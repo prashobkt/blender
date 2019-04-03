@@ -28,7 +28,6 @@
 #include "COLLADASWEffectProfile.h"
 #include "COLLADAFWColorOrTexture.h"
 
-
 #include <vector>
 #include <map>
 #include <set>
@@ -278,7 +277,7 @@ public:
 	bool has_roll();
 	float get_roll();
 
-	void set_tail(float *vec);
+	void set_tail(float vec[]);
 	float *get_tail();
 	bool has_tail();
 
