@@ -24,6 +24,8 @@
 #include <map>
 #include <algorithm>
 
+#include "ExportSettings.h"
+
 extern "C"
 {
 #include "BKE_object.h"
@@ -34,8 +36,6 @@ extern "C"
 #include "DNA_light_types.h"
 #include "DNA_camera_types.h"
 }
-
-typedef float(Matrix)[4][4];
 
 class BCMatrix {
 
@@ -58,10 +58,13 @@ public:
 	float(&scale() const)[3];
 	float(&quat() const)[4];
 
+	BCMatrix(BC_global_forward_axis global_forward_axis, BC_global_up_axis global_up_axis);
 	BCMatrix(Matrix &mat);
 	BCMatrix(Object *ob);
+	BCMatrix();
 
-	void get_matrix(double(&mat)[4][4], const bool transposed = false, const int precision = -1) const;
+	void get_matrix(DMatrix &matrix, const bool transposed=false, const int precision=-1) const;
+	void get_matrix(Matrix &matrix, const bool transposed=false, const int precision=-1, const bool inverted=false) const;
 
 	const bool in_range(const BCMatrix &other, float distance) const;
 	static void sanitize(Matrix &matrix, int precision);

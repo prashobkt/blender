@@ -1050,6 +1050,32 @@ bool bc_has_animations(Scene *sce, LinkNode &export_set)
 	return false;
 }
 
+void bc_add_global_transform(Matrix &to_mat, const Matrix &from_mat, const BCMatrix &global_transform, const bool invert)
+{
+	copy_m4_m4(to_mat, from_mat);
+	bc_add_global_transform(to_mat, global_transform, invert);
+}
+
+void bc_add_global_transform(Vector &to_vec, const Vector &from_vec, const BCMatrix &global_transform, const bool invert)
+{
+	copy_v3_v3(to_vec, from_vec);
+	bc_add_global_transform(to_vec, global_transform, invert);
+}
+
+void bc_add_global_transform(Matrix &to_mat, const BCMatrix &global_transform, const bool invert)
+{
+	Matrix mat;
+	global_transform.get_matrix(mat, false, 6, invert);
+	mul_m4_m4m4(to_mat, mat, to_mat);
+}
+
+void bc_add_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert)
+{
+	Matrix mat;
+	global_transform.get_matrix(mat, false, 6, invert);
+	mul_v3_m4v3(to_vec, mat, to_vec);
+}
+
 /**
  * Check if custom information about bind matrix exists and modify the from_mat
  * accordingly.

@@ -21,12 +21,42 @@
 #ifndef __BLENDERCONTEXT_H__
 #define __BLENDERCONTEXT_H__
 
+#ifdef __cplusplus
 extern "C" {
+#endif
+
 #include "DNA_object_types.h"
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+typedef float(Vector)[3];
+typedef float(Matrix)[4][4];
+typedef double(DMatrix)[4][4];
+
+typedef enum BC_global_forward_axis {
+	BC_GLOBAL_FORWARD_X = 0,
+	BC_GLOBAL_FORWARD_Y = 1,
+	BC_GLOBAL_FORWARD_Z = 2,
+	BC_GLOBAL_FORWARD_MINUS_X = 3,
+	BC_GLOBAL_FORWARD_MINUS_Y = 4,
+	BC_GLOBAL_FORWARD_MINUS_Z = 5
+} BC_global_forward_axis;
+
+typedef enum BC_global_up_axis {
+	BC_GLOBAL_UP_X = 0,
+	BC_GLOBAL_UP_Y = 1,
+	BC_GLOBAL_UP_Z = 2,
+	BC_GLOBAL_UP_MINUS_X = 3,
+	BC_GLOBAL_UP_MINUS_Y = 4,
+	BC_GLOBAL_UP_MINUS_Z = 5
+} BC_global_up_axis;
+
+static const BC_global_forward_axis BC_DEFAULT_FORWARD = BC_GLOBAL_FORWARD_Y;
+static const BC_global_up_axis BC_DEFAULT_UP = BC_GLOBAL_UP_Z;
+
+#ifdef __cplusplus
 }
 
 class BlenderContext
@@ -48,5 +78,6 @@ public:
 	ViewLayer *get_view_layer();
 	Main *get_main();
 };
+#endif
 
 #endif

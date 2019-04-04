@@ -223,8 +223,43 @@ extern bool bc_is_animated(BCMatrixSampleMap &values);
 extern bool bc_has_animations(Scene *sce, LinkNode &node);
 extern bool bc_has_animations(Object *ob);
 
+void bc_add_global_transform(Matrix &to_mat, const Matrix &from_mat, const BCMatrix &global_transform, const bool invert = false);
+void bc_add_global_transform(Vector &to_vec, const Vector &from_vec, const BCMatrix &global_transform, const bool invert = false);
 
-extern void bc_create_restpose_mat(const ExportSettings *export_settings, Bone *bone, float to_mat[4][4], float world[4][4], bool use_local_space);
+void bc_add_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert = false);
+void bc_add_global_transform(Matrix &to_mat, const BCMatrix &global_transform, const bool invert = false);
+
+extern void bc_create_restpose_mat(const ExportSettings *export_settings, Bone *bone, float to_mat[4][4], float from_mat[4][4], bool use_local_space);
+
+class ColladaBaseNodes
+{
+private:
+	std::vector<Object *> base_objects;
+
+public:
+
+	void add(Object *ob)
+	{
+		base_objects.push_back(ob);
+	}
+
+	bool contains(Object *ob)
+	{
+		std::vector<Object *>::iterator it = std::find(base_objects.begin(), base_objects.end(), ob);
+		return (it != base_objects.end());
+	}
+
+	int size()
+	{
+		return base_objects.size();
+	}
+
+	Object *get(int index)
+	{
+		return base_objects[index];
+	}
+
+};
 
 class BCPolygonNormalsIndices
 {

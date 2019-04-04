@@ -53,6 +53,28 @@ BCMatrix::BCMatrix(Object *ob)
 	set_transform(ob);
 }
 
+BCMatrix::BCMatrix()
+{
+	unit();
+}
+
+BCMatrix::BCMatrix(BC_global_forward_axis global_forward_axis, BC_global_up_axis global_up_axis)
+{
+	float mrot[3][3];
+	float mat[4][4];
+	mat3_from_axis_conversion(
+		BC_DEFAULT_FORWARD,
+		BC_DEFAULT_UP,
+		global_forward_axis,
+		global_up_axis,
+		mrot);
+
+	transpose_m3(mrot); // Assume that mat3_from_axis_conversion() returns a transposed matrix
+	copy_m4_m3(mat, mrot);
+	set_transform(mat);
+}
+
+
 void BCMatrix::set_transform(Matrix &mat)
 {
 	copy_m4_m4(matrix, mat);
@@ -129,14 +151,16 @@ void BCMatrix::sanitize(Matrix &mat, int precision)
 
 void BCMatrix::unit()
 {
-	unit_m4(matrix);
+	unit_m4(this->matrix);
+	mat4_decompose(this->loc, this->q, this->size, this->matrix);
+	quat_to_eul(this->rot, this->q);
 }
 
 /*
 We need double here because the OpenCollada API needs it.
 precision = -1 indicates to not limit the precision
 */
-void BCMatrix::get_matrix(double(&mat)[4][4], const bool transposed, const int precision) const
+void BCMatrix::get_matrix(DMatrix &mat, const bool transposed, const int precision) const
 {
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++) {
@@ -145,6 +169,21 @@ void BCMatrix::get_matrix(double(&mat)[4][4], const bool transposed, const int p
 				val = floor((val * pow(10, precision) + 0.5)) / pow(10, precision);
 			mat[i][j] = val;
 		}
+}
+
+void BCMatrix::get_matrix(Matrix &mat, const bool transposed, const int precision, const bool inverted) const
+{
+	for (int i = 0; i < 4; i++)
+		for (int j = 0; j < 4; j++) {
+			float val = (transposed) ? matrix[j][i] : matrix[i][j];
+			if (precision >= 0)
+				val = floor((val * pow(10, precision) + 0.5)) / pow(10, precision);
+			mat[i][j] = val;
+		}
+	
+	if (inverted) {
+		invert_m4(mat);
+	}
 }
 
 const bool BCMatrix::in_range(const BCMatrix &other, float distance) const

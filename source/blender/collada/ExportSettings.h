@@ -26,27 +26,7 @@ extern "C" {
 #endif
 
 #include "BLI_linklist.h"
-
-typedef enum BC_export_global_forward_axis {
-	BC_GLOBAL_FORWARD_X = 0,
-	BC_GLOBAL_FORWARD_Y = 1,
-	BC_GLOBAL_FORWARD_Z = 2,
-	BC_GLOBAL_FORWARD_MINUS_X = 3,
-	BC_GLOBAL_FORWARD_MINUS_Y = 4,
-	BC_GLOBAL_FORWARD_MINUS_Z = 5
-} BC_export_global_forward_axis;
-
-typedef enum BC_export_global_up_axis {
-	BC_GLOBAL_UP_X = 0,
-	BC_GLOBAL_UP_Y = 1,
-	BC_GLOBAL_UP_Z = 2,
-	BC_GLOBAL_UP_MINUS_X = 3,
-	BC_GLOBAL_UP_MINUS_Y = 4,
-	BC_GLOBAL_UP_MINUS_Z = 5
-} BC_export_global_up_axis;
-
-static const BC_export_global_forward_axis BC_DEFAULT_FORWARD = BC_GLOBAL_FORWARD_Y;
-static const BC_export_global_up_axis BC_DEFAULT_UP = BC_GLOBAL_UP_Z;
+#include "BlenderContext.h"
 
 typedef enum BC_export_mesh_type {
 	BC_MESH_TYPE_VIEW,
@@ -74,8 +54,8 @@ typedef enum BC_ui_export_section {
 
 typedef struct ExportSettings {
 	bool apply_modifiers;
-	BC_export_global_forward_axis global_forward;
-	BC_export_global_up_axis global_up;
+	BC_global_forward_axis global_forward;
+	BC_global_up_axis global_up;
 	bool apply_global_orientation;
 
 	BC_export_mesh_type export_mesh_type;
