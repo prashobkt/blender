@@ -320,9 +320,11 @@ Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *o
 
 {
 	Object *ancestor = ob;
-	while (ob->parent && bc_is_marked(ob->parent)) {
+	while (ob->parent) {
+		if (bc_is_marked(ob->parent)){
+			ancestor = ob->parent;
+		}
 		ob = ob->parent;
-		ancestor = ob;
 	}
 	return ancestor;
 }
