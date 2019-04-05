@@ -192,12 +192,13 @@ void ArmatureExporter::add_bone_node(
 			add_bone_transform(ob_arm, bone, node);
 
 			// Write nodes of childobjects, remove written objects from list
-			std::vector<Object *>::iterator i = child_objects.begin();
+			std::vector<Object *>::iterator iter = child_objects.begin();
 
-			while (i != child_objects.end()) {
-				if ((*i)->partype == PARBONE && STREQ((*i)->parsubstr, bone->name)) {
+			while (iter != child_objects.end()) {
+				Object *ob = *iter;
+				if (ob->partype == PARBONE && STREQ(ob->parsubstr, bone->name)) {
 					float backup_parinv[4][4];
-					copy_m4_m4(backup_parinv, (*i)->parentinv);
+					copy_m4_m4(backup_parinv, ob->parentinv);
 
 					// crude, temporary change to parentinv
 					// so transform gets exported correctly.
@@ -205,7 +206,7 @@ void ArmatureExporter::add_bone_node(
 					// Add bone tail- translation... don't know why
 					// bone parenting is against the tail of a bone
 					// and not it's head, seems arbitrary.
-					(*i)->parentinv[3][1] += bone->length;
+					ob->parentinv[3][1] += bone->length;
 
 					// OPEN_SIM_COMPATIBILITY
 					// TODO: when such objects are animated as
@@ -218,14 +219,14 @@ void ArmatureExporter::add_bone_node(
 						copy_m4_m4(temp, bone->arm_mat);
 						temp[3][0] = temp[3][1] = temp[3][2] = 0.0f;
 
-						mul_m4_m4m4((*i)->parentinv, temp, (*i)->parentinv);
+						mul_m4_m4m4(ob->parentinv, temp, ob->parentinv);
 					}
 
-					se->writeNodes(*i);
-					copy_m4_m4((*i)->parentinv, backup_parinv);
-					i = child_objects.erase(i);
+					se->writeNode(ob);
+					copy_m4_m4(ob->parentinv, backup_parinv);
+					iter = child_objects.erase(iter);
 				}
-				else i++;
+				else iter++;
 			}
 
 			for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
