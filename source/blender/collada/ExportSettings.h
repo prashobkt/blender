@@ -92,6 +92,143 @@ typedef struct ExportSettings {
 
 #ifdef __cplusplus
 }
+
+class BCExportSettings
+{
+private:
+	const ExportSettings &export_settings;
+
+public:
+	BCExportSettings(ExportSettings *exportSettings) :
+		export_settings(*exportSettings)
+	{}
+
+	bool get_apply_modifiers()
+	{
+		return export_settings.apply_modifiers;
+	}
+
+	BC_global_forward_axis get_global_forward()
+	{
+		return export_settings.global_forward;
+	}
+	BC_global_up_axis get_global_up()
+	{
+		return export_settings.global_up;
+	}
+	bool get_apply_global_orientation()
+	{
+		return export_settings.apply_global_orientation;
+	}
+
+	BC_export_mesh_type get_export_mesh_type()
+	{
+		return export_settings.export_mesh_type;
+	}
+
+	bool get_selected()
+	{
+		return export_settings.selected;
+	}
+	bool get_include_children()
+	{
+		return export_settings.include_children;
+	}
+	bool get_include_armatures()
+	{
+		return export_settings.include_armatures;
+	}
+	bool get_include_shapekeys()
+	{
+		return export_settings.include_shapekeys;
+	}
+	bool get_deform_bones_only()
+	{
+		return export_settings.deform_bones_only;
+	}
+	bool get_include_animations()
+	{
+		return export_settings.include_animations;
+	}
+	bool get_include_all_actions()
+	{
+		return export_settings.include_all_actions;
+	}
+	int  get_sampling_rate()
+	{
+		return export_settings.sampling_rate;
+	}
+	bool get_keep_smooth_curves()
+	{
+		return export_settings.keep_smooth_curves;
+	}
+	bool get_keep_keyframes()
+	{
+		return export_settings.keep_keyframes;
+	}
+	bool get_keep_flat_curves()
+	{
+		return export_settings.keep_flat_curves;
+	}
+
+	bool get_active_uv_only()
+	{
+		return export_settings.active_uv_only;
+	}
+	BC_export_animation_type get_export_animation_type()
+	{
+		return export_settings.export_animation_type;
+	}
+	bool get_use_texture_copies()
+	{
+		return export_settings.use_texture_copies;
+	}
+
+	bool get_triangulate()
+	{
+		return export_settings.triangulate;
+	}
+	bool get_use_object_instantiation()
+	{
+		return export_settings.use_object_instantiation;
+	}
+	bool get_use_blender_profile()
+	{
+		return export_settings.use_blender_profile;
+	}
+	bool get_sort_by_name()
+	{
+		return export_settings.sort_by_name;
+	}
+	BC_export_transformation_type get_export_transformation_type()
+	{
+		return export_settings.export_transformation_type;
+	}
+
+	bool get_open_sim()
+	{
+		return export_settings.open_sim;
+	}
+	bool get_limit_precision()
+	{
+		return export_settings.limit_precision;
+	}
+	bool get_keep_bind_info()
+	{
+		return export_settings.keep_bind_info;
+	}
+
+	char *get_filepath()
+	{
+		return export_settings.filepath;
+	}
+	LinkNode *get_export_set()
+	{
+		return export_settings.export_set;
+	}
+
+};
+
 #endif
 
 #endif

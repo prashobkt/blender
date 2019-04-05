@@ -41,14 +41,14 @@ void forEachLightObjectInExportSet(Scene *sce, Functor &f, LinkNode *export_set)
 	}
 }
 
-LightsExporter::LightsExporter(COLLADASW::StreamWriter *sw, const ExportSettings *export_settings) : COLLADASW::LibraryLights(sw), export_settings(export_settings) {
+LightsExporter::LightsExporter(COLLADASW::StreamWriter *sw, BCExportSettings &export_settings) : COLLADASW::LibraryLights(sw), export_settings(export_settings) {
 }
 
 void LightsExporter::exportLights(Scene *sce)
 {
 	openLibrary();
 
-	forEachLightObjectInExportSet(sce, *this, this->export_settings->export_set);
+	forEachLightObjectInExportSet(sce, *this, this->export_settings.get_export_set());
 
 	closeLibrary();
 }

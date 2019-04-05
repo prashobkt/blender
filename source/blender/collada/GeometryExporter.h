@@ -70,7 +70,7 @@ class GeometryExporter : COLLADASW::LibraryGeometries
 public:
 
 	// TODO: optimize UV sets by making indexed list with duplicates removed
-	GeometryExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, const ExportSettings *export_settings) :
+	GeometryExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, BCExportSettings &export_settings) :
 		COLLADASW::LibraryGeometries(sw),
 		blender_context(blender_context),
 		export_settings(export_settings)
@@ -121,7 +121,7 @@ public:
 private:
 	std::set<std::string> exportedGeometry;
 	BlenderContext &blender_context;
-	const ExportSettings *export_settings;
+	BCExportSettings &export_settings;
 
 	Mesh *get_mesh(Scene *sce, Object *ob, int apply_modifiers);
 };

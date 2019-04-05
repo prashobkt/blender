@@ -89,7 +89,7 @@ class SceneExporter: COLLADASW::LibraryVisualScenes, protected TransformWriter, 
 {
 public:
 
-	SceneExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, ArmatureExporter *arm, const ExportSettings *export_settings) :
+	SceneExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, ArmatureExporter *arm, BCExportSettings &export_settings) :
 		COLLADASW::LibraryVisualScenes(sw),
 		blender_context(blender_context),
 		arm_exporter(arm),
@@ -102,7 +102,7 @@ private:
 	BlenderContext &blender_context;
 	friend class ArmatureExporter;
 	ArmatureExporter *arm_exporter;
-	const ExportSettings *export_settings;
+	BCExportSettings &export_settings;
 
 	void exportHierarchy();
 	void writeNodeList(std::vector<Object *> &child_objects, Object *parent);

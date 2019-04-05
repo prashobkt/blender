@@ -56,7 +56,7 @@ bool ControllerExporter::is_skinned_mesh(Object *ob)
 
 void ControllerExporter::write_bone_URLs(COLLADASW::InstanceController &ins, Object *ob_arm, Bone *bone)
 {
-	if (bc_is_root_bone(bone, this->export_settings->deform_bones_only)) {
+	if (bc_is_root_bone(bone, this->export_settings.get_deform_bones_only())) {
 		std::string node_id = translate_id(id_name(ob_arm) + "_" + bone->name);
 		ins.addSkeleton(COLLADABU::URI(COLLADABU::Utils::EMPTY_STRING, node_id));
 	}
@@ -86,7 +86,7 @@ bool ControllerExporter::add_instance_controller(Object *ob)
 		write_bone_URLs(ins, ob_arm, bone);
 	}
 
-	InstanceWriter::add_material_bindings(ins.getBindMaterial(), ob, this->export_settings->active_uv_only);
+	InstanceWriter::add_material_bindings(ins.getBindMaterial(), ob, this->export_settings.get_active_uv_only());
 
 	ins.add();
 	return true;
@@ -98,7 +98,7 @@ void ControllerExporter::export_controllers()
 	openLibrary();
 
 	GeometryFunctor gf;
-	gf.forEachMeshObjectInExportSet<ControllerExporter>(sce, *this, this->export_settings->export_set);
+	gf.forEachMeshObjectInExportSet<ControllerExporter>(sce, *this, this->export_settings.get_export_set());
 
 	closeLibrary();
 }
@@ -111,7 +111,7 @@ void ControllerExporter::operator()(Object *ob)
 	if (ob_arm) {
 		export_skin_controller(ob, ob_arm);
 	}
-	if (key && this->export_settings->include_shapekeys) {
+	if (key && this->export_settings.get_include_shapekeys()) {
 		export_morph_controller(ob, key);
 	}
 }
@@ -181,7 +181,7 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
 	} MDeformWeight;
 #endif
 
-	bool use_instantiation = this->export_settings->use_object_instantiation;
+	bool use_instantiation = this->export_settings.get_use_object_instantiation();
 	Mesh *me;
 
 	if (((Mesh *)ob->data)->dvert == NULL) {
@@ -191,9 +191,9 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
 	me = bc_get_mesh_copy(
 	        blender_context,
 	        ob,
-	        this->export_settings->export_mesh_type,
-	        this->export_settings->apply_modifiers,
-	        this->export_settings->triangulate);
+	        this->export_settings.get_export_mesh_type(),
+	        this->export_settings.get_apply_modifiers(),
+	        this->export_settings.get_triangulate());
 
 	std::string controller_name = id_name(ob_arm);
 	std::string controller_id = get_controller_id(ob_arm, ob);
@@ -286,15 +286,15 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
 
 void ControllerExporter::export_morph_controller(Object *ob, Key *key)
 {
-	bool use_instantiation = this->export_settings->use_object_instantiation;
+	bool use_instantiation = this->export_settings.get_use_object_instantiation();
 	Mesh *me;
 
 	me = bc_get_mesh_copy(
 				blender_context,
 				ob,
-				this->export_settings->export_mesh_type,
-				this->export_settings->apply_modifiers,
-				this->export_settings->triangulate);
+				this->export_settings.get_export_mesh_type(),
+				this->export_settings.get_apply_modifiers(),
+				this->export_settings.get_triangulate());
 
 	std::string controller_name = id_name(ob) + "-morph";
 	std::string controller_id = get_controller_id(key, ob);
@@ -419,7 +419,7 @@ void ControllerExporter::add_bind_shape_mat(Object *ob)
 
 	//UnitConverter::mat4_to_dae_double(bind_mat, ob->obmat);
 	UnitConverter::mat4_to_dae_double(bind_mat, f_obmat);
-	if (this->export_settings->limit_precision)
+	if (this->export_settings.get_limit_precision())
 		bc_sanitize_mat(bind_mat, LIMITTED_PRECISION);
 
 	addBindShapeTransform(bind_mat);
@@ -514,7 +514,7 @@ std::string ControllerExporter::add_inv_bind_mats_source(Object *ob_arm, ListBas
 				bc_create_restpose_mat(this->export_settings, pchan->bone, bind_mat, pchan->bone->arm_mat, true);
 
 				// SL/OPEN_SIM COMPATIBILITY
-				if (export_settings->open_sim) {
+				if (export_settings.get_open_sim()) {
 
 					float loc[3];
 					float rot[3] = { 0, 0, 0 };
@@ -531,7 +531,7 @@ std::string ControllerExporter::add_inv_bind_mats_source(Object *ob_arm, ListBas
 
 			invert_m4_m4(mat, world);
 			UnitConverter::mat4_to_dae(inv_bind_mat, mat);
-			if (this->export_settings->limit_precision)
+			if (this->export_settings.get_limit_precision())
 				bc_sanitize_mat(inv_bind_mat, LIMITTED_PRECISION);
 			source.appendValues(inv_bind_mat);
 		}

@@ -1084,16 +1084,16 @@ void bc_add_global_transform(Vector &to_vec, const BCMatrix &global_transform, c
  *
  * Note: This is old style for Blender <= 2.78 only kept for compatibility
  */
-void bc_create_restpose_mat(const ExportSettings *export_settings, Bone *bone, float to_mat[4][4], float from_mat[4][4], bool use_local_space)
+void bc_create_restpose_mat(BCExportSettings &export_settings, Bone *bone, float to_mat[4][4], float from_mat[4][4], bool use_local_space)
 {
 	float loc[3];
 	float rot[3];
 	float scale[3];
 	static const float V0[3] = { 0, 0, 0 };
 
-	if (!has_custom_props(bone, export_settings->keep_bind_info, "restpose_loc") &&
-		!has_custom_props(bone, export_settings->keep_bind_info, "restpose_rot") &&
-		!has_custom_props(bone, export_settings->keep_bind_info, "restpose_scale"))
+	if (!has_custom_props(bone, export_settings.get_keep_bind_info(), "restpose_loc") &&
+		!has_custom_props(bone, export_settings.get_keep_bind_info(), "restpose_rot") &&
+		!has_custom_props(bone, export_settings.get_keep_bind_info(), "restpose_scale"))
 	{
 		/* No need */
 		copy_m4_m4(to_mat, from_mat);
@@ -1103,7 +1103,7 @@ void bc_create_restpose_mat(const ExportSettings *export_settings, Bone *bone, f
 	bc_decompose(from_mat, loc, rot, NULL, scale);
 	loc_eulO_size_to_mat4(to_mat, loc, rot, scale, 6);
 
-	if (export_settings->keep_bind_info) {
+	if (export_settings.get_keep_bind_info()) {
 		bc_get_property_vector(bone, "restpose_loc", loc, loc);
 
 		if (use_local_space && bone->parent) {
@@ -1119,7 +1119,7 @@ void bc_create_restpose_mat(const ExportSettings *export_settings, Bone *bone, f
 		}
 	}
 
-	if (export_settings->keep_bind_info) {
+	if (export_settings.get_keep_bind_info()) {
 		if (bc_get_IDProperty(bone, "restpose_rot_x"))
 		    rot[0] = DEG2RADF(bc_get_property(bone, "restpose_rot_x", 0));
 		if (bc_get_IDProperty(bone, "restpose_rot_y"))
@@ -1128,7 +1128,7 @@ void bc_create_restpose_mat(const ExportSettings *export_settings, Bone *bone, f
 			rot[2] = DEG2RADF(bc_get_property(bone, "restpose_rot_z", 0));
 	}
 
-	if (export_settings->keep_bind_info) {
+	if (export_settings.get_keep_bind_info()) {
 		bc_get_property_vector(bone, "restpose_scale", scale, scale);
 	}
 

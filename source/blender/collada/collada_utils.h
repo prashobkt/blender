@@ -229,7 +229,7 @@ void bc_add_global_transform(Vector &to_vec, const Vector &from_vec, const BCMat
 void bc_add_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert = false);
 void bc_add_global_transform(Matrix &to_mat, const BCMatrix &global_transform, const bool invert = false);
 
-extern void bc_create_restpose_mat(const ExportSettings *export_settings, Bone *bone, float to_mat[4][4], float from_mat[4][4], bool use_local_space);
+extern void bc_create_restpose_mat(BCExportSettings &export_settings, Bone *bone, float to_mat[4][4], float from_mat[4][4], bool use_local_space);
 
 class ColladaBaseNodes
 {

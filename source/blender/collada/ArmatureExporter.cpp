@@ -77,7 +77,7 @@ void ArmatureExporter::add_armature_bones(
 
 void ArmatureExporter::write_bone_URLs(COLLADASW::InstanceController &ins, Object *ob_arm, Bone *bone)
 {
-	if (bc_is_root_bone(bone, this->export_settings->deform_bones_only)) {
+	if (bc_is_root_bone(bone, this->export_settings.get_deform_bones_only())) {
 		std::string joint_id = translate_id(id_name(ob_arm) + "_" + bone->name);
 		ins.addSkeleton(COLLADABU::URI(COLLADABU::Utils::EMPTY_STRING, joint_id));
 	}
@@ -107,7 +107,7 @@ bool ArmatureExporter::add_instance_controller(Object *ob)
 		write_bone_URLs(ins, ob_arm, bone);
 	}
 
-	InstanceWriter::add_material_bindings(ins.getBindMaterial(), ob, this->export_settings->active_uv_only);
+	InstanceWriter::add_material_bindings(ins.getBindMaterial(), ob, this->export_settings.get_active_uv_only());
 
 	ins.add();
 	return true;
@@ -154,7 +154,7 @@ void ArmatureExporter::add_bone_node(
     SceneExporter *se,
     std::vector<Object *>& child_objects)
 {
-	if (!(this->export_settings->deform_bones_only && bone->flag & BONE_NO_DEFORM)) {
+	if (can_export(bone)) {
 		std::string node_id = translate_id(id_name(ob_arm) + "_" + bone->name);
 		std::string node_name = std::string(bone->name);
 		std::string node_sid = get_joint_sid(bone);
@@ -166,9 +166,9 @@ void ArmatureExporter::add_bone_node(
 		node.setNodeName(node_name);
 		node.setNodeSid(node_sid);
 
-		if (this->export_settings->use_blender_profile)
+		if (this->export_settings.get_use_blender_profile())
 		{
-			if (bone->parent) {
+			if (!is_export_root(bone)) {
 				if (bone->flag & BONE_CONNECTED) {
 					node.addExtraTechniqueParameter("blender", "connect", true);
 				}
@@ -214,7 +214,7 @@ void ArmatureExporter::add_bone_node(
 					// TODO: when such objects are animated as
 					// single matrix the tweak must be applied
 					// to the result.
-					if (export_settings->open_sim) {
+					if (export_settings.get_open_sim()) {
 						// tweak objects parentinverse to match compatibility
 						float temp[4][4];
 
@@ -241,6 +241,18 @@ void ArmatureExporter::add_bone_node(
 				add_bone_node(child, ob_arm, se, child_objects);
 			}
 		}
+}
+
+bool ArmatureExporter::is_export_root(Bone *bone)
+{
+	Bone *entry = bone->parent;
+	while (entry) {
+		if (can_export(entry)) {
+			return false;
+		}
+		entry = entry->parent;
+	}
+	return can_export(bone);
 }
 
 void ArmatureExporter::add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW::Node& node)
@@ -277,7 +289,7 @@ void ArmatureExporter::add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW:
 		}
 
 		// OPEN_SIM_COMPATIBILITY
-		if (export_settings->open_sim) {
+		if (export_settings.get_open_sim()) {
 			// Remove rotations vs armature from transform
 			// parent_rest_rot * mat * irest_rot
 			float temp[4][4];
@@ -296,8 +308,9 @@ void ArmatureExporter::add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW:
 		}
 	}
 
-	if (this->export_settings->limit_precision)
+	if (this->export_settings.get_limit_precision()) {
 		bc_sanitize_mat(mat, LIMITTED_PRECISION);
+	}
 
 	TransformWriter::add_node_transform(node, mat, NULL);
 

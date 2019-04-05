@@ -80,7 +80,7 @@ bool AnimationExporter::exportAnimations()
 {
 	Scene *sce = blender_context.get_scene();
 
-	LinkNode &export_set = *this->export_settings->export_set;
+	LinkNode &export_set = *this->export_settings.get_export_set();
 	bool has_anim_data = bc_has_animations(sce, export_set);
 	int animation_count = 0;
 	if (has_anim_data) {
@@ -92,11 +92,11 @@ bool AnimationExporter::exportAnimations()
 
 		try {
 			animation_sampler.sample_scene(
-			        export_settings->sampling_rate,
+			        export_settings.get_sampling_rate(),
 			        /*keyframe_at_end = */ true,
-			        export_settings->open_sim,
-			        export_settings->keep_keyframes,
-			        export_settings->export_animation_type
+			        export_settings.get_open_sim(),
+			        export_settings.get_keep_keyframes(),
+			        export_settings.get_export_animation_type()
 			);
 
 			openLibrary();
@@ -141,7 +141,7 @@ void AnimationExporter::exportAnimation(Object *ob, BCAnimationSampler &sampler)
 	 * Note: For Armatures the skeletal animation has already been exported (see above)
 	 * However Armatures also can have Object animation.
 	 */
-	bool export_as_matrix = this->export_settings->export_transformation_type == BC_TRANSFORMATION_TYPE_MATRIX;
+	bool export_as_matrix = this->export_settings.get_export_transformation_type() == BC_TRANSFORMATION_TYPE_MATRIX;
 
 	if (export_as_matrix) {
 		export_matrix_animation(ob, sampler); // export all transform_curves as one single matrix animation
@@ -178,7 +178,7 @@ void AnimationExporter::exportAnimation(Object *ob, BCAnimationSampler &sampler)
 void AnimationExporter::export_curve_animation_set(Object *ob, BCAnimationSampler &sampler, bool export_as_matrix)
 {
 	BCAnimationCurveMap *curves = sampler.get_curves(ob);
-	bool keep_flat_curves = this->export_settings->keep_flat_curves;
+	bool keep_flat_curves = this->export_settings.get_keep_flat_curves();
 
 	BCAnimationCurveMap::iterator it;
 	for (it = curves->begin(); it != curves->end(); ++it) {
@@ -217,7 +217,7 @@ void AnimationExporter::export_curve_animation_set(Object *ob, BCAnimationSample
 
 void AnimationExporter::export_matrix_animation(Object *ob, BCAnimationSampler &sampler)
 {
-	bool keep_flat_curves = this->export_settings->keep_flat_curves;
+	bool keep_flat_curves = this->export_settings.get_keep_flat_curves();
 
 	std::vector<float> frames;
 	sampler.get_object_frames(frames, ob);
@@ -242,7 +242,7 @@ void AnimationExporter::export_matrix_animation(Object *ob, BCAnimationSampler &
 //write bone animations in transform matrix sources
 void AnimationExporter::export_bone_animations_recursive(Object *ob, Bone *bone, BCAnimationSampler &sampler)
 {
-	bool keep_flat_curves = this->export_settings->keep_flat_curves;
+	bool keep_flat_curves = this->export_settings.get_keep_flat_curves();
 
 	std::vector<float> frames;
 	sampler.get_bone_frames(frames, ob, bone);
@@ -399,7 +399,7 @@ void AnimationExporter::export_collada_curve_animation(
 
 	bool has_tangents = false;
 	std::string interpolation_id;
-	if (this->export_settings->keep_smooth_curves)
+	if (this->export_settings.get_keep_smooth_curves())
 		interpolation_id = collada_interpolation_source(curve, id, axis, &has_tangents);
 	else
 		interpolation_id = collada_linear_interpolation_source(frames.size(), id);
@@ -619,7 +619,7 @@ std::string AnimationExporter::collada_source_from_values(BCMatrixSampleMap &sam
 	source.prepareToAppendValues();
 
 	BCMatrixSampleMap::iterator it;
-	int precision = (this->export_settings->limit_precision) ? 6 : -1; // could be made configurable
+	int precision = (this->export_settings.get_limit_precision()) ? 6 : -1; // could be made configurable
 	for (it = samples.begin(); it != samples.end(); it++) {
 		const BCMatrix *sample = it->second;
 		double daemat[4][4];

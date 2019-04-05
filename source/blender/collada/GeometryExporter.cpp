@@ -50,20 +50,20 @@ void GeometryExporter::exportGeom()
 	openLibrary();
 
 	GeometryFunctor gf;
-	gf.forEachMeshObjectInExportSet<GeometryExporter>(sce, *this, this->export_settings->export_set);
+	gf.forEachMeshObjectInExportSet<GeometryExporter>(sce, *this, this->export_settings.get_export_set());
 
 	closeLibrary();
 }
 
 void GeometryExporter::operator()(Object *ob)
 {
-	bool use_instantiation = this->export_settings->use_object_instantiation;
+	bool use_instantiation = this->export_settings.get_use_object_instantiation();
 	Mesh *me = bc_get_mesh_copy(
 					blender_context,
 					ob,
-					this->export_settings->export_mesh_type,
-					this->export_settings->apply_modifiers,
-					this->export_settings->triangulate);
+					this->export_settings.get_export_mesh_type(),
+					this->export_settings.get_apply_modifiers(),
+					this->export_settings.get_triangulate());
 
 	std::string geom_id = get_geometry_id(ob, use_instantiation);
 	std::vector<Normal> nor;
@@ -136,7 +136,7 @@ void GeometryExporter::operator()(Object *ob)
 
 	closeGeometry();
 
-	if (this->export_settings->include_shapekeys) {
+	if (this->export_settings.get_include_shapekeys()) {
 		Key *key = BKE_key_from_object(ob);
 		if (key) {
 			KeyBlock *kb = (KeyBlock *)key->block.first;
@@ -387,13 +387,13 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
 	int active_uv_index = CustomData_get_active_layer_index(&me->ldata, CD_MLOOPUV);
 	for (int i = 0; i < num_layers; i++) {
 		int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_MLOOPUV, i);
-		if (!this->export_settings->active_uv_only || layer_index == active_uv_index) {
+		if (!this->export_settings.get_active_uv_only() || layer_index == active_uv_index) {
 
 			// char *name = CustomData_get_layer_name(&me->ldata, CD_MLOOPUV, i);
 			COLLADASW::Input texcoord_input(COLLADASW::InputSemantic::TEXCOORD,
-									makeUrl(makeTexcoordSourceId(geom_id, i, this->export_settings->active_uv_only)),
+									makeUrl(makeTexcoordSourceId(geom_id, i, this->export_settings.get_active_uv_only())),
 									2, // this is only until we have optimized UV sets
-									(this->export_settings->active_uv_only) ? 0 : layer_index-1  //set (0,1,2,...)
+									(this->export_settings.get_active_uv_only()) ? 0 : layer_index-1  //set (0,1,2,...)
 									);
 			til.push_back(texcoord_input);
 		}
@@ -559,11 +559,11 @@ void GeometryExporter::createTexcoordsSource(std::string geom_id, Mesh *me)
 	int active_uv_index = CustomData_get_active_layer_index(&me->ldata, CD_MLOOPUV);
 	for (int a = 0; a < num_layers; a++) {
 		int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_MLOOPUV, a);
-		if (!this->export_settings->active_uv_only || layer_index == active_uv_index) {
+		if (!this->export_settings.get_active_uv_only() || layer_index == active_uv_index) {
 			MLoopUV *mloops = (MLoopUV *)CustomData_get_layer_n(&me->ldata, CD_MLOOPUV, a);
 
 			COLLADASW::FloatSourceF source(mSW);
-			std::string layer_id = makeTexcoordSourceId(geom_id, a, this->export_settings->active_uv_only);
+			std::string layer_id = makeTexcoordSourceId(geom_id, a, this->export_settings.get_active_uv_only());
 			source.setId(layer_id);
 			source.setArrayId(layer_id + ARRAY_ID_SUFFIX);
 

@@ -92,11 +92,11 @@ class AnimationExporter: COLLADASW::LibraryAnimations
 private:
 	BlenderContext &blender_context;
 	COLLADASW::StreamWriter *sw;
-	const ExportSettings *export_settings;
+	BCExportSettings &export_settings;
 
 public:
 
-	AnimationExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, const ExportSettings *export_settings):
+	AnimationExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, BCExportSettings &export_settings):
 		COLLADASW::LibraryAnimations(sw),
 		blender_context(blender_context),
 		sw(sw),

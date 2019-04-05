@@ -52,11 +52,15 @@ class SceneExporter;
 
 class ControllerExporter : public COLLADASW::LibraryControllers, protected TransformWriter, protected InstanceWriter
 {
+private:
+	BlenderContext &blender_context;
+	BCExportSettings export_settings;
+
 public:
 	// XXX exporter writes wrong data for shared armatures.  A separate
 	// controller should be written for each armature-mesh binding how do
 	// we make controller ids then?
-	ControllerExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, const ExportSettings *export_settings) :
+	ControllerExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, BCExportSettings &export_settings) :
 		COLLADASW::LibraryControllers(sw),
 		blender_context(blender_context),
 		export_settings(export_settings) {
@@ -71,8 +75,6 @@ public:
 	void operator()(Object *ob);
 
 private:
-	BlenderContext &blender_context;
-	const ExportSettings *export_settings;
 
 #if 0
 	std::vector<Object *> written_armatures;
