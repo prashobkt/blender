@@ -64,10 +64,7 @@ void ArmatureExporter::add_armature_bones(
 	}
 
 	for (Bone *bone = (Bone *)armature->bonebase.first; bone; bone = bone->next) {
-		// start from root bones
-		if (!bone->parent) {
-			add_bone_node(bone, ob_arm, se, child_objects);
-		}
+		add_bone_node(bone, ob_arm, se, child_objects);
 	}
 
 	if (!is_edited) {
