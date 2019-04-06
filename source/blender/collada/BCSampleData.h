@@ -37,41 +37,6 @@ extern "C"
 #include "DNA_camera_types.h"
 }
 
-class BCMatrix {
-
-private:
-	mutable float matrix[4][4];
-	mutable float size[3];
-	mutable float rot[3];
-	mutable float loc[3];
-	mutable float q[4];
-
-	void unit();
-	void copy(Matrix &r, Matrix &a);
-	void set_transform(Object *ob);
-	void set_transform(Matrix &mat);
-
-public:
-
-	float(&location() const)[3];
-	float(&rotation() const)[3];
-	float(&scale() const)[3];
-	float(&quat() const)[4];
-
-	BCMatrix(BC_global_forward_axis global_forward_axis, BC_global_up_axis global_up_axis);
-	BCMatrix(Matrix &mat);
-	BCMatrix(Object *ob);
-	BCMatrix();
-
-	void get_matrix(DMatrix &matrix, const bool transposed=false, const int precision=-1) const;
-	void get_matrix(Matrix &matrix, const bool transposed=false, const int precision=-1, const bool inverted=false) const;
-
-	const bool in_range(const BCMatrix &other, float distance) const;
-	static void sanitize(Matrix &matrix, int precision);
-	static void transpose(Matrix &matrix);
-
-};
-
 typedef std::map<Bone *, BCMatrix *> BCBoneMatrixMap;
 
 class BCSample{

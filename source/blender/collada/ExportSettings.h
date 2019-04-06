@@ -90,7 +90,7 @@ typedef struct ExportSettings {
 	LinkNode *export_set;
 } ExportSettings;
 
- bool bc_is_base_node(LinkNode *export_set, Object *ob);
+bool bc_is_base_node(LinkNode *export_set, Object *ob);
 
 #ifdef __cplusplus
 }
