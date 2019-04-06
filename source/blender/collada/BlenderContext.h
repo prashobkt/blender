@@ -60,6 +60,8 @@ static const BC_global_forward_axis BC_DEFAULT_FORWARD = BC_GLOBAL_FORWARD_Y;
 static const BC_global_up_axis BC_DEFAULT_UP = BC_GLOBAL_UP_Z;
 
 bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
+bool bc_is_base_node(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
+Object *bc_get_highest_exported_ancestor_or_self(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
 int bc_is_marked(Object *ob);
 void bc_remove_mark(Object *ob);
 void bc_set_mark(Object *ob);

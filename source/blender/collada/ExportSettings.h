@@ -22,6 +22,8 @@
 #define __EXPORTSETTINGS_H__
 
 #ifdef __cplusplus
+#include <vector>
+
 extern "C" {
 #endif
 
@@ -90,10 +92,10 @@ typedef struct ExportSettings {
 	LinkNode *export_set;
 } ExportSettings;
 
-bool bc_is_base_node(LinkNode *export_set, Object *ob);
-
 #ifdef __cplusplus
 }
+
+void bc_get_children(std::vector<Object *> &child_set, Object *ob, ViewLayer *view_layer);
 
 class BCExportSettings
 {
@@ -261,7 +263,7 @@ public:
 
 	bool is_export_root(Object *ob)
 	{
-		return bc_is_base_node(get_export_set(), ob);
+		return bc_is_base_node(get_export_set(), ob, get_view_layer());
 	}
 
 };

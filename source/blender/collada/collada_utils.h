@@ -130,23 +130,15 @@ std::string bc_get_action_id(std::string action_name, std::string ob_name, std::
 extern float bc_get_float_value(const COLLADAFW::FloatOrDoubleArray& array, unsigned int index);
 extern int bc_test_parent_loop(Object *par, Object *ob);
 
-extern void bc_get_children(std::vector<Object *> &child_set, Object *ob, ViewLayer *view_layer);
 extern bool bc_validateConstraints(bConstraint *con);
 
-extern int bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space = true);
+bool bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space = true);
 extern Object *bc_add_object(Main *bmain, Scene *scene, ViewLayer *view_layer, int type, const char *name);
 extern Mesh *bc_get_mesh_copy(
         BlenderContext &blender_context, Object *ob, BC_export_mesh_type export_mesh_type, bool apply_modifiers, bool triangulate);
 
 extern Object *bc_get_assigned_armature(Object *ob);
-extern Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *ob);
-extern bool bc_is_base_node(LinkNode *export_set, Object *ob);
-extern bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
 extern bool bc_has_object_type(LinkNode *export_set, short obtype);
-
-extern int bc_is_marked(Object *ob);
-extern void bc_remove_mark(Object *ob);
-extern void bc_set_mark(Object *ob);
 
 extern char *bc_CustomData_get_layer_name(const CustomData *data, int type, int n);
 extern char *bc_CustomData_get_active_layer_name(const CustomData *data, int type);

@@ -54,7 +54,7 @@ void SceneExporter::exportHierarchy()
 	// Now find all exportable base objects (highest in export hierarchy)
 	for (node = this->export_settings.get_export_set(); node; node = node->next) {
 		Object *ob = (Object *)node->link;
-		if (bc_is_base_node(this->export_settings.get_export_set(), ob)) {
+		if (this->export_settings.is_export_root(ob)) {
 			switch (ob->type) {
 				case OB_MESH:
 				case OB_CAMERA:

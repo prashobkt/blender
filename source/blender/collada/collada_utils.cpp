@@ -61,6 +61,7 @@ extern "C" {
 #include "ED_armature.h"
 #include "ED_screen.h"
 #include "ED_node.h"
+#include "ED_object.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -103,25 +104,6 @@ int bc_test_parent_loop(Object *par, Object *ob)
 	return bc_test_parent_loop(par->parent, ob);
 }
 
-void bc_get_children(std::vector<Object *> &child_set, Object *ob, ViewLayer *view_layer)
-{
-	Base *base;
-	for (base = (Base *)view_layer->object_bases.first; base; base = base->next) {
-		Object *cob = base->object;
-		if (cob->parent == ob) {
-			switch (ob->type) {
-			case OB_MESH:
-			case OB_CAMERA:
-			case OB_LAMP:
-			case OB_EMPTY:
-			case OB_ARMATURE:
-				child_set.push_back(cob);
-			default: break;
-			}
-		}
-	}
-}
-
 bool bc_validateConstraints(bConstraint *con)
 {
 	const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
@@ -146,7 +128,7 @@ bool bc_validateConstraints(bConstraint *con)
 
 // a shortened version of parent_set_exec()
 // if is_parent_space is true then ob->obmat will be multiplied by par->obmat before parenting
-int bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space)
+bool bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space)
 {
 	Object workob;
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
@@ -310,52 +292,6 @@ Object *bc_get_assigned_armature(Object *ob)
 	return ob_arm;
 }
 
-/**
- * Returns the highest selected ancestor
- * returns NULL if no ancestor is selected
- * IMPORTANT: This function expects that all exported objects have set:
- * ob->id.tag & LIB_TAG_DOIT
- */
-Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *ob)
-
-{
-	Object *ancestor = ob;
-	while (ob->parent) {
-		if (bc_is_marked(ob->parent)){
-			ancestor = ob->parent;
-		}
-		ob = ob->parent;
-	}
-	return ancestor;
-}
-
-bool bc_is_base_node(LinkNode *export_set, Object *ob)
-{
-	Object *root = bc_get_highest_selected_ancestor_or_self(export_set, ob);
-	return (root == ob);
-}
-
-bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, ViewLayer *view_layer)
-{
-	bool to_export = (BLI_linklist_index(export_set, ob) != -1);
-
-	if (!to_export)
-	{
-		/* Mark this object as to_export even if it is not in the
-		export list, but it contains children to export */
-
-		std::vector<Object *> children;
-		bc_get_children(children, ob, view_layer);
-		for (int i = 0; i < children.size(); i++) {
-			if (bc_is_in_Export_set(export_set, children[i], view_layer)) {
-				to_export = true;
-				break;
-			}
-		}
-	}
-	return to_export;
-}
-
 bool bc_has_object_type(LinkNode *export_set, short obtype)
 {
 	LinkNode *node;
@@ -370,20 +306,6 @@ bool bc_has_object_type(LinkNode *export_set, short obtype)
 	return false;
 }
 
-int bc_is_marked(Object *ob)
-{
-	return ob && (ob->id.tag & LIB_TAG_DOIT);
-}
-
-void bc_remove_mark(Object *ob)
-{
-	ob->id.tag &= ~LIB_TAG_DOIT;
-}
-
-void bc_set_mark(Object *ob)
-{
-	ob->id.tag |= LIB_TAG_DOIT;
-}
 
 // Use bubble sort algorithm for sorting the export set
 void bc_bubble_sort_by_Object_name(LinkNode *export_set)
