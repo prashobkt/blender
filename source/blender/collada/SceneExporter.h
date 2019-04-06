@@ -106,7 +106,7 @@ private:
 
 	void exportHierarchy();
 	void writeNodeList(std::vector<Object *> &child_objects, Object *parent);
-	void writeNodes(Object *ob);
+	void writeNode(Object *ob);
 
 };
 

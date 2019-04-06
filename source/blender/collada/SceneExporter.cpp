@@ -73,7 +73,7 @@ void SceneExporter::exportHierarchy()
 		Object *ob = base_objects[index];
 		if (bc_is_marked(ob)) {
 			bc_remove_mark(ob);
-			writeNodes(ob);
+			writeNode(ob);
 		}
 	}
 }
@@ -91,12 +91,12 @@ void SceneExporter::writeNodeList(std::vector<Object *> &child_objects, Object *
 		Object *child = child_objects[i];
 		if (bc_is_marked(child)) {
 			bc_remove_mark(child);
-			writeNodes(child);
+			writeNode(child);
 		}
 	}
 }
 
-void SceneExporter::writeNodes(Object *ob)
+void SceneExporter::writeNode(Object *ob)
 {
 	ViewLayer *view_layer = blender_context.get_view_layer();
 
@@ -112,7 +112,7 @@ void SceneExporter::writeNodes(Object *ob)
 		armature_exported = bc_is_in_Export_set(this->export_settings.get_export_set(), ob_arm, view_layer);
 		if (armature_exported && bc_is_marked(ob_arm)) {
 			bc_remove_mark(ob_arm);
-			writeNodes(ob_arm);
+			writeNode(ob_arm);
 			armature_exported = true;
 		}
 	}
