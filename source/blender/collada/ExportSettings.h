@@ -90,17 +90,23 @@ typedef struct ExportSettings {
 	LinkNode *export_set;
 } ExportSettings;
 
+ bool bc_is_base_node(LinkNode *export_set, Object *ob);
+
 #ifdef __cplusplus
 }
 
 class BCExportSettings
 {
+
 private:
 	const ExportSettings &export_settings;
+	BlenderContext &blender_context;
 
 public:
-	BCExportSettings(ExportSettings *exportSettings) :
-		export_settings(*exportSettings)
+
+	BCExportSettings(ExportSettings *exportSettings, BlenderContext &blenderContext) :
+		export_settings(*exportSettings),
+		blender_context(blenderContext)
 	{}
 
 	bool get_apply_modifiers()
@@ -112,10 +118,12 @@ public:
 	{
 		return export_settings.global_forward;
 	}
+
 	BC_global_up_axis get_global_up()
 	{
 		return export_settings.global_up;
 	}
+
 	bool get_apply_global_orientation()
 	{
 		return export_settings.apply_global_orientation;
@@ -130,42 +138,52 @@ public:
 	{
 		return export_settings.selected;
 	}
+
 	bool get_include_children()
 	{
 		return export_settings.include_children;
 	}
+
 	bool get_include_armatures()
 	{
 		return export_settings.include_armatures;
 	}
+
 	bool get_include_shapekeys()
 	{
 		return export_settings.include_shapekeys;
 	}
+
 	bool get_deform_bones_only()
 	{
 		return export_settings.deform_bones_only;
 	}
+
 	bool get_include_animations()
 	{
 		return export_settings.include_animations;
 	}
+
 	bool get_include_all_actions()
 	{
 		return export_settings.include_all_actions;
 	}
+
 	int  get_sampling_rate()
 	{
 		return export_settings.sampling_rate;
 	}
+
 	bool get_keep_smooth_curves()
 	{
 		return export_settings.keep_smooth_curves;
 	}
+
 	bool get_keep_keyframes()
 	{
 		return export_settings.keep_keyframes;
 	}
+
 	bool get_keep_flat_curves()
 	{
 		return export_settings.keep_flat_curves;
@@ -175,10 +193,12 @@ public:
 	{
 		return export_settings.active_uv_only;
 	}
+
 	BC_export_animation_type get_export_animation_type()
 	{
 		return export_settings.export_animation_type;
 	}
+
 	bool get_use_texture_copies()
 	{
 		return export_settings.use_texture_copies;
@@ -188,18 +208,22 @@ public:
 	{
 		return export_settings.triangulate;
 	}
+
 	bool get_use_object_instantiation()
 	{
 		return export_settings.use_object_instantiation;
 	}
+
 	bool get_use_blender_profile()
 	{
 		return export_settings.use_blender_profile;
 	}
+
 	bool get_sort_by_name()
 	{
 		return export_settings.sort_by_name;
 	}
+
 	BC_export_transformation_type get_export_transformation_type()
 	{
 		return export_settings.export_transformation_type;
@@ -209,10 +233,12 @@ public:
 	{
 		return export_settings.open_sim;
 	}
+
 	bool get_limit_precision()
 	{
 		return export_settings.limit_precision;
 	}
+
 	bool get_keep_bind_info()
 	{
 		return export_settings.keep_bind_info;
@@ -222,9 +248,20 @@ public:
 	{
 		return export_settings.filepath;
 	}
+
 	LinkNode *get_export_set()
 	{
 		return export_settings.export_set;
+	}
+
+	ViewLayer *get_view_layer()
+	{
+		return blender_context.get_view_layer();
+	}
+
+	bool is_export_root(Object *ob)
+	{
+		return bc_is_base_node(get_export_set(), ob);
 	}
 
 };

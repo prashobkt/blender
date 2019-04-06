@@ -147,7 +147,7 @@ char *bc_CustomData_get_active_layer_name(const CustomData *data, int type)
 
 DocumentExporter::DocumentExporter(BlenderContext &blender_context, ExportSettings *exportSettings) :
 	blender_context(blender_context),
-	export_settings(BCExportSettings(exportSettings)) {
+	export_settings(BCExportSettings(exportSettings, blender_context)) {
 }
 
 static COLLADABU::NativeString make_temp_filepath(const char *name, const char *extension)
