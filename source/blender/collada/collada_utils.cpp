@@ -126,43 +126,19 @@ bool bc_validateConstraints(bConstraint *con)
 	return true;
 }
 
-// a shortened version of parent_set_exec()
-// if is_parent_space is true then ob->obmat will be multiplied by par->obmat before parenting
 bool bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space)
 {
-	Object workob;
-	Depsgraph *depsgraph = CTX_data_depsgraph(C);
-	Scene *sce = CTX_data_scene(C);
+	Scene *scene = CTX_data_scene(C);
+	int partype = PAR_OBJECT;
+	const bool xmirror = false;
+	const bool keep_transform = false;
 
-	if (!par || bc_test_parent_loop(par, ob))
-		return false;
-
-	ob->parent = par;
-	ob->partype = PAROBJECT;
-
-	ob->parsubstr[0] = 0;
-
-	if (is_parent_space) {
-		float mat[4][4];
-		// calc par->obmat
-		BKE_object_where_is_calc(depsgraph, sce, par);
-
-		// move child obmat into world space
-		mul_m4_m4m4(mat, par->obmat, ob->obmat);
-		copy_m4_m4(ob->obmat, mat);
+	if (par && is_parent_space) {
+		mul_m4_m4m4(ob->obmat, par->obmat, ob->obmat);
 	}
 
-	// apply child obmat (i.e. decompose it into rot/loc/size)
-	BKE_object_apply_mat4(ob, ob->obmat, 0, 0);
-
-	// compute parentinv
-	BKE_object_workob_calc_parent(depsgraph, sce, ob, &workob);
-	invert_m4_m4(ob->parentinv, workob.obmat);
-
-	DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-	DEG_id_tag_update(&par->id, ID_RECALC_TRANSFORM);
-
-	return true;
+	bool ok = ED_object_parent_set(NULL, C, scene, ob, par, partype, xmirror, keep_transform, NULL);
+	return ok;
 }
 
 std::vector<bAction *> bc_getSceneActions(const bContext *C, Object *ob, bool all_actions)
