@@ -103,13 +103,20 @@ class BCExportSettings
 private:
 	const ExportSettings &export_settings;
 	BlenderContext &blender_context;
+	const BCMatrix global_transform;
 
 public:
 
 	BCExportSettings(ExportSettings *exportSettings, BlenderContext &blenderContext) :
 		export_settings(*exportSettings),
-		blender_context(blenderContext)
+		blender_context(blenderContext),
+		global_transform(BCMatrix(exportSettings->global_forward, exportSettings->global_up))
+
 	{}
+
+	const BCMatrix &get_global_transform() {
+		return global_transform;
+	}
 
 	bool get_apply_modifiers()
 	{
