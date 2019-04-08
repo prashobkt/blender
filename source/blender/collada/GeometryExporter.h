@@ -41,8 +41,6 @@
 
 struct Depsgraph;
 
-extern Object *bc_get_highest_selected_ancestor_or_self(Object *ob);
-
 class Normal
 {
 	public:

@@ -63,8 +63,8 @@ public:
 	ControllerExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, BCExportSettings &export_settings) :
 		COLLADASW::LibraryControllers(sw),
 		blender_context(blender_context),
-		export_settings(export_settings) {
-	}
+		export_settings(export_settings)
+	{}
 
 	bool is_skinned_mesh(Object *ob);
 

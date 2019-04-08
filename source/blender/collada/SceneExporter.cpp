@@ -23,10 +23,12 @@ extern "C" {
 	#include "BKE_collection.h"
 	#include "BKE_object.h"
 	#include "BLI_listbase.h"
+	#include "BKE_library.h"
 }
 
 #include "SceneExporter.h"
 #include "collada_utils.h"
+#include "BCSampleData.h"
 
 void SceneExporter::exportScene()
 {
@@ -43,7 +45,7 @@ void SceneExporter::exportScene()
 void SceneExporter::exportHierarchy()
 {
 	LinkNode *node;
-	std::vector<Object *> base_objects;
+	ColladaBaseNodes base_objects;
 
 	// Ensure all objects in the export_set are marked
 	for (node = this->export_settings.get_export_set(); node; node = node->next) {
@@ -56,24 +58,24 @@ void SceneExporter::exportHierarchy()
 		Object *ob = (Object *)node->link;
 		if (this->export_settings.is_export_root(ob)) {
 			switch (ob->type) {
-				case OB_MESH:
-				case OB_CAMERA:
-				case OB_LAMP:
-				case OB_EMPTY:
-				case OB_GPENCIL:
-				case OB_ARMATURE:
-					base_objects.push_back(ob);
-					break;
+			case OB_MESH:
+			case OB_CAMERA:
+			case OB_LAMP:
+			case OB_EMPTY:
+			case OB_GPENCIL:
+			case OB_ARMATURE:
+				base_objects.add(ob);
+				break;
 			}
 		}
 	}
 
 	// And now export the base objects:
 	for (int index = 0; index < base_objects.size(); index++) {
-		Object *ob = base_objects[index];
+		Object *ob = base_objects.get(index);
+		writeNode(ob);
 		if (bc_is_marked(ob)) {
 			bc_remove_mark(ob);
-			writeNode(ob);
 		}
 	}
 }
@@ -89,9 +91,9 @@ void SceneExporter::writeNodeList(std::vector<Object *> &child_objects, Object *
 	 */
 	for (int i = 0; i < child_objects.size(); ++i) {
 		Object *child = child_objects[i];
+		writeNode(child);
 		if (bc_is_marked(child)) {
 			bc_remove_mark(child);
-			writeNode(child);
 		}
 	}
 }
@@ -111,8 +113,8 @@ void SceneExporter::writeNode(Object *ob)
 	if (ob_arm != NULL) {
 		armature_exported = bc_is_in_Export_set(this->export_settings.get_export_set(), ob_arm, view_layer);
 		if (armature_exported && bc_is_marked(ob_arm)) {
-			bc_remove_mark(ob_arm);
 			writeNode(ob_arm);
+			bc_remove_mark(ob_arm);
 			armature_exported = true;
 		}
 	}
@@ -227,7 +229,12 @@ void SceneExporter::writeNode(Object *ob)
 				}
 			}
 		}
+		bc_remove_mark(ob);
 		writeNodeList(child_objects, ob);
 		colladaNode.end();
 	}
+	else {
+		writeNodeList(child_objects, ob);
+	}
 }
+

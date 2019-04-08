@@ -44,8 +44,6 @@ extern "C" {
 #include "ArmatureExporter.h"
 #include "SceneExporter.h"
 
-#include "collada_utils.h"
-
 // write bone nodes
 void ArmatureExporter::add_armature_bones(
 	Object *ob_arm,
@@ -181,9 +179,19 @@ void ArmatureExporter::add_bone_node(
 			}
 			if (bc_is_leaf_bone(bone))
 			{
-				node.addExtraTechniqueParameter("blender", "tip_x", bone->arm_tail[0] - bone->arm_head[0]);
-				node.addExtraTechniqueParameter("blender", "tip_y", bone->arm_tail[1] - bone->arm_head[1]);
-				node.addExtraTechniqueParameter("blender", "tip_z", bone->arm_tail[2] - bone->arm_head[2]);
+				Vector head, tail;
+				const BCMatrix &global_transform = this->export_settings.get_global_transform();
+				if (this->export_settings.get_apply_global_orientation()) {
+					bc_add_global_transform(head, bone->arm_head, global_transform);
+					bc_add_global_transform(tail, bone->arm_tail, global_transform);
+				}
+				else {
+					copy_v3_v3(head, bone->arm_head);
+					copy_v3_v3(tail, bone->arm_tail);
+				}
+				node.addExtraTechniqueParameter("blender", "tip_x", tail[0] - head[0]);
+				node.addExtraTechniqueParameter("blender", "tip_y", tail[1] - head[1]);
+				node.addExtraTechniqueParameter("blender", "tip_z", tail[2] - head[2]);
 			}
 		}
 
@@ -269,39 +277,42 @@ void ArmatureExporter::add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW:
 
 		bc_create_restpose_mat(this->export_settings, bone, bone_rest_mat, bone->arm_mat, true);
 
-		if (bone->parent) {
-			// get bone-space matrix from parent pose
-			/*bPoseChannel *parchan = BKE_pose_channel_find_name(ob_arm->pose, bone->parent->name);
-			float invpar[4][4];
-			invert_m4_m4(invpar, parchan->pose_mat);
-			mul_m4_m4m4(mat, invpar, pchan->pose_mat);*/
-			float invpar[4][4];
-			bc_create_restpose_mat(this->export_settings, bone->parent, parent_rest_mat, bone->parent->arm_mat, true);
-
-			invert_m4_m4(invpar, parent_rest_mat);
-			mul_m4_m4m4(mat, invpar, bone_rest_mat);
-
+		if (is_export_root(bone)) {
+			copy_m4_m4(mat, bone_rest_mat);
 		}
 		else {
-			copy_m4_m4(mat, bone_rest_mat);
+			Matrix parent_inverse;
+			bc_create_restpose_mat(this->export_settings, bone->parent, parent_rest_mat, bone->parent->arm_mat, true);
+
+			invert_m4_m4(parent_inverse, parent_rest_mat);
+			mul_m4_m4m4(mat, parent_inverse, bone_rest_mat);
 		}
 
 		// OPEN_SIM_COMPATIBILITY
 		if (export_settings.get_open_sim()) {
 			// Remove rotations vs armature from transform
 			// parent_rest_rot * mat * irest_rot
-			float temp[4][4];
-			copy_m4_m4(temp, bone_rest_mat);
-			temp[3][0] = temp[3][1] = temp[3][2] = 0.0f;
-			invert_m4(temp);
+			Matrix workmat;
+			copy_m4_m4(workmat, bone_rest_mat);
 
-			mul_m4_m4m4(mat, mat, temp);
+			workmat[3][0] = workmat[3][1] = workmat[3][2] = 0.0f;
+			invert_m4(workmat);
 
-			if (bone->parent) {
-				copy_m4_m4(temp, parent_rest_mat);
-				temp[3][0] = temp[3][1] = temp[3][2] = 0.0f;
+			mul_m4_m4m4(mat, mat, workmat);
 
-				mul_m4_m4m4(mat, temp, mat);
+			if (!is_export_root(bone)) {
+				copy_m4_m4(workmat, parent_rest_mat);
+				workmat[3][0] = workmat[3][1] = workmat[3][2] = 0.0f;
+
+				mul_m4_m4m4(mat, workmat, mat);
+
+				if (this->export_settings.get_apply_global_orientation()) {
+					Vector v;
+					copy_v3_v3(v, mat[3]);
+					bc_add_global_transform(v, this->export_settings.get_global_transform());
+					copy_v3_v3(mat[3], v);
+				}
+
 			}
 		}
 	}

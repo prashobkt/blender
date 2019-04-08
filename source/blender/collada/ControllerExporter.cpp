@@ -417,6 +417,12 @@ void ControllerExporter::add_bind_shape_mat(Object *ob)
 	float  f_obmat[4][4];
 	BKE_object_matrix_local_get(ob, f_obmat);
 
+	if (export_settings.get_apply_global_orientation()) {
+	}
+	else {
+		bc_add_global_transform(f_obmat, export_settings.get_global_transform());
+	}
+
 	//UnitConverter::mat4_to_dae_double(bind_mat, ob->obmat);
 	UnitConverter::mat4_to_dae_double(bind_mat, f_obmat);
 	if (this->export_settings.get_limit_precision())
@@ -528,6 +534,16 @@ std::string ControllerExporter::add_inv_bind_mats_source(Object *ob_arm, ListBas
 
 			// make world-space matrix (bind_mat is armature-space)
 			mul_m4_m4m4(world, ob_arm->obmat, bind_mat);
+
+			if (export_settings.get_apply_global_orientation()) {
+				Vector loc;
+				copy_v3_v3(loc,world[3]);
+				bc_add_global_transform(loc, export_settings.get_global_transform());
+				copy_v3_v3(world[3], loc);
+			}
+			else {
+				bc_add_global_transform(world, export_settings.get_global_transform());
+			}
 
 			invert_m4_m4(mat, world);
 			UnitConverter::mat4_to_dae(inv_bind_mat, mat);
