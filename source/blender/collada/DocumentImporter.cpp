@@ -646,7 +646,6 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node, COLLA
 				libnode_ob.push_back(ob);
 		}
 
-
 		//create_constraints(et,ob);
 
 	}
@@ -664,6 +663,7 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node, COLLA
 				ob->parsubstr[0] = 0;
 
 				//bc_set_parent(ob, par, mContext, false);
+
 			}
 		}
 	}
@@ -1128,7 +1128,6 @@ bool DocumentImporter::writeAnimation(const COLLADAFW::Animation *anim)
 	if (mImportStage == Fetching_Controller_data)
 		return true;
 
-	// return true;
 	return anim_importer.write_animation(anim);
 }
 
