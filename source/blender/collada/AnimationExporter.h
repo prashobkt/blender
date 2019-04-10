@@ -87,18 +87,25 @@ typedef enum BC_animation_source_type {
 	BC_SOURCE_TYPE_TIMEFRAME
 } BC_animation_source_type;
 
+typedef enum BC_global_rotation_type {
+	BC_NO_ROTATION,
+	BC_OBJECT_ROTATION,
+	BC_DATA_ROTATION
+} BC_global_rotation_type;
+
 class AnimationExporter: COLLADASW::LibraryAnimations
 {
 private:
-	BlenderContext &blender_context;
+
 	COLLADASW::StreamWriter *sw;
 	BCExportSettings &export_settings;
 
+	BC_global_rotation_type get_global_rotation_type(Object *ob);
+
 public:
 
-	AnimationExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, BCExportSettings &export_settings):
+	AnimationExporter(COLLADASW::StreamWriter *sw, BCExportSettings &export_settings):
 		COLLADASW::LibraryAnimations(sw),
-		blender_context(blender_context),
 		sw(sw),
 		export_settings(export_settings)
 	{}
@@ -178,7 +185,8 @@ protected:
 	        std::string name,
 	        std::string target,
 	        std::string axis,
-	        BCAnimationCurve &curve);
+	        BCAnimationCurve &curve,
+		    BC_global_rotation_type global_rotation_type);
 
 	/* call to the low level collada exporter */
 	void export_collada_matrix_animation(
@@ -186,7 +194,9 @@ protected:
 	        std::string name,
 	        std::string target,
 	        BCFrames &frames,
-	        BCMatrixSampleMap &outmats);
+	        BCMatrixSampleMap &outmats,
+		    BC_global_rotation_type global_rotation_type,
+		    Matrix &parentinv);
 
 	BCAnimationCurve *get_modified_export_curve(Object *ob, BCAnimationCurve &curve, BCAnimationCurveMap &curves);
 
@@ -206,7 +216,9 @@ protected:
 	/* Output sources (matrix data) */
 	std::string collada_source_from_values(
 	        BCMatrixSampleMap &samples,
-	        const std::string& anim_id);
+	        const std::string& anim_id,
+			BC_global_rotation_type global_rotation_type,
+			Matrix &parentinv);
 
 	/* Interpolation sources */
 	std::string collada_linear_interpolation_source(

@@ -263,6 +263,16 @@ public:
 		return export_settings.export_set;
 	}
 
+	BlenderContext &get_blender_context()
+	{
+		return blender_context;
+	}
+
+	Scene *get_scene()
+	{
+		return blender_context.get_scene();
+	}
+
 	ViewLayer *get_view_layer()
 	{
 		return blender_context.get_view_layer();

@@ -78,7 +78,7 @@ void AnimationExporter::close_animation_container(bool has_container)
 
 bool AnimationExporter::exportAnimations()
 {
-	Scene *sce = blender_context.get_scene();
+	Scene *sce = export_settings.get_scene();
 
 	LinkNode &export_set = *this->export_settings.get_export_set();
 	bool has_anim_data = bc_has_animations(sce, export_set);
@@ -88,16 +88,10 @@ bool AnimationExporter::exportAnimations()
 		BCObjectSet animated_subset;
 		BCAnimationSampler::get_animated_from_export_set(animated_subset, export_set);
 		animation_count = animated_subset.size();
-		BCAnimationSampler animation_sampler(blender_context, animated_subset);
+		BCAnimationSampler animation_sampler(export_settings, animated_subset);
 
 		try {
-			animation_sampler.sample_scene(
-			        export_settings.get_sampling_rate(),
-			        /*keyframe_at_end = */ true,
-			        export_settings.get_open_sim(),
-			        export_settings.get_keep_keyframes(),
-			        export_settings.get_export_animation_type()
-			);
+			animation_sampler.sample_scene(export_settings, /*keyframe_at_end = */ true);
 
 			openLibrary();
 
@@ -234,9 +228,22 @@ void AnimationExporter::export_matrix_animation(Object *ob, BCAnimationSampler &
 
 			std::string target = translate_id(name) + '/' + channel_type;
 
-			export_collada_matrix_animation(id, name, target, frames, samples);
+			BC_global_rotation_type global_rotation_type = get_global_rotation_type(ob);
+			export_collada_matrix_animation(id, name, target, frames, samples, global_rotation_type, ob->parentinv);
 		}
 	}
+}
+
+BC_global_rotation_type AnimationExporter::get_global_rotation_type(Object *ob)
+{
+	bool is_export_root = this->export_settings.is_export_root(ob);
+	if (!is_export_root) {
+		return BC_NO_ROTATION;
+	}
+
+	bool apply_global_rotation = this->export_settings.get_apply_global_orientation();
+
+	return (apply_global_rotation) ? BC_DATA_ROTATION : BC_OBJECT_ROTATION;
 }
 
 //write bone animations in transform matrix sources
@@ -344,7 +351,8 @@ void AnimationExporter::export_curve_animation(
 		collada_target += "/" + get_collada_sid(curve, axis);
 	}
 
-	export_collada_curve_animation(id, curve_name, collada_target, axis, curve);
+	BC_global_rotation_type global_rotation_type = get_global_rotation_type(ob);
+	export_collada_curve_animation(id, curve_name, collada_target, axis, curve, global_rotation_type);
 
 }
 
@@ -356,7 +364,8 @@ void AnimationExporter::export_bone_animation(Object *ob, Bone *bone, BCFrames &
 	std::string id = bc_get_action_id(id_name(action), name, bone_name, "pose_matrix");
 	std::string target = translate_id(id_name(ob) + "_" + bone_name) + "/transform";
 
-	export_collada_matrix_animation(id, name, target, frames, samples);
+	BC_global_rotation_type global_rotation_type = get_global_rotation_type(ob);
+	export_collada_matrix_animation(id, name, target, frames, samples, global_rotation_type, ob->parentinv);
 }
 
 bool AnimationExporter::is_bone_deform_group(Bone *bone)
@@ -382,7 +391,8 @@ void AnimationExporter::export_collada_curve_animation(
 	std::string name,
 	std::string collada_target,
 	std::string axis,
-	BCAnimationCurve &curve)
+	BCAnimationCurve &curve,
+	BC_global_rotation_type global_rotation_type)
 {
 	BCFrames frames;
 	BCValues values;
@@ -430,14 +440,14 @@ void AnimationExporter::export_collada_curve_animation(
 	closeAnimation();
 }
 
-void AnimationExporter::export_collada_matrix_animation(std::string id, std::string name, std::string target, BCFrames &frames, BCMatrixSampleMap &samples)
+void AnimationExporter::export_collada_matrix_animation(std::string id, std::string name, std::string target, BCFrames &frames, BCMatrixSampleMap &samples, BC_global_rotation_type global_rotation_type, Matrix &parentinv)
 {
 	fprintf(stdout, "Export animation matrix %s (%d control points)\n", id.c_str(), int(frames.size()));
 
 	openAnimationWithClip(id, name);
 
 	std::string input_id = collada_source_from_values(BC_SOURCE_TYPE_TIMEFRAME, COLLADASW::InputSemantic::INPUT, frames, id, "");
-	std::string output_id = collada_source_from_values(samples, id);
+	std::string output_id = collada_source_from_values(samples, id, global_rotation_type, parentinv);
 	std::string interpolation_id = collada_linear_interpolation_source(frames.size(), id);
 
 	std::string sampler_id = std::string(id) + SAMPLER_ID_SUFFIX;
@@ -516,7 +526,8 @@ void AnimationExporter::add_source_parameters(COLLADASW::SourceBase::ParameterNa
 
 std::string AnimationExporter::collada_tangent_from_curve(COLLADASW::InputSemantic::Semantics semantic, BCAnimationCurve &curve, const std::string& anim_id, std::string axis_name)
 {
-	Scene *scene = blender_context.get_scene();
+	Scene *scene = this->export_settings.get_scene();
+
 	std::string channel = curve.get_channel_target();
 
 	const std::string source_id = anim_id + get_semantic_suffix(semantic);
@@ -562,6 +573,7 @@ std::string AnimationExporter::collada_source_from_values(
 	const std::string& anim_id,
 	const std::string axis_name)
 {
+	BlenderContext &blender_context = this->export_settings.get_blender_context();
 	Scene *scene = blender_context.get_scene();
 	/* T can be float, int or double */
 
@@ -602,7 +614,7 @@ std::string AnimationExporter::collada_source_from_values(
 /*
  * Create a collada matrix source for a set of samples
 */
-std::string AnimationExporter::collada_source_from_values(BCMatrixSampleMap &samples, const std::string &anim_id)
+std::string AnimationExporter::collada_source_from_values(BCMatrixSampleMap &samples, const std::string &anim_id, BC_global_rotation_type global_rotation_type, Matrix &parentinv)
 {
 	COLLADASW::InputSemantic::Semantics semantic = COLLADASW::InputSemantic::OUTPUT;
 	std::string source_id = anim_id + get_semantic_suffix(semantic);
@@ -621,9 +633,10 @@ std::string AnimationExporter::collada_source_from_values(BCMatrixSampleMap &sam
 	BCMatrixSampleMap::iterator it;
 	int precision = (this->export_settings.get_limit_precision()) ? 6 : -1; // could be made configurable
 	for (it = samples.begin(); it != samples.end(); it++) {
-		const BCMatrix *sample = it->second;
-		double daemat[4][4];
-		sample->get_matrix(daemat, true, precision);
+		BCMatrix sample = BCMatrix(*it->second);
+		DMatrix daemat;
+		sample.add_transform(this->export_settings.get_global_transform());
+		sample.get_matrix(daemat, true, precision);
 		source.appendValues(daemat);
 	}
 

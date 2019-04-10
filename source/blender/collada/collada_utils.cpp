@@ -964,9 +964,9 @@ void bc_add_global_transform(Vector &to_vec, const Vector &from_vec, const BCMat
 
 void bc_add_global_transform(Matrix &to_mat, const BCMatrix &global_transform, const bool invert)
 {
-	Matrix mat;
-	global_transform.get_matrix(mat, false, 6, invert);
-	mul_m4_m4m4(to_mat, mat, to_mat);
+	BCMatrix mat(to_mat);
+	mat.add_transform(global_transform, invert);
+	mat.get_matrix(to_mat);
 }
 
 void bc_add_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert)

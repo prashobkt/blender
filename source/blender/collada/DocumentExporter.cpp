@@ -295,7 +295,7 @@ int DocumentExporter::exportCurrentScene()
 
 	if (this->export_settings.get_include_animations()) {
 		// <library_animations>
-		AnimationExporter ae(blender_context, writer, this->export_settings);
+		AnimationExporter ae(writer, this->export_settings);
 		ae.exportAnimations();
 	}
 

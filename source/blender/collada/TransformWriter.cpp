@@ -70,14 +70,14 @@ void TransformWriter::add_node_transform_ob(
 	Matrix f_obmat;
 	BKE_object_matrix_local_get(ob, f_obmat);
 
-	if (export_settings.is_export_root(ob)) {
-		if (export_settings.get_apply_global_orientation()) {
-			// do nothing. The rotation happens in the object data
-		}
-		else {
+	//if (export_settings.is_export_root(ob)) {
+	//	if (export_settings.get_apply_global_orientation()) {
+	//		// do nothing. The rotation happens in the object data
+	//	}
+	//	else {
 			bc_add_global_transform(f_obmat, export_settings.get_global_transform());
-		}
-	}
+	//	}
+	//}
 
 	switch (transformation_type) {
 		case BC_TRANSFORMATION_TYPE_MATRIX:

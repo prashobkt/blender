@@ -20,10 +20,6 @@
 #include "BCSampleData.h"
 #include "collada_utils.h"
 
-BCSample::BCSample(Object *ob):
-	obmat(ob)
-{}
-
 BCSample::~BCSample()
 {
 	BCBoneMatrixMap::iterator it;
@@ -41,6 +37,11 @@ void BCSample::add_bone_matrix(Bone *bone, Matrix &mat)
 	}
 	matrix = new BCMatrix(mat);
 	bonemats[bone] = matrix;
+}
+
+BCMatrix::BCMatrix(const BCMatrix &mat)
+{
+	set_transform(mat.matrix);
 }
 
 BCMatrix::BCMatrix(Matrix &mat)
@@ -69,17 +70,41 @@ BCMatrix::BCMatrix(BC_global_forward_axis global_forward_axis, BC_global_up_axis
 		global_up_axis,
 		mrot);
 
-	transpose_m3(mrot); // Assume that mat3_from_axis_conversion() returns a transposed matrix
+	//transpose_m3(mrot); // Assume that mat3_from_axis_conversion() returns a transposed matrix
 	copy_m4_m3(mat, mrot);
 	set_transform(mat);
 }
 
-
-void BCMatrix::set_transform(Matrix &mat)
+void BCMatrix::add_transform(const Matrix &mat, bool inverse)
 {
-	copy_m4_m4(matrix, mat);
-	mat4_decompose(this->loc, this->q, this->size, mat);
-	quat_to_eul(this->rot, this->q);
+	add_transform(this->matrix, mat, this->matrix, inverse);
+
+}
+
+void BCMatrix::add_transform(const BCMatrix &mat, bool inverse)
+{
+	add_transform(this->matrix, mat.matrix, this->matrix, inverse);
+}
+
+void BCMatrix::add_transform(Matrix &to, const Matrix &transform, const Matrix &from, bool inverse)
+{
+	Matrix globinv;
+	invert_m4_m4(globinv, transform);
+	if (inverse) {
+		add_transform(to, globinv, from, /*inverse=*/false);
+	}
+	else {
+		mul_m4_m4m4(to, transform, from);
+		mul_m4_m4m4(to, to, globinv);
+	}
+}
+
+void BCMatrix::add_inverted_transform(Matrix &to, const Matrix &transform, const Matrix &from)
+{
+	Matrix workmat;
+	invert_m4_m4(workmat, transform);
+	mul_m4_m4m4(to, workmat, from);
+
 }
 
 void BCMatrix::set_transform(Object *ob)
@@ -91,6 +116,13 @@ void BCMatrix::set_transform(Object *ob)
 
 	mat4_decompose(this->loc, this->q, this->size, lmat);
 	quat_to_compatible_eul(this->rot, ob->rot, this->q);
+}
+
+void BCMatrix::set_transform(Matrix &mat)
+{
+	copy_m4_m4(matrix, mat);
+	mat4_decompose(this->loc, this->q, this->size, mat);
+	quat_to_eul(this->rot, this->q);
 }
 
 const BCMatrix *BCSample::get_matrix(Bone *bone) const
@@ -106,7 +138,6 @@ const BCMatrix &BCSample::get_matrix() const
 {
 	return obmat;
 }
-
 
 /* Get channel value */
 const bool BCSample::get_value(std::string channel_target, const int array_index, float *val) const
