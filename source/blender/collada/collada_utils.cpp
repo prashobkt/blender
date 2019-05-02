@@ -64,7 +64,7 @@ extern "C" {
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"  // XXX hrm, see if we can do without this
+#include "WM_api.h" /* XXX hrm, see if we can do without this */
 #include "WM_types.h"
 
 #include "bmesh.h"
@@ -92,7 +92,7 @@ float bc_get_float_value(const COLLADAFW::FloatOrDoubleArray &array, unsigned in
     return array.getDoubleValues()->getData()[index];
 }
 
-// copied from /editors/object/object_relations.c
+/* copied from /editors/object/object_relations.c */
 int bc_test_parent_loop(Object *par, Object *ob)
 {
   /* test if 'ob' is a parent somewhere in par's parents */
@@ -152,8 +152,7 @@ std::vector<bAction *> bc_getSceneActions(const bContext *C, Object *ob, bool al
     for (id = (ID *)bmain->actions.first; id; id = (ID *)(id->next)) {
       bAction *act = (bAction *)id;
       /* XXX This currently creates too many actions.
-         TODO Need to check if the action is compatible to the given object
-      */
+       * TODO Need to check if the action is compatible to the given object. */
       actions.push_back(act);
     }
   }
@@ -185,10 +184,8 @@ void bc_update_scene(BlenderContext &blender_context, float ctime)
   Scene *scene = blender_context.get_scene();
   Depsgraph *depsgraph = blender_context.get_depsgraph();
 
-  /*
-   * See remark in physics_fluid.c lines 395...)
-   * BKE_scene_update_for_newframe(ev_context, bmain, scene, scene->lay);
-  */
+  /* See remark in physics_fluid.c lines 395...) */
+  // BKE_scene_update_for_newframe(ev_context, bmain, scene, scene->lay);
   BKE_scene_frame_set(scene, ctime);
   ED_update_for_newframe(bmain, depsgraph);
 }
@@ -221,13 +218,11 @@ Mesh *bc_get_mesh_copy(BlenderContext &blender_context,
   if (apply_modifiers) {
 #if 0 /* Not supported by new system currently... */
     switch (export_mesh_type) {
-      case BC_MESH_TYPE_VIEW:
-      {
+      case BC_MESH_TYPE_VIEW: {
         dm = mesh_create_derived_view(depsgraph, scene, ob, &mask);
         break;
       }
-      case BC_MESH_TYPE_RENDER:
-      {
+      case BC_MESH_TYPE_RENDER: {
         dm = mesh_create_derived_render(depsgraph, scene, ob, &mask);
         break;
       }
@@ -285,7 +280,7 @@ bool bc_has_object_type(LinkNode *export_set, short obtype)
   return false;
 }
 
-// Use bubble sort algorithm for sorting the export set
+/* Use bubble sort algorithm for sorting the export set */
 void bc_bubble_sort_by_Object_name(LinkNode *export_set)
 {
   bool sorted = false;
@@ -424,21 +419,22 @@ void bc_rotate_from_reference_quat(float quat_to[4], float quat_from[4], float m
   float mat_from[4][4];
   quat_to_mat4(mat_from, quat_from);
 
-  // Calculate the difference matrix matd between mat_from and mat_to
+  /* Calculate the difference matrix matd between mat_from and mat_to */
   invert_m4_m4(mati, mat_from);
   mul_m4_m4m4(matd, mati, mat_to);
 
   mat4_to_quat(qd, matd);
 
-  mul_qt_qtqt(quat_to, qd, quat_from);  // rot is the final rotation corresponding to mat_to
+  mul_qt_qtqt(quat_to, qd, quat_from); /* rot is the final rotation corresponding to mat_to */
 }
 
 void bc_triangulate_mesh(Mesh *me)
 {
   bool use_beauty = false;
   bool tag_only = false;
-  int quad_method =
-      MOD_TRIANGULATE_QUAD_SHORTEDGE; /* XXX: The triangulation method selection could be offered in the UI */
+
+  /* XXX: The triangulation method selection could be offered in the UI. */
+  int quad_method = MOD_TRIANGULATE_QUAD_SHORTEDGE;
 
   const struct BMeshCreateParams bm_create_params = {0};
   BMesh *bm = BM_mesh_create(&bm_mesh_allocsize_default, &bm_create_params);
@@ -678,8 +674,8 @@ std::string BoneExtended::get_bone_layers(int bitfield)
 
 int BoneExtended::get_bone_layers()
 {
-  return (bone_layers == 0) ? 1 :
-                              bone_layers;  // ensure that the bone is in at least one bone layer!
+  /* ensure that the bone is in at least one bone layer! */
+  return (bone_layers == 0) ? 1 : bone_layers;
 }
 
 void BoneExtended::set_use_connect(int use_connect)
@@ -725,18 +721,16 @@ void bc_set_IDPropertyMatrix(EditBone *ebone, const char *key, float mat[4][4])
  */
 static void bc_set_IDProperty(EditBone *ebone, const char *key, float value)
 {
-  if (ebone->prop == NULL)
-  {
-    IDPropertyTemplate val = { 0 };
+  if (ebone->prop == NULL) {
+    IDPropertyTemplate val = {0};
     ebone->prop = IDP_New(IDP_GROUP, &val, "RNA_EditBone ID properties");
   }
 
   IDProperty *pgroup = (IDProperty *)ebone->prop;
-  IDPropertyTemplate val = { 0 };
+  IDPropertyTemplate val = {0};
   IDProperty *prop = IDP_New(IDP_FLOAT, &val, key);
   IDP_Float(prop) = value;
   IDP_AddToGroup(pgroup, prop);
-
 }
 #endif
 
@@ -889,7 +883,7 @@ bool bc_is_animated(BCMatrixSampleMap &values)
   static float MIN_DISTANCE = 0.00001;
 
   if (values.size() < 2)
-    return false;  // need at least 2 entries to be not flat
+    return false; /* need at least 2 entries to be not flat */
 
   BCMatrixSampleMap::iterator it;
   const BCMatrix *refmat = NULL;
@@ -915,7 +909,7 @@ bool bc_has_animations(Object *ob)
       (bc_getSceneCameraAction(ob) && bc_getSceneCameraAction(ob)->curves.first))
     return true;
 
-  //Check Material Effect parameter animations.
+  /* Check Material Effect parameter animations. */
   for (int a = 0; a < ob->totcol; a++) {
     Material *ma = give_current_material(ob, a + 1);
     if (!ma)
@@ -1192,8 +1186,11 @@ bNode *bc_add_node(bContext *C, bNodeTree *ntree, int node_type, int locx, int l
 }
 
 #if 0
-// experimental, probably not used
-static bNodeSocket *bc_group_add_input_socket(bNodeTree *ntree, bNode *to_node, int to_index, std::string label)
+/* experimental, probably not used */
+static bNodeSocket *bc_group_add_input_socket(bNodeTree *ntree,
+                                              bNode *to_node,
+                                              int to_index,
+                                              std::string label)
 {
   bNodeSocket *to_socket = (bNodeSocket *)BLI_findlink(&to_node->inputs, to_index);
 
@@ -1209,7 +1206,10 @@ static bNodeSocket *bc_group_add_input_socket(bNodeTree *ntree, bNode *to_node, 
   return newsock;
 }
 
-static bNodeSocket *bc_group_add_output_socket(bNodeTree *ntree, bNode *from_node, int from_index, std::string label)
+static bNodeSocket *bc_group_add_output_socket(bNodeTree *ntree,
+                                               bNode *from_node,
+                                               int from_index,
+                                               std::string label)
 {
   bNodeSocket *from_socket = (bNodeSocket *)BLI_findlink(&from_node->outputs, from_index);
 
@@ -1224,7 +1224,6 @@ static bNodeSocket *bc_group_add_output_socket(bNodeTree *ntree, bNode *from_nod
   strcpy(newsock->name, label.c_str());
   return newsock;
 }
-
 
 void bc_make_group(bContext *C, bNodeTree *ntree, std::map<std::string, bNode *> nmap)
 {
@@ -1270,7 +1269,7 @@ void bc_add_default_shader(bContext *C, Material *ma)
   bc_node_add_link(ntree, nmap["transparent"], 0, nmap["mix"], 2);
 
   bc_node_add_link(ntree, nmap["mix"], 0, nmap["out"], 0);
-  // experimental, probably not used.
+  /* experimental, probably not used. */
   bc_make_group(C, ntree, nmap);
 #else
   nmap["main"] = bc_add_node(C, ntree, SH_NODE_BSDF_PRINCIPLED, 0, 300);
@@ -1299,7 +1298,7 @@ COLLADASW::ColorOrTexture bc_get_base_color(bNode *shader)
     return bc_get_cot(col[0], col[1], col[2], col[3]);
   }
   else {
-    return bc_get_cot(0.8, 0.8, 0.8, 1.0);  //default white
+    return bc_get_cot(0.8, 0.8, 0.8, 1.0); /* default white */
   }
 }
 
@@ -1316,7 +1315,7 @@ bool bc_get_reflectivity(bNode *shader, double &reflectivity)
 
 double bc_get_reflectivity(Material *ma)
 {
-  double reflectivity = ma->spec;  // fallback if no socket found
+  double reflectivity = ma->spec; /* fallback if no socket found */
   bNode *master_shader = bc_get_master_shader(ma);
   if (ma->use_nodes && master_shader) {
     bc_get_reflectivity(master_shader, reflectivity);

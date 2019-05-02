@@ -29,7 +29,7 @@ void TransformWriter::add_node_transform(COLLADASW::Node &node,
                                          float mat[4][4],
                                          float parent_mat[4][4])
 {
-  //bool limit_precision = export_settings.limit_precision;
+  // bool limit_precision = export_settings.limit_precision;
   float loc[3], rot[3], scale[3];
   float local[4][4];
 
@@ -66,11 +66,12 @@ void TransformWriter::add_node_transform_ob(COLLADASW::Node &node,
       export_settings.get_export_transformation_type();
   bool limit_precision = export_settings.get_limit_precision();
 
-  /* Export the local Matrix (relative to the object parent, be it an object, bone or vertex(-tices)) */
+  /* Export the local Matrix (relative to the object parent,
+   * be it an object, bone or vertex(-tices)). */
   Matrix f_obmat;
   BKE_object_matrix_local_get(ob, f_obmat);
 
-  //if (export_settings.is_export_root(ob)) {
+  // if (export_settings.is_export_root(ob)) {
   //  if (export_settings.get_apply_global_orientation()) {
   //      // do nothing. The rotation happens in the object data
   //  }

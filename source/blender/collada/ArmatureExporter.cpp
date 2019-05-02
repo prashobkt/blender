@@ -114,12 +114,12 @@ bool ArmatureExporter::add_instance_controller(Object *ob)
 void ArmatureExporter::operator()(Object *ob)
 {
   Object *ob_arm = bc_get_assigned_armature(ob);
-
 }
 
 bool ArmatureExporter::already_written(Object *ob_arm)
 {
-  return std::find(written_armatures.begin(), written_armatures.end(), ob_arm) != written_armatures.end();
+  return std::find(written_armatures.begin(), written_armatures.end(), ob_arm) !=
+         written_armatures.end();
 }
 
 void ArmatureExporter::wrote(Object *ob_arm)
@@ -127,11 +127,13 @@ void ArmatureExporter::wrote(Object *ob_arm)
   written_armatures.push_back(ob_arm);
 }
 
-void ArmatureExporter::find_objects_using_armature(Object *ob_arm, std::vector<Object *>& objects, Scene *sce)
+void ArmatureExporter::find_objects_using_armature(Object *ob_arm,
+                                                   std::vector<Object *> &objects,
+                                                   Scene *sce)
 {
   objects.clear();
 
-  Base *base = (Base *) sce->base.first;
+  Base *base = (Base *)sce->base.first;
   while (base) {
     Object *ob = base->object;
 
@@ -262,7 +264,7 @@ bool ArmatureExporter::is_export_root(Bone *bone)
 
 void ArmatureExporter::add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW::Node &node)
 {
-  //bPoseChannel *pchan = BKE_pose_channel_find_name(ob_arm->pose, bone->name);
+  // bPoseChannel *pchan = BKE_pose_channel_find_name(ob_arm->pose, bone->name);
 
   float mat[4][4];
   float bone_rest_mat[4][4];   /* derived from bone->arm_mat */
