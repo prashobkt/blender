@@ -49,6 +49,7 @@ ImagesExporter::ImagesExporter(COLLADASW::StreamWriter *sw, BCExportSettings &ex
 	export_settings(export_settings),
 	key_image_map(key_image_map)
 {
+	/* pass */
 }
 
 void ImagesExporter::export_UV_Image(Image *image, bool use_copies)
