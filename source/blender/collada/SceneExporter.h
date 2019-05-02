@@ -86,29 +86,32 @@ extern "C" {
 
 extern void bc_get_children(std::vector<Object *> &child_set, Object *ob, ViewLayer *view_layer);
 
-class SceneExporter: COLLADASW::LibraryVisualScenes, protected TransformWriter, protected InstanceWriter
-{
-public:
+class SceneExporter : COLLADASW::LibraryVisualScenes,
+                      protected TransformWriter,
+                      protected InstanceWriter {
+ public:
+  SceneExporter(BlenderContext &blender_context,
+                COLLADASW::StreamWriter *sw,
+                ArmatureExporter *arm,
+                BCExportSettings &export_settings)
+      : COLLADASW::LibraryVisualScenes(sw),
+        blender_context(blender_context),
+        arm_exporter(arm),
+        export_settings(export_settings)
+  {
+  }
 
-	SceneExporter(BlenderContext &blender_context, COLLADASW::StreamWriter *sw, ArmatureExporter *arm, BCExportSettings &export_settings) :
-		COLLADASW::LibraryVisualScenes(sw),
-		blender_context(blender_context),
-		arm_exporter(arm),
-		export_settings(export_settings)
-	{}
+  void exportScene();
 
-	void exportScene();
+ private:
+  BlenderContext &blender_context;
+  friend class ArmatureExporter;
+  ArmatureExporter *arm_exporter;
+  BCExportSettings &export_settings;
 
-private:
-	BlenderContext &blender_context;
-	friend class ArmatureExporter;
-	ArmatureExporter *arm_exporter;
-	BCExportSettings &export_settings;
-
-	void exportHierarchy();
-	void writeNodeList(std::vector<Object *> &child_objects, Object *parent);
-	void writeNode(Object *ob);
-
+  void exportHierarchy();
+  void writeNodeList(std::vector<Object *> &child_objects, Object *parent);
+  void writeNode(Object *ob);
 };
 
 #endif

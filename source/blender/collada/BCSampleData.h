@@ -26,8 +26,7 @@
 
 #include "ExportSettings.h"
 
-extern "C"
-{
+extern "C" {
 #include "BKE_object.h"
 #include "BLI_math_rotation.h"
 #include "DNA_object_types.h"
@@ -39,25 +38,23 @@ extern "C"
 
 typedef std::map<Bone *, BCMatrix *> BCBoneMatrixMap;
 
-class BCSample{
-private:
+class BCSample {
+ private:
+  BCMatrix obmat;
+  BCBoneMatrixMap bonemats; /* For Armature animation */
 
-	BCMatrix obmat;
-	BCBoneMatrixMap bonemats; /* For Armature animation */
+ public:
+  BCSample(Object *ob) : obmat(ob)
+  {
+  }
 
-public:
-	BCSample(Object *ob):
-		obmat(ob)
-    {
-	}
+  ~BCSample();
 
-	~BCSample();
+  void add_bone_matrix(Bone *bone, Matrix &mat);
 
-	void add_bone_matrix(Bone *bone, Matrix &mat);
-
-	const bool get_value(std::string channel_target, const int array_index, float *val) const;
-	const BCMatrix &get_matrix() const;
-	const BCMatrix *get_matrix(Bone *bone) const; // returns NULL if bone is not animated
+  const bool get_value(std::string channel_target, const int array_index, float *val) const;
+  const BCMatrix &get_matrix() const;
+  const BCMatrix *get_matrix(Bone *bone) const;  // returns NULL if bone is not animated
 };
 
 typedef std::map<Object *, BCSample *> BCSampleMap;

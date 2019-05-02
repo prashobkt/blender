@@ -27,19 +27,18 @@
 
 extern "C" {
 #include "DNA_customdata_types.h"
-
 }
 
-class DocumentExporter
-{
+class DocumentExporter {
  public:
-	DocumentExporter(BlenderContext &blender_context, ExportSettings *export_settings);
-	int  exportCurrentScene();
-	void exportScenes(const char *filename);
-private:
-	BlenderContext &blender_context;
-	BCExportSettings export_settings;
-	KeyImageMap key_image_map;
+  DocumentExporter(BlenderContext &blender_context, ExportSettings *export_settings);
+  int exportCurrentScene();
+  void exportScenes(const char *filename);
+
+ private:
+  BlenderContext &blender_context;
+  BCExportSettings export_settings;
+  KeyImageMap key_image_map;
 };
 
 #endif

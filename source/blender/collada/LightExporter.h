@@ -30,15 +30,15 @@
 
 #include "ExportSettings.h"
 
-class LightsExporter: COLLADASW::LibraryLights
-{
-public:
-	LightsExporter(COLLADASW::StreamWriter *sw, BCExportSettings &export_settings);
-	void exportLights(Scene *sce);
-	void operator()(Object *ob);
-private:
-	bool exportBlenderProfile(COLLADASW::Light &cla, Light *la);
-	BCExportSettings &export_settings;
+class LightsExporter : COLLADASW::LibraryLights {
+ public:
+  LightsExporter(COLLADASW::StreamWriter *sw, BCExportSettings &export_settings);
+  void exportLights(Scene *sce);
+  void operator()(Object *ob);
+
+ private:
+  bool exportBlenderProfile(COLLADASW::Light &cla, Light *la);
+  BCExportSettings &export_settings;
 };
 
 #endif
