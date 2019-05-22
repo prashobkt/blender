@@ -270,7 +270,7 @@ static const char *preview_collection_name(const char pr_type)
     case MA_FLUID:
       return "Fluid";
     case MA_SPHERE_A:
-      return "World Shader Ball";
+      return "World Sphere";
     case MA_LAMP:
       return "Lamp";
     case MA_SKY:
@@ -437,7 +437,14 @@ static Scene *preview_prepare_scene(
           sce->world->horb = 0.05f;
         }
 
-        set_preview_visibility(sce, view_layer, mat->pr_type, sp->pr_method);
+        if (sp->pr_method == PR_ICON_RENDER && sp->pr_main == G_pr_main_grease_pencil) {
+          /* For grease pencil, always use sphere for icon renders. */
+          set_preview_visibility(sce, view_layer, MA_SPHERE_A, sp->pr_method);
+        }
+        else {
+          /* Use specified preview shape for both preview panel and icon previews. */
+          set_preview_visibility(sce, view_layer, mat->pr_type, sp->pr_method);
+        }
 
         if (sp->pr_method != PR_ICON_RENDER) {
           if (mat->nodetree && sp->pr_method == PR_NODE_RENDER) {
@@ -449,7 +456,7 @@ static Scene *preview_prepare_scene(
         }
       }
       else {
-        sce->r.mode &= ~(R_OSA);
+        sce->display.render_aa = SCE_DISPLAY_AA_OFF;
       }
 
       for (Base *base = view_layer->object_bases.first; base; base = base->next) {
@@ -861,7 +868,7 @@ static void shader_preview_render(ShaderPreview *sp, ID *id, int split, int firs
 
   if (sp->pr_method == PR_ICON_RENDER) {
     sce->r.scemode |= R_NO_IMAGE_LOAD;
-    sce->r.mode |= R_OSA;
+    sce->display.render_aa = SCE_DISPLAY_AA_SAMPLES_8;
   }
   else if (sp->pr_method == PR_NODE_RENDER) {
     if (idtype == ID_MA) {
@@ -870,10 +877,10 @@ static void shader_preview_render(ShaderPreview *sp, ID *id, int split, int firs
     else if (idtype == ID_TE) {
       sce->r.scemode |= R_TEXNODE_PREVIEW;
     }
-    sce->r.mode &= ~R_OSA;
+    sce->display.render_aa = SCE_DISPLAY_AA_OFF;
   }
   else { /* PR_BUTS_RENDER */
-    sce->r.mode |= R_OSA;
+    sce->display.render_aa = SCE_DISPLAY_AA_SAMPLES_8;
   }
 
   /* callbacs are cleared on GetRender() */
@@ -969,7 +976,7 @@ static void shader_preview_free(void *customdata)
     /* get rid of copied ID */
     properties = IDP_GetProperties(sp->id_copy, false);
     if (properties) {
-      IDP_FreeProperty_ex(properties, false);
+      IDP_FreePropertyContent_ex(properties, false);
       MEM_freeN(properties);
     }
     switch (GS(sp->id_copy->name)) {

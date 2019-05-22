@@ -16,12 +16,13 @@
 
 #include <stdlib.h>
 
+#include "device/device.h"
 #include "render/background.h"
 #include "render/buffers.h"
 #include "render/camera.h"
-#include "device/device.h"
-#include "render/integrator.h"
+#include "render/colorspace.h"
 #include "render/film.h"
+#include "render/integrator.h"
 #include "render/light.h"
 #include "render/mesh.h"
 #include "render/object.h"
@@ -1158,6 +1159,12 @@ void BlenderSession::builtin_image_info(const string &builtin_name,
     metadata.height = b_image.size()[1];
     metadata.depth = 1;
     metadata.channels = b_image.channels();
+
+    if (metadata.is_float) {
+      /* Float images are already converted on the Blender side,
+       * no need to do anything in Cycles. */
+      metadata.colorspace = u_colorspace_raw;
+    }
   }
   else if (b_id.is_a(&RNA_Object)) {
     /* smoke volume data */
@@ -1433,7 +1440,12 @@ void BlenderSession::builtin_images_load()
 {
   /* Force builtin images to be loaded along with Blender data sync. This
    * is needed because we may be reading from depsgraph evaluated data which
-   * can be freed by Blender before Cycles reads it. */
+   * can be freed by Blender before Cycles reads it.
+   *
+   * TODO: the assumption that no further access to builtin image data will
+   * happen is really weak, and likely to break in the future. We should find
+   * a better solution to hand over the data directly to the image manager
+   * instead of through callbacks whose timing is difficult to control. */
   ImageManager *manager = session->scene->image_manager;
   Device *device = session->device;
   manager->device_load_builtin(device, session->scene, session->progress);

@@ -78,6 +78,7 @@ struct bConstraint;
 struct bGPdata;
 struct bNodeTree;
 struct bPoseChannel;
+struct bSound;
 
 struct PropertyRNA;
 
@@ -264,6 +265,7 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   void build_movieclip(MovieClip *clip);
   void build_lightprobe(LightProbe *probe);
   void build_speaker(Speaker *speaker);
+  void build_sound(bSound *sound);
 
   void build_nested_datablock(ID *owner, ID *id);
   void build_nested_nodetree(ID *owner, bNodeTree *ntree);

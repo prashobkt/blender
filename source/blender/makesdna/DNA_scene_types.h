@@ -661,19 +661,15 @@ typedef struct RenderData {
    */
   int mode;
 
+  short frs_sec;
+
   /**
    * What to do with the sky/background.
    * Picks sky/premul blending for the background.
    */
-  short alphamode;
+  char alphamode;
 
-  /**
-   * The number of samples to use per pixel.
-   */
-  short osa;
-
-  short frs_sec;
-  char _pad[6];
+  char _pad0[1];
 
   /* safety, border and display rect */
   rctf safety, border;
@@ -1447,8 +1443,9 @@ typedef struct ToolSettings {
   /* Multires */
   char multires_subdiv_type;
 
-  /* Alt+RMB option */
+  /* Edge tagging, store operator settings (no UI access). */
   char edge_mode;
+
   char edge_mode_live_unwrap;
 
   char _pad1[1];
@@ -1503,7 +1500,7 @@ typedef struct ToolSettings {
 
   /* Normal Editing */
   float normal_vector[3];
-  int face_strength;
+  char _pad6[4];
 } ToolSettings;
 
 /* *************************************************************** */
@@ -1565,6 +1562,11 @@ typedef struct SceneDisplay {
   float matcap_ssao_distance;
   float matcap_ssao_attenuation;
   int matcap_ssao_samples;
+
+  /** Method of AA for viewport rendering and image rendering */
+  char viewport_aa;
+  char render_aa;
+  char _pad[6];
 
   /** OpenGL render engine settings. */
   View3DShading shading;
@@ -1640,7 +1642,7 @@ typedef struct TransformOrientationSlot {
   char _pad0[7];
 } TransformOrientationSlot;
 
-/* Indices when used in Scene.orientation. */
+/** Indices when used in #Scene.orientation_slots */
 enum {
   SCE_ORIENT_DEFAULT = 0,
   SCE_ORIENT_TRANSLATE = 1,
@@ -1723,7 +1725,7 @@ typedef struct Scene {
   /* Units */
   struct UnitSettings unit;
 
-  /* Grease Pencil - Annotations */
+  /** Grease Pencil - Annotations */
   struct bGPdata *gpd;
 
   /* Movie Tracking */
@@ -1764,15 +1766,15 @@ typedef struct Scene {
 
 /* **************** RENDERDATA ********************* */
 
-/* RenderData.flag */
+/** #RenderData.flag */
 /* use preview range */
 #define SCER_PRV_RANGE (1 << 0)
 #define SCER_LOCK_FRAME_SELECTION (1 << 1)
 /* show/use subframes (for checking motion blur) */
 #define SCER_SHOW_SUBFRAME (1 << 3)
 
-/* RenderData.mode */
-#define R_OSA (1 << 0)
+/** #RenderData.mode */
+#define R_MODE_UNUSED_0 (1 << 0) /* dirty */
 #define R_MODE_UNUSED_1 (1 << 1) /* cleared */
 #define R_MODE_UNUSED_2 (1 << 2) /* cleared */
 #define R_MODE_UNUSED_3 (1 << 3) /* cleared */
@@ -1804,7 +1806,7 @@ typedef struct Scene {
 #define R_PERSISTENT_DATA (1 << 26) /* keep data around for re-render */
 #define R_MODE_UNUSED_27 (1 << 27)  /* cleared */
 
-/* RenderData.seq_flag */
+/** #RenderData.seq_flag */
 enum {
   R_SEQ_UNUSED_0 = (1 << 0), /* cleared */
   R_SEQ_UNUSED_1 = (1 << 1), /* cleared */
@@ -1814,14 +1816,14 @@ enum {
   R_SEQ_OVERRIDE_SCENE_SETTINGS = (1 << 5),
 };
 
-/* RenderData.displaymode */
+/** #RenderData.displaymode */
 #define R_OUTPUT_SCREEN 0
 #define R_OUTPUT_AREA 1
 #define R_OUTPUT_WINDOW 2
 #define R_OUTPUT_NONE 3
 /*#define R_OUTPUT_FORKED   4*/
 
-/* RenderData.filtertype (used for nodes) */
+/** #RenderData.filtertype (used for nodes) */
 #define R_FILTER_BOX 0
 #define R_FILTER_TENT 1
 #define R_FILTER_QUAD 2
@@ -1831,7 +1833,7 @@ enum {
 #define R_FILTER_MITCH 6
 #define R_FILTER_FAST_GAUSS 7
 
-/* RenderData.scemode */
+/** #RenderData.scemode */
 #define R_DOSEQ (1 << 0)
 #define R_BG_RENDER (1 << 1)
 /* passepartout is camera option now, keep this for backward compatibility */
@@ -1856,7 +1858,7 @@ enum {
 #define R_EXR_CACHE_FILE (1 << 20)
 #define R_MULTIVIEW (1 << 21)
 
-/* RenderData.stamp */
+/** #RenderData.stamp */
 #define R_STAMP_TIME (1 << 0)
 #define R_STAMP_FRAME (1 << 1)
 #define R_STAMP_DATE (1 << 2)
@@ -1881,10 +1883,12 @@ enum {
    R_STAMP_HOSTNAME)
 
 /** #RenderData.alphamode */
-#define R_ADDSKY 0
-#define R_ALPHAPREMUL 1
+enum {
+  R_ADDSKY = 0,
+  R_ALPHAPREMUL = 1,
+};
 
-/* RenderData.color_mgt_flag */
+/** #RenderData.color_mgt_flag */
 enum {
   /** deprecated, should only be used in versioning code only */
   R_COLOR_MANAGEMENT = (1 << 0),
@@ -2086,13 +2090,6 @@ enum {
   OB_DRAW_GROUPUSER_ALL = 2,
 };
 
-/* toolsettings->face_strength */
-enum {
-  FACE_STRENGTH_WEAK = -16384,
-  FACE_STRENGTH_MEDIUM = 0,
-  FACE_STRENGTH_STRONG = 16384,
-};
-
 /* object_vgroup.c */
 /* ToolSettings.vgroupsubset */
 typedef enum eVGroupSelect {
@@ -2244,14 +2241,6 @@ enum {
 #define UV_SELECT_FACE 4
 #define UV_SELECT_ISLAND 8
 
-/* ToolSettings.edge_mode */
-#define EDGE_MODE_SELECT 0
-#define EDGE_MODE_TAG_SEAM 1
-#define EDGE_MODE_TAG_SHARP 2
-#define EDGE_MODE_TAG_CREASE 3
-#define EDGE_MODE_TAG_BEVEL 4
-#define EDGE_MODE_TAG_FREESTYLE 5
-
 /* ToolSettings.gpencil_flags */
 typedef enum eGPencil_Flags {
   /* When creating new frames, the last frame gets used as the basis for the new one */
@@ -2366,19 +2355,19 @@ typedef enum eGPencil_Guide_Reference {
 
 /* SceneEEVEE->flag */
 enum {
-  SCE_EEVEE_VOLUMETRIC_ENABLED = (1 << 0),
+  // SCE_EEVEE_VOLUMETRIC_ENABLED = (1 << 0), /* Unused */
   SCE_EEVEE_VOLUMETRIC_LIGHTS = (1 << 1),
   SCE_EEVEE_VOLUMETRIC_SHADOWS = (1 << 2),
   //  SCE_EEVEE_VOLUMETRIC_COLORED    = (1 << 3), /* Unused */
   SCE_EEVEE_GTAO_ENABLED = (1 << 4),
   SCE_EEVEE_GTAO_BENT_NORMALS = (1 << 5),
   SCE_EEVEE_GTAO_BOUNCE = (1 << 6),
-  SCE_EEVEE_DOF_ENABLED = (1 << 7),
+  // SCE_EEVEE_DOF_ENABLED = (1 << 7), /* Moved to camera->dof.flag */
   SCE_EEVEE_BLOOM_ENABLED = (1 << 8),
   SCE_EEVEE_MOTION_BLUR_ENABLED = (1 << 9),
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),
-  SCE_EEVEE_SSS_ENABLED = (1 << 12),
+  // SCE_EEVEE_SSS_ENABLED = (1 << 12), /* Unused */
   SCE_EEVEE_SSS_SEPARATE_ALBEDO = (1 << 13),
   SCE_EEVEE_SSR_ENABLED = (1 << 14),
   SCE_EEVEE_SSR_REFRACTION = (1 << 15),
@@ -2395,6 +2384,17 @@ enum {
   SHADOW_ESM = 1,
   SHADOW_VSM = 2,
   SHADOW_METHOD_MAX = 3,
+};
+
+/* SceneDisplay->render_aa, SceneDisplay->viewport_aa */
+enum {
+  SCE_DISPLAY_AA_OFF = 0,
+  SCE_DISPLAY_AA_FXAA = 1,
+  SCE_DISPLAY_AA_SAMPLES_5 = 5,
+  SCE_DISPLAY_AA_SAMPLES_8 = 8,
+  SCE_DISPLAY_AA_SAMPLES_11 = 11,
+  SCE_DISPLAY_AA_SAMPLES_16 = 16,
+  SCE_DISPLAY_AA_SAMPLES_32 = 32,
 };
 
 #ifdef __cplusplus

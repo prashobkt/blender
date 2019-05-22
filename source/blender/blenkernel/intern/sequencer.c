@@ -262,7 +262,7 @@ static void BKE_sequence_free_ex(Scene *scene,
   }
 
   if (seq->prop) {
-    IDP_FreeProperty_ex(seq->prop, do_id_user);
+    IDP_FreePropertyContent_ex(seq->prop, do_id_user);
     MEM_freeN(seq->prop);
   }
 
@@ -635,8 +635,6 @@ void BKE_sequencer_new_render_data(Main *bmain,
   r_context->is_proxy_render = false;
   r_context->view_id = 0;
   r_context->gpu_offscreen = NULL;
-  r_context->gpu_samples = (scene->r.mode & R_OSA) ? scene->r.osa : 0;
-  r_context->gpu_full_samples = (r_context->gpu_samples) && (scene->r.scemode & R_FULL_SAMPLE);
 }
 
 /* ************************* iterator ************************** */
@@ -2792,7 +2790,7 @@ static ImBuf *input_preprocess(const SeqRenderData *context,
   }
 
   if (ibuf->x != context->rectx || ibuf->y != context->recty) {
-    if (scene->r.mode & R_OSA) {
+    if (scene->display.render_aa > SCE_DISPLAY_AA_FXAA) {
       IMB_scaleImBuf(ibuf, (short)context->rectx, (short)context->recty);
     }
     else {
@@ -3523,7 +3521,6 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
 
     unsigned int draw_flags = V3D_OFSDRAW_NONE;
     draw_flags |= (use_gpencil) ? V3D_OFSDRAW_SHOW_ANNOTATION : 0;
-    draw_flags |= (context->gpu_full_samples) ? V3D_OFSDRAW_USE_FULL_SAMPLE : 0;
     draw_flags |= (context->scene->r.seq_flag & R_SEQ_OVERRIDE_SCENE_SETTINGS) ?
                       V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS :
                       0;
@@ -3549,7 +3546,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         IB_rect,
         draw_flags,
         scene->r.alphamode,
-        context->gpu_samples,
+        U.ogl_multisamples,
         viewname,
         context->gpu_offscreen,
         err_out);
@@ -3578,9 +3575,9 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         re = RE_NewSceneRender(scene);
       }
 
-      RE_BlenderFrame(re, context->bmain, scene, view_layer, camera, frame, false);
+      RE_RenderFrame(re, context->bmain, scene, view_layer, camera, frame, false);
 
-      /* restore previous state after it was toggled on & off by RE_BlenderFrame */
+      /* restore previous state after it was toggled on & off by RE_RenderFrame */
       G.is_rendering = is_rendering;
     }
 
@@ -5671,12 +5668,12 @@ Sequence *BKE_sequencer_add_movie_strip(bContext *C, ListBase *seqbasep, SeqLoad
 
   if (seq_load->flag & SEQ_LOAD_MOVIE_SOUND) {
     int start_frame_back = seq_load->start_frame;
-    seq_load->channel++;
+    seq_load->channel--;
 
     seq_load->seq_sound = BKE_sequencer_add_sound_strip(C, seqbasep, seq_load);
 
     seq_load->start_frame = start_frame_back;
-    seq_load->channel--;
+    seq_load->channel++;
   }
 
   /* can be NULL */

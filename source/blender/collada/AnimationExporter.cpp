@@ -79,13 +79,13 @@ bool AnimationExporter::exportAnimations()
 {
   Scene *sce = export_settings.get_scene();
 
-  LinkNode &export_set = *this->export_settings.get_export_set();
+  LinkNode *export_set = this->export_settings->export_set;
   bool has_anim_data = bc_has_animations(sce, export_set);
   int animation_count = 0;
   if (has_anim_data) {
 
     BCObjectSet animated_subset;
-    BCAnimationSampler::get_animated_from_export_set(animated_subset, export_set);
+    BCAnimationSampler::get_animated_from_export_set(animated_subset, *export_set);
     animation_count = animated_subset.size();
     BCAnimationSampler animation_sampler(export_settings, animated_subset);
 

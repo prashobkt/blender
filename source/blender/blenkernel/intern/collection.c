@@ -321,11 +321,11 @@ Collection *BKE_collection_copy(Main *bmain, Collection *parent, Collection *col
  * \warning If any 'deep copy' behavior is enabled,
  * this functions will clear all \a bmain id.idnew pointers.
  *
- * \param do_hierarchy If true, it will recursively make shallow copies of children collections.
- * \param do_objects If true, it will also make duplicates of objects.
- *                   This one does nothing if \a do_hierarchy is not set.
- * \param do_obdata If true, it will also make deep duplicates of objects,
- * using behavior defined in user settings (U.dupflag).
+ * \param do_hierarchy: If true, it will recursively make shallow copies of children collections.
+ * \param do_objects: If true, it will also make duplicates of objects.
+ * This one does nothing if \a do_hierarchy is not set.
+ * \param do_obdata: If true, it will also make deep duplicates of objects,
+ * using behavior defined in user settings (#U.dupflag).
  * This one does nothing if \a do_hierarchy and \a do_objects are not set.
  */
 Collection *BKE_collection_duplicate(Main *bmain,
@@ -434,8 +434,8 @@ static void collection_object_cache_fill(ListBase *lb, Collection *collection, i
 
     int object_restrict = base->object->restrictflag;
 
-    if (((child_restrict & COLLECTION_RESTRICT_VIEW) == 0) &&
-        ((object_restrict & OB_RESTRICT_VIEW) == 0)) {
+    if (((child_restrict & COLLECTION_RESTRICT_VIEWPORT) == 0) &&
+        ((object_restrict & OB_RESTRICT_VIEWPORT) == 0)) {
       base->flag |= BASE_ENABLED_VIEWPORT;
     }
 
@@ -705,17 +705,26 @@ bool BKE_collection_object_add(Main *bmain, Collection *collection, Object *ob)
 }
 
 /**
- * Add object to all scene collections that reference objects is in
- * (used to copy objects)
+ * Add object to all scene collections that reference object is in
+ * (used to copy objects).
  */
 void BKE_collection_object_add_from(Main *bmain, Scene *scene, Object *ob_src, Object *ob_dst)
 {
+  bool is_instantiated = false;
+
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
-    if (BKE_collection_has_object(collection, ob_src)) {
+    if (!ID_IS_LINKED(collection) && BKE_collection_has_object(collection, ob_src)) {
       collection_object_add(bmain, collection, ob_dst, 0, true);
+      is_instantiated = true;
     }
   }
   FOREACH_SCENE_COLLECTION_END;
+
+  if (!is_instantiated) {
+    /* In case we could not find any non-linked collections in which instantiate our ob_dst,
+     * fallback to scene's master collection... */
+    collection_object_add(bmain, BKE_collection_master(scene), ob_dst, 0, true);
+  }
 
   BKE_main_collection_sync(bmain);
 }
@@ -964,6 +973,11 @@ static bool collection_find_child_recursive(Collection *parent, Collection *coll
   }
 
   return false;
+}
+
+bool BKE_collection_has_collection(Collection *parent, Collection *collection)
+{
+  return collection_find_child_recursive(parent, collection);
 }
 
 static CollectionParent *collection_find_parent(Collection *child, Collection *collection)
