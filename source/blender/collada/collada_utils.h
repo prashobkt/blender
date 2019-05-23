@@ -230,27 +230,31 @@ extern bool bc_is_animated(BCMatrixSampleMap &values);
 extern bool bc_has_animations(Scene *sce, LinkNode *node);
 extern bool bc_has_animations(Object *ob);
 
-void bc_add_global_transform(Matrix &to_mat,
-                             const Matrix &from_mat,
-                             const BCMatrix &global_transform,
-                             const bool invert = false);
-void bc_add_global_transform(Vector &to_vec,
-                             const Vector &from_vec,
-                             const BCMatrix &global_transform,
-                             const bool invert = false);
-
-void bc_add_global_transform(Vector &to_vec,
-                             const BCMatrix &global_transform,
-                             const bool invert = false);
-void bc_add_global_transform(Matrix &to_mat,
-                             const BCMatrix &global_transform,
-                             const bool invert = false);
-
+extern void bc_add_global_transform(Matrix &to_mat,
+                                    const Matrix &from_mat,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_add_global_transform(Vector &to_vec,
+                                    const Vector &from_vec,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_add_global_transform(Vector &to_vec,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_add_global_transform(Matrix &to_mat,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_apply_global_transform(Matrix &to_mat,
+                                      const BCMatrix &global_transform,
+                                      const bool invert = false);
+extern void bc_apply_global_transform(Vector &to_vec,
+                                      const BCMatrix &global_transform,
+                                      const bool invert = false);
 extern void bc_create_restpose_mat(BCExportSettings &export_settings,
-                                   Bone *bone,
-                                   float to_mat[4][4],
-                                   float from_mat[4][4],
-                                   bool use_local_space);
+                                          Bone *bone,
+                                          float to_mat[4][4],
+                                          float from_mat[4][4],
+                                          bool use_local_space);
 
 class ColladaBaseNodes {
  private:

@@ -468,12 +468,12 @@ void GeometryExporter::createVertsSource(std::string geom_id, Mesh *me)
   int i = 0;
   for (i = 0; i < totverts; i++) {
     Vector co;
-    // if (export_settings.get_apply_global_orientation()) {
-    bc_add_global_transform(co, verts[i].co, export_settings.get_global_transform());
-    //}
-    // else {
-    //  copy_v3_v3(co, verts[i].co);
-    //}
+    if (export_settings.get_apply_global_orientation()) {
+      bc_add_global_transform(co, verts[i].co, export_settings.get_global_transform());
+    }
+    else {
+      copy_v3_v3(co, verts[i].co);
+    }
     source.appendValues(co[0], co[1], co[2]);
   }
 
@@ -616,9 +616,9 @@ void GeometryExporter::createNormalsSource(std::string geom_id, Mesh *me, std::v
     Normal &n = *it;
 
     Vector no{n.x, n.y, n.z};
-    // if (export_settings.get_apply_global_orientation()) {
-    bc_add_global_transform(no, export_settings.get_global_transform());
-    //}
+    if (export_settings.get_apply_global_orientation()) {
+      bc_add_global_transform(no, export_settings.get_global_transform());
+    }
     source.appendValues(no[0], no[1], no[2]);
   }
 

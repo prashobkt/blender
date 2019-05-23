@@ -291,6 +291,7 @@ void ArmatureExporter::add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW:
     }
 
     // OPEN_SIM_COMPATIBILITY
+    
     if (export_settings.get_open_sim()) {
       // Remove rotations vs armature from transform
       // parent_rest_rot * mat * irest_rot
@@ -308,21 +309,16 @@ void ArmatureExporter::add_bone_transform(Object *ob_arm, Bone *bone, COLLADASW:
 
         mul_m4_m4m4(mat, workmat, mat);
 
-        if (this->export_settings.get_apply_global_orientation()) {
-          Vector v;
-          copy_v3_v3(v, mat[3]);
-          bc_add_global_transform(v, this->export_settings.get_global_transform());
-          copy_v3_v3(mat[3], v);
-        }
       }
     }
+    
   }
 
   if (this->export_settings.get_limit_precision()) {
     bc_sanitize_mat(mat, LIMITTED_PRECISION);
   }
 
-  TransformWriter::add_node_transform(node, mat, NULL);
+  TransformWriter::add_node_transform(node, mat, NULL, this->export_settings);
 }
 
 std::string ArmatureExporter::get_controller_id(Object *ob_arm, Object *ob)

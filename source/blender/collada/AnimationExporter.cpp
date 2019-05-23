@@ -79,7 +79,7 @@ bool AnimationExporter::exportAnimations()
 {
   Scene *sce = export_settings.get_scene();
 
-  LinkNode *export_set = this->export_settings->export_set;
+  LinkNode *export_set = this->export_settings.get_export_set();
   bool has_anim_data = bc_has_animations(sce, export_set);
   int animation_count = 0;
   if (has_anim_data) {
@@ -672,8 +672,14 @@ std::string AnimationExporter::collada_source_from_values(
   int precision = (this->export_settings.get_limit_precision()) ? 6 : -1;
   for (it = samples.begin(); it != samples.end(); it++) {
     BCMatrix sample = BCMatrix(*it->second);
+    BCMatrix global_transform = this->export_settings.get_global_transform();
     DMatrix daemat;
-    sample.add_transform(this->export_settings.get_global_transform());
+    if (this->export_settings.get_apply_global_orientation()) {
+      sample.apply_transform(global_transform);
+    }
+    else {
+      sample.add_transform(global_transform);
+    }
     sample.get_matrix(daemat, true, precision);
     source.appendValues(daemat);
   }

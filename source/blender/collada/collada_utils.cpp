@@ -967,8 +967,24 @@ void bc_add_global_transform(Matrix &to_mat, const BCMatrix &global_transform, c
 void bc_add_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert)
 {
   Matrix mat;
+  Vector from_vec;
+  copy_v3_v3(from_vec, to_vec);
   global_transform.get_matrix(mat, false, 6, invert);
-  mul_v3_m4v3(to_vec, mat, to_vec);
+  mul_v3_m4v3(to_vec, mat, from_vec);
+}
+
+void bc_apply_global_transform(Matrix &to_mat, const BCMatrix &global_transform, const bool invert)
+{
+  BCMatrix mat(to_mat);
+  mat.apply_transform(global_transform, invert);
+  mat.get_matrix(to_mat);
+}
+
+void bc_apply_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert)
+{
+  Matrix transform;
+  global_transform.get_matrix(transform);
+  mul_v3_m4v3(to_vec, transform, to_vec);
 }
 
 /**

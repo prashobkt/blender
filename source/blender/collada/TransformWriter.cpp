@@ -27,7 +27,9 @@
 
 void TransformWriter::add_node_transform(COLLADASW::Node &node,
                                          float mat[4][4],
-                                         float parent_mat[4][4])
+                                         float parent_mat[4][4],
+                                         BCExportSettings &export_settings
+	)
 {
   // bool limit_precision = export_settings.limit_precision;
   float loc[3], rot[3], scale[3];
@@ -42,18 +44,24 @@ void TransformWriter::add_node_transform(COLLADASW::Node &node,
     copy_m4_m4(local, mat);
   }
 
+  if (export_settings.get_apply_global_orientation()) {
+    bc_apply_global_transform(local, export_settings.get_global_transform());
+  }
+
   double dmat[4][4];
   UnitConverter *converter = new UnitConverter();
   converter->mat4_to_dae_double(dmat, local);
   delete converter;
 
-  bc_decompose(local, loc, rot, NULL, scale);
-
   if (node.getType() == COLLADASW::Node::JOINT) {
     // XXX Why are joints handled differently ?
+	// GC: I believe this is a mistake. Here we might want to 
+	// export according to how the transformation type
+	// is set, see add_node_transform_ob()
     node.addMatrix("transform", dmat);
   }
   else {
+    bc_decompose(local, loc, rot, NULL, scale);
     add_transform(node, loc, rot, scale);
   }
 }
@@ -71,14 +79,12 @@ void TransformWriter::add_node_transform_ob(COLLADASW::Node &node,
   Matrix f_obmat;
   BKE_object_matrix_local_get(ob, f_obmat);
 
-  // if (export_settings.is_export_root(ob)) {
-  //  if (export_settings.get_apply_global_orientation()) {
-  //      // do nothing. The rotation happens in the object data
-  //  }
-  //  else {
-  bc_add_global_transform(f_obmat, export_settings.get_global_transform());
-  //  }
-  //}
+  if (export_settings.get_apply_global_orientation()) {
+    bc_apply_global_transform(f_obmat, export_settings.get_global_transform());
+  }
+  else {
+    bc_add_global_transform(f_obmat, export_settings.get_global_transform());
+  }
 
   switch (transformation_type) {
     case BC_TRANSFORMATION_TYPE_MATRIX: {

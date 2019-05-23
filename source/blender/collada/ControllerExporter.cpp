@@ -432,6 +432,7 @@ void ControllerExporter::add_bind_shape_mat(Object *ob)
   BKE_object_matrix_local_get(ob, f_obmat);
 
   if (export_settings.get_apply_global_orientation()) {
+    // do nothing, rotation is going to be applied to the Data
   }
   else {
     bc_add_global_transform(f_obmat, export_settings.get_global_transform());
@@ -553,13 +554,7 @@ std::string ControllerExporter::add_inv_bind_mats_source(Object *ob_arm,
       mul_m4_m4m4(world, ob_arm->obmat, bind_mat);
 
       if (export_settings.get_apply_global_orientation()) {
-        Vector loc;
-        copy_v3_v3(loc, world[3]);
-        bc_add_global_transform(loc, export_settings.get_global_transform());
-        copy_v3_v3(world[3], loc);
-      }
-      else {
-        bc_add_global_transform(world, export_settings.get_global_transform());
+        bc_apply_global_transform(world, export_settings.get_global_transform());
       }
 
       invert_m4_m4(mat, world);
