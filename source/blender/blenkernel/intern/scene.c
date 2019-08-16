@@ -1017,7 +1017,7 @@ void BKE_scene_init(Scene *sce)
   /* SceneLANPR */
 
   sce->lanpr.crease_threshold = 0.7;
-  
+
   sce->lanpr.enable_intersections = 1;
 
   sce->lanpr.line_color[0] = 1;

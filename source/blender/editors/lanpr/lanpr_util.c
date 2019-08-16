@@ -171,4 +171,3 @@ void tmat_make_ortho_matrix_44d(
   mProjection[3][2] = -((zMax + zMin) / (zMax - zMin));
   mProjection[3][3] = 1.0f;
 }
-

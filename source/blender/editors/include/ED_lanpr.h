@@ -454,7 +454,6 @@ typedef struct LANPR_BoundingArea {
 #define TNS_IN_TILE(RenderTile, Fx, Fy) \
   (TNS_IN_TILE_X(RenderTile, Fx) && TNS_IN_TILE_Y(RenderTile, Fy))
 
-
 BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl)
 {
   if (MAX3(rt->v[0]->fbcoord[2], rt->v[1]->fbcoord[2], rt->v[2]->fbcoord[2]) >
@@ -566,7 +565,6 @@ LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp);
 void *mem_static_aquire(LANPR_StaticMemPool *smp, int size);
 void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size);
 void *mem_static_destroy(LANPR_StaticMemPool *smp);
-
 
 void tmat_make_ortho_matrix_44d(
     double (*mProjection)[4], real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);

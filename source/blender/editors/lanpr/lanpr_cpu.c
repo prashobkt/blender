@@ -523,7 +523,7 @@ static void lanpr_cut_render_line(LANPR_RenderBuffer *rb,
   if (begin_segment) {
     if (begin_segment != ns) {
       ns->occlusion = begin_segment->prev ? (irls = begin_segment->prev)->occlusion : 0;
-      BLI_insertlinkbefore(&rl->segments,(void *)begin_segment,(void *)ns);
+      BLI_insertlinkbefore(&rl->segments, (void *)begin_segment, (void *)ns);
     }
   }
   else {
@@ -533,7 +533,7 @@ static void lanpr_cut_render_line(LANPR_RenderBuffer *rb,
   if (end_segment) {
     if (end_segment != ns2) {
       ns2->occlusion = end_segment->prev ? (irls = end_segment->prev)->occlusion : 0;
-      BLI_insertlinkbefore(&rl->segments,(void *)end_segment,(void *)ns2);
+      BLI_insertlinkbefore(&rl->segments, (void *)end_segment, (void *)ns2);
     }
   }
   else {
@@ -871,7 +871,7 @@ static int lanpr_point_inside_triangle3de(tnsVector3d v,
   /*  tmat_normalize_self_3d(r); */
   cross_v3_v3v3_db(N2, l, r);
 
-  if ((d = dot_v3v3_db(N1,  N2)) < 0) {
+  if ((d = dot_v3v3_db(N1, N2)) < 0) {
     return 0;
   }
   /*  if (d<DBL_EPSILON) return -1; */
@@ -882,7 +882,7 @@ static int lanpr_point_inside_triangle3de(tnsVector3d v,
   /*  tmat_normalize_self_3d(r); */
   cross_v3_v3v3_db(N1, l, r);
 
-  if ((d = dot_v3v3_db(N1,  N2)) < 0) {
+  if ((d = dot_v3v3_db(N1, N2)) < 0) {
     return 0;
   }
   /*  if (d<DBL_EPSILON) return -1; */
@@ -893,7 +893,7 @@ static int lanpr_point_inside_triangle3de(tnsVector3d v,
   /*  tmat_normalize_self_3d(r); */
   cross_v3_v3v3_db(N2, l, r);
 
-  if ((d = dot_v3v3_db(N1,  N2)) < 0) {
+  if ((d = dot_v3v3_db(N1, N2)) < 0) {
     return 0;
   }
   /*  if (d<DBL_EPSILON) return -1; */
@@ -1065,16 +1065,16 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           if (!In1) {
             sub_v3_v3v3_db(vv1, rt->v[0]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[2]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[0]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[1]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
@@ -1131,16 +1131,16 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           else if (!In3) {
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[2]->gloc, rt->v[0]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[1]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[2]->gloc, rt->v[1]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
@@ -1197,16 +1197,16 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           else if (!In2) {
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[2]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[1]->gloc, rt->v[2]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[1]->gloc, rt->v[0]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
@@ -1266,16 +1266,16 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           if (In1) {
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot2 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot2 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
@@ -1349,16 +1349,16 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[2]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[1]->gloc, rt->v[2]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[1]->gloc, rt->v[0]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
@@ -1432,16 +1432,16 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[2]->gloc, rt->v[0]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[1]->gloc);
-            dot1 = dot_v3v3_db(vv1,  view_dir);
-            dot2 = dot_v3v3_db(vv2,  view_dir);
+            dot1 = dot_v3v3_db(vv1, view_dir);
+            dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[2]->gloc, rt->v[1]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
@@ -1549,10 +1549,10 @@ static void lanpr_transform_render_vert(BMVert *v,
                                         double (*MvMat)[4],
                                         double (*MvPMat)[4],
                                         Camera *UNUSED(camera))
-{ 
+{
   double co[4];
   LANPR_RenderVert *rv = &RvBuf[index];
-  copy_v3db_v3fl(co,v->co);
+  copy_v3db_v3fl(co, v->co);
   mul_v3_m4v3_db(rv->gloc, MvMat, co);
   mul_v4_m4v3_db(rv->fbcoord, MvPMat, co);
 }
@@ -1591,7 +1591,7 @@ static void lanpr_make_render_geometry_buffers_object(
 
     invert_m4_m4(o->imat, o->obmat);
     transpose_m4(o->imat);
-    copy_m4d_m4(Normal,o->imat);
+    copy_m4d_m4(Normal, o->imat);
 
     const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(((Mesh *)(o->data)));
     bm = BM_mesh_create(&allocsize,
@@ -1696,7 +1696,7 @@ static void lanpr_make_render_geometry_buffers_object(
       mul_v3db_db(rt->gc, 1.0f / 3.0f);
 
       double gn[3];
-      copy_v3db_v3fl(gn,f->no);
+      copy_v3db_v3fl(gn, f->no);
       mul_v3_mat3_m4v3_db(rt->gn, Normal, gn);
       normalize_v3_d(rt->gn);
       lanpr_assign_render_line_with_triangle(rt);
@@ -1806,7 +1806,6 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
   mul_m4db_m4db_m4fl_uniq(result, proj, inv);
   copy_m4_m4_db(proj, result);
   copy_m4_m4_db(rb->view_projection, proj);
-  
 
   BLI_listbase_is_empty(&rb->triangle_buffer_pointers);
   BLI_listbase_is_empty(&rb->vertex_buffer_pointers);
@@ -1938,9 +1937,9 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
     sub_v3_v3v3_db(Cv, vd4, rt->v[0]->gloc);
   }
 
-  DotL = dot_v3v3_db(Lv,  rt->gn);
-  DotR = dot_v3v3_db(Rv,  rt->gn);
-  DotF = dot_v3v3_db(Cv,  rt->gn);
+  DotL = dot_v3v3_db(Lv, rt->gn);
+  DotR = dot_v3v3_db(Rv, rt->gn);
+  DotF = dot_v3v3_db(Cv, rt->gn);
 
   if (!DotF) {
     return 0;
@@ -2498,13 +2497,13 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
     }
     else {
       if (rl->tl) {
-        Dot1 = dot_v3v3_db(view_vector,  rl->tl->gn);
+        Dot1 = dot_v3v3_db(view_vector, rl->tl->gn);
       }
       else {
         Add = 1;
       }
       if (rl->tr) {
-        Dot2 = dot_v3v3_db(view_vector,  rl->tr->gn);
+        Dot2 = dot_v3v3_db(view_vector, rl->tr->gn);
       }
       else {
         Add = 1;
@@ -2515,7 +2514,7 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
       if ((Result = Dot1 * Dot2) <= 0 && (Dot1 + Dot2)) {
         Add = 1;
       }
-      else if (dot_v3v3_db(rl->tl->gn,  rl->tr->gn) < threshold) {
+      else if (dot_v3v3_db(rl->tl->gn, rl->tr->gn) < threshold) {
         Add = 2;
       }
       else if (rl->tl && rl->tr && rl->tl->material_id != rl->tr->material_id) {
@@ -3726,7 +3725,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   SceneLANPR *lanpr = &s->lanpr;
   int is_lanpr_engine = !strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED)==0) {
+  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED) == 0) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3814,7 +3813,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
   int result;
   int is_lanpr_engine = !strcmp(scene->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED)==0) {
+  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED) == 0) {
     return OPERATOR_CANCELLED;
   }
 
@@ -4253,7 +4252,7 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 
 void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
 {
-  if ((s->lanpr.flag & LANPR_ENABLED)==0 || !s->lanpr.auto_update) {
+  if ((s->lanpr.flag & LANPR_ENABLED) == 0 || !s->lanpr.auto_update) {
     return;
   }
   if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {

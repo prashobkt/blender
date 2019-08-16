@@ -1648,23 +1648,23 @@ typedef enum LANPR_PostProcessingStatus {
   LANPR_POST_PROCESSING_ENABLED = 1,
 } LANPR_PostProcessingStatus;
 
-typedef enum LANPR_MainFlags{
+typedef enum LANPR_MainFlags {
   LANPR_ENABLED = 0,
   /* For LANPR->GP to update automatically. */
-  LANPR_AUTO_UPDATE = (1<<0),
-  LANPR_SAME_TAPER = (1<<2),
+  LANPR_AUTO_UPDATE = (1 << 0),
+  LANPR_SAME_TAPER = (1 << 2),
   /* Edge split modifier will cause problems in LANPR. */
-  LANPR_DISABLE_EDGE_SPLITS = (1<<3),
-  LANPR_USE_CHAINING = (1<<4),
-  LANPR_USE_INTERSECTIONS = (1<<5),
+  LANPR_DISABLE_EDGE_SPLITS = (1 << 3),
+  LANPR_USE_CHAINING = (1 << 4),
+  LANPR_USE_INTERSECTIONS = (1 << 5),
   /* Overwrite existing strokes in this frame. */
-  LANPR_GPENCIL_OVERWRITE = (1<<6),
-}LANPR_MainFlags;
+  LANPR_GPENCIL_OVERWRITE = (1 << 6),
+} LANPR_MainFlags;
 
 typedef struct SceneLANPR {
 
   int flag;
-  int auto_update; 
+  int auto_update;
 
   int master_mode; /* LANPR_MasterMode */
 
@@ -1687,7 +1687,7 @@ typedef struct SceneLANPR {
   float depth_width_curve;
   float depth_alpha_influence;
   float depth_alpha_curve;
-  
+
   int disable_edge_splits;
 
   int gpu_cache_size; /* enum! */
@@ -1703,7 +1703,6 @@ typedef struct SceneLANPR {
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 
-  
   int gpencil_overwrite;
 
 } SceneLANPR;

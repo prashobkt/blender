@@ -94,8 +94,8 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
 
     GPU_vertbuf_data_alloc(vbo, vertCount);
 
-    tv = v = MEM_callocN(sizeof(float)*6*Count, "temp v data");
-    tn = N = MEM_callocN(sizeof(float)*6*Count, "temp n data");
+    tv = v = MEM_callocN(sizeof(float) * 6 * Count, "temp v data");
+    tn = N = MEM_callocN(sizeof(float) * 6 * Count, "temp n data");
 
     if (ll->contour.enabled) {
       tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->contours, tv, tn, &tn, ll, 1.0f);

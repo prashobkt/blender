@@ -141,7 +141,6 @@ void copy_m4_m3(float m1[4][4], const float m2[3][3]) /* no clear */
   m1[3][3] = 1.0f;
 }
 
-
 void copy_m4d_m4(double m1[4][4], const float m2[4][4])
 {
   m1[0][0] = m2[0][0];
@@ -268,7 +267,6 @@ void mul_m4_m4m4_uniq(float R[4][4], const float A[4][4], const float B[4][4])
   R[3][3] = B[3][0] * A[0][3] + B[3][1] * A[1][3] + B[3][2] * A[2][3] + B[3][3] * A[3][3];
 #endif
 }
-
 
 void mul_m4db_m4db_m4fl_uniq(double R[4][4], const double A[4][4], const float B[4][4])
 {
