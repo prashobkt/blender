@@ -52,6 +52,7 @@ set(SRC
   intern/draw_anim_viz.c
   intern/draw_armature.c
   intern/draw_cache.c
+  intern/draw_cache_extract_mesh.c
   intern/draw_cache_impl_curve.c
   intern/draw_cache_impl_displist.c
   intern/draw_cache_impl_lattice.c
@@ -133,13 +134,14 @@ set(SRC
 	# engines/lanpr/lanpr_snake.c  deprecated for now.
 	engines/lanpr/lanpr_cpu.c
   engines/lanpr/lanpr_chain_draw.c
-  engines/select/select_engine.c
   engines/select/select_draw_utils.c
+  engines/select/select_engine.c
 
   DRW_engine.h
   DRW_select_buffer.h
   intern/DRW_render.h
   intern/draw_cache.h
+  intern/draw_cache_extract.h
   intern/draw_cache_impl.h
   intern/draw_cache_inline.h
   intern/draw_common.h
