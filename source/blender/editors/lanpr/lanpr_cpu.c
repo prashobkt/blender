@@ -579,7 +579,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->contour_pointers);
+    BLI_listbase_clear(&rti->contour_pointers);
     rti->contour = 0;
   }
 
@@ -595,7 +595,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->intersection_pointers);
+    BLI_listbase_clear(&rti->intersection_pointers);
     rti->intersection = 0;
   }
 
@@ -611,7 +611,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->crease_pointers);
+    BLI_listbase_clear(&rti->crease_pointers);
     rti->crease = 0;
   }
 
@@ -627,7 +627,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->material_pointers);
+    BLI_listbase_clear(&rti->material_pointers);
     rti->material = 0;
   }
 
@@ -643,7 +643,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->edge_mark_pointers);
+    BLI_listbase_clear(&rti->edge_mark_pointers);
     rti->edge_mark = 0;
   }
 
@@ -1807,8 +1807,8 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
   copy_m4_m4_db(proj, result);
   copy_m4_m4_db(rb->view_projection, proj);
 
-  BLI_listbase_is_empty(&rb->triangle_buffer_pointers);
-  BLI_listbase_is_empty(&rb->vertex_buffer_pointers);
+  BLI_listbase_clear(&rb->triangle_buffer_pointers);
+  BLI_listbase_clear(&rb->vertex_buffer_pointers);
 
   DEG_OBJECT_ITER_BEGIN (depsgraph,
                          o,
@@ -2577,17 +2577,17 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   rb->edge_mark_count = 0;
   rb->edge_mark_managed = 0;
 
-  BLI_listbase_is_empty(&rb->contours);
-  BLI_listbase_is_empty(&rb->intersection_lines);
-  BLI_listbase_is_empty(&rb->crease_lines);
-  BLI_listbase_is_empty(&rb->material_lines);
-  BLI_listbase_is_empty(&rb->edge_marks);
-  BLI_listbase_is_empty(&rb->all_render_lines);
-  BLI_listbase_is_empty(&rb->chains);
+  BLI_listbase_clear(&rb->contours);
+  BLI_listbase_clear(&rb->intersection_lines);
+  BLI_listbase_clear(&rb->crease_lines);
+  BLI_listbase_clear(&rb->material_lines);
+  BLI_listbase_clear(&rb->edge_marks);
+  BLI_listbase_clear(&rb->all_render_lines);
+  BLI_listbase_clear(&rb->chains);
 
-  BLI_listbase_is_empty(&rb->vertex_buffer_pointers);
-  BLI_listbase_is_empty(&rb->line_buffer_pointers);
-  BLI_listbase_is_empty(&rb->triangle_buffer_pointers);
+  BLI_listbase_clear(&rb->vertex_buffer_pointers);
+  BLI_listbase_clear(&rb->line_buffer_pointers);
+  BLI_listbase_clear(&rb->triangle_buffer_pointers);
 
   BLI_spin_end(&rb->cs_data);
   BLI_spin_end(&rb->cs_info);
