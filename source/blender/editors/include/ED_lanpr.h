@@ -48,7 +48,6 @@ typedef char nShortBuf[16];
 
 typedef float tnsMatrix44f[16];
 
-typedef real tnsMatrix44d[16];
 typedef real tnsVector2d[2];
 typedef real tnsVector3d[3];
 typedef real tnsVector4d[4];
@@ -225,8 +224,7 @@ typedef struct LANPR_RenderBuffer {
   int tile_size_w, tile_size_h;
   int tile_count_x, tile_count_y;
   real width_per_tile, height_per_tile;
-  tnsMatrix44d view_projection;
-  tnsMatrix44d vp_inverse;
+  double view_projection[4][4];
 
   int output_mode;
   int output_aa_level;
@@ -456,25 +454,6 @@ typedef struct LANPR_BoundingArea {
 #define TNS_IN_TILE(RenderTile, Fx, Fy) \
   (TNS_IN_TILE_X(RenderTile, Fx) && TNS_IN_TILE_Y(RenderTile, Fy))
 
-BLI_INLINE void tMatConvert44df(tnsMatrix44d from, tnsMatrix44f to)
-{
-  to[0] = from[0];
-  to[1] = from[1];
-  to[2] = from[2];
-  to[3] = from[3];
-  to[4] = from[4];
-  to[5] = from[5];
-  to[6] = from[6];
-  to[7] = from[7];
-  to[8] = from[8];
-  to[9] = from[9];
-  to[10] = from[10];
-  to[11] = from[11];
-  to[12] = from[12];
-  to[13] = from[13];
-  to[14] = from[14];
-  to[15] = from[15];
-}
 
 BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl)
 {
@@ -588,37 +567,11 @@ void *mem_static_aquire(LANPR_StaticMemPool *smp, int size);
 void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size);
 void *mem_static_destroy(LANPR_StaticMemPool *smp);
 
-void tmat_obmat_to_16d(float obmat[4][4], tnsMatrix44d out);
 
-real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);
-void tmat_apply_rotation_33d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_rotation_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_transform_43dfND(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v);
-void tmat_apply_normal_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
-void tmat_apply_normal_transform_43df(tnsVector3d result, tnsMatrix44d mat, tnsVector3f v);
-void tmat_apply_transform_44d(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v);
-void tmat_apply_transform_43df(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v);
-void tmat_apply_transform_44dTrue(tnsVector4d result, tnsMatrix44d mat, tnsVector4d v);
-
-void tmat_load_identity_44d(tnsMatrix44d m);
 void tmat_make_ortho_matrix_44d(
-    tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
+    double (*mProjection)[4], real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
 void tmat_make_perspective_matrix_44d(
-    tnsMatrix44d mProjection, real fFov_rad, real fAspect, real zMin, real zMax);
-void tmat_make_translation_matrix_44d(tnsMatrix44d mTrans, real x, real y, real z);
-void tmat_make_rotation_matrix_44d(tnsMatrix44d m, real angle_rad, real x, real y, real z);
-void tmat_make_scale_matrix_44d(tnsMatrix44d m, real x, real y, real z);
-void tmat_make_viewport_matrix_44d(tnsMatrix44d m, real w, real h, real Far, real Near);
-void tmat_multiply_44d(tnsMatrix44d result, tnsMatrix44d l, tnsMatrix44d r);
-void tmat_inverse_44d(tnsMatrix44d inverse, tnsMatrix44d mat);
-void tmat_make_rotation_x_matrix_44d(tnsMatrix44d m, real angle_rad);
-void tmat_make_rotation_y_matrix_44d(tnsMatrix44d m, real angle_rad);
-void tmat_make_rotation_z_matrix_44d(tnsMatrix44d m, real angle_rad);
-void tmat_remove_translation_44d(tnsMatrix44d result, tnsMatrix44d mat);
-void tmat_clear_translation_44d(tnsMatrix44d mat);
+    double (*mProjection)[4], real fFov_rad, real fAspect, real zMin, real zMax);
 
 int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll);
 long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll);

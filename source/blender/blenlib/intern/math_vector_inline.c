@@ -885,6 +885,14 @@ MINLINE void cross_v3_v3v3_hi_prec(float r[3], const float a[3], const float b[3
   r[2] = (float)((double)a[0] * (double)b[1] - (double)a[1] * (double)b[0]);
 }
 
+MINLINE void cross_v3_v3v3_db(double r[3], const double a[3], const double b[3])
+{
+  BLI_assert(r != a && r != b);
+  r[0] = a[1] * b[2] - a[2] * b[1];
+  r[1] = a[2] * b[0] - a[0] * b[2];
+  r[2] = a[0] * b[1] - a[1] * b[0];
+}
+
 /* Newell's Method */
 /* excuse this fairly specific function,
  * its used for polygon normals all over the place
