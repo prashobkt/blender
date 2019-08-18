@@ -565,7 +565,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
   int i;
   int res = 0;
 
-  BLI_spin_lock(&rb->cs_management);
+  BLI_spin_lock(&rb->lock_task);
 
   if (rb->contour_managed) {
     data = rb->contour_managed;
@@ -647,7 +647,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     rti->edge_mark = 0;
   }
 
-  BLI_spin_unlock(&rb->cs_management);
+  BLI_spin_unlock(&rb->lock_task);
 
   return res;
 }
@@ -684,7 +684,7 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
         continue;
       }
       rt->testing[thread_id] = rl;
-      if (lanpr_triangle_line_imagespace_intersection_v2(&rb->cs_management,
+      if (lanpr_triangle_line_imagespace_intersection_v2(&rb->lock_task,
                                                          (void *)rt,
                                                          rl,
                                                          c,
@@ -702,6 +702,18 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
     nba = lanpr_get_next_bounding_area(nba, rl, x, y, k, PositiveX, PositiveY, &x, &y);
   }
 }
+static bool lanpr_calculation_is_canceled(){
+  bool is_canceled;
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  switch(lanpr_share.flag_render_status){
+    case LANPR_RENDER_CANCELED:
+      is_canceled = true;
+    default:
+      is_canceled = false;
+  }
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
+  return is_canceled;
+}
 static void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict UNUSED(pool),
                                                   LANPR_RenderTaskInfo *rti,
                                                   int UNUSED(threadid))
@@ -716,25 +728,36 @@ static void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict UNUSED(po
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
 
+    /* Monitoring cancelation flag every once a while. */
+    if(lanpr_calculation_is_canceled()) return;
+
     for (lip = (void *)rti->crease; lip && lip->prev != rti->crease_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
+
+    if(lanpr_calculation_is_canceled()) return;
 
     for (lip = (void *)rti->intersection; lip && lip->prev != rti->intersection_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
 
+    if(lanpr_calculation_is_canceled()) return;
+
     for (lip = (void *)rti->material; lip && lip->prev != rti->material_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
 
+    if(lanpr_calculation_is_canceled()) return;
+
     for (lip = (void *)rti->edge_mark; lip && lip->prev != rti->edge_mark_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
+
+    if(lanpr_calculation_is_canceled()) return;
   }
 }
 static void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
@@ -2590,10 +2613,10 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   BLI_listbase_clear(&rb->line_buffer_pointers);
   BLI_listbase_clear(&rb->triangle_buffer_pointers);
 
-  BLI_spin_end(&rb->cs_data);
-  BLI_spin_end(&rb->cs_info);
-  BLI_spin_end(&rb->cs_management);
-  BLI_spin_end(&rb->render_data_pool.cs_mem);
+  BLI_spin_end(&rb->lock_task);
+  BLI_spin_end(&rb->render_data_pool.lock_mem);
+
+  BLI_spin_end(&lanpr_share.lock_render_status);
 
   mem_static_destroy(&rb->render_data_pool);
 }
@@ -2610,12 +2633,26 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
 
   rb->cached_for_frame = -1;
 
-  BLI_spin_init(&rb->cs_data);
-  BLI_spin_init(&rb->cs_info);
-  BLI_spin_init(&rb->cs_management);
-  BLI_spin_init(&rb->render_data_pool.cs_mem);
+  BLI_spin_init(&rb->lock_task);
+  BLI_spin_init(&rb->render_data_pool.lock_mem);
+
+  BLI_spin_init(&lanpr_share.lock_render_status);
 
   return rb;
+}
+
+void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag){
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  lanpr_share.flag_render_status = flag;
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
+}
+
+bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag){
+  bool match;
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  match = (lanpr_share.flag_render_status == flag);
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
+  return match;
 }
 
 static int lanpr_max_occlusion_in_collections(Collection *c)

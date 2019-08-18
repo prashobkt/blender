@@ -85,7 +85,7 @@ void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
   LANPR_StaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
-  BLI_spin_lock(&smp->cs_mem);
+  BLI_spin_lock(&smp->lock_mem);
 
   if (!smpn || (smpn->used_byte + size) > LANPR_MEMORY_POOL_128MB) {
     smpn = mem_new_static_pool(smp);
@@ -95,7 +95,7 @@ void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
 
   smpn->used_byte += size;
 
-  BLI_spin_unlock(&smp->cs_mem);
+  BLI_spin_unlock(&smp->lock_mem);
 
   return ret;
 }

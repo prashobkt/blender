@@ -64,7 +64,7 @@ typedef struct LANPR_StaticMemPoolNode {
 typedef struct LANPR_StaticMemPool {
   int each_size;
   ListBase pools;
-  SpinLock cs_mem;
+  SpinLock lock_mem;
 } LANPR_StaticMemPool;
 
 typedef struct LANPR_TextureSample {
@@ -285,9 +285,8 @@ typedef struct LANPR_RenderBuffer {
 
   struct DRWShadingGroup *ChainShgrp;
 
-  SpinLock cs_info;
-  SpinLock cs_data;
-  SpinLock cs_management;
+  /** For managing calculation tasks for multiple threads. */
+  SpinLock lock_task;
 
   /*  settings */
 
@@ -295,10 +294,6 @@ typedef struct LANPR_RenderBuffer {
   real crease_angle;
   real crease_cos;
   int thread_count;
-
-  /** Deprecated, need another report mechanism */
-  real overall_progress;
-  int calculation_status;
 
   int draw_material_preview;
   real material_transparency;
@@ -315,6 +310,14 @@ typedef struct LANPR_RenderBuffer {
   int _pad;
 
 } LANPR_RenderBuffer;
+
+typedef enum LANPR_RenderStatus{
+  LANPR_RENDER_IDLE = 0,
+  LANPR_RENDER_RUNNING = 1,
+  LANPR_RENDER_CANCELED = 2,
+  LANPR_RENDER_INCOMPELTE = 3,
+  LANPR_RENDER_FINISHED = 4,
+}LANPR_RenderStatus;
 
 typedef struct LANPR_SharedResource {
 
@@ -351,7 +354,9 @@ typedef struct LANPR_SharedResource {
 
   int init_complete;
 
-  SpinLock render_flag_lock;
+  /** To bypass or cancel rendering. */
+  SpinLock lock_render_status;
+  LANPR_RenderStatus flag_render_status;
 
   /** Set before rendering and cleared upon finish! */
   struct RenderEngine *re_render;
@@ -596,9 +601,11 @@ void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
 int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
 
+LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
-LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
+void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
+bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);
 
 bool ED_lanpr_dpix_shader_error(void);
 bool ED_lanpr_disable_edge_splits(struct Scene *s);
