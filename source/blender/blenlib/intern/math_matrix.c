@@ -273,24 +273,7 @@ void mul_m4_m4m4_db_uniq(double R[4][4], const double A[4][4], const double B[4]
   BLI_assert(R != A && R != B);
 
   /* matrix product: R[j][k] = A[j][i] . B[i][k] */
-#ifdef __SSE2__
-  __m128d A0 = _mm_loadu_pd(A[0]);
-  __m128d A1 = _mm_loadu_pd(A[1]);
-  __m128d A2 = _mm_loadu_pd(A[2]);
-  __m128d A3 = _mm_loadu_pd(A[3]);
 
-  for (int i = 0; i < 4; i++) {
-    __m128d B0 = _mm_set1_pd(B[i][0]);
-    __m128d B1 = _mm_set1_pd(B[i][1]);
-    __m128d B2 = _mm_set1_pd(B[i][2]);
-    __m128d B3 = _mm_set1_pd(B[i][3]);
-
-    __m128d sum = _mm_add_pd(_mm_add_pd(_mm_mul_pd(B0, A0), _mm_mul_pd(B1, A1)),
-                            _mm_add_pd(_mm_mul_pd(B2, A2), _mm_mul_pd(B3, A3)));
-
-    _mm_storeu_pd(R[i], sum);
-  }
-#else
   R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0] + B[0][3] * A[3][0];
   R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1] + B[0][3] * A[3][1];
   R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2] + B[0][3] * A[3][2];
@@ -310,35 +293,14 @@ void mul_m4_m4m4_db_uniq(double R[4][4], const double A[4][4], const double B[4]
   R[3][1] = B[3][0] * A[0][1] + B[3][1] * A[1][1] + B[3][2] * A[2][1] + B[3][3] * A[3][1];
   R[3][2] = B[3][0] * A[0][2] + B[3][1] * A[1][2] + B[3][2] * A[2][2] + B[3][3] * A[3][2];
   R[3][3] = B[3][0] * A[0][3] + B[3][1] * A[1][3] + B[3][2] * A[2][3] + B[3][3] * A[3][3];
-#endif
 }
 
 void mul_m4db_m4db_m4fl_uniq(double R[4][4], const double A[4][4], const float B[4][4])
 {
   BLI_assert(R != A && R != B);
-  double temp[4][4];
-
-  copy_m4d_m4(temp,B);
 
   /* matrix product: R[j][k] = A[j][i] . B[i][k] */
-#ifdef __SSE2__
-  __m128d A0 = _mm_loadu_pd(A[0]);
-  __m128d A1 = _mm_loadu_pd(A[1]);
-  __m128d A2 = _mm_loadu_pd(A[2]);
-  __m128d A3 = _mm_loadu_pd(A[3]);
 
-  for (int i = 0; i < 4; i++) {
-    __m128d B0 = _mm_set1_pd(temp[i][0]);
-    __m128d B1 = _mm_set1_pd(temp[i][1]);
-    __m128d B2 = _mm_set1_pd(temp[i][2]);
-    __m128d B3 = _mm_set1_pd(temp[i][3]);
-
-    __m128d sum = _mm_add_pd(_mm_add_pd(_mm_mul_pd(B0, A0), _mm_mul_pd(B1, A1)),
-                            _mm_add_pd(_mm_mul_pd(B2, A2), _mm_mul_pd(B3, A3)));
-
-    _mm_storeu_pd(R[i], sum);
-  }
-#else
   R[0][0] = B[0][0] * A[0][0] + B[0][1] * A[1][0] + B[0][2] * A[2][0] + B[0][3] * A[3][0];
   R[0][1] = B[0][0] * A[0][1] + B[0][1] * A[1][1] + B[0][2] * A[2][1] + B[0][3] * A[3][1];
   R[0][2] = B[0][0] * A[0][2] + B[0][1] * A[1][2] + B[0][2] * A[2][2] + B[0][3] * A[3][2];
@@ -358,7 +320,7 @@ void mul_m4db_m4db_m4fl_uniq(double R[4][4], const double A[4][4], const float B
   R[3][1] = B[3][0] * A[0][1] + B[3][1] * A[1][1] + B[3][2] * A[2][1] + B[3][3] * A[3][1];
   R[3][2] = B[3][0] * A[0][2] + B[3][1] * A[1][2] + B[3][2] * A[2][2] + B[3][3] * A[3][2];
   R[3][3] = B[3][0] * A[0][3] + B[3][1] * A[1][3] + B[3][2] * A[2][3] + B[3][3] * A[3][3];
-#endif
+
 }
 
 void mul_m4_m4_pre(float R[4][4], const float A[4][4])
