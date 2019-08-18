@@ -314,9 +314,8 @@ typedef struct LANPR_RenderBuffer {
 typedef enum LANPR_RenderStatus{
   LANPR_RENDER_IDLE = 0,
   LANPR_RENDER_RUNNING = 1,
-  LANPR_RENDER_CANCELED = 2,
-  LANPR_RENDER_INCOMPELTE = 3,
-  LANPR_RENDER_FINISHED = 4,
+  LANPR_RENDER_INCOMPELTE = 2,
+  LANPR_RENDER_FINISHED = 2,
 }LANPR_RenderStatus;
 
 typedef struct LANPR_SharedResource {
@@ -599,7 +598,12 @@ void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
 int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
+void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
+bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);
+
 int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
+
+void ED_lanpr_compute_feature_lines_background(struct Depsgraph* dg, int intersection_only);
 
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);

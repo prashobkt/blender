@@ -706,7 +706,7 @@ static bool lanpr_calculation_is_canceled(){
   bool is_canceled;
   BLI_spin_lock(&lanpr_share.lock_render_status);
   switch(lanpr_share.flag_render_status){
-    case LANPR_RENDER_CANCELED:
+    case LANPR_RENDER_INCOMPELTE:
       is_canceled = true;
     default:
       is_canceled = false;
@@ -714,7 +714,7 @@ static bool lanpr_calculation_is_canceled(){
   BLI_spin_unlock(&lanpr_share.lock_render_status);
   return is_canceled;
 }
-static void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict UNUSED(pool),
+static void lanpr_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(pool),
                                                   LANPR_RenderTaskInfo *rti,
                                                   int UNUSED(threadid))
 {
@@ -760,7 +760,7 @@ static void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict UNUSED(po
     if(lanpr_calculation_is_canceled()) return;
   }
 }
-static void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
+static void lanpr_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
 {
   int thread_count = rb->thread_count;
   LANPR_RenderTaskInfo *rti = MEM_callocN(sizeof(LANPR_RenderTaskInfo) * thread_count,
@@ -779,7 +779,7 @@ static void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
   for (i = 0; i < thread_count; i++) {
     rti[i].thread_id = i;
     BLI_task_pool_push(tp,
-                       (TaskRunFunction)lanpr_THREAD_calculate_line_occlusion,
+                       (TaskRunFunction)lanpr_calculate_line_occlusion_worker,
                        &rti[i],
                        0,
                        TASK_PRIORITY_HIGH);
@@ -2643,7 +2643,13 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
 
 void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag){
   BLI_spin_lock(&lanpr_share.lock_render_status);
-  lanpr_share.flag_render_status = flag;
+
+  if(flag == LANPR_RENDER_FINISHED && lanpr_share.flag_render_status==LANPR_RENDER_INCOMPELTE){
+    ;/* Don't set the finished flag when it's canceled from any one of the thread.*/
+  }else{
+    lanpr_share.flag_render_status = flag;
+  }
+
   BLI_spin_unlock(&lanpr_share.lock_render_status);
 }
 
@@ -3802,7 +3808,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   ED_lanpr_update_render_progress("LANPR: Computing line occlusion.");
 
   if (!intersectons_only) {
-    lanpr_THREAD_calculate_line_occlusion_begin(rb);
+    lanpr_calculate_line_occlusion_begin(rb);
   }
 
   ED_lanpr_update_render_progress("LANPR: Chaining.");
@@ -3816,7 +3822,8 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
 
     if (is_lanpr_engine) {
       /* Enough with it. We can provide an option after we have LANPR internal smoothing */
-      return OPERATOR_CANCELLED;
+      ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
+      return OPERATOR_FINISHED;
     }
 
     /* Below are simply for better GPencil experience. */
@@ -3837,8 +3844,42 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
 
   rb->cached_for_frame = rb->scene->r.cfra;
 
+  ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
+
   return OPERATOR_FINISHED;
 }
+
+typedef struct LANPR_FeatureLineWorker{
+  Depsgraph* dg;
+  int intersection_only;
+}LANPR_FeatureLineWorker;
+
+static void lanpr_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
+                                               LANPR_FeatureLineWorker * worker_data,
+                                               int UNUSED(threadid))
+{
+  ED_lanpr_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
+}
+
+void ED_lanpr_compute_feature_lines_background(Depsgraph* dg, int intersection_only){
+  /* If the calculation is already started then bypass it. */
+  if (!ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)){
+    return;
+  }
+  
+  ED_lanpr_calculation_set_flag(LANPR_RENDER_RUNNING);
+  
+  LANPR_FeatureLineWorker *flw = MEM_callocN(sizeof(LANPR_FeatureLineWorker), "Task Pool");
+  TaskScheduler *scheduler = BLI_task_scheduler_get();
+
+  flw->dg = dg;
+  flw->intersection_only = intersection_only;
+
+  TaskPool* tp = BLI_task_pool_create_background(scheduler, flw);
+
+  BLI_task_pool_push(tp,lanpr_compute_feature_lines_worker,flw,true,TASK_PRIORITY_HIGH);
+}
+
 static bool lanpr_camera_exists(struct bContext *c)
 {
   Scene *s = CTX_data_scene(c);

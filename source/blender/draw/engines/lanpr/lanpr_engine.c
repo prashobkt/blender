@@ -426,16 +426,17 @@ static void lanpr_cache_init(void *vedata)
       (!lanpr_share.render_buffer_shared ||
        lanpr_share.render_buffer_shared->cached_for_frame != draw_ctx->scene->r.cfra)) {
     if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_SOFTWARE) {
-      ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 0);
-      updated = 1;
+      
+      ED_lanpr_compute_feature_lines_background(draw_ctx->depsgraph, 0);
     }
     else if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_DPIX) {
-      ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 1);
+      ED_lanpr_compute_feature_lines_background(draw_ctx->depsgraph, 1);
     }
   }
 
-  if (updated) {
+  if (ED_lanpr_calculation_flag_check(LANPR_RENDER_FINISHED)) {
     ED_lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
+    ED_lanpr_calculation_set_flag(LANPR_RENDER_IDLE);
   }
 }
 
