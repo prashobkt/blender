@@ -315,7 +315,7 @@ typedef enum LANPR_RenderStatus{
   LANPR_RENDER_IDLE = 0,
   LANPR_RENDER_RUNNING = 1,
   LANPR_RENDER_INCOMPELTE = 2,
-  LANPR_RENDER_FINISHED = 2,
+  LANPR_RENDER_FINISHED = 3,
 }LANPR_RenderStatus;
 
 typedef struct LANPR_SharedResource {
