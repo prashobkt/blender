@@ -54,7 +54,7 @@ static void lanpr_engine_init(void *ved)
   LANPR_FramebufferList *fbl = vedata->fbl;
 
   if (!lanpr_share.init_complete) {
-    BLI_spin_init(&lanpr_share.render_flag_lock);
+    BLI_spin_init(&lanpr_share.lock_render_status);
   }
 
 #if 0 /* Deprecated: snake mode */
