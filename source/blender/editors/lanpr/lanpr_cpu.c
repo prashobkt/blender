@@ -2454,6 +2454,7 @@ static void lanpr_compute_view_Vector(LANPR_RenderBuffer *rb)
   float inv[4][4];
 
   invert_m4_m4(inv, rb->scene->camera->obmat);
+  transpose_m4(inv);
   mul_v3_mat3_m4v3(trans, inv, direction);
   copy_v3db_v3fl(rb->view_vector, trans);
 }
