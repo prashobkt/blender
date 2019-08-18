@@ -2447,7 +2447,7 @@ static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_Render
   }
 }
 
-static void lanpr_compute_view_Vector(LANPR_RenderBuffer *rb)
+static void lanpr_compute_view_vector(LANPR_RenderBuffer *rb)
 {
   float direction[3] = {0, 0, 1};
   float trans[3];
@@ -2474,7 +2474,7 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
   int MaterialCount = 0;
 
   if (c->type == CAM_ORTHO) {
-    lanpr_compute_view_Vector(rb);
+    lanpr_compute_view_vector(rb);
   }
 
   for (rl = rb->all_render_lines.first; rl; rl = rl->next) {
@@ -3747,7 +3747,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
 
   lanpr_make_render_geometry_buffers(depsgraph, rb->scene, rb->scene->camera, rb);
 
-  lanpr_compute_view_Vector(rb);
+  lanpr_compute_view_vector(rb);
   lanpr_cull_triangles(rb);
 
   lanpr_perspective_division(rb);
