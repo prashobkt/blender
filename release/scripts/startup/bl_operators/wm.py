@@ -25,6 +25,7 @@ from bpy.types import (
 )
 from bpy.props import (
     BoolProperty,
+    CollectionProperty,
     EnumProperty,
     FloatProperty,
     IntProperty,
@@ -846,6 +847,86 @@ class WM_OT_url_open(Operator):
         return {'FINISHED'}
 
 
+class WM_OT_url_open_preset(Operator):
+    """Open a preset website in the web-browser"""
+    bl_idname = "wm.url_open_preset"
+    bl_label = "Open Preset Website"
+    bl_options = {'INTERNAL'}
+
+    type: EnumProperty(
+        name="Site",
+        items=lambda self, _context: (
+            item for (item, _) in WM_OT_url_open_preset.preset_items
+        ),
+    )
+
+    id: StringProperty(
+        name="Identifier",
+        description="Optional identifier",
+    )
+
+    def _url_from_bug(self, _context):
+        from bl_ui_utils.bug_report_url import url_prefill_from_blender
+        return url_prefill_from_blender()
+
+    def _url_from_bug_addon(self, _context):
+        from bl_ui_utils.bug_report_url import url_prefill_from_blender
+        return url_prefill_from_blender(addon_info=self.id)
+
+    def _url_from_release_notes(self, _context):
+        return "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
+
+    def _url_from_manual(self, _context):
+        if bpy.app.version_cycle in {"rc", "release"}:
+            manual_version = "%d.%d" % bpy.app.version[:2]
+        else:
+            manual_version = "dev"
+        return "https://docs.blender.org/manual/en/" + manual_version + "/"
+
+    # This list is: (enum_item, url) pairs.
+    # Allow dynamically extending.
+    preset_items = [
+        # Dynamic URL's.
+        (('BUG', "Bug",
+          "Report a bug with pre-filled version information"),
+         _url_from_bug),
+        (('BUG_ADDON', "Add-On Bug",
+          "Report a bug in an add-on"),
+         _url_from_bug_addon),
+        (('RELEASE_NOTES', "Release Notes",
+          "Read about whats new in this version of Blender"),
+         _url_from_release_notes),
+        (('MANUAL', "Manual",
+          "The reference manual for this version of Blender"),
+         _url_from_manual),
+
+        # Static URL's.
+        (('FUND', "Development Fund",
+          "The donation program to support maintenance and improvements"),
+         "https://fund.blender.org"),
+        (('BLENDER', "blender.org",
+          "Blender's official web-site"),
+         "https://www.blender.org"),
+        (('CREDITS', "Credits",
+          "Lists committers to Blender's source code"),
+         "https://www.blender.org/about/credits/"),
+    ]
+
+    def execute(self, context):
+        url = None
+        type = self.type
+        for (item_id, _, _), url in self.preset_items:
+            if item_id == type:
+                if callable(url):
+                    url = url(self, context)
+                break
+
+        import webbrowser
+        webbrowser.open(url)
+
+        return {'FINISHED'}
+
+
 class WM_OT_path_open(Operator):
     """Open a path in a file browser"""
     bl_idname = "wm.path_open"
@@ -1093,6 +1174,7 @@ rna_vector_subtype_items = (
     ('EULER', "Euler Angles", "Euler rotation angles in radians"),
     ('QUATERNION', "Quaternion Rotation", "Quaternion rotation (affects NLA blending)"),
 )
+
 
 class WM_OT_properties_edit(Operator):
     bl_idname = "wm.properties_edit"
@@ -1683,6 +1765,294 @@ class WM_OT_toolbar(Operator):
         return {'FINISHED'}
 
 
+class BatchRenameAction(bpy.types.PropertyGroup):
+    # category: StringProperty()
+    type: EnumProperty(
+        name="Operation",
+        items=(
+            ('SET', "Set Name", "Set a new name or prefix/suffix the existing one"),
+            ('STRIP', "Strip Characters", "Strip leading/trailing text from the name"),
+            ('REPLACE', "Find/Replace", "Replace text in the name"),
+            ('CASE', "Change Case", "Change case of each name"),
+        ),
+    )
+
+    # We could split these into sub-properties, however it's not so important.
+
+    # type: 'SET'.
+    set_name: StringProperty(name="Name")
+    set_method: EnumProperty(
+        name="Method",
+        items=(
+            ('NEW', "New", ""),
+            ('PREFIX', "Prefix", ""),
+            ('SUFFIX', "Suffix", ""),
+        ),
+        default='SUFFIX',
+    )
+
+    # type: 'STRIP'.
+    strip_chars: EnumProperty(
+        name="Strip Characters",
+        options={'ENUM_FLAG'},
+        items=(
+            ('SPACE', "Spaces", ""),
+            ('DIGIT', "Digits", ""),
+            ('PUNCT', "Punctuation", ""),
+        ),
+    )
+
+    # type: 'STRIP'.
+    strip_part: EnumProperty(
+        name="Strip Part",
+        options={'ENUM_FLAG'},
+        items=(
+            ('START', "Start", ""),
+            ('END', "End", ""),
+        ),
+    )
+
+    # type: 'REPLACE'.
+    replace_src: StringProperty(name="Find")
+    replace_dst: StringProperty(name="Replace")
+    replace_match_case: BoolProperty(name="Match Case")
+
+    # type: 'CASE'.
+    case_method: EnumProperty(
+        name="Case",
+        items=(
+            ('UPPER', "Upper Case", ""),
+            ('LOWER', "Lower Case", ""),
+            ('TITLE', "Title Caps", ""),
+        ),
+    )
+
+    # Weak, add/remove as properties.
+    op_add: BoolProperty()
+    op_remove: BoolProperty()
+
+
+class WM_OT_batch_rename(Operator):
+    bl_idname = "wm.batch_rename"
+    bl_label = "Batch Rename"
+
+    bl_options = {'UNDO', 'INTERNAL'}
+
+    data_source: EnumProperty(
+        name="Source",
+        items=(
+            ('SELECT', "Selected", ""),
+            ('ALL', "All", ""),
+        ),
+    )
+
+    actions: CollectionProperty(type=BatchRenameAction)
+
+    @staticmethod
+    def _data_from_context(context, only_selected):
+
+        mode = context.mode
+        scene = context.scene
+        space = context.space_data
+        space_type = None if (space is None) else space.type
+
+        data = None
+        if space_type == 'SEQUENCE_EDITOR':
+            data = (
+                # TODO, we don't have access to seqbasep, this won't work when inside metas.
+                [seq for seq in context.scene.sequence_editor.sequences_all if seq.select]
+                if only_selected else
+                context.scene.sequence_editor.sequences_all,
+                "name",
+                "Strip(s)",
+            )
+        elif space_type == 'NODE_EDITOR':
+            data = (
+                context.selected_nodes
+                if only_selected else
+                list(space.node_tree.nodes),
+                "name",
+                "Node(s)",
+            )
+        else:
+            if mode == 'POSE' or (mode == 'WEIGHT_PAINT' and context.pose_object):
+                data = (
+                    [pchan.bone for pchan in context.selected_pose_bones]
+                    if only_selected else
+                    [pchan.bone for ob in context.objects_in_mode_unique_data for pbone in ob.pose.bones],
+                    "name",
+                    "Bone(s)",
+                )
+            elif mode == 'EDIT_ARMATURE':
+                data = (
+                    context.selected_editable_bones
+                    if only_selected else
+                    [ebone for ob in context.objects_in_mode_unique_data for ebone in ob.data.edit_bones],
+                    "name",
+                    "Edit Bone(s)",
+                )
+            else:
+                data = (
+                    context.selected_editable_objects
+                    if only_selected else
+                    [ob for ob in bpy.data.objects if ob.library is None],
+                    "name",
+                    "Object(s)",
+                )
+        return data
+
+    @staticmethod
+    def _apply_actions(actions, name):
+        import string
+        import re
+
+        for action in actions:
+            ty = action.type
+            if ty == 'SET':
+                text = action.set_name
+                method = action.set_method
+                if method == 'NEW':
+                    name = text
+                elif method == 'PREFIX':
+                    name = text + name
+                elif method == 'SUFFIX':
+                    name = name + text
+                else:
+                    assert(0)
+
+            elif ty == 'STRIP':
+                chars = action.strip_chars
+                chars_strip = (
+                    "{:s}{:s}{:s}"
+                ).format(
+                    string.punctuation if 'PUNCT' in chars else "",
+                    string.digits if 'DIGIT' in chars else "",
+                    " " if 'SPACE' in chars else "",
+                )
+                part = action.strip_part
+                if 'START' in part:
+                    name = name.lstrip(chars_strip)
+                if 'END' in part:
+                    name = name.rstrip(chars_strip)
+
+            elif ty == 'REPLACE':
+                if action.replace_match_case:
+                    name = name.replace(
+                        action.replace_src,
+                        action.replace_dst,
+                    )
+                else:
+                    name = re.sub(
+                        re.escape(action.replace_src),
+                        re.escape(action.replace_dst),
+                        name,
+                        flags=re.IGNORECASE,
+                    )
+            elif ty == 'CASE':
+                method = action.case_method
+                if method == 'UPPER':
+                    name = name.upper()
+                elif method == 'LOWER':
+                    name = name.lower()
+                elif method == 'TITLE':
+                    name = name.title()
+                else:
+                    assert(0)
+            else:
+                assert(0)
+        return name
+
+    def draw(self, context):
+        layout = self.layout
+
+        row = layout.row()
+        row.label(text="Rename {:d} {:s}".format(len(self._data[0]), self._data[2]))
+        row.prop(self, "data_source", expand=True)
+
+        for action in self.actions:
+            box = layout.box()
+
+            row = box.row(align=True)
+            row.prop(action, "type", text="")
+            row.prop(action, "op_add", text="", icon='ADD')
+            row.prop(action, "op_remove", text="", icon='REMOVE')
+
+            ty = action.type
+            if ty == 'SET':
+                box.prop(action, "set_method")
+                box.prop(action, "set_name")
+            elif ty == 'STRIP':
+                box.row().prop(action, "strip_chars")
+                box.row().prop(action, "strip_part")
+            elif ty == 'REPLACE':
+                box.row().prop(action, "replace_src")
+                box.row().prop(action, "replace_dst")
+                box.row().prop(action, "replace_match_case")
+            elif ty == 'CASE':
+                box.row().prop(action, "case_method", expand=True)
+
+    def check(self, context):
+        changed = False
+        for i, action in enumerate(self.actions):
+            if action.op_add:
+                action.op_add = False
+                self.actions.add()
+                if i + 2 != len(self.actions):
+                    self.actions.move(len(self.actions) - 1, i + 1)
+                changed = True
+                break
+            if action.op_remove:
+                action.op_remove = False
+                if len(self.actions) > 1:
+                    self.actions.remove(i)
+                changed = True
+                break
+
+        if self._data_source_prev != self.data_source:
+            only_selected = self.data_source == 'SELECT'
+            self._data = self._data_from_context(context, only_selected)
+            self._data_source_prev = self.data_source
+            changed = True
+
+        return changed
+
+    def execute(self, context):
+        seq, attr, descr = self._data
+
+        actions = self.actions
+
+        total_len = 0
+        change_len = 0
+        for item in seq:
+            name_src = getattr(item, attr)
+            name_dst = self._apply_actions(actions, name_src)
+            if name_src != name_dst:
+                setattr(item, attr, name_dst)
+                change_len += 1
+            total_len += 1
+
+        self.report({'INFO'}, "Renamed {:d} of {:d} {:s}".format(total_len, change_len, descr))
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+
+        only_selected = self.data_source == 'SELECT'
+        data = self._data_from_context(context, only_selected)
+        self._data_source_prev = self.data_source
+
+        if data is None:
+            self.report({'ERROR'}, "No usable items in this context")
+            return {'CANCELLED'}
+
+        self._data = data
+
+        if not self.actions:
+            self.actions.add()
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self, width=400)
+
+
 class WM_MT_splash(Menu):
     bl_label = "Splash"
 
@@ -1808,23 +2178,13 @@ class WM_MT_splash(Menu):
         if found_recent:
             col2_title.label(text="Recent Files")
         else:
-            if bpy.app.version_cycle in {'rc', 'release'}:
-                manual_version = '%d.%d' % bpy.app.version[:2]
-            else:
-                manual_version = 'dev'
 
             # Links if no recent files
             col2_title.label(text="Getting Started")
 
-            col2.operator(
-                "wm.url_open", text="Manual", icon='URL'
-            ).url = "https://docs.blender.org/manual/en/" + manual_version + "/"
-            col2.operator(
-                "wm.url_open", text="Blender Website", icon='URL',
-            ).url = "https://www.blender.org"
-            col2.operator(
-                "wm.url_open", text="Credits", icon='URL',
-            ).url = "https://www.blender.org/about/credits/"
+            col2.operator("wm.url_open_preset", text="Manual", icon='URL').type = 'MANUAL'
+            col2.operator("wm.url_open_preset", text="Blender Website", icon='URL').type = 'BLENDER'
+            col2.operator("wm.url_open_preset", text="Credits", icon='URL').type = 'CREDITS'
 
         layout.separator()
 
@@ -1837,12 +2197,9 @@ class WM_MT_splash(Menu):
         col1.operator("wm.recover_last_session", icon='RECOVER_LAST')
 
         col2 = split.column()
-        col2.operator(
-            "wm.url_open", text="Release Notes", icon='URL',
-        ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
-        col2.operator(
-            "wm.url_open", text="Development Fund", icon='FUND'
-        ).url = "https://fund.blender.org"
+
+        col2.operator("wm.url_open_preset", text="Release Notes", icon='URL').type = 'RELEASE_NOTES'
+        col2.operator("wm.url_open_preset", text="Development Fund", icon='FUND').type = 'FUND'
 
         layout.separator()
         layout.separator()
@@ -1908,8 +2265,11 @@ classes = (
     WM_OT_owner_disable,
     WM_OT_owner_enable,
     WM_OT_url_open,
+    WM_OT_url_open_preset,
     WM_OT_tool_set_by_id,
     WM_OT_tool_set_by_index,
     WM_OT_toolbar,
+    BatchRenameAction,
+    WM_OT_batch_rename,
     WM_MT_splash,
 )

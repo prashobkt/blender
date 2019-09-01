@@ -42,7 +42,6 @@ struct EditBone;
 struct NumInput;
 struct Object;
 struct RNG;
-struct RenderEngineType;
 struct ReportList;
 struct Scene;
 struct ScrArea;
@@ -52,7 +51,6 @@ struct TransDataContainer;
 struct TransInfo;
 struct TransSnap;
 struct TransformOrientation;
-struct View3D;
 struct ViewLayer;
 struct bConstraint;
 struct bContext;
@@ -85,7 +83,9 @@ typedef struct TransSnap {
   bool snap_self;
   bool peel;
   bool snap_spatial_grid;
-  short status;
+  char status;
+  /* Snapped Element Type (currently for objects only). */
+  char snapElem;
   /** snapping from this point (in global-space). */
   float snapPoint[3];
   /** to this point (in global-space). */
@@ -375,6 +375,7 @@ typedef struct VertSlideParams {
 typedef struct BoneInitData {
   struct EditBone *bone;
   float tail[3];
+  float rad_head;
   float rad_tail;
   float roll;
   float head[3];
@@ -1163,5 +1164,8 @@ bool checkUseAxisMatrix(TransInfo *t);
                           *tc_end = t->data_container + t->data_container_len; \
        th != tc_end; \
        th++, i++)
+
+void trans_obdata_in_obmode_update_all(struct TransInfo *t);
+void trans_obchild_in_obmode_update_all(struct TransInfo *t);
 
 #endif

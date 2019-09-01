@@ -34,9 +34,7 @@
 #include "BKE_pbvh.h"
 
 struct KeyBlock;
-struct Main;
 struct Object;
-struct SculptOrigVertData;
 struct SculptUndoNode;
 struct bContext;
 
@@ -47,7 +45,18 @@ bool sculpt_poll(struct bContext *C);
 bool sculpt_poll_view3d(struct bContext *C);
 
 /* Stroke */
+
+typedef struct SculptCursorGeometryInfo {
+  float location[3];
+  float normal[3];
+  float active_vertex_co[3];
+} SculptCursorGeometryInfo;
+
 bool sculpt_stroke_get_location(struct bContext *C, float out[3], const float mouse[2]);
+bool sculpt_cursor_geometry_info_update(bContext *C,
+                                        SculptCursorGeometryInfo *out,
+                                        const float mouse[2],
+                                        bool use_sampled_normal);
 
 /* Dynamic topology */
 void sculpt_pbvh_clear(Object *ob);
@@ -164,6 +173,7 @@ typedef struct SculptThreadedTaskData {
   float (*area_cos)[3];
   float (*area_nos)[3];
   int *count;
+  bool any_vertex_sampled;
 
   ThreadMutex mutex;
 
@@ -228,7 +238,7 @@ float tex_strength(struct SculptSession *ss,
                    const int thread_id);
 
 /* just for vertex paint. */
-void sculpt_pbvh_calc_area_normal(const struct Brush *brush,
+bool sculpt_pbvh_calc_area_normal(const struct Brush *brush,
                                   Object *ob,
                                   PBVHNode **nodes,
                                   int totnode,
@@ -342,7 +352,7 @@ SculptUndoNode *sculpt_undo_get_node(PBVHNode *node);
 void sculpt_undo_push_begin(const char *name);
 void sculpt_undo_push_end(void);
 
-void sculpt_vertcos_to_key(Object *ob, KeyBlock *kb, float (*vertCos)[3]);
+void sculpt_vertcos_to_key(Object *ob, KeyBlock *kb, const float (*vertCos)[3]);
 
 void sculpt_update_object_bounding_box(struct Object *ob);
 

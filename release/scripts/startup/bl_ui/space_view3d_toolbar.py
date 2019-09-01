@@ -177,6 +177,7 @@ class VIEW3D_PT_tools_meshedit_options_automerge(View3DPanel, Panel):
         layout.use_property_decorate = False
 
         layout.active = tool_settings.use_mesh_automerge
+        layout.prop(tool_settings, "use_mesh_automerge_and_split", toggle=False)
         layout.prop(tool_settings, "double_threshold", text="Threshold")
 
 # ********** default tools for editmode_curve ****************
@@ -362,6 +363,11 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
 
             if not self.is_popover:
                 brush_basic_sculpt_settings(col, context, brush)
+
+            # normal_radius_factor
+            col.separator()
+            row = col.row()
+            row.prop(brush, "normal_radius_factor", slider=True)
 
             # topology_rake_factor
             if (
@@ -911,6 +917,8 @@ class VIEW3D_PT_tools_brush_stroke(Panel, View3DPaintPanel):
 
             if brush.sculpt_capabilities.has_space_attenuation:
                 col.prop(brush, "use_space_attenuation")
+
+            col.prop(brush, "use_scene_spacing")
 
             if brush.sculpt_capabilities.has_jitter:
 

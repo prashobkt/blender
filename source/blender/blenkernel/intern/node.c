@@ -1406,6 +1406,7 @@ bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
   }
   else {
     ntree = MEM_callocN(sizeof(bNodeTree), "new node tree");
+    ntree->id.flag |= LIB_PRIVATE_DATA;
     *((short *)ntree->id.name) = ID_NT;
     BLI_strncpy(ntree->id.name + 2, name, sizeof(ntree->id.name));
   }
@@ -2172,6 +2173,7 @@ void ntreeSetOutput(bNodeTree *ntree)
    * might be different for editor or for "real" use... */
 }
 
+/* Returns the private NodeTree object of the datablock, if it has one. */
 bNodeTree *ntreeFromID(const ID *id)
 {
   switch (GS(id->name)) {
@@ -2190,6 +2192,28 @@ bNodeTree *ntreeFromID(const ID *id)
     default:
       return NULL;
   }
+}
+
+/* Finds and returns the datablock that privately owns the given tree, or NULL. */
+ID *BKE_node_tree_find_owner_ID(Main *bmain, struct bNodeTree *ntree)
+{
+  ListBase *lists[] = {&bmain->materials,
+                       &bmain->lights,
+                       &bmain->worlds,
+                       &bmain->textures,
+                       &bmain->scenes,
+                       &bmain->linestyles,
+                       NULL};
+
+  for (int i = 0; lists[i] != NULL; i++) {
+    LISTBASE_FOREACH (ID *, id, lists[i]) {
+      if (ntreeFromID(id) == ntree) {
+        return id;
+      }
+    }
+  }
+
+  return NULL;
 }
 
 void ntreeMakeLocal(Main *bmain, bNodeTree *ntree, bool id_in_mainlist, const bool lib_local)
@@ -3232,11 +3256,6 @@ void ntreeTagUsedSockets(bNodeTree *ntree)
   }
 
   for (link = ntree->links.first; link; link = link->next) {
-    /* link is unused if either side is disabled */
-    if ((link->fromsock->flag & SOCK_UNAVAIL) || (link->tosock->flag & SOCK_UNAVAIL)) {
-      continue;
-    }
-
     link->fromsock->flag |= SOCK_IN_USE;
     link->tosock->flag |= SOCK_IN_USE;
   }
@@ -3938,6 +3957,7 @@ static void registerShaderNodes(void)
   register_node_type_sh_tex_brick();
   register_node_type_sh_tex_pointdensity();
   register_node_type_sh_tex_ies();
+  register_node_type_sh_tex_white_noise();
 }
 
 static void registerTextureNodes(void)
@@ -3964,6 +3984,7 @@ static void registerTextureNodes(void)
   register_node_type_sh_tangent();
   register_node_type_sh_normal_map();
   register_node_type_sh_hair_info();
+  register_node_type_sh_volume_info();
 
   register_node_type_tex_checker();
   register_node_type_tex_texture();

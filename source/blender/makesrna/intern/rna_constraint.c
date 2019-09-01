@@ -256,6 +256,17 @@ static const EnumPropertyItem track_axis_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+static const EnumPropertyItem euler_order_items[] = {
+    {CONSTRAINT_EULER_AUTO, "AUTO", 0, "Default", "Euler using the default rotation order"},
+    {CONSTRAINT_EULER_XYZ, "XYZ", 0, "XYZ Euler", "Euler using the XYZ rotation order"},
+    {CONSTRAINT_EULER_XZY, "XZY", 0, "XZY Euler", "Euler using the XZY rotation order"},
+    {CONSTRAINT_EULER_YXZ, "YXZ", 0, "YXZ Euler", "Euler using the YXZ rotation order"},
+    {CONSTRAINT_EULER_YZX, "YZX", 0, "YZX Euler", "Euler using the YZX rotation order"},
+    {CONSTRAINT_EULER_ZXY, "ZXY", 0, "ZXY Euler", "Euler using the ZXY rotation order"},
+    {CONSTRAINT_EULER_ZYX, "ZYX", 0, "ZYX Euler", "Euler using the ZYX rotation order"},
+    {0, NULL, 0, NULL, NULL},
+};
+
 #ifdef RNA_RUNTIME
 
 static const EnumPropertyItem space_object_items[] = {
@@ -376,8 +387,8 @@ static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
   BLI_strncpy_utf8(con->name, value, sizeof(con->name));
 
   /* make sure name is unique */
-  if (ptr->id.data) {
-    Object *ob = ptr->id.data;
+  if (ptr->owner_id) {
+    Object *ob = (Object *)ptr->owner_id;
     ListBase *list = get_constraint_lb(ob, con, NULL);
 
     /* if we have the list, check for unique name, otherwise give up */
@@ -418,7 +429,7 @@ static char *rna_Constraint_do_compute_path(Object *ob, bConstraint *con)
 
 static char *rna_Constraint_path(PointerRNA *ptr)
 {
-  Object *ob = ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   bConstraint *con = ptr->data;
 
   return rna_Constraint_do_compute_path(ob, con);
@@ -426,7 +437,7 @@ static char *rna_Constraint_path(PointerRNA *ptr)
 
 static bConstraint *rna_constraint_from_target(PointerRNA *ptr)
 {
-  Object *ob = ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   bConstraintTarget *tgt = ptr->data;
 
   return BKE_constraint_find_from_target(ob, tgt, NULL);
@@ -434,7 +445,7 @@ static bConstraint *rna_constraint_from_target(PointerRNA *ptr)
 
 static char *rna_ConstraintTarget_path(PointerRNA *ptr)
 {
-  Object *ob = ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   bConstraintTarget *tgt = ptr->data;
   bConstraint *con = rna_constraint_from_target(ptr);
   int index = -1;
@@ -469,29 +480,30 @@ static char *rna_ConstraintTarget_path(PointerRNA *ptr)
 
 static void rna_Constraint_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  ED_object_constraint_tag_update(bmain, ptr->id.data, ptr->data);
+  ED_object_constraint_tag_update(bmain, (Object *)ptr->owner_id, ptr->data);
 }
 
 static void rna_Constraint_dependency_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  ED_object_constraint_dependency_tag_update(bmain, ptr->id.data, ptr->data);
+  ED_object_constraint_dependency_tag_update(bmain, (Object *)ptr->owner_id, ptr->data);
 }
 
 static void rna_ConstraintTarget_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  ED_object_constraint_tag_update(bmain, ptr->id.data, rna_constraint_from_target(ptr));
+  ED_object_constraint_tag_update(bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
 }
 
 static void rna_ConstraintTarget_dependency_update(Main *bmain,
                                                    Scene *UNUSED(scene),
                                                    PointerRNA *ptr)
 {
-  ED_object_constraint_dependency_tag_update(bmain, ptr->id.data, rna_constraint_from_target(ptr));
+  ED_object_constraint_dependency_tag_update(
+      bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
 }
 
 static void rna_Constraint_influence_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  Object *ob = ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
 
   if (ob->pose) {
     ob->pose->flag |= (POSE_LOCKED | POSE_DO_UNLOCK);
@@ -523,7 +535,7 @@ static const EnumPropertyItem *rna_Constraint_owner_space_itemf(bContext *UNUSED
                                                                 PropertyRNA *UNUSED(prop),
                                                                 bool *UNUSED(r_free))
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   bConstraint *con = (bConstraint *)ptr->data;
 
   if (BLI_findindex(&ob->constraints, con) == -1) {
@@ -671,7 +683,7 @@ static bool rna_Constraint_cameraObject_poll(PointerRNA *ptr, PointerRNA value)
   Object *ob = (Object *)value.data;
 
   if (ob) {
-    if (ob->type == OB_CAMERA && ob != (Object *)ptr->id.data) {
+    if (ob->type == OB_CAMERA && ob != (Object *)ptr->owner_id) {
       return 1;
     }
   }
@@ -688,7 +700,7 @@ static void rna_Constraint_followTrack_camera_set(PointerRNA *ptr,
   Object *ob = (Object *)value.data;
 
   if (ob) {
-    if (ob->type == OB_CAMERA && ob != (Object *)ptr->id.data) {
+    if (ob->type == OB_CAMERA && ob != (Object *)ptr->owner_id) {
       data->camera = ob;
       id_lib_extern((ID *)ob);
     }
@@ -707,7 +719,7 @@ static void rna_Constraint_followTrack_depthObject_set(PointerRNA *ptr,
   Object *ob = (Object *)value.data;
 
   if (ob) {
-    if (ob->type == OB_MESH && ob != (Object *)ptr->id.data) {
+    if (ob->type == OB_MESH && ob != (Object *)ptr->owner_id) {
       data->depth_ob = ob;
       id_lib_extern((ID *)ob);
     }
@@ -722,7 +734,7 @@ static bool rna_Constraint_followTrack_depthObject_poll(PointerRNA *ptr, Pointer
   Object *ob = (Object *)value.data;
 
   if (ob) {
-    if (ob->type == OB_MESH && ob != (Object *)ptr->id.data) {
+    if (ob->type == OB_MESH && ob != (Object *)ptr->owner_id) {
       return 1;
     }
   }
@@ -739,7 +751,7 @@ static void rna_Constraint_objectSolver_camera_set(PointerRNA *ptr,
   Object *ob = (Object *)value.data;
 
   if (ob) {
-    if (ob->type == OB_CAMERA && ob != (Object *)ptr->id.data) {
+    if (ob->type == OB_CAMERA && ob != (Object *)ptr->owner_id) {
       data->camera = ob;
       id_lib_extern((ID *)ob);
     }
@@ -1323,6 +1335,12 @@ static void rna_def_constraint_rotate_like(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Invert Z", "Invert the Z rotation");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
+  prop = RNA_def_property(srna, "euler_order", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "euler_order");
+  RNA_def_property_enum_items(prop, euler_order_items);
+  RNA_def_property_ui_text(prop, "Euler Order", "Explicitly specify the euler rotation order");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
   prop = RNA_def_property(srna, "use_offset", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ROTLIKE_OFFSET);
   RNA_def_property_ui_text(prop, "Offset", "Add original rotation into copied rotation");
@@ -1361,6 +1379,14 @@ static void rna_def_constraint_size_like(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
   RNA_def_property_ui_text(prop, "Power", "Raise the target's scale to the specified power");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  prop = RNA_def_property(srna, "use_make_uniform", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", SIZELIKE_UNIFORM);
+  RNA_def_property_ui_text(prop,
+                           "Make Uniform",
+                           "Redistribute the copied change in volume equally "
+                           "between the three axes of the owner");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "use_offset", PROP_BOOLEAN, PROP_NONE);
@@ -1874,6 +1900,18 @@ static void rna_def_constraint_transform(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_motion_extrapolate", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "expo", CLAMPTO_CYCLIC);
   RNA_def_property_ui_text(prop, "Extrapolate Motion", "Extrapolate ranges");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  prop = RNA_def_property(srna, "from_rotation_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "from_rotation_mode");
+  RNA_def_property_enum_items(prop, rna_enum_driver_target_rotation_mode_items);
+  RNA_def_property_ui_text(prop, "From Mode", "Specify the type of rotation channels to use");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  prop = RNA_def_property(srna, "to_euler_order", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "to_euler_order");
+  RNA_def_property_enum_items(prop, euler_order_items);
+  RNA_def_property_ui_text(prop, "To Order", "Explicitly specify the output euler rotation order");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   /* Loc */

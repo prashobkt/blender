@@ -32,7 +32,6 @@ struct Depsgraph;
 struct EnumPropertyItem;
 struct GridPaintMask;
 struct ImagePool;
-struct MFace;
 struct MLoop;
 struct MLoopTri;
 struct MVert;
@@ -47,7 +46,6 @@ struct Palette;
 struct PaletteColor;
 struct ReportList;
 struct Scene;
-struct Sculpt;
 struct StrokeCache;
 struct SubdivCCG;
 struct SubdivCCG;
@@ -259,7 +257,14 @@ typedef struct SculptSession {
 
   struct StrokeCache *cache;
 
+  /* Cursor data and active vertex for tools */
   int active_vertex_index;
+
+  float cursor_radius;
+  float cursor_location[3];
+  float cursor_normal[3];
+  float cursor_view_normal[3];
+  struct RegionView3D *rv3d;
 
   union {
     struct {

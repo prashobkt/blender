@@ -176,11 +176,21 @@ static uiBlock *menu_change_shortcut(bContext *C, ARegion *ar, void *arg)
   UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
   UI_block_direction_set(block, UI_DIR_CENTER_Y);
 
-  layout = UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, 200, 20, 0, style);
+  layout = UI_block_layout(block,
+                           UI_LAYOUT_VERTICAL,
+                           UI_LAYOUT_PANEL,
+                           0,
+                           0,
+                           U.widget_unit * 10,
+                           U.widget_unit * 2,
+                           0,
+                           style);
 
+  uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Change Shortcut"), ICON_HAND);
   uiItemR(layout, &ptr, "type", UI_ITEM_R_FULL_EVENT | UI_ITEM_R_IMMEDIATE, "", ICON_NONE);
 
-  UI_block_bounds_set_popup(block, 6, (const int[2]){-50, 26});
+  UI_block_bounds_set_popup(
+      block, 6 * U.dpi_fac, (const int[2]){-100 * U.dpi_fac, 36 * U.dpi_fac});
 
   shortcut_free_operator_property(prop);
 
@@ -227,11 +237,21 @@ static uiBlock *menu_add_shortcut(bContext *C, ARegion *ar, void *arg)
   UI_block_func_handle_set(block, but_shortcut_name_func, but);
   UI_block_direction_set(block, UI_DIR_CENTER_Y);
 
-  layout = UI_block_layout(block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, 200, 20, 0, style);
+  layout = UI_block_layout(block,
+                           UI_LAYOUT_VERTICAL,
+                           UI_LAYOUT_PANEL,
+                           0,
+                           0,
+                           U.widget_unit * 10,
+                           U.widget_unit * 2,
+                           0,
+                           style);
 
+  uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Assign Shortcut"), ICON_HAND);
   uiItemR(layout, &ptr, "type", UI_ITEM_R_FULL_EVENT | UI_ITEM_R_IMMEDIATE, "", ICON_NONE);
 
-  UI_block_bounds_set_popup(block, 6, (const int[2]){-50, 26});
+  UI_block_bounds_set_popup(
+      block, 6 * U.dpi_fac, (const int[2]){-100 * U.dpi_fac, 36 * U.dpi_fac});
 
 #ifdef USE_KEYMAP_ADD_HACK
   g_kmi_id_hack = kmi_id;
@@ -904,7 +924,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
             ICON_NONE,
             "UI_OT_copy_data_path_button");
 
-    if (ptr->id.data && !is_whole_array &&
+    if (ptr->owner_id && !is_whole_array &&
         ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
       uiItemO(layout,
               CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy As New Driver"),
@@ -1222,7 +1242,7 @@ void ui_popup_context_menu_for_panel(bContext *C, ARegion *ar, Panel *pa)
                  sizeof(tmpstr),
                  "%s" UI_SEP_CHAR_S "%s",
                  IFACE_("Pin"),
-                 IFACE_("Shift+Left Mouse"));
+                 IFACE_("Shift Left Mouse"));
     uiItemR(layout, &ptr, "use_pin", 0, tmpstr, ICON_NONE);
 
     /* evil, force shortcut flag */
@@ -1230,6 +1250,7 @@ void ui_popup_context_menu_for_panel(bContext *C, ARegion *ar, Panel *pa)
       uiBlock *block = uiLayoutGetBlock(layout);
       uiBut *but = block->buttons.last;
       but->flag |= UI_BUT_HAS_SEP_CHAR;
+      but->drawflag |= UI_BUT_HAS_SHORTCUT;
     }
   }
   UI_popup_menu_end(C, pup);

@@ -47,7 +47,6 @@ struct Material;
 struct Mesh;
 struct Object;
 struct PartDeflect;
-struct ParticleSystem;
 struct Path;
 struct RigidBodyOb;
 struct SculptSession;
@@ -163,12 +162,14 @@ typedef struct Object_Runtime {
   struct Mesh *mesh_eval;
   /**
    * Mesh structure created during object evaluation.
-   * It has deforemation only modifiers applied on it.
+   * It has deformation only modifiers applied on it.
    */
   struct Mesh *mesh_deform_eval;
 
-  /* This is a mesh representation of corresponding object.
-   * It created when Python calls `object.to_mesh()`. */
+  /**
+   * This is a mesh representation of corresponding object.
+   * It created when Python calls `object.to_mesh()`.
+   */
   struct Mesh *object_as_temp_mesh;
 
   /** Runtime evaluated curve-specific data, not stored in the file. */
@@ -176,6 +177,11 @@ typedef struct Object_Runtime {
 
   /** Runtime grease pencil drawing data */
   struct GpencilBatchCache *gpencil_cache;
+  /** Runtime grease pencil total layers used for evaluated data created by modifiers */
+  int gpencil_tot_layers;
+  char _pad4[4];
+  /** Runtime grease pencil evaluated data created by modifiers */
+  struct bGPDframe *gpencil_evaluated_frames;
 
   void *_pad2; /* Padding is here for win32s unconventional struct alignment rules. */
 } Object_Runtime;

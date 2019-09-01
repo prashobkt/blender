@@ -3693,8 +3693,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  {
-    /* Versioning code until next subversion bump goes here. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 3)) {
     if (U.view_rotate_sensitivity_turntable == 0) {
       U.view_rotate_sensitivity_turntable = DEG2RADF(0.4f);
       U.view_rotate_sensitivity_trackball = 1.0f;
@@ -3721,6 +3720,26 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (Mesh *mesh = bmain->meshes.first; mesh; mesh = mesh->id.next) {
       if (mesh->remesh_voxel_size == 0.0f) {
         mesh->remesh_voxel_size = 0.1f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 4)) {
+    ID *id;
+    FOREACH_MAIN_ID_BEGIN (bmain, id) {
+      bNodeTree *ntree = ntreeFromID(id);
+      if (ntree) {
+        ntree->id.flag |= LIB_PRIVATE_DATA;
+      }
+    }
+    FOREACH_MAIN_ID_END;
+  }
+
+  {
+    /* Versioning code until next subversion bump goes here. */
+    for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->ob_mode & OB_MODE_SCULPT && br->normal_radius_factor == 0.0f) {
+        br->normal_radius_factor = 0.5f;
       }
     }
   }

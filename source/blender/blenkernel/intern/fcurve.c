@@ -382,8 +382,8 @@ FCurve *rna_get_fcurve_context_ui(bContext *C,
   }
 
   /* there must be some RNA-pointer + property combon */
-  if (prop && tptr.id.data && RNA_property_animateable(&tptr, prop)) {
-    AnimData *adt = BKE_animdata_from_id(tptr.id.data);
+  if (prop && tptr.owner_id && RNA_property_animateable(&tptr, prop)) {
+    AnimData *adt = BKE_animdata_from_id(tptr.owner_id);
     int step = (
         /* Always 1 in case we have no context (can't check in 'ancestors' of given RNA ptr). */
         C ? 2 : 1);
@@ -391,7 +391,7 @@ FCurve *rna_get_fcurve_context_ui(bContext *C,
 
     if (!adt && C) {
       path = BKE_animdata_driver_path_hack(C, &tptr, prop, NULL);
-      adt = BKE_animdata_from_id(tptr.id.data);
+      adt = BKE_animdata_from_id(tptr.owner_id);
       step--;
     }
 
@@ -438,7 +438,7 @@ FCurve *rna_get_fcurve_context_ui(bContext *C,
             if (tpath && tpath != path) {
               MEM_freeN(path);
               path = tpath;
-              adt = BKE_animdata_from_id(tptr.id.data);
+              adt = BKE_animdata_from_id(tptr.owner_id);
             }
             else {
               adt = NULL;
@@ -1714,7 +1714,10 @@ static float dvar_eval_transChan(ChannelDriver *driver, DriverVar *dvar)
      * of scale over all three axes unless the matrix includes shear. */
     return cbrtf(mat4_to_volume_scale(mat));
   }
-  else if (dtar->transChan >= DTAR_TRANSCHAN_SCALEX) {
+  else if (ELEM(dtar->transChan,
+                DTAR_TRANSCHAN_SCALEX,
+                DTAR_TRANSCHAN_SCALEY,
+                DTAR_TRANSCHAN_SCALEZ)) {
     /* Extract scale, and choose the right axis,
      * inline 'mat4_to_size'. */
     return len_v3(mat[dtar->transChan - DTAR_TRANSCHAN_SCALEX]);
@@ -1728,19 +1731,75 @@ static float dvar_eval_transChan(ChannelDriver *driver, DriverVar *dvar)
      *     b) [NOT USED] directly use the original values (no decomposition)
      *         - only an option for "transform space", if quality is really bad with a)
      */
-    float eul[3];
+    float quat[4];
+    int channel;
 
-    mat4_to_eulO(eul, rot_order, mat);
-
-    if (use_eulers) {
-      compatible_eul(eul, oldEul);
+    if (dtar->transChan == DTAR_TRANSCHAN_ROTW) {
+      channel = 0;
+    }
+    else {
+      channel = 1 + dtar->transChan - DTAR_TRANSCHAN_ROTX;
+      BLI_assert(channel < 4);
     }
 
-    return eul[dtar->transChan - DTAR_TRANSCHAN_ROTX];
+    BKE_driver_target_matrix_to_rot_channels(
+        mat, rot_order, dtar->rotation_mode, channel, false, quat);
+
+    if (use_eulers && dtar->rotation_mode == DTAR_ROTMODE_AUTO) {
+      compatible_eul(quat + 1, oldEul);
+    }
+
+    return quat[channel];
   }
   else {
     /* extract location and choose right axis */
     return mat[3][dtar->transChan];
+  }
+}
+
+/* Convert a quaternion to pseudo-angles representing the weighted amount of rotation. */
+static void quaternion_to_angles(float quat[4], int channel)
+{
+  if (channel < 0) {
+    quat[0] = 2.0f * saacosf(quat[0]);
+
+    for (int i = 1; i < 4; i++) {
+      quat[i] = 2.0f * saasinf(quat[i]);
+    }
+  }
+  else if (channel == 0) {
+    quat[0] = 2.0f * saacosf(quat[0]);
+  }
+  else {
+    quat[channel] = 2.0f * saasinf(quat[channel]);
+  }
+}
+
+/* Compute channel values for a rotational Transform Channel driver variable. */
+void BKE_driver_target_matrix_to_rot_channels(
+    float mat[4][4], int auto_order, int rotation_mode, int channel, bool angles, float r_buf[4])
+{
+  float *const quat = r_buf;
+  float *const eul = r_buf + 1;
+
+  zero_v4(r_buf);
+
+  if (rotation_mode == DTAR_ROTMODE_AUTO) {
+    mat4_to_eulO(eul, auto_order, mat);
+  }
+  else if (rotation_mode >= DTAR_ROTMODE_EULER_MIN && rotation_mode <= DTAR_ROTMODE_EULER_MAX) {
+    mat4_to_eulO(eul, rotation_mode, mat);
+  }
+  else if (rotation_mode == DTAR_ROTMODE_QUATERNION) {
+    mat4_to_quat(quat, mat);
+
+    /* For Transformation constraint convenience, convert to pseudo-angles. */
+    if (angles) {
+      quaternion_to_angles(quat, channel);
+    }
+  }
+  else {
+    BLI_assert(false);
   }
 }
 

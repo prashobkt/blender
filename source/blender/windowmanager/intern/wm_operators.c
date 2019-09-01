@@ -368,7 +368,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
       continue;
     }
 
-    if (ptr->id.data == ctx_item_ptr.id.data) {
+    if (ptr->owner_id == ctx_item_ptr.owner_id) {
       if ((ptr->data == ctx_item_ptr.data) && (ptr->type == ctx_item_ptr.type)) {
         /* found! */
         member_found = identifier;
@@ -402,13 +402,13 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 {
   const char *member_id = NULL;
 
-  if (ptr->id.data) {
+  if (ptr->owner_id) {
 
 #  define CTX_TEST_PTR_ID(C, member, idptr) \
     { \
       const char *ctx_member = member; \
       PointerRNA ctx_item_ptr = CTX_data_pointer_get(C, ctx_member); \
-      if (ctx_item_ptr.id.data == idptr) { \
+      if (ctx_item_ptr.owner_id == idptr) { \
         member_id = ctx_member; \
         break; \
       } \
@@ -420,7 +420,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
       const char *ctx_member = member; \
       const char *ctx_member_full = member_full; \
       PointerRNA ctx_item_ptr = CTX_data_pointer_get(C, ctx_member); \
-      if (ctx_item_ptr.id.data && cast(ctx_item_ptr.id.data) == idptr) { \
+      if (ctx_item_ptr.owner_id && (ID *)cast(ctx_item_ptr.owner_id) == idptr) { \
         member_id = ctx_member_full; \
         break; \
       } \
@@ -447,19 +447,19 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
     } \
     (void)0
 
-    switch (GS(((ID *)ptr->id.data)->name)) {
+    switch (GS(ptr->owner_id->name)) {
       case ID_SCE: {
-        CTX_TEST_PTR_ID(C, "scene", ptr->id.data);
+        CTX_TEST_PTR_ID(C, "scene", ptr->owner_id);
         break;
       }
       case ID_OB: {
-        CTX_TEST_PTR_ID(C, "object", ptr->id.data);
+        CTX_TEST_PTR_ID(C, "object", ptr->owner_id);
         break;
       }
       /* from rna_Main_objects_new */
       case OB_DATA_SUPPORT_ID_CASE: {
 #  define ID_CAST_OBDATA(id_pt) (((Object *)(id_pt))->data)
-        CTX_TEST_PTR_ID_CAST(C, "object", "object.data", ID_CAST_OBDATA, ptr->id.data);
+        CTX_TEST_PTR_ID_CAST(C, "object", "object.data", ID_CAST_OBDATA, ptr->owner_id);
         break;
 #  undef ID_CAST_OBDATA
       }
@@ -467,18 +467,18 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 #  define ID_CAST_OBMATACT(id_pt) \
     (give_current_material(((Object *)id_pt), ((Object *)id_pt)->actcol))
         CTX_TEST_PTR_ID_CAST(
-            C, "object", "object.active_material", ID_CAST_OBMATACT, ptr->id.data);
+            C, "object", "object.active_material", ID_CAST_OBMATACT, ptr->owner_id);
         break;
 #  undef ID_CAST_OBMATACT
       }
       case ID_WO: {
 #  define ID_CAST_SCENEWORLD(id_pt) (((Scene *)(id_pt))->world)
-        CTX_TEST_PTR_ID_CAST(C, "scene", "scene.world", ID_CAST_SCENEWORLD, ptr->id.data);
+        CTX_TEST_PTR_ID_CAST(C, "scene", "scene.world", ID_CAST_SCENEWORLD, ptr->owner_id);
         break;
 #  undef ID_CAST_SCENEWORLD
       }
       case ID_SCR: {
-        CTX_TEST_PTR_ID(C, "screen", ptr->id.data);
+        CTX_TEST_PTR_ID(C, "screen", ptr->owner_id);
 
         SpaceLink *space_data = CTX_wm_space_data(C);
 
@@ -539,7 +539,7 @@ char *WM_prop_pystring_assign(bContext *C, PointerRNA *ptr, PropertyRNA *prop, i
 
   if (lhs == NULL) {
     /* fallback to bpy.data.foo[id] if we dont find in the context */
-    lhs = RNA_path_full_property_py(ptr, prop, index);
+    lhs = RNA_path_full_property_py(CTX_data_main(C), ptr, prop, index);
   }
 
   if (!lhs) {
@@ -850,7 +850,7 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *ar, void *arg)
            NULL);
 
   /* Move it downwards, mouse over button. */
-  UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
+  UI_block_bounds_set_popup(block, 0.3f * U.widget_unit, (const int[2]){0, -UI_UNIT_Y});
 
   UI_but_focus_on_enter_event(win, but);
 
@@ -1111,7 +1111,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *ar, void *arg_op)
 
   /* if register is not enabled, the operator gets freed on OPERATOR_FINISHED
    * ui_apply_but_funcs_after calls ED_undo_operator_repeate_cb and crashes */
-  assert(op->type->flag & OPTYPE_REGISTER);
+  BLI_assert(op->type->flag & OPTYPE_REGISTER);
 
   UI_block_func_handle_set(block, wm_block_redo_cb, arg_op);
   layout = UI_block_layout(
@@ -1126,18 +1126,15 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *ar, void *arg_op)
   if (op->type->flag & OPTYPE_MACRO) {
     for (op = op->macro.first; op; op = op->next) {
       uiTemplateOperatorPropertyButs(
-          C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
-      if (op->next) {
-        uiItemS(layout);
-      }
+          C, layout, op, UI_BUT_LABEL_ALIGN_NONE, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
     }
   }
   else {
     uiTemplateOperatorPropertyButs(
-        C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
+        C, layout, op, UI_BUT_LABEL_ALIGN_NONE, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
   }
 
-  UI_block_bounds_set_popup(block, 4, NULL);
+  UI_block_bounds_set_popup(block, 6 * U.dpi_fac, NULL);
 
   return block;
 }
@@ -1217,7 +1214,8 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *ar, void *userData)
   }
 
   /* center around the mouse */
-  UI_block_bounds_set_popup(block, 4, (const int[2]){data->width / -2, data->height / 2});
+  UI_block_bounds_set_popup(
+      block, 6 * U.dpi_fac, (const int[2]){data->width / -2, data->height / 2});
 
   UI_block_active_only_flagged_buttons(C, ar, block);
 
@@ -1245,7 +1243,7 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *ar, void *userData)
 
   UI_block_func_set(block, NULL, NULL, NULL);
 
-  UI_block_bounds_set_popup(block, 4, NULL);
+  UI_block_bounds_set_popup(block, 6 * U.dpi_fac, NULL);
 
   UI_block_active_only_flagged_buttons(C, ar, block);
 
@@ -1516,7 +1514,7 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *ar, void *userdata)
            NULL);
 
   /* Move it downwards, mouse over button. */
-  UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
+  UI_block_bounds_set_popup(block, 0.3f * U.widget_unit, (const int[2]){0, -UI_UNIT_Y});
 
   return block;
 }

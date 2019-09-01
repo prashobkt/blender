@@ -680,12 +680,7 @@ static void object_delete_cb(bContext *C,
     if (ob == CTX_data_edit_object(C)) {
       ED_object_editmode_exit(C, EM_FREEDATA);
     }
-    ED_object_base_free_and_unlink(CTX_data_main(C), scene, ob);
-    /* leave for ED_outliner_id_unref to handle */
-#if 0
-    te->directdata = NULL;
-    tselem->id = NULL;
-#endif
+    BKE_id_delete(bmain, ob);
   }
 }
 
@@ -778,7 +773,7 @@ static void singleuser_action_cb(bContext *C,
 
   if (id) {
     IdAdtTemplate *iat = (IdAdtTemplate *)tsep->id;
-    PointerRNA ptr = {{NULL}};
+    PointerRNA ptr = {NULL};
     PropertyRNA *prop;
 
     RNA_pointer_create(&iat->id, &RNA_AnimData, iat->adt, &ptr);
@@ -801,7 +796,7 @@ static void singleuser_world_cb(bContext *C,
   /* need to use parent scene not just scene, otherwise may end up getting wrong one */
   if (id) {
     Scene *parscene = (Scene *)tsep->id;
-    PointerRNA ptr = {{NULL}};
+    PointerRNA ptr = {NULL};
     PropertyRNA *prop;
 
     RNA_id_pointer_create(&parscene->id, &ptr);
@@ -1204,11 +1199,6 @@ static void object_delete_hierarchy_cb(bContext *C,
     }
 
     outline_delete_hierarchy(C, reports, scene, base);
-    /* leave for ED_outliner_id_unref to handle */
-#if 0
-    te->directdata = NULL;
-    tselem->id = NULL;
-#endif
   }
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
@@ -1292,11 +1282,6 @@ static void object_batch_delete_hierarchy_cb(bContext *C,
     }
 
     outline_batch_delete_hierarchy(reports, CTX_data_main(C), view_layer, scene, base);
-    /* leave for ED_outliner_id_unref to handle */
-#if 0
-    te->directdata = NULL;
-    tselem->id = NULL;
-#endif
   }
 }
 

@@ -132,16 +132,25 @@ ccl_device_inline float4 fetch_node_float(KernelGlobals *kg, int offset)
                      __uint_as_float(node.w));
 }
 
-ccl_device_inline void decode_node_uchar4(uint i, uint *x, uint *y, uint *z, uint *w)
+ccl_device_forceinline void svm_unpack_node_uchar2(uint i, uint *x, uint *y)
 {
-  if (x)
-    *x = (i & 0xFF);
-  if (y)
-    *y = ((i >> 8) & 0xFF);
-  if (z)
-    *z = ((i >> 16) & 0xFF);
-  if (w)
-    *w = ((i >> 24) & 0xFF);
+  *x = (i & 0xFF);
+  *y = ((i >> 8) & 0xFF);
+}
+
+ccl_device_forceinline void svm_unpack_node_uchar3(uint i, uint *x, uint *y, uint *z)
+{
+  *x = (i & 0xFF);
+  *y = ((i >> 8) & 0xFF);
+  *z = ((i >> 16) & 0xFF);
+}
+
+ccl_device_forceinline void svm_unpack_node_uchar4(uint i, uint *x, uint *y, uint *z, uint *w)
+{
+  *x = (i & 0xFF);
+  *y = ((i >> 8) & 0xFF);
+  *z = ((i >> 16) & 0xFF);
+  *w = ((i >> 24) & 0xFF);
 }
 
 CCL_NAMESPACE_END
@@ -194,6 +203,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/svm_bump.h"
 #include "kernel/svm/svm_map_range.h"
 #include "kernel/svm/svm_clamp.h"
+#include "kernel/svm/svm_white_noise.h"
 
 #ifdef __SHADER_RAYTRACE__
 #  include "kernel/svm/svm_ao.h"
@@ -431,6 +441,9 @@ ccl_device_noinline void svm_eval_nodes(KernelGlobals *kg,
         break;
       case NODE_TEX_BRICK:
         svm_node_tex_brick(kg, sd, stack, node, &offset);
+        break;
+      case NODE_TEX_WHITE_NOISE:
+        svm_node_tex_white_noise(kg, sd, stack, node.y, node.z, node.w, &offset);
         break;
 #  endif /* __TEXTURES__ */
 #  ifdef __EXTRA_NODES__

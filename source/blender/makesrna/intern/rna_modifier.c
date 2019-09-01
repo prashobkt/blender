@@ -602,8 +602,8 @@ static void rna_Modifier_name_set(PointerRNA *ptr, const char *value)
   BLI_strncpy_utf8(md->name, value, sizeof(md->name));
 
   /* make sure the name is truly unique */
-  if (ptr->id.data) {
-    Object *ob = ptr->id.data;
+  if (ptr->owner_id) {
+    Object *ob = (Object *)ptr->owner_id;
     modifier_unique_name(&ob->modifiers, md);
   }
 
@@ -622,8 +622,8 @@ static char *rna_Modifier_path(PointerRNA *ptr)
 
 static void rna_Modifier_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
-  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->id.data);
+  DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->owner_id);
 }
 
 static void rna_Modifier_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -730,7 +730,7 @@ static void modifier_object_set(Object *self, Object **ob_p, int type, PointerRN
         PointerRNA *ptr, PointerRNA value, struct ReportList *UNUSED(reports)) \
     { \
       _type##ModifierData *tmd = (_type##ModifierData *)ptr->data; \
-      modifier_object_set(ptr->id.data, &tmd->_prop, _obtype, value); \
+      modifier_object_set((Object *)ptr->owner_id, &tmd->_prop, _obtype, value); \
     }
 
 RNA_MOD_OBJECT_SET(Armature, object, OB_ARMATURE);
@@ -753,7 +753,7 @@ static void rna_HookModifier_object_set(PointerRNA *ptr,
                                         PointerRNA value,
                                         struct ReportList *UNUSED(reports))
 {
-  Object *owner = (Object *)ptr->id.data;
+  Object *owner = (Object *)ptr->owner_id;
   HookModifierData *hmd = ptr->data;
   Object *ob = (Object *)value.data;
 
@@ -762,9 +762,50 @@ static void rna_HookModifier_object_set(PointerRNA *ptr,
   BKE_object_modifier_hook_reset(owner, hmd);
 }
 
+static bool rna_HookModifier_object_override_apply(Main *UNUSED(bmain),
+                                                   PointerRNA *ptr_dst,
+                                                   PointerRNA *ptr_src,
+                                                   PointerRNA *ptr_storage,
+                                                   PropertyRNA *prop_dst,
+                                                   PropertyRNA *prop_src,
+                                                   PropertyRNA *UNUSED(prop_storage),
+                                                   const int len_dst,
+                                                   const int len_src,
+                                                   const int len_storage,
+                                                   PointerRNA *UNUSED(ptr_item_dst),
+                                                   PointerRNA *UNUSED(ptr_item_src),
+                                                   PointerRNA *UNUSED(ptr_item_storage),
+                                                   IDOverrideLibraryPropertyOperation *opop)
+{
+  BLI_assert(len_dst == len_src && (!ptr_storage || len_dst == len_storage) && len_dst == 0);
+  BLI_assert(opop->operation == IDOVERRIDE_LIBRARY_OP_REPLACE &&
+             "Unsupported RNA override operation on Hook modifier target objet pointer");
+  UNUSED_VARS_NDEBUG(ptr_storage, len_dst, len_src, len_storage, opop);
+
+  /* We need a special handling here because setting hook target resets invert parent matrix,
+   * which is evil in our case. */
+  HookModifierData *hmd = ptr_dst->data;
+  Object *owner = (Object *)ptr_dst->owner_id;
+  Object *target_dst = RNA_property_pointer_get(ptr_dst, prop_dst).data;
+  Object *target_src = RNA_property_pointer_get(ptr_src, prop_src).data;
+
+  BLI_assert(target_dst == hmd->object);
+
+  if (target_src == target_dst) {
+    return false;
+  }
+
+  hmd->object = target_src;
+  if (target_src == NULL) {
+    /* The only case where we do want default behavior (with matrix reset). */
+    BKE_object_modifier_hook_reset(owner, hmd);
+  }
+  return true;
+}
+
 static void rna_HookModifier_subtarget_set(PointerRNA *ptr, const char *value)
 {
-  Object *owner = (Object *)ptr->id.data;
+  Object *owner = (Object *)ptr->owner_id;
   HookModifierData *hmd = ptr->data;
 
   BLI_strncpy(hmd->subtarget, value, sizeof(hmd->subtarget));
@@ -851,7 +892,7 @@ static void rna_UVProjector_object_set(PointerRNA *ptr,
 static void rna_Smoke_set_type(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   SmokeModifierData *smd = (SmokeModifierData *)ptr->data;
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
 
   /* nothing changed */
   if ((smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain) {
@@ -878,7 +919,7 @@ static void rna_Smoke_set_type(Main *bmain, Scene *scene, PointerRNA *ptr)
 
 static void rna_MultiresModifier_type_set(PointerRNA *ptr, int value)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MultiresModifierData *mmd = (MultiresModifierData *)ptr->data;
 
   multires_force_update(ob);
@@ -896,7 +937,7 @@ static void rna_MultiresModifier_level_range(
 
 static bool rna_MultiresModifier_external_get(PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   Mesh *me = ob->data;
 
   return CustomData_external_test(&me->ldata, CD_MDISPS);
@@ -904,7 +945,7 @@ static bool rna_MultiresModifier_external_get(PointerRNA *ptr)
 
 static void rna_MultiresModifier_filepath_get(PointerRNA *ptr, char *value)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   CustomDataExternal *external = ((Mesh *)ob->data)->ldata.external;
 
   BLI_strncpy(value, (external) ? external->filename : "", sizeof(external->filename));
@@ -912,7 +953,7 @@ static void rna_MultiresModifier_filepath_get(PointerRNA *ptr, char *value)
 
 static void rna_MultiresModifier_filepath_set(PointerRNA *ptr, const char *value)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   CustomDataExternal *external = ((Mesh *)ob->data)->ldata.external;
 
   if (external && !STREQ(external->filename, value)) {
@@ -923,7 +964,7 @@ static void rna_MultiresModifier_filepath_set(PointerRNA *ptr, const char *value
 
 static int rna_MultiresModifier_filepath_length(PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   CustomDataExternal *external = ((Mesh *)ob->data)->ldata.external;
 
   return strlen((external) ? external->filename : "");
@@ -948,19 +989,19 @@ static bool rna_MeshDeformModifier_is_bound_get(PointerRNA *ptr)
 
 static PointerRNA rna_SoftBodyModifier_settings_get(PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   return rna_pointer_inherit_refine(ptr, &RNA_SoftBodySettings, ob->soft);
 }
 
 static PointerRNA rna_SoftBodyModifier_point_cache_get(PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   return rna_pointer_inherit_refine(ptr, &RNA_PointCache, ob->soft->shared->pointcache);
 }
 
 static PointerRNA rna_CollisionModifier_settings_get(PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   return rna_pointer_inherit_refine(ptr, &RNA_CollisionSettings, ob->pd);
 }
 
@@ -1567,6 +1608,7 @@ static void rna_def_modifier_generic_map_info(StructRNA *srna)
   prop = RNA_def_property(srna, "texture", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "Texture", "");
   RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   prop = RNA_def_property(srna, "texture_coords", PROP_ENUM, PROP_NONE);
@@ -2027,7 +2069,7 @@ static void rna_def_modifier_decimate(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_dissolve_boundaries", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_DECIM_FLAG_ALL_BOUNDARY_VERTS);
   RNA_def_property_ui_text(
-      prop, "All Boundaries", "Dissolve all vertices inbetween face boundaries (planar only)");
+      prop, "All Boundaries", "Dissolve all vertices in between face boundaries (planar only)");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "delimit", PROP_ENUM, PROP_NONE);
@@ -2295,6 +2337,7 @@ static void rna_def_modifier_hook(BlenderRNA *brna)
       prop, "Object", "Parent Object for hook, also recalculates and clears offset");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_override_funcs(prop, NULL, NULL, "rna_HookModifier_object_override_apply");
   RNA_def_property_pointer_funcs(prop, NULL, "rna_HookModifier_object_set", NULL, NULL);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
@@ -4287,6 +4330,7 @@ static void rna_def_modifier_uvwarp(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "object_src");
   RNA_def_property_ui_text(prop, "Object From", "Object defining offset");
   RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   prop = RNA_def_property(srna, "bone_from", PROP_STRING, PROP_NONE);
@@ -4298,6 +4342,7 @@ static void rna_def_modifier_uvwarp(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "object_dst");
   RNA_def_property_ui_text(prop, "Object To", "Object defining offset");
   RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   prop = RNA_def_property(srna, "bone_to", PROP_STRING, PROP_NONE);
@@ -4365,6 +4410,7 @@ static void rna_def_modifier_weightvg_mask(BlenderRNA *UNUSED(brna),
   prop = RNA_def_property(srna, "mask_texture", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "Masking Tex", "Masking texture");
   RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   prop = RNA_def_property(srna, "mask_tex_use_channel", PROP_ENUM, PROP_NONE);

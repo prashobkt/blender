@@ -81,6 +81,7 @@
 #include "BKE_workspace.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_anim_api.h"
 #include "ED_armature.h"
@@ -900,7 +901,7 @@ static void recalcData_objects(TransInfo *t)
         DEG_id_tag_update(tc->obedit->data, 0); /* sets recalc flags */
         BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
         EDBM_mesh_normals_update(em);
-        BKE_editmesh_tessface_calc(em);
+        BKE_editmesh_looptri_calc(em);
       }
     }
     else if (t->obedit_type == OB_ARMATURE) { /* no recalc flag, does pose */
@@ -1148,6 +1149,14 @@ static void recalcData_objects(TransInfo *t)
     if (motionpath_update) {
       /* Update motion paths once for all transformed objects. */
       ED_objects_recalculate_paths(t->context, t->scene, true);
+    }
+
+    if (t->options & CTX_OBMODE_XFORM_SKIP_CHILDREN) {
+      trans_obchild_in_obmode_update_all(t);
+    }
+
+    if (t->options & CTX_OBMODE_XFORM_OBDATA) {
+      trans_obdata_in_obmode_update_all(t);
     }
   }
 }
