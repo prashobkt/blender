@@ -1474,7 +1474,26 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
       break;
     }
 
-    run_callbacks = false;
+  /* TODO(sergey): Some functions here are changing global state,
+   * for example, clearing update tags from bmain.
+   */
+  /* (Re-)build dependency graph if needed. */
+  DEG_graph_relations_update(depsgraph, bmain, scene, view_layer);
+  /* Uncomment this to check if graph was properly tagged for update. */
+  // DEG_debug_graph_relations_validate(depsgraph, bmain, scene);
+  /* Flush editing data if needed. */
+  prepare_mesh_for_viewport_render(bmain, view_layer);
+  /* Flush recalc flags to dependencies. */
+  DEG_graph_flush_update(bmain, depsgraph);
+  /* Update all objects: drivers, matrices, displists, etc. flags set
+   * by depgraph or manual, no layer check here, gets correct flushed.
+   */
+  DEG_evaluate_on_refresh(bmain, depsgraph);
+  /* Update sound system. */
+  BKE_scene_update_sound(depsgraph, bmain);
+  /* Notify python about depsgraph update. */
+  if (run_callbacks) {
+    BLI_callback_exec(bmain, &scene->id, BLI_CB_EVT_DEPSGRAPH_UPDATE_POST);
   }
 }
 
