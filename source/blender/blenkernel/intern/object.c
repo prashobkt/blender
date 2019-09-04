@@ -2985,6 +2985,15 @@ bool BKE_object_empty_image_data_is_visible_in_view3d(const Object *ob, const Re
     }
   }
 
+  if (visibility_flag & OB_EMPTY_IMAGE_HIDE_NON_AXIS_ALIGNED) {
+    float proj[3];
+    project_plane_v3_v3v3(proj, ob->obmat[2], rv3d->viewinv[2]);
+    const float proj_length_sq = len_squared_v3(proj);
+    if (proj_length_sq > 1e-5f) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -3871,7 +3880,7 @@ int BKE_object_scenes_users_get(Main *bmain, Object *ob)
 {
   int num_scenes = 0;
   for (Scene *scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
-    if (BKE_collection_has_object_recursive(BKE_collection_master(scene), ob)) {
+    if (BKE_collection_has_object_recursive(scene->master_collection, ob)) {
       num_scenes++;
     }
   }

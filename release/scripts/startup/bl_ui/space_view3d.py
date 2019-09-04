@@ -2333,6 +2333,7 @@ class VIEW3D_MT_object_context_menu(Menu):
             layout.separator()
 
             layout.operator("object.convert", text="Convert to Mesh").target = 'MESH'
+            layout.operator("object.convert", text="Convert to Grease Pencil").target = 'GPENCIL'
             layout.operator_menu_enum("object.origin_set", text="Set Origin", property="type")
 
             layout.separator()
@@ -6427,7 +6428,11 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in Active Layer", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in All Layers", icon='ADD').all_layers = True
+
+        layout.separator()
+
         layout.operator("gpencil.frame_duplicate", text="Duplicate Active Layer", icon='DUPLICATE')
         layout.operator("gpencil.frame_duplicate", text="Duplicate All Layers", icon='DUPLICATE').mode = 'ALL'
 
@@ -6460,7 +6465,11 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in Active Layer", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in All Layers", icon='ADD').all_layers = True
+
+        layout.separator()
+
         layout.operator("gpencil.frame_duplicate", text="Duplicate Active Layer", icon='DUPLICATE')
         layout.operator("gpencil.frame_duplicate", text="Duplicate All Layers", icon='DUPLICATE').mode = 'ALL'
 
