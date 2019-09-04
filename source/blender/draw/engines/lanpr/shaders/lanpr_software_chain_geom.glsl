@@ -21,11 +21,11 @@ uniform float thickness_material;
 uniform float thickness_edge_mark;
 uniform float thickness_intersection;
 
-uniform int enable_contour;
-uniform int enable_crease;
-uniform int enable_material;
-uniform int enable_edge_mark;
-uniform int enable_intersection;
+uniform int use_contour;
+uniform int use_crease;
+uniform int use_material;
+uniform int use_edge_mark;
+uniform int use_intersection;
 
 uniform int occlusion_level_start;
 uniform int occlusion_level_end;
@@ -200,27 +200,27 @@ void decide_line_style(int component_id)
 
   if (component_id == 0) {
     out_color = contour_color;
-    use_thickness = th * thickness_contour * enable_contour;
+    use_thickness = th * thickness_contour * use_contour;
     return;
   }
   if (component_id == 1) {
     out_color = crease_color;
-    use_thickness = th * thickness_crease * enable_crease;
+    use_thickness = th * thickness_crease * use_crease;
     return;
   }
   if (component_id == 2) {
     out_color = material_color;
-    use_thickness = th * thickness_material * enable_material;
+    use_thickness = th * thickness_material * use_material;
     return;
   }
   if (component_id == 3) {
     out_color = edge_mark_color;
-    use_thickness = th * thickness_edge_mark * enable_edge_mark;
+    use_thickness = th * thickness_edge_mark * use_edge_mark;
     return;
   }
   if (component_id == 4) {
     out_color = intersection_color;
-    use_thickness = th * thickness_intersection * enable_intersection;
+    use_thickness = th * thickness_intersection * use_intersection;
     return;
   }
 }

@@ -826,7 +826,7 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
         lanpr_make_line_type(expand,layout,active_layer.edge_mark,"EdgeMark")
         lanpr_make_line_type(expand,layout,active_layer.material_separate,"Material")
 
-        if lanpr.enable_intersections:
+        if lanpr.use_intersections:
             lanpr_make_line_type(expand,layout,active_layer.intersection,"Intersection")
         else:
             layout.label(text= "Intersection calculation disabled.")
@@ -1116,7 +1116,7 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
         if mode == "DPIX":
             layout.prop(lanpr,"gpu_cache_size")
 
-        layout.prop(lanpr,"enable_intersections")
+        layout.prop(lanpr,"use_intersections")
 
         if scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='SOFTWARE':
             layout.prop(lanpr,"enable_chaining", text = "Chained Lines")

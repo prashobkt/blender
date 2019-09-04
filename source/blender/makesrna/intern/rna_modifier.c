@@ -6008,27 +6008,27 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "FeatureLineModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_WIREFRAME);
 
-  prop = RNA_def_property(srna, "enable_contour", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_contour", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_CONTOUR);
   RNA_def_property_ui_text(prop, "Contour", "Contour lines");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "enable_crease", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_crease", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_CREASE);
   RNA_def_property_ui_text(prop, "Crease", "Crease lines");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "enable_mark", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_MARK);
-  RNA_def_property_ui_text(prop, "Mark", "Freestyle marked edges");
+  RNA_def_property_ui_text(prop, "Mark","Marked NPR edges");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "enable_material", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_material", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_MATERIAL);
   RNA_def_property_ui_text(prop, "Material", "Material lines");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "enable_intersection", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_intersection", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_INTERSECTION);
   RNA_def_property_ui_text(prop, "Intersection", "Intersection lines");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
@@ -6064,19 +6064,19 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);
-  RNA_def_property_ui_text(prop, "Multiple", "Use multiple occlusion levels");
+  RNA_def_property_ui_text(prop, "Multiple Levels", "Use multiple occlusion levels");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "Level", "Occlusion level");
+  RNA_def_property_ui_text(prop, "Level Start", "Occlusion level start");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "To", "Occlusion level");
+  RNA_def_property_ui_text(prop, "Level End", "Occlusion level end");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

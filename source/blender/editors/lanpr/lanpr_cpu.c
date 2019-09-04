@@ -3250,7 +3250,7 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
     if (RootBoundingArea->triangle_count > 200 && Recursive) {
       lanpr_split_bounding_area(rb, RootBoundingArea);
     }
-    if (Recursive && rb->enable_intersections) {
+    if (Recursive && rb->use_intersections) {
       lanpr_triangle_calculate_intersections_in_bounding_area(rb, rt, RootBoundingArea);
     }
   }
@@ -3784,7 +3784,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   rb->scene = s;
   rb->w = s->r.xsch;
   rb->h = s->r.ysch;
-  rb->enable_intersections = (lanpr->flags & LANPR_USE_INTERSECTIONS);
+  rb->use_intersections = (lanpr->flags & LANPR_USE_INTERSECTIONS);
 
   rb->triangle_size = lanpr_get_render_triangle_size(rb);
 

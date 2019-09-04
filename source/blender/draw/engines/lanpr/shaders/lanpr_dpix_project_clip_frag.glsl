@@ -4,11 +4,11 @@ uniform mat4 ViewMatrixInverse;
 uniform mat4 ProjectionMatrix;
 uniform mat4 ProjectionMatrixInverse;
 
-uniform int enable_contour;
-uniform int enable_crease;
-uniform int enable_material;
-uniform int enable_edge_mark;
-uniform int enable_intersection;
+uniform int use_contour;
+uniform int use_crease;
+uniform int use_material;
+uniform int use_edge_mark;
+uniform int use_intersection;
 
 uniform float crease_threshold;
 uniform float crease_fade_threshold;
@@ -336,7 +336,7 @@ int testProfileEdge(ivec2 texcoord, vec3 world_position)
 
   bool contour = (dot0 >= 0.0 && dot1 <= 0.0) || (dot0 <= 0.0 && dot1 >= 0.0);
 
-  is_crease = (((enable_contour > 0 && !contour) || enable_contour == 0) &&
+  is_crease = (((use_contour > 0 && !contour) || use_contour == 0) &&
                ((dot2 < crease_threshold) || (dot2 < crease_fade_threshold))) ?
                   1 :
                   0;
@@ -347,11 +347,11 @@ int testProfileEdge(ivec2 texcoord, vec3 world_position)
                         0;
   // use 0 to 0.5 to repesent the range, because 1 will represent another meaning
 
-  if (enable_contour > 0 && contour)
+  if (use_contour > 0 && contour)
     return 1;
-  if (((enable_crease > 0) && (is_crease > 0)) || ((enable_material > 0) && (edge_mask.r > 0)) ||
-      ((enable_edge_mark > 0) && (edge_mask.g > 0)) ||
-      ((enable_intersection > 0) && (edge_mask.b > 0)) || false)
+  if (((use_crease > 0) && (is_crease > 0)) || ((use_material > 0) && (edge_mask.r > 0)) ||
+      ((use_edge_mark > 0) && (edge_mask.g > 0)) ||
+      ((use_intersection > 0) && (edge_mask.b > 0)) || false)
     return 2;
   return 0;
 }

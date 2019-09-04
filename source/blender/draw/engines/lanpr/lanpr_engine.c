@@ -316,15 +316,15 @@ static void lanpr_cache_init(void *vedata)
                               &lanpr->crease_fade_threshold,
                               1);
     DRW_shgroup_uniform_int(
-        stl->g_data->dpix_transform_shgrp, "enable_contour", &ll->contour.enabled, 1);
+        stl->g_data->dpix_transform_shgrp, "use_contour", &ll->contour.use, 1);
     DRW_shgroup_uniform_int(
-        stl->g_data->dpix_transform_shgrp, "enable_crease", &ll->crease.enabled, 1);
+        stl->g_data->dpix_transform_shgrp, "use_crease", &ll->crease.use, 1);
     DRW_shgroup_uniform_int(
-        stl->g_data->dpix_transform_shgrp, "enable_material", &ll->material_separate.enabled, 1);
+        stl->g_data->dpix_transform_shgrp, "use_material", &ll->material_separate.use, 1);
     DRW_shgroup_uniform_int(
-        stl->g_data->dpix_transform_shgrp, "enable_edge_mark", &ll->edge_mark.enabled, 1);
+        stl->g_data->dpix_transform_shgrp, "use_edge_mark", &ll->edge_mark.use, 1);
     DRW_shgroup_uniform_int(
-        stl->g_data->dpix_transform_shgrp, "enable_intersection", &ll->intersection.enabled, 1);
+        stl->g_data->dpix_transform_shgrp, "use_intersection", &ll->intersection.use, 1);
 
     psl->dpix_preview_pass = DRW_pass_create("DPIX Preview",
                                              DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |

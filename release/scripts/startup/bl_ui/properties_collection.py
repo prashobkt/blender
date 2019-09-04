@@ -98,11 +98,11 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
                 else:
                     layout.prop(lanpr,'level_start',text="Level")
 
-                layout.prop(lanpr,'enable_contour')
-                layout.prop(lanpr,'enable_crease')
+                layout.prop(lanpr,'use_contour')
+                layout.prop(lanpr,'use_crease')
                 layout.prop(lanpr,'enable_mark')
-                layout.prop(lanpr,'enable_material')
-                layout.prop(lanpr,'enable_intersection')
+                layout.prop(lanpr,'use_material')
+                layout.prop(lanpr,'use_intersection')
                 
                 layout.prop(lanpr,'layer')
                 layout.prop(lanpr,'material')

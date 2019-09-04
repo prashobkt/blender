@@ -73,11 +73,11 @@ class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
         else:
             layout.prop(md,'level_start', text="Level")
 
-        layout.prop(md,'enable_contour')
-        layout.prop(md,'enable_crease')
+        layout.prop(md,'use_contour')
+        layout.prop(md,'use_crease')
         layout.prop(md,'enable_mark')
-        layout.prop(md,'enable_material')
-        layout.prop(md,'enable_intersection')
+        layout.prop(md,'use_material')
+        layout.prop(md,'use_intersection')
         layout.prop(md,'enable_modifier_mark')
 
 class OBJECT_PT_lanpr_modifier_target(LanprButtonsPanel, Panel):

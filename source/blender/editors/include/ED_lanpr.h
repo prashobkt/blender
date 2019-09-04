@@ -294,7 +294,7 @@ typedef struct LANPR_RenderBuffer {
   struct Scene *scene;
   struct Object *camera;
 
-  int enable_intersections;
+  int use_intersections;
   int _pad;
 
 } LANPR_RenderBuffer;

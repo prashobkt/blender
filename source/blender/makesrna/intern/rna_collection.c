@@ -385,23 +385,23 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LANPR");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
-  prop = RNA_def_property(srna, "enable_contour", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_contour", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_CONTOUR);
   RNA_def_property_ui_text(prop, "Contour", "Contour lines");
 
-  prop = RNA_def_property(srna, "enable_crease", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_crease", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_CREASE);
   RNA_def_property_ui_text(prop, "Crease", "Crease lines");
 
   prop = RNA_def_property(srna, "enable_mark", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_MARK);
-  RNA_def_property_ui_text(prop, "Mark", "Freestyle marked edges");
+  RNA_def_property_ui_text(prop, "Mark", "Marked NPR edges");
 
-  prop = RNA_def_property(srna, "enable_material", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_material", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_MATERIAL);
   RNA_def_property_ui_text(prop, "Material", "Material lines");
 
-  prop = RNA_def_property(srna, "enable_intersection", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_intersection", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_INTERSECTION);
   RNA_def_property_ui_text(prop, "Intersection", "Intersection lines");
 
@@ -432,17 +432,17 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);
-  RNA_def_property_ui_text(prop, "Multiple", "Use multiple occlusion levels");
+  RNA_def_property_ui_text(prop, "Multiple Levels", "Use multiple occlusion levels");
 
   prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "Level", "Occlusion level");
+  RNA_def_property_ui_text(prop, "Level Start", "Occlusion level start");
 
   prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "To", "Occlusion level");
+  RNA_def_property_ui_text(prop, "Level End", "Occlusion level end");
 }
 
 void RNA_def_collections(BlenderRNA *brna)

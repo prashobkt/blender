@@ -97,19 +97,19 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
 
   GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
 
-  if (ll->contour.enabled) {
+  if (ll->contour.use) {
     Count += lanpr_count_leveled_edge_segment_count(&rb->contours, ll);
   }
-  if (ll->crease.enabled) {
+  if (ll->crease.use) {
     Count += lanpr_count_leveled_edge_segment_count(&rb->crease_lines, ll);
   }
-  if (ll->intersection.enabled) {
+  if (ll->intersection.use) {
     Count += lanpr_count_leveled_edge_segment_count(&rb->intersection_lines, ll);
   }
-  if (ll->edge_mark.enabled) {
+  if (ll->edge_mark.use) {
     Count += lanpr_count_leveled_edge_segment_count(&rb->edge_marks, ll);
   }
-  if (ll->material_separate.enabled) {
+  if (ll->material_separate.use) {
     Count += lanpr_count_leveled_edge_segment_count(&rb->material_lines, ll);
   }
 
@@ -124,19 +124,19 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
   tv = v = MEM_callocN(sizeof(float) * 6 * Count, "temp v data");
   tn = N = MEM_callocN(sizeof(float) * 6 * Count, "temp n data");
 
-  if (ll->contour.enabled) {
+  if (ll->contour.use) {
     tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->contours, tv, tn, &tn, ll, 1.0f);
   }
-  if (ll->crease.enabled) {
+  if (ll->crease.use) {
     tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->crease_lines, tv, tn, &tn, ll, 2.0f);
   }
-  if (ll->material_separate.enabled) {
+  if (ll->material_separate.use) {
     tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->material_lines, tv, tn, &tn, ll, 3.0f);
   }
-  if (ll->edge_mark.enabled) {
+  if (ll->edge_mark.use) {
     tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->edge_marks, tv, tn, &tn, ll, 4.0f);
   }
-  if (ll->intersection.enabled) {
+  if (ll->intersection.use) {
     tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->intersection_lines, tv, tn, &tn, ll, 5.0f);
   }
 
@@ -347,13 +347,13 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                       &unit_thickness :
                                       &ll->intersection.thickness,
                                   1);
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "enable_contour", &ll->contour.enabled, 1);
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "enable_crease", &ll->crease.enabled, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "use_contour", &ll->contour.use, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "use_crease", &ll->crease.use, 1);
         DRW_shgroup_uniform_int(
-            rb->ChainShgrp, "enable_material", &ll->material_separate.enabled, 1);
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "enable_edge_mark", &ll->edge_mark.enabled, 1);
+            rb->ChainShgrp, "use_material", &ll->material_separate.use, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "use_edge_mark", &ll->edge_mark.use, 1);
         DRW_shgroup_uniform_int(
-            rb->ChainShgrp, "enable_intersection", &ll->intersection.enabled, 1);
+            rb->ChainShgrp, "use_intersection", &ll->intersection.use, 1);
 
         static int normal_effect_inverse;
         normal_effect_inverse = (ll->flags & LANPR_LINE_LAYER_NORMAL_INVERSE) ? 1 : 0;
