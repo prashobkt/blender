@@ -730,7 +730,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         
         layout.prop(lanpr, "crease_threshold", slider=True)
 
-        #if mode == "SOFTWARE" or mode == "DPIX":
         if not scene.camera:
             has_camera=False
             col.label(text="No active camera.")
@@ -1093,7 +1092,7 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
                 col.prop(lanpr,"taper_left_strength", text="Strength") 
 
 class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
-    bl_label = "Options"
+    bl_label = "Settings"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
@@ -1156,7 +1155,6 @@ classes = (
     RENDER_PT_lanpr,
     RENDER_PT_lanpr_layer_settings,
     RENDER_PT_lanpr_gpencil,
-    #RENDER_PT_lanpr_line_components, # Deprecated
     RENDER_PT_lanpr_line_normal_effects,
     RENDER_PT_lanpr_line_gpu_effects,
     RENDER_PT_lanpr_snake_sobel_parameters,
