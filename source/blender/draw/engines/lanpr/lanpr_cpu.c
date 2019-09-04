@@ -21,54 +21,60 @@
  * \ingroup draw
  */
 
+#include "DNA_camera_types.h"
+#include "DNA_lanpr_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_text_types.h"
+
 #include "DRW_engine.h"
 #include "DRW_render.h"
+
+#include "DEG_depsgraph_query.h"
+
+#include "ED_lanpr.h"
+
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
 #include "BLI_math_matrix.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
-#include "lanpr_all.h"
-#include "ED_lanpr.h"
-#include "DRW_render.h"
-#include "BKE_object.h"
-#include "DNA_mesh_types.h"
-#include "DNA_camera_types.h"
-#include "DNA_modifier_types.h"
-#include "DNA_text_types.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_framebuffer.h"
-#include "DNA_lanpr_types.h"
-#include "DNA_meshdata_types.h"
-#include "BKE_customdata.h"
-#include "DEG_depsgraph_query.h"
+
 #include "BKE_camera.h"
+#include "BKE_customdata.h"
 #include "BKE_collection.h"
+#include "BKE_gpencil.h"
+#include "BKE_gpencil_modifier.h"
+#include "BKE_modifier.h"
+#include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_text.h"
-#include "GPU_draw.h"
 
 #include "GPU_batch.h"
+#include "GPU_draw.h"
 #include "GPU_framebuffer.h"
+#include "GPU_framebuffer.h"
+#include "GPU_immediate.h"
+#include "GPU_immediate_util.h"
 #include "GPU_shader.h"
 #include "GPU_uniformbuffer.h"
 #include "GPU_viewport.h"
-#include "bmesh.h"
-#include "bmesh_class.h"
-#include "bmesh_tools.h"
+
+#include "RNA_access.h"
+#include "RNA_define.h"
 
 #include "WM_types.h"
 #include "WM_api.h"
 
-#include <math.h>
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "bmesh.h"
+#include "bmesh_class.h"
+#include "bmesh_tools.h"
 
-#include "BKE_modifier.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_modifier.h"
+#include "lanpr_all.h"
+
+#include <math.h>
 
 extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;

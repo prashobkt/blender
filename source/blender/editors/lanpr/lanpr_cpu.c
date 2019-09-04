@@ -998,7 +998,7 @@ static void lanpr_post_triangle(LANPR_RenderTriangle *rt, LANPR_RenderTriangle *
   copy_v3_v3_db(rt->gn, orig->gn);
 }
 
-#define RT_AT(head, rb, offset) ((BYTE *)head + offset * rb->triangle_size)
+#define RT_AT(head, rb, offset) ((unsigned char *)head + offset * rb->triangle_size)
 
 static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 {
@@ -1028,7 +1028,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
   veln = lanpr_new_cull_point_space64(rb);
   teln = lanpr_new_cull_triangle_space64(rb);
   rv = &((LANPR_RenderVert *)veln->pointer)[v_count];
-  rt1 = (void *)(((BYTE *)teln->pointer) + rb->triangle_size * t_count);
+  rt1 = (void *)(((unsigned char *)teln->pointer) + rb->triangle_size * t_count);
 
   for (reln = rb->triangle_buffer_pointers.first; reln; reln = reln->next) {
     if (reln->additional) {
@@ -1037,7 +1037,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
     o = reln->object_ref;
     for (i = 0; i < reln->element_count; i++) {
       int In1 = 0, In2 = 0, In3 = 0;
-      rt = (void *)(((BYTE *)reln->pointer) + rb->triangle_size * i);
+      rt = (void *)(((unsigned char *)reln->pointer) + rb->triangle_size * i);
       if (rt->v[0]->fbcoord[3] < ((Camera *)cam->data)->clip_start) {
         In1 = 1;
       }
@@ -1067,8 +1067,8 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
       /* } */
 
       rv = &((LANPR_RenderVert *)veln->pointer)[v_count];
-      rt1 = (void *)(((BYTE *)teln->pointer) + rb->triangle_size * t_count);
-      rt2 = (void *)(((BYTE *)teln->pointer) + rb->triangle_size * (t_count + 1));
+      rt1 = (void *)(((unsigned char *)teln->pointer) + rb->triangle_size * t_count);
+      rt2 = (void *)(((unsigned char *)teln->pointer) + rb->triangle_size * (t_count + 1));
 
       real vv1[3], vv2[3], dot1, dot2;
 
@@ -3470,7 +3470,7 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
     lim = reln->element_count;
     for (i = 0; i < lim; i++) {
       if (rt->cull_status) {
-        rt = (void *)(((BYTE *)rt) + rb->triangle_size);
+        rt = (void *)(((unsigned char *)rt) + rb->triangle_size);
         continue;
       }
       if (lanpr_get_triangle_bounding_areas(rb, rt, &y1, &y2, &x1, &x2)) {
@@ -3484,7 +3484,7 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
       else {
         ; /*  throw away. */
       }
-      rt = (void *)(((BYTE *)rt) + rb->triangle_size);
+      rt = (void *)(((unsigned char *)rt) + rb->triangle_size);
       /*  if (tnsglobal_TriangleIntersectionCount >= 2000) { */
       /*  tnsset_PlusRenderIntersectionCount(rb, tnsglobal_TriangleIntersectionCount); */
       /*  tnsglobal_TriangleIntersectionCount = 0; */

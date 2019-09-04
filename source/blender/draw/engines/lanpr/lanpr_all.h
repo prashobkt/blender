@@ -24,36 +24,40 @@
 #ifndef __LANPR_ALL_H__
 #define __LANPR_ALL_H__
 
-#include "ED_lanpr.h"
 #include "BLI_mempool.h"
+#include "BLI_threads.h"
 #include "BLI_utildefines.h"
-/* #include "GPU_framebuffer.h" */
-#include "GPU_batch.h"
-#include "GPU_framebuffer.h"
-#include "GPU_shader.h"
-#include "GPU_uniformbuffer.h"
-#include "GPU_viewport.h"
-#include "DNA_listBase.h"
-#include "DRW_render.h"
+
+#include "BKE_customdata.h"
 #include "BKE_object.h"
-#include "DNA_mesh_types.h"
+
+#include "DEG_depsgraph_query.h"
+
 #include "DNA_camera_types.h"
+#include "DNA_listBase.h"
+#include "DNA_lanpr_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
+
+#include "DRW_render.h"
+
+#include "ED_lanpr.h"
+
+#include "GPU_batch.h"
+#include "GPU_draw.h"
+#include "GPU_framebuffer.h"
+#include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
-#include "GPU_framebuffer.h"
-#include "DNA_lanpr_types.h"
-#include "DNA_meshdata_types.h"
-#include "BKE_customdata.h"
-#include "DEG_depsgraph_query.h"
-#include "GPU_draw.h"
+#include "GPU_shader.h"
 #include "GPU_texture.h"
-
-#include "BLI_threads.h"
-
-#include "bmesh.h"
+#include "GPU_uniformbuffer.h"
+#include "GPU_viewport.h"
 
 #include "WM_types.h"
 #include "WM_api.h"
+
+#include "bmesh.h"
 
 #define LANPR_ENGINE "BLENDER_LANPR"
 

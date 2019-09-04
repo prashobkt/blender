@@ -24,18 +24,21 @@
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
-#include "BKE_object.h"
-#include "DNA_mesh_types.h"
-#include "DNA_camera_types.h"
-#include "DNA_lanpr_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_meshdata_types.h"
+
 #include "BKE_customdata.h"
+#include "BKE_object.h"
+
 #include "DEG_depsgraph_query.h"
 
-#include "bmesh.h"
+#include "DNA_camera_types.h"
+#include "DNA_lanpr_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
+#include "DNA_scene_types.h"
 
 #include "ED_lanpr.h"
+
+#include "bmesh.h"
 
 #include <math.h>
 

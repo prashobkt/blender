@@ -21,31 +21,37 @@
  * \ingroup draw
  */
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+
+
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
 #include "BLI_math_matrix.h"
-#include "lanpr_all.h"
-#include "DRW_render.h"
-#include "BKE_object.h"
-#include "DNA_mesh_types.h"
-#include "DNA_camera_types.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_framebuffer.h"
-#include "DNA_lanpr_types.h"
-#include "GPU_draw.h"
-#include "DEG_depsgraph_query.h"
-#include "RE_pipeline.h"
 #include "BLI_rect.h"
 
+#include "BKE_object.h"
+
+#include "DEG_depsgraph_query.h"
+
+#include "DNA_camera_types.h"
+#include "DNA_lanpr_types.h"
+#include "DNA_mesh_types.h"
+
+#include "DRW_engine.h"
+#include "DRW_render.h"
+
 #include "GPU_batch.h"
+#include "GPU_draw.h"
 #include "GPU_framebuffer.h"
+#include "GPU_immediate.h"
+#include "GPU_immediate_util.h"
 #include "GPU_shader.h"
 #include "GPU_uniformbuffer.h"
 #include "GPU_viewport.h"
+
+#include "RE_pipeline.h"
+
 #include "bmesh.h"
+#include "lanpr_all.h"
 
 #include <math.h>
 

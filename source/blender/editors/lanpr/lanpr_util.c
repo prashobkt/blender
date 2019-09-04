@@ -97,7 +97,7 @@ void *mem_static_aquire(LANPR_StaticMemPool *smp, int size)
     smpn = mem_new_static_pool(smp);
   }
 
-  ret = ((BYTE *)smpn) + smpn->used_byte;
+  ret = ((unsigned char *)smpn) + smpn->used_byte;
 
   smpn->used_byte += size;
 
@@ -114,7 +114,7 @@ void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
     smpn = mem_new_static_pool(smp);
   }
 
-  ret = ((BYTE *)smpn) + smpn->used_byte;
+  ret = ((unsigned char *)smpn) + smpn->used_byte;
 
   smpn->used_byte += size;
 

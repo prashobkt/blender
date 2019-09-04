@@ -24,19 +24,15 @@
 #ifndef __ED_LANPR_H__
 #define __ED_LANPR_H__
 
-#include <string.h>
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
-#include "BLI_threads.h"
-
-#include <math.h>
 #include "BLI_math.h"
+#include "BLI_threads.h"
 
 #include "DNA_lanpr_types.h"
 
-#ifndef BYTE
-#  define BYTE unsigned char
-#endif
+#include <math.h>
+#include <string.h>
 
 typedef double real;
 
