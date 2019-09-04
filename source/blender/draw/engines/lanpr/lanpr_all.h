@@ -13,14 +13,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Copyright 2016, Blender Foundation.
- *
- * Contributor(s): Yiming Wu
+ * Copyright 2019, Blender Foundation.
  *
  */
 
 /** \file
- * \ingroup DNA
+ * \ingroup draw
  */
 
 #ifndef __LANPR_ALL_H__
