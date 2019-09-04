@@ -21,7 +21,6 @@
  * \ingroup editors
  */
 
-
 #include <stdlib.h>
 
 #include "BLI_utildefines.h"

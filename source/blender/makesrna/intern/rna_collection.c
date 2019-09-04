@@ -371,7 +371,11 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
 
   static const EnumPropertyItem rna_collection_lanpr_usage[] = {
       {COLLECTION_LANPR_INCLUDE, "INCLUDE", 0, "Include", "Collection will produce feature lines"},
-      {COLLECTION_LANPR_OCCLUSION_ONLY, "OCCLUSION_ONLY", 0, "Occlusion Only", "Only use the collection to produce occlusion"},
+      {COLLECTION_LANPR_OCCLUSION_ONLY,
+       "OCCLUSION_ONLY",
+       0,
+       "Occlusion Only",
+       "Only use the collection to produce occlusion"},
       {COLLECTION_LANPR_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
       {0, NULL, 0, NULL, NULL}};
 

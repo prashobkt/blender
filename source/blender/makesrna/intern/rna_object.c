@@ -2354,16 +2354,20 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
 
   static EnumPropertyItem prop_feature_line_usage_items[] = {
       {OBJECT_FEATURE_LINE_INHERENT,
-       "INHERENT",
+       "INHEREIT",
        0,
-       "Inherent",
+       "Inhereit",
        "Follow settings from the parent collection"},
       {OBJECT_FEATURE_LINE_OCCLUSION_ONLY,
        "OCCLUSION_ONLY",
        0,
        "Occlusion Only",
        "Don't produce lines, only used as occlusion object"},
-      {OBJECT_FEATURE_LINE_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't calculate this object"},
+      {OBJECT_FEATURE_LINE_EXCLUDE,
+       "EXCLUDE",
+       0,
+       "Exclude",
+       "Don't use this object for LANPR rendering"},
       {0, NULL, 0, NULL, NULL},
   };
 

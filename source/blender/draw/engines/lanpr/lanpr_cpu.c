@@ -349,11 +349,9 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                   1);
         DRW_shgroup_uniform_int(rb->ChainShgrp, "use_contour", &ll->contour.use, 1);
         DRW_shgroup_uniform_int(rb->ChainShgrp, "use_crease", &ll->crease.use, 1);
-        DRW_shgroup_uniform_int(
-            rb->ChainShgrp, "use_material", &ll->material_separate.use, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "use_material", &ll->material_separate.use, 1);
         DRW_shgroup_uniform_int(rb->ChainShgrp, "use_edge_mark", &ll->edge_mark.use, 1);
-        DRW_shgroup_uniform_int(
-            rb->ChainShgrp, "use_intersection", &ll->intersection.use, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "use_intersection", &ll->intersection.use, 1);
 
         static int normal_effect_inverse;
         normal_effect_inverse = (ll->flags & LANPR_LINE_LAYER_NORMAL_INVERSE) ? 1 : 0;

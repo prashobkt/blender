@@ -7269,32 +7269,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
          tracing"}, */
       {0, NULL, 0, NULL, NULL}};
 
-  static const EnumPropertyItem rna_enum_lanpr_enable_post_processing[] = {
-      {LANPR_POST_PROCESSING_DISABLED,
-       "DISABLED",
-       0,
-       "Disabled",
-       "LANPR does not compute anything"},
-      {LANPR_POST_PROCESSING_ENABLED,
-       "ENABLED",
-       0,
-       "Enabled",
-       "LANPR will compute feature lines in image post processing"},
-      {0, NULL, 0, NULL, NULL}};
-
-  static const EnumPropertyItem rna_enum_lanpr_display_thinning_result[] = {
-      {LANPR_POST_PROCESSING_DISABLED,
-       "DISABLED",
-       0,
-       "Edge Detection",
-       "Display edge detector result"},
-      {LANPR_POST_PROCESSING_ENABLED,
-       "ENABLED",
-       0,
-       "Thinning",
-       "Apply thinning filters for vector usage"},
-      {0, NULL, 0, NULL, NULL}};
-
   static const EnumPropertyItem rna_enum_lanpr_use_same_taper[] = {
       {LANPR_USE_DIFFERENT_TAPER, "DISABLED", 0, "Different", "Use different taper value"},
       {LANPR_USE_SAME_TAPER,

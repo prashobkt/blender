@@ -38,7 +38,6 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
-
 #include "GPU_batch.h"
 #include "GPU_draw.h"
 #include "GPU_framebuffer.h"

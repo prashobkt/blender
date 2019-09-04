@@ -21,8 +21,6 @@
  * \ingroup draw
  */
 
-
-
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
 #include "BLI_math_matrix.h"
@@ -315,10 +313,8 @@ static void lanpr_cache_init(void *vedata)
                               "crease_fade_threshold",
                               &lanpr->crease_fade_threshold,
                               1);
-    DRW_shgroup_uniform_int(
-        stl->g_data->dpix_transform_shgrp, "use_contour", &ll->contour.use, 1);
-    DRW_shgroup_uniform_int(
-        stl->g_data->dpix_transform_shgrp, "use_crease", &ll->crease.use, 1);
+    DRW_shgroup_uniform_int(stl->g_data->dpix_transform_shgrp, "use_contour", &ll->contour.use, 1);
+    DRW_shgroup_uniform_int(stl->g_data->dpix_transform_shgrp, "use_crease", &ll->crease.use, 1);
     DRW_shgroup_uniform_int(
         stl->g_data->dpix_transform_shgrp, "use_material", &ll->material_separate.use, 1);
     DRW_shgroup_uniform_int(
