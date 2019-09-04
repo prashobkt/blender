@@ -317,24 +317,29 @@ static void lanpr_cache_init(void *vedata)
         stl->g_data->dpix_preview_shgrp, "viewport", stl->g_data->dpix_viewport, 1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
                              "contour_color",
-                             ll->use_same_style ? ll->color : ll->contour.color,
+                             (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color :
+                                                                             ll->contour.color,
                              1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
                              "crease_color",
-                             ll->use_same_style ? ll->color : ll->crease.color,
+                             (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color :
+                                                                             ll->crease.color,
                              1);
-    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
-                             "material_color",
-                             ll->use_same_style ? ll->color : ll->material_separate.color,
-                             1);
+    DRW_shgroup_uniform_vec4(
+        stl->g_data->dpix_preview_shgrp,
+        "material_color",
+        (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color : ll->material_separate.color,
+        1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
                              "edge_mark_color",
-                             ll->use_same_style ? ll->color : ll->edge_mark.color,
+                             (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color :
+                                                                             ll->edge_mark.color,
                              1);
-    DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
-                             "intersection_color",
-                             ll->use_same_style ? ll->color : ll->intersection.color,
-                             1);
+    DRW_shgroup_uniform_vec4(
+        stl->g_data->dpix_preview_shgrp,
+        "intersection_color",
+        (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color : ll->intersection.color,
+        1);
     static float use_background_color[4];
     copy_v3_v3(use_background_color, &scene->world->horr);
     use_background_color[3] = scene->r.alphamode ? 0.0f : 1.0f;
@@ -359,26 +364,32 @@ static void lanpr_cache_init(void *vedata)
     static float unit_thickness = 1.0f;
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "line_thickness", &ll->thickness, 1);
-    DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
-                              "line_thickness_contour",
-                              ll->use_same_style ? &unit_thickness : &ll->contour.thickness,
-                              1);
-    DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
-                              "line_thickness_crease",
-                              ll->use_same_style ? &unit_thickness : &ll->crease.thickness,
-                              1);
+    DRW_shgroup_uniform_float(
+        stl->g_data->dpix_preview_shgrp,
+        "line_thickness_contour",
+        (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? &unit_thickness : &ll->contour.thickness,
+        1);
+    DRW_shgroup_uniform_float(
+        stl->g_data->dpix_preview_shgrp,
+        "line_thickness_crease",
+        (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? &unit_thickness : &ll->crease.thickness,
+        1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
                               "line_thickness_material",
-                              ll->use_same_style ? &unit_thickness :
-                                                   &ll->material_separate.thickness,
+                              (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ?
+                                  &unit_thickness :
+                                  &ll->material_separate.thickness,
                               1);
-    DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
-                              "line_thickness_edge_mark",
-                              ll->use_same_style ? &unit_thickness : &ll->edge_mark.thickness,
-                              1);
+    DRW_shgroup_uniform_float(
+        stl->g_data->dpix_preview_shgrp,
+        "line_thickness_edge_mark",
+        (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? &unit_thickness : &ll->edge_mark.thickness,
+        1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
                               "line_thickness_intersection",
-                              ll->use_same_style ? &unit_thickness : &ll->intersection.thickness,
+                              (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ?
+                                  &unit_thickness :
+                                  &ll->intersection.thickness,
                               1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "z_near", &stl->g_data->dpix_znear, 1);
@@ -387,9 +398,12 @@ static void lanpr_cache_init(void *vedata)
 
     ED_lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
+    static int normal_effect_inverse;
+    normal_effect_inverse = (ll->flags & LANPR_LINE_LAYER_NORMAL_INVERSE);
+
     DRW_shgroup_uniform_int(stl->g_data->dpix_preview_shgrp, "normal_mode", &ll->normal_mode, 1);
     DRW_shgroup_uniform_int(
-        stl->g_data->dpix_preview_shgrp, "normal_effect_inverse", &ll->normal_effect_inverse, 1);
+        stl->g_data->dpix_preview_shgrp, "normal_effect_inverse", &normal_effect_inverse, 1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "normal_ramp_begin", &ll->normal_ramp_begin, 1);
     DRW_shgroup_uniform_float(
@@ -422,7 +436,7 @@ static void lanpr_cache_init(void *vedata)
 
   /* Intersection cache must be calculated before drawing. */
   int updated = 0;
-  if (draw_ctx->scene->lanpr.auto_update &&
+  if ((draw_ctx->scene->lanpr.flags & LANPR_AUTO_UPDATE) &&
       (!lanpr_share.render_buffer_shared ||
        lanpr_share.render_buffer_shared->cached_for_frame != draw_ctx->scene->r.cfra)) {
     if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_SOFTWARE) {
@@ -664,7 +678,7 @@ static void lanpr_render_to_image(void *vedata,
   RE_engine_update_stats(engine, NULL, "LANPR: Initializing");
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
-      (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
+      (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && (lanpr->flags & LANPR_USE_INTERSECTIONS))) {
     if (!lanpr_share.render_buffer_shared) {
       ED_lanpr_create_render_buffer();
     }

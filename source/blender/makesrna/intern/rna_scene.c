@@ -7316,17 +7316,18 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", LANPR_ENABLED);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_ENABLED);
   RNA_def_property_ui_text(prop, "Enabled", "Is LANPR enabled");
   RNA_def_property_update(prop, NC_WINDOW, NULL);
 
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", LANPR_AUTO_UPDATE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_AUTO_UPDATE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
       prop, "Auto Update", "Automatically update LANPR cache when frame changes");
 
   prop = RNA_def_property(srna, "gpencil_overwrite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_GPENCIL_OVERWRITE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(prop,
                            "GPencil Overwrite",
@@ -7402,9 +7403,9 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
-  prop = RNA_def_property(srna, "use_same_taper", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "use_same_taper", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", LANPR_SAME_TAPER);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_SAME_TAPER);
   RNA_def_property_ui_text(prop, "Same Taper", "Same/Different taper value");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -7431,10 +7432,12 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "enable_intersections", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_USE_INTERSECTIONS);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
 
   prop = RNA_def_property(srna, "enable_chaining", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_USE_CHAINING);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Enable Chaining", "Chain Feature Lines After Occlusion Test");
 

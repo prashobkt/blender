@@ -69,6 +69,7 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name", "Name of this layer");
 
   prop = RNA_def_property(srna, "normal_enabled", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_NORMAL_ENABLED);
   RNA_def_property_ui_text(prop, "Enabled", "Enable normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_mode", PROP_ENUM, PROP_NONE);
@@ -76,6 +77,7 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Normal", "Normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_effect_inverse", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_NORMAL_INVERSE);
   RNA_def_property_ui_text(prop, "Inverse", "Inverse normal effect");
 
   prop = RNA_def_property(
@@ -106,10 +108,12 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Object", "Normal style control object");
 
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);
   RNA_def_property_boolean_default(prop, true);
   RNA_def_property_ui_text(prop, "Same Style", "Use same styles for multiple line types.");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS);
   RNA_def_property_ui_text(
       prop, "Use Multiple Levels", "Select lines from multiple occlusion levels");
 

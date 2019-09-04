@@ -1695,7 +1695,6 @@ typedef struct SceneLANPR {
   float crease_fade_threshold; /* for dpix crease fading */
 
   float line_color[4];
-  int _pad1;
 
   float depth_width_influence;
   float depth_width_curve;
@@ -1706,14 +1705,14 @@ typedef struct SceneLANPR {
 
   int gpu_cache_size; /* enum! */
 
+  int enable_chain_connection;
+
   /* offline render */
   ListBase line_layers;
   struct LANPR_LineLayer *active_layer;
 
-  char enable_chain_connection;
   float chaining_geometry_threshold;
   float chaining_image_threshold;
-
 } SceneLANPR;
 
 enum {

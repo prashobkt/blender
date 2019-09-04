@@ -39,14 +39,6 @@
 #endif
 
 typedef double real;
-typedef unsigned long long u64bit;
-typedef unsigned int u32bit;
-typedef unsigned short u16bit;
-typedef unsigned short ushort;
-typedef unsigned char u8bit;
-typedef char nShortBuf[16];
-
-typedef float tnsMatrix44f[16];
 
 typedef real tnsVector2d[2];
 typedef real tnsVector3d[3];
@@ -120,7 +112,7 @@ typedef struct LANPR_RenderLineSegment {
   /** This is used to reconstruct 3d stroke  (TODO: implement global space?) */
   real at_global;
   /** Occlusion level after "at" point */
-  u8bit occlusion;
+  unsigned char occlusion;
   /** For determining lines beind a glass window material. (TODO: implement this) */
   short material_mask_mark;
 } LANPR_RenderLineSegment;
@@ -230,7 +222,7 @@ typedef struct LANPR_RenderBuffer {
   int output_aa_level;
 
   struct LANPR_BoundingArea *initial_bounding_areas;
-  u32bit bounding_area_count;
+  unsigned int bounding_area_count;
 
   ListBase vertex_buffer_pointers;
   ListBase line_buffer_pointers;
@@ -255,28 +247,28 @@ typedef struct LANPR_RenderBuffer {
 
   int triangle_size;
 
-  u32bit contour_count;
-  u32bit contour_processed;
+  unsigned int contour_count;
+  unsigned int contour_processed;
   LinkData *contour_managed;
   ListBase contours;
 
-  u32bit intersection_count;
-  u32bit intersection_processed;
+  unsigned int intersection_count;
+  unsigned int intersection_processed;
   LinkData *intersection_managed;
   ListBase intersection_lines;
 
-  u32bit crease_count;
-  u32bit crease_processed;
+  unsigned int crease_count;
+  unsigned int crease_processed;
   LinkData *crease_managed;
   ListBase crease_lines;
 
-  u32bit material_line_count;
-  u32bit material_processed;
+  unsigned int material_line_count;
+  unsigned int material_processed;
   LinkData *material_managed;
   ListBase material_lines;
 
-  u32bit edge_mark_count;
-  u32bit edge_mark_processed;
+  unsigned int edge_mark_count;
+  unsigned int edge_mark_processed;
   LinkData *edge_mark_managed;
   ListBase edge_marks;
 

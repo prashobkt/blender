@@ -1025,15 +1025,12 @@ void BKE_scene_init(Scene *sce)
 
   sce->lanpr.crease_threshold = 0.7;
 
-  sce->lanpr.enable_intersections = 1;
-
   sce->lanpr.line_color[0] = 1;
   sce->lanpr.line_color[1] = 1;
   sce->lanpr.line_color[2] = 1;
   sce->lanpr.line_color[3] = 1;
 
-  sce->lanpr.enable_intersections = 1;
-  sce->lanpr.enable_chaining = 1;
+  sce->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
   sce->lanpr.chaining_image_threshold = 0.01;
   sce->lanpr.chaining_geometry_threshold = 0.1;
 }

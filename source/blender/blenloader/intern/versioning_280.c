@@ -1909,7 +1909,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
         scene->lanpr.crease_threshold = 0.7;
 
-        scene->lanpr.enable_intersections = 1;
+        scene->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
 
         scene->lanpr.line_color[0] = 0.39;
         scene->lanpr.line_color[1] = 0.12;
@@ -3623,12 +3623,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (Scene *sce = bmain->scenes.first; sce; sce = sce->id.next) {
       sce->lanpr.crease_threshold = 0.7;
 
-      sce->lanpr.enable_intersections = 1;
-
       zero_v4(sce->lanpr.line_color);
 
-      sce->lanpr.enable_intersections = 1;
-      sce->lanpr.enable_chaining = 1;
+      sce->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
       sce->lanpr.chaining_image_threshold = 0.01f;
       sce->lanpr.chaining_geometry_threshold = 0.0f;
 

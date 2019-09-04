@@ -128,7 +128,7 @@ void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
     return;
   }
 
-  if (lanpr->enable_chaining) {
+  if (lanpr->flags & LANPR_USE_CHAINING) {
     lanpr_chain_generate_draw_command(lanpr_share.render_buffer_shared);
   }
   else {
@@ -243,7 +243,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
       camzoom = 1.0f;
     }
 
-    if (lanpr->enable_chaining && lanpr_share.render_buffer_shared->chain_draw_batch) {
+    if ((lanpr->flags & LANPR_USE_CHAINING) &&
+        lanpr_share.render_buffer_shared->chain_draw_batch) {
       for (ll = lanpr->line_layers.last; ll; ll = ll->prev) {
         LANPR_RenderBuffer *rb;
         psl->software_pass = DRW_pass_create("Software Render Preview",
@@ -372,7 +373,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         DRW_draw_pass(psl->software_pass);
       }
     }
-    else if (!lanpr->enable_chaining) {
+    else if (!(lanpr->flags & LANPR_USE_CHAINING)) {
       for (ll = lanpr->line_layers.last; ll; ll = ll->prev) {
         if (ll->batch) {
           psl->software_pass = DRW_pass_create("Software Render Preview",
