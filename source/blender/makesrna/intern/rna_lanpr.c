@@ -194,10 +194,10 @@ static void rna_def_lanpr_line_component(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem lanpr_line_component_modes[] = {
-      {0, "ALL", 0, "All", "Select All lines, lines are already selected are not affected"},
-      {1, "OBJECT", 0, "Object", "Display lines for selected object"},
-      {2, "MATERIAL", 0, "Material", "Display lines that touches specific material"},
-      {3, "COLLECTION", 0, "Collection", "Display lines in specific collections"},
+      {0, "ALL", 0, "All", "Show all lines, lines are already selected are not affected"},
+      {1, "OBJECT", 0, "Object", "Filter lines for selected object"},
+      {2, "MATERIAL", 0, "Material", "Filter lines that touches specific material"},
+      {3, "COLLECTION", 0, "Collection", "Filter lines in specific collections"},
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "LANPR_LineLayerComponent", NULL);
