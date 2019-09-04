@@ -393,8 +393,8 @@ typedef enum eStereo3dInterlaceType {
  * this is used for NodeImageFile and IMAGE_OT_save_as operator too.
  *
  * note: its a bit strange that even though this is an image format struct
- *  the imtype can still be used to select video formats.
- *  RNA ensures these enum's are only selectable for render output.
+ * the imtype can still be used to select video formats.
+ * RNA ensures these enum's are only selectable for render output.
  */
 typedef struct ImageFormatData {
   /**

@@ -568,8 +568,8 @@ void tmat_make_perspective_matrix_44d(
     double (*mProjection)[4], real fFov_rad, real fAspect, real zMin, real zMax);
 
 int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll);
-long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll);
-long lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb);
+int lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll);
+int lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb);
 void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
                                            ListBase *LineList,
                                            float *vertexArray,

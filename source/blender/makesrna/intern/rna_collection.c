@@ -370,9 +370,9 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem rna_collection_lanpr_usage[] = {
-      {0, "INCLUDE", 0, "Include", "Include the collection into LANPR calculation"},
-      {1, "OCCLUSION_ONLY", 0, "Occlusion Only", "Only use the collction to produce occlusion"},
-      {2, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
+      {COLLECTION_LANPR_INCLUDE, "INCLUDE", 0, "Include", "Collection will produce feature lines"},
+      {COLLECTION_LANPR_OCCLUSION_ONLY, "OCCLUSION_ONLY", 0, "Occlusion Only", "Only use the collection to produce occlusion"},
+      {COLLECTION_LANPR_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "CollectionLANPR", NULL);
@@ -408,11 +408,11 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   prop = RNA_def_property(srna, "force", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
-      prop, "Force", "Force object who has LANPR modifiers to follow the rule");
+      prop, "Force", "Force object that has LANPR modifiers to follow collection usage flag");
 
   prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "target");
-  RNA_def_property_ui_text(prop, "Target", "GPencil object to put the stroke result");
+  RNA_def_property_ui_text(prop, "Target", "Grease Pencil object to put the stroke result");
   RNA_def_property_pointer_funcs(prop, NULL, NULL, NULL, "rna_GPencil_object_poll");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
 

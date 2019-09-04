@@ -2789,12 +2789,12 @@ int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll)
     return AndResult;
   }
 }
-long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll)
+int lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll)
 {
   LinkData *lip;
   LANPR_RenderLine *rl;
   LANPR_RenderLineSegment *rls;
-  long Count = 0;
+  int Count = 0;
   for (lip = LineList->first; lip; lip = lip->next) {
     rl = lip->data;
     if (!lanpr_count_this_line(rl, ll)) {
@@ -2817,10 +2817,10 @@ long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer 
   }
   return Count;
 }
-long lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb)
+int lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLine *rl;
-  long Count = 0;
+  int Count = 0;
   for (rl = rb->intersection_lines.first; rl; rl = rl->next) {
     Count++;
   }

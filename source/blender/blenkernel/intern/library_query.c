@@ -493,6 +493,8 @@ static void library_foreach_ID_link(Main *bmain,
           CALLBACK_INVOKE(child->collection, IDWALK_CB_USER);
         }
 
+        CALLBACK_INVOKE(scene->master_collection->lanpr.target, IDWALK_CB_USER);
+
         ViewLayer *view_layer;
         for (view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
           CALLBACK_INVOKE(view_layer->mat_override, IDWALK_CB_USER);
