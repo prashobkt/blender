@@ -115,7 +115,7 @@ int ED_lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr)
   LANPR_LineLayer *lli;
   int max_occ = -1, max;
   for (lli = lanpr->line_layers.first; lli; lli = lli->next) {
-    if (lli->use_multiple_levels) {
+    if (lli->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) {
       max = MAX2(lli->qi_begin, lli->qi_end);
     }
     else {
@@ -134,7 +134,7 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
   int max_occ = ED_lanpr_max_occlusion_in_line_layers(lanpr);
 
   ll->qi_begin = ll->qi_end = max_occ + 1;
-  ll->use_same_style = 1;
+  ll->flags |= LANPR_LINE_LAYER_USE_SAME_STYLE;
   ll->thickness = 1.0f;
   copy_v3_fl(ll->color, 0.8);
   ll->color[3] = 1.0f;
@@ -2799,7 +2799,7 @@ long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer 
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
 
-      if (!ll->use_multiple_levels) {
+      if (!(ll->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS)) {
         if (rls->occlusion == ll->qi_begin) {
           Count++;
         }
@@ -2843,7 +2843,7 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
       int use = 0;
-      if (!ll->use_multiple_levels) {
+      if (!(ll->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS)) {
         if (rls->occlusion == ll->qi_begin) {
           use = 1;
         }

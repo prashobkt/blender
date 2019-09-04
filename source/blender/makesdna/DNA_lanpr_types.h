@@ -89,12 +89,18 @@ typedef struct LANPR_LineType {
   float color[4];
 } LANPR_LineType;
 
+typedef enum LANPR_LineLayerFlags {
+  LANPR_LINE_LAYER_USE_SAME_STYLE = (1<<0),
+  LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS = (1<<1),
+  LANPR_LINE_LAYER_NORMAL_ENABLED = (1<<2),
+  LANPR_LINE_LAYER_NORMAL_INVERSE = (1<<3),
+} LANPR_LineLayerFlags;
+
 typedef struct LANPR_LineLayer {
   struct LANPR_LineLayer *next, *prev;
 
-  int type;
-
-  int use_multiple_levels;
+  int flags;
+  int _pad1;
   int qi_begin;
   int qi_end;
 
@@ -111,12 +117,7 @@ typedef struct LANPR_LineLayer {
 
   float color[4];
 
-  int use_same_style;
-
-  int _pad1;
-  int normal_enabled;
   int normal_mode;
-  int normal_effect_inverse;
   float normal_ramp_begin;
   float normal_ramp_end;
   float normal_thickness_start;
