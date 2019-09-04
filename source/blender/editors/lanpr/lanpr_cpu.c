@@ -117,10 +117,10 @@ int ED_lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr)
   int max_occ = -1, max;
   for (lli = lanpr->line_layers.first; lli; lli = lli->next) {
     if (lli->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) {
-      max = MAX2(lli->qi_begin, lli->qi_end);
+      max = MAX2(lli->level_start, lli->level_end);
     }
     else {
-      max = lli->qi_begin;
+      max = lli->level_start;
     }
     max_occ = MAX2(max, max_occ);
   }
@@ -134,7 +134,7 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
 
   int max_occ = ED_lanpr_max_occlusion_in_line_layers(lanpr);
 
-  ll->qi_begin = ll->qi_end = max_occ + 1;
+  ll->level_start = ll->level_end = max_occ + 1;
   ll->flags |= LANPR_LINE_LAYER_USE_SAME_STYLE;
   ll->thickness = 1.0f;
   copy_v3_fl(ll->color, 0.8);
@@ -2804,12 +2804,12 @@ int lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *
     for (rls = rl->segments.first; rls; rls = rls->next) {
 
       if (!(ll->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS)) {
-        if (rls->occlusion == ll->qi_begin) {
+        if (rls->occlusion == ll->level_start) {
           Count++;
         }
       }
       else {
-        if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
+        if (rls->occlusion >= ll->level_start && rls->occlusion <= ll->level_end) {
           Count++;
         }
       }
@@ -2848,12 +2848,12 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
     for (rls = rl->segments.first; rls; rls = rls->next) {
       int use = 0;
       if (!(ll->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS)) {
-        if (rls->occlusion == ll->qi_begin) {
+        if (rls->occlusion == ll->level_start) {
           use = 1;
         }
       }
       else {
-        if (rls->occlusion >= ll->qi_begin && rls->occlusion <= ll->qi_end) {
+        if (rls->occlusion >= ll->level_start && rls->occlusion <= ll->level_end) {
           use = 1;
         }
       }
@@ -3957,8 +3957,8 @@ static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                               Object *ob,
                                               bGPDlayer *UNUSED(gpl),
                                               bGPDframe *gpf,
-                                              int qi_begin,
-                                              int qi_end,
+                                              int level_start,
+                                              int level_end,
                                               int material_nr,
                                               Collection *col,
                                               int types)
@@ -3994,7 +3994,7 @@ static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (!(rlc->type & types)) {
       continue;
     }
-    if (rlc->level > qi_end || rlc->level < qi_begin) {
+    if (rlc->level > level_end || rlc->level < level_start) {
       continue;
     }
     if (ob && &ob->id != rlc->object_ref->id.orig_id) {

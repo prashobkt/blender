@@ -808,9 +808,9 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
         if mode == "SOFTWARE":
             layout.prop(active_layer, "use_multiple_levels", text="Multiple Levels")
             col = layout.column(align=True)
-            col.prop(active_layer, "qi_begin", text='Level Start')
+            col.prop(active_layer, "level_start", text='Level Start')
             if active_layer.use_multiple_levels:
-                col.prop(active_layer, "qi_end", text='End')
+                col.prop(active_layer, "level_end", text='End')
         
         layout.prop(active_layer,"use_same_style")
 

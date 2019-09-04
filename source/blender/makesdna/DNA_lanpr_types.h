@@ -101,8 +101,8 @@ typedef struct LANPR_LineLayer {
 
   int flags;
   int _pad1;
-  int qi_begin;
-  int qi_end;
+  int level_start;
+  int level_end;
 
   /** To be displayed on the list */
   char name[64];

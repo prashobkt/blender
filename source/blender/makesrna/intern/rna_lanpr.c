@@ -138,14 +138,14 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "LANPR_LineType");
   RNA_def_property_ui_text(prop, "Intersection", "Intersection line type");
 
-  prop = RNA_def_property(srna, "qi_begin", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
   RNA_def_property_int_default(prop, 0);
-  RNA_def_property_ui_text(prop, "QI Begin", "QI Begin");
+  RNA_def_property_ui_text(prop, "Level Start", "Occlusion level start");
   RNA_def_property_range(prop, 0, 128);
 
-  prop = RNA_def_property(srna, "qi_end", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
   RNA_def_property_int_default(prop, 0);
-  RNA_def_property_ui_text(prop, "QI End", "QI End");
+  RNA_def_property_ui_text(prop, "Level End", "Occlusion level end");
   RNA_def_property_range(prop, 0, 128);
 
   prop = RNA_def_property(srna, "thickness", PROP_FLOAT, PROP_NONE);
