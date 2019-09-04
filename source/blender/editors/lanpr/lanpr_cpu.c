@@ -684,14 +684,8 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
         continue;
       }
       rt->testing[thread_id] = rl;
-      if (lanpr_triangle_line_imagespace_intersection_v2(&rb->lock_task,
-                                                         (void *)rt,
-                                                         rl,
-                                                         c,
-                                                         rb->view_projection,
-                                                         rb->view_vector,
-                                                         &l,
-                                                         &r)) {
+      if (lanpr_triangle_line_imagespace_intersection_v2(
+              &rb->lock_task, (void *)rt, rl, c, rb->view_projection, rb->view_vector, &l, &r)) {
         lanpr_cut_render_line(rb, rl, l, r);
         if (rl->min_occ > rb->max_occlusion_level) {
           return; /* No need to caluclate any longer. */
@@ -702,10 +696,11 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
     nba = lanpr_get_next_bounding_area(nba, rl, x, y, k, PositiveX, PositiveY, &x, &y);
   }
 }
-static bool lanpr_calculation_is_canceled(){
+static bool lanpr_calculation_is_canceled()
+{
   bool is_canceled;
   BLI_spin_lock(&lanpr_share.lock_render_status);
-  switch(lanpr_share.flag_render_status){
+  switch (lanpr_share.flag_render_status) {
     case LANPR_RENDER_INCOMPELTE:
       is_canceled = true;
     default:
@@ -729,35 +724,40 @@ static void lanpr_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(po
     }
 
     /* Monitoring cancelation flag every once a while. */
-    if(lanpr_calculation_is_canceled()) return;
+    if (lanpr_calculation_is_canceled())
+      return;
 
     for (lip = (void *)rti->crease; lip && lip->prev != rti->crease_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
 
-    if(lanpr_calculation_is_canceled()) return;
+    if (lanpr_calculation_is_canceled())
+      return;
 
     for (lip = (void *)rti->intersection; lip && lip->prev != rti->intersection_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
 
-    if(lanpr_calculation_is_canceled()) return;
+    if (lanpr_calculation_is_canceled())
+      return;
 
     for (lip = (void *)rti->material; lip && lip->prev != rti->material_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
 
-    if(lanpr_calculation_is_canceled()) return;
+    if (lanpr_calculation_is_canceled())
+      return;
 
     for (lip = (void *)rti->edge_mark; lip && lip->prev != rti->edge_mark_pointers.last;
          lip = lip->next) {
       lanpr_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
     }
 
-    if(lanpr_calculation_is_canceled()) return;
+    if (lanpr_calculation_is_canceled())
+      return;
   }
 }
 static void lanpr_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
@@ -2641,19 +2641,22 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
   return rb;
 }
 
-void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag){
+void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag)
+{
   BLI_spin_lock(&lanpr_share.lock_render_status);
 
-  if(flag == LANPR_RENDER_FINISHED && lanpr_share.flag_render_status==LANPR_RENDER_INCOMPELTE){
-    ;/* Don't set the finished flag when it's canceled from any one of the thread.*/
-  }else{
+  if (flag == LANPR_RENDER_FINISHED && lanpr_share.flag_render_status == LANPR_RENDER_INCOMPELTE) {
+    ; /* Don't set the finished flag when it's canceled from any one of the thread.*/
+  }
+  else {
     lanpr_share.flag_render_status = flag;
   }
 
   BLI_spin_unlock(&lanpr_share.lock_render_status);
 }
 
-bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag){
+bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag)
+{
   bool match;
   BLI_spin_lock(&lanpr_share.lock_render_status);
   match = (lanpr_share.flag_render_status == flag);
@@ -3769,7 +3772,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   SceneLANPR *lanpr = &s->lanpr;
   int is_lanpr_engine = !strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED) == 0) {
+  if (!is_lanpr_engine && (lanpr->flags & LANPR_ENABLED) == 0) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3780,7 +3783,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   rb->scene = s;
   rb->w = s->r.xsch;
   rb->h = s->r.ysch;
-  rb->enable_intersections = lanpr->enable_intersections;
+  rb->enable_intersections = (lanpr->flags & LANPR_USE_INTERSECTIONS);
 
   rb->triangle_size = lanpr_get_render_triangle_size(rb);
 
@@ -3814,7 +3817,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   ED_lanpr_update_render_progress("LANPR: Chaining.");
 
   /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
-  if ((lanpr->enable_chaining || !is_lanpr_engine) && (!intersectons_only)) {
+  if (((lanpr->flags & LANPR_USE_CHAINING) || !is_lanpr_engine) && (!intersectons_only)) {
     float t_image = rb->scene->lanpr.chaining_image_threshold;
     float t_geom = rb->scene->lanpr.chaining_geometry_threshold;
 
@@ -3849,35 +3852,36 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   return OPERATOR_FINISHED;
 }
 
-typedef struct LANPR_FeatureLineWorker{
-  Depsgraph* dg;
+typedef struct LANPR_FeatureLineWorker {
+  Depsgraph *dg;
   int intersection_only;
-}LANPR_FeatureLineWorker;
+} LANPR_FeatureLineWorker;
 
 static void lanpr_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
-                                               LANPR_FeatureLineWorker * worker_data,
+                                               LANPR_FeatureLineWorker *worker_data,
                                                int UNUSED(threadid))
 {
   ED_lanpr_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
 }
 
-void ED_lanpr_compute_feature_lines_background(Depsgraph* dg, int intersection_only){
+void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, int intersection_only)
+{
   /* If the calculation is already started then bypass it. */
-  if (!ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)){
+  if (!ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {
     return;
   }
-  
+
   ED_lanpr_calculation_set_flag(LANPR_RENDER_RUNNING);
-  
+
   LANPR_FeatureLineWorker *flw = MEM_callocN(sizeof(LANPR_FeatureLineWorker), "Task Pool");
   TaskScheduler *scheduler = BLI_task_scheduler_get();
 
   flw->dg = dg;
   flw->intersection_only = intersection_only;
 
-  TaskPool* tp = BLI_task_pool_create_background(scheduler, flw);
+  TaskPool *tp = BLI_task_pool_create_background(scheduler, flw);
 
-  BLI_task_pool_push(tp,lanpr_compute_feature_lines_worker,flw,true,TASK_PRIORITY_HIGH);
+  BLI_task_pool_push(tp, lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
 }
 
 static bool lanpr_camera_exists(struct bContext *c)
@@ -3892,7 +3896,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
   int result;
   int is_lanpr_engine = !strcmp(scene->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED) == 0) {
+  if (!is_lanpr_engine && (lanpr->flags & LANPR_ENABLED) == 0) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3947,7 +3951,7 @@ bool ED_lanpr_dpix_shader_error()
 }
 bool ED_lanpr_disable_edge_splits(Scene *s)
 {
-  return ((s->lanpr.flag & LANPR_ENABLED) && s->lanpr.disable_edge_splits);
+  return ((s->lanpr.flags & LANPR_ENABLED) && s->lanpr.disable_edge_splits);
 }
 
 /* GPencil bindings */
@@ -4079,7 +4083,7 @@ static void lanpr_update_gp_strokes_recursive(
           gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
 
           if (gpf->strokes.first &&
-              !lanpr_share.render_buffer_shared->scene->lanpr.gpencil_overwrite) {
+              !(lanpr_share.render_buffer_shared->scene->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {
             continue;
           }
 
@@ -4144,7 +4148,8 @@ static void lanpr_update_gp_strokes_collection(
   }
   gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
 
-  if (gpf->strokes.first && !lanpr_share.render_buffer_shared->scene->lanpr.gpencil_overwrite) {
+  if (gpf->strokes.first &&
+      !(lanpr_share.render_buffer_shared->scene->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {
     return;
   }
 
@@ -4331,7 +4336,7 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 
 void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
 {
-  if ((s->lanpr.flag & LANPR_ENABLED) == 0 || !s->lanpr.auto_update) {
+  if ((s->lanpr.flags & LANPR_ENABLED) == 0 || !(s->lanpr.flags & LANPR_AUTO_UPDATE)) {
     return;
   }
   if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {

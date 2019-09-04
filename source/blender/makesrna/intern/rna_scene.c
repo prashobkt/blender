@@ -7321,6 +7321,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_WINDOW, NULL);
 
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", LANPR_AUTO_UPDATE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
       prop, "Auto Update", "Automatically update LANPR cache when frame changes");
@@ -7402,10 +7403,9 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "use_same_taper", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_lanpr_use_same_taper);
-  RNA_def_property_enum_default(prop, LANPR_USE_DIFFERENT_TAPER);
-  RNA_def_property_ui_text(prop, "Taper", "Same/Different taper value");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", LANPR_SAME_TAPER);
+  RNA_def_property_ui_text(prop, "Same Taper", "Same/Different taper value");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "line_color", PROP_FLOAT, PROP_COLOR);

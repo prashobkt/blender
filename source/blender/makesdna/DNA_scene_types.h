@@ -1666,7 +1666,7 @@ typedef enum LANPR_PostProcessingStatus {
 
 typedef enum LANPR_MainFlags {
   LANPR_ENABLED = 0,
-  /* For LANPR->GP to update automatically. */
+  /* For LANPR->GP and viewport to update automatically. */
   LANPR_AUTO_UPDATE = (1 << 0),
   LANPR_SAME_TAPER = (1 << 2),
   /* Edge split modifier will cause problems in LANPR. */
@@ -1679,12 +1679,10 @@ typedef enum LANPR_MainFlags {
 
 typedef struct SceneLANPR {
 
-  int flag;
-  int auto_update;
+  int flags;
 
   int master_mode; /* LANPR_MasterMode */
 
-  int use_same_taper;
   float taper_left_distance;
   float taper_left_strength;
   float taper_right_distance;
@@ -1712,14 +1710,9 @@ typedef struct SceneLANPR {
   ListBase line_layers;
   struct LANPR_LineLayer *active_layer;
 
-  char enable_intersections;
-  char enable_chaining;
   char enable_chain_connection;
-  char _pad2;
   float chaining_geometry_threshold;
   float chaining_image_threshold;
-
-  int gpencil_overwrite;
 
 } SceneLANPR;
 

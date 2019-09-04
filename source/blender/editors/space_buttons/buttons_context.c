@@ -605,7 +605,7 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
       break;
     case BCONTEXT_LANPR:
       if (scene &&
-          ((scene->lanpr.flag & LANPR_ENABLED) || !strcmp(scene->r.engine, "BLENDER_LANPR"))) {
+          ((scene->lanpr.flags & LANPR_ENABLED) || !strcmp(scene->r.engine, "BLENDER_LANPR"))) {
         found = buttons_context_path_object(path);
       }
       else {
