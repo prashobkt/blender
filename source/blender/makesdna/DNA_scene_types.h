@@ -1701,9 +1701,8 @@ typedef struct SceneLANPR {
   float depth_alpha_influence;
   float depth_alpha_curve;
 
-  int disable_edge_splits;
-
   int gpu_cache_size; /* enum! */
+  int _pad;
 
   int enable_chain_connection;
 

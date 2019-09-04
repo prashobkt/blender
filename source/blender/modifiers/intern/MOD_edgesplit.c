@@ -127,44 +127,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
   return result;
 }
 
-bool ED_lanpr_disable_edge_splits(struct Scene *s);
-
-static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams)
-{
-  int lanpr_found = 0;
-  ModifierData *imd;
-  EdgeSplitModifierData *emd = (EdgeSplitModifierData *)md;
-
-  if (ED_lanpr_disable_edge_splits(scene)) {
-    lanpr_found = 1;
-  }
-  if (!lanpr_found) {
-    for (imd = md->prev; imd; imd = imd->prev) {
-      if (imd->type == eModifierType_FeatureLine) {
-        lanpr_found = 1;
-        break;
-      }
-    }
-  }
-  if (!lanpr_found) {
-    for (imd = md->next; imd; imd = imd->next) {
-      if (imd->type == eModifierType_FeatureLine) {
-        lanpr_found = 1;
-        break;
-      }
-    }
-  }
-  if (!lanpr_found) {
-    return false;
-  }
-  else {
-    if (emd->ignore_lanpr) {
-      return false;
-    }
-    return true;
-  }
-}
-
 ModifierTypeInfo modifierType_EdgeSplit = {
     /* name */ "EdgeSplit",
     /* structName */ "EdgeSplitModifierData",
@@ -185,7 +147,7 @@ ModifierTypeInfo modifierType_EdgeSplit = {
     /* initData */ initData,
     /* requiredDataMask */ NULL,
     /* freeData */ NULL,
-    /* isDisabled */ isDisabled,
+    /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* dependsOnNormals */ NULL,

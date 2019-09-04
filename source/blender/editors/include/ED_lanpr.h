@@ -604,7 +604,6 @@ void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
 bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);
 
 bool ED_lanpr_dpix_shader_error(void);
-bool ED_lanpr_disable_edge_splits(struct Scene *s);
 
 int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
 LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);

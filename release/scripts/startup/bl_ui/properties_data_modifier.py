@@ -400,10 +400,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         split.prop(md, "use_edge_sharp", text="Sharp Edges")
 
-        layout.prop(md, "ignore_lanpr")
-        if md.ignore_lanpr:
-            layout.label(text="Enabeling edge split may cause problems in LANPR.")
-
     def EXPLODE(self, layout, ob, md):
         split = layout.split()
 

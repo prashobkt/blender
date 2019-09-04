@@ -1117,7 +1117,6 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
             layout.prop(lanpr,"gpu_cache_size")
 
         layout.prop(lanpr,"enable_intersections")
-        layout.prop(lanpr, "disable_edge_splits")
 
         if scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='SOFTWARE':
             layout.prop(lanpr,"enable_chaining", text = "Chained Lines")

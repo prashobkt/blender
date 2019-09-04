@@ -3950,10 +3950,6 @@ bool ED_lanpr_dpix_shader_error()
 {
   return lanpr_share.dpix_shader_error;
 }
-bool ED_lanpr_disable_edge_splits(Scene *s)
-{
-  return ((s->lanpr.flags & LANPR_ENABLED) && s->lanpr.disable_edge_splits);
-}
 
 /* GPencil bindings */
 

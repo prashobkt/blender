@@ -7454,11 +7454,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU.");
 
-  prop = RNA_def_property(srna, "disable_edge_splits", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_ui_text(
-      prop, "Disable Edge Splits", "Disable edge split modifiers to prevent errors in LANPR.");
-
   prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.1f);
   RNA_def_property_ui_text(prop,

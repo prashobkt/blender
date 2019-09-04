@@ -2652,10 +2652,6 @@ static void rna_def_modifier_edgesplit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_EDGESPLIT_FROMFLAG);
   RNA_def_property_ui_text(prop, "Use Sharp Edges", "Split edges that are marked as sharp");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "ignore_lanpr", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Ignore LANPR", "Ignore the presense of LANPR modifier.");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_displace(BlenderRNA *brna)
