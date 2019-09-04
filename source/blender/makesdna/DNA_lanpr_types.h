@@ -84,7 +84,7 @@ typedef struct LANPR_LineLayerComponent {
 } LANPR_LineLayerComponent;
 
 typedef struct LANPR_LineType {
-  int enabled;
+  int use;
   float thickness;
   float color[4];
 } LANPR_LineType;

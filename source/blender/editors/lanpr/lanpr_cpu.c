@@ -139,11 +139,11 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->thickness = 1.0f;
   copy_v3_fl(ll->color, 0.8);
   ll->color[3] = 1.0f;
-  ll->contour.enabled = 1;
-  ll->crease.enabled = 1;
-  ll->material_separate.enabled = 1;
-  ll->edge_mark.enabled = 1;
-  ll->intersection.enabled = 1;
+  ll->contour.use = 1;
+  ll->crease.use = 1;
+  ll->material_separate.use = 1;
+  ll->edge_mark.use = 1;
+  ll->intersection.use = 1;
 
   ll->normal_thickness_start = 0.2f;
   ll->normal_thickness_end = 1.5f;
@@ -304,11 +304,11 @@ static int lanpr_enable_all_line_types_exec(struct bContext *C, struct wmOperato
     return OPERATOR_FINISHED;
   }
 
-  ll->contour.enabled = 1;
-  ll->crease.enabled = 1;
-  ll->edge_mark.enabled = 1;
-  ll->material_separate.enabled = 1;
-  ll->intersection.enabled = 1;
+  ll->contour.use = 1;
+  ll->crease.use = 1;
+  ll->edge_mark.use = 1;
+  ll->material_separate.use = 1;
+  ll->intersection.use = 1;
 
   copy_v3_v3(ll->contour.color, ll->color);
   copy_v3_v3(ll->crease.color, ll->color);

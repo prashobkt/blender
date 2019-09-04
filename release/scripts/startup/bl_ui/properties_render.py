@@ -770,7 +770,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         #    layout.prop(lanpr, "enable_vector_trace", expand = True)
 
 def lanpr_make_line_type(expand,layout,line_type,label):
-    layout.prop(line_type, "enabled", text=label)
+    layout.prop(line_type, "use", text=label)
     if expand and line_type.enabled:
         c = layout.column(align=True)
         c.prop(line_type, "color", text="Color")

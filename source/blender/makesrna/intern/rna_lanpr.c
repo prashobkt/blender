@@ -174,8 +174,8 @@ static void rna_def_lanpr_line_type(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "LANPR_LineType");
   RNA_def_struct_ui_text(srna, "Line Type", "LANPR_LineType");
 
-  prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Enabled", "This line type is enabled");
+  prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Use", "This line type is enabled");
 
   prop = RNA_def_property(srna, "thickness", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 1.0f);
@@ -186,7 +186,6 @@ static void rna_def_lanpr_line_type(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Color", "Color of this line type");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
 }
 
 static void rna_def_lanpr_line_component(BlenderRNA *brna)
