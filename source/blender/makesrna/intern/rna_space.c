@@ -390,7 +390,6 @@ static const EnumPropertyItem buttons_context_items[] = {
     {BCONTEXT_VIEW_LAYER, "VIEW_LAYER", ICON_RENDER_RESULT, "View Layer", "View Layer"},
     {BCONTEXT_WORLD, "WORLD", ICON_WORLD, "World", "World"},
     {BCONTEXT_COLLECTION, "COLLECTION", ICON_GROUP, "Collection", "Collection"},
-    {BCONTEXT_LANPR, "LANPR", ICON_SHADING_RENDERED, "LANPR", "LANPR Data"},
     {BCONTEXT_OBJECT, "OBJECT", ICON_OBJECT_DATA, "Object", "Object"},
     {BCONTEXT_CONSTRAINT, "CONSTRAINT", ICON_CONSTRAINT, "Constraints", "Object Constraints"},
     {BCONTEXT_MODIFIER, "MODIFIER", ICON_MODIFIER, "Modifiers", "Modifiers"},
@@ -402,6 +401,7 @@ static const EnumPropertyItem buttons_context_items[] = {
      "Bone Constraints",
      "Bone Constraint Properties"},
     {BCONTEXT_MATERIAL, "MATERIAL", ICON_MATERIAL, "Material", "Material Properties"},
+    {BCONTEXT_LANPR, "LANPR", ICON_SHADING_RENDERED, "LANPR", "LANPR Data"},
     {BCONTEXT_TEXTURE, "TEXTURE", ICON_TEXTURE, "Texture", "Texture Properties"},
     {BCONTEXT_PARTICLE, "PARTICLES", ICON_PARTICLES, "Particles", "Particle Properties"},
     {BCONTEXT_PHYSICS, "PHYSICS", ICON_PHYSICS, "Physics", "Physics Properties"},
@@ -1644,10 +1644,6 @@ static const EnumPropertyItem *rna_SpaceProperties_context_itemf(bContext *UNUSE
     RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_COLLECTION);
   }
 
-  if (sbuts->pathflag & (1 << BCONTEXT_LANPR)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_LANPR);
-  }
-
   if (totitem) {
     RNA_enum_item_add_separator(&item, &totitem);
   }
@@ -1691,6 +1687,10 @@ static const EnumPropertyItem *rna_SpaceProperties_context_itemf(bContext *UNUSE
 
   if (sbuts->pathflag & (1 << BCONTEXT_MATERIAL)) {
     RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_MATERIAL);
+  }
+
+  if (sbuts->pathflag & (1 << BCONTEXT_LANPR)) {
+    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_LANPR);
   }
 
   if (totitem) {
