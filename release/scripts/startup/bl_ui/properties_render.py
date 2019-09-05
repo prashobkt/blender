@@ -882,7 +882,7 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode == "SOFTWARE"
+        return scene.render.engine=="BLENDER_LANPR" and active_layer
 
     def draw_header(self, context):
         active_layer = context.scene.lanpr.layers.active_layer
