@@ -238,8 +238,7 @@ static void mouse_mesh_shortest_path_vert(Scene *UNUSED(scene),
       }
     } while ((node = node->next));
 
-    /* We need to start as if just *after* a 'skip' block... */
-    int depth = op_params->interval_params.skip;
+    int depth = -1;
     node = path;
     do {
       if ((is_path_ordered == false) ||
@@ -423,8 +422,7 @@ static void mouse_mesh_shortest_path_edge(Scene *scene,
       }
     } while ((node = node->next));
 
-    /* We need to start as if just *after* a 'skip' block... */
-    int depth = op_params->interval_params.skip;
+    int depth = -1;
     node = path;
     do {
       if ((is_path_ordered == false) ||
@@ -554,8 +552,7 @@ static void mouse_mesh_shortest_path_face(Scene *UNUSED(scene),
       }
     } while ((node = node->next));
 
-    /* We need to start as if just *after* a 'skip' block... */
-    int depth = op_params->interval_params.skip;
+    int depth = -1;
     node = path;
     do {
       if ((is_path_ordered == false) ||
