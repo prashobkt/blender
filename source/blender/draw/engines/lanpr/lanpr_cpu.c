@@ -137,7 +137,8 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
     tv = ED_lanpr_make_leveled_edge_vertex_array(rb, &rb->edge_marks, tv, tn, &tn, ll, 4.0f);
   }
   if (ll->intersection.use) {
-    tv = ED_lanpr_make_leveled_edge_vertex_array(rb, &rb->intersection_lines, tv, tn, &tn, ll, 5.0f);
+    tv = ED_lanpr_make_leveled_edge_vertex_array(
+        rb, &rb->intersection_lines, tv, tn, &tn, ll, 5.0f);
   }
 
   for (i = 0; i < vertCount; i++) {
@@ -371,11 +372,11 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         DRW_shgroup_uniform_vec3(rb->ChainShgrp, "normal_direction", normal_object_direction, 1);
 
         DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_start", &ll->level_start, 1);
-        DRW_shgroup_uniform_int(rb->ChainShgrp,
-                                "occlusion_level_end",
-                                (ll->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? &ll->level_end :
-                                                                                     &ll->level_start,
-                                1);
+        DRW_shgroup_uniform_int(
+            rb->ChainShgrp,
+            "occlusion_level_end",
+            (ll->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? &ll->level_end : &ll->level_start,
+            1);
 
         DRW_shgroup_uniform_vec4(
             rb->ChainShgrp, "preview_viewport", stl->g_data->dpix_viewport, 1);

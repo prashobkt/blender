@@ -39,9 +39,15 @@ struct LANPR_RenderLine;
 struct LANPR_RenderBuffer;
 
 void *list_append_pointer_static(ListBase *h, struct LANPR_StaticMemPool *smp, void *p);
-void *list_append_pointer_static_sized(ListBase *h, struct LANPR_StaticMemPool *smp, void *p, int size);
+void *list_append_pointer_static_sized(ListBase *h,
+                                       struct LANPR_StaticMemPool *smp,
+                                       void *p,
+                                       int size);
 void *list_push_pointer_static(ListBase *h, struct LANPR_StaticMemPool *smp, void *p);
-void *list_push_pointer_static_sized(ListBase *h, struct LANPR_StaticMemPool *smp, void *p, int size);
+void *list_push_pointer_static_sized(ListBase *h,
+                                     struct LANPR_StaticMemPool *smp,
+                                     void *p,
+                                     int size);
 
 void *list_append_pointer_static_pool(struct LANPR_StaticMemPool *mph, ListBase *h, void *p);
 void *list_pop_pointer_no_free(ListBase *h);
@@ -52,13 +58,17 @@ void *mem_static_aquire(struct LANPR_StaticMemPool *smp, int size);
 void *mem_static_aquire_thread(struct LANPR_StaticMemPool *smp, int size);
 void *mem_static_destroy(LANPR_StaticMemPool *smp);
 
-void tmat_make_ortho_matrix_44d(
-    double (*mProjection)[4], double xMin, double xMax, double yMin, double yMax, double zMin, double zMax);
+void tmat_make_ortho_matrix_44d(double (*mProjection)[4],
+                                double xMin,
+                                double xMax,
+                                double yMin,
+                                double yMax,
+                                double zMin,
+                                double zMax);
 void tmat_make_perspective_matrix_44d(
     double (*mProjection)[4], double fFov_rad, double fAspect, double zMin, double zMax);
 
 int lanpr_count_this_line(struct LANPR_RenderLine *rl, struct LANPR_LineLayer *ll);
 int lanpr_count_intersection_segment_count(struct LANPR_RenderBuffer *rb);
-
 
 #endif

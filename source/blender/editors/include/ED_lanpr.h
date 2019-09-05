@@ -558,12 +558,12 @@ void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
 int ED_lanpr_count_leveled_edge_segment_count(ListBase *LineList, struct LANPR_LineLayer *ll);
 void *ED_lanpr_make_leveled_edge_vertex_array(struct LANPR_RenderBuffer *rb,
-                                           ListBase *LineList,
-                                           float *vertexArray,
-                                           float *NormalArray,
-                                           float **NextNormal,
-                                           LANPR_LineLayer *ll,
-                                           float componet_id);
+                                              ListBase *LineList,
+                                              float *vertexArray,
+                                              float *NormalArray,
+                                              float **NextNormal,
+                                              LANPR_LineLayer *ll,
+                                              float componet_id);
 
 void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
 bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);

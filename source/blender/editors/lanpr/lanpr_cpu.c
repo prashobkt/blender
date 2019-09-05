@@ -2829,12 +2829,12 @@ int lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb)
   return Count;
 }
 void *ED_lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
-                                           ListBase *LineList,
-                                           float *vertexArray,
-                                           float *NormalArray,
-                                           float **NextNormal,
-                                           LANPR_LineLayer *ll,
-                                           float componet_id)
+                                              ListBase *LineList,
+                                              float *vertexArray,
+                                              float *NormalArray,
+                                              float **NextNormal,
+                                              LANPR_LineLayer *ll,
+                                              float componet_id)
 {
   LinkData *lip;
   LANPR_RenderLine *rl;

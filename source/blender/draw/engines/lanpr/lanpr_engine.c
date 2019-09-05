@@ -424,9 +424,14 @@ static void lanpr_cache_init(void *vedata)
     ED_lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
     static int normal_effect_inverse;
+    static int zero_value = 0;
     normal_effect_inverse = (ll->flags & LANPR_LINE_LAYER_NORMAL_INVERSE);
 
-    DRW_shgroup_uniform_int(stl->g_data->dpix_preview_shgrp, "normal_mode", &ll->normal_mode, 1);
+    DRW_shgroup_uniform_int(stl->g_data->dpix_preview_shgrp,
+                            "normal_mode",
+                            (ll->flags & LANPR_LINE_LAYER_NORMAL_ENABLED) ? &ll->normal_mode :
+                                                                            &zero_value,
+                            1);
     DRW_shgroup_uniform_int(
         stl->g_data->dpix_preview_shgrp, "normal_effect_inverse", &normal_effect_inverse, 1);
     DRW_shgroup_uniform_float(
