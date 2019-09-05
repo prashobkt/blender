@@ -67,6 +67,8 @@
 
 #include "BKE_text.h"
 
+#include "lanpr_intern.h"
+
 extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
 struct Object;
@@ -2789,7 +2791,7 @@ int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll)
     return AndResult;
   }
 }
-int lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll)
+int ED_lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll)
 {
   LinkData *lip;
   LANPR_RenderLine *rl;
@@ -2826,7 +2828,7 @@ int lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb)
   }
   return Count;
 }
-void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
+void *ED_lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
                                            ListBase *LineList,
                                            float *vertexArray,
                                            float *NormalArray,

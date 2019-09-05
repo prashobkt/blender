@@ -36,6 +36,8 @@ set(SRC
   lanpr_cpu.c
   lanpr_chain.c
   lanpr_util.c
+
+  lanpr_intern.h
 )
 
 set(LIB

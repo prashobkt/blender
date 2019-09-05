@@ -28,6 +28,8 @@
 #include "MEM_guardedalloc.h"
 #include <math.h>
 
+#include "lanpr_intern.h"
+
 /* ===================================================================[slt] */
 
 void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)

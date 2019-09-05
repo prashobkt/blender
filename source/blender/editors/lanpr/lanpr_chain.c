@@ -40,6 +40,8 @@
 
 #include "bmesh.h"
 
+#include "lanpr_intern.h"
+
 #include <math.h>
 
 #define LANPR_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)

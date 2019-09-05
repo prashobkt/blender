@@ -544,36 +544,6 @@ BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL)
 
 int ED_lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
 
-void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
-void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
-void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
-void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
-
-void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *p);
-void *list_pop_pointer_no_free(ListBase *h);
-void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
-
-LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp);
-void *mem_static_aquire(LANPR_StaticMemPool *smp, int size);
-void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size);
-void *mem_static_destroy(LANPR_StaticMemPool *smp);
-
-void tmat_make_ortho_matrix_44d(
-    double (*mProjection)[4], real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
-void tmat_make_perspective_matrix_44d(
-    double (*mProjection)[4], real fFov_rad, real fAspect, real zMin, real zMax);
-
-int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll);
-int lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll);
-int lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb);
-void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
-                                           ListBase *LineList,
-                                           float *vertexArray,
-                                           float *NormalArray,
-                                           float **NextNormal,
-                                           LANPR_LineLayer *ll,
-                                           float componet_id);
-
 struct Depsgraph;
 struct SceneLANPR;
 
@@ -585,6 +555,15 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space);
 void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
 int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
+
+int ED_lanpr_count_leveled_edge_segment_count(ListBase *LineList, struct LANPR_LineLayer *ll);
+void *ED_lanpr_make_leveled_edge_vertex_array(struct LANPR_RenderBuffer *rb,
+                                           ListBase *LineList,
+                                           float *vertexArray,
+                                           float *NormalArray,
+                                           float **NextNormal,
+                                           LANPR_LineLayer *ll,
+                                           float componet_id);
 
 void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
 bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);

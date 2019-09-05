@@ -98,19 +98,19 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
   GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
 
   if (ll->contour.use) {
-    Count += lanpr_count_leveled_edge_segment_count(&rb->contours, ll);
+    Count += ED_lanpr_count_leveled_edge_segment_count(&rb->contours, ll);
   }
   if (ll->crease.use) {
-    Count += lanpr_count_leveled_edge_segment_count(&rb->crease_lines, ll);
+    Count += ED_lanpr_count_leveled_edge_segment_count(&rb->crease_lines, ll);
   }
   if (ll->intersection.use) {
-    Count += lanpr_count_leveled_edge_segment_count(&rb->intersection_lines, ll);
+    Count += ED_lanpr_count_leveled_edge_segment_count(&rb->intersection_lines, ll);
   }
   if (ll->edge_mark.use) {
-    Count += lanpr_count_leveled_edge_segment_count(&rb->edge_marks, ll);
+    Count += ED_lanpr_count_leveled_edge_segment_count(&rb->edge_marks, ll);
   }
   if (ll->material_separate.use) {
-    Count += lanpr_count_leveled_edge_segment_count(&rb->material_lines, ll);
+    Count += ED_lanpr_count_leveled_edge_segment_count(&rb->material_lines, ll);
   }
 
   vertCount = Count * 2;
@@ -125,19 +125,19 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
   tn = N = MEM_callocN(sizeof(float) * 6 * Count, "temp n data");
 
   if (ll->contour.use) {
-    tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->contours, tv, tn, &tn, ll, 1.0f);
+    tv = ED_lanpr_make_leveled_edge_vertex_array(rb, &rb->contours, tv, tn, &tn, ll, 1.0f);
   }
   if (ll->crease.use) {
-    tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->crease_lines, tv, tn, &tn, ll, 2.0f);
+    tv = ED_lanpr_make_leveled_edge_vertex_array(rb, &rb->crease_lines, tv, tn, &tn, ll, 2.0f);
   }
   if (ll->material_separate.use) {
-    tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->material_lines, tv, tn, &tn, ll, 3.0f);
+    tv = ED_lanpr_make_leveled_edge_vertex_array(rb, &rb->material_lines, tv, tn, &tn, ll, 3.0f);
   }
   if (ll->edge_mark.use) {
-    tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->edge_marks, tv, tn, &tn, ll, 4.0f);
+    tv = ED_lanpr_make_leveled_edge_vertex_array(rb, &rb->edge_marks, tv, tn, &tn, ll, 4.0f);
   }
   if (ll->intersection.use) {
-    tv = lanpr_make_leveled_edge_vertex_array(rb, &rb->intersection_lines, tv, tn, &tn, ll, 5.0f);
+    tv = ED_lanpr_make_leveled_edge_vertex_array(rb, &rb->intersection_lines, tv, tn, &tn, ll, 5.0f);
   }
 
   for (i = 0; i < vertCount; i++) {
