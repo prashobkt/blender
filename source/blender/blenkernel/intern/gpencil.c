@@ -1042,7 +1042,7 @@ void BKE_gpencil_layer_setactive(bGPdata *gpd, bGPDlayer *active)
 }
 
 /* Set locked layers for autolock mode. */
-void BKE_gpencil_layer_autolock_set(bGPdata *gpd)
+void BKE_gpencil_layer_autolock_set(bGPdata *gpd, const bool unlock)
 {
   BLI_assert(gpd != NULL);
 
@@ -1066,8 +1066,10 @@ void BKE_gpencil_layer_autolock_set(bGPdata *gpd)
     /* If disable is better unlock all layers by default or it looks there is
      * a problem in the UI because the user expects all layers will be unlocked
      */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-      gpl->flag &= ~GP_LAYER_LOCKED;
+    if (unlock) {
+      for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        gpl->flag &= ~GP_LAYER_LOCKED;
+      }
     }
   }
 }
