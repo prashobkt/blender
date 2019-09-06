@@ -2402,6 +2402,7 @@ typedef enum eGPencil_GuideTypes {
   GP_GUIDE_RADIAL,
   GP_GUIDE_PARALLEL,
   GP_GUIDE_GRID,
+  GP_GUIDE_ISO,
 } eGPencil_GuideTypes;
 
 /* ToolSettings.gpencil_guide_references */
