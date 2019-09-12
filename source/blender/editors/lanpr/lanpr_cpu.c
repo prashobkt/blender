@@ -4074,7 +4074,7 @@ static void lanpr_update_gp_strokes_recursive(
           }
 
           gpd = gpobj->data;
-          gpl = BKE_gpencil_layer_get_index(gpd, flmd->layer, 1);
+          gpl = BKE_gpencil_layer_get_by_name(gpd, flmd->target_layer, 1);
           if (!gpl) {
             gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
           }
@@ -4089,6 +4089,11 @@ static void lanpr_update_gp_strokes_recursive(
             BKE_gpencil_free_strokes(gpf);
             gpf->flag |= GP_FRAME_LANPR_CLEARED;
           }
+          
+          int use_material = BKE_gpencil_object_material_get_index_name(ob, flmd->target_material);
+          if (use_material<0){
+            use_material = 0;
+          }
 
           lanpr_generate_gpencil_from_chain(dg,
                                             ob,
@@ -4097,7 +4102,7 @@ static void lanpr_update_gp_strokes_recursive(
                                             flmd->level_start,
                                             flmd->use_multiple_levels ? flmd->level_end :
                                                                         flmd->level_start,
-                                            flmd->material,
+                                            use_material,
                                             NULL,
                                             flmd->types);
           DEG_id_tag_update(&gpd->id,
@@ -4140,7 +4145,7 @@ static void lanpr_update_gp_strokes_collection(
   }
 
   gpd = gpobj->data;
-  gpl = BKE_gpencil_layer_get_index(gpd, col->lanpr.layer, 1);
+  gpl = BKE_gpencil_layer_get_by_name(gpd, col->lanpr.target_layer, 1);
   if (!gpl) {
     gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
   }
@@ -4156,6 +4161,11 @@ static void lanpr_update_gp_strokes_collection(
     gpf->flag |= GP_FRAME_LANPR_CLEARED;
   }
 
+  int use_material = BKE_gpencil_object_material_get_index_name(gpobj, col->lanpr.target_material);
+  if (use_material<0){
+    use_material = 0;
+  }
+
   lanpr_generate_gpencil_from_chain(dg,
                                     NULL,
                                     gpl,
@@ -4163,7 +4173,7 @@ static void lanpr_update_gp_strokes_collection(
                                     col->lanpr.level_start,
                                     col->lanpr.use_multiple_levels ? col->lanpr.level_end :
                                                                      col->lanpr.level_start,
-                                    col->lanpr.material,
+                                    use_material,
                                     col,
                                     col->lanpr.types);
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);

@@ -423,16 +423,14 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
 
-  prop = RNA_def_property(srna, "layer", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 100);
-  RNA_def_property_ui_range(prop, 0, 100, 1, -1);
+  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "target_layer");
   RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
 
-  prop = RNA_def_property(srna, "material", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 100);
-  RNA_def_property_ui_range(prop, 0, 100, 1, -1);
-  RNA_def_property_ui_text(
-      prop, "Material", "Grease Pencil material to use to generate the results");
+  prop = RNA_def_property(srna, "material", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "target_material");
+  RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
+
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);

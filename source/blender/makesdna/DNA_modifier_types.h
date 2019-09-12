@@ -1965,8 +1965,8 @@ typedef struct FeatureLineModifierData {
 
   struct Object *target;
   int replace;
-  int layer;
-  int material;
+  char target_layer[128];
+  char target_material[128];
 
   int use_multiple_levels;
   int level_start;

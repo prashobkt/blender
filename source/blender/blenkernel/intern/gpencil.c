@@ -991,7 +991,7 @@ bGPDlayer *BKE_gpencil_layer_getactive(bGPdata *gpd)
   return NULL;
 }
 
-bGPDlayer *BKE_gpencil_layer_get_index(bGPdata *gpd, int index, int first_if_not_found)
+bGPDlayer *BKE_gpencil_layer_get_by_name(bGPdata *gpd, char* name, int first_if_not_found)
 {
   bGPDlayer *gpl;
   int i = 0;
@@ -1003,7 +1003,7 @@ bGPDlayer *BKE_gpencil_layer_get_index(bGPdata *gpd, int index, int first_if_not
 
   /* loop over layers until found (assume only one active) */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    if (i == index) {
+    if (STREQ(name,gpl->info)) {
       return gpl;
     }
     i++;
@@ -2143,6 +2143,20 @@ int BKE_gpencil_object_material_get_index(Object *ob, Material *ma)
   for (short i = 0; i < *totcol; i++) {
     read_ma = give_current_material(ob, i + 1);
     if (ma == read_ma) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+int BKE_gpencil_object_material_get_index_name(Object *ob, char* name)
+{
+  short *totcol = give_totcolp(ob);
+  Material *read_ma = NULL;
+  for (short i = 0; i < *totcol; i++) {
+    read_ma = give_current_material(ob, i + 1);
+    if (STREQ(name,read_ma->id.name)) {
       return i;
     }
   }

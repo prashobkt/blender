@@ -104,11 +104,9 @@ class OBJECT_PT_lanpr_modifier_target(LanprButtonsPanel, Panel):
         layout.prop(md, "target")
         
         if md.target:
-            if not is_unit_transformation(md.target):
-                layout.label(text = "Target GP has self transformations.")
-                layout.operator("lanpr.reset_object_transfromations").obj=md.target.name
-            layout.prop(md,'layer')
-            layout.prop(md,'material')
+            layout.prop_search(md, 'layer', md.target.data, "layers", icon='GREASEPENCIL')
+            layout.prop_search(md, 'material', md.target.data, "materials", icon='SHADING_TEXTURE')
+
 
 class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):
     bl_label = "Usage"

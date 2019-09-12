@@ -104,8 +104,8 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
                 layout.prop(lanpr,'use_material')
                 layout.prop(lanpr,'use_intersection')
                 
-                layout.prop(lanpr,'layer')
-                layout.prop(lanpr,'material')
+                layout.prop_search(lanpr, 'layer', lanpr.target.data, "layers", icon='GREASEPENCIL')
+                layout.prop_search(lanpr, 'material', lanpr.target.data, "materials", icon='SHADING_TEXTURE')
 
 
 classes = (

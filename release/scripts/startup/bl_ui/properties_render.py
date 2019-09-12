@@ -763,10 +763,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             else:
                 col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
 
-        #else:
-        #    layout.label(text="Vectorization:")
-        #    layout.prop(lanpr, "enable_vector_trace", expand = True)
-
 def lanpr_make_line_type(expand,layout,line_type,label):
     layout.prop(line_type, "use", text=label)
     if expand and line_type.use:
