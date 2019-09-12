@@ -1664,9 +1664,9 @@ typedef enum LANPR_PostProcessingStatus {
 } LANPR_PostProcessingStatus;
 
 typedef enum LANPR_MainFlags {
-  LANPR_ENABLED = 0,
+  LANPR_ENABLED = (1 << 0),
   /* For LANPR->GP and viewport to update automatically. */
-  LANPR_AUTO_UPDATE = (1 << 0),
+  LANPR_AUTO_UPDATE = (1 << 1),
   LANPR_SAME_TAPER = (1 << 2),
   /* Edge split modifier will cause problems in LANPR. */
   LANPR_DISABLE_EDGE_SPLITS = (1 << 3),

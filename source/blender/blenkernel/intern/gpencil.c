@@ -2156,7 +2156,8 @@ int BKE_gpencil_object_material_get_index_name(Object *ob, char* name)
   Material *read_ma = NULL;
   for (short i = 0; i < *totcol; i++) {
     read_ma = give_current_material(ob, i + 1);
-    if (STREQ(name,read_ma->id.name)) {
+    /* Material names are like "MAMaterial.001" */
+    if (STREQ(name,&read_ma->id.name[2])) {
       return i;
     }
   }

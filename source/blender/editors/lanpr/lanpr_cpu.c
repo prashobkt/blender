@@ -4061,6 +4061,44 @@ static void lanpr_clear_gp_lanpr_flags(Depsgraph *dg, int frame)
   }
   DEG_OBJECT_ITER_END;
 }
+static void lanpr_update_gp_strokes_single(Depsgraph *dg,
+                                            Object* gpobj,
+                                            Object *ob,
+                                            int frame,
+                                            int level_start,
+                                            int level_end,
+                                            char* target_layer,
+                                            char* target_material,
+                                            Collection* col,
+                                            int type){
+  bGPdata *gpd;
+  bGPDlayer *gpl;
+  bGPDframe *gpf;
+  ObjectLANPR *obl = &ob->lanpr;
+  gpd = gpobj->data;
+  gpl = BKE_gpencil_layer_get_by_name(gpd, target_layer, 1);
+  if (!gpl) {
+    gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
+  }
+  gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+
+  if (gpf->strokes.first &&
+      !(lanpr_share.render_buffer_shared->scene->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {
+    return;
+  }
+
+  if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
+    BKE_gpencil_free_strokes(gpf);
+    gpf->flag |= GP_FRAME_LANPR_CLEARED;
+  }
+  
+  int use_material = BKE_gpencil_object_material_get_index_name(gpobj, target_material);
+  if (use_material<0){
+    use_material = 0;
+  }
+
+  lanpr_generate_gpencil_from_chain(dg, ob, gpl, gpf, level_start, level_end, use_material, col, type);
+}
 static void lanpr_update_gp_strokes_recursive(
     Depsgraph *dg, struct Collection *col, int frame, Object *source_only, Object *target_only)
 {
@@ -4084,39 +4122,31 @@ static void lanpr_update_gp_strokes_recursive(
         continue;
       }
 
-      gpd = gpobj->data;
-      gpl = BKE_gpencil_layer_get_by_name(gpd, obl->target_layer, 1);
-      if (!gpl) {
-        gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
-      }
-      gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+      int level_start = obl->level_start;
+      int level_end = (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? obl->level_end : obl->level_start;
 
-      if (gpf->strokes.first &&
-          !(lanpr_share.render_buffer_shared->scene->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {
-        continue;
+      if(obl->flags & LANPR_LINE_LAYER_USE_SAME_STYLE){
+        lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
+          obl->target_layer,obl->target_material,NULL,lanpr_object_line_types(ob));
+      }else{
+        if(obl->contour.use){
+          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
+            obl->contour.target_layer,obl->contour.target_material,NULL,LANPR_EDGE_FLAG_CONTOUR);
+        }
+        if(obl->crease.use){
+          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
+            obl->crease.target_layer,obl->crease.target_material,NULL,LANPR_EDGE_FLAG_CREASE);
+        }
+        if(obl->material.use){
+          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
+            obl->material.target_layer,obl->material.target_material,NULL,LANPR_EDGE_FLAG_MATERIAL);
+        }
+        if(obl->edge_mark.use){
+          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
+            obl->edge_mark.target_layer,obl->edge_mark.target_material,NULL,LANPR_EDGE_FLAG_EDGE_MARK);
+        }
       }
 
-      if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
-        BKE_gpencil_free_strokes(gpf);
-        gpf->flag |= GP_FRAME_LANPR_CLEARED;
-      }
-      
-      int use_material = BKE_gpencil_object_material_get_index_name(ob, obl->target_material);
-      if (use_material<0){
-        use_material = 0;
-      }
-
-      lanpr_generate_gpencil_from_chain(dg,
-                                        ob,
-                                        gpl,
-                                        gpf,
-                                        obl->level_start,
-                                        (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? 
-                                                                  obl->level_end :
-                                                                  obl->level_start,
-                                        use_material,
-                                        NULL,
-                                        lanpr_object_line_types(ob));
       DEG_id_tag_update(&gpd->id,
                         ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
     }
@@ -4174,38 +4204,36 @@ static void lanpr_update_gp_strokes_collection(
     return;
   }
 
-  gpd = gpobj->data;
-  gpl = BKE_gpencil_layer_get_by_name(gpd, col->lanpr.target_layer, 1);
-  if (!gpl) {
-    gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
-  }
-  gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+  CollectionLANPR* cl = &col->lanpr;
+  int level_start = cl->level_start;
+  int level_end = (cl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? cl->level_end : cl->level_start;
 
-  if (gpf->strokes.first &&
-      !(lanpr_share.render_buffer_shared->scene->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {
-    return;
+  if(cl->flags & LANPR_LINE_LAYER_USE_SAME_STYLE){
+    lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
+      cl->target_layer,cl->target_material,col,lanpr_collection_types(col));
+  }else{
+    if(cl->contour.use){
+      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
+        cl->contour.target_layer,cl->contour.target_material,col,LANPR_EDGE_FLAG_CONTOUR);
+    }
+    if(cl->crease.use){
+      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
+        cl->crease.target_layer,cl->crease.target_material,col,LANPR_EDGE_FLAG_CREASE);
+    }
+    if(cl->material.use){
+      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
+        cl->material.target_layer,cl->material.target_material,col,LANPR_EDGE_FLAG_MATERIAL);
+    }
+    if(cl->edge_mark.use){
+      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
+        cl->edge_mark.target_layer,cl->edge_mark.target_material,col,LANPR_EDGE_FLAG_EDGE_MARK);
+    }
+    if(cl->intersection.use){
+      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
+        cl->intersection.target_layer,cl->intersection.target_material,col,LANPR_EDGE_FLAG_INTERSECTION);
+    }
   }
 
-  if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
-    BKE_gpencil_free_strokes(gpf);
-    gpf->flag |= GP_FRAME_LANPR_CLEARED;
-  }
-
-  int use_material = BKE_gpencil_object_material_get_index_name(gpobj, col->lanpr.target_material);
-  if (use_material<0){
-    use_material = 0;
-  }
-
-  lanpr_generate_gpencil_from_chain(dg,
-                                    NULL,
-                                    gpl,
-                                    gpf,
-                                    col->lanpr.level_start,
-                                    (col->lanpr.flags&LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? col->lanpr.level_end :
-                                                                     col->lanpr.level_start,
-                                    use_material,
-                                    col,
-                                    lanpr_collection_types(col));
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
 static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
