@@ -595,7 +595,10 @@ void BKE_scene_free_ex(Scene *sce, const bool do_id_user)
     sce->eevee.light_cache = NULL;
   }
 
-  BKE_lanpr_free_everything(sce);
+  if (sce->display.shading.prop) {
+    IDP_FreeProperty(sce->display.shading.prop);
+    sce->display.shading.prop = NULL;
+  }
 
   /* These are freed on doversion. */
   BLI_assert(sce->layer_properties == NULL);
@@ -776,79 +779,6 @@ void BKE_scene_init(Scene *sce)
 
   BKE_view_layer_add(sce, "View Layer");
 
-  /* SceneDisplay */
-  copy_v3_v3(sce->display.light_direction, (float[3]){M_SQRT1_3, M_SQRT1_3, M_SQRT1_3});
-  sce->display.shadow_shift = 0.1f;
-  sce->display.shadow_focus = 0.0f;
-
-  sce->display.matcap_ssao_distance = 0.2f;
-  sce->display.matcap_ssao_attenuation = 1.0f;
-  sce->display.matcap_ssao_samples = 16;
-
-  sce->display.render_aa = SCE_DISPLAY_AA_SAMPLES_8;
-  sce->display.viewport_aa = SCE_DISPLAY_AA_FXAA;
-
-  /* OpenGL Render. */
-  BKE_screen_view3d_shading_init(&sce->display.shading);
-
-  /* SceneEEVEE */
-  sce->eevee.gi_diffuse_bounces = 3;
-  sce->eevee.gi_cubemap_resolution = 512;
-  sce->eevee.gi_visibility_resolution = 32;
-  sce->eevee.gi_cubemap_draw_size = 0.3f;
-  sce->eevee.gi_irradiance_draw_size = 0.1f;
-  sce->eevee.gi_irradiance_smoothing = 0.1f;
-  sce->eevee.gi_filter_quality = 3.0f;
-
-  sce->eevee.taa_samples = 16;
-  sce->eevee.taa_render_samples = 64;
-
-  sce->eevee.sss_samples = 7;
-  sce->eevee.sss_jitter_threshold = 0.3f;
-
-  sce->eevee.ssr_quality = 0.25f;
-  sce->eevee.ssr_max_roughness = 0.5f;
-  sce->eevee.ssr_thickness = 0.2f;
-  sce->eevee.ssr_border_fade = 0.075f;
-  sce->eevee.ssr_firefly_fac = 10.0f;
-
-  sce->eevee.volumetric_start = 0.1f;
-  sce->eevee.volumetric_end = 100.0f;
-  sce->eevee.volumetric_tile_size = 8;
-  sce->eevee.volumetric_samples = 64;
-  sce->eevee.volumetric_sample_distribution = 0.8f;
-  sce->eevee.volumetric_light_clamp = 0.0f;
-  sce->eevee.volumetric_shadow_samples = 16;
-
-  sce->eevee.gtao_distance = 0.2f;
-  sce->eevee.gtao_factor = 1.0f;
-  sce->eevee.gtao_quality = 0.25f;
-
-  sce->eevee.bokeh_max_size = 100.0f;
-  sce->eevee.bokeh_threshold = 1.0f;
-
-  copy_v3_fl(sce->eevee.bloom_color, 1.0f);
-  sce->eevee.bloom_threshold = 0.8f;
-  sce->eevee.bloom_knee = 0.5f;
-  sce->eevee.bloom_intensity = 0.05f;
-  sce->eevee.bloom_radius = 6.5f;
-  sce->eevee.bloom_clamp = 0.0f;
-
-  sce->eevee.motion_blur_samples = 8;
-  sce->eevee.motion_blur_shutter = 0.5f;
-
-  sce->eevee.shadow_cube_size = 512;
-  sce->eevee.shadow_cascade_size = 1024;
-
-  sce->eevee.light_cache = NULL;
-  sce->eevee.light_threshold = 0.01f;
-
-  sce->eevee.overscan = 3.0f;
-
-  sce->eevee.flag = SCE_EEVEE_VOLUMETRIC_LIGHTS | SCE_EEVEE_GTAO_BENT_NORMALS |
-                    SCE_EEVEE_GTAO_BOUNCE | SCE_EEVEE_TAA_REPROJECTION |
-                    SCE_EEVEE_SSR_HALF_RESOLUTION | SCE_EEVEE_SHADOW_SOFT;
-
   /* SceneLANPR */
 
   sce->lanpr.crease_threshold = 0.7;
@@ -861,6 +791,7 @@ void BKE_scene_init(Scene *sce)
   sce->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
   sce->lanpr.chaining_image_threshold = 0.01;
   sce->lanpr.chaining_geometry_threshold = 0.1;
+
 }
 
 Scene *BKE_scene_add(Main *bmain, const char *name)
@@ -1442,7 +1373,7 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
 
   bool run_callbacks = DEG_id_type_any_updated(depsgraph);
   if (run_callbacks) {
-    BKE_callback_exec(bmain, &scene->id, BKE_CB_EVT_DEPSGRAPH_UPDATE_PRE);
+    BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_DEPSGRAPH_UPDATE_PRE);
   }
 
   for (int pass = 0; pass < 2; pass++) {
@@ -1460,7 +1391,8 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     BKE_scene_update_sound(depsgraph, bmain);
     /* Notify python about depsgraph update. */
     if (run_callbacks) {
-      BKE_callback_exec(bmain, &scene->id, BKE_CB_EVT_DEPSGRAPH_UPDATE_POST);
+      BKE_callback_exec_id_depsgraph(
+          bmain, &scene->id, depsgraph, BKE_CB_EVT_DEPSGRAPH_UPDATE_POST);
     }
     /* Inform editors about possible changes. */
     DEG_ids_check_recalc(bmain, depsgraph, scene, view_layer, false);
@@ -1473,23 +1405,9 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     if (DEG_is_fully_evaluated(depsgraph)) {
       break;
     }
+
+    run_callbacks = false;
   }
-  
-  /* TODO(sergey): Some functions here are changing global state,
-   * for example, clearing update tags from bmain.
-   */
-  /* (Re-)build dependency graph if needed. */
-  DEG_graph_relations_update(depsgraph, bmain, scene, view_layer);
-  /* Uncomment this to check if graph was properly tagged for update. */
-  // DEG_debug_graph_relations_validate(depsgraph, bmain, scene);
-  /* Flush editing data if needed. */
-  prepare_mesh_for_viewport_render(bmain, view_layer);
-  /* Update all objects: drivers, matrices, displists, etc. flags set
-   * by depgraph or manual, no layer check here, gets correct flushed.
-   */
-  DEG_evaluate_on_refresh(bmain, depsgraph);
-  /* Update sound system. */
-  BKE_scene_update_sound(depsgraph, bmain);
 }
 
 void BKE_scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain)
@@ -1509,7 +1427,7 @@ void BKE_scene_graph_update_for_newframe(Depsgraph *depsgraph, Main *bmain)
   ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
 
   /* Keep this first. */
-  BKE_callback_exec(bmain, &scene->id, BKE_CB_EVT_FRAME_CHANGE_PRE);
+  BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_FRAME_CHANGE_PRE);
 
   for (int pass = 0; pass < 2; pass++) {
     /* Update animated image textures for particles, modifiers, gpu, etc,
@@ -1523,15 +1441,23 @@ void BKE_scene_graph_update_for_newframe(Depsgraph *depsgraph, Main *bmain)
 #endif
     /* Update all objects: drivers, matrices, displists, etc. flags set
      * by depgraph or manual, no layer check here, gets correct flushed.
-     */
-    const float ctime = BKE_scene_frame_get(scene);
-    DEG_evaluate_on_framechange(bmain, depsgraph, ctime);
+     *
+     * NOTE: Only update for new frame on first iteration. Second iteration is for ensuring user
+     * edits from callback are properly taken into account. Doing a time update on those would
+     * loose any possible unkeyed changes made by the handler. */
+    if (pass == 0) {
+      const float ctime = BKE_scene_frame_get(scene);
+      DEG_evaluate_on_framechange(bmain, depsgraph, ctime);
+    }
+    else {
+      DEG_evaluate_on_refresh(bmain, depsgraph);
+    }
     /* Update sound system animation. */
     BKE_scene_update_sound(depsgraph, bmain);
 
     /* Notify editors and python about recalc. */
     if (pass == 0) {
-      BKE_callback_exec(bmain, &scene->id, BKE_CB_EVT_FRAME_CHANGE_POST);
+      BKE_callback_exec_id_depsgraph(bmain, &scene->id, depsgraph, BKE_CB_EVT_FRAME_CHANGE_POST);
     }
 
     /* Inform editors about possible changes. */
@@ -1555,7 +1481,7 @@ void BKE_scene_graph_update_for_newframe(Depsgraph *depsgraph, Main *bmain)
  */
 void BKE_scene_view_layer_graph_evaluated_ensure(Main *bmain, Scene *scene, ViewLayer *view_layer)
 {
-  Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
+  Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
   DEG_make_active(depsgraph);
   BKE_scene_graph_update_tagged(depsgraph, bmain);
 }
@@ -2187,7 +2113,7 @@ void BKE_scene_free_depsgraph_hash(Scene *scene)
 
 /* Query depsgraph for a specific contexts. */
 
-Depsgraph *BKE_scene_get_depsgraph(Scene *scene, ViewLayer *view_layer, bool allocate)
+Depsgraph *BKE_scene_get_depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, bool allocate)
 {
   BLI_assert(scene != NULL);
   BLI_assert(view_layer != NULL);
@@ -2211,7 +2137,7 @@ Depsgraph *BKE_scene_get_depsgraph(Scene *scene, ViewLayer *view_layer, bool all
             scene->depsgraph_hash, &key, (void ***)&key_ptr, (void ***)&depsgraph_ptr)) {
       *key_ptr = MEM_mallocN(sizeof(DepsgraphKey), __func__);
       **key_ptr = key;
-      *depsgraph_ptr = DEG_graph_new(scene, view_layer, DAG_EVAL_VIEWPORT);
+      *depsgraph_ptr = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_VIEWPORT);
       /* TODO(sergey): Would be cool to avoid string format print,
        * but is a bit tricky because we can't know in advance  whether
        * we will ever enable debug messages for this depsgraph.

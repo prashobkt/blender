@@ -113,7 +113,8 @@ typedef struct BrushGpencilSettings {
   float gradient_f;
   /** factor xy of shape for dots gradients */
   float gradient_s[2];
-  char _pad_2[4];
+  /** Simplify adaptive factor */
+  float simplify_f;
 
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;
@@ -321,7 +322,7 @@ typedef struct Brush {
   char _pad1[4];
 
   int elastic_deform_type;
-  float elastic_deform_compressibility;
+  float elastic_deform_volume_preservation;
 
   /* overlay */
   int texture_overlay_alpha;
@@ -404,7 +405,7 @@ typedef enum eBrushFlags {
   BRUSH_JITTER_PRESSURE = (1 << 4),
   BRUSH_SPACING_PRESSURE = (1 << 5),
   BRUSH_FLAG_UNUSED_6 = (1 << 6), /* cleared */
-  BRUSH_FLAG_UNUSED_7 = (1 << 7), /* cleared */
+  BRUSH_GRAB_ACTIVE_VERTEX = (1 << 7),
   BRUSH_ANCHORED = (1 << 8),
   BRUSH_DIR_IN = (1 << 9),
   BRUSH_SPACE = (1 << 10),

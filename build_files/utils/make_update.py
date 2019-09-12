@@ -30,22 +30,6 @@ def parse_arguments():
     parser.add_argument("--git-command", default="git")
     return parser.parse_args()
 
-args = parse_arguments()
-no_libraries = args.no_libraries
-no_blender = args.no_blender
-no_submodules = args.no_submodules
-use_tests = args.use_tests
-git_command = args.git_command
-svn_command = args.svn_command
-svn_non_interactive = [args.svn_command, '--non-interactive']
-
-def print_stage(text):
-    print("")
-    print(text)
-    print("")
-
-# Test if we are building a specific release version.
-release_version = make_utils.git_branch_release_version(git_command)
 
 # Setup for precompiled libraries and tests from svn.
 def svn_update(args, release_version):
@@ -79,14 +63,14 @@ def svn_update(args, release_version):
             svn_url_platform = svn_url + lib_platform
             call(svn_non_interactive + ["checkout", svn_url_platform, lib_platform_dirpath])
 
-    if use_tests:
+    if args.use_tests:
         lib_tests = "tests"
         lib_tests_dirpath = os.path.join(lib_dirpath, lib_tests)
 
         if not os.path.exists(lib_tests_dirpath):
             print_stage("Checking out Tests")
 
-            if shutil.which(svn_command) is None:
+            if shutil.which(args.svn_command) is None:
                 sys.stderr.write("svn not found, can't checkout tests\n")
                 sys.exit(1)
 

@@ -2872,6 +2872,24 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
+        props = layout.operator("sculpt.mask_expand", text="Expand Mask By Topology")
+        props.use_normals = False
+        props.keep_previous_mask = False
+        props.invert = True
+        props.smooth_iterations = 2
+
+        props = layout.operator("sculpt.mask_expand", text="Expand Mask By Curvature")
+        props.use_normals = True
+        props.keep_previous_mask = True
+        props.invert = False
+        props.smooth_iterations = 0
+
+        layout.separator()
+
+        props = layout.operator("mesh.paint_mask_extract", text="Mask Extract")
+
+        layout.separator()
+
         props = layout.operator("sculpt.dirty_mask", text='Dirty Mask')
 
 
@@ -5981,14 +5999,6 @@ class VIEW3D_PT_pivot_point(Panel):
         col = layout.column()
         col.label(text="Pivot Point")
         col.prop(tool_settings, "transform_pivot_point", expand=True)
-
-        if (obj is None) or (mode in {'OBJECT', 'POSE', 'WEIGHT_PAINT'}):
-            col.separator()
-
-            col.label(text="Affect Only")
-            col.prop(tool_settings, "use_transform_data_origin", text="Origins")
-            col.prop(tool_settings, "use_transform_pivot_point_align", text="Locations")
-            col.prop(tool_settings, "use_transform_skip_children", text="Parents (Skip Children)")
 
 
 class VIEW3D_PT_snapping(Panel):
