@@ -5799,10 +5799,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
         }
       }
     }
-    else if (md->type == eModifierType_FeatureLine) {
-      FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-      UNUSED_VARS(flmd);
-    }
   }
 }
 

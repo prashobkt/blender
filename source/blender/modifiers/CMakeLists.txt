@@ -57,7 +57,6 @@ set(SRC
   intern/MOD_explode.c
   intern/MOD_fluidsim.c
   intern/MOD_fluidsim_util.c
-  intern/MOD_featureline.c
   intern/MOD_hook.c
   intern/MOD_laplaciandeform.c
   intern/MOD_laplaciansmooth.c

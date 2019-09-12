@@ -1741,11 +1741,8 @@ static void lanpr_make_render_geometry_buffers_object(
 
 static int lanpr_object_has_feature_line_modifier(Object *o)
 {
-  ModifierData *md;
-  for (md = o->modifiers.first; md; md = md->next) {
-    if (md->type == eModifierType_FeatureLine) {
-      return 1;
-    }
+  if(o->lanpr.usage==OBJECT_FEATURE_LINE_INCLUDE){
+    return 1;
   }
   return 0;
 }
@@ -2697,20 +2694,16 @@ static int lanpr_max_occlusion_in_targets(Depsgraph *depsgraph)
                          o,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    ModifierData *md;
-    for (md = o->modifiers.first; md; md = md->next) {
-      if (md->type == eModifierType_FeatureLine) {
-        FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-        if (flmd->target) {
-          if (flmd->use_multiple_levels) {
-            max = MAX2(flmd->level_start, flmd->level_end);
-          }
-          else {
-            max = flmd->level_start;
-          }
-          max_occ = MAX2(max, max_occ);
-        }
+    
+    ObjectLANPR* obl = &o->lanpr;
+    if (obl->target) {
+      if (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) {
+        max = MAX2(obl->level_start, obl->level_end);
       }
+      else {
+        max = obl->level_start;
+      }
+      max_occ = MAX2(max, max_occ);
     }
   }
   DEG_OBJECT_ITER_END;
@@ -3952,7 +3945,26 @@ bool ED_lanpr_dpix_shader_error()
   return lanpr_share.dpix_shader_error;
 }
 
-/* GPencil bindings */
+/* Grease Pencil bindings */
+
+/* returns flags from LANPR_EdgeFlag */
+static int lanpr_object_line_types(Object* ob){
+  ObjectLANPR* obl = &ob->lanpr;
+  int result=0;
+  if(obl->contour.use){
+    result |= LANPR_EDGE_FLAG_CONTOUR;
+  }
+  if(obl->crease.use){
+    result |= LANPR_EDGE_FLAG_CREASE;
+  }
+  if(obl->material.use){
+    result |= LANPR_EDGE_FLAG_MATERIAL;
+  }
+  if(obl->edge_mark.use){
+    result |= LANPR_EDGE_FLAG_EDGE_MARK;
+  }
+  return result;
+}
 
 static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                               Object *ob,
@@ -4063,52 +4075,50 @@ static void lanpr_update_gp_strokes_recursive(
 
   for (co = col->gobject.first; co || source_only; co = co->next) {
     ob = source_only ? source_only : co->ob;
-    for (md = ob->modifiers.first; md; md = md->next) {
-      if (md->type == eModifierType_FeatureLine) {
-        FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-        if (flmd->target && flmd->target->type == OB_GPENCIL) {
-          gpobj = flmd->target;
 
-          if (target_only && target_only != gpobj) {
-            continue;
-          }
+    ObjectLANPR *obl = &ob->lanpr;
+    if (obl->target && obl->target->type == OB_GPENCIL) {
+      gpobj = obl->target;
 
-          gpd = gpobj->data;
-          gpl = BKE_gpencil_layer_get_by_name(gpd, flmd->target_layer, 1);
-          if (!gpl) {
-            gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
-          }
-          gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
-
-          if (gpf->strokes.first &&
-              !(lanpr_share.render_buffer_shared->scene->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {
-            continue;
-          }
-
-          if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
-            BKE_gpencil_free_strokes(gpf);
-            gpf->flag |= GP_FRAME_LANPR_CLEARED;
-          }
-          
-          int use_material = BKE_gpencil_object_material_get_index_name(ob, flmd->target_material);
-          if (use_material<0){
-            use_material = 0;
-          }
-
-          lanpr_generate_gpencil_from_chain(dg,
-                                            ob,
-                                            gpl,
-                                            gpf,
-                                            flmd->level_start,
-                                            flmd->use_multiple_levels ? flmd->level_end :
-                                                                        flmd->level_start,
-                                            use_material,
-                                            NULL,
-                                            flmd->types);
-          DEG_id_tag_update(&gpd->id,
-                            ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-        }
+      if (target_only && target_only != gpobj) {
+        continue;
       }
+
+      gpd = gpobj->data;
+      gpl = BKE_gpencil_layer_get_by_name(gpd, obl->target_layer, 1);
+      if (!gpl) {
+        gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
+      }
+      gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+
+      if (gpf->strokes.first &&
+          !(lanpr_share.render_buffer_shared->scene->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {
+        continue;
+      }
+
+      if (!(gpf->flag & GP_FRAME_LANPR_CLEARED)) {
+        BKE_gpencil_free_strokes(gpf);
+        gpf->flag |= GP_FRAME_LANPR_CLEARED;
+      }
+      
+      int use_material = BKE_gpencil_object_material_get_index_name(ob, obl->target_material);
+      if (use_material<0){
+        use_material = 0;
+      }
+
+      lanpr_generate_gpencil_from_chain(dg,
+                                        ob,
+                                        gpl,
+                                        gpf,
+                                        obl->level_start,
+                                        (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? 
+                                                                  obl->level_end :
+                                                                  obl->level_start,
+                                        use_material,
+                                        NULL,
+                                        lanpr_object_line_types(ob));
+      DEG_id_tag_update(&gpd->id,
+                        ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
     }
     if (source_only) {
       return;
@@ -4294,11 +4304,8 @@ static bool lanpr_active_is_source_object(bContext *C)
     return false;
   }
   else {
-    ModifierData *md;
-    for (md = o->modifiers.first; md; md = md->next) {
-      if (md->type == eModifierType_FeatureLine) {
-        return true;
-      }
+    if(o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE){
+      return true;
     }
   }
   return false;

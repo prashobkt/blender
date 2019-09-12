@@ -186,15 +186,39 @@ typedef struct Object_Runtime {
   void *_pad2; /* Padding is here for win32s unconventional struct alignment rules. */
 } Object_Runtime;
 
+typedef struct ObjectLANPRType{
+  int use;
+  char _pad[4];
+  char target_layer[128];
+  char target_material[128];
+} ObjectLANPRType;
+
 typedef struct ObjectLANPR {
   int usage;
-  char _pad[4];
+
+  /* Separate flags for LANPR shared flag values. */
+  int flags;
+  
+  struct Object *target;
+  char target_layer[128];
+  char target_material[128];
+
+  ObjectLANPRType crease;
+  ObjectLANPRType contour;
+  ObjectLANPRType material;
+  ObjectLANPRType edge_mark;
+  
+  /* Intersection not implemented as per-object */
+
+  int level_start;
+  int level_end;
 } ObjectLANPR;
 
 enum ObjectFeatureLine_Usage {
   OBJECT_FEATURE_LINE_INHERENT = 0,
-  OBJECT_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
-  OBJECT_FEATURE_LINE_EXCLUDE = (1 << 1),
+  OBJECT_FEATURE_LINE_INCLUDE = (1 << 0),
+  OBJECT_FEATURE_LINE_OCCLUSION_ONLY = (1 << 1),
+  OBJECT_FEATURE_LINE_EXCLUDE = (1 << 2),
 };
 
 typedef struct Object {

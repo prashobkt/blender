@@ -32,80 +32,50 @@ class LanprButtonsPanel:
     def poll(cls, context):
         return True
 
-def find_feature_line_modifier(ob):
-    for md in ob.modifiers:
-        if md.type=='FEATURE_LINE':
-            return md
-    return None
-
-def is_unit_transformation(ob):
-    if ob.scale.xyz==Vector((1,1,1)) and ob.location.xyz==Vector((0,0,0)) and \
-        ob.rotation_euler.x == 0.0 and ob.rotation_euler.y == 0.0 and ob.rotation_euler.z == 0.0:
-        return True
-    return False
+def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
+    col.prop(line_type, "use", text=text_disp)
+    if expand:
+        col.prop_search(line_type, "layer", search_from, "layers")
+        col.prop_search(line_type, "material",  search_from, "materials")
 
 class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
-    bl_label = "Feature Line Modifier"
+    bl_label = "LANPR settings"
 
     @classmethod
     def poll(cls, context):
-        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
+        ob = context.object
+        obl = ob.lanpr
+        return (context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled) and\
+            obl.usage == 'INCLUDE' and obl.target
 
     def draw(self,context):
         collection = context.collection
         lanpr = collection.lanpr
         ob = context.object
-        md = find_feature_line_modifier(ob)
+        obl = ob.lanpr
 
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-
-        if not md:
-            layout.label(text="No feature line modifier for this object.")
-            return
         
-        layout.prop(md,'use_multiple_levels', text="Multiple Levels")
-        if md.use_multiple_levels:
+        layout.prop(obl,'use_multiple_levels', text="Multiple Levels")
+        if obl.use_multiple_levels:
             col = layout.column(align=True)
-            col.prop(md,'level_start')
-            col.prop(md,'level_end', text="End")
+            col.prop(obl,'level_start')
+            col.prop(obl,'level_end', text="End")
         else:
-            layout.prop(md,'level_start', text="Level")
-
-        layout.prop(md,'use_contour')
-        layout.prop(md,'use_crease')
-        layout.prop(md,'enable_mark')
-        layout.prop(md,'use_material')
-        layout.prop(md,'use_intersection')
-        layout.prop(md,'enable_modifier_mark')
-
-class OBJECT_PT_lanpr_modifier_target(LanprButtonsPanel, Panel):
-    bl_label = "Grease Pencil"
-    bl_parent_id = "OBJECT_PT_lanpr_settings"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        ob = context.object
-        return (scene.render.engine=="BLENDER_LANPR" or lanpr.enabled) and find_feature_line_modifier(ob)
-
-    def draw(self, context):
-        lanpr = context.scene.lanpr
-        ob = context.object
-        md = find_feature_line_modifier(ob)
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        layout.prop(md, "target")
+            layout.prop(obl,'level_start', text="Level")
         
-        if md.target:
-            layout.prop_search(md, 'layer', md.target.data, "layers", icon='GREASEPENCIL')
-            layout.prop_search(md, 'material', md.target.data, "materials", icon='SHADING_TEXTURE')
+        layout.prop(obl,'use_same_style')
+        if obl.use_same_style:
+            layout.prop_search(obl, 'target_layer', obl.target.data, "layers", icon='GREASEPENCIL')
+            layout.prop_search(obl, 'target_material', obl.target.data, "materials", icon='SHADING_TEXTURE')
+        
+        expand = not obl.use_same_style
+        lanpr_make_line_type_entry(layout, obl.contour, "Contour", expand, obl.target.data)
+        lanpr_make_line_type_entry(layout, obl.crease, "Crease", expand, obl.target.data)
+        lanpr_make_line_type_entry(layout, obl.material, "Material", expand, obl.target.data)
+        lanpr_make_line_type_entry(layout, obl.edge_mark, "Edge Mark", expand, obl.target.data)
 
 
 class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):
@@ -120,12 +90,13 @@ class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):
         lanpr = context.object.lanpr
         if context.object.type == 'MESH':
             layout.prop(lanpr,'usage')
+            if lanpr.usage == 'INCLUDE':
+                layout.prop(lanpr, "target")
 
 
 classes = (
     OBJECT_PT_lanpr,
     OBJECT_PT_lanpr_settings,
-    OBJECT_PT_lanpr_modifier_target,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -104,11 +104,6 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_WIREFRAME,
      "Wireframe",
      "Generate a wireframe on the edges of a mesh"},
-    {eModifierType_FeatureLine,
-     "FEATURE_LINE",
-     ICON_MOD_WIREFRAME,
-     "Feature Line",
-     "Extract feature lines into an GPencil object target"},
     {0, "", 0, N_("Deform"), ""},
     {eModifierType_Armature, "ARMATURE", ICON_MOD_ARMATURE, "Armature", ""},
     {eModifierType_Cast, "CAST", ICON_MOD_CAST, "Cast", ""},
@@ -578,8 +573,6 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
       return &RNA_SurfaceDeformModifier;
     case eModifierType_WeightedNormal:
       return &RNA_WeightedNormalModifier;
-    case eModifierType_FeatureLine:
-      return &RNA_FeatureLineModifier;
     /* Default */
     case eModifierType_None:
     case eModifierType_ShapeKey:
@@ -5997,84 +5990,6 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
-static void rna_def_modifier_featureline(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "FeatureLineModifier", "Modifier");
-  RNA_def_struct_ui_text(
-      srna, "Feature Line Modifier", "To extract feature lines from a mesh using LANPR");
-  RNA_def_struct_sdna(srna, "FeatureLineModifierData");
-  RNA_def_struct_ui_icon(srna, ICON_MOD_WIREFRAME);
-
-  prop = RNA_def_property(srna, "use_contour", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_CONTOUR);
-  RNA_def_property_ui_text(prop, "Contour", "Contour lines");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "use_crease", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_CREASE);
-  RNA_def_property_ui_text(prop, "Crease", "Crease lines");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "enable_mark", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_MARK);
-  RNA_def_property_ui_text(prop, "Mark", "Marked NPR edges");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "use_material", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_MATERIAL);
-  RNA_def_property_ui_text(prop, "Material", "Material lines");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "use_intersection", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_INTERSECTION);
-  RNA_def_property_ui_text(prop, "Intersection", "Intersection lines");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "enable_modifier_mark", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", MOD_FEATURE_LINE_MODIFIER_MARK);
-  RNA_def_property_ui_text(prop, "Modifier Mark", "Modifier mark lines");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "target");
-  RNA_def_property_ui_text(prop, "Target", "GPencil object to put the stroke result");
-  RNA_def_property_pointer_funcs(prop, NULL, NULL, NULL, "rna_GPencil_object_poll");
-  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
-  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
-
-  prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "target_layer");
-  RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
-
-  prop = RNA_def_property(srna, "material", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "target_material");
-  RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
-
-  prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);
-  RNA_def_property_ui_text(prop, "Multiple Levels", "Use multiple occlusion levels");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 255);
-  RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "Level Start", "Occlusion level start");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-
-  prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 255);
-  RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "Level End", "Occlusion level end");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
-}
-
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -6200,7 +6115,6 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_meshseqcache(brna);
   rna_def_modifier_surfacedeform(brna);
   rna_def_modifier_weightednormal(brna);
-  rna_def_modifier_featureline(brna);
 }
 
 #endif
