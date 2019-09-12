@@ -150,8 +150,8 @@ struct bGPDframe *BKE_gpencil_layer_find_frame(struct bGPDlayer *gpl, int cframe
 bool BKE_gpencil_layer_delframe(struct bGPDlayer *gpl, struct bGPDframe *gpf);
 
 struct bGPDlayer *BKE_gpencil_layer_get_by_name(struct bGPdata *gpd,
-                                              char* name,
-                                              int first_if_not_found);
+                                                char *name,
+                                                int first_if_not_found);
 
 struct bGPDlayer *BKE_gpencil_layer_getactive(struct bGPdata *gpd);
 void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);
@@ -178,7 +178,7 @@ struct Material *BKE_gpencil_object_material_new(struct Main *bmain,
 
 int BKE_gpencil_object_material_get_index(struct Object *ob, struct Material *ma);
 
-int BKE_gpencil_object_material_get_index_name(struct Object *ob, char* name);
+int BKE_gpencil_object_material_get_index_name(struct Object *ob, char *name);
 
 struct Material *BKE_gpencil_object_material_get_from_brush(struct Object *ob,
                                                             struct Brush *brush);

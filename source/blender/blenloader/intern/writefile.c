@@ -2699,7 +2699,7 @@ static void write_scene(WriteData *wd, Scene *sce)
       writestruct(wd, DATA, LANPR_LineLayerComponent, 1, llc);
     }
   }
-  
+
   write_view3dshading(wd, &sce->display.shading);
 
   /* Freed on doversion. */

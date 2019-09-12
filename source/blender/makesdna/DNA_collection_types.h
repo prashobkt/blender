@@ -50,7 +50,7 @@ enum CollectionFeatureLine_Usage {
   COLLECTION_FEATURE_LINE_EXCLUDE = (1 << 1),
 };
 
-typedef struct CollectionLANPRLineType{
+typedef struct CollectionLANPRLineType {
   int use;
   char _pad[4];
   char target_layer[128];

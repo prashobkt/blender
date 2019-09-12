@@ -385,16 +385,25 @@ static void rna_def_collection_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "material", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "target_material");
-  RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
+  RNA_def_property_ui_text(
+      prop, "Material", "Grease Pencil material to use to generate the results");
 
   static const EnumPropertyItem rna_collection_lanpr_usage[] = {
-      {COLLECTION_FEATURE_LINE_INCLUDE, "INCLUDE", 0, "Include", "Collection will produce feature lines"},
+      {COLLECTION_FEATURE_LINE_INCLUDE,
+       "INCLUDE",
+       0,
+       "Include",
+       "Collection will produce feature lines"},
       {COLLECTION_FEATURE_LINE_OCCLUSION_ONLY,
        "OCCLUSION_ONLY",
        0,
        "Occlusion Only",
        "Only use the collection to produce occlusion"},
-      {COLLECTION_FEATURE_LINE_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
+      {COLLECTION_FEATURE_LINE_EXCLUDE,
+       "EXCLUDE",
+       0,
+       "Exclude",
+       "Don't use this collection in LANPR"},
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "CollectionLANPR", NULL);
@@ -425,7 +434,8 @@ static void rna_def_collection_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
 
   prop = RNA_def_property(srna, "target_material", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
+  RNA_def_property_ui_text(
+      prop, "Material", "Grease Pencil material to use to generate the results");
 
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);

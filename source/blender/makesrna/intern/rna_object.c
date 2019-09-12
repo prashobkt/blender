@@ -2389,7 +2389,8 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "material", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "target_material");
-  RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
+  RNA_def_property_ui_text(
+      prop, "Material", "Grease Pencil material to use to generate the results");
 
   static EnumPropertyItem prop_feature_line_usage_items[] = {
       {OBJECT_FEATURE_LINE_INHERENT,
@@ -2397,7 +2398,7 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
        0,
        "Inhereit",
        "Follow settings from the parent collection"},
-       {OBJECT_FEATURE_LINE_INCLUDE,
+      {OBJECT_FEATURE_LINE_INCLUDE,
        "INCLUDE",
        0,
        "Include",
@@ -2430,14 +2431,15 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
 
   prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop,NULL,"flags",LANPR_LINE_LAYER_REPLACE_STROKES);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_REPLACE_STROKES);
   RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
 
   prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
 
   prop = RNA_def_property(srna, "target_material", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
+  RNA_def_property_ui_text(
+      prop, "Material", "Grease Pencil material to use to generate the results");
 
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);

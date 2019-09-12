@@ -187,7 +187,7 @@ typedef struct Object_Runtime {
   void *_pad2; /* Padding is here for win32s unconventional struct alignment rules. */
 } Object_Runtime;
 
-typedef struct ObjectLANPRLineType{
+typedef struct ObjectLANPRLineType {
   int use;
   char _pad[4];
   char target_layer[128];
@@ -199,7 +199,7 @@ typedef struct ObjectLANPR {
 
   /* Separate flags for LANPR shared flag values. */
   int flags;
-  
+
   struct Object *target;
   char target_layer[128];
   char target_material[128];

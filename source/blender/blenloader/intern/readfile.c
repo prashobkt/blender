@@ -7022,7 +7022,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     ll->shgrp = NULL;
     // ll->normal_control_object = newlibadr(fd, sce->id.lib, ll->normal_control_object);
   }
-  
+
   direct_link_view3dshading(fd, &sce->display.shading);
 
   sce->layer_properties = newdataadr(fd, sce->layer_properties);

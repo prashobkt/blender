@@ -1741,7 +1741,7 @@ static void lanpr_make_render_geometry_buffers_object(
 
 static int lanpr_object_has_feature_line_modifier(Object *o)
 {
-  if(o->lanpr.usage==OBJECT_FEATURE_LINE_INCLUDE){
+  if (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE) {
     return 1;
   }
   return 0;
@@ -1753,7 +1753,8 @@ int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
   int object_is_used = (lanpr_object_has_feature_line_modifier(o) &&
                         o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT);
 
-  if (object_is_used && (c->lanpr.flags&LANPR_LINE_LAYER_COLLECTION_FORCE) && c->lanpr.usage != COLLECTION_FEATURE_LINE_INCLUDE) {
+  if (object_is_used && (c->lanpr.flags & LANPR_LINE_LAYER_COLLECTION_FORCE) &&
+      c->lanpr.usage != COLLECTION_FEATURE_LINE_INCLUDE) {
     if (BKE_collection_has_object_recursive(c, o)) {
       if (c->lanpr.usage == COLLECTION_FEATURE_LINE_EXCLUDE) {
         return OBJECT_FEATURE_LINE_EXCLUDE;
@@ -2296,12 +2297,12 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
   LANPR_RenderVert *TE1 = 0;
   LANPR_RenderVert *TE2 = 0;
   tnsVector3d cl; /*  rb->scene->ActiveCamera->gloc; */
-  real ZMax = ((Camera *)rb->scene->camera->data)->clip_end;
-  real ZMin = ((Camera *)rb->scene->camera->data)->clip_start;
+  real ZMax = ((Camera *)rb->camera->data)->clip_end;
+  real ZMin = ((Camera *)rb->camera->data)->clip_start;
   LANPR_RenderVert *Share = lanpr_triangle_share_point(testing, rt);
-  Camera *cam = rb->scene->camera->data;
+  Camera *cam = rb->camera->data;
 
-  copy_v3db_v3fl(cl, rb->scene->camera->obmat[3]);
+  copy_v3db_v3fl(cl, rb->camera->obmat[3]);
 
   if (Share) {
     LANPR_RenderVert *NewShare;
@@ -2694,8 +2695,8 @@ static int lanpr_max_occlusion_in_targets(Depsgraph *depsgraph)
                          o,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    
-    ObjectLANPR* obl = &o->lanpr;
+
+    ObjectLANPR *obl = &o->lanpr;
     if (obl->target) {
       if (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) {
         max = MAX2(obl->level_start, obl->level_end);
@@ -3776,6 +3777,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   lanpr_share.render_buffer_shared = rb;
 
   rb->scene = s;
+  rb->camera = s->camera;
   rb->w = s->r.xsch;
   rb->h = s->r.ysch;
   rb->use_intersections = (lanpr->flags & LANPR_USE_INTERSECTIONS);
@@ -3948,19 +3950,20 @@ bool ED_lanpr_dpix_shader_error()
 /* Grease Pencil bindings */
 
 /* returns flags from LANPR_EdgeFlag */
-static int lanpr_object_line_types(Object* ob){
-  ObjectLANPR* obl = &ob->lanpr;
-  int result=0;
-  if(obl->contour.use){
+static int lanpr_object_line_types(Object *ob)
+{
+  ObjectLANPR *obl = &ob->lanpr;
+  int result = 0;
+  if (obl->contour.use) {
     result |= LANPR_EDGE_FLAG_CONTOUR;
   }
-  if(obl->crease.use){
+  if (obl->crease.use) {
     result |= LANPR_EDGE_FLAG_CREASE;
   }
-  if(obl->material.use){
+  if (obl->material.use) {
     result |= LANPR_EDGE_FLAG_MATERIAL;
   }
-  if(obl->edge_mark.use){
+  if (obl->edge_mark.use) {
     result |= LANPR_EDGE_FLAG_EDGE_MARK;
   }
   return result;
@@ -4062,15 +4065,16 @@ static void lanpr_clear_gp_lanpr_flags(Depsgraph *dg, int frame)
   DEG_OBJECT_ITER_END;
 }
 static void lanpr_update_gp_strokes_single(Depsgraph *dg,
-                                            Object* gpobj,
-                                            Object *ob,
-                                            int frame,
-                                            int level_start,
-                                            int level_end,
-                                            char* target_layer,
-                                            char* target_material,
-                                            Collection* col,
-                                            int type){
+                                           Object *gpobj,
+                                           Object *ob,
+                                           int frame,
+                                           int level_start,
+                                           int level_end,
+                                           char *target_layer,
+                                           char *target_material,
+                                           Collection *col,
+                                           int type)
+{
   bGPdata *gpd;
   bGPDlayer *gpl;
   bGPDframe *gpf;
@@ -4091,13 +4095,14 @@ static void lanpr_update_gp_strokes_single(Depsgraph *dg,
     BKE_gpencil_free_strokes(gpf);
     gpf->flag |= GP_FRAME_LANPR_CLEARED;
   }
-  
+
   int use_material = BKE_gpencil_object_material_get_index_name(gpobj, target_material);
-  if (use_material<0){
+  if (use_material < 0) {
     use_material = 0;
   }
 
-  lanpr_generate_gpencil_from_chain(dg, ob, gpl, gpf, level_start, level_end, use_material, col, type);
+  lanpr_generate_gpencil_from_chain(
+      dg, ob, gpl, gpf, level_start, level_end, use_material, col, type);
 }
 static void lanpr_update_gp_strokes_recursive(
     Depsgraph *dg, struct Collection *col, int frame, Object *source_only, Object *target_only)
@@ -4123,27 +4128,69 @@ static void lanpr_update_gp_strokes_recursive(
       }
 
       int level_start = obl->level_start;
-      int level_end = (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? obl->level_end : obl->level_start;
+      int level_end = (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? obl->level_end :
+                                                                            obl->level_start;
 
-      if(obl->flags & LANPR_LINE_LAYER_USE_SAME_STYLE){
-        lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
-          obl->target_layer,obl->target_material,NULL,lanpr_object_line_types(ob));
-      }else{
-        if(obl->contour.use){
-          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
-            obl->contour.target_layer,obl->contour.target_material,NULL,LANPR_EDGE_FLAG_CONTOUR);
+      if (obl->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) {
+        lanpr_update_gp_strokes_single(dg,
+                                       gpobj,
+                                       ob,
+                                       frame,
+                                       level_start,
+                                       level_end,
+                                       obl->target_layer,
+                                       obl->target_material,
+                                       NULL,
+                                       lanpr_object_line_types(ob));
+      }
+      else {
+        if (obl->contour.use) {
+          lanpr_update_gp_strokes_single(dg,
+                                         gpobj,
+                                         ob,
+                                         frame,
+                                         level_start,
+                                         level_end,
+                                         obl->contour.target_layer,
+                                         obl->contour.target_material,
+                                         NULL,
+                                         LANPR_EDGE_FLAG_CONTOUR);
         }
-        if(obl->crease.use){
-          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
-            obl->crease.target_layer,obl->crease.target_material,NULL,LANPR_EDGE_FLAG_CREASE);
+        if (obl->crease.use) {
+          lanpr_update_gp_strokes_single(dg,
+                                         gpobj,
+                                         ob,
+                                         frame,
+                                         level_start,
+                                         level_end,
+                                         obl->crease.target_layer,
+                                         obl->crease.target_material,
+                                         NULL,
+                                         LANPR_EDGE_FLAG_CREASE);
         }
-        if(obl->material.use){
-          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
-            obl->material.target_layer,obl->material.target_material,NULL,LANPR_EDGE_FLAG_MATERIAL);
+        if (obl->material.use) {
+          lanpr_update_gp_strokes_single(dg,
+                                         gpobj,
+                                         ob,
+                                         frame,
+                                         level_start,
+                                         level_end,
+                                         obl->material.target_layer,
+                                         obl->material.target_material,
+                                         NULL,
+                                         LANPR_EDGE_FLAG_MATERIAL);
         }
-        if(obl->edge_mark.use){
-          lanpr_update_gp_strokes_single(dg,gpobj,ob,frame,level_start,level_end,
-            obl->edge_mark.target_layer,obl->edge_mark.target_material,NULL,LANPR_EDGE_FLAG_EDGE_MARK);
+        if (obl->edge_mark.use) {
+          lanpr_update_gp_strokes_single(dg,
+                                         gpobj,
+                                         ob,
+                                         frame,
+                                         level_start,
+                                         level_end,
+                                         obl->edge_mark.target_layer,
+                                         obl->edge_mark.target_material,
+                                         NULL,
+                                         LANPR_EDGE_FLAG_EDGE_MARK);
         }
       }
 
@@ -4158,22 +4205,23 @@ static void lanpr_update_gp_strokes_recursive(
     lanpr_update_gp_strokes_recursive(dg, cc->collection, frame, source_only, target_only);
   }
 }
-static int lanpr_collection_types(Collection* c){
-  CollectionLANPR* cl = &c->lanpr;
+static int lanpr_collection_types(Collection *c)
+{
+  CollectionLANPR *cl = &c->lanpr;
   int result = 0;
-  if(cl->contour.use){
+  if (cl->contour.use) {
     result |= LANPR_EDGE_FLAG_CONTOUR;
   }
-  if(cl->crease.use){
+  if (cl->crease.use) {
     result |= LANPR_EDGE_FLAG_CREASE;
   }
-  if(cl->material.use){
+  if (cl->material.use) {
     result |= LANPR_EDGE_FLAG_MATERIAL;
   }
-  if(cl->edge_mark.use){
+  if (cl->edge_mark.use) {
     result |= LANPR_EDGE_FLAG_EDGE_MARK;
   }
-  if(cl->intersection.use){
+  if (cl->intersection.use) {
     result |= LANPR_EDGE_FLAG_INTERSECTION;
   }
   return result;
@@ -4204,33 +4252,83 @@ static void lanpr_update_gp_strokes_collection(
     return;
   }
 
-  CollectionLANPR* cl = &col->lanpr;
+  CollectionLANPR *cl = &col->lanpr;
   int level_start = cl->level_start;
-  int level_end = (cl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? cl->level_end : cl->level_start;
+  int level_end = (cl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? cl->level_end :
+                                                                       cl->level_start;
 
-  if(cl->flags & LANPR_LINE_LAYER_USE_SAME_STYLE){
-    lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
-      cl->target_layer,cl->target_material,col,lanpr_collection_types(col));
-  }else{
-    if(cl->contour.use){
-      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
-        cl->contour.target_layer,cl->contour.target_material,col,LANPR_EDGE_FLAG_CONTOUR);
+  if (cl->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) {
+    lanpr_update_gp_strokes_single(dg,
+                                   gpobj,
+                                   NULL,
+                                   frame,
+                                   level_start,
+                                   level_end,
+                                   cl->target_layer,
+                                   cl->target_material,
+                                   col,
+                                   lanpr_collection_types(col));
+  }
+  else {
+    if (cl->contour.use) {
+      lanpr_update_gp_strokes_single(dg,
+                                     gpobj,
+                                     NULL,
+                                     frame,
+                                     level_start,
+                                     level_end,
+                                     cl->contour.target_layer,
+                                     cl->contour.target_material,
+                                     col,
+                                     LANPR_EDGE_FLAG_CONTOUR);
     }
-    if(cl->crease.use){
-      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
-        cl->crease.target_layer,cl->crease.target_material,col,LANPR_EDGE_FLAG_CREASE);
+    if (cl->crease.use) {
+      lanpr_update_gp_strokes_single(dg,
+                                     gpobj,
+                                     NULL,
+                                     frame,
+                                     level_start,
+                                     level_end,
+                                     cl->crease.target_layer,
+                                     cl->crease.target_material,
+                                     col,
+                                     LANPR_EDGE_FLAG_CREASE);
     }
-    if(cl->material.use){
-      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
-        cl->material.target_layer,cl->material.target_material,col,LANPR_EDGE_FLAG_MATERIAL);
+    if (cl->material.use) {
+      lanpr_update_gp_strokes_single(dg,
+                                     gpobj,
+                                     NULL,
+                                     frame,
+                                     level_start,
+                                     level_end,
+                                     cl->material.target_layer,
+                                     cl->material.target_material,
+                                     col,
+                                     LANPR_EDGE_FLAG_MATERIAL);
     }
-    if(cl->edge_mark.use){
-      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
-        cl->edge_mark.target_layer,cl->edge_mark.target_material,col,LANPR_EDGE_FLAG_EDGE_MARK);
+    if (cl->edge_mark.use) {
+      lanpr_update_gp_strokes_single(dg,
+                                     gpobj,
+                                     NULL,
+                                     frame,
+                                     level_start,
+                                     level_end,
+                                     cl->edge_mark.target_layer,
+                                     cl->edge_mark.target_material,
+                                     col,
+                                     LANPR_EDGE_FLAG_EDGE_MARK);
     }
-    if(cl->intersection.use){
-      lanpr_update_gp_strokes_single(dg,gpobj,NULL,frame,level_start,level_end,
-        cl->intersection.target_layer,cl->intersection.target_material,col,LANPR_EDGE_FLAG_INTERSECTION);
+    if (cl->intersection.use) {
+      lanpr_update_gp_strokes_single(dg,
+                                     gpobj,
+                                     NULL,
+                                     frame,
+                                     level_start,
+                                     level_end,
+                                     cl->intersection.target_layer,
+                                     cl->intersection.target_material,
+                                     col,
+                                     LANPR_EDGE_FLAG_INTERSECTION);
     }
   }
 
@@ -4352,7 +4450,7 @@ static bool lanpr_active_is_source_object(bContext *C)
     return false;
   }
   else {
-    if(o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE){
+    if (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE) {
       return true;
     }
   }
