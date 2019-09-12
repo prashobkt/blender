@@ -1473,7 +1473,8 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     if (DEG_is_fully_evaluated(depsgraph)) {
       break;
     }
-
+  }
+  
   /* TODO(sergey): Some functions here are changing global state,
    * for example, clearing update tags from bmain.
    */
@@ -1489,10 +1490,6 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
   DEG_evaluate_on_refresh(bmain, depsgraph);
   /* Update sound system. */
   BKE_scene_update_sound(depsgraph, bmain);
-  /* Notify python about depsgraph update. */
-  if (run_callbacks) {
-    BLI_callback_exec(bmain, &scene->id, BLI_CB_EVT_DEPSGRAPH_UPDATE_POST);
-  }
 }
 
 void BKE_scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain)

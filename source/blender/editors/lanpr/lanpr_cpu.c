@@ -55,7 +55,6 @@
 #include "RNA_define.h"
 
 #include "BLI_math.h"
-#include "BLI_callbacks.h"
 #include "BLI_string_utils.h"
 
 #include "bmesh.h"

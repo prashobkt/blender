@@ -769,7 +769,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
 def lanpr_make_line_type(expand,layout,line_type,label):
     layout.prop(line_type, "use", text=label)
-    if expand and line_type.enabled:
+    if expand and line_type.use:
         c = layout.column(align=True)
         c.prop(line_type, "color", text="Color")
         c.prop(line_type, "thickness", slider=True)
