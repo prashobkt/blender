@@ -392,7 +392,7 @@ int BlenderFileLoader::testDegenerateTriangle(float v1[3], float v2[3], float v3
   return 0;
 }
 
-static bool testEdgeMark(Mesh *me, LanprEdge *fed, const MLoopTri *lt, int i)
+static bool testEdgeMark(Mesh *me, FreestyleEdge *fed, const MLoopTri *lt, int i)
 {
   MLoop *mloop = &me->mloop[lt->tri[i]];
   MLoop *mloop_next = &me->mloop[lt->tri[(i + 1) % 3]];
@@ -403,7 +403,7 @@ static bool testEdgeMark(Mesh *me, LanprEdge *fed, const MLoopTri *lt, int i)
     return false;
   }
 
-  return (fed[mloop->e].flag & LANPR_EDGE_MARK) != 0;
+  return (fed[mloop->e].flag & FREESTYLE_EDGE_MARK) != 0;
 }
 
 void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
@@ -427,8 +427,8 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
   MVert *mvert = me->mvert;
   MLoop *mloop = me->mloop;
   MPoly *mpoly = me->mpoly;
-  LanprEdge *fed = (LanprEdge *)CustomData_get_layer(&me->edata, CD_LANPR_EDGE);
-  LanprFace *ffa = (LanprFace *)CustomData_get_layer(&me->pdata, CD_LANPR_FACE);
+  FreestyleEdge *fed = (FreestyleEdge *)CustomData_get_layer(&me->edata, CD_FREESTYLE_EDGE);
+  FreestyleFace *ffa = (FreestyleFace *)CustomData_get_layer(&me->pdata, CD_FREESTYLE_FACE);
 
   // Compute view matrix
   Object *ob_camera_eval = DEG_get_evaluated_object(_depsgraph, RE_GetCamera(_re));
@@ -559,7 +559,7 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
       continue;
     }
 
-    bool fm = (ffa) ? (ffa[lt->poly].flag & LANPR_FACE_MARK) != 0 : false;
+    bool fm = (ffa) ? (ffa[lt->poly].flag & FREESTYLE_FACE_MARK) != 0 : false;
     bool em1 = false, em2 = false, em3 = false;
 
     if (fed) {

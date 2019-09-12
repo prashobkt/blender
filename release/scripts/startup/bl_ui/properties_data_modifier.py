@@ -1641,12 +1641,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "thresh", text="Threshold")
         col.prop(md, "face_influence")
 
-    def FEATURE_LINE(self, layout, _ob, _md):
-        if not (bpy.context.scene.render.engine == "BLENDER_LANPR" or bpy.context.scene.lanpr.enabled):
-            layout.label(text="LANPR is disabled.")
-        else:
-            layout.label(text="Settings are inside the LANPR tab.")
-        
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"

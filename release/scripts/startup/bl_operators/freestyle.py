@@ -148,7 +148,7 @@ class SCENE_OT_freestyle_add_edge_marks_to_keying_set(bpy.types.Operator):
         scene = context.scene
         ks = scene.keying_sets.active
         if ks is None:
-            ks = scene.keying_sets.new(idname="LanprEdgeMarkKeyingSet", name="Freestyle Edge Mark Keying Set")
+            ks = scene.keying_sets.new(idname="FreestyleEdgeMarkKeyingSet", name="Freestyle Edge Mark Keying Set")
             ks.bl_description = ""
         # add data paths to the keying set
         ob = context.active_object
@@ -179,7 +179,7 @@ class SCENE_OT_freestyle_add_face_marks_to_keying_set(bpy.types.Operator):
         scene = context.scene
         ks = scene.keying_sets.active
         if ks is None:
-            ks = scene.keying_sets.new(idname="LanprFaceMarkKeyingSet", name="Freestyle Face Mark Keying Set")
+            ks = scene.keying_sets.new(idname="FreestyleFaceMarkKeyingSet", name="Freestyle Face Mark Keying Set")
             ks.bl_description = ""
         # add data paths to the keying set
         ob = context.active_object

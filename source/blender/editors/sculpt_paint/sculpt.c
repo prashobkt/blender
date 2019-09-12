@@ -5978,9 +5978,6 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
     else if (tool == SCULPT_TOOL_ELASTIC_DEFORM) {
       copy_v3_v3(cache->anchored_location, cache->true_location);
     }
-    else if (tool == SCULPT_TOOL_ELASTIC_DEFORM) {
-      copy_v3_v3(cache->anchored_location, cache->true_location);
-    }
     else if (tool == SCULPT_TOOL_THUMB) {
       copy_v3_v3(cache->anchored_location, cache->orig_grab_location);
     }

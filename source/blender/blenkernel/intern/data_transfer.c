@@ -222,14 +222,14 @@ int BKE_object_data_transfer_dttype_to_cdtype(const int dtdata_type)
     case DT_TYPE_BWEIGHT_EDGE:
       return CD_FAKE_BWEIGHT;
     case DT_TYPE_FREESTYLE_EDGE:
-      return CD_LANPR_EDGE;
+      return CD_FREESTYLE_EDGE;
 
     case DT_TYPE_UV:
       return CD_FAKE_UV;
     case DT_TYPE_SHARP_FACE:
       return CD_FAKE_SHARP;
     case DT_TYPE_FREESTYLE_FACE:
-      return CD_LANPR_FACE;
+      return CD_FREESTYLE_FACE;
 
     case DT_TYPE_VCOL:
       return CD_MLOOPCOL;
@@ -519,11 +519,11 @@ static void data_transfer_layersmapping_add_item_cd(ListBase *r_map,
 {
   uint64_t data_flag = 0;
 
-  if (cddata_type == CD_LANPR_EDGE) {
-    data_flag = LANPR_EDGE_MARK;
+  if (cddata_type == CD_FREESTYLE_EDGE) {
+    data_flag = FREESTYLE_EDGE_MARK;
   }
-  else if (cddata_type == CD_LANPR_FACE) {
-    data_flag = LANPR_FACE_MARK;
+  else if (cddata_type == CD_FREESTYLE_FACE) {
+    data_flag = FREESTYLE_FACE_MARK;
   }
 
   data_transfer_layersmapping_add_item(r_map,

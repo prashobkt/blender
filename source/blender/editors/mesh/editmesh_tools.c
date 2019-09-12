@@ -7413,18 +7413,17 @@ void MESH_OT_symmetry_snap(struct wmOperatorType *ot)
 
 /** \} */
 
-/* preserve the edge marking capability */
-//#ifdef WITH_FREESTYLE
+#ifdef WITH_FREESTYLE
 
 /* -------------------------------------------------------------------- */
 /** \name Mark Edge (Freestyle) Operator
  * \{ */
 
-static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
+static int edbm_mark_freestyle_edge_exec(bContext *C, wmOperator *op)
 {
   BMEdge *eed;
   BMIter iter;
-  LanprEdge *fed;
+  FreestyleEdge *fed;
   const bool clear = RNA_boolean_get(op->ptr, "clear");
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
@@ -7445,23 +7444,23 @@ static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (!CustomData_has_layer(&em->bm->edata, CD_LANPR_EDGE)) {
-      BM_data_layer_add(em->bm, &em->bm->edata, CD_LANPR_EDGE);
+    if (!CustomData_has_layer(&em->bm->edata, CD_FREESTYLE_EDGE)) {
+      BM_data_layer_add(em->bm, &em->bm->edata, CD_FREESTYLE_EDGE);
     }
 
     if (clear) {
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_LANPR_EDGE);
-          fed->flag &= ~LANPR_EDGE_MARK;
+          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE);
+          fed->flag &= ~FREESTYLE_EDGE_MARK;
         }
       }
     }
     else {
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_LANPR_EDGE);
-          fed->flag |= LANPR_EDGE_MARK;
+          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE);
+          fed->flag |= FREESTYLE_EDGE_MARK;
         }
       }
     }
@@ -7474,17 +7473,17 @@ static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void MESH_OT_mark_lanpr_edge(wmOperatorType *ot)
+void MESH_OT_mark_freestyle_edge(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Mark LANPR Edge";
-  ot->description = "(Un)mark selected edges as LANPR feature edges";
-  ot->idname = "MESH_OT_mark_lanpr_edge";
+  ot->name = "Mark Freestyle Edge";
+  ot->description = "(Un)mark selected edges as Freestyle feature edges";
+  ot->idname = "MESH_OT_mark_freestyle_edge";
 
   /* api callbacks */
-  ot->exec = edbm_mark_lanpr_edge_exec;
+  ot->exec = edbm_mark_freestyle_edge_exec;
   ot->poll = ED_operator_editmesh;
 
   /* flags */
@@ -7500,11 +7499,11 @@ void MESH_OT_mark_lanpr_edge(wmOperatorType *ot)
 /** \name Mark Face (Freestyle) Operator
  * \{ */
 
-static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
+static int edbm_mark_freestyle_face_exec(bContext *C, wmOperator *op)
 {
   BMFace *efa;
   BMIter iter;
-  LanprFace *ffa;
+  FreestyleFace *ffa;
   const bool clear = RNA_boolean_get(op->ptr, "clear");
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
@@ -7523,23 +7522,23 @@ static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (!CustomData_has_layer(&em->bm->pdata, CD_LANPR_FACE)) {
-      BM_data_layer_add(em->bm, &em->bm->pdata, CD_LANPR_FACE);
+    if (!CustomData_has_layer(&em->bm->pdata, CD_FREESTYLE_FACE)) {
+      BM_data_layer_add(em->bm, &em->bm->pdata, CD_FREESTYLE_FACE);
     }
 
     if (clear) {
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_LANPR_FACE);
-          ffa->flag &= ~LANPR_FACE_MARK;
+          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE);
+          ffa->flag &= ~FREESTYLE_FACE_MARK;
         }
       }
     }
     else {
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_LANPR_FACE);
-          ffa->flag |= LANPR_FACE_MARK;
+          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE);
+          ffa->flag |= FREESTYLE_FACE_MARK;
         }
       }
     }
@@ -7552,17 +7551,17 @@ static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void MESH_OT_mark_lanpr_face(wmOperatorType *ot)
+void MESH_OT_mark_freestyle_face(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Mark LANPR Face";
-  ot->description = "(Un)mark selected faces for exclusion from LANPR feature edge detection";
-  ot->idname = "MESH_OT_mark_lanpr_face";
+  ot->name = "Mark Freestyle Face";
+  ot->description = "(Un)mark selected faces for exclusion from Freestyle feature edge detection";
+  ot->idname = "MESH_OT_mark_freestyle_face";
 
   /* api callbacks */
-  ot->exec = edbm_mark_lanpr_face_exec;
+  ot->exec = edbm_mark_freestyle_face_exec;
   ot->poll = ED_operator_editmesh;
 
   /* flags */
@@ -7574,7 +7573,7 @@ void MESH_OT_mark_lanpr_face(wmOperatorType *ot)
 
 /** \} */
 
-//#endif  /* WITH_FREESTYLE */
+#endif /* WITH_FREESTYLE */
 
 /* -------------------------------------------------------------------- */
 /** \name Loop Normals Editing Tools Modal Map

@@ -28,8 +28,9 @@
 #include "DNA_mesh_types.h"
 #include "DNA_windowmanager_types.h"
 
-// for freestyle edge mark.
-#include "DNA_meshdata_types.h"
+#ifdef WITH_FREESTYLE
+#  include "DNA_meshdata_types.h"
+#endif
 
 #include "BLI_math.h"
 #include "BLI_linklist.h"
@@ -300,10 +301,12 @@ static bool edgetag_test_cb(BMEdge *e, void *user_data_v)
       return BM_elem_float_data_get(&bm->edata, e, CD_CREASE) ? true : false;
     case EDGE_MODE_TAG_BEVEL:
       return BM_elem_float_data_get(&bm->edata, e, CD_BWEIGHT) ? true : false;
+#ifdef WITH_FREESTYLE
     case EDGE_MODE_TAG_FREESTYLE: {
-      LanprEdge *fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_LANPR_EDGE);
-      return (!fed) ? false : (fed->flag & LANPR_EDGE_MARK) ? true : false;
+      FreestyleEdge *fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_FREESTYLE_EDGE);
+      return (!fed) ? false : (fed->flag & FREESTYLE_EDGE_MARK) ? true : false;
     }
+#endif
   }
   return 0;
 }
@@ -329,17 +332,19 @@ static void edgetag_set_cb(BMEdge *e, bool val, void *user_data_v)
     case EDGE_MODE_TAG_BEVEL:
       BM_elem_float_data_set(&bm->edata, e, CD_BWEIGHT, (val) ? 1.0f : 0.0f);
       break;
+#ifdef WITH_FREESTYLE
     case EDGE_MODE_TAG_FREESTYLE: {
-      LanprEdge *fed;
-      fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_LANPR_EDGE);
+      FreestyleEdge *fed;
+      fed = CustomData_bmesh_get(&bm->edata, e->head.data, CD_FREESTYLE_EDGE);
       if (!val) {
-        fed->flag &= ~LANPR_EDGE_MARK;
+        fed->flag &= ~FREESTYLE_EDGE_MARK;
       }
       else {
-        fed->flag |= LANPR_EDGE_MARK;
+        fed->flag |= FREESTYLE_EDGE_MARK;
       }
       break;
     }
+#endif
   }
 }
 
@@ -354,11 +359,13 @@ static void edgetag_ensure_cd_flag(Mesh *me, const char edge_mode)
     case EDGE_MODE_TAG_BEVEL:
       BM_mesh_cd_flag_ensure(bm, me, ME_CDFLAG_EDGE_BWEIGHT);
       break;
+#ifdef WITH_FREESTYLE
     case EDGE_MODE_TAG_FREESTYLE:
-      if (!CustomData_has_layer(&bm->edata, CD_LANPR_EDGE)) {
-        BM_data_layer_add(bm, &bm->edata, CD_LANPR_EDGE);
+      if (!CustomData_has_layer(&bm->edata, CD_FREESTYLE_EDGE)) {
+        BM_data_layer_add(bm, &bm->edata, CD_FREESTYLE_EDGE);
       }
       break;
+#endif
     default:
       break;
   }

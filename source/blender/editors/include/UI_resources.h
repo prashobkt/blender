@@ -250,8 +250,8 @@ typedef enum ThemeColorID {
   TH_UV_SHADOW,
   TH_UV_OTHERS,
 
-  TH_LANPR_EDGE_MARK,
-  TH_LANPR_FACE_MARK,
+  TH_FREESTYLE_EDGE_MARK,
+  TH_FREESTYLE_FACE_MARK,
 
   TH_MATCH,            /* highlight color for search matches */
   TH_SELECT_HIGHLIGHT, /* highlight color for selected outliner item */

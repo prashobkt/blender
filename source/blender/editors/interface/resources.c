@@ -537,10 +537,10 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_HANDLE_SEL_ALIGN:
           cp = ts->handle_sel_align;
           break;
-        case TH_LANPR_EDGE_MARK:
+        case TH_FREESTYLE_EDGE_MARK:
           cp = ts->freestyle_edge_mark;
           break;
-        case TH_LANPR_FACE_MARK:
+        case TH_FREESTYLE_FACE_MARK:
           cp = ts->freestyle_face_mark;
           break;
 

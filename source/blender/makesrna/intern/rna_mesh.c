@@ -603,25 +603,25 @@ static bool rna_MEdge_freestyle_edge_mark_get(PointerRNA *ptr)
 {
   Mesh *me = rna_mesh(ptr);
   MEdge *medge = (MEdge *)ptr->data;
-  LanprEdge *fed = CustomData_get(&me->edata, (int)(medge - me->medge), CD_LANPR_EDGE);
+  FreestyleEdge *fed = CustomData_get(&me->edata, (int)(medge - me->medge), CD_FREESTYLE_EDGE);
 
-  return fed && (fed->flag & LANPR_EDGE_MARK) != 0;
+  return fed && (fed->flag & FREESTYLE_EDGE_MARK) != 0;
 }
 
 static void rna_MEdge_freestyle_edge_mark_set(PointerRNA *ptr, bool value)
 {
   Mesh *me = rna_mesh(ptr);
   MEdge *medge = (MEdge *)ptr->data;
-  LanprEdge *fed = CustomData_get(&me->edata, (int)(medge - me->medge), CD_LANPR_EDGE);
+  FreestyleEdge *fed = CustomData_get(&me->edata, (int)(medge - me->medge), CD_FREESTYLE_EDGE);
 
   if (!fed) {
-    fed = CustomData_add_layer(&me->edata, CD_LANPR_EDGE, CD_CALLOC, NULL, me->totedge);
+    fed = CustomData_add_layer(&me->edata, CD_FREESTYLE_EDGE, CD_CALLOC, NULL, me->totedge);
   }
   if (value) {
-    fed->flag |= LANPR_EDGE_MARK;
+    fed->flag |= FREESTYLE_EDGE_MARK;
   }
   else {
-    fed->flag &= ~LANPR_EDGE_MARK;
+    fed->flag &= ~FREESTYLE_EDGE_MARK;
   }
 }
 
@@ -629,25 +629,25 @@ static bool rna_MPoly_freestyle_face_mark_get(PointerRNA *ptr)
 {
   Mesh *me = rna_mesh(ptr);
   MPoly *mpoly = (MPoly *)ptr->data;
-  LanprFace *ffa = CustomData_get(&me->pdata, (int)(mpoly - me->mpoly), CD_LANPR_FACE);
+  FreestyleFace *ffa = CustomData_get(&me->pdata, (int)(mpoly - me->mpoly), CD_FREESTYLE_FACE);
 
-  return ffa && (ffa->flag & LANPR_FACE_MARK) != 0;
+  return ffa && (ffa->flag & FREESTYLE_FACE_MARK) != 0;
 }
 
 static void rna_MPoly_freestyle_face_mark_set(PointerRNA *ptr, int value)
 {
   Mesh *me = rna_mesh(ptr);
   MPoly *mpoly = (MPoly *)ptr->data;
-  LanprFace *ffa = CustomData_get(&me->pdata, (int)(mpoly - me->mpoly), CD_LANPR_FACE);
+  FreestyleFace *ffa = CustomData_get(&me->pdata, (int)(mpoly - me->mpoly), CD_FREESTYLE_FACE);
 
   if (!ffa) {
-    ffa = CustomData_add_layer(&me->pdata, CD_LANPR_FACE, CD_CALLOC, NULL, me->totpoly);
+    ffa = CustomData_add_layer(&me->pdata, CD_FREESTYLE_FACE, CD_CALLOC, NULL, me->totpoly);
   }
   if (value) {
-    ffa->flag |= LANPR_FACE_MARK;
+    ffa->flag |= FREESTYLE_FACE_MARK;
   }
   else {
-    ffa->flag &= ~LANPR_FACE_MARK;
+    ffa->flag &= ~FREESTYLE_FACE_MARK;
   }
 }
 

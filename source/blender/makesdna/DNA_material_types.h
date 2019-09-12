@@ -27,7 +27,6 @@
 #include "DNA_defs.h"
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
-#include "DNA_lanpr_types.h"
 
 #ifndef MAX_MTEX
 #  define MAX_MTEX 18

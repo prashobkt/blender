@@ -363,24 +363,24 @@ typedef struct MVertSkin {
   int flag;
 } MVertSkin;
 
-typedef struct LanprEdge {
+typedef struct FreestyleEdge {
   char flag;
   char _pad[3];
-} LanprEdge;
+} FreestyleEdge;
 
-/* LanprEdge->flag */
+/* FreestyleEdge->flag */
 enum {
-  LANPR_EDGE_MARK = 1,
+  FREESTYLE_EDGE_MARK = 1,
 };
 
-typedef struct LanprFace {
+typedef struct FreestyleFace {
   char flag;
   char _pad[3];
-} LanprFace;
+} FreestyleFace;
 
-/* LanprFace->flag */
+/* FreestyleFace->flag */
 enum {
-  LANPR_FACE_MARK = 1,
+  FREESTYLE_FACE_MARK = 1,
 };
 
 /* mvert->flag */

@@ -252,7 +252,7 @@ static PyGetSetDef bpy_bmlayeraccess_edge_getseters[] = {
      (getter)bpy_bmlayeraccess_collection_get,
      (setter)NULL,
      (char *)bpy_bmlayeraccess_collection__freestyle_edge_doc,
-     (void *)CD_LANPR_EDGE},
+     (void *)CD_FREESTYLE_EDGE},
 #endif
 
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
@@ -285,7 +285,7 @@ static PyGetSetDef bpy_bmlayeraccess_face_getseters[] = {
      (getter)bpy_bmlayeraccess_collection_get,
      (setter)NULL,
      (char *)bpy_bmlayeraccess_collection__freestyle_face_doc,
-     (void *)CD_LANPR_FACE},
+     (void *)CD_FREESTYLE_FACE},
 #endif
 
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */

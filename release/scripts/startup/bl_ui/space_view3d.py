@@ -3462,11 +3462,11 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.mark_sharp")
             col.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
 
-            if scene.lanpr.enabled or render.engine=="BLENDER_LANPR":
+            if render.use_freestyle or scene.lanpr.enabled or render.engine=="BLENDER_LANPR":
                 col.separator()
 
-                col.operator("mesh.mark_lanpr_edge").clear = False
-                col.operator("mesh.mark_lanpr_edge", text="Clear Freestyle Edge").clear = True
+                col.operator("mesh.mark_freestyle_edge").clear = False
+                col.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
 
             col.separator()
 

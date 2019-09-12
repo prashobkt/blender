@@ -97,8 +97,8 @@ void DRW_globals_update(void)
   interp_v4_v4v4(gb->colorDupli, gb->colorBackground, gb->colorWire, 0.3f);
 
 #ifdef WITH_FREESTYLE
-  UI_GetThemeColor4fv(TH_LANPR_EDGE_MARK, gb->colorEdgeFreestyle);
-  UI_GetThemeColor4fv(TH_LANPR_FACE_MARK, gb->colorFaceFreestyle);
+  UI_GetThemeColor4fv(TH_FREESTYLE_EDGE_MARK, gb->colorEdgeFreestyle);
+  UI_GetThemeColor4fv(TH_FREESTYLE_FACE_MARK, gb->colorFaceFreestyle);
 #else
   zero_v4(gb->colorEdgeFreestyle);
   zero_v4(gb->colorFaceFreestyle);
