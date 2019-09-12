@@ -29,6 +29,7 @@
 
 #include "DNA_defs.h"
 #include "DNA_customdata_types.h"
+#include "DNA_lanpr_types.h"
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 #include "DNA_action_types.h" /* bAnimVizSettings */
@@ -186,12 +187,12 @@ typedef struct Object_Runtime {
   void *_pad2; /* Padding is here for win32s unconventional struct alignment rules. */
 } Object_Runtime;
 
-typedef struct ObjectLANPRType{
+typedef struct ObjectLANPRLineType{
   int use;
   char _pad[4];
   char target_layer[128];
   char target_material[128];
-} ObjectLANPRType;
+} ObjectLANPRLineType;
 
 typedef struct ObjectLANPR {
   int usage;
@@ -203,11 +204,10 @@ typedef struct ObjectLANPR {
   char target_layer[128];
   char target_material[128];
 
-  ObjectLANPRType crease;
-  ObjectLANPRType contour;
-  ObjectLANPRType material;
-  ObjectLANPRType edge_mark;
-  
+  ObjectLANPRLineType crease;
+  ObjectLANPRLineType contour;
+  ObjectLANPRLineType material;
+  ObjectLANPRLineType edge_mark;
   /* Intersection not implemented as per-object */
 
   int level_start;

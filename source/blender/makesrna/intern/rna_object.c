@@ -2376,9 +2376,9 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "ObjectLANPRType", NULL);
-  RNA_def_struct_ui_text(srna, "Object LANPR Type", "Object lanpr type");
-  RNA_def_struct_sdna(srna, "ObjectLANPRType");
+  srna = RNA_def_struct(brna, "ObjectLANPRLineType", NULL);
+  RNA_def_struct_ui_text(srna, "Object LANPR Line Type", "Object lanpr line type");
+  RNA_def_struct_sdna(srna, "ObjectLANPRLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Use", "Use this line type");
@@ -2444,19 +2444,19 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Same Style", "Use same style for different line types");
 
   prop = RNA_def_property(srna, "contour", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRType");
+  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
   RNA_def_property_ui_text(prop, "Contour", "Contour line type");
 
   prop = RNA_def_property(srna, "crease", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRType");
+  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
   RNA_def_property_ui_text(prop, "Crease", "Creaseline type");
 
   prop = RNA_def_property(srna, "edge_mark", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRType");
+  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
   RNA_def_property_ui_text(prop, "Edge Mark", "Edge mark line type");
 
   prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRType");
+  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
   RNA_def_property_ui_text(prop, "Material", "Material separate line type");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);

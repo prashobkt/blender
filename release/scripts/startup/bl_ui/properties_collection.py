@@ -32,6 +32,13 @@ class CollectionButtonsPanel:
     def poll(cls, context):
         return (context.engine in cls.COMPAT_ENGINES)
 
+
+def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
+    col.prop(line_type, "use", text=text_disp)
+    if expand:
+        col.prop_search(line_type, "layer", search_from, "layers")
+        col.prop_search(line_type, "material",  search_from, "materials")
+
 class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
     bl_label = "Collection Flags"
 
@@ -97,16 +104,19 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
                     col.prop(lanpr,'level_end',text="End")
                 else:
                     layout.prop(lanpr,'level_start',text="Level")
-
-                layout.prop(lanpr,'use_contour')
-                layout.prop(lanpr,'use_crease')
-                layout.prop(lanpr,'enable_mark')
-                layout.prop(lanpr,'use_material')
-                layout.prop(lanpr,'use_intersection')
                 
-                layout.prop_search(lanpr, 'layer', lanpr.target.data, "layers", icon='GREASEPENCIL')
-                layout.prop_search(lanpr, 'material', lanpr.target.data, "materials", icon='SHADING_TEXTURE')
+                layout.prop(lanpr, "use_same_style")
 
+                if lanpr.use_same_style:
+                    layout.prop_search(lanpr, 'target_layer', lanpr.target.data, "layers", icon='GREASEPENCIL')
+                    layout.prop_search(lanpr, 'target_material', lanpr.target.data, "materials", icon='SHADING_TEXTURE')
+
+                expand = not lanpr.use_same_style
+                lanpr_make_line_type_entry(layout, lanpr.contour, "Contour", expand, lanpr.target.data)
+                lanpr_make_line_type_entry(layout, lanpr.crease, "Crease", expand, lanpr.target.data)
+                lanpr_make_line_type_entry(layout, lanpr.material, "Material", expand, lanpr.target.data)
+                lanpr_make_line_type_entry(layout, lanpr.edge_mark, "Edge Mark", expand, lanpr.target.data)
+                lanpr_make_line_type_entry(layout, lanpr.intersection, "Intersection", expand, lanpr.target.data)
 
 classes = (
     COLLECTION_PT_collection_flags,

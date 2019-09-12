@@ -22,6 +22,8 @@
 
 #include "DNA_collection_types.h"
 
+#include "DNA_lanpr_types.h"
+
 #include "BLI_utildefines.h"
 
 #include "RNA_define.h"
@@ -365,18 +367,34 @@ static void rna_def_collection_children(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 }
 
-static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
+static void rna_def_collection_lanpr(BlenderRNA *brna)
 {
   PropertyRNA *prop;
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "CollectionLANPRLineType", NULL);
+  RNA_def_struct_ui_text(srna, "Collection LANPR Line Type", "Collection lanpr line type");
+  RNA_def_struct_sdna(srna, "CollectionLANPRLineType");
+
+  prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Use", "Use this line type");
+
+  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "target_layer");
+  RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
+
+  prop = RNA_def_property(srna, "material", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "target_material");
+  RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
 
   static const EnumPropertyItem rna_collection_lanpr_usage[] = {
-      {COLLECTION_LANPR_INCLUDE, "INCLUDE", 0, "Include", "Collection will produce feature lines"},
-      {COLLECTION_LANPR_OCCLUSION_ONLY,
+      {COLLECTION_FEATURE_LINE_INCLUDE, "INCLUDE", 0, "Include", "Collection will produce feature lines"},
+      {COLLECTION_FEATURE_LINE_OCCLUSION_ONLY,
        "OCCLUSION_ONLY",
        0,
        "Occlusion Only",
        "Only use the collection to produce occlusion"},
-      {COLLECTION_LANPR_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
+      {COLLECTION_FEATURE_LINE_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't use this collection in LANPR"},
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "CollectionLANPR", NULL);
@@ -385,32 +403,11 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_collection_lanpr_usage);
-  RNA_def_property_enum_default(prop, 0);
   RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LANPR");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
-  prop = RNA_def_property(srna, "use_contour", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_CONTOUR);
-  RNA_def_property_ui_text(prop, "Contour", "Contour lines");
-
-  prop = RNA_def_property(srna, "use_crease", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_CREASE);
-  RNA_def_property_ui_text(prop, "Crease", "Crease lines");
-
-  prop = RNA_def_property(srna, "enable_mark", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_MARK);
-  RNA_def_property_ui_text(prop, "Mark", "Marked NPR edges");
-
-  prop = RNA_def_property(srna, "use_material", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_MATERIAL);
-  RNA_def_property_ui_text(prop, "Material", "Material lines");
-
-  prop = RNA_def_property(srna, "use_intersection", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "types", COLLECTION_FEATURE_LINE_INTERSECTION);
-  RNA_def_property_ui_text(prop, "Intersection", "Intersection lines");
-
   prop = RNA_def_property(srna, "force", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_COLLECTION_FORCE);
   RNA_def_property_ui_text(
       prop, "Force", "Force object that has LANPR modifiers to follow collection usage flag");
 
@@ -421,19 +418,41 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
 
   prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_REPLACE_STROKES);
   RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
 
-  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "target_layer");
+  prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
 
-  prop = RNA_def_property(srna, "material", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "target_material");
+  prop = RNA_def_property(srna, "target_material", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Material", "Grease Pencil material to use to generate the results");
 
+  prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);
+  RNA_def_property_ui_text(prop, "Same Style", "Use same style for different types");
+
+  prop = RNA_def_property(srna, "contour", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_ui_text(prop, "Contour", "Contour line type");
+
+  prop = RNA_def_property(srna, "crease", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_ui_text(prop, "Crease", "Creaseline type");
+
+  prop = RNA_def_property(srna, "edge_mark", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_ui_text(prop, "Edge Mark", "Edge mark line type");
+
+  prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_ui_text(prop, "Material", "Material separate line type");
+
+  prop = RNA_def_property(srna, "intersection", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_ui_text(prop, "Intersection", "Intersection line type");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS);
   RNA_def_property_ui_text(prop, "Multiple Levels", "Use multiple occlusion levels");
 
   prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
@@ -541,7 +560,7 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
-  rna_def_collection_lanpr(brna, srna);
+  rna_def_collection_lanpr(brna);
   prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CollectionLANPR");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the collection");

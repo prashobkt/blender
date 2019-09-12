@@ -3654,7 +3654,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       sce->lanpr.chaining_geometry_threshold = 0.0f;
     }
     for (Collection *co = bmain->collections.first; co; co = co->id.next) {
-      co->lanpr.types = COLLECTION_FEATURE_LINE_ALL;
+      co->lanpr.contour.use = 1;
+      co->lanpr.crease.use = 1;
+      co->lanpr.material.use = 1;
+      co->lanpr.edge_mark.use = 1;
+      co->lanpr.intersection.use = 1;
     }
   }
 

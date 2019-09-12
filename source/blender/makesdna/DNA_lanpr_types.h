@@ -94,7 +94,8 @@ typedef enum LANPR_LineLayerFlags {
   LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS = (1 << 1), /* Share with object lanpr flags */
   LANPR_LINE_LAYER_NORMAL_ENABLED = (1 << 2),
   LANPR_LINE_LAYER_NORMAL_INVERSE = (1 << 3),
-  LANPR_LINE_LAYER_REPLACE_STROKES = (1 << 4),     /* Currently only used by object lanpr flags */
+  LANPR_LINE_LAYER_REPLACE_STROKES = (1 << 4),
+  LANPR_LINE_LAYER_COLLECTION_FORCE = (1 << 5),
 } LANPR_LineLayerFlags;
 
 typedef struct LANPR_LineLayer {

@@ -27,6 +27,7 @@
 #define __DNA_COLLECTION_TYPES_H__
 
 #include "DNA_defs.h"
+#include "DNA_lanpr_types.h"
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 
@@ -49,42 +50,32 @@ enum CollectionFeatureLine_Usage {
   COLLECTION_FEATURE_LINE_EXCLUDE = (1 << 1),
 };
 
-typedef struct CollectionLANPR {
-  short usage;
-  short force; /* force objects with LANPR modifier follow the rule */
-
-  int types;
-
-  struct Object *target;
-  int replace;
+typedef struct CollectionLANPRLineType{
+  int use;
+  char _pad[4];
   char target_layer[128];
   char target_material[128];
-  int use_multiple_levels;
+} CollectionLANPRLineType;
+
+typedef struct CollectionLANPR {
+  int usage;
+
+  /* Separate flags for LANPR shared flag values. */
+  int flags;
+
+  struct Object *target;
+  char target_layer[128];
+  char target_material[128];
+
+  struct CollectionLANPRLineType contour;
+  struct CollectionLANPRLineType crease;
+  struct CollectionLANPRLineType material;
+  struct CollectionLANPRLineType edge_mark;
+  struct CollectionLANPRLineType intersection;
+
   int level_start;
   int level_end;
 } CollectionLANPR;
-
-/* CollectionLANPR->types */
-enum CollectionFeatureLine_TypeFlag {
-  COLLECTION_FEATURE_LINE_NONE = (1 << 0),
-  COLLECTION_FEATURE_LINE_CONTOUR = (1 << 1),
-  COLLECTION_FEATURE_LINE_CREASE = (1 << 2),
-  COLLECTION_FEATURE_LINE_MARK = (1 << 3),
-  COLLECTION_FEATURE_LINE_MATERIAL = (1 << 4),
-  COLLECTION_FEATURE_LINE_INTERSECTION = (1 << 5),
-};
-
-#define COLLECTION_FEATURE_LINE_ALL \
-  (COLLECTION_FEATURE_LINE_CONTOUR | COLLECTION_FEATURE_LINE_CREASE | \
-   COLLECTION_FEATURE_LINE_MARK | COLLECTION_FEATURE_LINE_MATERIAL | \
-   COLLECTION_FEATURE_LINE_INTERSECTION)
-
-/* CollectionLANPR->mode */
-enum {
-  COLLECTION_LANPR_INCLUDE = 0,
-  COLLECTION_LANPR_OCCLUSION_ONLY = 1,
-  COLLECTION_LANPR_EXCLUDE = 2,
-};
 
 typedef struct Collection {
   ID id;

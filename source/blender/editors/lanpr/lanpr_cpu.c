@@ -1753,7 +1753,7 @@ int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
   int object_is_used = (lanpr_object_has_feature_line_modifier(o) &&
                         o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT);
 
-  if (object_is_used && c->lanpr.force && c->lanpr.usage != COLLECTION_FEATURE_LINE_INCLUDE) {
+  if (object_is_used && (c->lanpr.flags&LANPR_LINE_LAYER_COLLECTION_FORCE) && c->lanpr.usage != COLLECTION_FEATURE_LINE_INCLUDE) {
     if (BKE_collection_has_object_recursive(c, o)) {
       if (c->lanpr.usage == COLLECTION_FEATURE_LINE_EXCLUDE) {
         return OBJECT_FEATURE_LINE_EXCLUDE;
@@ -2668,7 +2668,7 @@ static int lanpr_max_occlusion_in_collections(Collection *c)
   CollectionChild *cc;
   int max_occ = 0;
   int max;
-  if (c->lanpr.use_multiple_levels) {
+  if (c->lanpr.flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) {
     max = MAX2(c->lanpr.level_start, c->lanpr.level_end);
   }
   else {
@@ -4128,6 +4128,26 @@ static void lanpr_update_gp_strokes_recursive(
     lanpr_update_gp_strokes_recursive(dg, cc->collection, frame, source_only, target_only);
   }
 }
+static int lanpr_collection_types(Collection* c){
+  CollectionLANPR* cl = &c->lanpr;
+  int result = 0;
+  if(cl->contour.use){
+    result |= LANPR_EDGE_FLAG_CONTOUR;
+  }
+  if(cl->crease.use){
+    result |= LANPR_EDGE_FLAG_CREASE;
+  }
+  if(cl->material.use){
+    result |= LANPR_EDGE_FLAG_MATERIAL;
+  }
+  if(cl->edge_mark.use){
+    result |= LANPR_EDGE_FLAG_EDGE_MARK;
+  }
+  if(cl->intersection.use){
+    result |= LANPR_EDGE_FLAG_INTERSECTION;
+  }
+  return result;
+}
 static void lanpr_update_gp_strokes_collection(
     Depsgraph *dg, struct Collection *col, int frame, int this_only, Object *target_only)
 {
@@ -4144,7 +4164,7 @@ static void lanpr_update_gp_strokes_collection(
     }
   }
 
-  if (col->lanpr.usage != COLLECTION_LANPR_INCLUDE || !col->lanpr.target) {
+  if (col->lanpr.usage != COLLECTION_FEATURE_LINE_INCLUDE || !col->lanpr.target) {
     return;
   }
 
@@ -4181,11 +4201,11 @@ static void lanpr_update_gp_strokes_collection(
                                     gpl,
                                     gpf,
                                     col->lanpr.level_start,
-                                    col->lanpr.use_multiple_levels ? col->lanpr.level_end :
+                                    (col->lanpr.flags&LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? col->lanpr.level_end :
                                                                      col->lanpr.level_start,
                                     use_material,
                                     col,
-                                    col->lanpr.types);
+                                    lanpr_collection_types(col));
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
 static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
