@@ -47,6 +47,7 @@
 #include "mesh_intern.h" /* own include */
 
 #include "tools/bmesh_intersect.h"
+#include "tools/bmesh_boolean.h"
 #include "tools/bmesh_separate.h"
 
 /* detect isolated holes and fill them */
@@ -192,6 +193,7 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
       continue;
     }
 
+#ifdef OLDWAY
     has_isect = BM_mesh_intersect(em->bm,
                                   em->looptris,
                                   em->tottri,
@@ -205,6 +207,15 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
                                   true,
                                   -1,
                                   eps);
+#else
+	  has_isect = BM_mesh_boolean(em->bm,
+							      test_fn,
+								  NULL,
+								  use_self,
+								  use_separate_all,
+								  -1,
+								  eps);
+#endif
 
     if (use_separate_cut) {
       /* detach selected/un-selected faces */

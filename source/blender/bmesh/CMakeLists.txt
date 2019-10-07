@@ -135,6 +135,8 @@ set(SRC
   tools/bmesh_bevel.h
   tools/bmesh_bisect_plane.c
   tools/bmesh_bisect_plane.h
+  tools/bmesh_boolean.c
+  tools/bmesh_boolean.h
   tools/bmesh_decimate.h
   tools/bmesh_decimate_collapse.c
   tools/bmesh_decimate_dissolve.c

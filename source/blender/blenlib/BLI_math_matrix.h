@@ -218,6 +218,7 @@ bool invert_m3_m3_ex(float m1[3][3], const float m2[3][3], const float epsilon);
 
 bool invert_m3(float R[3][3]);
 bool invert_m3_m3(float R[3][3], const float A[3][3]);
+bool invert_m3_m3_db(double R[3][3], const double A[3][3]);
 bool invert_m4(float R[4][4]);
 bool invert_m4_m4(float R[4][4], const float A[4][4]);
 bool invert_m4_m4_fallback(float R[4][4], const float A[4][4]);
@@ -233,6 +234,7 @@ void mul_m3_v3_db(const double M[3][3], double r[3]);
 /****************************** Linear Algebra *******************************/
 
 void transpose_m3(float R[3][3]);
+void transpose_m3_db(double R[3][3]);
 void transpose_m3_m3(float R[3][3], const float A[3][3]);
 void transpose_m3_m4(float R[3][3], const float A[4][4]);
 void transpose_m4(float R[4][4]);
@@ -269,12 +271,14 @@ bool is_uniform_scaled_m4(const float m[4][4]);
  */
 void adjoint_m2_m2(float R[2][2], const float A[2][2]);
 void adjoint_m3_m3(float R[3][3], const float A[3][3]);
+void adjoint_m3_m3_db(double R[3][3], const double A[3][3]);
 void adjoint_m4_m4(float R[4][4], const float A[4][4]);
 
 float determinant_m2(float a, float b, float c, float d);
 float determinant_m3(
     float a, float b, float c, float d, float e, float f, float g, float h, float i);
 float determinant_m3_array(const float m[3][3]);
+double determinant_m3_array_db(const double m[3][3]);
 float determinant_m4_mat3_array(const float m[4][4]);
 float determinant_m4(const float A[4][4]);
 

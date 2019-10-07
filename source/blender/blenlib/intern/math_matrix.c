@@ -1055,6 +1055,13 @@ float determinant_m3_array(const float m[3][3])
           m[2][0] * (m[0][1] * m[1][2] - m[0][2] * m[1][1]));
 }
 
+double determinant_m3_array_db(const double m[3][3])
+{
+  return (m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+          m[1][0] * (m[0][1] * m[2][2] - m[0][2] * m[2][1]) +
+          m[2][0] * (m[0][1] * m[1][2] - m[0][2] * m[1][1]));
+}
+
 float determinant_m4_mat3_array(const float m[4][4])
 {
   return (m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
@@ -1123,6 +1130,32 @@ bool invert_m3_m3(float m1[3][3], const float m2[3][3])
 
   if (LIKELY(det != 0.0f)) {
     det = 1.0f / det;
+    for (a = 0; a < 3; a++) {
+      for (b = 0; b < 3; b++) {
+        m1[a][b] *= det;
+      }
+    }
+  }
+
+  return success;
+}
+
+bool invert_m3_m3_db(double m1[3][3], const double m2[3][3])
+{
+  double det;
+  int a, b;
+  bool success;
+
+  /* calc adjoint */
+  adjoint_m3_m3_db(m1, m2);
+
+  /* then determinant old matrix! */
+  det = determinant_m3_array_db(m2);
+
+  success = (det != 0.0);
+
+  if (LIKELY(det != 0.0)) {
+    det = 1.0 / det;
     for (a = 0; a < 3; a++) {
       for (b = 0; b < 3; b++) {
         m1[a][b] *= det;
@@ -1240,6 +1273,21 @@ bool invert_m4_m4(float inverse[4][4], const float mat[4][4])
 void transpose_m3(float mat[3][3])
 {
   float t;
+
+  t = mat[0][1];
+  mat[0][1] = mat[1][0];
+  mat[1][0] = t;
+  t = mat[0][2];
+  mat[0][2] = mat[2][0];
+  mat[2][0] = t;
+  t = mat[1][2];
+  mat[1][2] = mat[2][1];
+  mat[2][1] = t;
+}
+
+void transpose_m3_db(double mat[3][3])
+{
+  double t;
 
   t = mat[0][1];
   mat[0][1] = mat[1][0];
@@ -1804,6 +1852,22 @@ void adjoint_m2_m2(float m1[2][2], const float m[2][2])
 }
 
 void adjoint_m3_m3(float m1[3][3], const float m[3][3])
+{
+  BLI_assert(m1 != m);
+  m1[0][0] = m[1][1] * m[2][2] - m[1][2] * m[2][1];
+  m1[0][1] = -m[0][1] * m[2][2] + m[0][2] * m[2][1];
+  m1[0][2] = m[0][1] * m[1][2] - m[0][2] * m[1][1];
+
+  m1[1][0] = -m[1][0] * m[2][2] + m[1][2] * m[2][0];
+  m1[1][1] = m[0][0] * m[2][2] - m[0][2] * m[2][0];
+  m1[1][2] = -m[0][0] * m[1][2] + m[0][2] * m[1][0];
+
+  m1[2][0] = m[1][0] * m[2][1] - m[1][1] * m[2][0];
+  m1[2][1] = -m[0][0] * m[2][1] + m[0][1] * m[2][0];
+  m1[2][2] = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+}
+
+void adjoint_m3_m3_db(double m1[3][3], const double m[3][3])
 {
   BLI_assert(m1 != m);
   m1[0][0] = m[1][1] * m[2][2] - m[1][2] * m[2][1];

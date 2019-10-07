@@ -42,6 +42,7 @@ extern "C" {
 /********************************** Polygons *********************************/
 
 float normal_tri_v3(float r[3], const float a[3], const float b[3], const float c[3]);
+double normal_tri_v3_db(double r[3], const double a[3], const double b[3], const double c[3]);
 float normal_quad_v3(
     float r[3], const float a[3], const float b[3], const float c[3], const float d[3]);
 float normal_poly_v3(float r[3], const float verts[][3], unsigned int nr);
@@ -126,6 +127,7 @@ float dist_to_plane3_v3(const float p[3], const float plane[4]);
 float dist_squared_to_line_segment_v3(const float p[3], const float l1[3], const float l2[3]);
 float dist_to_line_segment_v3(const float p[3], const float l1[3], const float l2[3]);
 float dist_squared_to_line_v3(const float p[3], const float l1[3], const float l2[3]);
+double dist_squared_to_line_v3_db(const double p[3], const double l1[3], const double l2[3]);
 float dist_to_line_v3(const float p[3], const float l1[3], const float l2[3]);
 float dist_signed_squared_to_corner_v3v3v3(const float p[3],
                                            const float v1[3],
@@ -196,6 +198,10 @@ double closest_to_line_v2_db(double r_close[2],
                              const double l1[2],
                              const double l2[2]);
 float closest_to_line_v3(float r_close[3], const float p[3], const float l1[3], const float l2[3]);
+double closest_to_line_v3_db(double r_close[3],
+                             const double p[3],
+                             const double l1[3],
+                             const double l2[3]);
 void closest_to_line_segment_v2(float r_close[2],
                                 const float p[2],
                                 const float l1[2],
@@ -207,6 +213,9 @@ void closest_to_line_segment_v3(float r_close[3],
 void closest_to_plane_normalized_v3(float r_close[3], const float plane[4], const float pt[3]);
 void closest_to_plane_v3(float r_close[3], const float plane[4], const float pt[3]);
 void closest_to_plane3_normalized_v3(float r_close[3], const float plane[3], const float pt[3]);
+void closest_to_plane3_normalized_v3_db(double r_close[3],
+                                        const double plane[3],
+                                        const double pt[3]);
 void closest_to_plane3_v3(float r_close[3], const float plane[3], const float pt[3]);
 
 /* Set 'r' to the point in triangle (t1, t2, t3) closest to point 'p' */
@@ -227,6 +236,11 @@ float line_point_factor_v3_ex(const float p[3],
                               const float l2[3],
                               const float epsilon,
                               const float fallback);
+double line_point_factor_v3_ex_db(const double p[3],
+                                  const double l1[3],
+                                  const double l2[3],
+                                  const double epsilon,
+                                  const double fallback);
 float line_point_factor_v3(const float p[3], const float l1[3], const float l2[3]);
 
 float line_point_factor_v2_ex(const float p[2],
@@ -302,12 +316,25 @@ int isect_line_line_epsilon_v3(const float v1[3],
                                float i1[3],
                                float i2[3],
                                const float epsilon);
+int isect_line_line_epsilon_v3_db(const double v1[3],
+                                  const double v2[3],
+                                  const double v3[3],
+                                  const double v4[3],
+                                  double i1[3],
+                                  double i2[3],
+                                  const double epsilon);
 int isect_line_line_v3(const float v1[3],
                        const float v2[3],
                        const float v3[3],
                        const float v4[3],
                        float r_i1[3],
                        float r_i2[3]);
+int isect_line_line_v3_db(const double v1[3],
+                          const double v2[3],
+                          const double v3[3],
+                          const double v4[3],
+                          double r_i1[3],
+                          double r_i2[3]);
 bool isect_line_line_strict_v3(const float v1[3],
                                const float v2[3],
                                const float v3[3],
@@ -351,6 +378,10 @@ bool isect_plane_plane_v3(const float plane_a[4],
                           const float plane_b[4],
                           float r_isect_co[3],
                           float r_isect_no[3]) ATTR_WARN_UNUSED_RESULT;
+bool isect_plane_plane_v3_db(const double plane_a[4],
+                             const double plane_b[4],
+                             double r_isect_co[3],
+                             double r_isect_no[3]) ATTR_WARN_UNUSED_RESULT;
 
 /* line/ray triangle */
 bool isect_line_segment_tri_v3(const float p1[3],
@@ -491,6 +522,10 @@ bool isect_aabb_aabb_v3(const float min1[3],
                         const float max1[3],
                         const float min2[3],
                         const float max2[3]);
+bool isect_aabb_aabb_v3_db(const double min1[3],
+                           const double max1[3],
+                           const double min2[3],
+                           const double max2[3]);
 
 struct IsectRayAABB_Precalc {
   float ray_origin[3];
@@ -771,6 +806,7 @@ float form_factor_hemi_poly(
 
 void axis_dominant_v3_to_m3_negate(float r_mat[3][3], const float normal[3]);
 void axis_dominant_v3_to_m3(float r_mat[3][3], const float normal[3]);
+void axis_dominant_v3_to_m3_db(double r_mat[3][3], const double normal[3]);
 
 MINLINE void axis_dominant_v3(int *r_axis_a, int *r_axis_b, const float axis[3]);
 MINLINE float axis_dominant_v3_max(int *r_axis_a,

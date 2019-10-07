@@ -205,6 +205,21 @@ MINLINE void zero_v3_db(double r[3])
   r[2] = 0.0;
 }
 
+MINLINE void zero_v4_db(double r[4])
+{
+  r[0] = 0.0;
+  r[1] = 0.0;
+  r[2] = 0.0;
+  r[3] = 0.0;
+}
+
+MINLINE void copy_v3_db(double r[3], double d)
+{
+  r[0] = d;
+  r[1] = d;
+  r[2] = d;
+}
+
 MINLINE void copy_v2_v2_db(double r[2], const double a[2])
 {
   r[0] = a[0];
@@ -394,6 +409,13 @@ MINLINE void add_v3_v3v3(float r[3], const float a[3], const float b[3])
   r[2] = a[2] + b[2];
 }
 
+MINLINE void add_v3_v3v3_db(double r[3], const double a[3], const double b[3])
+{
+  r[0] = a[0] + b[0];
+  r[1] = a[1] + b[1];
+  r[2] = a[2] + b[2];
+}
+
 MINLINE void add_v3fl_v3fl_v3i(float r[3], const float a[3], const int b[3])
 {
   r[0] = a[0] + (float)b[0];
@@ -532,6 +554,13 @@ MINLINE void mul_v3_v3fl(float r[3], const float a[3], float f)
   r[2] = a[2] * f;
 }
 
+MINLINE void mul_v3db_v3dbdb(double r[3], const double a[3], double f)
+{
+  r[0] = a[0] * f;
+  r[1] = a[1] * f;
+  r[2] = a[2] * f;
+}
+
 MINLINE void mul_v2_v2(float r[2], const float a[2])
 {
   r[0] *= a[0];
@@ -657,6 +686,13 @@ MINLINE void madd_v3_v3fl(float r[3], const float a[3], float f)
   r[2] += a[2] * f;
 }
 
+MINLINE void madd_v3db_v3dbdb(double r[3], const double a[3], double f)
+{
+  r[0] += a[0] * f;
+  r[1] += a[1] * f;
+  r[2] += a[2] * f;
+}
+
 MINLINE void madd_v3_v3v3(float r[3], const float a[3], const float b[3])
 {
   r[0] += a[0] * b[0];
@@ -671,6 +707,13 @@ MINLINE void madd_v2_v2v2fl(float r[2], const float a[2], const float b[2], floa
 }
 
 MINLINE void madd_v3_v3v3fl(float r[3], const float a[3], const float b[3], float f)
+{
+  r[0] = a[0] + b[0] * f;
+  r[1] = a[1] + b[1] * f;
+  r[2] = a[2] + b[2] * f;
+}
+
+MINLINE void madd_v3_v3v3db_db(double r[3], const double a[3], const double b[3], double f)
 {
   r[0] = a[0] + b[0] * f;
   r[1] = a[1] + b[1] * f;
@@ -939,7 +982,17 @@ MINLINE float len_squared_v2(const float v[2])
   return v[0] * v[0] + v[1] * v[1];
 }
 
+MINLINE double len_squared_v2_db(const double v[2])
+{
+  return v[0] * v[0] + v[1] * v[1];
+}
+
 MINLINE float len_squared_v3(const float v[3])
+{
+  return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+}
+
+MINLINE double len_squared_v3_db(const double v[3])
 {
   return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
 }
@@ -996,6 +1049,11 @@ MINLINE float len_v3(const float a[3])
   return sqrtf(dot_v3v3(a, a));
 }
 
+MINLINE double len_v3_db(const double a[3])
+{
+  return sqrt(dot_v3v3_db(a, a));
+}
+
 MINLINE float len_squared_v2v2(const float a[2], const float b[2])
 {
   float d[2];
@@ -1018,6 +1076,14 @@ MINLINE float len_squared_v3v3(const float a[3], const float b[3])
 
   sub_v3_v3v3(d, b, a);
   return dot_v3v3(d, d);
+}
+
+MINLINE double len_squared_v3v3_db(const double a[3], const double b[3])
+{
+  double d[3];
+
+  sub_v3_v3v3_db(d, b, a);
+  return dot_v3v3_db(d, d);
 }
 
 MINLINE float len_squared_v4v4(const float a[4], const float b[4])
@@ -1058,6 +1124,14 @@ MINLINE float len_v3v3(const float a[3], const float b[3])
 
   sub_v3_v3v3(d, b, a);
   return len_v3(d);
+}
+
+MINLINE double len_v3v3_db(const double a[3], const double b[3])
+{
+  double d[3];
+
+  sub_v3_v3v3_db(d, b, a);
+  return len_v3_db(d);
 }
 
 MINLINE float normalize_v2_v2_length(float r[2], const float a[2], const float unit_length)
@@ -1231,6 +1305,12 @@ MINLINE bool compare_v3v3(const float v1[3], const float v2[3], const float limi
           compare_ff(v1[2], v2[2], limit));
 }
 
+MINLINE bool compare_v3v3_db(const double v1[3], const double v2[3], const double limit)
+{
+  return (compare_dd(v1[0], v2[0], limit) && compare_dd(v1[1], v2[1], limit) &&
+          compare_dd(v1[2], v2[2], limit));
+}
+
 MINLINE bool compare_v4v4(const float v1[4], const float v2[4], const float limit)
 {
   return (compare_ff(v1[0], v2[0], limit) && compare_ff(v1[1], v2[1], limit) &&
@@ -1287,6 +1367,11 @@ MINLINE bool compare_len_v3v3(const float v1[3], const float v2[3], const float 
  * (looking from 'l1' -> 'l2').
  */
 MINLINE float line_point_side_v2(const float l1[2], const float l2[2], const float pt[2])
+{
+  return (((l1[0] - pt[0]) * (l2[1] - pt[1])) - ((l2[0] - pt[0]) * (l1[1] - pt[1])));
+}
+
+MINLINE double line_point_side_v2_db(const double l1[2], const double l2[2], const double pt[2])
 {
   return (((l1[0] - pt[0]) * (l2[1] - pt[1])) - ((l2[0] - pt[0]) * (l1[1] - pt[1])));
 }

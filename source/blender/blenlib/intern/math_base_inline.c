@@ -466,6 +466,11 @@ MINLINE int compare_ff(float a, float b, const float max_diff)
   return fabsf(a - b) <= max_diff;
 }
 
+MINLINE int compare_dd(double a, double b, const double max_diff)
+{
+  return fabs(a - b) <= max_diff;
+}
+
 /**
  * Almost-equal for IEEE floats, using their integer representation
  * (mixing ULP and absolute difference methods).
