@@ -283,6 +283,18 @@ static int add_int_to_intset(BoolState *bs, IndexedIntSet *intset, int value)
   return index;
 }
 
+static bool find_in_intset(const IndexedIntSet *intset, int value)
+{
+  LinkNode *ln;
+
+  for (ln = intset->listhead.list; ln; ln = ln->next) {
+    if (POINTER_AS_INT(ln->link) == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static int intset_get_value_by_index(const IndexedIntSet *intset, int index)
 {
   LinkNode *ln;
@@ -753,8 +765,7 @@ static int isect_line_seg_epsilon_v3_db(const double line_v1[3],
     cross_v3_v3v3_db(cray, c, a_dir);
     fac_b = dot_v3v3_db(cray, crs_ab) / nlen;
 
-    if (fac_b * blen < -epsilon ||
-        fac_b * blen - blen > epsilon) {
+    if (fac_b * blen < -epsilon || fac_b * blen - blen > epsilon) {
       return 0;
     }
     else {
@@ -1200,10 +1211,10 @@ static void apply_meshadd_to_bmesh(BMesh *bm,
       bmv = bm->vtable[v];
       BM_vert_kill(bm, bmv);
 #ifdef BOOLDEBUG
-       if (dbg_level > 0) {
-         printf("killed bmv=%p for vtable[%d]\n", bmv, v);
-         /* BM_mesh_validate(bm); */
-       }
+      if (dbg_level > 0) {
+        printf("killed bmv=%p for vtable[%d]\n", bmv, v);
+        /* BM_mesh_validate(bm); */
+      }
 #endif
     }
   }
@@ -1278,7 +1289,8 @@ static int meshadd_add_vert(
 
   if (checkdup) {
     for (ln = meshadd->verts.list, i = meshadd->vindex_start; ln; ln = ln->next, i++) {
-      if (compare_v3v3((float *)ln->link, co, (float)bs->eps)) {
+      newv = (NewVert *)ln->link;
+      if (compare_v3v3(newv->co, co, (float)bs->eps)) {
         return i;
       }
     }
@@ -1308,8 +1320,8 @@ static int meshadd_add_edge(
 
   if (checkdup) {
     for (ln = meshadd->edges.list, i = meshadd->eindex_start; ln; ln = ln->next, i++) {
-      int *pair = (int *)ln->link;
-      if ((pair[0] == v1 && pair[1] == v2) || (pair[0] == v2 && pair[1] == v1)) {
+      newe = (NewEdge *)ln->link;
+      if ((newe->v1 == v1 && newe->v2 == v2) || (newe->v1 == v2 && newe->v2== v1)) {
         return i;
       }
     }
@@ -2005,40 +2017,45 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
     ppi = (PartPartIntersect *)ln->link;
     for (lnv = ppi->verts.list; lnv; lnv = lnv->next) {
       v = POINTER_AS_INT(lnv->link);
-      v_index = add_int_to_intset(bs, &verts_needed, v);
-      add_to_intintmap(bs, &in_to_vmap, v_index, v);
+      if (!find_in_intset(&verts_needed, v)) {
+        v_index = add_int_to_intset(bs, &verts_needed, v);
+        add_to_intintmap(bs, &in_to_vmap, v_index, v);
+      }
     }
     for (lne = ppi->edges.list; lne; lne = lne->next) {
       e = POINTER_AS_INT(lne->link);
-      imeshplus_get_edge_verts(&imp, e, &v1, &v2);
-      BLI_assert(v1 != -1 && v2 != -1);
-      v_index = add_int_to_intset(bs, &verts_needed, v1);
-      add_to_intintmap(bs, &in_to_vmap, v_index, v1);
-      v_index = add_int_to_intset(bs, &verts_needed, v2);
-      add_to_intintmap(bs, &in_to_vmap, v_index, v2);
-      e_index = add_int_to_intset(bs, &edges_needed, e);
-      add_to_intintmap(bs, &in_to_emap, e_index, e);
+      if (!find_in_intset(&edges_needed, e)) {
+        imeshplus_get_edge_verts(&imp, e, &v1, &v2);
+        BLI_assert(v1 != -1 && v2 != -1);
+        v_index = add_int_to_intset(bs, &verts_needed, v1);
+        add_to_intintmap(bs, &in_to_vmap, v_index, v1);
+        v_index = add_int_to_intset(bs, &verts_needed, v2);
+        add_to_intintmap(bs, &in_to_vmap, v_index, v2);
+        e_index = add_int_to_intset(bs, &edges_needed, e);
+        add_to_intintmap(bs, &in_to_emap, e_index, e);
+      }
     }
     for (lnf = ppi->faces.list; lnf; lnf = lnf->next) {
       f = POINTER_AS_INT(lnf->link);
-      face_len = imeshplus_facelen(&imp, f);
-      nfaceverts += face_len;
-#if 0
-/* maybe do this in code that made coplanar ppi? */
-	  for (j = 0; j < face_len; j++) {
-		v = imesh_face_vert(im, f, j);
-		BLI_assert(v != -1);
-		v_index = add_int_to_intset(bs, &verts_needed, v);
-		/* if leave this here, need to check that not adding dups */
-		add_to_intintmap(bs, &in_to_vmap, v_index, v);
-	  }
-#endif
-      f_index = add_int_to_intset(bs, &faces_needed, f);
-      add_to_intintmap(bs, &in_to_fmap, f_index, f);
+        if (!find_in_intset(&faces_needed, f)) {
+        face_len = imeshplus_facelen(&imp, f);
+        nfaceverts += face_len;
+        for (j = 0; j < face_len; j++) {
+          v = imesh_face_vert(im, f, j);
+          BLI_assert(v != -1);
+          if (!find_in_intset(&verts_needed, v)) {
+            v_index = add_int_to_intset(bs, &verts_needed, v);
+            add_to_intintmap(bs, &in_to_vmap, v_index, v);
+          }
+        }
+        f_index = add_int_to_intset(bs, &faces_needed, f);
+        add_to_intintmap(bs, &in_to_fmap, f_index, f);
+      }
     }
   }
   /* Edges implicit in faces will come back as orig edges, so handle those. */
   tot_ne = edges_needed.size;
+#if 0
   for (i = 0; i < part_nf; i++) {
     f = part_face(part, i);
     face_len = imesh_facelen(im, f);
@@ -2050,6 +2067,20 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
       add_to_intintmap(bs, &in_to_emap, j + tot_ne, e);
     }
   }
+#else
+  for (i = 0; i < faces_needed.size; i++) {
+    f = intset_get_value_by_index(&faces_needed, i);
+    face_len = imesh_facelen(im, f);
+    for (j = 0; j < face_len; j++) {
+      v1 = imesh_face_vert(im, f, j);
+      v2 = imesh_face_vert(im, f, (j + 1) % face_len);
+      e = imesh_find_edge(im, v1, v2);
+      BLI_assert(e != -1);
+      add_to_intintmap(bs, &in_to_emap, j + tot_ne, e);
+    }
+    tot_ne += face_len;
+  }
+#endif
 
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
@@ -2546,12 +2577,12 @@ static PartPartIntersect *coplanar_part_part_intersect(
 }
 
 typedef struct FaceEdgeInfo {
-  double co[3];  /* coord of this face vertex */
-  double isect[3];  /* intersection, if any, of this edge segment (starts at v) with line */
-  double factor;  /* co = line_co1 + factor * line_dir */
-  int v;  /* vertex index of this face coord */
-  bool v_on;  /* is co on the line (within epsilon)? */
-  bool isect_ok;  /* does this edge segment (excluding end vertex) intersect line? */
+  double co[3];    /* coord of this face vertex */
+  double isect[3]; /* intersection, if any, of this edge segment (starts at v) with line */
+  double factor;   /* co = line_co1 + factor * line_dir */
+  int v;           /* vertex index of this face coord */
+  bool v_on;       /* is co on the line (within epsilon)? */
+  bool isect_ok;   /* does this edge segment (excluding end vertex) intersect line? */
 } FaceEdgeInfo;
 
 /* Find intersection of a face with a line and return the intervals on line.
@@ -2610,12 +2641,12 @@ static void find_face_line_intersects(BoolState *bs,
       fi->factor = len_v3_db(line_co1_to_co) / line_dir_len;
       if (dot_v3v3_db(line_co1_to_co, line_dir) < 0.0) {
         fi->factor = -fi->factor;
-	  }
-	}
-	else {
+      }
+    }
+    else {
       zero_v3_db(fi->isect);
       fi->factor = 0.0f;
-	}
+    }
   }
   sub_v3_v3v3_db(l_no, line_co2, line_co1);
   normalize_v3_d(l_no);
@@ -2623,25 +2654,30 @@ static void find_face_line_intersects(BoolState *bs,
     fi = &finfo[i];
     if (fi->isect_ok) {
       continue;
-	}
+    }
     finext = &finfo[(i + 1) % flen];
     is = isect_line_seg_epsilon_v3_db(
         line_co1, line_co2, fi->co, finext->co, eps, fi->isect, &fi->factor, &mu);
     if (is > 0) {
       fi->isect_ok = true;
       if (finext->v_on && is != 2) {
-		/* Don't count intersections of only the end of the line segment. */
+        /* Don't count intersections of only the end of the line segment. */
         fi->isect_ok = false;
-	  }
+      }
     }
   }
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
     for (i = 0; i < flen; i++) {
       fi = &finfo[i];
-	  printf("finfo[%d]: v=%d v_on=%d isect_ok=%d factor=%g isect=(%f,%f,%f)\n",
-	    i, fi->v, fi->v_on, fi->isect_ok, fi->factor, F3(fi->isect));
-	}
+      printf("finfo[%d]: v=%d v_on=%d isect_ok=%d factor=%g isect=(%f,%f,%f)\n",
+             i,
+             fi->v,
+             fi->v_on,
+             fi->isect_ok,
+             fi->factor,
+             F3(fi->isect));
+    }
   }
 #endif
   /* For now just handle case of convex faces, which should be one of the following
@@ -2657,39 +2693,39 @@ static void find_face_line_intersects(BoolState *bs,
       if (finfo[i].isect_ok) {
         startpos = i;
         break;
-	  }
-	}
-	if (startpos == -1) {
+      }
+    }
+    if (startpos == -1) {
 #ifdef BOOLDEBUG
       if (dbg_level > 0) {
         printf("no intersections\n");
         return;
-	  }
+      }
 #endif
-	}
-	endpos = startpos;
-	for (i = (startpos + 1) % flen; i != startpos; i = (i + 1) % flen) {
-	  if (finfo[i].isect_ok) {
-	    endpos = i;
-	  }
-	}
+    }
+    endpos = startpos;
+    for (i = (startpos + 1) % flen; i != startpos; i = (i + 1) % flen) {
+      if (finfo[i].isect_ok) {
+        endpos = i;
+      }
+    }
 #ifdef BOOLDEBUG
-	if (dbg_level > 0) {
-	  printf("startpos=%d, endpos=%d\n", startpos, endpos);
-	}
+    if (dbg_level > 0) {
+      printf("startpos=%d, endpos=%d\n", startpos, endpos);
+    }
 #endif
     interval = BLI_memarena_alloc(bs->mem_arena, 2 * sizeof(double));
-	if (finfo[startpos].factor <= finfo[endpos].factor) {
+    if (finfo[startpos].factor <= finfo[endpos].factor) {
       interval[0] = finfo[startpos].factor;
       interval[1] = finfo[endpos].factor;
-	}
-	else {
-	  interval[0] = finfo[endpos].factor;
-	  interval[1] = finfo[startpos].factor;
-	}
-	if (interval[1] - interval[0] <= eps) {
-	  interval[1] = interval[0];
-	}
+    }
+    else {
+      interval[0] = finfo[endpos].factor;
+      interval[1] = finfo[startpos].factor;
+    }
+    if (interval[1] - interval[0] <= eps) {
+      interval[1] = interval[0];
+    }
   }
 #ifdef BOOLDEBUG
   printf("interval (dists) = (%f,%f)\n", interval[0], interval[1]);
@@ -2867,7 +2903,9 @@ static PartPartIntersect *non_coplanar_part_part_intersect(
       }
 #ifdef BOOLDEBUG
       if (dbg_level > 0) {
-        printf("intersect intervals for faces %d and %d\n",  part_face(part_a, index_a), part_face(part_b, index_b));
+        printf("intersect intervals for faces %d and %d\n",
+               part_face(part_a, index_a),
+               part_face(part_b, index_b));
       }
 #endif
       if (BLI_linklist_count(lna) == 1 && BLI_linklist_count(lnb) == 1) {
@@ -2967,6 +3005,7 @@ static void intersect_partset_pair(BoolState *bs, MeshPartSet *a_partset, MeshPa
   LinkNodePair *a_isects; /* Array of List of PairPartIntersect. */
   LinkNodePair *b_isects; /* Array of List of PairPartIntersect. */
   PartPartIntersect *isect;
+  BLI_bitmap *bpart_coplanar_with_apart;
 #ifdef BOOLDEBUG
   int dbg_level = 1;
 #endif
@@ -2988,9 +3027,11 @@ static void intersect_partset_pair(BoolState *bs, MeshPartSet *a_partset, MeshPa
   a_isects = BLI_memarena_calloc(arena, (size_t)tot_part_a * sizeof(a_isects[0]));
   if (same_partsets) {
     b_isects = NULL;
+    bpart_coplanar_with_apart = NULL;
   }
   else {
     b_isects = BLI_memarena_calloc(arena, (size_t)tot_part_b * sizeof(b_isects[0]));
+    bpart_coplanar_with_apart = BLI_BITMAP_NEW_MEMARENA(arena, tot_part_b);
   }
 
 #ifdef BOOLDEBUG
@@ -3006,6 +3047,11 @@ static void intersect_partset_pair(BoolState *bs, MeshPartSet *a_partset, MeshPa
     bstart = same_partsets ? a_index + 1 : 0;
     for (b_index = bstart; b_index < tot_part_b; b_index++) {
       part_b = partset_part(b_partset, b_index);
+      if (!same_partsets) {
+        if (planes_are_coplanar(part_a->plane, part_b->plane, bs->eps)) {
+          BLI_BITMAP_ENABLE(bpart_coplanar_with_apart, b_index);
+        }
+      }
       isect = part_part_intersect(bs, part_a, a_index, part_b, b_index, &meshadd);
       if (isect != NULL) {
 #ifdef BOOLDEBUG
@@ -3057,6 +3103,14 @@ static void intersect_partset_pair(BoolState *bs, MeshPartSet *a_partset, MeshPa
         printf("self intersect part b%d with its ppis\n", b_index);
       }
 #endif
+      if (BLI_BITMAP_TEST_BOOL(bpart_coplanar_with_apart, b_index)) {
+#ifdef BOOLDEBUG
+        if (dbg_level > 0) {
+          printf("skipping self_intersect because coplanar with some a part\n");
+        }
+#endif
+        continue;
+      }
       isect = self_intersect_part_and_ppis(
           bs, part_b, b_isects, &meshadd, &meshdelete, &vert_merge_map);
 #ifdef BOOLDEBUG
