@@ -2618,7 +2618,7 @@ static void find_face_line_intersects(BoolState *bs,
 
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
-    printf("\nFIND_FACE_LINE_INTERSECTS\n");
+    printf("\nFIND_FACE_LINE_INTERSECTS, face %d\n", f);
     printf("along line (%f,%f,%f)(%f,%f,%f)\n", F3(line_co1), F3(line_co2));
   }
 #endif
@@ -2728,7 +2728,12 @@ static void find_face_line_intersects(BoolState *bs,
     }
   }
 #ifdef BOOLDEBUG
-  printf("interval (dists) = (%f,%f)\n", interval[0], interval[1]);
+  if (dbg_level > 0) {
+    double co1[3], co2[3];
+    madd_v3_v3v3db_db(co1, line_co1, line_dir, interval[0]);
+    madd_v3_v3v3db_db(co2, line_co2, line_dir, interval[1]);
+    printf("interval (dists) = (%f,%f) -> cooords (%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n", interval[0], interval[1], F3(co1), F3(co2));
+  }
 #endif
   BLI_linklist_append_arena(intervals, interval, bs->mem_arena);
 }
@@ -2760,7 +2765,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(
   double eps_squared = eps * eps;
   bool on1, on2;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 1;
 #endif
 
 #ifdef BOOLDEBUG
