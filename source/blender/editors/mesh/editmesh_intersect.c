@@ -49,6 +49,7 @@
 #include "tools/bmesh_intersect.h"
 #include "tools/bmesh_boolean.h"
 #include "tools/bmesh_separate.h"
+#include "tools/bmesh_edgesplit.h"
 
 /* detect isolated holes and fill them */
 #define USE_NET_ISLAND_CONNECT
@@ -149,6 +150,7 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
   bool use_separate_cut = false;
   const int separate_mode = RNA_enum_get(op->ptr, "separate_mode");
   const float eps = RNA_float_get(op->ptr, "threshold");
+  const bool newbool = RNA_boolean_get(op->ptr, "newbool");
   bool use_self;
   bool has_isect;
 
@@ -193,8 +195,17 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-#ifdef OLDWAY
-    has_isect = BM_mesh_intersect(em->bm,
+    if (newbool) {
+	  has_isect = BM_mesh_boolean(em->bm,
+									test_fn,
+									NULL,
+									use_self,
+									use_separate_all,
+									-1,
+									eps);
+	}
+	else {
+      has_isect = BM_mesh_intersect(em->bm,
                                   em->looptris,
                                   em->tottri,
                                   test_fn,
@@ -207,21 +218,16 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
                                   true,
                                   -1,
                                   eps);
-#else
-	  has_isect = BM_mesh_boolean(em->bm,
-							      test_fn,
-								  NULL,
-								  use_self,
-								  use_separate_all,
-								  -1,
-								  eps);
-#endif
+	}
 
     if (use_separate_cut) {
       /* detach selected/un-selected faces */
       BM_mesh_separate_faces(
           em->bm, BM_elem_cb_check_hflag_enabled_simple(const BMFace *, BM_ELEM_SELECT));
     }
+    else if (newbool && use_separate_all) {
+      BM_mesh_edgesplit(em->bm, false, true, false);
+	}
 
     edbm_intersect_select(em, has_isect);
 
@@ -275,6 +281,7 @@ void MESH_OT_intersect(struct wmOperatorType *ot)
       ot->srna, "separate_mode", isect_separate_items, ISECT_SEPARATE_CUT, "Separate Mode", "");
   RNA_def_float_distance(
       ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
+  RNA_def_boolean(ot->srna, "newbool", true, "New", "Use the new algorithm?");
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -298,6 +305,7 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
   const int boolean_operation = RNA_enum_get(op->ptr, "operation");
   bool use_swap = RNA_boolean_get(op->ptr, "use_swap");
   const float eps = RNA_float_get(op->ptr, "threshold");
+  const bool newbool = RNA_boolean_get(op->ptr, "newbool");
   int (*test_fn)(BMFace *, void *);
   bool has_isect;
 
@@ -315,7 +323,17 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    has_isect = BM_mesh_intersect(em->bm,
+    if (newbool) {
+		has_isect = BM_mesh_boolean(em->bm,
+									  test_fn,
+									  NULL,
+									  false,
+									  false,
+									  boolean_operation,
+									  eps);
+	}
+	else {
+      has_isect = BM_mesh_intersect(em->bm,
                                   em->looptris,
                                   em->tottri,
                                   test_fn,
@@ -328,6 +346,7 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
                                   true,
                                   boolean_operation,
                                   eps);
+    }
 
     edbm_intersect_select(em, has_isect);
 
@@ -375,6 +394,7 @@ void MESH_OT_intersect_boolean(struct wmOperatorType *ot)
                   "Use with difference intersection to swap which side is kept");
   RNA_def_float_distance(
       ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
+  RNA_def_boolean(ot->srna, "newbool", true, "New", "Use the new algorithm?");
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
