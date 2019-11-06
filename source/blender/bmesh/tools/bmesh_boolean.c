@@ -3370,7 +3370,7 @@ static double generalized_winding_number(BoolState *bs, int side, const double c
   double p1[3], p2[3], p3[3], a[3], b[3], c[3], bxc[3];
   double alen, blen, clen, num, denom, t, x;
 #  ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 0;
 
   if (dbg_level > 0) {
     printf("generalized_winding_number, side=%d, co=(%f,%f,%f)\n", side, F3(co));
@@ -3472,7 +3472,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode)
   bool do_remove, do_flip, inside;
   MeshChange meshchange;
 #  ifdef BOOLDEBUG
-  bool dbg_level = 1;
+  bool dbg_level = 0;
 
   if (dbg_level > 0) {
     printf("\nDO_BOOLEAN_OP, boolean_mode=%d\n\n", boolean_mode);
@@ -3575,7 +3575,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode)
   }
 #  endif
 
-  // apply_meshchange_to_imesh(&bs->im, &meshchange);
+  apply_meshchange_to_imesh(&bs->im, &meshchange);
   MEM_freeN(group_index);
 }
 
