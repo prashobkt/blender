@@ -139,6 +139,7 @@ typedef struct NewFace {
   IntPair *vert_edge_pairs; /* Array of len (vert, edge) pairs. */
   int len;
   int example; /* If not -1, example face in IMesh. */
+  IntSet *other_examples; /* rest of faces in IMesh that are originals for this face */
 } NewFace;
 
 /* MeshDelete holds an incremental deletion to an IMesh.
@@ -1581,7 +1582,7 @@ static int meshadd_add_edge(
 
 /* This assumes that vert_edge is an arena-allocated array that will persist. */
 static int meshadd_add_face(
-    BoolState *bs, MeshAdd *meshadd, IntPair *vert_edge, int len, int example)
+    BoolState *bs, MeshAdd *meshadd, IntPair *vert_edge, int len, int example, IntSet *other_examples)
 {
   NewFace *newf;
   MemArena *arena = bs->mem_arena;
@@ -1590,6 +1591,7 @@ static int meshadd_add_face(
   newf->vert_edge_pairs = vert_edge;
   newf->len = len;
   newf->example = example;
+  newf->other_examples = other_examples;
   BLI_linklist_append_arena(&meshadd->faces, newf, arena);
   return meshadd->findex_start + BLI_linklist_count(meshadd->faces.list) - 1;
 }
@@ -2002,13 +2004,21 @@ static bool part_may_intersect_partset(const MeshPart *part, const MeshPartSet *
   return isect_aabb_aabb_v3_db(part->bbmin, part->bbmax, partset->bbmin, partset->bbmax);
 }
 
-/* Return true if a_plane and b_plane are the same plane, to within eps. */
+/* Return true if a_plane and b_plane are the same plane, to within eps.
+ * Assume normal part of plane is normalized. */
 static bool planes_are_coplanar(const double a_plane[4], const double b_plane[4], double eps)
 {
-  if (fabs(a_plane[3] - b_plane[3]) > eps) {
-    return false;
+  double norms_dot;
+
+  /* They are the same plane even if they have opposite-facing normals,
+   * in which case the 4th constants will also be opposite. */
+  norms_dot = dot_v3v3_db(a_plane, b_plane);
+  if (norms_dot > 0.0) {
+    return fabs(norms_dot - 1.0) <= eps && fabs(a_plane[3] - b_plane[3]) <= eps;
   }
-  return fabs(dot_v3v3_db(a_plane, b_plane) - 1.0f) <= eps;
+  else {
+    return fabs(norms_dot + 1.0) <= eps && fabs(a_plane[3] + b_plane[3]) <= eps;
+  }
 }
 
 /* Return the MeshPart in partset for plane.
@@ -2208,7 +2218,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   IMeshPlus imp;
   int i, j, part_nf, part_ne, part_nv, tot_ne, face_len, v, e, f, v1, v2;
   int nfaceverts, v_index, e_index, f_index, faces_index;
-  int in_v, out_v, out_v2, start, in_e, out_e, in_f, out_f, e_eg, f_eg;
+  int in_v, out_v, out_v2, start, in_e, out_e, in_f, out_f, e_eg, f_eg, f_eg_o, eg_len;
   int *imp_v, *imp_e;
   IntPair *new_face_data;
   IMesh *im = &bs->im;
@@ -2218,6 +2228,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   IntIntMap in_to_vmap;
   IntIntMap in_to_emap;
   IntIntMap in_to_fmap;
+  IntSet *f_other_egs;
   double mat_2d[3][3];
   double mat_2d_inv[3][3];
   double xyz[3], save_z, p[3], q[3], fno[3];
@@ -2226,7 +2237,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   MeshDelete *meshdelete = &change->delete;
   IntIntMap *vert_merge_map = &change->vert_merge_map;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 1;
 #endif
 
 #ifdef BOOLDEBUG
@@ -2599,12 +2610,26 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   for (out_f = 0; out_f < out->faces_len; out_f++) {
     in_f = -1;
     f_eg = -1;
+    f_other_egs = NULL;
     if (out->faces_orig_len_table[out_f] > 0) {
       start = out->faces_orig_start_table[out_f];
-      in_f = min_int_in_array(&out->faces_orig[start], out->faces_orig_len_table[out_f]);
+      eg_len = out->faces_orig_len_table[out_f];
+      in_f = min_int_in_array(&out->faces_orig[start], eg_len);
       if (!find_in_intintmap(&in_to_fmap, in_f, &f_eg)) {
         printf("shouldn't happen, %d not in in_to_fmap\n", in_f);
         BLI_assert(false);
+      }
+      if (eg_len > 1) {
+        /* Record the other examples too. They may be needed for boolean operations. */
+        f_other_egs = BLI_memarena_alloc(arena, sizeof(*f_other_egs));
+        for (i = start; i < start + eg_len; i++) {
+          if (!find_in_intintmap(&in_to_fmap, out->faces_orig[i], &f_eg_o)) {
+            printf("shouldn't happen, %d not in in_to_fmap\n", out->faces_orig[i]);
+          }
+          if (f_eg_o != f_eg) {
+            add_to_intset(bs, f_other_egs, f_eg_o);
+          }
+        }
       }
       /* If f_eg is in IMesh then need to record f_eg and any other faces
        * in the orig for out_f as deleted. */
@@ -2645,7 +2670,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
       }
       new_face_data[i].second = e;
     }
-    f = meshadd_add_face(bs, meshadd, new_face_data, face_len, f_eg);
+    f = meshadd_add_face(bs, meshadd, new_face_data, face_len, f_eg, f_other_egs);
     add_face_to_partpartintersect(bs, ppi_out, f);
   }
 
@@ -2901,7 +2926,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   MeshAdd *meshadd = &change->add;
   IntSet *intersection_edges = &change->intersection_edges;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 1;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3153,7 +3178,7 @@ static void intersect_partset_pair(BoolState *bs,
   PartPartIntersect *isect;
   BLI_bitmap *bpart_coplanar_with_apart;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 1;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3279,7 +3304,7 @@ bool BM_mesh_boolean(BMesh *bm,
   MeshPartSet all_parts, a_parts, b_parts;
   MeshChange meshchange;
 #ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 2;
 #endif
 
   init_imesh_from_bmesh(&bs.im, bm);
@@ -3305,6 +3330,10 @@ bool BM_mesh_boolean(BMesh *bm,
     find_coplanar_parts(&bs, &a_parts, TEST_A, "A");
     find_coplanar_parts(&bs, &b_parts, TEST_B, "B");
     intersect_partset_pair(&bs, &a_parts, &b_parts, &meshchange);
+  }
+
+  if (dbg_level > 1) {
+    dump_meshchange(&meshchange, "change for intersection");
   }
 
   apply_meshchange_to_imesh(&bs.im, &meshchange);
@@ -3657,7 +3686,10 @@ ATTU static void dump_meshadd(const MeshAdd *ma, const char *label)
     i = ma->findex_start;
     for (ln = ma->faces.list; ln; ln = ln->next) {
       nf = (NewFace *)ln->link;
-      printf("  %d: face of length %d, example %d\n     ", i, nf->len, nf->example);
+      printf("  %d: face of length %d, example %d\n", i, nf->len, nf->example);
+      if (nf->other_examples) {
+        dump_intset(nf->other_examples, "other examples", "    ");
+      }
       for (j = 0; j < nf->len; j++) {
         printf("(v=%d,e=%d)", nf->vert_edge_pairs[j].first, nf->vert_edge_pairs[j].second);
       }
@@ -3705,7 +3737,7 @@ ATTU static void dump_intset(const IntSet *set, const char *label, const char *p
   LinkNode *ln;
   int v;
 
-  printf("%sindexedintset %s\n", prefix, label);
+  printf("%sintset %s\n%s", prefix, label, prefix);
   for (ln = set->list; ln; ln = ln->next) {
     v = POINTER_AS_INT(ln->link);
     printf("%d ", v);
