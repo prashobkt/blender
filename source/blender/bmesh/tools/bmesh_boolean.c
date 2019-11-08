@@ -1158,7 +1158,11 @@ static int resolve_merge(int v, const IntIntMap *vert_merge_map)
   return vmapped;
 }
 
-static void apply_meshchange_to_bmesh(BMesh *bm, MeshChange *change)
+/* Apply the change to the BMesh. Ensure that indices are valid afterwards.
+ * Also, fill in r_both_side_faces with (new) indices of faces that have examples from
+ * both sides of the boolean operation (because they came from coplanar face intersections).
+ */
+static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *change, IntSet *r_both_side_faces)
 {
   int bm_tot_v, bm_tot_e, bm_tot_f, tot_new_v, tot_new_e, tot_new_f;
   int i, v, e, f, v1, v2;
@@ -1171,6 +1175,8 @@ static void apply_meshchange_to_bmesh(BMesh *bm, MeshChange *change)
   BMEdge **new_bmes, **face_bmes;
   BMEdge *bme, *bme_eg;
   BMFace *bmf, *bmf_eg;
+  LinkNode *both_side_bmfaces, *ln;
+  bool both_sides;
   MeshAdd *meshadd = &change->add;
   MeshDelete *meshdelete = &change->delete;
   IntIntMap *vert_merge_map = &change->vert_merge_map;
@@ -1268,6 +1274,7 @@ static void apply_meshchange_to_bmesh(BMesh *bm, MeshChange *change)
   }
 
   /* Now the faces. */
+  both_side_bmfaces = NULL;
   bm_tot_f = bm->totface;
   tot_new_f = meshadd_totface(meshadd);
   if (tot_new_f > 0) {
@@ -1283,8 +1290,30 @@ static void apply_meshchange_to_bmesh(BMesh *bm, MeshChange *change)
     for (f = meshadd->findex_start; f < meshadd->findex_start + tot_new_f; f++) {
       newface = meshadd_get_newface(meshadd, f);
       BLI_assert(newface != NULL);
+      both_sides = false;
       if (newface->example != -1) {
         bmf_eg = bm->ftable[newface->example];
+
+        /* See if newface has examples on both sides of the boolean operation.
+         * Add its BMFace to both_sides_faces if so. */
+        if (newface->other_examples) {
+          bool in_a, in_b;
+          int testval, f_o;;
+          BMFace *bmf_eg_o;
+
+          testval = bs->test_fn(bmf_eg, bs->test_fn_user_data);
+          in_a = (testval == TEST_A);
+          in_b = (testval == TEST_B);
+          intset_iter_init(&is_iter, newface->other_examples);
+          for (; !intset_iter_done(&is_iter); intset_iter_step(&is_iter)) {
+            f_o = intset_iter_value(&is_iter);
+            bmf_eg_o = bm->ftable[f_o];
+            testval = bs->test_fn(bmf_eg_o, bs->test_fn_user_data);
+            in_a |= (testval == TEST_A);
+            in_b |= (testval == TEST_B);
+          }
+          both_sides = in_a && in_b;
+        }
       }
       else {
         bmf_eg = NULL;
@@ -1314,6 +1343,9 @@ static void apply_meshchange_to_bmesh(BMesh *bm, MeshChange *change)
       bmf = BM_face_create(bm, face_bmvs, face_bmes, facelen, bmf_eg, 0);
       if (bmf_eg) {
         BM_elem_select_copy(bm, bmf, bmf_eg);
+        if (both_sides) {
+          BLI_linklist_prepend_arena(&both_side_bmfaces, bmf, bs->mem_arena);
+        }
       }
       if (find_in_intset(&change->face_flip, f)) {
         BM_face_normal_flip(bm, bmf);
@@ -1395,12 +1427,26 @@ static void apply_meshchange_to_bmesh(BMesh *bm, MeshChange *change)
   }
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+
+  if (r_both_side_faces) {
+    /* Turn both_side_bmfaces list into face indices in r_both_side_faces. */
+    for (ln = both_side_bmfaces; ln; ln = ln->next) {
+      bmf = (BMFace *)ln->link;
+      f = BM_elem_index_get(bmf);
+      add_to_intset(bs, r_both_side_faces, f);
+#ifdef BOOLDEBUG
+      if (dbg_level > 0) {
+        printf("added %d to both_sides set, for bmf=%p\n", f, bmf);
+      }
+#endif
+    }
+  }
 }
 
-static void apply_meshchange_to_imesh(IMesh *im, MeshChange *change)
+static void apply_meshchange_to_imesh(BoolState *bs, IMesh *im, MeshChange *change, IntSet *r_both_side_faces)
 {
   if (im->bm) {
-    apply_meshchange_to_bmesh(im->bm, change);
+    apply_meshchange_to_bmesh(bs, im->bm, change, r_both_side_faces);
   }
   else {
     /* TODO */
@@ -2237,7 +2283,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   MeshDelete *meshdelete = &change->delete;
   IntIntMap *vert_merge_map = &change->vert_merge_map;
 #ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 0;
 #endif
 
 #ifdef BOOLDEBUG
@@ -2926,7 +2972,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   MeshAdd *meshadd = &change->add;
   IntSet *intersection_edges = &change->intersection_edges;
 #ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 0;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3178,7 +3224,7 @@ static void intersect_partset_pair(BoolState *bs,
   PartPartIntersect *isect;
   BLI_bitmap *bpart_coplanar_with_apart;
 #ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 0;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3282,7 +3328,7 @@ static void intersect_partset_pair(BoolState *bs,
   }
 }
 
-static void do_boolean_op(BoolState *bm, const int boolean_mode);
+static void do_boolean_op(BoolState *bm, const int boolean_mode, IntSet *both_side_faces);
 
 /**
  * Intersect faces
@@ -3303,8 +3349,9 @@ bool BM_mesh_boolean(BMesh *bm,
   BoolState bs = {NULL};
   MeshPartSet all_parts, a_parts, b_parts;
   MeshChange meshchange;
+  IntSet both_side_faces;
 #ifdef BOOLDEBUG
-  int dbg_level = 2;
+  int dbg_level = 1;
 #endif
 
   init_imesh_from_bmesh(&bs.im, bm);
@@ -3321,6 +3368,7 @@ bool BM_mesh_boolean(BMesh *bm,
 #endif
 
   init_meshchange(&bs, &meshchange);
+  init_intset(&both_side_faces);
 
   if (use_self) {
     find_coplanar_parts(&bs, &all_parts, TEST_ALL, "all");
@@ -3334,12 +3382,13 @@ bool BM_mesh_boolean(BMesh *bm,
 
   if (dbg_level > 1) {
     dump_meshchange(&meshchange, "change for intersection");
+    dump_intset(&both_side_faces, "both side faces", "");
   }
 
-  apply_meshchange_to_imesh(&bs.im, &meshchange);
+  apply_meshchange_to_imesh(&bs, &bs.im, &meshchange, &both_side_faces);
 
   if (boolean_mode != -1) {
-    do_boolean_op(&bs, boolean_mode);
+    do_boolean_op(&bs, boolean_mode, &both_side_faces);
   }
 
   BLI_memarena_free(bs.mem_arena);
@@ -3491,17 +3540,17 @@ static bool point_is_inside_side(BoolState *bs, int side, const double co[3])
   return (fabs(gwn) >= 0.5);
 }
 
-static void do_boolean_op(BoolState *bs, const int boolean_mode)
+static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_side_faces)
 {
   int *groups_array;
   int(*group_index)[2];
   int group_tot, totface;
   double co[3];
   int i, f, fg, fg_end, side, otherside;
-  bool do_remove, do_flip, inside;
+  bool do_remove, do_flip, inside, both_sides;
   MeshChange meshchange;
 #  ifdef BOOLDEBUG
-  bool dbg_level = 0;
+  bool dbg_level = 1;
 
   if (dbg_level > 0) {
     printf("\nDO_BOOLEAN_OP, boolean_mode=%d\n\n", boolean_mode);
@@ -3542,9 +3591,10 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode)
     /* Test if first face of group is inside. */
     f = groups_array[fg];
     side = imesh_test_face(&bs->im, bs->test_fn, bs->test_fn_user_data, f);
+    both_sides = find_in_intset(both_side_faces, f);
 #  ifdef BOOLDEBUG
     if (dbg_level > 0) {
-      printf("group %d side = %d\n", i, side);
+      printf("group %d side = %d, both_sides = %d\n", i, side, both_sides);
     }
 #  endif
 
@@ -3604,7 +3654,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode)
   }
 #  endif
 
-  apply_meshchange_to_imesh(&bs->im, &meshchange);
+  apply_meshchange_to_imesh(bs, &bs->im, &meshchange, NULL);
   MEM_freeN(group_index);
 }
 
