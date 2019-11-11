@@ -138,7 +138,7 @@ typedef struct NewEdge {
 typedef struct NewFace {
   IntPair *vert_edge_pairs; /* Array of len (vert, edge) pairs. */
   int len;
-  int example; /* If not -1, example face in IMesh. */
+  int example;            /* If not -1, example face in IMesh. */
   IntSet *other_examples; /* rest of faces in IMesh that are originals for this face */
 } NewFace;
 
@@ -1162,7 +1162,10 @@ static int resolve_merge(int v, const IntIntMap *vert_merge_map)
  * Also, fill in r_both_side_faces with (new) indices of faces that have examples from
  * both sides of the boolean operation (because they came from coplanar face intersections).
  */
-static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *change, IntSet *r_both_side_faces)
+static void apply_meshchange_to_bmesh(BoolState *bs,
+                                      BMesh *bm,
+                                      MeshChange *change,
+                                      IntSet *r_both_side_faces)
 {
   int bm_tot_v, bm_tot_e, bm_tot_f, tot_new_v, tot_new_e, tot_new_f;
   int i, v, e, f, v1, v2;
@@ -1175,8 +1178,8 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
   BMEdge **new_bmes, **face_bmes;
   BMEdge *bme, *bme_eg;
   BMFace *bmf, *bmf_eg;
-  LinkNode *both_side_bmfaces, *ln;
-  bool both_sides;
+  LinkNode *both_side_bmfaces, *opp_normals_flags, *ln, *ln2;
+  bool both_sides, opp_normals;
   MeshAdd *meshadd = &change->add;
   MeshDelete *meshdelete = &change->delete;
   IntIntMap *vert_merge_map = &change->vert_merge_map;
@@ -1275,6 +1278,7 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
 
   /* Now the faces. */
   both_side_bmfaces = NULL;
+  opp_normals_flags = NULL;
   bm_tot_f = bm->totface;
   tot_new_f = meshadd_totface(meshadd);
   if (tot_new_f > 0) {
@@ -1291,6 +1295,7 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
       newface = meshadd_get_newface(meshadd, f);
       BLI_assert(newface != NULL);
       both_sides = false;
+      opp_normals = false;
       if (newface->example != -1) {
         bmf_eg = bm->ftable[newface->example];
 
@@ -1298,7 +1303,8 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
          * Add its BMFace to both_sides_faces if so. */
         if (newface->other_examples) {
           bool in_a, in_b;
-          int testval, f_o;;
+          int testval, f_o;
+          ;
           BMFace *bmf_eg_o;
 
           testval = bs->test_fn(bmf_eg, bs->test_fn_user_data);
@@ -1311,6 +1317,9 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
             testval = bs->test_fn(bmf_eg_o, bs->test_fn_user_data);
             in_a |= (testval == TEST_A);
             in_b |= (testval == TEST_B);
+            if (dot_v3v3(bmf_eg->no, bmf_eg_o->no) < 0.0f) {
+              opp_normals = true;
+            }
           }
           both_sides = in_a && in_b;
         }
@@ -1345,6 +1354,8 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
         BM_elem_select_copy(bm, bmf, bmf_eg);
         if (both_sides) {
           BLI_linklist_prepend_arena(&both_side_bmfaces, bmf, bs->mem_arena);
+          BLI_linklist_prepend_arena(
+              &opp_normals_flags, POINTER_FROM_INT(opp_normals), bs->mem_arena);
         }
       }
       if (find_in_intset(&change->face_flip, f)) {
@@ -1430,9 +1441,17 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
 
   if (r_both_side_faces) {
     /* Turn both_side_bmfaces list into face indices in r_both_side_faces. */
-    for (ln = both_side_bmfaces; ln; ln = ln->next) {
+    for (ln = both_side_bmfaces, ln2 = opp_normals_flags; ln; ln = ln->next, ln2 = ln2->next) {
       bmf = (BMFace *)ln->link;
       f = BM_elem_index_get(bmf);
+      /* Need to record f's other eg has opposite or same normal as eg.
+       * Indicate this by recording the index as negative if the normals
+       * are opposite. Except: negate (f+1) so that f==0 can be properly
+       * indicated as opposite. */
+      opp_normals = POINTER_AS_INT(ln2->link);
+      if (opp_normals) {
+        f = -(f + 1);
+      }
       add_to_intset(bs, r_both_side_faces, f);
 #ifdef BOOLDEBUG
       if (dbg_level > 0) {
@@ -1443,7 +1462,10 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
   }
 }
 
-static void apply_meshchange_to_imesh(BoolState *bs, IMesh *im, MeshChange *change, IntSet *r_both_side_faces)
+static void apply_meshchange_to_imesh(BoolState *bs,
+                                      IMesh *im,
+                                      MeshChange *change,
+                                      IntSet *r_both_side_faces)
 {
   if (im->bm) {
     apply_meshchange_to_bmesh(bs, im->bm, change, r_both_side_faces);
@@ -1627,8 +1649,12 @@ static int meshadd_add_edge(
 }
 
 /* This assumes that vert_edge is an arena-allocated array that will persist. */
-static int meshadd_add_face(
-    BoolState *bs, MeshAdd *meshadd, IntPair *vert_edge, int len, int example, IntSet *other_examples)
+static int meshadd_add_face(BoolState *bs,
+                            MeshAdd *meshadd,
+                            IntPair *vert_edge,
+                            int len,
+                            int example,
+                            IntSet *other_examples)
 {
   NewFace *newf;
   MemArena *arena = bs->mem_arena;
@@ -3439,13 +3465,17 @@ ATTU static void dump_part(const MeshPart *part, const char *label)
  * TOOD: speed up this calculation using the heirarchical algorithm in
  * that paper.
  */
-static double generalized_winding_number(BoolState *bs, int side, const double co[3])
+static double generalized_winding_number(BoolState *bs,
+                                         int side,
+                                         const double co[3],
+                                         IntSet *both_side_faces)
 {
   double gwn, fgwn;
   int i, v1, v2, v3, f, totf, flen, tottri;
   IMesh *im = &bs->im;
   int(*index)[3];
   int index_buffer_len;
+  bool negate;
   double p1[3], p2[3], p3[3], a[3], b[3], c[3], bxc[3];
   double alen, blen, clen, num, denom, t, x;
 #  ifdef BOOLDEBUG
@@ -3466,8 +3496,16 @@ static double generalized_winding_number(BoolState *bs, int side, const double c
   totf = imesh_totface(im);
   gwn = 0.0;
   for (f = 0; f < totf; f++) {
+    negate = false;
     if (imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f) != side) {
-      continue;
+      if (!find_in_intset(both_side_faces, f)) {
+        if (!find_in_intset(both_side_faces, -(f + 1))) {
+          /* f is not in both_side faces at all, so doesn't contribute to gwn. */
+          continue;
+        }
+        /* f is in both_side_faces but with opposite normal. */
+        negate = true;
+      }
     }
     flen = imesh_facelen(im, f);
     tottri = flen - 2;
@@ -3507,13 +3545,13 @@ static double generalized_winding_number(BoolState *bs, int side, const double c
       }
       t = num / denom;
       x = atan(t);
-      if (false && x < 0.0) {
-        x += M_PI;
-      }
       fgwn = 2 * x;
+      if (negate) {
+        fgwn = -fgwn;
+      }
 #  ifdef BOOLDEBUG
       if (dbg_level > 1) {
-        printf("face f%d tess tri %d contributes %f\n", f, i, fgwn);
+        printf("face f%d tess tri %d contributes %f (negated=%d\n", f, i, fgwn, negate);
       }
 #  endif
       gwn += fgwn;
@@ -3533,11 +3571,14 @@ static double generalized_winding_number(BoolState *bs, int side, const double c
 /* Return true if point co is inside the volume implied by the
  * faces for which bs->test_fn returns the value side.
  */
-static bool point_is_inside_side(BoolState *bs, int side, const double co[3])
+static bool point_is_inside_side(BoolState *bs,
+                                 int side,
+                                 const double co[3],
+                                 IntSet *both_side_faces)
 {
   double gwn;
 
-  gwn = generalized_winding_number(bs, side, co);
+  gwn = generalized_winding_number(bs, side, co, both_side_faces);
   return (fabs(gwn) >= 0.5);
 }
 
@@ -3548,7 +3589,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
   int group_tot, totface;
   double co[3];
   int i, f, fg, fg_end, side, otherside;
-  bool do_remove, do_flip, inside, both_sides;
+  bool do_remove, do_flip, inside, both_sides, opp_normals;
   MeshChange meshchange;
 #  ifdef BOOLDEBUG
   bool dbg_level = 1;
@@ -3592,10 +3633,25 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
     /* Test if first face of group is inside. */
     f = groups_array[fg];
     side = imesh_test_face(&bs->im, bs->test_fn, bs->test_fn_user_data, f);
-    both_sides = find_in_intset(both_side_faces, f);
+    if (find_in_intset(both_side_faces, f)) {
+      both_sides = true;
+      opp_normals = false;
+    }
+    else if (find_in_intset(both_side_faces, -(f + 1))) {
+      both_sides = true;
+      opp_normals = true;
+    }
+    else {
+      both_sides = false;
+      opp_normals = false;
+    }
 #  ifdef BOOLDEBUG
     if (dbg_level > 0) {
-      printf("group %d side = %d, both_sides = %d\n", i, side, both_sides);
+      printf("group %d side = %d, both_sides = %d, opp_normals = %d\n",
+             i,
+             side,
+             both_sides,
+             opp_normals);
     }
 #  endif
 
@@ -3605,36 +3661,50 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
     BLI_assert(ELEM(side, 0, 1));
     otherside = !side;
 
-    imesh_calc_point_in_face(&bs->im, f, co);
+    if (both_sides) {
+      do_remove = boolean_mode == BMESH_BOOLEAN_UNION && opp_normals;
+      do_flip = boolean_mode == BMESH_BOOLEAN_DIFFERENCE && opp_normals && side == 0;
 #  ifdef BOOLDEBUG
-    if (dbg_level > 0) {
-      printf("face %d test co=(%f,%f,%f)\n", f, F3(co));
+      if (dbg_level > 0) {
+        printf("both_sides case, do_remove=%d, do_flip=%d\n", do_remove, do_flip);
+      }
+#  endif
     }
+    else {
+      imesh_calc_point_in_face(&bs->im, f, co);
+#  ifdef BOOLDEBUG
+      if (dbg_level > 0) {
+        printf("face %d test co=(%f,%f,%f)\n", f, F3(co));
+      }
 #  endif
 
-    inside = point_is_inside_side(bs, otherside, co);
+      inside = point_is_inside_side(bs, otherside, co, both_side_faces);
 
-    switch (boolean_mode) {
-      case BMESH_BOOLEAN_ISECT:
-        do_remove = !inside;
-        do_flip = false;
-        break;
-      case BMESH_BOOLEAN_UNION:
-        do_remove = inside;
-        do_flip = false;
-        break;
-      case BMESH_BOOLEAN_DIFFERENCE:
-        do_remove = (side == 0) ? inside : !inside;
-        do_flip = (side == 1);
-        break;
-    }
+      switch (boolean_mode) {
+        case BMESH_BOOLEAN_ISECT:
+          do_remove = !inside;
+          do_flip = false;
+          break;
+        case BMESH_BOOLEAN_UNION:
+          do_remove = inside;
+          do_flip = false;
+          break;
+        case BMESH_BOOLEAN_DIFFERENCE:
+          do_remove = (side == 0) ? inside : !inside;
+          do_flip = (side == 1);
+          break;
+      }
 
 #  ifdef BOOLDEBUG
-    if (dbg_level > 0) {
-      printf(
-          "result for group %d: inside=%d, remove=%d, flip=%d\n\n", i, inside, do_remove, do_flip);
-    }
+      if (dbg_level > 0) {
+        printf("result for group %d: inside=%d, remove=%d, flip=%d\n\n",
+               i,
+               inside,
+               do_remove,
+               do_flip);
+      }
 #  endif
+    }
 
     if (do_remove || do_flip) {
       for (; fg != fg_end; fg++) {
