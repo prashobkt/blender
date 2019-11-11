@@ -2668,6 +2668,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
       if (eg_len > 1) {
         /* Record the other examples too. They may be needed for boolean operations. */
         f_other_egs = BLI_memarena_alloc(arena, sizeof(*f_other_egs));
+        init_intset(f_other_egs);
         for (i = start; i < start + eg_len; i++) {
           if (!find_in_intintmap(&in_to_fmap, out->faces_orig[i], &f_eg_o)) {
             printf("shouldn't happen, %d not in in_to_fmap\n", out->faces_orig[i]);
