@@ -2428,10 +2428,12 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   tot_ne = edges_needed.size;
   for (i = 0; i < faces_needed.size; i++) {
     f = indexedintset_get_value_by_index(&faces_needed, i);
+    imeshplus_get_face_no(&imp, f, fno);
+    reverse_face = (dot_v3v3_db(part->plane, fno) < 0.0);
     face_len = imesh_facelen(im, f);
     for (j = 0; j < face_len; j++) {
-      v1 = imesh_face_vert(im, f, j);
-      v2 = imesh_face_vert(im, f, (j + 1) % face_len);
+      v1 = imesh_face_vert(im, f, reverse_face ? (face_len - j - 1) % face_len : j);
+      v2 = imesh_face_vert(im, f, reverse_face ?  (2 * face_len - j - 2) % face_len : (j + 1) % face_len);
       e = imesh_find_edge(im, v1, v2);
       BLI_assert(e != -1);
       add_to_intintmap(bs, &in_to_emap, j + tot_ne, e);
@@ -2683,6 +2685,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
     in_f = -1;
     f_eg = -1;
     f_other_egs = NULL;
+    reverse_face = false;
     if (out->faces_orig_len_table[out_f] > 0) {
       start = out->faces_orig_start_table[out_f];
       eg_len = out->faces_orig_len_table[out_f];
@@ -2717,6 +2720,8 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
             meshdelete_add_face(meshdelete, f);
           }
         }
+        imeshplus_get_face_no(&imp, f_eg, fno);
+        reverse_face = (dot_v3v3_db(part->plane, fno) < 0.0);
       }
     }
     /* Even if f is same as an existing face, we make a new one, to simplify "what to delete"
@@ -2726,11 +2731,17 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
     new_face_data = (IntPair *)BLI_memarena_alloc(arena,
                                                   (size_t)face_len * sizeof(new_face_data[0]));
     for (i = 0; i < face_len; i++) {
-      out_v = out->faces[start + i];
+      if (reverse_face) {
+        out_v = out->faces[start + ((- i + face_len) % face_len)];
+        out_v2 = out->faces[start + ((-i - 1 + face_len) % face_len)];
+      }
+      else {
+        out_v = out->faces[start + i];
+        out_v2 = out->faces[start + ((i + 1) % face_len)];
+      }
       v = imp_v[out_v];
-      new_face_data[i].first = v;
-      out_v2 = out->faces[start + ((i + 1) % face_len)];
       v2 = imp_v[out_v2];
+      new_face_data[i].first = v;
       /* Edge (v, v2) should be an edge already added to ppi_out. Also e is either in im or
        * meshadd. */
       e = find_edge_by_verts_in_meshadd(meshadd, v, v2);
@@ -3294,7 +3305,7 @@ static void intersect_partset_pair(BoolState *bs,
           printf("Part a%d intersects part b%d\n", a_index, b_index);
           dump_partpartintersect(isect, "");
           printf("\n");
-          dump_meshadd(&meshchange->add, "incremental");
+          dump_meshchange(meshchange, "incremental");
         }
 #endif
         BLI_linklist_append_arena(&a_isects[a_index], isect, arena);
@@ -3378,7 +3389,7 @@ bool BM_mesh_boolean(BMesh *bm,
   MeshChange meshchange;
   IntSet both_side_faces;
 #ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 0;
 #endif
 
   init_imesh_from_bmesh(&bs.im, bm);
@@ -3592,7 +3603,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
   bool do_remove, do_flip, inside, both_sides, opp_normals;
   MeshChange meshchange;
 #  ifdef BOOLDEBUG
-  bool dbg_level = 1;
+  bool dbg_level = 0;
 
   if (dbg_level > 0) {
     printf("\nDO_BOOLEAN_OP, boolean_mode=%d\n\n", boolean_mode);
