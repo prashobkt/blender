@@ -45,6 +45,8 @@
 #include "BLI_strict_flags.h"
 
 #define BOOLDEBUG
+// #define PERFDEBUG
+
 
 /* NOTE: Work in progress. Initial implementation using slow data structures and algorithms
  * just to get the correct calculations down. After that, will replace data structures with
@@ -193,13 +195,13 @@ typedef struct MeshPart {
 /* A MeshPartSet set is a set of MeshParts.
  * For any two distinct elements of the set, either they are not
  * coplanar or if they are, they are known not to intersect.
- * TODO: faster structure for looking up by plane.
  */
 typedef struct MeshPartSet {
   double bbmin[3];
   double bbmax[3];
-  LinkNode *meshparts; /* links are MeshParts* */
+  MeshPart **meshparts;
   int tot_part;
+  int reserve;  /* number of allocated slots in meshparts; may exceed tot_part */
   const char *label; /* for debugging */
 } MeshPartSet;
 
@@ -265,6 +267,13 @@ ATTU static void dump_meshchange(const MeshChange *change, const char *label);
 ATTU static void dump_cdt_input(const CDT_input *cdt, const char *label);
 ATTU static void dump_cdt_result(const CDT_result *cdt, const char *label, const char *prefix);
 ATTU static void dump_bm(struct BMesh *bm, const char *msg);
+#endif
+
+#ifdef PERFDEBUG
+ATTU static void perfdata_init(void);
+ATTU static void incperfcount(int countnum);
+ATTU static void doperfmax(int maxnum, int val);
+ATTU static void dump_perfdata(void);
 #endif
 
 /* Forward declarations of some static functions. */
@@ -1891,28 +1900,27 @@ static void init_meshchange(BoolState *bs, MeshChange *meshchange)
 /** MeshPartSet functions. */
 #pragma mark MeshPartSet functions
 
-static void init_meshpartset(MeshPartSet *partset, const char *label)
+static void init_meshpartset(BoolState *bs, MeshPartSet *partset, int reserve, const char *label)
 {
   partset->meshparts = NULL;
+  partset->meshparts = BLI_memarena_alloc(bs->mem_arena, (size_t)reserve * sizeof(MeshPart *));
   partset->tot_part = 0;
+  partset->reserve = reserve;
   zero_v3_db(partset->bbmin);
   zero_v3_db(partset->bbmax);
   partset->label = label;
 }
 
-static void add_part_to_partset(BoolState *bs, MeshPartSet *partset, MeshPart *part)
+static inline void add_part_to_partset(MeshPartSet *partset, MeshPart *part)
 {
-  BLI_linklist_prepend_arena(&partset->meshparts, part, bs->mem_arena);
-  partset->tot_part++;
+  BLI_assert(partset->tot_part < partset->reserve);
+  partset->meshparts[partset->tot_part++] = part;
 }
 
-static MeshPart *partset_part(const MeshPartSet *partset, int index)
+static inline MeshPart *partset_part(const MeshPartSet *partset, int index)
 {
-  LinkNode *ln = BLI_linklist_find(partset->meshparts, index);
-  if (ln) {
-    return (MeshPart *)ln->link;
-  }
-  return NULL;
+  BLI_assert(index < partset->tot_part);
+  return partset->meshparts[index];
 }
 
 /* Fill in partset->bbmin and partset->bbmax with axis aligned bounding box
@@ -1922,9 +1930,8 @@ static MeshPart *partset_part(const MeshPartSet *partset, int index)
  */
 static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, double eps)
 {
-  LinkNode *ln;
   MeshPart *part;
-  int i;
+  int i, p;
 
   if (partset->meshparts == NULL) {
     zero_v3_db(partset->bbmin);
@@ -1933,8 +1940,8 @@ static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, double eps)
   }
   copy_v3_db(partset->bbmin, DBL_MAX);
   copy_v3_db(partset->bbmax, -DBL_MAX);
-  for (ln = partset->meshparts; ln; ln = ln->next) {
-    part = (MeshPart *)ln->link;
+  for (p = 0; p < partset->tot_part; p++) {
+    part = partset->meshparts[p];
     calc_part_bb_eps(bs, part, eps);
     for (i = 0; i < 3; i++) {
       partset->bbmin[i] = min_dd(partset->bbmin[i], part->bbmin[i]);
@@ -2096,14 +2103,15 @@ static bool planes_are_coplanar(const double a_plane[4], const double b_plane[4]
 /* Return the MeshPart in partset for plane.
  * If none exists, make a new one for the plane and add
  * it to partset.
+ * TODO: perhaps have hash set of plane normal -> part.
  */
 static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const double plane[4])
 {
-  LinkNode *ln;
   MeshPart *new_part;
+  int i;
 
-  for (ln = partset->meshparts; ln; ln = ln->next) {
-    MeshPart *p = (MeshPart *)ln->link;
+  for (i = 0; i < partset->tot_part; i++) {
+    MeshPart *p = partset->meshparts[i];
     if (planes_are_coplanar(plane, p->plane, bs->eps)) {
       return p;
     }
@@ -2111,7 +2119,7 @@ static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const 
   new_part = BLI_memarena_alloc(bs->mem_arena, sizeof(MeshPart));
   init_meshpart(bs, new_part);
   copy_v4_v4_db(new_part->plane, plane);
-  add_part_to_partset(bs, partset, new_part);
+  add_part_to_partset(partset, new_part);
   return new_part;
 }
 
@@ -2252,8 +2260,8 @@ static void find_coplanar_parts(BoolState *bs,
   int im_nf, f, test;
   double plane[4];
 
-  init_meshpartset(partset, label);
   im_nf = imesh_totface(im);
+  init_meshpartset(bs, partset, im_nf, label);
   for (f = 0; f < im_nf; f++) {
     if (test_val != TEST_ALL) {
       test = imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f);
@@ -3237,7 +3245,7 @@ static PartPartIntersect *part_part_intersect(BoolState *bs,
   if (!parts_may_intersect(part_a, part_b)) {
     ans = NULL;
   }
-  if (planes_are_coplanar(part_a->plane, part_b->plane, bs->eps)) {
+  else if (planes_are_coplanar(part_a->plane, part_b->plane, bs->eps)) {
     ans = coplanar_part_part_intersect(bs, part_a, a_index, part_b, b_index);
   }
   else {
@@ -3392,6 +3400,10 @@ bool BM_mesh_boolean(BMesh *bm,
   int dbg_level = 0;
 #endif
 
+#ifdef PERFDEBUG
+  perfdata_init();
+#endif
+
   init_imesh_from_bmesh(&bs.im, bm);
   bs.boolean_mode = boolean_mode;
   bs.eps = eps;
@@ -3430,6 +3442,9 @@ bool BM_mesh_boolean(BMesh *bm,
   }
 
   BLI_memarena_free(bs.mem_arena);
+#ifdef PERFDEBUG
+  dump_perfdata();
+#endif
   return true;
 }
 
@@ -3488,7 +3503,7 @@ static double generalized_winding_number(BoolState *bs,
   int index_buffer_len;
   bool negate;
   double p1[3], p2[3], p3[3], a[3], b[3], c[3], bxc[3];
-  double alen, blen, clen, num, denom, t, x;
+  double alen, blen, clen, num, denom, x;
 #  ifdef BOOLDEBUG
   int dbg_level = 0;
 
@@ -3554,8 +3569,7 @@ static double generalized_winding_number(BoolState *bs,
       if (denom == 0.0) {
         denom = 10e-10;
       }
-      t = num / denom;
-      x = atan(t);
+      x = atan2(num, denom);
       fgwn = 2 * x;
       if (negate) {
         fgwn = -fgwn;
@@ -4030,6 +4044,42 @@ ATTU static void dump_bm(struct BMesh *bm, const char *msg)
       printf(" ");
       printf(" %s\n", BM_elem_flag_test(l, (1 << 6)) ? "long" : "");
     }
+  }
+}
+#endif
+
+#ifdef PERFDEBUG
+#define NCOUNTS 6
+#define NMAXES 1
+struct PerfCounts {
+  int count[NCOUNTS];
+  int max[NMAXES];
+} perfdata;
+
+static void perfdata_init(void)
+{
+  memset(&perfdata, 0, sizeof(perfdata));
+}
+
+static void incperfcount(int countnum)
+{
+  perfdata.count[countnum]++;
+}
+
+static void doperfmax(int maxnum, int val)
+{
+  perfdata.max[maxnum] = max_ii(perfdata.max[maxnum], val);
+}
+
+static void dump_perfdata(void)
+{
+  int i;
+  printf("\nPERFDATA\n");
+  for (i = 0; i < NCOUNTS; i++) {
+    printf("  count%d = %d\n", i, perfdata.count[i]);
+  }
+  for (i = 0; i < NMAXES; i++) {
+    printf("  max%d = %d\n", i, perfdata.max[i]);
   }
 }
 #endif
