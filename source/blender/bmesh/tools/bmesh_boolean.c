@@ -32,6 +32,7 @@
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_delaunay_2d.h"
+#include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
@@ -1017,18 +1018,20 @@ static int imesh_find_co_db(const IMesh *im, const double co[3], double eps)
 static int imesh_find_edge(const IMesh *im, int v1, int v2)
 {
   BMesh *bm = im->bm;
-  int e;
 
   if (bm) {
+    BMEdge *bme;
+    BMVert *bmv1, *bmv2;
+    BMIter iter;
+
     if (v1 >= bm->totvert || v2 >= bm->totvert) {
       return -1;
     }
-    for (e = 0; e < bm->totedge; e++) {
-      BMEdge *bme = BM_edge_at_index(bm, e);
-      int ev1 = BM_elem_index_get(bme->v1);
-      int ev2 = BM_elem_index_get(bme->v2);
-      if ((ev1 == v1 && ev2 == v2) || (ev1 == v2 && ev2 == v1)) {
-        return e;
+    bmv1 = BM_vert_at_index(bm, v1);
+    bmv2 = BM_vert_at_index(bm, v2);
+    BM_ITER_ELEM(bme, &iter, bmv1, BM_EDGES_OF_VERT) {
+      if (BM_edge_other_vert(bme, bmv1) == bmv2) {
+        return BM_elem_index_get(bme);
       }
     }
     return -1;
