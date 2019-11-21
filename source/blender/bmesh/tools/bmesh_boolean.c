@@ -32,7 +32,7 @@
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_delaunay_2d.h"
-#include "BLI_ghash.h"
+#include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
@@ -47,7 +47,6 @@
 
 #define BOOLDEBUG
 // #define PERFDEBUG
-
 
 /* NOTE: Work in progress. Initial implementation using slow data structures and algorithms
  * just to get the correct calculations down. After that, will replace data structures with
@@ -202,7 +201,7 @@ typedef struct MeshPartSet {
   double bbmax[3];
   MeshPart **meshparts;
   int tot_part;
-  int reserve;  /* number of allocated slots in meshparts; may exceed tot_part */
+  int reserve;       /* number of allocated slots in meshparts; may exceed tot_part */
   const char *label; /* for debugging */
 } MeshPartSet;
 
@@ -1029,7 +1028,7 @@ static int imesh_find_edge(const IMesh *im, int v1, int v2)
     }
     bmv1 = BM_vert_at_index(bm, v1);
     bmv2 = BM_vert_at_index(bm, v2);
-    BM_ITER_ELEM(bme, &iter, bmv1, BM_EDGES_OF_VERT) {
+    BM_ITER_ELEM (bme, &iter, bmv1, BM_EDGES_OF_VERT) {
       if (BM_edge_other_vert(bme, bmv1) == bmv2) {
         return BM_elem_index_get(bme);
       }
@@ -1077,7 +1076,7 @@ static void imesh_get_edge_verts(const IMesh *im, int e, int *r_v1, int *r_v2)
   }
 }
 
-static void imesh_get_face_plane(const IMesh *im, int f, double r_plane[4])
+ATTU static void imesh_get_face_plane_db(const IMesh *im, int f, double r_plane[4])
 {
   double plane_co[3];
 
@@ -1089,6 +1088,22 @@ static void imesh_get_face_plane(const IMesh *im, int f, double r_plane[4])
       copy_v3db_v3fl(r_plane, bmf->no);
       copy_v3db_v3fl(plane_co, bmf->l_first->v->co);
       r_plane[3] = -dot_v3v3_db(r_plane, plane_co);
+    }
+  }
+}
+
+static void imesh_get_face_plane(const IMesh *im, int f, float r_plane[4])
+{
+  float plane_co[3];
+
+  zero_v4(r_plane);
+  if (im->bm) {
+    BMFace *bmf = BM_face_at_index(im->bm, f);
+    if (bmf) {
+      /* plane_from_point_normal_v3 with mixed arithmetic */
+      copy_v3_v3(r_plane, bmf->no);
+      copy_v3_v3(plane_co, bmf->l_first->v->co);
+      r_plane[3] = -dot_v3v3(r_plane, plane_co);
     }
   }
 }
@@ -2108,7 +2123,9 @@ static bool planes_are_coplanar(const double a_plane[4], const double b_plane[4]
  * it to partset.
  * TODO: perhaps have hash set of plane normal -> part.
  */
-static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const double plane[4])
+ATTU static MeshPart *find_part_for_plane(BoolState *bs,
+                                          MeshPartSet *partset,
+                                          const double plane[4])
 {
   MeshPart *new_part;
   int i;
@@ -2245,14 +2262,77 @@ static void add_face_to_partpartintersect(BoolState *bs, PartPartIntersect *ppi,
   BLI_linklist_append_arena(&ppi->faces, POINTER_FROM_INT(f), bs->mem_arena);
 }
 
+/* Pick one of the two possible plane representations with unit normal as canonical. */
+static void canonicalize_plane(float plane[4])
+{
+  bool do_negate = false;
+  if (plane[3] != 0.0f) {
+    do_negate = plane[3] > 0.0f;
+  }
+  else if (plane[2] != 0.0f) {
+    do_negate = plane[2] > 0.0f;
+  }
+  else if (plane[1] != 0.0f) {
+    do_negate = plane[1] > 0.0f;
+  }
+  else {
+    do_negate = plane[0] > 0.0f;
+  }
+  if (do_negate) {
+    plane[0] = -plane[0];
+    plane[1] = -plane[1];
+    plane[2] = -plane[2];
+    plane[3] = -plane[3];
+  }
+}
+
 /** Intersection Algorithm functions. */
 #pragma mark Intersection Algorithm functions
+
+static int find_coplanar_cb(void *user_data, int index, const float co[4], float dist_sq)
+{
+  MeshPart **face_part = (MeshPart **)user_data;
+
+  UNUSED_VARS(co,dist_sq);
+  return face_part[index] != NULL;
+}
 
 /* Fill partset with parts for each plane for which there is a face
  * in bs->im.
  * Use bs->test_fn to check elements against test_val, to see whether or not it should be in the
  * result.
  */
+/* Scratch notes to self on algorithm.
+ Cf emitmesh_select_similar.c which uses kdtree for SIMFACE_COPLANAR.
+
+ What I need is, for each face f in the part of the mesh given by test,
+ either:
+   1) make a new MeshPart for f's plane and add f to it. Add that new
+      MeshPart to partset.
+ or
+   2) if there is already a MeshPart for that plane, add f to that MeshPart.
+
+ A kdtree can be initialized with all the planes as indicated by the test,
+ where planes are identified with corresponding f as index. This tree may
+ have exact and near duplicates for plane.
+
+ Suppose I keep a face_part[f] indexed by face index, holding MeshPart pointers,
+ all initially NULL. The goal is to fill them all in with non-NULL values
+ where faces will share a part when they are all near enough the canonical plane
+ vector for the MeshPart.
+
+ After making the kdtree as specified above, we can then do:
+ for each f:
+   find all entries in kdtree that are near enough to f.
+   suppose these have face indices g1, g2, ..., gk.
+   Choose gi for the lowest i such that (a) face_part[gi] != NULL and
+   (b) the plane of face_part[gi] is close enough to that of f.
+   If there is no such gi, then make a new part with only f in it
+   and record that in face_part.
+   Otherwise add f to face_part[gi].
+   We can use a callback function version of the kdtree nearest neighbor
+   search to stop when we find the first gi that works.
+*/
 static void find_coplanar_parts(BoolState *bs,
                                 MeshPartSet *partset,
                                 int test_val,
@@ -2260,11 +2340,27 @@ static void find_coplanar_parts(BoolState *bs,
 {
   IMesh *im = &bs->im;
   MeshPart *part;
+  MeshPart **face_part;
   int im_nf, f, test;
-  double plane[4];
+  int near_f;
+  float plane[4];
+  KDTree_4d *tree;
+  KDTreeNearest_4d kdnear;
+  float feps = (float)bs->eps;
+#ifdef BOOLDEBUG
+  int dbg_level = 0;
+#endif
 
+
+#ifdef BOOLDEBUG
+  if (dbg_level > 0) {
+    printf("\nFIND_COPLANAR_PARTS %s, test_val=%d\n", label, test_val);
+  }
+#endif
   im_nf = imesh_totface(im);
   init_meshpartset(bs, partset, im_nf, label);
+  tree = BLI_kdtree_4d_new((unsigned int)im_nf);
+  face_part = MEM_calloc_arrayN((size_t)im_nf, sizeof(MeshPart *), __func__);
   for (f = 0; f < im_nf; f++) {
     if (test_val != TEST_ALL) {
       test = imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f);
@@ -2273,11 +2369,78 @@ static void find_coplanar_parts(BoolState *bs,
       }
     }
     imesh_get_face_plane(im, f, plane);
-    part = find_part_for_plane(bs, partset, plane);
-    add_face_to_part(bs, part, f);
+    canonicalize_plane(plane);
+    BLI_kdtree_4d_insert(tree, f, plane);
+#ifdef BOOLDEBUG
+    if (dbg_level > 1) {
+      printf("%d: (%f,%f,%f),%f\n", f, F4(plane));
+    }
+#endif
+  }
+  BLI_kdtree_4d_balance(tree);
+  for (f = 0; f < im_nf; f++) {
+    if (test_val != TEST_ALL) {
+      test = imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f);
+      if (test != test_val) {
+        continue;
+      }
+    }
+    imesh_get_face_plane(im, f, plane);
+    canonicalize_plane(plane);
+#ifdef BOOLDEBUG
+    if (dbg_level > 1) {
+      printf("find part for face %d, plane=(%f,%f,%f),%f\n", f, F4(plane));
+    }
+#endif
+    near_f = BLI_kdtree_4d_find_nearest_cb(tree, plane, find_coplanar_cb, face_part, &kdnear);
+#ifdef BOOLDEBUG
+    if (dbg_level > 1) {
+      printf("   near_f = %d\n", near_f);
+    }
+#endif
+    if (near_f != -1) {
+#ifdef BOOLDEBUG
+        if (dbg_level > 1) {
+          printf("  index=%d, dist=%f, co=(%f,%f,%f),%f\n", kdnear.index, kdnear.dist, F4(kdnear.co));
+        }
+#endif
+        if (fabsf(kdnear.co[3] - plane[3]) <= feps &&
+            fabsf(dot_v3v3(kdnear.co, plane) - 1.0f) <= feps * M_2_PI) {
+          add_face_to_part(bs, face_part[near_f], f);
+          face_part[f] = face_part[near_f];
+#ifdef BOOLDEBUG
+          if (dbg_level > 1) {
+            printf("   add to existing part %d\n", near_f);
+          }
+#endif
+        }
+        else {
+          near_f = -1;
+        }
+    }
+    if (near_f == -1) {
+      part = BLI_memarena_alloc(bs->mem_arena, sizeof(*part));
+      init_meshpart(bs, part);
+      copy_v4db_v4fl(part->plane, plane);
+      add_face_to_part(bs, part, f);
+      add_part_to_partset(partset, part);
+      face_part[f] = part;
+#ifdef BOOLDEBUG
+      if (dbg_level > 1) {
+        printf("   near_f = -1, so new part made for f=%d\n", f);
+      }
+#endif
+    }
   }
   /* TODO: look for loose verts and wire edges to add to each partset */
   calc_partset_bb_eps(bs, partset, bs->eps);
+#ifdef BOOLDEBUG
+  if (dbg_level > 0) {
+    dump_partset(partset);
+  }
+#endif
+  BLI_kdtree_4d_free(tree);
+  MEM_freeN(face_part);
 }
 
 /*
@@ -2444,7 +2607,8 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
     face_len = imesh_facelen(im, f);
     for (j = 0; j < face_len; j++) {
       v1 = imesh_face_vert(im, f, reverse_face ? (face_len - j - 1) % face_len : j);
-      v2 = imesh_face_vert(im, f, reverse_face ?  (2 * face_len - j - 2) % face_len : (j + 1) % face_len);
+      v2 = imesh_face_vert(
+          im, f, reverse_face ? (2 * face_len - j - 2) % face_len : (j + 1) % face_len);
       e = imesh_find_edge(im, v1, v2);
       BLI_assert(e != -1);
       add_to_intintmap(bs, &in_to_emap, j + tot_ne, e);
@@ -2743,7 +2907,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
                                                   (size_t)face_len * sizeof(new_face_data[0]));
     for (i = 0; i < face_len; i++) {
       if (reverse_face) {
-        out_v = out->faces[start + ((- i + face_len) % face_len)];
+        out_v = out->faces[start + ((-i + face_len) % face_len)];
         out_v2 = out->faces[start + ((-i - 1 + face_len) % face_len)];
       }
       else {
@@ -4052,8 +4216,8 @@ ATTU static void dump_bm(struct BMesh *bm, const char *msg)
 #endif
 
 #ifdef PERFDEBUG
-#define NCOUNTS 6
-#define NMAXES 1
+#  define NCOUNTS 6
+#  define NMAXES 1
 struct PerfCounts {
   int count[NCOUNTS];
   int max[NMAXES];
