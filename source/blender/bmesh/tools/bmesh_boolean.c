@@ -3563,6 +3563,10 @@ static void intersect_partset_pair(BoolState *bs,
     }
     MEM_freeN(overlap);
   }
+  BLI_bvhtree_free(tree_a);
+  if (tree_b != tree_a) {
+    BLI_bvhtree_free(tree_b);
+  }
 
 #  ifdef BOOLDEBUG
   if (dbg_level > 0) {
