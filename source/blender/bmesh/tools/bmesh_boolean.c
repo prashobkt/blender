@@ -32,6 +32,7 @@
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_delaunay_2d.h"
+#include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
@@ -47,11 +48,6 @@
 
 #define BOOLDEBUG
 // #define PERFDEBUG
-
-/* NOTE: Work in progress. Initial implementation using slow data structures and algorithms
- * just to get the correct calculations down. After that, will replace data structures with
- * faster-lookup versions (hash tables, kd-trees, bvh structures) and will parallelize.
- */
 
 /* A set of integers. TODO: faster structure. */
 typedef struct IntSet {
@@ -2096,11 +2092,6 @@ static bool parts_may_intersect(const MeshPart *part1, const MeshPart *part2)
   return isect_aabb_aabb_v3_db(part1->bbmin, part1->bbmax, part2->bbmin, part2->bbmax);
 }
 
-static bool part_may_intersect_partset(const MeshPart *part, const MeshPartSet *partset)
-{
-  return isect_aabb_aabb_v3_db(part->bbmin, part->bbmax, partset->bbmin, partset->bbmax);
-}
-
 /* Return true if a_plane and b_plane are the same plane, to within eps.
  * Assume normal part of plane is normalized. */
 static bool planes_are_coplanar(const double a_plane[4], const double b_plane[4], double eps)
@@ -2293,7 +2284,7 @@ static int find_coplanar_cb(void *user_data, int index, const float co[4], float
 {
   MeshPart **face_part = (MeshPart **)user_data;
 
-  UNUSED_VARS(co,dist_sq);
+  UNUSED_VARS(co, dist_sq);
   return face_part[index] != NULL;
 }
 
@@ -2351,7 +2342,6 @@ static void find_coplanar_parts(BoolState *bs,
   int dbg_level = 0;
 #endif
 
-
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("\nFIND_COPLANAR_PARTS %s, test_val=%d\n", label, test_val);
@@ -2400,23 +2390,24 @@ static void find_coplanar_parts(BoolState *bs,
 #endif
     if (near_f != -1) {
 #ifdef BOOLDEBUG
-        if (dbg_level > 1) {
-          printf("  index=%d, dist=%f, co=(%f,%f,%f),%f\n", kdnear.index, kdnear.dist, F4(kdnear.co));
-        }
+      if (dbg_level > 1) {
+        printf(
+            "  index=%d, dist=%f, co=(%f,%f,%f),%f\n", kdnear.index, kdnear.dist, F4(kdnear.co));
+      }
 #endif
-        if (fabsf(kdnear.co[3] - plane[3]) <= feps &&
-            fabsf(dot_v3v3(kdnear.co, plane) - 1.0f) <= feps * M_2_PI) {
-          add_face_to_part(bs, face_part[near_f], f);
-          face_part[f] = face_part[near_f];
+      if (fabsf(kdnear.co[3] - plane[3]) <= feps &&
+          fabsf(dot_v3v3(kdnear.co, plane) - 1.0f) <= feps * M_2_PI) {
+        add_face_to_part(bs, face_part[near_f], f);
+        face_part[f] = face_part[near_f];
 #ifdef BOOLDEBUG
-          if (dbg_level > 1) {
-            printf("   add to existing part %d\n", near_f);
-          }
+        if (dbg_level > 1) {
+          printf("   add to existing part %d\n", near_f);
+        }
 #endif
-        }
-        else {
-          near_f = -1;
-        }
+      }
+      else {
+        near_f = -1;
+      }
     }
     if (near_f == -1) {
       part = BLI_memarena_alloc(bs->mem_arena, sizeof(*part));
@@ -3421,6 +3412,31 @@ static PartPartIntersect *part_part_intersect(BoolState *bs,
   return ans;
 }
 
+/* Lexicographic sort of two BVHTreeOverlap. */
+static int bool_overlap_sort_fn(const void *v_1, const void *v_2)
+{
+  const BVHTreeOverlap *o1 = v_1;
+  const BVHTreeOverlap *o2 = v_2;
+
+  if (o1->indexA < o2->indexA) {
+    return -1;
+  }
+  else if (o1->indexA > o2->indexA) {
+    return 1;
+  }
+  else {
+    if (o1->indexB < o2->indexB) {
+      return -1;
+    }
+    else if (o1->indexB > o2->indexB) {
+      return 1;
+    }
+    else {
+      return 0;
+    }
+  }
+}
+
 /* Intersect all parts of a_partset with all parts of b_partset.
  */
 static void intersect_partset_pair(BoolState *bs,
@@ -3428,7 +3444,8 @@ static void intersect_partset_pair(BoolState *bs,
                                    MeshPartSet *b_partset,
                                    MeshChange *meshchange)
 {
-  int a_index, b_index, tot_part_a, tot_part_b, bstart;
+  int a_index, b_index, tot_part_a, tot_part_b;
+  uint overlap_index;
   MeshPart *part_a, *part_b;
   MemArena *arena = bs->mem_arena;
   bool same_partsets = (a_partset == b_partset);
@@ -3436,11 +3453,16 @@ static void intersect_partset_pair(BoolState *bs,
   LinkNodePair *b_isects; /* Array of List of PairPartIntersect. */
   PartPartIntersect *isect;
   BLI_bitmap *bpart_coplanar_with_apart;
-#ifdef BOOLDEBUG
+  BVHTree *tree_a, *tree_b;
+  uint tree_overlap_tot;
+  BVHTreeOverlap *overlap;
+  float feps_margin = 20.0f * ((float)bs->eps);
+  float bbpts[6];
+#  ifdef BOOLDEBUG
   int dbg_level = 0;
-#endif
+#  endif
 
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("\nINTERSECT_PARTSET_PAIR\n\n");
     if (dbg_level > 0) {
@@ -3448,41 +3470,89 @@ static void intersect_partset_pair(BoolState *bs,
       dump_partset(b_partset);
     }
   }
-#endif
+#  endif
   tot_part_a = a_partset->tot_part;
   tot_part_b = b_partset->tot_part;
   a_isects = BLI_memarena_calloc(arena, (size_t)tot_part_a * sizeof(a_isects[0]));
   b_isects = BLI_memarena_calloc(arena, (size_t)tot_part_b * sizeof(b_isects[0]));
   bpart_coplanar_with_apart = BLI_BITMAP_NEW_MEMARENA(arena, tot_part_b);
 
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
   if (dbg_level > 0) {
-    printf("\nIntersect_partset_pair: do all part - part preliminary intersections\n\n");
+    printf(
+        "\nIntersect_partset_pair: do all part - part preliminary intersections (using bvh)\n\n");
   }
-#endif
+#  endif
+  /* Tree type is 8 => octtree; axis = 6 => using XYZ axes only. */
+  tree_a = BLI_bvhtree_new(tot_part_a, feps_margin, 8, 6);
   for (a_index = 0; a_index < tot_part_a; a_index++) {
     part_a = partset_part(a_partset, a_index);
-    if (!part_may_intersect_partset(part_a, b_partset)) {
-      continue;
-    }
-    bstart = same_partsets ? a_index + 1 : 0;
-    for (b_index = bstart; b_index < tot_part_b; b_index++) {
+    copy_v3fl_v3db(bbpts, part_a->bbmin);
+    copy_v3fl_v3db(bbpts + 3, part_a->bbmax);
+    BLI_bvhtree_insert(tree_a, a_index, bbpts, 2);
+  }
+  BLI_bvhtree_balance(tree_a);
+  if (!same_partsets) {
+    tree_b = BLI_bvhtree_new(tot_part_b, feps_margin, 8, 6);
+    for (b_index = 0; b_index < tot_part_b; b_index++) {
       part_b = partset_part(b_partset, b_index);
-      if (!same_partsets) {
+      copy_v3fl_v3db(bbpts, part_b->bbmin);
+      copy_v3fl_v3db(bbpts + 3, part_b->bbmax);
+      BLI_bvhtree_insert(tree_b, b_index, bbpts, 2);
+    }
+    BLI_bvhtree_balance(tree_b);
+  }
+  else {
+    tree_b = tree_a;
+  }
+
+#if 0
+  /* The non-_ex version uses BVH_OVERLAP_USE_THREADING | BVH_OVERLAP_RETURN_PAIRS */
+  overlap = BLI_bvhtree_overlap_ex(
+      tree_a, tree_b, &tree_overlap_tot, NULL, NULL, BVH_OVERLAP_RETURN_PAIRS);
+#else
+  overlap = BLI_bvhtree_overlap(tree_a, tree_b, &tree_overlap_tot, NULL, NULL);
+#endif
+
+#  ifdef BOOLDEBUG
+  if (dbg_level > 0) {
+    printf("process %u overlaps\n\n", tree_overlap_tot);
+  }
+#  endif
+
+  if (overlap) {
+    /* For stable results in the face of, especially, multithreaded bvhtree overlap, sort the overlaps. */
+    qsort(overlap, tree_overlap_tot, sizeof(overlap[0]), bool_overlap_sort_fn);
+    for (overlap_index = 0; overlap_index < tree_overlap_tot; overlap_index++) {
+      a_index = overlap[overlap_index].indexA;
+      b_index = overlap[overlap_index].indexB;
+#  ifdef BOOLDEBUG
+      if (dbg_level > 1) {
+        printf("overlap: a%d and b%d\n", a_index, b_index);
+      }
+#  endif
+      part_a = partset_part(a_partset, a_index);
+      part_b = partset_part(b_partset, b_index);
+      if (same_partsets) {
+        if (b_index <= a_index) {
+          continue;
+        }
+      }
+      else {
         if (planes_are_coplanar(part_a->plane, part_b->plane, bs->eps)) {
           BLI_BITMAP_ENABLE(bpart_coplanar_with_apart, b_index);
         }
       }
       isect = part_part_intersect(bs, part_a, a_index, part_b, b_index, meshchange);
       if (isect != NULL) {
-#ifdef BOOLDEBUG
-        if (dbg_level > 0) {
+#  ifdef BOOLDEBUG
+        if (false && dbg_level > 0) { /*DEBUG!!*/
           printf("Part a%d intersects part b%d\n", a_index, b_index);
           dump_partpartintersect(isect, "");
           printf("\n");
           dump_meshchange(meshchange, "incremental");
         }
-#endif
+#  endif
         BLI_linklist_append_arena(&a_isects[a_index], isect, arena);
         BLI_linklist_append_arena(&b_isects[b_index], isect, arena);
         if (same_partsets) {
@@ -3491,52 +3561,53 @@ static void intersect_partset_pair(BoolState *bs,
         }
       }
     }
+    MEM_freeN(overlap);
   }
 
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("\nintersect_partset_pair: do self intersections\n\n");
   }
-#endif
+#  endif
   /* Now self-intersect the parts with their lists of isects. */
   for (a_index = 0; a_index < tot_part_a; a_index++) {
     part_a = partset_part(a_partset, a_index);
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
     if (dbg_level > 0) {
       printf("\nSELF INTERSECT part a%d with its ppis\n", a_index);
     }
-#endif
+#  endif
     isect = self_intersect_part_and_ppis(bs, part_a, &a_isects[a_index], meshchange);
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
     if (isect && dbg_level > 0) {
       dump_partpartintersect(isect, "after self intersect");
       dump_meshchange(meshchange, "after self intersect");
     }
-#endif
+#  endif
   }
   if (!same_partsets) {
     for (b_index = 0; b_index < tot_part_b; b_index++) {
       part_b = partset_part(b_partset, b_index);
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
       if (dbg_level > 0) {
         printf("\nSELF INTERSECT part b%d with its ppis\n", b_index);
       }
-#endif
+#  endif
       if (BLI_BITMAP_TEST_BOOL(bpart_coplanar_with_apart, b_index)) {
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
         if (dbg_level > 0) {
           printf("skipping self_intersect because coplanar with some a part\n");
         }
-#endif
+#  endif
         continue;
       }
       isect = self_intersect_part_and_ppis(bs, part_b, &b_isects[b_index], meshchange);
-#ifdef BOOLDEBUG
+#  ifdef BOOLDEBUG
       if (isect && dbg_level > 0) {
         dump_partpartintersect(isect, "after self intersect b");
         dump_meshchange(meshchange, "after self intersect b");
       }
-#endif
+#  endif
     }
   }
 }
