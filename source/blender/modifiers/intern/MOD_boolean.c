@@ -51,6 +51,7 @@
 #include "bmesh.h"
 #include "bmesh_tools.h"
 #include "tools/bmesh_intersect.h"
+#include "tools/bmesh_boolean.h"
 
 #ifdef DEBUG_TIME
 #  include "PIL_time.h"
@@ -153,10 +154,12 @@ static int bm_face_isect_pair(BMFace *f, void *UNUSED(user_data))
   return BM_elem_flag_test(f, BM_FACE_TAG) ? 1 : 0;
 }
 
+/* TODO: use Mesh's instead of BMesh's with new boolean code. */
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   BooleanModifierData *bmd = (BooleanModifierData *)md;
   Mesh *result = mesh;
+  bool newbool = true;
 
   Mesh *mesh_other;
 
@@ -216,9 +219,14 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         int tottri;
         BMLoop *(*looptris)[3];
 
-        looptris = MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__);
-
-        BM_mesh_calc_tessellation_beauty(bm, looptris, &tottri);
+        if (newbool) {
+          looptris = NULL;
+          tottri = 0;
+        }
+        else {
+          looptris = MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__);
+          BM_mesh_calc_tessellation_beauty(bm, looptris, &tottri);
+        }
 
         /* postpone this until after tessellating
          * so we can use the original normals before the vertex are moved */
@@ -299,7 +307,11 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                                0;
         }
 
-        BM_mesh_intersect(bm,
+        if (newbool) {
+          BM_mesh_boolean(bm, bm_face_isect_pair, NULL, false, false, bmd->operation, bmd->double_threshold);
+        }
+        else {
+          BM_mesh_intersect(bm,
                           looptris,
                           tottri,
                           bm_face_isect_pair,
@@ -313,7 +325,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                           bmd->operation,
                           bmd->double_threshold);
 
-        MEM_freeN(looptris);
+          MEM_freeN(looptris);
+        }
       }
 
       result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);

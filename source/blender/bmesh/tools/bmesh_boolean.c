@@ -881,6 +881,7 @@ static void init_imesh_from_bmesh(IMesh *im, BMesh *bm)
   im->bm = bm;
   im->me = NULL;
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+  BM_mesh_elem_index_ensure(bm, BM_VERT| BM_EDGE | BM_FACE | BM_LOOP);
   im->co_tree = make_im_co_tree(im);
 }
 
@@ -1252,7 +1253,7 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
   IntSet *intersection_edges = &change->intersection_edges;
   IntSetIterator is_iter;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 1;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3240,7 +3241,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   MeshAdd *meshadd = &change->add;
   IntSet *intersection_edges = &change->intersection_edges;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 2;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3523,7 +3524,7 @@ static void intersect_partset_pair(BoolState *bs,
   float feps_margin = 20.0f * ((float)bs->eps);
   float bbpts[6];
 #  ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 2;
 #  endif
 
 #  ifdef BOOLDEBUG
@@ -3604,7 +3605,7 @@ static void intersect_partset_pair(BoolState *bs,
       isect = part_part_intersect(bs, part_a, a_index, part_b, b_index, meshchange);
       if (isect != NULL) {
 #  ifdef BOOLDEBUG
-        if (false && dbg_level > 0) { /*DEBUG!!*/
+        if (dbg_level > 0) {
           printf("Part a%d intersects part b%d\n", a_index, b_index);
           dump_partpartintersect(isect, "");
           printf("\n");
@@ -3697,7 +3698,7 @@ bool BM_mesh_boolean(BMesh *bm,
   MeshChange meshchange;
   IntSet both_side_faces;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 2;
 #endif
 
 #ifdef PERFDEBUG
@@ -3705,6 +3706,7 @@ bool BM_mesh_boolean(BMesh *bm,
 #endif
 
   init_imesh_from_bmesh(&bs.im, bm);
+  dump_bm(bm, "initial bmesh after table ensure"); /*DEBUG!!!*/
   bs.boolean_mode = boolean_mode;
   bs.eps = eps;
   bs.test_fn = (int (*)(void *, void *))test_fn;
@@ -3736,8 +3738,9 @@ bool BM_mesh_boolean(BMesh *bm,
   }
 
   apply_meshchange_to_imesh(&bs, &bs.im, &meshchange, &both_side_faces);
+  dump_bm(bm, "bmesh after apply");/*DEBUG!!!*/
 
-  if (boolean_mode != -1) {
+  if (false && boolean_mode != -1) { /*DEBUG!!!*/
     do_boolean_op(&bs, boolean_mode, &both_side_faces);
   }
 
@@ -3748,35 +3751,6 @@ bool BM_mesh_boolean(BMesh *bm,
   dump_perfdata();
 #endif
   return true;
-}
-
-#ifdef BOOLDEBUG
-#  pragma mark Debug functions
-
-ATTU static void dump_part(const MeshPart *part, const char *label)
-{
-  LinkNode *ln;
-  int i;
-  struct namelist {
-    const char *name;
-    LinkNode *list;
-  } nl[3] = {{"verts", part->verts}, {"edges", part->edges}, {"faces", part->faces}};
-
-  printf("part %s\n", label);
-  for (i = 0; i < 3; i++) {
-    if (nl[i].list) {
-      printf("  %s:{", nl[i].name);
-      for (ln = nl[i].list; ln; ln = ln->next) {
-        printf("%d", POINTER_AS_INT(ln->link));
-        if (ln->next) {
-          printf(", ");
-        }
-      }
-      printf("}\n");
-    }
-  }
-  printf("  plane=(%.3f,%.3f,%.3f),%.3f:\n", F4(part->plane));
-  printf("  bb=(%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n", F3(part->bbmin), F3(part->bbmax));
 }
 
 /** Boolean funcgions. */
@@ -3919,7 +3893,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
   bool do_remove, do_flip, inside, both_sides, opp_normals;
   MeshChange meshchange;
 #  ifdef BOOLDEBUG
-  bool dbg_level = 0;
+  bool dbg_level = 1;
 
   if (dbg_level > 0) {
     printf("\nDO_BOOLEAN_OP, boolean_mode=%d\n\n", boolean_mode);
@@ -4057,6 +4031,36 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
   MEM_freeN(group_index);
 }
 
+
+#ifdef BOOLDEBUG
+#  pragma mark Debug functions
+
+ATTU static void dump_part(const MeshPart *part, const char *label)
+{
+  LinkNode *ln;
+  int i;
+  struct namelist {
+    const char *name;
+    LinkNode *list;
+  } nl[3] = {{"verts", part->verts}, {"edges", part->edges}, {"faces", part->faces}};
+
+  printf("part %s\n", label);
+  for (i = 0; i < 3; i++) {
+    if (nl[i].list) {
+      printf("  %s:{", nl[i].name);
+      for (ln = nl[i].list; ln; ln = ln->next) {
+        printf("%d", POINTER_AS_INT(ln->link));
+        if (ln->next) {
+          printf(", ");
+        }
+      }
+      printf("}\n");
+    }
+  }
+  printf("  plane=(%.3f,%.3f,%.3f),%.3f:\n", F4(part->plane));
+  printf("  bb=(%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n", F3(part->bbmin), F3(part->bbmax));
+}
+
 ATTU static void dump_partset(const MeshPartSet *partset)
 {
   int i;
@@ -4116,7 +4120,6 @@ ATTU static void dump_meshadd(const MeshAdd *ma, const char *label)
     for (i = 0; i < ma->totvert; i++) {
       nv = ma->verts[i];
       printf("  %d: (%f,%f,%f) %d\n", i + ma->vindex_start, F3(nv->co), nv->example);
-      i++;
     }
   }
   if (ma->totedge > 0) {
@@ -4124,7 +4127,6 @@ ATTU static void dump_meshadd(const MeshAdd *ma, const char *label)
     for (i = 0; i < ma->totedge; i++) {
       ne = ma->edges[i];
       printf("  %d: (%d,%d) %d\n", i + ma->eindex_start, ne->v1, ne->v2, ne->example);
-      i++;
     }
   }
   if (ma->totface > 0) {
@@ -4139,7 +4141,6 @@ ATTU static void dump_meshadd(const MeshAdd *ma, const char *label)
         printf("(v=%d,e=%d)", nf->vert_edge_pairs[j].first, nf->vert_edge_pairs[j].second);
       }
       printf("\n");
-      i++;
     }
   }
 }
