@@ -94,11 +94,15 @@ typedef struct IntIntMapIterator {
  * Thus, editmesh and modifier can use the same
  * code but without need to convert to BMesh (or Mesh).
  *
+ * Some data structures to make for efficient search
+ * are also included in this structure.
+ *
  * Exactly one of bm and me should be non-null.
  */
 typedef struct IMesh {
   BMesh *bm;
   struct Mesh *me;
+  KDTree_3d *co_tree;
 } IMesh;
 
 /* MeshAdd holds an incremental addition to an IMesh.
@@ -860,11 +864,19 @@ static int isect_line_seg_epsilon_v3_db(const double line_v1[3],
 /** IMesh functions. */
 #pragma mark IMesh functions
 
+static KDTree_3d *make_im_co_tree(IMesh *im);
+
 static void init_imesh_from_bmesh(IMesh *im, BMesh *bm)
 {
   im->bm = bm;
   im->me = NULL;
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+  im->co_tree = make_im_co_tree(im);
+}
+
+static void imesh_free_aux_data(IMesh *im)
+{
+  BLI_kdtree_3d_free(im->co_tree);
 }
 
 static int imesh_totvert(const IMesh *im)
@@ -980,30 +992,51 @@ static void imesh_get_vert_co_db(const IMesh *im, int v, double *r_coords)
   }
 }
 
+static KDTree_3d *make_im_co_tree(IMesh *im)
+{
+  KDTree_3d *tree;
+  int v, nv;
+  float co[3];
+
+  nv = imesh_totvert(im);
+  tree = BLI_kdtree_3d_new((uint)nv);
+  for (v = 0; v < nv; v++) {
+    imesh_get_vert_co(im, v, co);
+    BLI_kdtree_3d_insert(tree, v, co);
+  }
+  BLI_kdtree_3d_balance(tree);
+  return tree;
+}
+
 /* Find a vertex in im eps-close to co, if it exists.
+ * If there are multiple, return the one with the lowest vertex index.
  * Else return -1.
- * TODO: speed this up.
  */
+
+/* Callback to find min index vertex within eps range. */
+static bool find_co_cb(void *user_data, int index, const float co[3], float dist_sq)
+{
+  int *v = (int *)user_data;
+  if (*v == -1) {
+    *v = index;
+  }
+  else {
+    *v = min_ii(*v, index);
+  }
+  UNUSED_VARS(co, dist_sq);
+  return true;
+}
+
 static int imesh_find_co_db(const IMesh *im, const double co[3], double eps)
 {
   int v;
-  BMesh *bm = im->bm;
   float feps = (float)eps;
   float fco[3];
 
   copy_v3fl_v3db(fco, co);
-  if (bm) {
-    for (v = 0; v < bm->totvert; v++) {
-      BMVert *bmv = BM_vert_at_index(bm, v);
-      if (compare_v3v3(fco, bmv->co, feps)) {
-        return v;
-      }
-    }
-    return -1;
-  }
-  else {
-    return -1; /* TODO */
-  }
+  v = -1;
+  BLI_kdtree_3d_range_search_cb(im->co_tree, fco, feps, find_co_cb, &v);
+  return v;
 }
 
 /* Find an edge in im between given two verts (either order ok), if it exists.
@@ -2280,12 +2313,28 @@ static void canonicalize_plane(float plane[4])
 /** Intersection Algorithm functions. */
 #pragma mark Intersection Algorithm functions
 
-static int find_coplanar_cb(void *user_data, int index, const float co[4], float dist_sq)
-{
-  MeshPart **face_part = (MeshPart **)user_data;
+struct FindCoplanarCBData {
+  int near_f_with_part;
+  float eps;
+  float test_plane[4];
+  MeshPart **face_part;
+};
 
-  UNUSED_VARS(co, dist_sq);
-  return face_part[index] != NULL;
+/* See if co is a plane that is eps-close to test_plane. If there is already
+ * a MeshPart for such a plane, store the lowest such index in near_f_with_part.
+ */
+static bool find_coplanar_cb(void *user_data, int index, const float co[3], float UNUSED(dist_sq))
+{
+  struct FindCoplanarCBData *cb_data = user_data;
+  if (cb_data->face_part[index] != NULL) {
+    if (fabsf(cb_data->test_plane[3] - co[3]) <= cb_data->eps &&
+        fabsf(dot_v3v3(cb_data->test_plane, co) - 1.0f) <= cb_data->eps * M_2_PI) {
+      if (cb_data->near_f_with_part == -1 || index < cb_data->near_f_with_part) {
+        cb_data->near_f_with_part = index;
+      }
+    }
+  }
+  return true;
 }
 
 /* Fill partset with parts for each plane for which there is a face
@@ -2293,37 +2342,6 @@ static int find_coplanar_cb(void *user_data, int index, const float co[4], float
  * Use bs->test_fn to check elements against test_val, to see whether or not it should be in the
  * result.
  */
-/* Scratch notes to self on algorithm.
- Cf emitmesh_select_similar.c which uses kdtree for SIMFACE_COPLANAR.
-
- What I need is, for each face f in the part of the mesh given by test,
- either:
-   1) make a new MeshPart for f's plane and add f to it. Add that new
-      MeshPart to partset.
- or
-   2) if there is already a MeshPart for that plane, add f to that MeshPart.
-
- A kdtree can be initialized with all the planes as indicated by the test,
- where planes are identified with corresponding f as index. This tree may
- have exact and near duplicates for plane.
-
- Suppose I keep a face_part[f] indexed by face index, holding MeshPart pointers,
- all initially NULL. The goal is to fill them all in with non-NULL values
- where faces will share a part when they are all near enough the canonical plane
- vector for the MeshPart.
-
- After making the kdtree as specified above, we can then do:
- for each f:
-   find all entries in kdtree that are near enough to f.
-   suppose these have face indices g1, g2, ..., gk.
-   Choose gi for the lowest i such that (a) face_part[gi] != NULL and
-   (b) the plane of face_part[gi] is close enough to that of f.
-   If there is no such gi, then make a new part with only f in it
-   and record that in face_part.
-   Otherwise add f to face_part[gi].
-   We can use a callback function version of the kdtree nearest neighbor
-   search to stop when we find the first gi that works.
-*/
 static void find_coplanar_parts(BoolState *bs,
                                 MeshPartSet *partset,
                                 int test_val,
@@ -2336,7 +2354,7 @@ static void find_coplanar_parts(BoolState *bs,
   int near_f;
   float plane[4];
   KDTree_4d *tree;
-  KDTreeNearest_4d kdnear;
+  struct FindCoplanarCBData cb_data;
   float feps = (float)bs->eps;
 #ifdef BOOLDEBUG
   int dbg_level = 0;
@@ -2368,6 +2386,8 @@ static void find_coplanar_parts(BoolState *bs,
 #endif
   }
   BLI_kdtree_4d_balance(tree);
+  cb_data.eps = feps;
+  cb_data.face_part = face_part;
   for (f = 0; f < im_nf; f++) {
     if (test_val != TEST_ALL) {
       test = imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f);
@@ -2382,33 +2402,17 @@ static void find_coplanar_parts(BoolState *bs,
       printf("find part for face %d, plane=(%f,%f,%f),%f\n", f, F4(plane));
     }
 #endif
-    near_f = BLI_kdtree_4d_find_nearest_cb(tree, plane, find_coplanar_cb, face_part, &kdnear);
+    // near_f = BLI_kdtree_4d_find_nearest_cb(tree, plane, find_coplanar_cb, face_part, &kdnear);
+    cb_data.near_f_with_part = -1;
+    copy_v4_v4(cb_data.test_plane, plane);
+    /* Use bigger epsilon for range search because comparison function we want is a bit different from 4d distance. */
+    BLI_kdtree_4d_range_search_cb(tree, plane, feps * 10.0f, find_coplanar_cb, &cb_data);
+    near_f = cb_data.near_f_with_part;
 #ifdef BOOLDEBUG
     if (dbg_level > 1) {
       printf("   near_f = %d\n", near_f);
     }
 #endif
-    if (near_f != -1) {
-#ifdef BOOLDEBUG
-      if (dbg_level > 1) {
-        printf(
-            "  index=%d, dist=%f, co=(%f,%f,%f),%f\n", kdnear.index, kdnear.dist, F4(kdnear.co));
-      }
-#endif
-      if (fabsf(kdnear.co[3] - plane[3]) <= feps &&
-          fabsf(dot_v3v3(kdnear.co, plane) - 1.0f) <= feps * M_2_PI) {
-        add_face_to_part(bs, face_part[near_f], f);
-        face_part[f] = face_part[near_f];
-#ifdef BOOLDEBUG
-        if (dbg_level > 1) {
-          printf("   add to existing part %d\n", near_f);
-        }
-#endif
-      }
-      else {
-        near_f = -1;
-      }
-    }
     if (near_f == -1) {
       part = BLI_memarena_alloc(bs->mem_arena, sizeof(*part));
       init_meshpart(bs, part);
@@ -2419,6 +2423,15 @@ static void find_coplanar_parts(BoolState *bs,
 #ifdef BOOLDEBUG
       if (dbg_level > 1) {
         printf("   near_f = -1, so new part made for f=%d\n", f);
+      }
+#endif
+    }
+    else {
+      add_face_to_part(bs, face_part[near_f], f);
+      face_part[f] = face_part[near_f];
+#ifdef BOOLDEBUG
+      if (dbg_level > 1) {
+        printf("   add to existing part %d\n", near_f);
       }
 #endif
     }
@@ -3506,13 +3519,7 @@ static void intersect_partset_pair(BoolState *bs,
     tree_b = tree_a;
   }
 
-#if 0
-  /* The non-_ex version uses BVH_OVERLAP_USE_THREADING | BVH_OVERLAP_RETURN_PAIRS */
-  overlap = BLI_bvhtree_overlap_ex(
-      tree_a, tree_b, &tree_overlap_tot, NULL, NULL, BVH_OVERLAP_RETURN_PAIRS);
-#else
   overlap = BLI_bvhtree_overlap(tree_a, tree_b, &tree_overlap_tot, NULL, NULL);
-#endif
 
 #  ifdef BOOLDEBUG
   if (dbg_level > 0) {
@@ -3683,6 +3690,7 @@ bool BM_mesh_boolean(BMesh *bm,
     do_boolean_op(&bs, boolean_mode, &both_side_faces);
   }
 
+  imesh_free_aux_data(&bs.im);
   BLI_memarena_free(bs.mem_arena);
 #ifdef PERFDEBUG
   dump_perfdata();
