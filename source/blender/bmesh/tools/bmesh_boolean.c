@@ -107,31 +107,7 @@ typedef struct IMesh {
   KDTree_3d *co_tree;
 } IMesh;
 
-/* MeshAdd holds an incremental addition to an IMesh.
- * New verts, edges, and faces are given indices starting
- * beyond those of the underlying IMesh, and that new
- * geometry is stored here. For edges and faces, the
- * indices used can be either from the IMesh or from the
- * new geometry stored here.
- * Sometimes the new geometric elements are based on
- * an example element in the underlying IMesh (the example
- * will be used to copy attributes).
- * So we store examples here too.
- */
-typedef struct MeshAdd {
-  LinkNodePair verts; /* Links are NewVerts. */
-  LinkNodePair edges; /* Links are NewEdges. */
-  LinkNodePair faces; /* Links are NewFaces. */
-  EdgeHash *edge_hash;
-  int totvert;
-  int totedge;
-  int totface;
-  int vindex_start;   /* Add this to position in verts to get index of new vert. */
-  int eindex_start;   /* Add this to position in edges to get index of new edge. */
-  int findex_start;   /* Add this to position in faces to get index of new face. */
-  IMesh *im;          /* Underlying IMesh. */
-} MeshAdd;
-
+/* Structs to hold verts, edges, and faces to be added to MeshAdd. */
 typedef struct NewVert {
   float co[3];
   int example; /* If not -1, example vert in IMesh. */
@@ -149,6 +125,34 @@ typedef struct NewFace {
   int example;            /* If not -1, example face in IMesh. */
   IntSet *other_examples; /* rest of faces in IMesh that are originals for this face */
 } NewFace;
+
+/* MeshAdd holds an incremental addition to an IMesh.
+ * New verts, edges, and faces are given indices starting
+ * beyond those of the underlying IMesh, and that new
+ * geometry is stored here. For edges and faces, the
+ * indices used can be either from the IMesh or from the
+ * new geometry stored here.
+ * Sometimes the new geometric elements are based on
+ * an example element in the underlying IMesh (the example
+ * will be used to copy attributes).
+ * So we store examples here too.
+ */
+typedef struct MeshAdd {
+  NewVert **verts;
+  NewEdge **edges;
+  NewFace **faces;
+  uint vert_reserved;
+  uint edge_reserved;
+  uint face_reserved;
+  EdgeHash *edge_hash;
+  int totvert;
+  int totedge;
+  int totface;
+  int vindex_start;   /* Add this to position in verts to get index of new vert. */
+  int eindex_start;   /* Add this to position in edges to get index of new edge. */
+  int findex_start;   /* Add this to position in faces to get index of new face. */
+  IMesh *im;          /* Underlying IMesh. */
+} MeshAdd;
 
 /* MeshDelete holds an incremental deletion to an IMesh.
  * It records the indices of the edges and faces that need
@@ -1632,18 +1636,26 @@ static int imesh_calc_face_groups(BoolState *bs, int *r_groups_array, int (**r_g
 static void init_meshadd(BoolState *bs, MeshAdd *meshadd)
 {
   IMesh *im = &bs->im;
-  uint guess_edgehash_size;
+  uint guess_added_verts, guess_added_edges, guess_added_faces;
+  MemArena *arena = bs->mem_arena;
 
   memset(meshadd, 0, sizeof(MeshAdd));
   meshadd->im = im;
   meshadd->vindex_start = imesh_totvert(im);
   meshadd->eindex_start = imesh_totedge(im);
   meshadd->findex_start = imesh_totface(im);
-  guess_edgehash_size = 20 * (uint)sqrtf((float)imesh_totvert(im));
-  if (guess_edgehash_size < 100) {
-    guess_edgehash_size = 100;
-  }
-  meshadd->edge_hash = BLI_edgehash_new_ex("bool meshadd", guess_edgehash_size);
+
+  /* A typical intersection of two shells has O(sqrt(# of faces in bigger part)) intersection edges. */
+  guess_added_verts = (uint)min_ii(20 * (int)sqrtf((float)imesh_totvert(im)), 100);
+  guess_added_edges = guess_added_verts;
+  guess_added_faces = 2 * guess_added_edges;
+  meshadd->vert_reserved = guess_added_verts;
+  meshadd->edge_reserved = guess_added_edges;
+  meshadd->face_reserved = guess_added_faces;
+  meshadd->verts = BLI_memarena_alloc(arena, meshadd->vert_reserved * sizeof(NewVert *));
+  meshadd->edges = BLI_memarena_alloc(arena, meshadd->edge_reserved * sizeof(NewEdge *));
+  meshadd->faces = BLI_memarena_alloc(arena, meshadd->face_reserved * sizeof(NewFace *));
+  meshadd->edge_hash = BLI_edgehash_new_ex("bool meshadd", guess_added_edges);
 }
 
 static void meshadd_free_aux_data(MeshAdd *meshadd)
@@ -1671,21 +1683,27 @@ static int meshadd_add_vert(
 {
   NewVert *newv;
   MemArena *arena = bs->mem_arena;
-  LinkNode *ln;
   int i;
 
   if (checkdup) {
-    for (ln = meshadd->verts.list, i = meshadd->vindex_start; ln; ln = ln->next, i++) {
-      newv = (NewVert *)ln->link;
+    for (i = 0; i < meshadd->totvert; i++) {
+      newv = meshadd->verts[i];
       if (compare_v3v3(newv->co, co, (float)bs->eps)) {
-        return i;
+        return meshadd->vindex_start + i;
       }
     }
   }
   newv = BLI_memarena_alloc(arena, sizeof(*newv));
   copy_v3_v3(newv->co, co);
   newv->example = example;
-  BLI_linklist_append_arena(&meshadd->verts, newv, arena);
+  if ((uint)meshadd->totvert == meshadd->vert_reserved) {
+    uint new_reserved = 2 * meshadd->vert_reserved;
+    NewVert **new_buf = BLI_memarena_alloc(arena, new_reserved * sizeof(NewVert *));
+    memcpy(new_buf, meshadd->verts, meshadd->vert_reserved * sizeof(NewVert *));
+    meshadd->verts = new_buf;
+    meshadd->vert_reserved = new_reserved;
+  }
+  meshadd->verts[meshadd->totvert] = newv;
   meshadd->totvert++;
   return meshadd->vindex_start + meshadd->totvert - 1;
 }
@@ -1715,7 +1733,14 @@ static int meshadd_add_edge(
   newe->v1 = v1;
   newe->v2 = v2;
   newe->example = example;
-  BLI_linklist_append_arena(&meshadd->edges, newe, arena);
+  if ((uint)meshadd->totedge == meshadd->edge_reserved) {
+    uint new_reserved = 2 * meshadd->edge_reserved;
+    NewEdge **new_buf = BLI_memarena_alloc(arena, new_reserved * sizeof(NewEdge *));
+    memcpy(new_buf, meshadd->edges, meshadd->edge_reserved * sizeof(NewEdge *));
+    meshadd->edges = new_buf;
+    meshadd->edge_reserved = new_reserved;
+  }
+  meshadd->edges[meshadd->totedge] = newe;
   BLI_edgehash_insert(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(meshadd->totedge));
   meshadd->totedge++;
   return meshadd->eindex_start + meshadd->totedge - 1;
@@ -1737,19 +1762,26 @@ static int meshadd_add_face(BoolState *bs,
   newf->len = len;
   newf->example = example;
   newf->other_examples = other_examples;
-  BLI_linklist_append_arena(&meshadd->faces, newf, arena);
+  if ((uint)meshadd->totface == meshadd->face_reserved) {
+    uint new_reserved = 2 * meshadd->face_reserved;
+    NewFace **new_buf = BLI_memarena_alloc(arena, new_reserved * sizeof(NewFace *));
+    memcpy(new_buf, meshadd->faces, meshadd->face_reserved * sizeof(NewFace *));
+    meshadd->faces = new_buf;
+    meshadd->face_reserved = new_reserved;
+  }
+  meshadd->faces[meshadd->totface] = newf;
   meshadd->totface++;
   return meshadd->findex_start + meshadd->totface - 1;
 }
 
 static int meshadd_facelen(const MeshAdd *meshadd, int f)
 {
-  LinkNode *ln;
   NewFace *nf;
+  int i;
 
-  ln = BLI_linklist_find(meshadd->faces.list, f - meshadd->findex_start);
-  if (ln) {
-    nf = (NewFace *)ln->link;
+  i = f - meshadd->findex_start;
+  if (i >= 0 && i < meshadd->totface) {
+    nf = meshadd->faces[i];
     return nf->len;
   }
   return 0;
@@ -1757,12 +1789,12 @@ static int meshadd_facelen(const MeshAdd *meshadd, int f)
 
 static void meshadd_get_face_no(const MeshAdd *meshadd, int f, double *r_no)
 {
-  LinkNode *ln;
   NewFace *nf;
+  int i;
 
-  ln = BLI_linklist_find(meshadd->faces.list, f - meshadd->findex_start);
-  if (ln) {
-    nf = (NewFace *)ln->link;
+  i = f - meshadd->findex_start;
+  if (i >= 0 && i < meshadd->totface) {
+    nf = meshadd->faces[i];
     if (nf->example) {
       imesh_get_face_no(meshadd->im, nf->example, r_no);
     }
@@ -1775,12 +1807,12 @@ static void meshadd_get_face_no(const MeshAdd *meshadd, int f, double *r_no)
 
 static int meshadd_face_vert(const MeshAdd *meshadd, int f, int index)
 {
-  LinkNode *ln;
   NewFace *nf;
+  int i;
 
-  ln = BLI_linklist_find(meshadd->faces.list, f - meshadd->findex_start);
-  if (ln) {
-    nf = (NewFace *)ln->link;
+  i = f - meshadd->findex_start;
+  if (i >= 0 && i < meshadd->totface) {
+    nf = meshadd->faces[i];
     if (index >= 0 && index < nf->len) {
       return nf->vert_edge_pairs[index].first;
     }
@@ -1790,11 +1822,11 @@ static int meshadd_face_vert(const MeshAdd *meshadd, int f, int index)
 
 static NewVert *meshadd_get_newvert(const MeshAdd *meshadd, int v)
 {
-  LinkNode *ln;
+  int i;
 
-  ln = BLI_linklist_find(meshadd->verts.list, v - meshadd->vindex_start);
-  if (ln) {
-    return (NewVert *)ln->link;
+  i = v - meshadd->vindex_start;
+  if (i >= 0 && i < meshadd->totvert) {
+    return meshadd->verts[i];
   }
   else {
     return NULL;
@@ -1803,11 +1835,11 @@ static NewVert *meshadd_get_newvert(const MeshAdd *meshadd, int v)
 
 static NewEdge *meshadd_get_newedge(const MeshAdd *meshadd, int e)
 {
-  LinkNode *ln;
+  int i;
 
-  ln = BLI_linklist_find(meshadd->edges.list, e - meshadd->eindex_start);
-  if (ln) {
-    return (NewEdge *)ln->link;
+  i = e - meshadd->eindex_start;
+  if (i >= 0 && i < meshadd->totedge) {
+    return meshadd->edges[i];
   }
   else {
     return NULL;
@@ -1816,11 +1848,11 @@ static NewEdge *meshadd_get_newedge(const MeshAdd *meshadd, int e)
 
 static NewFace *meshadd_get_newface(const MeshAdd *meshadd, int f)
 {
-  LinkNode *ln;
+  int i;
 
-  ln = BLI_linklist_find(meshadd->faces.list, f - meshadd->findex_start);
-  if (ln) {
-    return (NewFace *)ln->link;
+  i = f - meshadd->findex_start;
+  if (i >= 0 && i < meshadd->totface) {
+    return meshadd->faces[i];
   }
   else {
     return NULL;
@@ -1865,24 +1897,12 @@ static void meshadd_get_edge_verts(const MeshAdd *meshadd, int e, int *r_v1, int
 
 static int find_edge_by_verts_in_meshadd(const MeshAdd *meshadd, int v1, int v2)
 {
-#if 0
-  LinkNode *ln;
-  NewEdge *ne;
-#endif
   int i;
 
   i = POINTER_AS_INT(BLI_edgehash_lookup_default(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(-1)));
   if (i != -1) {
     return meshadd->eindex_start + i;
   }
-#if 0
-  for (ln = meshadd->edges.list, i = 0; ln; ln = ln->next, i++) {
-    ne = (NewEdge *)ln->link;
-    if ((ne->v1 == v1 && ne->v2 == v2) || (ne->v1 == v2 && ne->v2 == v1)) {
-      return meshadd->eindex_start + i;
-    }
-  }
-#endif
   return -1;
 }
 
@@ -4085,37 +4105,33 @@ ATTU static void dump_partpartintersect(const PartPartIntersect *ppi, const char
 
 ATTU static void dump_meshadd(const MeshAdd *ma, const char *label)
 {
-  LinkNode *ln;
   NewVert *nv;
   NewEdge *ne;
   NewFace *nf;
   int i, j;
 
   printf("meshadd %s\n", label);
-  if (ma->verts.list) {
+  if (ma->totvert > 0) {
     printf("verts:\n");
-    i = ma->vindex_start;
-    for (ln = ma->verts.list; ln; ln = ln->next) {
-      nv = (NewVert *)ln->link;
-      printf("  %d: (%f,%f,%f) %d\n", i, F3(nv->co), nv->example);
+    for (i = 0; i < ma->totvert; i++) {
+      nv = ma->verts[i];
+      printf("  %d: (%f,%f,%f) %d\n", i + ma->vindex_start, F3(nv->co), nv->example);
       i++;
     }
   }
-  if (ma->edges.list) {
+  if (ma->totedge > 0) {
     printf("edges:\n");
-    i = ma->eindex_start;
-    for (ln = ma->edges.list; ln; ln = ln->next) {
-      ne = (NewEdge *)ln->link;
-      printf("  %d: (%d,%d) %d\n", i, ne->v1, ne->v2, ne->example);
+    for (i = 0; i < ma->totedge; i++) {
+      ne = ma->edges[i];
+      printf("  %d: (%d,%d) %d\n", i + ma->eindex_start, ne->v1, ne->v2, ne->example);
       i++;
     }
   }
-  if (ma->faces.list) {
+  if (ma->totface > 0) {
     printf("faces:\n");
-    i = ma->findex_start;
-    for (ln = ma->faces.list; ln; ln = ln->next) {
-      nf = (NewFace *)ln->link;
-      printf("  %d: face of length %d, example %d\n", i, nf->len, nf->example);
+    for (i = 0; i < ma->totface; i++) {
+      nf = ma->faces[i];
+      printf("  %d: face of length %d, example %d\n", i + ma->findex_start, nf->len, nf->example);
       if (nf->other_examples) {
         dump_intset(nf->other_examples, "other examples", "    ");
       }
