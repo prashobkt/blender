@@ -29,9 +29,11 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_utildefines.h"
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_delaunay_2d.h"
+#include "BLI_edgehash.h"
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
@@ -120,6 +122,10 @@ typedef struct MeshAdd {
   LinkNodePair verts; /* Links are NewVerts. */
   LinkNodePair edges; /* Links are NewEdges. */
   LinkNodePair faces; /* Links are NewFaces. */
+  EdgeHash *edge_hash;
+  int totvert;
+  int totedge;
+  int totface;
   int vindex_start;   /* Add this to position in verts to get index of new vert. */
   int eindex_start;   /* Add this to position in edges to get index of new edge. */
   int findex_start;   /* Add this to position in faces to get index of new face. */
@@ -1626,27 +1632,38 @@ static int imesh_calc_face_groups(BoolState *bs, int *r_groups_array, int (**r_g
 static void init_meshadd(BoolState *bs, MeshAdd *meshadd)
 {
   IMesh *im = &bs->im;
+  uint guess_edgehash_size;
 
   memset(meshadd, 0, sizeof(MeshAdd));
   meshadd->im = im;
   meshadd->vindex_start = imesh_totvert(im);
   meshadd->eindex_start = imesh_totedge(im);
   meshadd->findex_start = imesh_totface(im);
+  guess_edgehash_size = 20 * (uint)sqrtf((float)imesh_totvert(im));
+  if (guess_edgehash_size < 100) {
+    guess_edgehash_size = 100;
+  }
+  meshadd->edge_hash = BLI_edgehash_new_ex("bool meshadd", guess_edgehash_size);
 }
 
-static int meshadd_totvert(const MeshAdd *meshadd)
+static void meshadd_free_aux_data(MeshAdd *meshadd)
 {
-  return BLI_linklist_count(meshadd->verts.list);
+  BLI_edgehash_free(meshadd->edge_hash, NULL);
 }
 
-static int meshadd_totedge(const MeshAdd *meshadd)
+static inline int meshadd_totvert(const MeshAdd *meshadd)
 {
-  return BLI_linklist_count(meshadd->edges.list);
+  return meshadd->totvert;
 }
 
-static int meshadd_totface(const MeshAdd *meshadd)
+static inline int meshadd_totedge(const MeshAdd *meshadd)
 {
-  return BLI_linklist_count(meshadd->faces.list);
+  return meshadd->totedge;
+}
+
+static inline int meshadd_totface(const MeshAdd *meshadd)
+{
+  return meshadd->totface;
 }
 
 static int meshadd_add_vert(
@@ -1669,7 +1686,8 @@ static int meshadd_add_vert(
   copy_v3_v3(newv->co, co);
   newv->example = example;
   BLI_linklist_append_arena(&meshadd->verts, newv, arena);
-  return meshadd->vindex_start + BLI_linklist_count(meshadd->verts.list) - 1;
+  meshadd->totvert++;
+  return meshadd->vindex_start + meshadd->totvert - 1;
 }
 
 static int meshadd_add_vert_db(
@@ -1685,15 +1703,12 @@ static int meshadd_add_edge(
 {
   NewEdge *newe;
   MemArena *arena = bs->mem_arena;
-  LinkNode *ln;
   int i;
 
   if (checkdup) {
-    for (ln = meshadd->edges.list, i = meshadd->eindex_start; ln; ln = ln->next, i++) {
-      newe = (NewEdge *)ln->link;
-      if ((newe->v1 == v1 && newe->v2 == v2) || (newe->v1 == v2 && newe->v2 == v1)) {
-        return i;
-      }
+    i = POINTER_AS_INT(BLI_edgehash_lookup_default(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(-1)));
+    if (i != -1) {
+      return i;
     }
   }
   newe = BLI_memarena_alloc(arena, sizeof(*newe));
@@ -1701,7 +1716,9 @@ static int meshadd_add_edge(
   newe->v2 = v2;
   newe->example = example;
   BLI_linklist_append_arena(&meshadd->edges, newe, arena);
-  return meshadd->eindex_start + BLI_linklist_count(meshadd->edges.list) - 1;
+  BLI_edgehash_insert(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(meshadd->totedge));
+  meshadd->totedge++;
+  return meshadd->eindex_start + meshadd->totedge - 1;
 }
 
 /* This assumes that vert_edge is an arena-allocated array that will persist. */
@@ -1721,7 +1738,8 @@ static int meshadd_add_face(BoolState *bs,
   newf->example = example;
   newf->other_examples = other_examples;
   BLI_linklist_append_arena(&meshadd->faces, newf, arena);
-  return meshadd->findex_start + BLI_linklist_count(meshadd->faces.list) - 1;
+  meshadd->totface++;
+  return meshadd->findex_start + meshadd->totface - 1;
 }
 
 static int meshadd_facelen(const MeshAdd *meshadd, int f)
@@ -1847,16 +1865,24 @@ static void meshadd_get_edge_verts(const MeshAdd *meshadd, int e, int *r_v1, int
 
 static int find_edge_by_verts_in_meshadd(const MeshAdd *meshadd, int v1, int v2)
 {
+#if 0
   LinkNode *ln;
   NewEdge *ne;
+#endif
   int i;
 
+  i = POINTER_AS_INT(BLI_edgehash_lookup_default(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(-1)));
+  if (i != -1) {
+    return meshadd->eindex_start + i;
+  }
+#if 0
   for (ln = meshadd->edges.list, i = 0; ln; ln = ln->next, i++) {
     ne = (NewEdge *)ln->link;
     if ((ne->v1 == v1 && ne->v2 == v2) || (ne->v1 == v2 && ne->v2 == v1)) {
       return meshadd->eindex_start + i;
     }
   }
+#endif
   return -1;
 }
 
@@ -1942,6 +1968,11 @@ static void init_meshchange(BoolState *bs, MeshChange *meshchange)
   init_intset(&meshchange->intersection_edges);
   init_intset(&meshchange->face_flip);
   meshchange->use_face_kill_loose = false;
+}
+
+static void meshchange_free_aux_data(MeshChange *meshchange)
+{
+  meshadd_free_aux_data(&meshchange->add);
 }
 
 /** MeshPartSet functions. */
@@ -3691,6 +3722,7 @@ bool BM_mesh_boolean(BMesh *bm,
   }
 
   imesh_free_aux_data(&bs.im);
+  meshchange_free_aux_data(&meshchange);
   BLI_memarena_free(bs.mem_arena);
 #ifdef PERFDEBUG
   dump_perfdata();
@@ -4001,6 +4033,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
 #  endif
 
   apply_meshchange_to_imesh(bs, &bs->im, &meshchange, NULL);
+  meshchange_free_aux_data(&meshchange);
   MEM_freeN(group_index);
 }
 
