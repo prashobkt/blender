@@ -362,11 +362,10 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
 
 static bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *context)
 {
-  /* WMR seems to be faulty and doesn't do OETF transform correctly. So expect a SRGB buffer to
+  /* Monado seems to be faulty and doesn't do OETF transform correctly. So expect a SRGB buffer to
    * compensate. You get way too dark rendering without this, it's pretty obvious (even in the
    * default startup scene). */
-  return (context->getOpenXRRuntimeID() == OPENXR_RUNTIME_WMR) ||
-         (context->getOpenXRRuntimeID() == OPENXR_RUNTIME_MONADO);
+  return (context->getOpenXRRuntimeID() == OPENXR_RUNTIME_MONADO);
 }
 
 void GHOST_XrSession::drawView(GHOST_XrSwapchain &swapchain,
