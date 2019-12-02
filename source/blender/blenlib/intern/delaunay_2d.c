@@ -111,6 +111,7 @@ static void dump_se_cycle(const SymEdge *se, const char *lab, const int limit);
 static void dump_id_list(const LinkNode *id_list, const char *lab);
 static void dump_cdt(const CDT_state *cdt, const char *lab);
 static void cdt_draw(CDT_state *cdt, const char *lab);
+static void write_cdt_input_to_file(const CDT_input *inp);
 static void validate_face_centroid(SymEdge *se);
 static void validate_cdt(CDT_state *cdt, bool check_all_tris);
 #endif
@@ -151,14 +152,11 @@ static int CCW_test(const double a[2], const double b[2], const double c[2], con
   return 0;
 }
 
-/** return true if a -- b -- c are in that order, assuming they are on a straight line. */
-static bool in_line(const double a[2], const double b[2], const double c[2])
+/** return true if a -- b -- c are in that order, assuming they are on a straight line according to
+ * CCW_test. */
+static bool in_line(const double a[2], const double b[2], const double c[2], double eps)
 {
-  double dir_ab[2], dir_ac[2];
-
-  sub_v2_v2v2_db(dir_ab, a, b);
-  sub_v2_v2v2_db(dir_ac, a, c);
-  return dot_v2v2_db(dir_ab, dir_ac) >= 0.0;
+  return fabs(len_v2v2_db(a, c) - (len_v2v2_db(a, b) + len_v2v2_db(b, c))) <= eps;
 }
 
 #ifndef NDEBUG
@@ -1569,6 +1567,9 @@ static void add_edge_constraint(
       dump_se(vse1, "  se1");
       dump_se(vse2, "  se2");
     }
+    if (dbg_level > 2) {
+      dump_cdt(cdt, "before insert_segment");
+    }
   }
 #endif
   if (v1 == v2) {
@@ -1579,181 +1580,210 @@ static void add_edge_constraint(
 #endif
     return;
   }
-  state_through_vert = true;
+  /* Quick check for special case where segment is one of edges from v1. */
+  tstart = t = vse1;
   done = false;
-  t = vse1;
-  search_count = 0;
-  while (!done) {
-    /* Invariant: crossings[0 .. BLI_array_len(crossings)] has crossing info for path up to
-     * but not including the crossing of edge t, which will either be through a vert
-     * (if state_through_vert is true) or through edge t not at either end.
-     * In the latter case, t->face is the face that ray v1--v2 goes through after path-so-far.
-     */
-#ifdef DEBUG_CDT
-    if (dbg_level > 1) {
-      fprintf(
-          stderr, "top of insert_segment main loop, state_through_vert=%d\n", state_through_vert);
-      dump_se_cycle(t, "current t ", 4);
-    }
-#endif
-    if (state_through_vert) {
-      /* Invariant: ray v1--v2 contains t->vert. */
-      cdata.in = (BLI_array_len(crossings) == 0) ? NULL : t;
-      cdata.out = NULL; /* To be filled in if this isn't final. */
+  do {
+    if (t->next->vert == v2) {
+      cdata.in = NULL;
+      cdata.out = t->next;
       cdata.lambda = 0.0;
       cdata.vert = t->vert;
       BLI_array_append(crossings, cdata);
-      if (t->vert == v2) {
-#ifdef DEBUG_CDT
-        if (dbg_level > 0) {
-          fprintf(stderr, "found v2, so done\n");
-        }
-#endif
-        done = true;
-      }
-      else {
-        /* Do ccw scan of triangles around t->vert to find exit triangle for ray v1--v2. */
-        tstart = t;
-        tout = NULL;
-        do {
-          va = t->next->vert;
-          vb = t->next->next->vert;
-          ccw1 = CCW_test(t->vert->co, va->co, v2->co, epsilon);
-          ccw2 = CCW_test(t->vert->co, vb->co, v2->co, epsilon);
-#ifdef DEBUG_CDT
-          if (dbg_level > 1) {
-            fprintf(stderr, "non-final through vert case\n");
-            dump_v(va, " va");
-            dump_v(vb, " vb");
-            fprintf(stderr, "ccw1=%d, ccw2=%d\n", ccw1, ccw2);
-          }
-#endif
-          if (ccw1 == 0 && in_line(t->vert->co, va->co, v2->co)) {
-#ifdef DEBUG_CDT
-            if (dbg_level > 0) {
-              fprintf(stderr, "ray goes through va\n");
-            }
-#endif
-            state_through_vert = true;
-            tout = t;
-            t = t->next;
-            break;
-          }
-          else if (ccw2 == 0 && in_line(t->vert->co, vb->co, v2->co)) {
-#ifdef DEBUG_CDT
-            if (dbg_level > 0) {
-              fprintf(stderr, "ray goes through vb\n");
-            }
-#endif
-            state_through_vert = true;
-            t = t->next->next;
-            tout = sym(t);
-            break;
-          }
-          else if (ccw1 > 0 && ccw2 < 0) {
-#ifdef DEBUG_CDT
-            if (dbg_level > 0) {
-              fprintf(stderr, "segment intersects\n");
-            }
-#endif
-            state_through_vert = false;
-            tout = t;
-            t = t->next;
-            break;
-          }
-          t = t->rot;
-#ifdef DEBUG_CDT
-          if (dbg_level > 1) {
-            dump_se_cycle(t, "next rot tri", 4);
-          }
-#endif
-        } while (t != tstart);
-        BLI_assert(tout != NULL); /* TODO: something sensible for "this can't happen" */
-        crossings[BLI_array_len(crossings) - 1].out = tout;
-      }
-    }
-    else { /* State is "through edge", not "through vert" */
-      /* Invariant: ray v1--v2 intersects segment t->edge, not at either end.
-       * and t->face is the face we have just passed through. */
-      va = t->vert;
-      vb = t->next->vert;
+      cdata.in = t->next->rot;
+      cdata.out = NULL;
+      cdata.lambda = 0.0;
+      cdata.vert = v2;
+      BLI_array_append(crossings, cdata);
 #ifdef DEBUG_CDT
       if (dbg_level > 1) {
-        fprintf(stderr, "through edge case\n");
-        dump_v(va, " va");
-        dump_v(vb, " vb");
+        fprintf(stderr, "special one segment case\n");
+        dump_se(t, "  ");
       }
 #endif
-      isect = isect_seg_seg_v2_lambda_mu_db(va->co, vb->co, v1->co, v2->co, &lambda, NULL);
-      /* TODO: something sensible for "this can't happen" */
-      BLI_assert(isect == ISECT_LINE_LINE_CROSS);
-      UNUSED_VARS_NDEBUG(isect);
+      done = true;
+      break;
+    }
+    t = t->rot;
+  } while (t != tstart);
+  if (!done) {
+    state_through_vert = true;
+    done = false;
+    t = vse1;
+    search_count = 0;
+    while (!done) {
+      /* Invariant: crossings[0 .. BLI_array_len(crossings)] has crossing info for path up to
+       * but not including the crossing of edge t, which will either be through a vert
+       * (if state_through_vert is true) or through edge t not at either end.
+       * In the latter case, t->face is the face that ray v1--v2 goes through after path-so-far.
+       */
 #ifdef DEBUG_CDT
-      if (dbg_level > 0) {
-        fprintf(stderr, "intersect point at %f along va--vb\n", lambda);
-        if (dbg_level == 1) {
+      if (dbg_level > 1) {
+        fprintf(stderr,
+                "top of insert_segment main loop, state_through_vert=%d\n",
+                state_through_vert);
+        dump_se_cycle(t, "current t ", 4);
+      }
+#endif
+      if (state_through_vert) {
+        /* Invariant: ray v1--v2 contains t->vert. */
+        cdata.in = (BLI_array_len(crossings) == 0) ? NULL : t;
+        cdata.out = NULL; /* To be filled in if this isn't final. */
+        cdata.lambda = 0.0;
+        cdata.vert = t->vert;
+        BLI_array_append(crossings, cdata);
+        if (t->vert == v2) {
+#ifdef DEBUG_CDT
+          if (dbg_level > 0) {
+            fprintf(stderr, "found v2, so done\n");
+          }
+#endif
+          done = true;
+        }
+        else {
+          /* Do ccw scan of triangles around t->vert to find exit triangle for ray v1--v2. */
+          tstart = t;
+          tout = NULL;
+          do {
+            va = t->next->vert;
+            vb = t->next->next->vert;
+            ccw1 = CCW_test(t->vert->co, va->co, v2->co, epsilon);
+            ccw2 = CCW_test(t->vert->co, vb->co, v2->co, epsilon);
+#ifdef DEBUG_CDT
+            if (dbg_level > 1) {
+              fprintf(stderr, "non-final through vert case\n");
+              dump_v(va, " va");
+              dump_v(vb, " vb");
+              fprintf(stderr, "ccw1=%d, ccw2=%d\n", ccw1, ccw2);
+            }
+#endif
+            if (ccw1 == 0 && in_line(t->vert->co, va->co, v2->co, epsilon)) {
+#ifdef DEBUG_CDT
+              if (dbg_level > 0) {
+                fprintf(stderr, "ray goes through va\n");
+              }
+#endif
+              state_through_vert = true;
+              tout = t;
+              t = t->next;
+              break;
+            }
+            else if (ccw2 == 0 && in_line(t->vert->co, vb->co, v2->co, epsilon)) {
+#ifdef DEBUG_CDT
+              if (dbg_level > 0) {
+                fprintf(stderr, "ray goes through vb\n");
+              }
+#endif
+              state_through_vert = true;
+              t = t->next->next;
+              tout = sym(t);
+              break;
+            }
+            else if (ccw1 > 0 && ccw2 < 0) {
+#ifdef DEBUG_CDT
+              if (dbg_level > 0) {
+                fprintf(stderr, "segment intersects\n");
+              }
+#endif
+              state_through_vert = false;
+              tout = t;
+              t = t->next;
+              break;
+            }
+            t = t->rot;
+#ifdef DEBUG_CDT
+            if (dbg_level > 1) {
+              dump_se_cycle(t, "next rot tri", 4);
+            }
+#endif
+          } while (t != tstart);
+          BLI_assert(tout != NULL); /* TODO: something sensible for "this can't happen" */
+          crossings[BLI_array_len(crossings) - 1].out = tout;
+        }
+      }
+      else { /* State is "through edge", not "through vert" */
+        /* Invariant: ray v1--v2 intersects segment t->edge, not at either end.
+         * and t->face is the face we have just passed through. */
+        va = t->vert;
+        vb = t->next->vert;
+#ifdef DEBUG_CDT
+        if (dbg_level > 1) {
+          fprintf(stderr, "through edge case\n");
           dump_v(va, " va");
           dump_v(vb, " vb");
         }
-      }
 #endif
-      tout = sym(t)->next;
-      cdata.in = t;
-      cdata.out = tout;
-      cdata.lambda = lambda;
-      cdata.vert = NULL; /* To be filled in with edge split vertex later. */
-      BLI_array_append(crossings, cdata);
+        isect = isect_seg_seg_v2_lambda_mu_db(va->co, vb->co, v1->co, v2->co, &lambda, NULL);
+        /* TODO: something sensible for "this can't happen" */
+        BLI_assert(isect == ISECT_LINE_LINE_CROSS);
+        UNUSED_VARS_NDEBUG(isect);
 #ifdef DEBUG_CDT
-      if (dbg_level > 0) {
-        dump_se_cycle(tout, "next search tri", 4);
-      }
-#endif
-      /* 'tout' is 'symedge' from 'vb' to third vertex, 'vc'. */
-      BLI_assert(tout->vert == va);
-      vc = tout->next->vert;
-      ccw1 = CCW_test(v1->co, v2->co, vc->co, epsilon);
-#ifdef DEBUG_CDT
-      if (dbg_level > 1) {
-        fprintf(stderr, "now searching with third vertex ");
-        dump_v(vc, "vc");
-        fprintf(stderr, "ccw(v1, v2, vc) = %d\n", ccw1);
-      }
-#endif
-      if (ccw1 == -1) {
-        /* v1--v2 should intersect vb--vc. */
-#ifdef DEBUG_CDT
-        if (dbg_level > 1) {
-          fprintf(stderr, "v1--v2 intersects vb--vc\n");
+        if (dbg_level > 0) {
+          fprintf(stderr, "intersect point at %f along va--vb\n", lambda);
+          if (dbg_level == 1) {
+            dump_v(va, " va");
+            dump_v(vb, " vb");
+          }
         }
 #endif
-        t = tout->next;
-        state_through_vert = false;
-      }
-      else if (ccw1 == 1) {
-        /* v1--v2 should intersect va--vc. */
+        tout = sym(t)->next;
+        cdata.in = t;
+        cdata.out = tout;
+        cdata.lambda = lambda;
+        cdata.vert = NULL; /* To be filled in with edge split vertex later. */
+        BLI_array_append(crossings, cdata);
 #ifdef DEBUG_CDT
-        if (dbg_level > 1) {
-          fprintf(stderr, "v1--v2 intersects va--vc\n");
+        if (dbg_level > 0) {
+          dump_se_cycle(tout, "next search tri", 4);
         }
 #endif
-        t = tout;
-        state_through_vert = false;
-      }
-      else {
-        /* ccw1 == 0. */
+        /* 'tout' is 'symedge' from 'vb' to third vertex, 'vc'. */
+        BLI_assert(tout->vert == va);
+        vc = tout->next->vert;
+        ccw1 = CCW_test(v1->co, v2->co, vc->co, epsilon);
 #ifdef DEBUG_CDT
         if (dbg_level > 1) {
-          fprintf(stderr, "ccw==0 case, so going through or to vc\n");
+          fprintf(stderr, "now searching with third vertex ");
+          dump_v(vc, "vc");
+          fprintf(stderr, "ccw(v1, v2, vc) = %d\n", ccw1);
         }
 #endif
-        t = tout->next;
-        state_through_vert = true;
+        if (ccw1 == -1) {
+          /* v1--v2 should intersect vb--vc. */
+#ifdef DEBUG_CDT
+          if (dbg_level > 1) {
+            fprintf(stderr, "v1--v2 intersects vb--vc\n");
+          }
+#endif
+          t = tout->next;
+          state_through_vert = false;
+        }
+        else if (ccw1 == 1) {
+          /* v1--v2 should intersect va--vc. */
+#ifdef DEBUG_CDT
+          if (dbg_level > 1) {
+            fprintf(stderr, "v1--v2 intersects va--vc\n");
+          }
+#endif
+          t = tout;
+          state_through_vert = false;
+        }
+        else {
+          /* ccw1 == 0. */
+#ifdef DEBUG_CDT
+          if (dbg_level > 1) {
+            fprintf(stderr, "ccw==0 case, so going through or to vc\n");
+          }
+#endif
+          t = tout->next;
+          state_through_vert = true;
+        }
       }
-    }
-    if (++search_count > 10000) {
-      fprintf(stderr, "infinite loop? bailing out\n");
-      BLI_assert(0); /* Catch these while developing. */
-      break;
+      if (++search_count > 10000) {
+        fprintf(stderr, "infinite loop? bailing out\n");
+        BLI_assert(0); /* Catch these while developing. */
+        break;
+      }
     }
   }
 #ifdef DEBUG_CDT
@@ -2380,7 +2410,13 @@ CDT_result *BLI_delaunay_2d_cdt_calc(const CDT_input *input, const CDT_output_ty
   CDTEdge *face_edge;
   SymEdge *face_symedge;
 #ifdef DEBUG_CDT
-  int dbg_level = 1;
+  int dbg_level = -1;
+#endif
+
+#ifdef DEBUG_CDT
+  if (dbg_level == -1) {
+    write_cdt_input_to_file(input);
+  }
 #endif
 
   if ((nv > 0 && input->vert_coords == NULL) || (ne > 0 && input->edges == NULL) ||
@@ -2579,20 +2615,37 @@ void BLI_delaunay_2d_cdt_free(CDT_result *result)
 
 #ifdef DEBUG_CDT
 
-static void dump_se(const SymEdge *se, const char *lab)
+static const char *vertname(const CDTVert *v)
 {
-  if (se->next) {
-    fprintf(
-        stderr, "%s((%.3f,%.3f)->(%.3f,%.3f))\n", lab, F2(se->vert->co), F2(se->next->vert->co));
+  static char vertnamebuf[20];
+
+  if (v->index < 4) {
+    sprintf(vertnamebuf, "[%c]", "ABCD"[v->index]);
   }
   else {
-    fprintf(stderr, "%s((%.3f,%.3f)->NULL)\n", lab, F2(se->vert->co));
+    sprintf(vertnamebuf, "[%d]", v->index - 4);
   }
+  return vertnamebuf;
 }
 
 static void dump_v(const CDTVert *v, const char *lab)
 {
-  fprintf(stderr, "%s(%.3f,%.3f)\n", lab, F2(v->co));
+  fprintf(stderr, "%s%s(%.3f,%.3f)\n", lab, vertname(v), F2(v->co));
+}
+
+static void dump_se(const SymEdge *se, const char *lab)
+{
+  if (se->next) {
+    fprintf(stderr,
+            "%s%s((%.3f,%.3f)->(%.3f,%.3f))\n",
+            lab,
+            vertname(se->vert),
+            F2(se->vert->co),
+            F2(se->next->vert->co));
+  }
+  else {
+    fprintf(stderr, "%s%s((%.3f,%.3f)->NULL)\n", lab, vertname(se->vert), F2(se->vert->co));
+  }
 }
 
 static void dump_se_cycle(const SymEdge *se, const char *lab, const int limit)
@@ -2620,19 +2673,6 @@ static void dump_id_list(const LinkNode *id_list, const char *lab)
   for (ln = id_list; ln; ln = ln->next) {
     fprintf(stderr, "%d%c", POINTER_AS_INT(ln->link), ln->next ? ' ' : '\n');
   }
-}
-
-static const char *vertname(CDTVert *v)
-{
-  static char vertnamebuf[20];
-
-  if (v->index < 4) {
-    sprintf(vertnamebuf, "[%c]", "ABCD"[v->index]);
-  }
-  else {
-    sprintf(vertnamebuf, "[%d]", v->index - 4);
-  }
-  return vertnamebuf;
 }
 
 #  define PL(p) (POINTER_AS_UINT(p) & 0xFFFF)
@@ -2715,7 +2755,7 @@ static void dump_cdt(const CDT_state *cdt, const char *lab)
  * Constraint edges are drawn thicker than non-constraint edges.
  * The first call creates DRAWFILE; subsequent calls append to it.
  */
-#  define DRAWFILE "/tmp/debug_draw.html"
+#  define DRAWFILE "/Users/howardtrickey/debug_draw.html"
 #  define MAX_DRAW_WIDTH 1000
 #  define MAX_DRAW_HEIGHT 700
 static void cdt_draw(CDT_state *cdt, const char *lab)
@@ -2787,7 +2827,7 @@ static void cdt_draw(CDT_state *cdt, const char *lab)
             "<circle fill=\"black\" cx=\"%.3f\" cy=\"%.3f\" r=\"5\">\n",
             SX(v->co[0]),
             SY(v->co[1]));
-    fprintf(f, "  <title>(%.3f,%.3f)</title>\n", v->co[0], v->co[1]);
+    fprintf(f, "  <title>%s(%.3f,%.3f)</title>\n", vertname(v), v->co[0], v->co[1]);
     fprintf(f, "</circle>\n");
   }
 
@@ -2796,6 +2836,28 @@ static void cdt_draw(CDT_state *cdt, const char *lab)
   append = true;
 #  undef SX
 #  undef SY
+}
+
+#  define CDTFILE "/tmp/cdtinput.txt"
+static void write_cdt_input_to_file(const CDT_input *inp)
+{
+  int i, j;
+  FILE *f = fopen(CDTFILE, "w");
+
+  fprintf(f, "%d %d %d\n", inp->verts_len, inp->edges_len, inp->faces_len);
+  for (i = 0; i < inp->verts_len; i++) {
+    fprintf(f, "%.17f %.17f\n", inp->vert_coords[i][0], inp->vert_coords[i][1]);
+  }
+  for (i = 0; i < inp->edges_len; i++) {
+    fprintf(f, "%d %d\n", inp->edges[i][0], inp->edges[i][1]);
+  }
+  for (i = 0; i < inp->faces_len; i++) {
+    for (j = 0; j < inp->faces_len_table[i]; j++) {
+      fprintf(f, "%d ", inp->faces[j + inp->faces_start_table[i]]);
+    }
+    fprintf(f, "\n");
+  }
+  fclose(f);
 }
 
 #  ifndef NDEBUG /* Only used in assert. */

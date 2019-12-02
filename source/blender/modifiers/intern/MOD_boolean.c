@@ -60,9 +60,15 @@
 
 static void initData(ModifierData *md)
 {
+  bool newbool = true;
   BooleanModifierData *bmd = (BooleanModifierData *)md;
 
-  bmd->double_threshold = 1e-6f;
+  if (newbool) {
+    bmd->double_threshold = 1e-5f;
+  }
+  else {
+    bmd->double_threshold = 1e-6f;
+  }
   bmd->operation = eBooleanModifierOp_Difference;
 }
 

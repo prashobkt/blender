@@ -15,6 +15,10 @@ extern "C" {
 #include <fstream>
 #include <sstream>
 
+#define DO_REGULAR_TESTS 1
+#define DO_RANDOM_TESTS 0
+#define DO_FILE_TESTS 1
+
 static void fill_input_verts(CDT_input *r_input, float (*vcos)[2], int nverts)
 {
   r_input->verts_len = nverts;
@@ -41,6 +45,117 @@ static void add_input_faces(
   r_input->faces = faces;
   r_input->faces_start_table = faces_start_table;
   r_input->faces_len_table = faces_len_table;
+}
+
+/* The spec should have the form:
+ * #verts #edges #faces
+ * <float> <float>   [#verts lines)
+ * <int> <int>   [#edges lines]
+ * <int> <int> ... <int>   [#faces lines]
+ */
+static void fill_input_from_string(CDT_input *r_input, const char *spec)
+{
+  std::string line;
+  std::vector<std::vector<int>> faces;
+  int i, j;
+  int nverts, nedges, nfaces;
+  float(*p)[2];
+  int(*e)[2];
+  int *farr;
+  int *flen;
+  int *fstart;
+
+  std::istringstream ss(spec);
+  getline(ss, line);
+  std::istringstream hdrss(line);
+  hdrss >> nverts >> nedges >> nfaces;
+  if (nverts == 0) {
+    return;
+  }
+  p = (float(*)[2])MEM_malloc_arrayN(nverts, 2 * sizeof(float), __func__);
+  if (nedges > 0) {
+    e = (int(*)[2])MEM_malloc_arrayN(nedges, 2 * sizeof(int), __func__);
+  }
+  if (nfaces > 0) {
+    flen = (int *)MEM_malloc_arrayN(nfaces, sizeof(int), __func__);
+    fstart = (int *)MEM_malloc_arrayN(nfaces, sizeof(int), __func__);
+  }
+  i = 0;
+  while (i < nverts && getline(ss, line)) {
+    std::istringstream iss(line);
+    iss >> p[i][0] >> p[i][1];
+    i++;
+  }
+  i = 0;
+  while (i < nedges && getline(ss, line)) {
+    std::istringstream ess(line);
+    ess >> e[i][0] >> e[i][1];
+    i++;
+  }
+  i = 0;
+  while (i < nfaces && getline(ss, line)) {
+    std::istringstream fss(line);
+    int v;
+    faces.push_back(std::vector<int>());
+    while (fss >> v) {
+      faces[i].push_back(v);
+    }
+    i++;
+  }
+  fill_input_verts(r_input, p, nverts);
+  if (nedges > 0) {
+    add_input_edges(r_input, e, nedges);
+  }
+  if (nfaces > 0) {
+    for (i = 0; i < nfaces; i++) {
+      flen[i] = (int)faces[i].size();
+      if (i == 0) {
+        fstart[i] = 0;
+      }
+      else {
+        fstart[i] = fstart[i - 1] + flen[i - 1];
+      }
+    }
+    farr = (int *)MEM_malloc_arrayN(fstart[nfaces - 1] + flen[nfaces - 1], sizeof(int), __func__);
+    for (i = 0; i < nfaces; i++) {
+      for (j = 0; j < (int)faces[i].size(); j++) {
+        farr[fstart[i] + j] = faces[i][j];
+      }
+    }
+    add_input_faces(r_input, farr, fstart, flen, nfaces);
+  }
+}
+
+static void fill_input_from_file(CDT_input *in, const char *filename)
+{
+  std::FILE *fp = std::fopen(filename, "rb");
+  if (fp) {
+    std::string contents;
+    std::fseek(fp, 0, SEEK_END);
+    contents.resize(std::ftell(fp));
+    std::rewind(fp);
+    std::fread(&contents[0], 1, contents.size(), fp);
+    std::fclose(fp);
+    fill_input_from_string(in, contents.c_str());
+  }
+  else {
+    printf("couldn't open file %s\n", filename);
+  }
+}
+
+static void free_spec_arrays(CDT_input *in)
+{
+  if (in->vert_coords) {
+    MEM_freeN(in->vert_coords);
+  }
+  if (in->edges) {
+    MEM_freeN(in->edges);
+  }
+  if (in->faces_len_table) {
+    MEM_freeN(in->faces_len_table);
+    MEM_freeN(in->faces_start_table);
+    MEM_freeN(in->faces);
+  }
 }
 
 /* which output vert index goes with given input vertex? -1 if not found */
@@ -187,6 +302,7 @@ static void dump_result(CDT_result *r)
   }
 }
 
+#if DO_REGULAR_TESTS
 TEST(delaunay, Empty)
 {
   CDT_input in;
@@ -692,7 +808,32 @@ TEST(delaunay, TriInTri)
   BLI_delaunay_2d_cdt_free(out);
 }
 
-#if 0
+TEST(delaunay, ClosePts)
+{
+  CDT_input in;
+  CDT_result *out;
+  const char *spec = R"(7 2 1
+  0.46876350045204163 0.06087132915854454
+  0.46865847706794739 0.03632887825369835
+  0.49176687002182007 0.03632888197898865
+  0.49166208505630493 0.06087132543325424
+  0.49171400070190430 0.04841339960694313
+  0.49171534180641174 0.04839951172471046
+  0.49045535922050476 0.06087132915854454
+  4 5
+  6 4
+  0 1 2 3
+  )";
+  fill_input_from_string(&in, spec);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
+  EXPECT_EQ(out->verts_len, 7);
+  EXPECT_EQ(out->edges_len, 12);
+  EXPECT_EQ(out->faces_len, 6);
+  free_spec_arrays(&in);
+}
+#endif
+
+#if DO_RANDOM_TESTS
 enum {
   RANDOM_PTS,
   RANDOM_SEGS,
@@ -809,48 +950,36 @@ TEST(delaunay, randompoly_validbmesh)
 }
 #endif
 
-#if 0
-/* For debugging or timing large examples.
- * The given file should have one point per line, as a space-separated pair of floats
+#if DO_FILE_TESTS
+/* For timing large examples of points only.
+ * The given file should have one point per line, as a space-separated pair of floats.
  */
 static void points_from_file_test(const char *filename)
 {
-  std::ifstream f;
-  std::string line;
-  struct XY {
-    float x;
-    float y;
-  } xy;
-  std::vector<XY> pts;
-  int i, n;
   CDT_input in;
   CDT_result *out;
   double tstart;
-  float (*p)[2];
 
-  f.open(filename);
-  while (getline(f, line)) {
-    std::istringstream iss(line);
-    iss >> xy.x >> xy.y;
-    pts.push_back(xy);
-  }
-  n = (int)pts.size();
-  fprintf(stderr, "read %d points\n", (int)pts.size());
-  p = (float (*)[2])MEM_malloc_arrayN(n, 2 * sizeof(float), "delaunay");
-  for (i = 0; i < n; i++) {
-    xy = pts[i];
-    p[i][0] = xy.x;
-    p[i][1] = xy.y;
-  }
+  fill_input_from_file(&in, filename);
   tstart = PIL_check_seconds_timer();
-  fill_input_verts(&in, p, n);
   out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   fprintf(stderr, "time to triangulate=%f seconds\n", PIL_check_seconds_timer() - tstart);
   BLI_delaunay_2d_cdt_free(out);
-  MEM_freeN(p);
+  free_spec_arrays(&in);
 }
 
-#  define POINTFILEROOT "/tmp/"
+TEST(delaunay, debug)
+{
+  CDT_input in;
+  CDT_result *out;
+  fill_input_from_file(&in, "/Users/howardtrickey/cdtinput.txt");
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
+  BLI_delaunay_2d_cdt_free(out);
+  free_spec_arrays(&in);
+}
+
+#  if 0
+#    define POINTFILEROOT "/tmp/"
 
 TEST(delaunay, terrain1)
 {
@@ -866,4 +995,5 @@ TEST(delaunay, terrain3)
 {
   points_from_file_test(POINTFILEROOT "points3.txt");
 }
+#  endif
 #endif

@@ -274,7 +274,7 @@ void MESH_OT_intersect(struct wmOperatorType *ot)
   RNA_def_enum(
       ot->srna, "separate_mode", isect_separate_items, ISECT_SEPARATE_CUT, "Separate Mode", "");
   RNA_def_float_distance(
-      ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
+      ot->srna, "threshold", 0.00001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
   RNA_def_boolean(ot->srna, "newbool", true, "New", "Use the new algorithm?");
 
   /* flags */
@@ -381,7 +381,7 @@ void MESH_OT_intersect_boolean(struct wmOperatorType *ot)
                   "Swap",
                   "Use with difference intersection to swap which side is kept");
   RNA_def_float_distance(
-      ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
+      ot->srna, "threshold", 0.00001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
   RNA_def_boolean(ot->srna, "newbool", true, "New", "Use the new algorithm?");
 
   /* flags */

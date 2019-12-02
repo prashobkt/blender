@@ -1253,7 +1253,7 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
   IntSet *intersection_edges = &change->intersection_edges;
   IntSetIterator is_iter;
 #ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 0;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3241,7 +3241,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   MeshAdd *meshadd = &change->add;
   IntSet *intersection_edges = &change->intersection_edges;
 #ifdef BOOLDEBUG
-  int dbg_level = 2;
+  int dbg_level = 0;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3524,7 +3524,7 @@ static void intersect_partset_pair(BoolState *bs,
   float feps_margin = 20.0f * ((float)bs->eps);
   float bbpts[6];
 #  ifdef BOOLDEBUG
-  int dbg_level = 2;
+  int dbg_level = 0;
 #  endif
 
 #  ifdef BOOLDEBUG
@@ -3698,7 +3698,7 @@ bool BM_mesh_boolean(BMesh *bm,
   MeshChange meshchange;
   IntSet both_side_faces;
 #ifdef BOOLDEBUG
-  int dbg_level = 2;
+  int dbg_level = 0;
 #endif
 
 #ifdef PERFDEBUG
@@ -3706,7 +3706,6 @@ bool BM_mesh_boolean(BMesh *bm,
 #endif
 
   init_imesh_from_bmesh(&bs.im, bm);
-  dump_bm(bm, "initial bmesh after table ensure"); /*DEBUG!!!*/
   bs.boolean_mode = boolean_mode;
   bs.eps = eps;
   bs.test_fn = (int (*)(void *, void *))test_fn;
@@ -3738,9 +3737,8 @@ bool BM_mesh_boolean(BMesh *bm,
   }
 
   apply_meshchange_to_imesh(&bs, &bs.im, &meshchange, &both_side_faces);
-  dump_bm(bm, "bmesh after apply");/*DEBUG!!!*/
 
-  if (false && boolean_mode != -1) { /*DEBUG!!!*/
+  if (boolean_mode != -1) {
     do_boolean_op(&bs, boolean_mode, &both_side_faces);
   }
 
@@ -3893,7 +3891,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
   bool do_remove, do_flip, inside, both_sides, opp_normals;
   MeshChange meshchange;
 #  ifdef BOOLDEBUG
-  bool dbg_level = 1;
+  bool dbg_level = 0;
 
   if (dbg_level > 0) {
     printf("\nDO_BOOLEAN_OP, boolean_mode=%d\n\n", boolean_mode);
