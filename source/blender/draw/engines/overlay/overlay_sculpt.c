@@ -51,7 +51,7 @@ void OVERLAY_sculpt_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const bool use_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->v3d);
 
   if (use_pbvh || !ob->sculpt->deform_modifiers_active || ob->sculpt->shapekey_active) {
-    if (pbvh_has_mask(pbvh)) {
+    if (!use_pbvh || pbvh_has_mask(pbvh)) {
       DRW_shgroup_call_sculpt(pd->sculpt_mask_grp, ob, false, true, false);
     }
   }
@@ -60,6 +60,11 @@ void OVERLAY_sculpt_cache_populate(OVERLAY_Data *vedata, Object *ob)
 void OVERLAY_sculpt_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
+  OVERLAY_FramebufferList *fbl = vedata->fbl;
+
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(fbl->overlay_default_fb);
+  }
 
   DRW_draw_pass(psl->sculpt_mask_ps);
 }
