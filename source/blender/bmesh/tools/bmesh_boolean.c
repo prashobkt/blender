@@ -48,7 +48,7 @@
 
 #include "BLI_strict_flags.h"
 
-#define BOOLDEBUG
+// #define BOOLDEBUG
 // #define PERFDEBUG
 
 /* A set of integers. TODO: faster structure. */
@@ -521,7 +521,6 @@ static inline int intintmap_iter_value(IntIntMapIterator *iter)
 }
 
 /** Miscellaneous utility functions. */
-#pragma mark Miscellaneous utility functions
 
 static int min_int_in_array(int *array, int len)
 {
@@ -872,7 +871,6 @@ static int isect_line_seg_epsilon_v3_db(const double line_v1[3],
 }
 
 /** IMesh functions. */
-#pragma mark IMesh functions
 
 static KDTree_3d *make_im_co_tree(IMesh *im);
 
@@ -1258,7 +1256,10 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
 
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
-    printf("\n\nAPPLY_MESHADD_TO_BMESH\n\n");
+    printf("\n\nAPPLY_MESHCHANGE_TO_BMESH\n\n");
+    if (dbg_level > 1) {
+      dump_meshchange(change, "change to apply");
+    }
   }
 #endif
 
@@ -1431,6 +1432,12 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
 #ifdef BOOLDEBUG
       if (dbg_level > 0) {
         printf("created BMFace for new face %d\n", f);
+        for (int j = 0; j < facelen; j++) {
+          printf("    v=%d=>%d, bmv=%p, vco=(%f,%f,%f), e=%d=>%d, bme=%p\n",
+                 newface->vert_edge_pairs[j].first, BM_elem_index_get(face_bmvs[j]), face_bmvs[j],
+                 F3(face_bmvs[j]->co),
+                 newface->vert_edge_pairs[j].second, BM_elem_index_get(face_bmes[j]), face_bmes[j]);
+        }
         printf("  -> bmf = %p\n", bmf);
         /* BM_mesh_validate(bm); */
       }
@@ -1632,7 +1639,6 @@ static int imesh_calc_face_groups(BoolState *bs, int *r_groups_array, int (**r_g
 }
 
 /** MeshAdd functions. */
-#pragma mark MeshAdd functions
 
 static void init_meshadd(BoolState *bs, MeshAdd *meshadd)
 {
@@ -1908,7 +1914,6 @@ static int find_edge_by_verts_in_meshadd(const MeshAdd *meshadd, int v1, int v2)
 }
 
 /** MeshDelete functions. */
-#pragma mark MeshDelete functions
 
 static void init_meshdelete(BoolState *bs, MeshDelete *meshdelete)
 {
@@ -1979,7 +1984,6 @@ static bool meshdelete_find_face(MeshDelete *meshdelete, int f)
 }
 
 /** MeshChange functions. */
-#pragma mark MeshChange functions
 
 static void init_meshchange(BoolState *bs, MeshChange *meshchange)
 {
@@ -1997,7 +2001,6 @@ static void meshchange_free_aux_data(MeshChange *meshchange)
 }
 
 /** MeshPartSet functions. */
-#pragma mark MeshPartSet functions
 
 static void init_meshpartset(BoolState *bs, MeshPartSet *partset, int reserve, const char *label)
 {
@@ -2051,7 +2054,6 @@ static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, double eps)
 }
 
 /** MeshPart functions. */
-#pragma mark MeshPart functions
 
 static void init_meshpart(BoolState *UNUSED(bs), MeshPart *part)
 {
@@ -2250,7 +2252,6 @@ ATTU static int part_is_one_im_face(BoolState *bs, const MeshPart *part)
 }
 
 /** IMeshPlus functions. */
-#pragma mark IMeshPlus functions
 
 static void init_imeshplus(IMeshPlus *imp, IMesh *im, MeshAdd *meshadd)
 {
@@ -2316,7 +2317,6 @@ static void imeshplus_get_edge_verts(const IMeshPlus *imp, int e, int *r_v1, int
 }
 
 /** PartPartIntersect functions. */
-#pragma mark PartPartIntersect functions
 
 static void init_partpartintersect(PartPartIntersect *ppi)
 {
@@ -2363,7 +2363,6 @@ static void canonicalize_plane(float plane[4])
 }
 
 /** Intersection Algorithm functions. */
-#pragma mark Intersection Algorithm functions
 
 struct FindCoplanarCBData {
   int near_f_with_part;
@@ -3731,10 +3730,12 @@ bool BM_mesh_boolean(BMesh *bm,
     intersect_partset_pair(&bs, &a_parts, &b_parts, &meshchange);
   }
 
+#ifdef BOOLDEBUG
   if (dbg_level > 1) {
     dump_meshchange(&meshchange, "change for intersection");
     dump_intset(&both_side_faces, "both side faces", "");
   }
+#endif
 
   apply_meshchange_to_imesh(&bs, &bs.im, &meshchange, &both_side_faces);
 
@@ -3751,8 +3752,7 @@ bool BM_mesh_boolean(BMesh *bm,
   return true;
 }
 
-/** Boolean funcgions. */
-#  pragma mark Boolean functions
+/** Boolean functions. */
 
 /* Return the Generalized Winding Number of point co wih respect to the
  * volume implied by the faces for which bs->test_fn returns the value side.
@@ -4031,7 +4031,6 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
 
 
 #ifdef BOOLDEBUG
-#  pragma mark Debug functions
 
 ATTU static void dump_part(const MeshPart *part, const char *label)
 {
