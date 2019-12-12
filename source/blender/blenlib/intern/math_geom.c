@@ -432,6 +432,15 @@ void closest_to_plane3_normalized_v3(float r_close[3], const float plane[3], con
   madd_v3_v3v3fl(r_close, pt, plane, -side);
 }
 
+void closest_to_plane3_normalized_v3_db(double r_close[3],
+                                        const double plane[3],
+                                        const double pt[3])
+{
+  const double side = dot_v3v3_db(plane, pt);
+  BLI_ASSERT_UNIT_V3_DB(plane);
+  madd_v3_v3v3db_db(r_close, pt, plane, -side);
+}
+
 float dist_signed_squared_to_plane_v3(const float pt[3], const float plane[4])
 {
   const float len_sq = len_squared_v3(plane);
@@ -3251,7 +3260,7 @@ bool isect_aabb_aabb_v3(const float min1[3],
 bool isect_aabb_aabb_v3_db(const double min1[3],
                            const double max1[3],
                            const double min2[3],
-						   const double max2[3])
+                           const double max2[3])
 {
   return (min1[0] < max2[0] && min1[1] < max2[1] && min1[2] < max2[2] && min2[0] < max1[0] &&
           min2[1] < max1[1] && min2[2] < max1[2]);
@@ -3379,7 +3388,10 @@ float closest_to_line_v3(float r_close[3], const float p[3], const float l1[3], 
   return lambda;
 }
 
-double closest_to_line_v3_db(double r_close[3], const double p[3], const double l1[3], const double l2[3])
+double closest_to_line_v3_db(double r_close[3],
+                             const double p[3],
+                             const double l1[3],
+                             const double l2[3])
 {
   double h[3], u[3], lambda;
   sub_v3_v3v3_db(u, l2, l1);

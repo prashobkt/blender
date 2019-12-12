@@ -260,6 +260,11 @@ MINLINE float plane_point_side_v3(const float plane[4], const float co[3])
   return dot_v3v3(co, plane) + plane[3];
 }
 
+MINLINE double plane_point_side_v3_db(const double plane[4], const double co[3])
+{
+  return dot_v3v3_db(co, plane) + plane[3];
+}
+
 /* useful to calculate an even width shell, by taking the angle between 2 planes.
  * The return value is a scale on the offset.
  * no angle between planes is 1.0, as the angle between the 2 planes approaches 180d

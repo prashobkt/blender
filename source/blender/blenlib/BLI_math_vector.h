@@ -160,6 +160,7 @@ MINLINE void madd_v2_v2fl(float r[2], const float a[2], float f);
 MINLINE void madd_v3_v3fl(float r[3], const float a[3], float f);
 MINLINE void madd_v3db_v3dbdb(double r[3], const double a[3], double f);
 MINLINE void madd_v3_v3v3(float r[3], const float a[3], const float b[3]);
+MINLINE void madd_v3_v3v3_db(double r[3], const double a[3], const double b[3]);
 MINLINE void madd_v2_v2v2fl(float r[2], const float a[2], const float b[2], float f);
 MINLINE void madd_v3_v3v3fl(float r[3], const float a[3], const float b[3], float f);
 MINLINE void madd_v3_v3v3db_db(double r[3], const double a[3], const double b[3], double f);

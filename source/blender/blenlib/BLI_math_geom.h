@@ -81,6 +81,7 @@ void plane_to_point_vector_v3_normalized(const float plane[4],
                                          float r_plane_no[3]);
 
 MINLINE float plane_point_side_v3(const float plane[4], const float co[3]);
+MINLINE double plane_point_side_v3_db(const double plane[4], const double co[3]);
 
 /********************************* Volume **********************************/
 
@@ -115,6 +116,7 @@ float dist_to_line_segment_v2(const float p[2], const float l1[2], const float l
 
 float dist_signed_squared_to_plane_v3(const float p[3], const float plane[4]);
 float dist_squared_to_plane_v3(const float p[3], const float plane[4]);
+double dist_squared_to_plane_normalized_v3_db(const double pt[3], const double plane[4]);
 float dist_signed_to_plane_v3(const float p[3], const float plane[4]);
 float dist_to_plane_v3(const float p[3], const float plane[4]);
 

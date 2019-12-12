@@ -700,6 +700,13 @@ MINLINE void madd_v3_v3v3(float r[3], const float a[3], const float b[3])
   r[2] += a[2] * b[2];
 }
 
+MINLINE void madd_v3_v3v3_db(double r[3], const double a[3], const double b[3])
+{
+  r[0] += a[0] * b[0];
+  r[1] += a[1] * b[1];
+  r[2] += a[2] * b[2];
+}
+
 MINLINE void madd_v2_v2v2fl(float r[2], const float a[2], const float b[2], float f)
 {
   r[0] = a[0] + b[0] * f;

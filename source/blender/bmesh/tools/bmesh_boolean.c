@@ -808,66 +808,71 @@ static bool isect_tri_tri_epsilon_v3_db_ex(const double t_a0[3],
 }
 #endif
 
-/* Does the line intersect the segment (within epsilon)?
- * If line and seg are parallel and coincident, return 2.
- * If line intersects the segment within epsilon, return 1.
- * Otherwise return 0.
- * If the return value is 1, put the intersection point in isect,
- * and the fraction of the way from line_v1 to line_v2 to isect in *r_lambda
- * (may be outside of the range [0,1]) and the fraction of the way from seg_v1
- * to seg_v2 in *r_mu.
- */
-static int isect_line_seg_epsilon_v3_db(const double line_v1[3],
-                                        const double line_v2[3],
-                                        const double seg_v1[3],
-                                        const double seg_v2[3],
-                                        double epsilon,
-                                        double isect[3],
-                                        double *r_lambda,
-                                        double *r_mu)
+/* TODO: move these into math_geom.c. */
+/* What is interpolation factor that gives closest point on line to a given point? */
+static double line_interp_factor_v3_db(const double point[3], const double line_co1[3], const double line_co2[3])
 {
-  double fac_a, fac_b;
-  double a_dir[3], b_dir[3], a0b0[3], crs_ab[3];
-  double epsilon_squared = epsilon * epsilon;
-  sub_v3_v3v3_db(a_dir, line_v2, line_v1);
-  sub_v3_v3v3_db(b_dir, seg_v2, seg_v1);
-  cross_v3_v3v3_db(crs_ab, b_dir, a_dir);
-  const double nlen = len_squared_v3_db(crs_ab);
+  double h[3], seg_dir[3], seg_len_squared;
 
-  if (nlen < epsilon_squared) {
-    /* Parallel Lines or near parallel. Are the coincident? */
-    double d1, d2;
-    d1 = dist_squared_to_line_v3_db(seg_v1, line_v1, line_v2);
-    d2 = dist_squared_to_line_v3_db(seg_v2, line_v1, line_v2);
-    if (d1 <= epsilon_squared || d2 <= epsilon_squared) {
+  sub_v3_v3v3_db(h, point, line_co1);
+  seg_len_squared = len_squared_v3v3_db(line_co2, line_co1);
+  if (UNLIKELY(seg_len_squared) == 0.0) {
+    return 0.0;
+  }
+  sub_v3_v3v3_db(seg_dir, line_co2, line_co1);
+  return dot_v3v3_db(h, seg_dir) / seg_len_squared;
+}
+
+/* Does the segment intersect the plane, within epsilon?
+ * Return value is 0 if no intersect, 1 if one intersect, 2 if the whole segment is in the plane.
+ * In case 1, r_isect gets the intersection point, possibly snapped to an endpoint (if outside
+ * segment but within epsilon) and r_lambda gets the factor from seg_co1 to seg_co2 of
+ * the intersection point.
+ * \note Similar logic to isect_ray_plane_v3.
+ */
+static int isect_seg_plane_normalized_epsilon_v3_db(const double seg_co1[3],
+             const double seg_co2[3],
+             const double plane[4],
+             double epsilon,
+             double r_isect[3],
+             double *r_lambda)
+{
+  double h[3], plane_co[3], seg_dir[3], side1, side2;
+  double dot, lambda;
+
+  BLI_ASSERT_UNIT_V3_DB(plane);
+  sub_v3_v3v3_db(seg_dir, seg_co2, seg_co1);
+  dot = dot_v3v3_db(plane, seg_dir);
+  if (dot == 0.0) {
+    /* plane_point_side_v3_db gets signed distance of point to plane. */
+    side1 = plane_point_side_v3_db(plane, seg_co1);
+    side2 = plane_point_side_v3_db(plane, seg_co2);
+    if (fabs(side1) <= epsilon || fabs(side2) <= epsilon) {
       return 2;
     }
     else {
       return 0;
     }
   }
-  else {
-    double c[3], cray[3];
-    double blen = len_v3_db(b_dir);
-    sub_v3_v3v3_db(a0b0, seg_v1, line_v1);
-    sub_v3_v3v3_db(c, crs_ab, a0b0);
-
-    cross_v3_v3v3_db(cray, c, b_dir);
-    fac_a = dot_v3v3_db(cray, crs_ab) / nlen;
-
-    cross_v3_v3v3_db(cray, c, a_dir);
-    fac_b = dot_v3v3_db(cray, crs_ab) / nlen;
-
-    if (fac_b * blen < -epsilon || fac_b * blen - blen > epsilon) {
-      return 0;
-    }
-    else {
-      madd_v3_v3v3db_db(isect, seg_v1, b_dir, fac_b);
-      *r_lambda = fac_a;
-      *r_mu = fac_b;
-      return 1;
-    }
+  mul_v3db_v3dbdb(plane_co, plane, -plane[3]);
+  sub_v3_v3v3_db(h, seg_co1, plane_co);
+  lambda = -dot_v3v3_db(plane, h) / dot;
+  if (lambda < -epsilon || lambda > 1.0 + epsilon) {
+    return 0;
   }
+  if (lambda < 0.0) {
+    lambda = 0.0;
+    copy_v3_v3_db(r_isect, seg_co1);
+  }
+  else if (lambda > 1.0) {
+    lambda = 1.0;
+    copy_v3_v3_db(r_isect, seg_co2);
+  }
+  else {
+    madd_v3_v3v3db_db(r_isect, seg_co1, seg_dir, lambda);
+  }
+  *r_lambda = lambda;
+  return 1;
 }
 
 /** IMesh functions. */
@@ -3050,8 +3055,15 @@ typedef struct FaceEdgeInfo {
   bool isect_ok;   /* does this edge segment (excluding end vertex) intersect line? */
 } FaceEdgeInfo;
 
+typedef struct IntervalInfo {
+  double fac[2];
+  double co[2][3];
+} IntervalInfo;
+
 /* Find intersection of a face with a line and return the intervals on line.
  * It is known that the line is in the same plane as the face.
+ * The other_plane argument is a plane (double[4]), and is the plane
+ * that we intersected f's part's plane with to get the line.
  * If there is any intersection, it should be a series of points
  * and line segments on the line.
  * A point on the line can be represented as fractions of the distance from
@@ -3062,10 +3074,20 @@ typedef struct FaceEdgeInfo {
  * the intervals will not overlap, though they may touch.
  * [TODO: handle case where face has several
  * edges on the line, or where faces fold back on themselves.]
+ *
+ * To avoid problems where different topological judgements are made by
+ * different calls in the code, we want to make sure that we always do exactly
+ * the same calculation whenver seeing whether an edge intersects the line
+ * or a vertex is on the line. A common case is where an edge in f that the other_plane
+ * intersects is also in another part, g, and we want the same intersection point when
+ * intersecting that edge in the g / other_plane intersect case.  The line itself can
+ * be different, but the other_plane will be the same, so make sure to do the calculation
+ * as an edge / plane intersection, and only use the line to figure out the factors.
  */
 static void find_face_line_intersects(BoolState *bs,
                                       LinkNodePair *intervals,
                                       int f,
+                                      const double *other_plane,
                                       const double line_co1[3],
                                       const double line_co2[3])
 {
@@ -3074,8 +3096,8 @@ static void find_face_line_intersects(BoolState *bs,
   double eps = bs->eps;
   FaceEdgeInfo *finfo, *fi, *finext;
   double co_close[3], line_co1_to_co[3], line_dir[3];
-  double *interval;
-  double l_no[3], mu;
+  IntervalInfo *interval;
+  double l_no[3], lambda;
   double line_dir_len;
 #ifdef BOOLDEBUG
   int dbg_level = 0;
@@ -3085,6 +3107,7 @@ static void find_face_line_intersects(BoolState *bs,
   if (dbg_level > 0) {
     printf("\nFIND_FACE_LINE_INTERSECTS, face %d\n", f);
     printf("along line (%f,%f,%f)(%f,%f,%f)\n", F3(line_co1), F3(line_co2));
+    printf("other_plane (%f,%f,%f,%f)\n", F4(other_plane));
   }
 #endif
   intervals[0].list = NULL;
@@ -3121,10 +3144,22 @@ static void find_face_line_intersects(BoolState *bs,
       continue;
     }
     finext = &finfo[(i + 1) % flen];
-    is = isect_line_seg_epsilon_v3_db(
-        line_co1, line_co2, fi->co, finext->co, eps, fi->isect, &fi->factor, &mu);
+    /* For consistent calculations, order the ends of the segment consistently.
+     * Also, use segment original coordinates, not any snapped version.
+     */
+    int v1, v2;
+    double seg_co1[3], seg_co2[3];
+    v1 = fi->v;
+    v2 = finext->v;
+    if (v1 > v2) {
+      SWAP(int, v1, v2);
+    }
+    imesh_get_vert_co_db(im, v1, seg_co1);
+    imesh_get_vert_co_db(im, v2, seg_co2);
+    is = isect_seg_plane_normalized_epsilon_v3_db(seg_co1, seg_co2, other_plane, eps, fi->isect, &lambda);
     if (is > 0) {
       fi->isect_ok = true;
+      fi->factor = line_interp_factor_v3_db(is == 1 ? fi->isect : fi->co, line_co1, line_co2);
       if (finext->v_on && is != 2) {
         /* Don't count intersections of only the end of the line segment. */
         fi->isect_ok = false;
@@ -3179,29 +3214,27 @@ static void find_face_line_intersects(BoolState *bs,
       printf("startpos=%d, endpos=%d\n", startpos, endpos);
     }
 #endif
-    interval = BLI_memarena_alloc(bs->mem_arena, 2 * sizeof(double));
-    if (finfo[startpos].factor <= finfo[endpos].factor) {
-      interval[0] = finfo[startpos].factor;
-      interval[1] = finfo[endpos].factor;
+    interval = BLI_memarena_alloc(bs->mem_arena, sizeof(IntervalInfo));
+	if (finfo[startpos].factor <= finfo[endpos].factor) {
+      interval->fac[0] = finfo[startpos].factor;
+      interval->fac[1] = finfo[endpos].factor;
+      copy_v3_v3_db(interval->co[0], finfo[startpos].isect);
+      copy_v3_v3_db(interval->co[1], finfo[endpos].isect);
     }
     else {
-      interval[0] = finfo[endpos].factor;
-      interval[1] = finfo[startpos].factor;
+      interval->fac[0] = finfo[endpos].factor;
+      interval->fac[1] = finfo[startpos].factor;
+      copy_v3_v3_db(interval->co[0], finfo[endpos].isect);
+      copy_v3_v3_db(interval->co[1], finfo[startpos].isect);
     }
-    if (interval[1] - interval[0] <= eps) {
-      interval[1] = interval[0];
+    if (interval->fac[1] - interval->fac[0] <= eps) {
+      interval->fac[1] = interval->fac[0];
+      copy_v3_v3_db(interval->co[1], interval->co[0]);
     }
   }
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
-    double co1[3], co2[3];
-    madd_v3_v3v3db_db(co1, line_co1, line_dir, interval[0]);
-    madd_v3_v3v3db_db(co2, line_co2, line_dir, interval[1]);
-    printf("interval (dists) = (%f,%f) -> cooords (%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n",
-           interval[0],
-           interval[1],
-           F3(co1),
-           F3(co2));
+    printf("interval factors = (%f,%f), coords = (%f,%f,%f)(%f,%f,%f)\n", interval->fac[0], interval->fac[1], F3(interval->co[0]), F3(interval->co[1]));
   }
 #endif
   BLI_linklist_append_arena(intervals, interval, bs->mem_arena);
@@ -3229,11 +3262,13 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   LinkNodePair *intervals_b;
   LinkNodePair *intervals;
   LinkNode *ln, *lna, *lnb;
+  IntervalInfo *iinfoa, *iinfob;
   int is;
   double co[3], co1[3], co2[3], co_close[3], line_co1[3], line_co2[3], line_dir[3];
   double co_close1[3], co_close2[3];
+  double *other_plane;
   double elen_squared;
-  double faca1, faca2, facb1, facb2, facstart, facend, *inta, *intb;
+  double faca1, faca2, facb1, facb2, facstart, facend;
   double eps = bs->eps;
   double eps_squared = eps * eps;
   bool on1, on2;
@@ -3264,6 +3299,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   ppi->a_index = a_index;
   ppi->b_index = b_index;
 
+  /* Handle loose vertices of parts. */
   for (pi = 0; pi < 2; pi++) {
     part = pi == 0 ? part_a : part_b;
     totv[pi] = part_totvert(part);
@@ -3276,6 +3312,8 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
       }
     }
   }
+
+  /* Handle loose edges of parts */
   for (pi = 0; pi < 2; pi++) {
     part = pi == 0 ? part_a : part_b;
     tote[pi] = part_totedge(part);
@@ -3319,6 +3357,8 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
       }
     }
   }
+
+  /* Handle faces of parts. */
   totf[0] = part_totface(part_a);
   totf[1] = part_totface(part_b);
   intervals_a = BLI_array_alloca(intervals_a, (size_t)totf[0]);
@@ -3332,36 +3372,33 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
     part = pi == 0 ? part_a : part_b;
     totf[pi] = part_totface(part);
     for (i = 0; i < totf[pi]; i++) {
-#ifdef BOOLDEBUG
-      if (dbg_level > 0) {
-        printf("doing %dth face of part\n", i);
-      }
-#endif
       f = part_face(part, i);
       intervals = pi == 0 ? intervals_a : intervals_b;
-      find_face_line_intersects(bs, &intervals[i], f, line_co1, line_co2);
-      if (intervals[i].list == NULL) {
+      other_plane = pi == 0 ? part_b->plane : part_a->plane;
 #ifdef BOOLDEBUG
-        if (dbg_level > 0) {
+      if (dbg_level > 0) {
+        if (pi == 0) {
+          printf("doing %dth face of part a%d, f%d\nother_plane=(%f,%f,%f,%f) from b%d\n", i, a_index, f, F4(other_plane), b_index);
+        }
+        else {
+          printf("doing %dth face of part b%d, f%d\nother_plane=(%f,%f,%f,%f) from a%d\n", i, b_index, f, F4(other_plane), a_index);
+        }
+      }
+#endif
+      find_face_line_intersects(bs, &intervals[i], f, other_plane, line_co1, line_co2);
+#ifdef BOOLDEBUG
+      if (dbg_level > 0) {
+        if (intervals[i].list == NULL) {
           printf("no intersections\n");
-        }
+		}
+		else {
+		  for (ln = intervals[i].list; ln; ln = ln->next) {
+		    iinfoa = (IntervalInfo *)ln->link;
+		    printf("  (%f,%f) -> (%f,%f,%f)(%f,%f,%f)\n", iinfoa->fac[0], iinfoa->fac[1], F3(iinfoa->co[0]), F3(iinfoa->co[1]));
+		  }
+		}
+	  }
 #endif
-      }
-      else {
-        for (ln = intervals[i].list; ln; ln = ln->next) {
-          inta = (double *)ln->link;
-          faca1 = inta[0];
-          faca2 = inta[1];
-          madd_v3_v3v3db_db(co, line_co1, line_dir, faca1);
-          madd_v3_v3v3db_db(co2, line_co1, line_dir, faca2);
-#ifdef BOOLDEBUG
-          if (dbg_level > 0) {
-            printf(
-                "  (%f,%f) = (%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n", faca1, faca2, F3(co), F3(co2));
-          }
-#endif
-        }
-      }
     }
   }
 
@@ -3390,12 +3427,12 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
 #endif
       if (BLI_linklist_count(lna) == 1 && BLI_linklist_count(lnb) == 1) {
         /* Common special case of two single intervals to intersect. */
-        inta = (double *)lna->link;
-        intb = (double *)lnb->link;
-        faca1 = inta[0];
-        faca2 = inta[1];
-        facb1 = intb[0];
-        facb2 = intb[1];
+        iinfoa = (IntervalInfo *)lna->link;
+        iinfob = (IntervalInfo *)lnb->link;
+        faca1 = iinfoa->fac[0];
+        faca2 = iinfoa->fac[1];
+        facb1 = iinfob->fac[0];
+        facb2 = iinfob->fac[1];
         facstart = max_dd(faca1, facb1);
         facend = min_dd(faca2, facb2);
         if (facend < facstart - eps) {
@@ -3406,8 +3443,18 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
 #endif
         }
         else {
-          madd_v3_v3v3db_db(co, line_co1, line_dir, facstart);
-          madd_v3_v3v3db_db(co2, line_co1, line_dir, facend);
+          if (facstart == faca1) {
+            copy_v3_v3_db(co, iinfoa->co[0]);
+		  }
+		  else {
+		    copy_v3_v3_db(co, iinfob->co[0]);
+		  }
+		  if (facend == faca2) {
+		    copy_v3_v3_db(co2, iinfoa->co[1]);
+		  }
+		  else {
+		    copy_v3_v3_db(co2, iinfob->co[1]);
+		  }
 #ifdef BOOLDEBUG
           if (dbg_level > 0) {
             printf(
@@ -3527,7 +3574,7 @@ static void intersect_partset_pair(BoolState *bs,
 #  endif
 
 #  ifdef BOOLDEBUG
-  if (dbg_level > 0) {
+  if (dbg_level > 1) {
     printf("\nINTERSECT_PARTSET_PAIR\n\n");
     if (dbg_level > 0) {
       dump_partset(a_partset);
