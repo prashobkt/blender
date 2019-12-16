@@ -374,7 +374,7 @@ static const EnumPropertyItem rna_enum_studio_light_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-const EnumPropertyItem rna_enum_view3dshading_render_pass_type_items[] = {
+static const EnumPropertyItem rna_enum_view3dshading_render_pass_type_items[] = {
     {SCE_PASS_COMBINED, "COMBINED", 0, "Combined", ""},
     /* {SCE_PASS_Z, "Z", 0, "Z", ""},*/
     {SCE_PASS_AO, "AO", 0, "Ambient Occlusion", ""},
@@ -1404,7 +1404,7 @@ static const EnumPropertyItem *rna_SpaceImageEditor_display_channels_itemf(
   void *lock;
   int zbuf, alpha, totitem = 0;
 
-  ibuf = ED_space_image_acquire_buffer(sima, &lock);
+  ibuf = ED_space_image_acquire_buffer(sima, &lock, 0);
 
   alpha = ibuf && (ibuf->channels == 4);
   zbuf = ibuf && (ibuf->zbuf || ibuf->zbuf_float || (ibuf->channels == 1));
@@ -1512,7 +1512,8 @@ static void rna_SpaceImageEditor_scopes_update(struct bContext *C, struct Pointe
   ImBuf *ibuf;
   void *lock;
 
-  ibuf = ED_space_image_acquire_buffer(sima, &lock);
+  /* TODO(lukas): Support tiles in scopes? */
+  ibuf = ED_space_image_acquire_buffer(sima, &lock, 0);
   if (ibuf) {
     ED_space_image_scopes_update(C, sima, ibuf, true);
     WM_main_add_notifier(NC_IMAGE, sima->image);
@@ -2312,6 +2313,18 @@ static int rna_FileBrowser_FSMenuEntry_name_get_editable(PointerRNA *ptr,
   return fsm->save ? PROP_EDITABLE : 0;
 }
 
+static int rna_FileBrowser_FSMenuEntry_icon_get(PointerRNA *ptr)
+{
+  FSMenuEntry *fsm = ptr->data;
+  return ED_fsmenu_entry_get_icon(fsm);
+}
+
+static void rna_FileBrowser_FSMenuEntry_icon_set(PointerRNA *ptr, int value)
+{
+  FSMenuEntry *fsm = ptr->data;
+  ED_fsmenu_entry_set_icon(fsm, value);
+}
+
 static bool rna_FileBrowser_FSMenuEntry_use_save_get(PointerRNA *ptr)
 {
   FSMenuEntry *fsm = ptr->data;
@@ -2789,6 +2802,15 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_faces", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SI_NO_DRAWFACES);
   RNA_def_property_ui_text(prop, "Display Faces", "Display faces over the image");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, NULL);
+
+  prop = RNA_def_property(srna, "tile_grid_shape", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "tile_grid_shape");
+  RNA_def_property_array(prop, 2);
+  RNA_def_property_int_default(prop, 1);
+  RNA_def_property_range(prop, 1, 10);
+  RNA_def_property_ui_text(
+      prop, "Tile Grid Shape", "How many tiles will be shown in the background");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, NULL);
 
   /* todo: move edge and face drawing options here from G.f */
@@ -5572,6 +5594,11 @@ static void rna_def_filemenu_entry(BlenderRNA *brna)
   RNA_def_property_editable_func(prop, "rna_FileBrowser_FSMenuEntry_name_get_editable");
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
+
+  prop = RNA_def_property(srna, "icon", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(
+      prop, "rna_FileBrowser_FSMenuEntry_icon_get", "rna_FileBrowser_FSMenuEntry_icon_set", NULL);
+  RNA_def_property_ui_text(prop, "Icon", "");
 
   prop = RNA_def_property(srna, "use_save", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_FileBrowser_FSMenuEntry_use_save_get", NULL);

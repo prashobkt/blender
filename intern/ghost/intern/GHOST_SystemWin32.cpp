@@ -821,6 +821,9 @@ GHOST_TKey GHOST_SystemWin32::convertKey(short vKey, short scanCode, short exten
       case VK_RWIN:
         key = GHOST_kKeyOS;
         break;
+      case VK_APPS:
+        key = GHOST_kKeyApp;
+        break;
       case VK_NUMLOCK:
         key = GHOST_kKeyNumLock;
         break;
@@ -1157,7 +1160,7 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, UINT msg, WPARAM wParam, 
 
   if (hwnd) {
 
-	  if (msg == WM_NCCREATE) {
+    if (msg == WM_NCCREATE) {
       // Tell Windows to automatically handle scaling of non-client areas
       // such as the caption bar. EnableNonClientDpiScaling was introduced in Windows 10
       HMODULE m_user32 = ::LoadLibrary("User32.dll");
