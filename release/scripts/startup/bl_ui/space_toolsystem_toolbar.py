@@ -1581,6 +1581,23 @@ class _defs_gpencil_edit:
             draw_settings=_template_widget.VIEW3D_GGT_xform_extrude.draw_settings,
         )
 
+    @ToolDef.from_fn
+    def transform_fill():
+        def draw_settings(context, layout, tool):
+                props = tool.operator_properties("gpencil.transform_fill")
+                row = layout.row()
+                row.use_property_split = False
+                row.prop(props, "mode", expand=True)
+
+        return dict(
+            idname="builtin.transform_fill",
+            label="Transform Fill",
+            icon="ops.gpencil.transform_fill",
+            cursor='DEFAULT',
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
 
 class _defs_gpencil_sculpt:
 
@@ -2155,7 +2172,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_gpencil_edit.shear,
                 _defs_gpencil_edit.tosphere,
             ),
-
+            None,
+            _defs_gpencil_edit.transform_fill,
         ],
         'SCULPT_GPENCIL': [
             _defs_gpencil_sculpt.generate_from_brushes,
