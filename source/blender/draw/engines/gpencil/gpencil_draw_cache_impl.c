@@ -126,7 +126,7 @@ static void gpencil_buffer_add_point(
   /* Rotation are in [-90°..90°] range, so we can encode the sign of the angle + the cosine
    * because the cosine will always be positive. */
   vert->v_rot = cosf(pt->uv_rot) * signf(pt->uv_rot);
-  vert->thickness = gps->thickness * pt->pressure * (round_cap1 ? 1.0 : -1.0);
+  vert->thickness = max_ff(0.0f, gps->thickness * pt->pressure) * (round_cap1 ? 1.0 : -1.0);
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   vert->mat = (is_endpoint) ? -1 : (gps->mat_nr % GPENCIL_MATERIAL_BUFFER_LEN);
 }
