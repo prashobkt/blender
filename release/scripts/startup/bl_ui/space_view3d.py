@@ -4773,6 +4773,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.separator()
         layout.operator("gpencil.reset_transform_fill", text="Reset Fill Transform")
 
+
 class VIEW3D_MT_edit_gpencil_point(Menu):
     bl_label = "Point"
 
