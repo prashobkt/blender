@@ -182,7 +182,7 @@ void stroke_vertex()
   /* Screenspace Lines tangents. */
   float line_len;
   vec2 line = safe_normalize_len(ss2 - ss1, line_len);
-  vec2 line_adj = safe_normalize((x == -1.0) ? (ss1 - ss_adj) : (ss_adj - ss2));
+  vec2 line_adj = safe_normalize((use_curr) ? (ss1 - ss_adj) : (ss_adj - ss2));
 
   float thickness = abs((use_curr) ? thickness1 : thickness2);
   thickness = stroke_thickness_modulate(thickness);
@@ -190,11 +190,11 @@ void stroke_vertex()
   finalUvs = vec2(x, y) * 0.5 + 0.5;
 
   if (is_dot) {
-    vec2 x_axis;
-    vec2 y_axis;
     int alignement = materials[m].flag & GP_STROKE_ALIGNMENT;
+
+    vec2 x_axis;
     if (alignement == GP_STROKE_ALIGNMENT_STROKE) {
-      x_axis = line;
+      x_axis = (ma2.x == -1.0) ? line_adj : line;
     }
     else if (alignement == GP_STROKE_ALIGNMENT_OBJECT) {
       vec4 ndc_x = point_world_to_ndc(wpos1 + model_mat[0].xyz);
@@ -210,7 +210,7 @@ void stroke_vertex()
     float rot_cos = abs(uv1.w);
     x_axis = mat2(rot_cos, -rot_sin, rot_sin, rot_cos) * x_axis;
 
-    y_axis = rotate_90deg(x_axis);
+    vec2 y_axis = rotate_90deg(x_axis);
 
     gl_Position.xy += (x * x_axis + y * y_axis) * sizeViewportInv.xy * thickness;
 
