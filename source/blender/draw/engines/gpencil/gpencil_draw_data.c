@@ -151,13 +151,13 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
 
     /* Stroke Style */
     if ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
-      /* TODO finish. */
       bool premul;
       pool->tex_stroke[mat_id] = gpencil_image_texture_get(gp_style->sima, &premul);
       mat_data->flag |= pool->tex_stroke[mat_id] ? GP_STROKE_TEXTURE_USE : 0;
       mat_data->flag |= premul ? GP_STROKE_TEXTURE_PREMUL : 0;
       copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
       mat_data->stroke_texture_mix = 1.0f - gp_style->mix_stroke_factor;
+      mat_data->stroke_u_scale = 500.0f / gp_style->texture_pixsize;
     }
     else /* if (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_SOLID) */ {
       pool->tex_stroke[mat_id] = NULL;

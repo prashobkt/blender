@@ -2789,57 +2789,16 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
 /* texture coordinate utilities */
 void BKE_gpencil_calc_stroke_uv(Object *ob, bGPDstroke *gps)
 {
-  if (gps == NULL) {
+  if (gps == NULL || gps->totpoints == 0) {
     return;
   }
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
-  float pixsize;
-  if (gp_style) {
-    pixsize = gp_style->texture_pixsize / 1000000.0f;
-  }
-  else {
-    /* use this value by default */
-    pixsize = 0.0001f;
-  }
-  pixsize = MAX2(pixsize, 0.0000001f);
 
-  bGPDspoint *pt = NULL;
-  bGPDspoint *ptb = NULL;
-  int i;
+  bGPDspoint *pt = gps->points;
   float totlen = 0.0f;
-
-  /* first read all points and calc distance */
-  for (i = 0; i < gps->totpoints; i++) {
-    pt = &gps->points[i];
-    /* first point */
-    if (i == 0) {
-      pt->uv_fac = 0.0f;
-      continue;
-    }
-
-    ptb = &gps->points[i - 1];
-    totlen += len_v3v3(&pt->x, &ptb->x) / pixsize;
-    pt->uv_fac = totlen;
-  }
-
-  /* normalize the distance using a factor */
-  float factor;
-
-  /* if image, use texture width */
-  if ((gp_style) && (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
-      (gp_style->sima)) {
-    factor = gp_style->sima->gen_x;
-  }
-  else if (totlen == 0) {
-    return;
-  }
-  else {
-    factor = totlen;
-  }
-
-  for (i = 0; i < gps->totpoints; i++) {
-    pt = &gps->points[i];
-    pt->uv_fac /= factor;
+  pt[0].uv_fac = totlen;
+  for (int i = 1; i < gps->totpoints; i++) {
+    totlen += len_v3v3(&pt[i - 1].x, &pt[i].x);
+    pt[i].uv_fac = totlen;
   }
 }
 

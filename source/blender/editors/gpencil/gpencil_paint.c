@@ -689,7 +689,6 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
   tGPspoint *pt;
   Object *obact = (Object *)p->ownerPtr.data;
   RegionView3D *rv3d = p->ar->regiondata;
-  MaterialGPencilStyle *gp_style = p->material->gp_style;
 
   /* check painting mode */
   if (p->paintmode == GP_PAINTMODE_DRAW_STRAIGHT) {
@@ -801,7 +800,6 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
 
     /* point uv (only 3d view) */
     if ((p->sa->spacetype == SPACE_VIEW3D) && (gpd->runtime.sbuffer_used > 0)) {
-      float pixsize = gp_style->texture_pixsize / 1000000.0f;
       tGPspoint *ptb = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_used - 1;
       bGPDspoint spt, spt2;
 
@@ -815,11 +813,8 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       /* reproject previous */
       ED_gpencil_tpoint_to_point(p->ar, origin, ptb, &spt2);
       ED_gp_project_point_to_plane(p->scene, obact, rv3d, origin, p->lock_axis - 1, &spt2);
-      p->totpixlen += len_v3v3(&spt.x, &spt2.x) / pixsize;
+      p->totpixlen += len_v3v3(&spt.x, &spt2.x);
       pt->uv_fac = p->totpixlen;
-      if ((gp_style) && (gp_style->sima)) {
-        pt->uv_fac /= gp_style->sima->gen_x;
-      }
     }
     else {
       p->totpixlen = 0.0f;

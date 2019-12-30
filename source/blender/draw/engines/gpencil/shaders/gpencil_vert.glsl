@@ -245,6 +245,7 @@ void stroke_vertex()
     gl_Position.xy += screen_ofs * sizeViewportInv.xy * thickness;
 
     finalUvs.x = (use_curr) ? uv1.z : uv2.z;
+    finalUvs.x *= materials[m].stroke_u_scale;
   }
 
   vec4 vert_col = (use_curr) ? col1 : col2;

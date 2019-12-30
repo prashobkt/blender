@@ -998,8 +998,6 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
     /* point uv */
     if (gpd->runtime.sbuffer_used > 0) {
-      MaterialGPencilStyle *gp_style = tgpi->mat->gp_style;
-      const float pixsize = gp_style->texture_pixsize / 1000000.0f;
       tGPspoint *tptb = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_used - 1;
       bGPDspoint spt, spt2;
 
@@ -1015,11 +1013,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
       ED_gpencil_tpoint_to_point(tgpi->ar, origin, tptb, &spt2);
       ED_gp_project_point_to_plane(
           tgpi->scene, tgpi->ob, tgpi->rv3d, origin, tgpi->lock_axis - 1, &spt2);
-      tgpi->totpixlen += len_v3v3(&spt.x, &spt2.x) / pixsize;
+      tgpi->totpixlen += len_v3v3(&spt.x, &spt2.x);
       tpt->uv_fac = tgpi->totpixlen;
-      if ((gp_style) && (gp_style->sima)) {
-        tpt->uv_fac /= gp_style->sima->gen_x;
-      }
     }
     else {
       tgpi->totpixlen = 0.0f;
