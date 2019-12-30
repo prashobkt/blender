@@ -205,6 +205,11 @@ void stroke_vertex()
       x_axis = vec2(1.0, 0.0);
     }
 
+    /* Rotation: Encoded as Cos + Sin sign. */
+    float rot_sin = sqrt(1.0 - uv1.w * uv1.w) * sign(uv1.w);
+    float rot_cos = abs(uv1.w);
+    x_axis = mat2(rot_cos, -rot_sin, rot_sin, rot_cos) * x_axis;
+
     y_axis = rotate_90deg(x_axis);
 
     gl_Position.xy += (x * x_axis + y * y_axis) * sizeViewportInv.xy * thickness;
