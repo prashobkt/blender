@@ -195,8 +195,9 @@ void stroke_vertex()
       x_axis = line;
     }
     else if (alignement == GP_STROKE_ALIGNMENT_OBJECT) {
-      /* TODO */
-      x_axis = vec2(1.0, 0.0);
+      vec4 ndc_x = point_world_to_ndc(wpos1 + model_mat[0].xyz);
+      vec2 ss_x = project_to_screenspace(ndc_x);
+      x_axis = safe_normalize(ss_x - ss1);
     }
     else /* GP_STROKE_ALIGNMENT_FIXED*/ {
       x_axis = vec2(1.0, 0.0);
