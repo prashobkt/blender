@@ -111,12 +111,6 @@ void main()
 
   fragColor *= stroke_round_cap_mask();
 
-  if (GP_FLAG_TEST(matFlag, GP_STROKE_DOTS)) {
-    const float rad_sqr_inv = 1.0 / 0.25;
-    float dist = 1.0 - rad_sqr_inv * length_squared(finalUvs - 0.5);
-    fragColor *= clamp(dist, 0.0, 1.0);
-  }
-
   /* For compatibility with colored alpha buffer.
    * Note that we are limited to mono-chromatic alpha blending here
    * because of the blend equation and the limit of 1 color target

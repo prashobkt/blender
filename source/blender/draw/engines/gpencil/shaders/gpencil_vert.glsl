@@ -143,9 +143,11 @@ void stroke_vertex()
 {
   int m = int(ma1.x);
   bool is_dot = false;
+  bool is_squares = false;
 
   if (m != -1.0) {
     is_dot = GP_FLAG_TEST(materials[m].flag, GP_STROKE_ALIGNMENT);
+    is_squares = !GP_FLAG_TEST(materials[m].flag, GP_STROKE_DOTS);
   }
 
   /* Enpoints, we discard the vertices. */
@@ -207,8 +209,9 @@ void stroke_vertex()
 
     gl_Position.xy += (x * x_axis + y * y_axis) * sizeViewportInv.xy * thickness;
 
-    strokePt1 = strokePt2 = vec2(0.0);
-    strokeThickness = 1e18;
+    strokePt1 = ss1;
+    strokePt2 = ss1 + vec2(0.5, 0.0);
+    strokeThickness = (is_squares) ? 1e18 : (thickness / gl_Position.w);
   }
   else {
     /* Mitter tangent vector. */
