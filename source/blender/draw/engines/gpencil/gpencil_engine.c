@@ -918,7 +918,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
     float onion_col[4] = {UNPACK3(onion_col_custom), 1.0f};
     float onion_alpha = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
     onion_alpha += (gpd->onion_factor * 2.0f - 1.0f);
-    onion_alpha = max_ff(onion_alpha, 0.01f);
+    onion_alpha = clamp_f(onion_alpha, 0.01f, 1.0f);
 
     DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", onion_col);
     DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", onion_alpha);

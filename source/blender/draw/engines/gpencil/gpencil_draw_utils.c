@@ -153,19 +153,17 @@ void gpencil_object_visible_stroke_iter(Object *ob,
       }
     }
     else {
-      sta_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
-      if (sta_gpf) {
-        end_gpf = sta_gpf->next;
-        sta_gpf->runtime.onion_id = 0;
-      }
+      act_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+      end_gpf = sta_gpf = NULL;
     }
 
-    if (sta_gpf == NULL) {
+    if (sta_gpf == NULL && act_gpf == NULL) {
       continue;
     }
 
+    /* Draw multiedit/onion skinning first */
     for (bGPDframe *gpf = sta_gpf; gpf && gpf != end_gpf; gpf = gpf->next) {
-      if (gpf->runtime.onion_id == INT_MAX) {
+      if (gpf->runtime.onion_id == INT_MAX || gpf == act_gpf) {
         continue;
       }
 
@@ -175,6 +173,16 @@ void gpencil_object_visible_stroke_iter(Object *ob,
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         stroke_cb(gpl, gpf, gps, thunk);
+      }
+    }
+    /* Draw Active frame on top. */
+    if (act_gpf) {
+      if (layer_cb) {
+        layer_cb(gpl, act_gpf, NULL, thunk);
+      }
+
+      LISTBASE_FOREACH (bGPDstroke *, gps, &act_gpf->strokes) {
+        stroke_cb(gpl, act_gpf, gps, thunk);
       }
     }
 
