@@ -857,10 +857,11 @@ typedef struct gpIterPopulateData {
 } gpIterPopulateData;
 
 static void gp_layer_cache_populate(bGPDlayer *gpl,
-                                    bGPDframe *UNUSED(gpf),
+                                    bGPDframe *gpf,
                                     bGPDstroke *UNUSED(gps),
                                     void *thunk)
 {
+  DRWShadingGroup *grp;
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
@@ -905,8 +906,27 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
-  DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
   DRW_shgroup_stencil_mask(iter->grp, 0xFF);
+
+  bool use_onion = gpf->runtime.onion_id != 0.0f;
+  if (use_onion) {
+    const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
+    const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
+    const bool use_next_col = gpf->runtime.onion_id > 0.0f;
+    float *onion_col_custom = (use_next_col) ? gpd->gcolor_next : gpd->gcolor_prev;
+    onion_col_custom = (use_onion_custom_col) ? onion_col_custom : U.gpencil_new_layer_col;
+    float onion_col[4] = {UNPACK3(onion_col_custom), 1.0f};
+    float onion_alpha = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
+    onion_alpha += (gpd->onion_factor * 2.0f - 1.0f);
+    onion_alpha = max_ff(onion_alpha, 0.01f);
+
+    DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", onion_col);
+    DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", onion_alpha);
+  }
+  else {
+    DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
+    DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", 1.0f);
+  }
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),

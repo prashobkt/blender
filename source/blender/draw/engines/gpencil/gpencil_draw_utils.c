@@ -66,107 +66,118 @@ void gpencil_object_visible_stroke_iter(Object *ob,
                                         void *thunk)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  const bool main_onion = false; /* TODO */  // stl->storage->is_main_onion;
-  const bool playing = false; /* TODO */     // stl->storage->is_playing;
-  const bool overlay = false; /* TODO */     // stl->storage->is_main_overlay;
-  const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay &&
-                        main_onion && !playing && gpencil_onion_active(gpd);
+  const bool main_onion = true; /* TODO */  // stl->storage->is_main_onion;
+  const bool playing = false; /* TODO */    // stl->storage->is_playing;
+  const bool overlay = true; /* TODO */     // stl->storage->is_main_overlay;
+  const bool do_onion = ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay && main_onion &&
+                        !playing && gpencil_onion_active(gpd);
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   /* Onion skinning. */
-  const int step = gpd->gstep;
-  const int mode = gpd->onion_mode;
+  const bool onion_mode_abs = (gpd->onion_mode == GP_ONION_MODE_ABSOLUTE);
+  const bool onion_mode_sel = (gpd->onion_mode == GP_ONION_MODE_SELECTED);
+  const bool onion_loop = (gpd->onion_flag & GP_ONION_LOOP) != 0;
   const short onion_keytype = gpd->onion_keytype;
+  int ctime = 0;
+  if (onion_mode_abs) {
+    const DRWContextState *draw_ctx = DRW_context_state_get();
+    ctime = DEG_get_ctime(draw_ctx->depsgraph);
+  }
 
   int idx_eval = 0;
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    bGPDframe *init_gpf = NULL;
+    bGPDframe *act_gpf = gpl->actframe;
+    bGPDframe *sta_gpf = act_gpf;
+    bGPDframe *end_gpf = act_gpf ? act_gpf->next : NULL;
     const bool is_onion = (do_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN));
     if (gpl->flag & GP_LAYER_HIDE) {
       idx_eval++;
       continue;
     }
 
-    /* Relative onion mode needs to find the frame range before. */
-    int frame_from = -INT_MAX;
-    int frame_to = INT_MAX;
-    if (is_onion && (mode == GP_ONION_MODE_RELATIVE)) {
-      /* 1) Found first Frame. */
-      int idx = 0;
-      if (gpl->actframe) {
-        for (bGPDframe *gf = gpl->actframe->prev; gf; gf = gf->prev) {
-          idx++;
-          frame_from = gf->framenum;
-          if (idx >= step) {
-            break;
-          }
+    if (is_onion) {
+      if (act_gpf) {
+        bGPDframe *last_gpf = gpl->frames.last;
+
+        int frame_len = 0;
+        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+          gpf->runtime.frameid = frame_len++;
         }
-        /* 2) Found last Frame. */
-        idx = 0;
-        for (bGPDframe *gf = gpl->actframe->next; gf; gf = gf->next) {
-          idx++;
-          frame_to = gf->framenum;
-          if (idx >= gpd->gstep_next) {
-            break;
+
+        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+          bool is_wrong_keytype = (onion_keytype > -1) && (gpf->key_type != onion_keytype);
+          bool is_in_range;
+          int delta = (onion_mode_abs) ? (gpf->framenum - ctime) :
+                                         (gpf->runtime.frameid - act_gpf->runtime.frameid);
+
+          if (onion_mode_sel) {
+            is_in_range = (gpf->flag & GP_FRAME_SELECT) != 0;
           }
+          else {
+            is_in_range = (-delta <= gpd->gstep) && (delta <= gpd->gstep_next);
+
+            if (onion_loop && !is_in_range) {
+              /* We wrap the value using the last frame and 0 as reference. */
+              /* FIXME: This might not be good for animations not starting at 0. */
+              int shift = (onion_mode_abs) ? last_gpf->framenum : last_gpf->runtime.frameid;
+              delta += (delta < 0) ? shift : -shift;
+              /* Test again with wrapped value. */
+              is_in_range = (-delta <= gpd->gstep) && (delta <= gpd->gstep_next);
+            }
+          }
+          /* Mask frames that have wrong keytype of are not in range. */
+          gpf->runtime.onion_id = (is_wrong_keytype || !is_in_range) ? INT_MAX : delta;
+        }
+        /* Active frame is always shown. */
+        act_gpf->runtime.onion_id = 0;
+      }
+
+      sta_gpf = gpl->frames.first;
+      end_gpf = NULL;
+    }
+    else if (is_multiedit) {
+      sta_gpf = end_gpf = NULL;
+      /* Check the whole range and tag the editable frames. */
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        if (gpf == act_gpf || (gpf->flag & GP_FRAME_SELECT)) {
+          gpf->runtime.onion_id = 0;
+          if (sta_gpf == NULL) {
+            sta_gpf = gpf;
+          }
+          end_gpf = gpf->next;
+        }
+        else {
+          gpf->runtime.onion_id = INT_MAX;
         }
       }
     }
-
-    /* If multiedit or onion skin need to count all frames of the layer. */
-    if (is_multiedit || is_onion) {
-      init_gpf = gpl->frames.first;
-    }
     else {
-      init_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+      sta_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+      if (sta_gpf) {
+        end_gpf = sta_gpf->next;
+        sta_gpf->runtime.onion_id = 0;
+      }
     }
 
-    if (init_gpf == NULL) {
+    if (sta_gpf == NULL) {
       continue;
     }
 
-    if (layer_cb) {
-      layer_cb(gpl, NULL, NULL, thunk);
-    }
+    for (bGPDframe *gpf = sta_gpf; gpf && gpf != end_gpf; gpf = gpf->next) {
+      if (gpf->runtime.onion_id == INT_MAX) {
+        continue;
+      }
 
-    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+      if (layer_cb) {
+        layer_cb(gpl, gpf, NULL, thunk);
+      }
+
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-        if (!is_onion) {
-          if ((!is_multiedit) ||
-              (is_multiedit && ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)))) {
-            stroke_cb(gpl, gpf, gps, thunk);
-          }
-        }
-        else {
-          bool select = (is_multiedit &&
-                         ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)));
-
-          if (!select) {
-            bool is_wrong_keytype = (onion_keytype > -1) && (gpf->key_type != onion_keytype);
-            bool is_in_range;
-            if (mode == GP_ONION_MODE_ABSOLUTE) {
-              is_in_range = gpl->actframe && abs(gpl->actframe->framenum - gpf->framenum) <= step;
-            }
-            else if (mode == GP_ONION_MODE_RELATIVE) {
-              is_in_range = (gpf->framenum >= frame_from) && (gpf->framenum <= frame_to);
-            }
-            else /* GP_ONION_MODE_SELECTED */ {
-              is_in_range = (gpf->flag & GP_FRAME_SELECT) != 0;
-            }
-
-            if (is_wrong_keytype || !is_in_range) {
-              continue;
-            }
-          }
-          stroke_cb(gpl, gpf, gps, thunk);
-        }
-      }
-      /* If not multiframe nor Onion skin, don't need follow counting. */
-      if ((!is_multiedit) && (!is_onion)) {
-        break;
+        stroke_cb(gpl, gpf, gps, thunk);
       }
     }
+
     idx_eval++;
   }
 }
