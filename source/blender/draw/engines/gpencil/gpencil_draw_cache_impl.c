@@ -72,8 +72,7 @@ typedef struct gpStrokeVert {
   /** Position and thickness packed in the same attribute. */
   float pos[3], thickness;
   float col[4];
-  /** UV and strength packed in the same attribute. */
-  float uv[2], u_stroke, v_rot;
+  float uv_fill[2], u_stroke, v_rot;
 } gpStrokeVert;
 
 static GPUVertFormat *gpencil_stroke_format(void)
@@ -117,7 +116,7 @@ static void gpencil_buffer_add_point(
   const bool round_cap1 = (gps->caps[1] == GP_STROKE_CAP_ROUND);
   gpStrokeVert *vert = &verts[v];
   copy_v3_v3(vert->pos, &pt->x);
-  copy_v2_v2(vert->uv, pt->uv_fill);
+  copy_v2_v2(vert->uv_fill, pt->uv_fill);
   copy_v4_v4(vert->col, pt->mix_color);
   vert->strength = (round_cap0) ? pt->strength : -pt->strength;
   vert->u_stroke = pt->uv_fac;
