@@ -449,6 +449,13 @@ static void GPENCIL_cache_init_new(void *ved)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
 
+  const bool hide_overlay = ((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) != 0);
+  const bool show_onion = ((draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) != 0);
+  const bool playing = (draw_ctx->evil_C != NULL) ?
+                           ED_screen_animation_playing(CTX_wm_manager(draw_ctx->evil_C)) != NULL :
+                           false;
+  pd->do_onion = show_onion && !hide_overlay && !playing;
+
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
     DRW_PASS_CREATE(psl->composite_ps, state);
@@ -861,7 +868,6 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
                                     bGPDstroke *UNUSED(gps),
                                     void *thunk)
 {
-  DRWShadingGroup *grp;
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
@@ -1008,7 +1014,7 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
     iter.tex_stroke = txl->dummy_texture;
 
     gpencil_object_visible_stroke_iter(
-        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter);
+        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, pd->do_onion);
 
     gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
   }

@@ -490,6 +490,8 @@ typedef struct GPENCIL_PrivateData {
   float dof_params[2];
   /* Used for DoF Setup. */
   Object *camera;
+  /* Display onion skinning */
+  bool do_onion;
 } GPENCIL_PrivateData;
 
 /* flags for fast drawing support */
@@ -631,10 +633,8 @@ typedef void (*gpIterCb)(struct bGPDlayer *layer,
                          struct bGPDstroke *stroke,
                          void *thunk);
 
-void gpencil_object_visible_stroke_iter(Object *ob,
-                                        gpIterCb layer_cb,
-                                        gpIterCb stroke_cb,
-                                        void *thunk);
+void gpencil_object_visible_stroke_iter(
+    Object *ob, gpIterCb layer_cb, gpIterCb stroke_cb, void *thunk, bool do_onion);
 
 /* general drawing functions */
 struct DRWShadingGroup *gpencil_shgroup_stroke_create(struct GPENCIL_e_data *e_data,

@@ -60,18 +60,12 @@
  *
  * \{ */
 
-void gpencil_object_visible_stroke_iter(Object *ob,
-                                        gpIterCb layer_cb,
-                                        gpIterCb stroke_cb,
-                                        void *thunk)
+void gpencil_object_visible_stroke_iter(
+    Object *ob, gpIterCb layer_cb, gpIterCb stroke_cb, void *thunk, bool do_onion)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  const bool main_onion = true; /* TODO */  // stl->storage->is_main_onion;
-  const bool playing = false; /* TODO */    // stl->storage->is_playing;
-  const bool overlay = true; /* TODO */     // stl->storage->is_main_overlay;
-  const bool do_onion = ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay && main_onion &&
-                        !playing && gpencil_onion_active(gpd);
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_onion = do_onion && ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0);
 
   /* Onion skinning. */
   const bool onion_mode_abs = (gpd->onion_mode == GP_ONION_MODE_ABSOLUTE);
@@ -90,13 +84,13 @@ void gpencil_object_visible_stroke_iter(Object *ob,
     bGPDframe *act_gpf = gpl->actframe;
     bGPDframe *sta_gpf = act_gpf;
     bGPDframe *end_gpf = act_gpf ? act_gpf->next : NULL;
-    const bool is_onion = (do_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN));
+
     if (gpl->flag & GP_LAYER_HIDE) {
       idx_eval++;
       continue;
     }
 
-    if (is_onion) {
+    if (is_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN)) {
       if (act_gpf) {
         bGPDframe *last_gpf = gpl->frames.last;
 
@@ -153,7 +147,7 @@ void gpencil_object_visible_stroke_iter(Object *ob,
       }
     }
     else {
-      act_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+      /* Bypass multiedit/onion skinning. */
       end_gpf = sta_gpf = NULL;
     }
 
@@ -176,6 +170,9 @@ void gpencil_object_visible_stroke_iter(Object *ob,
       }
     }
     /* Draw Active frame on top. */
+    /* Use evaluated frame (with modifiers for active stroke)/ */
+    act_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+    act_gpf->runtime.onion_id = 0;
     if (act_gpf) {
       if (layer_cb) {
         layer_cb(gpl, act_gpf, NULL, thunk);

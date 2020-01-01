@@ -198,6 +198,11 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
     /* Should be discarded together. */
     BLI_assert(cache->vbo == NULL && cache->ibo == NULL);
     BLI_assert(cache->stroke_batch == NULL && cache->stroke_batch == NULL);
+    /* TODO/PERF: Could be changed to only do it if needed.
+     * For now it's simpler to assume we always need it
+     * since multiple viewport could or could not need it.
+     * Ideally we should have a dedicated onion skin geom batch. */
+    bool do_onion = true;
 
     /* First count how many vertices and triangles are needed for the whole object. */
     gpIterData iter = {
@@ -207,7 +212,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
         .vert_len = 1, /* Start at 1 for the gl_InstanceID trick to work (see vert shader). */
         .tri_len = 0,
     };
-    gpencil_object_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter);
+    gpencil_object_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter, do_onion);
 
     /* Create VBO. */
     GPUVertFormat *format = gpencil_stroke_format();
@@ -219,7 +224,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
     GPU_indexbuf_init(&iter.ibo, GPU_PRIM_TRIS, iter.tri_len, iter.vert_len);
 
     /* Fill buffers with data. */
-    gpencil_object_visible_stroke_iter(ob, NULL, gpencil_stroke_iter_cb, &iter);
+    gpencil_object_visible_stroke_iter(ob, NULL, gpencil_stroke_iter_cb, &iter, do_onion);
 
     /* Finish the IBO. */
     cache->ibo = GPU_indexbuf_build(&iter.ibo);
