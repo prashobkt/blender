@@ -37,7 +37,7 @@
  * This function uses the same calculation used for viewport, because if use
  * camera pixelsize, the result is not correct.
  */
-static float get_render_pixelsize(float persmat[4][4], int winx, int winy)
+static float UNUSED_FUNCTION(get_render_pixelsize)(float persmat[4][4], int winx, int winy)
 {
   float v1[3], v2[3];
   float len_px, len_sc;
