@@ -2757,7 +2757,6 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
     }
 
     for (int i = 0; i < gps->tot_triangles; i++) {
-      bGPDtriangle *stroke_triangle = &gps->triangles[i];
       memcpy(gps->triangles[i].verts, tmp_triangles[i], sizeof(uint[3]));
     }
 

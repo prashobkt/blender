@@ -474,7 +474,6 @@ static void rna_GPencilLayer_info_set(PointerRNA *ptr, const char *value)
 
 static void rna_GPencil_layer_mask_set(PointerRNA *ptr, const bool value)
 {
-  bGPdata *gpd = (bGPdata *)ptr->owner_id;
   bGPDlayer *gpl = ptr->data;
 
   const bool use_mask = gpl->flag & GP_LAYER_USE_MASK;
