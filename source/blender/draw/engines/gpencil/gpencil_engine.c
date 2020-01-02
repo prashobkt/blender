@@ -353,6 +353,10 @@ void GPENCIL_engine_init(void *vedata)
     stl->storage->shade_render[1] = 0;
   }
 
+  if (!stl->pd) {
+    stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
+  }
+
   stl->storage->multisamples = U.gpencil_multisamples;
 
   if (G.debug_value == 50) {
@@ -449,12 +453,18 @@ static void GPENCIL_cache_init_new(void *ved)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
 
-  const bool hide_overlay = ((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) != 0);
-  const bool show_onion = ((draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) != 0);
-  const bool playing = (draw_ctx->evil_C != NULL) ?
-                           ED_screen_animation_playing(CTX_wm_manager(draw_ctx->evil_C)) != NULL :
-                           false;
-  pd->do_onion = show_onion && !hide_overlay && !playing;
+  if (draw_ctx->v3d) {
+    const bool hide_overlay = ((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) != 0);
+    const bool show_onion = ((draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) != 0);
+    const bool playing = (draw_ctx->evil_C != NULL) ?
+                             ED_screen_animation_playing(CTX_wm_manager(draw_ctx->evil_C)) !=
+                                 NULL :
+                             false;
+    pd->do_onion = show_onion && !hide_overlay && !playing;
+  }
+  else {
+    pd->do_onion = true;
+  }
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
