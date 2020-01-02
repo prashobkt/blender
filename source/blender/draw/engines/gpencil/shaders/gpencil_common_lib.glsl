@@ -27,10 +27,14 @@ struct gpMaterial {
 #define GP_FILL_TEXTURE_USE (1 << 10)
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)
+#define GP_FILL_GRADIENT_USE (1 << 13)
+#define GP_FILL_GRADIENT_RADIAL (1 << 14)
+/* High bits are used to pass material ID to fragment shader. */
+#define GP_MATID_SHIFT 16
 
 /* Multiline defines can crash blender with certain GPU drivers. */
 /* clang-format off */
-#define GP_FILL_FLAGS (GP_FILL_TEXTURE_USE | GP_FILL_TEXTURE_PREMUL | GP_FILL_TEXTURE_CLIP)
+#define GP_FILL_FLAGS (GP_FILL_TEXTURE_USE | GP_FILL_TEXTURE_PREMUL | GP_FILL_TEXTURE_CLIP | GP_FILL_GRADIENT_USE | GP_FILL_GRADIENT_RADIAL)
 /* clang-format on */
 
 #define GP_FLAG_TEST(flag, val) (((flag) & (val)) != 0)

@@ -98,6 +98,12 @@ void main()
     bool premul = GP_FLAG_TEST(matFlag, GP_FILL_TEXTURE_PREMUL);
     col = texture_read_as_linearrgb(gpFillTexture, premul, uvs);
   }
+  else if (GP_FLAG_TEST(matFlag, GP_FILL_GRADIENT_USE)) {
+    bool radial = GP_FLAG_TEST(matFlag, GP_FILL_GRADIENT_RADIAL);
+    float fac = clamp(radial ? length(finalUvs * 2.0 - 1.0) : finalUvs.x, 0.0, 1.0);
+    int matid = matFlag >> GP_MATID_SHIFT;
+    col = mix(materials[matid].fill_color, materials[matid].fill_mix_color, fac);
+  }
   else /* SOLID */ {
     col = vec4(1.0);
   }

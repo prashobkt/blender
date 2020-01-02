@@ -292,9 +292,15 @@ void fill_vertex()
   vec4 fill_col = materials[m].fill_color;
   float mix_tex = materials[m].fill_texture_mix;
 
+  /* Special case: We don't modulate alpha in gradient mode. */
+  if (GP_FLAG_TEST(materials[m].flag, GP_FILL_GRADIENT_USE)) {
+    fill_col.a = 1.0;
+  }
+
   color_output(fill_col, vec4(0.0), 1.0, mix_tex);
 
   matFlag = materials[m].flag & GP_FILL_FLAGS;
+  matFlag |= m << GP_MATID_SHIFT;
 
   vec2 loc = materials[m].fill_uv_offset.xy;
   mat2x2 rot_scale = mat2x2(materials[m].fill_uv_rot_scale.xy, materials[m].fill_uv_rot_scale.zw);

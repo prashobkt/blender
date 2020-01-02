@@ -86,6 +86,8 @@ typedef struct gpMaterial {
 #define GP_FILL_TEXTURE_USE (1 << 10)
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)
+#define GP_FILL_GRADIENT_USE (1 << 13)
+#define GP_FILL_GRADIENT_RADIAL (1 << 14)
 
 #define GPENCIL_LIGHT_BUFFER_LEN 128
 
