@@ -115,7 +115,7 @@ void gpencil_object_visible_stroke_iter(
               /* We wrap the value using the last frame and 0 as reference. */
               /* FIXME: This might not be good for animations not starting at 0. */
               int shift = (onion_mode_abs) ? last_gpf->framenum : last_gpf->runtime.frameid;
-              delta += (delta < 0) ? shift : -shift;
+              delta += (delta < 0) ? (shift + 1) : -(shift + 1);
               /* Test again with wrapped value. */
               is_in_range = (-delta <= gpd->gstep) && (delta <= gpd->gstep_next);
             }
