@@ -321,6 +321,7 @@ bool GPENCIL_batch_from_sbuffer(Object *ob,
       copy_v2_v2(tpoints2d[i], &tpoints[i].x);
     }
     /* Compute directly inside the IBO data buffer. */
+    /* OPTI: This is a bottleneck if the stroke is very long. */
     BLI_polyfill_calc(tpoints2d, (uint)vert_len, 0, (uint(*)[3])ibo_builder.data);
     /* Add stroke start offset. */
     for (int i = 0; i < gps->tot_triangles * 3; i++) {

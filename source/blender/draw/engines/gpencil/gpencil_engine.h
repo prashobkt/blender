@@ -372,6 +372,7 @@ typedef struct GPENCIL_FramebufferList {
 
   /* Refactored */
   struct GPUFrameBuffer *gpencil_fb;
+  struct GPUFrameBuffer *snapshot_fb;
   struct GPUFrameBuffer *layer_fb;
   struct GPUFrameBuffer *object_fb;
   struct GPUFrameBuffer *masked_fb;
@@ -380,6 +381,10 @@ typedef struct GPENCIL_FramebufferList {
 typedef struct GPENCIL_TextureList {
   /* Dummy texture to avoid errors cause by empty sampler. */
   struct GPUTexture *dummy_texture;
+  /* Snapshot for smoother drawing. */
+  struct GPUTexture *snapshot_depth_tx;
+  struct GPUTexture *snapshot_color_tx;
+  struct GPUTexture *snapshot_reveal_tx;
 
   /* multisample textures */
   struct GPUTexture *multisample_color;
@@ -499,9 +504,15 @@ typedef struct GPENCIL_PrivateData {
   struct bGPDlayer *sbuffer_layer;
   /* Temporary stroke currently being drawn. */
   struct bGPDstroke *sbuffer_stroke;
+  /* List of temp objects containing the stroke. */
+  struct {
+    GPENCIL_tObject *first, *last;
+  } sbuffer_tobjects;
   /* Batches containing the temp stroke. */
   GPUBatch *stroke_batch;
   GPUBatch *fill_batch;
+  bool do_fast_drawing;
+  bool snapshot_buffer_dirty;
 
   /* Display onion skinning */
   bool do_onion;

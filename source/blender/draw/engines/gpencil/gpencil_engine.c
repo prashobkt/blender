@@ -312,6 +312,8 @@ static void GPENCIL_engine_init_new(void *ved)
   stl->pd->last_material_pool = NULL;
   stl->pd->tobjects.first = NULL;
   stl->pd->tobjects.last = NULL;
+  stl->pd->sbuffer_tobjects.first = NULL;
+  stl->pd->sbuffer_tobjects.last = NULL;
   stl->pd->draw_depth_only = !DRW_state_is_fbo();
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
   stl->pd->is_render = true; /* TODO */
@@ -447,6 +449,8 @@ static void GPENCIL_cache_init_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PassList *psl = vedata->psl;
+  GPENCIL_TextureList *txl = vedata->txl;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   DRWShadingGroup *grp;
 
@@ -472,7 +476,7 @@ static void GPENCIL_cache_init_new(void *ved)
     pd->sbuffer_layer = NULL;
     pd->stroke_batch = NULL;
     pd->fill_batch = NULL;
-    pd->do_stroke_fast_drawing = true;
+    pd->do_fast_drawing = false;
 
     Object *ob = draw_ctx->obact;
     if (ob && ob->type == OB_GPENCIL) {
@@ -481,8 +485,31 @@ static void GPENCIL_cache_init_new(void *ved)
               ob, &pd->stroke_batch, &pd->fill_batch, &pd->sbuffer_stroke)) {
         pd->sbuffer_gpd = (bGPdata *)ob->data;
         pd->sbuffer_layer = BKE_gpencil_layer_getactive(pd->sbuffer_gpd);
+        pd->do_fast_drawing = false; /* TODO option */
       }
     }
+  }
+
+  if (pd->do_fast_drawing) {
+    pd->snapshot_buffer_dirty = (txl->snapshot_color_tx == NULL);
+    const float *size = DRW_viewport_size_get();
+    DRW_texture_ensure_2d(&txl->snapshot_depth_tx, size[0], size[1], GPU_DEPTH24_STENCIL8, 0);
+    DRW_texture_ensure_2d(&txl->snapshot_color_tx, size[0], size[1], GPU_R11F_G11F_B10F, 0);
+    DRW_texture_ensure_2d(&txl->snapshot_reveal_tx, size[0], size[1], GPU_R11F_G11F_B10F, 0);
+
+    GPU_framebuffer_ensure_config(&fbl->snapshot_fb,
+                                  {
+                                      GPU_ATTACHMENT_TEXTURE(txl->snapshot_depth_tx),
+                                      GPU_ATTACHMENT_TEXTURE(txl->snapshot_color_tx),
+                                      GPU_ATTACHMENT_TEXTURE(txl->snapshot_reveal_tx),
+                                  });
+  }
+  else {
+    /* Free uneeded buffers. */
+    GPU_FRAMEBUFFER_FREE_SAFE(fbl->snapshot_fb);
+    DRW_TEXTURE_FREE_SAFE(txl->snapshot_depth_tx);
+    DRW_TEXTURE_FREE_SAFE(txl->snapshot_color_tx);
+    DRW_TEXTURE_FREE_SAFE(txl->snapshot_reveal_tx);
   }
 
   {
@@ -932,7 +959,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
     gp_sbuffer_cache_populate(iter);
   }
   else {
-    iter->do_sbuffer_call = (gpd == iter->pd->sbuffer_gpd) && (gpl == iter->pd->sbuffer_layer);
+    iter->do_sbuffer_call = !iter->pd->do_fast_drawing && (gpd == iter->pd->sbuffer_gpd) &&
+                            (gpl == iter->pd->sbuffer_layer);
   }
 
   GPENCIL_tLayer *tgp_layer_prev = iter->tgp_ob->layers.last;
@@ -1062,6 +1090,37 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
   iter->stroke_index_last = gps->runtime.stroke_start + gps->totpoints + 1;
 }
 
+static void gp_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateData *iter)
+{
+  bGPdata *gpd = (bGPdata *)iter->ob->data;
+  if (gpd != iter->pd->sbuffer_gpd) {
+    return;
+  }
+
+  GPENCIL_TextureList *txl = vedata->txl;
+  GPUTexture *depth_texture = iter->pd->scene_depth_tx;
+  GPENCIL_tObject *last_tgp_ob = iter->pd->tobjects.last;
+  /* Create another temp object that only contain the stroke. */
+  iter->tgp_ob = gpencil_object_cache_add_new(iter->pd, iter->ob);
+  /* Remove from the main list. */
+  iter->pd->tobjects.last = last_tgp_ob;
+  last_tgp_ob->next = NULL;
+  /* Add to sbuffer tgpobject list. */
+  BLI_LINKS_APPEND(&iter->pd->sbuffer_tobjects, iter->tgp_ob);
+  /* Remove depth test with scene (avoid self occlusion). */
+  iter->pd->scene_depth_tx = txl->dummy_texture;
+
+  gp_layer_cache_populate(iter->pd->sbuffer_layer, iter->pd->sbuffer_layer->actframe, NULL, iter);
+  iter->do_sbuffer_call = DRAW_NOW;
+  gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
+
+  gpencil_vfx_cache_populate(vedata, iter->ob, iter->tgp_ob);
+
+  /* Restore state. */
+  iter->do_sbuffer_call = 0;
+  iter->pd->scene_depth_tx = depth_texture;
+}
+
 static void GPENCIL_cache_populate_new(void *ved, Object *ob)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
@@ -1090,6 +1149,10 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
     }
 
     gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
+
+    if (pd->do_fast_drawing) {
+      gp_sbuffer_cache_populate_fast(vedata, &iter);
+    }
   }
 
   if (ob->type == OB_LAMP) {
@@ -1502,6 +1565,108 @@ static void GPENCIL_draw_scene_depth_only(void *ved)
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
 }
 
+static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
+{
+  GPENCIL_PassList *psl = vedata->psl;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
+
+  DRW_stats_group_start("GPencil Object");
+
+  GPUFrameBuffer *fb_object = (ob->vfx.first) ? fbl->object_fb : fbl->gpencil_fb;
+
+  GPU_framebuffer_bind(fb_object);
+  GPU_framebuffer_clear_depth_stencil(fb_object, ob->is_drawmode3d ? 1.0f : 0.0f, 0x00);
+
+  if (ob->vfx.first) {
+    GPU_framebuffer_multi_clear(fb_object, clear_cols);
+  }
+
+  for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
+    if (layer->blend_ps) {
+      GPU_framebuffer_bind(fbl->layer_fb);
+      GPU_framebuffer_multi_clear(fbl->layer_fb, clear_cols);
+    }
+    else if (layer->is_masked) {
+      GPU_framebuffer_bind(fbl->masked_fb);
+      if (layer->do_masked_clear) {
+        GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
+      }
+    }
+    else {
+      GPU_framebuffer_bind(fb_object);
+    }
+
+    DRW_draw_pass(layer->geom_ps);
+
+    if (layer->blend_ps) {
+      if (layer->is_masked) {
+        GPU_framebuffer_bind(fbl->masked_fb);
+        if (layer->do_masked_clear) {
+          GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
+        }
+      }
+      else {
+        GPU_framebuffer_bind(fb_object);
+      }
+      DRW_draw_pass(layer->blend_ps);
+    }
+  }
+
+  for (GPENCIL_tVfx *vfx = ob->vfx.first; vfx; vfx = vfx->next) {
+    GPU_framebuffer_bind(*(vfx->target_fb));
+    DRW_draw_pass(vfx->vfx_ps);
+  }
+
+  copy_m4_m4(pd->object_bound_mat, ob->plane_mat);
+  pd->is_stroke_order_3d = ob->is_drawmode3d;
+
+  /* TODO fix for render */
+  if (dfbl->depth_only_fb) {
+    GPU_framebuffer_bind(dfbl->depth_only_fb);
+    DRW_draw_pass(psl->merge_depth_ps);
+  }
+
+  DRW_stats_group_end();
+}
+
+static void GPENCIL_fast_draw_start(GPENCIL_Data *vedata)
+{
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+
+  if (!pd->snapshot_buffer_dirty) {
+    /* Copy back cached render. */
+    GPU_framebuffer_blit(fbl->snapshot_fb, 0, dfbl->default_fb, 0, GPU_DEPTH_BIT);
+    GPU_framebuffer_blit(fbl->snapshot_fb, 0, fbl->gpencil_fb, 0, GPU_COLOR_BIT);
+    GPU_framebuffer_blit(fbl->snapshot_fb, 1, fbl->gpencil_fb, 1, GPU_COLOR_BIT);
+    /* Bypass drawing. */
+    pd->tobjects.first = pd->tobjects.last = NULL;
+  }
+}
+
+static void GPENCIL_fast_draw_end(GPENCIL_Data *vedata)
+{
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+
+  if (pd->snapshot_buffer_dirty) {
+    /* Save to snapshot buffer. */
+    GPU_framebuffer_blit(dfbl->default_fb, 0, fbl->snapshot_fb, 0, GPU_DEPTH_BIT);
+    GPU_framebuffer_blit(fbl->gpencil_fb, 0, fbl->snapshot_fb, 0, GPU_COLOR_BIT);
+    GPU_framebuffer_blit(fbl->gpencil_fb, 1, fbl->snapshot_fb, 1, GPU_COLOR_BIT);
+    pd->snapshot_buffer_dirty = false;
+  }
+  /* Draw the sbuffer stroke(s). */
+  for (GPENCIL_tObject *ob = pd->sbuffer_tobjects.first; ob; ob = ob->next) {
+    GPENCIL_draw_object(vedata, ob);
+  }
+}
+
 static void GPENCIL_draw_scene_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
@@ -1520,67 +1685,21 @@ static void GPENCIL_draw_scene_new(void *ved)
     return;
   }
 
-  GPU_framebuffer_bind(fbl->gpencil_fb);
-  GPU_framebuffer_multi_clear(fbl->gpencil_fb, clear_cols);
+  if (pd->do_fast_drawing) {
+    GPENCIL_fast_draw_start(vedata);
+  }
+
+  if (pd->tobjects.first) {
+    GPU_framebuffer_bind(fbl->gpencil_fb);
+    GPU_framebuffer_multi_clear(fbl->gpencil_fb, clear_cols);
+  }
 
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
-    DRW_stats_group_start("GPencil Object");
+    GPENCIL_draw_object(vedata, ob);
+  }
 
-    GPUFrameBuffer *fb_object = (ob->vfx.first) ? fbl->object_fb : fbl->gpencil_fb;
-
-    GPU_framebuffer_bind(fb_object);
-    GPU_framebuffer_clear_depth_stencil(fb_object, ob->is_drawmode3d ? 1.0f : 0.0f, 0x00);
-
-    if (ob->vfx.first) {
-      GPU_framebuffer_multi_clear(fb_object, clear_cols);
-    }
-
-    for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
-      if (layer->blend_ps) {
-        GPU_framebuffer_bind(fbl->layer_fb);
-        GPU_framebuffer_multi_clear(fbl->layer_fb, clear_cols);
-      }
-      else if (layer->is_masked) {
-        GPU_framebuffer_bind(fbl->masked_fb);
-        if (layer->do_masked_clear) {
-          GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
-        }
-      }
-      else {
-        GPU_framebuffer_bind(fb_object);
-      }
-
-      DRW_draw_pass(layer->geom_ps);
-
-      if (layer->blend_ps) {
-        if (layer->is_masked) {
-          GPU_framebuffer_bind(fbl->masked_fb);
-          if (layer->do_masked_clear) {
-            GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
-          }
-        }
-        else {
-          GPU_framebuffer_bind(fb_object);
-        }
-        DRW_draw_pass(layer->blend_ps);
-      }
-    }
-
-    for (GPENCIL_tVfx *vfx = ob->vfx.first; vfx; vfx = vfx->next) {
-      GPU_framebuffer_bind(*(vfx->target_fb));
-      DRW_draw_pass(vfx->vfx_ps);
-    }
-
-    copy_m4_m4(pd->object_bound_mat, ob->plane_mat);
-    pd->is_stroke_order_3d = ob->is_drawmode3d;
-
-    /* TODO fix for render */
-    if (dfbl->depth_only_fb) {
-      GPU_framebuffer_bind(dfbl->depth_only_fb);
-      DRW_draw_pass(psl->merge_depth_ps);
-    }
-
-    DRW_stats_group_end();
+  if (pd->do_fast_drawing) {
+    GPENCIL_fast_draw_end(vedata);
   }
 
   if (dfbl->default_fb) {
