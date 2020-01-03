@@ -492,6 +492,19 @@ typedef struct GPENCIL_PrivateData {
   float dof_params[2];
   /* Used for DoF Setup. */
   Object *camera;
+
+  /* Object being in draw mode. */
+  struct bGPdata *sbuffer_gpd;
+  /* Layer to append the temp stroke to. */
+  struct bGPDlayer *sbuffer_layer;
+  /* Temporary stroke currently being drawn. */
+  struct bGPDstroke *sbuffer_stroke;
+  /* Batches containing the temp stroke. */
+  GPUBatch *stroke_batch;
+  GPUBatch *fill_batch;
+  /* A stroke is currently in progress, do special drawing.  */
+  bool do_stroke_fast_drawing;
+
   /* Display onion skinning */
   bool do_onion;
 } GPENCIL_PrivateData;
@@ -702,6 +715,10 @@ void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
 
 struct GPUBatch *GPENCIL_batch_cache_strokes(Object *ob, int cfra);
 struct GPUBatch *GPENCIL_batch_cache_fills(Object *ob, int cfra);
+bool GPENCIL_batch_from_sbuffer(Object *ob,
+                                struct GPUBatch **r_stroke_batch,
+                                struct GPUBatch **r_fill_batch,
+                                struct bGPDstroke **r_stroke);
 
 struct GPUBatch *gpencil_get_buffer_stroke_geom(struct bGPdata *gpd, short thickness);
 struct GPUBatch *gpencil_get_buffer_fill_geom(struct bGPdata *gpd);

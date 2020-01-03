@@ -1787,9 +1787,12 @@ static void gp_init_colors(tGPsdata *p)
   /* use brush material */
   p->material = BKE_gpencil_object_material_ensure_from_active_input_brush(p->bmain, p->ob, brush);
 
+  gpd->runtime.matid = BKE_object_material_slot_find_index(p->ob, p->material);
+
   /* assign color information to temp tGPsdata */
   gp_style = p->material->gp_style;
   if (gp_style) {
+    gpd->runtime.brush_size = brush->size;
 
     /* set colors */
     if (gp_style->flag & GP_STYLE_STROKE_SHOW) {
@@ -1814,7 +1817,6 @@ static void gp_init_colors(tGPsdata *p)
     }
 
     gpd->runtime.mode = (short)gp_style->mode;
-    gpd->runtime.bstroke_style = gp_style->stroke_style;
     gpd->runtime.bfill_style = gp_style->fill_style;
 
     /* Apply the mix color to stroke. */

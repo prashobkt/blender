@@ -465,8 +465,10 @@ typedef struct bGPdata_Runtime {
   float sfill[4];
   /** Settings for color. */
   short mode;
-  /** Buffer style for drawing strokes (used to select shader type). */
-  short bstroke_style;
+  /** Material index of the stroke. */
+  short matid;
+  /** Brush size of stroke. */
+  float brush_size;
   /** Buffer style for filling areas (used to select shader type). */
   short bfill_style;
 
@@ -483,7 +485,6 @@ typedef struct bGPdata_Runtime {
 
   /** Number of control-points for stroke. */
   int tot_cp_points;
-  char _pad_[4];
   /** Array of control-points for stroke. */
   bGPDcontrolpoint *cp_points;
 } bGPdata_Runtime;

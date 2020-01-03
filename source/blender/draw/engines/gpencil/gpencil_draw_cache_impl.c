@@ -24,6 +24,8 @@
 #include "BLI_polyfill_2d.h"
 #include "BLI_math_color.h"
 
+#include "DEG_depsgraph_query.h"
+
 #include "DNA_meshdata_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_screen_types.h"
@@ -138,7 +140,7 @@ static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps
   int v = gps->runtime.stroke_start;
 
   /* First point for adjacency (not drawn). */
-  int adj_idx = (is_cyclic) ? (pts_len - 1) : 1;
+  int adj_idx = (is_cyclic) ? (pts_len - 1) : min_ii(pts_len - 1, 1);
   gpencil_buffer_add_point(verts, gps, &pts[adj_idx], v++, true);
 
   for (int i = 0; i < pts_len; i++) {
@@ -149,14 +151,13 @@ static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps
     gpencil_buffer_add_point(verts, gps, &pts[0], v++, false);
   }
   /* Last adjacency point (not drawn). */
-  adj_idx = (is_cyclic) ? 1 : (pts_len - 2);
+  adj_idx = (is_cyclic) ? 1 : max_ii(0, pts_len - 2);
   gpencil_buffer_add_point(verts, gps, &pts[adj_idx], v++, true);
 }
 
 static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *gps)
 {
   int tri_len = gps->tot_triangles;
-  /* Add one for the adjacency index. */
   int v = gps->runtime.stroke_start;
   for (int i = 0; i < tri_len; i++) {
     uint *tri = gps->triangles[i].verts;
@@ -253,6 +254,98 @@ GPUBatch *GPENCIL_batch_cache_fills(Object *ob, int cfra)
   gpencil_batches_ensure(ob, cache);
 
   return cache->fill_batch;
+}
+
+/* Return true if there is anything to draw. */
+bool GPENCIL_batch_from_sbuffer(Object *ob,
+                                GPUBatch **r_stroke_batch,
+                                GPUBatch **r_fill_batch,
+                                bGPDstroke **r_stroke)
+{
+  bGPdata *gpd = (bGPdata *)ob->data;
+  /* Current stroke data is stored in the original id. This is waiting refactor of the
+   * Depsgraph to support more granular update of the GPencil data.  */
+  bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
+  tGPspoint *tpoints = gpd_orig->runtime.sbuffer;
+  int vert_len = gpd_orig->runtime.sbuffer_used;
+
+  if (vert_len <= 0) {
+    *r_stroke_batch = NULL;
+    *r_fill_batch = NULL;
+    return false;
+  }
+
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  Scene *scene = draw_ctx->scene;
+  ARegion *ar = draw_ctx->ar;
+
+  /* Get origin to reproject points. */
+  float origin[3];
+  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  ToolSettings *ts = scene->toolsettings;
+  ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
+
+  /* Convert the sbuffer to a bGPDstroke. */
+  bGPDstroke *gps = *r_stroke = MEM_callocN(sizeof(*gps), "bGPDstroke sbuffer");
+  gps->totpoints = vert_len;
+  gps->mat_nr = gpd_orig->runtime.matid - 1;
+  gps->flag = gpd_orig->runtime.sbuffer_sflag;
+  gps->thickness = gpd_orig->runtime.brush_size;
+  gps->tot_triangles = max_ii(0, vert_len - 2);
+  gps->caps[0] = gps->caps[1] = GP_STROKE_CAP_ROUND;
+  gps->runtime.stroke_start = 1; /* Add one for the adjacency index. */
+  gps->points = MEM_mallocN(vert_len * sizeof(*gps->points), __func__);
+
+  for (int i = 0; i < vert_len; i++) {
+    ED_gpencil_tpoint_to_point(ar, origin, &tpoints[i], &gps->points[i]);
+    mul_m4_v3(ob->imat, &gps->points[i].x);
+  }
+
+  /* Create VBO. */
+  GPUVertFormat *format = gpencil_stroke_format();
+  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(format);
+  /* Add extra space at the end (and start) of the buffer because of quad load and cyclic. */
+  GPU_vertbuf_data_alloc(vbo, 1 + vert_len + 1 + 2);
+  gpStrokeVert *verts = (gpStrokeVert *)vbo->data;
+  /* Create IBO. */
+  GPUIndexBufBuilder ibo_builder;
+  GPU_indexbuf_init(&ibo_builder, GPU_PRIM_TRIS, gps->tot_triangles, vert_len);
+
+  /* Fill buffers with data. */
+  gpencil_buffer_add_stroke(verts, gps);
+
+  if (gps->tot_triangles > 0) {
+    float(*tpoints2d)[2] = MEM_mallocN(sizeof(*tpoints2d) * vert_len, __func__);
+    /* Triangulate in 2D. */
+    for (int i = 0; i < vert_len; i++) {
+      copy_v2_v2(tpoints2d[i], &tpoints[i].x);
+    }
+    /* Compute directly inside the IBO data buffer. */
+    BLI_polyfill_calc(tpoints2d, (uint)vert_len, 0, (uint(*)[3])ibo_builder.data);
+    /* Add stroke start offset. */
+    for (int i = 0; i < gps->tot_triangles * 3; i++) {
+      ibo_builder.data[i] += gps->runtime.stroke_start;
+    }
+    /* HACK since we didn't use the builder API to avoid another malloc and copy,
+     * we need to set the number of indices manually. */
+    ibo_builder.index_len = gps->tot_triangles * 3;
+
+    MEM_freeN(tpoints2d);
+  }
+
+  /* Finish the IBO. */
+  GPUIndexBuf *ibo = GPU_indexbuf_build(&ibo_builder);
+
+  /* Create the batches */
+  *r_stroke_batch = GPU_batch_create(GPU_PRIM_TRI_STRIP, gpencil_dummy_buffer_get(), NULL);
+  GPU_batch_instbuf_add_ex(*r_stroke_batch, vbo, 0);
+  /* NOTE/WARNING: We make the fill batch the owner of the vbo to make cleanup easier. */
+  *r_fill_batch = GPU_batch_create_ex(
+      GPU_PRIM_TRIS, vbo, ibo, GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+
+  MEM_SAFE_FREE(gps->points);
+
+  return true;
 }
 
 /* ----------- End of new code ----------- */

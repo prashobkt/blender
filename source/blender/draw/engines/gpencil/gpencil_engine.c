@@ -467,6 +467,25 @@ static void GPENCIL_cache_init_new(void *ved)
   }
 
   {
+    pd->sbuffer_stroke = NULL;
+    pd->sbuffer_gpd = NULL;
+    pd->sbuffer_layer = NULL;
+    pd->stroke_batch = NULL;
+    pd->fill_batch = NULL;
+    pd->do_stroke_fast_drawing = false;
+
+    Object *ob = draw_ctx->obact;
+    if (ob && ob->type == OB_GPENCIL) {
+      /* Check if active object has a temp stroke data. */
+      if (GPENCIL_batch_from_sbuffer(
+              ob, &pd->stroke_batch, &pd->fill_batch, &pd->sbuffer_stroke)) {
+        pd->sbuffer_gpd = (bGPdata *)ob->data;
+        pd->sbuffer_layer = BKE_gpencil_layer_getactive(pd->sbuffer_gpd);
+      }
+    }
+  }
+
+  {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
     DRW_PASS_CREATE(psl->composite_ps, state);
 
@@ -857,6 +876,8 @@ static void gpencil_add_draw_data(void *vedata, Object *ob)
   }
 }
 
+#define DRAW_NOW 2
+
 typedef struct gpIterPopulateData {
   Object *ob;
   GPENCIL_tObject *tgp_ob;
@@ -871,7 +892,14 @@ typedef struct gpIterPopulateData {
   /* Last texture bound. */
   GPUTexture *tex_fill;
   GPUTexture *tex_stroke;
+  /* Is the sbuffer call need to be issued. */
+  int do_sbuffer_call;
 } gpIterPopulateData;
+
+static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
+                                     bGPDframe *UNUSED(gpf),
+                                     bGPDstroke *gps,
+                                     void *thunk);
 
 static void gp_layer_cache_populate(bGPDlayer *gpl,
                                     bGPDframe *gpf,
@@ -880,6 +908,15 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
 {
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
+
+  if (iter->do_sbuffer_call) {
+    iter->do_sbuffer_call = DRAW_NOW;
+    gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, thunk);
+    iter->do_sbuffer_call = 0;
+  }
+  else {
+    iter->do_sbuffer_call = (gpd == iter->pd->sbuffer_gpd) && (gpl == iter->pd->sbuffer_layer);
+  }
 
   GPENCIL_tLayer *tgp_layer_prev = iter->tgp_ob->layers.last;
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, gpl);
@@ -988,6 +1025,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 
   if (show_fill) {
     GPUBatch *geom = GPENCIL_batch_cache_fills(iter->ob, iter->pd->cfra);
+    geom = (iter->do_sbuffer_call == DRAW_NOW) ? iter->pd->fill_batch : geom;
     int vfirst = gps->runtime.fill_start * 3;
     int vcount = gps->tot_triangles * 3;
     DRW_shgroup_call_range(iter->grp, geom, vfirst, vcount);
@@ -995,6 +1033,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 
   if (show_stroke) {
     GPUBatch *geom = GPENCIL_batch_cache_strokes(iter->ob, iter->pd->cfra);
+    geom = (iter->do_sbuffer_call == DRAW_NOW) ? iter->pd->stroke_batch : geom;
     /* Start one vert before to have gl_InstanceID > 0 (see shader). */
     int vfirst = gps->runtime.stroke_start - 1;
     /* Include "potential" cyclic vertex and start adj vertex (see shader). */
@@ -1025,6 +1064,11 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
 
     gpencil_object_visible_stroke_iter(
         ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, pd->do_onion);
+
+    if (iter.do_sbuffer_call) {
+      iter.do_sbuffer_call = DRAW_NOW;
+      gp_stroke_cache_populate(NULL, NULL, iter.pd->sbuffer_stroke, &iter);
+    }
 
     gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
   }
@@ -1526,6 +1570,11 @@ static void GPENCIL_draw_scene_new(void *ved)
   }
 
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
+
+  /* Free temp stroke buffers. */
+  GPU_BATCH_DISCARD_SAFE(pd->stroke_batch);
+  GPU_BATCH_DISCARD_SAFE(pd->fill_batch);
+  MEM_SAFE_FREE(pd->sbuffer_stroke);
 }
 
 /* draw scene */
