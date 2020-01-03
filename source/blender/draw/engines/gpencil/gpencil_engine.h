@@ -502,8 +502,6 @@ typedef struct GPENCIL_PrivateData {
   /* Batches containing the temp stroke. */
   GPUBatch *stroke_batch;
   GPUBatch *fill_batch;
-  /* A stroke is currently in progress, do special drawing.  */
-  bool do_stroke_fast_drawing;
 
   /* Display onion skinning */
   bool do_onion;

@@ -15,6 +15,7 @@ uniform float thicknessOffset;
 uniform float vertexColorOpacity;
 uniform vec4 layerTint;
 uniform float layerOpacity; /* Used for onion skin. */
+uniform float strokeIndexOffset;
 
 in vec4 ma;
 in vec4 ma1;
@@ -262,7 +263,7 @@ void stroke_vertex()
     /* Use the fragment depth (see fragment shader). */
     depth = -1.0;
     /* We still offset the fills a little to avoid overlaps */
-    gl_Position.z -= (stroke_id1 + 1) * 0.000002;
+    gl_Position.z -= (stroke_id1 + strokeIndexOffset + 1.0) * 0.000002;
   }
   else if (GP_FLAG_TEST(materials[m].flag, GP_STROKE_OVERLAP)) {
     /* Use the index of the point as depth.
@@ -275,7 +276,7 @@ void stroke_vertex()
      * cannot overlap itself.
      * We offset by one so that the fill can be overlapped by its stroke.
      * The offset is ok since we pad the strokes data because of adjacency infos. */
-    depth = (stroke_id1 + 1.0) * 0.0000002;
+    depth = (stroke_id1 + strokeIndexOffset + 1.0) * 0.0000002;
   }
 }
 
@@ -313,11 +314,11 @@ void fill_vertex()
     /* Use the fragment depth (see fragment shader). */
     depth = -1.0;
     /* We still offset the fills a little to avoid overlaps */
-    gl_Position.z -= stroke_id1 * 0.000002;
+    gl_Position.z -= (stroke_id1 + strokeIndexOffset) * 0.000002;
   }
   else {
     /* Use the index of first point of the stroke as depth. */
-    depth = stroke_id1 * 0.0000002;
+    depth = (stroke_id1 + strokeIndexOffset) * 0.0000002;
   }
 }
 

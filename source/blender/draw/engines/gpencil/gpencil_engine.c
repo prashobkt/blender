@@ -472,7 +472,7 @@ static void GPENCIL_cache_init_new(void *ved)
     pd->sbuffer_layer = NULL;
     pd->stroke_batch = NULL;
     pd->fill_batch = NULL;
-    pd->do_stroke_fast_drawing = false;
+    pd->do_stroke_fast_drawing = true;
 
     Object *ob = draw_ctx->obact;
     if (ob && ob->type == OB_GPENCIL) {
@@ -894,12 +894,31 @@ typedef struct gpIterPopulateData {
   GPUTexture *tex_stroke;
   /* Is the sbuffer call need to be issued. */
   int do_sbuffer_call;
+  /* Indices to do correct insertion of the sbuffer stroke. */
+  int stroke_index_last;
+  int stroke_index_offset;
 } gpIterPopulateData;
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
                                      bGPDframe *UNUSED(gpf),
                                      bGPDstroke *gps,
                                      void *thunk);
+
+static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
+{
+  iter->do_sbuffer_call = DRAW_NOW;
+  /* In order to draw the sbuffer stroke correctly mixed with other storkes,
+   * we need to offset the stroke index of the sbuffer stroke and the subsequent strokes.
+   * Remember, sbuffer stroke indices start from 0. So we add last index to avoid
+   * masking issues. */
+  iter->grp = DRW_shgroup_create_sub(iter->grp);
+  DRW_shgroup_uniform_float_copy(iter->grp, "strokeIndexOffset", iter->stroke_index_last);
+
+  gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
+
+  iter->stroke_index_offset = iter->pd->sbuffer_stroke->totpoints + 1;
+  iter->do_sbuffer_call = 0;
+}
 
 static void gp_layer_cache_populate(bGPDlayer *gpl,
                                     bGPDframe *gpf,
@@ -910,9 +929,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
   if (iter->do_sbuffer_call) {
-    iter->do_sbuffer_call = DRAW_NOW;
-    gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, thunk);
-    iter->do_sbuffer_call = 0;
+    gp_sbuffer_cache_populate(iter);
   }
   else {
     iter->do_sbuffer_call = (gpd == iter->pd->sbuffer_gpd) && (gpl == iter->pd->sbuffer_layer);
@@ -959,6 +976,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
+  DRW_shgroup_uniform_float_copy(iter->grp, "strokeIndexOffset", iter->stroke_index_offset);
   DRW_shgroup_stencil_mask(iter->grp, 0xFF);
 
   bool use_onion = gpf->runtime.onion_id != 0.0f;
@@ -1040,6 +1058,8 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
     int vcount = gps->totpoints + 1 + 1;
     DRW_shgroup_call_instance_range(iter->grp, geom, vfirst, vcount);
   }
+
+  iter->stroke_index_last = gps->runtime.stroke_start + gps->totpoints + 1;
 }
 
 static void GPENCIL_cache_populate_new(void *ved, Object *ob)
@@ -1066,8 +1086,7 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
         ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, pd->do_onion);
 
     if (iter.do_sbuffer_call) {
-      iter.do_sbuffer_call = DRAW_NOW;
-      gp_stroke_cache_populate(NULL, NULL, iter.pd->sbuffer_stroke, &iter);
+      gp_sbuffer_cache_populate(&iter);
     }
 
     gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
