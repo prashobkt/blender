@@ -939,6 +939,7 @@ static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
    * Remember, sbuffer stroke indices start from 0. So we add last index to avoid
    * masking issues. */
   iter->grp = DRW_shgroup_create_sub(iter->grp);
+  DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", iter->ubo_mat);
   DRW_shgroup_uniform_float_copy(iter->grp, "strokeIndexOffset", iter->stroke_index_last);
 
   gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
@@ -987,7 +988,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
 
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
-  DRW_shgroup_uniform_block(iter->grp, "gpLightBlock", iter->ubo_lights);
+  DRW_shgroup_uniform_block_persistent(iter->grp, "gpLightBlock", iter->ubo_lights);
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", iter->ubo_mat);
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
