@@ -26,6 +26,8 @@
 extern char datatoc_gpencil_common_lib_glsl[];
 extern char datatoc_gpencil_frag_glsl[];
 extern char datatoc_gpencil_vert_glsl[];
+extern char datatoc_gpencil_antialiasing_frag_glsl[];
+extern char datatoc_gpencil_antialiasing_vert_glsl[];
 extern char datatoc_gpencil_composite_frag_glsl[];
 extern char datatoc_gpencil_layer_blend_frag_glsl[];
 extern char datatoc_gpencil_layer_mask_frag_glsl[];
@@ -35,7 +37,50 @@ extern char datatoc_gpencil_vfx_frag_glsl[];
 
 extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_fullscreen_vert_glsl[];
+extern char datatoc_common_smaa_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
+
+struct GPUShader *GPENCIL_shader_antialiasing(GPENCIL_e_data *e_data, int stage)
+{
+  BLI_assert(stage < 3);
+
+  if (!e_data->antialiasing_sh[stage]) {
+    char stage_define[32];
+    BLI_snprintf(stage_define, sizeof(stage_define), "#define SMAA_STAGE %d\n", stage);
+
+    e_data->antialiasing_sh[stage] = GPU_shader_create_from_arrays({
+        .vert =
+            (const char *[]){
+                "#define SMAA_INCLUDE_VS 1\n",
+                "#define SMAA_INCLUDE_PS 0\n",
+                "uniform vec4 viewportMetrics;\n",
+                datatoc_common_smaa_lib_glsl,
+                datatoc_gpencil_antialiasing_vert_glsl,
+                NULL,
+            },
+        .frag =
+            (const char *[]){
+                "#define SMAA_INCLUDE_VS 0\n",
+                "#define SMAA_INCLUDE_PS 1\n",
+                "uniform vec4 viewportMetrics;\n",
+                datatoc_common_smaa_lib_glsl,
+                datatoc_gpencil_antialiasing_frag_glsl,
+                NULL,
+            },
+        .defs =
+            (const char *[]){
+                "#define SMAA_GLSL_3\n",
+                "#define SMAA_RT_METRICS viewportMetrics\n",
+                "#define SMAA_PRESET_HIGH\n",
+                "#define SMAA_LUMA_WEIGHT float4(1.0, 1.0, 1.0, 0.0)\n",
+                "#define SMAA_NO_DISCARD\n",
+                stage_define,
+                NULL,
+            },
+    });
+  }
+  return e_data->antialiasing_sh[stage];
+}
 
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data)
 {

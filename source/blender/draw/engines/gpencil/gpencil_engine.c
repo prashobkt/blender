@@ -385,6 +385,9 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.gpencil_background_sh);
   DRW_SHADER_FREE_SAFE(e_data.gpencil_paper_sh);
 
+  for (int i = 0; i < 3; i++) {
+    DRW_SHADER_FREE_SAFE(e_data.antialiasing_sh[i]);
+  }
   DRW_SHADER_FREE_SAFE(e_data.gpencil_sh);
   DRW_SHADER_FREE_SAFE(e_data.composite_sh);
   DRW_SHADER_FREE_SAFE(e_data.layer_blend_sh);
@@ -1354,6 +1357,8 @@ static void GPENCIL_cache_finish_new(void *ved)
                                         GPU_ATTACHMENT_TEXTURE(pd->reveal_masked_tx),
                                     });
     }
+
+    GPENCIL_antialiasing_init(vedata);
   }
 }
 
@@ -1702,6 +1707,8 @@ static void GPENCIL_draw_scene_new(void *ved)
   if (pd->do_fast_drawing) {
     GPENCIL_fast_draw_end(vedata);
   }
+
+  GPENCIL_antialiasing_draw(vedata);
 
   if (dfbl->default_fb) {
     GPU_framebuffer_bind(dfbl->default_fb);

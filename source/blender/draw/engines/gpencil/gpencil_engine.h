@@ -359,6 +359,10 @@ typedef struct GPENCIL_PassList {
   struct DRWPass *composite_ps;
   /* Composite the object depth to the default depth buffer to occlude overlays. */
   struct DRWPass *merge_depth_ps;
+  /* Anti-Aliasing. */
+  struct DRWPass *smaa_edge_ps;
+  struct DRWPass *smaa_weight_ps;
+  struct DRWPass *smaa_resolve_ps;
 } GPENCIL_PassList;
 
 typedef struct GPENCIL_FramebufferList {
@@ -376,6 +380,8 @@ typedef struct GPENCIL_FramebufferList {
   struct GPUFrameBuffer *layer_fb;
   struct GPUFrameBuffer *object_fb;
   struct GPUFrameBuffer *masked_fb;
+  struct GPUFrameBuffer *smaa_edge_fb;
+  struct GPUFrameBuffer *smaa_weight_fb;
 } GPENCIL_FramebufferList;
 
 typedef struct GPENCIL_TextureList {
@@ -385,6 +391,9 @@ typedef struct GPENCIL_TextureList {
   struct GPUTexture *snapshot_depth_tx;
   struct GPUTexture *snapshot_color_tx;
   struct GPUTexture *snapshot_reveal_tx;
+  /* Textures used by Antialiasing. */
+  struct GPUTexture *smaa_area_tx;
+  struct GPUTexture *smaa_search_tx;
 
   /* multisample textures */
   struct GPUTexture *multisample_color;
@@ -479,6 +488,9 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *reveal_layer_tx;
   GPUTexture *reveal_object_tx;
   GPUTexture *reveal_masked_tx;
+  /* Anti-Aliasing. */
+  GPUTexture *smaa_edge_tx;
+  GPUTexture *smaa_weight_tx;
   /* Pointer to dtxl->depth */
   GPUTexture *scene_depth_tx;
   /* Current frame */
@@ -531,6 +543,8 @@ typedef struct GPENCIL_e_data {
   /* textures */
   struct GPUTexture *gpencil_blank_texture;
 
+  /* SMAA antialiasing */
+  struct GPUShader *antialiasing_sh[3];
   /* GPencil Object rendering */
   struct GPUShader *gpencil_sh;
   /* Final Compositing over rendered background. */
@@ -789,6 +803,7 @@ void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
 void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob);
 
 /* Shaders */
+struct GPUShader *GPENCIL_shader_antialiasing(GPENCIL_e_data *e_data, int stage);
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data);
@@ -802,6 +817,10 @@ struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_fx_rim_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_fx_shadow_get(GPENCIL_e_data *e_data);
+
+/* Antialiasing */
+void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata);
+void GPENCIL_antialiasing_draw(struct GPENCIL_Data *vedata);
 
 /* main functions */
 void GPENCIL_engine_init(void *vedata);

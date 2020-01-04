@@ -110,6 +110,7 @@ set(SRC
   engines/workbench/workbench_studiolight.c
   engines/workbench/workbench_volume.c
   engines/external/external_engine.c
+  engines/gpencil/gpencil_antialiasing.c
   engines/gpencil/gpencil_cache_utils.c
   engines/gpencil/gpencil_draw_cache_impl.c
   engines/gpencil/gpencil_draw_data.c
@@ -277,6 +278,8 @@ data_to_c_simple(intern/shaders/common_fullscreen_vert.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_vert.glsl SRC)
+data_to_c_simple(engines/gpencil/shaders/gpencil_antialiasing_frag.glsl SRC)
+data_to_c_simple(engines/gpencil/shaders/gpencil_antialiasing_vert.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_common_lib.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_composite_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_layer_blend_frag.glsl SRC)
