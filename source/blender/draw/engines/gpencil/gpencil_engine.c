@@ -1043,6 +1043,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 
   bool hide_material = (gp_style->flag & GP_STYLE_COLOR_HIDE) != 0;
   bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
+  // TODO: What about simplify Fill?
   bool show_fill = (gps->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
 
   if (hide_material || (!show_stroke && !show_fill)) {
