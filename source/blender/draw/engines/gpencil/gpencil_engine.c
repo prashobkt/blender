@@ -937,7 +937,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
 {
   iter->do_sbuffer_call = DRAW_NOW;
-  /* In order to draw the sbuffer stroke correctly mixed with other storkes,
+  /* In order to draw the sbuffer stroke correctly mixed with other strokes,
    * we need to offset the stroke index of the sbuffer stroke and the subsequent strokes.
    * Remember, sbuffer stroke indices start from 0. So we add last index to avoid
    * masking issues. */
