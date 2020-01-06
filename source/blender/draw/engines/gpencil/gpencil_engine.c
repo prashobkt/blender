@@ -992,7 +992,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
    * Convert to world units (by default, 1 meter = 2000 px). */
   float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / GPENCIL_PIXEL_FACTOR);
 
-  const bool use_lights = (gpl->flag & GP_LAYER_USE_LIGHTS) != 0;
+  const bool use_lights = (((gpl->flag & GP_LAYER_USE_LIGHTS) != 0) &&
+                           (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS));
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
 
