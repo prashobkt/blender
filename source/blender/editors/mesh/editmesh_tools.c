@@ -2357,7 +2357,7 @@ void MESH_OT_vertices_smooth(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   ot->prop = RNA_def_float_factor(
-      ot->srna, "factor", 0.5f, -10.0f, 10.0f, "Smoothing", "Smoothing factor", 0.0f, 1.0f);
+      ot->srna, "factor", 0.0f, -10.0f, 10.0f, "Smoothing", "Smoothing factor", 0.0f, 1.0f);
   RNA_def_int(
       ot->srna, "repeat", 1, 1, 1000, "Repeat", "Number of times to smooth the mesh", 1, 100);
 
@@ -4197,7 +4197,12 @@ static bool mesh_separate_loose(
   BM_mesh_elem_hflag_disable_all(bm_old, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_SELECT, false);
 
   if (clear_object_data) {
-    BM_mesh_bm_to_me(NULL, bm_old, me_old, (&(struct BMeshToMeshParams){0}));
+    BM_mesh_bm_to_me(NULL,
+                     bm_old,
+                     me_old,
+                     (&(struct BMeshToMeshParams){
+                         .update_shapekey_indices = true,
+                     }));
   }
 
 finally:
