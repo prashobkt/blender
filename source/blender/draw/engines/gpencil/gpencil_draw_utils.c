@@ -1307,7 +1307,6 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
   GPENCIL_PassList *psl = ((GPENCIL_Data *)vedata)->psl;
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  Scene *scene = draw_ctx->scene;
   View3D *v3d = draw_ctx->v3d;
   bGPDstroke *gps;
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
