@@ -65,7 +65,10 @@ static int gp_stroke_material(Main *bmain, Object *ob, const ColorTemplate *pct,
   ma = BKE_gpencil_object_material_new(bmain, ob, pct->name, &idx);
 
   copy_v4_v4(ma->gp_style->stroke_rgba, pct->line);
+  srgb_to_linearrgb_v4(ma->gp_style->stroke_rgba, ma->gp_style->stroke_rgba);
+
   copy_v4_v4(ma->gp_style->fill_rgba, pct->fill);
+  srgb_to_linearrgb_v4(ma->gp_style->fill_rgba, ma->gp_style->fill_rgba);
 
   if (fill) {
     ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
