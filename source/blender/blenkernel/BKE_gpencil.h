@@ -64,6 +64,8 @@ struct MDeformVert;
 #define GPENCIL_SIMPLIFY_TINT(scene, playing) \
   ((GPENCIL_SIMPLIFY_ONPLAY(playing) && (GPENCIL_SIMPLIFY(scene)) && \
     (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_TINT)))
+#define GPENCIL_SIMPLIFY_AA(scene) \
+  ((GPENCIL_SIMPLIFY(scene)) && (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_AA)))
 
 /* Vertex Color macros. */
 #define GPENCIL_USE_VERTEX_COLOR(toolsettings) \

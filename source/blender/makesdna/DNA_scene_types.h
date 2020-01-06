@@ -2284,6 +2284,8 @@ typedef enum eGPencil_SimplifyFlags {
   SIMPLIFY_GPENCIL_BLEND = (1 << 6),
   /* Simplify layer tint */
   SIMPLIFY_GPENCIL_TINT = (1 << 7),
+  /* Simplify Antialiasing */
+  SIMPLIFY_GPENCIL_AA = (1 << 8),
 } eGPencil_SimplifyFlags;
 
 /* ToolSettings.gpencil_*_align - Stroke Placement mode flags */
