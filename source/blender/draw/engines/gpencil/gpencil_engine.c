@@ -1277,6 +1277,7 @@ static void GPENCIL_cache_finish_new(void *ved)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
 
   /* Upload UBO data. */
   BLI_memblock_iter iter;
@@ -1360,7 +1361,9 @@ static void GPENCIL_cache_finish_new(void *ved)
                                     });
     }
 
-    GPENCIL_antialiasing_init(vedata);
+    if (!GPENCIL_SIMPLIFY_AA(draw_ctx->scene)) {
+      GPENCIL_antialiasing_init(vedata);
+    }
   }
 }
 
