@@ -34,7 +34,7 @@ typedef enum ShaderFxType {
   eShaderFxType_None = 0,
   eShaderFxType_Blur = 1,
   eShaderFxType_Flip = 2,
-  eShaderFxType_Light = 3,
+  eShaderFxType_Light_deprecated = 3, /* DEPRECATED (replaced by scene lights) */
   eShaderFxType_Pixel = 4,
   eShaderFxType_Swirl = 5,
   eShaderFxType_Wave = 6,
@@ -155,19 +155,6 @@ typedef enum GlowShaderFxModes {
 typedef enum eGlowShaderFx_Flag {
   FX_GLOW_USE_ALPHA = (1 << 0),
 } eGlowShaderFx_Flag;
-
-typedef struct LightShaderFxData {
-  ShaderFxData shaderfx;
-  struct Object *object;
-  /** Flags. */
-  int flag;
-  float energy;
-  float ambient;
-  /** Internal, not visible in rna. */
-  float loc[4];
-  char _pad[4];
-  ShaderFxData_Runtime runtime;
-} LightShaderFxData;
 
 typedef struct PixelShaderFxData {
   ShaderFxData shaderfx;

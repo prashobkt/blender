@@ -147,12 +147,6 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
         layout.prop(fx, "flip_horizontal")
         layout.prop(fx, "flip_vertical")
 
-    def FX_LIGHT(self, layout, fx):
-        layout.prop(fx, "object", text="Object")
-
-        layout.prop(fx, "energy")
-        layout.prop(fx, "ambient")
-
 
 classes = (
     DATA_PT_shader_fx,

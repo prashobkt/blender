@@ -587,7 +587,6 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *gpencil_fx_flip_sh;
   struct GPUShader *gpencil_fx_glow_prepare_sh;
   struct GPUShader *gpencil_fx_glow_resolve_sh;
-  struct GPUShader *gpencil_fx_light_sh;
   struct GPUShader *gpencil_fx_pixel_sh;
   struct GPUShader *gpencil_fx_rim_prepare_sh;
   struct GPUShader *gpencil_fx_rim_resolve_sh;

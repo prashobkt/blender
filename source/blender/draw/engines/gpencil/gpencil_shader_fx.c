@@ -38,7 +38,6 @@
 extern char datatoc_gpencil_fx_blur_frag_glsl[];
 extern char datatoc_gpencil_fx_colorize_frag_glsl[];
 extern char datatoc_gpencil_fx_flip_frag_glsl[];
-extern char datatoc_gpencil_fx_light_frag_glsl[];
 extern char datatoc_gpencil_fx_pixel_frag_glsl[];
 extern char datatoc_gpencil_fx_rim_prepare_frag_glsl[];
 extern char datatoc_gpencil_fx_rim_resolve_frag_glsl[];
@@ -269,60 +268,6 @@ static void gpencil_fx_flip(ShaderFxData *fx, GPENCIL_e_data *e_data, GPENCIL_Da
   DRW_shgroup_uniform_int(fx_shgrp, "flipmode", &fxd->flipmode, 1);
 
   DRW_shgroup_uniform_vec2(fx_shgrp, "wsize", DRW_viewport_size_get(), 1);
-
-  fxd->runtime.fx_sh = fx_shgrp;
-}
-
-/* Light FX */
-static void gpencil_fx_light(ShaderFxData *fx,
-                             GPENCIL_e_data *e_data,
-                             GPENCIL_Data *vedata,
-                             tGPencilObjectCache *cache)
-{
-  if (fx == NULL) {
-    return;
-  }
-  LightShaderFxData *fxd = (LightShaderFxData *)fx;
-
-  if (fxd->object == NULL) {
-    return;
-  }
-  GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
-  GPENCIL_PassList *psl = ((GPENCIL_Data *)vedata)->psl;
-  DRWShadingGroup *fx_shgrp;
-
-  GPUBatch *fxquad = DRW_cache_fullscreen_quad_get();
-  fx_shgrp = DRW_shgroup_create(e_data->gpencil_fx_light_sh, psl->fx_shader_pass);
-  DRW_shgroup_call(fx_shgrp, fxquad, NULL);
-  DRW_shgroup_uniform_texture_ref(fx_shgrp, "strokeColor", &stl->g_data->temp_color_tx_a);
-  DRW_shgroup_uniform_texture_ref(fx_shgrp, "strokeDepth", &stl->g_data->temp_depth_tx_a);
-
-  DRW_shgroup_uniform_vec2(fx_shgrp, "Viewport", DRW_viewport_size_get(), 1);
-
-  /* location of the light using obj location as origin */
-  copy_v3_v3(fxd->loc, fxd->object->obmat[3]);
-
-  /* Calc distance to strokes plane
-   * The w component of location is used to transfer the distance to drawing plane
-   */
-  float r_point[3], r_normal[3];
-  float r_plane[4];
-  bGPdata *gpd = cache->gpd;
-  if (!get_normal_vector(gpd, r_point, r_normal)) {
-    return;
-  }
-  mul_mat3_m4_v3(cache->obmat, r_normal); /* only rotation component */
-  plane_from_point_normal_v3(r_plane, r_point, r_normal);
-  float dt = dist_to_plane_v3(fxd->object->obmat[3], r_plane);
-  fxd->loc[3] = dt; /* use last element to save it */
-
-  DRW_shgroup_uniform_vec4(fx_shgrp, "loc", &fxd->loc[0], 1);
-
-  DRW_shgroup_uniform_float(fx_shgrp, "energy", &fxd->energy, 1);
-  DRW_shgroup_uniform_float(fx_shgrp, "ambient", &fxd->ambient, 1);
-
-  DRW_shgroup_uniform_float(fx_shgrp, "pixsize", stl->storage->pixsize, 1);
-  DRW_shgroup_uniform_float(fx_shgrp, "pixfactor", &gpd->pixfactor, 1);
 
   fxd->runtime.fx_sh = fx_shgrp;
 }
@@ -650,10 +595,6 @@ void GPENCIL_create_fx_shaders(GPENCIL_e_data *e_data)
     e_data->gpencil_fx_flip_sh = DRW_shader_create_fullscreen(datatoc_gpencil_fx_flip_frag_glsl,
                                                               NULL);
   }
-  if (!e_data->gpencil_fx_light_sh) {
-    e_data->gpencil_fx_light_sh = DRW_shader_create_fullscreen(datatoc_gpencil_fx_light_frag_glsl,
-                                                               NULL);
-  }
   if (!e_data->gpencil_fx_pixel_sh) {
     e_data->gpencil_fx_pixel_sh = DRW_shader_create_fullscreen(datatoc_gpencil_fx_pixel_frag_glsl,
                                                                NULL);
@@ -695,7 +636,6 @@ void GPENCIL_delete_fx_shaders(GPENCIL_e_data *e_data)
   DRW_SHADER_FREE_SAFE(e_data->gpencil_fx_blur_sh);
   DRW_SHADER_FREE_SAFE(e_data->gpencil_fx_colorize_sh);
   DRW_SHADER_FREE_SAFE(e_data->gpencil_fx_flip_sh);
-  DRW_SHADER_FREE_SAFE(e_data->gpencil_fx_light_sh);
   DRW_SHADER_FREE_SAFE(e_data->gpencil_fx_pixel_sh);
   DRW_SHADER_FREE_SAFE(e_data->gpencil_fx_rim_prepare_sh);
   DRW_SHADER_FREE_SAFE(e_data->gpencil_fx_rim_resolve_sh);
@@ -743,9 +683,6 @@ void gpencil_fx_prepare(GPENCIL_e_data *e_data,
           break;
         case eShaderFxType_Flip:
           gpencil_fx_flip(fx, e_data, vedata);
-          break;
-        case eShaderFxType_Light:
-          gpencil_fx_light(fx, e_data, vedata, cache_ob);
           break;
         case eShaderFxType_Pixel:
           gpencil_fx_pixel(fx, e_data, vedata, cache_ob);
@@ -1021,11 +958,6 @@ void gpencil_fx_draw(GPENCIL_e_data *UNUSED(e_data),
         }
         case eShaderFxType_Flip: {
           FlipShaderFxData *fxd = (FlipShaderFxData *)fx;
-          gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
-          break;
-        }
-        case eShaderFxType_Light: {
-          LightShaderFxData *fxd = (LightShaderFxData *)fx;
           gpencil_draw_fx_pass(vedata, fxd->runtime.fx_sh, false);
           break;
         }
@@ -1581,8 +1513,6 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
           break;
         case eShaderFxType_Flip:
           gpencil_vfx_flip((FlipShaderFxData *)fx, ob, &iter);
-          break;
-        case eShaderFxType_Light:
           break;
         case eShaderFxType_Pixel:
           gpencil_vfx_pixelize((PixelShaderFxData *)fx, ob, &iter);

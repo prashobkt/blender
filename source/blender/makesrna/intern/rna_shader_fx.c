@@ -52,7 +52,6 @@ const EnumPropertyItem rna_enum_object_shaderfx_type_items[] = {
      "Apply different tint effects"},
     {eShaderFxType_Flip, "FX_FLIP", ICON_SHADERFX, "Flip", "Flip image"},
     {eShaderFxType_Glow, "FX_GLOW", ICON_SHADERFX, "Glow", "Create a glow effect"},
-    {eShaderFxType_Light, "FX_LIGHT", ICON_SHADERFX, "Light", "Simulate illumination"},
     {eShaderFxType_Pixel, "FX_PIXEL", ICON_SHADERFX, "Pixelate", "Pixelate image"},
     {eShaderFxType_Rim, "FX_RIM", ICON_SHADERFX, "Rim", "Add a rim to the image"},
     {eShaderFxType_Shadow, "FX_SHADOW", ICON_SHADERFX, "Shadow", "Create a shadow effect"},
@@ -117,8 +116,6 @@ static StructRNA *rna_ShaderFx_refine(struct PointerRNA *ptr)
       return &RNA_ShaderFxFlip;
     case eShaderFxType_Glow:
       return &RNA_ShaderFxGlow;
-    case eShaderFxType_Light:
-      return &RNA_ShaderFxLight;
       /* Default */
     case eShaderFxType_None:
     case NUM_SHADER_FX_TYPES:
@@ -192,7 +189,6 @@ static void shaderfx_object_set(Object *self, Object **ob_p, int type, PointerRN
       shaderfx_object_set((Object *)ptr->owner_id, &tmd->_prop, _obtype, value); \
     }
 
-RNA_FX_OBJECT_SET(Light, object, OB_EMPTY);
 RNA_FX_OBJECT_SET(Shadow, object, OB_EMPTY);
 RNA_FX_OBJECT_SET(Swirl, object, OB_EMPTY);
 
@@ -614,38 +610,6 @@ static void rna_def_shader_fx_flip(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 }
 
-static void rna_def_shader_fx_light(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "ShaderFxLight", "ShaderFx");
-  RNA_def_struct_ui_text(srna, "Light Effect", "Light effect");
-  RNA_def_struct_sdna(srna, "LightShaderFxData");
-  RNA_def_struct_ui_icon(srna, ICON_SHADERFX);
-
-  prop = RNA_def_property(srna, "energy", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "energy");
-  RNA_def_property_range(prop, 0, FLT_MAX);
-  RNA_def_property_ui_range(prop, 1, FLT_MAX, 1, 2);
-  RNA_def_property_ui_text(prop, "Energy", "Strength of light source");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
-
-  prop = RNA_def_property(srna, "ambient", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "ambient");
-  RNA_def_property_range(prop, 0, FLT_MAX);
-  RNA_def_property_ui_range(prop, 0, FLT_MAX, 1, 2);
-  RNA_def_property_ui_text(prop, "Ambient", "Strength of ambient light source");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
-
-  prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Object", "Object to determine light source location");
-  RNA_def_property_pointer_funcs(prop, NULL, "rna_LightShaderFx_object_set", NULL, NULL);
-  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, 0, "rna_ShaderFx_dependency_update");
-}
-
 void RNA_def_shader_fx(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -712,7 +676,6 @@ void RNA_def_shader_fx(BlenderRNA *brna)
   rna_def_shader_fx_glow(brna);
   rna_def_shader_fx_swirl(brna);
   rna_def_shader_fx_flip(brna);
-  rna_def_shader_fx_light(brna);
 }
 
 #endif
