@@ -4,16 +4,6 @@ uniform sampler2D gpStrokeTexture;
 uniform sampler2D gpSceneDepthTexture;
 uniform vec3 gpNormal;
 
-in vec4 finalColorMul;
-in vec4 finalColorAdd;
-in vec3 finalPos;
-in vec2 finalUvs;
-noperspective in float strokeThickness;
-flat in vec2 strokePt1;
-flat in vec2 strokePt2;
-flat in int matFlag;
-flat in float depth;
-
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 revealColor;
 
@@ -65,26 +55,6 @@ vec3 gpencil_lighting(void)
   return clamp(light_accum, 0.0, 1e10);
 }
 
-float stroke_round_cap_mask()
-{
-  /* We create our own uv space to avoid issues with triangulation and linear
-   * interpolation artifacts. */
-  vec2 line = strokePt2.xy - strokePt1.xy;
-  vec2 pos = gl_FragCoord.xy - strokePt1.xy;
-  float line_len = sqrt(length_squared(line));
-  float half_line_len = line_len * 0.5;
-  /* Normalize */
-  line = (line_len > 0.0) ? (line / line_len) : vec2(1.0, 0.0);
-  /* Create a uv space that englobe the whole segment into a capsule. */
-  vec2 uv_end;
-  uv_end.x = max(abs(dot(line, pos) - half_line_len) - half_line_len, 0.0);
-  uv_end.y = dot(vec2(-line.y, line.x), pos);
-  /* Divide by stroke radius. */
-  uv_end /= strokeThickness;
-
-  return (length_squared(uv_end) > 0.25) ? 0.0 : 1.0;
-}
-
 void main()
 {
   vec4 col;
@@ -115,7 +85,7 @@ void main()
 
   fragColor.rgb *= gpencil_lighting();
 
-  fragColor *= stroke_round_cap_mask();
+  fragColor *= stroke_round_cap_mask(strokePt1, strokePt2, strokeThickness);
 
   /* For compatibility with colored alpha buffer.
    * Note that we are limited to mono-chromatic alpha blending here
