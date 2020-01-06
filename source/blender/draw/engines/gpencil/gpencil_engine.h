@@ -726,13 +726,6 @@ void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
                             float alpha,
                             const bool hide_select);
 
-struct GPUBatch *GPENCIL_batch_cache_strokes(Object *ob, int cfra);
-struct GPUBatch *GPENCIL_batch_cache_fills(Object *ob, int cfra);
-bool GPENCIL_batch_from_sbuffer(Object *ob,
-                                struct GPUBatch **r_stroke_batch,
-                                struct GPUBatch **r_fill_batch,
-                                struct bGPDstroke **r_stroke);
-
 struct GPUBatch *gpencil_get_buffer_stroke_geom(struct bGPdata *gpd, short thickness);
 struct GPUBatch *gpencil_get_buffer_fill_geom(struct bGPdata *gpd);
 struct GPUBatch *gpencil_get_buffer_point_geom(struct bGPdata *gpd, short thickness);

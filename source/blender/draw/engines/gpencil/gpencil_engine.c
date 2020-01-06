@@ -491,7 +491,7 @@ static void GPENCIL_cache_init_new(void *ved)
     Object *ob = draw_ctx->obact;
     if (ob && ob->type == OB_GPENCIL) {
       /* Check if active object has a temp stroke data. */
-      if (GPENCIL_batch_from_sbuffer(
+      if (DRW_cache_gpencil_sbuffer_get(
               ob, &pd->stroke_batch, &pd->fill_batch, &pd->sbuffer_stroke)) {
         pd->sbuffer_gpd = (bGPdata *)ob->data;
         pd->sbuffer_layer = BKE_gpencil_layer_active_get(pd->sbuffer_gpd);
@@ -1085,7 +1085,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
   }
 
   if (show_fill) {
-    GPUBatch *geom = GPENCIL_batch_cache_fills(iter->ob, iter->pd->cfra);
+    GPUBatch *geom = DRW_cache_gpencil_fills_get(iter->ob, iter->pd->cfra);
     geom = (iter->do_sbuffer_call == DRAW_NOW) ? iter->pd->fill_batch : geom;
     int vfirst = gps->runtime.fill_start * 3;
     int vcount = gps->tot_triangles * 3;
@@ -1093,7 +1093,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
   }
 
   if (show_stroke) {
-    GPUBatch *geom = GPENCIL_batch_cache_strokes(iter->ob, iter->pd->cfra);
+    GPUBatch *geom = DRW_cache_gpencil_strokes_get(iter->ob, iter->pd->cfra);
     geom = (iter->do_sbuffer_call == DRAW_NOW) ? iter->pd->stroke_batch : geom;
     /* Start one vert before to have gl_InstanceID > 0 (see shader). */
     int vfirst = gps->runtime.stroke_start - 1;

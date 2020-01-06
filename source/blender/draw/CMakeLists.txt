@@ -52,6 +52,7 @@ set(SRC
   intern/draw_cache_extract_mesh.c
   intern/draw_cache_impl_curve.c
   intern/draw_cache_impl_displist.c
+  intern/draw_cache_impl_gpencil.c
   intern/draw_cache_impl_lattice.c
   intern/draw_cache_impl_mesh.c
   intern/draw_cache_impl_metaball.c

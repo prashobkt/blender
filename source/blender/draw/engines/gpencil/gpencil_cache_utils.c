@@ -518,37 +518,3 @@ GpencilBatchCache *gpencil_batch_cache_get(Object *ob, int cfra)
     return cache;
   }
 }
-
-/* set cache as dirty */
-void DRW_gpencil_batch_cache_dirty_tag(bGPdata *gpd)
-{
-  gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
-}
-
-/* free batch cache */
-void DRW_gpencil_batch_cache_free(bGPdata *UNUSED(gpd))
-{
-  return;
-}
-
-/* wrapper to clear cache */
-void DRW_gpencil_freecache(struct Object *ob)
-{
-  if ((ob) && (ob->type == OB_GPENCIL)) {
-    gpencil_batch_cache_clear(ob->runtime.gpencil_cache);
-    MEM_SAFE_FREE(ob->runtime.gpencil_cache);
-    bGPdata *gpd = (bGPdata *)ob->data;
-    if (gpd) {
-      gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
-    }
-  }
-
-  /* clear all frames evaluated data */
-  for (int i = 0; i < ob->runtime.gpencil_tot_layers; i++) {
-    bGPDframe *gpf_eval = &ob->runtime.gpencil_evaluated_frames[i];
-    BKE_gpencil_free_frame_runtime_data(gpf_eval);
-  }
-
-  ob->runtime.gpencil_tot_layers = 0;
-  MEM_SAFE_FREE(ob->runtime.gpencil_evaluated_frames);
-}
