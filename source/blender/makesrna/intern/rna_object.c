@@ -345,6 +345,16 @@ static void rna_MaterialIndex_update(Main *UNUSED(bmain), Scene *UNUSED(scene), 
   }
 }
 
+static void rna_GPencil_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+{
+  Object *ob = (Object *)ptr->owner_id;
+  if (ob && ob->type == OB_GPENCIL) {
+    bGPdata *gpd = (bGPdata *)ob->data;
+    DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+    WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
+  }
+}
+
 static void rna_Object_matrix_local_get(PointerRNA *ptr, float values[16])
 {
   Object *ob = (Object *)ptr->owner_id;
@@ -3046,6 +3056,12 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "dtx", OB_DRAW_ALL_EDGES);
   RNA_def_property_ui_text(prop, "Display All Edges", "Display all edges for mesh objects");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+  prop = RNA_def_property(srna, "use_grease_pencil_lights", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "dtx", OB_USE_GPENCIL_LIGHTS);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Use Lights", "Lights affect to grease pencil object");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_GPencil_update");
 
   prop = RNA_def_property(srna, "show_transparent", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "dtx", OB_DRAWTRANSP);

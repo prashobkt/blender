@@ -396,6 +396,10 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         col = flow.column()
         col.prop(ob, "hide_select", text="Selectable", toggle=False, invert_checkbox=True)
 
+        if ob.type == 'GPENCIL':
+            col = flow.column()
+            col.prop(ob, "use_grease_pencil_lights", toggle=False)
+
 
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
