@@ -1789,7 +1789,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
         }
 
         if ((do_onion) || (elm->onion == false)) {
-          DRW_shgroup_call_range(shgrp, cache->b_stroke.batch, start_stroke, len);
+          DRW_shgroup_call_range(shgrp, NULL, cache->b_stroke.batch, start_stroke, len);
         }
         stl->storage->shgroup_id++;
         start_stroke = elm->vertex_idx;
@@ -1818,7 +1818,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
         DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
 
         if ((do_onion) || (elm->onion == false)) {
-          DRW_shgroup_call_range(shgrp, cache->b_point.batch, start_point, len);
+          DRW_shgroup_call_range(shgrp, NULL, cache->b_point.batch, start_point, len);
         }
         stl->storage->shgroup_id++;
         start_point = elm->vertex_idx;
@@ -1844,7 +1844,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
         DRW_shgroup_state_disable(shgrp, DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
 
         if ((do_onion) || (elm->onion == false)) {
-          DRW_shgroup_call_range(shgrp, cache->b_fill.batch, start_fill, len);
+          DRW_shgroup_call_range(shgrp, NULL, cache->b_fill.batch, start_fill, len);
         }
         stl->storage->shgroup_id++;
         start_fill = elm->vertex_idx;
@@ -1858,7 +1858,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
           DRW_shgroup_uniform_mat4(shgrp, "gpModelMatrix", obmat);
           /* use always the same group */
           DRW_shgroup_call_range(
-              stl->g_data->shgrps_edit_point, cache->b_edit.batch, start_edit, len);
+              stl->g_data->shgrps_edit_point, NULL, cache->b_edit.batch, start_edit, len);
 
           start_edit = elm->vertex_idx;
         }
@@ -1872,7 +1872,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
           DRW_shgroup_uniform_mat4(shgrp, "gpModelMatrix", obmat);
           /* use always the same group */
           DRW_shgroup_call_range(
-              stl->g_data->shgrps_edit_line, cache->b_edlin.batch, start_edlin, len);
+              stl->g_data->shgrps_edit_line, NULL, cache->b_edlin.batch, start_edlin, len);
 
           start_edlin = elm->vertex_idx;
         }

@@ -68,7 +68,7 @@ vec2 rotate_90deg(vec2 v)
 
 mat4 model_matrix_get()
 {
-  return mat4(gpModelMatrix[0], gpModelMatrix[1], gpModelMatrix[2], gpModelMatrix[3]);
+  return ModelMatrix;
 }
 
 vec3 transform_point(mat4 m, vec3 v)

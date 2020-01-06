@@ -1005,10 +1005,6 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->scene_depth_tx);
   DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3d", is_stroke_order_3d);
-  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[0]", iter->ob->obmat[0]);
-  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[1]", iter->ob->obmat[1]);
-  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[2]", iter->ob->obmat[2]);
-  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[3]", iter->ob->obmat[3]);
   DRW_shgroup_uniform_vec3_copy(iter->grp, "gpNormal", iter->tgp_ob->plane_normal);
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewportInv", DRW_viewport_invert_size_get());
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewport", DRW_viewport_size_get());
@@ -1089,7 +1085,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
     geom = (iter->do_sbuffer_call == DRAW_NOW) ? iter->pd->fill_batch : geom;
     int vfirst = gps->runtime.fill_start * 3;
     int vcount = gps->tot_triangles * 3;
-    DRW_shgroup_call_range(iter->grp, geom, vfirst, vcount);
+    DRW_shgroup_call_range(iter->grp, iter->ob, geom, vfirst, vcount);
   }
 
   if (show_stroke) {
@@ -1099,7 +1095,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
     int vfirst = gps->runtime.stroke_start - 1;
     /* Include "potential" cyclic vertex and start adj vertex (see shader). */
     int vcount = gps->totpoints + 1 + 1;
-    DRW_shgroup_call_instance_range(iter->grp, geom, vfirst, vcount);
+    DRW_shgroup_call_instance_range(iter->grp, iter->ob, geom, vfirst, vcount);
   }
 
   iter->stroke_index_last = gps->runtime.stroke_start + gps->totpoints + 1;

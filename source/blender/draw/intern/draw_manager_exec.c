@@ -50,6 +50,7 @@ void DRW_select_load_id(uint id)
 typedef struct DRWCommandsState {
   GPUBatch *batch;
   int resource_chunk;
+  int resource_id;
   int base_inst;
   int inst_count;
   int v_first;
@@ -60,6 +61,7 @@ typedef struct DRWCommandsState {
   int obinfos_loc;
   int baseinst_loc;
   int chunkid_loc;
+  int resourceid_loc;
   /* Legacy matrix support. */
   int obmat_loc;
   int obinv_loc;
@@ -994,6 +996,9 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
           state->chunkid_loc = uni->location;
           GPU_shader_uniform_int(shgroup->shader, uni->location, 0);
           break;
+        case DRW_UNIFORM_RESOURCE_ID:
+          state->resourceid_loc = uni->location;
+          break;
         case DRW_UNIFORM_TFEEDBACK_TARGET:
           BLI_assert(data && (*use_tfeedback == false));
           *use_tfeedback = GPU_shader_transform_feedback_enable(shgroup->shader,
@@ -1107,6 +1112,14 @@ static void draw_call_resource_bind(DRWCommandsState *state, const DRWResourceHa
     }
     state->resource_chunk = chunk;
   }
+
+  if (state->resourceid_loc != -1) {
+    int id = DRW_handle_id_get(handle);
+    if (state->resource_id != id) {
+      GPU_shader_uniform_int(NULL, state->resourceid_loc, id);
+      state->resource_id = id;
+    }
+  }
 }
 
 static void draw_call_batching_flush(DRWShadingGroup *shgroup, DRWCommandsState *state)
@@ -1163,6 +1176,7 @@ static void draw_call_batching_start(DRWCommandsState *state)
 {
   state->neg_scale = false;
   state->resource_chunk = 0;
+  state->resource_id = -1;
   state->base_inst = 0;
   state->inst_count = 0;
   state->v_first = 0;
@@ -1239,6 +1253,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       .obinfos_loc = -1,
       .baseinst_loc = -1,
       .chunkid_loc = -1,
+      .resourceid_loc = -1,
       .obmat_loc = -1,
       .obinv_loc = -1,
       .mvp_loc = -1,
@@ -1361,7 +1376,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
           draw_call_single_do(shgroup,
                               &state,
                               cmd->range.batch,
-                              (DRWResourceHandle)0,
+                              cmd->range.handle,
                               cmd->range.vert_first,
                               cmd->range.vert_count,
                               0,
@@ -1372,7 +1387,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
           draw_call_single_do(shgroup,
                               &state,
                               cmd->instance_range.batch,
-                              (DRWResourceHandle)0,
+                              cmd->instance_range.handle,
                               0,
                               0,
                               cmd->instance_range.inst_first,

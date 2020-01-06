@@ -201,6 +201,7 @@ typedef struct DRWCommandDraw {
 /* Assume DRWResourceHandle to be 0. */
 typedef struct DRWCommandDrawRange {
   GPUBatch *batch;
+  DRWResourceHandle handle;
   uint vert_first;
   uint vert_count;
 } DRWCommandDrawRange;
@@ -214,6 +215,7 @@ typedef struct DRWCommandDrawInstance {
 
 typedef struct DRWCommandDrawInstanceRange {
   GPUBatch *batch;
+  DRWResourceHandle handle;
   uint inst_first;
   uint inst_count;
 } DRWCommandDrawInstanceRange;
@@ -283,6 +285,7 @@ typedef enum {
   DRW_UNIFORM_BLOCK_OBMATS,
   DRW_UNIFORM_BLOCK_OBINFOS,
   DRW_UNIFORM_RESOURCE_CHUNK,
+  DRW_UNIFORM_RESOURCE_ID,
   /** Legacy / Fallback */
   DRW_UNIFORM_BASE_INSTANCE,
   DRW_UNIFORM_MODEL_MATRIX,

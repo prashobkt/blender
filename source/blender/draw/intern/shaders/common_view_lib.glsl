@@ -89,7 +89,14 @@ uniform int baseInstance;
 #    define instanceId gl_InstanceID
 #  endif
 
-#  define resource_id (baseInstance + instanceId)
+#  ifdef UNIFORM_RESOURCE_ID
+/* This is in the case we want to do a special instance drawcall but still want to have the
+ * right resourceId and all the correct ubo datas. */
+uniform int resourceId;
+#    define resource_id resourceId
+#  else
+#    define resource_id (baseInstance + instanceId)
+#  endif
 
 /* Use this to declare and pass the value if
  * the fragment shader uses the resource_id. */
