@@ -469,9 +469,15 @@ static void GPENCIL_cache_init_new(void *ved)
                                  NULL :
                              false;
     pd->do_onion = show_onion && !hide_overlay && !playing;
+    /* Save simplify flags (can change while drawing, so it's better to save). */
+    Scene *scene = draw_ctx->scene;
+    pd->simplify_fill = GPENCIL_SIMPLIFY_FILL(scene, playing);
+    pd->simplify_fx = GPENCIL_SIMPLIFY_FX(scene, playing);
   }
   else {
     pd->do_onion = true;
+    pd->simplify_fill = false;
+    pd->simplify_fx = false;
   }
 
   {
@@ -690,9 +696,7 @@ void GPENCIL_cache_init(void *vedata)
 
     /* save simplify flags (can change while drawing, so it's better to save) */
     stl->storage->simplify_fill = GPENCIL_SIMPLIFY_FILL(scene, stl->storage->is_playing);
-    stl->storage->simplify_modif = GPENCIL_SIMPLIFY_MODIF(scene, stl->storage->is_playing);
     stl->storage->simplify_fx = GPENCIL_SIMPLIFY_FX(scene, stl->storage->is_playing);
-    stl->storage->simplify_blend = GPENCIL_SIMPLIFY_BLEND(scene, stl->storage->is_playing);
 
     /* xray mode */
     if (v3d) {
@@ -1044,8 +1048,8 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 
   bool hide_material = (gp_style->flag & GP_STYLE_COLOR_HIDE) != 0;
   bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
-  // TODO: What about simplify Fill?
-  bool show_fill = (gps->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
+  bool show_fill = (gps->tot_triangles > 0) && ((gp_style->flag & GP_STYLE_FILL_SHOW) != 0) &&
+                   (!iter->pd->simplify_fill);
 
   if (hide_material || (!show_stroke && !show_fill)) {
     return;

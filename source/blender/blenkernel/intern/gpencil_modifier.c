@@ -859,7 +859,6 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   Object *ob_orig = DEG_get_original_object(ob);
   bGPdata *gpd = (bGPdata *)ob_orig->data;
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
-  const bool simplify_modif = GPENCIL_SIMPLIFY_MODIF(scene, false);
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
   const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
   int cfra_eval = (int)DEG_get_ctime(depsgraph);
@@ -890,7 +889,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* Remap frame (Time modifier) */
     int remap_cfra = cfra_eval;
-    if ((time_remap) && (!simplify_modif)) {
+    if (time_remap) {
       remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
     }
     bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
@@ -913,7 +912,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     gpencil_evaluated_frame_ensure(idx, ob, gpf, &gpf_eval);
 
     /* Skip all if some disable flag is enabled. */
-    if ((ob->greasepencil_modifiers.first == NULL) || (is_multiedit) || (simplify_modif)) {
+    if ((ob->greasepencil_modifiers.first == NULL) || (is_multiedit)) {
       idx++;
       continue;
     }

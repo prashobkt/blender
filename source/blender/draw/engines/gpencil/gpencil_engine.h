@@ -305,9 +305,7 @@ typedef struct GPENCIL_Storage {
 
   /* simplify settings*/
   bool simplify_fill;
-  bool simplify_modif;
   bool simplify_fx;
-  bool simplify_blend;
 
   float gradient_f;
   float gradient_s[2];
@@ -528,6 +526,11 @@ typedef struct GPENCIL_PrivateData {
 
   /* Display onion skinning */
   bool do_onion;
+
+  /* simplify settings*/
+  bool simplify_fill;
+  bool simplify_fx;
+
 } GPENCIL_PrivateData;
 
 /* flags for fast drawing support */

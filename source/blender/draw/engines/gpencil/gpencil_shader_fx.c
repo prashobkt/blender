@@ -1553,6 +1553,11 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
+  /* If simplify enabled, nothing more to do. */
+  if (pd->simplify_fx) {
+    return;
+  }
+
   /* These may not be allocated yet, use adress of future pointer. */
   gpIterVfxData iter = {
       .pd = pd,

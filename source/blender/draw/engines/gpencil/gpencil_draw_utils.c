@@ -1352,8 +1352,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
 
     /* if the fill has any value, it's considered a fill and is not drawn if simplify fill is
      * enabled */
-    if ((stl->storage->simplify_fill) &&
-        (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_REMOVE_FILL_LINE)) {
+    if (stl->storage->simplify_fill) {
       if ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) ||
           (gp_style->fill_style > GP_STYLE_FILL_STYLE_SOLID) ||
           (gpl->blend_mode != eGplBlendMode_Regular)) {
@@ -1365,7 +1364,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
     if ((gpl->actframe && (gpl->actframe->framenum == gpf->framenum)) || (!is_multiedit) ||
         (overlay_multiedit)) {
       /* hide any blend layer */
-      if ((!stl->storage->simplify_blend) || (gpl->blend_mode == eGplBlendMode_Regular)) {
+      if (gpl->blend_mode == eGplBlendMode_Regular) {
         /* fill */
         if ((gp_style->flag & GP_STYLE_FILL_SHOW) && (!stl->storage->simplify_fill) &&
             ((gps->flag & GP_STROKE_NOFILL) == 0)) {
@@ -2165,7 +2164,7 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
 
     /* remap time */
     int remap_cfra = cfra_eval;
-    if ((time_remap) && (!stl->storage->simplify_modif)) {
+    if (time_remap) {
       remap_cfra = BKE_gpencil_time_modifier(
           draw_ctx->depsgraph, scene, ob, gpl, cfra_eval, stl->storage->is_render);
     }

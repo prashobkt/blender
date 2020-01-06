@@ -2274,14 +2274,8 @@ typedef enum eGPencil_SimplifyFlags {
   SIMPLIFY_GPENCIL_ON_PLAY = (1 << 1),
   /* Simplify fill on viewport */
   SIMPLIFY_GPENCIL_FILL = (1 << 2),
-  /* Simplify modifier on viewport */
-  SIMPLIFY_GPENCIL_MODIFIER = (1 << 3),
-  /* Remove fill external line */
-  SIMPLIFY_GPENCIL_REMOVE_FILL_LINE = (1 << 4),
   /* Simplify Shader FX */
   SIMPLIFY_GPENCIL_FX = (1 << 5),
-  /* Simplify layer blending */
-  SIMPLIFY_GPENCIL_BLEND = (1 << 6),
   /* Simplify layer tint */
   SIMPLIFY_GPENCIL_TINT = (1 << 7),
   /* Simplify Antialiasing */
