@@ -961,6 +961,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
                                     bGPDstroke *UNUSED(gps),
                                     void *thunk)
 {
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const Scene *scene = draw_ctx->scene;
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
@@ -1032,7 +1034,9 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
     DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", onion_alpha);
   }
   else {
-    DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
+    float alpha = GPENCIL_SIMPLIFY_TINT(scene) ? 0.0f : gpl->tintcolor[3];
+    float tintcolor[4] = {gpl->tintcolor[0], gpl->tintcolor[1], gpl->tintcolor[2], alpha};
+    DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", tintcolor);
     DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", 1.0f);
   }
 }
