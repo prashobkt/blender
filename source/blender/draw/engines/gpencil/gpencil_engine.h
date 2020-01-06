@@ -656,12 +656,6 @@ typedef struct GpencilBatchCache {
   int grp_size;
   /** Array of cache elements */
   struct GpencilBatchGroup *grp_cache;
-
-  /* Refactor */
-  GPUVertBuf *vbo;
-  GPUIndexBuf *ibo;
-  GPUBatch *stroke_batch;
-  GPUBatch *fill_batch;
 } GpencilBatchCache;
 
 /* general drawing functions */

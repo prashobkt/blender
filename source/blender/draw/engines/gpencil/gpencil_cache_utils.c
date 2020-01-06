@@ -494,12 +494,6 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
   MEM_SAFE_FREE(cache->grp_cache);
   cache->grp_size = 0;
   cache->grp_used = 0;
-
-  /* New code */
-  GPU_BATCH_DISCARD_SAFE(cache->fill_batch);
-  GPU_BATCH_DISCARD_SAFE(cache->stroke_batch);
-  GPU_VERTBUF_DISCARD_SAFE(cache->vbo);
-  GPU_INDEXBUF_DISCARD_SAFE(cache->ibo);
 }
 
 /* get cache */

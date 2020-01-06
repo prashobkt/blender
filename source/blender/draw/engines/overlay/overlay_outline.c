@@ -182,6 +182,10 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 
 static void OVERLAY_outline_gpencil(OVERLAY_PrivateData *pd, Object *ob)
 {
+  /* REFACTOR(fclem) remove */
+  if (G.debug_value != 50) {
+    return;
+  }
   iterData iter = {
       .ob = ob,
       .stroke_grp = pd->outlines_gpencil_grp,
