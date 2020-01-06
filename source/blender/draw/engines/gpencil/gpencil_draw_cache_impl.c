@@ -191,7 +191,7 @@ static void gp_object_verts_count_cb(bGPDlayer *UNUSED(gpl),
   iter->tri_len += gps->tot_triangles;
 }
 
-static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
+static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfra)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
 
@@ -213,7 +213,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
         .vert_len = 1, /* Start at 1 for the gl_InstanceID trick to work (see vert shader). */
         .tri_len = 0,
     };
-    gpencil_object_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter, do_onion);
+    BKE_gpencil_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter, do_onion, cfra);
 
     /* Create VBO. */
     GPUVertFormat *format = gpencil_stroke_format();
@@ -225,7 +225,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
     GPU_indexbuf_init(&iter.ibo, GPU_PRIM_TRIS, iter.tri_len, iter.vert_len);
 
     /* Fill buffers with data. */
-    gpencil_object_visible_stroke_iter(ob, NULL, gpencil_stroke_iter_cb, &iter, do_onion);
+    BKE_gpencil_visible_stroke_iter(ob, NULL, gpencil_stroke_iter_cb, &iter, do_onion, cfra);
 
     /* Finish the IBO. */
     cache->ibo = GPU_indexbuf_build(&iter.ibo);
@@ -243,7 +243,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
 GPUBatch *GPENCIL_batch_cache_strokes(Object *ob, int cfra)
 {
   GpencilBatchCache *cache = gpencil_batch_cache_get(ob, cfra);
-  gpencil_batches_ensure(ob, cache);
+  gpencil_batches_ensure(ob, cache, cfra);
 
   return cache->stroke_batch;
 }
@@ -251,7 +251,7 @@ GPUBatch *GPENCIL_batch_cache_strokes(Object *ob, int cfra)
 GPUBatch *GPENCIL_batch_cache_fills(Object *ob, int cfra)
 {
   GpencilBatchCache *cache = gpencil_batch_cache_get(ob, cfra);
-  gpencil_batches_ensure(ob, cache);
+  gpencil_batches_ensure(ob, cache, cfra);
 
   return cache->fill_batch;
 }

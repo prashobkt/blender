@@ -1156,8 +1156,8 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
     iter.tex_fill = txl->dummy_texture;
     iter.tex_stroke = txl->dummy_texture;
 
-    gpencil_object_visible_stroke_iter(
-        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, pd->do_onion);
+    BKE_gpencil_visible_stroke_iter(
+        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, pd->do_onion, pd->cfra);
 
     if (iter.do_sbuffer_call) {
       gp_sbuffer_cache_populate(&iter);

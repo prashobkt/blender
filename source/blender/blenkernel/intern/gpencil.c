@@ -3688,3 +3688,135 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
 
   return done;
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Iterators
+ *
+ * Iterate over all visible stroke of all visible layers inside a gpObject.
+ * Also take into account onion skining.
+ *
+ * \{ */
+
+void BKE_gpencil_visible_stroke_iter(
+    Object *ob, gpIterCb layer_cb, gpIterCb stroke_cb, void *thunk, bool do_onion, int cfra)
+{
+  bGPdata *gpd = (bGPdata *)ob->data;
+  const bool is_multiedit = GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_onion = do_onion && ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0);
+
+  /* Onion skinning. */
+  const bool onion_mode_abs = (gpd->onion_mode == GP_ONION_MODE_ABSOLUTE);
+  const bool onion_mode_sel = (gpd->onion_mode == GP_ONION_MODE_SELECTED);
+  const bool onion_loop = (gpd->onion_flag & GP_ONION_LOOP) != 0;
+  const short onion_keytype = gpd->onion_keytype;
+
+  int idx_eval = 0;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    bGPDframe *act_gpf = gpl->actframe;
+    bGPDframe *sta_gpf = act_gpf;
+    bGPDframe *end_gpf = act_gpf ? act_gpf->next : NULL;
+
+    if (gpl->flag & GP_LAYER_HIDE) {
+      idx_eval++;
+      continue;
+    }
+
+    if (is_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN)) {
+      if (act_gpf) {
+        bGPDframe *last_gpf = gpl->frames.last;
+
+        int frame_len = 0;
+        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+          gpf->runtime.frameid = frame_len++;
+        }
+
+        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+          bool is_wrong_keytype = (onion_keytype > -1) && (gpf->key_type != onion_keytype);
+          bool is_in_range;
+          int delta = (onion_mode_abs) ? (gpf->framenum - cfra) :
+                                         (gpf->runtime.frameid - act_gpf->runtime.frameid);
+
+          if (onion_mode_sel) {
+            is_in_range = (gpf->flag & GP_FRAME_SELECT) != 0;
+          }
+          else {
+            is_in_range = (-delta <= gpd->gstep) && (delta <= gpd->gstep_next);
+
+            if (onion_loop && !is_in_range) {
+              /* We wrap the value using the last frame and 0 as reference. */
+              /* FIXME: This might not be good for animations not starting at 0. */
+              int shift = (onion_mode_abs) ? last_gpf->framenum : last_gpf->runtime.frameid;
+              delta += (delta < 0) ? (shift + 1) : -(shift + 1);
+              /* Test again with wrapped value. */
+              is_in_range = (-delta <= gpd->gstep) && (delta <= gpd->gstep_next);
+            }
+          }
+          /* Mask frames that have wrong keytype of are not in range. */
+          gpf->runtime.onion_id = (is_wrong_keytype || !is_in_range) ? INT_MAX : delta;
+        }
+        /* Active frame is always shown. */
+        act_gpf->runtime.onion_id = 0;
+      }
+
+      sta_gpf = gpl->frames.first;
+      end_gpf = NULL;
+    }
+    else if (is_multiedit) {
+      sta_gpf = end_gpf = NULL;
+      /* Check the whole range and tag the editable frames. */
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        if (gpf == act_gpf || (gpf->flag & GP_FRAME_SELECT)) {
+          gpf->runtime.onion_id = 0;
+          if (sta_gpf == NULL) {
+            sta_gpf = gpf;
+          }
+          end_gpf = gpf->next;
+        }
+        else {
+          gpf->runtime.onion_id = INT_MAX;
+        }
+      }
+    }
+    else {
+      /* Bypass multiedit/onion skinning. */
+      end_gpf = sta_gpf = NULL;
+    }
+
+    if (sta_gpf == NULL && act_gpf == NULL) {
+      continue;
+    }
+
+    /* Draw multiedit/onion skinning first */
+    for (bGPDframe *gpf = sta_gpf; gpf && gpf != end_gpf; gpf = gpf->next) {
+      if (gpf->runtime.onion_id == INT_MAX || gpf == act_gpf) {
+        continue;
+      }
+
+      if (layer_cb) {
+        layer_cb(gpl, gpf, NULL, thunk);
+      }
+
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        stroke_cb(gpl, gpf, gps, thunk);
+      }
+    }
+    /* Draw Active frame on top. */
+    /* Use evaluated frame (with modifiers for active stroke)/ */
+    act_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+    act_gpf->runtime.onion_id = 0;
+    if (act_gpf) {
+      if (layer_cb) {
+        layer_cb(gpl, act_gpf, NULL, thunk);
+      }
+
+      LISTBASE_FOREACH (bGPDstroke *, gps, &act_gpf->strokes) {
+        stroke_cb(gpl, act_gpf, gps, thunk);
+      }
+    }
+
+    idx_eval++;
+  }
+}
+
+/** \} */

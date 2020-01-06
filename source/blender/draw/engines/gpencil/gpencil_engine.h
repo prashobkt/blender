@@ -666,16 +666,6 @@ typedef struct GpencilBatchCache {
   GPUBatch *fill_batch;
 } GpencilBatchCache;
 
-/* Iterator */
-/* frame & stroke are NULL if it is a layer callback. */
-typedef void (*gpIterCb)(struct bGPDlayer *layer,
-                         struct bGPDframe *frame,
-                         struct bGPDstroke *stroke,
-                         void *thunk);
-
-void gpencil_object_visible_stroke_iter(
-    Object *ob, gpIterCb layer_cb, gpIterCb stroke_cb, void *thunk, bool do_onion);
-
 /* general drawing functions */
 struct DRWShadingGroup *gpencil_shgroup_stroke_create(struct GPENCIL_e_data *e_data,
                                                       struct GPENCIL_Data *vedata,
