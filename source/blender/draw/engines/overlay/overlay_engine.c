@@ -135,12 +135,14 @@ static void OVERLAY_cache_init(void *vedata)
     case CTX_MODE_SCULPT:
       OVERLAY_sculpt_cache_init(vedata);
       break;
-    case CTX_MODE_OBJECT:
-    case CTX_MODE_PAINT_GPENCIL:
     case CTX_MODE_EDIT_GPENCIL:
+    case CTX_MODE_PAINT_GPENCIL:
     case CTX_MODE_SCULPT_GPENCIL:
-    case CTX_MODE_WEIGHT_GPENCIL:
     case CTX_MODE_VERTEX_GPENCIL:
+    case CTX_MODE_WEIGHT_GPENCIL:
+      OVERLAY_edit_gpencil_cache_init(vedata);
+      break;
+    case CTX_MODE_OBJECT:
       break;
     default:
       BLI_assert(!"Draw mode invalid");
@@ -447,6 +449,13 @@ static void OVERLAY_draw_scene(void *vedata)
       break;
     case CTX_MODE_SCULPT:
       OVERLAY_sculpt_draw(vedata);
+      break;
+    case CTX_MODE_EDIT_GPENCIL:
+    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_SCULPT_GPENCIL:
+    case CTX_MODE_VERTEX_GPENCIL:
+    case CTX_MODE_WEIGHT_GPENCIL:
+      OVERLAY_edit_gpencil_draw(vedata);
       break;
     default:
       break;

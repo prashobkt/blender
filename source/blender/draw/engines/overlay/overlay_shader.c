@@ -52,6 +52,7 @@ extern char datatoc_edit_curve_handle_geom_glsl[];
 extern char datatoc_edit_curve_handle_vert_glsl[];
 extern char datatoc_edit_curve_point_vert_glsl[];
 extern char datatoc_edit_curve_wire_vert_glsl[];
+extern char datatoc_edit_gpencil_vert_glsl[];
 extern char datatoc_edit_lattice_point_vert_glsl[];
 extern char datatoc_edit_lattice_wire_vert_glsl[];
 extern char datatoc_edit_mesh_common_lib_glsl[];
@@ -135,6 +136,8 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_curve_handle;
   GPUShader *edit_curve_point;
   GPUShader *edit_curve_wire;
+  GPUShader *edit_gpencil_point;
+  GPUShader *edit_gpencil_wire;
   GPUShader *edit_lattice_point;
   GPUShader *edit_lattice_wire;
   GPUShader *edit_mesh_vert;
@@ -527,6 +530,44 @@ GPUShader *OVERLAY_shader_edit_curve_wire(void)
     });
   }
   return sh_data->edit_curve_wire;
+}
+
+GPUShader *OVERLAY_shader_edit_gpencil_point(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_gpencil_point) {
+    sh_data->edit_gpencil_point = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_gpencil_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define USE_POINTS\n", NULL},
+    });
+  }
+  return sh_data->edit_gpencil_point;
+}
+
+GPUShader *OVERLAY_shader_edit_gpencil_wire(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_gpencil_wire) {
+    sh_data->edit_gpencil_wire = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_gpencil_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->edit_gpencil_wire;
 }
 
 GPUShader *OVERLAY_shader_edit_lattice_point(void)

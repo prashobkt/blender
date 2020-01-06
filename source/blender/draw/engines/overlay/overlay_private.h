@@ -57,6 +57,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *armature_transp_ps;
   DRWPass *edit_curve_wire_ps[2];
   DRWPass *edit_curve_handle_ps;
+  DRWPass *edit_gpencil_ps;
   DRWPass *edit_lattice_ps;
   DRWPass *edit_mesh_depth_ps[2];
   DRWPass *edit_mesh_verts_ps[2];
@@ -210,6 +211,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_curve_points_grp;
   DRWShadingGroup *edit_lattice_points_grp;
   DRWShadingGroup *edit_lattice_wires_grp;
+  DRWShadingGroup *edit_gpencil_points_grp;
+  DRWShadingGroup *edit_gpencil_wires_grp;
   DRWShadingGroup *edit_mesh_depth_grp[2];
   DRWShadingGroup *edit_mesh_faces_grp[2];
   DRWShadingGroup *edit_mesh_faces_cage_grp[2];
@@ -406,6 +409,10 @@ void OVERLAY_edit_curve_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_surf_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_curve_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_gpencil_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_edit_lattice_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_lattice_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_lattice_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -433,7 +440,6 @@ void OVERLAY_extra_centers_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_camera_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
-void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_speaker_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -531,6 +537,8 @@ GPUShader *OVERLAY_shader_depth_only(void);
 GPUShader *OVERLAY_shader_edit_curve_handle(void);
 GPUShader *OVERLAY_shader_edit_curve_point(void);
 GPUShader *OVERLAY_shader_edit_curve_wire(void);
+GPUShader *OVERLAY_shader_edit_gpencil_point(void);
+GPUShader *OVERLAY_shader_edit_gpencil_wire(void);
 GPUShader *OVERLAY_shader_edit_lattice_point(void);
 GPUShader *OVERLAY_shader_edit_lattice_wire(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);

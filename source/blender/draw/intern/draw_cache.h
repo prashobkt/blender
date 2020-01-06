@@ -212,6 +212,8 @@ struct GPUBatch *DRW_cache_mball_edge_detection_get(struct Object *ob, bool *r_i
 
 struct GPUBatch *DRW_cache_gpencil_strokes_get(struct Object *ob, int cfra);
 struct GPUBatch *DRW_cache_gpencil_fills_get(struct Object *ob, int cfra);
+struct GPUBatch *DRW_cache_gpencil_edit_lines_get(Object *ob, int cfra);
+struct GPUBatch *DRW_cache_gpencil_edit_points_get(Object *ob, int cfra);
 bool DRW_cache_gpencil_sbuffer_get(struct Object *ob,
                                    struct GPUBatch **r_stroke_batch,
                                    struct GPUBatch **r_fill_batch,

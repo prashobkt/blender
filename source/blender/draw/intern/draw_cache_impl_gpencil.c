@@ -22,14 +22,10 @@
  */
 
 #include "BLI_polyfill_2d.h"
-// #include "BLI_math_color.h"
 
-// #include "DNA_meshdata_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_screen_types.h"
-// #include "DNA_view3d_types.h"
 
-// #include "BKE_deform.h"
 #include "BKE_gpencil.h"
 
 #include "DRW_engine.h"
@@ -37,9 +33,6 @@
 
 #include "GPU_batch.h"
 #include "ED_gpencil.h"
-// #include "ED_view3d.h"
-
-// #include "UI_resources.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -47,7 +40,7 @@
 #include "draw_cache_impl.h"
 
 /* ---------------------------------------------------------------------- */
-/* MetaBall GPUBatch Cache */
+/* GPencil GPUBatch Cache */
 
 /* REFACTOR Cleanup after */
 typedef struct GpencilBatchCacheElem {
@@ -94,6 +87,11 @@ typedef struct GpencilBatchCache {
   /** Instancing Batches */
   GPUBatch *stroke_batch;
   GPUBatch *fill_batch;
+
+  /** Edit Mode */
+  GPUVertBuf *edit_vbo;
+  GPUBatch *edit_lines_batch;
+  GPUBatch *edit_points_batch;
 
   /** Cache is dirty */
   bool is_dirty;
@@ -163,6 +161,10 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
   GPU_BATCH_DISCARD_SAFE(cache->stroke_batch);
   GPU_VERTBUF_DISCARD_SAFE(cache->vbo);
   GPU_INDEXBUF_DISCARD_SAFE(cache->ibo);
+
+  GPU_BATCH_DISCARD_SAFE(cache->edit_lines_batch);
+  GPU_BATCH_DISCARD_SAFE(cache->edit_points_batch);
+  GPU_VERTBUF_DISCARD_SAFE(cache->edit_vbo);
 
   cache->is_dirty = true;
 }
@@ -239,6 +241,15 @@ static GPUVertFormat *gpencil_stroke_format(void)
     GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     /* IMPORTANT: This means having only 4 attributes to fit into opengl limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
+  }
+  return &format;
+}
+
+static GPUVertFormat *gpencil_edit_stroke_format(void)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "vflag", GPU_COMP_U32, 1, GPU_FETCH_INT);
   }
   return &format;
 }
@@ -361,6 +372,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfr
      * For now it's simpler to assume we always need it
      * since multiple viewport could or could not need it.
      * Ideally we should have a dedicated onion skin geom batch. */
+    /* IMPORTANT: Keep in sync with gpencil_edit_batches_ensure() */
     bool do_onion = true;
 
     /* First count how many vertices and triangles are needed for the whole object. */
@@ -505,6 +517,97 @@ bool DRW_cache_gpencil_sbuffer_get(Object *ob,
   MEM_SAFE_FREE(gps->points);
 
   return true;
+}
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/* Edit GPencil Batches */
+
+#define GP_EDIT_POINT_SELECTED (1 << 0)
+#define GP_EDIT_STROKE_SELECTED (1 << 1)
+#define GP_EDIT_MULTIFRAME (1 << 2)
+
+static uint32_t gpencil_point_edit_flag(const bGPDspoint *pt)
+{
+  return (pt->flag & GP_SPOINT_SELECT) ? GP_EDIT_POINT_SELECTED : 0;
+}
+
+static void gpencil_edit_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
+                                        bGPDframe *gpf,
+                                        bGPDstroke *gps,
+                                        void *thunk)
+{
+  uint32_t *vflag_ptr = (uint32_t *)thunk;
+  const int v_len = gps->totpoints;
+  const int v = gps->runtime.stroke_start + 1;
+
+  uint32_t sflag = 0;
+  SET_FLAG_FROM_TEST(sflag, gps->flag & GP_STROKE_SELECT, GP_EDIT_STROKE_SELECTED);
+  SET_FLAG_FROM_TEST(sflag, gpf->runtime.onion_id != 0.0f, GP_EDIT_MULTIFRAME);
+
+  for (int i = 0; i < v_len; i++) {
+    vflag_ptr[v + i] = sflag | gpencil_point_edit_flag(&gps->points[i]);
+  }
+  /* Draw line to first point to complete the loop for cyclic strokes. */
+  vflag_ptr[v + v_len] = sflag | gpencil_point_edit_flag(&gps->points[0]);
+}
+
+static void gpencil_edit_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfra)
+{
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  if (cache->edit_vbo == NULL) {
+    /* TODO/PERF: Could be changed to only do it if needed.
+     * For now it's simpler to assume we always need it
+     * since multiple viewport could or could not need it.
+     * Ideally we should have a dedicated onion skin geom batch. */
+    /* IMPORTANT: Keep in sync with gpencil_batches_ensure() */
+    bool do_onion = true;
+
+    /* Vertex counting has already been done for cache->vbo. */
+    BLI_assert(cache->vbo);
+    int vert_len = cache->vbo->vertex_len;
+
+    /* Create VBO. */
+    GPUVertFormat *format = gpencil_edit_stroke_format();
+    cache->edit_vbo = GPU_vertbuf_create_with_format(format);
+    /* Add extra space at the end of the buffer because of quad load. */
+    GPU_vertbuf_data_alloc(cache->edit_vbo, vert_len);
+    uint32_t *vflag_ptr = (uint32_t *)cache->edit_vbo->data;
+
+    /* Fill buffers with data. */
+    BKE_gpencil_visible_stroke_iter(
+        ob, NULL, gpencil_edit_stroke_iter_cb, vflag_ptr, do_onion, cfra);
+
+    /* Create the batches */
+    cache->edit_points_batch = GPU_batch_create(GPU_PRIM_POINTS, cache->vbo, NULL);
+    GPU_batch_vertbuf_add(cache->edit_points_batch, cache->edit_vbo);
+
+    cache->edit_lines_batch = GPU_batch_create(GPU_PRIM_LINE_STRIP, cache->vbo, NULL);
+    GPU_batch_vertbuf_add(cache->edit_lines_batch, cache->edit_vbo);
+
+    gpd->flag &= ~GP_DATA_CACHE_IS_DIRTY;
+    cache->is_dirty = false;
+  }
+}
+
+GPUBatch *DRW_cache_gpencil_edit_lines_get(Object *ob, int cfra)
+{
+  GpencilBatchCache *cache = gpencil_batch_cache_get(ob, cfra);
+  gpencil_batches_ensure(ob, cache, cfra);
+  gpencil_edit_batches_ensure(ob, cache, cfra);
+
+  return cache->edit_lines_batch;
+}
+
+GPUBatch *DRW_cache_gpencil_edit_points_get(Object *ob, int cfra)
+{
+  GpencilBatchCache *cache = gpencil_batch_cache_get(ob, cfra);
+  gpencil_batches_ensure(ob, cache, cfra);
+  gpencil_edit_batches_ensure(ob, cache, cfra);
+
+  return cache->edit_points_batch;
 }
 
 /** \} */
