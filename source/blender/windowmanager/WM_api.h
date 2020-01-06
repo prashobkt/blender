@@ -228,6 +228,8 @@ struct wmEventHandler_Keymap *WM_event_add_keymap_handler_priority(ListBase *han
 typedef struct wmKeyMap *(wmEventHandler_KeymapDynamicFn)(
     wmWindowManager *wm, struct wmEventHandler_Keymap *handler)ATTR_WARN_UNUSED_RESULT;
 
+struct wmKeyMap *WM_event_get_keymap_from_toolsystem_fallback(
+    struct wmWindowManager *wm, struct wmEventHandler_Keymap *handler);
 struct wmKeyMap *WM_event_get_keymap_from_toolsystem(struct wmWindowManager *wm,
                                                      struct wmEventHandler_Keymap *handler);
 
@@ -821,15 +823,18 @@ typedef struct ARegion *(*wmTooltipInitFn)(struct bContext *C,
 
 void WM_tooltip_immediate_init(struct bContext *C,
                                struct wmWindow *win,
+                               struct ScrArea *sa,
                                struct ARegion *ar,
                                wmTooltipInitFn init);
 void WM_tooltip_timer_init_ex(struct bContext *C,
                               struct wmWindow *win,
+                              struct ScrArea *sa,
                               struct ARegion *ar,
                               wmTooltipInitFn init,
                               double delay);
 void WM_tooltip_timer_init(struct bContext *C,
                            struct wmWindow *win,
+                           struct ScrArea *sa,
                            struct ARegion *ar,
                            wmTooltipInitFn init);
 void WM_tooltip_timer_clear(struct bContext *C, struct wmWindow *win);
