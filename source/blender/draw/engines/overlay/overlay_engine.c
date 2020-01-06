@@ -25,6 +25,8 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
+#include "DEG_depsgraph_query.h"
+
 #include "ED_view3d.h"
 
 #include "BKE_object.h"
@@ -78,6 +80,7 @@ static void OVERLAY_engine_init(void *vedata)
   pd->xray_enabled = XRAY_ACTIVE(v3d);
   pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
   pd->clear_in_front = (v3d->shading.type != OB_SOLID);
+  pd->cfra = DEG_get_ctime(draw_ctx->depsgraph);
 
   OVERLAY_antialiasing_init(vedata);
 
@@ -184,6 +187,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   OVERLAY_PrivateData *pd = data->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool is_select = DRW_state_is_select();
+  const bool is_gpencil = ob->type == OB_GPENCIL;
   const bool renderable = DRW_object_is_renderable(ob);
   const bool in_pose_mode = ob->type == OB_ARMATURE && OVERLAY_armature_is_pose_mode(ob, draw_ctx);
   const bool in_edit_mode = BKE_object_is_in_editmode(ob);
@@ -197,8 +201,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool draw_bones = (pd->overlay.flag & V3D_OVERLAY_HIDE_BONES) == 0;
   const bool draw_wires = draw_surface && has_surface &&
                           (pd->wireframe_mode || !pd->hide_overlays);
-  const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable && has_surface &&
-                             (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
+  const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable &&
+                             (has_surface || is_gpencil) && (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
                              (ob->base_flag & BASE_SELECTED);
   const bool draw_bone_selection = (ob->type == OB_MESH) && pd->armature.do_pose_fade_geom &&
                                    !is_select;

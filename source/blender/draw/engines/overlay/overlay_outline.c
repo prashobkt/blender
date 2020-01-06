@@ -23,8 +23,10 @@
 #include "DRW_render.h"
 
 #include "BKE_global.h"
+#include "BKE_gpencil.h"
 
-#include "DNA_lightprobe_types.h"
+// #include "DNA_lightprobe_types.h"
+#include "DNA_gpencil_types.h"
 
 #include "UI_resources.h"
 
@@ -79,6 +81,11 @@ void OVERLAY_outline_cache_init(OVERLAY_Data *vedata)
 
     pd->outlines_grp = grp = DRW_shgroup_create(sh_geom, psl->outlines_prepass_ps);
     DRW_shgroup_uniform_bool_copy(grp, "isTransform", (G.moving & G_TRANSFORM_OBJ) != 0);
+
+    GPUShader *sh_gpencil = OVERLAY_shader_outline_prepass_gpencil();
+
+    pd->outlines_gpencil_grp = grp = DRW_shgroup_create(sh_gpencil, psl->outlines_prepass_ps);
+    DRW_shgroup_uniform_bool_copy(grp, "isTransform", (G.moving & G_TRANSFORM_OBJ) != 0);
   }
 
   /* outlines_prepass_ps is still needed for selection of probes. */
@@ -107,6 +114,85 @@ void OVERLAY_outline_cache_init(OVERLAY_Data *vedata)
   }
 }
 
+typedef struct iterData {
+  Object *ob;
+  DRWShadingGroup *stroke_grp;
+  DRWShadingGroup *fill_grp;
+  int cfra;
+} iterData;
+
+static void gp_layer_cache_populate(bGPDlayer *gpl,
+                                    bGPDframe *UNUSED(gpf),
+                                    bGPDstroke *UNUSED(gps),
+                                    void *thunk)
+{
+  iterData *iter = (iterData *)thunk;
+  bGPdata *gpd = (bGPdata *)iter->ob->data;
+
+  const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
+
+  float object_scale = mat4_to_scale(iter->ob->obmat);
+  /* Negate thickness sign to tag that strokes are in screen space.
+   * Convert to world units (by default, 1 meter = 2000 px). */
+  float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / 2000.0f);
+
+  DRWShadingGroup *grp = iter->stroke_grp = DRW_shgroup_create_sub(iter->stroke_grp);
+  DRW_shgroup_uniform_bool_copy(grp, "strokeOrder3d", true);
+  DRW_shgroup_uniform_vec2_copy(grp, "sizeViewportInv", DRW_viewport_invert_size_get());
+  DRW_shgroup_uniform_vec2_copy(grp, "sizeViewport", DRW_viewport_size_get());
+  DRW_shgroup_uniform_float_copy(grp, "thicknessScale", object_scale);
+  DRW_shgroup_uniform_float_copy(grp, "thicknessOffset", (float)gpl->line_change);
+  DRW_shgroup_uniform_float_copy(grp, "thicknessWorldScale", thickness_scale);
+}
+
+static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
+                                     bGPDframe *UNUSED(gpf),
+                                     bGPDstroke *gps,
+                                     void *thunk)
+{
+  iterData *iter = (iterData *)thunk;
+
+  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(iter->ob, gps->mat_nr + 1);
+
+  bool hide_material = (gp_style->flag & GP_STYLE_COLOR_HIDE) != 0;
+  bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
+  // TODO: What about simplify Fill?
+  bool show_fill = (gps->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
+
+  if (hide_material) {
+    return;
+  }
+
+  if (show_fill) {
+    struct GPUBatch *geom = DRW_cache_gpencil_fills_get(iter->ob, iter->cfra);
+    int vfirst = gps->runtime.fill_start * 3;
+    int vcount = gps->tot_triangles * 3;
+    DRW_shgroup_call_range(iter->fill_grp, iter->ob, geom, vfirst, vcount);
+  }
+
+  if (show_stroke) {
+    struct GPUBatch *geom = DRW_cache_gpencil_strokes_get(iter->ob, iter->cfra);
+    /* Start one vert before to have gl_InstanceID > 0 (see shader). */
+    int vfirst = gps->runtime.stroke_start - 1;
+    /* Include "potential" cyclic vertex and start adj vertex (see shader). */
+    int vcount = gps->totpoints + 1 + 1;
+    DRW_shgroup_call_instance_range(iter->stroke_grp, iter->ob, geom, vfirst, vcount);
+  }
+}
+
+static void OVERLAY_outline_gpencil(OVERLAY_PrivateData *pd, Object *ob)
+{
+  iterData iter = {
+      .ob = ob,
+      .stroke_grp = pd->outlines_gpencil_grp,
+      .fill_grp = DRW_shgroup_create_sub(pd->outlines_gpencil_grp),
+      .cfra = pd->cfra,
+  };
+
+  BKE_gpencil_visible_stroke_iter(
+      ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, false, pd->cfra);
+}
+
 void OVERLAY_outline_cache_populate(OVERLAY_Data *vedata,
                                     Object *ob,
                                     OVERLAY_DupliData *dupli,
@@ -120,6 +206,11 @@ void OVERLAY_outline_cache_populate(OVERLAY_Data *vedata,
 
   /* Early exit: outlines of bounding boxes are not drawn. */
   if (!draw_outline) {
+    return;
+  }
+
+  if (ob->type == OB_GPENCIL) {
+    OVERLAY_outline_gpencil(pd, ob);
     return;
   }
 
