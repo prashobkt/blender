@@ -359,7 +359,8 @@ void GPENCIL_engine_init(void *vedata)
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
   }
 
-  stl->storage->multisamples = U.gpencil_multisamples;
+  /* TODO: Keep this only for testing while doing refactor. (parameter has been removed). */
+  stl->storage->multisamples = 4;
 
   if (G.debug_value == 50) {
     GPENCIL_engine_init_new(vedata);
