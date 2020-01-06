@@ -826,7 +826,7 @@ bool gp_point_xy_to_3d(const GP_SpaceConversion *gsc,
   const RegionView3D *rv3d = gsc->ar->regiondata;
   float rvec[3];
 
-  ED_gp_get_drawing_reference(
+  ED_gpencil_drawing_reference_get(
       scene, gsc->ob, gsc->gpl, scene->toolsettings->gpencil_v3d_align, rvec);
 
   float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
@@ -886,7 +886,7 @@ void gp_stroke_convertcoords_tpoint(Scene *scene,
     /* Current method just converts each point in screen-coordinates to
      * 3D-coordinates using the 3D-cursor as reference.
      */
-    ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, rvec);
+    ED_gpencil_drawing_reference_get(scene, ob, gpl, ts->gpencil_v3d_align, rvec);
     zfac = ED_view3d_calc_zfac(ar->regiondata, rvec, NULL);
 
     if (ED_view3d_project_float_global(ar, rvec, mval_prj, V3D_PROJ_TEST_NOP) == V3D_PROJ_RET_OK) {
@@ -904,7 +904,7 @@ void gp_stroke_convertcoords_tpoint(Scene *scene,
  * Get drawing reference point for conversion or projection of the stroke
  * \param[out] r_vec : Reference point found
  */
-void ED_gp_get_drawing_reference(
+void ED_gpencil_drawing_reference_get(
     const Scene *scene, const Object *ob, bGPDlayer *UNUSED(gpl), char align_flag, float r_vec[3])
 {
   const float *fp = scene->cursor.location;

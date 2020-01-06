@@ -348,7 +348,7 @@ static void gp_get_3d_reference(tGPsdata *p, float vec[3])
   if (p->ownerPtr.type == &RNA_Object) {
     ob = (Object *)p->ownerPtr.data;
   }
-  ED_gp_get_drawing_reference(p->scene, ob, p->gpl, *p->align_flag, vec);
+  ED_gpencil_drawing_reference_get(p->scene, ob, p->gpl, *p->align_flag, vec);
 }
 
 /* Stroke Editing ---------------------------- */

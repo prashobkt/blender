@@ -1005,7 +1005,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
       /* get origin to reproject point */
       float origin[3];
-      ED_gp_get_drawing_reference(tgpi->scene, tgpi->ob, tgpi->gpl, ts->gpencil_v3d_align, origin);
+      ED_gpencil_drawing_reference_get(tgpi->scene, tgpi->ob, tgpi->gpl, ts->gpencil_v3d_align, origin);
       /* reproject current */
       ED_gpencil_tpoint_to_point(tgpi->ar, origin, tpt, &spt);
       ED_gp_project_point_to_plane(
@@ -1074,7 +1074,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
   /* reproject to plane */
   if (!is_depth) {
     float origin[3];
-    ED_gp_get_drawing_reference(tgpi->scene, tgpi->ob, tgpi->gpl, ts->gpencil_v3d_align, origin);
+    ED_gpencil_drawing_reference_get(tgpi->scene, tgpi->ob, tgpi->gpl, ts->gpencil_v3d_align, origin);
     ED_gp_project_stroke_to_plane(
         tgpi->scene, tgpi->ob, tgpi->rv3d, gps, origin, ts->gp_sculpt.lock_axis - 1);
   }

@@ -283,7 +283,7 @@ bool GPENCIL_batch_from_sbuffer(Object *ob,
   float origin[3];
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
   ToolSettings *ts = scene->toolsettings;
-  ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
+  ED_gpencil_drawing_reference_get(scene, ob, gpl, ts->gpencil_v3d_align, origin);
 
   /* Convert the sbuffer to a bGPDstroke. */
   bGPDstroke *gps = *r_stroke = MEM_callocN(sizeof(*gps), "bGPDstroke sbuffer");
@@ -779,7 +779,7 @@ GPUBatch *gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
   /* get origin to reproject point */
   float origin[3];
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
-  ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
+  ED_gpencil_drawing_reference_get(scene, ob, gpl, ts->gpencil_v3d_align, origin);
 
   for (int i = 0; i < totpoints; i++, tpt++) {
     ED_gpencil_tpoint_to_point(ar, origin, tpt, &pt);
@@ -913,7 +913,7 @@ GPUBatch *gpencil_get_buffer_point_geom(bGPdata *gpd, short thickness)
   /* get origin to reproject point */
   float origin[3];
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
-  ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
+  ED_gpencil_drawing_reference_get(scene, ob, gpl, ts->gpencil_v3d_align, origin);
 
   for (int i = 0; i < totpoints; i++, tpt++) {
     ED_gpencil_tpoint_to_point(ar, origin, tpt, &pt);
@@ -1048,7 +1048,7 @@ GPUBatch *gpencil_get_buffer_fill_geom(bGPdata *gpd)
   /* get origin to reproject point */
   float origin[3];
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
-  ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
+  ED_gpencil_drawing_reference_get(scene, ob, gpl, ts->gpencil_v3d_align, origin);
 
   int tot_triangles = totpoints - 2;
   /* allocate memory for temporary areas */

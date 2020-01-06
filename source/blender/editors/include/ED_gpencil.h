@@ -235,7 +235,7 @@ void ED_gp_project_point_to_plane(const struct Scene *scene,
                                   const float origin[3],
                                   const int axis,
                                   struct bGPDspoint *pt);
-void ED_gp_get_drawing_reference(const struct Scene *scene,
+void ED_gpencil_drawing_reference_get(const struct Scene *scene,
                                  const struct Object *ob,
                                  struct bGPDlayer *gpl,
                                  char align_flag,
