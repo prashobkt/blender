@@ -4438,7 +4438,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
 
-      /* Fix Layers Colors and Vertex Colors to Linear. */
+      /* Fix Layers Colors and Vertex Colors to Linear.
+       * Also set lights to on for layers. */
       LISTBASE_FOREACH (bGPdata *, gpd, &bmain->gpencils) {
         if (gpd->flag & GP_DATA_ANNOTATIONS) {
           continue;
@@ -4448,6 +4449,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         srgb_to_linearrgb_v3_v3(gpd->gcolor_next, gpd->gcolor_next);
 
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+          gpl->flag |= GP_LAYER_USE_LIGHTS;
           srgb_to_linearrgb_v4(gpl->tintcolor, gpl->tintcolor);
 
           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
