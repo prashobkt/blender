@@ -487,7 +487,7 @@ static void GPENCIL_cache_init_new(void *ved)
       if (GPENCIL_batch_from_sbuffer(
               ob, &pd->stroke_batch, &pd->fill_batch, &pd->sbuffer_stroke)) {
         pd->sbuffer_gpd = (bGPdata *)ob->data;
-        pd->sbuffer_layer = BKE_gpencil_layer_getactive(pd->sbuffer_gpd);
+        pd->sbuffer_layer = BKE_gpencil_layer_active_get(pd->sbuffer_gpd);
         pd->do_fast_drawing = false; /* TODO option */
       }
     }
@@ -592,7 +592,7 @@ void GPENCIL_cache_init(void *vedata)
   if (obact && (obact->type == OB_GPENCIL) && (obact->data)) {
     obact_gpd = (bGPdata *)obact->data;
     /* use the brush material */
-    Material *ma = BKE_gpencil_object_material_get_from_brush(obact, brush);
+    Material *ma = BKE_gpencil_object_material_from_brush_get(obact, brush);
     if (ma != NULL) {
       gp_style = ma->gp_style;
     }

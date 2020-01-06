@@ -185,7 +185,7 @@ void ED_gpencil_select_frame(bGPDlayer *gpl, int selx, short select_mode)
     return;
   }
 
-  gpf = BKE_gpencil_layer_find_frame(gpl, selx);
+  gpf = BKE_gpencil_layer_frame_find(gpl, selx);
 
   if (gpf) {
     gpframe_select(gpf, select_mode);
@@ -264,7 +264,7 @@ bool ED_gplayer_frames_delete(bGPDlayer *gpl)
     gpfn = gpf->next;
 
     if (gpf->flag & GP_FRAME_SELECT) {
-      BKE_gpencil_layer_delframe(gpl, gpf);
+      BKE_gpencil_layer_frame_delete(gpl, gpf);
       changed = true;
     }
   }
@@ -489,7 +489,7 @@ bool ED_gpencil_anim_copybuf_paste(bAnimContext *ac, const short offset_mode)
       gpfs->framenum += offset;
 
       /* get frame to copy data into (if no frame returned, then just ignore) */
-      gpf = BKE_gpencil_layer_getframe(gpld, gpfs->framenum, GP_GETFRAME_ADD_NEW);
+      gpf = BKE_gpencil_layer_frame_get(gpld, gpfs->framenum, GP_GETFRAME_ADD_NEW);
       if (gpf) {
         bGPDstroke *gps, *gpsn;
 
@@ -516,7 +516,7 @@ bool ED_gpencil_anim_copybuf_paste(bAnimContext *ac, const short offset_mode)
 
         /* if no strokes (i.e. new frame) added, free gpf */
         if (BLI_listbase_is_empty(&gpf->strokes)) {
-          BKE_gpencil_layer_delframe(gpld, gpf);
+          BKE_gpencil_layer_frame_delete(gpld, gpf);
         }
       }
 

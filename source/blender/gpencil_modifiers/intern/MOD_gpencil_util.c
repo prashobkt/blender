@@ -211,7 +211,7 @@ void gpencil_apply_modifier_material(
       DEG_id_tag_update(&newmat->id, ID_RECALC_COPY_ON_WRITE);
     }
     /* Reassign color index. */
-    gps->mat_nr = BKE_gpencil_object_material_get_index(ob, newmat);
+    gps->mat_nr = BKE_gpencil_object_material_index_get(ob, newmat);
   }
   else {
     /* reuse existing color (but update only first time) */

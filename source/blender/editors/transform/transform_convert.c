@@ -862,7 +862,7 @@ static void posttrans_gpd_clean(bGPdata *gpd)
       for (gpf = gpl->frames.first; gpf; gpf = gpfn) {
         gpfn = gpf->next;
         if (gpfn && gpf->framenum == gpfn->framenum) {
-          BKE_gpencil_layer_delframe(gpl, gpf);
+          BKE_gpencil_layer_frame_delete(gpl, gpf);
         }
       }
     }

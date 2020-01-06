@@ -393,7 +393,7 @@ static void rna_GPencil_active_layer_set(PointerRNA *ptr,
 static int rna_GPencil_active_layer_index_get(PointerRNA *ptr)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   return BLI_findindex(&gpd->layers, gpl);
 }
@@ -403,7 +403,7 @@ static void rna_GPencil_active_layer_index_set(PointerRNA *ptr, int value)
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
   bGPDlayer *gpl = BLI_findlink(&gpd->layers, value);
 
-  BKE_gpencil_layer_setactive(gpd, gpl);
+  BKE_gpencil_layer_active_set(gpd, gpl);
 
   /* Now do standard updates... */
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
@@ -733,14 +733,14 @@ static bGPDframe *rna_GPencil_frame_new(bGPDlayer *layer,
 {
   bGPDframe *frame;
 
-  if (BKE_gpencil_layer_find_frame(layer, frame_number)) {
+  if (BKE_gpencil_layer_frame_find(layer, frame_number)) {
     BKE_reportf(reports, RPT_ERROR, "Frame already exists on this frame number %d", frame_number);
     return NULL;
   }
 
   frame = BKE_gpencil_frame_addnew(layer, frame_number);
   if (active) {
-    layer->actframe = BKE_gpencil_layer_getframe(layer, frame_number, GP_GETFRAME_USE_PREV);
+    layer->actframe = BKE_gpencil_layer_frame_get(layer, frame_number, GP_GETFRAME_USE_PREV);
   }
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 
@@ -755,7 +755,7 @@ static void rna_GPencil_frame_remove(bGPDlayer *layer, ReportList *reports, Poin
     return;
   }
 
-  BKE_gpencil_layer_delframe(layer, frame);
+  BKE_gpencil_layer_frame_delete(layer, frame);
   RNA_POINTER_INVALIDATE(frame_ptr);
 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
@@ -765,7 +765,7 @@ static bGPDframe *rna_GPencil_frame_copy(bGPDlayer *layer, bGPDframe *src)
 {
   bGPDframe *frame = BKE_gpencil_frame_duplicate(src);
 
-  while (BKE_gpencil_layer_find_frame(layer, frame->framenum)) {
+  while (BKE_gpencil_layer_frame_find(layer, frame->framenum)) {
     frame->framenum++;
   }
 

@@ -296,7 +296,7 @@ void GPENCIL_OT_layer_add(wmOperatorType *ot)
 static int gp_layer_remove_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   /* sanity checks */
   if (ELEM(NULL, gpd, gpl)) {
@@ -313,10 +313,10 @@ static int gp_layer_remove_exec(bContext *C, wmOperator *op)
    * - if this is the only layer, this naturally becomes NULL
    */
   if (gpl->prev) {
-    BKE_gpencil_layer_setactive(gpd, gpl->prev);
+    BKE_gpencil_layer_active_set(gpd, gpl->prev);
   }
   else {
-    BKE_gpencil_layer_setactive(gpd, gpl->next);
+    BKE_gpencil_layer_active_set(gpd, gpl->next);
   }
 
   /* delete the layer now... */
@@ -353,7 +353,7 @@ enum {
 static int gp_layer_move_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   const int direction = RNA_enum_get(op->ptr, "type") * -1;
 
@@ -399,7 +399,7 @@ void GPENCIL_OT_layer_move(wmOperatorType *ot)
 static int gp_layer_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   bGPDlayer *new_layer;
 
   /* sanity checks */
@@ -418,7 +418,7 @@ static int gp_layer_copy_exec(bContext *C, wmOperator *UNUSED(op))
                  '.',
                  offsetof(bGPDlayer, info),
                  sizeof(new_layer->info));
-  BKE_gpencil_layer_setactive(gpd, new_layer);
+  BKE_gpencil_layer_active_set(gpd, new_layer);
 
   /* notifiers */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
@@ -457,7 +457,7 @@ static bool gp_layer_duplicate_object_poll(bContext *C)
   }
 
   bGPdata *gpd = (bGPdata *)ob->data;
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   if (gpl == NULL) {
     return false;
@@ -490,7 +490,7 @@ static int gp_layer_duplicate_object_exec(bContext *C, wmOperator *op)
 
   Object *ob_src = CTX_data_active_object(C);
   bGPdata *gpd_src = (bGPdata *)ob_src->data;
-  bGPDlayer *gpl_src = BKE_gpencil_layer_getactive(gpd_src);
+  bGPDlayer *gpl_src = BKE_gpencil_layer_active_get(gpd_src);
 
   /* Sanity checks. */
   if (ELEM(NULL, gpd_src, gpl_src, ob_dst)) {
@@ -588,7 +588,7 @@ enum {
 static int gp_frame_duplicate_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   Scene *scene = CTX_data_scene(C);
 
   int mode = RNA_enum_get(op->ptr, "mode");
@@ -819,7 +819,7 @@ void GPENCIL_OT_frame_clean_loose(wmOperatorType *ot)
 static int gp_hide_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *layer = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *layer = BKE_gpencil_layer_active_get(gpd);
   bool unselected = RNA_boolean_get(op->ptr, "unselected");
 
   /* sanity checks */
@@ -1045,7 +1045,7 @@ void GPENCIL_OT_unlock_all(wmOperatorType *ot)
 static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *layer = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *layer = BKE_gpencil_layer_active_get(gpd);
   bGPDlayer *gpl;
   int flags = GP_LAYER_LOCKED;
   bool isolate = false;
@@ -1130,7 +1130,7 @@ void GPENCIL_OT_layer_isolate(wmOperatorType *ot)
 static int gp_merge_layer_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl_next = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl_next = BKE_gpencil_layer_active_get(gpd);
   bGPDlayer *gpl_current = gpl_next->prev;
 
   if (ELEM(NULL, gpd, gpl_current, gpl_next)) {
@@ -1149,7 +1149,7 @@ static int gp_merge_layer_exec(bContext *C, wmOperator *op)
     /* try to find frame in current layer */
     bGPDframe *frame = BLI_ghash_lookup(gh_frames_cur, POINTER_FROM_INT(gpf->framenum));
     if (!frame) {
-      bGPDframe *actframe = BKE_gpencil_layer_getframe(
+      bGPDframe *actframe = BKE_gpencil_layer_frame_get(
           gpl_current, gpf->framenum, GP_GETFRAME_USE_PREV);
       frame = BKE_gpencil_frame_addnew(gpl_current, gpf->framenum);
       /* duplicate strokes of current active frame */
@@ -1226,7 +1226,7 @@ static int gp_layer_change_exec(bContext *C, wmOperator *op)
   }
 
   /* Set active layer */
-  BKE_gpencil_layer_setactive(gpd, gpl);
+  BKE_gpencil_layer_active_set(gpd, gpl);
 
   /* updates */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
@@ -1270,7 +1270,7 @@ static int gp_stroke_arrange_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl_act = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl_act = BKE_gpencil_layer_active_get(gpd);
 
   /* sanity checks */
   if (ELEM(NULL, gpd, gpl_act, gpl_act->actframe)) {
@@ -1427,7 +1427,7 @@ static int gp_stroke_change_color_exec(bContext *C, wmOperator *op)
     }
   }
   /* try to find slot */
-  int idx = BKE_gpencil_object_material_get_index(ob, ma);
+  int idx = BKE_gpencil_object_material_index_get(ob, ma);
   if (idx < 0) {
     return OPERATOR_CANCELLED;
   }

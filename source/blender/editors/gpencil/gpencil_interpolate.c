@@ -594,7 +594,7 @@ static int gpencil_interpolate_modal(bContext *C, wmOperator *op, const wmEvent 
 
       /* insert keyframes as required... */
       for (tgpil = tgpi->ilayers.first; tgpil; tgpil = tgpil->next) {
-        gpf_dst = BKE_gpencil_layer_getframe(tgpil->gpl, tgpi->cframe, GP_GETFRAME_ADD_NEW);
+        gpf_dst = BKE_gpencil_layer_frame_get(tgpil->gpl, tgpi->cframe, GP_GETFRAME_ADD_NEW);
         gpf_dst->key_type = BEZT_KEYTYPE_BREAKDOWN;
 
         /* copy strokes */
@@ -1042,7 +1042,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
 
         /* create a new frame if needed */
         if (interFrame == NULL) {
-          interFrame = BKE_gpencil_layer_getframe(gpl, cframe, GP_GETFRAME_ADD_NEW);
+          interFrame = BKE_gpencil_layer_frame_get(gpl, cframe, GP_GETFRAME_ADD_NEW);
           interFrame->key_type = BEZT_KEYTYPE_BREAKDOWN;
         }
 

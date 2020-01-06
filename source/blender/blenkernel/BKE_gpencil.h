@@ -145,7 +145,7 @@ void BKE_gpencil_stroke_add_points(struct bGPDstroke *gps,
                                    const int totpoints,
                                    const float mat[4][4]);
 
-struct bGPDstroke *BKE_gpencil_add_stroke(struct bGPDframe *gpf,
+struct bGPDstroke *BKE_gpencil_stroke_add(struct bGPDframe *gpf,
                                           int mat_idx,
                                           int totpoints,
                                           short thickness);
@@ -176,14 +176,14 @@ typedef enum eGP_GetFrame_Mode {
   GP_GETFRAME_ADD_COPY = 2,
 } eGP_GetFrame_Mode;
 
-struct bGPDframe *BKE_gpencil_layer_getframe(struct bGPDlayer *gpl,
-                                             int cframe,
-                                             eGP_GetFrame_Mode addnew);
-struct bGPDframe *BKE_gpencil_layer_find_frame(struct bGPDlayer *gpl, int cframe);
-bool BKE_gpencil_layer_delframe(struct bGPDlayer *gpl, struct bGPDframe *gpf);
+struct bGPDframe *BKE_gpencil_layer_frame_get(struct bGPDlayer *gpl,
+                                              int cframe,
+                                              eGP_GetFrame_Mode addnew);
+struct bGPDframe *BKE_gpencil_layer_frame_find(struct bGPDlayer *gpl, int cframe);
+bool BKE_gpencil_layer_frame_delete(struct bGPDlayer *gpl, struct bGPDframe *gpf);
 
-struct bGPDlayer *BKE_gpencil_layer_getactive(struct bGPdata *gpd);
-void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);
+struct bGPDlayer *BKE_gpencil_layer_active_get(struct bGPdata *gpd);
+void BKE_gpencil_layer_active_set(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
 void BKE_gpencil_layer_autolock_set(struct bGPdata *gpd, const bool unlock);
 
@@ -205,9 +205,9 @@ struct Material *BKE_gpencil_object_material_new(struct Main *bmain,
                                                  const char *name,
                                                  int *r_index);
 
-int BKE_gpencil_object_material_get_index(struct Object *ob, struct Material *ma);
+int BKE_gpencil_object_material_index_get(struct Object *ob, struct Material *ma);
 
-struct Material *BKE_gpencil_object_material_get_from_brush(struct Object *ob,
+struct Material *BKE_gpencil_object_material_from_brush_get(struct Object *ob,
                                                             struct Brush *brush);
 int BKE_gpencil_object_material_get_index_from_brush(struct Object *ob, struct Brush *brush);
 

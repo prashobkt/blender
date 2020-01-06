@@ -373,7 +373,7 @@ static void gp_select_same_layer(bContext *C)
   Scene *scene = CTX_data_scene(C);
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_USE_PREV);
     bGPDstroke *gps;
     bool found = false;
 

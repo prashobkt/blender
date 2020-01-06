@@ -1215,7 +1215,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
   ToolSettings *ts = scene->toolsettings;
 
   /* get active layer (or add a new one if non-existent) */
-  p->gpl = BKE_gpencil_layer_getactive(p->gpd);
+  p->gpl = BKE_gpencil_layer_active_get(p->gpd);
   if (p->gpl == NULL) {
     /* tag for annotations */
     p->gpd->flag |= GP_DATA_ANNOTATIONS;
@@ -1271,7 +1271,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
       add_frame_mode = GP_GETFRAME_ADD_NEW;
     }
 
-    p->gpf = BKE_gpencil_layer_getframe(p->gpl, CFRA, add_frame_mode);
+    p->gpf = BKE_gpencil_layer_frame_get(p->gpl, CFRA, add_frame_mode);
 
     if (p->gpf == NULL) {
       p->status = GP_STATUS_ERROR;

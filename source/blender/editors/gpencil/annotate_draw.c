@@ -872,7 +872,7 @@ static void annotation_draw_data_layers(
     }
 
     /* get frame to draw */
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, cfra, GP_GETFRAME_USE_PREV);
     if (gpf == NULL) {
       continue;
     }

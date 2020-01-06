@@ -259,12 +259,12 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
     /* if active layer and no keyframe, create a new one */
     if (gpl == tgpf->gpl) {
       if ((gpl->actframe == NULL) || (gpl->actframe->framenum != tgpf->active_cfra)) {
-        BKE_gpencil_layer_getframe(gpl, tgpf->active_cfra, GP_GETFRAME_ADD_NEW);
+        BKE_gpencil_layer_frame_get(gpl, tgpf->active_cfra, GP_GETFRAME_ADD_NEW);
       }
     }
 
     /* get frame to draw */
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, tgpf->active_cfra, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, tgpf->active_cfra, GP_GETFRAME_USE_PREV);
     if (gpf == NULL) {
       continue;
     }
@@ -1081,7 +1081,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   }
 
   /* Get frame or create a new one. */
-  tgpf->gpf = BKE_gpencil_layer_getframe(tgpf->gpl, tgpf->active_cfra, GP_GETFRAME_ADD_NEW);
+  tgpf->gpf = BKE_gpencil_layer_frame_get(tgpf->gpl, tgpf->active_cfra, GP_GETFRAME_ADD_NEW);
 
   /* Set frame as selected. */
   tgpf->gpf->flag |= GP_FRAME_SELECT;
@@ -1297,7 +1297,7 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 
   /* set GP datablock */
   tgpf->gpd = gpd;
-  tgpf->gpl = BKE_gpencil_layer_getactive(gpd);
+  tgpf->gpl = BKE_gpencil_layer_active_get(gpd);
   if (tgpf->gpl == NULL) {
     tgpf->gpl = BKE_gpencil_layer_addnew(tgpf->gpd, DATA_("GP_Layer"), true);
   }
@@ -1406,7 +1406,7 @@ static int gpencil_fill_init(bContext *C, wmOperator *op)
   tGPDfill *tgpf;
   /* cannot paint in locked layer */
   bGPdata *gpd = CTX_data_gpencil_data(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   if ((gpl) && (gpl->flag & GP_LAYER_LOCKED)) {
     return 0;
   }

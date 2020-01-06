@@ -1270,7 +1270,7 @@ static void gp_layer_to_curve(bContext *C,
   Collection *collection = CTX_data_collection(C);
   Scene *scene = CTX_data_scene(C);
 
-  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
+  bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_USE_PREV);
   bGPDstroke *gps, *prev_gps = NULL;
   Object *ob;
   Curve *cu;
@@ -1408,7 +1408,7 @@ static bool gp_convert_check_has_valid_timing(bContext *C, bGPDlayer *gpl, wmOpe
   int i;
   bool valid = true;
 
-  if (!gpl || !(gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV)) ||
+  if (!gpl || !(gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_USE_PREV)) ||
       !(gps = gpf->strokes.first)) {
     return false;
   }
@@ -1474,8 +1474,8 @@ static bool gp_convert_poll(bContext *C)
   /* only if the current view is 3D View, if there's valid data (i.e. at least one stroke!),
    * and if we are not in edit mode!
    */
-  return ((sa && sa->spacetype == SPACE_VIEW3D) && (gpl = BKE_gpencil_layer_getactive(gpd)) &&
-          (gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV)) &&
+  return ((sa && sa->spacetype == SPACE_VIEW3D) && (gpl = BKE_gpencil_layer_active_get(gpd)) &&
+          (gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_USE_PREV)) &&
           (gpf->strokes.first) && (!GPENCIL_ANY_EDIT_MODE(gpd)));
 }
 
@@ -1485,7 +1485,7 @@ static int gp_convert_layer_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   Scene *scene = CTX_data_scene(C);
   const int mode = RNA_enum_get(op->ptr, "type");
   const bool norm_weights = RNA_boolean_get(op->ptr, "use_normalize_weights");

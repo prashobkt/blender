@@ -534,7 +534,7 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
     bGPdata *gpd = ED_gpencil_data_get_active_direct((ID *)sc, sa, scene, obact);
 
     if (gpd) {
-      bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+      bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
       if (gpl) {
         CTX_data_pointer_set(result, &gpd->id, &RNA_GPencilLayer, gpl);
@@ -547,7 +547,7 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
     bGPdata *gpd = ED_gpencil_data_get_active_direct((ID *)sc, sa, scene, obact);
 
     if (gpd) {
-      bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+      bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
       if (gpl) {
         CTX_data_pointer_set(result, &gpd->id, &RNA_GPencilLayer, gpl->actframe);

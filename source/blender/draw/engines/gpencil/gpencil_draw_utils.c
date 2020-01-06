@@ -1649,7 +1649,7 @@ void gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
   float obscale = mat4_to_scale(ob->obmat);
 
   /* use the brush material */
-  Material *ma = BKE_gpencil_object_material_get_from_brush(ob, brush);
+  Material *ma = BKE_gpencil_object_material_from_brush_get(ob, brush);
   if (ma != NULL) {
     gp_style = ma->gp_style;
   }
@@ -2081,7 +2081,7 @@ void gpencil_populate_multiedit(GPENCIL_e_data *e_data,
       }
     }
     else {
-      gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
+      gpf = BKE_gpencil_layer_frame_get(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
       if (gpf) {
         gpencil_draw_strokes(
             cache, e_data, vedata, ob, gpd, gpl, gpf, gpl->opacity, tintcolor, false, cache_ob);
@@ -2170,7 +2170,7 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
           draw_ctx->depsgraph, scene, ob, gpl, cfra_eval, stl->storage->is_render);
     }
 
-    gpf = BKE_gpencil_layer_getframe(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
+    gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
     if (gpf == NULL) {
       continue;
     }

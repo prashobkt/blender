@@ -296,7 +296,7 @@ bool ED_gpencil_data_owner_is_annotation(PointerRNA *owner_ptr)
 bool ED_gpencil_has_keyframe_v3d(Scene *UNUSED(scene), Object *ob, int cfra)
 {
   if (ob && ob->data && (ob->type == OB_GPENCIL)) {
-    bGPDlayer *gpl = BKE_gpencil_layer_getactive(ob->data);
+    bGPDlayer *gpl = BKE_gpencil_layer_active_get(ob->data);
     if (gpl) {
       if (gpl->actframe) {
         // XXX: assumes that frame has been fetched already
@@ -304,7 +304,7 @@ bool ED_gpencil_has_keyframe_v3d(Scene *UNUSED(scene), Object *ob, int cfra)
       }
       else {
         /* XXX: disabled as could be too much of a penalty */
-        /* return BKE_gpencil_layer_find_frame(gpl, cfra); */
+        /* return BKE_gpencil_layer_frame_find(gpl, cfra); */
       }
     }
   }
@@ -326,7 +326,7 @@ bool gp_add_poll(bContext *C)
 bool gp_active_layer_poll(bContext *C)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   return (gpl != NULL);
 }
@@ -1701,7 +1701,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     }
 
     /* get current drawing color */
-    ma = BKE_gpencil_object_material_get_from_brush(ob, brush);
+    ma = BKE_gpencil_object_material_from_brush_get(ob, brush);
 
     if (ma) {
       gp_style = ma->gp_style;

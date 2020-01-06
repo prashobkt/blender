@@ -362,7 +362,7 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd, const char *name, bool setacti
   /* allocate memory for frame and add to end of list */
   gpl = MEM_callocN(sizeof(bGPDlayer), "bGPDlayer");
 
-  gpl_active = BKE_gpencil_layer_getactive(gpd);
+  gpl_active = BKE_gpencil_layer_active_get(gpd);
 
   /* add to datablock */
   if (gpl_active == NULL) {
@@ -407,7 +407,7 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd, const char *name, bool setacti
 
   /* make this one the active one */
   if (setactive) {
-    BKE_gpencil_layer_setactive(gpd, gpl);
+    BKE_gpencil_layer_active_set(gpd, gpl);
   }
 
   /* return layer */
@@ -483,7 +483,7 @@ void BKE_gpencil_stroke_add_points(bGPDstroke *gps,
 }
 
 /* Create a new stroke, with pre-allocated data buffers */
-bGPDstroke *BKE_gpencil_add_stroke(bGPDframe *gpf, int mat_idx, int totpoints, short thickness)
+bGPDstroke *BKE_gpencil_stroke_add(bGPDframe *gpf, int mat_idx, int totpoints, short thickness)
 {
   /* allocate memory for a new stroke */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
@@ -520,7 +520,7 @@ bGPDstroke *BKE_gpencil_add_stroke(bGPDframe *gpf, int mat_idx, int totpoints, s
 bGPDstroke *BKE_gpencil_add_stroke_existing_style(
     bGPDframe *gpf, bGPDstroke *existing, int mat_idx, int totpoints, short thickness)
 {
-  bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, mat_idx, totpoints, thickness);
+  bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, totpoints, thickness);
   /* Copy run-time color data so that strokes added in the modifier has the style.
    * There are depsgraph reference pointers inside,
    * change the copy function if interfere with future drawing implementation. */
@@ -776,8 +776,8 @@ void BKE_gpencil_frame_delete_laststroke(bGPDlayer *gpl, bGPDframe *gpf)
 
   /* if frame has no strokes after this, delete it */
   if (BLI_listbase_is_empty(&gpf->strokes)) {
-    BKE_gpencil_layer_delframe(gpl, gpf);
-    BKE_gpencil_layer_getframe(gpl, cfra, GP_GETFRAME_USE_PREV);
+    BKE_gpencil_layer_frame_delete(gpl, gpf);
+    BKE_gpencil_layer_frame_get(gpl, cfra, GP_GETFRAME_USE_PREV);
   }
 }
 
@@ -807,7 +807,7 @@ bool gpencil_layer_is_editable(const bGPDlayer *gpl)
 }
 
 /* Look up the gp-frame on the requested frame number, but don't add a new one */
-bGPDframe *BKE_gpencil_layer_find_frame(bGPDlayer *gpl, int cframe)
+bGPDframe *BKE_gpencil_layer_frame_find(bGPDlayer *gpl, int cframe)
 {
   bGPDframe *gpf;
 
@@ -827,7 +827,7 @@ bGPDframe *BKE_gpencil_layer_find_frame(bGPDlayer *gpl, int cframe)
  * - this sets the layer's actframe var (if allowed to)
  * - extension beyond range (if first gp-frame is after all frame in interest and cannot add)
  */
-bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_Mode addnew)
+bGPDframe *BKE_gpencil_layer_frame_get(bGPDlayer *gpl, int cframe, eGP_GetFrame_Mode addnew)
 {
   bGPDframe *gpf = NULL;
   bool found = false;
@@ -970,7 +970,7 @@ bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_M
 }
 
 /* delete the given frame from a layer */
-bool BKE_gpencil_layer_delframe(bGPDlayer *gpl, bGPDframe *gpf)
+bool BKE_gpencil_layer_frame_delete(bGPDlayer *gpl, bGPDframe *gpf)
 {
   bool changed = false;
 
@@ -994,7 +994,7 @@ bool BKE_gpencil_layer_delframe(bGPDlayer *gpl, bGPDframe *gpf)
 }
 
 /* get the active gp-layer for editing */
-bGPDlayer *BKE_gpencil_layer_getactive(bGPdata *gpd)
+bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 {
   bGPDlayer *gpl;
 
@@ -1015,7 +1015,7 @@ bGPDlayer *BKE_gpencil_layer_getactive(bGPdata *gpd)
 }
 
 /* set the active gp-layer */
-void BKE_gpencil_layer_setactive(bGPdata *gpd, bGPDlayer *active)
+void BKE_gpencil_layer_active_set(bGPdata *gpd, bGPDlayer *active)
 {
   bGPDlayer *gpl;
 
@@ -1047,7 +1047,7 @@ void BKE_gpencil_layer_autolock_set(bGPdata *gpd, const bool unlock)
   bGPDlayer *gpl;
 
   if (gpd->flag & GP_DATA_AUTOLOCK_LAYERS) {
-    bGPDlayer *layer_active = BKE_gpencil_layer_getactive(gpd);
+    bGPDlayer *layer_active = BKE_gpencil_layer_active_get(gpd);
 
     /* Lock all other layers */
     for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -1123,7 +1123,7 @@ Material *BKE_gpencil_object_material_ensure_from_brush(Main *bmain, Object *ob,
     Material *ma = BKE_gpencil_brush_material_get(brush);
 
     /* check if the material is already on object material slots and add it if missing */
-    if (ma && BKE_gpencil_object_material_get_index(ob, ma) < 0) {
+    if (ma && BKE_gpencil_object_material_index_get(ob, ma) < 0) {
       BKE_object_material_slot_add(bmain, ob);
       assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
     }
@@ -1142,7 +1142,7 @@ int BKE_gpencil_object_material_ensure(Main *bmain, Object *ob, Material *materi
   if (!material) {
     return -1;
   }
-  int index = BKE_gpencil_object_material_get_index(ob, material);
+  int index = BKE_gpencil_object_material_index_get(ob, material);
   if (index < 0) {
     BKE_object_material_slot_add(bmain, ob);
     assign_material(bmain, ob, material, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
@@ -1171,7 +1171,7 @@ Material *BKE_gpencil_object_material_new(Main *bmain, Object *ob, const char *n
 }
 
 /* Returns the material for a brush with respect to its pinned state. */
-Material *BKE_gpencil_object_material_get_from_brush(Object *ob, Brush *brush)
+Material *BKE_gpencil_object_material_from_brush_get(Object *ob, Brush *brush)
 {
   if ((brush) && (brush->gpencil_settings) &&
       (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED)) {
@@ -1187,7 +1187,7 @@ Material *BKE_gpencil_object_material_get_from_brush(Object *ob, Brush *brush)
 int BKE_gpencil_object_material_get_index_from_brush(Object *ob, Brush *brush)
 {
   if ((brush) && (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED)) {
-    return BKE_gpencil_object_material_get_index(ob, brush->gpencil_settings->material);
+    return BKE_gpencil_object_material_index_get(ob, brush->gpencil_settings->material);
   }
   else {
     return ob->actcol - 1;
@@ -2476,7 +2476,7 @@ void BKE_gpencil_stats_update(bGPdata *gpd)
 }
 
 /* get material index (0-based like mat_nr not actcol) */
-int BKE_gpencil_object_material_get_index(Object *ob, Material *ma)
+int BKE_gpencil_object_material_index_get(Object *ob, Material *ma)
 {
   short *totcol = give_totcolp(ob);
   Material *read_ma = NULL;
@@ -3572,14 +3572,14 @@ void BKE_gpencil_convert_curve(Main *bmain,
   }
 
   if (gpl == NULL) {
-    gpl = BKE_gpencil_layer_getactive(gpd);
+    gpl = BKE_gpencil_layer_active_get(gpd);
     if (gpl == NULL) {
       gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
     }
   }
 
   /* Check if there is an active frame and add if needed. */
-  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_COPY);
+  bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_ADD_COPY);
 
   /* Read all splines of the curve and create a stroke for each. */
   for (Nurb *nu = cu->nurb.first; nu; nu = nu->next) {
@@ -3652,7 +3652,7 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
     bGPDspoint *pt;
     for (int row = 0; row < img_y; row++) {
       /* Create new stroke */
-      bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, 0, img_x, size * 1000);
+      bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, img_x, size * 1000);
       done = true;
       for (int col = 0; col < img_x; col++) {
         IMB_sampleImageAtLocation(ibuf, col, row, true, color);

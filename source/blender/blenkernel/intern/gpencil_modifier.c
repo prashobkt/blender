@@ -461,7 +461,7 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
 
   /* update active frame */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    gpl->actframe = BKE_gpencil_layer_getframe(gpl, ctime, GP_GETFRAME_USE_PREV);
+    gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
   }
 
   if (DEG_is_active(depsgraph)) {
@@ -472,7 +472,7 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
      * when the current frame changes
      */
     for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
-      gpl->actframe = BKE_gpencil_layer_getframe(gpl, ctime, GP_GETFRAME_USE_PREV);
+      gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
     }
   }
 }
@@ -893,7 +893,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     if ((time_remap) && (!simplify_modif)) {
       remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
     }
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
 
     if (gpf == NULL) {
       idx++;

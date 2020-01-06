@@ -312,7 +312,7 @@ static bool gpencil_primitive_add_poll(bContext *C)
   /* don't allow operator to function if the active layer is locked/hidden
    * (BUT, if there isn't an active layer, we are free to add new layer when the time comes)
    */
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   if ((gpl) && (gpl->flag & (GP_LAYER_LOCKED | GP_LAYER_HIDE))) {
     CTX_wm_operator_poll_msg_set(C,
                                  "Primitives cannot be added as active layer is locked or hidden");
@@ -1331,7 +1331,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
     add_frame_mode = GP_GETFRAME_ADD_NEW;
   }
 
-  gpf = BKE_gpencil_layer_getframe(tgpi->gpl, tgpi->cframe, add_frame_mode);
+  gpf = BKE_gpencil_layer_frame_get(tgpi->gpl, tgpi->cframe, add_frame_mode);
 
   /* prepare stroke to get transferred */
   gps = tgpi->gpf->strokes.first;

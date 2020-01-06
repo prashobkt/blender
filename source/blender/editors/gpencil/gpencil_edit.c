@@ -1495,7 +1495,7 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
        *       we are obliged to add a new frame if one
        *       doesn't exist already
        */
-      gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_NEW);
+      gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_ADD_NEW);
       if (gpf) {
         /* Create new stroke */
         bGPDstroke *new_stroke = MEM_dupallocN(gps);
@@ -1514,7 +1514,7 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
 
         /* Remap material */
         Material *ma = BLI_ghash_lookup(new_colors, POINTER_FROM_INT(new_stroke->mat_nr));
-        new_stroke->mat_nr = BKE_gpencil_object_material_get_index(ob, ma);
+        new_stroke->mat_nr = BKE_gpencil_object_material_index_get(ob, ma);
         CLAMP_MIN(new_stroke->mat_nr, 0);
       }
     }
@@ -1625,7 +1625,7 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
 
   /* Paste them all in one go */
   if (strokes.first) {
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(target_layer, CFRA, GP_GETFRAME_ADD_NEW);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(target_layer, CFRA, GP_GETFRAME_ADD_NEW);
 
     BLI_movelisttolist(&gpf->strokes, &strokes);
     BLI_assert((strokes.first == strokes.last) && (strokes.first == NULL));
@@ -1690,7 +1690,7 @@ static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   int cfra = CFRA;
 
-  bGPDlayer *active_gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *active_gpl = BKE_gpencil_layer_active_get(gpd);
 
   const bool all_layers = RNA_boolean_get(op->ptr, "all_layers");
 
@@ -1710,7 +1710,7 @@ static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
     }
 
     /* 1) Check for an existing frame on the current frame */
-    bGPDframe *gpf = BKE_gpencil_layer_find_frame(gpl, cfra);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_find(gpl, cfra);
     if (gpf) {
       /* Shunt all frames after (and including) the existing one later by 1-frame */
       for (; gpf; gpf = gpf->next) {
@@ -1719,7 +1719,7 @@ static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
     }
 
     /* 2) Now add a new frame, with nothing in it */
-    gpl->actframe = BKE_gpencil_layer_getframe(gpl, cfra, GP_GETFRAME_ADD_NEW);
+    gpl->actframe = BKE_gpencil_layer_frame_get(gpl, cfra, GP_GETFRAME_ADD_NEW);
   }
   CTX_DATA_END;
 
@@ -1761,7 +1761,7 @@ void GPENCIL_OT_blank_frame_add(wmOperatorType *ot)
 static bool gp_actframe_delete_poll(bContext *C)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   /* only if there's an active layer with an active frame */
   return (gpl && gpl->actframe);
@@ -1771,11 +1771,11 @@ static bool gp_actframe_delete_poll(bContext *C)
 static int gp_actframe_delete_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   Scene *scene = CTX_data_scene(C);
 
-  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
+  bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_USE_PREV);
 
   /* if there's no existing Grease-Pencil data there, add some */
   if (gpd == NULL) {
@@ -1788,7 +1788,7 @@ static int gp_actframe_delete_exec(bContext *C, wmOperator *op)
   }
 
   /* delete it... */
-  BKE_gpencil_layer_delframe(gpl, gpf);
+  BKE_gpencil_layer_frame_delete(gpl, gpf);
 
   /* notifiers */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
@@ -1832,14 +1832,14 @@ static int gp_actframe_delete_all_exec(bContext *C, wmOperator *op)
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     /* try to get the "active" frame - but only if it actually occurs on this frame */
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_USE_PREV);
 
     if (gpf == NULL) {
       continue;
     }
 
     /* delete it... */
-    BKE_gpencil_layer_delframe(gpl, gpf);
+    BKE_gpencil_layer_frame_delete(gpl, gpf);
 
     /* we successfully modified something */
     success = true;
@@ -2869,7 +2869,7 @@ void GPENCIL_OT_snap_cursor_to_selected(wmOperatorType *ot)
 static int gp_stroke_apply_thickness_exec(bContext *C, wmOperator *UNUSED(op))
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   /* sanity checks */
   if (ELEM(NULL, gpd, gpl, gpl->frames.first)) {
@@ -3274,7 +3274,7 @@ static void gpencil_stroke_join_strokes(bGPDstroke *gps_a,
 static int gp_stroke_join_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *activegpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *activegpl = BKE_gpencil_layer_active_get(gpd);
   bGPDstroke *gps, *gpsn;
   Object *ob = CTX_data_active_object(C);
 
@@ -4228,7 +4228,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 
               /* add frame if not created before */
               if (gpf_dst == NULL) {
-                gpf_dst = BKE_gpencil_layer_getframe(gpl_dst, gpf->framenum, GP_GETFRAME_ADD_NEW);
+                gpf_dst = BKE_gpencil_layer_frame_get(gpl_dst, gpf->framenum, GP_GETFRAME_ADD_NEW);
               }
 
               /* add duplicate materials */
@@ -4289,10 +4289,10 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
     if (gpl) {
       /* try to set a new active layer in source datablock */
       if (gpl->prev) {
-        BKE_gpencil_layer_setactive(gpd_src, gpl->prev);
+        BKE_gpencil_layer_active_set(gpd_src, gpl->prev);
       }
       else if (gpl->next) {
-        BKE_gpencil_layer_setactive(gpd_src, gpl->next);
+        BKE_gpencil_layer_active_set(gpd_src, gpl->next);
       }
       /* unlink from source datablock */
       BLI_remlink(&gpd_src->layers, gpl);
@@ -4769,7 +4769,7 @@ static bool gp_merge_by_distance_poll(bContext *C)
     return false;
   }
 
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   return ((gpl != NULL) && (ob->mode == OB_MODE_EDIT_GPENCIL));
 }
