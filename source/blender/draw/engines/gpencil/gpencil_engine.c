@@ -1682,6 +1682,7 @@ static void GPENCIL_draw_scene_new(void *ved)
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  const DRWContextState *draw_ctx = DRW_context_state_get();
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
 
   if (pd->draw_depth_only) {
@@ -1710,7 +1711,9 @@ static void GPENCIL_draw_scene_new(void *ved)
     GPENCIL_fast_draw_end(vedata);
   }
 
-  GPENCIL_antialiasing_draw(vedata);
+  if (!GPENCIL_SIMPLIFY_AA(draw_ctx->scene)) {
+    GPENCIL_antialiasing_draw(vedata);
+  }
 
   if (dfbl->default_fb) {
     GPU_framebuffer_bind(dfbl->default_fb);
