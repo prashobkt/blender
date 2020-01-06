@@ -1954,7 +1954,7 @@ void ED_gpencil_tpoint_to_point(ARegion *ar, float origin[3], const tGPspoint *t
   /* conversion to 3d format */
   gpencil_stroke_convertcoords(ar, tpt, origin, p3d);
   copy_v3_v3(&pt->x, p3d);
-  zero_v4(&pt->mix_color);
+  zero_v4(pt->mix_color);
 
   pt->pressure = tpt->pressure;
   pt->strength = tpt->strength;
