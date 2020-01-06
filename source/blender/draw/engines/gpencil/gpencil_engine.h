@@ -23,6 +23,8 @@
 #ifndef __GPENCIL_ENGINE_H__
 #define __GPENCIL_ENGINE_H__
 
+#include "DNA_gpencil_types.h"
+
 #include "GPU_batch.h"
 
 extern DrawEngineType draw_engine_gpencil_type;
@@ -55,10 +57,6 @@ struct GPUVertFormat;
 #define GPENCIL_COLOR_PATTERN 2
 
 #define GP_IS_CAMERAVIEW ((rv3d != NULL) && (rv3d->persp == RV3D_CAMOB && v3d->camera))
-
-/* TODO(fclem) grow this number back when grouping different objects' material together
- * is implemented. */
-#define GPENCIL_MATERIAL_BUFFER_LEN 16
 
 /* UBO structure. Watch out for padding. Must match GLSL declaration. */
 typedef struct gpMaterial {
@@ -169,12 +167,12 @@ typedef struct GPENCIL_MaterialPool {
   /* Linklist. */
   struct GPENCIL_MaterialPool *next;
   /* GPU representatin of materials. */
-  gpMaterial mat_data[GPENCIL_MATERIAL_BUFFER_LEN];
+  gpMaterial mat_data[GP_MATERIAL_BUFFER_LEN];
   /* Matching ubo. */
   struct GPUUniformBuffer *ubo;
   /* Texture per material. NULL means none. */
-  struct GPUTexture *tex_fill[GPENCIL_MATERIAL_BUFFER_LEN];
-  struct GPUTexture *tex_stroke[GPENCIL_MATERIAL_BUFFER_LEN];
+  struct GPUTexture *tex_fill[GP_MATERIAL_BUFFER_LEN];
+  struct GPUTexture *tex_stroke[GP_MATERIAL_BUFFER_LEN];
 } GPENCIL_MaterialPool;
 
 typedef struct GPENCIL_LightPool {

@@ -129,7 +129,7 @@ static void gpencil_buffer_add_point(
   vert->v_rot = cosf(pt->uv_rot) * signf(pt->uv_rot);
   vert->thickness = max_ff(0.0f, gps->thickness * pt->pressure) * (round_cap1 ? 1.0 : -1.0);
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
-  vert->mat = (is_endpoint) ? -1 : (gps->mat_nr % GPENCIL_MATERIAL_BUFFER_LEN);
+  vert->mat = (is_endpoint) ? -1 : (gps->mat_nr % GP_MATERIAL_BUFFER_LEN);
 }
 
 static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps)

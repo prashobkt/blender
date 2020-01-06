@@ -36,6 +36,10 @@ struct MDeformVert;
 #define GP_DEFAULT_GRID_LINES 4
 #define GP_MAX_INPUT_SAMPLES 10
 
+/* TODO(fclem) grow this number back when grouping different objects' material together
+ * is implemented. */
+#define GP_MATERIAL_BUFFER_LEN 16
+
 /* ***************************************** */
 /* GP Stroke Points */
 

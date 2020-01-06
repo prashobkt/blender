@@ -115,7 +115,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
 
   GPENCIL_MaterialPool *pool = matpool;
   for (int i = 0; i < ob->totcol; i++) {
-    int mat_id = (i % GPENCIL_MATERIAL_BUFFER_LEN);
+    int mat_id = (i % GP_MATERIAL_BUFFER_LEN);
     if ((i > 0) && (mat_id == 0)) {
       pool->next = gpencil_material_pool_add(pd);
       pool = pool->next;
@@ -216,11 +216,11 @@ void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
                                     GPUUniformBuffer **r_ubo_mat)
 {
   GPENCIL_MaterialPool *matpool = first_pool;
-  int pool_id = mat_id / GPENCIL_MATERIAL_BUFFER_LEN;
+  int pool_id = mat_id / GP_MATERIAL_BUFFER_LEN;
   for (int i = 0; i < pool_id; i++) {
     matpool = matpool->next;
   }
-  mat_id = mat_id % GPENCIL_MATERIAL_BUFFER_LEN;
+  mat_id = mat_id % GP_MATERIAL_BUFFER_LEN;
   *r_ubo_mat = matpool->ubo;
   if (r_tex_fill) {
     *r_tex_fill = matpool->tex_fill[mat_id];

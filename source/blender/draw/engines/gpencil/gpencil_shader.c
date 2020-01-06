@@ -102,7 +102,7 @@ struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data)
             },
         .defs =
             (const char *[]){
-                "#define GPENCIL_MATERIAL_BUFFER_LEN " STRINGIFY(GPENCIL_MATERIAL_BUFFER_LEN) "\n",
+                "#define GP_MATERIAL_BUFFER_LEN " STRINGIFY(GP_MATERIAL_BUFFER_LEN) "\n",
                 "#define GPENCIL_LIGHT_BUFFER_LEN " STRINGIFY(GPENCIL_LIGHT_BUFFER_LEN) "\n",
                 NULL,
             },

@@ -57,11 +57,11 @@ struct gpLight {
 #define GP_LIGHT_TYPE_SUN 2.0
 #define GP_LIGHT_TYPE_AMBIENT 3.0
 
-#ifdef GPENCIL_MATERIAL_BUFFER_LEN
+#ifdef GP_MATERIAL_BUFFER_LEN
 
 layout(std140) uniform gpMaterialBlock
 {
-  gpMaterial materials[GPENCIL_MATERIAL_BUFFER_LEN];
+  gpMaterial materials[GP_MATERIAL_BUFFER_LEN];
 };
 
 #endif
