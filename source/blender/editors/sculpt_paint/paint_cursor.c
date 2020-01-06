@@ -648,7 +648,7 @@ static bool paint_draw_tex_overlay(UnifiedPaintSettings *ups,
       GPU_matrix_translate_2f(-x, -y);
 
       /* scale based on tablet pressure */
-      if (primary && ups->stroke_active && BKE_brush_use_size_pressure(vc->scene, brush)) {
+      if (primary && ups->stroke_active && BKE_brush_use_size_pressure(brush)) {
         const float scale = ups->size_pressure_value;
         GPU_matrix_translate_2f(x, y);
         GPU_matrix_scale_2f(scale, scale);
@@ -778,7 +778,7 @@ static bool paint_draw_cursor_overlay(
     }
 
     /* scale based on tablet pressure */
-    if (ups->stroke_active && BKE_brush_use_size_pressure(vc->scene, brush)) {
+    if (ups->stroke_active && BKE_brush_use_size_pressure(brush)) {
       do_pop = true;
       GPU_matrix_push();
       GPU_matrix_translate_2fv(center);
@@ -1075,7 +1075,7 @@ static void paint_cursor_on_hit(UnifiedPaintSettings *ups,
     unprojected_radius = paint_calc_object_space_radius(vc, location, projected_radius);
 
     /* scale 3D brush radius by pressure */
-    if (ups->stroke_active && BKE_brush_use_size_pressure(vc->scene, brush)) {
+    if (ups->stroke_active && BKE_brush_use_size_pressure(brush)) {
       unprojected_radius *= ups->size_pressure_value;
     }
 
@@ -1329,7 +1329,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
   /* set various defaults */
   const float *outline_col = brush->add_col;
-  const float outline_alpha = 0.7f;
+  const float outline_alpha = brush->add_col[3];
   float translation[2] = {x, y};
   float final_radius = (BKE_brush_size_get(scene, brush) * zoomx);
 
@@ -1362,7 +1362,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
     immUniformColor3fvAlpha(outline_col, outline_alpha);
 
     /* draw brush outline */
-    if (ups->stroke_active && BKE_brush_use_size_pressure(scene, brush)) {
+    if (ups->stroke_active && BKE_brush_use_size_pressure(brush)) {
       imm_draw_circle_wire_2d(
           pos, translation[0], translation[1], final_radius * ups->size_pressure_value, 40);
       /* outer at half alpha */
@@ -1407,8 +1407,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
     immUniformColor3fvAlpha(outline_col, outline_alpha);
 
-    if (ups->stroke_active && BKE_brush_use_size_pressure(scene, brush) &&
-        mode != PAINT_MODE_SCULPT) {
+    if (ups->stroke_active && BKE_brush_use_size_pressure(brush) && mode != PAINT_MODE_SCULPT) {
       imm_draw_circle_wire_3d(
           pos, translation[0], translation[1], final_radius * ups->size_pressure_value, 40);
       /* outer at half alpha */
@@ -1548,16 +1547,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
       }
       else {
         if (vc.obact->sculpt->cache && !vc.obact->sculpt->cache->first_time) {
-          /* Draw cursor location preview when the stroke is active using the data from StrokeCache
-           */
-          float cursor_location[3];
           wmViewport(&ar->winrct);
-          copy_v3_v3(cursor_location, ss->cache->true_location);
-          if (ss->cache->brush->sculpt_tool == SCULPT_TOOL_GRAB) {
-            add_v3_v3(cursor_location, ss->cache->grab_delta);
-          }
-          cursor_draw_point_with_symmetry(
-              pos, ar, cursor_location, sd, vc.obact, ss->cache->radius);
 
           /* Draw cached dynamic mesh preview lines */
           if (brush->sculpt_tool == SCULPT_TOOL_GRAB && (brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) &&
