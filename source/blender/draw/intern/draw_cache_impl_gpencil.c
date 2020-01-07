@@ -555,7 +555,7 @@ static uint32_t gpencil_point_edit_flag(const bGPDspoint *pt, int v, int v_len)
 
 static float gpencil_point_edit_weight(const MDeformVert *dvert, int v, int vgindex)
 {
-  return (dvert && dvert->dw) ? defvert_find_weight(&dvert[v], vgindex) : -1.0f;
+  return (dvert && dvert[v].dw) ? defvert_find_weight(&dvert[v], vgindex) : -1.0f;
 }
 
 static void gpencil_edit_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
