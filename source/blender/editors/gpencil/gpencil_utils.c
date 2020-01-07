@@ -369,7 +369,7 @@ bool gp_active_layer_poll(bContext *C)
     return false;
   }
   bGPdata *gpd = (bGPdata *)ob->data;
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   return (gpl != NULL);
 }

@@ -1770,7 +1770,7 @@ static bool gp_actframe_delete_poll(bContext *C)
 static bool gp_annotation_actframe_delete_poll(bContext *C)
 {
   bGPdata *gpd = ED_annotation_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   /* only if there's an active layer with an active frame */
   return (gpl && gpl->actframe);
@@ -1784,7 +1784,7 @@ static int gp_actframe_delete_exec(bContext *C, wmOperator *op)
   bGPdata *gpd = (!is_annotation) ? ED_gpencil_data_get_active(C) :
                                     ED_annotation_data_get_active(C);
 
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
   Scene *scene = CTX_data_scene(C);
 
