@@ -1779,7 +1779,7 @@ static bool gp_annotation_actframe_delete_poll(bContext *C)
 /* delete active frame - wrapper around API calls */
 static int gp_actframe_delete_exec(bContext *C, wmOperator *op)
 {
-  const int is_annotation = RNA_boolean_get(op->ptr, "is_annotation");
+  const bool is_annotation = STREQ(op->idname, "GPENCIL_OT_annotation_active_frame_delete");
 
   bGPdata *gpd = (!is_annotation) ? ED_gpencil_data_get_active(C) :
                                     ED_annotation_data_get_active(C);
@@ -1812,8 +1812,6 @@ static int gp_actframe_delete_exec(bContext *C, wmOperator *op)
 
 void GPENCIL_OT_active_frame_delete(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* identifiers */
   ot->name = "Delete Active Frame";
   ot->idname = "GPENCIL_OT_active_frame_delete";
@@ -1824,15 +1822,10 @@ void GPENCIL_OT_active_frame_delete(wmOperatorType *ot)
   /* callbacks */
   ot->exec = gp_actframe_delete_exec;
   ot->poll = gp_actframe_delete_poll;
-
-  prop = RNA_def_boolean(ot->srna, "is_annotation", false, "Annotation", "");
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* identifiers */
   ot->name = "Delete Active Frame";
   ot->idname = "GPENCIL_OT_annotation_active_frame_delete";
@@ -1843,9 +1836,6 @@ void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot)
   /* callbacks */
   ot->exec = gp_actframe_delete_exec;
   ot->poll = gp_annotation_actframe_delete_poll;
-
-  prop = RNA_def_boolean(ot->srna, "is_annotation", true, "Annotation", "");
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 /* **************** Delete All Active Frames ****************** */
 
