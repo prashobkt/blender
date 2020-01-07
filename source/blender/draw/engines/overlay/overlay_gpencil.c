@@ -115,8 +115,10 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
       pd->edit_gpencil_wires_grp = grp = DRW_shgroup_create(sh, psl->edit_gpencil_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_bool_copy(grp, "doMultiframe", show_multi_edit_lines);
-      DRW_shgroup_uniform_float_copy(grp, "gpEditOpacity", v3d->vertex_opacity);
+      DRW_shgroup_uniform_bool_copy(grp, "doWeightColor", is_weight_paint);
       DRW_shgroup_uniform_bool_copy(grp, "hideSelect", hide_select);
+      DRW_shgroup_uniform_float_copy(grp, "gpEditOpacity", v3d->vertex_opacity);
+      DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
     }
 
     if (show_points && !hide_select) {
@@ -124,7 +126,9 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
       pd->edit_gpencil_points_grp = grp = DRW_shgroup_create(sh, psl->edit_gpencil_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_bool_copy(grp, "doMultiframe", do_multiedit);
+      DRW_shgroup_uniform_bool_copy(grp, "doWeightColor", is_weight_paint);
       DRW_shgroup_uniform_float_copy(grp, "gpEditOpacity", v3d->vertex_opacity);
+      DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
     }
   }
 }
@@ -133,9 +137,6 @@ static void OVERLAY_edit_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   bGPdata *gpd = (bGPdata *)ob->data;
-  if (gpd == NULL) {
-    return;
-  }
 
   if (pd->edit_gpencil_wires_grp) {
     DRWShadingGroup *grp = DRW_shgroup_create_sub(pd->edit_gpencil_wires_grp);
@@ -159,9 +160,6 @@ static void OVERLAY_edit_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob
 static void OVERLAY_gpencil_color_names(Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  if (gpd == NULL) {
-    return;
-  }
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ViewLayer *view_layer = draw_ctx->view_layer;
@@ -219,7 +217,12 @@ static void OVERLAY_gpencil_color_names(Object *ob)
 
 void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
-  if (ob->mode == OB_MODE_EDIT_GPENCIL) {
+  bGPdata *gpd = (bGPdata *)ob->data;
+  if (gpd == NULL) {
+    return;
+  }
+
+  if (GPENCIL_ANY_MODE(gpd)) {
     OVERLAY_edit_gpencil_cache_populate(vedata, ob);
   }
 

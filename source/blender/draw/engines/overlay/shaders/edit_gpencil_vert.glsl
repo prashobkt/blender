@@ -3,12 +3,15 @@ uniform float normalSize;
 uniform bool doMultiframe;
 uniform bool doStrokeEndpoints;
 uniform bool hideSelect;
+uniform bool doWeightColor;
 uniform float gpEditOpacity;
 uniform vec4 gpEditColor;
+uniform sampler1D weightTex;
 
 in vec3 pos;
 in float ma;
 in uint vflag;
+in float weight;
 
 out vec4 finalColor;
 
@@ -32,6 +35,21 @@ void discard_vert()
 #  define colorSelect (hideSelect ? colorUnselect : colorGpencilVertexSelect)
 #endif
 
+vec3 weight_to_rgb(float t)
+{
+  if (t < 0.0) {
+    /* No weight */
+    return colorUnselect.rgb;
+  }
+  else if (t > 1.0) {
+    /* Error color */
+    return vec3(1.0, 0.0, 1.0);
+  }
+  else {
+    return texture(weightTex, t).rgb;
+  }
+}
+
 void main()
 {
   GPU_INTEL_VERTEX_SHADER_WORKAROUND
@@ -42,13 +60,20 @@ void main()
   bool is_multiframe = (vflag & GP_EDIT_MULTIFRAME) != 0u;
   bool is_stroke_sel = (vflag & GP_EDIT_STROKE_SELECTED) != 0u;
   bool is_point_sel = (vflag & GP_EDIT_POINT_SELECTED) != 0u;
-  finalColor = (is_point_sel) ? colorSelect : colorUnselect;
-  finalColor.a *= gpEditOpacity;
+
+  if (doWeightColor) {
+    finalColor.rgb = weight_to_rgb(weight);
+    finalColor.a = gpEditOpacity;
+  }
+  else {
+    finalColor = (is_point_sel) ? colorSelect : colorUnselect;
+    finalColor.a *= gpEditOpacity;
+  }
 
 #ifdef USE_POINTS
   gl_PointSize = sizeVertex * 2.0;
 
-  if (doStrokeEndpoints) {
+  if (doStrokeEndpoints && !doWeightColor) {
     bool is_stroke_start = (vflag & GP_EDIT_STROKE_START) != 0u;
     bool is_stroke_end = (vflag & GP_EDIT_STROKE_END) != 0u;
 
@@ -62,11 +87,12 @@ void main()
     }
   }
 
-  if (!is_stroke_sel || (!doMultiframe && is_multiframe)) {
+  if ((!is_stroke_sel && !doWeightColor) || (!doMultiframe && is_multiframe)) {
     discard_vert();
   }
 #endif
 
+  /* Discard unwanted padding vertices. */
   if (ma == -1.0 || (is_multiframe && !doMultiframe)) {
     discard_vert();
   }
