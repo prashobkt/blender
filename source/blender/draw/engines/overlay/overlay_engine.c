@@ -152,6 +152,7 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_armature_cache_init(vedata);
   OVERLAY_extra_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
+  OVERLAY_gpencil_cache_init(vedata);
   OVERLAY_grid_cache_init(vedata);
   OVERLAY_image_cache_init(vedata);
   OVERLAY_metaball_cache_init(vedata);
@@ -394,6 +395,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_armature_draw(vedata);
   OVERLAY_particle_draw(vedata);
   OVERLAY_metaball_draw(vedata);
+  OVERLAY_gpencil_draw(vedata);
   OVERLAY_extra_draw(vedata);
 
   if (DRW_state_is_fbo()) {

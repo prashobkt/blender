@@ -74,6 +74,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *extra_blend_ps;
   DRWPass *extra_centers_ps;
   DRWPass *extra_grid_ps;
+  DRWPass *gpencil_canvas_ps;
   DRWPass *facing_ps;
   DRWPass *grid_ps;
   DRWPass *image_background_under_ps;
@@ -410,7 +411,9 @@ void OVERLAY_edit_surf_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_curve_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_gpencil_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_gpencil_draw(OVERLAY_Data *vedata);
 void OVERLAY_edit_gpencil_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_edit_lattice_cache_init(OVERLAY_Data *vedata);
@@ -556,6 +559,7 @@ GPUShader *OVERLAY_shader_extra_wire(bool use_object);
 GPUShader *OVERLAY_shader_extra_loose_point(void);
 GPUShader *OVERLAY_shader_extra_point(void);
 GPUShader *OVERLAY_shader_facing(void);
+GPUShader *OVERLAY_shader_gpencil_canvas(void);
 GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_image(void);
 GPUShader *OVERLAY_shader_motion_path_line(void);

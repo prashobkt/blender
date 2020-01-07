@@ -53,6 +53,7 @@ extern char datatoc_edit_curve_handle_vert_glsl[];
 extern char datatoc_edit_curve_point_vert_glsl[];
 extern char datatoc_edit_curve_wire_vert_glsl[];
 extern char datatoc_edit_gpencil_vert_glsl[];
+extern char datatoc_edit_gpencil_canvas_vert_glsl[];
 extern char datatoc_edit_lattice_point_vert_glsl[];
 extern char datatoc_edit_lattice_wire_vert_glsl[];
 extern char datatoc_edit_mesh_common_lib_glsl[];
@@ -159,6 +160,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *extra_lightprobe_grid;
   GPUShader *extra_loose_point;
   GPUShader *facing;
+  GPUShader *gpencil_canvas;
   GPUShader *grid;
   GPUShader *image;
   GPUShader *motion_path_line;
@@ -894,6 +896,21 @@ GPUShader *OVERLAY_shader_facing(void)
     });
   }
   return sh_data->facing;
+}
+
+GPUShader *OVERLAY_shader_gpencil_canvas(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->gpencil_canvas) {
+    sh_data->gpencil_canvas = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_gpencil_canvas_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_common_view_lib_glsl, datatoc_extra_frag_glsl, NULL},
+    });
+  }
+  return sh_data->gpencil_canvas;
 }
 
 GPUShader *OVERLAY_shader_grid(void)

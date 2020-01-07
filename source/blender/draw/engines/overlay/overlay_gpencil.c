@@ -58,9 +58,10 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   View3D *v3d = draw_ctx->v3d;
   Object *ob = draw_ctx->obact;
   bGPdata *gpd = (bGPdata *)ob->data;
-  ToolSettings *ts = draw_ctx->scene->toolsettings;
+  Scene *scene = draw_ctx->scene;
+  ToolSettings *ts = scene->toolsettings;
 
-  if (gpd == NULL) {
+  if (ob->type != OB_GPENCIL || gpd == NULL) {
     return;
   }
 
@@ -101,11 +102,7 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
                            (GPENCIL_EDIT_MODE(gpd) &&
                             (ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE));
 
-  if (GPENCIL_VERTEX_MODE(gpd) && !use_vertex_mask && !show_multi_edit_lines) {
-    return;
-  }
-
-  {
+  if (!GPENCIL_VERTEX_MODE(gpd) || use_vertex_mask || show_multi_edit_lines) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->edit_gpencil_ps, state | pd->clipping_state);
@@ -130,6 +127,92 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "gpEditOpacity", v3d->vertex_opacity);
       DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
     }
+  }
+}
+
+void OVERLAY_gpencil_cache_init(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+  struct GPUShader *sh;
+  DRWShadingGroup *grp;
+
+  /* Default: Display nothing. */
+  psl->gpencil_canvas_ps = NULL;
+
+  /* REFACTOR(fclem) remove */
+  if (G.debug_value != 50) {
+    return;
+  }
+
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  View3D *v3d = draw_ctx->v3d;
+  Object *ob = draw_ctx->obact;
+  bGPdata *gpd = (bGPdata *)ob->data;
+  Scene *scene = draw_ctx->scene;
+  ToolSettings *ts = scene->toolsettings;
+  const View3DCursor *cursor = &scene->cursor;
+
+  if (ob->type != OB_GPENCIL || gpd == NULL) {
+    return;
+  }
+
+  const bool show_overlays = (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0;
+  const bool show_grid = (v3d->gp_flag & V3D_GP_SHOW_GRID) != 0;
+
+  if (show_grid && show_overlays) {
+    const char *grid_unit = NULL;
+    float mat[4][4];
+    float col_grid[4];
+    float size[2];
+
+    /* set color */
+    copy_v3_v3(col_grid, gpd->grid.color);
+    col_grid[3] = max_ff(v3d->overlay.gpencil_grid_opacity, 0.01f);
+
+    copy_m4_m4(mat, ob->obmat);
+
+    float viewinv[4][4];
+    /* Set the grid in the selected axis */
+    switch (ts->gp_sculpt.lock_axis) {
+      case GP_LOCKAXIS_X:
+        swap_v4_v4(mat[0], mat[2]);
+        break;
+      case GP_LOCKAXIS_Y:
+        swap_v4_v4(mat[1], mat[2]);
+        break;
+      case GP_LOCKAXIS_Z:
+        /* Default. */
+        break;
+      case GP_LOCKAXIS_CURSOR:
+        loc_eul_size_to_mat4(mat, cursor->location, cursor->rotation_euler, (float[3]){1, 1, 1});
+        break;
+      case GP_LOCKAXIS_VIEW:
+        /* view aligned */
+        DRW_view_viewmat_get(NULL, viewinv, true);
+        copy_v3_v3(mat[0], viewinv[0]);
+        copy_v3_v3(mat[1], viewinv[1]);
+        break;
+    }
+
+    translate_m4(mat, gpd->grid.offset[0], gpd->grid.offset[1], 0.0f);
+    mul_v2_v2fl(size, gpd->grid.scale, 2.0f * ED_scene_grid_scale(scene, &grid_unit));
+    rescale_m4(mat, (float[3]){size[0], size[1], 0.0f});
+
+    const int gridlines = (gpd->grid.lines <= 0) ? 1 : gpd->grid.lines;
+    int line_ct = gridlines * 4 + 2;
+
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->gpencil_canvas_ps, state);
+
+    sh = OVERLAY_shader_gpencil_canvas();
+    grp = DRW_shgroup_create(sh, psl->gpencil_canvas_ps);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", col_grid);
+    DRW_shgroup_uniform_vec3_copy(grp, "xAxis", mat[0]);
+    DRW_shgroup_uniform_vec3_copy(grp, "yAxis", mat[1]);
+    DRW_shgroup_uniform_vec3_copy(grp, "origin", mat[3]);
+    DRW_shgroup_uniform_int_copy(grp, "halfLineCount", line_ct / 2);
+    DRW_shgroup_call_procedural_lines(grp, NULL, line_ct);
   }
 }
 
@@ -233,6 +316,15 @@ void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
     if ((ob->dtx & OB_DRAWNAME) && (ob->mode == OB_MODE_EDIT_GPENCIL) && DRW_state_show_text()) {
       OVERLAY_gpencil_color_names(ob);
     }
+  }
+}
+
+void OVERLAY_gpencil_draw(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+
+  if (psl->gpencil_canvas_ps) {
+    DRW_draw_pass(psl->gpencil_canvas_ps);
   }
 }
 
