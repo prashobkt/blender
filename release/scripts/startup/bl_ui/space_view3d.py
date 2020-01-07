@@ -740,7 +740,14 @@ class VIEW3D_HT_header(Header):
                 row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_segment", text="")
 
-            if gpd.use_stroke_edit_mode or gpd.is_stroke_sculpt_mode or gpd.is_stroke_weight_mode:
+            # Select mode for Vertex Paint
+            if gpd.is_stroke_vertex_mode:
+                row = layout.row(align=True)
+                row.prop(tool_settings, "use_gpencil_vertex_select_mask_point", text="")
+                row.prop(tool_settings, "use_gpencil_vertex_select_mask_stroke", text="")
+                row.prop(tool_settings, "use_gpencil_vertex_select_mask_segment", text="")
+
+            if gpd.use_stroke_edit_mode or gpd.is_stroke_sculpt_mode or gpd.is_stroke_weight_mode or gpd.is_stroke_vertex_mode:
                 row = layout.row(align=True)
                 row.prop(gpd, "use_multiedit", text="", icon='GP_MULTIFRAME_EDITING')
 
@@ -6468,12 +6475,16 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         sub.prop(overlay, "gpencil_paper_opacity", text="Fade Objects", slider=True)
         sub.prop(overlay, "use_gpencil_fade_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
-        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
+        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
             layout.prop(overlay, "use_gpencil_multiedit_line_only", text="Show Edit Lines only in multiframe")
+
+        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "vertex_opacity", text="Vertex Opacity", slider=True)
 
-        layout.prop(overlay, "gpencil_vertex_paint_opacity", slider=True)
+        if context.object.mode in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
+            layout.label(text="Vertex Paint")
+            layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
 
 
 class VIEW3D_PT_quad_view(Panel):
@@ -6792,10 +6803,22 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
     bl_label = "Draw Context Menu"
 
     def draw(self, context):
-        brush = context.tool_settings.gpencil_paint.brush
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
         gp_settings = brush.gpencil_settings
 
         layout = self.layout
+
+        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.use_vertex_color:
+            split = layout.split(factor=0.1)
+            split.prop(brush, "color", text="")
+            split.template_color_picker(brush, "color", value_slider=True)
+
+            col = layout.column()
+            col.separator()
+            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
+            col.separator()
 
         if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
             layout.prop(brush, "size", slider=True)
