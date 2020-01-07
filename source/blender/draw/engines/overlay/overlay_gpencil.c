@@ -57,11 +57,11 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
   Object *ob = draw_ctx->obact;
-  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
   Scene *scene = draw_ctx->scene;
   ToolSettings *ts = scene->toolsettings;
 
-  if (ob->type != OB_GPENCIL || gpd == NULL) {
+  if (gpd == NULL || ob->type != OB_GPENCIL) {
     return;
   }
 
@@ -152,12 +152,12 @@ void OVERLAY_gpencil_cache_init(OVERLAY_Data *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
   Object *ob = draw_ctx->obact;
-  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
   Scene *scene = draw_ctx->scene;
   ToolSettings *ts = scene->toolsettings;
   const View3DCursor *cursor = &scene->cursor;
 
-  if (ob->type != OB_GPENCIL || gpd == NULL) {
+  if (gpd == NULL || ob->type != OB_GPENCIL) {
     return;
   }
 
