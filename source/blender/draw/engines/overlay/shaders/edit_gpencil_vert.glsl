@@ -2,6 +2,7 @@
 uniform float normalSize;
 uniform bool doMultiframe;
 uniform bool doStrokeEndpoints;
+uniform bool hideSelect;
 uniform float gpEditOpacity;
 uniform vec4 gpEditColor;
 
@@ -25,8 +26,10 @@ void discard_vert()
 
 #ifdef USE_POINTS
 #  define colorUnselect colorGpencilVertex
+#  define colorSelect colorGpencilVertexSelect
 #else
 #  define colorUnselect gpEditColor
+#  define colorSelect (hideSelect ? colorUnselect : colorGpencilVertexSelect)
 #endif
 
 void main()
@@ -39,7 +42,7 @@ void main()
   bool is_multiframe = (vflag & GP_EDIT_MULTIFRAME) != 0u;
   bool is_stroke_sel = (vflag & GP_EDIT_STROKE_SELECTED) != 0u;
   bool is_point_sel = (vflag & GP_EDIT_POINT_SELECTED) != 0u;
-  finalColor = (is_point_sel) ? colorGpencilVertexSelect : colorUnselect;
+  finalColor = (is_point_sel) ? colorSelect : colorUnselect;
   finalColor.a *= gpEditOpacity;
 
 #ifdef USE_POINTS

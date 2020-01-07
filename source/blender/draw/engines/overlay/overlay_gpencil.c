@@ -64,8 +64,8 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
     return;
   }
 
-  // const bool use_sculpt_mask = (GPENCIL_SCULPT_MODE(gpd) &&
-  //                               GPENCIL_ANY_SCULPT_MASK(ts->gpencil_selectmode_sculpt));
+  const bool use_sculpt_mask = (GPENCIL_SCULPT_MODE(gpd) &&
+                                GPENCIL_ANY_SCULPT_MASK(ts->gpencil_selectmode_sculpt));
   const bool show_sculpt_points = (GPENCIL_SCULPT_MODE(gpd) &&
                                    (ts->gpencil_selectmode_sculpt &
                                     (GP_SCULPT_MASK_SELECTMODE_POINT |
@@ -87,8 +87,8 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   const bool is_vertex_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_VERTEXMODE);
 
   /* If Sculpt/Vertex mode and the mask is disabled, the select must be hidden. */
-  // const bool hide_select = ((GPENCIL_SCULPT_MODE(gpd) && !use_sculpt_mask) ||
-  //                           (GPENCIL_VERTEX_MODE(gpd) && !use_vertex_mask));
+  const bool hide_select = ((GPENCIL_SCULPT_MODE(gpd) && !use_sculpt_mask) ||
+                            (GPENCIL_VERTEX_MODE(gpd) && !use_vertex_mask));
 
   /* Show Edit points if:
    *  Edit mode: Not in Stroke selection mode
@@ -116,9 +116,10 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_bool_copy(grp, "doMultiframe", show_multi_edit_lines);
       DRW_shgroup_uniform_float_copy(grp, "gpEditOpacity", v3d->vertex_opacity);
+      DRW_shgroup_uniform_bool_copy(grp, "hideSelect", hide_select);
     }
 
-    if (show_points) {
+    if (show_points && !hide_select) {
       sh = OVERLAY_shader_edit_gpencil_point();
       pd->edit_gpencil_points_grp = grp = DRW_shgroup_create(sh, psl->edit_gpencil_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
