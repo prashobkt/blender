@@ -51,6 +51,10 @@ void main()
 {
 #ifdef USE_GPENCIL
   gpencil_vertex();
+#  ifdef USE_WORLD_CLIP_PLANES
+  vec3 world_pos = point_object_to_world(pos1.xyz);
+#  endif
+
 #else
   vec3 world_pos = point_object_to_world(pos);
   gl_Position = point_world_to_ndc(world_pos);
