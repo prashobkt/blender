@@ -186,6 +186,12 @@ static void OVERLAY_outline_gpencil(OVERLAY_PrivateData *pd, Object *ob)
   if (G.debug_value != 50) {
     return;
   }
+  /* No outlines in edit mode. */
+  bGPdata *gpd = (bGPdata *)ob->data;
+  if (gpd && GPENCIL_ANY_MODE(gpd)) {
+    return;
+  }
+
   iterData iter = {
       .ob = ob,
       .stroke_grp = pd->outlines_gpencil_grp,
