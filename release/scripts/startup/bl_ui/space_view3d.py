@@ -6437,6 +6437,7 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
             'EDIT_GPENCIL': "Edit Grease Pencil",
             'SCULPT_GPENCIL': "Sculpt Grease Pencil",
             'WEIGHT_GPENCIL': "Weight Grease Pencil",
+            'VERTEX_GPENCIL': "Vertex Grease Pencil",
             'OBJECT': "Grease Pencil",
         }[context.mode])
 
@@ -6471,6 +6472,8 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
             layout.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
             layout.prop(overlay, "use_gpencil_multiedit_line_only", text="Show Edit Lines only in multiframe")
             layout.prop(overlay, "vertex_opacity", text="Vertex Opacity", slider=True)
+
+        layout.prop(overlay, "gpencil_vertex_paint_opacity", slider=True)
 
 
 class VIEW3D_PT_quad_view(Panel):
