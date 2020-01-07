@@ -234,6 +234,8 @@ static void blo_update_defaults_screen(bScreen *screen,
           View3D *v3d = sa->spacedata.first;
           /* Set Vertex Color by default. */
           v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
+          /* Enable Annotations. */
+          v3d->flag2 |= V3D_SHOW_ANNOTATION;
         }
       }
     }
