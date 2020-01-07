@@ -137,6 +137,8 @@ static void OVERLAY_edit_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   bGPdata *gpd = (bGPdata *)ob->data;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  View3D *v3d = draw_ctx->v3d;
 
   if (pd->edit_gpencil_wires_grp) {
     DRWShadingGroup *grp = DRW_shgroup_create_sub(pd->edit_gpencil_wires_grp);
@@ -147,7 +149,7 @@ static void OVERLAY_edit_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob
   }
 
   if (pd->edit_gpencil_points_grp) {
-    const bool show_direction = (gpd->flag & GP_DATA_SHOW_DIRECTION) != 0;
+    const bool show_direction = (v3d->gp_flag & V3D_GP_SHOW_STROKE_DIRECTION) != 0;
 
     DRWShadingGroup *grp = DRW_shgroup_create_sub(pd->edit_gpencil_points_grp);
     DRW_shgroup_uniform_float_copy(grp, "doStrokeEndpoints", show_direction);

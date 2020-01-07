@@ -3713,6 +3713,14 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
       prop, "Fade Grease Pencil Objects", "Fade Grease Pencil Objects, except the active one");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
 
+  prop = RNA_def_property(srna, "use_gpencil_show_directions", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "gp_flag", V3D_GP_SHOW_STROKE_DIRECTION);
+  RNA_def_property_ui_text(prop,
+                           "Strokes Directions",
+                           "Show stroke drawing direction with a bigger green dot (start) "
+                           "and smaller red dot (end) points");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
+
   prop = RNA_def_property(srna, "gpencil_grid_opacity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "overlay.gpencil_grid_opacity");
   RNA_def_property_range(prop, 0.1f, 1.0f);

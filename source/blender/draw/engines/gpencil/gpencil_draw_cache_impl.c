@@ -865,7 +865,7 @@ void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
   gpencil_vbo_ensure_size(be, gps->totpoints);
 
   /* Draw start and end point differently if enabled stroke direction hint */
-  bool show_direction_hint = (dflag & GP_DATA_SHOW_DIRECTION) && (gps->totpoints > 1);
+  bool show_direction_hint = false;
 
   /* Draw all the stroke points (selected or not) */
   bGPDspoint *pt = gps->points;

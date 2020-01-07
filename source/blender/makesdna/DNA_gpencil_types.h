@@ -612,8 +612,6 @@ typedef enum eGPdata_Flag {
 
   /* Main flag to switch onion skinning on/off */
   GP_DATA_SHOW_ONIONSKINS = (1 << 9),
-  /* Draw a green and red point to indicate start and end of the stroke */
-  GP_DATA_SHOW_DIRECTION = (1 << 10),
 
   /* Batch drawing cache need to be recalculated */
   GP_DATA_CACHE_IS_DIRTY = (1 << 11),

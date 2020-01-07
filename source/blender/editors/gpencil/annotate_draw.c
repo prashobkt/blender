@@ -709,31 +709,12 @@ static void annotation_draw_strokes_edit(bGPdata *gpd,
 
     immBegin(GPU_PRIM_POINTS, gps->totpoints);
 
-    /* Draw start and end point differently if enabled stroke direction hint */
-    bool show_direction_hint = (gpd->flag & GP_DATA_SHOW_DIRECTION) && (gps->totpoints > 1);
-
     /* Draw all the stroke points (selected or not) */
     bGPDspoint *pt = gps->points;
     for (int i = 0; i < gps->totpoints; i++, pt++) {
       /* size and color first */
-      if (show_direction_hint && i == 0) {
-        /* start point in green bigger */
-        immAttr3f(color, 0.0f, 1.0f, 0.0f);
-        immAttr1f(size, vsize + 4);
-      }
-      else if (show_direction_hint && (i == gps->totpoints - 1)) {
-        /* end point in red smaller */
-        immAttr3f(color, 1.0f, 0.0f, 0.0f);
-        immAttr1f(size, vsize + 1);
-      }
-      else if (pt->flag & GP_SPOINT_SELECT) {
-        immAttr3fv(color, selectColor);
-        immAttr1f(size, vsize);
-      }
-      else {
-        immAttr3fv(color, gpl->color);
-        immAttr1f(size, bsize);
-      }
+      immAttr3fv(color, gpl->color);
+      immAttr1f(size, bsize);
 
       /* then position */
       if (gps->flag & GP_STROKE_3DSPACE) {

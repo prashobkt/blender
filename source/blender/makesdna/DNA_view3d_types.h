@@ -407,6 +407,7 @@ typedef struct View3D {
 #define V3D_GP_SHOW_ONION_SKIN (1 << 4)       /* main switch at view level */
 #define V3D_GP_FADE_NOACTIVE_LAYERS (1 << 5)  /* fade layers not active */
 #define V3D_GP_FADE_NOACTIVE_GPENCIL (1 << 6) /* Fade other GPencil objects */
+#define V3D_GP_SHOW_STROKE_DIRECTION (1 << 7) /* Show Strokes Directions */
 
 /** #View3DShading.light */
 enum {

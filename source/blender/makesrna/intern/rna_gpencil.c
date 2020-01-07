@@ -1810,14 +1810,6 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_update(
       prop, NC_SCREEN | NC_SCENE | ND_TOOLSETTINGS | ND_DATA | NC_GPENCIL, "rna_GPencil_update");
 
-  prop = RNA_def_property(srna, "show_stroke_direction", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_DATA_SHOW_DIRECTION);
-  RNA_def_property_ui_text(prop,
-                           "Show Direction",
-                           "Show stroke drawing direction with a bigger green dot (start) "
-                           "and smaller red dot (end) points");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
-
   prop = RNA_def_property(srna, "stroke_thickness_space", PROP_ENUM, PROP_NONE); /* as an enum */
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "flag");
   RNA_def_property_enum_items(prop, stroke_thickness_items);
