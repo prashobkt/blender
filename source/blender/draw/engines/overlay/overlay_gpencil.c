@@ -47,6 +47,7 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   /* Default: Display nothing. */
   pd->edit_gpencil_points_grp = NULL;
   pd->edit_gpencil_wires_grp = NULL;
+  psl->edit_gpencil_ps = NULL;
 
   /* REFACTOR(fclem) remove */
   if (G.debug_value != 50) {
@@ -233,10 +234,7 @@ void OVERLAY_edit_gpencil_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
 
-  /* REFACTOR(fclem) remove */
-  if (G.debug_value != 50) {
-    return;
+  if (psl->edit_gpencil_ps) {
+    DRW_draw_pass(psl->edit_gpencil_ps);
   }
-
-  DRW_draw_pass(psl->edit_gpencil_ps);
 }
