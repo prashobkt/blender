@@ -429,6 +429,9 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
               100.0f;
   float inf_fill = (gso->pressure * brush->gpencil_settings->draw_strength) / 1000.0f;
 
+  CLAMP(inf, 0.0f, 1.0f);
+  CLAMP(inf_fill, 0.0f, 1.0f);
+
   bGPDspoint *pt = &gps->points[pt_index];
 
   float alpha = pt->mix_color[3];
