@@ -983,7 +983,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   gps->dvert = NULL;
 
   /* initialize triangle memory to dummy data */
-  gps->triangles = MEM_callocN(sizeof(bGPDtriangle), "GP Stroke triangulation");
+  gps->triangles = NULL;
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->tot_triangles = 0;
   /* drawing batch cache is dirty now */
