@@ -3722,7 +3722,23 @@ void BKE_gpencil_visible_stroke_iter(
       continue;
     }
 
-    if (is_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN)) {
+    if (is_multiedit) {
+      sta_gpf = end_gpf = NULL;
+      /* Check the whole range and tag the editable frames. */
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        if (gpf == act_gpf || (gpf->flag & GP_FRAME_SELECT)) {
+          gpf->runtime.onion_id = 0;
+          if (sta_gpf == NULL) {
+            sta_gpf = gpf;
+          }
+          end_gpf = gpf->next;
+        }
+        else {
+          gpf->runtime.onion_id = INT_MAX;
+        }
+      }
+    }
+    else if (is_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN)) {
       if (act_gpf) {
         bGPDframe *last_gpf = gpl->frames.last;
 
@@ -3761,22 +3777,6 @@ void BKE_gpencil_visible_stroke_iter(
 
       sta_gpf = gpl->frames.first;
       end_gpf = NULL;
-    }
-    else if (is_multiedit) {
-      sta_gpf = end_gpf = NULL;
-      /* Check the whole range and tag the editable frames. */
-      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-        if (gpf == act_gpf || (gpf->flag & GP_FRAME_SELECT)) {
-          gpf->runtime.onion_id = 0;
-          if (sta_gpf == NULL) {
-            sta_gpf = gpf;
-          }
-          end_gpf = gpf->next;
-        }
-        else {
-          gpf->runtime.onion_id = INT_MAX;
-        }
-      }
     }
     else {
       /* Bypass multiedit/onion skinning. */
