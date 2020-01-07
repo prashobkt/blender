@@ -2196,6 +2196,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'VERTEX_GPENCIL': [
             _defs_gpencil_vertex.generate_from_brushes,
             None,
+            *_tools_annotate,
+            None,
             lambda context: (
                 VIEW3D_PT_tools_active._tools_gpencil_select
                 if _defs_gpencil_vertex.poll_select_mask(context)
