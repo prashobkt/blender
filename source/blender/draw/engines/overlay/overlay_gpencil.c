@@ -79,6 +79,7 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   const bool show_multi_edit_lines = do_multiedit &&
                                      (v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) != 0;
 
+  const bool show_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES);
   const bool hide_lines = GPENCIL_VERTEX_MODE(gpd) && use_vertex_mask && !show_multi_edit_lines;
 
   const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
@@ -104,21 +105,24 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   }
 
   {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+                     DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->edit_gpencil_ps, state | pd->clipping_state);
+
+    if (show_lines && !hide_lines) {
+      sh = OVERLAY_shader_edit_gpencil_wire();
+      pd->edit_gpencil_wires_grp = grp = DRW_shgroup_create(sh, psl->edit_gpencil_ps);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_bool_copy(grp, "doMultiframe", show_multi_edit_lines);
+      DRW_shgroup_uniform_float_copy(grp, "gpEditOpacity", v3d->vertex_opacity);
+    }
 
     if (show_points) {
       sh = OVERLAY_shader_edit_gpencil_point();
       pd->edit_gpencil_points_grp = grp = DRW_shgroup_create(sh, psl->edit_gpencil_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_bool_copy(grp, "doMultiframe", do_multiedit);
-    }
-
-    if (!hide_lines) {
-      sh = OVERLAY_shader_edit_gpencil_wire();
-      pd->edit_gpencil_wires_grp = grp = DRW_shgroup_create(sh, psl->edit_gpencil_ps);
-      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_bool_copy(grp, "doMultiframe", show_multi_edit_lines);
+      DRW_shgroup_uniform_float_copy(grp, "gpEditOpacity", v3d->vertex_opacity);
     }
   }
 }
@@ -126,15 +130,27 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
 static void OVERLAY_edit_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
+  bGPdata *gpd = (bGPdata *)ob->data;
+  if (gpd == NULL) {
+    return;
+  }
 
   if (pd->edit_gpencil_wires_grp) {
+    DRWShadingGroup *grp = DRW_shgroup_create_sub(pd->edit_gpencil_wires_grp);
+    DRW_shgroup_uniform_vec4_copy(grp, "gpEditColor", gpd->line_color);
+
     struct GPUBatch *geom = DRW_cache_gpencil_edit_lines_get(ob, pd->cfra);
     DRW_shgroup_call_no_cull(pd->edit_gpencil_wires_grp, geom, ob);
   }
 
   if (pd->edit_gpencil_points_grp) {
+    const bool show_direction = (gpd->flag & GP_DATA_SHOW_DIRECTION) != 0;
+
+    DRWShadingGroup *grp = DRW_shgroup_create_sub(pd->edit_gpencil_points_grp);
+    DRW_shgroup_uniform_float_copy(grp, "doStrokeEndpoints", show_direction);
+
     struct GPUBatch *geom = DRW_cache_gpencil_edit_points_get(ob, pd->cfra);
-    DRW_shgroup_call_no_cull(pd->edit_gpencil_points_grp, geom, ob);
+    DRW_shgroup_call_no_cull(grp, geom, ob);
   }
 }
 

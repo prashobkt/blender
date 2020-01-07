@@ -24,8 +24,10 @@
 #include "BLI_polyfill_2d.h"
 
 #include "DNA_gpencil_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_screen_types.h"
 
+#include "BKE_deform.h"
 #include "BKE_gpencil.h"
 
 #include "DRW_engine.h"
@@ -239,17 +241,24 @@ static GPUVertFormat *gpencil_stroke_format(void)
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    /* IMPORTANT: This means having only 4 attributes to fit into opengl limit of 16 attrib. */
+    /* IMPORTANT: This means having only 4 attributes to fit into GPU module limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
   }
   return &format;
 }
+
+/* MUST match the format below. */
+typedef struct gpEditVert {
+  int vflag;
+  float weight;
+} gpEditVert;
 
 static GPUVertFormat *gpencil_edit_stroke_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "vflag", GPU_COMP_U32, 1, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "weight", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
   return &format;
 }
@@ -527,10 +536,26 @@ bool DRW_cache_gpencil_sbuffer_get(Object *ob,
 #define GP_EDIT_POINT_SELECTED (1 << 0)
 #define GP_EDIT_STROKE_SELECTED (1 << 1)
 #define GP_EDIT_MULTIFRAME (1 << 2)
+#define GP_EDIT_STROKE_START (1 << 3)
+#define GP_EDIT_STROKE_END (1 << 4)
 
-static uint32_t gpencil_point_edit_flag(const bGPDspoint *pt)
+typedef struct gpEditIterData {
+  gpEditVert *verts;
+  int vgindex;
+} gpEditIterData;
+
+static uint32_t gpencil_point_edit_flag(const bGPDspoint *pt, int v, int v_len)
 {
-  return (pt->flag & GP_SPOINT_SELECT) ? GP_EDIT_POINT_SELECTED : 0;
+  uint32_t sflag = 0;
+  SET_FLAG_FROM_TEST(sflag, pt->flag & GP_SPOINT_SELECT, GP_EDIT_POINT_SELECTED);
+  SET_FLAG_FROM_TEST(sflag, v == 0, GP_EDIT_STROKE_START);
+  SET_FLAG_FROM_TEST(sflag, v == (v_len - 1), GP_EDIT_STROKE_END);
+  return sflag;
+}
+
+static float gpencil_point_edit_weight(const MDeformVert *dvert, int v, int vgindex)
+{
+  return (dvert && dvert->dw) ? defvert_find_weight(&dvert[v], vgindex) : 0.0f;
 }
 
 static void gpencil_edit_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
@@ -538,19 +563,24 @@ static void gpencil_edit_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
                                         bGPDstroke *gps,
                                         void *thunk)
 {
-  uint32_t *vflag_ptr = (uint32_t *)thunk;
+  gpEditIterData *iter = (gpEditIterData *)thunk;
   const int v_len = gps->totpoints;
   const int v = gps->runtime.stroke_start + 1;
+  MDeformVert *dvert = ((iter->vgindex > -1) && gps->dvert) ? gps->dvert : NULL;
+  gpEditVert *vert_ptr = iter->verts + v;
 
   uint32_t sflag = 0;
   SET_FLAG_FROM_TEST(sflag, gps->flag & GP_STROKE_SELECT, GP_EDIT_STROKE_SELECTED);
   SET_FLAG_FROM_TEST(sflag, gpf->runtime.onion_id != 0.0f, GP_EDIT_MULTIFRAME);
 
   for (int i = 0; i < v_len; i++) {
-    vflag_ptr[v + i] = sflag | gpencil_point_edit_flag(&gps->points[i]);
+    vert_ptr->vflag = sflag | gpencil_point_edit_flag(&gps->points[i], i, v_len);
+    vert_ptr->weight = gpencil_point_edit_weight(dvert, i, iter->vgindex);
+    vert_ptr++;
   }
   /* Draw line to first point to complete the loop for cyclic strokes. */
-  vflag_ptr[v + v_len] = sflag | gpencil_point_edit_flag(&gps->points[0]);
+  vert_ptr->vflag = sflag | gpencil_point_edit_flag(&gps->points[0], 0, v_len);
+  vert_ptr->weight = gpencil_point_edit_weight(dvert, 0, iter->vgindex);
 }
 
 static void gpencil_edit_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfra)
@@ -569,16 +599,21 @@ static void gpencil_edit_batches_ensure(Object *ob, GpencilBatchCache *cache, in
     BLI_assert(cache->vbo);
     int vert_len = cache->vbo->vertex_len;
 
+    gpEditIterData iter;
+    iter.vgindex = ob->actdef - 1;
+    if (!BLI_findlink(&ob->defbase, iter.vgindex)) {
+      iter.vgindex = -1;
+    }
+
     /* Create VBO. */
     GPUVertFormat *format = gpencil_edit_stroke_format();
     cache->edit_vbo = GPU_vertbuf_create_with_format(format);
     /* Add extra space at the end of the buffer because of quad load. */
     GPU_vertbuf_data_alloc(cache->edit_vbo, vert_len);
-    uint32_t *vflag_ptr = (uint32_t *)cache->edit_vbo->data;
+    iter.verts = (gpEditVert *)cache->edit_vbo->data;
 
     /* Fill buffers with data. */
-    BKE_gpencil_visible_stroke_iter(
-        ob, NULL, gpencil_edit_stroke_iter_cb, vflag_ptr, do_onion, cfra);
+    BKE_gpencil_visible_stroke_iter(ob, NULL, gpencil_edit_stroke_iter_cb, &iter, do_onion, cfra);
 
     /* Create the batches */
     cache->edit_points_batch = GPU_batch_create(GPU_PRIM_POINTS, cache->vbo, NULL);
