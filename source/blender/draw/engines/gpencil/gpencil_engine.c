@@ -357,7 +357,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   }
 
   GPENCIL_tLayer *tgp_layer_prev = iter->tgp_ob->layers.last;
-  GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, gpl);
+  GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add(iter->pd, iter->ob, gpl);
   BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
 
   if (tgp_layer->is_masked && (tgp_layer_prev == NULL || !tgp_layer_prev->is_masked)) {
@@ -494,7 +494,7 @@ static void gp_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateD
   GPUTexture *depth_texture = iter->pd->scene_depth_tx;
   GPENCIL_tObject *last_tgp_ob = iter->pd->tobjects.last;
   /* Create another temp object that only contain the stroke. */
-  iter->tgp_ob = gpencil_object_cache_add_new(iter->pd, iter->ob);
+  iter->tgp_ob = gpencil_object_cache_add(iter->pd, iter->ob);
   /* Remove from the main list. */
   iter->pd->tobjects.last = last_tgp_ob;
   last_tgp_ob->next = NULL;
@@ -529,7 +529,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     gpIterPopulateData iter = {0};
     iter.ob = ob;
     iter.pd = pd;
-    iter.tgp_ob = gpencil_object_cache_add_new(pd, ob);
+    iter.tgp_ob = gpencil_object_cache_add(pd, ob);
     iter.matpool = gpencil_material_pool_create(pd, ob, &iter.mat_ofs);
     iter.tex_fill = txl->dummy_texture;
     iter.tex_stroke = txl->dummy_texture;

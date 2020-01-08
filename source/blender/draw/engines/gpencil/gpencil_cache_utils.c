@@ -42,8 +42,7 @@
 
 #include "DEG_depsgraph.h"
 
-/* TODO remove the _new suffix. */
-GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *ob)
+GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tObject *tgp_ob = BLI_memblock_alloc(pd->gp_object_pool);
@@ -105,8 +104,7 @@ GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *o
   return tgp_ob;
 }
 
-/* TODO remove the _new suffix. */
-GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob, bGPDlayer *gpl)
+GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGPDlayer *gpl)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);

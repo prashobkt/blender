@@ -380,10 +380,10 @@ typedef struct GpencilBatchCache {
 /* geometry batch cache functions */
 struct GpencilBatchCache *gpencil_batch_cache_get(struct Object *ob, int cfra);
 
-GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *ob);
-GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
-                                            Object *ob,
-                                            struct bGPDlayer *layer);
+GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob);
+GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
+                                        Object *ob,
+                                        struct bGPDlayer *layer);
 GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Object *ob, int *ofs);
 void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
                                     int mat_id,
