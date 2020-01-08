@@ -409,6 +409,8 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   /* Random generator, only init once. */
   uint rng_seed = (uint)(PIL_check_seconds_timer_i() & UINT_MAX);
   tgpi->rng = BLI_rng_new(rng_seed);
+
+  DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_COPY_ON_WRITE);
 }
 
 /* add new segment to curve */

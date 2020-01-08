@@ -2173,6 +2173,8 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
       }
     }
   }
+  /* Tag datablock. */
+  gp_update_cache(p->gpd);
 }
 
 /* finish off a stroke (clears buffer, but doesn't finish the paint operation) */
