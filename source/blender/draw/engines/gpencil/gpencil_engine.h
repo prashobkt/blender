@@ -319,12 +319,6 @@ typedef struct GPENCIL_Storage {
   Object *camera; /* camera pointer for render mode */
 } GPENCIL_Storage;
 
-typedef enum eGpencilFramebuffer_Flag {
-  GP_FRAMEBUFFER_MULTISAMPLE = (1 << 0),
-  GP_FRAMEBUFFER_BASIC = (1 << 1),
-  GP_FRAMEBUFFER_DRAW = (1 << 2),
-} eGpencilFramebuffer_Flag;
-
 typedef struct GPENCIL_StorageList {
   struct GPENCIL_PrivateData *pd;
   /* TODO remove all below. */
@@ -601,22 +595,14 @@ typedef struct GPENCIL_e_data {
 extern GPENCIL_e_data en_data;
 
 /* Defines each batch group to define later the shgroup */
-typedef struct GpencilBatchGroup {
-  struct bGPDlayer *gpl;  /* reference to original layer */
-  struct bGPDframe *gpf;  /* reference to original frame */
-  struct bGPDstroke *gps; /* reference to original stroke */
-  short type;             /* type of element */
-  bool onion;             /* the group is part of onion skin */
-  int vertex_idx;         /* index of vertex data */
-} GpencilBatchGroup;
-
-typedef enum GpencilBatchGroup_Type {
-  eGpencilBatchGroupType_Stroke = 1,
-  eGpencilBatchGroupType_Point = 2,
-  eGpencilBatchGroupType_Fill = 3,
-  eGpencilBatchGroupType_Edit = 4,
-  eGpencilBatchGroupType_Edlin = 5,
-} GpencilBatchGroup_Type;
+// typedef struct GpencilBatchGroup {
+//  struct bGPDlayer *gpl;  /* reference to original layer */
+//  struct bGPDframe *gpf;  /* reference to original frame */
+//  struct bGPDstroke *gps; /* reference to original stroke */
+//  short type;             /* type of element */
+//  bool onion;             /* the group is part of onion skin */
+//  int vertex_idx;         /* index of vertex data */
+//} GpencilBatchGroup;
 
 /* Runtime data for GPU and evaluated frames after applying modifiers */
 typedef struct GpencilBatchCache {
@@ -666,63 +652,11 @@ void gpencil_populate_particles(struct GPENCIL_e_data *e_data,
                                 struct GHash *gh_objects,
                                 void *vedata);
 
-void gpencil_multisample_ensure(struct GPENCIL_Data *vedata, int rect_w, int rect_h);
-
-/* create geometry functions */
-void gpencil_get_point_geom(struct GpencilBatchCacheElem *be,
-                            struct bGPDlayer *gpl,
-                            struct bGPDstroke *gps,
-                            short thickness,
-                            const float ink[4],
-                            const float tintcolor[4],
-                            const int follow_mode,
-                            const bool onion);
-void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
-                             struct bGPDlayer *gpl,
-                             struct bGPDstroke *gps,
-                             short thickness,
-                             const float ink[4],
-                             const float tintcolor[4],
-                             const bool onion);
-void gpencil_get_fill_geom(struct GpencilBatchCacheElem *be,
-                           struct Object *ob,
-                           struct bGPDstroke *gps,
-                           const float color[4]);
-void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
-                           struct bGPDstroke *gps,
-                           float alpha,
-                           short dflag);
-void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
-                            struct bGPDstroke *gps,
-                            float alpha,
-                            const bool hide_select);
-
-struct GPUBatch *gpencil_get_buffer_stroke_geom(struct bGPdata *gpd, short thickness);
-struct GPUBatch *gpencil_get_buffer_fill_geom(struct bGPdata *gpd);
-struct GPUBatch *gpencil_get_buffer_point_geom(struct bGPdata *gpd, short thickness);
-struct GPUBatch *gpencil_get_buffer_ctrlpoint_geom(struct bGPdata *gpd);
-struct GPUBatch *gpencil_get_grid(Object *ob);
-
 /* object cache functions */
 struct tGPencilObjectCache *gpencil_object_cache_add(struct tGPencilObjectCache *cache_array,
                                                      struct Object *ob,
                                                      int *gp_cache_size,
                                                      int *gp_cache_used);
-
-bool gpencil_onion_active(struct bGPdata *gpd);
-float gpencil_get_vertex_paint_factor(struct View3D *v3d);
-
-/* shading groups cache functions */
-struct GpencilBatchGroup *gpencil_group_cache_add(struct GpencilBatchGroup *cache_array,
-                                                  struct bGPDlayer *gpl,
-                                                  struct bGPDframe *gpf,
-                                                  struct bGPDstroke *gps,
-                                                  const short type,
-                                                  const bool onion,
-                                                  const int vertex_idx,
-                                                  int *grp_size,
-                                                  int *grp_used);
-
 /* geometry batch cache functions */
 struct GpencilBatchCache *gpencil_batch_cache_get(struct Object *ob, int cfra);
 

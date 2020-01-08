@@ -61,27 +61,7 @@ typedef struct GpencilBatchCacheElem {
   int tot_vertex;
 } GpencilBatchCacheElem;
 
-/* REFACTOR Cleanup after */
-typedef struct GpencilBatchGroup {
-  struct bGPDlayer *gpl;  /* reference to original layer */
-  struct bGPDframe *gpf;  /* reference to original frame */
-  struct bGPDstroke *gps; /* reference to original stroke */
-  short type;             /* type of element */
-  bool onion;             /* the group is part of onion skin */
-  int vertex_idx;         /* index of vertex data */
-} GpencilBatchGroup;
-
 typedef struct GpencilBatchCache {
-  /* REFACTOR Cleanup after */
-  GpencilBatchCacheElem b_stroke;
-  GpencilBatchCacheElem b_point;
-  GpencilBatchCacheElem b_fill;
-  GpencilBatchCacheElem b_edit;
-  GpencilBatchCacheElem b_edlin;
-  int grp_used;
-  int grp_size;
-  struct GpencilBatchGroup *grp_cache;
-
   /** Instancing Data */
   GPUVertBuf *vbo;
   /** Fill Topology */

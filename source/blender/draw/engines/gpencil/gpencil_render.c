@@ -67,13 +67,6 @@ void GPENCIL_render_init(GPENCIL_Data *ved, RenderEngine *engine, struct Depsgra
   const float *viewport_size = DRW_viewport_size_get();
   const int size[2] = {(int)viewport_size[0], (int)viewport_size[1]};
 
-  /* init storage */
-  if (!stl->storage) {
-    stl->storage = MEM_callocN(sizeof(GPENCIL_Storage), "GPENCIL_Storage");
-    stl->storage->shade_render[0] = OB_RENDER;
-    stl->storage->shade_render[1] = 0;
-  }
-
   /* In render mode the default framebuffer is not generated
    * because there is no viewport. So we need to manually create one
    * NOTE : use 32 bit format for precision in render mode.
