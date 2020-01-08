@@ -3717,7 +3717,7 @@ void BKE_gpencil_visible_stroke_iter(
     bGPDframe *sta_gpf = act_gpf;
     bGPDframe *end_gpf = act_gpf ? act_gpf->next : NULL;
 
-    if (gpl->flag & GP_LAYER_HIDE) {
+    if ((gpl->flag & GP_LAYER_HIDE) || (gpl->actframe == NULL)) {
       idx_eval++;
       continue;
     }
