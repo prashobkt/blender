@@ -3597,7 +3597,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
 void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
 {
   const int totcol = 120;
-  static char *hexcol[] = {
+  const char *hexcol[] = {
       "FFFFFF", "F2F2F2", "E6E6E6", "D9D9D9", "CCCCCC", "BFBFBF", "B2B2B2", "A6A6A6", "999999",
       "8C8C8C", "808080", "737373", "666666", "595959", "4C4C4C", "404040", "333333", "262626",
       "1A1A1A", "000000", "F2FC24", "FFEA00", "FEA711", "FE8B68", "FB3B02", "FE3521", "D00000",
@@ -3626,7 +3626,7 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
     for (int i = 0; i < totcol; i++) {
       PaletteColor *palcol = BKE_palette_color_add(paint->palette);
       if (palcol) {
-        hex_to_rgb(hexcol[i], palcol->rgb, palcol->rgb + 1, palcol->rgb + 2);
+        hex_to_rgb((char *)hexcol[i], palcol->rgb, palcol->rgb + 1, palcol->rgb + 2);
       }
     }
   }

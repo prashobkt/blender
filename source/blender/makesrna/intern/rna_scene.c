@@ -734,7 +734,7 @@ static void rna_GPencilInterpolateSettings_type_set(PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Gpencil_extend_selection(bContext *C, PointerRNA *ptr)
+static void rna_Gpencil_extend_selection(bContext *C, PointerRNA *UNUSED(ptr))
 {
   /* Extend selection to all points in all selected strokes. */
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -768,7 +768,7 @@ static void rna_Gpencil_selectmode_update(bContext *C, PointerRNA *ptr)
   rna_Gpencil_extend_selection(C, ptr);
 }
 
-static void rna_Gpencil_mask_point_update(bContext *C, PointerRNA *ptr)
+static void rna_Gpencil_mask_point_update(bContext *UNUSED(C), PointerRNA *ptr)
 {
   ToolSettings *ts = (ToolSettings *)ptr->data;
 
@@ -786,7 +786,7 @@ static void rna_Gpencil_mask_stroke_update(bContext *C, PointerRNA *ptr)
   rna_Gpencil_extend_selection(C, ptr);
 }
 
-static void rna_Gpencil_mask_segment_update(bContext *C, PointerRNA *ptr)
+static void rna_Gpencil_mask_segment_update(bContext *UNUSED(C), PointerRNA *ptr)
 {
   ToolSettings *ts = (ToolSettings *)ptr->data;
 

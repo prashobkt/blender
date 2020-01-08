@@ -1374,6 +1374,8 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  UNUSED_VARS(prop_direction_items);
+
   StructRNA *srna;
   PropertyRNA *prop;
 

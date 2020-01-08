@@ -119,6 +119,7 @@ static StructRNA *rna_ShaderFx_refine(struct PointerRNA *ptr)
       /* Default */
     case eShaderFxType_None:
     case NUM_SHADER_FX_TYPES:
+    default:
       return &RNA_ShaderFx;
   }
 
