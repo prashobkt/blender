@@ -161,7 +161,7 @@ static void GPENCIL_render_update_vecs(GPENCIL_Data *vedata)
   DRW_view_winmat_get(NULL, invproj, true);
 
   /* this is separated to keep function equal to Eevee for future reuse of same code */
-  GPENCIL_render_update_viewvecs(invproj, winmat, stl->storage->view_vecs);
+  GPENCIL_render_update_viewvecs(invproj, winmat, stl->pd->view_vecs);
 }
 
 /* read z-depth render result */
@@ -202,8 +202,7 @@ static void GPENCIL_render_result_z(struct RenderLayer *rl,
           rp->rect[i] = winmat[3][2] / (rp->rect[i] + winmat[2][2]);
         }
         else {
-          rp->rect[i] = -stl->storage->view_vecs[0][2] +
-                        rp->rect[i] * -stl->storage->view_vecs[1][2];
+          rp->rect[i] = -stl->pd->view_vecs[0][2] + rp->rect[i] * -stl->pd->view_vecs[1][2];
         }
       }
     }
@@ -272,8 +271,7 @@ void GPENCIL_render_to_image(void *vedata,
 
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   Object *camera = DEG_get_evaluated_object(draw_ctx->depsgraph, RE_GetCamera(engine->re));
-  stl->storage->camera = camera; /* save current camera */
-  stl->pd->camera = camera;      /* save current camera */
+  stl->pd->camera = camera; /* save current camera */
 
   GPENCIL_cache_init(vedata);
 

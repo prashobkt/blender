@@ -189,8 +189,6 @@ typedef struct GPENCIL_Storage {
 
 typedef struct GPENCIL_StorageList {
   struct GPENCIL_PrivateData *pd;
-  /* TODO remove all below. */
-  struct GPENCIL_Storage *storage;
 } GPENCIL_StorageList;
 
 typedef struct GPENCIL_PassList {
@@ -293,6 +291,8 @@ typedef struct GPENCIL_PrivateData {
   float camera_pos[3];
   /* Pseudo depth of field parameter. Used to scale blur radius. */
   float dof_params[2];
+  /* Viewvecs to compute view Z from depth buffer. */
+  float view_vecs[2][4];
   /* Used for DoF Setup. */
   Object *camera;
 
@@ -466,8 +466,5 @@ GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void);
 
 #define GPENCIL_3D_DRAWMODE(ob, gpd) \
   ((gpd) && (gpd->draw_mode == GP_DRAWMODE_3D) && ((ob->dtx & OB_DRAWXRAY) == 0))
-
-#define GPENCIL_USE_SOLID(stl) \
-  ((stl) && ((stl->storage->is_render) || (stl->storage->is_mat_preview)))
 
 #endif /* __GPENCIL_ENGINE_H__ */
