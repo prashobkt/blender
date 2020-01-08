@@ -69,7 +69,9 @@ void GPENCIL_engine_init(void *ved)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_StorageList *stl = vedata->stl;
   GPENCIL_TextureList *txl = vedata->txl;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
 
   if (!stl->pd) {
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
@@ -102,12 +104,18 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->sbuffer_tobjects.last = NULL;
   stl->pd->draw_depth_only = !DRW_state_is_fbo();
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
+  stl->pd->scene_fb = dfbl->default_fb;
   stl->pd->is_render = true; /* TODO */
   stl->pd->global_light_pool = gpencil_light_pool_add(stl->pd);
   stl->pd->shadeless_light_pool = gpencil_light_pool_add(stl->pd);
   /* Small HACK: we don't want the global pool to be reused,
    * so we set the last light pool to NULL. */
   stl->pd->last_light_pool = NULL;
+
+  if (txl->render_depth_tx != NULL) {
+    stl->pd->scene_depth_tx = txl->render_depth_tx;
+    stl->pd->scene_fb = fbl->render_fb;
+  }
 
   gpencil_light_ambient_add(stl->pd->shadeless_light_pool, (float[3]){1.0f, 1.0f, 1.0f});
 
@@ -697,8 +705,7 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
   GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
-  float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
+  float clear_cols[2][4] = {{0.0f, 0.5f, 0.0f, 0.0f}, {1.0f, 0.5f, 1.0f, 1.0f}};
 
   DRW_stats_group_start("GPencil Object");
 
@@ -750,9 +757,8 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
   copy_m4_m4(pd->object_bound_mat, ob->plane_mat);
   pd->is_stroke_order_3d = ob->is_drawmode3d;
 
-  /* TODO fix for render */
-  if (dfbl->depth_only_fb) {
-    GPU_framebuffer_bind(dfbl->depth_only_fb);
+  if (pd->scene_fb) {
+    GPU_framebuffer_bind(pd->scene_fb);
     DRW_draw_pass(psl->merge_depth_ps);
   }
 
@@ -800,7 +806,6 @@ void GPENCIL_draw_scene(void *ved)
   GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   const DRWContextState *draw_ctx = DRW_context_state_get();
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
 
@@ -834,8 +839,8 @@ void GPENCIL_draw_scene(void *ved)
     GPENCIL_antialiasing_draw(vedata);
   }
 
-  if (dfbl->default_fb) {
-    GPU_framebuffer_bind(dfbl->default_fb);
+  if (pd->scene_fb) {
+    GPU_framebuffer_bind(pd->scene_fb);
     DRW_draw_pass(psl->composite_ps);
   }
 

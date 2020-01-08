@@ -203,9 +203,7 @@ typedef struct GPENCIL_PassList {
 } GPENCIL_PassList;
 
 typedef struct GPENCIL_FramebufferList {
-  struct GPUFrameBuffer *main;
-
-  /* Refactored */
+  struct GPUFrameBuffer *render_fb;
   struct GPUFrameBuffer *gpencil_fb;
   struct GPUFrameBuffer *snapshot_fb;
   struct GPUFrameBuffer *layer_fb;
@@ -225,7 +223,9 @@ typedef struct GPENCIL_TextureList {
   /* Textures used by Antialiasing. */
   struct GPUTexture *smaa_area_tx;
   struct GPUTexture *smaa_search_tx;
-
+  /* Textures used during render. Containing underlying rendered scene. */
+  struct GPUTexture *render_depth_tx;
+  struct GPUTexture *render_color_tx;
 } GPENCIL_TextureList;
 
 typedef struct GPENCIL_Data {
@@ -234,11 +234,6 @@ typedef struct GPENCIL_Data {
   struct GPENCIL_TextureList *txl;
   struct GPENCIL_PassList *psl;
   struct GPENCIL_StorageList *stl;
-
-  /* render textures */
-  struct GPUTexture *render_depth_tx;
-  struct GPUTexture *render_color_tx;
-
 } GPENCIL_Data;
 
 /* *********** STATIC *********** */
@@ -277,6 +272,7 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *smaa_weight_tx;
   /* Pointer to dtxl->depth */
   GPUTexture *scene_depth_tx;
+  GPUFrameBuffer *scene_fb;
   /* Current frame */
   int cfra;
   /* If we are rendering for final render (F12). */
@@ -291,8 +287,6 @@ typedef struct GPENCIL_PrivateData {
   float camera_pos[3];
   /* Pseudo depth of field parameter. Used to scale blur radius. */
   float dof_params[2];
-  /* Viewvecs to compute view Z from depth buffer. */
-  float view_vecs[2][4];
   /* Used for DoF Setup. */
   Object *camera;
 
@@ -431,7 +425,8 @@ void GPENCIL_draw_scene(void *vedata);
 /* render */
 void GPENCIL_render_init(struct GPENCIL_Data *ved,
                          struct RenderEngine *engine,
-                         struct Depsgraph *depsgraph);
+                         struct RenderLayer *render_layer,
+                         const struct Depsgraph *depsgraph);
 void GPENCIL_render_to_image(void *vedata,
                              struct RenderEngine *engine,
                              struct RenderLayer *render_layer,
