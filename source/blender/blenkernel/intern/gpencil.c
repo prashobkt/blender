@@ -3710,15 +3710,16 @@ void BKE_gpencil_visible_stroke_iter(
   const bool onion_loop = (gpd->onion_flag & GP_ONION_LOOP) != 0;
   const short onion_keytype = gpd->onion_keytype;
 
-  int idx_eval = 0;
-
+  /* Index in the layer in the listbase. */
+  int layer_idx = -1;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    layer_idx++;
+
     bGPDframe *act_gpf = gpl->actframe;
     bGPDframe *sta_gpf = act_gpf;
     bGPDframe *end_gpf = act_gpf ? act_gpf->next : NULL;
 
-    if ((gpl->flag & GP_LAYER_HIDE) || (gpl->actframe == NULL)) {
-      idx_eval++;
+    if (gpl->flag & GP_LAYER_HIDE) {
       continue;
     }
 
@@ -3803,7 +3804,7 @@ void BKE_gpencil_visible_stroke_iter(
     }
     /* Draw Active frame on top. */
     /* Use evaluated frame (with modifiers for active stroke)/ */
-    act_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+    act_gpf = &ob->runtime.gpencil_evaluated_frames[layer_idx];
     act_gpf->runtime.onion_id = 0;
     if (act_gpf) {
       if (layer_cb) {
@@ -3814,8 +3815,6 @@ void BKE_gpencil_visible_stroke_iter(
         stroke_cb(gpl, act_gpf, gps, thunk);
       }
     }
-
-    idx_eval++;
   }
 }
 
