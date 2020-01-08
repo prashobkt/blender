@@ -384,8 +384,6 @@ class DATA_PT_gpencil_display(DataButtonsPanel, Panel):
         gpl = gpd.layers.active
 
         layout.prop(gpd, "edit_line_color", text="Edit Line Color")
-        if gpl:
-            layout.prop(gpd, "show_stroke_direction", text="Show Stroke Directions")
 
 
 class DATA_PT_gpencil_canvas(DataButtonsPanel, Panel):

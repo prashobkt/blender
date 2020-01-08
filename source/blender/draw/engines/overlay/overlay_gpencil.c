@@ -49,11 +49,6 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   pd->edit_gpencil_wires_grp = NULL;
   psl->edit_gpencil_ps = NULL;
 
-  /* REFACTOR(fclem) remove */
-  if (G.debug_value != 50) {
-    return;
-  }
-
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
   Object *ob = draw_ctx->obact;
@@ -143,11 +138,6 @@ void OVERLAY_gpencil_cache_init(OVERLAY_Data *vedata)
 
   /* Default: Display nothing. */
   psl->gpencil_canvas_ps = NULL;
-
-  /* REFACTOR(fclem) remove */
-  if (G.debug_value != 50) {
-    return;
-  }
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;

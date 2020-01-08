@@ -42,25 +42,6 @@
 #include "draw_cache_impl.h"
 
 /* ---------------------------------------------------------------------- */
-/* GPencil GPUBatch Cache */
-
-/* REFACTOR Cleanup after */
-typedef struct GpencilBatchCacheElem {
-  GPUBatch *batch;
-  GPUVertBuf *vbo;
-  int vbo_len;
-  /* attr ids */
-  GPUVertFormat *format;
-  uint pos_id;
-  uint color_id;
-  uint thickness_id;
-  uint uvdata_id;
-  uint prev_pos_id;
-
-  /* size for VBO alloc */
-  int tot_vertex;
-} GpencilBatchCacheElem;
-
 typedef struct GpencilBatchCache {
   /** Instancing Data */
   GPUVertBuf *vbo;
