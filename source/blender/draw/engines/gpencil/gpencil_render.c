@@ -78,12 +78,6 @@ void GPENCIL_render_init(GPENCIL_Data *ved, RenderEngine *engine, struct Depsgra
    * because there is no viewport. So we need to manually create one
    * NOTE : use 32 bit format for precision in render mode.
    */
-  /* create multisample framebuffer for AA */
-  int rect_w = (int)viewport_size[0];
-  int rect_h = (int)viewport_size[1];
-  /* TODO: Keep this only for testing while doing refactor. */
-  gpencil_multisample_ensure(vedata, rect_w, rect_h);
-
   vedata->render_depth_tx = DRW_texture_pool_query_2d(
       size[0], size[1], GPU_DEPTH_COMPONENT24, &draw_engine_gpencil_type);
   vedata->render_color_tx = DRW_texture_pool_query_2d(
