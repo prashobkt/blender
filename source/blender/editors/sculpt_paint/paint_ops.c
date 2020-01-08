@@ -358,7 +358,7 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void PALETTE_OT_extract_from_image(wmOperatorType *ot)
+static void PALETTE_OT_extract_from_image(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Extract Palette from Image";
@@ -454,7 +454,7 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void PALETTE_OT_sort(wmOperatorType *ot)
+static void PALETTE_OT_sort(wmOperatorType *ot)
 {
   static const EnumPropertyItem sort_type[] = {
       {-1, "HSV", 0, "Hue, Saturation, Value", ""},
@@ -499,7 +499,7 @@ static int palette_color_move_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void PALETTE_OT_color_move(wmOperatorType *ot)
+static void PALETTE_OT_color_move(wmOperatorType *ot)
 {
   static const EnumPropertyItem slot_move[] = {
       {-1, "UP", 0, "Up", ""},
@@ -582,7 +582,7 @@ static int palette_join_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void PALETTE_OT_join(wmOperatorType *ot)
+static void PALETTE_OT_join(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Join Palette Swatches";

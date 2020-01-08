@@ -59,62 +59,6 @@ static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_render)
   return false;
 }
 
-/**
- * Get normal of draw using one stroke of visible layer
- * \param gpd: GP datablock
- * \param r_point: Point on plane
- * \param r_normal: Normal vector
- */
-static bool get_normal_vector(bGPdata *gpd, float r_point[3], float r_normal[3])
-{
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    if (gpl->flag & GP_LAYER_HIDE) {
-      continue;
-    }
-
-    /* get frame  */
-    bGPDframe *gpf = gpl->actframe;
-    if (gpf == NULL) {
-      continue;
-    }
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-      if (gps->totpoints >= 3) {
-        bGPDspoint *pt = &gps->points[0];
-        BKE_gpencil_stroke_normal(gps, r_normal);
-        /* in some weird situations, the normal cannot be calculated, so try next stroke */
-        if ((r_normal[0] != 0.0f) || (r_normal[1] != 0.0f) || (r_normal[2] != 0.0f)) {
-          copy_v3_v3(r_point, &pt->x);
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
-/* helper to get near and far depth of field values */
-static void GPENCIL_dof_nearfar(Object *camera, float coc, float nearfar[2])
-{
-  if (camera == NULL) {
-    return;
-  }
-  Camera *cam = camera->data;
-
-  float fstop = cam->dof.aperture_fstop;
-  float focus_dist = BKE_camera_object_dof_distance(camera);
-  float focal_len = cam->lens;
-
-  const float scale_camera = 0.001f;
-  /* we want radius here for the aperture number  */
-  float aperture_scaled = 0.5f * scale_camera * focal_len / fstop;
-  float focal_len_scaled = scale_camera * focal_len;
-
-  float hyperfocal = (focal_len_scaled * focal_len_scaled) / (aperture_scaled * coc);
-  nearfar[0] = (hyperfocal * focus_dist) / (hyperfocal + focal_len);
-  nearfar[1] = (hyperfocal * focus_dist) / (hyperfocal - focal_len);
-}
-
 typedef struct gpIterVfxData {
   GPENCIL_PrivateData *pd;
   GPENCIL_tObject *tgp_ob;
