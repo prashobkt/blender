@@ -2789,7 +2789,7 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
 }
 
 /* texture coordinate utilities */
-void BKE_gpencil_calc_stroke_uv(Object *ob, bGPDstroke *gps)
+void BKE_gpencil_calc_stroke_uv(bGPDstroke *gps)
 {
   if (gps == NULL || gps->totpoints == 0) {
     return;
@@ -2821,7 +2821,7 @@ void BKE_gpencil_recalc_geometry_caches(Object *ob,
     }
 
     /* calc uv data along the stroke */
-    BKE_gpencil_calc_stroke_uv(ob, gps);
+    BKE_gpencil_calc_stroke_uv(gps);
 
     /* clear flag */
     gps->flag &= ~GP_STROKE_RECALC_GEOMETRY;

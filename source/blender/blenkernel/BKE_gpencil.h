@@ -259,7 +259,7 @@ void BKE_gpencil_recalc_geometry_caches(struct Object *ob,
                                         struct bGPDlayer *gpl,
                                         struct MaterialGPencilStyle *gp_style,
                                         struct bGPDstroke *gps);
-void BKE_gpencil_calc_stroke_uv(struct Object *ob, struct bGPDstroke *gps);
+void BKE_gpencil_calc_stroke_uv(struct bGPDstroke *gps);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
 
