@@ -160,6 +160,7 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
   bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
   int totvertex = gps->totpoints;
   float mix_color[4];
+  zero_v4(mix_color);
 
   const float vpaint_mix = gpencil_get_vertex_paint_factor(v3d);
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
