@@ -226,28 +226,6 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   return tgp_layer;
 }
 
-/* verify if exist a non instanced version of the object */
-static bool gpencil_has_noninstanced_object(Object *ob_instance)
-{
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const ViewLayer *view_layer = draw_ctx->view_layer;
-  Object *ob = NULL;
-  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-    ob = base->object;
-    if (ob->type != OB_GPENCIL) {
-      continue;
-    }
-    /* is not duplicated and the name is equals */
-    if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
-      if (STREQ(ob->id.name, ob_instance->id.name)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 /* get current cache data */
 static GpencilBatchCache *gpencil_batch_get_element(Object *ob)
 {
