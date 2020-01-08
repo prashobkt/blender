@@ -843,7 +843,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
 static Brush *gpencil_brush_ensure(Main *bmain,
                                    ToolSettings *ts,
-                                   char *brush_name,
+                                   const char *brush_name,
                                    eObjectMode mode)
 {
   Brush *brush = BLI_findstring(&bmain->brushes, brush_name, offsetof(ID, name) + 2);
