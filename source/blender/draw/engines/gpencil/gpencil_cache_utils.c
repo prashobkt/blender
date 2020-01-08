@@ -357,52 +357,6 @@ tGPencilObjectCache *gpencil_object_cache_add(tGPencilObjectCache *cache_array,
   return cache_array;
 }
 
-/* add a shading group to the cache to create later */
-GpencilBatchGroup *gpencil_group_cache_add(GpencilBatchGroup *cache_array,
-                                           bGPDlayer *gpl,
-                                           bGPDframe *gpf,
-                                           bGPDstroke *gps,
-                                           const short type,
-                                           const bool onion,
-                                           const int vertex_idx,
-                                           int *grp_size,
-                                           int *grp_used)
-{
-  GpencilBatchGroup *cache_elem = NULL;
-  GpencilBatchGroup *p = NULL;
-
-  /* By default a cache is created with one block with a predefined number of free slots,
-   * if the size is not enough, the cache is reallocated adding a new block of free slots.
-   * This is done in order to keep cache small. */
-  if (*grp_used + 1 > *grp_size) {
-    if ((*grp_size == 0) || (cache_array == NULL)) {
-      p = MEM_callocN(sizeof(struct GpencilBatchGroup) * GPENCIL_GROUPS_BLOCK_SIZE,
-                      "GpencilBatchGroup");
-      *grp_size = GPENCIL_GROUPS_BLOCK_SIZE;
-    }
-    else {
-      *grp_size += GPENCIL_GROUPS_BLOCK_SIZE;
-      p = MEM_recallocN(cache_array, sizeof(struct GpencilBatchGroup) * *grp_size);
-    }
-    cache_array = p;
-  }
-  /* zero out all data */
-  cache_elem = &cache_array[*grp_used];
-  memset(cache_elem, 0, sizeof(*cache_elem));
-
-  cache_elem->gpl = gpl;
-  cache_elem->gpf = gpf;
-  cache_elem->gps = gps;
-  cache_elem->type = type;
-  cache_elem->onion = onion;
-  cache_elem->vertex_idx = vertex_idx;
-
-  /* increase slots used in cache */
-  (*grp_used)++;
-
-  return cache_array;
-}
-
 /* get current cache data */
 static GpencilBatchCache *gpencil_batch_get_element(Object *ob)
 {
@@ -471,25 +425,6 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
   if (!cache) {
     return;
   }
-
-  GPU_BATCH_DISCARD_SAFE(cache->b_stroke.batch);
-  GPU_BATCH_DISCARD_SAFE(cache->b_point.batch);
-  GPU_BATCH_DISCARD_SAFE(cache->b_fill.batch);
-  GPU_BATCH_DISCARD_SAFE(cache->b_edit.batch);
-  GPU_BATCH_DISCARD_SAFE(cache->b_edlin.batch);
-
-  MEM_SAFE_FREE(cache->b_stroke.batch);
-  MEM_SAFE_FREE(cache->b_point.batch);
-  MEM_SAFE_FREE(cache->b_fill.batch);
-  MEM_SAFE_FREE(cache->b_edit.batch);
-  MEM_SAFE_FREE(cache->b_edlin.batch);
-
-  /* internal format data */
-  MEM_SAFE_FREE(cache->b_stroke.format);
-  MEM_SAFE_FREE(cache->b_point.format);
-  MEM_SAFE_FREE(cache->b_fill.format);
-  MEM_SAFE_FREE(cache->b_edit.format);
-  MEM_SAFE_FREE(cache->b_edlin.format);
 
   MEM_SAFE_FREE(cache->grp_cache);
   cache->grp_size = 0;

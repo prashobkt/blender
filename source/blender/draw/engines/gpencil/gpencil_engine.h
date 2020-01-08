@@ -600,23 +600,6 @@ typedef struct GPENCIL_e_data {
 
 extern GPENCIL_e_data en_data;
 
-/* GPUBatch Cache Element */
-typedef struct GpencilBatchCacheElem {
-  GPUBatch *batch;
-  GPUVertBuf *vbo;
-  int vbo_len;
-  /* attr ids */
-  GPUVertFormat *format;
-  uint pos_id;
-  uint color_id;
-  uint thickness_id;
-  uint uvdata_id;
-  uint prev_pos_id;
-
-  /* size for VBO alloc */
-  int tot_vertex;
-} GpencilBatchCacheElem;
-
 /* Defines each batch group to define later the shgroup */
 typedef struct GpencilBatchGroup {
   struct bGPDlayer *gpl;  /* reference to original layer */
@@ -637,12 +620,6 @@ typedef enum GpencilBatchGroup_Type {
 
 /* Runtime data for GPU and evaluated frames after applying modifiers */
 typedef struct GpencilBatchCache {
-  GpencilBatchCacheElem b_stroke;
-  GpencilBatchCacheElem b_point;
-  GpencilBatchCacheElem b_fill;
-  GpencilBatchCacheElem b_edit;
-  GpencilBatchCacheElem b_edlin;
-
   /** Cache is dirty */
   bool is_dirty;
   /** Edit mode flag */
@@ -766,17 +743,6 @@ GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd);
 GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *ob);
 
 /* effects */
-void GPENCIL_create_fx_shaders(struct GPENCIL_e_data *e_data);
-void GPENCIL_delete_fx_shaders(struct GPENCIL_e_data *e_data);
-void GPENCIL_create_fx_passes(struct GPENCIL_PassList *psl);
-
-void gpencil_fx_prepare(struct GPENCIL_e_data *e_data,
-                        struct GPENCIL_Data *vedata,
-                        struct tGPencilObjectCache *cache_ob);
-void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
-                     struct GPENCIL_Data *vedata,
-                     struct tGPencilObjectCache *cache_ob);
-
 void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob);
 
 /* Shaders */

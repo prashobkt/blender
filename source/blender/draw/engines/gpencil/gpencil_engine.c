@@ -293,40 +293,6 @@ void GPENCIL_cache_init(void *ved)
   }
 }
 
-static void gpencil_add_draw_data(void *vedata, Object *ob)
-{
-  GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
-  bGPdata *gpd = (bGPdata *)ob->data;
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const View3D *v3d = draw_ctx->v3d;
-
-  int i = stl->g_data->gp_cache_used - 1;
-  tGPencilObjectCache *cache_ob = &stl->g_data->gp_object_cache[i];
-
-  if (!cache_ob->is_dup_ob) {
-    /* fill shading groups */
-    if ((!is_multiedit) || (stl->storage->is_render)) {
-      gpencil_populate_datablock(&e_data, vedata, ob, cache_ob);
-    }
-    else {
-      gpencil_populate_multiedit(&e_data, vedata, ob, cache_ob);
-    }
-  }
-
-  /* FX passses */
-  cache_ob->has_fx = false;
-  if ((!stl->storage->simplify_fx) &&
-      ((!ELEM(cache_ob->shading_type[0], OB_WIRE, OB_SOLID)) ||
-       ((v3d->spacetype != SPACE_VIEW3D))) &&
-      (BKE_shaderfx_has_gpencil(ob))) {
-    cache_ob->has_fx = true;
-    if ((!stl->storage->simplify_fx) && (!is_multiedit)) {
-      gpencil_fx_prepare(&e_data, vedata, cache_ob);
-    }
-  }
-}
-
 #define DRAW_NOW 2
 
 typedef struct gpIterPopulateData {
