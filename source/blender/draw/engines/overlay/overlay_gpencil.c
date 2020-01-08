@@ -65,44 +65,49 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
     return;
   }
 
+  /* For sculpt show only if mask mode, and only points if not stroke mode. */
   const bool use_sculpt_mask = (GPENCIL_SCULPT_MODE(gpd) &&
                                 GPENCIL_ANY_SCULPT_MASK(ts->gpencil_selectmode_sculpt));
   const bool show_sculpt_points = (GPENCIL_SCULPT_MODE(gpd) &&
                                    (ts->gpencil_selectmode_sculpt &
                                     (GP_SCULPT_MASK_SELECTMODE_POINT |
                                      GP_SCULPT_MASK_SELECTMODE_SEGMENT)));
+
+  /* For vertex paint show only if mask mode, and only points if not stroke mode. */
   const bool use_vertex_mask = (GPENCIL_VERTEX_MODE(gpd) &&
                                 GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
   const bool show_vertex_points = (GPENCIL_VERTEX_MODE(gpd) &&
                                    (ts->gpencil_selectmode_vertex &
                                     (GP_VERTEX_MASK_SELECTMODE_POINT |
                                      GP_VERTEX_MASK_SELECTMODE_SEGMENT)));
+
+  /* If Sculpt or Vertex mode and the mask is disabled, the select must be hidden. */
+  const bool hide_select = ((GPENCIL_SCULPT_MODE(gpd) && !use_sculpt_mask) ||
+                            (GPENCIL_VERTEX_MODE(gpd) && !use_vertex_mask));
+
   const bool do_multiedit = GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool show_multi_edit_lines = do_multiedit &&
                                      (v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) != 0;
 
   const bool show_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES);
-  const bool hide_lines = GPENCIL_VERTEX_MODE(gpd) && use_vertex_mask && !show_multi_edit_lines;
+
+  const bool hide_lines = !GPENCIL_EDIT_MODE(gpd) && !GPENCIL_WEIGHT_MODE(gpd) &&
+                          !use_sculpt_mask && !use_vertex_mask && !show_multi_edit_lines;
 
   const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
-  const bool is_vertex_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_VERTEXMODE);
-
-  /* If Sculpt/Vertex mode and the mask is disabled, the select must be hidden. */
-  const bool hide_select = ((GPENCIL_SCULPT_MODE(gpd) && !use_sculpt_mask) ||
-                            (GPENCIL_VERTEX_MODE(gpd) && !use_vertex_mask));
 
   /* Show Edit points if:
    *  Edit mode: Not in Stroke selection mode
-   *  Sculpt mode: Not in Stroke mask mode and any other mask mode enabled
+   *  Sculpt mode: If use Mask and not Stroke mode
    *  Weight mode: Always
-   *  Vertex mode: Always
+   *  Vertex mode: If use Mask and not Stroke mode
    */
-  const bool show_points = show_sculpt_points || show_vertex_points || is_weight_paint ||
-                           is_vertex_paint ||
+  const bool show_points = show_sculpt_points || is_weight_paint || show_vertex_points ||
                            (GPENCIL_EDIT_MODE(gpd) &&
                             (ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE));
 
-  if (!GPENCIL_VERTEX_MODE(gpd) || use_vertex_mask || show_multi_edit_lines) {
+  if ((!GPENCIL_VERTEX_MODE(gpd) && !GPENCIL_PAINT_MODE(gpd)) || use_vertex_mask ||
+      show_multi_edit_lines) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->edit_gpencil_ps, state | pd->clipping_state);
