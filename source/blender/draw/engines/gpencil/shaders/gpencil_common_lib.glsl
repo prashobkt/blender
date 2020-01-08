@@ -176,11 +176,11 @@ float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness)
 
 #endif
 
-#ifdef GPU_VERTEX_SHADER
-
 /* TODO UBO */
 uniform vec2 sizeViewport;
 uniform vec2 sizeViewportInv;
+
+#ifdef GPU_VERTEX_SHADER
 
 /* Per Object */
 uniform bool strokeOrder3d;
