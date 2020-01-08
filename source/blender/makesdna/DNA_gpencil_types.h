@@ -461,6 +461,11 @@ typedef struct bGPdata_Runtime {
   struct ARegion *ar;
   /** Stroke buffer. */
   void *sbuffer;
+  /** Temp batches cleared after drawing. */
+  struct GPUBatch *sbuffer_stroke_batch;
+  struct GPUBatch *sbuffer_fill_batch;
+  /** Temp stroke used for drawing. */
+  struct bGPDstroke *sbuffer_gps;
 
   /* GP Object drawing */
   /** Buffer stroke color. */

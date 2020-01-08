@@ -207,12 +207,16 @@ void GPENCIL_cache_init(void *ved)
     pd->fill_batch = NULL;
     pd->do_fast_drawing = false;
 
-    Object *ob = draw_ctx->obact;
-    if (ob && ob->type == OB_GPENCIL) {
+    pd->obact = draw_ctx->obact;
+    if (pd->obact && pd->obact->type == OB_GPENCIL) {
       /* Check if active object has a temp stroke data. */
-      if (DRW_cache_gpencil_sbuffer_get(
-              ob, &pd->stroke_batch, &pd->fill_batch, &pd->sbuffer_stroke)) {
-        pd->sbuffer_gpd = (bGPdata *)ob->data;
+      bGPdata *gpd = (bGPdata *)pd->obact->data;
+      /* Current stroke data is stored in the original id. This is waiting refactor of the
+       * Depsgraph to support more granular update of the GPencil data. */
+      bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
+      if (gpd_orig->runtime.sbuffer_used > 0) {
+        pd->sbuffer_gpd = gpd;
+        pd->sbuffer_stroke = DRW_cache_gpencil_sbuffer_stroke_data_get(pd->obact);
         pd->sbuffer_layer = BKE_gpencil_layer_active_get(pd->sbuffer_gpd);
         pd->do_fast_drawing = false; /* TODO option */
       }
@@ -462,17 +466,19 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
     }
   }
 
+  bool do_sbuffer = (iter->do_sbuffer_call == DRAW_NOW);
+
   if (show_fill) {
-    GPUBatch *geom = DRW_cache_gpencil_fills_get(iter->ob, iter->pd->cfra);
-    geom = (iter->do_sbuffer_call == DRAW_NOW) ? iter->pd->fill_batch : geom;
+    GPUBatch *geom = do_sbuffer ? DRW_cache_gpencil_sbuffer_fill_get(iter->ob) :
+                                  DRW_cache_gpencil_fills_get(iter->ob, iter->pd->cfra);
     int vfirst = gps->runtime.fill_start * 3;
     int vcount = gps->tot_triangles * 3;
     DRW_shgroup_call_range(iter->grp, iter->ob, geom, vfirst, vcount);
   }
 
   if (show_stroke) {
-    GPUBatch *geom = DRW_cache_gpencil_strokes_get(iter->ob, iter->pd->cfra);
-    geom = (iter->do_sbuffer_call == DRAW_NOW) ? iter->pd->stroke_batch : geom;
+    GPUBatch *geom = do_sbuffer ? DRW_cache_gpencil_sbuffer_stroke_get(iter->ob) :
+                                  DRW_cache_gpencil_strokes_get(iter->ob, iter->pd->cfra);
     /* Start one vert before to have gl_InstanceID > 0 (see shader). */
     int vfirst = gps->runtime.stroke_start - 1;
     /* Include "potential" cyclic vertex and start adj vertex (see shader). */
@@ -836,9 +842,9 @@ void GPENCIL_draw_scene(void *ved)
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
 
   /* Free temp stroke buffers. */
-  GPU_BATCH_DISCARD_SAFE(pd->stroke_batch);
-  GPU_BATCH_DISCARD_SAFE(pd->fill_batch);
-  MEM_SAFE_FREE(pd->sbuffer_stroke);
+  if (pd->sbuffer_gpd) {
+    DRW_cache_gpencil_sbuffer_clear(pd->obact);
+  }
 }
 
 static const DrawEngineDataSize GPENCIL_data_size = DRW_VIEWPORT_DATA_SIZE(GPENCIL_Data);

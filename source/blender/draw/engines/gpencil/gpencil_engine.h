@@ -296,6 +296,8 @@ typedef struct GPENCIL_PrivateData {
   /* Used for DoF Setup. */
   Object *camera;
 
+  /* Active object. */
+  Object *obact;
   /* Object being in draw mode. */
   struct bGPdata *sbuffer_gpd;
   /* Layer to append the temp stroke to. */
