@@ -672,50 +672,6 @@ void GPENCIL_cache_finish(void *ved)
   }
 }
 
-void DRW_gpencil_free_runtime_data(void *ved)
-{
-  GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
-  GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
-
-  if (stl->g_data == NULL) {
-    return;
-  }
-
-  /* free gpu data */
-  GPU_BATCH_DISCARD_SAFE(stl->g_data->batch_buffer_stroke);
-  MEM_SAFE_FREE(stl->g_data->batch_buffer_stroke);
-
-  GPU_BATCH_DISCARD_SAFE(stl->g_data->batch_buffer_fill);
-  MEM_SAFE_FREE(stl->g_data->batch_buffer_fill);
-
-  GPU_BATCH_DISCARD_SAFE(stl->g_data->batch_buffer_ctrlpoint);
-  MEM_SAFE_FREE(stl->g_data->batch_buffer_ctrlpoint);
-
-  GPU_BATCH_DISCARD_SAFE(stl->g_data->batch_grid);
-  MEM_SAFE_FREE(stl->g_data->batch_grid);
-
-  if (stl->g_data->gp_object_cache == NULL) {
-    return;
-  }
-
-  /* reset all cache flags */
-  for (int i = 0; i < stl->g_data->gp_cache_used; i++) {
-    tGPencilObjectCache *cache_ob = &stl->g_data->gp_object_cache[i];
-    if (cache_ob) {
-      bGPdata *gpd = cache_ob->gpd;
-      gpd->flag &= ~GP_DATA_CACHE_IS_DIRTY;
-
-      /* free shgrp array */
-      cache_ob->tot_layers = 0;
-      MEM_SAFE_FREE(cache_ob->name);
-      MEM_SAFE_FREE(cache_ob->shgrp_array);
-    }
-  }
-
-  /* free the cache itself */
-  MEM_SAFE_FREE(stl->g_data->gp_object_cache);
-}
-
 static void GPENCIL_draw_scene_depth_only(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;

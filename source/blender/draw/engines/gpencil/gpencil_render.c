@@ -60,7 +60,6 @@ static float UNUSED_FUNCTION(get_render_pixelsize)(float persmat[4][4], int winx
 void GPENCIL_render_init(GPENCIL_Data *ved, RenderEngine *engine, struct Depsgraph *depsgraph)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
-  GPENCIL_StorageList *stl = vedata->stl;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -78,11 +77,6 @@ void GPENCIL_render_init(GPENCIL_Data *ved, RenderEngine *engine, struct Depsgra
   GPU_framebuffer_ensure_config(&fbl->main,
                                 {GPU_ATTACHMENT_TEXTURE(vedata->render_depth_tx),
                                  GPU_ATTACHMENT_TEXTURE(vedata->render_color_tx)});
-
-  /* Alloc transient data. */
-  if (!stl->g_data) {
-    stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
-  }
 
   /* Set the pers & view matrix. */
   float winmat[4][4], viewmat[4][4], viewinv[4][4], persmat[4][4];

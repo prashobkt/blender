@@ -33,8 +33,7 @@
 
 #include "overlay_private.h"
 
-/* Modified copy of gpencil_object_cache_add().
- * Returns the normal plane in ndc space. */
+/* Returns the normal plane in ndc space. */
 static void gpencil_depth_plane(Object *ob, float r_plane[4])
 {
   /* TODO put that into private data. */

@@ -250,113 +250,6 @@ static bool gpencil_has_noninstanced_object(Object *ob_instance)
   return false;
 }
 
-/* add a gpencil object to cache to defer drawing */
-tGPencilObjectCache *gpencil_object_cache_add(tGPencilObjectCache *cache_array,
-                                              Object *ob,
-                                              int *gp_cache_size,
-                                              int *gp_cache_used)
-{
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  tGPencilObjectCache *cache_elem = NULL;
-  RegionView3D *rv3d = draw_ctx->rv3d;
-  View3D *v3d = draw_ctx->v3d;
-  tGPencilObjectCache *p = NULL;
-
-  /* By default a cache is created with one block with a predefined number of free slots,
-   * if the size is not enough, the cache is reallocated adding a new block of free slots.
-   * This is done in order to keep cache small. */
-  if (*gp_cache_used + 1 > *gp_cache_size) {
-    if ((*gp_cache_size == 0) || (cache_array == NULL)) {
-      p = MEM_callocN(sizeof(struct tGPencilObjectCache) * GP_CACHE_BLOCK_SIZE,
-                      "tGPencilObjectCache");
-      *gp_cache_size = GP_CACHE_BLOCK_SIZE;
-    }
-    else {
-      *gp_cache_size += GP_CACHE_BLOCK_SIZE;
-      p = MEM_recallocN(cache_array, sizeof(struct tGPencilObjectCache) * *gp_cache_size);
-    }
-    cache_array = p;
-  }
-  /* zero out all pointers */
-  cache_elem = &cache_array[*gp_cache_used];
-  memset(cache_elem, 0, sizeof(*cache_elem));
-
-  cache_elem->ob = ob;
-  cache_elem->gpd = (bGPdata *)ob->data;
-  cache_elem->name = BKE_id_to_unique_string_key(&ob->id);
-
-  copy_v3_v3(cache_elem->loc, ob->obmat[3]);
-  copy_m4_m4(cache_elem->obmat, ob->obmat);
-  cache_elem->idx = *gp_cache_used;
-
-  /* object is duplicated (particle) */
-  if (ob->base_flag & BASE_FROM_DUPLI) {
-    /* Check if the original object is not in the viewlayer
-     * and cannot be managed as dupli. This is slower, but required to keep
-     * the particle drawing FPS and display instanced objects in scene
-     * without the original object */
-    bool has_original = gpencil_has_noninstanced_object(ob);
-    cache_elem->is_dup_ob = (has_original) ? ob->base_flag & BASE_FROM_DUPLI : false;
-  }
-  else {
-    cache_elem->is_dup_ob = false;
-  }
-
-  cache_elem->scale = mat4_to_scale(ob->obmat);
-
-  /* save FXs */
-  cache_elem->pixfactor = cache_elem->gpd->pixfactor;
-  cache_elem->shader_fx = ob->shader_fx;
-
-  /* save wire mode (object mode is always primary option) */
-  if (ob->dt == OB_WIRE) {
-    cache_elem->shading_type[0] = (int)OB_WIRE;
-  }
-  else {
-    if (v3d) {
-      cache_elem->shading_type[0] = (int)v3d->shading.type;
-    }
-  }
-
-  /* shgrp array */
-  cache_elem->tot_layers = 0;
-  int totgpl = BLI_listbase_count(&cache_elem->gpd->layers);
-  if (totgpl > 0) {
-    cache_elem->shgrp_array = MEM_callocN(sizeof(tGPencilObjectCache_shgrp) * totgpl, __func__);
-  }
-
-  /* calculate zdepth from point of view */
-  float zdepth = 0.0;
-  if (rv3d) {
-    if (rv3d->is_persp) {
-      zdepth = ED_view3d_calc_zfac(rv3d, ob->obmat[3], NULL);
-    }
-    else {
-      zdepth = -dot_v3v3(rv3d->viewinv[2], ob->obmat[3]);
-    }
-  }
-  else {
-    /* In render mode, rv3d is not available, so use the distance to camera.
-     * The real distance is not important, but the relative distance to the camera plane
-     * in order to sort by z_depth of the objects
-     */
-    float vn[3] = {0.0f, 0.0f, -1.0f}; /* always face down */
-    float plane_cam[4];
-    struct Object *camera = draw_ctx->scene->camera;
-    if (camera) {
-      mul_m4_v3(camera->obmat, vn);
-      normalize_v3(vn);
-      plane_from_point_normal_v3(plane_cam, camera->loc, vn);
-      zdepth = dist_squared_to_plane_v3(ob->obmat[3], plane_cam);
-    }
-  }
-  cache_elem->zdepth = zdepth;
-  /* increase slots used in cache */
-  (*gp_cache_used)++;
-
-  return cache_array;
-}
-
 /* get current cache data */
 static GpencilBatchCache *gpencil_batch_get_element(Object *ob)
 {
@@ -419,18 +312,6 @@ static GpencilBatchCache *gpencil_batch_cache_init(Object *ob, int cfra)
   return cache;
 }
 
-/* clear cache */
-static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
-{
-  if (!cache) {
-    return;
-  }
-
-  MEM_SAFE_FREE(cache->grp_cache);
-  cache->grp_size = 0;
-  cache->grp_used = 0;
-}
-
 /* get cache */
 GpencilBatchCache *gpencil_batch_cache_get(Object *ob, int cfra)
 {
@@ -438,9 +319,6 @@ GpencilBatchCache *gpencil_batch_cache_get(Object *ob, int cfra)
 
   GpencilBatchCache *cache = gpencil_batch_get_element(ob);
   if (!gpencil_batch_cache_valid(cache, gpd, cfra)) {
-    if (cache) {
-      gpencil_batch_cache_clear(cache);
-    }
     return gpencil_batch_cache_init(ob, cfra);
   }
   else {
