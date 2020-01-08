@@ -101,11 +101,6 @@ static bool gpencil_batch_cache_valid(GpencilBatchCache *cache, bGPdata *gpd, in
     gpd->flag &= ~GP_DATA_PYTHON_UPDATED;
     valid = false;
   }
-  else if (cache->is_editmode) {
-    /* XXX FIXME This is bad as it means we cannot call gpencil_batch_cache_get twice in a row.
-     * Disabling for now. Edit: seems to work without it... */
-    // valid = false;
-  }
   else if (cache->is_dirty) {
     /* TODO, maybe get rid of the other dirty flags. */
     valid = false;
