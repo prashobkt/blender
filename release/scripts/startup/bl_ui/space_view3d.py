@@ -6477,6 +6477,7 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
 
         if context.object.mode == 'EDIT_GPENCIL':
             layout.prop(overlay, "use_gpencil_show_directions")
+            layout.prop(overlay, "use_gpencil_show_material_name")
 
         if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")

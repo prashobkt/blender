@@ -3721,6 +3721,12 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
                            "and smaller red dot (end) points");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
 
+  prop = RNA_def_property(srna, "use_gpencil_show_material_name", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "gp_flag", V3D_GP_SHOW_MATERIAL_NAME);
+  RNA_def_property_ui_text(
+      prop, "Show Material Name", "Show material name assigned to each stroke");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
+
   prop = RNA_def_property(srna, "gpencil_grid_opacity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "overlay.gpencil_grid_opacity");
   RNA_def_property_range(prop, 0.1f, 1.0f);

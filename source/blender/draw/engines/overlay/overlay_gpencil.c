@@ -344,6 +344,9 @@ static void OVERLAY_gpencil_color_names(Object *ob)
 
 void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  View3D *v3d = draw_ctx->v3d;
+
   bGPdata *gpd = (bGPdata *)ob->data;
   if (gpd == NULL) {
     return;
@@ -355,7 +358,8 @@ void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   /* don't show object extras in set's */
   if ((ob->base_flag & (BASE_FROM_SET | BASE_FROM_DUPLI)) == 0) {
-    if ((ob->dtx & OB_DRAWNAME) && (ob->mode == OB_MODE_EDIT_GPENCIL) && DRW_state_show_text()) {
+    if ((v3d->gp_flag & V3D_GP_SHOW_MATERIAL_NAME) && (ob->mode == OB_MODE_EDIT_GPENCIL) &&
+        DRW_state_show_text()) {
       OVERLAY_gpencil_color_names(ob);
     }
   }
