@@ -171,8 +171,6 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.fx_shadow_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_transform_sh);
 
-  DRW_TEXTURE_FREE_SAFE(e_data.gpencil_blank_texture);
-
   GPU_VERTBUF_DISCARD_SAFE(e_data.quad);
 }
 

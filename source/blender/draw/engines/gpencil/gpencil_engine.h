@@ -181,12 +181,6 @@ typedef struct GPENCIL_tObject {
 } GPENCIL_tObject;
 
 /* *********** LISTS *********** */
-typedef struct GPENCIL_Storage {
-  /* Render Matrices and data */
-  float view_vecs[2][4]; /* vec4[2] */
-  Object *camera;        /* camera pointer for render mode */
-} GPENCIL_Storage;
-
 typedef struct GPENCIL_StorageList {
   struct GPENCIL_PrivateData *pd;
 } GPENCIL_StorageList;
@@ -318,9 +312,6 @@ typedef struct GPENCIL_PrivateData {
 } GPENCIL_PrivateData;
 
 typedef struct GPENCIL_e_data {
-  /* textures */
-  struct GPUTexture *gpencil_blank_texture;
-
   /* SMAA antialiasing */
   struct GPUShader *antialiasing_sh[3];
   /* GPencil Object rendering */
