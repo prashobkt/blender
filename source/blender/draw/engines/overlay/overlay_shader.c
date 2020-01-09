@@ -52,8 +52,9 @@ extern char datatoc_edit_curve_handle_geom_glsl[];
 extern char datatoc_edit_curve_handle_vert_glsl[];
 extern char datatoc_edit_curve_point_vert_glsl[];
 extern char datatoc_edit_curve_wire_vert_glsl[];
-extern char datatoc_edit_gpencil_vert_glsl[];
 extern char datatoc_edit_gpencil_canvas_vert_glsl[];
+extern char datatoc_edit_gpencil_guide_vert_glsl[];
+extern char datatoc_edit_gpencil_vert_glsl[];
 extern char datatoc_edit_lattice_point_vert_glsl[];
 extern char datatoc_edit_lattice_wire_vert_glsl[];
 extern char datatoc_edit_mesh_common_lib_glsl[];
@@ -137,6 +138,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_curve_handle;
   GPUShader *edit_curve_point;
   GPUShader *edit_curve_wire;
+  GPUShader *edit_gpencil_guide_point;
   GPUShader *edit_gpencil_point;
   GPUShader *edit_gpencil_wire;
   GPUShader *edit_lattice_point;
@@ -532,6 +534,20 @@ GPUShader *OVERLAY_shader_edit_curve_wire(void)
     });
   }
   return sh_data->edit_curve_wire;
+}
+
+GPUShader *OVERLAY_shader_edit_gpencil_guide_point(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->edit_gpencil_guide_point) {
+    sh_data->edit_gpencil_guide_point = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_view_lib_glsl,
+                                 datatoc_edit_gpencil_guide_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+    });
+  }
+  return sh_data->edit_gpencil_guide_point;
 }
 
 GPUShader *OVERLAY_shader_edit_gpencil_point(void)

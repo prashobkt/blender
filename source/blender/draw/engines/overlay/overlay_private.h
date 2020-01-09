@@ -58,6 +58,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *edit_curve_wire_ps[2];
   DRWPass *edit_curve_handle_ps;
   DRWPass *edit_gpencil_ps;
+  DRWPass *edit_gpencil_gizmos_ps;
   DRWPass *edit_lattice_ps;
   DRWPass *edit_mesh_depth_ps[2];
   DRWPass *edit_mesh_verts_ps[2];
@@ -540,6 +541,7 @@ GPUShader *OVERLAY_shader_depth_only(void);
 GPUShader *OVERLAY_shader_edit_curve_handle(void);
 GPUShader *OVERLAY_shader_edit_curve_point(void);
 GPUShader *OVERLAY_shader_edit_curve_wire(void);
+GPUShader *OVERLAY_shader_edit_gpencil_guide_point(void);
 GPUShader *OVERLAY_shader_edit_gpencil_point(void);
 GPUShader *OVERLAY_shader_edit_gpencil_wire(void);
 GPUShader *OVERLAY_shader_edit_lattice_point(void);

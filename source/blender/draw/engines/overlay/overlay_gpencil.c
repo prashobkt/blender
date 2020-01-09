@@ -128,6 +128,45 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
     }
   }
+
+  if (gpd->runtime.cp_points || ts->gp_sculpt.guide.use_guide) {
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->edit_gpencil_gizmos_ps, state);
+
+    sh = OVERLAY_shader_edit_gpencil_guide_point();
+    grp = DRW_shgroup_create(sh, psl->edit_gpencil_gizmos_ps);
+
+    if (gpd->runtime.cp_points != NULL) {
+      for (int i = 0; i < gpd->runtime.tot_cp_points; i++) {
+        bGPDcontrolpoint *cp = &gpd->runtime.cp_points[i];
+        grp = DRW_shgroup_create_sub(grp);
+        DRW_shgroup_uniform_vec3_copy(grp, "pPosition", &cp->x);
+        DRW_shgroup_uniform_float_copy(grp, "pSize", cp->size * 0.8f * G_draw.block.sizePixel);
+        DRW_shgroup_uniform_vec4_copy(grp, "pColor", cp->color);
+        DRW_shgroup_call_procedural_points(grp, NULL, 1);
+      }
+    }
+
+    if (ts->gp_sculpt.guide.use_guide) {
+      float color[4];
+      if (ts->gp_sculpt.guide.reference_point == GP_GUIDE_REF_CUSTOM) {
+        UI_GetThemeColor4fv(TH_GIZMO_PRIMARY, color);
+        DRW_shgroup_uniform_vec3_copy(grp, "pPosition", ts->gp_sculpt.guide.location);
+      }
+      else if (ts->gp_sculpt.guide.reference_point == GP_GUIDE_REF_OBJECT &&
+               ts->gp_sculpt.guide.reference_object != NULL) {
+        UI_GetThemeColor4fv(TH_GIZMO_SECONDARY, color);
+        DRW_shgroup_uniform_vec3_copy(grp, "pPosition", ts->gp_sculpt.guide.reference_object->loc);
+      }
+      else {
+        UI_GetThemeColor4fv(TH_REDALERT, color);
+        DRW_shgroup_uniform_vec3_copy(grp, "pPosition", scene->cursor.location);
+      }
+      DRW_shgroup_uniform_vec4_copy(grp, "pColor", color);
+      DRW_shgroup_uniform_float_copy(grp, "pSize", 8.0f * G_draw.block.sizePixel);
+      DRW_shgroup_call_procedural_points(grp, NULL, 1);
+    }
+  }
 }
 
 void OVERLAY_gpencil_cache_init(OVERLAY_Data *vedata)
@@ -327,6 +366,10 @@ void OVERLAY_gpencil_draw(OVERLAY_Data *vedata)
 void OVERLAY_edit_gpencil_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
+
+  if (psl->edit_gpencil_gizmos_ps) {
+    DRW_draw_pass(psl->edit_gpencil_gizmos_ps);
+  }
 
   if (psl->edit_gpencil_ps) {
     DRW_draw_pass(psl->edit_gpencil_ps);
