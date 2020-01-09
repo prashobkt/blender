@@ -595,6 +595,9 @@ bool BKE_object_is_in_editmode(const Object *ob)
     case OB_SURF:
     case OB_CURVE:
       return ((Curve *)ob->data)->editnurb != NULL;
+    case OB_GPENCIL:
+      /* Grease Pencil object has no edit mode data. */
+      return GPENCIL_EDIT_MODE((bGPdata *)ob->data);
     default:
       return false;
   }
