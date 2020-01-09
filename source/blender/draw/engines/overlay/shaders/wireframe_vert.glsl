@@ -9,6 +9,8 @@ in vec3 pos;
 in vec3 nor;
 in float wd; /* wiredata */
 
+in float layer_rand; /* gpencil only */
+
 flat out vec2 edgeStart;
 
 #ifndef SELECT_EDGES
@@ -81,7 +83,7 @@ void wire_object_color_get(out vec3 rim_col, out vec3 wire_col)
     rim_col = wire_col = ObjectColor.rgb * 0.5;
   }
   else {
-    float hue = ObjectInfo.z;
+    float hue = fract(ObjectInfo.z + layer_rand);
     vec3 hsv = vec3(hue, 0.75, 0.8);
     rim_col = wire_col = hsv_to_rgb(hsv);
   }

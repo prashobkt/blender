@@ -72,6 +72,7 @@ void GPENCIL_engine_init(void *ved)
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  const DRWContextState *ctx = DRW_context_state_get();
 
   if (!stl->pd) {
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
@@ -102,7 +103,8 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->tobjects.last = NULL;
   stl->pd->sbuffer_tobjects.first = NULL;
   stl->pd->sbuffer_tobjects.last = NULL;
-  stl->pd->draw_depth_only = !DRW_state_is_fbo();
+  stl->pd->draw_depth_only = !DRW_state_is_fbo() ||
+                             (ctx->v3d && ctx->v3d->shading.type == OB_WIRE);
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
   stl->pd->scene_fb = dfbl->default_fb;
   stl->pd->is_render = true; /* TODO */
@@ -119,7 +121,6 @@ void GPENCIL_engine_init(void *ved)
 
   gpencil_light_ambient_add(stl->pd->shadeless_light_pool, (float[3]){1.0f, 1.0f, 1.0f});
 
-  const DRWContextState *ctx = DRW_context_state_get();
   World *world = ctx->scene->world;
   if (world != NULL) {
     gpencil_light_ambient_add(stl->pd->global_light_pool, &world->horr);
@@ -689,6 +690,11 @@ static void GPENCIL_draw_scene_depth_only(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(dfbl->depth_only_fb);
+  }
 
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
     for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
@@ -696,7 +702,16 @@ static void GPENCIL_draw_scene_depth_only(void *ved)
     }
   }
 
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(dfbl->default_fb);
+  }
+
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
+
+  /* Free temp stroke buffers. */
+  if (pd->sbuffer_gpd) {
+    DRW_cache_gpencil_sbuffer_clear(pd->obact);
+  }
 }
 
 static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
