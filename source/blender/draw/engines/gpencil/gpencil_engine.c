@@ -538,7 +538,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     return;
   }
 
-  if (ob->type == OB_GPENCIL && ob->data) {
+  if (ob->data && (ob->type == OB_GPENCIL) && (ob->dt >= OB_SOLID)) {
     gpIterPopulateData iter = {0};
     iter.ob = ob;
     iter.pd = pd;
