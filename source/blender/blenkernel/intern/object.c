@@ -870,6 +870,10 @@ void BKE_object_init(Object *ob, const short ob_type)
     ob->upflag = OB_POSZ;
   }
 
+  if (ob->type == OB_GPENCIL) {
+    ob->dtx |= OB_USE_GPENCIL_LIGHTS;
+  }
+
   /* Animation Visualization defaults */
   animviz_settings_init(&ob->avs);
 }

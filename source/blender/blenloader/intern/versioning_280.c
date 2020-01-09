@@ -4384,6 +4384,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         if (ob->type != OB_GPENCIL) {
           continue;
         }
+        /* Enable lights by default. */
+        ob->dtx |= OB_USE_GPENCIL_LIGHTS;
+
         /* VFX. */
         LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
           switch (fx->type) {
