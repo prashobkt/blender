@@ -609,14 +609,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     if (ma == NULL) {
       ma = BKE_material_add_gpencil(bmain, "Dots Stroke");
     }
-    ma->gp_style->mode = GP_STYLE_MODE_DOTS;
+    ma->gp_style->mode = GP_MATERIAL_MODE_DOT;
 
     /* Boxes Stroke. */
     ma = BLI_findstring(&bmain->materials, "Boxes Stroke", offsetof(ID, name) + 2);
     if (ma == NULL) {
       ma = BKE_material_add_gpencil(bmain, "Boxes Stroke");
     }
-    ma->gp_style->mode = GP_STYLE_MODE_BOX;
+    ma->gp_style->mode = GP_MATERIAL_MODE_SQUARE;
 
     /* Reset all grease pencil brushes. */
     Scene *scene = bmain->scenes.first;

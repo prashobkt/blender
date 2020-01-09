@@ -123,34 +123,34 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
     gpMaterial *mat_data = &pool->mat_data[mat_id];
     MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, i + 1);
 
-    if (gp_style->mode == GP_STYLE_MODE_LINE) {
+    if (gp_style->mode == GP_MATERIAL_MODE_LINE) {
       mat_data->flag = 0;
     }
     else {
       switch (gp_style->alignment_mode) {
-        case GP_STYLE_FOLLOW_PATH:
+        case GP_MATERIAL_FOLLOW_PATH:
           mat_data->flag = GP_STROKE_ALIGNMENT_STROKE;
           break;
-        case GP_STYLE_FOLLOW_OBJ:
+        case GP_MATERIAL_FOLLOW_OBJ:
           mat_data->flag = GP_STROKE_ALIGNMENT_OBJECT;
           break;
-        case GP_STYLE_FOLLOW_FIXED:
+        case GP_MATERIAL_FOLLOW_FIXED:
         default:
           mat_data->flag = GP_STROKE_ALIGNMENT_FIXED;
           break;
       }
 
-      if (gp_style->mode == GP_STYLE_MODE_DOTS) {
+      if (gp_style->mode == GP_MATERIAL_MODE_DOT) {
         mat_data->flag |= GP_STROKE_DOTS;
       }
     }
 
-    if ((gp_style->mode != GP_STYLE_MODE_LINE) || (gp_style->flag & GP_STYLE_DISABLE_STENCIL)) {
+    if ((gp_style->mode != GP_MATERIAL_MODE_LINE) || (gp_style->flag & GP_MATERIAL_DISABLE_STENCIL)) {
       mat_data->flag |= GP_STROKE_OVERLAP;
     }
 
     /* Stroke Style */
-    if ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
+    if ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
       bool premul;
       pool->tex_stroke[mat_id] = gpencil_image_texture_get(gp_style->sima, &premul);
       mat_data->flag |= pool->tex_stroke[mat_id] ? GP_STROKE_TEXTURE_USE : 0;
@@ -159,7 +159,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       mat_data->stroke_texture_mix = 1.0f - gp_style->mix_stroke_factor;
       mat_data->stroke_u_scale = 500.0f / gp_style->texture_pixsize;
     }
-    else /* if (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_SOLID) */ {
+    else /* if (gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_SOLID) */ {
       pool->tex_stroke[mat_id] = NULL;
       mat_data->flag &= ~GP_STROKE_TEXTURE_USE;
       copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
@@ -167,8 +167,8 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
     }
 
     /* Fill Style */
-    if ((gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) && (gp_style->ima)) {
-      bool use_clip = (gp_style->flag & GP_STYLE_COLOR_TEX_CLAMP) != 0;
+    if ((gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) && (gp_style->ima)) {
+      bool use_clip = (gp_style->flag & GP_MATERIAL_TEX_CLAMP) != 0;
       bool premul;
       pool->tex_fill[mat_id] = gpencil_image_texture_get(gp_style->ima, &premul);
       mat_data->flag |= pool->tex_fill[mat_id] ? GP_FILL_TEXTURE_USE : 0;
@@ -181,8 +181,8 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       mat_data->fill_texture_mix = 1.0f - gp_style->mix_factor;
     }
-    else if (gp_style->fill_style == GP_STYLE_FILL_STYLE_GRADIENT) {
-      bool use_radial = (gp_style->gradient_type == GP_STYLE_GRADIENT_RADIAL);
+    else if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT) {
+      bool use_radial = (gp_style->gradient_type == GP_MATERIAL_GRADIENT_RADIAL);
       pool->tex_fill[mat_id] = NULL;
       mat_data->flag |= GP_FILL_GRADIENT_USE;
       mat_data->flag |= use_radial ? GP_FILL_GRADIENT_RADIAL : 0;
@@ -193,11 +193,11 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       copy_v4_v4(mat_data->fill_mix_color, gp_style->mix_rgba);
       mat_data->fill_texture_mix = 1.0f - gp_style->mix_factor;
-      if (gp_style->flag & GP_STYLE_COLOR_FLIP_FILL) {
+      if (gp_style->flag & GP_MATERIAL_FLIP_FILL) {
         swap_v4_v4(mat_data->fill_color, mat_data->fill_mix_color);
       }
     }
-    else /* if (gp_style->fill_style == GP_STYLE_FILL_STYLE_SOLID) */ {
+    else /* if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_SOLID) */ {
       pool->tex_fill[mat_id] = NULL;
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       mat_data->fill_texture_mix = 0.0f;

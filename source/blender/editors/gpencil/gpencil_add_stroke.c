@@ -71,7 +71,7 @@ static int gp_stroke_material(Main *bmain, Object *ob, const ColorTemplate *pct,
   srgb_to_linearrgb_v4(ma->gp_style->fill_rgba, ma->gp_style->fill_rgba);
 
   if (fill) {
-    ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
+    ma->gp_style->flag |= GP_MATERIAL_FILL_SHOW;
   }
 
   return idx;

@@ -1562,7 +1562,7 @@ static int gp_stroke_lock_color_exec(bContext *C, wmOperator *UNUSED(op))
   for (short i = 0; i < *totcol; i++) {
     Material *tmp_ma = give_current_material(ob, i + 1);
     if (tmp_ma) {
-      tmp_ma->gp_style->flag |= GP_STYLE_COLOR_LOCKED;
+      tmp_ma->gp_style->flag |= GP_MATERIAL_LOCKED;
       DEG_id_tag_update(&tmp_ma->id, ID_RECALC_COPY_ON_WRITE);
     }
   }
@@ -1581,7 +1581,7 @@ static int gp_stroke_lock_color_exec(bContext *C, wmOperator *UNUSED(op))
           /* unlock color */
           Material *tmp_ma = give_current_material(ob, gps->mat_nr + 1);
           if (tmp_ma) {
-            tmp_ma->gp_style->flag &= ~GP_STYLE_COLOR_LOCKED;
+            tmp_ma->gp_style->flag &= ~GP_MATERIAL_LOCKED;
             DEG_id_tag_update(&tmp_ma->id, ID_RECALC_COPY_ON_WRITE);
           }
         }
@@ -2707,8 +2707,8 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
     ma = BKE_material_gpencil_get(ob, i + 1);
     if (ma) {
       gp_style = ma->gp_style;
-      gp_style->flag |= GP_STYLE_COLOR_LOCKED;
-      gp_style->flag |= GP_STYLE_COLOR_HIDE;
+      gp_style->flag |= GP_MATERIAL_LOCKED;
+      gp_style->flag |= GP_MATERIAL_HIDE;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
     }
   }
@@ -2730,8 +2730,8 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
         gp_style = ma->gp_style;
         /* unlock/unhide color if not unlocked before */
         if (gp_style != NULL) {
-          gp_style->flag &= ~GP_STYLE_COLOR_LOCKED;
-          gp_style->flag &= ~GP_STYLE_COLOR_HIDE;
+          gp_style->flag &= ~GP_MATERIAL_LOCKED;
+          gp_style->flag &= ~GP_MATERIAL_HIDE;
         }
       }
     }
@@ -2771,11 +2771,11 @@ static int gpencil_color_isolate_exec(bContext *C, wmOperator *op)
   MaterialGPencilStyle *active_color = BKE_material_gpencil_settings_get(ob, ob->actcol);
   MaterialGPencilStyle *gp_style;
 
-  int flags = GP_STYLE_COLOR_LOCKED;
+  int flags = GP_MATERIAL_LOCKED;
   bool isolate = false;
 
   if (RNA_boolean_get(op->ptr, "affect_visibility")) {
-    flags |= GP_STYLE_COLOR_HIDE;
+    flags |= GP_MATERIAL_HIDE;
   }
 
   if (ELEM(NULL, gpd, active_color)) {
@@ -2893,7 +2893,7 @@ static int gpencil_color_hide_exec(bContext *C, wmOperator *op)
       if (ma) {
         color = ma->gp_style;
         if (active_color != color) {
-          color->flag |= GP_STYLE_COLOR_HIDE;
+          color->flag |= GP_MATERIAL_HIDE;
           DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
         }
       }
@@ -2901,7 +2901,7 @@ static int gpencil_color_hide_exec(bContext *C, wmOperator *op)
   }
   else {
     /* hide selected/active */
-    active_color->flag |= GP_STYLE_COLOR_HIDE;
+    active_color->flag |= GP_MATERIAL_HIDE;
   }
 
   /* updates */
@@ -2955,7 +2955,7 @@ static int gpencil_color_reveal_exec(bContext *C, wmOperator *UNUSED(op))
     ma = BKE_material_gpencil_get(ob, i + 1);
     if (ma) {
       gp_style = ma->gp_style;
-      gp_style->flag &= ~GP_STYLE_COLOR_HIDE;
+      gp_style->flag &= ~GP_MATERIAL_HIDE;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
     }
   }
@@ -3008,7 +3008,7 @@ static int gpencil_color_lock_all_exec(bContext *C, wmOperator *UNUSED(op))
     ma = BKE_material_gpencil_get(ob, i + 1);
     if (ma) {
       gp_style = ma->gp_style;
-      gp_style->flag |= GP_STYLE_COLOR_LOCKED;
+      gp_style->flag |= GP_MATERIAL_LOCKED;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
     }
   }
@@ -3061,7 +3061,7 @@ static int gpencil_color_unlock_all_exec(bContext *C, wmOperator *UNUSED(op))
     ma = BKE_material_gpencil_get(ob, i + 1);
     if (ma) {
       gp_style = ma->gp_style;
-      gp_style->flag &= ~GP_STYLE_COLOR_LOCKED;
+      gp_style->flag &= ~GP_MATERIAL_LOCKED;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
     }
   }

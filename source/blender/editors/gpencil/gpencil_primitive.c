@@ -146,7 +146,7 @@ static void gp_init_colors(tGPDprimitive *p)
     gpd->runtime.brush_size = brush->size;
 
     /* set colors */
-    if (gp_style->flag & GP_STYLE_STROKE_SHOW) {
+    if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
       copy_v4_v4(gpd->runtime.scolor, gp_style->stroke_rgba);
     }
     else {

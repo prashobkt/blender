@@ -2399,7 +2399,7 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
       gp_style_secondary = ma_secondary->gp_style;
 
       if ((gp_style_primary == NULL) || (gp_style_secondary == NULL) ||
-          (gp_style_secondary->flag & GP_STYLE_COLOR_LOCKED)) {
+          (gp_style_secondary->flag & GP_MATERIAL_LOCKED)) {
         continue;
       }
 
@@ -2409,13 +2409,13 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
       }
 
       /* Check materials have same stroke and fill attributes. */
-      if ((gp_style_primary->flag & GP_STYLE_STROKE_SHOW) !=
-          (gp_style_secondary->flag & GP_STYLE_STROKE_SHOW)) {
+      if ((gp_style_primary->flag & GP_MATERIAL_STROKE_SHOW) !=
+          (gp_style_secondary->flag & GP_MATERIAL_STROKE_SHOW)) {
         continue;
       }
 
-      if ((gp_style_primary->flag & GP_STYLE_FILL_SHOW) !=
-          (gp_style_secondary->flag & GP_STYLE_FILL_SHOW)) {
+      if ((gp_style_primary->flag & GP_MATERIAL_FILL_SHOW) !=
+          (gp_style_secondary->flag & GP_MATERIAL_FILL_SHOW)) {
         continue;
       }
 
@@ -2813,7 +2813,7 @@ void BKE_gpencil_recalc_geometry_caches(Object *ob,
   if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
     /* Calculate triangles cache for filling area (must be done only after changes) */
     if ((gps->tot_triangles == 0) || (gps->triangles == NULL)) {
-      if ((gps->totpoints > 2) && (gp_style->flag & GP_STYLE_FILL_SHOW) &&
+      if ((gps->totpoints > 2) && (gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
           ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gp_style->fill_style > 0) ||
            (gpl->blend_mode != eGplBlendMode_Regular))) {
         BKE_gpencil_triangulate_stroke_fill((bGPdata *)ob->data, gps);
@@ -3210,7 +3210,8 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
     float hsv2[4];
     rgb_to_hsv_v(gp_style->fill_rgba, hsv2);
     hsv2[3] = gp_style->fill_rgba[3];
-    if ((gp_style->fill_style == GP_STYLE_FILL_STYLE_SOLID) && (compare_v4v4(hsv1, hsv2, 0.01f))) {
+    if ((gp_style->fill_style == GP_MATERIAL_FILL_STYLE_SOLID) &&
+        (compare_v4v4(hsv1, hsv2, 0.01f))) {
       *r_mat = ma;
       return i - 1;
     }
@@ -3235,24 +3236,24 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
   /* Stroke color. */
   if (gpencil_lines) {
     ARRAY_SET_ITEMS(gp_style->stroke_rgba, 0.0f, 0.0f, 0.0f, 1.0f);
-    gp_style->flag |= GP_STYLE_STROKE_SHOW;
+    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
   }
   else {
     linearrgb_to_srgb_v4(gp_style->stroke_rgba, cu_color);
-    gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
+    gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
   }
 
   /* Fill color. */
   linearrgb_to_srgb_v4(gp_style->fill_rgba, cu_color);
   /* Fill is false if the original curve hasn't material assigned, so enable it. */
   if (fill) {
-    gp_style->flag |= GP_STYLE_FILL_SHOW;
+    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
   }
 
   /* Check at least one is enabled. */
-  if (((gp_style->flag & GP_STYLE_STROKE_SHOW) == 0) &&
-      ((gp_style->flag & GP_STYLE_FILL_SHOW) == 0)) {
-    gp_style->flag |= GP_STYLE_STROKE_SHOW;
+  if (((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0) &&
+      ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0)) {
+    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
   }
 
   return mat_gp;
@@ -3411,12 +3412,12 @@ static void gpencil_convert_spline(Main *bmain,
           mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
           /* Set fill and stroke depending of curve type (3D or 2D). */
           if ((cu->flag & CU_3D) || ((cu->flag & (CU_FRONT | CU_BACK)) == 0)) {
-            mat_gp->gp_style->flag |= GP_STYLE_STROKE_SHOW;
-            mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+            mat_gp->gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+            mat_gp->gp_style->flag &= ~GP_MATERIAL_FILL_SHOW;
           }
           else {
-            mat_gp->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
-            mat_gp->gp_style->flag |= GP_STYLE_FILL_SHOW;
+            mat_gp->gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
+            mat_gp->gp_style->flag |= GP_MATERIAL_FILL_SHOW;
           }
         }
       }

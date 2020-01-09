@@ -253,7 +253,7 @@ static void overlay_gpencil_draw_stroke_color_name(bGPDlayer *UNUSED(gpl),
     return;
   }
   /* check if the color is visible */
-  if (gp_style->flag & GP_STYLE_COLOR_HIDE) {
+  if (gp_style->flag & GP_MATERIAL_HIDE) {
     return;
   }
   /* only if selected */

@@ -2839,8 +2839,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* grease pencil main material show switches */
     for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
       if (mat->gp_style) {
-        mat->gp_style->flag |= GP_STYLE_STROKE_SHOW;
-        mat->gp_style->flag |= GP_STYLE_FILL_SHOW;
+        mat->gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+        mat->gp_style->flag |= GP_MATERIAL_FILL_SHOW;
       }
     }
   }
@@ -4361,20 +4361,20 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
         /* Set Checker material as Solid. This fill mode has been removed and replaced
          * by textures. */
-        if (gp_style->fill_style == GP_STYLE_FILL_STYLE_CHECKER) {
-          gp_style->fill_style = GP_STYLE_FILL_STYLE_SOLID;
+        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_CHECKER) {
+          gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
         }
         /* Update Alpha channel for texture opacity. */
-        if (gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) {
+        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) {
           gp_style->fill_rgba[3] *= gp_style->texture_opacity;
         }
         /* Stroke stencil mask to mix = 1. */
-        if (gp_style->flag & GP_STYLE_STROKE_PATTERN) {
+        if (gp_style->flag & GP_MATERIAL_STROKE_PATTERN) {
           gp_style->mix_stroke_factor = 1.0f;
-          gp_style->flag &= ~GP_STYLE_STROKE_PATTERN;
+          gp_style->flag &= ~GP_MATERIAL_STROKE_PATTERN;
         }
         /* Mix disabled, set mix factor to 0. */
-        else if ((gp_style->flag & GP_STYLE_STROKE_TEX_MIX) == 0) {
+        else if ((gp_style->flag & GP_MATERIAL_STROKE_TEX_MIX) == 0) {
           gp_style->mix_stroke_factor = 0.0f;
         }
       }

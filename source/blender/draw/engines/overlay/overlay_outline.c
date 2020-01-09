@@ -209,10 +209,10 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 
   MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(iter->ob, gps->mat_nr + 1);
 
-  bool hide_material = (gp_style->flag & GP_STYLE_COLOR_HIDE) != 0;
-  bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
+  bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
+  bool show_stroke = (gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0;
   // TODO: What about simplify Fill?
-  bool show_fill = (gps->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
+  bool show_fill = (gps->tot_triangles > 0) && (gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0;
 
   if (hide_material) {
     return;

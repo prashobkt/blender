@@ -72,14 +72,14 @@ static int gpencil_monkey_color(
   srgb_to_linearrgb_v4(ma->gp_style->fill_rgba, ma->gp_style->fill_rgba);
 
   if (!stroke) {
-    ma->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
+    ma->gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
   }
 
   if (!fill) {
-    ma->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+    ma->gp_style->flag &= ~GP_MATERIAL_FILL_SHOW;
   }
   else {
-    ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
+    ma->gp_style->flag |= GP_MATERIAL_FILL_SHOW;
   }
 
   return idx;

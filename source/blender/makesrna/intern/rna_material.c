@@ -411,37 +411,45 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
 
   /* mode type styles */
   static EnumPropertyItem gpcolordata_mode_types_items[] = {
-      {GP_STYLE_MODE_LINE, "LINE", 0, "Line", "Draw strokes using a continuous line"},
-      {GP_STYLE_MODE_DOTS, "DOTS", 0, "Dots", "Draw strokes using separated dots"},
-      {GP_STYLE_MODE_BOX, "BOX", 0, "Squares", "Draw strokes using separated squares"},
+      {GP_MATERIAL_MODE_LINE, "LINE", 0, "Line", "Draw strokes using a continuous line"},
+      {GP_MATERIAL_MODE_DOT, "DOTS", 0, "Dots", "Draw strokes using separated dots"},
+      {GP_MATERIAL_MODE_SQUARE, "BOX", 0, "Squares", "Draw strokes using separated squares"},
       {0, NULL, 0, NULL, NULL},
   };
 
   /* stroke styles */
   static EnumPropertyItem stroke_style_items[] = {
-      {GP_STYLE_STROKE_STYLE_SOLID, "SOLID", 0, "Solid", "Draw strokes with solid color"},
-      {GP_STYLE_STROKE_STYLE_TEXTURE, "TEXTURE", 0, "Texture", "Draw strokes using texture"},
+      {GP_MATERIAL_STROKE_STYLE_SOLID, "SOLID", 0, "Solid", "Draw strokes with solid color"},
+      {GP_MATERIAL_STROKE_STYLE_TEXTURE, "TEXTURE", 0, "Texture", "Draw strokes using texture"},
       {0, NULL, 0, NULL, NULL},
   };
 
   /* fill styles */
   static EnumPropertyItem fill_style_items[] = {
-      {GP_STYLE_FILL_STYLE_SOLID, "SOLID", 0, "Solid", "Fill area with solid color"},
-      {GP_STYLE_FILL_STYLE_GRADIENT, "GRADIENT", 0, "Gradient", "Fill area with gradient color"},
-      {GP_STYLE_FILL_STYLE_TEXTURE, "TEXTURE", 0, "Texture", "Fill area with image texture"},
+      {GP_MATERIAL_FILL_STYLE_SOLID, "SOLID", 0, "Solid", "Fill area with solid color"},
+      {GP_MATERIAL_FILL_STYLE_GRADIENT,
+       "GRADIENT",
+       0,
+       "Gradient",
+       "Fill area with gradient color"},
+      {GP_MATERIAL_FILL_STYLE_TEXTURE, "TEXTURE", 0, "Texture", "Fill area with image texture"},
       {0, NULL, 0, NULL, NULL},
   };
 
   static EnumPropertyItem fill_gradient_items[] = {
-      {GP_STYLE_GRADIENT_LINEAR, "LINEAR", 0, "Linear", "Fill area with gradient color"},
-      {GP_STYLE_GRADIENT_RADIAL, "RADIAL", 0, "Radial", "Fill area with radial gradient"},
+      {GP_MATERIAL_GRADIENT_LINEAR, "LINEAR", 0, "Linear", "Fill area with gradient color"},
+      {GP_MATERIAL_GRADIENT_RADIAL, "RADIAL", 0, "Radial", "Fill area with radial gradient"},
       {0, NULL, 0, NULL, NULL},
   };
 
   static EnumPropertyItem alignment_draw_items[] = {
-      {GP_STYLE_FOLLOW_PATH, "PATH", 0, "Path", "Follow stroke drawing path and object rotation"},
-      {GP_STYLE_FOLLOW_OBJ, "OBJECT", 0, "Object", "Follow object rotation only"},
-      {GP_STYLE_FOLLOW_FIXED,
+      {GP_MATERIAL_FOLLOW_PATH,
+       "PATH",
+       0,
+       "Path",
+       "Follow stroke drawing path and object rotation"},
+      {GP_MATERIAL_FOLLOW_OBJ, "OBJECT", 0, "Object", "Follow object rotation only"},
+      {GP_MATERIAL_FOLLOW_FIXED,
        "FIXED",
        0,
        "Fixed",
@@ -554,48 +562,48 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
 
   /* Flags */
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_COLOR_HIDE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_HIDE);
   RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
   RNA_def_property_ui_text(prop, "Hide", "Set color Visibility");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
 
   prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_COLOR_LOCKED);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_LOCKED);
   RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
   RNA_def_property_ui_text(
       prop, "Locked", "Protect color from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
 
   prop = RNA_def_property(srna, "ghost", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_COLOR_ONIONSKIN);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_ONIONSKIN);
   RNA_def_property_ui_icon(prop, ICON_GHOST_ENABLED, 0);
   RNA_def_property_ui_text(
       prop, "Show in Ghosts", "Display strokes using this color when showing onion skins");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
 
   prop = RNA_def_property(srna, "texture_clamp", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_COLOR_TEX_CLAMP);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_TEX_CLAMP);
   RNA_def_property_ui_text(prop, "Clamp", "Do not repeat texture and clamp to one instance only");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "flip", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_COLOR_FLIP_FILL);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_FLIP_FILL);
   RNA_def_property_ui_text(prop, "Flip", "Flip filling colors");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "use_overlap_strokes", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_DISABLE_STENCIL);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_DISABLE_STENCIL);
   RNA_def_property_ui_text(
       prop, "Self Overlap", "Disable stencil and overlap self intersections with alpha materials");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "show_stroke", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_STROKE_SHOW);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_STROKE_SHOW);
   RNA_def_property_ui_text(prop, "Show Stroke", "Show stroke lines of this material");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "show_fill", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_FILL_SHOW);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_FILL_SHOW);
   RNA_def_property_ui_text(prop, "Show Fill", "Show stroke fills of this material");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 

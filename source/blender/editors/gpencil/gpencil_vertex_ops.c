@@ -526,8 +526,8 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
           continue;
         }
 
-        bool use_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW);
-        bool use_fill = (gp_style->flag & GP_STYLE_FILL_SHOW);
+        bool use_stroke = (gp_style->flag & GP_MATERIAL_STROKE_SHOW);
+        bool use_fill = (gp_style->flag & GP_MATERIAL_FILL_SHOW);
 
         /* Material is disabled. */
         if ((!use_fill) && (!use_stroke)) {
@@ -535,13 +535,13 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
         }
 
         /* Only solid strokes or stencil. */
-        if ((use_stroke) && ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
-                             ((gp_style->flag & GP_STYLE_STROKE_PATTERN) == 0))) {
+        if ((use_stroke) && ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) &&
+                             ((gp_style->flag & GP_MATERIAL_STROKE_PATTERN) == 0))) {
           continue;
         }
 
         /* Only solid fill. */
-        if ((use_fill) && (gp_style->fill_style != GP_STYLE_FILL_STYLE_SOLID)) {
+        if ((use_fill) && (gp_style->fill_style != GP_MATERIAL_FILL_STYLE_SOLID)) {
           continue;
         }
 
@@ -600,17 +600,17 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
   uint r_i = 0;
   if ((use_stroke) && (use_fill)) {
     switch (gp_style->mode) {
-      case GP_STYLE_MODE_LINE: {
+      case GP_MATERIAL_MODE_LINE: {
         r_i = 1;
         strcpy(name, "Line Stroke-Fill");
         break;
       }
-      case GP_STYLE_MODE_DOTS: {
+      case GP_MATERIAL_MODE_DOT: {
         r_i = 2;
         strcpy(name, "Dots Stroke-Fill");
         break;
       }
-      case GP_STYLE_MODE_BOX: {
+      case GP_MATERIAL_MODE_SQUARE: {
         r_i = 3;
         strcpy(name, "Boxes Stroke-Fill");
         break;
@@ -621,17 +621,17 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
   }
   else if (use_stroke) {
     switch (gp_style->mode) {
-      case GP_STYLE_MODE_LINE: {
+      case GP_MATERIAL_MODE_LINE: {
         r_i = 4;
         strcpy(name, "Line Stroke");
         break;
       }
-      case GP_STYLE_MODE_DOTS: {
+      case GP_MATERIAL_MODE_DOT: {
         r_i = 5;
         strcpy(name, "Dots Stroke");
         break;
       }
-      case GP_STYLE_MODE_BOX: {
+      case GP_MATERIAL_MODE_SQUARE: {
         r_i = 6;
         strcpy(name, "Boxes Stroke");
         break;
@@ -713,23 +713,23 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        bool use_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW);
-        bool use_fill = (gp_style->flag & GP_STYLE_FILL_SHOW);
-        bool is_stencil = ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
-                           (gp_style->flag & GP_STYLE_STROKE_PATTERN));
+        bool use_stroke = (gp_style->flag & GP_MATERIAL_STROKE_SHOW);
+        bool use_fill = (gp_style->flag & GP_MATERIAL_FILL_SHOW);
+        bool is_stencil = ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) &&
+                           (gp_style->flag & GP_MATERIAL_STROKE_PATTERN));
         /* Material is disabled. */
         if ((!use_fill) && (!use_stroke)) {
           continue;
         }
 
         /* Only solid strokes or stencil. */
-        if ((use_stroke) && ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
-                             ((gp_style->flag & GP_STYLE_STROKE_PATTERN) == 0))) {
+        if ((use_stroke) && ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) &&
+                             ((gp_style->flag & GP_MATERIAL_STROKE_PATTERN) == 0))) {
           continue;
         }
 
         /* Only solid fill. */
-        if ((use_fill) && (gp_style->fill_style != GP_STYLE_FILL_STYLE_SOLID)) {
+        if ((use_fill) && (gp_style->fill_style != GP_MATERIAL_FILL_STYLE_SOLID)) {
           continue;
         }
 
@@ -755,17 +755,17 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
           if (!found) {
             ma = BKE_material_add_gpencil(bmain, name);
             if (use_stroke) {
-              ma->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+              ma->gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
             }
             else {
-              ma->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
+              ma->gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
             }
 
             if (use_fill) {
-              ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
+              ma->gp_style->flag |= GP_MATERIAL_FILL_SHOW;
             }
             else {
-              ma->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+              ma->gp_style->flag &= ~GP_MATERIAL_FILL_SHOW;
             }
 
             ma->gp_style->stroke_rgba[3] = gp_style->stroke_rgba[3];

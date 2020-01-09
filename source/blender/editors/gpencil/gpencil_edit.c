@@ -2978,8 +2978,8 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
             continue;
           }
           /* skip hidden or locked colors */
-          if (!gp_style || (gp_style->flag & GP_STYLE_COLOR_HIDE) ||
-              (gp_style->flag & GP_STYLE_COLOR_LOCKED)) {
+          if (!gp_style || (gp_style->flag & GP_MATERIAL_HIDE) ||
+              (gp_style->flag & GP_MATERIAL_LOCKED)) {
             continue;
           }
 
@@ -3092,8 +3092,8 @@ static int gp_stroke_caps_set_exec(bContext *C, wmOperator *op)
         continue;
       }
       /* skip hidden or locked colors */
-      if (!gp_style || (gp_style->flag & GP_STYLE_COLOR_HIDE) ||
-          (gp_style->flag & GP_STYLE_COLOR_LOCKED)) {
+      if (!gp_style || (gp_style->flag & GP_MATERIAL_HIDE) ||
+          (gp_style->flag & GP_MATERIAL_LOCKED)) {
         continue;
       }
 

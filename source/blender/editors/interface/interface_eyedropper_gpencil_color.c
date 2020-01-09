@@ -126,15 +126,15 @@ static void eyedropper_add_material(
     if (gp_style != NULL) {
       /* Check stroke color. */
       bool found_stroke = compare_v3v3(gp_style->stroke_rgba, col_conv, 0.01f) &&
-                          (gp_style->flag & GP_STYLE_STROKE_SHOW);
+                          (gp_style->flag & GP_MATERIAL_STROKE_SHOW);
       /* Check fill color. */
       bool found_fill = compare_v3v3(gp_style->fill_rgba, col_conv, 0.01f) &&
-                        (gp_style->flag & GP_STYLE_FILL_SHOW);
+                        (gp_style->flag & GP_MATERIAL_FILL_SHOW);
 
-      if ((only_stroke) && (found_stroke) && ((gp_style->flag & GP_STYLE_FILL_SHOW) == 0)) {
+      if ((only_stroke) && (found_stroke) && ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0)) {
         found = true;
       }
-      else if ((only_fill) && (found_fill) && ((gp_style->flag & GP_STYLE_STROKE_SHOW) == 0)) {
+      else if ((only_fill) && (found_fill) && ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0)) {
         found = true;
       }
       else if ((both) && (found_stroke) && (found_fill)) {
@@ -168,22 +168,22 @@ static void eyedropper_add_material(
   /* Only create Stroke (default option). */
   if (only_stroke) {
     /* Stroke color. */
-    gp_style_new->flag |= GP_STYLE_STROKE_SHOW;
-    gp_style_new->flag &= ~GP_STYLE_FILL_SHOW;
+    gp_style_new->flag |= GP_MATERIAL_STROKE_SHOW;
+    gp_style_new->flag &= ~GP_MATERIAL_FILL_SHOW;
     copy_v3_v3(gp_style_new->stroke_rgba, col_conv);
     zero_v4(gp_style_new->fill_rgba);
   }
   /* Fill Only. */
   else if (only_fill) {
     /* Fill color. */
-    gp_style_new->flag &= ~GP_STYLE_STROKE_SHOW;
-    gp_style_new->flag |= GP_STYLE_FILL_SHOW;
+    gp_style_new->flag &= ~GP_MATERIAL_STROKE_SHOW;
+    gp_style_new->flag |= GP_MATERIAL_FILL_SHOW;
     zero_v4(gp_style_new->stroke_rgba);
     copy_v3_v3(gp_style_new->fill_rgba, col_conv);
   }
   /* Stroke and Fill. */
   else if (both) {
-    gp_style_new->flag |= GP_STYLE_STROKE_SHOW | GP_STYLE_FILL_SHOW;
+    gp_style_new->flag |= GP_MATERIAL_STROKE_SHOW | GP_MATERIAL_FILL_SHOW;
     copy_v3_v3(gp_style_new->stroke_rgba, col_conv);
     copy_v3_v3(gp_style_new->fill_rgba, col_conv);
   }

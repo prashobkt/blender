@@ -402,7 +402,7 @@ static int gp_set_filling_texture(Image *image, short flag)
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  if (flag & GP_STYLE_COLOR_TEX_CLAMP) {
+  if (flag & GP_MATERIAL_TEX_CLAMP) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
   }
@@ -458,12 +458,12 @@ static void gp_draw_stroke_fill(bGPdata *gpd,
   immUniform2fv("texture_scale", gp_style->texture_scale);
   immUniform2fv("texture_offset", gp_style->texture_offset);
   immUniform1f("texture_opacity", gp_style->texture_opacity);
-  immUniform1i("t_mix", (gp_style->flag & GP_STYLE_FILL_TEX_MIX) != 0);
-  immUniform1i("t_flip", (gp_style->flag & GP_STYLE_COLOR_FLIP_FILL) != 0);
+  immUniform1i("t_mix", (gp_style->flag & GP_MATERIAL_FILL_TEX_MIX) != 0);
+  immUniform1i("t_flip", (gp_style->flag & GP_MATERIAL_FLIP_FILL) != 0);
 #if 0 /* GPXX disabled, not used in annotations */
   /* image texture */
-  if ((gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) ||
-      (gp_style->flag & GP_STYLE_COLOR_TEX_MIX)) {
+  if ((gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) ||
+      (gp_style->flag & GP_MATERIAL_COLOR_TEX_MIX)) {
     gp_set_filling_texture(gp_style->ima, gp_style->flag);
   }
 #endif
@@ -884,15 +884,15 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
     Material *ma = (use_mat) ? tgpw->gpd->mat[gps->mat_nr] : BKE_material_gpencil_default_get();
     MaterialGPencilStyle *gp_style = (ma) ? ma->gp_style : NULL;
 
-    if ((gp_style == NULL) || (gp_style->flag & GP_STYLE_COLOR_HIDE) ||
+    if ((gp_style == NULL) || (gp_style->flag & GP_MATERIAL_HIDE) ||
         /* if onion and ghost flag do not draw*/
-        (tgpw->onion && (gp_style->flag & GP_STYLE_COLOR_ONIONSKIN))) {
+        (tgpw->onion && (gp_style->flag & GP_MATERIAL_ONIONSKIN))) {
       continue;
     }
 
     /* if disable fill, the colors with fill must be omitted too except fill boundary strokes */
     if ((tgpw->disable_fill == 1) && (gp_style->fill_rgba[3] > 0.0f) &&
-        ((gps->flag & GP_STROKE_NOFILL) == 0) && (gp_style->flag & GP_STYLE_FILL_SHOW)) {
+        ((gps->flag & GP_STROKE_NOFILL) == 0) && (gp_style->flag & GP_MATERIAL_FILL_SHOW)) {
       continue;
     }
 
@@ -977,7 +977,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
         }
       }
 
-      if (gp_style->mode == GP_STYLE_MODE_DOTS) {
+      if (gp_style->mode == GP_MATERIAL_MODE_DOT) {
         /* volumetric stroke drawing */
         if (tgpw->disable_fill != 1) {
           gp_draw_stroke_volumetric_3d(gps->points, gps->totpoints, sthickness, ink);
@@ -1058,7 +1058,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
           copy_v4_v4(ink, tcolor);
         }
       }
-      if (gp_style->mode == GP_STYLE_MODE_DOTS) {
+      if (gp_style->mode == GP_MATERIAL_MODE_DOT) {
         /* blob/disk-based "volumetric" drawing */
         gp_draw_stroke_volumetric_2d(gps->points,
                                      gps->totpoints,

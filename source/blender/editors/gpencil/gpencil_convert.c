@@ -1783,7 +1783,7 @@ static int image_to_gpencil_exec(bContext *C, wmOperator *op)
   /* Create material slot. */
   Material *ma = BKE_gpencil_object_material_new(bmain, ob, "Image Material", NULL);
   MaterialGPencilStyle *gp_style = ma->gp_style;
-  gp_style->mode = GP_STYLE_MODE_BOX;
+  gp_style->mode = GP_MATERIAL_MODE_SQUARE;
 
   /* Add layer and frame. */
   bGPdata *gpd = (bGPdata *)ob->data;

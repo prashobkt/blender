@@ -137,8 +137,8 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *op)
         gp_style->texture_opacity = 1.0f;
         gp_style->texture_pixsize = 100.0f;
 
-        gp_style->flag |= GP_STYLE_STROKE_SHOW;
-        gp_style->flag |= GP_STYLE_FILL_SHOW;
+        gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+        gp_style->flag |= GP_MATERIAL_FILL_SHOW;
 
         /* fix strokes */
         for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {

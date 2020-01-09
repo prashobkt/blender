@@ -464,7 +464,7 @@ static bool gp_strokes_merge_poll(bContext *C)
 
   /* check hidden or locked materials */
   MaterialGPencilStyle *gp_style = ma->gp_style;
-  if ((gp_style->flag & GP_STYLE_COLOR_HIDE) || (gp_style->flag & GP_STYLE_COLOR_LOCKED)) {
+  if ((gp_style->flag & GP_MATERIAL_HIDE) || (gp_style->flag & GP_MATERIAL_LOCKED)) {
     return false;
   }
 

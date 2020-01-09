@@ -276,7 +276,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
       }
       /* check if the color is visible */
       MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
-      if ((gp_style == NULL) || (gp_style->flag & GP_STYLE_COLOR_HIDE)) {
+      if ((gp_style == NULL) || (gp_style->flag & GP_MATERIAL_HIDE)) {
         continue;
       }
 
@@ -293,7 +293,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
       tgpw.onion = true;
       tgpw.custonion = true;
 
-      bool textured_stroke = (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE);
+      bool textured_stroke = (gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE);
 
       /* normal strokes */
       if (((tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE) ||
