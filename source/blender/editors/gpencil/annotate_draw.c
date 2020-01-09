@@ -625,7 +625,7 @@ static void annotation_draw_strokes(bGPdata *UNUSED(gpd),
 }
 
 /* Draw selected verts for strokes being edited */
-static void annotation_draw_strokes_edit(bGPdata *gpd,
+static void annotation_draw_strokes_edit(bGPdata *UNUSED(gpd),
                                          bGPDlayer *gpl,
                                          const bGPDframe *gpf,
                                          int offsx,
@@ -688,6 +688,9 @@ static void annotation_draw_strokes_edit(bGPdata *gpd,
     else {
       vsize = bsize + 2;
     }
+
+    /* Why? */
+    UNUSED_VARS(vsize);
 
     float selectColor[4];
     UI_GetThemeColor3fv(TH_GP_VERTEX_SELECT, selectColor);

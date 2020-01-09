@@ -412,7 +412,7 @@ static void gp_grid_colors_calc(tGP_BrushVertexpaintData *gso)
 
 /* ************************************************ */
 /* Brush Callbacks
-/* This section defines the callbacks used by each brush to perform their magic.
+ * This section defines the callbacks used by each brush to perform their magic.
  * These are called on each point within the brush's radius. */
 
 /* Tint Brush */

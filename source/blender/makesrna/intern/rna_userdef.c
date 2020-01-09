@@ -4992,15 +4992,6 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem multi_sample_levels[] = {
-      {USER_MULTISAMPLE_NONE, "NONE", 0, "No MultiSample", "Do not use OpenGL MultiSample"},
-      {USER_MULTISAMPLE_2, "2", 0, "MultiSample: 2", "Use 2x OpenGL MultiSample"},
-      {USER_MULTISAMPLE_4, "4", 0, "MultiSample: 4", "Use 4x OpenGL MultiSample"},
-      {USER_MULTISAMPLE_8, "8", 0, "MultiSample: 8", "Use 8x OpenGL MultiSample"},
-      {USER_MULTISAMPLE_16, "16", 0, "MultiSample: 16", "Use 16x OpenGL MultiSample"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   static const EnumPropertyItem image_draw_methods[] = {
       {IMAGE_DRAW_METHOD_AUTO,
        "AUTO",

@@ -240,9 +240,9 @@ static void gpencil_uv_transform_exit(bContext *C, wmOperator *op)
 
 static void gpencil_transform_fill_cancel(bContext *C, wmOperator *op)
 {
-  GpUvData *opdata;
+  GpUvData *opdata = op->customdata;
+  UNUSED_VARS(opdata);
 
-  opdata = op->customdata;
   gpencil_uv_transform_exit(C, op);
 
   /* need to force redisplay or we may still view the modified result */

@@ -1677,7 +1677,7 @@ void GPENCIL_OT_brush_reset(wmOperatorType *ot)
 }
 
 static Brush *gp_brush_get_first_by_mode(Main *bmain,
-                                         Paint *paint,
+                                         Paint *UNUSED(paint),
                                          const enum eContextObjectMode mode,
                                          char tool)
 {

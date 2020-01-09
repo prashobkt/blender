@@ -246,7 +246,7 @@ static void brush_calc_dvec_2d(tGP_BrushWeightpaintData *gso)
 
 /* ************************************************ */
 /* Brush Callbacks
-/* This section defines the callbacks used by each brush to perform their magic.
+ * This section defines the callbacks used by each brush to perform their magic.
  * These are called on each point within the brush's radius. */
 
 /* Draw Brush */

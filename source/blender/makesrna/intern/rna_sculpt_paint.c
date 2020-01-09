@@ -528,11 +528,6 @@ static char *rna_GPencilSculptSettings_path(PointerRNA *UNUSED(ptr))
   return BLI_strdup("tool_settings.gpencil_sculpt");
 }
 
-static char *rna_GPencilSculptBrush_path(PointerRNA *UNUSED(ptr))
-{
-  return BLI_strdup("tool_settings.gpencil_sculpt.brush");
-}
-
 static char *rna_GPencilSculptGuide_path(PointerRNA *UNUSED(ptr))
 {
   return BLI_strdup("tool_settings.gpencil_sculpt.guide");

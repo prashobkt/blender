@@ -920,12 +920,12 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
 
 /* Weight Paint Brush */
 /* Change weight paint for vertex groups */
-static bool gp_brush_weight_apply(tGP_BrushEditData *gso,
-                                  bGPDstroke *gps,
-                                  float UNUSED(rot_eval),
-                                  int pt_index,
-                                  const int radius,
-                                  const int co[2])
+static bool UNUSED_FUNCTION(gp_brush_weight_apply)(tGP_BrushEditData *gso,
+                                                   bGPDstroke *gps,
+                                                   float UNUSED(rot_eval),
+                                                   int pt_index,
+                                                   const int radius,
+                                                   const int co[2])
 {
   /* create dvert */
   BKE_gpencil_dvert_ensure(gps);
