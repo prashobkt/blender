@@ -129,7 +129,14 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
     }
   }
 
-  if (gpd->runtime.cp_points || ts->gp_sculpt.guide.use_guide) {
+  /* control points for primitives and speed guide */
+  const bool is_cppoint = (gpd->runtime.tot_cp_points > 0);
+  const bool is_speed_guide = (ts->gp_sculpt.guide.use_guide &&
+                               (draw_ctx->object_mode == OB_MODE_PAINT_GPENCIL));
+  const bool is_show_gizmo = (((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) &&
+                              ((v3d->gizmo_flag & V3D_GIZMO_HIDE_TOOL) == 0));
+
+  if ((is_cppoint || is_speed_guide) && (is_show_gizmo)) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->edit_gpencil_gizmos_ps, state);
 
