@@ -22,7 +22,7 @@
 
 #include "DRW_render.h"
 
-#include "BKE_global.h" /* REFACTOR(fclem) remove */
+#include "BKE_gpencil.h"
 
 #include "UI_resources.h"
 
@@ -237,62 +237,63 @@ static void OVERLAY_edit_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob
   }
 }
 
-static void OVERLAY_gpencil_color_names(Object *ob)
+static void overlay_gpencil_draw_stroke_color_name(bGPDlayer *UNUSED(gpl),
+                                                   bGPDframe *UNUSED(gpf),
+                                                   bGPDstroke *gps,
+                                                   void *thunk)
 {
-  bGPdata *gpd = (bGPdata *)ob->data;
+  Object *ob = (Object *)thunk;
+  Material *ma = give_current_material(ob, gps->mat_nr + 1);
+  if (ma == NULL) {
+    return;
+  }
+  MaterialGPencilStyle *gp_style = ma->gp_style;
+  /* skip stroke if it doesn't have any valid data */
+  if ((gps->points == NULL) || (gps->totpoints < 1) || (gp_style == NULL)) {
+    return;
+  }
+  /* check if the color is visible */
+  if (gp_style->flag & GP_STYLE_COLOR_HIDE) {
+    return;
+  }
+  /* only if selected */
+  if (gps->flag & GP_STROKE_SELECT) {
+    for (int i = 0; i < gps->totpoints; i++) {
+      bGPDspoint *pt = &gps->points[i];
+      /* Draw name at the first selected point. */
+      if (pt->flag & GP_SPOINT_SELECT) {
+        const DRWContextState *draw_ctx = DRW_context_state_get();
+        ViewLayer *view_layer = draw_ctx->view_layer;
 
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  ViewLayer *view_layer = draw_ctx->view_layer;
-  int theme_id = DRW_object_wire_theme_get(ob, view_layer, NULL);
-  uchar color[4];
-  UI_GetThemeColor4ubv(theme_id, color);
-  struct DRWTextStore *dt = DRW_text_cache_ensure();
+        int theme_id = DRW_object_wire_theme_get(ob, view_layer, NULL);
+        uchar color[4];
+        UI_GetThemeColor4ubv(theme_id, color);
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    if (gpl->flag & GP_LAYER_HIDE) {
-      continue;
-    }
-    bGPDframe *gpf = gpl->actframe;
-    if (gpf == NULL) {
-      continue;
-    }
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-      Material *ma = give_current_material(ob, gps->mat_nr + 1);
-      if (ma == NULL) {
-        continue;
-      }
-
-      MaterialGPencilStyle *gp_style = ma->gp_style;
-      /* skip stroke if it doesn't have any valid data */
-      if ((gps->points == NULL) || (gps->totpoints < 1) || (gp_style == NULL)) {
-        continue;
-      }
-      /* check if the color is visible */
-      if (gp_style->flag & GP_STYLE_COLOR_HIDE) {
-        continue;
-      }
-
-      /* only if selected */
-      if (gps->flag & GP_STROKE_SELECT) {
         float fpt[3];
-        for (int i = 0; i < gps->totpoints; i++) {
-          bGPDspoint *pt = &gps->points[i];
-          if (pt->flag & GP_SPOINT_SELECT) {
-            mul_v3_m4v3(fpt, ob->obmat, &pt->x);
-            DRW_text_cache_add(dt,
-                               fpt,
-                               ma->id.name + 2,
-                               strlen(ma->id.name + 2),
-                               10,
-                               0,
-                               DRW_TEXT_CACHE_GLOBALSPACE | DRW_TEXT_CACHE_STRING_PTR,
-                               color);
-            break;
-          }
-        }
+        mul_v3_m4v3(fpt, ob->obmat, &pt->x);
+
+        struct DRWTextStore *dt = DRW_text_cache_ensure();
+        DRW_text_cache_add(dt,
+                           fpt,
+                           ma->id.name + 2,
+                           strlen(ma->id.name + 2),
+                           10,
+                           0,
+                           DRW_TEXT_CACHE_GLOBALSPACE | DRW_TEXT_CACHE_STRING_PTR,
+                           color);
+        break;
       }
     }
   }
+}
+
+static void OVERLAY_gpencil_color_names(Object *ob)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  int cfra = DEG_get_ctime(draw_ctx->depsgraph);
+
+  BKE_gpencil_visible_stroke_iter(
+      ob, NULL, overlay_gpencil_draw_stroke_color_name, ob, false, cfra);
 }
 
 void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
