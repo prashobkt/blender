@@ -50,6 +50,7 @@ typedef struct GpencilBatchCache {
   /** Instancing Batches */
   GPUBatch *stroke_batch;
   GPUBatch *fill_batch;
+  GPUBatch *lines_batch;
 
   /** Edit Mode */
   GPUVertBuf *edit_vbo;
@@ -115,6 +116,7 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
     return;
   }
 
+  GPU_BATCH_DISCARD_SAFE(cache->lines_batch);
   GPU_BATCH_DISCARD_SAFE(cache->fill_batch);
   GPU_BATCH_DISCARD_SAFE(cache->stroke_batch);
   GPU_VERTBUF_DISCARD_SAFE(cache->vbo);
@@ -389,6 +391,46 @@ GPUBatch *DRW_cache_gpencil_fills_get(Object *ob, int cfra)
   gpencil_batches_ensure(ob, cache, cfra);
 
   return cache->fill_batch;
+}
+
+static void gp_lines_indices_cb(bGPDlayer *UNUSED(gpl),
+                                bGPDframe *UNUSED(gpf),
+                                bGPDstroke *gps,
+                                void *thunk)
+{
+  GPUIndexBufBuilder *builder = (GPUIndexBufBuilder *)thunk;
+  int pts_len = gps->totpoints + gpencil_stroke_is_cyclic(gps);
+
+  int start = gps->runtime.stroke_start + 1;
+  int end = start + pts_len;
+  for (int i = start; i < end; i++) {
+    GPU_indexbuf_add_generic_vert(builder, i);
+  }
+  GPU_indexbuf_add_primitive_restart(builder);
+}
+
+GPUBatch *DRW_cache_gpencil_face_wireframe_get(Object *ob)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  int cfra = DEG_get_ctime(draw_ctx->depsgraph);
+
+  GpencilBatchCache *cache = gpencil_batch_cache_get(ob, cfra);
+  gpencil_batches_ensure(ob, cache, cfra);
+
+  if (cache->lines_batch == NULL) {
+    GPUVertBuf *vbo = cache->vbo;
+    GPUIndexBufBuilder ibo_builder;
+    GPU_indexbuf_init_ex(&ibo_builder, GPU_PRIM_LINE_STRIP, vbo->vertex_len, vbo->vertex_len);
+
+    /* IMPORTANT: Keep in sync with gpencil_edit_batches_ensure() */
+    bool do_onion = true;
+    BKE_gpencil_visible_stroke_iter(ob, NULL, gp_lines_indices_cb, &ibo_builder, do_onion, cfra);
+
+    GPUIndexBuf *ibo = GPU_indexbuf_build(&ibo_builder);
+
+    cache->lines_batch = GPU_batch_create_ex(GPU_PRIM_LINE_STRIP, vbo, ibo, GPU_BATCH_OWNS_INDEX);
+  }
+  return cache->lines_batch;
 }
 
 /** \} */

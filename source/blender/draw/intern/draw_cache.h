@@ -215,8 +215,10 @@ struct GPUBatch *DRW_cache_gpencil_edit_lines_get(struct Object *ob, int cfra);
 struct GPUBatch *DRW_cache_gpencil_edit_points_get(struct Object *ob, int cfra);
 struct GPUBatch *DRW_cache_gpencil_sbuffer_stroke_get(struct Object *ob);
 struct GPUBatch *DRW_cache_gpencil_sbuffer_fill_get(struct Object *ob);
-void DRW_cache_gpencil_sbuffer_clear(struct Object *ob);
+
+struct GPUBatch *DRW_cache_gpencil_face_wireframe_get(struct Object *ob);
 
 struct bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(struct Object *ob);
+void DRW_cache_gpencil_sbuffer_clear(struct Object *ob);
 
 #endif /* __DRAW_CACHE_H__ */

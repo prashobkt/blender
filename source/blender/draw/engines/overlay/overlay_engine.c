@@ -190,7 +190,6 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   OVERLAY_PrivateData *pd = data->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool is_select = DRW_state_is_select();
-  const bool is_gpencil = ob->type == OB_GPENCIL;
   const bool renderable = DRW_object_is_renderable(ob);
   const bool in_pose_mode = ob->type == OB_ARMATURE && OVERLAY_armature_is_pose_mode(ob, draw_ctx);
   const bool in_edit_mode = (ob->mode & OB_MODE_EDIT) && BKE_object_is_in_editmode(ob);
@@ -198,14 +197,15 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool in_paint_mode = (ob == draw_ctx->obact) &&
                              (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
   const bool in_sculpt_mode = (ob == draw_ctx->obact) && (ob->sculpt != NULL);
-  const bool has_surface = ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_MBALL, OB_FONT);
-  const bool draw_surface = !((ob->dt < OB_WIRE) || (!renderable && (ob->dt != OB_WIRE)));
+  const bool has_surface = ELEM(
+      ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_MBALL, OB_FONT, OB_GPENCIL);
+  const bool draw_surface = (ob->dt >= OB_WIRE) && (renderable || (ob->dt == OB_WIRE));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION);
   const bool draw_bones = (pd->overlay.flag & V3D_OVERLAY_HIDE_BONES) == 0;
   const bool draw_wires = draw_surface && has_surface &&
                           (pd->wireframe_mode || !pd->hide_overlays);
-  const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable &&
-                             (has_surface || is_gpencil) && (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
+  const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable && has_surface &&
+                             (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
                              (ob->base_flag & BASE_SELECTED);
   const bool draw_bone_selection = (ob->type == OB_MESH) && pd->armature.do_pose_fade_geom &&
                                    !is_select;

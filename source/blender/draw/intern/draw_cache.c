@@ -807,6 +807,9 @@ GPUBatch *DRW_cache_object_face_wireframe_get(Object *ob)
       return DRW_cache_text_face_wireframe_get(ob);
     case OB_MBALL:
       return DRW_cache_mball_face_wireframe_get(ob);
+    case OB_GPENCIL: {
+      return DRW_cache_gpencil_face_wireframe_get(ob);
+    }
     default:
       return NULL;
   }
