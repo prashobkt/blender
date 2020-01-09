@@ -261,6 +261,7 @@ void GPENCIL_cache_init(void *ved)
     grp = DRW_shgroup_create(sh, psl->composite_ps);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_tx);
+    DRW_shgroup_uniform_bool_copy(grp, "doSrgb", txl->render_depth_tx == NULL);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
   {
@@ -705,7 +706,7 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
   GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
-  float clear_cols[2][4] = {{0.0f, 0.5f, 0.0f, 0.0f}, {1.0f, 0.5f, 1.0f, 1.0f}};
+  float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
 
   DRW_stats_group_start("GPencil Object");
 
