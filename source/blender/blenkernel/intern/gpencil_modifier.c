@@ -806,7 +806,6 @@ static void gpencil_frame_copy_noalloc(Object *ob, bGPDframe *gpf, bGPDframe *gp
   gpf_eval->flag = gpf->flag;
   gpf_eval->key_type = gpf->key_type;
   gpf_eval->runtime = gpf->runtime;
-  copy_m4_m4(gpf_eval->runtime.parent_obmat, gpf->runtime.parent_obmat);
 
   /* copy strokes */
   BLI_listbase_clear(&gpf_eval->strokes);

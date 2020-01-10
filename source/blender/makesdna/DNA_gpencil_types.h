@@ -286,8 +286,6 @@ typedef enum eGPDstroke_Caps {
 
 /* Runtime temp data for bGPDframe */
 typedef struct bGPDframe_Runtime {
-  /** Parent matrix for drawing. */
-  float parent_obmat[4][4];
   /** Index of this frame in the listbase of frames. */
   int frameid;
   /** Onion offset from active frame. 0 if not onion. INT_MAX to bypass frame. */
