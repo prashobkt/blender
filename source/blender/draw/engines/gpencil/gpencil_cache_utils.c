@@ -153,7 +153,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL | DRW_STATE_BLEND_MUL;
     tgp_layer->blend_ps = DRW_pass_create("GPencil Mask Layer", state);
 
-    GPUShader *sh = GPENCIL_shader_layer_mask_get(&en_data);
+    GPUShader *sh = GPENCIL_shader_layer_mask_get();
     DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
     DRW_shgroup_uniform_int_copy(grp, "isFirstPass", true);
     DRW_shgroup_uniform_float_copy(grp, "maskOpacity", gpl->opacity);
@@ -200,7 +200,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
 
     tgp_layer->blend_ps = DRW_pass_create("GPencil Blend Layer", state);
 
-    GPUShader *sh = GPENCIL_shader_layer_blend_get(&en_data);
+    GPUShader *sh = GPENCIL_shader_layer_blend_get();
     DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
     DRW_shgroup_uniform_int_copy(grp, "blendMode", gpl->blend_mode);
     DRW_shgroup_uniform_float_copy(grp, "blendOpacity", gpl->opacity);

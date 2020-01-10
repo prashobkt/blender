@@ -117,7 +117,7 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
     mul_v2_fl(blur_size, distance_factor);
   }
 
-  GPUShader *sh = GPENCIL_shader_fx_blur_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_blur_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Blur H", state, iter, sh);
@@ -135,7 +135,7 @@ static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), g
 {
   DRWShadingGroup *grp;
 
-  GPUShader *sh = GPENCIL_shader_fx_colorize_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_colorize_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Colorize", state, iter, sh);
@@ -154,7 +154,7 @@ static void gpencil_vfx_flip(FlipShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   axis_flip[0] = (fx->flag & FX_FLIP_HORIZONTAL) ? -1.0f : 1.0f;
   axis_flip[1] = (fx->flag & FX_FLIP_VERTICAL) ? -1.0f : 1.0f;
 
-  GPUShader *sh = GPENCIL_shader_fx_transform_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_transform_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
@@ -186,7 +186,7 @@ static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter
   mul_v2_v2(offset, vp_size_inv);
   mul_v2_fl(blur_size, distance_factor);
 
-  GPUShader *sh = GPENCIL_shader_fx_rim_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_rim_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Rim H", state, iter, sh);
@@ -265,7 +265,7 @@ static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxDat
   /* Center to texel */
   madd_v2_v2fl(ob_center, pixel_size, -0.5f);
 
-  GPUShader *sh = GPENCIL_shader_fx_pixelize_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_pixelize_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
 
@@ -364,7 +364,7 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
     wave_phase = 0.0f;
   }
 
-  GPUShader *sh = GPENCIL_shader_fx_shadow_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_shadow_get();
 
   copy_v2_fl2(blur_dir, blur_size[0] * vp_size_inv[0], 0.0f);
 
@@ -406,7 +406,7 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
 {
   DRWShadingGroup *grp;
 
-  GPUShader *sh = GPENCIL_shader_fx_glow_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_glow_get();
 
   float ref_col[3];
 
@@ -482,7 +482,7 @@ static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *it
   /* Phase start at shadow center. */
   wave_phase = fx->phase - dot_v2v2(wave_center, wave_dir);
 
-  GPUShader *sh = GPENCIL_shader_fx_transform_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_transform_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Wave", state, iter, sh);
@@ -527,7 +527,7 @@ static void gpencil_vfx_swirl(SwirlShaderFxData *fx, Object *UNUSED(ob), gpIterV
     return;
   }
 
-  GPUShader *sh = GPENCIL_shader_fx_transform_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_transform_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
@@ -601,7 +601,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
     /* We need an extra pass to combine result to main buffer. */
     iter.target_fb = &fbl->gpencil_fb;
 
-    GPUShader *sh = GPENCIL_shader_fx_composite_get(&en_data);
+    GPUShader *sh = GPENCIL_shader_fx_composite_get();
 
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_MUL;
     DRWShadingGroup *grp = gpencil_vfx_pass_create("GPencil Object Compose", state, &iter, sh);

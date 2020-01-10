@@ -95,7 +95,7 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
     /* Stage 1: Edge detection. */
     DRW_PASS_CREATE(psl->smaa_edge_ps, DRW_STATE_WRITE_COLOR);
 
-    GPUShader *sh = GPENCIL_shader_antialiasing(&en_data, 0);
+    GPUShader *sh = GPENCIL_shader_antialiasing(0);
     grp = DRW_shgroup_create(sh, psl->smaa_edge_ps);
     DRW_shgroup_uniform_texture(grp, "colorTex", pd->color_tx);
     DRW_shgroup_uniform_texture(grp, "revealTex", pd->reveal_tx);
@@ -108,7 +108,7 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
     /* Stage 2: Blend Weight/Coord. */
     DRW_PASS_CREATE(psl->smaa_weight_ps, DRW_STATE_WRITE_COLOR);
 
-    GPUShader *sh = GPENCIL_shader_antialiasing(&en_data, 1);
+    GPUShader *sh = GPENCIL_shader_antialiasing(1);
     grp = DRW_shgroup_create(sh, psl->smaa_weight_ps);
     DRW_shgroup_uniform_texture(grp, "edgesTex", pd->smaa_edge_tx);
     DRW_shgroup_uniform_texture(grp, "areaTex", txl->smaa_area_tx);
@@ -123,7 +123,7 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
     /* TODO merge it with the main composite pass. */
     DRW_PASS_CREATE(psl->smaa_resolve_ps, DRW_STATE_WRITE_COLOR);
 
-    GPUShader *sh = GPENCIL_shader_antialiasing(&en_data, 2);
+    GPUShader *sh = GPENCIL_shader_antialiasing(2);
     grp = DRW_shgroup_create(sh, psl->smaa_resolve_ps);
     DRW_shgroup_uniform_texture(grp, "blendTex", pd->smaa_weight_tx);
     DRW_shgroup_uniform_texture(grp, "colorTex", pd->color_tx);

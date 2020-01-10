@@ -313,49 +313,6 @@ typedef struct GPENCIL_PrivateData {
 
 } GPENCIL_PrivateData;
 
-typedef struct GPENCIL_e_data {
-  /* SMAA antialiasing */
-  struct GPUShader *antialiasing_sh[3];
-  /* GPencil Object rendering */
-  struct GPUShader *gpencil_sh;
-  /* Final Compositing over rendered background. */
-  struct GPUShader *composite_sh;
-  /* All layer blend types in one shader! */
-  struct GPUShader *layer_blend_sh;
-  /* To blend masked layer with other layers. */
-  struct GPUShader *layer_mask_sh;
-  /* Merge the final object depth to the depth buffer. */
-  struct GPUShader *depth_merge_sh;
-  /* Effects. */
-  struct GPUShader *fx_composite_sh;
-  struct GPUShader *fx_colorize_sh;
-  struct GPUShader *fx_blur_sh;
-  struct GPUShader *fx_glow_sh;
-  struct GPUShader *fx_pixel_sh;
-  struct GPUShader *fx_rim_sh;
-  struct GPUShader *fx_shadow_sh;
-  struct GPUShader *fx_transform_sh;
-
-  /* general drawing shaders */
-  struct GPUShader *gpencil_fill_sh;
-  struct GPUShader *gpencil_stroke_sh;
-  struct GPUShader *gpencil_point_sh;
-  struct GPUShader *gpencil_edit_point_sh;
-  struct GPUShader *gpencil_line_sh;
-  struct GPUShader *gpencil_drawing_fill_sh;
-  struct GPUShader *gpencil_fullscreen_sh;
-  struct GPUShader *gpencil_simple_fullscreen_sh;
-  struct GPUShader *gpencil_blend_fullscreen_sh;
-  struct GPUShader *gpencil_background_sh;
-  struct GPUShader *gpencil_paper_sh;
-
-  /* Dummy vbos. */
-  struct GPUVertBuf *quad;
-
-} GPENCIL_e_data; /* Engine data */
-
-extern GPENCIL_e_data en_data;
-
 /* Runtime data for GPU and evaluated frames after applying modifiers */
 typedef struct GpencilBatchCache {
   /** Cache is dirty */
@@ -389,20 +346,22 @@ GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *ob
 void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob);
 
 /* Shaders */
-struct GPUShader *GPENCIL_shader_antialiasing(GPENCIL_e_data *e_data, int stage);
-struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_layer_mask_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_blur_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_colorize_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_transform_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_rim_get(GPENCIL_e_data *e_data);
-struct GPUShader *GPENCIL_shader_fx_shadow_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_antialiasing(int stage);
+struct GPUShader *GPENCIL_shader_geometry_get(void);
+struct GPUShader *GPENCIL_shader_composite_get(void);
+struct GPUShader *GPENCIL_shader_layer_blend_get(void);
+struct GPUShader *GPENCIL_shader_layer_mask_get(void);
+struct GPUShader *GPENCIL_shader_depth_merge_get(void);
+struct GPUShader *GPENCIL_shader_fx_blur_get(void);
+struct GPUShader *GPENCIL_shader_fx_colorize_get(void);
+struct GPUShader *GPENCIL_shader_fx_composite_get(void);
+struct GPUShader *GPENCIL_shader_fx_transform_get(void);
+struct GPUShader *GPENCIL_shader_fx_glow_get(void);
+struct GPUShader *GPENCIL_shader_fx_pixelize_get(void);
+struct GPUShader *GPENCIL_shader_fx_rim_get(void);
+struct GPUShader *GPENCIL_shader_fx_shadow_get(void);
+
+void GPENCIL_shader_free(void);
 
 /* Antialiasing */
 void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata);

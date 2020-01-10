@@ -52,16 +52,6 @@
 
 #include "UI_resources.h"
 
-extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
-
-extern char datatoc_common_colormanagement_lib_glsl[];
-extern char datatoc_common_view_lib_glsl[];
-
-/* *********** STATIC *********** */
-GPENCIL_e_data en_data = {NULL}; /* Engine data */
-/* TODO remove this. This is only to avoid loads of warnings in other files. */
-#define e_data en_data
-
 /* *********** FUNCTIONS *********** */
 
 void GPENCIL_engine_init(void *ved)
@@ -139,41 +129,6 @@ void GPENCIL_engine_init(void *ved)
   else {
     stl->pd->camera = NULL;
   }
-}
-
-static void GPENCIL_engine_free(void)
-{
-  /* only free custom shaders, builtin shaders are freed in blender close */
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_fill_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_stroke_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_point_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_edit_point_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_line_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_fullscreen_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_simple_fullscreen_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_blend_fullscreen_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_background_sh);
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_paper_sh);
-
-  for (int i = 0; i < 3; i++) {
-    DRW_SHADER_FREE_SAFE(e_data.antialiasing_sh[i]);
-  }
-  DRW_SHADER_FREE_SAFE(e_data.gpencil_sh);
-  DRW_SHADER_FREE_SAFE(e_data.composite_sh);
-  DRW_SHADER_FREE_SAFE(e_data.layer_blend_sh);
-  DRW_SHADER_FREE_SAFE(e_data.layer_mask_sh);
-  DRW_SHADER_FREE_SAFE(e_data.depth_merge_sh);
-
-  DRW_SHADER_FREE_SAFE(e_data.fx_blur_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_colorize_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_composite_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_glow_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_pixel_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_rim_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_shadow_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_transform_sh);
-
-  GPU_VERTBUF_DISCARD_SAFE(e_data.quad);
 }
 
 void GPENCIL_cache_init(void *ved)
@@ -257,7 +212,7 @@ void GPENCIL_cache_init(void *ved)
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
     DRW_PASS_CREATE(psl->composite_ps, state);
 
-    GPUShader *sh = GPENCIL_shader_composite_get(&e_data);
+    GPUShader *sh = GPENCIL_shader_composite_get();
     grp = DRW_shgroup_create(sh, psl->composite_ps);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_tx);
@@ -268,7 +223,7 @@ void GPENCIL_cache_init(void *ved)
     DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
     DRW_PASS_CREATE(psl->merge_depth_ps, state);
 
-    GPUShader *sh = GPENCIL_shader_depth_merge_get(&e_data);
+    GPUShader *sh = GPENCIL_shader_depth_merge_get();
     grp = DRW_shgroup_create(sh, psl->merge_depth_ps);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuf", &pd->depth_tx);
     DRW_shgroup_uniform_bool(grp, "strokeOrder3d", &pd->is_stroke_order_3d, 1);
@@ -399,7 +354,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
 
-  struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
+  struct GPUShader *sh = GPENCIL_shader_geometry_get();
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
   DRW_shgroup_uniform_block_persistent(iter->grp, "gpLightBlock", iter->ubo_lights);
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", iter->ubo_mat);
@@ -880,6 +835,11 @@ void GPENCIL_draw_scene(void *ved)
   if (pd->sbuffer_gpd) {
     DRW_cache_gpencil_sbuffer_clear(pd->obact);
   }
+}
+
+static void GPENCIL_engine_free(void)
+{
+  GPENCIL_shader_free();
 }
 
 static const DrawEngineDataSize GPENCIL_data_size = DRW_VIEWPORT_DATA_SIZE(GPENCIL_Data);

@@ -40,15 +40,59 @@ extern char datatoc_common_fullscreen_vert_glsl[];
 extern char datatoc_common_smaa_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
-struct GPUShader *GPENCIL_shader_antialiasing(GPENCIL_e_data *e_data, int stage)
+static struct {
+  /* SMAA antialiasing */
+  GPUShader *antialiasing_sh[3];
+  /* GPencil Object rendering */
+  GPUShader *gpencil_sh;
+  /* Final Compositing over rendered background. */
+  GPUShader *composite_sh;
+  /* All layer blend types in one shader! */
+  GPUShader *layer_blend_sh;
+  /* To blend masked layer with other layers. */
+  GPUShader *layer_mask_sh;
+  /* Merge the final object depth to the depth buffer. */
+  GPUShader *depth_merge_sh;
+  /* Effects. */
+  GPUShader *fx_composite_sh;
+  GPUShader *fx_colorize_sh;
+  GPUShader *fx_blur_sh;
+  GPUShader *fx_glow_sh;
+  GPUShader *fx_pixel_sh;
+  GPUShader *fx_rim_sh;
+  GPUShader *fx_shadow_sh;
+  GPUShader *fx_transform_sh;
+  /* general drawing shaders */
+  GPUShader *gpencil_fill_sh;
+  GPUShader *gpencil_stroke_sh;
+  GPUShader *gpencil_point_sh;
+  GPUShader *gpencil_edit_point_sh;
+  GPUShader *gpencil_line_sh;
+  GPUShader *gpencil_drawing_fill_sh;
+  GPUShader *gpencil_fullscreen_sh;
+  GPUShader *gpencil_simple_fullscreen_sh;
+  GPUShader *gpencil_blend_fullscreen_sh;
+  GPUShader *gpencil_background_sh;
+  GPUShader *gpencil_paper_sh;
+} g_shaders = {{NULL}};
+
+void GPENCIL_shader_free(void)
+{
+  GPUShader **sh_data_as_array = (GPUShader **)&g_shaders;
+  for (int i = 0; i < (sizeof(g_shaders) / sizeof(GPUShader *)); i++) {
+    DRW_SHADER_FREE_SAFE(sh_data_as_array[i]);
+  }
+}
+
+GPUShader *GPENCIL_shader_antialiasing(int stage)
 {
   BLI_assert(stage < 3);
 
-  if (!e_data->antialiasing_sh[stage]) {
+  if (!g_shaders.antialiasing_sh[stage]) {
     char stage_define[32];
     BLI_snprintf(stage_define, sizeof(stage_define), "#define SMAA_STAGE %d\n", stage);
 
-    e_data->antialiasing_sh[stage] = GPU_shader_create_from_arrays({
+    g_shaders.antialiasing_sh[stage] = GPU_shader_create_from_arrays({
         .vert =
             (const char *[]){
                 "#define SMAA_INCLUDE_VS 1\n",
@@ -79,13 +123,13 @@ struct GPUShader *GPENCIL_shader_antialiasing(GPENCIL_e_data *e_data, int stage)
             },
     });
   }
-  return e_data->antialiasing_sh[stage];
+  return g_shaders.antialiasing_sh[stage];
 }
 
-struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_geometry_get(void)
 {
-  if (!e_data->gpencil_sh) {
-    e_data->gpencil_sh = GPU_shader_create_from_arrays({
+  if (!g_shaders.gpencil_sh) {
+    g_shaders.gpencil_sh = GPU_shader_create_from_arrays({
         .vert =
             (const char *[]){
                 datatoc_common_view_lib_glsl,
@@ -109,21 +153,22 @@ struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data)
             },
     });
   }
-  return e_data->gpencil_sh;
+  return g_shaders.gpencil_sh;
 }
 
-struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_composite_get(void)
 {
-  if (!e_data->composite_sh) {
-    e_data->composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_composite_frag_glsl, NULL);
+  if (!g_shaders.composite_sh) {
+    g_shaders.composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_composite_frag_glsl,
+                                                          NULL);
   }
-  return e_data->composite_sh;
+  return g_shaders.composite_sh;
 }
 
-struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_layer_blend_get(void)
 {
-  if (!e_data->layer_blend_sh) {
-    e_data->layer_blend_sh = GPU_shader_create_from_arrays({
+  if (!g_shaders.layer_blend_sh) {
+    g_shaders.layer_blend_sh = GPU_shader_create_from_arrays({
         .vert =
             (const char *[]){
                 datatoc_common_fullscreen_vert_glsl,
@@ -137,22 +182,22 @@ struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data)
             },
     });
   }
-  return e_data->layer_blend_sh;
+  return g_shaders.layer_blend_sh;
 }
 
-struct GPUShader *GPENCIL_shader_layer_mask_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_layer_mask_get(void)
 {
-  if (!e_data->layer_mask_sh) {
-    e_data->layer_mask_sh = DRW_shader_create_fullscreen(datatoc_gpencil_layer_mask_frag_glsl,
-                                                         NULL);
+  if (!g_shaders.layer_mask_sh) {
+    g_shaders.layer_mask_sh = DRW_shader_create_fullscreen(datatoc_gpencil_layer_mask_frag_glsl,
+                                                           NULL);
   }
-  return e_data->layer_mask_sh;
+  return g_shaders.layer_mask_sh;
 }
 
-struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_depth_merge_get(void)
 {
-  if (!e_data->depth_merge_sh) {
-    e_data->depth_merge_sh = GPU_shader_create_from_arrays({
+  if (!g_shaders.depth_merge_sh) {
+    g_shaders.depth_merge_sh = GPU_shader_create_from_arrays({
         .vert =
             (const char *[]){
                 datatoc_common_view_lib_glsl,
@@ -166,60 +211,60 @@ struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data)
             },
     });
   }
-  return e_data->depth_merge_sh;
+  return g_shaders.depth_merge_sh;
 }
 
 /* ------- FX Shaders --------- */
 
-struct GPUShader *GPENCIL_shader_fx_blur_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_blur_get(void)
 {
-  if (!e_data->fx_blur_sh) {
-    e_data->fx_blur_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                      "#define BLUR\n");
+  if (!g_shaders.fx_blur_sh) {
+    g_shaders.fx_blur_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                        "#define BLUR\n");
   }
-  return e_data->fx_blur_sh;
+  return g_shaders.fx_blur_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_colorize_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_colorize_get(void)
 {
-  if (!e_data->fx_colorize_sh) {
-    e_data->fx_colorize_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                          "#define COLORIZE\n");
+  if (!g_shaders.fx_colorize_sh) {
+    g_shaders.fx_colorize_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                            "#define COLORIZE\n");
   }
-  return e_data->fx_colorize_sh;
+  return g_shaders.fx_colorize_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_composite_get(void)
 {
-  if (!e_data->fx_composite_sh) {
-    e_data->fx_composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                           "#define COMPOSITE\n");
+  if (!g_shaders.fx_composite_sh) {
+    g_shaders.fx_composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                             "#define COMPOSITE\n");
   }
-  return e_data->fx_composite_sh;
+  return g_shaders.fx_composite_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_glow_get(void)
 {
-  if (!e_data->fx_glow_sh) {
-    e_data->fx_glow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                      "#define GLOW\n");
+  if (!g_shaders.fx_glow_sh) {
+    g_shaders.fx_glow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                        "#define GLOW\n");
   }
-  return e_data->fx_glow_sh;
+  return g_shaders.fx_glow_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_pixelize_get(void)
 {
-  if (!e_data->fx_pixel_sh) {
-    e_data->fx_pixel_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                       "#define PIXELIZE\n");
+  if (!g_shaders.fx_pixel_sh) {
+    g_shaders.fx_pixel_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                         "#define PIXELIZE\n");
   }
-  return e_data->fx_pixel_sh;
+  return g_shaders.fx_pixel_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_rim_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_rim_get(void)
 {
-  if (!e_data->fx_rim_sh) {
-    e_data->fx_rim_sh = GPU_shader_create_from_arrays({
+  if (!g_shaders.fx_rim_sh) {
+    g_shaders.fx_rim_sh = GPU_shader_create_from_arrays({
         .vert =
             (const char *[]){
                 datatoc_common_fullscreen_vert_glsl,
@@ -238,23 +283,23 @@ struct GPUShader *GPENCIL_shader_fx_rim_get(GPENCIL_e_data *e_data)
             },
     });
   }
-  return e_data->fx_rim_sh;
+  return g_shaders.fx_rim_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_shadow_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_shadow_get(void)
 {
-  if (!e_data->fx_shadow_sh) {
-    e_data->fx_shadow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                        "#define SHADOW\n");
+  if (!g_shaders.fx_shadow_sh) {
+    g_shaders.fx_shadow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                          "#define SHADOW\n");
   }
-  return e_data->fx_shadow_sh;
+  return g_shaders.fx_shadow_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_transform_get(GPENCIL_e_data *e_data)
+GPUShader *GPENCIL_shader_fx_transform_get(void)
 {
-  if (!e_data->fx_transform_sh) {
-    e_data->fx_transform_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                           "#define TRANSFORM\n");
+  if (!g_shaders.fx_transform_sh) {
+    g_shaders.fx_transform_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                             "#define TRANSFORM\n");
   }
-  return e_data->fx_transform_sh;
+  return g_shaders.fx_transform_sh;
 }
