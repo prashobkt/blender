@@ -267,6 +267,8 @@ typedef struct GPENCIL_PrivateData {
   /* Pointer to dtxl->depth */
   GPUTexture *scene_depth_tx;
   GPUFrameBuffer *scene_fb;
+  /* Copy of txl->dummy_tx */
+  GPUTexture *dummy_tx;
   /* Current frame */
   int cfra;
   /* If we are rendering for final render (F12). */

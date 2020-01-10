@@ -103,6 +103,7 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->tobjects.last = NULL;
   stl->pd->sbuffer_tobjects.first = NULL;
   stl->pd->sbuffer_tobjects.last = NULL;
+  stl->pd->dummy_tx = txl->dummy_texture;
   stl->pd->draw_depth_only = !DRW_state_is_fbo() ||
                              (ctx->v3d && ctx->v3d->shading.type == OB_WIRE);
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
@@ -344,6 +345,13 @@ static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", iter->ubo_mat);
   DRW_shgroup_uniform_float_copy(iter->grp, "strokeIndexOffset", iter->stroke_index_last);
 
+  const DRWContextState *ctx = DRW_context_state_get();
+  ToolSettings *ts = ctx->scene->toolsettings;
+  if (ts->gpencil_v3d_align & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE)) {
+    /* In this case we can't do correct projection during stroke. We just disable depth test. */
+    DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->dummy_tx);
+  }
+
   gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
 
   iter->stroke_index_offset = iter->pd->sbuffer_stroke->totpoints + 1;
@@ -518,6 +526,14 @@ static void gp_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateD
   iter->pd->scene_depth_tx = txl->dummy_texture;
 
   gp_layer_cache_populate(iter->pd->sbuffer_layer, iter->pd->sbuffer_layer->actframe, NULL, iter);
+
+  const DRWContextState *ctx = DRW_context_state_get();
+  ToolSettings *ts = ctx->scene->toolsettings;
+  if (ts->gpencil_v3d_align & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE)) {
+    /* In this case we can't do correct projection during stroke. We just disable depth test. */
+    DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->dummy_tx);
+  }
+
   iter->do_sbuffer_call = DRAW_NOW;
   gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
 
