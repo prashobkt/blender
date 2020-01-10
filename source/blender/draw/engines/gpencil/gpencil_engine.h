@@ -37,7 +37,7 @@ struct RenderEngine;
 struct RenderLayer;
 struct bGPDstroke;
 struct View3D;
-
+struct GpencilBatchCache;
 struct GPUBatch;
 struct GPUVertBuf;
 struct GPUVertFormat;
@@ -315,16 +315,6 @@ typedef struct GPENCIL_PrivateData {
   bool use_lights;
 } GPENCIL_PrivateData;
 
-/* Runtime data for GPU and evaluated frames after applying modifiers */
-typedef struct GpencilBatchCache {
-  /** Cache is dirty */
-  bool is_dirty;
-  /** Edit mode flag */
-  bool is_editmode;
-  /** Last cache frame */
-  int cache_frame;
-} GpencilBatchCache;
-
 /* geometry batch cache functions */
 struct GpencilBatchCache *gpencil_batch_cache_get(struct Object *ob, int cfra);
 
@@ -390,30 +380,6 @@ void GPENCIL_render_to_image(void *vedata,
 void gpencil_light_pool_free(void *storage);
 void gpencil_material_pool_free(void *storage);
 GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void);
-
-/* Use of multisample framebuffers. */
-#define MULTISAMPLE_GP_SYNC_ENABLE(lvl, fbl) \
-  { \
-    if ((lvl > 0) && (fbl->multisample_fb != NULL) && (DRW_state_is_fbo())) { \
-      DRW_stats_query_start("GP Multisample Blit"); \
-      GPU_framebuffer_bind(fbl->multisample_fb); \
-      GPU_framebuffer_clear_color_depth_stencil( \
-          fbl->multisample_fb, (const float[4]){0.0f}, 1.0f, 0x0); \
-      DRW_stats_query_end(); \
-    } \
-  } \
-  ((void)0)
-
-#define MULTISAMPLE_GP_SYNC_DISABLE(lvl, fbl, fb, txl) \
-  { \
-    if ((lvl > 0) && (fbl->multisample_fb != NULL) && (DRW_state_is_fbo())) { \
-      DRW_stats_query_start("GP Multisample Resolve"); \
-      GPU_framebuffer_bind(fb); \
-      DRW_multisamples_resolve(txl->multisample_depth, txl->multisample_color, true); \
-      DRW_stats_query_end(); \
-    } \
-  } \
-  ((void)0)
 
 #define GPENCIL_3D_DRAWMODE(ob, gpd) \
   ((gpd) && (gpd->draw_mode == GP_DRAWMODE_3D) && ((ob->dtx & OB_DRAWXRAY) == 0))
