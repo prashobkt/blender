@@ -1357,7 +1357,7 @@ static void drw_engines_enable(ViewLayer *UNUSED(view_layer),
   const bool use_xray = XRAY_ENABLED(v3d);
 
   drw_engines_enable_from_engine(engine_type, drawtype, use_xray);
-  if (gpencil_engine_needed && (drawtype >= OB_SOLID)) {
+  if (gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray)) {
     use_drw_engine(&draw_engine_gpencil_type);
   }
   drw_engines_enable_overlays();
