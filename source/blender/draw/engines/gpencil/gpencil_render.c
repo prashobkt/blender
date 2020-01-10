@@ -124,7 +124,6 @@ static void GPENCIL_render_cache(void *vedata,
   }
 }
 
-/* read z-depth render result */
 static void GPENCIL_render_result_z(struct RenderLayer *rl,
                                     const char *viewname,
                                     GPENCIL_Data *vedata,
@@ -178,7 +177,6 @@ static void GPENCIL_render_result_z(struct RenderLayer *rl,
   }
 }
 
-/* read combined render result */
 static void GPENCIL_render_result_combined(struct RenderLayer *rl,
                                            const char *viewname,
                                            GPENCIL_Data *vedata,
