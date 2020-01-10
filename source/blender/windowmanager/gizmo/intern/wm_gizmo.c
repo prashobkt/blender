@@ -771,7 +771,9 @@ bool WM_gizmo_context_check_drawstep(const struct bContext *C, eWM_GizmoFlagMapD
     case WM_GIZMOMAP_DRAWSTEP_3D: {
       wmWindowManager *wm = CTX_wm_manager(C);
       if (ED_screen_animation_playing(wm)) {
-        return false;
+        /* XXX Let gizmos draw while animation is playing, as a hack to force VR view gizmos to
+         * redraw continuously. */
+        // return false;
       }
       break;
     }
