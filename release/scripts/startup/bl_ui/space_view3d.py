@@ -6482,8 +6482,6 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
             layout.prop(overlay, "use_gpencil_multiedit_line_only", text="Show Edit Lines only in multiframe")
-
-        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "vertex_opacity", text="Vertex Opacity", slider=True)
 
         if context.object.mode in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
