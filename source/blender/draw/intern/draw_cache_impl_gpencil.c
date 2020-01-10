@@ -384,6 +384,11 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfr
     /* Fill buffers with data. */
     BKE_gpencil_visible_stroke_iter(ob, NULL, gpencil_stroke_iter_cb, &iter, do_onion, cfra);
 
+    /* Mark last 2 verts as invalid. */
+    for (int i = 0; i < 2; i++) {
+      iter.verts[iter.vert_len + i].mat = -1;
+    }
+
     /* Finish the IBO. */
     cache->ibo = GPU_indexbuf_build(&iter.ibo);
 
