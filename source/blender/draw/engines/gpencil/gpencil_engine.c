@@ -63,6 +63,7 @@ void GPENCIL_engine_init(void *ved)
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   const DRWContextState *ctx = DRW_context_state_get();
+  const View3D *v3d = ctx->v3d;
 
   if (!stl->pd) {
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
@@ -94,8 +95,7 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->sbuffer_tobjects.first = NULL;
   stl->pd->sbuffer_tobjects.last = NULL;
   stl->pd->dummy_tx = txl->dummy_texture;
-  stl->pd->draw_depth_only = !DRW_state_is_fbo() ||
-                             (ctx->v3d && ctx->v3d->shading.type == OB_WIRE);
+  stl->pd->draw_depth_only = !DRW_state_is_fbo() || (v3d && v3d->shading.type == OB_WIRE);
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
   stl->pd->scene_fb = dfbl->default_fb;
   stl->pd->is_render = true; /* TODO */
@@ -105,6 +105,24 @@ void GPENCIL_engine_init(void *ved)
    * so we set the last light pool to NULL. */
   stl->pd->last_light_pool = NULL;
 
+  bool use_scene_lights = false;
+  bool use_scene_world = false;
+
+  if (v3d) {
+    use_scene_lights = ((v3d->shading.type == OB_MATERIAL) &&
+                        (v3d->shading.flag & V3D_SHADING_SCENE_LIGHTS)) ||
+                       ((v3d->shading.type == OB_RENDER) &&
+                        (v3d->shading.flag & V3D_SHADING_SCENE_LIGHTS_RENDER));
+
+    use_scene_world = ((v3d->shading.type == OB_MATERIAL) &&
+                       (v3d->shading.flag & V3D_SHADING_SCENE_WORLD)) ||
+                      ((v3d->shading.type == OB_RENDER) &&
+                       (v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER));
+  }
+
+  stl->pd->use_lighting = (v3d && v3d->shading.type > OB_SOLID);
+  stl->pd->use_lights = use_scene_lights;
+
   if (txl->render_depth_tx != NULL) {
     stl->pd->scene_depth_tx = txl->render_depth_tx;
     stl->pd->scene_fb = fbl->render_fb;
@@ -113,8 +131,13 @@ void GPENCIL_engine_init(void *ved)
   gpencil_light_ambient_add(stl->pd->shadeless_light_pool, (float[3]){1.0f, 1.0f, 1.0f});
 
   World *world = ctx->scene->world;
-  if (world != NULL) {
+  if (world != NULL && use_scene_world) {
     gpencil_light_ambient_add(stl->pd->global_light_pool, &world->horr);
+  }
+  else if (v3d) {
+    float world_light[3];
+    copy_v3_fl(world_light, v3d->shading.studiolight_intensity);
+    gpencil_light_ambient_add(stl->pd->global_light_pool, world_light);
   }
 
   float viewmatinv[4][4];
@@ -123,8 +146,8 @@ void GPENCIL_engine_init(void *ved)
   copy_v3_v3(stl->pd->camera_pos, viewmatinv[3]);
   stl->pd->camera_z_offset = dot_v3v3(viewmatinv[3], viewmatinv[2]);
 
-  if (ctx && ctx->rv3d && ctx->v3d) {
-    stl->pd->camera = (ctx->rv3d->persp == RV3D_CAMOB) ? ctx->v3d->camera : NULL;
+  if (ctx && ctx->rv3d && v3d) {
+    stl->pd->camera = (ctx->rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
   }
   else {
     stl->pd->camera = NULL;
@@ -349,8 +372,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
    * Convert to world units (by default, 1 meter = 2000 px). */
   float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / GPENCIL_PIXEL_FACTOR);
 
-  const bool use_lights = (((gpl->flag & GP_LAYER_USE_LIGHTS) != 0) &&
-                           (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS));
+  const bool use_lights = iter->pd->use_lighting && ((gpl->flag & GP_LAYER_USE_LIGHTS) != 0) &&
+                          (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS);
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
 
@@ -533,7 +556,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     }
   }
 
-  if (ob->type == OB_LAMP) {
+  if (ob->type == OB_LAMP && pd->use_lights) {
     gpencil_light_pool_populate(pd->global_light_pool, ob);
   }
 }

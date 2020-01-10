@@ -306,11 +306,13 @@ typedef struct GPENCIL_PrivateData {
 
   /* Display onion skinning */
   bool do_onion;
-
-  /* simplify settings*/
+  /* simplify settings */
   bool simplify_fill;
   bool simplify_fx;
-
+  /* Use scene lighting or flat shading (global setting). */
+  bool use_lighting;
+  /* Use physical lights or just ambient lighting. */
+  bool use_lights;
 } GPENCIL_PrivateData;
 
 /* Runtime data for GPU and evaluated frames after applying modifiers */
