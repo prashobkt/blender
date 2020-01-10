@@ -235,6 +235,10 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
     }
   }
 
+  mul_qt_qtqt(state->viewer_pose.orientation_quat,
+              state->final_reference_pose.orientation_quat,
+              draw_view->local_pose.orientation_quat);
+
   copy_v3_v3(state->viewer_pose.position, state->final_reference_pose.position);
   if (use_position_tracking) {
     state->viewer_pose.position[0] += draw_view->local_pose.position[0];
@@ -252,6 +256,15 @@ void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float location[
   }
 
   copy_v3_v3(location, xr->session_state->viewer_pose.position);
+}
+
+void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float rotation[4])
+{
+  if (!WM_xr_is_session_running(xr)) {
+    return;
+  }
+
+  copy_v4_v4(rotation, xr->session_state->viewer_pose.orientation_quat);
 }
 
 /** \} */ /* XR Runtime Session State */

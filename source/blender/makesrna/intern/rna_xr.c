@@ -42,14 +42,29 @@ static bool rna_XrSessionState_is_running(bContext *C)
   return WM_xr_is_session_running(&wm->xr);
 }
 
-static void rna_XrSessionState_viewer_location_get(PointerRNA *ptr, float *values)
+static wmXrData *rna_XrSessionState_wm_xr_data_get(PointerRNA *ptr)
 {
-  /* Could also get bXrSessionState pointer through ptr->data, but prefer if we just consistently
-   * pass wmXrData pointers to the WM_xr_xxx() API. */
-  const wmWindowManager *wm = (wmWindowManager *)ptr->owner_id;
+  /* Callers could also get bXrSessionState pointer through ptr->data, but prefer if we just
+   * consistently pass wmXrData pointers to the WM_xr_xxx() API. */
+
+  BLI_assert(ptr->type == &RNA_XrSessionState);
+
+  wmWindowManager *wm = (wmWindowManager *)ptr->owner_id;
   BLI_assert(wm && (GS(wm->id.name) == ID_WM));
 
-  WM_xr_session_state_viewer_location_get(&wm->xr, values);
+  return &wm->xr;
+}
+
+static void rna_XrSessionState_viewer_location_get(PointerRNA *ptr, float *values)
+{
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  WM_xr_session_state_viewer_location_get(xr, values);
+}
+
+static void rna_XrSessionState_viewer_rotation_get(PointerRNA *ptr, float *values)
+{
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  WM_xr_session_state_viewer_rotation_get(xr, values);
 }
 
 #else /* RNA_RUNTIME */
@@ -124,6 +139,15 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
       prop,
       "Viewer Location",
       "Last known location of the viewer (centroid of the eyes) in world space");
+
+  prop = RNA_def_property(srna, "viewer_rotation", PROP_FLOAT, PROP_QUATERNION);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_rotation_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Viewer Rotation",
+      "Last known Rotation of the viewer (centroid of the eyes) in world space");
 }
 
 void RNA_def_xr(BlenderRNA *brna)
