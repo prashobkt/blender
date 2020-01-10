@@ -114,7 +114,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
   }
 
   GPENCIL_MaterialPool *pool = matpool;
-  for (int i = 0; i < ob->totcol; i++) {
+  for (int i = 0; i < max_ii(1, ob->totcol); i++) {
     int mat_id = (i % GP_MATERIAL_BUFFER_LEN);
     if ((i > 0) && (mat_id == 0)) {
       pool->next = gpencil_material_pool_add(pd);
@@ -145,7 +145,8 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       }
     }
 
-    if ((gp_style->mode != GP_MATERIAL_MODE_LINE) || (gp_style->flag & GP_MATERIAL_DISABLE_STENCIL)) {
+    if ((gp_style->mode != GP_MATERIAL_MODE_LINE) ||
+        (gp_style->flag & GP_MATERIAL_DISABLE_STENCIL)) {
       mat_data->flag |= GP_STROKE_OVERLAP;
     }
 

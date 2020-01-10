@@ -501,7 +501,7 @@ bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(Object *ob)
   if (gpd->runtime.sbuffer_gps == NULL) {
     bGPDstroke *gps = MEM_callocN(sizeof(*gps), "bGPDstroke sbuffer");
     gps->totpoints = gpd->runtime.sbuffer_used;
-    gps->mat_nr = gpd->runtime.matid - 1;
+    gps->mat_nr = max_ii(0, gpd->runtime.matid - 1);
     gps->flag = gpd->runtime.sbuffer_sflag;
     gps->thickness = gpd->runtime.brush_size;
     gps->tot_triangles = max_ii(0, gpd->runtime.sbuffer_used - 2);
