@@ -453,7 +453,10 @@ void BKE_object_free_derived_caches(Object *ob)
   BKE_object_to_mesh_clear(ob);
   BKE_object_free_curve_cache(ob);
 
-  /* clear grease pencil data */
+  /* Clear grease pencil data. */
+  if (ob->runtime.gpd_eval != NULL) {
+    BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
+  }
   DRW_gpencil_freecache(ob);
 }
 

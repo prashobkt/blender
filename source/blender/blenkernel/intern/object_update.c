@@ -157,7 +157,6 @@ static void assign_object_gpencil_eval(Object *object)
 {
   BLI_assert(object->id.tag & LIB_TAG_COPIED_ON_WRITE);
 
-  bGPdata *gpd = (bGPdata *)object->data;
   bGPdata *gpd_eval = object->runtime.gpd_eval;
 
   gpd_eval->id.tag |= LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT;
@@ -170,13 +169,6 @@ static void assign_object_gpencil_eval(Object *object)
 void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   DEG_debug_print_eval(depsgraph, __func__, ob->id.name, ob);
-  Object *ob_orig = DEG_get_original_object(ob);
-  printf("%s\tOb Orig:%p Ob Eval:%p Orig_Data:%p Eval Data:%p \n",
-         ob->id.name + 2,
-         ob_orig,
-         ob,
-         ob_orig->data,
-         ob->data);
 
   /* includes all keys and modifiers */
   switch (ob->type) {
@@ -236,11 +228,18 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
       BKE_lattice_modifiers_calc(depsgraph, scene, ob);
       break;
     case OB_GPENCIL: {
-      /* Copy Datablock to evaluated version. */
-      if (ob->runtime.gpd_eval) {
-        BKE_gpencil_free(ob->runtime.gpd_eval, true);
+      bGPdata *gpd = (bGPdata *)ob->data;
+
+      if (ob->runtime.gpd_orig == NULL) {
+        ob->runtime.gpd_orig = gpd;
       }
-      ob->runtime.gpd_orig = (bGPdata *)ob->data;
+
+      /* Copy Datablock to evaluated version. */
+      if (ob->runtime.gpd_eval != NULL) {
+        BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
+        ob->data = ob->runtime.gpd_orig;
+      }
+
       ob->runtime.gpd_eval = BKE_gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
       assign_object_gpencil_eval(ob);
 

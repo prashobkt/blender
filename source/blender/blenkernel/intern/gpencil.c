@@ -236,6 +236,13 @@ void BKE_gpencil_free(bGPdata *gpd, bool free_all)
   }
 }
 
+void BKE_gpencil_eval_delete(bGPdata *gpd_eval)
+{
+  BKE_gpencil_free(gpd_eval, true);
+  BKE_libblock_free_data(&gpd_eval->id, false);
+  MEM_freeN(gpd_eval);
+}
+
 /* ************************************************** */
 /* Container Creation */
 
