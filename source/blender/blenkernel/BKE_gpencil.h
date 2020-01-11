@@ -106,6 +106,8 @@ struct bGPDstroke *BKE_gpencil_stroke_duplicate(struct bGPDstroke *gps_src);
 
 void BKE_gpencil_copy_data(struct bGPdata *gpd_dst, const struct bGPdata *gpd_src, const int flag);
 struct bGPdata *BKE_gpencil_copy(struct Main *bmain, const struct bGPdata *gpd);
+struct bGPdata *BKE_gpencil_copy_for_eval(struct bGPdata *gpd, bool reference);
+
 struct bGPdata *BKE_gpencil_data_duplicate(struct Main *bmain,
                                            const struct bGPdata *gpd,
                                            bool internal_copy);

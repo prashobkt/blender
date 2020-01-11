@@ -609,7 +609,6 @@ static bool gp_weightpaint_brush_apply_to_layers(bContext *C, tGP_BrushWeightpai
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = gso->object;
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
   bGPdata *gpd = gso->gpd;
   bool changed = false;
 
@@ -617,12 +616,6 @@ static bool gp_weightpaint_brush_apply_to_layers(bContext *C, tGP_BrushWeightpai
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     /* If no active frame, don't do anything... */
     if (gpl->actframe == NULL) {
-      continue;
-    }
-    /* Get evaluated frames array data */
-    int idx_eval = BLI_findindex(&gpd->layers, gpl);
-    bGPDframe *gpf_eval = &ob_eval->runtime.gpencil_evaluated_frames[idx_eval];
-    if (gpf_eval == NULL) {
       continue;
     }
 
@@ -661,9 +654,12 @@ static bool gp_weightpaint_brush_apply_to_layers(bContext *C, tGP_BrushWeightpai
       }
     }
     else {
-      /* Apply to active frame's strokes */
-      gso->mf_falloff = 1.0f;
-      changed |= gp_weightpaint_brush_do_frame(C, gso, gpl, gpf_eval, diff_mat);
+      if (gpl->actframe != NULL) {
+        /* Apply to active frame's strokes */
+        gso->mf_falloff = 1.0f;
+        // TODO GPXX
+        changed |= gp_weightpaint_brush_do_frame(C, gso, gpl, gpl->actframe, diff_mat);
+      }
     }
   }
   CTX_DATA_END;

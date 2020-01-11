@@ -3953,7 +3953,6 @@ void BKE_object_runtime_reset_on_copy(Object *object, const int UNUSED(flag))
   runtime->mesh_eval = NULL;
   runtime->mesh_deform_eval = NULL;
   runtime->curve_cache = NULL;
-  runtime->gpencil_cache = NULL;
 }
 
 /*

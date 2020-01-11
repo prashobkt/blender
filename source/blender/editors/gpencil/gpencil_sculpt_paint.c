@@ -1755,7 +1755,6 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = gso->object;
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
   bGPdata *gpd = gso->gpd;
   bool changed = false;
 
@@ -1797,12 +1796,6 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
     if (gpl->actframe == NULL) {
       continue;
     }
-    /* Get evaluated frames array data */
-    int idx_eval = BLI_findindex(&gpd->layers, gpl);
-    bGPDframe *gpf_eval = &ob_eval->runtime.gpencil_evaluated_frames[idx_eval];
-    if (gpf_eval == NULL) {
-      continue;
-    }
 
     /* calculate difference matrix */
     float diff_mat[4][4];
@@ -1838,9 +1831,12 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
       }
     }
     else {
-      /* Apply to active frame's strokes */
-      gso->mf_falloff = 1.0f;
-      changed |= gpsculpt_brush_do_frame(C, gso, gpl, gpf_eval, diff_mat);
+      if (gpl->actframe != NULL) {
+        // TODO GPXX
+        /* Apply to active frame's strokes */
+        gso->mf_falloff = 1.0f;
+        changed |= gpsculpt_brush_do_frame(C, gso, gpl, gpl->actframe, diff_mat);
+      }
     }
   }
   CTX_DATA_END;

@@ -689,6 +689,19 @@ bGPdata *BKE_gpencil_copy(Main *bmain, const bGPdata *gpd)
   return gpd_copy;
 }
 
+bGPdata *BKE_gpencil_copy_for_eval(bGPdata *gpd, bool reference)
+{
+  int flags = LIB_ID_COPY_LOCALIZE;
+
+  if (reference) {
+    flags |= LIB_ID_COPY_CD_REFERENCE;
+  }
+
+  bGPdata *result;
+  BKE_id_copy_ex(NULL, &gpd->id, (ID **)&result, flags);
+  return result;
+}
+
 /* make a copy of a given gpencil datablock */
 /* XXX: Should this be deprecated? */
 bGPdata *BKE_gpencil_data_duplicate(Main *bmain, const bGPdata *gpd_src, bool internal_copy)
@@ -3805,7 +3818,7 @@ void BKE_gpencil_visible_stroke_iter(
     }
     /* Draw Active frame on top. */
     /* Use evaluated frame (with modifiers for active stroke)/ */
-    act_gpf = &ob->runtime.gpencil_evaluated_frames[layer_idx];
+    act_gpf = gpl->actframe;
     act_gpf->runtime.onion_id = 0;
     if (act_gpf) {
       if (layer_cb) {

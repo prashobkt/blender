@@ -97,10 +97,10 @@ static GpencilBatchCache *gpencil_batch_cache_init(Object *ob, int cfra)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  GpencilBatchCache *cache = ob->runtime.gpencil_cache;
+  GpencilBatchCache *cache = gpd->runtime.gpencil_cache;
 
   if (!cache) {
-    cache = ob->runtime.gpencil_cache = MEM_callocN(sizeof(*cache), __func__);
+    cache = gpd->runtime.gpencil_cache = MEM_callocN(sizeof(*cache), __func__);
   }
   else {
     memset(cache, 0, sizeof(*cache));
@@ -136,7 +136,7 @@ static GpencilBatchCache *gpencil_batch_cache_get(Object *ob, int cfra)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  GpencilBatchCache *cache = ob->runtime.gpencil_cache;
+  GpencilBatchCache *cache = gpd->runtime.gpencil_cache;
   if (!gpencil_batch_cache_valid(cache, gpd, cfra)) {
     gpencil_batch_cache_clear(cache);
     return gpencil_batch_cache_init(ob, cfra);
@@ -151,31 +151,22 @@ void DRW_gpencil_batch_cache_dirty_tag(bGPdata *gpd)
   gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
 }
 
-void DRW_gpencil_batch_cache_free(bGPdata *UNUSED(gpd))
+void DRW_gpencil_batch_cache_free(bGPdata *gpd)
 {
-  /* TODO(fclem): Why is this empty? */
+  gpencil_batch_cache_clear(gpd->runtime.gpencil_cache);
+  MEM_SAFE_FREE(gpd->runtime.gpencil_cache);
+  gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
   return;
 }
 
 void DRW_gpencil_freecache(struct Object *ob)
 {
   if ((ob) && (ob->type == OB_GPENCIL)) {
-    gpencil_batch_cache_clear(ob->runtime.gpencil_cache);
-    MEM_SAFE_FREE(ob->runtime.gpencil_cache);
     bGPdata *gpd = (bGPdata *)ob->data;
     if (gpd) {
-      gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
+      DRW_gpencil_batch_cache_free(gpd);
     }
   }
-
-  /* clear all frames evaluated data */
-  for (int i = 0; i < ob->runtime.gpencil_tot_layers; i++) {
-    bGPDframe *gpf_eval = &ob->runtime.gpencil_evaluated_frames[i];
-    BKE_gpencil_free_frame_runtime_data(gpf_eval);
-  }
-
-  ob->runtime.gpencil_tot_layers = 0;
-  MEM_SAFE_FREE(ob->runtime.gpencil_evaluated_frames);
 }
 
 /** \} */

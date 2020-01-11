@@ -494,6 +494,8 @@ typedef struct bGPdata_Runtime {
   int tot_cp_points;
   /** Array of control-points for stroke. */
   bGPDcontrolpoint *cp_points;
+  /** Runtime grease pencil drawing data */
+  struct GpencilBatchCache *gpencil_cache;
 } bGPdata_Runtime;
 
 /* grid configuration */
