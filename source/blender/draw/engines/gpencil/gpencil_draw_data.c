@@ -132,11 +132,12 @@ static void gpencil_shade_color(float color[3])
 /* Apply all overrides from the solid viewport mode to the GPencil material. */
 static MaterialGPencilStyle *gpencil_viewport_material_overrides(GPENCIL_PrivateData *pd,
                                                                  Object *ob,
+                                                                 int color_type,
                                                                  MaterialGPencilStyle *gp_style)
 {
   static MaterialGPencilStyle gp_style_tmp;
 
-  switch (pd->v3d_color_type) {
+  switch (color_type) {
     case V3D_SHADING_MATERIAL_COLOR:
       copy_v4_v4(gp_style_tmp.stroke_rgba, gp_style->stroke_rgba);
       copy_v4_v4(gp_style_tmp.fill_rgba, gp_style->fill_rgba);
@@ -210,6 +211,12 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
     matpool = gpencil_material_pool_add(pd);
   }
 
+  /* Force vertex color in solid mode with vertex paint mode. Same behavior as meshes. */
+  bGPdata *gpd = (bGPdata *)ob->data;
+  int color_type = (pd->v3d_color_type != -1 && GPENCIL_VERTEX_MODE(gpd)) ?
+                       V3D_SHADING_VERTEX_COLOR :
+                       pd->v3d_color_type;
+
   GPENCIL_MaterialPool *pool = matpool;
   for (int i = 0; i < max_ii(1, ob->totcol); i++) {
     int mat_id = (i % GP_MATERIAL_BUFFER_LEN);
@@ -247,7 +254,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       mat_data->flag |= GP_STROKE_OVERLAP;
     }
 
-    gp_style = gpencil_viewport_material_overrides(pd, ob, gp_style);
+    gp_style = gpencil_viewport_material_overrides(pd, ob, color_type, gp_style);
 
     /* Stroke Style */
     if ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {

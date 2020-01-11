@@ -295,14 +295,14 @@ typedef struct gpIterPopulateData {
   GPENCIL_PrivateData *pd;
   GPENCIL_MaterialPool *matpool;
   DRWShadingGroup *grp;
-  /* Offset in the material pool to the first material of this object. */
-  int mat_ofs;
   /* Last material UBO bound. Used to avoid uneeded buffer binding. */
   GPUUniformBuffer *ubo_mat;
   GPUUniformBuffer *ubo_lights;
   /* Last texture bound. */
   GPUTexture *tex_fill;
   GPUTexture *tex_stroke;
+  /* Offset in the material pool to the first material of this object. */
+  int mat_ofs;
   /* Is the sbuffer call need to be issued. */
   int do_sbuffer_call;
   /* Indices to do correct insertion of the sbuffer stroke. */
@@ -381,7 +381,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
                                     iter->pd->shadeless_light_pool->ubo;
 
   bool overide_vertcol = (iter->pd->v3d_color_type != -1);
-  bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR);
+  bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
+                          GPENCIL_VERTEX_MODE(gpd);
   float vert_col_opacity = (overide_vertcol) ? (is_vert_col_mode ? 1.0f : 0.0f) :
                                                gpl->vertex_paint_opacity;
 
