@@ -240,20 +240,6 @@ static GPUVertFormat *gpencil_color_format(void)
   return &format;
 }
 
-/* MUST match the format below. */
-typedef struct gpExtraDataVert {
-  float layer_rand;
-} gpExtraDataVert;
-
-static GPUVertFormat *gpencil_extra_data_format(void)
-{
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "layer_rand", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-  }
-  return &format;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -262,16 +248,11 @@ static GPUVertFormat *gpencil_extra_data_format(void)
 
 typedef struct gpIterData {
   bGPdata *gpd;
-  union {
-    gpStrokeVert *verts;
-    gpExtraDataVert *verts_extra;
-  };
+  gpStrokeVert *verts;
   gpColorVert *cols;
   GPUIndexBufBuilder ibo;
   int vert_len;
   int tri_len;
-  int layer_id;
-  float layer_rand;
 } gpIterData;
 
 static GPUVertBuf *gpencil_dummy_buffer_get(void)
@@ -451,16 +432,6 @@ GPUBatch *DRW_cache_gpencil_fills_get(Object *ob, int cfra)
   return cache->fill_batch;
 }
 
-static void gp_layer_index_cb(bGPDlayer *gpl,
-                              bGPDframe *UNUSED(gpf),
-                              bGPDstroke *UNUSED(gps),
-                              void *thunk)
-{
-  gpIterData *iter = (gpIterData *)thunk;
-  iter->layer_id++;
-  iter->layer_rand = BLI_hash_int_01(BLI_hash_string(gpl->info));
-}
-
 static void gp_lines_indices_cb(bGPDlayer *UNUSED(gpl),
                                 bGPDframe *UNUSED(gpf),
                                 bGPDstroke *gps,
@@ -473,7 +444,6 @@ static void gp_lines_indices_cb(bGPDlayer *UNUSED(gpl),
   int end = start + pts_len;
   for (int i = start; i < end; i++) {
     GPU_indexbuf_add_generic_vert(&iter->ibo, i);
-    iter->verts_extra[i].layer_rand = iter->layer_rand;
   }
   GPU_indexbuf_add_primitive_restart(&iter->ibo);
 }
@@ -491,28 +461,18 @@ GPUBatch *DRW_cache_gpencil_face_wireframe_get(Object *ob)
 
     gpIterData iter = {
         .gpd = ob->data,
-        .verts = NULL,
         .ibo = {0},
-        .layer_id = 0,
     };
-
-    /* Create VBO containing layer index. */
-    GPUVertFormat *format = gpencil_extra_data_format();
-    GPUVertBuf *vbo_layer = GPU_vertbuf_create_with_format(format);
-    GPU_vertbuf_data_alloc(vbo_layer, vbo->vertex_len);
-    iter.verts_extra = (gpExtraDataVert *)vbo_layer->data;
 
     GPU_indexbuf_init_ex(&iter.ibo, GPU_PRIM_LINE_STRIP, vbo->vertex_len, vbo->vertex_len);
 
     /* IMPORTANT: Keep in sync with gpencil_edit_batches_ensure() */
     bool do_onion = true;
-    BKE_gpencil_visible_stroke_iter(
-        ob, gp_layer_index_cb, gp_lines_indices_cb, &iter, do_onion, cfra);
+    BKE_gpencil_visible_stroke_iter(ob, NULL, gp_lines_indices_cb, &iter, do_onion, cfra);
 
     GPUIndexBuf *ibo = GPU_indexbuf_build(&iter.ibo);
 
     cache->lines_batch = GPU_batch_create_ex(GPU_PRIM_LINE_STRIP, vbo, ibo, GPU_BATCH_OWNS_INDEX);
-    GPU_batch_vertbuf_add_ex(cache->lines_batch, vbo_layer, true);
   }
   return cache->lines_batch;
 }
