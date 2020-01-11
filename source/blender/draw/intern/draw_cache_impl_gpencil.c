@@ -46,6 +46,7 @@
 typedef struct GpencilBatchCache {
   /** Instancing Data */
   GPUVertBuf *vbo;
+  GPUVertBuf *vbo_col;
   /** Fill Topology */
   GPUIndexBuf *ibo;
   /** Instancing Batches */
@@ -121,6 +122,7 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
   GPU_BATCH_DISCARD_SAFE(cache->fill_batch);
   GPU_BATCH_DISCARD_SAFE(cache->stroke_batch);
   GPU_VERTBUF_DISCARD_SAFE(cache->vbo);
+  GPU_VERTBUF_DISCARD_SAFE(cache->vbo_col);
   GPU_INDEXBUF_DISCARD_SAFE(cache->ibo);
 
   GPU_BATCH_DISCARD_SAFE(cache->edit_lines_batch);
@@ -188,7 +190,6 @@ typedef struct gpStrokeVert {
   float mat, strength, stroke_id, point_id;
   /** Position and thickness packed in the same attribute. */
   float pos[3], thickness;
-  float col[4];
   float uv_fill[2], u_stroke, v_rot;
 } gpStrokeVert;
 
@@ -198,7 +199,6 @@ static GPUVertFormat *gpencil_stroke_format(void)
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "ma", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     /* IMPORTANT: This means having only 4 attributes to fit into GPU module limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
@@ -218,6 +218,24 @@ static GPUVertFormat *gpencil_edit_stroke_format(void)
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "vflag", GPU_COMP_U32, 1, GPU_FETCH_INT);
     GPU_vertformat_attr_add(&format, "weight", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+  }
+  return &format;
+}
+
+/* MUST match the format below. */
+typedef struct gpColorVert {
+  float vcol[4]; /* Vertex color */
+  float fcol[4]; /* Fill color */
+} gpColorVert;
+
+static GPUVertFormat *gpencil_color_format(void)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "fcol", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    /* IMPORTANT: This means having only 4 attributes to fit into GPU module limit of 16 attrib. */
+    GPU_vertformat_multiload_enable(&format, 4);
   }
   return &format;
 }
@@ -248,6 +266,7 @@ typedef struct gpIterData {
     gpStrokeVert *verts;
     gpExtraDataVert *verts_extra;
   };
+  gpColorVert *cols;
   GPUIndexBufBuilder ibo;
   int vert_len;
   int tri_len;
@@ -266,16 +285,22 @@ static int gpencil_stroke_is_cyclic(const bGPDstroke *gps)
   return ((gps->flag & GP_STROKE_CYCLIC) != 0) && (gps->totpoints > 2);
 }
 
-static void gpencil_buffer_add_point(
-    gpStrokeVert *verts, const bGPDstroke *gps, const bGPDspoint *pt, int v, bool is_endpoint)
+static void gpencil_buffer_add_point(gpStrokeVert *verts,
+                                     gpColorVert *cols,
+                                     const bGPDstroke *gps,
+                                     const bGPDspoint *pt,
+                                     int v,
+                                     bool is_endpoint)
 {
   /* Note: we use the sign of stength and thickness to pass cap flag. */
   const bool round_cap0 = (gps->caps[0] == GP_STROKE_CAP_ROUND);
   const bool round_cap1 = (gps->caps[1] == GP_STROKE_CAP_ROUND);
   gpStrokeVert *vert = &verts[v];
+  gpColorVert *col = &cols[v];
   copy_v3_v3(vert->pos, &pt->x);
   copy_v2_v2(vert->uv_fill, pt->uv_fill);
-  copy_v4_v4(vert->col, pt->vert_color);
+  copy_v4_v4(col->vcol, pt->vert_color);
+  copy_v4_v4(col->fcol, gps->vert_color_fill);
   vert->strength = (round_cap0) ? pt->strength : -pt->strength;
   vert->u_stroke = pt->uv_fac;
   vert->stroke_id = gps->runtime.stroke_start;
@@ -288,7 +313,9 @@ static void gpencil_buffer_add_point(
   vert->mat = (is_endpoint) ? -1 : (gps->mat_nr % GP_MATERIAL_BUFFER_LEN);
 }
 
-static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps)
+static void gpencil_buffer_add_stroke(gpStrokeVert *verts,
+                                      gpColorVert *cols,
+                                      const bGPDstroke *gps)
 {
   const bGPDspoint *pts = gps->points;
   int pts_len = gps->totpoints;
@@ -297,18 +324,18 @@ static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps
 
   /* First point for adjacency (not drawn). */
   int adj_idx = (is_cyclic) ? (pts_len - 1) : min_ii(pts_len - 1, 1);
-  gpencil_buffer_add_point(verts, gps, &pts[adj_idx], v++, true);
+  gpencil_buffer_add_point(verts, cols, gps, &pts[adj_idx], v++, true);
 
   for (int i = 0; i < pts_len; i++) {
-    gpencil_buffer_add_point(verts, gps, &pts[i], v++, false);
+    gpencil_buffer_add_point(verts, cols, gps, &pts[i], v++, false);
   }
   /* Draw line to first point to complete the loop for cyclic strokes. */
   if (is_cyclic) {
-    gpencil_buffer_add_point(verts, gps, &pts[0], v++, false);
+    gpencil_buffer_add_point(verts, cols, gps, &pts[0], v++, false);
   }
   /* Last adjacency point (not drawn). */
   adj_idx = (is_cyclic) ? 1 : max_ii(0, pts_len - 2);
-  gpencil_buffer_add_point(verts, gps, &pts[adj_idx], v++, true);
+  gpencil_buffer_add_point(verts, cols, gps, &pts[adj_idx], v++, true);
 }
 
 static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *gps)
@@ -327,7 +354,7 @@ static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
                                    void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
-  gpencil_buffer_add_stroke(iter->verts, gps);
+  gpencil_buffer_add_stroke(iter->verts, iter->cols, gps);
   if (gps->tot_triangles > 0) {
     gpencil_buffer_add_fill(&iter->ibo, gps);
   }
@@ -372,12 +399,16 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfr
     };
     BKE_gpencil_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter, do_onion, cfra);
 
-    /* Create VBO. */
+    /* Create VBOs. */
     GPUVertFormat *format = gpencil_stroke_format();
+    GPUVertFormat *format_col = gpencil_color_format();
     cache->vbo = GPU_vertbuf_create_with_format(format);
+    cache->vbo_col = GPU_vertbuf_create_with_format(format_col);
     /* Add extra space at the end of the buffer because of quad load. */
     GPU_vertbuf_data_alloc(cache->vbo, iter.vert_len + 2);
+    GPU_vertbuf_data_alloc(cache->vbo_col, iter.vert_len + 2);
     iter.verts = (gpStrokeVert *)cache->vbo->data;
+    iter.cols = (gpColorVert *)cache->vbo_col->data;
     /* Create IBO. */
     GPU_indexbuf_init(&iter.ibo, GPU_PRIM_TRIS, iter.tri_len, iter.vert_len);
 
@@ -394,8 +425,10 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfr
 
     /* Create the batches */
     cache->fill_batch = GPU_batch_create(GPU_PRIM_TRIS, cache->vbo, cache->ibo);
+    GPU_batch_vertbuf_add(cache->fill_batch, cache->vbo_col);
     cache->stroke_batch = GPU_batch_create(GPU_PRIM_TRI_STRIP, gpencil_dummy_buffer_get(), NULL);
     GPU_batch_instbuf_add_ex(cache->stroke_batch, cache->vbo, 0);
+    GPU_batch_instbuf_add_ex(cache->stroke_batch, cache->vbo_col, 0);
 
     gpd->flag &= ~GP_DATA_CACHE_IS_DIRTY;
     cache->is_dirty = false;
@@ -546,16 +579,21 @@ static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_
 
     /* Create VBO. */
     GPUVertFormat *format = gpencil_stroke_format();
+    GPUVertFormat *format_color = gpencil_color_format();
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(format);
+    GPUVertBuf *vbo_col = GPU_vertbuf_create_with_format(format_color);
     /* Add extra space at the end (and start) of the buffer because of quad load and cyclic. */
     GPU_vertbuf_data_alloc(vbo, 1 + vert_len + 1 + 2);
+    GPU_vertbuf_data_alloc(vbo_col, 1 + vert_len + 1 + 2);
     gpStrokeVert *verts = (gpStrokeVert *)vbo->data;
+    gpColorVert *cols = (gpColorVert *)vbo_col->data;
 
     /* Fill buffers with data. */
-    gpencil_buffer_add_stroke(verts, gps);
+    gpencil_buffer_add_stroke(verts, cols, gps);
 
     GPUBatch *batch = GPU_batch_create(GPU_PRIM_TRI_STRIP, gpencil_dummy_buffer_get(), NULL);
     GPU_batch_instbuf_add_ex(batch, vbo, true);
+    GPU_batch_instbuf_add_ex(batch, vbo_col, true);
 
     gpd->runtime.sbuffer_stroke_batch = batch;
 
@@ -589,8 +627,10 @@ static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_
 
     GPUIndexBuf *ibo = GPU_indexbuf_build(&ibo_builder);
     GPUVertBuf *vbo = gpd->runtime.sbuffer_stroke_batch->inst[0];
+    GPUVertBuf *vbo_col = gpd->runtime.sbuffer_stroke_batch->inst[1];
 
     GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, ibo, GPU_BATCH_OWNS_INDEX);
+    GPU_batch_vertbuf_add(batch, vbo_col);
 
     gpd->runtime.sbuffer_fill_batch = batch;
   }

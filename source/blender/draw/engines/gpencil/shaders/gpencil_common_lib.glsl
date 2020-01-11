@@ -217,6 +217,8 @@ in vec4 uv2;
 in vec4 col1;
 in vec4 col2;
 
+in vec4 fcol1;
+
 void discard_vert()
 {
   /* We set the vertex at the camera origin to generate 0 fragments. */
@@ -481,7 +483,7 @@ void fill_vertex()
     fill_col.a = 1.0;
   }
 
-  color_output(fill_col, vec4(0.0), 1.0, mix_tex);
+  color_output(fill_col, fcol1, 1.0, mix_tex);
 
   matFlag = materials[m].flag & GP_FILL_FLAGS;
   matFlag |= m << GP_MATID_SHIFT;
