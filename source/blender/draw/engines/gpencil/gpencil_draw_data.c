@@ -174,9 +174,13 @@ static MaterialGPencilStyle *gpencil_viewport_material_overrides(GPENCIL_Private
         copy_v4_fl(gp_style->stroke_rgba, 1.0f);
         gp_style->mix_stroke_factor = 0.0f;
       }
-      if (((gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) && (gp_style->ima)) ||
-          (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT)) {
+
+      if ((gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) && (gp_style->ima)) {
         copy_v4_fl(gp_style->fill_rgba, 1.0f);
+        gp_style->mix_factor = 0.0f;
+      }
+      else if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT) {
+        /* gp_style->fill_rgba is needed for correct gradient. */
         gp_style->mix_factor = 0.0f;
       }
       break;
