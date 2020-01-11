@@ -98,7 +98,7 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->draw_depth_only = !DRW_state_is_fbo() || (v3d && v3d->shading.type == OB_WIRE);
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
   stl->pd->scene_fb = dfbl->default_fb;
-  stl->pd->is_render = true; /* TODO */
+  stl->pd->is_render = txl->render_depth_tx || (v3d && v3d->shading.type == OB_RENDER);
   stl->pd->global_light_pool = gpencil_light_pool_add(stl->pd);
   stl->pd->shadeless_light_pool = gpencil_light_pool_add(stl->pd);
   /* Small HACK: we don't want the global pool to be reused,
