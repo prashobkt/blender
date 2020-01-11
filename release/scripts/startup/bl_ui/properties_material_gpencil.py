@@ -190,41 +190,32 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
         col.enabled = not gpcolor.lock
         col.prop(gpcolor, "fill_style", text="Style")
 
-        if gpcolor.fill_style == 'GRADIENT':
-            col.prop(gpcolor, "gradient_type")
 
-        if gpcolor.fill_style != 'TEXTURE':
+        if gpcolor.fill_style == 'SOLID':
             col.prop(gpcolor, "fill_color", text="Base Color")
 
-            if gpcolor.fill_style == 'GRADIENT':
-                col.prop(gpcolor, "mix_color", text="Secondary Color")
+        elif gpcolor.fill_style == 'GRADIENT':
+            col.prop(gpcolor, "gradient_type")
 
-            if gpcolor.fill_style == 'GRADIENT':
-                col.prop(gpcolor, "mix_factor", text="Mix Factor", slider=True)
+            col.prop(gpcolor, "fill_color", text="Base Color")
+            col.prop(gpcolor, "mix_color", text="Secondary Color")
+            col.prop(gpcolor, "mix_factor", text="Mix Factor", slider=True)
+            col.prop(gpcolor, "flip", text="Flip Colors")
 
-            if gpcolor.fill_style == 'GRADIENT':
-                col.prop(gpcolor, "flip", text="Flip Colors")
+            col.prop(gpcolor, "texture_offset", text="Location")
+            col.prop(gpcolor, "texture_angle", text="Rotation")
+            col.prop(gpcolor, "texture_scale", text="Scale")
 
-                col.prop(gpcolor, "pattern_shift", text="Location")
-                col.prop(gpcolor, "pattern_scale", text="Scale")
-
-            if gpcolor.gradient_type == 'RADIAL' and gpcolor.fill_style == 'SOLID':
-                col.prop(gpcolor, "pattern_radius", text="Radius")
-            else:
-                if gpcolor.fill_style != 'SOLID':
-                    col.prop(gpcolor, "pattern_angle", text="Angle")
-
-        # Texture
-        if gpcolor.fill_style == 'TEXTURE':
+        elif gpcolor.fill_style == 'TEXTURE':
             col.template_ID(gpcolor, "fill_image", open="image.open")
 
             col.prop(gpcolor, "fill_color", text="Base Color")
+            col.prop(gpcolor, "texture_opacity", slider=True)
             col.prop(gpcolor, "mix_factor", text="Factor", slider=True)
 
-            col.prop(gpcolor, "texture_offset", text="Offset")
+            col.prop(gpcolor, "texture_offset", text="Location")
+            col.prop(gpcolor, "texture_angle", text="Rotation")
             col.prop(gpcolor, "texture_scale", text="Scale")
-            col.prop(gpcolor, "texture_angle")
-            col.prop(gpcolor, "texture_opacity")
             col.prop(gpcolor, "texture_clamp", text="Clip Image")
 
 

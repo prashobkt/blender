@@ -79,6 +79,7 @@ static struct GPUTexture *gpencil_image_texture_get(Image *image, bool *r_alpha_
   return gpu_tex;
 }
 
+#if 0 /* Old implementation. Reference for doing versioning code. TODO remove. */
 static void gpencil_uv_transform_get(const float ofs[2],
                                      const float scale[2],
                                      const float rotation,
@@ -95,6 +96,27 @@ static void gpencil_uv_transform_get(const float ofs[2],
   rotate_m4(mat, 'Z', -rotation);
   /* Translate. */
   translate_m4(mat, -0.5f, -0.5f, 0.0f);
+  /* Convert to 3x2 */
+  copy_v2_v2(r_uvmat[0], mat[0]);
+  copy_v2_v2(r_uvmat[1], mat[1]);
+  copy_v2_v2(r_uvmat[2], mat[3]);
+}
+#endif
+
+static void gpencil_uv_transform_get(const float ofs[2],
+                                     const float scale[2],
+                                     const float rotation,
+                                     float r_uvmat[3][2])
+{
+  /* OPTI this could use 3x2 matrices and reduce the number of operations drastically. */
+  float mat[4][4];
+  unit_m4(mat);
+  /* Offset to center. */
+  translate_m4(mat, 0.5f, 0.5f, 0.0f);
+  /* Reversed order. */
+  rescale_m4(mat, (float[3]){1.0f / scale[0], 1.0f / scale[1], 0.0});
+  rotate_m4(mat, 'Z', -rotation);
+  translate_m4(mat, ofs[0], ofs[1], 0.0f);
   /* Convert to 3x2 */
   copy_v2_v2(r_uvmat[0], mat[0]);
   copy_v2_v2(r_uvmat[1], mat[1]);
@@ -293,9 +315,9 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       pool->tex_fill[mat_id] = NULL;
       mat_data->flag |= GP_FILL_GRADIENT_USE;
       mat_data->flag |= use_radial ? GP_FILL_GRADIENT_RADIAL : 0;
-      gpencil_uv_transform_get(gp_style->gradient_shift,
-                               gp_style->gradient_scale,
-                               gp_style->gradient_angle,
+      gpencil_uv_transform_get(gp_style->texture_offset,
+                               gp_style->texture_scale,
+                               gp_style->texture_angle,
                                mat_data->fill_uv_transform);
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       copy_v4_v4(mat_data->fill_mix_color, gp_style->mix_rgba);
