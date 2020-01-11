@@ -26,6 +26,8 @@
 
 #include "BKE_image.h"
 
+#include "BLI_hash.h"
+#include "BLI_math_color.h"
 #include "BLI_memblock.h"
 
 #include "GPU_uniformbuffer.h"
@@ -99,6 +101,101 @@ static void gpencil_uv_transform_get(const float ofs[2],
   copy_v2_v2(r_uvmat[2], mat[3]);
 }
 
+#define HSV_SATURATION 0.5
+#define HSV_VALUE 0.8
+
+static void gpencil_object_random_color_get(const Object *ob, float r_color[3])
+{
+  /* Duplicated from workbench_material.c */
+  uint hash = BLI_ghashutil_strhash_p_murmur(ob->id.name);
+  if (ob->id.lib) {
+    hash = (hash * 13) ^ BLI_ghashutil_strhash_p_murmur(ob->id.lib->name);
+  }
+  float hue = BLI_hash_int_01(hash);
+  float hsv[3] = {hue, HSV_SATURATION, HSV_VALUE};
+  hsv_to_rgb_v(hsv, r_color);
+}
+
+static void gpencil_shade_color(float color[3])
+{
+  /* This is scene refered color, not gamma corrected and not per perceptual.
+   * So we lower the threshold a bit. (1.0 / 3.0) */
+  if (color[0] + color[1] + color[2] > 1.1) {
+    add_v3_fl(color, -0.25f);
+  }
+  else {
+    add_v3_fl(color, 0.15f);
+  }
+  CLAMP3(color, 0.0f, 1.0f);
+}
+
+/* Apply all overrides from the solid viewport mode to the GPencil material. */
+static MaterialGPencilStyle *gpencil_viewport_material_overrides(GPENCIL_PrivateData *pd,
+                                                                 Object *ob,
+                                                                 MaterialGPencilStyle *gp_style)
+{
+  static MaterialGPencilStyle gp_style_tmp;
+
+  switch (pd->v3d_color_type) {
+    case V3D_SHADING_MATERIAL_COLOR:
+      copy_v4_v4(gp_style_tmp.stroke_rgba, gp_style->stroke_rgba);
+      copy_v4_v4(gp_style_tmp.fill_rgba, gp_style->fill_rgba);
+      gp_style = &gp_style_tmp;
+      gp_style->stroke_style = GP_MATERIAL_STROKE_STYLE_SOLID;
+      gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
+      break;
+    case V3D_SHADING_TEXTURE_COLOR:
+      memcpy(&gp_style_tmp, gp_style, sizeof(*gp_style));
+      gp_style = &gp_style_tmp;
+      if ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
+        copy_v4_fl(gp_style->stroke_rgba, 1.0f);
+        gp_style->mix_stroke_factor = 0.0f;
+      }
+      if (((gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) && (gp_style->ima)) ||
+          (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT)) {
+        copy_v4_fl(gp_style->fill_rgba, 1.0f);
+        gp_style->mix_factor = 0.0f;
+      }
+      break;
+    case V3D_SHADING_RANDOM_COLOR:
+      gp_style = &gp_style_tmp;
+      gp_style->stroke_style = GP_MATERIAL_STROKE_STYLE_SOLID;
+      gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
+      gpencil_object_random_color_get(ob, gp_style->fill_rgba);
+      gp_style->fill_rgba[3] = 1.0f;
+      copy_v4_v4(gp_style->stroke_rgba, gp_style->fill_rgba);
+      gpencil_shade_color(gp_style->stroke_rgba);
+      break;
+    case V3D_SHADING_SINGLE_COLOR:
+      gp_style = &gp_style_tmp;
+      gp_style->stroke_style = GP_MATERIAL_STROKE_STYLE_SOLID;
+      gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
+      copy_v3_v3(gp_style->fill_rgba, pd->v3d_single_color);
+      gp_style->fill_rgba[3] = 1.0f;
+      copy_v4_v4(gp_style->stroke_rgba, gp_style->fill_rgba);
+      gpencil_shade_color(gp_style->stroke_rgba);
+      break;
+    case V3D_SHADING_OBJECT_COLOR:
+      gp_style = &gp_style_tmp;
+      gp_style->stroke_style = GP_MATERIAL_STROKE_STYLE_SOLID;
+      gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
+      copy_v4_v4(gp_style->fill_rgba, ob->color);
+      copy_v4_v4(gp_style->stroke_rgba, ob->color);
+      gpencil_shade_color(gp_style->stroke_rgba);
+      break;
+    case V3D_SHADING_VERTEX_COLOR:
+      gp_style = &gp_style_tmp;
+      gp_style->stroke_style = GP_MATERIAL_STROKE_STYLE_SOLID;
+      gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
+      copy_v4_fl(gp_style->fill_rgba, 1.0f);
+      copy_v4_fl(gp_style->stroke_rgba, 1.0f);
+      break;
+    default:
+      break;
+  }
+  return gp_style;
+}
+
 /**
  * Creates a linked list of material pool containing all materials assigned for a given object.
  * We merge the material pools together if object does not contain a huge amount of materials.
@@ -149,6 +246,8 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
         (gp_style->flag & GP_MATERIAL_DISABLE_STENCIL)) {
       mat_data->flag |= GP_STROKE_OVERLAP;
     }
+
+    gp_style = gpencil_viewport_material_overrides(pd, ob, gp_style);
 
     /* Stroke Style */
     if ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {

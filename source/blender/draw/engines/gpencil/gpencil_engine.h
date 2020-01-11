@@ -269,6 +269,10 @@ typedef struct GPENCIL_PrivateData {
   GPUFrameBuffer *scene_fb;
   /* Copy of txl->dummy_tx */
   GPUTexture *dummy_tx;
+  /* Copy of v3d->shading.single_color. */
+  float v3d_single_color[3];
+  /* Copy of v3d->shading.color_type or -1 to ignore. */
+  int v3d_color_type;
   /* Current frame */
   int cfra;
   /* If we are rendering for final render (F12). */

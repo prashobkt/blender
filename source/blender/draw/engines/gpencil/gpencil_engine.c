@@ -118,6 +118,9 @@ void GPENCIL_engine_init(void *ved)
                        (v3d->shading.flag & V3D_SHADING_SCENE_WORLD)) ||
                       ((v3d->shading.type == OB_RENDER) &&
                        (v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER));
+
+    stl->pd->v3d_color_type = (v3d->shading.type == OB_SOLID) ? v3d->shading.color_type : -1;
+    copy_v3_v3(stl->pd->v3d_single_color, v3d->shading.single_color);
   }
 
   stl->pd->use_lighting = (v3d && v3d->shading.type > OB_SOLID);
@@ -377,6 +380,11 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
 
+  bool overide_vertcol = (iter->pd->v3d_color_type != -1);
+  bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR);
+  float vert_col_opacity = (overide_vertcol) ? (is_vert_col_mode ? 1.0f : 0.0f) :
+                                               gpl->vertex_paint_opacity;
+
   struct GPUShader *sh = GPENCIL_shader_geometry_get();
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
   DRW_shgroup_uniform_block_persistent(iter->grp, "gpLightBlock", iter->ubo_lights);
@@ -391,7 +399,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessScale", object_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
-  DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
+  DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", vert_col_opacity);
   DRW_shgroup_uniform_float_copy(iter->grp, "strokeIndexOffset", iter->stroke_index_offset);
   DRW_shgroup_stencil_mask(iter->grp, 0xFF);
 
