@@ -4455,11 +4455,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
             LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-              srgb_to_linearrgb_v4(gps->mix_color_fill, gps->mix_color_fill);
+              srgb_to_linearrgb_v4(gps->vert_color_fill, gps->vert_color_fill);
               int i;
               bGPDspoint *pt;
               for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-                srgb_to_linearrgb_v4(pt->mix_color, pt->mix_color);
+                srgb_to_linearrgb_v4(pt->vert_color, pt->vert_color);
               }
             }
           }

@@ -137,9 +137,9 @@ static int gp_vertexpaint_brightness_contrast_exec(bContext *C, wmOperator *op)
       if (gps->flag & GP_STROKE_SELECT) {
         changed = true;
         if (mode != GP_PAINT_VERTEX_STROKE) {
-          if (gps->mix_color_fill[3] > 0.0f) {
+          if (gps->vert_color_fill[3] > 0.0f) {
             for (int i2 = 0; i2 < 3; i2++) {
-              gps->mix_color_fill[i2] = gain * gps->mix_color_fill[i2] + offset;
+              gps->vert_color_fill[i2] = gain * gps->vert_color_fill[i2] + offset;
             }
           }
         }
@@ -148,9 +148,9 @@ static int gp_vertexpaint_brightness_contrast_exec(bContext *C, wmOperator *op)
       /* Stroke points. */
       if (mode != GP_PAINT_VERTEX_FILL) {
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          if ((pt->flag & GP_SPOINT_SELECT) && (pt->mix_color[3] > 0.0f)) {
+          if ((pt->flag & GP_SPOINT_SELECT) && (pt->vert_color[3] > 0.0f)) {
             for (int i2 = 0; i2 < 3; i2++) {
-              pt->mix_color[i2] = gain * pt->mix_color[i2] + offset;
+              pt->vert_color[i2] = gain * pt->vert_color[i2] + offset;
             }
           }
         }
@@ -214,9 +214,9 @@ static int gp_vertexpaint_hsv_exec(bContext *C, wmOperator *op)
 
       /* Fill color. */
       if (mode != GP_PAINT_VERTEX_STROKE) {
-        if (gps->mix_color_fill[3] > 0.0f) {
+        if (gps->vert_color_fill[3] > 0.0f) {
 
-          rgb_to_hsv_v(gps->mix_color_fill, hsv);
+          rgb_to_hsv_v(gps->vert_color_fill, hsv);
 
           hsv[0] += (hue - 0.5f);
           if (hsv[0] > 1.0f) {
@@ -228,15 +228,15 @@ static int gp_vertexpaint_hsv_exec(bContext *C, wmOperator *op)
           hsv[1] *= sat;
           hsv[2] *= val;
 
-          hsv_to_rgb_v(hsv, gps->mix_color_fill);
+          hsv_to_rgb_v(hsv, gps->vert_color_fill);
         }
       }
 
       /* Stroke points. */
       if (mode != GP_PAINT_VERTEX_FILL) {
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          if ((pt->flag & GP_SPOINT_SELECT) && (pt->mix_color[3] > 0.0f)) {
-            rgb_to_hsv_v(pt->mix_color, hsv);
+          if ((pt->flag & GP_SPOINT_SELECT) && (pt->vert_color[3] > 0.0f)) {
+            rgb_to_hsv_v(pt->vert_color, hsv);
 
             hsv[0] += (hue - 0.5f);
             if (hsv[0] > 1.0f) {
@@ -248,7 +248,7 @@ static int gp_vertexpaint_hsv_exec(bContext *C, wmOperator *op)
             hsv[1] *= sat;
             hsv[2] *= val;
 
-            hsv_to_rgb_v(hsv, pt->mix_color);
+            hsv_to_rgb_v(hsv, pt->vert_color);
           }
         }
       }
@@ -305,9 +305,9 @@ static int gp_vertexpaint_invert_exec(bContext *C, wmOperator *op)
       if (gps->flag & GP_STROKE_SELECT) {
         changed = true;
         if (mode != GP_PAINT_VERTEX_STROKE) {
-          if (gps->mix_color_fill[3] > 0.0f) {
+          if (gps->vert_color_fill[3] > 0.0f) {
             for (int i2 = 0; i2 < 3; i2++) {
-              gps->mix_color_fill[i2] = 1.0f - gps->mix_color_fill[i2];
+              gps->vert_color_fill[i2] = 1.0f - gps->vert_color_fill[i2];
             }
           }
         }
@@ -316,9 +316,9 @@ static int gp_vertexpaint_invert_exec(bContext *C, wmOperator *op)
       /* Stroke points. */
       if (mode != GP_PAINT_VERTEX_FILL) {
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          if ((pt->flag & GP_SPOINT_SELECT) && (pt->mix_color[3] > 0.0f)) {
+          if ((pt->flag & GP_SPOINT_SELECT) && (pt->vert_color[3] > 0.0f)) {
             for (int i2 = 0; i2 < 3; i2++) {
-              pt->mix_color[i2] = 1.0f - pt->mix_color[i2];
+              pt->vert_color[i2] = 1.0f - pt->vert_color[i2];
             }
           }
         }
@@ -374,9 +374,9 @@ static int gp_vertexpaint_levels_exec(bContext *C, wmOperator *op)
     if (gps->flag & GP_STROKE_SELECT) {
       changed = true;
       if (mode != GP_PAINT_VERTEX_STROKE) {
-        if (gps->mix_color_fill[3] > 0.0f) {
+        if (gps->vert_color_fill[3] > 0.0f) {
           for (int i2 = 0; i2 < 3; i2++) {
-            gps->mix_color_fill[i2] = gain * (gps->mix_color_fill[i2] + offset);
+            gps->vert_color_fill[i2] = gain * (gps->vert_color_fill[i2] + offset);
           }
         }
       }
@@ -385,9 +385,9 @@ static int gp_vertexpaint_levels_exec(bContext *C, wmOperator *op)
     /* Stroke points. */
     if (mode != GP_PAINT_VERTEX_FILL) {
       for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-        if ((pt->flag & GP_SPOINT_SELECT) && (pt->mix_color[3] > 0.0f)) {
+        if ((pt->flag & GP_SPOINT_SELECT) && (pt->vert_color[3] > 0.0f)) {
           for (int i2 = 0; i < 3; i2++) {
-            pt->mix_color[i2] = gain * (pt->mix_color[i2] + offset);
+            pt->vert_color[i2] = gain * (pt->vert_color[i2] + offset);
           }
         }
       }
@@ -450,8 +450,8 @@ static int gp_vertexpaint_set_exec(bContext *C, wmOperator *op)
     if (gps->flag & GP_STROKE_SELECT) {
       changed = true;
       if (mode != GP_PAINT_VERTEX_STROKE) {
-        copy_v3_v3(gps->mix_color_fill, brush->rgb);
-        gps->mix_color_fill[3] = factor;
+        copy_v3_v3(gps->vert_color_fill, brush->rgb);
+        gps->vert_color_fill[3] = factor;
       }
     }
 
@@ -459,8 +459,8 @@ static int gp_vertexpaint_set_exec(bContext *C, wmOperator *op)
     if (mode != GP_PAINT_VERTEX_FILL) {
       for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
         if (pt->flag & GP_SPOINT_SELECT) {
-          copy_v3_v3(pt->mix_color, brush->rgb);
-          pt->mix_color[3] = factor;
+          copy_v3_v3(pt->vert_color, brush->rgb);
+          pt->vert_color[3] = factor;
         }
       }
     }
@@ -546,10 +546,10 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
         }
 
         /* Fill color. */
-        if (gps->mix_color_fill[3] > 0.0f) {
-          col[0] = truncf(gps->mix_color_fill[0] * range) / range;
-          col[1] = truncf(gps->mix_color_fill[1] * range) / range;
-          col[2] = truncf(gps->mix_color_fill[2] * range) / range;
+        if (gps->vert_color_fill[3] > 0.0f) {
+          col[0] = truncf(gps->vert_color_fill[0] * range) / range;
+          col[1] = truncf(gps->vert_color_fill[1] * range) / range;
+          col[2] = truncf(gps->vert_color_fill[2] * range) / range;
 
           uint key = rgb_to_cpack(col[0], col[1], col[2]);
 
@@ -562,9 +562,9 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
         bGPDspoint *pt;
         int i;
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          col[0] = truncf(pt->mix_color[0] * range) / range;
-          col[1] = truncf(pt->mix_color[1] * range) / range;
-          col[2] = truncf(pt->mix_color[2] * range) / range;
+          col[0] = truncf(pt->vert_color[0] * range) / range;
+          col[1] = truncf(pt->vert_color[1] * range) / range;
+          col[2] = truncf(pt->vert_color[2] * range) / range;
 
           uint key = rgb_to_cpack(col[0], col[1], col[2]);
           if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
@@ -787,14 +787,14 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
         }
 
         changed = true;
-        copy_v3_v3(gps->mix_color_fill, gp_style->fill_rgba);
-        gps->mix_color_fill[3] = 1.0f;
+        copy_v3_v3(gps->vert_color_fill, gp_style->fill_rgba);
+        gps->vert_color_fill[3] = 1.0f;
 
         /* Update all points. */
         bGPDspoint *pt;
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          copy_v3_v3(pt->mix_color, gp_style->stroke_rgba);
-          pt->mix_color[3] = 1.0f;
+          copy_v3_v3(pt->vert_color, gp_style->stroke_rgba);
+          pt->vert_color[3] = 1.0f;
         }
       }
     }

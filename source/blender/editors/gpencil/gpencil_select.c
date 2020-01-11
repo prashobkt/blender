@@ -1704,11 +1704,11 @@ static int gpencil_select_color_exec(bContext *C, wmOperator *op)
     bool gps_selected = false;
     /* Check all stroke points. */
     for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-      if (pt->mix_color[3] < 0.03f) {
+      if (pt->vert_color[3] < 0.03f) {
         continue;
       }
 
-      rgb_to_hsv_compat_v(pt->mix_color, hsv_stroke);
+      rgb_to_hsv_compat_v(pt->vert_color, hsv_stroke);
       /* Only check Hue to get full value and saturation ranges. */
       if (compare_ff(hsv_stroke[0], hsv_brush[0], threshold)) {
         pt->flag |= GP_SPOINT_SELECT;

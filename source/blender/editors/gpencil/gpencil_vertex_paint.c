@@ -386,7 +386,7 @@ static void gp_grid_colors_calc(tGP_BrushVertexpaintData *gso)
     if (grid_index > -1) {
       grid = &gso->grid[grid_index];
       /* Add stroke mix color (only if used). */
-      if (pt->mix_color[3] > 0.0f) {
+      if (pt->vert_color[3] > 0.0f) {
         add_v3_v3(grid->color, selected->color);
         grid->color[3] = 1.0f;
         grid->totcol++;
@@ -434,8 +434,8 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
 
   bGPDspoint *pt = &gps->points[pt_index];
 
-  float alpha = pt->mix_color[3];
-  float alpha_fill = gps->mix_color_fill[3];
+  float alpha = pt->vert_color[3];
+  float alpha_fill = gps->vert_color_fill[3];
 
   if (brush_invert_check(gso)) {
     alpha -= inf;
@@ -449,20 +449,20 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
   /* Apply color to Stroke point. */
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
     CLAMP(alpha, 0.0f, 1.0f);
-    interp_v3_v3v3(pt->mix_color, pt->mix_color, brush->rgb, inf);
-    pt->mix_color[3] = alpha;
+    interp_v3_v3v3(pt->vert_color, pt->vert_color, brush->rgb, inf);
+    pt->vert_color[3] = alpha;
   }
 
   /* Apply color to Fill area (all with same color and factor). */
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     CLAMP(alpha_fill, 0.0f, 1.0f);
-    if (equals_v3v3(gps->mix_color_fill, brush->rgb)) {
-      copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    if (equals_v3v3(gps->vert_color_fill, brush->rgb)) {
+      copy_v3_v3(gps->vert_color_fill, brush->rgb);
     }
     else {
-      interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, brush->rgb, inf_fill);
+      interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, brush->rgb, inf_fill);
     }
-    gps->mix_color_fill[3] = alpha_fill;
+    gps->vert_color_fill[3] = alpha_fill;
   }
 
   return true;
@@ -476,19 +476,19 @@ static bool brush_replace_apply(tGP_BrushVertexpaintData *gso, bGPDstroke *gps, 
 
   /* Apply color to Stroke point. */
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
-    copy_v3_v3(pt->mix_color, brush->rgb);
+    copy_v3_v3(pt->vert_color, brush->rgb);
     /* If not mix color, full replace. */
-    if (pt->mix_color[3] == 0.0f) {
-      pt->mix_color[3] = 1.0f;
+    if (pt->vert_color[3] == 0.0f) {
+      pt->vert_color[3] = 1.0f;
     }
   }
 
   /* Apply color to Fill area (all with same color and factor). */
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
-    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    copy_v3_v3(gps->vert_color_fill, brush->rgb);
     /* If not mix color, full replace. */
-    if (gps->mix_color_fill[3] == 0.0f) {
-      gps->mix_color_fill[3] = 1.0f;
+    if (gps->vert_color_fill[3] == 0.0f) {
+      gps->vert_color_fill[3] = 1.0f;
     }
   }
 
@@ -520,7 +520,7 @@ static bool get_surrounding_color(tGP_BrushVertexpaintData *gso,
     pt = &gps_selected->points[selected->pt_index];
 
     /* Add stroke mix color (only if used). */
-    if (pt->mix_color[3] > 0.0f) {
+    if (pt->vert_color[3] > 0.0f) {
       add_v3_v3(r_color, selected->color);
       totcol++;
     }
@@ -554,12 +554,12 @@ static bool brush_blur_apply(tGP_BrushVertexpaintData *gso,
   if (get_surrounding_color(gso, gps, pt_index, blur_color)) {
     /* Apply color to Stroke point. */
     if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
-      interp_v3_v3v3(pt->mix_color, pt->mix_color, blur_color, inf);
+      interp_v3_v3v3(pt->vert_color, pt->vert_color, blur_color, inf);
     }
 
     /* Apply color to Fill area (all with same color and factor). */
     if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
-      interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, blur_color, inf_fill);
+      interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, blur_color, inf_fill);
     }
     return true;
   }
@@ -584,8 +584,8 @@ static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
 
   bGPDspoint *pt = &gps->points[pt_index];
 
-  float alpha = pt->mix_color[3];
-  float alpha_fill = gps->mix_color_fill[3];
+  float alpha = pt->vert_color[3];
+  float alpha_fill = gps->vert_color_fill[3];
 
   if (brush_invert_check(gso)) {
     alpha -= inf;
@@ -599,15 +599,15 @@ static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
   /* Apply color to Stroke point. */
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
     CLAMP(alpha, 0.0f, 1.0f);
-    interp_v3_v3v3(pt->mix_color, pt->mix_color, average_color, inf);
-    pt->mix_color[3] = alpha;
+    interp_v3_v3v3(pt->vert_color, pt->vert_color, average_color, inf);
+    pt->vert_color[3] = alpha;
   }
 
   /* Apply color to Fill area (all with same color and factor). */
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     CLAMP(alpha_fill, 0.0f, 1.0f);
-    copy_v3_v3(gps->mix_color_fill, average_color);
-    gps->mix_color_fill[3] = alpha_fill;
+    copy_v3_v3(gps->vert_color_fill, average_color);
+    gps->vert_color_fill[3] = alpha_fill;
   }
 
   return true;
@@ -672,8 +672,8 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
     if (grid_index > -1) {
       if (grid->color[3] > 0.0f) {
-        // copy_v3_v3(pt->mix_color, grid->color);
-        interp_v3_v3v3(pt->mix_color, pt->mix_color, grid->color, inf);
+        // copy_v3_v3(pt->vert_color, grid->color);
+        interp_v3_v3v3(pt->vert_color, pt->vert_color, grid->color, inf);
         changed = true;
       }
     }
@@ -683,7 +683,7 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     if (grid_index > -1) {
       if (grid->color[3] > 0.0f) {
-        interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, grid->color, inf);
+        interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, grid->color, inf);
         changed = true;
       }
     }
@@ -810,7 +810,7 @@ static void gp_save_selected_point(tGP_BrushVertexpaintData *gso,
   selected->gps = gps;
   selected->pt_index = index;
   copy_v2_v2_int(selected->pc, pc);
-  copy_v4_v4(selected->color, pt->mix_color);
+  copy_v4_v4(selected->color, pt->vert_color);
 
   gso->pbuffer_used++;
 }
@@ -987,14 +987,14 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
       bGPDspoint *pt = &gps->points[selected->pt_index];
 
       /* Add stroke mix color (only if used). */
-      if (pt->mix_color[3] > 0.0f) {
-        add_v3_v3(average_color, pt->mix_color);
+      if (pt->vert_color[3] > 0.0f) {
+        add_v3_v3(average_color, pt->vert_color);
         totcol++;
       }
 
       /* If Fill color mix, add to average. */
-      if (gps->mix_color_fill[3] > 0.0f) {
-        add_v3_v3(average_color, gps->mix_color_fill);
+      if (gps->vert_color_fill[3] > 0.0f) {
+        add_v3_v3(average_color, gps->vert_color_fill);
         totcol++;
       }
     }

@@ -421,7 +421,7 @@ static void gp_save_selected_point(tGP_BrushWeightpaintData *gso,
   selected->gps = gps;
   selected->pt_index = index;
   copy_v2_v2_int(selected->pc, pc);
-  copy_v4_v4(selected->color, pt->mix_color);
+  copy_v4_v4(selected->color, pt->vert_color);
 
   gso->pbuffer_used++;
 }

@@ -85,8 +85,8 @@ typedef struct bGPDspoint {
   /** Uv for fill mode */
   float uv_fill[2];
 
-  /** Mix color RGBA (A=mix factor) */
-  float mix_color[4];
+  /** Vertex Color RGBA (A=mix factor). */
+  float vert_color[4];
 
   /** Runtime data */
   char _pad2[4];
@@ -244,8 +244,8 @@ typedef struct bGPDstroke {
   struct MDeformVert *dvert;
   void *_pad3;
 
-  /** Vertex mix color for Fill (one for all stroke). */
-  float mix_color_fill[4];
+  /** Vertex Color for Fill (one for all stroke, A=mix factor). */
+  float vert_color_fill[4];
 
   bGPDstroke_Runtime runtime;
 } bGPDstroke;

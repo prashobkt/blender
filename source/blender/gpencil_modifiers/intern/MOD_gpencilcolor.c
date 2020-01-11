@@ -111,20 +111,20 @@ static void deformStroke(GpencilModifierData *md,
   /* Apply to mix color. */
   /* Fill */
   if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
-    rgb_to_hsv_v(gps->mix_color_fill, hsv);
+    rgb_to_hsv_v(gps->vert_color_fill, hsv);
     add_v3_v3(hsv, factor);
     CLAMP3(hsv, 0.0f, 1.0f);
-    hsv_to_rgb_v(hsv, gps->mix_color_fill);
+    hsv_to_rgb_v(hsv, gps->vert_color_fill);
   }
 
   /* Stroke */
   if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
     for (int i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
-      rgb_to_hsv_v(pt->mix_color, hsv);
+      rgb_to_hsv_v(pt->vert_color, hsv);
       add_v3_v3(hsv, factor);
       CLAMP3(hsv, 0.0f, 1.0f);
-      hsv_to_rgb_v(hsv, pt->mix_color);
+      hsv_to_rgb_v(hsv, pt->vert_color);
     }
   }
 }

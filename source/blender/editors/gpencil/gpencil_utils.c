@@ -1195,7 +1195,7 @@ void gp_subdivide_stroke(bGPDstroke *gps, const int subdivide)
       pt_final->flag = pt->flag;
       pt_final->uv_fac = pt->uv_fac;
       pt_final->uv_rot = pt->uv_rot;
-      copy_v4_v4(pt_final->mix_color, pt->mix_color);
+      copy_v4_v4(pt_final->vert_color, pt->vert_color);
 
       if (gps->dvert != NULL) {
         MDeformVert *dvert = &gps->dvert[i];
@@ -1222,7 +1222,7 @@ void gp_subdivide_stroke(bGPDstroke *gps, const int subdivide)
       pt_final->time = interpf(pt->time, next->time, 0.5f);
       pt_final->uv_fac = interpf(pt->uv_fac, next->uv_fac, 0.5f);
       pt_final->uv_rot = interpf(pt->uv_rot, next->uv_rot, 0.5f);
-      interp_v4_v4v4(pt_final->mix_color, pt->mix_color, next->mix_color, 0.5f);
+      interp_v4_v4v4(pt_final->vert_color, pt->vert_color, next->vert_color, 0.5f);
 
       if (gps->dvert != NULL) {
         MDeformVert *dvert_final = &gps->dvert[i2];
@@ -1997,7 +1997,7 @@ void ED_gpencil_tpoint_to_point(ARegion *ar, float origin[3], const tGPspoint *t
   /* conversion to 3d format */
   gpencil_stroke_convertcoords(ar, tpt, origin, p3d);
   copy_v3_v3(&pt->x, p3d);
-  zero_v4(pt->mix_color);
+  zero_v4(pt->vert_color);
 
   pt->pressure = tpt->pressure;
   pt->strength = tpt->strength;
@@ -2106,7 +2106,7 @@ static void gp_copy_points(bGPDstroke *gps, bGPDspoint *pt, bGPDspoint *pt_final
   pt_final->flag = pt->flag;
   pt_final->uv_fac = pt->uv_fac;
   pt_final->uv_rot = pt->uv_rot;
-  copy_v4_v4(pt_final->mix_color, pt->mix_color);
+  copy_v4_v4(pt_final->vert_color, pt->vert_color);
 
   if (gps->dvert != NULL) {
     MDeformVert *dvert = &gps->dvert[i];

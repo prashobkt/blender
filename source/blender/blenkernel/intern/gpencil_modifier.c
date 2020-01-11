@@ -726,7 +726,7 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       pt_final->flag = pt->flag;
       pt_final->runtime.pt_orig = pt->runtime.pt_orig;
       pt_final->runtime.idx_orig = pt->runtime.idx_orig;
-      copy_v4_v4(pt_final->mix_color, pt->mix_color);
+      copy_v4_v4(pt_final->vert_color, pt->vert_color);
 
       if (gps->dvert != NULL) {
         dvert = &temp_dverts[i];
@@ -750,7 +750,7 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       CLAMP(pt_final->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt_final->time = interpf(pt->time, next->time, 0.5f);
       pt_final->runtime.pt_orig = NULL;
-      interp_v4_v4v4(pt_final->mix_color, pt->mix_color, next->mix_color, 0.5f);
+      interp_v4_v4v4(pt_final->vert_color, pt->vert_color, next->vert_color, 0.5f);
 
       if (gps->dvert != NULL) {
         dvert = &temp_dverts[i];

@@ -119,14 +119,14 @@ static void deformStroke(GpencilModifierData *md,
   CLAMP(mixfac, 0.0, 1.0f);
   /* Fill */
   if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
-    interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, mmd->rgb, mixfac);
+    interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, mmd->rgb, mixfac);
   }
 
   /* Stroke */
   if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
     for (int i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
-      interp_v3_v3v3(pt->mix_color, pt->mix_color, mmd->rgb, mixfac);
+      interp_v3_v3v3(pt->vert_color, pt->vert_color, mmd->rgb, mixfac);
     }
   }
 }

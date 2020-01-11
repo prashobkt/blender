@@ -943,7 +943,7 @@ static void copy_move_point(bGPDstroke *gps,
   pt_final->flag = pt->flag;
   pt_final->uv_fac = pt->uv_fac;
   pt_final->uv_rot = pt->uv_rot;
-  copy_v4_v4(pt_final->mix_color, pt->mix_color);
+  copy_v4_v4(pt_final->vert_color, pt->vert_color);
 
   if (gps->dvert != NULL) {
     MDeformVert *dvert = &temp_dverts[from_idx];
@@ -2243,7 +2243,7 @@ static void gp_stroke_join_islands(bGPDframe *gpf, bGPDstroke *gps_first, bGPDst
     pt_final->strength = pt->strength;
     pt_final->time = delta;
     pt_final->flag = pt->flag;
-    copy_v4_v4(pt_final->mix_color, pt->mix_color);
+    copy_v4_v4(pt_final->vert_color, pt->vert_color);
 
     /* retiming with fixed time interval (we cannot determine real time) */
     delta += 0.01f;
@@ -3173,7 +3173,7 @@ static void gpencil_flip_stroke(bGPDstroke *gps)
     pt.pressure = point->pressure;
     pt.strength = point->strength;
     pt.time = point->time;
-    copy_v4_v4(pt.mix_color, point->mix_color);
+    copy_v4_v4(pt.vert_color, point->vert_color);
 
     /* replace first point with last point */
     point2 = &gps->points[end];
@@ -3184,7 +3184,7 @@ static void gpencil_flip_stroke(bGPDstroke *gps)
     point->pressure = point2->pressure;
     point->strength = point2->strength;
     point->time = point2->time;
-    copy_v4_v4(point->mix_color, point2->mix_color);
+    copy_v4_v4(point->vert_color, point2->vert_color);
 
     /* replace last point with first saved before */
     point = &gps->points[end];
@@ -3195,7 +3195,7 @@ static void gpencil_flip_stroke(bGPDstroke *gps)
     point->pressure = pt.pressure;
     point->strength = pt.strength;
     point->time = pt.time;
-    copy_v4_v4(point->mix_color, pt.mix_color);
+    copy_v4_v4(point->vert_color, pt.vert_color);
 
     end--;
   }
@@ -3226,7 +3226,7 @@ static void gpencil_stroke_copy_point(bGPDstroke *gps,
   newpoint->pressure = pressure;
   newpoint->strength = strength;
   newpoint->time = point->time + deltatime;
-  copy_v4_v4(newpoint->mix_color, point->mix_color);
+  copy_v4_v4(newpoint->vert_color, point->vert_color);
 
   if (gps->dvert != NULL) {
     MDeformVert *dvert = &gps->dvert[idx];
@@ -3840,7 +3840,7 @@ static int gp_stroke_subdivide_exec(bContext *C, wmOperator *op)
           pt_final->strength = pt->strength;
           pt_final->time = pt->time;
           pt_final->flag = pt->flag;
-          copy_v4_v4(pt_final->mix_color, pt->mix_color);
+          copy_v4_v4(pt_final->vert_color, pt->vert_color);
 
           if (gps->dvert != NULL) {
             dvert = &temp_dverts[i];
@@ -3864,7 +3864,7 @@ static int gp_stroke_subdivide_exec(bContext *C, wmOperator *op)
                 pt_final->pressure = interpf(pt->pressure, next->pressure, 0.5f);
                 pt_final->strength = interpf(pt->strength, next->strength, 0.5f);
                 CLAMP(pt_final->strength, GPENCIL_STRENGTH_MIN, 1.0f);
-                interp_v4_v4v4(pt_final->mix_color, pt->mix_color, next->mix_color, 0.5f);
+                interp_v4_v4v4(pt_final->vert_color, pt->vert_color, next->vert_color, 0.5f);
                 pt_final->time = interpf(pt->time, next->time, 0.5f);
                 pt_final->flag |= GP_SPOINT_SELECT;
 

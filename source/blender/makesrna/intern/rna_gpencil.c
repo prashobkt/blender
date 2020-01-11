@@ -911,8 +911,8 @@ static void rna_def_gpencil_stroke_point(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   /* Mix color. */
-  prop = RNA_def_property(srna, "mix_color", PROP_FLOAT, PROP_COLOR);
-  RNA_def_property_float_sdna(prop, NULL, "mix_color");
+  prop = RNA_def_property(srna, "vertex_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, NULL, "vert_color");
   RNA_def_property_array(prop, 4);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -1167,8 +1167,8 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_uv_update");
 
   /* Mix Vertex Color for Fill. */
-  prop = RNA_def_property(srna, "mix_color_fill", PROP_FLOAT, PROP_COLOR);
-  RNA_def_property_float_sdna(prop, NULL, "mix_color_fill");
+  prop = RNA_def_property(srna, "vertex_color_fill", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, NULL, "vert_color_fill");
   RNA_def_property_array(prop, 4);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);

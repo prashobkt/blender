@@ -230,8 +230,8 @@ static void deformStroke(GpencilModifierData *md,
       /* Apply to fill. */
       if (mmd->mode != GPPAINT_MODE_STROKE) {
         BKE_colorband_evaluate(mmd->colorband, 1.0f, coba_res);
-        interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, coba_res, mmd->factor);
-        gps->mix_color_fill[3] = mmd->factor;
+        interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, coba_res, mmd->factor);
+        gps->vert_color_fill[3] = mmd->factor;
         /* If no stroke, cancel loop. */
         if (mmd->mode != GPPAINT_MODE_BOTH) {
           break;
@@ -252,11 +252,11 @@ static void deformStroke(GpencilModifierData *md,
       float mix_factor = dist_sqr / radius_sqr;
       BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
 
-      interp_v3_v3v3(pt->mix_color, pt->mix_color, coba_res, mmd->factor * weight);
-      pt->mix_color[3] = mmd->factor;
+      interp_v3_v3v3(pt->vert_color, pt->vert_color, coba_res, mmd->factor * weight);
+      pt->vert_color[3] = mmd->factor;
       /* Apply Decay. */
       if (mmd->flag & GP_VERTEXCOL_DECAY_COLOR) {
-        pt->mix_color[3] *= (1.0f - mix_factor);
+        pt->vert_color[3] *= (1.0f - mix_factor);
       }
     }
   }

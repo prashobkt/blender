@@ -935,8 +935,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
 
   /* Apply the mix color to fill for stroke. */
   if (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush)) {
-    copy_v3_v3(gps->mix_color_fill, brush->rgb);
-    gps->mix_color_fill[3] = brush->gpencil_settings->vertex_factor;
+    copy_v3_v3(gps->vert_color_fill, brush->rgb);
+    gps->vert_color_fill[3] = brush->gpencil_settings->vertex_factor;
   }
 
   /* copy points from the buffer to the stroke */
@@ -954,8 +954,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
       /* Point mix color. */
-      copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
+      copy_v3_v3(pt->vert_color, brush->rgb);
+      pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -990,8 +990,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
       /* Point mix color. */
-      copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
+      copy_v3_v3(pt->vert_color, brush->rgb);
+      pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -1116,8 +1116,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->uv_fac = ptc->uv_fac;
       pt->uv_rot = ptc->uv_rot;
       /* Point mix color. */
-      copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
+      copy_v3_v3(pt->vert_color, brush->rgb);
+      pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 

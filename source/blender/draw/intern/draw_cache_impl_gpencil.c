@@ -275,7 +275,7 @@ static void gpencil_buffer_add_point(
   gpStrokeVert *vert = &verts[v];
   copy_v3_v3(vert->pos, &pt->x);
   copy_v2_v2(vert->uv_fill, pt->uv_fill);
-  copy_v4_v4(vert->col, pt->mix_color);
+  copy_v4_v4(vert->col, pt->vert_color);
   vert->strength = (round_cap0) ? pt->strength : -pt->strength;
   vert->u_stroke = pt->uv_fac;
   vert->stroke_id = gps->runtime.stroke_start;
