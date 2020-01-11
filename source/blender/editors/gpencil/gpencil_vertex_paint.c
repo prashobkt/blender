@@ -434,35 +434,42 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
 
   bGPDspoint *pt = &gps->points[pt_index];
 
-  float alpha = pt->vert_color[3];
-  float alpha_fill = gps->vert_color_fill[3];
-
-  if (brush_invert_check(gso)) {
-    alpha -= inf;
-    alpha_fill -= inf_fill;
-  }
-  else {
-    alpha += inf;
-    alpha_fill += inf_fill;
-  }
-
   /* Apply color to Stroke point. */
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
-    CLAMP(alpha, 0.0f, 1.0f);
-    interp_v3_v3v3(pt->vert_color, pt->vert_color, brush->rgb, inf);
-    pt->vert_color[3] = alpha;
+    if (brush_invert_check(gso)) {
+      pt->vert_color[3] -= inf;
+      CLAMP_MIN(pt->vert_color[3], 0.0f);
+    }
+    else {
+      /* Premult. */
+      mul_v3_fl(pt->vert_color, pt->vert_color[3]);
+      /* "Alpha over" blending. */
+      interp_v3_v3v3(pt->vert_color, pt->vert_color, brush->rgb, inf);
+      pt->vert_color[3] = pt->vert_color[3] * (1.0 - inf) + inf;
+      /* Un-premult. */
+      if (pt->vert_color[3] > 0.0f) {
+        mul_v3_fl(pt->vert_color, 1.0f / pt->vert_color[3]);
+      }
+    }
   }
 
   /* Apply color to Fill area (all with same color and factor). */
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
-    CLAMP(alpha_fill, 0.0f, 1.0f);
-    if (equals_v3v3(gps->vert_color_fill, brush->rgb)) {
-      copy_v3_v3(gps->vert_color_fill, brush->rgb);
+    if (brush_invert_check(gso)) {
+      gps->vert_color_fill[3] -= inf_fill;
+      CLAMP_MIN(gps->vert_color_fill[3], 0.0f);
     }
     else {
+      /* Premult. */
+      mul_v3_fl(gps->vert_color_fill, gps->vert_color_fill[3]);
+      /* "Alpha over" blending. */
       interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, brush->rgb, inf_fill);
+      gps->vert_color_fill[3] = gps->vert_color_fill[3] * (1.0 - inf_fill) + inf_fill;
+      /* Un-premult. */
+      if (gps->vert_color_fill[3] > 0.0f) {
+        mul_v3_fl(gps->vert_color_fill, 1.0f / gps->vert_color_fill[3]);
+      }
     }
-    gps->vert_color_fill[3] = alpha_fill;
   }
 
   return true;
