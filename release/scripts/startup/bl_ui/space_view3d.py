@@ -434,17 +434,16 @@ class _draw_tool_settings_context_mode:
 
             if brush.gpencil_tool in {'DRAW', 'FILL'} and ma:
                 gp_style = ma.grease_pencil
-                if gp_style.stroke_style != 'TEXTURE':
-                    row.separator(factor=0.4)
-                    row.prop(settings, "use_vertex_color", text="",
-                             icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
-                    sub_row = row.row(align=True)
-                    sub_row.enabled = settings.use_vertex_color
-                    sub_row.prop(brush, "color", text="")
-                    sub_row.popover(
-                        panel="TOPBAR_PT_gpencil_vertexcolor",
-                        text="Vertex Color",
-                    )
+                row.separator(factor=0.4)
+                row.prop(settings, "use_vertex_color", text="",
+                            icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
+                sub_row = row.row(align=True)
+                sub_row.enabled = settings.use_vertex_color
+                sub_row.prop(brush, "color", text="")
+                sub_row.popover(
+                    panel="TOPBAR_PT_gpencil_vertexcolor",
+                    text="Vertex Color",
+                )
 
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
