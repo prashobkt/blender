@@ -456,6 +456,7 @@ void BKE_object_free_derived_caches(Object *ob)
   /* Clear grease pencil data. */
   if (ob->runtime.gpd_eval != NULL) {
     BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
+    ob->runtime.gpd_eval = NULL;
   }
   DRW_gpencil_freecache(ob);
 }
