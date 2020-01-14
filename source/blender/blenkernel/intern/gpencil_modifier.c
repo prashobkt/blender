@@ -929,7 +929,6 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
   const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
   int cfra_eval = (int)DEG_get_ctime(depsgraph);
@@ -939,9 +938,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     BKE_gpencil_lattice_init(ob);
   }
 
-  /* *****************************************************************
-   * Loop all layers in eval datablock and apply modifiers.
-   * ******************************************************************/
+  /* Loop all layers and apply modifiers. */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* Remap frame (Time modifier) */
     int remap_cfra = cfra_eval;
@@ -965,10 +962,9 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
       BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, gpf, gps, is_render);
     }
 
-    /* Generate triangulation for filling in eval copy and verify if any updated is required.
-     * Usually, this is only required the first time because if the stroke is copied by depsgraph,
-     * the original stroke is already ready and don't need more work except if some modifiers
-     * tagged the stroke to be recalc. */
+    /* Review triangulation for filling after applying modifiers and verify if any updated is
+     * required.
+     * This is needed if some modifiers tagged the stroke triangulation to be recalc. */
     for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
       MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
       if (gp_style) {
@@ -986,19 +982,19 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 static void gpencil_update_frame_reference_pointers(bGPDframe *gpf_orig, bGPDframe *gpf_eval)
 {
   int stroke_idx = -1;
-  for (bGPDstroke *gps = gpf_orig->strokes.first; gps; gps = gps->next) {
+  for (bGPDstroke *gps_orig = gpf_orig->strokes.first; gps_orig; gps_orig = gps_orig->next) {
     stroke_idx++;
 
     /* Assign original stroke pointer. */
     if (gpf_eval != NULL) {
       bGPDstroke *gps_eval = BLI_findlink(&gpf_eval->strokes, stroke_idx);
       if (gps_eval != NULL) {
-        gps_eval->runtime.gps_orig = gps;
+        gps_eval->runtime.gps_orig = gps_orig;
 
         /* Assign original point pointer. */
-        for (int i = 0; i < gps->totpoints; i++) {
+        for (int i = 0; i < gps_orig->totpoints; i++) {
           bGPDspoint *pt_eval = &gps_eval->points[i];
-          pt_eval->runtime.pt_orig = &gps->points[i];
+          pt_eval->runtime.pt_orig = &gps_orig->points[i];
           pt_eval->runtime.idx_orig = i;
         }
       }
@@ -1010,7 +1006,7 @@ void BKE_gpencil_update_refences(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   bGPdata *gpd_eval = (bGPdata *)ob->data;
 
-  /* use original data to set reference pointers to original data */
+  /* use original data to get reference pointers to original data */
   Object *ob_orig = DEG_get_original_object(ob);
   bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
 
@@ -1019,8 +1015,9 @@ void BKE_gpencil_update_refences(Depsgraph *depsgraph, Scene *scene, Object *ob)
   int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
   /* Assign pointers to the original stroke and points to the evaluated data. This must
-   * be done before apply any modifier because at this moment the structure is equals and the
-   * same index is valid for both datablocks. This data will be used by operators. */
+   * be done before apply any modifier because at this moment the structure is equals,
+   * so we can assume the layer index is the same in both datablocks.
+   * This data will be used by operators. */
 
   int layer_idx = -1;
   for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
