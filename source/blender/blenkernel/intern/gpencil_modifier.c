@@ -862,12 +862,14 @@ static void gpencil_assign_object_eval(Object *object)
 
 void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  if (ob->greasepencil_modifiers.first == NULL) {
+  bGPdata *gpd_eval = (bGPdata *)ob->data;
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_eval);
+
+  if ((is_multiedit) || (ob->greasepencil_modifiers.first == NULL)) {
     return;
   }
 
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-  bGPdata *gpd_eval = (bGPdata *)ob->data;
   DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);
 
   /* If first time, do a full copy. */
@@ -927,15 +929,16 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
 void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
-  // const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
-  // int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  const bool do_modifiers = (bool)((is_multiedit) || (ob->greasepencil_modifiers.first == NULL));
+
+  if (!do_modifiers) {
+    return;
+  }
 
   /* Init general modifiers data. */
-  if (ob->greasepencil_modifiers.first) {
-    BKE_gpencil_lattice_init(ob);
-  }
+  BKE_gpencil_lattice_init(ob);
 
   /* Loop all layers and apply modifiers. */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -970,7 +973,5 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   }
 
   /* Clear any lattice data. */
-  if (ob->greasepencil_modifiers.first) {
-    BKE_gpencil_lattice_clear(ob);
-  }
+  BKE_gpencil_lattice_clear(ob);
 }
