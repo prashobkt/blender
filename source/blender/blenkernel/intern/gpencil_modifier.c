@@ -862,12 +862,11 @@ static void gpencil_assign_object_eval(Object *object)
 
 void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-
   if (ob->greasepencil_modifiers.first == NULL) {
     return;
   }
 
+  Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob->data;
   DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);
 
@@ -884,12 +883,13 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
 
     ob->runtime.gpd_eval = BKE_gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
     gpencil_assign_object_eval(ob);
+    BKE_gpencil_update_orig_pointers((Object *)ob_orig, (Object *)ob);
   }
   else {
     /* Replace only active frame. */
     if (DEG_is_active(depsgraph)) {
 
-      bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
+      bGPdata *gpd_orig = ob->runtime.gpd_orig;
       bGPdata *gpd_eval = ob->runtime.gpd_eval;
       ob->data = ob->runtime.gpd_eval;
 
@@ -916,6 +916,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
           BKE_gpencil_free_strokes(gpf_eval);
           /* Copy again strokes. */
           BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
+          BKE_gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
         }
       }
     }

@@ -3859,8 +3859,8 @@ void BKE_gpencil_prepare_filling_data(const Object *ob)
   }
 }
 
-static void gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_orig,
-                                                    const struct bGPDframe *gpf_eval)
+void BKE_gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_orig,
+                                                 const struct bGPDframe *gpf_eval)
 {
   int stroke_idx = -1;
   for (bGPDstroke *gps_orig = gpf_orig->strokes.first; gps_orig; gps_orig = gps_orig->next) {
@@ -3910,7 +3910,7 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
         continue;
       }
       /* Update frame reference pointers. */
-      gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
+      BKE_gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
     }
   }
 }
