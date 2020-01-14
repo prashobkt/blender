@@ -1867,16 +1867,6 @@ static void rna_def_modifier_gpencilarmature(BlenderRNA *brna)
       prop, "Preserve Volume", "Deform rotation interpolation with quaternions");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 
-#  if 0 /* GPXX keep disabled now */
-  prop = RNA_def_property(srna, "use_multi_modifier", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "multi", 0);
-  RNA_def_property_ui_text(
-      prop,
-      "Multi Modifier",
-      "Use same input as previous modifier, and mix results using overall vgroup");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
-#  endif
-
   prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "vgname");
   RNA_def_property_ui_text(

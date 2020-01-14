@@ -115,13 +115,6 @@ static void gp_interpolate_update_points(const bGPDstroke *gps_from,
     pt->pressure = interpf(prev->pressure, next->pressure, 1.0f - factor);
     pt->strength = interpf(prev->strength, next->strength, 1.0f - factor);
     CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
-
-    /* GPXX interpolate dverts */
-#if 0
-    MDeformVert *dvert = &new_stroke->dvert[i];
-    dvert->totweight = 0;
-    dvert->dw = NULL;
-#endif
   }
 }
 

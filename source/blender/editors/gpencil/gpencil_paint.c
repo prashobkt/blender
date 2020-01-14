@@ -956,8 +956,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       /* Point mix color. */
       copy_v3_v3(pt->vert_color, brush->rgb);
       pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                             brush->gpencil_settings->vertex_factor :
-                             0.0f;
+                              brush->gpencil_settings->vertex_factor :
+                              0.0f;
 
       pt++;
 
@@ -992,8 +992,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       /* Point mix color. */
       copy_v3_v3(pt->vert_color, brush->rgb);
       pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                             brush->gpencil_settings->vertex_factor :
-                             0.0f;
+                              brush->gpencil_settings->vertex_factor :
+                              0.0f;
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
         BKE_gpencil_dvert_ensure(gps);
@@ -1118,8 +1118,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       /* Point mix color. */
       copy_v3_v3(pt->vert_color, brush->rgb);
       pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                             brush->gpencil_settings->vertex_factor :
-                             0.0f;
+                              brush->gpencil_settings->vertex_factor :
+                              0.0f;
 
       if (dvert != NULL) {
         dvert->totweight = 0;
@@ -1766,10 +1766,7 @@ static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
   /* use radius of eraser */
   p->radius = (short)p->eraser->size;
 
-  /* GPXX: Need this update to synchronize brush with draw manager.
-   * Maybe this update can be removed when the new tool system
-   * will be in place, but while, we need this to keep drawing working.
-   */
+  /* Need this update to synchronize brush with draw manager. */
   if (changed) {
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
   }
