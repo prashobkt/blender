@@ -153,10 +153,8 @@ void BKE_object_eval_transform_final(Depsgraph *depsgraph, Object *ob)
   }
 
   /* Assign evaluated version. */
-  if (ob->type == OB_GPENCIL) {
-    if (ob->runtime.gpd_eval != NULL) {
-      ob->data = ob->runtime.gpd_eval;
-    }
+  if ((ob->type == OB_GPENCIL) && (ob->runtime.gpd_eval != NULL)) {
+    ob->data = ob->runtime.gpd_eval;
   }
 }
 
