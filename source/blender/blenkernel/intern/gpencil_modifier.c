@@ -833,7 +833,7 @@ static void gpencil_frame_copy_noalloc(Object *ob, bGPDframe *gpf, bGPDframe *gp
 }
 
 /* Remap frame (Time modifier) */
-static int gpencil_get_remap_time(Depsgraph *depsgraph, Scene *scene, Object *ob, bGPDlayer *gpl)
+static int gpencil_remap_time_get(Depsgraph *depsgraph, Scene *scene, Object *ob, bGPDlayer *gpl)
 {
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
   const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
@@ -869,7 +869,7 @@ void BKE_gpencil_prepare_filling_data(Depsgraph *depsgraph, Scene *scene, Object
    * The first time this is slow, but in next loops, the strokes has all data calculated and
    * doesn't need calc again except if some modifier update the stroke geometry. */
   for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
-    int remap_cfra = gpencil_get_remap_time(depsgraph, scene, ob, gpl);
+    int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl);
     bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
     if (gpf == NULL) {
       continue;
@@ -917,21 +917,23 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
       ob->data = ob->runtime.gpd_eval;
 
       int layer_index = -1;
-      for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
+      for (bGPDlayer *gpl_orig = gpd_orig->layers.first; gpl_orig; gpl_orig = gpl_orig->next) {
         layer_index++;
-        int remap_cfra = gpencil_get_remap_time(depsgraph, scene, ob, gpl);
-        bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
-        if (gpd_eval == NULL) {
+
+        int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
+        bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(
+            gpl_orig, remap_cfra, GP_GETFRAME_USE_PREV);
+        if (gpf_orig == NULL) {
           continue;
         }
+        int gpf_index = BLI_findindex(&gpl_orig->frames, gpf_orig);
 
         bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_index);
         if (gpl_eval == NULL) {
           continue;
         }
-        /* TODO: Use index instead of time? */
-        bGPDframe *gpf_eval = BKE_gpencil_layer_frame_get(
-            gpl_eval, remap_cfra, GP_GETFRAME_USE_PREV);
+        bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, gpf_index);
+
         if ((gpf_orig != NULL) && (gpf_eval != NULL)) {
           /* Delete old strokes. */
           BKE_gpencil_free_strokes(gpf_eval);
@@ -960,7 +962,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   /* Loop all layers and apply modifiers. */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* Remap frame (Time modifier) */
-    int remap_cfra = gpencil_get_remap_time(depsgraph, scene, ob, gpl);
+    int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl);
     bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
 
     if (gpf == NULL) {
