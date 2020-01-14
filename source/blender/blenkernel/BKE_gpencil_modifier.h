@@ -321,10 +321,4 @@ void BKE_gpencil_modifiers_calc(struct Depsgraph *depsgraph,
 void BKE_gpencil_prepare_eval_data(struct Depsgraph *depsgraph,
                                    struct Scene *scene,
                                    struct Object *ob);
-void BKE_gpencil_update_refences(struct Depsgraph *depsgraph,
-                                 struct Scene *scene,
-                                 struct Object *ob);
-void BKE_gpencil_prepare_filling_data(struct Depsgraph *depsgraph,
-                                      struct Scene *scene,
-                                      struct Object *ob);
 #endif /* __BKE_GPENCIL_MODIFIER_H__ */

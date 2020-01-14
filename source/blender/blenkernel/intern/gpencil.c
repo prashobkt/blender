@@ -3839,4 +3839,79 @@ void BKE_gpencil_visible_stroke_iter(
   }
 }
 
+void BKE_gpencil_prepare_filling_data(const Object *ob)
+{
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  /* Loop original strokes and generate triangulation for filling.
+   * The first time this is slow, but in next loops, the strokes has all data calculated and
+   * doesn't need calc again except if some modifier update the stroke geometry. */
+  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get((Object *)ob,
+                                                                           gps->mat_nr + 1);
+        if (gp_style) {
+          BKE_gpencil_recalc_geometry_caches((Object *)ob, gpl, gp_style, gps);
+        }
+      }
+    }
+  }
+}
+
+static void gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_orig,
+                                                    const struct bGPDframe *gpf_eval)
+{
+  int stroke_idx = -1;
+  for (bGPDstroke *gps_orig = gpf_orig->strokes.first; gps_orig; gps_orig = gps_orig->next) {
+    stroke_idx++;
+
+    /* Assign original stroke pointer. */
+    if (gpf_eval != NULL) {
+      bGPDstroke *gps_eval = BLI_findlink(&gpf_eval->strokes, stroke_idx);
+      if (gps_eval != NULL) {
+        gps_eval->runtime.gps_orig = gps_orig;
+
+        /* Assign original point pointer. */
+        for (int i = 0; i < gps_orig->totpoints; i++) {
+          bGPDspoint *pt_eval = &gps_eval->points[i];
+          pt_eval->runtime.pt_orig = &gps_orig->points[i];
+          pt_eval->runtime.idx_orig = i;
+        }
+      }
+    }
+  }
+}
+
+void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_eval)
+{
+  bGPdata *gpd_eval = (bGPdata *)ob_eval->data;
+  bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
+
+  /* Assign pointers to the original stroke and points to the evaluated data. This must
+   * be done before apply any modifier because at this moment the structure is equals,
+   * so we can assume the layer index is the same in both datablocks.
+   * This data will be used by operators. */
+
+  int layer_idx = -1;
+  for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
+    layer_idx++;
+    /* Retry evaluated layer. */
+    bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_idx);
+    if (gpl_eval == NULL) {
+      continue;
+    }
+    int frame_idx = -1;
+    for (bGPDframe *gpf_orig = gpl->frames.first; gpf_orig; gpf_orig = gpf_orig->next) {
+      frame_idx++;
+      /* Retry evaluated frame. */
+      bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, frame_idx);
+      if (gpf_eval == NULL) {
+        continue;
+      }
+      /* Update frame reference pointers. */
+      gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
+    }
+  }
+}
 /** \} */

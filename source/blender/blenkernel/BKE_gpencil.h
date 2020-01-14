@@ -322,4 +322,15 @@ void BKE_gpencil_visible_stroke_iter(struct Object *ob,
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void BKE_gpencil_update_orig_pointers(const struct Object *ob_orig, const struct Object *ob_eval);
+void BKE_gpencil_prepare_filling_data(const struct Object *ob);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /*  __BKE_GPENCIL_H__ */

@@ -215,9 +215,7 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
       BKE_lattice_modifiers_calc(depsgraph, scene, ob);
       break;
     case OB_GPENCIL: {
-      BKE_gpencil_prepare_filling_data(depsgraph, scene, ob);
       BKE_gpencil_prepare_eval_data(depsgraph, scene, ob);
-      BKE_gpencil_update_refences(depsgraph, scene, ob);
       BKE_gpencil_modifiers_calc(depsgraph, scene, ob);
       break;
     }
