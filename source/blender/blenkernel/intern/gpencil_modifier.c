@@ -832,6 +832,21 @@ static void gpencil_frame_copy_noalloc(Object *ob, bGPDframe *gpf, bGPDframe *gp
   }
 }
 
+/* Remap frame (Time modifier) */
+static int gpencil_get_remap_time(Depsgraph *depsgraph, Scene *scene, Object *ob, bGPDlayer *gpl)
+{
+  const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
+  const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
+  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+
+  int remap_cfra = cfra_eval;
+  if (time_remap) {
+    remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
+  }
+
+  return remap_cfra;
+}
+
 static void gpencil_assign_object_eval(Object *object)
 {
   BLI_assert(object->id.tag & LIB_TAG_COPIED_ON_WRITE);
@@ -845,41 +860,43 @@ static void gpencil_assign_object_eval(Object *object)
   }
 }
 
-static void gpencil_recalc_triangulation(Object *ob, bGPdata *gpd)
+void BKE_gpencil_prepare_filling_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
-        if (gp_style) {
-          BKE_gpencil_recalc_geometry_caches(ob, gpl, gp_style, gps);
-        }
+  Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
+  bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
+
+  /* Loop original strokes and generate triangulation for filling.
+   * The first time this is slow, but in next loops, the strokes has all data calculated and
+   * doesn't need calc again except if some modifier update the stroke geometry. */
+  for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
+    int remap_cfra = gpencil_get_remap_time(depsgraph, scene, ob, gpl);
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
+    if (gpf == NULL) {
+      continue;
+    }
+    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+      if (gp_style) {
+        BKE_gpencil_recalc_geometry_caches(ob, gpl, gp_style, gps);
       }
     }
   }
 }
 
-void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Object *ob)
+void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
 
   if (ob->greasepencil_modifiers.first == NULL) {
-    /* Loop all original strokes and generate triangulation for filling.
-     * The first time this is slow, but in next loops, the strokes has all data calculated and
-     * doesn't need calc again except if some modifier update the stroke geometry. */
-    gpencil_recalc_triangulation(ob_orig, ob_orig->data);
-
     return;
   }
 
-  bGPdata *gpd = (bGPdata *)ob->data;
-  DEG_debug_print_eval(depsgraph, __func__, gpd->id.name, gpd);
-
-  const int ctime = (int)DEG_get_ctime(depsgraph);
+  bGPdata *gpd_eval = (bGPdata *)ob->data;
+  DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);
 
   /* If first time, do a full copy. */
   if (ob->runtime.gpd_orig == NULL) {
-    ob->runtime.gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
+    ob->runtime.gpd_orig = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
 
     /* Copy Datablock to evaluated version. */
     if (ob->runtime.gpd_eval != NULL) {
@@ -902,7 +919,8 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Object *ob)
       int layer_index = -1;
       for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
         layer_index++;
-        bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
+        int remap_cfra = gpencil_get_remap_time(depsgraph, scene, ob, gpl);
+        bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
         if (gpd_eval == NULL) {
           continue;
         }
@@ -911,8 +929,9 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Object *ob)
         if (gpl_eval == NULL) {
           continue;
         }
-
-        bGPDframe *gpf_eval = BKE_gpencil_layer_frame_get(gpl_eval, ctime, GP_GETFRAME_USE_PREV);
+        /* TODO: Use index instead of time? */
+        bGPDframe *gpf_eval = BKE_gpencil_layer_frame_get(
+            gpl_eval, remap_cfra, GP_GETFRAME_USE_PREV);
         if ((gpf_orig != NULL) && (gpf_eval != NULL)) {
           /* Delete old strokes. */
           BKE_gpencil_free_strokes(gpf_eval);
@@ -930,8 +949,8 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   bGPdata *gpd = (bGPdata *)ob->data;
 
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
-  const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  // const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
+  // int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
   /* Init general modifiers data. */
   if (ob->greasepencil_modifiers.first) {
@@ -941,10 +960,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   /* Loop all layers and apply modifiers. */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* Remap frame (Time modifier) */
-    int remap_cfra = cfra_eval;
-    if (time_remap) {
-      remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
-    }
+    int remap_cfra = gpencil_get_remap_time(depsgraph, scene, ob, gpl);
     bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
 
     if (gpf == NULL) {
