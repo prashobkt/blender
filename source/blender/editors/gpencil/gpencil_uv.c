@@ -171,7 +171,6 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
   }
 
   /* Calc selected strokes center. */
-  bGPdata *gpd = opdata->gpd;
   zero_v2(opdata->mcenter);
   float center[3] = {0.0f};
   int i = 0;
