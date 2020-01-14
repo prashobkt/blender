@@ -924,75 +924,15 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Object *ob)
   }
 }
 
-static void gpencil_update_reference_pointers(bGPDframe *gpf_orig, bGPDframe *gpf_eval)
-{
-  int stroke_idx = -1;
-  for (bGPDstroke *gps = gpf_orig->strokes.first; gps; gps = gps->next) {
-    stroke_idx++;
-
-    /* Assign original stroke pointer. */
-    if (gpf_eval != NULL) {
-      bGPDstroke *gps_eval = BLI_findlink(&gpf_eval->strokes, stroke_idx);
-      if (gps_eval != NULL) {
-        gps_eval->runtime.gps_orig = gps;
-
-        /* Assign original point pointer. */
-        for (int i = 0; i < gps->totpoints; i++) {
-          bGPDspoint *pt_eval = &gps_eval->points[i];
-          pt_eval->runtime.pt_orig = &gps->points[i];
-          pt_eval->runtime.idx_orig = i;
-        }
-      }
-    }
-  }
-}
-
 /* Calculate gpencil modifiers */
 void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  /* use original data to set reference pointers to original data */
-  Object *ob_orig = DEG_get_original_object(ob);
-  bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
-
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
   const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
   int cfra_eval = (int)DEG_get_ctime(depsgraph);
-
-  /* Assign pointers to the original stroke and points to the evaluated data. This must
-   * be done before apply any modifier because at this moment the structure is equals and the
-   * same index is valid for both datablocks. This data will be used by operators. */
-
-  int layer_idx = -1;
-  for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
-    layer_idx++;
-
-    /* Remap frame (Time modifier) */
-    int remap_cfra = cfra_eval;
-    if (time_remap) {
-      remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
-    }
-    bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
-    if (gpf_orig == NULL) {
-      continue;
-    }
-
-    /* Retry evaluated layer. */
-    bGPDlayer *gpl_eval = BLI_findlink(&gpd->layers, layer_idx);
-    if (gpl_eval == NULL) {
-      continue;
-    }
-
-    /* Retry evaluated frame. */
-    bGPDframe *gpf_eval = BKE_gpencil_layer_frame_get(gpl_eval, remap_cfra, GP_GETFRAME_USE_PREV);
-    if (gpf_eval == NULL) {
-      continue;
-    }
-    /* Update reference pointers. */
-    gpencil_update_reference_pointers(gpf_orig, gpf_eval);
-  }
 
   /* Init general modifiers data. */
   if (ob->greasepencil_modifiers.first) {
@@ -1040,5 +980,74 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   /* Clear any lattice data. */
   if (ob->greasepencil_modifiers.first) {
     BKE_gpencil_lattice_clear(ob);
+  }
+}
+
+static void gpencil_update_frame_reference_pointers(bGPDframe *gpf_orig, bGPDframe *gpf_eval)
+{
+  int stroke_idx = -1;
+  for (bGPDstroke *gps = gpf_orig->strokes.first; gps; gps = gps->next) {
+    stroke_idx++;
+
+    /* Assign original stroke pointer. */
+    if (gpf_eval != NULL) {
+      bGPDstroke *gps_eval = BLI_findlink(&gpf_eval->strokes, stroke_idx);
+      if (gps_eval != NULL) {
+        gps_eval->runtime.gps_orig = gps;
+
+        /* Assign original point pointer. */
+        for (int i = 0; i < gps->totpoints; i++) {
+          bGPDspoint *pt_eval = &gps_eval->points[i];
+          pt_eval->runtime.pt_orig = &gps->points[i];
+          pt_eval->runtime.idx_orig = i;
+        }
+      }
+    }
+  }
+}
+
+void BKE_gpencil_update_refences(Depsgraph *depsgraph, Scene *scene, Object *ob)
+{
+  bGPdata *gpd_eval = (bGPdata *)ob->data;
+
+  /* use original data to set reference pointers to original data */
+  Object *ob_orig = DEG_get_original_object(ob);
+  bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
+
+  const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
+  const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
+  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+
+  /* Assign pointers to the original stroke and points to the evaluated data. This must
+   * be done before apply any modifier because at this moment the structure is equals and the
+   * same index is valid for both datablocks. This data will be used by operators. */
+
+  int layer_idx = -1;
+  for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
+    layer_idx++;
+
+    /* Remap frame (Time modifier) */
+    int remap_cfra = cfra_eval;
+    if (time_remap) {
+      remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
+    }
+    bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
+    if (gpf_orig == NULL) {
+      continue;
+    }
+
+    /* Retry evaluated layer. */
+    bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_idx);
+    if (gpl_eval == NULL) {
+      continue;
+    }
+
+    /* Retry evaluated frame. */
+    bGPDframe *gpf_eval = BKE_gpencil_layer_frame_get(gpl_eval, remap_cfra, GP_GETFRAME_USE_PREV);
+    if (gpf_eval == NULL) {
+      continue;
+    }
+    /* Update frame reference pointers. */
+    gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
   }
 }
