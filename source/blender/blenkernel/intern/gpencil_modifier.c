@@ -839,57 +839,19 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
   DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);
 
-  /* If first time, do a full copy. */
   if (ob->runtime.gpd_orig == NULL) {
     ob->runtime.gpd_orig = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
-
-    /* Copy Datablock to evaluated version. */
-    if (ob->runtime.gpd_eval != NULL) {
-      BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
-      ob->runtime.gpd_eval = NULL;
-      ob->data = ob->runtime.gpd_orig;
-    }
-
-    ob->runtime.gpd_eval = BKE_gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
-    gpencil_assign_object_eval(ob);
-    BKE_gpencil_update_orig_pointers((Object *)ob_orig, (Object *)ob);
   }
-  else {
-    /* Replace only active frame. */
-    if (DEG_is_active(depsgraph)) {
-
-      bGPdata *gpd_orig = ob->runtime.gpd_orig;
-      gpd_eval = ob->runtime.gpd_eval;
-      ob->data = ob->runtime.gpd_eval;
-
-      int layer_index = -1;
-      for (bGPDlayer *gpl_orig = gpd_orig->layers.first; gpl_orig; gpl_orig = gpl_orig->next) {
-        layer_index++;
-
-        int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
-        bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(
-            gpl_orig, remap_cfra, GP_GETFRAME_USE_PREV);
-        if (gpf_orig == NULL) {
-          continue;
-        }
-        int gpf_index = BLI_findindex(&gpl_orig->frames, gpf_orig);
-
-        bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_index);
-        if (gpl_eval == NULL) {
-          continue;
-        }
-        bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, gpf_index);
-
-        if ((gpf_orig != NULL) && (gpf_eval != NULL)) {
-          /* Delete old strokes. */
-          BKE_gpencil_free_strokes(gpf_eval);
-          /* Copy again strokes. */
-          BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
-          BKE_gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
-        }
-      }
-    }
+  /* Copy Datablock to evaluated version. */
+  if (ob->runtime.gpd_eval != NULL) {
+    BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
+    ob->runtime.gpd_eval = NULL;
+    ob->data = ob->runtime.gpd_orig;
   }
+
+  ob->runtime.gpd_eval = BKE_gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
+  gpencil_assign_object_eval(ob);
+  BKE_gpencil_update_orig_pointers((Object *)ob_orig, (Object *)ob);
 }
 
 /* Calculate gpencil modifiers */
