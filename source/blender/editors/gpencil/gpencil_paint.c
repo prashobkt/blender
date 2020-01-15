@@ -1827,10 +1827,7 @@ static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
   /* use radius of eraser */
   p->radius = (short)p->eraser->size;
 
-  /* GPXX: Need this update to synchronize brush with draw manager.
-   * Maybe this update can be removed when the new tool system
-   * will be in place, but while, we need this to keep drawing working.
-   */
+  /* Need this update to synchronize brush with draw manager. */
   if (changed) {
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
   }
