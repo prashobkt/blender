@@ -1527,8 +1527,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
   const int radius = (brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
                                                              gso->brush->size;
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
-  bGPDstroke *gps_active = (!is_multiedit) ? gps->runtime.gps_orig : gps;
+  bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
   bGPDspoint *pt_active = NULL;
 
   bGPDspoint *pt1, *pt2;
@@ -1546,7 +1545,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
     gp_point_to_parent_space(gps->points, diff_mat, &pt_temp);
     gp_point_to_xy(gsc, gps, &pt_temp, &pc1[0], &pc1[1]);
 
-    pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
+    pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
     /* do boundbox check first */
     if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) {
       /* only check if point is inside */
@@ -1599,8 +1598,8 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
 
           /* To each point individually... */
           pt = &gps->points[i];
-          pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
-          index = (!is_multiedit) ? pt->runtime.idx_orig : i;
+          pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
+          index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
             rot_eval = gpsculpt_rotation_eval_get(gso, gps, pt, i);
             ok = apply(gso, gps_active, rot_eval, index, radius, pc1);
@@ -1616,8 +1615,8 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
            */
           if (i + 1 == gps->totpoints - 1) {
             pt = &gps->points[i + 1];
-            pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
-            index = (!is_multiedit) ? pt->runtime.idx_orig : i + 1;
+            pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
+            index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i + 1;
             if (pt_active != NULL) {
               rot_eval = gpsculpt_rotation_eval_get(gso, gps, pt, i + 1);
               ok |= apply(gso, gps_active, rot_eval, index, radius, pc2);
@@ -1637,8 +1636,8 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
            * (but wasn't added then, to avoid double-ups).
            */
           pt = &gps->points[i];
-          pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
-          index = (!is_multiedit) ? pt->runtime.idx_orig : i;
+          pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
+          index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
             rot_eval = gpsculpt_rotation_eval_get(gso, gps, pt, i);
             changed |= apply(gso, gps_active, rot_eval, index, radius, pc1);
@@ -1661,7 +1660,6 @@ static bool gpsculpt_brush_do_frame(bContext *C,
 {
   bool changed = false;
   Object *ob = CTX_data_active_object(C);
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
   char tool = gso->brush->gpencil_sculpt_tool;
 
   for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
@@ -1695,7 +1693,7 @@ static bool gpsculpt_brush_do_frame(bContext *C,
 
       case GPSCULPT_TOOL_GRAB: /* Grab points */
       {
-        bGPDstroke *gps_active = (!is_multiedit) ? gps->runtime.gps_orig : gps;
+        bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
         if (gps_active != NULL) {
           if (gso->first) {
             /* First time this brush stroke is being applied:
@@ -1755,8 +1753,10 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = gso->object;
-  bGPdata *gpd = gso->gpd;
   bool changed = false;
+
+  Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &obact->id);
+  bGPdata *gpd = (bGPdata *)ob_eval->data;
 
   /* Calculate brush-specific data which applies equally to all points */
   char tool = gso->brush->gpencil_sculpt_tool;
@@ -1791,7 +1791,7 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
   }
 
   /* Find visible strokes, and perform operations on those if hit */
-  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* If no active frame, don't do anything... */
     if (gpl->actframe == NULL) {
       continue;
@@ -1838,7 +1838,6 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
       }
     }
   }
-  CTX_DATA_END;
 
   return changed;
 }
