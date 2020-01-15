@@ -326,6 +326,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       /* Pin the matterial to the brush. */
       brush->gpencil_settings->flag |= GP_BRUSH_MATERIAL_PINNED;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_INK_PEN: {
@@ -362,6 +367,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_INK;
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_INK_PEN_ROUGH: {
@@ -399,6 +409,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_INKNOISE;
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_MARKER_BOLD: {
@@ -436,6 +451,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_MARKER;
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_MARKER_CHISEL: {
@@ -466,6 +486,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_CHISEL;
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_PEN: {
@@ -497,6 +522,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PEN;
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_PENCIL_SOFT: {
@@ -528,6 +558,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PENCIL;
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_PENCIL: {
@@ -558,6 +593,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PENCIL;
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_FILL_AREA: {
@@ -580,6 +620,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_tool = GPAINT_TOOL_FILL;
       brush->gpencil_settings->vertex_mode = GPPAINT_MODE_FILL;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_ERASER_SOFT: {
@@ -635,12 +680,12 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       brush->gpencil_settings->draw_strength = 0.8f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-      brush->rgb[0] = 0.757f;
-      brush->rgb[1] = 0.659f;
-      brush->rgb[2] = 0.824f;
+
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
 
       zero_v3(brush->secondary_rgb);
-
       break;
     }
     case GP_BRUSH_PRESET_VERTEX_DRAW: {
@@ -652,9 +697,10 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       brush->gpencil_settings->draw_strength = 0.8f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-      brush->rgb[0] = 0.757f;
-      brush->rgb[1] = 0.659f;
-      brush->rgb[2] = 0.824f;
+
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
 
       zero_v3(brush->secondary_rgb);
       break;
@@ -668,6 +714,12 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       brush->gpencil_settings->draw_strength = 0.8f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_VERTEX_AVERAGE: {
@@ -679,6 +731,12 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       brush->gpencil_settings->draw_strength = 0.8f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_VERTEX_SMEAR: {
@@ -690,6 +748,12 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       brush->gpencil_settings->draw_strength = 0.8f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_VERTEX_REPLACE: {
@@ -702,6 +766,11 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_strength = 0.8f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
 
+      brush->rgb[0] = 1.0f;
+      brush->rgb[1] = 1.0f;
+      brush->rgb[2] = 1.0f;
+
+      zero_v3(brush->secondary_rgb);
       break;
     }
     case GP_BRUSH_PRESET_SMOOTH_STROKE: {
