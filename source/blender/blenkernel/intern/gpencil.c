@@ -3914,7 +3914,9 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
       if (gpf_eval == NULL) {
         continue;
       }
+
       /* Update frame reference pointers. */
+      gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
       BKE_gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
     }
   }

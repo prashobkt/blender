@@ -914,6 +914,8 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
           BKE_gpencil_free_strokes(gpf_eval);
           /* Copy again strokes. */
           BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
+
+          gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
           BKE_gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
         }
       }

@@ -290,6 +290,9 @@ typedef struct bGPDframe_Runtime {
   int frameid;
   /** Onion offset from active frame. 0 if not onion. INT_MAX to bypass frame. */
   int onion_id;
+
+  /** Original frame (used to dereference evaluated data) */
+  struct bGPDframe *gpf_orig;
 } bGPDframe_Runtime;
 
 /* Grease-Pencil Annotations - 'Frame'
