@@ -378,44 +378,6 @@ static void gp_add_filldata_tobuffer(const bGPDspoint *pt,
   immVertex3fv(pos, fpt);                              /* position */
 }
 
-#if 0 /* GPXX disabled, not used in annotations */
-/* assign image texture for filling stroke */
-static int gp_set_filling_texture(Image *image, short flag)
-{
-  ImBuf *ibuf;
-  uint *bind = &image->bindcode[TEXTARGET_TEXTURE_2D];
-  int error = GL_NO_ERROR;
-  ImageUser iuser = {NULL};
-  void *lock;
-
-  iuser.ok = true;
-
-  ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
-
-  if (ibuf == NULL || ibuf->rect == NULL) {
-    BKE_image_release_ibuf(image, ibuf, NULL);
-    return (int)GL_INVALID_OPERATION;
-  }
-
-  GPU_create_gl_tex(
-      bind, ibuf->rect, ibuf->rect_float, ibuf->x, ibuf->y, GL_TEXTURE_2D, false, false, image);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  if (flag & GP_MATERIAL_TEX_CLAMP) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-  }
-  else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  }
-  BKE_image_release_ibuf(image, ibuf, NULL);
-
-  return error;
-}
-#endif
-
 /* draw fills for shapes */
 static void gp_draw_stroke_fill(bGPdata *gpd,
                                 bGPDstroke *gps,
@@ -458,15 +420,9 @@ static void gp_draw_stroke_fill(bGPdata *gpd,
   immUniform2fv("texture_scale", gp_style->texture_scale);
   immUniform2fv("texture_offset", gp_style->texture_offset);
   immUniform1f("texture_opacity", gp_style->texture_opacity);
-  immUniform1i("t_mix", (gp_style->flag & GP_MATERIAL_FILL_TEX_MIX) != 0);
-  immUniform1i("t_flip", (gp_style->flag & GP_MATERIAL_FLIP_FILL) != 0);
-#if 0 /* GPXX disabled, not used in annotations */
-  /* image texture */
-  if ((gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) ||
-      (gp_style->flag & GP_MATERIAL_COLOR_TEX_MIX)) {
-    gp_set_filling_texture(gp_style->ima, gp_style->flag);
-  }
-#endif
+  immUniform1i("t_mix", (gp_style->flag & GP_STYLE_FILL_TEX_MIX) != 0);
+  immUniform1i("t_flip", (gp_style->flag & GP_STYLE_COLOR_FLIP_FILL) != 0);
+
   /* Draw all triangles for filling the polygon (cache must be calculated before) */
   immBegin(GPU_PRIM_TRIS, gps->tot_triangles * 3);
   /* TODO: use batch instead of immediate mode, to share vertices */
