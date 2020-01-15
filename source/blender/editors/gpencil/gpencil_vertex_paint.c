@@ -1116,7 +1116,6 @@ static bool gp_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVertexpai
       /* Apply to active frame's strokes */
       if (gpl->actframe != NULL) {
         gso->mf_falloff = 1.0f;
-        // TODO GPXX
         changed |= gp_vertexpaint_brush_do_frame(C, gso, gpl, gpl->actframe, diff_mat);
       }
     }

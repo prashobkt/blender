@@ -1832,7 +1832,6 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
     }
     else {
       if (gpl->actframe != NULL) {
-        // TODO GPXX
         /* Apply to active frame's strokes */
         gso->mf_falloff = 1.0f;
         changed |= gpsculpt_brush_do_frame(C, gso, gpl, gpl->actframe, diff_mat);
