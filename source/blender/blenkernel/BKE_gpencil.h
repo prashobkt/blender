@@ -330,7 +330,7 @@ extern "C" {
 void BKE_gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_orig,
                                                  const struct bGPDframe *gpf_eval);
 void BKE_gpencil_update_orig_pointers(const struct Object *ob_orig, const struct Object *ob_eval);
-void BKE_gpencil_prepare_filling_data(const struct Object *ob);
+void BKE_gpencil_prepare_filling_data(const struct Object *ob_orig, const struct Object *ob_eval);
 
 #ifdef __cplusplus
 }

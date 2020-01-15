@@ -3839,13 +3839,9 @@ void BKE_gpencil_visible_stroke_iter(
   }
 }
 
-void BKE_gpencil_prepare_filling_data(const Object *ob)
+static void gpencil_prepare_filling(const Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-
-  /* Loop original strokes and generate triangulation for filling.
-   * The first time this is slow, but in next loops, the strokes has all data calculated and
-   * doesn't need calc again except if some modifier update the stroke geometry. */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
       for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
@@ -3857,6 +3853,15 @@ void BKE_gpencil_prepare_filling_data(const Object *ob)
       }
     }
   }
+}
+
+void BKE_gpencil_prepare_filling_data(const struct Object *ob_orig, const struct Object *ob_eval)
+{
+  /* ToDo: Add flag to avoid this checking if nothing has changed. */
+  /* Update original data to avoid recalculation in next loops. */
+  gpencil_prepare_filling(ob_orig);
+  /* Update evaluated data. */
+  gpencil_prepare_filling(ob_eval);
 }
 
 void BKE_gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_orig,
