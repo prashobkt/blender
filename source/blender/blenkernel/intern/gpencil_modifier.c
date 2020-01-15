@@ -797,41 +797,6 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
   }
 }
 
-/* Copy frame but do not assign new memory */
-static void gpencil_frame_copy_noalloc(Object *ob, bGPDframe *gpf, bGPDframe *gpf_eval)
-{
-  gpf_eval->prev = gpf->prev;
-  gpf_eval->next = gpf->next;
-  gpf_eval->framenum = gpf->framenum;
-  gpf_eval->flag = gpf->flag;
-  gpf_eval->key_type = gpf->key_type;
-  gpf_eval->runtime = gpf->runtime;
-
-  /* copy strokes */
-  BLI_listbase_clear(&gpf_eval->strokes);
-  for (bGPDstroke *gps_src = gpf->strokes.first; gps_src; gps_src = gps_src->next) {
-    /* make copy of source stroke */
-    bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps_src);
-
-    /* copy color to temp fields to apply temporal changes in the stroke */
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps_src->mat_nr + 1);
-    if (gp_style) {
-      copy_v4_v4(gps_dst->runtime.tmp_stroke_rgba, gp_style->stroke_rgba);
-      copy_v4_v4(gps_dst->runtime.tmp_fill_rgba, gp_style->fill_rgba);
-    }
-
-    /* Save original pointers for using in edit and select operators. */
-    gps_dst->runtime.gps_orig = gps_src;
-    for (int i = 0; i < gps_src->totpoints; i++) {
-      bGPDspoint *pt_dst = &gps_dst->points[i];
-      pt_dst->runtime.pt_orig = &gps_src->points[i];
-      pt_dst->runtime.idx_orig = i;
-    }
-
-    BLI_addtail(&gpf_eval->strokes, gps_dst);
-  }
-}
-
 /* Remap frame (Time modifier) */
 static int gpencil_remap_time_get(Depsgraph *depsgraph, Scene *scene, Object *ob, bGPDlayer *gpl)
 {
@@ -894,7 +859,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
     if (DEG_is_active(depsgraph)) {
 
       bGPdata *gpd_orig = ob->runtime.gpd_orig;
-      bGPdata *gpd_eval = ob->runtime.gpd_eval;
+      gpd_eval = ob->runtime.gpd_eval;
       ob->data = ob->runtime.gpd_eval;
 
       int layer_index = -1;
