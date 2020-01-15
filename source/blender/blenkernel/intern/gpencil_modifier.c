@@ -861,6 +861,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
       bGPdata *gpd_orig = ob->runtime.gpd_orig;
       gpd_eval = ob->runtime.gpd_eval;
       ob->data = ob->runtime.gpd_eval;
+      gpd_eval->flag = gpd_orig->flag;
 
       int layer_index = -1;
       for (bGPDlayer *gpl_orig = gpd_orig->layers.first; gpl_orig; gpl_orig = gpl_orig->next) {
