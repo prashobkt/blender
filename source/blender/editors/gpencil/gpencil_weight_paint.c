@@ -436,8 +436,7 @@ static void gp_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
   Brush *brush = gso->brush;
   const int radius = (brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
                                                              gso->brush->size;
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
-  bGPDstroke *gps_active = (!is_multiedit) ? gps->runtime.gps_orig : gps;
+  bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
   bGPDspoint *pt_active = NULL;
 
   bGPDspoint *pt1, *pt2;
@@ -454,7 +453,7 @@ static void gp_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
     gp_point_to_parent_space(gps->points, diff_mat, &pt_temp);
     gp_point_to_xy(gsc, gps, &pt_temp, &pc1[0], &pc1[1]);
 
-    pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
+    pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
     /* do boundbox check first */
     if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) {
       /* only check if point is inside */
@@ -496,8 +495,8 @@ static void gp_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
 
           /* To each point individually... */
           pt = &gps->points[i];
-          pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
-          index = (!is_multiedit) ? pt->runtime.idx_orig : i;
+          pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
+          index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
             gp_save_selected_point(gso, gps_active, index, pc1);
           }
@@ -512,8 +511,8 @@ static void gp_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
            */
           if (i + 1 == gps->totpoints - 1) {
             pt = &gps->points[i + 1];
-            pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
-            index = (!is_multiedit) ? pt->runtime.idx_orig : i + 1;
+            pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
+            index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i + 1;
             if (pt_active != NULL) {
               gp_save_selected_point(gso, gps_active, index, pc2);
               include_last = false;
@@ -530,8 +529,8 @@ static void gp_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
            * (but wasn't added then, to avoid double-ups).
            */
           pt = &gps->points[i];
-          pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
-          index = (!is_multiedit) ? pt->runtime.idx_orig : i;
+          pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
+          index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
             gp_save_selected_point(gso, gps_active, index, pc1);
 
@@ -609,11 +608,13 @@ static bool gp_weightpaint_brush_apply_to_layers(bContext *C, tGP_BrushWeightpai
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = gso->object;
-  bGPdata *gpd = gso->gpd;
   bool changed = false;
 
+  Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &obact->id);
+  bGPdata *gpd = (bGPdata *)ob_eval->data;
+
   /* Find visible strokes, and perform operations on those if hit */
-  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* If no active frame, don't do anything... */
     if (gpl->actframe == NULL) {
       continue;
@@ -657,12 +658,10 @@ static bool gp_weightpaint_brush_apply_to_layers(bContext *C, tGP_BrushWeightpai
       if (gpl->actframe != NULL) {
         /* Apply to active frame's strokes */
         gso->mf_falloff = 1.0f;
-        // TODO GPXX
         changed |= gp_weightpaint_brush_do_frame(C, gso, gpl, gpl->actframe, diff_mat);
       }
     }
   }
-  CTX_DATA_END;
 
   return changed;
 }
