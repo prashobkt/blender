@@ -863,9 +863,12 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
       /* Copy all relevant data of the datablock. */
       ListBase layers = gpd_eval->layers;
       bGPdata_Runtime runtime = gpd_eval->runtime;
+      MEM_SAFE_FREE(gpd_eval->mat);
+
       memcpy(gpd_eval, gpd_orig, sizeof(bGPdata));
       gpd_eval->layers = layers;
       gpd_eval->runtime = runtime;
+      gpd_eval->mat = MEM_dupallocN(gpd_orig->mat);
 
       /* Assign. */
       ob->data = ob->runtime.gpd_eval;
