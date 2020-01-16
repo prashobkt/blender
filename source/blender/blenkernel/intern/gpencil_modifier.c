@@ -829,11 +829,10 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
 {
   bGPdata *gpd_eval = (bGPdata *)ob->data;
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-  bGPdata *gpd = (bGPdata *)ob_orig->data;
 
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_eval);
   const bool do_modifiers = (bool)((!is_multiedit) && (ob->greasepencil_modifiers.first != NULL) &&
-                                   (!GPENCIL_SIMPLIFY_MODIF(scene)) && (gpd->id.us > 1));
+                                   (!GPENCIL_SIMPLIFY_MODIF(scene)));
   if (!do_modifiers) {
     return;
   }
