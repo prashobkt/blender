@@ -3864,8 +3864,8 @@ void BKE_gpencil_prepare_filling_data(const struct Object *ob_orig, const struct
   gpencil_prepare_filling(ob_eval);
 }
 
-void BKE_gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_orig,
-                                                 const struct bGPDframe *gpf_eval)
+void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig,
+                                                const struct bGPDframe *gpf_eval)
 {
   int stroke_idx = -1;
   LISTBASE_FOREACH (bGPDstroke *, gps_orig, &gpf_orig->strokes) {
@@ -3894,7 +3894,7 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
   bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
 
   /* Assign pointers to the original stroke and points to the evaluated data. This must
-   * be done before apply any modifier because at this moment the structure is equals,
+   * be done before applying any modifier because at this moment the structure is equals,
    * so we can assume the layer index is the same in both datablocks.
    * This data will be used by operators. */
 
@@ -3917,7 +3917,7 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
 
       /* Update frame reference pointers. */
       gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
-      BKE_gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
+      BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
     }
   }
 }

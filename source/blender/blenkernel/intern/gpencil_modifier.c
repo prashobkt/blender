@@ -851,7 +851,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
 
     ob->runtime.gpd_eval = BKE_gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
     gpencil_assign_object_eval(ob);
-    BKE_gpencil_update_orig_pointers((Object *)ob_orig, (Object *)ob);
+    BKE_gpencil_update_orig_pointers(ob_orig, (Object *)ob);
   }
   else {
     /* Replace only active frame. */
@@ -918,7 +918,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
           BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
 
           gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
-          BKE_gpencil_update_frame_reference_pointers(gpf_orig, gpf_eval);
+          BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
         }
       }
     }

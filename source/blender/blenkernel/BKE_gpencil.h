@@ -327,8 +327,8 @@ extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
 #ifdef __cplusplus
 extern "C" {
 #endif
-void BKE_gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_orig,
-                                                 const struct bGPDframe *gpf_eval);
+void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig,
+                                                const struct bGPDframe *gpf_eval);
 void BKE_gpencil_update_orig_pointers(const struct Object *ob_orig, const struct Object *ob_eval);
 void BKE_gpencil_prepare_filling_data(const struct Object *ob_orig, const struct Object *ob_eval);
 
