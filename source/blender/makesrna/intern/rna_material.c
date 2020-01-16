@@ -112,9 +112,6 @@ static void rna_MaterialGpencil_update(Main *bmain, Scene *scene, PointerRNA *pt
 {
   Material *ma = (Material *)ptr->owner_id;
 
-  /* Tag any related stroke. */
-  ED_gpencil_material_strokes_tag(bmain, ma);
-
   rna_Material_update(bmain, scene, ptr);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA, ma);
 }

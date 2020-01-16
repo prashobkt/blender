@@ -2040,31 +2040,6 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
   }
 }
 
-/* Tag any stroke using the material */
-void ED_gpencil_material_strokes_tag(Main *bmain, Material *mat)
-{
-  Material *gps_ma = NULL;
-  /* read all strokes  */
-  for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
-    if (ob->type == OB_GPENCIL) {
-      bGPdata *gpd = (bGPdata *)ob->data;
-      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-            gps_ma = BKE_material_gpencil_get(ob, gps->mat_nr + 1);
-            /* update */
-            if ((gps_ma) && (gps_ma == mat)) {
-              gps->tot_triangles = 0;
-              gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-            }
-          }
-        }
-      }
-      DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-    }
-  }
-}
-
 static bool gpencil_check_collision(bGPDstroke *gps,
                                     bGPDstroke **gps_array,
                                     GHash *all_2d,
