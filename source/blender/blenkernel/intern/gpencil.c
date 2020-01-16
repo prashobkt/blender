@@ -3868,7 +3868,7 @@ void BKE_gpencil_update_frame_reference_pointers(const struct bGPDframe *gpf_ori
                                                  const struct bGPDframe *gpf_eval)
 {
   int stroke_idx = -1;
-  for (bGPDstroke *gps_orig = gpf_orig->strokes.first; gps_orig; gps_orig = gps_orig->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps_orig, &gpf_orig->strokes) {
     stroke_idx++;
 
     /* Assign original stroke pointer. */
@@ -3899,7 +3899,7 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
    * This data will be used by operators. */
 
   int layer_idx = -1;
-  for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
     layer_idx++;
     /* Retry evaluated layer. */
     bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_idx);
@@ -3907,7 +3907,7 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
       continue;
     }
     int frame_idx = -1;
-    for (bGPDframe *gpf_orig = gpl->frames.first; gpf_orig; gpf_orig = gpf_orig->next) {
+    LISTBASE_FOREACH (bGPDframe *, gpf_orig, &gpl->frames) {
       frame_idx++;
       /* Retry evaluated frame. */
       bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, frame_idx);
