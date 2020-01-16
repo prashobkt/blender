@@ -871,7 +871,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
       ob->data = ob->runtime.gpd_eval;
 
       int layer_index = -1;
-      for (bGPDlayer *gpl_orig = gpd_orig->layers.first; gpl_orig; gpl_orig = gpl_orig->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl_orig, &gpd_orig->layers) {
         layer_index++;
 
         int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
@@ -938,7 +938,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   BKE_gpencil_lattice_init(ob);
 
   /* Loop all layers and apply modifiers. */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Remap frame (Time modifier) */
     int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl);
     bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
@@ -953,7 +953,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     }
 
     /* Apply deform modifiers (only change geometry). */
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       /* Apply modifiers that only deform geometry */
       BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, gpf, gps, is_render);
     }
@@ -961,7 +961,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     /* Review triangulation for filling after applying modifiers and verify if any updated is
      * required.
      * This is needed if some modifiers tagged the stroke triangulation to be recalc. */
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
       if (gp_style) {
         BKE_gpencil_recalc_geometry_caches(ob, gpl, gp_style, gps);

@@ -3842,9 +3842,9 @@ void BKE_gpencil_visible_stroke_iter(
 static void gpencil_prepare_filling(const Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get((Object *)ob,
                                                                            gps->mat_nr + 1);
         if (gp_style) {
