@@ -2030,7 +2030,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
               gps_ma = BKE_material_gpencil_get(ob, gps->mat_nr + 1);
               /* update */
               if ((gps_ma) && (gps_ma == mat)) {
-                BKE_gpencil_calc_stroke_uv(gps);
+                BKE_gpencil_stroke_uv_update(gps);
               }
             }
           }

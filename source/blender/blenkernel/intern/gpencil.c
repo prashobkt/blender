@@ -2784,7 +2784,7 @@ void BKE_gpencil_stroke_fill_triangulate(bGPDstroke *gps)
 }
 
 /* texture coordinate utilities */
-void BKE_gpencil_calc_stroke_uv(bGPDstroke *gps)
+void BKE_gpencil_stroke_uv_update(bGPDstroke *gps)
 {
   if (gps == NULL || gps->totpoints == 0) {
     return;
@@ -2811,7 +2811,7 @@ void BKE_gpencil_stroke_geometry_update(bGPDstroke *gps)
   }
 
   /* calc uv data along the stroke */
-  BKE_gpencil_calc_stroke_uv(gps);
+  BKE_gpencil_stroke_uv_update(gps);
 }
 
 float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
