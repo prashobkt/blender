@@ -4486,6 +4486,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
             LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+
+              /* Calc geometry data because in old versions this data was not saved. */
+              BKE_gpencil_stroke_geometry_update(gps);
+
               srgb_to_linearrgb_v4(gps->vert_color_fill, gps->vert_color_fill);
               int i;
               bGPDspoint *pt;

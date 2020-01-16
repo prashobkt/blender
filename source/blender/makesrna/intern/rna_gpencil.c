@@ -152,7 +152,9 @@ static void rna_GPencil_uv_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Poi
 {
   /* Force to recalc the UVs. */
   bGPDstroke *gps = (bGPDstroke *)ptr->data;
-  gps->tot_triangles = 0;
+
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
@@ -185,7 +187,7 @@ static void rna_GPencil_strokes_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
     for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
       for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
         for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-          BKE_gpencil_triangulate_stroke_fill(gpd, gps);
+          BKE_gpencil_stroke_fill_triangulate(gps);
         }
       }
     }
@@ -587,7 +589,8 @@ static void rna_GPencil_stroke_point_add(
 
     stroke->totpoints += count;
 
-    stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
+    /* Calc geometry data. */
+    BKE_gpencil_stroke_geometry_update(stroke);
 
     gpd->flag |= GP_DATA_PYTHON_UPDATED;
     DEG_id_tag_update(&gpd->id,
@@ -648,7 +651,8 @@ static void rna_GPencil_stroke_point_pop(ID *id,
     MEM_freeN(pt_dvert);
   }
 
-  stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(stroke);
 
   gpd->flag |= GP_DATA_PYTHON_UPDATED;
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
@@ -1842,12 +1846,6 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
       "Force Fill Update",
       "Force recalc of fill data after use deformation modifiers (reduce FPS)");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
-
-  prop = RNA_def_property(srna, "use_adaptive_uv", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_DATA_UV_ADAPTIVE);
-  RNA_def_property_ui_text(
-      prop, "Adaptive UV", "Automatic UVs are calculated depending of the stroke size");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_strokes_update");
 
   prop = RNA_def_property(srna, "use_autolock_layers", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_DATA_AUTOLOCK_LAYERS);

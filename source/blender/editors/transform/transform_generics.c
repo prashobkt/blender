@@ -1220,7 +1220,8 @@ static void recalcData_gpencil_strokes(TransInfo *t)
   for (int i = 0; i < tc->data_len; i++, td++) {
     bGPDstroke *gps = td->extra;
     if (gps != NULL) {
-      gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+      /* Calc geometry data. */
+      BKE_gpencil_stroke_geometry_update(gps);
     }
   }
 }

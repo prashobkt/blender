@@ -298,7 +298,8 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
           else {
             copy_v2_v2(gps->uv_translation, location);
           }
-          gps->tot_triangles = 0;
+          /* Calc geometry data. */
+          BKE_gpencil_stroke_geometry_update(gps);
           i++;
         }
       }
@@ -312,7 +313,8 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
       GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
         if (gps->flag & GP_STROKE_SELECT) {
           gps->uv_rotation = (opdata->is_modal) ? opdata->array_rot[i] + uv_rotation : uv_rotation;
-          gps->tot_triangles = 0;
+          /* Calc geometry data. */
+          BKE_gpencil_stroke_geometry_update(gps);
           i++;
         }
       }
@@ -339,7 +341,8 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
       GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
         if (gps->flag & GP_STROKE_SELECT) {
           gps->uv_scale = (opdata->is_modal) ? opdata->array_scale[i] + scale : scale;
-          gps->tot_triangles = 0;
+          /* Calc geometry data. */
+          BKE_gpencil_stroke_geometry_update(gps);
           i++;
         }
       }
@@ -541,7 +544,8 @@ static int gpencil_reset_transform_fill_exec(bContext *C, wmOperator *op)
       if ((mode == GP_UV_SCALE) || (mode == GP_UV_ALL)) {
         gps->uv_scale = 1.0f;
       }
-      gps->tot_triangles = 0;
+      /* Calc geometry data. */
+      BKE_gpencil_stroke_geometry_update(gps);
       changed = true;
     }
   }

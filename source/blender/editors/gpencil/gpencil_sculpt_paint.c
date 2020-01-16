@@ -285,15 +285,8 @@ static float gp_brush_influence_calc(tGP_BrushEditData *gso, const int radius, c
 /* Force recal filling data */
 static void gp_recalc_geometry(bGPDstroke *gps)
 {
-  bGPDstroke *gps_orig = gps->runtime.gps_orig;
-  if (gps_orig) {
-    gps_orig->flag |= GP_STROKE_RECALC_GEOMETRY;
-    gps_orig->tot_triangles = 0;
-  }
-  else {
-    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-    gps->tot_triangles = 0;
-  }
+  bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
+  BKE_gpencil_stroke_geometry_update(gps_active);
 }
 
 /* ************************************************ */
@@ -619,7 +612,8 @@ static bool gp_brush_push_apply(tGP_BrushEditData *gso,
   /* compute lock axis */
   gpsculpt_compute_lock_axis(gso, pt, save_pt);
 
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   /* done */
   return true;

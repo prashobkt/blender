@@ -178,7 +178,7 @@ static void duplicateStroke(bGPDstroke *gps,
   for (i = count - 1; i >= 0; i--) {
     if (i != 0) {
       new_gps = BKE_gpencil_stroke_duplicate(gps);
-      new_gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+
       BLI_addtail(results, new_gps);
     }
     else {
@@ -215,6 +215,9 @@ static void duplicateStroke(bGPDstroke *gps,
       }
     }
   }
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(new_gps);
+
   MEM_freeN(t1_array);
   MEM_freeN(t2_array);
 }

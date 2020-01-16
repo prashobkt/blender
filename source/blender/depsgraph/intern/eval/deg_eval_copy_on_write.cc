@@ -807,7 +807,6 @@ void update_id_after_copy(const Depsgraph *depsgraph,
         BKE_pose_pchan_index_rebuild(object_cow->pose);
       }
       if (object_cow->type == OB_GPENCIL) {
-        BKE_gpencil_prepare_filling_data(object_orig, object_cow);
         BKE_gpencil_update_orig_pointers(object_orig, object_cow);
       }
       update_particles_after_copy(depsgraph, object_orig, object_cow);

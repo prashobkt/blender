@@ -143,10 +143,6 @@ static bGPDstroke *gpencil_prepare_stroke(bContext *C, wmOperator *op, int totpo
 
   /* allocate memory for points */
   gps->points = MEM_callocN(sizeof(bGPDspoint) * totpoints, "gp_stroke_points");
-  /* initialize triangle memory to dummy data */
-  gps->tot_triangles = 0;
-  gps->triangles = NULL;
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
   if (cyclic) {
     gps->flag |= GP_STROKE_CYCLIC;

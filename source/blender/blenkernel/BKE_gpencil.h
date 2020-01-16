@@ -259,10 +259,8 @@ void BKE_gpencil_stroke_2d_flat_ref(const struct bGPDspoint *ref_points,
                                     float (*points2d)[2],
                                     const float scale,
                                     int *r_direction);
-void BKE_gpencil_triangulate_stroke_fill(struct bGPdata *gpd, struct bGPDstroke *gps);
-void BKE_gpencil_recalc_geometry_caches(struct Object *ob,
-                                        struct bGPDlayer *gpl,
-                                        struct bGPDstroke *gps);
+void BKE_gpencil_stroke_fill_triangulate(struct bGPDstroke *gps);
+void BKE_gpencil_stroke_geometry_update(struct bGPDstroke *gps);
 void BKE_gpencil_calc_stroke_uv(struct bGPDstroke *gps);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
@@ -329,7 +327,6 @@ extern "C" {
 void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig,
                                                 const struct bGPDframe *gpf_eval);
 void BKE_gpencil_update_orig_pointers(const struct Object *ob_orig, const struct Object *ob_eval);
-void BKE_gpencil_prepare_filling_data(const struct Object *ob_orig, const struct Object *ob_eval);
 
 #ifdef __cplusplus
 }

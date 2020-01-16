@@ -165,9 +165,6 @@ void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float epsilon)
     old_dvert = MEM_dupallocN(gps->dvert);
   }
   /* resize gps */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-  gps->tot_triangles = 0;
-
   int j = 0;
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt_src = &old_points[i];
@@ -194,6 +191,8 @@ void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float epsilon)
   }
 
   gps->totpoints = j;
+
+  BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(old_points);
   MEM_SAFE_FREE(old_dvert);
@@ -227,8 +226,6 @@ void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
   if (gps->dvert != NULL) {
     gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * newtot);
   }
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-  gps->tot_triangles = 0;
 
   int j = 0;
   for (int i = 0; i < gps->totpoints; i++) {
@@ -256,6 +253,7 @@ void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
   }
 
   gps->totpoints = j;
+  BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(old_points);
   MEM_SAFE_FREE(old_dvert);
@@ -379,19 +377,18 @@ void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph,
 
       if (mti && mti->deformStroke) {
         mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
-        /* subdivide always requires update */
+        /* Subdivide always requires geometry update. */
         if (md->type == eGpencilModifierType_Subdiv) {
-          gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+          BKE_gpencil_stroke_geometry_update(gps);
         }
-        /* some modifiers could require a recalc of fill triangulation data */
+        /* Some modifiers could require a recalc of fill triangulation data. */
         else if (gpd->flag & GP_DATA_STROKE_FORCE_RECALC) {
           if (ELEM(md->type,
                    eGpencilModifierType_Armature,
                    eGpencilModifierType_Hook,
                    eGpencilModifierType_Lattice,
                    eGpencilModifierType_Offset)) {
-
-            gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+            BKE_gpencil_stroke_geometry_update(gps);
           }
         }
       }
@@ -710,8 +707,6 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       temp_dverts = MEM_dupallocN(gps->dvert);
       gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * gps->totpoints);
     }
-    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-    gps->tot_triangles = 0;
 
     /* move points from last to first to new place */
     i2 = gps->totpoints - 1;
@@ -795,6 +790,7 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       MEM_SAFE_FREE(temp_points);
     }
   }
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* Remap frame (Time modifier) */
@@ -965,7 +961,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
      * required.
      * This is needed if some modifiers tagged the stroke triangulation to be recalc. */
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-      BKE_gpencil_recalc_geometry_caches(ob, gpl, gps);
+      BKE_gpencil_stroke_geometry_update(gps);
     }
   }
 

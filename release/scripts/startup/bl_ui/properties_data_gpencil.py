@@ -368,7 +368,6 @@ class DATA_PT_gpencil_strokes(DataButtonsPanel, Panel):
         sub.prop(gpd, "pixel_factor", text="Thickness Scale")
 
         layout.prop(gpd, "use_force_fill_recalc", text="Force Fill Update")
-        layout.prop(gpd, "use_adaptive_uv", text="Adaptive UVs")
 
 
 class DATA_PT_gpencil_display(DataButtonsPanel, Panel):
