@@ -204,6 +204,10 @@ static bXrRuntimeSessionState *wm_xr_runtime_session_state_create(const Scene *s
     unit_qt(state->reference_pose.orientation_quat);
   }
 
+  /* Make sure the final reference pose is set, even if positional tracking is disabled on session
+   * start. */
+  copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
+
   return state;
 }
 
