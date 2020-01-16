@@ -242,10 +242,10 @@ void ED_gp_project_point_to_plane(const struct Scene *scene,
                                   const int axis,
                                   struct bGPDspoint *pt);
 void ED_gpencil_drawing_reference_get(const struct Scene *scene,
-                                 const struct Object *ob,
-                                 struct bGPDlayer *gpl,
-                                 char align_flag,
-                                 float vec[3]);
+                                      const struct Object *ob,
+                                      struct bGPDlayer *gpl,
+                                      char align_flag,
+                                      float vec[3]);
 void ED_gpencil_project_stroke_to_view(struct bContext *C,
                                        struct bGPDlayer *gpl,
                                        struct bGPDstroke *gps);
@@ -262,12 +262,14 @@ void ED_gpencil_vgroup_deselect(struct bContext *C, struct Object *ob);
 /* join objects */
 int ED_gpencil_join_objects_exec(struct bContext *C, struct wmOperator *op);
 
-/* texture coordinate utilities */
+/* texture coordinate and tag utilities */
 void ED_gpencil_tpoint_to_point(struct ARegion *ar,
                                 float origin[3],
                                 const struct tGPspoint *tpt,
                                 struct bGPDspoint *pt);
 void ED_gpencil_update_color_uv(struct Main *bmain, struct Material *mat);
+
+void ED_gpencil_material_strokes_tag(struct Main *bmain, struct Material *mat);
 
 /* extend selection to stroke intersections
  * returns:
