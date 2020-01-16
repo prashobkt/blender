@@ -2771,13 +2771,9 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
   gps->tot_triangles = gps->totpoints - 2;
   /* save triangulation data in stroke cache */
   if (gps->tot_triangles > 0) {
-    if (gps->triangles == NULL) {
-      gps->triangles = MEM_callocN(sizeof(*gps->triangles) * gps->tot_triangles,
-                                   "GP Stroke triangulation");
-    }
-    else {
-      gps->triangles = MEM_recallocN(gps->triangles, sizeof(*gps->triangles) * gps->tot_triangles);
-    }
+    MEM_SAFE_FREE(gps->triangles);
+    gps->triangles = MEM_callocN(sizeof(*gps->triangles) * gps->tot_triangles,
+                                 "GP Stroke triangulation");
 
     for (int i = 0; i < gps->tot_triangles; i++) {
       memcpy(gps->triangles[i].verts, tmp_triangles[i], sizeof(uint[3]));
@@ -2825,19 +2821,11 @@ void BKE_gpencil_calc_stroke_uv(bGPDstroke *gps)
 }
 
 /* Recalc the internal geometry caches for fill and uvs. */
-void BKE_gpencil_recalc_geometry_caches(Object *ob,
-                                        bGPDlayer *gpl,
-                                        MaterialGPencilStyle *gp_style,
-                                        bGPDstroke *gps)
+void BKE_gpencil_recalc_geometry_caches(Object *ob, bGPDlayer *gpl, bGPDstroke *gps)
 {
   if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
-    /* Calculate triangles cache for filling area (must be done only after changes) */
-    if ((gps->tot_triangles == 0) || (gps->triangles == NULL)) {
-      if ((gps->totpoints > 2) && (gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-          ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gp_style->fill_style > 0) ||
-           (gpl->blend_mode != eGplBlendMode_Regular))) {
-        BKE_gpencil_triangulate_stroke_fill((bGPdata *)ob->data, gps);
-      }
+    if (gps->totpoints > 2) {
+      BKE_gpencil_triangulate_stroke_fill((bGPdata *)ob->data, gps);
     }
 
     /* calc uv data along the stroke */
@@ -3845,11 +3833,7 @@ static void gpencil_prepare_filling(const Object *ob)
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get((Object *)ob,
-                                                                           gps->mat_nr + 1);
-        if (gp_style) {
-          BKE_gpencil_recalc_geometry_caches((Object *)ob, gpl, gp_style, gps);
-        }
+        BKE_gpencil_recalc_geometry_caches((Object *)ob, gpl, gps);
       }
     }
   }

@@ -262,7 +262,6 @@ void BKE_gpencil_stroke_2d_flat_ref(const struct bGPDspoint *ref_points,
 void BKE_gpencil_triangulate_stroke_fill(struct bGPdata *gpd, struct bGPDstroke *gps);
 void BKE_gpencil_recalc_geometry_caches(struct Object *ob,
                                         struct bGPDlayer *gpl,
-                                        struct MaterialGPencilStyle *gp_style,
                                         struct bGPDstroke *gps);
 void BKE_gpencil_calc_stroke_uv(struct bGPDstroke *gps);
 

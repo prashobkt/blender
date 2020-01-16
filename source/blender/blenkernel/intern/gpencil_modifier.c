@@ -965,10 +965,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
      * required.
      * This is needed if some modifiers tagged the stroke triangulation to be recalc. */
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-      MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
-      if (gp_style) {
-        BKE_gpencil_recalc_geometry_caches(ob, gpl, gp_style, gps);
-      }
+      BKE_gpencil_recalc_geometry_caches(ob, gpl, gps);
     }
   }
 
