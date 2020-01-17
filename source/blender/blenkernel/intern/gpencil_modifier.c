@@ -825,8 +825,10 @@ static void gpencil_copy_activeframe_to_eval(
   gpd_eval->runtime = runtime;
   gpd_eval->mat = MEM_dupallocN(gpd_orig->mat);
 
-  /* Assign. */
-  ob->data = ob->runtime.gpd_eval;
+  /* Assign (can be NULL if reuse eval copy done by depsgraph). */
+  if (ob->runtime.gpd_eval != NULL) {
+    ob->data = ob->runtime.gpd_eval;
+  }
 
   int layer_index = -1;
   LISTBASE_FOREACH (bGPDlayer *, gpl_orig, &gpd_orig->layers) {
@@ -880,6 +882,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
 {
   bGPdata *gpd_eval = (bGPdata *)ob->data;
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
+  bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
 
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_eval);
   const bool do_modifiers = (bool)((!is_multiedit) && (ob->greasepencil_modifiers.first != NULL) &&
@@ -890,15 +893,15 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
   DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);
 
   /* If only one user, don't need a new copy, just update data. */
-  if (DEG_is_active(depsgraph) && (gpd_eval->id.us == 1)) {
+  if (gpd_orig->id.us == 1) {
+    ob->runtime.gpd_eval = NULL;
     gpencil_copy_activeframe_to_eval(depsgraph, scene, ob, ob_orig->data, gpd_eval);
     return;
   }
 
-  /* More than one user: If first time, do a full copy. */
+  /* If first time, do a full copy. */
   if (ob->runtime.gpd_orig == NULL) {
-    ob->runtime.gpd_orig = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
-
+    ob->runtime.gpd_orig = gpd_orig;
     /* Copy Datablock to evaluated version. */
     if (ob->runtime.gpd_eval != NULL) {
       BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
