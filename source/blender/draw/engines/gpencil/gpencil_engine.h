@@ -313,6 +313,7 @@ typedef struct GPENCIL_PrivateData {
   /* simplify settings */
   bool simplify_fill;
   bool simplify_fx;
+  bool simplify_antialias;
   /* Use scene lighting or flat shading (global setting). */
   bool use_lighting;
   /* Use physical lights or just ambient lighting. */
