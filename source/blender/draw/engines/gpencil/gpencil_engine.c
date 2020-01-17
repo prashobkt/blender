@@ -168,7 +168,9 @@ void GPENCIL_cache_init(void *ved)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
-  pd->use_layer_fb = false;
+  pd->simplify_antialias = GPENCIL_SIMPLIFY_AA(draw_ctx->scene);
+  /* Antialiasing needs the layer buffer to output to. */
+  pd->use_layer_fb = false || !pd->simplify_antialias;
   pd->use_object_fb = false;
   pd->use_mask_fb = false;
   pd->use_signed_fb = false;
@@ -682,7 +684,7 @@ void GPENCIL_cache_finish(void *ved)
                                     });
     }
 
-    if (!GPENCIL_SIMPLIFY_AA(draw_ctx->scene)) {
+    if (!pd->simplify_antialias) {
       GPENCIL_antialiasing_init(vedata);
     }
   }
@@ -822,7 +824,6 @@ void GPENCIL_draw_scene(void *ved)
   GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
 
   if (pd->draw_depth_only) {
@@ -851,7 +852,7 @@ void GPENCIL_draw_scene(void *ved)
     GPENCIL_fast_draw_end(vedata);
   }
 
-  if (!GPENCIL_SIMPLIFY_AA(draw_ctx->scene)) {
+  if (!pd->simplify_antialias) {
     GPENCIL_antialiasing_draw(vedata);
   }
 
