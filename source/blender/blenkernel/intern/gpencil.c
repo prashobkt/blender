@@ -1406,7 +1406,7 @@ void BKE_gpencil_transform(bGPdata *gpd, float mat[4][4])
           pt->pressure *= scalef;
         }
 
-        /* TODO: Do we need to do this? distortion may mean we need to re-triangulate */
+        /* Distortion may mean we need to re-triangulate. */
         BKE_gpencil_stroke_geometry_update(gps);
       }
     }
