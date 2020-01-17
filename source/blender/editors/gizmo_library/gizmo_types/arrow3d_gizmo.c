@@ -353,7 +353,7 @@ static int gizmo_arrow_modal(bContext *C,
   }
 
   /* tag the region for redraw */
-  ED_region_tag_redraw(ar);
+  ED_region_tag_redraw_ui_overlays(CTX_wm_region(C));
   WM_event_add_mousemove(C);
 
   return OPERATOR_RUNNING_MODAL;

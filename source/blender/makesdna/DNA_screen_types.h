@@ -657,19 +657,23 @@ enum {
 /** #ARegion.do_draw */
 enum {
   /* Region must be fully redrawn. */
-  RGN_DRAW = 1,
+  RGN_DRAW = (1 << 0),
   /* Redraw only part of region, for sculpting and painting to get smoother
    * stroke painting on heavy meshes. */
-  RGN_DRAW_PARTIAL = 2,
+  RGN_DRAW_PARTIAL = (1 << 1),
   /* For outliner, to do faster redraw without rebuilding outliner tree.
    * For 3D viewport, to display a new progressive render sample without
    * while other buffers and overlays remain unchanged. */
-  RGN_DRAW_NO_REBUILD = 4,
+  RGN_DRAW_NO_REBUILD = (1 << 2),
 
   /* Set while region is being drawn. */
-  RGN_DRAWING = 8,
+  RGN_DRAWING = (1 << 3),
   /* For popups, to refresh UI layout along with drawing. */
-  RGN_REFRESH_UI = 16,
+  RGN_REFRESH_UI = (1 << 4),
+
+  /* At least UI overlays (currently gizmos only!) should be redrawn. Note that other flags may
+     still indicate that more than that needs to be redrawn. */
+  RGN_DRAW_UI_OVERLAYS = (1 << 5),
 };
 
 #endif /* __DNA_SCREEN_TYPES_H__ */

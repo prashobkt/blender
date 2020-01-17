@@ -658,6 +658,13 @@ void ED_region_tag_refresh_ui(ARegion *ar)
   }
 }
 
+void ED_region_tag_redraw_ui_overlays(ARegion *ar)
+{
+  if (ar) {
+    ar->do_draw |= RGN_DRAW_UI_OVERLAYS;
+  }
+}
+
 void ED_region_tag_redraw_partial(ARegion *ar, const rcti *rct, bool rebuild)
 {
   if (ar && !(ar->do_draw & RGN_DRAWING)) {
@@ -725,6 +732,16 @@ void ED_area_tag_refresh(ScrArea *sa)
   if (sa) {
     sa->do_refresh = true;
   }
+}
+
+/**
+ * For region draw functions to query if they can safe work by not doing a full-redraw, but only
+ * redrawing UI overlays (gizmos).
+ */
+bool ED_region_can_redraw_ui_overlays_only(const ARegion *ar)
+{
+  return (ar->do_draw & RGN_DRAW_UI_OVERLAYS) &&
+         !(ar->do_draw & (RGN_DRAW | RGN_DRAW_PARTIAL | RGN_DRAW_NO_REBUILD));
 }
 
 /* *************************************************************** */
