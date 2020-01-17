@@ -171,6 +171,8 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD_FULL);
     DRW_shgroup_uniform_int_copy(grp, "isFirstPass", false);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+    pd->use_mask_fb = true;
   }
   else if ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f)) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL;
@@ -182,20 +184,18 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
         state |= DRW_STATE_BLEND_ADD_FULL;
         break;
       case eGplBlendMode_Subtract:
-        /* Caveat. This effect only propagates if target buffer has
-         * a signed floating point color buffer.
-         * i.e: This will not be conserved after this blending step.
-         * TODO(fclem) To make things consistent, we might create a dummy vfx
-         * for objects that use this blend type to always avoid the subtract
-         * affecting other objects. */
         state |= DRW_STATE_BLEND_SUB;
         break;
       case eGplBlendMode_Multiply:
       case eGplBlendMode_Divide:
-        /* Same Caveat as Subtract. This is conserved until there is a blend with a LDR buffer. */
       case eGplBlendMode_Overlay:
         state |= DRW_STATE_BLEND_MUL;
         break;
+    }
+
+    if (ELEM(gpl->blend_mode, eGplBlendMode_Subtract, eGplBlendMode_Overlay)) {
+      /* For these effect to propagate, we need a signed floating point buffer. */
+      pd->use_signed_fb = true;
     }
 
     tgp_layer->blend_ps = DRW_pass_create("GPencil Blend Layer", state);
@@ -218,6 +218,8 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
       DRW_shgroup_uniform_int_copy(grp, "blendMode", 999);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
     }
+
+    pd->use_layer_fb = true;
   }
   else {
     tgp_layer->blend_ps = NULL;
