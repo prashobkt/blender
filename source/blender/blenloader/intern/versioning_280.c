@@ -4355,7 +4355,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 283, 1)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 283, 0)) {
 
     /* Update Grease Pencil after drawing engine refactor. */
     {
