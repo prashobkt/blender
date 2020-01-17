@@ -663,11 +663,16 @@ static float gpencil_point_edit_weight(const MDeformVert *dvert, int v, int vgin
   return (dvert && dvert[v].dw) ? defvert_find_weight(&dvert[v], vgindex) : -1.0f;
 }
 
-static void gpencil_edit_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
+static void gpencil_edit_stroke_iter_cb(bGPDlayer *gpl,
                                         bGPDframe *gpf,
                                         bGPDstroke *gps,
                                         void *thunk)
 {
+  /* Cancel if layer is locked. */
+  if (gpl->flag & GP_LAYER_LOCKED) {
+    return;
+  }
+
   gpEditIterData *iter = (gpEditIterData *)thunk;
   const int v_len = gps->totpoints;
   const int v = gps->runtime.stroke_start + 1;
