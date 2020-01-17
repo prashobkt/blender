@@ -168,6 +168,10 @@ void GPENCIL_cache_init(void *ved)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
+  pd->use_layer_fb = false;
+  pd->use_object_fb = false;
+  pd->use_mask_fb = false;
+  pd->use_signed_fb = false;
 
   if (draw_ctx->v3d) {
     const bool hide_overlay = ((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) != 0);
@@ -620,18 +624,13 @@ void GPENCIL_cache_finish(void *ved)
 
   /* Create framebuffers only if needed. */
   if (pd->tobjects.first) {
-    /* TODO(fclem) Detect use of layers and vfx. */
-    bool use_layer_fb = true;
-    bool use_mask_fb = true;
-    bool use_object_fb = true;
+    eGPUTextureFormat format = pd->use_signed_fb ? GPU_RGBA16F : GPU_R11F_G11F_B10F;
 
     const float *size = DRW_viewport_size_get();
     pd->depth_tx = DRW_texture_pool_query_2d(
         size[0], size[1], GPU_DEPTH24_STENCIL8, &draw_engine_gpencil_type);
-    pd->color_tx = DRW_texture_pool_query_2d(
-        size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
-    pd->reveal_tx = DRW_texture_pool_query_2d(
-        size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+    pd->color_tx = DRW_texture_pool_query_2d(size[0], size[1], format, &draw_engine_gpencil_type);
+    pd->reveal_tx = DRW_texture_pool_query_2d(size[0], size[1], format, &draw_engine_gpencil_type);
 
     GPU_framebuffer_ensure_config(&fbl->gpencil_fb,
                                   {
@@ -640,11 +639,11 @@ void GPENCIL_cache_finish(void *ved)
                                       GPU_ATTACHMENT_TEXTURE(pd->reveal_tx),
                                   });
 
-    if (use_layer_fb) {
+    if (pd->use_layer_fb) {
       pd->color_layer_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+          size[0], size[1], format, &draw_engine_gpencil_type);
       pd->reveal_layer_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+          size[0], size[1], format, &draw_engine_gpencil_type);
 
       GPU_framebuffer_ensure_config(&fbl->layer_fb,
                                     {
@@ -654,11 +653,11 @@ void GPENCIL_cache_finish(void *ved)
                                     });
     };
 
-    if (use_object_fb) {
+    if (pd->use_object_fb) {
       pd->color_object_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+          size[0], size[1], format, &draw_engine_gpencil_type);
       pd->reveal_object_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+          size[0], size[1], format, &draw_engine_gpencil_type);
 
       GPU_framebuffer_ensure_config(&fbl->object_fb,
                                     {
@@ -668,12 +667,12 @@ void GPENCIL_cache_finish(void *ved)
                                     });
     }
 
-    if (use_mask_fb) {
+    if (pd->use_mask_fb) {
       /* We need to separate all the masked layer together in order to correctly mix them. */
       pd->color_masked_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], GPU_RGBA16F, &draw_engine_gpencil_type);
+          size[0], size[1], format, &draw_engine_gpencil_type);
       pd->reveal_masked_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], GPU_RGBA16F, &draw_engine_gpencil_type);
+          size[0], size[1], format, &draw_engine_gpencil_type);
 
       GPU_framebuffer_ensure_config(&fbl->masked_fb,
                                     {

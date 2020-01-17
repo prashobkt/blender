@@ -317,6 +317,13 @@ typedef struct GPENCIL_PrivateData {
   bool use_lighting;
   /* Use physical lights or just ambient lighting. */
   bool use_lights;
+  /* Do we need additional framebuffers? */
+  bool use_layer_fb;
+  bool use_object_fb;
+  bool use_mask_fb;
+  /* Some blend mode needs to add negative values.
+   * This is only supported if target texture is signed. */
+  bool use_signed_fb;
 } GPENCIL_PrivateData;
 
 /* geometry batch cache functions */
