@@ -878,6 +878,19 @@ static void gpencil_copy_activeframe_to_eval(
   }
 }
 
+static bGPdata *gpencil_copy_for_eval(bGPdata *gpd, bool reference)
+{
+  int flags = LIB_ID_COPY_LOCALIZE;
+
+  if (reference) {
+    flags |= LIB_ID_COPY_CD_REFERENCE;
+  }
+
+  bGPdata *result;
+  BKE_id_copy_ex(NULL, &gpd->id, (ID **)&result, flags);
+  return result;
+}
+
 void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   bGPdata *gpd_eval = (bGPdata *)ob->data;
@@ -909,7 +922,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
       ob->data = ob->runtime.gpd_orig;
     }
 
-    ob->runtime.gpd_eval = BKE_gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
+    ob->runtime.gpd_eval = gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
     gpencil_assign_object_eval(ob);
     BKE_gpencil_update_orig_pointers(ob_orig, (Object *)ob);
   }
