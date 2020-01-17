@@ -4355,60 +4355,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - "versioning_userdef.c", #BLO_version_defaults_userpref_blend
-   * - "versioning_userdef.c", #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 283, 1)) {
 
-    /* Cloth internal springs */
-    for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
-      for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
-        if (md->type == eModifierType_Cloth) {
-          ClothModifierData *clmd = (ClothModifierData *)md;
-
-          clmd->sim_parms->internal_tension = 15.0f;
-          clmd->sim_parms->max_internal_tension = 15.0f;
-          clmd->sim_parms->internal_compression = 15.0f;
-          clmd->sim_parms->max_internal_compression = 15.0f;
-          clmd->sim_parms->internal_spring_max_diversion = M_PI / 4.0f;
-        }
-      }
-    }
-
-    /* Add primary tile to images. */
-    if (!DNA_struct_elem_find(fd->filesdna, "Image", "ListBase", "tiles")) {
-      for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
-        ImageTile *tile = MEM_callocN(sizeof(ImageTile), "Image Tile");
-        tile->ok = 1;
-        tile->tile_number = 1001;
-        BLI_addtail(&ima->tiles, tile);
-      }
-    }
-
-    /* UDIM Image Editor change. */
-    if (!DNA_struct_elem_find(fd->filesdna, "SpaceImage", "int", "tile_grid_shape[2]")) {
-      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-            if (sl->spacetype == SPACE_IMAGE) {
-              SpaceImage *sima = (SpaceImage *)sl;
-              sima->tile_grid_shape[0] = 1;
-              sima->tile_grid_shape[1] = 1;
-            }
-          }
-        }
-      }
-    }
-
-    /* Update Grease Pencil Materials */
-    /* TODO: This requires version bump!! (we keep as is for testing). */
+    /* Update Grease Pencil after drawing engine refactor. */
     {
       LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
         MaterialGPencilStyle *gp_style = mat->gp_style;
@@ -4521,6 +4470,59 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
                 srgb_to_linearrgb_v4(pt->vert_color, pt->vert_color);
               }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - "versioning_userdef.c", #BLO_version_defaults_userpref_blend
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
+
+    /* Cloth internal springs */
+    for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+      for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+        if (md->type == eModifierType_Cloth) {
+          ClothModifierData *clmd = (ClothModifierData *)md;
+
+          clmd->sim_parms->internal_tension = 15.0f;
+          clmd->sim_parms->max_internal_tension = 15.0f;
+          clmd->sim_parms->internal_compression = 15.0f;
+          clmd->sim_parms->max_internal_compression = 15.0f;
+          clmd->sim_parms->internal_spring_max_diversion = M_PI / 4.0f;
+        }
+      }
+    }
+
+    /* Add primary tile to images. */
+    if (!DNA_struct_elem_find(fd->filesdna, "Image", "ListBase", "tiles")) {
+      for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
+        ImageTile *tile = MEM_callocN(sizeof(ImageTile), "Image Tile");
+        tile->ok = 1;
+        tile->tile_number = 1001;
+        BLI_addtail(&ima->tiles, tile);
+      }
+    }
+
+    /* UDIM Image Editor change. */
+    if (!DNA_struct_elem_find(fd->filesdna, "SpaceImage", "int", "tile_grid_shape[2]")) {
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_IMAGE) {
+              SpaceImage *sima = (SpaceImage *)sl;
+              sima->tile_grid_shape[0] = 1;
+              sima->tile_grid_shape[1] = 1;
             }
           }
         }
