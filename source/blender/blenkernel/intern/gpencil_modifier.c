@@ -811,6 +811,71 @@ static void gpencil_assign_object_eval(Object *object)
   }
 }
 
+/* Helper: Copy active frame from original datablock to evaluated datablock for modifiers. */
+static void gpencil_copy_activeframe_to_eval(
+    Depsgraph *depsgraph, Scene *scene, Object *ob, bGPdata *gpd_orig, bGPdata *gpd_eval)
+{
+  /* Copy all relevant data of the datablock. */
+  ListBase layers = gpd_eval->layers;
+  bGPdata_Runtime runtime = gpd_eval->runtime;
+  MEM_SAFE_FREE(gpd_eval->mat);
+
+  memcpy(gpd_eval, gpd_orig, sizeof(bGPdata));
+  gpd_eval->layers = layers;
+  gpd_eval->runtime = runtime;
+  gpd_eval->mat = MEM_dupallocN(gpd_orig->mat);
+
+  /* Assign. */
+  ob->data = ob->runtime.gpd_eval;
+
+  int layer_index = -1;
+  LISTBASE_FOREACH (bGPDlayer *, gpl_orig, &gpd_orig->layers) {
+    layer_index++;
+
+    int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
+    bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl_orig, remap_cfra, GP_GETFRAME_USE_PREV);
+    if (gpf_orig == NULL) {
+      continue;
+    }
+    int gpf_index = BLI_findindex(&gpl_orig->frames, gpf_orig);
+
+    bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_index);
+    if (gpl_eval == NULL) {
+      continue;
+    }
+    /* Copy all relevant data of the layer. */
+    gpl_eval->flag = gpl_orig->flag;
+    gpl_eval->onion_flag = gpl_orig->onion_flag;
+    copy_v4_v4(gpl_eval->color, gpl_orig->color);
+    copy_v4_v4(gpl_eval->fill, gpl_orig->fill);
+    BLI_strncpy(gpl_eval->info, gpl_orig->info, sizeof(gpl_eval->info));
+    gpl_eval->thickness = gpl_orig->thickness;
+    gpl_eval->pass_index = gpl_orig->pass_index;
+    gpl_eval->parent = gpl_orig->parent;
+    copy_m4_m4(gpl_eval->inverse, gpl_orig->inverse);
+    BLI_strncpy(gpl_eval->parsubstr, gpl_orig->parsubstr, sizeof(gpl_eval->parsubstr));
+    gpl_eval->partype = gpl_orig->partype;
+    gpl_eval->line_change = gpl_orig->line_change;
+    copy_v4_v4(gpl_eval->tintcolor, gpl_orig->tintcolor);
+    gpl_eval->opacity = gpl_orig->opacity;
+    BLI_strncpy(gpl_eval->viewlayername, gpl_orig->viewlayername, sizeof(gpl_eval->viewlayername));
+    gpl_eval->blend_mode = gpl_orig->blend_mode;
+    gpl_eval->vertex_paint_opacity = gpl_orig->vertex_paint_opacity;
+
+    bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, gpf_index);
+
+    if ((gpf_orig != NULL) && (gpf_eval != NULL)) {
+      /* Delete old strokes. */
+      BKE_gpencil_free_strokes(gpf_eval);
+      /* Copy again strokes. */
+      BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
+
+      gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
+      BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
+    }
+  }
+}
+
 void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   bGPdata *gpd_eval = (bGPdata *)ob->data;
@@ -824,7 +889,13 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
   }
   DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);
 
-  /* If first time, do a full copy. */
+  /* If only one user, don't need a new copy, just update data. */
+  if (DEG_is_active(depsgraph) && (gpd_eval->id.us == 1)) {
+    gpencil_copy_activeframe_to_eval(depsgraph, scene, ob, ob_orig->data, gpd_eval);
+    return;
+  }
+
+  /* More than one user: If first time, do a full copy. */
   if (ob->runtime.gpd_orig == NULL) {
     ob->runtime.gpd_orig = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
 
@@ -842,71 +913,8 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
   else {
     /* Replace only active frame. */
     if (DEG_is_active(depsgraph)) {
-
-      bGPdata *gpd_orig = ob->runtime.gpd_orig;
-      gpd_eval = ob->runtime.gpd_eval;
-
-      /* Copy all relevant data of the datablock. */
-      ListBase layers = gpd_eval->layers;
-      bGPdata_Runtime runtime = gpd_eval->runtime;
-      MEM_SAFE_FREE(gpd_eval->mat);
-
-      memcpy(gpd_eval, gpd_orig, sizeof(bGPdata));
-      gpd_eval->layers = layers;
-      gpd_eval->runtime = runtime;
-      gpd_eval->mat = MEM_dupallocN(gpd_orig->mat);
-
-      /* Assign. */
-      ob->data = ob->runtime.gpd_eval;
-
-      int layer_index = -1;
-      LISTBASE_FOREACH (bGPDlayer *, gpl_orig, &gpd_orig->layers) {
-        layer_index++;
-
-        int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
-        bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(
-            gpl_orig, remap_cfra, GP_GETFRAME_USE_PREV);
-        if (gpf_orig == NULL) {
-          continue;
-        }
-        int gpf_index = BLI_findindex(&gpl_orig->frames, gpf_orig);
-
-        bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_index);
-        if (gpl_eval == NULL) {
-          continue;
-        }
-        /* Copy all relevant data of the layer. */
-        gpl_eval->flag = gpl_orig->flag;
-        gpl_eval->onion_flag = gpl_orig->onion_flag;
-        copy_v4_v4(gpl_eval->color, gpl_orig->color);
-        copy_v4_v4(gpl_eval->fill, gpl_orig->fill);
-        BLI_strncpy(gpl_eval->info, gpl_orig->info, sizeof(gpl_eval->info));
-        gpl_eval->thickness = gpl_orig->thickness;
-        gpl_eval->pass_index = gpl_orig->pass_index;
-        gpl_eval->parent = gpl_orig->parent;
-        copy_m4_m4(gpl_eval->inverse, gpl_orig->inverse);
-        BLI_strncpy(gpl_eval->parsubstr, gpl_orig->parsubstr, sizeof(gpl_eval->parsubstr));
-        gpl_eval->partype = gpl_orig->partype;
-        gpl_eval->line_change = gpl_orig->line_change;
-        copy_v4_v4(gpl_eval->tintcolor, gpl_orig->tintcolor);
-        gpl_eval->opacity = gpl_orig->opacity;
-        BLI_strncpy(
-            gpl_eval->viewlayername, gpl_orig->viewlayername, sizeof(gpl_eval->viewlayername));
-        gpl_eval->blend_mode = gpl_orig->blend_mode;
-        gpl_eval->vertex_paint_opacity = gpl_orig->vertex_paint_opacity;
-
-        bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, gpf_index);
-
-        if ((gpf_orig != NULL) && (gpf_eval != NULL)) {
-          /* Delete old strokes. */
-          BKE_gpencil_free_strokes(gpf_eval);
-          /* Copy again strokes. */
-          BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
-
-          gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
-          BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
-        }
-      }
+      gpencil_copy_activeframe_to_eval(
+          depsgraph, scene, ob, ob->runtime.gpd_orig, ob->runtime.gpd_eval);
     }
   }
 }
