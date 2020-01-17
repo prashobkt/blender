@@ -192,6 +192,7 @@ void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float epsilon)
 
   gps->totpoints = j;
 
+  /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(old_points);
@@ -253,6 +254,7 @@ void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
   }
 
   gps->totpoints = j;
+  /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(old_points);
@@ -377,20 +379,6 @@ void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph,
 
       if (mti && mti->deformStroke) {
         mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
-        /* Subdivide always requires geometry update. */
-        if (md->type == eGpencilModifierType_Subdiv) {
-          BKE_gpencil_stroke_geometry_update(gps);
-        }
-        /* Some modifiers could require a recalc of fill triangulation data. */
-        else if (gpd->flag & GP_DATA_STROKE_FORCE_RECALC) {
-          if (ELEM(md->type,
-                   eGpencilModifierType_Armature,
-                   eGpencilModifierType_Hook,
-                   eGpencilModifierType_Lattice,
-                   eGpencilModifierType_Offset)) {
-            BKE_gpencil_stroke_geometry_update(gps);
-          }
-        }
       }
     }
   }
@@ -790,6 +778,8 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       MEM_SAFE_FREE(temp_points);
     }
   }
+
+  /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gps);
 }
 
@@ -955,13 +945,6 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       /* Apply modifiers that only deform geometry */
       BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, gpf, gps, is_render);
-    }
-
-    /* Review triangulation for filling after applying modifiers and verify if any updated is
-     * required.
-     * This is needed if some modifiers tagged the stroke triangulation to be recalc. */
-    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-      BKE_gpencil_stroke_geometry_update(gps);
     }
   }
 

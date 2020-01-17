@@ -437,7 +437,6 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
 
   /* general flags */
   gpd->flag |= GP_DATA_VIEWALIGN;
-  gpd->flag |= GP_DATA_STROKE_FORCE_RECALC;
   /* always enable object onion skin switch */
   gpd->flag |= GP_DATA_SHOW_ONIONSKINS;
   /* GP object specific settings */
@@ -1795,6 +1794,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
 
   gps->totpoints = i;
 
+  /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gps);
 
   return true;
@@ -3177,6 +3177,9 @@ void BKE_gpencil_merge_distance_stroke(bGPDframe *gpf,
   if (tagged) {
     BKE_gpencil_dissolve_points(gpf, gps, GP_SPOINT_TAG);
   }
+
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* Helper: Check materials with same color. */

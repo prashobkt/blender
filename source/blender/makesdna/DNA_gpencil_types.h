@@ -634,12 +634,6 @@ typedef enum eGPdata_Flag {
   /* Allow edit several frames at the same time */
   GP_DATA_STROKE_MULTIEDIT = (1 << 16),
 
-  /* Force fill recalc if use deformation modifiers.
-   * this is required if the stroke is deformed and the triangulation data is
-   * not valid.
-   */
-  GP_DATA_STROKE_FORCE_RECALC = (1 << 17),
-
   /* Vertex Paint Mode - Toggle paint mode */
   GP_DATA_STROKE_VERTEXMODE = (1 << 18),
 
