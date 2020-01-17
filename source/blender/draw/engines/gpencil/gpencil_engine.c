@@ -314,7 +314,57 @@ typedef struct gpIterPopulateData {
   /* Indices to do correct insertion of the sbuffer stroke. */
   int stroke_index_last;
   int stroke_index_offset;
+  /* Infos for call batching. */
+  struct GPUBatch *geom;
+  bool instancing;
+  int vfirst, vcount;
 } gpIterPopulateData;
+
+#define DISABLE_BATCHING 0
+
+static void gp_drawcall_flush(gpIterPopulateData *iter)
+{
+#if !DISABLE_BATCHING
+  if (iter->geom != NULL) {
+    if (iter->instancing) {
+      DRW_shgroup_call_instance_range(iter->grp, iter->ob, iter->geom, iter->vfirst, iter->vcount);
+    }
+    else {
+      DRW_shgroup_call_range(iter->grp, iter->ob, iter->geom, iter->vfirst, iter->vcount);
+    }
+  }
+#endif
+
+  iter->geom = NULL;
+  iter->vfirst = -1;
+  iter->vcount = 0;
+}
+
+/* Group drawcalls that are consecutive and with the same type. Reduces GPU driver overhead. */
+static void gp_drawcall_add(
+    gpIterPopulateData *iter, struct GPUBatch *geom, bool instancing, int v_first, int v_count)
+{
+#if DISABLE_BATCHING
+  if (instancing) {
+    DRW_shgroup_call_instance_range(iter->grp, iter->ob, geom, v_first, v_count);
+  }
+  else {
+    DRW_shgroup_call_range(iter->grp, iter->ob, geom, v_first, v_count);
+  }
+#endif
+
+  int last = iter->vfirst + iter->vcount;
+  /* Interupt drawcall grouping if the sequence is not consecutive. */
+  if ((geom != iter->geom) || (v_first - last > 3)) {
+    gp_drawcall_flush(iter);
+  }
+  iter->geom = geom;
+  iter->instancing = instancing;
+  if (iter->vfirst == -1) {
+    iter->vfirst = v_first;
+  }
+  iter->vcount = v_first + v_count - iter->vfirst;
+}
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
                                      bGPDframe *UNUSED(gpf),
@@ -340,6 +390,7 @@ static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
   }
 
   gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
+  gp_drawcall_flush(iter);
 
   iter->stroke_index_offset = iter->pd->sbuffer_stroke->totpoints + 1;
   iter->do_sbuffer_call = 0;
@@ -354,6 +405,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   const Scene *scene = draw_ctx->scene;
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
+
+  gp_drawcall_flush(iter);
 
   if (iter->do_sbuffer_call) {
     gp_sbuffer_cache_populate(iter);
@@ -460,6 +513,8 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
                           (tex_stroke && (iter->tex_stroke != tex_stroke));
 
   if (resource_changed) {
+    gp_drawcall_flush(iter);
+
     iter->grp = DRW_shgroup_create_sub(iter->grp);
     if (iter->ubo_mat != ubo_mat) {
       DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
@@ -482,7 +537,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
                                   DRW_cache_gpencil_fills_get(iter->ob, iter->pd->cfra);
     int vfirst = gps->runtime.fill_start * 3;
     int vcount = gps->tot_triangles * 3;
-    DRW_shgroup_call_range(iter->grp, iter->ob, geom, vfirst, vcount);
+    gp_drawcall_add(iter, geom, false, vfirst, vcount);
   }
 
   if (show_stroke) {
@@ -492,7 +547,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
     int vfirst = gps->runtime.stroke_start - 1;
     /* Include "potential" cyclic vertex and start adj vertex (see shader). */
     int vcount = gps->totpoints + 1 + 1;
-    DRW_shgroup_call_instance_range(iter->grp, iter->ob, geom, vfirst, vcount);
+    gp_drawcall_add(iter, geom, true, vfirst, vcount);
   }
 
   iter->stroke_index_last = gps->runtime.stroke_start + gps->totpoints + 1;
@@ -529,6 +584,7 @@ static void gp_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateD
 
   iter->do_sbuffer_call = DRAW_NOW;
   gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
+  gp_drawcall_flush(iter);
 
   gpencil_vfx_cache_populate(vedata, iter->ob, iter->tgp_ob);
 
@@ -559,6 +615,8 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
 
     BKE_gpencil_visible_stroke_iter(
         ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, pd->do_onion, pd->cfra);
+
+    gp_drawcall_flush(&iter);
 
     if (iter.do_sbuffer_call) {
       gp_sbuffer_cache_populate(&iter);
@@ -605,7 +663,6 @@ void GPENCIL_cache_finish(void *ved)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
 
   /* Upload UBO data. */
   BLI_memblock_iter iter;
