@@ -2809,6 +2809,10 @@ void BKE_gpencil_stroke_geometry_update(bGPDstroke *gps)
   if (gps->totpoints > 2) {
     BKE_gpencil_stroke_fill_triangulate(gps);
   }
+  else {
+    gps->tot_triangles = 0;
+    MEM_SAFE_FREE(gps->triangles);
+  }
 
   /* calc uv data along the stroke */
   BKE_gpencil_stroke_uv_update(gps);
