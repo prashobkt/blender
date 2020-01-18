@@ -26,7 +26,6 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_ghash.h"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
 
@@ -52,7 +51,6 @@ static void initData(GpencilModifierData *md)
   ARRAY_SET_ITEMS(gpmd->hsv, 0.5f, 1.0f, 1.0f);
   gpmd->layername[0] = '\0';
   gpmd->materialname[0] = '\0';
-  gpmd->flag |= GP_COLOR_CREATE_COLORS;
   gpmd->modify_color = GP_MODIFY_COLOR_BOTH;
 }
 
@@ -94,21 +92,7 @@ static void deformStroke(GpencilModifierData *md,
   factor[1] -= 1.0f;
   factor[2] -= 1.0f;
 
-  if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
-    rgb_to_hsv_v(gps->runtime.tmp_stroke_rgba, hsv);
-    add_v3_v3(hsv, factor);
-    CLAMP3(hsv, 0.0f, 1.0f);
-    hsv_to_rgb_v(hsv, gps->runtime.tmp_stroke_rgba);
-  }
-
-  if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
-    rgb_to_hsv_v(gps->runtime.tmp_fill_rgba, hsv);
-    add_v3_v3(hsv, factor);
-    CLAMP3(hsv, 0.0f, 1.0f);
-    hsv_to_rgb_v(hsv, gps->runtime.tmp_fill_rgba);
-  }
-
-  /* Apply to mix color. */
+  /* Apply to Vertex Color. */
   /* Fill */
   if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
     rgb_to_hsv_v(gps->vert_color_fill, hsv);
@@ -131,38 +115,14 @@ static void deformStroke(GpencilModifierData *md,
 
 static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData *md, Object *ob)
 {
-  ColorGpencilModifierData *mmd = (ColorGpencilModifierData *)md;
   bGPdata *gpd = ob->data;
 
-  GHash *gh_color = BLI_ghash_str_new("GP_Color modifier");
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-
-        Material *mat = BKE_material_gpencil_get(ob, gps->mat_nr + 1);
-        if (mat == NULL) {
-          continue;
-        }
-        MaterialGPencilStyle *gp_style = mat->gp_style;
-        /* skip stroke if it doesn't have color info */
-        if (ELEM(NULL, gp_style)) {
-          continue;
-        }
-
-        copy_v4_v4(gps->runtime.tmp_stroke_rgba, gp_style->stroke_rgba);
-        copy_v4_v4(gps->runtime.tmp_fill_rgba, gp_style->fill_rgba);
-
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         deformStroke(md, depsgraph, ob, gpl, gpf, gps);
-
-        gpencil_apply_modifier_material(
-            bmain, ob, mat, gh_color, gps, (bool)(mmd->flag & GP_COLOR_CREATE_COLORS));
       }
     }
-  }
-  /* free hash buffers */
-  if (gh_color) {
-    BLI_ghash_free(gh_color, NULL, NULL);
-    gh_color = NULL;
   }
 }
 

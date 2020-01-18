@@ -230,7 +230,6 @@ typedef struct TintGpencilModifierData {
 } TintGpencilModifierData;
 
 typedef enum eTintGpencil_Flag {
-  GP_TINT_CREATE_COLORS = (1 << 0),
   GP_TINT_INVERT_LAYER = (1 << 1),
   GP_TINT_INVERT_PASS = (1 << 2),
   GP_TINT_INVERT_LAYERPASS = (1 << 3),
@@ -258,7 +257,6 @@ typedef struct ColorGpencilModifierData {
 } ColorGpencilModifierData;
 
 typedef enum eColorGpencil_Flag {
-  GP_COLOR_CREATE_COLORS = (1 << 0),
   GP_COLOR_INVERT_LAYER = (1 << 1),
   GP_COLOR_INVERT_PASS = (1 << 2),
   GP_COLOR_INVERT_LAYERPASS = (1 << 3),
@@ -279,11 +277,7 @@ typedef struct OpacityGpencilModifierData {
   int flag;
   /** Main Opacity factor. */
   float factor;
-  /** Modify stroke, fill or both. */
-  char modify_color;
-  /** Mode of opacity, colors or strength */
-  char opacity_mode;
-  char _pad[2];
+  char _pad[4];
   /** Custom index for passes. */
   int layer_pass;
   char _pad1[4];
@@ -293,7 +287,6 @@ typedef enum eOpacityGpencil_Flag {
   GP_OPACITY_INVERT_LAYER = (1 << 0),
   GP_OPACITY_INVERT_PASS = (1 << 1),
   GP_OPACITY_INVERT_VGROUP = (1 << 2),
-  GP_OPACITY_CREATE_COLORS = (1 << 3),
   GP_OPACITY_INVERT_LAYERPASS = (1 << 4),
   GP_OPACITY_INVERT_MATERIAL = (1 << 5),
 } eOpacityGpencil_Flag;

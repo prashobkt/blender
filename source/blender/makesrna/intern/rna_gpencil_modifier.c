@@ -144,16 +144,6 @@ static const EnumPropertyItem modifier_modify_color_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-static const EnumPropertyItem modifier_opacity_mode_items[] = {
-    {GP_OPACITY_MODE_MATERIAL,
-     "MATERIAL",
-     0,
-     "Material",
-     "Modify opacity using alpha channel of material"},
-    {GP_OPACITY_MODE_STRENGTH, "STRENGTH", 0, "Strength", "Modify opacity using point strength"},
-    {0, NULL, 0, NULL, NULL},
-};
-
 static const EnumPropertyItem modifier_gphook_falloff_items[] = {
     {eGPHook_Falloff_None, "NONE", 0, "No Falloff", ""},
     {eGPHook_Falloff_Curve, "CURVE", 0, "Curve", ""},
@@ -982,11 +972,6 @@ static void rna_def_modifier_gpenciltint(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Factor", "Factor for mixing color");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "create_materials", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_TINT_CREATE_COLORS);
-  RNA_def_property_ui_text(prop, "Create Materials", "When apply modifier, create new material");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "pass_index");
   RNA_def_property_range(prop, 0, 100);
@@ -1147,11 +1132,6 @@ static void rna_def_modifier_gpencilcolor(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Value", "Color Value");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "create_materials", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_COLOR_CREATE_COLORS);
-  RNA_def_property_ui_text(prop, "Create Materials", "When apply modifier, create new material");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "pass_index");
   RNA_def_property_range(prop, 0, 100);
@@ -1195,16 +1175,6 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "OpacityGpencilModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_OPACITY);
 
-  prop = RNA_def_property(srna, "modify_color", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, modifier_modify_color_items); /* share the enum */
-  RNA_def_property_ui_text(prop, "Mode", "Set what colors of the stroke are affected");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
-  prop = RNA_def_property(srna, "opacity_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, modifier_opacity_mode_items);
-  RNA_def_property_ui_text(prop, "Opacity Mode", "Set what mode used to define opacity");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
   prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "layername");
   RNA_def_property_ui_text(prop, "Layer", "Layer name");
@@ -1225,11 +1195,6 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "factor");
   RNA_def_property_ui_range(prop, 0, 2.0, 0.1, 3);
   RNA_def_property_ui_text(prop, "Factor", "Factor of Opacity");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
-  prop = RNA_def_property(srna, "create_materials", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_OPACITY_CREATE_COLORS);
-  RNA_def_property_ui_text(prop, "Create Materials", "When apply modifier, create new material");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
