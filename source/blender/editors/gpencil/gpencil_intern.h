@@ -677,10 +677,9 @@ struct GP_EditableStrokes_Iter {
     struct GP_EditableStrokes_Iter gpstroke_iter = {{{0}}}; \
     Depsgraph *depsgraph_ = CTX_data_ensure_evaluated_depsgraph(C); \
     Object *obact_ = CTX_data_active_object(C); \
-    Object *obeval_ = DEG_get_evaluated_object(depsgraph_, obact_); \
-    bGPdata *gpd_ = CTX_data_gpencil_data(C); \
-    const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
-    int idx_eval = 0; \
+    Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph_, &obact_->id); \
+    bGPdata *gpd = (bGPdata *)ob_eval_->data; \
+    const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd); \
     for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) { \
       if (gpencil_layer_is_editable(gpl)) { \
         bGPDframe *init_gpf_ = gpl->actframe; \
@@ -689,14 +688,10 @@ struct GP_EditableStrokes_Iter {
         } \
         for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
           if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
-            ED_gpencil_parent_location(depsgraph_, obact_, gpd_, gpl, gpstroke_iter.diff_mat); \
+            ED_gpencil_parent_location(depsgraph_, obact_, gpd, gpl, gpstroke_iter.diff_mat); \
             invert_m4_m4(gpstroke_iter.inverse_diff_mat, gpstroke_iter.diff_mat); \
-            /* get evaluated frame with modifiers applied */ \
-            bGPDframe *gpf_eval_ = (!is_multiedit_) ? \
-                                       &obeval_->runtime.gpencil_evaluated_frames[idx_eval] : \
-                                       gpf_; \
             /* loop over strokes */ \
-            for (bGPDstroke *gps = gpf_eval_->strokes.first; gps; gps = gps->next) { \
+            for (bGPDstroke *gps = gpf_->strokes.first; gps; gps = gps->next) { \
               /* skip strokes that are invalid for current view */ \
               if (ED_gpencil_stroke_can_use(C, gps) == false) \
                 continue; \
@@ -713,7 +708,6 @@ struct GP_EditableStrokes_Iter {
   } \
   } \
   } \
-  idx_eval++; \
   } \
   } \
   (void)0

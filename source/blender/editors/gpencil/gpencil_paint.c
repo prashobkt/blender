@@ -912,19 +912,12 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   gps->inittime = p->inittime;
   gps->uv_scale = 1.0f;
 
-  /* enable recalculation flag by default */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-
   /* allocate enough memory for a continuous array for storage points */
   const int subdivide = brush->gpencil_settings->draw_subdivide;
 
   gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
   gps->dvert = NULL;
 
-  /* initialize triangle memory to dummy data */
-  gps->triangles = NULL;
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-  gps->tot_triangles = 0;
   /* drawing batch cache is dirty now */
   gp_update_cache(p->gpd);
   /* set pointer to first non-initialized point */
@@ -956,8 +949,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       /* Point mix color. */
       copy_v3_v3(pt->vert_color, brush->rgb);
       pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                             brush->gpencil_settings->vertex_factor :
-                             0.0f;
+                              brush->gpencil_settings->vertex_factor :
+                              0.0f;
 
       pt++;
 
@@ -992,8 +985,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       /* Point mix color. */
       copy_v3_v3(pt->vert_color, brush->rgb);
       pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                             brush->gpencil_settings->vertex_factor :
-                             0.0f;
+                              brush->gpencil_settings->vertex_factor :
+                              0.0f;
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
         BKE_gpencil_dvert_ensure(gps);
@@ -1118,8 +1111,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       /* Point mix color. */
       copy_v3_v3(pt->vert_color, brush->rgb);
       pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                             brush->gpencil_settings->vertex_factor :
-                             0.0f;
+                              brush->gpencil_settings->vertex_factor :
+                              0.0f;
 
       if (dvert != NULL) {
         dvert->totweight = 0;
@@ -1179,9 +1172,6 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     }
   }
 
-  /* calculate UVs along the stroke */
-  BKE_gpencil_calc_stroke_uv(gps);
-
   /* add stroke to frame, usually on tail of the listbase, but if on back is enabled the stroke
    * is added on listbase head because the drawing order is inverse and the head stroke is the
    * first to draw. This is very useful for artist when drawing the background.
@@ -1209,6 +1199,9 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       p->brush->gpencil_settings->flag & GP_BRUSH_TRIM_STROKE) {
     BKE_gpencil_trim_stroke(gps);
   }
+
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   gp_stroke_added_enable(p);
 }

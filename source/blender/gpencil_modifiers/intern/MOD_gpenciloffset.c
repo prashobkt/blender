@@ -108,6 +108,8 @@ static void deformStroke(GpencilModifierData *md,
 
     mul_m4_v3(mat, &pt->x);
   }
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 static void bakeModifier(struct Main *UNUSED(bmain),

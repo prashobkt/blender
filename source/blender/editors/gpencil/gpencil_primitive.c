@@ -371,8 +371,6 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
     gps->vert_color_fill[3] = brush->gpencil_settings->vertex_factor;
   }
 
-  /* enable recalculation flag by default */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->flag &= ~GP_STROKE_SELECT;
   /* the polygon must be closed, so enabled cyclic */
   if (ELEM(tgpi->type, GP_STROKE_BOX, GP_STROKE_CIRCLE)) {
@@ -395,10 +393,10 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   gps->totpoints = 0;
   gps->points = MEM_callocN(sizeof(bGPDspoint), "gp_stroke_points");
   gps->dvert = NULL;
+
   /* initialize triangle memory to dummy data */
   gps->tot_triangles = 0;
   gps->triangles = NULL;
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
   /* add to strokes */
   BLI_addtail(&tgpi->gpf->strokes, gps);
@@ -1051,8 +1049,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     /* Point mix color. */
     copy_v3_v3(pt->vert_color, brush->rgb);
     pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                           brush->gpencil_settings->vertex_factor :
-                           0.0f;
+                            brush->gpencil_settings->vertex_factor :
+                            0.0f;
 
     if (gps->dvert != NULL) {
       MDeformVert *dvert = &gps->dvert[i];
@@ -1094,8 +1092,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     ED_gpencil_project_stroke_to_view(C, tgpi->gpl, gps);
   }
 
-  /* force fill recalc */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(depth_arr);
 
@@ -1344,11 +1342,8 @@ static void gpencil_primitive_interaction_end(bContext *C,
     gps->gradient_f = brush->gpencil_settings->gradient_f;
     copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
 
-    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-    gps->tot_triangles = 0;
-
-    /* calculate UVs along the stroke */
-    BKE_gpencil_calc_stroke_uv(gps);
+    /* Calc geometry data. */
+    BKE_gpencil_stroke_geometry_update(gps);
   }
 
   /* transfer stroke from temporary buffer to the actual frame */

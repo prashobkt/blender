@@ -2760,6 +2760,7 @@ static void write_gpencil(WriteData *wd, bGPdata *gpd)
         writelist(wd, DATA, bGPDstroke, &gpf->strokes);
         for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
           writestruct(wd, DATA, bGPDspoint, gps->totpoints, gps->points);
+          writestruct(wd, DATA, bGPDtriangle, gps->tot_triangles, gps->triangles);
           write_dverts(wd, gps->totpoints, gps->dvert);
         }
       }

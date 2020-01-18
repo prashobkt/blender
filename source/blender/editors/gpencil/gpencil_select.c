@@ -868,13 +868,12 @@ static bool gp_stroke_do_circle_sel(bGPdata *gpd,
                                     const int selectmode,
                                     const float scale)
 {
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   bGPDspoint *pt1 = NULL;
   bGPDspoint *pt2 = NULL;
   int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
   int i;
   bool changed = false;
-  bGPDstroke *gps_active = (!is_multiedit) ? gps->runtime.gps_orig : gps;
+  bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
   bGPDspoint *pt_active = NULL;
 
   if (gps->totpoints == 1) {
@@ -933,22 +932,22 @@ static bool gp_stroke_do_circle_sel(bGPdata *gpd,
            */
           hit = true;
           if (select) {
-            pt_active = (!is_multiedit) ? pt1->runtime.pt_orig : pt1;
+            pt_active = pt1->runtime.pt_orig;
             if (pt_active != NULL) {
               pt_active->flag |= GP_SPOINT_SELECT;
             }
-            pt_active = (!is_multiedit) ? pt2->runtime.pt_orig : pt2;
+            pt_active = pt2->runtime.pt_orig;
             if (pt_active != NULL) {
               pt_active->flag |= GP_SPOINT_SELECT;
             }
             changed = true;
           }
           else {
-            pt_active = (!is_multiedit) ? pt1->runtime.pt_orig : pt1;
+            pt_active = pt1->runtime.pt_orig;
             if (pt_active != NULL) {
               pt_active->flag &= ~GP_SPOINT_SELECT;
             }
-            pt_active = (!is_multiedit) ? pt2->runtime.pt_orig : pt2;
+            pt_active = pt2->runtime.pt_orig;
             if (pt_active != NULL) {
               pt_active->flag &= ~GP_SPOINT_SELECT;
             }
@@ -965,7 +964,7 @@ static bool gp_stroke_do_circle_sel(bGPdata *gpd,
     /* if stroke mode expand selection */
     if ((hit) && (selectmode == GP_SELECTMODE_STROKE)) {
       for (i = 0, pt1 = gps->points; i < gps->totpoints; i++, pt1++) {
-        pt_active = (!is_multiedit) ? pt1->runtime.pt_orig : pt1;
+        pt_active = (pt1->runtime.pt_orig) ? pt1->runtime.pt_orig : pt1;
         if (pt_active != NULL) {
           if (select) {
             pt_active->flag |= GP_SPOINT_SELECT;
@@ -978,7 +977,7 @@ static bool gp_stroke_do_circle_sel(bGPdata *gpd,
     }
 
     /* expand selection to segment */
-    pt_active = (!is_multiedit) ? pt1->runtime.pt_orig : pt1;
+    pt_active = (pt1->runtime.pt_orig) ? pt1->runtime.pt_orig : pt1;
     if ((hit) && (selectmode == GP_SELECTMODE_SEGMENT) && (select) && (pt_active != NULL)) {
       float r_hita[3], r_hitb[3];
       bool hit_select = (bool)(pt1->flag & GP_SPOINT_SELECT);
@@ -1183,16 +1182,16 @@ static int gpencil_generic_select_exec(bContext *C,
   /* select/deselect points */
   GP_EVALUATED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
   {
-    bGPDstroke *gps_active = (!is_multiedit) ? gps->runtime.gps_orig : gps;
+    bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
 
     bGPDspoint *pt;
     int i;
     bool hit = false;
     for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-      if ((!is_multiedit) && (pt->runtime.pt_orig == NULL)) {
+      if (pt->runtime.pt_orig == NULL) {
         continue;
       }
-      bGPDspoint *pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
+      bGPDspoint *pt_active = pt->runtime.pt_orig;
 
       /* convert point coords to screenspace */
       const bool is_inside = is_inside_fn(gps, pt, &gsc, gpstroke_iter.diff_mat, user_data);
@@ -1230,7 +1229,7 @@ static int gpencil_generic_select_exec(bContext *C,
           if ((!is_multiedit) && (pt->runtime.pt_orig == NULL)) {
             continue;
           }
-          bGPDspoint *pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
+          bGPDspoint *pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
 
           if (sel_op_result) {
             pt_active->flag |= GP_SPOINT_SELECT;
@@ -1475,7 +1474,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
   /* XXX: maybe we should go from the top of the stack down instead... */
   GP_EVALUATED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
   {
-    bGPDstroke *gps_active = (!is_multiedit) ? gps->runtime.gps_orig : gps;
+    bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
     bGPDspoint *pt;
     int i;
 

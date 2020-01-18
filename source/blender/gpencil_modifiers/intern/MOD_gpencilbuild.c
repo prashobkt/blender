@@ -174,10 +174,8 @@ static void reduce_stroke_points(bGPDstroke *gps,
   gps->dvert = new_dvert;
   gps->totpoints = num_points;
 
-  /* mark stroke as needing to have its geometry caches rebuilt */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-  gps->tot_triangles = 0;
-  MEM_SAFE_FREE(gps->triangles);
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* --------------------------------------------- */

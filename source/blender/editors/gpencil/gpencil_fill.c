@@ -1117,11 +1117,6 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   gps->totpoints = tgpf->sbuffer_used;
   gps->points = MEM_callocN(sizeof(bGPDspoint) * tgpf->sbuffer_used, "gp_stroke_points");
 
-  /* initialize triangle memory to dummy data */
-  gps->tot_triangles = 0;
-  gps->triangles = NULL;
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-
   /* add stroke to frame */
   if ((ts->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) || (tgpf->on_back == true)) {
     BLI_addhead(&tgpf->gpf->strokes, gps);
@@ -1214,6 +1209,9 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   for (int b = 0; b < tgpf->fill_simplylvl; b++) {
     BKE_gpencil_simplify_fixed(gps);
   }
+
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* ----------------------- */

@@ -165,9 +165,6 @@ void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float epsilon)
     old_dvert = MEM_dupallocN(gps->dvert);
   }
   /* resize gps */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-  gps->tot_triangles = 0;
-
   int j = 0;
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt_src = &old_points[i];
@@ -194,6 +191,9 @@ void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float epsilon)
   }
 
   gps->totpoints = j;
+
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(old_points);
   MEM_SAFE_FREE(old_dvert);
@@ -227,8 +227,6 @@ void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
   if (gps->dvert != NULL) {
     gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * newtot);
   }
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-  gps->tot_triangles = 0;
 
   int j = 0;
   for (int i = 0; i < gps->totpoints; i++) {
@@ -256,6 +254,8 @@ void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
   }
 
   gps->totpoints = j;
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(old_points);
   MEM_SAFE_FREE(old_dvert);
@@ -379,21 +379,6 @@ void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph,
 
       if (mti && mti->deformStroke) {
         mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
-        /* subdivide always requires update */
-        if (md->type == eGpencilModifierType_Subdiv) {
-          gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-        }
-        /* some modifiers could require a recalc of fill triangulation data */
-        else if (gpd->flag & GP_DATA_STROKE_FORCE_RECALC) {
-          if (ELEM(md->type,
-                   eGpencilModifierType_Armature,
-                   eGpencilModifierType_Hook,
-                   eGpencilModifierType_Lattice,
-                   eGpencilModifierType_Offset)) {
-
-            gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-          }
-        }
       }
     }
   }
@@ -710,8 +695,6 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       temp_dverts = MEM_dupallocN(gps->dvert);
       gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * gps->totpoints);
     }
-    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-    gps->tot_triangles = 0;
 
     /* move points from last to first to new place */
     i2 = gps->totpoints - 1;
@@ -795,151 +778,200 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
       MEM_SAFE_FREE(temp_points);
     }
   }
+
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
-/* Copy frame but do not assign new memory */
-static void gpencil_frame_copy_noalloc(Object *ob, bGPDframe *gpf, bGPDframe *gpf_eval)
+/* Remap frame (Time modifier) */
+static int gpencil_remap_time_get(Depsgraph *depsgraph, Scene *scene, Object *ob, bGPDlayer *gpl)
 {
-  gpf_eval->prev = gpf->prev;
-  gpf_eval->next = gpf->next;
-  gpf_eval->framenum = gpf->framenum;
-  gpf_eval->flag = gpf->flag;
-  gpf_eval->key_type = gpf->key_type;
-  gpf_eval->runtime = gpf->runtime;
+  const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
+  const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
+  int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
-  /* copy strokes */
-  BLI_listbase_clear(&gpf_eval->strokes);
-  for (bGPDstroke *gps_src = gpf->strokes.first; gps_src; gps_src = gps_src->next) {
-    /* make copy of source stroke */
-    bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps_src);
+  int remap_cfra = cfra_eval;
+  if (time_remap) {
+    remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
+  }
 
-    /* copy color to temp fields to apply temporal changes in the stroke */
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps_src->mat_nr + 1);
-    if (gp_style) {
-      copy_v4_v4(gps_dst->runtime.tmp_stroke_rgba, gp_style->stroke_rgba);
-      copy_v4_v4(gps_dst->runtime.tmp_fill_rgba, gp_style->fill_rgba);
-    }
+  return remap_cfra;
+}
 
-    /* Save original pointers for using in edit and select operators. */
-    gps_dst->runtime.gps_orig = gps_src;
-    for (int i = 0; i < gps_src->totpoints; i++) {
-      bGPDspoint *pt_dst = &gps_dst->points[i];
-      pt_dst->runtime.pt_orig = &gps_src->points[i];
-      pt_dst->runtime.idx_orig = i;
-    }
+static void gpencil_assign_object_eval(Object *object)
+{
+  BLI_assert(object->id.tag & LIB_TAG_COPIED_ON_WRITE);
 
-    BLI_addtail(&gpf_eval->strokes, gps_dst);
+  bGPdata *gpd_eval = object->runtime.gpd_eval;
+
+  gpd_eval->id.tag |= LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT;
+
+  if (object->id.tag & LIB_TAG_COPIED_ON_WRITE) {
+    object->data = gpd_eval;
   }
 }
 
-/* Ensure there is a evaluated frame */
-static void gpencil_evaluated_frame_ensure(int idx,
-                                           Object *ob,
-                                           bGPDframe *gpf,
-                                           bGPDframe **gpf_eval)
+/* Helper: Copy active frame from original datablock to evaluated datablock for modifiers. */
+static void gpencil_copy_activeframe_to_eval(
+    Depsgraph *depsgraph, Scene *scene, Object *ob, bGPdata *gpd_orig, bGPdata *gpd_eval)
 {
-  /* Create evaluated frames array data or expand. */
-  bGPDframe *evaluated_frames = ob->runtime.gpencil_evaluated_frames;
-  *gpf_eval = &evaluated_frames[idx];
+  /* Copy all relevant data of the datablock. */
+  ListBase layers = gpd_eval->layers;
+  bGPdata_Runtime runtime = gpd_eval->runtime;
+  MEM_SAFE_FREE(gpd_eval->mat);
 
-  /* If already exist a evaluated frame create a new one. */
-  if (*gpf_eval != NULL) {
-    /* first clear temp data */
-    BKE_gpencil_free_frame_runtime_data(*gpf_eval);
+  memcpy(gpd_eval, gpd_orig, sizeof(bGPdata));
+  gpd_eval->layers = layers;
+  gpd_eval->runtime = runtime;
+  gpd_eval->mat = MEM_dupallocN(gpd_orig->mat);
+
+  /* Assign (can be NULL if reuse eval copy done by depsgraph). */
+  if (ob->runtime.gpd_eval != NULL) {
+    ob->data = ob->runtime.gpd_eval;
   }
-  /* Copy data (do not assign new memory). */
-  gpencil_frame_copy_noalloc(ob, gpf, *gpf_eval);
+
+  int layer_index = -1;
+  LISTBASE_FOREACH (bGPDlayer *, gpl_orig, &gpd_orig->layers) {
+    layer_index++;
+
+    int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
+    bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl_orig, remap_cfra, GP_GETFRAME_USE_PREV);
+    if (gpf_orig == NULL) {
+      continue;
+    }
+    int gpf_index = BLI_findindex(&gpl_orig->frames, gpf_orig);
+
+    bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_index);
+    if (gpl_eval == NULL) {
+      continue;
+    }
+    /* Copy all relevant data of the layer. */
+    gpl_eval->flag = gpl_orig->flag;
+    gpl_eval->onion_flag = gpl_orig->onion_flag;
+    copy_v4_v4(gpl_eval->color, gpl_orig->color);
+    copy_v4_v4(gpl_eval->fill, gpl_orig->fill);
+    BLI_strncpy(gpl_eval->info, gpl_orig->info, sizeof(gpl_eval->info));
+    gpl_eval->thickness = gpl_orig->thickness;
+    gpl_eval->pass_index = gpl_orig->pass_index;
+    gpl_eval->parent = gpl_orig->parent;
+    copy_m4_m4(gpl_eval->inverse, gpl_orig->inverse);
+    BLI_strncpy(gpl_eval->parsubstr, gpl_orig->parsubstr, sizeof(gpl_eval->parsubstr));
+    gpl_eval->partype = gpl_orig->partype;
+    gpl_eval->line_change = gpl_orig->line_change;
+    copy_v4_v4(gpl_eval->tintcolor, gpl_orig->tintcolor);
+    gpl_eval->opacity = gpl_orig->opacity;
+    BLI_strncpy(gpl_eval->viewlayername, gpl_orig->viewlayername, sizeof(gpl_eval->viewlayername));
+    gpl_eval->blend_mode = gpl_orig->blend_mode;
+    gpl_eval->vertex_paint_opacity = gpl_orig->vertex_paint_opacity;
+
+    bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, gpf_index);
+
+    if ((gpf_orig != NULL) && (gpf_eval != NULL)) {
+      /* Delete old strokes. */
+      BKE_gpencil_free_strokes(gpf_eval);
+      /* Copy again strokes. */
+      BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
+
+      gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
+      BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
+    }
+  }
+}
+
+static bGPdata *gpencil_copy_for_eval(bGPdata *gpd, bool reference)
+{
+  int flags = LIB_ID_COPY_LOCALIZE;
+
+  if (reference) {
+    flags |= LIB_ID_COPY_CD_REFERENCE;
+  }
+
+  bGPdata *result;
+  BKE_id_copy_ex(NULL, &gpd->id, (ID **)&result, flags);
+  return result;
+}
+
+void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
+{
+  bGPdata *gpd_eval = (bGPdata *)ob->data;
+  Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
+  bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
+
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_eval);
+  const bool do_modifiers = (bool)((!is_multiedit) && (ob->greasepencil_modifiers.first != NULL) &&
+                                   (!GPENCIL_SIMPLIFY_MODIF(scene)));
+  if (!do_modifiers) {
+    return;
+  }
+  DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);
+
+  /* If only one user, don't need a new copy, just update data. */
+  if (gpd_orig->id.us == 1) {
+    ob->runtime.gpd_eval = NULL;
+    gpencil_copy_activeframe_to_eval(depsgraph, scene, ob, ob_orig->data, gpd_eval);
+    return;
+  }
+
+  /* If first time, do a full copy. */
+  if (ob->runtime.gpd_orig == NULL) {
+    ob->runtime.gpd_orig = gpd_orig;
+    /* Copy Datablock to evaluated version. */
+    if (ob->runtime.gpd_eval != NULL) {
+      BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
+      ob->runtime.gpd_eval = NULL;
+      ob->data = ob->runtime.gpd_orig;
+    }
+
+    ob->runtime.gpd_eval = gpencil_copy_for_eval(ob->runtime.gpd_orig, true);
+    gpencil_assign_object_eval(ob);
+    BKE_gpencil_update_orig_pointers(ob_orig, (Object *)ob);
+  }
+  else {
+    /* Replace only active frame. */
+    if (DEG_is_active(depsgraph)) {
+      gpencil_copy_activeframe_to_eval(
+          depsgraph, scene, ob, ob->runtime.gpd_orig, ob->runtime.gpd_eval);
+    }
+  }
 }
 
 /* Calculate gpencil modifiers */
 void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  /* use original data to set reference pointers to original data */
-  Object *ob_orig = DEG_get_original_object(ob);
-  bGPdata *gpd = (bGPdata *)ob_orig->data;
+  bGPdata *gpd = (bGPdata *)ob->data;
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
-  const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
-
-  /* Clear any previous evaluated data. */
-  if (ob->runtime.gpencil_tot_layers > 0) {
-    for (int i = 0; i < ob->runtime.gpencil_tot_layers; i++) {
-      bGPDframe *gpf_eval = &ob->runtime.gpencil_evaluated_frames[i];
-      BKE_gpencil_free_frame_runtime_data(gpf_eval);
-    }
-  }
-
-  /* Create array of evaluated frames equal to number of layers. */
-  ob->runtime.gpencil_tot_layers = BLI_listbase_count(&gpd->layers);
-  CLAMP_MIN(ob->runtime.gpencil_tot_layers, 1);
-  if (ob->runtime.gpencil_evaluated_frames == NULL) {
-    ob->runtime.gpencil_evaluated_frames = MEM_callocN(
-        sizeof(struct bGPDframe) * ob->runtime.gpencil_tot_layers, __func__);
-  }
-  else {
-    ob->runtime.gpencil_evaluated_frames = MEM_recallocN(ob->runtime.gpencil_evaluated_frames,
-                                                         sizeof(struct bGPDframe) *
-                                                             ob->runtime.gpencil_tot_layers);
+  const bool do_modifiers = (bool)((!is_multiedit) && (ob->greasepencil_modifiers.first != NULL) &&
+                                   (!GPENCIL_SIMPLIFY_MODIF(scene)));
+  if (!do_modifiers) {
+    return;
   }
 
   /* Init general modifiers data. */
-  if (ob->greasepencil_modifiers.first) {
-    BKE_gpencil_lattice_init(ob);
-  }
+  BKE_gpencil_lattice_init(ob);
 
-  /* *****************************************************************
-   * Loop all layers, duplicate data and apply modifiers.
-   *
-   * ******************************************************************/
-  int idx = 0;
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  /* Loop all layers and apply modifiers. */
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Remap frame (Time modifier) */
-    int remap_cfra = cfra_eval;
-    if (time_remap) {
-      remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
-    }
+    int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl);
     bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, remap_cfra, GP_GETFRAME_USE_PREV);
 
     if (gpf == NULL) {
-      idx++;
-      continue;
-    }
-
-    /* Loop all strokes and generate triangulation for filling. */
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-      MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
-      if (gp_style) {
-        BKE_gpencil_recalc_geometry_caches(ob, gpl, gp_style, gps);
-      }
-    }
-
-    /* Create a duplicate data set of stroke to modify. */
-    bGPDframe *gpf_eval = NULL;
-    gpencil_evaluated_frame_ensure(idx, ob, gpf, &gpf_eval);
-
-    /* Skip all if some disable flag is enabled. */
-    if ((ob->greasepencil_modifiers.first == NULL) || (is_multiedit)) {
-      idx++;
       continue;
     }
 
     /* Apply geometry modifiers (create new geometry). */
     if (BKE_gpencil_has_geometry_modifiers(ob)) {
-      BKE_gpencil_geometry_modifiers(depsgraph, ob, gpl, gpf_eval, is_render);
+      BKE_gpencil_geometry_modifiers(depsgraph, ob, gpl, gpf, is_render);
     }
 
-    /* Loop all strokes and deform them. */
-    for (bGPDstroke *gps = gpf_eval->strokes.first; gps; gps = gps->next) {
+    /* Apply deform modifiers (only change geometry). */
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       /* Apply modifiers that only deform geometry */
-      BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, gpf_eval, gps, is_render);
+      BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, gpf, gps, is_render);
     }
-
-    idx++;
   }
 
   /* Clear any lattice data. */
-  if (ob->greasepencil_modifiers.first) {
-    BKE_gpencil_lattice_clear(ob);
-  }
+  BKE_gpencil_lattice_clear(ob);
 }

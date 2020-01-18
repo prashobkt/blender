@@ -260,9 +260,6 @@ typedef enum eGPDstroke_Flag {
   GP_STROKE_2DIMAGE = (1 << 2),
   /* stroke is selected */
   GP_STROKE_SELECT = (1 << 3),
-  /* Recalculate geometry data (triangulation, UVs, Bound Box,...
-   * (when true, force a new recalc) */
-  GP_STROKE_RECALC_GEOMETRY = (1 << 4),
   /* Flag used to indicate that stroke is closed and draw edge between last and first point */
   GP_STROKE_CYCLIC = (1 << 7),
   /* Flag used to indicate that stroke is used for fill close and must use
@@ -290,6 +287,9 @@ typedef struct bGPDframe_Runtime {
   int frameid;
   /** Onion offset from active frame. 0 if not onion. INT_MAX to bypass frame. */
   int onion_id;
+
+  /** Original frame (used to dereference evaluated data) */
+  struct bGPDframe *gpf_orig;
 } bGPDframe_Runtime;
 
 /* Grease-Pencil Annotations - 'Frame'
@@ -494,6 +494,8 @@ typedef struct bGPdata_Runtime {
   int tot_cp_points;
   /** Array of control-points for stroke. */
   bGPDcontrolpoint *cp_points;
+  /** Runtime grease pencil drawing data */
+  struct GpencilBatchCache *gpencil_cache;
 } bGPdata_Runtime;
 
 /* grid configuration */
@@ -632,17 +634,9 @@ typedef enum eGPdata_Flag {
   /* Allow edit several frames at the same time */
   GP_DATA_STROKE_MULTIEDIT = (1 << 16),
 
-  /* Force fill recalc if use deformation modifiers.
-   * this is required if the stroke is deformed and the triangulation data is
-   * not valid.
-   */
-  GP_DATA_STROKE_FORCE_RECALC = (1 << 17),
-
   /* Vertex Paint Mode - Toggle paint mode */
   GP_DATA_STROKE_VERTEXMODE = (1 << 18),
 
-  /* Use adaptive UV scales */
-  GP_DATA_UV_ADAPTIVE = (1 << 19),
   /* Autolock not active layers */
   GP_DATA_AUTOLOCK_LAYERS = (1 << 20),
   /* Internal flag for python update */

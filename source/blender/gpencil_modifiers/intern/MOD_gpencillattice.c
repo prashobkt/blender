@@ -108,6 +108,8 @@ static void deformStroke(GpencilModifierData *md,
     }
     calc_latt_deform((struct LatticeDeformData *)mmd->cache_data, &pt->x, mmd->strength * weight);
   }
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* FIXME: Ideally we be doing this on a copy of the main depsgraph

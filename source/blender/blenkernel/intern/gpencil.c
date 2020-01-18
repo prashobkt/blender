@@ -236,6 +236,13 @@ void BKE_gpencil_free(bGPdata *gpd, bool free_all)
   }
 }
 
+void BKE_gpencil_eval_delete(bGPdata *gpd_eval)
+{
+  BKE_gpencil_free(gpd_eval, true);
+  BKE_libblock_free_data(&gpd_eval->id, false);
+  MEM_freeN(gpd_eval);
+}
+
 /* ************************************************** */
 /* Container Creation */
 
@@ -430,7 +437,6 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
 
   /* general flags */
   gpd->flag |= GP_DATA_VIEWALIGN;
-  gpd->flag |= GP_DATA_STROKE_FORCE_RECALC;
   /* always enable object onion skin switch */
   gpd->flag |= GP_DATA_SHOW_ONIONSKINS;
   /* GP object specific settings */
@@ -500,15 +506,13 @@ bGPDstroke *BKE_gpencil_stroke_add(bGPDframe *gpf, int mat_idx, int totpoints, s
 
   gps->inittime = 0;
 
-  /* enable recalculation flag by default */
-  gps->flag = GP_STROKE_RECALC_GEOMETRY | GP_STROKE_3DSPACE;
+  gps->flag = GP_STROKE_3DSPACE;
 
   gps->totpoints = totpoints;
   gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
 
   /* initialize triangle memory to dummy data */
   gps->triangles = NULL;
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->tot_triangles = 0;
 
   gps->mat_nr = mat_idx;
@@ -563,12 +567,7 @@ bGPDstroke *BKE_gpencil_stroke_duplicate(bGPDstroke *gps_src)
     gps_dst->dvert = NULL;
   }
 
-  /* Don't clear triangles, so that modifier evaluation can just use
-   * this without extra work first. Most places that need to force
-   * this data to get recalculated will destroy the data anyway though.
-   */
   gps_dst->triangles = MEM_dupallocN(gps_dst->triangles);
-  /* gps_dst->flag |= GP_STROKE_RECALC_GEOMETRY; */
 
   /* return new stroke */
   return gps_dst;
@@ -1407,9 +1406,8 @@ void BKE_gpencil_transform(bGPdata *gpd, float mat[4][4])
           pt->pressure *= scalef;
         }
 
-        /* TODO: Do we need to do this? distortion may mean we need to re-triangulate */
-        gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-        gps->tot_triangles = 0;
+        /* Distortion may mean we need to re-triangulate. */
+        BKE_gpencil_stroke_geometry_update(gps);
       }
     }
   }
@@ -1783,8 +1781,8 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
 
   gps->totpoints = i;
 
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-  gps->tot_triangles = 0;
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   return true;
 }
@@ -1945,7 +1943,7 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
    * Keep the end point. */
 
   BKE_gpencil_trim_stroke_points(gps, 0, old_count);
-
+  BKE_gpencil_stroke_geometry_update(gps);
   return true;
 }
 
@@ -2714,7 +2712,7 @@ static void gpencil_calc_stroke_fill_uv(const float (*points2d)[2],
 
 /* Triangulate stroke for high quality fill (this is done only if cache is null or stroke was
  * modified) */
-void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
+void BKE_gpencil_stroke_fill_triangulate(bGPDstroke *gps)
 {
   BLI_assert(gps->totpoints >= 3);
 
@@ -2736,28 +2734,17 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
   float minv[2];
   float maxv[2];
   /* first needs bounding box data */
-  if (gpd->flag & GP_DATA_UV_ADAPTIVE) {
-    gpencil_calc_2d_bounding_box(points2d, gps->totpoints, minv, maxv);
-  }
-  else {
-    ARRAY_SET_ITEMS(minv, -1.0f, -1.0f);
-    ARRAY_SET_ITEMS(maxv, 1.0f, 1.0f);
-  }
+  ARRAY_SET_ITEMS(minv, -1.0f, -1.0f);
+  ARRAY_SET_ITEMS(maxv, 1.0f, 1.0f);
 
   /* calc uv data */
   gpencil_calc_stroke_fill_uv(points2d, gps, minv, maxv, uv);
 
-  /* Number of triangles */
-  gps->tot_triangles = gps->totpoints - 2;
-  /* save triangulation data in stroke cache */
+  /* Save triangulation data. */
   if (gps->tot_triangles > 0) {
-    if (gps->triangles == NULL) {
-      gps->triangles = MEM_callocN(sizeof(*gps->triangles) * gps->tot_triangles,
-                                   "GP Stroke triangulation");
-    }
-    else {
-      gps->triangles = MEM_recallocN(gps->triangles, sizeof(*gps->triangles) * gps->tot_triangles);
-    }
+    MEM_SAFE_FREE(gps->triangles);
+    gps->triangles = MEM_callocN(sizeof(*gps->triangles) * gps->tot_triangles,
+                                 "GP Stroke triangulation");
 
     for (int i = 0; i < gps->tot_triangles; i++) {
       memcpy(gps->triangles[i].verts, tmp_triangles[i], sizeof(uint[3]));
@@ -2777,11 +2764,6 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
     gps->triangles = NULL;
   }
 
-  /* disable recalculation flag */
-  if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
-    gps->flag &= ~GP_STROKE_RECALC_GEOMETRY;
-  }
-
   /* clear memory */
   MEM_SAFE_FREE(tmp_triangles);
   MEM_SAFE_FREE(points2d);
@@ -2789,7 +2771,7 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
 }
 
 /* texture coordinate utilities */
-void BKE_gpencil_calc_stroke_uv(bGPDstroke *gps)
+void BKE_gpencil_stroke_uv_update(bGPDstroke *gps)
 {
   if (gps == NULL || gps->totpoints == 0) {
     return;
@@ -2805,27 +2787,22 @@ void BKE_gpencil_calc_stroke_uv(bGPDstroke *gps)
 }
 
 /* Recalc the internal geometry caches for fill and uvs. */
-void BKE_gpencil_recalc_geometry_caches(Object *ob,
-                                        bGPDlayer *gpl,
-                                        MaterialGPencilStyle *gp_style,
-                                        bGPDstroke *gps)
+void BKE_gpencil_stroke_geometry_update(bGPDstroke *gps)
 {
-  if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
-    /* Calculate triangles cache for filling area (must be done only after changes) */
-    if ((gps->tot_triangles == 0) || (gps->triangles == NULL)) {
-      if ((gps->totpoints > 2) && (gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-          ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gp_style->fill_style > 0) ||
-           (gpl->blend_mode != eGplBlendMode_Regular))) {
-        BKE_gpencil_triangulate_stroke_fill((bGPdata *)ob->data, gps);
-      }
-    }
-
-    /* calc uv data along the stroke */
-    BKE_gpencil_calc_stroke_uv(gps);
-
-    /* clear flag */
-    gps->flag &= ~GP_STROKE_RECALC_GEOMETRY;
+  if (gps == NULL) {
+    return;
   }
+
+  if (gps->totpoints > 2) {
+    BKE_gpencil_stroke_fill_triangulate(gps);
+  }
+  else {
+    gps->tot_triangles = 0;
+    MEM_SAFE_FREE(gps->triangles);
+  }
+
+  /* calc uv data along the stroke */
+  BKE_gpencil_stroke_uv_update(gps);
 }
 
 float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
@@ -2935,13 +2912,14 @@ bool BKE_gpencil_trim_stroke(bGPDstroke *gps)
       }
     }
 
-    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-    gps->tot_triangles = 0;
     gps->totpoints = newtot;
 
     MEM_SAFE_FREE(old_points);
     MEM_SAFE_FREE(old_dvert);
   }
+
+  BKE_gpencil_stroke_geometry_update(gps);
+
   return intersect;
 }
 
@@ -3110,8 +3088,7 @@ void BKE_gpencil_dissolve_points(bGPDframe *gpf, bGPDstroke *gps, const short ta
     gps->totpoints = tot;
 
     /* triangles cache needs to be recalculated */
-    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-    gps->tot_triangles = 0;
+    BKE_gpencil_stroke_geometry_update(gps);
   }
 }
 
@@ -3191,6 +3168,9 @@ void BKE_gpencil_merge_distance_stroke(bGPDframe *gpf,
   if (tagged) {
     BKE_gpencil_dissolve_points(gpf, gps, GP_SPOINT_TAG);
   }
+
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* Helper: Check materials with same color. */
@@ -3325,8 +3305,6 @@ static void gpencil_convert_spline(Main *bmain,
   ARRAY_SET_ITEMS(gps->caps, GP_STROKE_CAP_ROUND, GP_STROKE_CAP_ROUND);
   gps->inittime = 0.0f;
 
-  /* Enable recalculation flag by default. */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->flag &= ~GP_STROKE_SELECT;
   gps->flag |= GP_STROKE_3DSPACE;
 
@@ -3344,10 +3322,6 @@ static void gpencil_convert_spline(Main *bmain,
     cyclic = false;
   }
   totpoints = (resolu * segments) - (segments - 1);
-
-  /* Initialize triangle memory to dummy data. */
-  gps->tot_triangles = 0;
-  gps->triangles = NULL;
 
   /* Materials
    * Notice: The color of the material is the color of viewport and not the final shader color.
@@ -3531,6 +3505,9 @@ static void gpencil_convert_spline(Main *bmain,
   if ((cyclic) && (!do_stroke)) {
     BKE_gpencil_close_stroke(gps);
   }
+
+  /* Recalc fill geometry. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* Convert a curve object to grease pencil stroke.
@@ -3681,6 +3658,7 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
           pt->flag |= GP_SPOINT_SELECT;
         }
       }
+      BKE_gpencil_stroke_geometry_update(gps);
     }
   }
 
@@ -3805,7 +3783,7 @@ void BKE_gpencil_visible_stroke_iter(
     }
     /* Draw Active frame on top. */
     /* Use evaluated frame (with modifiers for active stroke)/ */
-    act_gpf = &ob->runtime.gpencil_evaluated_frames[layer_idx];
+    act_gpf = gpl->actframe;
     act_gpf->runtime.onion_id = 0;
     if (act_gpf) {
       if (layer_cb) {
@@ -3819,4 +3797,61 @@ void BKE_gpencil_visible_stroke_iter(
   }
 }
 
+void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig,
+                                                const struct bGPDframe *gpf_eval)
+{
+  int stroke_idx = -1;
+  LISTBASE_FOREACH (bGPDstroke *, gps_orig, &gpf_orig->strokes) {
+    stroke_idx++;
+
+    /* Assign original stroke pointer. */
+    if (gpf_eval != NULL) {
+      bGPDstroke *gps_eval = BLI_findlink(&gpf_eval->strokes, stroke_idx);
+      if (gps_eval != NULL) {
+        gps_eval->runtime.gps_orig = gps_orig;
+
+        /* Assign original point pointer. */
+        for (int i = 0; i < gps_orig->totpoints; i++) {
+          bGPDspoint *pt_eval = &gps_eval->points[i];
+          pt_eval->runtime.pt_orig = &gps_orig->points[i];
+          pt_eval->runtime.idx_orig = i;
+        }
+      }
+    }
+  }
+}
+
+void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_eval)
+{
+  bGPdata *gpd_eval = (bGPdata *)ob_eval->data;
+  bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
+
+  /* Assign pointers to the original stroke and points to the evaluated data. This must
+   * be done before applying any modifier because at this moment the structure is equals,
+   * so we can assume the layer index is the same in both datablocks.
+   * This data will be used by operators. */
+
+  int layer_idx = -1;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
+    layer_idx++;
+    /* Retry evaluated layer. */
+    bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_idx);
+    if (gpl_eval == NULL) {
+      continue;
+    }
+    int frame_idx = -1;
+    LISTBASE_FOREACH (bGPDframe *, gpf_orig, &gpl->frames) {
+      frame_idx++;
+      /* Retry evaluated frame. */
+      bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, frame_idx);
+      if (gpf_eval == NULL) {
+        continue;
+      }
+
+      /* Update frame reference pointers. */
+      gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
+      BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
+    }
+  }
+}
 /** \} */

@@ -1180,7 +1180,6 @@ void gp_subdivide_stroke(bGPDstroke *gps, const int subdivide)
     if (gps->dvert != NULL) {
       gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * gps->totpoints);
     }
-    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
     /* move points from last to first to new place */
     i2 = gps->totpoints - 1;
@@ -1251,6 +1250,8 @@ void gp_subdivide_stroke(bGPDstroke *gps, const int subdivide)
     /* free temp memory */
     MEM_SAFE_FREE(temp_points);
   }
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 }
 
 /* ******************************************************** */
@@ -2029,7 +2030,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
               gps_ma = BKE_material_gpencil_get(ob, gps->mat_nr + 1);
               /* update */
               if ((gps_ma) && (gps_ma == mat)) {
-                BKE_gpencil_calc_stroke_uv(gps);
+                BKE_gpencil_stroke_uv_update(gps);
               }
             }
           }
@@ -2161,7 +2162,6 @@ static void gp_insert_point(
   if (gps->dvert != NULL) {
     gps->dvert = MEM_recallocN(gps->dvert, sizeof(*gps->dvert) * gps->totpoints);
   }
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
   /* copy all points */
   int i2 = 0;
@@ -2185,6 +2185,8 @@ static void gp_insert_point(
 
     i2++;
   }
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(gps);
 
   MEM_SAFE_FREE(temp_points);
 }

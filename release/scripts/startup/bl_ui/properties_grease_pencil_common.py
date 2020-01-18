@@ -733,6 +733,7 @@ class GreasePencilSimplifyPanel:
         col = layout.column()
         col.prop(rd, "simplify_gpencil_onplay")
         col.prop(rd, "simplify_gpencil_view_fill")
+        col.prop(rd, "simplify_gpencil_modifier")
         col.prop(rd, "simplify_gpencil_shader_fx")
         col.prop(rd, "simplify_gpencil_tint")
         col.prop(rd, "simplify_gpencil_antialiasing")

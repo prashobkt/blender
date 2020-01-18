@@ -52,6 +52,8 @@ struct MDeformVert;
 #define GPENCIL_SIMPLIFY_FILL(scene, playing) \
   ((GPENCIL_SIMPLIFY_ONPLAY(playing) && (GPENCIL_SIMPLIFY(scene)) && \
     (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FILL)))
+#define GPENCIL_SIMPLIFY_MODIF(scene) \
+  ((GPENCIL_SIMPLIFY(scene) && (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_MODIFIER)))
 #define GPENCIL_SIMPLIFY_FX(scene, playing) \
   ((GPENCIL_SIMPLIFY_ONPLAY(playing) && (GPENCIL_SIMPLIFY(scene)) && \
     (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FX)))
@@ -88,6 +90,7 @@ void BKE_gpencil_free_frames(struct bGPDlayer *gpl);
 void BKE_gpencil_free_layers(struct ListBase *list);
 bool BKE_gpencil_free_frame_runtime_data(struct bGPDframe *gpf_eval);
 void BKE_gpencil_free(struct bGPdata *gpd, bool free_all);
+void BKE_gpencil_eval_delete(struct bGPdata *gpd_eval);
 
 void BKE_gpencil_batch_cache_dirty_tag(struct bGPdata *gpd);
 void BKE_gpencil_batch_cache_free(struct bGPdata *gpd);
@@ -106,6 +109,7 @@ struct bGPDstroke *BKE_gpencil_stroke_duplicate(struct bGPDstroke *gps_src);
 
 void BKE_gpencil_copy_data(struct bGPdata *gpd_dst, const struct bGPdata *gpd_src, const int flag);
 struct bGPdata *BKE_gpencil_copy(struct Main *bmain, const struct bGPdata *gpd);
+
 struct bGPdata *BKE_gpencil_data_duplicate(struct Main *bmain,
                                            const struct bGPdata *gpd,
                                            bool internal_copy);
@@ -254,12 +258,9 @@ void BKE_gpencil_stroke_2d_flat_ref(const struct bGPDspoint *ref_points,
                                     float (*points2d)[2],
                                     const float scale,
                                     int *r_direction);
-void BKE_gpencil_triangulate_stroke_fill(struct bGPdata *gpd, struct bGPDstroke *gps);
-void BKE_gpencil_recalc_geometry_caches(struct Object *ob,
-                                        struct bGPDlayer *gpl,
-                                        struct MaterialGPencilStyle *gp_style,
-                                        struct bGPDstroke *gps);
-void BKE_gpencil_calc_stroke_uv(struct bGPDstroke *gps);
+void BKE_gpencil_stroke_fill_triangulate(struct bGPDstroke *gps);
+void BKE_gpencil_stroke_geometry_update(struct bGPDstroke *gps);
+void BKE_gpencil_stroke_uv_update(struct bGPDstroke *gps);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
 
@@ -318,5 +319,16 @@ void BKE_gpencil_visible_stroke_iter(struct Object *ob,
 
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig,
+                                                const struct bGPDframe *gpf_eval);
+void BKE_gpencil_update_orig_pointers(const struct Object *ob_orig, const struct Object *ob_eval);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /*  __BKE_GPENCIL_H__ */
