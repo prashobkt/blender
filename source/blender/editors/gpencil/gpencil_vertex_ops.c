@@ -713,8 +713,10 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        bool use_stroke = (gp_style->flag & GP_MATERIAL_STROKE_SHOW);
-        bool use_fill = (gp_style->flag & GP_MATERIAL_FILL_SHOW);
+        bool use_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
+                           (gp_style->stroke_rgba[3] > 0.0f));
+        bool use_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
+                         (gp_style->fill_rgba[3] > 0.0f));
         bool is_stencil = ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) &&
                            (gp_style->flag & GP_MATERIAL_STROKE_PATTERN));
         /* Material is disabled. */
