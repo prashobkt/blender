@@ -462,7 +462,7 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Grease Pencil Color", "");
   RNA_def_struct_path_func(srna, "rna_GpencilColorData_path");
 
-  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_float_sdna(prop, NULL, "stroke_rgba");
   RNA_def_property_array(prop, 4);
@@ -470,7 +470,7 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   /* Fill Drawing Color */
-  prop = RNA_def_property(srna, "fill_color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "fill_color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_float_sdna(prop, NULL, "fill_rgba");
   RNA_def_property_array(prop, 4);
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -478,7 +478,7 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   /* Secondary Drawing Color */
-  prop = RNA_def_property(srna, "mix_color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "mix_color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_float_sdna(prop, NULL, "mix_rgba");
   RNA_def_property_array(prop, 4);
   RNA_def_property_range(prop, 0.0f, 1.0f);
