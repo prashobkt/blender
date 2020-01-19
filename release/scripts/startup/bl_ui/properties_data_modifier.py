@@ -2042,6 +2042,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = split.column()
         col.label(text="Opacity:")
         col.prop(md, "factor")
+        col.prop(md, "modify_color", text="Change")
 
         col = layout.column()
         col.separator()

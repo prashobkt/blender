@@ -53,6 +53,7 @@ static void initData(GpencilModifierData *md)
   gpmd->layername[0] = '\0';
   gpmd->materialname[0] = '\0';
   gpmd->vgname[0] = '\0';
+  gpmd->modify_color = GP_MODIFY_COLOR_BOTH;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -90,30 +91,38 @@ static void deformStroke(GpencilModifierData *md,
     bGPDspoint *pt = &gps->points[i];
     MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
 
-    /* verify vertex group */
-    float weight = get_modifier_point_weight(
-        dvert, (mmd->flag & GP_OPACITY_INVERT_VGROUP) != 0, def_nr);
-    if (weight < 0.0f) {
-      continue;
-    }
-    if (def_nr < 0) {
-      pt->strength += mmd->factor - 1.0f;
-    }
-    else {
-      /* High factor values, change weight too. */
-      if ((mmd->factor > 1.0f) && (weight < 1.0f)) {
-        weight += mmd->factor - 1.0f;
-        CLAMP(weight, 0.0f, 1.0f);
+    /* Stroke using strength. */
+    if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
+      /* verify vertex group */
+      float weight = get_modifier_point_weight(
+          dvert, (mmd->flag & GP_OPACITY_INVERT_VGROUP) != 0, def_nr);
+      if (weight < 0.0f) {
+        continue;
       }
-      pt->strength += (mmd->factor - 1) * weight;
+      if (def_nr < 0) {
+        pt->strength += mmd->factor - 1.0f;
+      }
+      else {
+        /* High factor values, change weight too. */
+        if ((mmd->factor > 1.0f) && (weight < 1.0f)) {
+          weight += mmd->factor - 1.0f;
+          CLAMP(weight, 0.0f, 1.0f);
+        }
+        pt->strength += (mmd->factor - 1) * weight;
+      }
+      CLAMP(pt->strength, 0.0f, 1.0f);
     }
-    CLAMP(pt->strength, 0.0f, 1.0f);
+  }
+
+  /* Fill using opacity factor. */
+  if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
+    gps->runtime.fill_opacity_fac = mmd->factor;
   }
 }
 
 static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData *md, Object *ob)
 {
-  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPdata *gpd = ob->data;
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {

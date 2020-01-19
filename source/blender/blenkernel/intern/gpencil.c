@@ -3810,6 +3810,9 @@ void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig
       if (gps_eval != NULL) {
         gps_eval->runtime.gps_orig = gps_orig;
 
+        /* Reset fill opacity. */
+        gps_eval->runtime.fill_opacity_fac = 1.0f;
+
         /* Assign original point pointer. */
         for (int i = 0; i < gps_orig->totpoints; i++) {
           bGPDspoint *pt_eval = &gps_eval->points[i];

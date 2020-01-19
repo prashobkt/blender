@@ -1175,6 +1175,11 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "OpacityGpencilModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_OPACITY);
 
+  prop = RNA_def_property(srna, "modify_color", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, modifier_modify_color_items); /* share the enum */
+  RNA_def_property_ui_text(prop, "Mode", "Set what colors of the stroke are affected");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
   prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "layername");
   RNA_def_property_ui_text(prop, "Layer", "Layer name");

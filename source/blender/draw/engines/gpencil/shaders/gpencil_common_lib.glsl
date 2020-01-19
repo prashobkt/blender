@@ -485,7 +485,21 @@ void fill_vertex()
     fill_col.a = 1.0;
   }
 
-  color_output(fill_col, fcol1, 1.0, mix_tex);
+  /* Decode fill opacity. */
+  vec4 fcol_decode = vec4(fcol1.rgb, floor(fcol1.a / 10.0));
+  float fill_opacity = fcol1.a - (fcol_decode.a * 10);
+  fcol_decode.a /= 10000.0f;
+
+  /* Apply opacity. */
+  fill_col.a *= fill_opacity;
+  /* If factor is > 1 force opacity. */
+  if (fill_opacity > 1.0) {
+    fill_col.a += fill_opacity - 1.0f;
+  }
+
+  fill_col.a = clamp(fill_col.a, 0.0, 1.0);
+
+  color_output(fill_col, fcol_decode, 1.0, mix_tex);
 
   matFlag = MATERIAL(m).flag & GP_FILL_FLAGS;
   matFlag |= m << GP_MATID_SHIFT;

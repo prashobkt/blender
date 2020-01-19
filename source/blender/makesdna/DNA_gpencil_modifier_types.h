@@ -277,7 +277,9 @@ typedef struct OpacityGpencilModifierData {
   int flag;
   /** Main Opacity factor. */
   float factor;
-  char _pad[4];
+  /** Modify stroke, fill or both. */
+  char modify_color;
+  char _pad[3];
   /** Custom index for passes. */
   int layer_pass;
   char _pad1[4];
