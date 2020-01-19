@@ -452,6 +452,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->scene_depth_tx);
+  DRW_shgroup_uniform_int_copy(iter->grp, "gpMaterialOffset", iter->mat_ofs);
   DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3d", is_stroke_order_3d);
   DRW_shgroup_uniform_vec3_copy(iter->grp, "gpNormal", iter->tgp_ob->plane_normal);
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewportInv", DRW_viewport_invert_size_get());

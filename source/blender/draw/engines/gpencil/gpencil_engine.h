@@ -111,6 +111,8 @@ typedef struct GPENCIL_MaterialPool {
   /* Texture per material. NULL means none. */
   struct GPUTexture *tex_fill[GP_MATERIAL_BUFFER_LEN];
   struct GPUTexture *tex_stroke[GP_MATERIAL_BUFFER_LEN];
+  /* Number of material used in this pool. */
+  int used_count;
 } GPENCIL_MaterialPool;
 
 typedef struct GPENCIL_LightPool {

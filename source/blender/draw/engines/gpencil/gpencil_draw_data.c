@@ -53,6 +53,7 @@ static GPENCIL_MaterialPool *gpencil_material_pool_add(GPENCIL_PrivateData *pd)
 {
   GPENCIL_MaterialPool *matpool = BLI_memblock_alloc(pd->gp_material_pool);
   matpool->next = NULL;
+  matpool->used_count = 0;
   if (matpool->ubo == NULL) {
     matpool->ubo = GPU_uniformbuffer_create(sizeof(matpool->mat_data), NULL, NULL);
   }
@@ -232,9 +233,17 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
 {
   GPENCIL_MaterialPool *matpool = pd->last_material_pool;
 
-  /* TODO reuse matpool for objects with small material count. */
-  if (true) {
+  int mat_len = max_ii(1, ob->totcol);
+
+  bool reuse_matpool = matpool && ((matpool->used_count + mat_len) <= GP_MATERIAL_BUFFER_LEN);
+
+  if (reuse_matpool) {
+    /* Share the matpool with other objects. Return offset to first material. */
+    *ofs = matpool->used_count;
+  }
+  else {
     matpool = gpencil_material_pool_add(pd);
+    *ofs = 0;
   }
 
   /* Force vertex color in solid mode with vertex paint mode. Same behavior as meshes. */
@@ -244,12 +253,13 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
                        pd->v3d_color_type;
 
   GPENCIL_MaterialPool *pool = matpool;
-  for (int i = 0; i < max_ii(1, ob->totcol); i++) {
-    int mat_id = (i % GP_MATERIAL_BUFFER_LEN);
-    if ((i > 0) && (mat_id == 0)) {
+  for (int i = 0; i < mat_len; i++) {
+    if ((i > 0) && (pool->used_count == GP_MATERIAL_BUFFER_LEN)) {
       pool->next = gpencil_material_pool_add(pd);
       pool = pool->next;
     }
+    int mat_id = pool->used_count++;
+
     gpMaterial *mat_data = &pool->mat_data[mat_id];
     MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, i + 1);
 
@@ -336,8 +346,6 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       mat_data->fill_texture_mix = 0.0f;
     }
   }
-
-  *ofs = 0;
 
   return matpool;
 }

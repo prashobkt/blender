@@ -180,13 +180,15 @@ float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness)
 uniform vec2 sizeViewport;
 uniform vec2 sizeViewportInv;
 
-#ifdef GPU_VERTEX_SHADER
-
 /* Per Object */
 uniform bool strokeOrder3d;
+uniform float gpMaterialOffset;
 uniform float thicknessScale;
 uniform float thicknessWorldScale;
-#  define thicknessIsScreenSpace (thicknessWorldScale < 0.0)
+#define thicknessIsScreenSpace (thicknessWorldScale < 0.0)
+#define MATERIAL(m) materials[m]
+
+#ifdef GPU_VERTEX_SHADER
 
 /* Per Layer */
 uniform float thicknessOffset;
@@ -321,8 +323,8 @@ void stroke_vertex()
 
 #  ifdef GP_MATERIAL_BUFFER_LEN
   if (m != -1.0) {
-    is_dot = GP_FLAG_TEST(materials[m].flag, GP_STROKE_ALIGNMENT);
-    is_squares = !GP_FLAG_TEST(materials[m].flag, GP_STROKE_DOTS);
+    is_dot = GP_FLAG_TEST(MATERIAL(m).flag, GP_STROKE_ALIGNMENT);
+    is_squares = !GP_FLAG_TEST(MATERIAL(m).flag, GP_STROKE_DOTS);
   }
 #  endif
 
@@ -367,7 +369,7 @@ void stroke_vertex()
 
   if (is_dot) {
 #  ifdef GP_MATERIAL_BUFFER_LEN
-    int alignement = materials[m].flag & GP_STROKE_ALIGNMENT;
+    int alignement = MATERIAL(m).flag & GP_STROKE_ALIGNMENT;
 #  endif
 
     vec2 x_axis;
@@ -428,19 +430,19 @@ void stroke_vertex()
 
     finalUvs.x = (use_curr) ? uv1.z : uv2.z;
 #  ifdef GP_MATERIAL_BUFFER_LEN
-    finalUvs.x *= materials[m].stroke_u_scale;
+    finalUvs.x *= MATERIAL(m).stroke_u_scale;
 #  endif
   }
 
 #  ifdef GP_MATERIAL_BUFFER_LEN
   vec4 vert_col = (use_curr) ? col1 : col2;
   float vert_strength = abs((use_curr) ? strength1 : strength2);
-  vec4 stroke_col = materials[m].stroke_color;
-  float mix_tex = materials[m].stroke_texture_mix;
+  vec4 stroke_col = MATERIAL(m).stroke_color;
+  float mix_tex = MATERIAL(m).stroke_texture_mix;
 
   color_output(stroke_col, vert_col, vert_strength, mix_tex);
 
-  matFlag = materials[m].flag & ~GP_FILL_FLAGS;
+  matFlag = MATERIAL(m).flag & ~GP_FILL_FLAGS;
 #  endif
 
   if (strokeOrder3d) {
@@ -448,7 +450,7 @@ void stroke_vertex()
     depth = -1.0;
   }
 #  ifdef GP_MATERIAL_BUFFER_LEN
-  else if (GP_FLAG_TEST(materials[m].flag, GP_STROKE_OVERLAP)) {
+  else if (GP_FLAG_TEST(MATERIAL(m).flag, GP_STROKE_OVERLAP)) {
     /* Use the index of the point as depth.
      * This means the stroke can overlap itself. */
     depth = (point_id1 + 1.0) * 0.0000002;
@@ -475,21 +477,21 @@ void fill_vertex()
 #  ifdef GP_MATERIAL_BUFFER_LEN
   int m = int(ma1.x);
 
-  vec4 fill_col = materials[m].fill_color;
-  float mix_tex = materials[m].fill_texture_mix;
+  vec4 fill_col = MATERIAL(m).fill_color;
+  float mix_tex = MATERIAL(m).fill_texture_mix;
 
   /* Special case: We don't modulate alpha in gradient mode. */
-  if (GP_FLAG_TEST(materials[m].flag, GP_FILL_GRADIENT_USE)) {
+  if (GP_FLAG_TEST(MATERIAL(m).flag, GP_FILL_GRADIENT_USE)) {
     fill_col.a = 1.0;
   }
 
   color_output(fill_col, fcol1, 1.0, mix_tex);
 
-  matFlag = materials[m].flag & GP_FILL_FLAGS;
+  matFlag = MATERIAL(m).flag & GP_FILL_FLAGS;
   matFlag |= m << GP_MATID_SHIFT;
 
-  vec2 loc = materials[m].fill_uv_offset.xy;
-  mat2x2 rot_scale = mat2x2(materials[m].fill_uv_rot_scale.xy, materials[m].fill_uv_rot_scale.zw);
+  vec2 loc = MATERIAL(m).fill_uv_offset.xy;
+  mat2x2 rot_scale = mat2x2(MATERIAL(m).fill_uv_rot_scale.xy, MATERIAL(m).fill_uv_rot_scale.zw);
   finalUvs = rot_scale * uv1.xy + loc;
 #  endif
 
