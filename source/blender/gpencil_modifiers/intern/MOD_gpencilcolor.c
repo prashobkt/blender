@@ -92,9 +92,18 @@ static void deformStroke(GpencilModifierData *md,
   factor[1] -= 1.0f;
   factor[2] -= 1.0f;
 
+  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+
   /* Apply to Vertex Color. */
   /* Fill */
   if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
+    /* If not using Vertex Color, use the material color. */
+    if ((gp_style != NULL) && (gps->vert_color_fill[3] == 0.0f) &&
+        (gp_style->fill_rgba[3] > 0.0f)) {
+      copy_v4_v4(gps->vert_color_fill, gp_style->fill_rgba);
+      gps->vert_color_fill[3] = 1.0f;
+    }
+
     rgb_to_hsv_v(gps->vert_color_fill, hsv);
     add_v3_v3(hsv, factor);
     CLAMP3(hsv, 0.0f, 1.0f);
@@ -103,8 +112,15 @@ static void deformStroke(GpencilModifierData *md,
 
   /* Stroke */
   if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
+
     for (int i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
+      /* If not using Vertex Color, use the material color. */
+      if ((gp_style != NULL) && (pt->vert_color[3] == 0.0f) && (gp_style->stroke_rgba[3] > 0.0f)) {
+        copy_v4_v4(pt->vert_color, gp_style->stroke_rgba);
+        pt->vert_color[3] = 1.0f;
+      }
+
       rgb_to_hsv_v(pt->vert_color, hsv);
       add_v3_v3(hsv, factor);
       CLAMP3(hsv, 0.0f, 1.0f);
