@@ -359,6 +359,7 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   /* create new temp stroke */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "Temp bGPDstroke");
   gps->thickness = 2.0f;
+  gps->fill_opacity_fac = 1.0f;
   gps->gradient_f = 1.0f;
   gps->gradient_s[0] = 1.0f;
   gps->gradient_s[1] = 1.0f;

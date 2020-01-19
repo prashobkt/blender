@@ -498,6 +498,7 @@ bGPDstroke *BKE_gpencil_stroke_add(bGPDframe *gpf, int mat_idx, int totpoints, s
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
 
   gps->thickness = thickness;
+  gps->fill_opacity_fac = 1.0f;
   gps->gradient_f = 1.0f;
   gps->gradient_s[0] = 1.0f;
   gps->gradient_s[1] = 1.0f;
@@ -3298,6 +3299,7 @@ static void gpencil_convert_spline(Main *bmain,
   /* Create Stroke. */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
   gps->thickness = 1.0f;
+  gps->fill_opacity_fac = 1.0f;
   gps->gradient_f = 1.0f;
   gps->uv_scale = 1.0f;
 
@@ -3809,9 +3811,6 @@ void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig
       bGPDstroke *gps_eval = BLI_findlink(&gpf_eval->strokes, stroke_idx);
       if (gps_eval != NULL) {
         gps_eval->runtime.gps_orig = gps_orig;
-
-        /* Reset fill opacity. */
-        gps_eval->runtime.fill_opacity_fac = 1.0f;
 
         /* Assign original point pointer. */
         for (int i = 0; i < gps_orig->totpoints; i++) {

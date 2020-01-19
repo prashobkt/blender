@@ -182,8 +182,7 @@ typedef struct bGPDstroke_Runtime {
   int stroke_start;
   /** Triangle offset in the ibo where this fill starts. */
   int fill_start;
-  /** Factor of opacity for Fill color (used by opacity modifier). */
-  float fill_opacity_fac;
+  int _pad[1];
 
   /** Original stroke (used to dereference evaluated data) */
   struct bGPDstroke *gps_orig;
@@ -225,7 +224,9 @@ typedef struct bGPDstroke {
   float gradient_f;
   /** factor xy of shape for dots gradients */
   float gradient_s[2];
-  char _pad_3[4];
+
+  /** Factor of opacity for Fill color (used by opacity modifier). */
+  float fill_opacity_fac;
 
   /** UV rotation */
   float uv_rotation;

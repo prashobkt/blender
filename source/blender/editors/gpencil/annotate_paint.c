@@ -599,6 +599,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   /* copy appropriate settings for stroke */
   gps->totpoints = totelem;
   gps->thickness = gpl->thickness;
+  gps->fill_opacity_fac = 1.0f;
   gps->gradient_f = 1.0f;
   gps->gradient_s[0] = 1.0f;
   gps->gradient_s[1] = 1.0f;
