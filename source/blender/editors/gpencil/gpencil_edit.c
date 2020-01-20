@@ -783,6 +783,7 @@ static void gp_duplicate_points(const bGPDstroke *gps,
 
         /* make a stupid copy first of the entire stroke (to get the flags too) */
         gpsd = MEM_dupallocN(gps);
+        gpsd->triangles = MEM_dupallocN(gps->triangles);
 
         /* saves original layer name */
         BLI_strncpy(gpsd->runtime.tmp_layerinfo, layername, sizeof(gpsd->runtime.tmp_layerinfo));
@@ -861,6 +862,8 @@ static int gp_duplicate_exec(bContext *C, wmOperator *op)
 
           /* make direct copies of the stroke and its points */
           gpsd = MEM_dupallocN(gps);
+          gpsd->triangles = MEM_dupallocN(gps->triangles);
+
           BLI_strncpy(gpsd->runtime.tmp_layerinfo, gpl->info, sizeof(gpsd->runtime.tmp_layerinfo));
           gpsd->points = MEM_dupallocN(gps->points);
           if (gps->dvert != NULL) {
@@ -979,6 +982,7 @@ static void gpencil_add_move_points(bGPDframe *gpf, bGPDstroke *gps)
     if (pt->flag == GP_SPOINT_SELECT) {
       /* duplicate original stroke data */
       bGPDstroke *gps_new = MEM_dupallocN(gps);
+      gps_new->triangles = MEM_dupallocN(gps->triangles);
       gps_new->prev = gps_new->next = NULL;
 
       /* add new points array */
@@ -1308,6 +1312,8 @@ static int gp_strokes_copy_exec(bContext *C, wmOperator *op)
 
           /* make direct copies of the stroke and its points */
           gpsd = MEM_dupallocN(gps);
+          gpsd->triangles = MEM_dupallocN(gps->triangles);
+
           /* saves original layer name */
           BLI_strncpy(gpsd->runtime.tmp_layerinfo, gpl->info, sizeof(gpsd->runtime.tmp_layerinfo));
           gpsd->points = MEM_dupallocN(gps->points);
@@ -2356,6 +2362,7 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf,
     for (idx = 0; idx < num_islands; idx++) {
       tGPDeleteIsland *island = &islands[idx];
       new_stroke = MEM_dupallocN(gps);
+      new_stroke->triangles = MEM_dupallocN(gps->triangles);
 
       /* if cyclic and first stroke, save to join later */
       if ((is_cyclic) && (gps_first == NULL)) {
