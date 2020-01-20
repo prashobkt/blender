@@ -2068,8 +2068,6 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
   /* set special fill stroke mode */
   if (p->disable_fill == true) {
     p->gpd->runtime.sbuffer_sflag |= GP_STROKE_NOFILL;
-    /* replace stroke color with fill color */
-    /* TODO: Review copy_v4_v4(p->gpd->runtime.scolor, p->gpd->runtime.sfill); */
   }
 
   /* set 'initial run' flag, which is only used to denote when a new stroke is starting */
