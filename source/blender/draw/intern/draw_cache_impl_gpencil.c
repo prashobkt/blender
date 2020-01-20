@@ -533,6 +533,8 @@ static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_
     for (int i = 0; i < vert_len; i++) {
       ED_gpencil_tpoint_to_point(ar, origin, &tpoints[i], &gps->points[i]);
       mul_m4_v3(ob->imat, &gps->points[i].x);
+      bGPDspoint *pt = &gps->points[i];
+      copy_v4_v4(pt->vert_color, gpd->runtime.vert_color);
     }
 
     /* Create VBO. */

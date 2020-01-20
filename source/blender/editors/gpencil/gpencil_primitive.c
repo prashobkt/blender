@@ -131,6 +131,15 @@ static void gp_session_validatebuffer(tGPDprimitive *p)
   else {
     zero_v4(gpd->runtime.vert_color_fill);
   }
+  /* Copy stroke vertex color. */
+  if (GPENCIL_USE_VERTEX_COLOR_STROKE(p->scene->toolsettings, p->brush)) {
+    copy_v3_v3(gpd->runtime.vert_color, p->brush->rgb);
+    gpd->runtime.vert_color[3] = p->brush->gpencil_settings->vertex_factor;
+    srgb_to_linearrgb_v4(gpd->runtime.vert_color, gpd->runtime.vert_color);
+  }
+  else {
+    zero_v4(gpd->runtime.vert_color);
+  }
 
   if (ELEM(p->type, GP_STROKE_BOX, GP_STROKE_CIRCLE)) {
     gpd->runtime.sbuffer_sflag |= GP_STROKE_CYCLIC;

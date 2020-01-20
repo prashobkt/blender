@@ -484,7 +484,10 @@ typedef struct bGPdata_Runtime {
   /** Number of total elements available in cache. */
   int sbuffer_size;
 
-  /** Vertex Color applied to Fill. */
+  /** Vertex Color applied to point (while drawing). */
+  float vert_color[4];
+
+  /** Vertex Color applied to Fill (while drawing). */
   float vert_color_fill[4];
 
   /** Number of control-points for stroke. */
