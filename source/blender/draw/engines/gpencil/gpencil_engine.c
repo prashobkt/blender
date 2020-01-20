@@ -187,11 +187,17 @@ void GPENCIL_cache_init(void *ved)
     Scene *scene = draw_ctx->scene;
     pd->simplify_fill = GPENCIL_SIMPLIFY_FILL(scene, playing);
     pd->simplify_fx = GPENCIL_SIMPLIFY_FX(scene, playing);
+
+    /* Fade Layer. */
+    const bool is_fade = ((!hide_overlay) &&
+                          (draw_ctx->v3d->gp_flag & V3D_GP_FADE_NOACTIVE_LAYERS));
+    pd->fade_layer_opacity = (is_fade) ? draw_ctx->v3d->overlay.gpencil_fade_layer : -1.0f;
   }
   else {
     pd->do_onion = true;
     pd->simplify_fill = false;
     pd->simplify_fx = false;
+    pd->fade_layer_opacity = -1.0f;
   }
 
   {

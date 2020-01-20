@@ -106,6 +106,10 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
 
 GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGPDlayer *gpl)
 {
+  const bool is_fade = ((pd->fade_layer_opacity > -1.0f) && (pd->obact) && (pd->obact == ob) &&
+                        ((gpl->flag & GP_LAYER_ACTIVE) == 0));
+  float fade_layer_opacity = (!is_fade) ? gpl->opacity : pd->fade_layer_opacity;
+
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
 
@@ -156,7 +160,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     GPUShader *sh = GPENCIL_shader_layer_mask_get();
     DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
     DRW_shgroup_uniform_int_copy(grp, "isFirstPass", true);
-    DRW_shgroup_uniform_float_copy(grp, "maskOpacity", gpl->opacity);
+    DRW_shgroup_uniform_float_copy(grp, "maskOpacity", fade_layer_opacity);
     DRW_shgroup_uniform_bool_copy(grp, "maskInvert", gpl->flag & GP_LAYER_MASK_INVERT);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_masked_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_masked_tx);
@@ -174,7 +178,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
 
     pd->use_mask_fb = true;
   }
-  else if ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f)) {
+  else if ((gpl->blend_mode != eGplBlendMode_Regular) || (fade_layer_opacity < 1.0f)) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL;
     switch (gpl->blend_mode) {
       case eGplBlendMode_Regular:
@@ -203,7 +207,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     GPUShader *sh = GPENCIL_shader_layer_blend_get();
     DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
     DRW_shgroup_uniform_int_copy(grp, "blendMode", gpl->blend_mode);
-    DRW_shgroup_uniform_float_copy(grp, "blendOpacity", gpl->opacity);
+    DRW_shgroup_uniform_float_copy(grp, "blendOpacity", fade_layer_opacity);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
     DRW_shgroup_stencil_mask(grp, 0xFF);

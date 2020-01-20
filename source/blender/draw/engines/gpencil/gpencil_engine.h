@@ -327,6 +327,8 @@ typedef struct GPENCIL_PrivateData {
   /* Some blend mode needs to add negative values.
    * This is only supported if target texture is signed. */
   bool use_signed_fb;
+  /* Layer opacity for fading. */
+  float fade_layer_opacity;
 } GPENCIL_PrivateData;
 
 /* geometry batch cache functions */
