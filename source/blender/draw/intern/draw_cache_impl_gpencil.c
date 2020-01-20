@@ -498,7 +498,7 @@ bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(Object *ob)
     gps->tot_triangles = max_ii(0, gpd->runtime.sbuffer_used - 2);
     gps->caps[0] = gps->caps[1] = GP_STROKE_CAP_ROUND;
     gps->runtime.stroke_start = 1; /* Add one for the adjacency index. */
-
+    copy_v4_v4(gps->vert_color_fill, gpd->runtime.vert_color_fill);
     gpd->runtime.sbuffer_gps = gps;
   }
   return gpd->runtime.sbuffer_gps;

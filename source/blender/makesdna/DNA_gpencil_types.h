@@ -484,6 +484,9 @@ typedef struct bGPdata_Runtime {
   /** Number of total elements available in cache. */
   int sbuffer_size;
 
+  /** Vertex Color applied to Fill. */
+  float vert_color_fill[4];
+
   /** Number of control-points for stroke. */
   int tot_cp_points;
   /** Array of control-points for stroke. */

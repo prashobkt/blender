@@ -737,6 +737,16 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       return GP_STROKEADD_INVALID;
     }
 
+    /* Copy fill vertex color. */
+    if (GPENCIL_USE_VERTEX_COLOR_FILL(p->scene->toolsettings, p->brush)) {
+      copy_v3_v3(gpd->runtime.vert_color_fill, p->brush->rgb);
+      gpd->runtime.vert_color_fill[3] = p->brush->gpencil_settings->vertex_factor;
+      srgb_to_linearrgb_v4(gpd->runtime.vert_color_fill, gpd->runtime.vert_color_fill);
+    }
+    else {
+      zero_v4(gpd->runtime.vert_color_fill);
+    }
+
     /* get pointer to destination point */
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
 
