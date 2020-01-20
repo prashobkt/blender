@@ -429,6 +429,15 @@ typedef struct DRWDebugSphere {
   float color[4];
 } DRWDebugSphere;
 
+/* ------------- DRAW LAYER ------------ */
+
+typedef struct DRWLayerType {
+  bool (*poll)(void);
+  void (*draw_layer)(void);
+} DRWLayerType;
+
+const extern DRWLayerType DRW_layer_types[];
+
 /* ------------- DRAW MANAGER ------------ */
 
 #define DST_MAX_SLOTS 64  /* Cannot be changed without modifying RST.bound_tex_slots */
@@ -574,5 +583,15 @@ void drw_resource_buffer_finish(ViewportMemoryPool *vmempool);
 GPUBatch *drw_cache_procedural_points_get(void);
 GPUBatch *drw_cache_procedural_lines_get(void);
 GPUBatch *drw_cache_procedural_triangles_get(void);
+
+void DRW_layers_draw_combined_cached(void);
+void DRW_layers_free(void);
+
+/* DRWLayer callbacks */
+void drw_layer_scene_draw(void);
+bool drw_layer_ui_overlays_poll(void);
+void drw_layer_ui_overlays_draw(void);
+bool drw_layer_debug_stats_poll(void);
+void drw_layer_debug_stats_draw(void);
 
 #endif /* __DRAW_MANAGER_H__ */

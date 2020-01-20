@@ -104,6 +104,29 @@ DRWManager DST = {NULL};
 
 static ListBase DRW_engines = {NULL, NULL};
 
+static const DRWLayerType drw_layer_scene_main = {
+    .poll = NULL,
+    .draw_layer = drw_layer_scene_draw,
+};
+
+static const DRWLayerType drw_layer_editor_overlays = {
+    .poll = drw_layer_ui_overlays_poll,
+    .draw_layer = drw_layer_ui_overlays_draw,
+};
+
+static const DRWLayerType drw_layer_debug_stats = {
+    .poll = drw_layer_debug_stats_poll,
+    .draw_layer = drw_layer_debug_stats_draw,
+};
+
+const DRWLayerType DRW_layer_types[] = {
+    drw_layer_scene_main,
+    drw_layer_editor_overlays,
+    drw_layer_debug_stats,
+    /* Important, leave this here! */
+    {NULL},
+};
+
 static void drw_state_prepare_clean_for_draw(DRWManager *dst)
 {
   memset(dst, 0x0, offsetof(DRWManager, gl_context));
@@ -1485,43 +1508,14 @@ void DRW_draw_view(const bContext *C)
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
 
-/**
- * Used for both regular and off-screen drawing.
- * Need to reset DST before calling this function
- */
-void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
-                             RenderEngineType *engine_type,
-                             ARegion *ar,
-                             View3D *v3d,
-                             GPUViewport *viewport,
-                             const bContext *evil_C)
+void drw_layer_scene_draw(void)
 {
-
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
-  RegionView3D *rv3d = ar->regiondata;
+  View3D *v3d = DST.draw_ctx.v3d;
+  Depsgraph *depsgraph = DST.draw_ctx.depsgraph;
+  ARegion *ar = DST.draw_ctx.ar;
+  RenderEngineType *engine_type = DST.draw_ctx.engine_type;
   const bool do_annotations = (((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0) &&
                                ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0));
-
-  DST.draw_ctx.evil_C = evil_C;
-  DST.viewport = viewport;
-
-  /* Setup viewport */
-  DST.draw_ctx = (DRWContextState){
-      .ar = ar,
-      .rv3d = rv3d,
-      .v3d = v3d,
-      .scene = scene,
-      .view_layer = view_layer,
-      .obact = OBACT(view_layer),
-      .engine_type = engine_type,
-      .depsgraph = depsgraph,
-
-      /* reuse if caller sets */
-      .evil_C = DST.draw_ctx.evil_C,
-  };
-  drw_context_state_init();
-  drw_viewport_var_init();
 
   const int object_type_exclude_viewport = v3d->object_type_exclude_viewport;
   /* Check if scene needs to perform the populate loop */
@@ -1532,27 +1526,11 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   const bool do_populate_loop = internal_engine || overlays_on || !draw_type_render ||
                                 gpencil_engine_needed;
 
-  /* Get list of enabled engines */
-  drw_engines_enable(view_layer, engine_type, gpencil_engine_needed);
-  drw_engines_data_validate();
-
-  /* Update ubos */
-  DRW_globals_update();
-
-  drw_debug_init();
-  DRW_hair_init();
-
-  /* No framebuffer allowed before drawing. */
-  BLI_assert(GPU_framebuffer_active_get() == NULL);
-
-  /* Init engines */
-  drw_engines_init();
-
   /* Cache filling */
   {
     PROFILE_START(stime);
     drw_engines_cache_init();
-    drw_engines_world_update(scene);
+    drw_engines_world_update(DST.draw_ctx.scene);
 
     /* Only iterate over objects for internal engines or when overlays are enabled */
     if (do_populate_loop) {
@@ -1597,7 +1575,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   DRW_draw_callbacks_pre_scene();
   if (DST.draw_ctx.evil_C) {
-    ED_region_draw_cb_draw(DST.draw_ctx.evil_C, DST.draw_ctx.ar, REGION_DRAW_PRE_VIEW);
+    ED_region_draw_cb_draw(DST.draw_ctx.evil_C, ar, REGION_DRAW_PRE_VIEW);
   }
 
   drw_engines_draw_scene();
@@ -1625,7 +1603,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   if (DST.draw_ctx.evil_C) {
     GPU_depth_test(false);
-    ED_region_draw_cb_draw(DST.draw_ctx.evil_C, DST.draw_ctx.ar, REGION_DRAW_POST_VIEW);
+    ED_region_draw_cb_draw(DST.draw_ctx.evil_C, ar, REGION_DRAW_POST_VIEW);
     GPU_depth_test(true);
     /* Callback can be nasty and do whatever they want with the state.
      * Don't trust them! */
@@ -1635,43 +1613,118 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   GPU_depth_test(false);
   drw_engines_draw_text();
   GPU_depth_test(true);
+}
 
-  if (DST.draw_ctx.evil_C) {
-    /* needed so gizmo isn't obscured */
-    if ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) {
-      glDisable(GL_DEPTH_TEST);
-      DRW_draw_gizmo_3d();
-    }
+bool drw_layer_ui_overlays_poll(void)
+{
+  return DST.draw_ctx.evil_C != NULL;
+}
 
-    DRW_draw_region_info();
+void drw_layer_ui_overlays_draw(void)
+{
+  View3D *v3d = DST.draw_ctx.v3d;
+  Depsgraph *depsgraph = DST.draw_ctx.depsgraph;
+  ARegion *ar = DST.draw_ctx.ar;
+  const bool do_annotations = (((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0) &&
+                               ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0));
 
-    /* annotations - temporary drawing buffer (screenspace) */
-    /* XXX: Or should we use a proper draw/overlay engine for this case? */
-    if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && (do_annotations)) {
-      GPU_depth_test(false);
-      /* XXX: as scene->gpd is not copied for COW yet */
-      ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, ar, false);
-      GPU_depth_test(true);
-    }
-
-    if ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) {
-      /* Draw 2D after region info so we can draw on top of the camera passepartout overlay.
-       * 'DRW_draw_region_info' sets the projection in pixel-space. */
-      GPU_depth_test(false);
-      DRW_draw_gizmo_2d();
-      GPU_depth_test(true);
-    }
+  /* needed so gizmo isn't obscured */
+  if ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) {
+    glDisable(GL_DEPTH_TEST);
+    DRW_draw_gizmo_3d();
   }
 
-  DRW_stats_reset();
+  DRW_draw_region_info();
 
-  if (G.debug_value > 20 && G.debug_value < 30) {
+  /* annotations - temporary drawing buffer (screenspace) */
+  /* XXX: Or should we use a proper draw/overlay engine for this case? */
+  if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && (do_annotations)) {
     GPU_depth_test(false);
-    /* local coordinate visible rect inside region, to accommodate overlapping ui */
-    const rcti *rect = ED_region_visible_rect(DST.draw_ctx.ar);
-    DRW_stats_draw(rect);
+    /* XXX: as scene->gpd is not copied for COW yet */
+    ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, ar, false);
     GPU_depth_test(true);
   }
+
+  if ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) {
+    /* Draw 2D after region info so we can draw on top of the camera passepartout overlay.
+     * 'DRW_draw_region_info' sets the projection in pixel-space. */
+    GPU_depth_test(false);
+    DRW_draw_gizmo_2d();
+    GPU_depth_test(true);
+  }
+}
+
+bool drw_layer_debug_stats_poll(void)
+{
+  return G.debug_value > 20 && G.debug_value < 30;
+}
+
+void drw_layer_debug_stats_draw(void)
+{
+  DRW_stats_reset();
+
+  GPU_depth_test(false);
+  /* local coordinate visible rect inside region, to accommodate overlapping ui */
+  const rcti *rect = ED_region_visible_rect(DST.draw_ctx.ar);
+  DRW_stats_draw(rect);
+  GPU_depth_test(true);
+}
+
+/**
+ * Used for both regular and off-screen drawing.
+ * Need to reset DST before calling this function
+ */
+void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
+                             RenderEngineType *engine_type,
+                             ARegion *ar,
+                             View3D *v3d,
+                             GPUViewport *viewport,
+                             const bContext *evil_C)
+{
+
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+  RegionView3D *rv3d = ar->regiondata;
+  const bool gpencil_engine_needed = drw_gpencil_engine_needed(depsgraph, v3d);
+
+  DST.draw_ctx.evil_C = evil_C;
+  DST.viewport = viewport;
+
+  /* Setup viewport */
+  DST.draw_ctx = (DRWContextState){
+      .ar = ar,
+      .rv3d = rv3d,
+      .v3d = v3d,
+      .scene = scene,
+      .view_layer = view_layer,
+      .obact = OBACT(view_layer),
+      .engine_type = engine_type,
+      .depsgraph = depsgraph,
+
+      /* reuse if caller sets */
+      .evil_C = DST.draw_ctx.evil_C,
+  };
+  drw_context_state_init();
+  drw_viewport_var_init();
+
+  /* Get list of enabled engines */
+  drw_engines_enable(view_layer, engine_type, gpencil_engine_needed);
+  drw_engines_data_validate();
+
+  /* Update ubos */
+  DRW_globals_update();
+
+  drw_debug_init();
+  DRW_hair_init();
+
+  /* No framebuffer allowed before drawing. */
+  BLI_assert(GPU_framebuffer_active_get() == NULL);
+
+  /* Init engines */
+  drw_engines_init();
+
+  /* Draw scene, scene overlays and editor overlays through layers. */
+  DRW_layers_draw_combined_cached();
 
   if (WM_draw_region_get_bound_viewport(ar)) {
     /* Don't unbind the framebuffer yet in this case and let
@@ -2837,6 +2890,7 @@ void DRW_engines_free(void)
   DRW_hair_free();
   DRW_shape_cache_free();
   DRW_stats_free();
+  DRW_layers_free();
   DRW_globals_free();
 
   DrawEngineType *next;
