@@ -3697,10 +3697,7 @@ void BKE_gpencil_visible_stroke_iter(
   const bool onion_loop = (gpd->onion_flag & GP_ONION_LOOP) != 0;
   const short onion_keytype = gpd->onion_keytype;
 
-  /* Index in the layer in the listbase. */
-  int layer_idx = -1;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    layer_idx++;
 
     bGPDframe *act_gpf = gpl->actframe;
     bGPDframe *sta_gpf = act_gpf;
