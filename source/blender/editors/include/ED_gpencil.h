@@ -42,6 +42,7 @@ struct Main;
 struct RegionView3D;
 struct ReportList;
 struct Scene;
+struct ToolSettings;
 struct ScrArea;
 struct View3D;
 struct ViewLayer;
@@ -242,10 +243,10 @@ void ED_gp_project_point_to_plane(const struct Scene *scene,
                                   const int axis,
                                   struct bGPDspoint *pt);
 void ED_gpencil_drawing_reference_get(const struct Scene *scene,
-                                 const struct Object *ob,
-                                 struct bGPDlayer *gpl,
-                                 char align_flag,
-                                 float vec[3]);
+                                      const struct Object *ob,
+                                      struct bGPDlayer *gpl,
+                                      char align_flag,
+                                      float vec[3]);
 void ED_gpencil_project_stroke_to_view(struct bContext *C,
                                        struct bGPDlayer *gpl,
                                        struct bGPDstroke *gps);
@@ -294,5 +295,13 @@ struct tGPspoint *ED_gpencil_sbuffer_ensure(struct tGPspoint *buffer_array,
                                             const bool clear);
 /* Tag all scene grease pencil object to update. */
 void ED_gpencil_tag_scene_gpencil(struct Scene *scene);
+
+/* Vertex color set. */
+void ED_gpencil_fill_vertex_color_set(struct ToolSettings *ts,
+                                      struct Brush *brush,
+                                      struct bGPDstroke *gps);
+void ED_gpencil_point_vertex_color_set(struct ToolSettings *ts,
+                                       struct Brush *brush,
+                                       struct bGPDspoint *pt);
 
 #endif /*  __ED_GPENCIL_H__ */

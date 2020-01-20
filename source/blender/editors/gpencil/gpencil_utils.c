@@ -2550,3 +2550,27 @@ void ED_gpencil_tag_scene_gpencil(Scene *scene)
 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 }
+
+void ED_gpencil_fill_vertex_color_set(ToolSettings *ts, Brush *brush, bGPDstroke *gps)
+{
+  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush)) {
+    copy_v3_v3(gps->vert_color_fill, brush->rgb);
+    gps->vert_color_fill[3] = brush->gpencil_settings->vertex_factor;
+    srgb_to_linearrgb_v4(gps->vert_color_fill, gps->vert_color_fill);
+  }
+  else {
+    zero_v4(gps->vert_color_fill);
+  }
+}
+
+void ED_gpencil_point_vertex_color_set(ToolSettings *ts, Brush *brush, bGPDspoint *pt)
+{
+  if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush)) {
+    copy_v3_v3(pt->vert_color, brush->rgb);
+    pt->vert_color[3] = brush->gpencil_settings->vertex_factor;
+    srgb_to_linearrgb_v4(pt->vert_color, pt->vert_color);
+  }
+  else {
+    zero_v4(pt->vert_color);
+  }
+}

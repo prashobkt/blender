@@ -366,11 +366,8 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   gps->uv_scale = 1.0f;
   gps->inittime = 0.0f;
 
-  /* Apply the mix color to fill. */
-  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush)) {
-    copy_v3_v3(gps->vert_color_fill, brush->rgb);
-    gps->vert_color_fill[3] = brush->gpencil_settings->vertex_factor;
-  }
+  /* Apply the vertex color to fill. */
+  ED_gpencil_fill_vertex_color_set(ts, brush, gps);
 
   gps->flag &= ~GP_STROKE_SELECT;
   /* the polygon must be closed, so enabled cyclic */
@@ -1047,11 +1044,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     pt->time = 0.0f;
     pt->flag = 0;
     pt->uv_fac = tpt->uv_fac;
-    /* Point mix color. */
-    copy_v3_v3(pt->vert_color, brush->rgb);
-    pt->vert_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
-                            brush->gpencil_settings->vertex_factor :
-                            0.0f;
+    /* Apply the vertex color to point. */
+    ED_gpencil_point_vertex_color_set(ts, brush, pt);
 
     if (gps->dvert != NULL) {
       MDeformVert *dvert = &gps->dvert[i];
