@@ -1762,53 +1762,12 @@ static void gp_init_colors(tGPsdata *p)
 {
   bGPdata *gpd = p->gpd;
   Brush *brush = p->brush;
-  ToolSettings *ts = p->scene->toolsettings;
-
-  MaterialGPencilStyle *gp_style = NULL;
 
   /* use brush material */
   p->material = BKE_gpencil_object_material_ensure_from_active_input_brush(p->bmain, p->ob, brush);
 
   gpd->runtime.matid = BKE_object_material_slot_find_index(p->ob, p->material);
-
-  /* assign color information to temp tGPsdata */
-  gp_style = p->material->gp_style;
-  if (gp_style) {
-    gpd->runtime.brush_size = brush->size;
-
-    /* set colors */
-    if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
-      copy_v4_v4(gpd->runtime.scolor, gp_style->stroke_rgba);
-    }
-    else {
-      /* if no stroke, use fill */
-      copy_v4_v4(gpd->runtime.scolor, gp_style->fill_rgba);
-    }
-    copy_v4_v4(gpd->runtime.sfill, gp_style->fill_rgba);
-    /* add some alpha to make easy the filling without hide strokes */
-    if (gpd->runtime.sfill[3] > 0.8f) {
-      gpd->runtime.sfill[3] = 0.8f;
-    }
-
-    /* Apply the mix color to fill. */
-    if (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush)) {
-      interp_v3_v3v3(gpd->runtime.sfill,
-                     gpd->runtime.sfill,
-                     brush->rgb,
-                     brush->gpencil_settings->vertex_factor);
-    }
-
-    gpd->runtime.mode = (short)gp_style->mode;
-    gpd->runtime.bfill_style = gp_style->fill_style;
-
-    /* Apply the mix color to stroke. */
-    if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush)) {
-      interp_v3_v3v3(gpd->runtime.scolor,
-                     gpd->runtime.scolor,
-                     brush->rgb,
-                     brush->gpencil_settings->vertex_factor);
-    }
-  }
+  gpd->runtime.brush_size = brush->size;
 }
 
 /* (re)init new painting data */
@@ -2110,7 +2069,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
   if (p->disable_fill == true) {
     p->gpd->runtime.sbuffer_sflag |= GP_STROKE_NOFILL;
     /* replace stroke color with fill color */
-    copy_v4_v4(p->gpd->runtime.scolor, p->gpd->runtime.sfill);
+    /* TODO: Review copy_v4_v4(p->gpd->runtime.scolor, p->gpd->runtime.sfill); */
   }
 
   /* set 'initial run' flag, which is only used to denote when a new stroke is starting */

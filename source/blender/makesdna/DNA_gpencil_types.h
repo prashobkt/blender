@@ -460,18 +460,12 @@ typedef struct bGPdata_Runtime {
   struct bGPDstroke *sbuffer_gps;
 
   /* GP Object drawing */
-  /** Buffer stroke color. */
-  float scolor[4];
-  /** Buffer fill color. */
-  float sfill[4];
-  /** Settings for color. */
-  short mode;
+  char _pad[2];
   /** Material index of the stroke. */
   short matid;
   /** Brush size of stroke. */
   float brush_size;
-  /** Buffer style for filling areas (used to select shader type). */
-  short bfill_style;
+  char _pad1[2];
 
   /* Stroke Buffer data (only used during paint-session)
    * - buffer must be initialized before use, but freed after
