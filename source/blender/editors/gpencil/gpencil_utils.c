@@ -2574,3 +2574,26 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts, Brush *brush, bGPDspoin
     zero_v4(pt->vert_color);
   }
 }
+
+void ED_gpencil_sbuffer_vertex_color_set(ToolSettings *ts, Brush *brush, bGPdata *gpd)
+{
+  float vertex_color[4];
+  copy_v3_v3(vertex_color, brush->rgb);
+  vertex_color[3] = brush->gpencil_settings->vertex_factor;
+  srgb_to_linearrgb_v4(vertex_color, vertex_color);
+
+  /* Copy fill vertex color. */
+  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush)) {
+    copy_v4_v4(gpd->runtime.vert_color_fill, vertex_color);
+  }
+  else {
+    zero_v4(gpd->runtime.vert_color_fill);
+  }
+  /* Copy stroke vertex color. */
+  if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush)) {
+    copy_v4_v4(gpd->runtime.vert_color, vertex_color);
+  }
+  else {
+    zero_v4(gpd->runtime.vert_color);
+  }
+}
