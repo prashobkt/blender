@@ -6468,11 +6468,11 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         sub.prop(overlay, "gpencil_fade_layer", text="Fade Layers", slider=True)
 
         row = col.row()
-        row.prop(overlay, "use_gpencil_paper", text="")
+        row.prop(overlay, "use_gpencil_fade_objects", text="")
         sub = row.row(align=True)
-        sub.active = overlay.use_gpencil_paper
-        sub.prop(overlay, "gpencil_paper_opacity", text="Fade Objects", slider=True)
-        sub.prop(overlay, "use_gpencil_fade_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
+        sub.active = overlay.use_gpencil_fade_objects
+        sub.prop(overlay, "gpencil_fade_objects", text="Fade Objects", slider=True)
+        sub.prop(overlay, "use_gpencil_fade_gp_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
         if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             split = layout.split()

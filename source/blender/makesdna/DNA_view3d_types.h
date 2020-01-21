@@ -400,8 +400,8 @@ typedef struct View3D {
 #define V3D_FLAG2_UNUSED_15 (1 << 15) /* cleared */
 
 /** #View3D.gp_flag (short) */
-#define V3D_GP_SHOW_PAPER (1 << 0) /* Activate paper to cover all viewport */
-#define V3D_GP_SHOW_GRID (1 << 1)  /* Activate paper grid */
+#define V3D_GP_FADE_OBJECTS (1 << 0) /* Fade all non GP objects */
+#define V3D_GP_SHOW_GRID (1 << 1)    /* Activate paper grid */
 #define V3D_GP_SHOW_EDIT_LINES (1 << 2)
 #define V3D_GP_SHOW_MULTIEDIT_LINES (1 << 3)
 #define V3D_GP_SHOW_ONION_SKIN (1 << 4)       /* main switch at view level */
