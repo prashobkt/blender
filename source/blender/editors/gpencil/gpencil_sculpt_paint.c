@@ -1106,14 +1106,7 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
       bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_ADD_NEW);
 
       /* Make a new stroke */
-      new_stroke = MEM_dupallocN(gps);
-
-      new_stroke->points = MEM_dupallocN(gps->points);
-      if (gps->dvert != NULL) {
-        new_stroke->dvert = MEM_dupallocN(gps->dvert);
-        BKE_gpencil_stroke_weights_duplicate(gps, new_stroke);
-      }
-      new_stroke->triangles = MEM_dupallocN(gps->triangles);
+      new_stroke = BKE_gpencil_stroke_duplicate(gps, true);
 
       new_stroke->next = new_stroke->prev = NULL;
       BLI_addtail(&gpf->strokes, new_stroke);

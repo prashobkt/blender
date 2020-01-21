@@ -782,8 +782,7 @@ static void gp_duplicate_points(const bGPDstroke *gps,
         bGPDstroke *gpsd;
 
         /* make a stupid copy first of the entire stroke (to get the flags too) */
-        gpsd = MEM_dupallocN(gps);
-        gpsd->triangles = MEM_dupallocN(gps->triangles);
+        gpsd = BKE_gpencil_stroke_duplicate((bGPDstroke *)gps, false);
 
         /* saves original layer name */
         BLI_strncpy(gpsd->runtime.tmp_layerinfo, layername, sizeof(gpsd->runtime.tmp_layerinfo));
@@ -861,15 +860,9 @@ static int gp_duplicate_exec(bContext *C, wmOperator *op)
           bGPDstroke *gpsd;
 
           /* make direct copies of the stroke and its points */
-          gpsd = MEM_dupallocN(gps);
-          gpsd->triangles = MEM_dupallocN(gps->triangles);
+          gpsd = BKE_gpencil_stroke_duplicate(gps, true);
 
           BLI_strncpy(gpsd->runtime.tmp_layerinfo, gpl->info, sizeof(gpsd->runtime.tmp_layerinfo));
-          gpsd->points = MEM_dupallocN(gps->points);
-          if (gps->dvert != NULL) {
-            gpsd->dvert = MEM_dupallocN(gps->dvert);
-            BKE_gpencil_stroke_weights_duplicate(gps, gpsd);
-          }
 
           /* Initialize triangle information. */
           BKE_gpencil_stroke_geometry_update(gpsd);
@@ -981,8 +974,7 @@ static void gpencil_add_move_points(bGPDframe *gpf, bGPDstroke *gps)
     pt = &gps->points[i];
     if (pt->flag == GP_SPOINT_SELECT) {
       /* duplicate original stroke data */
-      bGPDstroke *gps_new = MEM_dupallocN(gps);
-      gps_new->triangles = MEM_dupallocN(gps->triangles);
+      bGPDstroke *gps_new = BKE_gpencil_stroke_duplicate(gps, false);
       gps_new->prev = gps_new->next = NULL;
 
       /* add new points array */
@@ -1311,8 +1303,7 @@ static int gp_strokes_copy_exec(bContext *C, wmOperator *op)
           bGPDstroke *gpsd;
 
           /* make direct copies of the stroke and its points */
-          gpsd = MEM_dupallocN(gps);
-          gpsd->triangles = MEM_dupallocN(gps->triangles);
+          gpsd = BKE_gpencil_stroke_duplicate(gps, false);
 
           /* saves original layer name */
           BLI_strncpy(gpsd->runtime.tmp_layerinfo, gpl->info, sizeof(gpsd->runtime.tmp_layerinfo));
@@ -1502,7 +1493,7 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
       gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_ADD_NEW);
       if (gpf) {
         /* Create new stroke */
-        bGPDstroke *new_stroke = MEM_dupallocN(gps);
+        bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps, false);
         new_stroke->runtime.tmp_layerinfo[0] = '\0';
 
         new_stroke->points = MEM_dupallocN(gps->points);
@@ -2218,7 +2209,7 @@ static void gp_stroke_join_islands(bGPDframe *gpf, bGPDstroke *gps_first, bGPDst
   const int totpoints = gps_first->totpoints + gps_last->totpoints;
 
   /* create new stroke */
-  bGPDstroke *join_stroke = MEM_dupallocN(gps_first);
+  bGPDstroke *join_stroke = BKE_gpencil_stroke_duplicate(gps_first, false);
 
   join_stroke->points = MEM_callocN(sizeof(bGPDspoint) * totpoints, __func__);
   join_stroke->totpoints = totpoints;
@@ -2361,8 +2352,7 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf,
     /* Create each new stroke... */
     for (idx = 0; idx < num_islands; idx++) {
       tGPDeleteIsland *island = &islands[idx];
-      new_stroke = MEM_dupallocN(gps);
-      new_stroke->triangles = MEM_dupallocN(gps->triangles);
+      new_stroke = BKE_gpencil_stroke_duplicate(gps, false);
 
       /* if cyclic and first stroke, save to join later */
       if ((is_cyclic) && (gps_first == NULL)) {
@@ -3363,12 +3353,7 @@ static int gp_stroke_join_exec(bContext *C, wmOperator *op)
 
           /* create a new stroke if was not created before (only created if something to join) */
           if (new_stroke == NULL) {
-            new_stroke = MEM_dupallocN(stroke_a);
-            new_stroke->points = MEM_dupallocN(stroke_a->points);
-            if (stroke_a->dvert != NULL) {
-              new_stroke->dvert = MEM_dupallocN(stroke_a->dvert);
-              BKE_gpencil_stroke_weights_duplicate(stroke_a, new_stroke);
-            }
+            new_stroke = BKE_gpencil_stroke_duplicate(stroke_a, true);
 
             /* if new, set current color */
             if (type == GP_STROKE_JOINCOPY) {
