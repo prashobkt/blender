@@ -286,7 +286,7 @@ static void gp_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
       }
 
       /* create new stroke */
-      new_stroke = BKE_gpencil_stroke_duplicate(gps_from);
+      new_stroke = BKE_gpencil_stroke_duplicate(gps_from, true);
 
       if (valid) {
         /* if destination stroke is smaller, resize new_stroke to size of gps_to stroke */
@@ -1037,7 +1037,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
         }
 
         /* create new stroke */
-        new_stroke = BKE_gpencil_stroke_duplicate(gps_from);
+        new_stroke = BKE_gpencil_stroke_duplicate(gps_from, true);
 
         /* if destination stroke is smaller, resize new_stroke to size of gps_to stroke */
         if (gps_from->totpoints > gps_to->totpoints) {

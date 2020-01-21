@@ -4273,7 +4273,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
               /* selected points mode */
               if (mode == GP_SEPARATE_POINT) {
                 /* make copy of source stroke */
-                bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps);
+                bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps, true);
 
                 /* Reassign material. */
                 gps_dst->mat_nr = idx;
@@ -4422,7 +4422,7 @@ static int gp_stroke_split_exec(bContext *C, wmOperator *UNUSED(op))
           /*  split selected strokes */
           if (gps->flag & GP_STROKE_SELECT) {
             /* make copy of source stroke */
-            bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps);
+            bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps, true);
 
             /* link to same frame */
             BLI_addtail(&gpf->strokes, gps_dst);

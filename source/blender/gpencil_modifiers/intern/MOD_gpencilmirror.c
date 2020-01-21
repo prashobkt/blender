@@ -145,7 +145,7 @@ static void generateStrokes(GpencilModifierData *md,
                                            mmd->flag & GP_MIRROR_INVERT_PASS,
                                            mmd->flag & GP_MIRROR_INVERT_LAYERPASS,
                                            mmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
-          gps_new = BKE_gpencil_stroke_duplicate(gps);
+          gps_new = BKE_gpencil_stroke_duplicate(gps, true);
           update_position(ob, mmd, gps_new, xi);
           BLI_addtail(&gpf->strokes, gps_new);
         }

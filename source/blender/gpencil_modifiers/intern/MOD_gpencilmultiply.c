@@ -177,7 +177,7 @@ static void duplicateStroke(bGPDstroke *gps,
   /* This ensures the original stroke is the last one to be processed. */
   for (i = count - 1; i >= 0; i--) {
     if (i != 0) {
-      new_gps = BKE_gpencil_stroke_duplicate(gps);
+      new_gps = BKE_gpencil_stroke_duplicate(gps, true);
 
       BLI_addtail(results, new_gps);
     }

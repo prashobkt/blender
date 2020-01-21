@@ -551,24 +551,25 @@ void BKE_gpencil_stroke_weights_duplicate(bGPDstroke *gps_src, bGPDstroke *gps_d
 }
 
 /* make a copy of a given gpencil stroke */
-bGPDstroke *BKE_gpencil_stroke_duplicate(bGPDstroke *gps_src)
+bGPDstroke *BKE_gpencil_stroke_duplicate(bGPDstroke *gps_src, const bool dup_points)
 {
   bGPDstroke *gps_dst = NULL;
 
   gps_dst = MEM_dupallocN(gps_src);
   gps_dst->prev = gps_dst->next = NULL;
-
-  gps_dst->points = MEM_dupallocN(gps_src->points);
-
-  if (gps_src->dvert != NULL) {
-    gps_dst->dvert = MEM_dupallocN(gps_src->dvert);
-    BKE_gpencil_stroke_weights_duplicate(gps_src, gps_dst);
-  }
-  else {
-    gps_dst->dvert = NULL;
-  }
-
   gps_dst->triangles = MEM_dupallocN(gps_dst->triangles);
+
+  if (dup_points) {
+    gps_dst->points = MEM_dupallocN(gps_src->points);
+
+    if (gps_src->dvert != NULL) {
+      gps_dst->dvert = MEM_dupallocN(gps_src->dvert);
+      BKE_gpencil_stroke_weights_duplicate(gps_src, gps_dst);
+    }
+    else {
+      gps_dst->dvert = NULL;
+    }
+  }
 
   /* return new stroke */
   return gps_dst;
@@ -593,7 +594,7 @@ bGPDframe *BKE_gpencil_frame_duplicate(const bGPDframe *gpf_src)
   BLI_listbase_clear(&gpf_dst->strokes);
   for (bGPDstroke *gps_src = gpf_src->strokes.first; gps_src; gps_src = gps_src->next) {
     /* make copy of source stroke */
-    gps_dst = BKE_gpencil_stroke_duplicate(gps_src);
+    gps_dst = BKE_gpencil_stroke_duplicate(gps_src, true);
     BLI_addtail(&gpf_dst->strokes, gps_dst);
   }
 
@@ -614,7 +615,7 @@ void BKE_gpencil_frame_copy_strokes(bGPDframe *gpf_src, struct bGPDframe *gpf_ds
   BLI_listbase_clear(&gpf_dst->strokes);
   for (bGPDstroke *gps_src = gpf_src->strokes.first; gps_src; gps_src = gps_src->next) {
     /* make copy of source stroke */
-    gps_dst = BKE_gpencil_stroke_duplicate(gps_src);
+    gps_dst = BKE_gpencil_stroke_duplicate(gps_src, true);
     BLI_addtail(&gpf_dst->strokes, gps_dst);
   }
 }
