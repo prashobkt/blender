@@ -3081,7 +3081,7 @@ static void rna_def_object(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_in_front", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "dtx", OB_DRAWXRAY);
   RNA_def_property_ui_text(prop, "In Front", "Make the object draw in front of others");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_GPencil_update");
 
   /* pose */
   prop = RNA_def_property(srna, "pose_library", PROP_POINTER, PROP_NONE);
