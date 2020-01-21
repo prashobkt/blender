@@ -99,7 +99,13 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   rescale_m4(tgp_ob->plane_mat, (float[3]){radius, radius, radius});
   copy_v3_v3(tgp_ob->plane_mat[3], center);
 
-  BLI_LINKS_APPEND(&pd->tobjects, tgp_ob);
+  /* Add to corresponding list if is in front. */
+  if (ob->dtx & OB_DRAWXRAY) {
+    BLI_LINKS_APPEND(&pd->tobjects_infront, tgp_ob);
+  }
+  else {
+    BLI_LINKS_APPEND(&pd->tobjects, tgp_ob);
+  }
 
   return tgp_ob;
 }

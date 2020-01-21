@@ -251,7 +251,7 @@ typedef struct GPENCIL_PrivateData {
   /* Linked list of tObjects. */
   struct {
     GPENCIL_tObject *first, *last;
-  } tobjects;
+  } tobjects, tobjects_infront;
   /* Temp Textures (shared with other engines). */
   GPUTexture *depth_tx;
   GPUTexture *color_tx;

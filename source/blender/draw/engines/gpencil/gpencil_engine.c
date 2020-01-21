@@ -92,6 +92,8 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->last_material_pool = NULL;
   stl->pd->tobjects.first = NULL;
   stl->pd->tobjects.last = NULL;
+  stl->pd->tobjects_infront.first = NULL;
+  stl->pd->tobjects_infront.last = NULL;
   stl->pd->sbuffer_tobjects.first = NULL;
   stl->pd->sbuffer_tobjects.last = NULL;
   stl->pd->dummy_tx = txl->dummy_texture;
@@ -454,6 +456,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
                           (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS);
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
+  const bool is_in_front = (iter->ob->dtx & OB_DRAWXRAY);
 
   bool overide_vertcol = (iter->pd->v3d_color_type != -1);
   bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
@@ -461,13 +464,16 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   float vert_col_opacity = (overide_vertcol) ? (is_vert_col_mode ? 1.0f : 0.0f) :
                                                gpl->vertex_paint_opacity;
 
+  /* Check if object is defined in front. */
+  GPUTexture *depth_tex = (is_in_front) ? iter->pd->dummy_tx : iter->pd->scene_depth_tx;
+
   struct GPUShader *sh = GPENCIL_shader_geometry_get();
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
   DRW_shgroup_uniform_block_persistent(iter->grp, "gpLightBlock", iter->ubo_lights);
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", iter->ubo_mat);
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
-  DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->scene_depth_tx);
+  DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", depth_tex);
   DRW_shgroup_uniform_int_copy(iter->grp, "gpMaterialOffset", iter->mat_ofs);
   DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3d", is_stroke_order_3d);
   DRW_shgroup_uniform_vec3_copy(iter->grp, "gpNormal", iter->tgp_ob->plane_normal);
@@ -696,7 +702,34 @@ void GPENCIL_cache_finish(void *ved)
   }
 
   /* Sort object by distance to the camera. */
-  pd->tobjects.first = gpencil_tobject_sort_fn_r(pd->tobjects.first, gpencil_tobject_dist_sort);
+  if (pd->tobjects.first) {
+    pd->tobjects.first = gpencil_tobject_sort_fn_r(pd->tobjects.first, gpencil_tobject_dist_sort);
+    /* Relink last pointer. */
+    while ((pd->tobjects.last->next != NULL)) {
+      pd->tobjects.last = pd->tobjects.last->next;
+    }
+  }
+  if (pd->tobjects_infront.first) {
+    pd->tobjects_infront.first = gpencil_tobject_sort_fn_r(pd->tobjects_infront.first,
+                                                           gpencil_tobject_dist_sort);
+    /* Relink last pointer. */
+    while ((pd->tobjects_infront.last->next != NULL)) {
+      pd->tobjects_infront.last = pd->tobjects_infront.last->next;
+    }
+  }
+
+  /* Join both lists, adding infront. */
+  if (pd->tobjects_infront.first != NULL) {
+    if (pd->tobjects.last != NULL) {
+      pd->tobjects.last->next = pd->tobjects_infront.first;
+      pd->tobjects.last = pd->tobjects_infront.last;
+    }
+    else {
+      /* Only in front objects. */
+      pd->tobjects.first = pd->tobjects_infront.first;
+      pd->tobjects.last = pd->tobjects_infront.last;
+    }
+  }
 
   /* Create framebuffers only if needed. */
   if (pd->tobjects.first) {
