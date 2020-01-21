@@ -775,7 +775,6 @@ static void gp_duplicate_points(const bGPDstroke *gps,
       else if (i == gps->totpoints - 1) {
         len = i - start_idx + 1;
       }
-      // printf("copying from %d to %d = %d\n", start_idx, i, len);
 
       /* make copies of the relevant data */
       if (len) {
