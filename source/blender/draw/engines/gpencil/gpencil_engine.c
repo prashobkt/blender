@@ -196,8 +196,12 @@ void GPENCIL_cache_init(void *ved)
     const bool is_fade_object = ((!hide_overlay) && (!pd->is_render) &&
                                  (draw_ctx->v3d->gp_flag & V3D_GP_FADE_OBJECTS) &&
                                  (draw_ctx->v3d->gp_flag & V3D_GP_FADE_NOACTIVE_GPENCIL));
-    pd->fade_object_opacity = (is_fade_object) ? draw_ctx->v3d->overlay.gpencil_paper_opacity :
-                                                 -1.0f;
+    pd->fade_gp_object_opacity = (is_fade_object) ? draw_ctx->v3d->overlay.gpencil_paper_opacity :
+                                                    -1.0f;
+    pd->fade_3d_object_opacity = ((!hide_overlay) && (!pd->is_render) &&
+                                  (draw_ctx->v3d->gp_flag & V3D_GP_FADE_OBJECTS)) ?
+                                     draw_ctx->v3d->overlay.gpencil_paper_opacity :
+                                     -1.0f;
   }
   else {
     pd->do_onion = true;
@@ -895,6 +899,11 @@ void GPENCIL_draw_scene(void *ved)
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
+
+  /* Fade 3D objects. */
+  if (pd->fade_3d_object_opacity > -1.0f) {
+    mul_v4_fl(clear_cols[1], pd->fade_3d_object_opacity);
+  }
 
   if (pd->draw_depth_only) {
     GPENCIL_draw_scene_depth_only(vedata);

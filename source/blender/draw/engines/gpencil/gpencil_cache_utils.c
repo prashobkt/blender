@@ -116,8 +116,8 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   if ((is_obact) && (is_fade)) {
     fade_layer_opacity = pd->fade_layer_opacity;
   }
-  else if ((!is_obact) && (pd->fade_object_opacity > -1.0f)) {
-    fade_layer_opacity = pd->fade_object_opacity;
+  else if ((!is_obact) && (pd->fade_gp_object_opacity > -1.0f)) {
+    fade_layer_opacity = pd->fade_gp_object_opacity;
   }
 
   bGPdata *gpd = (bGPdata *)ob->data;
