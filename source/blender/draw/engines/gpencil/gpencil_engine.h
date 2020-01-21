@@ -329,6 +329,8 @@ typedef struct GPENCIL_PrivateData {
   bool use_signed_fb;
   /* Layer opacity for fading. */
   float fade_layer_opacity;
+  /* Opacity for fading objects. */
+  float fade_object_opacity;
 } GPENCIL_PrivateData;
 
 /* geometry batch cache functions */

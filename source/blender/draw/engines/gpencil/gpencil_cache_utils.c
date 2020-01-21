@@ -106,9 +106,19 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
 
 GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGPDlayer *gpl)
 {
-  const bool is_fade = ((pd->fade_layer_opacity > -1.0f) && (pd->obact) && (pd->obact == ob) &&
+  const bool is_obact = ((pd->obact) && (pd->obact == ob));
+  const bool is_fade = ((pd->fade_layer_opacity > -1.0f) && (is_obact) &&
                         ((gpl->flag & GP_LAYER_ACTIVE) == 0));
-  float fade_layer_opacity = (!is_fade) ? gpl->opacity : pd->fade_layer_opacity;
+
+  /* Defines layer opacity. For active object depends of layer opacity factor, and
+   * for no active object, depends if the fade grease pencil objects option is enabled. */
+  float fade_layer_opacity = gpl->opacity;
+  if ((is_obact) && (is_fade)) {
+    fade_layer_opacity = pd->fade_layer_opacity;
+  }
+  else if ((!is_obact) && (pd->fade_object_opacity > -1.0f)) {
+    fade_layer_opacity = pd->fade_object_opacity;
+  }
 
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
