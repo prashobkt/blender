@@ -1073,8 +1073,8 @@ static bool gp_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVertexpai
 
   /* Find visible strokes, and perform operations on those if hit */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    /* If no active frame, don't do anything... */
-    if (gpl->actframe == NULL) {
+    /* If locked or no active frame, don't do anything. */
+    if ((!gpencil_layer_is_editable(gpl)) || (gpl->actframe == NULL)) {
       continue;
     }
 
