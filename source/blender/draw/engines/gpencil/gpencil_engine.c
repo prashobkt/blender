@@ -456,15 +456,15 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
    * Convert to world units (by default, 1 meter = 2000 px). */
   float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / GPENCIL_PIXEL_FACTOR);
 
-  const bool use_lights = ((iter->pd->use_lighting) && ((gpl->flag & GP_LAYER_USE_LIGHTS) != 0) &&
-                           (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS));
+  const bool use_lights = iter->pd->use_lighting && ((gpl->flag & GP_LAYER_USE_LIGHTS) != 0) &&
+                          (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS);
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
   const bool is_in_front = (iter->ob->dtx & OB_DRAWXRAY);
 
   bool overide_vertcol = (iter->pd->v3d_color_type != -1);
-  bool is_vert_col_mode = ((iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
-                           GPENCIL_VERTEX_MODE(gpd));
+  bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
+                          GPENCIL_VERTEX_MODE(gpd);
   float vert_col_opacity = (overide_vertcol) ? (is_vert_col_mode ? 1.0f : 0.0f) :
                                                gpl->vertex_paint_opacity;
 
