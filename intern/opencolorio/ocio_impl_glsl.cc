@@ -138,8 +138,6 @@ typedef struct OCIO_GLSLDrawState {
   OCIO_GLSLCacheHandle shader_cache[SHADER_CACHE_SIZE];
   OCIO_GLSLCacheHandle lut3d_cache[SHADER_CACHE_SIZE];
   OCIO_GLSLCacheHandle curvemap_cache[SHADER_CACHE_SIZE];
-  /* Previous OpenGL state. */
-  GLint last_texture, last_texture_unit;
 } OCIO_GLSLDrawState;
 
 static OCIO_GLSLDrawState *allocateOpenGLState(void)
@@ -582,11 +580,6 @@ bool OCIOImpl::setupGLSLDraw(OCIO_GLSLDrawState **state_r,
     *state_r = allocateOpenGLState();
   state = *state_r;
 
-  /* TODO(fclem) These two glGetIntegerv should be removed, and just assume the state needs
-   * to be cleared after this function call. */
-  glGetIntegerv(GL_TEXTURE_BINDING_2D, &state->last_texture);
-  glGetIntegerv(GL_ACTIVE_TEXTURE, &state->last_texture_unit);
-
   /* Compute cache IDs. */
   GpuShaderDesc shaderDesc;
   shaderDesc.setLanguage(GPU_LANGUAGE_GLSL_1_3);
@@ -653,19 +646,13 @@ bool OCIOImpl::setupGLSLDraw(OCIO_GLSLDrawState **state_r,
 
     return true;
   }
-  else {
-    glActiveTexture(state->last_texture_unit);
-    glBindTexture(GL_TEXTURE_2D, state->last_texture);
 
-    return false;
-  }
+  return false;
 }
 
 void OCIOImpl::finishGLSLDraw(OCIO_GLSLDrawState *state)
 {
-  /* TODO(fclem) Remove thoses state changes. */
-  glActiveTexture(state->last_texture_unit);
-  glBindTexture(GL_TEXTURE_2D, state->last_texture);
+  (void)state;
   immUnbindProgram();
 }
 
