@@ -914,14 +914,14 @@ static void rna_def_gpencil_stroke_point(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Select", "Point is selected for viewport editing");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
-  /* Mix color. */
+  /* Vertex color. */
   prop = RNA_def_property(srna, "vertex_color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_float_sdna(prop, NULL, "vert_color");
   RNA_def_property_array(prop, 4);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
-      prop, "Mix Color", "Color used to mix with point color to get final color");
+      prop, "Vertex Color", "Color used to mix with point color to get final color");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 }
 
@@ -1170,14 +1170,14 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
   RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_uv_update");
 
-  /* Mix Vertex Color for Fill. */
+  /* Vertex Color for Fill. */
   prop = RNA_def_property(srna, "vertex_color_fill", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_float_sdna(prop, NULL, "vert_color_fill");
   RNA_def_property_array(prop, 4);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
-      prop, "Mix Fill Color", "Color used to mix with fill color to get final color");
+      prop, "Vertex Fill Color", "Color used to mix with fill color to get final color");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 }
 
