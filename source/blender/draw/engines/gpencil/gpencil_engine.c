@@ -934,7 +934,7 @@ void GPENCIL_draw_scene(void *ved)
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
 
   /* Fade 3D objects. */
-  if (pd->fade_3d_object_opacity > -1.0f) {
+  if ((!pd->is_render) && (pd->fade_3d_object_opacity > -1.0f)) {
     mul_v4_fl(clear_cols[1], pd->fade_3d_object_opacity);
   }
 
