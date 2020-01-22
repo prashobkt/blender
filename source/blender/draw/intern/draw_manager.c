@@ -1154,39 +1154,6 @@ static void drw_engines_cache_finish(void)
   MEM_freeN(DST.vedata_array);
 }
 
-static bool drw_engines_draw_background(void)
-{
-  for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
-    DrawEngineType *engine = link->data;
-    ViewportEngineData *data = drw_viewport_engine_data_ensure(engine);
-
-    if (engine->draw_background) {
-      PROFILE_START(stime);
-
-      DRW_stats_group_start(engine->idname);
-      engine->draw_background(data);
-      DRW_stats_group_end();
-
-      PROFILE_END_UPDATE(data->background_time, stime);
-      return true;
-    }
-  }
-
-  /* No draw engines draw the background. We clear the background.
-   * We draw the background after drawing of the scene so the camera background
-   * images can be drawn using ALPHA Under. Otherwise the background always
-   * interfered with the alpha blending. */
-  DRW_clear_background();
-  return false;
-}
-
-static void drw_draw_background_alpha_under(void)
-{
-  /* No draw_background found, doing default background */
-  const bool do_alpha_checker = !DRW_state_draw_background();
-  DRW_draw_background(do_alpha_checker);
-}
-
 static void drw_engines_draw_scene(void)
 {
   for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
@@ -1574,9 +1541,8 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   DRW_hair_update();
 
-  const bool background_drawn = drw_engines_draw_background();
-
   GPU_framebuffer_bind(DST.default_framebuffer);
+  GPU_framebuffer_clear_depth_stencil(DST.default_framebuffer, 1.0f, 0x0);
 
   DRW_draw_callbacks_pre_scene();
   if (DST.draw_ctx.evil_C) {
@@ -1584,10 +1550,6 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   }
 
   drw_engines_draw_scene();
-
-  if (!background_drawn) {
-    drw_draw_background_alpha_under();
-  }
 
   drw_debug_draw();
 

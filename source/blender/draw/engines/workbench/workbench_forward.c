@@ -366,8 +366,7 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
 
   const float *viewport_size = DRW_viewport_size_get();
   const int size[2] = {(int)viewport_size[0], (int)viewport_size[1]};
-  const eGPUTextureFormat comp_tex_format = DRW_state_is_image_render() ? GPU_RGBA16F :
-                                                                          GPU_R11F_G11F_B10F;
+  const eGPUTextureFormat comp_tex_format = GPU_RGBA16F;
 
   e_data.object_id_tx = DRW_texture_pool_query_2d(
       size[0], size[1], GPU_R32UI, &draw_engine_workbench_transparent);
@@ -780,16 +779,6 @@ void workbench_forward_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 
 void workbench_forward_cache_finish(WORKBENCH_Data *UNUSED(vedata))
 {
-}
-
-void workbench_forward_draw_background(WORKBENCH_Data *UNUSED(vedata))
-{
-  const float clear_depth = 1.0f;
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
-  DRW_stats_group_start("Clear depth");
-  GPU_framebuffer_bind(dfbl->default_fb);
-  GPU_framebuffer_clear_depth_stencil(dfbl->default_fb, clear_depth, 0xFF);
-  DRW_stats_group_end();
 }
 
 void workbench_forward_draw_scene(WORKBENCH_Data *vedata)

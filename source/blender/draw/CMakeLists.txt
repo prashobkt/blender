@@ -121,6 +121,7 @@ set(SRC
   engines/select/select_engine.c
   engines/overlay/overlay_antialiasing.c
   engines/overlay/overlay_armature.c
+  engines/overlay/overlay_background.c
   engines/overlay/overlay_edit_curve.c
   engines/overlay/overlay_edit_mesh.c
   engines/overlay/overlay_edit_text.c
@@ -325,6 +326,7 @@ data_to_c_simple(engines/overlay/shaders/armature_stick_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_stick_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_wire_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_wire_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/background_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/depth_only_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_curve_handle_geom.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_curve_handle_vert.glsl SRC)

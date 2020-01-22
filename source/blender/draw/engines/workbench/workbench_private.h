@@ -453,7 +453,6 @@ BLI_INLINE bool workbench_background_dither_factor(const WORKBENCH_PrivateData *
 /* workbench_deferred.c */
 void workbench_deferred_engine_init(WORKBENCH_Data *vedata);
 void workbench_deferred_engine_free(void);
-void workbench_deferred_draw_background(WORKBENCH_Data *vedata);
 void workbench_deferred_draw_scene(WORKBENCH_Data *vedata);
 void workbench_deferred_draw_finish(WORKBENCH_Data *vedata);
 void workbench_deferred_cache_init(WORKBENCH_Data *vedata);
@@ -463,7 +462,6 @@ void workbench_deferred_cache_finish(WORKBENCH_Data *vedata);
 /* workbench_forward.c */
 void workbench_forward_engine_init(WORKBENCH_Data *vedata);
 void workbench_forward_engine_free(void);
-void workbench_forward_draw_background(WORKBENCH_Data *vedata);
 void workbench_forward_draw_scene(WORKBENCH_Data *vedata);
 void workbench_forward_draw_finish(WORKBENCH_Data *vedata);
 void workbench_forward_cache_init(WORKBENCH_Data *vedata);

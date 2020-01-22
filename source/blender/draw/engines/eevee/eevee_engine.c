@@ -182,7 +182,7 @@ static void eevee_cache_finish(void *vedata)
  * the background and the scene pass are visible.
  * Note: we could break it up in two passes using some depth test
  * to reduce the fillrate */
-static void eevee_draw_background(void *vedata)
+static void eevee_draw_scene(void *vedata)
 {
   EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
   EEVEE_StorageList *stl = ((EEVEE_Data *)vedata)->stl;
@@ -454,8 +454,7 @@ DrawEngineType draw_engine_eevee_type = {
     &eevee_cache_init,
     &EEVEE_cache_populate,
     &eevee_cache_finish,
-    &eevee_draw_background,
-    NULL, /* Everything is drawn in the background pass (see comment on function) */
+    &eevee_draw_scene,
     &eevee_view_update,
     &eevee_id_update,
     &eevee_render_to_image,

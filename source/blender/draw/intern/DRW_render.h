@@ -122,7 +122,6 @@ typedef struct DrawEngineType {
   void (*cache_populate)(void *vedata, struct Object *ob);
   void (*cache_finish)(void *vedata);
 
-  void (*draw_background)(void *vedata);
   void (*draw_scene)(void *vedata);
 
   void (*view_update)(void *vedata);

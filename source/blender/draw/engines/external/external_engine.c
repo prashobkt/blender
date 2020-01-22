@@ -275,7 +275,6 @@ static DrawEngineType draw_engine_external_type = {
     &external_cache_init,
     &external_cache_populate,
     &external_cache_finish,
-    NULL,
     &external_draw_scene,
     NULL,
     NULL,

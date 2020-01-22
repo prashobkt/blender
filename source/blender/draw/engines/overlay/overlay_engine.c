@@ -144,6 +144,7 @@ static void OVERLAY_cache_init(void *vedata)
   }
   OVERLAY_antialiasing_cache_init(vedata);
   OVERLAY_armature_cache_init(vedata);
+  OVERLAY_background_cache_init(vedata);
   OVERLAY_extra_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_grid_cache_init(vedata);
@@ -400,6 +401,7 @@ static void OVERLAY_draw_scene(void *vedata)
     GPU_framebuffer_bind(fbl->overlay_default_fb);
   }
 
+  OVERLAY_background_draw(vedata);
   OVERLAY_image_draw(vedata);
   OVERLAY_facing_draw(vedata);
   OVERLAY_extra_blend_draw(vedata);
@@ -503,7 +505,6 @@ DrawEngineType draw_engine_overlay_type = {
     &OVERLAY_cache_init,
     &OVERLAY_cache_populate,
     &OVERLAY_cache_finish,
-    NULL,
     &OVERLAY_draw_scene,
     NULL,
     NULL,

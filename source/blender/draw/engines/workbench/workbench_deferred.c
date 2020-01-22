@@ -481,8 +481,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
     const float *viewport_size = DRW_viewport_size_get();
     const int size[2] = {(int)viewport_size[0], (int)viewport_size[1]};
     const eGPUTextureFormat nor_tex_format = NORMAL_ENCODING_ENABLED() ? GPU_RG16 : GPU_RGBA32F;
-    const eGPUTextureFormat comp_tex_format = DRW_state_is_image_render() ? GPU_RGBA16F :
-                                                                            GPU_R11F_G11F_B10F;
+    const eGPUTextureFormat comp_tex_format = GPU_RGBA16F;
     const eGPUTextureFormat col_tex_format = workbench_color_texture_format(wpd);
     const eGPUTextureFormat id_tex_format = OBJECT_ID_PASS_ENABLED(wpd) ? GPU_R32UI : GPU_R8;
 
@@ -1269,30 +1268,6 @@ void workbench_deferred_cache_finish(WORKBENCH_Data *vedata)
   }
 }
 
-void workbench_deferred_draw_background(WORKBENCH_Data *vedata)
-{
-  WORKBENCH_StorageList *stl = vedata->stl;
-  WORKBENCH_FramebufferList *fbl = vedata->fbl;
-  WORKBENCH_PrivateData *wpd = stl->g_data;
-  const float clear_depth = 1.0f;
-  const float clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  uint clear_stencil = 0x00;
-
-  DRW_stats_group_start("Clear Background");
-
-  if (OBJECT_ID_PASS_ENABLED(wpd)) {
-    /* From all the color buffers, only object id needs to be cleared. */
-    GPU_framebuffer_bind(fbl->id_clear_fb);
-    GPU_framebuffer_clear_color(fbl->id_clear_fb, clear_color);
-  }
-
-  GPU_framebuffer_bind(fbl->prepass_fb);
-  int clear_bits = GPU_DEPTH_BIT;
-  SET_FLAG_FROM_TEST(clear_bits, SHADOW_ENABLED(wpd), GPU_STENCIL_BIT);
-  GPU_framebuffer_clear(fbl->prepass_fb, clear_bits, clear_color, clear_depth, clear_stencil);
-  DRW_stats_group_end();
-}
-
 void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
 {
   WORKBENCH_PassList *psl = vedata->psl;
@@ -1306,8 +1281,21 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
     workbench_taa_draw_scene_start(vedata);
   }
 
-  /* clear in background */
+  const float clear_depth = 1.0f;
+  const float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+  uint clear_stencil = 0x00;
+  int clear_bits = GPU_DEPTH_BIT;
+  SET_FLAG_FROM_TEST(clear_bits, SHADOW_ENABLED(wpd), GPU_STENCIL_BIT);
+
+  if (OBJECT_ID_PASS_ENABLED(wpd)) {
+    /* From all the color buffers, only object id needs to be cleared. */
+    GPU_framebuffer_bind(fbl->id_clear_fb);
+    GPU_framebuffer_clear_color(fbl->id_clear_fb, clear_col);
+  }
+
   GPU_framebuffer_bind(fbl->prepass_fb);
+  GPU_framebuffer_clear(fbl->prepass_fb, clear_bits, clear_col, clear_depth, clear_stencil);
+
   DRW_draw_pass(psl->prepass_pass);
   DRW_draw_pass(psl->prepass_hair_pass);
 

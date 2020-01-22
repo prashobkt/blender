@@ -55,6 +55,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *armature_ps[2];
   DRWPass *armature_bone_select_ps;
   DRWPass *armature_transp_ps;
+  DRWPass *background_ps;
   DRWPass *edit_curve_wire_ps[2];
   DRWPass *edit_curve_handle_ps;
   DRWPass *edit_lattice_ps;
@@ -395,6 +396,9 @@ void OVERLAY_armature_in_front_draw(OVERLAY_Data *vedata);
 void OVERLAY_pose_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_pose_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_background_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_background_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_bone_instance_data_set_color_hint(BoneInstanceData *data, const float hint_color[4]);
 void OVERLAY_bone_instance_data_set_color(BoneInstanceData *data, const float bone_color[4]);
 
@@ -525,6 +529,7 @@ GPUShader *OVERLAY_shader_armature_shape_wire(void);
 GPUShader *OVERLAY_shader_armature_sphere(bool use_outline);
 GPUShader *OVERLAY_shader_armature_stick(void);
 GPUShader *OVERLAY_shader_armature_wire(void);
+GPUShader *OVERLAY_shader_background(void);
 GPUShader *OVERLAY_shader_depth_only(void);
 GPUShader *OVERLAY_shader_edit_curve_handle(void);
 GPUShader *OVERLAY_shader_edit_curve_point(void);
