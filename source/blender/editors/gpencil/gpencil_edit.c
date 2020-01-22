@@ -2998,7 +2998,7 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
 
           /* Create new geometry. */
           if ((gps->flag & GP_STROKE_CYCLIC) && (geometry)) {
-            BKE_gpencil_close_stroke(gps);
+            BKE_gpencil_stroke_close(gps);
           }
         }
 
@@ -3737,19 +3737,19 @@ static void gp_smooth_stroke(bContext *C, wmOperator *op)
 
           /* perform smoothing */
           if (smooth_position) {
-            BKE_gpencil_smooth_stroke(gps, i, factor);
+            BKE_gpencil_stroke_smooth(gps, i, factor);
           }
           if (smooth_strength) {
-            BKE_gpencil_smooth_stroke_strength(gps, i, factor);
+            BKE_gpencil_stroke_smooth_strength(gps, i, factor);
           }
           if (smooth_thickness) {
             /* thickness need to repeat process several times */
             for (int r2 = 0; r2 < r * 20; r2++) {
-              BKE_gpencil_smooth_stroke_thickness(gps, i, factor);
+              BKE_gpencil_stroke_smooth_thickness(gps, i, factor);
             }
           }
           if (smooth_uv) {
-            BKE_gpencil_smooth_stroke_uv(gps, i, factor);
+            BKE_gpencil_stroke_smooth_uv(gps, i, factor);
           }
         }
       }
@@ -3958,7 +3958,7 @@ static int gp_stroke_simplify_exec(bContext *C, wmOperator *op)
   GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
     if (gps->flag & GP_STROKE_SELECT) {
       /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      BKE_gpencil_simplify_stroke(gps, factor);
+      BKE_gpencil_stroke_simplify(gps, factor);
     }
   }
   GP_EDITABLE_STROKES_END(gpstroke_iter);
@@ -4007,7 +4007,7 @@ static int gp_stroke_simplify_fixed_exec(bContext *C, wmOperator *op)
   GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
     if (gps->flag & GP_STROKE_SELECT) {
       for (int i = 0; i < steps; i++) {
-        BKE_gpencil_simplify_fixed(gps);
+        BKE_gpencil_stroke_simplify_fixed(gps);
       }
     }
   }
@@ -4057,7 +4057,7 @@ static int gp_stroke_sample_exec(bContext *C, wmOperator *op)
   /* Go through each editable + selected stroke */
   GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
     if (gps->flag & GP_STROKE_SELECT) {
-      BKE_gpencil_sample_stroke(gps, length, true);
+      BKE_gpencil_stroke_sample(gps, length, true);
     }
   }
   GP_EDITABLE_STROKES_END(gpstroke_iter);
@@ -4124,7 +4124,7 @@ static int gp_stroke_trim_exec(bContext *C, wmOperator *UNUSED(op))
           }
 
           if (gps->flag & GP_STROKE_SELECT) {
-            BKE_gpencil_trim_stroke(gps);
+            BKE_gpencil_stroke_trim(gps);
           }
         }
         /* if not multiedit, exit loop*/
@@ -4805,7 +4805,7 @@ static int gp_merge_by_distance_exec(bContext *C, wmOperator *op)
   /* Go through each editable selected stroke */
   GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
     if (gps->flag & GP_STROKE_SELECT) {
-      BKE_gpencil_merge_distance_stroke(gpf_, gps, threshold, unselected);
+      BKE_gpencil_stroke_merge_distance(gpf_, gps, threshold, unselected);
     }
   }
   GP_EDITABLE_STROKES_END(gpstroke_iter);

@@ -96,7 +96,7 @@ void BKE_gpencil_stroke_normal(const bGPDstroke *gps, float r_normal[3])
  * Ramer - Douglas - Peucker algorithm
  * by http ://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm
  */
-void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float epsilon)
+void BKE_gpencil_stroke_simplify(bGPDstroke *gps, float epsilon)
 {
   bGPDspoint *old_points = MEM_dupallocN(gps->points);
   int totpoints = gps->totpoints;
@@ -201,7 +201,7 @@ void BKE_gpencil_simplify_stroke(bGPDstroke *gps, float epsilon)
 }
 
 /* Simplify alternate vertex of stroke except extremes */
-void BKE_gpencil_simplify_fixed(bGPDstroke *gps)
+void BKE_gpencil_stroke_simplify_fixed(bGPDstroke *gps)
 {
   if (gps->totpoints < 5) {
     return;
@@ -672,7 +672,7 @@ GpencilModifierData *BKE_gpencil_modifiers_findByName(Object *ob, const char *na
   return BLI_findstring(&(ob->greasepencil_modifiers), name, offsetof(GpencilModifierData, name));
 }
 
-void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
+void BKE_gpencil_stroke_subdivide(bGPDstroke *gps, int level, int flag)
 {
   bGPDspoint *temp_points;
   MDeformVert *temp_dverts = NULL;

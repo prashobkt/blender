@@ -84,7 +84,7 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  BKE_gpencil_subdivide(gps, mmd->level, mmd->flag);
+  BKE_gpencil_stroke_subdivide(gps, mmd->level, mmd->flag);
 }
 
 static void bakeModifier(struct Main *UNUSED(bmain),

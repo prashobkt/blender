@@ -311,16 +311,16 @@ static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
 
   /* perform smoothing */
   if (gso->brush->gpencil_settings->sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_POSITION) {
-    BKE_gpencil_smooth_stroke(gps, pt_index, inf);
+    BKE_gpencil_stroke_smooth(gps, pt_index, inf);
   }
   if (gso->brush->gpencil_settings->sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
-    BKE_gpencil_smooth_stroke_strength(gps, pt_index, inf);
+    BKE_gpencil_stroke_smooth_strength(gps, pt_index, inf);
   }
   if (gso->brush->gpencil_settings->sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
-    BKE_gpencil_smooth_stroke_thickness(gps, pt_index, inf);
+    BKE_gpencil_stroke_smooth_thickness(gps, pt_index, inf);
   }
   if (gso->brush->gpencil_settings->sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_UV) {
-    BKE_gpencil_smooth_stroke_uv(gps, pt_index, inf);
+    BKE_gpencil_stroke_smooth_uv(gps, pt_index, inf);
   }
 
   gp_recalc_geometry(gps);
@@ -402,7 +402,7 @@ static bool gp_brush_strength_apply(tGP_BrushEditData *gso,
     pt->strength += inf;
   }
   /* smooth the strength */
-  BKE_gpencil_smooth_stroke_strength(gps, pt_index, inf);
+  BKE_gpencil_stroke_smooth_strength(gps, pt_index, inf);
 
   /* Strength should stay within [0.0, 1.0] */
   CLAMP(pt->strength, 0.0f, 1.0f);

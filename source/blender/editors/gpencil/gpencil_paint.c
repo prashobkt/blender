@@ -1126,8 +1126,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       float reduce = 0.0f;
       for (int r = 0; r < brush->gpencil_settings->draw_smoothlvl; r++) {
         for (i = 0; i < gps->totpoints - 1; i++) {
-          BKE_gpencil_smooth_stroke(gps, i, brush->gpencil_settings->draw_smoothfac - reduce);
-          BKE_gpencil_smooth_stroke_strength(gps, i, brush->gpencil_settings->draw_smoothfac);
+          BKE_gpencil_stroke_smooth(gps, i, brush->gpencil_settings->draw_smoothfac - reduce);
+          BKE_gpencil_stroke_smooth_strength(gps, i, brush->gpencil_settings->draw_smoothfac);
         }
         reduce += 0.25f; /* reduce the factor */
       }
@@ -1136,7 +1136,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     /* Simplify adaptive */
     if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_SETTINGS) &&
         (brush->gpencil_settings->simplify_f > 0.0f)) {
-      BKE_gpencil_simplify_stroke(gps, brush->gpencil_settings->simplify_f);
+      BKE_gpencil_stroke_simplify(gps, brush->gpencil_settings->simplify_f);
     }
 
     /* reproject to plane (only in 3d space) */
@@ -1189,7 +1189,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   /* post process stroke */
   if ((p->brush->gpencil_settings->flag & GP_BRUSH_GROUP_SETTINGS) &&
       p->brush->gpencil_settings->flag & GP_BRUSH_TRIM_STROKE) {
-    BKE_gpencil_trim_stroke(gps);
+    BKE_gpencil_stroke_trim(gps);
   }
 
   /* Calc geometry data. */

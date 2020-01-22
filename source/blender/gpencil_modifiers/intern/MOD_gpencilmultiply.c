@@ -88,7 +88,7 @@ static void splitStroke(bGPDframe *gpf, bGPDstroke *gps, float split_angle)
   for (i = 1; i < new_gps->totpoints - 1; i++) {
     angle = angle_v3v3v3(&pt[i - 1].x, &pt[i].x, &pt[i + 1].x);
     if (angle < split_angle) {
-      if (BKE_gpencil_split_stroke(gpf, new_gps, i, &new_gps)) {
+      if (BKE_gpencil_stroke_split(gpf, new_gps, i, &new_gps)) {
         pt = new_gps->points;
         i = 0;
         continue; /* then i == 1 again */

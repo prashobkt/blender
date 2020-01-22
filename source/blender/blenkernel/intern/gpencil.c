@@ -1692,7 +1692,7 @@ static int stroke_march_count(const bGPDstroke *gps, const float dist)
  * \param gps: Stroke to sample
  * \param dist: Distance of one segment
  */
-bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool select)
+bool BKE_gpencil_stroke_sample(bGPDstroke *gps, const float dist, const bool select)
 {
   bGPDspoint *pt = gps->points;
   bGPDspoint *pt1 = NULL;
@@ -1801,7 +1801,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
  * \param dist: Distance of one segment
  * \param tip_length: Ignore tip jittering, set zero to use default value.
  */
-bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, const float dist, const float tip_length)
+bool BKE_gpencil_stroke_stretch(bGPDstroke *gps, const float dist, const float tip_length)
 {
   bGPDspoint *pt = gps->points, *last_pt, *second_last, *next_pt;
   int i;
@@ -1852,7 +1852,7 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, const float dist, const float t
  * \param index_from: the index of the first point to be used in the trimmed result
  * \param index_to: the index of the last point to be used in the trimmed result
  */
-bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, const int index_from, const int index_to)
+bool BKE_gpencil_stroke_trim_points(bGPDstroke *gps, const int index_from, const int index_to)
 {
   bGPDspoint *pt = gps->points, *new_pt;
   MDeformVert *dv, *new_dv;
@@ -1902,7 +1902,7 @@ bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, const int index_from, const
   return true;
 }
 
-bool BKE_gpencil_split_stroke(bGPDframe *gpf,
+bool BKE_gpencil_stroke_split(bGPDframe *gpf,
                               bGPDstroke *gps,
                               const int before_index,
                               bGPDstroke **remaining_gps)
@@ -1950,7 +1950,7 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
   /* Trim the original stroke into a shorter one.
    * Keep the end point. */
 
-  BKE_gpencil_trim_stroke_points(gps, 0, old_count);
+  BKE_gpencil_stroke_trim_points(gps, 0, old_count);
   BKE_gpencil_stroke_geometry_update(gps);
   return true;
 }
@@ -1960,7 +1960,7 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
  * \param gps: Stroke to shrink
  * \param dist: delta length
  */
-bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, const float dist)
+bool BKE_gpencil_stroke_shrink(bGPDstroke *gps, const float dist)
 {
   bGPDspoint *pt = gps->points, *second_last;
   int i;
@@ -2004,7 +2004,7 @@ bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, const float dist)
     index_start = index_end = 0; /* no length left to cut */
   }
 
-  BKE_gpencil_trim_stroke_points(gps, index_start, index_end);
+  BKE_gpencil_stroke_trim_points(gps, index_start, index_end);
 
   if (gps->totpoints == 0) {
     return false;
@@ -2032,7 +2032,7 @@ bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, const float dist)
  * \param i: Point index
  * \param inf: Amount of smoothing to apply
  */
-bool BKE_gpencil_smooth_stroke(bGPDstroke *gps, int i, float inf)
+bool BKE_gpencil_stroke_smooth(bGPDstroke *gps, int i, float inf)
 {
   bGPDspoint *pt = &gps->points[i];
   float sco[3] = {0.0f};
@@ -2091,7 +2091,7 @@ bool BKE_gpencil_smooth_stroke(bGPDstroke *gps, int i, float inf)
 
 /**
  * Apply smooth for strength to stroke point */
-bool BKE_gpencil_smooth_stroke_strength(bGPDstroke *gps, int point_index, float influence)
+bool BKE_gpencil_stroke_smooth_strength(bGPDstroke *gps, int point_index, float influence)
 {
   bGPDspoint *ptb = &gps->points[point_index];
 
@@ -2151,7 +2151,7 @@ bool BKE_gpencil_smooth_stroke_strength(bGPDstroke *gps, int point_index, float 
 
 /**
  * Apply smooth for thickness to stroke point (use pressure) */
-bool BKE_gpencil_smooth_stroke_thickness(bGPDstroke *gps, int point_index, float influence)
+bool BKE_gpencil_stroke_smooth_thickness(bGPDstroke *gps, int point_index, float influence)
 {
   bGPDspoint *ptb = &gps->points[point_index];
 
@@ -2211,7 +2211,7 @@ bool BKE_gpencil_smooth_stroke_thickness(bGPDstroke *gps, int point_index, float
 /**
  * Apply smooth for UV rotation to stroke point (use pressure).
  */
-bool BKE_gpencil_smooth_stroke_uv(bGPDstroke *gps, int point_index, float influence)
+bool BKE_gpencil_stroke_smooth_uv(bGPDstroke *gps, int point_index, float influence)
 {
   bGPDspoint *ptb = &gps->points[point_index];
 
@@ -2839,7 +2839,7 @@ float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
  * Trim stroke to the first intersection or loop
  * \param gps: Stroke data
  */
-bool BKE_gpencil_trim_stroke(bGPDstroke *gps)
+bool BKE_gpencil_stroke_trim(bGPDstroke *gps)
 {
   if (gps->totpoints < 4) {
     return false;
@@ -2935,7 +2935,7 @@ bool BKE_gpencil_trim_stroke(bGPDstroke *gps)
  * Close stroke
  * \param gps: Stroke to close
  */
-bool BKE_gpencil_close_stroke(bGPDstroke *gps)
+bool BKE_gpencil_stroke_close(bGPDstroke *gps)
 {
   bGPDspoint *pt1 = NULL;
   bGPDspoint *pt2 = NULL;
@@ -3109,7 +3109,7 @@ void BKE_gpencil_dissolve_points(bGPDframe *gpf, bGPDstroke *gps, const short ta
  * \param threshold: Distance between points
  * \param use_unselected: Set to true to analyze all stroke and not only selected points
  */
-void BKE_gpencil_merge_distance_stroke(bGPDframe *gpf,
+void BKE_gpencil_stroke_merge_distance(bGPDframe *gpf,
                                        bGPDstroke *gps,
                                        const float threshold,
                                        const bool use_unselected)
@@ -3512,7 +3512,7 @@ static void gpencil_convert_spline(Main *bmain,
   }
   /* Cyclic curve, close stroke. */
   if ((cyclic) && (!do_stroke)) {
-    BKE_gpencil_close_stroke(gps);
+    BKE_gpencil_stroke_close(gps);
   }
 
   /* Recalc fill geometry. */

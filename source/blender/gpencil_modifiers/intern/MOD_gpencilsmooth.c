@@ -98,19 +98,19 @@ static void deformStroke(GpencilModifierData *md,
         const float val = mmd->factor * weight;
         /* perform smoothing */
         if (mmd->flag & GP_SMOOTH_MOD_LOCATION) {
-          BKE_gpencil_smooth_stroke(gps, i, val);
+          BKE_gpencil_stroke_smooth(gps, i, val);
         }
         if (mmd->flag & GP_SMOOTH_MOD_STRENGTH) {
-          BKE_gpencil_smooth_stroke_strength(gps, i, val);
+          BKE_gpencil_stroke_smooth_strength(gps, i, val);
         }
         if ((mmd->flag & GP_SMOOTH_MOD_THICKNESS) && (val > 0.0f)) {
           /* thickness need to repeat process several times */
           for (int r2 = 0; r2 < r * 10; r2++) {
-            BKE_gpencil_smooth_stroke_thickness(gps, i, val);
+            BKE_gpencil_stroke_smooth_thickness(gps, i, val);
           }
         }
         if (mmd->flag & GP_SMOOTH_MOD_UV) {
-          BKE_gpencil_smooth_stroke_uv(gps, i, val);
+          BKE_gpencil_stroke_smooth_uv(gps, i, val);
         }
       }
     }

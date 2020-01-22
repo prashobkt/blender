@@ -699,7 +699,7 @@ static void rna_GPencil_stroke_close(ID *id,
     return;
   }
 
-  BKE_gpencil_close_stroke(stroke);
+  BKE_gpencil_stroke_close(stroke);
 
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);

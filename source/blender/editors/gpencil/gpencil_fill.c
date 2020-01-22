@@ -1174,7 +1174,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   float smoothfac = 1.0f;
   for (int r = 0; r < 1; r++) {
     for (int i = 0; i < gps->totpoints; i++) {
-      BKE_gpencil_smooth_stroke(gps, i, smoothfac - reduce);
+      BKE_gpencil_stroke_smooth(gps, i, smoothfac - reduce);
     }
     reduce += 0.25f;  // reduce the factor
   }
@@ -1202,7 +1202,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 
   /* simplify stroke */
   for (int b = 0; b < tgpf->fill_simplylvl; b++) {
-    BKE_gpencil_simplify_fixed(gps);
+    BKE_gpencil_stroke_simplify_fixed(gps);
   }
 
   /* Calc geometry data. */

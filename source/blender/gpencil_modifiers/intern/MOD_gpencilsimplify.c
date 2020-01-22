@@ -84,21 +84,21 @@ static void deformStroke(GpencilModifierData *md,
   switch (mmd->mode) {
     case GP_SIMPLIFY_FIXED: {
       for (int i = 0; i < mmd->step; i++) {
-        BKE_gpencil_simplify_fixed(gps);
+        BKE_gpencil_stroke_simplify_fixed(gps);
       }
       break;
     }
     case GP_SIMPLIFY_ADAPTIVE: {
       /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      BKE_gpencil_simplify_stroke(gps, mmd->factor);
+      BKE_gpencil_stroke_simplify(gps, mmd->factor);
       break;
     }
     case GP_SIMPLIFY_SAMPLE: {
-      BKE_gpencil_sample_stroke(gps, mmd->length, false);
+      BKE_gpencil_stroke_sample(gps, mmd->length, false);
       break;
     }
     case GP_SIMPLIFY_MERGE: {
-      BKE_gpencil_merge_distance_stroke(gpf, gps, mmd->distance, true);
+      BKE_gpencil_stroke_merge_distance(gpf, gps, mmd->distance, true);
       break;
     }
     default:

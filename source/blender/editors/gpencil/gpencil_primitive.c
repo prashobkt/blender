@@ -1326,7 +1326,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
 
   /* Close stroke with geometry */
   if ((tgpi->type == GP_STROKE_BOX) || (tgpi->type == GP_STROKE_CIRCLE)) {
-    BKE_gpencil_close_stroke(gps);
+    BKE_gpencil_stroke_close(gps);
   }
 
   DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_COPY_ON_WRITE);
