@@ -124,8 +124,12 @@ void GPENCIL_engine_init(void *ved)
     stl->pd->v3d_color_type = (v3d->shading.type == OB_SOLID) ? v3d->shading.color_type : -1;
     copy_v3_v3(stl->pd->v3d_single_color, v3d->shading.single_color);
   }
+  else if (stl->pd->is_render) {
+    use_scene_lights = true;
+    use_scene_world = true;
+  }
 
-  stl->pd->use_lighting = (v3d && v3d->shading.type > OB_SOLID);
+  stl->pd->use_lighting = (v3d && v3d->shading.type > OB_SOLID) || stl->pd->is_render;
   stl->pd->use_lights = use_scene_lights;
 
   if (txl->render_depth_tx != NULL) {
