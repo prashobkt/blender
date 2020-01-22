@@ -1570,7 +1570,7 @@ static int gp_stroke_lock_color_exec(bContext *C, wmOperator *UNUSED(op))
   /* loop all selected strokes and unlock any color */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       for (bGPDstroke *gps = gpl->actframe->strokes.last; gps; gps = gps->prev) {
         /* only if selected */
         if (gps->flag & GP_STROKE_SELECT) {
@@ -2716,7 +2716,7 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
   /* loop all selected strokes and unlock any color used in active layer */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL) &&
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL) &&
         (gpl->flag & GP_LAYER_ACTIVE)) {
       for (bGPDstroke *gps = gpl->actframe->strokes.last; gps; gps = gps->prev) {
         /* skip strokes that are invalid for current view */

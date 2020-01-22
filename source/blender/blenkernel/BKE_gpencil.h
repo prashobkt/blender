@@ -160,7 +160,7 @@ struct bGPDstroke *BKE_gpencil_add_stroke_existing_style(struct bGPDframe *gpf,
 #define GPENCIL_STRENGTH_MIN 0.003f
 #define GP_VERTEX_MASK_ATTENUATE 0.3f
 
-bool gpencil_layer_is_editable(const struct bGPDlayer *gpl);
+bool BKE_gpencil_layer_is_editable(const struct bGPDlayer *gpl);
 
 /* How gpencil_layer_getframe() should behave when there
  * is no existing GP-Frame on the frame requested.

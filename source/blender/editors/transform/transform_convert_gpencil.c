@@ -111,7 +111,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
    */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf;
       bGPDstroke *gps;
       bGPDframe *init_gpf = gpl->actframe;
@@ -183,7 +183,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
   /* Second Pass: Build transdata array */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       const int cfra = (gpl->flag & GP_LAYER_FRAMELOCK) ? gpl->actframe->framenum : cfra_scene;
       bGPDframe *gpf = gpl->actframe;
       bGPDstroke *gps;

@@ -1423,7 +1423,7 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
     /* no active layer - let's just create one */
     gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true);
   }
-  else if ((gpencil_layer_is_editable(gpl) == false) && (type == GP_COPY_TO_ACTIVE)) {
+  else if ((BKE_gpencil_layer_is_editable(gpl) == false) && (type == GP_COPY_TO_ACTIVE)) {
     BKE_report(
         op->reports, RPT_ERROR, "Can not paste strokes when active layer is hidden or locked");
     return OPERATOR_CANCELLED;
@@ -2641,7 +2641,7 @@ static int gp_snap_to_grid(bContext *C, wmOperator *UNUSED(op))
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
       float diff_mat[4][4];
 
@@ -2718,7 +2718,7 @@ static int gp_snap_to_cursor(bContext *C, wmOperator *op)
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
       float diff_mat[4][4];
 
@@ -2816,7 +2816,7 @@ static int gp_snap_cursor_to_sel(bContext *C, wmOperator *UNUSED(op))
   /* calculate midpoints from selected points */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
       float diff_mat[4][4];
 

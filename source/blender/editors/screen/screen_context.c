@@ -609,7 +609,7 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
       bGPDlayer *gpl;
 
       for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-        if (gpencil_layer_is_editable(gpl)) {
+        if (BKE_gpencil_layer_is_editable(gpl)) {
           CTX_data_list_add(result, &gpd->id, &RNA_GPencilLayer, gpl);
         }
       }
@@ -625,7 +625,7 @@ int ed_screen_context(const bContext *C, const char *member, bContextDataResult 
       bGPDlayer *gpl;
 
       for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-        if (gpencil_layer_is_editable(gpl) && (gpl->actframe)) {
+        if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe)) {
           bGPDframe *gpf;
           bGPDstroke *gps;
           bGPDframe *init_gpf = gpl->actframe;

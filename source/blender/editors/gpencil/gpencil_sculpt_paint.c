@@ -1422,7 +1422,7 @@ static void gpsculpt_brush_init_stroke(bContext *C, tGP_BrushEditData *gso)
   /* go through each layer, and ensure that we've got a valid frame to use */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
 
       /* Make a new frame to work on if the layer's frame

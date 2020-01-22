@@ -171,7 +171,7 @@ static bool gp_interpolate_check_todo(bContext *C, bGPdata *gpd)
       continue;
     }
     /* only editable and visible layers are considered */
-    if (!gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
+    if (!BKE_gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
       continue;
     }
 
@@ -233,7 +233,7 @@ static void gp_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
       continue;
     }
     /* only editable and visible layers are considered */
-    if (!gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
+    if (!BKE_gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
       continue;
     }
 
@@ -968,7 +968,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
       continue;
     }
     /* only editable and visible layers are considered */
-    if (!gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
+    if (!BKE_gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
       continue;
     }
 

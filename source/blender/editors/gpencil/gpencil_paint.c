@@ -1607,7 +1607,7 @@ static void gp_stroke_doeraser(tGPsdata *p)
     bGPDframe *gpf = gpl->actframe;
 
     /* only affect layer if it's editable (and visible) */
-    if (gpencil_layer_is_editable(gpl) == false) {
+    if (BKE_gpencil_layer_is_editable(gpl) == false) {
       continue;
     }
     else if (gpf == NULL) {
@@ -2000,7 +2000,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
 
     for (bGPDlayer *gpl = p->gpd->layers.first; gpl; gpl = gpl->next) {
       /* Skip if layer not editable */
-      if (gpencil_layer_is_editable(gpl) == false) {
+      if (BKE_gpencil_layer_is_editable(gpl) == false) {
         continue;
       }
 
@@ -3028,7 +3028,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
     bool has_layer_to_erase = false;
     for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
       /* Skip if layer not editable */
-      if (gpencil_layer_is_editable(gpl)) {
+      if (BKE_gpencil_layer_is_editable(gpl)) {
         if (gpl->actframe && gpl->actframe->strokes.first) {
           has_layer_to_erase = true;
           break;

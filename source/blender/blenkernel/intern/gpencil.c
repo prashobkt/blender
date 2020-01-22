@@ -789,7 +789,7 @@ void BKE_gpencil_frame_delete_laststroke(bGPDlayer *gpl, bGPDframe *gpf)
 /* GP Layer API */
 
 /* Check if the given layer is able to be edited or not */
-bool gpencil_layer_is_editable(const bGPDlayer *gpl)
+bool BKE_gpencil_layer_is_editable(const bGPDlayer *gpl)
 {
   /* Sanity check */
   if (gpl == NULL) {

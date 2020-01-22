@@ -2020,7 +2020,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
 
       for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
         /* only editable and visible layers are considered */
-        if (gpencil_layer_is_editable(gpl)) {
+        if (BKE_gpencil_layer_is_editable(gpl)) {
           for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
             for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
               /* check if it is editable */
