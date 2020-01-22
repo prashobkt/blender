@@ -271,13 +271,14 @@ void DRW_transform_to_display(GPUTexture *tex, bool use_view_transform, bool use
 {
   drw_state_set(DRW_STATE_WRITE_COLOR);
 
-  GPUVertFormat *vert_format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(vert_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uint texco = GPU_vertformat_attr_add(vert_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPUBatch *geom = DRW_cache_fullscreen_quad_get();
 
   const float dither = 1.0f;
 
   bool use_ocio = false;
+
+  GPU_matrix_identity_set();
+  GPU_matrix_identity_projection_set();
 
   /* Should we apply the view transform */
   if (DRW_state_do_color_management()) {
@@ -305,44 +306,26 @@ void DRW_transform_to_display(GPUTexture *tex, bool use_view_transform, bool use
         &view_settings, display_settings, NULL, dither, false);
   }
 
-  if (!use_ocio) {
-    /* View transform is already applied for offscreen, don't apply again, see: T52046 */
-    if (DST.options.is_image_render && !DST.options.is_scene_render) {
-      immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_COLOR);
-      immUniformColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    }
-    else {
-      immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_LINEAR_TO_SRGB);
-    }
-    immUniform1i("image", 0);
-  }
-
-  GPU_texture_bind(tex, 0); /* OCIO texture bind point is 0 */
-
-  float mat[4][4];
-  unit_m4(mat);
-  immUniformMatrix4fv("ModelViewProjectionMatrix", mat);
-
-  /* Full screen triangle */
-  immBegin(GPU_PRIM_TRIS, 3);
-  immAttr2f(texco, 0.0f, 0.0f);
-  immVertex2f(pos, -1.0f, -1.0f);
-
-  immAttr2f(texco, 2.0f, 0.0f);
-  immVertex2f(pos, 3.0f, -1.0f);
-
-  immAttr2f(texco, 0.0f, 2.0f);
-  immVertex2f(pos, -1.0f, 3.0f);
-  immEnd();
-
-  GPU_texture_unbind(tex);
-
   if (use_ocio) {
+    GPU_batch_program_set_imm_shader(geom);
+    /* End IMM session. */
     IMB_colormanagement_finish_glsl_draw();
   }
   else {
-    immUnbindProgram();
+    /* View transform is already applied for offscreen, don't apply again, see: T52046 */
+    if (DST.options.is_image_render && !DST.options.is_scene_render) {
+      GPU_batch_program_set_builtin(geom, GPU_SHADER_2D_IMAGE_COLOR);
+      GPU_batch_uniform_4f(geom, "color", 1.0f, 1.0f, 1.0f, 1.0f);
+    }
+    else {
+      GPU_batch_program_set_builtin(geom, GPU_SHADER_2D_IMAGE_LINEAR_TO_SRGB);
+    }
+    GPU_batch_uniform_1i(geom, "image", 0);
   }
+
+  GPU_texture_bind(tex, 0); /* OCIO texture bind point is 0 */
+  GPU_batch_draw(geom);
+  GPU_texture_unbind(tex);
 }
 
 /* Draw texture to framebuffer without any color transforms */
