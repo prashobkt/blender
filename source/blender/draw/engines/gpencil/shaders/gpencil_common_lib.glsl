@@ -182,11 +182,11 @@ uniform vec2 sizeViewportInv;
 
 /* Per Object */
 uniform bool strokeOrder3d;
-uniform float gpMaterialOffset;
+uniform int gpMaterialOffset;
 uniform float thicknessScale;
 uniform float thicknessWorldScale;
 #define thicknessIsScreenSpace (thicknessWorldScale < 0.0)
-#define MATERIAL(m) materials[m]
+#define MATERIAL(m) materials[m + gpMaterialOffset]
 
 #ifdef GPU_VERTEX_SHADER
 
