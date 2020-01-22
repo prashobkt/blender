@@ -88,7 +88,6 @@ void BKE_gpencil_free_stroke(struct bGPDstroke *gps);
 bool BKE_gpencil_free_strokes(struct bGPDframe *gpf);
 void BKE_gpencil_free_frames(struct bGPDlayer *gpl);
 void BKE_gpencil_free_layers(struct ListBase *list);
-bool BKE_gpencil_free_frame_runtime_data(struct bGPDframe *gpf_eval);
 void BKE_gpencil_free(struct bGPdata *gpd, bool free_all);
 void BKE_gpencil_eval_delete(struct bGPdata *gpd_eval);
 
