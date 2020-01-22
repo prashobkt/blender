@@ -1780,7 +1780,7 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
   /* Find visible strokes, and perform operations on those if hit */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* If no active frame, don't do anything... */
-    if (gpl->actframe == NULL) {
+    if ((!BKE_gpencil_layer_is_editable(gpl)) || (gpl->actframe == NULL)) {
       continue;
     }
 
