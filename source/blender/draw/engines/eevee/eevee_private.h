@@ -1057,6 +1057,7 @@ void EEVEE_renderpasses_postprocess(EEVEE_ViewLayerData *sldata,
                                     EEVEE_Data *vedata,
                                     eScenePassType renderpass_type);
 void EEVEE_renderpasses_draw(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
+void EEVEE_renderpasses_draw_debug(EEVEE_Data *vedata);
 void EEVEE_renderpasses_free(void);
 bool EEVEE_renderpasses_only_first_sample_pass_active(EEVEE_Data *vedata);
 

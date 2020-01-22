@@ -23,6 +23,8 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
+#include "BKE_global.h" /* for G.debug_value */
+
 #include "BLI_string_utils.h"
 
 #include "DEG_depsgraph_query.h"
@@ -275,4 +277,55 @@ void EEVEE_renderpasses_draw(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 void EEVEE_renderpasses_free(void)
 {
   DRW_SHADER_FREE_SAFE(e_data.postprocess_sh);
+}
+
+void EEVEE_renderpasses_draw_debug(EEVEE_Data *vedata)
+{
+  EEVEE_TextureList *txl = vedata->txl;
+  EEVEE_StorageList *stl = vedata->stl;
+  EEVEE_EffectsInfo *effects = stl->effects;
+
+  GPUTexture *tx = NULL;
+  /* Debug : Output buffer to view. */
+  switch (G.debug_value) {
+    case 1:
+      tx = txl->maxzbuffer;
+      break;
+    case 2:
+      tx = effects->ssr_pdf_output;
+      break;
+    case 3:
+      tx = effects->ssr_normal_input;
+      break;
+    case 4:
+      tx = effects->ssr_specrough_input;
+      break;
+    case 5:
+      tx = txl->color_double_buffer;
+      break;
+    case 6:
+      tx = effects->gtao_horizons;
+      break;
+    case 7:
+      tx = effects->gtao_horizons;
+      break;
+    case 8:
+      tx = effects->sss_irradiance;
+      break;
+    case 9:
+      tx = effects->sss_radius;
+      break;
+    case 10:
+      tx = effects->sss_albedo;
+      break;
+    case 11:
+      tx = effects->velocity_tx;
+      break;
+    default:
+      break;
+  }
+
+  if (tx) {
+    DRW_transform_to_display(tx, false, false);
+  }
 }
