@@ -366,6 +366,10 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport)
   dtxl->color = GPU_texture_create_2d(size[0], size[1], GPU_RGBA16F, NULL, NULL);
   dtxl->depth = GPU_texture_create_2d(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
 
+  /* TODO(fclem) make it optional if using imageLoad/Store. */
+  dtxl->color_display_space = GPU_texture_create_2d(
+      size[0], size[1], GPU_R11F_G11F_B10F, NULL, NULL);
+
   if (!dtxl->depth || !dtxl->color) {
     ok = false;
     goto cleanup;
@@ -375,6 +379,13 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport)
                                 {
                                     GPU_ATTACHMENT_TEXTURE(dtxl->depth),
                                     GPU_ATTACHMENT_TEXTURE(dtxl->color),
+                                });
+
+  /* TODO(fclem) make it optional if using imageLoad/Store. */
+  GPU_framebuffer_ensure_config(&dfbl->default_display_fb,
+                                {
+                                    GPU_ATTACHMENT_TEXTURE(dtxl->depth),
+                                    GPU_ATTACHMENT_TEXTURE(dtxl->color_display_space),
                                 });
 
   GPU_framebuffer_ensure_config(&dfbl->depth_only_fb,
@@ -451,7 +462,7 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
 
   DefaultTextureList *dtxl = viewport->txl;
 
-  GPUTexture *color = dtxl->color;
+  GPUTexture *color = dtxl->color_display_space;
 
   const float w = (float)GPU_texture_width(color);
   const float h = (float)GPU_texture_height(color);

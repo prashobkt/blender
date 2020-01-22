@@ -173,7 +173,7 @@ void DRW_globals_update(void)
   invert_v2(gb->sizeViewportInv);
 
   /* Color management. */
-  if (!DRW_state_do_color_management()) {
+  {
     float *color = gb->UBO_FIRST_COLOR;
     do {
       /* TODO more accurate transform. */

@@ -438,7 +438,7 @@ BLI_INLINE eGPUTextureFormat workbench_color_texture_format(const WORKBENCH_Priv
     result = GPU_RGBA16;
   }
   else {
-    result = GPU_RGBA8;
+    result = GPU_RGBA16;
   }
   return result;
 }

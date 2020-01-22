@@ -335,14 +335,9 @@ static void eevee_draw_background(void *vedata)
   }
 
   if ((stl->g_data->render_passes & SCE_PASS_COMBINED) > 0) {
-    /* Tonemapping and transfer result to default framebuffer. */
-    bool use_render_settings = stl->g_data->use_color_render_settings;
-
+    /* Transfer result to default framebuffer. */
     GPU_framebuffer_bind(dfbl->default_fb);
-    DRW_transform_to_display(stl->effects->final_tx, true, use_render_settings);
-
-    /* Draw checkerboard with alpha under. */
-    EEVEE_draw_alpha_checker(vedata);
+    DRW_transform_none(stl->effects->final_tx);
   }
   else {
     EEVEE_renderpasses_draw(sldata, vedata);

@@ -1591,6 +1591,13 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   drw_debug_draw();
 
+  {
+    DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+    DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+    GPU_framebuffer_bind(dfbl->default_display_fb);
+    DRW_transform_to_display(dtxl->color, true, true);
+  }
+
   /* Fix 3D view being "laggy" on macos and win+nvidia. (See T56996, T61474) */
   GPU_flush();
 
