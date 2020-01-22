@@ -635,7 +635,18 @@ bool OCIOImpl::setupGLSLDraw(OCIO_GLSLDrawState **state_r,
     /* Bind UBO. */
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, shader_curvemap->buffer);
 
+    /* IMM needs vertex format even if we don't draw with it.
+     *
+     * NOTE: The only reason why it's here is because of Cycles viewport.
+     * All other areas are managing their own vertex formats.
+     * Doing it here is probably harmless, but kind of stupid.
+     *
+     * TODO(sergey): Look into some nicer solution.
+     */
     /* TODO(fclem) remove remains of IMM. */
+    GPUVertFormat *format = immVertexFormat();
+    GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindProgram(shader->program, shader->interface);
 
     /* Bind Shader and set uniforms. */
