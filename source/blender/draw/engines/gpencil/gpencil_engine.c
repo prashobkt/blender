@@ -640,8 +640,12 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     iter.tex_fill = txl->dummy_texture;
     iter.tex_stroke = txl->dummy_texture;
 
+    /* Specil case for rendering onion skin. */
+    bGPdata *gpd = (bGPdata *)ob->data;
+    bool do_onion = (!pd->is_render) ? pd->do_onion : (gpd->onion_flag & GP_ONION_GHOST_ALWAYS);
+
     BKE_gpencil_visible_stroke_iter(
-        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, pd->do_onion, pd->cfra);
+        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, do_onion, pd->cfra);
 
     gp_drawcall_flush(&iter);
 
