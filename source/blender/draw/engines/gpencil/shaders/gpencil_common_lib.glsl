@@ -255,7 +255,7 @@ vec2 safe_normalize(vec2 v)
     return v / sqrt(len_sqr);
   }
   else {
-    return vec2(0.0);
+    return vec2(1.0, 0.0);
   }
 }
 
@@ -266,7 +266,7 @@ vec2 safe_normalize_len(vec2 v, out float len)
     return v / len;
   }
   else {
-    return vec2(0.0);
+    return vec2(1.0, 0.0);
   }
 }
 
@@ -327,6 +327,12 @@ void stroke_vertex()
     is_squares = !GP_FLAG_TEST(MATERIAL(m).flag, GP_STROKE_DOTS);
   }
 #  endif
+
+  /* Special Case. Stroke with single vert are rendered as dots. Do not discard them. */
+  if (!is_dot && ma.x == -1.0 && ma2.x == -1.0) {
+    is_dot = true;
+    is_squares = false;
+  }
 
   /* Enpoints, we discard the vertices. */
   if (ma1.x == -1.0 || (!is_dot && ma2.x == -1.0)) {
