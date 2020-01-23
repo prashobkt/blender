@@ -383,15 +383,16 @@ void stroke_vertex()
     if (alignement == GP_STROKE_ALIGNMENT_STROKE) {
       x_axis = (ma2.x == -1.0) ? line_adj : line;
     }
-    else if (alignement == GP_STROKE_ALIGNMENT_OBJECT) {
+    else if (alignement == GP_STROKE_ALIGNMENT_FIXED) {
+      /* Default for no-material drawing. */
+      x_axis = vec2(1.0, 0.0);
+    }
+    else
+#  endif
+    { /* GP_STROKE_ALIGNMENT_OBJECT */
       vec4 ndc_x = point_world_to_ndc(wpos1 + model_mat[0].xyz);
       vec2 ss_x = project_to_screenspace(ndc_x);
       x_axis = safe_normalize(ss_x - ss1);
-    }
-    else /* GP_STROKE_ALIGNMENT_FIXED*/
-#  endif
-    {
-      x_axis = vec2(1.0, 0.0);
     }
 
     /* Rotation: Encoded as Cos + Sin sign. */
