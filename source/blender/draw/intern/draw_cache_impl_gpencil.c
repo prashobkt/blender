@@ -538,6 +538,8 @@ static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_
       bGPDspoint *pt = &gps->points[i];
       copy_v4_v4(pt->vert_color, gpd->runtime.vert_color);
     }
+    /* Calc uv data along the stroke. */
+    BKE_gpencil_stroke_uv_update(gps);
 
     /* Create VBO. */
     GPUVertFormat *format = gpencil_stroke_format();
