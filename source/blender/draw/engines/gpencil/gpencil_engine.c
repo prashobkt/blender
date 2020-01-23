@@ -464,7 +464,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
 
   bool overide_vertcol = (iter->pd->v3d_color_type != -1);
   bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
-                          GPENCIL_VERTEX_MODE(gpd);
+                          GPENCIL_VERTEX_MODE(gpd) || iter->pd->is_render;
   float vert_col_opacity = (overide_vertcol) ? (is_vert_col_mode ? 1.0f : 0.0f) :
                                                gpl->vertex_paint_opacity;
 
