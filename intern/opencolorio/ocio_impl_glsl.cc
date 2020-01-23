@@ -598,7 +598,9 @@ bool OCIOImpl::setupGLSLDraw(OCIO_GLSLDrawState **state_r,
 
   OCIO_GLSLCacheHandle *shader_handle = cacheSearch(state->shader_cache, shader_cache_id);
   OCIO_GLSLCacheHandle *lut3d_handle = cacheSearch(state->lut3d_cache, lut3d_cache_id);
-  OCIO_GLSLCacheHandle *curvemap_handle = cacheSearch(state->curvemap_cache, curvemap_cache_id);
+  /* We cannot keep more than one cache for curvemap because their cache id is a pointer.
+   * The pointer cannot be the same for one update but can be the same after a second update. */
+  OCIO_GLSLCacheHandle *curvemap_handle = &state->curvemap_cache[0];
 
   OCIO_GLSLShader **shader_ptr = (OCIO_GLSLShader **)&shader_handle->data;
   OCIO_GLSLLut3d **lut3d_ptr = (OCIO_GLSLLut3d **)&lut3d_handle->data;
