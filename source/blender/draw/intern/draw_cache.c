@@ -826,25 +826,11 @@ GPUBatch *DRW_cache_object_surface_get(Object *ob)
 
 GPUBatch **DRW_cache_object_surface_material_get(struct Object *ob,
                                                  struct GPUMaterial **gpumat_array,
-                                                 uint gpumat_array_len,
-                                                 char **auto_layer_names,
-                                                 int **auto_layer_is_srgb,
-                                                 int *auto_layer_count)
+                                                 uint gpumat_array_len)
 {
-  if (auto_layer_names != NULL) {
-    *auto_layer_names = NULL;
-    *auto_layer_is_srgb = NULL;
-    *auto_layer_count = 0;
-  }
-
   switch (ob->type) {
     case OB_MESH:
-      return DRW_cache_mesh_surface_shaded_get(ob,
-                                               gpumat_array,
-                                               gpumat_array_len,
-                                               auto_layer_names,
-                                               auto_layer_is_srgb,
-                                               auto_layer_count);
+      return DRW_cache_mesh_surface_shaded_get(ob, gpumat_array, gpumat_array_len);
     case OB_CURVE:
       return DRW_cache_curve_surface_shaded_get(ob, gpumat_array, gpumat_array_len);
     case OB_SURF:
@@ -1222,10 +1208,11 @@ GPUBatch *DRW_cache_field_curve_get(void)
 GPUBatch *DRW_cache_field_tube_limit_get(void)
 {
 #define CIRCLE_RESOL 32
+#define SIDE_STIPPLE 32
   if (!SHC.drw_field_tube_limit) {
     GPUVertFormat format = extra_vert_format();
 
-    int v_len = 2 * (CIRCLE_RESOL * 2 + 4);
+    int v_len = 2 * (CIRCLE_RESOL * 2 + 4 * SIDE_STIPPLE / 2);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
@@ -1233,14 +1220,14 @@ GPUBatch *DRW_cache_field_tube_limit_get(void)
     int flag = VCLASS_EMPTY_SIZE;
     /* Caps */
     for (int i = 0; i < 2; i++) {
-      float z = (float)i * 2.0f - 1.0f;
-      circle_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
+      float z = i * 2.0f - 1.0f;
+      circle_dashed_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
     }
     /* Side Edges */
     for (int a = 0; a < 4; a++) {
-      for (int i = 0; i < 2; i++) {
-        float z = (float)i * 2.0f - 1.0f;
-        float angle = (2.0f * M_PI * a) / 4.0f;
+      float angle = (2.0f * M_PI * a) / 4.0f;
+      for (int i = 0; i < SIDE_STIPPLE; i++) {
+        float z = (i / (float)SIDE_STIPPLE) * 2.0f - 1.0f;
         GPU_vertbuf_vert_set(vbo, v++, &(Vert){{sinf(angle), cosf(angle), z}, flag});
       }
     }
@@ -1248,16 +1235,18 @@ GPUBatch *DRW_cache_field_tube_limit_get(void)
     SHC.drw_field_tube_limit = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_field_tube_limit;
+#undef SIDE_STIPPLE
 #undef CIRCLE_RESOL
 }
 
 GPUBatch *DRW_cache_field_cone_limit_get(void)
 {
 #define CIRCLE_RESOL 32
+#define SIDE_STIPPLE 32
   if (!SHC.drw_field_cone_limit) {
     GPUVertFormat format = extra_vert_format();
 
-    int v_len = 2 * (CIRCLE_RESOL * 2 + 4);
+    int v_len = 2 * (CIRCLE_RESOL * 2 + 4 * SIDE_STIPPLE / 2);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
@@ -1265,14 +1254,14 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
     int flag = VCLASS_EMPTY_SIZE;
     /* Caps */
     for (int i = 0; i < 2; i++) {
-      float z = (float)i * 2.0f - 1.0f;
-      circle_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
+      float z = i * 2.0f - 1.0f;
+      circle_dashed_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
     }
     /* Side Edges */
     for (int a = 0; a < 4; a++) {
-      for (int i = 0; i < 2; i++) {
-        float z = (float)i * 2.0f - 1.0f;
-        float angle = (2.0f * M_PI * a) / 4.0f;
+      float angle = (2.0f * M_PI * a) / 4.0f;
+      for (int i = 0; i < SIDE_STIPPLE; i++) {
+        float z = (i / (float)SIDE_STIPPLE) * 2.0f - 1.0f;
         GPU_vertbuf_vert_set(vbo, v++, &(Vert){{sinf(angle) * z, cosf(angle) * z, z}, flag});
       }
     }
@@ -1280,6 +1269,7 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
     SHC.drw_field_cone_limit = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_field_cone_limit;
+#undef SIDE_STIPPLE
 #undef CIRCLE_RESOL
 }
 
@@ -2733,18 +2723,10 @@ GPUBatch *DRW_cache_mesh_surface_edges_get(Object *ob)
 /* Return list of batches with length equal to max(1, totcol). */
 GPUBatch **DRW_cache_mesh_surface_shaded_get(Object *ob,
                                              struct GPUMaterial **gpumat_array,
-                                             uint gpumat_array_len,
-                                             char **auto_layer_names,
-                                             int **auto_layer_is_srgb,
-                                             int *auto_layer_count)
+                                             uint gpumat_array_len)
 {
   BLI_assert(ob->type == OB_MESH);
-  return DRW_mesh_batch_cache_get_surface_shaded(ob->data,
-                                                 gpumat_array,
-                                                 gpumat_array_len,
-                                                 auto_layer_names,
-                                                 auto_layer_is_srgb,
-                                                 auto_layer_count);
+  return DRW_mesh_batch_cache_get_surface_shaded(ob->data, gpumat_array, gpumat_array_len);
 }
 
 /* Return list of batches with length equal to max(1, totcol). */
@@ -2895,8 +2877,7 @@ GPUBatch **DRW_cache_curve_surface_shaded_get(Object *ob,
   struct Curve *cu = ob->data;
   struct Mesh *mesh_eval = ob->runtime.mesh_eval;
   if (mesh_eval != NULL) {
-    return DRW_mesh_batch_cache_get_surface_shaded(
-        mesh_eval, gpumat_array, gpumat_array_len, NULL, NULL, NULL);
+    return DRW_mesh_batch_cache_get_surface_shaded(mesh_eval, gpumat_array, gpumat_array_len);
   }
   else {
     return DRW_curve_batch_cache_get_surface_shaded(cu, gpumat_array, gpumat_array_len);
@@ -3036,8 +3017,7 @@ GPUBatch **DRW_cache_text_surface_shaded_get(Object *ob,
     return NULL;
   }
   if (mesh_eval != NULL) {
-    return DRW_mesh_batch_cache_get_surface_shaded(
-        mesh_eval, gpumat_array, gpumat_array_len, NULL, NULL, NULL);
+    return DRW_mesh_batch_cache_get_surface_shaded(mesh_eval, gpumat_array, gpumat_array_len);
   }
   else {
     return DRW_curve_batch_cache_get_surface_shaded(cu, gpumat_array, gpumat_array_len);
@@ -3131,8 +3111,7 @@ GPUBatch **DRW_cache_surf_surface_shaded_get(Object *ob,
   struct Curve *cu = ob->data;
   struct Mesh *mesh_eval = ob->runtime.mesh_eval;
   if (mesh_eval != NULL) {
-    return DRW_mesh_batch_cache_get_surface_shaded(
-        mesh_eval, gpumat_array, gpumat_array_len, NULL, NULL, NULL);
+    return DRW_mesh_batch_cache_get_surface_shaded(mesh_eval, gpumat_array, gpumat_array_len);
   }
   else {
     return DRW_curve_batch_cache_get_surface_shaded(cu, gpumat_array, gpumat_array_len);

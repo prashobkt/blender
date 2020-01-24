@@ -867,7 +867,7 @@ static void rna_PartSettings_start_set(struct PointerRNA *ptr, float value)
 
   /* check for clipping */
   if (value > settings->end) {
-    value = settings->end;
+    settings->end = value;
   }
 
   /*if (settings->type==PART_REACTOR && value < 1.0) */
@@ -886,7 +886,7 @@ static void rna_PartSettings_end_set(struct PointerRNA *ptr, float value)
 
   /* check for clipping */
   if (value < settings->sta) {
-    value = settings->sta;
+    settings->sta = value;
   }
 
   settings->end = value;
@@ -964,7 +964,11 @@ static int rna_PartSettings_is_fluid_get(PointerRNA *ptr)
                PART_FLUID_FOAM,
                PART_FLUID_SPRAY,
                PART_FLUID_BUBBLE,
-               PART_FLUID_TRACER));
+               PART_FLUID_TRACER,
+               PART_FLUID_SPRAYFOAM,
+               PART_FLUID_SPRAYBUBBLE,
+               PART_FLUID_FOAMBUBBLE,
+               PART_FLUID_SPRAYFOAMBUBBLE));
 }
 
 static void rna_ParticleSettings_use_clump_curve_update(Main *bmain, Scene *scene, PointerRNA *ptr)
