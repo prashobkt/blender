@@ -644,7 +644,7 @@ static int gp_frame_duplicate_exec(bContext *C, wmOperator *op)
     BKE_gpencil_frame_addcopy(gpl, CFRA);
   }
   else {
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       if ((gpl->flag & GP_LAYER_LOCKED) == 0) {
         BKE_gpencil_frame_addcopy(gpl, CFRA);
       }
@@ -2531,7 +2531,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
           defgroup_unique_name(vgroup, ob_active);
           BLI_addtail(&ob_active->defbase, vgroup);
           /* update vertex groups in strokes in original data */
-          for (bGPDlayer *gpl_src = gpd->layers.first; gpl_src; gpl_src = gpl_src->next) {
+          LISTBASE_FOREACH (bGPDlayer *, gpl_src, &gpd->layers) {
             LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_src->frames) {
               LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
                 MDeformVert *dvert;
