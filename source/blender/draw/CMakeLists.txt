@@ -56,6 +56,7 @@ set(SRC
   intern/draw_cache_impl_mesh.c
   intern/draw_cache_impl_metaball.c
   intern/draw_cache_impl_particles.c
+  intern/draw_color_management.c
   intern/draw_common.c
   intern/draw_debug.c
   intern/draw_hair.c
@@ -147,6 +148,7 @@ set(SRC
   intern/draw_cache_extract.h
   intern/draw_cache_impl.h
   intern/draw_cache_inline.h
+  intern/draw_color_management.h
   intern/draw_common.h
   intern/draw_debug.h
   intern/draw_hair_private.h

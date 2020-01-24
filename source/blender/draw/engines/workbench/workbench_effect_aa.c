@@ -22,6 +22,8 @@
 
 #include "ED_screen.h"
 
+#include "draw_color_management.h"
+
 #include "workbench_private.h"
 
 void workbench_aa_create_pass(WORKBENCH_Data *vedata, GPUTexture **tx)

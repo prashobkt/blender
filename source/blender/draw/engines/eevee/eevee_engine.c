@@ -22,6 +22,8 @@
 
 #include "DRW_render.h"
 
+#include "draw_color_management.h" /* TODO remove dependency */
+
 #include "BLI_rand.h"
 
 #include "BKE_object.h"
