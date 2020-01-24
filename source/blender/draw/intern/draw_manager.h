@@ -433,10 +433,12 @@ typedef struct DRWDebugSphere {
 
 typedef struct DRWLayerType {
   bool (*poll)(void);
+  bool (*may_skip)(void);
   void (*draw_layer)(void);
 } DRWLayerType;
 
 const extern DRWLayerType DRW_layer_types[];
+const extern int DRW_layer_types_count;
 
 /* ------------- DRAW MANAGER ------------ */
 
@@ -588,9 +590,10 @@ void DRW_layers_draw_combined_cached(void);
 void DRW_layers_free(void);
 
 /* DRWLayer callbacks */
+bool drw_layer_scene_may_skip(void);
 void drw_layer_scene_draw(void);
-bool drw_layer_ui_overlays_poll(void);
-void drw_layer_ui_overlays_draw(void);
+bool drw_layer_editor_overlays_poll(void);
+void drw_layer_editor_overlays_draw(void);
 bool drw_layer_debug_stats_poll(void);
 void drw_layer_debug_stats_draw(void);
 

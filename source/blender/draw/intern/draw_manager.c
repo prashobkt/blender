@@ -106,16 +106,19 @@ static ListBase DRW_engines = {NULL, NULL};
 
 static const DRWLayerType drw_layer_scene_main = {
     .poll = NULL,
+    .may_skip = drw_layer_scene_may_skip,
     .draw_layer = drw_layer_scene_draw,
 };
 
 static const DRWLayerType drw_layer_editor_overlays = {
-    .poll = drw_layer_ui_overlays_poll,
-    .draw_layer = drw_layer_ui_overlays_draw,
+    .poll = drw_layer_editor_overlays_poll,
+    .may_skip = NULL,
+    .draw_layer = drw_layer_editor_overlays_draw,
 };
 
 static const DRWLayerType drw_layer_debug_stats = {
     .poll = drw_layer_debug_stats_poll,
+    .may_skip = NULL,
     .draw_layer = drw_layer_debug_stats_draw,
 };
 
@@ -123,9 +126,8 @@ const DRWLayerType DRW_layer_types[] = {
     drw_layer_scene_main,
     drw_layer_editor_overlays,
     drw_layer_debug_stats,
-    /* Important, leave this here! */
-    {NULL},
 };
+const int DRW_layer_types_count = ARRAY_SIZE(DRW_layer_types);
 
 static void drw_state_prepare_clean_for_draw(DRWManager *dst)
 {
@@ -1508,6 +1510,11 @@ void DRW_draw_view(const bContext *C)
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
 
+bool drw_layer_scene_may_skip(void)
+{
+  return ED_region_can_redraw_ui_overlays_only(DST.draw_ctx.ar);
+}
+
 void drw_layer_scene_draw(void)
 {
   View3D *v3d = DST.draw_ctx.v3d;
@@ -1525,6 +1532,9 @@ void drw_layer_scene_draw(void)
   const bool gpencil_engine_needed = drw_gpencil_engine_needed(depsgraph, v3d);
   const bool do_populate_loop = internal_engine || overlays_on || !draw_type_render ||
                                 gpencil_engine_needed;
+
+  /* Engine caches create offscreen contexts, which require no framebuffer be set. */
+  GPU_framebuffer_restore();
 
   /* Cache filling */
   {
@@ -1615,12 +1625,12 @@ void drw_layer_scene_draw(void)
   GPU_depth_test(true);
 }
 
-bool drw_layer_ui_overlays_poll(void)
+bool drw_layer_editor_overlays_poll(void)
 {
   return DST.draw_ctx.evil_C != NULL;
 }
 
-void drw_layer_ui_overlays_draw(void)
+void drw_layer_editor_overlays_draw(void)
 {
   View3D *v3d = DST.draw_ctx.v3d;
   Depsgraph *depsgraph = DST.draw_ctx.depsgraph;
@@ -1628,9 +1638,10 @@ void drw_layer_ui_overlays_draw(void)
   const bool do_annotations = (((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0) &&
                                ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0));
 
+  drw_state_set(DRW_STATE_WRITE_COLOR);
+
   /* needed so gizmo isn't obscured */
   if ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) {
-    glDisable(GL_DEPTH_TEST);
     DRW_draw_gizmo_3d();
   }
 
@@ -1639,18 +1650,14 @@ void drw_layer_ui_overlays_draw(void)
   /* annotations - temporary drawing buffer (screenspace) */
   /* XXX: Or should we use a proper draw/overlay engine for this case? */
   if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && (do_annotations)) {
-    GPU_depth_test(false);
     /* XXX: as scene->gpd is not copied for COW yet */
     ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, ar, false);
-    GPU_depth_test(true);
   }
 
   if ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) {
     /* Draw 2D after region info so we can draw on top of the camera passepartout overlay.
      * 'DRW_draw_region_info' sets the projection in pixel-space. */
-    GPU_depth_test(false);
     DRW_draw_gizmo_2d();
-    GPU_depth_test(true);
   }
 }
 
