@@ -2898,7 +2898,7 @@ static int gp_stroke_apply_thickness_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   /* loop all strokes */
-  for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+  LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
     for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
       /* Apply thickness */
       if ((gps->thickness == 0) && (gpl->line_change == 0)) {

@@ -2021,7 +2021,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
       LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
         /* only editable and visible layers are considered */
         if (BKE_gpencil_layer_is_editable(gpl)) {
-          for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
             for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
               /* check if it is editable */
               if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
@@ -2430,10 +2430,9 @@ void ED_gpencil_select_toggle_all(bContext *C, int action)
      *       nothing should be able to touch it
      */
     CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-      bGPDframe *gpf;
 
       /* deselect all strokes on all frames */
-      for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
         bGPDstroke *gps;
 
         for (gps = gpf->strokes.first; gps; gps = gps->next) {

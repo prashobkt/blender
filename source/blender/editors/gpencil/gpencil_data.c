@@ -2532,7 +2532,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
           BLI_addtail(&ob_active->defbase, vgroup);
           /* update vertex groups in strokes in original data */
           for (bGPDlayer *gpl_src = gpd->layers.first; gpl_src; gpl_src = gpl_src->next) {
-            for (bGPDframe *gpf = gpl_src->frames.first; gpf; gpf = gpf->next) {
+            LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_src->frames) {
               for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
                 MDeformVert *dvert;
                 int i;

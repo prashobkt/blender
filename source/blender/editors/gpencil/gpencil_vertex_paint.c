@@ -1092,7 +1092,7 @@ static bool gp_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVertexpai
         BKE_gpencil_get_range_selected(gpl, &f_init, &f_end);
       }
 
-      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
         /* Always do active frame; Otherwise, only include selected frames */
         if ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)) {
           /* compute multiframe falloff factor */
