@@ -112,6 +112,9 @@ if(WITH_INPUT_NDOF)
   list(APPEND INC_SYS
     ${NDOF_INCLUDE_DIRS}
   )
+  list(APPEND LIB
+    ${NDOF_LIBRARIES}
+  )
 endif()
 
 if(WITH_HEADLESS OR WITH_GHOST_SDL)
@@ -141,6 +144,11 @@ if(WITH_HEADLESS OR WITH_GHOST_SDL)
     list(APPEND INC_SYS
       ${SDL_INCLUDE_DIR}
     )
+    if(NOT WITH_SDL_DYNLOAD)
+      list(APPEND LIB
+        ${SDL_LIBRARY}
+      )
+    endif()
   endif()
 
 elseif(APPLE AND NOT WITH_X11)
@@ -366,6 +374,9 @@ if(WITH_OPENXR)
   )
   list(APPEND INC_SYS
     ${OPENXR_SDK_INCLUDE_DIR}
+  )
+  list(APPEND LIB
+    ${OPENXR_SDK_LIBRARIES}
   )
 
   set(XR_PLATFORM_DEFINES -DXR_USE_GRAPHICS_API_OPENGL)

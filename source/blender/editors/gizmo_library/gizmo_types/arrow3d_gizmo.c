@@ -239,11 +239,24 @@ static int gizmo_arrow_test_select(bContext *UNUSED(C), wmGizmo *gz, const int m
 
   const float mval_fl[2] = {UNPACK2(mval)};
   const float arrow_stem_threshold_px = 5 * UI_DPI_FAC;
-  const float arrow_head_threshold_px = 10 * UI_DPI_FAC;
-  if (dist_squared_to_line_v2(mval_fl, arrow_start, arrow_end) < SQUARE(arrow_stem_threshold_px) ||
-      len_squared_v2v2(mval_fl, arrow_end) < SQUARE(arrow_head_threshold_px)) {
+  const float arrow_head_threshold_px = 12 * UI_DPI_FAC;
+
+  /* Distance to arrow head. */
+  if (len_squared_v2v2(mval_fl, arrow_end) < SQUARE(arrow_head_threshold_px)) {
     return 0;
   }
+
+  /* Distance to arrow stem. */
+  float co_isect[2];
+  const float lambda = closest_to_line_v2(co_isect, mval_fl, arrow_start, arrow_end);
+  /* Clamp inside the line, to avoid overlapping with other gizmos,
+   * especially around the start of the arrow. */
+  if (lambda >= 0.0 && lambda <= 1.0) {
+    if (len_squared_v2v2(mval_fl, co_isect) < SQUARE(arrow_stem_threshold_px)) {
+      return 0;
+    }
+  }
+
   return -1;
 }
 
@@ -395,7 +408,14 @@ static void gizmo_arrow_exit(bContext *C, wmGizmo *gz, const bool cancel)
   wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(gz, "offset");
   const bool is_prop_valid = WM_gizmo_target_property_is_valid(gz_prop);
 
-  if (!cancel) {
+  if (cancel) {
+    GizmoInteraction *inter = gz->interaction_data;
+    if (is_prop_valid) {
+      gizmo_property_value_reset(C, gz, inter, gz_prop);
+    }
+    data->offset = inter->init_offset;
+  }
+  else {
     /* Assign in case applying the operation needs an updated offset
      * edit-mesh bisect needs this. */
     if (is_prop_valid) {
@@ -405,14 +425,13 @@ static void gizmo_arrow_exit(bContext *C, wmGizmo *gz, const bool cancel)
       const float value = WM_gizmo_target_property_float_get(gz, gz_prop);
       data->offset = gizmo_offset_from_value(data, value, constrained, inverted);
     }
-    return;
   }
 
-  GizmoInteraction *inter = gz->interaction_data;
-  if (is_prop_valid) {
-    gizmo_property_value_reset(C, gz, inter, gz_prop);
+  if (!cancel) {
+    if (is_prop_valid) {
+      WM_gizmo_target_property_anim_autokey(C, gz, gz_prop);
+    }
   }
-  data->offset = inter->init_offset;
 }
 
 /* -------------------------------------------------------------------- */
