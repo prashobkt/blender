@@ -521,6 +521,7 @@ static void *undomesh_from_editmesh(UndoMesh *um, BMEditMesh *em, Key *key)
       (&(struct BMeshToMeshParams){
           /* Undo code should not be manipulating 'G_MAIN->object' hooks/vertex-parent. */
           .calc_object_remap = false,
+          .update_shapekey_indices = false,
           .cd_mask_extra = {.vmask = CD_MASK_SHAPE_KEYINDEX},
       }));
 
@@ -559,12 +560,10 @@ static void *undomesh_from_editmesh(UndoMesh *um, BMEditMesh *em, Key *key)
   return um;
 }
 
-static void undomesh_to_editmesh(UndoMesh *um, BMEditMesh *em, Mesh *obmesh)
+static void undomesh_to_editmesh(UndoMesh *um, Object *ob, BMEditMesh *em, Key *key)
 {
   BMEditMesh *em_tmp;
-  Object *ob = em->ob;
   BMesh *bm;
-  Key *key = obmesh->key;
 
 #ifdef USE_ARRAY_STORE
 #  ifdef USE_ARRAY_STORE_THREAD
@@ -606,7 +605,6 @@ static void undomesh_to_editmesh(UndoMesh *um, BMEditMesh *em, Mesh *obmesh)
 
   em->selectmode = um->selectmode;
   bm->selectmode = um->selectmode;
-  em->ob = ob;
 
   bm->spacearr_dirty = BM_SPACEARR_DIRTY_ALL;
 
@@ -765,7 +763,7 @@ static void mesh_undosys_step_decode(
       continue;
     }
     BMEditMesh *em = me->edit_mesh;
-    undomesh_to_editmesh(&elem->data, em, obedit->data);
+    undomesh_to_editmesh(&elem->data, obedit, em, me->key);
     em->needs_flush_to_id = 1;
     DEG_id_tag_update(&obedit->id, ID_RECALC_GEOMETRY);
   }
