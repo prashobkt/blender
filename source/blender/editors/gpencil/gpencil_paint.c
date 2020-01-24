@@ -1562,7 +1562,6 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 /* erase strokes which fall under the eraser strokes */
 static void gp_stroke_doeraser(tGPsdata *p)
 {
-  bGPDlayer *gpl;
   bGPDstroke *gps, *gpn;
   rcti rect;
   Brush *brush = p->brush;
@@ -1603,7 +1602,7 @@ static void gp_stroke_doeraser(tGPsdata *p)
    * only a subset of layers, it is harder to perform the same erase operation
    * on multiple layers...
    */
-  for (gpl = p->gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &p->gpd->layers) {
     bGPDframe *gpf = gpl->actframe;
 
     /* only affect layer if it's editable (and visible) */
@@ -1998,7 +1997,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
      */
     bool has_layer_to_erase = false;
 
-    for (bGPDlayer *gpl = p->gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &p->gpd->layers) {
       /* Skip if layer not editable */
       if (BKE_gpencil_layer_is_editable(gpl) == false) {
         continue;
@@ -3026,7 +3025,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
   else {
     /* don't erase empty frames */
     bool has_layer_to_erase = false;
-    for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       /* Skip if layer not editable */
       if (BKE_gpencil_layer_is_editable(gpl)) {
         if (gpl->actframe && gpl->actframe->strokes.first) {

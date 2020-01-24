@@ -2639,7 +2639,7 @@ static int gp_snap_to_grid(bContext *C, wmOperator *UNUSED(op))
   Object *obact = CTX_data_active_object(C);
   const float gridf = ED_view3d_grid_view_scale(scene, v3d, rv3d, NULL);
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
@@ -2716,7 +2716,7 @@ static int gp_snap_to_cursor(bContext *C, wmOperator *op)
   const bool use_offset = RNA_boolean_get(op->ptr, "use_offset");
   const float *cursor_global = scene->cursor.location;
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
@@ -2814,7 +2814,7 @@ static int gp_snap_cursor_to_sel(bContext *C, wmOperator *UNUSED(op))
   INIT_MINMAX(min, max);
 
   /* calculate midpoints from selected points */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
@@ -4665,7 +4665,7 @@ static int gpencil_cutter_lasso_select(bContext *C,
 
   /* dissolve selected points */
   bGPDstroke *gpsn;
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (gpl->flag & GP_LAYER_LOCKED) {
       continue;
     }

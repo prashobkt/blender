@@ -247,7 +247,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 
   GPU_blend(true);
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* calculate parent position */
     ED_gpencil_parent_location(tgpw.depsgraph, ob, gpd, gpl, tgpw.diff_mat);
 

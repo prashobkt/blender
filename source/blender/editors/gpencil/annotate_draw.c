@@ -33,6 +33,7 @@
 #include "BLI_sys_types.h"
 
 #include "BLI_math.h"
+#include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
 #include "BLF_api.h"
@@ -841,7 +842,7 @@ static void annotation_draw_data_layers(
 {
   float ink[4];
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* verify never thickness is less than 1 */
     CLAMP_MIN(gpl->thickness, 1.0f);
     short lthick = gpl->thickness;

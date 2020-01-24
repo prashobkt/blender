@@ -1318,7 +1318,7 @@ void ED_gpencil_reset_layers_parent(Depsgraph *depsgraph, Object *obact, bGPdata
   float gpl_loc[3];
   zero_v3(gpl_loc);
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (gpl->parent != NULL) {
       /* calculate new matrix */
       if ((gpl->partype == PAROBJECT) || (gpl->partype == PARSKEL)) {
@@ -2018,7 +2018,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
         continue;
       }
 
-      for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
         /* only editable and visible layers are considered */
         if (BKE_gpencil_layer_is_editable(gpl)) {
           for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {

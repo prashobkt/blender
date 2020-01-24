@@ -141,7 +141,7 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *op)
         gp_style->flag |= GP_MATERIAL_FILL_SHOW;
 
         /* fix strokes */
-        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
             for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
               if ((gps->colorname[0] != '\0') && (STREQ(gps->colorname, palcolor->info))) {
@@ -173,7 +173,7 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *op)
       for (bGPDpalettecolor *palcolor = palette->colors.first; palcolor;
            palcolor = palcolor->next) {
         /* fix layers */
-        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           /* unlock/unhide layer */
           gpl->flag &= ~GP_LAYER_LOCKED;
           gpl->flag &= ~GP_LAYER_HIDE;

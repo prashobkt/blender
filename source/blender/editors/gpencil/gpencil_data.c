@@ -870,10 +870,8 @@ static int gp_hide_exec(bContext *C, wmOperator *op)
   }
 
   if (unselected) {
-    bGPDlayer *gpl;
-
     /* hide unselected */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       if (gpl != layer) {
         gpl->flag |= GP_LAYER_HIDE;
       }
@@ -946,7 +944,6 @@ static void gp_reveal_select_frame(bContext *C, bGPDframe *frame, bool select)
 static int gp_reveal_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl;
   const bool select = RNA_boolean_get(op->ptr, "select");
 
   /* sanity checks */
@@ -954,8 +951,7 @@ static int gp_reveal_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (gpl->flag & GP_LAYER_HIDE) {
       gpl->flag &= ~GP_LAYER_HIDE;
 
@@ -1008,7 +1004,6 @@ void GPENCIL_OT_reveal(wmOperatorType *ot)
 static int gp_lock_all_exec(bContext *C, wmOperator *UNUSED(op))
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl;
 
   /* sanity checks */
   if (gpd == NULL) {
@@ -1016,7 +1011,7 @@ static int gp_lock_all_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   /* make all layers non-editable */
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     gpl->flag |= GP_LAYER_LOCKED;
   }
 
@@ -1048,7 +1043,6 @@ void GPENCIL_OT_lock_all(wmOperatorType *ot)
 static int gp_unlock_all_exec(bContext *C, wmOperator *UNUSED(op))
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl;
 
   /* sanity checks */
   if (gpd == NULL) {
@@ -1056,7 +1050,7 @@ static int gp_unlock_all_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   /* make all layers editable again */
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     gpl->flag &= ~GP_LAYER_LOCKED;
   }
 
@@ -1088,7 +1082,6 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   bGPDlayer *layer = BKE_gpencil_layer_active_get(gpd);
-  bGPDlayer *gpl;
   int flags = GP_LAYER_LOCKED;
   bool isolate = false;
 
@@ -1102,7 +1095,7 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
   }
 
   /* Test whether to isolate or clear all flags */
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Skip if this is the active layer */
     if (gpl == layer) {
       continue;
@@ -1121,7 +1114,7 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
   /* TODO: Include onion-skinning on this list? */
   if (isolate) {
     /* Set flags on all "other" layers */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       if (gpl == layer) {
         continue;
       }
@@ -1132,7 +1125,7 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
   }
   else {
     /* Clear flags - Restore everything else */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       gpl->flag &= ~flags;
     }
   }
@@ -1568,7 +1561,7 @@ static int gp_stroke_lock_color_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   /* loop all selected strokes and unlock any color */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       for (bGPDstroke *gps = gpl->actframe->strokes.last; gps; gps = gps->prev) {
@@ -2714,7 +2707,7 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   /* loop all selected strokes and unlock any color used in active layer */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL) &&
         (gpl->flag & GP_LAYER_ACTIVE)) {

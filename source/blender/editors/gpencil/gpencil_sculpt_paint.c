@@ -1411,7 +1411,6 @@ static void gpsculpt_brush_init_stroke(bContext *C, tGP_BrushEditData *gso)
 {
   bGPdata *gpd = gso->gpd;
 
-  bGPDlayer *gpl;
   Scene *scene = gso->scene;
   int cfra = CFRA;
 
@@ -1421,7 +1420,7 @@ static void gpsculpt_brush_init_stroke(bContext *C, tGP_BrushEditData *gso)
   }
 
   /* go through each layer, and ensure that we've got a valid frame to use */
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf = gpl->actframe;
@@ -1779,7 +1778,7 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
   }
 
   /* Find visible strokes, and perform operations on those if hit */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* If no active frame, don't do anything... */
     if ((!BKE_gpencil_layer_is_editable(gpl)) || (gpl->actframe == NULL)) {
       continue;

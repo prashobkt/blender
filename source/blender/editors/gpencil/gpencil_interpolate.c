@@ -165,7 +165,7 @@ static bool gp_interpolate_check_todo(bContext *C, bGPdata *gpd)
   eGP_Interpolate_SettingsFlag flag = ts->gp_interpolate.flag;
 
   /* get layers */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* all layers or only active */
     if (!(flag & GP_TOOLFLAG_INTERPOLATE_ALL_LAYERS) && !(gpl->flag & GP_LAYER_ACTIVE)) {
       continue;
@@ -225,7 +225,7 @@ static void gp_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
   tgpi->high_limit = 2.0f - tgpi->init_factor;
 
   /* set layers */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     tGPDinterpolate_layer *tgpil;
 
     /* all layers or only active */
@@ -958,7 +958,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
   }
 
   /* loop all layer to check if need interpolation */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *prevFrame, *nextFrame;
     bGPDstroke *gps_from, *gps_to;
     int cframe, fFrame;

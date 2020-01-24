@@ -357,7 +357,7 @@ static void gpencil_add_verts_to_dgroups(
   }
 
   /* loop all strokes */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
     bGPDspoint *pt = NULL;
 
