@@ -302,7 +302,7 @@ bGPDframe *BKE_gpencil_frame_addcopy(bGPDlayer *gpl, int cframe)
   new_frame = BKE_gpencil_frame_duplicate(gpl->actframe);
 
   /* Find frame to insert it before */
-  for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+  LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
     if (gpf->framenum > cframe) {
       /* Add it here */
       BLI_insertlinkbefore(&gpl->frames, gpf, new_frame);
@@ -1288,7 +1288,7 @@ bool BKE_gpencil_data_minmax(const bGPdata *gpd, float r_min[3], float r_max[3])
     bGPDframe *gpf = gpl->actframe;
 
     if (gpf != NULL) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         changed = BKE_gpencil_stroke_minmax(gps, false, r_min, r_max);
       }
     }
@@ -1380,8 +1380,8 @@ void BKE_gpencil_transform(bGPdata *gpd, float mat[4][4])
       continue;
     }
 
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;
         int i;
 
@@ -2237,7 +2237,7 @@ void BKE_gpencil_get_range_selected(bGPDlayer *gpl, int *r_initframe, int *r_end
   *r_initframe = gpl->actframe->framenum;
   *r_endframe = gpl->actframe->framenum;
 
-  for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+  LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
     if (gpf->flag & GP_FRAME_SELECT) {
       if (gpf->framenum < *r_initframe) {
         *r_initframe = gpf->framenum;

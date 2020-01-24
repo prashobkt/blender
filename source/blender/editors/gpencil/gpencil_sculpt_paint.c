@@ -1649,7 +1649,7 @@ static bool gpsculpt_brush_do_frame(bContext *C,
   Object *ob = CTX_data_active_object(C);
   char tool = gso->brush->gpencil_sculpt_tool;
 
-  for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
     /* skip strokes that are invalid for current view */
     if (ED_gpencil_stroke_can_use(C, gps) == false) {
       continue;
@@ -1798,7 +1798,7 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
         BKE_gpencil_get_range_selected(gpl, &f_init, &f_end);
       }
 
-      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
         /* Always do active frame; Otherwise, only include selected frames */
         if ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)) {
           /* compute multiframe falloff factor */

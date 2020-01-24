@@ -968,7 +968,7 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
    * all selected points before apply the effect, because it could be
    * required to average data.
    *--------------------------------------------------------------------- */
-  for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
     /* Skip strokes that are invalid for current view. */
     if (ED_gpencil_stroke_can_use(C, gps) == false) {
       continue;

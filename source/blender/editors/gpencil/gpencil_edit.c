@@ -2648,7 +2648,7 @@ static int gp_snap_to_grid(bContext *C, wmOperator *UNUSED(op))
       /* calculate difference matrix object */
       ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
 
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;
         int i;
 
@@ -2725,7 +2725,7 @@ static int gp_snap_to_cursor(bContext *C, wmOperator *op)
       /* calculate difference matrix */
       ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
 
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;
         int i;
 
@@ -2823,7 +2823,7 @@ static int gp_snap_cursor_to_sel(bContext *C, wmOperator *UNUSED(op))
       /* calculate difference matrix */
       ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
 
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;
         int i;
 
@@ -2899,7 +2899,7 @@ static int gp_stroke_apply_thickness_exec(bContext *C, wmOperator *UNUSED(op))
 
   /* loop all strokes */
   LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       /* Apply thickness */
       if ((gps->thickness == 0) && (gpl->line_change == 0)) {
         gps->thickness = gpl->thickness;
@@ -3455,7 +3455,7 @@ static int gp_stroke_flip_exec(bContext *C, wmOperator *UNUSED(op))
       continue;
     }
 
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       if (gps->flag & GP_STROKE_SELECT) {
         /* skip strokes that are invalid for current view */
         if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -4317,8 +4317,8 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
       BLI_addtail(&gpd_dst->layers, gpl);
 
       /* add duplicate materials */
-      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;

@@ -1342,8 +1342,8 @@ void ED_gpencil_reset_layers_parent(Depsgraph *depsgraph, Object *obact, bGPdata
         /* undo local object */
         sub_v3_v3(diff_mat[3], gpl_loc);
 
-        for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-          for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
             for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
               mul_m4_v3(diff_mat, &pt->x);
             }
@@ -2022,7 +2022,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
         /* only editable and visible layers are considered */
         if (BKE_gpencil_layer_is_editable(gpl)) {
           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-            for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
               /* check if it is editable */
               if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
                 continue;

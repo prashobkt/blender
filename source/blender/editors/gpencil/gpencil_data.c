@@ -1487,7 +1487,7 @@ static int gp_stroke_change_color_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           /* only if selected */
           if (gps->flag & GP_STROKE_SELECT) {
             /* skip strokes that are invalid for current view */
@@ -2533,7 +2533,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
           /* update vertex groups in strokes in original data */
           for (bGPDlayer *gpl_src = gpd->layers.first; gpl_src; gpl_src = gpl_src->next) {
             LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_src->frames) {
-              for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+              LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
                 MDeformVert *dvert;
                 int i;
                 for (i = 0, dvert = gps->dvert; i < gps->totpoints; i++, dvert++) {
@@ -2585,7 +2585,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
 
           Material *ma_src = NULL;
           for (bGPDframe *gpf = gpl_new->frames.first; gpf; gpf = gpf->next) {
-            for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
 
               /* Reassign material. Look old material and try to find in destination. */
               ma_src = BKE_material_gpencil_get(ob_src, gps->mat_nr + 1);
@@ -3109,7 +3109,7 @@ static int gpencil_color_select_exec(bContext *C, wmOperator *op)
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
 
         /* verify something to do */
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;

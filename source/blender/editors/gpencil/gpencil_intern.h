@@ -680,7 +680,7 @@ struct GP_EditableStrokes_Iter {
     Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph_, &obact_->id); \
     bGPdata *gpd = (bGPdata *)ob_eval_->data; \
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd); \
-    for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) { \
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) { \
       if (BKE_gpencil_layer_is_editable(gpl)) { \
         bGPDframe *init_gpf_ = gpl->actframe; \
         if (is_multiedit_) { \

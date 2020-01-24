@@ -1130,7 +1130,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
       /* Ensure that the datablock's onion-skinning toggle flag
        * stays in sync with the status of the actual layers
        */
-      for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
         if (gpl->flag & GP_LAYER_ONIONSKIN) {
           enabled = true;
         }
@@ -1358,7 +1358,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
         if (BLI_listbase_is_empty(&gpd->palettes)) {
           /* create palette */
           bGPDpalette *palette = BKE_gpencil_palette_addnew(gpd, "GP_Palette");
-          for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+          LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
             /* create color using layer name */
             bGPDpalettecolor *palcolor = BKE_gpencil_palettecolor_addnew(palette, gpl->info);
             if (palcolor != NULL) {
@@ -1386,8 +1386,8 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
               ARRAY_SET_ITEMS(gpl->tintcolor, 0.0f, 0.0f, 0.0f, 0.0f);
 
               /* flush relevant layer-settings to strokes */
-              for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-                for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+              LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+                LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
                   /* set stroke to palette and force recalculation */
                   BLI_strncpy(gps->colorname, gpl->info, sizeof(gps->colorname));
                   gps->thickness = gpl->thickness;

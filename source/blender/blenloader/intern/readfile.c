@@ -7212,7 +7212,7 @@ static void lib_link_gpencil(FileData *fd, Main *main)
   for (bGPdata *gpd = main->gpencils.first; gpd; gpd = gpd->id.next) {
     if (gpd->id.tag & LIB_TAG_NEED_LINK) {
       /* Layers */
-      for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
         /* Layer -> Parent References */
         gpl->parent = newlibadr(fd, gpd->id.lib, gpl->parent);
       }
@@ -11227,7 +11227,7 @@ static void expand_gpencil(FileData *fd, Main *mainvar, bGPdata *gpd)
     expand_animdata(fd, mainvar, gpd->adt);
   }
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     expand_doit(fd, mainvar, gpl->parent);
   }
 

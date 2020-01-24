@@ -281,8 +281,8 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   bGPdata *gpd = ob->data;
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       generate_geometry(md, depsgraph, ob, gpl, gpf);
     }
   }

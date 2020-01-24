@@ -792,7 +792,7 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
   if (is_gp_edit) {
     float diff_mat[4][4];
     const bool use_mat_local = true;
-    for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       /* only editable and visible layers are considered */
 
       if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {

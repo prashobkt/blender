@@ -563,7 +563,7 @@ static void annotation_draw_strokes(bGPdata *UNUSED(gpd),
 {
   GPU_program_point_size(true);
 
-  for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
     /* check if stroke can be drawn */
     if (annotation_can_draw_stroke(gps, dflag) == false) {
       continue;
@@ -661,7 +661,7 @@ static void annotation_draw_strokes_edit(bGPdata *UNUSED(gpd),
   GPU_program_point_size(true);
 
   /* draw stroke verts */
-  for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
     /* check if stroke can be drawn */
     if (annotation_can_draw_stroke(gps, dflag) == false) {
       continue;

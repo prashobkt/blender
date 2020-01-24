@@ -510,7 +510,7 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
   /* Extract all colors. */
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (ED_gpencil_stroke_can_use(C, gps) == false) {
           continue;
         }
@@ -696,7 +696,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
   /* Update stroke material index. */
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (ED_gpencil_stroke_can_use(C, gps) == false) {
           continue;
         }

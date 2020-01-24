@@ -269,7 +269,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
       continue;
     }
 
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       /* check if stroke can be drawn */
       if ((gps->points == NULL) || (gps->totpoints < 2)) {
         continue;

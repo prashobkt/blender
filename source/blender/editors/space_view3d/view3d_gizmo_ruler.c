@@ -410,7 +410,7 @@ static bool view3d_ruler_item_mousemove(RulerInfo *ruler_info,
 /* Helper: Find the layer created as ruler. */
 static bGPDlayer *view3d_ruler_layer_get(bGPdata *gpd)
 {
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (gpl->flag & GP_LAYER_IS_RULER) {
       return gpl;
     }

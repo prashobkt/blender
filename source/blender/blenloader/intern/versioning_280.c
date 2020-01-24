@@ -576,7 +576,7 @@ static void do_versions_fix_annotations(bGPdata *gpd)
   for (const bGPDpalette *palette = gpd->palettes.first; palette; palette = palette->next) {
     for (bGPDpalettecolor *palcolor = palette->colors.first; palcolor; palcolor = palcolor->next) {
       /* fix layers */
-      for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
         /* unlock/unhide layer */
         gpl->flag &= ~GP_LAYER_LOCKED;
         gpl->flag &= ~GP_LAYER_HIDE;
@@ -585,8 +585,8 @@ static void do_versions_fix_annotations(bGPdata *gpd)
         /* disable tint */
         gpl->tintcolor[3] = 0.0f;
 
-        for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-          for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
             if ((gps->colorname[0] != '\0') && (STREQ(gps->colorname, palcolor->info))) {
               /* copy color settings */
               copy_v4_v4(gpl->color, palcolor->color);
@@ -1553,7 +1553,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
         if (gpd == NULL) {
           continue;
         }
-        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           if (STREQ(gpl->info, "RulerData3D")) {
             gpl->flag |= GP_LAYER_IS_RULER;
             break;
@@ -2592,7 +2592,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "short", "line_change")) {
       for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           gpl->line_change = gpl->thickness;
           if ((gpl->thickness < 1) || (gpl->thickness > 10)) {
             gpl->thickness = 3;
@@ -3162,7 +3162,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* init Annotations onion skin */
     if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "int", "gstep")) {
       for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           ARRAY_SET_ITEMS(gpl->gcolor_prev, 0.302f, 0.851f, 0.302f);
           ARRAY_SET_ITEMS(gpl->gcolor_next, 0.250f, 0.1f, 1.0f);
         }
@@ -3587,7 +3587,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         if (gpd->flag & GP_DATA_ANNOTATIONS) {
           continue;
         }
-        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           /* default channel color */
           ARRAY_SET_ITEMS(gpl->color, 0.2f, 0.2f, 0.2f);
         }
@@ -3692,9 +3692,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* init grease pencil stroke gradients */
     if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "float", "gradient_f")) {
       for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-          for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-            for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
               gps->gradient_f = 1.0f;
               gps->gradient_s[0] = 1.0f;
               gps->gradient_s[1] = 1.0f;
@@ -4198,9 +4198,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       /* Initialize new grease pencil uv scale parameter. */
       if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "float", "uv_scale")) {
         for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-          for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-            for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-              for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+          LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+            LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+              LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
                 gps->uv_scale = 1.0f;
               }
             }
@@ -4370,7 +4370,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     {
       if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "float", "vertex_paint_opacity")) {
         for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-          for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+          LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
             gpl->vertex_paint_opacity = 1.0f;
           }
         }

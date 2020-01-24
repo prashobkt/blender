@@ -160,8 +160,8 @@ static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData 
   bGPdata *gpd = ob->data;
   int oldframe = (int)DEG_get_ctime(depsgraph);
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       /* apply mirror effects on this frame */
       CFRA = gpf->framenum;
       BKE_scene_graph_update_for_newframe(depsgraph, bmain);

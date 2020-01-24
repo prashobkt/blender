@@ -2752,13 +2752,13 @@ static void write_gpencil(WriteData *wd, bGPdata *gpd)
 
     /* write grease-pencil layers to file */
     writelist(wd, DATA, bGPDlayer, &gpd->layers);
-    for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       /* write this layer's frames to file */
       writelist(wd, DATA, bGPDframe, &gpl->frames);
-      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
         /* write strokes */
         writelist(wd, DATA, bGPDstroke, &gpf->strokes);
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           writestruct(wd, DATA, bGPDspoint, gps->totpoints, gps->points);
           writestruct(wd, DATA, bGPDtriangle, gps->tot_triangles, gps->triangles);
           write_dverts(wd, gps->totpoints, gps->dvert);

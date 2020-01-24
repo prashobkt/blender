@@ -142,8 +142,8 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *op)
 
         /* fix strokes */
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-          for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-            for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
               if ((gps->colorname[0] != '\0') && (STREQ(gps->colorname, palcolor->info))) {
                 gps->mat_nr = ob->totcol - 1;
                 gps->colorname[0] = '\0';
@@ -181,8 +181,8 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *op)
           gpl->opacity = 1.0f;
           /* disable tint */
           gpl->tintcolor[3] = 0.0f;
-          for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-            for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
               if ((gps->colorname[0] != '\0') && (STREQ(gps->colorname, palcolor->info))) {
                 /* copy color settings */
                 copy_v4_v4(gpl->color, palcolor->color);

@@ -223,7 +223,7 @@ static void gpencil_calc_points_factor(bContext *C,
     if (gpf == NULL) {
       continue;
     }
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       if (gps->flag & GP_STROKE_SELECT) {
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
           if (clear_stroke) {
@@ -608,8 +608,8 @@ static int gp_stroke_merge_material_exec(bContext *C, wmOperator *op)
   /* Update stroke material index. */
   if (changed) {
     CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;
           }

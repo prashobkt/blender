@@ -184,9 +184,9 @@ static void rna_GPencil_strokes_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
   if (gpd) {
-    for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           BKE_gpencil_stroke_fill_triangulate(gps);
         }
       }
