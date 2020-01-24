@@ -42,6 +42,9 @@ layout(std140) uniform globalsBlock
   vec4 colorLightNoAlpha;
 
   vec4 colorBackground;
+  vec4 colorBackgroundGradient;
+  vec4 colorCheckerLow;
+  vec4 colorCheckerHigh;
   vec4 colorEditMeshMiddle;
 
   vec4 colorHandleFree;
