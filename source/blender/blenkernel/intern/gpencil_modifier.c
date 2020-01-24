@@ -445,7 +445,7 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
   int ctime = (int)DEG_get_ctime(depsgraph);
 
   /* update active frame */
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
   }
 
@@ -456,7 +456,7 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
      * so that editing tools work with copy-on-write
      * when the current frame changes
      */
-    for (bGPDlayer *gpl = gpd_orig->layers.first; gpl; gpl = gpl->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
       gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
     }
   }

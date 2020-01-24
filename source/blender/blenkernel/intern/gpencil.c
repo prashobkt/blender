@@ -654,7 +654,7 @@ void BKE_gpencil_copy_data(bGPdata *gpd_dst, const bGPdata *gpd_src, const int U
 
   /* copy layers */
   BLI_listbase_clear(&gpd_dst->layers);
-  for (const bGPDlayer *gpl_src = gpd_src->layers.first; gpl_src; gpl_src = gpl_src->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl_src, &gpd_src->layers) {
     /* make a copy of source layer and its data */
 
     /* TODO here too could add unused flags... */
@@ -988,15 +988,13 @@ bool BKE_gpencil_layer_frame_delete(bGPDlayer *gpl, bGPDframe *gpf)
 /* get the active gp-layer for editing */
 bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 {
-  bGPDlayer *gpl;
-
   /* error checking */
   if (ELEM(NULL, gpd, gpd->layers.first)) {
     return NULL;
   }
 
   /* loop over layers until found (assume only one active) */
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (gpl->flag & GP_LAYER_ACTIVE) {
       return gpl;
     }
@@ -1009,15 +1007,13 @@ bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 /* set the active gp-layer */
 void BKE_gpencil_layer_active_set(bGPdata *gpd, bGPDlayer *active)
 {
-  bGPDlayer *gpl;
-
   /* error checking */
   if (ELEM(NULL, gpd, gpd->layers.first, active)) {
     return;
   }
 
   /* loop over layers deactivating all */
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     gpl->flag &= ~GP_LAYER_ACTIVE;
     if (gpd->flag & GP_DATA_AUTOLOCK_LAYERS) {
       gpl->flag |= GP_LAYER_LOCKED;
@@ -1036,13 +1032,11 @@ void BKE_gpencil_layer_autolock_set(bGPdata *gpd, const bool unlock)
 {
   BLI_assert(gpd != NULL);
 
-  bGPDlayer *gpl;
-
   if (gpd->flag & GP_DATA_AUTOLOCK_LAYERS) {
     bGPDlayer *layer_active = BKE_gpencil_layer_active_get(gpd);
 
     /* Lock all other layers */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       /* unlock active layer */
       if (gpl == layer_active) {
         gpl->flag &= ~GP_LAYER_LOCKED;
@@ -1057,7 +1051,7 @@ void BKE_gpencil_layer_autolock_set(bGPdata *gpd, const bool unlock)
      * a problem in the UI because the user expects all layers will be unlocked
      */
     if (unlock) {
-      for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
         gpl->flag &= ~GP_LAYER_LOCKED;
       }
     }
@@ -1290,7 +1284,7 @@ bool BKE_gpencil_data_minmax(const bGPdata *gpd, float r_min[3], float r_max[3])
     return changed;
   }
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = gpl->actframe;
 
     if (gpf != NULL) {
@@ -1377,7 +1371,7 @@ void BKE_gpencil_transform(bGPdata *gpd, float mat[4][4])
   }
 
   const float scalef = mat4_to_scale(mat);
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* FIXME: For now, we just skip parented layers.
      * Otherwise, we have to update each frame to find
      * the current parent position/effects.
@@ -1416,9 +1410,9 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
 
   /* Remove points data */
   if (gpd) {
-    for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           if (gps->dvert != NULL) {
             for (int i = 0; i < gps->totpoints; i++) {
               dvert = &gps->dvert[i];
@@ -2296,9 +2290,9 @@ float BKE_gpencil_multiframe_falloff_calc(
 /* reassign strokes using a material */
 void BKE_gpencil_material_index_reassign(bGPdata *gpd, int totcol, int index)
 {
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         /* reassign strokes */
         if ((gps->mat_nr > index) || (gps->mat_nr > totcol - 1)) {
           gps->mat_nr--;
@@ -2312,9 +2306,9 @@ void BKE_gpencil_material_index_reassign(bGPdata *gpd, int totcol, int index)
 /* remove strokes using a material */
 bool BKE_gpencil_material_index_used(bGPdata *gpd, int index)
 {
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (gps->mat_nr == index) {
           return true;
         }
@@ -2338,9 +2332,9 @@ void BKE_gpencil_material_remap(struct bGPdata *gpd,
   } \
   ((void)0)
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         /* reassign strokes */
         MAT_NR_REMAP(gps->mat_nr);
       }
@@ -2454,11 +2448,11 @@ void BKE_gpencil_stats_update(bGPdata *gpd)
   gpd->totstroke = 0;
   gpd->totpoint = 0;
 
-  for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     gpd->totlayer++;
-    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       gpd->totframe++;
-      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         gpd->totstroke++;
         gpd->totpoint += gps->totpoints;
       }
