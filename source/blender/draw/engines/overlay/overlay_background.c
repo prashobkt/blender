@@ -44,6 +44,9 @@ void OVERLAY_background_draw(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
 
   if (DRW_state_is_fbo()) {
+    /* TODO(fclem) Drawing the background inside the overlay buffer will become a problem
+     * once we cache the overlay result.
+     * Because the render can change / refine the alpha chanel. */
     DRW_draw_pass(psl->background_ps);
   }
 }
