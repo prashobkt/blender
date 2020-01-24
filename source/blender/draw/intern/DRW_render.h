@@ -295,7 +295,7 @@ typedef enum {
   DRW_STATE_BLEND_ALPHA = (1 << 18),
   /** Use that if color is already premult by alpha. */
   DRW_STATE_BLEND_ALPHA_PREMUL = (1 << 19),
-  DRW_STATE_BLEND_ALPHA_UNDER_PREMUL = (1 << 20),
+  DRW_STATE_BLEND_BACKGROUND = (1 << 20),
   DRW_STATE_BLEND_OIT = (1 << 21),
   DRW_STATE_BLEND_MUL = (1 << 22),
   /** Use dual source blending. WARNING: Only one color buffer allowed. */

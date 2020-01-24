@@ -237,7 +237,7 @@ void drw_state_set(DRWState state)
     if (CHANGED_ANY_STORE_VAR(DRW_STATE_BLEND_ALPHA | DRW_STATE_BLEND_ALPHA_PREMUL |
                                   DRW_STATE_BLEND_ADD | DRW_STATE_BLEND_MUL |
                                   DRW_STATE_BLEND_ADD_FULL | DRW_STATE_BLEND_OIT |
-                                  DRW_STATE_BLEND_ALPHA_UNDER_PREMUL | DRW_STATE_BLEND_CUSTOM,
+                                  DRW_STATE_BLEND_BACKGROUND | DRW_STATE_BLEND_CUSTOM,
                               test)) {
       if (test) {
         glEnable(GL_BLEND);
@@ -248,8 +248,12 @@ void drw_state_set(DRWState state)
                               GL_ONE,
                               GL_ONE_MINUS_SRC_ALPHA); /* Alpha */
         }
-        else if ((state & DRW_STATE_BLEND_ALPHA_UNDER_PREMUL) != 0) {
-          glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+        else if ((state & DRW_STATE_BLEND_BACKGROUND) != 0) {
+          /* Special blend to add color under and multiply dst by alpha. */
+          glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA,
+                              GL_SRC_ALPHA, /* RGB */
+                              GL_ZERO,
+                              GL_SRC_ALPHA); /* Alpha */
         }
         else if ((state & DRW_STATE_BLEND_ALPHA_PREMUL) != 0) {
           glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);

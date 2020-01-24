@@ -29,13 +29,14 @@ void OVERLAY_background_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
-  DRWState state = DRW_STATE_WRITE_COLOR;
+  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_BACKGROUND;
   DRW_PASS_CREATE(psl->background_ps, state);
 
   GPUShader *sh = OVERLAY_shader_background();
   DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->background_ps);
   DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-  DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &dtxl->color);
+  DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &dtxl->color);
+  DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 

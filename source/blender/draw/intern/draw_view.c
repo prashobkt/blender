@@ -66,7 +66,7 @@ void DRW_clear_background()
 
 void DRW_draw_background(bool do_alpha_checker)
 {
-  drw_state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_UNDER_PREMUL);
+  drw_state_set(DRW_STATE_WRITE_COLOR);
   if (do_alpha_checker) {
     /* Transparent render, do alpha checker. */
     GPU_matrix_push();

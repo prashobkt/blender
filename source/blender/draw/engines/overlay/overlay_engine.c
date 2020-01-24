@@ -395,7 +395,13 @@ static void OVERLAY_draw_scene(void *vedata)
 
   DRW_view_set_active(NULL);
 
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(fbl->overlay_color_only_fb);
+  }
+
+  OVERLAY_image_background_draw(vedata);
   OVERLAY_background_draw(vedata);
+
   OVERLAY_outline_draw(vedata);
 
   if (DRW_state_is_fbo()) {
