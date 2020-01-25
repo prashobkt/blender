@@ -41,45 +41,40 @@
 /** \name Color Management
  * \{ */
 
+/* Draw texture to framebuffer without any color transforms */
+void DRW_transform_none(GPUTexture *tex)
+{
+  drw_state_set(DRW_STATE_WRITE_COLOR);
+
+  GPU_matrix_identity_set();
+  GPU_matrix_identity_projection_set();
+
+  /* Draw as texture for final render (without immediate mode). */
+  GPUBatch *geom = DRW_cache_fullscreen_quad_get();
+  GPU_batch_program_set_builtin(geom, GPU_SHADER_2D_IMAGE_COLOR);
+  GPU_batch_uniform_4f(geom, "color", 1.0f, 1.0f, 1.0f, 1.0f);
+  GPU_batch_uniform_1i(geom, "image", 0);
+
+  GPU_texture_bind(tex, 0);
+  GPU_batch_draw(geom);
+  GPU_texture_unbind(tex);
+}
+
 /* Use color management profile to draw texture to framebuffer */
-void DRW_transform_to_display(GPUTexture *tex, bool use_view_transform, bool use_render_settings)
+static void drw_colorspace_transform(GPUTexture *tex,
+                                     ColorManagedViewSettings *view_settings,
+                                     ColorManagedDisplaySettings *display_settings,
+                                     float dither)
 {
   drw_state_set(DRW_STATE_WRITE_COLOR);
 
   GPUBatch *geom = DRW_cache_fullscreen_quad_get();
 
-  const float dither = 1.0f;
-
-  bool use_ocio = false;
+  bool use_ocio = IMB_colormanagement_setup_glsl_draw_from_space(
+      view_settings, display_settings, NULL, dither, false);
 
   GPU_matrix_identity_set();
   GPU_matrix_identity_projection_set();
-
-  /* Should we apply the view transform */
-  if (DRW_state_do_color_management()) {
-    Scene *scene = DST.draw_ctx.scene;
-    ColorManagedDisplaySettings *display_settings = &scene->display_settings;
-    ColorManagedViewSettings view_settings;
-    if (use_render_settings) {
-      /* Use full render settings, for renders with scene lighting. */
-      view_settings = scene->view_settings;
-    }
-    else if (use_view_transform) {
-      /* Use only view transform + look and nothing else for lookdev without
-       * scene lighting, as exposure depends on scene light intensity. */
-      BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
-      STRNCPY(view_settings.view_transform, scene->view_settings.view_transform);
-      STRNCPY(view_settings.look, scene->view_settings.look);
-    }
-    else {
-      /* For workbench use only default view transform in configuration,
-       * using no scene settings. */
-      BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
-    }
-
-    use_ocio = IMB_colormanagement_setup_glsl_draw_from_space(
-        &view_settings, display_settings, NULL, dither, false);
-  }
 
   if (use_ocio) {
     GPU_batch_program_set_imm_shader(geom);
@@ -103,44 +98,64 @@ void DRW_transform_to_display(GPUTexture *tex, bool use_view_transform, bool use
   GPU_texture_unbind(tex);
 }
 
-/* Draw texture to framebuffer without any color transforms */
-void DRW_transform_none(GPUTexture *tex)
-{
-  drw_state_set(DRW_STATE_WRITE_COLOR);
-
-  /* Draw as texture for final render (without immediate mode). */
-  GPUBatch *geom = DRW_cache_fullscreen_quad_get();
-  GPU_batch_program_set_builtin(geom, GPU_SHADER_2D_IMAGE_COLOR);
-
-  GPU_texture_bind(tex, 0);
-
-  const float white[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-  GPU_batch_uniform_4fv(geom, "color", white);
-
-  float mat[4][4];
-  unit_m4(mat);
-  GPU_batch_uniform_mat4(geom, "ModelViewProjectionMatrix", mat);
-
-  GPU_batch_program_use_begin(geom);
-  GPU_batch_bind(geom);
-  GPU_batch_draw_advanced(geom, 0, 0, 0, 0);
-  GPU_batch_program_use_end(geom);
-
-  GPU_texture_unbind(tex);
-}
-
 void DRW_transform_to_display_linear(void)
 {
-  /* TODO */
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+  Scene *scene = DST.draw_ctx.scene;
+  View3D *v3d = DST.draw_ctx.v3d;
+  ColorManagedDisplaySettings *display_settings = &scene->display_settings;
+  ColorManagedViewSettings view_settings;
+  float dither = 0.0f;
+
+  /* TODO make it match old behavior. */
+  bool use_render_settings = v3d && (v3d->shading.type == OB_RENDER);
+  bool use_view_transform = v3d && (v3d->shading.type >= OB_MATERIAL);
+
+  /* TODO What ocio settings do we need here? */
+  if (use_render_settings) {
+    /* Use full render settings, for renders with scene lighting. */
+    view_settings = scene->view_settings;
+    dither = scene->r.dither_intensity;
+  }
+  else if (use_view_transform) {
+    /* Use only view transform + look and nothing else for lookdev without
+     * scene lighting, as exposure depends on scene light intensity. */
+    BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
+    STRNCPY(view_settings.view_transform, scene->view_settings.view_transform);
+    STRNCPY(view_settings.look, scene->view_settings.look);
+    dither = scene->r.dither_intensity;
+  }
+  else {
+    /* For workbench use only default view transform in configuration,
+     * using no scene settings. */
+    BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
+  }
+
+  if (DRW_state_do_color_management()) {
+    GPU_framebuffer_bind(dfbl->default_display_fb);
+    drw_colorspace_transform(dtxl->color, &view_settings, display_settings, dither);
+
+    /* Copy back to default framebuffer. */
+    /* TODO get rid of this hack. */
+    GPU_framebuffer_bind(dfbl->default_fb);
+    DRW_transform_none(dtxl->color_display_space);
+  }
 }
 
 void DRW_transform_to_display_encoded(void)
 {
-  /* TODO */
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+
+#if 1 /* TODO Placeholder code. */
   GPU_framebuffer_bind(dfbl->default_display_fb);
-  DRW_transform_to_display(dtxl->color, true, true);
+  DRW_transform_none(dtxl->color);
+#else
+  /* TODO What ocio settings do we need here? */
+  GPU_framebuffer_bind(dfbl->default_display_fb);
+  drw_colorspace_transform(dtxl->color, &view_settings, display_settings, dither);
+#endif
 }
 
 /** \} */
