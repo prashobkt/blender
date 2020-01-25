@@ -148,7 +148,7 @@ struct bGPDstroke *BKE_gpencil_stroke_add(struct bGPDframe *gpf,
                                           int totpoints,
                                           short thickness);
 
-struct bGPDstroke *BKE_gpencil_add_stroke_existing_style(struct bGPDframe *gpf,
+struct bGPDstroke *BKE_gpencil_stroke_add_existing_style(struct bGPDframe *gpf,
                                                          struct bGPDstroke *existing,
                                                          int mat_idx,
                                                          int totpoints,

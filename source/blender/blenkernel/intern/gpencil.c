@@ -507,7 +507,7 @@ bGPDstroke *BKE_gpencil_stroke_add(bGPDframe *gpf, int mat_idx, int totpoints, s
 }
 
 /* Add a stroke and copy the temporary drawing color value from one of the existing stroke */
-bGPDstroke *BKE_gpencil_add_stroke_existing_style(
+bGPDstroke *BKE_gpencil_stroke_add_existing_style(
     bGPDframe *gpf, bGPDstroke *existing, int mat_idx, int totpoints, short thickness)
 {
   bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, totpoints, thickness);
@@ -1896,7 +1896,7 @@ bool BKE_gpencil_stroke_split(bGPDframe *gpf,
 
   /* Handle remaining segments first. */
 
-  new_gps = BKE_gpencil_add_stroke_existing_style(
+  new_gps = BKE_gpencil_stroke_add_existing_style(
       gpf, gps, gps->mat_nr, new_count, gps->thickness);
 
   new_pt = new_gps->points; /* Allocated from above. */
