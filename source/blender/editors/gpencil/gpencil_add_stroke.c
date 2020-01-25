@@ -243,7 +243,7 @@ void ED_gpencil_create_stroke(bContext *C, Object *ob, float mat[4][4])
   UNUSED_VARS(frame_color);
 
   /* generate stroke */
-  gps = BKE_gpencil_stroke_add(frame_lines, color_black, 175, 75);
+  gps = BKE_gpencil_stroke_add(frame_lines, color_black, 175, 75, false);
   BKE_gpencil_stroke_add_points(gps, data0, 175, mat);
   BKE_gpencil_stroke_geometry_update(gps);
 

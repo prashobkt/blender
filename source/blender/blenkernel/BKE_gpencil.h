@@ -143,10 +143,8 @@ void BKE_gpencil_stroke_add_points(struct bGPDstroke *gps,
                                    const int totpoints,
                                    const float mat[4][4]);
 
-struct bGPDstroke *BKE_gpencil_stroke_add(struct bGPDframe *gpf,
-                                          int mat_idx,
-                                          int totpoints,
-                                          short thickness);
+struct bGPDstroke *BKE_gpencil_stroke_add(
+    struct bGPDframe *gpf, int mat_idx, int totpoints, short thickness, const bool insert_at_head);
 
 struct bGPDstroke *BKE_gpencil_stroke_add_existing_style(struct bGPDframe *gpf,
                                                          struct bGPDstroke *existing,

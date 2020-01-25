@@ -474,7 +474,8 @@ void BKE_gpencil_stroke_add_points(bGPDstroke *gps,
 }
 
 /* Create a new stroke, with pre-allocated data buffers */
-bGPDstroke *BKE_gpencil_stroke_add(bGPDframe *gpf, int mat_idx, int totpoints, short thickness)
+bGPDstroke *BKE_gpencil_stroke_add(
+    bGPDframe *gpf, int mat_idx, int totpoints, short thickness, const bool insert_at_head)
 {
   /* allocate memory for a new stroke */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
@@ -500,8 +501,13 @@ bGPDstroke *BKE_gpencil_stroke_add(bGPDframe *gpf, int mat_idx, int totpoints, s
 
   gps->mat_nr = mat_idx;
 
-  /* add to frame */
-  BLI_addtail(&gpf->strokes, gps);
+  /* Add to frame. */
+  if (!insert_at_head) {
+    BLI_addtail(&gpf->strokes, gps);
+  }
+  else {
+    BLI_addhead(&gpf->strokes, gps);
+  }
 
   return gps;
 }
@@ -510,7 +516,7 @@ bGPDstroke *BKE_gpencil_stroke_add(bGPDframe *gpf, int mat_idx, int totpoints, s
 bGPDstroke *BKE_gpencil_stroke_add_existing_style(
     bGPDframe *gpf, bGPDstroke *existing, int mat_idx, int totpoints, short thickness)
 {
-  bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, totpoints, thickness);
+  bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, totpoints, thickness, false);
   /* Copy run-time color data so that strokes added in the modifier has the style.
    * There are depsgraph reference pointers inside,
    * change the copy function if interfere with future drawing implementation. */
@@ -3618,7 +3624,7 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
     bGPDspoint *pt;
     for (int row = 0; row < img_y; row++) {
       /* Create new stroke */
-      bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, img_x, size * 1000);
+      bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, img_x, size * 1000, false);
       done = true;
       for (int col = 0; col < img_x; col++) {
         IMB_sampleImageAtLocation(ibuf, col, row, true, color);
