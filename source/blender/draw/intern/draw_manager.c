@@ -237,6 +237,48 @@ struct DupliObject *DRW_object_get_dupli(const Object *UNUSED(ob))
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Color Management
+ * \{ */
+
+static void drw_viewport_colormanagement_set(void)
+{
+  Scene *scene = DST.draw_ctx.scene;
+  View3D *v3d = DST.draw_ctx.v3d;
+
+  ColorManagedDisplaySettings *display_settings = &scene->display_settings;
+  ColorManagedViewSettings view_settings;
+  float dither = 0.0f;
+
+  /* TODO make it match old behavior. */
+  bool use_render_settings = v3d && (v3d->shading.type == OB_RENDER);
+  bool use_view_transform = v3d && (v3d->shading.type >= OB_MATERIAL);
+
+  /* TODO What ocio settings do we need here? */
+  if (use_render_settings) {
+    /* Use full render settings, for renders with scene lighting. */
+    view_settings = scene->view_settings;
+    dither = scene->r.dither_intensity;
+  }
+  else if (use_view_transform) {
+    /* Use only view transform + look and nothing else for lookdev without
+     * scene lighting, as exposure depends on scene light intensity. */
+    BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
+    STRNCPY(view_settings.view_transform, scene->view_settings.view_transform);
+    STRNCPY(view_settings.look, scene->view_settings.look);
+    dither = scene->r.dither_intensity;
+  }
+  else {
+    /* For workbench use only default view transform in configuration,
+     * using no scene settings. */
+    BKE_color_managed_view_settings_init_render(&view_settings, display_settings, NULL);
+  }
+
+  GPU_viewport_colorspace_set(DST.viewport, &view_settings, display_settings, dither);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Viewport (DRW_viewport)
  * \{ */
 
@@ -1254,7 +1296,14 @@ void DRW_draw_callbacks_post_scene(void)
                                ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0));
 
   if (DST.draw_ctx.evil_C) {
+    DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+
     DRW_state_reset();
+
+    GPU_framebuffer_bind(dfbl->overlay_fb);
+    /* Disable sRGB encoding from the fixed function pipeline since all the drawing in this
+     * function is done with sRGB color. Avoid double transform. */
+    glDisable(GL_FRAMEBUFFER_SRGB);
 
     /* annotations - temporary drawing buffer (3d space) */
     /* XXX: Or should we use a proper draw/overlay engine for this case? */
@@ -1387,7 +1436,9 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
       .evil_C = DST.draw_ctx.evil_C,
   };
   drw_context_state_init();
+
   drw_viewport_var_init();
+  drw_viewport_colormanagement_set();
 
   const int object_type_exclude_viewport = v3d->object_type_exclude_viewport;
   /* Check if scene needs to perform the populate loop */
@@ -1462,15 +1513,9 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   DRW_draw_callbacks_pre_scene();
 
-  {
-    drw_engines_draw_scene();
+  drw_engines_draw_scene();
 
-    DRW_transform_to_display_linear();
-
-    drw_engines_draw_overlays();
-
-    DRW_transform_to_display_encoded();
-  }
+  drw_engines_draw_overlays();
 
   /* Fix 3D view being "laggy" on macos and win+nvidia. (See T56996, T61474) */
   GPU_flush();

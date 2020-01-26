@@ -24,7 +24,5 @@
 #define __DRAW_COLOR_MANAGEMENT_H__
 
 void DRW_transform_none(struct GPUTexture *tex);
-void DRW_transform_to_display_linear(void);
-void DRW_transform_to_display_encoded(void);
 
 #endif /* __DRAW_COLOR_MANAGEMENT_H__ */

@@ -112,7 +112,7 @@ void OVERLAY_antialiasing_cache_init(OVERLAY_Data *vedata)
      * anti aliasing is needed. */
     const bool do_smooth_lines = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) > 0;
 
-    DRW_PASS_CREATE(psl->antialiasing_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
+    DRW_PASS_CREATE(psl->antialiasing_ps, DRW_STATE_WRITE_COLOR);
 
     sh = OVERLAY_shader_antialiasing();
     grp = DRW_shgroup_create(sh, psl->antialiasing_ps);
@@ -180,9 +180,7 @@ void OVERLAY_antialiasing_end(OVERLAY_Data *vedata)
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
 
   if (pd->antialiasing.enabled) {
-    GPU_framebuffer_bind(dfbl->color_only_fb);
+    GPU_framebuffer_bind(dfbl->overlay_only_fb);
     DRW_draw_pass(psl->antialiasing_ps);
-
-    GPU_framebuffer_bind(dfbl->default_fb);
   }
 }

@@ -106,6 +106,8 @@ typedef struct ColormanageProcessor {
 static struct global_glsl_state {
   /* Actual processor used for GLSL baked LUTs. */
   OCIO_ConstProcessorRcPtr *processor;
+  OCIO_ConstProcessorRcPtr *processor_linear;
+  OCIO_ConstProcessorRcPtr *processor_display;
 
   /* Settings of processor for comparison. */
   char look[MAX_COLORSPACE_NAME];
@@ -121,7 +123,6 @@ static struct global_glsl_state {
 
   /* Container for GLSL state needed for OCIO module. */
   struct OCIO_GLSLDrawState *ocio_glsl_state;
-  struct OCIO_GLSLDrawState *transform_ocio_glsl_state;
 } global_glsl_state = {NULL};
 
 static struct global_color_picking_state {
@@ -715,6 +716,14 @@ void colormanagement_exit(void)
     OCIO_processorRelease(global_glsl_state.processor);
   }
 
+  if (global_glsl_state.processor_linear) {
+    OCIO_processorRelease(global_glsl_state.processor_linear);
+  }
+
+  if (global_glsl_state.processor_display) {
+    OCIO_processorRelease(global_glsl_state.processor_display);
+  }
+
   if (global_glsl_state.curve_mapping) {
     BKE_curvemapping_free(global_glsl_state.curve_mapping);
   }
@@ -725,10 +734,6 @@ void colormanagement_exit(void)
 
   if (global_glsl_state.ocio_glsl_state) {
     OCIO_freeOGLState(global_glsl_state.ocio_glsl_state);
-  }
-
-  if (global_glsl_state.transform_ocio_glsl_state) {
-    OCIO_freeOGLState(global_glsl_state.transform_ocio_glsl_state);
   }
 
   if (global_color_picking_state.processor_to) {
@@ -3993,6 +3998,14 @@ static void update_glsl_display_processor(const ColorManagedViewSettings *view_s
       OCIO_processorRelease(global_glsl_state.processor);
     }
 
+    if (global_glsl_state.processor_linear) {
+      OCIO_processorRelease(global_glsl_state.processor_linear);
+    }
+
+    if (global_glsl_state.processor_display) {
+      OCIO_processorRelease(global_glsl_state.processor_display);
+    }
+
     /* We're using display OCIO processor, no RGB curves yet. */
     global_glsl_state.processor = create_display_buffer_processor(global_glsl_state.look,
                                                                   global_glsl_state.view,
@@ -4000,6 +4013,12 @@ static void update_glsl_display_processor(const ColorManagedViewSettings *view_s
                                                                   global_glsl_state.exposure,
                                                                   global_glsl_state.gamma,
                                                                   global_glsl_state.input);
+
+    global_glsl_state.processor_linear = create_colorspace_transform_processor(
+        display_settings->display_device, "Linear");
+
+    global_glsl_state.processor_display = create_colorspace_transform_processor(
+        "Linear", display_settings->display_device);
   }
 }
 
@@ -4026,7 +4045,8 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
     const ColorManagedDisplaySettings *display_settings,
     struct ColorSpace *from_colorspace,
     float dither,
-    bool predivide)
+    bool predivide,
+    bool do_overlay_merge)
 {
   ColorManagedViewSettings default_view_settings;
   const ColorManagedViewSettings *applied_view_settings;
@@ -4057,12 +4077,12 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   return OCIO_setupGLSLDraw(
       &global_glsl_state.ocio_glsl_state,
       global_glsl_state.processor,
-      global_glsl_state.processor,
-      global_glsl_state.processor,
+      global_glsl_state.processor_linear,
+      global_glsl_state.processor_display,
       global_glsl_state.use_curve_mapping ? &global_glsl_state.curve_mapping_settings : NULL,
       dither,
       predivide,
-      false);
+      do_overlay_merge);
 }
 
 /* Configures GLSL shader for conversion from scene linear to display space */
@@ -4072,7 +4092,7 @@ bool IMB_colormanagement_setup_glsl_draw(const ColorManagedViewSettings *view_se
                                          bool predivide)
 {
   return IMB_colormanagement_setup_glsl_draw_from_space(
-      view_settings, display_settings, NULL, dither, predivide);
+      view_settings, display_settings, NULL, dither, predivide, false);
 }
 
 /**
@@ -4090,7 +4110,7 @@ bool IMB_colormanagement_setup_glsl_draw_from_space_ctx(const bContext *C,
   IMB_colormanagement_display_settings_from_ctx(C, &view_settings, &display_settings);
 
   return IMB_colormanagement_setup_glsl_draw_from_space(
-      view_settings, display_settings, from_colorspace, dither, predivide);
+      view_settings, display_settings, from_colorspace, dither, predivide, false);
 }
 
 /* Same as setup_glsl_draw, but color management settings are guessing from a given context */

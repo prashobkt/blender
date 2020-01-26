@@ -102,6 +102,11 @@ void GPU_viewport_unbind(GPUViewport *viewport);
 void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect);
 void GPU_viewport_free(GPUViewport *viewport);
 
+void GPU_viewport_colorspace_set(GPUViewport *viewport,
+                                 ColorManagedViewSettings *view_settings,
+                                 ColorManagedDisplaySettings *display_settings,
+                                 float dither);
+
 GPUViewport *GPU_viewport_create_from_offscreen(struct GPUOffScreen *ofs);
 void GPU_viewport_clear_from_offscreen(GPUViewport *viewport);
 

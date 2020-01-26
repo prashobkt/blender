@@ -30,6 +30,10 @@
 #include "BLI_math_vector.h"
 #include "BLI_memblock.h"
 
+#include "BKE_colortools.h"
+
+#include "IMB_colormanagement.h"
+
 #include "DNA_vec_types.h"
 #include "DNA_userdef_types.h"
 
@@ -80,6 +84,14 @@ struct GPUViewport {
 
   /* Profiling data */
   double cache_time;
+
+  /* Color management. */
+  ColorManagedViewSettings view_settings;
+  ColorManagedDisplaySettings display_settings;
+  float dither;
+  /* TODO(fclem) the uvimage display use the viewport but do not set any view transform for the
+   * moment. The end goal would be to let the GPUViewport do the color management. */
+  bool do_color_management;
 };
 
 enum {
@@ -112,6 +124,7 @@ GPUViewport *GPU_viewport_create(void)
   viewport->fbl = MEM_callocN(sizeof(DefaultFramebufferList), "FramebufferList");
   viewport->txl = MEM_callocN(sizeof(DefaultTextureList), "TextureList");
   viewport->idatalist = DRW_instance_data_list_create();
+  viewport->do_color_management = false;
 
   viewport->size[0] = viewport->size[1] = -1;
 
@@ -365,10 +378,7 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport)
 
   dtxl->color = GPU_texture_create_2d(size[0], size[1], GPU_RGBA16F, NULL, NULL);
   dtxl->depth = GPU_texture_create_2d(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
-
-  /* TODO(fclem) make it optional if using imageLoad/Store. */
-  dtxl->color_display_space = GPU_texture_create_2d(
-      size[0], size[1], GPU_R11F_G11F_B10F, NULL, NULL);
+  dtxl->color_overlay = GPU_texture_create_2d(size[0], size[1], GPU_SRGB8_A8, NULL, NULL);
 
   if (!dtxl->depth || !dtxl->color) {
     ok = false;
@@ -381,11 +391,10 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport)
                                     GPU_ATTACHMENT_TEXTURE(dtxl->color),
                                 });
 
-  /* TODO(fclem) make it optional if using imageLoad/Store. */
-  GPU_framebuffer_ensure_config(&dfbl->default_display_fb,
+  GPU_framebuffer_ensure_config(&dfbl->overlay_fb,
                                 {
                                     GPU_ATTACHMENT_TEXTURE(dtxl->depth),
-                                    GPU_ATTACHMENT_TEXTURE(dtxl->color_display_space),
+                                    GPU_ATTACHMENT_TEXTURE(dtxl->color_overlay),
                                 });
 
   GPU_framebuffer_ensure_config(&dfbl->depth_only_fb,
@@ -400,9 +409,17 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport)
                                     GPU_ATTACHMENT_TEXTURE(dtxl->color),
                                 });
 
+  GPU_framebuffer_ensure_config(&dfbl->overlay_only_fb,
+                                {
+                                    GPU_ATTACHMENT_NONE,
+                                    GPU_ATTACHMENT_TEXTURE(dtxl->color_overlay),
+                                });
+
   ok = ok && GPU_framebuffer_check_valid(dfbl->default_fb, NULL);
+  ok = ok && GPU_framebuffer_check_valid(dfbl->overlay_fb, NULL);
   ok = ok && GPU_framebuffer_check_valid(dfbl->color_only_fb, NULL);
   ok = ok && GPU_framebuffer_check_valid(dfbl->depth_only_fb, NULL);
+  ok = ok && GPU_framebuffer_check_valid(dfbl->overlay_only_fb, NULL);
 
 cleanup:
   if (!ok) {
@@ -452,17 +469,27 @@ void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect)
   }
 }
 
+void GPU_viewport_colorspace_set(GPUViewport *viewport,
+                                 ColorManagedViewSettings *view_settings,
+                                 ColorManagedDisplaySettings *display_settings,
+                                 float dither)
+{
+  memcpy(&viewport->view_settings, view_settings, sizeof(*view_settings));
+  memcpy(&viewport->display_settings, display_settings, sizeof(*display_settings));
+  viewport->dither = dither;
+  viewport->do_color_management = true;
+}
+
 void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
 {
   DefaultFramebufferList *dfbl = viewport->fbl;
+  DefaultTextureList *dtxl = viewport->txl;
+  GPUTexture *color = dtxl->color;
+  GPUTexture *color_overlay = dtxl->color_overlay;
 
   if (dfbl->default_fb == NULL) {
     return;
   }
-
-  DefaultTextureList *dtxl = viewport->txl;
-
-  GPUTexture *color = dtxl->color_display_space;
 
   const float w = (float)GPU_texture_width(color);
   const float h = (float)GPU_texture_height(color);
@@ -479,22 +506,51 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   float y1 = rect->ymin;
   float y2 = rect->ymin + h;
 
-  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_RECT_COLOR);
-  GPU_shader_bind(shader);
+  GPUVertFormat *vert_format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(vert_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uint texco = GPU_vertformat_attr_add(vert_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  GPU_texture_bind(color, 0);
-  glUniform1i(GPU_shader_get_uniform_ensure(shader, "image"), 0);
-  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_icon"),
-              halfx,
-              halfy,
-              1.0f + halfx,
-              1.0f + halfy);
-  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_geom"), x1, y1, x2, y2);
-  glUniform4f(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_COLOR), 1.0f, 1.0f, 1.0f, 1.0f);
+  bool use_ocio = false;
 
-  GPU_draw_primitive(GPU_PRIM_TRI_STRIP, 4);
+  if (viewport->do_color_management) {
+    use_ocio = IMB_colormanagement_setup_glsl_draw_from_space(&viewport->view_settings,
+                                                              &viewport->display_settings,
+                                                              NULL,
+                                                              viewport->dither,
+                                                              false,
+                                                              true);
+  }
 
-  GPU_texture_unbind(color);
+  if (!use_ocio) {
+    /* TODO fallback. */
+  }
+  else {
+    GPU_texture_bind(color, 0);
+    GPU_texture_bind(color_overlay, 1);
+
+    immBegin(GPU_PRIM_TRI_STRIP, 4);
+
+    immAttr2f(texco, halfx, halfy);
+    immVertex2f(pos, x1, y1);
+    immAttr2f(texco, halfx + 1.0f, halfy);
+    immVertex2f(pos, x2, y1);
+    immAttr2f(texco, halfx, halfy + 1.0f);
+    immVertex2f(pos, x1, y2);
+    immAttr2f(texco, halfx + 1.0f, halfy + 1.0f);
+    immVertex2f(pos, x2, y2);
+
+    immEnd();
+
+    GPU_texture_unbind(color);
+    GPU_texture_unbind(color_overlay);
+  }
+
+  if (use_ocio) {
+    IMB_colormanagement_finish_glsl_draw();
+  }
+  else {
+    /* TODO fallback. */
+  }
 }
 
 void GPU_viewport_unbind(GPUViewport *UNUSED(viewport))
