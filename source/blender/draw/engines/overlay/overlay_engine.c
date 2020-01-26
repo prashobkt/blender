@@ -390,6 +390,16 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_Data *data = vedata;
   OVERLAY_PrivateData *pd = data->stl->pd;
   OVERLAY_FramebufferList *fbl = data->fbl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+
+  if (DRW_state_is_fbo()) {
+    float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    GPU_framebuffer_bind(dfbl->overlay_only_fb);
+    GPU_framebuffer_clear_color(dfbl->overlay_only_fb, clear_col);
+  }
+
+  OVERLAY_image_background_draw(vedata);
+  OVERLAY_background_draw(vedata);
 
   OVERLAY_antialiasing_start(vedata);
 
@@ -398,9 +408,6 @@ static void OVERLAY_draw_scene(void *vedata)
   if (DRW_state_is_fbo()) {
     GPU_framebuffer_bind(fbl->overlay_color_only_fb);
   }
-
-  OVERLAY_image_background_draw(vedata);
-  OVERLAY_background_draw(vedata);
 
   OVERLAY_outline_draw(vedata);
 

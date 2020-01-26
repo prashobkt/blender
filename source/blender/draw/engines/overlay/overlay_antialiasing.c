@@ -75,26 +75,40 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
     return;
   }
 
-  pd->antialiasing.enabled = true;
+  bool need_wire_expansion = (G_draw.block.sizePixel > 1.0f);
+  pd->antialiasing.enabled = need_wire_expansion ||
+                             ((U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) > 0);
 
-  DRW_texture_ensure_fullscreen_2d(&txl->overlay_color_tx, GPU_SRGB8_A8, 0);
-  DRW_texture_ensure_fullscreen_2d(&txl->overlay_line_tx, GPU_RGBA8, 0);
+  GPUTexture *color_tex = NULL;
+  GPUTexture *line_tex = NULL;
+
+  if (pd->antialiasing.enabled) {
+    DRW_texture_ensure_fullscreen_2d(&txl->overlay_color_tx, GPU_SRGB8_A8, DRW_TEX_FILTER);
+    DRW_texture_ensure_fullscreen_2d(&txl->overlay_line_tx, GPU_RGBA8, 0);
+
+    color_tex = txl->overlay_color_tx;
+    line_tex = txl->overlay_line_tx;
+  }
+  else {
+    /* Just a copy of the defaults framebuffers. */
+    color_tex = dtxl->color;
+  }
 
   GPU_framebuffer_ensure_config(&fbl->overlay_color_only_fb,
                                 {
                                     GPU_ATTACHMENT_NONE,
-                                    GPU_ATTACHMENT_TEXTURE(txl->overlay_color_tx),
+                                    GPU_ATTACHMENT_TEXTURE(color_tex),
                                 });
   GPU_framebuffer_ensure_config(&fbl->overlay_default_fb,
                                 {
                                     GPU_ATTACHMENT_TEXTURE(dtxl->depth),
-                                    GPU_ATTACHMENT_TEXTURE(txl->overlay_color_tx),
+                                    GPU_ATTACHMENT_TEXTURE(color_tex),
                                 });
   GPU_framebuffer_ensure_config(&fbl->overlay_line_fb,
                                 {
                                     GPU_ATTACHMENT_TEXTURE(dtxl->depth),
-                                    GPU_ATTACHMENT_TEXTURE(txl->overlay_color_tx),
-                                    GPU_ATTACHMENT_TEXTURE(txl->overlay_line_tx),
+                                    GPU_ATTACHMENT_TEXTURE(color_tex),
+                                    GPU_ATTACHMENT_TEXTURE(line_tex),
                                 });
 }
 
@@ -112,7 +126,7 @@ void OVERLAY_antialiasing_cache_init(OVERLAY_Data *vedata)
      * anti aliasing is needed. */
     const bool do_smooth_lines = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) > 0;
 
-    DRW_PASS_CREATE(psl->antialiasing_ps, DRW_STATE_WRITE_COLOR);
+    DRW_PASS_CREATE(psl->antialiasing_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
 
     sh = OVERLAY_shader_antialiasing();
     grp = DRW_shgroup_create(sh, psl->antialiasing_ps);
