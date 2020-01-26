@@ -131,35 +131,6 @@ GPUViewport *GPU_viewport_create(void)
   return viewport;
 }
 
-GPUViewport *GPU_viewport_create_from_offscreen(struct GPUOffScreen *ofs)
-{
-  GPUViewport *viewport = GPU_viewport_create();
-  GPUTexture *color, *depth;
-  GPUFrameBuffer *fb;
-  viewport->size[0] = GPU_offscreen_width(ofs);
-  viewport->size[1] = GPU_offscreen_height(ofs);
-
-  GPU_offscreen_viewport_data_get(ofs, &fb, &color, &depth);
-
-  /* TODO(fclem) This needs to be reimplemented correctly. */
-  BLI_assert(0);
-
-  return viewport;
-}
-/**
- * Clear vars assigned from offscreen, so we don't free data owned by `GPUOffScreen`.
- */
-void GPU_viewport_clear_from_offscreen(GPUViewport *viewport)
-{
-  DefaultFramebufferList *dfbl = viewport->fbl;
-  DefaultTextureList *dtxl = viewport->txl;
-
-  UNUSED_VARS(dfbl, dtxl);
-
-  /* TODO(fclem) This needs to be reimplemented correctly. */
-  BLI_assert(0);
-}
-
 void *GPU_viewport_engine_data_create(GPUViewport *viewport, void *engine_type)
 {
   ViewportEngineData *data = MEM_callocN(sizeof(ViewportEngineData), "ViewportEngineData");
@@ -254,8 +225,7 @@ void *GPU_viewport_texture_list_get(GPUViewport *viewport)
 
 void GPU_viewport_size_get(const GPUViewport *viewport, int size[2])
 {
-  size[0] = viewport->size[0];
-  size[1] = viewport->size[1];
+  copy_v2_v2_int(size, viewport->size);
 }
 
 /**
@@ -265,8 +235,7 @@ void GPU_viewport_size_get(const GPUViewport *viewport, int size[2])
  */
 void GPU_viewport_size_set(GPUViewport *viewport, const int size[2])
 {
-  viewport->size[0] = size[0];
-  viewport->size[1] = size[1];
+  copy_v2_v2_int(viewport->size, size);
 }
 
 double *GPU_viewport_cache_time_get(GPUViewport *viewport)
@@ -377,8 +346,12 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport)
   bool ok = true;
 
   dtxl->color = GPU_texture_create_2d(size[0], size[1], GPU_RGBA16F, NULL, NULL);
-  dtxl->depth = GPU_texture_create_2d(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
   dtxl->color_overlay = GPU_texture_create_2d(size[0], size[1], GPU_SRGB8_A8, NULL, NULL);
+
+  /* Can be shared with GPUOffscreen. */
+  if (dtxl->depth == NULL) {
+    dtxl->depth = GPU_texture_create_2d(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
+  }
 
   if (!dtxl->depth || !dtxl->color) {
     ok = false;
@@ -469,6 +442,27 @@ void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect)
   }
 }
 
+void GPU_viewport_bind_from_offscreen(GPUViewport *viewport, struct GPUOffScreen *ofs)
+{
+  DefaultFramebufferList *dfbl = viewport->fbl;
+  DefaultTextureList *dtxl = viewport->txl;
+  GPUTexture *color, *depth;
+  GPUFrameBuffer *fb;
+  viewport->size[0] = GPU_offscreen_width(ofs);
+  viewport->size[1] = GPU_offscreen_height(ofs);
+
+  GPU_offscreen_viewport_data_get(ofs, &fb, &color, &depth);
+
+  /* This is the only texture we can share. */
+  dtxl->depth = depth;
+
+  gpu_viewport_texture_pool_clear_users(viewport);
+
+  if (!dfbl->default_fb) {
+    gpu_viewport_default_fb_create(viewport);
+  }
+}
+
 void GPU_viewport_colorspace_set(GPUViewport *viewport,
                                  ColorManagedViewSettings *view_settings,
                                  ColorManagedDisplaySettings *display_settings,
@@ -480,12 +474,69 @@ void GPU_viewport_colorspace_set(GPUViewport *viewport,
   viewport->do_color_management = true;
 }
 
+static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
+                                           const rctf *rect_pos,
+                                           const rctf *rect_uv,
+                                           bool display_colorspace)
+{
+  DefaultTextureList *dtxl = viewport->txl;
+  GPUTexture *color = dtxl->color;
+  GPUTexture *color_overlay = dtxl->color_overlay;
+
+  GPUVertFormat *vert_format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(vert_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uint texco = GPU_vertformat_attr_add(vert_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  bool use_ocio = false;
+
+  if (viewport->do_color_management && display_colorspace) {
+    use_ocio = IMB_colormanagement_setup_glsl_draw_from_space(&viewport->view_settings,
+                                                              &viewport->display_settings,
+                                                              NULL,
+                                                              viewport->dither,
+                                                              false,
+                                                              true);
+  }
+
+  if (!use_ocio) {
+    immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_OVERLAYS_MERGE);
+    immUniform1i("display_transform", display_colorspace);
+    immUniform1i("image_texture", 0);
+    immUniform1i("overlays_texture", 1);
+  }
+
+  GPU_texture_bind(color, 0);
+  GPU_texture_bind(color_overlay, 1);
+
+  immBegin(GPU_PRIM_TRI_STRIP, 4);
+
+  immAttr2f(texco, rect_uv->xmin, rect_uv->ymin);
+  immVertex2f(pos, rect_pos->xmin, rect_pos->ymin);
+  immAttr2f(texco, rect_uv->xmax, rect_uv->ymin);
+  immVertex2f(pos, rect_pos->xmax, rect_pos->ymin);
+  immAttr2f(texco, rect_uv->xmin, rect_uv->ymax);
+  immVertex2f(pos, rect_pos->xmin, rect_pos->ymax);
+  immAttr2f(texco, rect_uv->xmax, rect_uv->ymax);
+  immVertex2f(pos, rect_pos->xmax, rect_pos->ymax);
+
+  immEnd();
+
+  GPU_texture_unbind(color);
+  GPU_texture_unbind(color_overlay);
+
+  if (use_ocio) {
+    IMB_colormanagement_finish_glsl_draw();
+  }
+  else {
+    immUnbindProgram();
+  }
+}
+
 void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
 {
   DefaultFramebufferList *dfbl = viewport->fbl;
   DefaultTextureList *dtxl = viewport->txl;
   GPUTexture *color = dtxl->color;
-  GPUTexture *color_overlay = dtxl->color_overlay;
 
   if (dfbl->default_fb == NULL) {
     return;
@@ -501,57 +552,58 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   const float halfx = GLA_PIXEL_OFS / w;
   const float halfy = GLA_PIXEL_OFS / h;
 
-  float x1 = rect->xmin;
-  float x2 = rect->xmin + w;
-  float y1 = rect->ymin;
-  float y2 = rect->ymin + h;
+  rctf pos_rect = {
+      .xmin = rect->xmin,
+      .ymin = rect->ymin,
+      .xmax = rect->xmin + w,
+      .ymax = rect->ymin + h,
+  };
 
-  GPUVertFormat *vert_format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(vert_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uint texco = GPU_vertformat_attr_add(vert_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  rctf uv_rect = {
+      .xmin = halfx,
+      .ymin = halfy,
+      .xmax = halfx + 1.0f,
+      .ymax = halfy + 1.0f,
+  };
 
-  bool use_ocio = false;
+  gpu_viewport_draw_colormanaged(viewport, &pos_rect, &uv_rect, true);
+}
 
-  if (viewport->do_color_management) {
-    use_ocio = IMB_colormanagement_setup_glsl_draw_from_space(&viewport->view_settings,
-                                                              &viewport->display_settings,
-                                                              NULL,
-                                                              viewport->dither,
-                                                              false,
-                                                              true);
+/**
+ * Clear vars assigned from offscreen, so we don't free data owned by `GPUOffScreen`.
+ */
+void GPU_viewport_unbind_from_offscreen(GPUViewport *viewport,
+                                        struct GPUOffScreen *ofs,
+                                        bool display_colorspace)
+{
+  DefaultFramebufferList *dfbl = viewport->fbl;
+  DefaultTextureList *dtxl = viewport->txl;
+
+  if (dfbl->default_fb == NULL) {
+    return;
   }
 
-  if (!use_ocio) {
-    immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_OVERLAYS_MERGE);
-    immUniform1i("image_texture", 0);
-    immUniform1i("overlays_texture", 1);
-  }
+  GPU_depth_test(false);
+  GPU_offscreen_bind(ofs, false);
 
-  GPU_texture_bind(color, 0);
-  GPU_texture_bind(color_overlay, 1);
+  rctf pos_rect = {
+      .xmin = -1.0f,
+      .ymin = -1.0f,
+      .xmax = 1.0f,
+      .ymax = 1.0f,
+  };
 
-  immBegin(GPU_PRIM_TRI_STRIP, 4);
+  rctf uv_rect = {
+      .xmin = 0.0f,
+      .ymin = 0.0f,
+      .xmax = 1.0f,
+      .ymax = 1.0f,
+  };
 
-  immAttr2f(texco, halfx, halfy);
-  immVertex2f(pos, x1, y1);
-  immAttr2f(texco, halfx + 1.0f, halfy);
-  immVertex2f(pos, x2, y1);
-  immAttr2f(texco, halfx, halfy + 1.0f);
-  immVertex2f(pos, x1, y2);
-  immAttr2f(texco, halfx + 1.0f, halfy + 1.0f);
-  immVertex2f(pos, x2, y2);
+  gpu_viewport_draw_colormanaged(viewport, &pos_rect, &uv_rect, display_colorspace);
 
-  immEnd();
-
-  GPU_texture_unbind(color);
-  GPU_texture_unbind(color_overlay);
-
-  if (use_ocio) {
-    IMB_colormanagement_finish_glsl_draw();
-  }
-  else {
-    immUnbindProgram();
-  }
+  /* This one is from the offscreen. Don't free it with the viewport. */
+  dtxl->depth = NULL;
 }
 
 void GPU_viewport_unbind(GPUViewport *UNUSED(viewport))

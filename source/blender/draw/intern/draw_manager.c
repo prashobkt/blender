@@ -1571,10 +1571,10 @@ void DRW_draw_render_loop_offscreen(struct Depsgraph *depsgraph,
   /* Create temporary viewport if needed. */
   GPUViewport *render_viewport = viewport;
   if (viewport == NULL) {
-    render_viewport = GPU_viewport_create_from_offscreen(ofs);
+    render_viewport = GPU_viewport_create();
   }
 
-  GPU_framebuffer_restore();
+  GPU_viewport_bind_from_offscreen(render_viewport, ofs);
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
@@ -1583,15 +1583,12 @@ void DRW_draw_render_loop_offscreen(struct Depsgraph *depsgraph,
   DST.options.draw_background = draw_background;
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, render_viewport, NULL);
 
+  GPU_viewport_unbind_from_offscreen(render_viewport, ofs, do_color_management);
+
   /* Free temporary viewport. */
   if (viewport == NULL) {
-    /* don't free data owned by 'ofs' */
-    GPU_viewport_clear_from_offscreen(render_viewport);
     GPU_viewport_free(render_viewport);
   }
-
-  /* we need to re-bind (annoying!) */
-  GPU_offscreen_bind(ofs, false);
 }
 
 /* Helper to check if exit object type to render. */

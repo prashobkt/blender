@@ -107,8 +107,10 @@ void GPU_viewport_colorspace_set(GPUViewport *viewport,
                                  ColorManagedDisplaySettings *display_settings,
                                  float dither);
 
-GPUViewport *GPU_viewport_create_from_offscreen(struct GPUOffScreen *ofs);
-void GPU_viewport_clear_from_offscreen(GPUViewport *viewport);
+void GPU_viewport_bind_from_offscreen(GPUViewport *viewport, struct GPUOffScreen *ofs);
+void GPU_viewport_unbind_from_offscreen(GPUViewport *viewport,
+                                        struct GPUOffScreen *ofs,
+                                        bool display_colorspace);
 
 ViewportMemoryPool *GPU_viewport_mempool_get(GPUViewport *viewport);
 struct DRWInstanceDataList *GPU_viewport_instance_data_list_get(GPUViewport *viewport);

@@ -3,6 +3,7 @@
 
 uniform sampler2D image_texture;
 uniform sampler2D overlays_texture;
+uniform bool display_transform;
 
 in vec2 texCoord_interp;
 
@@ -35,5 +36,7 @@ void main()
   fragColor *= 1.0 - overlay_col.a;
   fragColor += overlay_col;
 
-  linearrgb_to_srgb(fragColor, fragColor);
+  if (display_transform) {
+    linearrgb_to_srgb(fragColor, fragColor);
+  }
 }
