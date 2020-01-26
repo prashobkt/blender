@@ -2,11 +2,15 @@
 
 uniform sampler1D curve_mapping_texture;
 uniform sampler2D image_texture;
+uniform sampler2D overlay_texture;
 uniform sampler3D lut3d_texture;
+uniform sampler3D lut3d_display_texture;
+uniform sampler3D lut3d_linear_texture;
 
 uniform float dither;
 uniform bool predivide;
 uniform bool curve_mapping;
+uniform bool overlay;
 
 layout(std140) uniform OCIO_GLSLCurveMappingParameters
 {
@@ -129,7 +133,7 @@ vec4 apply_dither(vec4 col, vec2 uv)
   return col;
 }
 
-vec4 OCIO_ProcessColor(vec4 col, vec2 noise_uv)
+vec4 OCIO_ProcessColor(vec4 col, vec4 col_overlay, vec2 noise_uv)
 {
   if (curve_mapping) {
     col = curvemapping_evaluate_premulRGBF(col);
@@ -146,10 +150,19 @@ vec4 OCIO_ProcessColor(vec4 col, vec2 noise_uv)
    *       for straight alpha at this moment
    */
 
-  col = OCIODisplay(col, lut3d_texture);
+  col = OCIO_to_display_encoded_with_look(col, lut3d_texture);
 
   if (dither > 0.0) {
     col = apply_dither(col, noise_uv);
+  }
+
+  if (overlay) {
+    col = OCIO_to_display_linear(col, lut3d_display_texture);
+
+    col *= 1.0 - col_overlay.a;
+    col += col_overlay; /* Assumed unassociated alpha. */
+
+    col = OCIO_to_display_encoded(col, lut3d_linear_texture);
   }
 
   return col;
@@ -160,18 +173,11 @@ vec4 OCIO_ProcessColor(vec4 col, vec2 noise_uv)
 in vec2 texCoord_interp;
 out vec4 fragColor;
 
-/* Standard Implementation. */
 void main()
 {
   vec4 col = texture(image_texture, texCoord_interp.st);
+  vec4 col_overlay = texture(overlay_texture, texCoord_interp.st);
   vec2 noise_uv = round_to_pixel(image_texture, texCoord_interp.st);
 
-  fragColor = OCIO_ProcessColor(col, noise_uv);
+  fragColor = OCIO_ProcessColor(col, col_overlay, noise_uv);
 }
-
-#if 0 /* In-place transformation. No extra buffer required. */
-void main()
-{
-  /* TODO(fclem) use imageLoad/Store to do in-place color-management. */
-}
-#endif

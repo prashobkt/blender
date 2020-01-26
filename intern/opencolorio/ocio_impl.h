@@ -133,9 +133,12 @@ class IOCIOImpl {
   virtual bool supportGLSLDraw(void) = 0;
   virtual bool setupGLSLDraw(struct OCIO_GLSLDrawState **state_r,
                              OCIO_ConstProcessorRcPtr *processor,
+                             OCIO_ConstProcessorRcPtr *processor_linear,
+                             OCIO_ConstProcessorRcPtr *processor_display,
                              OCIO_CurveMappingSettings *curve_mapping_settings,
                              float dither,
-                             bool predivide) = 0;
+                             bool predivide,
+                             bool overlay) = 0;
   virtual void finishGLSLDraw(struct OCIO_GLSLDrawState *state) = 0;
   virtual void freeGLState(struct OCIO_GLSLDrawState *state_r) = 0;
 
@@ -244,9 +247,12 @@ class FallbackImpl : public IOCIOImpl {
   bool supportGLSLDraw(void);
   bool setupGLSLDraw(struct OCIO_GLSLDrawState **state_r,
                      OCIO_ConstProcessorRcPtr *processor,
+                     OCIO_ConstProcessorRcPtr *processor_linear,
+                     OCIO_ConstProcessorRcPtr *processor_display,
                      OCIO_CurveMappingSettings *curve_mapping_settings,
                      float dither,
-                     bool predivide);
+                     bool predivide,
+                     bool overlay);
   void finishGLSLDraw(struct OCIO_GLSLDrawState *state);
   void freeGLState(struct OCIO_GLSLDrawState *state_r);
 
@@ -354,9 +360,12 @@ class OCIOImpl : public IOCIOImpl {
   bool supportGLSLDraw(void);
   bool setupGLSLDraw(struct OCIO_GLSLDrawState **state_r,
                      OCIO_ConstProcessorRcPtr *processor,
+                     OCIO_ConstProcessorRcPtr *processor_linear,
+                     OCIO_ConstProcessorRcPtr *processor_display,
                      OCIO_CurveMappingSettings *curve_mapping_settings,
                      float dither,
-                     bool predivide);
+                     bool predivide,
+                     bool overlay);
   void finishGLSLDraw(struct OCIO_GLSLDrawState *state);
   void freeGLState(struct OCIO_GLSLDrawState *state_r);
 

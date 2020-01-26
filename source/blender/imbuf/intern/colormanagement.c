@@ -4057,9 +4057,12 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   return OCIO_setupGLSLDraw(
       &global_glsl_state.ocio_glsl_state,
       global_glsl_state.processor,
+      global_glsl_state.processor,
+      global_glsl_state.processor,
       global_glsl_state.use_curve_mapping ? &global_glsl_state.curve_mapping_settings : NULL,
       dither,
-      predivide);
+      predivide,
+      false);
 }
 
 /* Configures GLSL shader for conversion from scene linear to display space */
