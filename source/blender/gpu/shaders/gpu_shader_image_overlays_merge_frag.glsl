@@ -1,7 +1,8 @@
 
 /* Display a linear image texture into sRGB space */
 
-uniform sampler2D image;
+uniform sampler2D image_texture;
+uniform sampler2D overlays_texture;
 
 in vec2 texCoord_interp;
 
@@ -27,7 +28,12 @@ void linearrgb_to_srgb(vec4 col_from, out vec4 col_to)
 
 void main()
 {
-  fragColor = texture(image, texCoord_interp.st);
+  fragColor = texture(image_texture, texCoord_interp.st);
+
+  vec4 overlay_col = texture(overlays_texture, texCoord_interp.st);
+
+  fragColor *= 1.0 - overlay_col.a;
+  fragColor += overlay_col;
 
   linearrgb_to_srgb(fragColor, fragColor);
 }

@@ -522,34 +522,35 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   }
 
   if (!use_ocio) {
-    /* TODO fallback. */
+    immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_OVERLAYS_MERGE);
+    immUniform1i("image_texture", 0);
+    immUniform1i("overlays_texture", 1);
   }
-  else {
-    GPU_texture_bind(color, 0);
-    GPU_texture_bind(color_overlay, 1);
 
-    immBegin(GPU_PRIM_TRI_STRIP, 4);
+  GPU_texture_bind(color, 0);
+  GPU_texture_bind(color_overlay, 1);
 
-    immAttr2f(texco, halfx, halfy);
-    immVertex2f(pos, x1, y1);
-    immAttr2f(texco, halfx + 1.0f, halfy);
-    immVertex2f(pos, x2, y1);
-    immAttr2f(texco, halfx, halfy + 1.0f);
-    immVertex2f(pos, x1, y2);
-    immAttr2f(texco, halfx + 1.0f, halfy + 1.0f);
-    immVertex2f(pos, x2, y2);
+  immBegin(GPU_PRIM_TRI_STRIP, 4);
 
-    immEnd();
+  immAttr2f(texco, halfx, halfy);
+  immVertex2f(pos, x1, y1);
+  immAttr2f(texco, halfx + 1.0f, halfy);
+  immVertex2f(pos, x2, y1);
+  immAttr2f(texco, halfx, halfy + 1.0f);
+  immVertex2f(pos, x1, y2);
+  immAttr2f(texco, halfx + 1.0f, halfy + 1.0f);
+  immVertex2f(pos, x2, y2);
 
-    GPU_texture_unbind(color);
-    GPU_texture_unbind(color_overlay);
-  }
+  immEnd();
+
+  GPU_texture_unbind(color);
+  GPU_texture_unbind(color_overlay);
 
   if (use_ocio) {
     IMB_colormanagement_finish_glsl_draw();
   }
   else {
-    /* TODO fallback. */
+    immUnbindProgram();
   }
 }
 
