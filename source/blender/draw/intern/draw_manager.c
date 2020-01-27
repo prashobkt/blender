@@ -1507,7 +1507,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   DRW_state_reset();
 
   GPU_framebuffer_bind(DST.default_framebuffer);
-  GPU_framebuffer_clear_depth_stencil(DST.default_framebuffer, 1.0f, 0x0);
+  GPU_framebuffer_clear_depth_stencil(DST.default_framebuffer, 1.0f, 0xFF);
 
   DRW_hair_update();
 
