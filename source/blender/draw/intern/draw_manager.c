@@ -990,11 +990,6 @@ static void drw_engines_draw_scene(void)
 {
   for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
     DrawEngineType *engine = link->data;
-    if (engine == &draw_engine_overlay_type) {
-      /* Overlays are drawn afterward, in display linear space. */
-      continue;
-    }
-
     ViewportEngineData *data = drw_viewport_engine_data_ensure(engine);
     PROFILE_START(stime);
 
@@ -1026,28 +1021,6 @@ static void drw_engines_draw_text(void)
     }
 
     PROFILE_END_UPDATE(data->render_time, stime);
-  }
-}
-
-static void drw_engines_draw_overlays(void)
-{
-  for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
-    DrawEngineType *engine = link->data;
-    if (engine == &draw_engine_overlay_type) {
-      ViewportEngineData *data = drw_viewport_engine_data_ensure(engine);
-      PROFILE_START(stime);
-      if (engine->draw_scene) {
-        /* Overlays are drawn afterward, in display linear space. */
-        DRW_stats_group_start(engine->idname);
-        engine->draw_scene(data);
-        /* Restore for next engine */
-        if (DRW_state_is_fbo()) {
-          GPU_framebuffer_bind(DST.default_framebuffer);
-        }
-        DRW_stats_group_end();
-      }
-      PROFILE_END_UPDATE(data->render_time, stime);
-    }
   }
 }
 
@@ -1514,8 +1487,6 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   DRW_draw_callbacks_pre_scene();
 
   drw_engines_draw_scene();
-
-  drw_engines_draw_overlays();
 
   /* Fix 3D view being "laggy" on macos and win+nvidia. (See T56996, T61474) */
   GPU_flush();
@@ -2177,7 +2148,6 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     }
 
     drw_engines_draw_scene();
-    drw_engines_draw_overlays();
 
     if (!select_pass_fn(DRW_SELECT_PASS_POST, select_pass_user_data)) {
       break;
@@ -2290,7 +2260,6 @@ static void drw_draw_depth_loop_imp(struct Depsgraph *depsgraph,
   DRW_hair_update();
 
   drw_engines_draw_scene();
-  drw_engines_draw_overlays();
 
   DRW_state_reset();
 
@@ -2412,7 +2381,6 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, const rc
   /* Start Drawing */
   DRW_state_reset();
   drw_engines_draw_scene();
-  drw_engines_draw_overlays();
   DRW_state_reset();
 
   drw_engines_disable();
