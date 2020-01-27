@@ -31,23 +31,38 @@ typedef struct DRWLayer {
   struct DRWLayer *next, *prev;
 
   const DRWLayerType *type;
-  /* Store which viewport this layer was created for, so we invalidate these buffers if the
-   * viewport changed. */
-  const GPUViewport *viewport;
 
-  GPUFrameBuffer *framebuffer;
-  GPUTexture *color;
+  struct {
+    /* Store which viewport this layer was cached for, so we invalidate these buffers if the
+     * viewport changed. */
+    const GPUViewport *viewport;
+
+    GPUFrameBuffer *framebuffer;
+    /* The texture attached to the framebuffer containing the actual cache. */
+    GPUTexture *color;
+  } cache;
 } DRWLayer;
 
 static GHash *DRW_layers_hash = NULL;
 
+/**
+ * If a layer never skips redrawing, it doesn't make sense to keep its framebuffer attachements
+ * cached, they just take up GPU memory.
+ */
+static bool drw_layer_supports_caching(const DRWLayer *layer)
+{
+  return layer->type->may_skip != NULL;
+}
+
 static void drw_layer_recreate_textures(DRWLayer *layer)
 {
-  DRW_TEXTURE_FREE_SAFE(layer->color);
+  BLI_assert(drw_layer_supports_caching(layer));
 
-  DRW_texture_ensure_fullscreen_2d(&layer->color, GPU_RGBA8, 0);
-  GPU_framebuffer_ensure_config(&layer->framebuffer,
-                                {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(layer->color)});
+  DRW_TEXTURE_FREE_SAFE(layer->cache.color);
+
+  DRW_texture_ensure_fullscreen_2d(&layer->cache.color, GPU_RGBA8, 0);
+  GPU_framebuffer_ensure_config(&layer->cache.framebuffer,
+                                {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(layer->cache.color)});
 }
 
 static DRWLayer *drw_layer_create(const DRWLayerType *type, const GPUViewport *viewport)
@@ -55,16 +70,19 @@ static DRWLayer *drw_layer_create(const DRWLayerType *type, const GPUViewport *v
   DRWLayer *layer = MEM_callocN(sizeof(*layer), __func__);
 
   layer->type = type;
-  layer->viewport = viewport;
-  drw_layer_recreate_textures(layer);
+
+  if (drw_layer_supports_caching(layer)) {
+    layer->cache.viewport = viewport;
+    drw_layer_recreate_textures(layer);
+  }
 
   return layer;
 }
 
 static void drw_layer_free(DRWLayer *layer)
 {
-  DRW_TEXTURE_FREE_SAFE(layer->color);
-  GPU_FRAMEBUFFER_FREE_SAFE(layer->framebuffer);
+  DRW_TEXTURE_FREE_SAFE(layer->cache.color);
+  GPU_FRAMEBUFFER_FREE_SAFE(layer->cache.framebuffer);
 
   MEM_SAFE_FREE(layer);
 }
@@ -74,35 +92,45 @@ static void drw_layer_free_cb(void *layer)
   drw_layer_free(layer);
 }
 
-static void drw_layer_ensure_updated(DRWLayer *layer)
+static void drw_layer_cache_ensure_updated(DRWLayer *layer)
 {
   const float *size = DRW_viewport_size_get();
 
-  BLI_assert(layer->color);
+  BLI_assert(drw_layer_supports_caching(layer));
+  BLI_assert(layer->cache.color);
 
-  layer->viewport = DST.viewport;
+  layer->cache.viewport = DST.viewport;
 
   /* Ensure updated texture dimensions. */
-  if ((GPU_texture_width(layer->color) != size[0]) ||
-      (GPU_texture_height(layer->color) != size[1])) {
+  if ((GPU_texture_width(layer->cache.color) != size[0]) ||
+      (GPU_texture_height(layer->cache.color) != size[1])) {
     drw_layer_recreate_textures(layer);
   }
+}
+
+static void drw_layer_draw(const DRWLayer *layer)
+{
+  DRW_state_reset();
+  layer->type->draw_layer();
 }
 
 static bool drw_layer_needs_cache_update(const DRWLayer *layer)
 {
   const float *size = DRW_viewport_size_get();
 
-  if ((DST.viewport != layer->viewport) || (GPU_texture_width(layer->color) != size[0]) ||
-      (GPU_texture_height(layer->color) != size[1])) {
+  BLI_assert(drw_layer_supports_caching(layer));
+
+  if ((DST.viewport != layer->cache.viewport) ||
+      (GPU_texture_width(layer->cache.color) != size[0]) ||
+      (GPU_texture_height(layer->cache.color) != size[1])) {
     /* Always update after viewport changed. */
     return true;
   }
 
-  return (layer->type->may_skip == NULL) || (layer->type->may_skip() == false);
+  return layer->type->may_skip() == false;
 }
 
-static DRWLayer *drw_layer_for_type_updated_ensure(const DRWLayerType *type)
+static DRWLayer *drw_layer_for_type_ensure(const DRWLayerType *type)
 {
   if (DRW_layers_hash == NULL) {
     DRW_layers_hash = BLI_ghash_ptr_new_ex("DRW_layers_hash", DRW_layer_types_count);
@@ -128,7 +156,7 @@ void DRW_layers_free(void)
   }
 }
 
-static void drw_layers_textures_draw_composited(GPUTexture *tex)
+static void drw_layers_textures_draw_alpha_over(GPUTexture *tex)
 {
   drw_state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
 
@@ -160,7 +188,8 @@ void DRW_layers_draw_combined_cached(void)
   GPU_framebuffer_bind(DST.default_framebuffer);
   DRW_clear_background();
 
-  /* First pass: Update dirty framebuffers and blit into cache. */
+  /* First pass: Update dirty framebuffers and blit into cache. Skip layers that don't support
+   * caching, we can avoid the costs of a separate framebuffer (and compositing it) then. */
   for (int i = 0; i < DRW_layer_types_count; i++) {
     const DRWLayerType *layer_type = &DRW_layer_types[i];
 
@@ -170,22 +199,27 @@ void DRW_layers_draw_combined_cached(void)
     }
     is_layer_visible[i] = true;
 
-    DRWLayer *layer = drw_layer_for_type_updated_ensure(layer_type);
+    DRWLayer *layer = drw_layer_for_type_ensure(layer_type);
+
+    if (!drw_layer_supports_caching(layer)) {
+      /* Layer always redraws -> Skip caching and draw directly into the default framebuffer in
+       * second pass. */
+      continue;
+    }
 
     if (!drw_layer_needs_cache_update(layer)) {
       continue;
     }
 
-    drw_layer_ensure_updated(layer);
+    drw_layer_cache_ensure_updated(layer);
 
     DRW_clear_background();
-    DRW_state_reset();
 
-    layer_type->draw_layer();
+    drw_layer_draw(layer);
 
     /* Blit the default framebuffer into the layer framebuffer cache. */
     GPU_framebuffer_bind(DST.default_framebuffer);
-    GPU_framebuffer_blit(DST.default_framebuffer, 0, layer->framebuffer, 0, GPU_COLOR_BIT);
+    GPU_framebuffer_blit(DST.default_framebuffer, 0, layer->cache.framebuffer, 0, GPU_COLOR_BIT);
   }
 
   BLI_assert(GPU_framebuffer_active_get() == DST.default_framebuffer);
@@ -197,9 +231,16 @@ void DRW_layers_draw_combined_cached(void)
     }
 
     const DRWLayerType *layer_type = &DRW_layer_types[i];
-    const DRWLayer *layer = drw_layer_for_type_updated_ensure(layer_type);
+    const DRWLayer *layer = drw_layer_for_type_ensure(layer_type);
 
-    drw_layers_textures_draw_composited(layer->color);
+    if (drw_layer_supports_caching(layer)) {
+      drw_layers_textures_draw_alpha_over(layer->cache.color);
+    }
+    else {
+      /* Uncached layer, draw directly into default framebuffer. */
+      BLI_assert(GPU_framebuffer_active_get() == DST.default_framebuffer);
+      drw_layer_draw(layer);
+    }
   }
 
   GPU_framebuffer_bind(DST.default_framebuffer);
