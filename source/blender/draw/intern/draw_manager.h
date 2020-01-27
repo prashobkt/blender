@@ -534,6 +534,10 @@ typedef struct DRWManager {
 
   GPUDrawList *draw_list;
 
+  /* Global storage of draw-layers which may cache framebuffers for later reuse. Allows decoupled
+   * redraws of individual layers. */
+  GHash *layers_hash; /* DRWLayer * */
+
   /** GPU Resource State: Memory storage between drawing. */
   struct {
     /* High end GPUs supports up to 32 binds per shader stage.

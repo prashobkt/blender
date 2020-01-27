@@ -43,8 +43,6 @@ typedef struct DRWLayer {
   } cache;
 } DRWLayer;
 
-static GHash *DRW_layers_hash = NULL;
-
 /**
  * If a layer never skips redrawing, it doesn't make sense to keep its framebuffer attachements
  * cached, they just take up GPU memory.
@@ -132,15 +130,15 @@ static bool drw_layer_needs_cache_update(const DRWLayer *layer)
 
 static DRWLayer *drw_layer_for_type_ensure(const DRWLayerType *type)
 {
-  if (DRW_layers_hash == NULL) {
-    DRW_layers_hash = BLI_ghash_ptr_new_ex("DRW_layers_hash", DRW_layer_types_count);
+  if (DST.layers_hash == NULL) {
+    DST.layers_hash = BLI_ghash_ptr_new_ex("DRW_layers_hash", DRW_layer_types_count);
   }
 
-  DRWLayer *layer = BLI_ghash_lookup(DRW_layers_hash, type);
+  DRWLayer *layer = BLI_ghash_lookup(DST.layers_hash, type);
 
   if (!layer) {
     layer = drw_layer_create(type, DST.viewport);
-    BLI_ghash_insert(DRW_layers_hash, (void *)type, layer);
+    BLI_ghash_insert(DST.layers_hash, (void *)type, layer);
   }
 
   /* Could reinsert layer at tail here, so that the next layer to be drawn is likely first in the
@@ -151,8 +149,9 @@ static DRWLayer *drw_layer_for_type_ensure(const DRWLayerType *type)
 
 void DRW_layers_free(void)
 {
-  if (DRW_layers_hash) {
-    BLI_ghash_free(DRW_layers_hash, NULL, drw_layer_free_cb);
+  if (DST.layers_hash) {
+    BLI_ghash_free(DST.layers_hash, NULL, drw_layer_free_cb);
+    DST.layers_hash = NULL;
   }
 }
 
@@ -183,7 +182,7 @@ void DRW_layers_draw_combined_cached(void)
   /* Store if poll succeeded, to avoid calling it twice. */
   bool *is_layer_visible = BLI_array_alloca(is_layer_visible, DRW_layer_types_count);
 
-  BLI_assert(!DRW_layers_hash || (DRW_layer_types_count >= BLI_ghash_len(DRW_layers_hash)));
+  BLI_assert(!DST.layers_hash || (DRW_layer_types_count >= BLI_ghash_len(DST.layers_hash)));
 
   GPU_framebuffer_bind(DST.default_framebuffer);
   DRW_clear_background();
