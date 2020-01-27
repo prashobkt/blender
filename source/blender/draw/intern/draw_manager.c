@@ -1533,6 +1533,9 @@ void drw_layer_scene_draw(void)
   const bool do_populate_loop = internal_engine || overlays_on || !draw_type_render ||
                                 gpencil_engine_needed;
 
+  /* Init engines */
+  drw_engines_init();
+
   /* Engine caches create offscreen contexts, which require no framebuffer be set. */
   GPU_framebuffer_restore();
 
@@ -1726,9 +1729,6 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   /* No framebuffer allowed before drawing. */
   BLI_assert(GPU_framebuffer_active_get() == NULL);
-
-  /* Init engines */
-  drw_engines_init();
 
   /* Draw scene, scene overlays and editor overlays through layers. */
   DRW_layers_draw_combined_cached();
