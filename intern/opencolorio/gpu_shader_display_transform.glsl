@@ -5,7 +5,6 @@ uniform sampler2D image_texture;
 uniform sampler2D overlay_texture;
 uniform sampler3D lut3d_texture;
 uniform sampler3D lut3d_display_texture;
-uniform sampler3D lut3d_linear_texture;
 
 uniform float dither;
 uniform bool predivide;
@@ -150,20 +149,18 @@ vec4 OCIO_ProcessColor(vec4 col, vec4 col_overlay, vec2 noise_uv)
    *       for straight alpha at this moment
    */
 
-  col = OCIO_to_display_encoded_with_look(col, lut3d_texture);
+  col = OCIO_to_display_linear_with_look(col, lut3d_texture);
 
   if (dither > 0.0) {
     col = apply_dither(col, noise_uv);
   }
 
   if (overlay) {
-    col = OCIO_to_display_linear(col, lut3d_display_texture);
-
     col *= 1.0 - col_overlay.a;
     col += col_overlay; /* Assumed unassociated alpha. */
-
-    col = OCIO_to_display_encoded(col, lut3d_linear_texture);
   }
+
+  col = OCIO_to_display_encoded(col, lut3d_display_texture);
 
   return col;
 }

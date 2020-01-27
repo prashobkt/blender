@@ -106,7 +106,6 @@ typedef struct ColormanageProcessor {
 static struct global_glsl_state {
   /* Actual processor used for GLSL baked LUTs. */
   OCIO_ConstProcessorRcPtr *processor;
-  OCIO_ConstProcessorRcPtr *processor_linear;
   OCIO_ConstProcessorRcPtr *processor_display;
 
   /* Settings of processor for comparison. */
@@ -716,10 +715,6 @@ void colormanagement_exit(void)
     OCIO_processorRelease(global_glsl_state.processor);
   }
 
-  if (global_glsl_state.processor_linear) {
-    OCIO_processorRelease(global_glsl_state.processor_linear);
-  }
-
   if (global_glsl_state.processor_display) {
     OCIO_processorRelease(global_glsl_state.processor_display);
   }
@@ -842,7 +837,8 @@ static OCIO_ConstProcessorRcPtr *create_display_buffer_processor(const char *loo
                                                                  const char *display,
                                                                  float exposure,
                                                                  float gamma,
-                                                                 const char *from_colorspace)
+                                                                 const char *from_colorspace,
+                                                                 const bool linear_output)
 {
   OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
   OCIO_DisplayTransformRcPtr *dt;
@@ -888,9 +884,40 @@ static OCIO_ConstProcessorRcPtr *create_display_buffer_processor(const char *loo
     OCIO_exponentTransformRelease(et);
   }
 
-  processor = OCIO_configGetProcessor(config, (OCIO_ConstTransformRcPtr *)dt);
+  OCIO_GroupTransformRcPtr *gt = OCIO_createGroupTransform();
+  OCIO_groupTransformSetDirection(gt, true);
+  OCIO_groupTransformPushBack(gt, (OCIO_ConstTransformRcPtr *)dt);
 
+  if (linear_output) {
+    /* TODO use correct function display. */
+    OCIO_ExponentTransformRcPtr *et = OCIO_createExponentTransform();
+    OCIO_exponentTransformSetValue(et, (float[4]){2.2f, 2.2f, 2.2f, 1.0f});
+    OCIO_groupTransformPushBack(gt, (OCIO_ConstTransformRcPtr *)et);
+    OCIO_exponentTransformRelease(et);
+  }
+
+  processor = OCIO_configGetProcessor(config, (OCIO_ConstTransformRcPtr *)gt);
+
+  OCIO_groupTransformRelease(gt);
   OCIO_displayTransformRelease(dt);
+  OCIO_configRelease(config);
+
+  return processor;
+}
+
+static OCIO_ConstProcessorRcPtr *create_display_encoded_buffer_processor(
+    const char *UNUSED(display))
+{
+  OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
+  OCIO_ConstProcessorRcPtr *processor;
+
+  /* TODO use correct function display. */
+  OCIO_ExponentTransformRcPtr *et = OCIO_createExponentTransform();
+  OCIO_exponentTransformSetValue(et, (float[4]){1.0f / 2.2f, 1.0f / 2.2f, 1.0f / 2.2f, 1.0f});
+
+  processor = OCIO_configGetProcessor(config, (OCIO_ConstTransformRcPtr *)et);
+
+  OCIO_exponentTransformRelease(et);
   OCIO_configRelease(config);
 
   return processor;
@@ -3730,7 +3757,8 @@ ColormanageProcessor *IMB_colormanagement_display_processor_new(
                                                             display_settings->display_device,
                                                             applied_view_settings->exposure,
                                                             applied_view_settings->gamma,
-                                                            global_role_scene_linear);
+                                                            global_role_scene_linear,
+                                                            false);
 
   if (applied_view_settings->flag & COLORMANAGE_VIEW_USE_CURVES) {
     cm_processor->curve_mapping = BKE_curvemapping_copy(applied_view_settings->curve_mapping);
@@ -3998,10 +4026,6 @@ static void update_glsl_display_processor(const ColorManagedViewSettings *view_s
       OCIO_processorRelease(global_glsl_state.processor);
     }
 
-    if (global_glsl_state.processor_linear) {
-      OCIO_processorRelease(global_glsl_state.processor_linear);
-    }
-
     if (global_glsl_state.processor_display) {
       OCIO_processorRelease(global_glsl_state.processor_display);
     }
@@ -4012,13 +4036,11 @@ static void update_glsl_display_processor(const ColorManagedViewSettings *view_s
                                                                   global_glsl_state.display,
                                                                   global_glsl_state.exposure,
                                                                   global_glsl_state.gamma,
-                                                                  global_glsl_state.input);
+                                                                  global_glsl_state.input,
+                                                                  true);
 
-    global_glsl_state.processor_linear = create_colorspace_transform_processor(
-        display_settings->display_device, "Linear");
-
-    global_glsl_state.processor_display = create_colorspace_transform_processor(
-        "Linear", display_settings->display_device);
+    global_glsl_state.processor_display = create_display_encoded_buffer_processor(
+        global_glsl_state.display);
   }
 }
 
@@ -4077,7 +4099,6 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   return OCIO_setupGLSLDraw(
       &global_glsl_state.ocio_glsl_state,
       global_glsl_state.processor,
-      global_glsl_state.processor_linear,
       global_glsl_state.processor_display,
       global_glsl_state.use_curve_mapping ? &global_glsl_state.curve_mapping_settings : NULL,
       dither,
