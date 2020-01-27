@@ -36,8 +36,7 @@ typedef struct DRWLayer {
   GPUTexture *color;
 } DRWLayer;
 
-/* TODO: Use array with DRW_layer_types_count length to avoid listbase lookups. */
-static ListBase DRW_layers = {NULL}; /* DRWLayer */
+static GHash *DRW_layers_hash = NULL;
 
 static void drw_layer_recreate_textures(DRWLayer *layer)
 {
@@ -66,6 +65,11 @@ static void drw_layer_free(DRWLayer *layer)
   MEM_SAFE_FREE(layer);
 }
 
+static void drw_layer_free_cb(void *layer)
+{
+  drw_layer_free(layer);
+}
+
 static void drw_layer_ensure_updated_textures(DRWLayer *layer)
 {
   const float *size = DRW_viewport_size_get();
@@ -80,7 +84,10 @@ static void drw_layer_ensure_updated_textures(DRWLayer *layer)
 
 static DRWLayer *drw_layer_for_type_updated_ensure(const DRWLayerType *type)
 {
-  DRWLayer *layer = BLI_findptr(&DRW_layers, type, offsetof(DRWLayer, type));
+  if (DRW_layers_hash == NULL) {
+    DRW_layers_hash = BLI_ghash_ptr_new_ex("DRW_layers_hash", DRW_layer_types_count);
+  }
+  DRWLayer *layer = BLI_ghash_lookup(DRW_layers_hash, type);
 
   if (layer) {
     /* Ensure updated texture dimensions. */
@@ -88,7 +95,7 @@ static DRWLayer *drw_layer_for_type_updated_ensure(const DRWLayerType *type)
   }
   else {
     layer = drw_layer_create(type);
-    BLI_addtail(&DRW_layers, layer);
+    BLI_ghash_insert(DRW_layers_hash, (void *)type, layer);
   }
 
   /* Could reinsert layer at tail here, so that the next layer to be drawn is likely first in the
@@ -99,9 +106,8 @@ static DRWLayer *drw_layer_for_type_updated_ensure(const DRWLayerType *type)
 
 void DRW_layers_free(void)
 {
-  LISTBASE_FOREACH_MUTABLE (DRWLayer *, layer, &DRW_layers) {
-    BLI_remlink(&DRW_layers, layer);
-    drw_layer_free(layer);
+  if (DRW_layers_hash) {
+    BLI_ghash_free(DRW_layers_hash, NULL, drw_layer_free_cb);
   }
 }
 
