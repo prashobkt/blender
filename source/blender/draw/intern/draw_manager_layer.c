@@ -31,6 +31,9 @@ typedef struct DRWLayer {
   struct DRWLayer *next, *prev;
 
   const DRWLayerType *type;
+  /* Store which viewport this layer was created for, so we invalidate these buffers if the
+   * viewport changed. */
+  const GPUViewport *viewport;
 
   GPUFrameBuffer *framebuffer;
   GPUTexture *color;
@@ -47,11 +50,12 @@ static void drw_layer_recreate_textures(DRWLayer *layer)
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(layer->color)});
 }
 
-static DRWLayer *drw_layer_create(const DRWLayerType *type)
+static DRWLayer *drw_layer_create(const DRWLayerType *type, const GPUViewport *viewport)
 {
   DRWLayer *layer = MEM_callocN(sizeof(*layer), __func__);
 
   layer->type = type;
+  layer->viewport = viewport;
   drw_layer_recreate_textures(layer);
 
   return layer;
@@ -70,16 +74,32 @@ static void drw_layer_free_cb(void *layer)
   drw_layer_free(layer);
 }
 
-static void drw_layer_ensure_updated_textures(DRWLayer *layer)
+static void drw_layer_ensure_updated(DRWLayer *layer)
 {
   const float *size = DRW_viewport_size_get();
 
   BLI_assert(layer->color);
 
+  layer->viewport = DST.viewport;
+
+  /* Ensure updated texture dimensions. */
   if ((GPU_texture_width(layer->color) != size[0]) ||
       (GPU_texture_height(layer->color) != size[1])) {
     drw_layer_recreate_textures(layer);
   }
+}
+
+static bool drw_layer_needs_cache_update(const DRWLayer *layer)
+{
+  const float *size = DRW_viewport_size_get();
+
+  if ((DST.viewport != layer->viewport) || (GPU_texture_width(layer->color) != size[0]) ||
+      (GPU_texture_height(layer->color) != size[1])) {
+    /* Always update after viewport changed. */
+    return true;
+  }
+
+  return (layer->type->may_skip == NULL) || (layer->type->may_skip() == false);
 }
 
 static DRWLayer *drw_layer_for_type_updated_ensure(const DRWLayerType *type)
@@ -87,14 +107,11 @@ static DRWLayer *drw_layer_for_type_updated_ensure(const DRWLayerType *type)
   if (DRW_layers_hash == NULL) {
     DRW_layers_hash = BLI_ghash_ptr_new_ex("DRW_layers_hash", DRW_layer_types_count);
   }
+
   DRWLayer *layer = BLI_ghash_lookup(DRW_layers_hash, type);
 
-  if (layer) {
-    /* Ensure updated texture dimensions. */
-    drw_layer_ensure_updated_textures(layer);
-  }
-  else {
-    layer = drw_layer_create(type);
+  if (!layer) {
+    layer = drw_layer_create(type, DST.viewport);
     BLI_ghash_insert(DRW_layers_hash, (void *)type, layer);
   }
 
@@ -138,6 +155,8 @@ void DRW_layers_draw_combined_cached(void)
   /* Store if poll succeeded, to avoid calling it twice. */
   bool *is_layer_visible = BLI_array_alloca(is_layer_visible, DRW_layer_types_count);
 
+  BLI_assert(!DRW_layers_hash || (DRW_layer_types_count >= BLI_ghash_len(DRW_layers_hash)));
+
   GPU_framebuffer_bind(DST.default_framebuffer);
   DRW_clear_background();
 
@@ -151,14 +170,17 @@ void DRW_layers_draw_combined_cached(void)
     }
     is_layer_visible[i] = true;
 
-    if (layer_type->may_skip && layer_type->may_skip()) {
+    DRWLayer *layer = drw_layer_for_type_updated_ensure(layer_type);
+
+    if (!drw_layer_needs_cache_update(layer)) {
       continue;
     }
 
-    DRWLayer *layer = drw_layer_for_type_updated_ensure(layer_type);
+    drw_layer_ensure_updated(layer);
 
     DRW_clear_background();
     DRW_state_reset();
+
     layer_type->draw_layer();
 
     /* Blit the default framebuffer into the layer framebuffer cache. */
