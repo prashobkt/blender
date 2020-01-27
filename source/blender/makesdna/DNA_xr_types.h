@@ -21,12 +21,14 @@
 #ifndef __DNA_XR_TYPES_H__
 #define __DNA_XR_TYPES_H__
 
+#include "DNA_view3d_types.h"
+
 typedef struct bXrSessionSettings {
-  /** Shading type (OB_SOLID, ...). */
-  char shading_type;
+  struct View3DShading shading;
+
   /** View3D draw flags (V3D_OFSDRAW_NONE, V3D_OFSDRAW_SHOW_ANNOTATION, ...). */
   char draw_flags;
-  char _pad[2];
+  char _pad[3];
 
   /** Clipping distance. */
   float clip_start, clip_end;

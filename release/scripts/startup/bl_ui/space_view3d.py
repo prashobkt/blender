@@ -5274,7 +5274,10 @@ class VIEW3D_PT_shading(Panel):
     bl_ui_units_x = 12
 
     @classmethod
-    def get_shading(cls, context):
+    def get_shading(cls, context, shading=None):
+        if shading:
+            return shading
+
         # Get settings from 3D viewport or OpenGL render engine
         view = context.space_data
         if view.type == 'VIEW_3D':
@@ -5295,13 +5298,20 @@ class VIEW3D_PT_shading_lighting(Panel):
 
     @classmethod
     def poll(cls, context):
-        shading = VIEW3D_PT_shading.get_shading(context)
+        return cls.poll_ex(context)
+
+    def draw(self, context):
+        self.draw_ex(context)
+
+    @classmethod
+    def poll_ex(cls, context, opt_shading=None):
+        shading = VIEW3D_PT_shading.get_shading(context, opt_shading)
         engine = context.scene.render.engine
         return shading.type in {'SOLID', 'MATERIAL'} or engine == 'BLENDER_EEVEE' and shading.type == 'RENDERED'
 
-    def draw(self, context):
+    def draw_ex(self, context, opt_shading=None):
         layout = self.layout
-        shading = VIEW3D_PT_shading.get_shading(context)
+        shading = VIEW3D_PT_shading.get_shading(context, opt_shading)
 
         col = layout.column()
         split = col.split(factor=0.9)
@@ -5405,34 +5415,39 @@ class VIEW3D_PT_shading_color(Panel):
 
     @classmethod
     def poll(cls, context):
-        shading = VIEW3D_PT_shading.get_shading(context)
+        return cls.poll_ex(context)
+
+    def draw(self, context):
+        self.draw_ex(context)
+
+    @classmethod
+    def poll_ex(cls, context, shading=None):
+        shading = VIEW3D_PT_shading.get_shading(context, shading)
         return shading.type in {'WIREFRAME', 'SOLID'}
 
-    def _draw_color_type(self, context):
-        layout = self.layout
-        shading = VIEW3D_PT_shading.get_shading(context)
-
+    @staticmethod
+    def _draw_color_type(layout, shading):
         layout.grid_flow(columns=3, align=True).prop(shading, "color_type", expand=True)
         if shading.color_type == 'SINGLE':
             layout.row().prop(shading, "single_color", text="")
 
-    def _draw_background_color(self, context):
-        layout = self.layout
-        shading = VIEW3D_PT_shading.get_shading(context)
-
+    @staticmethod
+    def _draw_background_color(layout, shading):
         layout.row().label(text="Background")
         layout.row().prop(shading, "background_type", expand=True)
         if shading.background_type == 'VIEWPORT':
             layout.row().prop(shading, "background_color", text="")
 
-    def draw(self, context):
-        shading = VIEW3D_PT_shading.get_shading(context)
+    def draw_ex(self, context, shading=None):
+        shading = VIEW3D_PT_shading.get_shading(context, shading)
+        layout = self.layout
+
         if shading.type == 'WIREFRAME':
-            self.layout.row().prop(shading, "wireframe_color_type", expand=True)
+            layout.row().prop(shading, "wireframe_color_type", expand=True)
         else:
-            self._draw_color_type(context)
-            self.layout.separator()
-        self._draw_background_color(context)
+            VIEW3D_PT_shading_color._draw_color_type(layout, shading)
+            layout.separator()
+        VIEW3D_PT_shading_color._draw_background_color(layout, shading)
 
 
 class VIEW3D_PT_shading_options(Panel):
@@ -5443,13 +5458,20 @@ class VIEW3D_PT_shading_options(Panel):
 
     @classmethod
     def poll(cls, context):
-        shading = VIEW3D_PT_shading.get_shading(context)
-        return shading.type in {'WIREFRAME', 'SOLID'}
+        cls.poll_ex(context)
 
     def draw(self, context):
+        self.draw_ex(context)
+
+    @classmethod
+    def poll_ex(cls, context, shading=None):
+        shading = VIEW3D_PT_shading.get_shading(context, shading)
+        return shading.type in {'WIREFRAME', 'SOLID'}
+
+    def draw_ex(self, context, shading=None):
         layout = self.layout
 
-        shading = VIEW3D_PT_shading.get_shading(context)
+        shading = VIEW3D_PT_shading.get_shading(context, shading)
 
         col = layout.column()
 

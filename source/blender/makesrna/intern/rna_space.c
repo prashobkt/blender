@@ -978,7 +978,7 @@ static IDProperty *rna_View3DShading_idprops(PointerRNA *ptr, bool create)
 static void rna_3DViewShading_type_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
-  if (GS(id->name) == ID_SCE) {
+  if (GS(id->name) != ID_SCR) {
     return;
   }
 

@@ -78,9 +78,9 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "bXrSessionSettings");
   RNA_def_struct_ui_text(srna, "XR-Session Settings", "");
 
-  prop = RNA_def_property(srna, "shading_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_shading_type_items);
-  RNA_def_property_ui_text(prop, "Shading Type", "Method to display/shade objects in the VR View");
+  prop = RNA_def_property(srna, "shading", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_ui_text(prop, "Shading Settings", "");
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "show_floor", PROP_BOOLEAN, PROP_NONE);

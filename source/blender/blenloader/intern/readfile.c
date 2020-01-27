@@ -7816,6 +7816,21 @@ static bool direct_link_area_map(FileData *fd, ScrAreaMap *area_map)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name XR-data
+ * \{ */
+
+#ifdef WITH_OPENXR
+
+static void direct_link_wm_xr_data(FileData *fd, wmXrData *xr_data)
+{
+  direct_link_view3dshading(fd, &xr_data->session_settings.shading);
+}
+
+#endif
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Read ID: Window Manager
  * \{ */
 
@@ -7867,6 +7882,10 @@ static void direct_link_windowmanager(FileData *fd, wmWindowManager *wm)
       win->stereo3d_format->display_mode = S3D_DISPLAY_ANAGLYPH;
     }
   }
+
+#ifdef WITH_OPENXR
+  direct_link_wm_xr_data(fd, &wm->xr);
+#endif
 
   BLI_listbase_clear(&wm->timers);
   BLI_listbase_clear(&wm->operators);

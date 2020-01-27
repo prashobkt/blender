@@ -575,7 +575,6 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 
   GPUOffScreen *offscreen;
   GPUViewport *viewport;
-  View3DShading shading;
   float viewmat[4][4], winmat[4][4];
 
   /* The runtime may still trigger drawing while a session-end request is pending. */
@@ -595,14 +594,10 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   wm_xr_surface_viewport_bind(surface_data, &rect);
   glClear(GL_DEPTH_BUFFER_BIT);
 
-  BKE_screen_view3d_shading_init(&shading);
-  shading.flag |= V3D_SHADING_WORLD_ORIENTATION;
-  shading.flag &= ~V3D_SHADING_SPECULAR_HIGHLIGHT;
-  shading.background_type = V3D_SHADING_BACKGROUND_WORLD;
   ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
                                   scene,
-                                  &shading,
-                                  wm->xr.session_settings.shading_type,
+                                  &wm->xr.session_settings.shading,
+                                  wm->xr.session_settings.shading.type,
                                   draw_view->width,
                                   draw_view->height,
                                   display_flags,
