@@ -323,6 +323,8 @@ typedef struct bGPDlayer_Runtime {
   /** Id for dynamic icon used to show annotation color preview for layer. */
   int icon_id;
   char _pad[4];
+  /** Original layer (used to dereference evaluated data) */
+  struct bGPDlayer *gpl_orig;
 } bGPDlayer_Runtime;
 
 /* Grease-Pencil Annotations - 'Layer' */

@@ -3828,6 +3828,9 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
     if (gpl_eval == NULL) {
       continue;
     }
+    /* Update layer reference pointers. */
+    gpl_eval->runtime.gpl_orig = (bGPDlayer *)gpl;
+
     int frame_idx = -1;
     LISTBASE_FOREACH (bGPDframe *, gpf_orig, &gpl->frames) {
       frame_idx++;
