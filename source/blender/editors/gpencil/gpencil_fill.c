@@ -249,7 +249,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* calculate parent position */
-    ED_gpencil_parent_location(tgpw.depsgraph, ob, gpd, gpl, tgpw.diff_mat);
+    BKE_gpencil_parent_matrix_get(tgpw.depsgraph, ob, gpl, tgpw.diff_mat);
 
     /* do not draw layer if hidden */
     if (gpl->flag & GP_LAYER_HIDE) {

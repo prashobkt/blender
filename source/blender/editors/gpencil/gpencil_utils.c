@@ -642,7 +642,7 @@ void gp_apply_parent(
   float inverse_diff_mat[4][4];
   float fpt[3];
 
-  ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+  BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
   invert_m4_m4(inverse_diff_mat, diff_mat);
 
   for (i = 0; i < gps->totpoints; i++) {
@@ -663,7 +663,7 @@ void gp_apply_parent_point(
   float inverse_diff_mat[4][4];
   float fpt[3];
 
-  ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+  BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
   invert_m4_m4(inverse_diff_mat, diff_mat);
 
   mul_v3_m4v3(fpt, inverse_diff_mat, &pt->x);
@@ -977,7 +977,6 @@ void ED_gpencil_project_stroke_to_view(bContext *C, bGPDlayer *gpl, bGPDstroke *
   Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
-  bGPdata *gpd = (bGPdata *)ob->data;
   GP_SpaceConversion gsc = {NULL};
 
   bGPDspoint *pt;
@@ -988,7 +987,7 @@ void ED_gpencil_project_stroke_to_view(bContext *C, bGPDlayer *gpl, bGPDstroke *
   /* init space conversion stuff */
   gp_point_conversion_init(C, &gsc);
 
-  ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, diff_mat);
+  BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
   invert_m4_m4(inverse_diff_mat, diff_mat);
 
   /* Adjust each point */
@@ -1254,61 +1253,7 @@ void gp_subdivide_stroke(bGPDstroke *gps, const int subdivide)
   BKE_gpencil_stroke_geometry_update(gps);
 }
 
-/* ******************************************************** */
-/* Layer Parenting  - Compute Parent Transforms */
-
-/* calculate difference matrix */
-void ED_gpencil_parent_location(const Depsgraph *depsgraph,
-                                Object *obact,
-                                bGPdata *UNUSED(gpd),
-                                bGPDlayer *gpl,
-                                float diff_mat[4][4])
-{
-  Object *ob_eval = depsgraph != NULL ? DEG_get_evaluated_object(depsgraph, obact) : obact;
-  Object *obparent = gpl->parent;
-  Object *obparent_eval = depsgraph != NULL ? DEG_get_evaluated_object(depsgraph, obparent) :
-                                              obparent;
-
-  /* if not layer parented, try with object parented */
-  if (obparent_eval == NULL) {
-    if (ob_eval != NULL) {
-      if (ob_eval->type == OB_GPENCIL) {
-        copy_m4_m4(diff_mat, ob_eval->obmat);
-        return;
-      }
-    }
-    /* not gpencil object */
-    unit_m4(diff_mat);
-    return;
-  }
-  else {
-    if ((gpl->partype == PAROBJECT) || (gpl->partype == PARSKEL)) {
-      mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse);
-      add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
-      return;
-    }
-    else if (gpl->partype == PARBONE) {
-      bPoseChannel *pchan = BKE_pose_channel_find_name(obparent_eval->pose, gpl->parsubstr);
-      if (pchan) {
-        float tmp_mat[4][4];
-        mul_m4_m4m4(tmp_mat, obparent_eval->obmat, pchan->pose_mat);
-        mul_m4_m4m4(diff_mat, tmp_mat, gpl->inverse);
-        add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
-      }
-      else {
-        /* if bone not found use object (armature) */
-        mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse);
-        add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
-      }
-      return;
-    }
-    else {
-      unit_m4(diff_mat); /* not defined type */
-    }
-  }
-}
-
-/* reset parent matrix for all layers */
+/* Reset parent matrix for all layers. */
 void ED_gpencil_reset_layers_parent(Depsgraph *depsgraph, Object *obact, bGPdata *gpd)
 {
   bGPDspoint *pt;
@@ -1338,7 +1283,7 @@ void ED_gpencil_reset_layers_parent(Depsgraph *depsgraph, Object *obact, bGPdata
       /* only redo if any change */
       if (!equals_m4m4(gpl->inverse, cur_mat)) {
         /* first apply current transformation to all strokes */
-        ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+        BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
         /* undo local object */
         sub_v3_v3(diff_mat[3], gpl_loc);
 

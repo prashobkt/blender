@@ -324,6 +324,11 @@ void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig
                                                 const struct bGPDframe *gpf_eval);
 void BKE_gpencil_update_orig_pointers(const struct Object *ob_orig, const struct Object *ob_eval);
 
+void BKE_gpencil_parent_matrix_get(const struct Depsgraph *depsgraph,
+                                   struct Object *obact,
+                                   struct bGPDlayer *gpl,
+                                   float diff_mat[4][4]);
+
 #ifdef __cplusplus
 }
 #endif

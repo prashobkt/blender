@@ -1240,7 +1240,7 @@ static bool gp_stroke_eraser_is_occluded(tGPsdata *p,
 
     float diff_mat[4][4];
     /* calculate difference matrix if parent object */
-    ED_gpencil_parent_location(p->depsgraph, obact, p->gpd, gpl, diff_mat);
+    BKE_gpencil_parent_matrix_get(p->depsgraph, obact, gpl, diff_mat);
 
     if (ED_view3d_autodist_simple(p->ar, mval_i, mval_3d, 0, NULL)) {
       const float depth_mval = view3d_point_depth(rv3d, mval_3d);
@@ -1365,7 +1365,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
   round_v2i_v2fl(mval_i, mval);
 
   /* calculate difference matrix */
-  ED_gpencil_parent_location(depsgraph, obact, p->gpd, gpl, diff_mat);
+  BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
 
   if (gps->totpoints == 0) {
     /* just free stroke */

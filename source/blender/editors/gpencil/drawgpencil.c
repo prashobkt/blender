@@ -1029,7 +1029,7 @@ void ED_gp_draw_interpolation(const bContext *C, tGPDinterpolate *tgpi, const in
   GPU_blend(true);
   for (tgpil = tgpi->ilayers.first; tgpil; tgpil = tgpil->next) {
     /* calculate parent position */
-    ED_gpencil_parent_location(depsgraph, obact, tgpi->gpd, tgpil->gpl, tgpw.diff_mat);
+    BKE_gpencil_parent_matrix_get(depsgraph, obact, tgpil->gpl, tgpw.diff_mat);
     if (tgpil->interFrame) {
       tgpw.gpl = tgpil->gpl;
       tgpw.gpf = tgpil->interFrame;

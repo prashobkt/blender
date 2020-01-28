@@ -202,12 +202,6 @@ bool ED_gpencil_add_lattice_modifier(const struct bContext *C,
 
 /* ------------ Transformation Utilities ------------ */
 
-/* get difference matrix */
-void ED_gpencil_parent_location(const struct Depsgraph *depsgraph,
-                                struct Object *obact,
-                                struct bGPdata *gpd,
-                                struct bGPDlayer *gpl,
-                                float diff_mat[4][4]);
 /* reset parent matrix for all layers */
 void ED_gpencil_reset_layers_parent(struct Depsgraph *depsgraph,
                                     struct Object *obact,

@@ -203,7 +203,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
       }
 
       /* calculate difference matrix */
-      ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+      BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
       /* undo matrix */
       invert_m4_m4(inverse_diff_mat, diff_mat);
 

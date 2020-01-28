@@ -798,7 +798,7 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
       if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
 
         /* calculate difference matrix */
-        ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, diff_mat);
+        BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
 
         for (bGPDstroke *gps = gpl->actframe->strokes.first; gps; gps = gps->next) {
           /* skip strokes that are invalid for current view */

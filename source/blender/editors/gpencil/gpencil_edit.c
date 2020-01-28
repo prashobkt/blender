@@ -2646,7 +2646,7 @@ static int gp_snap_to_grid(bContext *C, wmOperator *UNUSED(op))
       float diff_mat[4][4];
 
       /* calculate difference matrix object */
-      ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+      BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;
@@ -2723,7 +2723,7 @@ static int gp_snap_to_cursor(bContext *C, wmOperator *op)
       float diff_mat[4][4];
 
       /* calculate difference matrix */
-      ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+      BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;
@@ -2821,7 +2821,7 @@ static int gp_snap_cursor_to_sel(bContext *C, wmOperator *UNUSED(op))
       float diff_mat[4][4];
 
       /* calculate difference matrix */
-      ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+      BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;

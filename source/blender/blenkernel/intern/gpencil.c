@@ -69,6 +69,7 @@
 #include "BLI_math_color.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 static CLG_LogRef LOG = {"bke.gpencil"};
 
@@ -3842,4 +3843,54 @@ void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_ev
     }
   }
 }
+
+void BKE_gpencil_parent_matrix_get(const Depsgraph *depsgraph,
+                                   Object *obact,
+                                   bGPDlayer *gpl,
+                                   float diff_mat[4][4])
+{
+  Object *ob_eval = depsgraph != NULL ? DEG_get_evaluated_object(depsgraph, obact) : obact;
+  Object *obparent = gpl->parent;
+  Object *obparent_eval = depsgraph != NULL ? DEG_get_evaluated_object(depsgraph, obparent) :
+                                              obparent;
+
+  /* if not layer parented, try with object parented */
+  if (obparent_eval == NULL) {
+    if (ob_eval != NULL) {
+      if (ob_eval->type == OB_GPENCIL) {
+        copy_m4_m4(diff_mat, ob_eval->obmat);
+        return;
+      }
+    }
+    /* not gpencil object */
+    unit_m4(diff_mat);
+    return;
+  }
+  else {
+    if ((gpl->partype == PAROBJECT) || (gpl->partype == PARSKEL)) {
+      mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse);
+      add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
+      return;
+    }
+    else if (gpl->partype == PARBONE) {
+      bPoseChannel *pchan = BKE_pose_channel_find_name(obparent_eval->pose, gpl->parsubstr);
+      if (pchan) {
+        float tmp_mat[4][4];
+        mul_m4_m4m4(tmp_mat, obparent_eval->obmat, pchan->pose_mat);
+        mul_m4_m4m4(diff_mat, tmp_mat, gpl->inverse);
+        add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
+      }
+      else {
+        /* if bone not found use object (armature) */
+        mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse);
+        add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
+      }
+      return;
+    }
+    else {
+      unit_m4(diff_mat); /* not defined type */
+    }
+  }
+}
+
 /** \} */

@@ -1080,7 +1080,7 @@ static bool gp_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVertexpai
 
     /* calculate difference matrix */
     float diff_mat[4][4];
-    ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+    BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
 
     /* Active Frame or MultiFrame? */
     if (gso->is_multiframe) {
