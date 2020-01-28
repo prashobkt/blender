@@ -445,7 +445,7 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
   int ctime = (int)DEG_get_ctime(depsgraph);
 
   /* update active frame */
-    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
   }
 
@@ -456,7 +456,7 @@ void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
      * so that editing tools work with copy-on-write
      * when the current frame changes
      */
-      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
       gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
     }
   }
@@ -897,10 +897,19 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
   bGPdata *gpd_orig = (bGPdata *)ob_orig->data;
 
+  /* Need check if some layer is parented. */
+  bool do_parent = false;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
+    if (gpl->parent != NULL) {
+      do_parent = true;
+      break;
+    }
+  }
+
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_eval);
   const bool do_modifiers = (bool)((!is_multiedit) && (ob->greasepencil_modifiers.first != NULL) &&
                                    (!GPENCIL_SIMPLIFY_MODIF(scene)));
-  if (!do_modifiers) {
+  if ((!do_modifiers) && (!do_parent)) {
     return;
   }
   DEG_debug_print_eval(depsgraph, __func__, gpd_eval->id.name, gpd_eval);

@@ -329,6 +329,8 @@ void BKE_gpencil_parent_matrix_get(const struct Depsgraph *depsgraph,
                                    struct bGPDlayer *gpl,
                                    float diff_mat[4][4]);
 
+void BKE_gpencil_update_layer_parent(const struct Depsgraph *depsgraph, struct Object *ob);
+
 #ifdef __cplusplus
 }
 #endif
