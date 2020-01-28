@@ -357,58 +357,8 @@ bool BKE_gpencil_has_transform_modifiers(Object *ob)
   return false;
 }
 
-/* apply stroke modifiers */
-void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph,
-                                  Object *ob,
-                                  bGPDlayer *gpl,
-                                  bGPDframe *gpf,
-                                  bGPDstroke *gps,
-                                  bool is_render)
-{
-  GpencilModifierData *md;
-  bGPdata *gpd = ob->data;
-  const bool is_edit = GPENCIL_ANY_EDIT_MODE(gpd);
-
-  for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
-    if (GPENCIL_MODIFIER_ACTIVE(md, is_render)) {
-      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
-
-      if ((GPENCIL_MODIFIER_EDIT(md, is_edit)) && (!is_render)) {
-        continue;
-      }
-
-      if (mti && mti->deformStroke) {
-        mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
-      }
-    }
-  }
-}
-
-/* apply stroke geometry modifiers */
-void BKE_gpencil_geometry_modifiers(
-    Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf, bool is_render)
-{
-  GpencilModifierData *md;
-  bGPdata *gpd = ob->data;
-  const bool is_edit = GPENCIL_ANY_EDIT_MODE(gpd);
-
-  for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
-    if (GPENCIL_MODIFIER_ACTIVE(md, is_render)) {
-      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
-
-      if ((GPENCIL_MODIFIER_EDIT(md, is_edit)) && (!is_render)) {
-        continue;
-      }
-
-      if (mti->generateStrokes) {
-        mti->generateStrokes(md, depsgraph, ob, gpl, gpf);
-      }
-    }
-  }
-}
-
 /* apply time modifiers */
-int BKE_gpencil_time_modifier(
+static int gpencil_time_modifier(
     Depsgraph *depsgraph, Scene *scene, Object *ob, bGPDlayer *gpl, int cfra, bool is_render)
 {
   GpencilModifierData *md;
@@ -792,7 +742,7 @@ static int gpencil_remap_time_get(Depsgraph *depsgraph, Scene *scene, Object *ob
 
   int remap_cfra = cfra_eval;
   if (time_remap) {
-    remap_cfra = BKE_gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
+    remap_cfra = gpencil_time_modifier(depsgraph, scene, ob, gpl, cfra_eval, is_render);
   }
 
   return remap_cfra;
@@ -948,6 +898,7 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
 void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
+  const bool is_edit = GPENCIL_ANY_EDIT_MODE(gpd);
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
   const bool do_modifiers = (bool)((!is_multiedit) && (ob->greasepencil_modifiers.first != NULL) &&
@@ -969,15 +920,27 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
       continue;
     }
 
-    /* Apply geometry modifiers (create new geometry). */
-    if (BKE_gpencil_has_geometry_modifiers(ob)) {
-      BKE_gpencil_geometry_modifiers(depsgraph, ob, gpl, gpf, is_render);
-    }
+    LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
 
-    /* Apply deform modifiers (only change geometry). */
-    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-      /* Apply modifiers that only deform geometry */
-      BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, gpf, gps, is_render);
+      if (GPENCIL_MODIFIER_ACTIVE(md, is_render)) {
+        const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+
+        if ((GPENCIL_MODIFIER_EDIT(md, is_edit)) && (!is_render)) {
+          continue;
+        }
+
+        /* Apply geometry modifiers (add new geometry). */
+        if (mti->generateStrokes) {
+          mti->generateStrokes(md, depsgraph, ob, gpl, gpf);
+        }
+
+        /* Apply deform modifiers (only change geometry). */
+        if (mti && mti->deformStroke) {
+          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+            mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
+          }
+        }
+      }
     }
   }
 
