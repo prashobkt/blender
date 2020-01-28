@@ -5301,7 +5301,7 @@ class VIEW3D_PT_shading_lighting(Panel):
         return cls.poll_ex(context)
 
     def draw(self, context):
-        self.draw_ex(context)
+        VIEW3D_PT_shading_lighting.draw_ex(self, context)
 
     @classmethod
     def poll_ex(cls, context, opt_shading=None):
@@ -5309,6 +5309,7 @@ class VIEW3D_PT_shading_lighting(Panel):
         engine = context.scene.render.engine
         return shading.type in {'SOLID', 'MATERIAL'} or engine == 'BLENDER_EEVEE' and shading.type == 'RENDERED'
 
+    @staticmethod
     def draw_ex(self, context, opt_shading=None):
         layout = self.layout
         shading = VIEW3D_PT_shading.get_shading(context, opt_shading)
@@ -5461,13 +5462,14 @@ class VIEW3D_PT_shading_options(Panel):
         cls.poll_ex(context)
 
     def draw(self, context):
-        self.draw_ex(context)
+        VIEW3D_PT_shading_options.draw_ex(self, context)
 
     @classmethod
     def poll_ex(cls, context, shading=None):
         shading = VIEW3D_PT_shading.get_shading(context, shading)
         return shading.type in {'WIREFRAME', 'SOLID'}
 
+    @staticmethod
     def draw_ex(self, context, shading=None):
         layout = self.layout
 

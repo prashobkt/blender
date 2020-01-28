@@ -20,6 +20,7 @@
 # <pep8 compliant>
 from bpy.types import Panel
 from bl_ui.space_view3d import (
+    VIEW3D_PT_shading,
     VIEW3D_PT_shading_lighting,
     VIEW3D_PT_shading_color,
     VIEW3D_PT_shading_options,
@@ -580,7 +581,8 @@ class RENDER_PT_opengl_color(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        VIEW3D_PT_shading_color._draw_color_type(self, context)
+        shading = VIEW3D_PT_shading.get_shading(context)
+        VIEW3D_PT_shading_color._draw_color_type(self.layout, shading)
 
 
 class RENDER_PT_opengl_options(RenderButtonsPanel, Panel):
