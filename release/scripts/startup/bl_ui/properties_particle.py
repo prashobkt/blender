@@ -55,7 +55,7 @@ def particle_panel_poll(cls, context):
     if not settings:
         return False
 
-    return settings.is_fluid is False and (engine in cls.COMPAT_ENGINES)
+    return (settings.is_fluid is False) and (engine in cls.COMPAT_ENGINES)
 
 
 def particle_get_settings(context):
@@ -207,7 +207,7 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
 
             col = layout.column()
 
-            if part.is_fluid is False:
+            if (part.is_fluid is False):
                 row = col.row()
                 row.enabled = particle_panel_enabled(context, psys)
                 row.template_ID(psys, "settings", new="particle.new")
@@ -582,7 +582,10 @@ class PARTICLE_PT_rotation(ParticleButtonsPanel, Panel):
         else:
             part = context.space_data.pin_id
 
-        self.layout.prop(part, "use_rotations", text="")
+        layout = self.layout
+        layout.prop(part, "use_rotations", text="")
+        layout.enabled = particle_panel_enabled(context, psys) and part.use_rotations
+
 
     def draw(self, context):
         layout = self.layout
@@ -1961,7 +1964,7 @@ class PARTICLE_PT_hair_shape(ParticleButtonsPanel, Panel):
         layout.prop(part, "shape", text="Strand Shape")
 
         col = layout.column(align=True)
-        col.prop(part, "root_radius", text="Radius Root")
+        col.prop(part, "root_radius", text="Diameter Root")
         col.prop(part, "tip_radius", text="Tip")
 
         col = layout.column()

@@ -17,6 +17,8 @@
  */
 #include "blendfile_loading_base_test.h"
 
+#include "MEM_guardedalloc.h"
+
 extern "C" {
 #include "BKE_appdir.h"
 #include "BKE_blender.h"
@@ -40,8 +42,6 @@ extern "C" {
 #include "DNA_windowmanager_types.h"
 
 #include "IMB_imbuf.h"
-
-#include "MEM_guardedalloc.h"
 
 #include "RNA_define.h"
 
@@ -89,7 +89,7 @@ void BlendfileLoadingBaseTest::TearDownTestCase()
   }
 
   /* Copied from WM_exit_ex() in wm_init_exit.c, and cherry-picked those lines that match the
-   * allocation/initialisation done in SetUpTestCase(). */
+   * allocation/initialization done in SetUpTestCase(). */
   BKE_blender_free();
   RNA_exit();
 

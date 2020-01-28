@@ -91,11 +91,17 @@ typedef struct RenderSlot {
   struct RenderResult *render;
 } RenderSlot;
 
+typedef struct ImageTile_Runtime {
+  int tilearray_layer;
+  int _pad;
+  int tilearray_offset[2];
+  int tilearray_size[2];
+} ImageTile_Runtime;
+
 typedef struct ImageTile {
   struct ImageTile *next, *prev;
 
-  /** Not written in file 2 = TEXTARGET_COUNT. */
-  struct GPUTexture *gputexture[2];
+  struct ImageTile_Runtime runtime;
 
   char ok;
   char _pad[3];
@@ -114,7 +120,9 @@ typedef struct ImageTile {
 enum {
   TEXTARGET_TEXTURE_2D = 0,
   TEXTARGET_TEXTURE_CUBE_MAP = 1,
-  TEXTARGET_COUNT = 2,
+  TEXTARGET_TEXTURE_2D_ARRAY = 2,
+  TEXTARGET_TEXTURE_TILE_MAPPING = 3,
+  TEXTARGET_COUNT = 4,
 };
 
 typedef struct Image {
@@ -125,6 +133,8 @@ typedef struct Image {
 
   /** Not written in file. */
   struct MovieCache *cache;
+  /** Not written in file 4 = TEXTARGET_COUNT. */
+  struct GPUTexture *gputexture[4];
 
   /* sources from: */
   ListBase anims;
@@ -184,7 +194,7 @@ typedef struct Image {
 enum {
   IMA_FLAG_UNUSED_0 = (1 << 0), /* cleared */
   IMA_FLAG_UNUSED_1 = (1 << 1), /* cleared */
-#ifdef DNA_DEPRECATED
+#ifdef DNA_DEPRECATED_ALLOW
   IMA_DO_PREMUL = (1 << 2),
 #endif
   IMA_FLAG_UNUSED_4 = (1 << 4), /* cleared */

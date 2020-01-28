@@ -29,8 +29,9 @@ class UnifiedPaintPanel:
     def get_brush_mode(context):
         """ Get the correct mode for this context. For any context where this returns None,
             no brush options should be displayed."""
+        mode = context.mode
 
-        if context.mode == 'PARTICLE':
+        if mode == 'PARTICLE':
             # Particle brush settings currently completely do their own thing.
             return None
 
@@ -54,14 +55,13 @@ class UnifiedPaintPanel:
                 if space_data.show_uvedit:
                     return 'UV_SCULPT'
                 return 'PAINT_2D'
-
-            if space_type in {'VIEW_3D', 'PROPERTIES'}:
-                if context.mode == 'PAINT_TEXTURE':
-                    if tool_settings.image_paint and tool_settings.image_paint.detect_data():
-                        return context.mode
+            elif space_type in {'VIEW_3D', 'PROPERTIES'}:
+                if mode == 'PAINT_TEXTURE':
+                    if tool_settings.image_paint:
+                        return mode
                     else:
                         return None
-                return context.mode
+                return mode
         return None
 
     @staticmethod
@@ -91,7 +91,7 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_paint
         elif mode in {'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
             return tool_settings.gpencil_sculpt
-        return False
+        return None
 
     @staticmethod
     def prop_unified(
@@ -104,14 +104,14 @@ class UnifiedPaintPanel:
             icon='NONE',
             text=None,
             slider=False,
-            display_unified_toggle=True,
+            header=False,
     ):
         """ Generalized way of adding brush options to the UI,
             along with their pen pressure setting and global toggle, if they exist. """
         row = layout.row(align=True)
         ups = context.tool_settings.unified_paint_settings
         prop_owner = brush
-        if unified_name and getattr(ups, unified_name) and display_unified_toggle:
+        if unified_name and getattr(ups, unified_name):
             prop_owner = ups
 
         row.prop(prop_owner, prop_name, icon=icon, text=text, slider=slider)
@@ -119,7 +119,8 @@ class UnifiedPaintPanel:
         if pressure_name:
             row.prop(brush, pressure_name, text="")
 
-        if unified_name and display_unified_toggle:
+        if unified_name and not header:
+            # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
             row.prop(ups, unified_name, text="", icon="WORLD")
 
         return row
@@ -160,10 +161,12 @@ class BrushSelectPanel(BrushPanel):
             row.column().template_ID(settings, "brush", new="brush.add")
         col = row.column()
         col.menu("VIEW3D_MT_brush_context_menu", icon='DOWNARROW_HLT', text="")
-        col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
 
-        if brush.use_custom_icon:
-            layout.prop(brush, "icon_filepath", text="")
+        if brush is not None:
+            col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
+
+            if brush.use_custom_icon:
+                layout.prop(brush, "icon_filepath", text="")
 
 
 class ColorPalettePanel(BrushPanel):
@@ -435,7 +438,7 @@ class FalloffPanel(BrushPanel):
             row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
             row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
 
-        if mode in {'SCULPT', 'PAINT_VERTEX', 'PAINT_WEIGHT'}:
+        if mode in {'SCULPT', 'PAINT_VERTEX', 'PAINT_WEIGHT'} and brush.sculpt_tool != 'POSE':
             col.separator()
             row = col.row(align=True)
             row.use_property_split = True
@@ -613,9 +616,12 @@ def brush_settings(layout, context, brush, popover=False):
             layout.separator()
 
         if brush.sculpt_tool == 'POSE':
-            row = layout.row()
-            row.prop(brush, "pose_offset")
-
+            layout.separator()
+            layout.prop(brush, "pose_offset")
+            layout.prop(brush, "pose_smooth_iterations")
+            layout.prop(brush, "pose_ik_segments")
+            layout.separator()
+        
         if brush.sculpt_tool == 'SCRAPE':
             row = layout.row()
             row.prop(brush, "invert_to_scrape_fill", text="Invert to Fill")
@@ -869,7 +875,7 @@ def draw_color_settings(context, layout, brush, color_type=False):
                 "secondary_color",
                 unified_name="use_unified_color",
                 text="Background Color",
-                display_unified_toggle=False,
+                header=True,
             )
 
             col.prop(brush, "gradient_stroke_mode", text="Gradient Mapping")
@@ -959,7 +965,6 @@ def brush_mask_texture_settings(layout, brush):
 
 def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
     """Draw Tool Settings header for Vertex Paint and 2D and 3D Texture Paint modes."""
-    # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
     capabilities = brush.image_paint_capabilities
 
     if capabilities.has_color:
@@ -972,8 +977,10 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
         brush,
         "size",
         pressure_name="use_pressure_size",
+        unified_name="use_unified_size",
         slider=True,
         text="Radius",
+        header=True
     )
     UnifiedPaintPanel.prop_unified(
         layout,
@@ -981,6 +988,8 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
         brush,
         "strength",
         pressure_name="use_pressure_strength",
+        unified_name="use_unified_strength",
+        header=True
     )
 
 
@@ -1007,7 +1016,7 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
             row.prop(gp_settings, "eraser_thickness_factor")
 
         row = layout.row(align=True)
-        row.prop(gp_settings, "use_cursor", text="Show Brush")
+        row.prop(gp_settings, "use_cursor", text="Display Cursor")
 
     # FIXME: tools must use their own UI drawing!
     elif brush.gpencil_tool == 'FILL':
@@ -1017,9 +1026,6 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row.prop(brush, "size", text="Thickness")
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_simplify_level", text="Simplify")
-        row = layout.row(align=True)
-        row.prop(gp_settings, "fill_draw_mode", text="Boundary")
-        row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
 
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)

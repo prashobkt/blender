@@ -72,6 +72,7 @@
 #include "BKE_particle.h"
 #include "BKE_curveprofile.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
@@ -1819,11 +1820,15 @@ static int modifier_can_delete(ModifierData *md)
 {
   /* fluid particle modifier can't be deleted here */
   if (md->type == eModifierType_ParticleSystem) {
-    if (((ParticleSystemModifierData *)md)->psys->part->type == PART_FLUID) {
+    short particle_type = ((ParticleSystemModifierData *)md)->psys->part->type;
+    if (particle_type == PART_FLUID || particle_type == PART_FLUID_FLIP ||
+        particle_type == PART_FLUID_FOAM || particle_type == PART_FLUID_SPRAY ||
+        particle_type == PART_FLUID_BUBBLE || particle_type == PART_FLUID_TRACER ||
+        particle_type == PART_FLUID_SPRAYFOAM || particle_type == PART_FLUID_SPRAYBUBBLE ||
+        particle_type == PART_FLUID_FOAMBUBBLE || particle_type == PART_FLUID_SPRAYFOAMBUBBLE) {
       return 0;
     }
   }
-
   return 1;
 }
 
@@ -1836,7 +1841,7 @@ static int modifier_is_simulation(ModifierData *md)
            eModifierType_Cloth,
            eModifierType_Collision,
            eModifierType_Fluidsim,
-           eModifierType_Smoke,
+           eModifierType_Fluid,
            eModifierType_Softbody,
            eModifierType_Surface,
            eModifierType_DynamicPaint)) {
@@ -2069,7 +2074,7 @@ static uiLayout *draw_modifier(uiLayout *layout,
                 eModifierType_Softbody,
                 eModifierType_ParticleSystem,
                 eModifierType_Cloth,
-                eModifierType_Smoke)) {
+                eModifierType_Fluid)) {
         uiItemO(row,
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
                 ICON_NONE,
@@ -2841,8 +2846,13 @@ void uiTemplatePreview(uiLayout *layout,
       col = uiLayoutColumn(row, true);
       uiLayoutSetScaleX(col, 1.5);
       uiItemR(col, &material_ptr, "preview_render_type", UI_ITEM_R_EXPAND, "", ICON_NONE);
-      uiItemS(col);
-      uiItemR(col, &material_ptr, "use_preview_world", 0, "", ICON_WORLD);
+
+      /* EEVEE preview file has baked lighting so use_preview_world has no effect,
+       * just hide the option until this feature is supported. */
+      if (!BKE_scene_uses_blender_eevee(CTX_data_scene(C))) {
+        uiItemS(col);
+        uiItemR(col, &material_ptr, "use_preview_world", 0, "", ICON_WORLD);
+      }
     }
 
     if (pr_texture) {
@@ -5011,7 +5021,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                       0.0,
                       0.0,
                       0.0,
-                      TIP_("Set the point's handle type to sharp."));
+                      TIP_("Set the point's handle type to sharp"));
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
@@ -5029,7 +5039,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                       0.0,
                       0.0,
                       0.0,
-                      TIP_("Set the point's handle type to sharp."));
+                      TIP_("Set the point's handle type to smooth"));
     UI_but_funcN_set(bt, CurveProfile_buttons_setcurved, MEM_dupallocN(cb), profile);
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
@@ -6861,7 +6871,6 @@ static char *progress_tooltip_func(bContext *UNUSED(C), void *argN, const char *
 
 void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
 {
-  bScreen *screen = CTX_wm_screen(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   ScrArea *sa = CTX_wm_area(C);
   uiBlock *block;
@@ -7043,7 +7052,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
     }
   }
 
-  if (screen->animtimer) {
+  if (ED_screen_animation_no_scrub(wm)) {
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT,
                      B_STOPANIM,

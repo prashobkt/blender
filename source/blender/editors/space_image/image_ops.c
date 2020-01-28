@@ -305,7 +305,7 @@ static bool image_sample_poll(bContext *C)
 typedef struct ViewPanData {
   float x, y;
   float xof, yof;
-  int event_type;
+  int launch_event;
   bool own_cursor;
 } ViewPanData;
 
@@ -327,7 +327,7 @@ static void image_view_pan_init(bContext *C, wmOperator *op, const wmEvent *even
   vpd->y = event->y;
   vpd->xof = sima->xof;
   vpd->yof = sima->yof;
-  vpd->event_type = event->type;
+  vpd->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
 
   WM_event_add_modal_handler(C, op);
 }
@@ -398,7 +398,7 @@ static int image_view_pan_modal(bContext *C, wmOperator *op, const wmEvent *even
       image_view_pan_exec(C, op);
       break;
     default:
-      if (event->type == vpd->event_type && event->val == KM_RELEASE) {
+      if (event->type == vpd->launch_event && event->val == KM_RELEASE) {
         image_view_pan_exit(C, op, false);
         return OPERATOR_FINISHED;
       }
@@ -452,7 +452,7 @@ void IMAGE_OT_view_pan(wmOperatorType *ot)
 typedef struct ViewZoomData {
   float origx, origy;
   float zoom;
-  int event_type;
+  int launch_event;
   float location[2];
 
   /* needed for continuous zoom */
@@ -483,7 +483,7 @@ static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *eve
   vpd->origx = event->x;
   vpd->origy = event->y;
   vpd->zoom = sima->zoom;
-  vpd->event_type = event->type;
+  vpd->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
 
   UI_view2d_region_to_view(
       &ar->v2d, event->mval[0], event->mval[1], &vpd->location[0], &vpd->location[1]);
@@ -633,7 +633,7 @@ static int image_view_zoom_modal(bContext *C, wmOperator *op, const wmEvent *eve
   else if (event->type == MOUSEMOVE) {
     event_code = VIEW_APPLY;
   }
-  else if (event->type == vpd->event_type && event->val == KM_RELEASE) {
+  else if (event->type == vpd->launch_event && event->val == KM_RELEASE) {
     event_code = VIEW_CONFIRM;
   }
 
@@ -1267,49 +1267,63 @@ static int image_cmp_frame(const void *a, const void *b)
   return 0;
 }
 
-static int image_get_udim(const char *filepath, LinkNodePair *udim_tiles)
+/* Checks whether the given filepath refers to a UDIM texture.
+ * If yes, the range from 1001 to the highest tile is returned, otherwise 0.
+ *
+ * If the result is positive, the filepath will be overwritten with that of
+ * the 1001 tile.
+ * udim_tiles may get filled even if the result ultimately is false! */
+static int image_get_udim(char *filepath, LinkNodePair *udim_tiles)
 {
   char filename[FILE_MAX], dirname[FILE_MAXDIR];
   BLI_split_dirfile(filepath, dirname, filename, sizeof(dirname), sizeof(filename));
 
-  if (strstr(filename, "1001") == NULL) {
+  unsigned short digits;
+  char base_head[FILE_MAX], base_tail[FILE_MAX];
+  int id = BLI_stringdec(filename, base_head, base_tail, &digits);
+
+  if (id < 1001 || id >= IMA_UDIM_MAX) {
     return 0;
   }
 
   bool is_udim = true;
+  bool has_primary = false;
   int max_udim = 0;
 
-  unsigned short digits;
-  char base_head[FILE_MAX], base_tail[FILE_MAX];
-  int id = BLI_stringdec(filename, base_head, base_tail, &digits);
-  if (id == 1001) {
-    struct direntry *dir;
-    uint totfile = BLI_filelist_dir_contents(dirname, &dir);
-    for (int i = 0; i < totfile; i++) {
-      if (!(dir[i].type & S_IFREG)) {
-        continue;
-      }
-      char head[FILE_MAX], tail[FILE_MAX];
-      id = BLI_stringdec(dir[i].relname, head, tail, &digits);
+  struct direntry *dir;
+  uint totfile = BLI_filelist_dir_contents(dirname, &dir);
+  for (int i = 0; i < totfile; i++) {
+    if (!(dir[i].type & S_IFREG)) {
+      continue;
+    }
+    char head[FILE_MAX], tail[FILE_MAX];
+    id = BLI_stringdec(dir[i].relname, head, tail, &digits);
 
-      if (digits > 4 || !(STREQLEN(base_head, head, FILE_MAX)) ||
-          !(STREQLEN(base_tail, tail, FILE_MAX))) {
-        continue;
-      }
-
-      if (id < 1001 || id >= 2000) {
-        is_udim = false;
-        break;
-      }
-
-      BLI_linklist_append(udim_tiles, POINTER_FROM_INT(id));
-      max_udim = max_ii(max_udim, id);
+    if (digits > 4 || !(STREQLEN(base_head, head, FILE_MAX)) ||
+        !(STREQLEN(base_tail, tail, FILE_MAX))) {
+      continue;
     }
 
-    BLI_filelist_free(dir, totfile);
-  }
+    if (id < 1001 || id >= IMA_UDIM_MAX) {
+      is_udim = false;
+      break;
+    }
+    if (id == 1001) {
+      has_primary = true;
+    }
 
-  return is_udim ? (max_udim - 1001) : 0;
+    BLI_linklist_append(udim_tiles, POINTER_FROM_INT(id));
+    max_udim = max_ii(max_udim, id);
+  }
+  BLI_filelist_free(dir, totfile);
+
+  if (is_udim && has_primary) {
+    char primary_filename[FILE_MAX];
+    BLI_stringenc(primary_filename, base_head, base_tail, digits, 1001);
+    BLI_join_dirfile(filepath, FILE_MAX, dirname, primary_filename);
+    return max_udim - 1000;
+  }
+  return 0;
 }
 
 /**
@@ -1320,27 +1334,34 @@ static int image_get_udim(const char *filepath, LinkNodePair *udim_tiles)
  * \param ofs: [out] offset the first frame number in the sequence.
  * \return the number of contiguous frames in the sequence
  */
-static int image_sequence_get_len(ImageFrameRange *frame_range, int *ofs, LinkNodePair *udim_tiles)
+static int image_sequence_get_len(ImageFrameRange *frame_range,
+                                  int *ofs,
+                                  char *filepath_range,
+                                  LinkNodePair *udim_tiles)
 {
   ImageFrame *frame;
 
   BLI_listbase_sort(&frame_range->frames, image_cmp_frame);
+  BLI_strncpy(filepath_range, frame_range->filepath, FILE_MAX);
 
   frame = frame_range->frames.first;
   if (frame != NULL) {
     int frame_curr = frame->framenr;
     (*ofs) = frame_curr;
 
-    if (udim_tiles != NULL && (frame_curr == 1001)) {
-      return 1 + image_get_udim(frame_range->filepath, udim_tiles);
-    }
-    else {
-      while (frame != NULL && (frame->framenr == frame_curr)) {
-        frame_curr++;
-        frame = frame->next;
+    if (udim_tiles != NULL) {
+      int len_udim = image_get_udim(filepath_range, udim_tiles);
+      if (len_udim > 0) {
+        *ofs = 1001;
+        return len_udim;
       }
-      return frame_curr - (*ofs);
     }
+
+    while (frame != NULL && (frame->framenr == frame_curr)) {
+      frame_curr++;
+      frame = frame->next;
+    }
+    return frame_curr - (*ofs);
   }
   *ofs = 0;
   return 0;
@@ -1422,7 +1443,6 @@ static int image_open_exec(bContext *C, wmOperator *op)
   char filepath[FILE_MAX];
   int frame_seq_len = 0;
   int frame_ofs = 1;
-  LinkNodePair udim_tiles = {NULL};
 
   const bool is_relative_path = RNA_boolean_get(op->ptr, "relative_path");
   const bool use_multiview = RNA_boolean_get(op->ptr, "use_multiview");
@@ -1445,13 +1465,13 @@ static int image_open_exec(bContext *C, wmOperator *op)
          frame_range = frame_range->next) {
       int frame_range_ofs;
 
+      LinkNodePair udim_tiles = {NULL};
       LinkNodePair *udim_tiles_ptr = use_udim ? (&udim_tiles) : NULL;
-      int frame_range_seq_len = image_sequence_get_len(
-          frame_range, &frame_range_ofs, udim_tiles_ptr);
-      BLI_freelistN(&frame_range->frames);
 
       char filepath_range[FILE_MAX];
-      BLI_strncpy(filepath_range, frame_range->filepath, sizeof(filepath_range));
+      int frame_range_seq_len = image_sequence_get_len(
+          frame_range, &frame_range_ofs, filepath_range, udim_tiles_ptr);
+      BLI_freelistN(&frame_range->frames);
 
       if (was_relative) {
         BLI_path_rel(filepath_range, BKE_main_blendfile_path(bmain));
@@ -1473,35 +1493,42 @@ static int image_open_exec(bContext *C, wmOperator *op)
         frame_seq_len = frame_range_seq_len;
         frame_ofs = frame_range_ofs;
       }
+
+      BLI_linklist_free(udim_tiles.list, NULL);
     }
     BLI_freelistN(&frame_ranges_all);
   }
   else {
     /* for drag & drop etc. */
-    frame_seq_len = 1;
 
-    if (use_udim) {
+    LinkNodePair udim_tiles = {NULL};
+    frame_seq_len = 1;
+    char filepath_range[FILE_MAX];
+    BLI_strncpy(filepath_range, filepath, FILE_MAX);
+
+    if (use_udim > 0) {
       /* Try to find UDIM tiles corresponding to the image */
-      frame_seq_len = 1 + image_get_udim(filepath, &udim_tiles);
+      int udim_len = image_get_udim(filepath_range, &udim_tiles);
 
       /* If we found something, mark the image as tiled. */
-      if (frame_seq_len > 1) {
+      if (udim_len) {
+        frame_seq_len = udim_len;
         frame_ofs = 1001;
       }
     }
 
     ima = image_open_single(bmain,
                             op,
-                            filepath,
+                            filepath_range,
                             BKE_main_blendfile_path(bmain),
                             is_relative_path,
                             use_multiview,
                             frame_seq_len,
                             frame_ofs,
                             &udim_tiles);
-  }
 
-  BLI_linklist_free(udim_tiles.list, NULL);
+    BLI_linklist_free(udim_tiles.list, NULL);
+  }
 
   if (ima == NULL) {
     return OPERATOR_CANCELLED;
@@ -3329,6 +3356,9 @@ static void image_sample_draw(const bContext *C, ARegion *ar, void *arg_info)
 /* Returns color in linear space, matching ED_space_node_color_sample(). */
 bool ED_space_image_color_sample(SpaceImage *sima, ARegion *ar, int mval[2], float r_col[3])
 {
+  if (sima->image == NULL) {
+    return false;
+  }
   float uv[2];
   UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &uv[0], &uv[1]);
   int tile = BKE_image_get_tile_from_pos(sima->image, uv, uv, NULL);
@@ -4212,32 +4242,135 @@ void IMAGE_OT_clear_render_border(wmOperatorType *ot)
 
 /* ********************* Add tile operator ****************** */
 
-static bool tile_poll(bContext *C)
+static bool do_fill_tile(PointerRNA *ptr, Image *ima, ImageTile *tile)
+{
+  float color[4];
+  RNA_float_get_array(ptr, "color", color);
+  int gen_type = RNA_enum_get(ptr, "generated_type");
+  int width = RNA_int_get(ptr, "width");
+  int height = RNA_int_get(ptr, "height");
+  bool is_float = RNA_boolean_get(ptr, "float");
+  int planes = RNA_boolean_get(ptr, "alpha") ? 32 : 24;
+
+  return BKE_image_fill_tile(ima, tile, width, height, color, gen_type, planes, is_float);
+}
+
+static void draw_fill_tile(PointerRNA *ptr, uiLayout *layout)
+{
+  uiLayout *split, *col[2];
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col[0] = uiLayoutColumn(split, false);
+  col[1] = uiLayoutColumn(split, false);
+
+  uiItemL(col[0], IFACE_("Color"), ICON_NONE);
+  uiItemR(col[1], ptr, "color", 0, "", ICON_NONE);
+
+  uiItemL(col[0], IFACE_("Width"), ICON_NONE);
+  uiItemR(col[1], ptr, "width", 0, "", ICON_NONE);
+
+  uiItemL(col[0], IFACE_("Height"), ICON_NONE);
+  uiItemR(col[1], ptr, "height", 0, "", ICON_NONE);
+
+  uiItemL(col[0], "", ICON_NONE);
+  uiItemR(col[1], ptr, "alpha", 0, NULL, ICON_NONE);
+
+  uiItemL(col[0], IFACE_("Generated Type"), ICON_NONE);
+  uiItemR(col[1], ptr, "generated_type", 0, "", ICON_NONE);
+
+  uiItemL(col[0], "", ICON_NONE);
+  uiItemR(col[1], ptr, "float", 0, NULL, ICON_NONE);
+}
+
+static void initialize_fill_tile(PointerRNA *ptr, Image *ima, ImageTile *tile)
+{
+  ImageUser iuser;
+  BKE_imageuser_default(&iuser);
+  if (tile != NULL) {
+    iuser.tile = tile->tile_number;
+  }
+
+  /* Acquire ibuf to get the default values.
+   * If the specified tile has no ibuf, try acquiring the main tile instead
+   * (unless the specified tile already was the main tile).*/
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, &iuser, NULL);
+  if (ibuf == NULL && (tile != NULL) && (tile->tile_number != 1001)) {
+    ibuf = BKE_image_acquire_ibuf(ima, NULL, NULL);
+  }
+
+  if (ibuf != NULL) {
+    /* Initialize properties from reference tile. */
+    RNA_int_set(ptr, "width", ibuf->x);
+    RNA_int_set(ptr, "height", ibuf->y);
+    RNA_boolean_set(ptr, "float", ibuf->rect_float != NULL);
+    RNA_boolean_set(ptr, "alpha", ibuf->planes > 24);
+
+    BKE_image_release_ibuf(ima, ibuf, NULL);
+  }
+}
+
+static void def_fill_tile(StructOrFunctionRNA *srna)
+{
+  PropertyRNA *prop;
+  static float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  prop = RNA_def_float_color(
+      srna, "color", 4, NULL, 0.0f, FLT_MAX, "Color", "Default fill color", 0.0f, 1.0f);
+  RNA_def_property_subtype(prop, PROP_COLOR_GAMMA);
+  RNA_def_property_float_array_default(prop, default_color);
+  RNA_def_enum(srna,
+               "generated_type",
+               rna_enum_image_generated_type_items,
+               IMA_GENTYPE_BLANK,
+               "Generated Type",
+               "Fill the image with a grid for UV map testing");
+  prop = RNA_def_int(srna, "width", 1024, 1, INT_MAX, "Width", "Image width", 1, 16384);
+  RNA_def_property_subtype(prop, PROP_PIXEL);
+  prop = RNA_def_int(srna, "height", 1024, 1, INT_MAX, "Height", "Image height", 1, 16384);
+  RNA_def_property_subtype(prop, PROP_PIXEL);
+
+  /* Only needed when filling the first tile. */
+  RNA_def_boolean(
+      srna, "float", 0, "32 bit Float", "Create image with 32 bit floating point bit depth");
+  RNA_def_boolean(srna, "alpha", 1, "Alpha", "Create an image with an alpha channel");
+}
+
+static bool tile_add_poll(bContext *C)
 {
   Image *ima = CTX_data_edit_image(C);
 
-  return (ima != NULL && ima->source == IMA_SRC_TILED);
+  return (ima != NULL && ima->source == IMA_SRC_TILED && BKE_image_has_ibuf(ima, NULL));
 }
 
 static int tile_add_exec(bContext *C, wmOperator *op)
 {
   Image *ima = CTX_data_edit_image(C);
 
-  int tile_number = RNA_int_get(op->ptr, "number");
-
+  int start_tile = RNA_int_get(op->ptr, "number");
+  int end_tile = min_ii(start_tile + RNA_int_get(op->ptr, "count"), IMA_UDIM_MAX);
+  bool fill_tile = RNA_boolean_get(op->ptr, "fill");
   char *label = RNA_string_get_alloc(op->ptr, "label", NULL, 0);
 
-  ImageTile *tile = BKE_image_add_tile(ima, tile_number, label);
+  bool created_tile = false;
+  for (int tile_number = start_tile; tile_number < end_tile; tile_number++) {
+    ImageTile *tile = BKE_image_add_tile(ima, tile_number, label);
+
+    if (tile != NULL) {
+      ima->active_tile_index = BLI_findindex(&ima->tiles, tile);
+
+      if (fill_tile) {
+        do_fill_tile(op->ptr, ima, tile);
+      }
+
+      created_tile = true;
+    }
+  }
   MEM_freeN(label);
 
-  if (tile == NULL) {
+  if (!created_tile) {
     return OPERATOR_CANCELLED;
   }
 
-  ima->active_tile_index = BLI_findindex(&ima->tiles, tile);
-
   WM_event_add_notifier(C, NC_IMAGE | ND_DRAW, NULL);
-
   return OPERATOR_FINISHED;
 }
 
@@ -4255,7 +4388,11 @@ static int tile_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(ev
     }
   }
 
+  ImageTile *tile = BLI_findlink(&ima->tiles, ima->active_tile_index);
+  initialize_fill_tile(op->ptr, ima, tile);
+
   RNA_int_set(op->ptr, "number", next_number);
+  RNA_int_set(op->ptr, "count", 1);
   RNA_string_set(op->ptr, "label", "");
 
   return WM_operator_props_dialog_popup(C, op, 10 * UI_UNIT_X, 5 * UI_UNIT_Y);
@@ -4276,8 +4413,17 @@ static void tile_add_draw(bContext *UNUSED(C), wmOperator *op)
   uiItemL(col[0], IFACE_("Number"), ICON_NONE);
   uiItemR(col[1], &ptr, "number", 0, "", ICON_NONE);
 
+  uiItemL(col[0], IFACE_("Count"), ICON_NONE);
+  uiItemR(col[1], &ptr, "count", 0, "", ICON_NONE);
+
   uiItemL(col[0], IFACE_("Label"), ICON_NONE);
   uiItemR(col[1], &ptr, "label", 0, "", ICON_NONE);
+
+  uiItemR(layout, &ptr, "fill", 0, NULL, ICON_NONE);
+
+  if (RNA_boolean_get(&ptr, "fill")) {
+    draw_fill_tile(&ptr, layout);
+  }
 }
 
 void IMAGE_OT_tile_add(wmOperatorType *ot)
@@ -4288,7 +4434,7 @@ void IMAGE_OT_tile_add(wmOperatorType *ot)
   ot->idname = "IMAGE_OT_tile_add";
 
   /* api callbacks */
-  ot->poll = tile_poll;
+  ot->poll = tile_add_poll;
   ot->exec = tile_add_exec;
   ot->invoke = tile_add_invoke;
   ot->ui = tile_add_draw;
@@ -4298,7 +4444,10 @@ void IMAGE_OT_tile_add(wmOperatorType *ot)
 
   RNA_def_int(
       ot->srna, "number", 1002, 1001, INT_MAX, "Number", "UDIM number of the tile", 1001, 1099);
+  RNA_def_int(ot->srna, "count", 1, 1, INT_MAX, "Count", "How many tiles to add", 1, 1000);
   RNA_def_string(ot->srna, "label", NULL, 0, "Label", "Optional tile label");
+  RNA_def_boolean(ot->srna, "fill", true, "Fill", "Fill new tile with a generated image");
+  def_fill_tile(ot->srna);
 }
 
 /* ********************* Remove tile operator ****************** */
@@ -4344,20 +4493,23 @@ void IMAGE_OT_tile_remove(wmOperatorType *ot)
 
 /* ********************* Fill tile operator ****************** */
 
+static bool tile_fill_poll(bContext *C)
+{
+  Image *ima = CTX_data_edit_image(C);
+
+  if (ima != NULL && ima->source == IMA_SRC_TILED) {
+    /* Filling secondary tiles is only allowed if the primary tile exists. */
+    return (ima->active_tile_index == 0) || BKE_image_has_ibuf(ima, NULL);
+  }
+  return false;
+}
+
 static int tile_fill_exec(bContext *C, wmOperator *op)
 {
   Image *ima = CTX_data_edit_image(C);
 
-  float color[4];
-  RNA_float_get_array(op->ptr, "color", color);
-  int gen_type = RNA_enum_get(op->ptr, "generated_type");
-  int width = RNA_int_get(op->ptr, "width");
-  int height = RNA_int_get(op->ptr, "height");
-  bool is_float = RNA_boolean_get(op->ptr, "float");
-  int planes = RNA_boolean_get(op->ptr, "alpha") ? 32 : 24;
-
   ImageTile *tile = BLI_findlink(&ima->tiles, ima->active_tile_index);
-  if (!BKE_image_fill_tile(ima, tile, width, height, color, gen_type, planes, is_float)) {
+  if (!do_fill_tile(op->ptr, ima, tile)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -4368,52 +4520,17 @@ static int tile_fill_exec(bContext *C, wmOperator *op)
 
 static int tile_fill_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-  Image *ima = CTX_data_edit_image(C);
-
-  /* Acquire first tile to get the defaults. */
-  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, NULL, NULL);
-  if (ibuf != NULL) {
-    RNA_int_set(op->ptr, "width", ibuf->x);
-    RNA_int_set(op->ptr, "height", ibuf->y);
-    RNA_boolean_set(op->ptr, "float", ibuf->rect_float != NULL);
-    RNA_boolean_set(op->ptr, "alpha", ibuf->planes > 24);
-    BKE_image_release_ibuf(ima, ibuf, NULL);
-  }
+  initialize_fill_tile(op->ptr, CTX_data_edit_image(C), NULL);
 
   return WM_operator_props_dialog_popup(C, op, 15 * UI_UNIT_X, 5 * UI_UNIT_Y);
 }
 
 static void tile_fill_draw(bContext *UNUSED(C), wmOperator *op)
 {
-  uiLayout *split, *col[2];
-  uiLayout *layout = op->layout;
   PointerRNA ptr;
-
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
-  /* copy of WM_operator_props_dialog_popup() layout */
-
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col[0] = uiLayoutColumn(split, false);
-  col[1] = uiLayoutColumn(split, false);
-
-  uiItemL(col[0], IFACE_("Color"), ICON_NONE);
-  uiItemR(col[1], &ptr, "color", 0, "", ICON_NONE);
-
-  uiItemL(col[0], IFACE_("Width"), ICON_NONE);
-  uiItemR(col[1], &ptr, "width", 0, "", ICON_NONE);
-
-  uiItemL(col[0], IFACE_("Height"), ICON_NONE);
-  uiItemR(col[1], &ptr, "height", 0, "", ICON_NONE);
-
-  uiItemL(col[0], "", ICON_NONE);
-  uiItemR(col[1], &ptr, "alpha", 0, NULL, ICON_NONE);
-
-  uiItemL(col[0], IFACE_("Generated Type"), ICON_NONE);
-  uiItemR(col[1], &ptr, "generated_type", 0, "", ICON_NONE);
-
-  uiItemL(col[0], "", ICON_NONE);
-  uiItemR(col[1], &ptr, "float", 0, NULL, ICON_NONE);
+  draw_fill_tile(&ptr, op->layout);
 }
 
 void IMAGE_OT_tile_fill(wmOperatorType *ot)
@@ -4424,7 +4541,7 @@ void IMAGE_OT_tile_fill(wmOperatorType *ot)
   ot->idname = "IMAGE_OT_tile_fill";
 
   /* api callbacks */
-  ot->poll = tile_poll;
+  ot->poll = tile_fill_poll;
   ot->exec = tile_fill_exec;
   ot->invoke = tile_fill_invoke;
   ot->ui = tile_fill_draw;
@@ -4432,25 +4549,5 @@ void IMAGE_OT_tile_fill(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  PropertyRNA *prop;
-  static float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  prop = RNA_def_float_color(
-      ot->srna, "color", 4, NULL, 0.0f, FLT_MAX, "Color", "Default fill color", 0.0f, 1.0f);
-  RNA_def_property_subtype(prop, PROP_COLOR_GAMMA);
-  RNA_def_property_float_array_default(prop, default_color);
-  RNA_def_enum(ot->srna,
-               "generated_type",
-               rna_enum_image_generated_type_items,
-               IMA_GENTYPE_BLANK,
-               "Generated Type",
-               "Fill the image with a grid for UV map testing");
-  prop = RNA_def_int(ot->srna, "width", 1024, 1, INT_MAX, "Width", "Image width", 1, 16384);
-  RNA_def_property_subtype(prop, PROP_PIXEL);
-  prop = RNA_def_int(ot->srna, "height", 1024, 1, INT_MAX, "Height", "Image height", 1, 16384);
-  RNA_def_property_subtype(prop, PROP_PIXEL);
-
-  /* Only needed when filling the first tile. */
-  RNA_def_boolean(
-      ot->srna, "float", 0, "32 bit Float", "Create image with 32 bit floating point bit depth");
-  RNA_def_boolean(ot->srna, "alpha", 1, "Alpha", "Create an image with an alpha channel");
+  def_fill_tile(ot->srna);
 }

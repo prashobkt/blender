@@ -589,14 +589,15 @@ class _draw_tool_settings_context_mode:
                 uv_sculpt = tool_settings.uv_sculpt
                 brush = uv_sculpt.brush
                 if brush:
-                    # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
                     UnifiedPaintPanel.prop_unified(
                         layout,
                         context,
                         brush,
                         "size",
                         pressure_name="use_pressure_size",
+                        unified_name="use_unified_size",
                         slider=True,
+                        header=True
                     )
                     UnifiedPaintPanel.prop_unified(
                         layout,
@@ -604,7 +605,9 @@ class _draw_tool_settings_context_mode:
                         brush,
                         "strength",
                         pressure_name="use_pressure_strength",
+                        unified_name="use_unified_strength",
                         slider=True,
+                        header=True
                     )
 
     @staticmethod
@@ -1083,6 +1086,7 @@ class IMAGE_PT_paint_settings(Panel, ImagePaintPanel):
 class IMAGE_PT_paint_settings_advanced(Panel, ImagePaintPanel):
     bl_context = ".paint_common_2d"
     bl_parent_id = "IMAGE_PT_paint_settings"
+    bl_category = "Tool"
     bl_label = "Advanced"
 
     def draw(self, context):

@@ -293,7 +293,9 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         col.label(text="Vertex Group:")
-        col.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row = col.row(align=True)
+        row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
         col = split.column()
         col.label(text="Control Object:")
         col.prop(md, "object", text="")
@@ -945,7 +947,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             col.prop(md, "angle")
         col.prop(md, "limits", slider=True)
 
-    def SMOKE(self, layout, _ob, _md):
+    def FLUID(self, layout, _ob, _md):
         layout.label(text="Settings are inside the Physics tab")
 
     def SMOOTH(self, layout, ob, md):

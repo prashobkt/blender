@@ -1602,6 +1602,7 @@ static bool bvhtree_weld_overlap_cb(void *userdata, int index_a, int index_b, in
     struct WeldOverlapData *data = userdata;
     const MVert *mvert = data->mvert;
     const float dist_sq = len_squared_v3v3(mvert[index_a].co, mvert[index_b].co);
+    BLI_assert(dist_sq <= ((data->merge_dist_sq + FLT_EPSILON) * 3));
     return dist_sq <= data->merge_dist_sq;
   }
   return false;
@@ -1629,13 +1630,15 @@ static Mesh *weldModifier_doWeld(WeldModifierData *wmd, const ModifierEvalContex
   if (defgrp_index != -1) {
     MDeformVert *dvert, *dv;
     dvert = CustomData_get_layer(&mesh->vdata, CD_MDEFORMVERT);
-    dv = &dvert[0];
-    v_mask = BLI_BITMAP_NEW(totvert, __func__);
-    for (i = 0; i < totvert; i++, dv++) {
-      const bool found = defvert_find_weight(dv, defgrp_index) > 0.0f;
-      if (found) {
-        BLI_BITMAP_ENABLE(v_mask, i);
-        v_mask_act++;
+    if (dvert) {
+      dv = &dvert[0];
+      v_mask = BLI_BITMAP_NEW(totvert, __func__);
+      for (i = 0; i < totvert; i++, dv++) {
+        const bool found = defvert_find_weight(dv, defgrp_index) > 0.0f;
+        if (found) {
+          BLI_BITMAP_ENABLE(v_mask, i);
+          v_mask_act++;
+        }
       }
     }
   }
@@ -1644,7 +1647,7 @@ static Mesh *weldModifier_doWeld(WeldModifierData *wmd, const ModifierEvalContex
   /* TODO: For a better performanse use KD-Tree. */
   struct BVHTreeFromMesh treedata;
   BVHTree *bvhtree = bvhtree_from_mesh_verts_ex(
-      &treedata, mvert, totvert, false, v_mask, v_mask_act, wmd->merge_dist, 2, 6, 0, NULL);
+      &treedata, mvert, totvert, false, v_mask, v_mask_act, wmd->merge_dist / 2, 2, 6, 0, NULL);
 
   if (v_mask) {
     MEM_freeN(v_mask);
