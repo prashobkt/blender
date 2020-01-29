@@ -249,8 +249,6 @@ typedef struct WORKBENCH_PrivateData {
   bool is_playback;
 
   float (*world_clip_planes)[4];
-  struct GPUBatch *world_clip_planes_batch;
-  float world_clip_planes_color[4];
 
   /* Volumes */
   bool volumes_do;

@@ -431,19 +431,6 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
     DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
   }
 
-  /* TODO(campbell): displays but masks geometry,
-   * only use with wire or solid-without-xray for now. */
-  if ((wpd->shading.type != OB_WIRE && !XRAY_FLAG_ENABLED(wpd)) &&
-      RV3D_CLIPPING_ENABLED(draw_ctx->v3d, draw_ctx->rv3d)) {
-    psl->background_pass = DRW_pass_create("Background",
-                                           DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
-    GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_UNIFORM_COLOR_BACKGROUND);
-    grp = DRW_shgroup_create(shader, psl->background_pass);
-    wpd->world_clip_planes_batch = DRW_draw_background_clipping_batch_from_rv3d(draw_ctx->rv3d);
-    DRW_shgroup_call(grp, wpd->world_clip_planes_batch, NULL);
-    DRW_shgroup_uniform_vec4(grp, "color", &wpd->world_clip_planes_color[0], 1);
-  }
-
   {
     workbench_aa_create_pass(vedata, &e_data.transparent_accum_tx);
   }

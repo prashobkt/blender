@@ -56,6 +56,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *armature_bone_select_ps;
   DRWPass *armature_transp_ps;
   DRWPass *background_ps;
+  DRWPass *clipping_frustum_ps;
   DRWPass *edit_curve_wire_ps[2];
   DRWPass *edit_curve_handle_ps;
   DRWPass *edit_lattice_ps;
@@ -530,6 +531,7 @@ GPUShader *OVERLAY_shader_armature_sphere(bool use_outline);
 GPUShader *OVERLAY_shader_armature_stick(void);
 GPUShader *OVERLAY_shader_armature_wire(void);
 GPUShader *OVERLAY_shader_background(void);
+GPUShader *OVERLAY_shader_clipbound(void);
 GPUShader *OVERLAY_shader_depth_only(void);
 GPUShader *OVERLAY_shader_edit_curve_handle(void);
 GPUShader *OVERLAY_shader_edit_curve_point(void);

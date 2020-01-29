@@ -197,13 +197,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   /* Will be NULL when rendering. */
   if (RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
     wpd->world_clip_planes = rv3d->clip;
-    UI_GetThemeColor4fv(TH_V3D_CLIPPING_BORDER, wpd->world_clip_planes_color);
-    if (wpd->use_color_management) {
-      srgb_to_linearrgb_v3_v3(wpd->world_clip_planes_color, wpd->world_clip_planes_color);
-    }
-    else {
-      copy_v3_v3(wpd->world_clip_planes_color, wpd->world_clip_planes_color);
-    }
   }
   else {
     wpd->world_clip_planes = NULL;
@@ -298,5 +291,4 @@ void workbench_private_data_free(WORKBENCH_PrivateData *wpd)
   }
 
   DRW_UBO_FREE_SAFE(wpd->dof_ubo);
-  GPU_BATCH_DISCARD_SAFE(wpd->world_clip_planes_batch);
 }

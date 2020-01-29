@@ -91,6 +91,7 @@ void DRW_globals_update(void)
   UI_GetThemeColor4fv(TH_BACK_GRAD, gb->colorBackgroundGradient);
   UI_COLOR_RGBA_FROM_U8(0x26, 0x26, 0x26, 0xFF, gb->colorCheckerLow);
   UI_COLOR_RGBA_FROM_U8(0x33, 0x33, 0x33, 0xFF, gb->colorCheckerHigh);
+  UI_GetThemeColor4fv(TH_V3D_CLIPPING_BORDER, gb->colorClippingBorder);
 
   /* Custom median color to slightly affect the edit mesh colors. */
   interp_v4_v4v4(gb->colorEditMeshMiddle, gb->colorVertexSelect, gb->colorWireEdit, 0.35f);

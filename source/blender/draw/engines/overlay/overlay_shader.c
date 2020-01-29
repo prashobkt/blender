@@ -48,6 +48,7 @@ extern char datatoc_armature_stick_vert_glsl[];
 extern char datatoc_armature_wire_frag_glsl[];
 extern char datatoc_armature_wire_vert_glsl[];
 extern char datatoc_background_frag_glsl[];
+extern char datatoc_clipbound_vert_glsl[];
 extern char datatoc_depth_only_vert_glsl[];
 extern char datatoc_edit_curve_handle_geom_glsl[];
 extern char datatoc_edit_curve_handle_vert_glsl[];
@@ -131,6 +132,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *armature_stick;
   GPUShader *armature_wire;
   GPUShader *background;
+  GPUShader *clipbound;
   GPUShader *depth_only;
   GPUShader *edit_curve_handle;
   GPUShader *edit_curve_point;
@@ -211,6 +213,18 @@ GPUShader *OVERLAY_shader_background(void)
     });
   }
   return sh_data->background;
+}
+
+GPUShader *OVERLAY_shader_clipbound(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->clipbound) {
+    sh_data->clipbound = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_view_lib_glsl, datatoc_clipbound_vert_glsl, NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+    });
+  }
+  return sh_data->clipbound;
 }
 
 GPUShader *OVERLAY_shader_depth_only(void)
