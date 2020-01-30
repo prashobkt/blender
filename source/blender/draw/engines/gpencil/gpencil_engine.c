@@ -490,7 +490,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "strokeIndexOffset", iter->stroke_index_offset);
   DRW_shgroup_stencil_mask(iter->grp, 0xFF);
 
-  bool use_onion = gpf->runtime.onion_id != 0.0f;
+  bool use_onion = gpf && gpf->runtime.onion_id != 0.0f;
   if (use_onion) {
     const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
     const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;

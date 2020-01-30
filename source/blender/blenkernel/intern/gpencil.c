@@ -3753,6 +3753,9 @@ void BKE_gpencil_visible_stroke_iter(
     }
 
     if (sta_gpf == NULL && act_gpf == NULL) {
+      if (layer_cb) {
+        layer_cb(gpl, act_gpf, NULL, thunk);
+      }
       continue;
     }
 
