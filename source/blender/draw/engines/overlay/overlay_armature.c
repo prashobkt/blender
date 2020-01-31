@@ -747,14 +747,6 @@ static void cp_shade_color3ub(uchar cp[3], const int offset)
   cp[2] = b;
 }
 
-static void cp_shade_color3f(float cp[3], const float offset)
-{
-  add_v3_fl(cp, offset);
-  CLAMP(cp[0], 0, 255);
-  CLAMP(cp[1], 0, 255);
-  CLAMP(cp[2], 0, 255);
-}
-
 /* This function sets the gl-color for coloring a certain bone (based on bcolor) */
 static bool set_pchan_color(const ArmatureDrawContext *ctx,
                             short colCode,
@@ -963,13 +955,12 @@ static const float *get_bone_wire_color(const ArmatureDrawContext *ctx,
   return disp_color;
 }
 
-#define HINT_MUL 0.5f
-#define HINT_SHADE 0.2f
-
 static void bone_hint_color_shade(float hint_color[4], const float color[4])
 {
-  mul_v3_v3fl(hint_color, color, HINT_MUL);
-  cp_shade_color3f(hint_color, -HINT_SHADE);
+  /* Increase contrast. */
+  mul_v3_v3v3(hint_color, color, color);
+  /* Decrease value to add mode shading to the shape. */
+  mul_v3_fl(hint_color, 0.1f);
   hint_color[3] = 1.0f;
 }
 
@@ -1268,7 +1259,7 @@ static void draw_axes(ArmatureDrawContext *ctx, EditBone *eBone, bPoseChannel *p
                                                                      G_draw.block.colorText;
   copy_v4_v4(final_col, col);
   /* Mix with axes color. */
-  final_col[3] = (ctx->const_color) ? 1.0 : (BONE_FLAG(eBone, pchan) & BONE_SELECTED) ? 0.3 : 0.8;
+  final_col[3] = (ctx->const_color) ? 1.0 : (BONE_FLAG(eBone, pchan) & BONE_SELECTED) ? 0.1 : 0.65;
   drw_shgroup_bone_axes(ctx, BONE_VAR(eBone, pchan, disp_mat), final_col);
 }
 
