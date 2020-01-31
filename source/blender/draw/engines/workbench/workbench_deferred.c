@@ -105,7 +105,6 @@ extern char datatoc_workbench_shadow_geom_glsl[];
 extern char datatoc_workbench_shadow_caps_geom_glsl[];
 extern char datatoc_workbench_shadow_debug_frag_glsl[];
 
-extern char datatoc_workbench_background_lib_glsl[];
 extern char datatoc_workbench_cavity_lib_glsl[];
 extern char datatoc_workbench_common_lib_glsl[];
 extern char datatoc_workbench_data_lib_glsl[];
@@ -122,7 +121,6 @@ static char *workbench_build_composite_frag(WORKBENCH_PrivateData *wpd)
   BLI_dynstr_append(ds, datatoc_common_view_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_data_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_common_lib_glsl);
-  BLI_dynstr_append(ds, datatoc_workbench_background_lib_glsl);
 
   if (!FLAT_ENABLED(wpd)) {
     BLI_dynstr_append(ds, datatoc_workbench_world_light_lib_glsl);
@@ -260,7 +258,6 @@ static GPUShader *ensure_background_shader(WORKBENCH_PrivateData *wpd)
     const char *defines = (index) ? "#define V3D_SHADING_OBJECT_OUTLINE\n" : NULL;
     char *frag = BLI_string_joinN(datatoc_workbench_data_lib_glsl,
                                   datatoc_workbench_common_lib_glsl,
-                                  datatoc_workbench_background_lib_glsl,
                                   datatoc_workbench_object_outline_lib_glsl,
                                   datatoc_workbench_deferred_background_frag_glsl);
     e_data.background_sh[index] = DRW_shader_create_fullscreen(frag, defines);
@@ -717,8 +714,12 @@ void workbench_deferred_cache_init(WORKBENCH_Data *vedata)
 
   /* Background Pass */
   {
-    psl->background_pass = DRW_pass_create("Background",
-                                           DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL;
+    if (DRW_state_is_scene_render()) {
+      /* Composite the scene over cleared background. */
+      state |= DRW_STATE_BLEND_ALPHA_PREMUL;
+    }
+    psl->background_pass = DRW_pass_create("Background", state);
     grp = DRW_shgroup_create(wpd->background_sh, psl->background_pass);
     DRW_shgroup_uniform_block(grp, "world_block", wpd->world_ubo);
     DRW_shgroup_uniform_vec2(grp, "invertedViewportSize", DRW_viewport_invert_size_get(), 1);
@@ -1312,6 +1313,13 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
   if (CAVITY_ENABLED(wpd)) {
     GPU_framebuffer_bind(fbl->cavity_fb);
     DRW_draw_pass(psl->cavity_pass);
+  }
+
+  if (DRW_state_is_scene_render()) {
+    float clear_color[4];
+    workbench_clear_color_get(clear_color);
+    GPU_framebuffer_bind(fbl->composite_fb);
+    GPU_framebuffer_clear_color(fbl->composite_fb, clear_color);
   }
 
   if (SHADOW_ENABLED(wpd)) {

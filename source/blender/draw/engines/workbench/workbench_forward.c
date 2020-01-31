@@ -72,7 +72,6 @@ extern char datatoc_workbench_forward_composite_frag_glsl[];
 extern char datatoc_workbench_forward_depth_frag_glsl[];
 extern char datatoc_workbench_forward_transparent_accum_frag_glsl[];
 extern char datatoc_workbench_data_lib_glsl[];
-extern char datatoc_workbench_background_lib_glsl[];
 extern char datatoc_workbench_checkerboard_depth_frag_glsl[];
 extern char datatoc_workbench_object_outline_lib_glsl[];
 extern char datatoc_workbench_curvature_lib_glsl[];
@@ -128,7 +127,6 @@ static char *workbench_build_forward_composite_frag(void)
 
   BLI_dynstr_append(ds, datatoc_workbench_data_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_common_lib_glsl);
-  BLI_dynstr_append(ds, datatoc_workbench_background_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_object_outline_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_curvature_lib_glsl);
   BLI_dynstr_append(ds, datatoc_workbench_forward_composite_frag_glsl);
@@ -418,6 +416,10 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
   /* Composite */
   {
     int state = DRW_STATE_WRITE_COLOR;
+    if (DRW_state_is_scene_render()) {
+      /* Composite the scene over cleared background. */
+      state |= DRW_STATE_BLEND_ALPHA_PREMUL;
+    }
     psl->composite_pass = DRW_pass_create("Composite", state);
 
     grp = DRW_shgroup_create(wpd->composite_sh, psl->composite_pass);
@@ -802,6 +804,13 @@ void workbench_forward_draw_scene(WORKBENCH_Data *vedata)
 
   /* Composite */
   GPU_framebuffer_bind(fbl->composite_fb);
+
+  if (DRW_state_is_scene_render()) {
+    float clear_color[4];
+    workbench_clear_color_get(clear_color);
+    GPU_framebuffer_clear_color(fbl->composite_fb, clear_color);
+  }
+
   DRW_draw_pass(psl->composite_pass);
   DRW_draw_pass(psl->volume_pass);
 
