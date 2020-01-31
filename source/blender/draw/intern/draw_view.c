@@ -57,61 +57,6 @@ void DRW_draw_region_info(void)
   view3d_draw_region_info(draw_ctx->evil_C, ar);
 }
 
-/* ************************* Background ************************** */
-void DRW_clear_background()
-{
-  GPU_clear_color(0.0, 0.0, 0.0, 0.0);
-  GPU_clear(GPU_COLOR_BIT | GPU_DEPTH_BIT | GPU_STENCIL_BIT);
-}
-
-void DRW_draw_background(bool do_alpha_checker)
-{
-  drw_state_set(DRW_STATE_WRITE_COLOR);
-  if (do_alpha_checker) {
-    /* Transparent render, do alpha checker. */
-    GPU_matrix_push();
-    GPU_matrix_identity_set();
-    GPU_matrix_identity_projection_set();
-
-    imm_draw_box_checker_2d(-1.0f, -1.0f, 1.0f, 1.0f);
-
-    GPU_matrix_pop();
-  }
-  else {
-    float m[4][4];
-    unit_m4(m);
-
-    GPUVertFormat *format = immVertexFormat();
-    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    uint color = GPU_vertformat_attr_add(
-        format, "color", GPU_COMP_U8, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
-    uchar col_hi[3], col_lo[3];
-
-    GPU_matrix_push();
-    GPU_matrix_identity_set();
-    GPU_matrix_projection_set(m);
-
-    immBindBuiltinProgram(GPU_SHADER_2D_SMOOTH_COLOR_DITHER);
-
-    UI_GetThemeColor3ubv(TH_BACK, col_hi);
-    UI_GetThemeColor3ubv(UI_GetThemeValue(TH_SHOW_BACK_GRAD) ? TH_BACK_GRAD : TH_BACK, col_lo);
-
-    immBegin(GPU_PRIM_TRI_FAN, 4);
-    immAttr3ubv(color, col_lo);
-    immVertex2f(pos, -1.0f, -1.0f);
-    immVertex2f(pos, 1.0f, -1.0f);
-
-    immAttr3ubv(color, col_hi);
-    immVertex2f(pos, 1.0f, 1.0f);
-    immVertex2f(pos, -1.0f, 1.0f);
-    immEnd();
-
-    immUnbindProgram();
-
-    GPU_matrix_pop();
-  }
-}
-
 /* **************************** 3D Cursor ******************************** */
 
 static bool is_cursor_visible(const DRWContextState *draw_ctx, Scene *scene, ViewLayer *view_layer)

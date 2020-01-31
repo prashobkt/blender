@@ -1294,7 +1294,7 @@ void DRW_draw_callbacks_post_scene(void)
 
     GPU_depth_test(false);
     ED_region_draw_cb_draw(DST.draw_ctx.evil_C, DST.draw_ctx.ar, REGION_DRAW_POST_VIEW);
-    GPU_depth_test(true);
+
     /* Callback can be nasty and do whatever they want with the state.
      * Don't trust them! */
     DRW_state_reset();
@@ -1307,7 +1307,6 @@ void DRW_draw_callbacks_post_scene(void)
 
     GPU_depth_test(false);
     drw_engines_draw_text();
-    GPU_depth_test(true);
 
     DRW_draw_region_info();
 
@@ -1317,7 +1316,6 @@ void DRW_draw_callbacks_post_scene(void)
       GPU_depth_test(false);
       /* XXX: as scene->gpd is not copied for COW yet */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, ar, false);
-      GPU_depth_test(true);
     }
 
     if ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) {
@@ -1325,7 +1323,6 @@ void DRW_draw_callbacks_post_scene(void)
        * 'DRW_draw_region_info' sets the projection in pixel-space. */
       GPU_depth_test(false);
       DRW_draw_gizmo_2d();
-      GPU_depth_test(true);
     }
 
     if (G.debug_value > 20 && G.debug_value < 30) {
@@ -1333,8 +1330,9 @@ void DRW_draw_callbacks_post_scene(void)
       /* local coordinate visible rect inside region, to accommodate overlapping ui */
       const rcti *rect = ED_region_visible_rect(DST.draw_ctx.ar);
       DRW_stats_draw(rect);
-      GPU_depth_test(true);
     }
+
+    GPU_depth_test(true);
   }
 }
 
