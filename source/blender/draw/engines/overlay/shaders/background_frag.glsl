@@ -3,6 +3,7 @@ uniform sampler2D colorBuffer;
 uniform sampler2D depthBuffer;
 
 uniform int bgType;
+uniform vec4 colorOverride;
 
 in vec4 uvcoordsvar;
 
@@ -59,6 +60,8 @@ void main()
       bg_col = (check) ? colorCheckerLow.rgb : colorCheckerHigh.rgb;
       break;
   }
+
+  bg_col = mix(bg_col, colorOverride.rgb, colorOverride.a);
 
   /* Mimic alpha under behavior. Result is premultiplied. */
   fragColor = vec4(bg_col, 1.0) * (1.0 - alpha);

@@ -37,14 +37,29 @@ void OVERLAY_background_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  const Scene *scene = draw_ctx->scene;
   const RegionView3D *rv3d = draw_ctx->rv3d;
   const BoundBox *bb = rv3d->clipbb;
+  const View3D *v3d = draw_ctx->v3d;
   bool draw_clipping_bounds = (pd->clipping_state != 0);
 
   {
+    float color_override[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     int background_type;
     if (!DRW_state_draw_background()) {
       background_type = BG_CHECKER;
+    }
+    else if (v3d->shading.background_type == V3D_SHADING_BACKGROUND_WORLD && scene->world) {
+      background_type = BG_SOLID;
+      /* TODO(fclem) this is a scene refered linear color. we should convert
+       * it to display linear here. */
+      copy_v3_v3(color_override, &scene->world->horr);
+      color_override[3] = 1.0f;
+    }
+    else if (v3d->shading.background_type == V3D_SHADING_BACKGROUND_VIEWPORT) {
+      background_type = BG_SOLID;
+      copy_v3_v3(color_override, v3d->shading.background_color);
+      color_override[3] = 1.0f;
     }
     else if (UI_GetThemeValue(TH_SHOW_BACK_GRAD)) {
       background_type = BG_GRADIENT;
@@ -61,6 +76,7 @@ void OVERLAY_background_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &dtxl->color);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
+    DRW_shgroup_uniform_vec4_copy(grp, "colorOverride", color_override);
     DRW_shgroup_uniform_int_copy(grp, "bgType", background_type);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
