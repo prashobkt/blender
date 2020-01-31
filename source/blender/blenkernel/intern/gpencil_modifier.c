@@ -766,14 +766,27 @@ static void gpencil_copy_activeframe_to_eval(
     Depsgraph *depsgraph, Scene *scene, Object *ob, bGPdata *gpd_orig, bGPdata *gpd_eval)
 {
   /* Copy all relevant data of the datablock. */
-  ListBase layers = gpd_eval->layers;
-  bGPdata_Runtime runtime = gpd_eval->runtime;
   MEM_SAFE_FREE(gpd_eval->mat);
-
-  memcpy(gpd_eval, gpd_orig, sizeof(bGPdata));
-  gpd_eval->layers = layers;
-  gpd_eval->runtime = runtime;
   gpd_eval->mat = MEM_dupallocN(gpd_orig->mat);
+
+  gpd_eval->flag = gpd_orig->flag;
+  gpd_eval->pixfactor = gpd_orig->pixfactor;
+  copy_v4_v4(gpd_eval->line_color, gpd_orig->line_color);
+  gpd_eval->onion_factor = gpd_orig->onion_factor;
+  gpd_eval->onion_mode = gpd_orig->onion_mode;
+  gpd_eval->onion_flag = gpd_orig->onion_flag;
+  gpd_eval->gstep = gpd_orig->gstep;
+  gpd_eval->gstep_next = gpd_orig->gstep_next;
+  copy_v3_v3(gpd_eval->gcolor_prev, gpd_orig->gcolor_prev);
+  copy_v3_v3(gpd_eval->gcolor_next, gpd_orig->gcolor_next);
+  gpd_eval->zdepth_offset = gpd_orig->zdepth_offset;
+  gpd_eval->totcol = gpd_orig->totcol;
+  gpd_eval->totlayer = gpd_orig->totlayer;
+  gpd_eval->totframe = gpd_orig->totframe;
+  gpd_eval->totstroke = gpd_orig->totstroke;
+  gpd_eval->totpoint = gpd_orig->totpoint;
+  gpd_eval->draw_mode = gpd_orig->draw_mode;
+  gpd_eval->onion_keytype = gpd_orig->onion_keytype;
 
   /* Assign (can be NULL if reuse eval copy done by depsgraph). */
   if (ob->runtime.gpd_eval != NULL) {

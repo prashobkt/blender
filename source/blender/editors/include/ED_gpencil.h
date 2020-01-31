@@ -287,6 +287,8 @@ struct tGPspoint *ED_gpencil_sbuffer_ensure(struct tGPspoint *buffer_array,
                                             int *buffer_size,
                                             int *buffer_used,
                                             const bool clear);
+void ED_gpencil_sbuffer_update_eval(struct Depsgraph *depsgraph, struct Object *ob);
+
 /* Tag all scene grease pencil object to update. */
 void ED_gpencil_tag_scene_gpencil(struct Scene *scene);
 

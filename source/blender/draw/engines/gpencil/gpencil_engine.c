@@ -228,10 +228,7 @@ void GPENCIL_cache_init(void *ved)
     if (pd->obact && pd->obact->type == OB_GPENCIL) {
       /* Check if active object has a temp stroke data. */
       bGPdata *gpd = (bGPdata *)pd->obact->data;
-      /* Current stroke data is stored in the original id. This is waiting refactor of the
-       * Depsgraph to support more granular update of the GPencil data. */
-      bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
-      if (gpd_orig->runtime.sbuffer_used > 0) {
+      if (gpd->runtime.sbuffer_used > 0) {
         pd->sbuffer_gpd = gpd;
         pd->sbuffer_stroke = DRW_cache_gpencil_sbuffer_stroke_data_get(pd->obact);
         pd->sbuffer_layer = BKE_gpencil_layer_active_get(pd->sbuffer_gpd);

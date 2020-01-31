@@ -1052,6 +1052,9 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
   /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gps);
 
+  /* Update evaluated data. */
+  ED_gpencil_sbuffer_update_eval(tgpi->depsgraph, tgpi->ob);
+
   MEM_SAFE_FREE(depth_arr);
 
   DEG_id_tag_update(&gpd->id, ID_RECALC_COPY_ON_WRITE);

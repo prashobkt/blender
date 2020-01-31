@@ -483,10 +483,6 @@ GPUBatch *DRW_cache_gpencil_face_wireframe_get(Object *ob)
 bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  /* Current stroke data is stored in the original id. This is waiting refactor of the
-   * Depsgraph to support more granular update of the GPencil data. */
-  gpd = (bGPdata *)DEG_get_original_id(&gpd->id);
-
   /* Convert the sbuffer to a bGPDstroke. */
   if (gpd->runtime.sbuffer_gps == NULL) {
     bGPDstroke *gps = MEM_callocN(sizeof(*gps), "bGPDstroke sbuffer");
@@ -603,38 +599,27 @@ static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_
 GPUBatch *DRW_cache_gpencil_sbuffer_stroke_get(Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  /* Current stroke data is stored in the original id. This is waiting refactor of the
-   * Depsgraph to support more granular update of the GPencil data. */
-  bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
+  gpencil_sbuffer_stroke_ensure(gpd, true, false);
 
-  gpencil_sbuffer_stroke_ensure(gpd_orig, true, false);
-
-  return gpd_orig->runtime.sbuffer_stroke_batch;
+  return gpd->runtime.sbuffer_stroke_batch;
 }
 
 GPUBatch *DRW_cache_gpencil_sbuffer_fill_get(Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  /* Current stroke data is stored in the original id. This is waiting refactor of the
-   * Depsgraph to support more granular update of the GPencil data. */
-  bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
   /* Fill batch also need stroke batch to be created (vbo is shared). */
-  gpencil_sbuffer_stroke_ensure(gpd_orig, true, true);
+  gpencil_sbuffer_stroke_ensure(gpd, true, true);
 
-  return gpd_orig->runtime.sbuffer_fill_batch;
+  return gpd->runtime.sbuffer_fill_batch;
 }
 
 /* Sbuffer batches are temporary. We need to clear it after drawing */
 void DRW_cache_gpencil_sbuffer_clear(Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  /* Current stroke data is stored in the original id. This is waiting refactor of the
-   * Depsgraph to support more granular update of the GPencil data. */
-  bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
-
-  MEM_SAFE_FREE(gpd_orig->runtime.sbuffer_gps);
-  GPU_BATCH_DISCARD_SAFE(gpd_orig->runtime.sbuffer_fill_batch);
-  GPU_BATCH_DISCARD_SAFE(gpd_orig->runtime.sbuffer_stroke_batch);
+  MEM_SAFE_FREE(gpd->runtime.sbuffer_gps);
+  GPU_BATCH_DISCARD_SAFE(gpd->runtime.sbuffer_fill_batch);
+  GPU_BATCH_DISCARD_SAFE(gpd->runtime.sbuffer_stroke_batch);
 }
 
 /** \} */

@@ -2474,6 +2474,21 @@ tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
   return buffer_array;
 }
 
+void ED_gpencil_sbuffer_update_eval(Depsgraph *depsgraph, Object *ob)
+{
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
+  bGPdata *gpd_eval = (bGPdata *)ob_eval->data;
+
+  gpd_eval->runtime.sbuffer = gpd->runtime.sbuffer;
+  gpd_eval->runtime.sbuffer_sflag = gpd->runtime.sbuffer_sflag;
+  gpd_eval->runtime.sbuffer_used = gpd->runtime.sbuffer_used;
+  gpd_eval->runtime.sbuffer_size = gpd->runtime.sbuffer_size;
+  gpd_eval->runtime.tot_cp_points = gpd->runtime.tot_cp_points;
+  gpd_eval->runtime.cp_points = gpd->runtime.cp_points;
+}
+
 /* Tag all scene grease pencil object to update. */
 void ED_gpencil_tag_scene_gpencil(Scene *scene)
 {
