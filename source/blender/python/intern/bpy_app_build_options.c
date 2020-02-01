@@ -48,9 +48,9 @@ static PyStructSequence_Field app_builtopts_info_fields[] = {
 };
 
 static PyStructSequence_Desc app_builtopts_info_desc = {
-    (char *)"bpy.app.build_options",                                                /* name */
-    (char *)"This module contains information about options blender is built with", /* doc */
-    app_builtopts_info_fields,                                                      /* fields */
+    "bpy.app.build_options",                                                /* name */
+    "This module contains information about options blender is built with", /* doc */
+    app_builtopts_info_fields,                                              /* fields */
     ARRAY_SIZE(app_builtopts_info_fields) - 1,
 };
 
@@ -211,12 +211,6 @@ static PyObject *make_builtopts_info(void)
   SetObjIncref(Py_False);
 #endif
 
-#ifdef WITH_MOD_FLUID
-  SetObjIncref(Py_True);
-#else
-  SetObjIncref(Py_False);
-#endif
-
 #ifdef WITH_OCEANSIM
   SetObjIncref(Py_True);
 #else
@@ -224,12 +218,6 @@ static PyObject *make_builtopts_info(void)
 #endif
 
 #ifdef WITH_MOD_REMESH
-  SetObjIncref(Py_True);
-#else
-  SetObjIncref(Py_False);
-#endif
-
-#ifdef WITH_SMOKE
   SetObjIncref(Py_True);
 #else
   SetObjIncref(Py_False);
@@ -260,6 +248,18 @@ static PyObject *make_builtopts_info(void)
 #endif
 
 #ifdef WITH_ALEMBIC
+  SetObjIncref(Py_True);
+#else
+  SetObjIncref(Py_False);
+#endif
+
+#ifdef WITH_USD
+  SetObjIncref(Py_True);
+#else
+  SetObjIncref(Py_False);
+#endif
+
+#ifdef WITH_FLUID
   SetObjIncref(Py_True);
 #else
   SetObjIncref(Py_False);

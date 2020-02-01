@@ -242,8 +242,7 @@ endif()
 
 
 # Modifiers
-option(WITH_MOD_FLUID           "Enable Elbeem Modifier (Fluid Simulation)" ON)
-option(WITH_MOD_SMOKE           "Enable Smoke Modifier (Smoke Simulation)" ON)
+option(WITH_MOD_FLUID           "Enable Mantaflow Fluid Simulation Framework" ON)
 option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 option(WITH_MOD_OCEANSIM        "Enable Ocean Modifier" ON)
 
@@ -264,6 +263,9 @@ option(WITH_CODEC_SNDFILE       "Enable libsndfile Support (http://www.mega-nerd
 # Alembic support
 option(WITH_ALEMBIC             "Enable Alembic Support" ON)
 option(WITH_ALEMBIC_HDF5        "Enable Legacy Alembic Support (not officially supported)" OFF)
+
+# Universal Scene Description support
+option(WITH_USD                 "Enable Universal Scene Description (USD) Support" OFF)
 
 # 3D format support
 # Disable opencollada when we don't have precompiled libs
@@ -1732,6 +1734,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_OPENVDB)
   info_cfg_option(WITH_ALEMBIC)
   info_cfg_option(WITH_QUADRIFLOW)
+  info_cfg_option(WITH_USD)
 
   info_cfg_text("Compiler Options:")
   info_cfg_option(WITH_BUILDINFO)

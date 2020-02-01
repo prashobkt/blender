@@ -861,6 +861,7 @@ typedef enum eFileSel_File_Types {
   FILE_TYPE_ALEMBIC = (1 << 16),
   /** For all kinds of recognized import/export formats. No need for specialized types. */
   FILE_TYPE_OBJECT_IO = (1 << 17),
+  FILE_TYPE_USD = (1 << 18),
 
   /** An FS directory (i.e. S_ISDIR on its path is true). */
   FILE_TYPE_DIR = (1 << 30),
@@ -1698,7 +1699,7 @@ typedef enum eSpace_Type {
   SPACE_INFO = 7,
   SPACE_SEQ = 8,
   SPACE_TEXT = 9,
-#ifdef DNA_DEPRECATED
+#ifdef DNA_DEPRECATED_ALLOW
   SPACE_IMASEL = 10, /* Deprecated */
   SPACE_SOUND = 11,  /* Deprecated */
 #endif
@@ -1706,11 +1707,11 @@ typedef enum eSpace_Type {
   SPACE_NLA = 13,
   /* TODO: fully deprecate */
   SPACE_SCRIPT = 14, /* Deprecated */
-#ifdef DNA_DEPRECATED
+#ifdef DNA_DEPRECATED_ALLOW
   SPACE_TIME = 15, /* Deprecated */
 #endif
   SPACE_NODE = 16,
-#ifdef DNA_DEPRECATED
+#ifdef DNA_DEPRECATED_ALLOW
   SPACE_LOGIC = 17, /* Deprecated */
 #endif
   SPACE_CONSOLE = 18,
