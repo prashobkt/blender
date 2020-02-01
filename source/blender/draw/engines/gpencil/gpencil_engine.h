@@ -327,6 +327,8 @@ typedef struct GPENCIL_PrivateData {
   /* Some blend mode needs to add negative values.
    * This is only supported if target texture is signed. */
   bool use_signed_fb;
+  /* Use only lines for multiedit and not active frame. */
+  bool use_multiedit_lines_only;
   /* Layer opacity for fading. */
   float fade_layer_opacity;
   /* Opacity for fading gpencil objects. */

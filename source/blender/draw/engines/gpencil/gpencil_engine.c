@@ -123,10 +123,16 @@ void GPENCIL_engine_init(void *ved)
 
     stl->pd->v3d_color_type = (v3d->shading.type == OB_SOLID) ? v3d->shading.color_type : -1;
     copy_v3_v3(stl->pd->v3d_single_color, v3d->shading.single_color);
+
+    /* For non active frame, use only lines in multiedit mode. */
+    const bool overlays_on = (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0;
+    stl->pd->use_multiedit_lines_only = overlays_on &&
+                                        (v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) != 0;
   }
   else if (stl->pd->is_render) {
     use_scene_lights = true;
     use_scene_world = true;
+    stl->pd->use_multiedit_lines_only = false;
   }
 
   stl->pd->use_lighting = (v3d && v3d->shading.type > OB_SOLID) || stl->pd->is_render;
@@ -385,10 +391,7 @@ static void gp_drawcall_add(
   iter->vcount = v_first + v_count - iter->vfirst;
 }
 
-static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
-                                     bGPDframe *UNUSED(gpf),
-                                     bGPDstroke *gps,
-                                     void *thunk);
+static void gp_stroke_cache_populate(bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke *gps, void *thunk);
 
 static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
 {
@@ -510,10 +513,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   }
 }
 
-static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
-                                     bGPDframe *UNUSED(gpf),
-                                     bGPDstroke *gps,
-                                     void *thunk)
+static void gp_stroke_cache_populate(bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke *gps, void *thunk)
 {
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
 
@@ -524,7 +524,9 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
   bool show_fill = (gps->tot_triangles > 0) && ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) &&
                    (!iter->pd->simplify_fill);
 
-  if (hide_material || (!show_stroke && !show_fill)) {
+  bool only_lines = gpl && gpf && gpl->actframe != gpf && iter->pd->use_multiedit_lines_only;
+
+  if (hide_material || (!show_stroke && !show_fill) || only_lines) {
     return;
   }
 
