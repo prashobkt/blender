@@ -1911,11 +1911,9 @@ void blo_make_image_pointer_map(FileData *fd, Main *oldmain)
     if (ima->cache) {
       oldnewmap_insert(fd->imamap, ima->cache, ima->cache, 0);
     }
-    LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
-      for (a = 0; a < TEXTARGET_COUNT; a++) {
-        if (tile->gputexture[a] != NULL) {
-          oldnewmap_insert(fd->imamap, tile->gputexture[a], tile->gputexture[a], 0);
-        }
+    for (a = 0; a < TEXTARGET_COUNT; a++) {
+      if (ima->gputexture[a] != NULL) {
+        oldnewmap_insert(fd->imamap, ima->gputexture[a], ima->gputexture[a], 0);
       }
     }
     if (ima->rr) {
@@ -1959,10 +1957,8 @@ void blo_end_image_pointer_map(FileData *fd, Main *oldmain)
     if (ima->cache == NULL) {
       ima->gpuflag = 0;
       ima->gpuframenr = INT_MAX;
-      LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
-        for (i = 0; i < TEXTARGET_COUNT; i++) {
-          tile->gputexture[i] = NULL;
-        }
+      for (i = 0; i < TEXTARGET_COUNT; i++) {
+        ima->gputexture[i] = NULL;
       }
       ima->rr = NULL;
     }
@@ -1970,10 +1966,8 @@ void blo_end_image_pointer_map(FileData *fd, Main *oldmain)
       slot->render = newimaadr(fd, slot->render);
     }
 
-    LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
-      for (i = 0; i < TEXTARGET_COUNT; i++) {
-        tile->gputexture[i] = newimaadr(fd, tile->gputexture[i]);
-      }
+    for (i = 0; i < TEXTARGET_COUNT; i++) {
+      ima->gputexture[i] = newimaadr(fd, ima->gputexture[i]);
     }
     ima->rr = newimaadr(fd, ima->rr);
   }
@@ -3378,6 +3372,11 @@ static void lib_link_workspaces(FileData *fd, Main *bmain)
           }
         }
       }
+      else {
+        /* If we're reading a layout without screen stored, it's useless and we shouldn't keep it
+         * around. */
+        BKE_workspace_layout_remove(bmain, workspace, layout);
+      }
     }
 
     id->tag &= ~LIB_TAG_NEED_LINK;
@@ -3876,7 +3875,7 @@ static void direct_link_bones(FileData *fd, Bone *bone)
   bone->bbone_next = newdataadr(fd, bone->bbone_next);
   bone->bbone_prev = newdataadr(fd, bone->bbone_prev);
 
-  bone->flag &= ~BONE_DRAW_ACTIVE;
+  bone->flag &= ~(BONE_DRAW_ACTIVE | BONE_DRAW_LOCKED_WEIGHT);
 
   link_list(fd, &bone->childbase);
 
@@ -4270,18 +4269,14 @@ static void direct_link_image(FileData *fd, Image *ima)
   if (!ima->cache) {
     ima->gpuflag = 0;
     ima->gpuframenr = INT_MAX;
-    LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
-      for (int i = 0; i < TEXTARGET_COUNT; i++) {
-        tile->gputexture[i] = NULL;
-      }
+    for (int i = 0; i < TEXTARGET_COUNT; i++) {
+      ima->gputexture[i] = NULL;
     }
     ima->rr = NULL;
   }
   else {
-    LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
-      for (int i = 0; i < TEXTARGET_COUNT; i++) {
-        tile->gputexture[i] = newimaadr(fd, tile->gputexture[i]);
-      }
+    for (int i = 0; i < TEXTARGET_COUNT; i++) {
+      ima->gputexture[i] = newimaadr(fd, ima->gputexture[i]);
     }
     ima->rr = newimaadr(fd, ima->rr);
   }
@@ -6226,8 +6221,6 @@ static void direct_link_object(FileData *fd, Object *ob)
     BKE_object_empty_draw_type_set(ob, ob->empty_drawtype);
   }
 
-  ob->derivedDeform = NULL;
-  ob->derivedFinal = NULL;
   BKE_object_runtime_reset(ob);
   link_list(fd, &ob->pc_ids);
 
@@ -9343,6 +9336,9 @@ static BHead *read_libblock(FileData *fd,
   ID *id;
   ListBase *lb;
   const char *allocname;
+
+  /* XXX Very weakly handled currently, see comment at the end of this function before trying to
+   * use it for anything new. */
   bool wrong_id = false;
 
   /* In undo case, most libs and linked data should be kept as is from previous state
@@ -9598,7 +9594,14 @@ static BHead *read_libblock(FileData *fd,
   oldnewmap_clear(fd->datamap);
 
   if (wrong_id) {
+    /* XXX This is probably working OK currently given the very limited scope of that flag.
+     * However, it is absolutely **not** handled correctly: it is freeing an ID pointer that has
+     * been added to the fd->libmap mapping, which in theory could lead to nice crashes...
+     * This should be properly solved at some point. */
     BKE_id_free(main, id);
+    if (r_id != NULL) {
+      *r_id = NULL;
+    }
   }
 
   return (bhead);

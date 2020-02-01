@@ -893,9 +893,11 @@ void BKE_brush_debug_print_state(Brush *br)
   BR_TEST(add_col[0], f);
   BR_TEST(add_col[1], f);
   BR_TEST(add_col[2], f);
+  BR_TEST(add_col[3], f);
   BR_TEST(sub_col[0], f);
   BR_TEST(sub_col[1], f);
   BR_TEST(sub_col[2], f);
+  BR_TEST(sub_col[3], f);
 
   printf("\n");
 
@@ -926,7 +928,7 @@ void BKE_brush_sculpt_reset(Brush *br)
       br->curve_preset = BRUSH_CURVE_POW4;
       br->spacing = 5;
       break;
-    case SCULPT_TOOL_TOPOLOGY:
+    case SCULPT_TOOL_SLIDE_RELAX:
       br->spacing = 10;
       br->alpha = 1.0f;
       break;
@@ -990,6 +992,7 @@ void BKE_brush_sculpt_reset(Brush *br)
       break;
     case SCULPT_TOOL_POSE:
       br->pose_smooth_iterations = 4;
+      br->pose_ik_segments = 1;
       br->flag &= ~BRUSH_ALPHA_PRESSURE;
       br->flag &= ~BRUSH_SPACE;
       br->flag &= ~BRUSH_SPACE_ATTEN;
@@ -1006,6 +1009,11 @@ void BKE_brush_sculpt_reset(Brush *br)
   }
 
   /* Cursor colors */
+
+  /* Default Alpha */
+  br->add_col[3] = 0.90f;
+  br->sub_col[3] = 0.90f;
+
   switch (br->sculpt_tool) {
     case SCULPT_TOOL_DRAW:
     case SCULPT_TOOL_DRAW_SHARP:

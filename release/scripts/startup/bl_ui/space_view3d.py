@@ -621,15 +621,19 @@ class VIEW3D_HT_header(Header):
         tool_settings = context.tool_settings
         view = context.space_data
         shading = view.shading
-        # mode_string = context.mode
-        obj = context.active_object
         show_region_tool_header = view.show_region_tool_header
 
         if not show_region_tool_header:
             layout.row(align=True).template_header()
 
         row = layout.row(align=True)
+        obj = context.active_object
+        # mode_string = context.mode
         object_mode = 'OBJECT' if obj is None else obj.mode
+        has_pose_mode = (
+            (object_mode == 'POSE') or
+            (object_mode == 'WEIGHT_PAINT' and context.pose_object is not None)
+        )
 
         # Note: This is actually deadly in case enum_items have to be dynamically generated
         #       (because internal RNA array iterator will free everything immediately...).
@@ -780,10 +784,13 @@ class VIEW3D_HT_header(Header):
             "view3d.toggle_xray",
             text="",
             icon='XRAY',
-            depress=getattr(
-                shading,
-                "show_xray_wireframe" if shading.type == 'WIREFRAME' else
-                "show_xray"
+            depress=(
+                overlay.show_xray_bone if has_pose_mode else
+                getattr(
+                    shading,
+                    "show_xray_wireframe" if shading.type == 'WIREFRAME' else
+                    "show_xray"
+                )
             ),
         )
 
@@ -918,7 +925,7 @@ class VIEW3D_MT_transform_base(Menu):
         if context.mode != 'OBJECT':
             layout.operator("transform.vertex_warp", text="Warp")
             layout.operator_context = 'EXEC_DEFAULT'
-            layout.operator("transform.vertex_random", text="Randomize")
+            layout.operator("transform.vertex_random", text="Randomize").offset = 0.1
             layout.operator_context = 'INVOKE_REGION_WIN'
 
 
@@ -3530,8 +3537,8 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("transform.shear", text="Shear")
             col.operator("transform.vert_slide", text="Slide Vertices")
             col.operator_context = 'EXEC_DEFAULT'
-            col.operator("transform.vertex_random", text="Randomize Vertices")
-            col.operator("mesh.vertices_smooth", text="Smooth Vertices")
+            col.operator("transform.vertex_random", text="Randomize Vertices").offset = 0.1
+            col.operator("mesh.vertices_smooth", text="Smooth Vertices").factor = 0.5
             col.operator_context = 'INVOKE_REGION_WIN'
             col.operator("mesh.vertices_smooth_laplacian", text="Smooth Laplacian")
 
@@ -3747,7 +3754,7 @@ class VIEW3D_MT_edit_mesh_vertices(Menu):
 
         layout.operator("transform.vert_slide", text="Slide Vertices")
         layout.operator_context = 'EXEC_DEFAULT'
-        layout.operator("mesh.vertices_smooth", text="Smooth Vertices")
+        layout.operator("mesh.vertices_smooth", text="Smooth Vertices").factor = 0.5
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.separator()

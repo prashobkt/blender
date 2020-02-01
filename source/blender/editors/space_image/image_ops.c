@@ -305,7 +305,7 @@ static bool image_sample_poll(bContext *C)
 typedef struct ViewPanData {
   float x, y;
   float xof, yof;
-  int event_type;
+  int launch_event;
   bool own_cursor;
 } ViewPanData;
 
@@ -327,7 +327,7 @@ static void image_view_pan_init(bContext *C, wmOperator *op, const wmEvent *even
   vpd->y = event->y;
   vpd->xof = sima->xof;
   vpd->yof = sima->yof;
-  vpd->event_type = event->type;
+  vpd->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
 
   WM_event_add_modal_handler(C, op);
 }
@@ -398,7 +398,7 @@ static int image_view_pan_modal(bContext *C, wmOperator *op, const wmEvent *even
       image_view_pan_exec(C, op);
       break;
     default:
-      if (event->type == vpd->event_type && event->val == KM_RELEASE) {
+      if (event->type == vpd->launch_event && event->val == KM_RELEASE) {
         image_view_pan_exit(C, op, false);
         return OPERATOR_FINISHED;
       }
@@ -452,7 +452,7 @@ void IMAGE_OT_view_pan(wmOperatorType *ot)
 typedef struct ViewZoomData {
   float origx, origy;
   float zoom;
-  int event_type;
+  int launch_event;
   float location[2];
 
   /* needed for continuous zoom */
@@ -483,7 +483,7 @@ static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *eve
   vpd->origx = event->x;
   vpd->origy = event->y;
   vpd->zoom = sima->zoom;
-  vpd->event_type = event->type;
+  vpd->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
 
   UI_view2d_region_to_view(
       &ar->v2d, event->mval[0], event->mval[1], &vpd->location[0], &vpd->location[1]);
@@ -633,7 +633,7 @@ static int image_view_zoom_modal(bContext *C, wmOperator *op, const wmEvent *eve
   else if (event->type == MOUSEMOVE) {
     event_code = VIEW_APPLY;
   }
-  else if (event->type == vpd->event_type && event->val == KM_RELEASE) {
+  else if (event->type == vpd->launch_event && event->val == KM_RELEASE) {
     event_code = VIEW_CONFIRM;
   }
 
@@ -1318,7 +1318,9 @@ static int image_get_udim(char *filepath, LinkNodePair *udim_tiles)
   BLI_filelist_free(dir, totfile);
 
   if (is_udim && has_primary) {
-    BLI_stringenc_path(filepath, dirname, base_head, base_tail, digits, 1001);
+    char primary_filename[FILE_MAX];
+    BLI_stringenc(primary_filename, base_head, base_tail, digits, 1001);
+    BLI_join_dirfile(filepath, FILE_MAX, dirname, primary_filename);
     return max_udim - 1000;
   }
   return 0;
@@ -3354,6 +3356,9 @@ static void image_sample_draw(const bContext *C, ARegion *ar, void *arg_info)
 /* Returns color in linear space, matching ED_space_node_color_sample(). */
 bool ED_space_image_color_sample(SpaceImage *sima, ARegion *ar, int mval[2], float r_col[3])
 {
+  if (sima->image == NULL) {
+    return false;
+  }
   float uv[2];
   UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &uv[0], &uv[1]);
   int tile = BKE_image_get_tile_from_pos(sima->image, uv, uv, NULL);
@@ -4277,6 +4282,33 @@ static void draw_fill_tile(PointerRNA *ptr, uiLayout *layout)
   uiItemR(col[1], ptr, "float", 0, NULL, ICON_NONE);
 }
 
+static void initialize_fill_tile(PointerRNA *ptr, Image *ima, ImageTile *tile)
+{
+  ImageUser iuser;
+  BKE_imageuser_default(&iuser);
+  if (tile != NULL) {
+    iuser.tile = tile->tile_number;
+  }
+
+  /* Acquire ibuf to get the default values.
+   * If the specified tile has no ibuf, try acquiring the main tile instead
+   * (unless the specified tile already was the main tile).*/
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, &iuser, NULL);
+  if (ibuf == NULL && (tile != NULL) && (tile->tile_number != 1001)) {
+    ibuf = BKE_image_acquire_ibuf(ima, NULL, NULL);
+  }
+
+  if (ibuf != NULL) {
+    /* Initialize properties from reference tile. */
+    RNA_int_set(ptr, "width", ibuf->x);
+    RNA_int_set(ptr, "height", ibuf->y);
+    RNA_boolean_set(ptr, "float", ibuf->rect_float != NULL);
+    RNA_boolean_set(ptr, "alpha", ibuf->planes > 24);
+
+    BKE_image_release_ibuf(ima, ibuf, NULL);
+  }
+}
+
 static void def_fill_tile(StructOrFunctionRNA *srna)
 {
   PropertyRNA *prop;
@@ -4355,6 +4387,9 @@ static int tile_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(ev
       break;
     }
   }
+
+  ImageTile *tile = BLI_findlink(&ima->tiles, ima->active_tile_index);
+  initialize_fill_tile(op->ptr, ima, tile);
 
   RNA_int_set(op->ptr, "number", next_number);
   RNA_int_set(op->ptr, "count", 1);
@@ -4485,17 +4520,7 @@ static int tile_fill_exec(bContext *C, wmOperator *op)
 
 static int tile_fill_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-  Image *ima = CTX_data_edit_image(C);
-
-  /* Acquire first tile to get the defaults. */
-  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, NULL, NULL);
-  if (ibuf != NULL) {
-    RNA_int_set(op->ptr, "width", ibuf->x);
-    RNA_int_set(op->ptr, "height", ibuf->y);
-    RNA_boolean_set(op->ptr, "float", ibuf->rect_float != NULL);
-    RNA_boolean_set(op->ptr, "alpha", ibuf->planes > 24);
-    BKE_image_release_ibuf(ima, ibuf, NULL);
-  }
+  initialize_fill_tile(op->ptr, CTX_data_edit_image(C), NULL);
 
   return WM_operator_props_dialog_popup(C, op, 15 * UI_UNIT_X, 5 * UI_UNIT_Y);
 }

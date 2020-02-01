@@ -450,19 +450,14 @@ int count_set_pose_transflags(Object *ob,
 
   for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
     bone = pchan->bone;
+    bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
     if (PBONE_VISIBLE(arm, bone)) {
       if ((bone->flag & BONE_SELECTED)) {
         bone->flag |= BONE_TRANSFORM;
       }
-      else {
-        bone->flag &= ~BONE_TRANSFORM;
-      }
 
       bone->flag &= ~BONE_HINGE_CHILD_TRANSFORM;
       bone->flag &= ~BONE_TRANSFORM_CHILD;
-    }
-    else {
-      bone->flag &= ~BONE_TRANSFORM;
     }
   }
 
@@ -1350,6 +1345,15 @@ bool constraints_list_needinv(TransInfo *t, ListBase *list)
             return true;
           }
         }
+        else if (con->type == CONSTRAINT_TYPE_ACTION) {
+          /* The Action constraint only does this in the Before mode. */
+          bActionConstraint *data = (bActionConstraint *)con->data;
+
+          if (ELEM(data->mix_mode, ACTCON_MIX_BEFORE) &&
+              ELEM(t->mode, TFM_ROTATION, TFM_TRANSLATION)) {
+            return true;
+          }
+        }
         else if (con->type == CONSTRAINT_TYPE_TRANSFORM) {
           /* Transform constraint needs it for rotation at least (r.57309),
            * but doing so when translating may also mess things up [#36203]
@@ -1888,8 +1892,8 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 
     SpaceSeq *sseq = (SpaceSeq *)t->sa->spacedata.first;
 
-    /* marker transform, not especially nice but we may want to move markers
-     * at the same time as keyframes in the dope sheet. */
+    /* Marker transform, not especially nice but we may want to move markers
+     * at the same time as strips in the Video Sequencer. */
     if ((sseq->flag & SEQ_MARKER_TRANS) && (canceled == 0)) {
       /* cant use TFM_TIME_EXTEND
        * for some reason EXTEND is changed into TRANSLATE, so use frame_side instead */

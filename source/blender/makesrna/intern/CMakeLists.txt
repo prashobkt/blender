@@ -229,6 +229,10 @@ if(WITH_AUDASPACE)
   list(APPEND INC_SYS
     ${AUDASPACE_C_INCLUDE_DIRS}
   )
+  list(APPEND LIB
+    ${AUDASPACE_C_LIBRARIES}
+    ${AUDASPACE_PY_LIBRARIES}
+  )
 endif()
 
 if(WITH_CODEC_FFMPEG)
@@ -237,6 +241,9 @@ if(WITH_CODEC_FFMPEG)
   )
   list(APPEND INC_SYS
     ${FFMPEG_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${FFMPEG_LIBRARIES}
   )
   add_definitions(-DWITH_FFMPEG)
 endif()
