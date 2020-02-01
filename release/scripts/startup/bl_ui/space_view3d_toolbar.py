@@ -1471,6 +1471,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
     bl_label = "Advanced"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_settings'
     bl_category = "Tool"
+    bl_ui_units_x = 12
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
