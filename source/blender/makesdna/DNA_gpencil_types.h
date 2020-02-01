@@ -260,6 +260,8 @@ typedef enum eGPDstroke_Flag {
   /* Flag used to indicate that stroke is used for fill close and must use
    * fill color for stroke and no fill area */
   GP_STROKE_NOFILL = (1 << 8),
+  /* Tag for update geometry */
+  GP_STROKE_TAG = (1 << 9),
   /* only for use with stroke-buffer (while drawing eraser) */
   GP_STROKE_ERASER = (1 << 15),
 } eGPDstroke_Flag;

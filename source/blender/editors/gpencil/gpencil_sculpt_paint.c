@@ -282,11 +282,30 @@ static float gp_brush_influence_calc(tGP_BrushEditData *gso, const int radius, c
   return influence;
 }
 
-/* Force recal filling data */
-static void gp_recalc_geometry(bGPDstroke *gps)
+/* Tag stroke to be recalculated. */
+static void gpencil_recalc_geometry_tag(bGPDstroke *gps)
 {
   bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
-  BKE_gpencil_stroke_geometry_update(gps_active);
+  gps_active->flag |= GP_STROKE_TAG;
+}
+
+/* Recalc any stroke tagged. */
+static void gpencil_update_geometry(bGPdata *gpd)
+{
+  if (gpd == NULL) {
+    return;
+  }
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        if (gps->flag & GP_STROKE_TAG) {
+          BKE_gpencil_stroke_geometry_update(gps);
+          gps->flag &= ~GP_STROKE_TAG;
+        }
+      }
+    }
+  }
 }
 
 /* ************************************************ */
@@ -323,7 +342,7 @@ static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
     BKE_gpencil_stroke_smooth_uv(gps, pt_index, inf);
   }
 
-  gp_recalc_geometry(gps);
+  gpencil_recalc_geometry_tag(gps);
 
   return true;
 }
@@ -541,6 +560,8 @@ static void gp_brush_grab_apply_cached(tGP_BrushEditData *gso,
 {
   tGPSB_Grab_StrokeData *data = BLI_ghash_lookup(gso->stroke_customdata, gps);
   int i;
+  float inverse_diff_mat[4][4];
+  invert_m4_m4(inverse_diff_mat, diff_mat);
 
   /* Apply dvec to all of the stored points */
   for (i = 0; i < data->size; i++) {
@@ -562,14 +583,12 @@ static void gp_brush_grab_apply_cached(tGP_BrushEditData *gso,
     /* apply */
     add_v3_v3v3(&pt->x, fpt, delta);
     /* undo transformation to the init parent position */
-    float inverse_diff_mat[4][4];
-    invert_m4_m4(inverse_diff_mat, diff_mat);
     mul_m4_v3(inverse_diff_mat, &pt->x);
 
     /* compute lock axis */
     gpsculpt_compute_lock_axis(gso, pt, save_pt);
   }
-  gp_recalc_geometry(gps);
+  gpencil_recalc_geometry_tag(gps);
 }
 
 /* free customdata used for handling this stroke */
@@ -705,7 +724,7 @@ static bool gp_brush_pinch_apply(tGP_BrushEditData *gso,
   /* compute lock axis */
   gpsculpt_compute_lock_axis(gso, pt, save_pt);
 
-  gp_recalc_geometry(gps);
+  gpencil_recalc_geometry_tag(gps);
 
   /* done */
   return true;
@@ -793,7 +812,7 @@ static bool gp_brush_twist_apply(tGP_BrushEditData *gso,
     }
   }
 
-  gp_recalc_geometry(gps);
+  gpencil_recalc_geometry_tag(gps);
 
   /* done */
   return true;
@@ -907,7 +926,7 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
   }
 
-  gp_recalc_geometry(gps);
+  gpencil_recalc_geometry_tag(gps);
 
   /* done */
   return true;
@@ -1336,6 +1355,9 @@ static void gpsculpt_brush_exit(bContext *C, wmOperator *op)
   /* disable temp invert flag */
   gso->brush->gpencil_settings->sculpt_flag &= ~GP_SCULPT_FLAG_TMP_INVERT;
 
+  /* Update geometry data for tagged strokes. */
+  gpencil_update_geometry(gso->gpd);
+
   /* free operator data */
   MEM_freeN(gso);
   op->customdata = NULL;
@@ -1671,7 +1693,7 @@ static bool gpsculpt_brush_do_frame(bContext *C,
         break;
     }
     /* Triangulation must be calculated if changed */
-    gp_recalc_geometry(gps);
+    gpencil_recalc_geometry_tag(gps);
   }
 
   return changed;
