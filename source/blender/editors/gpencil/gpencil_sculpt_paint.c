@@ -310,6 +310,8 @@ static void gpencil_update_geometry(bGPdata *gpd)
       }
     }
   }
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 }
 
 /* ************************************************ */
@@ -1495,6 +1497,12 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
   bool include_last = false;
   bool changed = false;
   float rot_eval = 0.0f;
+
+  /* Check if the stroke collide with brush. */
+  if (!ED_gpencil_stroke_check_collision(gsc, gps, gso->mval, radius, diff_mat)) {
+    return false;
+  }
+
   if (gps->totpoints == 1) {
     bGPDspoint pt_temp;
     pt = &gps->points[0];

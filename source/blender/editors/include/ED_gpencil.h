@@ -35,6 +35,7 @@ struct bGPDspoint;
 struct bGPDstroke;
 struct bGPdata;
 struct tGPspoint;
+struct GP_SpaceConversion;
 
 struct ARegion;
 struct Depsgraph;
@@ -302,5 +303,11 @@ void ED_gpencil_point_vertex_color_set(struct ToolSettings *ts,
 void ED_gpencil_sbuffer_vertex_color_set(struct ToolSettings *ts,
                                          struct Brush *brush,
                                          struct bGPdata *gpd);
+
+bool ED_gpencil_stroke_check_collision(struct GP_SpaceConversion *gsc,
+                                       struct bGPDstroke *gps,
+                                       float mval[2],
+                                       const int radius,
+                                       const float diff_mat[4][4]);
 
 #endif /*  __ED_GPENCIL_H__ */

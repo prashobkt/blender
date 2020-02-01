@@ -2556,3 +2556,47 @@ void ED_gpencil_sbuffer_vertex_color_set(ToolSettings *ts, Brush *brush, bGPdata
     zero_v4(gpd->runtime.vert_color);
   }
 }
+
+/* Check if the stroke collides with brush. */
+bool ED_gpencil_stroke_check_collision(GP_SpaceConversion *gsc,
+                                       bGPDstroke *gps,
+                                       float mval[2],
+                                       const int radius,
+                                       const float diff_mat[4][4])
+{
+  bGPDspoint pt_dummy, pt_dummy_ps;
+  float gps_collision_min[2] = {0.0f};
+  float gps_collision_max[2] = {0.0f};
+  float collision_center[2] = {0.0f};
+  float zerov3[3];
+
+  int mouse[2], center[2];
+
+  /* Check we have something to use (only for old files). */
+  if (equals_v3v3(zerov3, gps->collision_min)) {
+    BKE_gpencil_stroke_collision_get(gps);
+  }
+
+  /* Convert bound box to 2d */
+  copy_v3_v3(&pt_dummy.x, gps->collision_min);
+  gp_point_to_parent_space(&pt_dummy, diff_mat, &pt_dummy_ps);
+  gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &gps_collision_min[0], &gps_collision_min[1]);
+
+  copy_v3_v3(&pt_dummy.x, gps->collision_max);
+  gp_point_to_parent_space(&pt_dummy, diff_mat, &pt_dummy_ps);
+  gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &gps_collision_max[0], &gps_collision_max[1]);
+
+  /* Calc collision center and radius in 2d. */
+  add_v2_v2v2(collision_center, gps_collision_min, gps_collision_max);
+  mul_v2_v2fl(collision_center, collision_center, 0.5f);
+
+  int collision_radius = (int)(len_v2v2(gps_collision_min, gps_collision_max) * 0.5f);
+  round_v2i_v2fl(center, collision_center);
+  round_v2i_v2fl(mouse, mval);
+
+  if (len_v2v2_int(mouse, center) > radius + collision_radius) {
+    return false;
+  }
+
+  return true;
+}

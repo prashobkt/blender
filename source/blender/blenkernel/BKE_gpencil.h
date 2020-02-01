@@ -224,6 +224,7 @@ bool BKE_gpencil_stroke_select_check(const struct bGPDstroke *gps);
 
 struct BoundBox *BKE_gpencil_boundbox_get(struct Object *ob);
 void BKE_gpencil_centroid_3d(struct bGPdata *gpd, float r_centroid[3]);
+void BKE_gpencil_stroke_collision_get(struct bGPDstroke *gps);
 
 /* vertex groups */
 void BKE_gpencil_dvert_ensure(struct bGPDstroke *gps);

@@ -229,6 +229,11 @@ typedef struct bGPDstroke {
   /** Factor of opacity for Fill color (used by opacity modifier). */
   float fill_opacity_fac;
 
+  /** Min of the collision bound box used to speedup painting. */
+  float collision_min[3];
+  /** Max of the collision bound box used to speedup painting. */
+  float collision_max[3];
+
   /** UV rotation */
   float uv_rotation;
   /** UV translation (X and Y axis) */
@@ -261,7 +266,7 @@ typedef enum eGPDstroke_Flag {
    * fill color for stroke and no fill area */
   GP_STROKE_NOFILL = (1 << 8),
   /* Tag for update geometry */
-  GP_STROKE_TAG = (1 << 9),
+  GP_STROKE_TAG = (1 << 14),
   /* only for use with stroke-buffer (while drawing eraser) */
   GP_STROKE_ERASER = (1 << 15),
 } eGPDstroke_Flag;

@@ -1327,6 +1327,13 @@ void BKE_gpencil_centroid_3d(bGPdata *gpd, float r_centroid[3])
   mul_v3_v3fl(r_centroid, tot, 0.5f);
 }
 
+/* Compute stroke collision detection center and radius. */
+void BKE_gpencil_stroke_collision_get(bGPDstroke *gps)
+{
+  INIT_MINMAX(gps->collision_min, gps->collision_max);
+  BKE_gpencil_stroke_minmax(gps, false, gps->collision_min, gps->collision_max);
+}
+
 /* create bounding box values */
 static void boundbox_gpencil(Object *ob)
 {
@@ -2794,6 +2801,9 @@ void BKE_gpencil_stroke_geometry_update(bGPDstroke *gps)
 
   /* calc uv data along the stroke */
   BKE_gpencil_stroke_uv_update(gps);
+
+  /* Calc collision center and radius. */
+  BKE_gpencil_stroke_collision_get(gps);
 }
 
 float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
