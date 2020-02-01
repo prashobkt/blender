@@ -1659,25 +1659,6 @@ void GPENCIL_OT_move_to_layer(wmOperatorType *ot)
 
 /* ********************* Add Blank Frame *************************** */
 
-/* Basically the same as the drawing op */
-static bool UNUSED_FUNCTION(gp_blank_frame_add_poll)(bContext *C)
-{
-  if (ED_operator_regionactive(C)) {
-    /* check if current context can support GPencil data */
-    if (ED_gpencil_data_get_pointers(C, NULL) != NULL) {
-      return 1;
-    }
-    else {
-      CTX_wm_operator_poll_msg_set(C, "Failed to find Grease Pencil data to draw into");
-    }
-  }
-  else {
-    CTX_wm_operator_poll_msg_set(C, "Active region not set");
-  }
-
-  return 0;
-}
-
 static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);

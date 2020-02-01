@@ -913,63 +913,6 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
   return true;
 }
 
-/* Weight Paint Brush */
-/* Change weight paint for vertex groups */
-static bool UNUSED_FUNCTION(gp_brush_weight_apply)(tGP_BrushEditData *gso,
-                                                   bGPDstroke *gps,
-                                                   float UNUSED(rot_eval),
-                                                   int pt_index,
-                                                   const int radius,
-                                                   const int co[2])
-{
-  /* create dvert */
-  BKE_gpencil_dvert_ensure(gps);
-
-  MDeformVert *dvert = gps->dvert + pt_index;
-  float inf;
-
-  /* Compute strength of effect
-   * - We divide the strength by 10, so that users can set "sane" values.
-   *   Otherwise, good default values are in the range of 0.093
-   */
-  inf = gp_brush_influence_calc(gso, radius, co) / 10.0f;
-
-  /* need a vertex group */
-  if (gso->vrgroup == -1) {
-    if (gso->object) {
-      BKE_object_defgroup_add(gso->object);
-      DEG_relations_tag_update(gso->bmain);
-      gso->vrgroup = 0;
-    }
-  }
-  else {
-    bDeformGroup *defgroup = BLI_findlink(&gso->object->defbase, gso->vrgroup);
-    if (defgroup->flag & DG_LOCK_WEIGHT) {
-      return false;
-    }
-  }
-  /* get current weight */
-  MDeformWeight *dw = defvert_verify_index(dvert, gso->vrgroup);
-  float curweight = dw ? dw->weight : 0.0f;
-
-  if (gp_brush_invert_check(gso)) {
-    curweight -= inf;
-  }
-  else {
-    /* increase weight */
-    curweight += inf;
-    /* verify maximum target weight */
-    CLAMP_MAX(curweight, gso->brush->weight);
-  }
-
-  CLAMP(curweight, 0.0f, 1.0f);
-  if (dw) {
-    dw->weight = curweight;
-  }
-
-  return true;
-}
-
 /* ************************************************ */
 /* Non Callback-Based Brushes */
 /* Clone Brush ------------------------------------- */
