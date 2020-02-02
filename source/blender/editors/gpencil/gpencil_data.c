@@ -1624,25 +1624,33 @@ static int gp_brush_reset_exec(bContext *C, wmOperator *UNUSED(op))
     case CTX_MODE_PAINT_GPENCIL: {
       Paint *paint = &ts->gp_paint->paint;
       brush = paint->brush;
-      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      if (brush && brush->gpencil_settings) {
+        BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      }
       break;
     }
     case CTX_MODE_SCULPT_GPENCIL: {
       Paint *paint = &ts->gp_sculptpaint->paint;
       brush = paint->brush;
-      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      if (brush && brush->gpencil_settings) {
+        BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      }
       break;
     }
     case CTX_MODE_WEIGHT_GPENCIL: {
       Paint *paint = &ts->gp_weightpaint->paint;
       brush = paint->brush;
-      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      if (brush && brush->gpencil_settings) {
+        BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      }
       break;
     }
     case CTX_MODE_VERTEX_GPENCIL: {
       Paint *paint = &ts->gp_vertexpaint->paint;
       brush = paint->brush;
-      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      if (brush && brush->gpencil_settings) {
+        BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      }
       break;
     }
     default:
@@ -1824,7 +1832,29 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
     }
 
     gp_brush_delete_mode_brushes(bmain, paint, mode);
-    BKE_brush_gpencil_paint_presets(bmain, ts);
+
+    switch (mode) {
+      case CTX_MODE_PAINT_GPENCIL: {
+        BKE_brush_gpencil_paint_presets(bmain, ts);
+        break;
+      }
+      case CTX_MODE_SCULPT_GPENCIL: {
+        BKE_brush_gpencil_sculpt_presets(bmain, ts);
+        break;
+      }
+      case CTX_MODE_WEIGHT_GPENCIL: {
+        BKE_brush_gpencil_weight_presets(bmain, ts);
+        break;
+      }
+      case CTX_MODE_VERTEX_GPENCIL: {
+        BKE_brush_gpencil_vertex_presets(bmain, ts);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+
     BKE_paint_toolslots_brush_validate(bmain, paint);
 
     /* Set Again the first brush of the mode. */
