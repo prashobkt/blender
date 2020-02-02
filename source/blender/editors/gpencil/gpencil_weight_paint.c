@@ -447,6 +447,11 @@ static void gp_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
   int index;
   bool include_last = false;
 
+  /* Check if the stroke collide with brush. */
+  if (!ED_gpencil_stroke_check_collision(gsc, gps, gso->mval, radius, diff_mat)) {
+    return;
+  }
+
   if (gps->totpoints == 1) {
     bGPDspoint pt_temp;
     pt = &gps->points[0];
