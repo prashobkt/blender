@@ -306,7 +306,7 @@ void ED_gpencil_sbuffer_vertex_color_set(struct ToolSettings *ts,
 
 bool ED_gpencil_stroke_check_collision(struct GP_SpaceConversion *gsc,
                                        struct bGPDstroke *gps,
-                                       float mval[2],
+                                       float mouse[2],
                                        const int radius,
                                        const float diff_mat[4][4]);
 

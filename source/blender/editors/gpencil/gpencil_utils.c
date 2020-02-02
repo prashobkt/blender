@@ -2560,10 +2560,11 @@ void ED_gpencil_sbuffer_vertex_color_set(ToolSettings *ts, Brush *brush, bGPdata
 /* Check if the stroke collides with brush. */
 bool ED_gpencil_stroke_check_collision(GP_SpaceConversion *gsc,
                                        bGPDstroke *gps,
-                                       float mval[2],
+                                       float mouse[2],
                                        const int radius,
                                        const float diff_mat[4][4])
 {
+  const int offset = (int)ceil(sqrt((radius * radius) * 2));
   bGPDspoint pt_dummy, pt_dummy_ps;
   float gps_collision_min[2] = {0.0f};
   float gps_collision_max[2] = {0.0f};
@@ -2583,12 +2584,12 @@ bool ED_gpencil_stroke_check_collision(GP_SpaceConversion *gsc,
   gp_point_to_parent_space(&pt_dummy, diff_mat, &pt_dummy_ps);
   gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &gps_collision_max[0], &gps_collision_max[1]);
 
-  rcti rect1 = {
+  rcti rect_stroke = {
       gps_collision_min[0], gps_collision_max[0], gps_collision_min[1], gps_collision_max[1]};
-  rcti rect2 = {mval[0] - radius, mval[0] + radius, mval[1] - radius, mval[1] + radius};
-  if (BLI_rcti_isect(&rect1, &rect2, NULL)) {
-    return true;
-  }
 
-  return true;
+  /* For mouse, add a small offet to avoid false negative in corners. */
+  rcti rect_mouse = {mouse[0] - offset, mouse[0] + offset, mouse[1] - offset, mouse[1] + offset};
+
+  /* Check collision between both rectangles. */
+  return BLI_rcti_isect(&rect_stroke, &rect_mouse, NULL);
 }
