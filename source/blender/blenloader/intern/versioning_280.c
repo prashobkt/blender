@@ -4331,17 +4331,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
         if (brush->gpencil_settings != NULL) {
           brush->gpencil_vertex_tool = brush->gpencil_settings->brush_type;
-        }
-      }
-
-      for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
-        if (brush->gpencil_settings != NULL) {
           brush->gpencil_sculpt_tool = brush->gpencil_settings->brush_type;
-        }
-      }
-
-      for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
-        if (brush->gpencil_settings != NULL) {
           brush->gpencil_weight_tool = brush->gpencil_settings->brush_type;
         }
       }
