@@ -766,32 +766,31 @@ static void gpencil_copy_activeframe_to_eval(
     Depsgraph *depsgraph, Scene *scene, Object *ob, bGPdata *gpd_orig, bGPdata *gpd_eval)
 {
 
-  int layer_index = -1;
+  bGPDlayer *gpl_eval = gpd_eval->layers.first;
   LISTBASE_FOREACH (bGPDlayer *, gpl_orig, &gpd_orig->layers) {
-    layer_index++;
 
-    int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
-    bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(gpl_orig, remap_cfra, GP_GETFRAME_USE_PREV);
-    if (gpf_orig == NULL) {
-      continue;
-    }
-    int gpf_index = BLI_findindex(&gpl_orig->frames, gpf_orig);
+    if (gpl_eval != NULL) {
+      int remap_cfra = gpencil_remap_time_get(depsgraph, scene, ob, gpl_orig);
 
-    bGPDlayer *gpl_eval = BLI_findlink(&gpd_eval->layers, layer_index);
-    if (gpl_eval == NULL) {
-      continue;
-    }
+      bGPDframe *gpf_orig = BKE_gpencil_layer_frame_get(
+          gpl_orig, remap_cfra, GP_GETFRAME_USE_PREV);
 
-    bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, gpf_index);
+      if (gpf_orig != NULL) {
+        int gpf_index = BLI_findindex(&gpl_orig->frames, gpf_orig);
+        bGPDframe *gpf_eval = BLI_findlink(&gpl_eval->frames, gpf_index);
 
-    if ((gpf_orig != NULL) && (gpf_eval != NULL)) {
-      /* Delete old strokes. */
-      BKE_gpencil_free_strokes(gpf_eval);
-      /* Copy again strokes. */
-      BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
+        if (gpf_eval != NULL) {
+          /* Delete old strokes. */
+          BKE_gpencil_free_strokes(gpf_eval);
+          /* Copy again strokes. */
+          BKE_gpencil_frame_copy_strokes(gpf_orig, gpf_eval);
 
-      gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
-      BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
+          gpf_eval->runtime.gpf_orig = (bGPDframe *)gpf_orig;
+          BKE_gpencil_frame_original_pointers_update(gpf_orig, gpf_eval);
+        }
+      }
+
+      gpl_eval = gpl_eval->next;
     }
   }
 }
