@@ -348,8 +348,6 @@ static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
     BKE_gpencil_stroke_smooth_uv(gps, pt_index, inf);
   }
 
-  gpencil_recalc_geometry_tag(gps);
-
   return true;
 }
 
@@ -594,7 +592,6 @@ static void gp_brush_grab_apply_cached(tGP_BrushEditData *gso,
     /* compute lock axis */
     gpsculpt_compute_lock_axis(gso, pt, save_pt);
   }
-  gpencil_recalc_geometry_tag(gps);
 }
 
 /* free customdata used for handling this stroke */
@@ -730,8 +727,6 @@ static bool gp_brush_pinch_apply(tGP_BrushEditData *gso,
   /* compute lock axis */
   gpsculpt_compute_lock_axis(gso, pt, save_pt);
 
-  gpencil_recalc_geometry_tag(gps);
-
   /* done */
   return true;
 }
@@ -817,8 +812,6 @@ static bool gp_brush_twist_apply(tGP_BrushEditData *gso,
       copy_v2_v2(&pt->x, vec);
     }
   }
-
-  gpencil_recalc_geometry_tag(gps);
 
   /* done */
   return true;
@@ -931,8 +924,6 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     }
     CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
   }
-
-  gpencil_recalc_geometry_tag(gps);
 
   /* done */
   return true;
@@ -1704,8 +1695,19 @@ static bool gpsculpt_brush_do_frame(bContext *C,
         printf("ERROR: Unknown type of GPencil Sculpt brush \n");
         break;
     }
-    /* Triangulation must be calculated if changed */
-    gpencil_recalc_geometry_tag(gps);
+
+    /* Triangulation must be calculated. */
+    if (changed) {
+      bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
+      if (gpl->actframe == gpf) {
+        BKE_gpencil_stroke_geometry_update(gps_active);
+        gps->flag &= ~GP_STROKE_TAG;
+      }
+      else {
+        /* Delay calculation for non active frames. */
+        gpencil_recalc_geometry_tag(gps_active);
+      }
+    }
   }
 
   return changed;
