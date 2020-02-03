@@ -85,7 +85,7 @@
 /* Context for brush operators */
 typedef struct tGP_BrushEditData {
   /* Current editor/region/etc. */
-  /* NOTE: This stuff is mainly needed to handle 3D view projection stuff... */
+  Depsgraph *depsgraph;
   Main *bmain;
   Scene *scene;
   Object *object;
@@ -993,9 +993,9 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
 {
   tGPSB_CloneBrushData *data = gso->customdata;
 
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = gso->object;
   bGPdata *gpd = (bGPdata *)ob->data;
-  Scene *scene = CTX_data_scene(C);
+  Scene *scene = gso->scene;
   bGPDstroke *gps;
 
   float delta[3];
@@ -1147,7 +1147,7 @@ static void gpsculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
 static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
+  ToolSettings *ts = scene->toolsettings;
   Object *ob = CTX_data_active_object(C);
 
   /* set the brush using the tool */
@@ -1157,6 +1157,7 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
   gso = MEM_callocN(sizeof(tGP_BrushEditData), "tGP_BrushEditData");
   op->customdata = gso;
 
+  gso->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   gso->bmain = CTX_data_main(C);
   /* store state */
   gso->settings = gpsculpt_get_settings(scene);
@@ -1571,7 +1572,7 @@ static bool gpsculpt_brush_do_frame(bContext *C,
                                     const float diff_mat[4][4])
 {
   bool changed = false;
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = gso->object;
   char tool = gso->brush->gpencil_sculpt_tool;
 
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
@@ -1679,8 +1680,8 @@ static bool gpsculpt_brush_do_frame(bContext *C,
 /* Perform two-pass brushes which modify the existing strokes */
 static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
 {
-  ToolSettings *ts = CTX_data_tool_settings(C);
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  ToolSettings *ts = gso->scene->toolsettings;
+  Depsgraph *depsgraph = gso->depsgraph;
   Object *obact = gso->object;
   bool changed = false;
 
