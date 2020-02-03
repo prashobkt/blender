@@ -1792,7 +1792,7 @@ static void *newlibadr_us(FileData *fd, const void *lib, const void *adr)
 {
   ID *id = newlibadr(fd, lib, adr);
 
-  id_us_plus_no_lib(id);
+  /* id_us_plus_no_lib(id); */
 
   return id;
 }
@@ -1808,7 +1808,7 @@ static void *newlibadr_real_us(FileData *fd, const void *lib, const void *adr)
 {
   ID *id = newlibadr(fd, lib, adr);
 
-  id_us_ensure_real(id);
+  /* id_us_ensure_real(id); */
 
   return id;
 }
@@ -9395,7 +9395,7 @@ static void do_versions_after_linking(Main *main, ReportList *reports)
 /* -------------------------------------------------------------------- */
 /** \name Read Library Data Block (all)
  * \{ */
-
+#include "PIL_time_utildefines.h"
 static void lib_link_all(FileData *fd, Main *bmain)
 {
   ID *id;
@@ -9536,6 +9536,10 @@ static void lib_link_all(FileData *fd, Main *bmain)
     id->tag &= ~LIB_TAG_NEED_LINK;
   }
   FOREACH_MAIN_ID_END;
+
+  TIMEIT_START(readfile_refcount_recomp);
+  BKE_main_id_refcount_recompute(bmain, false);
+  TIMEIT_END(readfile_refcount_recomp);
 
   /* Check for possible cycles in scenes' 'set' background property. */
   lib_link_scenes_check_set(bmain);
