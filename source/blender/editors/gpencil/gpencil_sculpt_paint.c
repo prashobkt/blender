@@ -1700,11 +1700,17 @@ static bool gpsculpt_brush_do_frame(bContext *C,
     if (changed) {
       bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
       if (gpl->actframe == gpf) {
-        BKE_gpencil_stroke_geometry_update(gps_active);
-        gps->flag &= ~GP_STROKE_TAG;
+        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+        /* Update active frame now, only if material has fill. */
+        if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
+          BKE_gpencil_stroke_geometry_update(gps_active);
+        }
+        else {
+          gpencil_recalc_geometry_tag(gps_active);
+        }
       }
       else {
-        /* Delay calculation for non active frames. */
+        /* Delay a full recalculation for other frames. */
         gpencil_recalc_geometry_tag(gps_active);
       }
     }
