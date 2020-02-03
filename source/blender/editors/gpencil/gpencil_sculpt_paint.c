@@ -175,10 +175,6 @@ static void gpsculpt_compute_lock_axis(tGP_BrushEditData *gso,
                                        bGPDspoint *pt,
                                        const float save_pt[3])
 {
-  if (gso->sa->spacetype != SPACE_VIEW3D) {
-    return;
-  }
-
   const ToolSettings *ts = gso->scene->toolsettings;
   const View3DCursor *cursor = &gso->scene->cursor;
   const int axis = ts->gp_sculpt.lock_axis;
@@ -523,38 +519,27 @@ static bool gp_brush_grab_store_points(tGP_BrushEditData *gso,
 static void gp_brush_grab_calc_dvec(tGP_BrushEditData *gso)
 {
   /* Convert mouse-movements to movement vector */
-  // TODO: incorporate pressure into this?
-  // XXX: screen-space strokes in 3D space will suffer!
-  if (gso->sa->spacetype == SPACE_VIEW3D) {
-    RegionView3D *rv3d = gso->ar->regiondata;
-    float *rvec = gso->object->loc;
-    float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
+  RegionView3D *rv3d = gso->ar->regiondata;
+  float *rvec = gso->object->loc;
+  float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
 
-    float mval_f[2];
+  float mval_f[2];
 
-    /* convert from 2D screenspace to 3D... */
-    mval_f[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
-    mval_f[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
+  /* convert from 2D screenspace to 3D... */
+  mval_f[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
+  mval_f[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
 
-    /* apply evaluated data transformation */
-    if (gso->rot_eval != 0.0f) {
-      const float cval = cos(gso->rot_eval);
-      const float sval = sin(gso->rot_eval);
-      float r[2];
-      r[0] = (mval_f[0] * cval) - (mval_f[1] * sval);
-      r[1] = (mval_f[0] * sval) + (mval_f[1] * cval);
-      copy_v2_v2(mval_f, r);
-    }
-
-    ED_view3d_win_to_delta(gso->ar, mval_f, gso->dvec, zfac);
+  /* apply evaluated data transformation */
+  if (gso->rot_eval != 0.0f) {
+    const float cval = cos(gso->rot_eval);
+    const float sval = sin(gso->rot_eval);
+    float r[2];
+    r[0] = (mval_f[0] * cval) - (mval_f[1] * sval);
+    r[1] = (mval_f[0] * sval) + (mval_f[1] * cval);
+    copy_v2_v2(mval_f, r);
   }
-  else {
-    /* 2D - just copy */
-    // XXX: view2d?
-    gso->dvec[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
-    gso->dvec[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
-    gso->dvec[2] = 0.0f; /* unused */
-  }
+
+  ED_view3d_win_to_delta(gso->ar, mval_f, gso->dvec, zfac);
 }
 
 /* Apply grab transform to all relevant points of the affected strokes */
@@ -647,35 +632,26 @@ static bool gp_brush_push_apply(tGP_BrushEditData *gso,
 /* Compute reference midpoint for the brush - this is what we'll be moving towards */
 static void gp_brush_calc_midpoint(tGP_BrushEditData *gso)
 {
-  if (gso->sa->spacetype == SPACE_VIEW3D) {
-    /* Convert mouse position to 3D space
-     * See: gpencil_paint.c :: gp_stroke_convertcoords()
-     */
-    RegionView3D *rv3d = gso->ar->regiondata;
-    const float *rvec = gso->object->loc;
-    float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
+  /* Convert mouse position to 3D space
+   * See: gpencil_paint.c :: gp_stroke_convertcoords()
+   */
+  RegionView3D *rv3d = gso->ar->regiondata;
+  const float *rvec = gso->object->loc;
+  float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
 
-    float mval_f[2];
-    copy_v2_v2(mval_f, gso->mval);
-    float mval_prj[2];
-    float dvec[3];
+  float mval_f[2];
+  copy_v2_v2(mval_f, gso->mval);
+  float mval_prj[2];
+  float dvec[3];
 
-    if (ED_view3d_project_float_global(gso->ar, rvec, mval_prj, V3D_PROJ_TEST_NOP) ==
-        V3D_PROJ_RET_OK) {
-      sub_v2_v2v2(mval_f, mval_prj, mval_f);
-      ED_view3d_win_to_delta(gso->ar, mval_f, dvec, zfac);
-      sub_v3_v3v3(gso->dvec, rvec, dvec);
-    }
-    else {
-      zero_v3(gso->dvec);
-    }
+  if (ED_view3d_project_float_global(gso->ar, rvec, mval_prj, V3D_PROJ_TEST_NOP) ==
+      V3D_PROJ_RET_OK) {
+    sub_v2_v2v2(mval_f, mval_prj, mval_f);
+    ED_view3d_win_to_delta(gso->ar, mval_f, dvec, zfac);
+    sub_v3_v3v3(gso->dvec, rvec, dvec);
   }
   else {
-    /* Just 2D coordinates */
-    // XXX: fix View2D offsets later
-    gso->dvec[0] = (float)gso->mval[0];
-    gso->dvec[1] = (float)gso->mval[1];
-    gso->dvec[2] = 0.0f;
+    zero_v3(gso->dvec);
   }
 }
 
@@ -865,31 +841,16 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     /* convert to dataspace */
     if (gps->flag & GP_STROKE_3DSPACE) {
       /* 3D: Project to 3D space */
-      if (gso->sa->spacetype == SPACE_VIEW3D) {
-        bool flip;
-        RegionView3D *rv3d = gso->ar->regiondata;
-        float zfac = ED_view3d_calc_zfac(rv3d, &pt->x, &flip);
-        if (flip == false) {
-          float dvec[3];
-          ED_view3d_win_to_delta(gso->gsc.ar, svec, dvec, zfac);
-          add_v3_v3(&pt->x, dvec);
-          /* compute lock axis */
-          gpsculpt_compute_lock_axis(gso, pt, save_pt);
-        }
+      bool flip;
+      RegionView3D *rv3d = gso->ar->regiondata;
+      float zfac = ED_view3d_calc_zfac(rv3d, &pt->x, &flip);
+      if (flip == false) {
+        float dvec[3];
+        ED_view3d_win_to_delta(gso->gsc.ar, svec, dvec, zfac);
+        add_v3_v3(&pt->x, dvec);
+        /* compute lock axis */
+        gpsculpt_compute_lock_axis(gso, pt, save_pt);
       }
-      else {
-        /* ERROR */
-        BLI_assert(!"3D stroke being sculpted in non-3D view");
-      }
-    }
-    else {
-      /* 2D: As-is */
-      // XXX: v2d scaling/offset?
-      float nco[2];
-      nco[0] = (float)co[0] + svec[0];
-      nco[1] = (float)co[1] + svec[1];
-
-      copy_v2_v2(&pt->x, nco);
     }
   }
   /* apply random to strength */
@@ -1298,11 +1259,6 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
   /* update header */
   gpsculpt_brush_header_set(C, gso);
 
-  /* setup cursor drawing */
-  // WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_CROSS);
-  if (gso->sa->spacetype != SPACE_VIEW3D) {
-    ED_gpencil_toggle_brush_cursor(C, true, NULL);
-  }
   return true;
 }
 
@@ -1342,12 +1298,8 @@ static void gpsculpt_brush_exit(bContext *C, wmOperator *op)
     BLI_rng_free(gso->rng);
   }
 
-  /* disable cursor and headerprints */
+  /* Disable headerprints. */
   ED_workspace_status_text(C, NULL);
-  WM_cursor_modal_restore(win);
-  if (gso->sa->spacetype != SPACE_VIEW3D) {
-    ED_gpencil_toggle_brush_cursor(C, false, NULL);
-  }
 
   /* disable temp invert flag */
   gso->brush->gpencil_settings->sculpt_flag &= ~GP_SCULPT_FLAG_TMP_INVERT;
@@ -1363,6 +1315,11 @@ static void gpsculpt_brush_exit(bContext *C, wmOperator *op)
 /* poll callback for stroke sculpting operator(s) */
 static bool gpsculpt_brush_poll(bContext *C)
 {
+  ScrArea *sa = CTX_wm_area(C);
+  if (sa && sa->spacetype != SPACE_VIEW3D) {
+    return false;
+  }
+
   /* NOTE: this is a bit slower, but is the most accurate... */
   return CTX_DATA_COUNT(C, editable_gpencil_strokes) != 0;
 }
