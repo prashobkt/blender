@@ -620,9 +620,6 @@ static bool gp_brush_push_apply(tGP_BrushEditData *gso,
   /* compute lock axis */
   gpsculpt_compute_lock_axis(gso, pt, save_pt);
 
-  /* Calc geometry data. */
-  BKE_gpencil_stroke_geometry_update(gps);
-
   /* done */
   return true;
 }
