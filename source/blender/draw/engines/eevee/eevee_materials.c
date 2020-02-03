@@ -2142,6 +2142,9 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
                 shgrps->material_accum_grp[renderpass_index], ob, mat_geom[i], oedata);
           }
 
+          /* Motion Blur Vectors. */
+          EEVEE_motion_blur_cache_populate(vedata, ob, oedata, mat_geom[i]);
+
           /* Shadow Pass */
           struct GPUMaterial *gpumat;
           const bool use_gpumat = (ma_array[i]->use_nodes && ma_array[i]->nodetree);

@@ -29,6 +29,8 @@
 
 #include "DNA_lightprobe_types.h"
 
+#include "BKE_camera.h"
+
 struct EEVEE_ShadowCasterBuffer;
 struct GPUFrameBuffer;
 struct Object;
@@ -257,6 +259,7 @@ typedef struct EEVEE_PassList {
   struct DRWPass *sss_translucency_ps;
   struct DRWPass *color_downsample_ps;
   struct DRWPass *color_downsample_cube_ps;
+  struct DRWPass *velocity_object;
   struct DRWPass *velocity_resolve;
   struct DRWPass *taa_resolve;
   struct DRWPass *alpha_checker;
@@ -325,6 +328,7 @@ typedef struct EEVEE_FramebufferList {
   struct GPUFrameBuffer *renderpass_fb;
   struct GPUFrameBuffer *ao_accum_fb;
   struct GPUFrameBuffer *velocity_resolve_fb;
+  struct GPUFrameBuffer *velocity_fb;
 
   struct GPUFrameBuffer *update_noise_fb;
 
@@ -609,11 +613,16 @@ typedef struct EEVEE_EffectsInfo {
   struct GPUTexture *gtao_horizons; /* Textures from pool */
   struct GPUTexture *gtao_horizons_debug;
   /* Motion Blur */
-  float current_world_to_ndc[4][4];
   float current_ndc_to_world[4][4];
+  float current_world_to_ndc[4][4];
+  float current_world_to_view[4][4];
   float past_world_to_ndc[4][4];
-  int motion_blur_samples;
-  bool motion_blur_mat_cached;
+  float past_world_to_view[4][4];
+  CameraParams past_cam_params;
+  CameraParams current_cam_params;
+  float current_time;
+  float past_time;
+  bool cam_params_init;
   /* Velocity Pass */
   float velocity_curr_persinv[4][4];
   float velocity_past_persmat[4][4];
@@ -788,8 +797,15 @@ typedef struct EEVEE_ObjectEngineData {
   EEVEE_LightProbeVisTest *test_data;
   bool ob_vis, ob_vis_dirty;
 
+  bool motion_mats_init;
+
   bool need_update;
   uint shadow_caster_id;
+
+  float prev_matrix[4][4];
+  float curr_matrix[4][4];
+  float prev_time;
+  float curr_time;
 } EEVEE_ObjectEngineData;
 
 typedef struct EEVEE_WorldEngineData {
@@ -1120,6 +1136,10 @@ void EEVEE_subsurface_free(void);
 /* eevee_motion_blur.c */
 int EEVEE_motion_blur_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object *camera);
 void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
+void EEVEE_motion_blur_cache_populate(EEVEE_Data *vedata,
+                                      Object *ob,
+                                      EEVEE_ObjectEngineData *oedata,
+                                      struct GPUBatch *geom);
 void EEVEE_motion_blur_draw(EEVEE_Data *vedata);
 void EEVEE_motion_blur_free(void);
 

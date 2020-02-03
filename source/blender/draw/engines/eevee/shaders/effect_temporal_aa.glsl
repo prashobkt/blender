@@ -39,7 +39,8 @@ vec3 clip_to_aabb(vec3 color, vec3 minimum, vec3 maximum, vec3 average)
 void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
-  vec2 motion = texelFetch(velocityBuffer, texel, 0).rg;
+  // vec2 motion = texelFetch(velocityBuffer, texel, 0).rg;
+  vec2 motion = vec2(0.5);
 
   /* Decode from unsigned normalized 16bit texture. */
   motion = motion * 2.0 - 1.0;

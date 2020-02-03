@@ -297,7 +297,8 @@ void EEVEE_temporal_sampling_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data 
 
     if (effects->enabled_effects & EFFECT_TAA_REPROJECT) {
       // DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-      DRW_shgroup_uniform_texture_ref(grp, "velocityBuffer", &effects->velocity_tx);
+      // DRW_shgroup_uniform_texture_ref(grp, "velocityBuffer", &effects->velocity_tx);
+      /* TODO FIX */
     }
     else {
       DRW_shgroup_uniform_float(grp, "alpha", &effects->taa_alpha, 1);
