@@ -126,7 +126,7 @@ void GPENCIL_engine_init(void *ved)
 
     /* For non active frame, use only lines in multiedit mode. */
     const bool overlays_on = (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0;
-    stl->pd->use_multiedit_lines_only = overlays_on &&
+    stl->pd->use_multiedit_lines_only = !overlays_on ||
                                         (v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) != 0;
   }
   else if (stl->pd->is_render) {
