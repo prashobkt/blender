@@ -2256,6 +2256,8 @@ static void gp_stroke_join_islands(bGPDframe *gpf, bGPDstroke *gps_first, bGPDst
 
   /* add new stroke at head */
   BLI_addhead(&gpf->strokes, join_stroke);
+  /* Calc geometry data. */
+  BKE_gpencil_stroke_geometry_update(join_stroke);
 
   /* remove first stroke */
   BLI_remlink(&gpf->strokes, gps_first);
@@ -2416,9 +2418,6 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf,
     /* if cyclic, need to join last stroke with first stroke */
     if ((is_cyclic) && (gps_first != NULL) && (gps_first != new_stroke)) {
       gp_stroke_join_islands(gpf, gps_first, new_stroke);
-      /* Calc geometry data. */
-      BKE_gpencil_stroke_geometry_update(gps_first);
-      BKE_gpencil_stroke_geometry_update(new_stroke);
     }
   }
 
