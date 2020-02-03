@@ -7826,6 +7826,12 @@ static void direct_link_wm_xr_data(FileData *fd, wmXrData *xr_data)
   direct_link_view3dshading(fd, &xr_data->session_settings.shading);
 }
 
+static void lib_link_wm_xr_data(FileData *fd, ID *parent_id, wmXrData *xr_data)
+{
+  xr_data->session_settings.anchor_object = newlibadr(
+      fd, parent_id->lib, xr_data->session_settings.anchor_object);
+}
+
 #endif
 
 /** \} */
@@ -7934,6 +7940,8 @@ static void lib_link_windowmanager(FileData *fd, Main *main)
           lib_link_area(fd, &wm->id, area);
         }
       }
+
+      lib_link_wm_xr_data(fd, &wm->id, &wm->xr);
 
       wm->id.tag &= ~LIB_TAG_NEED_LINK;
     }

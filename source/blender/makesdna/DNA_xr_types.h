@@ -24,7 +24,11 @@
 #include "DNA_view3d_types.h"
 
 typedef struct bXrSessionSettings {
+  /** Shading settings, struct shared with 3D-View so settings are the same. */
   struct View3DShading shading;
+
+  /** Object to take the location and rotation as base position from. */
+  Object *anchor_object;
 
   /** View3D draw flags (V3D_OFSDRAW_NONE, V3D_OFSDRAW_SHOW_ANNOTATION, ...). */
   char draw_flags;

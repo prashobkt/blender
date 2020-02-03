@@ -225,6 +225,13 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
                                          (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
+  if (settings->anchor_object) {
+    copy_v3_v3(state->reference_pose.position, settings->anchor_object->obmat[3]);
+    mat4_to_quat(state->reference_pose.orientation_quat, settings->anchor_object->obmat);
+
+    copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
+  }
+
   copy_v4_v4(state->final_reference_pose.orientation_quat, state->reference_pose.orientation_quat);
 
   if (position_tracking_toggled) {
