@@ -72,14 +72,14 @@ typedef struct MaterialGPencilStyle {
   /** Factor used to define shader behavior (several uses). */
   float mix_factor;
   /** Angle used for gradients orientation. */
-  float gradient_angle;
+  float gradient_angle DNA_DEPRECATED;
   /** Radius for radial gradients. */
-  float gradient_radius;
+  float gradient_radius DNA_DEPRECATED;
   char _pad2[4];
   /** Uv coordinates scale. */
-  float gradient_scale[2];
+  float gradient_scale[2] DNA_DEPRECATED;
   /** Factor to shift filling in 2d space. */
-  float gradient_shift[2];
+  float gradient_shift[2] DNA_DEPRECATED;
   /** Angle used for texture orientation. */
   float texture_angle;
   /** Texture scale (separated of uv scale). */

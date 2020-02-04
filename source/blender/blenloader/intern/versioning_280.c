@@ -4381,6 +4381,12 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         srgb_to_linearrgb_v4(gp_style->stroke_rgba, gp_style->stroke_rgba);
         srgb_to_linearrgb_v4(gp_style->fill_rgba, gp_style->fill_rgba);
 
+        /* Move old gradient variables to texture. */
+        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT) {
+          gp_style->texture_angle = gp_style->gradient_angle;
+          copy_v2_v2(gp_style->texture_scale, gp_style->gradient_scale);
+          copy_v2_v2(gp_style->texture_offset, gp_style->gradient_shift);
+        }
         /* Set Checker material as Solid. This fill mode has been removed and replaced
          * by textures. */
         if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_CHECKER) {
