@@ -1803,9 +1803,9 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
       break;
   }
 
+  char tool = '0';
   if (paint) {
     Brush *brush_active = paint->brush;
-    char tool = '0';
     if (brush_active) {
       switch (mode) {
         case CTX_MODE_PAINT_GPENCIL: {
