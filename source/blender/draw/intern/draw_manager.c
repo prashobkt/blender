@@ -249,11 +249,9 @@ static void drw_viewport_colormanagement_set(void)
   ColorManagedViewSettings view_settings;
   float dither = 0.0f;
 
-  /* TODO make it match old behavior. */
   bool use_render_settings = v3d && (v3d->shading.type == OB_RENDER);
   bool use_view_transform = v3d && (v3d->shading.type >= OB_MATERIAL);
 
-  /* TODO What ocio settings do we need here? */
   if (use_render_settings) {
     /* Use full render settings, for renders with scene lighting. */
     view_settings = scene->view_settings;

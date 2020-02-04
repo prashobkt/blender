@@ -694,9 +694,8 @@ bool OCIOImpl::setupGLSLDraw(OCIO_GLSLDrawState **state_r,
   return false;
 }
 
-void OCIOImpl::finishGLSLDraw(OCIO_GLSLDrawState *state)
+void OCIOImpl::finishGLSLDraw(OCIO_GLSLDrawState * /*state*/)
 {
-  (void)state;
   immUnbindProgram();
 }
 

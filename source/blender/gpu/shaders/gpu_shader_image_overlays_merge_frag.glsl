@@ -1,5 +1,5 @@
 
-/* Display a linear image texture into sRGB space */
+/* Merge overlays texture on top of image texture and transform to display space (assume sRGB) */
 
 uniform sampler2D image_texture;
 uniform sampler2D overlays_texture;

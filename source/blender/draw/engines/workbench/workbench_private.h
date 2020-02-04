@@ -427,9 +427,6 @@ BLI_INLINE eGPUTextureFormat workbench_color_texture_format(const WORKBENCH_Priv
       TEXTURE_DRAWING_ENABLED(wpd)) {
     result = GPU_RGBA16F;
   }
-  else if (workbench_is_in_vertex_paint_mode() || VERTEX_COLORS_ENABLED(wpd)) {
-    result = GPU_RGBA16;
-  }
   else {
     result = GPU_RGBA16;
   }
