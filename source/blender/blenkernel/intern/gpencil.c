@@ -474,9 +474,8 @@ void BKE_gpencil_stroke_add_points(bGPDstroke *gps,
   }
 }
 
-/* Create a new stroke, with pre-allocated data buffers */
-bGPDstroke *BKE_gpencil_stroke_add(
-    bGPDframe *gpf, int mat_idx, int totpoints, short thickness, const bool insert_at_head)
+/* Create a new stroke, with pre-allocated data buffers. */
+bGPDstroke *BKE_gpencil_stroke_new(int mat_idx, int totpoints, short thickness)
 {
   /* allocate memory for a new stroke */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
@@ -502,12 +501,23 @@ bGPDstroke *BKE_gpencil_stroke_add(
 
   gps->mat_nr = mat_idx;
 
+  return gps;
+}
+
+/* Create a new stroke and add to frame. */
+bGPDstroke *BKE_gpencil_stroke_add(
+    bGPDframe *gpf, int mat_idx, int totpoints, short thickness, const bool insert_at_head)
+{
+  bGPDstroke *gps = BKE_gpencil_stroke_new(mat_idx, totpoints, thickness);
+
   /* Add to frame. */
-  if (!insert_at_head) {
-    BLI_addtail(&gpf->strokes, gps);
-  }
-  else {
-    BLI_addhead(&gpf->strokes, gps);
+  if ((gps != NULL) && (gpf != NULL)) {
+    if (!insert_at_head) {
+      BLI_addtail(&gpf->strokes, gps);
+    }
+    else {
+      BLI_addhead(&gpf->strokes, gps);
+    }
   }
 
   return gps;
