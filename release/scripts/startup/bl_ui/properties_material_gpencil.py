@@ -203,8 +203,9 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
             col.prop(gpcolor, "flip", text="Flip Colors")
 
             col.prop(gpcolor, "texture_offset", text="Location")
-            col.prop(gpcolor, "texture_angle", text="Rotation")
             col.prop(gpcolor, "texture_scale", text="Scale")
+            if gpcolor.gradient_type == 'LINEAR':
+                col.prop(gpcolor, "texture_angle", text="Rotation")
 
         elif gpcolor.fill_style == 'TEXTURE':
             col.template_ID(gpcolor, "fill_image", open="image.open")
