@@ -439,7 +439,8 @@ typedef enum {
   GHOST_kTrackpadEventScroll,
   GHOST_kTrackpadEventRotate,
   GHOST_kTrackpadEventSwipe, /* Reserved, not used for now */
-  GHOST_kTrackpadEventMagnify
+  GHOST_kTrackpadEventMagnify,
+  GHOST_kTrackpadEventSmartMagnify
 } GHOST_TTrackpadEventSubTypes;
 
 typedef struct {
