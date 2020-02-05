@@ -174,6 +174,8 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
             if not gpl.mask_layer:
                 col = layout.row(align=True)
                 col.prop(gpl, "blend_mode", text="Blend")
+                col = layout.row(align=True)
+                col.prop_search(gpl, "mask_layer_name", gpd, "layers", icon='GREASEPENCIL')
 
             col = layout.row(align=True)
             col.prop(gpl, "opacity", text="Opacity", slider=True)

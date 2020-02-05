@@ -403,6 +403,9 @@ typedef struct bGPDlayer {
   float gcolor_next[3];
   char _pad1[4];
 
+  /** Mask Layer name. */
+  char mask_layer[64];
+
   bGPDlayer_Runtime runtime;
 } bGPDlayer;
 
@@ -431,7 +434,7 @@ typedef enum eGPDlayer_Flag {
   /* Unlock color */
   GP_LAYER_UNLOCK_COLOR = (1 << 12),
   /* Mask Layer */
-  GP_LAYER_USE_MASK = (1 << 13),
+  GP_LAYER_USE_MASK = (1 << 13), /*TODO: DEPRECATED */
   /* Ruler Layer */
   GP_LAYER_IS_RULER = (1 << 14),
   /* Invert masking behavior */

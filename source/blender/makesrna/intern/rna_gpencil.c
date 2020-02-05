@@ -1477,6 +1477,11 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
+  prop = RNA_def_property(srna, "mask_layer_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "mask_layer");
+  RNA_def_property_ui_text(prop, "Mask", "Name of the masking layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
   /* Flags */
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_HIDE);
@@ -1512,13 +1517,14 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
       prop, "Disallow Locked Materials Editing", "Avoids editing locked materials in the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
+#  /* TODO: Deprecated */
   prop = RNA_def_property(srna, "mask_layer", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_USE_MASK);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_boolean_funcs(prop, NULL, "rna_GPencil_layer_mask_set");
   RNA_def_property_ui_text(prop, "Mask Layer", "Mask pixels from underlying layers drawing");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
-
+#
   prop = RNA_def_property(srna, "invert_mask", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_MASK_INVERT);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);

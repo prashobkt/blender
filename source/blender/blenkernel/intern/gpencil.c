@@ -397,7 +397,7 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd, const char *name, bool setacti
 
   /* Enable always affected by scene lights. */
   gpl->flag |= GP_LAYER_USE_LIGHTS;
-
+  gpl->mask_layer[0] = '\0';
   /* make this one the active one */
   if (setactive) {
     BKE_gpencil_layer_active_set(gpd, gpl);
