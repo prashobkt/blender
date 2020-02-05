@@ -453,7 +453,7 @@ static bool gp_strokes_merge_poll(bContext *C)
 
   /* check material */
   Material *ma = NULL;
-  ma = BKE_material_gpencil_get(ob, ob->actcol);
+  ma = BKE_gpencil_material(ob, ob->actcol);
   if ((ma == NULL) || (ma->gp_style == NULL)) {
     return false;
   }
@@ -595,7 +595,7 @@ static int gp_stroke_merge_material_exec(bContext *C, wmOperator *op)
   /* Review materials. */
   GHash *mat_table = BLI_ghash_int_new(__func__);
 
-  short *totcol = give_totcolp(ob);
+  short *totcol = BKE_object_material_num(ob);
   if (totcol == 0) {
     return OPERATOR_CANCELLED;
   }

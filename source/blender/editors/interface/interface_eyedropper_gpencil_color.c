@@ -115,9 +115,9 @@ static void eyedropper_add_material(
   bool found = false;
 
   /* Look for a similar material in grease pencil slots. */
-  short *totcol = give_totcolp(ob);
+  short *totcol = BKE_object_material_num(ob);
   for (short i = 0; i < *totcol; i++) {
-    ma = give_current_material(ob, i + 1);
+    ma = BKE_object_material_get(ob, i + 1);
     if (ma == NULL) {
       continue;
     }

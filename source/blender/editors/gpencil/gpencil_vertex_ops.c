@@ -517,7 +517,7 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
         if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
           continue;
         }
-        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+        MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
         if (gp_style == NULL) {
           continue;
         }
@@ -684,7 +684,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
 
-  short *totcol = give_totcolp(ob);
+  short *totcol = BKE_object_material_num(ob);
   if (totcol == 0) {
     return OPERATOR_CANCELLED;
   }
@@ -708,7 +708,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+        MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
         if (gp_style == NULL) {
           continue;
         }
@@ -755,7 +755,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
           /* If not found create a new material. */
           if (!found) {
-            ma = BKE_material_add_gpencil(bmain, name);
+            ma = BKE_gpencil_material_add(bmain, name);
             if (use_stroke) {
               ma->gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
             }
@@ -774,7 +774,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
             ma->gp_style->fill_rgba[3] = gp_style->fill_rgba[3];
 
             BKE_object_material_slot_add(bmain, ob);
-            assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+            BKE_object_material_assign(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
 
             mat_elm->key = key;
             mat_elm->ma = ma;

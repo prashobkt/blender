@@ -1433,7 +1433,7 @@ static int gpencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
     }
   }
   else {
-    if (give_current_material(ob, ob->actcol) == NULL) {
+    if (BKE_object_material_get(ob, ob->actcol) == NULL) {
       valid = false;
     }
   }

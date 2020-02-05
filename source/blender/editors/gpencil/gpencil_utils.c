@@ -550,7 +550,7 @@ bool ED_gpencil_stroke_can_use(const bContext *C, const bGPDstroke *gps)
 bool ED_gpencil_stroke_color_use(Object *ob, const bGPDlayer *gpl, const bGPDstroke *gps)
 {
   /* check if the color is editable */
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
   if (gp_style != NULL) {
     if (gp_style->flag & GP_MATERIAL_HIDE) {
@@ -1970,7 +1970,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat)
               if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
                 continue;
               }
-              gps_ma = BKE_material_gpencil_get(ob, gps->mat_nr + 1);
+              gps_ma = BKE_gpencil_material(ob, gps->mat_nr + 1);
               /* update */
               if ((gps_ma) && (gps_ma == mat)) {
                 BKE_gpencil_stroke_uv_update(gps);

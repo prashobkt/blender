@@ -614,14 +614,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     /* Dots Stroke. */
     ma = BLI_findstring(&bmain->materials, "Dots Stroke", offsetof(ID, name) + 2);
     if (ma == NULL) {
-      ma = BKE_material_add_gpencil(bmain, "Dots Stroke");
+      ma = BKE_gpencil_material_add(bmain, "Dots Stroke");
     }
     ma->gp_style->mode = GP_MATERIAL_MODE_DOT;
 
     /* Boxes Stroke. */
     ma = BLI_findstring(&bmain->materials, "Boxes Stroke", offsetof(ID, name) + 2);
     if (ma == NULL) {
-      ma = BKE_material_add_gpencil(bmain, "Boxes Stroke");
+      ma = BKE_gpencil_material_add(bmain, "Boxes Stroke");
     }
     ma->gp_style->mode = GP_MATERIAL_MODE_SQUARE;
 
