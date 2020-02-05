@@ -93,7 +93,7 @@ const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
     {SCULPT_TOOL_POSE, "POSE", ICON_BRUSH_GRAB, "Pose", ""},
     {SCULPT_TOOL_NUDGE, "NUDGE", ICON_BRUSH_NUDGE, "Nudge", ""},
     {SCULPT_TOOL_ROTATE, "ROTATE", ICON_BRUSH_ROTATE, "Rotate", ""},
-    {SCULPT_TOOL_TOPOLOGY, "TOPOLOGY", ICON_BRUSH_GRAB, "Topology", ""},
+    {SCULPT_TOOL_SLIDE_RELAX, "TOPOLOGY", ICON_BRUSH_GRAB, "Slide Relax", ""},
     {0, "", 0, NULL, NULL},
     {SCULPT_TOOL_SIMPLIFY, "SIMPLIFY", ICON_BRUSH_DATA, "Simplify", ""},
     {SCULPT_TOOL_MASK, "MASK", ICON_BRUSH_MASK, "Mask", ""},
@@ -151,9 +151,9 @@ const EnumPropertyItem rna_enum_brush_gpencil_types_items[] = {
 
 #ifndef RNA_RUNTIME
 static EnumPropertyItem rna_enum_gpencil_brush_eraser_modes_items[] = {
-    {GP_BRUSH_ERASER_SOFT, "SOFT", 0, "Soft", "Use soft eraser"},
-    {GP_BRUSH_ERASER_HARD, "HARD", 0, "Hard", "Use hard eraser"},
-    {GP_BRUSH_ERASER_STROKE, "STROKE", 0, "Stroke", "Use stroke eraser"},
+    {GP_BRUSH_ERASER_SOFT, "SOFT", 0, "Dissolve,", "Erase strokes, fading their points strength and thickness"},
+    {GP_BRUSH_ERASER_HARD, "HARD", 0, "Point", "Erase stroke points"},
+    {GP_BRUSH_ERASER_STROKE, "STROKE", 0, "Stroke", "Erase entire strokes"},
     {0, NULL, 0, NULL, NULL},
 };
 
