@@ -996,7 +996,7 @@ static void gpencil_add_stroke_vertexdata(GpencilBatchCache *cache,
   float tcolor[4];
   float ink[4];
   short sthickness;
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
   const int alignment_mode = (gp_style) ? gp_style->alignment_mode : GP_STYLE_FOLLOW_PATH;
 
   /* set color using base color, tint color and opacity */
@@ -1220,7 +1220,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
   }
 
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
     /* check if stroke can be drawn */
     if (gpencil_can_draw_stroke(gp_style, gps, false, is_mat_preview) == false) {
@@ -1335,7 +1335,7 @@ static void gpencil_draw_onion_strokes(GpencilBatchCache *cache,
   ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, gpf->runtime.parent_obmat);
 
   for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
     if (gp_style == NULL) {
       continue;
     }
@@ -1543,7 +1543,7 @@ void gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
   }
   /* this is not common, but avoid any special situations when brush could be without material */
   if (gp_style == NULL) {
-    gp_style = BKE_material_gpencil_settings_get(ob, ob->actcol);
+    gp_style = BKE_gpencil_material_settings(ob, ob->actcol);
   }
 
   static float unit_mat[4][4] = {
@@ -1768,7 +1768,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
 
     bGPDframe *gpf = elm->gpf;
     bGPDstroke *gps = elm->gps;
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
     /* if the user switch used material from data to object,
      * the material could not be available */
     if (gp_style == NULL) {
