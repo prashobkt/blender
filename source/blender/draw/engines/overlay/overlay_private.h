@@ -307,6 +307,7 @@ typedef struct OVERLAY_PrivateData {
   struct {
     bool transparent;
     bool show_relations;
+    bool do_pose_xray;
     bool do_pose_fade_geom;
   } armature;
   struct {
