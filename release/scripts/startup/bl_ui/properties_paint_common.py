@@ -121,7 +121,7 @@ class UnifiedPaintPanel:
 
         if unified_name and not header:
             # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
-            row.prop(ups, unified_name, text="", icon="WORLD")
+            row.prop(ups, unified_name, text="", icon="BRUSHES_ALL")
 
         return row
 
@@ -996,6 +996,8 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
 def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False):
     gp_settings = brush.gpencil_settings
     tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
+    if gp_settings is None:
+        return
 
     # Brush details
     if brush.gpencil_tool == 'ERASE':
