@@ -292,7 +292,7 @@ static void overlay_gpencil_draw_stroke_color_name(bGPDlayer *UNUSED(gpl),
                                                    void *thunk)
 {
   Object *ob = (Object *)thunk;
-  Material *ma = give_current_material(ob, gps->mat_nr + 1);
+  Material *ma = BKE_object_material_get(ob, gps->mat_nr + 1);
   if (ma == NULL) {
     return;
   }

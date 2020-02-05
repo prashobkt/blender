@@ -207,7 +207,7 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
 {
   iterData *iter = (iterData *)thunk;
 
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(iter->ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(iter->ob, gps->mat_nr + 1);
 
   bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
   bool show_stroke = (gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0;

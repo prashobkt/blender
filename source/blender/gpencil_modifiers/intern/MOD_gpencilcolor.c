@@ -92,7 +92,7 @@ static void deformStroke(GpencilModifierData *md,
   factor[1] -= 1.0f;
   factor[2] -= 1.0f;
 
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
   /* Apply to Vertex Color. */
   /* Fill */

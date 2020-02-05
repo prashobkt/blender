@@ -261,7 +261,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
     int mat_id = pool->used_count++;
 
     gpMaterial *mat_data = &pool->mat_data[mat_id];
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, i + 1);
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
 
     if (gp_style->mode == GP_MATERIAL_MODE_LINE) {
       mat_data->flag = 0;
