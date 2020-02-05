@@ -2379,21 +2379,21 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
   MaterialGPencilStyle *gp_style_primary = NULL;
   MaterialGPencilStyle *gp_style_secondary = NULL;
 
-  short *totcol = give_totcolp(ob);
+  short *totcol = BKE_object_material_num(ob);
   if (totcol == 0) {
     return changed;
   }
 
   for (int idx_primary = 0; idx_primary < *totcol; idx_primary++) {
     /* Read primary material to compare. */
-    ma_primary = BKE_material_gpencil_get(ob, idx_primary + 1);
+    ma_primary = BKE_gpencil_material(ob, idx_primary + 1);
     if (ma_primary == NULL) {
       continue;
     }
 
     for (int idx_secondary = idx_primary + 1; idx_secondary < *totcol; idx_secondary++) {
       /* Read secondary material to compare with primary material. */
-      ma_secondary = BKE_material_gpencil_get(ob, idx_secondary + 1);
+      ma_secondary = BKE_gpencil_material(ob, idx_secondary + 1);
       if ((ma_secondary == NULL) ||
           (BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary)))) {
         continue;

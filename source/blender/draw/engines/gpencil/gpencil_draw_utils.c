@@ -928,7 +928,7 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
                           GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
   if (gps->totpoints >= 3) {
     float tfill[4];
     /* set color using material, tint color and opacity */
@@ -1097,7 +1097,7 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
   const bool hide_vertex_lines = (GPENCIL_VERTEX_MODE(gpd) && (use_vertex_mask) &&
                                   ((v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) == 0));
 
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
   /* alpha factor for edit points/line to make them more subtle */
   float edit_alpha = v3d->vertex_opacity;

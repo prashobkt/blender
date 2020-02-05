@@ -320,7 +320,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
        * drawn. */
       Material *ma = BLI_findstring(&bmain->materials, "Dots Stroke", offsetof(ID, name) + 2);
       if (ma == NULL) {
-        ma = BKE_material_add_gpencil(bmain, "Dots Stroke");
+        ma = BKE_gpencil_material_add(bmain, "Dots Stroke");
       }
       brush->gpencil_settings->material = ma;
       /* Pin the matterial to the brush. */
