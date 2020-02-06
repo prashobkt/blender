@@ -341,16 +341,6 @@ static void gp_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
 }
 
 /* ----------------------- */
-/* Drawing Callbacks */
-
-/* Drawing callback for modal operator in 3d mode */
-static void gpencil_interpolate_draw_3d(const bContext *C, ARegion *UNUSED(ar), void *arg)
-{
-  tGPDinterpolate *tgpi = (tGPDinterpolate *)arg;
-  ED_gp_draw_interpolation(C, tgpi, REGION_DRAW_POST_VIEW);
-}
-
-/* ----------------------- */
 
 /* Helper: calculate shift based on position of mouse (we only use x-axis for now.
  * since this is more convenient for users to do), and store new shift value

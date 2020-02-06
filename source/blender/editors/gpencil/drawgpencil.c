@@ -994,63 +994,6 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
 
 /* ----- General Drawing ------ */
 
-/* draw interpolate strokes (used only while operator is running) */
-void ED_gp_draw_interpolation(const bContext *C, tGPDinterpolate *tgpi, const int type)
-{
-  tGPDdraw tgpw;
-  ARegion *ar = CTX_wm_region(C);
-  RegionView3D *rv3d = ar->regiondata;
-  tGPDinterpolate_layer *tgpil;
-  Object *obact = CTX_data_active_object(C);
-  /* Drawing code is expected to run with fully evaluated depsgraph. */
-  Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
-
-  float color[4];
-
-  UI_GetThemeColor3fv(TH_GP_VERTEX_SELECT, color);
-  color[3] = 0.6f;
-  int dflag = 0;
-  /* if 3d stuff, enable flags */
-  if (type == REGION_DRAW_POST_VIEW) {
-    dflag |= (GP_DRAWDATA_ONLY3D | GP_DRAWDATA_NOSTATUS);
-  }
-
-  tgpw.rv3d = rv3d;
-  tgpw.depsgraph = depsgraph;
-  tgpw.ob = obact;
-  tgpw.gpd = tgpi->gpd;
-  tgpw.offsx = 0;
-  tgpw.offsy = 0;
-  tgpw.winx = tgpi->ar->winx;
-  tgpw.winy = tgpi->ar->winy;
-  tgpw.dflag = dflag;
-
-  /* turn on alpha-blending */
-  GPU_blend(true);
-  for (tgpil = tgpi->ilayers.first; tgpil; tgpil = tgpil->next) {
-    /* calculate parent position */
-    BKE_gpencil_parent_matrix_get(depsgraph, obact, tgpil->gpl, tgpw.diff_mat);
-    if (tgpil->interFrame) {
-      tgpw.gpl = tgpil->gpl;
-      tgpw.gpf = tgpil->interFrame;
-      tgpw.t_gpf = tgpil->interFrame;
-      tgpw.gps = NULL;
-
-      tgpw.lthick = tgpil->gpl->line_change;
-      tgpw.opacity = 1.0;
-      copy_v4_v4(tgpw.tintcolor, color);
-      tgpw.onion = true;
-      tgpw.custonion = true;
-      if (obact->totcol == 0) {
-        tgpw.gpd->mat = NULL;
-      }
-
-      gp_draw_strokes(&tgpw);
-    }
-  }
-  GPU_blend(false);
-}
-
 /* wrapper to draw strokes for filling operator */
 void ED_gp_draw_fill(tGPDdraw *tgpw)
 {

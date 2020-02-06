@@ -231,10 +231,6 @@ typedef struct tGPDprimitive {
 } tGPDprimitive;
 
 /* Modal Operator Drawing Callbacks ------------------------ */
-
-void ED_gp_draw_interpolation(const struct bContext *C,
-                              struct tGPDinterpolate *tgpi,
-                              const int type);
 void ED_gp_draw_fill(struct tGPDdraw *tgpw);
 
 /* ***************************************************** */
