@@ -138,10 +138,8 @@ typedef struct tGPDinterpolate {
   int flag;
 
   NumInput num; /* numeric input */
-  /** handle for drawing strokes while operator is running 3d stuff */
+  /** handle for drawing strokes while operator. */
   void *draw_handle_3d;
-  /** handle for drawing strokes while operator is running screen stuff */
-  void *draw_handle_screen;
 } tGPDinterpolate;
 
 /* Temporary primitive operation data */

@@ -124,15 +124,12 @@ static void gp_interpolate_update_points(const bGPDstroke *gps_from,
 static void gp_interpolate_update_strokes(bContext *C, tGPDinterpolate *tgpi)
 {
   bGPdata *gpd = tgpi->gpd;
-  tGPDinterpolate_layer *tgpil;
   const float shift = tgpi->shift;
 
-  for (tgpil = tgpi->ilayers.first; tgpil; tgpil = tgpil->next) {
-    bGPDstroke *new_stroke;
+  LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
     const float factor = tgpil->factor + shift;
 
-    for (new_stroke = tgpil->interFrame->strokes.first; new_stroke;
-         new_stroke = new_stroke->next) {
+    LISTBASE_FOREACH (bGPDstroke *, new_stroke, &tgpil->interFrame->strokes) {
       bGPDstroke *gps_from, *gps_to;
       int stroke_idx;
 
@@ -176,8 +173,7 @@ static bool gp_interpolate_check_todo(bContext *C, bGPdata *gpd)
     }
 
     /* read strokes */
-    for (bGPDstroke *gps_from = gpl->actframe->strokes.first; gps_from;
-         gps_from = gps_from->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps_from, &gpl->actframe->strokes) {
       bGPDstroke *gps_to;
       int fFrame;
 
@@ -255,8 +251,7 @@ static void gp_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
                     (tgpil->nextFrame->framenum - tgpil->prevFrame->framenum + 1);
 
     /* create new strokes data with interpolated points reading original stroke */
-    for (bGPDstroke *gps_from = tgpil->prevFrame->strokes.first; gps_from;
-         gps_from = gps_from->next) {
+    LISTBASE_FOREACH (bGPDstroke *, gps_from, &tgpil->prevFrame->strokes) {
       bGPDstroke *gps_to;
       int fFrame;
 
@@ -404,15 +399,11 @@ static void gpencil_interpolate_update(bContext *C, wmOperator *op, tGPDinterpol
 static void gpencil_interpolate_exit(bContext *C, wmOperator *op)
 {
   tGPDinterpolate *tgpi = op->customdata;
-  tGPDinterpolate_layer *tgpil;
   bGPdata *gpd = tgpi->gpd;
 
   /* don't assume that operator data exists at all */
   if (tgpi) {
-    /* remove drawing handler */
-    if (tgpi->draw_handle_screen) {
-      ED_region_draw_cb_exit(tgpi->ar->type, tgpi->draw_handle_screen);
-    }
+    /* Remove drawing handler. */
     if (tgpi->draw_handle_3d) {
       ED_region_draw_cb_exit(tgpi->ar->type, tgpi->draw_handle_3d);
     }
@@ -422,7 +413,7 @@ static void gpencil_interpolate_exit(bContext *C, wmOperator *op)
     ED_workspace_status_text(C, NULL);
 
     /* finally, free memory used by temp data */
-    for (tgpil = tgpi->ilayers.first; tgpil; tgpil = tgpil->next) {
+    LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
       BKE_gpencil_free_strokes(tgpil->interFrame);
       MEM_freeN(tgpil->interFrame);
     }
@@ -539,12 +530,7 @@ static int gpencil_interpolate_invoke(bContext *C, wmOperator *op, const wmEvent
     tgpi = op->customdata;
   }
 
-  /* Enable custom drawing handlers
-   * It needs 2 handlers because strokes can in 3d space and screen space
-   * and each handler use different coord system
-   */
-  tgpi->draw_handle_screen = ED_region_draw_cb_activate(
-      tgpi->ar->type, gpencil_interpolate_draw_screen, tgpi, REGION_DRAW_POST_PIXEL);
+  /* Enable custom drawing handler. */
   tgpi->draw_handle_3d = ED_region_draw_cb_activate(
       tgpi->ar->type, gpencil_interpolate_draw_3d, tgpi, REGION_DRAW_POST_VIEW);
 
@@ -568,8 +554,7 @@ static int gpencil_interpolate_modal(bContext *C, wmOperator *op, const wmEvent 
   tGPDinterpolate *tgpi = op->customdata;
   wmWindow *win = CTX_wm_window(C);
   bGPDframe *gpf_dst;
-  bGPDstroke *gps_src, *gps_dst;
-  tGPDinterpolate_layer *tgpil;
+  bGPDstroke *gps_dst;
   const bool has_numinput = hasNumInput(&tgpi->num);
 
   switch (event->type) {
@@ -582,13 +567,13 @@ static int gpencil_interpolate_modal(bContext *C, wmOperator *op, const wmEvent 
       WM_cursor_modal_restore(win);
 
       /* insert keyframes as required... */
-      for (tgpil = tgpi->ilayers.first; tgpil; tgpil = tgpil->next) {
+      LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
         gpf_dst = BKE_gpencil_layer_frame_get(tgpil->gpl, tgpi->cframe, GP_GETFRAME_ADD_NEW);
         gpf_dst->key_type = BEZT_KEYTYPE_BREAKDOWN;
 
         /* copy strokes */
         BLI_listbase_clear(&gpf_dst->strokes);
-        for (gps_src = tgpil->interFrame->strokes.first; gps_src; gps_src = gps_src->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps_src, &tgpil->interFrame->strokes) {
           if (gps_src->totpoints == 0) {
             continue;
           }
