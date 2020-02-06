@@ -431,6 +431,22 @@ static void eevee_render_to_image(void *vedata,
 
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
 
+  {
+    EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
+    memset(psl, 0, sizeof(*psl));
+
+    float time = DEG_get_ctime(draw_ctx->depsgraph);
+    RE_engine_frame_set(engine, time - 1.0, 0.0f);
+
+    EEVEE_render_init(vedata, engine, draw_ctx->depsgraph);
+
+    if (RE_engine_test_break(engine)) {
+      return;
+    }
+
+    DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
+  }
+
   /* Actually do the rendering. */
   EEVEE_render_draw(vedata, engine, render_layer, rect);
 
