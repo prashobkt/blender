@@ -119,7 +119,22 @@ static void gp_interpolate_update_points(const bGPDstroke *gps_from,
 }
 
 /* ****************** Interpolate Interactive *********************** */
+/* Helper: free all temp strokes for display. */
+static void gp_interpolate_free_temp_strokes(bGPDframe *gpf)
+{
+  if (gpf == NULL) {
+    return;
+  }
 
+  bGPDstroke *gps_next;
+  for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps_next) {
+    gps_next = gps->next;
+    if (gps->flag & GP_STROKE_TAG) {
+      BLI_remlink(&gpf->strokes, gps);
+      BKE_gpencil_free_stroke(gps);
+    }
+  }
+}
 /* Helper: Update all strokes interpolated */
 static void gp_interpolate_update_strokes(bContext *C, tGPDinterpolate *tgpi)
 {
@@ -128,6 +143,10 @@ static void gp_interpolate_update_strokes(bContext *C, tGPDinterpolate *tgpi)
 
   LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
     const float factor = tgpil->factor + shift;
+
+    bGPDframe *gpf = tgpil->gpl->actframe;
+    /* Free temp strokes. */
+    gp_interpolate_free_temp_strokes(gpf);
 
     LISTBASE_FOREACH (bGPDstroke *, new_stroke, &tgpil->interFrame->strokes) {
       bGPDstroke *gps_from, *gps_to;
@@ -146,6 +165,13 @@ static void gp_interpolate_update_strokes(bContext *C, tGPDinterpolate *tgpi)
       /* update points position */
       if ((gps_from) && (gps_to)) {
         gp_interpolate_update_points(gps_from, gps_to, new_stroke, factor);
+
+        /* Add temp strokes. */
+        if (gpf) {
+          bGPDstroke *gps_eval = BKE_gpencil_stroke_duplicate(new_stroke, true);
+          gps_eval->flag |= GP_STROKE_TAG;
+          BLI_addtail(&gpf->strokes, gps_eval);
+        }
       }
     }
   }
@@ -317,15 +343,6 @@ static void gp_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
 /* ----------------------- */
 /* Drawing Callbacks */
 
-/* Drawing callback for modal operator in screen mode */
-static void gpencil_interpolate_draw_screen(const struct bContext *C,
-                                            ARegion *UNUSED(ar),
-                                            void *arg)
-{
-  tGPDinterpolate *tgpi = (tGPDinterpolate *)arg;
-  ED_gp_draw_interpolation(C, tgpi, REGION_DRAW_POST_PIXEL);
-}
-
 /* Drawing callback for modal operator in 3d mode */
 static void gpencil_interpolate_draw_3d(const bContext *C, ARegion *UNUSED(ar), void *arg)
 {
@@ -403,14 +420,16 @@ static void gpencil_interpolate_exit(bContext *C, wmOperator *op)
 
   /* don't assume that operator data exists at all */
   if (tgpi) {
-    /* Remove drawing handler. */
-    if (tgpi->draw_handle_3d) {
-      ED_region_draw_cb_exit(tgpi->ar->type, tgpi->draw_handle_3d);
-    }
-
     /* clear status message area */
     ED_area_status_text(tgpi->sa, NULL);
     ED_workspace_status_text(C, NULL);
+
+    /* Clear any temp stroke. */
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        gp_interpolate_free_temp_strokes(gpf);
+      }
+    }
 
     /* finally, free memory used by temp data */
     LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
@@ -435,6 +454,7 @@ static bool gp_interpolate_set_init_values(bContext *C, wmOperator *op, tGPDinte
   bGPdata *gpd = CTX_data_gpencil_data(C);
 
   /* set current scene and window */
+  tgpi->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   tgpi->scene = CTX_data_scene(C);
   tgpi->sa = CTX_wm_area(C);
   tgpi->ar = CTX_wm_region(C);
@@ -529,10 +549,6 @@ static int gpencil_interpolate_invoke(bContext *C, wmOperator *op, const wmEvent
   else {
     tgpi = op->customdata;
   }
-
-  /* Enable custom drawing handler. */
-  tgpi->draw_handle_3d = ED_region_draw_cb_activate(
-      tgpi->ar->type, gpencil_interpolate_draw_3d, tgpi, REGION_DRAW_POST_VIEW);
 
   /* set cursor to indicate modal */
   WM_cursor_modal_set(win, WM_CURSOR_EW_SCROLL);

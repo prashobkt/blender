@@ -111,6 +111,8 @@ typedef struct tGPDinterpolate_layer {
 } tGPDinterpolate_layer;
 
 typedef struct tGPDinterpolate {
+  /** Current depsgraph from context */
+  struct Depsgraph *depsgraph;
   /** current scene from context */
   struct Scene *scene;
   /** area where painting originated */
@@ -138,8 +140,6 @@ typedef struct tGPDinterpolate {
   int flag;
 
   NumInput num; /* numeric input */
-  /** handle for drawing strokes while operator. */
-  void *draw_handle_3d;
 } tGPDinterpolate;
 
 /* Temporary primitive operation data */
