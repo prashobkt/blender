@@ -72,7 +72,7 @@ extern "C" char datatoc_gpu_shader_display_transform_vertex_glsl[];
  * See documentation for OCIO_CurveMappingSettings to get fields descriptions.
  * (this ones pretty much copies stuff from C structure.)
  */
-typedef struct OCIO_GLSLCurveMappingParameters {
+struct OCIO_GLSLCurveMappingParameters {
   float curve_mapping_mintable[4];
   float curve_mapping_range[4];
   float curve_mapping_ext_in_x[4];
@@ -89,12 +89,12 @@ typedef struct OCIO_GLSLCurveMappingParameters {
   int curve_mapping_use_extend_extrapolate;
   int _pad[2];
   /** WARNING: Needs to be 16byte aligned. Used as UBO data. */
-} OCIO_GLSLCurveMappingParameters;
+};
 
-typedef struct OCIO_GLSLShader {
+struct OCIO_GLSLShader {
   /** Cache IDs */
   std::string cacheId;
-  /** IMM shader interface. TODO(remove) */
+  /** TODO(fclem): Remove. IMM shader interface. */
   struct GPUShaderInterface *interface;
   /** OpenGL Shader objects handles. */
   GLuint frag;
@@ -108,9 +108,9 @@ typedef struct OCIO_GLSLShader {
   GLint curve_mapping_loc;
   /** Error checking. */
   bool valid;
-} OCIO_GLSLShader;
+};
 
-typedef struct OCIO_GLSLLut3d {
+struct OCIO_GLSLLut3d {
   /** Cache IDs */
   std::string cacheId;
   /** OpenGL Texture handles. 0 if not allocated. */
@@ -118,9 +118,9 @@ typedef struct OCIO_GLSLLut3d {
   GLuint texture_display;
   /** Error checking. */
   bool valid;
-} OCIO_GLSLLut3d;
+};
 
-typedef struct OCIO_GLSLCurveMappping {
+struct OCIO_GLSLCurveMappping {
   /** Cache IDs */
   size_t cacheId;
   /** OpenGL Uniform Buffer handle. 0 if not allocated. */
@@ -129,19 +129,19 @@ typedef struct OCIO_GLSLCurveMappping {
   GLuint texture;
   /** Error checking. */
   bool valid;
-} OCIO_GLSLCurveMappping;
+};
 
-typedef struct OCIO_GLSLCacheHandle {
+struct OCIO_GLSLCacheHandle {
   size_t cache_id;
   void *data;
-} OCIO_GLSLCacheHandle;
+};
 
-typedef struct OCIO_GLSLDrawState {
+struct OCIO_GLSLDrawState {
   /* Shader Cache */
   OCIO_GLSLCacheHandle shader_cache[SHADER_CACHE_SIZE];
   OCIO_GLSLCacheHandle lut3d_cache[SHADER_CACHE_SIZE];
   OCIO_GLSLCacheHandle curvemap_cache[SHADER_CACHE_SIZE];
-} OCIO_GLSLDrawState;
+};
 
 static OCIO_GLSLDrawState *allocateOpenGLState(void)
 {
@@ -175,8 +175,9 @@ static GLuint compileShaderText(GLenum shader_type, const char *text)
 
 static GLuint linkShaders(GLuint frag, GLuint vert)
 {
-  if (!frag || !vert)
+  if (!frag || !vert) {
     return 0;
+  }
 
   GLuint program = glCreateProgram();
 
@@ -204,11 +205,12 @@ static GLuint linkShaders(GLuint frag, GLuint vert)
 static void updateGLSLShader(OCIO_GLSLShader *shader,
                              ConstProcessorRcPtr *ocio_processor,
                              ConstProcessorRcPtr *ocio_processor_display,
-                             GpuShaderDesc *shaderDesc,
-                             std::string *cacheId)
+                             GpuShaderDesc *shader_desc,
+                             std::string *cache_id)
 {
-  if (shader->cacheId == *cacheId)
+  if (shader->cacheId == *cache_id) {
     return;
+  }
 
   /* Delete any previous shader. */
   glDeleteProgram(shader->program);
@@ -237,11 +239,11 @@ static void updateGLSLShader(OCIO_GLSLShader *shader,
     os << "#define texture2D texture\n";
     os << "#define texture3D texture\n";
 
-    shaderDesc->setFunctionName("OCIO_to_display_linear_with_look");
-    os << (*ocio_processor)->getGpuShaderText(*shaderDesc) << "\n";
+    shader_desc->setFunctionName("OCIO_to_display_linear_with_look");
+    os << (*ocio_processor)->getGpuShaderText(*shader_desc) << "\n";
 
-    shaderDesc->setFunctionName("OCIO_to_display_encoded");
-    os << (*ocio_processor_display)->getGpuShaderText(*shaderDesc) << "\n";
+    shader_desc->setFunctionName("OCIO_to_display_encoded");
+    os << (*ocio_processor_display)->getGpuShaderText(*shader_desc) << "\n";
 
     os << datatoc_gpu_shader_display_transform_glsl;
 
@@ -276,23 +278,23 @@ static void updateGLSLShader(OCIO_GLSLShader *shader,
     shader->interface = GPU_shaderinterface_create(shader->program);
   }
 
-  shader->cacheId = *cacheId;
+  shader->cacheId = *cache_id;
   shader->valid = (shader->program != 0);
 }
 
 static void ensureGLSLShader(OCIO_GLSLShader **shader_ptr,
                              ConstProcessorRcPtr *ocio_processor,
                              ConstProcessorRcPtr *ocio_processor_display,
-                             GpuShaderDesc *shaderDesc,
-                             std::string *cacheId)
+                             GpuShaderDesc *shader_desc,
+                             std::string *cache_id)
 {
-  if (*shader_ptr != NULL)
+  if (*shader_ptr != NULL) {
     return;
+  }
 
-  OCIO_GLSLShader *shader = (OCIO_GLSLShader *)MEM_callocN(sizeof(*shader), __func__);
-  new (&shader->cacheId) std::string();
+  OCIO_GLSLShader *shader = OBJECT_GUARDED_NEW(OCIO_GLSLShader);
 
-  updateGLSLShader(shader, ocio_processor, ocio_processor_display, shaderDesc, cacheId);
+  updateGLSLShader(shader, ocio_processor, ocio_processor_display, shader_desc, cache_id);
 
   *shader_ptr = shader;
 }
@@ -307,10 +309,7 @@ static void freeGLSLShader(OCIO_GLSLShader *shader)
     GPU_shaderinterface_discard(shader->interface);
   }
 
-  using std::string;
-  shader->cacheId.~string();
-
-  MEM_freeN(shader);
+  OBJECT_GUARDED_DELETE(shader, OCIO_GLSLShader);
 }
 
 /** \} */
@@ -322,10 +321,10 @@ static void freeGLSLShader(OCIO_GLSLShader *shader)
 static void updateGLSLLut3d(OCIO_GLSLLut3d *lut3d,
                             ConstProcessorRcPtr *ocio_processor,
                             ConstProcessorRcPtr *ocio_processor_display,
-                            GpuShaderDesc *shaderDesc,
-                            std::string *cacheId)
+                            GpuShaderDesc *shader_desc,
+                            std::string *cache_id)
 {
-  if (lut3d->cacheId == *cacheId)
+  if (lut3d->cacheId == *cache_id)
     return;
 
   float *lut_data = (float *)MEM_mallocN(LUT3D_TEXTURE_SIZE, __func__);
@@ -336,7 +335,7 @@ static void updateGLSLLut3d(OCIO_GLSLLut3d *lut3d,
     ConstProcessorRcPtr *processor = ocio_processors[i];
     GLuint texture = (&lut3d->texture)[i];
 
-    (*processor)->getGpuLut3D(lut_data, *shaderDesc);
+    (*processor)->getGpuLut3D(lut_data, *shader_desc);
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_3D, texture);
@@ -356,20 +355,20 @@ static void updateGLSLLut3d(OCIO_GLSLLut3d *lut3d,
 
   MEM_freeN(lut_data);
 
-  lut3d->cacheId = *cacheId;
+  lut3d->cacheId = *cache_id;
 }
 
 static void ensureGLSLLut3d(OCIO_GLSLLut3d **lut3d_ptr,
                             ConstProcessorRcPtr *ocio_processor,
                             ConstProcessorRcPtr *ocio_processor_display,
                             GpuShaderDesc *shaderDesc,
-                            std::string *cacheId)
+                            std::string *cache_id)
 {
-  if (*lut3d_ptr != NULL)
+  if (*lut3d_ptr != NULL) {
     return;
+  }
 
-  OCIO_GLSLLut3d *lut3d = (OCIO_GLSLLut3d *)MEM_callocN(sizeof(*lut3d), __func__);
-  new (&lut3d->cacheId) std::string();
+  OCIO_GLSLLut3d *lut3d = OBJECT_GUARDED_NEW(OCIO_GLSLLut3d);
 
   glGenTextures(3, &lut3d->texture);
 
@@ -396,7 +395,7 @@ static void ensureGLSLLut3d(OCIO_GLSLLut3d **lut3d_ptr,
                  NULL);
   }
 
-  updateGLSLLut3d(lut3d, ocio_processor, ocio_processor_display, shaderDesc, cacheId);
+  updateGLSLLut3d(lut3d, ocio_processor, ocio_processor_display, shaderDesc, cache_id);
 
   lut3d->valid = (lut3d->texture != 0);
 
@@ -407,10 +406,7 @@ static void freeGLSLLut3d(OCIO_GLSLLut3d *lut3d)
 {
   glDeleteTextures(1, &lut3d->texture);
 
-  using std::string;
-  lut3d->cacheId.~string();
-
-  MEM_freeN(lut3d);
+  OBJECT_GUARDED_DELETE(lut3d, OCIO_GLSLLut3d);
 }
 
 /** \} */
@@ -440,11 +436,11 @@ static void allocateCurveMappingTexture(OCIO_GLSLCurveMappping *curvemap,
 static void ensureGLSLCurveMapping(OCIO_GLSLCurveMappping **curvemap_ptr,
                                    OCIO_CurveMappingSettings *curve_mapping_settings)
 {
-  if (*curvemap_ptr != NULL)
+  if (*curvemap_ptr != NULL) {
     return;
+  }
 
-  OCIO_GLSLCurveMappping *curvemap = (OCIO_GLSLCurveMappping *)MEM_callocN(sizeof(*curvemap),
-                                                                           __func__);
+  OCIO_GLSLCurveMappping *curvemap = OBJECT_GUARDED_NEW(OCIO_GLSLCurveMappping);
 
   /* Texture. */
   allocateCurveMappingTexture(curvemap, curve_mapping_settings);
@@ -466,7 +462,7 @@ static void freeGLSLCurveMapping(OCIO_GLSLCurveMappping *curvemap)
   glDeleteTextures(1, &curvemap->texture);
   glDeleteBuffers(1, &curvemap->buffer);
 
-  MEM_freeN(curvemap);
+  OBJECT_GUARDED_DELETE(curvemap, OCIO_GLSLCurveMappping);
 }
 
 static void updateGLSLCurveMapping(OCIO_GLSLCurveMappping *curvemap,
