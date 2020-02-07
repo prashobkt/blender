@@ -231,7 +231,7 @@ static void generate_geometry(GpencilModifierData *md,
         /* Calculate original stroke center (only first loop). */
         float center[3];
         if (x == 1) {
-          add_v3_v3v3(center, gps->collision_min, gps->collision_max);
+          add_v3_v3v3(center, gps->boundbox_min, gps->boundbox_max);
           mul_v3_fl(center, 0.5f);
           sub_v3_v3v3(center, center, ob->obmat[3]);
         }

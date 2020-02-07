@@ -2564,26 +2564,25 @@ bool ED_gpencil_stroke_check_collision(GP_SpaceConversion *gsc,
 {
   const int offset = (int)ceil(sqrt((radius * radius) * 2));
   bGPDspoint pt_dummy, pt_dummy_ps;
-  float gps_collision_min[2] = {0.0f};
-  float gps_collision_max[2] = {0.0f};
+  float boundbox_min[2] = {0.0f};
+  float boundbox_max[2] = {0.0f};
   float zerov3[3];
 
   /* Check we have something to use (only for old files). */
-  if (equals_v3v3(zerov3, gps->collision_min)) {
+  if (equals_v3v3(zerov3, gps->boundbox_min)) {
     BKE_gpencil_stroke_collision_get(gps);
   }
 
   /* Convert bound box to 2d */
-  copy_v3_v3(&pt_dummy.x, gps->collision_min);
+  copy_v3_v3(&pt_dummy.x, gps->boundbox_min);
   gp_point_to_parent_space(&pt_dummy, diff_mat, &pt_dummy_ps);
-  gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &gps_collision_min[0], &gps_collision_min[1]);
+  gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &boundbox_min[0], &boundbox_min[1]);
 
-  copy_v3_v3(&pt_dummy.x, gps->collision_max);
+  copy_v3_v3(&pt_dummy.x, gps->boundbox_max);
   gp_point_to_parent_space(&pt_dummy, diff_mat, &pt_dummy_ps);
-  gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &gps_collision_max[0], &gps_collision_max[1]);
+  gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &boundbox_max[0], &boundbox_max[1]);
 
-  rcti rect_stroke = {
-      gps_collision_min[0], gps_collision_max[0], gps_collision_min[1], gps_collision_max[1]};
+  rcti rect_stroke = {boundbox_min[0], boundbox_max[0], boundbox_min[1], boundbox_max[1]};
 
   /* For mouse, add a small offet to avoid false negative in corners. */
   rcti rect_mouse = {mouse[0] - offset, mouse[0] + offset, mouse[1] - offset, mouse[1] + offset};

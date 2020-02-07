@@ -1340,8 +1340,8 @@ void BKE_gpencil_centroid_3d(bGPdata *gpd, float r_centroid[3])
 /* Compute stroke collision detection center and radius. */
 void BKE_gpencil_stroke_collision_get(bGPDstroke *gps)
 {
-  INIT_MINMAX(gps->collision_min, gps->collision_max);
-  BKE_gpencil_stroke_minmax(gps, false, gps->collision_min, gps->collision_max);
+  INIT_MINMAX(gps->boundbox_min, gps->boundbox_max);
+  BKE_gpencil_stroke_minmax(gps, false, gps->boundbox_min, gps->boundbox_max);
 }
 
 /* create bounding box values */
