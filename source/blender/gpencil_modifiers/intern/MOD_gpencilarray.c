@@ -229,17 +229,15 @@ static void generate_geometry(GpencilModifierData *md,
       /* check if stroke can be duplicated */
       if (valid_strokes[idx]) {
         /* Calculate original stroke center (only first loop). */
-        float r_min[3], r_max[3], center[3];
+        float center[3];
         if (x == 1) {
-          INIT_MINMAX(r_min, r_max);
-          BKE_gpencil_stroke_minmax(gps, false, r_min, r_max);
-          add_v3_v3v3(center, r_min, r_max);
+          add_v3_v3v3(center, gps->collision_min, gps->collision_max);
           mul_v3_fl(center, 0.5f);
           sub_v3_v3v3(center, center, ob->obmat[3]);
         }
 
         /* Duplicate stroke */
-        bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps);
+        bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps, true);
 
         /* Move points */
         for (int i = 0; i < gps->totpoints; i++) {
