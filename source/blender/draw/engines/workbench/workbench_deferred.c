@@ -954,7 +954,7 @@ static void workbench_cache_populate_texture_paint_mode(WORKBENCH_Data *vedata, 
   }
   else {
     /* IMAGEPAINT_MODE_MATERIAL */
-    const int materials_len = MAX2(1, ob->totcol);
+    const int materials_len = DRW_cache_object_material_count_get(ob);
     struct GPUBatch **geom_array = DRW_cache_mesh_surface_texpaint_get(ob);
     for (int i = 0; i < materials_len; i++) {
       if (geom_array != NULL && geom_array[i] != NULL) {
@@ -1026,7 +1026,7 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
     const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->v3d) &&
                                  !DRW_state_is_image_render();
     const bool use_hide = is_active && DRW_object_use_hide_faces(ob);
-    const int materials_len = MAX2(1, ob->totcol);
+    const int materials_len = DRW_cache_object_material_count_get(ob);
     const Mesh *me = (ob->type == OB_MESH) ? ob->data : NULL;
     bool has_transp_mat = false;
     const WORKBENCH_ColorOverride color_override = workbench_object_color_override_get(ob);
@@ -1111,7 +1111,7 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
         struct DRWShadingGroup **shgrps = BLI_array_alloca(shgrps, materials_len);
 
         for (int i = 0; i < materials_len; i++) {
-          struct Material *mat = give_current_material(ob, i + 1);
+          struct Material *mat = BKE_object_material_get(ob, i + 1);
           if (mat != NULL && mat->a < 1.0f) {
             material = workbench_forward_get_or_create_material_data(
                 vedata, ob, mat, NULL, NULL, V3D_SHADING_MATERIAL_COLOR, 0);
@@ -1133,7 +1133,7 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
         geoms = DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len);
         for (int i = 0; i < materials_len; i++) {
           if (geoms != NULL && geoms[i] != NULL) {
-            Material *mat = give_current_material(ob, i + 1);
+            Material *mat = BKE_object_material_get(ob, i + 1);
             if (mat != NULL && mat->a < 1.0f) {
               material = workbench_forward_get_or_create_material_data(
                   vedata, ob, mat, NULL, NULL, V3D_SHADING_MATERIAL_COLOR, 0);

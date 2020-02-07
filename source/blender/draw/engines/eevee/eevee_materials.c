@@ -1430,12 +1430,12 @@ static void material_transparent(Material *ma,
   DRW_shgroup_state_enable(*shgrp, cur_state);
 }
 
-/* Return correct material or &defmaterial if slot is empty. */
+/* Return correct material or empty default material if slot is empty. */
 BLI_INLINE Material *eevee_object_material_get(Object *ob, int slot)
 {
-  Material *ma = give_current_material(ob, slot + 1);
+  Material *ma = BKE_object_material_get(ob, slot + 1);
   if (ma == NULL) {
-    ma = &defmaterial;
+    ma = BKE_material_default_empty();
   }
   return ma;
 }
@@ -1457,7 +1457,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
 
   /* First get materials for this mesh. */
   if (ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_MBALL)) {
-    const int materials_len = MAX2(1, ob->totcol);
+    const int materials_len = DRW_cache_object_material_count_get(ob);
 
     struct DRWShadingGroup **shgrp_array = BLI_array_alloca(shgrp_array, materials_len);
     struct DRWShadingGroup **shgrp_depth_array = BLI_array_alloca(shgrp_depth_array,

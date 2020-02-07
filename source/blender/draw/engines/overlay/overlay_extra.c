@@ -623,8 +623,9 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
   copy_m4_m4(instdata.mat, ob->obmat);
   /* FIXME / TODO: clipend has no meaning nowadays.
    * In EEVEE, Only clipsta is used shadowmaping.
-   * Clip end is computed automatically based on light power. */
-  instdata.clip_end = la->clipend;
+   * Clip end is computed automatically based on light power.
+   * For now, always use the custom distance as clipend. */
+  instdata.clip_end = la->att_dist;
   instdata.clip_sta = la->clipsta;
 
   DRW_buffer_add_entry(cb->groundline, instdata.pos);
@@ -1361,7 +1362,7 @@ static void OVERLAY_gpencil_color_names(Object *ob)
       continue;
     }
     for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-      Material *ma = give_current_material(ob, gps->mat_nr + 1);
+      Material *ma = BKE_object_material_get(ob, gps->mat_nr + 1);
       if (ma == NULL) {
         continue;
       }

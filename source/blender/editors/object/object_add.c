@@ -2443,7 +2443,7 @@ static int convert_exec(bContext *C, wmOperator *op)
 
     /* Ensure new object has consistent material data with its new obdata. */
     if (newob) {
-      test_object_materials(bmain, newob, newob->data);
+      BKE_object_materials_test(bmain, newob, newob->data);
     }
 
     /* tag obdata if it was been changed */
@@ -2673,6 +2673,8 @@ static int duplicate_exec(bContext *C, wmOperator *op)
   CTX_DATA_END;
 
   copy_object_set_idnew(C);
+
+  ED_outliner_select_sync_from_object_tag(C);
 
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);

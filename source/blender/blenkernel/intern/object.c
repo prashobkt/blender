@@ -430,7 +430,6 @@ void BKE_object_free_derived_caches(Object *ob)
   MEM_SAFE_FREE(ob->runtime.bb);
 
   object_update_from_subsurf_ccg(ob);
-  BKE_object_free_derived_mesh_caches(ob);
 
   /* Restore initial pointer. */
   if (ob->runtime.mesh_orig != NULL) {
@@ -455,20 +454,6 @@ void BKE_object_free_derived_caches(Object *ob)
 
   /* clear grease pencil data */
   DRW_gpencil_freecache(ob);
-}
-
-void BKE_object_free_derived_mesh_caches(struct Object *ob)
-{
-  if (ob->derivedFinal) {
-    ob->derivedFinal->needsFree = 1;
-    ob->derivedFinal->release(ob->derivedFinal);
-    ob->derivedFinal = NULL;
-  }
-  if (ob->derivedDeform) {
-    ob->derivedDeform->needsFree = 1;
-    ob->derivedDeform->release(ob->derivedDeform);
-    ob->derivedDeform = NULL;
-  }
 }
 
 void BKE_object_free_caches(Object *object)
@@ -1427,9 +1412,6 @@ void BKE_object_copy_data(Main *bmain, Object *ob_dst, const Object *ob_src, con
 
   BKE_object_copy_particlesystems(ob_dst, ob_src, flag_subdata);
 
-  ob_dst->derivedDeform = NULL;
-  ob_dst->derivedFinal = NULL;
-
   BLI_listbase_clear((ListBase *)&ob_dst->drawdata);
   BLI_listbase_clear(&ob_dst->pc_ids);
 
@@ -1695,7 +1677,7 @@ Object *BKE_object_duplicate(Main *bmain, const Object *ob, const int dupflag)
     }
 
     if (dupflag & USER_DUP_MAT) {
-      matarar = give_matarar(obn);
+      matarar = BKE_object_material_array(obn);
       if (matarar) {
         for (a = 0; a < obn->totcol; a++) {
           id = (ID *)(*matarar)[a];
@@ -1925,7 +1907,7 @@ void BKE_object_make_proxy(Main *bmain, Object *ob, Object *target, Object *cob)
     ob->mat = MEM_dupallocN(target->mat);
     ob->matbits = MEM_dupallocN(target->matbits);
     for (i = 0; i < target->totcol; i++) {
-      /* don't need to run test_object_materials
+      /* don't need to run BKE_object_materials_test
        * since we know this object is new and not used elsewhere */
       id_us_plus((ID *)ob->mat[i]);
     }

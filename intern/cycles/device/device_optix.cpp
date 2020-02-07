@@ -31,9 +31,6 @@
 #  include "util/util_debug.h"
 #  include "util/util_logging.h"
 
-#  undef _WIN32_WINNT  // Need minimum API support for Windows 7
-#  define _WIN32_WINNT _WIN32_WINNT_WIN7
-
 #  ifdef WITH_CUDA_DYNLOAD
 #    include <cuew.h>
 // Do not use CUDA SDK headers when using CUEW
@@ -1461,6 +1458,9 @@ class OptiXDevice : public Device {
             srt_data[i].a = decomp[i].z.x;  // scale.x.y
             srt_data[i].b = decomp[i].z.y;  // scale.x.z
             srt_data[i].c = decomp[i].w.x;  // scale.y.z
+            assert(decomp[i].z.z == 0.0f);  // scale.y.x
+            assert(decomp[i].w.y == 0.0f);  // scale.z.x
+            assert(decomp[i].w.z == 0.0f);  // scale.z.y
 
             // Pivot point
             srt_data[i].pvx = 0.0f;
