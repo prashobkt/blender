@@ -1,6 +1,8 @@
 
 uniform sampler2D colorBuf;
 uniform sampler2D revealBuf;
+uniform sampler2D maskBuf;
+uniform bool maskInvert;
 uniform int blendMode;
 uniform float blendOpacity;
 
@@ -20,8 +22,12 @@ void main()
   /* Stroke only render mono-chromatic revealage. We convert to alpha. */
   color.a = 1.0 - textureLod(revealBuf, uvcoordsvar.xy, 0).r;
 
+  float mask = textureLod(maskBuf, uvcoordsvar.xy, 0).r;
+  mask = (!maskInvert) ? (1.0 - mask) : mask;
+  mask *= blendOpacity;
+
   fragColor = vec4(1.0, 0.0, 1.0, 1.0);
   fragRevealage = vec4(1.0, 0.0, 1.0, 1.0);
 
-  blend_mode_output(blendMode, color, blendOpacity, fragColor, fragRevealage);
+  blend_mode_output(blendMode, color, mask, fragColor, fragRevealage);
 }

@@ -438,13 +438,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
                             (gpl == iter->pd->sbuffer_layer);
   }
 
-  GPENCIL_tLayer *tgp_layer_prev = iter->tgp_ob->layers.last;
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add(iter->pd, iter->ob, gpl);
   BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
-
-  if (tgp_layer->is_masked && (tgp_layer_prev == NULL || !tgp_layer_prev->is_masked)) {
-    tgp_layer->do_masked_clear = true;
-  }
 
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &iter->ubo_mat);
 
@@ -784,17 +779,22 @@ void GPENCIL_cache_finish(void *ved)
     }
 
     if (pd->use_mask_fb) {
-      /* We need to separate all the masked layer together in order to correctly mix them. */
-      pd->color_masked_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], format, &draw_engine_gpencil_type);
-      pd->reveal_masked_tx = DRW_texture_pool_query_2d(
-          size[0], size[1], format, &draw_engine_gpencil_type);
+      /* We need an extra depth to not disturb the normal drawing.
+       * The color_tx is needed for framebuffer cmpleteness. */
+      GPUTexture *color_tx, *depth_tx;
+      depth_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], GPU_DEPTH24_STENCIL8, &draw_engine_gpencil_type);
+      color_tx = DRW_texture_pool_query_2d(size[0], size[1], GPU_R8, &draw_engine_gpencil_type);
+      /* Use high quality format for render. */
+      eGPUTextureFormat mask_format = pd->is_render ? GPU_R16 : GPU_R8;
+      pd->mask_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], mask_format, &draw_engine_gpencil_type);
 
-      GPU_framebuffer_ensure_config(&fbl->masked_fb,
+      GPU_framebuffer_ensure_config(&fbl->mask_fb,
                                     {
-                                        GPU_ATTACHMENT_TEXTURE(pd->depth_tx),
-                                        GPU_ATTACHMENT_TEXTURE(pd->color_masked_tx),
-                                        GPU_ATTACHMENT_TEXTURE(pd->reveal_masked_tx),
+                                        GPU_ATTACHMENT_TEXTURE(depth_tx),
+                                        GPU_ATTACHMENT_TEXTURE(color_tx),
+                                        GPU_ATTACHMENT_TEXTURE(pd->mask_tx),
                                     });
     }
 
@@ -838,6 +838,7 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
+  GPENCIL_tLayer *cached_mask = NULL;
 
   DRW_stats_group_start("GPencil Object");
 
@@ -851,15 +852,20 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
   }
 
   for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
+    GPENCIL_tLayer *mask_layer = gpencil_layer_cache_get(ob, layer->mask_id);
+    if ((mask_layer != NULL) && (mask_layer != cached_mask)) {
+      cached_mask = mask_layer;
+
+      GPU_framebuffer_bind(fbl->mask_fb);
+      GPU_framebuffer_clear_color_depth(
+          fbl->mask_fb, clear_cols[1], ob->is_drawmode3d ? 1.0f : 0.0f);
+
+      DRW_draw_pass(mask_layer->geom_ps);
+    }
+
     if (layer->blend_ps) {
       GPU_framebuffer_bind(fbl->layer_fb);
       GPU_framebuffer_multi_clear(fbl->layer_fb, clear_cols);
-    }
-    else if (layer->is_masked) {
-      GPU_framebuffer_bind(fbl->masked_fb);
-      if (layer->do_masked_clear) {
-        GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
-      }
     }
     else {
       GPU_framebuffer_bind(fb_object);
@@ -868,15 +874,7 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
     DRW_draw_pass(layer->geom_ps);
 
     if (layer->blend_ps) {
-      if (layer->is_masked) {
-        GPU_framebuffer_bind(fbl->masked_fb);
-        if (layer->do_masked_clear) {
-          GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
-        }
-      }
-      else {
-        GPU_framebuffer_bind(fb_object);
-      }
+      GPU_framebuffer_bind(fb_object);
       DRW_draw_pass(layer->blend_ps);
     }
   }

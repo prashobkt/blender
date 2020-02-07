@@ -179,6 +179,7 @@ struct bGPDframe *BKE_gpencil_layer_frame_get(struct bGPDlayer *gpl,
 struct bGPDframe *BKE_gpencil_layer_frame_find(struct bGPDlayer *gpl, int cframe);
 bool BKE_gpencil_layer_frame_delete(struct bGPDlayer *gpl, struct bGPDframe *gpf);
 
+struct bGPDlayer *BKE_gpencil_layer_named_get(struct bGPdata *gpd, const char *name);
 struct bGPDlayer *BKE_gpencil_layer_active_get(struct bGPdata *gpd);
 void BKE_gpencil_layer_active_set(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);

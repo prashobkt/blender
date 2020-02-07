@@ -154,10 +154,10 @@ typedef struct GPENCIL_tLayer {
   DRWPass *geom_ps;
   /** Blend pass to composite onto the target buffer (blends modes). NULL if not needed. */
   DRWPass *blend_ps;
-  /** Used to identify which layers are masks and which are masked. */
-  bool is_mask;
-  bool is_masked;
-  bool do_masked_clear;
+  /** Index in the layer list. Used as id for masking. */
+  int layer_id;
+  /** Layer id of the mask. */
+  int mask_id;
 } GPENCIL_tLayer;
 
 typedef struct GPENCIL_tObject {
@@ -204,7 +204,7 @@ typedef struct GPENCIL_FramebufferList {
   struct GPUFrameBuffer *snapshot_fb;
   struct GPUFrameBuffer *layer_fb;
   struct GPUFrameBuffer *object_fb;
-  struct GPUFrameBuffer *masked_fb;
+  struct GPUFrameBuffer *mask_fb;
   struct GPUFrameBuffer *smaa_edge_fb;
   struct GPUFrameBuffer *smaa_weight_fb;
 } GPENCIL_FramebufferList;
@@ -257,12 +257,12 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *color_tx;
   GPUTexture *color_layer_tx;
   GPUTexture *color_object_tx;
-  GPUTexture *color_masked_tx;
   /* Revealage is 1 - alpha */
   GPUTexture *reveal_tx;
   GPUTexture *reveal_layer_tx;
   GPUTexture *reveal_object_tx;
-  GPUTexture *reveal_masked_tx;
+  /* Mask texture */
+  GPUTexture *mask_tx;
   /* Anti-Aliasing. */
   GPUTexture *smaa_edge_tx;
   GPUTexture *smaa_weight_tx;
@@ -335,6 +335,10 @@ typedef struct GPENCIL_PrivateData {
   float fade_gp_object_opacity;
   /* Opacity for fading 3D objects. */
   float fade_3d_object_opacity;
+  /* Mask opacity uniform. */
+  float mask_opacity;
+  /* Mask invert uniform. */
+  int mask_invert;
 } GPENCIL_PrivateData;
 
 /* geometry batch cache functions */
@@ -344,6 +348,7 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob);
 GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
                                         Object *ob,
                                         struct bGPDlayer *layer);
+GPENCIL_tLayer *gpencil_layer_cache_get(GPENCIL_tObject *tgp_ob, int number);
 GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Object *ob, int *ofs);
 void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
                                     int mat_id,

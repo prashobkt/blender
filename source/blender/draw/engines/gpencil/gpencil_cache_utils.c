@@ -115,6 +115,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   const bool is_obact = ((pd->obact) && (pd->obact == ob));
   const bool is_fade = ((pd->fade_layer_opacity > -1.0f) && (is_obact) &&
                         ((gpl->flag & GP_LAYER_ACTIVE) == 0));
+  bool mask_invert = true; /* True because we invert the dummy texture red channel. */
 
   /* Defines layer opacity. For active object depends of layer opacity factor, and
    * for no active object, depends if the fade grease pencil objects option is enabled. */
@@ -127,27 +128,20 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
       fade_layer_opacity = pd->fade_gp_object_opacity;
     }
   }
+
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
+  tgp_layer->layer_id = BLI_findindex(&gpd->layers, gpl);
+  tgp_layer->mask_id = -1;
 
-  const bool is_mask = (gpl->flag & GP_LAYER_USE_MASK) != 0;
-  tgp_layer->is_mask = is_mask;
-  tgp_layer->do_masked_clear = false;
-
-  if (!is_mask) {
-    tgp_layer->is_masked = false;
-    for (bGPDlayer *gpl_m = gpl->next; gpl_m; gpl_m = gpl_m->next) {
-      if (gpl_m->flag & GP_LAYER_USE_MASK) {
-        if (gpl_m->flag & GP_LAYER_HIDE) {
-          /* We don't mask but we dont try to mask with further layers. */
-        }
-        else {
-          tgp_layer->is_masked = true;
-        }
-        break;
-      }
-    }
+  bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, gpl->mask_layer);
+  if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0)) {
+    mask_invert = (gpl->flag & GP_LAYER_MASK_INVERT) != 0;
+    tgp_layer->mask_id = BLI_findindex(&gpd->layers, gpl_mask);
+    pd->use_mask_fb = true;
   }
+
+  const bool is_masked = tgp_layer->mask_id != -1;
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
@@ -160,42 +154,13 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
       state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
     }
 
-    if (gpl->flag & GP_LAYER_USE_MASK) {
-      state |= DRW_STATE_STENCIL_EQUAL;
-    }
-    else {
-      state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
-    }
+    /* Always write stencil. Only used as optimization for blending. */
+    state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
 
     tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
   }
 
-  if (is_mask) {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL | DRW_STATE_BLEND_MUL;
-    tgp_layer->blend_ps = DRW_pass_create("GPencil Mask Layer", state);
-
-    GPUShader *sh = GPENCIL_shader_layer_mask_get();
-    DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
-    DRW_shgroup_uniform_int_copy(grp, "isFirstPass", true);
-    DRW_shgroup_uniform_float_copy(grp, "maskOpacity", fade_layer_opacity);
-    DRW_shgroup_uniform_bool_copy(grp, "maskInvert", gpl->flag & GP_LAYER_MASK_INVERT);
-    DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_masked_tx);
-    DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_masked_tx);
-    DRW_shgroup_uniform_texture_ref(grp, "maskBuf", &pd->reveal_layer_tx);
-    DRW_shgroup_stencil_mask(grp, 0xFF);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-
-    /* We cannot do custom blending on MultiTarget framebuffers.
-     * Workaround by doing 2 passes. */
-    grp = DRW_shgroup_create_sub(grp);
-    DRW_shgroup_state_disable(grp, DRW_STATE_BLEND_MUL);
-    DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD_FULL);
-    DRW_shgroup_uniform_int_copy(grp, "isFirstPass", false);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-
-    pd->use_mask_fb = true;
-  }
-  else if ((gpl->blend_mode != eGplBlendMode_Regular) || (fade_layer_opacity < 1.0f)) {
+  if (is_masked || (gpl->blend_mode != eGplBlendMode_Regular) || (fade_layer_opacity < 1.0f)) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL;
     switch (gpl->blend_mode) {
       case eGplBlendMode_Regular:
@@ -227,6 +192,8 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     DRW_shgroup_uniform_float_copy(grp, "blendOpacity", fade_layer_opacity);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
+    DRW_shgroup_uniform_texture_ref(grp, "maskBuf", (is_masked) ? &pd->mask_tx : &pd->dummy_tx);
+    DRW_shgroup_uniform_bool_copy(grp, "maskInvert", mask_invert);
     DRW_shgroup_stencil_mask(grp, 0xFF);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
@@ -247,4 +214,18 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   }
 
   return tgp_layer;
+}
+
+GPENCIL_tLayer *gpencil_layer_cache_get(GPENCIL_tObject *tgp_ob, int number)
+{
+  if (number >= 0) {
+    GPENCIL_tLayer *layer = tgp_ob->layers.first;
+    while (layer != NULL) {
+      if (layer->layer_id == number) {
+        return layer;
+      }
+      layer = layer->next;
+    }
+  }
+  return NULL;
 }

@@ -30,7 +30,6 @@ extern char datatoc_gpencil_antialiasing_frag_glsl[];
 extern char datatoc_gpencil_antialiasing_vert_glsl[];
 extern char datatoc_gpencil_composite_frag_glsl[];
 extern char datatoc_gpencil_layer_blend_frag_glsl[];
-extern char datatoc_gpencil_layer_mask_frag_glsl[];
 extern char datatoc_gpencil_depth_merge_frag_glsl[];
 extern char datatoc_gpencil_depth_merge_vert_glsl[];
 extern char datatoc_gpencil_vfx_frag_glsl[];
@@ -49,8 +48,6 @@ static struct {
   GPUShader *composite_sh;
   /* All layer blend types in one shader! */
   GPUShader *layer_blend_sh;
-  /* To blend masked layer with other layers. */
-  GPUShader *layer_mask_sh;
   /* Merge the final object depth to the depth buffer. */
   GPUShader *depth_merge_sh;
   /* Effects. */
@@ -183,15 +180,6 @@ GPUShader *GPENCIL_shader_layer_blend_get(void)
     });
   }
   return g_shaders.layer_blend_sh;
-}
-
-GPUShader *GPENCIL_shader_layer_mask_get(void)
-{
-  if (!g_shaders.layer_mask_sh) {
-    g_shaders.layer_mask_sh = DRW_shader_create_fullscreen(datatoc_gpencil_layer_mask_frag_glsl,
-                                                           NULL);
-  }
-  return g_shaders.layer_mask_sh;
 }
 
 GPUShader *GPENCIL_shader_depth_merge_get(void)

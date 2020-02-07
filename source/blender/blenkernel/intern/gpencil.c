@@ -1002,6 +1002,14 @@ bool BKE_gpencil_layer_frame_delete(bGPDlayer *gpl, bGPDframe *gpf)
   return changed;
 }
 
+bGPDlayer *BKE_gpencil_layer_named_get(bGPdata *gpd, const char *name)
+{
+  if (name[0] == '\0') {
+    return NULL;
+  }
+  return BLI_findstring(&gpd->layers, name, offsetof(bGPDlayer, info));
+}
+
 /* get the active gp-layer for editing */
 bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 {
