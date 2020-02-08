@@ -1014,7 +1014,7 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
       bGPDlayer *gpl = NULL;
       /* Try to use original layer. */
       if (gps->runtime.tmp_layerinfo != NULL) {
-        gpl = BLI_findstring(&gpd->layers, gps->runtime.tmp_layerinfo, offsetof(bGPDlayer, info));
+        gpl = BKE_gpencil_layer_named_get(gpd, gps->runtime.tmp_layerinfo);
       }
 
       /* if not available, use active layer. */

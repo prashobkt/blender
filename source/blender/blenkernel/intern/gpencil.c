@@ -3528,7 +3528,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
   if (use_collections) {
     Collection *collection = gpencil_get_parent_collection(scene, ob_cu);
     if (collection != NULL) {
-      gpl = BLI_findstring(&gpd->layers, collection->id.name + 2, offsetof(bGPDlayer, info));
+      gpl = BKE_gpencil_layer_named_get(gpd, collection->id.name + 2);
       if (gpl == NULL) {
         gpl = BKE_gpencil_layer_addnew(gpd, collection->id.name + 2, true);
       }
