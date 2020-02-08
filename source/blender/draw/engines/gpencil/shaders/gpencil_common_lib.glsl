@@ -409,12 +409,15 @@ void stroke_vertex()
     strokeThickness = (is_squares) ? 1e18 : (thickness / gl_Position.w);
   }
   else {
+    bool is_stroke_start = (ma.x == -1.0 && x == -1.0);
+    bool is_stroke_end = (ma3.x == -1.0 && x == 1.0);
+
     /* Mitter tangent vector. */
     vec2 miter_tan = safe_normalize(line_adj + line);
     float miter_dot = dot(miter_tan, line_adj);
     /* Break corners after a certain angle to avoid really thick corners. */
     const float miter_limit = 0.5; /* cos(60°) */
-    bool miter_break = (miter_dot < miter_limit);
+    bool miter_break = (miter_dot < miter_limit) || is_stroke_start || is_stroke_end;
     miter_tan = (miter_break) ? line : (miter_tan / miter_dot);
 
     vec2 miter = rotate_90deg(miter_tan);
@@ -423,13 +426,11 @@ void stroke_vertex()
     strokePt2.xy = ss2;
     strokeThickness = thickness / gl_Position.w;
 
-    /* Reminder: we packed the cap flag into the sign of stength and thickness sign. */
-    bool is_stroke_start = (ma.x == -1.0 && x == -1.0 && strength1 > 0.0) || miter_break;
-    bool is_stroke_end = (ma3.x == -1.0 && x == 1.0 && thickness1 > 0.0) || miter_break;
-
     vec2 screen_ofs = miter * y;
 
-    if (is_stroke_start || is_stroke_end) {
+    /* Reminder: we packed the cap flag into the sign of stength and thickness sign. */
+    if ((is_stroke_start && strength1 > 0.0) || (is_stroke_end && thickness1 > 0.0) ||
+        miter_break) {
       screen_ofs += line * x;
     }
 
