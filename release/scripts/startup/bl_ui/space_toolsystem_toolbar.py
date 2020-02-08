@@ -1444,6 +1444,11 @@ class _defs_gpencil_paint:
 
     @ToolDef.from_fn
     def eyedropper():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("ui.eyedropper_gpencil_color")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", expand=True)
         return dict(
             idname="builtin.eyedropper",
             label="Eyedropper",
@@ -1451,6 +1456,7 @@ class _defs_gpencil_paint:
             cursor='EYEDROPPER',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
 
