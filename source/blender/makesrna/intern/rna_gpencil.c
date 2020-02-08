@@ -464,6 +464,13 @@ static void rna_GPencilLayer_info_set(PointerRNA *ptr, const char *value)
 
   /* now fix animation paths */
   BKE_animdata_fix_paths_rename_all(&gpd->id, "layers", oldname, gpl->info);
+
+  /* Fix mask layer. */
+  LISTBASE_FOREACH (bGPDlayer *, gpl_, &gpd->layers) {
+    if ((gpl_->mask_layer[0] != '\0') && STREQ(gpl_->mask_layer, oldname)) {
+      BLI_strncpy(gpl_->mask_layer, gpl->info, sizeof(gpl_->mask_layer));
+    }
+  }
 }
 
 static void rna_GPencil_layer_mask_set(PointerRNA *ptr, const bool value)
