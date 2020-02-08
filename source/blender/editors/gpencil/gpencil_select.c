@@ -855,7 +855,7 @@ void GPENCIL_OT_select_less(wmOperatorType *ot)
  * from gpencil_paint.c #gp_stroke_eraser_dostroke().
  * It would be great to de-duplicate the logic here sometime, but that can wait.
  */
-static bool gp_stroke_do_circle_sel(bGPdata *gpd,
+static bool gp_stroke_do_circle_sel(bGPdata *UNUSED(gpd),
                                     bGPDlayer *gpl,
                                     bGPDstroke *gps,
                                     GP_SpaceConversion *gsc,

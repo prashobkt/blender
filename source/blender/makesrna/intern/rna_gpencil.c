@@ -190,25 +190,6 @@ static void rna_GPencil_editmode_update(Main *UNUSED(bmain), Scene *UNUSED(scene
   WM_main_add_notifier(NC_SCENE | ND_MODE | NC_MOVIECLIP, NULL);
 }
 
-/* Recalc UVs and Fill for all strokes. */
-static void rna_GPencil_strokes_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
-{
-  bGPdata *gpd = (bGPdata *)ptr->owner_id;
-  if (gpd) {
-    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-          BKE_gpencil_stroke_fill_triangulate(gps);
-        }
-      }
-    }
-  }
-
-  /* Now do standard updates... */
-  DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
-}
-
 /* Poll Callback to filter GP Datablocks to only show those for Annotations */
 bool rna_GPencil_datablocks_annotations_poll(PointerRNA *UNUSED(ptr), const PointerRNA value)
 {

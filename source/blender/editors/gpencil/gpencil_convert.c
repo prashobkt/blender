@@ -152,7 +152,7 @@ static const EnumPropertyItem *rna_GPConvert_mode_items(bContext *UNUSED(C),
  * - assumes that the active space is the 3D-View
  */
 static void gp_strokepoint_convertcoords(bContext *C,
-                                         bGPdata *gpd,
+                                         bGPdata *UNUSED(gpd),
                                          bGPDlayer *gpl,
                                          bGPDstroke *gps,
                                          bGPDspoint *source_pt,

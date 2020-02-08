@@ -233,56 +233,6 @@ static void gp_draw_stroke_volumetric_3d(const bGPDspoint *points,
 }
 
 /* --------------- Stroke Fills ----------------- */
-/* calc bounding box in 2d using flat projection data */
-static void gp_calc_2d_bounding_box(
-    const float (*points2d)[2], int totpoints, float minv[2], float maxv[2], bool expand)
-{
-  copy_v2_v2(minv, points2d[0]);
-  copy_v2_v2(maxv, points2d[0]);
-
-  for (int i = 1; i < totpoints; i++) {
-    /* min */
-    if (points2d[i][0] < minv[0]) {
-      minv[0] = points2d[i][0];
-    }
-    if (points2d[i][1] < minv[1]) {
-      minv[1] = points2d[i][1];
-    }
-    /* max */
-    if (points2d[i][0] > maxv[0]) {
-      maxv[0] = points2d[i][0];
-    }
-    if (points2d[i][1] > maxv[1]) {
-      maxv[1] = points2d[i][1];
-    }
-  }
-  /* If not expanded, use a perfect square */
-  if (expand == false) {
-    if (maxv[0] > maxv[1]) {
-      maxv[1] = maxv[0];
-    }
-    else {
-      maxv[0] = maxv[1];
-    }
-  }
-}
-
-/* calc texture coordinates using flat projected points */
-static void gp_calc_stroke_text_coordinates(const float (*points2d)[2],
-                                            int totpoints,
-                                            const float minv[2],
-                                            float maxv[2],
-                                            float (*r_uv)[2])
-{
-  float d[2];
-  d[0] = maxv[0] - minv[0];
-  d[1] = maxv[1] - minv[1];
-  for (int i = 0; i < totpoints; i++) {
-    r_uv[i][0] = (points2d[i][0] - minv[0]) / d[0];
-    r_uv[i][1] = (points2d[i][1] - minv[1]) / d[1];
-  }
-}
-
 /* add a new fill point and texture coordinates to vertex buffer */
 static void gp_add_filldata_tobuffer(const bGPDspoint *pt,
                                      uint pos,
@@ -335,11 +285,6 @@ static void gp_draw_stroke_fill(bGPdata *gpd,
   immUniform4fv("color2", gp_style->mix_rgba);
   immUniform1i("fill_type", gp_style->fill_style);
   immUniform1f("mix_factor", gp_style->mix_factor);
-
-  immUniform1f("gradient_angle", gp_style->gradient_angle);
-  immUniform1f("gradient_radius", gp_style->gradient_radius);
-  immUniform2fv("gradient_scale", gp_style->gradient_scale);
-  immUniform2fv("gradient_shift", gp_style->gradient_shift);
 
   immUniform1f("texture_angle", gp_style->texture_angle);
   immUniform2fv("texture_scale", gp_style->texture_scale);

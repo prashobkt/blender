@@ -120,7 +120,10 @@ static void deformStroke(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData *md, Object *ob)
+static void bakeModifier(Main *UNUSED(bmain),
+                         Depsgraph *depsgraph,
+                         GpencilModifierData *md,
+                         Object *ob)
 {
   bGPdata *gpd = ob->data;
 

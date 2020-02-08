@@ -2655,7 +2655,7 @@ static int gp_snap_to_grid(bContext *C, wmOperator *UNUSED(op))
 
             /* return data */
             copy_v3_v3(&pt->x, fpt);
-            gp_apply_parent_point(depsgraph, obact, gpd, gpl, pt);
+            gp_apply_parent_point(depsgraph, obact, gpl, pt);
           }
         }
       }
@@ -2739,7 +2739,7 @@ static int gp_snap_to_cursor(bContext *C, wmOperator *op)
           for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
             if (pt->flag & GP_SPOINT_SELECT) {
               copy_v3_v3(&pt->x, cursor_global);
-              gp_apply_parent_point(depsgraph, obact, gpd, gpl, pt);
+              gp_apply_parent_point(depsgraph, obact, gpl, pt);
             }
           }
         }
@@ -3584,7 +3584,7 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
           copy_v3_v3(&pt->x, &pt2.x);
 
           /* apply parent again */
-          gp_apply_parent_point(depsgraph, ob, gpd, gpl, pt);
+          gp_apply_parent_point(depsgraph, ob, gpl, pt);
         }
         /* Project screen-space back to 3D space (from current perspective)
          * so that all points have been treated the same way. */

@@ -2651,42 +2651,6 @@ void BKE_gpencil_stroke_2d_flat_ref(const bGPDspoint *ref_points,
   *r_direction = (int)locy[2];
 }
 
-/* calc bounding box in 2d using flat projection data */
-static void gpencil_calc_2d_bounding_box(const float (*points2d)[2],
-                                         int totpoints,
-                                         float minv[2],
-                                         float maxv[2])
-{
-  minv[0] = points2d[0][0];
-  minv[1] = points2d[0][1];
-  maxv[0] = points2d[0][0];
-  maxv[1] = points2d[0][1];
-
-  for (int i = 1; i < totpoints; i++) {
-    /* min */
-    if (points2d[i][0] < minv[0]) {
-      minv[0] = points2d[i][0];
-    }
-    if (points2d[i][1] < minv[1]) {
-      minv[1] = points2d[i][1];
-    }
-    /* max */
-    if (points2d[i][0] > maxv[0]) {
-      maxv[0] = points2d[i][0];
-    }
-    if (points2d[i][1] > maxv[1]) {
-      maxv[1] = points2d[i][1];
-    }
-  }
-  /* use a perfect square */
-  if (maxv[0] > maxv[1]) {
-    maxv[1] = maxv[0];
-  }
-  else {
-    maxv[0] = maxv[1];
-  }
-}
-
 /* calc texture coordinates using flat projected points */
 static void gpencil_calc_stroke_fill_uv(const float (*points2d)[2],
                                         bGPDstroke *gps,
@@ -3386,7 +3350,6 @@ static void gpencil_convert_spline(Main *bmain,
       copy_v4_v4(gp_style_gp->mix_rgba, gp_style_cur->mix_rgba);
       gp_style_gp->fill_style = gp_style_cur->fill_style;
       gp_style_gp->mix_factor = gp_style_cur->mix_factor;
-      gp_style_gp->gradient_angle = gp_style_cur->gradient_angle;
     }
 
     /* If object has more than 1 material, use second material for stroke color. */
