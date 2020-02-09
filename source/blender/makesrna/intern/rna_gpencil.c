@@ -525,25 +525,6 @@ static void rna_GPencilLayer_mask_info_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static void rna_GPencil_layer_mask_set(PointerRNA *ptr, const bool value)
-{
-  bGPDlayer *gpl = ptr->data;
-
-  const bool use_mask = gpl->flag & GP_LAYER_USE_MASK;
-
-  /* Cycle through the 3 options */
-  if (value != use_mask) {
-    if (use_mask && (gpl->flag & GP_LAYER_MASK_INVERT) == 0) {
-      /* Switch to invert mask instead of removing the masking. */
-      gpl->flag |= GP_LAYER_MASK_INVERT;
-    }
-    else {
-      SET_FLAG_FROM_TEST(gpl->flag, value, GP_LAYER_USE_MASK);
-      gpl->flag &= ~GP_LAYER_MASK_INVERT;
-    }
-  }
-}
-
 static bGPDstroke *rna_GPencil_stroke_point_find_stroke(const bGPdata *gpd,
                                                         const bGPDspoint *pt,
                                                         bGPDlayer **r_gpl,
@@ -1579,14 +1560,12 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
       prop, "Disallow Locked Materials Editing", "Avoids editing locked materials in the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
-#  /* TODO: ON/OFF */
   prop = RNA_def_property(srna, "use_mask_layer", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_USE_MASK);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_GPencil_layer_mask_set");
   RNA_def_property_ui_text(prop, "Mask Layer", "Mask pixels from underlying layers drawing");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
-#
+
   prop = RNA_def_property(srna, "invert_mask", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_MASK_INVERT);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);

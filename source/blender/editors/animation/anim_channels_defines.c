@@ -5096,12 +5096,10 @@ void ANIM_channel_draw_widgets(const bContext *C,
             if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
               icon = ICON_LAYER_ACTIVE;
               if (gpl->flag & GP_LAYER_USE_MASK) {
-                if (gpl->flag & GP_LAYER_MASK_INVERT) {
-                  icon = ICON_HOLDOUT_ON;
-                }
-                else {
-                  icon = ICON_MOD_MASK;
-                }
+                icon = ICON_MOD_MASK;
+              }
+              else {
+                icon = ICON_LAYER_ACTIVE;
               }
               uiDefAutoButR(block,
                             &ptr,
