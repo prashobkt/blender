@@ -180,6 +180,15 @@ void BKE_gpencil_free_frames(bGPDlayer *gpl)
   gpl->actframe = NULL;
 }
 
+void BKE_gpencil_free_layer_masks(bGPDlayer *gpl)
+{
+  /* Free masks.*/
+  bGPDlayer_Mask *mask_next = NULL;
+  for (bGPDlayer_Mask *mask = gpl->mask_layers.first; mask; mask = mask_next) {
+    mask_next = mask->next;
+    BLI_freelinkN(&gpl->mask_layers, mask);
+  }
+}
 /* Free all of the gp-layers for a viewport (list should be &gpd->layers or so) */
 void BKE_gpencil_free_layers(ListBase *list)
 {
@@ -196,6 +205,10 @@ void BKE_gpencil_free_layers(ListBase *list)
 
     /* free layers and their data */
     BKE_gpencil_free_frames(gpl);
+
+    /* Free masks.*/
+    BKE_gpencil_free_layer_masks(gpl);
+
     BLI_freelinkN(list, gpl);
   }
 }
@@ -397,7 +410,6 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd, const char *name, bool setacti
 
   /* Enable always affected by scene lights. */
   gpl->flag |= GP_LAYER_USE_LIGHTS;
-  gpl->mask_layer[0] = '\0';
   /* make this one the active one */
   if (setactive) {
     BKE_gpencil_layer_active_set(gpd, gpl);
@@ -634,6 +646,14 @@ bGPDlayer *BKE_gpencil_layer_duplicate(const bGPDlayer *gpl_src)
   /* make a copy of source layer */
   gpl_dst = MEM_dupallocN(gpl_src);
   gpl_dst->prev = gpl_dst->next = NULL;
+
+  /* Copy masks. */
+  BLI_listbase_clear(&gpl_dst->mask_layers);
+  LISTBASE_FOREACH (bGPDlayer_Mask *, mask_src, &gpl_src->mask_layers) {
+    bGPDlayer_Mask *mask_dst = MEM_dupallocN(mask_src);
+    mask_dst->prev = mask_dst->next = NULL;
+    BLI_addtail(&gpl_dst->mask_layers, mask_dst);
+  }
 
   /* copy frames */
   BLI_listbase_clear(&gpl_dst->frames);
@@ -1093,6 +1113,9 @@ void BKE_gpencil_layer_delete(bGPdata *gpd, bGPDlayer *gpl)
 
   /* free layer */
   BKE_gpencil_free_frames(gpl);
+
+  /* Free Masks. */
+  BKE_gpencil_free_layer_masks(gpl);
 
   /* free icon providing preview of icon color */
   BKE_icon_delete(gpl->runtime.icon_id);

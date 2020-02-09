@@ -3296,3 +3296,91 @@ bool ED_gpencil_add_lattice_modifier(const bContext *C,
 
   return true;
 }
+
+/* Masking operators */
+static int gp_layer_mask_add_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
+  if (gpl_active == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  for (bGPDlayer *gpl = gpl_active->prev; gpl; gpl = gpl->prev) {
+    bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
+    if (!BLI_findstring(&gpl_active->mask_layers, gpl->info, offsetof(bGPDlayer_Mask, name))) {
+      BLI_addtail(&gpl_active->mask_layers, mask);
+      BLI_strncpy(mask->name, gpl->info, sizeof(mask->name));
+      gpl_active->act_mask++;
+    }
+  }
+
+  /* notifiers */
+  if (gpd) {
+    DEG_id_tag_update(&gpd->id,
+                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  }
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_layer_mask_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add New Mask Layer";
+  ot->idname = "GPENCIL_OT_layer_mask_add";
+  ot->description = "Add new layer as masking";
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* callbacks */
+  ot->exec = gp_layer_mask_add_exec;
+  ot->poll = gp_add_poll;
+}
+
+static int gp_layer_mask_remove_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
+  if (gpl == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+  if (gpl->act_mask > 0) {
+    bGPDlayer_Mask *mask = BLI_findlink(&gpl->mask_layers, gpl->act_mask - 1);
+    if (mask != NULL) {
+      BLI_freelinkN(&gpl->mask_layers, mask);
+      gpl->act_mask--;
+      CLAMP_MIN(gpl->act_mask, 0);
+    }
+  }
+  /* notifiers */
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_layer_mask_remove(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Remove Mask Layer";
+  ot->idname = "GPENCIL_OT_layer_mask_remove";
+  ot->description = "Remove Layer Mask";
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* callbacks */
+  ot->exec = gp_layer_mask_remove_exec;
+  ot->poll = gp_active_layer_poll;
+}

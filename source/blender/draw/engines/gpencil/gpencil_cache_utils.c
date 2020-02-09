@@ -134,12 +134,13 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   tgp_layer->layer_id = BLI_findindex(&gpd->layers, gpl);
   tgp_layer->mask_id = -1;
 
-  bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, gpl->mask_layer);
-  if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0)) {
-    mask_invert = (gpl->flag & GP_LAYER_MASK_INVERT) != 0;
-    tgp_layer->mask_id = BLI_findindex(&gpd->layers, gpl_mask);
-    pd->use_mask_fb = true;
-  }
+  // TODO GPXX (New masking)
+  // bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, gpl->mask_layer);
+  // if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0)) {
+  //  mask_invert = (gpl->flag & GP_LAYER_MASK_INVERT) != 0;
+  //  tgp_layer->mask_id = BLI_findindex(&gpd->layers, gpl_mask);
+  //  pd->use_mask_fb = true;
+  //}
 
   const bool is_masked = tgp_layer->mask_id != -1;
 

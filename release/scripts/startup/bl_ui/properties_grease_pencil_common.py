@@ -692,10 +692,10 @@ class GPENCIL_UL_layer(UIList):
             row = layout.row(align=True)
 
             icon_mask = 'LAYER_ACTIVE'
-            if gpl.mask_layer:
+            if gpl.use_mask_layer:
                 icon_mask = 'HOLDOUT_ON' if gpl.invert_mask else 'MOD_MASK'
 
-            row.prop(gpl, "mask_layer", text="", icon=icon_mask, emboss=False)
+            row.prop(gpl, "use_mask_layer", text="", icon=icon_mask, emboss=False)
 
             subrow = row.row(align=True)
             subrow.prop(

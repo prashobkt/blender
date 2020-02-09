@@ -297,6 +297,26 @@ static void rna_GPencilLayer_parent_bone_set(PointerRNA *ptr, const char *value)
     set_parent(gpl, par, gpl->partype, value);
   }
 }
+static int rna_GPencil_active_mask_index_get(PointerRNA *ptr)
+{
+  bGPDlayer *gpl = (bGPDlayer *)ptr->data;
+  return gpl->act_mask - 1;
+}
+
+static void rna_GPencil_active_mask_index_set(PointerRNA *ptr, int value)
+{
+  bGPDlayer *gpl = (bGPDlayer *)ptr->data;
+  gpl->act_mask = value + 1;
+}
+
+static void rna_GPencil_active_mask_index_range(
+    PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
+{
+  bGPDlayer *gpl = (bGPDlayer *)ptr->data;
+
+  *min = 0;
+  *max = max_ii(0, BLI_listbase_count(&gpl->mask_layers) - 1);
+}
 
 /* parent types enum */
 static const EnumPropertyItem *rna_Object_parent_type_itemf(bContext *UNUSED(C),
@@ -465,10 +485,42 @@ static void rna_GPencilLayer_info_set(PointerRNA *ptr, const char *value)
   /* now fix animation paths */
   BKE_animdata_fix_paths_rename_all(&gpd->id, "layers", oldname, gpl->info);
 
-  /* Fix mask layer. */
+  /* Fix mask layers. */
   LISTBASE_FOREACH (bGPDlayer *, gpl_, &gpd->layers) {
-    if ((gpl_->mask_layer[0] != '\0') && STREQ(gpl_->mask_layer, oldname)) {
-      BLI_strncpy(gpl_->mask_layer, gpl->info, sizeof(gpl_->mask_layer));
+    LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl_->mask_layers) {
+      if (STREQ(mask->name, oldname)) {
+        BLI_strncpy(mask->name, gpl->info, sizeof(mask->name));
+      }
+    }
+  }
+}
+
+static void rna_GPencilLayer_mask_info_set(PointerRNA *ptr, const char *value)
+{
+  bGPdata *gpd = (bGPdata *)ptr->owner_id;
+  bGPDlayer_Mask *mask = ptr->data;
+  char oldname[128] = "";
+  BLI_strncpy(oldname, mask->name, sizeof(oldname));
+
+  /* Really is changing the layer name. */
+  bGPDlayer *gpl = BKE_gpencil_layer_named_get(gpd, oldname);
+  if (gpl) {
+    /* copy the new name into the name slot */
+    BLI_strncpy_utf8(gpl->info, value, sizeof(gpl->info));
+
+    BLI_uniquename(
+        &gpd->layers, gpl, DATA_("GP_Layer"), '.', offsetof(bGPDlayer, info), sizeof(gpl->info));
+
+    /* now fix animation paths */
+    BKE_animdata_fix_paths_rename_all(&gpd->id, "layers", oldname, gpl->info);
+
+    /* Fix mask layers. */
+    LISTBASE_FOREACH (bGPDlayer *, gpl_, &gpd->layers) {
+      LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl_->mask_layers) {
+        if (STREQ(mask->name, oldname)) {
+          BLI_strncpy(mask->name, gpl->info, sizeof(mask->name));
+        }
+      }
     }
   }
 }
@@ -1297,6 +1349,26 @@ static void rna_def_gpencil_frames_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_return(func, parm);
 }
 
+static void rna_def_gpencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  RNA_def_property_srna(cprop, "GreasePencilMaskLayers");
+  srna = RNA_def_struct(brna, "GreasePencilMaskLayers", NULL);
+  RNA_def_struct_sdna(srna, "bGPlayer");
+  RNA_def_struct_ui_text(
+      srna, "Grease Pencil Mask Layers", "Collection of grease pencil masking layers");
+
+  prop = RNA_def_property(srna, "active_mask_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_int_funcs(prop,
+                             "rna_GPencil_active_mask_index_get",
+                             "rna_GPencil_active_mask_index_set",
+                             "rna_GPencil_active_mask_index_range");
+  RNA_def_property_ui_text(prop, "Active Layer Mask Index", "Active index in layer mask array");
+}
+
 static void rna_def_gpencil_layer(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -1324,6 +1396,13 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "GPencilFrame");
   RNA_def_property_ui_text(prop, "Frames", "Sketches for this layer on different frames");
   rna_def_gpencil_frames_api(brna, prop);
+
+  /* Mask Layers */
+  prop = RNA_def_property(srna, "mask_layers", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "mask_layers", NULL);
+  RNA_def_property_struct_type(prop, "GPencilLayerMask");
+  RNA_def_property_ui_text(prop, "Masks", "List of Masking Layers");
+  rna_def_gpencil_layers_mask_api(brna, prop);
 
   /* Active Frame */
   prop = RNA_def_property(srna, "active_frame", PROP_POINTER, PROP_NONE);
@@ -1465,11 +1544,6 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
-  prop = RNA_def_property(srna, "mask_layer_name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "mask_layer");
-  RNA_def_property_ui_text(prop, "Mask", "Name of the masking layer");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
-
   /* Flags */
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_HIDE);
@@ -1505,8 +1579,8 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
       prop, "Disallow Locked Materials Editing", "Avoids editing locked materials in the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
-#  /* TODO: Deprecated */
-  prop = RNA_def_property(srna, "mask_layer", PROP_BOOLEAN, PROP_NONE);
+#  /* TODO: ON/OFF */
+  prop = RNA_def_property(srna, "use_mask_layer", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_USE_MASK);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_boolean_funcs(prop, NULL, "rna_GPencil_layer_mask_set");
@@ -1538,15 +1612,6 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_IS_RULER);
   RNA_def_property_ui_text(prop, "Ruler", "This is a special ruler layer");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
-  /* exposed as layers.active */
-#  if 0
-  prop = RNA_def_property(srna, "active", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_ACTIVE);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_GPencilLayer_active_set");
-  RNA_def_property_ui_text(prop, "Active", "Set active layer for editing");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, NULL);
-#  endif
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_SELECT);
@@ -1607,6 +1672,23 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   /* Layers API */
   func = RNA_def_function(srna, "clear", "rna_GPencil_layer_clear");
   RNA_def_function_ui_description(func, "Remove all the grease pencil layer data");
+}
+
+static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GPencilLayerMask", NULL);
+  RNA_def_struct_sdna(srna, "bGPDlayer_Mask");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Masking Layers", "List of Mask Layers");
+
+  /* Name */
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Layer", "Mask layer name");
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_GPencilLayer_mask_info_set");
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, NULL);
 }
 
 static void rna_def_gpencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
@@ -1988,6 +2070,7 @@ void RNA_def_gpencil(BlenderRNA *brna)
   rna_def_gpencil_data(brna);
 
   rna_def_gpencil_layer(brna);
+  rna_def_gpencil_layer_mask(brna);
   rna_def_gpencil_frame(brna);
 
   rna_def_gpencil_stroke(brna);

@@ -171,11 +171,9 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
             layout.use_property_decorate = True
             col = layout.column(align=True)
 
-            if not gpl.mask_layer:
+            if not gpl.use_mask_layer:
                 col = layout.row(align=True)
                 col.prop(gpl, "blend_mode", text="Blend")
-                col = layout.row(align=True)
-                col.prop_search(gpl, "mask_layer_name", gpd, "layers", icon='GREASEPENCIL')
 
             col = layout.row(align=True)
             col.prop(gpl, "opacity", text="Opacity", slider=True)
@@ -310,6 +308,34 @@ class GPENCIL_UL_vgroups(UIList):
             layout.label(text="", icon_value=icon)
 
 
+class GPENCIL_UL_masks(UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        mask = item
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
+
+
+class DATA_PT_gpencil_layer_masks(ObjectButtonsPanel, Panel):
+    bl_label = "Masks"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        ob = context.active_object
+        gpd = ob.data
+        gpl = gpd.layers.active
+        if gpl:
+            rows = 4
+            row = layout.row()
+            row.template_list("GPENCIL_UL_masks", "", gpl, "mask_layers", gpl.mask_layers, "active_mask_index", rows=rows)
+            col = row.column(align=True)
+            col.operator("gpencil.layer_mask_add", icon="ADD", text="")
+            col.operator("gpencil.layer_mask_remove", icon='REMOVE', text="")
+
+
 class DATA_PT_gpencil_vertex_groups(ObjectButtonsPanel, Panel):
     bl_label = "Vertex Groups"
     bl_options = {'DEFAULT_CLOSED'}
@@ -418,6 +444,7 @@ class DATA_PT_custom_props_gpencil(DataButtonsPanel, PropertyPanel, Panel):
 classes = (
     DATA_PT_context_gpencil,
     DATA_PT_gpencil_layers,
+    DATA_PT_gpencil_layer_masks,
     DATA_PT_gpencil_onion_skinning,
     DATA_PT_gpencil_onion_skinning_custom_colors,
     DATA_PT_gpencil_onion_skinning_display,
@@ -431,6 +458,7 @@ classes = (
     DATA_PT_custom_props_gpencil,
 
     GPENCIL_UL_vgroups,
+    GPENCIL_UL_masks,
 
     GPENCIL_MT_layer_context_menu,
     GPENCIL_MT_gpencil_vertex_group,

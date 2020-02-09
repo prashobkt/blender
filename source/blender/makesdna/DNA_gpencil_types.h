@@ -325,6 +325,12 @@ typedef enum eGPDframe_Flag {
 /* ***************************************** */
 /* GP Layer */
 
+/* List of masking layers. */
+typedef struct bGPDlayer_Mask {
+  struct bGPDlayer_Mask *next, *prev;
+  char name[128];
+} bGPDlayer_Mask;
+
 /* Runtime temp data for bGPDlayer */
 typedef struct bGPDlayer_Runtime {
   /** Id for dynamic icon used to show annotation color preview for layer. */
@@ -403,8 +409,11 @@ typedef struct bGPDlayer {
   float gcolor_next[3];
   char _pad1[4];
 
-  /** Mask Layer name. */
-  char mask_layer[64];
+  /** Mask list (bGPDlayer_Mask). */
+  ListBase mask_layers;
+  /** Current Mask index (noted base 1). */
+  int act_mask;
+  char _pad2[4];
 
   bGPDlayer_Runtime runtime;
 } bGPDlayer;
