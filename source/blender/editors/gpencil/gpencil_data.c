@@ -3312,6 +3312,10 @@ static int gp_layer_mask_add_exec(bContext *C, wmOperator *op)
   }
 
   for (bGPDlayer *gpl = gpl_active->prev; gpl; gpl = gpl->prev) {
+    /* Don't add mask layers. */
+    if (gpl->mask_layers.first != NULL) {
+      continue;
+    }
     bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
     if (!BLI_findstring(&gpl_active->mask_layers, gpl->info, offsetof(bGPDlayer_Mask, name))) {
       BLI_addtail(&gpl_active->mask_layers, mask);
