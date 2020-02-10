@@ -781,11 +781,21 @@ class GPENCIL_UL_masks(UIList):
 
 class GreasePencilLayerMasksPanel:
 
-    def draw(self, context):
-        layout = self.layout
+    def draw_header(self, context):
         ob = context.active_object
         gpd = ob.data
         gpl = gpd.layers.active
+
+        self.layout.prop(gpl, "use_mask_layer", text="")
+
+    def draw(self, context):
+        ob = context.active_object
+        gpd = ob.data
+        gpl = gpd.layers.active
+
+        layout = self.layout
+        layout.enabled = gpl.use_mask_layer
+
         if gpl:
             row = layout.row(align=True)
             row.prop(gpd, "layer_list", text="Layer")
