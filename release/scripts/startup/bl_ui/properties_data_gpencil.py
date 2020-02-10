@@ -329,6 +329,9 @@ class DATA_PT_gpencil_layer_masks(ObjectButtonsPanel, Panel):
         gpd = ob.data
         gpl = gpd.layers.active
         if gpl:
+            row = layout.row()
+            row.prop(gpl, "invert_mask")
+
             rows = 4
             row = layout.row()
             row.template_list("GPENCIL_UL_masks", "", gpl, "mask_layers", gpl.mask_layers, "active_mask_index", rows=rows)
