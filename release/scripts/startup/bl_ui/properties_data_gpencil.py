@@ -320,6 +320,7 @@ class GPENCIL_UL_masks(UIList):
 
 class DATA_PT_gpencil_layer_masks(ObjectButtonsPanel, Panel):
     bl_label = "Masks"
+    bl_parent_id = 'DATA_PT_gpencil_layers'
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
