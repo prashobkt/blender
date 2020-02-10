@@ -70,10 +70,10 @@
 #include "BKE_light.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_library_override.h"
-#include "BKE_library_query.h"
-#include "BKE_library_remap.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_override.h"
+#include "BKE_lib_query.h"
+#include "BKE_lib_remap.h"
 #include "BKE_lightprobe.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -616,8 +616,6 @@ void OBJECT_OT_parent_clear(wmOperatorType *ot)
   ot->invoke = WM_menu_invoke;
   ot->exec = parent_clear_exec;
 
-  ot->poll = ED_operator_object_active_editable;
-
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
@@ -1056,7 +1054,9 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
   if (parent->type == OB_ARMATURE) {
     uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE);
     uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_NAME);
-    uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_ENVELOPE);
+    if (!has_children_of_type.gpencil) {
+      uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_ENVELOPE);
+    }
     if (has_children_of_type.mesh || has_children_of_type.gpencil) {
       uiItemEnumO_ptr(layout, ot, NULL, 0, "type", PAR_ARMATURE_AUTO);
     }

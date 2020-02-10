@@ -13,11 +13,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
-#ifndef __BKE_LIBRARY_IDMAP_H__
-#define __BKE_LIBRARY_IDMAP_H__
+#ifndef __BKE_MAIN_IDMAP_H__
+#define __BKE_MAIN_IDMAP_H__
 
 /** \file
  * \ingroup bke
+ *
+ * API to generate and use a mapping from [ID type & name] to [id pointer], within a given Main
+ * data-base.
+ *
+ * \note `BKE_main` files are for operations over the Main database itself, or generating extra
+ * temp data to help working with it. Those should typically not affect the data-blocks themselves.
+ *
+ * \section Function Names
+ *
+ * - `BKE_main_idmap_` Should be used for functions in that file.
  */
 
 #include "BLI_compiler_attrs.h"
@@ -42,4 +52,4 @@ struct ID *BKE_main_idmap_lookup_id(struct IDNameLib_Map *id_typemap,
                                     const struct ID *id) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1, 2);
 
-#endif /* __BKE_LIBRARY_IDMAP_H__ */
+#endif /* __BKE_MAIN_IDMAP_H__ */
