@@ -1562,16 +1562,16 @@ void do_versions_after_linking_280(Main* bmain, ReportList* UNUSED(reports))
 			}
 		}
 
-		/* This versionning could probably be done only on earlier versions, not sure however
-		 * which exact version fully deprecated tessfaces, so think we can keep that one here, no
-		 * harm to be expected anyway for being over-conservative. */
-		for (Mesh* me = bmain->meshes.first; me != NULL; me = me->id.next) {
-			/*check if we need to convert mfaces to mpolys*/
-			if (me->totface && !me->totpoly) {
-				/* temporarily switch main so that reading from
-				 * external CustomData works */
-				Main* gmain = G_MAIN;
-				G_MAIN = bmain;
+    /* This versioning could probably be done only on earlier versions, not sure however
+     * which exact version fully deprecated tessfaces, so think we can keep that one here, no
+     * harm to be expected anyway for being over-conservative. */
+    for (Mesh *me = bmain->meshes.first; me != NULL; me = me->id.next) {
+      /*check if we need to convert mfaces to mpolys*/
+      if (me->totface && !me->totpoly) {
+        /* temporarily switch main so that reading from
+         * external CustomData works */
+        Main *gmain = G_MAIN;
+        G_MAIN = bmain;
 
 				BKE_mesh_do_versions_convert_mfaces_to_mpolys(me);
 
