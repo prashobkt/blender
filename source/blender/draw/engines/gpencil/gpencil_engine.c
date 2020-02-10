@@ -82,9 +82,11 @@ void GPENCIL_engine_init(void *ved)
   BLI_memblock_clear(vldata->gp_object_pool, NULL);
   BLI_memblock_clear(vldata->gp_layer_pool, NULL);
   BLI_memblock_clear(vldata->gp_vfx_pool, NULL);
+  BLI_memblock_clear(vldata->gp_maskbit_pool, NULL);
 
   stl->pd->gp_light_pool = vldata->gp_light_pool;
   stl->pd->gp_material_pool = vldata->gp_material_pool;
+  stl->pd->gp_maskbit_pool = vldata->gp_maskbit_pool;
   stl->pd->gp_object_pool = vldata->gp_object_pool;
   stl->pd->gp_layer_pool = vldata->gp_layer_pool;
   stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
@@ -824,12 +826,40 @@ static void GPENCIL_draw_scene_depth_only(void *ved)
     GPU_framebuffer_bind(dfbl->default_fb);
   }
 
-  pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
+  pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = pd->gp_maskbit_pool = NULL;
 
   /* Free temp stroke buffers. */
   if (pd->sbuffer_gpd) {
     DRW_cache_gpencil_sbuffer_clear(pd->obact);
   }
+}
+
+static void gpencil_draw_mask(GPENCIL_Data *vedata, GPENCIL_tObject *ob, GPENCIL_tLayer *layer)
+{
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
+  float clear_col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+  DRW_stats_group_start("GPencil Mask");
+
+  /* OPTI(fclem) we could optimize by only clearing if the new mask_bits contains all
+   * the masks already rendered in the buffer, and drawing only the layers not already drawn. */
+  if (true) {
+    GPU_framebuffer_bind(fbl->mask_fb);
+    GPU_framebuffer_clear_color_depth(fbl->mask_fb, clear_col, ob->is_drawmode3d ? 1.0f : 0.0f);
+  }
+
+  for (int i = 0; i < GP_MAX_MASKBITS; i++) {
+    if (!BLI_BITMAP_TEST(layer->mask_bits, i)) {
+      continue;
+    }
+
+    GPENCIL_tLayer *mask_layer = gpencil_layer_cache_get(ob, i);
+    BLI_assert(mask_layer);
+
+    DRW_draw_pass(mask_layer->geom_ps);
+  }
+
+  DRW_stats_group_end();
 }
 
 static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
@@ -838,7 +868,6 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
-  GPENCIL_tLayer *cached_mask = NULL;
 
   DRW_stats_group_start("GPencil Object");
 
@@ -852,15 +881,8 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
   }
 
   for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
-    GPENCIL_tLayer *mask_layer = gpencil_layer_cache_get(ob, layer->mask_id);
-    if ((mask_layer != NULL) && (mask_layer != cached_mask)) {
-      cached_mask = mask_layer;
-
-      GPU_framebuffer_bind(fbl->mask_fb);
-      GPU_framebuffer_clear_color_depth(
-          fbl->mask_fb, clear_cols[1], ob->is_drawmode3d ? 1.0f : 0.0f);
-
-      DRW_draw_pass(mask_layer->geom_ps);
+    if (layer->mask_bits) {
+      gpencil_draw_mask(vedata, ob, layer);
     }
 
     if (layer->blend_ps) {
@@ -978,7 +1000,7 @@ void GPENCIL_draw_scene(void *ved)
     DRW_draw_pass(psl->composite_ps);
   }
 
-  pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
+  pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = pd->gp_maskbit_pool = NULL;
 
   /* Free temp stroke buffers. */
   if (pd->sbuffer_gpd) {

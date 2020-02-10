@@ -25,6 +25,8 @@
 
 #include "DNA_gpencil_types.h"
 
+#include "BLI_bitmap.h"
+
 #include "GPU_batch.h"
 
 extern DrawEngineType draw_engine_gpencil_type;
@@ -49,6 +51,8 @@ struct GPUVertFormat;
 #define GPENCIL_VBO_BLOCK_SIZE 128
 
 #define GP_IS_CAMERAVIEW ((rv3d != NULL) && (rv3d->persp == RV3D_CAMOB && v3d->camera))
+
+#define GP_MAX_MASKBITS 256
 
 /* UBO structure. Watch out for padding. Must match GLSL declaration. */
 typedef struct gpMaterial {
@@ -135,6 +139,8 @@ typedef struct GPENCIL_ViewLayerData {
   struct BLI_memblock *gp_material_pool;
   /* GPENCIL_LightPool */
   struct BLI_memblock *gp_light_pool;
+  /* BLI_bitmap */
+  struct BLI_memblock *gp_maskbit_pool;
 } GPENCIL_ViewLayerData;
 
 /* *********** GPencil  *********** */
@@ -154,10 +160,10 @@ typedef struct GPENCIL_tLayer {
   DRWPass *geom_ps;
   /** Blend pass to composite onto the target buffer (blends modes). NULL if not needed. */
   DRWPass *blend_ps;
+  /** Layer id of the mask. */
+  BLI_bitmap *mask_bits;
   /** Index in the layer list. Used as id for masking. */
   int layer_id;
-  /** Layer id of the mask. */
-  int mask_id;
 } GPENCIL_tLayer;
 
 typedef struct GPENCIL_tObject {
@@ -240,6 +246,7 @@ typedef struct GPENCIL_PrivateData {
   struct BLI_memblock *gp_vfx_pool;
   struct BLI_memblock *gp_material_pool;
   struct BLI_memblock *gp_light_pool;
+  struct BLI_memblock *gp_maskbit_pool;
   /* Last used material pool. */
   GPENCIL_MaterialPool *last_material_pool;
   /* Last used light pool. */

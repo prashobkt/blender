@@ -115,6 +115,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   const bool is_obact = ((pd->obact) && (pd->obact == ob));
   const bool is_fade = ((pd->fade_layer_opacity > -1.0f) && (is_obact) &&
                         ((gpl->flag & GP_LAYER_ACTIVE) == 0));
+  const bool use_mask = (gpl->flag & GP_LAYER_USE_MASK) != 0;
   bool mask_invert = true; /* True because we invert the dummy texture red channel. */
 
   /* Defines layer opacity. For active object depends of layer opacity factor, and
@@ -132,17 +133,36 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
   tgp_layer->layer_id = BLI_findindex(&gpd->layers, gpl);
-  tgp_layer->mask_id = -1;
+  tgp_layer->mask_bits = NULL;
 
-  // TODO GPXX (New masking)
-  // bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, gpl->mask_layer);
-  // if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0)) {
-  //  mask_invert = (gpl->flag & GP_LAYER_MASK_INVERT) != 0;
-  //  tgp_layer->mask_id = BLI_findindex(&gpd->layers, gpl_mask);
-  //  pd->use_mask_fb = true;
-  //}
+  if (use_mask && !BLI_listbase_is_empty(&gpl->mask_layers)) {
+    bool valid_mask = false;
+    /* Warning: only GP_MAX_MASKBITS amount of bits.
+     * TODO(fclem) Find a better system without any limitation. */
+    tgp_layer->mask_bits = BLI_memblock_alloc(pd->gp_maskbit_pool);
+    BLI_bitmap_set_all(tgp_layer->mask_bits, false, GP_MAX_MASKBITS);
 
-  const bool is_masked = tgp_layer->mask_id != -1;
+    LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
+      bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, mask->name);
+      if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0)) {
+        int index = BLI_findindex(&gpd->layers, gpl_mask);
+        if (index < GP_MAX_MASKBITS) {
+          BLI_BITMAP_SET(tgp_layer->mask_bits, index, true);
+          valid_mask = true;
+        }
+      }
+    }
+
+    if (valid_mask) {
+      mask_invert = (gpl->flag & GP_LAYER_MASK_INVERT) != 0;
+      pd->use_mask_fb = true;
+    }
+    else {
+      tgp_layer->mask_bits = NULL;
+    }
+  }
+
+  const bool is_masked = tgp_layer->mask_bits != NULL;
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
