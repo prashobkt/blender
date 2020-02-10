@@ -172,9 +172,8 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
             layout.use_property_decorate = True
             col = layout.column(align=True)
 
-            if not gpl.use_mask_layer:
-                col = layout.row(align=True)
-                col.prop(gpl, "blend_mode", text="Blend")
+            col = layout.row(align=True)
+            col.prop(gpl, "blend_mode", text="Blend")
 
             col = layout.row(align=True)
             col.prop(gpl, "opacity", text="Opacity", slider=True)
