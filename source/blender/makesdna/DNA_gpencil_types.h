@@ -481,8 +481,8 @@ typedef struct bGPdata_Runtime {
   /** Temp stroke used for drawing. */
   struct bGPDstroke *sbuffer_gps;
 
-  /* GP Object drawing */
-  char _pad[2];
+  /* Index for dynamic layer list. */
+  short layer_idx;
   /** Material index of the stroke. */
   short matid;
   /** Brush size of stroke. */

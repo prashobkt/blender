@@ -3310,19 +3310,29 @@ static int gp_layer_mask_add_exec(bContext *C, wmOperator *op)
   if (gpl_active == NULL) {
     return OPERATOR_CANCELLED;
   }
+  char name[128];
+  RNA_string_get(op->ptr, "name", name);
+  bGPDlayer *gpl = BKE_gpencil_layer_named_get(gpd, name);
 
-  for (bGPDlayer *gpl = gpl_active->prev; gpl; gpl = gpl->prev) {
-    /* Don't add mask layers. */
-    if (gpl->mask_layers.first != NULL) {
-      continue;
-    }
-    bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
-    if (!BLI_findstring(&gpl_active->mask_layers, gpl->info, offsetof(bGPDlayer_Mask, name))) {
-      BLI_addtail(&gpl_active->mask_layers, mask);
-      BLI_strncpy(mask->name, gpl->info, sizeof(mask->name));
-      gpl_active->act_mask++;
-    }
+  if (gpl == NULL) {
+    BKE_report(op->reports, RPT_ERROR, "Unable to find layer to add");
+    return OPERATOR_CANCELLED;
   }
+
+  if (gpl == gpl_active) {
+    BKE_report(op->reports, RPT_ERROR, "Cannot add active layer as mask");
+    return OPERATOR_CANCELLED;
+  }
+
+  if (BLI_findstring(&gpl_active->mask_layers, name, offsetof(bGPDlayer_Mask, name))) {
+    BKE_report(op->reports, RPT_ERROR, "Layer already added");
+    return OPERATOR_CANCELLED;
+  }
+
+  bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
+  BLI_addtail(&gpl_active->mask_layers, mask);
+  BLI_strncpy(mask->name, name, sizeof(mask->name));
+  gpl_active->act_mask++;
 
   /* notifiers */
   if (gpd) {
@@ -3346,6 +3356,9 @@ void GPENCIL_OT_layer_mask_add(wmOperatorType *ot)
   /* callbacks */
   ot->exec = gp_layer_mask_add_exec;
   ot->poll = gp_add_poll;
+
+  /* properties */
+  RNA_def_string(ot->srna, "name", NULL, 128, "Layer", "Name of the layer");
 }
 
 static int gp_layer_mask_remove_exec(bContext *C, wmOperator *op)

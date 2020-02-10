@@ -769,6 +769,38 @@ class GreasePencilLayerAdjustmentsPanel:
         col = layout.row(align=True)
         col.prop(gpl, "lock_material")
 
+class GPENCIL_UL_masks(UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        mask = item
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
+
+
+class GreasePencilLayerMasksPanel:
+
+    def draw(self, context):
+        layout = self.layout
+        ob = context.active_object
+        gpd = ob.data
+        gpl = gpd.layers.active
+        if gpl:
+            row = layout.row()
+            row.prop(gpl, "invert_mask")
+            rows = 4
+            row = layout.row()
+            col = row.column()
+            col.template_list("GPENCIL_UL_masks", "", gpl, "mask_layers", gpl.mask_layers, "active_mask_index", rows=rows)
+
+            col2 = row.column(align=True)
+            col2.operator("gpencil.layer_mask_remove", icon='REMOVE', text="")
+
+            subrow = col.row(align=True)
+            subrow.prop(gpd, "layer_list", text="Layer")
+            layer_name = gpd.layer_list
+            subrow.operator("gpencil.layer_mask_add", icon="ADD", text="").name=layer_name
 
 class GreasePencilLayerRelationsPanel:
 
@@ -856,6 +888,7 @@ classes = (
 
     GPENCIL_UL_annotation_layer,
     GPENCIL_UL_layer,
+    GPENCIL_UL_masks,
 
     GreasePencilFlipTintColors,
 )
