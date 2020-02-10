@@ -787,8 +787,11 @@ class GreasePencilLayerMasksPanel:
         gpd = ob.data
         gpl = gpd.layers.active
         if gpl:
-            row = layout.row()
-            row.prop(gpl, "invert_mask")
+            row = layout.row(align=True)
+            row.prop(gpd, "layer_list", text="Layer")
+            layer_name = gpd.layer_list
+            row.operator("gpencil.layer_mask_add", icon="ADD", text="").name=layer_name
+
             rows = 4
             row = layout.row()
             col = row.column()
@@ -797,10 +800,8 @@ class GreasePencilLayerMasksPanel:
             col2 = row.column(align=True)
             col2.operator("gpencil.layer_mask_remove", icon='REMOVE', text="")
 
-            subrow = col.row(align=True)
-            subrow.prop(gpd, "layer_list", text="Layer")
-            layer_name = gpd.layer_list
-            subrow.operator("gpencil.layer_mask_add", icon="ADD", text="").name=layer_name
+            row = layout.row()
+            row.prop(gpl, "invert_mask")
 
 class GreasePencilLayerRelationsPanel:
 
