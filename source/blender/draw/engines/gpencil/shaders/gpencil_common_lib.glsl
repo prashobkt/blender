@@ -175,10 +175,15 @@ float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness, float hardfac)
   uv_end /= thickness;
 
   float dist = clamp(1.0 - length(uv_end) * 2.0, 0.0, 1.0);
-  /* Modulate the falloff profile */
-  float hardness = 1.0 - hardfac;
-  dist = pow(dist, mix(0.1, 10.0, hardness));
-  return smoothstep(0.0, 1.0, dist);
+  if (hardfac > 0.999) {
+    return step(0.0, dist);
+  }
+  else {
+    /* Modulate the falloff profile */
+    float hardness = 1.0 - hardfac;
+    dist = pow(dist, mix(0.01, 10.0, hardness));
+    return smoothstep(0.0, 1.0, dist);
+  }
 }
 
 #endif
