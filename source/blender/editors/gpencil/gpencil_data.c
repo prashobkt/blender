@@ -1203,7 +1203,7 @@ static int gp_merge_layer_exec(bContext *C, wmOperator *op)
         STREQ(mask->name, gpl_current->info)) {
       continue;
     }
-    if (!BLI_findstring(&gpl_current->mask_layers, mask->name, offsetof(bGPDlayer_Mask, name))) {
+    if (!BKE_gpencil_layer_mask_named_get(gpl_current, mask->name)) {
       bGPDlayer_Mask *mask_new = MEM_dupallocN(mask);
       BLI_addtail(&gpl_current->mask_layers, mask_new);
       gpl_current->act_mask++;
@@ -3338,7 +3338,7 @@ static int gp_layer_mask_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (BLI_findstring(&gpl_active->mask_layers, name, offsetof(bGPDlayer_Mask, name))) {
+  if (BKE_gpencil_layer_mask_named_get(gpl_active, name)) {
     BKE_report(op->reports, RPT_ERROR, "Layer already added");
     return OPERATOR_CANCELLED;
   }
@@ -3348,10 +3348,7 @@ static int gp_layer_mask_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
-  BLI_addtail(&gpl_active->mask_layers, mask);
-  BLI_strncpy(mask->name, name, sizeof(mask->name));
-  gpl_active->act_mask++;
+  BKE_gpencil_layer_mask_add(gpl_active, name);
 
   /* notifiers */
   if (gpd) {
@@ -3395,9 +3392,7 @@ static int gp_layer_mask_remove_exec(bContext *C, wmOperator *op)
   if (gpl->act_mask > 0) {
     bGPDlayer_Mask *mask = BLI_findlink(&gpl->mask_layers, gpl->act_mask - 1);
     if (mask != NULL) {
-      BLI_freelinkN(&gpl->mask_layers, mask);
-      gpl->act_mask--;
-      CLAMP_MIN(gpl->act_mask, 0);
+      BKE_gpencil_layer_mask_remove(gpl, mask);
       if ((gpl->mask_layers.first != NULL) && (gpl->act_mask == 0)) {
         gpl->act_mask = 1;
       }

@@ -39,6 +39,7 @@ struct ToolSettings;
 struct bDeformGroup;
 struct bGPDframe;
 struct bGPDlayer;
+struct bGPDlayer_Mask;
 struct bGPDspoint;
 struct bGPDstroke;
 struct bGPdata;
@@ -185,6 +186,11 @@ struct bGPDlayer *BKE_gpencil_layer_active_get(struct bGPdata *gpd);
 void BKE_gpencil_layer_active_set(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
 void BKE_gpencil_layer_autolock_set(struct bGPdata *gpd, const bool unlock);
+
+struct bGPDlayer_Mask *BKE_gpencil_layer_mask_add(struct bGPDlayer *gpl, const char *name);
+void BKE_gpencil_layer_mask_remove(struct bGPDlayer *gpl, struct bGPDlayer_Mask *mask);
+void BKE_gpencil_layer_mask_remove_ref(struct bGPdata *gpd, const char *name);
+struct bGPDlayer_Mask *BKE_gpencil_layer_mask_named_get(struct bGPDlayer *gpl, const char *name);
 
 /* Brush */
 struct Material *BKE_gpencil_brush_material_get(struct Brush *brush);

@@ -1030,6 +1030,46 @@ bGPDlayer *BKE_gpencil_layer_named_get(bGPdata *gpd, const char *name)
   return BLI_findstring(&gpd->layers, name, offsetof(bGPDlayer, info));
 }
 
+bGPDlayer_Mask *BKE_gpencil_layer_mask_named_get(bGPDlayer *gpl, const char *name)
+{
+  if (name[0] == '\0') {
+    return NULL;
+  }
+  return BLI_findstring(&gpl->mask_layers, name, offsetof(bGPDlayer_Mask, name));
+}
+
+bGPDlayer_Mask *BKE_gpencil_layer_mask_add(bGPDlayer *gpl, const char *name)
+{
+
+  bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
+  BLI_addtail(&gpl->mask_layers, mask);
+  BLI_strncpy(mask->name, name, sizeof(mask->name));
+  gpl->act_mask++;
+
+  return mask;
+}
+
+void BKE_gpencil_layer_mask_remove(bGPDlayer *gpl, bGPDlayer_Mask *mask)
+{
+  BLI_freelinkN(&gpl->mask_layers, mask);
+  gpl->act_mask--;
+  CLAMP_MIN(gpl->act_mask, 0);
+}
+
+void BKE_gpencil_layer_mask_remove_ref(bGPdata *gpd, const char *name)
+{
+  bGPDlayer_Mask *mask_next;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    for (bGPDlayer_Mask *mask = gpl->mask_layers.first; mask; mask = mask_next) {
+      mask_next = mask->next;
+      if (STREQ(mask->name, name)) {
+        BKE_gpencil_layer_mask_remove(gpl, mask);
+      }
+    }
+  }
+}
+
 /* get the active gp-layer for editing */
 bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 {
@@ -1116,6 +1156,9 @@ void BKE_gpencil_layer_delete(bGPdata *gpd, bGPDlayer *gpl)
 
   /* Free Masks. */
   BKE_gpencil_free_layer_masks(gpl);
+
+  /* Remove any reference to that layer in masking lists. */
+  BKE_gpencil_layer_mask_remove_ref(gpd, gpl->info);
 
   /* free icon providing preview of icon color */
   BKE_icon_delete(gpl->runtime.icon_id);
