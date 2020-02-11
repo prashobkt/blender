@@ -18,17 +18,17 @@
  * \ingroup spconsole
  */
 
+#include <limits.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <limits.h>
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "DNA_space_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_space_types.h"
 
 #include "MEM_guardedalloc.h"
 

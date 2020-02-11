@@ -20,8 +20,8 @@
  * \ingroup draw_engine
  */
 
-#include "workbench_private.h"
 #include "BLI_jitter_2d.h"
+#include "workbench_private.h"
 
 static struct {
   struct GPUShader *effect_taa_sh;

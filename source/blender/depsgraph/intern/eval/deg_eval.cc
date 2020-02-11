@@ -28,10 +28,10 @@
 #include "PIL_time.h"
 
 #include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
-#include "BLI_task.h"
 #include "BLI_ghash.h"
 #include "BLI_gsqueue.h"
+#include "BLI_task.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_global.h"
 
@@ -43,6 +43,8 @@
 
 #include "atomic_ops.h"
 
+#include "intern/depsgraph.h"
+#include "intern/depsgraph_relation.h"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_flush.h"
 #include "intern/eval/deg_eval_stats.h"
@@ -51,8 +53,6 @@
 #include "intern/node/deg_node_id.h"
 #include "intern/node/deg_node_operation.h"
 #include "intern/node/deg_node_time.h"
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_relation.h"
 
 namespace DEG {
 

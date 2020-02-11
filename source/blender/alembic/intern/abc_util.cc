@@ -32,8 +32,8 @@
 #include <algorithm>
 
 extern "C" {
-#include "DNA_object_types.h"
 #include "DNA_layer_types.h"
+#include "DNA_object_types.h"
 
 #include "BLI_math.h"
 

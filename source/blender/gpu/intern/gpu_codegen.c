@@ -31,12 +31,12 @@
 #include "DNA_node_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_hash_mm2a.h"
-#include "BLI_link_utils.h"
-#include "BLI_utildefines.h"
 #include "BLI_dynstr.h"
 #include "BLI_ghash.h"
+#include "BLI_hash_mm2a.h"
+#include "BLI_link_utils.h"
 #include "BLI_threads.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_material.h"
 
@@ -54,8 +54,8 @@
 #include "gpu_codegen.h"
 #include "gpu_material_library.h"
 
-#include <string.h>
 #include <stdarg.h>
+#include <string.h>
 
 extern char datatoc_gpu_shader_material_glsl[];
 extern char datatoc_gpu_shader_geometry_glsl[];

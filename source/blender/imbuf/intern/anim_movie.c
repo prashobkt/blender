@@ -23,12 +23,12 @@
 
 #ifdef _WIN32
 #  define INC_OLE2
+#  include <commdlg.h>
+#  include <memory.h>
+#  include <mmsystem.h>
+#  include <vfw.h>
 #  include <windows.h>
 #  include <windowsx.h>
-#  include <mmsystem.h>
-#  include <memory.h>
-#  include <commdlg.h>
-#  include <vfw.h>
 
 #  undef AVIIF_KEYFRAME /* redefined in AVI_avi.h */
 #  undef AVIIF_LIST     /* redefined in AVI_avi.h */
@@ -46,21 +46,21 @@
 
 #endif
 
-#include <sys/types.h>
 #include <ctype.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
 #include <limits.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
 #ifndef _WIN32
 #  include <dirent.h>
 #else
 #  include <io.h>
 #endif
 
-#include "BLI_utildefines.h"
-#include "BLI_string.h"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
+#include "BLI_utildefines.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -68,8 +68,8 @@
 #  include "AVI_avi.h"
 #endif
 
-#include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
 
 #include "IMB_colormanagement.h"
 #include "IMB_colormanagement_intern.h"
@@ -81,8 +81,8 @@
 #ifdef WITH_FFMPEG
 #  include "BKE_global.h" /* ENDIAN_ORDER */
 
-#  include <libavformat/avformat.h>
 #  include <libavcodec/avcodec.h>
+#  include <libavformat/avformat.h>
 #  include <libavutil/rational.h>
 #  include <libswscale/swscale.h>
 

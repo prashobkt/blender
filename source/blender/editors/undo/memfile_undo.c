@@ -20,15 +20,15 @@
  * Wrapper between 'ED_undo.h' and 'BKE_undo_system.h' API's.
  */
 
-#include "BLI_utildefines.h"
 #include "BLI_sys_types.h"
+#include "BLI_utildefines.h"
 
 #include "DNA_object_enums.h"
 
 #include "BKE_blender_undo.h"
 #include "BKE_context.h"
-#include "BKE_undo_system.h"
 #include "BKE_main.h"
+#include "BKE_undo_system.h"
 
 #include "WM_api.h"
 #include "WM_types.h"

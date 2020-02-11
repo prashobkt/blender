@@ -23,10 +23,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-#include "BLI_alloca.h"
-#include "BLI_memarena.h"
 #include "BKE_customdata.h"
+#include "BLI_alloca.h"
+#include "BLI_math.h"
+#include "BLI_memarena.h"
 
 #include "bmesh.h"
 

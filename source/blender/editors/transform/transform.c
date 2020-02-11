@@ -21,45 +21,45 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
 #include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h" /* PET modes */
 #include "DNA_workspace_types.h"
-#include "DNA_gpencil_types.h"
 
 #include "BLI_alloca.h"
-#include "BLI_utildefines.h"
-#include "BLI_math.h"
-#include "BLI_rect.h"
-#include "BLI_listbase.h"
-#include "BLI_string.h"
 #include "BLI_ghash.h"
-#include "BLI_utildefines_stack.h"
+#include "BLI_listbase.h"
+#include "BLI_math.h"
 #include "BLI_memarena.h"
+#include "BLI_rect.h"
+#include "BLI_string.h"
+#include "BLI_utildefines.h"
+#include "BLI_utildefines_stack.h"
 
-#include "BKE_nla.h"
+#include "BKE_constraint.h"
+#include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_bvh.h"
-#include "BKE_context.h"
-#include "BKE_constraint.h"
-#include "BKE_particle.h"
-#include "BKE_unit.h"
-#include "BKE_scene.h"
 #include "BKE_mask.h"
 #include "BKE_mesh.h"
+#include "BKE_nla.h"
+#include "BKE_particle.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
+#include "BKE_unit.h"
 #include "BKE_workspace.h"
 
 #include "DEG_depsgraph.h"
@@ -68,24 +68,24 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
+#include "ED_clip.h"
+#include "ED_gpencil.h"
 #include "ED_image.h"
 #include "ED_keyframing.h"
+#include "ED_mesh.h"
+#include "ED_node.h"
 #include "ED_screen.h"
+#include "ED_sculpt.h"
 #include "ED_space_api.h"
 #include "ED_view3d.h"
-#include "ED_mesh.h"
-#include "ED_clip.h"
-#include "ED_node.h"
-#include "ED_gpencil.h"
-#include "ED_sculpt.h"
 
-#include "WM_types.h"
 #include "WM_api.h"
+#include "WM_types.h"
 
-#include "UI_view2d.h"
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
 #include "UI_resources.h"
+#include "UI_view2d.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"

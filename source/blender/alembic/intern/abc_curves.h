@@ -24,8 +24,8 @@
 #ifndef __ABC_CURVES_H__
 #define __ABC_CURVES_H__
 
-#include "abc_object.h"
 #include "abc_mesh.h"
+#include "abc_object.h"
 
 struct Curve;
 
