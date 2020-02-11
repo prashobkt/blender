@@ -21,8 +21,8 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "RNA_define.h"
 

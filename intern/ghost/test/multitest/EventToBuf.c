@@ -23,8 +23,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "EventToBuf.h"
 #include "GHOST_C-api.h"
+#include "EventToBuf.h"
 
 char *eventtype_to_string(GHOST_TEventType type)
 {

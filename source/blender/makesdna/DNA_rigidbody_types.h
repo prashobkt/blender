@@ -26,7 +26,6 @@
 #define __DNA_RIGIDBODY_TYPES_H__
 
 #include "DNA_listBase.h"
-#include "DNA_object_force_types.h"
 
 struct Collection;
 

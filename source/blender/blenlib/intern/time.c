@@ -74,8 +74,8 @@ void PIL_sleep_ms(int ms)
 
 #else
 
-#  include <sys/time.h>
 #  include <unistd.h>
+#  include <sys/time.h>
 
 double PIL_check_seconds_timer(void)
 {

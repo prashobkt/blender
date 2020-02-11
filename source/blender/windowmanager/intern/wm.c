@@ -25,8 +25,8 @@
  * Also Blenders main event loop (WM_main)
  */
 
-#include <stddef.h>
 #include <string.h>
+#include <stddef.h>
 
 #include "BLI_sys_types.h"
 
@@ -34,8 +34,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
+#include "BLI_blenlib.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -46,15 +46,15 @@
 #include "BKE_workspace.h"
 
 #include "WM_api.h"
-#include "WM_message.h"
 #include "WM_types.h"
-#include "wm.h"
-#include "wm_draw.h"
-#include "wm_event_system.h"
+#include "WM_message.h"
 #include "wm_window.h"
+#include "wm_event_system.h"
+#include "wm_draw.h"
+#include "wm.h"
 
-#include "BKE_undo_system.h"
 #include "ED_screen.h"
+#include "BKE_undo_system.h"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"

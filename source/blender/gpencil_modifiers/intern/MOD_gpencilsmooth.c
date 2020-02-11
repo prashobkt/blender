@@ -25,10 +25,10 @@
 
 #include "BLI_utildefines.h"
 
-#include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_modifier_types.h"
 
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
@@ -36,8 +36,8 @@
 
 #include "DEG_depsgraph.h"
 
-#include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_util.h"
+#include "MOD_gpencil_modifiertypes.h"
 
 static void initData(GpencilModifierData *md)
 {

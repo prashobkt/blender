@@ -21,8 +21,8 @@
  * \ingroup spnla
  */
 
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "DNA_scene_types.h"
 

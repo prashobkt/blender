@@ -21,8 +21,6 @@
  * \ingroup pygen
  */
 
-#include <Python.h>
-
 PyObject *BPyInit_blf(void);
 
 #endif /* __BLF_PY_API_H__ */

@@ -22,8 +22,8 @@
  */
 
 #include <limits.h>
-#include <stddef.h>
 #include <stdlib.h>
+#include <stddef.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -40,10 +40,8 @@
 #include "DNA_scene_types.h"
 #include "DNA_vfont_types.h"
 
-#include "BKE_anim.h"
 #include "BKE_animsys.h"
 #include "BKE_collection.h"
-#include "BKE_editmesh.h"
 #include "BKE_font.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -55,12 +53,14 @@
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
+#include "BKE_editmesh.h"
+#include "BKE_anim.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "BLI_hash.h"
 #include "BLI_strict_flags.h"
+#include "BLI_hash.h"
 
 /* Dupli-Geometry */
 

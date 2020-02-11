@@ -23,12 +23,12 @@
  * A minimalist lib for functions doing stuff with rectangle structs.
  */
 
-#include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
-#include <float.h>
 #include <limits.h>
+#include <float.h>
 
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"

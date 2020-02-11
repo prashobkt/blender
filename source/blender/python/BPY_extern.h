@@ -39,8 +39,6 @@ struct bPythonConstraint; /* DNA_constraint_types.h */
 extern "C" {
 #endif
 
-#include "BLI_utildefines.h"
-
 void BPY_pyconstraint_exec(struct bPythonConstraint *con,
                            struct bConstraintOb *cob,
                            struct ListBase *targets);

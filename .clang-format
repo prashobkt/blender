@@ -132,7 +132,9 @@ PenaltyBreakAssignment: 100
 
 AllowShortFunctionsOnASingleLine: None
 
-SortIncludes: true
+# Disable for now since it complicates initial migration tests,
+# TODO: look into enabling this in the future.
+SortIncludes: false
 
 # Don't right align escaped newlines to the right because we have a wide default
 AlignEscapedNewlines: DontAlign

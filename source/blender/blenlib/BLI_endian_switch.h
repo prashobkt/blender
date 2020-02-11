@@ -22,7 +22,6 @@
  */
 
 #include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
 
 /* BLI_endian_switch_inline.h */
 BLI_INLINE void BLI_endian_switch_int16(short *val) ATTR_NONNULL(1);

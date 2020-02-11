@@ -29,22 +29,22 @@
 #endif
 
 #include <commctrl.h>
-#include <psapi.h>
-#include <shellapi.h>
 #include <shlobj.h>
 #include <tlhelp32.h>
+#include <psapi.h>
+#include <shellapi.h>
 #include <windowsx.h>
 
-#include "utf_winfunc.h"
 #include "utfconv.h"
+#include "utf_winfunc.h"
 
 #include "GHOST_DisplayManagerWin32.h"
 #include "GHOST_EventButton.h"
 #include "GHOST_EventCursor.h"
 #include "GHOST_EventKey.h"
 #include "GHOST_EventWheel.h"
-#include "GHOST_TimerManager.h"
 #include "GHOST_TimerTask.h"
+#include "GHOST_TimerManager.h"
 #include "GHOST_WindowManager.h"
 #include "GHOST_WindowWin32.h"
 

@@ -21,16 +21,16 @@
 #ifndef __CAMERAEXPORTER_H__
 #define __CAMERAEXPORTER_H__
 
-#include "COLLADASWLibraryCameras.h"
 #include "COLLADASWStreamWriter.h"
+#include "COLLADASWLibraryCameras.h"
 
 extern "C" {
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 }
 
-#include "DNA_camera_types.h"
 #include "ExportSettings.h"
+#include "DNA_camera_types.h"
 
 class CamerasExporter : COLLADASW::LibraryCameras {
  public:

@@ -40,17 +40,17 @@
  * \note Struct members only define their members (pointers are left as NULL set).
  */
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_endian_switch.h"
-#include "BLI_math.h"
-#include "BLI_memarena.h"
 #include "BLI_utildefines.h"
+#include "BLI_endian_switch.h"
+#include "BLI_memarena.h"
+#include "BLI_math.h"
 
 #include "DNA_defaults.h"
 

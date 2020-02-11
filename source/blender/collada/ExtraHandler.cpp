@@ -18,8 +18,8 @@
  * \ingroup collada
  */
 
-#include "BLI_string.h"
 #include <stddef.h>
+#include "BLI_string.h"
 
 #include "ExtraHandler.h"
 

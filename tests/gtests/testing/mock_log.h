@@ -40,8 +40,8 @@
 
 #include <string>
 
-#include "glog/logging.h"
 #include "gmock/gmock.h"
+#include "glog/logging.h"
 
 // Needed to make the scoped mock log tests work without modification.
 namespace ceres {

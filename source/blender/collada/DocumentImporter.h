@@ -21,26 +21,26 @@
 #ifndef __DOCUMENTIMPORTER_H__
 #define __DOCUMENTIMPORTER_H__
 
-#include "COLLADAFWColor.h"
-#include "COLLADAFWController.h"
-#include "COLLADAFWEffect.h"
-#include "COLLADAFWEffectCommon.h"
 #include "COLLADAFWIWriter.h"
+#include "COLLADAFWMaterial.h"
+#include "COLLADAFWEffect.h"
+#include "COLLADAFWColor.h"
 #include "COLLADAFWImage.h"
 #include "COLLADAFWInstanceGeometry.h"
-#include "COLLADAFWMaterial.h"
+#include "COLLADAFWController.h"
 #include "COLLADAFWMorphController.h"
 #include "COLLADAFWSkinController.h"
+#include "COLLADAFWEffectCommon.h"
 
-#include "BKE_constraint.h"
 #include "BKE_object.h"
+#include "BKE_constraint.h"
 
+#include "TransformReader.h"
 #include "AnimationImporter.h"
 #include "ArmatureImporter.h"
 #include "ControllerExporter.h"
-#include "ImportSettings.h"
 #include "MeshImporter.h"
-#include "TransformReader.h"
+#include "ImportSettings.h"
 
 struct bContext;
 

@@ -20,8 +20,8 @@
  */
 
 #ifdef WITH_FFMPEG
-#  include <stdio.h>
 #  include <string.h>
+#  include <stdio.h>
 
 #  include <stdlib.h>
 
@@ -52,8 +52,8 @@
 
 /* This needs to be included after BLI_math_base.h otherwise it will redefine some math defines
  * like M_SQRT1_2 leading to warnings with MSVC */
-#  include <libavcodec/avcodec.h>
 #  include <libavformat/avformat.h>
+#  include <libavcodec/avcodec.h>
 #  include <libavutil/imgutils.h>
 #  include <libavutil/rational.h>
 #  include <libavutil/samplefmt.h>

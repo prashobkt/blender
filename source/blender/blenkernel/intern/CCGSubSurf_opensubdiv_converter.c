@@ -22,11 +22,11 @@
 
 #  include <stdlib.h>
 
-#  include "BLI_sys_types.h"  // for intptr_t support
 #  include "MEM_guardedalloc.h"
+#  include "BLI_sys_types.h"  // for intptr_t support
 
-#  include "BLI_math.h"
 #  include "BLI_utildefines.h" /* for BLI_assert */
+#  include "BLI_math.h"
 
 #  include "CCGSubSurf.h"
 #  include "CCGSubSurf_intern.h"

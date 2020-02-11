@@ -18,8 +18,8 @@
 
 #include "COM_PixelateNode.h"
 
-#include "COM_ExecutionSystem.h"
 #include "COM_PixelateOperation.h"
+#include "COM_ExecutionSystem.h"
 
 PixelateNode::PixelateNode(bNode *editorNode) : Node(editorNode)
 {

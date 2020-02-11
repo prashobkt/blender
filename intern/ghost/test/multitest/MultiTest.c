@@ -22,10 +22,10 @@
 #  pragma warning(disable : 4244 4305)
 #endif
 
-#include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <math.h>
 
 #include "GL.h"
 
@@ -44,10 +44,10 @@ extern char datatoc_bfont_ttf[];
 char U[1024] = {0};
 #endif
 
-#include "Basic.h"
-#include "EventToBuf.h"
-#include "ScrollBar.h"
 #include "Util.h"
+#include "Basic.h"
+#include "ScrollBar.h"
+#include "EventToBuf.h"
 
 #include "WindowData.h"
 

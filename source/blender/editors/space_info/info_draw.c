@@ -21,26 +21,26 @@
  * \ingroup spinfo
  */
 
-#include <limits.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <limits.h>
 
 #include "BLI_utildefines.h"
 
-#include "DNA_screen_types.h"
 #include "DNA_space_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_report.h"
 
-#include "UI_interface.h"
 #include "UI_resources.h"
+#include "UI_interface.h"
 #include "UI_view2d.h"
 
-#include "GPU_framebuffer.h"
 #include "info_intern.h"
 #include "textview.h"
+#include "GPU_framebuffer.h"
 
 static int report_line_data(struct TextViewContext *tvc,
                             unsigned char fg[4],

@@ -29,20 +29,20 @@
 #include "BLI_ghash.h"
 #include "BLI_math_vector.h"
 
-#include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_object_types.h"
+#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_modifier_types.h"
 
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
-#include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_main.h"
 
 #include "DEG_depsgraph.h"
 
-#include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_util.h"
+#include "MOD_gpencil_modifiertypes.h"
 
 static void initData(GpencilModifierData *md)
 {

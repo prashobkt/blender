@@ -20,9 +20,9 @@
  * \ingroup draw
  */
 
-#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_world_types.h"
+#include "DNA_material_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_string_utils.h"
@@ -33,8 +33,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "GPU_material.h"
 #include "GPU_shader.h"
+#include "GPU_material.h"
 
 #include "WM_api.h"
 #include "WM_types.h"

@@ -21,8 +21,8 @@
 #include <iostream>
 
 #include "COLLADASaxFWLIError.h"
-#include "COLLADASaxFWLSaxFWLError.h"
 #include "COLLADASaxFWLSaxParserError.h"
+#include "COLLADASaxFWLSaxFWLError.h"
 
 #include "GeneratedSaxParserParserError.h"
 

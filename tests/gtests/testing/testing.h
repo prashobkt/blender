@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 
 #define EXPECT_V3_NEAR(a, b, eps) \

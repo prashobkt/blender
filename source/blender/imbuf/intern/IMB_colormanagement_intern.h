@@ -24,8 +24,8 @@
  * \ingroup imbuf
  */
 
-#include "BLI_sys_types.h"
 #include "DNA_listBase.h"
+#include "BLI_sys_types.h"
 
 struct ImBuf;
 struct OCIO_ConstProcessorRcPtr;

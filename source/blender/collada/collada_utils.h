@@ -21,51 +21,51 @@
 #ifndef __COLLADA_UTILS_H__
 #define __COLLADA_UTILS_H__
 
-#include "COLLADAFWColorOrTexture.h"
-#include "COLLADAFWFloatOrDoubleArray.h"
-#include "COLLADAFWGeometry.h"
 #include "COLLADAFWMeshPrimitive.h"
+#include "COLLADAFWGeometry.h"
+#include "COLLADAFWFloatOrDoubleArray.h"
 #include "COLLADAFWTypes.h"
 #include "COLLADASWEffectProfile.h"
+#include "COLLADAFWColorOrTexture.h"
 
-#include <algorithm>
+#include <vector>
 #include <map>
 #include <set>
-#include <vector>
+#include <algorithm>
 
 extern "C" {
-#include "DNA_anim_types.h"
-#include "DNA_camera_types.h"
-#include "DNA_constraint_types.h"
-#include "DNA_light_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
+#include "DNA_anim_types.h"
+#include "DNA_constraint_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_light_types.h"
+#include "DNA_camera_types.h"
 
 #include "DNA_customdata_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
+#include "DNA_scene_types.h"
 
 #include "RNA_access.h"
 
 #include "BLI_linklist.h"
-#include "BLI_string.h"
 #include "BLI_utildefines.h"
+#include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_idprop.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_context.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
+#include "BKE_idprop.h"
+#include "BKE_node.h"
 }
 
 #include "DEG_depsgraph_query.h"
 
+#include "ImportSettings.h"
+#include "ExportSettings.h"
+#include "collada_internal.h"
 #include "BCSampleData.h"
 #include "BlenderContext.h"
-#include "ExportSettings.h"
-#include "ImportSettings.h"
-#include "collada_internal.h"
 
 constexpr int LIMITTED_PRECISION = 6;
 

@@ -23,8 +23,8 @@
  * \ingroup bli
  */
 
-#include "BLI_math.h"
 #include <assert.h>
+#include "BLI_math.h"
 
 #include "BLI_strict_flags.h"
 

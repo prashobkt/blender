@@ -21,8 +21,8 @@
 #ifndef __ABC_MBALL_H__
 #define __ABC_MBALL_H__
 
-#include "abc_mesh.h"
 #include "abc_object.h"
+#include "abc_mesh.h"
 
 struct Main;
 struct Object;

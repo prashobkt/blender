@@ -21,10 +21,10 @@
  * \ingroup texnodes
  */
 
-#include "BLI_math.h"
-#include "NOD_texture.h"
-#include "node_texture_util.h"
 #include <math.h>
+#include "BLI_math.h"
+#include "node_texture_util.h"
+#include "NOD_texture.h"
 
 static bNodeSocketTemplate inputs[] = {
     {SOCK_VECTOR, 1, N_("Coordinate 1"), 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, PROP_NONE},

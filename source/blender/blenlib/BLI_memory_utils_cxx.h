@@ -21,8 +21,8 @@
  * \ingroup bli
  */
 
-#include <algorithm>
 #include <memory>
+#include <algorithm>
 
 namespace BLI {
 

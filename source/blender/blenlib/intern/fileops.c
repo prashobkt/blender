@@ -24,42 +24,42 @@
 #include <stdlib.h> /* malloc */
 #include <string.h>
 
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <errno.h>
 
 #include "zlib.h"
 
 #ifdef WIN32
-#  include "BLI_fileops_types.h"
-#  include "BLI_winstuff.h"
-#  include "utf_winfunc.h"
-#  include "utfconv.h"
-#  include <io.h>
+#  include <windows.h>
 #  include <shellapi.h>
 #  include <shobjidl.h>
-#  include <windows.h>
+#  include <io.h>
+#  include "BLI_winstuff.h"
+#  include "BLI_fileops_types.h"
+#  include "utf_winfunc.h"
+#  include "utfconv.h"
 #else
 #  if defined(__APPLE__)
 #    include <CoreFoundation/CoreFoundation.h>
-#    include <objc/message.h>
 #    include <objc/runtime.h>
+#    include <objc/message.h>
 #  endif
-#  include <dirent.h>
 #  include <sys/param.h>
-#  include <sys/wait.h>
+#  include <dirent.h>
 #  include <unistd.h>
+#  include <sys/wait.h>
 #endif
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_fileops.h"
-#include "BLI_path_util.h"
-#include "BLI_string.h"
-#include "BLI_sys_types.h"  // for intptr_t support
 #include "BLI_utildefines.h"
+#include "BLI_string.h"
+#include "BLI_path_util.h"
+#include "BLI_fileops.h"
+#include "BLI_sys_types.h"  // for intptr_t support
 
 #if 0 /* UNUSED */
 /* gzip the file in from and write it to "to".
