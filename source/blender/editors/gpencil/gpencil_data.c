@@ -1196,6 +1196,20 @@ static int gp_merge_layer_exec(bContext *C, wmOperator *op)
     BLI_movelisttolist(&frame->strokes, &gpf->strokes);
   }
 
+  /* Add Masks to destination layer. */
+  LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl_next->mask_layers) {
+    /* Don't add merged layers or missing layer names. */
+    if (!BKE_gpencil_layer_named_get(gpd, mask->name) || STREQ(mask->name, gpl_next->info) ||
+        STREQ(mask->name, gpl_current->info)) {
+      continue;
+    }
+    if (!BLI_findstring(&gpl_current->mask_layers, mask->name, offsetof(bGPDlayer_Mask, name))) {
+      bGPDlayer_Mask *mask_new = MEM_dupallocN(mask);
+      BLI_addtail(&gpl_current->mask_layers, mask_new);
+      gpl_current->act_mask++;
+    }
+  }
+
   /* Now delete next layer */
   BKE_gpencil_layer_delete(gpd, gpl_next);
   BLI_ghash_free(gh_frames_cur, NULL, NULL);
