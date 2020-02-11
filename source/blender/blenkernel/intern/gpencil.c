@@ -1070,6 +1070,45 @@ void BKE_gpencil_layer_mask_remove_ref(bGPdata *gpd, const char *name)
   }
 }
 
+static int gpencil_cb_sort_masks(const void *arg1, const void *arg2)
+{
+  /* sort is inverted as layer list. */
+  const struct bGPDlayer_Mask *mask1 = arg1;
+  const struct bGPDlayer_Mask *mask2 = arg2;
+  int val = 0;
+
+  if (mask1->sort_index < mask2->sort_index) {
+    val = 1;
+  }
+  else if (mask1->sort_index > mask2->sort_index) {
+    val = -1;
+  }
+
+  return val;
+}
+
+void BKE_gpencil_layer_mask_sort(bGPdata *gpd, bGPDlayer *gpl)
+{
+  /* Update sort index. */
+  LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
+    bGPDlayer *gpl = BKE_gpencil_layer_named_get(gpd, mask->name);
+    if (gpl != NULL) {
+      mask->sort_index = BLI_findindex(&gpd->layers, gpl);
+    }
+    else {
+      mask->sort_index = 0;
+    }
+  }
+  BLI_listbase_sort(&gpl->mask_layers, gpencil_cb_sort_masks);
+}
+
+void BKE_gpencil_layer_mask_sort_all(bGPdata *gpd)
+{
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    BKE_gpencil_layer_mask_sort(gpd, gpl);
+  }
+}
+
 /* get the active gp-layer for editing */
 bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 {

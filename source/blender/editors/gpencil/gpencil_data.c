@@ -318,6 +318,9 @@ static int gp_layer_remove_exec(bContext *C, wmOperator *op)
   /* delete the layer now... */
   BKE_gpencil_layer_delete(gpd, gpl);
 
+  /* Reorder masking. */
+  BKE_gpencil_layer_mask_sort_all(gpd);
+
   /* notifiers */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
@@ -384,6 +387,9 @@ static int gp_layer_move_exec(bContext *C, wmOperator *op)
 
   BLI_assert(ELEM(direction, -1, 0, 1)); /* we use value below */
   if (BLI_listbase_link_move(&gpd->layers, gpl, direction)) {
+    /* Reorder masking. */
+    BKE_gpencil_layer_mask_sort_all(gpd);
+
     DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
   }
@@ -1213,6 +1219,9 @@ static int gp_merge_layer_exec(bContext *C, wmOperator *op)
   /* Now delete next layer */
   BKE_gpencil_layer_delete(gpd, gpl_next);
   BLI_ghash_free(gh_frames_cur, NULL, NULL);
+
+  /* Reorder masking. */
+  BKE_gpencil_layer_mask_sort(gpd, gpl_current);
 
   /* notifiers */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
@@ -3350,6 +3359,9 @@ static int gp_layer_mask_add_exec(bContext *C, wmOperator *op)
 
   BKE_gpencil_layer_mask_add(gpl_active, name);
 
+  /* Reorder masking. */
+  BKE_gpencil_layer_mask_sort(gpd, gpl_active);
+
   /* notifiers */
   if (gpd) {
     DEG_id_tag_update(&gpd->id,
@@ -3398,6 +3410,9 @@ static int gp_layer_mask_remove_exec(bContext *C, wmOperator *op)
       }
     }
   }
+
+  /* Reorder masking. */
+  BKE_gpencil_layer_mask_sort(gpd, gpl);
 
   /* notifiers */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);

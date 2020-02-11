@@ -330,7 +330,9 @@ typedef struct bGPDlayer_Mask {
   struct bGPDlayer_Mask *next, *prev;
   char name[128];
   short flag;
-  char _pad[6];
+  /** Index for sorting. Only valid while sorting algorithm is running. */
+  short sort_index;
+  char _pad[4];
 } bGPDlayer_Mask;
 
 /* bGPDlayer_Mask->flag */
