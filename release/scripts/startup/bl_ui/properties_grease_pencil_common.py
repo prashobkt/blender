@@ -776,7 +776,7 @@ class GPENCIL_UL_masks(UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             row = layout.row(align=True)
             row.prop(mask, "name", text="", emboss=False, icon_value=icon)
-            icon_mask = 'HOLDOUT_ON' if mask.invert else 'MOD_MASK'
+            icon_mask = 'HOLDOUT_ON' if mask.invert else 'HOLDOUT_OFF'
             row.prop(mask, "invert", text="", emboss=False, icon=icon_mask)
             row.prop(mask, "hide", text="", emboss=False)
         elif self.layout_type == 'GRID':
