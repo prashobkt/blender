@@ -880,7 +880,8 @@ static void gpencil_draw_mask(GPENCIL_Data *vedata, GPENCIL_tObject *ob, GPENCIL
     DRW_draw_pass(mask_layer->geom_ps);
   }
 
-  if (inverted) {
+  if (!inverted) {
+    /* Blend shader expect an opacity mask not a reavealage buffer. */
     DRW_draw_pass(psl->mask_invert_ps);
   }
 
