@@ -194,6 +194,8 @@ void BKE_main_free(Main *mainvar)
     BKE_main_relations_free(mainvar);
   }
 
+  BKE_main_idmemset_release(mainvar);
+
   BLI_spin_end((SpinLock *)mainvar->lock);
   MEM_freeN(mainvar->lock);
   MEM_freeN(mainvar);
@@ -207,6 +209,54 @@ void BKE_main_lock(struct Main *bmain)
 void BKE_main_unlock(struct Main *bmain)
 {
   BLI_spin_unlock((SpinLock *)bmain->lock);
+}
+
+void BKE_main_idmemset_ensure(Main *bmain)
+{
+  if (bmain->used_id_memset == NULL || (bmain->used_id_memset_tag & MAIN_IDMEMSET_OWNER) == 0) {
+    bmain->used_id_memset = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
+    bmain->used_id_memset_tag |= MAIN_IDMEMSET_OWNER;
+  }
+}
+
+void BKE_main_idmemset_release(Main *bmain)
+{
+  if (bmain->used_id_memset != NULL) {
+    if ((bmain->used_id_memset_tag & MAIN_IDMEMSET_OWNER) != 0) {
+      BLI_gset_free(bmain->used_id_memset, NULL);
+    }
+    bmain->used_id_memset = NULL;
+    bmain->used_id_memset_tag &= ~MAIN_IDMEMSET_OWNER;
+  }
+}
+
+void BKE_main_idmemset_transfer_ownership(Main *bmain_dst, Main *bmain_src)
+{
+  BKE_main_idmemset_release(bmain_dst);
+
+  BLI_assert(bmain_src->used_id_memset != NULL);
+  BLI_assert(bmain_src->used_id_memset_tag & MAIN_IDMEMSET_OWNER);
+
+  bmain_dst->used_id_memset = bmain_src->used_id_memset;
+  bmain_dst->used_id_memset_tag |= MAIN_IDMEMSET_OWNER;
+  bmain_src->used_id_memset_tag &= ~MAIN_IDMEMSET_OWNER;
+}
+
+void BKE_main_idmemset_usefrom(Main *bmain_user, Main *bmain_src)
+{
+  BKE_main_idmemset_release(bmain_user);
+
+  BLI_assert(bmain_src->used_id_memset != NULL);
+  bmain_user->used_id_memset = bmain_src->used_id_memset;
+}
+
+/**
+ * @return true if the ID was successfully added to the memset, false if it already existed.
+ */
+bool BKE_main_idmemset_register_id(Main *bmain, ID *id)
+{
+  BLI_assert(bmain->used_id_memset != NULL);
+  return BLI_gset_add(bmain->used_id_memset, id);
 }
 
 static int main_relations_create_idlink_cb(void *user_data,

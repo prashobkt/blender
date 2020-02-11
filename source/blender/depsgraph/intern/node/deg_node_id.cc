@@ -136,7 +136,7 @@ void IDNode::init_copy_on_write(ID *id_cow_hint)
     }
   }
   else if (deg_copy_on_write_is_needed(id_orig)) {
-    id_cow = (ID *)BKE_libblock_alloc_notest(GS(id_orig->name));
+    id_cow = (ID *)BKE_libblock_alloc_notest(NULL, GS(id_orig->name));
     DEG_COW_PRINT(
         "Create shallow copy for %s: id_orig=%p id_cow=%p\n", id_orig->name, id_orig, id_cow);
     deg_tag_copy_on_write_id(id_cow, id_orig);

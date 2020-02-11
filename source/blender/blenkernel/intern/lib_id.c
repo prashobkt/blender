@@ -1204,12 +1204,22 @@ size_t BKE_libblock_get_alloc_info(short type, const char **name)
  * Allocates and returns memory of the right size for the specified block type,
  * initialized to zero.
  */
-void *BKE_libblock_alloc_notest(short type)
+void *BKE_libblock_alloc_notest(Main *bmain, short type)
 {
   const char *name;
   size_t size = BKE_libblock_get_alloc_info(type, &name);
   if (size != 0) {
-    return MEM_callocN(size, name);
+    ID *id_mem = MEM_callocN(size, name);
+    if (bmain != NULL && bmain->used_id_memset != NULL) {
+      ListBase generated_ids = {.first = NULL};
+      while (UNLIKELY(!BKE_main_idmemset_register_id(bmain, id_mem))) {
+        printf("Allocating ID re-used memory address %p, trying again...", id_mem);
+        BLI_addtail(&generated_ids, id_mem);
+        id_mem = MEM_callocN(size, name);
+      }
+      BLI_freelistN(&generated_ids);
+    }
+    return id_mem;
   }
   BLI_assert(!"Request to allocate unknown data type");
   return NULL;
@@ -1225,7 +1235,7 @@ void *BKE_libblock_alloc(Main *bmain, short type, const char *name, const int fl
 {
   BLI_assert((flag & LIB_ID_CREATE_NO_ALLOCATE) == 0);
 
-  ID *id = BKE_libblock_alloc_notest(type);
+  ID *id = BKE_libblock_alloc_notest(bmain, type);
 
   if (id) {
     if ((flag & LIB_ID_CREATE_NO_MAIN) != 0) {

@@ -127,6 +127,7 @@ void BKE_blender_globals_init(void)
   U.savetime = 1;
 
   G_MAIN = BKE_main_new();
+  BKE_main_idmemset_ensure(G_MAIN);
 
   strcpy(G.ima, "//");
 
