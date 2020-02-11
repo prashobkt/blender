@@ -51,7 +51,7 @@ static struct GPUTextureGlobal {
 } GG = {NULL, NULL, NULL};
 
 /* Maximum number of FBOs a texture can be attached to. */
-#define GPU_TEX_MAX_FBO_ATTACHED 10
+#define GPU_TEX_MAX_FBO_ATTACHED 12
 
 typedef enum eGPUTextureFormatFlag {
   GPU_FORMAT_DEPTH = (1 << 0),
