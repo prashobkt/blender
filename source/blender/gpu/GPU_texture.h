@@ -100,6 +100,7 @@ typedef enum eGPUTextureFormat {
   GPU_R11F_G11F_B10F,
   GPU_DEPTH32F_STENCIL8,
   GPU_DEPTH24_STENCIL8,
+  GPU_SRGB8_A8,
 
   /* Texture only format */
   GPU_RGB16F,
