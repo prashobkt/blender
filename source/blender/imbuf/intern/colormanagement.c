@@ -105,8 +105,8 @@ typedef struct ColormanageProcessor {
 
 static struct global_glsl_state {
   /* Actual processor used for GLSL baked LUTs. */
-  OCIO_ConstProcessorRcPtr *processor;
-  OCIO_ConstProcessorRcPtr *processor_display;
+  OCIO_ConstProcessorRcPtr *processor_scene_to_ui;
+  OCIO_ConstProcessorRcPtr *processor_ui_to_display;
 
   /* Settings of processor for comparison. */
   char look[MAX_COLORSPACE_NAME];
@@ -711,12 +711,12 @@ void colormanagement_init(void)
 
 void colormanagement_exit(void)
 {
-  if (global_glsl_state.processor) {
-    OCIO_processorRelease(global_glsl_state.processor);
+  if (global_glsl_state.processor_scene_to_ui) {
+    OCIO_processorRelease(global_glsl_state.processor_scene_to_ui);
   }
 
-  if (global_glsl_state.processor_display) {
-    OCIO_processorRelease(global_glsl_state.processor_display);
+  if (global_glsl_state.processor_ui_to_display) {
+    OCIO_processorRelease(global_glsl_state.processor_ui_to_display);
   }
 
   if (global_glsl_state.curve_mapping) {
@@ -3967,7 +3967,7 @@ static void update_glsl_display_processor(const ColorManagedViewSettings *view_s
   bool use_curve_mapping = (view_settings->flag & COLORMANAGE_VIEW_USE_CURVES) != 0;
   bool need_update = false;
 
-  need_update = global_glsl_state.processor == NULL ||
+  need_update = global_glsl_state.processor_scene_to_ui == NULL ||
                 check_glsl_display_processor_changed(
                     view_settings, display_settings, from_colorspace) ||
                 use_curve_mapping != global_glsl_state.use_curve_mapping;
@@ -4022,24 +4022,25 @@ static void update_glsl_display_processor(const ColorManagedViewSettings *view_s
     }
 
     /* Free old processor, if any. */
-    if (global_glsl_state.processor) {
-      OCIO_processorRelease(global_glsl_state.processor);
+    if (global_glsl_state.processor_scene_to_ui) {
+      OCIO_processorRelease(global_glsl_state.processor_scene_to_ui);
     }
 
-    if (global_glsl_state.processor_display) {
-      OCIO_processorRelease(global_glsl_state.processor_display);
+    if (global_glsl_state.processor_ui_to_display) {
+      OCIO_processorRelease(global_glsl_state.processor_ui_to_display);
     }
 
     /* We're using display OCIO processor, no RGB curves yet. */
-    global_glsl_state.processor = create_display_buffer_processor(global_glsl_state.look,
-                                                                  global_glsl_state.view,
-                                                                  global_glsl_state.display,
-                                                                  global_glsl_state.exposure,
-                                                                  global_glsl_state.gamma,
-                                                                  global_glsl_state.input,
-                                                                  true);
+    global_glsl_state.processor_scene_to_ui = create_display_buffer_processor(
+        global_glsl_state.look,
+        global_glsl_state.view,
+        global_glsl_state.display,
+        global_glsl_state.exposure,
+        global_glsl_state.gamma,
+        global_glsl_state.input,
+        true);
 
-    global_glsl_state.processor_display = create_display_encoded_buffer_processor(
+    global_glsl_state.processor_ui_to_display = create_display_encoded_buffer_processor(
         global_glsl_state.display);
   }
 }
@@ -4089,7 +4090,7 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
                                 from_colorspace ? from_colorspace->name :
                                                   global_role_scene_linear);
 
-  if (global_glsl_state.processor == NULL) {
+  if (global_glsl_state.processor_scene_to_ui == NULL) {
     /* Happens when requesting non-existing color space or LUT in the
      * configuration file does not exist.
      */
@@ -4098,8 +4099,8 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
 
   return OCIO_setupGLSLDraw(
       &global_glsl_state.ocio_glsl_state,
-      global_glsl_state.processor,
-      global_glsl_state.processor_display,
+      global_glsl_state.processor_scene_to_ui,
+      global_glsl_state.processor_ui_to_display,
       global_glsl_state.use_curve_mapping ? &global_glsl_state.curve_mapping_settings : NULL,
       dither,
       predivide,

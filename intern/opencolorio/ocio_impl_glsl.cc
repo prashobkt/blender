@@ -206,9 +206,9 @@ static void updateGLSLShader(OCIO_GLSLShader *shader,
                              ConstProcessorRcPtr *ocio_processor,
                              ConstProcessorRcPtr *ocio_processor_display,
                              GpuShaderDesc *shader_desc,
-                             std::string *cache_id)
+                             const std::string &cache_id)
 {
-  if (shader->cacheId == *cache_id) {
+  if (shader->cacheId == cache_id) {
     return;
   }
 
@@ -278,7 +278,7 @@ static void updateGLSLShader(OCIO_GLSLShader *shader,
     shader->interface = GPU_shaderinterface_create(shader->program);
   }
 
-  shader->cacheId = *cache_id;
+  shader->cacheId = cache_id;
   shader->valid = (shader->program != 0);
 }
 
@@ -286,7 +286,7 @@ static void ensureGLSLShader(OCIO_GLSLShader **shader_ptr,
                              ConstProcessorRcPtr *ocio_processor,
                              ConstProcessorRcPtr *ocio_processor_display,
                              GpuShaderDesc *shader_desc,
-                             std::string *cache_id)
+                             const std::string &cache_id)
 {
   if (*shader_ptr != NULL) {
     return;
@@ -322,9 +322,9 @@ static void updateGLSLLut3d(OCIO_GLSLLut3d *lut3d,
                             ConstProcessorRcPtr *ocio_processor,
                             ConstProcessorRcPtr *ocio_processor_display,
                             GpuShaderDesc *shader_desc,
-                            std::string *cache_id)
+                            const std::string &cache_id)
 {
-  if (lut3d->cacheId == *cache_id)
+  if (lut3d->cacheId == cache_id)
     return;
 
   float *lut_data = (float *)MEM_mallocN(LUT3D_TEXTURE_SIZE, __func__);
@@ -355,14 +355,14 @@ static void updateGLSLLut3d(OCIO_GLSLLut3d *lut3d,
 
   MEM_freeN(lut_data);
 
-  lut3d->cacheId = *cache_id;
+  lut3d->cacheId = cache_id;
 }
 
 static void ensureGLSLLut3d(OCIO_GLSLLut3d **lut3d_ptr,
                             ConstProcessorRcPtr *ocio_processor,
                             ConstProcessorRcPtr *ocio_processor_display,
                             GpuShaderDesc *shaderDesc,
-                            std::string *cache_id)
+                            const std::string &cache_id)
 {
   if (*lut3d_ptr != NULL) {
     return;
@@ -636,18 +636,16 @@ bool OCIOImpl::setupGLSLDraw(OCIO_GLSLDrawState **state_r,
   OCIO_GLSLCurveMappping **curvemap_ptr = (OCIO_GLSLCurveMappping **)&curvemap_handle->data;
 
   ensureGLSLShader(
-      shader_ptr, &ocio_processor, &ocio_processor_display, &shaderDesc, &shaderCacheID);
-  ensureGLSLLut3d(
-      lut3d_ptr, &ocio_processor, &ocio_processor_display, &shaderDesc, &shaderCacheID);
+      shader_ptr, &ocio_processor, &ocio_processor_display, &shaderDesc, shaderCacheID);
+  ensureGLSLLut3d(lut3d_ptr, &ocio_processor, &ocio_processor_display, &shaderDesc, shaderCacheID);
   ensureGLSLCurveMapping(curvemap_ptr, curve_mapping_settings);
 
   OCIO_GLSLShader *shader = (OCIO_GLSLShader *)shader_handle->data;
   OCIO_GLSLLut3d *shader_lut = (OCIO_GLSLLut3d *)lut3d_handle->data;
   OCIO_GLSLCurveMappping *shader_curvemap = (OCIO_GLSLCurveMappping *)curvemap_handle->data;
 
-  updateGLSLShader(shader, &ocio_processor, &ocio_processor_display, &shaderDesc, &shaderCacheID);
-  updateGLSLLut3d(
-      shader_lut, &ocio_processor, &ocio_processor_display, &shaderDesc, &lut3dCacheID);
+  updateGLSLShader(shader, &ocio_processor, &ocio_processor_display, &shaderDesc, shaderCacheID);
+  updateGLSLLut3d(shader_lut, &ocio_processor, &ocio_processor_display, &shaderDesc, lut3dCacheID);
   updateGLSLCurveMapping(shader_curvemap, curve_mapping_settings, curvemap_cache_id);
 
   /* Update handles cache keys. */
