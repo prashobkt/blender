@@ -695,8 +695,8 @@ bool FallbackImpl::supportGLSLDraw(void)
 }
 
 bool FallbackImpl::setupGLSLDraw(struct OCIO_GLSLDrawState ** /*state_r*/,
-                                 OCIO_ConstProcessorRcPtr * /*processor*/,
-                                 OCIO_ConstProcessorRcPtr * /*processor_display*/,
+                                 OCIO_ConstProcessorRcPtr * /*ocio_processor_scene_to_ui*/,
+                                 OCIO_ConstProcessorRcPtr * /*ocio_processor_ui_to_display*/,
                                  OCIO_CurveMappingSettings * /*curve_mapping_settings*/,
                                  float /*dither*/,
                                  bool /*predivide*/,
