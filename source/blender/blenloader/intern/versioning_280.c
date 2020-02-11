@@ -4206,34 +4206,25 @@ void blo_do_versions_280(FileData* fd, Library* UNUSED(lib), Main* bmain)
 								do_versions_remove_region(regionbase, ar_next);
 							}
 
-							BLI_remlink(regionbase, ar_tools);
-							BLI_insertlinkafter(regionbase, ar_header, ar_tools);
-						}
-						else {
-							ar_tools = do_versions_add_region(RGN_TYPE_TOOLS, "versioning file tools region");
-							BLI_insertlinkafter(regionbase, ar_header, ar_tools);
-							ar_tools->alignment = RGN_ALIGN_LEFT;
-						}
-					}
-				}
-			}
-		}
+              BLI_remlink(regionbase, ar_tools);
+              BLI_insertlinkafter(regionbase, ar_header, ar_tools);
+            }
+            else {
+              ar_tools = do_versions_add_region(RGN_TYPE_TOOLS, "versioning file tools region");
+              BLI_insertlinkafter(regionbase, ar_header, ar_tools);
+              ar_tools->alignment = RGN_ALIGN_LEFT;
+            }
+          }
+        }
+      }
+    }
 
-		{
-			/* Initialize new grease pencil uv scale parameter. */
-			if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "float", "uv_scale")) {
-				for (bGPdata* gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-					LISTBASE_FOREACH(bGPDlayer*, gpl, &gpd->layers) {
-						LISTBASE_FOREACH(bGPDframe*, gpf, &gpl->frames) {
-							LISTBASE_FOREACH(bGPDstroke*, gps, &gpf->strokes) {
-								gps->uv_scale = 1.0f;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+    for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->ob_mode & OB_MODE_SCULPT && br->area_radius_factor == 0.0f) {
+        br->area_radius_factor = 0.5f;
+      }
+    }
+  }
 
 	if (!MAIN_VERSION_ATLEAST(bmain, 282, 2)) {
 		do_version_curvemapping_walker(bmain, do_version_curvemapping_flag_extend_extrapolate);
@@ -4582,17 +4573,32 @@ void blo_do_versions_280(FileData* fd, Library* UNUSED(lib), Main* bmain)
 			}
 		}
 
-		/* Brush cursor alpha */
-		for (Brush* br = bmain->brushes.first; br; br = br->id.next) {
-			br->add_col[3] = 0.9f;
-			br->sub_col[3] = 0.9f;
-		}
+    for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+      br->add_col[3] = 0.9f;
+      br->sub_col[3] = 0.9f;
+    }
 
-		/* Pose brush IK segments. */
-		for (Brush* br = bmain->brushes.first; br; br = br->id.next) {
-			if (br->pose_ik_segments == 0) {
-				br->pose_ik_segments = 1;
-			}
-		}
-	}
+    /* Pose brush IK segments. */
+    for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->pose_ik_segments == 0) {
+        br->pose_ik_segments = 1;
+      }
+    }
+
+    /* Pose brush keep anchor point. */
+    for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->sculpt_tool == SCULPT_TOOL_POSE) {
+        br->flag2 |= BRUSH_POSE_IK_ANCHORED;
+      }
+    }
+
+    /* Tip Roundness. */
+    if (!DNA_struct_elem_find(fd->filesdna, "Brush", "float", "tip_roundness")) {
+      for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+        if (br->ob_mode & OB_MODE_SCULPT && br->sculpt_tool == SCULPT_TOOL_CLAY_STRIPS) {
+          br->tip_roundness = 0.18f;
+        }
+      }
+    }
+  }
 }
