@@ -495,9 +495,6 @@ typedef struct bGPdata_Runtime {
   short layer_idx;
   /** Material index of the stroke. */
   short matid;
-  /** Brush size of stroke. */
-  float brush_size;
-  char _pad1[2];
 
   /* Stroke Buffer data (only used during paint-session)
    * - buffer must be initialized before use, but freed after
@@ -505,6 +502,7 @@ typedef struct bGPdata_Runtime {
    */
   /** Flags for stroke that cache represents. */
   short sbuffer_sflag;
+  char _pad1[2];
   /** Number of elements currently used in cache. */
   int sbuffer_used;
   /** Number of total elements available in cache. */
@@ -518,9 +516,11 @@ typedef struct bGPdata_Runtime {
 
   /** Number of control-points for stroke. */
   int tot_cp_points;
+  char _pad2[4];
   /** Array of control-points for stroke. */
   bGPDcontrolpoint *cp_points;
-  /** Runtime grease pencil drawing data */
+  /** Brush pointer */
+  Brush *sbuffer_brush;
   struct GpencilBatchCache *gpencil_cache;
 } bGPdata_Runtime;
 

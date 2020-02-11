@@ -18,7 +18,7 @@ vec3 ray_plane_intersection(vec3 ray_ori, vec3 ray_dir, vec4 plane)
 void main()
 {
 #ifdef USE_GPENCIL
-  if (stroke_round_cap_mask(strokePt1, strokePt2, strokeThickness) < 0.001) {
+  if (stroke_round_cap_mask(strokePt1, strokePt2, strokeThickness, strokeHardeness) < 0.001) {
     discard;
   }
 

@@ -1772,7 +1772,7 @@ static void gp_init_colors(tGPsdata *p)
   p->material = BKE_gpencil_object_material_ensure_from_active_input_brush(p->bmain, p->ob, brush);
 
   gpd->runtime.matid = BKE_object_material_slot_find_index(p->ob, p->material);
-  gpd->runtime.brush_size = brush->size;
+  gpd->runtime.sbuffer_brush = brush;
 }
 
 /* (re)init new painting data */

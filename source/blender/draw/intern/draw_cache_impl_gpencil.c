@@ -182,6 +182,8 @@ typedef struct gpStrokeVert {
   /** Position and thickness packed in the same attribute. */
   float pos[3], thickness;
   float uv_fill[2], u_stroke, v_rot;
+  /** Aspect ratio and hardnes. */
+  float aspect_ratio, hardness;
 } gpStrokeVert;
 
 static GPUVertFormat *gpencil_stroke_format(void)
@@ -191,6 +193,7 @@ static GPUVertFormat *gpencil_stroke_format(void)
     GPU_vertformat_attr_add(&format, "ma", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "hard", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     /* IMPORTANT: This means having only 4 attributes to fit into GPU module limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
   }
@@ -289,6 +292,9 @@ static void gpencil_buffer_add_point(gpStrokeVert *verts,
   vert->thickness = max_ff(0.0f, gps->thickness * pt->pressure) * (round_cap1 ? 1.0 : -1.0);
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   vert->mat = (is_endpoint) ? -1 : (gps->mat_nr % GP_MATERIAL_BUFFER_LEN);
+
+  vert->aspect_ratio = gps->gradient_s[0] / max_ff(gps->gradient_s[1], 1e-8);
+  vert->hardness = gps->gradient_f;
 }
 
 static void gpencil_buffer_add_stroke(gpStrokeVert *verts,
@@ -483,13 +489,17 @@ GPUBatch *DRW_cache_gpencil_face_wireframe_get(Object *ob)
 bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
+  Brush *brush = gpd->runtime.sbuffer_brush;
   /* Convert the sbuffer to a bGPDstroke. */
   if (gpd->runtime.sbuffer_gps == NULL) {
     bGPDstroke *gps = MEM_callocN(sizeof(*gps), "bGPDstroke sbuffer");
     gps->totpoints = gpd->runtime.sbuffer_used;
     gps->mat_nr = max_ii(0, gpd->runtime.matid - 1);
     gps->flag = gpd->runtime.sbuffer_sflag;
-    gps->thickness = gpd->runtime.brush_size;
+    gps->thickness = brush->size;
+    gps->gradient_f = brush->gpencil_settings->gradient_f;
+    copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
+
     /* Reduce slightly the opacity of fill to make easy fill areas while drawing. */
     gps->fill_opacity_fac = 0.8f;
 

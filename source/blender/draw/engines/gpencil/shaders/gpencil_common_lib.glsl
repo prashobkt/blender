@@ -151,10 +151,13 @@ flat IN_OUT vec2 strokePt1;
 flat IN_OUT vec2 strokePt2;
 flat IN_OUT int matFlag;
 flat IN_OUT float depth;
+noperspective IN_OUT float strokeHardeness;
 
 #ifdef GPU_FRAGMENT_SHADER
 
-float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness)
+#  define linearstep(p0, p1, v) (clamp(((v) - (p0)) / abs((p1) - (p0)), 0.0, 1.0))
+
+float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness, float hardfac)
 {
   /* We create our own uv space to avoid issues with triangulation and linear
    * interpolation artifacts. */
@@ -171,7 +174,11 @@ float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness)
   /* Divide by stroke radius. */
   uv_end /= thickness;
 
-  return (dot(uv_end, uv_end) > 0.25) ? 0.0 : 1.0;
+  float dist = clamp(1.0 - length(uv_end) * 2.0, 0.0, 1.0);
+  /* Modulate the falloff profile */
+  float hardness = 1.0 - hardfac;
+  dist = pow(dist, mix(0.1, 10.0, hardness));
+  return smoothstep(0.0, 1.0, dist);
 }
 
 #endif
@@ -220,6 +227,11 @@ in vec4 col1;
 in vec4 col2;
 
 in vec4 fcol1;
+
+in vec2 hard;
+in vec2 hard1;
+in vec2 hard2;
+in vec2 hard3;
 
 void discard_vert()
 {
@@ -372,6 +384,7 @@ void stroke_vertex()
   thickness = stroke_thickness_modulate(thickness);
 
   finalUvs = vec2(x, y) * 0.5 + 0.5;
+  strokeHardeness = (use_curr) ? hard1.y : hard2.y;
 
   if (is_dot) {
 #  ifdef GP_MATERIAL_BUFFER_LEN

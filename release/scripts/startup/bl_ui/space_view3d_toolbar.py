@@ -1491,10 +1491,10 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
                     ma = brush.gpencil_settings.material
 
                 col.separator()
+                col.prop(gp_settings, "gradient_factor", slider=True)
                 subcol = col.column(align=True)
                 if ma and ma.grease_pencil.mode == 'LINE':
                     subcol.enabled = False
-                subcol.prop(gp_settings, "gradient_factor", slider=True)
                 subcol.prop(gp_settings, "gradient_shape")
 
             elif brush.gpencil_tool == 'FILL':
