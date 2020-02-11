@@ -1845,7 +1845,9 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "draw_mode");
   RNA_def_property_enum_items(prop, rna_enum_gpencil_stroke_depth_order_items);
   RNA_def_property_ui_text(
-      prop, "Stroke Depth Order", "Defines how the strokes are ordered in 3D space");
+      prop,
+      "Stroke Depth Order",
+      "Defines how the strokes are ordered in 3D space (for objects not displayed 'In Front')");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   /* Flags */
