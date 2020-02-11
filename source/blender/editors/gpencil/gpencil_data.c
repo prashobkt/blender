@@ -3329,6 +3329,11 @@ static int gp_layer_mask_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  if (gpl_active->act_mask == 256) {
+    BKE_report(op->reports, RPT_ERROR, "Maximum number of masking layers reached");
+    return OPERATOR_CANCELLED;
+  }
+
   bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
   BLI_addtail(&gpl_active->mask_layers, mask);
   BLI_strncpy(mask->name, name, sizeof(mask->name));
