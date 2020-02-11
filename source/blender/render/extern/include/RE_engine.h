@@ -26,8 +26,8 @@
 
 #include "DNA_listBase.h"
 #include "DNA_scene_types.h"
-#include "RNA_types.h"
 #include "RE_bake.h"
+#include "RNA_types.h"
 
 #include "BLI_threads.h"
 

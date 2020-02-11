@@ -23,6 +23,8 @@
  * \ingroup bke
  */
 
+#include "DNA_scene_types.h"
+
 struct BezTriple;
 struct Curve;
 struct Depsgraph;

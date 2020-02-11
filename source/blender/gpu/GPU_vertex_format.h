@@ -26,9 +26,9 @@
 #ifndef __GPU_VERTEX_FORMAT_H__
 #define __GPU_VERTEX_FORMAT_H__
 
-#include "GPU_common.h"
-#include "BLI_compiler_compat.h"
 #include "BLI_assert.h"
+#include "BLI_compiler_compat.h"
+#include "GPU_common.h"
 
 #define GPU_VERT_ATTR_MAX_LEN 16
 #define GPU_VERT_ATTR_MAX_NAMES 6

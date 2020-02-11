@@ -28,8 +28,8 @@
 #include "BLI_dynstr.h"
 #include "BLI_hash.h"
 
-#include "DNA_node_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_node_types.h"
 
 #include "ED_uvedit.h"
 

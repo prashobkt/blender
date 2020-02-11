@@ -18,19 +18,19 @@
  * \ingroup spinfo
  */
 
+#include <assert.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <limits.h>
-#include <assert.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLF_api.h"
 
 #include "BLI_math.h"
-#include "BLI_utildefines.h"
 #include "BLI_string_utf8.h"
+#include "BLI_utildefines.h"
 
 #include "GPU_immediate.h"
 #include "GPU_state.h"

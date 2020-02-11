@@ -32,8 +32,8 @@
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 
-#include "DNA_image_types.h"
 #include "DNA_fluid_types.h"
+#include "DNA_image_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"

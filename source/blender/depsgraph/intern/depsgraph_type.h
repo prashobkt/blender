@@ -33,12 +33,12 @@
 
 /* TODO(sergey): Ideally we'll just use char* and statically allocated strings
  * to avoid any possible overhead caused by string (re)allocation/formatting. */
-#include <string>
-#include <vector>
 #include <algorithm>
 #include <map>
 #include <set>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 struct Depsgraph;
 

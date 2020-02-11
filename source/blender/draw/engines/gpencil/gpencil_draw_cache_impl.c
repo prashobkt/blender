@@ -21,11 +21,11 @@
  * \ingroup draw
  */
 
-#include "BLI_polyfill_2d.h"
 #include "BLI_math_color.h"
+#include "BLI_polyfill_2d.h"
 
-#include "DNA_meshdata_types.h"
 #include "DNA_gpencil_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 

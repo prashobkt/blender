@@ -24,8 +24,8 @@
 
 #include "BLI_rand.h"
 
-#include "BKE_object.h"
 #include "BKE_global.h" /* for G.debug_value */
+#include "BKE_object.h"
 
 #include "DEG_depsgraph_query.h"
 

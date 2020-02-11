@@ -21,8 +21,8 @@
  * \ingroup bke
  */
 
-#include <stdio.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
 
 #ifndef WIN32
@@ -30,11 +30,11 @@
 #else
 #  include <io.h>
 #endif
-#include <string.h>
 #include "MEM_guardedalloc.h"
+#include <string.h>
 
-#include "DNA_image_types.h"
 #include "DNA_ID.h"
+#include "DNA_image_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_vfont_types.h"

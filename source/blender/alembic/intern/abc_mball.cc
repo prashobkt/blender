@@ -25,8 +25,8 @@
 #include "MEM_guardedalloc.h"
 
 extern "C" {
-#include "DNA_meta_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_meta_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_curve.h"
