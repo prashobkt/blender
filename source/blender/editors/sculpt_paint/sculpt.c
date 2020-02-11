@@ -50,7 +50,7 @@
 #include "BKE_image.h"
 #include "BKE_kelvinlet.h"
 #include "BKE_key.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
@@ -291,7 +291,7 @@ static void sculpt_vertex_neighbors_get_faces(SculptSession *ss,
 
   for (i = 0; i < ss->pmap[(int)index].count; i++) {
     const MPoly *p = &ss->mpoly[vert_map->indices[i]];
-    unsigned f_adj_v[2];
+    uint f_adj_v[2];
     if (poly_get_adj_loops_from_vert(p, ss->mloop, (int)index, f_adj_v) != -1) {
       int j;
       for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
@@ -2203,7 +2203,7 @@ static void update_brush_local_mat(Sculpt *sd, Object *ob)
 /* For the smooth brush, uses the neighboring vertices around vert to calculate
  * a smoothed location for vert. Skips corner vertices (used by only one
  * polygon.) */
-static void neighbor_average(SculptSession *ss, float avg[3], unsigned vert)
+static void neighbor_average(SculptSession *ss, float avg[3], uint vert)
 {
   const MeshElemMap *vert_map = &ss->pmap[vert];
   const MVert *mvert = ss->mvert;
@@ -2217,7 +2217,7 @@ static void neighbor_average(SculptSession *ss, float avg[3], unsigned vert)
 
     for (i = 0; i < vert_map->count; i++) {
       const MPoly *p = &ss->mpoly[vert_map->indices[i]];
-      unsigned f_adj_v[2];
+      uint f_adj_v[2];
 
       if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
         int j;
@@ -2243,7 +2243,7 @@ static void neighbor_average(SculptSession *ss, float avg[3], unsigned vert)
 /* Similar to neighbor_average(), but returns an averaged mask value
  * instead of coordinate. Also does not restrict based on border or
  * corner vertices. */
-static float neighbor_average_mask(SculptSession *ss, unsigned vert)
+static float neighbor_average_mask(SculptSession *ss, uint vert)
 {
   const float *vmask = ss->vmask;
   float avg = 0;
@@ -2251,7 +2251,7 @@ static float neighbor_average_mask(SculptSession *ss, unsigned vert)
 
   for (i = 0; i < ss->pmap[vert].count; i++) {
     const MPoly *p = &ss->mpoly[ss->pmap[vert].indices[i]];
-    unsigned f_adj_v[2];
+    uint f_adj_v[2];
 
     if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
       int j;
@@ -7537,7 +7537,9 @@ static void sculpt_flush_update_step(bContext *C, SculptUpdateType update_flags)
     ED_region_tag_redraw(ar);
   }
   else {
-    /* Fast path where we just update the BVH nodes that changed. */
+    /* Fast path where we just update the BVH nodes that changed, and redraw
+     * only the part of the 3D viewport where changes happened. */
+    rcti r;
 
     if (update_flags & SCULPT_UPDATE_COORDS) {
       BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB);
@@ -7547,7 +7549,21 @@ static void sculpt_flush_update_step(bContext *C, SculptUpdateType update_flags)
       sculpt_update_object_bounding_box(ob);
     }
 
-    ED_region_tag_redraw(ar);
+    if (sculpt_get_redraw_rect(ar, CTX_wm_region_view3d(C), ob, &r)) {
+      if (ss->cache) {
+        ss->cache->current_r = r;
+      }
+
+      /* previous is not set in the current cache else
+       * the partial rect will always grow */
+      sculpt_extend_redraw_rect_previous(ob, &r);
+
+      r.xmin += ar->winrct.xmin - 2;
+      r.xmax += ar->winrct.xmin + 2;
+      r.ymin += ar->winrct.ymin - 2;
+      r.ymax += ar->winrct.ymin + 2;
+      ED_region_tag_redraw_partial(ar, &r, true);
+    }
   }
 }
 
