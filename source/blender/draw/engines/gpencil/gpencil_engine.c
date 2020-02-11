@@ -275,7 +275,6 @@ void GPENCIL_cache_init(void *ved)
     grp = DRW_shgroup_create(sh, psl->composite_ps);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_tx);
-    DRW_shgroup_uniform_bool_copy(grp, "doSrgb", txl->render_depth_tx == NULL);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
   {
