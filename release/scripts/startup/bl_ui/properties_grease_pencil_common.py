@@ -769,18 +769,22 @@ class GreasePencilLayerAdjustmentsPanel:
         col = layout.row(align=True)
         col.prop(gpl, "lock_material")
 
+
 class GPENCIL_UL_masks(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         mask = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
+            row = layout.row(align=True)
+            row.prop(mask, "name", text="", emboss=False, icon_value=icon)
+            icon_mask = 'HOLDOUT_ON' if mask.invert else 'MOD_MASK'
+            row.prop(mask, "invert", text="", emboss=False, icon=icon_mask)
+            row.prop(mask, "hide", text="", emboss=False)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
 
 
 class GreasePencilLayerMasksPanel:
-
     def draw_header(self, context):
         ob = context.active_object
         gpd = ob.data
@@ -805,13 +809,12 @@ class GreasePencilLayerMasksPanel:
             rows = 4
             row = layout.row()
             col = row.column()
-            col.template_list("GPENCIL_UL_masks", "", gpl, "mask_layers", gpl.mask_layers, "active_mask_index", rows=rows)
+            col.template_list("GPENCIL_UL_masks", "", gpl, "mask_layers", gpl.mask_layers,
+                            "active_mask_index", rows=rows, sort_lock=True)
 
             col2 = row.column(align=True)
             col2.operator("gpencil.layer_mask_remove", icon='REMOVE', text="")
 
-            row = layout.row()
-            row.prop(gpl, "invert_mask")
 
 class GreasePencilLayerRelationsPanel:
 

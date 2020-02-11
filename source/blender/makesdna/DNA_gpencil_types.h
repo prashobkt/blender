@@ -329,7 +329,17 @@ typedef enum eGPDframe_Flag {
 typedef struct bGPDlayer_Mask {
   struct bGPDlayer_Mask *next, *prev;
   char name[128];
+  short flag;
+  char _pad[6];
 } bGPDlayer_Mask;
+
+/* bGPDlayer_Mask->flag */
+typedef enum ebGPDlayer_Mask_Flag {
+  /* Mask is hidden. */
+  GP_MASK_HIDE = (1 << 0),
+  /* Mask is inverted. */
+  GP_MASK_INVERT = (1 << 1),
+} ebGPDlayer_Mask_Flag;
 
 /* Runtime temp data for bGPDlayer */
 typedef struct bGPDlayer_Runtime {
