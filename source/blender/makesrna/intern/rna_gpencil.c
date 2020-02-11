@@ -404,18 +404,6 @@ static void rna_GPencil_active_layer_set(PointerRNA *ptr,
   }
 }
 
-static int rna_GPencil_active_layer_dummy_get(PointerRNA *ptr)
-{
-  bGPdata *gpd = (bGPdata *)ptr->owner_id;
-  return gpd->runtime.layer_idx;
-}
-
-static void rna_GPencil_active_layer_dummy_set(PointerRNA *ptr, int value)
-{
-  bGPdata *gpd = (bGPdata *)ptr->owner_id;
-  gpd->runtime.layer_idx = value;
-}
-
 static int rna_GPencil_active_layer_index_get(PointerRNA *ptr)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
@@ -1839,15 +1827,6 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "GPencilLayer");
   RNA_def_property_ui_text(prop, "Layers", "");
   rna_def_gpencil_layers_api(brna, prop);
-
-  prop = RNA_def_property(srna, "layer_list", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_funcs(prop,
-                              "rna_GPencil_active_layer_dummy_get",
-                              "rna_GPencil_active_layer_dummy_set",
-                              "rna_GPencil_active_layer_itemf");
-  RNA_def_property_enum_items(
-      prop, DummyRNA_DEFAULT_items); /* purely dynamic, as it maps to user-data */
-  RNA_def_property_ui_text(prop, "Layer List", "List of Layers");
 
   /* Animation Data */
   rna_def_animdata_common(srna);

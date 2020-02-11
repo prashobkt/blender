@@ -784,6 +784,24 @@ class GPENCIL_UL_masks(UIList):
             layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
 
 
+class GPENCIL_MT_layer_mask_menu(Menu):
+    bl_label = "Layer Specials"
+
+    def draw(self, context):
+        layout = self.layout
+        ob = context.object
+        gpd = ob.data
+        gpl_active = gpd.layers.active
+        done = False
+        for gpl in gpd.layers:
+            if gpl != gpl_active and gpl.info not in gpl_active.mask_layers:
+                done = True
+                layout.operator("gpencil.layer_mask_add", text=gpl.info).name=gpl.info
+
+        if done is False:
+            layout.label(text="No layers to add")
+
+
 class GreasePencilLayerMasksPanel:
     def draw_header(self, context):
         ob = context.active_object
@@ -801,11 +819,6 @@ class GreasePencilLayerMasksPanel:
         layout.enabled = gpl.use_mask_layer
 
         if gpl:
-            row = layout.row(align=True)
-            row.prop(gpd, "layer_list", text="Layer")
-            layer_name = gpd.layer_list
-            row.operator("gpencil.layer_mask_add", icon="ADD", text="").name=layer_name
-
             rows = 4
             row = layout.row()
             col = row.column()
@@ -813,6 +826,7 @@ class GreasePencilLayerMasksPanel:
                             "active_mask_index", rows=rows, sort_lock=True)
 
             col2 = row.column(align=True)
+            col2.menu("GPENCIL_MT_layer_mask_menu", icon='ADD', text="")
             col2.operator("gpencil.layer_mask_remove", icon='REMOVE', text="")
 
 
@@ -899,6 +913,7 @@ classes = (
     GPENCIL_MT_move_to_layer,
 
     GPENCIL_MT_gpencil_draw_delete,
+    GPENCIL_MT_layer_mask_menu,
 
     GPENCIL_UL_annotation_layer,
     GPENCIL_UL_layer,
