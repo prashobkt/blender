@@ -105,6 +105,10 @@ typedef struct ColormanageProcessor {
 
 static struct global_glsl_state {
   /* Actual processor used for GLSL baked LUTs. */
+  /* UI colorspace here refers to the display linear color space,
+   * i.e: The linear color space w.r.t. display chromaticity and radiometry.
+   * We separate the colormanagement process into two steps to be able to
+   * merge UI using alpha blending in the correct color space. */
   OCIO_ConstProcessorRcPtr *processor_scene_to_ui;
   OCIO_ConstProcessorRcPtr *processor_ui_to_display;
 
