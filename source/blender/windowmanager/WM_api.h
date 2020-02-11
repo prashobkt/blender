@@ -205,11 +205,6 @@ void WM_paint_cursor_tag_redraw(struct wmWindow *win, struct ARegion *ar);
 
 void WM_cursor_warp(struct wmWindow *win, int x, int y);
 void WM_cursor_compatible_xy(wmWindow *win, int *x, int *y);
-float WM_cursor_pressure(const struct wmWindow *win);
-
-/* event map */
-int WM_userdef_event_map(int kmitype);
-int WM_userdef_event_type_from_keymap_type(int kmitype);
 
 /* handlers */
 
@@ -228,6 +223,8 @@ struct wmEventHandler_Keymap *WM_event_add_keymap_handler_priority(ListBase *han
 typedef struct wmKeyMap *(wmEventHandler_KeymapDynamicFn)(
     wmWindowManager *wm, struct wmEventHandler_Keymap *handler)ATTR_WARN_UNUSED_RESULT;
 
+struct wmKeyMap *WM_event_get_keymap_from_toolsystem_fallback(
+    struct wmWindowManager *wm, struct wmEventHandler_Keymap *handler);
 struct wmKeyMap *WM_event_get_keymap_from_toolsystem(struct wmWindowManager *wm,
                                                      struct wmEventHandler_Keymap *handler);
 
@@ -247,6 +244,11 @@ wmKeyMap *WM_event_get_keymap_from_handler(wmWindowManager *wm,
 wmKeyMapItem *WM_event_match_keymap_item(struct bContext *C,
                                          wmKeyMap *keymap,
                                          const struct wmEvent *event);
+
+wmKeyMapItem *WM_event_match_keymap_item_from_handlers(struct bContext *C,
+                                                       struct wmWindowManager *wm,
+                                                       struct ListBase *handlers,
+                                                       const struct wmEvent *event);
 
 typedef int (*wmUIHandlerFunc)(struct bContext *C, const struct wmEvent *event, void *userdata);
 typedef void (*wmUIHandlerRemoveFunc)(struct bContext *C, void *userdata);
@@ -292,8 +294,6 @@ struct wmEventHandler_Dropbox *WM_event_add_dropbox_handler(ListBase *handlers,
 
 /* mouse */
 void WM_event_add_mousemove(const struct bContext *C);
-bool WM_event_is_modal_tweak_exit(const struct wmEvent *event, int tweak_event);
-bool WM_event_is_last_mousemove(const struct wmEvent *event);
 
 #ifdef WITH_INPUT_NDOF
 /* 3D mouse */
@@ -307,6 +307,7 @@ void WM_main_remap_editor_id_reference(struct ID *old_id, struct ID *new_id);
 
 /* reports */
 void WM_report_banner_show(void);
+void WM_report_banners_cancel(struct Main *bmain);
 void WM_report(ReportType type, const char *message);
 void WM_reportf(ReportType type, const char *format, ...) ATTR_PRINTF_FORMAT(2, 3);
 
@@ -623,19 +624,14 @@ void WM_gesture_straightline_cancel(struct bContext *C, struct wmOperator *op);
 struct wmGesture *WM_gesture_new(struct bContext *C, const struct wmEvent *event, int type);
 void WM_gesture_end(struct bContext *C, struct wmGesture *gesture);
 void WM_gestures_remove(struct bContext *C);
+void WM_gestures_free_all(struct wmWindow *win);
 bool WM_gesture_is_modal_first(const struct wmGesture *gesture);
 
 /* fileselecting support */
 void WM_event_add_fileselect(struct bContext *C, struct wmOperator *op);
 void WM_event_fileselect_event(struct wmWindowManager *wm, void *ophandle, int eventval);
-int WM_event_modifier_flag(const struct wmEvent *event);
-void WM_event_print(const struct wmEvent *event);
 
 void WM_operator_region_active_win_set(struct bContext *C);
-
-int WM_event_drag_threshold(const struct wmEvent *event);
-bool WM_event_drag_test(const struct wmEvent *event, const int prev_xy[2]);
-bool WM_event_drag_test_with_delta(const struct wmEvent *event, const int delta[2]);
 
 /* drag and drop */
 struct wmDrag *WM_event_start_drag(
@@ -675,8 +671,10 @@ enum {
   WM_JOB_PROGRESS = (1 << 2),
 };
 
-/** Identifying jobs by owner alone is unreliable, this isnt saved,
- * order can change (keep 0 for 'any'). */
+/**
+ * Identifying jobs by owner alone is unreliable, this isnt saved,
+ * order can change (keep 0 for 'any').
+ */
 enum {
   WM_JOB_TYPE_ANY = 0,
   WM_JOB_TYPE_COMPOSITE,
@@ -778,6 +776,36 @@ bool write_crash_blend(void);
 /* Lock the interface for any communication */
 void WM_set_locked_interface(struct wmWindowManager *wm, bool lock);
 
+/* For testing only 'G_FLAG_EVENT_SIMULATE' */
+struct wmEvent *WM_event_add_simulate(struct wmWindow *win, const struct wmEvent *event_to_add);
+
+const char *WM_window_cursor_keymap_status_get(const struct wmWindow *win,
+                                               int button_index,
+                                               int type_index);
+void WM_window_cursor_keymap_status_refresh(struct bContext *C, struct wmWindow *win);
+
+void WM_window_status_area_tag_redraw(struct wmWindow *win);
+struct ScrArea *WM_window_status_area_find(struct wmWindow *win, struct bScreen *sc);
+bool WM_window_modal_keymap_status_draw(struct bContext *C,
+                                        struct wmWindow *win,
+                                        struct uiLayout *layout);
+
+/* wm_event_query.c */
+void WM_event_print(const struct wmEvent *event);
+
+int WM_event_modifier_flag(const struct wmEvent *event);
+
+bool WM_event_is_modal_tweak_exit(const struct wmEvent *event, int tweak_event);
+bool WM_event_is_last_mousemove(const struct wmEvent *event);
+
+int WM_event_drag_threshold(const struct wmEvent *event);
+bool WM_event_drag_test(const struct wmEvent *event, const int prev_xy[2]);
+bool WM_event_drag_test_with_delta(const struct wmEvent *event, const int delta[2]);
+
+/* event map */
+int WM_userdef_event_map(int kmitype);
+int WM_userdef_event_type_from_keymap_type(int kmitype);
+
 #ifdef WITH_INPUT_NDOF
 void WM_event_ndof_pan_get(const struct wmNDOFMotionData *ndof,
                            float r_pan[3],
@@ -795,20 +823,6 @@ bool WM_event_is_tablet(const struct wmEvent *event);
 bool WM_event_is_ime_switch(const struct wmEvent *event);
 #endif
 
-/* For testing only 'G_FLAG_EVENT_SIMULATE' */
-struct wmEvent *WM_event_add_simulate(struct wmWindow *win, const struct wmEvent *event_to_add);
-
-const char *WM_window_cursor_keymap_status_get(const struct wmWindow *win,
-                                               int button_index,
-                                               int type_index);
-void WM_window_cursor_keymap_status_refresh(struct bContext *C, struct wmWindow *win);
-
-void WM_window_status_area_tag_redraw(struct wmWindow *win);
-struct ScrArea *WM_window_status_area_find(struct wmWindow *win, struct bScreen *sc);
-bool WM_window_modal_keymap_status_draw(struct bContext *C,
-                                        struct wmWindow *win,
-                                        struct uiLayout *layout);
-
 /* wm_tooltip.c */
 typedef struct ARegion *(*wmTooltipInitFn)(struct bContext *C,
                                            struct ARegion *ar,
@@ -818,15 +832,18 @@ typedef struct ARegion *(*wmTooltipInitFn)(struct bContext *C,
 
 void WM_tooltip_immediate_init(struct bContext *C,
                                struct wmWindow *win,
+                               struct ScrArea *sa,
                                struct ARegion *ar,
                                wmTooltipInitFn init);
 void WM_tooltip_timer_init_ex(struct bContext *C,
                               struct wmWindow *win,
+                              struct ScrArea *sa,
                               struct ARegion *ar,
                               wmTooltipInitFn init,
                               double delay);
 void WM_tooltip_timer_init(struct bContext *C,
                            struct wmWindow *win,
+                           struct ScrArea *sa,
                            struct ARegion *ar,
                            wmTooltipInitFn init);
 void WM_tooltip_timer_clear(struct bContext *C, struct wmWindow *win);

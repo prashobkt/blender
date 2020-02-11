@@ -34,6 +34,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 #include "BLI_math_vector.h"
+#include "BLI_polyfill_2d.h"
 #include "BLI_string_utils.h"
 
 #include "BLT_translation.h"
@@ -54,7 +55,7 @@
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
 #include "BKE_icons.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_object.h"
@@ -493,7 +494,7 @@ bGPDstroke *BKE_gpencil_add_stroke(bGPDframe *gpf, int mat_idx, int totpoints, s
   gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
 
   /* initialize triangle memory to dummy data */
-  gps->triangles = MEM_callocN(sizeof(bGPDtriangle), "GP Stroke triangulation");
+  gps->triangles = NULL;
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->tot_triangles = 0;
 
@@ -510,8 +511,8 @@ bGPDstroke *BKE_gpencil_add_stroke_existing_style(
     bGPDframe *gpf, bGPDstroke *existing, int mat_idx, int totpoints, short thickness)
 {
   bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, mat_idx, totpoints, thickness);
-  /* Copy runtime color data so that strokes added in the modifier has the style.
-   * There are depsgrapgh reference pointers inside,
+  /* Copy run-time color data so that strokes added in the modifier has the style.
+   * There are depsgraph reference pointers inside,
    * change the copy function if interfere with future drawing implementation. */
   memcpy(&gps->runtime, &existing->runtime, sizeof(bGPDstroke_Runtime));
   return gps;
@@ -646,7 +647,7 @@ bGPDlayer *BKE_gpencil_layer_duplicate(const bGPDlayer *gpl_src)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_gpencil_copy_data(bGPdata *gpd_dst, const bGPdata *gpd_src, const int UNUSED(flag))
 {
@@ -938,9 +939,15 @@ bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_M
       gpl->actframe = gpf;
     }
     else {
-      /* unresolved errogenous situation! */
-      CLOG_STR_ERROR(&LOG, "cannot find appropriate gp-frame");
-      /* gpl->actframe should still be NULL */
+      /* If delete first frame, need to find one. */
+      if (gpl->frames.first != NULL) {
+        gpl->actframe = gpl->frames.first;
+      }
+      else {
+        /* unresolved errogenous situation! */
+        CLOG_STR_ERROR(&LOG, "cannot find appropriate gp-frame");
+        /* gpl->actframe should still be NULL */
+      }
     }
   }
   else {
@@ -1114,14 +1121,14 @@ Material *BKE_gpencil_object_material_ensure_from_brush(Main *bmain, Object *ob,
     /* check if the material is already on object material slots and add it if missing */
     if (ma && BKE_gpencil_object_material_get_index(ob, ma) < 0) {
       BKE_object_material_slot_add(bmain, ob);
-      assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+      BKE_object_material_assign(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
     }
 
     return ma;
   }
   else {
     /* using active material instead */
-    return give_current_material(ob, ob->actcol);
+    return BKE_object_material_get(ob, ob->actcol);
   }
 }
 
@@ -1134,23 +1141,24 @@ int BKE_gpencil_object_material_ensure(Main *bmain, Object *ob, Material *materi
   int index = BKE_gpencil_object_material_get_index(ob, material);
   if (index < 0) {
     BKE_object_material_slot_add(bmain, ob);
-    assign_material(bmain, ob, material, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+    BKE_object_material_assign(bmain, ob, material, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
     return ob->totcol - 1;
   }
   return index;
 }
 
-/** Creates a new gpencil material and assigns it to object.
+/**
+ * Creates a new gpencil material and assigns it to object.
  *
  * \param *r_index: value is set to zero based index of the new material if r_index is not NULL
  */
 Material *BKE_gpencil_object_material_new(Main *bmain, Object *ob, const char *name, int *r_index)
 {
-  Material *ma = BKE_material_add_gpencil(bmain, name);
+  Material *ma = BKE_gpencil_material_add(bmain, name);
   id_us_min(&ma->id); /* no users yet */
 
   BKE_object_material_slot_add(bmain, ob);
-  assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+  BKE_object_material_assign(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
 
   if (r_index) {
     *r_index = ob->actcol - 1;
@@ -1167,7 +1175,7 @@ Material *BKE_gpencil_object_material_get_from_brush(Object *ob, Brush *brush)
     return ma;
   }
   else {
-    return give_current_material(ob, ob->actcol);
+    return BKE_object_material_get(ob, ob->actcol);
   }
 }
 
@@ -1220,12 +1228,12 @@ Material *BKE_gpencil_object_material_ensure_from_active_input_brush(Main *bmain
  */
 Material *BKE_gpencil_object_material_ensure_from_active_input_material(Object *ob)
 {
-  Material *ma = give_current_material(ob, ob->actcol);
+  Material *ma = BKE_object_material_get(ob, ob->actcol);
   if (ma) {
     return ma;
   }
 
-  return &defgpencil_material;
+  return BKE_material_default_gpencil();
 }
 
 /* Get active color, and add all default settings if we don't find anything */
@@ -1240,7 +1248,7 @@ Material *BKE_gpencil_object_material_ensure_active(Object *ob)
 
   ma = BKE_gpencil_object_material_ensure_from_active_input_material(ob);
   if (ma->gp_style == NULL) {
-    BKE_material_init_gpencil_settings(ma);
+    BKE_gpencil_material_attr_init(ma);
   }
 
   return ma;
@@ -2360,10 +2368,10 @@ void BKE_gpencil_stats_update(bGPdata *gpd)
 /* get material index (0-based like mat_nr not actcol) */
 int BKE_gpencil_object_material_get_index(Object *ob, Material *ma)
 {
-  short *totcol = give_totcolp(ob);
+  short *totcol = BKE_object_material_num(ob);
   Material *read_ma = NULL;
   for (short i = 0; i < *totcol; i++) {
-    read_ma = give_current_material(ob, i + 1);
+    read_ma = BKE_object_material_get(ob, i + 1);
     if (ma == read_ma) {
       return i;
     }
@@ -2514,6 +2522,134 @@ void BKE_gpencil_stroke_2d_flat_ref(const bGPDspoint *ref_points,
 
   /* Concave (-1), Convex (1), or Autodetect (0)? */
   *r_direction = (int)locy[2];
+}
+
+/* calc bounding box in 2d using flat projection data */
+static void gpencil_calc_2d_bounding_box(const float (*points2d)[2],
+                                         int totpoints,
+                                         float minv[2],
+                                         float maxv[2])
+{
+  minv[0] = points2d[0][0];
+  minv[1] = points2d[0][1];
+  maxv[0] = points2d[0][0];
+  maxv[1] = points2d[0][1];
+
+  for (int i = 1; i < totpoints; i++) {
+    /* min */
+    if (points2d[i][0] < minv[0]) {
+      minv[0] = points2d[i][0];
+    }
+    if (points2d[i][1] < minv[1]) {
+      minv[1] = points2d[i][1];
+    }
+    /* max */
+    if (points2d[i][0] > maxv[0]) {
+      maxv[0] = points2d[i][0];
+    }
+    if (points2d[i][1] > maxv[1]) {
+      maxv[1] = points2d[i][1];
+    }
+  }
+  /* use a perfect square */
+  if (maxv[0] > maxv[1]) {
+    maxv[1] = maxv[0];
+  }
+  else {
+    maxv[0] = maxv[1];
+  }
+}
+
+/* calc texture coordinates using flat projected points */
+static void gpencil_calc_stroke_fill_uv(const float (*points2d)[2],
+                                        int totpoints,
+                                        const float minv[2],
+                                        float maxv[2],
+                                        float (*r_uv)[2])
+{
+  float d[2];
+  d[0] = maxv[0] - minv[0];
+  d[1] = maxv[1] - minv[1];
+  for (int i = 0; i < totpoints; i++) {
+    r_uv[i][0] = (points2d[i][0] - minv[0]) / d[0];
+    r_uv[i][1] = (points2d[i][1] - minv[1]) / d[1];
+  }
+}
+
+/* Triangulate stroke for high quality fill (this is done only if cache is null or stroke was
+ * modified) */
+void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
+{
+  BLI_assert(gps->totpoints >= 3);
+
+  /* allocate memory for temporary areas */
+  gps->tot_triangles = gps->totpoints - 2;
+  uint(*tmp_triangles)[3] = MEM_mallocN(sizeof(*tmp_triangles) * gps->tot_triangles,
+                                        "GP Stroke temp triangulation");
+  float(*points2d)[2] = MEM_mallocN(sizeof(*points2d) * gps->totpoints,
+                                    "GP Stroke temp 2d points");
+  float(*uv)[2] = MEM_mallocN(sizeof(*uv) * gps->totpoints, "GP Stroke temp 2d uv data");
+
+  int direction = 0;
+
+  /* convert to 2d and triangulate */
+  BKE_gpencil_stroke_2d_flat(gps->points, gps->totpoints, points2d, &direction);
+  BLI_polyfill_calc(points2d, (uint)gps->totpoints, direction, tmp_triangles);
+
+  /* calc texture coordinates automatically */
+  float minv[2];
+  float maxv[2];
+  /* first needs bounding box data */
+  if (gpd->flag & GP_DATA_UV_ADAPTIVE) {
+    gpencil_calc_2d_bounding_box(points2d, gps->totpoints, minv, maxv);
+  }
+  else {
+    ARRAY_SET_ITEMS(minv, -1.0f, -1.0f);
+    ARRAY_SET_ITEMS(maxv, 1.0f, 1.0f);
+  }
+
+  /* calc uv data */
+  gpencil_calc_stroke_fill_uv(points2d, gps->totpoints, minv, maxv, uv);
+
+  /* Number of triangles */
+  gps->tot_triangles = gps->totpoints - 2;
+  /* save triangulation data in stroke cache */
+  if (gps->tot_triangles > 0) {
+    if (gps->triangles == NULL) {
+      gps->triangles = MEM_callocN(sizeof(*gps->triangles) * gps->tot_triangles,
+                                   "GP Stroke triangulation");
+    }
+    else {
+      gps->triangles = MEM_recallocN(gps->triangles, sizeof(*gps->triangles) * gps->tot_triangles);
+    }
+
+    for (int i = 0; i < gps->tot_triangles; i++) {
+      bGPDtriangle *stroke_triangle = &gps->triangles[i];
+      memcpy(gps->triangles[i].verts, tmp_triangles[i], sizeof(uint[3]));
+      /* copy texture coordinates */
+      copy_v2_v2(stroke_triangle->uv[0], uv[tmp_triangles[i][0]]);
+      copy_v2_v2(stroke_triangle->uv[1], uv[tmp_triangles[i][1]]);
+      copy_v2_v2(stroke_triangle->uv[2], uv[tmp_triangles[i][2]]);
+    }
+  }
+  else {
+    /* No triangles needed - Free anything allocated previously */
+    if (gps->triangles) {
+      MEM_freeN(gps->triangles);
+    }
+
+    gps->triangles = NULL;
+  }
+
+  /* disable recalculation flag */
+  if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
+    gps->flag &= ~GP_STROKE_RECALC_GEOMETRY;
+  }
+
+  /* clear memory */
+  MEM_SAFE_FREE(tmp_triangles);
+  MEM_SAFE_FREE(points2d);
+  MEM_SAFE_FREE(uv);
 }
 
 float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
@@ -2891,7 +3027,7 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
   hsv1[3] = color[3];
 
   for (int i = 1; i <= ob_gp->totcol; i++) {
-    ma = give_current_material(ob_gp, i);
+    ma = BKE_object_material_get(ob_gp, i);
     MaterialGPencilStyle *gp_style = ma->gp_style;
     /* Check color with small tolerance (better in HSV). */
     float hsv2[4];
@@ -3058,7 +3194,7 @@ static void gpencil_convert_spline(Main *bmain,
    */
   bool do_stroke = false;
   if (ob_cu->totcol == 1) {
-    Material *ma_stroke = give_current_material(ob_cu, 1);
+    Material *ma_stroke = BKE_object_material_get(ob_cu, 1);
     if ((ma_stroke) && (strstr(ma_stroke->id.name, "_stroke") != NULL)) {
       do_stroke = true;
     }
@@ -3066,7 +3202,7 @@ static void gpencil_convert_spline(Main *bmain,
 
   int r_idx = gpencil_check_same_material_color(ob_gp, color, &mat_gp);
   if ((ob_cu->totcol > 0) && (r_idx < 0)) {
-    Material *mat_curve = give_current_material(ob_cu, 1);
+    Material *mat_curve = BKE_object_material_get(ob_cu, 1);
     mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
 
     if ((mat_curve) && (mat_curve->gp_style != NULL)) {
@@ -3080,8 +3216,8 @@ static void gpencil_convert_spline(Main *bmain,
     }
 
     /* If object has more than 1 material, use second material for stroke color. */
-    if ((!only_stroke) && (ob_cu->totcol > 1) && (give_current_material(ob_cu, 2))) {
-      mat_curve = give_current_material(ob_cu, 2);
+    if ((!only_stroke) && (ob_cu->totcol > 1) && (BKE_object_material_get(ob_cu, 2))) {
+      mat_curve = BKE_object_material_get(ob_cu, 2);
       if (mat_curve) {
         linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
         mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
@@ -3090,7 +3226,7 @@ static void gpencil_convert_spline(Main *bmain,
     else if ((only_stroke) || (do_stroke)) {
       /* Also use the first color if the fill is none for stroke color. */
       if (ob_cu->totcol > 0) {
-        mat_curve = give_current_material(ob_cu, 1);
+        mat_curve = BKE_object_material_get(ob_cu, 1);
         if (mat_curve) {
           linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
           mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;

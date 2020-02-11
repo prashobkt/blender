@@ -48,7 +48,7 @@
 #include "BKE_deform.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_editmesh.h"
@@ -158,7 +158,7 @@ Key *BKE_key_add(Main *bmain, ID *id) /* common function */
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_key_copy_data(Main *UNUSED(bmain),
                        Key *key_dst,
@@ -2256,7 +2256,8 @@ void BKE_keyblock_update_from_offset(Object *ob, KeyBlock *kb, const float (*ofs
 
 /* ==========================================================*/
 
-/** Move shape key from org_index to new_index. Safe, clamps index to valid range,
+/**
+ * Move shape key from org_index to new_index. Safe, clamps index to valid range,
  * updates reference keys, the object's active shape index,
  * the 'frame' value in case of absolute keys, etc.
  * Note indices are expected in real values (not 'fake' shapenr +1 ones).

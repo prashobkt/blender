@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,9 @@
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpencilstrokes.c
+/** \file
  *  \ingroup modifiers
  */
 
@@ -51,7 +46,7 @@
 #include "BKE_main.h"
 #include "BKE_scene.h"
 #include "BKE_layer.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_query.h"
 #include "BKE_collection.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"

@@ -51,8 +51,8 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_library_remap.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 
@@ -828,7 +828,7 @@ static void lib_relocate_do(Main *bmain,
         BLI_strncpy(&old_id->name[len], "~000", 7);
       }
 
-      id_sort_by_name(which_libbase(bmain, GS(old_id->name)), old_id);
+      id_sort_by_name(which_libbase(bmain, GS(old_id->name)), old_id, NULL);
 
       BKE_reportf(
           reports,

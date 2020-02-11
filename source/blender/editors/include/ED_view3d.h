@@ -452,7 +452,7 @@ float ED_view3d_radius_to_dist(const struct View3D *v3d,
                                const bool use_aspect,
                                const float radius);
 
-void imm_drawcircball(const float cent[3], float rad, const float tmat[4][4], unsigned pos);
+void imm_drawcircball(const float cent[3], float rad, const float tmat[4][4], unsigned int pos);
 
 /* backbuffer select and draw support */
 void ED_view3d_backbuf_depth_validate(struct ViewContext *vc);
@@ -593,7 +593,6 @@ struct ImBuf *ED_view3d_draw_offscreen_imbuf(struct Depsgraph *depsgraph,
                                              int sizey,
                                              unsigned int flag,
                                              int alpha_mode,
-                                             int samples,
                                              const char *viewname,
                                              struct GPUOffScreen *ofs,
                                              char err_out[256]);
@@ -607,7 +606,6 @@ struct ImBuf *ED_view3d_draw_offscreen_imbuf_simple(struct Depsgraph *depsgraph,
                                                     unsigned int flag,
                                                     unsigned int draw_flags,
                                                     int alpha_mode,
-                                                    int samples,
                                                     const char *viewname,
                                                     struct GPUOffScreen *ofs,
                                                     char err_out[256]);
@@ -624,8 +622,12 @@ void ED_view3d_update_viewmat(struct Depsgraph *depsgraph,
                               float winmat[4][4],
                               const struct rcti *rect,
                               bool offscreen);
-bool ED_view3d_quat_from_axis_view(const char view, float quat[4]);
-char ED_view3d_quat_to_axis_view(const float quat[4], const float epsilon);
+bool ED_view3d_quat_from_axis_view(const char view, const char view_axis_roll, float quat[4]);
+bool ED_view3d_quat_to_axis_view(const float viewquat[4],
+                                 const float epsilon,
+                                 char *r_view,
+                                 char *r_view_axis_rotation);
+
 char ED_view3d_lock_view_from_index(int index);
 char ED_view3d_axis_view_opposite(char view);
 bool ED_view3d_lock(struct RegionView3D *rv3d);

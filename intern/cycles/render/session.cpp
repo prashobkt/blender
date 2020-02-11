@@ -285,9 +285,7 @@ void Session::run_gpu()
 
       if (progress.get_cancel())
         break;
-    }
 
-    if (!no_tiles) {
       /* buffers mutex is locked entirely while rendering each
        * sample, and released/reacquired on each iteration to allow
        * reset and draw in between */
@@ -703,23 +701,26 @@ DeviceRequestedFeatures Session::get_requested_device_features()
   requested_features.use_object_motion = false;
   requested_features.use_camera_motion = use_motion && scene->camera->use_motion();
   foreach (Object *object, scene->objects) {
-    Mesh *mesh = object->mesh;
-    if (mesh->num_curves()) {
-      requested_features.use_hair = true;
-    }
+    Geometry *geom = object->geometry;
     if (use_motion) {
-      requested_features.use_object_motion |= object->use_motion() | mesh->use_motion_blur;
-      requested_features.use_camera_motion |= mesh->use_motion_blur;
+      requested_features.use_object_motion |= object->use_motion() | geom->use_motion_blur;
+      requested_features.use_camera_motion |= geom->use_motion_blur;
     }
-#ifdef WITH_OPENSUBDIV
-    if (mesh->subdivision_type != Mesh::SUBDIVISION_NONE) {
-      requested_features.use_patch_evaluation = true;
-    }
-#endif
     if (object->is_shadow_catcher) {
       requested_features.use_shadow_tricks = true;
     }
-    requested_features.use_true_displacement |= mesh->has_true_displacement();
+    if (geom->type == Geometry::MESH) {
+      Mesh *mesh = static_cast<Mesh *>(geom);
+#ifdef WITH_OPENSUBDIV
+      if (mesh->subdivision_type != Mesh::SUBDIVISION_NONE) {
+        requested_features.use_patch_evaluation = true;
+      }
+#endif
+      requested_features.use_true_displacement |= mesh->has_true_displacement();
+    }
+    else if (geom->type == Geometry::HAIR) {
+      requested_features.use_hair = true;
+    }
   }
 
   requested_features.use_background_light = scene->light_manager->has_background_light(scene);
@@ -978,7 +979,7 @@ void Session::update_status_time(bool show_pause, bool show_done)
        */
       substatus += string_printf(", Sample %d/%d", progress.get_current_sample(), num_samples);
     }
-    if (params.full_denoising) {
+    if (params.full_denoising || params.optix_denoising) {
       substatus += string_printf(", Denoised %d tiles", progress.get_denoised_tiles());
     }
     else if (params.run_denoising) {
@@ -1038,6 +1039,7 @@ void Session::render()
 
     task.denoising_from_render = true;
     task.denoising_do_filter = params.full_denoising;
+    task.denoising_use_optix = params.optix_denoising;
     task.denoising_write_passes = params.write_denoising_passes;
   }
 

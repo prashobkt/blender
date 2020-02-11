@@ -23,7 +23,7 @@
 #include "DRW_render.h"
 
 #include "BKE_gpencil.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
@@ -32,8 +32,6 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
-
-#include "draw_mode_engines.h"
 
 #include "GPU_texture.h"
 
@@ -370,7 +368,7 @@ void GPENCIL_cache_init(void *vedata)
     }
     /* this is not common, but avoid any special situations when brush could be without material */
     if (gp_style == NULL) {
-      gp_style = BKE_material_gpencil_settings_get(obact, obact->actcol);
+      gp_style = BKE_gpencil_material_settings(obact, obact->actcol);
     }
   }
 
@@ -441,7 +439,7 @@ void GPENCIL_cache_init(void *vedata)
       stl->storage->is_main_onion = false;
     }
     /* save render state */
-    stl->storage->is_render = DRW_state_is_image_render();
+    stl->storage->is_render = DRW_state_is_scene_render();
     stl->storage->is_mat_preview = (bool)stl->storage->is_render &&
                                    STREQ(scene->id.name + 2, "preview");
 

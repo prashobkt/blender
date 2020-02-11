@@ -42,48 +42,78 @@
 #include "textview.h"
 #include "GPU_framebuffer.h"
 
-/* complicates things a bit, so leaving in old simple code */
-#define USE_INFO_NEWLINE
-
-static void info_report_color(unsigned char *fg,
-                              unsigned char *bg,
-                              Report *report,
-                              const short do_tint)
+static int report_line_data(struct TextViewContext *tvc,
+                            unsigned char fg[4],
+                            unsigned char bg[4],
+                            int *icon,
+                            unsigned char icon_fg[4],
+                            unsigned char icon_bg[4])
 {
-  int bg_id = TH_BACK, fg_id = TH_TEXT;
-  int shade = do_tint ? 0 : -6;
+  Report *report = (Report *)tvc->iter;
 
-  if (report->flag & SELECT) {
-    bg_id = TH_INFO_SELECTED;
-    fg_id = TH_INFO_SELECTED_TEXT;
-  }
-  else if (report->type & RPT_ERROR_ALL) {
-    bg_id = TH_INFO_ERROR;
-    fg_id = TH_INFO_ERROR_TEXT;
+  /* Same text color no matter what type of report. */
+  UI_GetThemeColor4ubv((report->flag & SELECT) ? TH_INFO_SELECTED_TEXT : TH_TEXT, fg);
+
+  /* Zebra striping for background. */
+  int bg_id = (report->flag & SELECT) ? TH_INFO_SELECTED : TH_BACK;
+  int shade = tvc->iter_tmp % 2 ? 4 : -4;
+  UI_GetThemeColorShade4ubv(bg_id, shade, bg);
+
+  /* Icon color and backgound depend of report type. */
+
+  int icon_fg_id;
+  int icon_bg_id;
+
+  if (report->type & RPT_ERROR_ALL) {
+    icon_fg_id = TH_INFO_ERROR_TEXT;
+    icon_bg_id = TH_INFO_ERROR;
+    *icon = ICON_CANCEL;
   }
   else if (report->type & RPT_WARNING_ALL) {
-    bg_id = TH_INFO_WARNING;
-    fg_id = TH_INFO_WARNING_TEXT;
+    icon_fg_id = TH_INFO_WARNING_TEXT;
+    icon_bg_id = TH_INFO_WARNING;
+    *icon = ICON_ERROR;
   }
   else if (report->type & RPT_INFO_ALL) {
-    bg_id = TH_INFO_INFO;
-    fg_id = TH_INFO_INFO_TEXT;
+    icon_fg_id = TH_INFO_INFO_TEXT;
+    icon_bg_id = TH_INFO_INFO;
+    *icon = ICON_INFO;
   }
   else if (report->type & RPT_DEBUG_ALL) {
-    bg_id = TH_INFO_DEBUG;
-    fg_id = TH_INFO_DEBUG_TEXT;
+    icon_fg_id = TH_INFO_DEBUG_TEXT;
+    icon_bg_id = TH_INFO_DEBUG;
+    *icon = ICON_SYSTEM;
+  }
+  else if (report->type & RPT_PROPERTY) {
+    icon_fg_id = TH_INFO_PROPERTY_TEXT;
+    icon_bg_id = TH_INFO_PROPERTY;
+    *icon = ICON_OPTIONS;
+  }
+  else if (report->type & RPT_OPERATOR) {
+    icon_fg_id = TH_INFO_OPERATOR_TEXT;
+    icon_bg_id = TH_INFO_OPERATOR;
+    *icon = ICON_CHECKMARK;
   }
   else {
-    bg_id = TH_BACK;
-    fg_id = TH_TEXT;
+    *icon = ICON_NONE;
   }
 
-  UI_GetThemeColorShade3ubv(bg_id, shade, bg);
-  UI_GetThemeColor3ubv(fg_id, fg);
+  if (report->flag & SELECT) {
+    icon_fg_id = TH_INFO_SELECTED;
+    icon_bg_id = TH_INFO_SELECTED_TEXT;
+  }
+
+  if (*icon != ICON_NONE) {
+    UI_GetThemeColor4ubv(icon_fg_id, icon_fg);
+    UI_GetThemeColor4ubv(icon_bg_id, icon_bg);
+    return TVC_LINE_FG | TVC_LINE_BG | TVC_LINE_ICON | TVC_LINE_ICON_FG | TVC_LINE_ICON_BG;
+  }
+  else {
+    return TVC_LINE_FG | TVC_LINE_BG;
+  }
 }
 
 /* reports! */
-#ifdef USE_INFO_NEWLINE
 static void report_textview_init__internal(TextViewContext *tvc)
 {
   Report *report = (Report *)tvc->iter;
@@ -108,14 +138,11 @@ static int report_textview_skip__internal(TextViewContext *tvc)
   return (tvc->iter != NULL);
 }
 
-#endif  // USE_INFO_NEWLINE
-
 static int report_textview_begin(TextViewContext *tvc)
 {
-  // SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
   ReportList *reports = (ReportList *)tvc->arg2;
 
-  tvc->lheight = 14 * UI_DPI_FAC;  // sc->lheight;
+  tvc->lheight = 14 * UI_DPI_FAC;
   tvc->sel_start = 0;
   tvc->sel_end = 0;
 
@@ -125,7 +152,6 @@ static int report_textview_begin(TextViewContext *tvc)
   UI_ThemeClearColor(TH_BACK);
   GPU_clear(GPU_COLOR_BIT);
 
-#ifdef USE_INFO_NEWLINE
   tvc->iter_tmp = 0;
   if (tvc->iter && report_textview_skip__internal(tvc)) {
     /* init the newline iterator */
@@ -137,9 +163,6 @@ static int report_textview_begin(TextViewContext *tvc)
   else {
     return false;
   }
-#else
-  return (tvc->iter != NULL);
-#endif
 }
 
 static void report_textview_end(TextViewContext *UNUSED(tvc))
@@ -147,7 +170,6 @@ static void report_textview_end(TextViewContext *UNUSED(tvc))
   /* pass */
 }
 
-#ifdef USE_INFO_NEWLINE
 static int report_textview_step(TextViewContext *tvc)
 {
   /* simple case, but no newline support */
@@ -184,61 +206,25 @@ static int report_textview_line_get(struct TextViewContext *tvc, const char **li
   return 1;
 }
 
-static int report_textview_line_color(struct TextViewContext *tvc,
-                                      unsigned char fg[3],
-                                      unsigned char bg[3])
+static void info_textview_draw_rect_calc(const ARegion *ar, rcti *draw_rect)
 {
-  Report *report = (Report *)tvc->iter;
-  info_report_color(fg, bg, report, tvc->iter_tmp % 2);
-  return TVC_LINE_FG | TVC_LINE_BG;
+  draw_rect->xmin = 0;
+  draw_rect->xmax = ar->winx;
+  draw_rect->ymin = 0;
+  draw_rect->ymax = ar->winy;
 }
-
-#else  // USE_INFO_NEWLINE
-
-static int report_textview_step(TextViewContext *tvc)
-{
-  SpaceInfo *sinfo = (SpaceInfo *)tvc->arg1;
-  const int report_mask = info_report_mask(sinfo);
-  do {
-    tvc->iter = (void *)((Link *)tvc->iter)->prev;
-  } while (tvc->iter && (((Report *)tvc->iter)->type & report_mask) == 0);
-
-  return (tvc->iter != NULL);
-}
-
-static int report_textview_line_get(struct TextViewContext *tvc, const char **line, int *len)
-{
-  Report *report = (Report *)tvc->iter;
-  *line = report->message;
-  *len = report->len;
-
-  return 1;
-}
-
-static int report_textview_line_color(struct TextViewContext *tvc,
-                                      unsigned char fg[3],
-                                      unsigned char bg[3])
-{
-  Report *report = (Report *)tvc->iter;
-  info_report_color(fg, bg, report, tvc->iter_tmp % 2);
-  return TVC_LINE_FG | TVC_LINE_BG;
-}
-
-#endif  // USE_INFO_NEWLINE
-
-#undef USE_INFO_NEWLINE
 
 static int info_textview_main__internal(struct SpaceInfo *sinfo,
-                                        ARegion *ar,
+                                        const ARegion *ar,
                                         ReportList *reports,
-                                        int draw,
-                                        int mval[2],
-                                        void **mouse_pick,
-                                        int *pos_pick)
+                                        const bool do_draw,
+                                        const int mval[2],
+                                        void **r_mval_pick_item,
+                                        int *r_mval_pick_offset)
 {
   int ret = 0;
 
-  View2D *v2d = &ar->v2d;
+  const View2D *v2d = &ar->v2d;
 
   TextViewContext tvc = {0};
   tvc.begin = report_textview_begin;
@@ -246,7 +232,7 @@ static int info_textview_main__internal(struct SpaceInfo *sinfo,
 
   tvc.step = report_textview_step;
   tvc.line_get = report_textview_line_get;
-  tvc.line_color = report_textview_line_color;
+  tvc.line_data = report_line_data;
   tvc.const_colors = NULL;
 
   tvc.arg1 = sinfo;
@@ -255,36 +241,37 @@ static int info_textview_main__internal(struct SpaceInfo *sinfo,
   /* view */
   tvc.sel_start = 0;
   tvc.sel_end = 0;
-  tvc.lheight = 14 * UI_DPI_FAC;  // sc->lheight;
-  tvc.ymin = v2d->cur.ymin;
-  tvc.ymax = v2d->cur.ymax;
-  tvc.winx = ar->winx - V2D_SCROLL_WIDTH;
+  tvc.lheight = 17 * UI_DPI_FAC;
+  tvc.row_vpadding = 0.4 * tvc.lheight;
+  tvc.margin_left_chars = 5;
+  tvc.margin_right_chars = 2;
+  tvc.scroll_ymin = v2d->cur.ymin;
+  tvc.scroll_ymax = v2d->cur.ymax;
 
-  ret = textview_draw(&tvc, draw, mval, mouse_pick, pos_pick);
+  info_textview_draw_rect_calc(ar, &tvc.draw_rect);
+
+  ret = textview_draw(&tvc, do_draw, mval, r_mval_pick_item, r_mval_pick_offset);
 
   return ret;
 }
 
-void *info_text_pick(struct SpaceInfo *sinfo, ARegion *ar, ReportList *reports, int mouse_y)
+void *info_text_pick(struct SpaceInfo *sinfo, const ARegion *ar, ReportList *reports, int mval_y)
 {
-  void *mouse_pick = NULL;
-  int mval[2];
+  void *mval_pick_item = NULL;
+  const int mval[2] = {0, mval_y};
 
-  mval[0] = 0;
-  mval[1] = mouse_y;
-
-  info_textview_main__internal(sinfo, ar, reports, 0, mval, &mouse_pick, NULL);
-  return (void *)mouse_pick;
+  info_textview_main__internal(sinfo, ar, reports, false, mval, &mval_pick_item, NULL);
+  return (void *)mval_pick_item;
 }
 
-int info_textview_height(struct SpaceInfo *sinfo, ARegion *ar, ReportList *reports)
+int info_textview_height(struct SpaceInfo *sinfo, const ARegion *ar, ReportList *reports)
 {
   int mval[2] = {INT_MAX, INT_MAX};
-  return info_textview_main__internal(sinfo, ar, reports, 0, mval, NULL, NULL);
+  return info_textview_main__internal(sinfo, ar, reports, false, mval, NULL, NULL);
 }
 
-void info_textview_main(struct SpaceInfo *sinfo, ARegion *ar, ReportList *reports)
+void info_textview_main(struct SpaceInfo *sinfo, const ARegion *ar, ReportList *reports)
 {
   int mval[2] = {INT_MAX, INT_MAX};
-  info_textview_main__internal(sinfo, ar, reports, 1, mval, NULL, NULL);
+  info_textview_main__internal(sinfo, ar, reports, true, mval, NULL, NULL);
 }

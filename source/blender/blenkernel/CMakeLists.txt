@@ -45,11 +45,11 @@ set(INC
   ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/libmv
+  ../../../intern/mantaflow/extern
   ../../../intern/memutil
   ../../../intern/mikktspace
   ../../../intern/opensubdiv
   ../../../extern/curve_fit_nd
-  ../../../intern/smoke/extern
 
   # dna_type_offsets.h
   ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
@@ -105,8 +105,8 @@ set(SRC
   intern/data_transfer.c
   intern/deform.c
   intern/displist.c
+  intern/displist_tangent.c
   intern/dynamicpaint.c
-  intern/editderivedmesh.c
   intern/editlattice.c
   intern/editmesh.c
   intern/editmesh_bvh.c
@@ -114,7 +114,7 @@ set(SRC
   intern/editmesh_tangent.c
   intern/effect.c
   intern/fcurve.c
-  intern/fluidsim.c
+  intern/fluid.c
   intern/fmodifier.c
   intern/font.c
   intern/freestyle.c
@@ -129,20 +129,23 @@ set(SRC
   intern/image_gen.c
   intern/image_save.c
   intern/ipo.c
+  intern/kelvinlet.c
   intern/key.c
   intern/keyconfig.c
   intern/lattice.c
   intern/layer.c
   intern/layer_utils.c
+  intern/lib_id.c
+  intern/lib_id_delete.c
+  intern/lib_override.c
+  intern/lib_query.c
+  intern/lib_remap.c
   intern/library.c
-  intern/library_idmap.c
-  intern/library_override.c
-  intern/library_query.c
-  intern/library_remap.c
   intern/light.c
   intern/lightprobe.c
   intern/linestyle.c
   intern/main.c
+  intern/main_idmap.c
   intern/mask.c
   intern/mask_evaluate.c
   intern/mask_rasterize.c
@@ -197,7 +200,6 @@ set(SRC
   intern/sequencer.c
   intern/shader_fx.c
   intern/shrinkwrap.c
-  intern/smoke.c
   intern/softbody.c
   intern/sound.c
   intern/speaker.c
@@ -272,6 +274,7 @@ set(SRC
   BKE_data_transfer.h
   BKE_deform.h
   BKE_displist.h
+  BKE_displist_tangent.h
   BKE_dynamicpaint.h
   BKE_editlattice.h
   BKE_editmesh.h
@@ -280,7 +283,7 @@ set(SRC
   BKE_editmesh_tangent.h
   BKE_effect.h
   BKE_fcurve.h
-  BKE_fluidsim.h
+  BKE_fluid.h
   BKE_font.h
   BKE_freestyle.h
   BKE_global.h
@@ -292,19 +295,21 @@ set(SRC
   BKE_image.h
   BKE_image_save.h
   BKE_ipo.h
+  BKE_kelvinlet.h
   BKE_key.h
   BKE_keyconfig.h
   BKE_lattice.h
   BKE_layer.h
+  BKE_lib_id.h
+  BKE_lib_override.h
+  BKE_lib_query.h
+  BKE_lib_remap.h
   BKE_library.h
-  BKE_library_idmap.h
-  BKE_library_override.h
-  BKE_library_query.h
-  BKE_library_remap.h
   BKE_light.h
   BKE_lightprobe.h
   BKE_linestyle.h
   BKE_main.h
+  BKE_main_idmap.h
   BKE_mask.h
   BKE_material.h
   BKE_mball.h
@@ -339,7 +344,6 @@ set(SRC
   BKE_sequencer.h
   BKE_shader_fx.h
   BKE_shrinkwrap.h
-  BKE_smoke.h
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
@@ -369,6 +373,7 @@ set(SRC
   intern/CCGSubSurf_inline.h
   intern/CCGSubSurf_intern.h
   intern/data_transfer_intern.h
+  intern/lib_intern.h
   intern/multires_inline.h
   intern/pbvh_intern.h
   intern/subdiv_converter.h
@@ -396,8 +401,6 @@ set(LIB
   bf_modifiers
   bf_nodes
   bf_physics
-  bf_python
-  bf_python_bmesh
   bf_rna
   bf_shader_fx
 )
@@ -426,6 +429,10 @@ if(WITH_AUDASPACE)
   list(APPEND INC_SYS
     ${AUDASPACE_C_INCLUDE_DIRS}
   )
+  list(APPEND LIB
+    ${AUDASPACE_C_LIBRARIES}
+    ${AUDASPACE_PY_LIBRARIES}
+  )
 endif()
 
 if(WITH_BULLET)
@@ -438,17 +445,11 @@ if(WITH_BULLET)
   list(APPEND LIB
     bf_intern_rigidbody
     extern_bullet
+
+    ${BULLET_LIBRARIES}
   )
   add_definitions(-DWITH_BULLET)
 endif()
-
-# if(WITH_MOD_CLOTH_ELTOPO)
-#   list(APPEND INC
-#     ../../../extern/eltopo
-#     ../../../extern/eltopo/eltopo3d
-#   )
-#   add_definitions(-DWITH_ELTOPO)
-# endif()
 
 if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
@@ -500,6 +501,9 @@ if(WITH_CODEC_FFMPEG)
   list(APPEND INC_SYS
     ${FFMPEG_INCLUDE_DIRS}
   )
+  list(APPEND LIB
+    ${FFMPEG_LIBRARIES}
+  )
   add_definitions(-DWITH_FFMPEG)
 
   remove_strict_c_flags_file(
@@ -510,6 +514,10 @@ endif()
 if(WITH_PYTHON)
   list(APPEND INC
     ../python
+  )
+  list(APPEND LIB
+    bf_python
+    bf_python_bmesh
   )
   add_definitions(-DWITH_PYTHON)
 
@@ -530,20 +538,10 @@ if(WITH_PYTHON)
 endif()
 
 if(WITH_MOD_FLUID)
-  list(APPEND INC
-    ../../../intern/elbeem/extern
-  )
   list(APPEND LIB
-    bf_intern_elbeem
+    bf_intern_mantaflow
   )
-  add_definitions(-DWITH_MOD_FLUID)
-endif()
-
-if(WITH_MOD_SMOKE)
-  list(APPEND LIB
-    bf_intern_smoke
-  )
-  add_definitions(-DWITH_SMOKE)
+  add_definitions(-DWITH_FLUID)
 endif()
 
 if(WITH_MOD_OCEANSIM)
@@ -558,6 +556,9 @@ if(WITH_LZO)
   if(WITH_SYSTEM_LZO)
     list(APPEND INC_SYS
       ${LZO_INCLUDE_DIR}
+    )
+    list(APPEND LIB
+      ${LZO_LIBRARIES}
     )
     add_definitions(-DWITH_SYSTEM_LZO)
   else()
@@ -589,6 +590,9 @@ if(WITH_FFTW3)
   list(APPEND INC_SYS
     ${FFTW3_INCLUDE_DIRS}
   )
+  list(APPEND LIB
+    ${FFTW3_LIBRARIES}
+  )
   add_definitions(-DFFTW3=1)
 endif()
 
@@ -610,6 +614,9 @@ endif()
 if(WITH_OPENSUBDIV)
   list(APPEND INC_SYS
     ${OPENSUBDIV_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${OPENSUBDIV_LIBRARIES}
   )
   add_definitions(-DWITH_OPENSUBDIV)
 endif()
@@ -645,6 +652,9 @@ if(WITH_TBB)
 
   list(APPEND INC_SYS
     ${TBB_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${TBB_LIBRARIES}
   )
 endif()
 

@@ -58,7 +58,7 @@
 #include "BKE_deform.h"
 #include "BKE_displist.h"
 #include "BKE_idprop.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_lattice.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
@@ -194,7 +194,7 @@ static void copy_bonechildren_custom_handles(Bone *bone_dst, bArmature *arm_dst)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_armature_copy_data(Main *UNUSED(bmain),
                             bArmature *arm_dst,
@@ -281,22 +281,22 @@ static void armature_transform_recurse(ListBase *bonebase,
 {
   for (Bone *bone = bonebase->first; bone; bone = bone->next) {
 
-    /* Transform the bone's roll. */
-    if (bone_parent == NULL) {
-
-      float roll_mat[3][3];
-      {
-        float delta[3];
-        sub_v3_v3v3(delta, bone->tail, bone->head);
-        vec_roll_to_mat3(delta, bone->roll, roll_mat);
+    /* Store the initial bone roll in a matrix, this is needed even for child bones
+     * so any change in head/tail doesn't cause the roll to change.
+     *
+     * Logic here is different to edit-mode because
+     * this is calculated in relative to the parent. */
+    float roll_mat3_pre[3][3];
+    {
+      float delta[3];
+      sub_v3_v3v3(delta, bone->tail, bone->head);
+      vec_roll_to_mat3(delta, bone->roll, roll_mat3_pre);
+      if (bone->parent == NULL) {
+        mul_m3_m3m3(roll_mat3_pre, mat3, roll_mat3_pre);
       }
-
-      /* Transform the roll matrix. */
-      mul_m3_m3m3(roll_mat, mat3, roll_mat);
-
-      /* Apply the transformed roll back. */
-      mat3_to_vec_roll(roll_mat, NULL, &bone->roll);
     }
+    /* Optional, use this for predictable results since the roll is re-calculated below anyway. */
+    bone->roll = 0.0f;
 
     mul_m4_v3(mat, bone->arm_head);
     mul_m4_v3(mat, bone->arm_tail);
@@ -312,6 +312,17 @@ static void armature_transform_recurse(ListBase *bonebase,
     else {
       copy_v3_v3(bone->head, bone->arm_head);
       copy_v3_v3(bone->tail, bone->arm_tail);
+    }
+
+    /* Now the head/tail have been updated, set the roll back, matching 'roll_mat3_pre'. */
+    {
+      float roll_mat3_post[3][3], delta_mat3[3][3];
+      float delta[3];
+      sub_v3_v3v3(delta, bone->tail, bone->head);
+      vec_roll_to_mat3(delta, 0.0f, roll_mat3_post);
+      invert_m3(roll_mat3_post);
+      mul_m3_m3m3(delta_mat3, roll_mat3_post, roll_mat3_pre);
+      bone->roll = atan2f(delta_mat3[2][0], delta_mat3[2][2]);
     }
 
     BKE_armature_where_is_bone(bone, bone_parent, false);
@@ -1239,8 +1250,10 @@ void BKE_pchan_bbone_segments_cache_copy(bPoseChannel *pchan, bPoseChannel *pcha
   }
 }
 
-/** Calculate index and blend factor for the two B-Bone segment nodes
- * affecting the point at 0 <= pos <= 1. */
+/**
+ * Calculate index and blend factor for the two B-Bone segment nodes
+ * affecting the point at 0 <= pos <= 1.
+ */
 void BKE_pchan_bbone_deform_segment_index(const bPoseChannel *pchan,
                                           float pos,
                                           int *r_index,
@@ -1548,10 +1561,9 @@ static void armature_vert_task(void *__restrict userdata,
     MDeformWeight *dw = dvert->dw;
     int deformed = 0;
     unsigned int j;
-    float acum_weight = 0;
     for (j = dvert->totweight; j != 0; j--, dw++) {
-      const int index = dw->def_nr;
-      if (index >= 0 && index < data->defbase_tot && (pchan = data->defnrToPC[index])) {
+      const uint index = dw->def_nr;
+      if (index < data->defbase_tot && (pchan = data->defnrToPC[index])) {
         float weight = dw->weight;
         Bone *bone = pchan->bone;
 
@@ -1562,20 +1574,7 @@ static void armature_vert_task(void *__restrict userdata,
               co, bone->arm_head, bone->arm_tail, bone->rad_head, bone->rad_tail, bone->dist);
         }
 
-        /* check limit of weight */
-        if (data->target->type == OB_GPENCIL) {
-          if (acum_weight + weight >= 1.0f) {
-            weight = 1.0f - acum_weight;
-          }
-          acum_weight += weight;
-        }
-
         pchan_bone_deform(pchan, weight, vec, dq, smat, co, &contrib);
-
-        /* if acumulated weight limit exceed, exit loop */
-        if ((data->target->type == OB_GPENCIL) && (acum_weight >= 1.0f)) {
-          break;
-        }
       }
     }
     /* if there are vertexgroups but not groups with bones
@@ -2294,13 +2293,17 @@ void mat3_to_vec_roll(const float mat[3][3], float r_vec[3], float *r_roll)
  * If vec is the Y vector from purely rotational mat, result should be exact. */
 void mat3_vec_to_roll(const float mat[3][3], const float vec[3], float *r_roll)
 {
-  float vecmat[3][3], vecmatinv[3][3], rollmat[3][3];
+  float vecmat[3][3], vecmatinv[3][3], rollmat[3][3], q[4];
 
+  /* Compute the orientation relative to the vector with zero roll. */
   vec_roll_to_mat3(vec, 0.0f, vecmat);
   invert_m3_m3(vecmatinv, vecmat);
   mul_m3_m3m3(rollmat, vecmatinv, mat);
 
-  *r_roll = atan2f(rollmat[2][0], rollmat[2][2]);
+  /* Extract the twist angle as the roll value. */
+  mat3_to_quat(q, rollmat);
+
+  *r_roll = quat_split_swing_and_twist(q, 1, NULL, NULL);
 }
 
 /* Calculates the rest matrix of a bone based on its vector and a roll around that vector. */

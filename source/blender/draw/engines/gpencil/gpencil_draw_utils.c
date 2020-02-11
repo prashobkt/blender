@@ -20,8 +20,6 @@
  * \ingroup draw
  */
 
-#include "BLI_polyfill_2d.h"
-
 #include "DRW_render.h"
 
 #include "BKE_gpencil.h"
@@ -284,58 +282,6 @@ static bool gpencil_can_draw_stroke(struct MaterialGPencilStyle *gp_style,
   return true;
 }
 
-/* calc bounding box in 2d using flat projection data */
-static void gpencil_calc_2d_bounding_box(const float (*points2d)[2],
-                                         int totpoints,
-                                         float minv[2],
-                                         float maxv[2])
-{
-  minv[0] = points2d[0][0];
-  minv[1] = points2d[0][1];
-  maxv[0] = points2d[0][0];
-  maxv[1] = points2d[0][1];
-
-  for (int i = 1; i < totpoints; i++) {
-    /* min */
-    if (points2d[i][0] < minv[0]) {
-      minv[0] = points2d[i][0];
-    }
-    if (points2d[i][1] < minv[1]) {
-      minv[1] = points2d[i][1];
-    }
-    /* max */
-    if (points2d[i][0] > maxv[0]) {
-      maxv[0] = points2d[i][0];
-    }
-    if (points2d[i][1] > maxv[1]) {
-      maxv[1] = points2d[i][1];
-    }
-  }
-  /* use a perfect square */
-  if (maxv[0] > maxv[1]) {
-    maxv[1] = maxv[0];
-  }
-  else {
-    maxv[0] = maxv[1];
-  }
-}
-
-/* calc texture coordinates using flat projected points */
-static void gpencil_calc_stroke_fill_uv(const float (*points2d)[2],
-                                        int totpoints,
-                                        const float minv[2],
-                                        float maxv[2],
-                                        float (*r_uv)[2])
-{
-  float d[2];
-  d[0] = maxv[0] - minv[0];
-  d[1] = maxv[1] - minv[1];
-  for (int i = 0; i < totpoints; i++) {
-    r_uv[i][0] = (points2d[i][0] - minv[0]) / d[0];
-    r_uv[i][1] = (points2d[i][1] - minv[1]) / d[1];
-  }
-}
-
 /* recalc the internal geometry caches for fill and uvs */
 static void gpencil_recalc_geometry_caches(Object *ob,
                                            bGPDlayer *gpl,
@@ -348,7 +294,7 @@ static void gpencil_recalc_geometry_caches(Object *ob,
       if ((gps->totpoints > 2) && (gp_style->flag & GP_STYLE_FILL_SHOW) &&
           ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gp_style->fill_style > 0) ||
            (gpl->blend_mode != eGplBlendMode_Regular))) {
-        gpencil_triangulate_stroke_fill(ob, gps);
+        BKE_gpencil_triangulate_stroke_fill((bGPdata *)ob->data, gps);
       }
     }
 
@@ -576,7 +522,7 @@ static DRWShadingGroup *gpencil_shgroup_fill_create(GPENCIL_e_data *e_data,
       BKE_image_release_ibuf(image, ibuf, NULL);
     }
     else {
-      GPUTexture *texture = GPU_texture_from_blender(gp_style->ima, &iuser, GL_TEXTURE_2D);
+      GPUTexture *texture = GPU_texture_from_blender(gp_style->ima, &iuser, ibuf, GL_TEXTURE_2D);
       DRW_shgroup_uniform_texture(grp, "myTexture", texture);
       DRW_shgroup_uniform_bool_copy(
           grp, "myTexturePremultiplied", (image->alpha_mode == IMA_ALPHA_PREMUL));
@@ -759,7 +705,7 @@ DRWShadingGroup *gpencil_shgroup_stroke_create(GPENCIL_e_data *e_data,
       BKE_image_release_ibuf(image, ibuf, NULL);
     }
     else {
-      GPUTexture *texture = GPU_texture_from_blender(gp_style->sima, &iuser, GL_TEXTURE_2D);
+      GPUTexture *texture = GPU_texture_from_blender(gp_style->sima, &iuser, ibuf, GL_TEXTURE_2D);
       DRW_shgroup_uniform_texture(grp, "myTexture", texture);
       DRW_shgroup_uniform_bool_copy(
           grp, "myTexturePremultiplied", (image->alpha_mode == IMA_ALPHA_PREMUL));
@@ -932,7 +878,7 @@ static DRWShadingGroup *gpencil_shgroup_point_create(GPENCIL_e_data *e_data,
       BKE_image_release_ibuf(image, ibuf, NULL);
     }
     else {
-      GPUTexture *texture = GPU_texture_from_blender(gp_style->sima, &iuser, GL_TEXTURE_2D);
+      GPUTexture *texture = GPU_texture_from_blender(gp_style->sima, &iuser, ibuf, GL_TEXTURE_2D);
       DRW_shgroup_uniform_texture(grp, "myTexture", texture);
       DRW_shgroup_uniform_bool_copy(
           grp, "myTexturePremultiplied", (image->alpha_mode == IMA_ALPHA_PREMUL));
@@ -959,7 +905,7 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
                                         const bool onion,
                                         const bool custonion)
 {
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
   if (gps->totpoints >= 3) {
     float tfill[4];
     /* set color using material, tint color and opacity */
@@ -1016,7 +962,7 @@ static void gpencil_add_stroke_vertexdata(GpencilBatchCache *cache,
   float tcolor[4];
   float ink[4];
   short sthickness;
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
   const int alignment_mode = (gp_style) ? gp_style->alignment_mode : GP_STYLE_FOLLOW_PATH;
 
   /* set color using base color, tint color and opacity */
@@ -1106,7 +1052,7 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
                                     (GP_SCULPT_MASK_SELECTMODE_POINT |
                                      GP_SCULPT_MASK_SELECTMODE_SEGMENT)));
 
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
   /* alpha factor for edit points/line to make them more subtle */
   float edit_alpha = v3d->vertex_opacity;
@@ -1220,7 +1166,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
   }
 
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
     /* check if stroke can be drawn */
     if (gpencil_can_draw_stroke(gp_style, gps, false, is_mat_preview) == false) {
@@ -1335,7 +1281,7 @@ static void gpencil_draw_onion_strokes(GpencilBatchCache *cache,
   ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, gpf->runtime.parent_obmat);
 
   for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
     if (gp_style == NULL) {
       continue;
     }
@@ -1509,84 +1455,6 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
   }
 }
 
-/* Triangulate stroke for high quality fill (this is done only if cache is null or stroke was
- * modified) */
-void gpencil_triangulate_stroke_fill(Object *ob, bGPDstroke *gps)
-{
-  BLI_assert(gps->totpoints >= 3);
-
-  bGPdata *gpd = (bGPdata *)ob->data;
-
-  /* allocate memory for temporary areas */
-  gps->tot_triangles = gps->totpoints - 2;
-  uint(*tmp_triangles)[3] = MEM_mallocN(sizeof(*tmp_triangles) * gps->tot_triangles,
-                                        "GP Stroke temp triangulation");
-  float(*points2d)[2] = MEM_mallocN(sizeof(*points2d) * gps->totpoints,
-                                    "GP Stroke temp 2d points");
-  float(*uv)[2] = MEM_mallocN(sizeof(*uv) * gps->totpoints, "GP Stroke temp 2d uv data");
-
-  int direction = 0;
-
-  /* convert to 2d and triangulate */
-  BKE_gpencil_stroke_2d_flat(gps->points, gps->totpoints, points2d, &direction);
-  BLI_polyfill_calc(points2d, (uint)gps->totpoints, direction, tmp_triangles);
-
-  /* calc texture coordinates automatically */
-  float minv[2];
-  float maxv[2];
-  /* first needs bounding box data */
-  if (gpd->flag & GP_DATA_UV_ADAPTIVE) {
-    gpencil_calc_2d_bounding_box(points2d, gps->totpoints, minv, maxv);
-  }
-  else {
-    ARRAY_SET_ITEMS(minv, -1.0f, -1.0f);
-    ARRAY_SET_ITEMS(maxv, 1.0f, 1.0f);
-  }
-
-  /* calc uv data */
-  gpencil_calc_stroke_fill_uv(points2d, gps->totpoints, minv, maxv, uv);
-
-  /* Number of triangles */
-  gps->tot_triangles = gps->totpoints - 2;
-  /* save triangulation data in stroke cache */
-  if (gps->tot_triangles > 0) {
-    if (gps->triangles == NULL) {
-      gps->triangles = MEM_callocN(sizeof(*gps->triangles) * gps->tot_triangles,
-                                   "GP Stroke triangulation");
-    }
-    else {
-      gps->triangles = MEM_recallocN(gps->triangles, sizeof(*gps->triangles) * gps->tot_triangles);
-    }
-
-    for (int i = 0; i < gps->tot_triangles; i++) {
-      bGPDtriangle *stroke_triangle = &gps->triangles[i];
-      memcpy(gps->triangles[i].verts, tmp_triangles[i], sizeof(uint[3]));
-      /* copy texture coordinates */
-      copy_v2_v2(stroke_triangle->uv[0], uv[tmp_triangles[i][0]]);
-      copy_v2_v2(stroke_triangle->uv[1], uv[tmp_triangles[i][1]]);
-      copy_v2_v2(stroke_triangle->uv[2], uv[tmp_triangles[i][2]]);
-    }
-  }
-  else {
-    /* No triangles needed - Free anything allocated previously */
-    if (gps->triangles) {
-      MEM_freeN(gps->triangles);
-    }
-
-    gps->triangles = NULL;
-  }
-
-  /* disable recalculation flag */
-  if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
-    gps->flag &= ~GP_STROKE_RECALC_GEOMETRY;
-  }
-
-  /* clear memory */
-  MEM_SAFE_FREE(tmp_triangles);
-  MEM_SAFE_FREE(points2d);
-  MEM_SAFE_FREE(uv);
-}
-
 /* Check if stencil is required */
 static bool gpencil_is_stencil_required(MaterialGPencilStyle *gp_style)
 {
@@ -1621,7 +1489,7 @@ void gpencil_populate_buffer_strokes(GPENCIL_e_data *e_data,
   }
   /* this is not common, but avoid any special situations when brush could be without material */
   if (gp_style == NULL) {
-    gp_style = BKE_material_gpencil_settings_get(ob, ob->actcol);
+    gp_style = BKE_gpencil_material_settings(ob, ob->actcol);
   }
 
   static float unit_mat[4][4] = {
@@ -1816,7 +1684,6 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
   for (int i = 0; i < cache->grp_used; i++) {
     elm = &cache->grp_cache[i];
     array_elm = &cache_ob->shgrp_array[idx];
-    const float scale = cache_ob->scale;
 
     /* Limit stencil id */
     if (stencil_id > 255) {
@@ -1846,7 +1713,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
 
     bGPDframe *gpf = elm->gpf;
     bGPDstroke *gps = elm->gps;
-    MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
     /* if the user switch used material from data to object,
      * the material could not be available */
     if (gp_style == NULL) {
@@ -1858,6 +1725,8 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
       break;
     }
 
+    const float scale = (!cache_ob->is_dup_ob) ? mat4_to_scale(gpf->runtime.parent_obmat) :
+                                                 cache_ob->scale;
     float(*obmat)[4] = (!cache_ob->is_dup_ob) ? gpf->runtime.parent_obmat : cache_ob->obmat;
     switch (elm->type) {
       case eGpencilBatchGroupType_Stroke: {
@@ -2077,13 +1946,14 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
     BKE_gpencil_modifiers_calc(draw_ctx->depsgraph, draw_ctx->scene, ob);
   }
 
-  /* Use original data to shared in edit/transform operators */
-  bGPdata *gpd_eval = (bGPdata *)ob->data;
-  bGPdata *gpd = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
+  bGPdata *gpd = (bGPdata *)ob->data;
 
-  const bool main_onion = stl->storage->is_main_onion;
+  /* If render mode, instead to use view switches, test if the datablock has
+   * the onion activated for render. */
+  const bool render_onion = (gpd && gpd->onion_flag & GP_ONION_GHOST_ALWAYS);
+  const bool main_onion = (stl->storage->is_render) ? render_onion : stl->storage->is_main_onion;
+  const bool overlay = (stl->storage->is_render) ? render_onion : stl->storage->is_main_overlay;
   const bool playing = stl->storage->is_playing;
-  const bool overlay = stl->storage->is_main_overlay;
   const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay &&
                         main_onion && !playing && gpencil_onion_active(gpd);
 

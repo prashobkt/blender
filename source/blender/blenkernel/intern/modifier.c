@@ -53,8 +53,8 @@
 #include "BKE_global.h"
 #include "BKE_idcode.h"
 #include "BKE_key.h"
-#include "BKE_library.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_multires.h"
 #include "BKE_object.h"
@@ -108,7 +108,7 @@ void BKE_modifier_init(void)
 const ModifierTypeInfo *modifierType_getInfo(ModifierType type)
 {
   /* type unsigned, no need to check < 0 */
-  if (type < NUM_MODIFIER_TYPES && modifier_types[type]->name[0] != '\0') {
+  if (type < NUM_MODIFIER_TYPES && modifier_types[type] && modifier_types[type]->name[0] != '\0') {
     return modifier_types[type];
   }
   else {
@@ -612,10 +612,9 @@ ModifierData *modifiers_getLastPreview(struct Scene *scene, ModifierData *md, in
   return tmp_md;
 }
 
-/* NOTE: This is to support old files from before Blender supported modifiers,
- * in some cases versioning code updates these so for new files this will
- * return an empty list. */
-ModifierData *modifiers_getVirtualModifierList(Object *ob,
+/* This is to include things that are not modifiers in the evaluation of the modifier stack, for
+ * example parenting to an armature. */
+ModifierData *modifiers_getVirtualModifierList(const Object *ob,
                                                VirtualModifierData *virtualModifierData)
 {
   ModifierData *md;

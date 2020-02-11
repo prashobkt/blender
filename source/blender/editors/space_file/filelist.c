@@ -947,15 +947,16 @@ ImBuf *filelist_geticon_image(struct FileList *filelist, const int index)
   return filelist_geticon_image_ex(file->typeflag, file->relpath);
 }
 
-static int filelist_geticon_ex(const int typeflag,
-                               const int blentype,
-                               const char *relpath,
+static int filelist_geticon_ex(FileDirEntry *file,
+                               const char *root,
                                const bool is_main,
                                const bool ignore_libdir)
 {
+  const int typeflag = file->typeflag;
+
   if ((typeflag & FILE_TYPE_DIR) &&
       !(ignore_libdir && (typeflag & (FILE_TYPE_BLENDERLIB | FILE_TYPE_BLENDER)))) {
-    if (FILENAME_IS_PARENT(relpath)) {
+    if (FILENAME_IS_PARENT(file->relpath)) {
       return is_main ? ICON_FILE_PARENT : ICON_NONE;
     }
     else if (typeflag & FILE_TYPE_APPLICATIONBUNDLE) {
@@ -968,6 +969,20 @@ static int filelist_geticon_ex(const int typeflag,
       /* Do not return icon for folders if icons are not 'main' draw type
        * (e.g. when used over previews). */
       return ICON_FILE_FOLDER;
+    }
+    else {
+      /* If this path is in System list then use that icon. */
+      struct FSMenu *fsmenu = ED_fsmenu_get();
+      FSMenuEntry *tfsm = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS);
+      char fullpath[FILE_MAX_LIBEXTRA];
+      BLI_join_dirfile(fullpath, sizeof(fullpath), root, file->relpath);
+      BLI_add_slash(fullpath);
+      for (; tfsm; tfsm = tfsm->next) {
+        if (STREQ(tfsm->path, fullpath)) {
+          /* Never want a little folder inside a large one. */
+          return (tfsm->icon == ICON_FILE_FOLDER) ? ICON_NONE : tfsm->icon;
+        }
+      }
     }
   }
 
@@ -1001,6 +1016,9 @@ static int filelist_geticon_ex(const int typeflag,
   else if (typeflag & FILE_TYPE_ALEMBIC) {
     return ICON_FILE_3D;
   }
+  else if (typeflag & FILE_TYPE_USD) {
+    return ICON_FILE_3D;
+  }
   else if (typeflag & FILE_TYPE_OBJECT_IO) {
     return ICON_FILE_3D;
   }
@@ -1011,7 +1029,7 @@ static int filelist_geticon_ex(const int typeflag,
     return ICON_FILE_ARCHIVE;
   }
   else if (typeflag & FILE_TYPE_BLENDERLIB) {
-    const int ret = UI_idcode_icon_get(blentype);
+    const int ret = UI_idcode_icon_get(file->blentype);
     if (ret != ICON_NONE) {
       return ret;
     }
@@ -1023,7 +1041,7 @@ int filelist_geticon(struct FileList *filelist, const int index, const bool is_m
 {
   FileDirEntry *file = filelist_geticon_get_file(filelist, index);
 
-  return filelist_geticon_ex(file->typeflag, file->blentype, file->relpath, is_main, false);
+  return filelist_geticon_ex(file, filelist->filelist.root, is_main, false);
 }
 
 /* ********** Main ********** */
@@ -2129,6 +2147,9 @@ int ED_path_extension_type(const char *path)
   }
   else if (BLI_path_extension_check(path, ".abc")) {
     return FILE_TYPE_ALEMBIC;
+  }
+  else if (BLI_path_extension_check_n(path, ".usd", ".usda", ".usdc", NULL)) {
+    return FILE_TYPE_USD;
   }
   else if (BLI_path_extension_check(path, ".zip")) {
     return FILE_TYPE_ARCHIVE;

@@ -45,7 +45,7 @@
 #include "BKE_brush.h"
 #include "BKE_colortools.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_node.h"
@@ -55,6 +55,9 @@
 #include "BKE_curveprofile.h"
 
 #include "BLO_readfile.h"
+
+/* Make preferences read-only, use versioning_userdef.c. */
+#define U (*((const UserDef *)&U))
 
 /**
  * Rename if the ID doesn't exist.
@@ -147,10 +150,9 @@ static void blo_update_defaults_screen(bScreen *screen,
       }
     }
     else if (sa->spacetype == SPACE_ACTION) {
-      /* Show marker lines, hide channels and collapse summary in timelines. */
+      /* Show markers region, hide channels and collapse summary in timelines. */
       SpaceAction *saction = sa->spacedata.first;
-      saction->flag |= SACTION_SHOW_MARKER_LINES;
-
+      saction->flag |= SACTION_SHOW_MARKERS;
       if (saction->mode == SACTCONT_TIMELINE) {
         saction->ads.flag |= ADS_FLAG_SUMMARY_COLLAPSED;
 
@@ -163,11 +165,15 @@ static void blo_update_defaults_screen(bScreen *screen,
     }
     else if (sa->spacetype == SPACE_GRAPH) {
       SpaceGraph *sipo = sa->spacedata.first;
-      sipo->flag |= SIPO_MARKER_LINES;
+      sipo->flag |= SIPO_SHOW_MARKERS;
     }
     else if (sa->spacetype == SPACE_NLA) {
       SpaceNla *snla = sa->spacedata.first;
-      snla->flag |= SNLA_SHOW_MARKER_LINES;
+      snla->flag |= SNLA_SHOW_MARKERS;
+    }
+    else if (sa->spacetype == SPACE_SEQ) {
+      SpaceSeq *seq = sa->spacedata.first;
+      seq->flag |= SEQ_SHOW_MARKERS;
     }
     else if (sa->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */
@@ -201,13 +207,33 @@ static void blo_update_defaults_screen(bScreen *screen,
     }
   }
 
-  /* Show top-bar by default. */
+  /* Show tool-header by default (for most cases at least, hide for others). */
+  const bool hide_image_tool_header = STREQ(workspace_name, "Rendering");
   for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
     for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
       ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+
       for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
         if (ar->regiontype == RGN_TYPE_TOOL_HEADER) {
-          ar->flag &= ~(RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER);
+          if ((sl->spacetype == SPACE_IMAGE) && hide_image_tool_header) {
+            ar->flag |= RGN_FLAG_HIDDEN;
+          }
+          else {
+            ar->flag &= ~(RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER);
+          }
+        }
+      }
+    }
+  }
+
+  /* 2D animation template. */
+  if (app_template && STREQ(app_template, "2D_Animation")) {
+    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+      for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
+        if (sa->spacetype == SPACE_ACTION) {
+          SpaceAction *saction = sa->spacedata.first;
+          /* Enable Sliders. */
+          saction->flag |= SACTION_SLIDERS;
         }
       }
     }

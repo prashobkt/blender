@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 struct GPUVertBuf;
+struct ImBuf;
 struct Image;
 struct ImageUser;
 struct MovieClip;
@@ -187,7 +188,10 @@ GPUTexture *GPU_texture_create_from_vertbuf(struct GPUVertBuf *vert);
 GPUTexture *GPU_texture_create_buffer(eGPUTextureFormat data_type, const uint buffer);
 
 GPUTexture *GPU_texture_from_bindcode(int textarget, int bindcode);
-GPUTexture *GPU_texture_from_blender(struct Image *ima, struct ImageUser *iuser, int textarget);
+GPUTexture *GPU_texture_from_blender(struct Image *ima,
+                                     struct ImageUser *iuser,
+                                     struct ImBuf *ibuf,
+                                     int textarget);
 GPUTexture *GPU_texture_from_preview(struct PreviewImage *prv, int mipmap);
 
 /* movie clip drawing */

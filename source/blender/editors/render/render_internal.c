@@ -50,7 +50,7 @@
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
 #include "BKE_object.h"
@@ -955,7 +955,7 @@ static int screen_render_invoke(bContext *C, wmOperator *op, const wmEvent *even
   WM_cursor_wait(1);
 
   /* flush sculpt and editmode changes */
-  ED_editors_flush_edits(bmain, true);
+  ED_editors_flush_edits_ex(bmain, true, false);
 
   /* cleanup sequencer caches before starting user triggered render.
    * otherwise, invalidated cache entries can make their way into
@@ -1173,7 +1173,7 @@ static int render_shutter_curve_preset_exec(bContext *C, wmOperator *op)
   CurveMap *cm = mblur_shutter_curve->cm;
   int preset = RNA_enum_get(op->ptr, "shape");
 
-  cm->flag &= ~CUMA_EXTEND_EXTRAPOLATE;
+  mblur_shutter_curve->flag &= ~CUMA_EXTEND_EXTRAPOLATE;
   mblur_shutter_curve->preset = preset;
   BKE_curvemap_reset(
       cm, &mblur_shutter_curve->clipr, mblur_shutter_curve->preset, CURVEMAP_SLOPE_POS_NEG);

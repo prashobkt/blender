@@ -24,6 +24,10 @@
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* WARNING ALERT! TYPEDEF VALUES ARE WRITTEN IN FILES! SO DO NOT CHANGE!
  * (ONLY ADD NEW ITEMS AT THE END)
  */
@@ -62,7 +66,9 @@ typedef enum ModifierType {
   eModifierType_SimpleDeform = 28,
   eModifierType_Multires = 29,
   eModifierType_Surface = 30,
+#ifdef DNA_DEPRECATED_ALLOW
   eModifierType_Smoke = 31,
+#endif
   eModifierType_ShapeKey = 32,
   eModifierType_Solidify = 33,
   eModifierType_Screw = 34,
@@ -86,6 +92,8 @@ typedef enum ModifierType {
   eModifierType_MeshSequenceCache = 52,
   eModifierType_SurfaceDeform = 53,
   eModifierType_WeightedNormal = 54,
+  eModifierType_Weld = 55,
+  eModifierType_Fluid = 56,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -178,8 +186,14 @@ typedef struct LatticeModifierData {
   /** Optional vertexgroup name, MAX_VGROUP_NAME. */
   char name[64];
   float strength;
-  char _pad[4];
+  short flag;
+  char _pad[2];
 } LatticeModifierData;
+
+/*Lattice modifier flags */
+enum {
+  MOD_LATTICE_INVERT_VGROUP = (1 << 0),
+};
 
 typedef struct CurveModifierData {
   ModifierData modifier;
@@ -189,8 +203,14 @@ typedef struct CurveModifierData {
   char name[64];
   /** Axis along which curve deforms. */
   short defaxis;
-  char _pad[6];
+  short flag;
+  char _pad[4];
 } CurveModifierData;
+
+/* Curve modifier flags */
+enum {
+  MOD_CURVE_INVERT_VGROUP = (1 << 0),
+};
 
 /* CurveModifierData->defaxis */
 enum {
@@ -450,24 +470,24 @@ enum {
   MOD_BEVEL_VMESH_CUTOFF,
 };
 
-typedef struct SmokeModifierData {
+typedef struct FluidModifierData {
   ModifierData modifier;
 
-  struct SmokeDomainSettings *domain;
+  struct FluidDomainSettings *domain;
   /** Inflow, outflow, smoke objects. */
-  struct SmokeFlowSettings *flow;
-  /** Collision objects. */
-  struct SmokeCollSettings *coll;
+  struct FluidFlowSettings *flow;
+  /** Effector objects (collision, guiding). */
+  struct FluidEffectorSettings *effector;
   float time;
   /** Domain, inflow, outflow, .... */
   int type;
-} SmokeModifierData;
+} FluidModifierData;
 
-/* Smoke modifier flags */
+/* Fluid modifier flags */
 enum {
-  MOD_SMOKE_TYPE_DOMAIN = (1 << 0),
-  MOD_SMOKE_TYPE_FLOW = (1 << 1),
-  MOD_SMOKE_TYPE_COLL = (1 << 2),
+  MOD_FLUID_TYPE_DOMAIN = (1 << 0),
+  MOD_FLUID_TYPE_FLOW = (1 << 1),
+  MOD_FLUID_TYPE_EFFEC = (1 << 2),
 };
 
 typedef struct DisplaceModifierData {
@@ -488,7 +508,14 @@ typedef struct DisplaceModifierData {
   char defgrp_name[64];
   float midlevel;
   int space;
+  short flag;
+  char _pad[6];
 } DisplaceModifierData;
+
+/* DisplaceModifierData->flag */
+enum {
+  MOD_DISP_INVERT_VGROUP = (1 << 0),
+};
 
 /* DisplaceModifierData->direction */
 enum {
@@ -587,6 +614,7 @@ typedef struct SmoothModifierData {
 
 /* Smooth modifier flags */
 enum {
+  MOD_SMOOTH_INVERT_VGROUP = (1 << 0),
   MOD_SMOOTH_X = (1 << 1),
   MOD_SMOOTH_Y = (1 << 2),
   MOD_SMOOTH_Z = (1 << 3),
@@ -607,6 +635,7 @@ typedef struct CastModifierData {
 /* Cast modifier flags */
 enum {
   /* And what bout (1 << 0) flag? ;) */
+  MOD_CAST_INVERT_VGROUP = (1 << 0),
   MOD_CAST_X = (1 << 1),
   MOD_CAST_Y = (1 << 2),
   MOD_CAST_Z = (1 << 3),
@@ -976,12 +1005,22 @@ typedef enum {
   eMultiresModifierFlag_UseCrease = (1 << 2),
 } MultiresModifierFlag;
 
+/* DEPRECATED, only used for versioning. */
 typedef struct FluidsimModifierData {
   ModifierData modifier;
 
   /** Definition is in DNA_object_fluidsim_types.h. */
   struct FluidsimSettings *fss;
 } FluidsimModifierData;
+
+/* DEPRECATED, only used for versioning. */
+typedef struct SmokeModifierData {
+  ModifierData modifier;
+
+  /** Domain, inflow, outflow, .... */
+  int type;
+  int _pad;
+} SmokeModifierData;
 
 typedef struct ShrinkwrapModifierData {
   ModifierData modifier;
@@ -1147,7 +1186,7 @@ enum {
   MOD_SOLIDIFY_EVEN = (1 << 1),
   MOD_SOLIDIFY_NORMAL_CALC = (1 << 2),
   MOD_SOLIDIFY_VGROUP_INV = (1 << 3),
-#ifdef DNA_DEPRECATED
+#ifdef DNA_DEPRECATED_ALLOW
   MOD_SOLIDIFY_RIM_MATERIAL = (1 << 4), /* deprecated, used in do_versions */
 #endif
   MOD_SOLIDIFY_FLIP = (1 << 5),
@@ -1278,13 +1317,17 @@ typedef struct WarpModifierData {
   char defgrp_name[64];
   float strength;
   float falloff_radius;
-  /** Not used yet. */
   char flag;
   char falloff_type;
   char _pad[6];
 } WarpModifierData;
 
 #define MOD_WARP_VOLUME_PRESERVE 1
+
+/* WarpModifierData->flag */
+enum {
+  MOD_WARP_INVERT_VGROUP = (1 << 0),
+};
 
 typedef enum {
   eWarp_Falloff_None = 0,
@@ -1594,7 +1637,7 @@ typedef struct TriangulateModifierData {
 
 /* TriangulateModifierData.flag */
 enum {
-#ifdef DNA_DEPRECATED
+#ifdef DNA_DEPRECATED_ALLOW
   MOD_TRIANGULATE_BEAUTY = (1 << 0), /* deprecated */
 #endif
   MOD_TRIANGULATE_KEEP_CUSTOMLOOP_NORMALS = 1 << 1,
@@ -1810,6 +1853,16 @@ enum {
   MOD_WIREFRAME_CREASE = (1 << 5),
 };
 
+typedef struct WeldModifierData {
+  ModifierData modifier;
+
+  /* The limit below which to merge vertices. */
+  float merge_dist;
+  unsigned int max_interactions;
+  /* Name of vertex group to use to mask, MAX_VGROUP_NAME. */
+  char defgrp_name[64];
+} WeldModifierData;
+
 typedef struct DataTransferModifierData {
   ModifierData modifier;
 
@@ -1992,5 +2045,9 @@ enum {
 
 #define MOD_MESHSEQ_READ_ALL \
   (MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY | MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __DNA_MODIFIER_TYPES_H__ */

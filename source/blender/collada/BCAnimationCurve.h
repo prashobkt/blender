@@ -17,14 +17,15 @@
  * All rights reserved.
  */
 
-#ifndef __BC_ANIMATION_CURVE_H__
-#define __BC_ANIMATION_CURVE_H__
+#ifndef __BCANIMATIONCURVE_H__
+#define __BCANIMATIONCURVE_H__
 
 #include "collada_utils.h"
 #include "BCSampleData.h"
 
-extern "C" {
 #include "MEM_guardedalloc.h"
+
+extern "C" {
 #include "BKE_fcurve.h"
 #include "BKE_armature.h"
 #include "BKE_material.h"
@@ -148,4 +149,4 @@ class BCAnimationCurve {
 
 typedef std::map<BCCurveKey, BCAnimationCurve *> BCAnimationCurveMap;
 
-#endif
+#endif /* __BCANIMATIONCURVE_H__ */

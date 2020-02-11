@@ -174,12 +174,9 @@ static void view2d_masks(View2D *v2d, bool check_scrollers, const rcti *mask_scr
    * - if they overlap, they must not occupy the corners (which are reserved for other widgets)
    */
   if (scroll) {
-    const int scroll_width = (v2d->scroll & V2D_SCROLL_VERTICAL_HANDLES) ?
-                                 V2D_SCROLL_HANDLE_WIDTH :
-                                 V2D_SCROLL_WIDTH;
-    const int scroll_height = (v2d->scroll & V2D_SCROLL_HORIZONTAL_HANDLES) ?
-                                  V2D_SCROLL_HANDLE_HEIGHT :
-                                  V2D_SCROLL_HEIGHT;
+    float scroll_width, scroll_height;
+
+    UI_view2d_scroller_size_get(v2d, &scroll_width, &scroll_height);
 
     /* vertical scroller */
     if (scroll & V2D_SCROLL_LEFT) {
@@ -356,11 +353,6 @@ void UI_view2d_region_reinit(View2D *v2d, short type, int winx, int winy)
 
       /* note, scroll is being flipped in ED_region_panels() drawing */
       v2d->scroll |= (V2D_SCROLL_HORIZONTAL_HIDE | V2D_SCROLL_VERTICAL_HIDE);
-
-      /* initialize without scroll bars (interferes with zoom level see: T47047) */
-      if (do_init) {
-        v2d->scroll |= (V2D_SCROLL_VERTICAL_FULLR | V2D_SCROLL_HORIZONTAL_FULLR);
-      }
 
       if (do_init) {
         float panelzoom = (style) ? style->panelzoom : 1.0f;
@@ -730,7 +722,7 @@ static void ui_view2d_curRect_validate_resize(View2D *v2d, bool resize, bool mas
        * - width is OK, but need to check if outside of boundaries
        *
        * So, resolution is to just shift view by the gap between the extremities.
-       * We favour moving the 'minimum' across, as that's origin for most things
+       * We favor moving the 'minimum' across, as that's origin for most things.
        * (XXX - in the past, max was favored... if there are bugs, swap!)
        */
       if ((cur->xmin < tot->xmin) && (cur->xmax > tot->xmax)) {
@@ -787,7 +779,7 @@ static void ui_view2d_curRect_validate_resize(View2D *v2d, bool resize, bool mas
        * - height is OK, but need to check if outside of boundaries
        *
        * So, resolution is to just shift view by the gap between the extremities.
-       * We favour moving the 'minimum' across, as that's origin for most things
+       * We favor moving the 'minimum' across, as that's origin for most things.
        */
       if ((cur->ymin < tot->ymin) && (cur->ymax > tot->ymax)) {
         /* outside boundaries on both sides,
@@ -1351,7 +1343,7 @@ void UI_view2d_multi_grid_draw(View2D *v2d, int colorid, float step, int level_s
   uchar grid_line_color[3];
 
   /* Make an estimate of at least how many vertices will be needed */
-  unsigned vertex_count = 4;
+  uint vertex_count = 4;
   vertex_count += 2 * ((int)((v2d->cur.xmax - v2d->cur.xmin) / lstep) + 1);
   vertex_count += 2 * ((int)((v2d->cur.ymax - v2d->cur.ymin) / lstep) + 1);
 
@@ -1937,6 +1929,31 @@ View2D *UI_view2d_fromcontext_rwin(const bContext *C)
     return ar ? &(ar->v2d) : NULL;
   }
   return &(region->v2d);
+}
+
+/* Get scrollbar sizes of the current 2D view. The size will be zero if the view has its scrollbars
+ * disabled. */
+void UI_view2d_scroller_size_get(const View2D *v2d, float *r_x, float *r_y)
+{
+  int scroll = view2d_scroll_mapped(v2d->scroll);
+
+  if (r_x) {
+    if (scroll & V2D_SCROLL_VERTICAL) {
+      *r_x = (scroll & V2D_SCROLL_VERTICAL_HANDLES) ? V2D_SCROLL_HANDLE_WIDTH : V2D_SCROLL_WIDTH;
+    }
+    else {
+      *r_x = 0;
+    }
+  }
+  if (r_y) {
+    if (scroll & V2D_SCROLL_HORIZONTAL) {
+      *r_y = (scroll & V2D_SCROLL_HORIZONTAL_HANDLES) ? V2D_SCROLL_HANDLE_HEIGHT :
+                                                        V2D_SCROLL_HEIGHT;
+    }
+    else {
+      *r_y = 0;
+    }
+  }
 }
 
 /**

@@ -28,12 +28,6 @@
 #  define _WIN32_IE 0x0501 /* shipped before XP, so doesn't impose additional requirements */
 #endif
 
-/* clang-format off */
-#pragma comment(linker,"\"/manifestdependency:type='win32' \
-name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-/* clang-format on */
-
 #include <commctrl.h>
 #include <shlobj.h>
 #include <tlhelp32.h>
@@ -449,6 +443,13 @@ bool GHOST_SystemWin32::processEvents(bool waitForEvent)
       ::DispatchMessageW(&msg);
       hasEventHandled = true;
     }
+
+    /* PeekMessage above is allowed to dispatch messages to the wndproc without us
+     * noticing, so we need to check the event manager here to see if there are
+     * events waiting in the queue.
+     */
+    hasEventHandled |= this->m_eventManager->getNumEvents() > 0;
+
   } while (waitForEvent && !hasEventHandled);
 
   return hasEventHandled;
@@ -827,6 +828,9 @@ GHOST_TKey GHOST_SystemWin32::convertKey(short vKey, short scanCode, short exten
       case VK_RWIN:
         key = GHOST_kKeyOS;
         break;
+      case VK_APPS:
+        key = GHOST_kKeyApp;
+        break;
       case VK_NUMLOCK:
         key = GHOST_kKeyNumLock;
         break;
@@ -897,6 +901,7 @@ GHOST_Event *GHOST_SystemWin32::processPointerEvent(GHOST_TEventType type,
 
   switch (type) {
     case GHOST_kEventButtonDown:
+      /* Update window tablet data to be included in event. */
       window->setTabletData(&pointerInfo.tabletData);
       eventHandled = true;
       return new GHOST_EventButton(
@@ -906,6 +911,7 @@ GHOST_Event *GHOST_SystemWin32::processPointerEvent(GHOST_TEventType type,
       return new GHOST_EventButton(
           system->getMilliSeconds(), GHOST_kEventButtonUp, window, pointerInfo.buttonMask);
     case GHOST_kEventCursorMove:
+      /* Update window tablet data to be included in event. */
       window->setTabletData(&pointerInfo.tabletData);
       eventHandled = true;
       return new GHOST_EventCursor(system->getMilliSeconds(),
@@ -1162,8 +1168,7 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, UINT msg, WPARAM wParam, 
   GHOST_ASSERT(system, "GHOST_SystemWin32::s_wndProc(): system not initialized");
 
   if (hwnd) {
-#if 0
-    // Disabled due to bug in Intel drivers, see T51959
+
     if (msg == WM_NCCREATE) {
       // Tell Windows to automatically handle scaling of non-client areas
       // such as the caption bar. EnableNonClientDpiScaling was introduced in Windows 10
@@ -1172,13 +1177,11 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, UINT msg, WPARAM wParam, 
         GHOST_WIN32_EnableNonClientDpiScaling fpEnableNonClientDpiScaling =
             (GHOST_WIN32_EnableNonClientDpiScaling)::GetProcAddress(m_user32,
                                                                     "EnableNonClientDpiScaling");
-
         if (fpEnableNonClientDpiScaling) {
           fpEnableNonClientDpiScaling(hwnd);
         }
       }
     }
-#endif
 
     GHOST_WindowWin32 *window = (GHOST_WindowWin32 *)::GetWindowLongPtr(hwnd, GWLP_USERDATA);
     if (window) {
@@ -1457,7 +1460,10 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, UINT msg, WPARAM wParam, 
         ////////////////////////////////////////////////////////////////////////
         case WM_CLOSE:
           /* The WM_CLOSE message is sent as a signal that a window
-           * or an application should terminate. */
+           * or an application should terminate. Restore if minimized. */
+          if (IsIconic(hwnd)) {
+            ShowWindow(hwnd, SW_RESTORE);
+          }
           event = processWindowEvent(GHOST_kEventWindowClose, window);
           break;
         case WM_ACTIVATE:

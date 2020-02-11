@@ -46,12 +46,13 @@
 #include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_constraint.h"
+#include "BKE_object.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_library_override.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_override.h"
+#include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -546,7 +547,8 @@ static void merged_element_search_call_cb(struct bContext *C, void *UNUSED(arg1)
   }
 }
 
-/** Merged element search menu
+/**
+ * Merged element search menu
  * Created on activation of a merged or aggregated icon-row icon.
  */
 static uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *data)
@@ -677,8 +679,8 @@ static void object_delete_cb(bContext *C,
     }
 
     // check also library later
-    if (ob == CTX_data_edit_object(C)) {
-      ED_object_editmode_exit(C, EM_FREEDATA);
+    if ((ob->mode && OB_MODE_EDIT) && BKE_object_is_in_editmode(ob)) {
+      ED_object_editmode_exit_ex(bmain, scene, ob, EM_FREEDATA);
     }
     BKE_id_delete(bmain, ob);
   }
@@ -717,7 +719,7 @@ static void id_override_library_cb(bContext *C,
     Main *bmain = CTX_data_main(C);
     /* For now, remapp all local usages of linked ID to local override one here. */
     BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, true);
-    ID *override_id = BKE_override_library_create_from_id(bmain, tselem->id, true);
+    ID *override_id = BKE_lib_override_library_create_from_id(bmain, tselem->id, true);
     if (override_id != NULL) {
       BKE_main_id_clear_newpoins(bmain);
     }
@@ -1537,7 +1539,7 @@ static bool outliner_id_operation_item_poll(bContext *C,
 
   switch (enum_value) {
     case OUTLINER_IDOP_OVERRIDE_LIBRARY:
-      return BKE_override_library_is_enabled();
+      return BKE_lib_override_library_is_enabled();
     case OUTLINER_IDOP_SINGLE:
       if (!soops || ELEM(soops->outlinevis, SO_SCENES, SO_VIEW_LAYER)) {
         return true;
@@ -1558,6 +1560,9 @@ static const EnumPropertyItem *outliner_id_operation_itemf(bContext *C,
   EnumPropertyItem *items = NULL;
   int totitem = 0;
 
+  if (C == NULL) {
+    return prop_id_op_types;
+  }
   for (const EnumPropertyItem *it = prop_id_op_types; it->identifier != NULL; it++) {
     if (!outliner_id_operation_item_poll(C, ptr, prop, it->value)) {
       continue;
@@ -1647,7 +1652,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
       break;
     }
     case OUTLINER_IDOP_OVERRIDE_LIBRARY: {
-      if (BKE_override_library_is_enabled()) {
+      if (BKE_lib_override_library_is_enabled()) {
         /* make local */
         outliner_do_libdata_operation(
             C, op->reports, scene, soops, &soops->tree, id_override_library_cb, NULL);

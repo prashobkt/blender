@@ -126,7 +126,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_sdna_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_space_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_speaker_types.h"
@@ -157,7 +157,7 @@
 #include "BKE_gpencil_modifier.h"
 #include "BKE_idcode.h"
 #include "BKE_layer.h"
-#include "BKE_library_override.h"
+#include "BKE_lib_override.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
@@ -180,6 +180,9 @@
 #include "dna_type_offsets.h"
 
 #include <errno.h>
+
+/* Make preferences read-only. */
+#define U (*((const UserDef *)&U))
 
 /* ********* my write, buffered writing with minimum size chunks ************ */
 
@@ -1625,38 +1628,38 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
       writestruct(wd, DATA, EffectorWeights, 1, clmd->sim_parms->effector_weights);
       write_pointcaches(wd, &clmd->ptcaches);
     }
-    else if (md->type == eModifierType_Smoke) {
-      SmokeModifierData *smd = (SmokeModifierData *)md;
+    else if (md->type == eModifierType_Fluid) {
+      FluidModifierData *mmd = (FluidModifierData *)md;
 
-      if (smd->type & MOD_SMOKE_TYPE_DOMAIN) {
-        writestruct(wd, DATA, SmokeDomainSettings, 1, smd->domain);
+      if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
+        writestruct(wd, DATA, FluidDomainSettings, 1, mmd->domain);
 
-        if (smd->domain) {
-          write_pointcaches(wd, &(smd->domain->ptcaches[0]));
+        if (mmd->domain) {
+          write_pointcaches(wd, &(mmd->domain->ptcaches[0]));
 
           /* create fake pointcache so that old blender versions can read it */
-          smd->domain->point_cache[1] = BKE_ptcache_add(&smd->domain->ptcaches[1]);
-          smd->domain->point_cache[1]->flag |= PTCACHE_DISK_CACHE | PTCACHE_FAKE_SMOKE;
-          smd->domain->point_cache[1]->step = 1;
+          mmd->domain->point_cache[1] = BKE_ptcache_add(&mmd->domain->ptcaches[1]);
+          mmd->domain->point_cache[1]->flag |= PTCACHE_DISK_CACHE | PTCACHE_FAKE_SMOKE;
+          mmd->domain->point_cache[1]->step = 1;
 
-          write_pointcaches(wd, &(smd->domain->ptcaches[1]));
+          write_pointcaches(wd, &(mmd->domain->ptcaches[1]));
 
-          if (smd->domain->coba) {
-            writestruct(wd, DATA, ColorBand, 1, smd->domain->coba);
+          if (mmd->domain->coba) {
+            writestruct(wd, DATA, ColorBand, 1, mmd->domain->coba);
           }
 
           /* cleanup the fake pointcache */
-          BKE_ptcache_free_list(&smd->domain->ptcaches[1]);
-          smd->domain->point_cache[1] = NULL;
+          BKE_ptcache_free_list(&mmd->domain->ptcaches[1]);
+          mmd->domain->point_cache[1] = NULL;
 
-          writestruct(wd, DATA, EffectorWeights, 1, smd->domain->effector_weights);
+          writestruct(wd, DATA, EffectorWeights, 1, mmd->domain->effector_weights);
         }
       }
-      else if (smd->type & MOD_SMOKE_TYPE_FLOW) {
-        writestruct(wd, DATA, SmokeFlowSettings, 1, smd->flow);
+      else if (mmd->type & MOD_FLUID_TYPE_FLOW) {
+        writestruct(wd, DATA, FluidFlowSettings, 1, mmd->flow);
       }
-      else if (smd->type & MOD_SMOKE_TYPE_COLL) {
-        writestruct(wd, DATA, SmokeCollSettings, 1, smd->coll);
+      else if (mmd->type & MOD_FLUID_TYPE_EFFEC) {
+        writestruct(wd, DATA, FluidEffectorSettings, 1, mmd->effector);
       }
     }
     else if (md->type == eModifierType_Fluidsim) {
@@ -2063,9 +2066,7 @@ static void write_customdata(WriteData *wd,
                              int count,
                              CustomData *data,
                              CustomDataLayer *layers,
-                             CustomDataMask cddata_mask,
-                             int partial_type,
-                             int partial_count)
+                             CustomDataMask cddata_mask)
 {
   int i;
 
@@ -2102,16 +2103,7 @@ static void write_customdata(WriteData *wd,
     else {
       CustomData_file_write_info(layer->type, &structname, &structnum);
       if (structnum) {
-        /* when using partial visibility, the MEdge and MFace layers
-         * are smaller than the original, so their type and count is
-         * passed to make this work */
-        if (layer->type != partial_type) {
-          datasize = structnum * count;
-        }
-        else {
-          datasize = structnum * partial_count;
-        }
-
+        datasize = structnum * count;
         writestruct_id(wd, DATA, structname, datasize, layer->data);
       }
       else {
@@ -2130,85 +2122,70 @@ static void write_customdata(WriteData *wd,
 
 static void write_mesh(WriteData *wd, Mesh *mesh)
 {
-  CustomDataLayer *vlayers = NULL, vlayers_buff[CD_TEMP_CHUNK_SIZE];
-  CustomDataLayer *elayers = NULL, elayers_buff[CD_TEMP_CHUNK_SIZE];
-  CustomDataLayer *flayers = NULL, flayers_buff[CD_TEMP_CHUNK_SIZE];
-  CustomDataLayer *llayers = NULL, llayers_buff[CD_TEMP_CHUNK_SIZE];
-  CustomDataLayer *players = NULL, players_buff[CD_TEMP_CHUNK_SIZE];
-
   if (mesh->id.us > 0 || wd->use_memfile) {
-    /* write LibData */
-    {
-      /* write a copy of the mesh, don't modify in place because it is
-       * not thread safe for threaded renders that are reading this */
-      Mesh *old_mesh = mesh;
-      Mesh copy_mesh = *mesh;
-      mesh = &copy_mesh;
+    /* Write a copy of the mesh with possibly reduced number of data layers.
+     * Don't edit the original since other threads might be reading it. */
+    Mesh *old_mesh = mesh;
+    Mesh copy_mesh = *mesh;
+    mesh = &copy_mesh;
 
-      /* cache only - don't write */
-      mesh->mface = NULL;
-      mesh->totface = 0;
-      memset(&mesh->fdata, 0, sizeof(mesh->fdata));
+    /* cache only - don't write */
+    mesh->mface = NULL;
+    mesh->totface = 0;
+    memset(&mesh->fdata, 0, sizeof(mesh->fdata));
 
-      /**
-       * Those calls:
-       * - Reduce mesh->xdata.totlayer to number of layers to write.
-       * - Fill xlayers with those layers to be written.
-       * Note that mesh->xdata is from now on invalid for Blender,
-       * but this is why the whole mesh is a temp local copy!
-       */
-      CustomData_file_write_prepare(
-          &mesh->vdata, &vlayers, vlayers_buff, ARRAY_SIZE(vlayers_buff));
-      CustomData_file_write_prepare(
-          &mesh->edata, &elayers, elayers_buff, ARRAY_SIZE(elayers_buff));
-      flayers = flayers_buff;
-      CustomData_file_write_prepare(
-          &mesh->ldata, &llayers, llayers_buff, ARRAY_SIZE(llayers_buff));
-      CustomData_file_write_prepare(
-          &mesh->pdata, &players, players_buff, ARRAY_SIZE(players_buff));
+    /* Reduce xdata layers, fill xlayers with layers to be written.
+     * This makes xdata invalid for Blender, which is why we made a
+     * temporary local copy. */
+    CustomDataLayer *vlayers = NULL, vlayers_buff[CD_TEMP_CHUNK_SIZE];
+    CustomDataLayer *elayers = NULL, elayers_buff[CD_TEMP_CHUNK_SIZE];
+    CustomDataLayer *flayers = NULL, flayers_buff[CD_TEMP_CHUNK_SIZE];
+    CustomDataLayer *llayers = NULL, llayers_buff[CD_TEMP_CHUNK_SIZE];
+    CustomDataLayer *players = NULL, players_buff[CD_TEMP_CHUNK_SIZE];
 
-      writestruct_at_address(wd, ID_ME, Mesh, 1, old_mesh, mesh);
-      write_iddata(wd, &mesh->id);
+    CustomData_file_write_prepare(&mesh->vdata, &vlayers, vlayers_buff, ARRAY_SIZE(vlayers_buff));
+    CustomData_file_write_prepare(&mesh->edata, &elayers, elayers_buff, ARRAY_SIZE(elayers_buff));
+    flayers = flayers_buff;
+    CustomData_file_write_prepare(&mesh->ldata, &llayers, llayers_buff, ARRAY_SIZE(llayers_buff));
+    CustomData_file_write_prepare(&mesh->pdata, &players, players_buff, ARRAY_SIZE(players_buff));
 
-      /* direct data */
-      if (mesh->adt) {
-        write_animdata(wd, mesh->adt);
-      }
+    writestruct_at_address(wd, ID_ME, Mesh, 1, old_mesh, mesh);
+    write_iddata(wd, &mesh->id);
 
-      writedata(wd, DATA, sizeof(void *) * mesh->totcol, mesh->mat);
-      writedata(wd, DATA, sizeof(MSelect) * mesh->totselect, mesh->mselect);
-
-      write_customdata(
-          wd, &mesh->id, mesh->totvert, &mesh->vdata, vlayers, CD_MASK_MESH.vmask, -1, 0);
-      write_customdata(
-          wd, &mesh->id, mesh->totedge, &mesh->edata, elayers, CD_MASK_MESH.emask, -1, 0);
-      /* fdata is really a dummy - written so slots align */
-      write_customdata(
-          wd, &mesh->id, mesh->totface, &mesh->fdata, flayers, CD_MASK_MESH.fmask, -1, 0);
-      write_customdata(
-          wd, &mesh->id, mesh->totloop, &mesh->ldata, llayers, CD_MASK_MESH.lmask, -1, 0);
-      write_customdata(
-          wd, &mesh->id, mesh->totpoly, &mesh->pdata, players, CD_MASK_MESH.pmask, -1, 0);
-
-      /* restore pointer */
-      mesh = old_mesh;
+    /* direct data */
+    if (mesh->adt) {
+      write_animdata(wd, mesh->adt);
     }
-  }
 
-  if (vlayers && vlayers != vlayers_buff) {
-    MEM_freeN(vlayers);
-  }
-  if (elayers && elayers != elayers_buff) {
-    MEM_freeN(elayers);
-  }
-  if (flayers && flayers != flayers_buff) {
-    MEM_freeN(flayers);
-  }
-  if (llayers && llayers != llayers_buff) {
-    MEM_freeN(llayers);
-  }
-  if (players && players != players_buff) {
-    MEM_freeN(players);
+    writedata(wd, DATA, sizeof(void *) * mesh->totcol, mesh->mat);
+    writedata(wd, DATA, sizeof(MSelect) * mesh->totselect, mesh->mselect);
+
+    write_customdata(wd, &mesh->id, mesh->totvert, &mesh->vdata, vlayers, CD_MASK_MESH.vmask);
+    write_customdata(wd, &mesh->id, mesh->totedge, &mesh->edata, elayers, CD_MASK_MESH.emask);
+    /* fdata is really a dummy - written so slots align */
+    write_customdata(wd, &mesh->id, mesh->totface, &mesh->fdata, flayers, CD_MASK_MESH.fmask);
+    write_customdata(wd, &mesh->id, mesh->totloop, &mesh->ldata, llayers, CD_MASK_MESH.lmask);
+    write_customdata(wd, &mesh->id, mesh->totpoly, &mesh->pdata, players, CD_MASK_MESH.pmask);
+
+    /* restore pointer */
+    mesh = old_mesh;
+
+    /* free temporary data */
+    if (vlayers && vlayers != vlayers_buff) {
+      MEM_freeN(vlayers);
+    }
+    if (elayers && elayers != elayers_buff) {
+      MEM_freeN(elayers);
+    }
+    if (flayers && flayers != flayers_buff) {
+      MEM_freeN(flayers);
+    }
+    if (llayers && llayers != llayers_buff) {
+      MEM_freeN(llayers);
+    }
+    if (players && players != players_buff) {
+      MEM_freeN(players);
+    }
   }
 }
 
@@ -2262,6 +2239,8 @@ static void write_image(WriteData *wd, Image *ima)
       writestruct(wd, DATA, ImageView, 1, iv);
     }
     writestruct(wd, DATA, Stereo3dFormat, 1, ima->stereo3d_format);
+
+    writelist(wd, DATA, ImageTile, &ima->tiles);
 
     ima->packedfile = NULL;
 
@@ -3803,7 +3782,7 @@ static bool write_file_handle(Main *mainvar,
   mywrite_flush(wd);
 
   OverrideLibraryStorage *override_storage =
-      wd->use_memfile ? NULL : BKE_override_library_operations_store_initialize();
+      wd->use_memfile ? NULL : BKE_lib_override_library_operations_store_initialize();
 
   /* This outer loop allows to save first data-blocks from real mainvar,
    * then the temp ones from override process,
@@ -3828,7 +3807,7 @@ static bool write_file_handle(Main *mainvar,
         const bool do_override = !ELEM(override_storage, NULL, bmain) && id->override_library;
 
         if (do_override) {
-          BKE_override_library_operations_store_start(bmain, override_storage, id);
+          BKE_lib_override_library_operations_store_start(bmain, override_storage, id);
         }
 
         switch ((ID_Type)GS(id->name)) {
@@ -3948,7 +3927,7 @@ static bool write_file_handle(Main *mainvar,
         }
 
         if (do_override) {
-          BKE_override_library_operations_store_end(override_storage, id);
+          BKE_lib_override_library_operations_store_end(override_storage, id);
         }
       }
 
@@ -3957,7 +3936,7 @@ static bool write_file_handle(Main *mainvar,
   } while ((bmain != override_storage) && (bmain = override_storage));
 
   if (override_storage) {
-    BKE_override_library_operations_store_finalize(override_storage);
+    BKE_lib_override_library_operations_store_finalize(override_storage);
     override_storage = NULL;
   }
 

@@ -216,7 +216,7 @@ static void rna_Scene_alembic_export(Scene *scene,
                                      bool vcolors,
                                      bool apply_subdiv,
                                      bool flatten_hierarchy,
-                                     bool visible_layers_only,
+                                     bool visible_objects_only,
                                      bool renderable_only,
                                      bool face_sets,
                                      bool use_subdiv_schema,
@@ -251,7 +251,7 @@ static void rna_Scene_alembic_export(Scene *scene,
       .vcolors = vcolors,
       .apply_subdiv = apply_subdiv,
       .flatten_hierarchy = flatten_hierarchy,
-      .visible_layers_only = visible_layers_only,
+      .visible_objects_only = visible_objects_only,
       .renderable_only = renderable_only,
       .face_sets = face_sets,
       .use_subdiv_schema = use_subdiv_schema,
@@ -365,7 +365,7 @@ void RNA_api_scene(StructRNA *srna)
   RNA_def_function_ui_description(func, "Clear sequence editor in this scene");
 
 #  ifdef WITH_ALEMBIC
-  /* XXX Deprecated, will be removed in 2.8 in favour of calling the export operator. */
+  /* XXX Deprecated, will be removed in 2.8 in favor of calling the export operator. */
   func = RNA_def_function(srna, "alembic_export", "rna_Scene_alembic_export");
   RNA_def_function_ui_description(
       func, "Export to Alembic file (deprecated, use the Alembic export operator)");
@@ -391,7 +391,7 @@ void RNA_api_scene(StructRNA *srna)
       func, "apply_subdiv", 1, "Subsurfs as meshes", "Export subdivision surfaces as meshes");
   RNA_def_boolean(func, "flatten", 0, "Flatten hierarchy", "Flatten hierarchy");
   RNA_def_boolean(func,
-                  "visible_layers_only",
+                  "visible_objects_only",
                   0,
                   "Visible layers only",
                   "Export only objects in visible layers");

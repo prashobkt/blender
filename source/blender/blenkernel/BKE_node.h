@@ -74,7 +74,9 @@ struct uiLayout;
 /** \name Node Type Definitions
  * \{ */
 
-/** Compact definition of a node socket.
+/**
+ * \brief Compact definition of a node socket.
+ *
  * Can be used to quickly define a list of static sockets for a node,
  * which are added to each new node of that type.
  *
@@ -95,7 +97,9 @@ typedef struct bNodeSocketTemplate {
   char identifier[64];      /* generated from name */
 } bNodeSocketTemplate;
 
-/** Defines a socket type.
+/**
+ * \brief Defines a socket type.
+ *
  * Defines the appearance and behavior of a socket in the UI.
  */
 typedef struct bNodeSocketType {
@@ -155,7 +159,9 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
                                    struct GPUNodeStack *in,
                                    struct GPUNodeStack *out);
 
-/** Defines a node type.
+/**
+ * \brief Defines a node type.
+ *
  * Initial attributes and constants for a node as well as callback functions
  * implementing the node behavior.
  */
@@ -381,7 +387,8 @@ struct bNodeTree *ntreeCopyTree(struct Main *bmain, const struct bNodeTree *ntre
 void ntreeUserIncrefID(struct bNodeTree *ntree);
 void ntreeUserDecrefID(struct bNodeTree *ntree);
 
-struct bNodeTree *ntreeFromID(const struct ID *id);
+struct bNodeTree **BKE_ntree_ptr_from_id(struct ID *id);
+struct bNodeTree *ntreeFromID(struct ID *id);
 struct ID *BKE_node_tree_find_owner_ID(struct Main *bmain, struct bNodeTree *ntree);
 
 void ntreeMakeLocal(struct Main *bmain,
@@ -539,7 +546,8 @@ void nodeRemoveNode(struct Main *bmain,
 
 struct bNode *BKE_node_copy_ex(struct bNodeTree *ntree,
                                const struct bNode *node_src,
-                               const int flag);
+                               const int flag,
+                               const bool unique_name);
 
 /* Same as BKE_node_copy_ex() but stores pointers to a new node and its sockets in the source
  * node.
@@ -984,6 +992,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree,
 #define SH_NODE_TEX_WHITE_NOISE 704
 #define SH_NODE_VOLUME_INFO 705
 #define SH_NODE_VERTEX_COLOR 706
+#define SH_NODE_OUTPUT_AOV 707
 
 /* custom defines options for Material node */
 #define SH_NODE_MAT_DIFF 1

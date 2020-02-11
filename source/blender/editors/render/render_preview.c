@@ -62,7 +62,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_icons.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_light.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -80,10 +80,10 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_thumbs.h"
 
-#include "BIF_gl.h"
 #include "BIF_glutil.h"
 
 #include "GPU_shader.h"
+#include "GPU_glew.h"
 
 #include "RE_pipeline.h"
 #include "RE_engine.h"
@@ -465,8 +465,9 @@ static Scene *preview_prepare_scene(
           copy_v4_v4(base->object->color, sp->color);
 
           if (OB_TYPE_SUPPORT_MATERIAL(base->object->type)) {
-            /* don't use assign_material, it changed mat->id.us, which shows in the UI */
-            Material ***matar = give_matarar(base->object);
+            /* don't use BKE_object_material_assign, it changed mat->id.us, which shows in the UI
+             */
+            Material ***matar = BKE_object_material_array(base->object);
             int actcol = max_ii(base->object->actcol - 1, 0);
 
             if (matar && actcol < base->object->totcol) {
@@ -1118,10 +1119,16 @@ static void icon_preview_startjob(void *customdata, short *stop, short *do_updat
     if (idtype == ID_IM) {
       Image *ima = (Image *)id;
       ImBuf *ibuf = NULL;
-      ImageUser iuser = {NULL};
+      ImageUser iuser;
+      BKE_imageuser_default(&iuser);
 
-      /* ima->ok is zero when Image cannot load */
-      if (ima == NULL || ima->ok == 0) {
+      if (ima == NULL) {
+        return;
+      }
+
+      ImageTile *tile = BKE_image_get_tile(ima, 0);
+      /* tile->ok is zero when Image cannot load */
+      if (tile->ok == 0) {
         return;
       }
 

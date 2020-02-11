@@ -53,7 +53,7 @@
 #include "BKE_animsys.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
 
@@ -1089,7 +1089,11 @@ static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src,
 
 /* keep socket listorder identical, for copying links */
 /* ntree is the target tree */
-bNode *BKE_node_copy_ex(bNodeTree *ntree, const bNode *node_src, const int flag)
+/* unique_name needs to be true. It's only disabled for speed when doing GPUnodetrees. */
+bNode *BKE_node_copy_ex(bNodeTree *ntree,
+                        const bNode *node_src,
+                        const int flag,
+                        const bool unique_name)
 {
   bNode *node_dst = MEM_callocN(sizeof(bNode), "dupli node");
   bNodeSocket *sock_dst, *sock_src;
@@ -1098,7 +1102,9 @@ bNode *BKE_node_copy_ex(bNodeTree *ntree, const bNode *node_src, const int flag)
   *node_dst = *node_src;
   /* can be called for nodes outside a node tree (e.g. clipboard) */
   if (ntree) {
-    nodeUniqueName(ntree, node_dst);
+    if (unique_name) {
+      nodeUniqueName(ntree, node_dst);
+    }
 
     BLI_addtail(&ntree->nodes, node_dst);
   }
@@ -1146,8 +1152,9 @@ bNode *BKE_node_copy_ex(bNodeTree *ntree, const bNode *node_src, const int flag)
 
   node_dst->new_node = NULL;
 
-  bool do_copy_api = !((flag & LIB_ID_CREATE_NO_MAIN) || (flag & LIB_ID_COPY_LOCALIZE));
-  if (node_dst->typeinfo->copyfunc_api && do_copy_api) {
+  /* Only call copy function when a copy is made for the main database, not
+   * for cases like the dependency graph and localization. */
+  if (node_dst->typeinfo->copyfunc_api && !(flag & LIB_ID_CREATE_NO_MAIN)) {
     PointerRNA ptr;
     RNA_pointer_create((ID *)ntree, &RNA_Node, node_dst, &ptr);
 
@@ -1185,7 +1192,7 @@ static void node_set_new_pointers(bNode *node_src, bNode *new_node)
 
 bNode *BKE_node_copy_store_new_pointers(bNodeTree *ntree, bNode *node_src, const int flag)
 {
-  bNode *new_node = BKE_node_copy_ex(ntree, node_src, flag);
+  bNode *new_node = BKE_node_copy_ex(ntree, node_src, flag, true);
   node_set_new_pointers(node_src, new_node);
   return new_node;
 }
@@ -1492,7 +1499,7 @@ bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_node_tree_copy_data(Main *UNUSED(bmain),
                              bNodeTree *ntree_dst,
@@ -1515,7 +1522,7 @@ void BKE_node_tree_copy_data(Main *UNUSED(bmain),
   GHash *new_pointers = BLI_ghash_ptr_new("BKE_node_tree_copy_data");
 
   for (const bNode *node_src = ntree_src->nodes.first; node_src; node_src = node_src->next) {
-    bNode *new_node = BKE_node_copy_ex(ntree_dst, node_src, flag_subdata);
+    bNode *new_node = BKE_node_copy_ex(ntree_dst, node_src, flag_subdata, true);
     BLI_ghash_insert(new_pointers, (void *)node_src, new_node);
     /* Store mapping to inputs. */
     bNodeSocket *new_input_sock = new_node->inputs.first;
@@ -1594,7 +1601,7 @@ void BKE_node_tree_copy_data(Main *UNUSED(bmain),
 bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, const bool do_id_user)
 {
   bNodeTree *ntree_copy;
-  const int flag = do_id_user ? LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_MAIN : 0;
+  const int flag = do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_MAIN;
   BKE_id_copy_ex(bmain, (ID *)ntree, (ID **)&ntree_copy, flag);
   return ntree_copy;
 }
@@ -2235,25 +2242,35 @@ void ntreeSetOutput(bNodeTree *ntree)
    * might be different for editor or for "real" use... */
 }
 
-/* Returns the private NodeTree object of the datablock, if it has one. */
-bNodeTree *ntreeFromID(const ID *id)
+/** Get address of potential nodetree pointer of given ID.
+ *
+ * \warning Using this function directly is potentially dangerous, if you don't know or are not
+ * sure, please use `ntreeFromID()` instead. */
+bNodeTree **BKE_ntree_ptr_from_id(ID *id)
 {
   switch (GS(id->name)) {
     case ID_MA:
-      return ((const Material *)id)->nodetree;
+      return &((Material *)id)->nodetree;
     case ID_LA:
-      return ((const Light *)id)->nodetree;
+      return &((Light *)id)->nodetree;
     case ID_WO:
-      return ((const World *)id)->nodetree;
+      return &((World *)id)->nodetree;
     case ID_TE:
-      return ((const Tex *)id)->nodetree;
+      return &((Tex *)id)->nodetree;
     case ID_SCE:
-      return ((const Scene *)id)->nodetree;
+      return &((Scene *)id)->nodetree;
     case ID_LS:
-      return ((const FreestyleLineStyle *)id)->nodetree;
+      return &((FreestyleLineStyle *)id)->nodetree;
     default:
       return NULL;
   }
+}
+
+/* Returns the private NodeTree object of the datablock, if it has one. */
+bNodeTree *ntreeFromID(ID *id)
+{
+  bNodeTree **nodetree = BKE_ntree_ptr_from_id(id);
+  return (nodetree != NULL) ? *nodetree : NULL;
 }
 
 /* Finds and returns the datablock that privately owns the given tree, or NULL. */
@@ -4006,6 +4023,7 @@ static void registerShaderNodes(void)
   register_node_type_sh_output_material();
   register_node_type_sh_output_world();
   register_node_type_sh_output_linestyle();
+  register_node_type_sh_output_aov();
 
   register_node_type_sh_tex_image();
   register_node_type_sh_tex_environment();

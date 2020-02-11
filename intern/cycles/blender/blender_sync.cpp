@@ -56,7 +56,7 @@ BlenderSync::BlenderSync(BL::RenderEngine &b_engine,
       b_scene(b_scene),
       shader_map(&scene->shaders),
       object_map(&scene->objects),
-      mesh_map(&scene->meshes),
+      geometry_map(&scene->geometry),
       light_map(&scene->lights),
       particle_system_map(&scene->particle_systems),
       world_map(NULL),
@@ -108,10 +108,15 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
     }
 
     if (dicing_prop_changed) {
-      for (const pair<void *, Mesh *> &iter : mesh_map.key_to_scene_data()) {
-        Mesh *mesh = iter.second;
-        if (mesh->subdivision_type != Mesh::SUBDIVISION_NONE) {
-          mesh_map.set_recalc(iter.first);
+      for (const pair<GeometryKey, Geometry *> &iter : geometry_map.key_to_scene_data()) {
+        Geometry *geom = iter.second;
+        if (geom->type == Geometry::MESH) {
+          Mesh *mesh = static_cast<Mesh *>(geom);
+          if (mesh->subdivision_type != Mesh::SUBDIVISION_NONE) {
+            PointerRNA id_ptr;
+            RNA_id_pointer_create((::ID *)iter.first.id, &id_ptr);
+            geometry_map.set_recalc(BL::ID(id_ptr));
+          }
         }
       }
     }
@@ -146,7 +151,7 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
         if (updated_geometry ||
             (object_subdivision_type(b_ob, preview, experimental) != Mesh::SUBDIVISION_NONE)) {
           BL::ID key = BKE_object_is_modified(b_ob) ? b_ob : b_ob.data();
-          mesh_map.set_recalc(key);
+          geometry_map.set_recalc(key);
         }
       }
       else if (object_is_light(b_ob)) {
@@ -164,7 +169,7 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
     /* Mesh */
     else if (b_id.is_a(&RNA_Mesh)) {
       BL::Mesh b_mesh(b_id);
-      mesh_map.set_recalc(b_mesh);
+      geometry_map.set_recalc(b_mesh);
     }
     /* World */
     else if (b_id.is_a(&RNA_World)) {
@@ -211,7 +216,7 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
   sync_images();
   sync_curve_settings();
 
-  mesh_synced.clear(); /* use for objects and motion sync */
+  geometry_synced.clear(); /* use for objects and motion sync */
 
   if (scene->need_motion() == Scene::MOTION_PASS || scene->need_motion() == Scene::MOTION_NONE ||
       scene->camera->motion_position == Camera::MOTION_POSITION_CENTER) {
@@ -219,7 +224,7 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
   }
   sync_motion(b_render, b_depsgraph, b_v3d, b_override, width, height, python_thread_state);
 
-  mesh_synced.clear();
+  geometry_synced.clear();
 
   /* Shader sync done at the end, since object sync uses it.
    * false = don't delete unused shaders, not supported. */
@@ -531,27 +536,30 @@ vector<Pass> BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLa
     if (pass_type == PASS_MOTION && scene->integrator->motion_blur)
       continue;
     if (pass_type != PASS_NONE)
-      Pass::add(pass_type, passes);
+      Pass::add(pass_type, passes, b_pass.name().c_str());
   }
 
   PointerRNA crp = RNA_pointer_get(&b_view_layer.ptr, "cycles");
-  bool full_denoising = get_boolean(crp, "use_denoising");
+  bool use_denoising = get_boolean(crp, "use_denoising");
+  bool use_optix_denoising = get_boolean(crp, "use_optix_denoising");
   bool write_denoising_passes = get_boolean(crp, "denoising_store_passes");
 
   scene->film->denoising_flags = 0;
-  if (full_denoising || write_denoising_passes) {
+  if (use_denoising || write_denoising_passes) {
+    if (!use_optix_denoising) {
 #define MAP_OPTION(name, flag) \
   if (!get_boolean(crp, name)) \
     scene->film->denoising_flags |= flag;
-    MAP_OPTION("denoising_diffuse_direct", DENOISING_CLEAN_DIFFUSE_DIR);
-    MAP_OPTION("denoising_diffuse_indirect", DENOISING_CLEAN_DIFFUSE_IND);
-    MAP_OPTION("denoising_glossy_direct", DENOISING_CLEAN_GLOSSY_DIR);
-    MAP_OPTION("denoising_glossy_indirect", DENOISING_CLEAN_GLOSSY_IND);
-    MAP_OPTION("denoising_transmission_direct", DENOISING_CLEAN_TRANSMISSION_DIR);
-    MAP_OPTION("denoising_transmission_indirect", DENOISING_CLEAN_TRANSMISSION_IND);
-    MAP_OPTION("denoising_subsurface_direct", DENOISING_CLEAN_SUBSURFACE_DIR);
-    MAP_OPTION("denoising_subsurface_indirect", DENOISING_CLEAN_SUBSURFACE_IND);
+      MAP_OPTION("denoising_diffuse_direct", DENOISING_CLEAN_DIFFUSE_DIR);
+      MAP_OPTION("denoising_diffuse_indirect", DENOISING_CLEAN_DIFFUSE_IND);
+      MAP_OPTION("denoising_glossy_direct", DENOISING_CLEAN_GLOSSY_DIR);
+      MAP_OPTION("denoising_glossy_indirect", DENOISING_CLEAN_GLOSSY_IND);
+      MAP_OPTION("denoising_transmission_direct", DENOISING_CLEAN_TRANSMISSION_DIR);
+      MAP_OPTION("denoising_transmission_indirect", DENOISING_CLEAN_TRANSMISSION_IND);
+      MAP_OPTION("denoising_subsurface_direct", DENOISING_CLEAN_SUBSURFACE_DIR);
+      MAP_OPTION("denoising_subsurface_indirect", DENOISING_CLEAN_SUBSURFACE_IND);
 #undef MAP_OPTION
+    }
     b_engine.add_pass("Noisy Image", 4, "RGBA", b_view_layer.name().c_str());
   }
 
@@ -559,43 +567,46 @@ vector<Pass> BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLa
     b_engine.add_pass("Denoising Normal", 3, "XYZ", b_view_layer.name().c_str());
     b_engine.add_pass("Denoising Albedo", 3, "RGB", b_view_layer.name().c_str());
     b_engine.add_pass("Denoising Depth", 1, "Z", b_view_layer.name().c_str());
-    b_engine.add_pass("Denoising Shadowing", 1, "X", b_view_layer.name().c_str());
-    b_engine.add_pass("Denoising Variance", 3, "RGB", b_view_layer.name().c_str());
-    b_engine.add_pass("Denoising Intensity", 1, "X", b_view_layer.name().c_str());
+    if (!use_optix_denoising) {
+      b_engine.add_pass("Denoising Shadowing", 1, "X", b_view_layer.name().c_str());
+      b_engine.add_pass("Denoising Variance", 3, "RGB", b_view_layer.name().c_str());
+      b_engine.add_pass("Denoising Intensity", 1, "X", b_view_layer.name().c_str());
+    }
 
     if (scene->film->denoising_flags & DENOISING_CLEAN_ALL_PASSES) {
       b_engine.add_pass("Denoising Clean", 3, "RGB", b_view_layer.name().c_str());
     }
   }
+
 #ifdef __KERNEL_DEBUG__
   if (get_boolean(crp, "pass_debug_bvh_traversed_nodes")) {
     b_engine.add_pass("Debug BVH Traversed Nodes", 1, "X", b_view_layer.name().c_str());
-    Pass::add(PASS_BVH_TRAVERSED_NODES, passes);
+    Pass::add(PASS_BVH_TRAVERSED_NODES, passes, "Debug BVH Traversed Nodes");
   }
   if (get_boolean(crp, "pass_debug_bvh_traversed_instances")) {
     b_engine.add_pass("Debug BVH Traversed Instances", 1, "X", b_view_layer.name().c_str());
-    Pass::add(PASS_BVH_TRAVERSED_INSTANCES, passes);
+    Pass::add(PASS_BVH_TRAVERSED_INSTANCES, passes, "Debug BVH Traversed Instances");
   }
   if (get_boolean(crp, "pass_debug_bvh_intersections")) {
     b_engine.add_pass("Debug BVH Intersections", 1, "X", b_view_layer.name().c_str());
-    Pass::add(PASS_BVH_INTERSECTIONS, passes);
+    Pass::add(PASS_BVH_INTERSECTIONS, passes, "Debug BVH Intersections");
   }
   if (get_boolean(crp, "pass_debug_ray_bounces")) {
     b_engine.add_pass("Debug Ray Bounces", 1, "X", b_view_layer.name().c_str());
-    Pass::add(PASS_RAY_BOUNCES, passes);
+    Pass::add(PASS_RAY_BOUNCES, passes, "Debug Ray Bounces");
   }
 #endif
   if (get_boolean(crp, "pass_debug_render_time")) {
     b_engine.add_pass("Debug Render Time", 1, "X", b_view_layer.name().c_str());
-    Pass::add(PASS_RENDER_TIME, passes);
+    Pass::add(PASS_RENDER_TIME, passes, "Debug Render Time");
   }
   if (get_boolean(crp, "use_pass_volume_direct")) {
     b_engine.add_pass("VolumeDir", 3, "RGB", b_view_layer.name().c_str());
-    Pass::add(PASS_VOLUME_DIRECT, passes);
+    Pass::add(PASS_VOLUME_DIRECT, passes, "VolumeDir");
   }
   if (get_boolean(crp, "use_pass_volume_indirect")) {
     b_engine.add_pass("VolumeInd", 3, "RGB", b_view_layer.name().c_str());
-    Pass::add(PASS_VOLUME_INDIRECT, passes);
+    Pass::add(PASS_VOLUME_INDIRECT, passes, "VolumeInd");
   }
 
   /* Cryptomatte stores two ID/weight pairs per RGBA layer.
@@ -634,6 +645,21 @@ vector<Pass> BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLa
     scene->film->cryptomatte_passes = (CryptomatteType)(scene->film->cryptomatte_passes |
                                                         CRYPT_ACCURATE);
   }
+
+  RNA_BEGIN (&crp, b_aov, "aovs") {
+    bool is_color = (get_enum(b_aov, "type") == 1);
+    string name = get_string(b_aov, "name");
+
+    if (is_color) {
+      b_engine.add_pass(name.c_str(), 4, "RGBA", b_view_layer.name().c_str());
+      Pass::add(PASS_AOV_COLOR, passes, name.c_str());
+    }
+    else {
+      b_engine.add_pass(name.c_str(), 1, "X", b_view_layer.name().c_str());
+      Pass::add(PASS_AOV_VALUE, passes, name.c_str());
+    }
+  }
+  RNA_END;
 
   return passes;
 }
@@ -714,6 +740,9 @@ SceneParams BlenderSync::get_scene_params(BL::Scene &b_scene, bool background)
   params.bvh_layout = RNA_boolean_get(&cscene, "use_bvh_embree") ? BVH_LAYOUT_EMBREE :
                                                                    params.bvh_layout;
 #endif
+
+  params.background = background;
+
   return params;
 }
 

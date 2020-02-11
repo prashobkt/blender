@@ -61,8 +61,8 @@
 #include "BKE_idcode.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_library_override.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_override.h"
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
@@ -72,6 +72,7 @@
 #include "BKE_particle.h"
 #include "BKE_curveprofile.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
@@ -93,6 +94,7 @@
 
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
+#include "UI_view2d.h"
 #include "interface_intern.h"
 
 #include "PIL_time.h"
@@ -155,6 +157,13 @@ static void template_add_button_search_menu(const bContext *C,
     const bool use_preview_icon = use_big_size || (id && (GS(id->name) != ID_SCR));
     const short width = UI_UNIT_X * (use_big_size ? 6 : 1.6f);
     const short height = UI_UNIT_Y * (use_big_size ? 6 : 1);
+    uiLayout *col = NULL;
+
+    if (use_big_size) {
+      /* Assume column layout here. To be more correct, we should check if the layout passed to
+       * template_id is a column one, but this should work well in practice. */
+      col = uiLayoutColumn(layout, true);
+    }
 
     but = uiDefBlockButN(block, block_func, block_argN, "", 0, 0, width, height, tip);
     if (use_preview_icon) {
@@ -170,7 +179,7 @@ static void template_add_button_search_menu(const bContext *C,
       UI_but_flag_enable(but, UI_BUT_DISABLED);
     }
     if (use_big_size) {
-      uiLayoutRow(layout, true);
+      uiLayoutRow(col ? col : layout, true);
     }
   }
   else {
@@ -535,10 +544,10 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
     case UI_ID_LOCAL:
       if (id) {
         Main *bmain = CTX_data_main(C);
-        if (BKE_override_library_is_enabled() && CTX_wm_window(C)->eventstate->shift) {
+        if (BKE_lib_override_library_is_enabled() && CTX_wm_window(C)->eventstate->shift) {
           if (ID_IS_OVERRIDABLE_LIBRARY(id)) {
             /* Only remap that specific ID usage to overriding local data-block. */
-            ID *override_id = BKE_override_library_create_from_id(bmain, id, false);
+            ID *override_id = BKE_lib_override_library_create_from_id(bmain, id, false);
             if (override_id != NULL) {
               BKE_main_id_clear_newpoins(bmain);
 
@@ -561,7 +570,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_OVERRIDE:
       if (id && id->override_library) {
-        BKE_override_library_free(&id->override_library, true);
+        BKE_lib_override_library_free(&id->override_library, true);
         /* reassign to get get proper updates/notifiers */
         idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
         RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, NULL);
@@ -779,6 +788,7 @@ static void template_ID(bContext *C,
                         const char *newop,
                         const char *openop,
                         const char *unlinkop,
+                        const char *text,
                         const bool live_icon,
                         const bool hide_buttons)
 {
@@ -800,6 +810,11 @@ static void template_ID(bContext *C,
 
   if (idptr.type) {
     type = idptr.type;
+  }
+
+  if (text) {
+    /* Add label resepecting the seperated layout property split state. */
+    layout = uiItemL_respect_property_split(layout, text, ICON_NONE);
   }
 
   if (flag & UI_ID_BROWSE) {
@@ -879,7 +894,7 @@ static void template_ID(bContext *C,
                            0,
                            0,
                            0,
-                           BKE_override_library_is_enabled() ?
+                           BKE_lib_override_library_is_enabled() ?
                                TIP_("Direct linked library data-block, click to make local, "
                                     "Shift + Click to create a library override") :
                                TIP_("Direct linked library data-block, click to make local"));
@@ -1186,6 +1201,7 @@ static void ui_template_id(uiLayout *layout,
                            const char *newop,
                            const char *openop,
                            const char *unlinkop,
+                           const char *text,
                            int flag,
                            int prv_rows,
                            int prv_cols,
@@ -1238,13 +1254,22 @@ static void ui_template_id(uiLayout *layout,
    */
   if (template_ui->idlb) {
     if (use_tabs) {
-      uiLayoutRow(layout, true);
+      layout = uiLayoutRow(layout, true);
       template_ID_tabs(C, layout, template_ui, type, flag, newop, unlinkop);
     }
     else {
-      uiLayoutRow(layout, true);
-      template_ID(
-          C, layout, template_ui, type, flag, newop, openop, unlinkop, live_icon, hide_buttons);
+      layout = uiLayoutRow(layout, true);
+      template_ID(C,
+                  layout,
+                  template_ui,
+                  type,
+                  flag,
+                  newop,
+                  openop,
+                  unlinkop,
+                  text,
+                  live_icon,
+                  hide_buttons);
     }
   }
 
@@ -1259,7 +1284,8 @@ void uiTemplateID(uiLayout *layout,
                   const char *openop,
                   const char *unlinkop,
                   int filter,
-                  const bool live_icon)
+                  const bool live_icon,
+                  const char *text)
 {
   ui_template_id(layout,
                  C,
@@ -1268,6 +1294,7 @@ void uiTemplateID(uiLayout *layout,
                  newop,
                  openop,
                  unlinkop,
+                 text,
                  UI_ID_BROWSE | UI_ID_RENAME | UI_ID_DELETE,
                  0,
                  0,
@@ -1285,7 +1312,8 @@ void uiTemplateIDBrowse(uiLayout *layout,
                         const char *newop,
                         const char *openop,
                         const char *unlinkop,
-                        int filter)
+                        int filter,
+                        const char *text)
 {
   ui_template_id(layout,
                  C,
@@ -1294,6 +1322,7 @@ void uiTemplateIDBrowse(uiLayout *layout,
                  newop,
                  openop,
                  unlinkop,
+                 text,
                  UI_ID_BROWSE | UI_ID_RENAME,
                  0,
                  0,
@@ -1323,6 +1352,7 @@ void uiTemplateIDPreview(uiLayout *layout,
                  newop,
                  openop,
                  unlinkop,
+                 NULL,
                  UI_ID_BROWSE | UI_ID_RENAME | UI_ID_DELETE | UI_ID_PREVIEWS,
                  rows,
                  cols,
@@ -1346,6 +1376,7 @@ void uiTemplateGpencilColorPreview(uiLayout *layout,
                  C,
                  ptr,
                  propname,
+                 NULL,
                  NULL,
                  NULL,
                  NULL,
@@ -1377,6 +1408,7 @@ void uiTemplateIDTabs(uiLayout *layout,
                  newop,
                  NULL,
                  unlinkop,
+                 NULL,
                  UI_ID_BROWSE | UI_ID_RENAME,
                  0,
                  0,
@@ -1788,11 +1820,15 @@ static int modifier_can_delete(ModifierData *md)
 {
   /* fluid particle modifier can't be deleted here */
   if (md->type == eModifierType_ParticleSystem) {
-    if (((ParticleSystemModifierData *)md)->psys->part->type == PART_FLUID) {
+    short particle_type = ((ParticleSystemModifierData *)md)->psys->part->type;
+    if (particle_type == PART_FLUID || particle_type == PART_FLUID_FLIP ||
+        particle_type == PART_FLUID_FOAM || particle_type == PART_FLUID_SPRAY ||
+        particle_type == PART_FLUID_BUBBLE || particle_type == PART_FLUID_TRACER ||
+        particle_type == PART_FLUID_SPRAYFOAM || particle_type == PART_FLUID_SPRAYBUBBLE ||
+        particle_type == PART_FLUID_FOAMBUBBLE || particle_type == PART_FLUID_SPRAYFOAMBUBBLE) {
       return 0;
     }
   }
-
   return 1;
 }
 
@@ -1805,7 +1841,7 @@ static int modifier_is_simulation(ModifierData *md)
            eModifierType_Cloth,
            eModifierType_Collision,
            eModifierType_Fluidsim,
-           eModifierType_Smoke,
+           eModifierType_Fluid,
            eModifierType_Softbody,
            eModifierType_Surface,
            eModifierType_DynamicPaint)) {
@@ -2038,7 +2074,7 @@ static uiLayout *draw_modifier(uiLayout *layout,
                 eModifierType_Softbody,
                 eModifierType_ParticleSystem,
                 eModifierType_Cloth,
-                eModifierType_Smoke)) {
+                eModifierType_Fluid)) {
         uiItemO(row,
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
                 ICON_NONE,
@@ -2810,8 +2846,13 @@ void uiTemplatePreview(uiLayout *layout,
       col = uiLayoutColumn(row, true);
       uiLayoutSetScaleX(col, 1.5);
       uiItemR(col, &material_ptr, "preview_render_type", UI_ITEM_R_EXPAND, "", ICON_NONE);
-      uiItemS(col);
-      uiItemR(col, &material_ptr, "use_preview_world", 0, "", ICON_WORLD);
+
+      /* EEVEE preview file has baked lighting so use_preview_world has no effect,
+       * just hide the option until this feature is supported. */
+      if (!BKE_scene_uses_blender_eevee(CTX_data_scene(C))) {
+        uiItemS(col);
+        uiItemR(col, &material_ptr, "use_preview_world", 0, "", ICON_WORLD);
+      }
     }
 
     if (pr_texture) {
@@ -3961,11 +4002,11 @@ static void curvemap_tools_dofunc(bContext *C, void *cumap_v, int event)
       BKE_curvemapping_changed(cumap, false);
       break;
     case UICURVE_FUNC_EXTEND_HOZ: /* extend horiz */
-      cuma->flag &= ~CUMA_EXTEND_EXTRAPOLATE;
+      cumap->flag &= ~CUMA_EXTEND_EXTRAPOLATE;
       BKE_curvemapping_changed(cumap, false);
       break;
     case UICURVE_FUNC_EXTEND_EXP: /* extend extrapolate */
-      cuma->flag |= CUMA_EXTEND_EXTRAPOLATE;
+      cumap->flag |= CUMA_EXTEND_EXTRAPOLATE;
       BKE_curvemapping_changed(cumap, false);
       break;
   }
@@ -4980,7 +5021,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                       0.0,
                       0.0,
                       0.0,
-                      TIP_("Set the point's handle type to sharp."));
+                      TIP_("Set the point's handle type to sharp"));
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
@@ -4998,7 +5039,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                       0.0,
                       0.0,
                       0.0,
-                      TIP_("Set the point's handle type to sharp."));
+                      TIP_("Set the point's handle type to smooth"));
     UI_but_funcN_set(bt, CurveProfile_buttons_setcurved, MEM_dupallocN(cb), profile);
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
@@ -5068,8 +5109,10 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   UI_block_funcN_set(block, NULL, NULL, NULL);
 }
 
-/** Template for a path creation widget intended for custom bevel profiles.
- * This section is quite similar to uiTemplateCurveMapping, but with reduced complexity */
+/**
+ * Template for a path creation widget intended for custom bevel profiles.
+ * This section is quite similar to #uiTemplateCurveMapping, but with reduced complexity.
+ */
 void uiTemplateCurveProfile(uiLayout *layout, PointerRNA *ptr, const char *propname)
 {
   RNAUpdateCb *cb;
@@ -6189,7 +6232,7 @@ void uiTemplateList(uiLayout *layout,
                   "",
                   0,
                   0,
-                  UI_UNIT_X * 0.75,
+                  V2D_SCROLL_WIDTH,
                   UI_UNIT_Y * dyn_data->visual_height,
                   &ui_list->list_scroll,
                   0,
@@ -6329,7 +6372,7 @@ void uiTemplateList(uiLayout *layout,
                   "",
                   0,
                   0,
-                  UI_UNIT_X * 0.75,
+                  V2D_SCROLL_WIDTH,
                   UI_UNIT_Y * dyn_data->visual_height,
                   &ui_list->list_scroll,
                   0,
@@ -6828,7 +6871,6 @@ static char *progress_tooltip_func(bContext *UNUSED(C), void *argN, const char *
 
 void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
 {
-  bScreen *screen = CTX_wm_screen(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   ScrArea *sa = CTX_wm_area(C);
   uiBlock *block;
@@ -7010,7 +7052,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
     }
   }
 
-  if (screen->animtimer) {
+  if (ED_screen_animation_no_scrub(wm)) {
     uiDefIconTextBut(block,
                      UI_BTYPE_BUT,
                      B_STOPANIM,
@@ -7482,8 +7524,16 @@ void uiTemplateCacheFile(uiLayout *layout, bContext *C, PointerRNA *ptr, const c
 
   uiLayoutSetContextPointer(layout, "edit_cachefile", &fileptr);
 
-  uiTemplateID(
-      layout, C, ptr, propname, NULL, "CACHEFILE_OT_open", NULL, UI_TEMPLATE_ID_FILTER_ALL, false);
+  uiTemplateID(layout,
+               C,
+               ptr,
+               propname,
+               NULL,
+               "CACHEFILE_OT_open",
+               NULL,
+               UI_TEMPLATE_ID_FILTER_ALL,
+               false,
+               NULL);
 
   if (!file) {
     return;
