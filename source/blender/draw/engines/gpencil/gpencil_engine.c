@@ -289,6 +289,14 @@ void GPENCIL_cache_init(void *ved)
     DRW_shgroup_uniform_vec4(grp, "gpModelMatrix[0]", pd->object_bound_mat[0], 4);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
+  {
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_LOGIC_INVERT;
+    DRW_PASS_CREATE(psl->mask_invert_ps, state);
+
+    GPUShader *sh = GPENCIL_shader_mask_invert_get();
+    grp = DRW_shgroup_create(sh, psl->mask_invert_ps);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
 
   Camera *cam = (pd->camera != NULL) ? pd->camera->data : NULL;
 
@@ -836,27 +844,44 @@ static void GPENCIL_draw_scene_depth_only(void *ved)
 
 static void gpencil_draw_mask(GPENCIL_Data *vedata, GPENCIL_tObject *ob, GPENCIL_tLayer *layer)
 {
+  GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   float clear_col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float clear_depth = ob->is_drawmode3d ? 1.0f : 0.0f;
+  bool inverted = false;
+  /* OPTI(fclem) we could optimize by only clearing if the new mask_bits does not contain all
+   * the masks already rendered in the buffer, and drawing only the layers not already drawn. */
+  bool cleared = false;
 
   DRW_stats_group_start("GPencil Mask");
 
-  /* OPTI(fclem) we could optimize by only clearing if the new mask_bits contains all
-   * the masks already rendered in the buffer, and drawing only the layers not already drawn. */
-  if (true) {
-    GPU_framebuffer_bind(fbl->mask_fb);
-    GPU_framebuffer_clear_color_depth(fbl->mask_fb, clear_col, ob->is_drawmode3d ? 1.0f : 0.0f);
-  }
+  GPU_framebuffer_bind(fbl->mask_fb);
 
   for (int i = 0; i < GP_MAX_MASKBITS; i++) {
     if (!BLI_BITMAP_TEST(layer->mask_bits, i)) {
       continue;
     }
 
+    if (BLI_BITMAP_TEST_BOOL(layer->mask_invert_bits, i) != inverted) {
+      if (cleared) {
+        DRW_draw_pass(psl->mask_invert_ps);
+      }
+      inverted = !inverted;
+    }
+
+    if (!cleared) {
+      cleared = true;
+      GPU_framebuffer_clear_color_depth(fbl->mask_fb, clear_col, clear_depth);
+    }
+
     GPENCIL_tLayer *mask_layer = gpencil_layer_cache_get(ob, i);
     BLI_assert(mask_layer);
 
     DRW_draw_pass(mask_layer->geom_ps);
+  }
+
+  if (inverted) {
+    DRW_draw_pass(psl->mask_invert_ps);
   }
 
   DRW_stats_group_end();

@@ -116,7 +116,6 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   const bool is_fade = ((pd->fade_layer_opacity > -1.0f) && (is_obact) &&
                         ((gpl->flag & GP_LAYER_ACTIVE) == 0));
   const bool use_mask = (gpl->flag & GP_LAYER_USE_MASK) != 0;
-  bool mask_invert = true; /* True because we invert the dummy texture red channel. */
 
   /* Defines layer opacity. For active object depends of layer opacity factor, and
    * for no active object, depends if the fade grease pencil objects option is enabled. */
@@ -134,27 +133,31 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
   tgp_layer->layer_id = BLI_findindex(&gpd->layers, gpl);
   tgp_layer->mask_bits = NULL;
+  tgp_layer->mask_invert_bits = NULL;
 
   if (use_mask && !BLI_listbase_is_empty(&gpl->mask_layers)) {
     bool valid_mask = false;
     /* Warning: only GP_MAX_MASKBITS amount of bits.
      * TODO(fclem) Find a better system without any limitation. */
     tgp_layer->mask_bits = BLI_memblock_alloc(pd->gp_maskbit_pool);
+    tgp_layer->mask_invert_bits = BLI_memblock_alloc(pd->gp_maskbit_pool);
     BLI_bitmap_set_all(tgp_layer->mask_bits, false, GP_MAX_MASKBITS);
 
     LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
       bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, mask->name);
-      if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0)) {
+      if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0) &&
+          ((mask->flag & GP_MASK_HIDE) == 0)) {
         int index = BLI_findindex(&gpd->layers, gpl_mask);
         if (index < GP_MAX_MASKBITS) {
+          const bool invert = (mask->flag & GP_MASK_INVERT) != 0;
           BLI_BITMAP_SET(tgp_layer->mask_bits, index, true);
+          BLI_BITMAP_SET(tgp_layer->mask_invert_bits, index, invert);
           valid_mask = true;
         }
       }
     }
 
     if (valid_mask) {
-      mask_invert = (gpl->flag & GP_LAYER_MASK_INVERT) != 0;
       pd->use_mask_fb = true;
     }
     else {
@@ -214,7 +217,6 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "maskBuf", (is_masked) ? &pd->mask_tx : &pd->dummy_tx);
-    DRW_shgroup_uniform_bool_copy(grp, "maskInvert", mask_invert);
     DRW_shgroup_stencil_mask(grp, 0xFF);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 

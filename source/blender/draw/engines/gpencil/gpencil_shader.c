@@ -30,6 +30,7 @@ extern char datatoc_gpencil_antialiasing_frag_glsl[];
 extern char datatoc_gpencil_antialiasing_vert_glsl[];
 extern char datatoc_gpencil_composite_frag_glsl[];
 extern char datatoc_gpencil_layer_blend_frag_glsl[];
+extern char datatoc_gpencil_mask_invert_frag_glsl[];
 extern char datatoc_gpencil_depth_merge_frag_glsl[];
 extern char datatoc_gpencil_depth_merge_vert_glsl[];
 extern char datatoc_gpencil_vfx_frag_glsl[];
@@ -50,6 +51,8 @@ static struct {
   GPUShader *layer_blend_sh;
   /* Merge the final object depth to the depth buffer. */
   GPUShader *depth_merge_sh;
+  /* Invert the content of the mask buffer. */
+  GPUShader *mask_invert_sh;
   /* Effects. */
   GPUShader *fx_composite_sh;
   GPUShader *fx_colorize_sh;
@@ -180,6 +183,15 @@ GPUShader *GPENCIL_shader_layer_blend_get(void)
     });
   }
   return g_shaders.layer_blend_sh;
+}
+
+GPUShader *GPENCIL_shader_mask_invert_get(void)
+{
+  if (!g_shaders.mask_invert_sh) {
+    g_shaders.mask_invert_sh = DRW_shader_create_fullscreen(datatoc_gpencil_mask_invert_frag_glsl,
+                                                            NULL);
+  }
+  return g_shaders.mask_invert_sh;
 }
 
 GPUShader *GPENCIL_shader_depth_merge_get(void)

@@ -162,6 +162,7 @@ typedef struct GPENCIL_tLayer {
   DRWPass *blend_ps;
   /** Layer id of the mask. */
   BLI_bitmap *mask_bits;
+  BLI_bitmap *mask_invert_bits;
   /** Index in the layer list. Used as id for masking. */
   int layer_id;
 } GPENCIL_tLayer;
@@ -198,6 +199,8 @@ typedef struct GPENCIL_PassList {
   struct DRWPass *composite_ps;
   /* Composite the object depth to the default depth buffer to occlude overlays. */
   struct DRWPass *merge_depth_ps;
+  /* Invert mask buffer content. */
+  struct DRWPass *mask_invert_ps;
   /* Anti-Aliasing. */
   struct DRWPass *smaa_edge_ps;
   struct DRWPass *smaa_weight_ps;
@@ -377,6 +380,7 @@ struct GPUShader *GPENCIL_shader_geometry_get(void);
 struct GPUShader *GPENCIL_shader_composite_get(void);
 struct GPUShader *GPENCIL_shader_layer_blend_get(void);
 struct GPUShader *GPENCIL_shader_layer_mask_get(void);
+struct GPUShader *GPENCIL_shader_mask_invert_get(void);
 struct GPUShader *GPENCIL_shader_depth_merge_get(void);
 struct GPUShader *GPENCIL_shader_fx_blur_get(void);
 struct GPUShader *GPENCIL_shader_fx_colorize_get(void);
