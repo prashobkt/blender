@@ -29,7 +29,6 @@ extern "C" {
 #endif
 
 #include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
 
 struct BLI_mempool;
 struct BLI_mempool_chunk;

@@ -31,8 +31,8 @@ extern "C" {
 #include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_customdata.h"
 #include "BLI_math_base.h"
+#include "BKE_customdata.h"
 }
 
 /* NOTE: for now only UVs and Vertex Colors are supported for streaming.

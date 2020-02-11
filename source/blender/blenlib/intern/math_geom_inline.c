@@ -28,7 +28,6 @@
 #define __MATH_GEOM_INLINE_C__
 
 #include "BLI_math.h"
-#include "BLI_math_vector.h"
 
 #include <string.h>
 

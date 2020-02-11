@@ -18,8 +18,8 @@
  * \ingroup collada
  */
 
-#include <sstream>
 #include <string>
+#include <sstream>
 
 #include "COLLADASWInstanceMaterial.h"
 

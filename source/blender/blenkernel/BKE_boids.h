@@ -25,7 +25,6 @@
  */
 
 #include "DNA_boid_types.h"
-#include "DNA_particle_types.h"
 
 struct RNG;
 

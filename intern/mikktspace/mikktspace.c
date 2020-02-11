@@ -22,12 +22,12 @@
  */
 
 #include <assert.h>
-#include <float.h>
-#include <limits.h>
-#include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <math.h>
 #include <string.h>
+#include <float.h>
+#include <stdlib.h>
+#include <limits.h>
 
 #include "mikktspace.h"
 

@@ -18,8 +18,8 @@
  * \ingroup spstatusbar
  */
 
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -37,8 +37,8 @@
 #include "UI_view2d.h"
 
 #include "WM_api.h"
-#include "WM_message.h"
 #include "WM_types.h"
+#include "WM_message.h"
 
 /* ******************** default callbacks for statusbar space ********************  */
 

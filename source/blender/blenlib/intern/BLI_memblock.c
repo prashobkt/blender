@@ -24,8 +24,8 @@
  *
  */
 
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "atomic_ops.h"
 

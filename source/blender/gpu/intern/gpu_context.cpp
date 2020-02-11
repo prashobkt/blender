@@ -38,11 +38,11 @@
 #include "gpu_context_private.h"
 #include "gpu_matrix_private.h"
 
-#include <mutex>
-#include <pthread.h>
-#include <string.h>
-#include <unordered_set>
 #include <vector>
+#include <string.h>
+#include <pthread.h>
+#include <mutex>
+#include <unordered_set>
 
 #if TRUST_NO_ONE
 #  if 0

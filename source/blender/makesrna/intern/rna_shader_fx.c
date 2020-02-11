@@ -22,9 +22,9 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#include "DNA_shader_fx_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_shader_fx_types.h"
 
 #include "MEM_guardedalloc.h"
 

@@ -24,16 +24,16 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_cloth_types.h"
+#include "DNA_scene_types.h"
+#include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
-#include "BLI_edgehash.h"
-#include "BLI_linklist.h"
+#include "BLI_utildefines.h"
 #include "BLI_math.h"
 #include "BLI_rand.h"
-#include "BLI_utildefines.h"
+#include "BLI_edgehash.h"
+#include "BLI_linklist.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"

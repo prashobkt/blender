@@ -29,11 +29,11 @@
  */
 
 #include <cstring>
-#include <sstream>
 #include <string>
+#include <sstream>
 
-#include "BLI_array_ref.h"
 #include "BLI_utildefines.h"
+#include "BLI_array_ref.h"
 
 namespace BLI {
 

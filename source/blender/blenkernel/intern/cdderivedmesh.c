@@ -29,25 +29,25 @@
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_pbvh.h"
 #include "BKE_cdderivedmesh.h"
-#include "BKE_curve.h"
-#include "BKE_editmesh.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_editmesh.h"
+#include "BKE_curve.h"
 
-#include "DNA_curve_types.h" /* for Curve */
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_curve_types.h" /* for Curve */
 
 #include "MEM_guardedalloc.h"
 
+#include <string.h>
 #include <limits.h>
 #include <math.h>
-#include <string.h>
 
 typedef struct {
   DerivedMesh dm;

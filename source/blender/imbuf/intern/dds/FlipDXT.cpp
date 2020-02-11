@@ -38,11 +38,11 @@
 
 #include <string.h>
 
-#include <BlockDXT.h>
-#include <ColorBlock.h>
 #include <Common.h>
-#include <FlipDXT.h>
 #include <Stream.h>
+#include <ColorBlock.h>
+#include <BlockDXT.h>
+#include <FlipDXT.h>
 
 // A function that flips a DXTC block.
 typedef void (*FlipBlockFunction)(uint8_t *block);

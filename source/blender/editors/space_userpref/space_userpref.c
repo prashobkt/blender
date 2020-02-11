@@ -21,8 +21,8 @@
  * \ingroup spuserpref
  */
 
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "MEM_guardedalloc.h"
 

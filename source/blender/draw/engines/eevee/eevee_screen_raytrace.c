@@ -29,8 +29,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "GPU_texture.h"
 #include "eevee_private.h"
+#include "GPU_texture.h"
 
 /* SSR shader variations */
 enum {

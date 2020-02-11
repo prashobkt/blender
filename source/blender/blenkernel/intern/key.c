@@ -22,8 +22,8 @@
  */
 
 #include <math.h>
-#include <stddef.h>
 #include <string.h>
+#include <stddef.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -46,12 +46,12 @@
 #include "BKE_curve.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
-#include "BKE_editmesh.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
+#include "BKE_editmesh.h"
 #include "BKE_scene.h"
 
 #include "RNA_access.h"

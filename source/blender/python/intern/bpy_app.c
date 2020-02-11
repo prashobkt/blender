@@ -27,7 +27,6 @@
 #include "bpy_app.h"
 
 #include "bpy_app_alembic.h"
-#include "bpy_app_build_options.h"
 #include "bpy_app_ffmpeg.h"
 #include "bpy_app_ocio.h"
 #include "bpy_app_oiio.h"
@@ -35,6 +34,7 @@
 #include "bpy_app_openvdb.h"
 #include "bpy_app_sdl.h"
 #include "bpy_app_usd.h"
+#include "bpy_app_build_options.h"
 
 #include "bpy_app_translations.h"
 

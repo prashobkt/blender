@@ -27,8 +27,6 @@
 #ifndef __DNA_DEFAULTS_H__
 #define __DNA_DEFAULTS_H__
 
-#include "BLI_utildefines.h"
-
 #include "dna_type_offsets.h"
 
 extern const void *DNA_default_table[SDNA_TYPE_MAX];

@@ -21,11 +21,11 @@
  * \ingroup bli
  */
 
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <inttypes.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "MEM_guardedalloc.h"
 

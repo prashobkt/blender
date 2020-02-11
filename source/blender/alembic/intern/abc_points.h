@@ -24,8 +24,8 @@
 #ifndef __ABC_POINTS_H__
 #define __ABC_POINTS_H__
 
-#include "abc_customdata.h"
 #include "abc_object.h"
+#include "abc_customdata.h"
 
 struct ParticleSystem;
 

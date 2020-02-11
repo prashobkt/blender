@@ -22,8 +22,6 @@
  * \brief A min-heap / priority queue ADT
  */
 
-#include "BLI_math.h"
-
 struct Heap;
 struct HeapNode;
 typedef struct Heap Heap;

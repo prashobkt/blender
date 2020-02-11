@@ -18,8 +18,8 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "BLI_utildefines.h"
 
@@ -36,8 +36,8 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_context.h"
 #  include "UI_interface.h"
+#  include "BKE_context.h"
 
 #  include "ED_gizmo_library.h"
 

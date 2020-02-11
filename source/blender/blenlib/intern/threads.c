@@ -21,14 +21,14 @@
  * \ingroup bli
  */
 
-#include <errno.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_gsqueue.h"
 #include "BLI_listbase.h"
+#include "BLI_gsqueue.h"
 #include "BLI_system.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -37,14 +37,14 @@
 
 /* for checking system threads - BLI_system_thread_count */
 #ifdef WIN32
-#  include <sys/timeb.h>
 #  include <windows.h>
+#  include <sys/timeb.h>
 #elif defined(__APPLE__)
-#  include <sys/sysctl.h>
 #  include <sys/types.h>
+#  include <sys/sysctl.h>
 #else
-#  include <sys/time.h>
 #  include <unistd.h>
+#  include <sys/time.h>
 #endif
 
 #include "atomic_ops.h"

@@ -23,16 +23,16 @@
  * GPU shader interface (C --> GLSL)
  */
 
-#include "BKE_global.h"
 #include "MEM_guardedalloc.h"
+#include "BKE_global.h"
 
 #include "GPU_shader_interface.h"
 
 #include "gpu_batch_private.h"
 #include "gpu_context_private.h"
 
-#include <stddef.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 
 #define DEBUG_SHADER_INTERFACE 0

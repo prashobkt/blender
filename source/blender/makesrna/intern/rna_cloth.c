@@ -18,8 +18,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "DNA_cloth_types.h"
 #include "DNA_object_types.h"

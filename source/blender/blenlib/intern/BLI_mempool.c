@@ -29,8 +29,8 @@
  *   (optionally when using the #BLI_MEMPOOL_ALLOW_ITER flag).
  */
 
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "atomic_ops.h"
 

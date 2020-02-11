@@ -34,7 +34,6 @@ struct Image;
 struct ImageUser;
 struct Main;
 
-#include "BLI_utildefines.h"
 #include "DNA_object_enums.h"
 
 /* OpenGL drawing functions related to shading. */

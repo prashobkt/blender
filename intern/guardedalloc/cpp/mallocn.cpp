@@ -18,8 +18,8 @@
  * \ingroup MEM
  */
 
-#include "../MEM_guardedalloc.h"
 #include <new>
+#include "../MEM_guardedalloc.h"
 
 void *operator new(size_t size, const char *str) throw(std::bad_alloc);
 void *operator new[](size_t size, const char *str) throw(std::bad_alloc);

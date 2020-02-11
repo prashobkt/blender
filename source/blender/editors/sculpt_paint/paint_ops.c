@@ -20,16 +20,16 @@
 
 #include "MEM_guardedalloc.h"
 
+#include <stdlib.h>
 #include "BLI_listbase.h"
+#include "BLI_utildefines.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
-#include "BLI_utildefines.h"
-#include <stdlib.h>
 
-#include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_brush_types.h"
 
 #include "BKE_brush.h"
 #include "BKE_context.h"
@@ -37,13 +37,13 @@
 #include "BKE_main.h"
 #include "BKE_paint.h"
 
-#include "ED_image.h"
 #include "ED_paint.h"
 #include "ED_screen.h"
+#include "ED_image.h"
 
 #include "WM_api.h"
-#include "WM_toolsystem.h"
 #include "WM_types.h"
+#include "WM_toolsystem.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"

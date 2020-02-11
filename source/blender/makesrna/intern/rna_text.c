@@ -18,8 +18,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "MEM_guardedalloc.h"
 

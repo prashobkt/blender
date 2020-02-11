@@ -18,20 +18,20 @@
  * \ingroup spconsole
  */
 
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_context.h"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
 #include "ED_space_api.h"
+#include "ED_screen.h"
 
 #include "RNA_access.h"
 
@@ -41,8 +41,8 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "GPU_framebuffer.h"
 #include "console_intern.h"  // own include
+#include "GPU_framebuffer.h"
 
 /* ******************** default callbacks for console space ***************** */
 

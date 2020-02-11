@@ -21,13 +21,10 @@
  * \ingroup bke
  */
 
-#include "BLI_utildefines.h"
-
 struct Depsgraph;
 struct DynamicPaintCanvasSettings;
 struct DynamicPaintModifierData;
 struct DynamicPaintRuntime;
-struct Object;
 struct Scene;
 
 /* Actual surface point */

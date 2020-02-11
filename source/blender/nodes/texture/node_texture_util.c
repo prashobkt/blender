@@ -37,8 +37,8 @@
  * over other previous ones.
  */
 
-#include "node_texture_util.h"
 #include <assert.h>
+#include "node_texture_util.h"
 
 bool tex_node_poll_default(bNodeType *UNUSED(ntype), bNodeTree *ntree)
 {

@@ -18,8 +18,8 @@
 
 #include "COM_MovieClipAttributeOperation.h"
 extern "C" {
-#include "BKE_movieclip.h"
 #include "BKE_tracking.h"
+#include "BKE_movieclip.h"
 }
 MovieClipAttributeOperation::MovieClipAttributeOperation() : NodeOperation()
 {

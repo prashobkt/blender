@@ -26,7 +26,6 @@
 #define __GHOST_EVENTBUTTON_H__
 
 #include "GHOST_Event.h"
-#include "GHOST_Window.h"
 
 /**
  * Mouse button event.

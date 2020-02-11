@@ -18,8 +18,8 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "DNA_scene_types.h"

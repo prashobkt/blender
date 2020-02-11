@@ -23,7 +23,6 @@
  */
 
 #include "BLI_compiler_typecheck.h"
-#include "BLI_sys_types.h"
 
 void _bli_array_reverse(void *arr, unsigned int arr_len, size_t arr_stride);
 #define BLI_array_reverse(arr, arr_len) _bli_array_reverse(arr, arr_len, sizeof(*(arr)))

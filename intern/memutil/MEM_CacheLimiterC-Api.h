@@ -25,8 +25,6 @@
 extern "C" {
 #endif
 
-#include "BLI_utildefines.h"
-
 struct MEM_CacheLimiter_s;
 struct MEM_CacheLimiterHandle_s;
 

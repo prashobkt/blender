@@ -26,17 +26,17 @@
 #include "DNA_cloth_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_effect_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
+#include "DNA_object_force_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_meshdata_types.h"
 
+#include "BLI_utildefines.h"
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
-#include "BLI_utildefines.h"
 
 #include "BKE_cloth.h"
 #include "BKE_collection.h"
@@ -45,8 +45,8 @@
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 
-#include "BKE_collision.h"
 #include "BLI_kdopbvh.h"
+#include "BKE_collision.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_physics.h"

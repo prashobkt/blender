@@ -23,8 +23,8 @@
  * \ingroup bke
  */
 
-#include "BLI_math_inline.h"
 #include <float.h>
+#include "BLI_math_inline.h"
 
 struct ClothModifierData;
 struct CollisionModifierData;

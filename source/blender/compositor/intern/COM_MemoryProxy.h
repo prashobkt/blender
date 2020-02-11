@@ -21,7 +21,6 @@ class MemoryProxy;
 #ifndef __COM_MEMORYPROXY_H__
 #define __COM_MEMORYPROXY_H__
 #include "COM_ExecutionGroup.h"
-#include "COM_MemoryBuffer.h"
 
 class ExecutionGroup;
 class WriteBufferOperation;

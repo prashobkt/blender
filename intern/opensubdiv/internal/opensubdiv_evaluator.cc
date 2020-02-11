@@ -18,8 +18,8 @@
 
 #include "opensubdiv_evaluator_capi.h"
 
-#include "MEM_guardedalloc.h"
 #include <new>
+#include "MEM_guardedalloc.h"
 
 #include "internal/opensubdiv_evaluator_internal.h"
 

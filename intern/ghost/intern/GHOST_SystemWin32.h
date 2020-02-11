@@ -30,8 +30,8 @@
 #endif  // WIN32
 
 #define WIN32_LEAN_AND_MEAN
-#include <ole2.h>  // for drag-n-drop
 #include <windows.h>
+#include <ole2.h>  // for drag-n-drop
 
 #include "GHOST_System.h"
 

@@ -22,8 +22,8 @@
 
 #include "internal/opensubdiv_converter_internal.h"
 
-#include <cassert>
 #include <opensubdiv/sdc/crease.h>
+#include <cassert>
 
 namespace opensubdiv_capi {
 

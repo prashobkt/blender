@@ -25,12 +25,12 @@
 
 #include <stdlib.h>
 
+#include "intern/GHOST_Debug.h"
 #include "GHOST_C-api.h"
+#include "GHOST_ISystem.h"
 #include "GHOST_IEvent.h"
 #include "GHOST_IEventConsumer.h"
-#include "GHOST_ISystem.h"
 #include "intern/GHOST_CallbackEventConsumer.h"
-#include "intern/GHOST_Debug.h"
 
 GHOST_SystemHandle GHOST_CreateSystem(void)
 {

@@ -27,7 +27,6 @@
  * \ingroup bli
  */
 
-#include "BLI_utildefines.h"
 #include "DNA_vec_types.h"
 
 #ifdef __cplusplus

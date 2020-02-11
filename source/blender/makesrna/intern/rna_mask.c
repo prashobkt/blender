@@ -18,8 +18,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -39,8 +39,8 @@
 
 #include "WM_types.h"
 
-#include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
+#include "IMB_imbuf.h"
 
 #ifdef RNA_RUNTIME
 

@@ -64,13 +64,13 @@ typedef uint64_t u_int64_t;
 #else
 
 /* FreeBSD, Solaris */
-#  include <stdint.h>
 #  include <sys/types.h>
+#  include <stdint.h>
 
 #endif /* ifdef platform for types */
 
-#include <stdbool.h>
 #include <stddef.h> /* size_t define */
+#include <stdbool.h>
 
 #ifndef __cplusplus
 #  if defined(__APPLE__)

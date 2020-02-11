@@ -25,8 +25,8 @@
 #ifndef __GHOST_IContext_H__
 #define __GHOST_IContext_H__
 
-#include "GHOST_Types.h"
 #include "STR_String.h"
+#include "GHOST_Types.h"
 
 /**
  * Interface for GHOST context.

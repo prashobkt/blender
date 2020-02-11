@@ -21,8 +21,6 @@
  * \ingroup bmesh
  */
 
-#include "bmesh_class.h"
-
 struct BMAllocTemplate;
 struct BMLoopNorEditDataArray;
 struct MLoopNorSpaceArray;

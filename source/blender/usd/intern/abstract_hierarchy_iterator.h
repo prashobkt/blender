@@ -37,8 +37,8 @@
 #define __ABSTRACT_HIERARCHY_ITERATOR_H__
 
 #include <map>
-#include <set>
 #include <string>
+#include <set>
 
 struct Base;
 struct Depsgraph;
