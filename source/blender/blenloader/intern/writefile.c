@@ -2728,7 +2728,7 @@ static void write_gpencil(WriteData *wd, bGPdata *gpd)
     writelist(wd, DATA, bGPDlayer, &gpd->layers);
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       /* Write mask list. */
-      writelist(wd, DATA, bGPDframe, &gpl->mask_layers);
+      writelist(wd, DATA, bGPDlayer_Mask, &gpl->mask_layers);
       /* write this layer's frames to file */
       writelist(wd, DATA, bGPDframe, &gpl->frames);
       LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
