@@ -1453,7 +1453,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
     bl_label = "Advanced"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_settings'
     bl_category = "Tool"
-    bl_ui_units_x = 12
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1491,11 +1490,11 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
                     ma = brush.gpencil_settings.material
 
                 col.separator()
-                col.prop(gp_settings, "gradient_factor", slider=True)
+                col.prop(gp_settings, "hardeness", slider=True)
                 subcol = col.column(align=True)
                 if ma and ma.grease_pencil.mode == 'LINE':
                     subcol.enabled = False
-                subcol.prop(gp_settings, "gradient_shape")
+                subcol.prop(gp_settings, "aspect")
 
             elif brush.gpencil_tool == 'FILL':
                 row = col.row(align=True)
