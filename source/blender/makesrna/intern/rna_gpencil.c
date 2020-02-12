@@ -1684,6 +1684,7 @@ static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Layer", "Mask layer name");
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_GPencilLayer_mask_info_set");
   RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, NULL);
 
   /* Flags */
