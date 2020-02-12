@@ -176,7 +176,7 @@ float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness, float hardfac)
 
   float dist = clamp(1.0 - length(uv_end) * 2.0, 0.0, 1.0);
   if (hardfac > 0.999) {
-    return step(0.0, dist);
+    return step(1e-8, dist);
   }
   else {
     /* Modulate the falloff profile */
