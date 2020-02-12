@@ -69,8 +69,8 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
   float *pix_col = (rpass_col_src) ? rpass_col_src->rect : NULL;
 
   if (!pix_z || !pix_col) {
-    /* TODO: put this message in a better place */
-    printf("Warning: To render grease pencil, enable Combined and Z passes.\n");
+    RE_engine_set_error_message(engine,
+                                "Warning: To render grease pencil, enable Combined and Z passes.");
   }
 
   if (pix_z) {
@@ -107,6 +107,18 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
                                     GPU_ATTACHMENT_TEXTURE(txl->render_depth_tx),
                                     GPU_ATTACHMENT_TEXTURE(txl->render_color_tx),
                                 });
+
+  if (!pix_z || !pix_col) {
+    /* To avoid unpredictable result, clear buffers that have not be initialized. */
+    GPU_framebuffer_bind(fbl->render_fb);
+    if (!pix_col) {
+      float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+      GPU_framebuffer_clear_color(fbl->render_fb, clear_col);
+    }
+    if (!pix_z) {
+      GPU_framebuffer_clear_depth(fbl->render_fb, 1.0f);
+    }
+  }
 
   MEM_SAFE_FREE(pix_z);
 }
