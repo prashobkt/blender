@@ -123,7 +123,7 @@ static void gp_session_validatebuffer(tGPDprimitive *p)
   gpd->runtime.sbuffer_sflag |= GP_STROKE_3DSPACE;
 
   /* Set vertex colors for buffer. */
-  ED_gpencil_sbuffer_vertex_color_set(p->depsgraph, p->scene->toolsettings, p->brush, gpd);
+  ED_gpencil_sbuffer_vertex_color_set(p->depsgraph, p->ob, p->scene->toolsettings, p->brush);
 
   if (ELEM(p->type, GP_STROKE_BOX, GP_STROKE_CIRCLE)) {
     gpd->runtime.sbuffer_sflag |= GP_STROKE_CYCLIC;

@@ -738,7 +738,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
     }
 
     /* Set vertex colors for buffer. */
-    ED_gpencil_sbuffer_vertex_color_set(p->depsgraph, p->scene->toolsettings, p->brush, gpd);
+    ED_gpencil_sbuffer_vertex_color_set(p->depsgraph, p->ob, p->scene->toolsettings, p->brush);
 
     /* get pointer to destination point */
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
