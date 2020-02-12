@@ -408,7 +408,8 @@ void GPENCIL_draw_scene(void *vedata);
 void GPENCIL_render_init(struct GPENCIL_Data *ved,
                          struct RenderEngine *engine,
                          struct RenderLayer *render_layer,
-                         const struct Depsgraph *depsgraph);
+                         const struct Depsgraph *depsgraph,
+                         const rcti *rect);
 void GPENCIL_render_to_image(void *vedata,
                              struct RenderEngine *engine,
                              struct RenderLayer *render_layer,

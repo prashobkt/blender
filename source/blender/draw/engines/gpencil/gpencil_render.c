@@ -37,7 +37,8 @@
 void GPENCIL_render_init(GPENCIL_Data *vedata,
                          RenderEngine *engine,
                          struct RenderLayer *render_layer,
-                         const Depsgraph *depsgraph)
+                         const Depsgraph *depsgraph,
+                         const rcti *rect)
 {
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   GPENCIL_TextureList *txl = vedata->txl;
@@ -97,10 +98,16 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
     }
   }
 
+  const bool do_region = (scene->r.mode & R_BORDER) != 0;
+  const bool do_clear_z = !pix_z || do_region;
+  const bool do_clear_col = !pix_col || do_region;
+
   /* FIXME(fclem): we have a precision loss in the depth buffer because of this reupload.
    * Find where it comes from! */
-  txl->render_depth_tx = DRW_texture_create_2d(size[0], size[1], GPU_DEPTH_COMPONENT24, 0, pix_z);
-  txl->render_color_tx = DRW_texture_create_2d(size[0], size[1], GPU_RGBA16F, 0, pix_col);
+  txl->render_depth_tx = DRW_texture_create_2d(
+      size[0], size[1], GPU_DEPTH_COMPONENT24, 0, do_region ? NULL : pix_z);
+  txl->render_color_tx = DRW_texture_create_2d(
+      size[0], size[1], GPU_RGBA16F, 0, do_region ? NULL : pix_col);
 
   GPU_framebuffer_ensure_config(&fbl->render_fb,
                                 {
@@ -108,15 +115,28 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
                                     GPU_ATTACHMENT_TEXTURE(txl->render_color_tx),
                                 });
 
-  if (!pix_z || !pix_col) {
+  if (do_clear_z || do_clear_col) {
     /* To avoid unpredictable result, clear buffers that have not be initialized. */
     GPU_framebuffer_bind(fbl->render_fb);
-    if (!pix_col) {
+    if (do_clear_col) {
       float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       GPU_framebuffer_clear_color(fbl->render_fb, clear_col);
     }
-    if (!pix_z) {
+    if (do_clear_z) {
       GPU_framebuffer_clear_depth(fbl->render_fb, 1.0f);
+    }
+  }
+
+  if (do_region) {
+    int x = rect->xmin;
+    int y = rect->ymin;
+    int w = BLI_rcti_size_x(rect);
+    int h = BLI_rcti_size_y(rect);
+    if (pix_col) {
+      GPU_texture_update_sub(txl->render_color_tx, GPU_DATA_FLOAT, pix_col, x, y, 0, w, h, 0);
+    }
+    if (pix_z) {
+      GPU_texture_update_sub(txl->render_depth_tx, GPU_DATA_FLOAT, pix_z, x, y, 0, w, h, 0);
     }
   }
 
@@ -218,7 +238,7 @@ void GPENCIL_render_to_image(void *ved,
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Depsgraph *depsgraph = draw_ctx->depsgraph;
 
-  GPENCIL_render_init(vedata, engine, render_layer, depsgraph);
+  GPENCIL_render_init(vedata, engine, render_layer, depsgraph, rect);
   GPENCIL_engine_init(vedata);
 
   vedata->stl->pd->camera = DEG_get_evaluated_object(depsgraph, RE_GetCamera(engine->re));
