@@ -561,6 +561,12 @@ static void gp_stroke_cache_populate(bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke 
       DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", tex_stroke);
       iter->tex_stroke = tex_stroke;
     }
+
+    /* TODO(fclem): This is a quick workaround but
+     * ideally we should have this as a permanent bind. */
+    const bool is_masked = iter->tgp_ob->layers.last->mask_bits != NULL;
+    GPUTexture **mask_tex = (is_masked) ? &iter->pd->mask_tx : &iter->pd->dummy_tx;
+    DRW_shgroup_uniform_texture_ref(iter->grp, "gpMaskTexture", mask_tex);
   }
 
   bool do_sbuffer = (iter->do_sbuffer_call == DRAW_NOW);
