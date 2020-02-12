@@ -562,6 +562,7 @@ void fill_vertex()
 #  endif
 
   strokeThickness = 1e18;
+  strokeAspect = vec2(1.0);
   strokePt1 = strokePt2 = vec2(0.0);
 
   if (strokeOrder3d) {
