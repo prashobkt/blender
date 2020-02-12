@@ -297,6 +297,22 @@ static void rna_GPencilLayer_parent_bone_set(PointerRNA *ptr, const char *value)
     set_parent(gpl, par, gpl->partype, value);
   }
 }
+
+static char *rna_GPencilLayerMask_path(PointerRNA *ptr)
+{
+  bGPdata *gpd = (bGPdata *)ptr->owner_id;
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
+  bGPDlayer_Mask *mask = (bGPDlayer_Mask *)ptr->data;
+
+  char name_layer[sizeof(gpl->info) * 2];
+  char name_mask[sizeof(mask->name) * 2];
+
+  BLI_strescape(name_layer, gpl->info, sizeof(name_layer));
+  BLI_strescape(name_mask, mask->name, sizeof(name_mask));
+
+  return BLI_sprintfN("layers[\"%s\"].mask_layers[\"%s\"]", name_layer, name_mask);
+}
+
 static int rna_GPencil_active_mask_index_get(PointerRNA *ptr)
 {
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
@@ -1661,6 +1677,7 @@ static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "GPencilLayerMask", NULL);
   RNA_def_struct_sdna(srna, "bGPDlayer_Mask");
   RNA_def_struct_ui_text(srna, "Grease Pencil Masking Layers", "List of Mask Layers");
+  RNA_def_struct_path_func(srna, "rna_GPencilLayerMask_path");
 
   /* Name */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
