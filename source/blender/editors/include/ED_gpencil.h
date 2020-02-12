@@ -300,7 +300,8 @@ void ED_gpencil_fill_vertex_color_set(struct ToolSettings *ts,
 void ED_gpencil_point_vertex_color_set(struct ToolSettings *ts,
                                        struct Brush *brush,
                                        struct bGPDspoint *pt);
-void ED_gpencil_sbuffer_vertex_color_set(struct ToolSettings *ts,
+void ED_gpencil_sbuffer_vertex_color_set(struct Depsgraph *depsgraph,
+                                         struct ToolSettings *ts,
                                          struct Brush *brush,
                                          struct bGPdata *gpd);
 

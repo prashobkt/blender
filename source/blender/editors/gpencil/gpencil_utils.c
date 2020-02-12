@@ -2530,7 +2530,10 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts, Brush *brush, bGPDspoin
   }
 }
 
-void ED_gpencil_sbuffer_vertex_color_set(ToolSettings *ts, Brush *brush, bGPdata *gpd)
+void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
+                                         ToolSettings *ts,
+                                         Brush *brush,
+                                         bGPdata *gpd)
 {
   float vertex_color[4];
   copy_v3_v3(vertex_color, brush->rgb);
@@ -2550,6 +2553,13 @@ void ED_gpencil_sbuffer_vertex_color_set(ToolSettings *ts, Brush *brush, bGPdata
   }
   else {
     zero_v4(gpd->runtime.vert_color);
+  }
+
+  /* Copy to eval data because paint operators don't tag refresh until end for speedup painting. */
+  bGPdata *gpd_eval = (bGPdata *)DEG_get_evaluated_id(depsgraph, &gpd->id);
+  if (gpd_eval != NULL) {
+    copy_v4_v4(gpd_eval->runtime.vert_color, gpd->runtime.vert_color);
+    copy_v4_v4(gpd_eval->runtime.vert_color_fill, gpd->runtime.vert_color_fill);
   }
 }
 
