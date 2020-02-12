@@ -1,6 +1,7 @@
 
 uniform sampler2D colorBuf;
 uniform sampler2D revealBuf;
+uniform bool onlyAlpha;
 
 in vec4 uvcoordsvar;
 
@@ -18,4 +19,10 @@ void main()
   fragColor.rgb = textureLod(colorBuf, uvcoordsvar.xy, 0.0).rgb;
   /* Add the alpha. */
   fragColor.a = 1.0 - fragRevealage.a;
+
+  if (onlyAlpha) {
+    /* Special case in wireframe xray mode. */
+    fragColor.rgba = vec4(0.0);
+    fragRevealage.rgb = fragRevealage.aaa;
+  }
 }

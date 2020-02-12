@@ -99,7 +99,8 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->sbuffer_tobjects.first = NULL;
   stl->pd->sbuffer_tobjects.last = NULL;
   stl->pd->dummy_tx = txl->dummy_texture;
-  stl->pd->draw_depth_only = !DRW_state_is_fbo() || (v3d && v3d->shading.type == OB_WIRE);
+  stl->pd->draw_depth_only = !DRW_state_is_fbo();
+  stl->pd->draw_wireframe = (v3d && v3d->shading.type == OB_WIRE) && !stl->pd->draw_depth_only;
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
   stl->pd->scene_fb = dfbl->default_fb;
   stl->pd->is_render = txl->render_depth_tx || (v3d && v3d->shading.type == OB_RENDER);
@@ -130,11 +131,15 @@ void GPENCIL_engine_init(void *ved)
     const bool overlays_on = (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0;
     stl->pd->use_multiedit_lines_only = !overlays_on ||
                                         (v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) != 0;
+
+    const bool shmode_xray_support = v3d->shading.type <= OB_SOLID;
+    stl->pd->xray_alpha = (shmode_xray_support && XRAY_ENABLED(v3d)) ? XRAY_ALPHA(v3d) : 1.0f;
   }
   else if (stl->pd->is_render) {
     use_scene_lights = true;
     use_scene_world = true;
     stl->pd->use_multiedit_lines_only = false;
+    stl->pd->xray_alpha = 1.0f;
   }
 
   stl->pd->use_lighting = (v3d && v3d->shading.type > OB_SOLID) || stl->pd->is_render;
@@ -275,6 +280,7 @@ void GPENCIL_cache_init(void *ved)
     grp = DRW_shgroup_create(sh, psl->composite_ps);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_tx);
+    DRW_shgroup_uniform_bool_copy(grp, "onlyAlpha", pd->draw_wireframe);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
   {
@@ -508,6 +514,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
     float onion_alpha = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
     onion_alpha += (gpd->onion_factor * 2.0f - 1.0f);
     onion_alpha = clamp_f(onion_alpha, 0.01f, 1.0f);
+    onion_alpha *= iter->pd->xray_alpha;
 
     DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", onion_col);
     DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", onion_alpha);
@@ -516,7 +523,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
     float alpha = GPENCIL_SIMPLIFY_TINT(scene) ? 0.0f : gpl->tintcolor[3];
     float tintcolor[4] = {gpl->tintcolor[0], gpl->tintcolor[1], gpl->tintcolor[2], alpha};
     DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", tintcolor);
-    DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", 1.0f);
+    DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", iter->pd->xray_alpha);
   }
 }
 

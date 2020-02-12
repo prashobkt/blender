@@ -291,6 +291,8 @@ typedef struct GPENCIL_PrivateData {
   bool is_render;
   /* True in selection and auto_depth drawing */
   bool draw_depth_only;
+  /* Is shading set to wireframe. */
+  bool draw_wireframe;
   /* Used by the depth merge step. */
   int is_stroke_order_3d;
   float object_bound_mat[4][4];
@@ -347,6 +349,8 @@ typedef struct GPENCIL_PrivateData {
   float fade_3d_object_opacity;
   /* Mask opacity uniform. */
   float mask_opacity;
+  /* Xray transparency in solid mode. */
+  float xray_alpha;
   /* Mask invert uniform. */
   int mask_invert;
 } GPENCIL_PrivateData;
