@@ -874,6 +874,31 @@ static void rna_GPencil_layer_move(bGPdata *gpd,
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 }
 
+static void rna_GPencil_layer_mask_add(bGPDlayer *gpl, ReportList *reports, PointerRNA *layer_ptr)
+{
+  bGPDlayer *gpl_mask = layer_ptr->data;
+
+  BKE_gpencil_layer_mask_add(gpl, gpl_mask->info);
+
+  WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+}
+
+static void rna_GPencil_layer_mask_remove(bGPDlayer *gpl,
+                                          ReportList *reports,
+                                          PointerRNA *mask_ptr)
+{
+  bGPDlayer_Mask *mask = mask_ptr->data;
+  if (BLI_findindex(&gpl->mask_layers, mask) == -1) {
+    BKE_report(reports, RPT_ERROR, "Mask not found in mask list");
+    return;
+  }
+
+  BKE_gpencil_layer_mask_remove(gpl, mask);
+  RNA_POINTER_INVALIDATE(mask_ptr);
+
+  WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+}
+
 static void rna_GPencil_frame_clear(bGPDframe *frame)
 {
   BKE_gpencil_free_strokes(frame);
@@ -1351,9 +1376,12 @@ static void rna_def_gpencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop
   StructRNA *srna;
   PropertyRNA *prop;
 
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
   RNA_def_property_srna(cprop, "GreasePencilMaskLayers");
   srna = RNA_def_struct(brna, "GreasePencilMaskLayers", NULL);
-  RNA_def_struct_sdna(srna, "bGPlayer");
+  RNA_def_struct_sdna(srna, "bGPDlayer");
   RNA_def_struct_ui_text(
       srna, "Grease Pencil Mask Layers", "Collection of grease pencil masking layers");
 
@@ -1364,6 +1392,20 @@ static void rna_def_gpencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop
                              "rna_GPencil_active_mask_index_set",
                              "rna_GPencil_active_mask_index_range");
   RNA_def_property_ui_text(prop, "Active Layer Mask Index", "Active index in layer mask array");
+
+  func = RNA_def_function(srna, "add", "rna_GPencil_layer_mask_add");
+  RNA_def_function_ui_description(func, "Add a layer to mask list");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "layer", "GPencilLayer", "", "Layer to add as mask");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+
+  func = RNA_def_function(srna, "remove", "rna_GPencil_layer_mask_remove");
+  RNA_def_function_ui_description(func, "Remove a layer from mask list");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "mask", "GPencilLayerMask", "", "Mask to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
 static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
