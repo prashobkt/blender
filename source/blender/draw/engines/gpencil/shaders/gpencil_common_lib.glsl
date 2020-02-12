@@ -468,6 +468,7 @@ void stroke_vertex()
     strokePt1.xy = ss1;
     strokePt2.xy = ss2;
     strokeThickness = thickness / gl_Position.w;
+    strokeAspect = vec2(1.0);
 
     vec2 screen_ofs = miter * y;
 
