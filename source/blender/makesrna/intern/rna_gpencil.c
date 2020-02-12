@@ -1366,6 +1366,38 @@ static void rna_def_gpencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop
   RNA_def_property_ui_text(prop, "Active Layer Mask Index", "Active index in layer mask array");
 }
 
+static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GPencilLayerMask", NULL);
+  RNA_def_struct_sdna(srna, "bGPDlayer_Mask");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Masking Layers", "List of Mask Layers");
+  RNA_def_struct_path_func(srna, "rna_GPencilLayerMask_path");
+
+  /* Name */
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Layer", "Mask layer name");
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_GPencilLayer_mask_info_set");
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, NULL);
+
+  /* Flags */
+  prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MASK_HIDE);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_text(prop, "Hide", "Set mask Visibility");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
+  prop = RNA_def_property(srna, "invert", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MASK_INVERT);
+  RNA_def_property_ui_icon(prop, ICON_HOLDOUT_OFF, 1);
+  RNA_def_property_ui_text(prop, "Invert", "Invert mask");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+}
+
 static void rna_def_gpencil_layer(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -1667,38 +1699,6 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   /* Layers API */
   func = RNA_def_function(srna, "clear", "rna_GPencil_layer_clear");
   RNA_def_function_ui_description(func, "Remove all the grease pencil layer data");
-}
-
-static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "GPencilLayerMask", NULL);
-  RNA_def_struct_sdna(srna, "bGPDlayer_Mask");
-  RNA_def_struct_ui_text(srna, "Grease Pencil Masking Layers", "List of Mask Layers");
-  RNA_def_struct_path_func(srna, "rna_GPencilLayerMask_path");
-
-  /* Name */
-  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Layer", "Mask layer name");
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_GPencilLayer_mask_info_set");
-  RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, NULL);
-
-  /* Flags */
-  prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MASK_HIDE);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
-  RNA_def_property_ui_text(prop, "Hide", "Set mask Visibility");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
-
-  prop = RNA_def_property(srna, "invert", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MASK_INVERT);
-  RNA_def_property_ui_icon(prop, ICON_HOLDOUT_OFF, 1);
-  RNA_def_property_ui_text(prop, "Invert", "Invert mask");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 }
 
 static void rna_def_gpencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
