@@ -102,7 +102,7 @@ void blend_mode_output(
     case MODE_DIVIDE:
       /* Reminder: Blending func is multiply blend (dst.rgba * src.rgba).*/
       color.a *= opacity;
-      frag_revealage = frag_color = clamp(1.0 / (1.0 - color * color.a), 0.0, 1e18);
+      frag_revealage = frag_color = clamp(1.0 / max(vec4(1e-6), 1.0 - color * color.a), 0.0, 1e18);
       break;
     case MODE_OVERLAY:
       /* Reminder: Blending func is multiply blend (dst.rgba * src.rgba).*/
