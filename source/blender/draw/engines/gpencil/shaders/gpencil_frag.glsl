@@ -2,6 +2,7 @@
 uniform sampler2D gpFillTexture;
 uniform sampler2D gpStrokeTexture;
 uniform sampler2D gpSceneDepthTexture;
+uniform sampler2D gpMaskTexture;
 uniform vec3 gpNormal;
 
 layout(location = 0) out vec4 fragColor;
@@ -101,6 +102,13 @@ void main()
   vec2 uvs = gl_FragCoord.xy / vec2(textureSize(gpSceneDepthTexture, 0).xy);
   float scene_depth = texture(gpSceneDepthTexture, uvs).r;
   if (gl_FragCoord.z > scene_depth) {
+    discard;
+  }
+
+  /* FIXME(fclem) Grrr. This is bad for performance but it's the easiest way to not get
+   * depth written where the mask obliterate the layer. */
+  float mask = texture(gpMaskTexture, uvs).r;
+  if (mask < 0.001) {
     discard;
   }
 

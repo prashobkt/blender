@@ -465,6 +465,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
   const bool is_in_front = (iter->ob->dtx & OB_DRAWXRAY);
+  const bool is_masked = tgp_layer->mask_bits != NULL;
 
   bool overide_vertcol = (iter->pd->v3d_color_type != -1);
   bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
@@ -474,6 +475,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
 
   /* Check if object is defined in front. */
   GPUTexture *depth_tex = (is_in_front) ? iter->pd->dummy_tx : iter->pd->scene_depth_tx;
+  GPUTexture **mask_tex = (is_masked) ? &iter->pd->mask_tx : &iter->pd->dummy_tx;
 
   struct GPUShader *sh = GPENCIL_shader_geometry_get();
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
@@ -482,6 +484,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", depth_tex);
+  DRW_shgroup_uniform_texture_ref(iter->grp, "gpMaskTexture", mask_tex);
   DRW_shgroup_uniform_int_copy(iter->grp, "gpMaterialOffset", iter->mat_ofs);
   DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3d", is_stroke_order_3d);
   DRW_shgroup_uniform_vec3_copy(iter->grp, "gpNormal", iter->tgp_ob->plane_normal);
