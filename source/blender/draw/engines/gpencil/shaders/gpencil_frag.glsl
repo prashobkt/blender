@@ -86,7 +86,8 @@ void main()
 
   fragColor.rgb *= gpencil_lighting();
 
-  fragColor *= stroke_round_cap_mask(strokePt1, strokePt2, strokeThickness, strokeHardeness);
+  fragColor *= stroke_round_cap_mask(
+      strokePt1, strokePt2, strokeAspect, strokeThickness, strokeHardeness);
 
   /* For compatibility with colored alpha buffer.
    * Note that we are limited to mono-chromatic alpha blending here

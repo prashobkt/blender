@@ -147,17 +147,18 @@ IN_OUT vec4 finalColorAdd;
 IN_OUT vec3 finalPos;
 IN_OUT vec2 finalUvs;
 noperspective IN_OUT float strokeThickness;
+noperspective IN_OUT float strokeHardeness;
+flat IN_OUT vec2 strokeAspect;
 flat IN_OUT vec2 strokePt1;
 flat IN_OUT vec2 strokePt2;
 flat IN_OUT int matFlag;
 flat IN_OUT float depth;
-noperspective IN_OUT float strokeHardeness;
 
 #ifdef GPU_FRAGMENT_SHADER
 
 #  define linearstep(p0, p1, v) (clamp(((v) - (p0)) / abs((p1) - (p0)), 0.0, 1.0))
 
-float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness, float hardfac)
+float stroke_round_cap_mask(vec2 p1, vec2 p2, vec2 aspect, float thickness, float hardfac)
 {
   /* We create our own uv space to avoid issues with triangulation and linear
    * interpolation artifacts. */
@@ -173,6 +174,7 @@ float stroke_round_cap_mask(vec2 p1, vec2 p2, float thickness, float hardfac)
   uv_end.y = dot(vec2(-line.y, line.x), pos);
   /* Divide by stroke radius. */
   uv_end /= thickness;
+  uv_end *= aspect;
 
   float dist = clamp(1.0 - length(uv_end) * 2.0, 0.0, 1.0);
   if (hardfac > 0.999) {
@@ -209,6 +211,14 @@ uniform vec4 layerTint;
 uniform float layerOpacity; /* Used for onion skin. */
 uniform float strokeIndexOffset = 0.0;
 
+/* All of these attribs are quad loaded the same way
+ * as GL_LINES_ADJACENCY would feed a geometry shader:
+ * - ma reference the previous adjacency point.
+ * - ma1 reference the current line first point.
+ * - ma2 reference the current line second point.
+ * - ma3 reference the next adjacency point.
+ * Note that we are rendering quad instances and not using any index buffer (except for fills).
+ */
 in vec4 ma;
 in vec4 ma1;
 in vec4 ma2;
@@ -233,10 +243,11 @@ in vec4 col2;
 
 in vec4 fcol1;
 
-in vec2 hard;
+/* hard.x is aspect. */
 in vec2 hard1;
 in vec2 hard2;
-in vec2 hard3;
+#  define aspect1 hard1.x
+#  define aspect2 hard2.x
 
 void discard_vert()
 {
@@ -420,10 +431,24 @@ void stroke_vertex()
 
     vec2 y_axis = rotate_90deg(x_axis);
 
+    strokeAspect.x = aspect1;
+
+    if (strokeAspect.x > 1.0) {
+      strokeAspect.y = strokeAspect.x;
+      strokeAspect.x = 1.0;
+    }
+    else {
+      strokeAspect.x = 1.0 / strokeAspect.x;
+      strokeAspect.y = 1.0;
+    }
+
+    x /= strokeAspect.x;
+    y /= strokeAspect.y;
+
     gl_Position.xy += (x * x_axis + y * y_axis) * sizeViewportInv.xy * thickness;
 
     strokePt1 = ss1;
-    strokePt2 = ss1 + vec2(0.5, 0.0);
+    strokePt2 = ss1 + x_axis * 0.5;
     strokeThickness = (is_squares) ? 1e18 : (thickness / gl_Position.w);
   }
   else {
