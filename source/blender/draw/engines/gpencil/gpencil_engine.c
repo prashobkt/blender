@@ -90,6 +90,7 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->gp_object_pool = vldata->gp_object_pool;
   stl->pd->gp_layer_pool = vldata->gp_layer_pool;
   stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
+  stl->pd->scene = ctx->scene;
   stl->pd->last_light_pool = NULL;
   stl->pd->last_material_pool = NULL;
   stl->pd->tobjects.first = NULL;
@@ -362,7 +363,7 @@ typedef struct gpIterPopulateData {
 
 #define DISABLE_BATCHING 0
 
-static void gp_drawcall_flush(gpIterPopulateData *iter)
+static void gpencil_drawcall_flush(gpIterPopulateData *iter)
 {
 #if !DISABLE_BATCHING
   if (iter->geom != NULL) {
@@ -396,7 +397,7 @@ static void gp_drawcall_add(
   int last = iter->vfirst + iter->vcount;
   /* Interupt drawcall grouping if the sequence is not consecutive. */
   if ((geom != iter->geom) || (v_first - last > 3)) {
-    gp_drawcall_flush(iter);
+    gpencil_drawcall_flush(iter);
   }
   iter->geom = geom;
   iter->instancing = instancing;
@@ -406,7 +407,10 @@ static void gp_drawcall_add(
   iter->vcount = v_first + v_count - iter->vfirst;
 }
 
-static void gp_stroke_cache_populate(bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke *gps, void *thunk);
+static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
+                                          bGPDframe *gpf,
+                                          bGPDstroke *gps,
+                                          void *thunk);
 
 static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
 {
@@ -426,108 +430,55 @@ static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
     DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->dummy_tx);
   }
 
-  gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
-  gp_drawcall_flush(iter);
+  gpencil_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
+  gpencil_drawcall_flush(iter);
 
   iter->stroke_index_offset = iter->pd->sbuffer_stroke->totpoints + 1;
   iter->do_sbuffer_call = 0;
 }
 
-static void gp_layer_cache_populate(bGPDlayer *gpl,
-                                    bGPDframe *gpf,
-                                    bGPDstroke *UNUSED(gps),
-                                    void *thunk)
+static void gpencil_layer_cache_populate(bGPDlayer *gpl,
+                                         bGPDframe *gpf,
+                                         bGPDstroke *UNUSED(gps),
+                                         void *thunk)
 {
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const Scene *scene = draw_ctx->scene;
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
+  GPENCIL_PrivateData *pd = iter->pd;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
-  gp_drawcall_flush(iter);
+  gpencil_drawcall_flush(iter);
 
   if (iter->do_sbuffer_call) {
     gp_sbuffer_cache_populate(iter);
   }
   else {
-    iter->do_sbuffer_call = !iter->pd->do_fast_drawing && (gpd == iter->pd->sbuffer_gpd) &&
-                            (gpl == iter->pd->sbuffer_layer);
+    iter->do_sbuffer_call = !pd->do_fast_drawing && (gpd == pd->sbuffer_gpd) &&
+                            (gpl == pd->sbuffer_layer);
   }
 
-  GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add(iter->pd, iter->ob, gpl);
-  BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
+  GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add(pd, iter->ob, gpl, gpf, iter->tgp_ob);
+
+  const bool use_lights = pd->use_lighting && ((gpl->flag & GP_LAYER_USE_LIGHTS) != 0) &&
+                          (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS);
+
+  iter->ubo_lights = (use_lights) ? pd->global_light_pool->ubo : pd->shadeless_light_pool->ubo;
 
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &iter->ubo_mat);
 
-  const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D) || iter->pd->draw_depth_only;
-  const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
-
-  float object_scale = mat4_to_scale(iter->ob->obmat);
-  /* Negate thickness sign to tag that strokes are in screen space.
-   * Convert to world units (by default, 1 meter = 2000 px). */
-  float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / GPENCIL_PIXEL_FACTOR);
-
-  const bool use_lights = iter->pd->use_lighting && ((gpl->flag & GP_LAYER_USE_LIGHTS) != 0) &&
-                          (iter->ob->dtx & OB_USE_GPENCIL_LIGHTS);
-  iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
-                                    iter->pd->shadeless_light_pool->ubo;
-  const bool is_in_front = (iter->ob->dtx & OB_DRAWXRAY);
-  const bool is_masked = tgp_layer->mask_bits != NULL;
-
-  bool overide_vertcol = (iter->pd->v3d_color_type != -1);
-  bool is_vert_col_mode = (iter->pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
-                          GPENCIL_VERTEX_MODE(gpd) || iter->pd->is_render;
-  float vert_col_opacity = (overide_vertcol) ? (is_vert_col_mode ? 1.0f : 0.0f) :
-                                               gpl->vertex_paint_opacity;
-
-  /* Check if object is defined in front. */
-  GPUTexture *depth_tex = (is_in_front) ? iter->pd->dummy_tx : iter->pd->scene_depth_tx;
-  GPUTexture **mask_tex = (is_masked) ? &iter->pd->mask_tx : &iter->pd->dummy_tx;
-
-  struct GPUShader *sh = GPENCIL_shader_geometry_get();
-  iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
-  DRW_shgroup_uniform_block_persistent(iter->grp, "gpLightBlock", iter->ubo_lights);
-  DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", iter->ubo_mat);
-  DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
-  DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
-  DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", depth_tex);
-  DRW_shgroup_uniform_texture_ref(iter->grp, "gpMaskTexture", mask_tex);
-  DRW_shgroup_uniform_int_copy(iter->grp, "gpMaterialOffset", iter->mat_ofs);
-  DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3d", is_stroke_order_3d);
-  DRW_shgroup_uniform_vec3_copy(iter->grp, "gpNormal", iter->tgp_ob->plane_normal);
-  DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewportInv", DRW_viewport_invert_size_get());
-  DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewport", DRW_viewport_size_get());
-  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessScale", object_scale);
-  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
-  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
-  DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", vert_col_opacity);
-  DRW_shgroup_uniform_float_copy(iter->grp, "strokeIndexOffset", iter->stroke_index_offset);
-  DRW_shgroup_stencil_mask(iter->grp, 0xFF);
-
-  bool use_onion = gpf && gpf->runtime.onion_id != 0.0f;
-  if (use_onion) {
-    const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
-    const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
-    const bool use_next_col = gpf->runtime.onion_id > 0.0f;
-    float *onion_col_custom = (use_next_col) ? gpd->gcolor_next : gpd->gcolor_prev;
-    onion_col_custom = (use_onion_custom_col) ? onion_col_custom : U.gpencil_new_layer_col;
-    float onion_col[4] = {UNPACK3(onion_col_custom), 1.0f};
-    float onion_alpha = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
-    onion_alpha += (gpd->onion_factor * 2.0f - 1.0f);
-    onion_alpha = clamp_f(onion_alpha, 0.01f, 1.0f);
-    onion_alpha *= iter->pd->xray_alpha;
-
-    DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", onion_col);
-    DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", onion_alpha);
-  }
-  else {
-    float alpha = GPENCIL_SIMPLIFY_TINT(scene) ? 0.0f : gpl->tintcolor[3];
-    float tintcolor[4] = {gpl->tintcolor[0], gpl->tintcolor[1], gpl->tintcolor[2], alpha};
-    DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", tintcolor);
-    DRW_shgroup_uniform_float_copy(iter->grp, "layerOpacity", iter->pd->xray_alpha);
-  }
+  /* Iterator dependent uniforms. */
+  DRWShadingGroup *grp = iter->grp = tgp_layer->base_shgrp;
+  DRW_shgroup_uniform_block_persistent(grp, "gpLightBlock", iter->ubo_lights);
+  DRW_shgroup_uniform_block(grp, "gpMaterialBlock", iter->ubo_mat);
+  DRW_shgroup_uniform_texture(grp, "gpFillTexture", iter->tex_fill);
+  DRW_shgroup_uniform_texture(grp, "gpStrokeTexture", iter->tex_stroke);
+  DRW_shgroup_uniform_int_copy(grp, "gpMaterialOffset", iter->mat_ofs);
+  DRW_shgroup_uniform_float_copy(grp, "strokeIndexOffset", iter->stroke_index_offset);
 }
 
-static void gp_stroke_cache_populate(bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke *gps, void *thunk)
+static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
+                                          bGPDframe *gpf,
+                                          bGPDstroke *gps,
+                                          void *thunk)
 {
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
 
@@ -553,7 +504,7 @@ static void gp_stroke_cache_populate(bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke 
                           (tex_stroke && (iter->tex_stroke != tex_stroke));
 
   if (resource_changed) {
-    gp_drawcall_flush(iter);
+    gpencil_drawcall_flush(iter);
 
     iter->grp = DRW_shgroup_create_sub(iter->grp);
     if (iter->ubo_mat != ubo_mat) {
@@ -619,7 +570,8 @@ static void gp_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateD
   /* Remove depth test with scene (avoid self occlusion). */
   iter->pd->scene_depth_tx = txl->dummy_texture;
 
-  gp_layer_cache_populate(iter->pd->sbuffer_layer, iter->pd->sbuffer_layer->actframe, NULL, iter);
+  gpencil_layer_cache_populate(
+      iter->pd->sbuffer_layer, iter->pd->sbuffer_layer->actframe, NULL, iter);
 
   const DRWContextState *ctx = DRW_context_state_get();
   ToolSettings *ts = ctx->scene->toolsettings;
@@ -629,8 +581,8 @@ static void gp_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateD
   }
 
   iter->do_sbuffer_call = DRAW_NOW;
-  gp_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
-  gp_drawcall_flush(iter);
+  gpencil_stroke_cache_populate(NULL, NULL, iter->pd->sbuffer_stroke, iter);
+  gpencil_drawcall_flush(iter);
 
   gpencil_vfx_cache_populate(vedata, iter->ob, iter->tgp_ob);
 
@@ -659,14 +611,18 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     iter.tex_fill = txl->dummy_texture;
     iter.tex_stroke = txl->dummy_texture;
 
-    /* Specil case for rendering onion skin. */
+    /* Special case for rendering onion skin. */
     bGPdata *gpd = (bGPdata *)ob->data;
     bool do_onion = (!pd->is_render) ? pd->do_onion : (gpd->onion_flag & GP_ONION_GHOST_ALWAYS);
 
-    BKE_gpencil_visible_stroke_iter(
-        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, do_onion, pd->cfra);
+    BKE_gpencil_visible_stroke_iter(ob,
+                                    gpencil_layer_cache_populate,
+                                    gpencil_stroke_cache_populate,
+                                    &iter,
+                                    do_onion,
+                                    pd->cfra);
 
-    gp_drawcall_flush(&iter);
+    gpencil_drawcall_flush(&iter);
 
     if (iter.do_sbuffer_call) {
       gp_sbuffer_cache_populate(&iter);
@@ -681,30 +637,6 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
 
   if (ob->type == OB_LAMP && pd->use_lights) {
     gpencil_light_pool_populate(pd->global_light_pool, ob);
-  }
-}
-
-#define SORT_IMPL_LINKTYPE GPENCIL_tObject
-
-#define SORT_IMPL_FUNC gpencil_tobject_sort_fn_r
-#include "../../blenlib/intern/list_sort_impl.h"
-#undef SORT_IMPL_FUNC
-
-#undef SORT_IMPL_LINKTYPE
-
-static int gpencil_tobject_dist_sort(const void *a, const void *b)
-{
-  const GPENCIL_tObject *ob_a = (const GPENCIL_tObject *)a;
-  const GPENCIL_tObject *ob_b = (const GPENCIL_tObject *)b;
-  /* Reminder, camera_z is negative in front of the camera. */
-  if (ob_a->camera_z > ob_b->camera_z) {
-    return 1;
-  }
-  else if (ob_a->camera_z < ob_b->camera_z) {
-    return -1;
-  }
-  else {
-    return 0;
   }
 }
 
@@ -728,35 +660,8 @@ void GPENCIL_cache_finish(void *ved)
     GPU_uniformbuffer_update(lpool->ubo, lpool->light_data);
   }
 
-  /* Sort object by distance to the camera. */
-  if (pd->tobjects.first) {
-    pd->tobjects.first = gpencil_tobject_sort_fn_r(pd->tobjects.first, gpencil_tobject_dist_sort);
-    /* Relink last pointer. */
-    while ((pd->tobjects.last->next != NULL)) {
-      pd->tobjects.last = pd->tobjects.last->next;
-    }
-  }
-  if (pd->tobjects_infront.first) {
-    pd->tobjects_infront.first = gpencil_tobject_sort_fn_r(pd->tobjects_infront.first,
-                                                           gpencil_tobject_dist_sort);
-    /* Relink last pointer. */
-    while ((pd->tobjects_infront.last->next != NULL)) {
-      pd->tobjects_infront.last = pd->tobjects_infront.last->next;
-    }
-  }
-
-  /* Join both lists, adding infront. */
-  if (pd->tobjects_infront.first != NULL) {
-    if (pd->tobjects.last != NULL) {
-      pd->tobjects.last->next = pd->tobjects_infront.first;
-      pd->tobjects.last = pd->tobjects_infront.last;
-    }
-    else {
-      /* Only in front objects. */
-      pd->tobjects.first = pd->tobjects_infront.first;
-      pd->tobjects.last = pd->tobjects_infront.last;
-    }
-  }
+  /* Sort object by decreasing Z to avoid most of alpha ordering issues. */
+  gpencil_object_cache_sort(pd);
 
   /* Create framebuffers only if needed. */
   if (pd->tobjects.first) {

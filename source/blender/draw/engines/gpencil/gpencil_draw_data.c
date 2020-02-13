@@ -36,18 +36,9 @@
 
 #include "gpencil_engine.h"
 
-GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd)
-{
-  GPENCIL_LightPool *lightpool = BLI_memblock_alloc(pd->gp_light_pool);
-  lightpool->light_used = 0;
-  /* Tag light list end. */
-  lightpool->light_data[0].color[0] = -1.0;
-  if (lightpool->ubo == NULL) {
-    lightpool->ubo = GPU_uniformbuffer_create(sizeof(lightpool->light_data), NULL, NULL);
-  }
-  pd->last_light_pool = lightpool;
-  return lightpool;
-}
+/* -------------------------------------------------------------------- */
+/** \name Material
+ * \{ */
 
 static GPENCIL_MaterialPool *gpencil_material_pool_add(GPENCIL_PrivateData *pd)
 {
@@ -347,6 +338,25 @@ void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
   }
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Lights
+ * \{ */
+
+GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd)
+{
+  GPENCIL_LightPool *lightpool = BLI_memblock_alloc(pd->gp_light_pool);
+  lightpool->light_used = 0;
+  /* Tag light list end. */
+  lightpool->light_data[0].color[0] = -1.0;
+  if (lightpool->ubo == NULL) {
+    lightpool->ubo = GPU_uniformbuffer_create(sizeof(lightpool->light_data), NULL, NULL);
+  }
+  pd->last_light_pool = lightpool;
+  return lightpool;
+}
+
 void gpencil_light_ambient_add(GPENCIL_LightPool *lightpool, const float color[3])
 {
   if (lightpool->light_used >= GPENCIL_LIGHT_BUFFER_LEN) {
@@ -431,7 +441,7 @@ GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *UN
   if (lightpool == NULL) {
     lightpool = gpencil_light_pool_add(pd);
   }
-  /* TODO */
+  /* TODO(fclem) Light linking. */
   // gpencil_light_pool_populate(lightpool, ob);
 
   return lightpool;
@@ -448,6 +458,12 @@ void gpencil_light_pool_free(void *storage)
   GPENCIL_LightPool *lightpool = (GPENCIL_LightPool *)storage;
   DRW_UBO_FREE_SAFE(lightpool->ubo);
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name View Layer Data
+ * \{ */
 
 static void gpencil_view_layer_data_free(void *storage)
 {
@@ -482,3 +498,5 @@ GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void)
 
   return *vldata;
 }
+
+/** \} */

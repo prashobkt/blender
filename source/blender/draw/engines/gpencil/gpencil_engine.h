@@ -160,6 +160,8 @@ typedef struct GPENCIL_tLayer {
   DRWPass *geom_ps;
   /** Blend pass to composite onto the target buffer (blends modes). NULL if not needed. */
   DRWPass *blend_ps;
+  /** First shading group created for this layer. Contains all uniforms. */
+  DRWShadingGroup *base_shgrp;
   /** Layer id of the mask. */
   BLI_bitmap *mask_bits;
   BLI_bitmap *mask_invert_bits;
@@ -181,6 +183,8 @@ typedef struct GPENCIL_tObject {
 
   /* Distance to camera. Used for sorting. */
   float camera_z;
+  /* Used for stroke thickness scaling. */
+  float object_scale;
   /* Normal used for shading. Based on view angle. */
   float plane_normal[3];
   /* Used for drawing depth merge pass. */
@@ -303,6 +307,8 @@ typedef struct GPENCIL_PrivateData {
   float dof_params[2];
   /* Used for DoF Setup. */
   Object *camera;
+  /* Copy of draw_ctx->scene for convenience. */
+  struct Scene *scene;
 
   /* Active object. */
   Object *obact;
@@ -359,10 +365,15 @@ typedef struct GPENCIL_PrivateData {
 struct GpencilBatchCache *gpencil_batch_cache_get(struct Object *ob, int cfra);
 
 GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob);
+void gpencil_object_cache_sort(GPENCIL_PrivateData *pd);
+
 GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
-                                        Object *ob,
-                                        struct bGPDlayer *layer);
+                                        const Object *ob,
+                                        const bGPDlayer *gpl,
+                                        const bGPDframe *gpf,
+                                        GPENCIL_tObject *tgp_ob);
 GPENCIL_tLayer *gpencil_layer_cache_get(GPENCIL_tObject *tgp_ob, int number);
+
 GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Object *ob, int *ofs);
 void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
                                     int mat_id,
@@ -422,8 +433,5 @@ void GPENCIL_render_to_image(void *vedata,
 void gpencil_light_pool_free(void *storage);
 void gpencil_material_pool_free(void *storage);
 GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void);
-
-#define GPENCIL_3D_DRAWMODE(ob, gpd) \
-  ((gpd) && (gpd->draw_mode == GP_DRAWMODE_3D) && ((ob->dtx & OB_DRAWXRAY) == 0))
 
 #endif /* __GPENCIL_ENGINE_H__ */

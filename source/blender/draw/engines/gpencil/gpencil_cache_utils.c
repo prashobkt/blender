@@ -42,6 +42,10 @@
 
 #include "DEG_depsgraph.h"
 
+/* -------------------------------------------------------------------- */
+/** \name Object
+ * \{ */
+
 GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -50,7 +54,8 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   tgp_ob->layers.first = tgp_ob->layers.last = NULL;
   tgp_ob->vfx.first = tgp_ob->vfx.last = NULL;
   tgp_ob->camera_z = dot_v3v3(pd->camera_z_axis, ob->obmat[3]);
-  tgp_ob->is_drawmode3d = (gpd->draw_mode == GP_DRAWMODE_3D);
+  tgp_ob->is_drawmode3d = (gpd->draw_mode == GP_DRAWMODE_3D) || pd->draw_depth_only;
+  tgp_ob->object_scale = mat4_to_scale(ob->obmat);
 
   /* Find the normal most likely to represent the gpObject. */
   /* TODO: This does not work quite well if you use
@@ -110,32 +115,159 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   return tgp_ob;
 }
 
-GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGPDlayer *gpl)
+#define SORT_IMPL_LINKTYPE GPENCIL_tObject
+
+#define SORT_IMPL_FUNC gpencil_tobject_sort_fn_r
+#include "../../blenlib/intern/list_sort_impl.h"
+#undef SORT_IMPL_FUNC
+
+#undef SORT_IMPL_LINKTYPE
+
+static int gpencil_tobject_dist_sort(const void *a, const void *b)
+{
+  const GPENCIL_tObject *ob_a = (const GPENCIL_tObject *)a;
+  const GPENCIL_tObject *ob_b = (const GPENCIL_tObject *)b;
+  /* Reminder, camera_z is negative in front of the camera. */
+  if (ob_a->camera_z > ob_b->camera_z) {
+    return 1;
+  }
+  else if (ob_a->camera_z < ob_b->camera_z) {
+    return -1;
+  }
+  else {
+    return 0;
+  }
+}
+
+void gpencil_object_cache_sort(GPENCIL_PrivateData *pd)
+{
+  /* Sort object by distance to the camera. */
+  if (pd->tobjects.first) {
+    pd->tobjects.first = gpencil_tobject_sort_fn_r(pd->tobjects.first, gpencil_tobject_dist_sort);
+    /* Relink last pointer. */
+    while (pd->tobjects.last->next) {
+      pd->tobjects.last = pd->tobjects.last->next;
+    }
+  }
+  if (pd->tobjects_infront.first) {
+    pd->tobjects_infront.first = gpencil_tobject_sort_fn_r(pd->tobjects_infront.first,
+                                                           gpencil_tobject_dist_sort);
+    /* Relink last pointer. */
+    while (pd->tobjects_infront.last->next) {
+      pd->tobjects_infront.last = pd->tobjects_infront.last->next;
+    }
+  }
+
+  /* Join both lists, adding infront. */
+  if (pd->tobjects_infront.first != NULL) {
+    if (pd->tobjects.last != NULL) {
+      pd->tobjects.last->next = pd->tobjects_infront.first;
+      pd->tobjects.last = pd->tobjects_infront.last;
+    }
+    else {
+      /* Only in front objects. */
+      pd->tobjects.first = pd->tobjects_infront.first;
+      pd->tobjects.last = pd->tobjects_infront.last;
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Layer
+ * \{ */
+
+static float gpencil_layer_final_opacity_get(const GPENCIL_PrivateData *pd,
+                                             const Object *ob,
+                                             const bGPDlayer *gpl)
 {
   const bool is_obact = ((pd->obact) && (pd->obact == ob));
   const bool is_fade = ((pd->fade_layer_opacity > -1.0f) && (is_obact) &&
                         ((gpl->flag & GP_LAYER_ACTIVE) == 0));
-  const bool use_mask = (gpl->flag & GP_LAYER_USE_MASK) != 0;
 
   /* Defines layer opacity. For active object depends of layer opacity factor, and
    * for no active object, depends if the fade grease pencil objects option is enabled. */
-  float fade_layer_opacity = gpl->opacity;
   if (!pd->is_render) {
-    if ((is_obact) && (is_fade)) {
-      fade_layer_opacity = pd->fade_layer_opacity;
+    if (is_obact && is_fade) {
+      return gpl->opacity * pd->fade_layer_opacity;
     }
-    else if ((!is_obact) && (pd->fade_gp_object_opacity > -1.0f)) {
-      fade_layer_opacity = pd->fade_gp_object_opacity;
+    else if (!is_obact && (pd->fade_gp_object_opacity > -1.0f)) {
+      return gpl->opacity * pd->fade_gp_object_opacity;
     }
   }
+  return gpl->opacity;
+}
 
+static void gpencil_layer_final_tint_and_alpha_get(const GPENCIL_PrivateData *pd,
+                                                   const bGPdata *gpd,
+                                                   const bGPDlayer *gpl,
+                                                   const bGPDframe *gpf,
+                                                   float r_tint[4],
+                                                   float *r_alpha)
+{
+  const bool use_onion = (gpf != NULL) && (gpf->runtime.onion_id != 0.0f);
+  if (use_onion) {
+    const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
+    const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
+    const bool use_next_col = gpf->runtime.onion_id > 0.0f;
+
+    const float *onion_col_custom = (use_onion_custom_col) ?
+                                        (use_next_col ? gpd->gcolor_next : gpd->gcolor_prev) :
+                                        U.gpencil_new_layer_col;
+
+    copy_v4_fl4(r_tint, UNPACK3(onion_col_custom), 1.0f);
+
+    *r_alpha = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
+    *r_alpha += (gpd->onion_factor * 2.0f - 1.0f);
+    *r_alpha = clamp_f(*r_alpha, 0.01f, 1.0f);
+  }
+  else {
+    copy_v4_v4(r_tint, gpl->tintcolor);
+    if (GPENCIL_SIMPLIFY_TINT(pd->scene)) {
+      r_tint[3] = 0.0f;
+    }
+    *r_alpha = 1.0f;
+  }
+
+  *r_alpha *= pd->xray_alpha;
+}
+
+GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
+                                        const Object *ob,
+                                        const bGPDlayer *gpl,
+                                        const bGPDframe *gpf,
+                                        GPENCIL_tObject *tgp_ob)
+{
   bGPdata *gpd = (bGPdata *)ob->data;
+
+  const bool is_in_front = (ob->dtx & OB_DRAWXRAY);
+  const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
+  const bool overide_vertcol = (pd->v3d_color_type != -1);
+  const bool is_vert_col_mode = (pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
+                                GPENCIL_VERTEX_MODE(gpd) || pd->is_render;
+  bool is_masked = (gpl->flag & GP_LAYER_USE_MASK) && !BLI_listbase_is_empty(&gpl->mask_layers);
+
+  float vert_col_opacity = (overide_vertcol) ? (is_vert_col_mode ? 1.0f : 0.0f) :
+                                               gpl->vertex_paint_opacity;
+  /* Negate thickness sign to tag that strokes are in screen space.
+   * Convert to world units (by default, 1 meter = 2000 px). */
+  float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / GPENCIL_PIXEL_FACTOR);
+  float layer_opacity = gpencil_layer_final_opacity_get(pd, ob, gpl);
+  float layer_tint[4];
+  float layer_alpha;
+  gpencil_layer_final_tint_and_alpha_get(pd, gpd, gpl, gpf, layer_tint, &layer_alpha);
+
+  /* Create the new layer descriptor. */
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
+  BLI_LINKS_APPEND(&tgp_ob->layers, tgp_layer);
   tgp_layer->layer_id = BLI_findindex(&gpd->layers, gpl);
   tgp_layer->mask_bits = NULL;
   tgp_layer->mask_invert_bits = NULL;
+  tgp_layer->blend_ps = NULL;
 
-  if (use_mask && !BLI_listbase_is_empty(&gpl->mask_layers)) {
+  /* Masking: Go through mask list and extract valid masks in a bitmap. */
+  if (is_masked) {
     bool valid_mask = false;
     /* Warning: only GP_MAX_MASKBITS amount of bits.
      * TODO(fclem) Find a better system without any limitation. */
@@ -163,28 +295,11 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     else {
       tgp_layer->mask_bits = NULL;
     }
+    is_masked = valid_mask;
   }
 
-  const bool is_masked = tgp_layer->mask_bits != NULL;
-
-  {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-    if (GPENCIL_3D_DRAWMODE(ob, gpd) || pd->draw_depth_only) {
-      /* TODO better 3D mode. */
-      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    }
-    else {
-      /* We render all strokes with uniform depth (increasing with stroke id). */
-      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
-    }
-
-    /* Always write stencil. Only used as optimization for blending. */
-    state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
-
-    tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
-  }
-
-  if (is_masked || (gpl->blend_mode != eGplBlendMode_Regular) || (fade_layer_opacity < 1.0f)) {
+  /* Blending: Force blending for masked layer. */
+  if (is_masked || (gpl->blend_mode != eGplBlendMode_Regular) || (layer_opacity < 1.0f)) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL;
     switch (gpl->blend_mode) {
       case eGplBlendMode_Regular:
@@ -213,7 +328,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
     GPUShader *sh = GPENCIL_shader_layer_blend_get();
     DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
     DRW_shgroup_uniform_int_copy(grp, "blendMode", gpl->blend_mode);
-    DRW_shgroup_uniform_float_copy(grp, "blendOpacity", fade_layer_opacity);
+    DRW_shgroup_uniform_float_copy(grp, "blendOpacity", layer_opacity);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "maskBuf", (is_masked) ? &pd->mask_tx : &pd->dummy_tx);
@@ -232,8 +347,36 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd, Object *ob, bGP
 
     pd->use_layer_fb = true;
   }
-  else {
-    tgp_layer->blend_ps = NULL;
+
+  /* Geometry pass */
+  {
+    GPUTexture *depth_tex = (is_in_front) ? pd->dummy_tx : pd->scene_depth_tx;
+    GPUTexture **mask_tex = (is_masked) ? &pd->mask_tx : &pd->dummy_tx;
+
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_BLEND_ALPHA_PREMUL;
+    /* For 2D mode, we render all strokes with uniform depth (increasing with stroke id). */
+    state |= tgp_ob->is_drawmode3d ? DRW_STATE_DEPTH_LESS_EQUAL : DRW_STATE_DEPTH_GREATER;
+    /* Always write stencil. Only used as optimization for blending. */
+    state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+
+    tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
+
+    struct GPUShader *sh = GPENCIL_shader_geometry_get();
+    DRWShadingGroup *grp = tgp_layer->base_shgrp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
+
+    DRW_shgroup_uniform_texture(grp, "gpSceneDepthTexture", depth_tex);
+    DRW_shgroup_uniform_texture_ref(grp, "gpMaskTexture", mask_tex);
+    DRW_shgroup_uniform_vec3_copy(grp, "gpNormal", tgp_ob->plane_normal);
+    DRW_shgroup_uniform_bool_copy(grp, "strokeOrder3d", tgp_ob->is_drawmode3d);
+    DRW_shgroup_uniform_float_copy(grp, "thicknessScale", tgp_ob->object_scale);
+    DRW_shgroup_uniform_vec2_copy(grp, "sizeViewportInv", DRW_viewport_invert_size_get());
+    DRW_shgroup_uniform_vec2_copy(grp, "sizeViewport", DRW_viewport_size_get());
+    DRW_shgroup_uniform_float_copy(grp, "thicknessOffset", (float)gpl->line_change);
+    DRW_shgroup_uniform_float_copy(grp, "thicknessWorldScale", thickness_scale);
+    DRW_shgroup_uniform_float_copy(grp, "vertexColorOpacity", vert_col_opacity);
+    DRW_shgroup_uniform_vec4_copy(grp, "layerTint", layer_tint);
+    DRW_shgroup_uniform_float_copy(grp, "layerOpacity", layer_alpha);
+    DRW_shgroup_stencil_mask(grp, 0xFF);
   }
 
   return tgp_layer;
@@ -252,3 +395,5 @@ GPENCIL_tLayer *gpencil_layer_cache_get(GPENCIL_tObject *tgp_ob, int number)
   }
   return NULL;
 }
+
+/** \} */
