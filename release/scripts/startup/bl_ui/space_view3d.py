@@ -1509,10 +1509,6 @@ class VIEW3D_MT_select_particle(Menu):
 
         layout.separator()
 
-        layout.operator("particle.select_linked")
-
-        layout.separator()
-
         layout.operator("particle.select_more")
         layout.operator("particle.select_less")
 
@@ -3189,10 +3185,6 @@ class VIEW3D_MT_particle_context_menu(Menu):
 
             layout.operator("particle.select_more")
             layout.operator("particle.select_less")
-
-            layout.separator()
-
-            layout.operator("particle.select_linked")
 
 
 class VIEW3D_MT_particle_showhide(ShowHideMenu, Menu):
