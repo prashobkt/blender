@@ -217,6 +217,8 @@ typedef struct tGPsdata {
   float imat[4][4];
   float mat[4][4];
 
+  float diff_mat[4][4];
+
   /** custom color - hack for enforcing a particular color for track/mask editing. */
   float custom_color[4];
 
@@ -1356,20 +1358,14 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
                                       const int radius,
                                       const rcti *rect)
 {
-  Depsgraph *depsgraph = p->depsgraph;
-  Object *obact = (Object *)p->ownerPtr.data;
   Brush *eraser = p->eraser;
   bGPDspoint *pt0, *pt1, *pt2;
   int pc0[2] = {0};
   int pc1[2] = {0};
   int pc2[2] = {0};
   int i;
-  float diff_mat[4][4];
   int mval_i[2];
   round_v2i_v2fl(mval_i, mval);
-
-  /* calculate difference matrix */
-  BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
 
   if (gps->totpoints == 0) {
     /* just free stroke */
@@ -1379,7 +1375,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
     /* only process if it hasn't been masked out... */
     if (!(p->flags & GP_PAINTFLAG_SELECTMASK) || (gps->points->flag & GP_SPOINT_SELECT)) {
       bGPDspoint pt_temp;
-      gp_point_to_parent_space(gps->points, diff_mat, &pt_temp);
+      gp_point_to_parent_space(gps->points, p->diff_mat, &pt_temp);
       gp_point_to_xy(&p->gsc, gps, &pt_temp, &pc1[0], &pc1[1]);
       /* do boundbox check first */
       if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) {
@@ -1403,7 +1399,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
       /* get points to work with */
       pt1 = gps->points + i;
       bGPDspoint npt;
-      gp_point_to_parent_space(pt1, diff_mat, &npt);
+      gp_point_to_parent_space(pt1, p->diff_mat, &npt);
       gp_point_to_xy(&p->gsc, gps, &npt, &pc1[0], &pc1[1]);
 
       /* do boundbox check first */
@@ -1455,7 +1451,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 
       bGPDspoint npt;
       if (pt0) {
-        gp_point_to_parent_space(pt0, diff_mat, &npt);
+        gp_point_to_parent_space(pt0, p->diff_mat, &npt);
         gp_point_to_xy(&p->gsc, gps, &npt, &pc0[0], &pc0[1]);
       }
       else {
@@ -1463,10 +1459,10 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
         copy_v2_v2_int(pc0, pc1);
       }
 
-      gp_point_to_parent_space(pt1, diff_mat, &npt);
+      gp_point_to_parent_space(pt1, p->diff_mat, &npt);
       gp_point_to_xy(&p->gsc, gps, &npt, &pc1[0], &pc1[1]);
 
-      gp_point_to_parent_space(pt2, diff_mat, &npt);
+      gp_point_to_parent_space(pt2, p->diff_mat, &npt);
       gp_point_to_xy(&p->gsc, gps, &npt, &pc2[0], &pc2[1]);
 
       /* Check that point segment of the boundbox of the eraser stroke */
@@ -1616,9 +1612,8 @@ static void gp_stroke_doeraser(tGPsdata *p)
     else if (gpf == NULL) {
       continue;
     }
-    float diff_mat[4][4];
     /* calculate difference matrix */
-    BKE_gpencil_parent_matrix_get(p->depsgraph, p->ob, gpl, diff_mat);
+    BKE_gpencil_parent_matrix_get(p->depsgraph, p->ob, gpl, p->diff_mat);
 
     /* loop over strokes, checking segments for intersections */
     for (gps = gpf->strokes.first; gps; gps = gpn) {
@@ -1629,7 +1624,7 @@ static void gp_stroke_doeraser(tGPsdata *p)
       }
 
       /* Check if the stroke collide with mouse. */
-      if (!ED_gpencil_stroke_check_collision(&p->gsc, gps, p->mval, calc_radius, diff_mat)) {
+      if (!ED_gpencil_stroke_check_collision(&p->gsc, gps, p->mval, calc_radius, p->diff_mat)) {
         continue;
       }
 
