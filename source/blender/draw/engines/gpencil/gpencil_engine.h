@@ -383,7 +383,6 @@ struct GPUShader *GPENCIL_shader_antialiasing(int stage);
 struct GPUShader *GPENCIL_shader_geometry_get(void);
 struct GPUShader *GPENCIL_shader_composite_get(void);
 struct GPUShader *GPENCIL_shader_layer_blend_get(void);
-struct GPUShader *GPENCIL_shader_layer_mask_get(void);
 struct GPUShader *GPENCIL_shader_mask_invert_get(void);
 struct GPUShader *GPENCIL_shader_depth_merge_get(void);
 struct GPUShader *GPENCIL_shader_fx_blur_get(void);
