@@ -190,7 +190,6 @@ float stroke_round_cap_mask(vec2 p1, vec2 p2, vec2 aspect, float thickness, floa
 
 #endif
 
-/* TODO UBO */
 uniform vec2 sizeViewport;
 uniform vec2 sizeViewportInv;
 
@@ -387,7 +386,6 @@ void stroke_vertex()
   gl_Position = (use_curr) ? ndc1 : ndc2;
   finalPos = (use_curr) ? wpos1 : wpos2;
 
-  /* TODO case where ndc1 & ndc2 is behind camera */
   vec2 ss_adj = project_to_screenspace(ndc_adj);
   vec2 ss1 = project_to_screenspace(ndc1);
   vec2 ss2 = project_to_screenspace(ndc2);
