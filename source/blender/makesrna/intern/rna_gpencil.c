@@ -533,9 +533,9 @@ static void rna_GPencilLayer_mask_info_set(PointerRNA *ptr, const char *value)
 
     /* Fix mask layers. */
     LISTBASE_FOREACH (bGPDlayer *, gpl_, &gpd->layers) {
-      LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl_->mask_layers) {
-        if (STREQ(mask->name, oldname)) {
-          BLI_strncpy(mask->name, gpl->info, sizeof(mask->name));
+      LISTBASE_FOREACH (bGPDlayer_Mask *, mask_, &gpl_->mask_layers) {
+        if (STREQ(mask_->name, oldname)) {
+          BLI_strncpy(mask_->name, gpl->info, sizeof(mask_->name));
         }
       }
     }
@@ -874,7 +874,7 @@ static void rna_GPencil_layer_move(bGPdata *gpd,
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 }
 
-static void rna_GPencil_layer_mask_add(bGPDlayer *gpl, ReportList *reports, PointerRNA *layer_ptr)
+static void rna_GPencil_layer_mask_add(bGPDlayer *gpl, PointerRNA *layer_ptr)
 {
   bGPDlayer *gpl_mask = layer_ptr->data;
 
@@ -1395,7 +1395,6 @@ static void rna_def_gpencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop
 
   func = RNA_def_function(srna, "add", "rna_GPencil_layer_mask_add");
   RNA_def_function_ui_description(func, "Add a layer to mask list");
-  RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "layer", "GPencilLayer", "", "Layer to add as mask");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
