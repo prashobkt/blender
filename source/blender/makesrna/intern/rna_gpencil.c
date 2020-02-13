@@ -1656,12 +1656,6 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Mask Layer", "Mask pixels from underlying layers drawing");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
-  prop = RNA_def_property(srna, "invert_mask", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_MASK_INVERT);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_text(prop, "Invert Mask", "Invert the masking behavior of the layer");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
-
   prop = RNA_def_property(srna, "use_lights", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_USE_LIGHTS);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
