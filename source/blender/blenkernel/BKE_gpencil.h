@@ -246,7 +246,7 @@ void BKE_gpencil_frame_active_set(struct Depsgraph *depsgraph, struct bGPdata *g
 
 /* stroke geometry utilities */
 void BKE_gpencil_stroke_normal(const struct bGPDstroke *gps, float r_normal[3]);
-void BKE_gpencil_stroke_simplify(struct bGPDstroke *gps, float factor);
+void BKE_gpencil_stroke_simplify_adaptive(struct bGPDstroke *gps, float factor);
 void BKE_gpencil_stroke_simplify_fixed(struct bGPDstroke *gps);
 void BKE_gpencil_stroke_subdivide(struct bGPDstroke *gps, int level, int flag);
 bool BKE_gpencil_stroke_trim(struct bGPDstroke *gps);
@@ -292,7 +292,7 @@ bool BKE_gpencil_stroke_shrink(struct bGPDstroke *gps, const float dist);
 
 float BKE_gpencil_stroke_length(const struct bGPDstroke *gps, bool use_3d);
 
-void BKE_gpencil_get_range_selected(struct bGPDlayer *gpl, int *r_initframe, int *r_endframe);
+void BKE_gpencil_frame_range_selected(struct bGPDlayer *gpl, int *r_initframe, int *r_endframe);
 float BKE_gpencil_multiframe_falloff_calc(
     struct bGPDframe *gpf, int actnum, int f_init, int f_end, struct CurveMapping *cur_falloff);
 

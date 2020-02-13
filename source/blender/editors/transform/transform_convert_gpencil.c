@@ -199,7 +199,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
       int f_end = 0;
 
       if (use_multiframe_falloff) {
-        BKE_gpencil_get_range_selected(gpl, &f_init, &f_end);
+        BKE_gpencil_frame_range_selected(gpl, &f_init, &f_end);
       }
 
       /* calculate difference matrix */

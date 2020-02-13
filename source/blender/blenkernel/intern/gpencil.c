@@ -2368,7 +2368,7 @@ bool BKE_gpencil_stroke_smooth_uv(bGPDstroke *gps, int point_index, float influe
  * \param r_initframe: Number of first selected frame
  * \param r_endframe: Number of last selected frame
  */
-void BKE_gpencil_get_range_selected(bGPDlayer *gpl, int *r_initframe, int *r_endframe)
+void BKE_gpencil_frame_range_selected(bGPDlayer *gpl, int *r_initframe, int *r_endframe)
 {
   *r_initframe = gpl->actframe->framenum;
   *r_endframe = gpl->actframe->framenum;

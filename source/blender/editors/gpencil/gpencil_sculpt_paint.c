@@ -1742,7 +1742,7 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
       int f_end = 0;
 
       if (gso->use_multiframe_falloff) {
-        BKE_gpencil_get_range_selected(gpl, &f_init, &f_end);
+        BKE_gpencil_frame_range_selected(gpl, &f_init, &f_end);
       }
 
       LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {

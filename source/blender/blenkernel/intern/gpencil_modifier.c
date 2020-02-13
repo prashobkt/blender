@@ -96,7 +96,7 @@ void BKE_gpencil_stroke_normal(const bGPDstroke *gps, float r_normal[3])
  * Ramer - Douglas - Peucker algorithm
  * by http ://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm
  */
-void BKE_gpencil_stroke_simplify(bGPDstroke *gps, float epsilon)
+void BKE_gpencil_stroke_simplify_adaptive(bGPDstroke *gps, float epsilon)
 {
   bGPDspoint *old_points = MEM_dupallocN(gps->points);
   int totpoints = gps->totpoints;

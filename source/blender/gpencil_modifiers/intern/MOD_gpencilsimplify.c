@@ -91,7 +91,7 @@ static void deformStroke(GpencilModifierData *md,
     }
     case GP_SIMPLIFY_ADAPTIVE: {
       /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      BKE_gpencil_stroke_simplify(gps, mmd->factor);
+      BKE_gpencil_stroke_simplify_adaptive(gps, mmd->factor);
       break;
     }
     case GP_SIMPLIFY_SAMPLE: {

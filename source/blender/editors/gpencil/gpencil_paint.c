@@ -1139,7 +1139,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     /* Simplify adaptive */
     if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_SETTINGS) &&
         (brush->gpencil_settings->simplify_f > 0.0f)) {
-      BKE_gpencil_stroke_simplify(gps, brush->gpencil_settings->simplify_f);
+      BKE_gpencil_stroke_simplify_adaptive(gps, brush->gpencil_settings->simplify_f);
     }
 
     /* reproject to plane (only in 3d space) */

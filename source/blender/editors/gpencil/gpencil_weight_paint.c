@@ -636,7 +636,7 @@ static bool gp_weightpaint_brush_apply_to_layers(bContext *C, tGP_BrushWeightpai
       int f_end = 0;
 
       if (gso->use_multiframe_falloff) {
-        BKE_gpencil_get_range_selected(gpl, &f_init, &f_end);
+        BKE_gpencil_frame_range_selected(gpl, &f_init, &f_end);
       }
 
       LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
