@@ -505,7 +505,7 @@ void stroke_vertex()
   else if (GP_FLAG_TEST(MATERIAL(m).flag, GP_STROKE_OVERLAP)) {
     /* Use the index of the point as depth.
      * This means the stroke can overlap itself. */
-    depth = (point_id1 + 1.0) * 0.0000002;
+    depth = (point_id1 + strokeIndexOffset + 1.0) * 0.0000002;
   }
 #  endif
   else {
