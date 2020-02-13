@@ -149,6 +149,8 @@ typedef struct tGPsdata {
 
   /** current object. */
   Object *ob;
+  /** Obeject eval. */
+  Object *ob_eval;
   /** window where painting originated. */
   wmWindow *win;
   /** area where painting originated. */
@@ -1840,6 +1842,7 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
       }
       /* assign object after all checks to be sure we have one active */
       p->ob = obact;
+      p->ob_eval = (Object *)DEG_get_evaluated_object(p->depsgraph, p->ob);
 
       break;
     }
@@ -1966,12 +1969,13 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
 {
   Scene *scene = p->scene;
   ToolSettings *ts = scene->toolsettings;
+  bool changed = false;
 
   /* get active layer (or add a new one if non-existent) */
   p->gpl = BKE_gpencil_layer_active_get(p->gpd);
   if (p->gpl == NULL) {
     p->gpl = BKE_gpencil_layer_addnew(p->gpd, DATA_("GP_Layer"), true);
-
+    changed = true;
     if (p->custom_color[3]) {
       copy_v3_v3(p->gpl->color, p->custom_color);
     }
@@ -2107,8 +2111,14 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
       }
     }
   }
-  /* Tag datablock. */
-  gp_update_cache(p->gpd);
+  if (!changed) {
+    /* Copy the brush to avoid a full tag (very slow). */
+    bGPdata *gpd_eval = (bGPdata *)p->ob_eval->data;
+    gpd_eval->runtime.sbuffer_brush = p->gpd->runtime.sbuffer_brush;
+  }
+  else {
+    gp_update_cache(p->gpd);
+  }
 }
 
 /* finish off a stroke (clears buffer, but doesn't finish the paint operation) */
@@ -3466,9 +3476,6 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && (ELEM(event->val, KM_PRESS, KM_RELEASE))) {
     /* if painting, end stroke */
     if (p->status == GP_STATUS_PAINTING) {
-      /* drawing batch cache is dirty now */
-      gp_update_cache(p->gpd);
-
       p->status = GP_STATUS_DONE;
       estate = OPERATOR_FINISHED;
     }
