@@ -34,8 +34,26 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
   GPENCIL_PassList *psl = vedata->psl;
   DRWShadingGroup *grp;
 
-  /* We need a temporary buffer to output result. */
-  BLI_assert(pd->color_layer_tx && pd->reveal_layer_tx);
+  const float *size = DRW_viewport_size_get();
+  const float *sizeinv = DRW_viewport_invert_size_get();
+  float metrics[4] = {sizeinv[0], sizeinv[1], size[0], size[1]};
+
+  if (pd->simplify_antialias) {
+    /* No AA fallback. */
+    DRW_PASS_CREATE(psl->smaa_resolve_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
+
+    GPUShader *sh = GPENCIL_shader_antialiasing(2);
+    grp = DRW_shgroup_create(sh, psl->smaa_resolve_ps);
+    DRW_shgroup_uniform_texture(grp, "blendTex", pd->color_tx);
+    DRW_shgroup_uniform_texture(grp, "colorTex", pd->color_tx);
+    DRW_shgroup_uniform_texture(grp, "revealTex", pd->reveal_tx);
+    DRW_shgroup_uniform_bool_copy(grp, "doAntiAliasing", false);
+    DRW_shgroup_uniform_bool_copy(grp, "onlyAlpha", pd->draw_wireframe);
+    DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
+
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    return;
+  }
 
   if (txl->smaa_search_tx == NULL) {
     txl->smaa_search_tx = GPU_texture_create_nD(SEARCHTEX_WIDTH,
@@ -68,9 +86,6 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
     GPU_texture_filter_mode(txl->smaa_area_tx, true);
     GPU_texture_unbind(txl->smaa_area_tx);
   }
-
-  const float *size = DRW_viewport_size_get();
-  float metrics[4] = {1.0f / size[0], 1.0f / size[1], size[0], size[1]};
 
   {
     pd->smaa_edge_tx = DRW_texture_pool_query_2d(
@@ -120,14 +135,15 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
   }
   {
     /* Stage 3: Resolve. */
-    /* TODO merge it with the main composite pass. */
-    DRW_PASS_CREATE(psl->smaa_resolve_ps, DRW_STATE_WRITE_COLOR);
+    DRW_PASS_CREATE(psl->smaa_resolve_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
 
     GPUShader *sh = GPENCIL_shader_antialiasing(2);
     grp = DRW_shgroup_create(sh, psl->smaa_resolve_ps);
     DRW_shgroup_uniform_texture(grp, "blendTex", pd->smaa_weight_tx);
     DRW_shgroup_uniform_texture(grp, "colorTex", pd->color_tx);
     DRW_shgroup_uniform_texture(grp, "revealTex", pd->reveal_tx);
+    DRW_shgroup_uniform_bool_copy(grp, "doAntiAliasing", true);
+    DRW_shgroup_uniform_bool_copy(grp, "onlyAlpha", pd->draw_wireframe);
     DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
 
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
@@ -140,16 +156,14 @@ void GPENCIL_antialiasing_draw(struct GPENCIL_Data *vedata)
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_PassList *psl = vedata->psl;
 
-  GPU_framebuffer_bind(fbl->smaa_edge_fb);
-  DRW_draw_pass(psl->smaa_edge_ps);
+  if (!pd->simplify_antialias) {
+    GPU_framebuffer_bind(fbl->smaa_edge_fb);
+    DRW_draw_pass(psl->smaa_edge_ps);
 
-  GPU_framebuffer_bind(fbl->smaa_weight_fb);
-  DRW_draw_pass(psl->smaa_weight_ps);
+    GPU_framebuffer_bind(fbl->smaa_weight_fb);
+    DRW_draw_pass(psl->smaa_weight_ps);
+  }
 
-  GPU_framebuffer_bind(fbl->layer_fb);
+  GPU_framebuffer_bind(pd->scene_fb);
   DRW_draw_pass(psl->smaa_resolve_ps);
-
-  /* Swap buffers */
-  SWAP(GPUTexture *, pd->color_tx, pd->color_layer_tx);
-  SWAP(GPUTexture *, pd->reveal_tx, pd->reveal_layer_tx);
 }

@@ -617,5 +617,6 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
     pd->use_object_fb = true;
+    pd->use_layer_fb = true;
   }
 }

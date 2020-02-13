@@ -189,8 +189,7 @@ void GPENCIL_cache_init(void *ved)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
   pd->simplify_antialias = GPENCIL_SIMPLIFY_AA(draw_ctx->scene);
-  /* Antialiasing needs the layer buffer to output to. */
-  pd->use_layer_fb = false || !pd->simplify_antialias;
+  pd->use_layer_fb = false;
   pd->use_object_fb = false;
   pd->use_mask_fb = false;
   pd->use_signed_fb = false;
@@ -273,17 +272,6 @@ void GPENCIL_cache_init(void *ved)
     DRW_TEXTURE_FREE_SAFE(txl->snapshot_reveal_tx);
   }
 
-  {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
-    DRW_PASS_CREATE(psl->composite_ps, state);
-
-    GPUShader *sh = GPENCIL_shader_composite_get();
-    grp = DRW_shgroup_create(sh, psl->composite_ps);
-    DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_tx);
-    DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_tx);
-    DRW_shgroup_uniform_bool_copy(grp, "onlyAlpha", pd->draw_wireframe);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-  }
   {
     DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
     DRW_PASS_CREATE(psl->merge_depth_ps, state);
@@ -728,9 +716,7 @@ void GPENCIL_cache_finish(void *ved)
                                     });
     }
 
-    if (!pd->simplify_antialias) {
-      GPENCIL_antialiasing_init(vedata);
-    }
+    GPENCIL_antialiasing_init(vedata);
   }
 }
 
@@ -901,7 +887,6 @@ static void GPENCIL_fast_draw_end(GPENCIL_Data *vedata)
 void GPENCIL_draw_scene(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
-  GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
@@ -937,13 +922,8 @@ void GPENCIL_draw_scene(void *ved)
     GPENCIL_fast_draw_end(vedata);
   }
 
-  if (!pd->simplify_antialias) {
-    GPENCIL_antialiasing_draw(vedata);
-  }
-
   if (pd->scene_fb) {
-    GPU_framebuffer_bind(pd->scene_fb);
-    DRW_draw_pass(psl->composite_ps);
+    GPENCIL_antialiasing_draw(vedata);
   }
 
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = pd->gp_maskbit_pool = NULL;

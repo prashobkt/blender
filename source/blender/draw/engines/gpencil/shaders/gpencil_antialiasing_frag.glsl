@@ -5,6 +5,8 @@ uniform sampler2D searchTex;
 uniform sampler2D blendTex;
 uniform sampler2D colorTex;
 uniform sampler2D revealTex;
+uniform bool onlyAlpha;
+uniform bool doAntiAliasing;
 
 in vec2 uvs;
 in vec2 pixcoord;
@@ -15,8 +17,9 @@ out vec2 fragColor;
 #elif SMAA_STAGE == 1
 out vec4 fragColor;
 #elif SMAA_STAGE == 2
-layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec4 outReveal;
+/* Reminder: Blending func is fragRevealage * DST + fragColor .*/
+layout(location = 0, index = 0) out vec4 outColor;
+layout(location = 0, index = 1) out vec4 outReveal;
 #endif
 
 void main()
@@ -36,8 +39,26 @@ void main()
 
 #elif SMAA_STAGE == 2
   /* Resolve both buffers. */
-  outColor = SMAANeighborhoodBlendingPS(uvs, offset[0], colorTex, blendTex);
-  outReveal = SMAANeighborhoodBlendingPS(uvs, offset[0], revealTex, blendTex);
+  if (doAntiAliasing) {
+    outColor = SMAANeighborhoodBlendingPS(uvs, offset[0], colorTex, blendTex);
+    outReveal = SMAANeighborhoodBlendingPS(uvs, offset[0], revealTex, blendTex);
+  }
+  else {
+    outColor = texture(colorTex, uvs);
+    outReveal = texture(revealTex, uvs);
+  }
 
+  /* Revealage, how much light passes through. */
+  /* Average for alpha channel. */
+  outReveal.a = clamp(dot(outReveal.rgb, vec3(0.333334)), 0.0, 1.0);
+  /* Color buf is already premultiplied. Just add it to the color. */
+  /* Add the alpha. */
+  outColor.a = 1.0 - outReveal.a;
+
+  if (onlyAlpha) {
+    /* Special case in wireframe xray mode. */
+    outColor = vec4(0.0);
+    outReveal.rgb = outReveal.aaa;
+  }
 #endif
 }

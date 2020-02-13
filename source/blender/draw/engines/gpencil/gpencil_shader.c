@@ -28,7 +28,6 @@ extern char datatoc_gpencil_frag_glsl[];
 extern char datatoc_gpencil_vert_glsl[];
 extern char datatoc_gpencil_antialiasing_frag_glsl[];
 extern char datatoc_gpencil_antialiasing_vert_glsl[];
-extern char datatoc_gpencil_composite_frag_glsl[];
 extern char datatoc_gpencil_layer_blend_frag_glsl[];
 extern char datatoc_gpencil_mask_invert_frag_glsl[];
 extern char datatoc_gpencil_depth_merge_frag_glsl[];
@@ -154,15 +153,6 @@ GPUShader *GPENCIL_shader_geometry_get(void)
     });
   }
   return g_shaders.gpencil_sh;
-}
-
-GPUShader *GPENCIL_shader_composite_get(void)
-{
-  if (!g_shaders.composite_sh) {
-    g_shaders.composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_composite_frag_glsl,
-                                                          NULL);
-  }
-  return g_shaders.composite_sh;
 }
 
 GPUShader *GPENCIL_shader_layer_blend_get(void)
