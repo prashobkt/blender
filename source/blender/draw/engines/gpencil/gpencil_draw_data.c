@@ -80,30 +80,6 @@ static struct GPUTexture *gpencil_image_texture_get(Image *image, bool *r_alpha_
   return gpu_tex;
 }
 
-#if 0 /* Old implementation. Reference for doing versioning code. TODO remove. */
-static void gpencil_uv_transform_get(const float ofs[2],
-                                     const float scale[2],
-                                     const float rotation,
-                                     float r_uvmat[3][2])
-{
-  /* OPTI this could use 3x2 matrices and reduce the number of operations drastically. */
-  float mat[4][4];
-  float scale_v3[3] = {scale[0], scale[1], 0.0};
-  /* Scale */
-  size_to_mat4(mat, scale_v3);
-  /* Offset to center. */
-  translate_m4(mat, 0.5f + ofs[0], 0.5f + ofs[1], 0.0f);
-  /* Rotation; */
-  rotate_m4(mat, 'Z', -rotation);
-  /* Translate. */
-  translate_m4(mat, -0.5f, -0.5f, 0.0f);
-  /* Convert to 3x2 */
-  copy_v2_v2(r_uvmat[0], mat[0]);
-  copy_v2_v2(r_uvmat[1], mat[1]);
-  copy_v2_v2(r_uvmat[2], mat[3]);
-}
-#endif
-
 static void gpencil_uv_transform_get(const float ofs[2],
                                      const float scale[2],
                                      const float rotation,

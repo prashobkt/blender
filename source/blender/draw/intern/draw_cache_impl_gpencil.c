@@ -86,7 +86,6 @@ static bool gpencil_batch_cache_valid(GpencilBatchCache *cache, bGPdata *gpd, in
     valid = false;
   }
   else if (cache->is_dirty) {
-    /* TODO, maybe get rid of the other dirty flags. */
     valid = false;
   }
 
