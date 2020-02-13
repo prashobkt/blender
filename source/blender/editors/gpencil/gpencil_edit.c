@@ -3690,6 +3690,43 @@ void GPENCIL_OT_reproject(wmOperatorType *ot)
       ot->srna, "type", reproject_type, GP_REPROJECT_VIEW, "Projection Type", "");
 }
 
+static int gp_recalc_geometry_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bGPdata *gpd = (bGPdata *)ob->data;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        BKE_gpencil_stroke_geometry_update(gps);
+      }
+    }
+  }
+  /* update changed data */
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_recalc_geometry(wmOperatorType *ot)
+{
+
+  /* identifiers */
+  ot->name = "Recalculate internal geometry";
+  ot->idname = "GPENCIL_OT_recalc_geometry";
+  ot->description = "Update all internal geometry data";
+
+  /* callbacks */
+  ot->exec = gp_recalc_geometry_exec;
+  ot->poll = gp_active_layer_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 /* ******************* Stroke subdivide ************************** */
 /* helper to smooth */
 static void gp_smooth_stroke(bContext *C, wmOperator *op)

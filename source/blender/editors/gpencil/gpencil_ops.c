@@ -563,6 +563,7 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_snap_cursor_to_selected);
 
   WM_operatortype_append(GPENCIL_OT_reproject);
+  WM_operatortype_append(GPENCIL_OT_recalc_geometry);
 
   WM_operatortype_append(GPENCIL_OT_sculpt_paint);
   WM_operatortype_append(GPENCIL_OT_weight_paint);

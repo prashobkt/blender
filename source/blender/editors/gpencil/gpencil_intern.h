@@ -422,6 +422,7 @@ void GPENCIL_OT_snap_to_cursor(struct wmOperatorType *ot);
 void GPENCIL_OT_snap_cursor_to_selected(struct wmOperatorType *ot);
 
 void GPENCIL_OT_reproject(struct wmOperatorType *ot);
+void GPENCIL_OT_recalc_geometry(struct wmOperatorType *ot);
 
 /* stroke sculpting -- */
 
