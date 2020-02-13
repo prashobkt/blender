@@ -311,8 +311,7 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   gps->thickness = 2.0f;
   gps->fill_opacity_fac = 1.0f;
   gps->hardeness = 1.0f;
-  gps->aspect_ratio[0] = 1.0f;
-  gps->aspect_ratio[1] = 1.0f;
+  copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->inittime = 0.0f;
 

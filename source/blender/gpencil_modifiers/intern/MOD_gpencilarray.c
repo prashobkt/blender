@@ -61,12 +61,8 @@ static void initData(GpencilModifierData *md)
   gpmd->offset[0] = 1.0f;
   gpmd->offset[1] = 0.0f;
   gpmd->offset[2] = 0.0f;
-  gpmd->shift[0] = 0.0f;
-  gpmd->shift[1] = 0.0f;
-  gpmd->shift[2] = 0.0f;
-  gpmd->scale[0] = 1.0f;
-  gpmd->scale[1] = 1.0f;
-  gpmd->scale[2] = 1.0f;
+  zero_v3(gpmd->shift);
+  copy_v3_fl(gpmd->scale, 1.0f);
   gpmd->rnd_rot = 0.5f;
   gpmd->rnd_size = 0.5f;
   gpmd->object = NULL;

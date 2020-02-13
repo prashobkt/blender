@@ -3708,8 +3708,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         if (brush->gpencil_settings != NULL) {
           BrushGpencilSettings *gp = brush->gpencil_settings;
           gp->hardeness = 1.0f;
-          gp->aspect_ratio[0] = 1.0f;
-          gp->aspect_ratio[1] = 1.0f;
+          copy_v2_fl(gp->aspect_ratio, 1.0f);
         }
       }
     }
@@ -3721,8 +3720,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
             LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
               gps->hardeness = 1.0f;
-              gps->aspect_ratio[0] = 1.0f;
-              gps->aspect_ratio[1] = 1.0f;
+              copy_v2_fl(gps->aspect_ratio, 1.0f);
             }
           }
         }

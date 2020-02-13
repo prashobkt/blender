@@ -601,8 +601,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   gps->thickness = gpl->thickness;
   gps->fill_opacity_fac = 1.0f;
   gps->hardeness = 1.0f;
-  gps->aspect_ratio[0] = 1.0f;
-  gps->aspect_ratio[1] = 1.0f;
+  copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->flag = gpd->runtime.sbuffer_sflag;
   gps->inittime = p->inittime;
