@@ -1090,8 +1090,8 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
   gps->thickness = brush->size;
   gps->fill_opacity_fac = 1.0f;
-  gps->gradient_f = brush->gpencil_settings->gradient_f;
-  copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
+  gps->hardeness = brush->gpencil_settings->hardeness;
+  copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
   gps->inittime = 0.0f;
 
   /* Apply the vertex color to fill. */

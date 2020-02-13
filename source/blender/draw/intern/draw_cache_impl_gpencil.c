@@ -292,8 +292,8 @@ static void gpencil_buffer_add_point(gpStrokeVert *verts,
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   vert->mat = (is_endpoint) ? -1 : (gps->mat_nr % GP_MATERIAL_BUFFER_LEN);
 
-  vert->aspect_ratio = gps->gradient_s[0] / max_ff(gps->gradient_s[1], 1e-8);
-  vert->hardness = gps->gradient_f;
+  vert->aspect_ratio = gps->aspect_ratio[0] / max_ff(gps->aspect_ratio[1], 1e-8);
+  vert->hardness = gps->hardeness;
 }
 
 static void gpencil_buffer_add_stroke(gpStrokeVert *verts,
@@ -496,8 +496,8 @@ bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(Object *ob)
     gps->mat_nr = max_ii(0, gpd->runtime.matid - 1);
     gps->flag = gpd->runtime.sbuffer_sflag;
     gps->thickness = brush->size;
-    gps->gradient_f = brush->gpencil_settings->gradient_f;
-    copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
+    gps->hardeness = brush->gpencil_settings->hardeness;
+    copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
 
     /* Reduce slightly the opacity of fill to make easy fill areas while drawing. */
     gps->fill_opacity_fac = 0.8f;

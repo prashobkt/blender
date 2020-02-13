@@ -309,9 +309,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->gradient_f = 0.211f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 0.211f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_tool = GPAINT_TOOL_DRAW;
       brush->gpencil_settings->icon_id = GP_BRUSH_ICON_AIRBRUSH;
@@ -345,9 +345,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->gradient_f = 1.0f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
       brush->gpencil_settings->draw_smoothfac = 0.1f;
@@ -385,9 +385,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->gradient_f = 1.0f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_settings->flag &= ~GP_BRUSH_GROUP_SETTINGS;
       brush->gpencil_settings->draw_smoothfac = 0.0f;
@@ -427,9 +427,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->gradient_f = 1.0f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
       brush->gpencil_settings->draw_smoothfac = 0.1f;
@@ -469,9 +469,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = DEG2RAD(20.0f);
       brush->gpencil_settings->draw_angle_factor = 1.0f;
-      brush->gpencil_settings->gradient_f = 1.0f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
       brush->gpencil_settings->draw_smoothfac = 0.0f;
@@ -505,9 +505,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->gradient_f = 1.0f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
       brush->gpencil_settings->draw_smoothfac = 0.0f;
@@ -541,9 +541,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->gradient_f = 0.8f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 0.8f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
       brush->gpencil_settings->draw_smoothfac = 0.0f;
@@ -577,9 +577,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
-      brush->gpencil_settings->gradient_f = 1.0f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
       brush->gpencil_settings->draw_smoothfac = 0.0f;
@@ -610,9 +610,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->fill_factor = 1;
 
       brush->gpencil_settings->draw_strength = 1.0f;
-      brush->gpencil_settings->gradient_f = 1.0f;
-      brush->gpencil_settings->gradient_s[0] = 1.0f;
-      brush->gpencil_settings->gradient_s[1] = 1.0f;
+      brush->gpencil_settings->hardeness = 1.0f;
+      brush->gpencil_settings->aspect_ratio[0] = 1.0f;
+      brush->gpencil_settings->aspect_ratio[1] = 1.0f;
       brush->gpencil_settings->draw_smoothfac = 0.1f;
       brush->gpencil_settings->draw_smoothlvl = 1;
       brush->gpencil_settings->draw_subdivide = 1;

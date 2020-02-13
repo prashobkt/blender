@@ -478,10 +478,10 @@ static bool view3d_ruler_to_gpencil(bContext *C, wmGizmoGroup *gzgroup)
     }
     gps->flag = GP_STROKE_3DSPACE;
     gps->thickness = 3;
-    gps->gradient_f = 1.0f;
+    gps->hardeness = 1.0f;
     gps->fill_opacity_fac = 1.0f;
-    gps->gradient_s[0] = 1.0f;
-    gps->gradient_s[1] = 1.0f;
+    gps->aspect_ratio[0] = 1.0f;
+    gps->aspect_ratio[1] = 1.0f;
     gps->uv_scale = 1.0f;
 
     BLI_addtail(&gpf->strokes, gps);

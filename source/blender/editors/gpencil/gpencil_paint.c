@@ -913,8 +913,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   gps->totpoints = totelem;
   gps->thickness = brush->size;
   gps->fill_opacity_fac = 1.0f;
-  gps->gradient_f = brush->gpencil_settings->gradient_f;
-  copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
+  gps->hardeness = brush->gpencil_settings->hardeness;
+  copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
   gps->flag = gpd->runtime.sbuffer_sflag;
   gps->inittime = p->inittime;
   gps->uv_scale = 1.0f;

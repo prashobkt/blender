@@ -135,8 +135,8 @@ static bGPDstroke *gpencil_prepare_stroke(bContext *C, wmOperator *op, int totpo
   gps->totpoints = totpoints;
   gps->inittime = 0.0f;
   gps->thickness = brush->size;
-  gps->gradient_f = brush->gpencil_settings->gradient_f;
-  copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
+  gps->hardeness = brush->gpencil_settings->hardeness;
+  copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
   gps->flag |= GP_STROKE_SELECT;
   gps->flag |= GP_STROKE_3DSPACE;
   gps->mat_nr = ob->actcol - 1;

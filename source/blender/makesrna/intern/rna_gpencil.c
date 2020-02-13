@@ -712,8 +712,8 @@ static void rna_GPencil_stroke_point_pop(ID *id,
 static bGPDstroke *rna_GPencil_stroke_new(bGPDframe *frame)
 {
   bGPDstroke *stroke = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
-  stroke->gradient_f = 1.0f;
-  ARRAY_SET_ITEMS(stroke->gradient_s, 1.0f, 1.0f);
+  stroke->hardeness = 1.0f;
+  ARRAY_SET_ITEMS(stroke->aspect_ratio, 1.0f, 1.0f);
   stroke->uv_scale = 1.0f;
   BLI_addtail(&frame->strokes, stroke);
 
@@ -1201,7 +1201,7 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
 
   /* gradient control along y */
   prop = RNA_def_property(srna, "hardeness", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_sdna(prop, NULL, "gradient_f");
+  RNA_def_property_float_sdna(prop, NULL, "hardeness");
   RNA_def_property_range(prop, 0.001f, 1.0f);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Hardeness", "Amount of gradient along section of stroke");
@@ -1210,7 +1210,7 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
 
   /* gradient shape ratio */
   prop = RNA_def_property(srna, "aspect", PROP_FLOAT, PROP_XYZ);
-  RNA_def_property_float_sdna(prop, NULL, "gradient_s");
+  RNA_def_property_float_sdna(prop, NULL, "aspect_ratio");
   RNA_def_property_array(prop, 2);
   RNA_def_property_range(prop, 0.01f, 1.0f);
   RNA_def_property_float_default(prop, 1.0f);

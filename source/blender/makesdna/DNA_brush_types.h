@@ -102,9 +102,9 @@ typedef struct BrushGpencilSettings {
   int flag;
 
   /** gradient control along y for color */
-  float gradient_f;
+  float hardeness;
   /** factor xy of shape for dots gradients */
-  float gradient_s[2];
+  float aspect_ratio[2];
   /** Simplify adaptive factor */
   float simplify_f;
 
@@ -656,15 +656,16 @@ typedef enum eBrushUVSculptTool {
 #define SCULPT_TOOL_HAS_RAKE(t) ELEM(t, SCULPT_TOOL_SNAKE_HOOK)
 
 #define SCULPT_TOOL_HAS_DYNTOPO(t) \
-  (ELEM(t, /* These brushes, as currently coded, cannot support dynamic topology */ \
-        SCULPT_TOOL_GRAB, \
-        SCULPT_TOOL_ROTATE, \
-        SCULPT_TOOL_THUMB, \
-        SCULPT_TOOL_LAYER, \
-        SCULPT_TOOL_DRAW_SHARP, \
-        SCULPT_TOOL_SLIDE_RELAX, \
-        SCULPT_TOOL_ELASTIC_DEFORM, \
-        SCULPT_TOOL_POSE, \
+  (ELEM( \
+       t, /* These brushes, as currently coded, cannot support dynamic topology */ \
+       SCULPT_TOOL_GRAB, \
+       SCULPT_TOOL_ROTATE, \
+       SCULPT_TOOL_THUMB, \
+       SCULPT_TOOL_LAYER, \
+       SCULPT_TOOL_DRAW_SHARP, \
+       SCULPT_TOOL_SLIDE_RELAX, \
+       SCULPT_TOOL_ELASTIC_DEFORM, \
+       SCULPT_TOOL_POSE, \
 \
        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
         * \ \

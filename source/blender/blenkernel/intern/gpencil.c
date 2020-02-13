@@ -494,9 +494,9 @@ bGPDstroke *BKE_gpencil_stroke_new(int mat_idx, int totpoints, short thickness)
 
   gps->thickness = thickness;
   gps->fill_opacity_fac = 1.0f;
-  gps->gradient_f = 1.0f;
-  gps->gradient_s[0] = 1.0f;
-  gps->gradient_s[1] = 1.0f;
+  gps->hardeness = 1.0f;
+  gps->aspect_ratio[0] = 1.0f;
+  gps->aspect_ratio[1] = 1.0f;
 
   gps->uv_scale = 1.0f;
 
@@ -3387,10 +3387,10 @@ static void gpencil_convert_spline(Main *bmain,
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
   gps->thickness = 1.0f;
   gps->fill_opacity_fac = 1.0f;
-  gps->gradient_f = 1.0f;
+  gps->hardeness = 1.0f;
   gps->uv_scale = 1.0f;
 
-  ARRAY_SET_ITEMS(gps->gradient_s, 1.0f, 1.0f);
+  ARRAY_SET_ITEMS(gps->aspect_ratio, 1.0f, 1.0f);
   ARRAY_SET_ITEMS(gps->caps, GP_STROKE_CAP_ROUND, GP_STROKE_CAP_ROUND);
   gps->inittime = 0.0f;
 

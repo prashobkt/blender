@@ -222,9 +222,9 @@ typedef struct bGPDstroke {
   short caps[2];
 
   /** gradient control along y for color */
-  float gradient_f;
+  float hardeness;
   /** factor xy of shape for dots gradients */
-  float gradient_s[2];
+  float aspect_ratio[2];
 
   /** Factor of opacity for Fill color (used by opacity modifier). */
   float fill_opacity_fac;
