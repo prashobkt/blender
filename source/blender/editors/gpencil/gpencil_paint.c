@@ -1347,7 +1347,6 @@ static void gp_stroke_soft_refine(bGPDstroke *gps)
 }
 
 /* eraser tool - evaluation per stroke */
-/* TODO: this could really do with some optimization (KD-Tree/BVH?) */
 static void gp_stroke_eraser_dostroke(tGPsdata *p,
                                       bGPDlayer *gpl,
                                       bGPDframe *gpf,
@@ -1617,6 +1616,9 @@ static void gp_stroke_doeraser(tGPsdata *p)
     else if (gpf == NULL) {
       continue;
     }
+    float diff_mat[4][4];
+    /* calculate difference matrix */
+    BKE_gpencil_parent_matrix_get(p->depsgraph, p->ob, gpl, diff_mat);
 
     /* loop over strokes, checking segments for intersections */
     for (gps = gpf->strokes.first; gps; gps = gpn) {
@@ -1625,6 +1627,12 @@ static void gp_stroke_doeraser(tGPsdata *p)
       if (ED_gpencil_stroke_color_use(p->ob, gpl, gps) == false) {
         continue;
       }
+
+      /* Check if the stroke collide with mouse. */
+      if (!ED_gpencil_stroke_check_collision(&p->gsc, gps, p->mval, calc_radius, diff_mat)) {
+        continue;
+      }
+
       /* Not all strokes in the datablock may be valid in the current editor/context
        * (e.g. 2D space strokes in the 3D view, if the same datablock is shared)
        */
