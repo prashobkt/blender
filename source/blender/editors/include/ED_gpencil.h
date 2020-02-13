@@ -75,14 +75,6 @@ typedef struct tGPspoint {
   bool rnd_dirty; /* rnd flag */
 } tGPspoint;
 
-/* used to sort by zdepth gpencil objects in viewport */
-/* TODO: this could be a system parameter in userprefs screen */
-#define GP_CACHE_BLOCK_SIZE 16
-typedef struct tGPencilSort {
-  struct Base *base;
-  float zdepth;
-} tGPencilSort;
-
 /* ----------- Grease Pencil Tools/Context ------------- */
 
 /* Context-dependent */
