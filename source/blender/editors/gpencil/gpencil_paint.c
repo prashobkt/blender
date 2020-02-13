@@ -1808,9 +1808,6 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
   switch (curarea->spacetype) {
     /* supported views first */
     case SPACE_VIEW3D: {
-      /* View3D *v3d = curarea->spacedata.first; */
-      /* RegionView3D *rv3d = ar->regiondata; */
-
       /* set current area
        * - must verify that region data is 3D-view (and not something else)
        */
@@ -1881,21 +1878,14 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
   gp_init_drawing_brush(C, p);
 
   /* setup active color */
-  if (curarea->spacetype == SPACE_VIEW3D) {
-    /* region where paint was originated */
-    p->gpd->runtime.ar = CTX_wm_region(C);
+  /* region where paint was originated */
+  p->gpd->runtime.ar = CTX_wm_region(C);
+  int totcol = p->ob->totcol;
+  gp_init_colors(p);
 
-    /* NOTE: This is only done for 3D view, as Materials aren't used for
-     *       annotations in 2D editors
-     */
-    int totcol = p->ob->totcol;
-
-    gp_init_colors(p);
-
-    /* check whether the material was newly added */
-    if (totcol != p->ob->totcol) {
-      WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, NULL);
-    }
+  /* check whether the material was newly added */
+  if (totcol != p->ob->totcol) {
+    WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, NULL);
   }
 
   /* lock axis (in some modes, disable) */
