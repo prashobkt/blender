@@ -389,7 +389,7 @@ static int gpencil_time_modifier(
 }
 /* *************************************************** */
 
-void BKE_gpencil_eval_geometry(Depsgraph *depsgraph, bGPdata *gpd)
+void BKE_gpencil_frame_active_set(Depsgraph *depsgraph, bGPdata *gpd)
 {
   DEG_debug_print_eval(depsgraph, __func__, gpd->id.name, gpd);
   int ctime = (int)DEG_get_ctime(depsgraph);

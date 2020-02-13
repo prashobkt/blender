@@ -158,7 +158,6 @@ struct bGPDstroke *BKE_gpencil_stroke_add_existing_style(struct bGPDframe *gpf,
 /* Stroke and Fill - Alpha Visibility Threshold */
 #define GPENCIL_ALPHA_OPACITY_THRESH 0.001f
 #define GPENCIL_STRENGTH_MIN 0.003f
-#define GP_VERTEX_MASK_ATTENUATE 0.3f
 
 bool BKE_gpencil_layer_is_editable(const struct bGPDlayer *gpl);
 
@@ -242,8 +241,8 @@ void BKE_gpencil_dvert_ensure(struct bGPDstroke *gps);
 void BKE_gpencil_vgroup_remove(struct Object *ob, struct bDeformGroup *defgroup);
 void BKE_gpencil_stroke_weights_duplicate(struct bGPDstroke *gps_src, struct bGPDstroke *gps_dst);
 
-/* GPencil geometry evaluation */
-void BKE_gpencil_eval_geometry(struct Depsgraph *depsgraph, struct bGPdata *gpd);
+/* Set active frame by layer. */
+void BKE_gpencil_frame_active_set(struct Depsgraph *depsgraph, struct bGPdata *gpd);
 
 /* stroke geometry utilities */
 void BKE_gpencil_stroke_normal(const struct bGPDstroke *gps, float r_normal[3]);
