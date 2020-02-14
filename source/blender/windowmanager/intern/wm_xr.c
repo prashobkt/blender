@@ -68,8 +68,6 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *, unsigned int);
 /* -------------------------------------------------------------------- */
 
 typedef struct bXrRuntimeSessionState {
-  /** The pose (location + rotation) that acts as the basis for view transforms (world space). */
-  GHOST_XrPose reference_pose;
   /** The pose (location + rotation) to which eye deltas will be applied to when drawing (world
    * space). With positional tracking enabled, it should be the same as `base_pose`, when disabled
    * it also contains a location delta from the moment the option was toggled. */
@@ -190,24 +188,9 @@ void wm_xr_data_destroy(wmWindowManager *wm)
  *
  * \{ */
 
-static bXrRuntimeSessionState *wm_xr_runtime_session_state_create(const Scene *scene)
+static bXrRuntimeSessionState *wm_xr_runtime_session_state_create(void)
 {
   bXrRuntimeSessionState *state = MEM_callocN(sizeof(*state), __func__);
-
-  if (scene->camera) {
-    copy_v3_v3(state->reference_pose.position, scene->camera->loc);
-    add_v3_v3(state->reference_pose.position, scene->camera->dloc);
-    BKE_object_rot_to_quat(scene->camera, state->reference_pose.orientation_quat);
-  }
-  else {
-    copy_v3_fl(state->reference_pose.position, 0.0f);
-    unit_qt(state->reference_pose.orientation_quat);
-  }
-
-  /* Make sure the final reference pose is set, even if positional tracking is disabled on session
-   * start. */
-  copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
-
   return state;
 }
 
@@ -216,32 +199,47 @@ void wm_xr_runtime_session_state_free(bXrRuntimeSessionState **state)
   MEM_SAFE_FREE(*state);
 }
 
+static void wm_xr_reference_pose_calc(const Scene *scene,
+                                      const bXrSessionSettings *settings,
+                                      GHOST_XrPose *r_pose)
+{
+  const Object *base_pose_object = settings->base_pose_object ? settings->base_pose_object :
+                                                                scene->camera;
+  float tmp_quat[4];
+  float tmp_eul[3];
+
+  if (base_pose_object) {
+    copy_v3_v3(r_pose->position, base_pose_object->obmat[3]);
+    mat4_to_quat(tmp_quat, base_pose_object->obmat);
+  }
+  else {
+    copy_v3_fl(r_pose->position, 0.0f);
+    unit_qt(tmp_quat);
+  }
+
+  /* Only use rotation around Z-axis to align view with floor. */
+  quat_to_eul(tmp_eul, tmp_quat);
+  tmp_eul[0] = M_PI_2;
+  tmp_eul[1] = 0;
+  eul_to_quat(r_pose->orientation_quat, tmp_eul);
+}
+
 static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
                                                const GHOST_XrDrawViewInfo *draw_view,
-                                               const bXrSessionSettings *settings)
+                                               const bXrSessionSettings *settings,
+                                               const Scene *scene)
 {
+  GHOST_XrPose reference_pose;
   const bool position_tracking_toggled = (state->prev_settings_flag &
                                           XR_SESSION_USE_POSITION_TRACKING) !=
                                          (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
-  if (settings->base_pose_object) {
-    copy_v3_v3(state->reference_pose.position, settings->base_pose_object->obmat[3]);
-    mat4_to_quat(state->reference_pose.orientation_quat, settings->base_pose_object->obmat);
-
-    copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
-  }
-
-  float tmp_eul[3];
-  /* Only use rotation around Z-axis to align view with floor. */
-  quat_to_eul(tmp_eul, state->reference_pose.orientation_quat);
-  tmp_eul[0] = M_PI_2;
-  tmp_eul[1] = 0;
-  eul_to_quat(state->final_reference_pose.orientation_quat, tmp_eul);
+  wm_xr_reference_pose_calc(scene, settings, &reference_pose);
+  copy_qt_qt(state->final_reference_pose.orientation_quat, reference_pose.orientation_quat);
+  copy_v3_v3(state->final_reference_pose.position, reference_pose.position);
 
   if (position_tracking_toggled) {
-    copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
-
     /* Update reference pose to the current position. */
     if (use_position_tracking == false) {
       /* OpenXR/Ghost-XR returns the local pose in local space, we need it in world space. */
@@ -318,11 +316,9 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(g
   WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, NULL);
 }
 
-static void wm_xr_session_begin_info_create(const bXrRuntimeSessionState *state,
-                                            GHOST_XrSessionBeginInfo *r_begin_info)
+static void wm_xr_session_begin_info_create(const bXrRuntimeSessionState *UNUSED(state),
+                                            GHOST_XrSessionBeginInfo *UNUSED(r_begin_info))
 {
-  copy_v3_v3(r_begin_info->base_pose.position, state->reference_pose.position);
-  copy_v4_v4(r_begin_info->base_pose.orientation_quat, state->reference_pose.orientation_quat);
 }
 
 void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
@@ -337,7 +333,7 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
   else {
     GHOST_XrSessionBeginInfo begin_info;
 
-    wm->xr.session_state = wm_xr_runtime_session_state_create(CTX_data_scene(C));
+    wm->xr.session_state = wm_xr_runtime_session_state_create();
     wm_xr_session_begin_info_create(wm->xr.session_state, &begin_info);
 
     GHOST_XrSessionStart(xr_context, &begin_info);
@@ -594,7 +590,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
     return;
   }
 
-  wm_xr_runtime_session_state_update(wm->xr.session_state, draw_view, settings);
+  wm_xr_runtime_session_state_update(wm->xr.session_state, draw_view, settings, scene);
   wm_xr_draw_matrices_create(draw_view, settings, wm->xr.session_state, viewmat, winmat);
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
