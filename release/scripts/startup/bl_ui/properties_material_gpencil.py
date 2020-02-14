@@ -146,18 +146,18 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
 
             col.prop(gpcolor, "stroke_style", text="Style")
 
+            row = col.row()
+            row.prop(gpcolor, "color", text="Base Color")
+
             if gpcolor.stroke_style == 'TEXTURE':
                 row = col.row()
                 row.enabled = not gpcolor.lock
                 col = row.column(align=True)
                 col.template_ID(gpcolor, "stroke_image", open="image.open")
 
-            row = col.row()
-            row.prop(gpcolor, "color", text="Base Color")
-
             if gpcolor.stroke_style == 'TEXTURE':
                 row = col.row()
-                row.prop(gpcolor, "mix_stroke_factor", text="Factor", slider=True)
+                row.prop(gpcolor, "mix_stroke_factor", text="Blend", slider=True)
                 if gpcolor.mode == 'LINE':
                     col.prop(gpcolor, "pixel_size", text="UV Factor")
 
@@ -199,7 +199,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
 
             col.prop(gpcolor, "fill_color", text="Base Color")
             col.prop(gpcolor, "mix_color", text="Secondary Color")
-            col.prop(gpcolor, "mix_factor", text="Mix Factor", slider=True)
+            col.prop(gpcolor, "mix_factor", text="Blend in Fill Gradient", slider=True)
             col.prop(gpcolor, "flip", text="Flip Colors")
 
             col.prop(gpcolor, "texture_offset", text="Location")
@@ -212,7 +212,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
 
             col.prop(gpcolor, "fill_color", text="Base Color")
             col.prop(gpcolor, "texture_opacity", slider=True)
-            col.prop(gpcolor, "mix_factor", text="Factor", slider=True)
+            col.prop(gpcolor, "mix_factor", text="Blend in Fill Texture", slider=True)
 
             col.prop(gpcolor, "texture_offset", text="Location")
             col.prop(gpcolor, "texture_angle", text="Rotation")
