@@ -24,6 +24,10 @@
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* WARNING ALERT! TYPEDEF VALUES ARE WRITTEN IN FILES! SO DO NOT CHANGE!
  * (ONLY ADD NEW ITEMS AT THE END)
  */
@@ -182,8 +186,14 @@ typedef struct LatticeModifierData {
   /** Optional vertexgroup name, MAX_VGROUP_NAME. */
   char name[64];
   float strength;
-  char _pad[4];
+  short flag;
+  char _pad[2];
 } LatticeModifierData;
+
+/*Lattice modifier flags */
+enum {
+  MOD_LATTICE_INVERT_VGROUP = (1 << 0),
+};
 
 typedef struct CurveModifierData {
   ModifierData modifier;
@@ -193,8 +203,14 @@ typedef struct CurveModifierData {
   char name[64];
   /** Axis along which curve deforms. */
   short defaxis;
-  char _pad[6];
+  short flag;
+  char _pad[4];
 } CurveModifierData;
+
+/* Curve modifier flags */
+enum {
+  MOD_CURVE_INVERT_VGROUP = (1 << 0),
+};
 
 /* CurveModifierData->defaxis */
 enum {
@@ -598,6 +614,7 @@ typedef struct SmoothModifierData {
 
 /* Smooth modifier flags */
 enum {
+  MOD_SMOOTH_INVERT_VGROUP = (1 << 0),
   MOD_SMOOTH_X = (1 << 1),
   MOD_SMOOTH_Y = (1 << 2),
   MOD_SMOOTH_Z = (1 << 3),
@@ -686,6 +703,7 @@ typedef struct ArmatureModifierData {
 
 enum {
   MOD_HOOK_UNIFORM_SPACE = (1 << 0),
+  MOD_HOOK_INVERT_VGROUP = (1 << 1),
 };
 
 /* same as WarpModifierFalloff */
@@ -1369,7 +1387,8 @@ typedef struct WeightVGEditModifierData {
 
 /* WeightVGEdit flags. */
 enum {
-  /* (1 << 0), (1 << 1) and (1 << 2) are free for future use! */
+  /* (1 << 0) and (1 << 1) are free for future use! */
+  MOD_WVG_EDIT_INVERT_VGROUP_MASK = (1 << 2),
   /** Add vertices with higher weight than threshold to vgroup. */
   MOD_WVG_EDIT_ADD2VG = (1 << 3),
   /** Remove vertices with lower weight than threshold from vgroup. */
@@ -1412,8 +1431,10 @@ typedef struct WeightVGMixModifierData {
   /** Name of the UV map. MAX_CUSTOMDATA_LAYER_NAME. */
   char mask_tex_uvlayer_name[64];
 
+  char flag;
+
   /* Padding... */
-  char _pad1[4];
+  char _pad1[3];
 } WeightVGMixModifierData;
 
 /* How second vgroup's weights affect first ones. */
@@ -1446,6 +1467,11 @@ enum {
   MOD_WVG_SET_OR = 4,
   /** Affect only vertices in both vgroups. */
   MOD_WVG_SET_AND = 5,
+};
+
+/* WeightVGMix->flag */
+enum {
+  MOD_WVG_MIX_INVERT_VGROUP_MASK = (1 << 0),
 };
 
 typedef struct WeightVGProximityModifierData {
@@ -1504,6 +1530,7 @@ enum {
   MOD_WVG_PROXIMITY_GEOM_EDGES = (1 << 1),
   /* Use nearest faces of target obj, in MOD_WVG_PROXIMITY_GEOMETRY mode. */
   MOD_WVG_PROXIMITY_GEOM_FACES = (1 << 2),
+  MOD_WVG_PROXIMITY_INVERT_VGROUP_MASK = (1 << 3),
 };
 
 /* Defines common to all WeightVG modifiers. */
@@ -1844,7 +1871,15 @@ typedef struct WeldModifierData {
   unsigned int max_interactions;
   /* Name of vertex group to use to mask, MAX_VGROUP_NAME. */
   char defgrp_name[64];
+
+  short flag;
+  char _pad[6];
 } WeldModifierData;
+
+/* WeldModifierData->flag */
+enum {
+  MOD_WELD_INVERT_VGROUP = (1 << 0),
+};
 
 typedef struct DataTransferModifierData {
   ModifierData modifier;
@@ -2028,5 +2063,9 @@ enum {
 
 #define MOD_MESHSEQ_READ_ALL \
   (MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY | MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __DNA_MODIFIER_TYPES_H__ */
