@@ -95,6 +95,10 @@ static DRWShadingGroup *gpencil_vfx_pass_create(const char *name,
 
 static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *iter)
 {
+  if (fx->radius[0] == 0.0f && fx->radius[1] == 0.0f) {
+    return;
+  }
+
   DRWShadingGroup *grp;
 
   float winmat[4][4], persmat[4][4];
@@ -120,15 +124,18 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
   GPUShader *sh = GPENCIL_shader_fx_blur_get();
 
   DRWState state = DRW_STATE_WRITE_COLOR;
-  grp = gpencil_vfx_pass_create("Fx Blur H", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){blur_size[0], 0.0f});
-  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-
-  grp = gpencil_vfx_pass_create("Fx Blur V", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){0.0f, blur_size[1]});
-  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  if (blur_size[0] > 0.0f) {
+    grp = gpencil_vfx_pass_create("Fx Blur H", state, iter, sh);
+    DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){blur_size[0], 0.0f});
+    DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
+  if (blur_size[1] > 0.0f) {
+    grp = gpencil_vfx_pass_create("Fx Blur V", state, iter, sh);
+    DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){0.0f, blur_size[1]});
+    DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
 }
 
 static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)

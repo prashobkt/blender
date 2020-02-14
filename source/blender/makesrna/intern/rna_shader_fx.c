@@ -207,9 +207,9 @@ static void rna_def_shader_fx_blur(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "BlurShaderFxData");
   RNA_def_struct_ui_icon(srna, ICON_SHADERFX);
 
-  prop = RNA_def_property(srna, "size", PROP_INT, PROP_PIXEL);
-  RNA_def_property_int_sdna(prop, NULL, "radius");
-  RNA_def_property_range(prop, 0, SHRT_MAX);
+  prop = RNA_def_property(srna, "size", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "radius");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_text(prop, "Size", "Factor of Blur");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 

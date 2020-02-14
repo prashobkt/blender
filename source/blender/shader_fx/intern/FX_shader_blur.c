@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 
+#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "FX_shader_types.h"
@@ -30,7 +31,7 @@
 static void initData(ShaderFxData *fx)
 {
   BlurShaderFxData *gpfx = (BlurShaderFxData *)fx;
-  ARRAY_SET_ITEMS(gpfx->radius, 5, 5);
+  copy_v2_fl(gpfx->radius, 20.0f);
   gpfx->samples = 2;
 }
 

@@ -81,7 +81,7 @@ typedef struct ShaderFxData_Runtime {
 
 typedef struct BlurShaderFxData {
   ShaderFxData shaderfx;
-  int radius[2];
+  float radius[2];
   /** Flags. */
   int flag;
   /** Number of samples. */
