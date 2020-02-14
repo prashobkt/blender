@@ -28,7 +28,7 @@ typedef struct bXrSessionSettings {
   struct View3DShading shading;
 
   /** Object to take the location and rotation as base position from. */
-  Object *anchor_object;
+  Object *base_pose_object;
 
   /** View3D draw flags (V3D_OFSDRAW_NONE, V3D_OFSDRAW_SHOW_ANNOTATION, ...). */
   char draw_flags;

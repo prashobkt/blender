@@ -83,7 +83,7 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Shading Settings", "");
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
-  prop = RNA_def_property(srna, "anchor_object", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "base_pose_object", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Anchor Object", "Object to take the location and rotation as base position from");
