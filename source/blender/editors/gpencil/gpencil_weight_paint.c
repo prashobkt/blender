@@ -63,14 +63,6 @@
 /* General Brush Editing Context */
 #define GP_SELECT_BUFFER_CHUNK 256
 
-/* Temp Flags while Painting. */
-typedef enum eGPDweight_brush_Flag {
-  /* invert the effect of the brush */
-  GP_WEIGHT_FLAG_INVERT = (1 << 0),
-  /* temporary invert action */
-  GP_WEIGHT_FLAG_TMP_INVERT = (1 << 1),
-} eGPDweight_brush_Flag;
-
 /* Grid of Colors for Smear. */
 typedef struct tGP_Grid {
   /** Lower right corner of rectangle of grid cell. */
@@ -108,7 +100,6 @@ typedef struct tGP_BrushWeightpaintData {
   bGPdata *gpd;
 
   Brush *brush;
-  eGPDweight_brush_Flag flag;
 
   /* Space Conversion Data */
   GP_SpaceConversion gsc;
@@ -192,20 +183,6 @@ static tGP_Selected *gpencil_select_buffer_ensure(tGP_Selected *buffer_array,
 
 /* Brush Operations ------------------------------- */
 
-/* Invert behavior of brush? */
-static bool brush_invert_check(tGP_BrushWeightpaintData *gso)
-{
-  /* The basic setting is no inverted */
-  bool invert = false;
-
-  /* During runtime, the user can hold down the Ctrl key to invert the basic behavior */
-  if (gso->flag & GP_WEIGHT_FLAG_INVERT) {
-    invert ^= true;
-  }
-
-  return invert;
-}
-
 /* Compute strength of effect. */
 static float brush_influence_calc(tGP_BrushWeightpaintData *gso, const int radius, const int co[2])
 {
@@ -223,6 +200,7 @@ static float brush_influence_calc(tGP_BrushWeightpaintData *gso, const int radiu
   int mval_i[2];
   round_v2i_v2fl(mval_i, gso->mval);
   float distance = (float)len_v2v2_int(mval_i, co);
+  influence *= 1.0f - (distance / max_ff(radius, 1e-8));
 
   /* Apply Brush curve. */
   float brush_fallof = BKE_brush_curve_strength(brush, distance, (float)radius);
@@ -262,11 +240,8 @@ static bool brush_draw_apply(tGP_BrushWeightpaintData *gso,
   MDeformVert *dvert = gps->dvert + pt_index;
   float inf;
 
-  /* Compute strength of effect
-   * - We divide the strength by 10, so that users can set "sane" values.
-   *   Otherwise, good default values are in the range of 0.093
-   */
-  inf = brush_influence_calc(gso, radius, co) / 10.0f;
+  /* Compute strength of effect */
+  inf = brush_influence_calc(gso, radius, co);
 
   /* need a vertex group */
   if (gso->vrgroup == -1) {
@@ -282,25 +257,12 @@ static bool brush_draw_apply(tGP_BrushWeightpaintData *gso,
       return false;
     }
   }
-  /* get current weight */
+  /* Get current weight and blend. */
   MDeformWeight *dw = defvert_verify_index(dvert, gso->vrgroup);
-  float curweight = dw ? dw->weight : 0.0f;
-
-  if (brush_invert_check(gso)) {
-    curweight -= inf;
-  }
-  else {
-    /* increase weight */
-    curweight += inf;
-    /* verify maximum target weight */
-    CLAMP_MAX(curweight, gso->brush->weight);
-  }
-
-  CLAMP(curweight, 0.0f, 1.0f);
   if (dw) {
-    dw->weight = curweight;
+    dw->weight = interpf(dw->weight, gso->brush->weight, inf);
+    CLAMP(dw->weight, 0.0f, 1.0f);
   }
-
   return true;
 }
 
@@ -308,9 +270,7 @@ static bool brush_draw_apply(tGP_BrushWeightpaintData *gso,
 /* Header Info */
 static void gp_weightpaint_brush_header_set(bContext *C)
 {
-  ED_workspace_status_text(C,
-                           TIP_("GPencil Weight Paint: LMB to paint | RMB/Escape to Exit"
-                                " | Ctrl to Invert Action"));
+  ED_workspace_status_text(C, TIP_("GPencil Weight Paint: LMB to paint | RMB/Escape to Exit"));
 }
 
 /* ************************************************ */
@@ -387,9 +347,6 @@ static void gp_weightpaint_brush_exit(bContext *C, wmOperator *op)
   /* Disable cursor and headerprints. */
   ED_workspace_status_text(C, NULL);
   ED_gpencil_toggle_brush_cursor(C, false, NULL);
-
-  /* Disable temp invert flag. */
-  gso->brush->flag &= ~GP_WEIGHT_FLAG_TMP_INVERT;
 
   /* Free operator data */
   MEM_SAFE_FREE(gso->pbuffer);
@@ -688,13 +645,6 @@ static void gp_weightpaint_brush_apply(bContext *C, wmOperator *op, PointerRNA *
   gso->mval[1] = mouse[1] = (int)(mousef[1]);
 
   gso->pressure = RNA_float_get(itemptr, "pressure");
-
-  if (RNA_boolean_get(itemptr, "pen_flip")) {
-    gso->flag |= GP_WEIGHT_FLAG_INVERT;
-  }
-  else {
-    gso->flag &= ~GP_WEIGHT_FLAG_INVERT;
-  }
 
   /* Store coordinates as reference, if operator just started running */
   if (gso->first) {

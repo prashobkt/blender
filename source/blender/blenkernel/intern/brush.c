@@ -294,9 +294,6 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
   brush->gpencil_settings->vertex_mode = GPPAINT_MODE_STROKE;
   brush->gpencil_settings->vertex_factor = 1.0f;
 
-  /* Set default weight. */
-  brush->gpencil_settings->weight = 1.0f;
-
   switch (type) {
     case GP_BRUSH_PRESET_AIRBRUSH: {
       brush->size = 300.0f;
