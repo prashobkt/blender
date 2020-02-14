@@ -60,8 +60,10 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
         layout.separator()
 
         col = layout.column()
-        col.prop(fx, "size", text="Size")
         col.enabled = not fx.use_dof_mode
+        col.prop(fx, "size", text="Size")
+        col.separator()
+        col.prop(fx, "rotation")
 
         layout.prop(fx, "samples", text="Samples")
 

@@ -86,6 +86,9 @@ typedef struct BlurShaderFxData {
   int flag;
   /** Number of samples. */
   int samples;
+  /** Rotation of blur effect.  */
+  float rotation;
+  char _pad[4];
 
   ShaderFxData_Runtime runtime;
 } BlurShaderFxData;
