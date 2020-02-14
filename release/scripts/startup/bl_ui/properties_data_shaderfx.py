@@ -69,12 +69,12 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
     def FX_COLORIZE(self, layout, fx):
         layout.prop(fx, "mode", text="Mode")
 
-        if fx.mode == 'BITONE':
+        if fx.mode == 'DUOTONE':
             layout.prop(fx, "low_color", text="Low Color")
         if fx.mode == 'CUSTOM':
             layout.prop(fx, "low_color", text="Color")
 
-        if fx.mode == 'BITONE':
+        if fx.mode == 'DUOTONE':
             layout.prop(fx, "high_color", text="High Color")
 
         layout.prop(fx, "factor")
