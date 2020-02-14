@@ -2086,6 +2086,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "zdepth_offset");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 3);
+  RNA_def_property_float_default(prop, 0.150f);
   RNA_def_property_ui_text(prop, "Surface Offset", "Offset amount when drawing in surface mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 

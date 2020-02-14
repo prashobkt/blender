@@ -4490,6 +4490,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         /* Onion colors. */
         srgb_to_linearrgb_v3_v3(gpd->gcolor_prev, gpd->gcolor_prev);
         srgb_to_linearrgb_v3_v3(gpd->gcolor_next, gpd->gcolor_next);
+        /* Z-depth Offset. */
+        gpd->zdepth_offset = 0.150f;
 
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           gpl->flag |= GP_LAYER_USE_LIGHTS;
@@ -4610,7 +4612,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-    
+
     /* Alembic Transform Cache changed from world to local space. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       LISTBASE_FOREACH (bConstraint *, con, &ob->constraints) {

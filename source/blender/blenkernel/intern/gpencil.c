@@ -439,6 +439,8 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
 
   gpd->pixfactor = GP_DEFAULT_PIX_FACTOR;
 
+  gpd->zdepth_offset = 0.150f;
+
   /* grid settings */
   ARRAY_SET_ITEMS(gpd->grid.color, 0.5f, 0.5f, 0.5f); /* Color */
   ARRAY_SET_ITEMS(gpd->grid.scale, 1.0f, 1.0f);       /* Scale */
