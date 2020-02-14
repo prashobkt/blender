@@ -169,6 +169,10 @@ void BKE_main_idmemset_release(struct Main *bmain);
 void BKE_main_idmemset_transfer_ownership(struct Main *bmain_dst, struct Main *bmain_src);
 void BKE_main_idmemset_usefrom(struct Main *bmain_user, struct Main *bmain_src);
 bool BKE_main_idmemset_register_id(struct Main *bmain, struct ID *id);
+void *BKE_main_idmemset_unique_alloc(struct Main *bmain,
+                                     void *(*alloc_cb)(size_t len, const char *str),
+                                     size_t size,
+                                     const char *message);
 
 void BKE_main_relations_create(struct Main *bmain, const short flag);
 void BKE_main_relations_free(struct Main *bmain);

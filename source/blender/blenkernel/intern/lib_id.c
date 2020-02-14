@@ -1198,17 +1198,7 @@ void *BKE_libblock_alloc_notest(Main *bmain, short type)
   const char *name;
   size_t size = BKE_libblock_get_alloc_info(type, &name);
   if (size != 0) {
-    ID *id_mem = MEM_callocN(size, name);
-    if (bmain != NULL && bmain->used_id_memset != NULL) {
-      ListBase generated_ids = {.first = NULL};
-      while (UNLIKELY(!BKE_main_idmemset_register_id(bmain, id_mem))) {
-        printf("Allocating ID re-used memory address %p, trying again...", id_mem);
-        BLI_addtail(&generated_ids, id_mem);
-        id_mem = MEM_callocN(size, name);
-      }
-      BLI_freelistN(&generated_ids);
-    }
-    return id_mem;
+    return BKE_main_idmemset_unique_alloc(bmain, MEM_callocN, size, name);
   }
   BLI_assert(!"Request to allocate unknown data type");
   return NULL;

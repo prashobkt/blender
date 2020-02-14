@@ -259,6 +259,25 @@ bool BKE_main_idmemset_register_id(Main *bmain, ID *id)
   return BLI_gset_add(bmain->used_id_memset, id);
 }
 
+void *BKE_main_idmemset_unique_alloc(Main *bmain,
+                                     void *(*alloc_cb)(size_t len, const char *str),
+                                     size_t size,
+                                     const char *message)
+{
+  void *id_mem = alloc_cb(size, message);
+  if (bmain != NULL && bmain->used_id_memset != NULL) {
+    ListBase generated_ids = {.first = NULL};
+    int count = 0;
+    while (UNLIKELY(!BKE_main_idmemset_register_id(bmain, id_mem))) {
+      printf("Allocating ID re-used memory address %p, trying again (%d)...\n", id_mem, ++count);
+      BLI_addtail(&generated_ids, id_mem);
+      id_mem = alloc_cb(size, message);
+    }
+    BLI_freelistN(&generated_ids);
+  }
+  return id_mem;
+}
+
 static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
 {
   MainIDRelations *rel = cb_data->user_data;
