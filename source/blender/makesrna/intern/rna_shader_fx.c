@@ -207,10 +207,10 @@ static void rna_def_shader_fx_blur(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "BlurShaderFxData");
   RNA_def_struct_ui_icon(srna, ICON_SHADERFX);
 
-  prop = RNA_def_property(srna, "factor", PROP_INT, PROP_PIXEL);
+  prop = RNA_def_property(srna, "size", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "radius");
   RNA_def_property_range(prop, 0, SHRT_MAX);
-  RNA_def_property_ui_text(prop, "Factor", "Factor of Blur");
+  RNA_def_property_ui_text(prop, "Size", "Factor of Blur");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
   prop = RNA_def_property(srna, "samples", PROP_INT, PROP_NONE);
@@ -221,19 +221,9 @@ static void rna_def_shader_fx_blur(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Samples", "Number of Blur Samples (zero, disable blur)");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
-  prop = RNA_def_property(srna, "coc", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "coc");
-  RNA_def_property_range(prop, 0.001f, 1.0f);
-  RNA_def_property_float_default(prop, 0.025f);
-  RNA_def_property_ui_text(prop, "Precision", "Define circle of confusion for depth of field");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
-
   prop = RNA_def_property(srna, "use_dof_mode", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", FX_BLUR_DOF_MODE);
-  RNA_def_property_ui_text(prop,
-                           "Lock Focal Plane",
-                           "Blur using focal plane distance as factor to simulate depth of field "
-                           "effect (only in camera view)");
+  RNA_def_property_ui_text(prop, "Use as Depth Of Field", "Blur using camera depth of field");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 }
 

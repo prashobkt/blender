@@ -86,11 +86,6 @@ typedef struct BlurShaderFxData {
   int flag;
   /** Number of samples. */
   int samples;
-  /** Circle of confusion. */
-  float coc;
-  /** Not visible in rna. */
-  int blur[2];
-  char _pad[4];
 
   ShaderFxData_Runtime runtime;
 } BlurShaderFxData;
