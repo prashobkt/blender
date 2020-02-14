@@ -232,7 +232,12 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
     copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
   }
 
-  copy_v4_v4(state->final_reference_pose.orientation_quat, state->reference_pose.orientation_quat);
+  float tmp_eul[3];
+  /* Only use rotation around Z-axis to align view with floor. */
+  quat_to_eul(tmp_eul, state->reference_pose.orientation_quat);
+  tmp_eul[0] = M_PI_2;
+  tmp_eul[1] = 0;
+  eul_to_quat(state->final_reference_pose.orientation_quat, tmp_eul);
 
   if (position_tracking_toggled) {
     copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
