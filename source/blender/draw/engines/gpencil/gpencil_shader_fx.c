@@ -36,7 +36,7 @@
 #include "gpencil_engine.h"
 
 /* verify if this fx is active */
-static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_render)
+static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_viewport)
 {
   if (fx == NULL) {
     return false;
@@ -47,12 +47,12 @@ static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_render)
   }
 
   bool is_edit = GPENCIL_ANY_EDIT_MODE(gpd);
-  if (((fx->mode & eShaderFxMode_Editmode) == 0) && (is_edit) && (!is_render)) {
+  if (((fx->mode & eShaderFxMode_Editmode) == 0) && (is_edit) && (is_viewport)) {
     return false;
   }
 
-  if (((fx->mode & eShaderFxMode_Realtime) && (is_render == false)) ||
-      ((fx->mode & eShaderFxMode_Render) && (is_render == true))) {
+  if (((fx->mode & eShaderFxMode_Realtime) && (is_viewport == true)) ||
+      ((fx->mode & eShaderFxMode_Render) && (is_viewport == false))) {
     return true;
   }
 
@@ -572,7 +572,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
   };
 
   LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
-    if (effect_is_active(gpd, fx, pd->is_render)) {
+    if (effect_is_active(gpd, fx, pd->is_viewport)) {
       switch (fx->type) {
         case eShaderFxType_Blur:
           gpencil_vfx_blur((BlurShaderFxData *)fx, ob, &iter);

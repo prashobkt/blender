@@ -293,6 +293,8 @@ typedef struct GPENCIL_PrivateData {
   int cfra;
   /* If we are rendering for final render (F12). */
   bool is_render;
+  /* If we are in viewport display (used for VFX). */
+  bool is_viewport;
   /* True in selection and auto_depth drawing */
   bool draw_depth_only;
   /* Is shading set to wireframe. */
