@@ -51,13 +51,11 @@
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
-#include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_lightprobe_types.h"
-#include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_speaker_types.h"
@@ -70,7 +68,6 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
@@ -103,7 +100,6 @@
 #include "BKE_lib_remap.h"
 #include "BKE_linestyle.h"
 #include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
 #include "BKE_material.h"
 #include "BKE_main.h"
 #include "BKE_mball.h"
@@ -113,7 +109,6 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_packedFile.h"
 #include "BKE_lightprobe.h"
 #include "BKE_rigidbody.h"
 #include "BKE_sound.h"
@@ -126,9 +121,6 @@
 #include "DEG_depsgraph.h"
 
 #include "RNA_access.h"
-
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
 
 #include "atomic_ops.h"
 
@@ -302,11 +294,11 @@ void BKE_id_clear_newpoin(ID *id)
   id->newid = NULL;
 }
 
-static int id_expand_local_callback(void *UNUSED(user_data),
-                                    struct ID *id_self,
-                                    struct ID **id_pointer,
-                                    int cb_flag)
+static int id_expand_local_callback(LibraryIDLinkCallbackData *cb_data)
 {
+  ID *id_self = cb_data->id_self;
+  ID **id_pointer = cb_data->id_pointer;
+  int const cb_flag = cb_data->cb_flag;
   if (cb_flag & IDWALK_CB_PRIVATE) {
     return IDWALK_RET_NOP;
   }
@@ -589,13 +581,12 @@ struct IDCopyLibManagementData {
 };
 
 /* Increases usercount as required, and remap self ID pointers. */
-static int id_copy_libmanagement_cb(void *user_data,
-                                    ID *UNUSED(id_self),
-                                    ID **id_pointer,
-                                    int cb_flag)
+static int id_copy_libmanagement_cb(LibraryIDLinkCallbackData *cb_data)
 {
-  struct IDCopyLibManagementData *data = user_data;
+  ID **id_pointer = cb_data->id_pointer;
   ID *id = *id_pointer;
+  const int cb_flag = cb_data->cb_flag;
+  struct IDCopyLibManagementData *data = cb_data->user_data;
 
   /* Remap self-references to new copied ID. */
   if (id == data->id_src) {
@@ -908,11 +899,10 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
   return false;
 }
 
-static int libblock_management_us_plus(void *UNUSED(user_data),
-                                       ID *UNUSED(id_self),
-                                       ID **id_pointer,
-                                       int cb_flag)
+static int libblock_management_us_plus(LibraryIDLinkCallbackData *cb_data)
 {
+  ID **id_pointer = cb_data->id_pointer;
+  const int cb_flag = cb_data->cb_flag;
   if (cb_flag & IDWALK_CB_USER) {
     id_us_plus(*id_pointer);
   }
@@ -923,11 +913,10 @@ static int libblock_management_us_plus(void *UNUSED(user_data),
   return IDWALK_RET_NOP;
 }
 
-static int libblock_management_us_min(void *UNUSED(user_data),
-                                      ID *UNUSED(id_self),
-                                      ID **id_pointer,
-                                      int cb_flag)
+static int libblock_management_us_min(LibraryIDLinkCallbackData *cb_data)
 {
+  ID **id_pointer = cb_data->id_pointer;
+  const int cb_flag = cb_data->cb_flag;
   if (cb_flag & IDWALK_CB_USER) {
     id_us_min(*id_pointer);
   }
@@ -1986,12 +1975,11 @@ void BKE_main_id_clear_newpoins(Main *bmain)
   FOREACH_MAIN_ID_END;
 }
 
-static int id_refcount_recompute_callback(void *user_data,
-                                          struct ID *UNUSED(id_self),
-                                          struct ID **id_pointer,
-                                          int cb_flag)
+static int id_refcount_recompute_callback(LibraryIDLinkCallbackData *cb_data)
 {
-  const bool do_linked_only = (bool)POINTER_AS_INT(user_data);
+  ID **id_pointer = cb_data->id_pointer;
+  const int cb_flag = cb_data->cb_flag;
+  const bool do_linked_only = (bool)POINTER_AS_INT(cb_data->user_data);
 
   if (*id_pointer == NULL) {
     return IDWALK_RET_NOP;
