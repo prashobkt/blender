@@ -9527,7 +9527,11 @@ static void lib_link_all(FileData *fd, Main *bmain)
   FOREACH_MAIN_ID_END;
 
   TIMEIT_START(readfile_refcount_recomp);
-  BKE_main_id_refcount_recompute(bmain, false);
+  /* We cannot do that here in undo case, we play too much with IDs from different memory realms,
+   * and Main database is in pretty bad state currently. */
+  if (fd->memfile == NULL) {
+    BKE_main_id_refcount_recompute(bmain, false);
+  }
   TIMEIT_END(readfile_refcount_recomp);
 
   /* Check for possible cycles in scenes' 'set' background property. */
