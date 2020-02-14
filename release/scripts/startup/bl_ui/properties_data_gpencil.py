@@ -273,7 +273,7 @@ class DATA_PT_gpencil_onion_skinning_display(DataButtonsPanel, Panel):
         col.prop(gpd, "use_onion_fade", text="Fade")
         sub = layout.column()
         sub.active = gpd.onion_mode in {'RELATIVE', 'SELECTED'}
-        sub.prop(gpd, "use_onion_loop", text="Loop")
+        sub.prop(gpd, "use_onion_loop", text="Show Start Frame")
 
 
 class GPENCIL_MT_gpencil_vertex_group(Menu):
