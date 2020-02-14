@@ -79,6 +79,7 @@
 
 #include "transform.h"
 #include "transform_convert.h"
+#include "transform_mode.h"
 
 /**
  * Transforming around ourselves is no use, fallback to individual origins,
@@ -1417,7 +1418,6 @@ void autokeyframe_object(bContext *C, Scene *scene, ViewLayer *view_layer, Objec
       if (adt && adt->action) {
         ListBase nla_cache = {NULL, NULL};
         for (fcu = adt->action->curves.first; fcu; fcu = fcu->next) {
-          fcu->flag &= ~FCURVE_SELECTED;
           insert_keyframe(bmain,
                           reports,
                           id,

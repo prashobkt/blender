@@ -144,6 +144,14 @@ else()
   set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /nologo /J /Gd /MP /bigobj")
 endif()
 
+# C++ standards conformace (/permissive-) is available on msvc 15.5 (1912) and up
+if(MSVC_VERSION GREATER 1911 AND NOT MSVC_CLANG)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive-")
+  # Two-phase name lookup does not place nicely with OpenMP yet, so disable for now
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:twoPhase-")
+endif()
+
+
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd /ZI")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MDd /ZI")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
@@ -661,6 +669,7 @@ if(WITH_USD)
     set(USD_INCLUDE_DIRS ${LIBDIR}/usd/include)
     set(USD_RELEASE_LIB ${LIBDIR}/usd/lib/libusd_m.lib)
     set(USD_DEBUG_LIB ${LIBDIR}/usd/lib/libusd_m_d.lib)
+    set(USD_LIBRARY_DIR ${LIBDIR}/usd/lib/usd)
     set(USD_LIBRARIES
         debug ${USD_DEBUG_LIB}
         optimized ${USD_RELEASE_LIB}
