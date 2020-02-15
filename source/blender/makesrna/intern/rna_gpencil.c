@@ -1208,6 +1208,19 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
   RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
+  /* Stroke bound box */
+  prop = RNA_def_property(srna, "bound_box_min", PROP_FLOAT, PROP_XYZ);
+  RNA_def_property_float_sdna(prop, NULL, "boundbox_min");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Boundbox Min", "");
+
+  prop = RNA_def_property(srna, "bound_box_max", PROP_FLOAT, PROP_XYZ);
+  RNA_def_property_float_sdna(prop, NULL, "boundbox_max");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Boundbox Max", "");
+
   /* gradient shape ratio */
   prop = RNA_def_property(srna, "aspect", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_float_sdna(prop, NULL, "aspect_ratio");
