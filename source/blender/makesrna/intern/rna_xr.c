@@ -74,6 +74,25 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem base_pose_types[] = {
+      {XR_BASE_POSE_SCENE_CAMERA,
+       "SCENE_CAMERA",
+       0,
+       "Scene Camera",
+       "Follow the active scene camera to define the VR view's reference pose"},
+      {XR_BASE_POSE_OBJECT,
+       "OBJECT",
+       0,
+       "Object",
+       "Follow an transformation of an object to define the VR view's reference pose"},
+      {XR_BASE_POSE_CUSTOM,
+       "CUSTOM",
+       0,
+       "Custom",
+       "Follow a custom transformation to define the VR view's reference pose"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "XrSessionSettings", NULL);
   RNA_def_struct_sdna(srna, "bXrSessionSettings");
   RNA_def_struct_ui_text(srna, "XR-Session Settings", "");
@@ -83,10 +102,28 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Shading Settings", "");
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
+  prop = RNA_def_property(srna, "base_pose_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_enum_items(prop, base_pose_types);
+  RNA_def_property_ui_text(
+      prop, "Base Pose Type", "Define where the base pose for the VR view comes from");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+
   prop = RNA_def_property(srna, "base_pose_object", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Base Pose Object",
+                           "Object to take the location and rotation as reference position from");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+
+  prop = RNA_def_property(srna, "base_pose_location", PROP_FLOAT, PROP_TRANSLATION);
+  RNA_def_property_ui_text(prop, "Base Pose Location", "");
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+
+  prop = RNA_def_property(srna, "base_pose_angle", PROP_FLOAT, PROP_AXISANGLE);
   RNA_def_property_ui_text(
-      prop, "Anchor Object", "Object to take the location and rotation as base position from");
+      prop, "Base Pose Angle", "Rotation angle around the Z-Axis to apply to the reference pose");
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "show_floor", PROP_BOOLEAN, PROP_NONE);

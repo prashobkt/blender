@@ -203,25 +203,36 @@ static void wm_xr_reference_pose_calc(const Scene *scene,
                                       const bXrSessionSettings *settings,
                                       GHOST_XrPose *r_pose)
 {
-  const Object *base_pose_object = settings->base_pose_object ? settings->base_pose_object :
-                                                                scene->camera;
-  float tmp_quat[4];
-  float tmp_eul[3];
+  const Object *base_pose_object = ((settings->base_pose_type == XR_BASE_POSE_OBJECT) &&
+                                    settings->base_pose_object) ?
+                                       settings->base_pose_object :
+                                       scene->camera;
 
-  if (base_pose_object) {
+  if (settings->base_pose_type == XR_BASE_POSE_CUSTOM) {
+    float tmp_quatx[4], tmp_quatz[4];
+
+    copy_v3_v3(r_pose->position, settings->base_pose_location);
+    axis_angle_to_quat_single(tmp_quatx, 'X', M_PI_2);
+    axis_angle_to_quat_single(tmp_quatz, 'Z', settings->base_pose_angle);
+    mul_qt_qtqt(r_pose->orientation_quat, tmp_quatz, tmp_quatx);
+  }
+  else if (base_pose_object) {
+    float tmp_quat[4];
+    float tmp_eul[3];
+
     copy_v3_v3(r_pose->position, base_pose_object->obmat[3]);
     mat4_to_quat(tmp_quat, base_pose_object->obmat);
+
+    /* Only use rotation around Z-axis to align view with floor. */
+    quat_to_eul(tmp_eul, tmp_quat);
+    tmp_eul[0] = M_PI_2;
+    tmp_eul[1] = 0;
+    eul_to_quat(r_pose->orientation_quat, tmp_eul);
   }
   else {
     copy_v3_fl(r_pose->position, 0.0f);
-    unit_qt(tmp_quat);
+    unit_qt(r_pose->orientation_quat);
   }
-
-  /* Only use rotation around Z-axis to align view with floor. */
-  quat_to_eul(tmp_eul, tmp_quat);
-  tmp_eul[0] = M_PI_2;
-  tmp_eul[1] = 0;
-  eul_to_quat(r_pose->orientation_quat, tmp_eul);
 }
 
 static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
