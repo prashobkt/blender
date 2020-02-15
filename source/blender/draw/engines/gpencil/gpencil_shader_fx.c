@@ -415,6 +415,8 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
 static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
+  const float s = sin(fx->rotation);
+  const float c = cos(fx->rotation);
 
   GPUShader *sh = GPENCIL_shader_fx_glow_get();
 
@@ -431,7 +433,7 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Glow H", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){fx->blur[0], 0.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){fx->blur[0] * c, fx->blur[0] * s});
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->blur[0])));
   DRW_shgroup_uniform_vec3_copy(grp, "threshold", ref_col);
   DRW_shgroup_uniform_vec3_copy(grp, "glowColor", fx->glow_color);
@@ -442,7 +444,8 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
 
   state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL;
   grp = gpencil_vfx_pass_create("Fx Glow V", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){0.0f, fx->blur[0]});
+  DRW_shgroup_uniform_vec2_copy(
+      grp, "offset", (float[2]){0.0f - fx->blur[1] * s, fx->blur[1] * c});
   DRW_shgroup_uniform_vec3_copy(grp, "threshold", ref_col);
   DRW_shgroup_uniform_vec3_copy(grp, "glowColor", (float[3]){1.0f, 1.0f, 1.0f});
   DRW_shgroup_uniform_bool_copy(grp, "useAlphaMode", (fx->flag & FX_GLOW_USE_ALPHA) != 0);

@@ -138,6 +138,7 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
 
         layout.separator()
         layout.prop(fx, "radius")
+        layout.prop(fx, "rotation")
         layout.prop(fx, "samples")
         layout.prop(fx, "use_alpha_mode", text="Use Alpha Mode")
 

@@ -142,6 +142,10 @@ typedef struct GlowShaderFxData {
   int mode;
   int blur[2];
   int samples;
+  /** Rotation of effect.  */
+  float rotation;
+  char _pad[4];
+
   ShaderFxData_Runtime runtime;
 } GlowShaderFxData;
 
