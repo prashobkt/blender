@@ -137,6 +137,7 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
             layout.prop(fx, "select_color")
 
         layout.separator()
+        layout.prop(fx, "blend_mode", text="Blend")
         layout.prop(fx, "radius")
         layout.prop(fx, "rotation")
         layout.prop(fx, "samples")

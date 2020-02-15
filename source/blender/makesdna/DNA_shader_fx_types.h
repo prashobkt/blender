@@ -144,7 +144,8 @@ typedef struct GlowShaderFxData {
   int samples;
   /** Rotation of effect.  */
   float rotation;
-  char _pad[4];
+  /** Blend modes. */
+  int blend_mode;
 
   ShaderFxData_Runtime runtime;
 } GlowShaderFxData;

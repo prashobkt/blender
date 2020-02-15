@@ -22,9 +22,10 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include "DNA_shader_fx_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_shader_fx_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -84,6 +85,14 @@ static const EnumPropertyItem rna_enum_shaderfx_colorize_modes_items[] = {
     {eShaderFxColorizeMode_Duotone, "DUOTONE", 0, "Duotone", ""},
     {eShaderFxColorizeMode_Transparent, "TRANSPARENT", 0, "Transparent", ""},
     {eShaderFxColorizeMode_Custom, "CUSTOM", 0, "Custom", ""},
+    {0, NULL, 0, NULL, NULL}};
+
+static const EnumPropertyItem rna_enum_glow_blend_modes_items[] = {
+    {eGplBlendMode_Regular, "REGULAR", 0, "Regular", ""},
+    {eGplBlendMode_Add, "ADD", 0, "Add", ""},
+    {eGplBlendMode_Subtract, "SUBTRACT", 0, "Subtract", ""},
+    {eGplBlendMode_Multiply, "MULTIPLY", 0, "Multiply", ""},
+    {eGplBlendMode_Divide, "DIVIDE", 0, "Divide", ""},
     {0, NULL, 0, NULL, NULL}};
 
 #ifdef RNA_RUNTIME
@@ -553,6 +562,13 @@ static void rna_def_shader_fx_glow(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "rotation");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_text(prop, "Rotation", "Rotation of the effect");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
+
+  /* blend mode */
+  prop = RNA_def_property(srna, "blend_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "blend_mode");
+  RNA_def_property_enum_items(prop, rna_enum_glow_blend_modes_items);
+  RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 }
 
