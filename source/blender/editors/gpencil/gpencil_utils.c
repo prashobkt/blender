@@ -2593,6 +2593,20 @@ bool ED_gpencil_stroke_check_collision(GP_SpaceConversion *gsc,
   gp_point_to_parent_space(&pt_dummy, diff_mat, &pt_dummy_ps);
   gp_point_to_xy_fl(gsc, gps, &pt_dummy_ps, &boundbox_max[0], &boundbox_max[1]);
 
+  /* Ensure the bounding box is oriented to axis. */
+  if (boundbox_max[0] < boundbox_min[0]) {
+    float box;
+    box = boundbox_min[0];
+    boundbox_min[0] = boundbox_max[0];
+    boundbox_max[0] = box;
+  }
+  if (boundbox_max[1] < boundbox_min[1]) {
+    float box;
+    box = boundbox_max[1];
+    boundbox_max[1] = boundbox_min[1];
+    boundbox_min[1] = box;
+  }
+
   rcti rect_stroke = {boundbox_min[0], boundbox_max[0], boundbox_min[1], boundbox_max[1]};
 
   /* For mouse, add a small offet to avoid false negative in corners. */
