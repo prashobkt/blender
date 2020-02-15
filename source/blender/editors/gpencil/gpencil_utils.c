@@ -2595,16 +2595,10 @@ bool ED_gpencil_stroke_check_collision(GP_SpaceConversion *gsc,
 
   /* Ensure the bounding box is oriented to axis. */
   if (boundbox_max[0] < boundbox_min[0]) {
-    float box;
-    box = boundbox_min[0];
-    boundbox_min[0] = boundbox_max[0];
-    boundbox_max[0] = box;
+    SWAP(float, boundbox_min[0], boundbox_max[0]);
   }
   if (boundbox_max[1] < boundbox_min[1]) {
-    float box;
-    box = boundbox_max[1];
-    boundbox_max[1] = boundbox_min[1];
-    boundbox_min[1] = box;
+    SWAP(float, boundbox_min[1], boundbox_max[1]);
   }
 
   rcti rect_stroke = {boundbox_min[0], boundbox_max[0], boundbox_min[1], boundbox_max[1]};
