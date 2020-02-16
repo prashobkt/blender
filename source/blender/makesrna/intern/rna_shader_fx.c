@@ -232,7 +232,7 @@ static void rna_def_shader_fx_blur(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, NULL, "rotation");
-  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_text(prop, "Rotation", "Rotation of the effect");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
@@ -561,7 +561,7 @@ static void rna_def_shader_fx_glow(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, NULL, "rotation");
-  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_text(prop, "Rotation", "Rotation of the effect");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
