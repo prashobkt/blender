@@ -437,10 +437,9 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->blur[0])));
   DRW_shgroup_uniform_vec3_copy(grp, "threshold", ref_col);
   DRW_shgroup_uniform_vec3_copy(grp, "glowColor", fx->glow_color);
-  DRW_shgroup_uniform_bool_copy(grp, "useAlphaMode", false);
+  DRW_shgroup_uniform_bool_copy(grp, "glowUnder", false);
+  DRW_shgroup_uniform_bool_copy(grp, "firstPass", true);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-
-  ref_col[0] = -1.0f;
 
   state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL;
   grp = gpencil_vfx_pass_create("Fx Glow V", state, iter, sh);
@@ -448,7 +447,9 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
       grp, "offset", (float[2]){0.0f - fx->blur[1] * s, fx->blur[1] * c});
   DRW_shgroup_uniform_vec3_copy(grp, "threshold", ref_col);
   DRW_shgroup_uniform_vec3_copy(grp, "glowColor", (float[3]){1.0f, 1.0f, 1.0f});
-  DRW_shgroup_uniform_bool_copy(grp, "useAlphaMode", (fx->flag & FX_GLOW_USE_ALPHA) != 0);
+  DRW_shgroup_uniform_bool_copy(grp, "glowUnder", (fx->flag & FX_GLOW_USE_ALPHA) != 0);
+  DRW_shgroup_uniform_bool_copy(grp, "firstPass", false);
+  DRW_shgroup_uniform_int_copy(grp, "blendMode", fx->blend_mode);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 

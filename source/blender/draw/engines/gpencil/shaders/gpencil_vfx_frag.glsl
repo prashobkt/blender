@@ -146,7 +146,9 @@ uniform vec3 glowColor;
 uniform vec2 offset;
 uniform int sampCount;
 uniform vec3 threshold;
-uniform bool useAlphaMode;
+uniform bool firstPass;
+uniform bool glowUnder;
+uniform int blendMode;
 
 void main()
 {
@@ -154,9 +156,7 @@ void main()
   vec2 ofs = offset * pixel_size;
 
   fragColor = vec4(0.0);
-
-  /* In first pass we copy the reveal buffer. This let us do the alpha under if needed. */
-  fragRevealage = texture(revealBuf, uvcoordsvar.xy);
+  fragRevealage = vec4(0.0);
 
   float weight_accum = 0.0;
   for (int i = -sampCount; i <= sampCount; i++) {
@@ -165,6 +165,7 @@ void main()
     weight_accum += weight;
     vec2 uv = uvcoordsvar.xy + ofs * x;
     vec3 col = texture(colorBuf, uv).rgb;
+    vec3 rev = texture(revealBuf, uv).rgb;
     if (threshold.x > -1.0) {
       if (threshold.y > -1.0) {
         if (all(lessThan(abs(col - threshold), vec3(0.05)))) {
@@ -178,18 +179,25 @@ void main()
       }
     }
     fragColor.rgb += col * weight;
+    fragRevealage.rgb += (1.0 - rev) * weight;
   }
 
   fragColor *= glowColor.rgbb / weight_accum;
+  fragRevealage = 1.0 - fragRevealage / weight_accum;
 
-  if (useAlphaMode) {
+  if (firstPass && glowUnder) {
+    /* In first pass we copy the reveal buffer. This let us do the alpha under if needed. */
+    fragRevealage = texture(revealBuf, uvcoordsvar.xy);
+  }
+
+  if (glowUnder && blendMode != MODE_REGULAR) {
     /* Equivalent to alpha under. */
     fragColor *= fragRevealage;
   }
 
-  if (threshold.x == -1.0) {
-    /* Blend Mode is additive in 2nd pass. Don't modify revealage. */
-    fragRevealage = vec4(0.0);
+  if (!firstPass) {
+    fragColor.a = dot(fragRevealage.rgb, vec3(0.333334));
+    blend_mode_output(blendMode, fragColor, 1.0, fragColor, fragRevealage);
   }
 }
 

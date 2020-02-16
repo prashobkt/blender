@@ -236,8 +236,24 @@ GPUShader *GPENCIL_shader_fx_composite_get(void)
 GPUShader *GPENCIL_shader_fx_glow_get(void)
 {
   if (!g_shaders.fx_glow_sh) {
-    g_shaders.fx_glow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                        "#define GLOW\n");
+    g_shaders.fx_glow_sh = GPU_shader_create_from_arrays({
+        .vert =
+            (const char *[]){
+                datatoc_common_fullscreen_vert_glsl,
+                NULL,
+            },
+        .frag =
+            (const char *[]){
+                datatoc_gpencil_common_lib_glsl,
+                datatoc_gpencil_vfx_frag_glsl,
+                NULL,
+            },
+        .defs =
+            (const char *[]){
+                "#define GLOW\n",
+                NULL,
+            },
+    });
   }
   return g_shaders.fx_glow_sh;
 }
