@@ -553,9 +553,10 @@ static void rna_def_shader_fx_glow(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Samples", "Number of Blur Samples");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
-  prop = RNA_def_property(srna, "use_alpha_mode", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_glow_under", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", FX_GLOW_USE_ALPHA);
-  RNA_def_property_ui_text(prop, "Use Alpha", "Glow only areas with alpha");
+  RNA_def_property_ui_text(
+      prop, "Glow Under", "Glow only areas with alpha (not supported with Regular blend mode)");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
   prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_ANGLE);

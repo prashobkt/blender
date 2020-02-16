@@ -137,11 +137,14 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
             layout.prop(fx, "select_color")
 
         layout.separator()
-        layout.prop(fx, "blend_mode", text="Blend")
+        row = layout.row()
+        row.enabled = not (fx.use_glow_under and fx.blend_mode == 'REGULAR')
+        row.prop(fx, "blend_mode", text="Blend")
+
         layout.prop(fx, "radius")
         layout.prop(fx, "rotation")
         layout.prop(fx, "samples")
-        layout.prop(fx, "use_alpha_mode", text="Use Alpha Mode")
+        layout.prop(fx, "use_glow_under", text="Glow Under")
 
     def FX_SWIRL(self, layout, fx):
         layout.prop(fx, "object", text="Object")
