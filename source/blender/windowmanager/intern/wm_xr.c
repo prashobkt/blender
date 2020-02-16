@@ -301,22 +301,22 @@ static void wm_xr_runtime_session_state_info_update(bXrRuntimeSessionState *stat
   state->last_known.is_initialized = true;
 }
 
-void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float location[3])
+void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
     return;
   }
 
-  copy_v3_v3(location, xr->session_state->last_known.viewer_pose.position);
+  copy_v3_v3(r_location, xr->session_state->last_known.viewer_pose.position);
 }
 
-void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float rotation[4])
+void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
     return;
   }
 
-  copy_v4_v4(rotation, xr->session_state->last_known.viewer_pose.orientation_quat);
+  copy_v4_v4(r_rotation, xr->session_state->last_known.viewer_pose.orientation_quat);
 }
 
 void WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
