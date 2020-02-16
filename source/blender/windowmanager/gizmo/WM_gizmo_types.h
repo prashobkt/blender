@@ -139,6 +139,8 @@ typedef enum eWM_GizmoFlagGroupTypeFlag {
    * with click drag events by popping up under the cursor and catching the tweak event.
    */
   WM_GIZMOGROUPTYPE_DELAY_REFRESH_FOR_TWEAK = (1 << 8),
+
+  WM_GIZMOGROUPTYPE_CONTINUOUS_REDRAW = (1 << 9),
 } eWM_GizmoFlagGroupTypeFlag;
 
 /**

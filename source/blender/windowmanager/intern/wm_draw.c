@@ -193,6 +193,11 @@ static void wm_region_test_gizmo_do_draw(ARegion *ar, bool tag_redraw)
   wmGizmoMap *gzmap = ar->gizmo_map;
   for (wmGizmoGroup *gzgroup = WM_gizmomap_group_list(gzmap)->first; gzgroup;
        gzgroup = gzgroup->next) {
+    /* TODO should use ED_region_tag_redraw_editor_overlays() here. */
+    if (tag_redraw && (gzgroup->type->flag & WM_GIZMOGROUPTYPE_CONTINUOUS_REDRAW)) {
+      ED_region_tag_redraw_no_rebuild(ar);
+    }
+
     for (wmGizmo *gz = gzgroup->gizmos.first; gz; gz = gz->next) {
       if (gz->do_draw) {
         if (tag_redraw) {

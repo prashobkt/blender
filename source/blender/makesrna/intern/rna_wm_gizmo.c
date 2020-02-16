@@ -1376,6 +1376,11 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
        0,
        "Tool Init",
        "Postpone running until tool operator run (when used with a tool)"},
+      {WM_GIZMOGROUPTYPE_CONTINUOUS_REDRAW,
+       "CONTINUOUS_REDRAW",
+       0,
+       "Continuous Redraw",
+       "Redraw the group all the time (on each main loop iteration)"},
       {0, NULL, 0, NULL, NULL},
   };
   prop = RNA_def_property(srna, "bl_options", PROP_ENUM, PROP_NONE);
