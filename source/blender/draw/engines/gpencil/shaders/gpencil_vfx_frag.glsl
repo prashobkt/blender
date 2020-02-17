@@ -200,7 +200,7 @@ void main()
 
   if (!firstPass) {
     fragColor.a = clamp(1.0 - dot(fragRevealage.rgb, vec3(0.333334)), 0.0, 1.0);
-    blend_mode_output(blendMode, fragColor, 1.0, fragColor, fragRevealage);
+    blend_mode_output(blendMode, fragColor, glowColor.a, fragColor, fragRevealage);
   }
 }
 
