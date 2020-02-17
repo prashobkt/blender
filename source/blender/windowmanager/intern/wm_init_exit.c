@@ -58,7 +58,7 @@
 #include "BKE_font.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
-#include "BKE_library_remap.h"
+#include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_mball_tessellate.h"
 #include "BKE_node.h"
@@ -72,7 +72,7 @@
 #include "BKE_appdir.h"
 #include "BKE_sequencer.h" /* free seq clipboard */
 #include "BKE_studiolight.h"
-#include "BKE_material.h" /* clear_matcopybuf */
+#include "BKE_material.h" /* BKE_material_copybuf_clear */
 #include "BKE_tracking.h" /* free tracking clipboard */
 #include "BKE_mask.h"     /* free mask clipboard */
 
@@ -250,13 +250,13 @@ void WM_init(bContext *C, int argc, const char **argv)
 
   ED_undosys_type_init();
 
-  BKE_library_callback_free_window_manager_set(wm_close_and_free); /* library.c */
+  BKE_library_callback_free_window_manager_set(wm_close_and_free); /* lib_id.c */
   BKE_library_callback_free_notifier_reference_set(
-      WM_main_remove_notifier_reference);                    /* library.c */
+      WM_main_remove_notifier_reference);                    /* lib_id.c */
   BKE_region_callback_free_gizmomap_set(wm_gizmomap_remove); /* screen.c */
   BKE_region_callback_refresh_tag_gizmomap_set(WM_gizmomap_tag_refresh);
   BKE_library_callback_remap_editor_id_reference_set(
-      WM_main_remap_editor_id_reference);                     /* library.c */
+      WM_main_remap_editor_id_reference);                     /* lib_id.c */
   BKE_spacedata_callback_id_remap_set(ED_spacedata_id_remap); /* screen.c */
   DEG_editors_set_update_cb(ED_render_id_flush_update, ED_render_scene_update);
 
@@ -351,7 +351,7 @@ void WM_init(bContext *C, int argc, const char **argv)
     GHOST_toggleConsole(3);
   }
 
-  clear_matcopybuf();
+  BKE_material_copybuf_clear();
   ED_render_clear_mtex_copybuf();
 
   // glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -534,7 +534,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
 
   BKE_addon_pref_type_free();
   BKE_keyconfig_pref_type_free();
-  BKE_material_gpencil_default_free();
+  BKE_materials_exit();
 
   wm_operatortype_free();
   wm_surfaces_free();
@@ -584,7 +584,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
   }
 
   BKE_blender_free(); /* blender.c, does entire library and spacetypes */
-                      //  free_matcopybuf();
+                      //  BKE_material_copybuf_free();
   ANIM_fcurves_copybuf_free();
   ANIM_drivers_copybuf_free();
   ANIM_driver_vars_copybuf_free();
