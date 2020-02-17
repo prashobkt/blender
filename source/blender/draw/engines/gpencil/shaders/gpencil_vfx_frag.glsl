@@ -142,7 +142,7 @@ void main()
 
 #elif defined(GLOW)
 
-uniform vec3 glowColor;
+uniform vec4 glowColor;
 uniform vec2 offset;
 uniform int sampCount;
 uniform vec3 threshold;
