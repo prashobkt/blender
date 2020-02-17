@@ -1653,14 +1653,6 @@ static void DRW_render_gpencil_to_image(RenderEngine *engine,
 
 void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph)
 {
-  /* This function is only valid for Cycles & Workbench
-   * Eevee does all work in the Eevee render directly.
-   * Maybe it can be done equal for all engines?
-   */
-  if (STREQ(engine->type->name, "Eevee")) {
-    return;
-  }
-
   /* Early out if there are no grease pencil objects, especially important
    * to avoid failing in in background renders without OpenGL context. */
   if (!DRW_render_check_grease_pencil(depsgraph)) {
@@ -1837,14 +1829,6 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
     drw_view_reset();
     engine_type->draw_engine->render_to_image(data, engine, render_layer, &render_rect);
     DST.buffer_finish_called = false;
-
-    /* grease pencil: render result is merged in the previous render result. */
-    if (DRW_render_check_grease_pencil(depsgraph)) {
-      DRW_state_reset();
-      drw_view_reset();
-      DRW_render_gpencil_to_image(engine, render_layer, &render_rect);
-      DST.buffer_finish_called = false;
-    }
   }
 
   RE_engine_end_result(engine, render_result, false, false, false);
