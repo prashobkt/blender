@@ -1215,6 +1215,8 @@ static int gp_merge_layer_exec(bContext *C, wmOperator *op)
       gpl_current->act_mask++;
     }
   }
+  /* Set destination layer as active. */
+  BKE_gpencil_layer_active_set(gpd, gpl_current);
 
   /* Now delete next layer */
   BKE_gpencil_layer_delete(gpd, gpl_next);
