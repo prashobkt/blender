@@ -1378,6 +1378,9 @@ void GPENCIL_OT_copy(wmOperatorType *ot)
 
 static bool gp_strokes_paste_poll(bContext *C)
 {
+  if (CTX_wm_area(C)->spacetype != SPACE_VIEW3D) {
+    return false;
+  }
   /* 1) Must have GP datablock to paste to
    *    - We don't need to have an active layer though, as that can easily get added
    *    - If the active layer is locked, we can't paste there,
@@ -1396,20 +1399,17 @@ typedef enum eGP_PasteMode {
 static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = CTX_data_active_gpencil_layer(C); /* only use active for copy merge */
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd); /* only use active for copy merge */
   Scene *scene = CTX_data_scene(C);
   bGPDframe *gpf;
 
   eGP_PasteMode type = RNA_enum_get(op->ptr, "type");
+  const bool on_back = RNA_boolean_get(op->ptr, "paste_back");
   GHash *new_colors;
 
-  /* check for various error conditions */
-  if (gpd == NULL) {
-    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil data");
-    return OPERATOR_CANCELLED;
-  }
-  else if (GPENCIL_MULTIEDIT_SESSIONS_ON(gpd)) {
+  /* Check for various error conditions. */
+  if (GPENCIL_MULTIEDIT_SESSIONS_ON(gpd)) {
     BKE_report(op->reports, RPT_ERROR, "Operator not supported in multiframe edition");
     return OPERATOR_CANCELLED;
   }
@@ -1441,17 +1441,6 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
     }
 
     if (ok == false) {
-      /* XXX: this check is not 100% accurate
-       * (i.e. image editor is incompatible with normal 2D strokes),
-       * but should be enough to give users a good idea of what's going on.
-       */
-      if (CTX_wm_area(C)->spacetype == SPACE_VIEW3D) {
-        BKE_report(op->reports, RPT_ERROR, "Cannot paste 2D strokes in 3D View");
-      }
-      else {
-        BKE_report(op->reports, RPT_ERROR, "Cannot paste 3D strokes in 2D editors");
-      }
-
       return OPERATOR_CANCELLED;
     }
   }
@@ -1473,14 +1462,15 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
   new_colors = gp_copybuf_validate_colormap(C);
 
   /* Copy over the strokes from the buffer (and adjust the colors) */
-  for (bGPDstroke *gps = gp_strokes_copypastebuf.first; gps; gps = gps->next) {
+  bGPDstroke *gps_init = (!on_back) ? gp_strokes_copypastebuf.first : gp_strokes_copypastebuf.last;
+  for (bGPDstroke *gps = gps_init; gps; gps = (!on_back) ? gps->next : gps->prev) {
     if (ED_gpencil_stroke_can_use(C, gps)) {
       /* Need to verify if layer exists */
       if (type != GP_COPY_TO_ACTIVE) {
         gpl = BLI_findstring(&gpd->layers, gps->runtime.tmp_layerinfo, offsetof(bGPDlayer, info));
         if (gpl == NULL) {
           /* no layer - use active (only if layer deleted before paste) */
-          gpl = CTX_data_active_gpencil_layer(C);
+          gpl = BKE_gpencil_layer_active_get(gpd);
         }
       }
 
@@ -1492,19 +1482,19 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
       gpf = BKE_gpencil_layer_frame_get(gpl, CFRA, GP_GETFRAME_ADD_NEW);
       if (gpf) {
         /* Create new stroke */
-        bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps, false);
+        bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps, true);
         new_stroke->runtime.tmp_layerinfo[0] = '\0';
+        new_stroke->next = new_stroke->prev = NULL;
 
-        new_stroke->points = MEM_dupallocN(gps->points);
-        if (gps->dvert != NULL) {
-          new_stroke->dvert = MEM_dupallocN(gps->dvert);
-          BKE_gpencil_stroke_weights_duplicate(gps, new_stroke);
-        }
         /* Calc geometry data. */
         BKE_gpencil_stroke_geometry_update(new_stroke);
 
-        new_stroke->next = new_stroke->prev = NULL;
-        BLI_addtail(&gpf->strokes, new_stroke);
+        if (on_back) {
+          BLI_addhead(&gpf->strokes, new_stroke);
+        }
+        else {
+          BLI_addtail(&gpf->strokes, new_stroke);
+        }
 
         /* Remap material */
         Material *ma = BLI_ghash_lookup(new_colors, POINTER_FROM_INT(new_stroke->mat_nr));
@@ -1526,6 +1516,8 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
 
 void GPENCIL_OT_paste(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   static const EnumPropertyItem copy_type[] = {
       {GP_COPY_TO_ACTIVE, "ACTIVE", 0, "Paste to Active", ""},
       {GP_COPY_BY_LAYER, "LAYER", 0, "Paste by Layer", ""},
@@ -1546,6 +1538,10 @@ void GPENCIL_OT_paste(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "type", copy_type, GP_COPY_TO_ACTIVE, "Type", "");
+
+  prop = RNA_def_boolean(
+      ot->srna, "paste_back", 0, "Paste on Back", "Add pasted strokes behind all strokes");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /* ******************* Move To Layer ****************************** */
