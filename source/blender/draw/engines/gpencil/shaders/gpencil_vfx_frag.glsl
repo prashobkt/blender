@@ -182,8 +182,11 @@ void main()
     fragRevealage.rgb += (1.0 - rev) * weight;
   }
 
-  fragColor *= glowColor.rgbb / weight_accum;
-  fragRevealage = 1.0 - fragRevealage / weight_accum;
+  if (weight_accum > 0.0) {
+    fragColor *= glowColor.rgbb / weight_accum;
+    fragRevealage = fragRevealage / weight_accum;
+  }
+  fragRevealage = 1.0 - fragRevealage;
 
   if (firstPass && glowUnder) {
     /* In first pass we copy the reveal buffer. This let us do the alpha under if needed. */
