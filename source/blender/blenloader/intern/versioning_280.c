@@ -4458,7 +4458,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             case eShaderFxType_Glow: {
               GlowShaderFxData *vfx = (GlowShaderFxData *)fx;
               srgb_to_linearrgb_v3_v3(vfx->glow_color, vfx->glow_color);
+              vfx->glow_color[3] = 1.0f;
               srgb_to_linearrgb_v3_v3(vfx->select_color, vfx->select_color);
+              vfx->blur[1] = vfx->blur[0];
               break;
             }
             default:
