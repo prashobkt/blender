@@ -130,12 +130,12 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
 
     def FX_GLOW(self, layout, fx):
         layout.prop(fx, "mode")
-        layout.prop(fx, "glow_color")
         if fx.mode == 'LUMINANCE':
             layout.prop(fx, "threshold")
         else:
             layout.prop(fx, "select_color")
 
+        layout.prop(fx, "glow_color")
         layout.separator()
         layout.prop(fx, "blend_mode", text="Blend")
         layout.prop(fx, "opacity")
