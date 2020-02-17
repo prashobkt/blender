@@ -137,14 +137,16 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
             layout.prop(fx, "select_color")
 
         layout.separator()
-        row = layout.row()
-        row.enabled = not (fx.use_glow_under and fx.blend_mode == 'REGULAR')
-        row.prop(fx, "blend_mode", text="Blend")
+        layout.prop(fx, "blend_mode", text="Blend")
 
         layout.prop(fx, "radius")
         layout.prop(fx, "rotation")
         layout.prop(fx, "samples")
-        layout.prop(fx, "use_glow_under", text="Glow Under")
+
+        if fx.blend_mode != 'REGULAR':
+            layout.prop(fx, "use_glow_under", text="Glow Under")
+        else:
+            layout.label(text="Glow Under not supported in Regular blend", icon="ERROR")
 
     def FX_SWIRL(self, layout, fx):
         layout.prop(fx, "object", text="Object")
