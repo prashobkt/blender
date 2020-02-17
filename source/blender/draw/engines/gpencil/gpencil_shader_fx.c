@@ -441,7 +441,29 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRW_shgroup_uniform_bool_copy(grp, "firstPass", true);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
-  state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL;
+  state = DRW_STATE_WRITE_COLOR;
+  /* Blending: Force blending. */
+  switch (fx->blend_mode) {
+    case eGplBlendMode_Regular:
+      state |= DRW_STATE_BLEND_ALPHA_PREMUL;
+      break;
+    case eGplBlendMode_Add:
+      state |= DRW_STATE_BLEND_ADD_FULL;
+      break;
+    case eGplBlendMode_Subtract:
+      state |= DRW_STATE_BLEND_SUB;
+      break;
+    case eGplBlendMode_Multiply:
+    case eGplBlendMode_Divide:
+      state |= DRW_STATE_BLEND_MUL;
+      break;
+  }
+
+  if (fx->blend_mode == eGplBlendMode_Subtract) {
+    /* For this effect to propagate, we need a signed floating point buffer. */
+    iter->pd->use_signed_fb = true;
+  }
+
   grp = gpencil_vfx_pass_create("Fx Glow V", state, iter, sh);
   DRW_shgroup_uniform_vec2_copy(
       grp, "offset", (float[2]){0.0f - fx->blur[1] * s, fx->blur[1] * c});
