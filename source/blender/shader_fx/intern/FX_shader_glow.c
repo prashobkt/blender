@@ -42,7 +42,7 @@ static void initData(ShaderFxData *md)
   ARRAY_SET_ITEMS(gpfx->select_color, 0.0f, 0.0f, 0.0f);
   copy_v2_fl(gpfx->blur, 50.0f);
   gpfx->threshold = 0.1f;
-  gpfx->samples = 16;
+  gpfx->samples = 8;
 }
 
 static void copyData(const ShaderFxData *md, ShaderFxData *target)
