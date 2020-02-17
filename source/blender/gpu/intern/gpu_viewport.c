@@ -549,8 +549,8 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   BLI_assert(h == BLI_rcti_size_y(rect) + 1);
 
   /* wmOrtho for the screen has this same offset */
-  const float halfx = GLA_PIXEL_OFS / ABS(x2 - x1);
-  const float halfy = GLA_PIXEL_OFS / ABS(y2 - y1);
+  const float halfx = GLA_PIXEL_OFS / w;
+  const float halfy = GLA_PIXEL_OFS / h;
 
   rctf pos_rect = {
       .xmin = rect->xmin,

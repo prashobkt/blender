@@ -100,8 +100,6 @@ GPUViewport *GPU_viewport_create(void);
 void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect);
 void GPU_viewport_unbind(GPUViewport *viewport);
 void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect);
-void GPU_viewport_draw_to_screen_ex(
-    GPUViewport *viewport, float x1, float x2, float y1, float y2, bool to_srgb);
 void GPU_viewport_free(GPUViewport *viewport);
 
 void GPU_viewport_colorspace_set(GPUViewport *viewport,
