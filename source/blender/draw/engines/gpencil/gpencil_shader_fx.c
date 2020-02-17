@@ -413,6 +413,7 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
 
 static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
 {
+  const bool use_glow_under = (fx->flag & FX_GLOW_USE_ALPHA) != 0;
   DRWShadingGroup *grp;
   const float s = sin(fx->rotation);
   const float c = cos(fx->rotation);
@@ -436,7 +437,7 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->blur[0])));
   DRW_shgroup_uniform_vec3_copy(grp, "threshold", ref_col);
   DRW_shgroup_uniform_vec4_copy(grp, "glowColor", fx->glow_color);
-  DRW_shgroup_uniform_bool_copy(grp, "glowUnder", false);
+  DRW_shgroup_uniform_bool_copy(grp, "glowUnder", use_glow_under);
   DRW_shgroup_uniform_bool_copy(grp, "firstPass", true);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
@@ -458,7 +459,9 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
       break;
   }
 
-  if (fx->blend_mode == eGplBlendMode_Subtract) {
+  /* Small Hack: We ask for RGBA16F buffer if using use_glow_under to store original
+   * revealage in alpha channel. */
+  if (fx->blend_mode == eGplBlendMode_Subtract || use_glow_under) {
     /* For this effect to propagate, we need a signed floating point buffer. */
     iter->pd->use_signed_fb = true;
   }
@@ -468,7 +471,6 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->blur[0])));
   DRW_shgroup_uniform_vec3_copy(grp, "threshold", (float[3]){-1.0f, -1.0f, -1.0f});
   DRW_shgroup_uniform_vec4_copy(grp, "glowColor", (float[4]){1.0f, 1.0f, 1.0f, fx->glow_color[3]});
-  DRW_shgroup_uniform_bool_copy(grp, "glowUnder", (fx->flag & FX_GLOW_USE_ALPHA) != 0);
   DRW_shgroup_uniform_bool_copy(grp, "firstPass", false);
   DRW_shgroup_uniform_int_copy(grp, "blendMode", fx->blend_mode);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);

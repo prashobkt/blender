@@ -188,19 +188,23 @@ void main()
   }
   fragRevealage = 1.0 - fragRevealage;
 
-  if (firstPass && glowUnder) {
-    /* In first pass we copy the reveal buffer. This let us do the alpha under if needed. */
-    fragRevealage = texture(revealBuf, uvcoordsvar.xy);
-  }
-
-  if (glowUnder && blendMode != MODE_REGULAR) {
-    /* Equivalent to alpha under. */
-    fragColor *= fragRevealage;
+  if (glowUnder) {
+    if (firstPass) {
+      /* In first pass we copy the revealage buffer in the alpha channel.
+       * This let us do the alpha under in second pass. */
+      vec3 original_revealage = texture(revealBuf, uvcoordsvar.xy).rgb;
+      fragRevealage.a = clamp(dot(original_revealage.rgb, vec3(0.333334)), 0.0, 1.0);
+    }
+    else {
+      /* Recover original revealage. */
+      fragRevealage.a = texture(revealBuf, uvcoordsvar.xy).a;
+    }
   }
 
   if (!firstPass) {
     fragColor.a = clamp(1.0 - dot(fragRevealage.rgb, vec3(0.333334)), 0.0, 1.0);
-    blend_mode_output(blendMode, fragColor, glowColor.a, fragColor, fragRevealage);
+    fragRevealage.a *= glowColor.a;
+    blend_mode_output(blendMode, fragColor, fragRevealage.a, fragColor, fragRevealage);
   }
 }
 
