@@ -134,18 +134,19 @@ typedef enum eFlipShaderFx_Flag {
 
 typedef struct GlowShaderFxData {
   ShaderFxData shaderfx;
-  float glow_color[3];
+  float glow_color[4];
   float select_color[3];
   float threshold;
   /** Flags. */
   int flag;
   int mode;
-  int blur[2];
+  float blur[2];
   int samples;
   /** Rotation of effect.  */
   float rotation;
   /** Blend modes. */
   int blend_mode;
+  char _pad[4];
 
   ShaderFxData_Runtime runtime;
 } GlowShaderFxData;

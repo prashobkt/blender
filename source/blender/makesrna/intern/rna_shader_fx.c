@@ -216,7 +216,7 @@ static void rna_def_shader_fx_blur(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "BlurShaderFxData");
   RNA_def_struct_ui_icon(srna, ICON_SHADERFX);
 
-  prop = RNA_def_property(srna, "size", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "size", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_float_sdna(prop, NULL, "radius");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_text(prop, "Size", "Factor of Blur");
@@ -516,6 +516,13 @@ static void rna_def_shader_fx_glow(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Glow Color", "Color used for generated glow");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
+  prop = RNA_def_property(srna, "opacity", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "glow_color[3]");
+  RNA_def_property_range(prop, 0.0, 1.0f);
+  RNA_def_property_ui_text(prop, "Opacity", "Effect Opacity");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
+
   prop = RNA_def_property(srna, "select_color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_float_sdna(prop, NULL, "select_color");
@@ -536,13 +543,11 @@ static void rna_def_shader_fx_glow(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Threshold", "Limit to select color for glow effect");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
-  /* Use blur fields to make compatible with blur filter,
-   * but only makes public first array element. */
-  prop = RNA_def_property(srna, "radius", PROP_INT, PROP_PIXEL);
-  RNA_def_property_int_sdna(prop, NULL, "blur[0]");
-  RNA_def_property_range(prop, 0, SHRT_MAX);
-  RNA_def_property_ui_text(
-      prop, "Radius", "Number of pixels for blurring glow (set to 0 to disable)");
+  /* Use blur fields to make compatible with blur filter */
+  prop = RNA_def_property(srna, "size", PROP_FLOAT, PROP_XYZ);
+  RNA_def_property_float_sdna(prop, NULL, "blur");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_text(prop, "Size", "Size of th effect");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
   prop = RNA_def_property(srna, "samples", PROP_INT, PROP_NONE);
