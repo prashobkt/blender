@@ -104,8 +104,15 @@ void GPU_viewport_draw_to_screen_ex(
     GPUViewport *viewport, float x1, float x2, float y1, float y2, bool to_srgb);
 void GPU_viewport_free(GPUViewport *viewport);
 
-GPUViewport *GPU_viewport_create_from_offscreen(struct GPUOffScreen *ofs);
-void GPU_viewport_clear_from_offscreen(GPUViewport *viewport);
+void GPU_viewport_colorspace_set(GPUViewport *viewport,
+                                 ColorManagedViewSettings *view_settings,
+                                 ColorManagedDisplaySettings *display_settings,
+                                 float dither);
+
+void GPU_viewport_bind_from_offscreen(GPUViewport *viewport, struct GPUOffScreen *ofs);
+void GPU_viewport_unbind_from_offscreen(GPUViewport *viewport,
+                                        struct GPUOffScreen *ofs,
+                                        bool display_colorspace);
 
 ViewportMemoryPool *GPU_viewport_mempool_get(GPUViewport *viewport);
 struct DRWInstanceDataList *GPU_viewport_instance_data_list_get(GPUViewport *viewport);
