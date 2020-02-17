@@ -64,7 +64,6 @@ typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
   GPUOffScreen *offscreen;
   GPUViewport *viewport;
-  bool viewport_bound;
 
   GHOST_ContextHandle secondary_ghost_ctx;
 } wmXrSurfaceData;
@@ -232,22 +231,6 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
  *
  * \{ */
 
-static void wm_xr_surface_viewport_bind(wmXrSurfaceData *surface_data, const rcti *UNUSED(rect))
-{
-  if (surface_data->viewport_bound == false) {
-    // GPU_viewport_bind(surface_data->viewport, rect);
-  }
-  surface_data->viewport_bound = true;
-}
-static void wm_xr_surface_viewport_unbind(wmXrSurfaceData *surface_data)
-{
-  if (surface_data->viewport_bound) {
-    // GPU_viewport_unbind(surface_data->viewport);
-    GPU_framebuffer_restore();
-  }
-  surface_data->viewport_bound = false;
-}
-
 /**
  * \brief Call Ghost-XR to draw a frame
  *
@@ -258,16 +241,13 @@ static void wm_xr_surface_viewport_unbind(wmXrSurfaceData *surface_data)
 static void wm_xr_session_surface_draw(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  wmXrSurfaceData *surface_data = g_xr_surface->customdata;
 
   if (!GHOST_XrSessionIsRunning(wm->xr.context)) {
     return;
   }
   GHOST_XrSessionDrawViews(wm->xr.context, C);
-  if (surface_data->viewport) {
-    /* Still bound from view drawing. */
-    wm_xr_surface_viewport_unbind(surface_data);
-  }
+
+  GPU_framebuffer_restore();
 }
 
 static void wm_xr_session_free_data(wmSurface *surface)
@@ -281,15 +261,12 @@ static void wm_xr_session_free_data(wmSurface *surface)
     }
 #endif
   }
-  GPU_context_active_set(surface->gpu_ctx);
-  DRW_opengl_context_enable_ex(false);
   if (data->viewport) {
     GPU_viewport_free(data->viewport);
   }
   if (data->offscreen) {
     GPU_offscreen_free(data->offscreen);
   }
-  DRW_opengl_context_disable_ex(false);
 
   MEM_freeN(surface->customdata);
 
@@ -357,7 +334,6 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
   surface->customdata = data;
 
   surface->ghost_ctx = DRW_opengl_context_get();
-  DRW_opengl_context_enable();
 
   switch (gpu_binding_type) {
     case GHOST_kXrGraphicsOpenGL:
@@ -370,8 +346,6 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
   }
 
   surface->gpu_ctx = DRW_gpu_context_get();
-
-  DRW_opengl_context_disable();
 
   g_xr_surface = surface;
 
@@ -455,8 +429,8 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 
   offscreen = surface_data->offscreen;
   viewport = surface_data->viewport;
-  wm_xr_surface_viewport_bind(surface_data, &rect);
   glClear(GL_DEPTH_BUFFER_BIT);
+  /* In case a framebuffer is still bound from drawing the last eye. */
   GPU_framebuffer_restore();
 
   BKE_screen_view3d_shading_init(&shading);
@@ -495,10 +469,6 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   GPU_framebuffer_bind(dfl->default_fb);
   wmViewport(&rect);
   GPU_viewport_draw_to_screen(viewport, &rect);
-
-  /* Leave viewport bound so GHOST_Xr can use its context/framebuffer, its unbound in
-   * wm_xr_session_surface_draw(). */
-  // GPU_viewport_unbind(viewport);
 }
 
 /** \} */ /* XR Drawing */
