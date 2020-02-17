@@ -317,6 +317,8 @@ typedef enum eScenePassType {
 #define RE_PASSNAME_SUBSURFACE_INDIRECT "SubsurfaceInd"
 #define RE_PASSNAME_SUBSURFACE_COLOR "SubsurfaceCol"
 
+#define RE_PASSNAME_FREESTYLE "Freestyle"
+
 /* View - MultiView */
 typedef struct SceneRenderView {
   struct SceneRenderView *next, *prev;
@@ -653,12 +655,8 @@ typedef struct RenderData {
   short subimtype DNA_DEPRECATED;
   short quality DNA_DEPRECATED;
 
-  /**
-   * Render to image editor, fullscreen or to new window.
-   */
-  short displaymode;
   char use_lock_interface;
-  char _pad7;
+  char _pad7[3];
 
   /**
    * Flags for render settings. Use bit-masking to access the settings.
@@ -1851,13 +1849,6 @@ enum {
   R_SEQ_OVERRIDE_SCENE_SETTINGS = (1 << 5),
 };
 
-/** #RenderData.displaymode */
-#define R_OUTPUT_SCREEN 0
-#define R_OUTPUT_AREA 1
-#define R_OUTPUT_WINDOW 2
-#define R_OUTPUT_NONE 3
-/*#define R_OUTPUT_FORKED   4*/
-
 /** #RenderData.filtertype (used for nodes) */
 #define R_FILTER_BOX 0
 #define R_FILTER_TENT 1
@@ -2155,6 +2146,7 @@ typedef enum eVGroupSelect {
 #define SCE_NLA_EDIT_ON (1 << 2)
 #define SCE_FRAME_DROP (1 << 3)
 #define SCE_KEYS_NO_SELONLY (1 << 4)
+#define SCE_READFILE_LIBLINK_NEED_SETSCENE_CHECK (1 << 5)
 
 /* return flag BKE_scene_base_iter_next functions */
 /* #define F_ERROR          -1 */ /* UNUSED */
