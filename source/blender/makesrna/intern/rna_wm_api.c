@@ -634,7 +634,6 @@ static void rna_generic_op_invoke(FunctionRNA *func, int flag)
 
   if (flag & WM_GEN_INVOKE_SIZE) {
     RNA_def_int(func, "width", 300, 0, INT_MAX, "", "Width of the popup", 0, INT_MAX);
-    RNA_def_int(func, "height", 20, 0, INT_MAX, "", "Height of the popup", 0, INT_MAX);
   }
 
   if (flag & WM_GEN_INVOKE_RETURN) {
@@ -881,7 +880,7 @@ void RNA_api_wm(StructRNA *srna)
       "Is Interface Locked",
       "If true, the interface is currently locked by a running job and data shouldn't be modified "
       "from application timers. Otherwise, the running job might conflict with the handler "
-      "causing unexpected results or even crashes.");
+      "causing unexpected results or even crashes");
   RNA_def_property_clear_flag(parm, PROP_EDITABLE);
 }
 
