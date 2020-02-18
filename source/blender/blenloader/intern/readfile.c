@@ -1810,16 +1810,6 @@ void *blo_do_versions_newlibadr_us(FileData *fd, const void *lib, const void *ad
   return newlibadr_us(fd, lib, adr);
 }
 
-/* ensures real user */
-static void *newlibadr_real_us(FileData *fd, const void *lib, const void *adr)
-{
-  ID *id = newlibadr(fd, lib, adr);
-
-  id_us_ensure_real(id);
-
-  return id;
-}
-
 static void change_link_placeholder_to_real_ID_pointer_fd(FileData *fd, const void *old, void *new)
 {
   for (int i = 0; i < fd->libmap->nentries; i++) {
@@ -7385,13 +7375,13 @@ static void lib_link_area(FileData *fd, ID *parent_id, ScrArea *area)
       case SPACE_IMAGE: {
         SpaceImage *sima = (SpaceImage *)sl;
 
-        sima->image = newlibadr_real_us(fd, parent_id->lib, sima->image);
-        sima->mask_info.mask = newlibadr_real_us(fd, parent_id->lib, sima->mask_info.mask);
+        sima->image = newlibadr(fd, parent_id->lib, sima->image);
+        sima->mask_info.mask = newlibadr(fd, parent_id->lib, sima->mask_info.mask);
 
         /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
          * so fingers crossed this works fine!
          */
-        sima->gpd = newlibadr_us(fd, parent_id->lib, sima->gpd);
+        sima->gpd = newlibadr(fd, parent_id->lib, sima->gpd);
         break;
       }
       case SPACE_SEQ: {
@@ -7400,7 +7390,7 @@ static void lib_link_area(FileData *fd, ID *parent_id, ScrArea *area)
         /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
          * so fingers crossed this works fine!
          */
-        sseq->gpd = newlibadr_us(fd, parent_id->lib, sseq->gpd);
+        sseq->gpd = newlibadr(fd, parent_id->lib, sseq->gpd);
         break;
       }
       case SPACE_NLA: {
@@ -7496,8 +7486,8 @@ static void lib_link_area(FileData *fd, ID *parent_id, ScrArea *area)
       }
       case SPACE_CLIP: {
         SpaceClip *sclip = (SpaceClip *)sl;
-        sclip->clip = newlibadr_real_us(fd, parent_id->lib, sclip->clip);
-        sclip->mask_info.mask = newlibadr_real_us(fd, parent_id->lib, sclip->mask_info.mask);
+        sclip->clip = newlibadr(fd, parent_id->lib, sclip->clip);
+        sclip->mask_info.mask = newlibadr(fd, parent_id->lib, sclip->mask_info.mask);
         break;
       }
       default:
@@ -9533,12 +9523,6 @@ static void lib_link_all(FileData *fd, Main *bmain)
   }
   FOREACH_MAIN_ID_END;
 
-  /* We cannot do that here in undo case, we play too much with IDs from different memory realms,
-   * and Main database is in pretty bad state currently. */
-  if (fd->memfile == NULL) {
-    BKE_main_id_refcount_recompute(bmain, false);
-  }
-
   /* Check for possible cycles in scenes' 'set' background property. */
   lib_link_scenes_check_set(bmain);
 
@@ -9789,6 +9773,12 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
         do_versions_after_linking(mainvar, fd->reports);
       }
       blo_join_main(&mainlist);
+
+      /* We cannot do that here in undo case, we play too much with IDs from different memory
+       * realms, and Main database is in pretty bad state currently. */
+      /* Also, this does not take into account old, deprecated data, so we have to do it after
+       * `do_versions_after_linking()`. */
+      BKE_main_id_refcount_recompute(bfd->main, false);
 
       /* After all data has been read and versioned, uses LIB_TAG_NEW. */
       ntreeUpdateAllNew(bfd->main);
@@ -11499,10 +11489,15 @@ static void library_link_end(Main *mainl,
 
     add_main_to_main(mainvar, main_newid);
   }
+
   BKE_main_free(main_newid);
   blo_join_main((*fd)->mainlist);
   mainvar = (*fd)->mainlist->first;
   MEM_freeN((*fd)->mainlist);
+
+  /* This does not take into account old, deprecated data, so we have to do it after
+   * `do_versions_after_linking()`. */
+  BKE_main_id_refcount_recompute(mainvar, false);
 
   /* After all data has been read and versioned, uses LIB_TAG_NEW. */
   ntreeUpdateAllNew(mainvar);
@@ -11864,6 +11859,11 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
     if (mainptr->curlib->filedata) {
       lib_link_all(mainptr->curlib->filedata, mainptr);
     }
+
+    /* Note: No need to call `do_versions_after_linking()` or `BKE_main_id_refcount_recompute()`
+     * here, as this function is only called for library 'subset' data handling, as part of either
+     * full blendfile reading (`blo_read_file_internal()`), or libdata linking
+     * (`library_link_end()`). */
 
     /* Free file data we no longer need. */
     if (mainptr->curlib->filedata) {
