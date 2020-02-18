@@ -234,7 +234,16 @@ static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, Eyed
 
   float col_conv[4];
 
-  copy_v3_v3(col_conv, eye->color);
+  /* Convert from linear rgb space to display space because grease pencil colors are in display
+   *  space, and this conversion is needed to undo the conversion to linear performed by
+   *  eyedropper_color_sample_fl. */
+  if (eye->display) {
+    copy_v3_v3(col_conv, eye->color);
+    IMB_colormanagement_scene_linear_to_display_v3(col_conv, eye->display);
+  }
+  else {
+    copy_v3_v3(col_conv, eye->color);
+  }
 
   /* Add material or Palette color*/
   if (eye->mode == 0) {
