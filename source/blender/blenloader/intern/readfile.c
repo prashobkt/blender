@@ -1806,16 +1806,6 @@ void *blo_do_versions_newlibadr_us(FileData *fd, const void *lib, const void *ad
   return newlibadr_us(fd, lib, adr);
 }
 
-/* ensures real user */
-static void *newlibadr_real_us(FileData *fd, const void *lib, const void *adr)
-{
-  ID *id = newlibadr(fd, lib, adr);
-
-  id_us_ensure_real(id);
-
-  return id;
-}
-
 static void change_link_placeholder_to_real_ID_pointer_fd(FileData *fd, const void *old, void *new)
 {
   for (int i = 0; i < fd->libmap->nentries; i++) {
@@ -7381,13 +7371,13 @@ static void lib_link_area(FileData *fd, ID *parent_id, ScrArea *area)
       case SPACE_IMAGE: {
         SpaceImage *sima = (SpaceImage *)sl;
 
-        sima->image = newlibadr_real_us(fd, parent_id->lib, sima->image);
-        sima->mask_info.mask = newlibadr_real_us(fd, parent_id->lib, sima->mask_info.mask);
+        sima->image = newlibadr(fd, parent_id->lib, sima->image);
+        sima->mask_info.mask = newlibadr(fd, parent_id->lib, sima->mask_info.mask);
 
         /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
          * so fingers crossed this works fine!
          */
-        sima->gpd = newlibadr_us(fd, parent_id->lib, sima->gpd);
+        sima->gpd = newlibadr(fd, parent_id->lib, sima->gpd);
         break;
       }
       case SPACE_SEQ: {
@@ -7396,7 +7386,7 @@ static void lib_link_area(FileData *fd, ID *parent_id, ScrArea *area)
         /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
          * so fingers crossed this works fine!
          */
-        sseq->gpd = newlibadr_us(fd, parent_id->lib, sseq->gpd);
+        sseq->gpd = newlibadr(fd, parent_id->lib, sseq->gpd);
         break;
       }
       case SPACE_NLA: {
@@ -7492,8 +7482,8 @@ static void lib_link_area(FileData *fd, ID *parent_id, ScrArea *area)
       }
       case SPACE_CLIP: {
         SpaceClip *sclip = (SpaceClip *)sl;
-        sclip->clip = newlibadr_real_us(fd, parent_id->lib, sclip->clip);
-        sclip->mask_info.mask = newlibadr_real_us(fd, parent_id->lib, sclip->mask_info.mask);
+        sclip->clip = newlibadr(fd, parent_id->lib, sclip->clip);
+        sclip->mask_info.mask = newlibadr(fd, parent_id->lib, sclip->mask_info.mask);
         break;
       }
       default:
