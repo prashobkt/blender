@@ -9524,12 +9524,6 @@ static void lib_link_all(FileData *fd, Main *bmain)
   }
   FOREACH_MAIN_ID_END;
 
-  /* We cannot do that here in undo case, we play too much with IDs from different memory realms,
-   * and Main database is in pretty bad state currently. */
-  if (fd->memfile == NULL) {
-    BKE_main_id_refcount_recompute(bmain, false);
-  }
-
   /* Check for possible cycles in scenes' 'set' background property. */
   lib_link_scenes_check_set(bmain);
 
@@ -9779,6 +9773,12 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
         do_versions_after_linking(mainvar, fd->reports);
       }
       blo_join_main(&mainlist);
+
+      /* We cannot do that here in undo case, we play too much with IDs from different memory
+       * realms, and Main database is in pretty bad state currently. */
+      /* Also, this does not take into account old, deprecated data, so we have to do it after
+       * `do_versions_after_linking()`. */
+      BKE_main_id_refcount_recompute(bfd->main, false);
 
       /* After all data has been read and versioned, uses LIB_TAG_NEW. */
       ntreeUpdateAllNew(bfd->main);
@@ -11488,10 +11488,15 @@ static void library_link_end(Main *mainl,
 
     add_main_to_main(mainvar, main_newid);
   }
+
   BKE_main_free(main_newid);
   blo_join_main((*fd)->mainlist);
   mainvar = (*fd)->mainlist->first;
   MEM_freeN((*fd)->mainlist);
+
+  /* This does not take into account old, deprecated data, so we have to do it after
+   * `do_versions_after_linking()`. */
+  BKE_main_id_refcount_recompute(mainvar, false);
 
   /* After all data has been read and versioned, uses LIB_TAG_NEW. */
   ntreeUpdateAllNew(mainvar);
@@ -11853,6 +11858,11 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
     if (mainptr->curlib->filedata) {
       lib_link_all(mainptr->curlib->filedata, mainptr);
     }
+
+    /* Note: No need to call `do_versions_after_linking()` or `BKE_main_id_refcount_recompute()`
+     * here, as this function is only called for library 'subset' data handling, as part of either
+     * full blendfile reading (`blo_read_file_internal()`), or libdata linking
+     * (`library_link_end()`). */
 
     /* Free file data we no longer need. */
     if (mainptr->curlib->filedata) {
