@@ -164,7 +164,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "SCREW",
      ICON_MOD_SCREW,
      "Screw",
-     "Lathe around an axis, treating the inout mesh as a profile"},
+     "Lathe around an axis, treating the input mesh as a profile"},
     {eModifierType_Skin,
      "SKIN",
      ICON_MOD_SKIN,
@@ -182,16 +182,16 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_TRIANGULATE,
      "Triangulate",
      "Convert all polygons to triangles"},
+    {eModifierType_Weld,
+      "WELD",
+      ICON_AUTOMERGE_OFF,
+      "Weld",
+      "Find groups of vertices closer then dist and merges them together"},
     {eModifierType_Wireframe,
      "WIREFRAME",
      ICON_MOD_WIREFRAME,
      "Wireframe",
      "Convert faces into thickened edges"},
-    {eModifierType_Weld,
-     "WELD",
-     ICON_AUTOMERGE_OFF,
-     "Weld",
-     "Find groups of vertices closer then dist and merges them together"},
     {0, "", 0, N_("Deform"), ""},
     {eModifierType_Armature,
      "ARMATURE",
@@ -3923,7 +3923,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_custom_profile", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_CUSTOM_PROFILE);
   RNA_def_property_ui_text(
-      prop, "Custom Profile", "Whether to use a user inputed curve for the bevel's profile");
+      prop, "Custom Profile", "Whether to use a user inputted curve for the bevel's profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "custom_profile", PROP_POINTER, PROP_NONE);
@@ -4597,6 +4597,21 @@ static void rna_def_modifier_uvwarp(BlenderRNA *brna)
   prop = RNA_def_property(srna, "center", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "center");
   RNA_def_property_ui_text(prop, "UV Center", "Center point for rotate/scale");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "offset");
+  RNA_def_property_ui_text(prop, "Offset", "2D Offset for the warp");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "scale");
+  RNA_def_property_ui_text(prop, "Scale", "2D Scale for the warp");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, NULL, "rotation");
+  RNA_def_property_ui_text(prop, "Rotation", "2D Rotation for the warp");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "object_from", PROP_POINTER, PROP_NONE);

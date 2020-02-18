@@ -75,8 +75,6 @@ static void drawTransformApply(const struct bContext *C, ARegion *ar, void *arg)
 
 static void initSnapSpatial(TransInfo *t, float r_snap[3]);
 
-static void storeCustomLNorValue(TransDataContainer *t, BMesh *bm);
-
 bool transdata_check_local_islands(TransInfo *t, short around)
 {
   return ((around == V3D_AROUND_LOCAL_ORIGINS) && ((ELEM(t->obedit_type, OB_MESH))));
@@ -1637,6 +1635,11 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     else {
       RNA_property_float_set(op->ptr, prop, t->values_final[0]);
     }
+  }
+
+  if ((prop = RNA_struct_find_property(op->ptr, "mouse_coordinate_override"))) {
+    /* Important for redo operations. */
+    RNA_property_int_set_array(op->ptr, prop, t->mouse.imval);
   }
 
   if (t->flag & T_PROP_EDIT_ALL) {
