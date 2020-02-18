@@ -766,7 +766,7 @@ void BKE_palette_sort_svh(tPaletteColorHSV *color_array, const int totcol)
   qsort(color_array, totcol, sizeof(tPaletteColorHSV), palettecolor_compare_svh);
 }
 
-bool BKE_palette_from_hash(Main *bmain, GHash *color_table, const char *name)
+bool BKE_palette_from_hash(Main *bmain, GHash *color_table, const char *name, const bool linear)
 {
   tPaletteColorHSV *color_array = NULL;
   tPaletteColorHSV *col_elm = NULL;
@@ -809,6 +809,9 @@ bool BKE_palette_from_hash(Main *bmain, GHash *color_table, const char *name)
         PaletteColor *palcol = BKE_palette_color_add(palette);
         if (palcol) {
           copy_v3_v3(palcol->rgb, col_elm->rgb);
+          if (linear) {
+            linearrgb_to_srgb_v3_v3(palcol->rgb, palcol->rgb);
+          }
         }
       }
       done = true;

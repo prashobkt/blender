@@ -51,6 +51,7 @@ class GPENCIL_MT_color_context_menu(Menu):
 
         layout.separator()
         layout.operator("gpencil.material_to_vertex_color", text="Convert Materials to Vertex Color")
+        layout.operator("gpencil.extract_palette_vertex", text="Extract Palette from Vertex Color")
 
 
 class GPENCIL_UL_matslots(UIList):

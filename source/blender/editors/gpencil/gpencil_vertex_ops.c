@@ -577,7 +577,7 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
   CTX_DATA_END;
 
   /* Create the Palette. */
-  done = BKE_palette_from_hash(bmain, color_table, ob->id.name + 2);
+  done = BKE_palette_from_hash(bmain, color_table, ob->id.name + 2, true);
 
   /* Free memory. */
   BLI_ghash_free(color_table, NULL, NULL);
