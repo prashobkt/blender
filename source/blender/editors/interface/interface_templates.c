@@ -5389,21 +5389,13 @@ static void ui_template_palette_menu(bContext *C, uiLayout *layout, void *but_p)
 {
   uiLayout *row;
 
-  uiItemL(layout, IFACE_("Sort"), ICON_NONE);
+  uiItemL(layout, IFACE_("Sort by"), ICON_NONE);
   row = uiLayoutRow(layout, false);
-  uiItemEnumO_value(row,
-                    IFACE_("Sort Colors by Hue, Saturation, Value"),
-                    ICON_NONE,
-                    "PALETTE_OT_sort",
-                    "type",
-                    1);
+  uiItemEnumO_value(
+      row, IFACE_("Hue, Saturation, Value"), ICON_NONE, "PALETTE_OT_sort", "type", 1);
   row = uiLayoutRow(layout, false);
-  uiItemEnumO_value(row,
-                    IFACE_("Sort Colors by Saturation, Value, Hue"),
-                    ICON_NONE,
-                    "PALETTE_OT_sort",
-                    "type",
-                    -1);
+  uiItemEnumO_value(
+      row, IFACE_("Saturation, Value, Hue"), ICON_NONE, "PALETTE_OT_sort", "type", -1);
 }
 
 void uiTemplatePalette(uiLayout *layout,
