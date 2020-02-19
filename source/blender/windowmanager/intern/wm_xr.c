@@ -374,6 +374,7 @@ bool WM_xr_is_session_running(const wmXrData *xr)
  */
 static void wm_xr_session_surface_draw(bContext *C)
 {
+  wmXrSurfaceData *surface_data = g_xr_surface->customdata;
   wmWindowManager *wm = CTX_wm_manager(C);
 
   if (!GHOST_XrSessionIsRunning(wm->xr.context)) {
@@ -381,7 +382,7 @@ static void wm_xr_session_surface_draw(bContext *C)
   }
   GHOST_XrSessionDrawViews(wm->xr.context, C);
 
-  GPU_framebuffer_restore();
+  GPU_offscreen_unbind(surface_data->offscreen, false);
 }
 
 static void wm_xr_session_free_data(wmSurface *surface)
@@ -534,6 +535,22 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
   mul_m4_m4m4(r_view_mat, eye_mat, base_mat);
 }
 
+static void wm_xr_draw_viewport_buffers_to_active_framebuffer(
+    const wmXrSurfaceData *surface_data, const GHOST_XrDrawViewInfo *draw_view)
+{
+  const bool is_upside_down = surface_data->secondary_ghost_ctx &&
+                              GHOST_isUpsideDownContext(surface_data->secondary_ghost_ctx);
+  rcti rect = {.xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
+
+  wmViewport(&rect);
+
+  /* For upside down contexts, draw with inverted y-values. */
+  if (is_upside_down) {
+    SWAP(int, rect.ymin, rect.ymax);
+  }
+  GPU_viewport_draw_to_screen(surface_data->viewport, &rect);
+}
+
 /**
  * \brief Draw a viewport for a single eye.
  *
@@ -549,11 +566,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   Scene *scene = CTX_data_scene(C);
 
   const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
-  const rcti rect = {
-      .xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
 
-  GPUOffScreen *offscreen;
-  GPUViewport *viewport;
   float viewmat[4][4], winmat[4][4];
 
   /* The runtime may still trigger drawing while a session-end request is pending. */
@@ -568,12 +581,10 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
     return;
   }
 
-  offscreen = surface_data->offscreen;
-  viewport = surface_data->viewport;
-  glClear(GL_DEPTH_BUFFER_BIT);
   /* In case a framebuffer is still bound from drawing the last eye. */
   GPU_framebuffer_restore();
 
+  /* Draws the view into the surface_data->viewport's framebuffers */
   ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
                                   scene,
                                   &wm->xr.session_settings.shading,
@@ -589,22 +600,14 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   true,
                                   NULL,
                                   false,
-                                  offscreen,
-                                  viewport);
+                                  surface_data->offscreen,
+                                  surface_data->viewport);
 
-  BLI_assert(GPU_context_active_get() == DRW_gpu_context_get());
+  /* Re-use the offscreen framebuffer to render the composited viewport into. Keep it bound,
+   * Ghost-XR will then blit from the currently bound framebuffer into the OpenXR swapchain. */
+  GPU_offscreen_bind(surface_data->offscreen, false);
 
-  // TODO
-  //  const bool is_upside_down = surface_data->secondary_ghost_ctx &&
-  //                              GHOST_isUpsideDownContext(surface_data->secondary_ghost_ctx);
-
-  DefaultFramebufferList *dfl = GPU_viewport_framebuffer_list_get(viewport);
-
-  /* Draw into viewport default framebuffer and leave it bound when exiting this function. Ghost-XR
-   * will blit from the currently bound framebuffer into the OpenXR swapchain. */
-  GPU_framebuffer_bind(dfl->default_fb);
-  wmViewport(&rect);
-  GPU_viewport_draw_to_screen(viewport, &rect);
+  wm_xr_draw_viewport_buffers_to_active_framebuffer(surface_data, draw_view);
 }
 
 /** \} */ /* XR Drawing */
