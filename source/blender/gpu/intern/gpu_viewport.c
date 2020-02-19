@@ -533,13 +533,12 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
 }
 
 /**
- * Merge and draw the buffers of \a viewport into the currently active framebuffer, performing
- * color transform to display space.
- *
- * \param rect: Coordinates to draw into. By swapping min and max values, drawing can be done with
- *              inversed axis coordinates (upside down or sideways).
+ * Version of #GPU_viewport_draw_to_screen() that lets caller decide if display colorspace
+ * transform should be performed.
  */
-void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
+void GPU_viewport_draw_to_screen_ex(GPUViewport *viewport,
+                                    const rcti *rect,
+                                    bool display_colorspace)
 {
   DefaultFramebufferList *dfbl = viewport->fbl;
   DefaultTextureList *dtxl = viewport->txl;
@@ -585,7 +584,19 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
     SWAP(int, uv_rect.ymin, uv_rect.ymax);
   }
 
-  gpu_viewport_draw_colormanaged(viewport, &pos_rect, &uv_rect, true);
+  gpu_viewport_draw_colormanaged(viewport, &pos_rect, &uv_rect, display_colorspace);
+}
+
+/**
+ * Merge and draw the buffers of \a viewport into the currently active framebuffer, performing
+ * color transform to display space.
+ *
+ * \param rect: Coordinates to draw into. By swapping min and max values, drawing can be done with
+ *              inversed axis coordinates (upside down or sideways).
+ */
+void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
+{
+  GPU_viewport_draw_to_screen_ex(viewport, rect, true);
 }
 
 /**

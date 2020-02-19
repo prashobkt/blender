@@ -548,7 +548,7 @@ static void wm_xr_draw_viewport_buffers_to_active_framebuffer(
   if (is_upside_down) {
     SWAP(int, rect.ymin, rect.ymax);
   }
-  GPU_viewport_draw_to_screen(surface_data->viewport, &rect);
+  GPU_viewport_draw_to_screen_ex(surface_data->viewport, &rect, draw_view->expects_srgb_buffer);
 }
 
 /**
