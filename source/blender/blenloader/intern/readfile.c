@@ -1791,21 +1791,6 @@ void *blo_do_versions_newlibadr(FileData *fd, const void *lib, const void *adr)
 }
 
 /* increases user number */
-static void *newlibadr_us(FileData *fd, const void *lib, const void *adr)
-{
-  ID *id = newlibadr(fd, lib, adr);
-
-  id_us_plus_no_lib(id);
-
-  return id;
-}
-
-/* increases user number */
-void *blo_do_versions_newlibadr_us(FileData *fd, const void *lib, const void *adr)
-{
-  return newlibadr_us(fd, lib, adr);
-}
-
 static void change_link_placeholder_to_real_ID_pointer_fd(FileData *fd, const void *old, void *new)
 {
   for (int i = 0; i < fd->libmap->nentries; i++) {
@@ -2952,7 +2937,7 @@ static void lib_link_constraint_channels(FileData *fd, ID *id, ListBase *chanbas
   bConstraintChannel *chan;
 
   for (chan = chanbase->first; chan; chan = chan->next) {
-    chan->ipo = newlibadr_us(fd, id->lib, chan->ipo);
+    chan->ipo = newlibadr(fd, id->lib, chan->ipo);
   }
 }
 
@@ -3119,7 +3104,7 @@ static void lib_link_action(FileData *fd, Main *UNUSED(bmain), bAction *act)
 {
   // XXX deprecated - old animation system <<<
   for (bActionChannel *chan = act->chanbase.first; chan; chan = chan->next) {
-    chan->ipo = newlibadr_us(fd, act->id.lib, chan->ipo);
+    chan->ipo = newlibadr(fd, act->id.lib, chan->ipo);
     lib_link_constraint_channels(fd, &act->id, &chan->constraintChannels);
   }
   // >>> XXX deprecated - old animation system
@@ -3692,7 +3677,7 @@ static void lib_link_constraints(FileData *fd, ID *id, ListBase *conlist)
       con->type = CONSTRAINT_TYPE_NULL;
     }
     /* own ipo, all constraints have it */
-    con->ipo = newlibadr_us(fd, id->lib, con->ipo);  // XXX deprecated - old animation system
+    con->ipo = newlibadr(fd, id->lib, con->ipo);  // XXX deprecated - old animation system
 
     /* If linking from a library, clear 'local' library override flag. */
     if (id->lib != NULL) {
@@ -3888,7 +3873,7 @@ static void direct_link_armature(FileData *fd, bArmature *arm)
 
 static void lib_link_camera(FileData *fd, Main *UNUSED(bmain), Camera *ca)
 {
-  ca->ipo = newlibadr_us(fd, ca->id.lib, ca->ipo); /* deprecated, for versioning */
+  ca->ipo = newlibadr(fd, ca->id.lib, ca->ipo); /* deprecated, for versioning */
 
   ca->dof_ob = newlibadr(fd, ca->id.lib, ca->dof_ob); /* deprecated, for versioning */
   ca->dof.focus_object = newlibadr(fd, ca->id.lib, ca->dof.focus_object);
@@ -3920,7 +3905,7 @@ static void direct_link_camera(FileData *fd, Camera *ca)
 
 static void lib_link_light(FileData *fd, Main *UNUSED(bmain), Light *la)
 {
-  la->ipo = newlibadr_us(fd, la->id.lib, la->ipo);  // XXX deprecated - old animation system
+  la->ipo = newlibadr(fd, la->id.lib, la->ipo);  // XXX deprecated - old animation system
 }
 
 static void direct_link_light(FileData *fd, Light *la)
@@ -3956,7 +3941,7 @@ static void lib_link_key(FileData *fd, Main *UNUSED(bmain), Key *key)
 {
   BLI_assert((key->id.tag & LIB_TAG_EXTERN) == 0);
 
-  key->ipo = newlibadr_us(fd, key->id.lib, key->ipo);  // XXX deprecated - old animation system
+  key->ipo = newlibadr(fd, key->id.lib, key->ipo);  // XXX deprecated - old animation system
   key->from = newlibadr(fd, key->id.lib, key->from);
 }
 
@@ -4021,7 +4006,7 @@ static void lib_link_mball(FileData *fd, Main *UNUSED(bmain), MetaBall *mb)
     mb->mat[a] = newlibadr(fd, mb->id.lib, mb->mat[a]);
   }
 
-  mb->ipo = newlibadr_us(fd, mb->id.lib, mb->ipo);  // XXX deprecated - old animation system
+  mb->ipo = newlibadr(fd, mb->id.lib, mb->ipo);  // XXX deprecated - old animation system
 }
 
 static void direct_link_mball(FileData *fd, MetaBall *mb)
@@ -4051,7 +4036,7 @@ static void direct_link_mball(FileData *fd, MetaBall *mb)
 
 static void lib_link_world(FileData *fd, Main *UNUSED(bmain), World *wrld)
 {
-  wrld->ipo = newlibadr_us(fd, wrld->id.lib, wrld->ipo);  // XXX deprecated - old animation system
+  wrld->ipo = newlibadr(fd, wrld->id.lib, wrld->ipo);  // XXX deprecated - old animation system
 }
 
 static void direct_link_world(FileData *fd, World *wrld)
@@ -4220,7 +4205,7 @@ static void lib_link_curve(FileData *fd, Main *UNUSED(bmain), Curve *cu)
   cu->vfonti = newlibadr(fd, cu->id.lib, cu->vfonti);
   cu->vfontbi = newlibadr(fd, cu->id.lib, cu->vfontbi);
 
-  cu->ipo = newlibadr_us(fd, cu->id.lib, cu->ipo);  // XXX deprecated - old animation system
+  cu->ipo = newlibadr(fd, cu->id.lib, cu->ipo);  // XXX deprecated - old animation system
   cu->key = newlibadr(fd, cu->id.lib, cu->key);
 }
 
@@ -4303,7 +4288,7 @@ static void direct_link_curve(FileData *fd, Curve *cu)
 static void lib_link_texture(FileData *fd, Main *UNUSED(bmain), Tex *tex)
 {
   tex->ima = newlibadr(fd, tex->id.lib, tex->ima);
-  tex->ipo = newlibadr_us(fd, tex->id.lib, tex->ipo);  // XXX deprecated - old animation system
+  tex->ipo = newlibadr(fd, tex->id.lib, tex->ipo);  // XXX deprecated - old animation system
 }
 
 static void direct_link_texture(FileData *fd, Tex *tex)
@@ -4327,7 +4312,7 @@ static void direct_link_texture(FileData *fd, Tex *tex)
 
 static void lib_link_material(FileData *fd, Main *UNUSED(bmain), Material *ma)
 {
-  ma->ipo = newlibadr_us(fd, ma->id.lib, ma->ipo);  // XXX deprecated - old animation system
+  ma->ipo = newlibadr(fd, ma->id.lib, ma->ipo);  // XXX deprecated - old animation system
 
   /* relink grease pencil settings */
   if (ma->gp_style != NULL) {
@@ -4458,7 +4443,7 @@ static void lib_link_partdeflect(FileData *fd, ID *id, PartDeflect *pd)
 
 static void lib_link_particlesettings(FileData *fd, Main *UNUSED(bmain), ParticleSettings *part)
 {
-  part->ipo = newlibadr_us(fd, part->id.lib, part->ipo);  // XXX deprecated - old animation system
+  part->ipo = newlibadr(fd, part->id.lib, part->ipo);  // XXX deprecated - old animation system
 
   part->instance_object = newlibadr(fd, part->id.lib, part->instance_object);
   part->instance_collection = newlibadr(fd, part->id.lib, part->instance_collection);
@@ -4723,7 +4708,7 @@ static void lib_link_mesh(FileData *fd, Main *UNUSED(bmain), Mesh *me)
     me->totcol = 0;
   }
 
-  me->ipo = newlibadr_us(fd, me->id.lib, me->ipo);  // XXX: deprecated: old anim sys
+  me->ipo = newlibadr(fd, me->id.lib, me->ipo);  // XXX: deprecated: old anim sys
   me->key = newlibadr(fd, me->id.lib, me->key);
   me->texcomesh = newlibadr(fd, me->id.lib, me->texcomesh);
 }
@@ -4941,7 +4926,7 @@ static void direct_link_mesh(FileData *fd, Mesh *mesh)
 
 static void lib_link_latt(FileData *fd, Main *UNUSED(bmain), Lattice *lt)
 {
-  lt->ipo = newlibadr_us(fd, lt->id.lib, lt->ipo);  // XXX deprecated - old animation system
+  lt->ipo = newlibadr(fd, lt->id.lib, lt->ipo);  // XXX deprecated - old animation system
   lt->key = newlibadr(fd, lt->id.lib, lt->key);
 }
 
@@ -5018,7 +5003,7 @@ static void lib_link_object(FileData *fd, Main *bmain, Object *ob)
   int a;
 
   // XXX deprecated - old animation system <<<
-  ob->ipo = newlibadr_us(fd, ob->id.lib, ob->ipo);
+  ob->ipo = newlibadr(fd, ob->id.lib, ob->ipo);
   ob->action = newlibadr(fd, ob->id.lib, ob->action);
   // >>> XXX deprecated - old animation system
 
@@ -5133,7 +5118,7 @@ static void lib_link_object(FileData *fd, Main *bmain, Object *ob)
         ob, eModifierType_Fluidsim);
 
     if (fluidmd && fluidmd->fss) {
-      fluidmd->fss->ipo = newlibadr_us(
+      fluidmd->fss->ipo = newlibadr(
           fd, ob->id.lib, fluidmd->fss->ipo);  // XXX deprecated - old animation system
     }
   }
@@ -6397,7 +6382,7 @@ static void lib_link_scene(FileData *fd, Main *UNUSED(bmain), Scene *sce)
     IDP_LibLinkProperty(seq->prop, fd);
 
     if (seq->ipo) {
-      seq->ipo = newlibadr_us(fd, sce->id.lib, seq->ipo);  // XXX deprecated - old animation system
+      seq->ipo = newlibadr(fd, sce->id.lib, seq->ipo);  // XXX deprecated - old animation system
     }
     seq->scene_sound = NULL;
     if (seq->scene) {
@@ -8332,8 +8317,7 @@ static void direct_link_sound(FileData *fd, bSound *sound)
 
 static void lib_link_sound(FileData *fd, Main *UNUSED(bmain), bSound *sound)
 {
-  sound->ipo = newlibadr_us(
-      fd, sound->id.lib, sound->ipo);  // XXX deprecated - old animation system
+  sound->ipo = newlibadr(fd, sound->id.lib, sound->ipo);  // XXX deprecated - old animation system
 }
 
 /** \} */
@@ -9764,8 +9748,9 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
       }
       blo_join_main(&mainlist);
 
-      /* We cannot do that here in undo case, we play too much with IDs from different memory
-       * realms, and Main database is in pretty bad state currently. */
+      /* Note that we cannot recompute usercounts at this point in undo case, we play too much with
+       * IDs from different memory realms, and Main database is not in a fully valid state yet.
+       */
       /* Also, this does not take into account old, deprecated data, so we have to do it after
        * `do_versions_after_linking()`. */
       BKE_main_id_refcount_recompute(bfd->main, false);
