@@ -793,10 +793,10 @@ static int palettecolor_compare_luminance(const void *a1, const void *a2)
   float lumi2 = (ps2->rgb[0] + ps2->rgb[1] + ps2->rgb[2]) / 3.0f;
 
   if (lumi1 > lumi2) {
-    return 1;
+    return -1;
   }
   else if (lumi1 < lumi2) {
-    return -1;
+    return 1;
   }
 
   return 0;
