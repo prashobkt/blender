@@ -169,8 +169,29 @@ void BKE_brush_init_gpencil_settings(Brush *brush)
 /* add a new gp-brush */
 Brush *BKE_brush_add_gpencil(Main *bmain, ToolSettings *ts, const char *name, eObjectMode mode)
 {
+  Paint *paint = NULL;
   Brush *brush;
-  Paint *paint = &ts->gp_paint->paint;
+  switch (mode) {
+    case OB_MODE_PAINT_GPENCIL: {
+      paint = &ts->gp_paint->paint;
+      break;
+    }
+    case OB_MODE_SCULPT_GPENCIL: {
+      paint = &ts->gp_sculptpaint->paint;
+      break;
+    }
+    case OB_MODE_WEIGHT_GPENCIL: {
+      paint = &ts->gp_weightpaint->paint;
+      break;
+    }
+    case OB_MODE_VERTEX_GPENCIL: {
+      paint = &ts->gp_vertexpaint->paint;
+      break;
+    }
+    default:
+      paint = &ts->gp_paint->paint;
+  }
+
   brush = BKE_brush_add(bmain, name, mode);
 
   BKE_paint_brush_set(paint, brush);

@@ -1609,11 +1609,12 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
       BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
 
       /* Set default Draw brush. */
-      Paint *paint = &ts->gp_paint->paint;
-      BKE_paint_brush_set(paint, brush);
-      /* Enable cursor by default. */
-      paint->flags |= PAINT_SHOW_BRUSH;
-
+      if (brush != NULL) {
+        Paint *paint = &ts->gp_paint->paint;
+        BKE_paint_brush_set(paint, brush);
+        /* Enable cursor by default. */
+        paint->flags |= PAINT_SHOW_BRUSH;
+      }
       /* Ensure Palette by default. */
       BKE_gpencil_palette_ensure(bmain, scene);
     }
