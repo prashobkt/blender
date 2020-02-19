@@ -5385,6 +5385,27 @@ void uiTemplateColorPicker(uiLayout *layout,
   }
 }
 
+static void ui_template_palette_menu(bContext *C, uiLayout *layout, void *but_p)
+{
+  uiLayout *row;
+
+  uiItemL(layout, IFACE_("Sort"), ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemEnumO_value(row,
+                    IFACE_("Sort Colors by Hue, Saturation, Value"),
+                    ICON_NONE,
+                    "PALETTE_OT_sort",
+                    "type",
+                    1);
+  row = uiLayoutRow(layout, false);
+  uiItemEnumO_value(row,
+                    IFACE_("Sort Colors by Saturation, Value, Hue"),
+                    ICON_NONE,
+                    "PALETTE_OT_sort",
+                    "type",
+                    -1);
+}
+
 void uiTemplatePalette(uiLayout *layout,
                        PointerRNA *ptr,
                        const char *propname,
@@ -5466,31 +5487,9 @@ void uiTemplatePalette(uiLayout *layout,
     UI_but_operator_ptr_get(but);
     RNA_enum_set(but->opptr, "type", 1);
 
-    but = uiDefIconButO(block,
-                        UI_BTYPE_BUT,
-                        "PALETTE_OT_sort",
-                        WM_OP_INVOKE_DEFAULT,
-                        ICON_SORTSIZE,
-                        0,
-                        0,
-                        UI_UNIT_X,
-                        UI_UNIT_Y,
-                        NULL);
-    UI_but_operator_ptr_get(but);
-    RNA_enum_set(but->opptr, "type", -1);
-
-    but = uiDefIconButO(block,
-                        UI_BTYPE_BUT,
-                        "PALETTE_OT_sort",
-                        WM_OP_INVOKE_DEFAULT,
-                        ICON_SORT_DESC,
-                        0,
-                        0,
-                        UI_UNIT_X,
-                        UI_UNIT_Y,
-                        NULL);
-    UI_but_operator_ptr_get(but);
-    RNA_enum_set(but->opptr, "type", 1);
+    /* Menu. */
+    uiDefIconMenuBut(
+        block, ui_template_palette_menu, NULL, ICON_SORTSIZE, 0, 0, UI_UNIT_X, UI_UNIT_Y, "");
   }
 
   col = uiLayoutColumn(layout, true);
