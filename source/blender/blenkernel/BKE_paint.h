@@ -146,6 +146,8 @@ void BKE_palette_clear(struct Palette *palette);
 
 void BKE_palette_sort_hsv(struct tPaletteColorHSV *color_array, const int totcol);
 void BKE_palette_sort_svh(struct tPaletteColorHSV *color_array, const int totcol);
+void BKE_palette_sort_vhs(struct tPaletteColorHSV *color_array, const int totcol);
+void BKE_palette_sort_luminance(struct tPaletteColorHSV *color_array, const int totcol);
 bool BKE_palette_from_hash(struct Main *bmain,
                            struct GHash *color_table,
                            const char *name,

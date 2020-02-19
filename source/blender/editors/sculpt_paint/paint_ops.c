@@ -420,11 +420,17 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
       t++;
     }
     /* Sort */
-    if (type == -1) {
+    if (type == 1) {
       BKE_palette_sort_hsv(color_array, totcol);
     }
-    else {
+    else if (type == 2) {
       BKE_palette_sort_svh(color_array, totcol);
+    }
+    else if (type == 3) {
+      BKE_palette_sort_vhs(color_array, totcol);
+    }
+    else {
+      BKE_palette_sort_luminance(color_array, totcol);
     }
 
     /* Clear old color swatches. */
@@ -457,15 +463,17 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
 static void PALETTE_OT_sort(wmOperatorType *ot)
 {
   static const EnumPropertyItem sort_type[] = {
-      {-1, "HSV", 0, "Hue, Saturation, Value", ""},
-      {1, "SVH", 0, "Saturation, Value, Hue", ""},
+      {1, "HSV", 0, "Hue, Saturation, Value", ""},
+      {2, "SVH", 0, "Saturation, Value, Hue", ""},
+      {3, "VHS", 0, "Value, Hue, Saturation", ""},
+      {4, "LUMINANCE", 0, "Luminance", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
   /* identifiers */
   ot->name = "Sort Palette";
   ot->idname = "PALETTE_OT_sort";
-  ot->description = "Sort Palette Colors by Hue, Saturation and Value";
+  ot->description = "Sort Palette Colors";
 
   /* api callbacks */
   ot->exec = palette_sort_exec;
