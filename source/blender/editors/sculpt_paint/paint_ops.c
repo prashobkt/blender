@@ -482,7 +482,7 @@ static void PALETTE_OT_sort(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  ot->prop = RNA_def_enum(ot->srna, "type", sort_type, -1, "Type", "");
+  ot->prop = RNA_def_enum(ot->srna, "type", sort_type, 1, "Type", "");
 }
 
 /* Move colors in palette. */
