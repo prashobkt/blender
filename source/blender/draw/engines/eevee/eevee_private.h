@@ -804,6 +804,11 @@ typedef struct EEVEE_PrivateData {
   /* Renderpasses */
   /* Bitmask containing the active render_passes */
   eScenePassType render_passes;
+  /* Uniform references that are referenced inside the `renderpass_pass`. They are updated
+   * to reuse the drawing pass and the shading group. */
+  int renderpass_type;
+  int renderpass_current_sample;
+  GPUTexture *renderpass_input;
 
   /** For rendering shadows. */
   struct DRWView *cube_views[6];
@@ -1095,7 +1100,6 @@ void EEVEE_effects_draw_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
 void EEVEE_create_minmax_buffer(EEVEE_Data *vedata, struct GPUTexture *depth_src, int layer);
 void EEVEE_downsample_buffer(EEVEE_Data *vedata, struct GPUTexture *texture_src, int level);
 void EEVEE_downsample_cube_buffer(EEVEE_Data *vedata, struct GPUTexture *texture_src, int level);
-void EEVEE_draw_alpha_checker(EEVEE_Data *vedata);
 void EEVEE_draw_effects(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
 void EEVEE_effects_free(void);
 
