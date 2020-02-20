@@ -1739,7 +1739,10 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
   memcpy(&v3d.shading, source_shading_settings, sizeof(View3DShading));
   v3d.shading.type = drawtype;
 
-  if (drawtype == OB_MATERIAL) {
+  if (shading_override) {
+    /* Pass. */
+  }
+  else if (drawtype == OB_MATERIAL) {
     v3d.shading.flag = V3D_SHADING_SCENE_WORLD | V3D_SHADING_SCENE_LIGHTS;
   }
 
