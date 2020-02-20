@@ -173,6 +173,13 @@ void *BKE_main_idmemset_unique_alloc(struct Main *bmain,
                                      void *(*alloc_cb)(size_t len, const char *str),
                                      size_t size,
                                      const char *message);
+void *BKE_main_idmemset_unique_realloc(struct Main *bmain,
+                                       void *vmemh,
+                                       void *(*realloc_cb)(void *vmemh,
+                                                           size_t len,
+                                                           const char *str),
+                                       size_t size,
+                                       const char *message);
 
 void BKE_main_relations_create(struct Main *bmain, const short flag);
 void BKE_main_relations_free(struct Main *bmain);
