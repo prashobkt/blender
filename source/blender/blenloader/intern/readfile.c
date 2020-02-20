@@ -6607,6 +6607,13 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 
   sce->toolsettings = newdataadr(fd, sce->toolsettings);
   if (sce->toolsettings) {
+
+    /* Reset last_location and last_hit, so they are not remembered across sessions. In some files
+     * these are also NaN, which could lead to crashes in painting. */
+    struct UnifiedPaintSettings *ups = &sce->toolsettings->unified_paint_settings;
+    zero_v3(ups->last_location);
+    ups->last_hit = 0;
+
     direct_link_paint_helper(fd, sce, (Paint **)&sce->toolsettings->sculpt);
     direct_link_paint_helper(fd, sce, (Paint **)&sce->toolsettings->vpaint);
     direct_link_paint_helper(fd, sce, (Paint **)&sce->toolsettings->wpaint);
@@ -7240,7 +7247,6 @@ static void direct_link_area(FileData *fd, ScrArea *area)
       sseq->scopes.sep_waveform_ibuf = NULL;
       sseq->scopes.vector_ibuf = NULL;
       sseq->scopes.histogram_ibuf = NULL;
-      sseq->compositor = NULL;
     }
     else if (sl->spacetype == SPACE_PROPERTIES) {
       SpaceProperties *sbuts = (SpaceProperties *)sl;
@@ -9750,6 +9756,15 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 
     /* Skip in undo case. */
     if (fd->memfile == NULL) {
+      /* Note that we cannot recompute usercounts at this point in undo case, we play too much with
+       * IDs from different memory realms, and Main database is not in a fully valid state yet.
+       */
+      /* Some versioning code does expect some proper userrefcounting, e.g. in conversion from
+       * groups to collections... We could optimize out that first call when we are reading a
+       * current version file, but again this is really not a bottle neck currently. so not worth
+       * it. */
+      BKE_main_id_refcount_recompute(bfd->main, false);
+
       /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
       blo_split_main(&mainlist, bfd->main);
       for (Main *mainvar = mainlist.first; mainvar; mainvar = mainvar->next) {
@@ -9758,11 +9773,9 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
       }
       blo_join_main(&mainlist);
 
-      /* Note that we cannot recompute usercounts at this point in undo case, we play too much with
-       * IDs from different memory realms, and Main database is not in a fully valid state yet.
-       */
-      /* Also, this does not take into account old, deprecated data, so we have to do it after
-       * `do_versions_after_linking()`. */
+      /* And we have to compute those userrefcounts again, as `do_versions_after_linking()` does
+       * not always properly handle user counts, and/or that function does not take into account
+       * old, deprecated data. */
       BKE_main_id_refcount_recompute(bfd->main, false);
 
       /* After all data has been read and versioned, uses LIB_TAG_NEW. */
@@ -11459,6 +11472,13 @@ static void library_link_end(Main *mainl,
   mainl = NULL; /* blo_join_main free's mainl, cant use anymore */
 
   lib_link_all(*fd, mainvar);
+
+  /* Some versioning code does expect some proper userrefcounting, e.g. in conversion from
+   * groups to collections... We could optimize out that first call when we are reading a
+   * current version file, but again this is really not a bottle neck currently. so not worth
+   * it. */
+  BKE_main_id_refcount_recompute(mainvar, false);
+
   BKE_collections_after_lib_link(mainvar);
 
   /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
@@ -11480,7 +11500,7 @@ static void library_link_end(Main *mainl,
   mainvar = (*fd)->mainlist->first;
   MEM_freeN((*fd)->mainlist);
 
-  /* This does not take into account old, deprecated data, so we have to do it after
+  /* This does not take into account old, deprecated data, so we also have to do it after
    * `do_versions_after_linking()`. */
   BKE_main_id_refcount_recompute(mainvar, false);
 
