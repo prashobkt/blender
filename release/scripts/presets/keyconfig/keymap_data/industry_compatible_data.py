@@ -3758,7 +3758,8 @@ def km_object_non_modal(params):
     )
 
     items.extend([
-
+        ("object.mode_set",{"type": 'THREE', "value": 'PRESS'},
+         {"properties": [("mode", 'POSE')]}),
         ("object.mode_set_with_submode",{"type": 'ONE', "value": 'PRESS'},
          {"properties": [("mode", 'EDIT'), ("mesh_select_mode", {'VERT'})]}),
         ("object.mode_set_with_submode",{"type": 'TWO', "value": 'PRESS'},
@@ -3777,7 +3778,6 @@ def km_object_non_modal(params):
          {"properties": [("mode", 'WEIGHT_PAINT')]}),
         ("object.mode_set",{"type": 'EIGHT', "value": 'PRESS'},
          {"properties": [("mode", 'TEXTURE_PAINT')]}),
-
         ("object.mode_set",{"type": 'TWO', "value": 'PRESS'},
          {"properties": [("mode", 'EDIT_GPENCIL')]}),
         ("object.mode_set",{"type": 'THREE', "value": 'PRESS'},
@@ -3786,9 +3786,7 @@ def km_object_non_modal(params):
          {"properties": [("mode", 'PAINT_GPENCIL')]}),
         ("object.mode_set",{"type": 'FIVE', "value": 'PRESS'},
          {"properties": [("mode", 'WEIGHT_GPENCIL')]}),
-
-        ("object.mode_set",{"type": 'THREE', "value": 'PRESS'},
-         {"properties": [("mode", 'POSE')]})
+        
     ])
 
     return keymap
