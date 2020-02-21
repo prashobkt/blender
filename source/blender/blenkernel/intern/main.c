@@ -29,6 +29,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
+#include "BLI_linklist.h"
 #include "BLI_mempool.h"
 #include "BLI_threads.h"
 
@@ -194,7 +195,7 @@ void BKE_main_free(Main *mainvar)
     BKE_main_relations_free(mainvar);
   }
 
-  BKE_main_idmemset_release(mainvar);
+  BKE_main_idmemhash_release(mainvar);
 
   BLI_spin_end((SpinLock *)mainvar->lock);
   MEM_freeN(mainvar->lock);
@@ -211,64 +212,100 @@ void BKE_main_unlock(struct Main *bmain)
   BLI_spin_unlock((SpinLock *)bmain->lock);
 }
 
-void BKE_main_idmemset_ensure(Main *bmain)
+void BKE_main_idmemhash_ensure(Main *bmain)
 {
-  if (bmain->used_id_memset == NULL || (bmain->used_id_memset_tag & MAIN_IDMEMSET_OWNER) == 0) {
-    bmain->used_id_memset = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
-    bmain->used_id_memset_tag |= MAIN_IDMEMSET_OWNER;
+  if (bmain->used_id_memhash == NULL || (bmain->used_id_memhash_tag & MAIN_IDMEMHASH_OWNER) == 0) {
+    bmain->used_id_memhash = BLI_ghash_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
+    bmain->used_id_memhash_history_chains = NULL;
+    bmain->used_id_memhash_tag |= MAIN_IDMEMHASH_OWNER;
   }
 }
 
-void BKE_main_idmemset_release(Main *bmain)
+void main_idmemhash_history_chains_free(void *linkv)
 {
-  if (bmain->used_id_memset != NULL) {
-    if ((bmain->used_id_memset_tag & MAIN_IDMEMSET_OWNER) != 0) {
-      BLI_gset_free(bmain->used_id_memset, NULL);
+  LinkNode *link = linkv;
+  BLI_linklist_free(link, NULL);
+}
+
+void BKE_main_idmemhash_release(Main *bmain)
+{
+  if (bmain->used_id_memhash != NULL) {
+    if ((bmain->used_id_memhash_tag & MAIN_IDMEMHASH_OWNER) != 0) {
+      BLI_ghash_free(bmain->used_id_memhash, NULL, NULL);
+      BLI_linklist_free(bmain->used_id_memhash_history_chains, main_idmemhash_history_chains_free);
     }
-    bmain->used_id_memset = NULL;
-    bmain->used_id_memset_tag &= ~MAIN_IDMEMSET_OWNER;
+    bmain->used_id_memhash = NULL;
+    bmain->used_id_memhash_history_chains = NULL;
+    bmain->used_id_memhash_tag &= ~MAIN_IDMEMHASH_OWNER;
   }
 }
 
-void BKE_main_idmemset_transfer_ownership(Main *bmain_dst, Main *bmain_src)
+void BKE_main_idmemhash_transfer_ownership(Main *bmain_dst, Main *bmain_src)
 {
-  BKE_main_idmemset_release(bmain_dst);
+  BKE_main_idmemhash_release(bmain_dst);
 
-  BLI_assert(bmain_src->used_id_memset != NULL);
-  BLI_assert(bmain_src->used_id_memset_tag & MAIN_IDMEMSET_OWNER);
+  BLI_assert(bmain_src->used_id_memhash != NULL);
+  BLI_assert(bmain_src->used_id_memhash_tag & MAIN_IDMEMHASH_OWNER);
 
-  bmain_dst->used_id_memset = bmain_src->used_id_memset;
-  bmain_dst->used_id_memset_tag |= MAIN_IDMEMSET_OWNER;
-  bmain_src->used_id_memset_tag &= ~MAIN_IDMEMSET_OWNER;
+  bmain_dst->used_id_memhash = bmain_src->used_id_memhash;
+  bmain_dst->used_id_memhash_history_chains = bmain_src->used_id_memhash_history_chains;
+  bmain_dst->used_id_memhash_tag |= MAIN_IDMEMHASH_OWNER;
+  bmain_src->used_id_memhash_tag &= ~MAIN_IDMEMHASH_OWNER;
 }
 
-void BKE_main_idmemset_usefrom(Main *bmain_user, Main *bmain_src)
+void BKE_main_idmemhash_usefrom(Main *bmain_user, Main *bmain_src)
 {
-  BKE_main_idmemset_release(bmain_user);
+  BKE_main_idmemhash_release(bmain_user);
 
-  BLI_assert(bmain_src->used_id_memset != NULL);
-  bmain_user->used_id_memset = bmain_src->used_id_memset;
+  BLI_assert(bmain_src->used_id_memhash != NULL);
+  bmain_user->used_id_memhash = bmain_src->used_id_memhash;
+  bmain_user->used_id_memhash_history_chains = bmain_src->used_id_memhash_history_chains;
 }
 
 /**
  * @return true if the ID was successfully added to the memset, false if it already existed.
  */
-bool BKE_main_idmemset_register_id(Main *bmain, ID *id)
+bool BKE_main_idmemhash_register_id(Main *bmain, void *old_vmemh, ID *id)
 {
-  BLI_assert(bmain->used_id_memset != NULL);
-  return BLI_gset_add(bmain->used_id_memset, id);
+  BLI_assert(bmain->used_id_memhash != NULL);
+  void **val;
+  if (!BLI_ghash_ensure_p(bmain->used_id_memhash, id, &val)) {
+    if (old_vmemh != NULL) {
+      BLI_assert(BLI_ghash_haskey(bmain->used_id_memhash, old_vmemh));
+      LinkNode **chain_hook = (LinkNode **)BLI_ghash_lookup_p(bmain->used_id_memhash, old_vmemh);
+      if (*chain_hook == NULL) {
+        /* That datablock only ever had one address so far, we need to initialize its addresses
+         * history chain. */
+        *chain_hook = MEM_callocN(sizeof(**chain_hook), __func__);
+        LinkNode *old_id_entry = MEM_mallocN(sizeof(*old_id_entry), __func__);
+        old_id_entry->link = old_vmemh;
+        old_id_entry->next = NULL;
+        BLI_linklist_prepend_nlink(
+            &bmain->used_id_memhash_history_chains, old_id_entry, *chain_hook);
+      }
+      LinkNode *curr_id_entry = MEM_mallocN(sizeof(*curr_id_entry), __func__);
+      BLI_linklist_prepend_nlink((LinkNode **)&(*chain_hook)->link, id, curr_id_entry);
+      *val = *chain_hook;
+    }
+    else {
+      *val = NULL;
+    }
+    return true;
+  }
+  return false;
 }
 
-void *BKE_main_idmemset_unique_alloc(Main *bmain,
-                                     void *(*alloc_cb)(size_t len, const char *str),
-                                     size_t size,
-                                     const char *message)
+void *BKE_main_idmemhash_unique_alloc(Main *bmain,
+                                      void *old_vmemh,
+                                      void *(*alloc_cb)(size_t len, const char *str),
+                                      size_t size,
+                                      const char *message)
 {
   void *id_mem = alloc_cb(size, message);
-  if (bmain != NULL && bmain->used_id_memset != NULL) {
+  if (bmain != NULL && bmain->used_id_memhash != NULL) {
     ListBase generated_ids = {.first = NULL};
     int count = 0;
-    while (UNLIKELY(!BKE_main_idmemset_register_id(bmain, id_mem))) {
+    while (UNLIKELY(!BKE_main_idmemhash_register_id(bmain, old_vmemh, id_mem))) {
       printf("Allocating ID re-used memory address %p, trying again (%d)...\n", id_mem, ++count);
       BLI_addtail(&generated_ids, id_mem);
       id_mem = alloc_cb(size, message);
@@ -278,19 +315,20 @@ void *BKE_main_idmemset_unique_alloc(Main *bmain,
   return id_mem;
 }
 
-void *BKE_main_idmemset_unique_realloc(Main *bmain,
-                                       void *vmemh,
-                                       void *(*realloc_cb)(void *vmemh,
-                                                           size_t len,
-                                                           const char *str),
-                                       size_t size,
-                                       const char *message)
+void *BKE_main_idmemhash_unique_realloc(Main *bmain,
+                                        void *old_vmemh,
+                                        void *vmemh,
+                                        void *(*realloc_cb)(void *vmemh,
+                                                            size_t len,
+                                                            const char *str),
+                                        size_t size,
+                                        const char *message)
 {
   void *id_mem = realloc_cb(vmemh, size, message);
-  if (bmain != NULL && bmain->used_id_memset != NULL) {
+  if (bmain != NULL && bmain->used_id_memhash != NULL) {
     ListBase generated_ids = {.first = NULL};
     int count = 0;
-    while (UNLIKELY(!BKE_main_idmemset_register_id(bmain, id_mem))) {
+    while (UNLIKELY(!BKE_main_idmemhash_register_id(bmain, old_vmemh, id_mem))) {
       printf("Allocating ID re-used memory address %p, trying again (%d)...\n", id_mem, ++count);
       BLI_addtail(&generated_ids, id_mem);
       id_mem = realloc_cb(id_mem, size, message);

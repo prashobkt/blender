@@ -100,8 +100,9 @@ typedef struct Main {
    */
   char is_memfile_undo_flush_needed;
 
-  struct GSet *used_id_memset;
-  short used_id_memset_tag;
+  struct GHash *used_id_memhash;
+  struct LinkNode *used_id_memhash_history_chains;
+  short used_id_memhash_tag;
 
   BlendThumbnail *blen_thumb;
 
@@ -155,7 +156,7 @@ typedef struct Main {
 
 /* Main.used_id_memory_pointers_tag */
 enum {
-  MAIN_IDMEMSET_OWNER = 1 << 0,
+  MAIN_IDMEMHASH_OWNER = 1 << 0,
 };
 
 struct Main *BKE_main_new(void);
@@ -164,22 +165,24 @@ void BKE_main_free(struct Main *mainvar);
 void BKE_main_lock(struct Main *bmain);
 void BKE_main_unlock(struct Main *bmain);
 
-void BKE_main_idmemset_ensure(struct Main *bmain);
-void BKE_main_idmemset_release(struct Main *bmain);
-void BKE_main_idmemset_transfer_ownership(struct Main *bmain_dst, struct Main *bmain_src);
-void BKE_main_idmemset_usefrom(struct Main *bmain_user, struct Main *bmain_src);
-bool BKE_main_idmemset_register_id(struct Main *bmain, struct ID *id);
-void *BKE_main_idmemset_unique_alloc(struct Main *bmain,
-                                     void *(*alloc_cb)(size_t len, const char *str),
-                                     size_t size,
-                                     const char *message);
-void *BKE_main_idmemset_unique_realloc(struct Main *bmain,
-                                       void *vmemh,
-                                       void *(*realloc_cb)(void *vmemh,
-                                                           size_t len,
-                                                           const char *str),
-                                       size_t size,
-                                       const char *message);
+void BKE_main_idmemhash_ensure(struct Main *bmain);
+void BKE_main_idmemhash_release(struct Main *bmain);
+void BKE_main_idmemhash_transfer_ownership(struct Main *bmain_dst, struct Main *bmain_src);
+void BKE_main_idmemhash_usefrom(struct Main *bmain_user, struct Main *bmain_src);
+bool BKE_main_idmemhash_register_id(struct Main *bmain, void *old_vmemh, struct ID *id);
+void *BKE_main_idmemhash_unique_alloc(struct Main *bmain,
+                                      void *old_vmemh,
+                                      void *(*alloc_cb)(size_t len, const char *str),
+                                      size_t size,
+                                      const char *message);
+void *BKE_main_idmemhash_unique_realloc(struct Main *bmain,
+                                        void *old_vmemh,
+                                        void *vmemh,
+                                        void *(*realloc_cb)(void *vmemh,
+                                                            size_t len,
+                                                            const char *str),
+                                        size_t size,
+                                        const char *message);
 
 void BKE_main_relations_create(struct Main *bmain, const short flag);
 void BKE_main_relations_free(struct Main *bmain);

@@ -1198,7 +1198,7 @@ void *BKE_libblock_alloc_notest(Main *bmain, short type)
   const char *name;
   size_t size = BKE_libblock_get_alloc_info(type, &name);
   if (size != 0) {
-    return BKE_main_idmemset_unique_alloc(bmain, MEM_callocN, size, name);
+    return BKE_main_idmemhash_unique_alloc(bmain, NULL, MEM_callocN, size, name);
   }
   BLI_assert(!"Request to allocate unknown data type");
   return NULL;
