@@ -268,11 +268,12 @@ void BKE_main_idmemhash_usefrom(Main *bmain_user, Main *bmain_src)
 bool BKE_main_idmemhash_register_id(Main *bmain, void *old_vmemh, ID *id)
 {
   BLI_assert(bmain->used_id_memhash != NULL);
+  BLI_assert(old_vmemh != id);
   void **val;
   if (!BLI_ghash_ensure_p(bmain->used_id_memhash, id, &val)) {
     if (old_vmemh != NULL) {
-      BLI_assert(BLI_ghash_haskey(bmain->used_id_memhash, old_vmemh));
       LinkNode **chain_hook = (LinkNode **)BLI_ghash_lookup_p(bmain->used_id_memhash, old_vmemh);
+      BLI_assert(chain_hook != NULL);
       if (*chain_hook == NULL) {
         /* That datablock only ever had one address so far, we need to initialize its addresses
          * history chain. */
