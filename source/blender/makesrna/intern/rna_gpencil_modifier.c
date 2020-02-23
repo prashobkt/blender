@@ -2037,11 +2037,6 @@ static void rna_def_modifier_gpencilvertexcolor(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "use_decay_color", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_VERTEXCOL_DECAY_COLOR);
-  RNA_def_property_ui_text(prop, "Decay", "The tinting decrease with the distance");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "factor");
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -2050,8 +2045,8 @@ static void rna_def_modifier_gpencilvertexcolor(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "radius", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_sdna(prop, NULL, "radius");
-  RNA_def_property_range(prop, 0, FLT_MAX);
-  RNA_def_property_ui_range(prop, 0, 100, 100, 2);
+  RNA_def_property_range(prop, 1e-6f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 1, 3);
   RNA_def_property_ui_text(prop, "Radius", "Defines the maximum distance of the effect");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 

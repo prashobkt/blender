@@ -141,31 +141,6 @@ static void gpencil_parent_location(const Depsgraph *depsgraph,
   }
 }
 
-/* Check if a point is inside a ellipsoid. */
-static bool gpencil_check_inside_ellipsoide(float co[3],
-                                            float radius[3],
-                                            float obmat[4][4],
-                                            float inv_mat[4][4])
-{
-  float fpt[3];
-
-  /* Translate to Ellipsoid space. */
-  sub_v3_v3v3(fpt, co, obmat[3]);
-
-  /* Rotate point to ellipsoid rotation. */
-  mul_mat3_m4_v3(inv_mat, fpt);
-
-  /* Standard equation of an ellipsoid. */
-  float r = ((fpt[0] / radius[0]) * (fpt[0] / radius[0])) +
-            ((fpt[1] / radius[1]) * (fpt[1] / radius[1])) +
-            ((fpt[2] / radius[2]) * (fpt[2] / radius[2]));
-
-  if (r < 1.0f) {
-    return true;
-  }
-  return false;
-}
-
 /* deform stroke */
 static void deformStroke(GpencilModifierData *md,
                          Depsgraph *depsgraph,
@@ -203,15 +178,6 @@ static void deformStroke(GpencilModifierData *md,
 
   gpencil_parent_location(depsgraph, ob, gpl, mat);
 
-  /* Radius and matrix for Ellipsoid. */
-  float radius[3];
-  float inv_mat[4][4];
-  mul_v3_v3fl(radius, mmd->object->scale, mmd->radius);
-  /* Clamp to avoid division by zero. */
-  CLAMP3_MIN(radius, 0.0001f);
-
-  invert_m4_m4(inv_mat, mmd->object->obmat);
-
   /* loop points and apply deform */
   bool doit = false;
   for (int i = 0; i < gps->totpoints; i++) {
@@ -222,10 +188,6 @@ static void deformStroke(GpencilModifierData *md,
     float pt_loc[3];
     mul_v3_m4v3(pt_loc, mat, &pt->x);
     float dist_sqr = len_squared_v3v3(pt_loc, mmd->object->loc);
-
-    if (!gpencil_check_inside_ellipsoide(pt_loc, radius, mmd->object->obmat, inv_mat)) {
-      continue;
-    }
 
     if (!doit) {
       /* Apply to fill. */
@@ -250,15 +212,10 @@ static void deformStroke(GpencilModifierData *md,
         continue;
       }
       /* Calc the factor using the distance and get mix color. */
-      float mix_factor = dist_sqr / radius_sqr;
+      float mix_factor = clamp_f(dist_sqr / radius_sqr, 0.0f, 1.0f);
       BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
 
-      interp_v3_v3v3(pt->vert_color, pt->vert_color, coba_res, mmd->factor * weight);
-      pt->vert_color[3] = mmd->factor;
-      /* Apply Decay. */
-      if (mmd->flag & GP_VERTEXCOL_DECAY_COLOR) {
-        pt->vert_color[3] *= (1.0f - mix_factor);
-      }
+      interp_v3_v3v3(pt->vert_color, pt->vert_color, coba_res, mmd->factor * weight * coba_res[3]);
     }
   }
 }

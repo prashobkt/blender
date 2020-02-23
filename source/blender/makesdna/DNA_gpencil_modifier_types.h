@@ -712,7 +712,6 @@ typedef enum eVertexcolorGpencil_Flag {
   GP_VERTEXCOL_UNIFORM_SPACE = (1 << 3),
   GP_VERTEXCOL_INVERT_LAYERPASS = (1 << 4),
   GP_VERTEXCOL_INVERT_MATERIAL = (1 << 5),
-  GP_VERTEXCOL_DECAY_COLOR = (1 << 6),
 } eVertexcolorGpencil_Flag;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

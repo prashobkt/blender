@@ -2138,20 +2138,20 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
     def GP_VERTEXCOLOR(self, layout, ob, md):
         col = layout.column()
-        col.prop(md, "vertex_mode")
-
-        col.separator()
         col.label(text="Object:")
         col.prop(md, "object", text="")
 
         col.separator()
-        col.prop(md, "radius")
-        col.prop(md, "factor", slider=True)
-        col.prop(md, "use_decay_color", text="Decay color with distance")
+        row = col.row(align=True)
+        row.prop(md, "radius")
+        row.prop(md, "factor", text="Strength", slider=True)
 
         col.separator()
         col.label(text="Colors:")
         col.template_color_ramp(md, "colors")
+
+        col.separator()
+        col.prop(md, "vertex_mode")
 
         self.gpencil_masking(layout, ob, md, True)
 
