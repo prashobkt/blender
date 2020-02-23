@@ -4477,9 +4477,18 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
           const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
           switch (mti->type) {
-            case eGpencilModifierTypeType_Gpencil: {
+            case eGpencilModifierType_Tint: {
               TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
               srgb_to_linearrgb_v3_v3(mmd->rgb, mmd->rgb);
+              break;
+            }
+            case eGpencilModifierType_Subdiv: {
+              const short simple = (1 << 0);
+              SubdivGpencilModifierData *mmd = (SubdivGpencilModifierData *)md;
+              if (mmd->flag & simple) {
+                mmd->flag &= ~simple;
+                mmd->type = GP_SUBDIV_SIMPLE;
+              }
               break;
             }
             default:
