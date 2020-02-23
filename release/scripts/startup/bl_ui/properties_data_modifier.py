@@ -2131,7 +2131,6 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = split.column()
         col.label(text="Rotation:")
         col.prop(md, "rotation", text="")
-        col.separator()
         row = col.row(align=True)
         row.prop(md, "random_rot", text="", icon='TIME', toggle=True)
         row.prop(md, "rot_factor", text="")
@@ -2139,13 +2138,13 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = split.column()
         col.label(text="Scale:")
         col.prop(md, "scale", text="")
-        col.separator()
         row = col.row(align=True)
         row.prop(md, "random_scale", text="", icon='TIME', toggle=True)
         row.prop(md, "scale_factor", text="")
 
         col = layout.column()
-        col.prop(md, "replace_material", text="Material")
+        col.separator()
+        col.prop(md, "replace_material", text="Material Override")
         col.prop(md, "keep_on_top", text="Keep original stroke on top")
 
         col = layout.column()
