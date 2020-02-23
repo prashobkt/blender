@@ -17,6 +17,8 @@
 #ifndef __BLI_COLOR_H__
 #define __BLI_COLOR_H__
 
+#include <sstream>
+
 #include "BLI_math_color.h"
 
 namespace BLI {
