@@ -127,15 +127,22 @@ typedef struct SubdivGpencilModifierData {
   int level;
   /** Custom index for passes. */
   int layer_pass;
+  /** Type of subdivision */
+  short type;
+  char _pad[6];
 } SubdivGpencilModifierData;
 
 typedef enum eSubdivGpencil_Flag {
-  GP_SUBDIV_SIMPLE = (1 << 0),
   GP_SUBDIV_INVERT_LAYER = (1 << 1),
   GP_SUBDIV_INVERT_PASS = (1 << 2),
   GP_SUBDIV_INVERT_LAYERPASS = (1 << 3),
   GP_SUBDIV_INVERT_MATERIAL = (1 << 4),
 } eSubdivGpencil_Flag;
+
+typedef enum eSubdivGpencil_Type {
+  GP_SUBDIV_CATMULL = 0,
+  GP_SUBDIV_SIMPLE = 1,
+} eSubdivGpencil_Type;
 
 typedef struct ThickGpencilModifierData {
   GpencilModifierData modifier;

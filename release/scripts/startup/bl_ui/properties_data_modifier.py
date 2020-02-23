@@ -1845,12 +1845,11 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
     def GP_SUBDIV(self, layout, ob, md):
         gpd = ob.data
+        layout.row().prop(md, "subdivision_type", expand=True)
         split = layout.split()
-
         col = split.column()
         row = col.row(align=True)
         row.prop(md, "level")
-        row.prop(md, "simple", text="", icon='PARTICLE_POINT')
 
         col = layout.column()
         col.separator()

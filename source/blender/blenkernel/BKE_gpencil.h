@@ -248,7 +248,7 @@ void BKE_gpencil_frame_active_set(struct Depsgraph *depsgraph, struct bGPdata *g
 void BKE_gpencil_stroke_normal(const struct bGPDstroke *gps, float r_normal[3]);
 void BKE_gpencil_stroke_simplify_adaptive(struct bGPDstroke *gps, float factor);
 void BKE_gpencil_stroke_simplify_fixed(struct bGPDstroke *gps);
-void BKE_gpencil_stroke_subdivide(struct bGPDstroke *gps, int level, int flag);
+void BKE_gpencil_stroke_subdivide(struct bGPDstroke *gps, int level, int flag, int type);
 bool BKE_gpencil_stroke_trim(struct bGPDstroke *gps);
 void BKE_gpencil_stroke_merge_distance(struct bGPDframe *gpf,
                                        struct bGPDstroke *gps,

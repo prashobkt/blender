@@ -622,7 +622,7 @@ GpencilModifierData *BKE_gpencil_modifiers_findByName(Object *ob, const char *na
   return BLI_findstring(&(ob->greasepencil_modifiers), name, offsetof(GpencilModifierData, name));
 }
 
-void BKE_gpencil_stroke_subdivide(bGPDstroke *gps, int level, int flag)
+void BKE_gpencil_stroke_subdivide(bGPDstroke *gps, int level, int flag, int type)
 {
   bGPDspoint *temp_points;
   MDeformVert *temp_dverts = NULL;
@@ -710,8 +710,8 @@ void BKE_gpencil_stroke_subdivide(bGPDstroke *gps, int level, int flag)
     MEM_SAFE_FREE(temp_points);
     MEM_SAFE_FREE(temp_dverts);
 
-    /* move points to smooth stroke (not simple flag )*/
-    if ((flag & GP_SUBDIV_SIMPLE) == 0) {
+    /* move points to smooth stroke (not simple type )*/
+    if (type != GP_SUBDIV_SIMPLE) {
       /* duplicate points in a temp area with the new subdivide data */
       temp_points = MEM_dupallocN(gps->points);
 
