@@ -678,7 +678,7 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
        "ADAPTIVE",
        ICON_IPO_EASE_IN_OUT,
        "Adaptive",
-       "Use a RDP algorithm to simplify the stroke"},
+       "Use a Ramer-Douglas-Peucker algorithm to simplify the stroke preserving main shape"},
       {GP_SIMPLIFY_SAMPLE,
        "SAMPLE",
        ICON_IPO_EASE_IN_OUT,
