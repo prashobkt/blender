@@ -224,13 +224,6 @@ static void generate_geometry(GpencilModifierData *md,
     for (gps = gpf->strokes.first, idx = 0; gps; gps = gps->next, idx++) {
       /* check if stroke can be duplicated */
       if (valid_strokes[idx]) {
-        /* Calculate original stroke center (only first loop). */
-        float center[3];
-        if (x == 1) {
-          add_v3_v3v3(center, gps->boundbox_min, gps->boundbox_max);
-          mul_v3_fl(center, 0.5f);
-          sub_v3_v3v3(center, center, ob->obmat[3]);
-        }
 
         /* Duplicate stroke */
         bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps, true);
@@ -242,14 +235,10 @@ static void generate_geometry(GpencilModifierData *md,
           if (mmd->object) {
             mul_m4_v3(mat, &pt->x);
           }
-          /* Translate to object origin. */
-          float fpt[3];
-          sub_v3_v3v3(fpt, &pt->x, center);
           /* Global Rotate and scale. */
-          mul_mat3_m4_v3(current_offset, fpt);
+          mul_mat3_m4_v3(current_offset, &pt->x);
           /* Global translate. */
-          add_v3_v3(fpt, center);
-          add_v3_v3v3(&pt->x, fpt, current_offset[3]);
+          add_v3_v3(&pt->x, current_offset[3]);
         }
 
         /* if replace material, use new one */
