@@ -171,12 +171,9 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  float target_scale = mat4_to_scale(mmd->object->obmat);
-  float radius_sqr = (mmd->radius * mmd->radius) * target_scale;
   float coba_res[4];
-  float mat[4][4];
-
-  gpencil_parent_location(depsgraph, ob, gpl, mat);
+  float matrix[4][4];
+  mul_m4_m4m4(matrix, mmd->object->imat, ob->obmat);
 
   /* loop points and apply deform */
   bool doit = false;
@@ -186,8 +183,8 @@ static void deformStroke(GpencilModifierData *md,
 
     /* Calc world position of point. */
     float pt_loc[3];
-    mul_v3_m4v3(pt_loc, mat, &pt->x);
-    float dist_sqr = len_squared_v3v3(pt_loc, mmd->object->loc);
+    mul_v3_m4v3(pt_loc, matrix, &pt->x);
+    float dist = len_v3(pt_loc);
 
     if (!doit) {
       /* Apply to fill. */
@@ -212,7 +209,7 @@ static void deformStroke(GpencilModifierData *md,
         continue;
       }
       /* Calc the factor using the distance and get mix color. */
-      float mix_factor = clamp_f(dist_sqr / radius_sqr, 0.0f, 1.0f);
+      float mix_factor = clamp_f(dist / mmd->radius, 0.0f, 1.0f);
       BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
 
       interp_v3_v3v3(pt->vert_color, pt->vert_color, coba_res, mmd->factor * weight * coba_res[3]);
