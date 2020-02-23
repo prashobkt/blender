@@ -87,11 +87,6 @@ static void deformStroke(GpencilModifierData *md,
   }
 
   copy_v3_v3(factor, mmd->hsv);
-  /* keep initial values unchanged, subtracting the default values. */
-  factor[0] -= 0.5f;
-  factor[1] -= 1.0f;
-  factor[2] -= 1.0f;
-
   MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
   /* Apply to Vertex Color. */
@@ -105,8 +100,9 @@ static void deformStroke(GpencilModifierData *md,
     }
 
     rgb_to_hsv_v(gps->vert_color_fill, hsv);
-    add_v3_v3(hsv, factor);
-    CLAMP3(hsv, 0.0f, 1.0f);
+    hsv[0] = fractf(hsv[0] + factor[0] + 0.5f);
+    hsv[1] = clamp_f(hsv[1] * factor[1], 0.0f, 1.0f);
+    hsv[2] = hsv[2] * factor[2];
     hsv_to_rgb_v(hsv, gps->vert_color_fill);
   }
 
@@ -122,8 +118,9 @@ static void deformStroke(GpencilModifierData *md,
       }
 
       rgb_to_hsv_v(pt->vert_color, hsv);
-      add_v3_v3(hsv, factor);
-      CLAMP3(hsv, 0.0f, 1.0f);
+      hsv[0] = fractf(hsv[0] + factor[0] + 0.5f);
+      hsv[1] = clamp_f(hsv[1] * factor[1], 0.0f, 1.0f);
+      hsv[2] = hsv[2] * factor[2];
       hsv_to_rgb_v(hsv, pt->vert_color);
     }
   }
