@@ -116,14 +116,6 @@ static void rna_MaterialGpencil_update(Main *bmain, Scene *scene, PointerRNA *pt
   WM_main_add_notifier(NC_GPENCIL | ND_DATA, ma);
 }
 
-static void rna_MaterialGpencil_nopreview_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  Material *ma = (Material *)ptr->owner_id;
-
-  rna_Material_update(bmain, scene, ptr);
-  WM_main_add_notifier(NC_GPENCIL | ND_DATA, ma);
-}
-
 static void rna_Material_draw_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Material *ma = (Material *)ptr->owner_id;
@@ -538,21 +530,21 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_HIDE);
   RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
   RNA_def_property_ui_text(prop, "Hide", "Set color Visibility");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_LOCKED);
   RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
   RNA_def_property_ui_text(
       prop, "Locked", "Protect color from further editing and/or frame changes");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "ghost", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_ONIONSKIN);
   RNA_def_property_ui_icon(prop, ICON_GHOST_ENABLED, 0);
   RNA_def_property_ui_text(
       prop, "Show in Ghosts", "Display strokes using this color when showing onion skins");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "texture_clamp", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_TEX_CLAMP);
@@ -586,13 +578,13 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, alignment_draw_items);
   RNA_def_property_ui_text(
       prop, "Alignment", "Defines how align Dots and Boxes with drawing path and object rotation");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   /* pass index for future compositing and editing tools */
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, NULL, "index");
   RNA_def_property_ui_text(prop, "Pass Index", "Index number for the \"Color Index\" pass");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_nopreview_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   /* mode type */
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
