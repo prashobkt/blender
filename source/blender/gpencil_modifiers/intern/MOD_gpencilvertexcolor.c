@@ -132,19 +132,15 @@ static void deformStroke(GpencilModifierData *md,
   mul_m4_m4m4(matrix, mmd->object->imat, ob->obmat);
 
   /* loop points and apply deform */
-  bool doit = false;
+  bool fill_done = false;
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
     MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
 
-    /* Calc world position of point. */
-    float pt_loc[3];
-    mul_v3_m4v3(pt_loc, matrix, &pt->x);
-    float dist = len_v3(pt_loc);
-
-    if (!doit) {
+    if (!fill_done) {
       /* Apply to fill. */
       if (mmd->mode != GPPAINT_MODE_STROKE) {
+
         /* If not using Vertex Color, use the material color. */
         if ((gp_style != NULL) && (gps->vert_color_fill[3] == 0.0f) &&
             (gp_style->fill_rgba[3] > 0.0f)) {
@@ -152,7 +148,15 @@ static void deformStroke(GpencilModifierData *md,
           gps->vert_color_fill[3] = 1.0f;
         }
 
-        BKE_colorband_evaluate(mmd->colorband, 1.0f, coba_res);
+        float center[3];
+        add_v3_v3v3(center, gps->boundbox_min, gps->boundbox_max);
+        mul_v3_fl(center, 0.5f);
+        float pt_loc[3];
+        mul_v3_m4v3(pt_loc, matrix, &pt->x);
+        float dist = len_v3(pt_loc);
+        float mix_factor = clamp_f(dist / mmd->radius, 0.0f, 1.0f);
+
+        BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
         interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, coba_res, mmd->factor);
         gps->vert_color_fill[3] = mmd->factor;
         /* If no stroke, cancel loop. */
@@ -161,7 +165,7 @@ static void deformStroke(GpencilModifierData *md,
         }
       }
 
-      doit = true;
+      fill_done = true;
     }
 
     /* Verify vertex group. */
@@ -171,6 +175,12 @@ static void deformStroke(GpencilModifierData *md,
       if (weight < 0.0f) {
         continue;
       }
+
+      /* Calc world position of point. */
+      float pt_loc[3];
+      mul_v3_m4v3(pt_loc, matrix, &pt->x);
+      float dist = len_v3(pt_loc);
+
       /* If not using Vertex Color, use the material color. */
       if ((gp_style != NULL) && (pt->vert_color[3] == 0.0f) && (gp_style->stroke_rgba[3] > 0.0f)) {
         copy_v4_v4(pt->vert_color, gp_style->stroke_rgba);
