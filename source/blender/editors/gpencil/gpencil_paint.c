@@ -842,7 +842,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
     }
 
     /* Update evaluated data. */
-    ED_gpencil_sbuffer_update_eval(p->depsgraph, p->ob);
+    ED_gpencil_sbuffer_update_eval(gpd, p->ob_eval);
 
     return GP_STROKEADD_NORMAL;
   }

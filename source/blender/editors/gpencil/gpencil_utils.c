@@ -2470,11 +2470,8 @@ tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
   return buffer_array;
 }
 
-void ED_gpencil_sbuffer_update_eval(Depsgraph *depsgraph, Object *ob)
+void ED_gpencil_sbuffer_update_eval(bGPdata *gpd, Object *ob_eval)
 {
-  bGPdata *gpd = (bGPdata *)ob->data;
-
-  Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob_eval->data;
 
   gpd_eval->runtime.sbuffer = gpd->runtime.sbuffer;
