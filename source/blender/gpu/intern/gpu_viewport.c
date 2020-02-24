@@ -579,10 +579,10 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   /* Mirror the UV rect in case axis-swapped drawing is requested (by passing a rect with min and
    * max values swapped). */
   if (BLI_rcti_size_x(rect) < 0) {
-    SWAP(int, uv_rect.xmin, uv_rect.xmax);
+    SWAP(float, uv_rect.xmin, uv_rect.xmax);
   }
   if (BLI_rcti_size_y(rect) < 0) {
-    SWAP(int, uv_rect.ymin, uv_rect.ymax);
+    SWAP(float, uv_rect.ymin, uv_rect.ymax);
   }
 
   gpu_viewport_draw_colormanaged(viewport, &pos_rect, &uv_rect, true);
