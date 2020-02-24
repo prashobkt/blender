@@ -123,7 +123,8 @@ static void gp_session_validatebuffer(tGPDprimitive *p)
   gpd->runtime.sbuffer_sflag |= GP_STROKE_3DSPACE;
 
   /* Set vertex colors for buffer. */
-  ED_gpencil_sbuffer_vertex_color_set(p->depsgraph, p->ob, p->scene->toolsettings, p->brush);
+  ED_gpencil_sbuffer_vertex_color_set(
+      p->depsgraph, p->ob, p->scene->toolsettings, p->brush, p->material);
 
   if (ELEM(p->type, GP_STROKE_BOX, GP_STROKE_CIRCLE)) {
     gpd->runtime.sbuffer_sflag |= GP_STROKE_CYCLIC;
@@ -136,9 +137,9 @@ static void gp_init_colors(tGPDprimitive *p)
   Brush *brush = p->brush;
 
   /* use brush material */
-  p->mat = BKE_gpencil_object_material_ensure_from_active_input_brush(p->bmain, p->ob, brush);
+  p->material = BKE_gpencil_object_material_ensure_from_active_input_brush(p->bmain, p->ob, brush);
 
-  gpd->runtime.matid = BKE_object_material_slot_find_index(p->ob, p->mat);
+  gpd->runtime.matid = BKE_object_material_slot_find_index(p->ob, p->material);
   gpd->runtime.sbuffer_brush = brush;
 }
 
@@ -1170,7 +1171,7 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   tgpi->gpd->runtime.tot_cp_points = 0;
 
   /* getcolor info */
-  tgpi->mat = BKE_gpencil_object_material_ensure_from_active_input_toolsettings(
+  tgpi->material = BKE_gpencil_object_material_ensure_from_active_input_toolsettings(
       bmain, tgpi->ob, ts);
 
   /* set parameters */

@@ -164,7 +164,7 @@ typedef struct tGPDprimitive {
   /** current GP datablock */
   struct bGPdata *gpd;
   /** current material */
-  struct Material *mat;
+  struct Material *material;
   /** current brush */
   struct Brush *brush;
 

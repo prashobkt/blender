@@ -2530,14 +2530,13 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts, Brush *brush, bGPDspoin
   }
 }
 
-void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
-                                         Object *ob,
-                                         ToolSettings *ts,
-                                         Brush *brush)
+void ED_gpencil_sbuffer_vertex_color_set(
+    Depsgraph *depsgraph, Object *ob, ToolSettings *ts, Brush *brush, Material *material)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob_eval->data;
+  MaterialGPencilStyle *gp_style = material->gp_style;
 
   float vertex_color[4];
   copy_v3_v3(vertex_color, brush->rgb);
@@ -2549,14 +2548,14 @@ void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
     copy_v4_v4(gpd->runtime.vert_color_fill, vertex_color);
   }
   else {
-    zero_v4(gpd->runtime.vert_color_fill);
+    copy_v4_v4(gpd->runtime.vert_color_fill, gp_style->fill_rgba);
   }
   /* Copy stroke vertex color. */
   if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush)) {
     copy_v4_v4(gpd->runtime.vert_color, vertex_color);
   }
   else {
-    zero_v4(gpd->runtime.vert_color);
+    copy_v4_v4(gpd->runtime.vert_color, gp_style->stroke_rgba);
   }
 
   /* Copy to eval data because paint operators don't tag refresh until end for speedup painting. */

@@ -511,7 +511,6 @@ bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(Object *ob)
   return gpd->runtime.sbuffer_gps;
 }
 
-/* gpd is original ID. */
 static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_fill)
 {
   tGPspoint *tpoints = gpd->runtime.sbuffer;

@@ -293,7 +293,8 @@ void ED_gpencil_point_vertex_color_set(struct ToolSettings *ts,
 void ED_gpencil_sbuffer_vertex_color_set(struct Depsgraph *depsgraph,
                                          struct Object *ob,
                                          struct ToolSettings *ts,
-                                         struct Brush *brush);
+                                         struct Brush *brush,
+                                         struct Material *material);
 
 bool ED_gpencil_stroke_check_collision(struct GP_SpaceConversion *gsc,
                                        struct bGPDstroke *gps,
