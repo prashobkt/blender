@@ -2562,6 +2562,7 @@ void ED_gpencil_sbuffer_vertex_color_set(
   if (gpd_eval != NULL) {
     copy_v4_v4(gpd_eval->runtime.vert_color, gpd->runtime.vert_color);
     copy_v4_v4(gpd_eval->runtime.vert_color_fill, gpd->runtime.vert_color_fill);
+    gpd_eval->runtime.matid = gpd->runtime.matid;
   }
 }
 
