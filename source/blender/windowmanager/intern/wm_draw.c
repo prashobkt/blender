@@ -184,7 +184,7 @@ static void wm_area_mark_invalid_backbuf(ScrArea *sa)
   }
 }
 
-static void wm_region_test_gizmo_do_draw(ARegion *ar, bool tag_redraw)
+static void wm_region_test_gizmo_do_draw(bContext *C, ScrArea *sa, ARegion *ar, bool tag_redraw)
 {
   if (ar->gizmo_map == NULL) {
     return;
@@ -195,7 +195,19 @@ static void wm_region_test_gizmo_do_draw(ARegion *ar, bool tag_redraw)
        gzgroup = gzgroup->next) {
     /* TODO should use ED_region_tag_redraw_editor_overlays() here. */
     if (tag_redraw && (gzgroup->type->flag & WM_GIZMOGROUPTYPE_CONTINUOUS_REDRAW)) {
-      ED_region_tag_redraw_no_rebuild(ar);
+      ScrArea *ctx_sa = CTX_wm_area(C);
+      ARegion *ctx_ar = CTX_wm_region(C);
+
+      CTX_wm_area_set(C, sa);
+      CTX_wm_region_set(C, ar);
+
+      if (WM_gizmo_group_type_poll(C, gzgroup->type)) {
+        ED_region_tag_redraw_no_rebuild(ar);
+      }
+
+      /* Reset. */
+      CTX_wm_area_set(C, ctx_sa);
+      CTX_wm_region_set(C, ctx_ar);
     }
 
     for (wmGizmo *gz = gzgroup->gizmos.first; gz; gz = gz->next) {
@@ -853,7 +865,7 @@ static void wm_draw_surface(bContext *C, wmSurface *surface)
 /****************** main update call **********************/
 
 /* quick test to prevent changing window drawable */
-static bool wm_draw_update_test_window(Main *bmain, wmWindow *win)
+static bool wm_draw_update_test_window(Main *bmain, bContext *C, wmWindow *win)
 {
   Scene *scene = WM_window_get_active_scene(win);
   ViewLayer *view_layer = WM_window_get_active_view_layer(win);
@@ -875,7 +887,7 @@ static bool wm_draw_update_test_window(Main *bmain, wmWindow *win)
   ED_screen_areas_iter(win, screen, sa)
   {
     for (ar = sa->regionbase.first; ar; ar = ar->next) {
-      wm_region_test_gizmo_do_draw(ar, true);
+      wm_region_test_gizmo_do_draw(C, sa, ar, true);
       wm_region_test_render_do_draw(scene, depsgraph, sa, ar);
 
       if (ar->visible && ar->do_draw) {
@@ -909,14 +921,14 @@ static bool wm_draw_update_test_window(Main *bmain, wmWindow *win)
 
 /* Clear drawing flags, after drawing is complete so any draw flags set during
  * drawing don't cause any additional redraws. */
-static void wm_draw_update_clear_window(wmWindow *win)
+static void wm_draw_update_clear_window(bContext *C, wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);
 
   ED_screen_areas_iter(win, screen, sa)
   {
     for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
-      wm_region_test_gizmo_do_draw(ar, false);
+      wm_region_test_gizmo_do_draw(C, sa, ar, false);
     }
   }
 
@@ -958,10 +970,10 @@ void wm_draw_update(bContext *C)
     }
 #endif
 
-    if (wm_draw_update_test_window(bmain, win)) {
-      bScreen *screen = WM_window_get_active_screen(win);
+    CTX_wm_window_set(C, win);
 
-      CTX_wm_window_set(C, win);
+    if (wm_draw_update_test_window(bmain, C, win)) {
+      bScreen *screen = WM_window_get_active_screen(win);
 
       /* sets context window+screen */
       wm_window_make_drawable(wm, win);
@@ -970,13 +982,13 @@ void wm_draw_update(bContext *C)
       ED_screen_ensure_updated(wm, win, screen);
 
       wm_draw_window(C, win);
-      wm_draw_update_clear_window(win);
+      wm_draw_update_clear_window(C, win);
 
       wm_window_swap_buffers(win);
-
-      CTX_wm_window_set(C, NULL);
     }
   }
+
+  CTX_wm_window_set(C, NULL);
 
   /* Draw non-windows (surfaces) */
   wm_surfaces_iter(C, wm_draw_surface);
