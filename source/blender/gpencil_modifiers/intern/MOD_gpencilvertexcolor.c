@@ -41,11 +41,12 @@
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
-#include "BKE_modifier.h"
-#include "BKE_lib_query.h"
-#include "BKE_scene.h"
-#include "BKE_main.h"
 #include "BKE_layer.h"
+#include "BKE_lib_query.h"
+#include "BKE_main.h"
+#include "BKE_material.h"
+#include "BKE_modifier.h"
+#include "BKE_scene.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -170,6 +171,7 @@ static void deformStroke(GpencilModifierData *md,
                                       mmd->flag & GP_HOOK_INVERT_MATERIAL)) {
     return;
   }
+  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
   float coba_res[4];
   float matrix[4][4];
@@ -189,6 +191,13 @@ static void deformStroke(GpencilModifierData *md,
     if (!doit) {
       /* Apply to fill. */
       if (mmd->mode != GPPAINT_MODE_STROKE) {
+        /* If not using Vertex Color, use the material color. */
+        if ((gp_style != NULL) && (gps->vert_color_fill[3] == 0.0f) &&
+            (gp_style->fill_rgba[3] > 0.0f)) {
+          copy_v4_v4(gps->vert_color_fill, gp_style->fill_rgba);
+          gps->vert_color_fill[3] = 1.0f;
+        }
+
         BKE_colorband_evaluate(mmd->colorband, 1.0f, coba_res);
         interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, coba_res, mmd->factor);
         gps->vert_color_fill[3] = mmd->factor;
@@ -208,6 +217,12 @@ static void deformStroke(GpencilModifierData *md,
       if (weight < 0.0f) {
         continue;
       }
+      /* If not using Vertex Color, use the material color. */
+      if ((gp_style != NULL) && (pt->vert_color[3] == 0.0f) && (gp_style->stroke_rgba[3] > 0.0f)) {
+        copy_v4_v4(pt->vert_color, gp_style->stroke_rgba);
+        pt->vert_color[3] = 1.0f;
+      }
+
       /* Calc the factor using the distance and get mix color. */
       float mix_factor = clamp_f(dist / mmd->radius, 0.0f, 1.0f);
       BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
