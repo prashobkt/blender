@@ -193,7 +193,6 @@ static void wm_region_test_gizmo_do_draw(bContext *C, ScrArea *sa, ARegion *ar, 
   wmGizmoMap *gzmap = ar->gizmo_map;
   for (wmGizmoGroup *gzgroup = WM_gizmomap_group_list(gzmap)->first; gzgroup;
        gzgroup = gzgroup->next) {
-    /* TODO should use ED_region_tag_redraw_editor_overlays() here. */
     if (tag_redraw && (gzgroup->type->flag & WM_GIZMOGROUPTYPE_CONTINUOUS_REDRAW)) {
       ScrArea *ctx_sa = CTX_wm_area(C);
       ARegion *ctx_ar = CTX_wm_region(C);
@@ -202,7 +201,7 @@ static void wm_region_test_gizmo_do_draw(bContext *C, ScrArea *sa, ARegion *ar, 
       CTX_wm_region_set(C, ar);
 
       if (WM_gizmo_group_type_poll(C, gzgroup->type)) {
-        ED_region_tag_redraw_no_rebuild(ar);
+        ED_region_tag_redraw_editor_overlays(ar);
       }
 
       /* Reset. */
@@ -213,7 +212,7 @@ static void wm_region_test_gizmo_do_draw(bContext *C, ScrArea *sa, ARegion *ar, 
     for (wmGizmo *gz = gzgroup->gizmos.first; gz; gz = gz->next) {
       if (gz->do_draw) {
         if (tag_redraw) {
-          ED_region_tag_redraw_no_rebuild(ar);
+          ED_region_tag_redraw_editor_overlays(ar);
         }
         gz->do_draw = false;
       }
