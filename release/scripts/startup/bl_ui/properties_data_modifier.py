@@ -1751,32 +1751,41 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     def gpencil_masking(self, layout, ob, md, use_vertex):
         gpd = ob.data
         layout.separator()
-        layout.label(text="Masking:")
+        layout.label(text="Influence Filters:")
 
-        split = layout.split(factor=0.7)
+        split = layout.split(factor=0.25)
 
         col1 = split.column()
+
+        col1.label(text="Layer:")
+        col1.label(text="Material:")
+        if use_vertex:
+            col1.label(text="Vertex Group:")
+
         col2 = split.column()
 
-        row = col1.row(align=True)
-        row.prop_search(md, "layer", gpd, "layers", text="Layer Mask", icon='GREASEPENCIL')
+        split = col2.split(factor=0.6)
+        row = split.row(align=True)
+        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
         row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
 
-        row = col2.row(align=True)
+        row = split.row(align=True)
         row.prop(md, "layer_pass", text="Pass")
         row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
 
-        row = col1.row(align=True)
-        row.prop_search(md, "material", gpd, "materials", text="Material Mask", icon='SHADING_TEXTURE')
+        split = col2.split(factor=0.6)
+
+        row = split.row(align=True)
+        row.prop_search(md, "material", gpd, "materials", text="", icon='SHADING_TEXTURE')
         row.prop(md, "invert_materials", text="", icon='ARROW_LEFTRIGHT')
 
-        row = col2.row(align=True)
+        row = split.row(align=True)
         row.prop(md, "pass_index", text="Pass")
         row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
 
         if use_vertex:
-            row = col1.row(align=True)
-            row.prop_search(md, "vertex_group", ob, "vertex_groups", text="Vertex Group")
+            row = col2.row(align=True)
+            row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
             row.prop(md, "invert_vertex", text="", icon='ARROW_LEFTRIGHT')
 
     def GP_NOISE(self, layout, ob, md):
