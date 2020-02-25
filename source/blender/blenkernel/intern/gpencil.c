@@ -146,12 +146,10 @@ void BKE_gpencil_free_stroke(bGPDstroke *gps)
 /* Free strokes belonging to a gp-frame */
 bool BKE_gpencil_free_strokes(bGPDframe *gpf)
 {
-  bGPDstroke *gps_next;
   bool changed = (BLI_listbase_is_empty(&gpf->strokes) == false);
 
   /* free strokes */
-  for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps_next) {
-    gps_next = gps->next;
+  LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
     BKE_gpencil_free_stroke(gps);
   }
   BLI_listbase_clear(&gpf->strokes);

@@ -126,9 +126,7 @@ static void gp_interpolate_free_temp_strokes(bGPDframe *gpf)
     return;
   }
 
-  bGPDstroke *gps_next;
-  for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps_next) {
-    gps_next = gps->next;
+  LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
     if (gps->flag & GP_STROKE_TAG) {
       BLI_remlink(&gpf->strokes, gps);
       BKE_gpencil_free_stroke(gps);
