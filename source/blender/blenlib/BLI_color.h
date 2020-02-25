@@ -37,6 +37,11 @@ struct rgba_f {
     return &r;
   }
 
+  operator const float *() const
+  {
+    return &r;
+  }
+
   operator std::array<float, 4>()
   {
     return {r, g, b, a};
