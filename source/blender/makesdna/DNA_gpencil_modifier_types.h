@@ -340,7 +340,6 @@ typedef enum eArrayGpencil_Flag {
   GP_ARRAY_RANDOM_ROT = (1 << 1),
   GP_ARRAY_INVERT_LAYER = (1 << 2),
   GP_ARRAY_INVERT_PASS = (1 << 3),
-  GP_ARRAY_KEEP_ONTOP = (1 << 4),
   GP_ARRAY_INVERT_LAYERPASS = (1 << 5),
   GP_ARRAY_INVERT_MATERIAL = (1 << 6),
 } eArrayGpencil_Flag;

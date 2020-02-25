@@ -158,6 +158,7 @@ static void generate_geometry(GpencilModifierData *md,
   /* Load the strokes to be duplicated. */
   bGPdata *gpd = (bGPdata *)ob->data;
   bool found = false;
+
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
     if (gpf == NULL) {
@@ -216,7 +217,7 @@ static void generate_geometry(GpencilModifierData *md,
       madd_v3_v3fl(current_offset[3], mmd->shift, x);
 
       /* Duplicate original strokes to create this instance. */
-      LISTBASE_FOREACH (tmpStrokes *, iter, &stroke_cache) {
+      LISTBASE_FOREACH_BACKWARD (tmpStrokes *, iter, &stroke_cache) {
         /* Duplicate stroke */
         bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(iter->gps, true);
 
@@ -233,20 +234,18 @@ static void generate_geometry(GpencilModifierData *md,
           add_v3_v3(&pt->x, current_offset[3]);
         }
 
-        /* if replace material, use new one */
+        /* If replace material, use new one. */
         if ((mmd->mat_rpl > 0) && (mmd->mat_rpl <= ob->totcol)) {
           gps_dst->mat_nr = mmd->mat_rpl - 1;
         }
 
         /* Add new stroke. */
-        BLI_addtail(&iter->gpf->strokes, gps_dst);
+        BLI_addhead(&iter->gpf->strokes, gps_dst);
       }
     }
 
     /* Free temp data. */
-    tmpStrokes *tmp_next = NULL;
-    for (tmpStrokes *tmp = stroke_cache.first; tmp; tmp = tmp_next) {
-      tmp_next = tmp->next;
+    LISTBASE_FOREACH_MUTABLE (tmpStrokes *, tmp, &stroke_cache) {
       BLI_freelinkN(&stroke_cache, tmp);
     }
   }

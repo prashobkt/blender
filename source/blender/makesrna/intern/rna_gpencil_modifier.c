@@ -1370,14 +1370,6 @@ static void rna_def_modifier_gpencilinstance(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_INVERT_LAYERPASS);
   RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
-  prop = RNA_def_property(srna, "keep_on_top", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_KEEP_ONTOP);
-  RNA_def_property_ui_text(
-      prop,
-      "Keep on Top",
-      "Keep the original stroke in front of new instances (only affect by layer)");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
 static void rna_def_modifier_gpencilbuild(BlenderRNA *brna)
