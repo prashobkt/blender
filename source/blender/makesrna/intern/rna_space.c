@@ -382,14 +382,32 @@ static const EnumPropertyItem rna_enum_studio_light_items[] = {
 };
 
 static const EnumPropertyItem rna_enum_view3dshading_render_pass_type_items[] = {
-    {SCE_PASS_COMBINED, "COMBINED", 0, "Combined", ""},
-    /* {SCE_PASS_Z, "Z", 0, "Z", ""},*/
-    {SCE_PASS_AO, "AO", 0, "Ambient Occlusion", ""},
-    {SCE_PASS_NORMAL, "NORMAL", 0, "Normal", ""},
-    {SCE_PASS_MIST, "MIST", 0, "Mist", ""},
-    {SCE_PASS_SUBSURFACE_DIRECT, "SUBSURFACE_DIRECT", 0, "Subsurface Direct", ""},
-    /* {SCE_PASS_SUBSURFACE_INDIRECT, "SUBSURFACE_INDIRECT", 0, "Subsurface Indirect", ""}, */
-    {SCE_PASS_SUBSURFACE_COLOR, "SUBSURFACE_COLOR", 0, "Subsurface Color", ""},
+    {0, "", ICON_NONE, "General", ""},
+    {EEVEE_RENDER_PASS_COMBINED, "COMBINED", 0, "Combined", ""},
+    {EEVEE_RENDER_PASS_EMIT, "EMISSION", 0, "Emission", ""},
+    {EEVEE_RENDER_PASS_ENVIRONMENT, "ENVIRONMENT", 0, "Environment", ""},
+    {EEVEE_RENDER_PASS_AO, "AO", 0, "Ambient Occlusion", ""},
+    {EEVEE_RENDER_PASS_SHADOW, "SHADOW", 0, "Shadow", ""},
+
+    {0, "", ICON_NONE, "Light", ""},
+    {EEVEE_RENDER_PASS_DIFFUSE_LIGHT, "DIFFUSE_LIGHT", 0, "Diffuse Light", ""},
+    {EEVEE_RENDER_PASS_DIFFUSE_COLOR, "DIFFUSE_COLOR", 0, "Diffuse Color", ""},
+    {EEVEE_RENDER_PASS_SPECULAR_LIGHT, "SPECULAR_LIGHT", 0, "Specular Light", ""},
+    {EEVEE_RENDER_PASS_SPECULAR_COLOR, "SPECULAR_COLOR", 0, "Specular Color", ""},
+    {EEVEE_RENDER_PASS_VOLUME_TRANSMITTANCE,
+     "VOLUME_TRANSMITTANCE",
+     0,
+     "Volume Transmittance",
+     ""},
+    {EEVEE_RENDER_PASS_VOLUME_SCATTER, "VOLUME_SCATTER", 0, "Volume Scattering", ""},
+
+    {0, "", ICON_NONE, "Effects", ""},
+    {EEVEE_RENDER_PASS_BLOOM, "BLOOM", 0, "Bloom", ""},
+
+    {0, "", ICON_NONE, "Data", ""},
+    {EEVEE_RENDER_PASS_NORMAL, "NORMAL", 0, "Normal", ""},
+    {EEVEE_RENDER_PASS_MIST, "MIST", 0, "Mist", ""},
+
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -1240,6 +1258,30 @@ static const EnumPropertyItem *rna_View3DShading_studio_light_itemf(bContext *UN
   RNA_enum_item_end(&item, &totitem);
   *r_free = true;
   return item;
+}
+
+static const EnumPropertyItem *rna_3DViewShading_render_pass_itemf(bContext *C,
+                                                                   PointerRNA *UNUSED(ptr),
+                                                                   PropertyRNA *UNUSED(prop),
+                                                                   bool *r_free)
+{
+  Scene *scene = CTX_data_scene(C);
+
+  const bool ao_enabled = scene->eevee.flag & SCE_EEVEE_GTAO_ENABLED;
+  const bool bloom_enabled = scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED;
+
+  int totitem = 0;
+  EnumPropertyItem *result = NULL;
+  for (int i = 0; rna_enum_view3dshading_render_pass_type_items[i].identifier != NULL; i++) {
+    const EnumPropertyItem *item = &rna_enum_view3dshading_render_pass_type_items[i];
+    if (!((!ao_enabled && item->value == EEVEE_RENDER_PASS_AO) ||
+          (!bloom_enabled &&
+           (item->value == EEVEE_RENDER_PASS_BLOOM || STREQ(item->name, "Effects"))))) {
+      RNA_enum_item_add(&result, &totitem, item);
+    }
+  }
+  *r_free = true;
+  return result;
 }
 
 static void rna_SpaceView3D_use_local_collections_update(bContext *C, PointerRNA *ptr)
@@ -3197,9 +3239,18 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "studiolight_background_alpha", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "studiolight_background");
-  RNA_def_property_ui_text(prop, "Background", "Show the studiolight in the background");
+  RNA_def_property_ui_text(prop, "World Opacity", "Show the studiolight in the background");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_range(prop, 0.00f, 1.0f, 1, 3);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
+  prop = RNA_def_property(srna, "studiolight_background_blur", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "studiolight_blur");
+  RNA_def_property_ui_text(prop, "Blur", "Blur the studiolight in the background");
+  RNA_def_property_float_default(prop, 0.5f);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
@@ -3328,6 +3379,7 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "render_pass");
   RNA_def_property_enum_items(prop, rna_enum_view3dshading_render_pass_type_items);
   RNA_def_property_ui_text(prop, "Render Pass", "Render Pass to show in the viewport");
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_3DViewShading_render_pass_itemf");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 }
 
