@@ -170,7 +170,7 @@ class SocketDecl {
   }
 };
 
-using OperatorSocketFn = bool (*)(bNodeTree *ntree,
+using OperatorSocketFn = void (*)(bNodeTree *ntree,
                                   bNode *node,
                                   bNodeSocket *socket,
                                   bNodeSocket *directly_linked_socket,
@@ -230,6 +230,7 @@ class NodeDecl {
   bNode *m_node;
   LinearAllocatedVector<SocketDecl *> m_inputs;
   LinearAllocatedVector<SocketDecl *> m_outputs;
+  bool m_has_operator_input = false;
 
   NodeDecl(bNodeTree *ntree, bNode *node) : m_ntree(ntree), m_node(node)
   {
@@ -323,6 +324,7 @@ class NodeBuilder {
     OperatorSocketDecl *decl = m_allocator.construct<OperatorSocketDecl>(
         m_allocator.copy_string(ui_name), m_allocator.copy_string(identifier), callback);
     m_node_decl.m_inputs.append(decl, m_allocator);
+    m_node_decl.m_has_operator_input = true;
   }
 
   void float_input(StringRef identifier, StringRef ui_name)
@@ -856,7 +858,26 @@ void register_node_type_my_test_node()
       LISTBASE_FOREACH (VariadicNodeSocketIdentifier *, value, &storage->inputs_info) {
         node_builder.float_input(value->identifier, "Value");
       }
-      node_builder.operator_input("New Input", "New", nullptr);
+      node_builder.operator_input(
+          "New Input",
+          "New",
+          [](bNodeTree *UNUSED(ntree),
+             bNode *node,
+             bNodeSocket *UNUSED(socket),
+             bNodeSocket *UNUSED(directly_linked_socket),
+             bNodeSocket *UNUSED(linked_socket)) {
+            /* TODO: refresh node and make link */
+            FloatAddNodeStorage *storage = get_node_storage<FloatAddNodeStorage>(node);
+            VariadicNodeSocketIdentifier *value = (VariadicNodeSocketIdentifier *)MEM_callocN(
+                sizeof(VariadicNodeSocketIdentifier), __func__);
+            BLI_uniquename(&storage->inputs_info,
+                           value,
+                           "ID",
+                           '.',
+                           offsetof(VariadicNodeSocketIdentifier, identifier),
+                           sizeof(value->identifier));
+            BLI_addtail(&storage->inputs_info, value);
+          });
       node_builder.float_output("result", "Result");
     });
     ntype.add_draw_fn([](uiLayout *layout, struct bContext *UNUSED(C), struct PointerRNA *ptr) {
@@ -1128,6 +1149,52 @@ static void get_node_declarations(bNodeTree *ntree,
   }
 }
 
+static bool run_operator_sockets(const VirtualNodeTree &vtree,
+                                 ArrayRef<const NodeDecl *> node_decls)
+{
+  bNodeTree *ntree = vtree.btree();
+  bool tree_changed = false;
+
+  /* TODO: correctly handle multiple operator sockets per node */
+  for (uint node_index : node_decls.index_range()) {
+    const NodeDecl *node_decl = node_decls[node_index];
+    if (node_decl->m_has_operator_input) {
+      const VNode *vnode = vtree.nodes()[node_index];
+      for (uint input_index : vnode->inputs().index_range()) {
+        SocketDecl *socket_decl = node_decl->m_inputs[input_index];
+        if (socket_decl->category() == SocketDeclCategory::Operator) {
+          const VInputSocket &vinput = vnode->input(input_index);
+
+          if (vinput.directly_linked_sockets().size() == 1 &&
+              vinput.linked_sockets().size() == 1) {
+            bNodeLink *link = vinput.incident_links()[0];
+            nodeRemLink(ntree, link);
+            tree_changed = true;
+
+            bNodeSocket *directly_linked_socket = vinput.directly_linked_sockets()[0]->bsocket();
+            bNodeSocket *linked_socket = vinput.linked_sockets()[0]->bsocket();
+
+            OperatorSocketDecl *operator_decl = (OperatorSocketDecl *)socket_decl;
+            OperatorSocketFn callback = operator_decl->callback();
+            if (callback) {
+              callback(
+                  ntree, vnode->bnode(), vinput.bsocket(), directly_linked_socket, linked_socket);
+            }
+          }
+          else {
+            for (bNodeLink *link : vinput.incident_links()) {
+              nodeRemLink(ntree, link);
+              tree_changed = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return tree_changed;
+}
+
 void update_sim_node_tree(bNodeTree *ntree)
 {
   VirtualNodeTree vtree(ntree);
@@ -1137,6 +1204,10 @@ void update_sim_node_tree(bNodeTree *ntree)
   get_node_declarations(ntree, vtree.nodes(), allocator, node_decls);
 
   if (rebuild_currently_outdated_nodes(vtree, node_decls)) {
+    vtree.~VirtualNodeTree();
+    new (&vtree) VirtualNodeTree(ntree);
+  }
+  if (run_operator_sockets(vtree, node_decls)) {
     vtree.~VirtualNodeTree();
     new (&vtree) VirtualNodeTree(ntree);
   }
