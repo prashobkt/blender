@@ -548,6 +548,11 @@ static void gp_brush_grab_apply_cached(tGP_BrushEditData *gso,
                                        const float diff_mat[4][4])
 {
   tGPSB_Grab_StrokeData *data = BLI_ghash_lookup(gso->stroke_customdata, gps);
+  /* If a new frame is created, could be impossible find the stroke. */
+  if (data == NULL) {
+    return;
+  }
+
   int i;
   float inverse_diff_mat[4][4];
   invert_m4_m4(inverse_diff_mat, diff_mat);
@@ -1613,7 +1618,8 @@ static bool gpsculpt_brush_do_frame(bContext *C,
              * 2) Use the points now under the cursor
              */
             gp_brush_grab_stroke_init(gso, gps_active);
-            changed |= gpsculpt_brush_do_stroke(gso, gps, diff_mat, gp_brush_grab_store_points);
+            changed |= gpsculpt_brush_do_stroke(
+                gso, gps_active, diff_mat, gp_brush_grab_store_points);
           }
           else {
             /* Apply effect to the stored points */
