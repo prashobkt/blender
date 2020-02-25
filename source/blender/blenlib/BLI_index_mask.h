@@ -102,6 +102,15 @@ class IndexMask {
     }
   }
 
+  template<typename T, typename FuncT>
+  void foreach_element(ArrayRef<T> elements, const FuncT &func)
+  {
+    for (uint i : m_indices) {
+      const T &value = elements[i];
+      func(value);
+    }
+  }
+
   IndexRange index_range() const
   {
     return m_indices.index_range();

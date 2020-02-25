@@ -130,6 +130,13 @@ template<typename T> class LinearAllocatedVector : BLI::NonCopyable {
     return index;
   }
 
+  template<typename AllocT> void reserve(uint reserve_size, LinearAllocator<AllocT> &allocator)
+  {
+    if (this->size() < reserve_size) {
+      this->grow(reserve_size, allocator);
+    }
+  }
+
   bool contains(const T &value) const
   {
     for (const T &current : *this) {
