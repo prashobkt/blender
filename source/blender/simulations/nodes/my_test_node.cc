@@ -57,16 +57,6 @@ class SocketDataType {
       : m_ui_name(ui_name), m_socket_type(socket_type), m_category(category)
   {
   }
-
-  bNodeSocket *build(bNodeTree &ntree,
-                     bNode &node,
-                     eNodeSocketInOut in_out,
-                     StringRef identifier,
-                     StringRef ui_name) const
-  {
-    return nodeAddSocket(
-        &ntree, &node, in_out, m_socket_type->idname, identifier.data(), ui_name.data());
-  }
 };
 
 class BaseSocketDataType : public SocketDataType {
@@ -107,118 +97,125 @@ static BaseSocketDataType *data_socket_int;
 static ListSocketDataType *data_socket_float_list;
 static ListSocketDataType *data_socket_int_list;
 
+enum class SocketDeclCategory {
+  Mockup,
+  FixedDataType,
+  Operator,
+};
+
 class SocketDecl {
+ private:
+  bNodeSocketType *m_current_type;
+  StringRefNull m_identifier;
+  StringRefNull m_ui_name;
+  SocketDeclCategory m_category;
+
  protected:
-  bNodeTree &m_ntree;
-  bNode &m_node;
-  uint m_amount;
-
- public:
-  SocketDecl(bNodeTree &ntree, bNode &node, uint amount)
-      : m_ntree(ntree), m_node(node), m_amount(amount)
-  {
-  }
-
-  virtual ~SocketDecl();
-
-  uint amount() const
-  {
-    return m_amount;
-  }
-
-  virtual bool sockets_are_correct(ArrayRef<bNodeSocket *> sockets) const = 0;
-
-  virtual void build() const = 0;
-};
-
-SocketDecl::~SocketDecl()
-{
-}
-
-class FixedTypeSocketDecl : public SocketDecl {
-  eNodeSocketInOut m_in_out;
-  SocketDataType &m_type;
-  StringRefNull m_ui_name;
-  StringRefNull m_identifier;
-
- public:
-  FixedTypeSocketDecl(bNodeTree &ntree,
-                      bNode &node,
-                      eNodeSocketInOut in_out,
-                      SocketDataType &type,
-                      StringRefNull ui_name,
-                      StringRefNull identifier)
-      : SocketDecl(ntree, node, 1),
-        m_in_out(in_out),
-        m_type(type),
+  SocketDecl(bNodeSocketType *current_type,
+             StringRefNull identifier,
+             StringRefNull ui_name,
+             SocketDeclCategory category)
+      : m_current_type(current_type),
+        m_identifier(identifier),
         m_ui_name(ui_name),
-        m_identifier(identifier)
+        m_category(category)
   {
   }
-
-  bool sockets_are_correct(ArrayRef<bNodeSocket *> sockets) const override
-  {
-    if (sockets.size() != 1) {
-      return false;
-    }
-
-    bNodeSocket *socket = sockets[0];
-    if (socket->typeinfo != m_type.m_socket_type) {
-      return false;
-    }
-    if (socket->name != m_ui_name) {
-      return false;
-    }
-    if (socket->identifier != m_identifier) {
-      return false;
-    }
-    return true;
-  }
-
-  void build() const override
-  {
-    m_type.build(m_ntree, m_node, m_in_out, m_identifier, m_ui_name);
-  }
-};
-
-class OperatorSocketDecl : public SocketDecl {
-  eNodeSocketInOut m_in_out;
-  StringRefNull m_ui_name;
-  StringRefNull m_identifier;
 
  public:
-  OperatorSocketDecl(bNodeTree &ntree,
-                     bNode &node,
-                     eNodeSocketInOut in_out,
-                     StringRefNull ui_name,
-                     StringRefNull identifier)
-      : SocketDecl(ntree, node, 1), m_in_out(in_out), m_ui_name(ui_name), m_identifier(identifier)
-  {
-  }
-
-  bool sockets_are_correct(ArrayRef<bNodeSocket *> sockets) const override
-  {
-    if (sockets.size() != 1) {
-      return false;
-    }
-
-    bNodeSocket *socket = sockets[0];
-    if (!STREQ(socket->idname, "OperatorSocket")) {
-      return false;
-    }
-    if (socket->name != m_ui_name) {
-      return false;
-    }
-    if (socket->identifier != m_identifier) {
-      return false;
-    }
-    return true;
-  }
-
-  void build() const override
+  void build(bNodeTree *ntree, bNode *node, eNodeSocketInOut in_out)
   {
     nodeAddSocket(
-        &m_ntree, &m_node, m_in_out, "OperatorSocket", m_identifier.data(), m_ui_name.data());
+        ntree, node, in_out, m_current_type->idname, m_identifier.data(), m_ui_name.data());
+  }
+
+  SocketDeclCategory category() const
+  {
+    return m_category;
+  }
+
+  bNodeSocketType *current_type() const
+  {
+    return m_current_type;
+  }
+
+  StringRefNull identifier() const
+  {
+    return m_identifier;
+  }
+
+  StringRefNull ui_name() const
+  {
+    return m_ui_name;
+  }
+
+  bool socket_is_correct(const bNodeSocket *socket)
+  {
+    BLI_assert(socket != nullptr);
+    if (socket->typeinfo != m_current_type) {
+      return false;
+    }
+    if (socket->name != m_ui_name) {
+      return false;
+    }
+    if (socket->identifier != m_identifier) {
+      return false;
+    }
+    return true;
+  }
+};
+
+using OperatorSocketFn = bool (*)(bNodeTree *ntree,
+                                  bNode *node,
+                                  bNodeSocket *socket,
+                                  bNodeSocket *directly_linked_socket,
+                                  bNodeSocket *linked_socket);
+
+class OperatorSocketDecl final : public SocketDecl {
+ private:
+  OperatorSocketFn m_callback;
+
+ public:
+  OperatorSocketDecl(StringRefNull identifier, StringRefNull ui_name, OperatorSocketFn callback)
+      : SocketDecl(nodeSocketTypeFind("OperatorSocket"),
+                   identifier,
+                   ui_name,
+                   SocketDeclCategory::Operator),
+        m_callback(callback)
+  {
+  }
+
+  const OperatorSocketFn callback() const
+  {
+    return m_callback;
+  }
+};
+
+class FixedDataTypeSocketDecl final : public SocketDecl {
+ private:
+  const SocketDataType *m_data_type;
+
+ public:
+  FixedDataTypeSocketDecl(StringRefNull identifier,
+                          StringRefNull ui_name,
+                          const SocketDataType *data_type)
+      : SocketDecl(
+            data_type->m_socket_type, identifier, ui_name, SocketDeclCategory::FixedDataType),
+        m_data_type(data_type)
+  {
+  }
+
+  const SocketDataType *data_type() const
+  {
+    return m_data_type;
+  }
+};
+
+class MockupSocketDecl final : public SocketDecl {
+ public:
+  MockupSocketDecl(bNodeSocketType *type, StringRefNull identifier, StringRefNull ui_name)
+      : SocketDecl(type, identifier, ui_name, SocketDeclCategory::Mockup)
+  {
   }
 };
 
@@ -236,10 +233,10 @@ class NodeDecl {
   void build() const
   {
     for (SocketDecl *decl : m_inputs) {
-      decl->build();
+      decl->build(&m_ntree, &m_node, SOCK_IN);
     }
     for (SocketDecl *decl : m_outputs) {
-      decl->build();
+      decl->build(&m_ntree, &m_node, SOCK_OUT);
     }
   }
 
@@ -257,24 +254,18 @@ class NodeDecl {
  private:
   bool sockets_are_correct(ListBase &sockets_list, ArrayRef<SocketDecl *> decls) const
   {
-    Vector<bNodeSocket *, 10> sockets;
+    uint i = 0;
     LISTBASE_FOREACH (bNodeSocket *, socket, &sockets_list) {
-      sockets.append(socket);
-    }
-
-    uint offset = 0;
-    for (SocketDecl *decl : decls) {
-      uint amount = decl->amount();
-      if (offset + amount > sockets.size()) {
+      if (i == decls.size()) {
         return false;
       }
-      ArrayRef<bNodeSocket *> sockets_for_decl = sockets.as_ref().slice(offset, amount);
-      if (!decl->sockets_are_correct(sockets_for_decl)) {
+      SocketDecl *decl = decls[i];
+      if (!decl->socket_is_correct(socket)) {
         return false;
       }
-      offset += amount;
+      i++;
     }
-    if (offset != sockets.size()) {
+    if (i != decls.size()) {
       return false;
     }
     return true;
@@ -303,36 +294,22 @@ class NodeBuilder {
 
   void fixed_input(StringRef identifier, StringRef ui_name, SocketDataType &type)
   {
-    FixedTypeSocketDecl *decl = m_allocator.construct<FixedTypeSocketDecl>(
-        m_node_decl.m_ntree,
-        m_node_decl.m_node,
-        SOCK_IN,
-        type,
-        m_allocator.copy_string(ui_name),
-        m_allocator.copy_string(identifier));
+    FixedDataTypeSocketDecl *decl = m_allocator.construct<FixedDataTypeSocketDecl>(
+        m_allocator.copy_string(identifier), m_allocator.copy_string(ui_name), &type);
     m_node_decl.m_inputs.append(decl);
   }
 
   void fixed_output(StringRef identifier, StringRef ui_name, SocketDataType &type)
   {
-    FixedTypeSocketDecl *decl = m_allocator.construct<FixedTypeSocketDecl>(
-        m_node_decl.m_ntree,
-        m_node_decl.m_node,
-        SOCK_OUT,
-        type,
-        m_allocator.copy_string(ui_name),
-        m_allocator.copy_string(identifier));
+    FixedDataTypeSocketDecl *decl = m_allocator.construct<FixedDataTypeSocketDecl>(
+        m_allocator.copy_string(identifier), m_allocator.copy_string(ui_name), &type);
     m_node_decl.m_outputs.append(decl);
   }
 
-  void operator_input(StringRef identifier, StringRef ui_name)
+  void operator_input(StringRef identifier, StringRef ui_name, OperatorSocketFn callback)
   {
     OperatorSocketDecl *decl = m_allocator.construct<OperatorSocketDecl>(
-        m_node_decl.m_ntree,
-        m_node_decl.m_node,
-        SOCK_IN,
-        m_allocator.copy_string(ui_name),
-        m_allocator.copy_string(identifier));
+        m_allocator.copy_string(ui_name), m_allocator.copy_string(identifier), callback);
     m_node_decl.m_inputs.append(decl);
   }
 
@@ -867,7 +844,7 @@ void register_node_type_my_test_node()
       LISTBASE_FOREACH (VariadicNodeSocketIdentifier *, value, &storage->inputs_info) {
         node_builder.float_input(value->identifier, "Value");
       }
-      node_builder.operator_input("New Input", "New");
+      node_builder.operator_input("New Input", "New", nullptr);
       node_builder.float_output("result", "Result");
     });
     ntype.add_draw_fn([](uiLayout *layout, struct bContext *UNUSED(C), struct PointerRNA *ptr) {
