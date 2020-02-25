@@ -874,6 +874,8 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   /* Init general modifiers data. */
   BKE_gpencil_lattice_init(ob);
 
+  const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
+
   LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
 
     if (GPENCIL_MODIFIER_ACTIVE(md, is_render)) {
@@ -888,16 +890,18 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
         mti->generateStrokes(md, depsgraph, ob);
       }
 
-      /* Apply deform modifiers (only change geometry). */
-      if (mti && mti->deformStroke) {
+      /* Apply deform modifiers and Time remap (only change geometry). */
+      if ((time_remap) || (mti && mti->deformStroke)) {
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
           if (gpf == NULL) {
             continue;
           }
 
-          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-            mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
+          if (mti->deformStroke) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+              mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
+            }
           }
         }
       }
