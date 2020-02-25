@@ -2,6 +2,8 @@
 #include <typeinfo>
 
 #include "BKE_node.h"
+#include "BKE_virtual_node_tree.h"
+
 #include "SIM_node_tree.h"
 
 #include "BLI_vector.h"
@@ -302,10 +304,10 @@ static void declare_test_node(NodeBuilder &builder)
 {
   MyTestNodeStorage *storage = builder.node_storage<MyTestNodeStorage>();
 
-  builder.float_input("id1", "ID 1");
-  builder.int_input("id2", "ID 2");
-  builder.int_input("id4", "ID 4");
-  builder.float_output("id3", "ID 3");
+  builder.float_input("a", "ID 1");
+  builder.int_input("b", "ID 2");
+  builder.int_input("c", "ID 4");
+  builder.float_output("c", "ID 3");
 
   for (int i = 0; i < storage->x; i++) {
     builder.fixed_input(
@@ -815,8 +817,29 @@ void free_socket_data_types()
   delete data_socket_int_list;
 }
 
+using BKE::VInputSocket;
+using BKE::VirtualNodeTree;
+using BKE::VNode;
+
 void update_sim_node_tree(bNodeTree *ntree)
 {
+  {
+    VirtualNodeTree vtree(ntree);
+
+    Vector<bNodeLink *> links_to_remove;
+    for (const VInputSocket *vinput : vtree.all_input_sockets()) {
+      for (bNodeLink *link : vinput->incident_links()) {
+        if (link->fromsock->typeinfo != vinput->bsocket()->typeinfo) {
+          links_to_remove.append(link);
+        }
+      }
+    }
+
+    for (bNodeLink *link : links_to_remove) {
+      nodeRemLink(ntree, link);
+    }
+  }
+
   Vector<bNode *> nodes;
   for (bNode *node : BLI::IntrusiveListBaseWrapper<bNode>(ntree->nodes)) {
     nodes.append(node);
