@@ -181,6 +181,47 @@ class FixedTypeSocketDecl : public SocketDecl {
   }
 };
 
+class OperatorSocketDecl : public SocketDecl {
+  eNodeSocketInOut m_in_out;
+  StringRefNull m_ui_name;
+  StringRefNull m_identifier;
+
+ public:
+  OperatorSocketDecl(bNodeTree &ntree,
+                     bNode &node,
+                     eNodeSocketInOut in_out,
+                     StringRefNull ui_name,
+                     StringRefNull identifier)
+      : SocketDecl(ntree, node, 1), m_in_out(in_out), m_ui_name(ui_name), m_identifier(identifier)
+  {
+  }
+
+  bool sockets_are_correct(ArrayRef<bNodeSocket *> sockets) const override
+  {
+    if (sockets.size() != 1) {
+      return false;
+    }
+
+    bNodeSocket *socket = sockets[0];
+    if (!STREQ(socket->idname, "OperatorSocket")) {
+      return false;
+    }
+    if (socket->name != m_ui_name) {
+      return false;
+    }
+    if (socket->identifier != m_identifier) {
+      return false;
+    }
+    return true;
+  }
+
+  void build() const override
+  {
+    nodeAddSocket(
+        &m_ntree, &m_node, m_in_out, "OperatorSocket", m_identifier.data(), m_ui_name.data());
+  }
+};
+
 class NodeDecl {
  public:
   bNodeTree &m_ntree;
@@ -282,6 +323,17 @@ class NodeBuilder {
         m_allocator.copy_string(ui_name),
         m_allocator.copy_string(identifier));
     m_node_decl.m_outputs.append(decl);
+  }
+
+  void operator_input(StringRef identifier, StringRef ui_name)
+  {
+    OperatorSocketDecl *decl = m_allocator.construct<OperatorSocketDecl>(
+        m_node_decl.m_ntree,
+        m_node_decl.m_node,
+        SOCK_IN,
+        m_allocator.copy_string(ui_name),
+        m_allocator.copy_string(identifier));
+    m_node_decl.m_inputs.append(decl);
   }
 
   void float_input(StringRef identifier, StringRef ui_name)
@@ -815,6 +867,7 @@ void register_node_type_my_test_node()
       LISTBASE_FOREACH (VariadicNodeSocketIdentifier *, value, &storage->inputs_info) {
         node_builder.float_input(value->identifier, "Value");
       }
+      node_builder.operator_input("New Input", "New");
       node_builder.float_output("result", "Result");
     });
     ntype.add_draw_fn([](uiLayout *layout, struct bContext *UNUSED(C), struct PointerRNA *ptr) {
@@ -871,6 +924,11 @@ void init_socket_data_types()
   {
     static SocketDefinition stype("MyIntSocket");
     stype.set_color({0.06, 0.52, 0.15, 1.0});
+    stype.register_type();
+  }
+  {
+    static SocketDefinition stype("OperatorSocket");
+    stype.set_color({0.0, 0.0, 0.0, 0.0});
     stype.register_type();
   }
   {
