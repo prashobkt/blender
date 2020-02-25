@@ -526,7 +526,6 @@ const EnumPropertyItem rna_enum_bake_pass_filter_type_items[] = {
     {R_BAKE_PASS_FILTER_DIFFUSE, "DIFFUSE", 0, "Diffuse", ""},
     {R_BAKE_PASS_FILTER_GLOSSY, "GLOSSY", 0, "Glossy", ""},
     {R_BAKE_PASS_FILTER_TRANSM, "TRANSMISSION", 0, "Transmission", ""},
-    {R_BAKE_PASS_FILTER_SUBSURFACE, "SUBSURFACE", 0, "Subsurface", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -3756,6 +3755,30 @@ static void rna_def_unit_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_WINDOW, NULL);
 }
 
+static void rna_def_view_layer_eevee(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+  srna = RNA_def_struct(brna, "ViewLayerEEVEE", NULL);
+  RNA_def_struct_ui_text(srna, "EEVEE Settings", "View layer settings for EEVEE");
+
+  prop = RNA_def_property(srna, "use_pass_volume_scatter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "render_passes", EEVEE_RENDER_PASS_VOLUME_SCATTER);
+  RNA_def_property_ui_text(prop, "Volume Scatter", "Deliver volume scattering pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+
+  prop = RNA_def_property(srna, "use_pass_volume_transmittance", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, NULL, "render_passes", EEVEE_RENDER_PASS_VOLUME_TRANSMITTANCE);
+  RNA_def_property_ui_text(prop, "Volume Transmittance", "Deliver volume transmittance pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+
+  prop = RNA_def_property(srna, "use_pass_bloom", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "render_passes", EEVEE_RENDER_PASS_BLOOM);
+  RNA_def_property_ui_text(prop, "Bloom", "Deliver bloom pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+}
+
 void rna_def_view_layer_common(StructRNA *srna, const bool scene)
 {
   PropertyRNA *prop;
@@ -3801,6 +3824,11 @@ void rna_def_view_layer_common(StructRNA *srna, const bool scene)
         "Z, Index, normal, UV and vector passes are only affected by surfaces with "
         "alpha transparency equal to or higher than this threshold");
     RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+    prop = RNA_def_property(srna, "eevee", PROP_POINTER, PROP_NONE);
+    RNA_def_property_flag(prop, PROP_NEVER_NULL);
+    RNA_def_property_struct_type(prop, "ViewLayerEEVEE");
+    RNA_def_property_ui_text(prop, "EEVEE Settings", "View layer settings for EEVEE");
   }
 
   /* layer options */
@@ -4839,11 +4867,6 @@ static void rna_def_bake_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_pass_transmission", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_TRANSM);
   RNA_def_property_ui_text(prop, "Transmission", "Add transmission contribution");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
-
-  prop = RNA_def_property(srna, "use_pass_subsurface", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_SUBSURFACE);
-  RNA_def_property_ui_text(prop, "Subsurface", "Add subsurface contribution");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
   prop = RNA_def_property(srna, "pass_filter", PROP_ENUM, PROP_NONE);
@@ -7546,6 +7569,7 @@ void RNA_def_scene(BlenderRNA *brna)
   rna_def_display_safe_areas(brna);
   rna_def_scene_display(brna);
   rna_def_scene_eevee(brna);
+  rna_def_view_layer_eevee(brna);
   RNA_define_animate_sdna(true);
   /* *** Animated *** */
   rna_def_scene_render_data(brna);
