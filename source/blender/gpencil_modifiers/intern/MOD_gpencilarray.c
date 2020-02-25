@@ -54,6 +54,12 @@
 #include "MOD_gpencil_util.h"
 #include "MOD_gpencil_modifiertypes.h"
 
+typedef struct tmpStrokes {
+  struct tmpStrokes *next, *prev;
+  bGPDframe *gpf;
+  bGPDstroke *gps;
+} tmpStrokes;
+
 static void initData(GpencilModifierData *md)
 {
   ArrayGpencilModifierData *gpmd = (ArrayGpencilModifierData *)md;
@@ -142,90 +148,80 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
 }
 
 /* array modifier - generate geometry callback (for viewport/rendering) */
-static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+static void generate_geometry(GpencilModifierData *md,
+                              Depsgraph *depsgraph,
+                              Scene *scene,
+                              Object *ob)
 {
   ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
   ListBase stroke_cache = {NULL, NULL};
-  bGPDstroke *gps;
-  int idx;
-
-  /* Check which strokes we can use once, and store those results in an array
-   * for quicker checking of what's valid (since string comparisons are expensive)
-   */
-  const int num_strokes = BLI_listbase_count(&gpf->strokes);
-  int num_valid = 0;
-
-  bool *valid_strokes = MEM_callocN(sizeof(bool) * num_strokes, __func__);
-
-  for (gps = gpf->strokes.first, idx = 0; gps; gps = gps->next, idx++) {
-    /* Record whether this stroke can be used
-     * ATTENTION: The logic here is the inverse of what's used everywhere else!
-     */
-    if (is_stroke_affected_by_modifier(ob,
-                                       mmd->layername,
-                                       mmd->materialname,
-                                       mmd->pass_index,
-                                       mmd->layer_pass,
-                                       1,
-                                       gpl,
-                                       gps,
-                                       mmd->flag & GP_ARRAY_INVERT_LAYER,
-                                       mmd->flag & GP_ARRAY_INVERT_PASS,
-                                       mmd->flag & GP_ARRAY_INVERT_LAYERPASS,
-                                       mmd->flag & GP_ARRAY_INVERT_MATERIAL)) {
-      valid_strokes[idx] = true;
-      num_valid++;
-    }
-  }
-
-  /* Early exit if no strokes can be copied */
-  if (num_valid == 0) {
-    if (G.debug & G_DEBUG) {
-      printf("GP Array Mod - No strokes to be included\n");
-    }
-
-    MEM_SAFE_FREE(valid_strokes);
-    return;
-  }
-
-  /* Generate new instances of all existing strokes,
-   * keeping each instance together so they maintain
-   * the correct ordering relative to each other
-   */
-  float current_offset[4][4];
-  unit_m4(current_offset);
-
-  for (int x = 0; x < mmd->count; x++) {
-    /* original strokes are at index = 0 */
-    if (x == 0) {
+  /* Load the strokes to be duplicated. */
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bool found = false;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
+    if (gpf == NULL) {
       continue;
     }
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+      if (is_stroke_affected_by_modifier(ob,
+                                         mmd->layername,
+                                         mmd->materialname,
+                                         mmd->pass_index,
+                                         mmd->layer_pass,
+                                         1,
+                                         gpl,
+                                         gps,
+                                         mmd->flag & GP_ARRAY_INVERT_LAYER,
+                                         mmd->flag & GP_ARRAY_INVERT_PASS,
+                                         mmd->flag & GP_ARRAY_INVERT_LAYERPASS,
+                                         mmd->flag & GP_ARRAY_INVERT_MATERIAL)) {
+        tmpStrokes *tmp = MEM_callocN(sizeof(tmpStrokes), __func__);
+        tmp->gpf = gpf;
+        tmp->gps = gps;
+        BLI_addtail(&stroke_cache, tmp);
 
-    /* Compute transforms for this instance */
-    float mat[4][4];
-    float mat_offset[4][4];
-    BKE_gpencil_instance_modifier_instance_tfm(ob, mmd, x, mat, mat_offset);
-
-    if (mmd->object) {
-      /* recalculate cumulative offset here */
-      mul_m4_m4m4(current_offset, current_offset, mat_offset);
+        found = true;
+      }
     }
-    else {
-      copy_m4_m4(current_offset, mat);
-    }
-    /* apply shift */
-    madd_v3_v3fl(current_offset[3], mmd->shift, x);
+  }
 
-    /* Duplicate original strokes to create this instance */
-    for (gps = gpf->strokes.first, idx = 0; gps; gps = gps->next, idx++) {
-      /* check if stroke can be duplicated */
-      if (valid_strokes[idx]) {
+  if (found) {
+    /* Generate new instances of all existing strokes,
+     * keeping each instance together so they maintain
+     * the correct ordering relative to each other
+     */
+    float current_offset[4][4];
+    unit_m4(current_offset);
 
+    for (int x = 0; x < mmd->count; x++) {
+      /* original strokes are at index = 0 */
+      if (x == 0) {
+        continue;
+      }
+
+      /* Compute transforms for this instance */
+      float mat[4][4];
+      float mat_offset[4][4];
+      BKE_gpencil_instance_modifier_instance_tfm(ob, mmd, x, mat, mat_offset);
+
+      if (mmd->object) {
+        /* recalculate cumulative offset here */
+        mul_m4_m4m4(current_offset, current_offset, mat_offset);
+      }
+      else {
+        copy_m4_m4(current_offset, mat);
+      }
+      /* apply shift */
+      madd_v3_v3fl(current_offset[3], mmd->shift, x);
+
+      /* Duplicate original strokes to create this instance. */
+      LISTBASE_FOREACH (tmpStrokes *, iter, &stroke_cache) {
         /* Duplicate stroke */
-        bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps, true);
+        bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(iter->gps, true);
 
         /* Move points */
-        for (int i = 0; i < gps->totpoints; i++) {
+        for (int i = 0; i < iter->gps->totpoints; i++) {
           bGPDspoint *pt = &gps_dst->points[i];
           /* Apply object local transform (Rot/Scale). */
           if (mmd->object) {
@@ -242,24 +238,18 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
           gps_dst->mat_nr = mmd->mat_rpl - 1;
         }
 
-        /* Add new stroke to cache, to be added to the frame once
-         * all duplicates have been made
-         */
-        BLI_addtail(&stroke_cache, gps_dst);
+        /* Add new stroke. */
+        BLI_addtail(&iter->gpf->strokes, gps_dst);
       }
     }
-  }
 
-  /* merge newly created stroke instances back into the main stroke list */
-  if (mmd->flag & GP_ARRAY_KEEP_ONTOP) {
-    BLI_movelisttolist_reverse(&gpf->strokes, &stroke_cache);
+    /* Free temp data. */
+    tmpStrokes *tmp_next = NULL;
+    for (tmpStrokes *tmp = stroke_cache.first; tmp; tmp = tmp_next) {
+      tmp_next = tmp->next;
+      BLI_freelinkN(&stroke_cache, tmp);
+    }
   }
-  else {
-    BLI_movelisttolist(&gpf->strokes, &stroke_cache);
-  }
-
-  /* free temp data */
-  MEM_SAFE_FREE(valid_strokes);
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
@@ -267,14 +257,8 @@ static void bakeModifier(Main *UNUSED(bmain),
                          GpencilModifierData *md,
                          Object *ob)
 {
-
-  bGPdata *gpd = ob->data;
-
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      generate_geometry(md, ob, gpl, gpf);
-    }
-  }
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  generate_geometry(md, depsgraph, scene, ob);
 }
 
 /* -------------------------------- */
@@ -283,15 +267,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  bGPdata *gpd = (bGPdata *)ob->data;
-
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
-      continue;
-    }
-    generate_geometry(md, ob, gpl, gpf);
-  }
+  generate_geometry(md, depsgraph, scene, ob);
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
