@@ -113,12 +113,7 @@ static void update_position(Object *ob, MirrorGpencilModifierData *mmd, bGPDstro
   }
 }
 
-/* Generic "generateStrokes" callback */
-static void generateStrokes(GpencilModifierData *md,
-                            Depsgraph *UNUSED(depsgraph),
-                            Object *ob,
-                            bGPDlayer *gpl,
-                            bGPDframe *gpf)
+static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   MirrorGpencilModifierData *mmd = (MirrorGpencilModifierData *)md;
   bGPDstroke *gps, *gps_new = NULL;
@@ -154,6 +149,21 @@ static void generateStrokes(GpencilModifierData *md,
   }
 }
 
+/* Generic "generateStrokes" callback */
+static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
+{
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
+    if (gpf == NULL) {
+      continue;
+    }
+    generate_geometry(md, ob, gpl, gpf);
+  }
+}
+
 static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData *md, Object *ob)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -167,7 +177,7 @@ static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData 
       BKE_scene_graph_update_for_newframe(depsgraph, bmain);
 
       /* compute mirror effects on this frame */
-      generateStrokes(md, depsgraph, ob, gpl, gpf);
+      generate_geometry(md, ob, gpl, gpf);
     }
   }
 

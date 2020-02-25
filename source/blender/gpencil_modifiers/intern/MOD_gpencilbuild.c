@@ -398,19 +398,13 @@ static void build_concurrent(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
 }
 
 /* --------------------------------------------- */
-
-/* Entry-point for Build Modifier */
-static void generateStrokes(GpencilModifierData *md,
-                            Depsgraph *depsgraph,
-                            Object *UNUSED(ob),
-                            bGPDlayer *gpl,
-                            bGPDframe *gpf)
+static void generate_geometry(
+    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   BuildGpencilModifierData *mmd = (BuildGpencilModifierData *)md;
   const bool reverse = (mmd->transition != GP_BUILD_TRANSITION_GROW);
 
   const float ctime = DEG_get_ctime(depsgraph);
-  // printf("GP Build Modifier - %f\n", ctime);
 
   /* Early exit if it's an empty frame */
   if (gpf->strokes.first == NULL) {
@@ -504,7 +498,6 @@ static void generateStrokes(GpencilModifierData *md,
 
   /* Determine how far along we are between the keyframes */
   float fac = (ctime - start_frame) / (end_frame - start_frame);
-  // printf("  Progress on %d = %f (%f - %f)\n", gpf->framenum, fac, start_frame, end_frame);
 
   /* Time management mode */
   switch (mmd->mode) {
@@ -521,6 +514,21 @@ static void generateStrokes(GpencilModifierData *md,
              mmd->mode,
              mmd->modifier.name);
       break;
+  }
+}
+
+/* Entry-point for Build Modifier */
+static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
+{
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
+    if (gpf == NULL) {
+      continue;
+    }
+    generate_geometry(md, depsgraph, ob, gpl, gpf);
   }
 }
 

@@ -275,13 +275,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 }
 
 /* -------------------------------- */
-
-/* Generic "generateStrokes" callback */
-static void generateStrokes(GpencilModifierData *md,
-                            Depsgraph *UNUSED(depsgraph),
-                            Object *ob,
-                            bGPDlayer *gpl,
-                            bGPDframe *gpf)
+static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
   bGPDstroke *gps;
@@ -320,6 +314,21 @@ static void generateStrokes(GpencilModifierData *md,
     ((bGPDstroke *)gpf->strokes.last)->next = duplicates.first;
     ((bGPDstroke *)duplicates.first)->prev = gpf->strokes.last;
     gpf->strokes.last = duplicates.first;
+  }
+}
+
+/* Generic "generateStrokes" callback */
+static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
+{
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
+    if (gpf == NULL) {
+      continue;
+    }
+    generate_geometry(md, ob, gpl, gpf);
   }
 }
 

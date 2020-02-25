@@ -142,11 +142,7 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
 }
 
 /* array modifier - generate geometry callback (for viewport/rendering) */
-static void generate_geometry(GpencilModifierData *md,
-                              Depsgraph *UNUSED(depsgraph),
-                              Object *ob,
-                              bGPDlayer *gpl,
-                              bGPDframe *gpf)
+static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
   ListBase stroke_cache = {NULL, NULL};
@@ -276,7 +272,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      generate_geometry(md, depsgraph, ob, gpl, gpf);
+      generate_geometry(md, ob, gpl, gpf);
     }
   }
 }
@@ -284,10 +280,18 @@ static void bakeModifier(Main *UNUSED(bmain),
 /* -------------------------------- */
 
 /* Generic "generateStrokes" callback */
-static void generateStrokes(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
 {
-  generate_geometry(md, depsgraph, ob, gpl, gpf);
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
+    if (gpf == NULL) {
+      continue;
+    }
+    generate_geometry(md, ob, gpl, gpf);
+  }
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
