@@ -71,6 +71,7 @@ class VSocket : BLI::NonCopyable, BLI::NonMovable {
 
   StringRefNull idname() const;
   StringRefNull name() const;
+  StringRefNull identifier() const;
 
   bool is_linked() const;
 
@@ -237,6 +238,11 @@ inline StringRefNull VSocket::idname() const
 inline StringRefNull VSocket::name() const
 {
   return m_bsocket->name;
+}
+
+inline StringRefNull VSocket::identifier() const
+{
+  return m_bsocket->identifier;
 }
 
 inline bNodeSocket *VSocket::bsocket() const
