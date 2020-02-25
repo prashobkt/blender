@@ -820,45 +820,124 @@ void free_socket_data_types()
 using BKE::VInputSocket;
 using BKE::VirtualNodeTree;
 using BKE::VNode;
+using BKE::VOutputSocket;
 
-void update_sim_node_tree(bNodeTree *ntree)
-{
+struct SocketID {
+  bNode *bnode;
+  std::string identifier;
+
+  friend bool operator==(const SocketID &a, const SocketID &b)
   {
-    VirtualNodeTree vtree(ntree);
+    return a.bnode == b.bnode && a.identifier == b.identifier;
+  }
+};
 
-    Vector<bNodeLink *> links_to_remove;
-    for (const VInputSocket *vinput : vtree.all_input_sockets()) {
-      for (bNodeLink *link : vinput->incident_links()) {
-        if (link->fromsock->typeinfo != vinput->bsocket()->typeinfo) {
-          links_to_remove.append(link);
-        }
+namespace BLI {
+template<> class DefaultHash<SocketID> {
+ public:
+  uint32_t operator()(const SocketID &value) const
+  {
+    uint32_t h1 = DefaultHash<bNode *>{}(value.bnode);
+    uint32_t h2 = DefaultHash<std::string>{}(value.identifier);
+    return h1 * 42523 + h2;
+  }
+};
+};  // namespace BLI
+
+static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
+                                         ArrayRef<const VNode *> vnodes,
+                                         LinearAllocator<> &allocator)
+{
+  Set<std::pair<SocketID, SocketID>> links_to_restore;
+
+  for (const VNode *vnode : vnodes) {
+    for (const VInputSocket *vinput : vnode->inputs()) {
+      for (const VOutputSocket *voutput : vinput->directly_linked_sockets()) {
+        SocketID id_from = {voutput->node().bnode(), voutput->identifier()};
+        SocketID id_to = {vinput->node().bnode(), vinput->identifier()};
+        links_to_restore.add({std::move(id_from), std::move(id_to)});
       }
     }
-
-    for (bNodeLink *link : links_to_remove) {
-      nodeRemLink(ntree, link);
+    for (const VOutputSocket *voutput : vnode->outputs()) {
+      for (const VInputSocket *vinput : voutput->directly_linked_sockets()) {
+        SocketID id_from = {voutput->node().bnode(), voutput->identifier()};
+        SocketID id_to = {vinput->node().bnode(), vinput->identifier()};
+        links_to_restore.add({std::move(id_from), std::move(id_to)});
+      }
     }
   }
 
-  Vector<bNode *> nodes;
-  for (bNode *node : BLI::IntrusiveListBaseWrapper<bNode>(ntree->nodes)) {
-    nodes.append(node);
+  bNodeTree *ntree = vtree.btree();
+
+  for (const VNode *vnode : vnodes) {
+    bNode *node = vnode->bnode();
+    NodeDecl node_decl{*ntree, *node};
+    NodeBuilder builder{allocator, node_decl};
+    NodeDefinition::declare_node(node, builder);
+    nodeRemoveAllSockets(ntree, node);
+    node_decl.build();
   }
 
+  for (const std::pair<SocketID, SocketID> &link_info : links_to_restore) {
+    const SocketID &from_id = link_info.first;
+    const SocketID &to_id = link_info.second;
+    bNodeSocket *from_socket = nodeFindSocket(from_id.bnode, SOCK_OUT, from_id.identifier.c_str());
+    bNodeSocket *to_socket = nodeFindSocket(to_id.bnode, SOCK_IN, to_id.identifier.c_str());
+
+    if (from_socket && to_socket) {
+      nodeAddLink(ntree, from_id.bnode, from_socket, to_id.bnode, to_socket);
+    }
+  }
+}
+
+static bool rebuild_currently_outdated_nodes(VirtualNodeTree &vtree)
+{
   LinearAllocator<> allocator;
 
-  for (bNode *node : nodes) {
+  Vector<const VNode *> vnodes_to_update;
+
+  bNodeTree *ntree = vtree.btree();
+  for (const VNode *vnode : vtree.nodes()) {
+    bNode *node = vnode->bnode();
     NodeDecl node_decl{*ntree, *node};
     NodeBuilder builder{allocator, node_decl};
     NodeDefinition::declare_node(node, builder);
 
     if (!node_decl.sockets_are_correct()) {
-      std::cout << "Rebuild\n";
-      nodeRemoveAllSockets(ntree, node);
+      vnodes_to_update.append(vnode);
       node_decl.build();
     }
-    else {
-      std::cout << "Don't rebuild\n";
+  }
+
+  rebuild_nodes_and_keep_state(vtree, vnodes_to_update, allocator);
+
+  return vnodes_to_update.size() > 0;
+}
+
+static bool remove_invalid_links(VirtualNodeTree &vtree)
+{
+  Vector<bNodeLink *> links_to_remove;
+  for (const VInputSocket *vinput : vtree.all_input_sockets()) {
+    for (bNodeLink *link : vinput->incident_links()) {
+      if (link->fromsock->typeinfo != vinput->bsocket()->typeinfo) {
+        links_to_remove.append(link);
+      }
     }
   }
+
+  for (bNodeLink *link : links_to_remove) {
+    nodeRemLink(vtree.btree(), link);
+  }
+
+  return links_to_remove.size() > 0;
+}
+
+void update_sim_node_tree(bNodeTree *ntree)
+{
+  VirtualNodeTree vtree(ntree);
+  if (rebuild_currently_outdated_nodes(vtree)) {
+    vtree.~VirtualNodeTree();
+    new (&vtree) VirtualNodeTree(ntree);
+  }
+  remove_invalid_links(vtree);
 }
