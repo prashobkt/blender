@@ -13,6 +13,7 @@
 #include "BLI_color.h"
 #include "BLI_string.h"
 #include "BLI_array_cxx.h"
+#include "BLI_map.h"
 
 #include "PIL_time.h"
 
@@ -27,6 +28,7 @@
 using BLI::Array;
 using BLI::ArrayRef;
 using BLI::LinearAllocator;
+using BLI::Map;
 using BLI::rgba_f;
 using BLI::Set;
 using BLI::StringRef;
@@ -419,15 +421,31 @@ class SocketDefinition {
     nodeRegisterSocketType(&m_stype);
   }
 
-  static SocketDefinition *get_from_socket(bNodeSocket *socket)
+  static const SocketDefinition *get_from_socket(bNodeSocket *socket)
   {
-    return (SocketDefinition *)socket->typeinfo->userdata;
+    const SocketDefinition *def = (const SocketDefinition *)socket->typeinfo->userdata;
+    BLI_assert(def != nullptr);
+    return def;
+  }
+
+  void *get_dna_storage_copy(bNodeSocket *socket) const
+  {
+    if (socket->default_value == nullptr) {
+      return nullptr;
+    }
+    void *storage_copy = m_copy_storage_fn(socket->default_value);
+    return storage_copy;
+  }
+
+  void free_dna_storage(void *storage) const
+  {
+    m_free_storage_fn(storage);
   }
 
  private:
   static void init_socket(bNodeTree *UNUSED(ntree), bNode *UNUSED(node), bNodeSocket *socket)
   {
-    SocketDefinition *def = get_from_socket(socket);
+    const SocketDefinition *def = get_from_socket(socket);
     socket->default_value = def->m_init_storage_fn();
   }
 
@@ -436,13 +454,13 @@ class SocketDefinition {
                           bNodeSocket *dst_socket,
                           const bNodeSocket *src_socket)
   {
-    SocketDefinition *def = get_from_socket(dst_socket);
+    const SocketDefinition *def = get_from_socket(dst_socket);
     dst_socket->default_value = def->m_copy_storage_fn(src_socket->default_value);
   }
 
   static void free_socket(bNodeTree *UNUSED(ntree), bNode *UNUSED(node), bNodeSocket *socket)
   {
-    SocketDefinition *def = get_from_socket(socket);
+    const SocketDefinition *def = get_from_socket(socket);
     def->m_free_storage_fn(socket->default_value);
     socket->default_value = nullptr;
   }
@@ -454,7 +472,7 @@ class SocketDefinition {
                            const char *text)
   {
     bNodeSocket *socket = (bNodeSocket *)ptr->data;
-    SocketDefinition *def = get_from_socket(socket);
+    const SocketDefinition *def = get_from_socket(socket);
     def->m_draw_in_node_fn(C, layout, ptr, node_ptr, text);
   }
 
@@ -464,7 +482,7 @@ class SocketDefinition {
                              float *r_color)
   {
     bNodeSocket *socket = (bNodeSocket *)ptr->data;
-    SocketDefinition *def = get_from_socket(socket);
+    const SocketDefinition *def = get_from_socket(socket);
     memcpy(r_color, def->m_color, sizeof(rgba_f));
   }
 };
@@ -760,6 +778,11 @@ void init_socket_data_types()
     stype.register_type();
   }
   {
+    static SocketDefinition stype("MyIntSocket");
+    stype.set_color({0.06, 0.52, 0.15, 1.0});
+    stype.register_type();
+  }
+  {
     static SocketDefinition stype("MyFloatSocket");
     stype.set_color({1, 1, 1, 1});
     stype.add_dna_storage<bNodeSocketValueFloat>(
@@ -790,7 +813,7 @@ void init_socket_data_types()
   }
 
   data_socket_float = new BaseSocketDataType("Float", nodeSocketTypeFind("MyFloatSocket"));
-  data_socket_int = new BaseSocketDataType("Integer", nodeSocketTypeFind("NodeSocketInt"));
+  data_socket_int = new BaseSocketDataType("Integer", nodeSocketTypeFind("MyIntSocket"));
   data_socket_float_list = new ListSocketDataType("Float List",
                                                   nodeSocketTypeFind("NodeSocketFloatList"));
   data_socket_int_list = new ListSocketDataType("Integer List",
@@ -824,11 +847,12 @@ using BKE::VOutputSocket;
 
 struct SocketID {
   bNode *bnode;
+  eNodeSocketInOut inout;
   std::string identifier;
 
   friend bool operator==(const SocketID &a, const SocketID &b)
   {
-    return a.bnode == b.bnode && a.identifier == b.identifier;
+    return a.bnode == b.bnode && a.inout == b.inout && a.identifier == b.identifier;
   }
 };
 
@@ -849,20 +873,33 @@ static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
                                          LinearAllocator<> &allocator)
 {
   Set<std::pair<SocketID, SocketID>> links_to_restore;
+  Map<SocketID, std::pair<const SocketDefinition *, void *>> value_per_socket;
 
   for (const VNode *vnode : vnodes) {
     for (const VInputSocket *vinput : vnode->inputs()) {
+      SocketID id_to = {vinput->node().bnode(), SOCK_IN, vinput->identifier()};
+      const SocketDefinition *def = SocketDefinition::get_from_socket(vinput->bsocket());
+      void *storage_copy = def->get_dna_storage_copy(vinput->bsocket());
+      if (storage_copy != nullptr) {
+        value_per_socket.add_new(id_to, {def, storage_copy});
+      }
+
       for (const VOutputSocket *voutput : vinput->directly_linked_sockets()) {
-        SocketID id_from = {voutput->node().bnode(), voutput->identifier()};
-        SocketID id_to = {vinput->node().bnode(), vinput->identifier()};
-        links_to_restore.add({std::move(id_from), std::move(id_to)});
+        SocketID id_from = {voutput->node().bnode(), SOCK_OUT, voutput->identifier()};
+        links_to_restore.add({std::move(id_from), id_to});
       }
     }
     for (const VOutputSocket *voutput : vnode->outputs()) {
+      SocketID id_from = {voutput->node().bnode(), SOCK_OUT, voutput->identifier()};
+      const SocketDefinition *def = SocketDefinition::get_from_socket(voutput->bsocket());
+      void *storage_copy = def->get_dna_storage_copy(voutput->bsocket());
+      if (storage_copy != nullptr) {
+        value_per_socket.add_new(id_from, {def, storage_copy});
+      }
+
       for (const VInputSocket *vinput : voutput->directly_linked_sockets()) {
-        SocketID id_from = {voutput->node().bnode(), voutput->identifier()};
-        SocketID id_to = {vinput->node().bnode(), vinput->identifier()};
-        links_to_restore.add({std::move(id_from), std::move(id_to)});
+        SocketID id_to = {vinput->node().bnode(), SOCK_IN, vinput->identifier()};
+        links_to_restore.add({id_from, std::move(id_to)});
       }
     }
   }
@@ -881,6 +918,9 @@ static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
   for (const std::pair<SocketID, SocketID> &link_info : links_to_restore) {
     const SocketID &from_id = link_info.first;
     const SocketID &to_id = link_info.second;
+    BLI_assert(from_id.inout == SOCK_OUT);
+    BLI_assert(to_id.inout == SOCK_IN);
+
     bNodeSocket *from_socket = nodeFindSocket(from_id.bnode, SOCK_OUT, from_id.identifier.c_str());
     bNodeSocket *to_socket = nodeFindSocket(to_id.bnode, SOCK_IN, to_id.identifier.c_str());
 
@@ -888,6 +928,19 @@ static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
       nodeAddLink(ntree, from_id.bnode, from_socket, to_id.bnode, to_socket);
     }
   }
+
+  value_per_socket.foreach_item(
+      [&](const SocketID &socket_id, const std::pair<const SocketDefinition *, void *> &value) {
+        bNodeSocket *socket = nodeFindSocket(
+            socket_id.bnode, socket_id.inout, socket_id.identifier.c_str());
+        if (socket != nullptr) {
+          value.first->free_dna_storage(socket->default_value);
+          socket->default_value = value.second;
+        }
+        else {
+          value.first->free_dna_storage(value.second);
+        }
+      });
 }
 
 static bool rebuild_currently_outdated_nodes(VirtualNodeTree &vtree)
