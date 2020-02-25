@@ -1040,6 +1040,15 @@ typedef struct MyTestNodeStorage {
   int x;
 } MyTestNodeStorage;
 
+typedef struct VariadicNodeSocketIdentifier {
+  struct VariadicNodeSocketIdentifier *next, *prev;
+  char identifier[8];
+} VariadicNodeSocketIdentifier;
+
+typedef struct FloatAddNodeStorage {
+  ListBase inputs_info; /* VariadicNodeSocketIdentifier */
+} FloatAddNodeStorage;
+
 /* script node mode */
 #define NODE_SCRIPT_INTERNAL 0
 #define NODE_SCRIPT_EXTERNAL 1

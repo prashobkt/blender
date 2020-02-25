@@ -14,6 +14,8 @@
 #include "BLI_string.h"
 #include "BLI_array_cxx.h"
 #include "BLI_map.h"
+#include "BLI_listbase_wrapper.h"
+#include "BLI_string_utils.h"
 
 #include "PIL_time.h"
 
@@ -27,6 +29,7 @@
 
 using BLI::Array;
 using BLI::ArrayRef;
+using BLI::IntrusiveListBaseWrapper;
 using BLI::LinearAllocator;
 using BLI::Map;
 using BLI::rgba_f;
@@ -324,7 +327,7 @@ class SocketDefinition {
                                           struct PointerRNA *ptr,
                                           struct PointerRNA *node_ptr,
                                           const char *text)>;
-  using InitStorageFn = std::function<void *()>;
+  using NewStorageFn = std::function<void *()>;
   using CopyStorageFn = std::function<void *(const void *)>;
   using FreeStorageFn = std::function<void(void *)>;
   template<typename T> using TypedInitStorageFn = std::function<void(T *)>;
@@ -334,7 +337,7 @@ class SocketDefinition {
   DrawInNodeFn m_draw_in_node_fn;
   rgba_f m_color = {0.0f, 0.0f, 0.0f, 1.0f};
   std::string m_storage_struct_name;
-  InitStorageFn m_init_storage_fn;
+  NewStorageFn m_new_storage_fn;
   CopyStorageFn m_copy_storage_fn;
   FreeStorageFn m_free_storage_fn;
 
@@ -354,7 +357,7 @@ class SocketDefinition {
     m_stype.draw_color = SocketDefinition::get_draw_color;
     m_stype.free_self = [](bNodeSocketType *UNUSED(stype)) {};
 
-    m_init_storage_fn = []() { return nullptr; };
+    m_new_storage_fn = []() { return nullptr; };
     m_copy_storage_fn = [](const void *storage) {
       BLI_assert(storage == nullptr);
       UNUSED_VARS_NDEBUG(storage);
@@ -378,12 +381,12 @@ class SocketDefinition {
   }
 
   void add_dna_storage(StringRef struct_name,
-                       InitStorageFn init_storage_fn,
+                       NewStorageFn init_storage_fn,
                        CopyStorageFn copy_storage_fn,
                        FreeStorageFn free_storage_fn)
   {
     m_storage_struct_name = struct_name;
-    m_init_storage_fn = init_storage_fn;
+    m_new_storage_fn = init_storage_fn;
     m_copy_storage_fn = copy_storage_fn;
     m_free_storage_fn = free_storage_fn;
   }
@@ -446,7 +449,7 @@ class SocketDefinition {
   static void init_socket(bNodeTree *UNUSED(ntree), bNode *UNUSED(node), bNodeSocket *socket)
   {
     const SocketDefinition *def = get_from_socket(socket);
-    socket->default_value = def->m_init_storage_fn();
+    socket->default_value = def->m_new_storage_fn();
   }
 
   static void copy_socket(bNodeTree *UNUSED(dst_ntree),
@@ -490,11 +493,14 @@ class SocketDefinition {
 class NodeDefinition {
  public:
   using DeclareNodeFn = std::function<void(NodeBuilder &node_builder)>;
-  using InitStorageFn = std::function<void *()>;
-  using CopyStorageFn = std::function<void *(void *)>;
+  using NewStorageFn = std::function<void *()>;
+  using CopyStorageFn = std::function<void *(const void *)>;
   using FreeStorageFn = std::function<void(void *)>;
   using DrawInNodeFn =
       std::function<void(struct uiLayout *layout, struct bContext *C, struct PointerRNA *ptr)>;
+  template<typename T> using TypedNewStorageFn = std::function<T *()>;
+  template<typename T> using TypedCopyStorageFn = std::function<T *(const T *)>;
+  template<typename T> using TypedFreeStorageFn = std::function<void(T *)>;
   template<typename T> using TypedInitStorageFn = std::function<void(T *)>;
   using CopyBehaviorFn = std::function<void(bNode *dst_node, const bNode *src_node)>;
   using LabelFn = std::function<void(bNodeTree *ntree, bNode *node, char *r_label, int maxlen)>;
@@ -502,7 +508,7 @@ class NodeDefinition {
  private:
   bNodeType m_ntype;
   DeclareNodeFn m_declare_node_fn;
-  InitStorageFn m_init_storage_fn;
+  NewStorageFn m_new_storage_fn;
   CopyStorageFn m_copy_storage_fn;
   FreeStorageFn m_free_storage_fn;
   CopyBehaviorFn m_copy_node_fn;
@@ -530,8 +536,8 @@ class NodeDefinition {
     ntype->userdata = (void *)this;
 
     m_declare_node_fn = [](NodeBuilder &UNUSED(builder)) {};
-    m_init_storage_fn = []() { return nullptr; };
-    m_copy_storage_fn = [](void *storage) {
+    m_new_storage_fn = []() { return nullptr; };
+    m_copy_storage_fn = [](const void *storage) {
       BLI_assert(storage == nullptr);
       UNUSED_VARS_NDEBUG(storage);
       return nullptr;
@@ -570,14 +576,34 @@ class NodeDefinition {
   }
 
   void add_dna_storage(StringRef struct_name,
-                       InitStorageFn init_storage_fn,
+                       NewStorageFn new_storage_fn,
                        CopyStorageFn copy_storage_fn,
                        FreeStorageFn free_storage_fn)
   {
     struct_name.copy(m_ntype.storagename);
-    m_init_storage_fn = init_storage_fn;
+    m_new_storage_fn = new_storage_fn;
     m_copy_storage_fn = copy_storage_fn;
     m_free_storage_fn = free_storage_fn;
+  }
+
+  template<typename T>
+  void add_dna_storage(StringRef struct_name,
+                       TypedNewStorageFn<T> new_storage_fn,
+                       TypedCopyStorageFn<T> copy_storage_fn,
+                       TypedFreeStorageFn<T> free_storage_fn)
+  {
+    this->add_dna_storage(
+        struct_name,
+        [new_storage_fn]() { return (void *)new_storage_fn(); },
+        [copy_storage_fn](const void *storage_) {
+          const T *storage = (const T *)storage_;
+          T *new_storage = copy_storage_fn(storage);
+          return (void *)new_storage;
+        },
+        [free_storage_fn](const void *storage_) {
+          T *storage = (T *)storage_;
+          free_storage_fn(storage);
+        });
   }
 
   template<typename T>
@@ -590,7 +616,7 @@ class NodeDefinition {
           init_storage_fn((T *)buffer);
           return buffer;
         },
-        [](void *buffer) {
+        [](const void *buffer) {
           void *new_buffer = MEM_callocN(sizeof(T), __func__);
           memcpy(new_buffer, buffer, sizeof(T));
           return new_buffer;
@@ -648,7 +674,7 @@ class NodeDefinition {
     LinearAllocator<> allocator;
     NodeDecl node_decl{*ntree, *node};
     NodeBuilder node_builder{allocator, node_decl};
-    node->storage = def->m_init_storage_fn();
+    node->storage = def->m_new_storage_fn();
     def->m_declare_node_fn(node_builder);
     node_decl.build();
   }
@@ -707,6 +733,13 @@ template<typename T> static T *get_socket_storage(bNodeSocket *socket)
   return (T *)socket->default_value;
 }
 
+static void update_tree(bContext *C)
+{
+  bNodeTree *ntree = CTX_wm_space_node(C)->edittree;
+  ntree->update = NTREE_UPDATE;
+  ntreeUpdateTree(CTX_data_main(C), ntree);
+}
+
 void register_node_type_my_test_node()
 {
   {
@@ -738,11 +771,7 @@ void register_node_type_my_test_node()
       uiItemL(layout, "Hello World", 0);
       UI_but_func_set(
           but,
-          [](bContext *C, void *UNUSED(arg1), void *UNUSED(arg2)) {
-            bNodeTree *ntree = CTX_wm_space_node(C)->edittree;
-            ntree->update = NTREE_UPDATE;
-            ntreeUpdateTree(CTX_data_main(C), ntree);
-          },
+          [](bContext *C, void *UNUSED(arg1), void *UNUSED(arg2)) { update_tree(C); },
           nullptr,
           nullptr);
     });
@@ -760,6 +789,68 @@ void register_node_type_my_test_node()
       if (node->flag & NODE_HIDDEN) {
         BLI_strncpy(r_label, "Custom Label", maxlen);
       }
+    });
+    ntype.register_type();
+  }
+  {
+    static NodeDefinition ntype("FloatAddNode", "Float Add Node", "");
+    ntype.add_dna_storage<FloatAddNodeStorage>(
+        "FloatAddNodeStorage",
+        []() { return (FloatAddNodeStorage *)MEM_callocN(sizeof(FloatAddNodeStorage), __func__); },
+        [](const FloatAddNodeStorage *storage) {
+          FloatAddNodeStorage *new_storage = (FloatAddNodeStorage *)MEM_callocN(
+              sizeof(FloatAddNodeStorage), __func__);
+          LISTBASE_FOREACH (VariadicNodeSocketIdentifier *, value, &storage->inputs_info) {
+            void *new_value = MEM_dupallocN(value);
+            BLI_addtail(&new_storage->inputs_info, new_value);
+          }
+          return new_storage;
+        },
+        [](FloatAddNodeStorage *storage) {
+          BLI_freelistN(&storage->inputs_info);
+          MEM_freeN(storage);
+        });
+    ntype.add_declaration([](NodeBuilder &node_builder) {
+      FloatAddNodeStorage *storage = node_builder.node_storage<FloatAddNodeStorage>();
+      LISTBASE_FOREACH (VariadicNodeSocketIdentifier *, value, &storage->inputs_info) {
+        node_builder.float_input(value->identifier, "Value");
+      }
+      node_builder.float_output("result", "Result");
+    });
+    ntype.add_draw_fn([](uiLayout *layout, struct bContext *UNUSED(C), struct PointerRNA *ptr) {
+      bNode *node = (bNode *)ptr->data;
+      uiBut *but = uiDefBut(uiLayoutGetBlock(layout),
+                            UI_BTYPE_BUT,
+                            0,
+                            "Add Input",
+                            0,
+                            0,
+                            100,
+                            40,
+                            nullptr,
+                            0,
+                            0,
+                            0,
+                            0,
+                            "Add new input");
+      UI_but_func_set(
+          but,
+          [](bContext *C, void *arg1, void *UNUSED(arg2)) {
+            bNode *node = (bNode *)arg1;
+            FloatAddNodeStorage *storage = get_node_storage<FloatAddNodeStorage>(node);
+            VariadicNodeSocketIdentifier *value = (VariadicNodeSocketIdentifier *)MEM_callocN(
+                sizeof(VariadicNodeSocketIdentifier), __func__);
+            BLI_uniquename(&storage->inputs_info,
+                           value,
+                           "ID",
+                           '.',
+                           offsetof(VariadicNodeSocketIdentifier, identifier),
+                           sizeof(value->identifier));
+            BLI_addtail(&storage->inputs_info, value);
+            update_tree(C);
+          },
+          node,
+          nullptr);
     });
     ntype.register_type();
   }
