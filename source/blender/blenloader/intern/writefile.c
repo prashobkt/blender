@@ -1073,6 +1073,13 @@ static void write_nodetree_nolib(WriteData *wd, bNodeTree *ntree)
         }
         writestruct_id(wd, DATA, node->typeinfo->storagename, 1, node->storage);
       }
+      else if (STREQ(node->idname, "FloatAddNode")) {
+        FloatAddNodeStorage *storage = (FloatAddNodeStorage *)node->storage;
+        LISTBASE_FOREACH (VariadicNodeSocketIdentifier *, value, &storage->inputs_info) {
+          writestruct_id(wd, DATA, "VariadicNodeSocketIdentifier", 1, value);
+        }
+        writestruct_id(wd, DATA, "FloatAddNodeStorage", 1, node->storage);
+      }
       else {
         writestruct_id(wd, DATA, node->typeinfo->storagename, 1, node->storage);
       }

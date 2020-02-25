@@ -3516,6 +3516,11 @@ static void direct_link_nodetree(FileData *fd, bNodeTree *ntree)
     }
 
     if (node->storage) {
+      if (STREQ(node->idname, "FloatAddNode")) {
+        FloatAddNodeStorage *storage = (FloatAddNodeStorage *)node->storage;
+        link_list(fd, &storage->inputs_info);
+      }
+
       /* could be handlerized at some point */
       switch (node->type) {
         case SH_NODE_CURVE_VEC:
