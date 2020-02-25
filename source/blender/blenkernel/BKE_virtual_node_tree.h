@@ -39,6 +39,7 @@ class VSocket : BLI::NonCopyable, BLI::NonMovable {
  protected:
   LinearAllocatedVector<VSocket *> m_linked_sockets;
   LinearAllocatedVector<VSocket *> m_directly_linked_sockets;
+  LinearAllocatedVector<bNodeLink *> m_incident_links;
   VNode *m_node;
   bool m_is_input;
   bNodeSocket *m_bsocket;
@@ -51,6 +52,7 @@ class VSocket : BLI::NonCopyable, BLI::NonMovable {
  public:
   ArrayRef<const VSocket *> linked_sockets() const;
   ArrayRef<const VSocket *> directly_linked_sockets() const;
+  ArrayRef<bNodeLink *> incident_links() const;
 
   const VNode &node() const;
   const VirtualNodeTree &tree() const;
@@ -163,6 +165,11 @@ inline ArrayRef<const VSocket *> VSocket::linked_sockets() const
 inline ArrayRef<const VSocket *> VSocket::directly_linked_sockets() const
 {
   return m_directly_linked_sockets.as_ref();
+}
+
+inline ArrayRef<bNodeLink *> VSocket::incident_links() const
+{
+  return m_incident_links;
 }
 
 inline const VirtualNodeTree &VSocket::tree() const

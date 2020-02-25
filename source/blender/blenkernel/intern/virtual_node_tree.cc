@@ -70,6 +70,8 @@ VirtualNodeTree::VirtualNodeTree(bNodeTree *btree) : m_btree(btree)
 
     from_vsocket.m_directly_linked_sockets.append(&to_vsocket, m_allocator);
     to_vsocket.m_directly_linked_sockets.append(&from_vsocket, m_allocator);
+    from_vsocket.m_incident_links.append(blink, m_allocator);
+    to_vsocket.m_incident_links.append(blink, m_allocator);
   }
 
   for (VOutputSocket *socket : vtree.m_output_sockets) {
