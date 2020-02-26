@@ -192,17 +192,14 @@ static void fsmenu_xdg_insert_entry(GHash *xdg_map,
                                     int icon,
                                     const char *home)
 {
-  char dirpath[FILE_MAXDIR];
-  char *xdg_path = xdg_map ? BLI_ghash_lookup(xdg_map, key) : NULL;
+  char xdg_path_buf[FILE_MAXDIR];
+  const char *xdg_path = xdg_map ? BLI_ghash_lookup(xdg_map, key) : NULL;
   if (xdg_path == NULL) {
-    BLI_path_join(dirpath, sizeof(dirpath), home, default_path, NULL);
+    BLI_path_join(xdg_path_buf, sizeof(xdg_path_buf), home, default_path, NULL);
+    xdg_path = xdg_path_buf;
   }
-  else {
-    BLI_snprintf(dirpath, sizeof(dirpath), xdg_path);
-  }
-
   fsmenu_insert_entry(
-      fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, dirpath, IFACE_(default_path), icon, FS_INSERT_LAST);
+      fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, xdg_path, IFACE_(default_path), icon, FS_INSERT_LAST);
 }
 
 /** \} */
@@ -380,6 +377,12 @@ void fsmenu_insert_entry(struct FSMenu *fsmenu,
                          int icon,
                          FSMenuInsert flag)
 {
+  const uint path_len = strlen(path);
+  BLI_assert(path_len > 0);
+  if (path_len == 0) {
+    return;
+  }
+  const bool has_trailing_slash = (path[path_len - 1] == SEP);
   FSMenuEntry *fsm_prev;
   FSMenuEntry *fsm_iter;
   FSMenuEntry *fsm_head;
@@ -389,8 +392,9 @@ void fsmenu_insert_entry(struct FSMenu *fsmenu,
 
   for (fsm_iter = fsm_head; fsm_iter; fsm_prev = fsm_iter, fsm_iter = fsm_iter->next) {
     if (fsm_iter->path) {
-      const int cmp_ret = BLI_path_cmp(path, fsm_iter->path);
-      if (cmp_ret == 0) {
+      /* Compare, with/without the trailing slash in 'path'. */
+      const int cmp_ret = BLI_path_ncmp(path, fsm_iter->path, path_len);
+      if (cmp_ret == 0 && STREQ(fsm_iter->path + path_len, has_trailing_slash ? "" : SEP_STR)) {
         if (flag & FS_INSERT_FIRST) {
           if (fsm_iter != fsm_head) {
             fsm_prev->next = fsm_iter->next;
@@ -415,7 +419,14 @@ void fsmenu_insert_entry(struct FSMenu *fsmenu,
   }
 
   fsm_iter = MEM_mallocN(sizeof(*fsm_iter), "fsme");
-  fsm_iter->path = BLI_strdup(path);
+  if (has_trailing_slash) {
+    fsm_iter->path = BLI_strdup(path);
+  }
+  else {
+    fsm_iter->path = BLI_strdupn(path, path_len + 1);
+    fsm_iter->path[path_len] = SEP;
+    fsm_iter->path[path_len + 1] = '\0';
+  }
   fsm_iter->save = (flag & FS_INSERT_SAVE) != 0;
 
   /* If entry is also in another list, use that icon and maybe name. */
@@ -608,7 +619,6 @@ static void fsmenu_add_windows_folder(struct FSMenu *fsmenu,
   if (SHGetKnownFolderPath(rfid, 0, NULL, &pPath) == S_OK) {
     BLI_strncpy_wchar_as_utf8(line, pPath, FILE_MAXDIR);
     CoTaskMemFree(pPath);
-    BLI_add_slash(line);
     fsmenu_insert_entry(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, line, name, icon, flag);
   }
 }
@@ -745,9 +755,6 @@ void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
         CFRelease(localKey);
       }
 
-      /* Add end slash for consistency with other platforms */
-      BLI_add_slash(defPath);
-
       fsmenu_insert_entry(
           fsmenu, FS_CATEGORY_SYSTEM, defPath, name[0] ? name : NULL, icon, FS_INSERT_SORTED);
     }
@@ -786,9 +793,6 @@ void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
         /* Exclude "all my files" as it makes no sense in blender fileselector */
         /* Exclude "airdrop" if wlan not active as it would show "" ) */
         if (!strstr(line, "myDocuments.cannedSearch") && (*line != '\0')) {
-          /* Add end slash for consistency with other platforms */
-          BLI_add_slash(line);
-
           fsmenu_insert_entry(
               fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, line, NULL, ICON_FILE_FOLDER, FS_INSERT_LAST);
         }
