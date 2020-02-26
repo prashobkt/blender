@@ -267,7 +267,7 @@ static void foreachObjectLink(GpencilModifierData *md,
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Vertexcolor = {
-    /* name */ "Vertexcolor",
+    /* name */ "Vertex Color",
     /* structName */ "VertexcolorGpencilModifierData",
     /* structSize */ sizeof(VertexcolorGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
