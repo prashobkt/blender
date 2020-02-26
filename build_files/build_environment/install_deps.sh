@@ -349,7 +349,7 @@ ARGUMENTS_INFO="\"COMMAND LINE ARGUMENTS:
         Unconditionally skip FFMpeg installation/building.
 
     --skip-usd
-        Unconditionally skip Universal Scene Description installation/building.\""
+        Unconditionally skip Universal Scene Description installation/building.
 
     --skip-openxr
         Unconditionally skip OpenXR-SDK installation/building.\""
@@ -469,7 +469,7 @@ FFMPEG_FORCE_REBUILD=false
 FFMPEG_SKIP=false
 _ffmpeg_list_sep=";"
 
-OPENXR_VERSION="1.0.3"
+OPENXR_VERSION="1.0.6"
 OPENXR_FORCE_BUILD=false
 OPENXR_FORCE_REBUILD=false
 OPENXR_SKIP=false
@@ -979,7 +979,7 @@ FFMPEG_SOURCE=( "http://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.bz2" )
 OPENXR_USE_REPO=false
 OPENXR_SOURCE=("https://github.com/KhronosGroup/OpenXR-SDK/archive/release-${OPENXR_VERSION}.tar.gz")
 #~ OPENXR_SOURCE_REPO=("https://github.com/KhronosGroup/OpenXR-SDK-Source.git")
-#~ OPENXR_REPO_UID="2bcc4fe291100728e7b78b91f0621961787a8c58"
+#~ OPENXR_REPO_UID="5292e57fda47561e672fba0a4b6e545c0f25dd8d"
 #~ OPENXR_REPO_BRANCH="master"
 
 # C++11 is required now
@@ -3170,6 +3170,10 @@ compile_OpenXR_SDK() {
     cmake_d="$cmake_d -D CMAKE_INSTALL_PREFIX=$_inst"
     cmake_d="$cmake_d -D BUILD_FORCE_GENERATION=OFF"
     cmake_d="$cmake_d -D BUILD_LOADER=ON"
+    cmake_d="$cmake_d -D DYNAMIC_LOADER=OFF"
+    cmake_d="$cmake_d -D BUILD_WITH_WAYLAND_HEADERS=OFF"
+    cmake_d="$cmake_d -D BUILD_WITH_XCB_HEADERS=OFF"
+    cmake_d="$cmake_d -D BUILD_WITH_XLIB_HEADERS=ON"
 
     cmake $cmake_d ..
 
