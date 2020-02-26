@@ -362,7 +362,7 @@ void OBJECT_OT_gpencil_modifier_add(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Add Grease Pencil Modifier";
+  ot->name = "Add Modifier";
   ot->description = "Add a procedural operation/effect to the active grease pencil object";
   ot->idname = "OBJECT_OT_gpencil_modifier_add";
 
