@@ -1732,8 +1732,13 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
   GPU_framebuffer_restore();
 
   /* Changing Context */
-  /* GPXX Review this context */
-  DRW_opengl_context_disable();
+  if (re_gl_context != NULL) {
+    DRW_gpu_render_context_disable(re_gpu_context);
+    DRW_opengl_render_context_disable(re_gl_context);
+  }
+  else {
+    DRW_opengl_context_disable();
+  }
 
   DST.buffer_finish_called = false;
 }
