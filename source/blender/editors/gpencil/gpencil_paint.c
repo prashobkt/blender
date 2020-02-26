@@ -1563,7 +1563,6 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
 /* erase strokes which fall under the eraser strokes */
 static void gp_stroke_doeraser(tGPsdata *p)
 {
-  bGPDstroke *gps, *gpn;
   rcti rect;
   Brush *brush = p->brush;
   Brush *eraser = p->eraser;
@@ -1617,8 +1616,7 @@ static void gp_stroke_doeraser(tGPsdata *p)
     BKE_gpencil_parent_matrix_get(p->depsgraph, p->ob, gpl, p->diff_mat);
 
     /* loop over strokes, checking segments for intersections */
-    for (gps = gpf->strokes.first; gps; gps = gpn) {
-      gpn = gps->next;
+    LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
       /* check if the color is editable */
       if (ED_gpencil_stroke_color_use(p->ob, gpl, gps) == false) {
         continue;

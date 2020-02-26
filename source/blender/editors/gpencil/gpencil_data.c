@@ -706,16 +706,13 @@ static int gp_frame_clean_fill_exec(bContext *C, wmOperator *op)
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || (mode == GP_FRAME_CLEAN_FILL_ALL)) {
-        bGPDstroke *gps, *gpsn;
 
         if (gpf == NULL) {
           continue;
         }
 
         /* simply delete strokes which are no fill */
-        for (gps = gpf->strokes.first; gps; gps = gpsn) {
-          gpsn = gps->next;
-
+        LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;
@@ -784,8 +781,6 @@ static int gp_frame_clean_loose_exec(bContext *C, wmOperator *op)
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
-    bGPDstroke *gps = NULL;
-    bGPDstroke *gpsn = NULL;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -794,9 +789,7 @@ static int gp_frame_clean_loose_exec(bContext *C, wmOperator *op)
         }
 
         /* simply delete strokes which are no loose */
-        for (gps = gpf->strokes.first; gps; gps = gpsn) {
-          gpsn = gps->next;
-
+        LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;

@@ -1584,7 +1584,6 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
    */
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     bGPDframe *gpf = gpl->actframe;
-    bGPDstroke *gps, *gpsn;
 
     /* skip if no frame with strokes, or if this is the layer we're moving strokes to */
     if ((gpl == target_layer) || (gpf == NULL)) {
@@ -1592,8 +1591,7 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
     }
 
     /* make copies of selected strokes, and deselect these once we're done */
-    for (gps = gpf->strokes.first; gps; gps = gpsn) {
-      gpsn = gps->next;
+    LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
 
       /* skip strokes that are invalid for current view */
       if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -1909,15 +1907,13 @@ static int gp_delete_selected_strokes(bContext *C)
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-        bGPDstroke *gps, *gpsn;
 
         if (gpf == NULL) {
           continue;
         }
 
         /* simply delete strokes which are selected */
-        for (gps = gpf->strokes.first; gps; gps = gpsn) {
-          gpsn = gps->next;
+        LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
 
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -3278,7 +3274,6 @@ static int gp_stroke_join_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   bGPDlayer *activegpl = BKE_gpencil_layer_active_get(gpd);
-  bGPDstroke *gps, *gpsn;
   Object *ob = CTX_data_active_object(C);
 
   bGPDframe *gpf_a = NULL;
@@ -3308,8 +3303,7 @@ static int gp_stroke_join_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    for (gps = gpf->strokes.first; gps; gps = gpsn) {
-      gpsn = gps->next;
+    LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
       if (gps->flag & GP_STROKE_SELECT) {
         /* skip strokes that are invalid for current view */
         if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -4128,14 +4122,12 @@ static int gp_stroke_trim_exec(bContext *C, wmOperator *UNUSED(op))
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-        bGPDstroke *gps, *gpsn;
 
         if (gpf == NULL) {
           continue;
         }
 
-        for (gps = gpf->strokes.first; gps; gps = gpsn) {
-          gpsn = gps->next;
+        LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
 
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
