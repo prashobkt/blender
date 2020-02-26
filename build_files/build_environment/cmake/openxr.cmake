@@ -17,11 +17,20 @@
 # ***** END GPL LICENSE BLOCK *****
 
 
+# Keep flags in sync with install_deps.sh ones in compile_OpenXR_SDK()
 set(OPENXR_SDK_EXTRA_ARGS
   -DBUILD_FORCE_GENERATION=OFF
   -DBUILD_LOADER=ON
   -DDYNAMIC_LOADER=OFF
 )
+
+if(UNIX AND NOT APPLE)
+  list(APPEND OPENXR_SDK_EXTRA_ARGS
+    -DBUILD_WITH_WAYLAND_HEADERS=OFF
+    -DBUILD_WITH_XCB_HEADERS=OFF
+    -DBUILD_WITH_XLIB_HEADERS=ON
+  )
+endif()
 
 ExternalProject_Add(external_openxr_sdk
   URL ${OPENXR_SDK_URI}
