@@ -65,7 +65,7 @@ struct MDeformVert;
 
 /* Vertex Color macros. */
 #define GPENCIL_USE_VERTEX_COLOR(toolsettings) \
-  ((toolsettings->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR))
+  ((toolsettings->gp_paint->mode == GPPAINT_FLAG_USE_VERTEXCOLOR))
 #define GPENCIL_USE_VERTEX_COLOR_STROKE(toolsettings, brush) \
   ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
     ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) || \

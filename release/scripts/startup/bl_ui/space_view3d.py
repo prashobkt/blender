@@ -433,12 +433,10 @@ class _draw_tool_settings_context_mode:
             row.prop(gp_settings, "use_material_pin", text="")
 
             if brush.gpencil_tool in {'DRAW', 'FILL'} and ma:
-                gp_style = ma.grease_pencil
-                row.separator(factor=0.4)
-                row.prop(settings, "use_vertex_color", text="",
-                            icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
+                row.separator(factor=1.0)
+                row.prop(settings, "use_vertex_color", text="", expand=True)
                 sub_row = row.row(align=True)
-                sub_row.enabled = settings.use_vertex_color
+                sub_row.enabled = settings.use_vertex_color == 'VERTEXCOLOR'
                 sub_row.prop(brush, "color", text="")
                 sub_row.popover(
                     panel="TOPBAR_PT_gpencil_vertexcolor",
@@ -6864,7 +6862,7 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         layout = self.layout
 
-        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.use_vertex_color:
+        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.use_vertex_color == 'VERTEXCOLOR':
             split = layout.split(factor=0.1)
             split.prop(brush, "color", text="")
             split.template_color_picker(brush, "color", value_slider=True)

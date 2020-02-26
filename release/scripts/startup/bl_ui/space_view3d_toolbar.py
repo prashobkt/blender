@@ -2110,6 +2110,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         if ob is None or brush is None:
             return False
 
+        if settings.use_vertex_color != 'VERTEXCOLOR':
+            return False
+
         if context.region.type == 'TOOL_HEADER':
             return False
 
@@ -2129,15 +2132,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         return True
 
-    def draw_header(self, context):
-        ts = context.tool_settings
-        settings = ts.gpencil_paint
-        brush = settings.brush
-
-        if brush.gpencil_tool != 'TINT':
-            self.layout.prop(settings, "use_vertex_color", text="",
-                             toggle=False)
-
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
@@ -2148,7 +2142,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         gp_settings = brush.gpencil_settings
 
         col = layout.column()
-        col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
+        col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
         if brush.gpencil_tool in {'DRAW', 'FILL'}:
             col.prop(gp_settings, "vertex_mode", text="Mode")
@@ -2208,7 +2202,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
         brush = settings.brush
 
         col = layout.column()
-        col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
+        col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
         row = col.row(align=True)
         row.template_ID(settings, "palette", new="palette.new")

@@ -1000,13 +1000,14 @@ typedef struct UvSculpt {
 typedef struct GpPaint {
   Paint paint;
   int flag;
-  char _pad[4];
+  /* Mode of paint (Materials or Vertex Color). */
+  int mode;
 } GpPaint;
 
 /* GpPaint.flag */
 enum {
-  /* weight paint only */
-  GPPAINT_FLAG_USE_VERTEXCOLOR = (1 << 0),
+  GPPAINT_FLAG_USE_MATERIAL = 0,
+  GPPAINT_FLAG_USE_VERTEXCOLOR = 1,
 };
 
 /* Grease pencil vertex paint. */
