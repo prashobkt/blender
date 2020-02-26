@@ -2050,7 +2050,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row.prop(md, "y_axis")
         row.prop(md, "z_axis")
 
-        layout.label(text="Object:")
+        layout.label(text="Mirror Object:")
         layout.prop(md, "object", text="")
 
         self.gpencil_masking(layout, ob, md, False)
