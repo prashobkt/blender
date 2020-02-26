@@ -2130,8 +2130,8 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         subcol.separator()
 
-        subcol.prop(md, "enable_fading")
-        if md.enable_fading:
+        subcol.prop(md, "use_fade")
+        if md.use_fade:
             subcol.prop(md, "fading_center")
             subcol.prop(md, "fading_thickness", slider=True)
             subcol.prop(md, "fading_opacity", slider=True)

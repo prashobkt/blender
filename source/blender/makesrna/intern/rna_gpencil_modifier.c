@@ -1907,9 +1907,9 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Angle Splitting", "Enable angle splitting");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "enable_fading", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_fade", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_FADING);
-  RNA_def_property_ui_text(prop, "Enable Fading", "Enable fading");
+  RNA_def_property_ui_text(prop, "Enable Fade", "Enable fade");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "split_angle", PROP_FLOAT, PROP_NONE);
