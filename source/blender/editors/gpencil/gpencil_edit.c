@@ -2440,15 +2440,13 @@ static int gp_delete_selected_points(bContext *C)
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-        bGPDstroke *gps, *gpsn;
 
         if (gpf == NULL) {
           continue;
         }
 
         /* simply delete strokes which are selected */
-        for (gps = gpf->strokes.first; gps; gps = gpsn) {
-          gpsn = gps->next;
+        LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
 
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -2464,7 +2462,7 @@ static int gp_delete_selected_points(bContext *C)
             gps->flag &= ~GP_STROKE_SELECT;
 
             /* delete unwanted points by splitting stroke into several smaller ones */
-            gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+            gp_stroke_delete_tagged_points(gpf, gps, gps->next, GP_SPOINT_SELECT, false, 0);
 
             changed = true;
           }
@@ -4227,7 +4225,6 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 
       for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
         if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-          bGPDstroke *gps, *gpsn;
 
           if (gpf == NULL) {
             continue;
@@ -4235,8 +4232,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 
           gpf_dst = NULL;
 
-          for (gps = gpf->strokes.first; gps; gps = gpsn) {
-            gpsn = gps->next;
+          LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
 
             /* skip strokes that are invalid for current view */
             if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -4285,7 +4281,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
                 gp_stroke_delete_tagged_points(gpf_dst, gps_dst, NULL, GP_SPOINT_SELECT, false, 0);
 
                 /* delete selected points from origin stroke */
-                gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+                gp_stroke_delete_tagged_points(gpf, gps, gps->next, GP_SPOINT_SELECT, false, 0);
               }
               /* selected strokes mode */
               else if (mode == GP_SEPARATE_STROKE) {
@@ -4404,14 +4400,12 @@ static int gp_stroke_split_exec(bContext *C, wmOperator *UNUSED(op))
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-        bGPDstroke *gps, *gpsn;
 
         if (gpf == NULL) {
           continue;
         }
 
-        for (gps = gpf->strokes.first; gps; gps = gpsn) {
-          gpsn = gps->next;
+        LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
 
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -4438,11 +4432,11 @@ static int gp_stroke_split_exec(bContext *C, wmOperator *UNUSED(op))
             gp_stroke_delete_tagged_points(gpf, gps_dst, NULL, GP_SPOINT_SELECT, true, 0);
 
             /* delete selected points from origin stroke */
-            gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+            gp_stroke_delete_tagged_points(gpf, gps, gps->next, GP_SPOINT_SELECT, false, 0);
           }
         }
         /* select again tagged points */
-        for (gps = gpf->strokes.first; gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           bGPDspoint *ptn = gps->points;
           for (int i2 = 0; i2 < gps->totpoints; i2++, ptn++) {
             if (ptn->flag & GP_SPOINT_TAG) {
@@ -4682,7 +4676,6 @@ static int gpencil_cutter_lasso_select(bContext *C,
   GP_EDITABLE_STROKES_END(gpstroke_iter);
 
   /* dissolve selected points */
-  bGPDstroke *gpsn;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (gpl->flag & GP_LAYER_LOCKED) {
       continue;
@@ -4692,8 +4685,7 @@ static int gpencil_cutter_lasso_select(bContext *C,
     if (gpf == NULL) {
       continue;
     }
-    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gpsn) {
-      gpsn = gps->next;
+    LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
       if (gps->flag & GP_STROKE_SELECT) {
         gpencil_cutter_dissolve(gpl, gps);
       }

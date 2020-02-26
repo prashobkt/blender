@@ -240,7 +240,6 @@ void ED_gplayer_frames_select_region(KeyframeEditData *ked,
 /* Delete selected frames */
 bool ED_gplayer_frames_delete(bGPDlayer *gpl)
 {
-  bGPDframe *gpf, *gpfn;
   bool changed = false;
 
   /* error checking */
@@ -249,9 +248,7 @@ bool ED_gplayer_frames_delete(bGPDlayer *gpl)
   }
 
   /* check for frames to delete */
-  for (gpf = gpl->frames.first; gpf; gpf = gpfn) {
-    gpfn = gpf->next;
-
+  LISTBASE_FOREACH_MUTABLE (bGPDframe *, gpf, &gpl->frames) {
     if (gpf->flag & GP_FRAME_SELECT) {
       BKE_gpencil_layer_frame_delete(gpl, gpf);
       changed = true;
@@ -264,16 +261,13 @@ bool ED_gplayer_frames_delete(bGPDlayer *gpl)
 /* Duplicate selected frames from given gp-layer */
 void ED_gplayer_frames_duplicate(bGPDlayer *gpl)
 {
-  bGPDframe *gpf, *gpfn;
-
   /* error checking */
   if (gpl == NULL) {
     return;
   }
 
   /* duplicate selected frames  */
-  for (gpf = gpl->frames.first; gpf; gpf = gpfn) {
-    gpfn = gpf->next;
+  LISTBASE_FOREACH_MUTABLE (bGPDframe *, gpf, &gpl->frames) {
 
     /* duplicate this frame */
     if (gpf->flag & GP_FRAME_SELECT) {
