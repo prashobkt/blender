@@ -1917,9 +1917,10 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Angle", "Split angle for segments");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "duplications", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "duplicates", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "duplications");
   RNA_def_property_range(prop, 0, 10);
-  RNA_def_property_ui_text(prop, "Duplications", "How many copies of strokes be displayed");
+  RNA_def_property_ui_text(prop, "Duplicates", "How many copies of strokes be displayed");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_NONE);

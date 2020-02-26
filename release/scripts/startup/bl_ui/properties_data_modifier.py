@@ -2122,9 +2122,9 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     def GP_MULTIPLY(self, layout, ob, md):
         col = layout.column()
 
-        col.prop(md, "duplications")
+        col.prop(md, "duplicates")
         subcol = col.column()
-        subcol.enabled = md.duplications > 0
+        subcol.enabled = md.duplicates > 0
         subcol.prop(md, "distance")
         subcol.prop(md, "offset", slider=True)
 
