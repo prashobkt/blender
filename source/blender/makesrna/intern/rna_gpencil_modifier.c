@@ -1970,7 +1970,7 @@ static void rna_def_modifier_gpencilvertexcolor(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_MOD_NORMALEDIT);
 
   prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Object", "Parent Object for define center of the effect");
+  RNA_def_property_ui_text(prop, "Object", "Parent object to define the center of the effect");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_pointer_funcs(
