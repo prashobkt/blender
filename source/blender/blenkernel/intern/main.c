@@ -221,7 +221,7 @@ void BKE_main_idmemhash_ensure(Main *bmain)
   }
 }
 
-void main_idmemhash_history_chains_free(void *linkv)
+static void main_idmemhash_history_chains_free(void *linkv)
 {
   LinkNode *link = linkv;
   BLI_linklist_free(link, NULL);
