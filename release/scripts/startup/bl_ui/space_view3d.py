@@ -442,7 +442,7 @@ class _draw_tool_settings_context_mode:
                 sub_row.prop(brush, "color", text="")
                 sub_row.popover(
                     panel="TOPBAR_PT_gpencil_vertexcolor",
-                    text="Vertex Color",
+                    text="",
                 )
 
         row = layout.row(align=True)
@@ -458,7 +458,7 @@ class _draw_tool_settings_context_mode:
             row.prop(brush, "color", text="")
             row.popover(
                 panel="TOPBAR_PT_gpencil_vertexcolor",
-                text="Vertex Color",
+                text="",
             )
 
         from bl_ui.properties_paint_common import (
@@ -515,7 +515,7 @@ class _draw_tool_settings_context_mode:
 
             row.popover(
                 panel="TOPBAR_PT_gpencil_vertexcolor",
-                text="Vertex Color",
+                text="",
             )
 
         from bl_ui.properties_paint_common import (
