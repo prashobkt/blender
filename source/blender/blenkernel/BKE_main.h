@@ -51,6 +51,7 @@ struct GHash;
 struct GSet;
 struct ImBuf;
 struct Library;
+struct LinkNode;
 struct MainLock;
 
 /* Blender thumbnail, as written on file (width, height, and data as char RGBA). */
@@ -170,19 +171,15 @@ void BKE_main_idmemhash_release(struct Main *bmain);
 void BKE_main_idmemhash_transfer_ownership(struct Main *bmain_dst, struct Main *bmain_src);
 void BKE_main_idmemhash_usefrom(struct Main *bmain_user, struct Main *bmain_src);
 bool BKE_main_idmemhash_register_id(struct Main *bmain, void *old_vmemh, struct ID *id);
+struct ID *BKE_main_idmemhash_lookup_id(struct Main *bmain,
+                                        void *vmemh,
+                                        struct LinkNode **r_used_id_chain);
 void *BKE_main_idmemhash_unique_alloc(struct Main *bmain,
                                       void *old_vmemh,
                                       void *(*alloc_cb)(size_t len, const char *str),
                                       size_t size,
                                       const char *message);
-void *BKE_main_idmemhash_unique_realloc(struct Main *bmain,
-                                        void *old_vmemh,
-                                        void *vmemh,
-                                        void *(*realloc_cb)(void *vmemh,
-                                                            size_t len,
-                                                            const char *str),
-                                        size_t size,
-                                        const char *message);
+void *BKE_main_idmemhash_unique_realloc(struct Main *bmain, void *old_vmemh, void *vmemh);
 
 void BKE_main_relations_create(struct Main *bmain, const short flag);
 void BKE_main_relations_free(struct Main *bmain);

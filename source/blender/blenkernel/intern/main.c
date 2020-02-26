@@ -296,6 +296,26 @@ bool BKE_main_idmemhash_register_id(Main *bmain, void *old_vmemh, ID *id)
   return false;
 }
 
+/**
+ * Lookup a random ID memory address, and return its last known valid instance, and the linked list
+ * of all its known addresses so far.
+ *
+ * \param r_used_id_chain If not NULL, and that address has had several previous instances, the
+ * linked list storing all of those.
+ * \return The last known instance address matching given \a vmemh pointer, or vmemh itself if it
+ * is unknown.
+ */
+ID *BKE_main_idmemhash_lookup_id(Main *bmain, void *vmemh, LinkNode **r_used_id_chain)
+{
+  LinkNode *used_id_chain_hook = BLI_ghash_lookup(bmain->used_id_memhash, vmemh);
+  LinkNode *used_id_chain = used_id_chain_hook ? used_id_chain_hook->link : NULL;
+  if (r_used_id_chain != NULL) {
+    *r_used_id_chain = used_id_chain;
+  }
+  /* The last valid address should always be the first one in the chain. */
+  return used_id_chain != NULL ? used_id_chain->link : vmemh;
+}
+
 void *BKE_main_idmemhash_unique_alloc(Main *bmain,
                                       void *old_vmemh,
                                       void *(*alloc_cb)(size_t len, const char *str),
@@ -316,23 +336,16 @@ void *BKE_main_idmemhash_unique_alloc(Main *bmain,
   return id_mem;
 }
 
-void *BKE_main_idmemhash_unique_realloc(Main *bmain,
-                                        void *old_vmemh,
-                                        void *vmemh,
-                                        void *(*realloc_cb)(void *vmemh,
-                                                            size_t len,
-                                                            const char *str),
-                                        size_t size,
-                                        const char *message)
+void *BKE_main_idmemhash_unique_realloc(Main *bmain, void *old_vmemh, void *vmemh)
 {
-  void *id_mem = realloc_cb(vmemh, size, message);
+  void *id_mem = MEM_dupallocN(vmemh);
   if (bmain != NULL && bmain->used_id_memhash != NULL) {
     ListBase generated_ids = {.first = NULL};
     int count = 0;
     while (UNLIKELY(!BKE_main_idmemhash_register_id(bmain, old_vmemh, id_mem))) {
       printf("Allocating ID re-used memory address %p, trying again (%d)...\n", id_mem, ++count);
       BLI_addtail(&generated_ids, id_mem);
-      id_mem = realloc_cb(id_mem, size, message);
+      id_mem = MEM_dupallocN(id_mem);
     }
     BLI_freelistN(&generated_ids);
   }
