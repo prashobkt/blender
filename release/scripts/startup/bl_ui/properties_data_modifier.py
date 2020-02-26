@@ -1817,7 +1817,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     def GP_SMOOTH(self, layout, ob, md):
         col = layout.column()
         col.prop(md, "factor")
-        col.prop(md, "step")
+        col.prop(md, "step", text="Repeat")
 
         col.label(text="Affect:")
         row = col.row(align=True)
