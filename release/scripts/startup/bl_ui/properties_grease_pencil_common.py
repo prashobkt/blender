@@ -651,6 +651,7 @@ class GreasePencilVertexcolorPanel:
         ob = context.object
 
         if ob:
+
             if tool in {'DRAW', 'FILL'} and is_vertex is False:
                 row = layout.row(align=True)
                 row.prop(gp_settings, "vertex_mode", text="Mode")
@@ -660,6 +661,10 @@ class GreasePencilVertexcolorPanel:
             if tool == 'TINT' or is_vertex is True:
                 row = layout.row(align=True)
                 row.prop(gp_settings, "vertex_mode", text="Mode")
+
+            col = layout.column()
+            col.prop(brush, "color", text="")
+            col.template_color_picker(brush, "color", value_slider=True)
 
             sub_row = layout.row(align=True)
             sub_row.prop(brush, "color", text="")

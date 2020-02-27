@@ -437,11 +437,7 @@ class _draw_tool_settings_context_mode:
                 row.prop(settings, "use_vertex_color", text="", expand=True)
                 sub_row = row.row(align=True)
                 sub_row.enabled = settings.use_vertex_color == 'VERTEXCOLOR'
-                sub_row.prop(brush, "color", text="")
-                sub_row.popover(
-                    panel="TOPBAR_PT_gpencil_vertexcolor",
-                    text="",
-                )
+                sub_row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
 
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
@@ -453,11 +449,7 @@ class _draw_tool_settings_context_mode:
 
         if context.object and brush.gpencil_tool == 'TINT':
             row.separator(factor=0.4)
-            row.prop(brush, "color", text="")
-            row.popover(
-                panel="TOPBAR_PT_gpencil_vertexcolor",
-                text="",
-            )
+            row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,
@@ -509,12 +501,7 @@ class _draw_tool_settings_context_mode:
 
         if brush.gpencil_vertex_tool not in {'BLUR', 'AVERAGE', 'SMEAR'}:
             row.separator(factor=0.4)
-            row.prop(brush, "color", text="")
-
-            row.popover(
-                panel="TOPBAR_PT_gpencil_vertexcolor",
-                text="",
-            )
+            row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_vertex_settings,
