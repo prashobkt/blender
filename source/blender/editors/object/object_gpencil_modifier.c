@@ -91,8 +91,10 @@ GpencilModifierData *ED_object_gpencil_modifier_add(
   /* make sure modifier data has unique name */
   BKE_gpencil_modifier_unique_name(&ob->greasepencil_modifiers, new_md);
 
-  /* enable edit mode visible by default. */
-  new_md->mode |= eGpencilModifierMode_Editmode;
+  /* Enable edit mode visible by default. */
+  if (mti->flags & eGpencilModifierTypeFlag_SupportsEditmode) {
+    new_md->mode |= eGpencilModifierMode_Editmode;
+  }
 
   bGPdata *gpd = ob->data;
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
