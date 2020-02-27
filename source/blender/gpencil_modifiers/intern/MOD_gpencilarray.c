@@ -72,6 +72,7 @@ static void initData(GpencilModifierData *md)
   gpmd->rnd_rot = 0.5f;
   gpmd->rnd_size = 0.5f;
   gpmd->object = NULL;
+  gpmd->flag |= GP_ARRAY_USE_OFFSET;
 
   /* fill random values */
   BLI_array_frand(gpmd->rnd, 20, 1);
@@ -95,9 +96,11 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
   int ri = mmd->rnd[0];
   float factor;
 
-  offset[0] = mmd->offset[0] * elem_idx;
-  offset[1] = mmd->offset[1] * elem_idx;
-  offset[2] = mmd->offset[2] * elem_idx;
+  if (mmd->flag & GP_ARRAY_USE_OFFSET) {
+    offset[0] = mmd->offset[0] * elem_idx;
+    offset[1] = mmd->offset[1] * elem_idx;
+    offset[2] = mmd->offset[2] * elem_idx;
+  }
 
   /* rotation */
   if (mmd->flag & GP_ARRAY_RANDOM_ROT) {
@@ -131,7 +134,7 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
   copy_m4_m4(r_offset, r_mat);
 
   /* offset object */
-  if (mmd->object) {
+  if ((mmd->flag & GP_ARRAY_USE_OB_OFFSET) && (mmd->object)) {
     float mat_offset[4][4];
     float obinv[4][4];
 
@@ -206,7 +209,7 @@ static void generate_geometry(GpencilModifierData *md,
       float mat_offset[4][4];
       BKE_gpencil_instance_modifier_instance_tfm(ob, mmd, x, mat, mat_offset);
 
-      if (mmd->object) {
+      if ((mmd->flag & GP_ARRAY_USE_OB_OFFSET) && (mmd->object)) {
         /* recalculate cumulative offset here */
         mul_m4_m4m4(current_offset, current_offset, mat_offset);
       }
@@ -214,8 +217,9 @@ static void generate_geometry(GpencilModifierData *md,
         copy_m4_m4(current_offset, mat);
       }
       /* apply shift */
-      madd_v3_v3fl(current_offset[3], mmd->shift, x);
-
+      if (mmd->flag & GP_ARRAY_USE_SHIFT) {
+        madd_v3_v3fl(current_offset[3], mmd->shift, x);
+      }
       /* Duplicate original strokes to create this instance. */
       LISTBASE_FOREACH_BACKWARD (tmpStrokes *, iter, &stroke_cache) {
         /* Duplicate stroke */
@@ -225,7 +229,7 @@ static void generate_geometry(GpencilModifierData *md,
         for (int i = 0; i < iter->gps->totpoints; i++) {
           bGPDspoint *pt = &gps_dst->points[i];
           /* Apply object local transform (Rot/Scale). */
-          if (mmd->object) {
+          if ((mmd->flag & GP_ARRAY_USE_OB_OFFSET) &&(mmd->object)) {
             mul_m4_v3(mat, &pt->x);
           }
           /* Global Rotate and scale. */

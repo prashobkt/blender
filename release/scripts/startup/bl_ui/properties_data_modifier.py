@@ -1965,13 +1965,21 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         split = layout.split()
         col = split.column()
-        col.label(text="Offset:")
-        col.prop(md, "offset", text="")
-        col.prop(md, "offset_object", text="Object")
+        col.prop(md, "use_offset")
+        subcol = col.column()
+        subcol.enabled = md.use_offset
+        subcol.prop(md, "offset", text="")
+
+        col.prop(md, "use_object_offset")
+        subcol = col.column()
+        subcol.enabled = md.use_object_offset
+        subcol.prop(md, "offset_object", text="")
 
         col = split.column()
-        col.label(text="Shift:")
-        col.prop(md, "shift", text="")
+        col.prop(md, "use_shift")
+        subcol = col.column()
+        subcol.enabled = md.use_shift
+        subcol.prop(md, "shift", text="")
 
         split = layout.split()
         col = split.column()

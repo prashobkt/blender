@@ -4477,6 +4477,20 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
           const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
           switch (mti->type) {
+            case eGpencilModifierType_Array: {
+              ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
+              if ((mmd->offset[0] != 0.0f) || (mmd->offset[1] != 0.0f) ||
+                  (mmd->offset[2] != 0.0f)) {
+                mmd->flag |= GP_ARRAY_USE_OFFSET;
+              }
+              if ((mmd->shift[0] != 0.0f) || (mmd->shift[1] != 0.0f) || (mmd->shift[2] != 0.0f)) {
+                mmd->flag |= GP_ARRAY_USE_OFFSET;
+              }
+              if (mmd->object != NULL) {
+                mmd->flag |= GP_ARRAY_USE_OB_OFFSET;
+              }
+              break;
+            }
             case eGpencilModifierType_Tint: {
               TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
               srgb_to_linearrgb_v3_v3(mmd->rgb, mmd->rgb);
