@@ -66,7 +66,7 @@ static void initData(GpencilModifierData *md)
   MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
   mmd->duplications = 3;
   mmd->distance = 0.1f;
-  mmd->split_angle = 1.0f;
+  mmd->split_angle = DEG2RADF(1.0f);
   mmd->fading_opacity = 1.0f;
 }
 
