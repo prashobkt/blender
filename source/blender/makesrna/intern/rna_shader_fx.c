@@ -342,11 +342,6 @@ static void rna_def_shader_fx_pixel(BlenderRNA *brna)
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Color", "Color used for lines");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
-
-  prop = RNA_def_property(srna, "use_lines", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", FX_PIXEL_USE_LINES);
-  RNA_def_property_ui_text(prop, "Lines", "Display lines between pixels");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 }
 
 static void rna_def_shader_fx_rim(BlenderRNA *brna)
