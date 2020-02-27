@@ -5798,15 +5798,27 @@ static int ui_do_but_COLOR(bContext *C, uiBut *but, uiHandleButtonData *data, co
           }
           else {
             Scene *scene = CTX_data_scene(C);
+            bool updated = false;
 
             if (but->rnaprop && RNA_property_subtype(but->rnaprop) == PROP_COLOR_GAMMA) {
               RNA_property_float_get_array(&but->rnapoin, but->rnaprop, color);
               BKE_brush_color_set(scene, brush, color);
+              updated = true;
             }
             else if (but->rnaprop && RNA_property_subtype(but->rnaprop) == PROP_COLOR) {
               RNA_property_float_get_array(&but->rnapoin, but->rnaprop, color);
               IMB_colormanagement_scene_linear_to_srgb_v3(color);
               BKE_brush_color_set(scene, brush, color);
+              updated = true;
+            }
+
+            if (updated) {
+              PointerRNA brush_ptr;
+              PropertyRNA *brush_color_prop;
+
+              RNA_id_pointer_create(&brush->id, &brush_ptr);
+              brush_color_prop = RNA_struct_find_property(&brush_ptr, "color");
+              RNA_property_update(C, &brush_ptr, brush_color_prop);
             }
           }
 
