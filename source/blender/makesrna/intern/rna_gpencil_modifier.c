@@ -1246,7 +1246,7 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
-static void rna_def_modifier_gpencilinstance(BlenderRNA *brna)
+static void rna_def_modifier_gpencilarray(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1290,15 +1290,16 @@ static void rna_def_modifier_gpencilinstance(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 
-  prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_TRANSLATION);
+  prop = RNA_def_property(srna, "constant_offset", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_float_sdna(prop, NULL, "offset");
-  RNA_def_property_ui_text(prop, "Offset", "Value for the distance between items");
+  RNA_def_property_ui_text(prop, "Constant Offset", "Value for the distance between items");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "shift", PROP_FLOAT, PROP_TRANSLATION);
+  prop = RNA_def_property(srna, "relative_offset", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_float_sdna(prop, NULL, "shift");
-  RNA_def_property_ui_text(prop, "Shift", "Shiftiness value");
+  RNA_def_property_ui_text(
+      prop, "Relative Offset", "Value for the distance between items bounding box");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
@@ -1371,7 +1372,7 @@ static void rna_def_modifier_gpencilinstance(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "use_offset", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_constant_offset", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_USE_OFFSET);
   RNA_def_property_ui_text(prop, "Offset", "Enable offset");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
@@ -1381,8 +1382,8 @@ static void rna_def_modifier_gpencilinstance(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Object Offset", "Enable obejct offset");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "use_shift", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_USE_SHIFT);
+  prop = RNA_def_property(srna, "use_relative_offset", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_ARRAY_USE_RELATIVE);
   RNA_def_property_ui_text(prop, "Shift", "Enable shift");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
@@ -2140,7 +2141,7 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpenciltint(brna);
   rna_def_modifier_gpenciltime(brna);
   rna_def_modifier_gpencilcolor(brna);
-  rna_def_modifier_gpencilinstance(brna);
+  rna_def_modifier_gpencilarray(brna);
   rna_def_modifier_gpencilbuild(brna);
   rna_def_modifier_gpencilopacity(brna);
   rna_def_modifier_gpencillattice(brna);

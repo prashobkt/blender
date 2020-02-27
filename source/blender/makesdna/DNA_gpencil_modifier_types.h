@@ -343,7 +343,7 @@ typedef enum eArrayGpencil_Flag {
   GP_ARRAY_INVERT_LAYERPASS = (1 << 5),
   GP_ARRAY_INVERT_MATERIAL = (1 << 6),
   GP_ARRAY_USE_OFFSET = (1 << 7),
-  GP_ARRAY_USE_SHIFT = (1 << 8),
+  GP_ARRAY_USE_RELATIVE = (1 << 8),
   GP_ARRAY_USE_OB_OFFSET = (1 << 9),
 } eArrayGpencil_Flag;
 

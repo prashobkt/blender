@@ -101,6 +101,9 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
     offset[1] = mmd->offset[1] * elem_idx;
     offset[2] = mmd->offset[2] * elem_idx;
   }
+  else {
+    zero_v3(offset);
+  }
 
   /* rotation */
   if (mmd->flag & GP_ARRAY_RANDOM_ROT) {
@@ -162,6 +165,18 @@ static void generate_geometry(GpencilModifierData *md,
   bGPdata *gpd = (bGPdata *)ob->data;
   bool found = false;
 
+  /* Get bounbox for relative offset. */
+  float size[3] = {0.0f, 0.0f, 0.0f};
+  if (mmd->flag & GP_ARRAY_USE_RELATIVE) {
+    BoundBox *bb = BKE_object_boundbox_get(ob);
+    if (bb == NULL) {
+      const float min[3] = {-1.0f, -1.0f, -1.0f}, max[3] = {1.0f, 1.0f, 1.0f};
+      BKE_boundbox_init_from_minmax(bb, min, max);
+    }
+    BKE_boundbox_calc_size_aabb(bb, size);
+    mul_v3_fl(size, 2.0f);
+  }
+
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
     if (gpf == NULL) {
@@ -216,10 +231,13 @@ static void generate_geometry(GpencilModifierData *md,
       else {
         copy_m4_m4(current_offset, mat);
       }
-      /* apply shift */
-      if (mmd->flag & GP_ARRAY_USE_SHIFT) {
-        madd_v3_v3fl(current_offset[3], mmd->shift, x);
+      /* Apply relative offset. */
+      if (mmd->flag & GP_ARRAY_USE_RELATIVE) {
+        float relative[3];
+        mul_v3_v3v3(relative, mmd->shift, size);
+        madd_v3_v3fl(current_offset[3], relative, x);
       }
+
       /* Duplicate original strokes to create this instance. */
       LISTBASE_FOREACH_BACKWARD (tmpStrokes *, iter, &stroke_cache) {
         /* Duplicate stroke */
@@ -229,7 +247,7 @@ static void generate_geometry(GpencilModifierData *md,
         for (int i = 0; i < iter->gps->totpoints; i++) {
           bGPDspoint *pt = &gps_dst->points[i];
           /* Apply object local transform (Rot/Scale). */
-          if ((mmd->flag & GP_ARRAY_USE_OB_OFFSET) &&(mmd->object)) {
+          if ((mmd->flag & GP_ARRAY_USE_OB_OFFSET) && (mmd->object)) {
             mul_m4_v3(mat, &pt->x);
           }
           /* Global Rotate and scale. */
