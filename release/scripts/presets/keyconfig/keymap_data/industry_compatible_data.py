@@ -2885,7 +2885,7 @@ def km_grease_pencil_stroke_vertex_replace(params):
 def km_face_mask(params):
     items = []
     keymap = (
-        "Face Mask",
+        "Paint Face Mask (Weight, Vertex, Texture)",
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         {"items": items},
     )
@@ -2912,7 +2912,7 @@ def km_face_mask(params):
 def km_weight_paint_vertex_selection(params):
     items = []
     keymap = (
-        "Weight Paint Vertex Selection",
+        "Paint Vertex Selection (Weight, Vertex)",
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         {"items": items},
     )
