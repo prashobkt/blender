@@ -1296,10 +1296,12 @@ static void rna_def_modifier_gpencilarray(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "relative_offset", PROP_FLOAT, PROP_TRANSLATION);
+  prop = RNA_def_property(srna, "relative_offset", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "shift");
   RNA_def_property_ui_text(
-      prop, "Relative Offset", "Value for the distance between items bounding box");
+      prop,
+      "Relative Offset",
+      "The size of the geometry will determine the distance between arrayed items");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 

@@ -64,15 +64,15 @@ static void initData(GpencilModifierData *md)
 {
   ArrayGpencilModifierData *gpmd = (ArrayGpencilModifierData *)md;
   gpmd->count = 2;
-  gpmd->offset[0] = 1.0f;
-  gpmd->offset[1] = 0.0f;
-  gpmd->offset[2] = 0.0f;
-  zero_v3(gpmd->shift);
+  gpmd->shift[0] = 1.0f;
+  gpmd->shift[1] = 0.0f;
+  gpmd->shift[2] = 0.0f;
+  zero_v3(gpmd->offset);
   copy_v3_fl(gpmd->scale, 1.0f);
   gpmd->rnd_rot = 0.5f;
   gpmd->rnd_size = 0.5f;
   gpmd->object = NULL;
-  gpmd->flag |= GP_ARRAY_USE_OFFSET;
+  gpmd->flag |= GP_ARRAY_USE_RELATIVE;
 
   /* fill random values */
   BLI_array_frand(gpmd->rnd, 20, 1);
