@@ -652,7 +652,6 @@ class GreasePencilVertexcolorPanel:
 
         if ob:
             col = layout.column()
-            col.prop(brush, "color", text="")
             col.template_color_picker(brush, "color", value_slider=True)
 
             sub_row = layout.row(align=True)

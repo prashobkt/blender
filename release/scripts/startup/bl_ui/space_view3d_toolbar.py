@@ -2144,7 +2144,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         col = layout.column()
         col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
-        col.prop(brush, "color", text="")
         col.template_color_picker(brush, "color", value_slider=True)
 
         sub_row = col.row(align=True)
