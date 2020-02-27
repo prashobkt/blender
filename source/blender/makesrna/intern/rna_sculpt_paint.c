@@ -86,12 +86,12 @@ static const EnumPropertyItem rna_enum_gpencil_lock_axis_items[] = {
 static const EnumPropertyItem rna_enum_gpencil_paint_mode[] = {
     {GPPAINT_FLAG_USE_MATERIAL,
      "MATERIAL",
-     ICON_MATERIAL,
+     0,
      "Material",
      "Paint using the active material base color"},
     {GPPAINT_FLAG_USE_VERTEXCOLOR,
      "VERTEXCOLOR",
-     ICON_VPAINT_HLT,
+     0,
      "Vertex Color",
      "Paint the material with custom vertex color"},
     {0, NULL, 0, NULL, NULL},
@@ -860,7 +860,7 @@ static void rna_def_gp_paint(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Grease Pencil Paint", "");
 
   /* Use vertex color (main swith). */
-  prop = RNA_def_property(srna, "use_vertex_color", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "color_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "mode");
   RNA_def_property_enum_items(prop, rna_enum_gpencil_paint_mode);
   RNA_def_property_ui_text(prop, "Mode", "Paint Mode");

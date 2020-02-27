@@ -434,9 +434,11 @@ class _draw_tool_settings_context_mode:
 
             if brush.gpencil_tool in {'DRAW', 'FILL'} and ma:
                 row.separator(factor=1.0)
-                row.prop(settings, "use_vertex_color", text="", expand=True)
+                subrow = row.row(align=True)
+                row.prop_enum(settings, "color_mode", 'MATERIAL', text="", icon='MATERIAL')
+                row.prop_enum(settings, "color_mode", 'VERTEXCOLOR', text="", icon='VPAINT_HLT')
                 sub_row = row.row(align=True)
-                sub_row.enabled = settings.use_vertex_color == 'VERTEXCOLOR'
+                sub_row.enabled = settings.color_mode == 'VERTEXCOLOR'
                 sub_row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
 
         row = layout.row(align=True)
@@ -6868,7 +6870,7 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         layout = self.layout
 
-        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.use_vertex_color == 'VERTEXCOLOR':
+        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.color_mode == 'VERTEXCOLOR':
             split = layout.split(factor=0.1)
             split.prop(brush, "color", text="")
             split.template_color_picker(brush, "color", value_slider=True)

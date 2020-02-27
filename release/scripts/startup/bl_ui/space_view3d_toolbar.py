@@ -2096,7 +2096,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
 
 class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
-    bl_label = "Paint Mode"
+    bl_label = "Color"
     bl_category = "Tool"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -2121,25 +2121,21 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         return True
 
-    def draw_header(self, context):
-        ts = context.tool_settings
-        settings = ts.gpencil_paint
-        brush = settings.brush
-
-        if brush.gpencil_tool != 'TINT':
-            self.layout.prop(settings, "use_vertex_color", text="", expand=True)
-
     def draw(self, context):
         layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
         ts = context.tool_settings
         settings = ts.gpencil_paint
         brush = settings.brush
         gp_settings = brush.gpencil_settings
 
+        if brush.gpencil_tool != 'TINT':
+            row = layout.row()
+            row.prop(settings, "color_mode", expand=True)
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
         col = layout.column()
-        col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
+        col.enabled = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
         col.template_color_picker(brush, "color", value_slider=True)
 
@@ -2159,7 +2155,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
 class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
-    bl_label = "Color Palette"
+    bl_label = "Palette"
     bl_category = "Tool"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_mixcolor'
     bl_options = {'DEFAULT_CLOSED'}
@@ -2191,7 +2187,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
         brush = settings.brush
 
         col = layout.column()
-        col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
+        col.enabled = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
         row = col.row(align=True)
         row.template_ID(settings, "palette", new="palette.new")
@@ -2252,7 +2248,7 @@ classes = (
     VIEW3D_PT_tools_curveedit_options_stroke,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,
-    
+
     VIEW3D_PT_slots_projectpaint,
     VIEW3D_PT_tools_brush_select,
     VIEW3D_PT_tools_brush_settings,
@@ -2292,7 +2288,7 @@ classes = (
 
     VIEW3D_PT_tools_imagepaint_symmetry,
     VIEW3D_PT_tools_imagepaint_options,
-    
+
     VIEW3D_PT_tools_imagepaint_options_external,
     VIEW3D_MT_tools_projectpaint_stencil,
 
