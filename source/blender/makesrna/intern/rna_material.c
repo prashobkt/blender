@@ -63,6 +63,7 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
+#  include "DNA_gpencil_types.h"
 #  include "DNA_node_types.h"
 #  include "DNA_object_types.h"
 #  include "DNA_screen_types.h"
@@ -111,8 +112,16 @@ static void rna_Material_update_previews(Main *UNUSED(bmain),
 static void rna_MaterialGpencil_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Material *ma = (Material *)ptr->owner_id;
-
   rna_Material_update(bmain, scene, ptr);
+
+  /* Need set all caches as dirty. */
+  for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+    if (ob->type == OB_GPENCIL) {
+      bGPdata *gpd = (bGPdata *)ob->data;
+      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+    }
+  }
+
   WM_main_add_notifier(NC_GPENCIL | ND_DATA, ma);
 }
 
