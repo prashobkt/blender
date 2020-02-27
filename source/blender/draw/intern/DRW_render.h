@@ -81,6 +81,7 @@ typedef struct DRWPass DRWPass;
 typedef struct DRWShadingGroup DRWShadingGroup;
 typedef struct DRWUniform DRWUniform;
 typedef struct DRWView DRWView;
+typedef struct DRWShaderLibrary DRWShaderLibrary;
 
 /* TODO Put it somewhere else? */
 typedef struct BoundSphere {
@@ -241,6 +242,24 @@ void DRW_shader_free(struct GPUShader *shader);
     if (shader != NULL) { \
       DRW_shader_free(shader); \
       shader = NULL; \
+    } \
+  } while (0)
+
+DRWShaderLibrary *DRW_shader_library_create(void);
+
+/* Warning: Each library must be added after all its dependencies. */
+void DRW_shader_library_add_file(DRWShaderLibrary *lib, char *lib_code, const char *lib_name);
+#define DRW_SHADER_LIB_ADD(lib, lib_name) \
+  DRW_shader_library_add_file(lib, datatoc_##lib_name##_glsl, STRINGIFY(lib_name) ".glsl")
+
+char *DRW_shader_library_create_shader_string(DRWShaderLibrary *lib, char *shader_code);
+
+void DRW_shader_library_free(DRWShaderLibrary *lib);
+#define DRW_SHADER_LIB_FREE_SAFE(lib) \
+  do { \
+    if (lib != NULL) { \
+      DRW_shader_library_free(lib); \
+      lib = NULL; \
     } \
   } while (0)
 
