@@ -3990,7 +3990,12 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
       copy_v3_v3(data->vec, data->origvec);
       but->editvec = data->vec;
 
-      handlefunc = ui_block_func_COLOR;
+      if (ui_but_menu_draw_as_popover(but)) {
+        popoverfunc = but->menu_create_func;
+      }
+      else {
+        handlefunc = ui_block_func_COLOR;
+      }
       arg = but;
       break;
 
@@ -4060,8 +4065,8 @@ int ui_but_menu_direction(uiBut *but)
 }
 
 /**
- * Hack for #uiList #UI_BTYPE_LISTROW buttons to "give" events to overlaying #UI_BTYPE_TEXT buttons
- * (Ctrl-Click rename feature & co).
+ * Hack for #uiList #UI_BTYPE_LISTROW buttons to "give" events to overlaying #UI_BTYPE_TEXT
+ * buttons (Ctrl-Click rename feature & co).
  */
 static uiBut *ui_but_list_row_text_activate(bContext *C,
                                             uiBut *but,
@@ -5550,14 +5555,13 @@ static int ui_do_but_BLOCK(bContext *C, uiBut *but, uiHandleButtonData *data, co
         button_activate_state(C, but, BUTTON_STATE_EXIT);
         ui_apply_but(C, but->block, but, data, true);
 
-        /* Button's state need to be changed to EXIT so moving mouse away from this mouse wouldn't
-         * lead to cancel changes made to this button, but changing state to EXIT also makes no
-         * button active for a while which leads to triggering operator
-         * when doing fast scrolling mouse wheel.
-         * using post activate stuff from button allows to make button be active again after
-         * checking for all all that mouse leave and cancel stuff,
-         * so quick scroll wouldn't be an issue anymore.
-         * Same goes for scrolling wheel in another direction below (sergey).
+        /* Button's state need to be changed to EXIT so moving mouse away from this mouse
+         * wouldn't lead to cancel changes made to this button, but changing state to EXIT also
+         * makes no button active for a while which leads to triggering operator when doing fast
+         * scrolling mouse wheel. using post activate stuff from button allows to make button be
+         * active again after checking for all all that mouse leave and cancel stuff, so quick
+         * scroll wouldn't be an issue anymore. Same goes for scrolling wheel in another
+         * direction below (sergey).
          */
         data->postbut = but;
         data->posttype = BUTTON_ACTIVATE_OVER;
@@ -9506,7 +9510,8 @@ static int ui_handle_menu_event(bContext *C,
         /* Closing sub-levels of pull-downs.
          *
          * The actual event is handled by the button under the cursor.
-         * This is done so we can right click on menu items even when they have sub-menus open. */
+         * This is done so we can right click on menu items even when they have sub-menus open.
+         */
         case RIGHTMOUSE:
           if (inside == false) {
             if (event->val == KM_PRESS && (block->flag & UI_BLOCK_LOOP)) {
