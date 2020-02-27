@@ -2004,7 +2004,7 @@ class VIEW3D_PT_tools_grease_pencil_vertex_paint_settings(Panel, View3DPanel, Gr
 
 class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
     bl_context = ".greasepencil_vertex"
-    bl_label = "Vertex Color"
+    bl_label = "Color"
     bl_category = "Tool"
 
     @classmethod
@@ -2033,7 +2033,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
 
         col = layout.column()
 
-        col.prop(brush, "color", text="")
         col.template_color_picker(brush, "color", value_slider=True)
 
         sub_row = col.row(align=True)
@@ -2059,7 +2058,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(GreasePencilBrushFallof
 
 class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
     bl_context = ".greasepencil_vertex"
-    bl_label = "Color Palette"
+    bl_label = "Palette"
     bl_category = "Tool"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_vertex_color'
 
@@ -2084,7 +2083,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
         layout.use_property_decorate = False
         ts = context.tool_settings
         settings = ts.gpencil_vertex_paint
-        brush = settings.brush
 
         col = layout.column()
 
