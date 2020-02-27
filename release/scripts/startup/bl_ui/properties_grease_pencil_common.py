@@ -651,17 +651,6 @@ class GreasePencilVertexcolorPanel:
         ob = context.object
 
         if ob:
-
-            if tool in {'DRAW', 'FILL'} and is_vertex is False:
-                row = layout.row(align=True)
-                row.prop(gp_settings, "vertex_mode", text="Mode")
-                row = layout.row(align=True)
-                row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
-
-            if tool == 'TINT' or is_vertex is True:
-                row = layout.row(align=True)
-                row.prop(gp_settings, "vertex_mode", text="Mode")
-
             col = layout.column()
             col.prop(brush, "color", text="")
             col.template_color_picker(brush, "color", value_slider=True)
@@ -676,6 +665,16 @@ class GreasePencilVertexcolorPanel:
             row.template_ID(gpencil_paint, "palette", new="palette.new")
             if gpencil_paint.palette:
                 layout.template_palette(gpencil_paint, "palette", color=True)
+
+            if tool in {'DRAW', 'FILL'} and is_vertex is False:
+                row = layout.row(align=True)
+                row.prop(gp_settings, "vertex_mode", text="Mode")
+                row = layout.row(align=True)
+                row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
+
+            if tool == 'TINT' or is_vertex is True:
+                row = layout.row(align=True)
+                row.prop(gp_settings, "vertex_mode", text="Mode")
 
 
 class GPENCIL_UL_layer(UIList):

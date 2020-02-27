@@ -2144,13 +2144,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         col = layout.column()
         col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
-        if brush.gpencil_tool in {'DRAW', 'FILL'}:
-            col.prop(gp_settings, "vertex_mode", text="Mode")
-            col.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
-
-        if brush.gpencil_tool == 'TINT':
-            col.prop(gp_settings, "vertex_mode", text="Mode")
-
         col.prop(brush, "color", text="")
         col.template_color_picker(brush, "color", value_slider=True)
 
@@ -2159,6 +2152,13 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         sub_row.prop(brush, "secondary_color", text="")
 
         sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+        if brush.gpencil_tool in {'DRAW', 'FILL'}:
+            col.prop(gp_settings, "vertex_mode", text="Mode")
+            col.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
+
+        if brush.gpencil_tool == 'TINT':
+            col.prop(gp_settings, "vertex_mode", text="Mode")
 
 
 class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
