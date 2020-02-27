@@ -2138,7 +2138,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         brush = settings.brush
         gp_settings = brush.gpencil_settings
 
-        layout.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
         col = layout.column()
         col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
@@ -2190,7 +2189,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
         ts = context.tool_settings
         settings = ts.gpencil_paint
         brush = settings.brush
-        layout.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
         col = layout.column()
         col.enabled = settings.use_vertex_color == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
