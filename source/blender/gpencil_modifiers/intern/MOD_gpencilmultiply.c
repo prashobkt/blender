@@ -67,6 +67,7 @@ static void initData(GpencilModifierData *md)
   mmd->duplications = 3;
   mmd->distance = 0.1f;
   mmd->split_angle = 1.0f;
+  mmd->fading_opacity = 1.0f;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -200,8 +201,8 @@ static void duplicateStroke(bGPDstroke *gps,
                              (interpf(
                                  1.0f, 1 - fading_thickness, offset_factor - fading_center + 1));
       opacity_factor = (offset_factor > fading_center) ?
-                           (interpf(1 - fading_opacity, 1.0f, offset_factor - fading_center)) :
-                           (interpf(1.0f, 1 - fading_opacity, offset_factor - fading_center + 1));
+                           (interpf(fading_opacity, 1.0f, offset_factor - fading_center)) :
+                           (interpf(1.0f, fading_opacity, offset_factor - fading_center + 1));
     }
 
     for (int j = 0; j < new_gps->totpoints; j++) {
