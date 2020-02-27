@@ -149,6 +149,8 @@ struct GPUTexture *DRW_texture_pool_query_2d(int w,
                                              int h,
                                              eGPUTextureFormat format,
                                              DrawEngineType *engine_type);
+struct GPUTexture *DRW_texture_pool_query_fullscreen(eGPUTextureFormat format,
+                                                     DrawEngineType *engine_type);
 
 struct GPUTexture *DRW_texture_create_1d(int w,
                                          eGPUTextureFormat format,

@@ -101,14 +101,19 @@ set(SRC
   engines/workbench/workbench_data.c
   engines/workbench/workbench_deferred.c
   engines/workbench/workbench_effect_aa.c
+  engines/workbench/workbench_effect_cavity.c
   engines/workbench/workbench_effect_dof.c
   engines/workbench/workbench_effect_fxaa.c
   engines/workbench/workbench_effect_taa.c
   engines/workbench/workbench_engine.c
   engines/workbench/workbench_forward.c
   engines/workbench/workbench_materials.c
+  engines/workbench/workbench_opaque.c
   engines/workbench/workbench_render.c
+  engines/workbench/workbench_shader.c
+  engines/workbench/workbench_shadow.c
   engines/workbench/workbench_studiolight.c
+  engines/workbench/workbench_transparent.c
   engines/workbench/workbench_volume.c
   engines/external/external_engine.c
   engines/gpencil/gpencil_cache_utils.c
@@ -246,6 +251,7 @@ data_to_c_simple(engines/eevee/shaders/volumetric_integration_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_cavity_lib.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_cavity_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_common_lib.glsl SRC)
+data_to_c_simple(engines/workbench/shaders/workbench_composite_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_data_lib.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_deferred_composite_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_deferred_background_frag.glsl SRC)

@@ -125,6 +125,7 @@ typedef struct WORKBENCH_TextureList {
 
 typedef struct WORKBENCH_StorageList {
   struct WORKBENCH_PrivateData *g_data;
+  struct WORKBENCH_PrivateData *wpd;
   struct WORKBENCH_EffectInfo *effects;
   float *dof_ubo_data;
 } WORKBENCH_StorageList;
@@ -181,6 +182,7 @@ typedef struct WORKBENCH_UBO_Light {
 } WORKBENCH_UBO_Light;
 
 typedef struct WORKBENCH_UBO_World {
+  float viewvecs[3][4];
   float object_outline_color[4];
   float shadow_direction_vs[4];
   WORKBENCH_UBO_Light lights[4];
@@ -243,6 +245,15 @@ typedef struct WORKBENCH_PrivateData {
 
   float (*world_clip_planes)[4];
 
+  /* Opaque pipeline */
+  struct GPUTexture *object_id_tx;
+  struct GPUTexture *material_buffer_tx;
+  struct GPUTexture *composite_buffer_tx;
+  struct GPUTexture *normal_buffer_tx;
+  struct GPUTexture *cavity_buffer_tx;
+
+  struct DRWShadingGroup *prepass_shgrp;
+
   /* Volumes */
   bool volumes_do;
   ListBase smoke_domains;
@@ -270,6 +281,8 @@ typedef struct WORKBENCH_PrivateData {
   /* Color Management */
   bool use_color_management;
   bool use_color_render_settings;
+
+  eGPUShaderConfig sh_cfg;
 } WORKBENCH_PrivateData; /* Transient data */
 
 typedef struct WORKBENCH_EffectInfo {
@@ -430,6 +443,18 @@ BLI_INLINE eGPUTextureFormat workbench_color_texture_format(const WORKBENCH_Priv
   }
   return result;
 }
+
+/* workbench_opaque.c */
+void workbench_opaque_engine_init(WORKBENCH_Data *data);
+void workbench_opaque_cache_init(WORKBENCH_Data *data);
+
+/* workbench_shader.c */
+GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd);
+GPUShader *workbench_shader_opaque_hair_get(WORKBENCH_PrivateData *wpd);
+GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd);
+
+void workbench_shader_library_ensure(void);
+void workbench_shader_free(void);
 
 /* workbench_deferred.c */
 void workbench_deferred_engine_init(WORKBENCH_Data *vedata);

@@ -102,6 +102,43 @@ static void workbench_world_data_update_shadow_direction_vs(WORKBENCH_PrivateDat
 
 /* \} */
 
+static void workbench_viewvecs_update(float r_viewvecs[3][4])
+{
+  float invproj[4][4];
+  const bool is_persp = DRW_view_is_persp_get(NULL);
+  DRW_view_winmat_get(NULL, invproj, true);
+
+  /* view vectors for the corners of the view frustum.
+   * Can be used to recreate the world space position easily */
+  copy_v4_fl4(r_viewvecs[0], -1.0f, -1.0f, -1.0f, 1.0f);
+  copy_v4_fl4(r_viewvecs[1], 1.0f, -1.0f, -1.0f, 1.0f);
+  copy_v4_fl4(r_viewvecs[2], -1.0f, 1.0f, -1.0f, 1.0f);
+
+  /* convert the view vectors to view space */
+  for (int i = 0; i < 3; i++) {
+    mul_m4_v4(invproj, r_viewvecs[i]);
+    /* normalized trick see:
+     * http://www.derschmale.com/2014/01/26/reconstructing-positions-from-the-depth-buffer */
+    mul_v3_fl(r_viewvecs[i], 1.0f / r_viewvecs[i][3]);
+    if (is_persp) {
+      mul_v3_fl(r_viewvecs[i], 1.0f / r_viewvecs[i][2]);
+    }
+    r_viewvecs[i][3] = 1.0;
+  }
+
+  /* we need to store the differences */
+  r_viewvecs[1][0] -= r_viewvecs[0][0];
+  r_viewvecs[1][1] = r_viewvecs[2][1] - r_viewvecs[0][1];
+
+  /* calculate a depth offset as well */
+  if (!is_persp) {
+    float vec_far[] = {-1.0f, -1.0f, 1.0f, 1.0f};
+    mul_m4_v4(invproj, vec_far);
+    mul_v3_fl(vec_far, 1.0f / vec_far[3]);
+    r_viewvecs[1][2] = vec_far[2] - r_viewvecs[0][2];
+  }
+}
+
 void workbench_clear_color_get(float color[4])
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -130,9 +167,10 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene = draw_ctx->scene;
-  wpd->material_hash = BLI_ghash_ptr_new(__func__);
-  wpd->material_transp_hash = BLI_ghash_ptr_new(__func__);
+  // wpd->material_hash = BLI_ghash_ptr_new(__func__);
+  // wpd->material_transp_hash = BLI_ghash_ptr_new(__func__);
   wpd->preferences = &U;
+  wpd->sh_cfg = draw_ctx->sh_cfg;
 
   View3D *v3d = draw_ctx->v3d;
   RegionView3D *rv3d = draw_ctx->rv3d;
@@ -190,6 +228,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 
   workbench_world_data_update_shadow_direction_vs(wpd);
   workbench_world_data_ubo_ensure(scene, wpd);
+  workbench_viewvecs_update(wpd->world_data.viewvecs);
 
   /* Cavity settings */
   {

@@ -5,6 +5,7 @@ struct LightData {
 };
 
 struct WorldData {
+  vec4 viewvecs[3];
   vec4 object_outline_color;
   vec4 shadow_direction_vs;
   LightData lights[4];
@@ -13,4 +14,9 @@ struct WorldData {
   int matcap_orientation;
   float curvature_ridge;
   float curvature_valley;
+};
+
+layout(std140) uniform world_block
+{
+  WorldData world_data;
 };

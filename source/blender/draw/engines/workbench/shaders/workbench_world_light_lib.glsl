@@ -1,4 +1,6 @@
 
+#pragma BLENDER_REQUIRE(workbench_data_lib.glsl)
+
 /* [Drobot2014a] Low Level Optimizations for GCN */
 vec4 fast_rcp(vec4 v)
 {
@@ -41,8 +43,7 @@ vec4 wrapped_lighting(vec4 NL, vec4 w)
   return clamp((NL + w) * denom, 0.0, 1.0);
 }
 
-vec3 get_world_lighting(
-    WorldData world_data, vec3 diffuse_color, vec3 specular_color, float roughness, vec3 N, vec3 I)
+vec3 get_world_lighting(vec3 diffuse_color, vec3 specular_color, float roughness, vec3 N, vec3 I)
 {
   vec3 specular_light = world_data.ambient_color.rgb;
   vec3 diffuse_light = world_data.ambient_color.rgb;
