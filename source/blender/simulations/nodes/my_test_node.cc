@@ -1160,13 +1160,11 @@ static bool remove_invalid_links(VirtualNodeTree &vtree)
   return links_to_remove.size() > 0;
 }
 
-static bool run_operator_sockets(const VirtualNodeTree &vtree,
-                                 ArrayRef<const NodeDecl *> node_decls)
+static bool run_one_operator_socket(const VirtualNodeTree &vtree,
+                                    ArrayRef<const NodeDecl *> node_decls)
 {
   bNodeTree *ntree = vtree.btree();
-  bool tree_changed = false;
 
-  /* TODO: correctly handle multiple operator sockets per node */
   for (uint node_index : node_decls.index_range()) {
     const NodeDecl *node_decl = node_decls[node_index];
     if (node_decl->m_has_operator_input) {
@@ -1180,7 +1178,6 @@ static bool run_operator_sockets(const VirtualNodeTree &vtree,
               vinput.linked_sockets().size() == 1) {
             bNodeLink *link = vinput.incident_links()[0];
             nodeRemLink(ntree, link);
-            tree_changed = true;
 
             bNodeSocket *directly_linked_socket = vinput.directly_linked_sockets()[0]->bsocket();
             bNodeSocket *linked_socket = vinput.linked_sockets()[0]->bsocket();
@@ -1191,15 +1188,35 @@ static bool run_operator_sockets(const VirtualNodeTree &vtree,
               callback(
                   ntree, vnode->bnode(), vinput.bsocket(), directly_linked_socket, linked_socket);
             }
+            return true;
           }
-          else {
+          else if (vinput.incident_links().size() > 1) {
             for (bNodeLink *link : vinput.incident_links()) {
               nodeRemLink(ntree, link);
-              tree_changed = true;
             }
+            return true;
           }
         }
       }
+    }
+  }
+  return false;
+}
+
+static bool run_operator_sockets(VirtualNodeTree &vtree, ArrayRef<const NodeDecl *> node_decls)
+{
+  bNodeTree *ntree = vtree.btree();
+  bool tree_changed = false;
+
+  while (true) {
+    bool found_an_operator_socket = run_one_operator_socket(vtree, node_decls);
+    if (found_an_operator_socket) {
+      tree_changed = true;
+      vtree.~VirtualNodeTree();
+      new (&vtree) VirtualNodeTree(ntree);
+    }
+    else {
+      break;
     }
   }
 
