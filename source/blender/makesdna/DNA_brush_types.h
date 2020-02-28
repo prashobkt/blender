@@ -494,7 +494,6 @@ typedef struct Brush {
   float mask_stencil_pos[2];
   float mask_stencil_dimension[2];
 
-  char _pad3[4];
   struct BrushGpencilSettings *gpencil_settings;
 
 } Brush;
