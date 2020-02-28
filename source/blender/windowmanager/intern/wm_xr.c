@@ -72,6 +72,7 @@ typedef struct bXrRuntimeSessionState {
    * space). With positional tracking enabled, it should be the same as `base_pose`, when disabled
    * it also contains a location delta from the moment the option was toggled. */
   GHOST_XrPose final_reference_pose;
+  float eye_position_ofs[3]; /* Local/view space. */
 
   /** Last known viewer location (centroid of eyes, in world space) stored for queries. */
   GHOST_XrPose viewer_pose;
@@ -217,8 +218,7 @@ static void wm_xr_reference_pose_calc(const Scene *scene,
     float tmp_quat[4];
     float tmp_eul[3];
 
-    copy_v3_v3(r_pose->position, base_pose_object->obmat[3]);
-    mat4_to_quat(tmp_quat, base_pose_object->obmat);
+    mat4_to_loc_quat(r_pose->position, tmp_quat, base_pose_object->obmat);
 
     /* Only use rotation around Z-axis to align view with floor. */
     quat_to_eul(tmp_eul, tmp_quat);
@@ -237,31 +237,31 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
                                                const bXrSessionSettings *settings,
                                                const Scene *scene)
 {
-  GHOST_XrPose reference_pose;
   const bool position_tracking_toggled = (state->prev_settings_flag &
                                           XR_SESSION_USE_POSITION_TRACKING) !=
                                          (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
-  wm_xr_reference_pose_calc(scene, settings, &reference_pose);
-  copy_qt_qt(state->final_reference_pose.orientation_quat, reference_pose.orientation_quat);
-  copy_v3_v3(state->final_reference_pose.position, reference_pose.position);
+  wm_xr_reference_pose_calc(scene, settings, &state->final_reference_pose);
 
   if (position_tracking_toggled) {
-    /* Update reference pose to the current position. */
-    if (use_position_tracking == false) {
-      /* OpenXR/Ghost-XR returns the local pose in local space, we need it in world space. */
-      state->final_reference_pose.position[0] += draw_view->local_pose.position[0];
-      state->final_reference_pose.position[1] -= draw_view->local_pose.position[2];
-      state->final_reference_pose.position[2] += draw_view->local_pose.position[1];
+    if (use_position_tracking) {
+      copy_v3_fl(state->eye_position_ofs, 0.0f);
+    }
+    else {
+      /* Store the current local offset (local pose) so that we can apply that to the eyes. This
+       * way the eyes stay exactly where they are when disabling positional tracking. */
+      copy_v3_v3(state->eye_position_ofs, draw_view->local_pose.position);
     }
   }
 
   mul_qt_qtqt(state->viewer_pose.orientation_quat,
               state->final_reference_pose.orientation_quat,
               draw_view->local_pose.orientation_quat);
-
   copy_v3_v3(state->viewer_pose.position, state->final_reference_pose.position);
+  state->viewer_pose.position[0] += state->eye_position_ofs[0];
+  state->viewer_pose.position[1] -= state->eye_position_ofs[2];
+  state->viewer_pose.position[2] += state->eye_position_ofs[1];
   if (use_position_tracking) {
     state->viewer_pose.position[0] += draw_view->local_pose.position[0];
     state->viewer_pose.position[1] -= draw_view->local_pose.position[2];
@@ -505,6 +505,15 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
                                        float r_view_mat[4][4],
                                        float r_proj_mat[4][4])
 {
+  float eye_position[3];
+  float quat[4];
+
+  copy_v3_v3(eye_position, draw_view->eye_pose.position);
+  add_v3_v3(eye_position, session_state->eye_position_ofs);
+  if ((session_settings->flag & XR_SESSION_USE_POSITION_TRACKING) == 0) {
+    sub_v3_v3(eye_position, draw_view->local_pose.position);
+  }
+
   perspective_m4_fov(r_proj_mat,
                      draw_view->fov.angle_left,
                      draw_view->fov.angle_right,
@@ -514,16 +523,11 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
                      session_settings->clip_end);
 
   float eye_mat[4][4];
-  float quat[4];
   invert_qt_qt_normalized(quat, draw_view->eye_pose.orientation_quat);
   quat_to_mat4(eye_mat, quat);
-  if (session_settings->flag & XR_SESSION_USE_POSITION_TRACKING) {
-    translate_m4(eye_mat,
-                 -draw_view->eye_pose.position[0],
-                 -draw_view->eye_pose.position[1],
-                 -draw_view->eye_pose.position[2]);
-  }
+  translate_m4(eye_mat, -eye_position[0], -eye_position[1], -eye_position[2]);
 
+  /* Calculate the reference pose matrix (in world space!). */
   float base_mat[4][4];
   invert_qt_qt_normalized(quat, session_state->final_reference_pose.orientation_quat);
   quat_to_mat4(base_mat, quat);
