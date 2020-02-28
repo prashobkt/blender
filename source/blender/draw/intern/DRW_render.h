@@ -421,6 +421,9 @@ void DRW_buffer_add_entry_array(DRWCallBuffer *buffer, const void *attr[], uint 
     DRW_buffer_add_entry_array(buffer, array, (sizeof(array) / sizeof(*array))); \
   } while (0)
 
+/* Can only be called during iter phase. */
+void DRW_object_resource_handle_get(uint32_t *chunk, uint32_t *id);
+
 void DRW_shgroup_state_enable(DRWShadingGroup *shgroup, DRWState state);
 void DRW_shgroup_state_disable(DRWShadingGroup *shgroup, DRWState state);
 void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask);
