@@ -1027,14 +1027,40 @@ template<> class DefaultHash<SocketID> {
 };
 };  // namespace BLI
 
-static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
-                                         IndexMask index_mask,
-                                         ArrayRef<const NodeDecl *> node_decls)
+static void get_node_declarations(bNodeTree *ntree,
+                                  ArrayRef<const VNode *> vnodes,
+                                  LinearAllocator<> &allocator,
+                                  MutableArrayRef<const NodeDecl *> r_node_decls)
 {
+  BLI::assert_same_size(vnodes, r_node_decls);
+
+  /* TODO: handle reroute and frames */
+  for (uint i : vnodes.index_range()) {
+    const VNode &vnode = *vnodes[i];
+    bNode *node = vnode.bnode();
+    NodeDecl *node_decl = allocator.construct<NodeDecl>(ntree, node);
+    node_decl->reserve_decls(allocator, vnode.inputs().size(), vnode.outputs().size());
+
+    NodeBuilder builder{allocator, *node_decl};
+    NodeDefinition::declare_node(node, builder);
+    r_node_decls[i] = node_decl;
+  }
+}
+
+static void rebuild_nodes_and_keep_state(ArrayRef<const VNode *> vnodes)
+{
+  if (vnodes.size() == 0) {
+    return;
+  }
+
+  const VirtualNodeTree &vtree = vnodes[0]->tree();
+  bNodeTree *ntree = vtree.btree();
+
   Set<std::pair<SocketID, SocketID>> links_to_restore;
   Map<SocketID, std::pair<const SocketDefinition *, void *>> value_per_socket;
 
-  index_mask.foreach_element(vtree.nodes(), [&](const VNode *vnode) {
+  /* Remember socket states. */
+  for (const VNode *vnode : vnodes) {
     for (const VInputSocket *vinput : vnode->inputs()) {
       SocketID id_to = {vinput->node().bnode(), SOCK_IN, vinput->identifier()};
       const SocketDefinition *def = SocketDefinition::get_from_socket(vinput->bsocket());
@@ -1061,11 +1087,17 @@ static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
         links_to_restore.add({id_from, std::move(id_to)});
       }
     }
-  });
+  }
 
-  index_mask.foreach_element(node_decls, [&](const NodeDecl *node_decl) { node_decl->build(); });
+  /* Rebuild nodes. */
+  LinearAllocator<> allocator;
+  Array<const NodeDecl *> node_decls(vnodes.size(), nullptr);
+  get_node_declarations(ntree, vnodes, allocator, node_decls);
+  for (uint i : vnodes.index_range()) {
+    node_decls[i]->build();
+  }
 
-  bNodeTree *ntree = vtree.btree();
+  /* Restore links. */
   for (const std::pair<SocketID, SocketID> &link_info : links_to_restore) {
     const SocketID &from_id = link_info.first;
     const SocketID &to_id = link_info.second;
@@ -1080,6 +1112,7 @@ static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
     }
   }
 
+  /* Restore socket values. */
   value_per_socket.foreach_item(
       [&](const SocketID &socket_id, const std::pair<const SocketDefinition *, void *> &value) {
         bNodeSocket *socket = nodeFindSocket(
@@ -1097,18 +1130,16 @@ static void rebuild_nodes_and_keep_state(VirtualNodeTree &vtree,
 static bool rebuild_currently_outdated_nodes(VirtualNodeTree &vtree,
                                              ArrayRef<const NodeDecl *> node_decls)
 {
-  LinearAllocator<> allocator;
+  Vector<const VNode *> vnodes_to_update;
 
-  Vector<uint> node_indices_to_update;
   for (uint i : node_decls.index_range()) {
     if (!node_decls[i]->sockets_are_correct()) {
-      node_indices_to_update.append(i);
+      vnodes_to_update.append(vtree.nodes()[i]);
     }
   }
 
-  rebuild_nodes_and_keep_state(vtree, node_indices_to_update, node_decls);
-
-  return node_indices_to_update.size() > 0;
+  rebuild_nodes_and_keep_state(vnodes_to_update);
+  return vnodes_to_update.size() > 0;
 }
 
 static bool remove_invalid_links(VirtualNodeTree &vtree)
@@ -1127,26 +1158,6 @@ static bool remove_invalid_links(VirtualNodeTree &vtree)
   }
 
   return links_to_remove.size() > 0;
-}
-
-static void get_node_declarations(bNodeTree *ntree,
-                                  ArrayRef<const VNode *> vnodes,
-                                  LinearAllocator<> &allocator,
-                                  MutableArrayRef<const NodeDecl *> r_node_decls)
-{
-  BLI::assert_same_size(vnodes, r_node_decls);
-
-  /* TODO: handle reroute and frames */
-  for (uint i : vnodes.index_range()) {
-    const VNode &vnode = *vnodes[i];
-    bNode *node = vnode.bnode();
-    NodeDecl *node_decl = allocator.construct<NodeDecl>(ntree, node);
-    node_decl->reserve_decls(allocator, vnode.inputs().size(), vnode.outputs().size());
-
-    NodeBuilder builder{allocator, *node_decl};
-    NodeDefinition::declare_node(node, builder);
-    r_node_decls[i] = node_decl;
-  }
 }
 
 static bool run_operator_sockets(const VirtualNodeTree &vtree,
