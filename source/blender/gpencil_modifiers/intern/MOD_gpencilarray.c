@@ -69,11 +69,12 @@ static void initData(GpencilModifierData *md)
   gpmd->shift[2] = 0.0f;
   zero_v3(gpmd->offset);
   copy_v3_fl(gpmd->scale, 1.0f);
+  gpmd->rnd_offset = 0.5f;
+  gpmd->rnd_relative = 0.5f;
   gpmd->rnd_rot = 0.5f;
   gpmd->rnd_size = 0.5f;
   gpmd->object = NULL;
   gpmd->flag |= GP_ARRAY_USE_RELATIVE;
-
   /* fill random values */
   BLI_array_frand(gpmd->rnd, 20, 1);
   gpmd->rnd[0] = 1;
@@ -103,6 +104,13 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
   }
   else {
     zero_v3(offset);
+  }
+
+  /* Random constant offset */
+  if (mmd->flag & GP_ARRAY_RANDOM_OFFSET) {
+    float rnd_offset[3];
+    mul_v3_v3fl(rnd_offset, mmd->offset, mmd->rnd_offset * mmd->rnd[ri]);
+    add_v3_v3(offset, rnd_offset);
   }
 
   /* rotation */
@@ -164,6 +172,7 @@ static void generate_geometry(GpencilModifierData *md,
   /* Load the strokes to be duplicated. */
   bGPdata *gpd = (bGPdata *)ob->data;
   bool found = false;
+  int ri = 1;
 
   /* Get bounbox for relative offset. */
   float size[3] = {0.0f, 0.0f, 0.0f};
@@ -236,6 +245,13 @@ static void generate_geometry(GpencilModifierData *md,
         float relative[3];
         mul_v3_v3v3(relative, mmd->shift, size);
         madd_v3_v3fl(current_offset[3], relative, x);
+
+        /* Random relative offset. */
+        if (mmd->flag & GP_ARRAY_RANDOM_RELATIVE) {
+          float rnd_shift[3];
+          mul_v3_v3fl(rnd_shift, mmd->shift, mmd->rnd_relative * mmd->rnd[ri]);
+          add_v3_v3(current_offset[3], rnd_shift);
+        }
       }
 
       /* Duplicate original strokes to create this instance. */
@@ -263,6 +279,12 @@ static void generate_geometry(GpencilModifierData *md,
 
         /* Add new stroke. */
         BLI_addhead(&iter->gpf->strokes, gps_dst);
+      }
+
+      /* Advance random index. */
+      ri++;
+      if (ri > 19) {
+        ri = 1;
       }
     }
 
