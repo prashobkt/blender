@@ -4479,6 +4479,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           switch (mti->type) {
             case eGpencilModifierType_Array: {
               ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
+              mmd->seed = 1;
               if ((mmd->offset[0] != 0.0f) || (mmd->offset[1] != 0.0f) ||
                   (mmd->offset[2] != 0.0f)) {
                 mmd->flag |= GP_ARRAY_USE_OFFSET;

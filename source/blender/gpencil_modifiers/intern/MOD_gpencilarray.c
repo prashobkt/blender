@@ -107,13 +107,6 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
     zero_v3(offset);
   }
 
-  /* Random constant offset */
-  if (mmd->flag & GP_ARRAY_RANDOM_OFFSET) {
-    float rnd_offset[3];
-    mul_v3_v3fl(rnd_offset, mmd->offset, mmd->rnd_offset * mmd->rnd[ri]);
-    add_v3_v3(offset, rnd_offset);
-  }
-
   /* rotation */
   if (mmd->flag & GP_ARRAY_RANDOM_ROT) {
     factor = mmd->rnd_rot * mmd->rnd[ri];
@@ -175,6 +168,8 @@ static void generate_geometry(GpencilModifierData *md,
   bool found = false;
   int ri = 1;
 
+  float max_offset[3], max_shift[3];
+
   /* Get bounbox for relative offset. */
   float size[3] = {0.0f, 0.0f, 0.0f};
   if (mmd->flag & GP_ARRAY_USE_RELATIVE) {
@@ -184,8 +179,13 @@ static void generate_geometry(GpencilModifierData *md,
       BKE_boundbox_init_from_minmax(bb, min, max);
     }
     BKE_boundbox_calc_size_aabb(bb, size);
+    /* Calc relative random maximum size. */
+    mul_v3_v3v3(max_shift, size, mmd->shift);
+
     mul_v3_fl(size, 2.0f);
   }
+  /* Save constant random maximum size. */
+  mul_v3_v3fl(max_offset, mmd->offset, 1.0f);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
@@ -241,6 +241,18 @@ static void generate_geometry(GpencilModifierData *md,
       else {
         copy_m4_m4(current_offset, mat);
       }
+
+      /* Apply constant random offset. */
+      if ((mmd->flag & GP_ARRAY_USE_OFFSET) && (mmd->flag & GP_ARRAY_RANDOM_OFFSET)) {
+        float off[3];
+        mul_v3_v3fl(off, max_offset, clamp_f(mmd->rnd_offset * mmd->rnd[ri], 0.0f, 1.0f));
+        /* For adding more randomness, check direction. */
+        if (mmd->rnd[20 - ri] < 0.5f) {
+          mul_v3_fl(off, -1.0f);
+        }
+        add_v3_v3(current_offset[3], off);
+      }
+
       /* Apply relative offset. */
       if (mmd->flag & GP_ARRAY_USE_RELATIVE) {
         float relative[3];
@@ -249,9 +261,13 @@ static void generate_geometry(GpencilModifierData *md,
 
         /* Random relative offset. */
         if (mmd->flag & GP_ARRAY_RANDOM_RELATIVE) {
-          float rnd_shift[3];
-          mul_v3_v3fl(rnd_shift, mmd->shift, mmd->rnd_relative * mmd->rnd[ri]);
-          add_v3_v3(current_offset[3], rnd_shift);
+          float off[3];
+          mul_v3_v3fl(off, max_shift, clamp_f(mmd->rnd_relative * mmd->rnd[ri], 0.0f, 1.0f));
+          /* For adding more randomness, check direction. */
+          if (mmd->rnd[20 - ri] < 0.5f) {
+            mul_v3_fl(off, -1.0f);
+          }
+          add_v3_v3(current_offset[3], off);
         }
       }
 
