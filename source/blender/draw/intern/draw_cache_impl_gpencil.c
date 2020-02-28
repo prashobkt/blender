@@ -646,10 +646,13 @@ typedef struct gpEditIterData {
   int vgindex;
 } gpEditIterData;
 
-static uint32_t gpencil_point_edit_flag(const bGPDspoint *pt, int v, int v_len)
+static uint32_t gpencil_point_edit_flag(const bool layer_lock,
+                                        const bGPDspoint *pt,
+                                        int v,
+                                        int v_len)
 {
   uint32_t sflag = 0;
-  SET_FLAG_FROM_TEST(sflag, pt->flag & GP_SPOINT_SELECT, GP_EDIT_POINT_SELECTED);
+  SET_FLAG_FROM_TEST(sflag, (!layer_lock) && pt->flag & GP_SPOINT_SELECT, GP_EDIT_POINT_SELECTED);
   SET_FLAG_FROM_TEST(sflag, v == 0, GP_EDIT_STROKE_START);
   SET_FLAG_FROM_TEST(sflag, v == (v_len - 1), GP_EDIT_STROKE_END);
   return sflag;
@@ -671,19 +674,19 @@ static void gpencil_edit_stroke_iter_cb(bGPDlayer *gpl,
   MDeformVert *dvert = ((iter->vgindex > -1) && gps->dvert) ? gps->dvert : NULL;
   gpEditVert *vert_ptr = iter->verts + v;
 
+  const bool layer_lock = (gpl->flag & GP_LAYER_LOCKED);
   uint32_t sflag = 0;
-  SET_FLAG_FROM_TEST(sflag,
-                     ((gpl->flag & GP_LAYER_LOCKED) == 0) && gps->flag & GP_STROKE_SELECT,
-                     GP_EDIT_STROKE_SELECTED);
+  SET_FLAG_FROM_TEST(
+      sflag, (!layer_lock) && gps->flag & GP_STROKE_SELECT, GP_EDIT_STROKE_SELECTED);
   SET_FLAG_FROM_TEST(sflag, gpf->runtime.onion_id != 0.0f, GP_EDIT_MULTIFRAME);
 
   for (int i = 0; i < v_len; i++) {
-    vert_ptr->vflag = sflag | gpencil_point_edit_flag(&gps->points[i], i, v_len);
+    vert_ptr->vflag = sflag | gpencil_point_edit_flag(layer_lock, &gps->points[i], i, v_len);
     vert_ptr->weight = gpencil_point_edit_weight(dvert, i, iter->vgindex);
     vert_ptr++;
   }
   /* Draw line to first point to complete the loop for cyclic strokes. */
-  vert_ptr->vflag = sflag | gpencil_point_edit_flag(&gps->points[0], 0, v_len);
+  vert_ptr->vflag = sflag | gpencil_point_edit_flag(layer_lock, &gps->points[0], 0, v_len);
   vert_ptr->weight = gpencil_point_edit_weight(dvert, 0, iter->vgindex);
 }
 
