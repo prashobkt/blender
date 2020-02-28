@@ -76,7 +76,8 @@ static void initData(GpencilModifierData *md)
   gpmd->object = NULL;
   gpmd->flag |= GP_ARRAY_USE_RELATIVE;
   /* fill random values */
-  BLI_array_frand(gpmd->rnd, 20, 1);
+  gpmd->seed = 1;
+  BLI_array_frand(gpmd->rnd, 20, gpmd->seed);
   gpmd->rnd[0] = 1;
 }
 

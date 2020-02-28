@@ -2005,6 +2005,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = layout.column()
         col.separator()
         col.prop(md, "replace_material", text="Material Override")
+        col.prop(md, "seed")
 
         self.gpencil_masking(layout, ob, md, False)
 
