@@ -1,6 +1,7 @@
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_common_lib.glsl)
+#pragma BLENDER_REQUIRE(workbench_material_lib.glsl)
 
 IN_OUT ShaderStageInterface
 {
@@ -32,11 +33,8 @@ void main()
 
   normal_interp = normalize(normal_object_to_view(nor));
 
-  // float metallic = materialColorAndMetal.a;
-  // float roughness = materialRoughness;
-
-  float metallic = 0.0;
-  float roughness = 0.0;
+  float alpha, metallic, roughness;
+  workbench_material_data_get(resource_handle, color_interp, alpha, roughness, metallic);
 
   if (metallic == -1.0) {
     /* Matcap Case. */

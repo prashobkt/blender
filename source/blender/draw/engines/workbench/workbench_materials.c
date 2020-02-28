@@ -22,6 +22,8 @@
 
 #include "workbench_private.h"
 
+#include "BLI_memblock.h"
+
 #include "BKE_image.h"
 #include "BKE_node.h"
 
@@ -30,6 +32,8 @@
 
 #include "DNA_node_types.h"
 #include "DNA_mesh_types.h"
+
+#include "GPU_uniformbuffer.h"
 
 #include "ED_uvedit.h"
 
@@ -80,6 +84,61 @@ void workbench_material_update_data(WORKBENCH_PrivateData *wpd,
       copy_v3_fl(data->base_color, 0.8f);
     }
   }
+}
+
+static void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
+                                        Object *ob,
+                                        Material *mat,
+                                        WORKBENCH_UBO_Material *data,
+                                        int color_type)
+{
+  float metallic = 0.0f;
+  float roughness = 0.632455532f; /* sqrtf(0.4f); */
+  float alpha = wpd->shading.xray_alpha;
+
+  switch (color_type) {
+    case V3D_SHADING_SINGLE_COLOR:
+      copy_v3_v3(data->base_color, wpd->shading.single_color);
+      break;
+    case V3D_SHADING_ERROR_COLOR:
+      copy_v3_fl3(data->base_color, 0.8, 0.0, 0.8);
+      break;
+    case V3D_SHADING_RANDOM_COLOR: {
+      uint hash = BLI_ghashutil_strhash_p_murmur(ob->id.name);
+      if (ob->id.lib) {
+        hash = (hash * 13) ^ BLI_ghashutil_strhash_p_murmur(ob->id.lib->name);
+      }
+      float hue = BLI_hash_int_01(hash);
+      float hsv[3] = {hue, HSV_SATURATION, HSV_VALUE};
+      hsv_to_rgb_v(hsv, data->base_color);
+      break;
+    }
+    case V3D_SHADING_OBJECT_COLOR:
+    case V3D_SHADING_VERTEX_COLOR:
+      alpha *= ob->color[3];
+      copy_v3_v3(data->base_color, ob->color);
+      break;
+    case V3D_SHADING_MATERIAL_COLOR:
+    case V3D_SHADING_TEXTURE_COLOR:
+    default:
+      if (mat) {
+        alpha *= mat->a;
+        copy_v3_v3(data->base_color, &mat->r);
+        if (workbench_is_specular_highlight_enabled(wpd)) {
+          metallic = mat->metallic;
+          roughness = sqrtf(mat->roughness); /* Remap to disney roughness. */
+        }
+      }
+      else {
+        copy_v3_fl(data->base_color, 0.8f);
+      }
+      break;
+  }
+
+  uint32_t packed_metallic = unit_float_to_uchar_clamp(metallic);
+  uint32_t packed_roughness = unit_float_to_uchar_clamp(roughness);
+  uint32_t packed_alpha = unit_float_to_uchar_clamp(alpha);
+  data->packed_data = (packed_alpha << 16u) | (packed_roughness << 8u) | packed_metallic;
 }
 
 char *workbench_material_build_defines(WORKBENCH_PrivateData *wpd,
@@ -397,6 +456,67 @@ void workbench_material_shgroup_uniform(WORKBENCH_PrivateData *wpd,
   if (use_highlight) {
     DRW_shgroup_uniform_float(grp, "materialRoughness", &material->roughness, 1);
   }
+}
+
+DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
+                                          Object *ob,
+                                          Material *ma,
+                                          int color_type)
+{
+  bool resource_changed = false;
+  uint32_t chunk, id;
+
+  DRWShadingGroup *grp = wpd->prepass_shgrp;
+  DRWShadingGroup **grp_mat = NULL;
+
+  const bool use_material_index = USE_MATERIAL_INDEX(wpd);
+
+  if (use_material_index) {
+    BLI_assert(ma);
+    if (BLI_ghash_ensure_p(wpd->material_hash, ma, (void ***)&grp_mat)) {
+      return *grp_mat;
+    }
+    id = wpd->material_index++;
+    resource_changed = true;
+  }
+  else {
+    id = DRW_object_resource_id_get(ob);
+  }
+
+  /* Divide in chunks of MAX_MATERIAL. */
+  chunk = id >> 12u;
+  id = id & 0xFFFu;
+
+  /* We need to add a new chunk. */
+  while (chunk >= wpd->material_chunk_count) {
+    wpd->material_chunk_count++;
+    wpd->material_ubo_data_curr = BLI_memblock_alloc(wpd->material_ubo_data);
+    wpd->material_ubo_curr = workbench_material_ubo_alloc(wpd);
+    wpd->material_chunk_curr = chunk;
+    resource_changed = true;
+  }
+  /* We need to go back to a previous chunk. */
+  if (wpd->material_chunk_curr != chunk) {
+    wpd->material_ubo_data_curr = BLI_memblock_elem_get(wpd->material_ubo_data, 0, chunk);
+    wpd->material_ubo_curr = BLI_memblock_elem_get(wpd->material_ubo, 0, chunk);
+    wpd->material_chunk_curr = chunk;
+    resource_changed = true;
+  }
+
+  /* mats are allocated in elem size of MAX_MATERIAL. */
+  workbench_material_ubo_data(wpd, ob, ma, &wpd->material_ubo_data_curr[id], color_type);
+
+  if (resource_changed) {
+    grp = DRW_shgroup_create_sub(grp);
+    DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+    DRW_shgroup_uniform_int_copy(grp, "material_index", (use_material_index) ? id : -1);
+
+    if (use_material_index && grp_mat) {
+      *grp_mat = grp;
+    }
+  }
+
+  return grp;
 }
 
 void workbench_material_copy(WORKBENCH_MaterialData *dest_material,

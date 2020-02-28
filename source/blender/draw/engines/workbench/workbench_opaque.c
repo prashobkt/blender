@@ -77,6 +77,8 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
 
     DRW_PASS_CREATE(psl->prepass_pass, state | cull_state | clip_state);
     wpd->prepass_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+    DRW_shgroup_uniform_int_copy(grp, "material_index", -1);
 
     // DRW_PASS_CREATE(psl->ghost_prepass_pass, state | cull_state | clip_state);
     // grp = DRW_shgroup_create(sh, psl->ghost_prepass_pass);

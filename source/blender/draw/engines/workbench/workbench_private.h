@@ -39,6 +39,7 @@
 #define MAX_PREPASS_SHADERS (1 << 8)
 #define MAX_ACCUM_SHADERS (1 << 8)
 #define MAX_CAVITY_SHADERS (1 << 3)
+#define MAX_MATERIAL (1 << 12)
 
 #define TEXTURE_DRAWING_ENABLED(wpd) (wpd->shading.color_type == V3D_SHADING_TEXTURE_COLOR)
 #define VERTEX_COLORS_ENABLED(wpd) (wpd->shading.color_type == V3D_SHADING_VERTEX_COLOR)
@@ -72,6 +73,9 @@
         V3D_SHADING_OBJECT_COLOR, \
         V3D_SHADING_TEXTURE_COLOR, \
         V3D_SHADING_VERTEX_COLOR))
+
+#define USE_MATERIAL_INDEX(wpd) \
+  ELEM(wpd->shading.color_type, V3D_SHADING_MATERIAL_COLOR, V3D_SHADING_TEXTURE_COLOR)
 
 #define IS_NAVIGATING(wpd) \
   ((DRW_context_state_get()->rv3d) && \
@@ -181,21 +185,29 @@ typedef struct WORKBENCH_UBO_Light {
   float diffuse_color[3], wrapped;
 } WORKBENCH_UBO_Light;
 
+typedef struct WORKBENCH_UBO_Material {
+  float base_color[3];
+  /* Packed data into a int. Decoded in the shader. */
+  uint32_t packed_data;
+} WORKBENCH_UBO_Material;
+
 typedef struct WORKBENCH_UBO_World {
   float viewvecs[3][4];
   float object_outline_color[4];
   float shadow_direction_vs[4];
   WORKBENCH_UBO_Light lights[4];
   float ambient_color[4];
-  int num_lights;
   int matcap_orientation;
   float curvature_ridge;
   float curvature_valley;
+  int _pad0;
 } WORKBENCH_UBO_World;
+
 BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_World, 16)
+BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_Light, 16)
+BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_Material, 16)
 
 typedef struct WORKBENCH_PrivateData {
-  struct GHash *material_hash;
   struct GHash *material_transp_hash;
   struct GPUShader *prepass_sh;
   struct GPUShader *prepass_hair_sh;
@@ -254,6 +266,17 @@ typedef struct WORKBENCH_PrivateData {
 
   struct DRWShadingGroup *prepass_shgrp;
 
+  /* Materials */
+  struct GHash *material_hash;
+  struct GHash *texture_hash;
+  struct BLI_memblock *material_ubo;
+  struct BLI_memblock *material_ubo_data;
+  WORKBENCH_UBO_Material *material_ubo_data_curr;
+  struct GPUUniformBuffer *material_ubo_curr;
+  int material_chunk_count;
+  int material_chunk_curr;
+  int material_index;
+
   /* Volumes */
   bool volumes_do;
   ListBase smoke_domains;
@@ -277,10 +300,6 @@ typedef struct WORKBENCH_PrivateData {
   float dof_rotation;
   float dof_ratio;
   bool dof_enabled;
-
-  /* Color Management */
-  bool use_color_management;
-  bool use_color_render_settings;
 
   eGPUShaderConfig sh_cfg;
 } WORKBENCH_PrivateData; /* Transient data */
@@ -320,11 +339,11 @@ typedef struct WORKBENCH_ObjectData {
   bool shadow_bbox_dirty;
 } WORKBENCH_ObjectData;
 
-typedef struct WORKBENCH_WorldData {
-  DrawData dd;
-  /* The cached `GPUUniformBuffer`, that is reused between draw calls. */
+typedef struct WORKBENCH_ViewLayerData {
   struct GPUUniformBuffer *world_ubo;
-} WORKBENCH_WorldData;
+  struct BLI_memblock *material_ubo;
+  struct BLI_memblock *material_ubo_data;
+} WORKBENCH_ViewLayerData;
 
 /* Enumeration containing override options for base color rendering.
  * This is used to during painting to force the base color to show what you are
@@ -551,6 +570,11 @@ void workbench_material_shgroup_uniform(WORKBENCH_PrivateData *wpd,
 void workbench_material_copy(WORKBENCH_MaterialData *dest_material,
                              const WORKBENCH_MaterialData *source_material);
 
+DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
+                                          Object *ob,
+                                          Material *ma,
+                                          int color_type);
+
 /* workbench_studiolight.c */
 void studiolight_update_world(WORKBENCH_PrivateData *wpd,
                               StudioLight *sl,
@@ -572,6 +596,8 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd);
 void workbench_private_data_free(WORKBENCH_PrivateData *wpd);
 void workbench_private_data_get_light_direction(float r_light_direction[3]);
 void workbench_clear_color_get(float color[4]);
+void workbench_update_material_ubos(WORKBENCH_PrivateData *wpd);
+struct GPUUniformBuffer *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd);
 
 /* workbench_volume.c */
 void workbench_volume_engine_init(void);

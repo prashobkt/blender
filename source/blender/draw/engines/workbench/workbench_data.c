@@ -22,69 +22,61 @@
 
 #include "workbench_private.h"
 
+#include "BLI_memblock.h"
+
 #include "DNA_userdef_types.h"
 
 #include "ED_view3d.h"
 
 #include "UI_resources.h"
 
-#include "GPU_batch.h"
+#include "GPU_uniformbuffer.h"
 
 /* -------------------------------------------------------------------- */
 /** \name World Data
  * \{ */
 
-static void workbench_world_data_free(DrawData *dd)
+GPUUniformBuffer *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd)
 {
-  WORKBENCH_WorldData *data = (WORKBENCH_WorldData *)dd;
-  DRW_UBO_FREE_SAFE(data->world_ubo);
+  struct GPUUniformBuffer **ubo = BLI_memblock_alloc(wpd->material_ubo);
+  if (*ubo == NULL) {
+    *ubo = GPU_uniformbuffer_create(sizeof(WORKBENCH_UBO_Material) * MAX_MATERIAL, NULL, NULL);
+  }
+  return *ubo;
 }
 
-/* Ensure the availability of the world_ubo in the given WORKBENCH_PrivateData
- *
- * See T70167: Some platforms create threads to upload ubo's.
- *
- * Reuses the last previous created `world_ubo`. Due to limitations of
- * DrawData it will only be reused when there is a world attached to the Scene.
- * Future development: The best location would be to store it in the View3D.
- *
- * We don't cache the data itself as there was no indication that that lead to
- * an improvement.
- *
- * This functions also sets the `WORKBENCH_PrivateData.is_world_ubo_owner` that must
- * be respected.
- */
-static void workbench_world_data_ubo_ensure(const Scene *scene, WORKBENCH_PrivateData *wpd)
+static void workbench_ubo_free(void *elem)
 {
-  World *world = scene->world;
-  if (world) {
-    WORKBENCH_WorldData *engine_world_data = (WORKBENCH_WorldData *)DRW_drawdata_ensure(
-        &world->id,
-        &draw_engine_workbench_solid,
-        sizeof(WORKBENCH_WorldData),
-        NULL,
-        &workbench_world_data_free);
+  GPUUniformBuffer **ubo = elem;
+  DRW_UBO_FREE_SAFE(*ubo);
+}
 
-    if (engine_world_data->world_ubo == NULL) {
-      engine_world_data->world_ubo = DRW_uniformbuffer_create(sizeof(WORKBENCH_UBO_World),
-                                                              &wpd->world_data);
-    }
-    else {
-      DRW_uniformbuffer_update(engine_world_data->world_ubo, &wpd->world_data);
-    }
+static void workbench_view_layer_data_free(void *storage)
+{
+  WORKBENCH_ViewLayerData *vldata = (WORKBENCH_ViewLayerData *)storage;
 
-    /* Borrow world data ubo */
-    wpd->is_world_ubo_owner = false;
-    wpd->world_ubo = engine_world_data->world_ubo;
+  DRW_UBO_FREE_SAFE(vldata->world_ubo);
+
+  BLI_memblock_destroy(vldata->material_ubo_data, NULL);
+  BLI_memblock_destroy(vldata->material_ubo, workbench_ubo_free);
+}
+
+static WORKBENCH_ViewLayerData *workbench_view_layer_data_ensure_ex(struct ViewLayer *view_layer)
+{
+  WORKBENCH_ViewLayerData **vldata = (WORKBENCH_ViewLayerData **)
+      DRW_view_layer_engine_data_ensure_ex(view_layer,
+                                           (DrawEngineType *)&workbench_view_layer_data_ensure_ex,
+                                           &workbench_view_layer_data_free);
+
+  if (*vldata == NULL) {
+    *vldata = MEM_callocN(sizeof(**vldata), "WORKBENCH_ViewLayerData");
+    size_t matbuf_size = sizeof(WORKBENCH_UBO_Material) * MAX_MATERIAL;
+    (*vldata)->material_ubo_data = BLI_memblock_create_ex(matbuf_size, matbuf_size * 2);
+    (*vldata)->material_ubo = BLI_memblock_create_ex(sizeof(void *), sizeof(void *) * 8);
+    (*vldata)->world_ubo = DRW_uniformbuffer_create(sizeof(WORKBENCH_UBO_World), NULL);
   }
-  else {
-    /* there is no world so we cannot cache the UBO. */
-    BLI_assert(!wpd->world_ubo || wpd->is_world_ubo_owner);
-    if (!wpd->world_ubo) {
-      wpd->is_world_ubo_owner = true;
-      wpd->world_ubo = DRW_uniformbuffer_create(sizeof(WORKBENCH_UBO_World), &wpd->world_data);
-    }
-  }
+
+  return *vldata;
 }
 
 static void workbench_world_data_update_shadow_direction_vs(WORKBENCH_PrivateData *wpd)
@@ -167,26 +159,32 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene = draw_ctx->scene;
-  // wpd->material_hash = BLI_ghash_ptr_new(__func__);
-  // wpd->material_transp_hash = BLI_ghash_ptr_new(__func__);
+  WORKBENCH_ViewLayerData *vldata = workbench_view_layer_data_ensure_ex(draw_ctx->view_layer);
+  RegionView3D *rv3d = draw_ctx->rv3d;
+  View3D *v3d = draw_ctx->v3d;
+
   wpd->preferences = &U;
   wpd->sh_cfg = draw_ctx->sh_cfg;
 
-  View3D *v3d = draw_ctx->v3d;
-  RegionView3D *rv3d = draw_ctx->rv3d;
+  wpd->world_ubo = vldata->world_ubo;
+
+  wpd->material_ubo_data = vldata->material_ubo_data;
+  wpd->material_ubo = vldata->material_ubo;
+  wpd->material_chunk_count = 1;
+  wpd->material_chunk_curr = 0;
+  wpd->material_index = 1;
+  /* Create default material ubo. */
+  wpd->material_ubo_data_curr = BLI_memblock_alloc(wpd->material_ubo_data);
+  wpd->material_ubo_curr = workbench_material_ubo_alloc(wpd);
 
   if (!v3d || (v3d->shading.type == OB_RENDER && BKE_scene_uses_blender_workbench(scene))) {
     wpd->shading = scene->display.shading;
     wpd->shading.xray_alpha = XRAY_ALPHA((&scene->display));
-    wpd->use_color_render_settings = true;
   }
   else {
     wpd->shading = v3d->shading;
     wpd->shading.xray_alpha = XRAY_ALPHA(v3d);
-    wpd->use_color_render_settings = false;
   }
-
-  wpd->use_color_management = BKE_scene_check_color_management_enabled(scene);
 
   if (wpd->shading.light == V3D_LIGHTING_MATCAP) {
     wpd->studio_light = BKE_studiolight_find(wpd->shading.matcap, STUDIOLIGHT_TYPE_MATCAP);
@@ -198,6 +196,12 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   /* If matcaps are missing, use this as fallback. */
   if (UNLIKELY(wpd->studio_light == NULL)) {
     wpd->studio_light = BKE_studiolight_find(wpd->shading.studio_light, STUDIOLIGHT_TYPE_STUDIO);
+  }
+
+  const bool use_material_index = USE_MATERIAL_INDEX(wpd);
+
+  if (use_material_index) {
+    wpd->material_hash = BLI_ghash_ptr_new(__func__);
   }
 
   float shadow_focus = scene->display.shadow_focus;
@@ -227,8 +231,9 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   }
 
   workbench_world_data_update_shadow_direction_vs(wpd);
-  workbench_world_data_ubo_ensure(scene, wpd);
   workbench_viewvecs_update(wpd->world_data.viewvecs);
+
+  DRW_uniformbuffer_update(wpd->world_ubo, &wpd->world_data);
 
   /* Cavity settings */
   {
@@ -301,6 +306,25 @@ void workbench_private_data_get_light_direction(float r_light_direction[3])
   SWAP(float, r_light_direction[2], r_light_direction[1]);
   r_light_direction[2] = -r_light_direction[2];
   r_light_direction[0] = -r_light_direction[0];
+}
+
+void workbench_update_material_ubos(WORKBENCH_PrivateData *UNUSED(wpd))
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  WORKBENCH_ViewLayerData *vldata = workbench_view_layer_data_ensure_ex(draw_ctx->view_layer);
+
+  BLI_memblock_iter iter, iter_data;
+  BLI_memblock_iternew(vldata->material_ubo, &iter);
+  BLI_memblock_iternew(vldata->material_ubo_data, &iter_data);
+  WORKBENCH_UBO_Material *matchunk;
+  while ((matchunk = BLI_memblock_iterstep(&iter_data))) {
+    GPUUniformBuffer **ubo = BLI_memblock_iterstep(&iter);
+    BLI_assert(*ubo != NULL);
+    GPU_uniformbuffer_update(*ubo, matchunk);
+  }
+
+  BLI_memblock_clear(vldata->material_ubo, workbench_ubo_free);
+  BLI_memblock_clear(vldata->material_ubo_data, NULL);
 }
 
 void workbench_private_data_free(WORKBENCH_PrivateData *wpd)

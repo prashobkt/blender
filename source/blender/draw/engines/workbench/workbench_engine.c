@@ -24,6 +24,19 @@
 
 #include "DRW_render.h"
 
+#include "BLI_alloca.h"
+
+#include "BKE_modifier.h"
+#include "BKE_object.h"
+#include "BKE_paint.h"
+#include "BKE_particle.h"
+
+#include "DNA_image_types.h"
+#include "DNA_fluid_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_node_types.h"
+
 #include "workbench_engine.h"
 #include "workbench_private.h"
 
@@ -79,6 +92,26 @@ static void workbench_cache_init(void *ved)
   //   workbench_dof_create_pass(vedata);
 }
 
+/* TODO(fclem) DRW_cache_object_surface_material_get needs a refactor to allow passing NULL
+ * instead of gpumat_array. Avoiding all this boilerplate code. */
+static struct GPUBatch **workbench_object_surface_get(Object *ob, int materials_len)
+{
+  struct GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
+  memset(gpumat_array, 0, sizeof(*gpumat_array) * materials_len);
+
+  return DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len);
+}
+
+/* Return correct material or empty default material if slot is empty. */
+BLI_INLINE Material *workbench_object_material_get(Object *ob, int slot)
+{
+  Material *ma = BKE_object_material_get(ob, slot + 1);
+  if (ma == NULL) {
+    ma = BKE_material_default_empty();
+  }
+  return ma;
+}
+
 static void workbench_cache_populate(void *ved, Object *ob)
 {
   WORKBENCH_Data *vedata = ved;
@@ -105,16 +138,75 @@ static void workbench_cache_populate(void *ved, Object *ob)
   }
 
   if (ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_MBALL)) {
-    struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    const DRWContextState *draw_ctx = DRW_context_state_get();
+    const bool is_active = (ob == draw_ctx->obact);
+    const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->v3d) &&
+                                 !DRW_state_is_image_render();
+    const int materials_len = DRW_cache_object_material_count_get(ob);
+    const Mesh *me = (ob->type == OB_MESH) ? ob->data : NULL;
 
-    if (geom) {
-      DRW_shgroup_call(wpd->prepass_shgrp, geom, ob);
+    int color_type = workbench_material_determine_color_type(wpd, NULL, ob, use_sculpt_pbvh);
+    const bool use_vcol = (color_type == V3D_SHADING_VERTEX_COLOR);
+    // const bool use_texpaint = !(DRW_state_is_image_render() && draw_ctx->v3d == NULL) && me &&
+    //                           me->mloopuv;
+    // const bool use_vertex_paint_drawing = !(DRW_state_is_image_render() &&
+    //                                         draw_ctx->v3d == NULL) &&
+    //                                       (color_override == WORKBENCH_COLOR_OVERRIDE_VERTEX) &&
+    //                                       me && me->mloopcol;
+    const bool use_texpaint = false;
+    // const bool use_texpaint = (color_type == V3D_SHADING_TEXTURE_COLOR);
+
+    const bool use_material_index = USE_MATERIAL_INDEX(wpd);
+
+    if (use_material_index) {
+      struct DRWShadingGroup **shgrps = BLI_array_alloca(shgrps, materials_len);
+      for (int i = 0; i < materials_len; i++) {
+        Material *mat = workbench_object_material_get(ob, i);
+        shgrps[i] = workbench_material_setup(wpd, ob, mat, color_type);
+      }
+
+      if (use_sculpt_pbvh) {
+        DRW_shgroup_call_sculpt_with_materials(shgrps, ob, false);
+      }
+      else {
+        struct GPUBatch **geoms = (use_texpaint) ? DRW_cache_mesh_surface_texpaint_get(ob) :
+                                                   workbench_object_surface_get(ob, materials_len);
+        if (geoms) {
+          for (int i = 0; i < materials_len; i++) {
+            DRW_shgroup_call(shgrps[i], geoms[i], ob);
+          }
+        }
+      }
+    }
+    else {
+      DRWShadingGroup *grp = workbench_material_setup(wpd, ob, NULL, color_type);
+
+      if (use_sculpt_pbvh) {
+        DRW_shgroup_call_sculpt(grp, ob, false, false, use_vcol);
+      }
+      else {
+        struct GPUBatch *geom = (use_vcol) ? DRW_cache_mesh_surface_vertpaint_get(ob) :
+                                             DRW_cache_object_surface_get(ob);
+        if (geom) {
+          DRW_shgroup_call(grp, geom, ob);
+        }
+      }
     }
   }
 }
 
 static void workbench_cache_finish(void *ved)
 {
+  WORKBENCH_Data *vedata = ved;
+  WORKBENCH_StorageList *stl = vedata->stl;
+  WORKBENCH_PrivateData *wpd = stl->wpd;
+
+  workbench_update_material_ubos(wpd);
+
+  if (wpd->material_hash) {
+    BLI_ghash_free(wpd->material_hash, NULL, NULL);
+    wpd->material_hash = NULL;
+  }
 }
 
 static void workbench_draw_scene(void *ved)

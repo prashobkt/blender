@@ -47,6 +47,7 @@ extern char datatoc_workbench_shadow_debug_frag_glsl[];
 
 extern char datatoc_workbench_cavity_lib_glsl[];
 extern char datatoc_workbench_common_lib_glsl[];
+extern char datatoc_workbench_material_lib_glsl[];
 extern char datatoc_workbench_data_lib_glsl[];
 extern char datatoc_workbench_object_outline_lib_glsl[];
 extern char datatoc_workbench_curvature_lib_glsl[];
@@ -78,6 +79,7 @@ void workbench_shader_library_ensure(void)
     DRW_SHADER_LIB_ADD(e_data.lib, common_view_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_cavity_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_common_lib);
+    DRW_SHADER_LIB_ADD(e_data.lib, workbench_material_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_data_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_object_outline_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_curvature_lib);
@@ -85,7 +87,7 @@ void workbench_shader_library_ensure(void)
   }
 }
 
-static char *workbench_build_defines(WORKBENCH_PrivateData *UNUSED(wpd))
+static char *workbench_build_defines(WORKBENCH_PrivateData *wpd)
 {
   char *str = NULL;
 
@@ -94,6 +96,7 @@ static char *workbench_build_defines(WORKBENCH_PrivateData *UNUSED(wpd))
   if (NORMAL_ENCODING_ENABLED()) {
     BLI_dynstr_append(ds, "#define WORKBENCH_ENCODE_NORMALS\n");
   }
+  BLI_dynstr_append(ds, "#define V3D_SHADING_SPECULAR_HIGHLIGHT\n");
 
   str = BLI_dynstr_get_cstring(ds);
   BLI_dynstr_free(ds);

@@ -562,16 +562,14 @@ static DRWResourceHandle drw_resource_handle_new(float (*obmat)[4], Object *ob)
   return handle;
 }
 
-void DRW_object_resource_handle_get(uint32_t *chunk, uint32_t *id)
+uint32_t DRW_object_resource_id_get(Object *UNUSED(ob))
 {
   DRWResourceHandle handle = DST.ob_handle;
   if (handle == 0) {
     /* Handle not yet allocated. Return next handle. */
     handle = DST.resource_handle;
   }
-
-  *chunk = DRW_handle_chunk_get(&handle);
-  *id = DRW_handle_id_get(&handle);
+  return handle;
 }
 
 static DRWResourceHandle drw_resource_handle(DRWShadingGroup *shgroup,

@@ -10,10 +10,10 @@ struct WorldData {
   vec4 shadow_direction_vs;
   LightData lights[4];
   vec4 ambient_color;
-  int num_lights;
   int matcap_orientation;
   float curvature_ridge;
   float curvature_valley;
+  int _pad0;
 };
 
 layout(std140) uniform world_block
