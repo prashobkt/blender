@@ -271,6 +271,21 @@ typedef enum eBrushElasticDeformType {
   BRUSH_ELASTIC_DEFORM_TWIST = 4,
 } eBrushElasticDeformType;
 
+typedef enum eBrushClothDeformType {
+  BRUSH_CLOTH_DEFORM_DRAG = 0,
+  BRUSH_CLOTH_DEFORM_PUSH = 1,
+  BRUSH_CLOTH_DEFORM_GRAB = 2,
+  BRUSH_CLOTH_DEFORM_PINCH_POINT = 3,
+  BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR = 4,
+  BRUSH_CLOTH_DEFORM_INFLATE = 5,
+  BRUSH_CLOTH_DEFORM_EXPAND = 6,
+} eBrushClothDeformType;
+
+typedef enum eBrushClothForceFalloffType {
+  BRUSH_CLOTH_FORCE_FALLOFF_RADIAL = 0,
+  BRUSH_CLOTH_FORCE_FALLOFF_PLANE = 1,
+} eBrushClothForceFalloffType;
+
 /* Gpencilsettings.Vertex_mode */
 typedef enum eGp_Vertex_Mode {
   /* Affect to Stroke only. */
@@ -384,7 +399,7 @@ typedef struct Brush {
   /** Source for fill tool color gradient application. */
   char gradient_fill_mode;
 
-  char _pad0;
+  char _pad0[5];
 
   /** Projection shape (sphere, circle). */
   char falloff_shape;
@@ -441,6 +456,16 @@ typedef struct Brush {
   float pose_offset;
   int pose_smooth_iterations;
   int pose_ik_segments;
+
+  /* cloth */
+  int cloth_deform_type;
+  int cloth_force_falloff_type;
+
+  float cloth_mass;
+  float cloth_damping;
+
+  float cloth_sim_limit;
+  float cloth_sim_falloff;
 
   /* multiplane scrape */
   float multiplane_scrape_angle;
@@ -622,6 +647,7 @@ typedef enum eBrushSculptTool {
   SCULPT_TOOL_MULTIPLANE_SCRAPE = 23,
   SCULPT_TOOL_SLIDE_RELAX = 24,
   SCULPT_TOOL_CLAY_THUMB = 25,
+  SCULPT_TOOL_CLOTH = 26,
 } eBrushSculptTool;
 
 /* Brush.uv_sculpt_tool */
@@ -657,6 +683,7 @@ typedef enum eBrushUVSculptTool {
   (ELEM(t, /* These brushes, as currently coded, cannot support dynamic topology */ \
         SCULPT_TOOL_GRAB, \
         SCULPT_TOOL_ROTATE, \
+        SCULPT_TOOL_CLOTH, \
         SCULPT_TOOL_THUMB, \
         SCULPT_TOOL_LAYER, \
         SCULPT_TOOL_DRAW_SHARP, \
