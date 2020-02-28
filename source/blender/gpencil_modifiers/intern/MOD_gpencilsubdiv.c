@@ -105,7 +105,7 @@ static void bakeModifier(struct Main *UNUSED(bmain),
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Subdiv = {
-    /* name */ "Subdivision",
+    /* name */ "Subdivide",
     /* structName */ "SubdivGpencilModifierData",
     /* structSize */ sizeof(SubdivGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,

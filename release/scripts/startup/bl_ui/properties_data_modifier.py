@@ -1803,10 +1803,10 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row = layout.row(align=True)
         row.label(text="Affect:")
         row = layout.row(align=True)
-        row.prop(md, "use_edit_position", text="Position", icon='MESH_DATA', toggle=True)
-        row.prop(md, "use_edit_strength", text="Strength", icon='COLOR', toggle=True)
-        row.prop(md, "use_edit_thickness", text="Thickness", icon='LINE_DATA', toggle=True)
-        row.prop(md, "use_edit_uv", text="UV", icon='MOD_UVPROJECT', toggle=True)
+        row.prop(md, "use_edit_position", text="Position", toggle=True)
+        row.prop(md, "use_edit_strength", text="Strength", toggle=True)
+        row.prop(md, "use_edit_thickness", text="Thickness", toggle=True)
+        row.prop(md, "use_edit_uv", text="UV", toggle=True)
 
         self.gpencil_masking(layout, ob, md, True)
 
@@ -1817,10 +1817,10 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col.label(text="Affect:")
         row = col.row(align=True)
-        row.prop(md, "use_edit_position", text="Position", icon='MESH_DATA', toggle=True)
-        row.prop(md, "use_edit_strength", text="Strength", icon='COLOR', toggle=True)
-        row.prop(md, "use_edit_thickness", text="Thickness", icon='LINE_DATA', toggle=True)
-        row.prop(md, "use_edit_uv", text="UV", icon='MOD_UVPROJECT', toggle=True)
+        row.prop(md, "use_edit_position", text="Position", toggle=True)
+        row.prop(md, "use_edit_strength", text="Strength", toggle=True)
+        row.prop(md, "use_edit_thickness", text="Thickness", toggle=True)
+        row.prop(md, "use_edit_uv", text="UV", toggle=True)
 
         self.gpencil_masking(layout, ob, md, True)
 
@@ -1829,7 +1829,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         split = layout.split()
         col = split.column()
         row = col.row(align=True)
-        row.prop(md, "level")
+        row.prop(md, "level", text="Subdivisions")
 
         self.gpencil_masking(layout, ob, md, False)
 
