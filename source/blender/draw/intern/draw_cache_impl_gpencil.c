@@ -665,11 +665,6 @@ static void gpencil_edit_stroke_iter_cb(bGPDlayer *gpl,
                                         bGPDstroke *gps,
                                         void *thunk)
 {
-  /* Cancel if layer is locked. */
-  if (gpl->flag & GP_LAYER_LOCKED) {
-    return;
-  }
-
   gpEditIterData *iter = (gpEditIterData *)thunk;
   const int v_len = gps->totpoints;
   const int v = gps->runtime.stroke_start + 1;
@@ -677,7 +672,9 @@ static void gpencil_edit_stroke_iter_cb(bGPDlayer *gpl,
   gpEditVert *vert_ptr = iter->verts + v;
 
   uint32_t sflag = 0;
-  SET_FLAG_FROM_TEST(sflag, gps->flag & GP_STROKE_SELECT, GP_EDIT_STROKE_SELECTED);
+  SET_FLAG_FROM_TEST(sflag,
+                     ((gpl->flag & GP_LAYER_LOCKED) == 0) && gps->flag & GP_STROKE_SELECT,
+                     GP_EDIT_STROKE_SELECTED);
   SET_FLAG_FROM_TEST(sflag, gpf->runtime.onion_id != 0.0f, GP_EDIT_MULTIFRAME);
 
   for (int i = 0; i < v_len; i++) {
