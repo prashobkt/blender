@@ -53,7 +53,7 @@
 #include "BKE_animsys.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
 
@@ -412,8 +412,9 @@ static void node_free_type(void *nodetype_v)
     free_dynamic_typeinfo(nodetype);
   }
 
-  if (nodetype->needs_free) {
-    MEM_freeN(nodetype);
+  /* Can be NULL when the type is not dynamically allocated. */
+  if (nodetype->free_self) {
+    nodetype->free_self(nodetype);
   }
 }
 
@@ -468,7 +469,7 @@ static void node_free_socket_type(void *socktype_v)
    * or we'd want to update *all* active Mains, which we cannot do anyway currently. */
   update_typeinfo(G_MAIN, NULL, NULL, NULL, socktype, true);
 
-  MEM_freeN(socktype);
+  socktype->free_self(socktype);
 }
 
 void nodeRegisterSocketType(bNodeSocketType *st)
@@ -1499,7 +1500,7 @@ bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_node_tree_copy_data(Main *UNUSED(bmain),
                              bNodeTree *ntree_dst,
@@ -2242,25 +2243,35 @@ void ntreeSetOutput(bNodeTree *ntree)
    * might be different for editor or for "real" use... */
 }
 
-/* Returns the private NodeTree object of the datablock, if it has one. */
-bNodeTree *ntreeFromID(const ID *id)
+/** Get address of potential nodetree pointer of given ID.
+ *
+ * \warning Using this function directly is potentially dangerous, if you don't know or are not
+ * sure, please use `ntreeFromID()` instead. */
+bNodeTree **BKE_ntree_ptr_from_id(ID *id)
 {
   switch (GS(id->name)) {
     case ID_MA:
-      return ((const Material *)id)->nodetree;
+      return &((Material *)id)->nodetree;
     case ID_LA:
-      return ((const Light *)id)->nodetree;
+      return &((Light *)id)->nodetree;
     case ID_WO:
-      return ((const World *)id)->nodetree;
+      return &((World *)id)->nodetree;
     case ID_TE:
-      return ((const Tex *)id)->nodetree;
+      return &((Tex *)id)->nodetree;
     case ID_SCE:
-      return ((const Scene *)id)->nodetree;
+      return &((Scene *)id)->nodetree;
     case ID_LS:
-      return ((const FreestyleLineStyle *)id)->nodetree;
+      return &((FreestyleLineStyle *)id)->nodetree;
     default:
       return NULL;
   }
+}
+
+/* Returns the private NodeTree object of the datablock, if it has one. */
+bNodeTree *ntreeFromID(ID *id)
+{
+  bNodeTree **nodetree = BKE_ntree_ptr_from_id(id);
+  return (nodetree != NULL) ? *nodetree : NULL;
 }
 
 /* Finds and returns the datablock that privately owns the given tree, or NULL. */
@@ -3564,6 +3575,12 @@ void nodeLabel(bNodeTree *ntree, bNode *node, char *label, int maxlen)
   }
 }
 
+/* Get node socket label if it is set */
+const char *nodeSocketLabel(const bNodeSocket *sock)
+{
+  return (sock->label[0] != '\0') ? sock->label : sock->name;
+}
+
 static void node_type_base_defaults(bNodeType *ntype)
 {
   /* default size values */
@@ -3959,6 +3976,7 @@ static void registerShaderNodes(void)
   register_node_type_sh_clamp();
   register_node_type_sh_math();
   register_node_type_sh_vect_math();
+  register_node_type_sh_vector_rotate();
   register_node_type_sh_vect_transform();
   register_node_type_sh_squeeze();
   register_node_type_sh_invert();

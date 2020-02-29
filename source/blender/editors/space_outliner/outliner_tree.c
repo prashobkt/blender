@@ -58,7 +58,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_idcode.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_outliner_treehash.h"
@@ -2090,12 +2090,12 @@ static bool outliner_element_visible_get(ViewLayer *view_layer,
       }
 
       if (exclude_filter & SO_FILTER_OB_STATE_VISIBLE) {
-        if ((base->flag & BASE_VISIBLE_DEPSGRAPH) == 0) {
+        if ((base->flag & BASE_VISIBLE_VIEWLAYER) == 0) {
           return false;
         }
       }
       else if (exclude_filter & SO_FILTER_OB_STATE_HIDDEN) {
-        if ((base->flag & BASE_VISIBLE_DEPSGRAPH) != 0) {
+        if ((base->flag & BASE_VISIBLE_VIEWLAYER) != 0) {
           return false;
         }
       }

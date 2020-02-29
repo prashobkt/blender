@@ -207,7 +207,7 @@ static float pe_brush_size_get(const Scene *UNUSED(scene), ParticleBrushData *br
   // UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
   // float size = (ups->flag & UNIFIED_PAINT_SIZE) ? ups->size : brush->size;
 
-  return brush->size * U.pixelsize;
+  return brush->size;
 }
 
 PTCacheEdit *PE_get_current_from_psys(ParticleSystem *psys)
@@ -488,7 +488,8 @@ static void PE_set_view3d_data(bContext *C, PEData *data)
 
 static bool PE_create_shape_tree(PEData *data, Object *shapeob)
 {
-  Mesh *mesh = BKE_object_get_evaluated_mesh(data->depsgraph, shapeob);
+  Object *shapeob_eval = DEG_get_evaluated_object(data->depsgraph, shapeob);
+  Mesh *mesh = BKE_object_get_evaluated_mesh(shapeob_eval);
 
   memset(&data->shape_bvh, 0, sizeof(data->shape_bvh));
 
@@ -2075,7 +2076,38 @@ void PARTICLE_OT_select_random(wmOperatorType *ot)
 
 /************************ select linked operator ************************/
 
-static int select_linked_exec(bContext *C, wmOperator *op)
+static int select_linked_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  PEData data;
+  PE_set_data(C, &data);
+  data.select = true;
+
+  foreach_selected_key(&data, select_keys);
+
+  PE_update_selection(data.depsgraph, data.scene, data.ob, 1);
+  WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_SELECTED, data.ob);
+
+  return OPERATOR_FINISHED;
+}
+
+void PARTICLE_OT_select_linked(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Select Linked All";
+  ot->idname = "PARTICLE_OT_select_linked";
+  ot->description = "Select all keys linked to already selected ones";
+
+  /* api callbacks */
+  ot->exec = select_linked_exec;
+  ot->poll = PE_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+}
+
+static int select_linked_pick_exec(bContext *C, wmOperator *op)
 {
   PEData data;
   int mval[2];
@@ -2097,22 +2129,22 @@ static int select_linked_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int select_linked_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int select_linked_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   RNA_int_set_array(op->ptr, "location", event->mval);
-  return select_linked_exec(C, op);
+  return select_linked_pick_exec(C, op);
 }
 
-void PARTICLE_OT_select_linked(wmOperatorType *ot)
+void PARTICLE_OT_select_linked_pick(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Select Linked";
-  ot->idname = "PARTICLE_OT_select_linked";
+  ot->idname = "PARTICLE_OT_select_linked_pick";
   ot->description = "Select nearest particle from mouse pointer";
 
   /* api callbacks */
-  ot->exec = select_linked_exec;
-  ot->invoke = select_linked_invoke;
+  ot->exec = select_linked_pick_exec;
+  ot->invoke = select_linked_pick_invoke;
   ot->poll = PE_poll_view3d;
 
   /* flags */
@@ -5188,14 +5220,6 @@ void PE_create_particle_edit(
       psys = NULL;
     }
 
-    /* Causes assert on startup. */
-#if 0
-    UI_GetThemeColor3ubv(TH_EDGE_SELECT, edit->sel_col);
-    UI_GetThemeColor3ubv(TH_WIRE, edit->nosel_col);
-#else
-    memset(edit->sel_col, 0xff, sizeof(edit->sel_col));
-    memset(edit->nosel_col, 0x00, sizeof(edit->nosel_col));
-#endif
     recalc_lengths(edit);
     if (psys && !cache) {
       recalc_emitter_field(depsgraph, ob, psys);

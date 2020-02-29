@@ -74,6 +74,7 @@ const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
     {SCULPT_TOOL_DRAW_SHARP, "DRAW_SHARP", ICON_BRUSH_SCULPT_DRAW, "Draw Sharp", ""},
     {SCULPT_TOOL_CLAY, "CLAY", ICON_BRUSH_CLAY, "Clay", ""},
     {SCULPT_TOOL_CLAY_STRIPS, "CLAY_STRIPS", ICON_BRUSH_CLAY_STRIPS, "Clay Strips", ""},
+    {SCULPT_TOOL_CLAY_THUMB, "CLAY_THUMB", ICON_BRUSH_CLAY_STRIPS, "Clay Thumb", ""},
     {SCULPT_TOOL_LAYER, "LAYER", ICON_BRUSH_LAYER, "Layer", ""},
     {SCULPT_TOOL_INFLATE, "INFLATE", ICON_BRUSH_INFLATE, "Inflate", ""},
     {SCULPT_TOOL_BLOB, "BLOB", ICON_BRUSH_BLOB, "Blob", ""},
@@ -83,7 +84,7 @@ const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
     {SCULPT_TOOL_FLATTEN, "FLATTEN", ICON_BRUSH_FLATTEN, "Flatten", ""},
     {SCULPT_TOOL_FILL, "FILL", ICON_BRUSH_FILL, "Fill", ""},
     {SCULPT_TOOL_SCRAPE, "SCRAPE", ICON_BRUSH_SCRAPE, "Scrape", ""},
-    {SCULPT_TOOL_MULTIPLANE_SCRAPE, "MULTIPLANE_SCRAPE", ICON_BRUSH_SCRAPE, "Multiplane Scrape", ""},
+    {SCULPT_TOOL_MULTIPLANE_SCRAPE, "MULTIPLANE_SCRAPE", ICON_BRUSH_SCRAPE, "Multi-plane Scrape", ""},
     {SCULPT_TOOL_PINCH, "PINCH", ICON_BRUSH_PINCH, "Pinch", ""},
     {0, "", 0, NULL, NULL},
     {SCULPT_TOOL_GRAB, "GRAB", ICON_BRUSH_GRAB, "Grab", ""},
@@ -95,6 +96,7 @@ const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
     {SCULPT_TOOL_ROTATE, "ROTATE", ICON_BRUSH_ROTATE, "Rotate", ""},
     {SCULPT_TOOL_SLIDE_RELAX, "TOPOLOGY", ICON_BRUSH_GRAB, "Slide Relax", ""},
     {0, "", 0, NULL, NULL},
+    {SCULPT_TOOL_CLOTH, "CLOTH", ICON_BRUSH_SCULPT_DRAW, "Cloth", ""},
     {SCULPT_TOOL_SIMPLIFY, "SIMPLIFY", ICON_BRUSH_DATA, "Simplify", ""},
     {SCULPT_TOOL_MASK, "MASK", ICON_BRUSH_MASK, "Mask", ""},
     {0, NULL, 0, NULL, NULL},
@@ -151,9 +153,13 @@ const EnumPropertyItem rna_enum_brush_gpencil_types_items[] = {
 
 #ifndef RNA_RUNTIME
 static EnumPropertyItem rna_enum_gpencil_brush_eraser_modes_items[] = {
-    {GP_BRUSH_ERASER_SOFT, "SOFT", 0, "Soft", "Use soft eraser"},
-    {GP_BRUSH_ERASER_HARD, "HARD", 0, "Hard", "Use hard eraser"},
-    {GP_BRUSH_ERASER_STROKE, "STROKE", 0, "Stroke", "Use stroke eraser"},
+    {GP_BRUSH_ERASER_SOFT,
+     "SOFT",
+     0,
+     "Dissolve",
+     "Erase strokes, fading their points strength and thickness"},
+    {GP_BRUSH_ERASER_HARD, "HARD", 0, "Point", "Erase stroke points"},
+    {GP_BRUSH_ERASER_STROKE, "STROKE", 0, "Stroke", "Erase entire strokes"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -271,6 +277,7 @@ static bool rna_BrushCapabilitiesSculpt_has_plane_offset_get(PointerRNA *ptr)
   return ELEM(br->sculpt_tool,
               SCULPT_TOOL_CLAY,
               SCULPT_TOOL_CLAY_STRIPS,
+              SCULPT_TOOL_CLAY_THUMB,
               SCULPT_TOOL_FILL,
               SCULPT_TOOL_FLATTEN,
               SCULPT_TOOL_SCRAPE);
@@ -778,7 +785,7 @@ static void rna_BrushGpencilSettings_use_material_pin_update(bContext *C, Pointe
   Brush *brush = (Brush *)ptr->owner_id;
 
   if (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
-    Material *material = give_current_material(ob, ob->actcol);
+    Material *material = BKE_object_material_get(ob, ob->actcol);
     BKE_gpencil_brush_material_set(brush, material);
   }
   else {
@@ -1597,8 +1604,8 @@ static void rna_def_brush(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem brush_jitter_unit_items[] = {
-      {BRUSH_ABSOLUTE_JITTER, "VIEW", 0, "View", "Jitterring happens in screen space, in pixels"},
-      {0, "BRUSH", 0, "Brush", "Jitterring happens relative to the brush size"},
+      {BRUSH_ABSOLUTE_JITTER, "VIEW", 0, "View", "Jittering happens in screen space, in pixels"},
+      {0, "BRUSH", 0, "Brush", "Jittering happens relative to the brush size"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1632,6 +1639,27 @@ static void rna_def_brush(BlenderRNA *brna)
       {BRUSH_ELASTIC_DEFORM_GRAB_TRISCALE, "GRAB_TRISCALE", 0, "Tri-scale Grab", ""},
       {BRUSH_ELASTIC_DEFORM_SCALE, "SCALE", 0, "Scale", ""},
       {BRUSH_ELASTIC_DEFORM_TWIST, "TWIST", 0, "Twist", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem brush_cloth_deform_type_items[] = {
+      {BRUSH_CLOTH_DEFORM_DRAG, "DRAG", 0, "Drag", ""},
+      {BRUSH_CLOTH_DEFORM_PUSH, "PUSH", 0, "Push", ""},
+      {BRUSH_CLOTH_DEFORM_PINCH_POINT, "PINCH_POINT", 0, "Pinch Point", ""},
+      {BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR,
+       "PINCH_PERPENDICULAR",
+       0,
+       "Pinch Perpendicular",
+       ""},
+      {BRUSH_CLOTH_DEFORM_INFLATE, "INFLATE", 0, "Inflate", ""},
+      {BRUSH_CLOTH_DEFORM_GRAB, "GRAB", 0, "Grab", ""},
+      {BRUSH_CLOTH_DEFORM_EXPAND, "EXPAND", 0, "Expand", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem brush_cloth_force_falloff_type_items[] = {
+      {BRUSH_CLOTH_FORCE_FALLOFF_RADIAL, "RADIAL", 0, "Radial", ""},
+      {BRUSH_CLOTH_FORCE_FALLOFF_PLANE, "PLANE", 0, "Plane", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1718,6 +1746,17 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "elastic_deform_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, brush_elastic_deform_type_items);
   RNA_def_property_ui_text(prop, "Deformation", "Deformation type that is used in the brush");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "cloth_deform_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, brush_cloth_deform_type_items);
+  RNA_def_property_ui_text(prop, "Deformation", "Deformation type that is used in the brush");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "cloth_force_falloff_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, brush_cloth_force_falloff_type_items);
+  RNA_def_property_ui_text(
+      prop, "Force Falloff", "Shape used in the brush to apply force to the cloth");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "jitter_unit", PROP_ENUM, PROP_NONE); /* as an enum */
@@ -1937,6 +1976,42 @@ static void rna_def_brush(BlenderRNA *brna)
       "Number of segments of the inverse kinematics chain that will deform the mesh");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
+  prop = RNA_def_property(srna, "tip_roundness", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "tip_roundness");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Tip Roundness", "Roundness of the brush tip");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "cloth_mass", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "cloth_mass");
+  RNA_def_property_range(prop, 0.01f, 2.0f);
+  RNA_def_property_ui_text(prop, "Cloth mass", "Mass of each simulation particle");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "cloth_damping", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "cloth_damping");
+  RNA_def_property_range(prop, 0.01f, 1.0f);
+  RNA_def_property_ui_text(
+      prop, "Cloth Damping", "How much the applied forces are propagated through the cloth");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "cloth_sim_limit", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "cloth_sim_limit");
+  RNA_def_property_range(prop, 0.1f, 10.0f);
+  RNA_def_property_ui_text(
+      prop,
+      "Simulation Limit",
+      "Factor added relative to the size of the radius to limit the cloth simulation effects");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "cloth_sim_falloff", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "cloth_sim_falloff");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop,
+                           "Simulation Falloff",
+                           "Area to apply deformation falloff to the effects of the simulation");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
   prop = RNA_def_property(srna, "auto_smooth_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "autosmooth_factor");
   RNA_def_property_float_default(prop, 0);
@@ -1966,6 +2041,16 @@ static void rna_def_brush(BlenderRNA *brna)
                            "Normal Radius",
                            "Ratio between the brush radius and the radius that is going to be "
                            "used to sample the normal");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "area_radius_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "area_radius_factor");
+  RNA_def_property_range(prop, 0.0f, 2.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.001, 3);
+  RNA_def_property_ui_text(prop,
+                           "Area Radius",
+                           "Ratio between the brush radius and the radius that is going to be "
+                           "used to sample the area center");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "stencil_pos", PROP_FLOAT, PROP_XYZ);
@@ -2056,7 +2141,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_automasking_topology", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "automasking_flags", BRUSH_AUTOMASKING_TOPOLOGY);
   RNA_def_property_ui_text(prop,
-                           "Topology Automasking",
+                           "Topology Auto-masking",
                            "Affect only vertices connected to the active vertex under the brush");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
@@ -2091,6 +2176,12 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag2", BRUSH_MULTIPLANE_SCRAPE_PLANES_PREVIEW);
   RNA_def_property_ui_text(
       prop, "Show Cursor Preview", "Preview the scrape planes in the cursor during the stroke");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "use_pose_ik_anchored", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag2", BRUSH_POSE_IK_ANCHORED);
+  RNA_def_property_ui_text(
+      prop, "Keep Anchor Point", "Keep the position of the last segment in the IK chain fixed");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "invert_to_scrape_fill", PROP_BOOLEAN, PROP_NONE);

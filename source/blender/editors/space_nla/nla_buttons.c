@@ -492,7 +492,6 @@ static void nla_panel_evaluation(const bContext *C, Panel *pa)
   block = uiLayoutGetBlock(layout);
   UI_block_func_handle_set(block, do_nla_region_buttons, NULL);
   uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
 
   uiLayoutSetEnabled(layout, RNA_boolean_get(&strip_ptr, "use_animated_influence"));
   uiItemR(layout, &strip_ptr, "influence", 0, NULL, ICON_NONE);
@@ -531,7 +530,6 @@ static void nla_panel_animated_strip_time(const bContext *C, Panel *pa)
   block = uiLayoutGetBlock(layout);
   UI_block_func_handle_set(block, do_nla_region_buttons, NULL);
   uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
 
   uiLayoutSetEnabled(layout, RNA_boolean_get(&strip_ptr, "use_animated_time"));
   uiItemR(layout, &strip_ptr, "strip_time", 0, NULL, ICON_NONE);
@@ -636,8 +634,9 @@ void nla_buttons_register(ARegionType *art)
   pt->flag = PNL_DEFAULT_CLOSED;
   pt->poll = nla_strip_eval_panel_poll;
   BLI_addtail(&pt_properties->children, BLI_genericNodeN(pt));
+  BLI_addtail(&art->paneltypes, pt);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype nla panel evaluation");
+  pt = MEM_callocN(sizeof(PanelType), "spacetype nla panel animated strip time");
   strcpy(pt->idname, "NLA_PT_animated_strip_time");
   strcpy(pt->parent_id, "NLA_PT_properties");
   strcpy(pt->label, N_("Animated Strip Time"));
@@ -649,6 +648,7 @@ void nla_buttons_register(ARegionType *art)
   pt->flag = PNL_DEFAULT_CLOSED;
   pt->poll = nla_strip_eval_panel_poll;
   BLI_addtail(&pt_properties->children, BLI_genericNodeN(pt));
+  BLI_addtail(&art->paneltypes, pt);
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype nla panel modifiers");
   strcpy(pt->idname, "NLA_PT_modifiers");

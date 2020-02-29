@@ -526,7 +526,6 @@ const EnumPropertyItem rna_enum_bake_pass_filter_type_items[] = {
     {R_BAKE_PASS_FILTER_DIFFUSE, "DIFFUSE", 0, "Diffuse", ""},
     {R_BAKE_PASS_FILTER_GLOSSY, "GLOSSY", 0, "Glossy", ""},
     {R_BAKE_PASS_FILTER_TRANSM, "TRANSMISSION", 0, "Transmission", ""},
-    {R_BAKE_PASS_FILTER_SUBSURFACE, "SUBSURFACE", 0, "Subsurface", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -1046,7 +1045,7 @@ static void rna_Scene_active_keying_set_set(PointerRNA *ptr,
 
 /* get KeyingSet index stuff for list of Keying Sets editing UI
  * - active_keyingset-1 since 0 is reserved for 'none'
- * - don't clamp, otherwise can never set builtins types as active...
+ * - don't clamp, otherwise can never set builtin's types as active...
  */
 static int rna_Scene_active_keying_set_index_get(PointerRNA *ptr)
 {
@@ -1654,11 +1653,36 @@ static void rna_Scene_world_update(Main *bmain, Scene *scene, PointerRNA *ptr)
   DEG_relations_tag_update(bmain);
 }
 
+static void rna_Scene_mesh_quality_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+
+  FOREACH_SCENE_OBJECT_BEGIN (scene, ob) {
+    if (ob->type == OB_MESH) {
+      DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+    }
+  }
+  FOREACH_SCENE_OBJECT_END;
+
+  rna_Scene_glsl_update(bmain, scene, ptr);
+}
+
 void rna_Scene_freestyle_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
 
   DEG_id_tag_update(&scene->id, 0);
+}
+
+void rna_Scene_use_freestyle_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+
+  DEG_id_tag_update(&scene->id, 0);
+
+  if (scene->nodetree) {
+    ntreeCompositUpdateRLayers(scene->nodetree);
+  }
 }
 
 void rna_Scene_use_view_map_cache_update(Main *UNUSED(bmain),
@@ -2963,17 +2987,21 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_transform_pivot_point_align", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "transform_flag", SCE_XFORM_AXIS_ALIGN);
   RNA_def_property_ui_text(
-      prop, "Only Locations", "Manipulate origins (object, pose and weight paint mode only)");
+      prop,
+      "Only Locations",
+      "Only transform object locations, without affecting rotation or scaling");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "use_transform_data_origin", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "transform_flag", SCE_XFORM_DATA_ORIGIN);
-  RNA_def_property_ui_text(prop, "Transform Origins", "Manipulate object data");
+  RNA_def_property_ui_text(
+      prop, "Transform Origins", "Transform object origins, while leaving the shape in place");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "use_transform_skip_children", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "transform_flag", SCE_XFORM_SKIP_CHILDREN);
-  RNA_def_property_ui_text(prop, "Transform Parents", "Don't transform children");
+  RNA_def_property_ui_text(
+      prop, "Transform Parents", "Transform the parents, leaving the children in place");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "use_mesh_automerge", PROP_BOOLEAN, PROP_NONE);
@@ -3727,6 +3755,30 @@ static void rna_def_unit_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_WINDOW, NULL);
 }
 
+static void rna_def_view_layer_eevee(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+  srna = RNA_def_struct(brna, "ViewLayerEEVEE", NULL);
+  RNA_def_struct_ui_text(srna, "EEVEE Settings", "View layer settings for EEVEE");
+
+  prop = RNA_def_property(srna, "use_pass_volume_scatter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "render_passes", EEVEE_RENDER_PASS_VOLUME_SCATTER);
+  RNA_def_property_ui_text(prop, "Volume Scatter", "Deliver volume scattering pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+
+  prop = RNA_def_property(srna, "use_pass_volume_transmittance", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, NULL, "render_passes", EEVEE_RENDER_PASS_VOLUME_TRANSMITTANCE);
+  RNA_def_property_ui_text(prop, "Volume Transmittance", "Deliver volume transmittance pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+
+  prop = RNA_def_property(srna, "use_pass_bloom", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "render_passes", EEVEE_RENDER_PASS_BLOOM);
+  RNA_def_property_ui_text(prop, "Bloom", "Deliver bloom pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+}
+
 void rna_def_view_layer_common(StructRNA *srna, const bool scene)
 {
   PropertyRNA *prop;
@@ -3772,6 +3824,11 @@ void rna_def_view_layer_common(StructRNA *srna, const bool scene)
         "Z, Index, normal, UV and vector passes are only affected by surfaces with "
         "alpha transparency equal to or higher than this threshold");
     RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+    prop = RNA_def_property(srna, "eevee", PROP_POINTER, PROP_NONE);
+    RNA_def_property_flag(prop, PROP_NEVER_NULL);
+    RNA_def_property_struct_type(prop, "ViewLayerEEVEE");
+    RNA_def_property_ui_text(prop, "EEVEE Settings", "View layer settings for EEVEE");
   }
 
   /* layer options */
@@ -4622,6 +4679,14 @@ void rna_def_freestyle_settings(BlenderRNA *brna)
   RNA_def_property_update(
       prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_use_view_map_cache_update");
 
+  prop = RNA_def_property(srna, "as_render_pass", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", FREESTYLE_AS_RENDER_PASS);
+  RNA_def_property_ui_text(
+      prop,
+      "As Render Pass",
+      "Renders Freestyle output to a separate pass instead of overlaying it on the Combined pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+
   prop = RNA_def_property(srna, "sphere_radius", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "sphere_radius");
   RNA_def_property_range(prop, 0.0, 1000.0);
@@ -4802,11 +4867,6 @@ static void rna_def_bake_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_pass_transmission", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_TRANSM);
   RNA_def_property_ui_text(prop, "Transmission", "Add transmission contribution");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
-
-  prop = RNA_def_property(srna, "use_pass_subsurface", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "pass_filter", R_BAKE_PASS_FILTER_SUBSURFACE);
-  RNA_def_property_ui_text(prop, "Subsurface", "Add subsurface contribution");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
   prop = RNA_def_property(srna, "pass_filter", PROP_ENUM, PROP_NONE);
@@ -5660,7 +5720,8 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "dither_intensity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "dither_intensity");
-  RNA_def_property_range(prop, 0.0f, 2.0f);
+  RNA_def_property_range(prop, 0.0, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0, 2.0, 0.1, 2);
   RNA_def_property_ui_text(
       prop,
       "Dither Intensity",
@@ -5687,7 +5748,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_boolean_sdna(prop, NULL, "mode", R_EDGE_FRS);
   RNA_def_property_ui_text(prop, "Edge", "Draw stylized strokes using Freestyle");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_freestyle_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_use_freestyle_update");
 
   /* threads */
   prop = RNA_def_property(srna, "threads", PROP_INT, PROP_NONE);
@@ -5737,6 +5798,14 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 3);
   RNA_def_property_ui_text(prop, "Additional Subdiv", "Additional subdivision along the hair");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_glsl_update");
+
+  /* Performance */
+  prop = RNA_def_property(srna, "use_high_quality_normals", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "perf_flag", SCE_PERF_HQ_NORMALS);
+  RNA_def_property_ui_text(prop,
+                           "High Quality Normals",
+                           "Use high quality tangent space at the cost of lower performance");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_mesh_quality_update");
 
   /* border */
   prop = RNA_def_property(srna, "use_border", PROP_BOOLEAN, PROP_NONE);
@@ -7500,6 +7569,7 @@ void RNA_def_scene(BlenderRNA *brna)
   rna_def_display_safe_areas(brna);
   rna_def_scene_display(brna);
   rna_def_scene_eevee(brna);
+  rna_def_view_layer_eevee(brna);
   RNA_define_animate_sdna(true);
   /* *** Animated *** */
   rna_def_scene_render_data(brna);

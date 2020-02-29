@@ -44,7 +44,7 @@
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.h"
@@ -84,7 +84,7 @@ extern "C" {
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
 #include "BKE_editmesh.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_query.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_pointcache.h"
@@ -513,12 +513,15 @@ struct RemapCallbackUserData {
   bool create_placeholders;
 };
 
-int foreach_libblock_remap_callback(void *user_data_v, ID *id_self, ID **id_p, int /*cb_flag*/)
+int foreach_libblock_remap_callback(LibraryIDLinkCallbackData *cb_data)
 {
+  ID **id_p = cb_data->id_pointer;
   if (*id_p == nullptr) {
     return IDWALK_RET_NOP;
   }
-  RemapCallbackUserData *user_data = (RemapCallbackUserData *)user_data_v;
+
+  ID *id_self = cb_data->id_self;
+  RemapCallbackUserData *user_data = (RemapCallbackUserData *)cb_data->user_data;
   const Depsgraph *depsgraph = user_data->depsgraph;
   ID *id_orig = *id_p;
   if (deg_copy_on_write_is_needed(id_orig)) {
@@ -778,9 +781,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       const Object *object_orig = (const Object *)id_orig;
       object_cow->mode = object_orig->mode;
       object_cow->sculpt = object_orig->sculpt;
-      if (object_cow->type == OB_MESH) {
-        object_cow->runtime.mesh_orig = (Mesh *)object_cow->data;
-      }
+      object_cow->runtime.data_orig = (ID *)object_cow->data;
       if (object_cow->type == OB_ARMATURE) {
         const bArmature *armature_orig = (bArmature *)object_orig->data;
         bArmature *armature_cow = (bArmature *)object_cow->data;
@@ -813,12 +814,11 @@ void update_id_after_copy(const Depsgraph *depsgraph,
 
 /* This callback is used to validate that all nested ID data-blocks are
  * properly expanded. */
-int foreach_libblock_validate_callback(void *user_data,
-                                       ID * /*id_self*/,
-                                       ID **id_p,
-                                       int /*cb_flag*/)
+int foreach_libblock_validate_callback(LibraryIDLinkCallbackData *cb_data)
 {
-  ValidateData *data = (ValidateData *)user_data;
+  ValidateData *data = (ValidateData *)cb_data->user_data;
+  ID **id_p = cb_data->id_pointer;
+
   if (*id_p != nullptr) {
     if (!check_datablock_expanded(*id_p)) {
       data->is_valid = false;

@@ -115,7 +115,7 @@ void DeviceTask::split(list<DeviceTask> &tasks, int num, int max_size)
 
 void DeviceTask::update_progress(RenderTile *rtile, int pixel_samples)
 {
-  if ((type != RENDER) && (type != SHADER))
+  if (type == FILM_CONVERT)
     return;
 
   if (update_progress_sample) {

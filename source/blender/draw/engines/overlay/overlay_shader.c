@@ -47,6 +47,8 @@ extern char datatoc_armature_stick_frag_glsl[];
 extern char datatoc_armature_stick_vert_glsl[];
 extern char datatoc_armature_wire_frag_glsl[];
 extern char datatoc_armature_wire_vert_glsl[];
+extern char datatoc_background_frag_glsl[];
+extern char datatoc_clipbound_vert_glsl[];
 extern char datatoc_depth_only_vert_glsl[];
 extern char datatoc_edit_curve_handle_geom_glsl[];
 extern char datatoc_edit_curve_handle_vert_glsl[];
@@ -101,6 +103,7 @@ extern char datatoc_sculpt_mask_vert_glsl[];
 extern char datatoc_volume_velocity_vert_glsl[];
 extern char datatoc_wireframe_vert_glsl[];
 extern char datatoc_wireframe_frag_glsl[];
+extern char datatoc_xray_fade_frag_glsl[];
 
 extern char datatoc_gpu_shader_depth_only_frag_glsl[];
 extern char datatoc_gpu_shader_point_varying_color_frag_glsl[];
@@ -129,6 +132,8 @@ typedef struct OVERLAY_Shaders {
   GPUShader *armature_sphere_solid;
   GPUShader *armature_stick;
   GPUShader *armature_wire;
+  GPUShader *background;
+  GPUShader *clipbound;
   GPUShader *depth_only;
   GPUShader *edit_curve_handle;
   GPUShader *edit_curve_point;
@@ -175,6 +180,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *volume_velocity_sh;
   GPUShader *wireframe_select;
   GPUShader *wireframe;
+  GPUShader *xray_fade;
 } OVERLAY_Shaders;
 
 static struct {
@@ -196,6 +202,31 @@ GPUShader *OVERLAY_shader_antialiasing(void)
     });
   }
   return sh_data->antialiasing;
+}
+
+GPUShader *OVERLAY_shader_background(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->background) {
+    sh_data->background = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_fullscreen_vert_glsl, NULL},
+        .frag =
+            (const char *[]){datatoc_common_globals_lib_glsl, datatoc_background_frag_glsl, NULL},
+    });
+  }
+  return sh_data->background;
+}
+
+GPUShader *OVERLAY_shader_clipbound(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->clipbound) {
+    sh_data->clipbound = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_view_lib_glsl, datatoc_clipbound_vert_glsl, NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+    });
+  }
+  return sh_data->clipbound;
 }
 
 GPUShader *OVERLAY_shader_depth_only(void)
@@ -1234,6 +1265,18 @@ GPUShader *OVERLAY_shader_wireframe(void)
     });
   }
   return sh_data->wireframe;
+}
+
+GPUShader *OVERLAY_shader_xray_fade(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->xray_fade) {
+    sh_data->xray_fade = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_fullscreen_vert_glsl, NULL},
+        .frag = (const char *[]){datatoc_xray_fade_frag_glsl, NULL},
+    });
+  }
+  return sh_data->xray_fade;
 }
 
 static OVERLAY_InstanceFormats g_formats = {NULL};

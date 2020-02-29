@@ -194,10 +194,7 @@ bool paint_is_grid_face_hidden(const unsigned int *grid_hidden, int gridsize, in
 bool paint_is_bmesh_face_hidden(struct BMFace *f);
 
 /* paint masks */
-float paint_grid_paint_mask(const struct GridPaintMask *gpm,
-                            unsigned level,
-                            unsigned x,
-                            unsigned y);
+float paint_grid_paint_mask(const struct GridPaintMask *gpm, uint level, uint x, uint y);
 
 /* stroke related */
 bool paint_calculate_rake_rotation(struct UnifiedPaintSettings *ups,
@@ -247,6 +244,31 @@ typedef struct SculptPoseIKChain {
   SculptPoseIKChainSegment *segments;
   int tot_segments;
 } SculptPoseIKChain;
+
+/* Cloth Brush */
+
+typedef struct SculptClothLengthConstraint {
+  int v1;
+  int v2;
+
+  float length;
+} SculptClothLengthConstraint;
+
+typedef struct SculptClothSimulation {
+  SculptClothLengthConstraint *length_constraints;
+  int tot_length_constraints;
+  int capacity_length_constraints;
+  float *length_constraint_tweak;
+
+  float mass;
+  float damping;
+
+  float (*acceleration)[3];
+  float (*pos)[3];
+  float (*init_pos)[3];
+  float (*prev_pos)[3];
+
+} SculptClothSimulation;
 
 /* Session data (mode-specific) */
 
@@ -301,6 +323,7 @@ typedef struct SculptSession {
   float cursor_radius;
   float cursor_location[3];
   float cursor_normal[3];
+  float cursor_sampled_normal[3];
   float cursor_view_normal[3];
 
   /* TODO(jbakker): Replace rv3d adn v3d with ViewContext */

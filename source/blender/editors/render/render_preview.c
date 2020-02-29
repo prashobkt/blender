@@ -62,7 +62,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_icons.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_light.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -371,6 +371,10 @@ static Scene *preview_prepare_scene(
   if (sce) {
     ViewLayer *view_layer = sce->view_layers.first;
 
+    /* Only enable the combined renderpass */
+    view_layer->passflag = SCE_PASS_COMBINED;
+    view_layer->eevee.render_passes = 0;
+
     /* this flag tells render to not execute depsgraph or ipos etc */
     sce->r.scemode |= R_BUTS_PREVIEW;
     /* set world always back, is used now */
@@ -465,8 +469,9 @@ static Scene *preview_prepare_scene(
           copy_v4_v4(base->object->color, sp->color);
 
           if (OB_TYPE_SUPPORT_MATERIAL(base->object->type)) {
-            /* don't use assign_material, it changed mat->id.us, which shows in the UI */
-            Material ***matar = give_matarar(base->object);
+            /* don't use BKE_object_material_assign, it changed mat->id.us, which shows in the UI
+             */
+            Material ***matar = BKE_object_material_array(base->object);
             int actcol = max_ii(base->object->actcol - 1, 0);
 
             if (matar && actcol < base->object->totcol) {

@@ -722,7 +722,7 @@ static void ui_view2d_curRect_validate_resize(View2D *v2d, bool resize, bool mas
        * - width is OK, but need to check if outside of boundaries
        *
        * So, resolution is to just shift view by the gap between the extremities.
-       * We favour moving the 'minimum' across, as that's origin for most things
+       * We favor moving the 'minimum' across, as that's origin for most things.
        * (XXX - in the past, max was favored... if there are bugs, swap!)
        */
       if ((cur->xmin < tot->xmin) && (cur->xmax > tot->xmax)) {
@@ -779,7 +779,7 @@ static void ui_view2d_curRect_validate_resize(View2D *v2d, bool resize, bool mas
        * - height is OK, but need to check if outside of boundaries
        *
        * So, resolution is to just shift view by the gap between the extremities.
-       * We favour moving the 'minimum' across, as that's origin for most things
+       * We favor moving the 'minimum' across, as that's origin for most things.
        */
       if ((cur->ymin < tot->ymin) && (cur->ymax > tot->ymax)) {
         /* outside boundaries on both sides,
@@ -1343,7 +1343,7 @@ void UI_view2d_multi_grid_draw(View2D *v2d, int colorid, float step, int level_s
   uchar grid_line_color[3];
 
   /* Make an estimate of at least how many vertices will be needed */
-  unsigned vertex_count = 4;
+  uint vertex_count = 4;
   vertex_count += 2 * ((int)((v2d->cur.xmax - v2d->cur.xmin) / lstep) + 1);
   vertex_count += 2 * ((int)((v2d->cur.ymax - v2d->cur.ymin) / lstep) + 1);
 
@@ -1607,7 +1607,7 @@ void UI_view2d_scrollers_draw(View2D *v2d, View2DScrollers *vs)
      * - slider bubble is large enough (no overdraw confusion)
      * - scale is shown on the scroller
      *   (workaround to make sure that button windows don't show these,
-     *   and only the time-grids with their zoomability can do so)
+     *   and only the time-grids with their zoom-ability can do so).
      */
     if ((v2d->keepzoom & V2D_LOCKZOOM_X) == 0 && (v2d->scroll & V2D_SCROLL_HORIZONTAL_HANDLES) &&
         (BLI_rcti_size_x(&slider) > V2D_SCROLL_HANDLE_SIZE_HOTSPOT)) {

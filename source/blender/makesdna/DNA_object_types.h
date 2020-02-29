@@ -124,7 +124,7 @@ struct CustomData_MeshMasks;
 typedef struct Object_Runtime {
   /**
    * The custom data layer mask that was last used
-   * to calculate mesh_eval and mesh_deform_eval.
+   * to calculate data_eval and mesh_deform_eval.
    */
   CustomData_MeshMasks last_data_mask;
 
@@ -141,25 +141,25 @@ typedef struct Object_Runtime {
   char _pad1[3];
 
   /**
-   * Denotes whether the evaluated mesh is owned by this object or is referenced and owned by
+   * Denotes whether the evaluated data is owned by this object or is referenced and owned by
    * somebody else.
    */
-  char is_mesh_eval_owned;
+  char is_data_eval_owned;
 
   /** Axis aligned boundbox (in localspace). */
   struct BoundBox *bb;
 
   /**
-   * Original mesh pointer, before object->data was changed to point
-   * to mesh_eval.
+   * Original data pointer, before object->data was changed to point
+   * to data_eval.
    * Is assigned by dependency graph's copy-on-write evaluation.
    */
-  struct Mesh *mesh_orig;
+  struct ID *data_orig;
   /**
-   * Mesh structure created during object evaluation.
+   * Object data structure created during object evaluation.
    * It has all modifiers applied.
    */
-  struct Mesh *mesh_eval;
+  struct ID *data_eval;
   /**
    * Mesh structure created during object evaluation.
    * It has deformation only modifiers applied on it.
@@ -543,7 +543,7 @@ enum {
   OB_AXIS = 1 << 1,
   OB_TEXSPACE = 1 << 2,
   OB_DRAWNAME = 1 << 3,
-  OB_DRAWIMAGE = 1 << 4,
+  /* OB_DRAWIMAGE = 1 << 4, */ /* UNUSED */
   /* for solid+wire display */
   OB_DRAWWIRE = 1 << 5,
   /* for overdraw s*/
@@ -579,17 +579,10 @@ enum {
   OB_BOUND_SPHERE = 1,
   OB_BOUND_CYLINDER = 2,
   OB_BOUND_CONE = 3,
-  OB_BOUND_TRIANGLE_MESH = 4,
-  OB_BOUND_CONVEX_HULL = 5,
+  /* OB_BOUND_TRIANGLE_MESH = 4, */  /* UNUSED */
+  /* OB_BOUND_CONVEX_HULL = 5, */    /* UNUSED */
   /*  OB_BOUND_DYN_MESH      = 6, */ /*UNUSED*/
   OB_BOUND_CAPSULE = 7,
-};
-
-/* lod flags */
-enum {
-  OB_LOD_USE_MESH = 1 << 0,
-  OB_LOD_USE_MAT = 1 << 1,
-  OB_LOD_USE_HYST = 1 << 2,
 };
 
 /* **************** BASE ********************* */
@@ -646,13 +639,13 @@ enum {
   /* object-channel expanded status */
   OB_ADS_COLLAPSED = 1 << 10,
   /* object's ipo-block */
-  OB_ADS_SHOWIPO = 1 << 11,
+  /* OB_ADS_SHOWIPO = 1 << 11, */ /* UNUSED */
   /* object's constraint channels */
-  OB_ADS_SHOWCONS = 1 << 12,
+  /* OB_ADS_SHOWCONS = 1 << 12, */ /* UNUSED */
   /* object's material channels */
-  OB_ADS_SHOWMATS = 1 << 13,
+  /* OB_ADS_SHOWMATS = 1 << 13, */ /* UNUSED */
   /* object's marticle channels */
-  OB_ADS_SHOWPARTS = 1 << 14,
+  /* OB_ADS_SHOWPARTS = 1 << 14, */ /* UNUSED */
 };
 
 /* ob->protectflag */

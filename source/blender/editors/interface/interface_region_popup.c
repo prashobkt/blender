@@ -524,20 +524,42 @@ void ui_popup_block_scrolltest(uiBlock *block)
 
 static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
 {
-  wmWindow *win = CTX_wm_window(C);
+  wmWindow *ctx_win = CTX_wm_window(C);
+  ScrArea *ctx_sa = CTX_wm_area(C);
+  ARegion *ctx_ar = CTX_wm_region(C);
+
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindow *win = ctx_win;
   bScreen *sc = CTX_wm_screen(C);
 
+  /* There may actually be a different window active than the one showing the popup, so lookup real
+   * one. */
+  if (BLI_findindex(&sc->regionbase, handle->region) == -1) {
+    for (win = wm->windows.first; win; win = win->next) {
+      sc = WM_window_get_active_screen(win);
+      if (BLI_findindex(&sc->regionbase, handle->region) != -1) {
+        break;
+      }
+    }
+  }
+
+  BLI_assert(win && sc);
+
+  CTX_wm_window_set(C, win);
   ui_region_temp_remove(C, sc, handle->region);
+
+  /* Reset context (area and region were NULL'ed when chaning context window). */
+  CTX_wm_window_set(C, ctx_win);
+  CTX_wm_area_set(C, ctx_sa);
+  CTX_wm_region_set(C, ctx_ar);
 
   /* reset to region cursor (only if there's not another menu open) */
   if (BLI_listbase_is_empty(&sc->regionbase)) {
-    ED_region_cursor_set(win, CTX_wm_area(C), CTX_wm_region(C));
-    /* in case cursor needs to be changed again */
-    WM_event_add_mousemove(C);
+    win->tag_cursor_refresh = true;
   }
 
   if (handle->scrolltimer) {
-    WM_event_remove_timer(CTX_wm_manager(C), win, handle->scrolltimer);
+    WM_event_remove_timer(wm, win, handle->scrolltimer);
   }
 }
 
@@ -684,6 +706,15 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     }
   }
   else {
+    /* Add an offset to draw the popover arrow. */
+    if ((block->flag & UI_BLOCK_POPOVER) && ELEM(block->direction, UI_DIR_UP, UI_DIR_DOWN)) {
+      /* Keep sync with 'ui_draw_popover_back_impl'. */
+      const float unit_size = U.widget_unit / block->aspect;
+      const float unit_half = unit_size * (block->direction == UI_DIR_DOWN ? 0.5 : -0.5);
+
+      UI_block_translate(block, 0, -unit_half);
+    }
+
     /* clip block with window boundary */
     ui_popup_block_clip(window, block);
 

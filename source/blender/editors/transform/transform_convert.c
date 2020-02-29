@@ -69,6 +69,8 @@
 #include "ED_clip.h"
 #include "ED_mask.h"
 
+#include "UI_view2d.h"
+
 #include "WM_api.h" /* for WM_event_add_notifier to deal with stabilization nodes */
 #include "WM_types.h"
 
@@ -79,6 +81,7 @@
 
 #include "transform.h"
 #include "transform_convert.h"
+#include "transform_mode.h"
 
 /**
  * Transforming around ourselves is no use, fallback to individual origins,
@@ -786,6 +789,28 @@ void clipUVData(TransInfo *t)
 
 /* ********************* ANIMATION EDITORS (GENERAL) ************************* */
 
+/**
+ * For modal operation: `t->center_global` may not have been set yet.
+ */
+void transform_convert_center_global_v2(TransInfo *t, float r_center[2])
+{
+  if (t->flag & T_MODAL) {
+    UI_view2d_region_to_view(
+        (View2D *)t->view, t->mouse.imval[0], t->mouse.imval[1], &r_center[0], &r_center[1]);
+  }
+  else {
+    copy_v2_v2(r_center, t->center_global);
+  }
+}
+
+void transform_convert_center_global_v2_int(TransInfo *t, int r_center[2])
+{
+  float center[2];
+  transform_convert_center_global_v2(t, center);
+  r_center[0] = round_fl_to_int(center[0]);
+  r_center[1] = round_fl_to_int(center[1]);
+}
+
 /* This function tests if a point is on the "mouse" side of the cursor/frame-marking */
 bool FrameOnMouseSide(char side, float frame, float cframe)
 {
@@ -1417,7 +1442,6 @@ void autokeyframe_object(bContext *C, Scene *scene, ViewLayer *view_layer, Objec
       if (adt && adt->action) {
         ListBase nla_cache = {NULL, NULL};
         for (fcu = adt->action->curves.first; fcu; fcu = fcu->next) {
-          fcu->flag &= ~FCURVE_SELECTED;
           insert_keyframe(bmain,
                           reports,
                           id,
@@ -1870,13 +1894,9 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
       }
       else {
         if (t->mode == TFM_EDGE_SLIDE) {
-          EdgeSlideParams *slp = t->custom.mode.data;
-          slp->perc = 0.0;
           projectEdgeSlideData(t, false);
         }
         else if (t->mode == TFM_VERT_SLIDE) {
-          EdgeSlideParams *slp = t->custom.mode.data;
-          slp->perc = 0.0;
           projectVertSlideData(t, false);
         }
       }
@@ -1892,8 +1912,8 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 
     SpaceSeq *sseq = (SpaceSeq *)t->sa->spacedata.first;
 
-    /* marker transform, not especially nice but we may want to move markers
-     * at the same time as keyframes in the dope sheet. */
+    /* Marker transform, not especially nice but we may want to move markers
+     * at the same time as strips in the Video Sequencer. */
     if ((sseq->flag & SEQ_MARKER_TRANS) && (canceled == 0)) {
       /* cant use TFM_TIME_EXTEND
        * for some reason EXTEND is changed into TRANSLATE, so use frame_side instead */
@@ -2518,7 +2538,7 @@ void createTransData(bContext *C, TransInfo *t)
     t->obedit_type = -1;
 
     t->num.flag |= NUM_NO_FRACTION; /* sequencer has no use for floating point trasnform */
-    createTransSeqData(C, t);
+    createTransSeqData(t);
     countAndCleanTransDataContainer(t);
   }
   else if (t->spacetype == SPACE_GRAPH) {

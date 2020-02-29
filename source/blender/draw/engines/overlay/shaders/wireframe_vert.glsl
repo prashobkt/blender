@@ -138,15 +138,24 @@ void main()
 
   facing = clamp(abs(facing), 0.0, 1.0);
 
-  vec3 final_front_col = mix(rim_col, wire_col, 0.4);
-  vec3 final_rim_col = mix(rim_col, wire_col, 0.1);
-  finalColor = mix(final_rim_col, final_front_col, facing);
+  /* Do interpolation in a non-linear space to have a better visual result. */
+  rim_col = pow(rim_col, vec3(1.0 / 2.2));
+  wire_col = pow(wire_col, vec3(1.0 / 2.2));
+  vec3 final_front_col = mix(rim_col, wire_col, 0.35);
+  finalColor = mix(rim_col, final_front_col, facing);
+  finalColor = pow(finalColor, vec3(2.2));
 #endif
 
   /* Cull flat edges below threshold. */
   if (get_edge_sharpness(wd) < 0.0) {
     edgeStart = vec2(-1.0);
   }
+
+#ifdef SELECT_EDGES
+  /* HACK: to avoid loosing sub pixel object in selections, we add a bit of randomness to the
+   * wire to at least create one fragment that will pass the occlusion query. */
+  gl_Position.xy += sizeViewportInv.xy * gl_Position.w * ((gl_VertexID % 2 == 0) ? -1.0 : 1.0);
+#endif
 
 #ifdef USE_WORLD_CLIP_PLANES
   world_clip_planes_calc_clip_distance(wpos);

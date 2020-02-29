@@ -25,6 +25,8 @@
 #ifndef __DRW_RENDER_H__
 #define __DRW_RENDER_H__
 
+#include "DRW_engine_types.h"
+
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -61,8 +63,6 @@
 
 #include "DEG_depsgraph.h"
 
-struct DefaultFramebufferList;
-struct DefaultTextureList;
 struct GPUBatch;
 struct GPUFrameBuffer;
 struct GPUMaterial;
@@ -122,7 +122,6 @@ typedef struct DrawEngineType {
   void (*cache_populate)(void *vedata, struct Object *ob);
   void (*cache_finish)(void *vedata);
 
-  void (*draw_background)(void *vedata);
   void (*draw_scene)(void *vedata);
 
   void (*view_update)(void *vedata);
@@ -133,22 +132,6 @@ typedef struct DrawEngineType {
                           struct RenderLayer *layer,
                           const struct rcti *rect);
 } DrawEngineType;
-
-#ifndef __DRW_ENGINE_H__
-/* Buffer and textures used by the viewport by default */
-typedef struct DefaultFramebufferList {
-  struct GPUFrameBuffer *default_fb;
-  struct GPUFrameBuffer *in_front_fb;
-  struct GPUFrameBuffer *color_only_fb;
-  struct GPUFrameBuffer *depth_only_fb;
-} DefaultFramebufferList;
-
-typedef struct DefaultTextureList {
-  struct GPUTexture *color;
-  struct GPUTexture *depth;
-  struct GPUTexture *depth_in_front;
-} DefaultTextureList;
-#endif
 
 /* Textures */
 typedef enum {
@@ -208,14 +191,6 @@ void DRW_uniformbuffer_free(struct GPUUniformBuffer *ubo);
       ubo = NULL; \
     } \
   } while (0)
-
-void DRW_transform_to_display(struct GPUTexture *tex,
-                              bool use_view_transform,
-                              bool use_render_settings);
-void DRW_transform_none(struct GPUTexture *tex);
-void DRW_multisamples_resolve(struct GPUTexture *src_depth,
-                              struct GPUTexture *src_color,
-                              bool use_depth);
 
 /* Shaders */
 struct GPUShader *DRW_shader_create(const char *vert,
@@ -302,7 +277,7 @@ typedef enum {
   DRW_STATE_BLEND_ALPHA = (1 << 18),
   /** Use that if color is already premult by alpha. */
   DRW_STATE_BLEND_ALPHA_PREMUL = (1 << 19),
-  DRW_STATE_BLEND_ALPHA_UNDER_PREMUL = (1 << 20),
+  DRW_STATE_BLEND_BACKGROUND = (1 << 20),
   DRW_STATE_BLEND_OIT = (1 << 21),
   DRW_STATE_BLEND_MUL = (1 << 22),
   /** Use dual source blending. WARNING: Only one color buffer allowed. */
@@ -617,6 +592,7 @@ void **DRW_duplidata_get(void *vedata);
 
 /* Settings */
 bool DRW_object_is_renderable(const struct Object *ob);
+bool DRW_object_is_in_edit_mode(const struct Object *ob);
 int DRW_object_visibility_in_active_context(const struct Object *ob);
 bool DRW_object_is_flat_normal(const struct Object *ob);
 bool DRW_object_use_hide_faces(const struct Object *ob);

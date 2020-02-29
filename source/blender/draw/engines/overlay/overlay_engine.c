@@ -75,6 +75,7 @@ static void OVERLAY_engine_init(void *vedata)
 
   pd->wireframe_mode = (v3d->shading.type == OB_WIRE);
   pd->clipping_state = RV3D_CLIPPING_ENABLED(v3d, rv3d) ? DRW_STATE_CLIP_PLANES : 0;
+  pd->xray_opacity = XRAY_ALPHA(v3d);
   pd->xray_enabled = XRAY_ACTIVE(v3d);
   pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
   pd->clear_in_front = (v3d->shading.type != OB_SOLID);
@@ -144,6 +145,7 @@ static void OVERLAY_cache_init(void *vedata)
   }
   OVERLAY_antialiasing_cache_init(vedata);
   OVERLAY_armature_cache_init(vedata);
+  OVERLAY_background_cache_init(vedata);
   OVERLAY_extra_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_grid_cache_init(vedata);
@@ -179,7 +181,7 @@ BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bo
 
 static bool overlay_object_is_edit_mode(const OVERLAY_PrivateData *pd, const Object *ob)
 {
-  if ((ob->mode & OB_MODE_EDIT) && BKE_object_is_in_editmode(ob)) {
+  if (DRW_object_is_in_edit_mode(ob)) {
     /* Also check for context mode as the object mode is not 100% reliable. (see T72490) */
     switch (ob->type) {
       case OB_MESH:
@@ -389,12 +391,27 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_Data *data = vedata;
   OVERLAY_PrivateData *pd = data->stl->pd;
   OVERLAY_FramebufferList *fbl = data->fbl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+
+  if (DRW_state_is_fbo()) {
+    float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    GPU_framebuffer_bind(dfbl->overlay_only_fb);
+    GPU_framebuffer_clear_color(dfbl->overlay_only_fb, clear_col);
+  }
+
+  OVERLAY_image_background_draw(vedata);
+  OVERLAY_background_draw(vedata);
 
   OVERLAY_antialiasing_start(vedata);
 
   DRW_view_set_active(NULL);
 
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(fbl->overlay_color_only_fb);
+  }
+
   OVERLAY_outline_draw(vedata);
+  OVERLAY_xray_depth_copy(vedata);
 
   if (DRW_state_is_fbo()) {
     GPU_framebuffer_bind(fbl->overlay_default_fb);
@@ -418,6 +435,7 @@ static void OVERLAY_draw_scene(void *vedata)
     GPU_framebuffer_bind(fbl->overlay_color_only_fb);
   }
 
+  OVERLAY_xray_fade_draw(vedata);
   OVERLAY_grid_draw(vedata);
 
   if (DRW_state_is_fbo()) {
@@ -503,7 +521,6 @@ DrawEngineType draw_engine_overlay_type = {
     &OVERLAY_cache_init,
     &OVERLAY_cache_populate,
     &OVERLAY_cache_finish,
-    NULL,
     &OVERLAY_draw_scene,
     NULL,
     NULL,

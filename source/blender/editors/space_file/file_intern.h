@@ -33,13 +33,6 @@ struct SpaceFile;
 struct View2D;
 
 /* file_draw.c */
-#define TILE_BORDER_X (UI_UNIT_X / 4)
-#define TILE_BORDER_Y (UI_UNIT_Y / 4)
-
-/* ui geometry */
-#define IMASEL_BUTTONS_HEIGHT (UI_UNIT_Y * 2)
-#define IMASEL_BUTTONS_MARGIN (UI_UNIT_Y / 6)
-
 #define ATTRIBUTE_COLUMN_PADDING (0.5f * UI_UNIT_X)
 
 #define SMALL_SIZE_CHECK(_size) ((_size) < 64) /* Related to FileSelectParams.thumbnail_size. */
@@ -87,6 +80,7 @@ void FILE_OT_delete(struct wmOperatorType *ot);
 void FILE_OT_rename(struct wmOperatorType *ot);
 void FILE_OT_smoothscroll(struct wmOperatorType *ot);
 void FILE_OT_filepath_drop(struct wmOperatorType *ot);
+void FILE_OT_start_filter(struct wmOperatorType *ot);
 
 int file_exec(bContext *C, struct wmOperator *exec_op);
 int file_cancel_exec(bContext *C, struct wmOperator *unused);

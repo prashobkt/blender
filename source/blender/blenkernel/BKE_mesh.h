@@ -91,9 +91,7 @@ struct Mesh *BKE_mesh_from_editmesh_with_coords_thin_wrap(
     float (*vertexCos)[3],
     const struct Mesh *me_settings);
 
-int poly_find_loop_from_vert(const struct MPoly *poly,
-                             const struct MLoop *loopstart,
-                             unsigned vert);
+int poly_find_loop_from_vert(const struct MPoly *poly, const struct MLoop *loopstart, uint vert);
 int poly_get_adj_loops_from_vert(const struct MPoly *poly,
                                  const struct MLoop *mloop,
                                  unsigned int vert,
@@ -131,7 +129,7 @@ struct Mesh *BKE_mesh_new_nomain_from_template_ex(const struct Mesh *me_src,
                                                   int tessface_len,
                                                   int loops_len,
                                                   int polys_len,
-                                                  CustomData_MeshMasks mask);
+                                                  struct CustomData_MeshMasks mask);
 
 void BKE_mesh_eval_delete(struct Mesh *me_eval);
 
@@ -177,7 +175,6 @@ int BKE_mesh_nurbs_displist_to_mdata(struct Object *ob,
 void BKE_mesh_from_nurbs_displist(struct Main *bmain,
                                   struct Object *ob,
                                   struct ListBase *dispbase,
-                                  const bool use_orco_uv,
                                   const char *obdata_name,
                                   bool temporary);
 void BKE_mesh_from_nurbs(struct Main *bmain, struct Object *ob);

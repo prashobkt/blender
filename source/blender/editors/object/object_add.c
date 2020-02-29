@@ -69,9 +69,9 @@
 #include "BKE_light.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_library_query.h"
-#include "BKE_library_remap.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
+#include "BKE_lib_remap.h"
 #include "BKE_lightprobe.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -410,45 +410,54 @@ bool ED_object_add_generic_get_opts(bContext *C,
       rot = _rot;
     }
 
-    prop = RNA_struct_find_property(op->ptr, "align");
-    int alignment = RNA_property_enum_get(op->ptr, prop);
-    bool alignment_set = RNA_property_is_set(op->ptr, prop);
-
     if (RNA_struct_property_is_set(op->ptr, "rotation")) {
+      /* If rotation is set, always use it. Alignment (and corresponding user preference)
+       * can be ignored since this is in world space anyways.
+       * To not confuse (e.g. on redo), dont set it to ALIGN_WORLD in the op UI though. */
       *is_view_aligned = false;
-      RNA_property_enum_set(op->ptr, prop, ALIGN_WORLD);
-      alignment = ALIGN_WORLD;
-    }
-    else if (alignment_set) {
-      *is_view_aligned = alignment == ALIGN_VIEW;
+      RNA_float_get_array(op->ptr, "rotation", rot);
     }
     else {
-      *is_view_aligned = (U.flag & USER_ADD_VIEWALIGNED) != 0;
-      if (*is_view_aligned) {
-        RNA_property_enum_set(op->ptr, prop, ALIGN_VIEW);
-        alignment = ALIGN_VIEW;
-      }
-      else if (U.flag & USER_ADD_CURSORALIGNED) {
-        RNA_property_enum_set(op->ptr, prop, ALIGN_CURSOR);
-        alignment = ALIGN_CURSOR;
-      }
-    }
+      int alignment = ALIGN_WORLD;
+      prop = RNA_struct_find_property(op->ptr, "align");
 
-    switch (alignment) {
-      case ALIGN_WORLD:
-        RNA_float_get_array(op->ptr, "rotation", rot);
-        break;
-      case ALIGN_VIEW:
-        ED_object_rotation_from_view(C, rot, view_align_axis);
-        RNA_float_set_array(op->ptr, "rotation", rot);
-        break;
-      case ALIGN_CURSOR: {
-        const Scene *scene = CTX_data_scene(C);
-        float tmat[3][3];
-        BKE_scene_cursor_rot_to_mat3(&scene->cursor, tmat);
-        mat3_normalized_to_eul(rot, tmat);
-        RNA_float_set_array(op->ptr, "rotation", rot);
-        break;
+      if (RNA_property_is_set(op->ptr, prop)) {
+        /* If alignment is set, always use it. */
+        *is_view_aligned = alignment == ALIGN_VIEW;
+        alignment = RNA_property_enum_get(op->ptr, prop);
+      }
+      else {
+        /* If alignment is not set, use User Preferences. */
+        *is_view_aligned = (U.flag & USER_ADD_VIEWALIGNED) != 0;
+        if (*is_view_aligned) {
+          RNA_property_enum_set(op->ptr, prop, ALIGN_VIEW);
+          alignment = ALIGN_VIEW;
+        }
+        else if ((U.flag & USER_ADD_CURSORALIGNED) != 0) {
+          RNA_property_enum_set(op->ptr, prop, ALIGN_CURSOR);
+          alignment = ALIGN_CURSOR;
+        }
+        else {
+          RNA_property_enum_set(op->ptr, prop, ALIGN_WORLD);
+          alignment = ALIGN_WORLD;
+        }
+      }
+      switch (alignment) {
+        case ALIGN_WORLD:
+          RNA_float_get_array(op->ptr, "rotation", rot);
+          break;
+        case ALIGN_VIEW:
+          ED_object_rotation_from_view(C, rot, view_align_axis);
+          RNA_float_set_array(op->ptr, "rotation", rot);
+          break;
+        case ALIGN_CURSOR: {
+          const Scene *scene = CTX_data_scene(C);
+          float tmat[3][3];
+          BKE_scene_cursor_rot_to_mat3(&scene->cursor, tmat);
+          mat3_normalized_to_eul(rot, tmat);
+          RNA_float_set_array(op->ptr, "rotation", rot);
+          break;
+        }
       }
     }
   }
@@ -1326,7 +1335,7 @@ static int collection_instance_add_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    collection = BLI_findlink(&CTX_data_main(C)->collections, RNA_enum_get(op->ptr, "collection"));
+    collection = BLI_findlink(&bmain->collections, RNA_enum_get(op->ptr, "collection"));
   }
 
   if (!ED_object_add_generic_get_opts(C, op, 'Z', loc, rot, NULL, &local_view_bits, NULL)) {
@@ -2378,8 +2387,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       else if (target == OB_GPENCIL) {
         if (ob->type != OB_CURVE) {
           ob->flag &= ~OB_DONE;
-          BKE_report(
-              op->reports, RPT_ERROR, "Convert Surfaces to Grease Pencil is not supported.");
+          BKE_report(op->reports, RPT_ERROR, "Convert Surfaces to Grease Pencil is not supported");
         }
         else {
           /* Create a new grease pencil object and copy transformations.
@@ -2443,7 +2451,7 @@ static int convert_exec(bContext *C, wmOperator *op)
 
     /* Ensure new object has consistent material data with its new obdata. */
     if (newob) {
-      test_object_materials(bmain, newob, newob->data);
+      BKE_object_materials_test(bmain, newob, newob->data);
     }
 
     /* tag obdata if it was been changed */
