@@ -18,7 +18,7 @@ vec2 matcap_uv_compute(vec3 I, vec3 N, bool flipped)
 uniform sampler2D matcapDiffuseImage;
 uniform sampler2D matcapSpecularImage;
 
-uniform bool useSpecular = false;
+uniform bool useSpecularMatcap = false;
 
 vec3 get_matcap_lighting(vec3 base_color, vec3 N, vec3 I)
 {
@@ -28,5 +28,5 @@ vec3 get_matcap_lighting(vec3 base_color, vec3 N, vec3 I)
   vec3 diffuse = textureLod(matcapDiffuseImage, uv, 0.0).rgb;
   vec3 specular = textureLod(matcapSpecularImage, uv, 0.0).rgb;
 
-  return diffuse * base_color + specular * float(useSpecular);
+  return diffuse * base_color + specular * float(useSpecularMatcap);
 }
