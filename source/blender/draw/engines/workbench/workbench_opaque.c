@@ -32,19 +32,20 @@ void workbench_opaque_engine_init(WORKBENCH_Data *data)
   WORKBENCH_FramebufferList *fbl = data->fbl;
   WORKBENCH_PrivateData *wpd = data->stl->wpd;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+  const DrawEngineType *owner = (const DrawEngineType *)&workbench_opaque_engine_init;
 
-  const eGPUTextureFormat nor_tex_format = NORMAL_ENCODING_ENABLED() ? GPU_RG16 : GPU_RGBA32F;
-  const eGPUTextureFormat col_tex_format = workbench_color_texture_format(wpd);
-  const eGPUTextureFormat id_tex_format = OBJECT_ID_PASS_ENABLED(wpd) ? GPU_R32UI : GPU_R8;
+  /* Reused the same textures format for transparent pipeline to share the textures. */
+  const eGPUTextureFormat col_tex_format = GPU_RGBA16F;
+  const eGPUTextureFormat nor_tex_format = NORMAL_ENCODING_ENABLED() ? GPU_RG16 : GPU_RGBA16F;
+  const eGPUTextureFormat id_tex_format = GPU_R16UI;
 
   wpd->composite_buffer_tx = dtxl->color;
 
-  wpd->material_buffer_tx = DRW_texture_pool_query_fullscreen(col_tex_format,
-                                                              &draw_engine_workbench_solid);
-  wpd->object_id_tx = DRW_texture_pool_query_fullscreen(id_tex_format,
-                                                        &draw_engine_workbench_solid);
-  wpd->normal_buffer_tx = DRW_texture_pool_query_fullscreen(nor_tex_format,
-                                                            &draw_engine_workbench_solid);
+  wpd->material_buffer_tx = DRW_texture_pool_query_fullscreen(col_tex_format, owner);
+  wpd->normal_buffer_tx = DRW_texture_pool_query_fullscreen(nor_tex_format, owner);
+  if (OBJECT_ID_PASS_ENABLED(wpd)) {
+    wpd->object_id_tx = DRW_texture_pool_query_fullscreen(id_tex_format, owner);
+  }
 
   GPU_framebuffer_ensure_config(&fbl->prepass_fb,
                                 {
