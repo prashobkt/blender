@@ -6878,6 +6878,7 @@ class VIEW3D_PT_gpencil_weight_context_menu(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'WINDOW'
     bl_label = "Weight Paint Context Menu"
+    bl_ui_units_x = 12
 
     def draw(self, context):
         ts = context.tool_settings
@@ -6892,6 +6893,9 @@ class VIEW3D_PT_gpencil_weight_context_menu(Panel):
 
         # Layers
         draw_gpencil_layer_active(context, layout)
+
+        # Frames
+        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_gpencil_draw_context_menu(Panel):
@@ -6934,6 +6938,7 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'WINDOW'
     bl_label = "Vertex Paint Context Menu"
+    bl_ui_units_x = 12
 
     def draw(self, context):
         layout = self.layout
@@ -6965,6 +6970,9 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
 
         # Layers
         draw_gpencil_layer_active(context, layout)
+
+        # Frames
+        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_paint_vertex_context_menu(Panel):
