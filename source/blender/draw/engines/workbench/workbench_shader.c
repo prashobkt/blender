@@ -89,11 +89,21 @@ void workbench_shader_library_ensure(void)
   }
 }
 
-static char *workbench_build_defines(WORKBENCH_PrivateData *UNUSED(wpd))
+static char *workbench_build_defines(WORKBENCH_PrivateData *wpd)
 {
   char *str = NULL;
 
   DynStr *ds = BLI_dynstr_new();
+
+  if (wpd->shading.light == V3D_LIGHTING_STUDIO) {
+    BLI_dynstr_append(ds, "#define V3D_LIGHTING_STUDIO\n");
+  }
+  else if (wpd->shading.light == V3D_LIGHTING_MATCAP) {
+    BLI_dynstr_append(ds, "#define V3D_LIGHTING_MATCAP\n");
+  }
+  else {
+    BLI_dynstr_append(ds, "#define V3D_LIGHTING_FLAT\n");
+  }
 
   if (NORMAL_ENCODING_ENABLED()) {
     BLI_dynstr_append(ds, "#define WORKBENCH_ENCODE_NORMALS\n");
@@ -174,7 +184,8 @@ GPUShader *workbench_shader_opaque_hair_get(WORKBENCH_PrivateData *UNUSED(wpd))
 
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd)
 {
-  int index = 0;
+  int index = wpd->shading.light;
+  BLI_assert(index < MAX_COMPOSITE_SHADERS);
   if (e_data.composite_sh[index] == NULL) {
     char *defines = workbench_build_defines(wpd);
     char *frag = DRW_shader_library_create_shader_string(e_data.lib,

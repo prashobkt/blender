@@ -509,7 +509,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
       DRWShadingGroup *grp = wpd->prepass_shgrp;
       *grp_mat = grp = DRW_shgroup_create_sub(grp);
       DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
-      DRW_shgroup_uniform_int_copy(grp, "material_index", id & 0xFFFu);
+      DRW_shgroup_uniform_int_copy(grp, "materialIndex", id & 0xFFFu);
       return grp;
     }
     case V3D_SHADING_VERTEX_COLOR: {

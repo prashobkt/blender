@@ -160,7 +160,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene = draw_ctx->scene;
   WORKBENCH_ViewLayerData *vldata = workbench_view_layer_data_ensure_ex(draw_ctx->view_layer);
-  RegionView3D *rv3d = draw_ctx->rv3d;
   View3D *v3d = draw_ctx->v3d;
 
   wpd->ctx_mode = CTX_data_mode_enum_ex(
@@ -224,14 +223,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 
   wd->curvature_ridge = 0.5f / max_ff(SQUARE(wpd->shading.curvature_ridge_factor), 1e-4f);
   wd->curvature_valley = 0.7f / max_ff(SQUARE(wpd->shading.curvature_valley_factor), 1e-4f);
-
-  /* Will be NULL when rendering. */
-  if (RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
-    wpd->world_clip_planes = rv3d->clip;
-  }
-  else {
-    wpd->world_clip_planes = NULL;
-  }
 
   workbench_world_data_update_shadow_direction_vs(wpd);
   workbench_viewvecs_update(wpd->world_data.viewvecs);

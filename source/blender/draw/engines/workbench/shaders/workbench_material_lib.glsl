@@ -5,12 +5,12 @@ layout(std140) uniform material_block
 };
 
 /* If set to -1, the resource handle is used instead. */
-uniform int material_index;
+uniform int materialIndex;
 
 void workbench_material_data_get(
     int handle, out vec3 color, out float alpha, out float roughness, out float metallic)
 {
-  handle = (material_index != -1) ? material_index : handle;
+  handle = (materialIndex != -1) ? materialIndex : handle;
   vec4 data = mat_data[uint(handle) & 0xFFFu];
   color = data.rgb;
 

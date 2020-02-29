@@ -20,8 +20,6 @@ in vec3 nor;
 in vec4 ac; /* active color */
 in vec2 au; /* active texture layer */
 
-uniform bool useVertexColor = false;
-
 void main()
 {
   vec3 world_pos = point_object_to_world(pos);
@@ -38,7 +36,7 @@ void main()
   float alpha, metallic, roughness;
   workbench_material_data_get(resource_handle, color_interp, alpha, roughness, metallic);
 
-  if (useVertexColor) {
+  if (materialIndex == 0) {
     color_interp = ac.rgb;
   }
 

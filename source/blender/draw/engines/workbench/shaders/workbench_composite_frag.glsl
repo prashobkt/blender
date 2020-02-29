@@ -25,6 +25,17 @@ void main()
   vec3 specular_color = mix(vec3(0.05), base_color.rgb, metallic);
   vec3 diffuse_color = mix(base_color.rgb, vec3(0.0), metallic);
 
+#ifdef V3D_LIGHTING_MATCAP
+  fragColor.rgb = vec3(1.0);
+#endif
+
+#ifdef V3D_LIGHTING_STUDIO
   fragColor.rgb = get_world_lighting(diffuse_color, specular_color, roughness, normal, I_vs);
+#endif
+
+#ifdef V3D_LIGHTING_FLAT
+  fragColor.rgb = base_color.rgb;
+#endif
+
   fragColor.a = 1.0;
 }

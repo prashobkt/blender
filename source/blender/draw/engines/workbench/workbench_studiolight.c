@@ -52,8 +52,8 @@ void studiolight_update_world(WORKBENCH_PrivateData *wpd,
   for (int i = 0; i < 4; i++) {
     WORKBENCH_UBO_Light *light = &wd->lights[i];
 
-    SolidLight *sl = &studiolight->light[i];
-    if (sl->flag) {
+    SolidLight *sl = (studiolight) ? &studiolight->light[i] : NULL;
+    if (sl && sl->flag) {
       copy_v3_v3(light->light_direction, sl->vec);
       mul_mat3_m4_v3(rot_matrix, light->light_direction);
       /* We should predivide the power by PI but that makes the lights really dim. */
@@ -68,7 +68,12 @@ void studiolight_update_world(WORKBENCH_PrivateData *wpd,
     }
   }
 
-  copy_v3_v3(wd->ambient_color, studiolight->light_ambient);
+  if (studiolight) {
+    copy_v3_v3(wd->ambient_color, studiolight->light_ambient);
+  }
+  else {
+    copy_v3_fl(wd->ambient_color, 1.0f);
+  }
 }
 
 static void compute_parallel_lines_nor_and_dist(const float v1[2],

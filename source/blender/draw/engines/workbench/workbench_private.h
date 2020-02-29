@@ -35,7 +35,7 @@
 #include "workbench_engine.h"
 
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
-#define MAX_COMPOSITE_SHADERS (1 << 7)
+#define MAX_COMPOSITE_SHADERS (1 << 3)
 #define MAX_PREPASS_SHADERS (1 << 8)
 #define MAX_ACCUM_SHADERS (1 << 8)
 #define MAX_CAVITY_SHADERS (1 << 3)
@@ -85,7 +85,8 @@
 #define NORMAL_VIEWPORT_PASS_ENABLED(wpd) \
   (NORMAL_VIEWPORT_COMP_PASS_ENABLED(wpd) || SSAO_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
 #define NORMAL_ENCODING_ENABLED() (true)
-#define WORLD_CLIPPING_ENABLED(wpd) (wpd->world_clip_planes != NULL)
+/* TODO remove */
+#define WORLD_CLIPPING_ENABLED(wpd) (false)
 
 struct RenderEngine;
 struct RenderLayer;
@@ -253,8 +254,6 @@ typedef struct WORKBENCH_PrivateData {
   float shadow_near_sides[2][4];
   bool shadow_changed;
   bool is_playback;
-
-  float (*world_clip_planes)[4];
 
   /* Opaque pipeline */
   struct GPUTexture *object_id_tx;

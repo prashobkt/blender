@@ -65,13 +65,16 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
 {
   WORKBENCH_PassList *psl = data->psl;
   WORKBENCH_PrivateData *wpd = data->stl->wpd;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  RegionView3D *rv3d = draw_ctx->rv3d;
+  View3D *v3d = draw_ctx->v3d;
   struct GPUShader *sh;
   DRWShadingGroup *grp;
 
   const bool use_matcap = (wpd->shading.light == V3D_LIGHTING_MATCAP);
 
   {
-    DRWState clip_state = WORLD_CLIPPING_ENABLED(wpd) ? DRW_STATE_CLIP_PLANES : 0;
+    DRWState clip_state = RV3D_CLIPPING_ENABLED(v3d, rv3d) ? DRW_STATE_CLIP_PLANES : 0;
     DRWState cull_state = CULL_BACKFACE_ENABLED(wpd) ? DRW_STATE_CULL_BACK : 0;
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
 
@@ -81,27 +84,24 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
 
     wpd->prepass_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "material_index", -1);
-    DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
-    DRW_shgroup_uniform_bool_copy(grp, "useVertexColor", false);
+    DRW_shgroup_uniform_int_copy(grp, "materialIndex", -1);
 
     wpd->prepass_vcol_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "material_index", 0); /* Default material. */
-    DRW_shgroup_uniform_bool_copy(grp, "useVertexColor", true);
+    DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. (uses vcol) */
 
     sh = workbench_shader_opaque_image_get(wpd, false);
 
     wpd->prepass_image_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "material_index", 0); /* Default material. */
+    DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
     DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
     sh = workbench_shader_opaque_image_get(wpd, true);
 
     wpd->prepass_image_tiled_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "material_index", 0); /* Default material. */
+    DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
     DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
     // DRW_PASS_CREATE(psl->ghost_prepass_pass, state | cull_state | clip_state);
