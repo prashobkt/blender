@@ -3168,6 +3168,8 @@ def km_grease_pencil_stroke_edit_mode(params):
          {"properties": [("mode", 1)]}),
         ("gpencil.selectmode_toggle", {"type": 'THREE', "value": 'PRESS'},
          {"properties": [("mode", 2)]}),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Context menu
         *_template_items_context_menu("VIEW3D_MT_gpencil_edit_context_menu", params.context_menu_event),
     ])
@@ -3212,7 +3214,7 @@ def km_grease_pencil_stroke_paint_mode(params):
         ("gpencil.hide", {"type": 'H', "value": 'PRESS', "shift": True},
          {"properties": [("unselected", True)]}),
         # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'M', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Draw context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_draw_context_menu", params.context_menu_event),
     ])
@@ -3365,6 +3367,8 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         ("gpencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         # Display
         *_grease_pencil_display(),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_sculpt_context_menu", params.context_menu_event),
     ])
@@ -3569,6 +3573,8 @@ def km_grease_pencil_stroke_weight_mode(params):
          {"properties": [("data_path_primary", 'tool_settings.gpencil_weight_paint.brush.size')]}),
         # Display
         *_grease_pencil_display(),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_weight_context_menu", params.context_menu_event),
     ])
@@ -3617,6 +3623,8 @@ def km_grease_pencil_stroke_vertex_mode(params):
         op_tool("builtin_brush.Blur", {"type": 'F', "value": 'PRESS'}),
         op_tool("builtin_brush.Average", {"type": 'E', "value": 'PRESS'}),
         op_tool("builtin.brush.Smear", {"type": 'K', "value": 'PRESS'}),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Vertex Paint context menu
         op_panel("VIEW3D_PT_gpencil_vertex_context_menu", params.context_menu_event),
     ])
