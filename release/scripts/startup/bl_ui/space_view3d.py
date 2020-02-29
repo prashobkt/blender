@@ -6887,6 +6887,18 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         layout.separator()
 
+        # Layers
+        gpl = context.active_gpencil_layer
+        if gpl:
+            layout.label(text="Layers:")
+            row = layout.row(align=True)
+            row.operator_context = 'EXEC_REGION_WIN'
+            row.operator_menu_enum("gpencil.layer_change", "layer", text="", icon='GREASEPENCIL')
+            row.prop(gpl, "info", text="")
+            row.operator("gpencil.layer_remove", text="", icon='X')
+
+            layout.separator()
+
         # Frames
         layout.label(text="Frames:")
 
