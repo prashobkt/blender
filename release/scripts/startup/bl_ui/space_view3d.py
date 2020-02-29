@@ -6827,7 +6827,9 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
     bl_label = "Sculpt Context Menu"
 
     def draw(self, context):
-        brush = context.tool_settings.gpencil_sculpt.brush
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
 
         layout = self.layout
 
