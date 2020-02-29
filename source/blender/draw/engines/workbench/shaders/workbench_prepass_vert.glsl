@@ -2,6 +2,7 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_common_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_material_lib.glsl)
+#pragma BLENDER_REQUIRE(workbench_image_lib.glsl)
 
 IN_OUT ShaderStageInterface
 {
@@ -19,6 +20,8 @@ in vec3 nor;
 in vec4 ac; /* active color */
 in vec2 au; /* active texture layer */
 
+uniform bool useVertexColor = false;
+
 void main()
 {
   vec3 world_pos = point_object_to_world(pos);
@@ -29,20 +32,17 @@ void main()
 #  endif
 
   uv_interp = au;
-  color_interp = vec3(0.9);  // ac.rgb;
 
   normal_interp = normalize(normal_object_to_view(nor));
 
   float alpha, metallic, roughness;
   workbench_material_data_get(resource_handle, color_interp, alpha, roughness, metallic);
 
-  if (metallic == -1.0) {
-    /* Matcap Case. */
-    packed_rough_metal = -1.0;
+  if (useVertexColor) {
+    color_interp = ac.rgb;
   }
-  else {
-    packed_rough_metal = workbench_float_pair_encode(roughness, metallic);
-  }
+
+  packed_rough_metal = workbench_float_pair_encode(roughness, metallic);
 
   object_id = int((uint(resource_id) + 1u) & 0xFFu);
 }
@@ -53,6 +53,8 @@ layout(location = 0) out vec4 materialData;
 layout(location = 1) out WB_Normal normalData;
 layout(location = 2) out uint objectId;
 
+uniform bool useMatcap = false;
+
 void main()
 {
   normalData = workbench_normal_encode(gl_FrontFacing, normal_interp);
@@ -61,12 +63,14 @@ void main()
 
   objectId = uint(object_id);
 
-  if (materialData.a == -1.0) {
+  if (useMatcap) {
     /* For matcaps, save front facing in alpha channel. */
     materialData.a = float(gl_FrontFacing);
   }
 
-  // materialData.rgb *= workbench_image_color(uv_interp);
+#  ifdef V3D_SHADING_TEXTURE_COLOR
+  materialData.rgb = workbench_image_color(uv_interp);
+#  endif
 }
 
 #endif

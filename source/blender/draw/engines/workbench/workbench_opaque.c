@@ -68,17 +68,41 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
   struct GPUShader *sh;
   DRWShadingGroup *grp;
 
+  const bool use_matcap = (wpd->shading.light == V3D_LIGHTING_MATCAP);
+
   {
     DRWState clip_state = WORLD_CLIPPING_ENABLED(wpd) ? DRW_STATE_CLIP_PLANES : 0;
     DRWState cull_state = CULL_BACKFACE_ENABLED(wpd) ? DRW_STATE_CULL_BACK : 0;
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
 
+    DRW_PASS_CREATE(psl->prepass_pass, state | cull_state | clip_state);
+
     sh = workbench_shader_opaque_get(wpd);
 
-    DRW_PASS_CREATE(psl->prepass_pass, state | cull_state | clip_state);
     wpd->prepass_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
     DRW_shgroup_uniform_int_copy(grp, "material_index", -1);
+    DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
+    DRW_shgroup_uniform_bool_copy(grp, "useVertexColor", false);
+
+    wpd->prepass_vcol_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+    DRW_shgroup_uniform_int_copy(grp, "material_index", 0); /* Default material. */
+    DRW_shgroup_uniform_bool_copy(grp, "useVertexColor", true);
+
+    sh = workbench_shader_opaque_image_get(wpd, false);
+
+    wpd->prepass_image_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+    DRW_shgroup_uniform_int_copy(grp, "material_index", 0); /* Default material. */
+    DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
+
+    sh = workbench_shader_opaque_image_get(wpd, true);
+
+    wpd->prepass_image_tiled_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+    DRW_shgroup_uniform_int_copy(grp, "material_index", 0); /* Default material. */
+    DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
     // DRW_PASS_CREATE(psl->ghost_prepass_pass, state | cull_state | clip_state);
     // grp = DRW_shgroup_create(sh, psl->ghost_prepass_pass);
@@ -88,7 +112,6 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
     // DRW_PASS_CREATE(psl->prepass_hair_pass, state | clip_state);
     // DRW_PASS_CREATE(psl->ghost_prepass_hair_pass, state | clip_state);
 
-    // grp = DRW_shgroup_create(sh, psl->composite_pass);
     // grp = DRW_shgroup_create(sh, psl->ghost_prepass_hair_pass);
   }
   {

@@ -26,6 +26,5 @@ void main()
   vec3 diffuse_color = mix(base_color.rgb, vec3(0.0), metallic);
 
   fragColor.rgb = get_world_lighting(diffuse_color, specular_color, roughness, normal, I_vs);
-
   fragColor.a = 1.0;
 }

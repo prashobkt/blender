@@ -163,6 +163,9 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   RegionView3D *rv3d = draw_ctx->rv3d;
   View3D *v3d = draw_ctx->v3d;
 
+  wpd->ctx_mode = CTX_data_mode_enum_ex(
+      draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
+
   wpd->preferences = &U;
   wpd->sh_cfg = draw_ctx->sh_cfg;
 
@@ -198,11 +201,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     wpd->studio_light = BKE_studiolight_find(wpd->shading.studio_light, STUDIOLIGHT_TYPE_STUDIO);
   }
 
-  const bool use_material_index = USE_MATERIAL_INDEX(wpd);
-
-  if (use_material_index) {
-    wpd->material_hash = BLI_ghash_ptr_new(__func__);
-  }
+  wpd->material_hash = BLI_ghash_ptr_new(__func__);
 
   float shadow_focus = scene->display.shadow_focus;
   /* Clamp to avoid overshadowing and shading errors. */
@@ -215,6 +214,10 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   wd->matcap_orientation = (wpd->shading.flag & V3D_SHADING_MATCAP_FLIP_X) != 0;
 
   studiolight_update_world(wpd, wpd->studio_light, wd);
+
+  /* Init default material used by vertex color & texture. */
+  workbench_material_ubo_data(
+      wpd, NULL, NULL, &wpd->material_ubo_data_curr[0], V3D_SHADING_MATERIAL_COLOR);
 
   copy_v3_v3(wd->object_outline_color, wpd->shading.object_outline_color);
   wd->object_outline_color[3] = 1.0f;

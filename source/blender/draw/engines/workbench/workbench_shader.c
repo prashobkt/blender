@@ -47,6 +47,7 @@ extern char datatoc_workbench_shadow_debug_frag_glsl[];
 
 extern char datatoc_workbench_cavity_lib_glsl[];
 extern char datatoc_workbench_common_lib_glsl[];
+extern char datatoc_workbench_image_lib_glsl[];
 extern char datatoc_workbench_material_lib_glsl[];
 extern char datatoc_workbench_data_lib_glsl[];
 extern char datatoc_workbench_object_outline_lib_glsl[];
@@ -79,6 +80,7 @@ void workbench_shader_library_ensure(void)
     DRW_SHADER_LIB_ADD(e_data.lib, common_view_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_cavity_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_common_lib);
+    DRW_SHADER_LIB_ADD(e_data.lib, workbench_image_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_material_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_data_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_object_outline_lib);
@@ -87,7 +89,7 @@ void workbench_shader_library_ensure(void)
   }
 }
 
-static char *workbench_build_defines(WORKBENCH_PrivateData *wpd)
+static char *workbench_build_defines(WORKBENCH_PrivateData *UNUSED(wpd))
 {
   char *str = NULL;
 
@@ -124,7 +126,32 @@ GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd)
   return e_data.prepass_sh_cache[wpd->sh_cfg][index];
 }
 
-GPUShader *workbench_shader_opaque_hair_get(WORKBENCH_PrivateData *wpd)
+GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool tiled)
+{
+  int index = tiled ? 1 : 2;
+  if (e_data.prepass_sh_cache[wpd->sh_cfg][index] == NULL) {
+    char *defines = workbench_build_defines(wpd);
+    char *sh_src = DRW_shader_library_create_shader_string(e_data.lib,
+                                                           datatoc_workbench_prepass_vert_glsl);
+    const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[wpd->sh_cfg];
+
+    e_data.prepass_sh_cache[wpd->sh_cfg][index] = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg_data->lib, sh_src, NULL},
+        .frag = (const char *[]){sh_src, NULL},
+        .defs = (const char *[]){sh_cfg_data->def,
+                                 defines,
+                                 "#define V3D_SHADING_TEXTURE_COLOR\n",
+                                 tiled ? "#define TEXTURE_IMAGE_ARRAY\n" : NULL,
+                                 NULL},
+    });
+
+    MEM_freeN(defines);
+    MEM_freeN(sh_src);
+  }
+  return e_data.prepass_sh_cache[wpd->sh_cfg][index];
+}
+
+GPUShader *workbench_shader_opaque_hair_get(WORKBENCH_PrivateData *UNUSED(wpd))
 {
   //   if (e_data.prepass_sh_cache[wpd->sh_cfg][index] == NULL) {
   //     char *vert = DRW_shader_library_create_shader_string(e_data.lib, char *shader_code);

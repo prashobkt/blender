@@ -74,9 +74,6 @@
         V3D_SHADING_TEXTURE_COLOR, \
         V3D_SHADING_VERTEX_COLOR))
 
-#define USE_MATERIAL_INDEX(wpd) \
-  ELEM(wpd->shading.color_type, V3D_SHADING_MATERIAL_COLOR, V3D_SHADING_TEXTURE_COLOR)
-
 #define IS_NAVIGATING(wpd) \
   ((DRW_context_state_get()->rv3d) && \
    (DRW_context_state_get()->rv3d->rflag & (RV3D_NAVIGATING | RV3D_PAINTING)))
@@ -125,6 +122,7 @@ typedef struct WORKBENCH_TextureList {
   struct GPUTexture *coc_halfres_tx;
   struct GPUTexture *history_buffer_tx;
   struct GPUTexture *depth_buffer_tx;
+  struct GPUTexture *dummy_image_tx;
 } WORKBENCH_TextureList;
 
 typedef struct WORKBENCH_StorageList {
@@ -226,6 +224,7 @@ typedef struct WORKBENCH_PrivateData {
   struct GPUShader *transparent_accum_textured_array_sh;
   struct GPUShader *transparent_accum_vertex_sh;
   View3DShading shading;
+  eContextObjectMode ctx_mode;
   StudioLight *studio_light;
   const UserDef *preferences;
   /* Does this instance owns the `world_ubo` field.
@@ -265,6 +264,9 @@ typedef struct WORKBENCH_PrivateData {
   struct GPUTexture *cavity_buffer_tx;
 
   struct DRWShadingGroup *prepass_shgrp;
+  struct DRWShadingGroup *prepass_vcol_shgrp;
+  struct DRWShadingGroup *prepass_image_shgrp;
+  struct DRWShadingGroup *prepass_image_tiled_shgrp;
 
   /* Materials */
   struct GHash *material_hash;
@@ -273,6 +275,7 @@ typedef struct WORKBENCH_PrivateData {
   struct BLI_memblock *material_ubo_data;
   WORKBENCH_UBO_Material *material_ubo_data_curr;
   struct GPUUniformBuffer *material_ubo_curr;
+  struct GPUTexture *dummy_image_tx;
   int material_chunk_count;
   int material_chunk_curr;
   int material_index;
@@ -469,6 +472,7 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data);
 
 /* workbench_shader.c */
 GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd);
+GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool tiled);
 GPUShader *workbench_shader_opaque_hair_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd);
 
@@ -570,10 +574,18 @@ void workbench_material_shgroup_uniform(WORKBENCH_PrivateData *wpd,
 void workbench_material_copy(WORKBENCH_MaterialData *dest_material,
                              const WORKBENCH_MaterialData *source_material);
 
+void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
+                                 Object *ob,
+                                 Material *mat,
+                                 WORKBENCH_UBO_Material *data,
+                                 int color_type);
+
 DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
                                           Object *ob,
-                                          Material *ma,
+                                          int mat_nr,
                                           int color_type);
+DRWShadingGroup *workbench_image_setup(
+    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, Image *ima, ImageUser *iuser, int interp);
 
 /* workbench_studiolight.c */
 void studiolight_update_world(WORKBENCH_PrivateData *wpd,

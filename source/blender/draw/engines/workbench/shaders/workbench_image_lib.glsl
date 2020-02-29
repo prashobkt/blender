@@ -1,4 +1,5 @@
 
+/* TODO(fclem) deduplicate code.  */
 bool node_tex_tile_lookup(inout vec3 co, sampler2DArray ima, sampler1DArray map)
 {
   vec2 tile_pos = floor(co.xy);
@@ -21,30 +22,19 @@ bool node_tex_tile_lookup(inout vec3 co, sampler2DArray ima, sampler1DArray map)
   return true;
 }
 
-vec4 workbench_sample_texture(sampler2D image,
-                              vec2 coord,
-                              bool nearest_sampling,
-                              bool premultiplied)
+vec4 workbench_sample_texture(sampler2D image, vec2 coord, bool nearest_sampling)
 {
   vec2 tex_size = vec2(textureSize(image, 0).xy);
   /* TODO(fclem) We could do the same with sampler objects.
    * But this is a quick workaround instead of messing with the GPUTexture itself. */
   vec2 uv = nearest_sampling ? (floor(coord * tex_size) + 0.5) / tex_size : coord;
-  vec4 color = texture(image, uv);
-
-  /* Unpremultiply if stored multiplied, since straight alpha is expected by shaders. */
-  if (premultiplied && !(color.a == 0.0 || color.a == 1.0)) {
-    color.rgb = color.rgb / color.a;
-  }
-
-  return color;
+  return texture(image, uv);
 }
 
 vec4 workbench_sample_texture_array(sampler2DArray tile_array,
                                     sampler1DArray tile_data,
                                     vec2 coord,
-                                    bool nearest_sampling,
-                                    bool premultiplied)
+                                    bool nearest_sampling)
 {
   vec2 tex_size = vec2(textureSize(tile_array, 0).xy);
 
@@ -55,37 +45,36 @@ vec4 workbench_sample_texture_array(sampler2DArray tile_array,
   /* TODO(fclem) We could do the same with sampler objects.
    * But this is a quick workaround instead of messing with the GPUTexture itself. */
   uv.xy = nearest_sampling ? (floor(uv.xy * tex_size) + 0.5) / tex_size : uv.xy;
-  vec4 color = texture(tile_array, uv);
-
-  /* Unpremultiply if stored multiplied, since straight alpha is expected by shaders. */
-  if (premultiplied && !(color.a == 0.0 || color.a == 1.0)) {
-    color.rgb = color.rgb / color.a;
-  }
-
-  return color;
+  return texture(tile_array, uv);
 }
 
-uniform sampler2DArray image_tile_array;
-uniform sampler1DArray image_tile_data;
-uniform sampler2D image;
+uniform sampler2DArray imageTileArray;
+uniform sampler1DArray imageTileData;
+uniform sampler2D imageTexture;
 
 uniform float imageTransparencyCutoff = 0.1;
 uniform bool imageNearest;
-uniform bool imagePremultiplied;
+uniform bool imagePremult;
 
 vec3 workbench_image_color(vec2 uvs)
 {
-#if defined(V3D_SHADING_TEXTURE_COLOR)
+#ifdef V3D_SHADING_TEXTURE_COLOR
 #  ifdef TEXTURE_IMAGE_ARRAY
-  vec4 color = workbench_sample_texture_array(
-      image_tile_array, image_tile_data, uvs, imageNearest, imagePremultiplied);
+  vec4 color = workbench_sample_texture_array(imageTileArray, imageTileData, uvs, imageNearest);
 #  else
-  vec4 color = workbench_sample_texture(image, uvs, imageNearest, imagePremultiplied);
+  vec4 color = workbench_sample_texture(imageTexture, uvs, imageNearest);
 #  endif
 
-  if (color.a < ImageTransparencyCutoff) {
+  /* Unpremultiply if stored multiplied, since straight alpha is expected by shaders. */
+  if (imagePremult && !(color.a == 0.0 || color.a == 1.0)) {
+    color.rgb /= color.a;
+  }
+
+#  ifdef GPU_FRAGMENT_SHADER
+  if (color.a < imageTransparencyCutoff) {
     discard;
   }
+#  endif
 
   return color.rgb;
 #else

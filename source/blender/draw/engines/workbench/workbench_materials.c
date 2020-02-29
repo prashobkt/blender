@@ -53,9 +53,6 @@ void workbench_material_update_data(WORKBENCH_PrivateData *wpd,
   if (color_type == V3D_SHADING_SINGLE_COLOR) {
     copy_v3_v3(data->base_color, wpd->shading.single_color);
   }
-  else if (color_type == V3D_SHADING_ERROR_COLOR) {
-    copy_v3_fl3(data->base_color, 0.8, 0.0, 0.8);
-  }
   else if (color_type == V3D_SHADING_RANDOM_COLOR) {
     uint hash = BLI_ghashutil_strhash_p_murmur(ob->id.name);
     if (ob->id.lib) {
@@ -86,11 +83,11 @@ void workbench_material_update_data(WORKBENCH_PrivateData *wpd,
   }
 }
 
-static void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
-                                        Object *ob,
-                                        Material *mat,
-                                        WORKBENCH_UBO_Material *data,
-                                        int color_type)
+void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
+                                 Object *ob,
+                                 Material *mat,
+                                 WORKBENCH_UBO_Material *data,
+                                 int color_type)
 {
   float metallic = 0.0f;
   float roughness = 0.632455532f; /* sqrtf(0.4f); */
@@ -99,9 +96,6 @@ static void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
   switch (color_type) {
     case V3D_SHADING_SINGLE_COLOR:
       copy_v3_v3(data->base_color, wpd->shading.single_color);
-      break;
-    case V3D_SHADING_ERROR_COLOR:
-      copy_v3_fl3(data->base_color, 0.8, 0.0, 0.8);
       break;
     case V3D_SHADING_RANDOM_COLOR: {
       uint hash = BLI_ghashutil_strhash_p_murmur(ob->id.name);
@@ -124,10 +118,8 @@ static void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
       if (mat) {
         alpha *= mat->a;
         copy_v3_v3(data->base_color, &mat->r);
-        if (workbench_is_specular_highlight_enabled(wpd)) {
-          metallic = mat->metallic;
-          roughness = sqrtf(mat->roughness); /* Remap to disney roughness. */
-        }
+        metallic = mat->metallic;
+        roughness = sqrtf(mat->roughness); /* Remap to disney roughness. */
       }
       else {
         copy_v3_fl(data->base_color, 0.8f);
@@ -351,49 +343,21 @@ int workbench_material_get_accum_shader_index(WORKBENCH_PrivateData *wpd,
   return index;
 }
 
-int workbench_material_determine_color_type(WORKBENCH_PrivateData *wpd,
-                                            Image *ima,
-                                            Object *ob,
-                                            bool use_sculpt_pbvh)
+/* Return correct material or empty default material if slot is empty. */
+BLI_INLINE Material *workbench_object_material_get(Object *ob, int mat_nr)
 {
-  int color_type = wpd->shading.color_type;
-  const Mesh *me = (ob->type == OB_MESH) ? ob->data : NULL;
-
-  if ((color_type == V3D_SHADING_TEXTURE_COLOR) &&
-      (ima == NULL || use_sculpt_pbvh || (ob->dt < OB_TEXTURE))) {
-    color_type = V3D_SHADING_MATERIAL_COLOR;
+  Material *ma = BKE_object_material_get(ob, mat_nr);
+  if (ma == NULL) {
+    ma = BKE_material_default_empty();
   }
-  if (color_type == V3D_SHADING_VERTEX_COLOR && (me == NULL || me->mloopcol == NULL)) {
-    color_type = V3D_SHADING_OBJECT_COLOR;
-  }
-
-  switch (workbench_object_color_override_get(ob)) {
-    /* Force V3D_SHADING_TEXTURE_COLOR for active object when in texture painting
-     * no matter the shading color that the user has chosen, when there is no
-     * texture we will render the object with the error color */
-    case WORKBENCH_COLOR_OVERRIDE_TEXTURE:
-      color_type = ima ? V3D_SHADING_TEXTURE_COLOR : V3D_SHADING_ERROR_COLOR;
-      break;
-
-    /* Force V3D_SHADING_VERTEX_COLOR for active object when in vertex painting
-     * no matter the shading color that the user has chosen, when there is no
-     * vertex color we will render the object with the error color */
-    case WORKBENCH_COLOR_OVERRIDE_VERTEX:
-      color_type = V3D_SHADING_VERTEX_COLOR;
-      break;
-
-    case WORKBENCH_COLOR_OVERRIDE_OFF:
-      break;
-  }
-
-  return color_type;
+  return ma;
 }
 
-void workbench_material_get_image_and_mat(
-    Object *ob, int mat_nr, Image **r_image, ImageUser **r_iuser, int *r_interp, Material **r_mat)
+BLI_INLINE void workbench_material_get_image(
+    Object *ob, int mat_nr, Image **r_image, ImageUser **r_iuser, int *r_interp)
 {
   bNode *node;
-  *r_mat = BKE_object_material_get(ob, mat_nr);
+
   ED_object_get_active_image(ob, mat_nr, r_image, r_iuser, &node, NULL);
   if (node && *r_image) {
     switch (node->type) {
@@ -414,6 +378,17 @@ void workbench_material_get_image_and_mat(
   }
   else {
     *r_interp = 0;
+  }
+}
+
+/* TODO remove */
+void workbench_material_get_image_and_mat(
+    Object *ob, int mat_nr, Image **r_image, ImageUser **r_iuser, int *r_interp, Material **r_mat)
+{
+  *r_mat = workbench_object_material_get(ob, mat_nr);
+
+  if (r_image) {
+    workbench_material_get_image(ob, mat_nr, r_image, r_iuser, r_interp);
   }
 }
 
@@ -458,35 +433,21 @@ void workbench_material_shgroup_uniform(WORKBENCH_PrivateData *wpd,
   }
 }
 
-DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
-                                          Object *ob,
-                                          Material *ma,
-                                          int color_type)
+/* TODO remove */
+int workbench_material_determine_color_type(WORKBENCH_PrivateData *UNUSED(wpd),
+                                            Image *UNUSED(ima),
+                                            Object *UNUSED(ob),
+                                            bool UNUSED(use_sculpt_pbvh))
+{
+  return 0;
+}
+
+/* Return true if the current material ubo has changed and needs to be rebind. */
+static bool workbench_material_chunk_select(WORKBENCH_PrivateData *wpd, uint32_t id)
 {
   bool resource_changed = false;
-  uint32_t chunk, id;
-
-  DRWShadingGroup *grp = wpd->prepass_shgrp;
-  DRWShadingGroup **grp_mat = NULL;
-
-  const bool use_material_index = USE_MATERIAL_INDEX(wpd);
-
-  if (use_material_index) {
-    BLI_assert(ma);
-    if (BLI_ghash_ensure_p(wpd->material_hash, ma, (void ***)&grp_mat)) {
-      return *grp_mat;
-    }
-    id = wpd->material_index++;
-    resource_changed = true;
-  }
-  else {
-    id = DRW_object_resource_id_get(ob);
-  }
-
   /* Divide in chunks of MAX_MATERIAL. */
-  chunk = id >> 12u;
-  id = id & 0xFFFu;
-
+  uint32_t chunk = id >> 12u;
   /* We need to add a new chunk. */
   while (chunk >= wpd->material_chunk_count) {
     wpd->material_chunk_count++;
@@ -502,20 +463,123 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
     wpd->material_chunk_curr = chunk;
     resource_changed = true;
   }
+  return resource_changed;
+}
 
-  /* mats are allocated in elem size of MAX_MATERIAL. */
-  workbench_material_ubo_data(wpd, ob, ma, &wpd->material_ubo_data_curr[id], color_type);
+DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
+                                          Object *ob,
+                                          int mat_nr,
+                                          int color_type)
+{
+  Image *ima = NULL;
+  ImageUser *iuser = NULL;
+  int interp;
 
-  if (resource_changed) {
-    grp = DRW_shgroup_create_sub(grp);
-    DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "material_index", (use_material_index) ? id : -1);
-
-    if (use_material_index && grp_mat) {
-      *grp_mat = grp;
+  if (color_type == V3D_SHADING_TEXTURE_COLOR) {
+    workbench_material_get_image(ob, mat_nr, &ima, &iuser, &interp);
+    if (ima == NULL) {
+      /* Fallback to material color. */
+      color_type = V3D_SHADING_MATERIAL_COLOR;
     }
   }
 
+  switch (color_type) {
+    case V3D_SHADING_TEXTURE_COLOR: {
+      return workbench_image_setup(wpd, ob, mat_nr, ima, iuser, interp);
+    }
+    case V3D_SHADING_MATERIAL_COLOR: {
+      /* For now, we use the same ubo for material and object coloring but with different indices.
+       * This means they are mutually exclusive. */
+      BLI_assert(
+          ELEM(wpd->shading.color_type, V3D_SHADING_MATERIAL_COLOR, V3D_SHADING_TEXTURE_COLOR));
+
+      Material *ma = workbench_object_material_get(ob, mat_nr);
+
+      DRWShadingGroup **grp_mat = NULL;
+      /* A hashmap stores material shgroups to pack all similar drawcalls together. */
+      if (BLI_ghash_ensure_p(wpd->material_hash, ma, (void ***)&grp_mat)) {
+        return *grp_mat;
+      }
+
+      uint32_t id = wpd->material_index++;
+
+      workbench_material_chunk_select(wpd, id);
+      workbench_material_ubo_data(wpd, ob, ma, &wpd->material_ubo_data_curr[id], color_type);
+
+      DRWShadingGroup *grp = wpd->prepass_shgrp;
+      *grp_mat = grp = DRW_shgroup_create_sub(grp);
+      DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+      DRW_shgroup_uniform_int_copy(grp, "material_index", id & 0xFFFu);
+      return grp;
+    }
+    case V3D_SHADING_VERTEX_COLOR: {
+      DRWShadingGroup *grp = wpd->prepass_vcol_shgrp;
+      return grp;
+    }
+    default: {
+      /* For now, we use the same ubo for material and object coloring but with different indices.
+       * This means they are mutually exclusive. */
+      BLI_assert(
+          !ELEM(wpd->shading.color_type, V3D_SHADING_MATERIAL_COLOR, V3D_SHADING_TEXTURE_COLOR));
+
+      uint32_t id = DRW_object_resource_id_get(ob);
+
+      bool resource_changed = workbench_material_chunk_select(wpd, id);
+      workbench_material_ubo_data(wpd, ob, NULL, &wpd->material_ubo_data_curr[id], color_type);
+
+      DRWShadingGroup *grp = wpd->prepass_shgrp;
+      if (resource_changed) {
+        grp = DRW_shgroup_create_sub(grp);
+        DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+      }
+      return grp;
+    }
+  }
+}
+
+/* If ima is null, search appropriate image node but will fallback to purple texture otherwise. */
+DRWShadingGroup *workbench_image_setup(
+    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, Image *ima, ImageUser *iuser, int interp)
+{
+  GPUTexture *tex = NULL, *tex_tile_data = NULL;
+
+  if (ima == NULL) {
+    workbench_material_get_image(ob, mat_nr, &ima, &iuser, &interp);
+  }
+
+  if (ima) {
+    if (ima->source == IMA_SRC_TILED) {
+      tex = GPU_texture_from_blender(ima, iuser, NULL, GL_TEXTURE_2D_ARRAY);
+      tex_tile_data = GPU_texture_from_blender(ima, iuser, NULL, GL_TEXTURE_1D_ARRAY);
+    }
+    else {
+      tex = GPU_texture_from_blender(ima, iuser, NULL, GL_TEXTURE_2D);
+    }
+  }
+
+  if (tex == NULL) {
+    tex = wpd->dummy_image_tx;
+  }
+
+  DRWShadingGroup **grp_tex = NULL;
+  /* A hashmap stores image shgroups to pack all similar drawcalls together. */
+  if (BLI_ghash_ensure_p(wpd->material_hash, tex, (void ***)&grp_tex)) {
+    return *grp_tex;
+  }
+
+  DRWShadingGroup *grp = (tex_tile_data) ? wpd->prepass_image_tiled_shgrp :
+                                           wpd->prepass_image_shgrp;
+
+  *grp_tex = grp = DRW_shgroup_create_sub(grp);
+  if (tex_tile_data) {
+    DRW_shgroup_uniform_texture(grp, "imageTileArray", tex);
+    DRW_shgroup_uniform_texture(grp, "imageTileData", tex_tile_data);
+  }
+  else {
+    DRW_shgroup_uniform_texture(grp, "imageTexture", tex);
+  }
+  DRW_shgroup_uniform_bool_copy(grp, "imagePremult", (ima && ima->alpha_mode == IMA_ALPHA_PREMUL));
+  DRW_shgroup_uniform_bool_copy(grp, "imageNearest", (interp == SHD_INTERP_CLOSEST));
   return grp;
 }
 
