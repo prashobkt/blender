@@ -126,6 +126,18 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
     DRW_shgroup_uniform_block(grp, "world_block", wpd->world_ubo);
     DRW_shgroup_uniform_texture(grp, "materialBuffer", wpd->material_buffer_tx);
     DRW_shgroup_uniform_texture(grp, "normalBuffer", wpd->normal_buffer_tx);
+
+    if (STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)) {
+      BKE_studiolight_ensure_flag(wpd->studio_light,
+                                  STUDIOLIGHT_MATCAP_DIFFUSE_GPUTEXTURE |
+                                      STUDIOLIGHT_MATCAP_SPECULAR_GPUTEXTURE);
+      bool use_spec = workbench_is_specular_highlight_enabled(wpd);
+      struct GPUTexture *diff_tx = wpd->studio_light->matcap_diffuse.gputexture;
+      struct GPUTexture *spec_tx = wpd->studio_light->matcap_specular.gputexture;
+      DRW_shgroup_uniform_texture(grp, "matcapDiffuseImage", diff_tx);
+      DRW_shgroup_uniform_texture(grp, "matcapSpecularImage", use_spec ? spec_tx : diff_tx);
+      DRW_shgroup_uniform_bool_copy(grp, "useSpecular", use_spec);
+    }
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 }

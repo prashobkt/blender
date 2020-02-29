@@ -1,6 +1,7 @@
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_common_lib.glsl)
+#pragma BLENDER_REQUIRE(workbench_matcap_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_world_light_lib.glsl)
 
 uniform sampler2D materialBuffer;
@@ -12,25 +13,25 @@ out vec4 fragColor;
 
 void main()
 {
+  /* Normal and Incident vector are in viewspace. Lighting is evaluated in viewspace. */
+  vec3 I = view_vector_from_screen_uv(uvcoordsvar.st, world_data.viewvecs, ProjectionMatrix);
   vec3 normal = workbench_normal_decode(texture(normalBuffer, uvcoordsvar.st));
   vec4 mat_data = texture(materialBuffer, uvcoordsvar.st);
-
-  vec3 I_vs = view_vector_from_screen_uv(uvcoordsvar.st, world_data.viewvecs, ProjectionMatrix);
 
   vec3 base_color = mat_data.rgb;
 
   float roughness, metallic;
   workbench_float_pair_decode(mat_data.a, roughness, metallic);
 
-  vec3 specular_color = mix(vec3(0.05), base_color.rgb, metallic);
-  vec3 diffuse_color = mix(base_color.rgb, vec3(0.0), metallic);
-
 #ifdef V3D_LIGHTING_MATCAP
-  fragColor.rgb = vec3(1.0);
+  /* When using matcaps, mat_data.a is the backface sign. */
+  normal = (mat_data.a > 0.0) ? normal : -normal;
+
+  fragColor.rgb = get_matcap_lighting(base_color, normal, I);
 #endif
 
 #ifdef V3D_LIGHTING_STUDIO
-  fragColor.rgb = get_world_lighting(diffuse_color, specular_color, roughness, normal, I_vs);
+  fragColor.rgb = get_world_lighting(base_color, roughness, metallic, normal, I);
 #endif
 
 #ifdef V3D_LIGHTING_FLAT

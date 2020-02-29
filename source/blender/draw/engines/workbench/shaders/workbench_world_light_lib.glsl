@@ -43,8 +43,11 @@ vec4 wrapped_lighting(vec4 NL, vec4 w)
   return clamp((NL + w) * denom, 0.0, 1.0);
 }
 
-vec3 get_world_lighting(vec3 diffuse_color, vec3 specular_color, float roughness, vec3 N, vec3 I)
+vec3 get_world_lighting(vec3 base_color, float roughness, float metallic, vec3 N, vec3 I)
 {
+  vec3 specular_color = mix(vec3(0.05), base_color.rgb, metallic);
+  vec3 diffuse_color = mix(base_color.rgb, vec3(0.0), metallic);
+
   vec3 specular_light = world_data.ambient_color.rgb;
   vec3 diffuse_light = world_data.ambient_color.rgb;
   vec4 wrap = vec4(world_data.lights[0].diffuse_color_wrap.a,

@@ -48,6 +48,7 @@ extern char datatoc_workbench_shadow_debug_frag_glsl[];
 extern char datatoc_workbench_cavity_lib_glsl[];
 extern char datatoc_workbench_common_lib_glsl[];
 extern char datatoc_workbench_image_lib_glsl[];
+extern char datatoc_workbench_matcap_lib_glsl[];
 extern char datatoc_workbench_material_lib_glsl[];
 extern char datatoc_workbench_data_lib_glsl[];
 extern char datatoc_workbench_object_outline_lib_glsl[];
@@ -83,6 +84,7 @@ void workbench_shader_library_ensure(void)
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_image_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_material_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_data_lib);
+    DRW_SHADER_LIB_ADD(e_data.lib, workbench_matcap_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_object_outline_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_curvature_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_world_light_lib);
