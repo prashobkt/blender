@@ -340,6 +340,30 @@ class GPENCIL_MT_move_to_layer(Menu):
         layout.operator("gpencil.layer_add", text="New Layer", icon='ADD')
 
 
+class GPENCIL_MT_layer_active(Menu):
+    bl_label = "Active Layer"
+
+    def draw(self, context):
+        layout = self.layout
+        gpd = context.gpencil_data
+        if gpd:
+            gpl_active = context.active_gpencil_layer
+            tot_layers = len(gpd.layers)
+            i = tot_layers - 1
+            while i >= 0:
+                gpl = gpd.layers[i]
+                if gpl.info == gpl_active.info:
+                    icon = 'GREASEPENCIL'
+                else:
+                    icon = 'NONE'
+                layout.operator("gpencil.layer_active", text=gpl.info, icon=icon).layer = i
+                i -= 1
+
+            layout.separator()
+
+        layout.operator("gpencil.layer_add", text="New Layer", icon='ADD')
+
+
 class GPENCIL_MT_gpencil_draw_delete(Menu):
     bl_label = "Delete"
 
@@ -913,6 +937,7 @@ classes = (
     GPENCIL_MT_snap,
     GPENCIL_MT_cleanup,
     GPENCIL_MT_move_to_layer,
+    GPENCIL_MT_layer_active,
 
     GPENCIL_MT_gpencil_draw_delete,
     GPENCIL_MT_layer_mask_menu,

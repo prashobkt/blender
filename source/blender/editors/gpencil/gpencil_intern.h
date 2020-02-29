@@ -418,6 +418,7 @@ void GPENCIL_OT_extrude(struct wmOperatorType *ot);
 
 void GPENCIL_OT_move_to_layer(struct wmOperatorType *ot);
 void GPENCIL_OT_layer_change(struct wmOperatorType *ot);
+void GPENCIL_OT_layer_active(struct wmOperatorType *ot);
 
 void GPENCIL_OT_snap_to_grid(struct wmOperatorType *ot);
 void GPENCIL_OT_snap_to_cursor(struct wmOperatorType *ot);

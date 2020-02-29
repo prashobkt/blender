@@ -555,6 +555,7 @@ void ED_operatortypes_gpencil(void)
 
   WM_operatortype_append(GPENCIL_OT_move_to_layer);
   WM_operatortype_append(GPENCIL_OT_layer_change);
+  WM_operatortype_append(GPENCIL_OT_layer_active);
 
   WM_operatortype_append(GPENCIL_OT_set_active_material);
 

@@ -2364,6 +2364,8 @@ def km_grease_pencil_stroke_paint_mode(params):
         op_tool_cycle("builtin_brush.Erase", {"type": 'E', "value": 'PRESS'}),
         op_tool_cycle("builtin.cutter", {"type": 'K', "value": 'PRESS'}),
         op_tool_cycle("builtin.cursor", {"type": 'C', "value": 'PRESS'}),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'M', "value": 'PRESS'}),
     ])
 
     return keymap

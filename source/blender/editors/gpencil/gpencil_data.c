@@ -1308,6 +1308,50 @@ void GPENCIL_OT_layer_change(wmOperatorType *ot)
   RNA_def_enum_funcs(ot->prop, ED_gpencil_layers_with_new_enum_itemf);
 }
 
+static int gp_layer_active_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+  bGPdata *gpd = (bGPdata *)ob->data;
+  int layer_num = RNA_int_get(op->ptr, "layer");
+
+  /* Try to get layer */
+  bGPDlayer *gpl = BLI_findlink(&gpd->layers, layer_num);
+
+  if (gpl == NULL) {
+    BKE_reportf(
+        op->reports, RPT_ERROR, "Cannot change to non-existent layer (index = %d)", layer_num);
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Set active layer */
+  BKE_gpencil_layer_active_set(gpd, gpl);
+
+  /* updates */
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_layer_active(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Change Layer";
+  ot->idname = "GPENCIL_OT_layer_active";
+  ot->description = "Active Grease Pencil layer";
+
+  /* callbacks */
+  ot->invoke = gp_layer_change_invoke;
+  ot->exec = gp_layer_active_exec;
+  ot->poll = gp_active_layer_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* GPencil layer to use. */
+  ot->prop = RNA_def_int(ot->srna, "layer", 0, 0, INT_MAX, "Grease Pencil Layer", "", 0, INT_MAX);
+  RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
 /* ************************************************ */
 
 /* ******************* Arrange Stroke Up/Down in drawing order ************************** */

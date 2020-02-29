@@ -3211,6 +3211,8 @@ def km_grease_pencil_stroke_paint_mode(params):
          {"properties": [("unselected", False)]}),
         ("gpencil.hide", {"type": 'H', "value": 'PRESS', "shift": True},
          {"properties": [("unselected", True)]}),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'M', "value": 'PRESS'}),
         # Draw context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_draw_context_menu", params.context_menu_event),
     ])
