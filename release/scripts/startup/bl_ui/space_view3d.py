@@ -6821,10 +6821,41 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.operator("gpencil.reproject", text="Reproject Strokes")
 
 
+def draw_gpencil_layer_active(context, layout):
+        gpl = context.active_gpencil_layer
+        if gpl:
+            layout.label(text="Active Layer")
+            row = layout.row(align=True)
+            row.operator_context = 'EXEC_REGION_WIN'
+            row.operator_menu_enum("gpencil.layer_change", "layer", text="", icon='GREASEPENCIL')
+            row.prop(gpl, "info", text="")
+            row.operator("gpencil.layer_remove", text="", icon='X')
+
+
+def draw_gpencil_keyframe_buttons(layout):
+        layout.label(text="Keyframe")
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (Active Layer)", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (All Layers)", icon='ADD').all_layers = True
+
+        layout.separator()
+
+        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (Active Layer)", icon='DUPLICATE')
+        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (All Layers)", icon='DUPLICATE').mode = 'ALL'
+
+        layout.separator()
+
+        layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)", icon='REMOVE').type = 'FRAME'
+        layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframe (All Layers)", icon='REMOVE')
+
+
 class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'WINDOW'
     bl_label = "Sculpt Context Menu"
+    bl_ui_units_x = 12
 
     def draw(self, context):
         ts = context.tool_settings
@@ -6836,25 +6867,11 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
         layout.prop(brush, "size", slider=True)
         layout.prop(brush, "strength")
 
-        layout.separator()
+        # Layers
+        draw_gpencil_layer_active(context, layout)
 
         # Frames
-        layout.label(text="Frames:")
-
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank in Active Layer", icon='ADD')
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank in All Layers", icon='ADD').all_layers = True
-
-        layout.separator()
-
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Layer", icon='DUPLICATE')
-        layout.operator("gpencil.frame_duplicate", text="Duplicate All Layers", icon='DUPLICATE').mode = 'ALL'
-
-        layout.separator()
-
-        layout.operator("gpencil.delete", text="Delete Active Layer", icon='REMOVE').type = 'FRAME'
-        layout.operator("gpencil.active_frames_delete_all", text="Delete All Layers", icon='REMOVE')
+        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_gpencil_weight_context_menu(Panel):
@@ -6873,11 +6890,15 @@ class VIEW3D_PT_gpencil_weight_context_menu(Panel):
         layout.prop(brush, "strength")
         layout.prop(brush, "weight")
 
+        # Layers
+        draw_gpencil_layer_active(context, layout)
+
 
 class VIEW3D_PT_gpencil_draw_context_menu(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'WINDOW'
     bl_label = "Draw Context Menu"
+    bl_ui_units_x = 12
 
     def draw(self, context):
         ts = context.tool_settings
@@ -6902,37 +6923,11 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
         if brush.gpencil_tool not in {'ERASE', 'FILL', 'CUTTER'}:
             layout.prop(gp_settings, "pen_strength")
 
-        layout.separator()
-
         # Layers
-        gpl = context.active_gpencil_layer
-        if gpl:
-            layout.label(text="Layers:")
-            row = layout.row(align=True)
-            row.operator_context = 'EXEC_REGION_WIN'
-            row.operator_menu_enum("gpencil.layer_change", "layer", text="", icon='GREASEPENCIL')
-            row.prop(gpl, "info", text="")
-            row.operator("gpencil.layer_remove", text="", icon='X')
-
-            layout.separator()
+        draw_gpencil_layer_active(context, layout)
 
         # Frames
-        layout.label(text="Frames:")
-
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank in Active Layer", icon='ADD')
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank in All Layers", icon='ADD').all_layers = True
-
-        layout.separator()
-
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Layer", icon='DUPLICATE')
-        layout.operator("gpencil.frame_duplicate", text="Duplicate All Layers", icon='DUPLICATE').mode = 'ALL'
-
-        layout.separator()
-
-        layout.operator("gpencil.delete", text="Delete Active Layer", icon='REMOVE').type = 'FRAME'
-        layout.operator("gpencil.active_frames_delete_all", text="Delete All Layers", icon='REMOVE')
+        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
@@ -6967,6 +6962,9 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
             row = layout.row(align=True)
             row.prop(gp_settings, "pen_strength", slider=True)
             row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
+
+        # Layers
+        draw_gpencil_layer_active(context, layout)
 
 
 class VIEW3D_PT_paint_vertex_context_menu(Panel):
