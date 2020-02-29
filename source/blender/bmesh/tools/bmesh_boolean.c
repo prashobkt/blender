@@ -2702,6 +2702,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   in.faces_start_table = BLI_array_alloca(in.faces_start_table, (size_t)in.faces_len);
   in.faces_len_table = BLI_array_alloca(in.faces_len_table, (size_t)in.faces_len);
   in.epsilon = (float)bs->eps;
+  in.skip_input_modify = false;
 
   /* Fill in the vert_coords of CDT input */
 
