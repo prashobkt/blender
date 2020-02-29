@@ -6833,8 +6833,6 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
 
         layout = self.layout
 
-        if context.mode == 'WEIGHT_GPENCIL':
-            layout.prop(brush, "weight")
         layout.prop(brush, "size", slider=True)
         layout.prop(brush, "strength")
 
@@ -6857,6 +6855,23 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
 
         layout.operator("gpencil.delete", text="Delete Active Layer", icon='REMOVE').type = 'FRAME'
         layout.operator("gpencil.active_frames_delete_all", text="Delete All Layers", icon='REMOVE')
+
+
+class VIEW3D_PT_gpencil_weight_context_menu(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_label = "Weight Paint Context Menu"
+
+    def draw(self, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+
+        layout = self.layout
+
+        layout.prop(brush, "size", slider=True)
+        layout.prop(brush, "strength")
+        layout.prop(brush, "weight")
 
 
 class VIEW3D_PT_gpencil_draw_context_menu(Panel):
@@ -7359,6 +7374,7 @@ classes = (
     VIEW3D_PT_paint_weight_context_menu,
     VIEW3D_PT_gpencil_vertex_context_menu,
     VIEW3D_PT_gpencil_sculpt_context_menu,
+    VIEW3D_PT_gpencil_weight_context_menu,
     VIEW3D_PT_gpencil_draw_context_menu,
     VIEW3D_PT_sculpt_context_menu,
     TOPBAR_PT_gpencil_materials,

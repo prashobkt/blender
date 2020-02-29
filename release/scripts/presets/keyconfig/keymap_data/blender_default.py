@@ -3567,6 +3567,8 @@ def km_grease_pencil_stroke_weight_mode(params):
          {"properties": [("data_path_primary", 'tool_settings.gpencil_weight_paint.brush.size')]}),
         # Display
         *_grease_pencil_display(),
+        # Context menu
+        *_template_items_context_panel("VIEW3D_PT_gpencil_weight_context_menu", params.context_menu_event),
     ])
 
     return keymap
