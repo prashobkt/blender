@@ -4737,6 +4737,10 @@ class VIEW3D_MT_edit_gpencil(Menu):
 
         layout.separator()
 
+        layout.menu("GPENCIL_MT_layer_active", text="Active Layer")
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_gpencil_animation")
         layout.menu("VIEW3D_MT_edit_gpencil_interpolate")
 
@@ -4784,7 +4788,6 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.separator()
 
         layout.menu("GPENCIL_MT_move_to_layer")
-        layout.menu("GPENCIL_MT_layer_active", text="Active Layer")
         layout.menu("VIEW3D_MT_assign_material")
         layout.operator("gpencil.set_active_material", text="Set as Active Material")
         layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
