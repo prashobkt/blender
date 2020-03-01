@@ -341,7 +341,7 @@ class GPENCIL_MT_move_to_layer(Menu):
 
 
 class GPENCIL_MT_layer_active(Menu):
-    bl_label = "Active Layer"
+    bl_label = "Change Active Layer"
 
     def draw(self, context):
         layout = self.layout
