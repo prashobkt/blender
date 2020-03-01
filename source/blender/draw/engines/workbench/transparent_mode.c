@@ -31,13 +31,13 @@
 
 /* Functions */
 
-static void workbench_transparent_engine_init(void *vedata)
+static void workbench_transparent_engine_init_old(void *vedata)
 {
   WORKBENCH_Data *data = vedata;
   workbench_forward_engine_init(data);
 }
 
-static void workbench_transparent_cache_init(void *vedata)
+static void workbench_transparent_cache_init_old(void *vedata)
 {
 
   WORKBENCH_Data *data = vedata;
@@ -85,9 +85,9 @@ DrawEngineType draw_engine_workbench_transparent = {
     NULL,
     N_("Workbench"),
     &workbench_data_size,
-    &workbench_transparent_engine_init,
+    &workbench_transparent_engine_init_old,
     &workbench_transparent_engine_free,
-    &workbench_transparent_cache_init,
+    &workbench_transparent_cache_init_old,
     &workbench_transparent_cache_populate,
     &workbench_transparent_cache_finish,
     &workbench_transparent_draw_scene,

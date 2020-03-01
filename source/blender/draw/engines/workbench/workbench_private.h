@@ -35,7 +35,8 @@
 #include "workbench_engine.h"
 
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
-#define MAX_COMPOSITE_SHADERS (1 << 3)
+/* TODO put them in workbench_shader.c */
+#define MAX_COMPOSITE_SHADERS 3
 #define MAX_PREPASS_SHADERS (1 << 8)
 #define MAX_ACCUM_SHADERS (1 << 8)
 #define MAX_CAVITY_SHADERS (1 << 3)
@@ -116,6 +117,9 @@ typedef struct WORKBENCH_FramebufferList {
   struct GPUFrameBuffer *object_outline_fb;
   struct GPUFrameBuffer *transparent_accum_fb;
   struct GPUFrameBuffer *transparent_revealage_fb;
+
+  struct GPUFrameBuffer *transp_accum_fb;
+  struct GPUFrameBuffer *transp_reveal_fb;
 } WORKBENCH_FramebufferList;
 
 typedef struct WORKBENCH_TextureList {
@@ -165,6 +169,8 @@ typedef struct WORKBENCH_PassList {
   struct DRWPass *volume_pass;
 
   /* forward rendering */
+  struct DRWPass *transp_resolve_pass;
+  struct DRWPass *transp_accum_pass;
   struct DRWPass *transparent_accum_pass;
   struct DRWPass *object_outline_pass;
   struct DRWPass *depth_pass;
@@ -192,6 +198,7 @@ typedef struct WORKBENCH_UBO_Material {
 
 typedef struct WORKBENCH_UBO_World {
   float viewvecs[3][4];
+  float viewport_size[2], viewport_size_inv[2];
   float object_outline_color[4];
   float shadow_direction_vs[4];
   WORKBENCH_UBO_Light lights[4];
@@ -260,12 +267,17 @@ typedef struct WORKBENCH_PrivateData {
   struct GPUTexture *material_buffer_tx;
   struct GPUTexture *composite_buffer_tx;
   struct GPUTexture *normal_buffer_tx;
-  struct GPUTexture *cavity_buffer_tx;
 
-  struct DRWShadingGroup *prepass_shgrp;
-  struct DRWShadingGroup *prepass_vcol_shgrp;
-  struct DRWShadingGroup *prepass_image_shgrp;
-  struct DRWShadingGroup *prepass_image_tiled_shgrp;
+  /* Transparent pipeline */
+  struct GPUTexture *accum_buffer_tx;
+  struct GPUTexture *reveal_buffer_tx;
+
+  struct {
+    struct DRWShadingGroup *common_shgrp;
+    struct DRWShadingGroup *vcol_shgrp;
+    struct DRWShadingGroup *image_shgrp;
+    struct DRWShadingGroup *image_tiled_shgrp;
+  } prepass[2];
 
   /* Materials */
   struct GHash *material_hash;
@@ -469,11 +481,18 @@ BLI_INLINE eGPUTextureFormat workbench_color_texture_format(const WORKBENCH_Priv
 void workbench_opaque_engine_init(WORKBENCH_Data *data);
 void workbench_opaque_cache_init(WORKBENCH_Data *data);
 
+/* workbench_transparent.c */
+void workbench_transparent_engine_init(WORKBENCH_Data *data);
+void workbench_transparent_cache_init(WORKBENCH_Data *data);
+
 /* workbench_shader.c */
 GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool tiled);
-GPUShader *workbench_shader_opaque_hair_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd);
+
+GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd);
+GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd, bool tiled);
+GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd);
 
 void workbench_shader_library_ensure(void);
 void workbench_shader_free(void);

@@ -47,20 +47,8 @@ static void workbench_engine_init(void *ved)
   WORKBENCH_Data *vedata = ved;
   WORKBENCH_StorageList *stl = vedata->stl;
   WORKBENCH_TextureList *txl = vedata->txl;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  RegionView3D *rv3d = draw_ctx->rv3d;
-  View3D *v3d = draw_ctx->v3d;
-  Scene *scene = draw_ctx->scene;
-  Object *camera;
 
   workbench_shader_library_ensure();
-
-  if (v3d && rv3d) {
-    camera = (rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
-  }
-  else {
-    camera = scene->camera;
-  }
 
   if (!stl->wpd) {
     stl->wpd = MEM_callocN(sizeof(*stl->wpd), __func__);
@@ -81,6 +69,7 @@ static void workbench_engine_init(void *ved)
   wpd->dummy_image_tx = txl->dummy_image_tx;
 
   workbench_opaque_engine_init(vedata);
+  workbench_transparent_engine_init(vedata);
   //   workbench_volume_engine_init();
   //   workbench_fxaa_engine_init();
   //   workbench_taa_engine_init(vedata);
@@ -92,8 +81,7 @@ static void workbench_cache_init(void *ved)
   WORKBENCH_Data *vedata = ved;
 
   workbench_opaque_cache_init(vedata);
-
-  return;
+  workbench_transparent_cache_init(vedata);
 
   //   workbench_aa_create_pass(vedata);
   //   workbench_dof_create_pass(vedata);
@@ -293,15 +281,63 @@ static void workbench_draw_scene(void *ved)
   WORKBENCH_Data *vedata = ved;
   WORKBENCH_FramebufferList *fbl = vedata->fbl;
   WORKBENCH_PassList *psl = vedata->psl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+  float clear_col_with_alpha[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
-  GPU_framebuffer_bind(fbl->prepass_fb);
-  DRW_draw_pass(psl->prepass_pass);
+  GPU_framebuffer_bind(dfbl->color_only_fb);
+  GPU_framebuffer_clear_color(dfbl->color_only_fb, clear_col);
 
-  GPU_framebuffer_bind(fbl->composite_fb);
-  GPU_framebuffer_clear_color(fbl->composite_fb, clear_col);
+  {
+    GPU_framebuffer_bind(fbl->prepass_fb);
+    DRW_draw_pass(psl->prepass_pass);
 
-  DRW_draw_pass(psl->composite_pass);
+    /* TODO(fclem) shadows */
+    // DRW_draw_pass(psl->shadow_pass);
+
+    {
+      /* TODO(fclem) infront */
+      // GPU_framebuffer_bind(fbl->prepass_infront_fb);
+      // DRW_draw_pass(psl->prepass_infront_pass);
+
+      /* TODO(fclem) merge infront depth & stencil. */
+      // GPU_framebuffer_bind(fbl->prepass_fb);
+      // DRW_draw_pass(psl->merge_infront_pass);
+    }
+
+    GPU_framebuffer_bind(dfbl->default_fb);
+    DRW_draw_pass(psl->composite_pass);
+
+    /* TODO(fclem) shadows : render shadowed areas */
+    // DRW_draw_pass(psl->composite_shadow_pass);
+
+    /* TODO(fclem) ambient occlusion */
+    // GPU_framebuffer_bind(dfbl->color_only_fb);
+    // DRW_draw_pass(psl->ambient_occlusion_pass);
+  }
+
+  {
+    GPU_framebuffer_bind(fbl->transp_accum_fb);
+    GPU_framebuffer_clear_color(fbl->transp_accum_fb, clear_col_with_alpha);
+
+    DRW_draw_pass(psl->transp_accum_pass);
+
+    {
+      /* TODO(fclem) infront */
+      // GPU_framebuffer_bind(fbl->tranp_accum_infront_fb);
+      // DRW_draw_pass(psl->transp_accum_infront_pass);
+    }
+
+    GPU_framebuffer_bind(dfbl->color_only_fb);
+    DRW_draw_pass(psl->transp_resolve_pass);
+  }
+
+  /* TODO(fclem) outline */
+  // DRW_draw_pass(psl->outline_pass);
+
+  /* TODO(fclem) dof */
+
+  /* TODO(fclem) antialias */
 }
 
 static void workbench_engine_free(void)

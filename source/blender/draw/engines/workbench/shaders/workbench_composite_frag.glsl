@@ -15,7 +15,7 @@ void main()
 {
   /* Normal and Incident vector are in viewspace. Lighting is evaluated in viewspace. */
   vec3 I = view_vector_from_screen_uv(uvcoordsvar.st, world_data.viewvecs, ProjectionMatrix);
-  vec3 normal = workbench_normal_decode(texture(normalBuffer, uvcoordsvar.st));
+  vec3 N = workbench_normal_decode(texture(normalBuffer, uvcoordsvar.st));
   vec4 mat_data = texture(materialBuffer, uvcoordsvar.st);
 
   vec3 base_color = mat_data.rgb;
@@ -25,17 +25,17 @@ void main()
 
 #ifdef V3D_LIGHTING_MATCAP
   /* When using matcaps, mat_data.a is the backface sign. */
-  normal = (mat_data.a > 0.0) ? normal : -normal;
+  N = (mat_data.a > 0.0) ? N : -N;
 
-  fragColor.rgb = get_matcap_lighting(base_color, normal, I);
+  fragColor.rgb = get_matcap_lighting(base_color, N, I);
 #endif
 
 #ifdef V3D_LIGHTING_STUDIO
-  fragColor.rgb = get_world_lighting(base_color, roughness, metallic, normal, I);
+  fragColor.rgb = get_world_lighting(base_color, roughness, metallic, N, I);
 #endif
 
 #ifdef V3D_LIGHTING_FLAT
-  fragColor.rgb = base_color.rgb;
+  fragColor.rgb = base_color;
 #endif
 
   fragColor.a = 1.0;

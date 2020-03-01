@@ -185,7 +185,12 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   }
   else {
     wpd->shading = v3d->shading;
-    wpd->shading.xray_alpha = XRAY_ALPHA(v3d);
+    if (XRAY_ENABLED(v3d)) {
+      wpd->shading.xray_alpha = XRAY_ALPHA(v3d);
+    }
+    else {
+      wpd->shading.xray_alpha = 1.0f;
+    }
   }
 
   if (wpd->shading.light == V3D_LIGHTING_MATCAP) {
@@ -226,6 +231,8 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 
   workbench_world_data_update_shadow_direction_vs(wpd);
   workbench_viewvecs_update(wpd->world_data.viewvecs);
+  copy_v2_v2(wpd->world_data.viewport_size, DRW_viewport_size_get());
+  copy_v2_v2(wpd->world_data.viewport_size_inv, DRW_viewport_invert_size_get());
 
   DRW_uniformbuffer_update(wpd->world_ubo, &wpd->world_data);
 

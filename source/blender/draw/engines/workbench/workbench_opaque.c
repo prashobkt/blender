@@ -32,14 +32,12 @@ void workbench_opaque_engine_init(WORKBENCH_Data *data)
   WORKBENCH_FramebufferList *fbl = data->fbl;
   WORKBENCH_PrivateData *wpd = data->stl->wpd;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-  const DrawEngineType *owner = (const DrawEngineType *)&workbench_opaque_engine_init;
+  DrawEngineType *owner = (DrawEngineType *)&workbench_opaque_engine_init;
 
   /* Reused the same textures format for transparent pipeline to share the textures. */
   const eGPUTextureFormat col_tex_format = GPU_RGBA16F;
-  const eGPUTextureFormat nor_tex_format = NORMAL_ENCODING_ENABLED() ? GPU_RG16 : GPU_RGBA16F;
+  const eGPUTextureFormat nor_tex_format = NORMAL_ENCODING_ENABLED() ? GPU_RG16F : GPU_RGBA16F;
   const eGPUTextureFormat id_tex_format = GPU_R16UI;
-
-  wpd->composite_buffer_tx = dtxl->color;
 
   wpd->material_buffer_tx = DRW_texture_pool_query_fullscreen(col_tex_format, owner);
   wpd->normal_buffer_tx = DRW_texture_pool_query_fullscreen(nor_tex_format, owner);
@@ -53,12 +51,6 @@ void workbench_opaque_engine_init(WORKBENCH_Data *data)
                                     GPU_ATTACHMENT_TEXTURE(wpd->material_buffer_tx),
                                     GPU_ATTACHMENT_TEXTURE(wpd->normal_buffer_tx),
                                     GPU_ATTACHMENT_TEXTURE(wpd->object_id_tx),
-                                });
-
-  GPU_framebuffer_ensure_config(&fbl->composite_fb,
-                                {
-                                    GPU_ATTACHMENT_TEXTURE(dtxl->depth),
-                                    GPU_ATTACHMENT_TEXTURE(dtxl->color),
                                 });
 }
 
@@ -81,26 +73,28 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
 
     DRW_PASS_CREATE(psl->prepass_pass, state | cull_state | clip_state);
 
+    int opaque = 0;
+
     sh = workbench_shader_opaque_get(wpd);
 
-    wpd->prepass_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    wpd->prepass[opaque].common_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
     DRW_shgroup_uniform_int_copy(grp, "materialIndex", -1);
 
-    wpd->prepass_vcol_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    wpd->prepass[opaque].vcol_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
     DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. (uses vcol) */
 
     sh = workbench_shader_opaque_image_get(wpd, false);
 
-    wpd->prepass_image_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    wpd->prepass[opaque].image_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
     DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
     DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
     sh = workbench_shader_opaque_image_get(wpd, true);
 
-    wpd->prepass_image_tiled_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
+    wpd->prepass[opaque].image_tiled_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
     DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
     DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
     DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);

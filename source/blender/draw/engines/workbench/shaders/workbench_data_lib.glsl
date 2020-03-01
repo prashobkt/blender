@@ -6,6 +6,7 @@ struct LightData {
 
 struct WorldData {
   vec4 viewvecs[3];
+  vec4 viewport_size;
   vec4 object_outline_color;
   vec4 shadow_direction_vs;
   LightData lights[4];
@@ -15,6 +16,8 @@ struct WorldData {
   float curvature_valley;
   int _pad0;
 };
+
+#define viewport_size_inv viewport_size.zw
 
 layout(std140) uniform world_block
 {
