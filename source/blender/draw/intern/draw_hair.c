@@ -128,7 +128,7 @@ static DRWShadingGroup *drw_shgroup_create_hair_procedural_ex(Object *object,
       object, psys, md, &hair_cache, subdiv, thickness_res);
 
   DRWShadingGroup *shgrp;
-  if (shgrp) {
+  if (shgrp_parent) {
     shgrp = DRW_shgroup_create_sub(shgrp_parent);
   }
   else if (gpu_mat) {

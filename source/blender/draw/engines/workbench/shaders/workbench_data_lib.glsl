@@ -9,6 +9,11 @@ struct WorldData {
   vec4 viewport_size;
   vec4 object_outline_color;
   vec4 shadow_direction_vs;
+  float shadow_focus;
+  float shadow_shift;
+  float shadow_mul;
+  float shadow_add;
+  /* - 16 bytes alignment-  */
   LightData lights[4];
   vec4 ambient_color;
   int matcap_orientation;

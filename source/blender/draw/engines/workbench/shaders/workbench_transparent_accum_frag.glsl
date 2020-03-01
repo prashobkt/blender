@@ -79,6 +79,8 @@ void main()
   vec3 shaded_color = color;
 #endif
 
+  shaded_color *= get_shadow(N);
+
   /* Listing 4 */
   float weight = calculate_transparent_weight() * alpha_interp;
   transparentAccum = vec4(shaded_color * weight, alpha_interp);

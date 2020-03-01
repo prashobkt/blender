@@ -82,6 +82,7 @@ static void workbench_cache_init(void *ved)
 
   workbench_opaque_cache_init(vedata);
   workbench_transparent_cache_init(vedata);
+  workbench_shadow_cache_init(vedata);
 
   //   workbench_aa_create_pass(vedata);
   //   workbench_dof_create_pass(vedata);
@@ -105,14 +106,14 @@ static void workbench_cache_sculpt_populate(WORKBENCH_PrivateData *wpd, Object *
   BLI_assert(wpd->shading.color_type != V3D_SHADING_TEXTURE_COLOR);
 
   if (use_single_drawcall) {
-    DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type, false);
+    DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type, NULL);
     DRW_shgroup_call_sculpt(grp, ob, false, false, use_vcol);
   }
   else {
     const int materials_len = DRW_cache_object_material_count_get(ob);
     struct DRWShadingGroup **shgrps = BLI_array_alloca(shgrps, materials_len);
     for (int i = 0; i < materials_len; i++) {
-      shgrps[i] = workbench_material_setup(wpd, ob, i + 1, color_type, false);
+      shgrps[i] = workbench_material_setup(wpd, ob, i + 1, color_type, NULL);
     }
     DRW_shgroup_call_sculpt_with_materials(shgrps, ob, false);
   }
@@ -132,7 +133,7 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
       int interp = (imapaint->interp == IMAGEPAINT_INTERP_LINEAR) ? SHD_INTERP_LINEAR :
                                                                     SHD_INTERP_CLOSEST;
 
-      DRWShadingGroup *grp = workbench_image_setup(wpd, ob, 0, ima, NULL, interp, false);
+      DRWShadingGroup *grp = workbench_image_setup(wpd, ob, 0, ima, NULL, interp);
       DRW_shgroup_call(grp, geom, ob);
     }
   }
@@ -141,14 +142,17 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
     if (geoms) {
       const int materials_len = DRW_cache_object_material_count_get(ob);
       for (int i = 0; i < materials_len; i++) {
-        DRWShadingGroup *grp = workbench_image_setup(wpd, ob, i + 1, NULL, NULL, 0, false);
+        DRWShadingGroup *grp = workbench_image_setup(wpd, ob, i + 1, NULL, NULL, 0);
         DRW_shgroup_call(grp, geoms[i], ob);
       }
     }
   }
 }
 
-static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd, Object *ob, int color_type)
+static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd,
+                                            Object *ob,
+                                            int color_type,
+                                            bool *r_transp)
 {
   const bool use_tex = ELEM(color_type, V3D_SHADING_TEXTURE_COLOR);
   const bool use_vcol = ELEM(color_type, V3D_SHADING_VERTEX_COLOR);
@@ -159,7 +163,7 @@ static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd, Object *
     struct GPUBatch *geom = (use_vcol) ? DRW_cache_mesh_surface_vertpaint_get(ob) :
                                          DRW_cache_object_surface_get(ob);
     if (geom) {
-      DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type, false);
+      DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type, r_transp);
       DRW_shgroup_call(grp, geom, ob);
     }
   }
@@ -169,7 +173,7 @@ static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd, Object *
     if (geoms) {
       const int materials_len = DRW_cache_object_material_count_get(ob);
       for (int i = 0; i < materials_len; i++) {
-        DRWShadingGroup *grp = workbench_material_setup(wpd, ob, i + 1, color_type, false);
+        DRWShadingGroup *grp = workbench_material_setup(wpd, ob, i + 1, color_type, r_transp);
         DRW_shgroup_call(grp, geoms[i], ob);
       }
     }
@@ -192,8 +196,8 @@ static void workbench_cache_hair_populate(WORKBENCH_PrivateData *wpd,
   int interp = (imapaint && imapaint->interp == IMAGEPAINT_INTERP_LINEAR) ? SHD_INTERP_LINEAR :
                                                                             SHD_INTERP_CLOSEST;
   DRWShadingGroup *grp = (use_texpaint_mode) ?
-                             workbench_image_setup(wpd, ob, part->omat, ima, NULL, interp, true) :
-                             workbench_material_setup(wpd, ob, part->omat, color_type, true);
+                             workbench_image_hair_setup(wpd, ob, part->omat, ima, NULL, interp) :
+                             workbench_material_hair_setup(wpd, ob, part->omat, color_type);
 
   DRW_shgroup_hair_create_sub(ob, psys, md, grp);
 }
@@ -203,7 +207,8 @@ static void workbench_cache_hair_populate(WORKBENCH_PrivateData *wpd,
 static int workbench_color_type_get(WORKBENCH_PrivateData *wpd,
                                     Object *ob,
                                     bool *r_sculpt_pbvh,
-                                    bool *r_texpaint_mode)
+                                    bool *r_texpaint_mode,
+                                    bool *r_draw_shadow)
 {
   int color_type = wpd->shading.color_type;
   const Mesh *me = (ob->type == OB_MESH) ? ob->data : NULL;
@@ -241,6 +246,20 @@ static int workbench_color_type_get(WORKBENCH_PrivateData *wpd,
     }
   }
 
+  if (r_draw_shadow) {
+    *r_draw_shadow = (ob->dtx & OB_DRAW_NO_SHADOW_CAST) == 0 && SHADOW_ENABLED(wpd);
+    /* Currently unsupported in sculpt mode. We could revert to the slow
+     * method in this case but I'm not sure if it's a good idea given that
+     * sculpted meshes are heavy to begin with. */
+    if (is_sculpt_pbvh) {
+      *r_draw_shadow = false;
+    }
+
+    if (is_active && DRW_object_use_hide_faces(ob)) {
+      *r_draw_shadow = false;
+    }
+  }
+
   return color_type;
 }
 
@@ -256,9 +275,9 @@ static void workbench_cache_populate(void *ved, Object *ob)
 
   if (ob->type == OB_MESH && ob->modifiers.first != NULL) {
     bool use_sculpt_pbvh, use_texpaint_mode;
-    int color_type = workbench_color_type_get(wpd, ob, &use_sculpt_pbvh, &use_texpaint_mode);
+    int color_type = workbench_color_type_get(wpd, ob, &use_sculpt_pbvh, &use_texpaint_mode, NULL);
 
-    for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
       if (md->type != eModifierType_ParticleSystem) {
         continue;
       }
@@ -286,8 +305,9 @@ static void workbench_cache_populate(void *ved, Object *ob)
   }
 
   if (ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_MBALL)) {
-    bool use_sculpt_pbvh, use_texpaint_mode;
-    int color_type = workbench_color_type_get(wpd, ob, &use_sculpt_pbvh, &use_texpaint_mode);
+    bool use_sculpt_pbvh, use_texpaint_mode, draw_shadow, has_transp_mat = false;
+    int color_type = workbench_color_type_get(
+        wpd, ob, &use_sculpt_pbvh, &use_texpaint_mode, &draw_shadow);
 
     if (use_sculpt_pbvh) {
       workbench_cache_sculpt_populate(wpd, ob, color_type);
@@ -296,7 +316,11 @@ static void workbench_cache_populate(void *ved, Object *ob)
       workbench_cache_texpaint_populate(wpd, ob);
     }
     else {
-      workbench_cache_common_populate(wpd, ob, color_type);
+      workbench_cache_common_populate(wpd, ob, color_type, &has_transp_mat);
+    }
+
+    if (draw_shadow) {
+      workbench_shadow_cache_populate(vedata, ob, has_transp_mat);
     }
   }
 }
@@ -372,10 +396,13 @@ static void workbench_draw_scene(void *ved)
 
   {
     GPU_framebuffer_bind(fbl->opaque_fb);
+    GPU_framebuffer_clear_stencil(fbl->opaque_fb, 0x00);
     DRW_draw_pass(psl->opaque_pass);
 
-    /* TODO(fclem) shadows */
-    // DRW_draw_pass(psl->shadow_pass);
+    if (psl->shadow_pass[0]) {
+      DRW_draw_pass(psl->shadow_pass[0]);
+      DRW_draw_pass(psl->shadow_pass[1]);
+    }
 
     {
       GPU_framebuffer_bind(fbl->opaque_infront_fb);
@@ -387,9 +414,6 @@ static void workbench_draw_scene(void *ved)
 
     GPU_framebuffer_bind(dfbl->default_fb);
     DRW_draw_pass(psl->composite_pass);
-
-    /* TODO(fclem) shadows : render shadowed areas */
-    // DRW_draw_pass(psl->composite_shadow_pass);
 
     /* TODO(fclem) ambient occlusion */
     // GPU_framebuffer_bind(dfbl->color_only_fb);
@@ -433,6 +457,18 @@ static void workbench_view_update(void *UNUSED(ved))
 {
 }
 
+static void workbench_id_update(void *UNUSED(vedata), struct ID *id)
+{
+  if (GS(id->name) == ID_OB) {
+    WORKBENCH_ObjectData *oed = (WORKBENCH_ObjectData *)DRW_drawdata_get(
+        id, &draw_engine_workbench_solid);
+    if (oed != NULL && oed->dd.recalc != 0) {
+      oed->shadow_bbox_dirty = (oed->dd.recalc & ID_RECALC_ALL) != 0;
+      oed->dd.recalc = 0;
+    }
+  }
+}
+
 static const DrawEngineDataSize workbench_data_size = DRW_VIEWPORT_DATA_SIZE(WORKBENCH_Data);
 
 DrawEngineType draw_engine_workbench = {
@@ -447,7 +483,7 @@ DrawEngineType draw_engine_workbench = {
     &workbench_cache_finish,
     &workbench_draw_scene,
     &workbench_view_update,
-    NULL,
+    &workbench_id_update,
     NULL,
 };
 

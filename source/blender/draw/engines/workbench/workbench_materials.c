@@ -466,8 +466,8 @@ static bool workbench_material_chunk_select(WORKBENCH_PrivateData *wpd, uint32_t
   return resource_changed;
 }
 
-DRWShadingGroup *workbench_material_setup(
-    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, int color_type, bool hair)
+DRWShadingGroup *workbench_material_setup_ex(
+    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, int color_type, bool hair, bool *r_transp)
 {
   Image *ima = NULL;
   ImageUser *iuser = NULL;
@@ -484,7 +484,7 @@ DRWShadingGroup *workbench_material_setup(
 
   switch (color_type) {
     case V3D_SHADING_TEXTURE_COLOR: {
-      return workbench_image_setup(wpd, ob, mat_nr, ima, iuser, interp, hair);
+      return workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, hair);
     }
     case V3D_SHADING_MATERIAL_COLOR: {
       /* For now, we use the same ubo for material and object coloring but with different indices.
@@ -496,6 +496,10 @@ DRWShadingGroup *workbench_material_setup(
 
       const bool transp = wpd->shading.xray_alpha < 1.0f || ma->a < 1.0f;
       WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][hair];
+
+      if (r_transp && transp) {
+        *r_transp = true;
+      }
 
       DRWShadingGroup **grp_mat = NULL;
       /* A hashmap stores material shgroups to pack all similar drawcalls together. */
@@ -536,19 +540,22 @@ DRWShadingGroup *workbench_material_setup(
         grp = DRW_shgroup_create_sub(grp);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
       }
+      if (r_transp && transp) {
+        *r_transp = true;
+      }
       return grp;
     }
   }
 }
 
 /* If ima is null, search appropriate image node but will fallback to purple texture otherwise. */
-DRWShadingGroup *workbench_image_setup(WORKBENCH_PrivateData *wpd,
-                                       Object *ob,
-                                       int mat_nr,
-                                       Image *ima,
-                                       ImageUser *iuser,
-                                       int interp,
-                                       bool hair)
+DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
+                                          Object *ob,
+                                          int mat_nr,
+                                          Image *ima,
+                                          ImageUser *iuser,
+                                          int interp,
+                                          bool hair)
 {
   GPUTexture *tex = NULL, *tex_tile_data = NULL;
 

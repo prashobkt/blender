@@ -33,6 +33,7 @@ extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_workbench_prepass_vert_glsl[];
 extern char datatoc_workbench_prepass_hair_vert_glsl[];
 extern char datatoc_workbench_prepass_frag_glsl[];
+
 // extern char datatoc_workbench_cavity_frag_glsl[];
 // extern char datatoc_workbench_forward_composite_frag_glsl[];
 // extern char datatoc_workbench_deferred_composite_frag_glsl[];
@@ -76,6 +77,9 @@ static struct {
   struct GPUShader *opaque_composite_sh[MAX_LIGHTING];
   struct GPUShader *oit_resolve_sh;
   struct GPUShader *merge_infront_sh;
+
+  struct GPUShader *shadow_depth_pass_sh[2];
+  struct GPUShader *shadow_depth_fail_sh[2][2];
 
   struct DRWShaderLibrary *lib;
 } e_data = {{{{NULL}}}};
@@ -241,6 +245,44 @@ GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd)
   return e_data.oit_resolve_sh;
 }
 
+static GPUShader *workbench_shader_shadow_pass_get_ex(bool depth_pass, bool manifold, bool cap)
+{
+  struct GPUShader **shader = (depth_pass) ? &e_data.shadow_depth_pass_sh[manifold] :
+                                             &e_data.shadow_depth_fail_sh[manifold][cap];
+
+  if (*shader == NULL) {
+#if DEBUG_SHADOW_VOLUME
+    const char *shadow_frag = datatoc_workbench_shadow_debug_frag_glsl;
+#else
+    const char *shadow_frag = datatoc_gpu_shader_depth_only_frag_glsl;
+#endif
+
+    *shader = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_view_lib_glsl,
+                                 datatoc_workbench_shadow_vert_glsl,
+                                 NULL},
+        .geom = (const char *[]){(cap) ? datatoc_workbench_shadow_caps_geom_glsl :
+                                         datatoc_workbench_shadow_geom_glsl,
+                                 NULL},
+        .frag = (const char *[]){shadow_frag, NULL},
+        .defs = (const char *[]){(depth_pass) ? "#define SHADOW_PASS\n" : "#define SHADOW_FAIL\n",
+                                 (manifold) ? "" : "#define DOUBLE_MANIFOLD\n",
+                                 NULL},
+    });
+  }
+  return *shader;
+}
+
+GPUShader *workbench_shader_shadow_pass_get(bool manifold)
+{
+  return workbench_shader_shadow_pass_get_ex(true, manifold, false);
+}
+
+GPUShader *workbench_shader_shadow_fail_get(bool manifold, bool cap)
+{
+  return workbench_shader_shadow_pass_get_ex(false, manifold, cap);
+}
+
 void workbench_shader_free(void)
 {
   for (int j = 0; j < sizeof(e_data.opaque_prepass_sh_cache) / sizeof(void *); j++) {
@@ -253,6 +295,14 @@ void workbench_shader_free(void)
   }
   for (int j = 0; j < sizeof(e_data.opaque_composite_sh) / sizeof(void *); j++) {
     struct GPUShader **sh_array = &e_data.opaque_composite_sh[0];
+    DRW_SHADER_FREE_SAFE(sh_array[j]);
+  }
+  for (int j = 0; j < sizeof(e_data.shadow_depth_pass_sh) / sizeof(void *); j++) {
+    struct GPUShader **sh_array = &e_data.shadow_depth_pass_sh[0];
+    DRW_SHADER_FREE_SAFE(sh_array[j]);
+  }
+  for (int j = 0; j < sizeof(e_data.shadow_depth_fail_sh) / sizeof(void *); j++) {
+    struct GPUShader **sh_array = &e_data.shadow_depth_fail_sh[0][0];
     DRW_SHADER_FREE_SAFE(sh_array[j]);
   }
   DRW_SHADER_FREE_SAFE(e_data.oit_resolve_sh);

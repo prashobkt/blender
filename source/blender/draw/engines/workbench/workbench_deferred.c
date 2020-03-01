@@ -334,12 +334,6 @@ static struct GPUTexture *create_jitter_texture(int num_samples)
 }
 /* Functions */
 
-static void workbench_init_object_data(DrawData *dd)
-{
-  WORKBENCH_ObjectData *data = (WORKBENCH_ObjectData *)dd;
-  data->shadow_bbox_dirty = true;
-}
-
 static void workbench_init_oit_framebuffer(WORKBENCH_FramebufferList *fbl,
                                            DefaultTextureList *dtxl)
 {
@@ -732,7 +726,7 @@ void workbench_deferred_cache_init(WORKBENCH_Data *vedata)
   /* Deferred Mix Pass */
   {
     workbench_private_data_get_light_direction(e_data.display.light_direction);
-    studiolight_update_light(wpd, e_data.display.light_direction);
+    studiolight_update_light(wpd);
 
     if (SHADOW_ENABLED(wpd)) {
       psl->composite_pass = DRW_pass_create(
@@ -1161,11 +1155,7 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
         }
         else {
           WORKBENCH_ObjectData *engine_object_data = (WORKBENCH_ObjectData *)DRW_drawdata_ensure(
-              &ob->id,
-              &draw_engine_workbench_solid,
-              sizeof(WORKBENCH_ObjectData),
-              &workbench_init_object_data,
-              NULL);
+              &ob->id, &draw_engine_workbench_solid, sizeof(WORKBENCH_ObjectData), NULL, NULL);
 
           if (studiolight_object_cast_visible_shadow(wpd, ob, engine_object_data)) {
 

@@ -94,23 +94,24 @@ static void compute_parallel_lines_nor_and_dist(const float v1[2],
   }
 }
 
-void studiolight_update_light(WORKBENCH_PrivateData *wpd, const float light_direction[3])
+void studiolight_update_light(WORKBENCH_PrivateData *wpd)
 {
-  wpd->shadow_changed = !compare_v3v3(wpd->cached_shadow_direction, light_direction, 1e-5f);
+  wpd->shadow_changed = !compare_v3v3(
+      wpd->cached_shadow_direction, wpd->light_direction_ws, 1e-5f);
 
   if (wpd->shadow_changed) {
     float up[3] = {0.0f, 0.0f, 1.0f};
     unit_m4(wpd->shadow_mat);
 
     /* TODO fix singularity. */
-    copy_v3_v3(wpd->shadow_mat[2], light_direction);
+    copy_v3_v3(wpd->shadow_mat[2], wpd->light_direction_ws);
     cross_v3_v3v3(wpd->shadow_mat[0], wpd->shadow_mat[2], up);
     normalize_v3(wpd->shadow_mat[0]);
     cross_v3_v3v3(wpd->shadow_mat[1], wpd->shadow_mat[2], wpd->shadow_mat[0]);
 
     invert_m4_m4(wpd->shadow_inv, wpd->shadow_mat);
 
-    copy_v3_v3(wpd->cached_shadow_direction, light_direction);
+    copy_v3_v3(wpd->cached_shadow_direction, wpd->light_direction_ws);
   }
 
   float planes[6][4];

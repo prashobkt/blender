@@ -38,5 +38,7 @@ void main()
   fragColor.rgb = base_color;
 #endif
 
+  fragColor.rgb *= get_shadow(N);
+
   fragColor.a = 1.0;
 }

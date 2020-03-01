@@ -56,6 +56,7 @@ static void workbench_transparent_lighting_uniforms(WORKBENCH_PrivateData *wpd,
 {
   const bool use_spec = workbench_is_specular_highlight_enabled(wpd);
   DRW_shgroup_uniform_block_persistent(grp, "world_block", wpd->world_ubo);
+  DRW_shgroup_uniform_bool_copy(grp, "forceShadowing", false);
 
   if (STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)) {
     BKE_studiolight_ensure_flag(wpd->studio_light,

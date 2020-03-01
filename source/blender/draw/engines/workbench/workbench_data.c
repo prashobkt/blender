@@ -79,17 +79,44 @@ static WORKBENCH_ViewLayerData *workbench_view_layer_data_ensure_ex(struct ViewL
   return *vldata;
 }
 
-static void workbench_world_data_update_shadow_direction_vs(WORKBENCH_PrivateData *wpd)
+void workbench_private_data_get_light_direction(float r_light_direction[3])
 {
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  Scene *scene = draw_ctx->scene;
+
+  copy_v3_v3(r_light_direction, scene->display.light_direction);
+  SWAP(float, r_light_direction[2], r_light_direction[1]);
+  r_light_direction[2] = -r_light_direction[2];
+  r_light_direction[0] = -r_light_direction[0];
+}
+
+static void workbench_shadow_world_data_update(WORKBENCH_PrivateData *wpd)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const Scene *scene = draw_ctx->scene;
+
   WORKBENCH_UBO_World *wd = &wpd->world_data;
-  float light_direction[3];
   float view_matrix[4][4];
   DRW_view_viewmat_get(NULL, view_matrix, false);
 
-  workbench_private_data_get_light_direction(light_direction);
+  workbench_private_data_get_light_direction(wpd->light_direction_ws);
 
   /* Shadow direction. */
-  mul_v3_mat3_m4v3(wd->shadow_direction_vs, view_matrix, light_direction);
+  mul_v3_mat3_m4v3(wd->shadow_direction_vs, view_matrix, wpd->light_direction_ws);
+
+  /* Clamp to avoid overshadowing and shading errors. */
+  float focus = clamp_f(scene->display.shadow_focus, 0.0001f, 0.99999f);
+  wd->shadow_shift = scene->display.shadow_shift;
+  wd->shadow_focus = 1.0f - focus * (1.0f - wd->shadow_shift);
+
+  if (SHADOW_ENABLED(wpd)) {
+    wd->shadow_mul = wpd->shading.shadow_intensity;
+    wd->shadow_add = 1.0f - wd->shadow_mul;
+  }
+  else {
+    wd->shadow_mul = 0.0f;
+    wd->shadow_add = 1.0f;
+  }
 }
 
 /* \} */
@@ -205,13 +232,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     wpd->studio_light = BKE_studiolight_find(wpd->shading.studio_light, STUDIOLIGHT_TYPE_STUDIO);
   }
 
-  float shadow_focus = scene->display.shadow_focus;
-  /* Clamp to avoid overshadowing and shading errors. */
-  CLAMP(shadow_focus, 0.0001f, 0.99999f);
-  wpd->shadow_shift = scene->display.shadow_shift;
-  wpd->shadow_focus = 1.0f - shadow_focus * (1.0f - wpd->shadow_shift);
-  wpd->shadow_multiplier = 1.0 - wpd->shading.shadow_intensity;
-
   WORKBENCH_UBO_World *wd = &wpd->world_data;
   wd->matcap_orientation = (wpd->shading.flag & V3D_SHADING_MATCAP_FLIP_X) != 0;
 
@@ -227,7 +247,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   wd->curvature_ridge = 0.5f / max_ff(SQUARE(wpd->shading.curvature_ridge_factor), 1e-4f);
   wd->curvature_valley = 0.7f / max_ff(SQUARE(wpd->shading.curvature_valley_factor), 1e-4f);
 
-  workbench_world_data_update_shadow_direction_vs(wpd);
+  workbench_shadow_world_data_update(wpd);
   workbench_viewvecs_update(wpd->world_data.viewvecs);
   copy_v2_v2(wpd->world_data.viewport_size, DRW_viewport_size_get());
   copy_v2_v2(wpd->world_data.viewport_size_inv, DRW_viewport_invert_size_get());
@@ -294,17 +314,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 
   wpd->volumes_do = false;
   BLI_listbase_clear(&wpd->smoke_domains);
-}
-
-void workbench_private_data_get_light_direction(float r_light_direction[3])
-{
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  Scene *scene = draw_ctx->scene;
-
-  copy_v3_v3(r_light_direction, scene->display.light_direction);
-  SWAP(float, r_light_direction[2], r_light_direction[1]);
-  r_light_direction[2] = -r_light_direction[2];
-  r_light_direction[0] = -r_light_direction[0];
 }
 
 void workbench_update_material_ubos(WORKBENCH_PrivateData *UNUSED(wpd))

@@ -34,6 +34,8 @@
 
 #include "workbench_engine.h"
 
+extern struct DrawEngineType draw_engine_workbench;
+
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
 /* TODO put them in workbench_shader.c */
 #define MAX_COMPOSITE_SHADERS 3
@@ -41,6 +43,8 @@
 #define MAX_ACCUM_SHADERS (1 << 8)
 #define MAX_CAVITY_SHADERS (1 << 3)
 #define MAX_MATERIAL (1 << 12)
+
+#define DEBUG_SHADOW_VOLUME 0
 
 #define TEXTURE_DRAWING_ENABLED(wpd) (wpd->shading.color_type == V3D_SHADING_TEXTURE_COLOR)
 #define VERTEX_COLORS_ENABLED(wpd) (wpd->shading.color_type == V3D_SHADING_VERTEX_COLOR)
@@ -143,6 +147,7 @@ typedef struct WORKBENCH_PassList {
   /* deferred rendering */
   struct DRWPass *opaque_pass;
   struct DRWPass *opaque_infront_pass;
+  struct DRWPass *shadow_pass[2];
   struct DRWPass *merge_infront_pass;
   struct DRWPass *prepass_pass;
   struct DRWPass *prepass_hair_pass;
@@ -207,6 +212,7 @@ typedef struct WORKBENCH_UBO_World {
   float viewport_size[2], viewport_size_inv[2];
   float object_outline_color[4];
   float shadow_direction_vs[4];
+  float shadow_focus, shadow_shift, shadow_mul, shadow_add;
   WORKBENCH_UBO_Light lights[4];
   float ambient_color[4];
   int matcap_orientation;
@@ -298,6 +304,12 @@ typedef struct WORKBENCH_PrivateData {
   int material_chunk_count;
   int material_chunk_curr;
   int material_index;
+
+  /* Shadow */
+  struct DRWShadingGroup *shadow_pass_grp[2];
+  struct DRWShadingGroup *shadow_fail_grp[2];
+  struct DRWShadingGroup *shadow_fail_caps_grp[2];
+  float light_direction_ws[3];
 
   /* Volumes */
   bool volumes_do;
@@ -493,6 +505,10 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data);
 void workbench_transparent_engine_init(WORKBENCH_Data *data);
 void workbench_transparent_cache_init(WORKBENCH_Data *data);
 
+/* workbench_shadow.c */
+void workbench_shadow_cache_init(WORKBENCH_Data *data);
+void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const bool has_transp_mat);
+
 /* workbench_shader.c */
 GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, bool hair);
 GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool hair, bool tiled);
@@ -504,6 +520,9 @@ GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd,
                                                   bool hair,
                                                   bool tiled);
 GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd);
+
+GPUShader *workbench_shader_shadow_pass_get(bool manifold);
+GPUShader *workbench_shader_shadow_fail_get(bool manifold, bool cap);
 
 void workbench_shader_library_ensure(void);
 void workbench_shader_free(void);
@@ -609,21 +628,31 @@ void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
                                  WORKBENCH_UBO_Material *data,
                                  int color_type);
 
-DRWShadingGroup *workbench_material_setup(
-    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, int color_type, bool hair);
-DRWShadingGroup *workbench_image_setup(WORKBENCH_PrivateData *wpd,
-                                       Object *ob,
-                                       int mat_nr,
-                                       Image *ima,
-                                       ImageUser *iuser,
-                                       int interp,
-                                       bool hair);
+DRWShadingGroup *workbench_material_setup_ex(
+    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, int color_type, bool hair, bool *r_transp);
+DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
+                                          Object *ob,
+                                          int mat_nr,
+                                          Image *ima,
+                                          ImageUser *iuser,
+                                          int interp,
+                                          bool hair);
+
+#define workbench_material_setup(wpd, ob, mat_nr, color_type, r_transp) \
+  workbench_material_setup_ex(wpd, ob, mat_nr, color_type, false, r_transp)
+#define workbench_image_setup(wpd, ob, mat_nr, ima, iuser, interp) \
+  workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, false)
+
+#define workbench_material_hair_setup(wpd, ob, mat_nr, color_type) \
+  workbench_material_setup_ex(wpd, ob, mat_nr, color_type, true, 0)
+#define workbench_image_hair_setup(wpd, ob, mat_nr, ima, iuser, interp) \
+  workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, true)
 
 /* workbench_studiolight.c */
 void studiolight_update_world(WORKBENCH_PrivateData *wpd,
                               StudioLight *sl,
                               WORKBENCH_UBO_World *wd);
-void studiolight_update_light(WORKBENCH_PrivateData *wpd, const float light_direction[3]);
+void studiolight_update_light(WORKBENCH_PrivateData *wpd);
 bool studiolight_object_cast_visible_shadow(WORKBENCH_PrivateData *wpd,
                                             Object *ob,
                                             WORKBENCH_ObjectData *oed);
