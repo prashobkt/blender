@@ -6832,25 +6832,6 @@ def draw_gpencil_layer_active(context, layout):
             row.operator("gpencil.layer_remove", text="", icon='X')
 
 
-def draw_gpencil_keyframe_buttons(layout):
-        layout.label(text="Keyframe")
-
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (Active Layer)", icon='ADD')
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (All Layers)", icon='ADD').all_layers = True
-
-        layout.separator()
-
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (Active Layer)", icon='DUPLICATE')
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (All Layers)", icon='DUPLICATE').mode = 'ALL'
-
-        layout.separator()
-
-        layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)", icon='REMOVE').type = 'FRAME'
-        layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframe (All Layers)", icon='REMOVE')
-
-
 class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'WINDOW'
@@ -6869,9 +6850,6 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
 
         # Layers
         draw_gpencil_layer_active(context, layout)
-
-        # Frames
-        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_gpencil_weight_context_menu(Panel):
@@ -6893,9 +6871,6 @@ class VIEW3D_PT_gpencil_weight_context_menu(Panel):
 
         # Layers
         draw_gpencil_layer_active(context, layout)
-
-        # Frames
-        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_gpencil_draw_context_menu(Panel):
@@ -6929,9 +6904,6 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         # Layers
         draw_gpencil_layer_active(context, layout)
-
-        # Frames
-        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
@@ -6970,9 +6942,6 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
 
         # Layers
         draw_gpencil_layer_active(context, layout)
-
-        # Frames
-        draw_gpencil_keyframe_buttons(layout)
 
 
 class VIEW3D_PT_paint_vertex_context_menu(Panel):
