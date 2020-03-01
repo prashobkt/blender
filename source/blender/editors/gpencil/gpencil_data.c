@@ -1341,7 +1341,6 @@ void GPENCIL_OT_layer_active(wmOperatorType *ot)
   ot->description = "Active Grease Pencil layer";
 
   /* callbacks */
-  ot->invoke = gp_layer_change_invoke;
   ot->exec = gp_layer_active_exec;
   ot->poll = gp_active_layer_poll;
 
