@@ -907,12 +907,17 @@ class VIEW3D_MT_editor_menus(Menu):
         if gp_edit:
             if obj and obj.mode == 'PAINT_GPENCIL':
                 layout.menu("VIEW3D_MT_paint_gpencil")
+                layout.menu("VIEW3D_MT_gpencil_options")
             elif obj and obj.mode == 'EDIT_GPENCIL':
                 layout.menu("VIEW3D_MT_edit_gpencil")
                 layout.menu("VIEW3D_MT_edit_gpencil_stroke")
                 layout.menu("VIEW3D_MT_edit_gpencil_point")
+                layout.menu("VIEW3D_MT_gpencil_options")
             elif obj and obj.mode == 'WEIGHT_GPENCIL':
                 layout.menu("VIEW3D_MT_weight_gpencil")
+                layout.menu("VIEW3D_MT_gpencil_options")
+            elif obj and obj.mode in {'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
+                layout.menu("VIEW3D_MT_gpencil_options")
 
         elif edit_object:
             layout.menu("VIEW3D_MT_edit_%s" % edit_object.type.lower())
@@ -2918,6 +2923,15 @@ class VIEW3D_MT_gpencil_vertex_group(Menu):
 
             layout.operator("gpencil.vertex_group_select", text="Select")
             layout.operator("gpencil.vertex_group_deselect", text="Deselect")
+
+
+class VIEW3D_MT_gpencil_options(Menu):
+    bl_label = "Options"
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.menu("GPENCIL_MT_layer_active")
+        layout.menu("GPENCIL_MT_frames")
 
 
 class VIEW3D_MT_paint_weight(Menu):
@@ -7267,6 +7281,7 @@ classes = (
     VIEW3D_MT_gpencil_copy_layer,
     VIEW3D_MT_gpencil_autoweights,
     VIEW3D_MT_gpencil_edit_context_menu,
+    VIEW3D_MT_gpencil_options,
     VIEW3D_MT_edit_curve,
     VIEW3D_MT_edit_curve_ctrlpoints,
     VIEW3D_MT_edit_curve_segments,
