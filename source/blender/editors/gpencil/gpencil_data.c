@@ -1336,7 +1336,7 @@ static int gp_layer_active_exec(bContext *C, wmOperator *op)
 void GPENCIL_OT_layer_active(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Change Layer";
+  ot->name = "Active Layer";
   ot->idname = "GPENCIL_OT_layer_active";
   ot->description = "Active Grease Pencil layer";
 
