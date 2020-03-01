@@ -268,6 +268,19 @@ static void workbench_cache_finish(void *ved)
   WORKBENCH_StorageList *stl = vedata->stl;
   WORKBENCH_PrivateData *wpd = stl->wpd;
 
+  /* TODO(fclem) Only do this when really needed. */
+  {
+    /* HACK we allocate the infront depth here to avoid the overhead when if is not needed. */
+    DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+    DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+
+    DRW_texture_ensure_fullscreen_2d(&dtxl->depth_in_front, GPU_DEPTH24_STENCIL8, 0);
+
+    GPU_framebuffer_ensure_config(
+        &dfbl->in_front_fb,
+        {GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+  }
+
   workbench_update_material_ubos(wpd);
 
   if (wpd->material_hash) {
@@ -285,24 +298,27 @@ static void workbench_draw_scene(void *ved)
   float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   float clear_col_with_alpha[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
+  {
+    GPU_framebuffer_bind(dfbl->in_front_fb);
+    GPU_framebuffer_clear_depth(dfbl->in_front_fb, 1.0f);
+  }
+
   GPU_framebuffer_bind(dfbl->color_only_fb);
   GPU_framebuffer_clear_color(dfbl->color_only_fb, clear_col);
 
   {
-    GPU_framebuffer_bind(fbl->prepass_fb);
-    DRW_draw_pass(psl->prepass_pass);
+    GPU_framebuffer_bind(fbl->opaque_fb);
+    DRW_draw_pass(psl->opaque_pass);
 
     /* TODO(fclem) shadows */
     // DRW_draw_pass(psl->shadow_pass);
 
     {
-      /* TODO(fclem) infront */
-      // GPU_framebuffer_bind(fbl->prepass_infront_fb);
-      // DRW_draw_pass(psl->prepass_infront_pass);
+      GPU_framebuffer_bind(fbl->opaque_infront_fb);
+      DRW_draw_pass(psl->opaque_infront_pass);
 
-      /* TODO(fclem) merge infront depth & stencil. */
-      // GPU_framebuffer_bind(fbl->prepass_fb);
-      // DRW_draw_pass(psl->merge_infront_pass);
+      GPU_framebuffer_bind(fbl->opaque_fb);
+      DRW_draw_pass(psl->merge_infront_pass);
     }
 
     GPU_framebuffer_bind(dfbl->default_fb);
@@ -322,14 +338,18 @@ static void workbench_draw_scene(void *ved)
 
     DRW_draw_pass(psl->transp_accum_pass);
 
-    {
-      /* TODO(fclem) infront */
-      // GPU_framebuffer_bind(fbl->tranp_accum_infront_fb);
-      // DRW_draw_pass(psl->transp_accum_infront_pass);
-    }
-
     GPU_framebuffer_bind(dfbl->color_only_fb);
     DRW_draw_pass(psl->transp_resolve_pass);
+
+    {
+      GPU_framebuffer_bind(fbl->transp_accum_infront_fb);
+      GPU_framebuffer_clear_color(fbl->transp_accum_infront_fb, clear_col_with_alpha);
+
+      DRW_draw_pass(psl->transp_accum_infront_pass);
+
+      GPU_framebuffer_bind(dfbl->color_only_fb);
+      DRW_draw_pass(psl->transp_resolve_pass);
+    }
   }
 
   /* TODO(fclem) outline */

@@ -95,7 +95,8 @@ struct rcti;
 
 typedef struct WORKBENCH_FramebufferList {
   /* Deferred render buffers */
-  struct GPUFrameBuffer *prepass_fb;
+  struct GPUFrameBuffer *opaque_fb;
+  struct GPUFrameBuffer *opaque_infront_fb;
   struct GPUFrameBuffer *ghost_prepass_fb;
   struct GPUFrameBuffer *cavity_fb;
   struct GPUFrameBuffer *composite_fb;
@@ -119,6 +120,7 @@ typedef struct WORKBENCH_FramebufferList {
   struct GPUFrameBuffer *transparent_revealage_fb;
 
   struct GPUFrameBuffer *transp_accum_fb;
+  struct GPUFrameBuffer *transp_accum_infront_fb;
   struct GPUFrameBuffer *transp_reveal_fb;
 } WORKBENCH_FramebufferList;
 
@@ -139,6 +141,9 @@ typedef struct WORKBENCH_StorageList {
 
 typedef struct WORKBENCH_PassList {
   /* deferred rendering */
+  struct DRWPass *opaque_pass;
+  struct DRWPass *opaque_infront_pass;
+  struct DRWPass *merge_infront_pass;
   struct DRWPass *prepass_pass;
   struct DRWPass *prepass_hair_pass;
   struct DRWPass *ghost_prepass_pass;
@@ -171,6 +176,7 @@ typedef struct WORKBENCH_PassList {
   /* forward rendering */
   struct DRWPass *transp_resolve_pass;
   struct DRWPass *transp_accum_pass;
+  struct DRWPass *transp_accum_infront_pass;
   struct DRWPass *transparent_accum_pass;
   struct DRWPass *object_outline_pass;
   struct DRWPass *depth_pass;
@@ -277,7 +283,7 @@ typedef struct WORKBENCH_PrivateData {
     struct DRWShadingGroup *vcol_shgrp;
     struct DRWShadingGroup *image_shgrp;
     struct DRWShadingGroup *image_tiled_shgrp;
-  } prepass[2];
+  } prepass[2][2];
 
   /* Materials */
   struct GHash *material_hash;
@@ -489,6 +495,7 @@ void workbench_transparent_cache_init(WORKBENCH_Data *data);
 GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool tiled);
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd);
+GPUShader *workbench_shader_merge_infront_get(WORKBENCH_PrivateData *wpd);
 
 GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd, bool tiled);

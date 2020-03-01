@@ -43,6 +43,8 @@ extern char datatoc_workbench_composite_frag_glsl[];
 extern char datatoc_workbench_transparent_accum_frag_glsl[];
 extern char datatoc_workbench_transparent_resolve_frag_glsl[];
 
+extern char datatoc_workbench_merge_infront_frag_glsl[];
+
 extern char datatoc_workbench_shadow_vert_glsl[];
 extern char datatoc_workbench_shadow_geom_glsl[];
 extern char datatoc_workbench_shadow_caps_geom_glsl[];
@@ -72,6 +74,7 @@ static struct {
 
   struct GPUShader *opaque_composite_sh[MAX_LIGHTING];
   struct GPUShader *oit_resolve_sh;
+  struct GPUShader *merge_infront_sh;
 
   struct DRWShaderLibrary *lib;
 } e_data = {{{{NULL}}}};
@@ -231,6 +234,19 @@ GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd)
   return *shader;
 }
 
+GPUShader *workbench_shader_merge_infront_get(WORKBENCH_PrivateData *UNUSED(wpd))
+{
+  if (e_data.merge_infront_sh == NULL) {
+    char *frag = DRW_shader_library_create_shader_string(
+        e_data.lib, datatoc_workbench_merge_infront_frag_glsl);
+
+    e_data.merge_infront_sh = DRW_shader_create_fullscreen(frag, NULL);
+
+    MEM_freeN(frag);
+  }
+  return e_data.merge_infront_sh;
+}
+
 GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd)
 {
   if (e_data.oit_resolve_sh == NULL) {
@@ -259,6 +275,7 @@ void workbench_shader_free(void)
     DRW_SHADER_FREE_SAFE(sh_array[j]);
   }
   DRW_SHADER_FREE_SAFE(e_data.oit_resolve_sh);
+  DRW_SHADER_FREE_SAFE(e_data.merge_infront_sh);
 
   DRW_SHADER_LIB_FREE_SAFE(e_data.lib);
 }

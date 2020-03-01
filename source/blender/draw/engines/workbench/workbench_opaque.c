@@ -45,9 +45,17 @@ void workbench_opaque_engine_init(WORKBENCH_Data *data)
     wpd->object_id_tx = DRW_texture_pool_query_fullscreen(id_tex_format, owner);
   }
 
-  GPU_framebuffer_ensure_config(&fbl->prepass_fb,
+  GPU_framebuffer_ensure_config(&fbl->opaque_fb,
                                 {
                                     GPU_ATTACHMENT_TEXTURE(dtxl->depth),
+                                    GPU_ATTACHMENT_TEXTURE(wpd->material_buffer_tx),
+                                    GPU_ATTACHMENT_TEXTURE(wpd->normal_buffer_tx),
+                                    GPU_ATTACHMENT_TEXTURE(wpd->object_id_tx),
+                                });
+
+  GPU_framebuffer_ensure_config(&fbl->opaque_infront_fb,
+                                {
+                                    GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
                                     GPU_ATTACHMENT_TEXTURE(wpd->material_buffer_tx),
                                     GPU_ATTACHMENT_TEXTURE(wpd->normal_buffer_tx),
                                     GPU_ATTACHMENT_TEXTURE(wpd->object_id_tx),
@@ -59,6 +67,7 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
   WORKBENCH_PassList *psl = data->psl;
   WORKBENCH_PrivateData *wpd = data->stl->wpd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   RegionView3D *rv3d = draw_ctx->rv3d;
   View3D *v3d = draw_ctx->v3d;
   struct GPUShader *sh;
@@ -71,43 +80,42 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
     DRWState cull_state = CULL_BACKFACE_ENABLED(wpd) ? DRW_STATE_CULL_BACK : 0;
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
 
-    DRW_PASS_CREATE(psl->prepass_pass, state | cull_state | clip_state);
-
     int opaque = 0;
+    for (int infront = 0; infront < 2; infront++) {
+      DRWPass *pass;
+      if (infront) {
+        DRW_PASS_CREATE(psl->opaque_infront_pass, state | cull_state | clip_state);
+        pass = psl->opaque_infront_pass;
+      }
+      else {
+        DRW_PASS_CREATE(psl->opaque_pass, state | cull_state | clip_state);
+        pass = psl->opaque_pass;
+      }
 
-    sh = workbench_shader_opaque_get(wpd);
+      sh = workbench_shader_opaque_get(wpd);
 
-    wpd->prepass[opaque].common_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
-    DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "materialIndex", -1);
+      wpd->prepass[opaque][infront].common_shgrp = grp = DRW_shgroup_create(sh, pass);
+      DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+      DRW_shgroup_uniform_int_copy(grp, "materialIndex", -1);
 
-    wpd->prepass[opaque].vcol_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
-    DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. (uses vcol) */
+      wpd->prepass[opaque][infront].vcol_shgrp = grp = DRW_shgroup_create(sh, pass);
+      DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+      DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. (uses vcol) */
 
-    sh = workbench_shader_opaque_image_get(wpd, false);
+      sh = workbench_shader_opaque_image_get(wpd, false);
 
-    wpd->prepass[opaque].image_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
-    DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
-    DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
+      wpd->prepass[opaque][infront].image_shgrp = grp = DRW_shgroup_create(sh, pass);
+      DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+      DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
+      DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
-    sh = workbench_shader_opaque_image_get(wpd, true);
+      sh = workbench_shader_opaque_image_get(wpd, true);
 
-    wpd->prepass[opaque].image_tiled_shgrp = grp = DRW_shgroup_create(sh, psl->prepass_pass);
-    DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-    DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
-    DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
-
-    // DRW_PASS_CREATE(psl->ghost_prepass_pass, state | cull_state | clip_state);
-    // grp = DRW_shgroup_create(sh, psl->ghost_prepass_pass);
-
-    // sh = workbench_shader_opaque_hair_get(wpd);
-
-    // DRW_PASS_CREATE(psl->prepass_hair_pass, state | clip_state);
-    // DRW_PASS_CREATE(psl->ghost_prepass_hair_pass, state | clip_state);
-
-    // grp = DRW_shgroup_create(sh, psl->ghost_prepass_hair_pass);
+      wpd->prepass[opaque][infront].image_tiled_shgrp = grp = DRW_shgroup_create(sh, pass);
+      DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+      DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
+      DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
+    }
   }
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER;
@@ -137,6 +145,19 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
     else if (STUDIOLIGHT_TYPE_STUDIO_ENABLED(wpd)) {
       DRW_shgroup_uniform_bool_copy(grp, "useSpecularLighting", use_spec);
     }
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
+  {
+    DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_WRITE_STENCIL |
+                     DRW_STATE_STENCIL_ALWAYS;
+
+    DRW_PASS_CREATE(psl->merge_infront_pass, state);
+
+    sh = workbench_shader_merge_infront_get(wpd);
+
+    grp = DRW_shgroup_create(sh, psl->merge_infront_pass);
+    DRW_shgroup_stencil_mask(grp, 0x00);
+    DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth_in_front);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 }

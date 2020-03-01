@@ -508,7 +508,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
           size[0], size[1], GPU_R16, &draw_engine_workbench_solid);
     }
 
-    GPU_framebuffer_ensure_config(&fbl->prepass_fb,
+    GPU_framebuffer_ensure_config(&fbl->opaque_fb,
                                   {
                                       GPU_ATTACHMENT_TEXTURE(dtxl->depth),
                                       GPU_ATTACHMENT_TEXTURE(e_data.color_buffer_tx),
@@ -1286,8 +1286,8 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
     GPU_framebuffer_clear_color(fbl->id_clear_fb, clear_col);
   }
 
-  GPU_framebuffer_bind(fbl->prepass_fb);
-  GPU_framebuffer_clear(fbl->prepass_fb, clear_bits, clear_col, clear_depth, clear_stencil);
+  GPU_framebuffer_bind(fbl->opaque_fb);
+  GPU_framebuffer_clear(fbl->opaque_fb, clear_bits, clear_col, clear_depth, clear_stencil);
 
   DRW_draw_pass(psl->prepass_pass);
   DRW_draw_pass(psl->prepass_hair_pass);

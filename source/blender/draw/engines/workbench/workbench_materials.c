@@ -474,6 +474,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
   Image *ima = NULL;
   ImageUser *iuser = NULL;
   int interp;
+  const bool infront = (ob->dtx & OB_DRAWXRAY) != 0;
 
   if (color_type == V3D_SHADING_TEXTURE_COLOR) {
     workbench_material_get_image(ob, mat_nr, &ima, &iuser, &interp);
@@ -507,7 +508,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
       workbench_material_ubo_data(wpd, ob, ma, &wpd->material_ubo_data_curr[id], color_type);
 
       const bool transp = wpd->shading.xray_alpha < 1.0f || ma->a < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp].common_shgrp;
+      DRWShadingGroup *grp = wpd->prepass[transp][infront].common_shgrp;
       *grp_mat = grp = DRW_shgroup_create_sub(grp);
       DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
       DRW_shgroup_uniform_int_copy(grp, "materialIndex", id & 0xFFFu);
@@ -515,7 +516,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
     }
     case V3D_SHADING_VERTEX_COLOR: {
       const bool transp = wpd->shading.xray_alpha < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp].vcol_shgrp;
+      DRWShadingGroup *grp = wpd->prepass[transp][infront].vcol_shgrp;
       return grp;
     }
     default: {
@@ -530,7 +531,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
       workbench_material_ubo_data(wpd, ob, NULL, &wpd->material_ubo_data_curr[id], color_type);
 
       const bool transp = wpd->shading.xray_alpha < 1.0f || ob->color[3] < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp].common_shgrp;
+      DRWShadingGroup *grp = wpd->prepass[transp][infront].common_shgrp;
       if (resource_changed) {
         grp = DRW_shgroup_create_sub(grp);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
@@ -570,9 +571,10 @@ DRWShadingGroup *workbench_image_setup(
     return *grp_tex;
   }
 
+  const bool infront = (ob->dtx & OB_DRAWXRAY) != 0;
   const bool transp = wpd->shading.xray_alpha < 1.0f;
-  DRWShadingGroup *grp = (tex_tile_data) ? wpd->prepass[transp].image_tiled_shgrp :
-                                           wpd->prepass[transp].image_shgrp;
+  DRWShadingGroup *grp = (tex_tile_data) ? wpd->prepass[transp][infront].image_tiled_shgrp :
+                                           wpd->prepass[transp][infront].image_shgrp;
 
   *grp_tex = grp = DRW_shgroup_create_sub(grp);
   if (tex_tile_data) {

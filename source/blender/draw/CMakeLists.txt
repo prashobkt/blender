@@ -265,6 +265,7 @@ data_to_c_simple(engines/workbench/shaders/workbench_ghost_resolve_frag.glsl SRC
 data_to_c_simple(engines/workbench/shaders/workbench_image_lib.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_matcap_lib.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_material_lib.glsl SRC)
+data_to_c_simple(engines/workbench/shaders/workbench_merge_infront_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_object_outline_lib.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_curvature_lib.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_prepass_vert.glsl SRC)
