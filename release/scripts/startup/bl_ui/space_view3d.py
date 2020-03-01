@@ -4675,7 +4675,7 @@ class VIEW3D_MT_paint_gpencil(Menu):
 
         layout = self.layout
 
-        layout.menu("GPENCIL_MT_layer_active")
+        layout.menu("GPENCIL_MT_layer_active", text="Active Layer")
 
         layout.separator()
 
@@ -4784,7 +4784,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.separator()
 
         layout.menu("GPENCIL_MT_move_to_layer")
-        layout.menu("GPENCIL_MT_layer_active")
+        layout.menu("GPENCIL_MT_layer_active", text="Active Layer")
         layout.menu("VIEW3D_MT_assign_material")
         layout.operator("gpencil.set_active_material", text="Set as Active Material")
         layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
