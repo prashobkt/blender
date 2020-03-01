@@ -48,7 +48,7 @@
 
 #include "BLI_strict_flags.h"
 
-// #define BOOLDEBUG
+#define BOOLDEBUG
 // #define PERFDEBUG
 
 /* A set of integers. TODO: faster structure. */
@@ -505,7 +505,7 @@ ATTU static void intintmap_iter_step(IntIntMapIterator *iter)
   }
 }
 
-static inline int intintmap_iter_key(IntIntMapIterator *iter)
+ATTU static inline int intintmap_iter_key(IntIntMapIterator *iter)
 {
   return iter->keyvalue->first;
 }
@@ -515,7 +515,7 @@ ATTU static inline int *intintmap_iter_valuep(IntIntMapIterator *iter)
   return &iter->keyvalue->second;
 }
 
-static inline int intintmap_iter_value(IntIntMapIterator *iter)
+ATTU static inline int intintmap_iter_value(IntIntMapIterator *iter)
 {
   return iter->keyvalue->second;
 }
@@ -2543,7 +2543,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   MeshDelete *meshdelete = &change->delete;
   IntIntMap *vert_merge_map = &change->vert_merge_map;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 2;
 #endif
 
 #ifdef BOOLDEBUG
@@ -3745,7 +3745,7 @@ bool BM_mesh_boolean(BMesh *bm,
   MeshChange meshchange;
   IntSet both_side_faces;
 #ifdef BOOLDEBUG
-  int dbg_level = 0;
+  int dbg_level = 1;
 #endif
 
 #ifdef PERFDEBUG
