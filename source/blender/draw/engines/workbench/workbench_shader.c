@@ -31,6 +31,7 @@ extern char datatoc_common_hair_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 extern char datatoc_workbench_prepass_vert_glsl[];
+extern char datatoc_workbench_prepass_hair_vert_glsl[];
 extern char datatoc_workbench_prepass_frag_glsl[];
 // extern char datatoc_workbench_cavity_frag_glsl[];
 // extern char datatoc_workbench_forward_composite_frag_glsl[];
@@ -66,7 +67,7 @@ extern char datatoc_gpu_shader_depth_only_frag_glsl[];
 /* Maximum number of variations. */
 #define MAX_LIGHTING 3
 #define MAX_COLOR 3
-#define MAX_GEOM 1
+#define MAX_GEOM 2
 
 static struct {
   struct GPUShader *opaque_prepass_sh_cache[GPU_SHADER_CFG_LEN][MAX_GEOM][MAX_COLOR];
@@ -137,59 +138,27 @@ static int workbench_color_index(WORKBENCH_PrivateData *UNUSED(wpd), bool textur
   return (textured) ? (tiled ? 2 : 1) : 0;
 }
 
-static GPUShader *workbench_shader_opaque_get_ex(WORKBENCH_PrivateData *wpd,
-                                                 bool textured,
-                                                 bool tiled)
-{
-  int color = workbench_color_index(wpd, textured, tiled);
-  struct GPUShader **shader = &e_data.opaque_prepass_sh_cache[wpd->sh_cfg][0][color];
-
-  if (*shader == NULL) {
-    char *defines = workbench_build_defines(wpd, textured, tiled);
-    char *frag_src = DRW_shader_library_create_shader_string(e_data.lib,
-                                                             datatoc_workbench_prepass_frag_glsl);
-    char *vert_src = DRW_shader_library_create_shader_string(e_data.lib,
-                                                             datatoc_workbench_prepass_vert_glsl);
-    const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[wpd->sh_cfg];
-
-    *shader = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg_data->lib, vert_src, NULL},
-        .frag = (const char *[]){frag_src, NULL},
-        .defs = (const char *[]){sh_cfg_data->def, defines, NULL},
-    });
-
-    MEM_freeN(defines);
-    MEM_freeN(frag_src);
-    MEM_freeN(vert_src);
-  }
-  return *shader;
-}
-
-GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd)
-{
-  return workbench_shader_opaque_get_ex(wpd, false, false);
-}
-
-GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool tiled)
-{
-  return workbench_shader_opaque_get_ex(wpd, true, tiled);
-}
-
-static GPUShader *workbench_shader_transparent_get_ex(WORKBENCH_PrivateData *wpd,
-                                                      bool textured,
-                                                      bool tiled)
+static GPUShader *workbench_shader_get_ex(
+    WORKBENCH_PrivateData *wpd, bool transp, bool hair, bool textured, bool tiled)
 {
   int color = workbench_color_index(wpd, textured, tiled);
   int light = wpd->shading.light;
-  struct GPUShader **shader = &e_data.transp_prepass_sh_cache[wpd->sh_cfg][0][light][color];
   BLI_assert(light < MAX_LIGHTING);
+  struct GPUShader **shader =
+      (transp) ? &e_data.transp_prepass_sh_cache[wpd->sh_cfg][hair][light][color] :
+                 &e_data.opaque_prepass_sh_cache[wpd->sh_cfg][hair][color];
 
   if (*shader == NULL) {
     char *defines = workbench_build_defines(wpd, textured, tiled);
-    char *frag_src = DRW_shader_library_create_shader_string(
-        e_data.lib, datatoc_workbench_transparent_accum_frag_glsl);
-    char *vert_src = DRW_shader_library_create_shader_string(e_data.lib,
-                                                             datatoc_workbench_prepass_vert_glsl);
+
+    char *frag_file = transp ? datatoc_workbench_transparent_accum_frag_glsl :
+                               datatoc_workbench_prepass_frag_glsl;
+    char *frag_src = DRW_shader_library_create_shader_string(e_data.lib, frag_file);
+
+    char *vert_file = hair ? datatoc_workbench_prepass_hair_vert_glsl :
+                             datatoc_workbench_prepass_vert_glsl;
+    char *vert_src = DRW_shader_library_create_shader_string(e_data.lib, vert_file);
+
     const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[wpd->sh_cfg];
 
     *shader = GPU_shader_create_from_arrays({
@@ -205,14 +174,26 @@ static GPUShader *workbench_shader_transparent_get_ex(WORKBENCH_PrivateData *wpd
   return *shader;
 }
 
-GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd)
+GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, bool hair)
 {
-  return workbench_shader_transparent_get_ex(wpd, false, false);
+  return workbench_shader_get_ex(wpd, false, hair, false, false);
 }
 
-GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd, bool tiled)
+GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool hair, bool tiled)
 {
-  return workbench_shader_transparent_get_ex(wpd, true, tiled);
+  return workbench_shader_get_ex(wpd, false, hair, true, tiled);
+}
+
+GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd, bool hair)
+{
+  return workbench_shader_get_ex(wpd, true, hair, false, false);
+}
+
+GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd,
+                                                  bool hair,
+                                                  bool tiled)
+{
+  return workbench_shader_get_ex(wpd, true, hair, true, tiled);
 }
 
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd)

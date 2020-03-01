@@ -205,8 +205,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     wpd->studio_light = BKE_studiolight_find(wpd->shading.studio_light, STUDIOLIGHT_TYPE_STUDIO);
   }
 
-  wpd->material_hash = BLI_ghash_ptr_new(__func__);
-
   float shadow_focus = scene->display.shadow_focus;
   /* Clamp to avoid overshadowing and shading errors. */
   CLAMP(shadow_focus, 0.0001f, 0.99999f);
@@ -330,9 +328,6 @@ void workbench_update_material_ubos(WORKBENCH_PrivateData *UNUSED(wpd))
 
 void workbench_private_data_free(WORKBENCH_PrivateData *wpd)
 {
-  BLI_ghash_free(wpd->material_hash, NULL, MEM_freeN);
-  BLI_ghash_free(wpd->material_transp_hash, NULL, MEM_freeN);
-
   if (wpd->is_world_ubo_owner) {
     DRW_UBO_FREE_SAFE(wpd->world_ubo);
   }

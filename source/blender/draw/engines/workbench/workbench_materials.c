@@ -466,10 +466,8 @@ static bool workbench_material_chunk_select(WORKBENCH_PrivateData *wpd, uint32_t
   return resource_changed;
 }
 
-DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
-                                          Object *ob,
-                                          int mat_nr,
-                                          int color_type)
+DRWShadingGroup *workbench_material_setup(
+    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, int color_type, bool hair)
 {
   Image *ima = NULL;
   ImageUser *iuser = NULL;
@@ -486,7 +484,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
 
   switch (color_type) {
     case V3D_SHADING_TEXTURE_COLOR: {
-      return workbench_image_setup(wpd, ob, mat_nr, ima, iuser, interp);
+      return workbench_image_setup(wpd, ob, mat_nr, ima, iuser, interp, hair);
     }
     case V3D_SHADING_MATERIAL_COLOR: {
       /* For now, we use the same ubo for material and object coloring but with different indices.
@@ -496,9 +494,12 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
 
       Material *ma = workbench_object_material_get(ob, mat_nr);
 
+      const bool transp = wpd->shading.xray_alpha < 1.0f || ma->a < 1.0f;
+      WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][hair];
+
       DRWShadingGroup **grp_mat = NULL;
       /* A hashmap stores material shgroups to pack all similar drawcalls together. */
-      if (BLI_ghash_ensure_p(wpd->material_hash, ma, (void ***)&grp_mat)) {
+      if (BLI_ghash_ensure_p(prepass->material_hash, ma, (void ***)&grp_mat)) {
         return *grp_mat;
       }
 
@@ -507,8 +508,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
       workbench_material_chunk_select(wpd, id);
       workbench_material_ubo_data(wpd, ob, ma, &wpd->material_ubo_data_curr[id], color_type);
 
-      const bool transp = wpd->shading.xray_alpha < 1.0f || ma->a < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp][infront].common_shgrp;
+      DRWShadingGroup *grp = prepass->common_shgrp;
       *grp_mat = grp = DRW_shgroup_create_sub(grp);
       DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
       DRW_shgroup_uniform_int_copy(grp, "materialIndex", id & 0xFFFu);
@@ -516,7 +516,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
     }
     case V3D_SHADING_VERTEX_COLOR: {
       const bool transp = wpd->shading.xray_alpha < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp][infront].vcol_shgrp;
+      DRWShadingGroup *grp = wpd->prepass[transp][infront][hair].vcol_shgrp;
       return grp;
     }
     default: {
@@ -531,7 +531,7 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
       workbench_material_ubo_data(wpd, ob, NULL, &wpd->material_ubo_data_curr[id], color_type);
 
       const bool transp = wpd->shading.xray_alpha < 1.0f || ob->color[3] < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp][infront].common_shgrp;
+      DRWShadingGroup *grp = wpd->prepass[transp][infront][hair].common_shgrp;
       if (resource_changed) {
         grp = DRW_shgroup_create_sub(grp);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
@@ -542,8 +542,13 @@ DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
 }
 
 /* If ima is null, search appropriate image node but will fallback to purple texture otherwise. */
-DRWShadingGroup *workbench_image_setup(
-    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, Image *ima, ImageUser *iuser, int interp)
+DRWShadingGroup *workbench_image_setup(WORKBENCH_PrivateData *wpd,
+                                       Object *ob,
+                                       int mat_nr,
+                                       Image *ima,
+                                       ImageUser *iuser,
+                                       int interp,
+                                       bool hair)
 {
   GPUTexture *tex = NULL, *tex_tile_data = NULL;
 
@@ -562,27 +567,29 @@ DRWShadingGroup *workbench_image_setup(
   }
 
   if (tex == NULL) {
+    printf("Image not foudn\n");
     tex = wpd->dummy_image_tx;
-  }
-
-  DRWShadingGroup **grp_tex = NULL;
-  /* A hashmap stores image shgroups to pack all similar drawcalls together. */
-  if (BLI_ghash_ensure_p(wpd->material_hash, tex, (void ***)&grp_tex)) {
-    return *grp_tex;
   }
 
   const bool infront = (ob->dtx & OB_DRAWXRAY) != 0;
   const bool transp = wpd->shading.xray_alpha < 1.0f;
-  DRWShadingGroup *grp = (tex_tile_data) ? wpd->prepass[transp][infront].image_tiled_shgrp :
-                                           wpd->prepass[transp][infront].image_shgrp;
+  WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][hair];
+
+  DRWShadingGroup **grp_tex = NULL;
+  /* A hashmap stores image shgroups to pack all similar drawcalls together. */
+  if (BLI_ghash_ensure_p(prepass->material_hash, tex, (void ***)&grp_tex)) {
+    return *grp_tex;
+  }
+
+  DRWShadingGroup *grp = (tex_tile_data) ? prepass->image_tiled_shgrp : prepass->image_shgrp;
 
   *grp_tex = grp = DRW_shgroup_create_sub(grp);
   if (tex_tile_data) {
-    DRW_shgroup_uniform_texture(grp, "imageTileArray", tex);
-    DRW_shgroup_uniform_texture(grp, "imageTileData", tex_tile_data);
+    DRW_shgroup_uniform_texture_persistent(grp, "imageTileArray", tex);
+    DRW_shgroup_uniform_texture_persistent(grp, "imageTileData", tex_tile_data);
   }
   else {
-    DRW_shgroup_uniform_texture(grp, "imageTexture", tex);
+    DRW_shgroup_uniform_texture_persistent(grp, "imageTexture", tex);
   }
   DRW_shgroup_uniform_bool_copy(grp, "imagePremult", (ima && ima->alpha_mode == IMA_ALPHA_PREMUL));
   DRW_shgroup_uniform_bool_copy(grp, "imageNearest", (interp == SHD_INTERP_CLOSEST));

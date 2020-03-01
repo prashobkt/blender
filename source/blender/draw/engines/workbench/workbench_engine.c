@@ -105,14 +105,14 @@ static void workbench_cache_sculpt_populate(WORKBENCH_PrivateData *wpd, Object *
   BLI_assert(wpd->shading.color_type != V3D_SHADING_TEXTURE_COLOR);
 
   if (use_single_drawcall) {
-    DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type);
+    DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type, false);
     DRW_shgroup_call_sculpt(grp, ob, false, false, use_vcol);
   }
   else {
     const int materials_len = DRW_cache_object_material_count_get(ob);
     struct DRWShadingGroup **shgrps = BLI_array_alloca(shgrps, materials_len);
     for (int i = 0; i < materials_len; i++) {
-      shgrps[i] = workbench_material_setup(wpd, ob, i + 1, color_type);
+      shgrps[i] = workbench_material_setup(wpd, ob, i + 1, color_type, false);
     }
     DRW_shgroup_call_sculpt_with_materials(shgrps, ob, false);
   }
@@ -132,7 +132,7 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
       int interp = (imapaint->interp == IMAGEPAINT_INTERP_LINEAR) ? SHD_INTERP_LINEAR :
                                                                     SHD_INTERP_CLOSEST;
 
-      DRWShadingGroup *grp = workbench_image_setup(wpd, ob, 0, ima, NULL, interp);
+      DRWShadingGroup *grp = workbench_image_setup(wpd, ob, 0, ima, NULL, interp, false);
       DRW_shgroup_call(grp, geom, ob);
     }
   }
@@ -141,7 +141,7 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
     if (geoms) {
       const int materials_len = DRW_cache_object_material_count_get(ob);
       for (int i = 0; i < materials_len; i++) {
-        DRWShadingGroup *grp = workbench_image_setup(wpd, ob, i + 1, NULL, NULL, 0);
+        DRWShadingGroup *grp = workbench_image_setup(wpd, ob, i + 1, NULL, NULL, 0, false);
         DRW_shgroup_call(grp, geoms[i], ob);
       }
     }
@@ -159,7 +159,7 @@ static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd, Object *
     struct GPUBatch *geom = (use_vcol) ? DRW_cache_mesh_surface_vertpaint_get(ob) :
                                          DRW_cache_object_surface_get(ob);
     if (geom) {
-      DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type);
+      DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type, false);
       DRW_shgroup_call(grp, geom, ob);
     }
   }
@@ -169,11 +169,33 @@ static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd, Object *
     if (geoms) {
       const int materials_len = DRW_cache_object_material_count_get(ob);
       for (int i = 0; i < materials_len; i++) {
-        DRWShadingGroup *grp = workbench_material_setup(wpd, ob, i + 1, color_type);
+        DRWShadingGroup *grp = workbench_material_setup(wpd, ob, i + 1, color_type, false);
         DRW_shgroup_call(grp, geoms[i], ob);
       }
     }
   }
+}
+
+static void workbench_cache_hair_populate(WORKBENCH_PrivateData *wpd,
+                                          Object *ob,
+                                          ModifierData *md,
+                                          int color_type,
+                                          bool use_texpaint_mode)
+{
+  ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
+  ParticleSettings *part = psys->part;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const Scene *scene = draw_ctx->scene;
+
+  const ImagePaintSettings *imapaint = use_texpaint_mode ? &scene->toolsettings->imapaint : NULL;
+  Image *ima = (imapaint && imapaint->mode == IMAGEPAINT_MODE_IMAGE) ? imapaint->canvas : NULL;
+  int interp = (imapaint && imapaint->interp == IMAGEPAINT_INTERP_LINEAR) ? SHD_INTERP_LINEAR :
+                                                                            SHD_INTERP_CLOSEST;
+  DRWShadingGroup *grp = (use_texpaint_mode) ?
+                             workbench_image_setup(wpd, ob, part->omat, ima, NULL, interp, true) :
+                             workbench_material_setup(wpd, ob, part->omat, color_type, true);
+
+  DRW_shgroup_hair_create_sub(ob, psys, md, grp);
 }
 
 /* Decide what colortype to draw the object with.
@@ -232,9 +254,26 @@ static void workbench_cache_populate(void *ved, Object *ob)
     return;
   }
 
-  //   if (ob->type == OB_MESH) {
-  //     workbench_cache_populate_particles(vedata, ob);
-  //   }
+  if (ob->type == OB_MESH && ob->modifiers.first != NULL) {
+    bool use_sculpt_pbvh, use_texpaint_mode;
+    int color_type = workbench_color_type_get(wpd, ob, &use_sculpt_pbvh, &use_texpaint_mode);
+
+    for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+      if (md->type != eModifierType_ParticleSystem) {
+        continue;
+      }
+      ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
+      if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
+        continue;
+      }
+      ParticleSettings *part = psys->part;
+      const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
+
+      if (draw_as == PART_DRAW_PATH) {
+        workbench_cache_hair_populate(wpd, ob, md, color_type, use_texpaint_mode);
+      }
+    }
+  }
 
   /* TODO volume */
 
@@ -266,6 +305,7 @@ static void workbench_cache_finish(void *ved)
 {
   WORKBENCH_Data *vedata = ved;
   WORKBENCH_StorageList *stl = vedata->stl;
+  WORKBENCH_FramebufferList *fbl = vedata->fbl;
   WORKBENCH_PrivateData *wpd = stl->wpd;
 
   /* TODO(fclem) Only do this when really needed. */
@@ -276,16 +316,40 @@ static void workbench_cache_finish(void *ved)
 
     DRW_texture_ensure_fullscreen_2d(&dtxl->depth_in_front, GPU_DEPTH24_STENCIL8, 0);
 
-    GPU_framebuffer_ensure_config(
-        &dfbl->in_front_fb,
-        {GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+    GPU_framebuffer_ensure_config(&dfbl->in_front_fb,
+                                  {
+                                      GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
+                                      GPU_ATTACHMENT_TEXTURE(dtxl->color),
+                                  });
+
+    GPU_framebuffer_ensure_config(&fbl->opaque_infront_fb,
+                                  {
+                                      GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
+                                      GPU_ATTACHMENT_TEXTURE(wpd->material_buffer_tx),
+                                      GPU_ATTACHMENT_TEXTURE(wpd->normal_buffer_tx),
+                                      GPU_ATTACHMENT_TEXTURE(wpd->object_id_tx),
+                                  });
+
+    GPU_framebuffer_ensure_config(&fbl->transp_accum_infront_fb,
+                                  {
+                                      GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
+                                      GPU_ATTACHMENT_TEXTURE(wpd->accum_buffer_tx),
+                                      GPU_ATTACHMENT_TEXTURE(wpd->reveal_buffer_tx),
+                                  });
   }
 
   workbench_update_material_ubos(wpd);
 
-  if (wpd->material_hash) {
-    BLI_ghash_free(wpd->material_hash, NULL, NULL);
-    wpd->material_hash = NULL;
+  /* TODO don't free reuse next redraw. */
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      for (int k = 0; k < 2; k++) {
+        if (wpd->prepass[i][j][k].material_hash) {
+          BLI_ghash_free(wpd->prepass[i][j][k].material_hash, NULL, NULL);
+          wpd->prepass[i][j][k].material_hash = NULL;
+        }
+      }
+    }
   }
 }
 

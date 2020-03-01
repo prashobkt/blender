@@ -108,6 +108,7 @@ static DRWShadingGroup *drw_shgroup_create_hair_procedural_ex(Object *object,
                                                               ParticleSystem *psys,
                                                               ModifierData *md,
                                                               DRWPass *hair_pass,
+                                                              DRWShadingGroup *shgrp_parent,
                                                               struct GPUMaterial *gpu_mat,
                                                               GPUShader *gpu_shader)
 {
@@ -127,7 +128,10 @@ static DRWShadingGroup *drw_shgroup_create_hair_procedural_ex(Object *object,
       object, psys, md, &hair_cache, subdiv, thickness_res);
 
   DRWShadingGroup *shgrp;
-  if (gpu_mat) {
+  if (shgrp) {
+    shgrp = DRW_shgroup_create_sub(shgrp_parent);
+  }
+  else if (gpu_mat) {
     shgrp = DRW_shgroup_material_create(gpu_mat, hair_pass);
   }
   else if (gpu_shader) {
@@ -220,7 +224,15 @@ static DRWShadingGroup *drw_shgroup_create_hair_procedural_ex(Object *object,
 DRWShadingGroup *DRW_shgroup_hair_create(
     Object *object, ParticleSystem *psys, ModifierData *md, DRWPass *hair_pass, GPUShader *shader)
 {
-  return drw_shgroup_create_hair_procedural_ex(object, psys, md, hair_pass, NULL, shader);
+  return drw_shgroup_create_hair_procedural_ex(object, psys, md, hair_pass, NULL, NULL, shader);
+}
+
+DRWShadingGroup *DRW_shgroup_hair_create_sub(Object *object,
+                                             ParticleSystem *psys,
+                                             ModifierData *md,
+                                             DRWShadingGroup *shgrp)
+{
+  return drw_shgroup_create_hair_procedural_ex(object, psys, md, NULL, shgrp, NULL, NULL);
 }
 
 DRWShadingGroup *DRW_shgroup_material_hair_create(Object *object,
@@ -229,7 +241,7 @@ DRWShadingGroup *DRW_shgroup_material_hair_create(Object *object,
                                                   DRWPass *hair_pass,
                                                   struct GPUMaterial *material)
 {
-  return drw_shgroup_create_hair_procedural_ex(object, psys, md, hair_pass, material, NULL);
+  return drw_shgroup_create_hair_procedural_ex(object, psys, md, hair_pass, NULL, material, NULL);
 }
 
 void DRW_hair_update(void)

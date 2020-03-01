@@ -219,7 +219,16 @@ BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_World, 16)
 BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_Light, 16)
 BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_Material, 16)
 
+typedef struct WORKBENCH_Prepass {
+  struct GHash *material_hash;
+  struct DRWShadingGroup *common_shgrp;
+  struct DRWShadingGroup *vcol_shgrp;
+  struct DRWShadingGroup *image_shgrp;
+  struct DRWShadingGroup *image_tiled_shgrp;
+} WORKBENCH_Prepass;
+
 typedef struct WORKBENCH_PrivateData {
+  struct GHash *material_hash;
   struct GHash *material_transp_hash;
   struct GPUShader *prepass_sh;
   struct GPUShader *prepass_hair_sh;
@@ -278,16 +287,9 @@ typedef struct WORKBENCH_PrivateData {
   struct GPUTexture *accum_buffer_tx;
   struct GPUTexture *reveal_buffer_tx;
 
-  struct {
-    struct DRWShadingGroup *common_shgrp;
-    struct DRWShadingGroup *vcol_shgrp;
-    struct DRWShadingGroup *image_shgrp;
-    struct DRWShadingGroup *image_tiled_shgrp;
-  } prepass[2][2];
+  WORKBENCH_Prepass prepass[2][2][2];
 
   /* Materials */
-  struct GHash *material_hash;
-  struct GHash *texture_hash;
   struct BLI_memblock *material_ubo;
   struct BLI_memblock *material_ubo_data;
   WORKBENCH_UBO_Material *material_ubo_data_curr;
@@ -492,13 +494,15 @@ void workbench_transparent_engine_init(WORKBENCH_Data *data);
 void workbench_transparent_cache_init(WORKBENCH_Data *data);
 
 /* workbench_shader.c */
-GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd);
-GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool tiled);
+GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, bool hair);
+GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool hair, bool tiled);
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_merge_infront_get(WORKBENCH_PrivateData *wpd);
 
-GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd);
-GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd, bool tiled);
+GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd, bool hair);
+GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd,
+                                                  bool hair,
+                                                  bool tiled);
 GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd);
 
 void workbench_shader_library_ensure(void);
@@ -605,12 +609,15 @@ void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
                                  WORKBENCH_UBO_Material *data,
                                  int color_type);
 
-DRWShadingGroup *workbench_material_setup(WORKBENCH_PrivateData *wpd,
-                                          Object *ob,
-                                          int mat_nr,
-                                          int color_type);
-DRWShadingGroup *workbench_image_setup(
-    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, Image *ima, ImageUser *iuser, int interp);
+DRWShadingGroup *workbench_material_setup(
+    WORKBENCH_PrivateData *wpd, Object *ob, int mat_nr, int color_type, bool hair);
+DRWShadingGroup *workbench_image_setup(WORKBENCH_PrivateData *wpd,
+                                       Object *ob,
+                                       int mat_nr,
+                                       Image *ima,
+                                       ImageUser *iuser,
+                                       int interp,
+                                       bool hair);
 
 /* workbench_studiolight.c */
 void studiolight_update_world(WORKBENCH_PrivateData *wpd,

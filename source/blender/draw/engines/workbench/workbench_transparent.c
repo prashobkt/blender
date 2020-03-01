@@ -49,13 +49,6 @@ void workbench_transparent_engine_init(WORKBENCH_Data *data)
                                     GPU_ATTACHMENT_TEXTURE(wpd->accum_buffer_tx),
                                     GPU_ATTACHMENT_TEXTURE(wpd->reveal_buffer_tx),
                                 });
-
-  GPU_framebuffer_ensure_config(&fbl->transp_accum_infront_fb,
-                                {
-                                    GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
-                                    GPU_ATTACHMENT_TEXTURE(wpd->accum_buffer_tx),
-                                    GPU_ATTACHMENT_TEXTURE(wpd->reveal_buffer_tx),
-                                });
 }
 
 static void workbench_transparent_lighting_uniforms(WORKBENCH_PrivateData *wpd,
@@ -108,30 +101,34 @@ void workbench_transparent_cache_init(WORKBENCH_Data *data)
         pass = psl->transp_accum_pass;
       }
 
-      sh = workbench_shader_transparent_get(wpd);
+      for (int hair = 0; hair < 2; hair++) {
+        wpd->prepass[transp][infront][hair].material_hash = BLI_ghash_ptr_new(__func__);
 
-      wpd->prepass[transp][infront].common_shgrp = grp = DRW_shgroup_create(sh, pass);
-      DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
-      DRW_shgroup_uniform_int_copy(grp, "materialIndex", -1);
-      workbench_transparent_lighting_uniforms(wpd, grp);
+        sh = workbench_shader_transparent_get(wpd, hair);
 
-      wpd->prepass[transp][infront].vcol_shgrp = grp = DRW_shgroup_create(sh, pass);
-      DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-      DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. (uses vcol) */
+        wpd->prepass[transp][infront][hair].common_shgrp = grp = DRW_shgroup_create(sh, pass);
+        DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+        DRW_shgroup_uniform_int_copy(grp, "materialIndex", -1);
+        workbench_transparent_lighting_uniforms(wpd, grp);
 
-      sh = workbench_shader_transparent_image_get(wpd, false);
+        wpd->prepass[transp][infront][hair].vcol_shgrp = grp = DRW_shgroup_create(sh, pass);
+        DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+        DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. (uses vcol) */
 
-      wpd->prepass[transp][infront].image_shgrp = grp = DRW_shgroup_create(sh, pass);
-      DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-      DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
-      workbench_transparent_lighting_uniforms(wpd, grp);
+        sh = workbench_shader_transparent_image_get(wpd, hair, false);
 
-      sh = workbench_shader_transparent_image_get(wpd, true);
+        wpd->prepass[transp][infront][hair].image_shgrp = grp = DRW_shgroup_create(sh, pass);
+        DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+        DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
+        workbench_transparent_lighting_uniforms(wpd, grp);
 
-      wpd->prepass[transp][infront].image_tiled_shgrp = grp = DRW_shgroup_create(sh, pass);
-      DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
-      DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
-      workbench_transparent_lighting_uniforms(wpd, grp);
+        sh = workbench_shader_transparent_image_get(wpd, hair, true);
+
+        wpd->prepass[transp][infront][hair].image_tiled_shgrp = grp = DRW_shgroup_create(sh, pass);
+        DRW_shgroup_uniform_block_persistent(grp, "material_block", wpd->material_ubo_curr);
+        DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
+        workbench_transparent_lighting_uniforms(wpd, grp);
+      }
     }
   }
   {
