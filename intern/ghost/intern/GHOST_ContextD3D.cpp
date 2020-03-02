@@ -251,8 +251,10 @@ class GHOST_SharedOpenGLResource {
 
     ensureUpdated(width, height);
 
+#ifdef NDEBUG
     const float clear_col[] = {0.8f, 0.5f, 1.0f, 1.0f};
     m_device_ctx->ClearRenderTargetView(m_render_target, clear_col);
+#endif
     m_device_ctx->OMSetRenderTargets(1, &m_render_target, nullptr);
 
     beginGLOnly();
