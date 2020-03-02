@@ -335,8 +335,6 @@ static bool gp_weightpaint_brush_init(bContext *C, wmOperator *op)
   /* Update header. */
   gp_weightpaint_brush_header_set(C);
 
-  /* Setup cursor drawing. */
-  ED_gpencil_toggle_brush_cursor(C, true, NULL);
   return true;
 }
 
@@ -344,9 +342,8 @@ static void gp_weightpaint_brush_exit(bContext *C, wmOperator *op)
 {
   tGP_BrushWeightpaintData *gso = op->customdata;
 
-  /* Disable cursor and headerprints. */
+  /* Disable headerprints. */
   ED_workspace_status_text(C, NULL);
-  ED_gpencil_toggle_brush_cursor(C, false, NULL);
 
   /* Free operator data */
   MEM_SAFE_FREE(gso->pbuffer);

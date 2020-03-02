@@ -770,8 +770,6 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   /* Update header. */
   gp_vertexpaint_brush_header_set(C);
 
-  /* Setup cursor drawing. */
-  ED_gpencil_toggle_brush_cursor(C, true, NULL);
   return true;
 }
 
@@ -779,9 +777,8 @@ static void gp_vertexpaint_brush_exit(bContext *C, wmOperator *op)
 {
   tGP_BrushVertexpaintData *gso = op->customdata;
 
-  /* Disable cursor and headerprints. */
+  /* Disable headerprints. */
   ED_workspace_status_text(C, NULL);
-  ED_gpencil_toggle_brush_cursor(C, false, NULL);
 
   /* Disable temp invert flag. */
   gso->brush->flag &= ~GP_VERTEX_FLAG_TMP_INVERT;
