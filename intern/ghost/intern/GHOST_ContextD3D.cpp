@@ -100,17 +100,21 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
     return GHOST_kFailure;
   }
 
-  HRESULT hres = s_D3D11CreateDeviceFn(NULL,
-                                       D3D_DRIVER_TYPE_HARDWARE,
-                                       NULL,
-                                       // D3D11_CREATE_DEVICE_DEBUG,
-                                       0,
-                                       NULL,
-                                       0,
-                                       D3D11_SDK_VERSION,
-                                       &m_device,
-                                       NULL,
-                                       &m_device_ctx);
+  HRESULT hres = s_D3D11CreateDeviceFn(
+      NULL,
+      D3D_DRIVER_TYPE_HARDWARE,
+      NULL,
+      /* For debugging you may want to pass D3D11_CREATE_DEVICE_DEBUG here, but that requires
+       * additional setup, see
+       * https://docs.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-devices-layers#debug-layer.
+       */
+      0,
+      NULL,
+      0,
+      D3D11_SDK_VERSION,
+      &m_device,
+      NULL,
+      &m_device_ctx);
 
   WIN32_CHK(hres == S_OK);
 
