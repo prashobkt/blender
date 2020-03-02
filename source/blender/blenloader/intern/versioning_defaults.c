@@ -641,12 +641,18 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     }
     ma->gp_style->mode = GP_MATERIAL_MODE_DOT;
 
-    /* Squars Stroke. */
+    /* Squares Stroke. */
     ma = BLI_findstring(&bmain->materials, "Squares Stroke", offsetof(ID, name) + 2);
     if (ma == NULL) {
       ma = BKE_gpencil_material_add(bmain, "Squares Stroke");
     }
     ma->gp_style->mode = GP_MATERIAL_MODE_SQUARE;
+
+    /* Change Solid Fill settings. */
+    ma = BLI_findstring(&bmain->materials, "Solid Fill", offsetof(ID, name) + 2);
+    if (ma != NULL) {
+      ma->gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
+    }
 
     /* Reset all grease pencil brushes. */
     Scene *scene = bmain->scenes.first;
