@@ -443,6 +443,8 @@ typedef struct Brush {
   float texture_sample_bias;
 
   int curve_preset;
+  float hardness;
+
   int automasking_flags;
 
   /* Factor that controls the shape of the brush tip by rounding the corners of a square. */
