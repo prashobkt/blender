@@ -612,7 +612,7 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
       }
       case GP_MATERIAL_MODE_SQUARE: {
         r_i = 3;
-        strcpy(name, "Boxes Stroke-Fill");
+        strcpy(name, "Squares Stroke-Fill");
         break;
       }
       default:
@@ -633,7 +633,7 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
       }
       case GP_MATERIAL_MODE_SQUARE: {
         r_i = 6;
-        strcpy(name, "Boxes Stroke");
+        strcpy(name, "Squares Stroke");
         break;
       }
       default:

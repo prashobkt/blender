@@ -630,7 +630,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     /* Rename and fix materials. */
     Material *ma = NULL;
     rename_id_for_versioning(bmain, ID_MA, "Black", "Solid Stroke");
-    rename_id_for_versioning(bmain, ID_MA, "Red", "Boxes Stroke");
+    rename_id_for_versioning(bmain, ID_MA, "Red", "Squares Stroke");
     rename_id_for_versioning(bmain, ID_MA, "Grey", "Solid Fill");
     rename_id_for_versioning(bmain, ID_MA, "Black Dots", "Dots Stroke");
 
@@ -641,10 +641,10 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     }
     ma->gp_style->mode = GP_MATERIAL_MODE_DOT;
 
-    /* Boxes Stroke. */
-    ma = BLI_findstring(&bmain->materials, "Boxes Stroke", offsetof(ID, name) + 2);
+    /* Squars Stroke. */
+    ma = BLI_findstring(&bmain->materials, "Squares Stroke", offsetof(ID, name) + 2);
     if (ma == NULL) {
-      ma = BKE_gpencil_material_add(bmain, "Boxes Stroke");
+      ma = BKE_gpencil_material_add(bmain, "Squares Stroke");
     }
     ma->gp_style->mode = GP_MATERIAL_MODE_SQUARE;
 
