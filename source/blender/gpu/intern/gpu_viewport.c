@@ -532,6 +532,13 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
   }
 }
 
+/**
+ * Merge and draw the buffers of \a viewport into the currently active framebuffer, performing
+ * color transform to display space.
+ *
+ * \param rect: Coordinates to draw into. By swapping min and max values, drawing can be done with
+ *              inversed axis coordinates (upside down or sideways).
+ */
 void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
 {
   DefaultFramebufferList *dfbl = viewport->fbl;
@@ -545,18 +552,22 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   const float w = (float)GPU_texture_width(color);
   const float h = (float)GPU_texture_height(color);
 
-  BLI_assert(w == BLI_rcti_size_x(rect) + 1);
-  BLI_assert(h == BLI_rcti_size_y(rect) + 1);
+  /* We allow rects with min/max swapped, but we also need coorectly assigned coordinates. */
+  rcti sanitized_rect = *rect;
+  BLI_rcti_sanitize(&sanitized_rect);
+
+  BLI_assert(w == BLI_rcti_size_x(&sanitized_rect) + 1);
+  BLI_assert(h == BLI_rcti_size_y(&sanitized_rect) + 1);
 
   /* wmOrtho for the screen has this same offset */
   const float halfx = GLA_PIXEL_OFS / w;
   const float halfy = GLA_PIXEL_OFS / h;
 
   rctf pos_rect = {
-      .xmin = rect->xmin,
-      .ymin = rect->ymin,
-      .xmax = rect->xmin + w,
-      .ymax = rect->ymin + h,
+      .xmin = sanitized_rect.xmin,
+      .ymin = sanitized_rect.ymin,
+      .xmax = sanitized_rect.xmin + w,
+      .ymax = sanitized_rect.ymin + h,
   };
 
   rctf uv_rect = {
@@ -565,6 +576,14 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
       .xmax = halfx + 1.0f,
       .ymax = halfy + 1.0f,
   };
+  /* Mirror the UV rect in case axis-swapped drawing is requested (by passing a rect with min and
+   * max values swapped). */
+  if (BLI_rcti_size_x(rect) < 0) {
+    SWAP(float, uv_rect.xmin, uv_rect.xmax);
+  }
+  if (BLI_rcti_size_y(rect) < 0) {
+    SWAP(float, uv_rect.ymin, uv_rect.ymax);
+  }
 
   gpu_viewport_draw_colormanaged(viewport, &pos_rect, &uv_rect, true);
 }

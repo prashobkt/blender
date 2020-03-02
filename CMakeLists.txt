@@ -184,6 +184,7 @@ if(APPLE)
   # There's no OpenXR runtime in sight for macOS, neither is code well
   # tested there -> disable it by default.
   option(WITH_OPENXR        "Enable VR features through the OpenXR specification" OFF)
+  mark_as_advanced(WITH_GHOST_DEBUG)
 else()
   option(WITH_OPENXR        "Enable VR features through the OpenXR specification" ON)
 endif()

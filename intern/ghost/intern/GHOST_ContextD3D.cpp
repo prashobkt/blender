@@ -100,17 +100,21 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
     return GHOST_kFailure;
   }
 
-  HRESULT hres = s_D3D11CreateDeviceFn(NULL,
-                                       D3D_DRIVER_TYPE_HARDWARE,
-                                       NULL,
-                                       // D3D11_CREATE_DEVICE_DEBUG,
-                                       0,
-                                       NULL,
-                                       0,
-                                       D3D11_SDK_VERSION,
-                                       &m_device,
-                                       NULL,
-                                       &m_device_ctx);
+  HRESULT hres = s_D3D11CreateDeviceFn(
+      NULL,
+      D3D_DRIVER_TYPE_HARDWARE,
+      NULL,
+      /* For debugging you may want to pass D3D11_CREATE_DEVICE_DEBUG here, but that requires
+       * additional setup, see
+       * https://docs.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-devices-layers#debug-layer.
+       */
+      0,
+      NULL,
+      0,
+      D3D11_SDK_VERSION,
+      &m_device,
+      NULL,
+      &m_device_ctx);
 
   WIN32_CHK(hres == S_OK);
 
@@ -247,8 +251,10 @@ class GHOST_SharedOpenGLResource {
 
     ensureUpdated(width, height);
 
+#ifdef NDEBUG
     const float clear_col[] = {0.8f, 0.5f, 1.0f, 1.0f};
     m_device_ctx->ClearRenderTargetView(m_render_target, clear_col);
+#endif
     m_device_ctx->OMSetRenderTargets(1, &m_render_target, nullptr);
 
     beginGLOnly();
@@ -262,7 +268,7 @@ class GHOST_SharedOpenGLResource {
 
     /* No glBlitNamedFramebuffer, gotta be 3.3 compatible. */
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
