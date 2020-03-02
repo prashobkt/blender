@@ -657,6 +657,10 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_SCULPT_GPENCIL);
     BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
 
+    /* Enable cursor. */
+    GpPaint *gp_paint = scene->toolsettings->gp_paint;
+    gp_paint->paint.flags |= PAINT_SHOW_BRUSH;
+
     /* Ensure Palette by default. */
     BKE_gpencil_palette_ensure(bmain, scene);
   }

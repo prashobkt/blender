@@ -222,9 +222,6 @@ class GreasePencilDisplayPanel:
             if brush.gpencil_tool == 'DRAW':
                 col.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
 
-            if brush.gpencil_tool in {'FILL', 'TINT'}:
-                col.prop(brush, "cursor_color_add", text="Cursor Color")
-
         elif ob.mode == 'SCULPT_GPENCIL':
             col = layout.column(align=True)
             col.active = settings.show_brush
@@ -240,10 +237,9 @@ class GreasePencilDisplayPanel:
             col.prop(brush, "cursor_color_add", text="Cursor Color")
 
         elif ob.mode == 'VERTEX_GPENCIL':
-            col = layout.column(align=True)
-            col.active = settings.show_brush
-
-            col.prop(brush, "cursor_color_add", text="Cursor Color")
+            row = layout.row(align=True)
+            row.prop(settings, "show_brush", text="")
+            row.label(text="Display Cursor")
 
 
 class GreasePencilBrushFalloff:
