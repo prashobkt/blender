@@ -2472,7 +2472,6 @@ static void rna_def_windowmanager(BlenderRNA *brna)
       prop, "rna_wmClipboard_get", "rna_wmClipboard_length", "rna_wmClipboard_set");
   RNA_def_property_ui_text(prop, "Text Clipboard", "");
 
-#  ifdef WITH_OPENXR
   prop = RNA_def_property(srna, "xr_session_settings", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "xr.session_settings");
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
@@ -2484,7 +2483,6 @@ static void rna_def_windowmanager(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "XR Session State", "Runtime state information about the VR session");
-#  endif
 
   RNA_api_wm(srna);
 }

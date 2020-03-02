@@ -131,11 +131,7 @@ const EnumPropertyItem rna_enum_vector_rotate_type_items[] = {
     {NODE_VECTOR_ROTATE_TYPE_AXIS_X, "X_AXIS", 0, "X Axis", "Rotate a point using X axis"},
     {NODE_VECTOR_ROTATE_TYPE_AXIS_Y, "Y_AXIS", 0, "Y Axis", "Rotate a point using Y axis"},
     {NODE_VECTOR_ROTATE_TYPE_AXIS_Z, "Z_AXIS", 0, "Z Axis", "Rotate a point using Z axis"},
-    {NODE_VECTOR_ROTATE_TYPE_EULER_XYZ,
-     "EULER_XYZ",
-     0,
-     "Euler",
-     "Rotate a point using XYZ order"},
+    {NODE_VECTOR_ROTATE_TYPE_EULER_XYZ, "EULER_XYZ", 0, "Euler", "Rotate a point using XYZ order"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -1656,8 +1652,7 @@ static bNodeType *rna_Node_register_base(Main *bmain,
   /* create a new node type */
   nt = MEM_callocN(sizeof(bNodeType), "node type");
   memcpy(nt, &dummynt, sizeof(dummynt));
-  /* make sure the node type struct is freed on unregister */
-  nt->needs_free = 1;
+  nt->free_self = (void (*)(bNodeType *))MEM_freeN;
 
   nt->ext.srna = RNA_def_struct_ptr(&BLENDER_RNA, nt->idname, basetype);
   nt->ext.data = data;
@@ -2189,6 +2184,8 @@ static StructRNA *rna_NodeSocket_register(Main *UNUSED(bmain),
     nodeRegisterSocketType(st);
   }
 
+  st->free_self = (void (*)(bNodeSocketType * stype)) MEM_freeN;
+
   /* if RNA type is already registered, unregister first */
   if (st->ext_socket.srna) {
     StructRNA *srna = st->ext_socket.srna;
@@ -2502,6 +2499,8 @@ static StructRNA *rna_NodeSocketInterface_register(Main *UNUSED(bmain),
 
     nodeRegisterSocketType(st);
   }
+
+  st->free_self = (void (*)(bNodeSocketType * stype)) MEM_freeN;
 
   /* if RNA type is already registered, unregister first */
   if (st->ext_interface.srna) {

@@ -28,10 +28,6 @@
 
 #include "rna_internal.h"
 
-#ifndef WITH_OPENXR
-BLI_STATIC_ASSERT(false, "Tried to compile rna_xr.c even though WITH_OPENXR is not defined.");
-#endif
-
 #ifdef RNA_RUNTIME
 
 #  include "WM_api.h"

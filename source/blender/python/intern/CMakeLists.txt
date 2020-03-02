@@ -330,10 +330,6 @@ if(WITH_OPENSUBDIV)
   )
 endif()
 
-if(WITH_OPENXR)
-  add_definitions(-DWITH_OPENXR)
-endif()
-
 add_definitions(${GL_DEFINITIONS})
 
 blender_add_lib(bf_python "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
