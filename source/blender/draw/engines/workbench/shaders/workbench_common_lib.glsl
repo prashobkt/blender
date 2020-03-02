@@ -77,3 +77,21 @@ vec3 view_vector_from_screen_uv(vec2 uv, vec4 viewvecs[3], mat4 proj_mat)
     return vec3(0.0, 0.0, 1.0);
   }
 }
+
+vec3 view_space_from_depth(vec2 uvcoords, float depth, vec4 viewvecs[3], mat4 proj_mat)
+{
+  if (proj_mat[3][3] == 0.0) {
+    /* Perspective */
+    float d = 2.0 * depth - 1.0;
+
+    float zview = -proj_mat[3][2] / (d + proj_mat[2][2]);
+
+    return zview * (viewvecs[0].xyz + vec3(uvcoords, 0.0) * viewvecs[1].xyz);
+  }
+  else {
+    /* Orthographic */
+    vec3 offset = vec3(uvcoords, depth);
+
+    return viewvecs[0].xyz + offset * viewvecs[1].xyz;
+  }
+}

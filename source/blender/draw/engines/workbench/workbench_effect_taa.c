@@ -21,6 +21,7 @@
  */
 
 #include "workbench_private.h"
+
 #include "BLI_jitter_2d.h"
 
 static struct {
@@ -86,10 +87,8 @@ static void workbench_taa_jitter_init(void)
   workbench_taa_jitter_init_order(e_data.jitter_32, 32);
 }
 
-int workbench_taa_calculate_num_iterations(WORKBENCH_Data *vedata)
+int workbench_taa_calculate_num_iterations(WORKBENCH_PrivateData *wpd)
 {
-  WORKBENCH_StorageList *stl = vedata->stl;
-  WORKBENCH_PrivateData *wpd = stl->g_data;
   const Scene *scene = DRW_context_state_get()->scene;
   int result;
   if (workbench_is_taa_enabled(wpd)) {
@@ -211,7 +210,7 @@ void workbench_taa_draw_scene_start(WORKBENCH_Data *vedata)
   int num_samples = 8;
   float(*samples)[2];
 
-  num_samples = workbench_taa_calculate_num_iterations(vedata);
+  num_samples = workbench_taa_calculate_num_iterations(vedata->stl->wpd);
   switch (num_samples) {
     default:
     case 5:

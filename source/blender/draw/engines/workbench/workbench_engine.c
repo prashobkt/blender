@@ -83,6 +83,7 @@ static void workbench_cache_init(void *ved)
   workbench_opaque_cache_init(vedata);
   workbench_transparent_cache_init(vedata);
   workbench_shadow_cache_init(vedata);
+  workbench_cavity_cache_init(vedata);
 
   //   workbench_aa_create_pass(vedata);
   //   workbench_dof_create_pass(vedata);
@@ -415,9 +416,10 @@ static void workbench_draw_scene(void *ved)
     GPU_framebuffer_bind(dfbl->default_fb);
     DRW_draw_pass(psl->composite_pass);
 
-    /* TODO(fclem) ambient occlusion */
-    // GPU_framebuffer_bind(dfbl->color_only_fb);
-    // DRW_draw_pass(psl->ambient_occlusion_pass);
+    if (psl->cavity_pass) {
+      GPU_framebuffer_bind(dfbl->color_only_fb);
+      DRW_draw_pass(psl->cavity_pass);
+    }
   }
 
   {

@@ -34,11 +34,7 @@ extern char datatoc_workbench_prepass_vert_glsl[];
 extern char datatoc_workbench_prepass_hair_vert_glsl[];
 extern char datatoc_workbench_prepass_frag_glsl[];
 
-// extern char datatoc_workbench_cavity_frag_glsl[];
-// extern char datatoc_workbench_forward_composite_frag_glsl[];
-// extern char datatoc_workbench_deferred_composite_frag_glsl[];
-// extern char datatoc_workbench_deferred_background_frag_glsl[];
-// extern char datatoc_workbench_ghost_resolve_frag_glsl[];
+extern char datatoc_workbench_effect_cavity_frag_glsl[];
 
 extern char datatoc_workbench_composite_frag_glsl[];
 
@@ -81,6 +77,8 @@ static struct {
   struct GPUShader *shadow_depth_pass_sh[2];
   struct GPUShader *shadow_depth_fail_sh[2][2];
 
+  struct GPUShader *cavity_sh[2][2];
+
   struct DRWShaderLibrary *lib;
 } e_data = {{{{NULL}}}};
 
@@ -92,28 +90,29 @@ void workbench_shader_library_ensure(void)
     DRW_SHADER_LIB_ADD(e_data.lib, common_hair_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, common_view_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_shader_interface_lib);
-    DRW_SHADER_LIB_ADD(e_data.lib, workbench_cavity_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_common_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_image_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_material_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_data_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_matcap_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_object_outline_lib);
+    DRW_SHADER_LIB_ADD(e_data.lib, workbench_cavity_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_curvature_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_world_light_lib);
   }
 }
 
-static char *workbench_build_defines(WORKBENCH_PrivateData *wpd, bool textured, bool tiled)
+static char *workbench_build_defines(
+    WORKBENCH_PrivateData *wpd, bool textured, bool tiled, bool cavity, bool curvature)
 {
   char *str = NULL;
 
   DynStr *ds = BLI_dynstr_new();
 
-  if (wpd->shading.light == V3D_LIGHTING_STUDIO) {
+  if (wpd && wpd->shading.light == V3D_LIGHTING_STUDIO) {
     BLI_dynstr_append(ds, "#define V3D_LIGHTING_STUDIO\n");
   }
-  else if (wpd->shading.light == V3D_LIGHTING_MATCAP) {
+  else if (wpd && wpd->shading.light == V3D_LIGHTING_MATCAP) {
     BLI_dynstr_append(ds, "#define V3D_LIGHTING_MATCAP\n");
   }
   else {
@@ -129,6 +128,12 @@ static char *workbench_build_defines(WORKBENCH_PrivateData *wpd, bool textured, 
   }
   if (tiled) {
     BLI_dynstr_append(ds, "#define TEXTURE_IMAGE_ARRAY\n");
+  }
+  if (cavity) {
+    BLI_dynstr_append(ds, "#define USE_CAVITY\n");
+  }
+  if (curvature) {
+    BLI_dynstr_append(ds, "#define USE_CURVATURE\n");
   }
 
   str = BLI_dynstr_get_cstring(ds);
@@ -153,7 +158,7 @@ static GPUShader *workbench_shader_get_ex(
                  &e_data.opaque_prepass_sh_cache[wpd->sh_cfg][hair][color];
 
   if (*shader == NULL) {
-    char *defines = workbench_build_defines(wpd, textured, tiled);
+    char *defines = workbench_build_defines(wpd, textured, tiled, false, false);
 
     char *frag_file = transp ? datatoc_workbench_transparent_accum_frag_glsl :
                                datatoc_workbench_prepass_frag_glsl;
@@ -207,7 +212,7 @@ GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd)
   BLI_assert(light < MAX_LIGHTING);
 
   if (*shader == NULL) {
-    char *defines = workbench_build_defines(wpd, false, false);
+    char *defines = workbench_build_defines(wpd, false, false, false, false);
     char *frag = DRW_shader_library_create_shader_string(e_data.lib,
                                                          datatoc_workbench_composite_frag_glsl);
 
@@ -235,7 +240,7 @@ GPUShader *workbench_shader_merge_infront_get(WORKBENCH_PrivateData *UNUSED(wpd)
 GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd)
 {
   if (e_data.oit_resolve_sh == NULL) {
-    char *defines = workbench_build_defines(wpd, false, false);
+    char *defines = workbench_build_defines(wpd, false, false, false, false);
 
     e_data.oit_resolve_sh = DRW_shader_create_fullscreen(
         datatoc_workbench_transparent_resolve_frag_glsl, defines);
@@ -283,6 +288,24 @@ GPUShader *workbench_shader_shadow_fail_get(bool manifold, bool cap)
   return workbench_shader_shadow_pass_get_ex(false, manifold, cap);
 }
 
+GPUShader *workbench_shader_cavity_get(bool cavity, bool curvature)
+{
+  BLI_assert(cavity || curvature);
+  struct GPUShader **shader = &e_data.cavity_sh[cavity][curvature];
+
+  if (*shader == NULL) {
+    char *defines = workbench_build_defines(NULL, false, false, cavity, curvature);
+    char *frag = DRW_shader_library_create_shader_string(
+        e_data.lib, datatoc_workbench_effect_cavity_frag_glsl);
+
+    *shader = DRW_shader_create_fullscreen(frag, defines);
+
+    MEM_freeN(defines);
+    MEM_freeN(frag);
+  }
+  return *shader;
+}
+
 void workbench_shader_free(void)
 {
   for (int j = 0; j < sizeof(e_data.opaque_prepass_sh_cache) / sizeof(void *); j++) {
@@ -303,6 +326,10 @@ void workbench_shader_free(void)
   }
   for (int j = 0; j < sizeof(e_data.shadow_depth_fail_sh) / sizeof(void *); j++) {
     struct GPUShader **sh_array = &e_data.shadow_depth_fail_sh[0][0];
+    DRW_SHADER_FREE_SAFE(sh_array[j]);
+  }
+  for (int j = 0; j < sizeof(e_data.cavity_sh) / sizeof(void *); j++) {
+    struct GPUShader **sh_array = &e_data.cavity_sh[0][0];
     DRW_SHADER_FREE_SAFE(sh_array[j]);
   }
   DRW_SHADER_FREE_SAFE(e_data.oit_resolve_sh);

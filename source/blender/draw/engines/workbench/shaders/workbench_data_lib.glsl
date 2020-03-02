@@ -16,10 +16,21 @@ struct WorldData {
   /* - 16 bytes alignment-  */
   LightData lights[4];
   vec4 ambient_color;
-  int matcap_orientation;
+
+  int cavity_sample_start;
+  int cavity_sample_end;
+  float cavity_sample_count_inv;
+  float cavity_jitter_scale;
+
+  float cavity_valley_factor;
+  float cavity_ridge_factor;
+  float cavity_attenuation;
+  float cavity_distance;
+
   float curvature_ridge;
   float curvature_valley;
-  int _pad0;
+  float curvature_offset;
+  int matcap_orientation;
 };
 
 #define viewport_size_inv viewport_size.zw

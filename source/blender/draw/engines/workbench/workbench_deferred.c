@@ -192,7 +192,7 @@ static char *workbench_build_cavity_frag(bool cavity, bool curvature, bool high_
   return str;
 }
 
-static GPUShader *workbench_cavity_shader_get(bool cavity, bool curvature)
+static GPUShader *workbench__cavity_shader_get(bool cavity, bool curvature)
 {
   const bool high_dpi = (U.pixelsize > 1.5f);
   int index = 0;
@@ -547,7 +547,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
 
   {
     /* AO Samples Tex */
-    int num_iterations = workbench_taa_calculate_num_iterations(vedata);
+    int num_iterations = workbench_taa_calculate_num_iterations(vedata->stl->wpd);
 
     const int ssao_samples_single_iteration = scene->display.matcap_ssao_samples;
     const int ssao_samples = MIN2(num_iterations * ssao_samples_single_iteration, 500);
@@ -596,7 +596,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
 
   if (CAVITY_ENABLED(wpd)) {
     int state = DRW_STATE_WRITE_COLOR;
-    GPUShader *shader = workbench_cavity_shader_get(SSAO_ENABLED(wpd), CURVATURE_ENABLED(wpd));
+    GPUShader *shader = workbench__cavity_shader_get(SSAO_ENABLED(wpd), CURVATURE_ENABLED(wpd));
     psl->cavity_pass = DRW_pass_create("Cavity", state);
     DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->cavity_pass);
     DRW_shgroup_uniform_texture_ref(grp, "normalBuffer", &e_data.normal_buffer_tx);

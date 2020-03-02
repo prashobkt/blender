@@ -27,6 +27,7 @@
 #include "DNA_userdef_types.h"
 
 #include "ED_view3d.h"
+#include "ED_screen.h"
 
 #include "UI_resources.h"
 
@@ -56,6 +57,8 @@ static void workbench_view_layer_data_free(void *storage)
   WORKBENCH_ViewLayerData *vldata = (WORKBENCH_ViewLayerData *)storage;
 
   DRW_UBO_FREE_SAFE(vldata->world_ubo);
+  DRW_UBO_FREE_SAFE(vldata->cavity_sample_ubo);
+  DRW_TEXTURE_FREE_SAFE(vldata->cavity_jitter_tx);
 
   BLI_memblock_destroy(vldata->material_ubo_data, NULL);
   BLI_memblock_destroy(vldata->material_ubo, workbench_ubo_free);
@@ -189,11 +192,22 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   WORKBENCH_ViewLayerData *vldata = workbench_view_layer_data_ensure_ex(draw_ctx->view_layer);
   View3D *v3d = draw_ctx->v3d;
 
+  if (draw_ctx->evil_C != NULL) {
+    struct wmWindowManager *wm = CTX_wm_manager(draw_ctx->evil_C);
+    wpd->is_playback = ED_screen_animation_playing(wm) != NULL;
+  }
+  else {
+    wpd->is_playback = false;
+  }
+
   wpd->ctx_mode = CTX_data_mode_enum_ex(
       draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
 
   wpd->preferences = &U;
   wpd->sh_cfg = draw_ctx->sh_cfg;
+  wpd->vldata = vldata;
+
+  wpd->taa_sample_len = workbench_taa_calculate_num_iterations(wpd);
 
   wpd->world_ubo = vldata->world_ubo;
 
@@ -244,13 +258,12 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   copy_v3_v3(wd->object_outline_color, wpd->shading.object_outline_color);
   wd->object_outline_color[3] = 1.0f;
 
-  wd->curvature_ridge = 0.5f / max_ff(SQUARE(wpd->shading.curvature_ridge_factor), 1e-4f);
-  wd->curvature_valley = 0.7f / max_ff(SQUARE(wpd->shading.curvature_valley_factor), 1e-4f);
-
-  workbench_shadow_world_data_update(wpd);
-  workbench_viewvecs_update(wpd->world_data.viewvecs);
   copy_v2_v2(wpd->world_data.viewport_size, DRW_viewport_size_get());
   copy_v2_v2(wpd->world_data.viewport_size_inv, DRW_viewport_invert_size_get());
+
+  workbench_shadow_world_data_update(wpd);
+  workbench_cavity_data_update(wpd);
+  workbench_viewvecs_update(wpd->world_data.viewvecs);
 
   DRW_uniformbuffer_update(wpd->world_ubo, &wpd->world_data);
 

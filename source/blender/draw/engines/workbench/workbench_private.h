@@ -215,10 +215,21 @@ typedef struct WORKBENCH_UBO_World {
   float shadow_focus, shadow_shift, shadow_mul, shadow_add;
   WORKBENCH_UBO_Light lights[4];
   float ambient_color[4];
-  int matcap_orientation;
+
+  int cavity_sample_start;
+  int cavity_sample_end;
+  float cavity_sample_count_inv;
+  float cavity_jitter_scale;
+
+  float cavity_valley_factor;
+  float cavity_ridge_factor;
+  float cavity_attenuation;
+  float cavity_distance;
+
   float curvature_ridge;
   float curvature_valley;
-  int _pad0;
+  float curvature_offset;
+  int matcap_orientation;
 } WORKBENCH_UBO_World;
 
 BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_World, 16)
@@ -252,6 +263,9 @@ typedef struct WORKBENCH_PrivateData {
   struct GPUShader *transparent_accum_textured_sh;
   struct GPUShader *transparent_accum_textured_array_sh;
   struct GPUShader *transparent_accum_vertex_sh;
+
+  struct WORKBENCH_ViewLayerData *vldata;
+
   View3DShading shading;
   eContextObjectMode ctx_mode;
   StudioLight *studio_light;
@@ -282,6 +296,12 @@ typedef struct WORKBENCH_PrivateData {
   float shadow_near_sides[2][4];
   bool shadow_changed;
   bool is_playback;
+
+  /* Temporal Antialiasing */
+  /** Total number of samples to after which TAA stops accumulating samples. */
+  int taa_sample_len;
+  /** Current TAA sample index in [0..taa_sample_len[ range. */
+  int taa_sample;
 
   /* Opaque pipeline */
   struct GPUTexture *object_id_tx;
@@ -375,8 +395,11 @@ typedef struct WORKBENCH_ObjectData {
 
 typedef struct WORKBENCH_ViewLayerData {
   struct GPUUniformBuffer *world_ubo;
+  struct GPUUniformBuffer *cavity_sample_ubo;
+  struct GPUTexture *cavity_jitter_tx;
   struct BLI_memblock *material_ubo;
   struct BLI_memblock *material_ubo_data;
+  int cavity_sample_count;
 } WORKBENCH_ViewLayerData;
 
 /* Enumeration containing override options for base color rendering.
@@ -524,6 +547,8 @@ GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_shadow_pass_get(bool manifold);
 GPUShader *workbench_shader_shadow_fail_get(bool manifold, bool cap);
 
+GPUShader *workbench_shader_cavity_get(bool cavity, bool curvature);
+
 void workbench_shader_library_ensure(void);
 void workbench_shader_free(void);
 
@@ -572,8 +597,12 @@ DRWPass *workbench_taa_create_pass(WORKBENCH_Data *vedata, GPUTexture **color_bu
 void workbench_taa_draw_scene_start(WORKBENCH_Data *vedata);
 void workbench_taa_draw_scene_end(WORKBENCH_Data *vedata);
 void workbench_taa_view_updated(WORKBENCH_Data *vedata);
-int workbench_taa_calculate_num_iterations(WORKBENCH_Data *vedata);
+int workbench_taa_calculate_num_iterations(WORKBENCH_PrivateData *wpd);
 int workbench_num_viewport_rendering_iterations(WORKBENCH_Data *vedata);
+
+/* workbench_cavity.c */
+void workbench_cavity_data_update(WORKBENCH_PrivateData *wpd);
+void workbench_cavity_cache_init(WORKBENCH_Data *data);
 
 /* workbench_effect_dof.c */
 void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera);

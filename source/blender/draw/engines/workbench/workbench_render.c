@@ -154,7 +154,7 @@ void workbench_render(WORKBENCH_Data *data,
     DRW_hair_update();
 
     /* Draw. */
-    int num_samples = workbench_taa_calculate_num_iterations(data);
+    int num_samples = workbench_taa_calculate_num_iterations(data->stl->wpd);
     for (int sample = 0; sample < num_samples; sample++) {
       if (RE_engine_test_break(engine)) {
         break;
@@ -179,7 +179,7 @@ void workbench_render(WORKBENCH_Data *data,
     DRW_hair_update();
 
     /* Draw. */
-    int num_samples = workbench_taa_calculate_num_iterations(data);
+    int num_samples = workbench_taa_calculate_num_iterations(data->stl->wpd);
     for (int sample = 0; sample < num_samples; sample++) {
       if (RE_engine_test_break(engine)) {
         break;

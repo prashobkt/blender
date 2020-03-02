@@ -28,7 +28,7 @@ layout(std140) uniform samples_block
 #define ssao_factor_edge ssao_settings.z
 #define ssao_attenuation ssao_settings.w
 
-vec3 get_view_space_from_depth(in vec2 uvcoords, in float depth)
+vec3 view_space_from_depth(in vec2 uvcoords, in float depth)
 {
   if (WinMatrix[3][3] == 0.0) {
     /* Perspective */
@@ -63,7 +63,7 @@ void main()
 
 #ifdef USE_CAVITY
   float depth = texelFetch(depthBuffer, texel, 0).x;
-  vec3 position = get_view_space_from_depth(screenco, depth);
+  vec3 position = view_space_from_depth(screenco, depth);
   vec3 normal_viewport = workbench_normal_decode(texelFetch(normalBuffer, texel, 0).rg);
 
   ssao_factors(depth, normal_viewport, position, screenco, cavity, edges);

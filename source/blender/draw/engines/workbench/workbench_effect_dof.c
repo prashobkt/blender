@@ -343,7 +343,7 @@ void workbench_dof_create_pass(WORKBENCH_Data *vedata,
 #endif
   {
     float offset = stl->effects->jitter_index /
-                   (float)workbench_taa_calculate_num_iterations(vedata);
+                   (float)workbench_taa_calculate_num_iterations(vedata->stl->wpd);
     DRWShadingGroup *grp = DRW_shgroup_create(e_data.effect_dof_blur1_sh, psl->dof_blur1_ps);
     DRW_shgroup_uniform_block(grp, "dofSamplesBlock", wpd->dof_ubo);
     DRW_shgroup_uniform_texture(grp, "noiseTex", noise_tex);

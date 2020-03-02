@@ -41,7 +41,7 @@ float get_view_z_from_depth(float depth)
   }
 }
 
-vec3 get_view_space_from_depth(vec2 uvcoords, float depth)
+vec3 view_space_from_depth(vec2 uvcoords, float depth)
 {
   if (ProjectionMatrix[3][3] == 0.0) {
     return vec3(viewvecs[0].xy + uvcoords * viewvecs[1].xy, 1.0) * get_view_z_from_depth(depth);
@@ -208,8 +208,8 @@ void main()
 
   float depth = texelFetch(depthBuffer, ivec2(gl_FragCoord.xy), 0).r;
   float depth_end = min(depth, gl_FragCoord.z);
-  vec3 vs_ray_end = get_view_space_from_depth(screen_uv, depth_end);
-  vec3 vs_ray_ori = get_view_space_from_depth(screen_uv, 0.0);
+  vec3 vs_ray_end = view_space_from_depth(screen_uv, depth_end);
+  vec3 vs_ray_ori = view_space_from_depth(screen_uv, 0.0);
   vec3 vs_ray_dir = (is_persp) ? (vs_ray_end - vs_ray_ori) : vec3(0.0, 0.0, -1.0);
   vs_ray_dir /= abs(vs_ray_dir.z);
 
