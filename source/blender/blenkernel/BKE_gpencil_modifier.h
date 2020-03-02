@@ -22,6 +22,10 @@
 
 #include "DNA_gpencil_modifier_types.h" /* needed for all enum typdefs */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct Depsgraph;
 struct GpencilModifierData;
 struct ID;
@@ -298,5 +302,9 @@ struct bGPDframe *BKE_gpencil_frame_retime_get(struct Depsgraph *depsgraph,
                                                struct Scene *scene,
                                                struct Object *ob,
                                                struct bGPDlayer *gpl);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __BKE_GPENCIL_MODIFIER_H__ */

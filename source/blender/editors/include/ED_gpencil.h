@@ -24,6 +24,10 @@
 #ifndef __ED_GPENCIL_H__
 #define __ED_GPENCIL_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ID;
 struct ListBase;
 struct PointerRNA;
@@ -301,5 +305,9 @@ bool ED_gpencil_stroke_check_collision(struct GP_SpaceConversion *gsc,
                                        float mouse[2],
                                        const int radius,
                                        const float diff_mat[4][4]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /*  __ED_GPENCIL_H__ */
