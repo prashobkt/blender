@@ -238,7 +238,6 @@ class GreasePencilDisplayPanel:
             col.active = settings.show_brush
 
             col.prop(brush, "cursor_color_add", text="Cursor Color")
-            col.prop(brush, "cursor_color_subtract", text="Inverse Cursor Color")
 
         elif ob.mode == 'VERTEX_GPENCIL':
             col = layout.column(align=True)
