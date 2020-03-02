@@ -28,8 +28,6 @@ ENDIF()
 SET(_openxr_sdk_SEARCH_DIRS
   ${OPENXR_SDK_ROOT_DIR}
   /usr/local
-  /sw # Fink
-  /opt/local # DarwinPorts
   /opt/lib/openxr-sdk
 )
 
