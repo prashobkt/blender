@@ -124,7 +124,6 @@ void workbench_cavity_data_update(WORKBENCH_PrivateData *wpd)
 
   wd->curvature_ridge = 0.5f / max_ff(SQUARE(shading->curvature_ridge_factor), 1e-4f);
   wd->curvature_valley = 0.7f / max_ff(SQUARE(shading->curvature_valley_factor), 1e-4f);
-  wd->curvature_offset = G_draw.block.sizePixel;
 }
 
 void workbench_cavity_cache_init(WORKBENCH_Data *data)

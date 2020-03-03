@@ -154,6 +154,7 @@ typedef struct WORKBENCH_PassList {
   struct DRWPass *ghost_prepass_pass;
   struct DRWPass *ghost_prepass_hair_pass;
   struct DRWPass *cavity_pass;
+  struct DRWPass *outline_pass;
   struct DRWPass *shadow_depth_pass_pass;
   struct DRWPass *shadow_depth_pass_mani_pass;
   struct DRWPass *shadow_depth_fail_pass;
@@ -228,7 +229,7 @@ typedef struct WORKBENCH_UBO_World {
 
   float curvature_ridge;
   float curvature_valley;
-  float curvature_offset;
+  float ui_scale;
   int matcap_orientation;
 } WORKBENCH_UBO_World;
 
@@ -548,6 +549,7 @@ GPUShader *workbench_shader_shadow_pass_get(bool manifold);
 GPUShader *workbench_shader_shadow_fail_get(bool manifold, bool cap);
 
 GPUShader *workbench_shader_cavity_get(bool cavity, bool curvature);
+GPUShader *workbench_shader_outline_get(void);
 
 void workbench_shader_library_ensure(void);
 void workbench_shader_free(void);
@@ -600,9 +602,12 @@ void workbench_taa_view_updated(WORKBENCH_Data *vedata);
 int workbench_taa_calculate_num_iterations(WORKBENCH_PrivateData *wpd);
 int workbench_num_viewport_rendering_iterations(WORKBENCH_Data *vedata);
 
-/* workbench_cavity.c */
+/* workbench_effect_cavity.c */
 void workbench_cavity_data_update(WORKBENCH_PrivateData *wpd);
 void workbench_cavity_cache_init(WORKBENCH_Data *data);
+
+/* workbench_effect_outline.c */
+void workbench_outline_cache_init(WORKBENCH_Data *data);
 
 /* workbench_effect_dof.c */
 void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera);

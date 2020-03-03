@@ -68,6 +68,13 @@ static void workbench_engine_init(void *ved)
   }
   wpd->dummy_image_tx = txl->dummy_image_tx;
 
+  if (OBJECT_ID_PASS_ENABLED(wpd)) {
+    wpd->object_id_tx = DRW_texture_pool_query_fullscreen(GPU_R16UI, &draw_engine_workbench);
+  }
+  else {
+    DRW_TEXTURE_FREE_SAFE(wpd->object_id_tx);
+  }
+
   workbench_opaque_engine_init(vedata);
   workbench_transparent_engine_init(vedata);
   //   workbench_volume_engine_init();
@@ -84,6 +91,7 @@ static void workbench_cache_init(void *ved)
   workbench_transparent_cache_init(vedata);
   workbench_shadow_cache_init(vedata);
   workbench_cavity_cache_init(vedata);
+  workbench_outline_cache_init(vedata);
 
   //   workbench_aa_create_pass(vedata);
   //   workbench_dof_create_pass(vedata);
@@ -363,6 +371,17 @@ static void workbench_cache_finish(void *ved)
                                   });
   }
 
+  if (wpd->object_id_tx) {
+    GPU_framebuffer_ensure_config(&fbl->id_clear_fb,
+                                  {
+                                      GPU_ATTACHMENT_NONE,
+                                      GPU_ATTACHMENT_TEXTURE(wpd->object_id_tx),
+                                  });
+  }
+  else {
+    GPU_FRAMEBUFFER_FREE_SAFE(fbl->id_clear_fb);
+  }
+
   workbench_update_material_ubos(wpd);
 
   /* TODO don't free reuse next redraw. */
@@ -386,6 +405,11 @@ static void workbench_draw_scene(void *ved)
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   float clear_col_with_alpha[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
+  if (fbl->id_clear_fb) {
+    GPU_framebuffer_bind(fbl->id_clear_fb);
+    GPU_framebuffer_clear_color(fbl->id_clear_fb, clear_col);
+  }
 
   {
     GPU_framebuffer_bind(dfbl->in_front_fb);
@@ -442,8 +466,9 @@ static void workbench_draw_scene(void *ved)
     }
   }
 
-  /* TODO(fclem) outline */
-  // DRW_draw_pass(psl->outline_pass);
+  if (psl->outline_pass) {
+    DRW_draw_pass(psl->outline_pass);
+  }
 
   /* TODO(fclem) dof */
 

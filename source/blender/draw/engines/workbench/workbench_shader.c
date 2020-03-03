@@ -35,6 +35,7 @@ extern char datatoc_workbench_prepass_hair_vert_glsl[];
 extern char datatoc_workbench_prepass_frag_glsl[];
 
 extern char datatoc_workbench_effect_cavity_frag_glsl[];
+extern char datatoc_workbench_effect_outline_frag_glsl[];
 
 extern char datatoc_workbench_composite_frag_glsl[];
 
@@ -72,6 +73,7 @@ static struct {
 
   struct GPUShader *opaque_composite_sh[MAX_LIGHTING];
   struct GPUShader *oit_resolve_sh;
+  struct GPUShader *outline_sh;
   struct GPUShader *merge_infront_sh;
 
   struct GPUShader *shadow_depth_pass_sh[2];
@@ -306,6 +308,19 @@ GPUShader *workbench_shader_cavity_get(bool cavity, bool curvature)
   return *shader;
 }
 
+GPUShader *workbench_shader_outline_get(void)
+{
+  if (e_data.outline_sh == NULL) {
+    char *frag = DRW_shader_library_create_shader_string(
+        e_data.lib, datatoc_workbench_effect_outline_frag_glsl);
+
+    e_data.outline_sh = DRW_shader_create_fullscreen(frag, NULL);
+
+    MEM_freeN(frag);
+  }
+  return e_data.outline_sh;
+}
+
 void workbench_shader_free(void)
 {
   for (int j = 0; j < sizeof(e_data.opaque_prepass_sh_cache) / sizeof(void *); j++) {
@@ -333,6 +348,7 @@ void workbench_shader_free(void)
     DRW_SHADER_FREE_SAFE(sh_array[j]);
   }
   DRW_SHADER_FREE_SAFE(e_data.oit_resolve_sh);
+  DRW_SHADER_FREE_SAFE(e_data.outline_sh);
   DRW_SHADER_FREE_SAFE(e_data.merge_infront_sh);
 
   DRW_SHADER_LIB_FREE_SAFE(e_data.lib);

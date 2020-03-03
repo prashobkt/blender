@@ -16,7 +16,7 @@ void curvature_compute(vec2 uv,
 {
   curvature = 0.0;
 
-  vec3 offset = vec3(world_data.viewport_size_inv, 0.0) * world_data.curvature_offset;
+  vec3 offset = vec3(world_data.viewport_size_inv, 0.0) * world_data.ui_scale;
   uint object_up = texture(objectIdBuffer, uv + offset.zy).r;
   uint object_down = texture(objectIdBuffer, uv - offset.zy).r;
   uint object_right = texture(objectIdBuffer, uv + offset.xz).r;

@@ -247,7 +247,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   }
 
   WORKBENCH_UBO_World *wd = &wpd->world_data;
-  wd->matcap_orientation = (wpd->shading.flag & V3D_SHADING_MATCAP_FLIP_X) != 0;
 
   studiolight_update_world(wpd, wpd->studio_light, wd);
 
@@ -255,11 +254,12 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   workbench_material_ubo_data(
       wpd, NULL, NULL, &wpd->material_ubo_data_curr[0], V3D_SHADING_MATERIAL_COLOR);
 
+  copy_v2_v2(wd->viewport_size, DRW_viewport_size_get());
+  copy_v2_v2(wd->viewport_size_inv, DRW_viewport_invert_size_get());
   copy_v3_v3(wd->object_outline_color, wpd->shading.object_outline_color);
   wd->object_outline_color[3] = 1.0f;
-
-  copy_v2_v2(wpd->world_data.viewport_size, DRW_viewport_size_get());
-  copy_v2_v2(wpd->world_data.viewport_size_inv, DRW_viewport_invert_size_get());
+  wd->ui_scale = G_draw.block.sizePixel;
+  wd->matcap_orientation = (wpd->shading.flag & V3D_SHADING_MATCAP_FLIP_X) != 0;
 
   workbench_shadow_world_data_update(wpd);
   workbench_cavity_data_update(wpd);

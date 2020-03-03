@@ -104,6 +104,7 @@ set(SRC
   engines/workbench/workbench_effect_cavity.c
   engines/workbench/workbench_effect_dof.c
   engines/workbench/workbench_effect_fxaa.c
+  engines/workbench/workbench_effect_outline.c
   engines/workbench/workbench_effect_taa.c
   engines/workbench/workbench_engine.c
   engines/workbench/workbench_forward.c
@@ -255,6 +256,7 @@ data_to_c_simple(engines/workbench/shaders/workbench_composite_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_data_lib.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_deferred_composite_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_deferred_background_frag.glsl SRC)
+data_to_c_simple(engines/workbench/shaders/workbench_effect_outline_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_effect_cavity_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_effect_dof_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_effect_fxaa_frag.glsl SRC)

@@ -29,7 +29,7 @@ struct WorldData {
 
   float curvature_ridge;
   float curvature_valley;
-  float curvature_offset;
+  float ui_scale;
   int matcap_orientation;
 };
 
