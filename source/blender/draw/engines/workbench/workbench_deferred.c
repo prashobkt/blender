@@ -358,17 +358,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
   WORKBENCH_PassList *psl = vedata->psl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  RegionView3D *rv3d = draw_ctx->rv3d;
-  View3D *v3d = draw_ctx->v3d;
   Scene *scene = draw_ctx->scene;
-  Object *camera;
-
-  if (v3d && rv3d) {
-    camera = (rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
-  }
-  else {
-    camera = scene->camera;
-  }
 
   if (!stl->g_data) {
     /* Alloc transient pointers */
@@ -456,7 +446,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
 
   wpd->shading.xray_alpha = 1.0f;
 
-  workbench_dof_engine_init(vedata, camera);
+  workbench_dof_engine_init(vedata);
 
   if (OIT_ENABLED(wpd)) {
     if (e_data.oit_resolve_sh == NULL) {
@@ -591,7 +581,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
   }
 
   {
-    workbench_dof_create_pass(vedata, &e_data.composite_buffer_tx, e_data.jitter_tx);
+    workbench_dof_cache_init(vedata);
   }
 
   if (CAVITY_ENABLED(wpd)) {
@@ -653,7 +643,6 @@ void workbench_deferred_engine_free(void)
   workbench_volume_engine_free();
   workbench_fxaa_engine_free();
   workbench_taa_engine_free();
-  workbench_dof_engine_free();
 }
 
 static void workbench_composite_uniforms(WORKBENCH_PrivateData *wpd, DRWShadingGroup *grp)

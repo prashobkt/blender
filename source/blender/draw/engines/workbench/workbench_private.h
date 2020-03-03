@@ -395,6 +395,7 @@ typedef struct WORKBENCH_ObjectData {
 } WORKBENCH_ObjectData;
 
 typedef struct WORKBENCH_ViewLayerData {
+  struct GPUUniformBuffer *dof_sample_ubo;
   struct GPUUniformBuffer *world_ubo;
   struct GPUUniformBuffer *cavity_sample_ubo;
   struct GPUTexture *cavity_jitter_tx;
@@ -551,6 +552,12 @@ GPUShader *workbench_shader_shadow_fail_get(bool manifold, bool cap);
 GPUShader *workbench_shader_cavity_get(bool cavity, bool curvature);
 GPUShader *workbench_shader_outline_get(void);
 
+void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
+                                         GPUShader **downsample_sh,
+                                         GPUShader **blur1_sh,
+                                         GPUShader **blur2_sh,
+                                         GPUShader **resolve_sh);
+
 void workbench_shader_library_ensure(void);
 void workbench_shader_free(void);
 
@@ -604,17 +611,15 @@ int workbench_num_viewport_rendering_iterations(WORKBENCH_Data *vedata);
 
 /* workbench_effect_cavity.c */
 void workbench_cavity_data_update(WORKBENCH_PrivateData *wpd);
+void workbench_cavity_samples_ubo_ensure(WORKBENCH_PrivateData *wpd);
 void workbench_cavity_cache_init(WORKBENCH_Data *data);
 
 /* workbench_effect_outline.c */
 void workbench_outline_cache_init(WORKBENCH_Data *data);
 
 /* workbench_effect_dof.c */
-void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera);
-void workbench_dof_engine_free(void);
-void workbench_dof_create_pass(WORKBENCH_Data *vedata,
-                               GPUTexture **dof_input,
-                               GPUTexture *noise_tex);
+void workbench_dof_engine_init(WORKBENCH_Data *vedata);
+void workbench_dof_cache_init(WORKBENCH_Data *vedata);
 void workbench_dof_draw_pass(WORKBENCH_Data *vedata);
 
 /* workbench_materials.c */

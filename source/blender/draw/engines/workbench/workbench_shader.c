@@ -36,6 +36,7 @@ extern char datatoc_workbench_prepass_frag_glsl[];
 
 extern char datatoc_workbench_effect_cavity_frag_glsl[];
 extern char datatoc_workbench_effect_outline_frag_glsl[];
+extern char datatoc_workbench_effect_dof_frag_glsl[];
 
 extern char datatoc_workbench_composite_frag_glsl[];
 
@@ -80,6 +81,12 @@ static struct {
   struct GPUShader *shadow_depth_fail_sh[2][2];
 
   struct GPUShader *cavity_sh[2][2];
+
+  struct GPUShader *dof_prepare_sh;
+  struct GPUShader *dof_downsample_sh;
+  struct GPUShader *dof_blur1_sh;
+  struct GPUShader *dof_blur2_sh;
+  struct GPUShader *dof_resolve_sh;
 
   struct DRWShaderLibrary *lib;
 } e_data = {{{{NULL}}}};
@@ -321,6 +328,48 @@ GPUShader *workbench_shader_outline_get(void)
   return e_data.outline_sh;
 }
 
+void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
+                                         GPUShader **downsample_sh,
+                                         GPUShader **blur1_sh,
+                                         GPUShader **blur2_sh,
+                                         GPUShader **resolve_sh)
+{
+  if (e_data.dof_prepare_sh == NULL) {
+    e_data.dof_prepare_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                         "#define PREPARE\n");
+
+    e_data.dof_downsample_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                            "#define DOWNSAMPLE\n");
+#if 0 /* TODO(fclem) finish COC min_max optimization */
+    e_data.dof_flatten_v_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                           "#define FLATTEN_VERTICAL\n");
+
+    e_data.dof_flatten_h_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                           "#define FLATTEN_HORIZONTAL\n");
+
+    e_data.dof_dilate_v_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                          "#define DILATE_VERTICAL\n");
+
+    e_data.dof_dilate_h_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                          "#define DILATE_HORIZONTAL\n");
+#endif
+    e_data.dof_blur1_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                       "#define BLUR1\n");
+
+    e_data.dof_blur2_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                       "#define BLUR2\n");
+
+    e_data.dof_resolve_sh = DRW_shader_create_fullscreen(datatoc_workbench_effect_dof_frag_glsl,
+                                                         "#define RESOLVE\n");
+  }
+
+  *prepare_sh = e_data.dof_prepare_sh;
+  *downsample_sh = e_data.dof_downsample_sh;
+  *blur1_sh = e_data.dof_blur1_sh;
+  *blur2_sh = e_data.dof_blur2_sh;
+  *resolve_sh = e_data.dof_resolve_sh;
+}
+
 void workbench_shader_free(void)
 {
   for (int j = 0; j < sizeof(e_data.opaque_prepass_sh_cache) / sizeof(void *); j++) {
@@ -350,6 +399,12 @@ void workbench_shader_free(void)
   DRW_SHADER_FREE_SAFE(e_data.oit_resolve_sh);
   DRW_SHADER_FREE_SAFE(e_data.outline_sh);
   DRW_SHADER_FREE_SAFE(e_data.merge_infront_sh);
+
+  DRW_SHADER_FREE_SAFE(e_data.dof_prepare_sh);
+  DRW_SHADER_FREE_SAFE(e_data.dof_downsample_sh);
+  DRW_SHADER_FREE_SAFE(e_data.dof_blur1_sh);
+  DRW_SHADER_FREE_SAFE(e_data.dof_blur2_sh);
+  DRW_SHADER_FREE_SAFE(e_data.dof_resolve_sh);
 
   DRW_SHADER_LIB_FREE_SAFE(e_data.lib);
 }

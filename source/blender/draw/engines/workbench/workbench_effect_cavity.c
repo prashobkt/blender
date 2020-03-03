@@ -78,7 +78,7 @@ static struct GPUTexture *create_jitter_texture(int num_samples)
   return DRW_texture_create_2d(64, 64, GPU_RGBA16F, DRW_TEX_WRAP, &jitter[0][0]);
 }
 
-static void workbench_cavity_samples_ubo_ensure(WORKBENCH_PrivateData *wpd)
+void workbench_cavity_samples_ubo_ensure(WORKBENCH_PrivateData *wpd)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;

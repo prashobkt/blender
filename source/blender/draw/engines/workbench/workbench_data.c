@@ -56,6 +56,7 @@ static void workbench_view_layer_data_free(void *storage)
 {
   WORKBENCH_ViewLayerData *vldata = (WORKBENCH_ViewLayerData *)storage;
 
+  DRW_UBO_FREE_SAFE(vldata->dof_sample_ubo);
   DRW_UBO_FREE_SAFE(vldata->world_ubo);
   DRW_UBO_FREE_SAFE(vldata->cavity_sample_ubo);
   DRW_TEXTURE_FREE_SAFE(vldata->cavity_jitter_tx);
