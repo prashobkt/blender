@@ -4389,8 +4389,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 283, 0)) {
 
-    /* Update Grease Pencil after drawing engine refactor. */
-    {
+    /* Update Grease Pencil after drawing engine refactor.
+     * It uses the seed variable of Array modifier to avoid double patching for
+     * files created with a development version. */
+    if (!DNA_struct_elem_find(fd->filesdna, "ArrayGpencilModifierData", "int", "seed")) {
       LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
         MaterialGPencilStyle *gp_style = mat->gp_style;
         if (gp_style == NULL) {
@@ -4475,8 +4477,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
         /* Modifiers. */
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
-          const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
-          switch (mti->type) {
+          switch ((GpencilModifierType)md->type) {
             case eGpencilModifierType_Array: {
               ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
               mmd->seed = 1;
