@@ -207,7 +207,7 @@ void GPENCIL_cache_init(void *ved)
     Scene *scene = draw_ctx->scene;
     pd->simplify_fill = GPENCIL_SIMPLIFY_FILL(scene, playing);
     pd->simplify_fx = GPENCIL_SIMPLIFY_FX(scene, playing) ||
-                      (draw_ctx->v3d->shading.type < OB_MATERIAL);
+                      (draw_ctx->v3d->shading.type < OB_RENDER);
 
     /* Fade Layer. */
     const bool is_fade_layer = ((!hide_overlay) && (!pd->is_render) &&
