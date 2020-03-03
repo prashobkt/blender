@@ -577,7 +577,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
   }
 
   {
-    workbench_aa_create_pass(vedata, &e_data.color_buffer_tx);
+    workbench_aa_cache_init(vedata);
   }
 
   {
@@ -1375,7 +1375,7 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
   }
 
   workbench_dof_draw_pass(vedata);
-  workbench_aa_draw_pass(vedata, e_data.composite_buffer_tx);
+  workbench_aa_draw_pass(vedata);
 }
 
 void workbench_deferred_draw_finish(WORKBENCH_Data *vedata)

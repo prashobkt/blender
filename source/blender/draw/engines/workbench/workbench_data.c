@@ -208,7 +208,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   wpd->sh_cfg = draw_ctx->sh_cfg;
   wpd->vldata = vldata;
 
-  wpd->taa_sample_len = workbench_taa_calculate_num_iterations(wpd);
+  wpd->taa_sample_len = workbench_aa_sample_count_get(wpd);
 
   wpd->world_ubo = vldata->world_ubo;
 

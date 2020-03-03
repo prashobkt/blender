@@ -260,6 +260,8 @@ data_to_c_simple(engines/workbench/shaders/workbench_effect_outline_frag.glsl SR
 data_to_c_simple(engines/workbench/shaders/workbench_effect_cavity_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_effect_dof_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_effect_fxaa_frag.glsl SRC)
+data_to_c_simple(engines/workbench/shaders/workbench_effect_smaa_frag.glsl SRC)
+data_to_c_simple(engines/workbench/shaders/workbench_effect_smaa_vert.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_effect_taa_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_forward_composite_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_forward_depth_frag.glsl SRC)

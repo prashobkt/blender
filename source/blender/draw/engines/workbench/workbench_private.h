@@ -118,6 +118,10 @@ typedef struct WORKBENCH_FramebufferList {
   struct GPUFrameBuffer *dof_blur1_fb;
   struct GPUFrameBuffer *dof_blur2_fb;
 
+  struct GPUFrameBuffer *antialiasing_fb;
+  struct GPUFrameBuffer *smaa_edge_fb;
+  struct GPUFrameBuffer *smaa_weight_fb;
+
   /* Forward render buffers */
   struct GPUFrameBuffer *object_outline_fb;
   struct GPUFrameBuffer *transparent_accum_fb;
@@ -134,6 +138,8 @@ typedef struct WORKBENCH_TextureList {
   struct GPUTexture *history_buffer_tx;
   struct GPUTexture *depth_buffer_tx;
   struct GPUTexture *dummy_image_tx;
+  struct GPUTexture *smaa_search_tx;
+  struct GPUTexture *smaa_area_tx;
 } WORKBENCH_TextureList;
 
 typedef struct WORKBENCH_StorageList {
@@ -178,6 +184,11 @@ typedef struct WORKBENCH_PassList {
   struct DRWPass *dof_blur2_ps;
   struct DRWPass *dof_resolve_ps;
   struct DRWPass *volume_pass;
+
+  struct DRWPass *aa_accum_pass;
+  struct DRWPass *aa_edge_pass;
+  struct DRWPass *aa_weight_pass;
+  struct DRWPass *aa_resolve_pass;
 
   /* forward rendering */
   struct DRWPass *transp_resolve_pass;
@@ -303,6 +314,14 @@ typedef struct WORKBENCH_PrivateData {
   int taa_sample_len;
   /** Current TAA sample index in [0..taa_sample_len[ range. */
   int taa_sample;
+  /** Inverse of taa_sample to divide the accumulation buffer. */
+  float taa_sample_inv;
+
+  /* Smart Morphological Anti-Aliasing */
+  struct GPUTexture *smaa_edge_tx;
+  struct GPUTexture *smaa_weight_tx;
+  /** Weight of the smaa pass. */
+  float smaa_mix_factor;
 
   /* Opaque pipeline */
   struct GPUTexture *object_id_tx;
@@ -552,6 +571,9 @@ GPUShader *workbench_shader_shadow_fail_get(bool manifold, bool cap);
 GPUShader *workbench_shader_cavity_get(bool cavity, bool curvature);
 GPUShader *workbench_shader_outline_get(void);
 
+GPUShader *workbench_shader_antialiasing_accumulation_get(void);
+GPUShader *workbench_shader_antialiasing_get(int stage);
+
 void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
                                          GPUShader **downsample_sh,
                                          GPUShader **blur1_sh,
@@ -591,8 +613,10 @@ WORKBENCH_MaterialData *workbench_forward_get_or_create_material_data(WORKBENCH_
                                                                       int interp);
 
 /* workbench_effect_aa.c */
-void workbench_aa_create_pass(WORKBENCH_Data *vedata, GPUTexture **tx);
-void workbench_aa_draw_pass(WORKBENCH_Data *vedata, GPUTexture *tx);
+int workbench_aa_sample_count_get(WORKBENCH_PrivateData *wpd);
+void workbench_aa_engine_init(WORKBENCH_Data *vedata);
+void workbench_aa_cache_init(WORKBENCH_Data *vedata);
+void workbench_aa_draw_pass(WORKBENCH_Data *vedata);
 
 /* workbench_effect_fxaa.c */
 void workbench_fxaa_engine_init(void);

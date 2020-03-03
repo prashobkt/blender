@@ -78,6 +78,7 @@ static void workbench_engine_init(void *ved)
   workbench_opaque_engine_init(vedata);
   workbench_transparent_engine_init(vedata);
   workbench_dof_engine_init(vedata);
+  workbench_aa_engine_init(vedata);
   //   workbench_volume_engine_init();
   //   workbench_fxaa_engine_init();
   //   workbench_taa_engine_init(vedata);
@@ -93,8 +94,9 @@ static void workbench_cache_init(void *ved)
   workbench_cavity_cache_init(vedata);
   workbench_outline_cache_init(vedata);
   workbench_dof_cache_init(vedata);
+  workbench_aa_cache_init(vedata);
 
-  //   workbench_aa_create_pass(vedata);
+  //   workbench_aa_cache_init(vedata);
 }
 
 /* TODO(fclem) DRW_cache_object_surface_material_get needs a refactor to allow passing NULL
@@ -472,7 +474,7 @@ static void workbench_draw_scene(void *ved)
 
   workbench_dof_draw_pass(vedata);
 
-  /* TODO(fclem) antialias */
+  workbench_aa_draw_pass(vedata);
 }
 
 static void workbench_engine_free(void)

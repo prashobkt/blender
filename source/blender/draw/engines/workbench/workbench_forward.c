@@ -428,7 +428,7 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
   }
 
   {
-    workbench_aa_create_pass(vedata, &e_data.transparent_accum_tx);
+    workbench_aa_cache_init(vedata);
   }
 
   if (wpd->shading.type == OB_WIRE) {
@@ -796,7 +796,7 @@ void workbench_forward_draw_scene(WORKBENCH_Data *vedata)
   }
 
   /* Color correct and Anti aliasing */
-  workbench_aa_draw_pass(vedata, e_data.composite_buffer_tx);
+  workbench_aa_draw_pass(vedata);
 }
 
 void workbench_forward_draw_finish(WORKBENCH_Data *vedata)

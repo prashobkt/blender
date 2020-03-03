@@ -37,6 +37,9 @@ extern char datatoc_workbench_prepass_frag_glsl[];
 extern char datatoc_workbench_effect_cavity_frag_glsl[];
 extern char datatoc_workbench_effect_outline_frag_glsl[];
 extern char datatoc_workbench_effect_dof_frag_glsl[];
+extern char datatoc_workbench_effect_taa_frag_glsl[];
+extern char datatoc_workbench_effect_smaa_frag_glsl[];
+extern char datatoc_workbench_effect_smaa_vert_glsl[];
 
 extern char datatoc_workbench_composite_frag_glsl[];
 
@@ -88,6 +91,9 @@ static struct {
   struct GPUShader *dof_blur2_sh;
   struct GPUShader *dof_resolve_sh;
 
+  struct GPUShader *aa_accum_sh;
+  struct GPUShader *smaa_sh[2];
+
   struct DRWShaderLibrary *lib;
 } e_data = {{{{NULL}}}};
 
@@ -96,6 +102,7 @@ void workbench_shader_library_ensure(void)
   if (e_data.lib == NULL) {
     e_data.lib = DRW_shader_library_create();
 
+    DRW_SHADER_LIB_ADD(e_data.lib, common_smaa_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, common_hair_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, common_view_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_shader_interface_lib);
@@ -370,6 +377,45 @@ void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
   *resolve_sh = e_data.dof_resolve_sh;
 }
 
+GPUShader *workbench_shader_antialiasing_accumulation_get(void)
+{
+  if (e_data.aa_accum_sh == NULL) {
+    char *frag = DRW_shader_library_create_shader_string(e_data.lib,
+                                                         datatoc_workbench_effect_taa_frag_glsl);
+
+    e_data.aa_accum_sh = DRW_shader_create_fullscreen(frag, NULL);
+
+    MEM_freeN(frag);
+  }
+  return e_data.aa_accum_sh;
+}
+
+GPUShader *workbench_shader_antialiasing_get(int stage)
+{
+  if (e_data.smaa_sh[stage] == NULL) {
+    char *frag = DRW_shader_library_create_shader_string(e_data.lib,
+                                                         datatoc_workbench_effect_smaa_frag_glsl);
+
+    e_data.smaa_sh[stage] = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_view_lib_glsl,
+                                 datatoc_workbench_shadow_vert_glsl,
+                                 NULL},
+        .geom = (const char *[]){(cap) ? datatoc_workbench_shadow_caps_geom_glsl :
+                                         datatoc_workbench_shadow_geom_glsl,
+                                 NULL},
+        .frag = (const char *[]){shadow_frag, NULL},
+        .defs = (const char *[]){(depth_pass) ? "" : "#define SHADOW_FAIL\n",
+                                 (manifold) ? "" : "#define DOUBLE_MANIFOLD\n",
+                                 (manifold) ? "" : "#define DOUBLE_MANIFOLD\n",
+                                 NULL},
+    });
+    = DRW_shader_create_fullscreen(frag, NULL);
+
+    MEM_freeN(frag);
+  }
+  return e_data.smaa_sh[stage];
+}
+
 void workbench_shader_free(void)
 {
   for (int j = 0; j < sizeof(e_data.opaque_prepass_sh_cache) / sizeof(void *); j++) {
@@ -396,6 +442,11 @@ void workbench_shader_free(void)
     struct GPUShader **sh_array = &e_data.cavity_sh[0][0];
     DRW_SHADER_FREE_SAFE(sh_array[j]);
   }
+  for (int j = 0; j < sizeof(e_data.smaa_sh) / sizeof(void *); j++) {
+    struct GPUShader **sh_array = &e_data.smaa_sh[0];
+    DRW_SHADER_FREE_SAFE(sh_array[j]);
+  }
+
   DRW_SHADER_FREE_SAFE(e_data.oit_resolve_sh);
   DRW_SHADER_FREE_SAFE(e_data.outline_sh);
   DRW_SHADER_FREE_SAFE(e_data.merge_infront_sh);
@@ -405,6 +456,8 @@ void workbench_shader_free(void)
   DRW_SHADER_FREE_SAFE(e_data.dof_blur1_sh);
   DRW_SHADER_FREE_SAFE(e_data.dof_blur2_sh);
   DRW_SHADER_FREE_SAFE(e_data.dof_resolve_sh);
+
+  DRW_SHADER_FREE_SAFE(e_data.aa_accum_sh);
 
   DRW_SHADER_LIB_FREE_SAFE(e_data.lib);
 }
