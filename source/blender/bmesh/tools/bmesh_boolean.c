@@ -48,7 +48,7 @@
 
 #include "BLI_strict_flags.h"
 
-#define BOOLDEBUG
+// #define BOOLDEBUG
 // #define PERFDEBUG
 
 /* A set of integers. TODO: faster structure. */
@@ -3262,7 +3262,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   LinkNodePair *intervals_a;
   LinkNodePair *intervals_b;
   LinkNodePair *intervals;
-  LinkNode *ln, *lna, *lnb;
+  LinkNode *lna, *lnb;
   IntervalInfo *iinfoa, *iinfob;
   int is;
   double co[3], co1[3], co2[3], co_close[3], line_co1[3], line_co2[3], line_dir[3];
@@ -3276,6 +3276,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
   MeshAdd *meshadd = &change->add;
   IntSet *intersection_edges = &change->intersection_edges;
 #ifdef BOOLDEBUG
+  LinkNode *ln;
   int dbg_level = 0;
 #endif
 
