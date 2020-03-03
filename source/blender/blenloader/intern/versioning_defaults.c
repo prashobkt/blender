@@ -239,8 +239,8 @@ static void blo_update_defaults_screen(bScreen *screen,
         }
         else if (sa->spacetype == SPACE_VIEW3D) {
           View3D *v3d = sa->spacedata.first;
-          /* Set Vertex Color by default. */
-          v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
+          /* Set Material Color by default. */
+          v3d->shading.color_type = V3D_SHADING_MATERIAL_COLOR;
           /* Enable Annotations. */
           v3d->flag2 |= V3D_SHOW_ANNOTATION;
         }
