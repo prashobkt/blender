@@ -3908,7 +3908,7 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
       RegionView3D *rv3d = ar->regiondata;
       const char viewlock = (rv3d->viewlock_quad & RV3D_VIEWLOCK_INIT) ?
                                 (rv3d->viewlock_quad & ~RV3D_VIEWLOCK_INIT) :
-                                RV3D_LOCKED;
+                                RV3D_LOCK_ROTATION;
 
       region_quadview_init_rv3d(
           sa, ar, viewlock, ED_view3d_lock_view_from_index(index_qsplit++), RV3D_ORTHO);

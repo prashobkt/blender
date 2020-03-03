@@ -3607,6 +3607,30 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 /** \} */
 
 #ifdef WITH_OPENXR
+
+static void wm_xr_session_disable_mirror_views(Main *bmain)
+{
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+      for (SpaceLink *slink = area->spacedata.first; slink; slink = slink->next) {
+        if (slink->spacetype == SPACE_VIEW3D) {
+          View3D *v3d = (View3D *)slink;
+          if (v3d->flag & V3D_XR_SESSION_MIRROR) {
+            ListBase *region_list = (slink == area->spacedata.first) ? &area->regionbase :
+                                                                       &slink->regionbase;
+            /* The free main region (e.g. the unlocked one in quad-view) is always the last one,
+             * see rna_SpaceView3D_region_3d_get(). */
+            ARegion *region = region_list->last;
+            RegionView3D *rv3d = region->regiondata;
+
+            rv3d->viewlock &= ~(RV3D_LOCK_ANY_TRANSFORM | RV3D_LOCK_RUNTIME_ONLY);
+          }
+        }
+      }
+    }
+  }
+}
+
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -3617,6 +3641,10 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   wm_xr_session_toggle(C, wm->xr.context);
+
+  if (!WM_xr_is_session_running(&wm->xr) || !wm->xr.session_state) {
+    wm_xr_session_disable_mirror_views(CTX_data_main(C));
+  }
 
   WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
@@ -3639,6 +3667,7 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
    * UI instead. Not meant as a permanent solution. */
   ot->flag = OPTYPE_INTERNAL;
 }
+
 #endif /* WITH_OPENXR */
 
 /* -------------------------------------------------------------------- */

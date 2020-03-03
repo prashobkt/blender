@@ -85,6 +85,52 @@ enum {
   HAS_ROTATE = (1 << 0),
 };
 
+/* test for unlocked camera view in quad view */
+static bool view3d_camera_user_poll(bContext *C)
+{
+  View3D *v3d;
+  ARegion *ar;
+
+  if (ED_view3d_context_user_region(C, &v3d, &ar)) {
+    RegionView3D *rv3d = ar->regiondata;
+    if ((rv3d->persp == RV3D_CAMOB) && !(rv3d->viewlock & RV3D_LOCK_ANY_TRANSFORM)) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+static bool view3d_lock_poll(bContext *C)
+{
+  View3D *v3d = CTX_wm_view3d(C);
+  if (v3d) {
+    RegionView3D *rv3d = CTX_wm_region_view3d(C);
+    if (rv3d) {
+      return ED_view3d_offset_lock_check(v3d, rv3d);
+    }
+  }
+  return false;
+}
+
+static bool view3d_pan_poll(bContext *C)
+{
+  if (ED_operator_region_view3d_active(C)) {
+    const RegionView3D *rv3d = CTX_wm_region_view3d(C);
+    return !(rv3d->viewlock & RV3D_LOCK_LOCATION);
+  }
+  return false;
+}
+
+static bool view3d_zoom_or_dolly_poll(bContext *C)
+{
+  if (ED_operator_region_view3d_active(C)) {
+    const RegionView3D *rv3d = CTX_wm_region_view3d(C);
+    return !(rv3d->viewlock & RV3D_LOCK_DOLLY);
+  }
+  return false;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Generic View Operator Properties
  * \{ */
@@ -934,7 +980,7 @@ static int viewrotate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   vod = op->customdata;
 
   /* poll should check but in some cases fails, see poll func for details */
-  if (vod->rv3d->viewlock & RV3D_LOCKED) {
+  if (vod->rv3d->viewlock & RV3D_LOCK_ROTATION) {
     viewops_data_free(C, op);
     return OPERATOR_PASS_THROUGH;
   }
@@ -982,34 +1028,6 @@ static int viewrotate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   }
 }
 
-/* test for unlocked camera view in quad view */
-static bool view3d_camera_user_poll(bContext *C)
-{
-  View3D *v3d;
-  ARegion *ar;
-
-  if (ED_view3d_context_user_region(C, &v3d, &ar)) {
-    RegionView3D *rv3d = ar->regiondata;
-    if (rv3d->persp == RV3D_CAMOB) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-static bool view3d_lock_poll(bContext *C)
-{
-  View3D *v3d = CTX_wm_view3d(C);
-  if (v3d) {
-    RegionView3D *rv3d = CTX_wm_region_view3d(C);
-    if (rv3d) {
-      return ED_view3d_offset_lock_check(v3d, rv3d);
-    }
-  }
-  return false;
-}
-
 static void viewrotate_cancel(bContext *C, wmOperator *op)
 {
   viewops_data_free(C, op);
@@ -1050,7 +1068,7 @@ static bool ndof_has_translate(const wmNDOFMotionData *ndof,
 
 static bool ndof_has_rotate(const wmNDOFMotionData *ndof, const RegionView3D *rv3d)
 {
-  return !is_zero_v3(ndof->rvec) && ((rv3d->viewlock & RV3D_LOCKED) == 0);
+  return !is_zero_v3(ndof->rvec) && ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0);
 }
 
 /**
@@ -1175,7 +1193,7 @@ static void view3d_ndof_orbit(const struct wmNDOFMotionData *ndof,
 
   float view_inv[4];
 
-  BLI_assert((rv3d->viewlock & RV3D_LOCKED) == 0);
+  BLI_assert((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0);
 
   ED_view3d_persp_ensure(vod->depsgraph, v3d, ar);
 
@@ -1399,7 +1417,7 @@ static int ndof_orbit_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     const bool has_rotation = ndof_has_rotate(ndof, rv3d);
     /* if we can't rotate, fallback to translate (locked axis views) */
     const bool has_translate = ndof_has_translate(ndof, v3d, rv3d) &&
-                               (rv3d->viewlock & RV3D_LOCKED);
+                               (rv3d->viewlock & RV3D_LOCK_ROTATION);
     const bool has_zoom = (ndof->tvec[2] != 0.0f) && !rv3d->is_persp;
 
     if (has_translate || has_zoom) {
@@ -1806,12 +1824,17 @@ static int viewmove_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   /* makes op->customdata */
   viewops_data_alloc(C, op);
+  vod = op->customdata;
+  if (vod->rv3d->viewlock & RV3D_LOCK_LOCATION) {
+    viewops_data_free(C, op);
+    return OPERATOR_PASS_THROUGH;
+  }
+
   viewops_data_create(C,
                       op,
                       event,
                       (viewops_flag_from_prefs() & ~VIEWOPS_FLAG_ORBIT_SELECT) |
                           (use_cursor_init ? VIEWOPS_FLAG_USE_MOUSE_INIT : 0));
-  vod = op->customdata;
 
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->ar);
 
@@ -2411,7 +2434,7 @@ void VIEW3D_OT_zoom(wmOperatorType *ot)
   ot->invoke = viewzoom_invoke;
   ot->exec = viewzoom_exec;
   ot->modal = viewzoom_modal;
-  ot->poll = ED_operator_region_view3d_active;
+  ot->poll = view3d_zoom_or_dolly_poll;
   ot->cancel = viewzoom_cancel;
 
   /* flags */
@@ -2636,7 +2659,7 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   vod = op->customdata;
 
   /* poll should check but in some cases fails, see poll func for details */
-  if (vod->rv3d->viewlock & RV3D_LOCKED) {
+  if (vod->rv3d->viewlock & RV3D_LOCK_ROTATION) {
     viewops_data_free(C, op);
     return OPERATOR_PASS_THROUGH;
   }
@@ -3116,7 +3139,7 @@ void VIEW3D_OT_view_selected(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = viewselected_exec;
-  ot->poll = ED_operator_region_view3d_active;
+  ot->poll = view3d_zoom_or_dolly_poll;
 
   /* flags */
   ot->flag = 0;
@@ -3259,7 +3282,7 @@ void VIEW3D_OT_view_center_cursor(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = viewcenter_cursor_exec;
-  ot->poll = ED_operator_view3d_active;
+  ot->poll = view3d_pan_poll;
 
   /* flags */
   ot->flag = 0;
@@ -3310,7 +3333,7 @@ void VIEW3D_OT_view_center_pick(wmOperatorType *ot)
 
   /* api callbacks */
   ot->invoke = viewcenter_pick_invoke;
-  ot->poll = ED_operator_view3d_active;
+  ot->poll = view3d_pan_poll;
 
   /* flags */
   ot->flag = 0;
@@ -3714,7 +3737,7 @@ void VIEW3D_OT_zoom_border(wmOperatorType *ot)
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
 
-  ot->poll = ED_operator_region_view3d_active;
+  ot->poll = view3d_zoom_or_dolly_poll;
 
   /* flags */
   ot->flag = 0;
@@ -3827,7 +3850,7 @@ static void axis_set_view(bContext *C,
     rv3d->view_axis_roll = view_axis_roll;
   }
 
-  if (rv3d->viewlock & RV3D_LOCKED) {
+  if (rv3d->viewlock & RV3D_LOCK_ROTATION) {
     ED_region_tag_redraw(ar);
     return;
   }
@@ -4050,7 +4073,7 @@ static int view_camera_exec(bContext *C, wmOperator *op)
 
   ED_view3d_smooth_view_force_finish(C, v3d, ar);
 
-  if ((rv3d->viewlock & RV3D_LOCKED) == 0) {
+  if ((rv3d->viewlock & RV3D_LOCK_ANY_TRANSFORM) == 0) {
     /* lastview -  */
 
     ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -4199,7 +4222,7 @@ static int vieworbit_exec(bContext *C, wmOperator *op)
                                                   RV3D_VIEW_USER;
   orbitdir = RNA_enum_get(op->ptr, "type");
 
-  if ((rv3d->viewlock & RV3D_LOCKED) && (view_opposite == RV3D_VIEW_USER)) {
+  if ((rv3d->viewlock & RV3D_LOCK_ROTATION) && (view_opposite == RV3D_VIEW_USER)) {
     /* no NULL check is needed, poll checks */
     ED_view3d_context_user_region(C, &v3d, &ar);
     rv3d = ar->regiondata;
@@ -4207,7 +4230,7 @@ static int vieworbit_exec(bContext *C, wmOperator *op)
 
   ED_view3d_smooth_view_force_finish(C, v3d, ar);
 
-  if ((rv3d->viewlock & RV3D_LOCKED) == 0 || (view_opposite != RV3D_VIEW_USER)) {
+  if ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0 || (view_opposite != RV3D_VIEW_USER)) {
     if ((rv3d->persp != RV3D_CAMOB) || ED_view3d_camera_lock_check(v3d, rv3d)) {
       int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
       float quat_mul[4];
@@ -4613,7 +4636,7 @@ void VIEW3D_OT_view_pan(wmOperatorType *ot)
 
   /* api callbacks */
   ot->invoke = viewpan_invoke;
-  ot->poll = ED_operator_region_view3d_active;
+  ot->poll = view3d_pan_poll;
 
   /* flags */
   ot->flag = 0;
@@ -4639,7 +4662,8 @@ static int viewpersportho_exec(bContext *C, wmOperator *UNUSED(op))
   ED_view3d_context_user_region(C, &v3d_dummy, &ar);
   rv3d = ar->regiondata;
 
-  if ((rv3d->viewlock & RV3D_LOCKED) == 0) {
+  /* Could add a separate lock flag for locking persp. */
+  if ((rv3d->viewlock & RV3D_LOCK_ANY_TRANSFORM) == 0) {
     if (rv3d->persp != RV3D_ORTHO) {
       rv3d->persp = RV3D_ORTHO;
     }

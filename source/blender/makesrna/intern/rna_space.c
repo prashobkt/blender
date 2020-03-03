@@ -1329,6 +1329,25 @@ static const EnumPropertyItem *rna_SpaceView3D_stereo3d_camera_itemf(bContext *C
   }
 }
 
+static void rna_SpaceView3D_show_as_xr_session_mirror_set(PointerRNA *ptr, bool value)
+{
+  View3D *v3d = ptr->data;
+
+  if (value) {
+    v3d->flag |= V3D_XR_SESSION_MIRROR;
+  }
+  else {
+    PointerRNA rv3d_ptr = RNA_pointer_get(ptr, "region_3d");
+    RegionView3D *rv3d = rv3d_ptr.data;
+
+    BLI_assert(rv3d_ptr.type == &RNA_RegionView3D);
+
+    /* Make sure the view is unlocked. */
+    rv3d->viewlock &= ~(RV3D_LOCK_ANY_TRANSFORM | RV3D_LOCK_RUNTIME_ONLY);
+    v3d->flag &= ~V3D_XR_SESSION_MIRROR;
+  }
+}
+
 static int rna_SpaceView3D_icon_from_show_object_viewport_get(PointerRNA *ptr)
 {
   const View3D *v3d = (View3D *)ptr->data;
@@ -4145,6 +4164,15 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Volume Alpha", "Opacity (alpha) of the cameras' frustum volume");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
+  prop = RNA_def_property(srna, "show_as_xr_session_mirror", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_XR_SESSION_MIRROR);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_SpaceView3D_show_as_xr_session_mirror_set");
+  RNA_def_property_ui_text(prop,
+                           "VR Session Mirror",
+                           "Use the 3D View to display the perspective of a virtual reality "
+                           "session, if one is running");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
   {
     struct {
       const char *name;
@@ -4224,7 +4252,7 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "3D View Region", "3D View region data");
 
   prop = RNA_def_property(srna, "lock_rotation", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "viewlock", RV3D_LOCKED);
+  RNA_def_property_boolean_sdna(prop, NULL, "viewlock", RV3D_LOCK_ROTATION);
   RNA_def_property_ui_text(prop, "Lock", "Lock view rotation in side views");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_RegionView3D_quadview_update");
 

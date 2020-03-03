@@ -296,7 +296,6 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
     WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, true);
   }
 
-  /* RV3D_LOCKED or Camera: only show supported buttons. */
   if (show_rotate_gizmo) {
     gz = navgroup->gz_array[GZ_INDEX_ROTATE];
     gz->matrix_basis[3][0] = co_rotate[0];
@@ -306,17 +305,22 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
 
   if (show_navigate) {
     int icon_mini_slot = 0;
-    gz = navgroup->gz_array[GZ_INDEX_ZOOM];
-    gz->matrix_basis[3][0] = co[0];
-    gz->matrix_basis[3][1] = co[1] - (icon_offset_mini * icon_mini_slot++);
-    WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
 
-    gz = navgroup->gz_array[GZ_INDEX_MOVE];
-    gz->matrix_basis[3][0] = co[0];
-    gz->matrix_basis[3][1] = co[1] - (icon_offset_mini * icon_mini_slot++);
-    WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+    if ((rv3d->viewlock & RV3D_LOCK_DOLLY) == 0) {
+      gz = navgroup->gz_array[GZ_INDEX_ZOOM];
+      gz->matrix_basis[3][0] = co[0];
+      gz->matrix_basis[3][1] = co[1] - (icon_offset_mini * icon_mini_slot++);
+      WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+    }
 
-    if ((rv3d->viewlock & RV3D_LOCKED) == 0) {
+    if ((rv3d->viewlock & RV3D_LOCK_LOCATION) == 0) {
+      gz = navgroup->gz_array[GZ_INDEX_MOVE];
+      gz->matrix_basis[3][0] = co[0];
+      gz->matrix_basis[3][1] = co[1] - (icon_offset_mini * icon_mini_slot++);
+      WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+    }
+
+    if ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) {
       gz = navgroup->gz_array[GZ_INDEX_CAMERA];
       gz->matrix_basis[3][0] = co[0];
       gz->matrix_basis[3][1] = co[1] - (icon_offset_mini * icon_mini_slot++);

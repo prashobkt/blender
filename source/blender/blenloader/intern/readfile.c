@@ -7043,6 +7043,10 @@ static void direct_link_region(FileData *fd, ARegion *ar, int spacetype)
         rv3d->smooth_timer = NULL;
 
         rv3d->rflag &= ~(RV3D_NAVIGATING | RV3D_PAINTING);
+        /* Clear runtime-only locks. */
+        if (rv3d->viewlock & RV3D_LOCK_RUNTIME_ONLY) {
+          rv3d->viewlock &= ~(RV3D_LOCK_ANY_TRANSFORM | RV3D_LOCK_RUNTIME_ONLY);
+        }
       }
     }
   }

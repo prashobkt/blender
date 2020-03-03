@@ -458,7 +458,7 @@ bool ED_view3d_persp_ensure(const Depsgraph *depsgraph, View3D *v3d, ARegion *ar
   RegionView3D *rv3d = ar->regiondata;
   const bool autopersp = (U.uiflag & USER_AUTOPERSP) != 0;
 
-  BLI_assert((rv3d->viewlock & RV3D_LOCKED) == 0);
+  BLI_assert((rv3d->viewlock & RV3D_LOCK_ANY_TRANSFORM) == 0);
 
   if (ED_view3d_camera_lock_check(v3d, rv3d)) {
     return false;
@@ -818,7 +818,7 @@ void view3d_boxview_sync(ScrArea *sa, ARegion *ar)
     if (artest != ar && artest->regiontype == RGN_TYPE_WINDOW) {
       RegionView3D *rv3dtest = artest->regiondata;
 
-      if (rv3dtest->viewlock & RV3D_LOCKED) {
+      if (rv3dtest->viewlock & RV3D_LOCK_ROTATION) {
         rv3dtest->dist = rv3d->dist;
         view3d_boxview_sync_axis(rv3dtest, rv3d);
         clip |= rv3dtest->viewlock & RV3D_BOXCLIP;
@@ -870,7 +870,7 @@ void ED_view3d_quadview_update(ScrArea *sa, ARegion *ar, bool do_clip)
    * properties are always being edited, weak */
   viewlock = rv3d->viewlock;
 
-  if ((viewlock & RV3D_LOCKED) == 0) {
+  if ((viewlock & RV3D_LOCK_ROTATION) == 0) {
     do_clip = (viewlock & RV3D_BOXCLIP) != 0;
     viewlock = 0;
   }
@@ -880,6 +880,11 @@ void ED_view3d_quadview_update(ScrArea *sa, ARegion *ar, bool do_clip)
   }
 
   for (; ar; ar = ar->prev) {
+    /* Skip the user region (always last). */
+    if (!ar->next) {
+      continue;
+    }
+
     if (ar->alignment == RGN_ALIGN_QSPLIT) {
       rv3d = ar->regiondata;
       rv3d->viewlock = viewlock;
@@ -900,7 +905,7 @@ void ED_view3d_quadview_update(ScrArea *sa, ARegion *ar, bool do_clip)
   }
 
   /* ensure locked regions have an axis, locked user views don't make much sense */
-  if (viewlock & RV3D_LOCKED) {
+  if (viewlock & RV3D_LOCK_ROTATION) {
     int index_qsplit = 0;
     for (ar = sa->regionbase.first; ar; ar = ar->next) {
       if (ar->alignment == RGN_ALIGN_QSPLIT) {

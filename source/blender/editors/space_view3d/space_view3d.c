@@ -114,7 +114,7 @@ bool ED_view3d_context_user_region(bContext *C, View3D **r_v3d, ARegion **r_ar)
     if (ar) {
       RegionView3D *rv3d;
       if ((ar->regiontype == RGN_TYPE_WINDOW) && (rv3d = ar->regiondata) &&
-          (rv3d->viewlock & RV3D_LOCKED) == 0) {
+          (rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) {
         *r_v3d = v3d;
         *r_ar = ar;
         return true;
@@ -126,7 +126,7 @@ bool ED_view3d_context_user_region(bContext *C, View3D **r_v3d, ARegion **r_ar)
           /* find the first unlocked rv3d */
           if (ar->regiondata && ar->regiontype == RGN_TYPE_WINDOW) {
             rv3d = ar->regiondata;
-            if ((rv3d->viewlock & RV3D_LOCKED) == 0) {
+            if ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) {
               ar_unlock = ar;
               if (rv3d->persp == RV3D_PERSP || rv3d->persp == RV3D_CAMOB) {
                 ar_unlock_user = ar;
@@ -335,7 +335,7 @@ static SpaceLink *view3d_duplicate(SpaceLink *sl)
   }
 
   v3dn->local_collections_uuid = 0;
-  v3dn->flag &= ~V3D_LOCAL_COLLECTIONS;
+  v3dn->flag &= ~(V3D_LOCAL_COLLECTIONS | V3D_XR_SESSION_MIRROR);
 
   if (v3dn->shading.type == OB_RENDER) {
     v3dn->shading.type = OB_SOLID;
@@ -700,6 +700,15 @@ static void view3d_main_region_listener(
       if (ELEM(wmn->data, ND_UNDO)) {
         WM_gizmomap_tag_refresh(gzmap);
       }
+#ifdef WITH_OPENXR
+      else if (ELEM(wmn->data, ND_XR_DATA_CHANGED)) {
+        /* Only cause a redraw if this a VR session mirror. Should more features be added that
+         * require redraws, we could pass something to wmn->reference, e.g. the flag value. */
+        if (v3d->flag & V3D_XR_SESSION_MIRROR) {
+          ED_region_tag_redraw(ar);
+        }
+      }
+#endif
       break;
     case NC_ANIMATION:
       switch (wmn->data) {

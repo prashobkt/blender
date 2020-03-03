@@ -228,7 +228,7 @@ void ED_view3d_smooth_view_ex(
             ob_camera_old_eval, sms.src.ofs, sms.src.quat, &sms.src.dist, &sms.src.lens);
       }
       /* grid draw as floor */
-      if ((rv3d->viewlock & RV3D_LOCKED) == 0) {
+      if ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) {
         /* use existing if exists, means multiple calls to smooth view
          * wont loose the original 'view' setting */
         rv3d->view = RV3D_VIEW_USER;
@@ -344,7 +344,7 @@ static void view3d_smoothview_apply(bContext *C, View3D *v3d, ARegion *ar, bool 
       ED_view3d_camera_lock_autokey(v3d, rv3d, C, true, true);
     }
 
-    if ((rv3d->viewlock & RV3D_LOCKED) == 0) {
+    if ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) {
       rv3d->view = sms->org_view;
     }
 
@@ -494,7 +494,7 @@ static bool view3d_camera_to_view_poll(bContext *C)
   if (ED_view3d_context_user_region(C, &v3d, &ar)) {
     RegionView3D *rv3d = ar->regiondata;
     if (v3d && v3d->camera && !ID_IS_LINKED(v3d->camera)) {
-      if (rv3d && (rv3d->viewlock & RV3D_LOCKED) == 0) {
+      if (rv3d && (rv3d->viewlock & RV3D_LOCK_ANY_TRANSFORM) == 0) {
         if (rv3d->persp != RV3D_CAMOB) {
           return 1;
         }
@@ -823,7 +823,7 @@ void view3d_viewmatrix_set(Depsgraph *depsgraph,
     bool use_lock_ofs = false;
 
     /* should be moved to better initialize later on XXX */
-    if (rv3d->viewlock & RV3D_LOCKED) {
+    if (rv3d->viewlock & RV3D_LOCK_ROTATION) {
       ED_view3d_lock(rv3d);
     }
 
@@ -988,6 +988,7 @@ int view3d_opengl_select(ViewContext *vc,
                          eV3DSelectObjectFilter select_filter)
 {
   struct bThemeState theme_state;
+  const wmWindowManager *wm = CTX_wm_manager(vc->C);
   Depsgraph *depsgraph = vc->depsgraph;
   Scene *scene = vc->scene;
   View3D *v3d = vc->v3d;
@@ -1093,7 +1094,8 @@ int view3d_opengl_select(ViewContext *vc,
 
   /* Important we use the 'viewmat' and don't re-calculate since
    * the object & bone view locking takes 'rect' into account, see: T51629. */
-  ED_view3d_draw_setup_view(vc->win, depsgraph, scene, ar, v3d, vc->rv3d->viewmat, NULL, &rect);
+  ED_view3d_draw_setup_view(
+      wm, vc->win, depsgraph, scene, ar, v3d, vc->rv3d->viewmat, NULL, &rect);
 
   if (!XRAY_ACTIVE(v3d)) {
     GPU_depth_test(true);
@@ -1161,7 +1163,7 @@ int view3d_opengl_select(ViewContext *vc,
   }
 
   G.f &= ~G_FLAG_PICKSEL;
-  ED_view3d_draw_setup_view(vc->win, depsgraph, scene, ar, v3d, vc->rv3d->viewmat, NULL, NULL);
+  ED_view3d_draw_setup_view(wm, vc->win, depsgraph, scene, ar, v3d, vc->rv3d->viewmat, NULL, NULL);
 
   if (!XRAY_ACTIVE(v3d)) {
     GPU_depth_test(false);

@@ -313,10 +313,51 @@ static void view3d_stereo3d_setup(
   }
 }
 
+#ifdef WITH_OPENXR
+static bool view3d_xr_mirror_active(const wmWindowManager *wm,
+                                    const View3D *v3d,
+                                    const ARegion *ar)
+{
+  return (v3d->flag & V3D_XR_SESSION_MIRROR) &&
+         /* The free region (e.g. the camera region in quad-view) is always the last in the list
+            base. We don't want any other to be affected. */
+         !ar->next &&
+         /* NULL'ed when sending session end request. */
+         wm->xr.session_state &&  //
+         WM_xr_is_session_running(&wm->xr);
+}
+
+static void view3d_xr_mirror_setup(const wmWindowManager *wm,
+                                   Depsgraph *depsgraph,
+                                   Scene *scene,
+                                   View3D *v3d,
+                                   ARegion *ar,
+                                   const rcti *rect)
+{
+  RegionView3D *rv3d = ar->regiondata;
+  float viewmat[4][4];
+  const float lens_old = v3d->lens;
+
+  /* Ensure valid fallback value. */
+  copy_m4_m4(viewmat, rv3d->viewmat);
+
+  WM_xr_session_state_viewer_matrix_info_get(&wm->xr, viewmat, &v3d->lens);
+  rv3d->viewlock |= (RV3D_LOCK_ANY_TRANSFORM | RV3D_LOCK_RUNTIME_ONLY);
+  /* Just change to perspective mode, not worth resetting this. */
+  rv3d->persp = RV3D_PERSP;
+
+  view3d_main_region_setup_view(depsgraph, scene, v3d, ar, viewmat, NULL, rect);
+
+  /* Reset overridden View3D data */
+  v3d->lens = lens_old;
+}
+#endif /* WITH_OPENXR */
+
 /**
  * Set the correct matrices
  */
-void ED_view3d_draw_setup_view(wmWindow *win,
+void ED_view3d_draw_setup_view(const wmWindowManager *wm,
+                               wmWindow *win,
                                Depsgraph *depsgraph,
                                Scene *scene,
                                ARegion *ar,
@@ -327,8 +368,14 @@ void ED_view3d_draw_setup_view(wmWindow *win,
 {
   RegionView3D *rv3d = ar->regiondata;
 
+#ifdef WITH_OPENXR
   /* Setup the view matrix. */
-  if (view3d_stereo3d_active(win, scene, v3d, rv3d)) {
+  if (view3d_xr_mirror_active(wm, v3d, ar)) {
+    view3d_xr_mirror_setup(wm, depsgraph, scene, v3d, ar, rect);
+  }
+  else
+#endif
+      if (view3d_stereo3d_active(win, scene, v3d, rv3d)) {
     view3d_stereo3d_setup(depsgraph, scene, v3d, ar, rect);
   }
   else {
@@ -799,7 +846,7 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, bool a
   UI_Theme_Store(&theme_state);
   UI_SetTheme(SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
-  ED_view3d_draw_setup_view(NULL, depsgraph, scene, ar, v3d, NULL, NULL, NULL);
+  ED_view3d_draw_setup_view(NULL, NULL, depsgraph, scene, ar, v3d, NULL, NULL, NULL);
 
   GPU_clear(GPU_DEPTH_BIT);
 
@@ -1477,7 +1524,7 @@ void view3d_draw_region_info(const bContext *C, ARegion *ar)
   wmWindowManager *wm = CTX_wm_manager(C);
 
 #ifdef WITH_INPUT_NDOF
-  if ((U.ndof_flag & NDOF_SHOW_GUIDE) && ((rv3d->viewlock & RV3D_LOCKED) == 0) &&
+  if ((U.ndof_flag & NDOF_SHOW_GUIDE) && ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) &&
       (rv3d->persp != RV3D_CAMOB)) {
     /* TODO: draw something else (but not this) during fly mode */
     draw_rotation_guide(rv3d);
@@ -1548,7 +1595,8 @@ void view3d_draw_region_info(const bContext *C, ARegion *ar)
 
 static void view3d_draw_view(const bContext *C, ARegion *ar)
 {
-  ED_view3d_draw_setup_view(CTX_wm_window(C),
+  ED_view3d_draw_setup_view(CTX_wm_manager(C),
+                            CTX_wm_window(C),
                             CTX_data_expect_evaluated_depsgraph(C),
                             CTX_data_scene(C),
                             ar,
@@ -2294,7 +2342,7 @@ float view3d_depth_near(ViewDepths *d)
 void ED_view3d_draw_depth_gpencil(Depsgraph *depsgraph, Scene *scene, ARegion *ar, View3D *v3d)
 {
   /* Setup view matrix. */
-  ED_view3d_draw_setup_view(NULL, depsgraph, scene, ar, v3d, NULL, NULL, NULL);
+  ED_view3d_draw_setup_view(NULL, NULL, depsgraph, scene, ar, v3d, NULL, NULL, NULL);
 
   GPU_clear(GPU_DEPTH_BIT);
 
