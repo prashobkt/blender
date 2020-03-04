@@ -494,7 +494,8 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
 
   GPUUniformBuffer *ubo_mat;
   GPUTexture *tex_stroke, *tex_fill;
-  gpencil_material_resources_get(iter->matpool, gps->mat_nr, &tex_stroke, &tex_fill, &ubo_mat);
+  gpencil_material_resources_get(
+      iter->matpool, iter->mat_ofs + gps->mat_nr, &tex_stroke, &tex_fill, &ubo_mat);
 
   bool resource_changed = (iter->ubo_mat != ubo_mat) ||
                           (tex_fill && (iter->tex_fill != tex_fill)) ||
