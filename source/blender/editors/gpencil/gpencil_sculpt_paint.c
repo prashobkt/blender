@@ -99,7 +99,7 @@ typedef struct tGP_BrushEditData {
   /* Brush Settings */
   GP_Sculpt_Settings *settings;
   Brush *brush;
-  Brush *brush_old;
+  Brush *brush_prev;
 
   eGP_Sculpt_Flag flag;
   eGP_Sculpt_SelectMaskFlag mask;
@@ -1878,16 +1878,16 @@ static void gpsculpt_brush_apply_event(bContext *C, wmOperator *op, const wmEven
   RNA_float_set(&itemptr, "pressure", pressure);
 
   if (event->shift) {
-    gso->brush_old = gso->brush;
+    gso->brush_prev = gso->brush;
 
     gso->brush = gpsculpt_get_smooth_brush(gso);
     if (gso->brush == NULL) {
-      gso->brush = gso->brush_old;
+      gso->brush = gso->brush_prev;
     }
   }
   else {
-    if (gso->brush_old != NULL) {
-      gso->brush = gso->brush_old;
+    if (gso->brush_prev != NULL) {
+      gso->brush = gso->brush_prev;
     }
   }
 

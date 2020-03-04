@@ -1670,7 +1670,7 @@ static Brush *gp_get_default_eraser(Main *bmain, ToolSettings *ts)
 {
   Brush *brush_dft = NULL;
   Paint *paint = &ts->gp_paint->paint;
-  Brush *brush_old = paint->brush;
+  Brush *brush_prev = paint->brush;
   for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
     if (brush->gpencil_settings == NULL) {
       continue;
@@ -1701,7 +1701,7 @@ static Brush *gp_get_default_eraser(Main *bmain, ToolSettings *ts)
     brush_dft->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_SOFT;
 
     /* reset current brush */
-    BKE_paint_brush_set(paint, brush_old);
+    BKE_paint_brush_set(paint, brush_prev);
 
     return brush_dft;
   }
@@ -3146,7 +3146,7 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
     return;
   }
 
-  int idx_old = gpd->runtime.sbuffer_used;
+  int idx_prev = gpd->runtime.sbuffer_used;
 
   /* Add space for new arc points. */
   gpd->runtime.sbuffer_used += segments - 1;
@@ -3157,8 +3157,8 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
 
   tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
   tGPspoint *pt = NULL;
-  tGPspoint *pt_before = &points[idx_old - 1]; /* current - 2 */
-  tGPspoint *pt_prev = &points[idx_old - 2];   /* previous */
+  tGPspoint *pt_before = &points[idx_prev - 1]; /* current - 2 */
+  tGPspoint *pt_prev = &points[idx_prev - 2];   /* previous */
 
   /* Create two vectors, previous and half way of the actual to get the vertex of the triangle
    * for arc curve.
@@ -3202,7 +3202,7 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
   corner[1] = midpoint[1] - (cp1[1] - midpoint[1]);
 
   for (int i = 0; i < segments; i++) {
-    pt = &points[idx_old + i - 1];
+    pt = &points[idx_prev + i - 1];
     pt->x = corner[0] + (end[0] - corner[0]) * sinf(a) + (start[0] - corner[0]) * cosf(a);
     pt->y = corner[1] + (end[1] - corner[1]) * sinf(a) + (start[1] - corner[1]) * cosf(a);
 
@@ -3225,7 +3225,7 @@ static void gpencil_add_guide_points(const tGPsdata *p,
     return;
   }
 
-  int idx_old = gpd->runtime.sbuffer_used;
+  int idx_prev = gpd->runtime.sbuffer_used;
 
   /* Add space for new points. */
   gpd->runtime.sbuffer_used += segments - 1;
@@ -3236,7 +3236,7 @@ static void gpencil_add_guide_points(const tGPsdata *p,
 
   tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
   tGPspoint *pt = NULL;
-  tGPspoint *pt_before = &points[idx_old - 1];
+  tGPspoint *pt_before = &points[idx_prev - 1];
 
   /* Use arc sampling for circular guide */
   if (guide->type == GP_GUIDE_CIRCULAR) {
@@ -3251,7 +3251,7 @@ static void gpencil_add_guide_points(const tGPsdata *p,
     float a = step;
 
     for (int i = 0; i < segments; i++) {
-      pt = &points[idx_old + i - 1];
+      pt = &points[idx_prev + i - 1];
 
       gp_rotate_v2_v2v2fl(&pt->x, start, p->guide.origin, -a);
       gpencil_snap_to_guide(p, guide, &pt->x);
@@ -3267,7 +3267,7 @@ static void gpencil_add_guide_points(const tGPsdata *p,
     float a = step;
 
     for (int i = 0; i < segments; i++) {
-      pt = &points[idx_old + i - 1];
+      pt = &points[idx_prev + i - 1];
 
       interp_v2_v2v2(&pt->x, start, end, a);
       gpencil_snap_to_guide(p, guide, &pt->x);

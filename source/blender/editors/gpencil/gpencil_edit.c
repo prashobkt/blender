@@ -4183,7 +4183,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  Base *base_old = CTX_data_active_base(C);
+  Base *base_prev = CTX_data_active_base(C);
   bGPdata *gpd_src = ED_gpencil_data_get_active(C);
   Object *ob = CTX_data_active_object(C);
 
@@ -4213,7 +4213,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
   /* Take into account user preferences for duplicating actions. */
   short dupflag = (U.dupflag & USER_DUP_ACT);
 
-  base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_old, dupflag);
+  base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
   ob_dst = base_new->object;
   ob_dst->mode = OB_MODE_OBJECT;
   /* create new grease pencil datablock */
