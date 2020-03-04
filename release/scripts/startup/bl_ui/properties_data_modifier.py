@@ -2086,11 +2086,11 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         self.gpencil_masking(layout, ob, md, True)
 
     def GP_OFFSET(self, layout, ob, md):
-        col = layout.column()
+        split = layout.split()
 
-        col.prop(md, "location")
-        col.prop(md, "scale")
-        col.prop(md, "rotation")
+        split.column().prop(md, "location")
+        split.column().prop(md, "rotation")
+        split.column().prop(md, "scale")
 
         self.gpencil_masking(layout, ob, md, True)
 
