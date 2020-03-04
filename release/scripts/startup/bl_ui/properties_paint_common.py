@@ -643,7 +643,7 @@ def brush_settings(layout, context, brush, popover=False):
             layout.prop(brush, "cloth_mass")
             layout.prop(brush, "cloth_damping")
             layout.separator()
-        
+
         if brush.sculpt_tool == 'SCRAPE':
             row = layout.row()
             row.prop(brush, "area_radius_factor", slider=True)
