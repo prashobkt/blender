@@ -985,7 +985,7 @@ static void rna_def_modifier_gpenciltint(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "factor");
-  RNA_def_property_ui_range(prop, 0, 2.0, 0.1, 2);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 2);
   RNA_def_property_ui_text(prop, "Factor", "Factor for mixing color");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
@@ -1215,7 +1215,7 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "factor");
-  RNA_def_property_ui_range(prop, 0, 2.0, 0.1, 2);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 2);
   RNA_def_property_ui_text(prop, "Opacity Factor", "Factor of Opacity");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 

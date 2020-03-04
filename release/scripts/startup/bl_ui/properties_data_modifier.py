@@ -1950,16 +1950,9 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         col.prop(md, "factor")
-        col.prop(md, "modify_color", text="Change")
+        col.prop(md, "modify_color")
 
-        col = layout.column()
-        col.separator()
-        col.label(text="Vertex Group:")
-        row = col.row(align=True)
-        row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
-        row.prop(md, "invert_vertex", text="", icon='ARROW_LEFTRIGHT')
-
-        self.gpencil_masking(layout, ob, md, False)
+        self.gpencil_masking(layout, ob, md, True)
 
     def GP_ARRAY(self, layout, ob, md):
         col = layout.column()
