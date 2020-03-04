@@ -449,7 +449,8 @@ static void gpencil_layer_cache_populate(bGPDlayer *gpl,
   }
   else {
     iter->do_sbuffer_call = !pd->do_fast_drawing && (gpd == pd->sbuffer_gpd) &&
-                            (gpl == pd->sbuffer_layer);
+                            (gpl == pd->sbuffer_layer) &&
+                            (gpf == NULL || gpf->runtime.onion_id == 0.0f);
   }
 
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add(pd, iter->ob, gpl, gpf, iter->tgp_ob);
