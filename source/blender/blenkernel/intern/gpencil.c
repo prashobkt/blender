@@ -1090,9 +1090,9 @@ void BKE_gpencil_layer_mask_sort(bGPdata *gpd, bGPDlayer *gpl)
 {
   /* Update sort index. */
   LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
-    bGPDlayer *gpl = BKE_gpencil_layer_named_get(gpd, mask->name);
-    if (gpl != NULL) {
-      mask->sort_index = BLI_findindex(&gpd->layers, gpl);
+    bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, mask->name);
+    if (gpl_mask != NULL) {
+      mask->sort_index = BLI_findindex(&gpd->layers, gpl_mask);
     }
     else {
       mask->sort_index = 0;

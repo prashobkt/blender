@@ -3684,7 +3684,7 @@ void GPENCIL_OT_reproject(wmOperatorType *ot)
       ot->srna, "type", reproject_type, GP_REPROJECT_VIEW, "Projection Type", "");
 }
 
-static int gp_recalc_geometry_exec(bContext *C, wmOperator *op)
+static int gp_recalc_geometry_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Object *ob = CTX_data_active_object(C);
   if ((ob == NULL) || (ob->type != OB_GPENCIL)) {

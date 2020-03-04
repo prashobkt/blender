@@ -98,7 +98,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 /* deform stroke */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *depsgraph,
+                         Depsgraph *UNUSED(depsgraph),
                          Object *ob,
                          bGPDlayer *gpl,
                          bGPDframe *UNUSED(gpf),
