@@ -156,10 +156,13 @@ typedef struct ThickGpencilModifierData {
   int pass_index;
   /** Flags. */
   int flag;
-  /** Thickness change. */
+  /** Relative thickness factor. */
+  float thickness_fac;
+  /** Absolute thickness overide. */
   int thickness;
   /** Custom index for passes. */
   int layer_pass;
+  char _pad[4];
   struct CurveMapping *curve_thickness;
 } ThickGpencilModifierData;
 

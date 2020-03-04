@@ -813,7 +813,15 @@ static void rna_def_modifier_gpencilthick(BlenderRNA *brna)
   prop = RNA_def_property(srna, "thickness", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "thickness");
   RNA_def_property_range(prop, -100, 500);
-  RNA_def_property_ui_text(prop, "Thickness", "Factor of thickness change");
+  RNA_def_property_ui_text(prop, "Thickness", "Absolute thickness to apply everywhere");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "thickness_factor", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "thickness_fac");
+  RNA_def_property_range(prop, 0.0, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0, 10.0, 0.1, 3);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Thickness Factor", "Factor to multiply the thickness with");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
@@ -855,12 +863,15 @@ static void rna_def_modifier_gpencilthick(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_THICK_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop, "Custom Curve", "Use a custom curve to define thickness changes");
+  RNA_def_property_ui_text(prop,
+                           "Custom Curve",
+                           "Use a custom curve to define thickness changes"
+                           "along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "normalize_thickness", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_THICK_NORMALIZE);
-  RNA_def_property_ui_text(prop, "Normalize", "Normalize the full stroke to modifier thickness");
+  RNA_def_property_ui_text(prop, "Replace Thickness", "Replace stroke thickness");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);

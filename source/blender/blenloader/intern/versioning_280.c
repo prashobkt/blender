@@ -4681,5 +4681,18 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Grease pencil modifiers changes. */
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "ThickGpencilModifierData", "float", "thickness_fac")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        LISTBASE_FOREACH (ModifierData *, md, &ob->greasepencil_modifiers) {
+          if (md->type == eGpencilModifierType_Thick) {
+            ThickGpencilModifierData *gpmd = (ThickGpencilModifierData *)md;
+            gpmd->thickness_fac = gpmd->thickness;
+          }
+        }
+      }
+    }
   }
 }

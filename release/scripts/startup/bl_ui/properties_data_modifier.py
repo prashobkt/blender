@@ -1858,21 +1858,21 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         self.gpencil_masking(layout, ob, md, False)
 
     def GP_THICK(self, layout, ob, md):
-        split = layout.split()
-
-        col = split.column()
-        row = col.row(align=True)
-        row.prop(md, "thickness", text="Thickness Factor")
+        col = layout.column()
 
         col.prop(md, "normalize_thickness")
 
-        if not md.normalize_thickness:
-            split = layout.split()
-            col = split.column()
-            col.prop(md, "use_custom_curve")
+        if md.normalize_thickness:
+            col.prop(md, "thickness")
+        else:
+            col.prop(md, "thickness_factor")
 
-            if md.use_custom_curve:
-                col.template_curve_mapping(md, "curve")
+        col.separator()
+
+        col.prop(md, "use_custom_curve")
+
+        if md.use_custom_curve:
+            col.template_curve_mapping(md, "curve")
 
         self.gpencil_masking(layout, ob, md, True)
 
