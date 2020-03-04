@@ -1964,9 +1964,6 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         subcol = col.column()
         subcol.enabled = md.use_constant_offset
         subcol.prop(md, "constant_offset", text="")
-        row = subcol.row(align=True)
-        row.prop(md, "use_random_offset", text="", icon='TIME', toggle=True)
-        row.prop(md, "random_offset_factor", text="")
 
         col.prop(md, "use_object_offset")
         subcol = col.column()
@@ -1978,24 +1975,19 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         subcol = col.column()
         subcol.enabled = md.use_relative_offset
         subcol.prop(md, "relative_offset", text="")
-        row = subcol.row(align=True)
-        row.prop(md, "use_random_relative", text="", icon='TIME', toggle=True)
-        row.prop(md, "random_relative_factor", text="")
 
         split = layout.split()
         col = split.column()
-        col.label(text="Rotation:")
-        col.prop(md, "rotation", text="")
-        row = col.row(align=True)
-        row.prop(md, "use_random_rot", text="", icon='TIME', toggle=True)
-        row.prop(md, "rot_factor", text="")
+        col.label(text="Random Offset:")
+        col.prop(md, "random_offset", text="")
 
         col = split.column()
-        col.label(text="Scale:")
-        col.prop(md, "scale", text="")
-        row = col.row(align=True)
-        row.prop(md, "use_random_scale", text="", icon='TIME', toggle=True)
-        row.prop(md, "scale_factor", text="")
+        col.label(text="Random Rotation:")
+        col.prop(md, "random_rotation", text="")
+
+        col = split.column()
+        col.label(text="Random Scale:")
+        col.prop(md, "random_scale", text="")
 
         col = layout.column()
         col.separator()

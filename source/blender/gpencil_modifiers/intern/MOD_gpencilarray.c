@@ -68,11 +68,7 @@ static void initData(GpencilModifierData *md)
   gpmd->shift[1] = 0.0f;
   gpmd->shift[2] = 0.0f;
   zero_v3(gpmd->offset);
-  copy_v3_fl(gpmd->scale, 1.0f);
-  gpmd->rnd_offset = 0.5f;
-  gpmd->rnd_relative = 0.5f;
-  gpmd->rnd_rot = 0.5f;
-  gpmd->rnd_size = 0.5f;
+  zero_v3(gpmd->rnd_scale);
   gpmd->object = NULL;
   gpmd->flag |= GP_ARRAY_USE_RELATIVE;
   /* fill random values */
@@ -95,8 +91,8 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
                                                        float r_offset[4][4])
 {
   float offset[3], rot[3], scale[3];
-  int ri = mmd->rnd[0];
-  float factor;
+  ARRAY_SET_ITEMS(scale, 1.0f, 1.0f, 1.0f);
+  zero_v3(rot);
 
   if (mmd->flag & GP_ARRAY_USE_OFFSET) {
     offset[0] = mmd->offset[0] * elem_idx;
@@ -107,35 +103,8 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
     zero_v3(offset);
   }
 
-  /* rotation */
-  if (mmd->flag & GP_ARRAY_RANDOM_ROT) {
-    factor = mmd->rnd_rot * mmd->rnd[ri];
-    mul_v3_v3fl(rot, mmd->rot, factor);
-    add_v3_v3(rot, mmd->rot);
-  }
-  else {
-    copy_v3_v3(rot, mmd->rot);
-  }
-
-  /* scale */
-  if (mmd->flag & GP_ARRAY_RANDOM_SIZE) {
-    factor = mmd->rnd_size * mmd->rnd[ri];
-    mul_v3_v3fl(scale, mmd->scale, factor);
-    add_v3_v3(scale, mmd->scale);
-  }
-  else {
-    copy_v3_v3(scale, mmd->scale);
-  }
-
-  /* advance random index */
-  mmd->rnd[0]++;
-  if (mmd->rnd[0] > 19) {
-    mmd->rnd[0] = 1;
-  }
-
-  /* calculate matrix */
+  /* Calculate matrix */
   loc_eul_size_to_mat4(r_mat, offset, rot, scale);
-
   copy_m4_m4(r_offset, r_mat);
 
   /* offset object */
@@ -166,9 +135,7 @@ static void generate_geometry(GpencilModifierData *md,
   /* Load the strokes to be duplicated. */
   bGPdata *gpd = (bGPdata *)ob->data;
   bool found = false;
-  int ri = 1;
-
-  float max_offset[3], max_shift[3];
+  int ri = mmd->rnd[0];
 
   /* Get bounbox for relative offset. */
   float size[3] = {0.0f, 0.0f, 0.0f};
@@ -179,13 +146,10 @@ static void generate_geometry(GpencilModifierData *md,
       BKE_boundbox_init_from_minmax(bb, min, max);
     }
     BKE_boundbox_calc_size_aabb(bb, size);
-    /* Calc relative random maximum size. */
-    mul_v3_v3v3(max_shift, size, mmd->shift);
-
     mul_v3_fl(size, 2.0f);
+    /* Need a minimum size (for flat drawings). */
+    CLAMP3_MIN(size, 0.01f);
   }
-  /* Save constant random maximum size. */
-  mul_v3_v3fl(max_offset, mmd->offset, 1.0f);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
@@ -242,34 +206,32 @@ static void generate_geometry(GpencilModifierData *md,
         copy_m4_m4(current_offset, mat);
       }
 
-      /* Apply constant random offset. */
-      if ((mmd->flag & GP_ARRAY_USE_OFFSET) && (mmd->flag & GP_ARRAY_RANDOM_OFFSET)) {
-        float off[3];
-        mul_v3_v3fl(off, max_offset, clamp_f(mmd->rnd_offset * mmd->rnd[ri], 0.0f, 1.0f));
-        /* For adding more randomness, check direction. */
-        if (mmd->rnd[20 - ri] < 0.5f) {
-          mul_v3_fl(off, -1.0f);
-        }
-        add_v3_v3(current_offset[3], off);
-      }
-
       /* Apply relative offset. */
       if (mmd->flag & GP_ARRAY_USE_RELATIVE) {
         float relative[3];
         mul_v3_v3v3(relative, mmd->shift, size);
         madd_v3_v3fl(current_offset[3], relative, x);
-
-        /* Random relative offset. */
-        if (mmd->flag & GP_ARRAY_RANDOM_RELATIVE) {
-          float off[3];
-          mul_v3_v3fl(off, max_shift, clamp_f(mmd->rnd_relative * mmd->rnd[ri], 0.0f, 1.0f));
-          /* For adding more randomness, check direction. */
-          if (mmd->rnd[20 - ri] < 0.5f) {
-            mul_v3_fl(off, -1.0f);
-          }
-          add_v3_v3(current_offset[3], off);
-        }
       }
+
+      /* Calculate Random matrix. */
+      float mat_rnd[4][4];
+      float scale[3] = {1.0f, 1.0f, 1.0f};
+      mul_v3_fl(mmd->rnd_offset, mmd->rnd[ri]);
+      mul_v3_fl(mmd->rnd_rot, mmd->rnd[ri]);
+      madd_v3_v3fl(scale, mmd->rnd_scale, mmd->rnd[ri]);
+
+      /* For adding more randomness, check direction. */
+      if (mmd->rnd[20 - ri] < 0.5f) {
+        mul_v3_fl(mmd->rnd_offset, -1.0f);
+      }
+      if (mmd->rnd[20 - ri] > 0.5f) {
+        mul_v3_fl(mmd->rnd_rot, -1.0f);
+      }
+      if (mmd->rnd[20 - ri] > 0.7f) {
+        mul_v3_fl(mmd->rnd_rot, -1.0f);
+      }
+
+      loc_eul_size_to_mat4(mat_rnd, mmd->rnd_offset, mmd->rnd_rot, scale);
 
       /* Duplicate original strokes to create this instance. */
       LISTBASE_FOREACH_BACKWARD (tmpStrokes *, iter, &stroke_cache) {
@@ -279,6 +241,9 @@ static void generate_geometry(GpencilModifierData *md,
         /* Move points */
         for (int i = 0; i < iter->gps->totpoints; i++) {
           bGPDspoint *pt = &gps_dst->points[i];
+          /* Apply randomness matrix. */
+          mul_m4_v3(mat_rnd, &pt->x);
+
           /* Apply object local transform (Rot/Scale). */
           if ((mmd->flag & GP_ARRAY_USE_OB_OFFSET) && (mmd->object)) {
             mul_m4_v3(mat, &pt->x);
@@ -299,10 +264,11 @@ static void generate_geometry(GpencilModifierData *md,
       }
 
       /* Advance random index. */
-      ri++;
-      if (ri > 19) {
-        ri = 1;
+      mmd->rnd[0]++;
+      if (mmd->rnd[0] > 19) {
+        mmd->rnd[0] = 1;
       }
+      ri = mmd->rnd[0];
     }
 
     /* Free temp data. */

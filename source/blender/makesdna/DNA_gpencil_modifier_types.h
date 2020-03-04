@@ -311,18 +311,13 @@ typedef struct ArrayGpencilModifierData {
   float offset[3];
   /** Shift increment. */
   float shift[3];
-  /** Random size factor. */
-  float rnd_size;
-  /** Random size factor. */
-  float rnd_rot;
-  /** Random constant offset factor. */
-  float rnd_offset;
-  /** Random relative offset factor. */
-  float rnd_relative;
-  /** Rotation changes. */
-  float rot[3];
-  /** Scale changes. */
-  float scale[3];
+  /** Random Offset. */
+  float rnd_offset[3];
+  /** Random Rotation. */
+  float rnd_rot[3];
+  /** Random Scales. */
+  float rnd_scale[3];
+  char _pad[4];
   /** (first element is the index) random values. */
   float rnd[20];
   int seed;
@@ -340,8 +335,6 @@ typedef struct ArrayGpencilModifierData {
 } ArrayGpencilModifierData;
 
 typedef enum eArrayGpencil_Flag {
-  GP_ARRAY_RANDOM_SIZE = (1 << 0),
-  GP_ARRAY_RANDOM_ROT = (1 << 1),
   GP_ARRAY_INVERT_LAYER = (1 << 2),
   GP_ARRAY_INVERT_PASS = (1 << 3),
   GP_ARRAY_INVERT_LAYERPASS = (1 << 5),
@@ -349,8 +342,6 @@ typedef enum eArrayGpencil_Flag {
   GP_ARRAY_USE_OFFSET = (1 << 7),
   GP_ARRAY_USE_RELATIVE = (1 << 8),
   GP_ARRAY_USE_OB_OFFSET = (1 << 9),
-  GP_ARRAY_RANDOM_OFFSET = (1 << 10),
-  GP_ARRAY_RANDOM_RELATIVE = (1 << 11),
 } eArrayGpencil_Flag;
 
 typedef struct BuildGpencilModifierData {
