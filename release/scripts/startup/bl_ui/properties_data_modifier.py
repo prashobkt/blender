@@ -1990,9 +1990,9 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "random_scale", text="")
 
         col = layout.column()
+        col.prop(md, "seed")
         col.separator()
         col.prop(md, "replace_material", text="Material Override")
-        col.prop(md, "seed")
 
         self.gpencil_masking(layout, ob, md, False)
 
