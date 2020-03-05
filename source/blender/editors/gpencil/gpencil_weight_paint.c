@@ -260,7 +260,7 @@ static bool brush_draw_apply(tGP_BrushWeightpaintData *gso,
   /* Get current weight and blend. */
   MDeformWeight *dw = defvert_verify_index(dvert, gso->vrgroup);
   if (dw) {
-    dw->weight = interpf(dw->weight, gso->brush->weight, inf);
+    dw->weight = interpf(gso->brush->weight, dw->weight, inf);
     CLAMP(dw->weight, 0.0f, 1.0f);
   }
   return true;
