@@ -357,7 +357,7 @@ elseif(WIN32)
 
 endif()
 
-if(WITH_OPENXR)
+if(WITH_XR_OPENXR)
   list(APPEND SRC
     intern/GHOST_Xr.cpp
     intern/GHOST_XrContext.cpp
@@ -373,10 +373,10 @@ if(WITH_OPENXR)
     intern/GHOST_XrSession.h
   )
   list(APPEND INC_SYS
-    ${OPENXR_SDK_INCLUDE_DIR}
+    ${XR_OPENXR_SDK_INCLUDE_DIR}
   )
   list(APPEND LIB
-    ${OPENXR_SDK_LIBRARIES}
+    ${XR_OPENXR_SDK_LIBRARIES}
   )
 
   set(XR_PLATFORM_DEFINES -DXR_USE_GRAPHICS_API_OPENGL)
@@ -397,7 +397,7 @@ if(WITH_OPENXR)
     )
   endif()
 
-  add_definitions(-DWITH_OPENXR ${XR_PLATFORM_DEFINES})
+  add_definitions(-DWITH_XR_OPENXR ${XR_PLATFORM_DEFINES})
 
   unset(XR_PLATFORM_DEFINES)
 endif()

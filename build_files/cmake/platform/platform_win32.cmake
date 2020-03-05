@@ -671,8 +671,8 @@ if(WITH_USD)
     set(USD_DEBUG_LIB ${LIBDIR}/usd/lib/libusd_m_d.lib)
     set(USD_LIBRARY_DIR ${LIBDIR}/usd/lib/usd)
     set(USD_LIBRARIES
-        debug ${USD_DEBUG_LIB}
-        optimized ${USD_RELEASE_LIB}
+      debug ${USD_DEBUG_LIB}
+      optimized ${USD_RELEASE_LIB}
     )
   endif()
 endif()
@@ -714,14 +714,14 @@ if(WINDOWS_PYTHON_DEBUG)
   endif()
 endif()
 
-if(WITH_OPENXR)
-  if(EXISTS ${LIBDIR}/openxr_sdk)
-    set(OPENXR_SDK ${LIBDIR}/openxr_sdk)
-    set(OPENXR_SDK_LIBPATH ${OPENXR_SDK}/lib)
-    set(OPENXR_SDK_INCLUDE_DIR ${OPENXR_SDK}/include)
-    set(OPENXR_SDK_LIBRARIES optimized ${OPENXR_SDK_LIBPATH}/openxr_loader.lib debug ${OPENXR_SDK_LIBPATH}/openxr_loader_d.lib)
+if(WITH_XR_OPENXR)
+  if(EXISTS ${LIBDIR}/xr_openxr_sdk)
+    set(XR_OPENXR_SDK ${LIBDIR}/xr_openxr_sdk)
+    set(XR_OPENXR_SDK_LIBPATH ${LIBDIR}/xr_openxr_sdk/lib)
+    set(XR_OPENXR_SDK_INCLUDE_DIR ${XR_OPENXR_SDK}/include)
+    set(XR_OPENXR_SDK_LIBRARIES optimized ${XR_OPENXR_SDK_LIBPATH}/openxr_loader.lib debug ${XR_OPENXR_SDK_LIBPATH}/openxr_loader_d.lib)
   else()
-    message(WARNING "OpenXR-SDK was not found, disabling WITH_OPENXR")
-    set(WITH_OPENXR OFF)
+    message(WARNING "OpenXR-SDK was not found, disabling WITH_XR_OPENXR")
+    set(WITH_XR_OPENXR OFF)
   endif()
 endif()
