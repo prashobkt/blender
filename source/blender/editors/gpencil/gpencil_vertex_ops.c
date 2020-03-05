@@ -684,7 +684,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
 
-  short *totcol = BKE_object_material_num(ob);
+  short *totcol = BKE_object_material_len_p(ob);
   if (totcol == 0) {
     return OPERATOR_CANCELLED;
   }

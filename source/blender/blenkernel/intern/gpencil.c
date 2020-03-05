@@ -2494,7 +2494,7 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
   MaterialGPencilStyle *gp_style_primary = NULL;
   MaterialGPencilStyle *gp_style_secondary = NULL;
 
-  short *totcol = BKE_object_material_num(ob);
+  short *totcol = BKE_object_material_len_p(ob);
   if (totcol == 0) {
     return changed;
   }

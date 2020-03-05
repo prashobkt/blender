@@ -592,7 +592,7 @@ static int gp_stroke_merge_material_exec(bContext *C, wmOperator *op)
   /* Review materials. */
   GHash *mat_table = BLI_ghash_int_new(__func__);
 
-  short *totcol = BKE_object_material_num(ob);
+  short *totcol = BKE_object_material_len_p(ob);
   if (totcol == 0) {
     return OPERATOR_CANCELLED;
   }
