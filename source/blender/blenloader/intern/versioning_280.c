@@ -661,6 +661,27 @@ static void do_versions_area_ensure_tool_region(Main *bmain,
         }
       }
     }
+
+    /* Grease pencil noise modifier curve. */
+    if (!DNA_struct_elem_find(fd->filesdna, "NoiseGpencilModifierData", "float", "factor_uvs")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        LISTBASE_FOREACH (ModifierData *, md, &ob->greasepencil_modifiers) {
+          if (md->type == eGpencilModifierType_Noise) {
+            NoiseGpencilModifierData *gpmd = (NoiseGpencilModifierData *)md;
+            gpmd->factor_thickness = gpmd->factor;
+            gpmd->factor_strength = gpmd->factor;
+            gpmd->factor_uvs = gpmd->factor;
+
+            if (gpmd->curve_intensity) {
+              gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+              if (gpmd->curve_intensity) {
+                BKE_curvemapping_initialize(gpmd->curve_intensity);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1059,6 +1080,13 @@ static void do_version_curvemapping_walker(Main *bmain, void (*callback)(CurveMa
 
         if (gpmd->curfalloff) {
           callback(gpmd->curfalloff);
+        }
+      }
+      else if (md->type == eGpencilModifierType_Noise) {
+        NoiseGpencilModifierData *gpmd = (NoiseGpencilModifierData *)md;
+
+        if (gpmd->curve_intensity) {
+          callback(gpmd->curve_intensity);
         }
       }
     }

@@ -1791,7 +1791,10 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         row = col.row(align=True)
-        row.prop(md, "factor")
+        row.prop(md, "factor", text="Position" )
+        row.prop(md, "factor_strength", text="Strength")
+        row.prop(md, "factor_thickness", text="Thickness")
+        row.prop(md, "factor_uvs", text="UV")
         row.prop(md, "random", text="", icon='TIME', toggle=True)
         row = col.row()
         row.enabled = md.random
@@ -1799,16 +1802,12 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row = col.row()
         row.enabled = md.random
         row.prop(md, "seed")
-        col.prop(md, "full_stroke")
-        col.prop(md, "move_extreme")
 
-        row = layout.row(align=True)
-        row.label(text="Affect:")
-        row = layout.row(align=True)
-        row.prop(md, "use_edit_position", text="Position", toggle=True)
-        row.prop(md, "use_edit_strength", text="Strength", toggle=True)
-        row.prop(md, "use_edit_thickness", text="Thickness", toggle=True)
-        row.prop(md, "use_edit_uv", text="UV", toggle=True)
+        col.prop(md, "full_stroke")
+        col.prop(md, "use_custom_curve")
+
+        if md.use_custom_curve:
+            col.template_curve_mapping(md, "curve")
 
         self.gpencil_masking(layout, ob, md, True)
 

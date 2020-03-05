@@ -90,12 +90,17 @@ typedef struct NoiseGpencilModifierData {
   int flag;
   /** Factor of noise. */
   float factor;
+  float factor_strength;
+  float factor_thickness;
+  float factor_uvs;
   /** How many frames before recalculate randoms. */
   int step;
   /** Custom index for passes. */
   int layer_pass;
   /** Random seed */
   int seed;
+  char _pad[4];
+  struct CurveMapping *curve_intensity;
 } NoiseGpencilModifierData;
 
 typedef enum eNoiseGpencil_Flag {
@@ -104,7 +109,7 @@ typedef enum eNoiseGpencil_Flag {
   GP_NOISE_MOD_STRENGTH = (1 << 2),
   GP_NOISE_MOD_THICKNESS = (1 << 3),
   GP_NOISE_FULL_STROKE = (1 << 4),
-  GP_NOISE_MOVE_EXTREME = (1 << 5),
+  GP_NOISE_CUSTOM_CURVE = (1 << 5),
   GP_NOISE_INVERT_LAYER = (1 << 6),
   GP_NOISE_INVERT_PASS = (1 << 7),
   GP_NOISE_INVERT_VGROUP = (1 << 8),
