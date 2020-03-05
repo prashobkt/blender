@@ -1006,7 +1006,7 @@ extern void GHOST_BeginIME(GHOST_WindowHandle windowhandle,
  */
 extern void GHOST_EndIME(GHOST_WindowHandle windowhandle);
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 
 /* XR-context */
 

@@ -34,6 +34,10 @@
 
 #include "RNA_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* not very important, but the stack solver likes to know a maximum */
 #define MAX_SOCKET 512
 
@@ -395,10 +399,7 @@ struct bNodeTree **BKE_ntree_ptr_from_id(struct ID *id);
 struct bNodeTree *ntreeFromID(struct ID *id);
 struct ID *BKE_node_tree_find_owner_ID(struct Main *bmain, struct bNodeTree *ntree);
 
-void ntreeMakeLocal(struct Main *bmain,
-                    struct bNodeTree *ntree,
-                    bool id_in_mainlist,
-                    const bool lib_local);
+void ntreeMakeLocal(struct Main *bmain, struct bNodeTree *ntree, const int flags);
 void ntreeFreeLocalNode(struct bNodeTree *ntree, struct bNode *node);
 void ntreeFreeLocalTree(struct bNodeTree *ntree);
 struct bNode *ntreeFindType(const struct bNodeTree *ntree, int type);
@@ -1297,5 +1298,9 @@ void BKE_nodetree_shading_params_eval(struct Depsgraph *depsgraph,
 
 extern struct bNodeType NodeTypeUndefined;
 extern struct bNodeSocketType NodeSocketTypeUndefined;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __BKE_NODE_H__ */
