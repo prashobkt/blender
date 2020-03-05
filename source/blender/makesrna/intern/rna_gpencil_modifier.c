@@ -871,7 +871,7 @@ static void rna_def_modifier_gpencilthick(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "normalize_thickness", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_THICK_NORMALIZE);
-  RNA_def_property_ui_text(prop, "Replace Thickness", "Replace stroke thickness");
+  RNA_def_property_ui_text(prop, "Uniform Thickness", "Replace the stroke thickness");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
