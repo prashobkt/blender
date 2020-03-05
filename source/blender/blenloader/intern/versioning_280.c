@@ -4631,6 +4631,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
                 ThickGpencilModifierData *mmd = (ThickGpencilModifierData *)md;
                 mmd->thickness_fac = mmd->thickness;
               }
+              break;
             }
             case eGpencilModifierType_Subdiv: {
               const short simple = (1 << 0);
