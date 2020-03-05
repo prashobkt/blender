@@ -172,10 +172,11 @@ static void deformStroke(GpencilModifierData *md,
 
     if (mmd->factor > 0.0f) {
       /* Offset point randomly around the normal vector. */
-      bGPDspoint *pt0 = (gps->totpoints > 1 && i < gps->totpoints - 1) ? &gps->points[i] :
-                                                                         &gps->points[i - 1];
-      bGPDspoint *pt1 = (gps->totpoints > 1 && i < gps->totpoints - 1) ? &gps->points[i + 1] :
-                                                                         &gps->points[i];
+      const bool is_last_point = (i == gps->totpoints - 1);
+      bGPDspoint *pt0 = (gps->totpoints > 1 && is_last_point) ? &gps->points[i - 1] :
+                                                                &gps->points[i];
+      bGPDspoint *pt1 = (gps->totpoints > 1 && !is_last_point) ? &gps->points[i + 1] :
+                                                                 &gps->points[i];
       /* Initial vector (p1 -> p0). */
       sub_v3_v3v3(vec1, &pt0->x, &pt1->x);
       /* if vec2 is zero, set to something */
