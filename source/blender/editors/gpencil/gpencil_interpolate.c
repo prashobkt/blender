@@ -991,7 +991,6 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
 
       /* create new strokes data with interpolated points reading original stroke */
       for (gps_from = prevFrame->strokes.first; gps_from; gps_from = gps_from->next) {
-        bGPDstroke *new_stroke = NULL;
 
         /* only selected */
         if ((flag & GP_TOOLFLAG_INTERPOLATE_ONLY_SELECTED) &&
@@ -1021,7 +1020,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
         }
 
         /* create new stroke */
-        new_stroke = BKE_gpencil_stroke_duplicate(gps_from, true);
+        bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps_from, true);
 
         /* if destination stroke is smaller, resize new_stroke to size of gps_to stroke */
         if (gps_from->totpoints > gps_to->totpoints) {
@@ -1038,6 +1037,8 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
             new_stroke->dvert = MEM_recallocN(new_stroke->dvert,
                                               sizeof(*new_stroke->dvert) * gps_to->totpoints);
           }
+
+          new_stroke->totpoints = gps_to->totpoints;
         }
 
         /* update points position */
