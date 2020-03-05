@@ -190,6 +190,8 @@ static void generate_geometry(GpencilModifierData *md,
     float current_offset[4][4];
     unit_m4(current_offset);
 
+    float rand_offset = BLI_hash_int_01(seed);
+
     for (int x = 0; x < mmd->count; x++) {
       /* original strokes are at index = 0 */
       if (x == 0) {
@@ -216,14 +218,26 @@ static void generate_geometry(GpencilModifierData *md,
         madd_v3_v3fl(current_offset[3], relative, x);
       }
 
+      float rand[3][3];
+      for (int j = 0; j < 3; j++) {
+        uint primes[3] = {2, 3, 7};
+        double offset[3] = {0.0, 0.0, 0.0};
+        double r[3];
+        /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
+        BLI_halton_3d(primes, offset, x, r);
+
+        for (int i = 0; i < 3; i++) {
+          rand[j][i] = fmodf(r[i] * 2.0 - 1.0 + rand_offset, 1.0f);
+          rand[j][i] = fmodf(sin(rand[j][i] * 12.9898 + j * 78.233) * 43758.5453, 1.0f);
+        }
+      }
       /* Calculate Random matrix. */
       float mat_rnd[4][4];
       float loc[3], rot[3];
       float scale[3] = {1.0f, 1.0f, 1.0f};
-      float factor = BLI_hash_int_01((uint)seed + x) * 2.0f - 1.0f;
-      mul_v3_v3fl(loc, mmd->rnd_offset, factor);
-      mul_v3_v3fl(rot, mmd->rnd_rot, factor);
-      madd_v3_v3fl(scale, mmd->rnd_scale, factor);
+      mul_v3_v3v3(loc, mmd->rnd_offset, rand[0]);
+      mul_v3_v3v3(rot, mmd->rnd_rot, rand[1]);
+      madd_v3_v3v3(scale, mmd->rnd_scale, rand[2]);
 
       loc_eul_size_to_mat4(mat_rnd, loc, rot, scale);
 
