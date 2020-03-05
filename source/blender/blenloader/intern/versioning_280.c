@@ -4608,9 +4608,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             }
             case eGpencilModifierType_Noise: {
               NoiseGpencilModifierData *gpmd = (NoiseGpencilModifierData *)md;
-              gpmd->factor_thickness = gpmd->factor;
-              gpmd->factor_strength = gpmd->factor;
-              gpmd->factor_uvs = gpmd->factor;
+              gpmd->factor_thickness = gpmd->factor / 25.0f;
+              gpmd->factor_strength = gpmd->factor / 25.0f;
+              gpmd->factor_uvs = gpmd->factor / 25.0f;
 
               if (gpmd->curve_intensity) {
                 gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
