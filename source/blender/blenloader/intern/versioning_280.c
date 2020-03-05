@@ -4344,210 +4344,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
-
-    /* Init new Grease Pencil Paint tools. */
-    {
-      for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
-        if (brush->gpencil_settings != NULL) {
-          brush->gpencil_vertex_tool = brush->gpencil_settings->brush_type;
-          brush->gpencil_sculpt_tool = brush->gpencil_settings->brush_type;
-          brush->gpencil_weight_tool = brush->gpencil_settings->brush_type;
-        }
-      }
-
-      BKE_paint_toolslots_init_from_main(bmain);
-    }
-
-    /* Init default Grease Pencil Vertex paint mix factor for Viewport. */
-    {
-      if (!DNA_struct_elem_find(
-              fd->filesdna, "View3DOverlay", "float", "gpencil_vertex_paint_opacity")) {
-        for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-          for (ScrArea *area = screen->areabase.first; area; area = area->next) {
-            for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
-              if (sl->spacetype == SPACE_VIEW3D) {
-                View3D *v3d = (View3D *)sl;
-                v3d->overlay.gpencil_vertex_paint_opacity = 1.0f;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    /* Init default Grease Pencil Vertex paint layer mix factor. */
-    {
-      if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "float", "vertex_paint_opacity")) {
-        for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-          LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-            gpl->vertex_paint_opacity = 1.0f;
-          }
-        }
-      }
-    }
-  }
-
-  if (!MAIN_VERSION_ATLEAST(bmain, 283, 0)) {
-
-    /* Update Grease Pencil after drawing engine refactor.
-     * It uses the seed variable of Array modifier to avoid double patching for
-     * files created with a development version. */
-    if (!DNA_struct_elem_find(fd->filesdna, "ArrayGpencilModifierData", "int", "seed")) {
-      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
-        MaterialGPencilStyle *gp_style = mat->gp_style;
-        if (gp_style == NULL) {
-          continue;
-        }
-        /* Fix Grease Pencil Material colors to Linear. */
-        srgb_to_linearrgb_v4(gp_style->stroke_rgba, gp_style->stroke_rgba);
-        srgb_to_linearrgb_v4(gp_style->fill_rgba, gp_style->fill_rgba);
-
-        /* Move old gradient variables to texture. */
-        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT) {
-          gp_style->texture_angle = gp_style->gradient_angle;
-          copy_v2_v2(gp_style->texture_scale, gp_style->gradient_scale);
-          copy_v2_v2(gp_style->texture_offset, gp_style->gradient_shift);
-        }
-        /* Set Checker material as Solid. This fill mode has been removed and replaced
-         * by textures. */
-        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_CHECKER) {
-          gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
-        }
-        /* Update Alpha channel for texture opacity. */
-        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) {
-          gp_style->fill_rgba[3] *= gp_style->texture_opacity;
-        }
-        /* Stroke stencil mask to mix = 1. */
-        if (gp_style->flag & GP_MATERIAL_STROKE_PATTERN) {
-          gp_style->mix_stroke_factor = 1.0f;
-          gp_style->flag &= ~GP_MATERIAL_STROKE_PATTERN;
-        }
-        /* Mix disabled, set mix factor to 0. */
-        else if ((gp_style->flag & GP_MATERIAL_STROKE_TEX_MIX) == 0) {
-          gp_style->mix_stroke_factor = 0.0f;
-        }
-      }
-
-      /* Fix Grease Pencil VFX and modifiers. */
-      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-        if (ob->type != OB_GPENCIL) {
-          continue;
-        }
-
-        /* VFX. */
-        LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
-          switch (fx->type) {
-            case eShaderFxType_Colorize: {
-              ColorizeShaderFxData *vfx = (ColorizeShaderFxData *)fx;
-              if (ELEM(vfx->mode, eShaderFxColorizeMode_GrayScale, eShaderFxColorizeMode_Sepia)) {
-                vfx->factor = 1.0f;
-              }
-              srgb_to_linearrgb_v4(vfx->low_color, vfx->low_color);
-              srgb_to_linearrgb_v4(vfx->high_color, vfx->high_color);
-              break;
-            }
-            case eShaderFxType_Pixel: {
-              PixelShaderFxData *vfx = (PixelShaderFxData *)fx;
-              srgb_to_linearrgb_v4(vfx->rgba, vfx->rgba);
-              break;
-            }
-            case eShaderFxType_Rim: {
-              RimShaderFxData *vfx = (RimShaderFxData *)fx;
-              srgb_to_linearrgb_v3_v3(vfx->rim_rgb, vfx->rim_rgb);
-              srgb_to_linearrgb_v3_v3(vfx->mask_rgb, vfx->mask_rgb);
-              break;
-            }
-            case eShaderFxType_Shadow: {
-              ShadowShaderFxData *vfx = (ShadowShaderFxData *)fx;
-              srgb_to_linearrgb_v4(vfx->shadow_rgba, vfx->shadow_rgba);
-              break;
-            }
-            case eShaderFxType_Glow: {
-              GlowShaderFxData *vfx = (GlowShaderFxData *)fx;
-              srgb_to_linearrgb_v3_v3(vfx->glow_color, vfx->glow_color);
-              vfx->glow_color[3] = 1.0f;
-              srgb_to_linearrgb_v3_v3(vfx->select_color, vfx->select_color);
-              vfx->blur[1] = vfx->blur[0];
-              break;
-            }
-            default:
-              break;
-          }
-        }
-
-        /* Modifiers. */
-        LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
-          switch ((GpencilModifierType)md->type) {
-            case eGpencilModifierType_Array: {
-              ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
-              mmd->seed = 1;
-              if ((mmd->offset[0] != 0.0f) || (mmd->offset[1] != 0.0f) ||
-                  (mmd->offset[2] != 0.0f)) {
-                mmd->flag |= GP_ARRAY_USE_OFFSET;
-              }
-              if ((mmd->shift[0] != 0.0f) || (mmd->shift[1] != 0.0f) || (mmd->shift[2] != 0.0f)) {
-                mmd->flag |= GP_ARRAY_USE_OFFSET;
-              }
-              if (mmd->object != NULL) {
-                mmd->flag |= GP_ARRAY_USE_OB_OFFSET;
-              }
-              break;
-            }
-            case eGpencilModifierType_Tint: {
-              TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
-              srgb_to_linearrgb_v3_v3(mmd->rgb, mmd->rgb);
-              break;
-            }
-            case eGpencilModifierType_Subdiv: {
-              const short simple = (1 << 0);
-              SubdivGpencilModifierData *mmd = (SubdivGpencilModifierData *)md;
-              if (mmd->flag & simple) {
-                mmd->flag &= ~simple;
-                mmd->type = GP_SUBDIV_SIMPLE;
-              }
-              break;
-            }
-            default:
-              break;
-          }
-        }
-      }
-
-      /* Fix Layers Colors and Vertex Colors to Linear.
-       * Also set lights to on for layers. */
-      LISTBASE_FOREACH (bGPdata *, gpd, &bmain->gpencils) {
-        if (gpd->flag & GP_DATA_ANNOTATIONS) {
-          continue;
-        }
-        /* Onion colors. */
-        srgb_to_linearrgb_v3_v3(gpd->gcolor_prev, gpd->gcolor_prev);
-        srgb_to_linearrgb_v3_v3(gpd->gcolor_next, gpd->gcolor_next);
-        /* Z-depth Offset. */
-        gpd->zdepth_offset = 0.150f;
-
-        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-          gpl->flag |= GP_LAYER_USE_LIGHTS;
-          srgb_to_linearrgb_v4(gpl->tintcolor, gpl->tintcolor);
-
-          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-              /* Set initial opacity for fill color. */
-              gps->fill_opacity_fac = 1.0f;
-
-              /* Calc geometry data because in old versions this data was not saved. */
-              BKE_gpencil_stroke_geometry_update(gps);
-
-              srgb_to_linearrgb_v4(gps->vert_color_fill, gps->vert_color_fill);
-              int i;
-              bGPDspoint *pt;
-              for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-                srgb_to_linearrgb_v4(pt->vert_color, pt->vert_color);
-              }
-            }
-          }
-        }
-      }
-    }
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 283, 3)) {
@@ -4670,6 +4466,212 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 283, 7)) {
+    /* Init default Grease Pencil Vertex paint mix factor for Viewport. */
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "View3DOverlay", "float", "gpencil_vertex_paint_opacity")) {
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              v3d->overlay.gpencil_vertex_paint_opacity = 1.0f;
+            }
+          }
+        }
+      }
+    }
+
+    /* Init default Grease Pencil Vertex paint layer mix factor. */
+    if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "float", "vertex_paint_opacity")) {
+      for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+          gpl->vertex_paint_opacity = 1.0f;
+        }
+      }
+    }
+
+    /* Update Grease Pencil after drawing engine and code refactor.
+     * It uses the seed variable of Array modifier to avoid double patching for
+     * files created with a development version. */
+    if (!DNA_struct_elem_find(fd->filesdna, "ArrayGpencilModifierData", "int", "seed")) {
+      /* Init new Grease Pencil Paint tools. */
+      {
+        for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
+          if (brush->gpencil_settings != NULL) {
+            brush->gpencil_vertex_tool = brush->gpencil_settings->brush_type;
+            brush->gpencil_sculpt_tool = brush->gpencil_settings->brush_type;
+            brush->gpencil_weight_tool = brush->gpencil_settings->brush_type;
+          }
+        }
+
+        BKE_paint_toolslots_init_from_main(bmain);
+      }
+
+      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
+        MaterialGPencilStyle *gp_style = mat->gp_style;
+        if (gp_style == NULL) {
+          continue;
+        }
+        /* Fix Grease Pencil Material colors to Linear. */
+        srgb_to_linearrgb_v4(gp_style->stroke_rgba, gp_style->stroke_rgba);
+        srgb_to_linearrgb_v4(gp_style->fill_rgba, gp_style->fill_rgba);
+
+        /* Move old gradient variables to texture. */
+        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT) {
+          gp_style->texture_angle = gp_style->gradient_angle;
+          copy_v2_v2(gp_style->texture_scale, gp_style->gradient_scale);
+          copy_v2_v2(gp_style->texture_offset, gp_style->gradient_shift);
+        }
+        /* Set Checker material as Solid. This fill mode has been removed and replaced
+         * by textures. */
+        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_CHECKER) {
+          gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
+        }
+        /* Update Alpha channel for texture opacity. */
+        if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_TEXTURE) {
+          gp_style->fill_rgba[3] *= gp_style->texture_opacity;
+        }
+        /* Stroke stencil mask to mix = 1. */
+        if (gp_style->flag & GP_MATERIAL_STROKE_PATTERN) {
+          gp_style->mix_stroke_factor = 1.0f;
+          gp_style->flag &= ~GP_MATERIAL_STROKE_PATTERN;
+        }
+        /* Mix disabled, set mix factor to 0. */
+        else if ((gp_style->flag & GP_MATERIAL_STROKE_TEX_MIX) == 0) {
+          gp_style->mix_stroke_factor = 0.0f;
+        }
+      }
+
+      /* Fix Grease Pencil VFX and modifiers. */
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        if (ob->type != OB_GPENCIL) {
+          continue;
+        }
+
+        /* VFX. */
+        LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
+          switch (fx->type) {
+            case eShaderFxType_Colorize: {
+              ColorizeShaderFxData *vfx = (ColorizeShaderFxData *)fx;
+              if (ELEM(vfx->mode, eShaderFxColorizeMode_GrayScale, eShaderFxColorizeMode_Sepia)) {
+                vfx->factor = 1.0f;
+              }
+              srgb_to_linearrgb_v4(vfx->low_color, vfx->low_color);
+              srgb_to_linearrgb_v4(vfx->high_color, vfx->high_color);
+              break;
+            }
+            case eShaderFxType_Pixel: {
+              PixelShaderFxData *vfx = (PixelShaderFxData *)fx;
+              srgb_to_linearrgb_v4(vfx->rgba, vfx->rgba);
+              break;
+            }
+            case eShaderFxType_Rim: {
+              RimShaderFxData *vfx = (RimShaderFxData *)fx;
+              srgb_to_linearrgb_v3_v3(vfx->rim_rgb, vfx->rim_rgb);
+              srgb_to_linearrgb_v3_v3(vfx->mask_rgb, vfx->mask_rgb);
+              break;
+            }
+            case eShaderFxType_Shadow: {
+              ShadowShaderFxData *vfx = (ShadowShaderFxData *)fx;
+              srgb_to_linearrgb_v4(vfx->shadow_rgba, vfx->shadow_rgba);
+              break;
+            }
+            case eShaderFxType_Glow: {
+              GlowShaderFxData *vfx = (GlowShaderFxData *)fx;
+              srgb_to_linearrgb_v3_v3(vfx->glow_color, vfx->glow_color);
+              vfx->glow_color[3] = 1.0f;
+              srgb_to_linearrgb_v3_v3(vfx->select_color, vfx->select_color);
+              vfx->blur[1] = vfx->blur[0];
+              break;
+            }
+            default:
+              break;
+          }
+        }
+
+        /* Modifiers. */
+        LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
+          switch ((GpencilModifierType)md->type) {
+            case eGpencilModifierType_Array: {
+              ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
+              mmd->seed = 1;
+              if ((mmd->offset[0] != 0.0f) || (mmd->offset[1] != 0.0f) ||
+                  (mmd->offset[2] != 0.0f)) {
+                mmd->flag |= GP_ARRAY_USE_OFFSET;
+              }
+              if ((mmd->shift[0] != 0.0f) || (mmd->shift[1] != 0.0f) || (mmd->shift[2] != 0.0f)) {
+                mmd->flag |= GP_ARRAY_USE_OFFSET;
+              }
+              if (mmd->object != NULL) {
+                mmd->flag |= GP_ARRAY_USE_OB_OFFSET;
+              }
+              break;
+            }
+            case eGpencilModifierType_Tint: {
+              TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
+              srgb_to_linearrgb_v3_v3(mmd->rgb, mmd->rgb);
+              break;
+            }
+            case eGpencilModifierType_Thick: {
+              if (!DNA_struct_elem_find(
+                      fd->filesdna, "ThickGpencilModifierData", "float", "thickness_fac")) {
+                ThickGpencilModifierData *mmd = (ThickGpencilModifierData *)md;
+                mmd->thickness_fac = mmd->thickness;
+              }
+            }
+            case eGpencilModifierType_Subdiv: {
+              const short simple = (1 << 0);
+              SubdivGpencilModifierData *mmd = (SubdivGpencilModifierData *)md;
+              if (mmd->flag & simple) {
+                mmd->flag &= ~simple;
+                mmd->type = GP_SUBDIV_SIMPLE;
+              }
+              break;
+            }
+            default:
+              break;
+          }
+        }
+      }
+
+      /* Fix Layers Colors and Vertex Colors to Linear.
+       * Also set lights to on for layers. */
+      LISTBASE_FOREACH (bGPdata *, gpd, &bmain->gpencils) {
+        if (gpd->flag & GP_DATA_ANNOTATIONS) {
+          continue;
+        }
+        /* Onion colors. */
+        srgb_to_linearrgb_v3_v3(gpd->gcolor_prev, gpd->gcolor_prev);
+        srgb_to_linearrgb_v3_v3(gpd->gcolor_next, gpd->gcolor_next);
+        /* Z-depth Offset. */
+        gpd->zdepth_offset = 0.150f;
+
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+          gpl->flag |= GP_LAYER_USE_LIGHTS;
+          srgb_to_linearrgb_v4(gpl->tintcolor, gpl->tintcolor);
+
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+              /* Set initial opacity for fill color. */
+              gps->fill_opacity_fac = 1.0f;
+
+              /* Calc geometry data because in old versions this data was not saved. */
+              BKE_gpencil_stroke_geometry_update(gps);
+
+              srgb_to_linearrgb_v4(gps->vert_color_fill, gps->vert_color_fill);
+              int i;
+              bGPDspoint *pt;
+              for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+                srgb_to_linearrgb_v4(pt->vert_color, pt->vert_color);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -4681,18 +4683,5 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-
-    /* Grease pencil modifiers changes. */
-    if (!DNA_struct_elem_find(
-            fd->filesdna, "ThickGpencilModifierData", "float", "thickness_fac")) {
-      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-        LISTBASE_FOREACH (ModifierData *, md, &ob->greasepencil_modifiers) {
-          if (md->type == eGpencilModifierType_Thick) {
-            ThickGpencilModifierData *gpmd = (ThickGpencilModifierData *)md;
-            gpmd->thickness_fac = gpmd->thickness;
-          }
-        }
-      }
-    }
   }
 }
