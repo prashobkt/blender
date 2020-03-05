@@ -381,6 +381,10 @@ void ED_view3d_draw_setup_view(const wmWindowManager *wm,
   else {
     view3d_main_region_setup_view(depsgraph, scene, v3d, ar, viewmat, winmat, rect);
   }
+
+#ifndef WITH_XR_OPENXR
+  UNUSED_VARS(wm);
+#endif
 }
 
 /** \} */

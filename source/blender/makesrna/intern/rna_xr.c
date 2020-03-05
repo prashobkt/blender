@@ -34,10 +34,16 @@
 
 static bool rna_XrSessionState_is_running(bContext *C)
 {
+#  ifdef WITH_XR_OPENXR
   const wmWindowManager *wm = CTX_wm_manager(C);
   return WM_xr_is_session_running(&wm->xr);
+#  else
+  UNUSED_VARS(C);
+  return false;
+#  endif
 }
 
+#  ifdef WITH_XR_OPENXR
 static wmXrData *rna_XrSessionState_wm_xr_data_get(PointerRNA *ptr)
 {
   /* Callers could also get bXrSessionState pointer through ptr->data, but prefer if we just
@@ -50,17 +56,26 @@ static wmXrData *rna_XrSessionState_wm_xr_data_get(PointerRNA *ptr)
 
   return &wm->xr;
 }
+#  endif
 
 static void rna_XrSessionState_viewer_location_get(PointerRNA *ptr, float *values)
 {
+#  ifdef WITH_XR_OPENXR
   const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
   WM_xr_session_state_viewer_location_get(xr, values);
+#  else
+  UNUSED_VARS(ptr, values);
+#  endif
 }
 
 static void rna_XrSessionState_viewer_rotation_get(PointerRNA *ptr, float *values)
 {
+#  ifdef WITH_XR_OPENXR
   const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
   WM_xr_session_state_viewer_rotation_get(xr, values);
+#  else
+  UNUSED_VARS(ptr, values);
+#  endif
 }
 
 #else /* RNA_RUNTIME */
