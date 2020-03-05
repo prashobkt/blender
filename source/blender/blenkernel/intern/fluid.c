@@ -626,7 +626,6 @@ static void clamp_bounds_in_domain(FluidDomainSettings *mds,
 
 static bool is_static_object(Object *ob)
 {
-
   /* Check if the object has modifiers that might make the object "dynamic". */
   ModifierData *md = ob->modifiers.first;
   for (; md; md = md->next) {
@@ -2709,6 +2708,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
       int subframes = mfs->subframes;
       EmissionMap *em = &emaps[flow_index];
 
+      bool use_velocity = mfs->flags & FLUID_FLOW_INITVELOCITY;
       bool is_static = is_static_object(flowobj);
       /* Cannot use static mode with adaptive domain.
        * The adaptive domain might expand and only later in the simulations discover the static
@@ -2736,8 +2736,9 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
         continue;
       }
       /* Optimization: Static liquid flow objects don't need emission computation after first
-       * frame. */
-      if (mfs->type == FLUID_FLOW_TYPE_LIQUID && is_static && !is_first_frame) {
+       * frame.
+       * TODO (sebbas): Also do not use static mode if inital velocities are enabled. */
+      if (mfs->type == FLUID_FLOW_TYPE_LIQUID && is_static && !is_first_frame && !use_velocity) {
         continue;
       }
 
@@ -2933,6 +2934,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
     if ((mmd2->type & MOD_FLUID_TYPE_FLOW) && mmd2->flow) {
       FluidFlowSettings *mfs = mmd2->flow;
 
+      bool use_velocity = mfs->flags & FLUID_FLOW_INITVELOCITY;
       bool use_inflow = (mfs->flags & FLUID_FLOW_USE_INFLOW);
       bool is_liquid = (mfs->type == FLUID_FLOW_TYPE_LIQUID);
       bool is_inflow = (mfs->behavior == FLUID_FLOW_BEHAVIOR_INFLOW);
@@ -2954,8 +2956,9 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
       /* Optimization: Liquid objects don't always need emission application after first frame. */
       if (is_liquid && !is_first_frame) {
 
-        /* Skip static liquid objects that are not on the first frame. */
-        if (is_static) {
+        /* Skip static liquid objects that are not on the first frame.
+         * TODO (sebbas): Also do not use static mode if inital velocities are enabled. */
+        if (is_static && !use_velocity) {
           continue;
         }
         /* Liquid geometry objects don't need emission application after first frame. */
@@ -3214,15 +3217,14 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *mds, Mesh *orgmesh, Obj
   float size[3];
   float cell_size_scaled[3];
 
-  /* assign material + flags to new dm
-   * if there's no faces in original dm, keep materials and flags unchanged */
+  /* Assign material + flags to new mesh.
+   * If there are no faces in original mesj, keep materials and flags unchanged. */
   MPoly *mpoly;
   MPoly mp_example = {0};
   mpoly = orgmesh->mpoly;
   if (mpoly) {
     mp_example = *mpoly;
   }
-  /* else leave NULL'd */
 
   const short mp_mat_nr = mp_example.mat_nr;
   const char mp_flag = mp_example.flag;
@@ -3246,6 +3248,24 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *mds, Mesh *orgmesh, Obj
   if (!num_verts || !num_faces) {
     return NULL;
   }
+  /* Normals are per vertex, so these must match. */
+  BLI_assert(num_verts == num_normals);
+
+  /* If needed, vertex velocities will be read too. */
+  bool use_speedvectors = mds->flags & FLUID_DOMAIN_USE_SPEED_VECTORS;
+  FluidDomainVertexVelocity *velarray = NULL;
+  float time_mult = 25.f * DT_DEFAULT;
+
+  if (use_speedvectors) {
+    if (mds->mesh_velocities) {
+      MEM_freeN(mds->mesh_velocities);
+    }
+
+    mds->mesh_velocities = MEM_calloc_arrayN(
+        num_verts, sizeof(FluidDomainVertexVelocity), "fluid_mesh_vertvelocities");
+    mds->totvert = num_verts;
+    velarray = mds->mesh_velocities;
+  }
 
   me = BKE_mesh_new_nomain(num_verts, 0, 0, num_faces * 3, num_faces);
   mverts = me->mvert;
@@ -3255,25 +3275,29 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *mds, Mesh *orgmesh, Obj
     return NULL;
   }
 
-  // Get size (dimension) but considering scaling scaling
+  /* Get size (dimension) but considering scaling scaling. */
   copy_v3_v3(cell_size_scaled, mds->cell_size);
   mul_v3_v3(cell_size_scaled, ob->scale);
   madd_v3fl_v3fl_v3fl_v3i(min, mds->p0, cell_size_scaled, mds->res_min);
   madd_v3fl_v3fl_v3fl_v3i(max, mds->p0, cell_size_scaled, mds->res_max);
   sub_v3_v3v3(size, max, min);
 
-  // Biggest dimension will be used for upscaling
+  /* Biggest dimension will be used for upscaling. */
   float max_size = MAX3(size[0], size[1], size[2]);
 
-  // Vertices
-  for (i = 0; i < num_verts; i++, mverts++) {
-    // read raw data. is normalized cube around domain origin
+  /* Normals. */
+  normals = MEM_callocN(sizeof(short) * num_normals * 3, "Fluidmesh_tmp_normals");
+
+  /* Loop for vertices and normals. */
+  for (i = 0, no_s = normals; i < num_verts && i < num_normals; i++, mverts++, no_s += 3) {
+
+    /* Vertices (data is normalized cube around domain origin). */
     mverts->co[0] = manta_liquid_get_vertex_x_at(mds->fluid, i);
     mverts->co[1] = manta_liquid_get_vertex_y_at(mds->fluid, i);
     mverts->co[2] = manta_liquid_get_vertex_z_at(mds->fluid, i);
 
-    // if reading raw data directly from manta, normalize now, otherwise omit this, ie when reading
-    // from files
+    /* If reading raw data directly from manta, normalize now (e.g. during replay mode).
+     * If reading data from files from disk, omit this normalization. */
     if (!manta_liquid_mesh_from_file(mds->fluid)) {
       // normalize to unit cube around 0
       mverts->co[0] -= ((float)mds->res[0] * mds->mesh_scale) * 0.5f;
@@ -3294,12 +3318,8 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *mds, Mesh *orgmesh, Obj
            mverts->co[1],
            mverts->co[2]);
 #  endif
-  }
 
-  // Normals
-  normals = MEM_callocN(sizeof(short) * num_normals * 3, "Fluidmesh_tmp_normals");
-
-  for (i = 0, no_s = normals; i < num_normals; no_s += 3, i++) {
+    /* Normals (data is normalized cube around domain origin). */
     no[0] = manta_liquid_get_normal_x_at(mds->fluid, i);
     no[1] = manta_liquid_get_normal_y_at(mds->fluid, i);
     no[2] = manta_liquid_get_normal_z_at(mds->fluid, i);
@@ -3309,11 +3329,27 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *mds, Mesh *orgmesh, Obj
     /* Debugging: Print coordinates of normals. */
     printf("no_s[0]: %d, no_s[1]: %d, no_s[2]: %d\n", no_s[0], no_s[1], no_s[2]);
 #  endif
+
+    if (use_speedvectors) {
+      velarray[i].vel[0] = manta_liquid_get_vertvel_x_at(mds->fluid, i) * (mds->dx / time_mult);
+      velarray[i].vel[1] = manta_liquid_get_vertvel_y_at(mds->fluid, i) * (mds->dx / time_mult);
+      velarray[i].vel[2] = manta_liquid_get_vertvel_z_at(mds->fluid, i) * (mds->dx / time_mult);
+#  ifdef DEBUG_PRINT
+      /* Debugging: Print velocities of vertices. */
+      printf("velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f\n",
+             i,
+             velarray[i].vel[0],
+             i,
+             velarray[i].vel[1],
+             i,
+             velarray[i].vel[2]);
+#  endif
+    }
   }
 
-  // Triangles
+  /* Loop for triangles. */
   for (i = 0; i < num_faces; i++, mpolys++, mloops += 3) {
-    /* initialize from existing face */
+    /* Initialize from existing face. */
     mpolys->mat_nr = mp_mat_nr;
     mpolys->flag = mp_flag;
 
@@ -3337,40 +3373,6 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *mds, Mesh *orgmesh, Obj
   BKE_mesh_vert_normals_apply(me, (short(*)[3])normals);
 
   MEM_freeN(normals);
-
-  /* return early if no mesh vert velocities required */
-  if ((mds->flags & FLUID_DOMAIN_USE_SPEED_VECTORS) == 0) {
-    return me;
-  }
-
-  if (mds->mesh_velocities) {
-    MEM_freeN(mds->mesh_velocities);
-  }
-
-  mds->mesh_velocities = MEM_calloc_arrayN(
-      num_verts, sizeof(FluidDomainVertexVelocity), "fluid_mesh_vertvelocities");
-  mds->totvert = num_verts;
-
-  FluidDomainVertexVelocity *velarray = NULL;
-  velarray = mds->mesh_velocities;
-
-  float time_mult = 25.f * DT_DEFAULT;
-
-  for (i = 0; i < num_verts; i++, mverts++) {
-    velarray[i].vel[0] = manta_liquid_get_vertvel_x_at(mds->fluid, i) * (mds->dx / time_mult);
-    velarray[i].vel[1] = manta_liquid_get_vertvel_y_at(mds->fluid, i) * (mds->dx / time_mult);
-    velarray[i].vel[2] = manta_liquid_get_vertvel_z_at(mds->fluid, i) * (mds->dx / time_mult);
-#  ifdef DEBUG_PRINT
-    /* Debugging: Print velocities of vertices. */
-    printf("velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f\n",
-           i,
-           velarray[i].vel[0],
-           i,
-           velarray[i].vel[1],
-           i,
-           velarray[i].vel[2]);
-#  endif
-  }
 
   return me;
 }
