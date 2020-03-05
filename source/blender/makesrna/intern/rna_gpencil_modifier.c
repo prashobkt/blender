@@ -273,16 +273,6 @@ static void rna_GpencilModifier_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->owner_id);
 }
 
-static void rna_GpencilModifier_seed_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  GpencilModifierData *md = ptr->data;
-  ArrayGpencilModifierData *gpmd = (ArrayGpencilModifierData *)md;
-
-  BLI_array_frand(gpmd->rnd, 20, gpmd->seed);
-
-  rna_GpencilModifier_update(bmain, scene, ptr);
-}
-
 static void rna_GpencilModifier_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_GpencilModifier_update(bmain, scene, ptr);
@@ -1350,7 +1340,7 @@ static void rna_def_modifier_gpencilarray(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "seed", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_ui_text(prop, "Seed", "Random seed");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_seed_update");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "replace_material", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "mat_rpl");

@@ -322,7 +322,6 @@ typedef struct ArrayGpencilModifierData {
   float rnd_scale[3];
   char _pad[4];
   /** (first element is the index) random values. */
-  float rnd[20];
   int seed;
 
   /** Custom index for passes. */

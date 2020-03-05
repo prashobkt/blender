@@ -27,6 +27,10 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLI_ghash.h"
+#include "BLI_hash.h"
+#include "BLI_rand.h"
+
 #include "BLI_blenlib.h"
 #include "BLI_rand.h"
 #include "BLI_math.h"
@@ -71,10 +75,7 @@ static void initData(GpencilModifierData *md)
   zero_v3(gpmd->rnd_scale);
   gpmd->object = NULL;
   gpmd->flag |= GP_ARRAY_USE_RELATIVE;
-  /* fill random values */
   gpmd->seed = 1;
-  BLI_array_frand(gpmd->rnd, 20, gpmd->seed);
-  gpmd->rnd[0] = 1;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -135,21 +136,22 @@ static void generate_geometry(GpencilModifierData *md,
   /* Load the strokes to be duplicated. */
   bGPdata *gpd = (bGPdata *)ob->data;
   bool found = false;
-  int ri = mmd->rnd[0];
 
   /* Get bounbox for relative offset. */
   float size[3] = {0.0f, 0.0f, 0.0f};
   if (mmd->flag & GP_ARRAY_USE_RELATIVE) {
     BoundBox *bb = BKE_object_boundbox_get(ob);
-    if (bb == NULL) {
-      const float min[3] = {-1.0f, -1.0f, -1.0f}, max[3] = {1.0f, 1.0f, 1.0f};
-      BKE_boundbox_init_from_minmax(bb, min, max);
-    }
+    const float min[3] = {-1.0f, -1.0f, -1.0f}, max[3] = {1.0f, 1.0f, 1.0f};
+    BKE_boundbox_init_from_minmax(bb, min, max);
     BKE_boundbox_calc_size_aabb(bb, size);
     mul_v3_fl(size, 2.0f);
     /* Need a minimum size (for flat drawings). */
     CLAMP3_MIN(size, 0.01f);
   }
+
+  int seed = mmd->seed;
+  /* Make sure different modifiers get different seeds. */
+  seed += BLI_hash_string(md->name);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
@@ -215,23 +217,14 @@ static void generate_geometry(GpencilModifierData *md,
 
       /* Calculate Random matrix. */
       float mat_rnd[4][4];
+      float loc[3], rot[3];
       float scale[3] = {1.0f, 1.0f, 1.0f};
-      mul_v3_fl(mmd->rnd_offset, mmd->rnd[ri]);
-      mul_v3_fl(mmd->rnd_rot, mmd->rnd[ri]);
-      madd_v3_v3fl(scale, mmd->rnd_scale, mmd->rnd[ri]);
+      float factor = BLI_hash_int_01((uint)seed + x) * 2.0f - 1.0f;
+      mul_v3_v3fl(loc, mmd->rnd_offset, factor);
+      mul_v3_v3fl(rot, mmd->rnd_rot, factor);
+      madd_v3_v3fl(scale, mmd->rnd_scale, factor);
 
-      /* For adding more randomness, check direction. */
-      if (mmd->rnd[20 - ri] < 0.5f) {
-        mul_v3_fl(mmd->rnd_offset, -1.0f);
-      }
-      if (mmd->rnd[20 - ri] > 0.5f) {
-        mul_v3_fl(mmd->rnd_rot, -1.0f);
-      }
-      if (mmd->rnd[20 - ri] > 0.7f) {
-        mul_v3_fl(mmd->rnd_rot, -1.0f);
-      }
-
-      loc_eul_size_to_mat4(mat_rnd, mmd->rnd_offset, mmd->rnd_rot, scale);
+      loc_eul_size_to_mat4(mat_rnd, loc, rot, scale);
 
       /* Duplicate original strokes to create this instance. */
       LISTBASE_FOREACH_BACKWARD (tmpStrokes *, iter, &stroke_cache) {
@@ -264,13 +257,6 @@ static void generate_geometry(GpencilModifierData *md,
         /* Calc bounding box. */
         BKE_gpencil_stroke_boundingbox_calc(gps_dst);
       }
-
-      /* Advance random index. */
-      mmd->rnd[0]++;
-      if (mmd->rnd[0] > 19) {
-        mmd->rnd[0] = 1;
-      }
-      ri = mmd->rnd[0];
     }
 
     /* Free temp data. */
