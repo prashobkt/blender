@@ -60,12 +60,13 @@ static void initData(GpencilModifierData *md)
   gpmd->layername[0] = '\0';
   gpmd->materialname[0] = '\0';
   gpmd->vgname[0] = '\0';
-  gpmd->step = 1;
-  gpmd->seed = 0;
+  gpmd->step = 4;
+  gpmd->seed = 1;
   gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
   if (gpmd->curve_intensity) {
-    /* TODO better default profile. */
-    BKE_curvemapping_initialize(gpmd->curve_intensity);
+    CurveMapping *curve = gpmd->curve_intensity;
+    BKE_curvemapping_initialize(curve);
+    BKE_curvemap_reset(curve->cm, &curve->clipr, CURVE_PRESET_BELL, CURVEMAP_SLOPE_POSITIVE);
   }
 }
 
@@ -138,6 +139,9 @@ static void deformStroke(GpencilModifierData *md,
   /* Make sure different modifiers get different seeds. */
   seed += BLI_hash_string(ob->id.name + 2);
   seed += BLI_hash_string(md->name);
+
+  /* Initialize curve */
+  BKE_curvemapping_initialize(mmd->curve_intensity);
 
   if (mmd->flag & GP_NOISE_USE_RANDOM) {
     seed += ((int)DEG_get_ctime(depsgraph)) / mmd->step;
