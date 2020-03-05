@@ -67,7 +67,9 @@ static void initData(GpencilModifierData *md)
   mmd->duplications = 3;
   mmd->distance = 0.1f;
   mmd->split_angle = DEG2RADF(1.0f);
-  mmd->fading_opacity = 1.0f;
+  mmd->fading_center = 0.5f;
+  mmd->fading_thickness = 0.5f;
+  mmd->fading_opacity = 0.5f;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -99,36 +101,35 @@ static void splitStroke(bGPDframe *gpf, bGPDstroke *gps, float split_angle)
 }
 
 static void minter_v3_v3v3v3_ref(
-    float *result, float *left, float *middle, float *right, float *stroke_normal)
+    float *result, float *prev, float *curr, float *next, float *stroke_normal)
 {
-  float left_arm[3], right_arm[3], inter1[3], inter2[3];
+  float vec[3], inter1[3], inter2[3];
   float minter[3];
-  if (left) {
-    sub_v3_v3v3(left_arm, middle, left);
-    cross_v3_v3v3(inter1, stroke_normal, left_arm);
+  if (prev) {
+    sub_v3_v3v3(vec, curr, prev);
+    cross_v3_v3v3(inter1, stroke_normal, vec);
   }
-  if (right) {
-    sub_v3_v3v3(right_arm, right, middle);
-    cross_v3_v3v3(inter2, stroke_normal, right_arm);
+  if (next) {
+    sub_v3_v3v3(vec, next, curr);
+    cross_v3_v3v3(inter2, stroke_normal, vec);
   }
-  if (!left) {
+  if (!prev) {
     normalize_v3(inter2);
     copy_v3_v3(result, inter2);
     return;
   }
-
-  if (!right) {
+  if (!next) {
     normalize_v3(inter1);
     copy_v3_v3(result, inter1);
     return;
   }
-
   interp_v3_v3v3(minter, inter1, inter2, 0.5);
   normalize_v3(minter);
   copy_v3_v3(result, minter);
 }
 
-static void duplicateStroke(bGPDstroke *gps,
+static void duplicateStroke(Object *ob,
+                            bGPDstroke *gps,
                             int count,
                             float dist,
                             float offset,
@@ -141,11 +142,12 @@ static void duplicateStroke(bGPDstroke *gps,
   int i;
   bGPDstroke *new_gps;
   float stroke_normal[3];
-  float minter[3];
   bGPDspoint *pt;
-  float offset_factor;
   float thickness_factor;
   float opacity_factor;
+
+  /* Apply object scale to offset distance. */
+  offset *= mat4_to_scale(ob->obmat);
 
   BKE_gpencil_stroke_normal(gps, stroke_normal);
   if (len_v3(stroke_normal) < FLT_EPSILON) {
@@ -161,6 +163,7 @@ static void duplicateStroke(bGPDstroke *gps,
   pt = gps->points;
 
   for (int j = 0; j < gps->totpoints; j++) {
+    float minter[3];
     if (j == 0) {
       minter_v3_v3v3v3_ref(minter, NULL, &pt[j].x, &pt[j + 1].x, stroke_normal);
     }
@@ -175,11 +178,11 @@ static void duplicateStroke(bGPDstroke *gps,
     sub_v3_v3v3(&t2_array[j * 3], &pt[j].x, minter);
   }
 
-  /* This ensures the original stroke is the last one to be processed. */
+  /* This ensures the original stroke is the last one
+   * to be processed, since we duplicate its data. */
   for (i = count - 1; i >= 0; i--) {
     if (i != 0) {
       new_gps = BKE_gpencil_stroke_duplicate(gps, true);
-
       BLI_addtail(results, new_gps);
     }
     else {
@@ -188,28 +191,16 @@ static void duplicateStroke(bGPDstroke *gps,
 
     pt = new_gps->points;
 
-    if (count == 1) {
-      offset_factor = 0;
-    }
-    else {
-      offset_factor = (float)i / (float)(count - 1);
-    }
+    float offset_fac = (count == 1) ? 0.5f : (i / (float)(count - 1));
 
     if (fading) {
-      thickness_factor = (offset_factor > fading_center) ?
-                             (interpf(1 - fading_thickness, 1.0f, offset_factor - fading_center)) :
-                             (interpf(
-                                 1.0f, 1 - fading_thickness, offset_factor - fading_center + 1));
-      opacity_factor = (offset_factor > fading_center) ?
-                           (interpf(fading_opacity, 1.0f, offset_factor - fading_center)) :
-                           (interpf(1.0f, fading_opacity, offset_factor - fading_center + 1));
+      thickness_factor = interpf(1.0f - fading_thickness, 1.0f, fabsf(offset_fac - fading_center));
+      opacity_factor = interpf(1.0f - fading_opacity, 1.0f, fabsf(offset_fac - fading_center));
     }
 
     for (int j = 0; j < new_gps->totpoints; j++) {
-      interp_v3_v3v3(&pt[j].x,
-                     &t1_array[j * 3],
-                     &t2_array[j * 3],
-                     interpf(1 + offset, offset, offset_factor));
+      float fac = interpf(1 + offset, offset, offset_fac);
+      interp_v3_v3v3(&pt[j].x, &t1_array[j * 3], &t2_array[j * 3], fac);
       if (fading) {
         pt[j].pressure = gps->points[j].pressure * thickness_factor;
         pt[j].strength = gps->points[j].strength * opacity_factor;
@@ -228,7 +219,6 @@ static void bakeModifier(Main *UNUSED(bmain),
                          GpencilModifierData *md,
                          Object *ob)
 {
-
   bGPdata *gpd = ob->data;
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
@@ -255,7 +245,8 @@ static void bakeModifier(Main *UNUSED(bmain),
           splitStroke(gpf, gps, mmd->split_angle);
         }
         if (mmd->duplications > 0) {
-          duplicateStroke(gps,
+          duplicateStroke(ob,
+                          gps,
                           mmd->duplications,
                           mmd->distance,
                           mmd->offset,
@@ -266,10 +257,8 @@ static void bakeModifier(Main *UNUSED(bmain),
                           mmd->fading_opacity);
         }
       }
-      if (duplicates.first) {
-        ((bGPDstroke *)gpf->strokes.last)->next = duplicates.first;
-        ((bGPDstroke *)duplicates.first)->prev = gpf->strokes.last;
-        gpf->strokes.last = duplicates.first;
+      if (!BLI_listbase_is_empty(&duplicates)) {
+        BLI_movelisttolist(&gpf->strokes, &duplicates);
       }
     }
   }
@@ -300,7 +289,8 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
       splitStroke(gpf, gps, mmd->split_angle);
     }
     if (mmd->duplications > 0) {
-      duplicateStroke(gps,
+      duplicateStroke(ob,
+                      gps,
                       mmd->duplications,
                       mmd->distance,
                       mmd->offset,
@@ -311,10 +301,8 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
                       mmd->fading_opacity);
     }
   }
-  if (duplicates.first) {
-    ((bGPDstroke *)gpf->strokes.last)->next = duplicates.first;
-    ((bGPDstroke *)duplicates.first)->prev = gpf->strokes.last;
-    gpf->strokes.last = duplicates.first;
+  if (!BLI_listbase_is_empty(&duplicates)) {
+    BLI_movelisttolist(&gpf->strokes, &duplicates);
   }
 }
 

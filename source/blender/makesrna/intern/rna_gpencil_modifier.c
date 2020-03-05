@@ -1943,7 +1943,8 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_fade", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_FADING);
-  RNA_def_property_ui_text(prop, "Enable Fade", "Enable fade");
+  RNA_def_property_ui_text(
+      prop, "Enable Fade", "Fade the stroke thickness for each generated stroke");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "split_angle", PROP_FLOAT, PROP_ANGLE);
@@ -1954,17 +1955,19 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "duplicates", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "duplications");
-  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_range(prop, 0, 999);
+  RNA_def_property_ui_range(prop, 1, 10, 1, 1);
   RNA_def_property_ui_text(prop, "Duplicates", "How many copies of strokes be displayed");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_range(prop, 0, M_PI);
+  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 3);
   RNA_def_property_ui_text(prop, "Distance", "Distance of duplications");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_range(prop, -1, 1, 0.1, 3);
+  RNA_def_property_ui_range(prop, -1, 1, 0.01, 3);
   RNA_def_property_ui_text(prop, "Offset", "Offset of duplicates. -1 to 1: inner to outer");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
@@ -1980,8 +1983,9 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Opacity", "Fade influence of stroke's opacity");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "fading_center", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "fading_center", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_float_default(prop, 0.5);
   RNA_def_property_ui_text(prop, "Center", "Fade center");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }

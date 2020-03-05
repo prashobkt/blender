@@ -4634,6 +4634,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               }
               break;
             }
+            case eGpencilModifierType_Multiply: {
+              MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
+              mmd->fading_opacity = 1.0 - mmd->fading_opacity;
+              break;
+            }
             case eGpencilModifierType_Subdiv: {
               const short simple = (1 << 0);
               SubdivGpencilModifierData *mmd = (SubdivGpencilModifierData *)md;
