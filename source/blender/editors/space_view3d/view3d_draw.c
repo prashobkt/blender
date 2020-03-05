@@ -313,7 +313,7 @@ static void view3d_stereo3d_setup(
   }
 }
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 static bool view3d_xr_mirror_active(const wmWindowManager *wm,
                                     const View3D *v3d,
                                     const ARegion *ar)
@@ -351,7 +351,7 @@ static void view3d_xr_mirror_setup(const wmWindowManager *wm,
   /* Reset overridden View3D data */
   v3d->lens = lens_old;
 }
-#endif /* WITH_OPENXR */
+#endif /* WITH_XR_OPENXR */
 
 /**
  * Set the correct matrices
@@ -368,7 +368,7 @@ void ED_view3d_draw_setup_view(const wmWindowManager *wm,
 {
   RegionView3D *rv3d = ar->regiondata;
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
   /* Setup the view matrix. */
   if (view3d_xr_mirror_active(wm, v3d, ar)) {
     view3d_xr_mirror_setup(wm, depsgraph, scene, v3d, ar, rect);

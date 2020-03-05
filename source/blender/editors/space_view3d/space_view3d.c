@@ -700,7 +700,7 @@ static void view3d_main_region_listener(
       if (ELEM(wmn->data, ND_UNDO)) {
         WM_gizmomap_tag_refresh(gzmap);
       }
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
       else if (ELEM(wmn->data, ND_XR_DATA_CHANGED)) {
         /* Only cause a redraw if this a VR session mirror. Should more features be added that
          * require redraws, we could pass something to wmn->reference, e.g. the flag value. */

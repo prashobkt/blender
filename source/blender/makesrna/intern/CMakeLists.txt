@@ -326,8 +326,8 @@ if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
 endif()
 
-if(WITH_OPENXR)
-  add_definitions(-DWITH_OPENXR)
+if(WITH_XR_OPENXR)
+  add_definitions(-DWITH_XR_OPENXR)
 endif()
 
 # Build makesrna executable

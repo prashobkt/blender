@@ -2723,7 +2723,7 @@ static void write_gpencil(WriteData *wd, bGPdata *gpd)
   }
 }
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 static void write_wm_xr_data(WriteData *wd, wmXrData *xr_data)
 {
   write_view3dshading(wd, &xr_data->session_settings.shading);
@@ -2976,7 +2976,7 @@ static void write_windowmanager(WriteData *wd, wmWindowManager *wm)
 {
   writestruct(wd, ID_WM, wmWindowManager, 1, wm);
   write_iddata(wd, &wm->id);
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
   write_wm_xr_data(wd, &wm->xr);
 #endif
 

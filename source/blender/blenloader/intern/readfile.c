@@ -7521,7 +7521,7 @@ static bool direct_link_area_map(FileData *fd, ScrAreaMap *area_map)
 /** \name XR-data
  * \{ */
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 
 static void direct_link_wm_xr_data(FileData *fd, wmXrData *xr_data)
 {
@@ -7591,7 +7591,7 @@ static void direct_link_windowmanager(FileData *fd, wmWindowManager *wm)
     }
   }
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
   direct_link_wm_xr_data(fd, &wm->xr);
 #endif
 
@@ -7636,7 +7636,7 @@ static void lib_link_windowmanager(FileData *fd, Main *UNUSED(bmain), wmWindowMa
       lib_link_area(fd, &wm->id, area);
     }
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
     lib_link_wm_xr_data(fd, &wm->id, &wm->xr);
 #endif
   }
