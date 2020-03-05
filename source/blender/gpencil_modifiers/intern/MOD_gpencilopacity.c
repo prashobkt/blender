@@ -117,6 +117,7 @@ static void deformStroke(GpencilModifierData *md,
   /* Fill using opacity factor. */
   if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
     gps->fill_opacity_fac = mmd->factor;
+    CLAMP(gps->fill_opacity_fac, 0.0f, 1.0f);
   }
 }
 
