@@ -636,18 +636,18 @@ enum {
 static int gp_frame_duplicate_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
+  bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
   Scene *scene = CTX_data_scene(C);
 
   int mode = RNA_enum_get(op->ptr, "mode");
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, gpl)) {
+  if (ELEM(NULL, gpd, gpl_active)) {
     return OPERATOR_CANCELLED;
   }
 
   if (mode == 0) {
-    BKE_gpencil_frame_addcopy(gpl, CFRA);
+    BKE_gpencil_frame_addcopy(gpl_active, CFRA);
   }
   else {
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
@@ -3427,7 +3427,7 @@ void GPENCIL_OT_layer_mask_add(wmOperatorType *ot)
   RNA_def_string(ot->srna, "name", NULL, 128, "Layer", "Name of the layer");
 }
 
-static int gp_layer_mask_remove_exec(bContext *C, wmOperator *op)
+static int gp_layer_mask_remove_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Object *ob = CTX_data_active_object(C);
   if ((ob == NULL) || (ob->type != OB_GPENCIL)) {

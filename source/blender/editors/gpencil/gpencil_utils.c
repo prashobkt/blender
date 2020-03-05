@@ -2578,7 +2578,7 @@ bool ED_gpencil_stroke_check_collision(GP_SpaceConversion *gsc,
 
   /* Check we have something to use (only for old files). */
   if (equals_v3v3(zerov3, gps->boundbox_min)) {
-    BKE_gpencil_stroke_collision_get(gps);
+    BKE_gpencil_stroke_boundingbox_calc(gps);
   }
 
   /* Convert bound box to 2d */

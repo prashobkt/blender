@@ -622,7 +622,7 @@ GpencilModifierData *BKE_gpencil_modifiers_findByName(Object *ob, const char *na
   return BLI_findstring(&(ob->greasepencil_modifiers), name, offsetof(GpencilModifierData, name));
 }
 
-void BKE_gpencil_stroke_subdivide(bGPDstroke *gps, int level, int flag, int type)
+void BKE_gpencil_stroke_subdivide(bGPDstroke *gps, int level, int type)
 {
   bGPDspoint *temp_points;
   MDeformVert *temp_dverts = NULL;

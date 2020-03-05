@@ -261,6 +261,8 @@ static void generate_geometry(GpencilModifierData *md,
 
         /* Add new stroke. */
         BLI_addhead(&iter->gpf->strokes, gps_dst);
+        /* Calc bounding box. */
+        BKE_gpencil_stroke_boundingbox_calc(gps_dst);
       }
 
       /* Advance random index. */

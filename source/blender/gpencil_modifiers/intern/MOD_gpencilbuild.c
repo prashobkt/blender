@@ -399,7 +399,7 @@ static void build_concurrent(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
 
 /* --------------------------------------------- */
 static void generate_geometry(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
+    GpencilModifierData *md, Depsgraph *depsgraph, bGPDlayer *gpl, bGPDframe *gpf)
 {
   BuildGpencilModifierData *mmd = (BuildGpencilModifierData *)md;
   const bool reverse = (mmd->transition != GP_BUILD_TRANSITION_GROW);
@@ -528,7 +528,7 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
     if (gpf == NULL) {
       continue;
     }
-    generate_geometry(md, depsgraph, ob, gpl, gpf);
+    generate_geometry(md, depsgraph, gpl, gpf);
   }
 }
 

@@ -238,7 +238,7 @@ bool BKE_gpencil_stroke_select_check(const struct bGPDstroke *gps);
 
 struct BoundBox *BKE_gpencil_boundbox_get(struct Object *ob);
 void BKE_gpencil_centroid_3d(struct bGPdata *gpd, float r_centroid[3]);
-void BKE_gpencil_stroke_collision_get(struct bGPDstroke *gps);
+void BKE_gpencil_stroke_boundingbox_calc(struct bGPDstroke *gps);
 
 /* vertex groups */
 void BKE_gpencil_dvert_ensure(struct bGPDstroke *gps);
@@ -252,7 +252,7 @@ void BKE_gpencil_frame_active_set(struct Depsgraph *depsgraph, struct bGPdata *g
 void BKE_gpencil_stroke_normal(const struct bGPDstroke *gps, float r_normal[3]);
 void BKE_gpencil_stroke_simplify_adaptive(struct bGPDstroke *gps, float factor);
 void BKE_gpencil_stroke_simplify_fixed(struct bGPDstroke *gps);
-void BKE_gpencil_stroke_subdivide(struct bGPDstroke *gps, int level, int flag, int type);
+void BKE_gpencil_stroke_subdivide(struct bGPDstroke *gps, int level, int type);
 bool BKE_gpencil_stroke_trim(struct bGPDstroke *gps);
 void BKE_gpencil_stroke_merge_distance(struct bGPDframe *gpf,
                                        struct bGPDstroke *gps,
