@@ -4470,23 +4470,14 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* Init default Grease Pencil Vertex paint mix factor for Viewport. */
     if (!DNA_struct_elem_find(
             fd->filesdna, "View3DOverlay", "float", "gpencil_vertex_paint_opacity")) {
-      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
-          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.gpencil_vertex_paint_opacity = 1.0f;
             }
           }
-        }
-      }
-    }
-
-    /* Init default Grease Pencil Vertex paint layer mix factor. */
-    if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "float", "vertex_paint_opacity")) {
-      for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
-        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-          gpl->vertex_paint_opacity = 1.0f;
         }
       }
     }
@@ -4497,7 +4488,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "ArrayGpencilModifierData", "int", "seed")) {
       /* Init new Grease Pencil Paint tools. */
       {
-        for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
+        LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
           if (brush->gpencil_settings != NULL) {
             brush->gpencil_vertex_tool = brush->gpencil_settings->brush_type;
             brush->gpencil_sculpt_tool = brush->gpencil_settings->brush_type;
@@ -4650,6 +4641,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           gpl->flag |= GP_LAYER_USE_LIGHTS;
           srgb_to_linearrgb_v4(gpl->tintcolor, gpl->tintcolor);
+          gpl->vertex_paint_opacity = 1.0f;
 
           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
             LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
