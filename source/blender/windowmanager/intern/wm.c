@@ -375,7 +375,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
     WM_msgbus_destroy(wm->message_bus);
   }
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
   wm_xr_context_destroy(wm);
 #endif
 

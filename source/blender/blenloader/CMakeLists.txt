@@ -92,8 +92,8 @@ if(WITH_ALEMBIC)
   add_definitions(-DWITH_ALEMBIC)
 endif()
 
-if(WITH_OPENXR)
-  add_definitions(-DWITH_OPENXR)
+if(WITH_XR_OPENXR)
+  add_definitions(-DWITH_XR_OPENXR)
 endif()
 
 blender_add_lib(bf_blenloader "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

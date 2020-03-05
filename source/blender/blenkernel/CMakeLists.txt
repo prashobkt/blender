@@ -660,8 +660,8 @@ if(WITH_TBB)
   )
 endif()
 
-if(WITH_OPENXR)
-  add_definitions(-DWITH_OPENXR)
+if(WITH_XR_OPENXR)
+  add_definitions(-DWITH_XR_OPENXR)
 endif()
 
 # # Warnings as errors, this is too strict!

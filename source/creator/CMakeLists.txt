@@ -111,8 +111,8 @@ if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
 endif()
 
-if(WITH_OPENXR)
-  add_definitions(-DWITH_OPENXR)
+if(WITH_XR_OPENXR)
+  add_definitions(-DWITH_XR_OPENXR)
 endif()
 
 # Setup the exe sources and buildinfo

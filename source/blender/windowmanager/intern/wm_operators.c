@@ -3645,7 +3645,7 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 
 /** \} */
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -3676,7 +3676,7 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
    * UI instead. Not meant as a permanent solution. */
   ot->flag = OPTYPE_INTERNAL;
 }
-#endif /* WITH_OPENXR */
+#endif /* WITH_XR_OPENXR */
 
 /* -------------------------------------------------------------------- */
 /** \name Operator Registration & Keymaps
@@ -3719,7 +3719,7 @@ void wm_operatortypes_register(void)
   WM_operatortype_append(WM_OT_call_panel);
   WM_operatortype_append(WM_OT_radial_control);
   WM_operatortype_append(WM_OT_stereo3d_set);
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
   WM_operatortype_append(WM_OT_xr_session_toggle);
 #endif
 #if defined(WIN32)
