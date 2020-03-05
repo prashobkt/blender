@@ -105,7 +105,7 @@ static void deformStroke(GpencilModifierData *md,
                          Depsgraph *depsgraph,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe *gpf,
                          bGPDstroke *gps)
 {
   NoiseGpencilModifierData *mmd = (NoiseGpencilModifierData *)md;
@@ -133,7 +133,8 @@ static void deformStroke(GpencilModifierData *md,
   }
 
   int seed = mmd->seed;
-  int stroke_seed = gps->totpoints;
+  /* FIXME(fclem): This is really slow. We should get the stroke index in another way. */
+  int stroke_seed = BLI_findindex(&gpf->strokes, gps);
   seed += stroke_seed;
 
   /* Make sure different modifiers get different seeds. */
