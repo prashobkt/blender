@@ -151,6 +151,7 @@ static void generate_geometry(GpencilModifierData *md,
 
   int seed = mmd->seed;
   /* Make sure different modifiers get different seeds. */
+  seed += BLI_hash_string(ob->id.name + 2);
   seed += BLI_hash_string(md->name);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {

@@ -132,12 +132,11 @@ static void deformStroke(GpencilModifierData *md,
   }
 
   int seed = mmd->seed;
-  /* TODO Find a better seed for stroke. Ideally their position in the strokelist. */
   int stroke_seed = gps->totpoints;
   seed += stroke_seed;
 
-  /* FIXME Seed is the same for all modifier currently.
-   * This is a workaround to make sure different modifiers get different seeds. */
+  /* Make sure different modifiers get different seeds. */
+  seed += BLI_hash_string(ob->id.name + 2);
   seed += BLI_hash_string(md->name);
 
   if (mmd->flag & GP_NOISE_USE_RANDOM) {
