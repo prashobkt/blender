@@ -102,7 +102,7 @@ void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 /* wm_draw.c */
 void wm_draw_offscreen_texture_parameters(struct GPUOffScreen *offscreen);
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 /* wm_xr.c */
 bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm);
 void wm_xr_data_destroy(wmWindowManager *wm);

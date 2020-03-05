@@ -30,7 +30,7 @@
 #include "GHOST_ISystem.h"
 #include "GHOST_IEvent.h"
 #include "GHOST_IEventConsumer.h"
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 #  include "GHOST_IXrContext.h"
 #endif
 #include "intern/GHOST_CallbackEventConsumer.h"
@@ -940,7 +940,7 @@ void GHOST_EndIME(GHOST_WindowHandle windowhandle)
 
 #endif /* WITH_INPUT_IME */
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 
 #  define GHOST_XR_CAPI_CALL(call, ctx) \
     try { \

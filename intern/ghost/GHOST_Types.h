@@ -593,7 +593,7 @@ struct GHOST_TimerTaskHandle__;
 typedef void (*GHOST_TimerProcPtr)(struct GHOST_TimerTaskHandle__ *task, GHOST_TUns64 time);
 #endif
 
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
 
 /**
  * The XR view (i.e. the OpenXR runtime) may require a different graphics library than OpenGL. An

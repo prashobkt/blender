@@ -121,7 +121,7 @@ typedef struct ReportTimerInfo {
   float widthfac;
 } ReportTimerInfo;
 
-//#ifdef WITH_OPENXR
+//#ifdef WITH_XR_OPENXR
 typedef struct wmXrData {
   void *context; /* GHOST_XrContextHandle */
 
@@ -195,7 +195,7 @@ typedef struct wmWindowManager {
 
   struct wmMsgBus *message_bus;
 
-  //#ifdef WITH_OPENXR
+  //#ifdef WITH_XR_OPENXR
   wmXrData xr;
   //#endif
 } wmWindowManager;

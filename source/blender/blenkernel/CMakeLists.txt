@@ -125,6 +125,7 @@ set(SRC
   intern/idcode.c
   intern/idprop.c
   intern/idprop_utils.c
+  intern/idtype.c
   intern/image.c
   intern/image_gen.c
   intern/image_save.c
@@ -292,6 +293,7 @@ set(SRC
   BKE_icons.h
   BKE_idcode.h
   BKE_idprop.h
+  BKE_idtype.h
   BKE_image.h
   BKE_image_save.h
   BKE_ipo.h
@@ -658,8 +660,8 @@ if(WITH_TBB)
   )
 endif()
 
-if(WITH_OPENXR)
-  add_definitions(-DWITH_OPENXR)
+if(WITH_XR_OPENXR)
+  add_definitions(-DWITH_XR_OPENXR)
 endif()
 
 # # Warnings as errors, this is too strict!

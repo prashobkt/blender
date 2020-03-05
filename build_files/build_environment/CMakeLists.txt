@@ -99,7 +99,7 @@ else()
 endif()
 include(cmake/openimagedenoise.cmake)
 include(cmake/embree.cmake)
-include(cmake/openxr.cmake)
+include(cmake/xr_openxr.cmake)
 
 if(WITH_WEBP)
   include(cmake/webp.cmake)

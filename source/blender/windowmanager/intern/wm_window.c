@@ -1630,7 +1630,7 @@ void wm_window_process_events(const bContext *C)
     GHOST_DispatchEvents(g_system);
   }
   hasevent |= wm_window_timer(C);
-#ifdef WITH_OPENXR
+#ifdef WITH_XR_OPENXR
   hasevent |= GHOST_XrEventsHandle(CTX_wm_manager(C)->xr.context);
 #endif
 
