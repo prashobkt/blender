@@ -1791,18 +1791,24 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         row = col.row(align=True)
-        row.prop(md, "factor", text="Position" )
+        row.prop(md, "factor", text="Position")
+        row = col.row(align=True)
         row.prop(md, "factor_strength", text="Strength")
+        row = col.row(align=True)
         row.prop(md, "factor_thickness", text="Thickness")
+        row = col.row(align=True)
         row.prop(md, "factor_uvs", text="UV")
-        row.prop(md, "random", text="", icon='TIME', toggle=True)
-        row = col.row()
-        row.enabled = md.random
-        row.prop(md, "step")
-        row = col.row()
-        row.enabled = md.random
-        row.prop(md, "seed")
 
+        col.separator()
+        row = col.row(align=True)
+        row.prop(md, "random", text="", icon='TIME', toggle=True)
+
+        subrow = row.row(align=True)
+        subrow.enabled = md.random
+        subrow.prop(md, "step")
+        subrow.prop(md, "seed")
+
+        col.separator()
         col.prop(md, "noise_scale")
         col.prop(md, "use_custom_curve")
 
