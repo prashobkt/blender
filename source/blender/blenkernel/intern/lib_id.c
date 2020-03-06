@@ -467,14 +467,10 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const bool test, const int flags
 
   switch ((ID_Type)GS(id->name)) {
     case ID_SCE:
-      if (!test) {
-        BKE_scene_make_local(bmain, (Scene *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_OB:
-      if (!test) {
-        BKE_object_make_local(bmain, (Object *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_ME:
       if (!test) {
@@ -512,14 +508,10 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const bool test, const int flags
       }
       return true;
     case ID_LA:
-      if (!test) {
-        BKE_light_make_local(bmain, (Light *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_CA:
-      if (!test) {
-        BKE_camera_make_local(bmain, (Camera *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_SPK:
       if (!test) {
@@ -527,14 +519,10 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const bool test, const int flags
       }
       return true;
     case ID_LP:
-      if (!test) {
-        BKE_lightprobe_make_local(bmain, (LightProbe *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_WO:
-      if (!test) {
-        BKE_world_make_local(bmain, (World *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_VF:
       if (!test) {
@@ -730,10 +718,10 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
 
     switch ((ID_Type)GS(id->name)) {
       case ID_SCE:
-        BKE_scene_copy_data(bmain, (Scene *)*r_newid, (Scene *)id, flag);
+        BLI_assert(0);
         break;
       case ID_OB:
-        BKE_object_copy_data(bmain, (Object *)*r_newid, (Object *)id, flag);
+        BLI_assert(0);
         break;
       case ID_ME:
         BKE_mesh_copy_data(bmain, (Mesh *)*r_newid, (Mesh *)id, flag);
@@ -757,22 +745,22 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
         BKE_lattice_copy_data(bmain, (Lattice *)*r_newid, (Lattice *)id, flag);
         break;
       case ID_LA:
-        BKE_light_copy_data(bmain, (Light *)*r_newid, (Light *)id, flag);
+        BLI_assert(0);
         break;
       case ID_SPK:
         BKE_speaker_copy_data(bmain, (Speaker *)*r_newid, (Speaker *)id, flag);
         break;
       case ID_LP:
-        BKE_lightprobe_copy_data(bmain, (LightProbe *)*r_newid, (LightProbe *)id, flag);
+        BLI_assert(0);
         break;
       case ID_CA:
-        BKE_camera_copy_data(bmain, (Camera *)*r_newid, (Camera *)id, flag);
+        BLI_assert(0);
         break;
       case ID_KE:
         BKE_key_copy_data(bmain, (Key *)*r_newid, (Key *)id, flag);
         break;
       case ID_WO:
-        BKE_world_copy_data(bmain, (World *)*r_newid, (World *)id, flag);
+        BLI_assert(0);
         break;
       case ID_TXT:
         BKE_text_copy_data(bmain, (Text *)*r_newid, (Text *)id, flag);
@@ -1348,16 +1336,14 @@ void BKE_libblock_init_empty(ID *id)
   /* Note that only ID types that are not valid when filled of zero should have a callback here. */
   switch ((ID_Type)GS(id->name)) {
     case ID_SCE:
-      BKE_scene_init((Scene *)id);
+      BLI_assert(0);
       break;
     case ID_LI:
       /* Nothing to do. */
       break;
-    case ID_OB: {
-      Object *ob = (Object *)id;
-      BKE_object_init(ob, OB_EMPTY);
+    case ID_OB:
+      BLI_assert(0);
       break;
-    }
     case ID_ME:
       BKE_mesh_init((Mesh *)id);
       break;
@@ -1380,19 +1366,19 @@ void BKE_libblock_init_empty(ID *id)
       BKE_lattice_init((Lattice *)id);
       break;
     case ID_LA:
-      BKE_light_init((Light *)id);
+      BLI_assert(0);
       break;
     case ID_SPK:
       BKE_speaker_init((Speaker *)id);
       break;
     case ID_LP:
-      BKE_lightprobe_init((LightProbe *)id);
+      BLI_assert(0);
       break;
     case ID_CA:
-      BKE_camera_init((Camera *)id);
+      BLI_assert(0);
       break;
     case ID_WO:
-      BKE_world_init((World *)id);
+      BLI_assert(0);
       break;
     case ID_SCR:
       /* Nothing to do. */
@@ -2419,7 +2405,7 @@ void BKE_library_make_local(Main *bmain,
       else {
         /* we can switch the proxy'ing from the linked-in to the made-local proxy.
          * BKE_object_make_proxy() shouldn't be used here, as it allocates memory that
-         * was already allocated by BKE_object_make_local() (which called BKE_object_copy). */
+         * was already allocated by object_make_local() (which called BKE_object_copy). */
         ob_new->proxy = ob->proxy;
         ob_new->proxy_group = ob->proxy_group;
         ob_new->proxy_from = ob->proxy_from;
