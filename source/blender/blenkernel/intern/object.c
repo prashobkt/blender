@@ -1041,6 +1041,10 @@ static void object_init(Object *ob, const short ob_type)
     ob->trackflag = OB_NEGZ;
     ob->upflag = OB_POSY;
   }
+
+  if (ob->type == OB_GPENCIL) {
+    ob->dtx |= OB_USE_GPENCIL_LIGHTS;
+  }
 }
 
 void *BKE_object_obdata_add_from_type(Main *bmain, int type, const char *name)
