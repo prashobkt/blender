@@ -81,6 +81,12 @@ static void initData(GpencilModifierData *md)
 
     gpmd->colorband->tot = 2;
   }
+
+  gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  if (gpmd->curve_intensity) {
+    CurveMapping *curve = gpmd->curve_intensity;
+    BKE_curvemapping_initialize(curve);
+  }
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -90,10 +96,18 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
   MEM_SAFE_FREE(tgmd->colorband);
 
+  if (tgmd->curve_intensity != NULL) {
+    BKE_curvemapping_free(tgmd->curve_intensity);
+    tgmd->curve_intensity = NULL;
+  }
+
   BKE_gpencil_modifier_copyData_generic(md, target);
+
   if (gmd->colorband) {
     tgmd->colorband = MEM_dupallocN(gmd->colorband);
   }
+
+  tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
 }
 
 /* deform stroke */
@@ -110,6 +124,7 @@ static void deformStroke(GpencilModifierData *md,
   }
 
   const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
+  const bool use_curve = (mmd->flag & GP_VERTEXCOL_CUSTOM_CURVE) != 0 && mmd->curve_intensity;
 
   if (!is_stroke_affected_by_modifier(ob,
                                       mmd->layername,
@@ -119,10 +134,10 @@ static void deformStroke(GpencilModifierData *md,
                                       1,
                                       gpl,
                                       gps,
-                                      mmd->flag & GP_HOOK_INVERT_LAYER,
-                                      mmd->flag & GP_HOOK_INVERT_PASS,
-                                      mmd->flag & GP_HOOK_INVERT_LAYERPASS,
-                                      mmd->flag & GP_HOOK_INVERT_MATERIAL)) {
+                                      mmd->flag & GP_VERTEXCOL_INVERT_LAYER,
+                                      mmd->flag & GP_VERTEXCOL_INVERT_PASS,
+                                      mmd->flag & GP_VERTEXCOL_INVERT_LAYERPASS,
+                                      mmd->flag & GP_VERTEXCOL_INVERT_MATERIAL)) {
     return;
   }
   MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
@@ -170,10 +185,15 @@ static void deformStroke(GpencilModifierData *md,
 
     /* Verify vertex group. */
     if (mmd->mode != GPPAINT_MODE_FILL) {
-      const float weight = get_modifier_point_weight(
-          dvert, (mmd->flag & GP_HOOK_INVERT_VGROUP) != 0, def_nr);
+      float weight = get_modifier_point_weight(
+          dvert, (mmd->flag & GP_VERTEXCOL_INVERT_VGROUP) != 0, def_nr);
       if (weight < 0.0f) {
         continue;
+      }
+      /* Custom curve to modulate value. */
+      if (use_curve) {
+        float value = (float)i / (gps->totpoints - 1);
+        weight *= BKE_curvemapping_evaluateF(mmd->curve_intensity, 0, value);
       }
 
       /* Calc world position of point. */
@@ -236,6 +256,9 @@ static void freeData(GpencilModifierData *md)
   if (mmd->colorband) {
     MEM_freeN(mmd->colorband);
     mmd->colorband = NULL;
+  }
+  if (mmd->curve_intensity) {
+    BKE_curvemapping_free(mmd->curve_intensity);
   }
 }
 

@@ -33,6 +33,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
+#include "BKE_colortools.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_material.h"
@@ -52,11 +53,27 @@ static void initData(GpencilModifierData *md)
   gpmd->materialname[0] = '\0';
   ARRAY_SET_ITEMS(gpmd->rgb, 1.0f, 1.0f, 1.0f);
   gpmd->modify_color = GP_MODIFY_COLOR_BOTH;
+
+  gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  if (gpmd->curve_intensity) {
+    CurveMapping *curve = gpmd->curve_intensity;
+    BKE_curvemapping_initialize(curve);
+  }
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
+  TintGpencilModifierData *gmd = (TintGpencilModifierData *)md;
+  TintGpencilModifierData *tgmd = (TintGpencilModifierData *)target;
+
+  if (tgmd->curve_intensity != NULL) {
+    BKE_curvemapping_free(tgmd->curve_intensity);
+    tgmd->curve_intensity = NULL;
+  }
+
   BKE_gpencil_modifier_copyData_generic(md, target);
+
+  tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
 }
 
 /* tint strokes */
@@ -68,6 +85,7 @@ static void deformStroke(GpencilModifierData *md,
                          bGPDstroke *gps)
 {
   TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
+  const bool use_curve = (mmd->flag & GP_TINT_CUSTOM_CURVE) != 0 && mmd->curve_intensity;
 
   if (!is_stroke_affected_by_modifier(ob,
                                       mmd->layername,
@@ -97,6 +115,7 @@ static void deformStroke(GpencilModifierData *md,
 
   /* Apply to Vertex Color. */
   float mixfac = mmd->factor;
+
   CLAMP(mixfac, 0.0, 1.0f);
   /* Fill */
   if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
@@ -120,7 +139,14 @@ static void deformStroke(GpencilModifierData *md,
         pt->vert_color[3] = 1.0f;
       }
 
-      interp_v3_v3v3(pt->vert_color, pt->vert_color, mmd->rgb, mixfac);
+      /* Custom curve to modulate value. */
+      float mixvalue = mixfac;
+      if (use_curve) {
+        float value = (float)i / (gps->totpoints - 1);
+        mixvalue *= BKE_curvemapping_evaluateF(mmd->curve_intensity, 0, value);
+      }
+
+      interp_v3_v3v3(pt->vert_color, pt->vert_color, mmd->rgb, mixvalue);
     }
   }
 }
@@ -141,6 +167,15 @@ static void bakeModifier(Main *UNUSED(bmain),
   }
 }
 
+static void freeData(GpencilModifierData *md)
+{
+  TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
+
+  if (gpmd->curve_intensity) {
+    BKE_curvemapping_free(gpmd->curve_intensity);
+  }
+}
+
 GpencilModifierTypeInfo modifierType_Gpencil_Tint = {
     /* name */ "Tint",
     /* structName */ "TintGpencilModifierData",
@@ -156,7 +191,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Tint = {
     /* remapTime */ NULL,
 
     /* initData */ initData,
-    /* freeData */ NULL,
+    /* freeData */ freeData,
     /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,

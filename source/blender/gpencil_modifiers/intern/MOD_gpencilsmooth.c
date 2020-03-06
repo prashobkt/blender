@@ -31,6 +31,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
+#include "BKE_colortools.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
@@ -50,11 +51,27 @@ static void initData(GpencilModifierData *md)
   gpmd->materialname[0] = '\0';
   gpmd->vgname[0] = '\0';
   gpmd->step = 1;
+
+  gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  if (gpmd->curve_intensity) {
+    CurveMapping *curve = gpmd->curve_intensity;
+    BKE_curvemapping_initialize(curve);
+  }
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
+  SmoothGpencilModifierData *gmd = (SmoothGpencilModifierData *)md;
+  SmoothGpencilModifierData *tgmd = (SmoothGpencilModifierData *)target;
+
+  if (tgmd->curve_intensity != NULL) {
+    BKE_curvemapping_free(tgmd->curve_intensity);
+    tgmd->curve_intensity = NULL;
+  }
+
   BKE_gpencil_modifier_copyData_generic(md, target);
+
+  tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
 }
 
 /* aply smooth effect based on stroke direction */
@@ -67,6 +84,7 @@ static void deformStroke(GpencilModifierData *md,
 {
   SmoothGpencilModifierData *mmd = (SmoothGpencilModifierData *)md;
   const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
+  const bool use_curve = (mmd->flag & GP_SMOOTH_CUSTOM_CURVE) != 0 && mmd->curve_intensity;
 
   if (!is_stroke_affected_by_modifier(ob,
                                       mmd->layername,
@@ -90,10 +108,16 @@ static void deformStroke(GpencilModifierData *md,
         MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
 
         /* verify vertex group */
-        const float weight = get_modifier_point_weight(
+        float weight = get_modifier_point_weight(
             dvert, (mmd->flag & GP_SMOOTH_INVERT_VGROUP) != 0, def_nr);
         if (weight < 0.0f) {
           continue;
+        }
+
+        /* Custom curve to modulate value. */
+        if (use_curve) {
+          float value = (float)i / (gps->totpoints - 1);
+          weight *= BKE_curvemapping_evaluateF(mmd->curve_intensity, 0, value);
         }
 
         const float val = mmd->factor * weight;
@@ -134,6 +158,15 @@ static void bakeModifier(struct Main *UNUSED(bmain),
   }
 }
 
+static void freeData(GpencilModifierData *md)
+{
+  SmoothGpencilModifierData *gpmd = (SmoothGpencilModifierData *)md;
+
+  if (gpmd->curve_intensity) {
+    BKE_curvemapping_free(gpmd->curve_intensity);
+  }
+}
+
 GpencilModifierTypeInfo modifierType_Gpencil_Smooth = {
     /* name */ "Smooth",
     /* structName */ "SmoothGpencilModifierData",
@@ -149,7 +182,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Smooth = {
     /* remapTime */ NULL,
 
     /* initData */ initData,
-    /* freeData */ NULL,
+    /* freeData */ freeData,
     /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,

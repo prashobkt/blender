@@ -34,6 +34,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
+#include "BKE_colortools.h"
 #include "BKE_deform.h"
 #include "BKE_material.h"
 #include "BKE_gpencil.h"
@@ -54,11 +55,26 @@ static void initData(GpencilModifierData *md)
   gpmd->materialname[0] = '\0';
   gpmd->vgname[0] = '\0';
   gpmd->modify_color = GP_MODIFY_COLOR_BOTH;
+  gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  if (gpmd->curve_intensity) {
+    CurveMapping *curve = gpmd->curve_intensity;
+    BKE_curvemapping_initialize(curve);
+  }
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
+  OpacityGpencilModifierData *gmd = (OpacityGpencilModifierData *)md;
+  OpacityGpencilModifierData *tgmd = (OpacityGpencilModifierData *)target;
+
+  if (tgmd->curve_intensity != NULL) {
+    BKE_curvemapping_free(tgmd->curve_intensity);
+    tgmd->curve_intensity = NULL;
+  }
+
   BKE_gpencil_modifier_copyData_generic(md, target);
+
+  tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
 }
 
 /* opacity strokes */
@@ -71,6 +87,7 @@ static void deformStroke(GpencilModifierData *md,
 {
   OpacityGpencilModifierData *mmd = (OpacityGpencilModifierData *)md;
   const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
+  const bool use_curve = (mmd->flag & GP_OPACITY_CUSTOM_CURVE) != 0 && mmd->curve_intensity;
 
   if (!is_stroke_affected_by_modifier(ob,
                                       mmd->layername,
@@ -99,17 +116,25 @@ static void deformStroke(GpencilModifierData *md,
       if (weight < 0.0f) {
         continue;
       }
+      /* Custom curve to modulate value. */
+      float factor_curve = mmd->factor;
+      if (use_curve) {
+        float value = (float)i / (gps->totpoints - 1);
+        factor_curve *= BKE_curvemapping_evaluateF(mmd->curve_intensity, 0, value);
+      }
+
       if (def_nr < 0) {
-        pt->strength += mmd->factor - 1.0f;
+        pt->strength += factor_curve - 1.0f;
       }
       else {
         /* High factor values, change weight too. */
-        if ((mmd->factor > 1.0f) && (weight < 1.0f)) {
-          weight += mmd->factor - 1.0f;
+        if ((factor_curve > 1.0f) && (weight < 1.0f)) {
+          weight += factor_curve - 1.0f;
           CLAMP(weight, 0.0f, 1.0f);
         }
-        pt->strength += (mmd->factor - 1) * weight;
+        pt->strength += (factor_curve - 1) * weight;
       }
+
       CLAMP(pt->strength, 0.0f, 1.0f);
     }
   }
@@ -136,6 +161,14 @@ static void bakeModifier(Main *UNUSED(bmain),
     }
   }
 }
+static void freeData(GpencilModifierData *md)
+{
+  OpacityGpencilModifierData *gpmd = (OpacityGpencilModifierData *)md;
+
+  if (gpmd->curve_intensity) {
+    BKE_curvemapping_free(gpmd->curve_intensity);
+  }
+}
 
 GpencilModifierTypeInfo modifierType_Gpencil_Opacity = {
     /* name */ "Opacity",
@@ -152,7 +185,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Opacity = {
     /* remapTime */ NULL,
 
     /* initData */ initData,
-    /* freeData */ NULL,
+    /* freeData */ freeData,
     /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,

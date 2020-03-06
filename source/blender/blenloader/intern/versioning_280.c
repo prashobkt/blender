@@ -1068,6 +1068,41 @@ static void do_version_curvemapping_walker(Main *bmain, void (*callback)(CurveMa
           callback(gpmd->curve_intensity);
         }
       }
+      else if (md->type == eGpencilModifierType_Vertexcolor) {
+        VertexcolorGpencilModifierData *gpmd = (VertexcolorGpencilModifierData *)md;
+
+        if (gpmd->curve_intensity) {
+          callback(gpmd->curve_intensity);
+        }
+      }
+      else if (md->type == eGpencilModifierType_Smooth) {
+        SmoothGpencilModifierData *gpmd = (SmoothGpencilModifierData *)md;
+
+        if (gpmd->curve_intensity) {
+          callback(gpmd->curve_intensity);
+        }
+      }
+      else if (md->type == eGpencilModifierType_Color) {
+        ColorGpencilModifierData *gpmd = (ColorGpencilModifierData *)md;
+
+        if (gpmd->curve_intensity) {
+          callback(gpmd->curve_intensity);
+        }
+      }
+      else if (md->type == eGpencilModifierType_Opacity) {
+        OpacityGpencilModifierData *gpmd = (OpacityGpencilModifierData *)md;
+
+        if (gpmd->curve_intensity) {
+          callback(gpmd->curve_intensity);
+        }
+      }
+      else if (md->type == eGpencilModifierType_Tint) {
+        TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
+
+        if (gpmd->curve_intensity) {
+          callback(gpmd->curve_intensity);
+        }
+      }
     }
   }
 
@@ -4611,17 +4646,17 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               break;
             }
             case eGpencilModifierType_Noise: {
-              NoiseGpencilModifierData *gpmd = (NoiseGpencilModifierData *)md;
-              gpmd->factor /= 25.0f;
-              gpmd->factor_thickness = gpmd->factor;
-              gpmd->factor_strength = gpmd->factor;
-              gpmd->factor_uvs = gpmd->factor;
-              gpmd->noise_scale = (gpmd->flag & GP_NOISE_FULL_STROKE) ? 0.0f : 1.0f;
+              NoiseGpencilModifierData *mmd = (NoiseGpencilModifierData *)md;
+              mmd->factor /= 25.0f;
+              mmd->factor_thickness = mmd->factor;
+              mmd->factor_strength = mmd->factor;
+              mmd->factor_uvs = mmd->factor;
+              mmd->noise_scale = (mmd->flag & GP_NOISE_FULL_STROKE) ? 0.0f : 1.0f;
 
-              if (gpmd->curve_intensity == NULL) {
-                gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
-                if (gpmd->curve_intensity) {
-                  BKE_curvemapping_initialize(gpmd->curve_intensity);
+              if (mmd->curve_intensity == NULL) {
+                mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+                if (mmd->curve_intensity) {
+                  BKE_curvemapping_initialize(mmd->curve_intensity);
                 }
               }
               break;
@@ -4629,6 +4664,42 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             case eGpencilModifierType_Tint: {
               TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
               srgb_to_linearrgb_v3_v3(mmd->rgb, mmd->rgb);
+              if (mmd->curve_intensity == NULL) {
+                mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+                if (mmd->curve_intensity) {
+                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                }
+              }
+              break;
+            }
+            case eGpencilModifierType_Smooth: {
+              SmoothGpencilModifierData *mmd = (SmoothGpencilModifierData *)md;
+              if (mmd->curve_intensity == NULL) {
+                mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+                if (mmd->curve_intensity) {
+                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                }
+              }
+              break;
+            }
+            case eGpencilModifierType_Opacity: {
+              OpacityGpencilModifierData *mmd = (OpacityGpencilModifierData *)md;
+              if (mmd->curve_intensity == NULL) {
+                mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+                if (mmd->curve_intensity) {
+                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                }
+              }
+              break;
+            }
+            case eGpencilModifierType_Color: {
+              ColorGpencilModifierData *mmd = (ColorGpencilModifierData *)md;
+              if (mmd->curve_intensity == NULL) {
+                mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+                if (mmd->curve_intensity) {
+                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                }
+              }
               break;
             }
             case eGpencilModifierType_Thick: {
@@ -4650,6 +4721,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (mmd->flag & simple) {
                 mmd->flag &= ~simple;
                 mmd->type = GP_SUBDIV_SIMPLE;
+              }
+              break;
+            }
+            case eGpencilModifierType_Vertexcolor: {
+              VertexcolorGpencilModifierData *mmd = (VertexcolorGpencilModifierData *)md;
+              if (mmd->curve_intensity == NULL) {
+                mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+                if (mmd->curve_intensity) {
+                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                }
               }
               break;
             }

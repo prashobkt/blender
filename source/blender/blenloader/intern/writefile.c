@@ -1849,6 +1849,33 @@ static void write_gpencil_modifiers(WriteData *wd, ListBase *modbase)
       if (gpmd->colorband) {
         writestruct(wd, DATA, ColorBand, 1, gpmd->colorband);
       }
+      if (gpmd->curve_intensity) {
+        write_curvemapping(wd, gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Smooth) {
+      SmoothGpencilModifierData *gpmd = (SmoothGpencilModifierData *)md;
+      if (gpmd->curve_intensity) {
+        write_curvemapping(wd, gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Color) {
+      ColorGpencilModifierData *gpmd = (ColorGpencilModifierData *)md;
+      if (gpmd->curve_intensity) {
+        write_curvemapping(wd, gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Opacity) {
+      OpacityGpencilModifierData *gpmd = (OpacityGpencilModifierData *)md;
+      if (gpmd->curve_intensity) {
+        write_curvemapping(wd, gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Tint) {
+      TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
+      if (gpmd->curve_intensity) {
+        write_curvemapping(wd, gpmd->curve_intensity);
+      }
     }
   }
 }

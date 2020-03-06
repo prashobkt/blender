@@ -34,6 +34,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 
+#include "BKE_colortools.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_main.h"
@@ -52,11 +53,27 @@ static void initData(GpencilModifierData *md)
   gpmd->layername[0] = '\0';
   gpmd->materialname[0] = '\0';
   gpmd->modify_color = GP_MODIFY_COLOR_BOTH;
+
+  gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  if (gpmd->curve_intensity) {
+    CurveMapping *curve = gpmd->curve_intensity;
+    BKE_curvemapping_initialize(curve);
+  }
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
+  ColorGpencilModifierData *gmd = (ColorGpencilModifierData *)md;
+  ColorGpencilModifierData *tgmd = (ColorGpencilModifierData *)target;
+
+  if (tgmd->curve_intensity != NULL) {
+    BKE_curvemapping_free(tgmd->curve_intensity);
+    tgmd->curve_intensity = NULL;
+  }
+
   BKE_gpencil_modifier_copyData_generic(md, target);
+
+  tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
 }
 
 /* color correction strokes */
@@ -70,6 +87,7 @@ static void deformStroke(GpencilModifierData *md,
 
   ColorGpencilModifierData *mmd = (ColorGpencilModifierData *)md;
   float hsv[3], factor[3];
+  const bool use_curve = (mmd->flag & GP_COLOR_CUSTOM_CURVE) != 0 && mmd->curve_intensity;
 
   if (!is_stroke_affected_by_modifier(ob,
                                       mmd->layername,
@@ -117,10 +135,19 @@ static void deformStroke(GpencilModifierData *md,
         pt->vert_color[3] = 1.0f;
       }
 
+      /* Custom curve to modulate value. */
+      float factor_value[3];
+      copy_v3_v3(factor_value, factor);
+      if (use_curve) {
+        float value = (float)i / (gps->totpoints - 1);
+        float mixfac = BKE_curvemapping_evaluateF(mmd->curve_intensity, 0, value);
+        mul_v3_fl(factor_value, mixfac);
+      }
+
       rgb_to_hsv_v(pt->vert_color, hsv);
-      hsv[0] = fractf(hsv[0] + factor[0] + 0.5f);
-      hsv[1] = clamp_f(hsv[1] * factor[1], 0.0f, 1.0f);
-      hsv[2] = hsv[2] * factor[2];
+      hsv[0] = fractf(hsv[0] + factor_value[0] + 0.5f);
+      hsv[1] = clamp_f(hsv[1] * factor_value[1], 0.0f, 1.0f);
+      hsv[2] = hsv[2] * factor_value[2];
       hsv_to_rgb_v(hsv, pt->vert_color);
     }
   }
@@ -142,6 +169,15 @@ static void bakeModifier(Main *UNUSED(bmain),
   }
 }
 
+static void freeData(GpencilModifierData *md)
+{
+  ColorGpencilModifierData *gpmd = (ColorGpencilModifierData *)md;
+
+  if (gpmd->curve_intensity) {
+    BKE_curvemapping_free(gpmd->curve_intensity);
+  }
+}
+
 GpencilModifierTypeInfo modifierType_Gpencil_Color = {
     /* name */ "Hue/Saturation",
     /* structName */ "ColorGpencilModifierData",
@@ -157,7 +193,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Color = {
     /* remapTime */ NULL,
 
     /* initData */ initData,
-    /* freeData */ NULL,
+    /* freeData */ freeData,
     /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,

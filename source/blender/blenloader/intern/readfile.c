@@ -5768,13 +5768,49 @@ static void direct_link_gpencil_modifiers(FileData *fd, ListBase *lb)
       gpmd->curve_thickness = newdataadr(fd, gpmd->curve_thickness);
       if (gpmd->curve_thickness) {
         direct_link_curvemapping(fd, gpmd->curve_thickness);
-        /* initialize the curve. Maybe this could be moved to modififer logic */
         BKE_curvemapping_initialize(gpmd->curve_thickness);
       }
     }
     else if (md->type == eGpencilModifierType_Vertexcolor) {
-      VertexcolorGpencilModifierData *hmd = (VertexcolorGpencilModifierData *)md;
-      hmd->colorband = newdataadr(fd, hmd->colorband);
+      VertexcolorGpencilModifierData *gpmd = (VertexcolorGpencilModifierData *)md;
+      gpmd->colorband = newdataadr(fd, gpmd->colorband);
+      gpmd->curve_intensity = newdataadr(fd, gpmd->curve_intensity);
+      if (gpmd->curve_intensity) {
+        direct_link_curvemapping(fd, gpmd->curve_intensity);
+        BKE_curvemapping_initialize(gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Smooth) {
+      SmoothGpencilModifierData *gpmd = (SmoothGpencilModifierData *)md;
+      gpmd->curve_intensity = newdataadr(fd, gpmd->curve_intensity);
+      if (gpmd->curve_intensity) {
+        direct_link_curvemapping(fd, gpmd->curve_intensity);
+        BKE_curvemapping_initialize(gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Color) {
+      ColorGpencilModifierData *gpmd = (ColorGpencilModifierData *)md;
+      gpmd->curve_intensity = newdataadr(fd, gpmd->curve_intensity);
+      if (gpmd->curve_intensity) {
+        direct_link_curvemapping(fd, gpmd->curve_intensity);
+        BKE_curvemapping_initialize(gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Tint) {
+      TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
+      gpmd->curve_intensity = newdataadr(fd, gpmd->curve_intensity);
+      if (gpmd->curve_intensity) {
+        direct_link_curvemapping(fd, gpmd->curve_intensity);
+        BKE_curvemapping_initialize(gpmd->curve_intensity);
+      }
+    }
+    else if (md->type == eGpencilModifierType_Opacity) {
+      OpacityGpencilModifierData *gpmd = (OpacityGpencilModifierData *)md;
+      gpmd->curve_intensity = newdataadr(fd, gpmd->curve_intensity);
+      if (gpmd->curve_intensity) {
+        direct_link_curvemapping(fd, gpmd->curve_intensity);
+        BKE_curvemapping_initialize(gpmd->curve_intensity);
+      }
     }
   }
 }

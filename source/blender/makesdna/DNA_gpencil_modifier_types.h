@@ -242,7 +242,9 @@ typedef struct TintGpencilModifierData {
   char _pad[7];
   /** Custom index for passes. */
   int layer_pass;
+
   char _pad1[4];
+  struct CurveMapping *curve_intensity;
 } TintGpencilModifierData;
 
 typedef enum eTintGpencil_Flag {
@@ -250,6 +252,7 @@ typedef enum eTintGpencil_Flag {
   GP_TINT_INVERT_PASS = (1 << 2),
   GP_TINT_INVERT_LAYERPASS = (1 << 3),
   GP_TINT_INVERT_MATERIAL = (1 << 4),
+  GP_TINT_CUSTOM_CURVE = (1 << 5),
 } eTintGpencil_Flag;
 
 typedef struct ColorGpencilModifierData {
@@ -269,7 +272,9 @@ typedef struct ColorGpencilModifierData {
   char _pad[3];
   /** Custom index for passes. */
   int layer_pass;
+
   char _pad1[4];
+  struct CurveMapping *curve_intensity;
 } ColorGpencilModifierData;
 
 typedef enum eColorGpencil_Flag {
@@ -277,6 +282,7 @@ typedef enum eColorGpencil_Flag {
   GP_COLOR_INVERT_PASS = (1 << 2),
   GP_COLOR_INVERT_LAYERPASS = (1 << 3),
   GP_COLOR_INVERT_MATERIAL = (1 << 4),
+  GP_COLOR_CUSTOM_CURVE = (1 << 5),
 } eColorGpencil_Flag;
 
 typedef struct OpacityGpencilModifierData {
@@ -298,7 +304,9 @@ typedef struct OpacityGpencilModifierData {
   char _pad[3];
   /** Custom index for passes. */
   int layer_pass;
+
   char _pad1[4];
+  struct CurveMapping *curve_intensity;
 } OpacityGpencilModifierData;
 
 typedef enum eOpacityGpencil_Flag {
@@ -307,6 +315,7 @@ typedef enum eOpacityGpencil_Flag {
   GP_OPACITY_INVERT_VGROUP = (1 << 2),
   GP_OPACITY_INVERT_LAYERPASS = (1 << 4),
   GP_OPACITY_INVERT_MATERIAL = (1 << 5),
+  GP_OPACITY_CUSTOM_CURVE = (1 << 6),
 } eOpacityGpencil_Flag;
 
 typedef struct ArrayGpencilModifierData {
@@ -623,7 +632,9 @@ typedef struct SmoothGpencilModifierData {
   int step;
   /** Custom index for passes. */
   int layer_pass;
-  char _pad[4];
+
+  char _pad1[4];
+  struct CurveMapping *curve_intensity;
 } SmoothGpencilModifierData;
 
 typedef enum eSmoothGpencil_Flag {
@@ -636,6 +647,7 @@ typedef enum eSmoothGpencil_Flag {
   GP_SMOOTH_MOD_UV = (1 << 6),
   GP_SMOOTH_INVERT_LAYERPASS = (1 << 7),
   GP_SMOOTH_INVERT_MATERIAL = (1 << 4),
+  GP_SMOOTH_CUSTOM_CURVE = (1 << 8),
 } eSmoothGpencil_Flag;
 
 typedef struct ArmatureGpencilModifierData {
@@ -709,6 +721,8 @@ typedef struct VertexcolorGpencilModifierData {
   float factor;
   float radius;
 
+  struct CurveMapping *curve_intensity;
+
   struct ColorBand *colorband;
 } VertexcolorGpencilModifierData;
 
@@ -719,6 +733,7 @@ typedef enum eVertexcolorGpencil_Flag {
   GP_VERTEXCOL_UNIFORM_SPACE = (1 << 3),
   GP_VERTEXCOL_INVERT_LAYERPASS = (1 << 4),
   GP_VERTEXCOL_INVERT_MATERIAL = (1 << 5),
+  GP_VERTEXCOL_CUSTOM_CURVE = (1 << 6),
 } eVertexcolorGpencil_Flag;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

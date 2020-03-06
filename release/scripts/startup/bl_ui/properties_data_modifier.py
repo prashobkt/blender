@@ -1746,7 +1746,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     # ...to avoid lengthy if statements
     # so each type must have a function here.
 
-    def gpencil_masking(self, layout, ob, md, use_vertex):
+    def gpencil_masking(self, layout, ob, md, use_vertex, use_curve=False):
         gpd = ob.data
         layout.separator()
         layout.label(text="Influence Filters:")
@@ -1786,6 +1786,13 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
             row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
             row.prop(md, "invert_vertex", text="", icon='ARROW_LEFTRIGHT')
 
+        if use_curve:
+            col = layout.column()
+            col.separator()
+            col.prop(md, "use_custom_curve")
+            if md.use_custom_curve:
+                col.template_curve_mapping(md, "curve")
+
     def GP_NOISE(self, layout, ob, md):
         split = layout.split()
 
@@ -1810,12 +1817,8 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col.separator()
         col.prop(md, "noise_scale")
-        col.prop(md, "use_custom_curve")
 
-        if md.use_custom_curve:
-            col.template_curve_mapping(md, "curve")
-
-        self.gpencil_masking(layout, ob, md, True)
+        self.gpencil_masking(layout, ob, md, True, True)
 
     def GP_SMOOTH(self, layout, ob, md):
         col = layout.column()
@@ -1829,7 +1832,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row.prop(md, "use_edit_thickness", text="Thickness", toggle=True)
         row.prop(md, "use_edit_uv", text="UV", toggle=True)
 
-        self.gpencil_masking(layout, ob, md, True)
+        self.gpencil_masking(layout, ob, md, True, True)
 
     def GP_SUBDIV(self, layout, ob, md):
         layout.row().prop(md, "subdivision_type", expand=True)
@@ -1872,14 +1875,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         else:
             col.prop(md, "thickness_factor")
 
-        col.separator()
-
-        col.prop(md, "use_custom_curve")
-
-        if md.use_custom_curve:
-            col.template_curve_mapping(md, "curve")
-
-        self.gpencil_masking(layout, ob, md, True)
+        self.gpencil_masking(layout, ob, md, True, True)
 
     def GP_TINT(self, layout, ob, md):
         split = layout.split()
@@ -1891,7 +1887,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row = layout.row()
         row.prop(md, "modify_color")
 
-        self.gpencil_masking(layout, ob, md, False)
+        self.gpencil_masking(layout, ob, md, False, True)
 
     def GP_TIME(self, layout, ob, md):
         gpd = ob.data
@@ -1948,7 +1944,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row = layout.row()
         row.prop(md, "modify_color")
 
-        self.gpencil_masking(layout, ob, md, False)
+        self.gpencil_masking(layout, ob, md, False, True)
 
     def GP_OPACITY(self, layout, ob, md):
         split = layout.split()
@@ -1957,7 +1953,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "factor")
         col.prop(md, "modify_color")
 
-        self.gpencil_masking(layout, ob, md, True)
+        self.gpencil_masking(layout, ob, md, True, True)
 
     def GP_ARRAY(self, layout, ob, md):
         col = layout.column()
@@ -2158,7 +2154,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.separator()
         col.prop(md, "vertex_mode")
 
-        self.gpencil_masking(layout, ob, md, True)
+        self.gpencil_masking(layout, ob, md, True, True)
 
 
 classes = (
