@@ -148,6 +148,7 @@ void GPENCIL_engine_init(void *ved)
     use_scene_world = true;
     stl->pd->use_multiedit_lines_only = false;
     stl->pd->xray_alpha = 1.0f;
+    stl->pd->v3d_color_type = -1;
   }
 
   stl->pd->use_lighting = (v3d && v3d->shading.type > OB_SOLID) || stl->pd->is_render;
