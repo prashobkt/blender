@@ -158,16 +158,6 @@ void DRW_gpencil_batch_cache_free(bGPdata *gpd)
   return;
 }
 
-void DRW_gpencil_freecache(struct Object *ob)
-{
-  if ((ob) && (ob->type == OB_GPENCIL)) {
-    bGPdata *gpd = (bGPdata *)ob->data;
-    if (gpd) {
-      DRW_gpencil_batch_cache_free(gpd);
-    }
-  }
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
