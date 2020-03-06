@@ -77,29 +77,6 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
-static void splitStroke(bGPDframe *gpf, bGPDstroke *gps, float split_angle)
-{
-  bGPDspoint *pt = gps->points;
-  bGPDstroke *new_gps = gps;
-  int i;
-  volatile float angle;
-
-  if (split_angle <= FLT_EPSILON) {
-    return;
-  }
-
-  for (i = 1; i < new_gps->totpoints - 1; i++) {
-    angle = angle_v3v3v3(&pt[i - 1].x, &pt[i].x, &pt[i + 1].x);
-    if (angle < split_angle) {
-      if (BKE_gpencil_stroke_split(gpf, new_gps, i, &new_gps)) {
-        pt = new_gps->points;
-        i = 0;
-        continue; /* then i == 1 again */
-      }
-    }
-  }
-}
-
 static void minter_v3_v3v3v3_ref(
     float *result, float *prev, float *curr, float *next, float *stroke_normal)
 {
@@ -241,9 +218,6 @@ static void bakeModifier(Main *UNUSED(bmain),
                                             mmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
           continue;
         }
-        if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
-          splitStroke(gpf, gps, mmd->split_angle);
-        }
         if (mmd->duplications > 0) {
           duplicateStroke(ob,
                           gps,
@@ -284,9 +258,6 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
                                         mmd->flag & GP_MIRROR_INVERT_LAYERPASS,
                                         mmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
       continue;
-    }
-    if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
-      splitStroke(gpf, gps, mmd->split_angle);
     }
     if (mmd->duplications > 0) {
       duplicateStroke(ob,

@@ -2139,12 +2139,6 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
             subcol.prop(md, "fading_thickness", slider=True)
             subcol.prop(md, "fading_opacity", slider=True)
 
-        subcol.separator()
-
-        col.prop(md, "enable_angle_splitting")
-        if md.enable_angle_splitting:
-            col.prop(md, "split_angle")
-
         self.gpencil_masking(layout, ob, md, False)
 
     def GP_VERTEXCOLOR(self, layout, ob, md):
