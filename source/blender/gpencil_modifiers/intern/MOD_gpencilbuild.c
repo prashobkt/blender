@@ -398,8 +398,10 @@ static void build_concurrent(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
 }
 
 /* --------------------------------------------- */
-static void generate_geometry(
-    GpencilModifierData *md, Depsgraph *depsgraph, bGPDlayer *gpl, bGPDframe *gpf)
+static void generate_geometry(GpencilModifierData *md,
+                              Depsgraph *depsgraph,
+                              bGPDlayer *gpl,
+                              bGPDframe *gpf)
 {
   BuildGpencilModifierData *mmd = (BuildGpencilModifierData *)md;
   const bool reverse = (mmd->transition != GP_BUILD_TRANSITION_GROW);
@@ -451,7 +453,7 @@ static void generate_geometry(
    * By default, the upper bound is given by the "maximum length" setting
    */
   float start_frame = gpf->framenum + mmd->start_delay;
-  float end_frame = gpf->framenum + mmd->length;
+  float end_frame = start_frame + mmd->length;
 
   if (gpf->next) {
     /* Use the next frame or upper bound as end frame, whichever is lower/closer */
