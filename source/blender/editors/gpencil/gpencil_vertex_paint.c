@@ -98,7 +98,7 @@ typedef struct tGP_BrushVertexpaintData {
   Scene *scene;
   Object *object;
 
-  ARegion *ar;
+  ARegion *region;
 
   /* Current GPencil datablock */
   bGPdata *gpd;
@@ -749,7 +749,7 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gso->scene = scene;
   gso->object = ob;
 
-  gso->ar = CTX_wm_region(C);
+  gso->region = CTX_wm_region(C);
 
   /* Save mask. */
   gso->mask = ts->gpencil_selectmode_vertex;
@@ -1256,14 +1256,14 @@ static int gp_vertexpaint_brush_invoke(bContext *C, wmOperator *op, const wmEven
 
   /* start drawing immediately? */
   if (is_modal == false) {
-    ARegion *ar = CTX_wm_region(C);
+    ARegion *region = CTX_wm_region(C);
 
     /* apply first dab... */
     gso->is_painting = true;
     gp_vertexpaint_brush_apply_event(C, op, event);
 
     /* redraw view with feedback */
-    ED_region_tag_redraw(ar);
+    ED_region_tag_redraw(region);
   }
 
   return OPERATOR_RUNNING_MODAL;
@@ -1373,8 +1373,7 @@ static int gp_vertexpaint_brush_modal(bContext *C, wmOperator *op, const wmEvent
 
   /* Redraw region? */
   if (redraw_region) {
-    ARegion *ar = CTX_wm_region(C);
-    ED_region_tag_redraw(ar);
+    ED_region_tag_redraw(CTX_wm_region(C));
   }
 
   /* Redraw toolsettings (brush settings)? */

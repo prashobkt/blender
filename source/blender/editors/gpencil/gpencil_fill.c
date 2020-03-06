@@ -1503,7 +1503,7 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
           /* Perform bounds check */
           in_bounds = BLI_rcti_isect_pt(&region->winrct, event->x, event->y);
 
-          if ((in_bounds) && (ar->regiontype == RGN_TYPE_WINDOW)) {
+          if ((in_bounds) && (region->regiontype == RGN_TYPE_WINDOW)) {
             tgpf->center[0] = event->mval[0];
             tgpf->center[1] = event->mval[1];
 

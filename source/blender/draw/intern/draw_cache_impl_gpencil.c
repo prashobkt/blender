@@ -515,7 +515,7 @@ static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_
 
     const DRWContextState *draw_ctx = DRW_context_state_get();
     Scene *scene = draw_ctx->scene;
-    ARegion *ar = draw_ctx->ar;
+    ARegion *region = draw_ctx->region;
     Object *ob = draw_ctx->obact;
 
     BLI_assert(ob && (ob->type == OB_GPENCIL));
@@ -527,7 +527,7 @@ static void gpencil_sbuffer_stroke_ensure(bGPdata *gpd, bool do_stroke, bool do_
     ED_gpencil_drawing_reference_get(scene, ob, gpl, ts->gpencil_v3d_align, origin);
 
     for (int i = 0; i < vert_len; i++) {
-      ED_gpencil_tpoint_to_point(ar, origin, &tpoints[i], &gps->points[i]);
+      ED_gpencil_tpoint_to_point(region, origin, &tpoints[i], &gps->points[i]);
       mul_m4_v3(ob->imat, &gps->points[i].x);
       bGPDspoint *pt = &gps->points[i];
       copy_v4_v4(pt->vert_color, gpd->runtime.vert_color);

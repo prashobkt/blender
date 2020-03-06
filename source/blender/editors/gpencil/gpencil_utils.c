@@ -929,7 +929,7 @@ void gp_stroke_convertcoords_tpoint(Scene *scene,
      * 3D-coordinates using the 3D-cursor as reference.
      */
     ED_gpencil_drawing_reference_get(scene, ob, gpl, ts->gpencil_v3d_align, rvec);
-    zfac = ED_view3d_calc_zfac(ar->regiondata, rvec, NULL);
+    zfac = ED_view3d_calc_zfac(region->regiondata, rvec, NULL);
 
     if (ED_view3d_project_float_global(region, rvec, mval_prj, V3D_PROJ_TEST_NOP) ==
         V3D_PROJ_RET_OK) {
@@ -1645,7 +1645,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
 {
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
 
   bGPdata *gpd = ED_gpencil_data_get_active(C);

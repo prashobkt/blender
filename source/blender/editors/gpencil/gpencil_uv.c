@@ -164,10 +164,10 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
   opdata->vinit_rotation[1] = 0.0f;
 
   if (is_modal) {
-    ARegion *ar = CTX_wm_region(C);
+    ARegion *region = CTX_wm_region(C);
 
     opdata->draw_handle_pixel = ED_region_draw_cb_activate(
-        ar->type, ED_region_draw_mouse_line_cb, opdata->mcenter, REGION_DRAW_POST_PIXEL);
+        region->type, ED_region_draw_mouse_line_cb, opdata->mcenter, REGION_DRAW_POST_PIXEL);
   }
 
   /* Calc selected strokes center. */
@@ -219,9 +219,9 @@ static void gpencil_uv_transform_exit(bContext *C, wmOperator *op)
   opdata = op->customdata;
 
   if (opdata->is_modal) {
-    ARegion *ar = CTX_wm_region(C);
+    ARegion *region = CTX_wm_region(C);
 
-    ED_region_draw_cb_exit(ar->type, opdata->draw_handle_pixel);
+    ED_region_draw_cb_exit(region->type, opdata->draw_handle_pixel);
   }
 
   WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);

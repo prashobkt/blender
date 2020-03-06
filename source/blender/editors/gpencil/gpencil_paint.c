@@ -693,7 +693,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
   BrushGpencilSettings *brush_settings = p->brush->gpencil_settings;
   tGPspoint *pt;
   Object *obact = (Object *)p->ownerPtr.data;
-  RegionView3D *rv3d = p->ar->regiondata;
+  RegionView3D *rv3d = p->region->regiondata;
 
   /* check painting mode */
   if (p->paintmode == GP_PAINTMODE_DRAW_STRAIGHT) {
