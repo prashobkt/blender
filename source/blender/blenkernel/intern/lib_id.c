@@ -473,39 +473,25 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const bool test, const int flags
       BLI_assert(0);
       return true;
     case ID_ME:
-      if (!test) {
-        BKE_mesh_make_local(bmain, (Mesh *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_CU:
-      if (!test) {
-        BKE_curve_make_local(bmain, (Curve *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_MB:
-      if (!test) {
-        BKE_mball_make_local(bmain, (MetaBall *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_MA:
-      if (!test) {
-        BKE_material_make_local(bmain, (Material *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_TE:
-      if (!test) {
-        BKE_texture_make_local(bmain, (Tex *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_IM:
-      if (!test) {
-        BKE_image_make_local(bmain, (Image *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_LT:
-      if (!test) {
-        BKE_lattice_make_local(bmain, (Lattice *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_LA:
       BLI_assert(0);
@@ -540,29 +526,19 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const bool test, const int flags
       }
       return true;
     case ID_GR:
-      if (!test) {
-        BKE_collection_make_local(bmain, (Collection *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_AR:
-      if (!test) {
-        BKE_armature_make_local(bmain, (bArmature *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_AC:
-      if (!test) {
-        BKE_action_make_local(bmain, (bAction *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_NT:
-      if (!test) {
-        ntreeMakeLocal(bmain, (bNodeTree *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_BR:
-      if (!test) {
-        BKE_brush_make_local(bmain, (Brush *)id, flags);
-      }
+      BLI_assert(0);
       return true;
     case ID_PA:
       if (!test) {
@@ -724,25 +700,25 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
         BLI_assert(0);
         break;
       case ID_ME:
-        BKE_mesh_copy_data(bmain, (Mesh *)*r_newid, (Mesh *)id, flag);
+        BLI_assert(0);
         break;
       case ID_CU:
-        BKE_curve_copy_data(bmain, (Curve *)*r_newid, (Curve *)id, flag);
+        BLI_assert(0);
         break;
       case ID_MB:
-        BKE_mball_copy_data(bmain, (MetaBall *)*r_newid, (MetaBall *)id, flag);
+        BLI_assert(0);
         break;
       case ID_MA:
-        BKE_material_copy_data(bmain, (Material *)*r_newid, (Material *)id, flag);
+        BLI_assert(0);
         break;
       case ID_TE:
-        BKE_texture_copy_data(bmain, (Tex *)*r_newid, (Tex *)id, flag);
+        BLI_assert(0);
         break;
       case ID_IM:
-        BKE_image_copy_data(bmain, (Image *)*r_newid, (Image *)id, flag);
+        BLI_assert(0);
         break;
       case ID_LT:
-        BKE_lattice_copy_data(bmain, (Lattice *)*r_newid, (Lattice *)id, flag);
+        BLI_assert(0);
         break;
       case ID_LA:
         BLI_assert(0);
@@ -757,7 +733,7 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
         BLI_assert(0);
         break;
       case ID_KE:
-        BKE_key_copy_data(bmain, (Key *)*r_newid, (Key *)id, flag);
+        BLI_assert(0);
         break;
       case ID_WO:
         BLI_assert(0);
@@ -766,19 +742,19 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
         BKE_text_copy_data(bmain, (Text *)*r_newid, (Text *)id, flag);
         break;
       case ID_GR:
-        BKE_collection_copy_data(bmain, (Collection *)*r_newid, (Collection *)id, flag);
+        BLI_assert(0);
         break;
       case ID_AR:
-        BKE_armature_copy_data(bmain, (bArmature *)*r_newid, (bArmature *)id, flag);
+        BLI_assert(0);
         break;
       case ID_AC:
-        BKE_action_copy_data(bmain, (bAction *)*r_newid, (bAction *)id, flag);
+        BLI_assert(0);
         break;
       case ID_NT:
-        BKE_node_tree_copy_data(bmain, (bNodeTree *)*r_newid, (bNodeTree *)id, flag);
+        BLI_assert(0);
         break;
       case ID_BR:
-        BKE_brush_copy_data(bmain, (Brush *)*r_newid, (Brush *)id, flag);
+        BLI_assert(0);
         break;
       case ID_PA:
         BKE_particlesettings_copy_data(
@@ -1345,25 +1321,25 @@ void BKE_libblock_init_empty(ID *id)
       BLI_assert(0);
       break;
     case ID_ME:
-      BKE_mesh_init((Mesh *)id);
+      BLI_assert(0);
       break;
     case ID_CU:
-      BKE_curve_init((Curve *)id, 0);
+      BLI_assert(0);
       break;
     case ID_MB:
-      BKE_mball_init((MetaBall *)id);
+      BLI_assert(0);
       break;
     case ID_MA:
-      BKE_material_init((Material *)id);
+      BLI_assert(0);
       break;
     case ID_TE:
-      BKE_texture_default((Tex *)id);
+      BLI_assert(0);
       break;
     case ID_IM:
-      BKE_image_init((Image *)id);
+      BLI_assert(0);
       break;
     case ID_LT:
-      BKE_lattice_init((Lattice *)id);
+      BLI_assert(0);
       break;
     case ID_LA:
       BLI_assert(0);
@@ -1402,10 +1378,10 @@ void BKE_libblock_init_empty(ID *id)
       /* Nothing to do. */
       break;
     case ID_NT:
-      ntreeInitDefault((bNodeTree *)id);
+      BLI_assert(0);
       break;
     case ID_BR:
-      BKE_brush_init((Brush *)id);
+      BLI_assert(0);
       break;
     case ID_PA:
       /* Nothing to do. */

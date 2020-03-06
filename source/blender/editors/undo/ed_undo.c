@@ -390,7 +390,7 @@ static int ed_undo_exec(bContext *C, wmOperator *op)
   int ret = ed_undo_step_direction(C, 1, op->reports);
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
-    WM_event_add_mousemove(C);
+    WM_event_add_mousemove(CTX_wm_window(C));
   }
 
   ED_outliner_select_sync_from_all_tag(C);
@@ -419,7 +419,7 @@ static int ed_redo_exec(bContext *C, wmOperator *op)
   int ret = ed_undo_step_direction(C, -1, op->reports);
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
-    WM_event_add_mousemove(C);
+    WM_event_add_mousemove(CTX_wm_window(C));
   }
 
   ED_outliner_select_sync_from_all_tag(C);
@@ -433,7 +433,7 @@ static int ed_undo_redo_exec(bContext *C, wmOperator *UNUSED(op))
   ret = ret ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
-    WM_event_add_mousemove(C);
+    WM_event_add_mousemove(CTX_wm_window(C));
   }
   return ret;
 }

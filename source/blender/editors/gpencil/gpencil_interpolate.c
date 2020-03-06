@@ -345,8 +345,8 @@ static void gp_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
  */
 static void gpencil_mouse_update_shift(tGPDinterpolate *tgpi, wmOperator *op, const wmEvent *event)
 {
-  float mid = (float)(tgpi->ar->winx - tgpi->ar->winrct.xmin) / 2.0f;
-  float mpos = event->x - tgpi->ar->winrct.xmin;
+  float mid = (float)(tgpi->region->winx - tgpi->region->winrct.xmin) / 2.0f;
+  float mpos = event->x - tgpi->region->winrct.xmin;
 
   if (mpos >= mid) {
     tgpi->shift = ((mpos - mid) * tgpi->high_limit) / mid;
@@ -445,7 +445,7 @@ static bool gp_interpolate_set_init_values(bContext *C, wmOperator *op, tGPDinte
   tgpi->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   tgpi->scene = CTX_data_scene(C);
   tgpi->sa = CTX_wm_area(C);
-  tgpi->ar = CTX_wm_region(C);
+  tgpi->region = CTX_wm_region(C);
   tgpi->flag = ts->gp_interpolate.flag;
 
   /* set current frame number */
