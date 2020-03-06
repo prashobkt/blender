@@ -1379,7 +1379,7 @@ void ED_gpencil_vgroup_assign(bContext *C, Object *ob, float weight)
               bGPDspoint *pt = &gps->points[i];
               MDeformVert *dvert = &gps->dvert[i];
               if (pt->flag & GP_SPOINT_SELECT) {
-                MDeformWeight *dw = defvert_verify_index(dvert, def_nr);
+                MDeformWeight *dw = BKE_defvert_ensure_index(dvert, def_nr);
                 if (dw) {
                   dw->weight = weight;
                 }
@@ -1433,9 +1433,9 @@ void ED_gpencil_vgroup_remove(bContext *C, Object *ob)
             MDeformVert *dvert = &gps->dvert[i];
 
             if ((pt->flag & GP_SPOINT_SELECT) && (dvert->totweight > 0)) {
-              MDeformWeight *dw = defvert_find_index(dvert, def_nr);
+              MDeformWeight *dw = BKE_defvert_find_index(dvert, def_nr);
               if (dw != NULL) {
-                defvert_remove_group(dvert, dw);
+                BKE_defvert_remove_group(dvert, dw);
               }
             }
           }
@@ -1485,7 +1485,7 @@ void ED_gpencil_vgroup_select(bContext *C, Object *ob)
             }
             MDeformVert *dvert = &gps->dvert[i];
 
-            if (defvert_find_index(dvert, def_nr) != NULL) {
+            if (BKE_defvert_find_index(dvert, def_nr) != NULL) {
               pt->flag |= GP_SPOINT_SELECT;
               gps->flag |= GP_STROKE_SELECT;
             }
@@ -1536,7 +1536,7 @@ void ED_gpencil_vgroup_deselect(bContext *C, Object *ob)
             }
             MDeformVert *dvert = &gps->dvert[i];
 
-            if (defvert_find_index(dvert, def_nr) != NULL) {
+            if (BKE_defvert_find_index(dvert, def_nr) != NULL) {
               pt->flag &= ~GP_SPOINT_SELECT;
             }
           }

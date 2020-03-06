@@ -1153,7 +1153,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
     ED_gpencil_point_vertex_color_set(ts, brush, pt);
 
     if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
-      MDeformWeight *dw = defvert_verify_index(dvert, def_nr);
+      MDeformWeight *dw = BKE_defvert_ensure_index(dvert, def_nr);
       if (dw) {
         dw->weight = ts->vgroup_weight;
       }

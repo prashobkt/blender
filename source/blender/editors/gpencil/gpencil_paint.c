@@ -962,7 +962,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
         BKE_gpencil_dvert_ensure(gps);
-        MDeformWeight *dw = defvert_verify_index(dvert, def_nr);
+        MDeformWeight *dw = BKE_defvert_ensure_index(dvert, def_nr);
         if (dw) {
           dw->weight = ts->vgroup_weight;
         }
@@ -993,7 +993,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
         BKE_gpencil_dvert_ensure(gps);
-        MDeformWeight *dw = defvert_verify_index(dvert, def_nr);
+        MDeformWeight *dw = BKE_defvert_ensure_index(dvert, def_nr);
         if (dw) {
           dw->weight = ts->vgroup_weight;
         }
@@ -1187,7 +1187,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     BKE_gpencil_dvert_ensure(gps);
     for (i = 0; i < gps->totpoints; i++) {
       MDeformVert *ve = &gps->dvert[i];
-      MDeformWeight *dw = defvert_verify_index(ve, def_nr);
+      MDeformWeight *dw = BKE_defvert_ensure_index(ve, def_nr);
       if (dw) {
         dw->weight = ts->vgroup_weight;
       }
