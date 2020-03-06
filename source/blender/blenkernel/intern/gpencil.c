@@ -567,7 +567,7 @@ bGPDstroke *BKE_gpencil_stroke_duplicate(bGPDstroke *gps_src, const bool dup_poi
 
   gps_dst = MEM_dupallocN(gps_src);
   gps_dst->prev = gps_dst->next = NULL;
-  gps_dst->triangles = MEM_dupallocN(gps_dst->triangles);
+  gps_dst->triangles = MEM_dupallocN(gps_src->triangles);
 
   if (dup_points) {
     gps_dst->points = MEM_dupallocN(gps_src->points);
