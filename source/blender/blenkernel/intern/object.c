@@ -734,7 +734,9 @@ void BKE_object_free_derived_caches(Object *ob)
     BKE_gpencil_eval_delete(ob->runtime.gpd_eval);
     ob->runtime.gpd_eval = NULL;
   }
-  DRW_gpencil_freecache(ob);
+#if 0  // GPXX
+    DRW_gpencil_freecache(ob);
+#endif
 }
 
 void BKE_object_free_caches(Object *object)
