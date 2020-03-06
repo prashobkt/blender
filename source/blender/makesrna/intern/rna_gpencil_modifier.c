@@ -539,7 +539,7 @@ static void rna_def_modifier_gpencilsmooth(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "factor");
-  RNA_def_property_range(prop, 0, 2);
+  RNA_def_property_range(prop, 0, 1);
   RNA_def_property_ui_text(prop, "Factor", "Amount of smooth to apply");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
