@@ -2042,13 +2042,14 @@ bool BKE_gpencil_stroke_split(bGPDframe *gpf,
   }
 
   if (gps->dvert) {
-    new_dv = MEM_callocN(sizeof(MDeformVert) * new_count, "gp_stroke_dverts_remaining");
+    new_dv = MEM_callocN(sizeof(MDeformVert) * new_count,
+                         "gp_stroke_dverts_remaining(MDeformVert)");
     for (int i = 0; i < new_count; i++) {
       dv = &gps->dvert[i + before_index];
       new_dv[i].flag = dv->flag;
       new_dv[i].totweight = dv->totweight;
       new_dv[i].dw = MEM_callocN(sizeof(MDeformWeight) * dv->totweight,
-                                 "gp_stroke_dverts_dw_remaining");
+                                 "gp_stroke_dverts_dw_remaining(MDeformWeight)");
       for (int j = 0; j < dv->totweight; j++) {
         new_dv[i].dw[j].weight = dv->dw[j].weight;
         new_dv[i].dw[j].def_nr = dv->dw[j].def_nr;
