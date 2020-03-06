@@ -660,7 +660,7 @@ static uint32_t gpencil_point_edit_flag(const bool layer_lock,
 
 static float gpencil_point_edit_weight(const MDeformVert *dvert, int v, int vgindex)
 {
-  return (dvert && dvert[v].dw) ? defvert_find_weight(&dvert[v], vgindex) : -1.0f;
+  return (dvert && dvert[v].dw) ? BKE_defvert_find_weight(&dvert[v], vgindex) : -1.0f;
 }
 
 static void gpencil_edit_stroke_iter_cb(bGPDlayer *gpl,

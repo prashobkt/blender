@@ -129,7 +129,7 @@ static void deformStroke(GpencilModifierData *md,
   /* Noise value in range [-1..1] */
   float normal[3];
   float vec1[3], vec2[3];
-  const int def_nr = defgroup_name_index(ob, mmd->vgname);
+  const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
   const bool invert_group = (mmd->flag & GP_NOISE_INVERT_VGROUP) != 0;
   const bool use_curve = (mmd->flag & GP_NOISE_CUSTOM_CURVE) != 0 && mmd->curve_intensity;
 
