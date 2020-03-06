@@ -219,19 +219,19 @@ static void deformStroke(GpencilModifierData *md,
     }
 
     if (mmd->factor_thickness > 0.0f) {
-      float noise = table_sample(noise_table_position, i * noise_scale);
+      float noise = table_sample(noise_table_thickness, i * noise_scale);
       pt->pressure *= max_ff(1.0f + (noise * 2.0f - 1.0f) * weight * mmd->factor_thickness, 0.0f);
       CLAMP_MIN(pt->pressure, GPENCIL_STRENGTH_MIN);
     }
 
     if (mmd->factor_strength > 0.0f) {
-      float noise = table_sample(noise_table_position, i * noise_scale);
+      float noise = table_sample(noise_table_strength, i * noise_scale);
       pt->strength *= max_ff(1.0f - noise * weight * mmd->factor_strength, 0.0f);
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
     }
 
     if (mmd->factor_uvs > 0.0f) {
-      float noise = table_sample(noise_table_position, i * noise_scale);
+      float noise = table_sample(noise_table_uvs, i * noise_scale);
       pt->uv_rot += (noise * 2.0f - 1.0f) * weight * mmd->factor_uvs * M_PI_2;
       CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
     }
