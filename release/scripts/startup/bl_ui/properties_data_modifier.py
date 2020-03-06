@@ -1803,7 +1803,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row.enabled = md.random
         row.prop(md, "seed")
 
-        col.prop(md, "full_stroke")
+        col.prop(md, "noise_scale")
         col.prop(md, "use_custom_curve")
 
         if md.use_custom_curve:

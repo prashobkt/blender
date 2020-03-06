@@ -93,13 +93,14 @@ typedef struct NoiseGpencilModifierData {
   float factor_strength;
   float factor_thickness;
   float factor_uvs;
+  /** Noise Frequency scaling */
+  float noise_scale;
   /** How many frames before recalculate randoms. */
   int step;
   /** Custom index for passes. */
   int layer_pass;
   /** Random seed */
   int seed;
-  char _pad[4];
   struct CurveMapping *curve_intensity;
 } NoiseGpencilModifierData;
 

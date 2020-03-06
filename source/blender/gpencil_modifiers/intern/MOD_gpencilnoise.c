@@ -31,6 +31,8 @@
 #include "BLI_hash.h"
 #include "BLI_rand.h"
 
+#include "MEM_guardedalloc.h"
+
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_object_types.h"
@@ -100,6 +102,20 @@ static bool dependsOnTime(GpencilModifierData *md)
   return (mmd->flag & GP_NOISE_USE_RANDOM) != 0;
 }
 
+static float *noise_table(int len, int seed)
+{
+  float *table = MEM_callocN(sizeof(float) * len, __func__);
+  for (int i = 0; i < len; i++) {
+    table[i] = BLI_hash_int_01(BLI_hash_int_2d(seed, i + 1));
+  }
+  return table;
+}
+
+BLI_INLINE float table_sample(float *table, float x)
+{
+  return interpf(table[(int)ceilf(x)], table[(int)floor(x)], fractf(x));
+}
+
 /* aply noise effect based on stroke direction */
 static void deformStroke(GpencilModifierData *md,
                          Depsgraph *depsgraph,
@@ -145,6 +161,15 @@ static void deformStroke(GpencilModifierData *md,
     seed += ((int)DEG_get_ctime(depsgraph)) / mmd->step;
   }
 
+  /* Sanitize as it can create out of bound reads. */
+  float noise_scale = clamp_f(mmd->noise_scale, 0.0f, 1.0f);
+
+  int len = ceilf(gps->totpoints * noise_scale) + 1;
+  float *noise_table_position = (mmd->factor > 0.0f) ? noise_table(len, seed + 2) : NULL;
+  float *noise_table_strength = (mmd->factor_strength > 0.0f) ? noise_table(len, seed + 3) : NULL;
+  float *noise_table_thickness = (mmd->factor_thickness > 0.0f) ? noise_table(len, seed) : NULL;
+  float *noise_table_uvs = (mmd->factor_uvs > 0.0f) ? noise_table(len, seed + 4) : NULL;
+
   /* calculate stroke normal*/
   if (gps->totpoints > 2) {
     BKE_gpencil_stroke_normal(gps, normal);
@@ -168,47 +193,54 @@ static void deformStroke(GpencilModifierData *md,
       weight *= BKE_curvemapping_evaluateF(mmd->curve_intensity, 0, value);
     }
 
-    int point_seed = (mmd->flag & GP_NOISE_FULL_STROKE) ? seed : BLI_hash_int_2d(seed, i + 1);
-
     if (mmd->factor > 0.0f) {
-      /* Offset point randomly around the normal vector. */
-      const bool is_last_point = (i == gps->totpoints - 1);
-      bGPDspoint *pt0 = (gps->totpoints > 1 && is_last_point) ? &gps->points[i - 1] :
-                                                                &gps->points[i];
-      bGPDspoint *pt1 = (gps->totpoints > 1 && !is_last_point) ? &gps->points[i + 1] :
-                                                                 &gps->points[i];
-      /* Initial vector (p1 -> p0). */
-      sub_v3_v3v3(vec1, &pt0->x, &pt1->x);
-      /* if vec2 is zero, set to something */
-      if (len_squared_v3(vec1) < 1e-8f) {
+      /* Offset point randomly around the bi-normal vector. */
+      if (gps->totpoints == 1) {
         copy_v3_fl3(vec1, 1.0f, 0.0f, 0.0f);
+      }
+      else if (i != gps->totpoints - 1) {
+        /* Initial vector (p1 -> p0). */
+        sub_v3_v3v3(vec1, &gps->points[i].x, &gps->points[i + 1].x);
+        /* if vec2 is zero, set to something */
+        if (len_squared_v3(vec1) < 1e-8f) {
+          copy_v3_fl3(vec1, 1.0f, 0.0f, 0.0f);
+        }
+      }
+      else {
+        /* Last point reuse the penultimate normal (still stored in vec1)
+         * because the previous point is already modified. */
       }
       /* Vector orthogonal to normal. */
       cross_v3_v3v3(vec2, vec1, normal);
       normalize_v3(vec2);
 
-      float noise = BLI_hash_int_01(point_seed);
+      float noise = table_sample(noise_table_position, i * noise_scale);
       madd_v3_v3fl(&pt->x, vec2, (noise * 2.0f - 1.0f) * weight * mmd->factor * 0.1f);
     }
 
     if (mmd->factor_thickness > 0.0f) {
-      float noise = BLI_hash_int_01(point_seed + 2);
+      float noise = table_sample(noise_table_position, i * noise_scale);
       pt->pressure *= max_ff(1.0f + (noise * 2.0f - 1.0f) * weight * mmd->factor_thickness, 0.0f);
       CLAMP_MIN(pt->pressure, GPENCIL_STRENGTH_MIN);
     }
 
     if (mmd->factor_strength > 0.0f) {
-      float noise = BLI_hash_int_01(point_seed + 3);
+      float noise = table_sample(noise_table_position, i * noise_scale);
       pt->strength *= max_ff(1.0f - noise * weight * mmd->factor_strength, 0.0f);
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
     }
 
     if (mmd->factor_uvs > 0.0f) {
-      float noise = BLI_hash_int_01(point_seed + 4);
+      float noise = table_sample(noise_table_position, i * noise_scale);
       pt->uv_rot += (noise * 2.0f - 1.0f) * weight * mmd->factor_uvs * M_PI_2;
       CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
     }
   }
+
+  MEM_SAFE_FREE(noise_table_position);
+  MEM_SAFE_FREE(noise_table_strength);
+  MEM_SAFE_FREE(noise_table_thickness);
+  MEM_SAFE_FREE(noise_table_uvs);
 }
 
 static void bakeModifier(struct Main *UNUSED(bmain),

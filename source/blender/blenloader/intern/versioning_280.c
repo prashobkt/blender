@@ -4612,6 +4612,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               gpmd->factor_thickness = gpmd->factor;
               gpmd->factor_strength = gpmd->factor;
               gpmd->factor_uvs = gpmd->factor;
+              gpmd->noise_scale = (gpmd->flag & GP_NOISE_FULL_STROKE) ? 0.0f : 1.0f;
 
               if (gpmd->curve_intensity == NULL) {
                 gpmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
