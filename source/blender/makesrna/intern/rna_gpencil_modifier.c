@@ -458,12 +458,13 @@ static void rna_def_modifier_gpencilnoise(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_NOISE_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop, "Custom Curve", "Shape the noise intensity along the strokes");
+  RNA_def_property_ui_text(
+      prop, "Custom Curve", "Use a custom curve to define noise effect along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "curve_intensity");
-  RNA_def_property_ui_text(prop, "Curve", "Custom noise intensity curve");
+  RNA_def_property_ui_text(prop, "Curve", "Custom curve to apply effect");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
@@ -613,7 +614,8 @@ static void rna_def_modifier_gpencilsmooth(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_SMOOTH_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop, "Custom Curve", "Shape the effect along the strokes");
+  RNA_def_property_ui_text(
+      prop, "Custom Curve", "Use a custom curve to define smooth effect along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
@@ -878,10 +880,8 @@ static void rna_def_modifier_gpencilthick(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_THICK_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop,
-                           "Custom Curve",
-                           "Use a custom curve to define thickness changes"
-                           "along the strokes");
+  RNA_def_property_ui_text(
+      prop, "Custom Curve", "Use a custom curve to define thickness change along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "normalize_thickness", PROP_BOOLEAN, PROP_NONE);
@@ -891,7 +891,7 @@ static void rna_def_modifier_gpencilthick(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "curve_thickness");
-  RNA_def_property_ui_text(prop, "Curve", "Custom Thickness Curve");
+  RNA_def_property_ui_text(prop, "Curve", "Custom curve to apply effect");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
@@ -1049,7 +1049,8 @@ static void rna_def_modifier_gpenciltint(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_TINT_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop, "Custom Curve", "Shape the effect along the strokes");
+  RNA_def_property_ui_text(
+      prop, "Custom Curve", "Use a custom curve to define tint effect along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
@@ -1222,7 +1223,8 @@ static void rna_def_modifier_gpencilcolor(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_COLOR_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop, "Custom Curve", "Shape the effect along the strokes");
+  RNA_def_property_ui_text(
+      prop, "Custom Curve", "Use a custom curve to define color effect along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
@@ -1307,7 +1309,8 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_OPACITY_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop, "Custom Curve", "Shape the effect along the strokes");
+  RNA_def_property_ui_text(
+      prop, "Custom Curve", "Use a custom curve to define opacity effect along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
@@ -2141,7 +2144,8 @@ static void rna_def_modifier_gpencilvertexcolor(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_VERTEXCOL_CUSTOM_CURVE);
-  RNA_def_property_ui_text(prop, "Custom Curve", "Shape the effect along the strokes");
+  RNA_def_property_ui_text(
+      prop, "Custom Curve", "Use a custom curve to define vertex color effect along the strokes");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "curve", PROP_POINTER, PROP_NONE);
