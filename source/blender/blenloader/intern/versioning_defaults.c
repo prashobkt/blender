@@ -628,30 +628,32 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     }
 
     /* Rename and fix materials. */
-    Material *ma = NULL;
-    rename_id_for_versioning(bmain, ID_MA, "Black", "Solid Stroke");
-    rename_id_for_versioning(bmain, ID_MA, "Red", "Squares Stroke");
-    rename_id_for_versioning(bmain, ID_MA, "Grey", "Solid Fill");
-    rename_id_for_versioning(bmain, ID_MA, "Black Dots", "Dots Stroke");
+    if (app_template && STREQ(app_template, "2D_Animation")) {
+      Material *ma = NULL;
+      rename_id_for_versioning(bmain, ID_MA, "Black", "Solid Stroke");
+      rename_id_for_versioning(bmain, ID_MA, "Red", "Squares Stroke");
+      rename_id_for_versioning(bmain, ID_MA, "Grey", "Solid Fill");
+      rename_id_for_versioning(bmain, ID_MA, "Black Dots", "Dots Stroke");
 
-    /* Dots Stroke. */
-    ma = BLI_findstring(&bmain->materials, "Dots Stroke", offsetof(ID, name) + 2);
-    if (ma == NULL) {
-      ma = BKE_gpencil_material_add(bmain, "Dots Stroke");
-    }
-    ma->gp_style->mode = GP_MATERIAL_MODE_DOT;
+      /* Dots Stroke. */
+      ma = BLI_findstring(&bmain->materials, "Dots Stroke", offsetof(ID, name) + 2);
+      if (ma == NULL) {
+        ma = BKE_gpencil_material_add(bmain, "Dots Stroke");
+      }
+      ma->gp_style->mode = GP_MATERIAL_MODE_DOT;
 
-    /* Squares Stroke. */
-    ma = BLI_findstring(&bmain->materials, "Squares Stroke", offsetof(ID, name) + 2);
-    if (ma == NULL) {
-      ma = BKE_gpencil_material_add(bmain, "Squares Stroke");
-    }
-    ma->gp_style->mode = GP_MATERIAL_MODE_SQUARE;
+      /* Squares Stroke. */
+      ma = BLI_findstring(&bmain->materials, "Squares Stroke", offsetof(ID, name) + 2);
+      if (ma == NULL) {
+        ma = BKE_gpencil_material_add(bmain, "Squares Stroke");
+      }
+      ma->gp_style->mode = GP_MATERIAL_MODE_SQUARE;
 
-    /* Change Solid Fill settings. */
-    ma = BLI_findstring(&bmain->materials, "Solid Fill", offsetof(ID, name) + 2);
-    if (ma != NULL) {
-      ma->gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
+      /* Change Solid Fill settings. */
+      ma = BLI_findstring(&bmain->materials, "Solid Fill", offsetof(ID, name) + 2);
+      if (ma != NULL) {
+        ma->gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
+      }
     }
 
     /* Reset all grease pencil brushes. */
