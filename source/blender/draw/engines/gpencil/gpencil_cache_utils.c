@@ -219,8 +219,9 @@ static void gpencil_layer_final_tint_and_alpha_get(const GPENCIL_PrivateData *pd
     copy_v4_fl4(r_tint, UNPACK3(onion_col_custom), 1.0f);
 
     *r_alpha = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
-    *r_alpha += (gpd->onion_factor * 2.0f - 1.0f);
-    *r_alpha = clamp_f(*r_alpha, 0.01f, 1.0f);
+    *r_alpha *= gpd->onion_factor;
+    *r_alpha = (gpd->onion_factor > 0.0f) ? clamp_f(*r_alpha, 0.1f, 1.0f) :
+                                            clamp_f(*r_alpha, 0.01f, 1.0f);
   }
   else {
     copy_v4_v4(r_tint, gpl->tintcolor);
