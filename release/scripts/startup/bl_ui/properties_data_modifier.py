@@ -1950,7 +1950,13 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         split = layout.split()
 
         col = split.column()
-        col.prop(md, "factor")
+        col.prop(md, "normalize_opacity")
+        if md.normalize_opacity is True:
+            text="Strength"
+        else:
+            text="Opacity Factor"
+
+        col.prop(md, "factor", text=text)
         col.prop(md, "modify_color")
 
         self.gpencil_masking(layout, ob, md, True, True)

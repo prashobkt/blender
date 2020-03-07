@@ -375,6 +375,42 @@ static void rna_TimeModifier_end_frame_set(PointerRNA *ptr, int value)
   }
 }
 
+static void rna_GpencilOpacity_range(
+    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
+{
+  OpacityGpencilModifierData *md = (OpacityGpencilModifierData *)ptr->data;
+
+  *min = 0.0f;
+  *softmin = 0.0f;
+
+  *softmax = (md->flag & GP_OPACITY_NORMALIZE) ? 1.0f : 2.0f;
+  *max = *softmax;
+}
+
+static void rna_GpencilOpacity_max_set(PointerRNA *ptr, float value)
+{
+  OpacityGpencilModifierData *md = (OpacityGpencilModifierData *)ptr->data;
+
+  md->factor = value;
+  if (md->flag & GP_OPACITY_NORMALIZE) {
+    if (md->factor > 1.0f) {
+      md->factor = 1.0f;
+    }
+  }
+}
+
+static void rna_GpencilModifier_opacity_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  OpacityGpencilModifierData *md = (OpacityGpencilModifierData *)ptr->data;
+  if (md->flag & GP_OPACITY_NORMALIZE) {
+    if (md->factor > 1.0f) {
+      md->factor = 1.0f;
+    }
+  }
+
+  rna_GpencilModifier_update(bmain, scene, ptr);
+}
+
 #else
 
 static void rna_def_modifier_gpencilnoise(BlenderRNA *brna)
@@ -1267,6 +1303,8 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "factor");
   RNA_def_property_ui_range(prop, 0, 2.0, 0.1, 2);
+  RNA_def_property_float_funcs(
+      prop, NULL, "rna_GpencilOpacity_max_set", "rna_GpencilOpacity_range");
   RNA_def_property_ui_text(prop, "Opacity Factor", "Factor of Opacity");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
@@ -1306,6 +1344,11 @@ static void rna_def_modifier_gpencilopacity(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_OPACITY_INVERT_LAYERPASS);
   RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "normalize_opacity", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_OPACITY_NORMALIZE);
+  RNA_def_property_ui_text(prop, "Uniform Opacity", "Replace the stroke opacity");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_opacity_update");
 
   prop = RNA_def_property(srna, "use_custom_curve", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_OPACITY_CUSTOM_CURVE);
