@@ -629,6 +629,8 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
   Brush *brush = gso->brush;
   tGP_Grid *grid = NULL;
   int average_idx[2];
+  ARRAY_SET_ITEMS(average_idx, 0, 0);
+
   bool changed = false;
 
   /* Need some movement, so first input is not done. */

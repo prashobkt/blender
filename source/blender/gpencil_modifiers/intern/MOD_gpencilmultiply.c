@@ -81,6 +81,9 @@ static void minter_v3_v3v3v3_ref(
     float *result, float *prev, float *curr, float *next, float *stroke_normal)
 {
   float vec[3], inter1[3], inter2[3];
+  ARRAY_SET_ITEMS(inter1, 0.0f, 0.0f, 0.0f);
+  ARRAY_SET_ITEMS(inter2, 0.0f, 0.0f, 0.0f);
+
   float minter[3];
   if (prev) {
     sub_v3_v3v3(vec, curr, prev);

@@ -1352,7 +1352,6 @@ static void gp_stroke_soft_refine(bGPDstroke *gps)
 
 /* eraser tool - evaluation per stroke */
 static void gp_stroke_eraser_dostroke(tGPsdata *p,
-                                      bGPDlayer *gpl,
                                       bGPDframe *gpf,
                                       bGPDstroke *gps,
                                       const float mval[2],
@@ -1632,7 +1631,7 @@ static void gp_stroke_doeraser(tGPsdata *p)
        * (e.g. 2D space strokes in the 3D view, if the same datablock is shared)
        */
       if (ED_gpencil_stroke_can_use_direct(p->sa, gps)) {
-        gp_stroke_eraser_dostroke(p, gpl, gpf, gps, p->mval, p->mvalo, calc_radius, &rect);
+        gp_stroke_eraser_dostroke(p, gpf, gps, p->mval, p->mvalo, calc_radius, &rect);
       }
     }
   }
