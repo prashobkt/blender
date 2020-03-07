@@ -125,7 +125,7 @@ static void deformStroke(GpencilModifierData *md,
 
       if (def_nr < 0) {
         if (mmd->flag & GP_OPACITY_NORMALIZE) {
-          pt->strength = mmd->factor;
+          pt->strength = factor_curve;
         }
         else {
           pt->strength += factor_curve - 1.0f;
@@ -138,7 +138,7 @@ static void deformStroke(GpencilModifierData *md,
           CLAMP(weight, 0.0f, 1.0f);
         }
         if (mmd->flag & GP_OPACITY_NORMALIZE) {
-          pt->strength = mmd->factor;
+          pt->strength = factor_curve;
         }
         else {
           pt->strength += (factor_curve - 1) * weight;
