@@ -1305,8 +1305,10 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
       if (newedge->example != -1) {
         /* Not really supposed to access bm->etable directly but even
          * though it may be technically dirty, all of the example indices
-         * will still be OK. */
+         * will still be OK since they should be from original edges. */
+        BLI_assert(newedge->example < meshadd->eindex_start);
         bme_eg = bm->etable[newedge->example];
+        BLI_assert(bme_eg != NULL && bme_eg->head.htype == BM_EDGE);
       }
       else {
         bme_eg = NULL;
@@ -1370,6 +1372,7 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
       both_sides = false;
       opp_normals = false;
       if (newface->example != -1) {
+        BLI_assert(newface->example < meshadd->findex_start);
         bmf_eg = bm->ftable[newface->example];
 
         /* See if newface has examples on both sides of the boolean operation.
@@ -1745,6 +1748,7 @@ static int meshadd_add_edge(
   newe->v1 = v1;
   newe->v2 = v2;
   newe->example = example;
+  BLI_assert(example == -1 || example < meshadd->eindex_start);
   if ((uint)meshadd->totedge == meshadd->edge_reserved) {
     uint new_reserved = 2 * meshadd->edge_reserved;
     NewEdge **new_buf = BLI_memarena_alloc(arena, new_reserved * sizeof(NewEdge *));
@@ -2543,7 +2547,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
   MeshDelete *meshdelete = &change->delete;
   IntIntMap *vert_merge_map = &change->vert_merge_map;
 #ifdef BOOLDEBUG
-  int dbg_level = 2;
+  int dbg_level = 0;
 #endif
 
 #ifdef BOOLDEBUG
@@ -2889,6 +2893,9 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
       int ev1, ev2;
       imeshplus_get_edge_verts(&imp, e_eg, &ev1, &ev2);
       if (!((v1 == ev1 && v2 == ev2) || (v1 == ev2 && v2 == ev1))) {
+        if (e_eg >= imesh_totedge(im)) {
+          e_eg = -1;
+        }
         e = meshadd_add_edge(bs, meshadd, v1, v2, e_eg, true);
       }
       else {
@@ -3746,7 +3753,7 @@ bool BM_mesh_boolean(BMesh *bm,
   MeshChange meshchange;
   IntSet both_side_faces;
 #ifdef BOOLDEBUG
-  int dbg_level = 1;
+  int dbg_level = 0;
 #endif
 
 #ifdef PERFDEBUG
