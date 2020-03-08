@@ -26,23 +26,23 @@ if(UNIX AND NOT APPLE)
   add_definitions(-D_GLIBCXX_PERMIT_BACKWARD_HASH)
 endif()
 if(WIN32)
-  add_definitions(-DNOMINMAX)
+  add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN)
 endif()
 add_definitions(-DPXR_STATIC)
 
 set(INC
   .
-  ../blenkernel
-  ../blenlib
-  ../blenloader
-  ../bmesh
-  ../depsgraph
-  ../editors/include
-  ../makesdna
-  ../makesrna
-  ../windowmanager
-  ../../../intern/guardedalloc
-  ../../../intern/utfconv
+  ../../blenkernel
+  ../../blenlib
+  ../../blenloader
+  ../../bmesh
+  ../../depsgraph
+  ../../editors/include
+  ../../makesdna
+  ../../makesrna
+  ../../windowmanager
+  ../../../../intern/guardedalloc
+  ../../../../intern/utfconv
 )
 
 set(INC_SYS
@@ -60,6 +60,7 @@ set(SRC
   intern/usd_writer_hair.cc
   intern/usd_writer_light.cc
   intern/usd_writer_mesh.cc
+  intern/usd_writer_metaball.cc
   intern/usd_writer_transform.cc
 
   usd.h
@@ -71,6 +72,7 @@ set(SRC
   intern/usd_writer_hair.h
   intern/usd_writer_light.h
   intern/usd_writer_mesh.h
+  intern/usd_writer_metaball.h
   intern/usd_writer_transform.h
 )
 
