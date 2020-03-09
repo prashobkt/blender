@@ -971,17 +971,17 @@ void GHOST_XrSessionEnd(GHOST_XrContextHandle xr_contexthandle)
   GHOST_XR_CAPI_CALL(xr_context->endSession(), xr_context);
 }
 
+void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_contexthandle, void *draw_customdata)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  GHOST_XR_CAPI_CALL(xr_context->drawSessionViews(draw_customdata), xr_context);
+}
+
 int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_contexthandle)
 {
   const GHOST_IXrContext *xr_context = (const GHOST_IXrContext *)xr_contexthandle;
   GHOST_XR_CAPI_CALL_RET(xr_context->isSessionRunning(), xr_context);
   return 0; /* Only reached if exception is thrown. */
-}
-
-void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_contexthandle, void *draw_customdata)
-{
-  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
-  GHOST_XR_CAPI_CALL(xr_context->drawSessionViews(draw_customdata), xr_context);
 }
 
 void GHOST_XrGraphicsContextBindFuncs(GHOST_XrContextHandle xr_contexthandle,

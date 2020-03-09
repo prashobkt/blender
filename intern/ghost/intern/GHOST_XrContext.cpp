@@ -487,14 +487,6 @@ void GHOST_XrContext::handleSessionStateChange(const XrEventDataSessionStateChan
  * Public as in, exposed in the Ghost API.
  * \{ */
 
-/**
- * Set context for binding and unbinding a graphics context for a session. The binding callback
- * may create a new context thereby. In fact that's the sole reason for this callback approach to
- * binding. Just make sure to have an unbind function set that properly destructs.
- *
- * \param bind_fn Function to retrieve (possibly create) a graphics context.
- * \param unbind_fn Function to release (possibly free) a graphics context.
- */
 void GHOST_XrContext::setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
                                                   GHOST_XrGraphicsContextUnbindFn unbind_fn)
 {

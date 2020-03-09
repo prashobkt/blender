@@ -29,11 +29,6 @@
 #include "GHOST_XrContext.h"
 #include "GHOST_XrException.h"
 
-/**
- * \brief Initialize the window manager XR-Context.
- * Includes setting up the OpenXR instance, querying available extensions and API layers,
- * enabling extensions (currently graphics binding extension only) and API layers.
- */
 GHOST_XrContextHandle GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_info)
 {
   GHOST_XrContext *xr_context = new GHOST_XrContext(create_info);
