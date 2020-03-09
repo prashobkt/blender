@@ -873,7 +873,7 @@ void WM_generic_user_data_free(struct wmGenericUserData *user_data);
 
 #ifdef WITH_XR_OPENXR
 /* wm_xr.c */
-bool WM_xr_is_session_running(const wmXrData *xr);
+bool WM_xr_session_is_running(const wmXrData *xr);
 void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float location[3]);
 void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float rotation[4]);
 void WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,

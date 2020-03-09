@@ -322,10 +322,8 @@ static bool view3d_xr_mirror_active(const wmWindowManager *wm,
   return (v3d->flag & V3D_XR_SESSION_MIRROR) &&
          /* The free region (e.g. the camera region in quad-view) is always the last in the list
             base. We don't want any other to be affected. */
-         !region->next &&
-         /* NULL'ed when sending session end request. */
-         wm->xr.session_state &&  //
-         WM_xr_is_session_running(&wm->xr);
+         !region->next &&  //
+         WM_xr_session_is_running(&wm->xr);
 }
 
 static void view3d_xr_mirror_setup(const wmWindowManager *wm,

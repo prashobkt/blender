@@ -303,7 +303,7 @@ static void wm_xr_runtime_session_state_info_update(bXrRuntimeSessionState *stat
 
 void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float location[3])
 {
-  if (!WM_xr_is_session_running(xr) || !xr->session_state->last_known.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
     return;
   }
 
@@ -312,7 +312,7 @@ void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float location[
 
 void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float rotation[4])
 {
-  if (!WM_xr_is_session_running(xr) || !xr->session_state->last_known.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
     return;
   }
 
@@ -323,7 +323,7 @@ void WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float r_viewmat[4][4],
                                                 float *r_focal_len)
 {
-  if (!WM_xr_is_session_running(xr) || !xr->session_state->last_known.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
     return;
   }
 
@@ -376,7 +376,7 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
   GHOST_XrContextHandle xr_context = xr_context_ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
 
-  if (WM_xr_is_session_running(&wm->xr)) {
+  if (WM_xr_session_is_running(&wm->xr)) {
     GHOST_XrSessionEnd(xr_context);
     wm_xr_runtime_session_state_free(&wm->xr.session_state);
   }
@@ -390,11 +390,21 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
   }
 }
 
-bool WM_xr_is_session_running(const wmXrData *xr)
+/**
+ * The definition used here to define a session as running differs slightly from the OpenXR
+ * sepecification one: Here we already consider a session as stopped when session-end request was
+ * issued. Ghost-XR may still have to handle session logic then, but Blender specific handling
+ * should be stopped then.
+ * This check should be used from external calls to WM_xr. Internally, GHOST_XrSessionIsRunning()
+ * may have to be called instead. It checks for the running state according to the OpenXR
+ * specification.
+ */
+bool WM_xr_session_is_running(const wmXrData *xr)
 {
-  /* wmXrData.session_state will be NULL if session end was requested. In that case, pretend like
-   * it's already  */
-  return xr->context && GHOST_XrSessionIsRunning(xr->context);
+  /* wmXrData.session_state will be NULL if session end was requested. That's what we use here to
+   * define if the session was already stopped (even if according to OpenXR, it's still considered
+   * running). */
+  return xr->context && xr->session_state && GHOST_XrSessionIsRunning(xr->context);
 }
 
 /** \} */ /* XR-Session */

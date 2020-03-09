@@ -3681,7 +3681,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 
   wm_xr_session_toggle(C, wm->xr.context);
 
-  if (!WM_xr_is_session_running(&wm->xr) || !wm->xr.session_state) {
+  if (!WM_xr_session_is_running(&wm->xr)) {
     wm_xr_session_disable_mirror_views(CTX_data_main(C));
   }
 

@@ -36,7 +36,7 @@ static bool rna_XrSessionState_is_running(bContext *C)
 {
 #  ifdef WITH_XR_OPENXR
   const wmWindowManager *wm = CTX_wm_manager(C);
-  return WM_xr_is_session_running(&wm->xr);
+  return WM_xr_session_is_running(&wm->xr);
 #  else
   UNUSED_VARS(C);
   return false;
