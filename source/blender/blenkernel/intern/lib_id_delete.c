@@ -214,12 +214,10 @@ void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
       BLI_assert(0);
       break;
     case ID_PA:
-      BKE_particlesettings_free((ParticleSettings *)id);
+      BLI_assert(0);
       break;
     case ID_WM:
-      if (free_windowmanager_cb) {
-        free_windowmanager_cb(NULL, (wmWindowManager *)id);
-      }
+      BLI_assert(0);
       break;
     case ID_GD:
       BKE_gpencil_free((bGPdata *)id, true);
@@ -237,13 +235,13 @@ void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
       BKE_palette_free((Palette *)id);
       break;
     case ID_PC:
-      BKE_paint_curve_free((PaintCurve *)id);
+      BLI_assert(0);
       break;
     case ID_CF:
-      BKE_cachefile_free((CacheFile *)id);
+      BLI_assert(0);
       break;
     case ID_WS:
-      BKE_workspace_free((WorkSpace *)id);
+      BLI_assert(0);
       break;
   }
 }

@@ -149,16 +149,16 @@ extern IDTypeInfo IDType_ID_AR;
 extern IDTypeInfo IDType_ID_AC;
 extern IDTypeInfo IDType_ID_NT;
 extern IDTypeInfo IDType_ID_BR;
-// extern IDTypeInfo IDType_ID_PA;
+extern IDTypeInfo IDType_ID_PA;
 // extern IDTypeInfo IDType_ID_GD;
-// extern IDTypeInfo IDType_ID_WM;
+extern IDTypeInfo IDType_ID_WM;
 // extern IDTypeInfo IDType_ID_MC;
 // extern IDTypeInfo IDType_ID_MSK;
 // extern IDTypeInfo IDType_ID_LS;
 // extern IDTypeInfo IDType_ID_PAL;
-// extern IDTypeInfo IDType_ID_PC;
-// extern IDTypeInfo IDType_ID_CF;
-// extern IDTypeInfo IDType_ID_WS;
+extern IDTypeInfo IDType_ID_PC;
+extern IDTypeInfo IDType_ID_CF;
+extern IDTypeInfo IDType_ID_WS;
 extern IDTypeInfo IDType_ID_LP;
 
 /* ********** Helpers/Utils API. ********** */
