@@ -776,7 +776,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
         }
         /* FIXME the +2 means minimum jitter is 4 which is a bit strange for UX. */
         const float exp_factor = brush_settings->draw_jitter + 2.0f;
-        const float fac = rand * SQUARE(exp_factor) * jitpress;
+        const float fac = rand * square_f(exp_factor) * jitpress;
         gp_brush_jitter(gpd, pt, fac);
       }
       /* apply randomness to pressure */
