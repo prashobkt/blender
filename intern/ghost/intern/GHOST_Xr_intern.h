@@ -30,7 +30,7 @@
   { \
     XrResult _res = call; \
     if (XR_FAILED(_res)) { \
-      throw GHOST_XrException(error_msg, __FILE__, __LINE__, _res); \
+      throw GHOST_XrException(error_msg, _res); \
     } \
   } \
   (void)0
@@ -40,27 +40,6 @@
     XrResult _res = call; \
     assert(_res == XR_SUCCESS); \
     (void)_res; \
-  } \
-  (void)0
-
-#define THROW_XR(error_msg) throw GHOST_XrException(error_msg, __FILE__, __LINE__);
-
-#define XR_DEBUG_ONLY_BEGIN(ctx) \
-  if ((ctx)->isDebugMode()) { \
-    (void)0
-#define XR_DEBUG_ONLY_END \
-  } \
-  (void)0
-
-#define XR_DEBUG_PRINTF(ctx, ...) \
-  if ((ctx)->isDebugMode()) { \
-    printf(__VA_ARGS__); \
-  } \
-  (void)0
-
-#define XR_DEBUG_ONLY_CALL(ctx, call) \
-  if ((ctx)->isDebugMode()) { \
-    call; \
   } \
   (void)0
 

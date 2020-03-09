@@ -53,7 +53,9 @@ GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContextHandle xr_contexthandle)
         GHOST_XrContextDestroy(xr_contexthandle);
         return GHOST_kSuccess;
       default:
-        XR_DEBUG_PRINTF(xr_context, "Unhandled event: %i\n", event->type);
+        if (xr_context->isDebugMode()) {
+          printf("Unhandled event: %i\n", event->type);
+        }
         return GHOST_kFailure;
     }
   }

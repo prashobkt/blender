@@ -84,7 +84,9 @@ void GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
 {
   initApiLayers();
   initExtensions();
-  XR_DEBUG_ONLY_CALL(this, printAvailableAPILayersAndExtensionsInfo());
+  if (isDebugMode()) {
+    printAvailableAPILayersAndExtensionsInfo();
+  }
 
   m_gpu_binding_type = determineGraphicsBindingTypeToEnable(create_info);
 
@@ -92,7 +94,9 @@ void GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
   createOpenXRInstance();
   storeInstanceProperties();
   printInstanceInfo();
-  XR_DEBUG_ONLY_CALL(this, initDebugMessenger());
+  if (isDebugMode()) {
+    initDebugMessenger();
+  }
 }
 
 void GHOST_XrContext::createOpenXRInstance()
@@ -109,7 +113,9 @@ void GHOST_XrContext::createOpenXRInstance()
   create_info.enabledApiLayerNames = m_enabled_layers.data();
   create_info.enabledExtensionCount = m_enabled_extensions.size();
   create_info.enabledExtensionNames = m_enabled_extensions.data();
-  XR_DEBUG_ONLY_CALL(this, printExtensionsAndAPILayersToEnable());
+  if (isDebugMode()) {
+    printExtensionsAndAPILayersToEnable();
+  }
 
   CHECK_XR(xrCreateInstance(&create_info, &m_oxr->instance),
            "Failed to connect to an OpenXR runtime.");
@@ -231,23 +237,17 @@ void GHOST_XrContext::initDebugMessenger()
 
 void GHOST_XrContext::dispatchErrorMessage(const GHOST_XrException *exception) const
 {
-  std::ostringstream stream_err_location;
-  std::string str_err_location;
   GHOST_XrError error;
 
-  stream_err_location << exception->m_file << ":" << exception->m_line;
-  str_err_location = stream_err_location.str();
-
   error.user_message = exception->m_msg;
-  error.source_location = str_err_location.c_str();
   error.customdata = s_error_handler_customdata;
 
-  XR_DEBUG_ONLY_CALL(this,
-                     fprintf(stderr,
-                             "Error: \t%s\n\tOpenXR error value: %i\n\tSource: (%s)\n",
-                             error.user_message,
-                             exception->m_result,
-                             error.source_location));
+  if (isDebugMode()) {
+    fprintf(stderr,
+            "Error: \t%s\n\tOpenXR error value: %i\n",
+            error.user_message,
+            exception->m_result);
+  }
 
   /* Potentially destroys GHOST_XrContext */
   s_error_handler(&error);
@@ -359,7 +359,9 @@ void GHOST_XrContext::getAPILayersToEnable(std::vector<const char *> &r_ext_name
 
   try_layers.clear();
 
-  XR_DEBUG_ONLY_CALL(this, try_layers.push_back("XR_APILAYER_LUNARG_core_validation"));
+  if (isDebugMode()) {
+    try_layers.push_back("XR_APILAYER_LUNARG_core_validation");
+  }
 
   r_ext_names.reserve(try_layers.size());
 
@@ -401,7 +403,9 @@ void GHOST_XrContext::getExtensionsToEnable(std::vector<const char *> &r_ext_nam
 
   /* Try enabling debug extension. */
 #ifndef WIN32
-  XR_DEBUG_ONLY_CALL(this, try_ext.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME));
+  if (isDebugMode()) {
+    try_ext.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  }
 #endif
 
   r_ext_names.reserve(try_ext.size() + 1); /* + 1 for graphics binding extension. */
