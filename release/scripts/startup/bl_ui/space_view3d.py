@@ -5570,17 +5570,16 @@ class VIEW3D_PT_shading_options(Panel):
 
     @classmethod
     def poll(cls, context):
-        cls.poll_ex(context)
+        return cls.poll_ex(context)
 
     def draw(self, context):
-        VIEW3D_PT_shading_options.draw_ex(self, context)
+        self.draw_ex(context)
 
     @classmethod
     def poll_ex(cls, context, shading=None):
         shading = VIEW3D_PT_shading.get_shading(context, shading)
         return shading.type in {'WIREFRAME', 'SOLID'}
 
-    @staticmethod
     def draw_ex(self, context, shading=None):
         layout = self.layout
 
