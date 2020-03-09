@@ -185,6 +185,7 @@ void wm_xr_data_destroy(wmWindowManager *wm)
 {
   if (wm->xr.context != NULL) {
     GHOST_XrContextDestroy(wm->xr.context);
+    wm->xr.context = NULL;
   }
   if (wm->xr.session_state != NULL) {
     wm_xr_runtime_session_state_free(&wm->xr.session_state);
