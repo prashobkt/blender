@@ -39,6 +39,7 @@
 #include "DRW_engine.h"
 
 #include "ED_view3d.h"
+#include "ED_view3d_offscreen.h"
 
 #include "GHOST_C-api.h"
 
