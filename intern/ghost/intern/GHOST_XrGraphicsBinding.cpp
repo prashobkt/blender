@@ -74,7 +74,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #endif
     static PFN_xrGetOpenGLGraphicsRequirementsKHR s_xrGetOpenGLGraphicsRequirementsKHR_fn =
         nullptr;
-    XrGraphicsRequirementsOpenGLKHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR};
+    XrGraphicsRequirementsOpenGLKHR gpu_requirements = {XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR};
     const XrVersion gl_version = XR_MAKE_VERSION(
         ctx_gl->m_contextMajorVersion, ctx_gl->m_contextMinorVersion, 0);
 
@@ -180,7 +180,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 
  private:
   std::list<std::vector<XrSwapchainImageOpenGLKHR>> m_image_cache;
-  GLuint m_fbo{0};
+  GLuint m_fbo = 0;
 };
 
 #ifdef WIN32
@@ -200,7 +200,7 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
   {
     GHOST_ContextD3D *ctx_dx = static_cast<GHOST_ContextD3D *>(ghost_ctx);
     static PFN_xrGetD3D11GraphicsRequirementsKHR s_xrGetD3D11GraphicsRequirementsKHR_fn = nullptr;
-    XrGraphicsRequirementsD3D11KHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR};
+    XrGraphicsRequirementsD3D11KHR gpu_requirements = {XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR};
 
     if (!s_xrGetD3D11GraphicsRequirementsKHR_fn &&
         XR_FAILED(xrGetInstanceProcAddr(

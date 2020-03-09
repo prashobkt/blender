@@ -24,20 +24,25 @@
 #include <map>
 #include <memory>
 
+class GHOST_XrContext;
+struct XrEventDataSessionStateChanged;
+struct OpenXRSessionData;
+struct GHOST_XrDrawInfo;
+
 class GHOST_XrSession {
  public:
-  enum eLifeExpectancy {
+  enum LifeExpectancy {
     SESSION_KEEP_ALIVE,
     SESSION_DESTROY,
   };
 
-  GHOST_XrSession(class GHOST_XrContext *xr_context);
+  GHOST_XrSession(GHOST_XrContext *xr_context);
   ~GHOST_XrSession();
 
   void start(const GHOST_XrSessionBeginInfo *begin_info);
   void requestEnd();
 
-  eLifeExpectancy handleStateChangeEvent(const struct XrEventDataSessionStateChanged *lifecycle);
+  LifeExpectancy handleStateChangeEvent(const XrEventDataSessionStateChanged *lifecycle);
 
   bool isRunning() const;
 
@@ -50,14 +55,14 @@ class GHOST_XrSession {
    * custom callbacks set before session start. */
   class GHOST_XrContext *m_context;
 
-  std::unique_ptr<struct OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable. */
+  std::unique_ptr<OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable. */
 
   /** Active Ghost graphic context. Owned by Blender, not GHOST. */
-  class GHOST_Context *m_gpu_ctx{nullptr};
+  class GHOST_Context *m_gpu_ctx = nullptr;
   std::unique_ptr<class GHOST_IXrGraphicsBinding> m_gpu_binding;
 
   /** Rendering information. Set when drawing starts. */
-  std::unique_ptr<struct GHOST_XrDrawInfo> m_draw_info;
+  std::unique_ptr<GHOST_XrDrawInfo> m_draw_info;
 
   void initSystem();
   void end();

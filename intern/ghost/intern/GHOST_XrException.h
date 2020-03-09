@@ -27,8 +27,8 @@ class GHOST_XrException : public std::exception {
   friend class GHOST_XrContext;
 
  public:
-  GHOST_XrException(const char *msg, const char *file, int line, int res = 0)
-      : std::exception(), m_msg(msg), m_file(file), m_line(line), m_res(res)
+  GHOST_XrException(const char *msg, const char *file, int line, int result = 0)
+      : std::exception(), m_msg(msg), m_file(file), m_line(line), m_result(result)
   {
   }
 
@@ -41,7 +41,7 @@ class GHOST_XrException : public std::exception {
   const char *m_msg;
   const char *m_file;
   const int m_line;
-  int m_res;
+  int m_result;
 };
 
 #endif  // __GHOST_XREXCEPTION_H__
