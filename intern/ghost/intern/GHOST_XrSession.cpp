@@ -153,7 +153,7 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   assert(m_context->getInstance() != XR_NULL_HANDLE);
   assert(m_oxr->session == XR_NULL_HANDLE);
   if (m_context->getCustomFuncs().gpu_ctx_bind_fn == nullptr) {
-    THROW_XR(
+    throw GHOST_XrException(
         "Invalid API usage: No way to bind graphics context to the XR session. Call "
         "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
         "session (through GHOST_XrSessionStart()).");
@@ -163,7 +163,7 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
 
   bindGraphicsContext();
   if (m_gpu_ctx == nullptr) {
-    THROW_XR(
+    throw GHOST_XrException(
         "Invalid API usage: No graphics context returned through the callback set with "
         "GHOST_XrGraphicsContextBindFuncs(). This is required for session starting (through "
         "GHOST_XrSessionStart()).");
@@ -176,7 +176,7 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
     std::ostringstream strstream;
     strstream << "Available graphics context version does not meet the following requirements: "
               << requirement_str;
-    THROW_XR(strstream.str().c_str());
+    throw GHOST_XrException(strstream.str().c_str());
   }
   m_gpu_binding->initFromGhostContext(m_gpu_ctx);
 
@@ -279,7 +279,8 @@ static unique_oxr_ptr<XrSwapchain> swapchain_create(const XrSession session,
   assert(swapchain_formats.size() == format_count);
 
   if (!gpu_binding->chooseSwapchainFormat(swapchain_formats, &chosen_format)) {
-    THROW_XR("Error: No format matching OpenXR runtime supported swapchain formats found.");
+    throw GHOST_XrException(
+        "Error: No format matching OpenXR runtime supported swapchain formats found.");
   }
 
   create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
