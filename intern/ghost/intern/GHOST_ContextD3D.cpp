@@ -16,6 +16,9 @@
 
 /** \file
  * \ingroup GHOST
+ *
+ * For testing purposes, it can be useful to do some DirectX only drawing. A patch for this can be
+ * found here: https://developer.blender.org/P1284
  */
 
 #include <iostream>
@@ -27,17 +30,8 @@
 #include "GHOST_ContextWGL.h" /* For shared drawing */
 #include "GHOST_ContextD3D.h"
 
-//#define USE_DRAW_D3D_TEST_TRIANGLE
-
 HMODULE GHOST_ContextD3D::s_d3d_lib = NULL;
 PFN_D3D11_CREATE_DEVICE GHOST_ContextD3D::s_D3D11CreateDeviceFn = NULL;
-
-#ifdef USE_DRAW_D3D_TEST_TRIANGLE
-static void drawTestTriangle(ID3D11Device *m_device,
-                             ID3D11DeviceContext *m_device_ctx,
-                             GHOST_TInt32 width,
-                             GHOST_TInt32 height);
-#endif
 
 GHOST_ContextD3D::GHOST_ContextD3D(bool stereoVisual, HWND hWnd)
     : GHOST_Context(stereoVisual), m_hWnd(hWnd)
@@ -157,6 +151,12 @@ class GHOST_SharedOpenGLResource {
       texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 
       device->CreateTexture2D(&texDesc, NULL, &tex);
+      if (!tex) {
+        /* If texture creation fails, we just return and leave the render target unset. So it needs
+         * to be NULL-checked before use. */
+        fprintf(stderr, "Error creating texture for shared DirectX-OpenGL resource\n");
+        return;
+      }
 
       renderTargetViewDesc.Format = texDesc.Format;
       renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
@@ -168,15 +168,28 @@ class GHOST_SharedOpenGLResource {
     }
 
     m_render_target = render_target;
-    m_render_target->GetResource(&backbuffer_res);
-    backbuffer_res->QueryInterface<ID3D11Texture2D>(&m_render_target_tex);
-    backbuffer_res->Release();
+    if (m_render_target) {
+      m_render_target->GetResource(&backbuffer_res);
+    }
+    if (backbuffer_res) {
+      backbuffer_res->QueryInterface<ID3D11Texture2D>(&m_render_target_tex);
+      backbuffer_res->Release();
+    }
+
+    if (!m_render_target || !m_render_target_tex) {
+      fprintf(stderr, "Error creating render target for shared DirectX-OpenGL resource\n");
+      return;
+    }
   }
 
   ~GHOST_SharedOpenGLResource()
   {
-    m_render_target_tex->Release();
-    m_render_target->Release();
+    if (m_render_target_tex) {
+      m_render_target_tex->Release();
+    }
+    if (m_render_target) {
+      m_render_target->Release();
+    }
 
     if (m_is_initialized) {
       if (m_shared.render_buf) {
@@ -196,11 +209,16 @@ class GHOST_SharedOpenGLResource {
       wglDXUnregisterObjectNV(m_shared.device, m_shared.render_buf);
     }
 
+    if (!m_render_target_tex) {
+      return;
+    }
+
     m_shared.render_buf = wglDXRegisterObjectNV(m_shared.device,
                                                 m_render_target_tex,
                                                 m_gl_render_buf,
                                                 GL_RENDERBUFFER,
                                                 WGL_ACCESS_READ_WRITE_NV);
+
     if (!m_shared.render_buf) {
       fprintf(stderr, "Error registering shared object using wglDXRegisterObjectNV()\n");
       return;
@@ -249,6 +267,10 @@ class GHOST_SharedOpenGLResource {
     GLint fbo;
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fbo);
 
+    if (!m_render_target || !m_render_target_tex) {
+      return GHOST_kFailure;
+    }
+
     ensureUpdated(width, height);
 
 #ifdef NDEBUG
@@ -262,7 +284,8 @@ class GHOST_SharedOpenGLResource {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_shared.fbo);
     GLenum err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (err != GL_FRAMEBUFFER_COMPLETE) {
-      fprintf(stderr, "Error: Framebuffer incomplete %u\n", err);
+      fprintf(
+          stderr, "Error: Framebuffer for shared DirectX-OpenGL resource incomplete %u\n", err);
       return GHOST_kFailure;
     }
 
@@ -274,15 +297,11 @@ class GHOST_SharedOpenGLResource {
 
     endGLOnly();
 
-#ifdef USE_DRAW_D3D_TEST_TRIANGLE
-    drawTestTriangle(m_device, m_device_ctx, m_cur_width, m_cur_height);
-#endif
-
     return GHOST_kSuccess;
   }
 
-  ID3D11RenderTargetView *m_render_target;
-  ID3D11Texture2D *m_render_target_tex;
+  ID3D11RenderTargetView *m_render_target{nullptr};
+  ID3D11Texture2D *m_render_target_tex{nullptr};
 
  private:
   void beginGLOnly()
@@ -337,116 +356,3 @@ ID3D11Texture2D *GHOST_ContextD3D::getSharedTexture2D(GHOST_SharedOpenGLResource
 {
   return shared_res->m_render_target_tex;
 }
-
-#ifdef USE_DRAW_D3D_TEST_TRIANGLE
-#  pragma comment(lib, "D3DCompiler.lib")
-
-const static std::string vertex_shader_str{
-    "struct VSOut {"
-    "float3 color : Color;"
-    "float4 pos : SV_POSITION;"
-    "};"
-
-    "VSOut main(float2 pos : Position, float3 color : Color)"
-    "{"
-    "  VSOut vso;"
-    "  vso.pos = float4(pos.x, pos.y, 0.0f, 1.0f);"
-    "  vso.color = color;"
-    "  return vso;"
-    "}"};
-const static std::string pixel_shader_str{
-    " float4 main(float3 color : Color) : SV_TARGET"
-    "{"
-    "	return float4(color, 1.0f);"
-    "}"};
-
-#  include <wrl/module.h>
-#  include <d3dcompiler.h>
-
-static void drawTestTriangle(ID3D11Device *m_device,
-                             ID3D11DeviceContext *m_device_ctx,
-                             GHOST_TInt32 width,
-                             GHOST_TInt32 height)
-{
-  struct Vertex {
-    float x, y;
-    unsigned char r, g, b, a;
-  };
-  Vertex vertices[] = {
-      {0.0f, 0.5f, 255, 0, 0},
-      {0.5f, -0.5f, 0, 255, 0},
-      {-0.5f, -0.5f, 0, 0, 255},
-
-  };
-  const unsigned int stride = sizeof(Vertex);
-  const unsigned int offset = 0;
-  ID3D11Buffer *vertex_buffer;
-
-  D3D11_BUFFER_DESC buffer_desc{};
-  buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-  buffer_desc.ByteWidth = sizeof(vertices);
-  buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-  D3D11_SUBRESOURCE_DATA init_data{};
-  init_data.pSysMem = vertices;
-
-  m_device->CreateBuffer(&buffer_desc, &init_data, &vertex_buffer);
-  m_device_ctx->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &offset);
-
-  Microsoft::WRL::ComPtr<ID3DBlob> blob;
-  D3DCompile(pixel_shader_str.c_str(),
-             pixel_shader_str.length(),
-             NULL,
-             NULL,
-             NULL,
-             "main",
-             "ps_5_0",
-             0,
-             0,
-             &blob,
-             NULL);
-  Microsoft::WRL::ComPtr<ID3D11PixelShader> pixel_shader;
-  m_device->CreatePixelShader(
-      blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &pixel_shader);
-
-  D3DCompile(vertex_shader_str.c_str(),
-             vertex_shader_str.length(),
-             NULL,
-             NULL,
-             NULL,
-             "main",
-             "vs_5_0",
-             0,
-             0,
-             &blob,
-             NULL);
-  Microsoft::WRL::ComPtr<ID3D11VertexShader> vertex_shader;
-  m_device->CreateVertexShader(
-      blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &vertex_shader);
-
-  m_device_ctx->PSSetShader(pixel_shader.Get(), NULL, 0);
-  m_device_ctx->VSSetShader(vertex_shader.Get(), 0, 0);
-
-  Microsoft::WRL::ComPtr<ID3D11InputLayout> input_layout;
-  const D3D11_INPUT_ELEMENT_DESC input_desc[] = {
-      {"Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-      {"Color", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0},
-  };
-  m_device->CreateInputLayout(input_desc,
-                              (unsigned int)std::size(input_desc),
-                              blob->GetBufferPointer(),
-                              blob->GetBufferSize(),
-                              &input_layout);
-  m_device_ctx->IASetInputLayout(input_layout.Get());
-
-  m_device_ctx->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-  D3D11_VIEWPORT viewport = {};
-  viewport.Width = width;
-  viewport.Height = height;
-  viewport.MaxDepth = 1;
-  m_device_ctx->RSSetViewports(1, &viewport);
-
-  m_device_ctx->Draw(std::size(vertices), 0);
-}
-#endif
