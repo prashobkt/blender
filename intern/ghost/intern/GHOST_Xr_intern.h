@@ -125,7 +125,7 @@ template<typename _OXR_HANDLE> class unique_oxr_ptr {
   unique_oxr_ptr &operator=(const unique_oxr_ptr &) = delete;
 
  private:
-  _OXR_HANDLE m_ptr{XR_NULL_HANDLE};
+  _OXR_HANDLE m_ptr = XR_NULL_HANDLE;
   xr_destroy_func m_destroy_fn;
 };
 
