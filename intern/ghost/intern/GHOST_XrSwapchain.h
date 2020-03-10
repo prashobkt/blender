@@ -18,33 +18,28 @@
  * \ingroup GHOST
  */
 
-#ifndef __GHOST_XR_INTERN_H__
-#define __GHOST_XR_INTERN_H__
+#ifndef __GHOST_XRSWAPCHAIN_H__
+#define __GHOST_XRSWAPCHAIN_H__
 
 #include <memory>
-#include <vector>
 
-#include "GHOST_Xr_openxr_includes.h"
+struct OpenXRSwapchainData;
 
-#define CHECK_XR(call, error_msg) \
-  { \
-    XrResult _res = call; \
-    if (XR_FAILED(_res)) { \
-      throw GHOST_XrException(error_msg, _res); \
-    } \
-  } \
-  (void)0
+class GHOST_XrSwapchain {
+ public:
+  GHOST_XrSwapchain(GHOST_IXrGraphicsBinding &gpu_binding,
+                    const XrSession &session,
+                    const XrViewConfigurationView &view_config);
+  ~GHOST_XrSwapchain();
 
-/**
- * Variation of CHECK_XR() that doesn't throw, but asserts for success. Especially useful for
- * destructors, which shouldn't throw.
- */
-#define CHECK_XR_ASSERT(call) \
-  { \
-    XrResult _res = call; \
-    assert(_res == XR_SUCCESS); \
-    (void)_res; \
-  } \
-  (void)0
+  XrSwapchainImageBaseHeader *acquireDrawableSwapchainImage();
+  void releaseImage();
 
-#endif /* __GHOST_XR_INTERN_H__ */
+  void updateCompositionLayerProjectViewSubImage(XrSwapchainSubImage &r_sub_image);
+
+ private:
+  std::unique_ptr<OpenXRSwapchainData> m_oxr; /* Could use stack, but PImpl is preferable. */
+  int32_t m_image_width, m_image_height;
+};
+
+#endif  // GHOST_XRSWAPCHAIN_H

@@ -28,6 +28,7 @@ class GHOST_XrContext;
 struct XrEventDataSessionStateChanged;
 struct OpenXRSessionData;
 struct GHOST_XrDrawInfo;
+struct GHOST_XrSwapchain;
 
 class GHOST_XrSession {
  public:
@@ -71,9 +72,9 @@ class GHOST_XrSession {
 
   void prepareDrawing();
   XrCompositionLayerProjection drawLayer(
-      std::vector<XrCompositionLayerProjectionView> &proj_layer_views, void *draw_customdata);
-  void drawView(XrSwapchain swapchain,
-                XrCompositionLayerProjectionView &proj_layer_view,
+      std::vector<XrCompositionLayerProjectionView> &r_proj_layer_views, void *draw_customdata);
+  void drawView(GHOST_XrSwapchain &swapchain,
+                XrCompositionLayerProjectionView &r_proj_layer_view,
                 XrSpaceLocation &view_location,
                 XrView &view,
                 void *draw_customdata);
