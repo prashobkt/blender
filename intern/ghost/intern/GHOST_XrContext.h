@@ -25,14 +25,16 @@
 #include <vector>
 #include "GHOST_IXrContext.h"
 
+struct OpenXRInstanceData;
+
 struct GHOST_XrCustomFuncs {
   /** Function to retrieve (possibly create) a graphics context. */
-  GHOST_XrGraphicsContextBindFn gpu_ctx_bind_fn{nullptr};
+  GHOST_XrGraphicsContextBindFn gpu_ctx_bind_fn = nullptr;
   /** Function to release (possibly free) a graphics context. */
-  GHOST_XrGraphicsContextUnbindFn gpu_ctx_unbind_fn{nullptr};
+  GHOST_XrGraphicsContextUnbindFn gpu_ctx_unbind_fn = nullptr;
 
   /** Custom per-view draw function for Blender side drawing. */
-  GHOST_XrDrawViewFn draw_view_fn{nullptr};
+  GHOST_XrDrawViewFn draw_view_fn = nullptr;
 };
 
 /**
@@ -74,35 +76,36 @@ class GHOST_XrContext : public GHOST_IXrContext {
   void handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle);
 
   GHOST_TXrOpenXRRuntimeID getOpenXRRuntimeID() const;
-  const GHOST_XrCustomFuncs *getCustomFuncs() const;
+  const GHOST_XrCustomFuncs &getCustomFuncs() const;
   GHOST_TXrGraphicsBinding getGraphicsBindingType() const;
   XrInstance getInstance() const;
   bool isDebugMode() const;
   bool isDebugTimeMode() const;
 
  private:
-  std::unique_ptr<struct OpenXRInstanceData> m_oxr;
+  static GHOST_XrErrorHandlerFn s_error_handler;
+  static void *s_error_handler_customdata;
 
-  GHOST_TXrOpenXRRuntimeID m_runtime_id{OPENXR_RUNTIME_UNKNOWN};
+  std::unique_ptr<OpenXRInstanceData> m_oxr;
+
+  GHOST_TXrOpenXRRuntimeID m_runtime_id = OPENXR_RUNTIME_UNKNOWN;
 
   /* The active GHOST XR Session. Null while no session runs. */
   std::unique_ptr<class GHOST_XrSession> m_session;
 
   /** Active graphics binding type. */
-  GHOST_TXrGraphicsBinding m_gpu_binding_type{GHOST_kXrGraphicsUnknown};
+  GHOST_TXrGraphicsBinding m_gpu_binding_type = GHOST_kXrGraphicsUnknown;
 
   /** Names of enabled extensions. */
   std::vector<const char *> m_enabled_extensions;
   /** Names of enabled API-layers. */
   std::vector<const char *> m_enabled_layers;
 
-  static GHOST_XrErrorHandlerFn s_error_handler;
-  static void *s_error_handler_customdata;
   GHOST_XrCustomFuncs m_custom_funcs;
 
   /** Enable debug message prints and OpenXR API validation layers. */
-  bool m_debug{false};
-  bool m_debug_time{false};
+  bool m_debug = false;
+  bool m_debug_time = false;
 
   void createOpenXRInstance();
   void storeInstanceProperties();
@@ -112,10 +115,9 @@ class GHOST_XrContext : public GHOST_IXrContext {
   void printAvailableAPILayersAndExtensionsInfo();
   void printExtensionsAndAPILayersToEnable();
 
-  void enumerateApiLayers();
-  void enumerateExtensions();
-  void enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
-                             const char *layer_name);
+  void initApiLayers();
+  void initExtensions();
+  void initExtensionsEx(std::vector<XrExtensionProperties> &extensions, const char *layer_name);
   void getAPILayersToEnable(std::vector<const char *> &r_ext_names);
   void getExtensionsToEnable(std::vector<const char *> &r_ext_names);
   GHOST_TXrGraphicsBinding determineGraphicsBindingTypeToEnable(

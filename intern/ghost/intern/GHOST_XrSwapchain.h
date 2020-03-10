@@ -18,28 +18,28 @@
  * \ingroup GHOST
  */
 
-#ifndef __GHOST_XREXCEPTION_H__
-#define __GHOST_XREXCEPTION_H__
+#ifndef __GHOST_XRSWAPCHAIN_H__
+#define __GHOST_XRSWAPCHAIN_H__
 
-#include <exception>
+#include <memory>
 
-class GHOST_XrException : public std::exception {
-  friend class GHOST_XrContext;
+struct OpenXRSwapchainData;
 
+class GHOST_XrSwapchain {
  public:
-  GHOST_XrException(const char *msg, int result = 0)
-      : std::exception(), m_msg(msg), m_result(result)
-  {
-  }
+  GHOST_XrSwapchain(GHOST_IXrGraphicsBinding &gpu_binding,
+                    const XrSession &session,
+                    const XrViewConfigurationView &view_config);
+  ~GHOST_XrSwapchain();
 
-  const char *what() const noexcept override
-  {
-    return m_msg;
-  }
+  XrSwapchainImageBaseHeader *acquireDrawableSwapchainImage();
+  void releaseImage();
+
+  void updateCompositionLayerProjectViewSubImage(XrSwapchainSubImage &r_sub_image);
 
  private:
-  const char *m_msg;
-  int m_result;
+  std::unique_ptr<OpenXRSwapchainData> m_oxr; /* Could use stack, but PImpl is preferable. */
+  int32_t m_image_width, m_image_height;
 };
 
-#endif  // __GHOST_XREXCEPTION_H__
+#endif  // GHOST_XRSWAPCHAIN_H
