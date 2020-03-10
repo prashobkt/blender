@@ -11,11 +11,19 @@
 
 namespace BParticles {
 
+struct CollisionObject {
+  Object *object;
+  float4x4 local_to_world_start;
+  float4x4 local_to_world_end;
+  float damping;
+};
+
 struct ParticleSystemInfo {
   ArrayRef<Force *> forces;
   ArrayRef<Event *> events;
   ArrayRef<OffsetHandler *> offset_handlers;
-  ArrayRef<Object *> collision_objects;
+
+  ArrayRef<CollisionObject> collision_objects;
 };
 
 void simulate_particles(SimulationState &state,

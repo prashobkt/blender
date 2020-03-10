@@ -8,4 +8,5 @@ class CollisionObjectNode(bpy.types.Node, SimulationNode):
 
     def declaration(self, builder: NodeBuilder):
         builder.fixed_input("object", "Object", "Object", display_name=False)
+        builder.fixed_input("damping", "Damping", "Float", default=0.5)
         builder.influences_output("collider", "Collider")

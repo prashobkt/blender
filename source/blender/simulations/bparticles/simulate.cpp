@@ -143,7 +143,13 @@ void simulate_particles(SimulationState &simulation_state,
 
   systems_to_simulate.foreach_item([](StringRef name, ParticleSystemInfo &system_info) {
     system_info.collision_objects.print_as_lines(
-        name, [](Object *object) { std::cout << object->id.name; });
+        name, [](const CollisionObject &collision_object) {
+          std::cout << collision_object.object->id.name
+                    << " - Damping: " << collision_object.damping << " - Location Old: "
+                    << float3(collision_object.local_to_world_start.values[3])
+                    << " - Location New: "
+                    << float3(collision_object.local_to_world_end.values[3]);
+        });
   });
 
   ParticlesState &particles_state = simulation_state.particles();

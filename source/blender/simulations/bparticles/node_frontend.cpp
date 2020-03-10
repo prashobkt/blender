@@ -66,7 +66,7 @@ class InfluencesCollector {
   StringMultiMap<Event *> m_events;
   StringMultiMap<OffsetHandler *> m_offset_handlers;
   StringMap<AttributesInfoBuilder *> m_attributes;
-  StringMultiMap<Object *> m_collision_objects;
+  StringMultiMap<CollisionObject> m_collision_objects;
 };
 
 class FunctionTreeData {
@@ -695,13 +695,16 @@ class FNodeInfluencesBuilder {
     }
   }
 
-  void add_collision_object(ArrayRef<std::string> system_names, Object *object)
+  void add_collision_object(ArrayRef<std::string> system_names, CollisionObject collision_object)
   {
     for (StringRef system_name : system_names) {
-      if (!m_influences_collector.m_collision_objects.lookup_default(system_name)
-               .contains(object)) {
-        m_influences_collector.m_collision_objects.add(system_name, object);
+      for (const CollisionObject &existing_collider :
+           m_influences_collector.m_collision_objects.lookup_default(system_name)) {
+        if (existing_collider.object == collision_object.object) {
+          return;
+        }
       }
+      m_influences_collector.m_collision_objects.add(system_name, collision_object);
     }
   }
 
@@ -1048,18 +1051,27 @@ static void PARSE_collision_object(FNodeInfluencesBuilder &builder)
 {
   ArrayRef<std::string> system_names = builder.find_target_system_names(0, "Collider");
 
-  Optional<NamedGenericTupleRef> inputs = builder.compute_inputs({0});
+  Optional<NamedGenericTupleRef> inputs = builder.compute_inputs({0, 1});
   if (!inputs.has_value()) {
     return;
   }
 
   ObjectIDHandle object_handle = inputs->relocate_out<ObjectIDHandle>(0, "Object");
   Object *object = builder.id_handle_lookup().lookup(object_handle);
+
   if (object == nullptr || object->type != OB_MESH) {
     return;
   }
 
-  builder.add_collision_object(system_names, object);
+  float damping = inputs->get<float>(1, "Damping");
+
+  float4x4 local_to_world_end = object->obmat;
+  float4x4 local_to_world_begin =
+      builder.world_transition().update_float4x4(object->id.name, "obmat", object->obmat).start;
+
+  CollisionObject collision_object = {object, local_to_world_begin, local_to_world_end, damping};
+
+  builder.add_collision_object(system_names, collision_object);
 }
 
 static StringMap<ParseNodeCallback, BLI::RawAllocator> create_node_parsers_map()

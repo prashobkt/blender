@@ -64,7 +64,7 @@ void EulerIntegrator::integrate(IntegratorInterface &interface)
                         velocity_offsets);
 }
 
-BLI_NOINLINE void EulerIntegrator::compute_combined_force(IntegratorInterface &interface,
+BLI_NOINLINE void EulerIntegrator::compute_combined_force(IntegratorInterface &UNUSED(interface),
                                                           MutableArrayRef<float3> r_force)
 {
   r_force.fill({0, 0, 0});
