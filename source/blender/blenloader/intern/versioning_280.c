@@ -4796,10 +4796,27 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
-              v3d->overlay.sculpt_mode_face_sets_opacity = 0.0f;
+              v3d->overlay.sculpt_mode_face_sets_opacity = 1.0f;
             }
           }
         }
+      }
+    }
+
+    /* Alembic Transform Cache changed from local to world space. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      LISTBASE_FOREACH (bConstraint *, con, &ob->constraints) {
+        if (con->type == CONSTRAINT_TYPE_TRANSFORM_CACHE) {
+          con->ownspace = CONSTRAINT_SPACE_WORLD;
+        }
+      }
+    }
+
+    /* Boundary Edges Automasking. */
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "Brush", "int", "automasking_boundary_edges_propagation_steps")) {
+      for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+        br->automasking_boundary_edges_propagation_steps = 1;
       }
     }
   }
