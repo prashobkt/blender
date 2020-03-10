@@ -485,7 +485,7 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
   copy_v3_v3(plane, tmat[1]);
 
   cross_v3_v3v3(mat[0], normal, plane);
-  if (len_squared_v3(mat[0]) < SQUARE(1e-3f)) {
+  if (len_squared_v3(mat[0]) < square_f(1e-3f)) {
     copy_v3_v3(plane, tmat[0]);
     cross_v3_v3v3(mat[0], normal, plane);
   }
@@ -5314,9 +5314,6 @@ static bConstraint *add_new_constraint(Object *ob,
       }
       break;
     }
-    case CONSTRAINT_TYPE_TRANSFORM_CACHE:
-      con->ownspace = CONSTRAINT_SPACE_LOCAL;
-      break;
   }
 
   return con;
