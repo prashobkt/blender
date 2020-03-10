@@ -658,9 +658,6 @@ typedef struct {
 typedef struct {
   const char *user_message;
 
-  /** File path and line number the error was found at. */
-  const char *source_location;
-
   void *customdata;
 } GHOST_XrError;
 

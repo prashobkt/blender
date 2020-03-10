@@ -364,13 +364,15 @@ if(WITH_XR_OPENXR)
     intern/GHOST_XrEvent.cpp
     intern/GHOST_XrGraphicsBinding.cpp
     intern/GHOST_XrSession.cpp
+    intern/GHOST_XrSwapchain.cpp
 
     GHOST_IXrContext.h
+    intern/GHOST_IXrGraphicsBinding.h
     intern/GHOST_Xr_intern.h
     intern/GHOST_Xr_openxr_includes.h
     intern/GHOST_XrContext.h
-    intern/GHOST_IXrGraphicsBinding.h
     intern/GHOST_XrSession.h
+    intern/GHOST_XrSwapchain.h
   )
   list(APPEND INC_SYS
     ${XR_OPENXR_SDK_INCLUDE_DIR}

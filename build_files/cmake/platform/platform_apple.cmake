@@ -429,14 +429,6 @@ if(WITH_XR_OPENXR)
   endif()
 endif()
 
-if(WITH_OPENXR)
-  find_package(OpenXR-SDK)
-  if(NOT OPENXR_SDK_FOUND)
-    message(WARNING "OpenXR-SDK was not found, disabling WITH_OPENXR")
-    set(WITH_OPENXR OFF)
-  endif()
-endif()
-
 set(EXETYPE MACOSX_BUNDLE)
 
 set(CMAKE_C_FLAGS_DEBUG "-fno-strict-aliasing -g")
