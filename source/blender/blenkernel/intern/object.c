@@ -2129,28 +2129,6 @@ void BKE_object_mat3_to_rot(Object *ob, float mat[3][3], bool use_compat)
   }
 }
 
-void BKE_object_rot_to_quat(Object *ob, float r_quat[4])
-{
-  float quat[4], dquat[4];
-
-  switch (ob->rotmode) {
-    case ROT_MODE_QUAT:
-      copy_v4_v4(quat, ob->quat);
-      copy_v4_v4(dquat, ob->dquat);
-      break;
-    case ROT_MODE_AXISANGLE:
-      axis_angle_to_quat(quat, ob->rotAxis, ob->rotAngle);
-      axis_angle_to_quat(dquat, ob->drotAxis, ob->drotAngle);
-      break;
-    default: /* euler */
-      eulO_to_quat(quat, ob->rot, ob->rotmode);
-      eulO_to_quat(dquat, ob->drot, ob->rotmode);
-      break;
-  }
-
-  mul_qt_qtqt(r_quat, dquat, quat);
-}
-
 void BKE_object_tfm_protected_backup(const Object *ob, ObjectTfmProtectedChannels *obtfm)
 {
 

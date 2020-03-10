@@ -72,26 +72,25 @@ void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4]);
 /* -------------------------------------------------------------------- */
 
 typedef struct bXrRuntimeSessionState {
+  /** Last known viewer pose (centroid of eyes, in world space) stored for queries. */
+  GHOST_XrPose viewer_pose;
+  /** The last known view matrix, calculated from above's viewer pose. */
+  float viewer_viewmat[4][4];
+  float focal_len;
+
+  /** Copy of bXrSessionSettings.flag created on the last draw call, stored to detect changes. */
+  int prev_settings_flag;
+
+  bool is_initialized;
+} bXrRuntimeSessionState;
+
+typedef struct wmXrDrawData {
   /** The pose (location + rotation) to which eye deltas will be applied to when drawing (world
    * space). With positional tracking enabled, it should be the same as the base pose, when
    * disabled it also contains a location delta from the moment the option was toggled. */
-  GHOST_XrPose final_reference_pose;
+  GHOST_XrPose reference_pose;
   float eye_position_ofs[3]; /* Local/view space. */
-
-  /** Copy of bXrSessionSettings.flag created on the last draw call,  */
-  int prev_settings_flag;
-
-  /* Just a utility "cache" to avoid recalculating things for external queries. */
-  struct {
-    /** Last known viewer location (centroid of eyes, in world space) stored for queries. */
-    GHOST_XrPose viewer_pose;
-    /** The view matrix calculated from above's viewer pose. */
-    float viewer_viewmat[4][4];
-    float focal_len;
-
-    bool is_initialized;
-  } last_known;
-} bXrRuntimeSessionState;
+} wmXrDrawData;
 
 typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
@@ -245,90 +244,95 @@ static void wm_xr_reference_pose_calc(const Scene *scene,
   }
 }
 
-static void wm_xr_runtime_session_state_final_reference_pose_update(
-    bXrRuntimeSessionState *state,
-    const GHOST_XrDrawViewInfo *draw_view,
-    const bXrSessionSettings *settings,
-    const Scene *scene)
+static void wm_xr_draw_data_populate(const bXrRuntimeSessionState *state,
+                                     const GHOST_XrDrawViewInfo *draw_view,
+                                     const bXrSessionSettings *settings,
+                                     const Scene *scene,
+                                     wmXrDrawData *r_draw_data)
 {
   const bool position_tracking_toggled = (state->prev_settings_flag &
                                           XR_SESSION_USE_POSITION_TRACKING) !=
                                          (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
-  wm_xr_reference_pose_calc(scene, settings, &state->final_reference_pose);
+  wm_xr_reference_pose_calc(scene, settings, &r_draw_data->reference_pose);
 
   if (position_tracking_toggled) {
     if (use_position_tracking) {
-      copy_v3_fl(state->eye_position_ofs, 0.0f);
+      copy_v3_fl(r_draw_data->eye_position_ofs, 0.0f);
     }
     else {
       /* Store the current local offset (local pose) so that we can apply that to the eyes. This
        * way the eyes stay exactly where they are when disabling positional tracking. */
-      copy_v3_v3(state->eye_position_ofs, draw_view->local_pose.position);
+      copy_v3_v3(r_draw_data->eye_position_ofs, draw_view->local_pose.position);
     }
   }
-
-  state->prev_settings_flag = settings->flag;
 }
 
-static void wm_xr_runtime_session_state_info_update(bXrRuntimeSessionState *state,
-                                                    const GHOST_XrDrawViewInfo *draw_view,
-                                                    const bXrSessionSettings *settings)
+/**
+ * Update information that is only stored for external state queries. E.g. for Python API to
+ * request the current (as in, last known) viewer pose.
+ */
+static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
+                                               const GHOST_XrDrawViewInfo *draw_view,
+                                               const bXrSessionSettings *settings,
+                                               const wmXrDrawData *draw_data)
 {
   GHOST_XrPose viewer_pose;
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
   mul_qt_qtqt(viewer_pose.orientation_quat,
-              state->final_reference_pose.orientation_quat,
+              draw_data->reference_pose.orientation_quat,
               draw_view->local_pose.orientation_quat);
-  copy_v3_v3(viewer_pose.position, state->final_reference_pose.position);
-  viewer_pose.position[0] += state->eye_position_ofs[0];
-  viewer_pose.position[1] -= state->eye_position_ofs[2];
-  viewer_pose.position[2] += state->eye_position_ofs[1];
+  copy_v3_v3(viewer_pose.position, draw_data->reference_pose.position);
+  viewer_pose.position[0] += draw_data->eye_position_ofs[0];
+  viewer_pose.position[1] -= draw_data->eye_position_ofs[2];
+  viewer_pose.position[2] += draw_data->eye_position_ofs[1];
   if (use_position_tracking) {
     viewer_pose.position[0] += draw_view->local_pose.position[0];
     viewer_pose.position[1] -= draw_view->local_pose.position[2];
     viewer_pose.position[2] += draw_view->local_pose.position[1];
   }
 
-  state->last_known.viewer_pose = viewer_pose;
-  wm_xr_pose_to_viewmat(&viewer_pose, state->last_known.viewer_viewmat);
+  state->viewer_pose = viewer_pose;
+  wm_xr_pose_to_viewmat(&viewer_pose, state->viewer_viewmat);
   /* No idea why, but multiplying by two seems to make it match the VR view more. */
-  state->last_known.focal_len = 2.0f * fov_to_focallength(draw_view->fov.angle_right -
-                                                              draw_view->fov.angle_left,
-                                                          DEFAULT_SENSOR_WIDTH);
-  state->last_known.is_initialized = true;
+  state->focal_len = 2.0f *
+                     fov_to_focallength(draw_view->fov.angle_right - draw_view->fov.angle_left,
+                                        DEFAULT_SENSOR_WIDTH);
+
+  state->prev_settings_flag = settings->flag;
+  state->is_initialized = true;
 }
 
 void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
     return;
   }
 
-  copy_v3_v3(r_location, xr->session_state->last_known.viewer_pose.position);
+  copy_v3_v3(r_location, xr->session_state->viewer_pose.position);
 }
 
 void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
     return;
   }
 
-  copy_v4_v4(r_rotation, xr->session_state->last_known.viewer_pose.orientation_quat);
+  copy_v4_v4(r_rotation, xr->session_state->viewer_pose.orientation_quat);
 }
 
 void WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float r_viewmat[4][4],
                                                 float *r_focal_len)
 {
-  if (!WM_xr_session_is_running(xr) || !xr->session_state->last_known.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
     return;
   }
 
-  copy_m4_m4(r_viewmat, xr->session_state->last_known.viewer_viewmat);
-  *r_focal_len = xr->session_state->last_known.focal_len;
+  copy_m4_m4(r_viewmat, xr->session_state->viewer_viewmat);
+  *r_focal_len = xr->session_state->focal_len;
 }
 
 /** \} */ /* XR Runtime Session State */
@@ -559,9 +563,9 @@ void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4])
  * reference space and apply its pose onto the active camera matrix to get a basic viewing
  * experience going. If there's no active camera with stick to the world origin.
  */
-static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
+static void wm_xr_draw_matrices_create(const wmXrDrawData *draw_data,
+                                       const GHOST_XrDrawViewInfo *draw_view,
                                        const bXrSessionSettings *session_settings,
-                                       const bXrRuntimeSessionState *session_state,
                                        float r_view_mat[4][4],
                                        float r_proj_mat[4][4])
 {
@@ -569,7 +573,7 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
 
   copy_qt_qt(eye_pose.orientation_quat, draw_view->eye_pose.orientation_quat);
   copy_v3_v3(eye_pose.position, draw_view->eye_pose.position);
-  add_v3_v3(eye_pose.position, session_state->eye_position_ofs);
+  add_v3_v3(eye_pose.position, draw_data->eye_position_ofs);
   if ((session_settings->flag & XR_SESSION_USE_POSITION_TRACKING) == 0) {
     sub_v3_v3(eye_pose.position, draw_view->local_pose.position);
   }
@@ -587,7 +591,7 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
 
   wm_xr_pose_to_viewmat(&eye_pose, eye_mat);
   /* Calculate the reference pose matrix (in world space!). */
-  wm_xr_pose_to_viewmat(&session_state->final_reference_pose, base_mat);
+  wm_xr_pose_to_viewmat(&draw_data->reference_pose, base_mat);
 
   mul_m4_m4m4(r_view_mat, eye_mat, base_mat);
 }
@@ -620,6 +624,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
   bXrSessionSettings *settings = &wm->xr.session_settings;
+  wmXrDrawData draw_data;
   Scene *scene = CTX_data_scene(C);
 
   const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
@@ -631,11 +636,10 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
     return;
   }
 
-  wm_xr_runtime_session_state_final_reference_pose_update(
-      wm->xr.session_state, draw_view, settings, scene);
-  wm_xr_draw_matrices_create(draw_view, settings, wm->xr.session_state, viewmat, winmat);
+  wm_xr_draw_data_populate(wm->xr.session_state, draw_view, settings, scene, &draw_data);
+  wm_xr_draw_matrices_create(&draw_data, draw_view, settings, viewmat, winmat);
 
-  wm_xr_runtime_session_state_info_update(wm->xr.session_state, draw_view, settings);
+  wm_xr_runtime_session_state_update(wm->xr.session_state, draw_view, settings, &draw_data);
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
     return;
