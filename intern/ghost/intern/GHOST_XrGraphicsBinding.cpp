@@ -153,8 +153,8 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     return base_images;
   }
 
-  void submitToSwapchain(XrSwapchainImageBaseHeader *swapchain_image,
-                         const GHOST_XrDrawViewInfo *draw_info) override
+  void submitToSwapchainImage(XrSwapchainImageBaseHeader *swapchain_image,
+                              const GHOST_XrDrawViewInfo *draw_info) override
   {
     XrSwapchainImageOpenGLKHR *ogl_swapchain_image = reinterpret_cast<XrSwapchainImageOpenGLKHR *>(
         swapchain_image);
@@ -257,8 +257,8 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     return base_images;
   }
 
-  void submitToSwapchain(XrSwapchainImageBaseHeader *swapchain_image,
-                         const GHOST_XrDrawViewInfo *draw_info) override
+  void submitToSwapchainImage(XrSwapchainImageBaseHeader *swapchain_image,
+                              const GHOST_XrDrawViewInfo *draw_info) override
   {
     XrSwapchainImageD3D11KHR *d3d_swapchain_image = reinterpret_cast<XrSwapchainImageD3D11KHR *>(
         swapchain_image);
