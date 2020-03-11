@@ -7030,7 +7030,9 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob, Po
 
   if (cache->first_time ||
       !((brush->flag & BRUSH_ANCHORED) || (brush->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK) ||
-        (brush->sculpt_tool == SCULPT_TOOL_ROTATE))) {
+        (brush->sculpt_tool == SCULPT_TOOL_ROTATE) ||
+        (brush->sculpt_tool == SCULPT_TOOL_CLOTH &&
+         brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB))) {
     RNA_float_get_array(ptr, "location", cache->true_location);
   }
 
@@ -11033,10 +11035,10 @@ static int sculpt_face_sets_change_visibility_invoke(bContext *C,
   }
 
   ED_region_tag_redraw(region);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
 
   View3D *v3d = CTX_wm_view3d(C);
   if (!BKE_sculptsession_use_pbvh_draw(ob, v3d)) {
-    DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
   return OPERATOR_FINISHED;

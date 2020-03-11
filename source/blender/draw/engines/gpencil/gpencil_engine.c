@@ -200,7 +200,8 @@ void GPENCIL_cache_init(void *ved)
   pd->use_layer_fb = false;
   pd->use_object_fb = false;
   pd->use_mask_fb = false;
-  pd->use_signed_fb = false;
+  /* Always use high precision for render. */
+  pd->use_signed_fb = !pd->is_viewport;
 
   if (draw_ctx->v3d) {
     const bool hide_overlay = ((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) != 0);
@@ -709,7 +710,7 @@ void GPENCIL_cache_finish(void *ved)
 
     if (pd->use_mask_fb) {
       /* We need an extra depth to not disturb the normal drawing.
-       * The color_tx is needed for framebuffer cmpleteness. */
+       * The color_tx is needed for frame-buffer completeness. */
       GPUTexture *color_tx, *depth_tx;
       depth_tx = DRW_texture_pool_query_2d(
           size[0], size[1], GPU_DEPTH24_STENCIL8, &draw_engine_gpencil_type);

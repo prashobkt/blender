@@ -55,14 +55,14 @@ enum {
   IDWALK_CB_INDIRECT_USAGE = (1 << 2),
 
   /**
-   * That ID is used as mere sub-data by its owner
-   * (only case currently: those f***ing nodetrees in materials etc.).
-   * This means callback shall not *do* anything,
-   * only use this as informative data if it needs it.
+   * That ID is used as mere sub-data by its owner (only case currently: those root nodetrees in
+   * materials etc., and the Scene's master collections).
+   * This means callback shall not *do* anything, only use this as informative data if it needs it.
    */
-  IDWALK_CB_PRIVATE = (1 << 3),
+  IDWALK_CB_EMBEDDED = (1 << 3),
 
-  /** That ID is not really used by its owner, it's just an internal hint/helper.
+  /**
+   * That ID is not really used by its owner, it's just an internal hint/helper.
    * This addresses Their Highest Ugliness the 'from' pointers: Object->from_proxy and Key->from.
    * How to handle that kind of cases totally depends on what caller code is doing... */
   IDWALK_CB_LOOPBACK = (1 << 4),
@@ -89,11 +89,15 @@ enum {
 
 typedef struct LibraryIDLinkCallbackData {
   void *user_data;
-  /* 'Real' ID, the one that might be in bmain, only differs from self_id when the later is a
-   * private one. */
+  /**
+   * 'Real' ID, the one that might be in bmain, only differs from self_id when the later is an
+   * embeded one.
+   */
   struct ID *id_owner;
-  /* ID from which the current ID pointer is being processed. It may be a 'private' ID like master
-   * collection or root node tree. */
+  /**
+   * ID from which the current ID pointer is being processed. It may be an embeded ID like master
+   * collection or root node tree.
+   */
   struct ID *id_self;
   struct ID **id_pointer;
   int cb_flag;
