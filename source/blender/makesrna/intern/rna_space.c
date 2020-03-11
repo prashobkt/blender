@@ -1333,7 +1333,7 @@ static const EnumPropertyItem *rna_SpaceView3D_stereo3d_camera_itemf(bContext *C
   }
 }
 
-static void rna_SpaceView3D_show_as_xr_session_mirror_set(PointerRNA *ptr, bool value)
+static void rna_SpaceView3D_mirror_xr_session_set(PointerRNA *ptr, bool value)
 {
   View3D *v3d = ptr->data;
 
@@ -4208,13 +4208,13 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Volume Alpha", "Opacity (alpha) of the cameras' frustum volume");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
-  prop = RNA_def_property(srna, "show_as_xr_session_mirror", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "mirror_xr_session", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_XR_SESSION_MIRROR);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_SpaceView3D_show_as_xr_session_mirror_set");
-  RNA_def_property_ui_text(prop,
-                           "VR Session Mirror",
-                           "Use the 3D View to display the perspective of a virtual reality "
-                           "session, if one is running");
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_SpaceView3D_mirror_xr_session_set");
+  RNA_def_property_ui_text(
+      prop,
+      "Mirror VR Session",
+      "Synchronize the viewer perspective of virtual reality sessions with this 3D viewport");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   {

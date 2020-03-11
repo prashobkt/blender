@@ -1380,7 +1380,8 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
        "CONTINUOUS_REDRAW",
        0,
        "Continuous Redraw",
-       "Redraw the group all the time (on each main loop iteration)"},
+       "Force the group to be redrawn all the time (may have significantly negative impact on "
+       "performance)"},
       {0, NULL, 0, NULL, NULL},
   };
   prop = RNA_def_property(srna, "bl_options", PROP_ENUM, PROP_NONE);

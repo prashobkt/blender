@@ -381,7 +381,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
 
 #ifdef WITH_XR_OPENXR
   /* May send notifier, so do before freeing notifier queue. */
-  wm_xr_data_destroy(wm);
+  wm_xr_exit(wm);
 #endif
 
   while ((win = BLI_pophead(&wm->windows))) {

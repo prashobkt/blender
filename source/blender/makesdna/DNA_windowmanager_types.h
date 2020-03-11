@@ -130,7 +130,7 @@ typedef struct wmXrData {
   bXrSessionSettings session_settings;
 
   /** Runtime state information for managing Blender specific behaviors. Not stored in files. */
-  struct bXrRuntimeSessionState *session_state;
+  struct XrRuntimeSessionState *session_state;
 } wmXrData;
 //#endif
 

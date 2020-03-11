@@ -695,7 +695,7 @@ extern StructRNA RNA_World;
 extern StructRNA RNA_WorldLighting;
 extern StructRNA RNA_WorldMistSettings;
 extern StructRNA RNA_XrSessionSettings;
-extern StructRNA RNA_XrSessionState;
+extern StructRNA RNA_XrRuntimeSessionState;
 extern StructRNA RNA_uiPopover;
 extern StructRNA RNA_wmOwnerIDs;
 

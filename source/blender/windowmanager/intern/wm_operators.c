@@ -3675,11 +3675,11 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   wmWindowManager *wm = CTX_wm_manager(C);
 
   /* Lazy-create xr context - tries to dynlink to the runtime, reading active_runtime.json. */
-  if (wm_xr_context_ensure(C, wm) == false) {
+  if (wm_xr_init(C, wm) == false) {
     return OPERATOR_CANCELLED;
   }
 
-  wm_xr_session_toggle(C, wm->xr.context);
+  wm_xr_session_toggle(&wm->xr);
 
   if (!WM_xr_session_is_running(&wm->xr)) {
     wm_xr_session_disable_mirror_views(CTX_data_main(C));

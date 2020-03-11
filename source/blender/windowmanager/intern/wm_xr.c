@@ -62,7 +62,7 @@
 #include "wm_surface.h"
 #include "wm_window.h"
 
-void wm_xr_runtime_session_state_free(struct bXrRuntimeSessionState **state);
+void wm_xr_runtime_session_state_free(struct XrRuntimeSessionState **state);
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
 void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
 void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
@@ -71,7 +71,7 @@ void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4]);
 
 /* -------------------------------------------------------------------- */
 
-typedef struct bXrRuntimeSessionState {
+typedef struct XrRuntimeSessionState {
   /** Last known viewer pose (centroid of eyes, in world space) stored for queries. */
   GHOST_XrPose viewer_pose;
   /** The last known view matrix, calculated from above's viewer pose. */
@@ -82,7 +82,7 @@ typedef struct bXrRuntimeSessionState {
   int prev_settings_flag;
 
   bool is_initialized;
-} bXrRuntimeSessionState;
+} XrRuntimeSessionState;
 
 typedef struct wmXrDrawData {
   /** The pose (location + rotation) to which eye deltas will be applied to when drawing (world
@@ -135,7 +135,7 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
   }
 }
 
-bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
+bool wm_xr_init(bContext *C, wmWindowManager *wm)
 {
   if (wm->xr.context) {
     return true;
@@ -180,7 +180,7 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
   return true;
 }
 
-void wm_xr_data_destroy(wmWindowManager *wm)
+void wm_xr_exit(wmWindowManager *wm)
 {
   if (wm->xr.context != NULL) {
     GHOST_XrContextDestroy(wm->xr.context);
@@ -198,13 +198,13 @@ void wm_xr_data_destroy(wmWindowManager *wm)
  *
  * \{ */
 
-static bXrRuntimeSessionState *wm_xr_runtime_session_state_create(void)
+static XrRuntimeSessionState *wm_xr_runtime_session_state_create(void)
 {
-  bXrRuntimeSessionState *state = MEM_callocN(sizeof(*state), __func__);
+  XrRuntimeSessionState *state = MEM_callocN(sizeof(*state), __func__);
   return state;
 }
 
-void wm_xr_runtime_session_state_free(bXrRuntimeSessionState **state)
+void wm_xr_runtime_session_state_free(XrRuntimeSessionState **state)
 {
   MEM_SAFE_FREE(*state);
 }
@@ -244,7 +244,7 @@ static void wm_xr_reference_pose_calc(const Scene *scene,
   }
 }
 
-static void wm_xr_draw_data_populate(const bXrRuntimeSessionState *state,
+static void wm_xr_draw_data_populate(const XrRuntimeSessionState *state,
                                      const GHOST_XrDrawViewInfo *draw_view,
                                      const bXrSessionSettings *settings,
                                      const Scene *scene,
@@ -273,7 +273,7 @@ static void wm_xr_draw_data_populate(const bXrRuntimeSessionState *state,
  * Update information that is only stored for external state queries. E.g. for Python API to
  * request the current (as in, last known) viewer pose.
  */
-static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
+static void wm_xr_runtime_session_state_update(XrRuntimeSessionState *state,
                                                const GHOST_XrDrawViewInfo *draw_view,
                                                const bXrSessionSettings *settings,
                                                const wmXrDrawData *draw_data)
@@ -285,6 +285,8 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
               draw_data->reference_pose.orientation_quat,
               draw_view->local_pose.orientation_quat);
   copy_v3_v3(viewer_pose.position, draw_data->reference_pose.position);
+  /* The local pose and the eye pose (which is copied from an earlier local pose) both are view
+   * space, so Y-up. In this case we need them in regular Z-up. */
   viewer_pose.position[0] += draw_data->eye_position_ofs[0];
   viewer_pose.position[1] -= draw_data->eye_position_ofs[2];
   viewer_pose.position[2] += draw_data->eye_position_ofs[1];
@@ -370,33 +372,30 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(g
   WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, NULL);
 }
 
-static void wm_xr_session_begin_info_create(const bXrRuntimeSessionState *UNUSED(state),
+static void wm_xr_session_begin_info_create(const XrRuntimeSessionState *UNUSED(state),
                                             GHOST_XrSessionBeginInfo *UNUSED(r_begin_info))
 {
 }
 
-void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
+void wm_xr_session_toggle(wmXrData *xr_data)
 {
-  GHOST_XrContextHandle xr_context = xr_context_ptr;
-  wmWindowManager *wm = CTX_wm_manager(C);
-
-  if (WM_xr_session_is_running(&wm->xr)) {
-    GHOST_XrSessionEnd(xr_context);
-    wm_xr_runtime_session_state_free(&wm->xr.session_state);
+  if (WM_xr_session_is_running(xr_data)) {
+    GHOST_XrSessionEnd(xr_data->context);
+    wm_xr_runtime_session_state_free(&xr_data->session_state);
   }
   else {
     GHOST_XrSessionBeginInfo begin_info;
 
-    wm->xr.session_state = wm_xr_runtime_session_state_create();
-    wm_xr_session_begin_info_create(wm->xr.session_state, &begin_info);
+    xr_data->session_state = wm_xr_runtime_session_state_create();
+    wm_xr_session_begin_info_create(xr_data->session_state, &begin_info);
 
-    GHOST_XrSessionStart(xr_context, &begin_info);
+    GHOST_XrSessionStart(xr_data->context, &begin_info);
   }
 }
 
 /**
  * The definition used here to define a session as running differs slightly from the OpenXR
- * sepecification one: Here we already consider a session as stopped when session-end request was
+ * specification one: Here we already consider a session as stopped when session-end request was
  * issued. Ghost-XR may still have to handle session logic then, but Blender specific handling
  * should be stopped then.
  * This check should be used from external calls to WM_xr. Internally, GHOST_XrSessionIsRunning()

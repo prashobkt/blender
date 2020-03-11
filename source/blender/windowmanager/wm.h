@@ -104,9 +104,9 @@ void wm_draw_offscreen_texture_parameters(struct GPUOffScreen *offscreen);
 
 #ifdef WITH_XR_OPENXR
 /* wm_xr.c */
-bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm);
-void wm_xr_data_destroy(wmWindowManager *wm);
-void wm_xr_session_toggle(bContext *C, void *xr_context);
+bool wm_xr_init(bContext *C, wmWindowManager *wm);
+void wm_xr_exit(wmWindowManager *wm);
+void wm_xr_session_toggle(wmXrData *xr_data);
 #endif
 
 #endif /* __WM_H__ */

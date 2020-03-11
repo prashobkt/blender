@@ -2490,7 +2490,7 @@ static void rna_def_windowmanager(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "XR Session Settings", "");
 
   prop = RNA_def_property(srna, "xr_session_state", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "XrSessionState");
+  RNA_def_property_struct_type(prop, "XrRuntimeSessionState");
   RNA_def_property_pointer_sdna(prop, NULL, "xr.session_state");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
