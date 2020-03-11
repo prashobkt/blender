@@ -126,7 +126,7 @@ static bool view3d_zoom_or_dolly_poll(bContext *C)
 {
   if (ED_operator_region_view3d_active(C)) {
     const RegionView3D *rv3d = CTX_wm_region_view3d(C);
-    return !(rv3d->viewlock & RV3D_LOCK_DOLLY);
+    return !(rv3d->viewlock & RV3D_LOCK_ZOOM_AND_DOLLY);
   }
   return false;
 }

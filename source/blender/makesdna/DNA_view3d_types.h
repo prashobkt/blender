@@ -373,13 +373,13 @@ enum {
   RV3D_BOXVIEW = (1 << 1),
   RV3D_BOXCLIP = (1 << 2),
   RV3D_LOCK_LOCATION = (1 << 3),
-  RV3D_LOCK_DOLLY = (1 << 4), /* Actually dolly and zoom. Could be split in two if needed. */
+  RV3D_LOCK_ZOOM_AND_DOLLY = (1 << 4),
 
   /* Make it clear that the transform lock flags should be runtime only, i.e. cleared on file
      read. */
   RV3D_LOCK_RUNTIME_ONLY = (1 << 5),
 
-  RV3D_LOCK_ANY_TRANSFORM = (RV3D_LOCK_LOCATION | RV3D_LOCK_ROTATION | RV3D_LOCK_DOLLY),
+  RV3D_LOCK_ANY_TRANSFORM = (RV3D_LOCK_LOCATION | RV3D_LOCK_ROTATION | RV3D_LOCK_ZOOM_AND_DOLLY),
 };
 
 /** #RegionView3D.viewlock_quad */

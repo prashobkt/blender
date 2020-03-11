@@ -305,7 +305,7 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
 
   if (show_navigate) {
     int icon_mini_slot = 0;
-    if ((rv3d->viewlock & RV3D_LOCK_DOLLY) == 0) {
+    if ((rv3d->viewlock & RV3D_LOCK_ZOOM_AND_DOLLY) == 0) {
         gz = navgroup->gz_array[GZ_INDEX_ZOOM];
         gz->matrix_basis[3][0] = roundf(co[0]);
         gz->matrix_basis[3][1] = roundf(co[1] - (icon_offset_mini * icon_mini_slot++));
