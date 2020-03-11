@@ -244,11 +244,6 @@ class GHOST_IWindow {
   virtual bool isDialog() const = 0;
 
   /**
-   * Returns if the window is rendered upside down compared to OpenGL.
-   */
-  virtual bool isUpsideDown() const = 0;
-
-  /**
    * Returns the tablet data (pressure etc).
    * \return The tablet data (pressure etc).
    */
