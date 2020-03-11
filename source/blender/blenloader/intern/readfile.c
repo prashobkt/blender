@@ -7859,6 +7859,12 @@ static void lib_link_main_data_restore(struct IDNameLib_Map *id_map, Main *newma
   FOREACH_MAIN_ID_END;
 }
 
+static void lib_link_wm_xr_data_restore(struct IDNameLib_Map *id_map, wmXrData *xr_data)
+{
+  xr_data->session_settings.base_pose_object = restore_pointer_by_name(
+      id_map, (ID *)xr_data->session_settings.base_pose_object, USER_REAL);
+}
+
 static void lib_link_window_scene_data_restore(wmWindow *win, Scene *scene, ViewLayer *view_layer)
 {
   bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
@@ -8188,6 +8194,8 @@ void blo_lib_link_restore(Main *oldmain,
 
     BLI_assert(win->screen == NULL);
   }
+
+  lib_link_wm_xr_data_restore(id_map, &curwm->xr);
 
   /* Restore all ID pointers in Main database itself
    * (especially IDProperties might point to some word-space of other 'weirdly unchanged' ID
