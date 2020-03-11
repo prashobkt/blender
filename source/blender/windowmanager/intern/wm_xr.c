@@ -245,7 +245,7 @@ static void wm_xr_reference_pose_calc(const Scene *scene,
   }
   else {
     copy_v3_fl(r_pose->position, 0.0f);
-    unit_qt(r_pose->orientation_quat);
+    axis_angle_to_quat_single(r_pose->orientation_quat, 'X', M_PI_2);
   }
 }
 
