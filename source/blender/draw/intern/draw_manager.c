@@ -562,7 +562,7 @@ static void drw_viewport_var_init(void)
     DRW_view_camtexco_set(DST.view_default, rv3d->viewcamtexcofac);
 
     if (DST.draw_ctx.sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      int plane_len = (rv3d->viewlock & RV3D_BOXCLIP) ? 4 : 6;
+      int plane_len = (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXCLIP) ? 4 : 6;
       DRW_view_clip_planes_set(DST.view_default, rv3d->clip, plane_len);
     }
 

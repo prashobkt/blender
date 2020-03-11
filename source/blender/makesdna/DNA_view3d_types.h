@@ -106,10 +106,12 @@ typedef struct RegionView3D {
   char persp;
   char view;
   char view_axis_roll;
-  char viewlock;
+  char viewlock; /* Should usually be accessed with RV3D_LOCK_FLAGS()! */
+  /** Options for runtime only locking (cleared on file read) */
+  char runtime_viewlock; /* Should usually be accessed with RV3D_LOCK_FLAGS()! */
   /** Options for quadview (store while out of quad view). */
   char viewlock_quad;
-  char _pad[2];
+  char _pad[1];
   /** Normalized offset for locked view: (-1, -1) bottom left, (1, 1) upper right. */
   float ofs_lock[2];
 
@@ -375,12 +377,11 @@ enum {
   RV3D_LOCK_LOCATION = (1 << 3),
   RV3D_LOCK_ZOOM_AND_DOLLY = (1 << 4),
 
-  /* Make it clear that the transform lock flags should be runtime only, i.e. cleared on file
-     read. */
-  RV3D_LOCK_RUNTIME_ONLY = (1 << 5),
-
   RV3D_LOCK_ANY_TRANSFORM = (RV3D_LOCK_LOCATION | RV3D_LOCK_ROTATION | RV3D_LOCK_ZOOM_AND_DOLLY),
 };
+
+/* Bitwise OR of the regular lock-flags with runtime only lock-flags. */
+#define RV3D_LOCK_FLAGS(rv3d) ((rv3d)->viewlock | ((rv3d)->runtime_viewlock))
 
 /** #RegionView3D.viewlock_quad */
 #define RV3D_VIEWLOCK_INIT (1 << 7)

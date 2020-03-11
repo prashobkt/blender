@@ -3661,8 +3661,7 @@ static void wm_xr_session_disable_mirror_views(Main *bmain)
              * see rna_SpaceView3D_region_3d_get(). */
             ARegion *region = region_list->last;
             RegionView3D *rv3d = region->regiondata;
-
-            rv3d->viewlock &= ~(RV3D_LOCK_ANY_TRANSFORM | RV3D_LOCK_RUNTIME_ONLY);
+            rv3d->runtime_viewlock &= ~RV3D_LOCK_ANY_TRANSFORM;
           }
         }
       }

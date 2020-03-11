@@ -3818,6 +3818,7 @@ static void region_quadview_init_rv3d(
   }
 
   rv3d->viewlock = viewlock;
+  rv3d->runtime_viewlock = 0;
   rv3d->view = view;
   rv3d->view_axis_roll = RV3D_VIEW_AXIS_ROLL_0;
   rv3d->persp = persp;

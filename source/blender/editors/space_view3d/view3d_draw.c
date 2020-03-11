@@ -341,7 +341,7 @@ static void view3d_xr_mirror_setup(const wmWindowManager *wm,
   copy_m4_m4(viewmat, rv3d->viewmat);
 
   WM_xr_session_state_viewer_matrix_info_get(&wm->xr, viewmat, &v3d->lens);
-  rv3d->viewlock |= (RV3D_LOCK_ANY_TRANSFORM | RV3D_LOCK_RUNTIME_ONLY);
+  rv3d->runtime_viewlock |= RV3D_LOCK_ANY_TRANSFORM;
   /* Just change to perspective mode, not worth resetting this. */
   rv3d->persp = RV3D_PERSP;
 
@@ -1527,7 +1527,7 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
   wmWindowManager *wm = CTX_wm_manager(C);
 
 #ifdef WITH_INPUT_NDOF
-  if ((U.ndof_flag & NDOF_SHOW_GUIDE) && ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) &&
+  if ((U.ndof_flag & NDOF_SHOW_GUIDE) && ((RV3D_LOCK_FLAGS(rv3d) & RV3D_LOCK_ROTATION) == 0) &&
       (rv3d->persp != RV3D_CAMOB)) {
     /* TODO: draw something else (but not this) during fly mode */
     draw_rotation_guide(rv3d);

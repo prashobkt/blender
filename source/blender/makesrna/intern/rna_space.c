@@ -1347,7 +1347,7 @@ static void rna_SpaceView3D_mirror_xr_session_set(PointerRNA *ptr, bool value)
     BLI_assert(rv3d_ptr.type == &RNA_RegionView3D);
 
     /* Make sure the view is unlocked. */
-    rv3d->viewlock &= ~(RV3D_LOCK_ANY_TRANSFORM | RV3D_LOCK_RUNTIME_ONLY);
+    rv3d->runtime_viewlock &= ~RV3D_LOCK_ANY_TRANSFORM;
     v3d->flag &= ~V3D_XR_SESSION_MIRROR;
   }
 }
