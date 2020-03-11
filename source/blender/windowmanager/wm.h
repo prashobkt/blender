@@ -25,7 +25,6 @@
 #define __WM_H__
 
 struct ARegion;
-struct GPUOffScreen;
 struct ReportList;
 struct wmWindow;
 
