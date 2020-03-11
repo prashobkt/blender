@@ -30,6 +30,8 @@
 
 #ifdef RNA_RUNTIME
 
+#  include "BLI_math.h"
+
 #  include "WM_api.h"
 
 static bool rna_XrRuntimeSessionState_is_running(bContext *C)
@@ -58,23 +60,25 @@ static wmXrData *rna_XrRuntimeSessionState_wm_xr_data_get(PointerRNA *ptr)
 }
 #  endif
 
-static void rna_XrRuntimeSessionState_viewer_location_get(PointerRNA *ptr, float *values)
+static void rna_XrRuntimeSessionState_viewer_location_get(PointerRNA *ptr, float *r_values)
 {
 #  ifdef WITH_XR_OPENXR
   const wmXrData *xr = rna_XrRuntimeSessionState_wm_xr_data_get(ptr);
-  WM_xr_session_state_viewer_location_get(xr, values);
+  WM_xr_session_state_viewer_location_get(xr, r_values);
 #  else
-  UNUSED_VARS(ptr, values);
+  UNUSED_VARS(ptr);
+  copy_v3_fl(r_values, 0.0f);
 #  endif
 }
 
-static void rna_XrRuntimeSessionState_viewer_rotation_get(PointerRNA *ptr, float *values)
+static void rna_XrRuntimeSessionState_viewer_rotation_get(PointerRNA *ptr, float *r_values)
 {
 #  ifdef WITH_XR_OPENXR
   const wmXrData *xr = rna_XrRuntimeSessionState_wm_xr_data_get(ptr);
-  WM_xr_session_state_viewer_rotation_get(xr, values);
+  WM_xr_session_state_viewer_rotation_get(xr, r_values);
 #  else
-  UNUSED_VARS(ptr, values);
+  UNUSED_VARS(ptr);
+  unit_qt(r_values);
 #  endif
 }
 
