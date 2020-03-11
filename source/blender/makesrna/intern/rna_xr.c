@@ -67,7 +67,7 @@ static void rna_XrRuntimeSessionState_viewer_location_get(PointerRNA *ptr, float
   WM_xr_session_state_viewer_location_get(xr, r_values);
 #  else
   UNUSED_VARS(ptr);
-  copy_v3_fl(r_values, 0.0f);
+  zero_v3(r_values);
 #  endif
 }
 

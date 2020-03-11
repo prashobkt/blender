@@ -315,6 +315,7 @@ static void wm_xr_runtime_session_state_update(XrRuntimeSessionState *state,
 void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
+    zero_v3(r_location);
     return;
   }
 
@@ -324,6 +325,7 @@ void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_locatio
 void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
+    unit_qt(r_rotation);
     return;
   }
 
@@ -335,6 +337,8 @@ void WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float *r_focal_len)
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
+    unit_m4(r_viewmat);
+    *r_focal_len = 0.0f;
     return;
   }
 
