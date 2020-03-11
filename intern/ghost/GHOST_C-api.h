@@ -762,7 +762,9 @@ extern GHOST_TSuccess GHOST_ReleaseOpenGLContext(GHOST_ContextHandle contexthand
 extern unsigned int GHOST_GetContextDefaultOpenGLFramebuffer(GHOST_ContextHandle contexthandle);
 
 /**
- * Returns whether a context is rendered upside down compared to OpenGL.
+ * Returns whether a context is rendered upside down compared to OpenGL. This only needs to be
+ * called if there's a non-OpenGL context, which is really the exception.
+ * So generally, this does not need to be called.
  */
 extern int GHOST_isUpsideDownContext(GHOST_ContextHandle contexthandle);
 

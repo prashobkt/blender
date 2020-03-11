@@ -471,8 +471,14 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   surface_data->offscreen,
                                   surface_data->viewport);
 
-  /* Re-use the offscreen framebuffer to render the composited viewport into. Keep it bound,
-   * Ghost-XR will then blit from the currently bound framebuffer into the OpenXR swapchain. */
+  /* The draw-manager uses both GPUOffscreen and GPUViewport to manage frame and texture buffers. A
+   * call to GPU_viewport_draw_to_screen() is still needed to get the final result from the
+   * viewport buffers composited together and potentially color managed for display on screen.
+   * It needs a bound framebuffer to draw into, for which we simply reuse the GPUOffscreen one.
+   *
+   * In a next step, Ghost-XR will use the the currently bound framebuffer to retrieve the image to
+   * be submitted to the OpenXR swapchain. So do not un-bind the offscreen yet! */
+
   GPU_offscreen_bind(surface_data->offscreen, false);
 
   wm_xr_draw_viewport_buffers_to_active_framebuffer(surface_data, draw_view);
