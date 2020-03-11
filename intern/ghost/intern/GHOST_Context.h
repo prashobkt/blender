@@ -38,8 +38,7 @@ class GHOST_Context : public GHOST_IContext {
    * Constructor.
    * \param stereoVisual      Stereo visual for quad buffered stereo.
    */
-  GHOST_Context(bool stereoVisual)
-      : m_stereoVisual(stereoVisual)
+  GHOST_Context(bool stereoVisual) : m_stereoVisual(stereoVisual)
   {
   }
 

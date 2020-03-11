@@ -333,7 +333,7 @@ static void wm_draw_region_buffer_free(ARegion *region)
   }
 }
 
-void wm_draw_offscreen_texture_parameters(GPUOffScreen *offscreen)
+static void wm_draw_offscreen_texture_parameters(GPUOffScreen *offscreen)
 {
   /* Setup offscreen color texture for drawing. */
   GPUTexture *texture = GPU_offscreen_color_texture(offscreen);

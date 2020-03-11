@@ -4799,21 +4799,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Keep this block, even when empty. */
-    if (!DNA_struct_find(fd->filesdna, "bXrSessionSettings")) {
-      for (wmWindowManager *wm = bmain->wm.first; wm; wm = wm->id.next) {
-        const View3D *v3d_default = DNA_struct_default_get(View3D);
-
-        BKE_screen_view3d_shading_init(&wm->xr.session_settings.shading);
-        wm->xr.session_settings.draw_flags = (V3D_OFSDRAW_SHOW_GRIDFLOOR |
-                                              V3D_OFSDRAW_SHOW_ANNOTATION);
-        wm->xr.session_settings.clip_start = v3d_default->clip_start;
-        wm->xr.session_settings.clip_end = v3d_default->clip_end;
-
-        wm->xr.session_settings.flag = XR_SESSION_USE_POSITION_TRACKING;
-      }
-    }
-
     /* Alembic Transform Cache changed from local to world space. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       LISTBASE_FOREACH (bConstraint *, con, &ob->constraints) {
@@ -4866,7 +4851,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-    if (!DNA_struct_find(fd->filesdna, "bXrSessionSettings")) {
+    if (!DNA_struct_find(fd->filesdna, "XrSessionSettings")) {
       for (wmWindowManager *wm = bmain->wm.first; wm; wm = wm->id.next) {
         const View3D *v3d_default = DNA_struct_default_get(View3D);
 

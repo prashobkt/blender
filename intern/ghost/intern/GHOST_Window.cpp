@@ -114,11 +114,6 @@ unsigned int GHOST_Window::getDefaultFramebuffer()
   return (m_context) ? m_context->getDefaultFramebuffer() : 0;
 }
 
-bool GHOST_Window::isUpsideDown() const
-{
-  return m_context->isUpsideDown();
-}
-
 GHOST_TSuccess GHOST_Window::activateDrawingContext()
 {
   return m_context->activateDrawingContext();

@@ -23,7 +23,7 @@
 
 #include "DNA_view3d_types.h"
 
-typedef struct bXrSessionSettings {
+typedef struct XrSessionSettings {
   /** Shading settings, struct shared with 3D-View so settings are the same. */
   struct View3DShading shading;
 
@@ -43,7 +43,7 @@ typedef struct bXrSessionSettings {
   float clip_start, clip_end;
 
   int flag;
-} bXrSessionSettings;
+} XrSessionSettings;
 
 typedef enum eXrSessionFlag {
   XR_SESSION_USE_POSITION_TRACKING = (1 << 0),

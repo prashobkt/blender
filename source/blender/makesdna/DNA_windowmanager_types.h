@@ -127,7 +127,7 @@ typedef struct wmXrData {
 
   /** Permanent session settings (draw mode, feature toggles, etc). Stored in files and accessible
    * even before the session runs. */
-  bXrSessionSettings session_settings;
+  XrSessionSettings session_settings;
 
   /** Runtime state information for managing Blender specific behaviors. Not stored in files. */
   struct XrRuntimeSessionState *session_state;

@@ -82,9 +82,6 @@ endif()
 
 if(WITH_PYTHON)
   blender_include_dirs(../blender/python)
-  list(APPEND LIB
-    bf_python
-  )
   add_definitions(-DWITH_PYTHON)
 
   if(WITH_PYTHON_SECURITY)

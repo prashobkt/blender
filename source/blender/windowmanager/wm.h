@@ -25,7 +25,6 @@
 #define __WM_H__
 
 struct ARegion;
-struct GPUOffScreen;
 struct ReportList;
 struct wmWindow;
 
@@ -99,12 +98,9 @@ void wm_stereo3d_set_cancel(bContext *C, wmOperator *op);
 void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
-/* wm_draw.c */
-void wm_draw_offscreen_texture_parameters(struct GPUOffScreen *offscreen);
-
 #ifdef WITH_XR_OPENXR
 /* wm_xr.c */
-bool wm_xr_init(bContext *C, wmWindowManager *wm);
+bool wm_xr_init(wmWindowManager *wm);
 void wm_xr_exit(wmWindowManager *wm);
 void wm_xr_session_toggle(wmXrData *xr_data);
 #endif
