@@ -31,6 +31,8 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 
+#include "CLG_log.h"
+
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
@@ -60,6 +62,7 @@
 #include "wm_window.h"
 
 static wmSurface *g_xr_surface = NULL;
+static CLG_LogRef LOG = {"wm.xr"};
 
 typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
@@ -308,7 +311,7 @@ static bool wm_xr_session_surface_offscreen_ensure(const GHOST_XrDrawViewInfo *d
   }
 
   if (failure) {
-    fprintf(stderr, "%s: failed to get buffer, %s\n", __func__, err_out);
+    CLOG_ERROR(&LOG, "Failed to get buffer, %s\n", err_out);
     return false;
   }
 
@@ -428,7 +431,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   bContext *C = customdata;
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
-  bXrSessionSettings *settings = &wm->xr.session_settings;
+  XrSessionSettings *settings = &wm->xr.session_settings;
   const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
 
   View3DShading shading;

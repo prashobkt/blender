@@ -3666,7 +3666,7 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
   ot->name = "Toggle VR Session";
   ot->idname = "WM_OT_xr_session_toggle";
   ot->description =
-      "Attempt to open a view for use with virtual reality headsets, or close it if already "
+      "Open a view for use with virtual reality headsets, or close it if already "
       "opened";
 
   /* callbacks */

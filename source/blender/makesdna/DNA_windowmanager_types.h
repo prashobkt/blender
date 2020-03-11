@@ -125,7 +125,7 @@ typedef struct ReportTimerInfo {
 typedef struct wmXrData {
   void *context; /* GHOST_XrContextHandle */
 
-  bXrSessionSettings session_settings;
+  XrSessionSettings session_settings;
 } wmXrData;
 //#endif
 

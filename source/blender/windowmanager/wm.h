@@ -99,9 +99,6 @@ void wm_stereo3d_set_cancel(bContext *C, wmOperator *op);
 void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
-/* wm_draw.c */
-void wm_draw_offscreen_texture_parameters(struct GPUOffScreen *offscreen);
-
 #ifdef WITH_XR_OPENXR
 /* wm_xr.c */
 bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm);

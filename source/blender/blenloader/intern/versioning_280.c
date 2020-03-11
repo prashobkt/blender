@@ -4800,7 +4800,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     /* Keep this block, even when empty. */
-    if (!DNA_struct_find(fd->filesdna, "bXrSessionSettings")) {
+    if (!DNA_struct_find(fd->filesdna, "XrSessionSettings")) {
       for (wmWindowManager *wm = bmain->wm.first; wm; wm = wm->id.next) {
         const View3D *v3d_default = DNA_struct_default_get(View3D);
 
@@ -4864,7 +4864,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-    if (!DNA_struct_find(fd->filesdna, "bXrSessionSettings")) {
+    if (!DNA_struct_find(fd->filesdna, "XrSessionSettings")) {
       for (wmWindowManager *wm = bmain->wm.first; wm; wm = wm->id.next) {
         const View3D *v3d_default = DNA_struct_default_get(View3D);
 
