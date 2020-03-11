@@ -3494,13 +3494,22 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
             if (v2 == -1) {
               v2 = meshadd_add_vert_db(bs, meshadd, co2, -1, true);
             }
-            e = imesh_find_edge(im, v1, v2);
-            if (e == -1) {
-              /* TODO: if overlaps an existing edge, use as example. */
-              e = meshadd_add_edge(bs, meshadd, v1, v2, -1, true);
+            if (v1 == v2) {
+              /* Even though coords are far enough apart with double
+               * test, maybe they are close enough with float test.
+               * Just add a single vert if this happens.
+               */
+              add_vert_to_partpartintersect(bs, ppi, v1);
             }
-            add_edge_to_partpartintersect(bs, ppi, e);
-            add_to_intset(bs, intersection_edges, e);
+            else {
+              e = imesh_find_edge(im, v1, v2);
+              if (e == -1) {
+                /* TODO: if overlaps an existing edge, use as example. */
+                e = meshadd_add_edge(bs, meshadd, v1, v2, -1, true);
+              }
+              add_edge_to_partpartintersect(bs, ppi, e);
+              add_to_intset(bs, intersection_edges, e);
+            }
           }
         }
       }
