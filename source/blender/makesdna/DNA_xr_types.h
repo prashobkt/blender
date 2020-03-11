@@ -21,7 +21,7 @@
 #ifndef __DNA_XR_TYPES_H__
 #define __DNA_XR_TYPES_H__
 
-typedef struct bXrSessionSettings {
+typedef struct XrSessionSettings {
   /** Shading type (OB_SOLID, ...). */
   char shading_type;
   /** View3D draw flags (V3D_OFSDRAW_NONE, V3D_OFSDRAW_SHOW_ANNOTATION, ...). */
@@ -32,6 +32,6 @@ typedef struct bXrSessionSettings {
   float clip_start, clip_end;
 
   char _pad2[4];
-} bXrSessionSettings;
+} XrSessionSettings;
 
 #endif /* __DNA_XR_TYPES_H__ */

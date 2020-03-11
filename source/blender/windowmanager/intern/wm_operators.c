@@ -3651,7 +3651,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   wmWindowManager *wm = CTX_wm_manager(C);
 
   /* Lazy-create xr context - tries to dynlink to the runtime, reading active_runtime.json. */
-  if (wm_xr_context_ensure(C, wm) == false) {
+  if (wm_xr_context_ensure(wm) == false) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3666,7 +3666,7 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
   ot->name = "Toggle VR Session";
   ot->idname = "WM_OT_xr_session_toggle";
   ot->description =
-      "Attempt to open a view for use with virtual reality headsets, or close it if already "
+      "Open a view for use with virtual reality headsets, or close it if already "
       "opened";
 
   /* callbacks */

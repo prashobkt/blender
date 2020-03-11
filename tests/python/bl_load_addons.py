@@ -50,7 +50,7 @@ def _init_addon_blacklist():
     # netrender has known problems re-registering
     BLACKLIST_ADDONS.add("netrender")
 
-    if not bpy.app.build_options.openxr:
+    if not bpy.app.build_options.xr_openxr:
         BLACKLIST_ADDONS.add("viewport_vr_preview")
 
     for mod in addon_utils.modules():

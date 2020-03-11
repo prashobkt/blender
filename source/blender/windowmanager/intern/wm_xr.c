@@ -31,6 +31,8 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 
+#include "CLG_log.h"
+
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
@@ -60,6 +62,7 @@
 #include "wm_window.h"
 
 static wmSurface *g_xr_surface = NULL;
+static CLG_LogRef LOG = {"wm.xr"};
 
 typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
@@ -71,7 +74,6 @@ typedef struct {
 
 typedef struct {
   wmWindowManager *wm;
-  bContext *evil_C;
 } wmXrErrorHandlerData;
 
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
@@ -96,7 +98,6 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
   BKE_reports_clear(&wm->reports);
   WM_report(RPT_ERROR, error->user_message);
   WM_report_banner_show();
-  UI_popup_menu_reports(handler_data->evil_C, &wm->reports);
 
   if (wm->xr.context) {
     /* Just play safe and destroy the entire context. */
@@ -105,7 +106,7 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
   }
 }
 
-bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
+bool wm_xr_context_ensure(wmWindowManager *wm)
 {
   if (wm->xr.context) {
     return true;
@@ -114,7 +115,6 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
 
   /* Set up error handling */
   error_customdata.wm = wm;
-  error_customdata.evil_C = C;
   GHOST_XrErrorHandler(wm_xr_error_handler, &error_customdata);
 
   {
@@ -308,7 +308,7 @@ static bool wm_xr_session_surface_offscreen_ensure(const GHOST_XrDrawViewInfo *d
   }
 
   if (failure) {
-    fprintf(stderr, "%s: failed to get buffer, %s\n", __func__, err_out);
+    CLOG_ERROR(&LOG, "Failed to get buffer, %s\n", err_out);
     return false;
   }
 
@@ -428,7 +428,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   bContext *C = customdata;
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
-  bXrSessionSettings *settings = &wm->xr.session_settings;
+  XrSessionSettings *settings = &wm->xr.session_settings;
   const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
 
   View3DShading shading;
@@ -468,8 +468,14 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   surface_data->offscreen,
                                   surface_data->viewport);
 
-  /* Re-use the offscreen framebuffer to render the composited viewport into. Keep it bound,
-   * Ghost-XR will then blit from the currently bound framebuffer into the OpenXR swapchain. */
+  /* The draw-manager uses both GPUOffscreen and GPUViewport to manage frame and texture buffers. A
+   * call to GPU_viewport_draw_to_screen() is still needed to get the final result from the
+   * viewport buffers composited together and potentially color managed for display on screen.
+   * It needs a bound framebuffer to draw into, for which we simply reuse the GPUOffscreen one.
+   *
+   * In a next step, Ghost-XR will use the the currently bound framebuffer to retrieve the image to
+   * be submitted to the OpenXR swapchain. So do not un-bind the offscreen yet! */
+
   GPU_offscreen_bind(surface_data->offscreen, false);
 
   wm_xr_draw_viewport_buffers_to_active_framebuffer(surface_data, draw_view);

@@ -35,7 +35,6 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "XrSessionSettings", NULL);
-  RNA_def_struct_sdna(srna, "bXrSessionSettings");
   RNA_def_struct_ui_text(srna, "XR-Session Settings", "");
 
   prop = RNA_def_property(srna, "shading_type", PROP_ENUM, PROP_NONE);

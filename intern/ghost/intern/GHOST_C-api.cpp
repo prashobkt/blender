@@ -231,13 +231,6 @@ int GHOST_IsDialogWindow(GHOST_WindowHandle windowhandle)
   return (int)window->isDialog();
 }
 
-int GHOST_isUpsideDownWindow(GHOST_WindowHandle windowhandle)
-{
-  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-
-  return window->isUpsideDown();
-}
-
 GHOST_TSuccess GHOST_DisposeWindow(GHOST_SystemHandle systemhandle,
                                    GHOST_WindowHandle windowhandle)
 {

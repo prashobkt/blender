@@ -284,11 +284,6 @@ class GHOST_Window : public GHOST_IWindow {
     m_userData = userData;
   }
 
-  /**
-   * Returns if the window is rendered upside down compared to OpenGL.
-   */
-  bool isUpsideDown() const;
-
   float getNativePixelSize(void)
   {
     if (m_nativePixelSize > 0.0f)
