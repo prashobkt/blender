@@ -24,6 +24,7 @@
 
 #include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_idprop.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
@@ -188,6 +189,10 @@ void wm_xr_exit(wmWindowManager *wm)
   }
   if (wm->xr.session_state != NULL) {
     wm_xr_runtime_session_state_free(&wm->xr.session_state);
+  }
+  if (wm->xr.session_settings.shading.prop) {
+    IDP_FreeProperty(wm->xr.session_settings.shading.prop);
+    wm->xr.session_settings.shading.prop = NULL;
   }
 }
 
