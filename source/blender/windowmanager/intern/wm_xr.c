@@ -74,7 +74,6 @@ typedef struct {
 
 typedef struct {
   wmWindowManager *wm;
-  bContext *evil_C;
 } wmXrErrorHandlerData;
 
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
@@ -99,7 +98,6 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
   BKE_reports_clear(&wm->reports);
   WM_report(RPT_ERROR, error->user_message);
   WM_report_banner_show();
-  UI_popup_menu_reports(handler_data->evil_C, &wm->reports);
 
   if (wm->xr.context) {
     /* Just play safe and destroy the entire context. */
@@ -108,7 +106,7 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
   }
 }
 
-bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
+bool wm_xr_context_ensure(wmWindowManager *wm)
 {
   if (wm->xr.context) {
     return true;
@@ -117,7 +115,6 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
 
   /* Set up error handling */
   error_customdata.wm = wm;
-  error_customdata.evil_C = C;
   GHOST_XrErrorHandler(wm_xr_error_handler, &error_customdata);
 
   {

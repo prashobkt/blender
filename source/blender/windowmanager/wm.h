@@ -101,7 +101,7 @@ void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
 #ifdef WITH_XR_OPENXR
 /* wm_xr.c */
-bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm);
+bool wm_xr_context_ensure(wmWindowManager *wm);
 void wm_xr_context_destroy(wmWindowManager *wm);
 void wm_xr_session_toggle(bContext *C, void *xr_context);
 #endif
