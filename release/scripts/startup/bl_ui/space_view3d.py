@@ -5888,7 +5888,9 @@ class VIEW3D_PT_overlay_guides(Panel):
         sub.prop(overlay, "show_cursor", text="3D Cursor")
 
         if shading.type == 'MATERIAL':
-            col.prop(overlay, "show_look_dev")
+            row = col.row()
+            row.active = shading.render_pass == 'COMBINED'
+            row.prop(overlay, "show_look_dev")
 
         col.prop(overlay, "show_annotation", text="Annotations")
 
@@ -6900,7 +6902,7 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
 
     def draw(self, context):
         ts = context.tool_settings
-        settings = ts.gpencil_paint
+        settings = ts.gpencil_sculpt_paint
         brush = settings.brush
 
         layout = self.layout
@@ -6920,7 +6922,7 @@ class VIEW3D_PT_gpencil_weight_context_menu(Panel):
 
     def draw(self, context):
         ts = context.tool_settings
-        settings = ts.gpencil_paint
+        settings = ts.gpencil_weight_paint
         brush = settings.brush
 
         layout = self.layout
