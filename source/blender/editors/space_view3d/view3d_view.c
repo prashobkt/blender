@@ -1693,7 +1693,7 @@ void ED_view3d_local_collections_reset(struct bContext *C, const bool reset_all)
 
 #ifdef WITH_XR_OPENXR
 
-void ED_view3d_xr_mirror_begin(RegionView3D *rv3d)
+static void view3d_xr_mirror_begin(RegionView3D *rv3d)
 {
   /* If the session is not running yet, changes below should not be applied! */
   BLI_assert(WM_xr_session_was_started(&((wmWindowManager *)G_MAIN->wm.first)->xr));
@@ -1703,9 +1703,25 @@ void ED_view3d_xr_mirror_begin(RegionView3D *rv3d)
   rv3d->persp = RV3D_PERSP;
 }
 
-void ED_view3d_xr_mirror_end(RegionView3D *rv3d)
+static void view3d_xr_mirror_end(RegionView3D *rv3d)
 {
   rv3d->runtime_viewlock &= ~RV3D_LOCK_ANY_TRANSFORM;
+}
+
+void ED_view3d_xr_mirror_update(const ScrArea *area, const View3D *v3d, const bool enable)
+{
+  ARegion *region_rv3d;
+
+  BLI_assert(v3d->spacetype == SPACE_VIEW3D);
+
+  if (ED_view3d_area_user_region(area, v3d, &region_rv3d)) {
+    if (enable) {
+      view3d_xr_mirror_begin(region_rv3d->regiondata);
+    }
+    else {
+      view3d_xr_mirror_end(region_rv3d->regiondata);
+    }
+  }
 }
 
 #endif

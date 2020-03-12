@@ -3655,19 +3655,10 @@ static void wm_xr_session_update_mirror_views(Main *bmain, wmWindowManager *wm)
     for (ScrArea *area = screen->areabase.first; area; area = area->next) {
       for (SpaceLink *slink = area->spacedata.first; slink; slink = slink->next) {
         if (slink->spacetype == SPACE_VIEW3D) {
-          View3D *v3d = (View3D *)slink;
+          const View3D *v3d = (View3D *)slink;
 
           if (v3d->flag & V3D_XR_SESSION_MIRROR) {
-            ARegion *region_rv3d;
-
-            if (ED_view3d_area_user_region(area, (View3D *)slink, &region_rv3d)) {
-              if (enable) {
-                ED_view3d_xr_mirror_begin(region_rv3d->regiondata);
-              }
-              else {
-                ED_view3d_xr_mirror_end(region_rv3d->regiondata);
-              }
-            }
+            ED_view3d_xr_mirror_update(area, v3d, enable);
           }
         }
       }

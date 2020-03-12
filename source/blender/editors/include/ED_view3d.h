@@ -735,8 +735,9 @@ bool ED_view3d_local_collections_set(struct Main *bmain, struct View3D *v3d);
 void ED_view3d_local_collections_reset(struct bContext *C, const bool reset_all);
 
 #ifdef WITH_XR_OPENXR
-void ED_view3d_xr_mirror_begin(RegionView3D *rv3d);
-void ED_view3d_xr_mirror_end(RegionView3D *rv3d);
+void ED_view3d_xr_mirror_update(const struct ScrArea *area,
+                                const struct View3D *v3d,
+                                const bool enable);
 #endif
 
 #ifdef __cplusplus
