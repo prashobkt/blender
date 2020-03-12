@@ -3647,8 +3647,10 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 
 #ifdef WITH_XR_OPENXR
 
-static void wm_xr_session_disable_mirror_views(Main *bmain)
+static void wm_xr_session_update_mirror_views(Main *bmain, wmWindowManager *wm)
 {
+  const bool enable = WM_xr_session_was_started(&wm->xr);
+
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
     for (ScrArea *area = screen->areabase.first; area; area = area->next) {
       for (SpaceLink *slink = area->spacedata.first; slink; slink = slink->next) {
@@ -3660,8 +3662,13 @@ static void wm_xr_session_disable_mirror_views(Main *bmain)
             /* The free main region (e.g. the unlocked one in quad-view) is always the last one,
              * see rna_SpaceView3D_region_3d_get(). */
             ARegion *region = region_list->last;
-            RegionView3D *rv3d = region->regiondata;
-            rv3d->runtime_viewlock &= ~RV3D_LOCK_ANY_TRANSFORM;
+
+            if (enable) {
+              ED_view3d_xr_mirror_begin(region->regiondata);
+            }
+            else {
+              ED_view3d_xr_mirror_end(region->regiondata);
+            }
           }
         }
       }
@@ -3680,9 +3687,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 
   wm_xr_session_toggle(&wm->xr);
 
-  if (!WM_xr_session_is_running(&wm->xr)) {
-    wm_xr_session_disable_mirror_views(CTX_data_main(C));
-  }
+  wm_xr_session_update_mirror_views(CTX_data_main(C), wm);
 
   WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, NULL);
 

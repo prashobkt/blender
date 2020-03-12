@@ -403,6 +403,15 @@ void wm_xr_session_toggle(wmXrData *xr_data)
 }
 
 /**
+ * Check if a session start was triggered and that there is no pending request to end the session.
+ * If an error happened while trying to start a session, this returns false too.
+ */
+bool WM_xr_session_was_started(const wmXrData *xr)
+{
+  return xr->context && xr->session_state;
+}
+
+/**
  * The definition used here to define a session as running differs slightly from the OpenXR
  * specification one: Here we already consider a session as stopped when session-end request was
  * issued. Ghost-XR may still have to handle session logic then, but Blender specific handling
@@ -416,7 +425,7 @@ bool WM_xr_session_is_running(const wmXrData *xr)
   /* wmXrData.session_state will be NULL if session end was requested. That's what we use here to
    * define if the session was already stopped (even if according to OpenXR, it's still considered
    * running). */
-  return xr->context && xr->session_state && GHOST_XrSessionIsRunning(xr->context);
+  return WM_xr_session_was_started(xr) && GHOST_XrSessionIsRunning(xr->context);
 }
 
 /** \} */ /* XR-Session */

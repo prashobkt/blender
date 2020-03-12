@@ -1335,21 +1335,43 @@ static const EnumPropertyItem *rna_SpaceView3D_stereo3d_camera_itemf(bContext *C
 
 static void rna_SpaceView3D_mirror_xr_session_set(PointerRNA *ptr, bool value)
 {
+#  ifdef WITH_XR_OPENXR
   View3D *v3d = ptr->data;
+  SET_FLAG_FROM_TEST(v3d->flag, value, V3D_XR_SESSION_MIRROR);
+#  else
+  UNUSED_VARS(ptr, value);
+#  endif
+}
 
-  if (value) {
-    v3d->flag |= V3D_XR_SESSION_MIRROR;
+static void rna_SpaceView3D_mirror_xr_session_update(Main *main,
+                                                     Scene *UNUSED(scene),
+                                                     PointerRNA *ptr)
+{
+#  ifdef WITH_XR_OPENXR
+  View3D *v3d = ptr->data;
+  PointerRNA rv3d_ptr = RNA_pointer_get(ptr, "region_3d");
+  RegionView3D *rv3d = rv3d_ptr.data;
+  wmWindowManager *wm = main->wm.first;
+
+  /* Handle mirror toggling while a VR session runs. */
+
+  BLI_assert(rv3d_ptr.type == &RNA_RegionView3D);
+
+  /* The VR session may not have been started yet, so the view should only be tagged to
+   * let the VR code manage the call to ED_view3d_xr_mirror_begin/end(). */
+  if (!WM_xr_session_was_started(&wm->xr)) {
+    return;
+  }
+
+  if (v3d->flag & V3D_XR_SESSION_MIRROR) {
+    ED_view3d_xr_mirror_begin(rv3d);
   }
   else {
-    PointerRNA rv3d_ptr = RNA_pointer_get(ptr, "region_3d");
-    RegionView3D *rv3d = rv3d_ptr.data;
-
-    BLI_assert(rv3d_ptr.type == &RNA_RegionView3D);
-
-    /* Make sure the view is unlocked. */
-    rv3d->runtime_viewlock &= ~RV3D_LOCK_ANY_TRANSFORM;
-    v3d->flag &= ~V3D_XR_SESSION_MIRROR;
+    ED_view3d_xr_mirror_end(rv3d);
   }
+#  else
+  UNUSED_VARS(main, scene, ptr);
+#  endif
 }
 
 static int rna_SpaceView3D_icon_from_show_object_viewport_get(PointerRNA *ptr)
@@ -4215,7 +4237,8 @@ static void rna_def_space_view3d(BlenderRNA *brna)
       prop,
       "Mirror VR Session",
       "Synchronize the viewer perspective of virtual reality sessions with this 3D viewport");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_SpaceView3D_mirror_xr_session_update");
 
   {
     struct {
