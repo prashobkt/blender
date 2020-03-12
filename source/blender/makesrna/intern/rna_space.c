@@ -1333,16 +1333,6 @@ static const EnumPropertyItem *rna_SpaceView3D_stereo3d_camera_itemf(bContext *C
   }
 }
 
-static void rna_SpaceView3D_mirror_xr_session_set(PointerRNA *ptr, bool value)
-{
-#  ifdef WITH_XR_OPENXR
-  View3D *v3d = ptr->data;
-  SET_FLAG_FROM_TEST(v3d->flag, value, V3D_XR_SESSION_MIRROR);
-#  else
-  UNUSED_VARS(ptr, value);
-#  endif
-}
-
 static void rna_SpaceView3D_mirror_xr_session_update(Main *main,
                                                      Scene *UNUSED(scene),
                                                      PointerRNA *ptr)
@@ -4232,7 +4222,6 @@ static void rna_def_space_view3d(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "mirror_xr_session", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_XR_SESSION_MIRROR);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_SpaceView3D_mirror_xr_session_set");
   RNA_def_property_ui_text(
       prop,
       "Mirror VR Session",
