@@ -880,11 +880,6 @@ void ED_view3d_quadview_update(ScrArea *sa, ARegion *region, bool do_clip)
   }
 
   for (; region; region = region->prev) {
-    /* Skip the user region (always last). */
-    if (!region->next) {
-      continue;
-    }
-
     if (region->alignment == RGN_ALIGN_QSPLIT) {
       rv3d = region->regiondata;
       rv3d->viewlock = viewlock;

@@ -120,36 +120,53 @@ bool ED_view3d_context_user_region(bContext *C, View3D **r_v3d, ARegion **r_ar)
         return true;
       }
       else {
-        ARegion *ar_unlock_user = NULL;
-        ARegion *ar_unlock = NULL;
-        for (region = sa->regionbase.first; region; region = region->next) {
-          /* find the first unlocked rv3d */
-          if (region->regiondata && region->regiontype == RGN_TYPE_WINDOW) {
-            rv3d = region->regiondata;
-            if ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) {
-              ar_unlock = region;
-              if (rv3d->persp == RV3D_PERSP || rv3d->persp == RV3D_CAMOB) {
-                ar_unlock_user = region;
-                break;
-              }
-            }
-          }
-        }
-
-        /* camera/perspective view get priority when the active region is locked */
-        if (ar_unlock_user) {
+        if (ED_view3d_area_user_region(sa, v3d, r_ar)) {
           *r_v3d = v3d;
-          *r_ar = ar_unlock_user;
-          return true;
-        }
-
-        if (ar_unlock) {
-          *r_v3d = v3d;
-          *r_ar = ar_unlock;
           return true;
         }
       }
     }
+  }
+
+  return false;
+}
+
+/**
+ * Similar to #ED_view3d_context_user_region() but does not use context. Always performs a lookup.
+ * Also works if \a v3d is not the active space.
+ */
+bool ED_view3d_area_user_region(const ScrArea *sa, const View3D *v3d, ARegion **r_ar)
+{
+  RegionView3D *rv3d = NULL;
+  ARegion *ar_unlock_user = NULL;
+  ARegion *ar_unlock = NULL;
+  const ListBase *region_list = (v3d == sa->spacedata.first) ? &sa->regionbase : &v3d->regionbase;
+
+  BLI_assert(v3d->spacetype == SPACE_VIEW3D);
+
+  for (ARegion *region = region_list->first; region; region = region->next) {
+    /* find the first unlocked rv3d */
+    if (region->regiondata && region->regiontype == RGN_TYPE_WINDOW) {
+      rv3d = region->regiondata;
+      if ((rv3d->viewlock & RV3D_LOCK_ROTATION) == 0) {
+        ar_unlock = region;
+        if (rv3d->persp == RV3D_PERSP || rv3d->persp == RV3D_CAMOB) {
+          ar_unlock_user = region;
+          break;
+        }
+      }
+    }
+  }
+
+  /* camera/perspective view get priority when the active region is locked */
+  if (ar_unlock_user) {
+    *r_ar = ar_unlock_user;
+    return true;
+  }
+
+  if (ar_unlock) {
+    *r_ar = ar_unlock;
+    return true;
   }
 
   return false;

@@ -1338,14 +1338,10 @@ static void rna_SpaceView3D_mirror_xr_session_update(Main *main,
                                                      PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  View3D *v3d = ptr->data;
-  PointerRNA rv3d_ptr = RNA_pointer_get(ptr, "region_3d");
-  RegionView3D *rv3d = rv3d_ptr.data;
   wmWindowManager *wm = main->wm.first;
-
-  /* Handle mirror toggling while a VR session runs. */
-
-  BLI_assert(rv3d_ptr.type == &RNA_RegionView3D);
+  ScrArea *area = rna_area_from_space(ptr);
+  View3D *v3d = ptr->data;
+  ARegion *region_rv3d = NULL;
 
   /* The VR session may not have been started yet, so the view should only be tagged to
    * let the VR code manage the call to ED_view3d_xr_mirror_begin/end(). */
@@ -1353,12 +1349,17 @@ static void rna_SpaceView3D_mirror_xr_session_update(Main *main,
     return;
   }
 
-  if (v3d->flag & V3D_XR_SESSION_MIRROR) {
-    ED_view3d_xr_mirror_begin(rv3d);
+  /* Handle mirror toggling while a VR session runs. */
+
+  if (ED_view3d_area_user_region(area, v3d, &region_rv3d)) {
+    if (v3d->flag & V3D_XR_SESSION_MIRROR) {
+      ED_view3d_xr_mirror_begin(region_rv3d->regiondata);
+    }
+    else {
+      ED_view3d_xr_mirror_end(region_rv3d->regiondata);
+    }
   }
-  else {
-    ED_view3d_xr_mirror_end(rv3d);
-  }
+
 #  else
   UNUSED_VARS(main, scene, ptr);
 #  endif
