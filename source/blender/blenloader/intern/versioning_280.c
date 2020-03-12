@@ -4089,7 +4089,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     FOREACH_MAIN_ID_BEGIN (bmain, id) {
       bNodeTree *ntree = ntreeFromID(id);
       if (ntree) {
-        ntree->id.flag |= LIB_PRIVATE_DATA;
+        ntree->id.flag |= LIB_EMBEDDED_DATA;
       }
     }
     FOREACH_MAIN_ID_END;
@@ -4106,7 +4106,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       /* Older files do not have a master collection, which is then added through
        * `BKE_collection_master_add()`, so everything is fine. */
       if (scene->master_collection != NULL) {
-        scene->master_collection->id.flag |= LIB_PRIVATE_DATA;
+        scene->master_collection->id.flag |= LIB_EMBEDDED_DATA;
       }
     }
   }
@@ -4849,5 +4849,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "OceanModifierData", "float", "fetch_jonswap")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        for (ModifierData *md = object->modifiers.first; md; md = md->next) {
+          if (md->type == eModifierType_Ocean) {
+            OceanModifierData *omd = (OceanModifierData *)md;
+            omd->fetch_jonswap = 120.0f;
+          }
+        }
+      }
+    }
   }
 }
