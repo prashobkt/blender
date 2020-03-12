@@ -875,9 +875,9 @@ void WM_generic_user_data_free(struct wmGenericUserData *user_data);
 /* wm_xr.c */
 bool WM_xr_session_was_started(const wmXrData *xr);
 bool WM_xr_session_is_running(const wmXrData *xr);
-void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3]);
-void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4]);
-void WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
+bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3]);
+bool WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4]);
+bool WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float r_viewmat[4][4],
                                                 float *r_focal_len);
 #endif

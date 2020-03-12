@@ -312,38 +312,42 @@ static void wm_xr_runtime_session_state_update(XrRuntimeSessionState *state,
   state->is_initialized = true;
 }
 
-void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
+bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
     zero_v3(r_location);
-    return;
+    return false;
   }
 
   copy_v3_v3(r_location, xr->session_state->viewer_pose.position);
+  return true;
 }
 
-void WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
+bool WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
     unit_qt(r_rotation);
-    return;
+    return false;
   }
 
   copy_v4_v4(r_rotation, xr->session_state->viewer_pose.orientation_quat);
+  return true;
 }
 
-void WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
+bool WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float r_viewmat[4][4],
                                                 float *r_focal_len)
 {
   if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
     unit_m4(r_viewmat);
     *r_focal_len = 0.0f;
-    return;
+    return false;
   }
 
   copy_m4_m4(r_viewmat, xr->session_state->viewer_viewmat);
   *r_focal_len = xr->session_state->focal_len;
+
+  return true;
 }
 
 /** \} */ /* XR Runtime Session State */
