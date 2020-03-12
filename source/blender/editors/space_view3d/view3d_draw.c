@@ -341,10 +341,6 @@ static void view3d_xr_mirror_setup(const wmWindowManager *wm,
   copy_m4_m4(viewmat, rv3d->viewmat);
 
   WM_xr_session_state_viewer_matrix_info_get(&wm->xr, viewmat, &v3d->lens);
-  rv3d->runtime_viewlock |= RV3D_LOCK_ANY_TRANSFORM;
-  /* Just change to perspective mode, not worth resetting this. */
-  rv3d->persp = RV3D_PERSP;
-
   view3d_main_region_setup_view(depsgraph, scene, v3d, region, viewmat, NULL, rect);
 
   /* Reset overridden View3D data */
