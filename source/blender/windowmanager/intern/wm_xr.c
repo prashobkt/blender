@@ -388,13 +388,14 @@ static void wm_xr_session_begin_info_create(const XrRuntimeSessionState *UNUSED(
 
 void wm_xr_session_toggle(wmXrData *xr_data)
 {
-  if (WM_xr_session_is_running(xr_data)) {
+  if (WM_xr_session_was_started(xr_data)) {
     GHOST_XrSessionEnd(xr_data->context);
     wm_xr_runtime_session_state_free(&xr_data->session_state);
   }
   else {
     GHOST_XrSessionBeginInfo begin_info;
 
+    BLI_assert(xr_data->session_state == NULL);
     xr_data->session_state = wm_xr_runtime_session_state_create();
     wm_xr_session_begin_info_create(xr_data->session_state, &begin_info);
 
