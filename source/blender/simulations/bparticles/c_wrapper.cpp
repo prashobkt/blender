@@ -52,7 +52,7 @@ void BParticles_simulation_free(BParticlesSimulationState state_c)
 }
 
 void BParticles_simulate_modifier(BParticlesModifierData *bpmd,
-                                  Depsgraph *UNUSED(depsgraph),
+                                  Depsgraph *depsgraph,
                                   BParticlesSimulationState state_c,
                                   float time_step)
 {
@@ -61,6 +61,7 @@ void BParticles_simulate_modifier(BParticlesModifierData *bpmd,
   }
 
   SimulationState &simulation_state = *unwrap(state_c);
+  simulation_state.m_depsgraph = depsgraph;
   simulation_state.time().start_update(time_step);
 
   bNodeTree *btree = (bNodeTree *)DEG_get_original_id((ID *)bpmd->node_tree);
@@ -71,9 +72,9 @@ void BParticles_simulate_modifier(BParticlesModifierData *bpmd,
   simulation_state.time().end_update();
 
   auto &containers = simulation_state.particles().particle_containers();
-  containers.foreach_item([](StringRefNull system_name, ParticleSet *particles) {
-    std::cout << "Particle System: " << system_name << ": " << particles->size() << "\n";
-  });
+  // containers.foreach_item([](StringRefNull system_name, ParticleSet *particles) {
+  //  std::cout << "Particle System: " << system_name << ": " << particles->size() << "\n";
+  //});
 }
 
 static float3 tetrahedon_vertices[4] = {

@@ -4,6 +4,9 @@
 #include "BLI_vector_adaptor.h"
 #include "BLI_parallel.h"
 
+#include "BKE_collision.h"
+#include "BKE_modifier.h"
+
 #include "FN_cpp_type.h"
 
 #include "simulate.hpp"
@@ -14,7 +17,43 @@ using BLI::ScopedVector;
 using BLI::VectorAdaptor;
 using FN::CPPType;
 
-BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulation_state),
+BLI_NOINLINE static void raycast_callback(void *userdata,
+                                          int index,
+                                          const BVHTreeRay *ray,
+                                          BVHTreeRayHit *hit)
+{
+  CollisionModifierData *collmd = (CollisionModifierData *)userdata;
+
+  const MVertTri *vt = &collmd->tri[index];
+  MVert *verts = collmd->x;
+  const float *t0, *t1, *t2;
+
+  t0 = verts[vt->tri[0]].co;
+  t1 = verts[vt->tri[1]].co;
+  t2 = verts[vt->tri[2]].co;
+
+  // TODO implement triangle collision width
+  // use width + vertex normals to make the triangle thick
+
+  float dist;
+
+  if (ray->radius == 0.0f) {
+    dist = bvhtree_ray_tri_intersection(ray, hit->dist, t0, t1, t2);
+  }
+  else {
+    dist = bvhtree_sphereray_tri_intersection(ray, ray->radius, hit->dist, t0, t1, t2);
+  }
+
+  if (dist >= 0 && dist < hit->dist) {
+    hit->index = index;
+    hit->dist = dist;
+    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
+
+    normal_tri_v3(hit->no, t0, t1, t2);
+  }
+}
+
+BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_state,
                                                  ParticleAllocator &UNUSED(particle_allocator),
                                                  MutableAttributesRef attributes,
                                                  ParticleSystemInfo &system_info,
@@ -34,14 +73,67 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
   MutableArrayRef<float3> velocities = attributes.get<float3>("Velocity");
   MutableArrayRef<float3> positions = attributes.get<float3>("Position");
 
+  // system_info.collision_objects
+  // simulation_state.m_depsgraph;
+  // cloth_bvh_collision
+  unsigned int numcollobj = 0;
+  Object **collobjs = NULL;
+
+  collobjs = BKE_collision_objects_create(
+      simulation_state.m_depsgraph, NULL, NULL, &numcollobj, eModifierType_Collision);
+
   for (uint pindex : IndexRange(amount)) {
     float mass = 1.0f;
     float duration = remaining_durations[pindex];
 
+    // Check if any 'collobjs' collide with the particles here
+    if (collobjs) {
+      // TODO Move this to be upper most loop
+      for (int i = 0; i < numcollobj; i++) {
+        Object *collob = collobjs[i];
+        CollisionModifierData *collmd = (CollisionModifierData *)modifiers_findByType(
+            collob, eModifierType_Collision);
+
+        if (!collmd->bvhtree) {
+          continue;
+        }
+
+        /* Move object to position (step) in time. */
+        collision_move_object(collmd, duration, 0, false);
+
+        const int raycast_flag = BVH_RAYCAST_DEFAULT;
+
+        float max_move = (duration * velocities[pindex]).length();
+
+        BVHTreeRayHit hit;
+        hit.index = -1;
+        hit.dist = max_move;
+        float particle_radius = 0.01f;
+        float3 start = positions[pindex];
+        float3 dir = velocities[pindex].normalized();
+
+        BLI_bvhtree_ray_cast_ex(collmd->bvhtree,
+                                start,
+                                dir,
+                                particle_radius,
+                                &hit,
+                                raycast_callback,
+                                collmd,
+                                raycast_flag);
+
+        if (hit.index == -1) {
+          // We didn't hit anything
+          continue;
+        }
+        // dot normal from vt with hit.co - start to see which way to deflect the particle
+        velocities[pindex] *= -1;
+      }
+    }
     velocities[pindex] += duration * forces[pindex] / mass;
     positions[pindex] += duration * velocities[pindex];
   }
-}
+  BKE_collision_objects_free(collobjs);
+}  // namespace BParticles
 
 BLI_NOINLINE static void delete_tagged_particles_and_reorder(ParticleSet &particles)
 {
@@ -139,18 +231,18 @@ void simulate_particles(SimulationState &simulation_state,
                         ArrayRef<Emitter *> emitters,
                         StringMap<ParticleSystemInfo> &systems_to_simulate)
 {
-  SCOPED_TIMER(__func__);
+  // SCOPED_TIMER(__func__);
 
-  systems_to_simulate.foreach_item([](StringRef name, ParticleSystemInfo &system_info) {
-    system_info.collision_objects.print_as_lines(
-        name, [](const CollisionObject &collision_object) {
-          std::cout << collision_object.object->id.name
-                    << " - Damping: " << collision_object.damping << " - Location Old: "
-                    << float3(collision_object.local_to_world_start.values[3])
-                    << " - Location New: "
-                    << float3(collision_object.local_to_world_end.values[3]);
-        });
-  });
+  // systems_to_simulate.foreach_item([](StringRef name, ParticleSystemInfo &system_info) {
+  //  system_info.collision_objects.print_as_lines(
+  //      name, [](const CollisionObject &collision_object) {
+  //        std::cout << collision_object.object->id.name
+  //                  << " - Damping: " << collision_object.damping << " - Location Old: "
+  //                  << float3(collision_object.local_to_world_start.values[3])
+  //                  << " - Location New: "
+  //                  << float3(collision_object.local_to_world_end.values[3]);
+  //      });
+  //});
 
   ParticlesState &particles_state = simulation_state.particles();
   FloatInterval simulation_time_span = simulation_state.time().current_update_time();

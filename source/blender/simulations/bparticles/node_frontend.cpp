@@ -1112,7 +1112,7 @@ static void collect_influences(FunctionTreeData &function_tree_data,
                                Vector<std::string> &r_system_names,
                                InfluencesCollector &collector)
 {
-  SCOPED_TIMER(__func__);
+  // SCOPED_TIMER(__func__);
 
   for (const FNode *fnode :
        function_tree_data.function_tree().nodes_with_idname(particle_system_idname)) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BLI_float_interval.h"
+#include "DEG_depsgraph_query.h"
 
 #include "particles_state.hpp"
 #include "world_state.hpp"
@@ -74,6 +75,8 @@ class SimulationState {
   {
     return m_time_state;
   }
+
+  Depsgraph *m_depsgraph;
 };
 
 }  // namespace BParticles

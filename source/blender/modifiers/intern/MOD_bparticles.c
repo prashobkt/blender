@@ -45,6 +45,7 @@
 #include "MOD_util.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_physics.h"
 #include "DEG_depsgraph_query.h"
 
 typedef struct RuntimeData {
@@ -179,9 +180,12 @@ static bool dependsOnTime(ModifierData *UNUSED(md))
   return true;
 }
 
-static void updateDepsgraph(ModifierData *UNUSED(md),
-                            const ModifierUpdateDepsgraphContext *UNUSED(ctx))
+static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
+  BParticlesModifierData *bpmd = (BParticlesModifierData *)md;
+  // TODO add check to see if we have and collision node and if so use the collision group here
+  DEG_add_collision_relations(
+      ctx->node, ctx->object, NULL, eModifierType_Collision, NULL, "Cloth Collision");
 }
 
 static void foreachObjectLink(ModifierData *UNUSED(md),
