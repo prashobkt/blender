@@ -1068,8 +1068,8 @@ static void do_version_curvemapping_walker(Main *bmain, void (*callback)(CurveMa
           callback(gpmd->curve_intensity);
         }
       }
-      else if (md->type == eGpencilModifierType_Vertexcolor) {
-        VertexcolorGpencilModifierData *gpmd = (VertexcolorGpencilModifierData *)md;
+      else if (md->type == eGpencilModifierType_Tint) {
+        TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
 
         if (gpmd->curve_intensity) {
           callback(gpmd->curve_intensity);
@@ -1091,13 +1091,6 @@ static void do_version_curvemapping_walker(Main *bmain, void (*callback)(CurveMa
       }
       else if (md->type == eGpencilModifierType_Opacity) {
         OpacityGpencilModifierData *gpmd = (OpacityGpencilModifierData *)md;
-
-        if (gpmd->curve_intensity) {
-          callback(gpmd->curve_intensity);
-        }
-      }
-      else if (md->type == eGpencilModifierType_Tint) {
-        TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
 
         if (gpmd->curve_intensity) {
           callback(gpmd->curve_intensity);
@@ -4728,16 +4721,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               }
               break;
             }
-            case eGpencilModifierType_Vertexcolor: {
-              VertexcolorGpencilModifierData *mmd = (VertexcolorGpencilModifierData *)md;
-              if (mmd->curve_intensity == NULL) {
-                mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
-                if (mmd->curve_intensity) {
-                  BKE_curvemapping_initialize(mmd->curve_intensity);
-                }
-              }
-              break;
-            }
             default:
               break;
           }
@@ -4849,5 +4832,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "OceanModifierData", "float", "fetch_jonswap")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        for (ModifierData *md = object->modifiers.first; md; md = md->next) {
+          if (md->type == eModifierType_Ocean) {
+            OceanModifierData *omd = (OceanModifierData *)md;
+            omd->fetch_jonswap = 120.0f;
+          }
+        }
+      }
+    }
   }
 }

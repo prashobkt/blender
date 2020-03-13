@@ -91,11 +91,11 @@ typedef struct LibraryIDLinkCallbackData {
   void *user_data;
   /**
    * 'Real' ID, the one that might be in bmain, only differs from self_id when the later is an
-   * embeded one.
+   * embedded one.
    */
   struct ID *id_owner;
   /**
-   * ID from which the current ID pointer is being processed. It may be an embeded ID like master
+   * ID from which the current ID pointer is being processed. It may be an embedded ID like master
    * collection or root node tree.
    */
   struct ID *id_self;
@@ -116,6 +116,8 @@ enum {
   IDWALK_READONLY = (1 << 0),
   IDWALK_RECURSE = (1 << 1),    /* Also implies IDWALK_READONLY. */
   IDWALK_INCLUDE_UI = (1 << 2), /* Include UI pointers (from WM and screens editors). */
+  /** Do not process ID pointers inside embedded IDs. Needed by depsgraph processing e.g. */
+  IDWALK_IGNORE_EMBEDDED_ID = (1 << 3),
 
   IDWALK_NO_INDIRECT_PROXY_DATA_USAGE = (1 << 8), /* Ugly special case :(((( */
 };

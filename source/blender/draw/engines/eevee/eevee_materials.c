@@ -89,6 +89,7 @@ extern char datatoc_common_hair_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_irradiance_lib_glsl[];
 extern char datatoc_octahedron_lib_glsl[];
+extern char datatoc_cubemap_lib_glsl[];
 extern char datatoc_lit_surface_frag_glsl[];
 extern char datatoc_lit_surface_vert_glsl[];
 extern char datatoc_raytrace_lib_glsl[];
@@ -618,6 +619,7 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
                                               datatoc_raytrace_lib_glsl,
                                               datatoc_ssr_lib_glsl,
                                               datatoc_octahedron_lib_glsl,
+                                              datatoc_cubemap_lib_glsl,
                                               datatoc_irradiance_lib_glsl,
                                               datatoc_lightprobe_lib_glsl,
                                               datatoc_ltc_lib_glsl,
@@ -641,6 +643,7 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
                                                 datatoc_bsdf_common_lib_glsl,
                                                 datatoc_ambient_occlusion_lib_glsl,
                                                 datatoc_octahedron_lib_glsl,
+                                                datatoc_cubemap_lib_glsl,
                                                 datatoc_irradiance_lib_glsl,
                                                 datatoc_lightprobe_lib_glsl,
                                                 datatoc_ltc_lib_glsl,
@@ -1263,7 +1266,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
   }
 
-  if (LOOK_DEV_OVERLAY_ENABLED(draw_ctx->v3d)) {
+  if (eevee_hdri_preview_overlay_enabled(draw_ctx->v3d)) {
     DRWShadingGroup *shgrp;
 
     struct GPUBatch *sphere = DRW_cache_sphere_get();
