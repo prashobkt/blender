@@ -257,6 +257,19 @@ static void wm_region_test_render_do_draw(const Scene *scene,
   }
 }
 
+#ifdef WITH_XR_OPENXR
+static void wm_region_test_xr_do_draw(const wmWindowManager *wm,
+                                      const ScrArea *area,
+                                      ARegion *region)
+{
+  if (area->spacetype == SPACE_VIEW3D && region->regiontype == RGN_TYPE_WINDOW) {
+    if (ED_view3d_is_region_xr_mirror_active(wm, area->spacedata.first, region->regiondata)) {
+      ED_region_tag_redraw_no_rebuild(region);
+    }
+  }
+}
+#endif
+
 static bool wm_region_use_viewport_by_type(short space_type, short region_type)
 {
   return (ELEM(space_type, SPACE_VIEW3D, SPACE_IMAGE) && region_type == RGN_TYPE_WINDOW);
@@ -875,6 +888,7 @@ static void wm_draw_surface(bContext *C, wmSurface *surface)
 /* quick test to prevent changing window drawable */
 static bool wm_draw_update_test_window(Main *bmain, bContext *C, wmWindow *win)
 {
+  const wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = WM_window_get_active_scene(win);
   ViewLayer *view_layer = WM_window_get_active_view_layer(win);
   struct Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
@@ -897,6 +911,9 @@ static bool wm_draw_update_test_window(Main *bmain, bContext *C, wmWindow *win)
     for (region = sa->regionbase.first; region; region = region->next) {
       wm_region_test_gizmo_do_draw(C, sa, region, true);
       wm_region_test_render_do_draw(scene, depsgraph, sa, region);
+#ifdef WITH_XR_OPENXR
+      wm_region_test_xr_do_draw(wm, sa, region);
+#endif
 
       if (region->visible && region->do_draw) {
         do_draw = true;
