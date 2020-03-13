@@ -36,6 +36,13 @@ from bl_ui.properties_grease_pencil_common import (
 from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
 )
+from bl_ui.utils import (
+    View3DShadingLayout,
+    View3DShadingLightingLayout,
+    View3DShadingColorLayout,
+    View3DShadingOptionsLayout,
+    View3DShadingRenderPassLayout,
+)
 from bpy.app.translations import contexts as i18n_contexts
 
 
@@ -5461,286 +5468,59 @@ class VIEW3D_PT_object_type_visibility(Panel):
 class VIEW3D_PT_shading(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_label = "Shading"
+    bl_label = View3DShadingLayout.bl_label
     bl_ui_units_x = 12
 
-    @classmethod
-    def get_shading(cls, context, shading=None):
-        if shading:
-            return shading
-
-        # Get settings from 3D viewport or OpenGL render engine
-        view = context.space_data
-        if view.type == 'VIEW_3D':
-            return view.shading
-        else:
-            return context.scene.display.shading
-
     def draw(self, _context):
-        layout = self.layout
-        layout.label(text="Viewport Shading")
+        View3DShadingLayout.draw(self.layout)
 
 
 class VIEW3D_PT_shading_lighting(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_label = "Lighting"
+    bl_label = View3DShadingLightingLayout.bl_label
     bl_parent_id = 'VIEW3D_PT_shading'
 
     @classmethod
     def poll(cls, context):
-        return cls.poll_ex(context)
+        shading = context.space_data.shading
+        return View3DShadingLightingLayout.poll(context, shading)
 
     def draw(self, context):
-        VIEW3D_PT_shading_lighting.draw_ex(self, context)
-
-    @classmethod
-    def poll_ex(cls, context, opt_shading=None):
-        shading = VIEW3D_PT_shading.get_shading(context, opt_shading)
-        engine = context.scene.render.engine
-        return shading.type in {'SOLID', 'MATERIAL'} or engine == 'BLENDER_EEVEE' and shading.type == 'RENDERED'
-
-    @staticmethod
-    def draw_ex(self, context, opt_shading=None):
-        layout = self.layout
-        shading = VIEW3D_PT_shading.get_shading(context, opt_shading)
-
-        col = layout.column()
-        split = col.split(factor=0.9)
-
-        if shading.type == 'SOLID':
-            split.row().prop(shading, "light", expand=True)
-            col = split.column()
-
-            split = layout.split(factor=0.9)
-            col = split.column()
-            sub = col.row()
-
-            if shading.light == 'STUDIO':
-                prefs = context.preferences
-                system = prefs.system
-
-                if not system.use_studio_light_edit:
-                    sub.scale_y = 0.6  # smaller studiolight preview
-                    sub.template_icon_view(shading, "studio_light", scale_popup=3.0)
-                else:
-                    sub.prop(
-                        system,
-                        "use_studio_light_edit",
-                        text="Disable Studio Light Edit",
-                        icon='NONE',
-                        toggle=True,
-                    )
-
-                col = split.column()
-                col.operator("preferences.studiolight_show", emboss=False, text="", icon='PREFERENCES')
-
-                split = layout.split(factor=0.9)
-                col = split.column()
-
-                row = col.row()
-                row.prop(shading, "use_world_space_lighting", text="", icon='WORLD', toggle=True)
-                row = row.row()
-                row.active = shading.use_world_space_lighting
-                row.prop(shading, "studiolight_rotate_z", text="Rotation")
-                col = split.column()  # to align properly with above
-
-            elif shading.light == 'MATCAP':
-                sub.scale_y = 0.6  # smaller matcap preview
-                sub.template_icon_view(shading, "studio_light", scale_popup=3.0)
-
-                col = split.column()
-                col.operator("preferences.studiolight_show", emboss=False, text="", icon='PREFERENCES')
-                col.operator("view3d.toggle_matcap_flip", emboss=False, text="", icon='ARROW_LEFTRIGHT')
-
-        elif shading.type == 'MATERIAL':
-            col.prop(shading, "use_scene_lights")
-            col.prop(shading, "use_scene_world")
-            col = layout.column()
-            split = col.split(factor=0.9)
-
-            if not shading.use_scene_world:
-                col = split.column()
-                sub = col.row()
-                sub.scale_y = 0.6
-                sub.template_icon_view(shading, "studio_light", scale_popup=3)
-
-                col = split.column()
-                col.operator("preferences.studiolight_show", emboss=False, text="", icon='PREFERENCES')
-
-                split = layout.split(factor=0.9)
-                col = split.column()
-                col.prop(shading, "studiolight_rotate_z", text="Rotation")
-                col.prop(shading, "studiolight_intensity")
-                col.prop(shading, "studiolight_background_alpha")
-                col.prop(shading, "studiolight_background_blur")
-                col = split.column()  # to align properly with above
-
-        elif shading.type == 'RENDERED':
-            col.prop(shading, "use_scene_lights_render")
-            col.prop(shading, "use_scene_world_render")
-
-            if not shading.use_scene_world_render:
-                col = layout.column()
-                split = col.split(factor=0.9)
-
-                col = split.column()
-                sub = col.row()
-                sub.scale_y = 0.6
-                sub.template_icon_view(shading, "studio_light", scale_popup=3)
-
-                col = split.column()
-                col.operator("preferences.studiolight_show", emboss=False, text="", icon='PREFERENCES')
-
-                split = layout.split(factor=0.9)
-                col = split.column()
-                col.prop(shading, "studiolight_rotate_z", text="Rotation")
-                col.prop(shading, "studiolight_intensity")
-                col.prop(shading, "studiolight_background_alpha")
-                col.prop(shading, "studiolight_background_blur")
-                col = split.column()  # to align properly with above
+        shading = context.space_data.shading
+        View3DShadingLightingLayout.draw(context, shading, self.layout)
 
 
 class VIEW3D_PT_shading_color(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_label = "Color"
+    bl_label = View3DShadingColorLayout.bl_label
     bl_parent_id = 'VIEW3D_PT_shading'
 
     @classmethod
     def poll(cls, context):
-        return cls.poll_ex(context)
+        shading = context.space_data.shading
+        return View3DShadingColorLayout.poll(context, shading)
 
     def draw(self, context):
-        self.draw_ex(context)
-
-    @classmethod
-    def poll_ex(cls, context, shading=None):
-        shading = VIEW3D_PT_shading.get_shading(context, shading)
-        return shading.type in {'WIREFRAME', 'SOLID'}
-
-    @staticmethod
-    def _draw_color_type(layout, shading):
-        layout.grid_flow(columns=3, align=True).prop(shading, "color_type", expand=True)
-        if shading.color_type == 'SINGLE':
-            layout.row().prop(shading, "single_color", text="")
-
-    @staticmethod
-    def _draw_background_color(layout, shading):
-        layout.row().label(text="Background")
-        layout.row().prop(shading, "background_type", expand=True)
-        if shading.background_type == 'VIEWPORT':
-            layout.row().prop(shading, "background_color", text="")
-
-    def draw_ex(self, context, shading=None):
-        shading = VIEW3D_PT_shading.get_shading(context, shading)
-        layout = self.layout
-
-        if shading.type == 'WIREFRAME':
-            layout.row().prop(shading, "wireframe_color_type", expand=True)
-        else:
-            VIEW3D_PT_shading_color._draw_color_type(layout, shading)
-            layout.separator()
-        VIEW3D_PT_shading_color._draw_background_color(layout, shading)
+        shading = context.space_data.shading
+        View3DShadingColorLayout.draw(context, shading, self.layout)
 
 
 class VIEW3D_PT_shading_options(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_label = "Options"
+    bl_label = View3DShadingOptionsLayout.bl_label
     bl_parent_id = 'VIEW3D_PT_shading'
 
     @classmethod
     def poll(cls, context):
-        return cls.poll_ex(context)
+        shading = context.space_data.shading
+        return View3DShadingOptionsLayout.poll(context, shading)
 
     def draw(self, context):
-        self.draw_ex(context)
-
-    @classmethod
-    def poll_ex(cls, context, shading=None):
-        shading = VIEW3D_PT_shading.get_shading(context, shading)
-        return shading.type in {'WIREFRAME', 'SOLID'}
-
-    def draw_ex(self, context, shading=None):
-        layout = self.layout
-
-        shading = VIEW3D_PT_shading.get_shading(context, shading)
-
-        col = layout.column()
-
-        if shading.type == 'SOLID':
-            col.prop(shading, "show_backface_culling")
-
-        row = col.row(align=True)
-
-        if shading.type == 'WIREFRAME':
-            row.prop(shading, "show_xray_wireframe", text="")
-            sub = row.row()
-            sub.active = shading.show_xray_wireframe
-            sub.prop(shading, "xray_alpha_wireframe", text="X-Ray")
-        elif shading.type == 'SOLID':
-            row.prop(shading, "show_xray", text="")
-            sub = row.row()
-            sub.active = shading.show_xray
-            sub.prop(shading, "xray_alpha", text="X-Ray")
-            # X-ray mode is off when alpha is 1.0
-            xray_active = shading.show_xray and shading.xray_alpha != 1
-
-            row = col.row(align=True)
-            row.prop(shading, "show_shadows", text="")
-            row.active = not xray_active
-            sub = row.row(align=True)
-            sub.active = shading.show_shadows
-            sub.prop(shading, "shadow_intensity", text="Shadow")
-            sub.popover(
-                panel="VIEW3D_PT_shading_options_shadow",
-                icon='PREFERENCES',
-                text="",
-            )
-
-            col = layout.column()
-
-            row = col.row()
-            row.active = not xray_active
-            row.prop(shading, "show_cavity")
-
-            if shading.show_cavity and not xray_active:
-                row.prop(shading, "cavity_type", text="Type")
-
-                if shading.cavity_type in {'WORLD', 'BOTH'}:
-                    col.label(text="World Space")
-                    sub = col.row(align=True)
-                    sub.prop(shading, "cavity_ridge_factor", text="Ridge")
-                    sub.prop(shading, "cavity_valley_factor", text="Valley")
-                    sub.popover(
-                        panel="VIEW3D_PT_shading_options_ssao",
-                        icon='PREFERENCES',
-                        text="",
-                    )
-
-                if shading.cavity_type in {'SCREEN', 'BOTH'}:
-                    col.label(text="Screen Space")
-                    sub = col.row(align=True)
-                    sub.prop(shading, "curvature_ridge_factor", text="Ridge")
-                    sub.prop(shading, "curvature_valley_factor", text="Valley")
-
-            row = col.row()
-            row.active = not xray_active
-            row.prop(shading, "use_dof", text="Depth Of Field")
-
-        if shading.type in {'WIREFRAME', 'SOLID'}:
-            row = layout.split()
-            row.prop(shading, "show_object_outline")
-            sub = row.row()
-            sub.active = shading.show_object_outline
-            sub.prop(shading, "object_outline_color", text="")
-
-        if shading.type == 'SOLID':
-            col = layout.column()
-            if shading.light in {'STUDIO', 'MATCAP'}:
-                col.active = shading.selected_studio_light.has_specular_highlight_pass
-                col.prop(shading, "show_specular_highlight", text="Specular Lighting")
+        shading = context.space_data.shading
+        View3DShadingOptionsLayout.draw(context, shading, self.layout)
 
 
 class VIEW3D_PT_shading_options_shadow(Panel):
@@ -5778,22 +5558,18 @@ class VIEW3D_PT_shading_options_ssao(Panel):
 class VIEW3D_PT_shading_render_pass(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_label = "Render Pass"
+    bl_label = View3DShadingRenderPassLayout.bl_label
     bl_parent_id = 'VIEW3D_PT_shading'
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
     @classmethod
     def poll(cls, context):
-        return (
-            (context.space_data.shading.type == 'MATERIAL') or
-            (context.engine in cls.COMPAT_ENGINES and context.space_data.shading.type == 'RENDERED')
-        )
+        shading = context.space_data.shading
+        return View3DShadingRenderPassLayout.poll(context, shading)
 
     def draw(self, context):
         shading = context.space_data.shading
-
-        layout = self.layout
-        layout.prop(shading, "render_pass", text="")
+        View3DShadingRenderPassLayout.draw(
+            context, shading, self.layout)
 
 
 class VIEW3D_PT_gizmo_display(Panel):
