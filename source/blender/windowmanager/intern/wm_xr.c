@@ -261,7 +261,7 @@ static void wm_xr_draw_data_populate(const XrRuntimeSessionState *state,
                                           (settings->flag & XR_SESSION_USE_POSITION_TRACKING));
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
-  memset(r_draw_data, 0, sizeof(r_draw_data));
+  memset(r_draw_data, 0, sizeof(*r_draw_data));
 
   wm_xr_reference_pose_calc(scene, settings, &r_draw_data->reference_pose);
 
