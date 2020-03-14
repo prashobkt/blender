@@ -25,9 +25,9 @@
 #include <memory>
 
 class GHOST_XrContext;
+class GHOST_XrSwapchain;
 struct OpenXRSessionData;
 struct GHOST_XrDrawInfo;
-struct GHOST_XrSwapchain;
 
 class GHOST_XrSession {
  public:
