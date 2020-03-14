@@ -81,8 +81,10 @@ typedef struct XrRuntimeSessionState {
   float viewer_viewmat[4][4];
   float focal_len;
 
-  /** Copy of bXrSessionSettings.flag created on the last draw call, stored to detect changes. */
+  /** Copy of XrSessionSettings.flag created on the last draw call, stored to detect changes. */
   int prev_settings_flag;
+  /** Copy of wmXrDrawData.eye_position_ofs. */
+  float prev_eye_position_ofs[3];
 
   bool is_initialized;
 } XrRuntimeSessionState;
@@ -275,6 +277,10 @@ static void wm_xr_draw_data_populate(const XrRuntimeSessionState *state,
       copy_v3_v3(r_draw_data->eye_position_ofs, draw_view->local_pose.position);
     }
   }
+  else if (!use_position_tracking) {
+    /* Keep previous offset when positional tracking is disabled. */
+    copy_v3_v3(r_draw_data->eye_position_ofs, state->prev_eye_position_ofs);
+  }
 }
 
 /**
@@ -312,6 +318,7 @@ static void wm_xr_runtime_session_state_update(XrRuntimeSessionState *state,
                      fov_to_focallength(draw_view->fov.angle_right - draw_view->fov.angle_left,
                                         DEFAULT_SENSOR_WIDTH);
 
+  copy_v3_v3(state->prev_eye_position_ofs, draw_data->eye_position_ofs);
   state->prev_settings_flag = settings->flag;
   state->is_initialized = true;
 }
