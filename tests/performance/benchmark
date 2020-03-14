@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+
+import api
+import argparse
+import fnmatch
+import pathlib
+import sys
+import time
+
+def print_entry(collection, entry, end='\n'):
+    revision = entry['revision']
+    testname = entry['test']
+    device = entry['device']
+
+    test = collection.find(testname)
+    status = entry['status']
+    if status == 'queued' and not test:
+        status = 'missing'
+
+    output = entry['output']
+    result = ''
+    if status == 'done' and output:
+        result = '%.4fs' % output['time']
+
+    print(f"{revision: <20} {testname: <20} {device: <10} {'[' + status + ']': <10} {result: <10}", end=end)
+
+def match_entry(entry, args):
+    revision = entry['revision']
+    testname = entry['test']
+    device = entry['device']
+
+    return (fnmatch.fnmatch(revision, args.revision) and
+            fnmatch.fnmatch(testname, args.test) and
+            fnmatch.fnmatch(device, args.device))
+
+def run_entry(env, collection, entry):
+    revision = entry['revision']
+    testname = entry['test']
+    device = entry['device']
+
+    if entry['status'] != 'queued':
+        return None
+
+    test = collection.find(entry['test'])
+    if not test:
+        return None
+
+    entry['status'] = 'building'
+    print_entry(collection, entry, end='\r')
+    env.build_revision(revision)
+    entry['status'] = 'running'
+    print_entry(collection, entry, end='\r')
+    entry['output'] = test.run(env)
+    entry['status'] = 'done' if entry['output'] else 'failed'
+    print_entry(collection, entry)
+    return entry
+
+def cmd_init(env, argv):
+    env.init()
+
+def cmd_add(env, argv, silent=False):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test', default='*')
+    parser.add_argument('--device', default='*')
+    parser.add_argument('--revision', default=env.current_revision())
+    args = parser.parse_args(argv)
+
+    collection = api.TestCollection(env)
+    queue = api.TestQueue(env)
+    machine = api.TestMachine(env)
+
+    for test in collection.tests:
+        if not fnmatch.fnmatch(test.name(), args.test):
+            continue
+
+        if not test.use_device():
+            devices = [machine.cpu_device()]
+        else:
+            devices = machine.devices
+
+        for device in devices:
+            if not fnmatch.fnmatch(device.name, args.device):
+                continue
+
+            # TODO: validate revision
+            entry = queue.add(args.revision, test.name(), device.name)
+            if entry and not silent:
+                print_entry(collection, entry)
+
+    queue.write()
+
+def cmd_remove(env, argv, default_revision, silent=False):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test', default='*')
+    parser.add_argument('--device', default='*')
+    parser.add_argument('--revision', default=default_revision)
+    args = parser.parse_args(argv)
+
+    collection = api.TestCollection(env)
+    queue = api.TestQueue(env)
+    for entry in queue.entries[:]:
+        if match_entry(entry, args):
+            queue.remove(entry)
+            if not silent:
+                print_entry(collection, entry)
+
+    queue.write()
+
+def cmd_run(env, argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test', default='*')
+    parser.add_argument('--device', default='*')
+    parser.add_argument('--revision', default=env.current_revision())
+    args = parser.parse_args(argv)
+
+    cmd_remove(env, argv, env.current_revision())
+    cmd_add(env, argv, silent=True)
+
+    collection = api.TestCollection(env)
+    queue = api.TestQueue(env)
+    for entry in queue.entries[:]:
+        revision = entry['revision']
+        testname = entry['test']
+        device = entry['device']
+
+        if match_entry(entry, args):
+            updated_entry = run_entry(env, collection, entry)
+            if updated_entry:
+                queue = api.TestQueue(env)
+                queue.update(updated_entry)
+                queue.write()
+            else:
+                print_entry(collection, entry)
+
+def cmd_server(env, argv):
+    while True:
+        collection = api.TestCollection(env)
+        queue = api.TestQueue(env)
+        for entry in queue.entries:
+            updated_entry = run_entry(env, collection, entry)
+            if updated_entry:
+                queue = api.TestQueue(env)
+                queue.update(updated_entry)
+                queue.write()
+                break
+
+        time.sleep(1.0)
+
+def cmd_list(env, argv):
+    collection = api.TestCollection(env)
+    machine = api.TestMachine(env)
+    for test in collection.tests:
+        if not test.use_device():
+            devices = [machine.cpu_device()]
+        else:
+            devices = machine.devices
+
+        devices = [device.name for device in devices]
+        devices = ' '.join(devices)
+        print(f"{test.name(): <20} {devices}")
+
+def cmd_devices(env, argv):
+    machine = api.TestMachine(env)
+    for device in machine.devices:
+        print(device.name)
+
+def cmd_status(env, argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test', default='*')
+    parser.add_argument('--device', default='*')
+    parser.add_argument('--revision', default='*')
+    args = parser.parse_args(argv)
+
+    collection = api.TestCollection(env)
+    queue = api.TestQueue(env)
+    for entry in queue.entries:
+        if match_entry(entry, args):
+            print_entry(collection, entry)
+
+def main():
+    usage = ('benchmark <command> [<args>]\n'
+             '\n'
+             'Commands:\n'
+             '  init                   Set up git worktree and build in ../benchmark\n'
+             '  \n'
+             '  list                   List available tests\n'
+             '  devices                List available devices\n'
+             '  \n'
+             '  run                    Execute benchmarks for current revision\n'
+             '  add                    Queue current revision to be benchmarked\n'
+             '  remove                 Removed current revision\n'
+             '  clear                  Removed all queued and completed benchmarks\n'
+             '  \n'
+             '  status                 List queued and completed tests\n'
+             '  \n'
+             '  server                 Run as server, executing queued revisions\n'
+             '  \n'
+             'Arguments for run, add, remove and status:\n'
+             '  --test <pattern>       Pattern to match test name, may include wildcards\n'
+             '  --device <device>      Use only specified device\n'
+             '  --revision <revision>  Use specified instead of current revision\n'
+             )
+
+    env = api.TestEnvironment()
+    warning = env.validate()
+    if warning:
+        usage += '\n' + warning + '\n'
+
+    parser = argparse.ArgumentParser(
+        description='Blender performance testing',
+        usage=usage)
+
+    parser.add_argument('command', nargs='?', default='help')
+    args = parser.parse_args(sys.argv[1:2])
+
+    argv = sys.argv[2:]
+
+    if args.command == 'init':
+        cmd_init(env, argv)
+        return
+    elif args.command == 'list':
+        cmd_list(env, argv)
+        return
+    elif args.command == 'devices':
+        cmd_devices(env, argv)
+        return
+    elif args.command == 'help':
+        parser.print_usage()
+        return
+
+    if not env.initialized():
+        print("Benchmark directory is not (fully) initialized")
+        return
+
+    if args.command == 'add':
+        cmd_add(env, argv)
+    elif args.command == 'remove':
+        cmd_remove(env, argv, env.current_revision())
+    elif args.command == 'clear':
+        cmd_remove(env, argv, '*')
+    elif args.command == 'status':
+        cmd_status(env, argv)
+    elif args.command == 'run':
+        cmd_run(env, argv)
+    elif args.command == 'server':
+        cmd_server(env, argv)
+    else:
+        sys.stderr.write(f'Unknown command: {args.command}\n')
+
+if __name__ == '__main__':
+    main()
