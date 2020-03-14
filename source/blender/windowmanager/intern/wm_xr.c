@@ -255,10 +255,13 @@ static void wm_xr_draw_data_populate(const XrRuntimeSessionState *state,
                                      const Scene *scene,
                                      wmXrDrawData *r_draw_data)
 {
-  const bool position_tracking_toggled = (state->prev_settings_flag &
-                                          XR_SESSION_USE_POSITION_TRACKING) !=
-                                         (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
+  const bool position_tracking_toggled = !state->is_initialized ||
+                                         ((state->prev_settings_flag &
+                                           XR_SESSION_USE_POSITION_TRACKING) !=
+                                          (settings->flag & XR_SESSION_USE_POSITION_TRACKING));
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
+
+  memset(r_draw_data, 0, sizeof(r_draw_data));
 
   wm_xr_reference_pose_calc(scene, settings, &r_draw_data->reference_pose);
 
@@ -301,7 +304,8 @@ static void wm_xr_runtime_session_state_update(XrRuntimeSessionState *state,
     viewer_pose.position[2] += draw_view->local_pose.position[1];
   }
 
-  state->viewer_pose = viewer_pose;
+  copy_v3_v3(state->viewer_pose.position, viewer_pose.position);
+  copy_qt_qt(state->viewer_pose.orientation_quat, viewer_pose.orientation_quat);
   wm_xr_pose_to_viewmat(&viewer_pose, state->viewer_viewmat);
   /* No idea why, but multiplying by two seems to make it match the VR view more. */
   state->focal_len = 2.0f *
@@ -649,7 +653,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   wmXrDrawData draw_data;
   Scene *scene = CTX_data_scene(C);
 
-  const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
+  const int display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
 
   float viewmat[4][4], winmat[4][4];
 
@@ -669,6 +673,8 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 
   /* In case a framebuffer is still bound from drawing the last eye. */
   GPU_framebuffer_restore();
+  /* Some systems have drawing glitches without this. */
+  GPU_clear(GPU_DEPTH_BIT);
 
   /* Draws the view into the surface_data->viewport's framebuffers */
   ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
