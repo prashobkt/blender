@@ -262,8 +262,8 @@ static void wm_region_test_xr_do_draw(const wmWindowManager *wm,
                                       const ScrArea *area,
                                       ARegion *region)
 {
-  if (area->spacetype == SPACE_VIEW3D && region->regiontype == RGN_TYPE_WINDOW) {
-    if (ED_view3d_is_region_xr_mirror_active(wm, area->spacedata.first, region->regiondata)) {
+  if ((area->spacetype == SPACE_VIEW3D) && (region->regiontype == RGN_TYPE_WINDOW)) {
+    if (ED_view3d_is_region_xr_mirror_active(wm, area->spacedata.first, region)) {
       ED_region_tag_redraw_no_rebuild(region);
     }
   }
