@@ -835,7 +835,8 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *region, View3D *v3d, bo
   UI_Theme_Store(&theme_state);
   UI_SetTheme(SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
-  ED_view3d_draw_setup_view(NULL, NULL, depsgraph, scene, region, v3d, NULL, NULL, NULL);
+  ED_view3d_draw_setup_view(
+      G_MAIN->wm.first, NULL, depsgraph, scene, region, v3d, NULL, NULL, NULL);
 
   GPU_clear(GPU_DEPTH_BIT);
 
