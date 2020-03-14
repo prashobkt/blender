@@ -1348,7 +1348,7 @@ static void rna_SpaceView3D_mirror_xr_session_update(Main *main,
   }
 
 #  else
-  UNUSED_VARS(main, scene, ptr);
+  UNUSED_VARS(main, ptr);
 #  endif
 }
 

@@ -941,6 +941,10 @@ static bool wm_draw_update_test_window(Main *bmain, bContext *C, wmWindow *win)
     return true;
   }
 
+#ifndef WITH_XR_OPENXR
+  UNUSED_VARS(wm);
+#endif
+
   return false;
 }
 
