@@ -97,6 +97,8 @@ typedef struct wmXrRuntimeData {
 
   /* Although this struct is internal, RNA gets a handle to this for state information queries. */
   wmXrSessionState session_state;
+  wmXrSessionExitFn exit_fn;
+  void *exit_customdata;
 } wmXrRuntimeData;
 
 typedef struct wmXrDrawData {
@@ -411,7 +413,7 @@ void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics
 }
 
 void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(graphics_lib),
-                                               void *UNUSED(context))
+                                               GHOST_ContextHandle UNUSED(context))
 {
   if (g_xr_surface) { /* Might have been freed already */
     wm_surface_remove(g_xr_surface);
@@ -424,25 +426,46 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(g
   WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, NULL);
 }
 
-static void wm_xr_session_begin_info_create(const wmXrRuntimeData *UNUSED(runtime),
-                                            GHOST_XrSessionBeginInfo *UNUSED(r_begin_info))
+static void wm_xr_session_exit_cb(void *customdata)
 {
+  wmXrData *xr_data = customdata;
+
+  xr_data->runtime->session_state.is_started = false;
+  if (xr_data->runtime->exit_fn) {
+    xr_data->runtime->exit_fn(xr_data, xr_data->runtime->exit_customdata);
+  }
+
+  /* Free the entire runtime data (including session state and context), to play safe. */
+  wm_xr_runtime_data_free(&xr_data->runtime);
 }
 
-void wm_xr_session_toggle(wmWindowManager *wm)
+static void wm_xr_session_begin_info_create(wmXrData *xr_data,
+                                            GHOST_XrSessionBeginInfo *r_begin_info)
+{
+  /* WM-XR exit function, does some own stuff and calls callback passed to wm_xr_session_toggle(),
+   * to allow external code to execute its own session-exit logic. */
+  r_begin_info->exit_fn = wm_xr_session_exit_cb;
+  r_begin_info->exit_customdata = xr_data;
+}
+
+void wm_xr_session_toggle(wmWindowManager *wm,
+                          wmXrSessionExitFn session_exit_fn,
+                          void *session_exit_customdata)
 {
   wmXrData *xr_data = &wm->xr;
 
   if (WM_xr_session_was_started(xr_data)) {
     GHOST_XrSessionEnd(xr_data->runtime->context);
-    /* Free the entire runtime data (including session state and context), to play safe. */
-    wm_xr_runtime_data_free(&xr_data->runtime);
   }
   else {
     GHOST_XrSessionBeginInfo begin_info;
-    wm_xr_session_begin_info_create(xr_data->runtime, &begin_info);
-    GHOST_XrSessionStart(xr_data->runtime->context, &begin_info);
+
     xr_data->runtime->session_state.is_started = true;
+    xr_data->runtime->exit_fn = session_exit_fn;
+    xr_data->runtime->exit_customdata = session_exit_customdata;
+
+    wm_xr_session_begin_info_create(xr_data, &begin_info);
+    GHOST_XrSessionStart(xr_data->runtime->context, &begin_info);
   }
 }
 

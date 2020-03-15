@@ -3647,9 +3647,9 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 
 #ifdef WITH_XR_OPENXR
 
-static void wm_xr_session_update_mirror_views(Main *bmain, wmWindowManager *wm)
+static void wm_xr_session_update_mirror_views(Main *bmain, const wmXrData *xr_data)
 {
-  const bool enable = WM_xr_session_was_started(&wm->xr);
+  const bool enable = WM_xr_session_was_started(xr_data);
 
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
     for (ScrArea *area = screen->areabase.first; area; area = area->next) {
@@ -3666,8 +3666,14 @@ static void wm_xr_session_update_mirror_views(Main *bmain, wmWindowManager *wm)
   }
 }
 
+static void wm_xr_session_exit_cb(const wmXrData *xr_data, void *customdata)
+{
+  wm_xr_session_update_mirror_views(customdata, xr_data);
+}
+
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
+  Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
 
   /* Lazy-create xr context - tries to dynlink to the runtime, reading active_runtime.json. */
@@ -3675,9 +3681,8 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  wm_xr_session_toggle(wm);
-
-  wm_xr_session_update_mirror_views(CTX_data_main(C), wm);
+  wm_xr_session_toggle(wm, wm_xr_session_exit_cb, bmain);
+  wm_xr_session_update_mirror_views(bmain, &wm->xr);
 
   WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, NULL);
 

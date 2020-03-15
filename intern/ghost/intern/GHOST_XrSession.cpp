@@ -82,6 +82,8 @@ GHOST_XrSession::~GHOST_XrSession()
 
   m_oxr->session = XR_NULL_HANDLE;
   m_oxr->session_state = XR_SESSION_STATE_UNKNOWN;
+
+  m_context->getCustomFuncs().session_exit_fn(m_context->getCustomFuncs().session_exit_customdata);
 }
 
 /**
@@ -499,7 +501,8 @@ void GHOST_XrSession::unbindGraphicsContext()
 {
   const GHOST_XrCustomFuncs &custom_funcs = m_context->getCustomFuncs();
   if (custom_funcs.gpu_ctx_unbind_fn) {
-    custom_funcs.gpu_ctx_unbind_fn(m_context->getGraphicsBindingType(), m_gpu_ctx);
+    custom_funcs.gpu_ctx_unbind_fn(m_context->getGraphicsBindingType(),
+                                   (GHOST_ContextHandle)m_gpu_ctx);
   }
   m_gpu_ctx = nullptr;
 }
