@@ -1340,8 +1340,8 @@ static void rna_SpaceView3D_mirror_xr_session_update(Main *main,
 #  ifdef WITH_XR_OPENXR
   const wmWindowManager *wm = main->wm.first;
 
-  /* Handle mirror toggling while a VR session runs. */
-  if (WM_xr_session_was_started(&wm->xr)) {
+  /* Handle mirror toggling while there is a session already. */
+  if (WM_xr_session_exists(&wm->xr)) {
     const View3D *v3d = ptr->data;
     const ScrArea *area = rna_area_from_space(ptr);
     ED_view3d_xr_mirror_update(area, v3d, v3d->flag & V3D_XR_SESSION_MIRROR);

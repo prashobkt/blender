@@ -355,7 +355,7 @@ wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr)
 
 bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_view_data_set) {
+  if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
     zero_v3(r_location);
     return false;
   }
@@ -366,7 +366,7 @@ bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_locatio
 
 bool WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_view_data_set) {
+  if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
     unit_qt(r_rotation);
     return false;
   }
@@ -379,7 +379,7 @@ bool WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float r_viewmat[4][4],
                                                 float *r_focal_len)
 {
-  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_view_data_set) {
+  if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
     unit_m4(r_viewmat);
     *r_focal_len = 0.0f;
     return false;
@@ -454,7 +454,7 @@ void wm_xr_session_toggle(wmWindowManager *wm,
 {
   wmXrData *xr_data = &wm->xr;
 
-  if (WM_xr_session_was_started(xr_data)) {
+  if (WM_xr_session_exists(xr_data)) {
     GHOST_XrSessionEnd(xr_data->runtime->context);
   }
   else {
@@ -470,29 +470,20 @@ void wm_xr_session_toggle(wmWindowManager *wm,
 }
 
 /**
- * Check if a session start was triggered and that there is no pending request to end the session.
+ * Check if the XR-Session was triggered.
  * If an error happened while trying to start a session, this returns false too.
  */
-bool WM_xr_session_was_started(const wmXrData *xr)
+bool WM_xr_session_exists(const wmXrData *xr)
 {
   return xr->runtime && xr->runtime->context && xr->runtime->session_state.is_started;
 }
 
 /**
- * The definition used here to define a session as running differs slightly from the OpenXR
- * specification one: Here we already consider a session as stopped when session-end request was
- * issued. Ghost-XR may still have to handle session logic then, but Blender specific handling
- * should be stopped then.
- * This check should be used from external calls to WM_xr. Internally, GHOST_XrSessionIsRunning()
- * may have to be called instead. It checks for the running state according to the OpenXR
- * specification.
+ * Check if the session is running, according to the OpenXR definition.
  */
-bool WM_xr_session_is_running(const wmXrData *xr)
+bool WM_xr_session_is_ready(const wmXrData *xr)
 {
-  /* wmXrData.session_state will be NULL if session end was requested. That's what we use here to
-   * define if the session was already stopped (even if according to OpenXR, it's still considered
-   * running). */
-  return WM_xr_session_was_started(xr) && GHOST_XrSessionIsRunning(xr->runtime->context);
+  return WM_xr_session_exists(xr) && GHOST_XrSessionIsRunning(xr->runtime->context);
 }
 
 /** \} */ /* XR-Session */
@@ -716,10 +707,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 
   float viewmat[4][4], winmat[4][4];
 
-  /* The runtime may still trigger drawing while a session-end request is pending. */
-  if (!wm->xr.runtime || !wm->xr.runtime->session_state.is_started) {
-    return;
-  }
+  BLI_assert(WM_xr_session_is_ready(&wm->xr));
 
   wm_xr_draw_data_populate(session_state, draw_view, settings, scene, &draw_data);
   wm_xr_draw_matrices_create(&draw_data, draw_view, settings, viewmat, winmat);

@@ -1695,8 +1695,8 @@ void ED_view3d_local_collections_reset(struct bContext *C, const bool reset_all)
 
 static void view3d_xr_mirror_begin(RegionView3D *rv3d)
 {
-  /* If the session is not running yet, changes below should not be applied! */
-  BLI_assert(WM_xr_session_was_started(&((wmWindowManager *)G_MAIN->wm.first)->xr));
+  /* If there is no session yet, changes below should not be applied! */
+  BLI_assert(WM_xr_session_exists(&((wmWindowManager *)G_MAIN->wm.first)->xr));
 
   rv3d->runtime_viewlock |= RV3D_LOCK_ANY_TRANSFORM;
   /* Force perspective view. This isn't reset but that's not really an issue. */
@@ -1732,7 +1732,7 @@ bool ED_view3d_is_region_xr_mirror_active(const wmWindowManager *wm,
          /* The free region (e.g. the camera region in quad-view) is always the last in the list
             base. We don't want any other to be affected. */
          !region->next &&  //
-         WM_xr_session_is_running(&wm->xr);
+         WM_xr_session_is_ready(&wm->xr);
 }
 
 #endif

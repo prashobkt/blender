@@ -3649,7 +3649,7 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 
 static void wm_xr_session_update_mirror_views(Main *bmain, const wmXrData *xr_data)
 {
-  const bool enable = WM_xr_session_was_started(xr_data);
+  const bool enable = WM_xr_session_exists(xr_data);
 
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
     for (ScrArea *area = screen->areabase.first; area; area = area->next) {
