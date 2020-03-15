@@ -1266,6 +1266,12 @@ static void rna_wmClipboard_set(PointerRNA *UNUSED(ptr), const char *value)
   WM_clipboard_text_set((void *)value, false);
 }
 
+static PointerRNA rna_WindowManager_xr_session_state_get(PointerRNA *ptr)
+{
+  wmWindowManager *wm = ptr->data;
+  return rna_pointer_inherit_refine(ptr, &RNA_XrSessionState, &wm->xr);
+}
+
 #  ifdef WITH_PYTHON
 
 static bool rna_operator_poll_cb(bContext *C, wmOperatorType *ot)
@@ -2490,8 +2496,8 @@ static void rna_def_windowmanager(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "XR Session Settings", "");
 
   prop = RNA_def_property(srna, "xr_session_state", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "XrRuntimeSessionState");
-  RNA_def_property_pointer_sdna(prop, NULL, "xr.session_state");
+  RNA_def_property_struct_type(prop, "XrSessionState");
+  RNA_def_property_pointer_funcs(prop, "rna_WindowManager_xr_session_state_get", NULL, NULL, NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "XR Session State", "Runtime state information about the VR session");

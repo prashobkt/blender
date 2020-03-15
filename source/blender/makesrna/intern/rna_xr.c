@@ -34,7 +34,7 @@
 
 #  include "WM_api.h"
 
-static bool rna_XrRuntimeSessionState_is_running(bContext *C)
+static bool rna_XrSessionState_is_running(bContext *C)
 {
 #  ifdef WITH_XR_OPENXR
   const wmWindowManager *wm = CTX_wm_manager(C);
@@ -46,12 +46,12 @@ static bool rna_XrRuntimeSessionState_is_running(bContext *C)
 }
 
 #  ifdef WITH_XR_OPENXR
-static wmXrData *rna_XrRuntimeSessionState_wm_xr_data_get(PointerRNA *ptr)
+static wmXrData *rna_XrSessionState_wm_xr_data_get(PointerRNA *ptr)
 {
-  /* Callers could also get XrRuntimeSessionState pointer through ptr->data, but prefer if we just
+  /* Callers could also get XrSessionState pointer through ptr->data, but prefer if we just
    * consistently pass wmXrData pointers to the WM_xr_xxx() API. */
 
-  BLI_assert(ptr->type == &RNA_XrRuntimeSessionState);
+  BLI_assert(ptr->type == &RNA_XrSessionState);
 
   wmWindowManager *wm = (wmWindowManager *)ptr->owner_id;
   BLI_assert(wm && (GS(wm->id.name) == ID_WM));
@@ -60,10 +60,10 @@ static wmXrData *rna_XrRuntimeSessionState_wm_xr_data_get(PointerRNA *ptr)
 }
 #  endif
 
-static void rna_XrRuntimeSessionState_viewer_location_get(PointerRNA *ptr, float *r_values)
+static void rna_XrSessionState_viewer_location_get(PointerRNA *ptr, float *r_values)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrData *xr = rna_XrRuntimeSessionState_wm_xr_data_get(ptr);
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
   WM_xr_session_state_viewer_location_get(xr, r_values);
 #  else
   UNUSED_VARS(ptr);
@@ -71,10 +71,10 @@ static void rna_XrRuntimeSessionState_viewer_location_get(PointerRNA *ptr, float
 #  endif
 }
 
-static void rna_XrRuntimeSessionState_viewer_rotation_get(PointerRNA *ptr, float *r_values)
+static void rna_XrSessionState_viewer_rotation_get(PointerRNA *ptr, float *r_values)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrData *xr = rna_XrRuntimeSessionState_wm_xr_data_get(ptr);
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
   WM_xr_session_state_viewer_rotation_get(xr, r_values);
 #  else
   UNUSED_VARS(ptr);
@@ -184,11 +184,11 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   FunctionRNA *func;
   PropertyRNA *parm, *prop;
 
-  srna = RNA_def_struct(brna, "XrRuntimeSessionState", NULL);
+  srna = RNA_def_struct(brna, "XrSessionState", NULL);
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
   RNA_def_struct_ui_text(srna, "Session State", "Runtime state information about the VR session");
 
-  func = RNA_def_function(srna, "is_running", "rna_XrRuntimeSessionState_is_running");
+  func = RNA_def_function(srna, "is_running", "rna_XrSessionState_is_running");
   RNA_def_function_ui_description(func, "Query if the VR session is currently running");
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
@@ -198,7 +198,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "viewer_location", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_funcs(prop, "rna_XrRuntimeSessionState_viewer_location_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_location_get", NULL, NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop,
@@ -207,7 +207,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "viewer_rotation", PROP_FLOAT, PROP_QUATERNION);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(prop, "rna_XrRuntimeSessionState_viewer_rotation_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_rotation_get", NULL, NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop,

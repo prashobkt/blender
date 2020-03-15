@@ -3675,7 +3675,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  wm_xr_session_toggle(&wm->xr);
+  wm_xr_session_toggle(wm);
 
   wm_xr_session_update_mirror_views(CTX_data_main(C), wm);
 

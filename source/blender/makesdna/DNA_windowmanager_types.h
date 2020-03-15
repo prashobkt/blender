@@ -43,7 +43,6 @@ struct wmKeyMap;
 struct wmMsgBus;
 struct wmOperator;
 struct wmOperatorType;
-struct GHOST_XrContext;
 
 /* forwards */
 struct PointerRNA;
@@ -123,14 +122,11 @@ typedef struct ReportTimerInfo {
 
 //#ifdef WITH_XR_OPENXR
 typedef struct wmXrData {
-  void *context; /* GHOST_XrContextHandle */
-
+  /** Runtime information for managing Blender specific behaviors. */
+  struct wmXrRuntimeData *runtime;
   /** Permanent session settings (draw mode, feature toggles, etc). Stored in files and accessible
    * even before the session runs. */
   XrSessionSettings session_settings;
-
-  /** Runtime state information for managing Blender specific behaviors. Not stored in files. */
-  struct XrRuntimeSessionState *session_state;
 } wmXrData;
 //#endif
 

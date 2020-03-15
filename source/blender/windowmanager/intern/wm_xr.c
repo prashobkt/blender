@@ -65,7 +65,8 @@
 #include "wm_surface.h"
 #include "wm_window.h"
 
-void wm_xr_runtime_session_state_free(struct XrRuntimeSessionState **state);
+struct wmXrRuntimeData *wm_xr_runtime_data_create(void);
+void wm_xr_runtime_data_free(struct wmXrRuntimeData **runtime);
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
 void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
 void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
@@ -74,7 +75,9 @@ void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4]);
 
 /* -------------------------------------------------------------------- */
 
-typedef struct XrRuntimeSessionState {
+typedef struct wmXrSessionState {
+  bool is_started;
+
   /** Last known viewer pose (centroid of eyes, in world space) stored for queries. */
   GHOST_XrPose viewer_pose;
   /** The last known view matrix, calculated from above's viewer pose. */
@@ -87,7 +90,14 @@ typedef struct XrRuntimeSessionState {
   float prev_eye_position_ofs[3];
 
   bool is_initialized;
-} XrRuntimeSessionState;
+} wmXrSessionState;
+
+typedef struct wmXrRuntimeData {
+  GHOST_XrContextHandle context;
+
+  /* Although this struct is internal, RNA gets a handle to this for state information queries. */
+  wmXrSessionState session_state;
+} wmXrRuntimeData;
 
 typedef struct wmXrDrawData {
   /** The pose (location + rotation) to which eye deltas will be applied to when drawing (world
@@ -132,16 +142,15 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
   WM_report(RPT_ERROR, error->user_message);
   WM_report_banner_show();
 
-  if (wm->xr.context) {
-    /* Just play safe and destroy the entire context. */
-    GHOST_XrContextDestroy(wm->xr.context);
-    wm->xr.context = NULL;
+  if (wm->xr.runtime->context) {
+    /* Just play safe and destroy the entire runtime data, including context. */
+    wm_xr_runtime_data_free(&wm->xr.runtime);
   }
 }
 
 bool wm_xr_init(wmWindowManager *wm)
 {
-  if (wm->xr.context) {
+  if (wm->xr.runtime && wm->xr.runtime->context) {
     return true;
   }
   static wmXrErrorHandlerData error_customdata;
@@ -159,7 +168,9 @@ bool wm_xr_init(wmWindowManager *wm)
     };
     GHOST_XrContextCreateInfo create_info = {
         .gpu_binding_candidates = gpu_bindings_candidates,
-        .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
+        .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates),
+    };
+    GHOST_XrContextHandle context;
 
     if (G.debug & G_DEBUG_XR) {
       create_info.context_flag |= GHOST_kXrContextDebug;
@@ -168,29 +179,30 @@ bool wm_xr_init(wmWindowManager *wm)
       create_info.context_flag |= GHOST_kXrContextDebugTime;
     }
 
-    if (!(wm->xr.context = GHOST_XrContextCreate(&create_info))) {
+    if (!(context = GHOST_XrContextCreate(&create_info))) {
       return false;
     }
 
     /* Set up context callbacks */
-    GHOST_XrGraphicsContextBindFuncs(wm->xr.context,
+    GHOST_XrGraphicsContextBindFuncs(context,
                                      wm_xr_session_gpu_binding_context_create,
                                      wm_xr_session_gpu_binding_context_destroy);
-    GHOST_XrDrawViewFunc(wm->xr.context, wm_xr_draw_view);
+    GHOST_XrDrawViewFunc(context, wm_xr_draw_view);
+
+    if (!wm->xr.runtime) {
+      wm->xr.runtime = wm_xr_runtime_data_create();
+      wm->xr.runtime->context = context;
+    }
   }
-  BLI_assert(wm->xr.context != NULL);
+  BLI_assert(wm->xr.runtime && wm->xr.runtime->context);
 
   return true;
 }
 
 void wm_xr_exit(wmWindowManager *wm)
 {
-  if (wm->xr.context != NULL) {
-    GHOST_XrContextDestroy(wm->xr.context);
-    wm->xr.context = NULL;
-  }
-  if (wm->xr.session_state != NULL) {
-    wm_xr_runtime_session_state_free(&wm->xr.session_state);
+  if (wm->xr.runtime != NULL) {
+    wm_xr_runtime_data_free(&wm->xr.runtime);
   }
   if (wm->xr.session_settings.shading.prop) {
     IDP_FreeProperty(wm->xr.session_settings.shading.prop);
@@ -198,22 +210,34 @@ void wm_xr_exit(wmWindowManager *wm)
   }
 }
 
+bool wm_xr_events_handle(wmWindowManager *wm)
+{
+  if (wm->xr.runtime && wm->xr.runtime->context) {
+    return GHOST_XrEventsHandle(wm->xr.runtime->context);
+  }
+  return false;
+}
+
 /** \} */ /* XR-Context */
 
 /* -------------------------------------------------------------------- */
-/** \name XR Runtime Session State
+/** \name XR Runtime Data
  *
  * \{ */
 
-static XrRuntimeSessionState *wm_xr_runtime_session_state_create(void)
+wmXrRuntimeData *wm_xr_runtime_data_create(void)
 {
-  XrRuntimeSessionState *state = MEM_callocN(sizeof(*state), __func__);
-  return state;
+  wmXrRuntimeData *runtime = MEM_callocN(sizeof(*runtime), __func__);
+  return runtime;
 }
 
-void wm_xr_runtime_session_state_free(XrRuntimeSessionState **state)
+void wm_xr_runtime_data_free(wmXrRuntimeData **runtime)
 {
-  MEM_SAFE_FREE(*state);
+  if ((*runtime)->context != NULL) {
+    GHOST_XrContextDestroy((*runtime)->context);
+    (*runtime)->context = NULL;
+  }
+  MEM_SAFE_FREE(*runtime);
 }
 
 static void wm_xr_reference_pose_calc(const Scene *scene,
@@ -251,14 +275,13 @@ static void wm_xr_reference_pose_calc(const Scene *scene,
   }
 }
 
-static void wm_xr_draw_data_populate(const XrRuntimeSessionState *state,
+static void wm_xr_draw_data_populate(const wmXrSessionState *state,
                                      const GHOST_XrDrawViewInfo *draw_view,
                                      const XrSessionSettings *settings,
                                      const Scene *scene,
                                      wmXrDrawData *r_draw_data)
 {
-  const bool position_tracking_toggled = !state->is_initialized ||
-                                         ((state->prev_settings_flag &
+  const bool position_tracking_toggled = ((state->prev_settings_flag &
                                            XR_SESSION_USE_POSITION_TRACKING) !=
                                           (settings->flag & XR_SESSION_USE_POSITION_TRACKING));
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
@@ -267,7 +290,7 @@ static void wm_xr_draw_data_populate(const XrRuntimeSessionState *state,
 
   wm_xr_reference_pose_calc(scene, settings, &r_draw_data->reference_pose);
 
-  if (position_tracking_toggled) {
+  if (position_tracking_toggled || !state->is_initialized) {
     if (use_position_tracking) {
       copy_v3_fl(r_draw_data->eye_position_ofs, 0.0f);
     }
@@ -287,10 +310,10 @@ static void wm_xr_draw_data_populate(const XrRuntimeSessionState *state,
  * Update information that is only stored for external state queries. E.g. for Python API to
  * request the current (as in, last known) viewer pose.
  */
-static void wm_xr_runtime_session_state_update(XrRuntimeSessionState *state,
-                                               const GHOST_XrDrawViewInfo *draw_view,
-                                               const XrSessionSettings *settings,
-                                               const wmXrDrawData *draw_data)
+static void wm_xr_session_state_update(wmXrSessionState *state,
+                                       const GHOST_XrDrawViewInfo *draw_view,
+                                       const XrSessionSettings *settings,
+                                       const wmXrDrawData *draw_data)
 {
   GHOST_XrPose viewer_pose;
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
@@ -323,25 +346,30 @@ static void wm_xr_runtime_session_state_update(XrRuntimeSessionState *state,
   state->is_initialized = true;
 }
 
+wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr)
+{
+  return xr->runtime ? &xr->runtime->session_state : NULL;
+}
+
 bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_initialized) {
     zero_v3(r_location);
     return false;
   }
 
-  copy_v3_v3(r_location, xr->session_state->viewer_pose.position);
+  copy_v3_v3(r_location, xr->runtime->session_state.viewer_pose.position);
   return true;
 }
 
 bool WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_initialized) {
     unit_qt(r_rotation);
     return false;
   }
 
-  copy_v4_v4(r_rotation, xr->session_state->viewer_pose.orientation_quat);
+  copy_v4_v4(r_rotation, xr->runtime->session_state.viewer_pose.orientation_quat);
   return true;
 }
 
@@ -349,19 +377,19 @@ bool WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float r_viewmat[4][4],
                                                 float *r_focal_len)
 {
-  if (!WM_xr_session_is_running(xr) || !xr->session_state->is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_initialized) {
     unit_m4(r_viewmat);
     *r_focal_len = 0.0f;
     return false;
   }
 
-  copy_m4_m4(r_viewmat, xr->session_state->viewer_viewmat);
-  *r_focal_len = xr->session_state->focal_len;
+  copy_m4_m4(r_viewmat, xr->runtime->session_state.viewer_viewmat);
+  *r_focal_len = xr->runtime->session_state.focal_len;
 
   return true;
 }
 
-/** \} */ /* XR Runtime Session State */
+/** \} */ /* XR Runtime Data */
 
 /* -------------------------------------------------------------------- */
 /** \name XR-Session
@@ -396,25 +424,25 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(g
   WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, NULL);
 }
 
-static void wm_xr_session_begin_info_create(const XrRuntimeSessionState *UNUSED(state),
+static void wm_xr_session_begin_info_create(const wmXrRuntimeData *UNUSED(runtime),
                                             GHOST_XrSessionBeginInfo *UNUSED(r_begin_info))
 {
 }
 
-void wm_xr_session_toggle(wmXrData *xr_data)
+void wm_xr_session_toggle(wmWindowManager *wm)
 {
+  wmXrData *xr_data = &wm->xr;
+
   if (WM_xr_session_was_started(xr_data)) {
-    GHOST_XrSessionEnd(xr_data->context);
-    wm_xr_runtime_session_state_free(&xr_data->session_state);
+    GHOST_XrSessionEnd(xr_data->runtime->context);
+    /* Free the entire runtime data (including session state and context), to play safe. */
+    wm_xr_runtime_data_free(&xr_data->runtime);
   }
   else {
     GHOST_XrSessionBeginInfo begin_info;
-
-    BLI_assert(xr_data->session_state == NULL);
-    xr_data->session_state = wm_xr_runtime_session_state_create();
-    wm_xr_session_begin_info_create(xr_data->session_state, &begin_info);
-
-    GHOST_XrSessionStart(xr_data->context, &begin_info);
+    wm_xr_session_begin_info_create(xr_data->runtime, &begin_info);
+    GHOST_XrSessionStart(xr_data->runtime->context, &begin_info);
+    xr_data->runtime->session_state.is_started = true;
   }
 }
 
@@ -424,7 +452,7 @@ void wm_xr_session_toggle(wmXrData *xr_data)
  */
 bool WM_xr_session_was_started(const wmXrData *xr)
 {
-  return xr->context && xr->session_state;
+  return xr->runtime && xr->runtime->context && xr->runtime->session_state.is_started;
 }
 
 /**
@@ -441,7 +469,7 @@ bool WM_xr_session_is_running(const wmXrData *xr)
   /* wmXrData.session_state will be NULL if session end was requested. That's what we use here to
    * define if the session was already stopped (even if according to OpenXR, it's still considered
    * running). */
-  return WM_xr_session_was_started(xr) && GHOST_XrSessionIsRunning(xr->context);
+  return WM_xr_session_was_started(xr) && GHOST_XrSessionIsRunning(xr->runtime->context);
 }
 
 /** \} */ /* XR-Session */
@@ -466,10 +494,10 @@ static void wm_xr_session_surface_draw(bContext *C)
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
   wmWindowManager *wm = CTX_wm_manager(C);
 
-  if (!GHOST_XrSessionIsRunning(wm->xr.context)) {
+  if (!GHOST_XrSessionIsRunning(wm->xr.runtime->context)) {
     return;
   }
-  GHOST_XrSessionDrawViews(wm->xr.context, C);
+  GHOST_XrSessionDrawViews(wm->xr.runtime->context, C);
 
   GPU_offscreen_unbind(surface_data->offscreen, false);
 }
@@ -656,6 +684,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   bContext *C = customdata;
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
+  wmXrSessionState *session_state = &wm->xr.runtime->session_state;
   XrSessionSettings *settings = &wm->xr.session_settings;
   wmXrDrawData draw_data;
   Scene *scene = CTX_data_scene(C);
@@ -665,14 +694,13 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   float viewmat[4][4], winmat[4][4];
 
   /* The runtime may still trigger drawing while a session-end request is pending. */
-  if (!wm->xr.session_state || !wm->xr.context) {
+  if (!wm->xr.runtime || !wm->xr.runtime->session_state.is_started) {
     return;
   }
 
-  wm_xr_draw_data_populate(wm->xr.session_state, draw_view, settings, scene, &draw_data);
+  wm_xr_draw_data_populate(session_state, draw_view, settings, scene, &draw_data);
   wm_xr_draw_matrices_create(&draw_data, draw_view, settings, viewmat, winmat);
-
-  wm_xr_runtime_session_state_update(wm->xr.session_state, draw_view, settings, &draw_data);
+  wm_xr_session_state_update(session_state, draw_view, settings, &draw_data);
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
     return;

@@ -7662,8 +7662,7 @@ static void direct_link_windowmanager(FileData *fd, wmWindowManager *wm)
 
   wm->message_bus = NULL;
 
-  wm->xr.context = NULL;
-  wm->xr.session_state = NULL;
+  wm->xr.runtime = NULL;
 
   BLI_listbase_clear(&wm->jobs);
   BLI_listbase_clear(&wm->drags);
