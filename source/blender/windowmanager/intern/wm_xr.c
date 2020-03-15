@@ -89,7 +89,7 @@ typedef struct wmXrSessionState {
   /** Copy of wmXrDrawData.eye_position_ofs. */
   float prev_eye_position_ofs[3];
 
-  bool is_initialized;
+  bool is_view_data_set;
 } wmXrSessionState;
 
 typedef struct wmXrRuntimeData {
@@ -290,7 +290,7 @@ static void wm_xr_draw_data_populate(const wmXrSessionState *state,
 
   wm_xr_reference_pose_calc(scene, settings, &r_draw_data->reference_pose);
 
-  if (position_tracking_toggled || !state->is_initialized) {
+  if (position_tracking_toggled || !state->is_view_data_set) {
     if (use_position_tracking) {
       copy_v3_fl(r_draw_data->eye_position_ofs, 0.0f);
     }
@@ -343,7 +343,7 @@ static void wm_xr_session_state_update(wmXrSessionState *state,
 
   copy_v3_v3(state->prev_eye_position_ofs, draw_data->eye_position_ofs);
   state->prev_settings_flag = settings->flag;
-  state->is_initialized = true;
+  state->is_view_data_set = true;
 }
 
 wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr)
@@ -353,7 +353,7 @@ wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr)
 
 bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_view_data_set) {
     zero_v3(r_location);
     return false;
   }
@@ -364,7 +364,7 @@ bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_locatio
 
 bool WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
-  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_view_data_set) {
     unit_qt(r_rotation);
     return false;
   }
@@ -377,7 +377,7 @@ bool WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
                                                 float r_viewmat[4][4],
                                                 float *r_focal_len)
 {
-  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_initialized) {
+  if (!WM_xr_session_is_running(xr) || !xr->runtime->session_state.is_view_data_set) {
     unit_m4(r_viewmat);
     *r_focal_len = 0.0f;
     return false;
