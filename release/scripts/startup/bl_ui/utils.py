@@ -73,7 +73,7 @@ class View3DShadingLightingLayout:
         return shading.type in {'SOLID', 'MATERIAL'} or engine == 'BLENDER_EEVEE' and shading.type == 'RENDERED'
 
     @staticmethod
-    def draw(context, shading, layout):
+    def draw(context, shading, layout, add_world_space_lighting_prop=True):
         col = layout.column()
         split = col.split(factor=0.9)
 
@@ -110,8 +110,9 @@ class View3DShadingLightingLayout:
                 col = split.column()
 
                 row = col.row()
-                row.prop(shading, "use_world_space_lighting",
-                         text="", icon='WORLD', toggle=True)
+                if add_world_space_lighting_prop:
+                    row.prop(shading, "use_world_space_lighting",
+                             text="", icon='WORLD', toggle=True)
                 row = row.row()
                 row.active = shading.use_world_space_lighting
                 row.prop(shading, "studiolight_rotate_z", text="Rotation")
