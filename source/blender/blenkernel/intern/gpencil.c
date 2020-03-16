@@ -1120,6 +1120,32 @@ void BKE_gpencil_layer_mask_sort_all(bGPdata *gpd)
   }
 }
 
+static int gpencil_cb_cmp_frame(void *thunk, const void *a, const void *b)
+{
+  const bGPDframe *frame_a = a;
+  const bGPDframe *frame_b = b;
+
+  if (frame_a->framenum < frame_b->framenum) {
+    return -1;
+  }
+  if (frame_a->framenum > frame_b->framenum) {
+    return 1;
+  }
+  if (thunk != NULL) {
+    *((bool *)thunk) = true;
+  }
+  /* Sort selected last. */
+  if ((frame_a->flag & GP_FRAME_SELECT) && ((frame_b->flag & GP_FRAME_SELECT) == 0)) {
+    return 1;
+  }
+  return 0;
+}
+
+void BKE_gpencil_layer_frames_sort(struct bGPDlayer *gpl, bool *r_has_duplicate_frames)
+{
+  BLI_listbase_sort_r(&gpl->frames, gpencil_cb_cmp_frame, r_has_duplicate_frames);
+}
+
 /* get the active gp-layer for editing */
 bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 {
@@ -3909,6 +3935,9 @@ void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig
 
       /* Assign original point pointer. */
       for (int i = 0; i < gps_orig->totpoints; i++) {
+        if (i > gps_eval->totpoints - 1) {
+          break;
+        }
         bGPDspoint *pt_eval = &gps_eval->points[i];
         pt_eval->runtime.pt_orig = &gps_orig->points[i];
         pt_eval->runtime.idx_orig = i;
