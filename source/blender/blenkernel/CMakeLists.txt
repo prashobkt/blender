@@ -168,7 +168,12 @@ set(SRC
   intern/modifier.c
   intern/movieclip.c
   intern/multires.c
-  intern/multires_reshape_legacy.c
+  intern/multires_reshape.c
+  intern/multires_reshape_apply_base.c
+  intern/multires_reshape_ccg.c
+  intern/multires_reshape_smooth.c
+  intern/multires_reshape_util.c
+  intern/multires_reshape_vertcos.c
   intern/multires_subdiv.c
   intern/nla.c
   intern/node.c
@@ -178,6 +183,7 @@ set(SRC
   intern/object_facemap.c
   intern/object_update.c
   intern/ocean.c
+  intern/ocean_spectrum.c
   intern/outliner_treehash.c
   intern/packedFile.c
   intern/paint.c
@@ -377,6 +383,7 @@ set(SRC
   intern/data_transfer_intern.h
   intern/lib_intern.h
   intern/multires_inline.h
+  intern/multires_reshape.h
   intern/pbvh_intern.h
   intern/subdiv_converter.h
   intern/subdiv_inline.h

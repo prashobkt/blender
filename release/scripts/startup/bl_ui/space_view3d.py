@@ -1902,6 +1902,9 @@ class VIEW3D_MT_select_gpencil(Menu):
         layout.operator("gpencil.select_alternate")
         layout.operator_menu_enum("gpencil.select_grouped", "type", text="Grouped")
 
+        if _context.mode == 'VERTEX_GPENCIL':
+            layout.operator("gpencil.select_vertex_color", text="Vertex Color")
+
         layout.separator()
 
         layout.operator("gpencil.select_first")
@@ -5888,7 +5891,9 @@ class VIEW3D_PT_overlay_guides(Panel):
         sub.prop(overlay, "show_cursor", text="3D Cursor")
 
         if shading.type == 'MATERIAL':
-            col.prop(overlay, "show_look_dev")
+            row = col.row()
+            row.active = shading.render_pass == 'COMBINED'
+            row.prop(overlay, "show_look_dev")
 
         col.prop(overlay, "show_annotation", text="Annotations")
 
@@ -6900,7 +6905,7 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
 
     def draw(self, context):
         ts = context.tool_settings
-        settings = ts.gpencil_paint
+        settings = ts.gpencil_sculpt_paint
         brush = settings.brush
 
         layout = self.layout
@@ -6920,7 +6925,7 @@ class VIEW3D_PT_gpencil_weight_context_menu(Panel):
 
     def draw(self, context):
         ts = context.tool_settings
-        settings = ts.gpencil_paint
+        settings = ts.gpencil_weight_paint
         brush = settings.brush
 
         layout = self.layout
@@ -6946,8 +6951,9 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
         gp_settings = brush.gpencil_settings
 
         layout = self.layout
+        is_vertex = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
-        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.color_mode == 'VERTEXCOLOR':
+        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and is_vertex:
             split = layout.split(factor=0.1)
             split.prop(brush, "color", text="")
             split.template_color_picker(brush, "color", value_slider=True)

@@ -4348,7 +4348,9 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   /* include the generated prototypes header */
   fprintf(f, "#include \"rna_prototypes_gen.h\"\n\n");
 
-  fprintf(f, "#include \"%s\"\n", filename);
+  if (filename) {
+    fprintf(f, "#include \"%s\"\n", filename);
+  }
   if (api_filename) {
     fprintf(f, "#include \"%s\"\n", api_filename);
   }
@@ -4654,8 +4656,8 @@ static const char *cpp_classes =
     "    operator void*() { return ptr.data; }\n"
     "    operator bool() { return ptr.data != NULL; }\n"
     "\n"
-    "    bool operator==(const Pointer &other) { return ptr.data == other.ptr.data; }\n"
-    "    bool operator!=(const Pointer &other) { return ptr.data != other.ptr.data; }\n"
+    "    bool operator==(const Pointer &other) const { return ptr.data == other.ptr.data; }\n"
+    "    bool operator!=(const Pointer &other) const { return ptr.data != other.ptr.data; }\n"
     "\n"
     "    PointerRNA ptr;\n"
     "};\n"
