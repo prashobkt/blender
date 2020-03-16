@@ -2805,12 +2805,10 @@ static void write_gpencil(WriteData *wd, bGPdata *gpd)
   }
 }
 
-#ifdef WITH_XR_OPENXR
 static void write_wm_xr_data(WriteData *wd, wmXrData *xr_data)
 {
   write_view3dshading(wd, &xr_data->session_settings.shading);
 }
-#endif
 
 static void write_region(WriteData *wd, ARegion *region, int spacetype)
 {
@@ -3058,9 +3056,7 @@ static void write_windowmanager(WriteData *wd, wmWindowManager *wm)
 {
   writestruct(wd, ID_WM, wmWindowManager, 1, wm);
   write_iddata(wd, &wm->id);
-#ifdef WITH_XR_OPENXR
   write_wm_xr_data(wd, &wm->xr);
-#endif
 
   for (wmWindow *win = wm->windows.first; win; win = win->next) {
 #ifndef WITH_GLOBAL_AREA_WRITING

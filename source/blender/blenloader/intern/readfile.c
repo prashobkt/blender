@@ -7650,9 +7650,7 @@ static void direct_link_windowmanager(FileData *fd, wmWindowManager *wm)
     }
   }
 
-#ifdef WITH_XR_OPENXR
   direct_link_wm_xr_data(fd, &wm->xr);
-#endif
 
   BLI_listbase_clear(&wm->timers);
   BLI_listbase_clear(&wm->operators);
@@ -7694,9 +7692,7 @@ static void lib_link_windowmanager(FileData *fd, Main *UNUSED(bmain), wmWindowMa
       lib_link_area(fd, &wm->id, area);
     }
 
-#ifdef WITH_XR_OPENXR
     lib_link_wm_xr_data(fd, &wm->id, &wm->xr);
-#endif
   }
 }
 
