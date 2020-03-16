@@ -1269,7 +1269,13 @@ static void rna_wmClipboard_set(PointerRNA *UNUSED(ptr), const char *value)
 static PointerRNA rna_WindowManager_xr_session_state_get(PointerRNA *ptr)
 {
   wmWindowManager *wm = ptr->data;
-  struct wmXrSessionState *state = WM_xr_session_state_handle_get(&wm->xr);
+  struct wmXrSessionState *state =
+#  ifdef WITH_XR_OPENXR
+      WM_xr_session_state_handle_get(&wm->xr);
+#  else
+      NULL;
+#  endif
+
   return rna_pointer_inherit_refine(ptr, &RNA_XrSessionState, state);
 }
 
