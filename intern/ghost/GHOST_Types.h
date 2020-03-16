@@ -600,17 +600,6 @@ typedef void (*GHOST_TimerProcPtr)(struct GHOST_TimerTaskHandle__ *task, GHOST_T
 
 struct GHOST_XrError;
 struct GHOST_XrDrawViewInfo;
-enum GHOST_TXrGraphicsBinding;
-
-typedef void (*GHOST_XrErrorHandlerFn)(const struct GHOST_XrError *);
-
-typedef void (*GHOST_XrSessionExitFn)(void *customdata);
-
-typedef void *(*GHOST_XrGraphicsContextBindFn)(enum GHOST_TXrGraphicsBinding graphics_lib);
-typedef void (*GHOST_XrGraphicsContextUnbindFn)(enum GHOST_TXrGraphicsBinding graphics_lib,
-                                                GHOST_ContextHandle graphics_context);
-typedef void (*GHOST_XrDrawViewFn)(const struct GHOST_XrDrawViewInfo *draw_view, void *customdata);
-
 /**
  * The XR view (i.e. the OpenXR runtime) may require a different graphics library than OpenGL. An
  * offscreen texture of the viewport will then be drawn into using OpenGL, but the final texture
@@ -627,6 +616,16 @@ typedef enum GHOST_TXrGraphicsBinding {
   /* For later */
   //  GHOST_kXrGraphicsVulkan,
 } GHOST_TXrGraphicsBinding;
+
+typedef void (*GHOST_XrErrorHandlerFn)(const struct GHOST_XrError *);
+
+typedef void (*GHOST_XrSessionExitFn)(void *customdata);
+
+typedef void *(*GHOST_XrGraphicsContextBindFn)(enum GHOST_TXrGraphicsBinding graphics_lib);
+typedef void (*GHOST_XrGraphicsContextUnbindFn)(enum GHOST_TXrGraphicsBinding graphics_lib,
+                                                GHOST_ContextHandle graphics_context);
+typedef void (*GHOST_XrDrawViewFn)(const struct GHOST_XrDrawViewInfo *draw_view, void *customdata);
+
 /* An array of GHOST_TXrGraphicsBinding items defining the candidate bindings to use. The first
  * available candidate will be chosen, so order defines priority. */
 typedef const GHOST_TXrGraphicsBinding *GHOST_XrGraphicsBindingCandidates;
