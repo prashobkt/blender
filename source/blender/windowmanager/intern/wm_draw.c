@@ -199,7 +199,7 @@ static void wm_region_test_gizmo_do_draw(bContext *C,
   wmGizmoMap *gzmap = region->gizmo_map;
   for (wmGizmoGroup *gzgroup = WM_gizmomap_group_list(gzmap)->first; gzgroup;
        gzgroup = gzgroup->next) {
-    if (tag_redraw && (gzgroup->type->flag & WM_GIZMOGROUPTYPE_CONTINUOUS_REDRAW)) {
+    if (tag_redraw && (gzgroup->type->flag & WM_GIZMOGROUPTYPE_VR_REDRAWS)) {
       ScrArea *ctx_sa = CTX_wm_area(C);
       ARegion *ctx_ar = CTX_wm_region(C);
 
