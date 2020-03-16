@@ -98,7 +98,6 @@ typedef struct wmXrRuntimeData {
   /* Although this struct is internal, RNA gets a handle to this for state information queries. */
   wmXrSessionState session_state;
   wmXrSessionExitFn exit_fn;
-  void *exit_customdata;
 } wmXrRuntimeData;
 
 typedef struct wmXrDrawData {
@@ -441,7 +440,7 @@ static void wm_xr_session_exit_cb(void *customdata)
 
   xr_data->runtime->session_state.is_started = false;
   if (xr_data->runtime->exit_fn) {
-    xr_data->runtime->exit_fn(xr_data, xr_data->runtime->exit_customdata);
+    xr_data->runtime->exit_fn(xr_data);
   }
 
   /* Free the entire runtime data (including session state and context), to play safe. */
@@ -457,9 +456,7 @@ static void wm_xr_session_begin_info_create(wmXrData *xr_data,
   r_begin_info->exit_customdata = xr_data;
 }
 
-void wm_xr_session_toggle(wmWindowManager *wm,
-                          wmXrSessionExitFn session_exit_fn,
-                          void *session_exit_customdata)
+void wm_xr_session_toggle(wmWindowManager *wm, wmXrSessionExitFn session_exit_fn)
 {
   wmXrData *xr_data = &wm->xr;
 
@@ -471,7 +468,6 @@ void wm_xr_session_toggle(wmWindowManager *wm,
 
     xr_data->runtime->session_state.is_started = true;
     xr_data->runtime->exit_fn = session_exit_fn;
-    xr_data->runtime->exit_customdata = session_exit_customdata;
 
     wm_xr_session_begin_info_create(xr_data, &begin_info);
     GHOST_XrSessionStart(xr_data->runtime->context, &begin_info);

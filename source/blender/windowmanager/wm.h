@@ -99,14 +99,12 @@ void wm_open_init_load_ui(wmOperator *op, bool use_prefs);
 void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 
 #ifdef WITH_XR_OPENXR
-typedef void (*wmXrSessionExitFn)(const wmXrData *xr_data, void *customdata);
+typedef void (*wmXrSessionExitFn)(const wmXrData *xr_data);
 
 /* wm_xr.c */
 bool wm_xr_init(wmWindowManager *wm);
 void wm_xr_exit(wmWindowManager *wm);
-void wm_xr_session_toggle(wmWindowManager *wm,
-                          wmXrSessionExitFn session_exit_fn,
-                          void *session_exit_customdata);
+void wm_xr_session_toggle(wmWindowManager *wm, wmXrSessionExitFn session_exit_fn);
 bool wm_xr_events_handle(wmWindowManager *wm);
 #endif
 

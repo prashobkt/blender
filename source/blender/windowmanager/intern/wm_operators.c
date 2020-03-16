@@ -3666,9 +3666,10 @@ static void wm_xr_session_update_mirror_views(Main *bmain, const wmXrData *xr_da
   }
 }
 
-static void wm_xr_session_exit_cb(const wmXrData *xr_data, void *customdata)
+static void wm_xr_session_update_mirror_views_cb(const wmXrData *xr_data)
 {
-  wm_xr_session_update_mirror_views(customdata, xr_data);
+  /* Just use G_MAIN here, storing main isn't reliable enough on file read or exit. */
+  wm_xr_session_update_mirror_views(G_MAIN, xr_data);
 }
 
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
@@ -3681,7 +3682,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  wm_xr_session_toggle(wm, wm_xr_session_exit_cb, bmain);
+  wm_xr_session_toggle(wm, wm_xr_session_update_mirror_views_cb);
   wm_xr_session_update_mirror_views(bmain, &wm->xr);
 
   WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, NULL);
