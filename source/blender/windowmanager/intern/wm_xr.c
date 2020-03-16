@@ -235,9 +235,18 @@ wmXrRuntimeData *wm_xr_runtime_data_create(void)
 
 void wm_xr_runtime_data_free(wmXrRuntimeData **runtime)
 {
+  /* Note that this function may be called twice, because of an indirect recursion: If a session is
+   * running while WM-XR calls this function, calling GHOST_XrContextDestroy() will call this
+   * again, because it's also set as the session exit callback. So NULL-check and NULL everything
+   * that is freed here. */
+
+  /* We free all runtime XR data here, so if the context is still alive, destroy it. */
   if ((*runtime)->context != NULL) {
-    GHOST_XrContextDestroy((*runtime)->context);
+    GHOST_XrContextHandle context = (*runtime)->context;
+    /* Prevent recursive GHOST_XrContextDestroy() call by NULL'ing the context pointer before the
+     * first call, see comment above. */
     (*runtime)->context = NULL;
+    GHOST_XrContextDestroy(context);
   }
   MEM_SAFE_FREE(*runtime);
 }
