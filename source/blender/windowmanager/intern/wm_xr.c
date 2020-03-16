@@ -104,7 +104,7 @@ typedef struct wmXrDrawData {
   /** The pose (location + rotation) to which eye deltas will be applied to when drawing (world
    * space). With positional tracking enabled, it should be the same as the base pose, when
    * disabled it also contains a location delta from the moment the option was toggled. */
-  GHOST_XrPose reference_pose;
+  GHOST_XrPose base_pose;
   float eye_position_ofs[3]; /* Local/view space. */
 } wmXrDrawData;
 
@@ -250,9 +250,9 @@ void wm_xr_runtime_data_free(wmXrRuntimeData **runtime)
   MEM_SAFE_FREE(*runtime);
 }
 
-static void wm_xr_reference_pose_calc(const Scene *scene,
-                                      const XrSessionSettings *settings,
-                                      GHOST_XrPose *r_pose)
+static void wm_xr_base_pose_calc(const Scene *scene,
+                                 const XrSessionSettings *settings,
+                                 GHOST_XrPose *r_base_pose)
 {
   const Object *base_pose_object = ((settings->base_pose_type == XR_BASE_POSE_OBJECT) &&
                                     settings->base_pose_object) ?
@@ -262,26 +262,26 @@ static void wm_xr_reference_pose_calc(const Scene *scene,
   if (settings->base_pose_type == XR_BASE_POSE_CUSTOM) {
     float tmp_quatx[4], tmp_quatz[4];
 
-    copy_v3_v3(r_pose->position, settings->base_pose_location);
+    copy_v3_v3(r_base_pose->position, settings->base_pose_location);
     axis_angle_to_quat_single(tmp_quatx, 'X', M_PI_2);
     axis_angle_to_quat_single(tmp_quatz, 'Z', settings->base_pose_angle);
-    mul_qt_qtqt(r_pose->orientation_quat, tmp_quatz, tmp_quatx);
+    mul_qt_qtqt(r_base_pose->orientation_quat, tmp_quatz, tmp_quatx);
   }
   else if (base_pose_object) {
     float tmp_quat[4];
     float tmp_eul[3];
 
-    mat4_to_loc_quat(r_pose->position, tmp_quat, base_pose_object->obmat);
+    mat4_to_loc_quat(r_base_pose->position, tmp_quat, base_pose_object->obmat);
 
     /* Only use rotation around Z-axis to align view with floor. */
     quat_to_eul(tmp_eul, tmp_quat);
     tmp_eul[0] = M_PI_2;
     tmp_eul[1] = 0;
-    eul_to_quat(r_pose->orientation_quat, tmp_eul);
+    eul_to_quat(r_base_pose->orientation_quat, tmp_eul);
   }
   else {
-    copy_v3_fl(r_pose->position, 0.0f);
-    axis_angle_to_quat_single(r_pose->orientation_quat, 'X', M_PI_2);
+    copy_v3_fl(r_base_pose->position, 0.0f);
+    axis_angle_to_quat_single(r_base_pose->orientation_quat, 'X', M_PI_2);
   }
 }
 
@@ -298,7 +298,7 @@ static void wm_xr_draw_data_populate(const wmXrSessionState *state,
 
   memset(r_draw_data, 0, sizeof(*r_draw_data));
 
-  wm_xr_reference_pose_calc(scene, settings, &r_draw_data->reference_pose);
+  wm_xr_base_pose_calc(scene, settings, &r_draw_data->base_pose);
 
   if (position_tracking_toggled || !state->is_view_data_set) {
     if (use_position_tracking) {
@@ -329,9 +329,9 @@ static void wm_xr_session_state_update(wmXrSessionState *state,
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
   mul_qt_qtqt(viewer_pose.orientation_quat,
-              draw_data->reference_pose.orientation_quat,
+              draw_data->base_pose.orientation_quat,
               draw_view->local_pose.orientation_quat);
-  copy_v3_v3(viewer_pose.position, draw_data->reference_pose.position);
+  copy_v3_v3(viewer_pose.position, draw_data->base_pose.position);
   /* The local pose and the eye pose (which is copied from an earlier local pose) both are view
    * space, so Y-up. In this case we need them in regular Z-up. */
   viewer_pose.position[0] += draw_data->eye_position_ofs[0];
@@ -361,7 +361,7 @@ wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr)
   return xr->runtime ? &xr->runtime->session_state : NULL;
 }
 
-bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_location[3])
+bool WM_xr_session_state_viewer_pose_location_get(const wmXrData *xr, float r_location[3])
 {
   if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
     zero_v3(r_location);
@@ -372,7 +372,7 @@ bool WM_xr_session_state_viewer_location_get(const wmXrData *xr, float r_locatio
   return true;
 }
 
-bool WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotation[4])
+bool WM_xr_session_state_viewer_pose_rotation_get(const wmXrData *xr, float r_rotation[4])
 {
   if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
     unit_qt(r_rotation);
@@ -383,9 +383,9 @@ bool WM_xr_session_state_viewer_rotation_get(const wmXrData *xr, float r_rotatio
   return true;
 }
 
-bool WM_xr_session_state_viewer_matrix_info_get(const wmXrData *xr,
-                                                float r_viewmat[4][4],
-                                                float *r_focal_len)
+bool WM_xr_session_state_viewer_pose_matrix_info_get(const wmXrData *xr,
+                                                     float r_viewmat[4][4],
+                                                     float *r_focal_len)
 {
   if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
     unit_m4(r_viewmat);
@@ -638,11 +638,6 @@ void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4])
   translate_m4(r_viewmat, -pose->position[0], -pose->position[1], -pose->position[2]);
 }
 
-/**
- * Proper reference space set up is not supported yet. We simply hand OpenXR the global space as
- * reference space and apply its pose onto the active camera matrix to get a basic viewing
- * experience going. If there's no active camera with stick to the world origin.
- */
 static void wm_xr_draw_matrices_create(const wmXrDrawData *draw_data,
                                        const GHOST_XrDrawViewInfo *draw_view,
                                        const XrSessionSettings *session_settings,
@@ -670,8 +665,8 @@ static void wm_xr_draw_matrices_create(const wmXrDrawData *draw_data,
   float base_mat[4][4];
 
   wm_xr_pose_to_viewmat(&eye_pose, eye_mat);
-  /* Calculate the reference pose matrix (in world space!). */
-  wm_xr_pose_to_viewmat(&draw_data->reference_pose, base_mat);
+  /* Calculate the base pose matrix (in world space!). */
+  wm_xr_pose_to_viewmat(&draw_data->base_pose, base_mat);
 
   mul_m4_m4m4(r_view_mat, eye_mat, base_mat);
 }

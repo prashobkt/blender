@@ -329,7 +329,7 @@ static void view3d_xr_mirror_setup(const wmWindowManager *wm,
   float viewmat[4][4];
   const float lens_old = v3d->lens;
 
-  if (!WM_xr_session_state_viewer_matrix_info_get(&wm->xr, viewmat, &v3d->lens)) {
+  if (!WM_xr_session_state_viewer_pose_matrix_info_get(&wm->xr, viewmat, &v3d->lens)) {
     /* Can't get info from XR session, use fallback values. */
     copy_m4_m4(viewmat, rv3d->viewmat);
     v3d->lens = lens_old;

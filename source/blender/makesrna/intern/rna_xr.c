@@ -60,22 +60,22 @@ static wmXrData *rna_XrSessionState_wm_xr_data_get(PointerRNA *ptr)
 }
 #  endif
 
-static void rna_XrSessionState_viewer_location_get(PointerRNA *ptr, float *r_values)
+static void rna_XrSessionState_viewer_pose_location_get(PointerRNA *ptr, float *r_values)
 {
 #  ifdef WITH_XR_OPENXR
   const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
-  WM_xr_session_state_viewer_location_get(xr, r_values);
+  WM_xr_session_state_viewer_pose_location_get(xr, r_values);
 #  else
   UNUSED_VARS(ptr);
   zero_v3(r_values);
 #  endif
 }
 
-static void rna_XrSessionState_viewer_rotation_get(PointerRNA *ptr, float *r_values)
+static void rna_XrSessionState_viewer_pose_rotation_get(PointerRNA *ptr, float *r_values)
 {
 #  ifdef WITH_XR_OPENXR
   const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
-  WM_xr_session_state_viewer_rotation_get(xr, r_values);
+  WM_xr_session_state_viewer_pose_rotation_get(xr, r_values);
 #  else
   UNUSED_VARS(ptr);
   unit_qt(r_values);
@@ -94,17 +94,17 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
        "SCENE_CAMERA",
        0,
        "Scene Camera",
-       "Follow the active scene camera to define the VR view's reference pose"},
+       "Follow the active scene camera to define the VR view's base pose"},
       {XR_BASE_POSE_OBJECT,
        "OBJECT",
        0,
        "Object",
-       "Follow the transformation of an object to define the VR view's reference pose"},
+       "Follow the transformation of an object to define the VR view's base pose"},
       {XR_BASE_POSE_CUSTOM,
        "CUSTOM",
        0,
        "Custom",
-       "Follow a custom transformation to define the VR view's reference pose"},
+       "Follow a custom transformation to define the VR view's base pose"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -120,23 +120,24 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_enum_items(prop, base_pose_types);
   RNA_def_property_ui_text(
-      prop, "Base Pose Type", "Define where the base pose for the VR view comes from");
+      prop,
+      "Base Pose Type",
+      "Define where the location and rotation for the VR view come from, to which "
+      "translation and rotation deltas from the VR headset will be applied to");
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "base_pose_object", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop,
-      "Base Pose Object",
-      "Object to take the location and rotation for the centroid from, to which translation and "
-      "rotation deltas from the VR headset will be applied to");
+  RNA_def_property_ui_text(prop,
+                           "Base Pose Object",
+                           "Object to take the location and rotation to which translation and "
+                           "rotation deltas from the VR headset will be applied to");
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "base_pose_location", PROP_FLOAT, PROP_TRANSLATION);
-  RNA_def_property_ui_text(
-      prop,
-      "Base Pose Location",
-      "Coordinates for the centroid to apply translation deltas from the VR headset to");
+  RNA_def_property_ui_text(prop,
+                           "Base Pose Location",
+                           "Coordinates to apply translation deltas from the VR headset to");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
@@ -196,22 +197,22 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   parm = RNA_def_boolean(func, "result", 0, "Result", "");
   RNA_def_function_return(func, parm);
 
-  prop = RNA_def_property(srna, "viewer_location", PROP_FLOAT, PROP_TRANSLATION);
+  prop = RNA_def_property(srna, "viewer_pose_location", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_location_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_pose_location_get", NULL, NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop,
-      "Viewer Location",
+      "Viewer Pose Location",
       "Last known location of the viewer pose (center between the eyes) in world space");
 
-  prop = RNA_def_property(srna, "viewer_rotation", PROP_FLOAT, PROP_QUATERNION);
+  prop = RNA_def_property(srna, "viewer_pose_rotation", PROP_FLOAT, PROP_QUATERNION);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_rotation_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_pose_rotation_get", NULL, NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop,
-      "Viewer Rotation",
+      "Viewer Pose Rotation",
       "Last known rotation of the viewer pose (center between the eyes) in world space");
 }
 
