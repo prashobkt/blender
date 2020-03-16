@@ -231,8 +231,8 @@ static GP_Sculpt_Settings *gpsculpt_get_settings(Scene *scene)
 static bool gp_brush_invert_check(tGP_BrushEditData *gso)
 {
   /* The basic setting is the brush's setting (from the panel) */
-  bool invert = ((gso->brush->gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_INVERT) != 0);
-
+  bool invert = ((gso->brush->gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_INVERT) != 0) ||
+                (gso->brush->gpencil_settings->sculpt_flag & BRUSH_DIR_IN);
   /* During runtime, the user can hold down the Ctrl key to invert the basic behavior */
   if (gso->flag & GP_SCULPT_FLAG_INVERT) {
     invert ^= true;
@@ -1744,7 +1744,8 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
         if ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)) {
           /* compute multiframe falloff factor */
           if (gso->use_multiframe_falloff) {
-            /* Faloff depends on distance to active frame (relative to the overall frame range) */
+            /* Falloff depends on distance to active frame
+             * (relative to the overall frame range). */
             gso->mf_falloff = BKE_gpencil_multiframe_falloff_calc(
                 gpf, gpl->actframe->framenum, f_init, f_end, ts->gp_sculpt.cur_falloff);
           }

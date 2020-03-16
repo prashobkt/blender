@@ -1844,8 +1844,8 @@ static void write_gpencil_modifiers(WriteData *wd, ListBase *modbase)
         write_curvemapping(wd, gpmd->curfalloff);
       }
     }
-    else if (md->type == eGpencilModifierType_Vertexcolor) {
-      VertexcolorGpencilModifierData *gpmd = (VertexcolorGpencilModifierData *)md;
+    else if (md->type == eGpencilModifierType_Tint) {
+      TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
       if (gpmd->colorband) {
         writestruct(wd, DATA, ColorBand, 1, gpmd->colorband);
       }
@@ -1867,12 +1867,6 @@ static void write_gpencil_modifiers(WriteData *wd, ListBase *modbase)
     }
     else if (md->type == eGpencilModifierType_Opacity) {
       OpacityGpencilModifierData *gpmd = (OpacityGpencilModifierData *)md;
-      if (gpmd->curve_intensity) {
-        write_curvemapping(wd, gpmd->curve_intensity);
-      }
-    }
-    else if (md->type == eGpencilModifierType_Tint) {
-      TintGpencilModifierData *gpmd = (TintGpencilModifierData *)md;
       if (gpmd->curve_intensity) {
         write_curvemapping(wd, gpmd->curve_intensity);
       }
@@ -2767,9 +2761,9 @@ static void write_scene(WriteData *wd, Scene *sce)
   }
 
   /* Eevee Lightcache */
-  if (sce->eevee.light_cache && !wd->use_memfile) {
-    writestruct(wd, DATA, LightCache, 1, sce->eevee.light_cache);
-    write_lightcache(wd, sce->eevee.light_cache);
+  if (sce->eevee.light_cache_data && !wd->use_memfile) {
+    writestruct(wd, DATA, LightCache, 1, sce->eevee.light_cache_data);
+    write_lightcache(wd, sce->eevee.light_cache_data);
   }
 
   write_view3dshading(wd, &sce->display.shading);

@@ -34,16 +34,16 @@ extern "C" {
 #endif
 
 /* ********* exports for space_view3d/ module for offscreen rendering ********** */
-struct Depsgraph;
-struct Scene;
-struct View3D;
 struct ARegion;
+struct Depsgraph;
 struct GPUOffScreen;
 struct GPUViewport;
+struct Scene;
+struct View3D;
 struct View3DShading;
 
 void ED_view3d_draw_offscreen(struct Depsgraph *depsgraph,
-                              struct Scene *scene,
+                              const struct Scene *scene,
                               eDrawType drawtype,
                               struct View3D *v3d,
                               struct ARegion *region,
