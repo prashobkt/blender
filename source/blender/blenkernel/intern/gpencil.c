@@ -4047,8 +4047,10 @@ void BKE_gpencil_update_layer_parent(const Depsgraph *depsgraph, Object *ob)
         bPoseChannel *pchan = BKE_pose_channel_find_name(ob_parent->pose, gpl->parsubstr);
         if (pchan != NULL) {
           copy_m4_m4(cur_mat, ob->imat);
-          mul_m4_m4m4(cur_mat, cur_mat, ob_parent->obmat);
-          mul_m4_m4m4(cur_mat, cur_mat, pchan->pose_mat);
+          mul_m4_m4m4(cur_mat, ob_parent->obmat, pchan->pose_mat);
+        }
+        else {
+          unit_m4(cur_mat);
         }
       }
       /* only redo if any change */
