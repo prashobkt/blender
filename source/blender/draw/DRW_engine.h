@@ -141,8 +141,8 @@ void DRW_opengl_context_disable(void);
 
 /* Not nice to expose these. Code to render offscreen viewports can save expensive context switches
  * by using this directly however. */
-void *DRW_opengl_context_get(void);
-void *DRW_gpu_context_get(void);
+void *DRW_xr_opengl_context_get(void);
+void *DRW_xr_gpu_context_get(void);
 
 /* For garbage collection */
 void DRW_cache_free_old_batches(struct Main *bmain);
