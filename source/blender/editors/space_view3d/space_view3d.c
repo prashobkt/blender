@@ -939,9 +939,11 @@ static void view3d_main_region_listener(
         if (wmn->subtype == NS_VIEW3D_GPU) {
           rv3d->rflag |= RV3D_GPULIGHT_UPDATE;
         }
+#ifdef WITH_XR_OPENXR
         else if (wmn->subtype == NS_VIEW3D_SHADING) {
           ED_view3d_xr_shading_update(G_MAIN->wm.first, v3d);
         }
+#endif
         ED_region_tag_redraw(region);
         WM_gizmomap_tag_refresh(gzmap);
       }
