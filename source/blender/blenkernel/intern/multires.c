@@ -271,15 +271,16 @@ static MDisps *multires_mdisps_initialize_hidden(Mesh *me, int level)
 }
 
 Mesh *BKE_multires_create_mesh(struct Depsgraph *depsgraph,
-                               Scene *scene,
-                               MultiresModifierData *mmd,
-                               Object *ob)
+                               Object *object,
+                               MultiresModifierData *mmd)
 {
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-  Mesh *deformed_mesh = mesh_get_eval_deform(depsgraph, scene, ob_eval, &CD_MASK_BAREMESH);
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+  Mesh *deformed_mesh = mesh_get_eval_deform(
+      depsgraph, scene_eval, object_eval, &CD_MASK_BAREMESH);
   ModifierEvalContext modifier_ctx = {
       .depsgraph = depsgraph,
-      .object = ob_eval,
+      .object = object_eval,
       .flag = MOD_APPLY_USECACHE | MOD_APPLY_IGNORE_SIMPLIFY,
   };
 
@@ -290,6 +291,25 @@ Mesh *BKE_multires_create_mesh(struct Depsgraph *depsgraph,
     result = BKE_mesh_copy_for_eval(deformed_mesh, true);
   }
   return result;
+}
+
+Mesh *BKE_multires_create_deformed_base_mesh(struct Depsgraph *depsgraph,
+                                             Object *object,
+                                             MultiresModifierData *mmd)
+{
+  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+
+  const int mmd_index = BLI_findindex(&object->modifiers, &mmd->modifier);
+  BLI_assert(mmd_index != -1);
+
+  Object object_for_eval = *object_eval;
+  object_for_eval.data = object->data;
+
+  Mesh *base_mesh = mesh_create_eval_final_view_index(
+      depsgraph, scene_eval, object, &CD_MASK_BAREMESH, mmd_index - 1);
+
+  return base_mesh;
 }
 
 MultiresModifierData *find_multires_modifier_before(Scene *scene, ModifierData *lastmd)
