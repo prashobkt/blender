@@ -234,6 +234,10 @@ typedef struct View3DOverlay {
 typedef struct View3D_Runtime {
   /** Nkey panel stores stuff here. */
   void *properties_storage;
+  /** Runtime only flags. */
+  int flag;
+
+  char _pad1[4];
 } View3D_Runtime;
 
 /** 3D ViewPort Struct. */
@@ -351,6 +355,12 @@ typedef struct View3D {
 #define V3D_FLAG_UNUSED_12 (1 << 12) /* cleared */
 #define V3D_GLOBAL_STATS (1 << 13)
 #define V3D_DRAW_CENTERS (1 << 15)
+
+/** #View3D_Runtime.flag */
+enum {
+  /** The 3D view which the XR session was created in is flagged with this. */
+  V3D_RUNTIME_XR_SESSION_ROOT = (1 << 0),
+};
 
 /** #RegionView3D.persp */
 #define RV3D_ORTHO 0

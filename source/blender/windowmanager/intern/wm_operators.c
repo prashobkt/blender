@@ -3647,18 +3647,26 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 
 #ifdef WITH_XR_OPENXR
 
-static void wm_xr_session_update_mirror_views(Main *bmain, const wmXrData *xr_data)
+static void wm_xr_session_update_screen(Main *bmain, const wmXrData *xr_data)
 {
-  const bool enable = WM_xr_session_exists(xr_data);
+  const bool session_exists = WM_xr_session_exists(xr_data);
 
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
     for (ScrArea *area = screen->areabase.first; area; area = area->next) {
       for (SpaceLink *slink = area->spacedata.first; slink; slink = slink->next) {
         if (slink->spacetype == SPACE_VIEW3D) {
-          const View3D *v3d = (View3D *)slink;
+          View3D *v3d = (View3D *)slink;
 
           if (v3d->flag & V3D_XR_SESSION_MIRROR) {
-            ED_view3d_xr_mirror_update(area, v3d, enable);
+            ED_view3d_xr_mirror_update(area, v3d, session_exists);
+          }
+
+          if (session_exists) {
+            ED_view3d_xr_shading_update(bmain->wm.first, v3d);
+          }
+          /* Ensure no 3D View is tagged as session root. */
+          else {
+            v3d->runtime.flag &= ~V3D_RUNTIME_XR_SESSION_ROOT;
           }
         }
       }
@@ -3666,24 +3674,26 @@ static void wm_xr_session_update_mirror_views(Main *bmain, const wmXrData *xr_da
   }
 }
 
-static void wm_xr_session_update_mirror_views_cb(const wmXrData *xr_data)
+static void wm_xr_session_update_screen_on_exit_cb(const wmXrData *xr_data)
 {
   /* Just use G_MAIN here, storing main isn't reliable enough on file read or exit. */
-  wm_xr_session_update_mirror_views(G_MAIN, xr_data);
+  wm_xr_session_update_screen(G_MAIN, xr_data);
 }
 
 static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
+  View3D *v3d = CTX_wm_view3d(C);
 
   /* Lazy-create xr context - tries to dynlink to the runtime, reading active_runtime.json. */
   if (wm_xr_init(wm) == false) {
     return OPERATOR_CANCELLED;
   }
 
-  wm_xr_session_toggle(wm, wm_xr_session_update_mirror_views_cb);
-  wm_xr_session_update_mirror_views(bmain, &wm->xr);
+  v3d->runtime.flag |= V3D_RUNTIME_XR_SESSION_ROOT;
+  wm_xr_session_toggle(wm, wm_xr_session_update_screen_on_exit_cb);
+  wm_xr_session_update_screen(bmain, &wm->xr);
 
   WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
@@ -3701,6 +3711,7 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = wm_xr_session_toggle_exec;
+  ot->poll = ED_operator_view3d_active;
 
   /* XXX INTERNAL just to hide it from the search menu by default, an Add-on will expose it in the
    * UI instead. Not meant as a permanent solution. */

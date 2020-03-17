@@ -738,6 +738,7 @@ void ED_view3d_local_collections_reset(struct bContext *C, const bool reset_all)
 void ED_view3d_xr_mirror_update(const struct ScrArea *area,
                                 const struct View3D *v3d,
                                 const bool enable);
+void ED_view3d_xr_shading_update(struct wmWindowManager *wm, const View3D *v3d);
 bool ED_view3d_is_region_xr_mirror_active(const struct wmWindowManager *wm,
                                           const struct View3D *v3d,
                                           const struct ARegion *region);

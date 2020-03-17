@@ -39,6 +39,7 @@
 
 #include "BKE_context.h"
 #include "BKE_curve.h"
+#include "BKE_global.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_lattice.h"
@@ -350,6 +351,8 @@ static SpaceLink *view3d_duplicate(SpaceLink *sl)
     v3dn->localvd = NULL;
     v3dn->runtime.properties_storage = NULL;
   }
+  /* Only one View3D is allowed to have this flag! */
+  v3dn->runtime.flag &= ~V3D_RUNTIME_XR_SESSION_ROOT;
 
   v3dn->local_collections_uuid = 0;
   v3dn->flag &= ~(V3D_LOCAL_COLLECTIONS | V3D_XR_SESSION_MIRROR);
@@ -935,6 +938,9 @@ static void view3d_main_region_listener(
       if (wmn->data == ND_SPACE_VIEW3D) {
         if (wmn->subtype == NS_VIEW3D_GPU) {
           rv3d->rflag |= RV3D_GPULIGHT_UPDATE;
+        }
+        else if (wmn->subtype == NS_VIEW3D_SHADING) {
+          ED_view3d_xr_shading_update(G_MAIN->wm.first, v3d);
         }
         ED_region_tag_redraw(region);
         WM_gizmomap_tag_refresh(gzmap);

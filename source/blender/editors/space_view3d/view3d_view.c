@@ -36,6 +36,7 @@
 #include "BKE_action.h"
 #include "BKE_camera.h"
 #include "BKE_context.h"
+#include "BKE_idprop.h"
 #include "BKE_object.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
@@ -1720,6 +1721,22 @@ void ED_view3d_xr_mirror_update(const ScrArea *area, const View3D *v3d, const bo
     }
     else {
       view3d_xr_mirror_end(region_rv3d->regiondata);
+    }
+  }
+}
+
+void ED_view3d_xr_shading_update(wmWindowManager *wm, const View3D *v3d)
+{
+  if (v3d->runtime.flag & V3D_RUNTIME_XR_SESSION_ROOT) {
+    View3DShading *xr_shading = &wm->xr.session_settings.shading;
+
+    BLI_assert(WM_xr_session_exists(&wm->xr));
+
+    /* Copy shading from View3D to VR view. */
+    *xr_shading = v3d->shading;
+    if (xr_shading->prop) {
+      IDP_FreeProperty(xr_shading->prop);
+      xr_shading->prop = IDP_CopyProperty(xr_shading->prop);
     }
   }
 }

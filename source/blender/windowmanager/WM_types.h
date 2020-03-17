@@ -438,6 +438,7 @@ typedef struct wmNotifier {
 
 /* subtype 3d view editing */
 #define NS_VIEW3D_GPU (16 << 8)
+#define NS_VIEW3D_SHADING (16 << 9)
 
 /* action classification */
 #define NOTE_ACTION (0x000000FF)
