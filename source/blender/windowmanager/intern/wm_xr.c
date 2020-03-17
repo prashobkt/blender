@@ -604,7 +604,7 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
   data->gpu_binding_type = gpu_binding_type;
   surface->customdata = data;
 
-  surface->ghost_ctx = DRW_opengl_context_get();
+  surface->ghost_ctx = DRW_xr_opengl_context_get();
 
   switch (gpu_binding_type) {
     case GHOST_kXrGraphicsOpenGL:
@@ -616,7 +616,7 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
 #endif
   }
 
-  surface->gpu_ctx = DRW_gpu_context_get();
+  surface->gpu_ctx = DRW_xr_gpu_context_get();
 
   g_xr_surface = surface;
 
