@@ -516,9 +516,10 @@ static void wm_xr_session_surface_draw(bContext *C)
   if (!GHOST_XrSessionIsRunning(wm->xr.runtime->context)) {
     return;
   }
+  DRW_xr_drawing_begin();
   GHOST_XrSessionDrawViews(wm->xr.runtime->context, C);
-
   GPU_offscreen_unbind(surface_data->offscreen, false);
+  DRW_xr_drawing_end();
 }
 
 static void wm_xr_session_free_data(wmSurface *surface)
