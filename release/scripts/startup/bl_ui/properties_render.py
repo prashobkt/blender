@@ -19,13 +19,13 @@
 
 # <pep8 compliant>
 from bpy.types import Panel
+from bl_ui.space_view3d import (
+    VIEW3D_PT_shading_lighting,
+    VIEW3D_PT_shading_color,
+    VIEW3D_PT_shading_options,
+)
 
 from bl_ui.properties_grease_pencil_common import GreasePencilSimplifyPanel
-from bl_ui.utils import (
-    View3DShadingLightingLayout,
-    View3DShadingColorLayout,
-    View3DShadingOptionsLayout,
-)
 
 
 class RenderButtonsPanel:
@@ -579,7 +579,7 @@ class RENDER_PT_opengl_film(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_opengl_lighting(RenderButtonsPanel, Panel):
-    bl_label = View3DShadingLightingLayout.bl_label
+    bl_label = "Lighting"
     COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
@@ -587,12 +587,11 @@ class RENDER_PT_opengl_lighting(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        shading = context.scene.display.shading
-        View3DShadingLightingLayout.draw(context, shading, self.layout)
+        VIEW3D_PT_shading_lighting.draw(self, context)
 
 
 class RENDER_PT_opengl_color(RenderButtonsPanel, Panel):
-    bl_label = View3DShadingLightingLayout.bl_label
+    bl_label = "Color"
     COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
@@ -600,12 +599,11 @@ class RENDER_PT_opengl_color(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        shading = context.scene.display.shading
-        View3DShadingColorLayout._draw_color_type(shading, self.layout)
+        VIEW3D_PT_shading_color._draw_color_type(self, context)
 
 
 class RENDER_PT_opengl_options(RenderButtonsPanel, Panel):
-    bl_label = View3DShadingOptionsLayout.bl_label
+    bl_label = "Options"
     COMPAT_ENGINES = {'BLENDER_WORKBENCH'}
 
     @classmethod
@@ -613,8 +611,7 @@ class RENDER_PT_opengl_options(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        shading = context.scene.display.shading
-        View3DShadingOptionsLayout.draw(context, shading, self.layout)
+        VIEW3D_PT_shading_options.draw(self, context)
 
 
 class RENDER_PT_simplify(RenderButtonsPanel, Panel):
