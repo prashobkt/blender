@@ -4033,38 +4033,15 @@ void BKE_gpencil_update_layer_parent(const Depsgraph *depsgraph, Object *ob)
     return;
   }
 
-  /* Create matrix to rotate -90 degrees in X axis. */
-  const float matrix[4][4] = {1.0f,
-                              0.0f,
-                              0.0f,
-                              0.0f,
-                              0.0f,
-                              0.0f,
-                              -1.0f,
-                              0.0f,
-                              0.0f,
-                              1.0f,
-                              0.0f,
-                              0.0f,
-                              0.0f,
-                              0.0f,
-                              0.0f,
-                              1.0f};
-
   bGPdata *gpd = (bGPdata *)ob->data;
-  bGPDspoint *pt;
-  int i;
-  float cur_mat[4][4], icur_mat[4][4];
+  float cur_mat[4][4];
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if ((gpl->parent != NULL) && (gpl->actframe != NULL)) {
       Object *ob_parent = DEG_get_evaluated_object(depsgraph, gpl->parent);
       /* calculate new matrix */
       if ((gpl->partype == PAROBJECT) || (gpl->partype == PARSKEL)) {
-        mul_m4_m4m4(cur_mat, ob_parent->obmat, ob->imat);
-
-        invert_m4_m4(icur_mat, cur_mat);
-        mul_m4_m4m4(icur_mat, icur_mat, ob->imat);
+        copy_m4_m4(cur_mat, ob_parent->obmat);
       }
       else if (gpl->partype == PARBONE) {
         bPoseChannel *pchan = BKE_pose_channel_find_name(ob_parent->pose, gpl->parsubstr);
@@ -4072,28 +4049,19 @@ void BKE_gpencil_update_layer_parent(const Depsgraph *depsgraph, Object *ob)
           copy_m4_m4(cur_mat, ob->imat);
           mul_m4_m4m4(cur_mat, cur_mat, ob_parent->obmat);
           mul_m4_m4m4(cur_mat, cur_mat, pchan->pose_mat);
-
-          invert_m4_m4(icur_mat, cur_mat);
-          mul_m4_m4m4(icur_mat, icur_mat, ob->imat);
-
-          /* Rotate -90 degrees in X axis because GPencil default strokes orientation
-           * is to X/Z axis, but bones are X/Y. */
-          mul_m4_m4m4(cur_mat, cur_mat, matrix);
         }
       }
       /* only redo if any change */
-      bGPDlayer *gpl_active = (gpl->runtime.gpl_orig != NULL) ? gpl->runtime.gpl_orig : gpl;
-
       if (!equals_m4m4(gpl->inverse, cur_mat)) {
         LISTBASE_FOREACH (bGPDstroke *, gps, &gpl->actframe->strokes) {
+          bGPDspoint *pt;
+          int i;
           for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+            mul_m4_v3(gpl->inverse, &pt->x);
             mul_m4_v3(cur_mat, &pt->x);
           }
         }
       }
-
-      /* set new parent matrix */
-      copy_m4_m4(gpl_active->inverse, icur_mat);
     }
   }
 }
