@@ -38,6 +38,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
+#include "BKE_hair.h"
 #include "BKE_lattice.h"
 #include "BKE_main.h"
 #include "BKE_mball.h"
@@ -48,6 +49,8 @@
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 #include "BKE_pointcache.h"
+#include "BKE_pointcloud.h"
+#include "BKE_volume.h"
 
 #include "draw_manager.h"
 #include "DNA_camera_types.h"
@@ -562,7 +565,7 @@ static void drw_viewport_var_init(void)
     DRW_view_camtexco_set(DST.view_default, rv3d->viewcamtexcofac);
 
     if (DST.draw_ctx.sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      int plane_len = (rv3d->viewlock & RV3D_BOXCLIP) ? 4 : 6;
+      int plane_len = (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXCLIP) ? 4 : 6;
       DRW_view_clip_planes_set(DST.view_default, rv3d->clip, plane_len);
     }
 
@@ -1554,6 +1557,7 @@ void DRW_draw_render_loop_offscreen(struct Depsgraph *depsgraph,
                                     RenderEngineType *engine_type,
                                     ARegion *region,
                                     View3D *v3d,
+                                    const bool is_image_render,
                                     const bool draw_background,
                                     const bool do_color_management,
                                     GPUOffScreen *ofs,
@@ -1569,7 +1573,7 @@ void DRW_draw_render_loop_offscreen(struct Depsgraph *depsgraph,
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
-  DST.options.is_image_render = true;
+  DST.options.is_image_render = is_image_render;
   DST.options.do_color_management = do_color_management;
   DST.options.draw_background = draw_background;
   DRW_draw_render_loop_ex(depsgraph, engine_type, region, v3d, render_viewport, NULL);
@@ -2652,6 +2656,15 @@ void DRW_engines_register(void)
 
     BKE_gpencil_batch_cache_dirty_tag_cb = DRW_gpencil_batch_cache_dirty_tag;
     BKE_gpencil_batch_cache_free_cb = DRW_gpencil_batch_cache_free;
+
+    BKE_hair_batch_cache_dirty_tag_cb = DRW_hair_batch_cache_dirty_tag;
+    BKE_hair_batch_cache_free_cb = DRW_hair_batch_cache_free;
+
+    BKE_pointcloud_batch_cache_dirty_tag_cb = DRW_pointcloud_batch_cache_dirty_tag;
+    BKE_pointcloud_batch_cache_free_cb = DRW_pointcloud_batch_cache_free;
+
+    BKE_volume_batch_cache_dirty_tag_cb = DRW_volume_batch_cache_dirty_tag;
+    BKE_volume_batch_cache_free_cb = DRW_volume_batch_cache_free;
   }
 }
 
@@ -2829,4 +2842,39 @@ void DRW_gpu_render_context_disable(void *UNUSED(re_gpu_context))
   GPU_context_active_set(NULL);
 }
 
+#ifdef WITH_XR_OPENXR
+
+/* XXX
+ * There should really be no such getter, but for VR we currently can't easily avoid it. OpenXR
+ * needs some low level info for the OpenGL context that will be used for submitting the
+ * final framebuffer. VR could in theory create its own context, but that would mean we have to
+ * switch to it just to submit the final frame, which has notable performance impact.
+ *
+ * We could "inject" a context through DRW_opengl_render_context_enable(), but that would have to
+ * work from the main thread, which is tricky to get working too. The preferable solution would be
+ * using a separate thread for VR drawing where a single context can stay active. */
+void *DRW_xr_opengl_context_get(void)
+{
+  return DST.gl_context;
+}
+
+/* XXX See comment on DRW_xr_opengl_context_get(). */
+void *DRW_xr_gpu_context_get(void)
+{
+  return DST.gpu_context;
+}
+
+/* XXX See comment on DRW_xr_opengl_context_get(). */
+void DRW_xr_drawing_begin(void)
+{
+  BLI_ticket_mutex_lock(DST.gl_context_mutex);
+}
+
+/* XXX See comment on DRW_xr_opengl_context_get(). */
+void DRW_xr_drawing_end(void)
+{
+  BLI_ticket_mutex_unlock(DST.gl_context_mutex);
+}
+
+#endif
 /** \} */

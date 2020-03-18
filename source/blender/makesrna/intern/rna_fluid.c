@@ -1263,7 +1263,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Threshold",
-      "Maximum amount of fluid a cell can contain before it is considered empty");
+      "Minimum amount of fluid a cell can contain before it is considered empty");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_resetCache");
 
   prop = RNA_def_property(srna, "use_adaptive_domain", PROP_BOOLEAN, PROP_NONE);
@@ -1361,7 +1361,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Dissolve Speed",
-      "Determine how quickly the smoke dissolves (higher value makes smoke disappear faster)");
+      "Determine how quickly the smoke dissolves (lower value makes smoke disappear faster)");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_resetCache");
 
   prop = RNA_def_property(srna, "vorticity", PROP_FLOAT, PROP_NONE);

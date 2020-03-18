@@ -1090,7 +1090,7 @@ static int actionzone_modal(bContext *C, wmOperator *op, const wmEvent *event)
       }
       break;
     }
-    case ESCKEY:
+    case EVT_ESCKEY:
       actionzone_exit(op);
       return OPERATOR_CANCELLED;
     case LEFTMOUSE:
@@ -1270,7 +1270,7 @@ static int area_swap_modal(bContext *C, wmOperator *op, const wmEvent *event)
       }
       break;
 
-    case ESCKEY:
+    case EVT_ESCKEY:
       area_swap_cancel(C, op);
       return OPERATOR_CANCELLED;
   }
@@ -2335,7 +2335,7 @@ static int area_split_modal(bContext *C, wmOperator *op, const wmEvent *event)
       break;
 
     case MIDDLEMOUSE:
-    case TABKEY:
+    case EVT_TABKEY:
       if (sd->previewmode == 0) {
         /* pass */
       }
@@ -2353,11 +2353,11 @@ static int area_split_modal(bContext *C, wmOperator *op, const wmEvent *event)
       break;
 
     case RIGHTMOUSE: /* cancel operation */
-    case ESCKEY:
+    case EVT_ESCKEY:
       area_split_cancel(C, op);
       return OPERATOR_CANCELLED;
 
-    case LEFTCTRLKEY:
+    case EVT_LEFTCTRLKEY:
       sd->do_snap = event->val == KM_PRESS;
       update_factor = true;
       break;
@@ -2757,7 +2757,7 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
       }
       break;
 
-    case ESCKEY:
+    case EVT_ESCKEY:
       break;
   }
 
@@ -3473,7 +3473,7 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
       break;
 
     case RIGHTMOUSE:
-    case ESCKEY:
+    case EVT_ESCKEY:
       area_join_cancel(C, op);
       return OPERATOR_CANCELLED;
   }
@@ -3818,6 +3818,7 @@ static void region_quadview_init_rv3d(
   }
 
   rv3d->viewlock = viewlock;
+  rv3d->runtime_viewlock = 0;
   rv3d->view = view;
   rv3d->view_axis_roll = RV3D_VIEW_AXIS_ROLL_0;
   rv3d->persp = persp;
@@ -3915,7 +3916,7 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
       RegionView3D *rv3d = region->regiondata;
       const char viewlock = (rv3d->viewlock_quad & RV3D_VIEWLOCK_INIT) ?
                                 (rv3d->viewlock_quad & ~RV3D_VIEWLOCK_INIT) :
-                                RV3D_LOCKED;
+                                RV3D_LOCK_ROTATION;
 
       region_quadview_init_rv3d(
           sa, region, viewlock, ED_view3d_lock_view_from_index(index_qsplit++), RV3D_ORTHO);

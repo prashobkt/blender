@@ -58,6 +58,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_shader_fx_types.h"
+#include "DNA_hair_types.h"
 #include "DNA_ipo_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
@@ -74,6 +75,7 @@
 #include "DNA_object_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
+#include "DNA_pointcloud_types.h"
 #include "DNA_curveprofile_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_rigidbody_types.h"
@@ -88,6 +90,7 @@
 #include "DNA_sound_types.h"
 #include "DNA_space_types.h"
 #include "DNA_vfont_types.h"
+#include "DNA_volume_types.h"
 #include "DNA_workspace_types.h"
 #include "DNA_world_types.h"
 #include "DNA_movieclip_types.h"
@@ -118,6 +121,7 @@
 #include "BKE_fluid.h"
 #include "BKE_global.h"  // for G
 #include "BKE_gpencil_modifier.h"
+#include "BKE_hair.h"
 #include "BKE_idcode.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
@@ -136,13 +140,14 @@
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_curveprofile.h"
+#include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_sequencer.h"
 #include "BKE_shader_fx.h"
 #include "BKE_sound.h"
+#include "BKE_volume.h"
 #include "BKE_workspace.h"
 
 #include "DRW_engine.h"
@@ -1595,6 +1600,9 @@ void blo_filedata_free(FileData *fd)
     if (fd->soundmap) {
       oldnewmap_free(fd->soundmap);
     }
+    if (fd->volumemap) {
+      oldnewmap_free(fd->volumemap);
+    }
     if (fd->packedmap) {
       oldnewmap_free(fd->packedmap);
     }
@@ -1802,6 +1810,15 @@ static void *newsoundadr(FileData *fd, const void *adr)
 {
   if (fd->soundmap && adr) {
     return oldnewmap_lookup_and_inc(fd->soundmap, adr, true);
+  }
+  return NULL;
+}
+
+/* used to restore volume data after undo */
+static void *newvolumeadr(FileData *fd, const void *adr)
+{
+  if (fd->volumemap && adr) {
+    return oldnewmap_lookup_and_inc(fd->volumemap, adr, true);
   }
   return NULL;
 }
@@ -2112,6 +2129,37 @@ void blo_end_sound_pointer_map(FileData *fd, Main *oldmain)
   }
 }
 
+void blo_make_volume_pointer_map(FileData *fd, Main *oldmain)
+{
+  fd->volumemap = oldnewmap_new();
+
+  Volume *volume = oldmain->volumes.first;
+  for (; volume; volume = volume->id.next) {
+    if (volume->runtime.grids) {
+      oldnewmap_insert(fd->volumemap, volume->runtime.grids, volume->runtime.grids, 0);
+    }
+  }
+}
+
+/* set old main volume caches to zero if it has been restored */
+/* this works because freeing old main only happens after this call */
+void blo_end_volume_pointer_map(FileData *fd, Main *oldmain)
+{
+  OldNew *entry = fd->volumemap->entries;
+  Volume *volume = oldmain->volumes.first;
+  int i;
+
+  /* used entries were restored, so we put them to zero */
+  for (i = 0; i < fd->volumemap->nentries; i++, entry++) {
+    if (entry->nr > 0)
+      entry->newp = NULL;
+  }
+
+  for (; volume; volume = volume->id.next) {
+    volume->runtime.grids = newvolumeadr(fd, volume->runtime.grids);
+  }
+}
+
 /* XXX disabled this feature - packed files also belong in temp saves and quit.blend,
  * to make restore work. */
 
@@ -2126,6 +2174,7 @@ void blo_make_packed_pointer_map(FileData *fd, Main *oldmain)
   Image *ima;
   VFont *vfont;
   bSound *sound;
+  Volume *volume;
   Library *lib;
 
   fd->packedmap = oldnewmap_new();
@@ -2156,6 +2205,12 @@ void blo_make_packed_pointer_map(FileData *fd, Main *oldmain)
     }
   }
 
+  for (volume = oldmain->volumes.first; volume; volume = volume->id.next) {
+    if (volume->packedfile) {
+      insert_packedmap(fd, volume->packedfile);
+    }
+  }
+
   for (lib = oldmain->libraries.first; lib; lib = lib->id.next) {
     if (lib->packedfile) {
       insert_packedmap(fd, lib->packedfile);
@@ -2170,6 +2225,7 @@ void blo_end_packed_pointer_map(FileData *fd, Main *oldmain)
   Image *ima;
   VFont *vfont;
   bSound *sound;
+  Volume *volume;
   Library *lib;
   OldNew *entry = fd->packedmap->entries;
   int i;
@@ -2201,6 +2257,10 @@ void blo_end_packed_pointer_map(FileData *fd, Main *oldmain)
 
   for (lib = oldmain->libraries.first; lib; lib = lib->id.next) {
     lib->packedfile = newpackedadr(fd, lib->packedfile);
+  }
+
+  for (volume = oldmain->volumes.first; volume; volume = volume->id.next) {
+    volume->packedfile = newpackedadr(fd, volume->packedfile);
   }
 }
 
@@ -7187,6 +7247,7 @@ static void direct_link_region(FileData *fd, ARegion *region, int spacetype)
         rv3d->smooth_timer = NULL;
 
         rv3d->rflag &= ~(RV3D_NAVIGATING | RV3D_PAINTING);
+        rv3d->runtime_viewlock = 0;
       }
     }
   }
@@ -7277,7 +7338,10 @@ static void direct_link_area(FileData *fd, ScrArea *area)
         direct_link_gpencil(fd, v3d->gpd);
       }
       v3d->localvd = newdataadr(fd, v3d->localvd);
+
+      /* Runtime data */
       v3d->runtime.properties_storage = NULL;
+      v3d->runtime.flag = 0;
 
       /* render can be quite heavy, set to solid on load */
       if (v3d->shading.type == OB_RENDER) {
@@ -7658,6 +7722,23 @@ static bool direct_link_area_map(FileData *fd, ScrAreaMap *area_map)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name XR-data
+ * \{ */
+
+static void direct_link_wm_xr_data(FileData *fd, wmXrData *xr_data)
+{
+  direct_link_view3dshading(fd, &xr_data->session_settings.shading);
+}
+
+static void lib_link_wm_xr_data(FileData *fd, ID *parent_id, wmXrData *xr_data)
+{
+  xr_data->session_settings.base_pose_object = newlibadr(
+      fd, parent_id->lib, xr_data->session_settings.base_pose_object);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Read ID: Window Manager
  * \{ */
 
@@ -7710,6 +7791,8 @@ static void direct_link_windowmanager(FileData *fd, wmWindowManager *wm)
     }
   }
 
+  direct_link_wm_xr_data(fd, &wm->xr);
+
   BLI_listbase_clear(&wm->timers);
   BLI_listbase_clear(&wm->operators);
   BLI_listbase_clear(&wm->paintcursors);
@@ -7723,6 +7806,8 @@ static void direct_link_windowmanager(FileData *fd, wmWindowManager *wm)
   wm->undo_stack = NULL;
 
   wm->message_bus = NULL;
+
+  wm->xr.runtime = NULL;
 
   BLI_listbase_clear(&wm->jobs);
   BLI_listbase_clear(&wm->drags);
@@ -7747,6 +7832,8 @@ static void lib_link_windowmanager(FileData *fd, Main *UNUSED(bmain), wmWindowMa
     for (ScrArea *area = win->global_areas.areabase.first; area; area = area->next) {
       lib_link_area(fd, &wm->id, area);
     }
+
+    lib_link_wm_xr_data(fd, &wm->id, &wm->xr);
   }
 }
 
@@ -7909,6 +7996,12 @@ static void lib_link_main_data_restore(struct IDNameLib_Map *id_map, Main *newma
     BKE_library_foreach_ID_link(newmain, id, lib_link_main_data_restore_cb, id_map, IDWALK_NOP);
   }
   FOREACH_MAIN_ID_END;
+}
+
+static void lib_link_wm_xr_data_restore(struct IDNameLib_Map *id_map, wmXrData *xr_data)
+{
+  xr_data->session_settings.base_pose_object = restore_pointer_by_name(
+      id_map, (ID *)xr_data->session_settings.base_pose_object, USER_REAL);
 }
 
 static void lib_link_window_scene_data_restore(wmWindow *win, Scene *scene, ViewLayer *view_layer)
@@ -8240,6 +8333,8 @@ void blo_lib_link_restore(Main *oldmain,
 
     BLI_assert(win->screen == NULL);
   }
+
+  lib_link_wm_xr_data_restore(id_map, &curwm->xr);
 
   /* Restore all ID pointers in Main database itself
    * (especially IDProperties might point to some word-space of other 'weirdly unchanged' ID
@@ -8927,6 +9022,89 @@ static void direct_link_linestyle(FileData *fd, FreestyleLineStyle *linestyle)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Read ID: Hair
+ * \{ */
+
+static void lib_link_hair(FileData *fd, Main *UNUSED(main), Hair *hair)
+{
+  for (int a = 0; a < hair->totcol; a++) {
+    hair->mat[a] = newlibadr(fd, hair->id.lib, hair->mat[a]);
+  }
+}
+
+static void direct_link_hair(FileData *fd, Hair *hair)
+{
+  hair->adt = newdataadr(fd, hair->adt);
+  direct_link_animdata(fd, hair->adt);
+
+  /* Geometry */
+  direct_link_customdata(fd, &hair->pdata, hair->totpoint);
+  direct_link_customdata(fd, &hair->cdata, hair->totcurve);
+  BKE_hair_update_customdata_pointers(hair);
+
+  /* Materials */
+  hair->mat = newdataadr(fd, hair->mat);
+  test_pointer_array(fd, (void **)&hair->mat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Read ID: Point Cloud
+ * \{ */
+
+static void lib_link_pointcloud(FileData *fd, Main *UNUSED(main), PointCloud *pointcloud)
+{
+  for (int a = 0; a < pointcloud->totcol; a++) {
+    pointcloud->mat[a] = newlibadr(fd, pointcloud->id.lib, pointcloud->mat[a]);
+  }
+}
+
+static void direct_link_pointcloud(FileData *fd, PointCloud *pointcloud)
+{
+  pointcloud->adt = newdataadr(fd, pointcloud->adt);
+  direct_link_animdata(fd, pointcloud->adt);
+
+  /* Geometry */
+  direct_link_customdata(fd, &pointcloud->pdata, pointcloud->totpoint);
+  BKE_pointcloud_update_customdata_pointers(pointcloud);
+
+  /* Materials */
+  pointcloud->mat = newdataadr(fd, pointcloud->mat);
+  test_pointer_array(fd, (void **)&pointcloud->mat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Read ID: Volume
+ * \{ */
+
+static void lib_link_volume(FileData *fd, Main *UNUSED(main), Volume *volume)
+{
+  for (int a = 0; a < volume->totcol; a++) {
+    volume->mat[a] = newlibadr(fd, volume->id.lib, volume->mat[a]);
+  }
+}
+
+static void direct_link_volume(FileData *fd, Volume *volume)
+{
+  volume->adt = newdataadr(fd, volume->adt);
+  direct_link_animdata(fd, volume->adt);
+
+  volume->packedfile = direct_link_packedfile(fd, volume->packedfile);
+  volume->runtime.grids = (fd->volumemap) ? newvolumeadr(fd, volume->runtime.grids) : NULL;
+  volume->runtime.frame = 0;
+  BKE_volume_init_grids(volume);
+
+  /* materials */
+  volume->mat = newdataadr(fd, volume->mat);
+  test_pointer_array(fd, (void **)&volume->mat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Read Library Data Block
  * \{ */
 
@@ -9038,6 +9216,12 @@ static const char *dataname(short id_code)
       return "Data from CF";
     case ID_WS:
       return "Data from WS";
+    case ID_HA:
+      return "Data from HA";
+    case ID_PT:
+      return "Data from PT";
+    case ID_VO:
+      return "Data from VO";
   }
   return "Data from Lib Block";
 }
@@ -9168,7 +9352,7 @@ static BHead *read_libblock(FileData *fd,
       /* read all data into fd->datamap */
       /* TODO: instead of building oldnewmap here we could just quickly check the bheads... could
        * save some more ticks. Probably not worth it though, bottleneck is full depsgraph rebuild
-       * and eval, not actual file reading. */
+       * and evaluate, not actual file reading. */
       bhead = read_data_into_oldnewmap(fd, id_bhead, allocname);
 
       DEBUG_PRINTF(
@@ -9463,6 +9647,15 @@ static BHead *read_libblock(FileData *fd,
     case ID_WS:
       direct_link_workspace(fd, (WorkSpace *)id, main);
       break;
+    case ID_HA:
+      direct_link_hair(fd, (Hair *)id);
+      break;
+    case ID_PT:
+      direct_link_pointcloud(fd, (PointCloud *)id);
+      break;
+    case ID_VO:
+      direct_link_volume(fd, (Volume *)id);
+      break;
   }
 
   oldnewmap_free_unused(fd->datamap);
@@ -9696,9 +9889,9 @@ static void lib_link_all(FileData *fd, Main *bmain)
     }
 
     if (fd->memfile != NULL && do_partial_undo && (id->tag & LIB_TAG_UNDO_OLD_ID_REUSED) != 0) {
-      /* This ID has been re-used from 'old' bmain. Since it was therfore unchanged accross current
-       * undo step, and old IDs re-use their old memory address, we do not need to liblink it at
-       * all. */
+      /* This ID has been re-used from 'old' bmain. Since it was therefore unchanged across
+       * current undo step, and old IDs re-use their old memory address, we do not need to liblink
+       * it at all. */
       continue;
     }
 
@@ -9789,6 +9982,15 @@ static void lib_link_all(FileData *fd, Main *bmain)
         break;
       case ID_VF:
         lib_link_vfont(fd, bmain, (VFont *)id);
+        break;
+      case ID_HA:
+        lib_link_hair(fd, bmain, (Hair *)id);
+        break;
+      case ID_PT:
+        lib_link_pointcloud(fd, bmain, (PointCloud *)id);
+        break;
+      case ID_VO:
+        lib_link_volume(fd, bmain, (Volume *)id);
         break;
       case ID_MA:
         lib_link_material(fd, bmain, (Material *)id);
@@ -11201,6 +11403,39 @@ static void expand_workspace(FileData *fd, Main *mainvar, WorkSpace *workspace)
   }
 }
 
+static void expand_hair(FileData *fd, Main *mainvar, Hair *hair)
+{
+  for (int a = 0; a < hair->totcol; a++) {
+    expand_doit(fd, mainvar, hair->mat[a]);
+  }
+
+  if (hair->adt) {
+    expand_animdata(fd, mainvar, hair->adt);
+  }
+}
+
+static void expand_pointcloud(FileData *fd, Main *mainvar, PointCloud *pointcloud)
+{
+  for (int a = 0; a < pointcloud->totcol; a++) {
+    expand_doit(fd, mainvar, pointcloud->mat[a]);
+  }
+
+  if (pointcloud->adt) {
+    expand_animdata(fd, mainvar, pointcloud->adt);
+  }
+}
+
+static void expand_volume(FileData *fd, Main *mainvar, Volume *volume)
+{
+  for (int a = 0; a < volume->totcol; a++) {
+    expand_doit(fd, mainvar, volume->mat[a]);
+  }
+
+  if (volume->adt) {
+    expand_animdata(fd, mainvar, volume->adt);
+  }
+}
+
 /**
  * Set the callback func used over all ID data found by \a BLO_expand_main func.
  *
@@ -11320,6 +11555,15 @@ void BLO_expand_main(void *fdhandle, Main *mainvar)
               break;
             case ID_WS:
               expand_workspace(fd, mainvar, (WorkSpace *)id);
+              break;
+            case ID_HA:
+              expand_hair(fd, mainvar, (Hair *)id);
+              break;
+            case ID_PT:
+              expand_pointcloud(fd, mainvar, (PointCloud *)id);
+              break;
+            case ID_VO:
+              expand_volume(fd, mainvar, (Volume *)id);
               break;
             default:
               break;
