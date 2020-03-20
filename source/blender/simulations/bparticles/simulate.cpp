@@ -17,39 +17,252 @@ using BLI::ScopedVector;
 using BLI::VectorAdaptor;
 using FN::CPPType;
 
+/*
+static bool point_inside_v2(const float mat[3][3], const float point[2], BMFace *f){
+  //TODO maybe add a sanity check to see if the face is not a quad or a triangle
+  float (*mat_coords)[2] = BLI_array_alloca(mat_coords, f->len);
+  BMVert *vert;
+  BMIter iter_v;
+  int vert_idx;
+
+  BM_ITER_ELEM_INDEX (vert, &iter_v, f, BM_VERTS_OF_FACE, vert_idx) {
+    mul_v2_m3v3(mat_coords[vert_idx], mat, vert->co);
+  }
+
+  if( f->len == 3 ){
+    return isect_point_tri_v2(point, mat_coords[0], mat_coords[1], mat_coords[2]);
+  }
+  return isect_point_quad_v2(point, mat_coords[0], mat_coords[1], mat_coords[2], mat_coords[3]);
+}
+
+static bool point_inside(const float mat[3][3], const float point[3], BMFace *f){
+  float mat_new_pos[2];
+  mul_v2_m3v3(mat_new_pos, mat, point);
+
+  return point_inside_v2(mat, mat_new_pos, f);
+}
+
+axis_dominant_v3_to_m3(mat, new_norm);
+
+*/
+
+/************************************************
+ * Collisions (taken from the old particle_system.c)
+ *
+ * The algorithm is roughly:
+ *  1. Use a BVH tree to search for faces that a particle may collide with.
+ *  2. Use Newton's method to find the exact time at which the collision occurs.
+ *     https://en.wikipedia.org/wiki/Newton's_method
+ *
+ ************************************************/
+#define COLLISION_MIN_RADIUS 0.001f     // TODO check if this is needed
+#define COLLISION_MIN_DISTANCE 0.0001f  // TODO check if this is needed
+#define COLLISION_ZERO 0.00001f
+static float nr_signed_distance_to_plane(
+    float3 &p, float radius, ScopedVector<float3> &cur_tri_points, float3 &nor, int &inv_nor)
+{
+  float3 p0, e1, e2;
+  float d;
+
+  sub_v3_v3v3(e1, cur_tri_points[1], cur_tri_points[0]);
+  sub_v3_v3v3(e2, cur_tri_points[2], cur_tri_points[0]);
+  sub_v3_v3v3(p0, p, cur_tri_points[0]);
+
+  cross_v3_v3v3(nor, e1, e2);
+  normalize_v3(nor);
+
+  d = dot_v3v3(p0, nor);
+
+  if (inv_nor == -1) {
+    if (d < 0.f) {
+      inv_nor = 1;
+    }
+    else {
+      inv_nor = 0;
+    }
+  }
+
+  if (inv_nor == 1) {
+    negate_v3(nor);
+    d = -d;
+  }
+
+  return d - radius;
+}
+
+static void collision_interpolate_element(ScopedVector<std::pair<float3, float3>> &tri_points,
+                                          ScopedVector<float3> &cur_tri_points,
+                                          float t)
+{
+  for (int i = 0; i < tri_points.size(); i++) {
+    cur_tri_points[i] = float3::interpolate(tri_points[i].first, tri_points[i].second, t);
+  }
+}
+
+/* find first root in range [0-1] starting from 0 */
+static float collision_newton_rhapson(std::pair<float3, float3> &particle_points,
+                                      ScopedVector<std::pair<float3, float3>> &tri_points,
+                                      float radius,
+                                      float3 &coll_normal)
+{
+  ScopedVector<float3> cur_tri_points{float3(), float3(), float3()};
+  float t0, t1, dt_init, d0, d1, dd;
+  float3 p;
+
+  int inv_nor = -1;
+
+  dt_init = 0.001f;
+  /* start from the beginning */
+  t0 = 0.f;
+  collision_interpolate_element(tri_points, cur_tri_points, t0);
+  d0 = nr_signed_distance_to_plane(
+      particle_points.first, radius, cur_tri_points, coll_normal, inv_nor);
+  t1 = dt_init;
+  d1 = 0.f;
+
+  for (int iter = 0; iter < 10; iter++) {  //, itersum++) {
+    /* get current location */
+    collision_interpolate_element(tri_points, cur_tri_points, t1);
+    p = float3::interpolate(particle_points.first, particle_points.second, t1);
+
+    d1 = nr_signed_distance_to_plane(p, radius, cur_tri_points, coll_normal, inv_nor);
+
+    // XXX Just a test return for now
+    if (std::signbit(d0) != std::signbit(d1)) {
+      return 1.0f;
+    }
+
+    /* particle already inside face, so report collision */
+    if (iter == 0 && d0 < 0.f && d0 > -radius) {
+      p = particle_points.first;
+      // pce->inside = 1;
+      return 0.f;
+    }
+
+    /* Zero gradient (no movement relative to element). Can't step from
+     * here. */
+    if (d1 == d0) {
+      /* If first iteration, try from other end where the gradient may be
+       * greater. Note: code duplicated below. */
+      if (iter == 0) {
+        t0 = 1.f;
+        collision_interpolate_element(tri_points, cur_tri_points, t0);
+        d0 = nr_signed_distance_to_plane(
+            particle_points.second, radius, cur_tri_points, coll_normal, inv_nor);
+        t1 = 1.0f - dt_init;
+        d1 = 0.f;
+        continue;
+      }
+      else {
+        return -1.f;
+      }
+    }
+
+    dd = (t1 - t0) / (d1 - d0);
+
+    t0 = t1;
+    d0 = d1;
+
+    t1 -= d1 * dd;
+
+    /* Particle moving away from plane could also mean a strangely rotating
+     * face, so check from end. Note: code duplicated above. */
+    if (iter == 0 && t1 < 0.f) {
+      t0 = 1.f;
+      collision_interpolate_element(tri_points, cur_tri_points, t0);
+      d0 = nr_signed_distance_to_plane(
+          particle_points.second, radius, cur_tri_points, coll_normal, inv_nor);
+      t1 = 1.0f - dt_init;
+      d1 = 0.f;
+      continue;
+    }
+    else if (iter == 1 && (t1 < -COLLISION_ZERO || t1 > 1.f)) {
+      return -1.f;
+    }
+
+    if (d1 <= COLLISION_ZERO && d1 >= -COLLISION_ZERO) {
+      if (t1 >= -COLLISION_ZERO && t1 <= 1.f) {
+        CLAMP(t1, 0.f, 1.f);
+        return t1;
+      }
+      else {
+        return -1.f;
+      }
+    }
+  }
+  return -1.0;
+}
+
+typedef struct RayCastData {
+  std::pair<float3, float3> particle_points;
+  CollisionModifierData *collmd;
+} RayCastData;
+
 BLI_NOINLINE static void raycast_callback(void *userdata,
                                           int index,
                                           const BVHTreeRay *ray,
                                           BVHTreeRayHit *hit)
 {
-  CollisionModifierData *collmd = (CollisionModifierData *)userdata;
+  RayCastData *rd = (RayCastData *)userdata;
+  CollisionModifierData *collmd = rd->collmd;
 
   const MVertTri *vt = &collmd->tri[index];
   MVert *verts = collmd->x;
-  const float *t0, *t1, *t2;
+  const float *v0, *v1, *v2;
+  float dist;
 
-  t0 = verts[vt->tri[0]].co;
-  t1 = verts[vt->tri[1]].co;
-  t2 = verts[vt->tri[2]].co;
+  v0 = verts[vt->tri[0]].co;
+  v1 = verts[vt->tri[1]].co;
+  v2 = verts[vt->tri[2]].co;
 
   // TODO implement triangle collision width
   // use width + vertex normals to make the triangle thick
 
-  float dist;
+  if (collmd->is_static) {
 
-  if (ray->radius == 0.0f) {
-    dist = bvhtree_ray_tri_intersection(ray, hit->dist, t0, t1, t2);
-  }
-  else {
-    dist = bvhtree_sphereray_tri_intersection(ray, ray->radius, hit->dist, t0, t1, t2);
+    if (ray->radius == 0.0f) {
+      dist = bvhtree_ray_tri_intersection(ray, hit->dist, v0, v1, v2);
+    }
+    else {
+      dist = bvhtree_sphereray_tri_intersection(ray, ray->radius, hit->dist, v0, v1, v2);
+    }
+
+    if (dist >= 0 && dist < hit->dist) {
+      hit->index = index;
+      hit->dist = dist;
+      madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
+
+      normal_tri_v3(hit->no, v0, v1, v2);
+    }
+    return;
   }
 
-  if (dist >= 0 && dist < hit->dist) {
+  MVert *new_verts = collmd->xnew;
+  const float *v0_new, *v1_new, *v2_new;
+  v0_new = new_verts[vt->tri[0]].co;
+  v1_new = new_verts[vt->tri[1]].co;
+  v2_new = new_verts[vt->tri[2]].co;
+
+  ScopedVector<std::pair<float3, float3>> tri_points;
+  float3 coll_normal;
+
+  tri_points.append(std::pair<float3, float3>(v0, v0_new));
+  tri_points.append(std::pair<float3, float3>(v1, v1_new));
+  tri_points.append(std::pair<float3, float3>(v2, v2_new));
+
+  // Check if we get hit by the moving object
+  float coll_time = collision_newton_rhapson(
+      rd->particle_points, tri_points, ray->radius, coll_normal);
+
+  dist = float3::distance(rd->particle_points.first, rd->particle_points.second) * coll_time;
+
+  if (coll_time >= 0.f) {  //&& dist >= 0 && dist < hit->dist) {
+    // We have a collision!
     hit->index = index;
     hit->dist = dist;
-    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
-
-    normal_tri_v3(hit->no, t0, t1, t2);
+    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, hit->dist);
+    zero_v3(hit->co);
+    copy_v3_v3(hit->no, coll_normal);
   }
 }
 
@@ -85,6 +298,11 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
   for (uint pindex : IndexRange(amount)) {
     float mass = 1.0f;
     float duration = remaining_durations[pindex];
+    bool collided = false;
+
+    // Update the velocities here so that the potential distance traveled is correct in the
+    // collision check.
+    velocities[pindex] += duration * forces[pindex] / mass;
 
     // Check if any 'collobjs' collide with the particles here
     if (collobjs) {
@@ -98,8 +316,8 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
           continue;
         }
 
-        /* Move object to position (step) in time. */
-        collision_move_object(collmd, duration, 0, false);
+        /* Move the collision object to it's end position in this frame. */
+        collision_move_object(collmd, 1.0f, 0.0f, true);
 
         const int raycast_flag = BVH_RAYCAST_DEFAULT;
 
@@ -108,9 +326,15 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
         BVHTreeRayHit hit;
         hit.index = -1;
         hit.dist = max_move;
-        float particle_radius = 0.01f;
+        float particle_radius = 0.0f;
         float3 start = positions[pindex];
         float3 dir = velocities[pindex].normalized();
+
+        RayCastData rd;
+
+        rd.collmd = collmd;
+        rd.particle_points.first = start;
+        rd.particle_points.second = start + duration * velocities[pindex];
 
         BLI_bvhtree_ray_cast_ex(collmd->bvhtree,
                                 start,
@@ -118,20 +342,30 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
                                 particle_radius,
                                 &hit,
                                 raycast_callback,
-                                collmd,
+                                &rd,
                                 raycast_flag);
 
         if (hit.index == -1) {
           // We didn't hit anything
           continue;
         }
+        // TODO move particle to collision point and do additional collision check in the new
+        // direction.
+        // update final position of particle
+        positions[pindex] = hit.co;
+        //
         // dot normal from vt with hit.co - start to see which way to deflect the particle
         velocities[pindex] *= -1;
+        positions[pindex] += duration * (1.0f - hit.dist / max_move) * velocities[pindex];
+        collided = true;
+        break;
       }
     }
-    velocities[pindex] += duration * forces[pindex] / mass;
-    positions[pindex] += duration * velocities[pindex];
+    if (!collided) {
+      positions[pindex] += duration * velocities[pindex];
+    }
   }
+
   BKE_collision_objects_free(collobjs);
 }  // namespace BParticles
 
