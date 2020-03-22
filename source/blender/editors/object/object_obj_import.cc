@@ -714,7 +714,6 @@ BLI_NOINLINE static void import_obj(bContext *C, StringRef file_path)
   Vector<std::unique_ptr<Vector<std::unique_ptr<ObjFileSegment>>>> all_segments;
 
   tbb::task_group tasks;
-  std::mutex mutex;
 
   while (!reader.eof()) {
     StringRef text = reader.read_next_line_chunk(20 * 1024 * 1024);
