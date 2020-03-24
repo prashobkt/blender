@@ -286,8 +286,6 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
   bool has_singularities = false;
 
   /* Vert edge adjacent map. */
-  uint *vert_adj_edges_len = MEM_calloc_arrayN(
-      numVerts, sizeof(*vert_adj_edges_len), "vert_adj_edges_len in solidify");
   OldVertEdgeRef **vert_adj_edges = MEM_calloc_arrayN(
       numVerts, sizeof(*vert_adj_edges), "vert_adj_edges in solidify");
 
@@ -335,12 +333,14 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
     }
 
     float edgedir[3] = {0, 0, 0};
+    uint *vert_adj_edges_len = MEM_calloc_arrayN(
+        numVerts, sizeof(*vert_adj_edges_len), "vert_adj_edges_len in solidify");
 
     /* Calculate edge lengths and len vert_adj edges. */
     {
       bool *face_singularity = MEM_calloc_arrayN(
           numPolys, sizeof(*face_singularity), "face_sides_arr in solidify");
-      
+
       ed = orig_medge;
       for (uint i = 0; i < numEdges; i++, ed++) {
         if (edge_adj_faces_len[i] > 0) {
@@ -349,40 +349,40 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
           if (v1 != v2) {
             sub_v3_v3v3(edgedir, orig_mvert[v2].co, orig_mvert[v1].co);
             orig_edge_lengths[i] = len_squared_v3(edgedir);
-          }
-          if (v1 != v2 && orig_edge_lengths[i] <= FLT_EPSILON) {
-            if (v2 > v1) {
-              for (uint j = v2; j < numVerts; j++) {
-                if (vm[j] == v2) {
-                  vm[j] = v1;
-                  vert_adj_edges_len[v1] += vert_adj_edges_len[j];
-                  vert_adj_edges_len[j] = 0;
+            if (orig_edge_lengths[i] <= FLT_EPSILON) {
+              if (v2 > v1) {
+                for (uint j = v2; j < numVerts; j++) {
+                  if (vm[j] == v2) {
+                    vm[j] = v1;
+                    vert_adj_edges_len[v1] += vert_adj_edges_len[j];
+                    vert_adj_edges_len[j] = 0;
+                  }
                 }
               }
-            }
-            else if (v2 < v1) {
-              for (uint j = v1; j < numVerts; j++) {
-                if (vm[j] == v1) {
-                  vm[j] = v2;
-                  vert_adj_edges_len[v2] += vert_adj_edges_len[j];
-                  vert_adj_edges_len[j] = 0;
+              else if (v2 < v1) {
+                for (uint j = v1; j < numVerts; j++) {
+                  if (vm[j] == v1) {
+                    vm[j] = v2;
+                    vert_adj_edges_len[v2] += vert_adj_edges_len[j];
+                    vert_adj_edges_len[j] = 0;
+                  }
                 }
               }
+              if (do_shell) {
+                numNewLoops -= edge_adj_faces_len[i] * 2;
+              }
+
+              edge_adj_faces_len[i] = 0;
+              MEM_freeN(edge_adj_faces[i]->faces);
+              MEM_freeN(edge_adj_faces[i]->faces_reversed);
+              MEM_freeN(edge_adj_faces[i]);
+              edge_adj_faces[i] = NULL;
             }
-            if (do_shell) {
-              numNewLoops -= edge_adj_faces_len[i] * 2;
+            else {
+              orig_edge_lengths[i] = sqrtf(orig_edge_lengths[i]);
+              vert_adj_edges_len[v1]++;
+              vert_adj_edges_len[v2]++;
             }
-            
-            edge_adj_faces_len[i] = 0;
-            MEM_freeN(edge_adj_faces[i]->faces);
-            MEM_freeN(edge_adj_faces[i]->faces_reversed);
-            MEM_freeN(edge_adj_faces[i]);
-            edge_adj_faces[i] = NULL;
-          }
-          else if (v1 != v2 && edge_adj_faces_len[i] > 0) {
-            orig_edge_lengths[i] = sqrtf(orig_edge_lengths[i]);
-            vert_adj_edges_len[v1]++;
-            vert_adj_edges_len[v2]++;
           }
         }
       }
@@ -412,7 +412,7 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
               }
             }
           }
-          
+
           if (do_shell) {
             numNewLoops -= edge_adj_faces_len[i] * 2;
           }
@@ -473,8 +473,8 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
                   }
                 }
                 if (invalid_edge_index) {
-                  /* Should never actually be executed. */
                   if (j == 1) {
+                    /* Should never actually be executed. */
                     vert_adj_edges[vs[0]]->edges_len--;
                   }
                   break;
@@ -482,6 +482,7 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
               }
             }
           }
+          /* Remove zero faces that are in shape of an edge. */
           if (invalid_edge_index) {
             const uint tmp = invalid_edge_index - 1;
             invalid_edge_index = i;
@@ -509,6 +510,7 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
                 len, sizeof(*adj_faces), "OldEdgeFaceRef::faces in solidify");
             bool *adj_faces_loops_reversed = MEM_malloc_arrayN(
                 len, sizeof(*adj_faces_loops_reversed), "OldEdgeFaceRef::reversed in solidify");
+            /* Clean merge of adj_faces. */
             j = 0;
             for (uint k = 0; k < i_adj_faces->faces_len; k++) {
               if (i_adj_faces->faces[k] != MOD_SOLIDIFY_EMPTY_TAG) {
@@ -543,13 +545,19 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
       }
     }
 
+    MEM_freeN(vert_adj_edges_len);
+
     /* Filter duplicate polys. */
     {
       ed = orig_medge;
+      /* Iterate over edges and only check the faces around an edge for duplicates
+       * (performance optimization). */
       for (uint i = 0; i < numEdges; i++, ed++) {
         if (edge_adj_faces_len[i] > 0) {
           const OldEdgeFaceRef *adj_faces = edge_adj_faces[i];
           uint adj_len = adj_faces->faces_len;
+          /* Not that #adj_len doesn't need to equal edge_adj_faces_len anymore
+           * because #adj_len is shared when a face got collapsed to an edge. */
           if (adj_len > 1) {
             /* For each face pair check if they have equal verts. */
             for (uint j = 0; j < adj_len; j++) {
@@ -586,40 +594,56 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
                   uint del_loops = 0;
                   for (uint m = 0; m < totloop; m++, ml++) {
                     const uint e = ml->e;
-                    uint face_index = j;
-                    uint *e_adj_faces_faces = edge_adj_faces[e]->faces;
-                    bool *e_adj_faces_reversed = edge_adj_faces[e]->faces_reversed;
-                    const uint faces_len = edge_adj_faces[e]->faces_len;
-                    if (e != i) {
-                      /* Find index of e in #adj_faces. */
-                      for (face_index = 0;
-                           face_index < faces_len && e_adj_faces_faces[face_index] != face;
-                           face_index++) {
-                        /* Pass. */
+                    OldEdgeFaceRef *e_adj_faces = edge_adj_faces[e];
+                    if (e_adj_faces) {
+                      uint face_index = j;
+                      uint *e_adj_faces_faces = e_adj_faces->faces;
+                      bool *e_adj_faces_reversed = e_adj_faces->faces_reversed;
+                      const uint faces_len = e_adj_faces->faces_len;
+                      if (e != i) {
+                        /* Find index of e in #adj_faces. */
+                        for (face_index = 0;
+                             face_index < faces_len && e_adj_faces_faces[face_index] != face;
+                             face_index++) {
+                          /* Pass. */
+                        }
+                        /* If not found. */
+                        if (face_index == faces_len) {
+                          continue;
+                        }
                       }
-                      /* If not found. */
-                      if (face_index == faces_len) {
-                        continue;
+                      else {
+                        /* If we shrink #edge_adj_faces[i] we need to update this field. */
+                        adj_len--;
                       }
-                    }
-                    else {
-                      adj_len--;
-                    }
-                    memmove(e_adj_faces_faces + face_index,
-                            e_adj_faces_faces + face_index + 1,
-                            (faces_len - face_index - 1) * sizeof(*e_adj_faces_faces));
-                    memmove(e_adj_faces_reversed + face_index,
-                            e_adj_faces_reversed + face_index + 1,
-                            (faces_len - face_index - 1) * sizeof(*e_adj_faces_reversed));
-                    edge_adj_faces[e]->faces_len--;
-                    if (edge_adj_faces_len[e] > 0) {
-                      edge_adj_faces_len[e]--;
-                      if (edge_adj_faces_len[e] == 0) {
-                        edge_adj_faces[e]->used--;
-                        edge_adj_faces[e] = NULL;
+                      memmove(e_adj_faces_faces + face_index,
+                              e_adj_faces_faces + face_index + 1,
+                              (faces_len - face_index - 1) * sizeof(*e_adj_faces_faces));
+                      memmove(e_adj_faces_reversed + face_index,
+                              e_adj_faces_reversed + face_index + 1,
+                              (faces_len - face_index - 1) * sizeof(*e_adj_faces_reversed));
+                      e_adj_faces->faces_len--;
+                      if (edge_adj_faces_len[e] > 0) {
+                        edge_adj_faces_len[e]--;
+                        if (edge_adj_faces_len[e] == 0) {
+                          e_adj_faces->used--;
+                          edge_adj_faces[e] = NULL;
+                        }
                       }
+                      else if (e_adj_faces->used > 1) {
+                        for (uint n = 0; n < numEdges; n++) {
+                          if (edge_adj_faces[n] == e_adj_faces && edge_adj_faces_len[n] > 0) {
+                            edge_adj_faces_len[n]--;
+                            if (edge_adj_faces_len[n] == 0) {
+                              edge_adj_faces[n]->used--;
+                              edge_adj_faces[n] = NULL;
+                            }
+                            break;
+                          }
+                        }
+                      }
+                      del_loops++;
                     }
-                    del_loops++;
                   }
                   if (do_shell) {
                     numNewPolys -= 2;
@@ -777,8 +801,6 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
     MEM_freeN(edge_adj_faces);
   }
 
-  MEM_freeN(vert_adj_edges_len);
-
   /* Create sorted edge groups for every vert. */
   {
     OldVertEdgeRef **adj_edges_ptr = vert_adj_edges;
@@ -820,7 +842,8 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
             }
           }
 
-          /* an edge group will always contain min 2 edges so max edge group count can be calculated */
+          /* An edge group will always contain min 2 edges
+           * so max edge group count can be calculated. */
           uint edge_groups_len = unassigned_edges_len / 2;
           edge_groups = MEM_calloc_arrayN(
               edge_groups_len + 1, sizeof(*edge_groups), "edge_groups in solidify");
@@ -837,8 +860,9 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
             found_edge = NULL;
             insert_at_start = false;
             if (eg_index >= 0 && edge_groups[eg_index].edges_len == 0) {
-              /* called everytime a new group was started in the last iteration */
-              /* find an unused edge to start the next group and setup variables to start creating it */
+              /* Called every time a new group was started in the last iteration. */
+              /* Find an unused edge to start the next group
+               * and setup variables to start creating it. */
               uint j = 0;
               NewEdgeRef *edge = NULL;
               while (!edge && j < unassigned_edges_len) {
@@ -990,7 +1014,8 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
 
           MEM_freeN(unassigned_edges);
 
-          /* TODO reshape the edge_groups array to its actual size after writing is finished to save on memory */
+          /* TODO reshape the edge_groups array to its actual size
+           * after writing is finished to save on memory. */
         }
 
         /* Split of long self intersection groups */
@@ -1816,7 +1841,7 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
     MEM_freeN(singularity_edges);
   }
 
-  /* DEBUG CODE FOR BUGFIXING (can not be removed because every bugfix needs this badly!). */
+  /* DEBUG CODE FOR BUG-FIXING (can not be removed because every bug-fix needs this badly!). */
 #if 0
   {
     /* this code will output the content of orig_vert_groups_arr.
@@ -1832,7 +1857,8 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
     /* Debug output format:
      * <original vertex id>:
      * {
-     *   { <old edge id>/<new edge id>, } (tg:<topology group id>)(s:<is split group>,c:<is closed group (before splitting)>)
+     *   { <old edge id>/<new edge id>, } \
+     *     (tg:<topology group id>)(s:<is split group>,c:<is closed group (before splitting)>)
      * }
      */
     gs_ptr = orig_vert_groups_arr;
