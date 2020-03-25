@@ -789,7 +789,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       /* apply randomness to uv texture rotation */
       if (brush_settings->uv_random > 0.0f) {
         float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
-        pt->uv_rot += rand * M_PI * brush_settings->uv_random;
+        pt->uv_rot += rand * M_PI_2 * brush_settings->uv_random;
         CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
       }
       /* apply randomness to color strength */
