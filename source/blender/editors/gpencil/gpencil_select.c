@@ -1483,7 +1483,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   /* "radius" is simply a threshold (screen space) to make it easier to test with a tolerance */
-  const float radius = 0.50f * U.widget_unit;
+  const float radius = 0.4f * U.widget_unit;
   const int radius_squared = (int)(radius * radius);
 
   const bool use_shift_extend = RNA_boolean_get(op->ptr, "use_shift_extend");
@@ -1534,6 +1534,14 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
     bGPDspoint *pt;
     int i;
 
+    /* Check boundbox to speedup. */
+    float fmval[2];
+    copy_v2fl_v2i(fmval, mval);
+    if (!ED_gpencil_stroke_check_collision(
+            &gsc, gps_active, fmval, radius, gpstroke_iter.diff_mat)) {
+      continue;
+    }
+
     /* firstly, check for hit-point */
     for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
       int xy[2];
@@ -1561,21 +1569,14 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
         }
       }
     }
-  }
-  GP_EVALUATED_STROKES_END(gpstroke_iter);
-
-  /* If nothing hit, check if the mouse is inside any filled stroke. */
-  if (ELEM(NULL, hit_stroke, hit_point)) {
-    GP_EVALUATED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
-    {
-      bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
-      /* Only check filled strokes. */
+    if (ELEM(NULL, hit_stroke, hit_point)) {
+      /* If nothing hit, check if the mouse is inside any filled stroke.
+       * Only check filling materials. */
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
       if ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0) {
         continue;
       }
-
-      bool hit_fill = gpencil_point_inside_stroke(gps_active, &gsc, mval, gpstroke_iter.diff_mat);
+      bool hit_fill = gpencil_point_inside_stroke(gps, &gsc, mval, gpstroke_iter.diff_mat);
       if (hit_fill) {
         hit_stroke = gps_active;
         hit_point = &gps_active->points[0];
@@ -1583,8 +1584,8 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
         whole = true;
       }
     }
-    GP_EVALUATED_STROKES_END(gpstroke_iter);
   }
+  GP_EVALUATED_STROKES_END(gpstroke_iter);
 
   /* Abort if nothing hit... */
   if (ELEM(NULL, hit_stroke, hit_point)) {
