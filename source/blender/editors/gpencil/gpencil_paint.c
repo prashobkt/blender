@@ -486,6 +486,7 @@ static void gp_stroke_convertcoords(tGPsdata *p, const float mval[2], float out[
 /* Apply jitter to stroke point. */
 static void gp_brush_jitter(bGPdata *gpd, tGPspoint *pt, const float amplitude)
 {
+  const float axis[2] = {0.0f, 1.0f};
   /* Jitter is applied perpendicular to the mouse movement vector (2D space). */
   float mvec[2];
   /* Mouse movement in ints -> floats. */
@@ -493,16 +494,15 @@ static void gp_brush_jitter(bGPdata *gpd, tGPspoint *pt, const float amplitude)
     tGPspoint *pt_prev = pt - 1;
     sub_v2_v2v2(mvec, &pt->x, &pt_prev->x);
     normalize_v2(mvec);
+    /* Rotate mvec by 90 degrees... */
+    float angle = angle_v2v2(mvec, axis);
+    /* Reduce noise in the direction of the stroke. */
+    mvec[0] *= cos(angle);
+    mvec[1] *= sin(angle);
+
+    /* Scale by displacement amount, and apply. */
+    madd_v2_v2fl(&pt->x, mvec, amplitude * 10.0f);
   }
-  else {
-    mvec[0] = 0.0f;
-    mvec[1] = 0.0f;
-  }
-  /* Rotate mvec by 90 degrees... */
-  SWAP(float, mvec[0], mvec[1]);
-  mvec[0] -= mvec[0];
-  /* Scale by displacement amount, and apply. */
-  madd_v2_v2fl(&pt->x, mvec, amplitude);
 }
 
 /* apply pressure change depending of the angle of the stroke to simulate a pen with shape */
