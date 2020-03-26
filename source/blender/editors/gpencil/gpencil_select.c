@@ -1202,7 +1202,7 @@ static int gpencil_generic_select_exec(
   gp_point_conversion_init(C, &gsc);
 
   /* deselect all strokes first? */
-  if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+  if (SEL_OP_USE_PRE_DESELECT(sel_op) || (GPENCIL_PAINT_MODE(gpd))) {
 
     CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
       bGPDspoint *pt;
@@ -1301,8 +1301,8 @@ static int gpencil_generic_select_exec(
   }
   GP_EVALUATED_STROKES_END(gpstroke_iter);
 
-  /* if paint mode, delete selected points */
-  if (gpd->flag & GP_DATA_STROKE_PAINTMODE) {
+  /* if paint mode,delete selected points */
+  if (GPENCIL_PAINT_MODE(gpd)) {
     gp_delete_selected_point_wrap(C);
     changed = true;
     DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
