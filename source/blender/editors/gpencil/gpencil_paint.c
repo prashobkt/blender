@@ -30,6 +30,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_hash.h"
 #include "BLI_math.h"
 #include "BLI_math_geom.h"
 #include "BLI_rand.h"
@@ -788,7 +789,9 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       }
       /* apply randomness to uv texture rotation */
       if (brush_settings->uv_random > 0.0f) {
-        float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
+        float rand = BLI_hash_int_01(BLI_hash_int_2d((int)pt->x, gpd->runtime.sbuffer_used)) *
+                         2.0f -
+                     1.0f;
         pt->uv_rot += rand * M_PI_2 * brush_settings->uv_random;
         CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
       }
@@ -3142,7 +3145,7 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
   if (gpd->runtime.sbuffer_used < 3) {
     return;
   }
-
+  BrushGpencilSettings *brush_settings = p->brush->gpencil_settings;
   int idx_prev = gpd->runtime.sbuffer_used;
 
   /* Add space for new arc points. */
@@ -3206,6 +3209,27 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
     /* Set pressure and strength equals to previous. It will be smoothed later. */
     pt->pressure = pt_prev->pressure;
     pt->strength = pt_prev->strength;
+
+    /* Apply randomness to pressure. */
+    if (brush_settings->draw_random_press > 0.0f) {
+      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
+      pt->pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
+      CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
+    }
+    /* Apply randomness to color strength. */
+    if (brush_settings->draw_random_strength) {
+      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
+      pt->strength *= 1.0 + rand * brush_settings->draw_random_strength;
+      CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
+    }
+    /* Apply randomness to uv texture rotation. */
+    if (brush_settings->uv_random > 0.0f) {
+      float rand = BLI_hash_int_01(BLI_hash_int_2d((int)pt->x, gpd->runtime.sbuffer_used + i)) *
+                       2.0f -
+                   1.0f;
+      pt->uv_rot += rand * M_PI_2 * brush_settings->uv_random;
+      CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
+    }
 
     a += step;
   }
