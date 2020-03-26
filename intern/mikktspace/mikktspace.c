@@ -22,12 +22,12 @@
  */
 
 #include <assert.h>
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
 #include <float.h>
-#include <stdlib.h>
 #include <limits.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "mikktspace.h"
 
@@ -1392,7 +1392,7 @@ static void QuickSort(int *pSortBuffer, int iLeft, int iRight, unsigned int uSee
 
   // Random
   unsigned int t = uSeed & 31;
-  t = (uSeed << t) | (uSeed >> (32 - t));
+  t = rotl(uSeed, t);
   uSeed = uSeed + t + 3;
   // Random end
 

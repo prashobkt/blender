@@ -27,11 +27,11 @@
 
 #include "CLG_log.h"
 
-#include "DNA_scene_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_listbase.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -39,27 +39,27 @@
 #include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_layer.h"
 #include "BKE_main.h"
+#include "BKE_paint.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
-#include "BKE_layer.h"
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
-#include "BKE_paint.h"
 
 #include "BLO_blend_validate.h"
 
 #include "ED_gpencil.h"
-#include "ED_render.h"
 #include "ED_object.h"
 #include "ED_outliner.h"
+#include "ED_render.h"
 #include "ED_screen.h"
 #include "ED_undo.h"
 
 #include "WM_api.h"
-#include "WM_types.h"
 #include "WM_toolsystem.h"
+#include "WM_types.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -202,7 +202,8 @@ static int ed_undo_step_impl(
         if (ELEM(obact->mode,
                  OB_MODE_PAINT_GPENCIL,
                  OB_MODE_SCULPT_GPENCIL,
-                 OB_MODE_WEIGHT_GPENCIL)) {
+                 OB_MODE_WEIGHT_GPENCIL,
+                 OB_MODE_VERTEX_GPENCIL)) {
           ED_gpencil_toggle_brush_cursor(C, true, NULL);
         }
         else {
@@ -389,7 +390,7 @@ static int ed_undo_exec(bContext *C, wmOperator *op)
   int ret = ed_undo_step_direction(C, 1, op->reports);
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
-    WM_event_add_mousemove(C);
+    WM_event_add_mousemove(CTX_wm_window(C));
   }
 
   ED_outliner_select_sync_from_all_tag(C);
@@ -418,7 +419,7 @@ static int ed_redo_exec(bContext *C, wmOperator *op)
   int ret = ed_undo_step_direction(C, -1, op->reports);
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
-    WM_event_add_mousemove(C);
+    WM_event_add_mousemove(CTX_wm_window(C));
   }
 
   ED_outliner_select_sync_from_all_tag(C);
@@ -432,7 +433,7 @@ static int ed_undo_redo_exec(bContext *C, wmOperator *UNUSED(op))
   ret = ret ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
-    WM_event_add_mousemove(C);
+    WM_event_add_mousemove(CTX_wm_window(C));
   }
   return ret;
 }
@@ -774,7 +775,7 @@ void ED_undo_object_editmode_restore_helper(struct bContext *C,
   uint bases_len = 0;
   /* Don't request unique data because we want to de-select objects when exiting edit-mode
    * for that to be done on all objects we can't skip ones that share data. */
-  Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(view_layer, NULL, &bases_len);
+  Base **bases = ED_undo_editmode_bases_from_view_layer(view_layer, &bases_len);
   for (uint i = 0; i < bases_len; i++) {
     ((ID *)bases[i]->object->data)->tag |= LIB_TAG_DOIT;
   }
@@ -795,6 +796,107 @@ void ED_undo_object_editmode_restore_helper(struct bContext *C,
     }
   }
   MEM_freeN(bases);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Undo View Layer Helper Functions
+ *
+ * Needed because view layer functions such as
+ * #BKE_view_layer_array_from_objects_in_edit_mode_unique_data also check visibility,
+ * which is not reliable when it comes to object undo operations,
+ * since hidden objects can be operated on in the properties editor,
+ * and local collections may be used.
+ * \{ */
+
+static int undo_editmode_objects_from_view_layer_prepare(ViewLayer *view_layer,
+                                                         Object *obact,
+                                                         int *r_active_index)
+{
+  const short object_type = obact->type;
+
+  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    Object *ob = base->object;
+    if ((ob->type == object_type) && (ob->mode & OB_MODE_EDIT)) {
+      ID *id = ob->data;
+      id->tag &= ~LIB_TAG_DOIT;
+    }
+  }
+
+  int len = 0;
+  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    Object *ob = base->object;
+    if ((ob->type == object_type) && (ob->mode & OB_MODE_EDIT)) {
+      if (ob == obact) {
+        *r_active_index = len;
+      }
+      ID *id = ob->data;
+      if ((id->tag & LIB_TAG_DOIT) == 0) {
+        len += 1;
+        id->tag |= LIB_TAG_DOIT;
+      }
+    }
+  }
+  return len;
+}
+
+Object **ED_undo_editmode_objects_from_view_layer(ViewLayer *view_layer, uint *r_len)
+{
+  Object *obact = OBACT(view_layer);
+  if ((obact == NULL) || (obact->mode & OB_MODE_EDIT) == 0) {
+    return MEM_mallocN(0, __func__);
+  }
+  int active_index = 0;
+  const int len = undo_editmode_objects_from_view_layer_prepare(view_layer, obact, &active_index);
+  const short object_type = obact->type;
+  int i = 0;
+  Object **objects = MEM_malloc_arrayN(len, sizeof(*objects), __func__);
+  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    Object *ob = base->object;
+    if ((ob->type == object_type) && (ob->mode & OB_MODE_EDIT)) {
+      ID *id = ob->data;
+      if (id->tag & LIB_TAG_DOIT) {
+        objects[i++] = ob;
+        id->tag &= ~LIB_TAG_DOIT;
+      }
+    }
+  }
+  BLI_assert(i == len);
+  if (active_index > 0) {
+    SWAP(Object *, objects[0], objects[active_index]);
+  }
+  *r_len = len;
+  return objects;
+}
+
+Base **ED_undo_editmode_bases_from_view_layer(ViewLayer *view_layer, uint *r_len)
+{
+  Object *obact = OBACT(view_layer);
+  if ((obact == NULL) || (obact->mode & OB_MODE_EDIT) == 0) {
+    return MEM_mallocN(0, __func__);
+  }
+  int active_index = 0;
+  const int len = undo_editmode_objects_from_view_layer_prepare(view_layer, obact, &active_index);
+  const short object_type = obact->type;
+  int i = 0;
+  Base **base_array = MEM_malloc_arrayN(len, sizeof(*base_array), __func__);
+  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    Object *ob = base->object;
+    if ((ob->type == object_type) && (ob->mode & OB_MODE_EDIT)) {
+      ID *id = ob->data;
+      if (id->tag & LIB_TAG_DOIT) {
+        base_array[i++] = base;
+        id->tag &= ~LIB_TAG_DOIT;
+      }
+    }
+  }
+  BLI_assert(i == len);
+  if (active_index > 0) {
+    SWAP(Base *, base_array[0], base_array[active_index]);
+  }
+  *r_len = len;
+  return base_array;
 }
 
 /** \} */

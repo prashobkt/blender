@@ -27,6 +27,10 @@
 #include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* enable this only if needed (unused circa 2016) */
 #define BLF_BLUR_ENABLE 0
 
@@ -234,11 +238,9 @@ void BLF_thumb_preview(const char *filename,
                        int h,
                        int channels) ATTR_NONNULL();
 
-/* blf_font_i18.c */
-unsigned char *BLF_get_unifont(int *unifont_size);
-void BLF_free_unifont(void);
-unsigned char *BLF_get_unifont_mono(int *unifont_size);
-void BLF_free_unifont_mono(void);
+/* blf_font_default.c */
+int BLF_load_default(const bool unique);
+int BLF_load_mono_default(const bool unique);
 
 #ifdef DEBUG
 void BLF_state_print(int fontid);
@@ -276,5 +278,9 @@ struct ResultBLF {
    */
   int width;
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __BLF_API_H__ */

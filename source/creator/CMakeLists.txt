@@ -38,20 +38,16 @@ blender_include_dirs(
 )
 
 set(LIB
-  # This forces TBB libraries to be in front of MKL (which is a part of OpenImageDenoise).
-  #
-  # The need of this comes to need to ensure static libraries initialization order, making it
-  # so TBB is initialized prior to MKL (or any other dpeendnecy).
-  #
-  # This isn't fully robust but seems to work.
-  ${TBB_LIBRARIES}
-
   bf_windowmanager
 )
 
-# Note: this should not be needed, but causes issues in some situations:
-# See reply to daf290dcc80c.
-if(WITH_TBB AND WITH_OPENIMAGEDENOISE)
+if(WITH_TBB)
+  # Force TBB libraries to be in front of MKL (part of OpenImageDenoise), so
+  # that it is initialized before MKL and static library initialization order
+  # issues are avoided.
+  #
+  # This isn't fully robust but seems to work.
+  list(INSERT LIB 0 ${TBB_LIBRARIES})
   list(INSERT LIB 0 bf_blenkernel)
 endif()
 
@@ -113,6 +109,10 @@ endif()
 if(WITH_FREESTYLE)
   blender_include_dirs(../blender/freestyle)
   add_definitions(-DWITH_FREESTYLE)
+endif()
+
+if(WITH_XR_OPENXR)
+  add_definitions(-DWITH_XR_OPENXR)
 endif()
 
 # Setup the exe sources and buildinfo
@@ -304,12 +304,10 @@ if(WITH_MEM_JEMALLOC)
   )
 endif()
 
-if(WITH_INTERNATIONAL)
-  list(APPEND BLENDER_TEXT_FILES
-    ${CMAKE_SOURCE_DIR}/release/datafiles/LICENSE-droidsans.ttf.txt
-    ${CMAKE_SOURCE_DIR}/release/datafiles/LICENSE-bmonofont-i18n.ttf.txt
-  )
-endif()
+list(APPEND BLENDER_TEXT_FILES
+  ${CMAKE_SOURCE_DIR}/release/datafiles/LICENSE-droidsans.ttf.txt
+  ${CMAKE_SOURCE_DIR}/release/datafiles/LICENSE-bmonofont-i18n.ttf.txt
+)
 
 
 # -----------------------------------------------------------------------------
@@ -387,14 +385,15 @@ if(WITH_PYTHON)
   unset(FREESTYLE_EXCLUDE_CONDITIONAL)
 endif()
 
+# fonts
+install(
+  DIRECTORY
+    ${CMAKE_SOURCE_DIR}/release/datafiles/fonts
+  DESTINATION ${TARGETDIR_VER}/datafiles
+)
+
 # localization
 if(WITH_INTERNATIONAL)
-  install(
-    DIRECTORY
-      ${CMAKE_SOURCE_DIR}/release/datafiles/fonts
-    DESTINATION ${TARGETDIR_VER}/datafiles
-  )
-
   set(_locale_dir "${CMAKE_SOURCE_DIR}/release/datafiles/locale")
   set(_locale_target_dir ${TARGETDIR_VER}/datafiles/locale)
 
@@ -860,6 +859,8 @@ elseif(WIN32)
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu_glitchworkaround.cmd
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_log.cmd
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_factory_startup.cmd
+      ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_oculus.cmd
+      ${CMAKE_SOURCE_DIR}/release/windows/batch/oculus.json
     DESTINATION "."
   )
 
@@ -920,6 +921,11 @@ elseif(APPLE)
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
   # Give the bundle actual creation/modification date
+  #
+  # Note that the directory might not yet exist, which happens when CMake is first run.
+  if(NOT EXISTS ${EXECUTABLE_OUTPUT_PATH}/Blender.app)
+    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/Blender.app)
+  endif()
   execute_process(COMMAND SetFile -d ${SETFILE_DATE} -m ${SETFILE_DATE}
                   ${EXECUTABLE_OUTPUT_PATH}/Blender.app)
 
@@ -1062,7 +1068,7 @@ setup_liblinks(blender)
 if(WITH_USD)
   add_definitions(-DWITH_USD)
   install(DIRECTORY
-    ${LIBDIR}/usd/lib/usd
+    ${USD_LIBRARY_DIR}/usd
     DESTINATION "${TARGETDIR_VER}/datafiles"
   )
 endif()
