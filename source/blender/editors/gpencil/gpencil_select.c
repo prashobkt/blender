@@ -1258,7 +1258,7 @@ static int gpencil_generic_select_exec(
 
     /* If nothing hit, check if the mouse is inside a filled stroke using the center or
      * Box or lasso area. */
-    if (!hit) {
+    if ((!hit) && (!changed)) {
       /* Only check filled strokes. */
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
       if ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0) {
