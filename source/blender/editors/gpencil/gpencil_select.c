@@ -1526,8 +1526,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
   RNA_int_get_array(op->ptr, "location", mval);
 
   /* First Pass: Find stroke point which gets hit */
-  GP_EVALUATED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
-  {
+  GP_EVALUATED_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
     bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
     bGPDspoint *pt;
     int i;
