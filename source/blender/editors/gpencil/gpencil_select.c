@@ -959,13 +959,12 @@ static bool gp_stroke_do_circle_sel(bGPdata *UNUSED(gpd),
       if (((!ELEM(V2D_IS_CLIPPED, x0, y0)) && BLI_rcti_isect_pt(rect, x0, y0)) ||
           ((!ELEM(V2D_IS_CLIPPED, x1, y1)) && BLI_rcti_isect_pt(rect, x1, y1))) {
         float mval[2] = {(float)mx, (float)my};
-        float mvalo[2] = {(float)mx, (float)my}; /* dummy - this isn't used... */
 
         /* check if point segment of stroke had anything to do with
          * eraser region  (either within stroke painted, or on its lines)
          * - this assumes that linewidth is irrelevant
          */
-        if (gp_stroke_inside_circle(mval, mvalo, radius, x0, y0, x1, y1)) {
+        if (gp_stroke_inside_circle(mval, radius, x0, y0, x1, y1)) {
           /* change selection of stroke, and then of both points
            * (as the last point otherwise wouldn't get selected
            * as we only do n-1 loops through).

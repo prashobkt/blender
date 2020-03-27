@@ -1072,6 +1072,17 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         row.active = md.use_rim
         row.prop(md, "material_offset_rim", text="Rim")
 
+        col.separator()
+
+        row = col.row(align=True)
+        row.label(text="Shell Vertex Group:")
+        row = col.row(align=True)
+        row.prop_search(md, "shell_vertex_group", ob, "vertex_groups", text="")
+        row = col.row(align=True)
+        row.label(text="Rim Vertex Group:")
+        row = col.row(align=True)
+        row.prop_search(md, "rim_vertex_group", ob, "vertex_groups", text="")
+
     def SUBSURF(self, layout, ob, md):
         from bpy import context
         layout.row().prop(md, "subdivision_type", expand=True)
@@ -1130,13 +1141,24 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.label(text="Settings are inside the Physics tab")
 
     def SURFACE_DEFORM(self, layout, _ob, md):
-        col = layout.column()
+        split = layout.split()
+        col = split.column()
         col.active = not md.is_bound
 
-        col.prop(md, "target")
-        col.prop(md, "falloff")
+        col.label(text="Target:")
+        col.prop(md, "target", text="")
 
-        layout.separator()
+        col = split.column()
+        col.label(text="Vertex Group:")
+        row = col.row(align=True)
+        row.prop_search(md, "vertex_group", _ob, "vertex_groups", text="")
+        row.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
+
+        split = layout.split()
+        col = split.column()
+        col.prop(md, "falloff")
+        col = split.column()
+        col.prop(md, "strength")
 
         col = layout.column()
 
