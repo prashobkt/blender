@@ -65,7 +65,6 @@ class DATA_UL_modifiers(UIList):
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             layout.prop(md, 'name', text="", emboss=False, icon_value=1, icon=icon)
-            layout.prop(md, 'show_ui', text="", emboss=False, icon_only=True, icon='HIDE_OFF')
             layout.prop(md, 'show_viewport', text="", emboss=False, icon_only=True)
             layout.prop(md, 'show_render', text="", emboss=False, icon_only=True)
         elif self.layout_type == 'GRID':

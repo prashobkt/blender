@@ -140,25 +140,25 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-uiLayout *sub, *row, *split, *col;
+// uiLayout *sub, *row, *split, *col;
 
-bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
 
-split = uiLayoutSplit(layout, 0.5f, false);
-col = uiLayoutColumn(split, false);
-uiItemL(col, IFACE_("Object:"), ICON_NONE);
-uiItemR(col, ptr, "object", 0, "", ICON_NONE);
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Object:"), ICON_NONE);
+// uiItemR(col, ptr, "object", 0, "", ICON_NONE);
 
-col = uiLayoutColumn(split, false);
-uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-row = uiLayoutRow(col, true);
-uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-sub = uiLayoutRow(row, true);
-uiLayoutSetActive(sub, has_vertex_group);
-uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-uiItemS(layout);
-uiItemR(layout, ptr, "strength", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+// uiItemS(layout);
+// uiItemR(layout, ptr, "strength", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
 ModifierTypeInfo modifierType_Lattice = {
     /* name */ "Lattice",

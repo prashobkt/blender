@@ -192,26 +192,26 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
-uiLayout *box, *row;
+// uiLayout *box, *row;
 
-PointerRNA cache_file_ptr = RNA_pointer_get(ptr, "cache_file");
-bool has_cache_file = !RNA_pointer_is_null(&cache_file_ptr);
+// PointerRNA cache_file_ptr = RNA_pointer_get(ptr, "cache_file");
+// bool has_cache_file = !RNA_pointer_is_null(&cache_file_ptr);
 
-uiItemL(layout, IFACE_("Cache File Properties:"), ICON_NONE);
-box = uiLayoutBox(layout);
-uiTemplateCacheFile(box, C, ptr, "cache_file");
+// uiItemL(layout, IFACE_("Cache File Properties:"), ICON_NONE);
+// box = uiLayoutBox(layout);
+// uiTemplateCacheFile(box, C, ptr, "cache_file");
 
-uiItemL(layout, IFACE_("Modifier Properties:"), ICON_NONE);
-box = uiLayoutBox(layout);
+// uiItemL(layout, IFACE_("Modifier Properties:"), ICON_NONE);
+// box = uiLayoutBox(layout);
 
-if (has_cache_file) {
-  uiItemPointerR(box, ptr, "object_path", &cache_file_ptr, "object_paths", NULL, ICON_NONE);
-}
+// if (has_cache_file) {
+//   uiItemPointerR(box, ptr, "object_path", &cache_file_ptr, "object_paths", NULL, ICON_NONE);
+// }
 
-if (RNA_enum_get(ob_ptr, "type") == OB_MESH) {
-  row = uiLayoutRow(box, false);
-  uiItemR(row, ptr, "read_data", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-}
+// if (RNA_enum_get(ob_ptr, "type") == OB_MESH) {
+//   row = uiLayoutRow(box, false);
+//   uiItemR(row, ptr, "read_data", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+// }
 
 ModifierTypeInfo modifierType_MeshSequenceCache = {
     /* name */ "Mesh Sequence Cache",
