@@ -1581,6 +1581,14 @@ static void rna_Object_modifier_clear(Object *object, bContext *C)
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
 
+static void rna_Object_active_modifier_index_range(
+    PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
+{
+  Object *ob = (Object *)ptr->owner_id;
+  *min = 0;
+  *max = BLI_listbase_count(&ob->modifiers) - 1;
+}
+
 bool rna_Object_modifiers_override_apply(Main *bmain,
                                          PointerRNA *ptr_dst,
                                          PointerRNA *ptr_src,
@@ -2155,7 +2163,7 @@ static void rna_def_object_modifiers(BlenderRNA *brna, PropertyRNA *cprop)
   StructRNA *srna;
 
   FunctionRNA *func;
-  PropertyRNA *parm;
+  PropertyRNA *prop, *parm;
 
   RNA_def_property_srna(cprop, "ObjectModifiers");
   srna = RNA_def_struct(brna, "ObjectModifiers", NULL);
@@ -2202,6 +2210,13 @@ static void rna_def_object_modifiers(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "clear", "rna_Object_modifier_clear");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   RNA_def_function_ui_description(func, "Remove all modifiers from the object");
+
+  /* Active index */
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_int_sdna(prop, NULL, "active_mod_index");
+  RNA_def_property_ui_text(prop, "Active Modifier Index", "Active index in modifier arary");
+  RNA_def_property_int_funcs(prop, NULL, NULL, "rna_Object_active_modifier_index_range");
 }
 
 /* object.grease_pencil_modifiers */
