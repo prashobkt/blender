@@ -451,6 +451,90 @@ static void ui_offset_panel_block(uiBlock *block)
   block->rect.xmin = block->rect.ymin = 0.0;
 }
 
+/**
+ * Called in situations where panels need to be added dynamically rather than only having one panel
+ * corresponding to each PanelType.
+ */
+Panel *UI_panel_add(
+    ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int modifier_index)
+{
+  Panel *panel = MEM_callocN(sizeof(Panel), "new panel");
+  panel->type = panel_type;
+  BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
+
+  if (panel_type->flag & PNL_DEFAULT_CLOSED) {
+    int align = panel_aligned(sa, region);
+    if (align == BUT_VERTICAL) {
+      panel->flag |= PNL_CLOSEDY;
+    }
+    else {
+      panel->flag |= PNL_CLOSEDX;
+    }
+  }
+
+  panel->ofsx = 0;
+  panel->ofsy = 0;
+  panel->sizex = 0;
+  panel->sizey = 0;
+  panel->blocksizex = 0;
+  panel->blocksizey = 0;
+  panel->runtime_flag |= PNL_NEW_ADDED;
+
+  panel->modifier_index = modifier_index;
+
+  /* Add the panel's children too. */
+  for (LinkData *link = panel_type->children.first; link; link = link->next) {
+    PanelType *child = link->data;
+    UI_panel_add(sa, region, &panel->children, child, modifier_index);
+  }
+
+  BLI_addtail(panels, panel);
+
+  return panel;
+}
+
+void UI_panel_delete(ListBase *panels, Panel *panel)
+{
+  printf("UI_PANEL_DELETE\n");
+  /* Recursively delete children. */
+  Panel *child = panel->children.first;
+  while (child != NULL) {
+
+    Panel *child_next = child->next;
+    UI_panel_delete(&panel->children, child);
+    child = child_next;
+  }
+  BLI_freelistN(&panel->children);
+
+  BLI_remlink(panels, panel);
+  if (panel->activedata) {
+    MEM_freeN(panel->activedata);
+  }
+  MEM_freeN(panel);
+}
+
+void UI_panels_free_recreate(ListBase *panels)
+{
+  /* Delete panels with the recreate flag. */
+  printf("UI_PANELS_FREE_RECREATE\n");
+  Panel *panel = panels->first;
+  Panel *panel_next = NULL;
+  while (panel != NULL) {
+    bool remove = false;
+    if (panel->type != NULL) { /* Some panels don't have a type.. */
+      if (panel->type->flag & PANELTYPE_RECREATE) {
+        remove = true;
+      }
+    }
+
+    panel_next = panel->next;
+    if (remove) {
+      UI_panel_delete(panels, panel);
+    }
+    panel = panel_next;
+  }
+}
+
 /**************************** drawing *******************************/
 
 /* triangle 'icon' for panel header */

@@ -3301,16 +3301,32 @@ void UI_blocklist_free(const bContext *C, ListBase *lb)
   }
 }
 
-void UI_blocklist_free_inactive(const bContext *C, ListBase *lb)
+void UI_blocklist_free_inactive(const bContext *C, ARegion *region)
 {
+  printf("UI_BLOCKLIST_FREE_INACTIVE\n");
   uiBlock *block, *nextblock;
 
-  for (block = lb->first; block; block = nextblock) {
+  for (block = region->uiblocks.first; block; block = nextblock) {
     nextblock = block->next;
+    Panel *panel = block->panel;
+    if (panel != NULL && panel->type->flag & PANELTYPE_RECREATE) {
+      printf("  Recreate panel found: %s\n", panel->panelname);
+    }
 
     if (!block->handle) {
+      if (panel != NULL && panel->type->flag & PANELTYPE_RECREATE) {
+        printf("    No block handle\n");
+      }
       if (!block->active) {
-        BLI_remlink(lb, block);
+        if (panel != NULL && panel->type->flag & PANELTYPE_RECREATE) {
+          printf("    Block not active\n");
+        }
+        /* Remove recreate panels as well. */
+        if (panel != NULL && panel->type->flag & PANELTYPE_RECREATE) {
+          UI_panel_delete(&region->panels, panel);
+        }
+
+        BLI_remlink(&region->uiblocks, block);
         UI_block_free(C, block);
       }
       else {

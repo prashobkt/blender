@@ -669,7 +669,7 @@ void UI_block_emboss_set(uiBlock *block, char dt);
 
 void UI_block_free(const struct bContext *C, uiBlock *block);
 void UI_blocklist_free(const struct bContext *C, struct ListBase *lb);
-void UI_blocklist_free_inactive(const struct bContext *C, struct ListBase *lb);
+void UI_blocklist_free_inactive(const struct bContext *C, struct ARegion *region);
 void UI_screen_free_active_but(const struct bContext *C, struct bScreen *screen);
 
 void UI_block_region_set(uiBlock *block, struct ARegion *region);
@@ -1663,6 +1663,14 @@ void UI_panel_end(const struct ScrArea *sa,
                   int width,
                   int height,
                   bool open);
+struct Panel *UI_panel_add(struct ScrArea *sa,
+                           struct ARegion *region,
+                           struct ListBase *panels,
+                           struct PanelType *panel_type,
+                           int modifier_index);
+void UI_panel_delete(struct ListBase *panels, struct Panel *panel);
+
+void UI_panels_free_recreate(struct ListBase *panels);
 void UI_panels_scale(struct ARegion *region, float new_width);
 void UI_panel_label_offset(struct uiBlock *block, int *r_x, int *r_y);
 int UI_panel_size_y(const struct Panel *pa);
@@ -1955,7 +1963,7 @@ void uiTemplatePathBuilder(uiLayout *layout,
                            const char *propname,
                            struct PointerRNA *root_ptr,
                            const char *text);
-uiLayout *uiTemplateModifier(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);
+void uiTemplateModifiers(uiLayout *layout, struct bContext *C);
 uiLayout *uiTemplateGpencilModifier(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);
 void uiTemplateGpencilColorPreview(uiLayout *layout,
                                    struct bContext *C,

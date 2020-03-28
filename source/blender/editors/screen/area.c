@@ -27,6 +27,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_userdef_types.h"
+#include "DNA_modifier_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist_stack.h"
@@ -560,7 +561,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   memset(&region->drawrct, 0, sizeof(region->drawrct));
 
-  UI_blocklist_free_inactive(C, &region->uiblocks);
+  UI_blocklist_free_inactive(C, region);
 
   if (sa) {
     const bScreen *screen = WM_window_get_active_screen(win);
@@ -2574,8 +2575,14 @@ void ED_region_panels_layout_ex(const bContext *C,
   /* set view2d view matrix  - UI_block_begin() stores it */
   UI_view2d_view_ortho(v2d);
 
+  bool has_always_recreate_panel = false;
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
+
+    if (pt->flag & PANELTYPE_RECREATE) {
+      has_always_recreate_panel = true;
+      continue;
+    }
     Panel *panel = UI_panel_find_by_type(&region->panels, pt);
 
     if (use_category_tabs && pt->category[0] && !STREQ(category, pt->category)) {
@@ -2583,8 +2590,21 @@ void ED_region_panels_layout_ex(const bContext *C,
         continue;
       }
     }
-
     ed_panel_draw(C, sa, region, &region->panels, pt, panel, w, em, vertical);
+  }
+
+  printf("ED_REGION_PANELS_LAYOUT_EX\n");
+  if (has_always_recreate_panel) {
+    printf("  Drawing Recreate Panels:");
+    for (Panel *panel = region->panels.first; panel; panel = panel->next) {
+      if (panel->type != NULL) { /* Some panels don't have a type.. */
+        if (panel->type->flag & PANELTYPE_RECREATE) {
+          printf("  %s,", panel->type->idname);
+          ed_panel_draw(C, sa, region, &region->panels, panel->type, panel, w, em, vertical);
+        }
+      }
+    }
+    printf("\n");
   }
 
   /* align panels and return size */

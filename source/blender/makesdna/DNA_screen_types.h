@@ -163,6 +163,10 @@ typedef struct Panel {
   int sortorder;
   /** Runtime for panel manipulation. */
   void *activedata;
+  /* For recreate type panels to store which instance of their panel type creator's object they
+   * correspond to. */
+  int modifier_index;
+  char _pad1[4];
   /** Sub panels. */
   ListBase children;
 
@@ -546,6 +550,8 @@ enum {
 #define PNL_DEFAULT_CLOSED 1
 #define PNL_NO_HEADER 2
 #define PNL_LAYOUT_VERT_BAR 4
+/** Delete panel after drawing, don't search for panel by type. */
+#define PANELTYPE_RECREATE 8
 
 /* Fallback panel category (only for old scripts which need updating) */
 #define PNL_CATEGORY_FALLBACK "Misc"
