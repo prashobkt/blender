@@ -29,12 +29,16 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_curve_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_lib_id.h"
@@ -42,7 +46,14 @@
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_object_deform.h"
+#include "BKE_screen.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "DEG_depsgraph.h"
@@ -792,6 +803,99 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   return false;
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
+
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  uiItemR(layout, &ptr, "fit_type", 0, NULL, ICON_NONE);
+
+  int fit_type = RNA_enum_get(&ptr, "fit_type");
+  if (fit_type == MOD_ARR_FIXEDCOUNT) {
+    uiItemR(layout, &ptr, "count", 0, NULL, ICON_NONE);
+  }
+  else if (fit_type == MOD_ARR_FITLENGTH) {
+    uiItemR(layout, &ptr, "fit_length", 0, NULL, ICON_NONE);
+  }
+  else if (fit_type == MOD_ARR_FITCURVE) {
+    uiItemR(layout, &ptr, "curve", 0, NULL, ICON_NONE);
+  }
+
+  uiItemS(layout);
+
+  /* Column 1. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_constant_offset", 0, NULL, ICON_NONE);
+  sub = uiLayoutColumn(col, false);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_constant_offset"));
+  uiItemR(sub, &ptr, "constant_offset_displace", 0, "", ICON_NONE);
+
+  /* Column 2. */
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_relative_offset", 0, NULL, ICON_NONE);
+  sub = uiLayoutColumn(col, false);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_relative_offset"));
+  uiItemR(sub, &ptr, "relative_offset_displace", 0, "", ICON_NONE);
+
+  uiItemR(layout, &ptr, "use_object_offset", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_object_offset"));
+  uiItemR(col, &ptr, "offset_object", 0, "", ICON_NONE);
+
+  /* Rows. */
+  uiItemL(layout, IFACE_("UV Offsets:"), ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  sub = uiLayoutColumn(row, true);
+  uiItemR(sub, &ptr, "offset_u", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(sub, &ptr, "offset_v", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+  uiItemS(layout);
+  uiItemR(layout, &ptr, "start_cap", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "end_cap", 0, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void array_merge_header_draw(const bContext *C, Panel *panel)
+{
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  uiLayout *layout = panel->layout;
+
+  uiItemR(layout, &ptr, "use_merge_vertices", 0, IFACE_("Merge"), ICON_NONE);
+}
+
+static void array_merge_panel_draw(const bContext *C, Panel *panel)
+{
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  uiLayout *layout = panel->layout;
+
+  uiItemR(layout, &ptr, "use_merge_vertices", 0, IFACE_("Merge"), ICON_NONE);
+  uiLayout *col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
+  uiItemR(col, &ptr, "use_merge_vertices_cap", 0, IFACE_("First Last"), ICON_NONE);
+  uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
+}
+
+static void panel(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Array", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "array_merge",
+                             "",
+                             array_merge_header_draw,
+                             array_merge_panel_draw,
+                             false,
+                             panel_type);
+}
+
 ModifierTypeInfo modifierType_Array = {
     /* name */ "Array",
     /* structName */ "ArrayModifierData",
@@ -820,4 +924,5 @@ ModifierTypeInfo modifierType_Array = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ panel,
 };

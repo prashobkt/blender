@@ -23,12 +23,15 @@ set(INC
   intern
   ../blenfont
   ../blenkernel
+  ../blentranslation
   ../blenlib
   ../bmesh
   ../depsgraph
+  ../editors/include
   ../makesdna
   ../makesrna
   ../render/extern/include
+  ../windowmanager
   ../../../intern/eigen
   ../../../intern/guardedalloc
 )
@@ -88,6 +91,7 @@ set(SRC
   intern/MOD_surface.c
   intern/MOD_surfacedeform.c
   intern/MOD_triangulate.c
+  intern/MOD_ui_common.c
   intern/MOD_util.c
   intern/MOD_uvproject.c
   intern/MOD_uvwarp.c
@@ -104,6 +108,7 @@ set(SRC
   MOD_modifiertypes.h
   intern/MOD_meshcache_util.h
   intern/MOD_solidify_util.h
+  intern/MOD_ui_common.h
   intern/MOD_util.h
   intern/MOD_weightvg_util.h
 )

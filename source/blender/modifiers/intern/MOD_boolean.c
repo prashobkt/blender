@@ -31,17 +31,28 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_global.h" /* only to check G.debug */
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "DEG_depsgraph_query.h"
@@ -346,6 +357,35 @@ static void requiredDataMask(Object *UNUSED(ob),
   r_cddata_masks->fmask |= CD_MASK_MTFACE;
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  uiLayout *col, *split;
+  uiLayout *layout = panel->layout;
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Operation:"), ICON_NONE);
+  uiItemR(col, &ptr, "operation", 0, "", ICON_NONE);
+
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Object:"), ICON_NONE);
+  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
+
+  uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
+
+  if (G.debug) {
+    uiItemR(col, &ptr, "debug_options", 0, "", ICON_NONE);
+  }
+}
+
+static void panel(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Boolean", panel_draw);
+}
+
 ModifierTypeInfo modifierType_Boolean = {
     /* name */ "Boolean",
     /* structName */ "BooleanModifierData",
@@ -372,4 +412,5 @@ ModifierTypeInfo modifierType_Boolean = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ panel,
 };

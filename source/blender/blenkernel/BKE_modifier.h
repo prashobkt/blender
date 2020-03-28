@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+struct ARegionType;
+struct bContext;
 struct BMEditMesh;
 struct CustomData_MeshMasks;
 struct DepsNodeHandle;
@@ -38,8 +40,10 @@ struct Main;
 struct Mesh;
 struct ModifierData;
 struct Object;
+struct PointerRNA;
 struct Scene;
 struct bArmature;
+struct uiLayout;
 
 typedef enum {
   /* Should not be used, only for None modifier type */
@@ -338,7 +342,12 @@ typedef struct ModifierTypeInfo {
    *    more like "ensure the data is freed".
    */
   void (*freeRuntimeData)(void *runtime_data);
+
+  /* Define the modifier's UI panels. */
+  void (*panel)(struct ARegionType *region_type);
 } ModifierTypeInfo;
+
+#define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"
 
 /* Initialize modifier's global data (type info and some common global storages). */
 void BKE_modifier_init(void);
