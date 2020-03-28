@@ -181,7 +181,7 @@ static void foreachTexLink(ModifierData *UNUSED(md),
 }
 
 // uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
-}
+
 ModifierTypeInfo modifierType_DynamicPaint = {
     /* name */ "Dynamic Paint",
     /* structName */ "DynamicPaintModifierData",
