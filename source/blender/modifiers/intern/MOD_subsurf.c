@@ -22,21 +22,32 @@
  */
 
 #include <stddef.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subdiv_deform.h"
 #include "BKE_subdiv_mesh.h"
 #include "BKE_subsurf.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RE_engine.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -275,6 +286,85 @@ static void deformMatrices(ModifierData *md,
   }
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// /* Find whether to display adaptive options, accounting for failing to get context. */
+// bool show_adaptive_options = false;
+// const struct RenderEngineType *engine_type;
+// const struct Scene *scene;
+// if ((engine_type = CTX_data_engine_type(C)) == NULL) {
+//   show_adaptive_options = false;
+// }
+// else {
+//   if (strcmp(engine_type->idname, "CYCLES") == 0) {
+//     if ((scene = CTX_data_scene(C)) != NULL) {
+//       /* HANS-TODO: Can't figure out how to get cycles feature set. */
+//       // if (scene->cycles.feature_set == EXPERIMENTAL && THIS_IS_LAST_MODIFIER) {
+//       //   show_adaptive_options = true;
+//       // }
+//     }
+//   }
+// }
+
+// // PointerRNA ob_cycles_ptr = RNA_pointer_get(ob_ptr, "cycles");
+// // bool ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr,
+// // "use_adaptive_subdivision");
+
+// row = uiLayoutRow(layout, false);
+// uiItemR(row, ptr, "subdivision_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.25f, false);
+// col = uiLayoutColumn(split, false);
+// if (show_adaptive_options) {
+//   uiItemL(col, "Render:", ICON_NONE);
+//   // uiItemR(row, &ob_cycles_ptr, "use_adaptive_subdivision", 0, "Adaptive", ICON_NONE);
+//   // if (ob_use_adaptive_subdivision) {
+//   //   uiItemR(row, &ob_cycles_ptr, "dicing_rate", 0, NULL, ICON_NONE);
+//   // }
+//   // else
+//   // {
+//   //   uiItemR(row, ptr, "render_levels", 0, "Levels", ICON_NONE);
+//   // }
+
+//   uiItemS(col);
+
+//   uiItemL(col, IFACE_("Viewport:"), ICON_NONE);
+//   uiItemR(row, ptr, "levels", 0, "Levels", ICON_NONE);
+// }
+// else {
+//   uiItemL(col, IFACE_("Subdivisions:"), ICON_NONE);
+//   sub = uiLayoutColumn(col, true);
+//   uiItemR(sub, ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
+//   uiItemR(sub, ptr, "levels", 0, IFACE_("Viewport"), ICON_NONE);
+
+//   uiItemR(col, ptr, "quality", 0, NULL, ICON_NONE);
+// }
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Options:"), ICON_NONE);
+// sub = uiLayoutColumn(col, true);
+// // uiLayoutSetActive(sub, !(show_adaptive_options && ob_use_adaptive_subdivision));
+// uiItemR(sub, ptr, "uv_smooth", 0, "", ICON_NONE);
+// uiItemR(sub, ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
+// uiItemR(sub, ptr, "use_creases", 0, NULL, ICON_NONE);
+
+// // if (show_adaptive_options && ob_use_adaptive_subdivision) {
+// //   col = uiLayoutColumn(layout, true);
+// //   uiLayoutSetScaleY(col, 0.6f);
+// //   uiItemS(col);
+// //   uiItemL(col, "Final Dicing Rate:", ICON_NONE);
+// //   uiItemS(col);
+
+// //   float render = MAX2(scene->cycles->dicing_rate * RNA_float_get(&ob_cycles_ptr,
+// //   "dicing_rate"),
+// //                       0.1f);
+// //   float preview = MAX2(
+// //       scene->cycles->preview_dicing_rate * RNA_float_get(&ob_cycles_ptr, "dicing_rate"),
+// //       0.1f);
+// //   char output[32];
+// //   snprintf(output, 32, "Render %.2f px, Preview %.2f px", render, preview);
+// // }
+
 ModifierTypeInfo modifierType_Subsurf = {
     /* name */ "Subdivision",
     /* structName */ "SubsurfModifierData",
@@ -303,4 +393,5 @@ ModifierTypeInfo modifierType_Subsurf = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
+    /* panel */ NULL,
 };

@@ -25,6 +25,8 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -32,6 +34,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_collision.h"
+#include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
@@ -39,6 +42,11 @@
 #include "BKE_modifier.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_util.h"
@@ -241,6 +249,8 @@ static void updateDepsgraph(ModifierData *UNUSED(md), const ModifierUpdateDepsgr
   DEG_add_modifier_to_transform_relation(ctx->node, "Collision Modifier");
 }
 
+// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+
 ModifierTypeInfo modifierType_Collision = {
     /* name */ "Collision",
     /* structName */ "CollisionModifierData",
@@ -267,4 +277,5 @@ ModifierTypeInfo modifierType_Collision = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

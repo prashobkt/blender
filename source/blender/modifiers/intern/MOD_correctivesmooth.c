@@ -27,6 +27,8 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -34,10 +36,16 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_util.h"
@@ -763,6 +771,38 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// uiItemR(layout, ptr, "factor", 0, IFACE_("Factor"), ICON_NONE);
+// uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
+// uiItemR(layout, ptr, "scale", 0, NULL, ICON_NONE);
+// uiItemR(layout, ptr, "smooth_type", 0, NULL, ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// col = uiLayoutColumn(split, false);
+
+// uiItemR(col, ptr, "use_only_smooth", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_pin_boundary", 0, NULL, ICON_NONE);
+
+// uiItemR(layout, ptr, "rest_source", 0, NULL, ICON_NONE);
+// if (RNA_enum_get(ptr, "rest_source") == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {
+//   uiItemO(layout,
+//           (RNA_boolean_get(ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
+//           ICON_NONE,
+//           "OBJECT_OT_correctivesmooth_bind");
+// }
+
 ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* name */ "CorrectiveSmooth",
     /* structName */ "CorrectiveSmoothModifierData",
@@ -789,4 +829,5 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

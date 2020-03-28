@@ -22,12 +22,20 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
@@ -115,6 +123,20 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
   return result;
 }
 
+// uiLayout *col, *split;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Quad Method:"), ICON_NONE);
+// uiItemR(col, ptr, "quad_method", 0, "", ICON_NONE);
+// uiItemR(col, ptr, "keep_custom_normals", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Ngon Method:"), ICON_NONE);
+// uiItemR(col, ptr, "ngon_method", 0, "", ICON_NONE);
+// uiItemL(col, IFACE_("Minimum Vertices:"), ICON_NONE);
+// uiItemR(col, ptr, "min_vertices", 0, "", ICON_NONE);
+
 ModifierTypeInfo modifierType_Triangulate = {
     /* name */ "Triangulate",
     /* structName */ "TriangulateModifierData",
@@ -141,5 +163,7 @@ ModifierTypeInfo modifierType_Triangulate = {
     /* dependsOnNormals */ NULL,
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
+    /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

@@ -21,11 +21,21 @@
  * \ingroup modifiers
  */
 
+#include <string.h>
+
 #include "BLI_utildefines.h"
+
+#include "BLT_translation.h"
 
 #include "DNA_mesh_types.h"
 
+#include "BKE_context.h"
 #include "BKE_particle.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
 
@@ -82,6 +92,69 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return mesh;
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// int solidify_mode = RNA_enum_get(ptr, "solidify_mode");
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+// row = uiLayoutRow(layout, false);
+// uiItemR(row, ptr, "solidify_mode", 0, NULL, ICON_NONE);
+
+// if (solidify_mode == MOD_SOLIDIFY_MODE_NONMANIFOLD) {
+//   uiItemR(layout, ptr, "nonmanifold_thickness_mode", 0, NULL, ICON_NONE);
+//   uiItemR(layout, ptr, "nonmanifold_boundary_mode", 0, NULL, ICON_NONE);
+// }
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "thickness", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "thickness_clamp", 0, NULL, ICON_NONE);
+// row = uiLayoutRow(col, false);
+// uiLayoutSetActive(row, RNA_float_get(ptr, "thickness_clamp") > 0.0f);
+// uiItemR(row, ptr, "use_thickness_angle_clamp", 0, NULL, ICON_NONE);
+
+// uiItemS(col);
+
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// row = uiLayoutRow(col, false);
+// uiLayoutSetActive(row, has_vertex_group);
+// uiItemR(row, ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
+
+// if (solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE) {
+//   uiItemL(col, IFACE_("Crease:"), ICON_NONE);
+//   uiItemR(col, ptr, "edge_crease_inner", 0, IFACE_("Inner"), ICON_NONE);
+//   uiItemR(col, ptr, "edge_crease_outer", 0, IFACE_("Outer"), ICON_NONE);
+//   uiItemR(col, ptr, "edge_crease_rim", 0, IFACE_("Rim"), ICON_NONE);
+// }
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "offset", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_flip_normals", 0, NULL, ICON_NONE);
+// if (solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE) {
+//   uiItemR(col, ptr, "use_even_offset", 0, NULL, ICON_NONE);
+//   uiItemR(col, ptr, "use_quality_normals", 0, NULL, ICON_NONE);
+// }
+// uiItemR(col, ptr, "use_rim", 0, NULL, ICON_NONE);
+// sub = uiLayoutColumn(col, false);
+// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_rim"));
+// uiItemR(sub, ptr, "use_rim_only", 0, NULL, ICON_NONE);
+
+// uiItemS(col);
+
+// uiItemL(col, IFACE_("Material Index Offset:"), ICON_NONE);
+
+// sub = uiLayoutColumn(col, false);
+// row = uiLayoutSplit(sub, 0.4f, true);
+// uiItemR(row, ptr, "material_offset", 0, "", ICON_NONE);
+// row = uiLayoutRow(row, true);
+// uiLayoutSetActive(row, RNA_boolean_get(ptr, "use_rim"));
+// uiItemR(row, ptr, "material_offset_rim", 0, IFACE_("Rim"), ICON_NONE);
+
 ModifierTypeInfo modifierType_Solidify = {
     /* name */ "Solidify",
     /* structName */ "SolidifyModifierData",
@@ -111,4 +184,5 @@ ModifierTypeInfo modifierType_Solidify = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

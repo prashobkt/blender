@@ -23,6 +23,8 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_cachefile_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -31,8 +33,14 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_cachefile.h"
+#include "BKE_context.h"
 #include "BKE_lib_query.h"
 #include "BKE_scene.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -184,6 +192,27 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
+uiLayout *box, *row;
+
+PointerRNA cache_file_ptr = RNA_pointer_get(ptr, "cache_file");
+bool has_cache_file = !RNA_pointer_is_null(&cache_file_ptr);
+
+uiItemL(layout, IFACE_("Cache File Properties:"), ICON_NONE);
+box = uiLayoutBox(layout);
+uiTemplateCacheFile(box, C, ptr, "cache_file");
+
+uiItemL(layout, IFACE_("Modifier Properties:"), ICON_NONE);
+box = uiLayoutBox(layout);
+
+if (has_cache_file) {
+  uiItemPointerR(box, ptr, "object_path", &cache_file_ptr, "object_paths", NULL, ICON_NONE);
+}
+
+if (RNA_enum_get(ob_ptr, "type") == OB_MESH) {
+  row = uiLayoutRow(box, false);
+  uiItemR(row, ptr, "read_data", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+}
+
 ModifierTypeInfo modifierType_MeshSequenceCache = {
     /* name */ "Mesh Sequence Cache",
     /* structName */ "MeshSeqCacheModifierData",
@@ -210,4 +239,5 @@ ModifierTypeInfo modifierType_MeshSequenceCache = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

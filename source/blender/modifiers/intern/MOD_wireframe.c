@@ -18,13 +18,23 @@
  * \ingroup modifiers
  */
 
+#include <string.h>
+
 #include "BLI_utildefines.h"
+
+#include "BLT_translation.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
 
@@ -106,6 +116,34 @@ static Mesh *applyModifier(ModifierData *md,
   return WireframeModifier_do((WireframeModifierData *)md, ctx->object, mesh);
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "thickness", 0, IFACE_("Thickness"), ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+// row = uiLayoutRow(col, true);
+// uiLayoutSetActive(row, has_vertex_group);
+// uiItemR(row, ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
+// uiItemR(col, ptr, "use_crease", 0, IFACE_("Crease Edges"), ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiLayoutSetActive(row, RNA_boolean_get(ptr, "use_crease"));
+// uiItemR(row, ptr, "crease_weight", 0, IFACE_("Crease Weight"), ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "offset", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_even_offset", 0, IFACE_("Even Thickness"), ICON_NONE);
+// uiItemR(col, ptr, "use_relative_offset", 0, IFACE_("Relative Thickness"), ICON_NONE);
+// uiItemR(col, ptr, "use_boundary", 0, IFACE_("Boundary"), ICON_NONE);
+// uiItemR(col, ptr, "use_replace", 0, IFACE_("Replace Original"), ICON_NONE);
+// uiItemR(col, ptr, "material_offset", 0, IFACE_("Material Offset"), ICON_NONE);
+
 ModifierTypeInfo modifierType_Wireframe = {
     /* name */ "Wireframe",
     /* structName */ "WireframeModifierData",
@@ -132,4 +170,5 @@ ModifierTypeInfo modifierType_Wireframe = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

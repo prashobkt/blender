@@ -26,11 +26,14 @@
 #include "BLI_math.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
@@ -39,6 +42,11 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -551,6 +559,37 @@ void modifier_mdef_compact_influences(ModifierData *md)
   mmd->bindweights = NULL;
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// bool is_bound = RNA_boolean_get(ptr, "is_bound");
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiLayoutSetEnabled(col, !is_bound);
+// uiItemL(col, IFACE_("Object:"), ICON_NONE);
+// uiItemR(col, ptr, "object", 0, "", ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// uiItemS(layout);
+// row = uiLayoutRow(layout, false);
+// uiLayoutSetEnabled(row, !is_bound);
+// uiItemR(row, ptr, "precision", 0, NULL, ICON_NONE);
+// uiItemR(row, ptr, "use_dynamic_bind", 0, NULL, ICON_NONE);
+
+// uiItemS(layout);
+// uiItemO(layout,
+//         is_bound ? IFACE_("Unbind") : IFACE_("Bind"),
+//         ICON_NONE,
+//         "OBJECT_OT_meshdeform_bind");
+
 ModifierTypeInfo modifierType_MeshDeform = {
     /* name */ "MeshDeform",
     /* structName */ "MeshDeformModifierData",
@@ -578,4 +617,5 @@ ModifierTypeInfo modifierType_MeshDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

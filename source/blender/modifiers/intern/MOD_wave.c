@@ -25,11 +25,14 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
@@ -37,6 +40,11 @@
 #include "BKE_mesh.h"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MEM_guardedalloc.h"
 #include "RE_shader_ext.h"
@@ -349,6 +357,74 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// int texture_coords = RNA_enum_get(ptr, "texture_coords");
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Motion:"), ICON_NONE);
+// uiItemR(col, ptr, "use_x", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_y", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_cyclic", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "use_normal", 0, NULL, ICON_NONE);
+// sub = uiLayoutColumn(col, false);
+// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_normal"));
+// uiItemR(sub, ptr, "use_normal_x", 0, "X", ICON_NONE);
+// uiItemR(sub, ptr, "use_normal_y", 0, "Y", ICON_NONE);
+// uiItemR(sub, ptr, "use_normal_z", 0, "Z", ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Time:"), ICON_NONE);
+// sub = uiLayoutColumn(col, true);
+// uiItemR(sub, ptr, "time_offset", 0, "Offset", ICON_NONE);
+// uiItemR(sub, ptr, "lifetime", 0, "Life", ICON_NONE);
+// uiItemR(col, ptr, "damping_time", 0, "Damping", ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Position:"), ICON_NONE);
+// sub = uiLayoutColumn(col, true);
+// uiItemR(sub, ptr, "start_position_x", 0, "X", ICON_NONE);
+// uiItemR(sub, ptr, "start_position_y", 0, "Y", ICON_NONE);
+// uiItemR(col, ptr, "falloff_radius", 0, "Falloff", ICON_NONE);
+
+// uiItemS(layout);
+
+// uiItemR(layout, ptr, "start_position_object", 0, NULL, ICON_NONE);
+// row = uiLayoutRow(layout, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// split = uiLayoutSplit(layout, 0.333f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Texture:"), ICON_NONE);
+// col = uiLayoutColumn(split, false);
+// uiTemplateID(col, C, ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
+
+// uiItemR(layout, ptr, "texture_coords", 0, NULL, ICON_NONE);
+// if (texture_coords == MOD_DISP_MAP_OBJECT) {
+//   uiItemR(layout, ptr, "texture_coords_object", 0, NULL, ICON_NONE);
+// }
+// else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(ob_ptr, "type") == OB_MESH) {
+//   PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
+//   uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
+// }
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "speed", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+// uiItemR(col, ptr, "height", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "width", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+// uiItemR(col, ptr, "narrowness", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_Wave = {
     /* name */ "Wave",
     /* structName */ "WaveModifierData",
@@ -376,4 +452,5 @@ ModifierTypeInfo modifierType_Wave = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

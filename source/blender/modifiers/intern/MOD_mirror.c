@@ -23,16 +23,24 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mirror.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
@@ -113,6 +121,66 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return result;
 }
 
+// uiLayout *row, *col, *split;
+
+// split = uiLayoutSplit(layout, 0.333f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+// PropertyRNA *prop = RNA_struct_find_property(ptr, "use_axis");
+// uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
+// uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+// uiItemFullR(col, ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Bisect:"), ICON_NONE);
+// prop = RNA_struct_find_property(ptr, "use_bisect_axis");
+// uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
+// uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+// uiItemFullR(col, ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Flip:"), ICON_NONE);
+// prop = RNA_struct_find_property(ptr, "use_bisect_flip_axis");
+// uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
+// uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+// uiItemFullR(col, ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+
+// uiItemS(layout);
+
+// uiItemL(layout, IFACE_("Mirror Object:"), ICON_NONE);
+// uiItemR(layout, ptr, "mirror_object", 0, "", ICON_NONE);
+
+// uiItemS(layout);
+
+// uiItemL(layout, IFACE_("Options:"), ICON_NONE);
+// split = uiLayoutSplit(layout, 0.333f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+// uiItemR(col, ptr, "use_mirror_merge", 0, IFACE_("Merge"), ICON_NONE);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
+// if (RNA_boolean_get(ptr, "use_mirror_merge")) {
+//   uiItemR(layout, ptr, "merge_threshold", 0, NULL, ICON_NONE);
+// }
+
+// uiItemS(layout);
+
+// uiItemL(layout, IFACE_("Textures:"), ICON_NONE);
+// row = uiLayoutRow(layout, false);
+// uiItemR(row, ptr, "use_mirror_u", 0, IFACE_("Flip U"), ICON_NONE);
+// uiItemR(row, ptr, "use_mirror_v", 0, IFACE_("Flip V"), ICON_NONE);
+
+// col = uiLayoutColumn(layout, true);
+// if (RNA_boolean_get(ptr, "use_mirror_u")) {
+//   uiItemR(col, ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+// }
+// if (RNA_boolean_get(ptr, "use_mirror_v")) {
+//   uiItemR(col, ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+// }
+// col = uiLayoutColumn(layout, true);
+// uiItemR(col, ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+// uiItemR(col, ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_Mirror = {
     /* name */ "Mirror",
     /* structName */ "MirrorModifierData",
@@ -143,4 +211,5 @@ ModifierTypeInfo modifierType_Mirror = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

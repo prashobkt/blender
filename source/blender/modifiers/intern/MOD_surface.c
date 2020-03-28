@@ -25,14 +25,22 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_bvhutils.h"
+#include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -182,6 +190,8 @@ static void deformVerts(ModifierData *md,
   }
 }
 
+// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+
 ModifierTypeInfo modifierType_Surface = {
     /* name */ "Surface",
     /* structName */ "SurfaceModifierData",
@@ -209,4 +219,5 @@ ModifierTypeInfo modifierType_Surface = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

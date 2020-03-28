@@ -30,11 +30,19 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
@@ -127,6 +135,18 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
   return result;
 }
 
+// uiLayout *sub, *col, *split;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "use_edge_angle", 0, IFACE_("Edge Angle"), ICON_NONE);
+// sub = uiLayoutColumn(col, false);
+// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_edge_angle"));
+// uiItemR(col, ptr, "split_angle", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "use_edge_sharp", 0, IFACE_("Sharp Edges"), ICON_NONE);
+
 ModifierTypeInfo modifierType_EdgeSplit = {
     /* name */ "EdgeSplit",
     /* structName */ "EdgeSplitModifierData",
@@ -155,4 +175,5 @@ ModifierTypeInfo modifierType_EdgeSplit = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

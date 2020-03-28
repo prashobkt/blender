@@ -25,17 +25,25 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_util.h"
 
@@ -567,6 +575,35 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.25f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+// uiItemR(col, ptr, "use_x", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_y", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_z", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Lambda:"), ICON_NONE);
+// uiItemR(col, ptr, "lambda_factor", 0, "Factor", ICON_NONE);
+// uiItemR(col, ptr, "lambda_border", 0, "Border", ICON_NONE);
+
+// uiItemS(col);
+// uiItemR(col, ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_normalized", 0, NULL, ICON_NONE);
+
+// uiItemL(layout, IFACE_("Vertex Group:"), ICON_NONE);
+// row = uiLayoutRow(layout, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
 ModifierTypeInfo modifierType_LaplacianSmooth = {
     /* name */ "Laplacian Smooth",
     /* structName */ "LaplacianSmoothModifierData",
@@ -593,4 +630,5 @@ ModifierTypeInfo modifierType_LaplacianSmooth = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

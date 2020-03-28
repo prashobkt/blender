@@ -27,6 +27,8 @@
 #include "BLI_math_inline.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_customdata_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -34,10 +36,18 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_ocean.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
+#include "WM_types.h" /* For UI free bake operator. */
 
 #include "DEG_depsgraph_query.h"
 
@@ -495,6 +505,115 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return result;
 }
 
+// #ifdef WITH_OCEANSIM
+//   uiLayout *sub, *row, *col, *split;
+
+//   bool is_cached = RNA_boolean_get(ptr, "is_cached");
+//   bool use_foam = RNA_boolean_get(ptr, "use_foam");
+//   int spectrum = RNA_enum_get(ptr, "spectrum");
+
+//   uiItemR(layout, ptr, "geometry_mode", 0, NULL, ICON_NONE);
+//   if (RNA_enum_get(ptr, "geometry_mode") == MOD_OCEAN_GEOM_GENERATE) {
+//     row = uiLayoutRow(layout, false);
+//     uiItemR(row, ptr, "repeat_x", 0, NULL, ICON_NONE);
+//     uiItemR(row, ptr, "repeat_y", 0, NULL, ICON_NONE);
+//   }
+
+//   uiItemS(layout);
+
+//   split = uiLayoutSplit(layout, 0.5f, false);
+//   col = uiLayoutColumn(split, false);
+//   uiItemR(col, ptr, "time", 0, NULL, ICON_NONE);
+//   uiItemR(col, ptr, "depth", 0, NULL, ICON_NONE);
+//   uiItemR(col, ptr, "random_seed", 0, NULL, ICON_NONE);
+
+//   col = uiLayoutColumn(split, false);
+//   uiItemR(col, ptr, "resolution", 0, NULL, ICON_NONE);
+//   uiItemR(col, ptr, "size", 0, NULL, ICON_NONE);
+//   uiItemR(col, ptr, "spatial_size", 0, NULL, ICON_NONE);
+
+//   uiItemS(layout);
+
+//   /* Spectrum settings. */
+//   uiItemR(layout, ptr, "spectrum", 0, NULL, ICON_NONE);
+//   if (ELEM(spectrum, MOD_OCEAN_SPECTRUM_TEXEL_MARSEN_ARSLOE, MOD_OCEAN_SPECTRUM_JONSWAP)) {
+//     split = uiLayoutSplit(layout, 0.5f, false);
+//     col = uiLayoutColumn(split, false);
+//     uiItemR(col, ptr, "sharpen_peak_jonswap", 0, NULL, ICON_NONE);
+
+//     col = uiLayoutColumn(split, false);
+//     uiItemR(col, ptr, "fetch_jonswap", 0, NULL, ICON_NONE);
+//   }
+
+//   uiItemL(layout, IFACE_("Waves:"), ICON_NONE);
+
+//   split = uiLayoutSplit(layout, 0.5f, false);
+//   col = uiLayoutColumn(split, false);
+//   uiItemR(col, ptr, "choppiness", 0, NULL, ICON_NONE);
+//   uiItemR(col, ptr, "wave_scale", 0, IFACE_("Scale"), ICON_NONE);
+//   uiItemR(col, ptr, "wave_scale_min", 0, NULL, ICON_NONE);
+//   uiItemR(col, ptr, "wind_velocity", 0, NULL, ICON_NONE);
+
+//   col = uiLayoutColumn(split, false);
+//   uiItemR(col, ptr, "wave_alignment", 0, IFACE_("Alignment"), ICON_NONE);
+//   sub = uiLayoutColumn(col, false);
+//   uiLayoutSetActive(sub, RNA_float_get(ptr, "wave_alignment") > 0.0f);
+//   uiItemR(sub, ptr, "wave_direction", 0, IFACE_("Direction"), ICON_NONE);
+//   uiItemR(sub, ptr, "damping", 0, NULL, ICON_NONE);
+
+//   uiItemS(layout);
+
+//   uiItemR(layout, ptr, "use_normals", 0, NULL, ICON_NONE);
+
+//   split = uiLayoutSplit(layout, 0.5f, false);
+//   col = uiLayoutColumn(split, false);
+//   uiItemR(col, ptr, "use_foam", 0, NULL, ICON_NONE);
+//   sub = uiLayoutColumn(col, false);
+//   uiLayoutSetActive(sub, use_foam);
+//   uiItemR(sub, ptr, "foam_coverage", 0, IFACE_("Coverage"), ICON_NONE);
+
+//   col = uiLayoutColumn(split, false);
+//   uiLayoutSetActive(col, use_foam);
+//   uiItemL(col, IFACE_("Foam Data Layer Name:"), ICON_NONE);
+//   uiItemR(col, ptr, "foam_layer_name", 0, "", ICON_NONE);
+
+//   uiItemS(layout);
+
+//   if (is_cached) {
+//     PointerRNA op_ptr;
+//     uiItemFullO(layout,
+//                 "OBJECT_OT_ocean_bake",
+//                 IFACE_("Delete Bake"),
+//                 ICON_NONE,
+//                 NULL,
+//                 WM_OP_EXEC_DEFAULT,
+//                 0,
+//                 &op_ptr);
+//     RNA_boolean_set(&op_ptr, "free", true);
+//   }
+//   else {
+//     uiItemO(layout, NULL, ICON_NONE, "OBJECT_OT_ocean_bake");
+//   }
+
+//   split = uiLayoutSplit(layout, 0.5f, false);
+//   uiLayoutSetEnabled(split, !is_cached);
+//   col = uiLayoutColumn(split, false);
+//   sub = uiLayoutColumn(col, true);
+//   uiItemR(sub, ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
+//   uiItemR(sub, ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
+//   sub = uiLayoutColumn(col, false);
+//   uiLayoutSetActive(sub, use_foam);
+//   uiItemR(sub, ptr, "bake_foam_fade", 0, NULL, ICON_NONE);
+
+//   col = uiLayoutColumn(split, false);
+//   uiItemL(col, IFACE_("Cache path:"), ICON_NONE);
+//   uiItemR(col, ptr, "filepath", 0, "", ICON_NONE);
+
+// #else  /* WITH_OCEANSIM */
+//   uiItemL(layout, IFACE_("Built without OceanSim modifier"), ICON_NONE);
+//   UNUSED_VARS(ptr);
+// #endif /* WITH_OCEANSIM */
+
 ModifierTypeInfo modifierType_Ocean = {
     /* name */ "Ocean",
     /* structName */ "OceanModifierData",
@@ -522,4 +641,5 @@ ModifierTypeInfo modifierType_Ocean = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

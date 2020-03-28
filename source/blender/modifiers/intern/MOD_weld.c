@@ -35,15 +35,23 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_bvhutils.h"
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 
@@ -1902,6 +1910,18 @@ static void requiredDataMask(Object *UNUSED(ob),
   }
 }
 
+// uiLayout *sub, *row;
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// uiItemR(layout, ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
+// uiItemR(layout, ptr, "max_interactions", 0, NULL, ICON_NONE);
+// row = uiLayoutRow(layout, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", NULL, ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
 ModifierTypeInfo modifierType_Weld = {
     /* name */ "Weld",
     /* structName */ "WeldModifierData",
@@ -1930,6 +1950,7 @@ ModifierTypeInfo modifierType_Weld = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };
 
 /** \} */

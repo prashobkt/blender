@@ -26,14 +26,22 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_scene.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -287,6 +295,52 @@ static void deformVertsEM(ModifierData *md,
   meshcache_do(mcmd, scene, ctx->object, vertexCos, numVerts);
 }
 
+// uiLayout *row, *split;
+
+// uiItemR(layout, ptr, "cache_format", 0, NULL, ICON_NONE);
+// uiItemR(layout, ptr, "filepath", 0, NULL, ICON_NONE);
+
+// uiItemL(layout, IFACE_("Evaluation:"), ICON_NONE);
+// uiItemR(layout, ptr, "factor", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+// uiItemR(layout, ptr, "deform_mode", 0, NULL, ICON_NONE);
+// uiItemR(layout, ptr, "interpolation", 0, NULL, ICON_NONE);
+
+// uiItemL(layout, IFACE_("Time Mapping:"), ICON_NONE);
+// row = uiLayoutRow(layout, false);
+// uiItemR(row, ptr, "time_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+// row = uiLayoutRow(layout, false);
+// uiItemR(row, ptr, "play_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+// if (RNA_enum_get(ptr, "play_mode") == MOD_MESHCACHE_PLAY_CFEA) {
+//   uiItemR(layout, ptr, "frame_start", 0, NULL, ICON_NONE);
+//   uiItemR(layout, ptr, "frame_scale", 0, NULL, ICON_NONE);
+// }
+// else { /* play_mode == MOD_MESHCACHE_PLAY_EVAL */
+//   int time_mode = RNA_enum_get(ptr, "time_mode");
+//   if (time_mode == MOD_MESHCACHE_TIME_FRAME) {
+//     uiItemR(layout, ptr, "eval_frame", 0, NULL, ICON_NONE);
+//   }
+//   else if (time_mode == MOD_MESHCACHE_TIME_SECONDS) {
+//     uiItemR(layout, ptr, "eval_time", 0, NULL, ICON_NONE);
+//   }
+//   else { /* time_mode == MOD_MESHCACHE_TIME_FACTOR */
+//     uiItemR(layout, ptr, "eval_factor", 0, NULL, ICON_NONE);
+//   }
+// }
+
+// uiItemL(layout, IFACE_("Time Mapping:"), ICON_NONE);
+// split = uiLayoutSplit(layout, 0.5f, false);
+// uiItemL(split, IFACE_("Forward/Up Axis:"), ICON_NONE);
+// row = uiLayoutRow(split, true);
+// uiLayoutSetRedAlert(row, RNA_enum_get(ptr, "forward_axis") == RNA_enum_get(ptr, "up_axis"));
+// uiItemR(row, ptr, "forward_axis", 0, "", ICON_NONE);
+// uiItemR(row, ptr, "up_axis", 0, "", ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// uiItemL(split, IFACE_("Flip Axis:"), ICON_NONE);
+// row = uiLayoutRow(split, true);
+// uiItemR(row, ptr, "flip_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_MeshCache = {
     /* name */ "Mesh Cache",
     /* structName */ "MeshCacheModifierData",
@@ -314,4 +368,5 @@ ModifierTypeInfo modifierType_MeshCache = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

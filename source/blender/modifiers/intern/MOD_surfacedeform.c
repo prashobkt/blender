@@ -24,19 +24,26 @@
 #include "BLI_math_geom.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_bvhutils.h"
+#include "BKE_context.h"
+#include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
 
-#include "BKE_deform.h"
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -1382,6 +1389,28 @@ static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED
          !(smd->verts != NULL && !(smd->flags & MOD_SDEF_BIND));
 }
 
+// uiLayout *col;
+
+// PointerRNA target_ptr = RNA_pointer_get(ptr, "target");
+
+// bool is_bound = RNA_boolean_get(ptr, "is_bound");
+
+// col = uiLayoutColumn(layout, false);
+// uiLayoutSetActive(col, !is_bound);
+// uiItemR(col, ptr, "target", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "falloff", 0, NULL, ICON_NONE);
+
+// uiItemS(layout);
+
+// col = uiLayoutColumn(layout, false);
+// if (is_bound) {
+//   uiItemO(col, IFACE_("Unbind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
+// }
+// else {
+//   uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
+//   uiItemO(col, IFACE_("Bind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
+// }
+
 ModifierTypeInfo modifierType_SurfaceDeform = {
     /* name */ "Surface Deform",
     /* structName */ "SurfaceDeformModifierData",
@@ -1408,4 +1437,5 @@ ModifierTypeInfo modifierType_SurfaceDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

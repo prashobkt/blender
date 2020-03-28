@@ -26,16 +26,24 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
 #include "BKE_texture.h" /* Texture masking. */
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -422,6 +430,28 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return mesh;
 }
 
+// uiLayout *col, *split;
+
+// split = uiLayoutSplit(layout, 0.5f, true);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Vertex Group A:"), ICON_NONE);
+// uiItemPointerR(col, ptr, "vertex_group_a", ob_ptr, "vertex_groups", "", ICON_NONE);
+// uiItemL(col, IFACE_("Default Weight A:"), ICON_NONE);
+// uiItemR(col, ptr, "default_weight_a", 0, "", ICON_NONE);
+// uiItemL(col, IFACE_("Mix Mode:"), ICON_NONE);
+// uiItemR(col, ptr, "mix_mode", 0, "", ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Vertex Group B:"), ICON_NONE);
+// uiItemPointerR(col, ptr, "vertex_group_b", ob_ptr, "vertex_groups", "", ICON_NONE);
+// uiItemL(col, IFACE_("Default Weight B:"), ICON_NONE);
+// uiItemR(col, ptr, "default_weight_b", 0, "", ICON_NONE);
+// uiItemL(col, IFACE_("Mix Set:"), ICON_NONE);
+// uiItemR(col, ptr, "mix_set", 0, "", ICON_NONE);
+
+// uiItemS(layout);
+// weightvg_ui_common(C, ob_ptr, ptr, layout);
+
 ModifierTypeInfo modifierType_WeightVGMix = {
     /* name */ "VertexWeightMix",
     /* structName */ "WeightVGMixModifierData",
@@ -449,4 +479,5 @@ ModifierTypeInfo modifierType_WeightVGMix = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

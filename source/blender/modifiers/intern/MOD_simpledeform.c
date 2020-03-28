@@ -25,16 +25,24 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -447,6 +455,55 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// int deform_method = RNA_enum_get(ptr, "deform_method");
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// row = uiLayoutRow(layout, false);
+// uiItemR(row, ptr, "deform_method", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+// uiItemL(layout, IFACE_("Vertex Group:"), ICON_NONE);
+// row = uiLayoutRow(layout, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Axis Origin:"), ICON_NONE);
+// uiItemR(col, ptr, "origin", 0, "", ICON_NONE);
+// uiItemR(col, ptr, "deform_axis", 0, NULL, ICON_NONE);
+
+// if (ELEM(deform_method,
+//          MOD_SIMPLEDEFORM_MODE_TAPER,
+//          MOD_SIMPLEDEFORM_MODE_STRETCH,
+//          MOD_SIMPLEDEFORM_MODE_TWIST)) {
+//   row = uiLayoutRow(col, true);
+//   uiItemL(row, IFACE_("Lock:"), ICON_NONE);
+//   int deform_axis = RNA_enum_get(ptr, "deform_axis");
+//   if (deform_axis != 0) {
+//     uiItemR(row, ptr, "lock_x", 0, NULL, ICON_NONE);
+//   }
+//   if (deform_axis != 1) {
+//     uiItemR(row, ptr, "lock_y", 0, NULL, ICON_NONE);
+//   }
+//   if (deform_axis != 2) {
+//     uiItemR(row, ptr, "lock_z", 0, NULL, ICON_NONE);
+//   }
+// }
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Deform:"), ICON_NONE);
+// if (ELEM(deform_method, MOD_SIMPLEDEFORM_MODE_TAPER, MOD_SIMPLEDEFORM_MODE_STRETCH)) {
+//   uiItemR(col, ptr, "factor", 0, NULL, ICON_NONE);
+// }
+// else {
+//   uiItemR(col, ptr, "angle", 0, NULL, ICON_NONE);
+// }
+// uiItemR(col, ptr, "limits", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_SimpleDeform = {
     /* name */ "SimpleDeform",
     /* structName */ "SimpleDeformModifierData",
@@ -476,4 +533,5 @@ ModifierTypeInfo modifierType_SimpleDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

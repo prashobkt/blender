@@ -26,6 +26,8 @@
 
 #include "BLI_math_base.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
@@ -33,8 +35,14 @@
 
 #include "MOD_modifiertypes.h"
 
+#include "BKE_context.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -202,6 +210,30 @@ static Mesh *applyModifier(ModifierData *UNUSED(md),
 
 #endif /* !WITH_MOD_REMESH */
 
+// #ifdef WITH_MOD_REMESH
+//   uiLayout *row;
+
+//   uiItemR(layout, ptr, "mode", 0, NULL, ICON_NONE);
+
+//   row = uiLayoutRow(layout, false);
+//   uiItemR(row, ptr, "octree_depth", 0, NULL, ICON_NONE);
+//   uiItemR(row, ptr, "scale", 0, NULL, ICON_NONE);
+
+//   if (RNA_enum_get(ptr, "mode") == MOD_REMESH_SHARP_FEATURES) {
+//     uiItemR(layout, ptr, "sharpness", 0, NULL, ICON_NONE);
+//   }
+
+//   uiItemR(layout, ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
+//   uiItemR(layout, ptr, "use_remove_disconnected", 0, NULL, ICON_NONE);
+//   row = uiLayoutRow(layout, false);
+//   uiLayoutSetActive(row, RNA_boolean_get(ptr, "use_remove_disconnected"));
+//   uiItemR(layout, ptr, "threshold", 0, NULL, ICON_NONE);
+
+// #else  /* WITH_MOD_REMESH */
+//   uiItemL(layout, IFACE_("Built without Remesh modifier"), ICON_NONE);
+//   UNUSED_VARS(ptr);
+// #endif /* WITH_MOD_REMESH */
+
 ModifierTypeInfo modifierType_Remesh = {
     /* name */ "Remesh",
     /* structName */ "RemeshModifierData",
@@ -227,5 +259,7 @@ ModifierTypeInfo modifierType_Remesh = {
     /* dependsOnNormals */ NULL,
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
+    /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

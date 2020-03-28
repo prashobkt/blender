@@ -22,17 +22,25 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_dynamicpaint.h"
 #include "BKE_layer.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -172,6 +180,8 @@ static void foreachTexLink(ModifierData *UNUSED(md),
   // walk(userData, ob, md, ""); /* re-enable when possible */
 }
 
+// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+}
 ModifierTypeInfo modifierType_DynamicPaint = {
     /* name */ "Dynamic Paint",
     /* structName */ "DynamicPaintModifierData",
@@ -200,4 +210,5 @@ ModifierTypeInfo modifierType_DynamicPaint = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ freeRuntimeData,
+    /* panel */ NULL,
 };

@@ -29,12 +29,20 @@
 #include "BLI_alloca.h"
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -1159,6 +1167,39 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
   walk(userData, ob, &ltmd->ob_axis, IDWALK_CB_NOP);
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// PointerRNA screw_obj_ptr = RNA_pointer_get(ptr, "object");
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "axis", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "object", 0, IFACE_("Axis Object"), ICON_NONE);
+// uiItemR(col, ptr, "angle", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "steps", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "render_steps", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_merge_vertices", 0, NULL, ICON_NONE);
+// sub = uiLayoutColumn(col, false);
+// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_merge_vertices"));
+// uiItemR(sub, ptr, "merge_threshold", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// row = uiLayoutRow(col, false);
+// uiLayoutSetActive(sub,
+//                   RNA_pointer_is_null(&screw_obj_ptr) ||
+//                       !RNA_boolean_get(ptr, "use_object_screw_offset"));
+// uiItemR(row, ptr, "screw_offset", 0, NULL, ICON_NONE);
+// row = uiLayoutRow(col, false);
+// uiLayoutSetActive(sub, !RNA_pointer_is_null(&screw_obj_ptr));
+// uiItemR(row, ptr, "use_object_screw_offset", 0, NULL, ICON_NONE);
+
+// uiItemR(col, ptr, "use_normal_calculate", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_normal_flip", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "iterations", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_stretch_u", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_stretch_v", 0, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_Screw = {
     /* name */ "Screw",
     /* structName */ "ScrewModifierData",
@@ -1187,4 +1228,5 @@ ModifierTypeInfo modifierType_Screw = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

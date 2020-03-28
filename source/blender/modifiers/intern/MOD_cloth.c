@@ -27,6 +27,8 @@
 
 #include "BLI_listbase.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_cloth_types.h"
 #include "DNA_key_types.h"
 #include "DNA_mesh_types.h"
@@ -36,6 +38,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_cloth.h"
+#include "BKE_context.h"
 #include "BKE_effect.h"
 #include "BKE_global.h"
 #include "BKE_key.h"
@@ -44,6 +47,11 @@
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_pointcache.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_physics.h"
 #include "DEG_depsgraph_query.h"
@@ -253,6 +261,8 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
   }
 }
 
+// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+
 ModifierTypeInfo modifierType_Cloth = {
     /* name */ "Cloth",
     /* structName */ "ClothModifierData",
@@ -280,4 +290,5 @@ ModifierTypeInfo modifierType_Cloth = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

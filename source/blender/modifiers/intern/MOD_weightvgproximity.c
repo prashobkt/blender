@@ -29,12 +29,15 @@
 #include "BLI_rand.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_bvhutils.h"
+#include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
@@ -43,6 +46,11 @@
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_texture.h" /* Texture masking. */
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -617,6 +625,37 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return mesh;
 }
 
+// uiLayout *row, *col, *split;
+
+// split = uiLayoutSplit(layout, 0.5f, true);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+// uiItemPointerR(col, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+
+// col = uiLayoutColumn(split, true);
+// uiItemL(col, IFACE_("Target Object:"), ICON_NONE);
+// uiItemR(col, ptr, "target", 0, "", ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, true);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Distance:"), ICON_NONE);
+// uiItemR(col, ptr, "proximity_mode", 0, "", ICON_NONE);
+// if (RNA_enum_get(ptr, "proximity_mode") == MOD_WVG_PROXIMITY_GEOMETRY) {
+//   row = uiLayoutRow(col, false);
+//   uiItemR(row, ptr, "proximity_geometry", 0, NULL, ICON_NONE);
+// }
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, NULL, ICON_NONE);
+// uiItemR(col, ptr, "min_dist", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "max_dist", 0, NULL, ICON_NONE);
+
+// uiItemS(layout);
+// uiItemR(layout, ptr, "falloff_type", 0, NULL, ICON_NONE);
+
+// uiItemS(layout);
+// weightvg_ui_common(C, ob_ptr, ptr, layout);
+
 ModifierTypeInfo modifierType_WeightVGProximity = {
     /* name */ "VertexWeightProximity",
     /* structName */ "WeightVGProximityModifierData",
@@ -644,4 +683,5 @@ ModifierTypeInfo modifierType_WeightVGProximity = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

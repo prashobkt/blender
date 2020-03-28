@@ -27,6 +27,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_collection_types.h"
 #include "DNA_fluid_types.h"
 #include "DNA_mesh_types.h"
@@ -34,10 +36,16 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_fluid.h"
 #include "BKE_layer.h"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -194,6 +202,8 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
   }
 }
 
+// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+
 ModifierTypeInfo modifierType_Fluid = {
     /* name */ "Fluid",
     /* structName */ "FluidModifierData",
@@ -220,4 +230,5 @@ ModifierTypeInfo modifierType_Fluid = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

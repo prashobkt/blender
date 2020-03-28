@@ -25,13 +25,21 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_particle.h"
 #include "BKE_softbody.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -73,6 +81,8 @@ static void updateDepsgraph(ModifierData *UNUSED(md), const ModifierUpdateDepsgr
   DEG_add_modifier_to_transform_relation(ctx->node, "SoftBody Modifier");
 }
 
+// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+
 ModifierTypeInfo modifierType_Softbody = {
     /* name */ "Softbody",
     /* structName */ "SoftbodyModifierData",
@@ -101,4 +111,5 @@ ModifierTypeInfo modifierType_Softbody = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

@@ -28,6 +28,8 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_armature_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -35,11 +37,17 @@
 #include "DNA_object_types.h"
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
+#include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -386,6 +394,34 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   return mmd->ob_arm && mmd->ob_arm->type != OB_ARMATURE;
 }
 
+// uiLayout *sub, *row, *split, *col;
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Mode:"), ICON_NONE);
+// uiItemR(col, ptr, "mode", 0, "", ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// int mode = RNA_enum_get(ptr, "mode");
+// if (mode == MOD_MASK_MODE_ARM) {
+//   uiItemL(col, IFACE_("Armature:"), ICON_NONE);
+//   row = uiLayoutRow(col, true);
+//   uiItemR(row, ptr, "armature", 0, "", ICON_NONE);
+//   uiItemR(row, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+// }
+// else if (mode == MOD_MASK_MODE_VGROUP) {
+//   uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+//   row = uiLayoutRow(col, true);
+//   uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+//   sub = uiLayoutRow(row, true);
+//   uiLayoutSetActive(sub, has_vertex_group);
+//   uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+// }
+
+// uiItemR(layout, ptr, "threshold", 0, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_Mask = {
     /* name */ "Mask",
     /* structName */ "MaskModifierData",
@@ -414,4 +450,5 @@ ModifierTypeInfo modifierType_Mask = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

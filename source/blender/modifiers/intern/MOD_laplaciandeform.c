@@ -29,15 +29,23 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_particle.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_util.h"
 
@@ -802,6 +810,29 @@ static void freeData(ModifierData *md)
   lmd->total_verts = 0;
 }
 
+// uiLayout *sub, *row;
+
+// bool is_bind = RNA_boolean_get(ptr, "is_bind");
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
+
+// row = uiLayoutRow(layout, true);
+// uiLayoutSetEnabled(row, !is_bind);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", NULL, ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// uiItemS(layout);
+
+// row = uiLayoutRow(layout, true);
+// uiLayoutSetEnabled(row, has_vertex_group);
+// uiItemO(row,
+//         (RNA_boolean_get(ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
+//         ICON_NONE,
+//         "OBJECT_OT_laplaciandeform_bind");
+
 ModifierTypeInfo modifierType_LaplacianDeform = {
     /* name */ "LaplacianDeform",
     /* structName */ "LaplacianDeformModifierData",
@@ -827,4 +858,5 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

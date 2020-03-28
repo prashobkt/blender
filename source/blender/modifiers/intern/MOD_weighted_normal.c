@@ -24,14 +24,22 @@
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_util.h"
@@ -700,6 +708,27 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
   return true;
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// uiItemL(layout, IFACE_("Weighting Mode:"), ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, true);
+// col = uiLayoutColumn(split, true);
+// uiItemR(col, ptr, "mode", 0, "", ICON_NONE);
+// uiItemR(col, ptr, "weight", 0, IFACE_("Weight"), ICON_NONE);
+// uiItemR(col, ptr, "keep_sharp", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, true);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+// uiItemR(col, ptr, "thresh", 0, IFACE_("Threshold"), ICON_NONE);
+// uiItemR(col, ptr, "face_influence", 0, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_WeightedNormal = {
     /* name */ "Weighted Normal",
     /* structName */ "WeightedNormalModifierData",
@@ -727,4 +756,5 @@ ModifierTypeInfo modifierType_WeightedNormal = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

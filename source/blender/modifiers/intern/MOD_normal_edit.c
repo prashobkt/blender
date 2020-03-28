@@ -27,14 +27,22 @@
 #include "BLI_bitmap.h"
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -689,6 +697,49 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return normalEditModifier_do((NormalEditModifierData *)md, ctx, ctx->object, mesh);
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// int mode = RNA_enum_get(ptr, "mode");
+// PointerRNA target_ptr = RNA_pointer_get(ptr, "target");
+// bool needs_object_offset = (mode == MOD_NORMALEDIT_MODE_RADIAL &&
+//                             RNA_pointer_is_null(&target_ptr)) ||
+//                            (mode == MOD_NORMALEDIT_MODE_DIRECTIONAL &&
+//                             RNA_boolean_get(ptr, "use_direction_parallel"));
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// row = uiLayoutRow(layout, false);
+// uiItemR(row, ptr, "mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "target", 0, "", ICON_NONE);
+// sub = uiLayoutColumn(col, true);
+// uiLayoutSetActive(sub, needs_object_offset);
+// uiItemR(sub, ptr, "offset", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// row = uiLayoutRow(col, false);
+// uiLayoutSetActive(row, mode == MOD_NORMALEDIT_MODE_DIRECTIONAL);
+// uiItemR(row, ptr, "use_direction_parallel", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(col, true);
+// uiItemL(col, IFACE_("Mix Mode:"), ICON_NONE);
+// uiItemR(col, ptr, "mix_mode", 0, "", ICON_NONE);
+// uiItemR(col, ptr, "mix_factor", 0, NULL, ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+// row = uiLayoutRow(col, true);
+// uiItemR(row, ptr, "mix_limit", 0, NULL, ICON_NONE);
+// uiItemR(row,
+//         ptr,
+//         "no_polynors_fix",
+//         0,
+//         "",
+//         (RNA_boolean_get(ptr, "no_polynors_fix") ? ICON_LOCKED : ICON_UNLOCKED));
+
 ModifierTypeInfo modifierType_NormalEdit = {
     /* name */ "Set Split Normals",
     /* structName */ "NormalEditModifierData",
@@ -716,4 +767,5 @@ ModifierTypeInfo modifierType_NormalEdit = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

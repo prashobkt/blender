@@ -25,14 +25,22 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 
+#include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -247,6 +255,8 @@ static void deformVertsEM(ModifierData *md,
 }
 #endif
 
+// uiItemL(layout, IFACE_("Settings can be found inside the Particle context"), ICON_NONE);
+
 ModifierTypeInfo modifierType_ParticleSystem = {
     /* name */ "ParticleSystem",
     /* structName */ "ParticleSystemModifierData",
@@ -277,4 +287,5 @@ ModifierTypeInfo modifierType_ParticleSystem = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

@@ -61,16 +61,26 @@
 #include "BLI_math_geom.h"
 #include "BLI_stack.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
+#include "WM_types.h" /* For skin mark clear operator UI. */
 
 #include "MOD_modifiertypes.h"
 
@@ -1928,6 +1938,51 @@ static void requiredDataMask(Object *UNUSED(ob),
   r_cddata_masks->vmask |= CD_MASK_MVERT_SKIN | CD_MASK_MDEFORMVERT;
 }
 
+// uiLayout *sub, *row, *col, *split;
+// PointerRNA op_ptr;
+
+// row = uiLayoutRow(layout, false);
+// uiItemO(row, IFACE_("Create Armature"), ICON_NONE, "OBJECT_OT_skin_armature_create");
+// uiItemO(row, NULL, ICON_NONE, "MESH_OT_customdata_skin_add");
+
+// uiItemS(layout);
+
+// row = uiLayoutRow(layout, true);
+// uiItemR(row, ptr, "branch_smoothing", 0, NULL, ICON_NONE);
+// uiItemR(row, ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Selected Vertices:"), ICON_NONE);
+// sub = uiLayoutColumn(col, true);
+// uiItemFullO(sub,
+//             "OBJECT_OT_skin_loose_mark_clear",
+//             IFACE_("Mark Loose"),
+//             ICON_NONE,
+//             NULL,
+//             WM_OP_EXEC_DEFAULT,
+//             0,
+//             &op_ptr);
+// RNA_enum_set(&op_ptr, "action", 0); /* SKIN_LOOSE_MARK */
+// uiItemFullO(sub,
+//             "OBJECT_OT_skin_loose_mark_clear",
+//             IFACE_("Clear Loose"),
+//             ICON_NONE,
+//             NULL,
+//             WM_OP_EXEC_DEFAULT,
+//             0,
+//             &op_ptr);
+// RNA_enum_set(&op_ptr, "action", 1); /* SKIN_LOOSE_CLEAR */
+
+// uiItemO(col, IFACE_("Mark Root"), ICON_NONE, "OBJECT_OT_skin_root_mark");
+// uiItemO(col, IFACE_("Equalize Radii"), ICON_NONE, "OBJECT_OT_skin_radii_equalize");
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Symmetry Axes:"), ICON_NONE);
+// uiItemR(col, ptr, "use_x_symmetry", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_y_symmetry", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_z_symmetry", 0, NULL, ICON_NONE);
+
 ModifierTypeInfo modifierType_Skin = {
     /* name */ "Skin",
     /* structName */ "SkinModifierData",
@@ -1952,5 +2007,7 @@ ModifierTypeInfo modifierType_Skin = {
     /* dependsOnNormals */ NULL,
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
+    /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

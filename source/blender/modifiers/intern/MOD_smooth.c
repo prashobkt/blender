@@ -27,14 +27,22 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_particle.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_util.h"
@@ -223,6 +231,27 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// split = uiLayoutSplit(layout, 0.25f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+// uiItemR(col, ptr, "use_x", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_y", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_z", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "factor", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "iterations", 0, NULL, ICON_NONE);
+// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
 ModifierTypeInfo modifierType_Smooth = {
     /* name */ "Smooth",
     /* structName */ "SmoothModifierData",
@@ -250,4 +279,5 @@ ModifierTypeInfo modifierType_Smooth = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

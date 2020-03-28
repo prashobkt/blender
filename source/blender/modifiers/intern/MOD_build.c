@@ -35,10 +35,16 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "BKE_context.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
 
@@ -275,6 +281,21 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, str
   return result;
 }
 
+// uiLayout *col, *split, *sub;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "frame_start", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "frame_duration", 0, NULL, ICON_NONE);
+// uiItemR(col, ptr, "use_reverse", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "use_random_order", 0, NULL, ICON_NONE);
+// sub = uiLayoutColumn(col, true);
+// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_random_order"));
+// uiItemR(sub, ptr, "seed", 0, "", ICON_ARROW_LEFTRIGHT);
+
 ModifierTypeInfo modifierType_Build = {
     /* name */ "Build",
     /* structName */ "BuildModifierData",
@@ -301,4 +322,5 @@ ModifierTypeInfo modifierType_Build = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

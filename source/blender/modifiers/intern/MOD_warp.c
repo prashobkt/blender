@@ -26,19 +26,27 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_colortools.h"
-#include "BKE_deform.h"
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
+#include "BKE_colortools.h"
+#include "BKE_context.h"
+#include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_texture.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -86,7 +94,10 @@ static void requiredDataMask(Object *UNUSED(ob),
   }
 }
 
-static void matrix_from_obj_pchan(float mat[4][4], float obinv[4][4], Object *ob, const char *bonename)
+static void matrix_from_obj_pchan(float mat[4][4],
+                                  float obinv[4][4],
+                                  Object *ob,
+                                  const char *bonename)
 {
   bPoseChannel *pchan = BKE_pose_channel_find_name(ob->pose, bonename);
   if (pchan) {
@@ -148,8 +159,8 @@ static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void 
 }
 
 static void warp_deps_object_bone_new(struct DepsNodeHandle *node,
-                                         Object *object,
-                                         const char *bonename)
+                                      Object *object,
+                                      const char *bonename)
 {
   if (bonename[0] && object->type == OB_ARMATURE) {
     DEG_add_object_relation(node, object, DEG_OB_COMP_EVAL_POSE, "Warp Modifier");
@@ -384,6 +395,56 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
+// uiLayout *sub, *row, *col, *split;
+
+// bool use_falloff = (RNA_enum_get(ptr, "falloff_type") != eWarp_Falloff_None);
+// int texture_corrds = RNA_enum_get(ptr, "texture_coords");
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("From:"), ICON_NONE);
+// uiItemR(col, ptr, "object_from", 0, "", ICON_NONE);
+
+// uiItemR(col, ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("To:"), ICON_NONE);
+// uiItemR(col, ptr, "object_to", 0, "", ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// row = uiLayoutRow(layout, true);
+// uiItemR(row, ptr, "strength", 0, NULL, ICON_NONE);
+// if (use_falloff) {
+//   uiItemR(row, ptr, "falloff_radius", 0, NULL, ICON_NONE);
+// }
+
+// uiItemR(layout, ptr, "falloff_type", 0, NULL, ICON_NONE);
+// if (use_falloff && RNA_enum_get(ptr, "falloff_type") == eWarp_Falloff_Curve) {
+//   uiTemplateCurveMapping(layout, ptr, "falloff_curve", 0, false, false, false, false);
+// }
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Texture:"), ICON_NONE);
+// uiTemplateID(col, C, ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Texture Coordinates:"), ICON_NONE);
+// uiItemR(col, ptr, "texture_coords", 0, "", ICON_NONE);
+
+// if (texture_corrds == MOD_DISP_MAP_OBJECT) {
+//   uiItemR(layout, ptr, "texture_coords_object", 0, NULL, ICON_NONE);
+// }
+// else if (texture_corrds == MOD_DISP_MAP_UV && RNA_enum_get(ob_ptr, "type") == OB_MESH) {
+//   PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
+//   uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
+// }
+
 ModifierTypeInfo modifierType_Warp = {
     /* name */ "Warp",
     /* structName */ "WarpModifierData",
@@ -410,4 +471,5 @@ ModifierTypeInfo modifierType_Warp = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

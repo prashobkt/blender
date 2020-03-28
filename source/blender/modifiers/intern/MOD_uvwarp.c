@@ -25,14 +25,22 @@
 #include "BLI_math.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -257,6 +265,72 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   DEG_add_modifier_to_transform_relation(ctx->node, "UVWarp Modifier");
 }
 
+// uiLayout *sub, *row, *col, *split;
+// PointerRNA warp_obj_ptr;
+// PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
+
+// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemR(col, ptr, "center", 0, NULL, ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("UV Axis:"), ICON_NONE);
+// uiItemR(col, ptr, "axis_u", 0, "", ICON_NONE);
+// uiItemR(col, ptr, "axis_v", 0, "", ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("From:"), ICON_NONE);
+// uiItemR(col, ptr, "object_from", 0, "", ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("To:"), ICON_NONE);
+// uiItemR(col, ptr, "object_to", 0, "", ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// warp_obj_ptr = RNA_pointer_get(ptr, "object_from");
+// if (!RNA_pointer_is_null(&warp_obj_ptr) && RNA_enum_get(&warp_obj_ptr, "type") == OB_ARMATURE) {
+//   uiItemL(col, IFACE_("Bone:"), ICON_NONE);
+//   PointerRNA warp_obj_data_ptr = RNA_pointer_get(&warp_obj_ptr, "data");
+//   uiItemPointerR(col, ptr, "bone_from", &warp_obj_data_ptr, "bones", NULL, ICON_NONE);
+// }
+
+// col = uiLayoutColumn(split, false);
+// warp_obj_ptr = RNA_pointer_get(ptr, "object_to");
+// if (!RNA_pointer_is_null(&warp_obj_ptr) && RNA_enum_get(&warp_obj_ptr, "type") == OB_ARMATURE) {
+//   uiItemL(col, IFACE_("Bone:"), ICON_NONE);
+//   PointerRNA warp_obj_data_ptr = RNA_pointer_get(&warp_obj_ptr, "data");
+//   uiItemPointerR(col, ptr, "bone_to", &warp_obj_data_ptr, "bones", NULL, ICON_NONE);
+// }
+
+// split = uiLayoutSplit(layout, 0.333f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Offset:"), ICON_NONE);
+// uiItemR(col, ptr, "offset", 0, "", ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Scale:"), ICON_NONE);
+// uiItemR(col, ptr, "scale", 0, "", ICON_NONE);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Rotate:"), ICON_NONE);
+// uiItemR(col, ptr, "rotation", 0, "", ICON_NONE);
+
+// split = uiLayoutSplit(layout, 0.5f, false);
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+// row = uiLayoutRow(col, true);
+// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+// sub = uiLayoutRow(row, true);
+// uiLayoutSetActive(sub, has_vertex_group);
+// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+// col = uiLayoutColumn(split, false);
+// uiItemL(col, IFACE_("UV Map:"), ICON_NONE);
+// uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", "", ICON_NONE);
+
 ModifierTypeInfo modifierType_UVWarp = {
     /* name */ "UVWarp",
     /* structName */ "UVWarpModifierData",
@@ -284,4 +358,5 @@ ModifierTypeInfo modifierType_UVWarp = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panel */ NULL,
 };

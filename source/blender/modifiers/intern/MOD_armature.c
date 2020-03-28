@@ -26,17 +26,25 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_armature_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_action.h"
+#include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_lattice.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -238,6 +246,34 @@ static void deformMatrices(ModifierData *md,
     BKE_id_free(NULL, mesh_src);
   }
 }
+
+//   uiLayout *sub, *row, *col, *split;
+
+//   bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+
+//   split = uiLayoutSplit(layout, 0.5f, false);
+
+//   col = uiLayoutColumn(split, false);
+//   uiItemL(col, IFACE_("Object:"), ICON_NONE);
+//   uiItemR(col, ptr, "object", 0, "", ICON_NONE);
+//   uiItemR(col, ptr, "use_deform_preserve_volume", 0, NULL, ICON_NONE);
+
+//   col = uiLayoutColumn(split, false);
+//   uiItemL(col, IFACE_("Bind to:"), ICON_NONE);
+//   uiItemR(col, ptr, "use_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+//   uiItemR(col, ptr, "use_bone_envelopes", 0, IFACE_("Bone Envelopes"), ICON_NONE);
+
+//   uiItemS(layout);
+
+//   split = uiLayoutSplit(layout, 0.5f, false);
+
+//   row = uiLayoutRow(split, true);
+//   uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
+//   sub = uiLayoutRow(row, true);
+//   uiLayoutSetActive(sub, has_vertex_group);
+//   uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+//   uiItemR(split, ptr, "use_multi_modifier", 0, NULL, ICON_NONE);
 
 ModifierTypeInfo modifierType_Armature = {
     /* name */ "Armature",
