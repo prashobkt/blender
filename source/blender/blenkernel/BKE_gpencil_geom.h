@@ -106,6 +106,14 @@ void BKE_gpencil_convert_curve(struct Main *bmain,
                                const bool use_collections,
                                const bool only_stroke);
 
+void BKE_gpencil_convert_mesh(struct Main *bmain,
+                              struct Depsgraph *depsgraph,
+                              struct Scene *scene,
+                              struct Object *ob_gp,
+                              struct Object *ob_mesh,
+                              const bool gpencil_lines,
+                              const bool only_stroke);
+
 #ifdef __cplusplus
 }
 #endif

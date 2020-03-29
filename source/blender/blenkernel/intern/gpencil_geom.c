@@ -38,6 +38,7 @@
 #include "BLT_translation.h"
 
 #include "DNA_gpencil_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "BKE_collection.h"
@@ -1614,32 +1615,30 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
   return -1;
 }
 
-/* Helper: Add gpencil material using curve material as base. */
-static Material *gpencil_add_from_curve_material(Main *bmain,
-                                                 Object *ob_gp,
-                                                 const float cu_color[4],
-                                                 const bool gpencil_lines,
-                                                 const bool fill,
-                                                 int *r_idx)
+/* Helper: Add gpencil material using material as base. */
+static Material *gpencil_add_material(Main *bmain,
+                                      Object *ob_gp,
+                                      const float color[4],
+                                      const bool use_stroke,
+                                      const bool use_fill,
+                                      int *r_idx)
 {
-  Material *mat_gp = BKE_gpencil_object_material_new(
-      bmain, ob_gp, (fill) ? "Material" : "Unassigned", r_idx);
+  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gp, "Material", r_idx);
   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
   /* Stroke color. */
-  if (gpencil_lines) {
+  if (use_stroke) {
     ARRAY_SET_ITEMS(gp_style->stroke_rgba, 0.0f, 0.0f, 0.0f, 1.0f);
     gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
   }
   else {
-    linearrgb_to_srgb_v4(gp_style->stroke_rgba, cu_color);
+    linearrgb_to_srgb_v4(gp_style->stroke_rgba, color);
     gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
   }
 
   /* Fill color. */
-  linearrgb_to_srgb_v4(gp_style->fill_rgba, cu_color);
-  /* Fill is false if the original curve hasn't material assigned, so enable it. */
-  if (fill) {
+  linearrgb_to_srgb_v4(gp_style->fill_rgba, color);
+  if (use_fill) {
     gp_style->flag |= GP_MATERIAL_FILL_SHOW;
   }
 
@@ -1771,7 +1770,7 @@ static void gpencil_convert_spline(Main *bmain,
   int r_idx = gpencil_check_same_material_color(ob_gp, color, &mat_gp);
   if ((ob_cu->totcol > 0) && (r_idx < 0)) {
     Material *mat_curve = BKE_object_material_get(ob_cu, 1);
-    mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+    mat_gp = gpencil_add_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
 
     if ((mat_curve) && (mat_curve->gp_style != NULL)) {
       MaterialGPencilStyle *gp_style_cur = mat_curve->gp_style;
@@ -1978,6 +1977,105 @@ void BKE_gpencil_convert_curve(Main *bmain,
   /* Read all splines of the curve and create a stroke for each. */
   for (Nurb *nu = cu->nurb.first; nu; nu = nu->next) {
     gpencil_convert_spline(bmain, ob_gp, ob_cu, gpencil_lines, only_stroke, gpf, nu);
+  }
+
+  /* Tag for recalculation */
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+}
+
+/* Convert a mesh object to grease pencil stroke.
+ *
+ * \param bmain: Main thread pointer
+ * \param depsgraph: Original depsgraph.
+ * \param scene: Original scene.
+ * \param ob_gp: Grease pencil object to add strokes.
+ * \param ob_mesh: Mesh to convert.
+ * \param gpencil_lines: Use lines for strokes.
+ * \param use_collections: Create layers using collection names.
+ * \param only_stroke: The material must be only stroke without fill.
+ */
+void BKE_gpencil_convert_mesh(Main *bmain,
+                              Depsgraph *depsgraph,
+                              Scene *scene,
+                              Object *ob_gp,
+                              Object *ob_mesh,
+                              const bool gpencil_lines,
+                              const bool only_stroke)
+{
+  if (ELEM(NULL, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
+    return;
+  }
+  bGPdata *gpd = (bGPdata *)ob_gp->data;
+  /* Set object in 3D mode. */
+  gpd->draw_mode = GP_DRAWMODE_3D;
+
+  /* Use evaluated data to get mesh with all modifiers on top. */
+  Object *ob_eval = (Object *)DEG_get_evaluated_object(depsgraph, ob_mesh);
+  Mesh *me = (Mesh *)ob_eval->data;
+  MPoly *mp, *mpoly = me->mpoly;
+  MLoop *mloop = me->mloop;
+  int mpoly_len = me->totpoly;
+  int i;
+
+  /* Create two materials, one for stroke, one for fill */
+  int r_idx;
+  const float default_colors[3][4] = {
+      {0.0f, 0.0f, 0.0f, 1.0f}, {0.7f, 0.7f, 0.7f, 1.0f}, {0.5f, 0.5f, 0.5f, 1.0f}};
+  gpencil_add_material(bmain, ob_gp, default_colors[0], true, false, &r_idx);
+  gpencil_add_material(bmain, ob_gp, default_colors[1], false, true, &r_idx);
+
+  /* Create two layers. */
+  bGPDlayer *gpl_fill = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
+  bGPDlayer *gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
+
+  /* Check if there is an active frame and add if needed. */
+  bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_COPY);
+  bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_COPY);
+
+  /* Read all polygons and create a stroke and fill for each. */
+  for (i = 0, mp = mpoly; i < mpoly_len; i++, mp++) {
+    MLoop *ml = &mloop[mp->loopstart];
+    /* Get stroke and fill color from Material Viewport color. */
+    Material *mat = me->mat != NULL ? me->mat[mp->mat_nr] : NULL;
+    float vert_color[4];
+    if (mat != NULL) {
+      copy_v3_v3(vert_color, &mat->r);
+      vert_color[3] = 1.0f;
+    }
+    else {
+      /* Use default. */
+      copy_v4_v4(vert_color, default_colors[2]);
+    }
+
+    /* Create line stroke. */
+    bGPDstroke *gps_stroke = BKE_gpencil_stroke_add(gpf_stroke, 0, mp->totloop, 10, false);
+    gps_stroke->flag |= GP_STROKE_CYCLIC;
+    bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, 1, mp->totloop, 10, false);
+    gps_fill->flag |= GP_STROKE_CYCLIC;
+    copy_v4_v4(gps_stroke->vert_color_fill, vert_color);
+    copy_v4_v4(gps_fill->vert_color_fill, vert_color);
+
+    /* Add points to strokes. */
+    int j;
+    for (j = 0; j < mp->totloop; j++, ml++) {
+      MVert *mv = &me->mvert[ml->v];
+
+      /* Line. */
+      bGPDspoint *pt = &gps_stroke->points[j];
+      copy_v3_v3(&pt->x, mv->co);
+      pt->pressure = 1.0f;
+      pt->strength = 1.0f;
+      copy_v4_v4(pt->vert_color, vert_color);
+      /* Fill. */
+      pt = &gps_fill->points[j];
+      copy_v3_v3(&pt->x, mv->co);
+      pt->pressure = 1.0f;
+      pt->strength = 1.0f;
+      copy_v4_v4(pt->vert_color, vert_color);
+    }
+
+    BKE_gpencil_stroke_geometry_update(gps_stroke);
+    BKE_gpencil_stroke_geometry_update(gps_fill);
   }
 
   /* Tag for recalculation */

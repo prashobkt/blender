@@ -2085,7 +2085,7 @@ void OBJECT_OT_duplicates_make_real(wmOperatorType *ot)
 static const EnumPropertyItem convert_target_items[] = {
     {OB_CURVE, "CURVE", ICON_OUTLINER_OB_CURVE, "Curve from Mesh/Text", ""},
     {OB_MESH, "MESH", ICON_OUTLINER_OB_MESH, "Mesh from Curve/Meta/Surf/Text", ""},
-    {OB_GPENCIL, "GPENCIL", ICON_OUTLINER_OB_GREASEPENCIL, "Grease Pencil from Curve", ""},
+    {OB_GPENCIL, "GPENCIL", ICON_OUTLINER_OB_GREASEPENCIL, "Grease Pencil from Curve/Mesh", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -2331,6 +2331,23 @@ static int convert_exec(bContext *C, wmOperator *op)
         ED_rigidbody_object_remove(bmain, scene, newob);
       }
     }
+    else if (ob->type == OB_MESH && target == OB_GPENCIL) {
+      ob->flag |= OB_DONE;
+
+      /* Create a new grease pencil object and copy transformations. */
+      ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+      float loc[3], size[3], rot[3][3], eul[3];
+      mat4_to_loc_rot_size(loc, rot, size, ob->obmat);
+      mat3_to_eul(eul, rot);
+
+      gpencil_ob = ED_gpencil_add_object(C, loc, local_view_bits);
+      copy_v3_v3(gpencil_ob->loc, loc);
+      copy_v3_v3(gpencil_ob->rot, eul);
+      copy_v3_v3(gpencil_ob->scale, size);
+
+      BKE_gpencil_convert_mesh(bmain, depsgraph, scene, gpencil_ob, ob, false, true);
+      gpencilConverted = true;
+    }
     else if (ob->type == OB_MESH) {
       ob->flag |= OB_DONE;
 
@@ -2574,12 +2591,12 @@ static int convert_exec(bContext *C, wmOperator *op)
       }
       FOREACH_SCENE_OBJECT_END;
     }
-    /* Remove curves converted to Grease Pencil object. */
+    /* Remove curves and meshes converted to Grease Pencil object. */
     if (gpencilConverted) {
-      FOREACH_SCENE_OBJECT_BEGIN (scene, ob_curve) {
-        if (ob_curve->type == OB_CURVE) {
-          if (ob_curve->flag & OB_DONE) {
-            ED_object_base_free_and_unlink(bmain, scene, ob_curve);
+      FOREACH_SCENE_OBJECT_BEGIN (scene, ob_delete) {
+        if ((ob_delete->type == OB_CURVE) || (ob_delete->type == OB_MESH)) {
+          if (ob_delete->flag & OB_DONE) {
+            ED_object_base_free_and_unlink(bmain, scene, ob_delete);
           }
         }
       }
