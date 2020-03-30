@@ -120,11 +120,13 @@ void blend_mode_output(
       color = mix(vec4(0.5), color, color.a * opacity);
       vec4 s = step(-0.5, -color);
       frag_revealage = frag_color = 2.0 * s + 2.0 * color * (1.0 - s * 2.0);
+      frag_revealage = max(vec4(0.0), frag_revealage);
       break;
     case MODE_OVERLAY_SECOND_PASS:
       /* Reminder: Blending func is additive blend (dst.rgba + src.rgba).*/
       color = mix(vec4(0.5), color, color.a * opacity);
       frag_revealage = frag_color = (-1.0 + 2.0 * color) * step(-0.5, -color);
+      frag_revealage = max(vec4(0.0), frag_revealage);
       break;
     case MODE_SUB:
     case MODE_ADD:
@@ -572,6 +574,7 @@ void fill_vertex()
   finalUvs = rot_scale * uv1.xy + loc;
 #  endif
 
+  strokeHardeness = 1.0;
   strokeThickness = 1e18;
   strokeAspect = vec2(1.0);
   strokePt1 = strokePt2 = vec2(0.0);
