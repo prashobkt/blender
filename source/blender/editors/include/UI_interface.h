@@ -1668,6 +1668,7 @@ struct Panel *UI_panel_add(struct ScrArea *sa,
                            struct ListBase *panels,
                            struct PanelType *panel_type,
                            int modifier_index);
+void UI_panel_set_list_index(struct Panel *panel, int i);
 void UI_panel_delete(struct ListBase *panels, struct Panel *panel);
 
 void UI_panels_free_recreate(struct ListBase *panels);

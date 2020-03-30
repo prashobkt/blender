@@ -480,7 +480,7 @@ Panel *UI_panel_add(
   panel->blocksizey = 0;
   panel->runtime_flag |= PNL_NEW_ADDED;
 
-  panel->modifier_index = modifier_index;
+  panel->list_index = modifier_index;
 
   /* Add the panel's children too. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
@@ -493,13 +493,23 @@ Panel *UI_panel_add(
   return panel;
 }
 
+void UI_panel_set_list_index(Panel *panel, int i)
+{
+  panel->list_index = i;
+
+  Panel *child = panel->children.first;
+  while (child != NULL) {
+    UI_panel_set_list_index(child, i);
+    child = child->next;
+  }
+}
+
 void UI_panel_delete(ListBase *panels, Panel *panel)
 {
   printf("UI_PANEL_DELETE\n");
   /* Recursively delete children. */
   Panel *child = panel->children.first;
   while (child != NULL) {
-
     Panel *child_next = child->next;
     UI_panel_delete(&panel->children, child);
     child = child_next;

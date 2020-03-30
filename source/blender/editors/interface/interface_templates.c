@@ -1926,9 +1926,10 @@ void uiTemplatePathBuilder(uiLayout *layout,
 //   }
 // }
 
-static PanelType *panel_type_from_modifier_type(ARegion *region, const ModifierTypeInfo *mti)
+static PanelType *panel_type_from_modifier_type(ARegion *region, ModifierType type)
 {
   ARegionType *region_type = region->type;
+  const ModifierTypeInfo *mti = modifierType_getInfo(type);
 
   /* Get the name of the modifier's panel type which was defined when the panel was registered. */
   char panel_idname[BKE_ST_MAXNAME];
@@ -1943,18 +1944,52 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
+
+  /* Check if the type corresponds between each panel consecutive panel and modifier. */
+  bool modifiers_changed = false;
+  int modifiers_len = BLI_listbase_count(&ob->modifiers);
+  int i = 0;
   ModifierData *md = ob->modifiers.first;
+  Panel *panel = region->panels.first;
+  while (panel != NULL) {
+    if (panel->type != NULL && panel->type->flag & PANELTYPE_RECREATE) {
+      if (md == NULL) {
+        /* We reached the last modifier before the last recreate panel. */
+        modifiers_changed = true;
+        break;
+      }
 
-  UI_panels_free_recreate(&region->panels);
+      if (panel_type_from_modifier_type(region, md->type) != panel->type) {
+        /* The types of the corresponding panel and modifier don't match. */
+        modifiers_changed = true;
+        break;
+      }
 
-  /* Add a panel to the region corresponding to each modifier. */
-  for (int i = 0; md; i++, md = md->next) {
-    const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
-    if (mti->panel) {
-      PanelType *panel_type = panel_type_from_modifier_type(region, mti);
-      BLI_assert(panel_type != NULL);
+      UI_panel_set_list_index(panel, i);
+      panel->list_index = i;
+      md = md->next;
+      i++;
+    }
+    panel = panel->next;
+  }
 
-      UI_panel_add(sa, region, &region->panels, panel_type, i);
+  /* If we didn't make it to the last modifier, the panel list isn't complete. */
+  if (i != modifiers_len) {
+    modifiers_changed = true;
+  }
+
+  /* If the modifier list has changed at all, clear all of the recreate panels and rebuild them. */
+  if (modifiers_changed) {
+    UI_panels_free_recreate(&region->panels);
+    md = ob->modifiers.first;
+    for (i = 0; md; i++, md = md->next) {
+      const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+      if (mti->panel) {
+        PanelType *panel_type = panel_type_from_modifier_type(region, md->type);
+        BLI_assert(panel_type != NULL);
+
+        UI_panel_add(sa, region, &region->panels, panel_type, i);
+      }
     }
   }
 }
@@ -2023,7 +2058,8 @@ static uiLayout *gpencil_draw_modifier(uiLayout *layout, Object *ob, GpencilModi
   uiItemO(row, "", ICON_X, "OBJECT_OT_gpencil_modifier_remove");
   UI_block_emboss_set(block, UI_EMBOSS);
 
-  /* modifier settings (under the header) --------------------------------------------------- */
+  /* modifier settings (under the header) ---------------------------------------------------
+   */
   if (md->mode & eGpencilModifierMode_Expanded) {
     /* apply/convert/copy */
     box = uiLayoutBox(column);
@@ -4691,8 +4727,8 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   uiLayoutRow(layout, false);
 
   /* Preset selector */
-  /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
-   * after a preset is selected would be more complicated. */
+  /* There is probably potential to use simpler "uiItemR" functions here, but automatic
+   * updating after a preset is selected would be more complicated. */
   bt = uiDefBlockBut(
       block, CurveProfile_buttons_presets, profile, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
@@ -5650,8 +5686,8 @@ static void uilist_filter_items_default(struct uiList *ui_list,
       int new_idx;
       /* note: order_idx equals either to ui_list->items_len if no filtering done,
        *       or to ui_list->items_shown if filter is enabled,
-       *       or to (ui_list->items_len - ui_list->items_shown) if filtered items are excluded.
-       *       This way, we only sort items we actually intend to draw!
+       *       or to (ui_list->items_len - ui_list->items_shown) if filtered items are
+       * excluded. This way, we only sort items we actually intend to draw!
        */
       qsort(names, order_idx, sizeof(StringCmp), cmpstringp);
 
@@ -5678,7 +5714,8 @@ typedef struct {
 } _uilist_item;
 
 typedef struct {
-  int visual_items; /* Visual number of items (i.e. number of items we have room to display). */
+  int visual_items; /* Visual number of items (i.e. number of items we have room to display).
+                     */
   int start_idx;    /* Index of first item to display. */
   int end_idx;      /* Index of last item to display + 1. */
 } uiListLayoutdata;
@@ -5751,7 +5788,8 @@ static void uilist_resize_update_cb(bContext *C, void *arg1, void *UNUSED(arg2))
   uiList *ui_list = arg1;
   uiListDyn *dyn_data = ui_list->dyn_data;
 
-  /* This way we get diff in number of additional items to show (positive) or hide (negative). */
+  /* This way we get diff in number of additional items to show (positive) or hide (negative).
+   */
   const int diff = round_fl_to_int((float)(dyn_data->resize - dyn_data->resize_prev) /
                                    (float)UI_UNIT_Y);
 
@@ -6900,7 +6938,8 @@ static struct MenuSearch_Data *menu_items_from_ui_create(bContext *C,
     UI_block_free(NULL, block);
 
     /* Add key-map items as a second pass,
-     * so all menus are accessed from the header & top-bar before key shortcuts are expanded. */
+     * so all menus are accessed from the header & top-bar before key shortcuts are expanded.
+     */
     if ((menu_stack == NULL) && (has_keymap_menu_items == false)) {
       has_keymap_menu_items = true;
       menu_types_add_from_keymap_items(C, win, sa, region, &menu_stack, menu_to_kmi, menu_tagged);
@@ -7644,8 +7683,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   /* icon and report message on top */
   icon = UI_icon_from_report_type(report->type);
 
-  /* XXX: temporary operator to dump all reports to a text block, but only if more than 1 report
-   * to be shown instead of icon when appropriate...
+  /* XXX: temporary operator to dump all reports to a text block, but only if more than 1
+   * report to be shown instead of icon when appropriate...
    */
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 

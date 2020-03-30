@@ -165,7 +165,7 @@ typedef struct Panel {
   void *activedata;
   /* For recreate type panels to store which instance of their panel type creator's object they
    * correspond to. */
-  int modifier_index;
+  int list_index;
   char _pad1[4];
   /** Sub panels. */
   ListBase children;

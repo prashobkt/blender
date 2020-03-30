@@ -66,7 +66,7 @@ void modifier_panel_get_property_pointers(const bContext *C,
   Object *ob = CTX_data_active_object(C);
   ModifierData *md = ob->modifiers.first;
 
-  for (int i = 0; i < panel->modifier_index; i++) {
+  for (int i = 0; i < panel->list_index; i++) {
     md = md->next;
   }
   RNA_pointer_create(&ob->id, &RNA_Modifier, md, r_md_ptr);
@@ -106,7 +106,7 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   ModifierData *md = ptr.data;
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
-  int index = panel->modifier_index;
+  int index = panel->list_index;
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
 
