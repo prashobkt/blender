@@ -343,8 +343,8 @@ typedef struct ModifierTypeInfo {
    */
   void (*freeRuntimeData)(void *runtime_data);
 
-  /* Define the modifier's UI panels. */
-  void (*panel)(struct ARegionType *region_type);
+  /* Register the panel types for the modifier's UI. */
+  void (*panelRegister)(struct ARegionType *region_type);
 } ModifierTypeInfo;
 
 #define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"

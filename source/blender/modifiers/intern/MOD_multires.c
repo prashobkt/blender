@@ -337,5 +337,5 @@ ModifierTypeInfo modifierType_Multires = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
-    /* panel */ NULL,
+    /* panelRegister */ NULL,
 };

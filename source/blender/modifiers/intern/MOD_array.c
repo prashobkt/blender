@@ -884,7 +884,7 @@ static void array_merge_panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
 }
 
-static void panel(ARegionType *region_type)
+static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Array", panel_draw);
   modifier_subpanel_register(region_type,
@@ -924,5 +924,5 @@ ModifierTypeInfo modifierType_Array = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panel */ panel,
+    /* panelRegister */ panelRegister,
 };

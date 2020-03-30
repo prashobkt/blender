@@ -277,5 +277,5 @@ ModifierTypeInfo modifierType_Collision = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panel */ NULL,
+    /* panelRegister */ NULL,
 };

@@ -829,5 +829,5 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panel */ NULL,
+    /* panelRegister */ NULL,
 };

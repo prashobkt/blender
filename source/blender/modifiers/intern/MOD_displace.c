@@ -486,5 +486,5 @@ ModifierTypeInfo modifierType_Displace = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
-    /* panel */ NULL,
+    /* panelRegister */ NULL,
 };

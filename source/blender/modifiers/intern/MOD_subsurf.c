@@ -393,5 +393,5 @@ ModifierTypeInfo modifierType_Subsurf = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
-    /* panel */ NULL,
+    /* panelRegister */ NULL,
 };

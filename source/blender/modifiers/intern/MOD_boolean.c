@@ -381,7 +381,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   }
 }
 
-static void panel(ARegionType *region_type)
+static void panelRegister(ARegionType *region_type)
 {
   modifier_panel_register(region_type, "Boolean", panel_draw);
 }
@@ -412,5 +412,5 @@ ModifierTypeInfo modifierType_Boolean = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panel */ panel,
+    /* panelRegister */ panelRegister,
 };

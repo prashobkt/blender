@@ -639,8 +639,8 @@ void ED_spacetype_buttons(void)
    * per modifier type. */
   for (int i = 0; i < NUM_MODIFIER_TYPES; i++) {
     const ModifierTypeInfo *mti = modifierType_getInfo(i);
-    if (mti != NULL && mti->panel != NULL) {
-      mti->panel(art);
+    if (mti != NULL && mti->panelRegister != NULL) {
+      mti->panelRegister(art);
     }
   }
 

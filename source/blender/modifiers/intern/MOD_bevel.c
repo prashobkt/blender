@@ -383,7 +383,7 @@ static void custom_profile_panel_draw(const bContext *C, Panel *panel)
   uiTemplateCurveProfile(layout, &ptr, "custom_profile");
 }
 
-static void panel(ARegionType *region_type)
+static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Bevel", panel_draw);
   modifier_subpanel_register(
@@ -421,5 +421,5 @@ ModifierTypeInfo modifierType_Bevel = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* uiPanel */ panel,
+    /* uiPanel */ panelRegister,
 };

@@ -1984,7 +1984,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
     md = ob->modifiers.first;
     for (i = 0; md; i++, md = md->next) {
       const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
-      if (mti->panel) {
+      if (mti->panelRegister) {
         PanelType *panel_type = panel_type_from_modifier_type(region, md->type);
         BLI_assert(panel_type != NULL);
 
