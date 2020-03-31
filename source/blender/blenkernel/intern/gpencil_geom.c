@@ -2193,7 +2193,8 @@ static void gpencil_generate_edgeloops(Object *ob,
  * \param ob_mesh: Mesh to convert.
  * \param angle: Limit angle to consider a edgeloop ends.
  * \param thickness: Thickness of the strokes.
- * \param only_seams: Only export seam edges.
+ * \param use_seams: Only export seam edges.
+ * \param use_seams: Export faces as filled strokes.
  */
 void BKE_gpencil_convert_mesh(Main *bmain,
                               Depsgraph *depsgraph,
@@ -2202,7 +2203,8 @@ void BKE_gpencil_convert_mesh(Main *bmain,
                               Object *ob_mesh,
                               const float angle,
                               const int thickness,
-                              const bool use_seams)
+                              const bool use_seams,
+                              const bool use_faces)
 {
   if (ELEM(NULL, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
     return;
@@ -2230,44 +2232,47 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   /* Create stroke material. */
   gpencil_add_material(bmain, ob_gp, "Stroke", default_colors[0], true, false, &r_idx);
 
-  /* If no materials, create a simple fill. */
-  if (ob_mesh->totcol == 0) {
-    gpencil_add_material(bmain, ob_gp, "Fill", default_colors[1], false, true, &r_idx);
-  }
-  else {
-    /* Create all materials for fill. */
-    for (int i = 0; i < ob_mesh->totcol; i++) {
-      Material *ma = BKE_object_material_get(ob_mesh, i + 1);
-      float color[4];
-      copy_v3_v3(color, &ma->r);
-      color[3] = 1.0f;
-      gpencil_add_material(bmain, ob_gp, ma->id.name + 2, color, false, true, &r_idx);
+  /* Export faces as filled strokes. */
+  if (use_faces) {
+    /* If no materials, create a simple fill. */
+    if (ob_mesh->totcol == 0) {
+      gpencil_add_material(bmain, ob_gp, "Fill", default_colors[1], false, true, &r_idx);
     }
-  }
-
-  /* Read all polygons and create fill for each. */
-  if (mpoly_len > 0) {
-    bGPDlayer *gpl_fill = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
-    bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_COPY);
-    for (i = 0, mp = mpoly; i < mpoly_len; i++, mp++) {
-      MLoop *ml = &mloop[mp->loopstart];
-      /* Create fill stroke. */
-      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(
-          gpf_fill, mp->mat_nr + 1, mp->totloop, 10, false);
-      gps_fill->flag |= GP_STROKE_CYCLIC;
-
-      /* Add points to strokes. */
-      int j;
-      for (j = 0; j < mp->totloop; j++, ml++) {
-        MVert *mv = &me->mvert[ml->v];
-
-        bGPDspoint *pt = &gps_fill->points[j];
-        copy_v3_v3(&pt->x, mv->co);
-        pt->pressure = 1.0f;
-        pt->strength = 1.0f;
+    else {
+      /* Create all materials for fill. */
+      for (int i = 0; i < ob_mesh->totcol; i++) {
+        Material *ma = BKE_object_material_get(ob_mesh, i + 1);
+        float color[4];
+        copy_v3_v3(color, &ma->r);
+        color[3] = 1.0f;
+        gpencil_add_material(bmain, ob_gp, ma->id.name + 2, color, false, true, &r_idx);
       }
+    }
 
-      BKE_gpencil_stroke_geometry_update(gps_fill);
+    /* Read all polygons and create fill for each. */
+    if (mpoly_len > 0) {
+      bGPDlayer *gpl_fill = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
+      bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_COPY);
+      for (i = 0, mp = mpoly; i < mpoly_len; i++, mp++) {
+        MLoop *ml = &mloop[mp->loopstart];
+        /* Create fill stroke. */
+        bGPDstroke *gps_fill = BKE_gpencil_stroke_add(
+            gpf_fill, mp->mat_nr + 1, mp->totloop, 10, false);
+        gps_fill->flag |= GP_STROKE_CYCLIC;
+
+        /* Add points to strokes. */
+        int j;
+        for (j = 0; j < mp->totloop; j++, ml++) {
+          MVert *mv = &me->mvert[ml->v];
+
+          bGPDspoint *pt = &gps_fill->points[j];
+          copy_v3_v3(&pt->x, mv->co);
+          pt->pressure = 1.0f;
+          pt->strength = 1.0f;
+        }
+
+        BKE_gpencil_stroke_geometry_update(gps_fill);
+      }
     }
   }
 
