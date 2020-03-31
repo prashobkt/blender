@@ -1995,7 +1995,7 @@ static int gpencil_next_edge(GpEdge *gp_edges, int totedges, GpEdge *gped_init, 
 {
   int edge = -1;
   float last_angle = 999999.0f;
-  const float threshold = M_PI / 3.0f;
+  const float threshold = DEG2RADF(70.0f);
   for (int i = 0; i < totedges; i++) {
     GpEdge *gped = &gp_edges[i];
     if (gped->flag != 0) {
