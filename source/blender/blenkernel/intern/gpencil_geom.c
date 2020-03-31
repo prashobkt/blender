@@ -2171,6 +2171,7 @@ static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
   }
 
   /* Free memory. */
+  MEM_SAFE_FREE(stroke);
   MEM_SAFE_FREE(stroke_fw);
   MEM_SAFE_FREE(stroke_bw);
   MEM_SAFE_FREE(gp_edges);
