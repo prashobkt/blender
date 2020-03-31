@@ -2068,7 +2068,8 @@ static int gpencil_walk_edge(GHash *v_table,
 static void gpencil_generate_edgeloops(Object *ob,
                                        bGPDframe *gpf_stroke,
                                        const float angle,
-                                       const int thickness)
+                                       const int thickness,
+                                       const bool use_seams)
 {
   Mesh *me = (Mesh *)ob->data;
   if (me->totedge == 0) {
@@ -2095,6 +2096,11 @@ static void gpencil_generate_edgeloops(Object *ob,
     copy_v3_v3(gped->v2_co, mv2->co);
 
     sub_v3_v3v3(gped->vec, mv1->co, mv2->co);
+
+    /* If use seams, mark as done if not a seam. */
+    if ((use_seams) && ((ed->flag & ME_SEAM) == 0)) {
+      gped->flag = 1;
+    }
   }
 
   /* Loop edges to find edgeloops */
@@ -2185,21 +2191,18 @@ static void gpencil_generate_edgeloops(Object *ob,
  * \param scene: Original scene.
  * \param ob_gp: Grease pencil object to add strokes.
  * \param ob_mesh: Mesh to convert.
- * \param gpencil_lines: Use lines for strokes.
- * \param use_collections: Create layers using collection names.
- * \param only_stroke: The material must be only stroke without fill.
  * \param angle: Limit angle to consider a edgeloop ends.
  * \param thickness: Thickness of the strokes.
+ * \param only_seams: Only export seam edges.
  */
 void BKE_gpencil_convert_mesh(Main *bmain,
                               Depsgraph *depsgraph,
                               Scene *scene,
                               Object *ob_gp,
                               Object *ob_mesh,
-                              const bool gpencil_lines,
-                              const bool only_stroke,
                               const float angle,
-                              const int thickness)
+                              const int thickness,
+                              const bool use_seams)
 {
   if (ELEM(NULL, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
     return;
@@ -2271,7 +2274,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   /* Create stroke from edges. */
   bGPDlayer *gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
   bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_COPY);
-  gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness);
+  gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness, use_seams);
 
   /* Tag for recalculation */
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);

@@ -2222,8 +2222,10 @@ static int convert_exec(bContext *C, wmOperator *op)
   Object *gpencil_ob = NULL;
   const short target = RNA_enum_get(op->ptr, "target");
   bool keep_original = RNA_boolean_get(op->ptr, "keep_original");
+
   const float angle = RNA_float_get(op->ptr, "angle");
   const int thickness = RNA_int_get(op->ptr, "thickness");
+  const bool use_seams = RNA_boolean_get(op->ptr, "seams");
 
   int a, mballConverted = 0;
   bool gpencilConverted = false;
@@ -2351,7 +2353,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       copy_v3_v3(gpencil_ob->scale, size);
 
       BKE_gpencil_convert_mesh(
-          bmain, depsgraph, scene, gpencil_ob, ob, false, true, angle, thickness);
+          bmain, depsgraph, scene, gpencil_ob, ob, angle, thickness, use_seams);
       gpencilConverted = true;
     }
     else if (ob->type == OB_MESH) {
@@ -2643,6 +2645,7 @@ static void convert_ui(bContext *C, wmOperator *op)
   if (RNA_enum_get(&ptr, "target") == OB_GPENCIL) {
     uiItemR(layout, &ptr, "angle", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "seams", 0, NULL, ICON_NONE);
   }
 }
 
@@ -2686,6 +2689,7 @@ void OBJECT_OT_convert(wmOperatorType *ot)
   RNA_def_property_float_default(prop, DEG2RADF(70.0f));
 
   RNA_def_int(ot->srna, "thickness", 5, 1, 10000, "Thickness", "", 1, 200);
+  RNA_def_boolean(ot->srna, "seams", 0, "Only Seams", "Convert only seam edges");
 }
 
 /** \} */
