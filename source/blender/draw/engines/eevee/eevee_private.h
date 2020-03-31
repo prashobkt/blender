@@ -605,7 +605,7 @@ typedef struct EEVEE_EffectsInfo {
   float taa_alpha;
   bool prev_drw_support;
   bool prev_is_navigating;
-  float prev_drw_persmat[4][4];
+  float prev_drw_persmat[4][4]; /* Used for checking view validity and reprojection. */
   struct DRWView *taa_view;
   /* Ambient Occlusion */
   int ao_depth_layer;
