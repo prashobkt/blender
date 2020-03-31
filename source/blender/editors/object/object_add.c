@@ -96,6 +96,8 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
+#include "UI_interface.h"
+
 #include "WM_api.h"
 #include "WM_types.h"
 
@@ -2220,6 +2222,9 @@ static int convert_exec(bContext *C, wmOperator *op)
   Object *gpencil_ob = NULL;
   const short target = RNA_enum_get(op->ptr, "target");
   bool keep_original = RNA_boolean_get(op->ptr, "keep_original");
+  const float angle = RNA_float_get(op->ptr, "angle");
+  const int thickness = RNA_int_get(op->ptr, "thickness");
+
   int a, mballConverted = 0;
   bool gpencilConverted = false;
 
@@ -2345,7 +2350,8 @@ static int convert_exec(bContext *C, wmOperator *op)
       copy_v3_v3(gpencil_ob->rot, eul);
       copy_v3_v3(gpencil_ob->scale, size);
 
-      BKE_gpencil_convert_mesh(bmain, depsgraph, scene, gpencil_ob, ob, false, true);
+      BKE_gpencil_convert_mesh(
+          bmain, depsgraph, scene, gpencil_ob, ob, false, true, angle, thickness);
       gpencilConverted = true;
     }
     else if (ob->type == OB_MESH) {
@@ -2625,8 +2631,25 @@ static int convert_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void convert_ui(bContext *C, wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  PointerRNA ptr;
+
+  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+  uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "keep_original", 0, NULL, ICON_NONE);
+
+  if (RNA_enum_get(&ptr, "target") == OB_GPENCIL) {
+    uiItemR(layout, &ptr, "angle", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
+  }
+}
+
 void OBJECT_OT_convert(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   /* identifiers */
   ot->name = "Convert to";
   ot->description = "Convert selected objects to another type";
@@ -2636,6 +2659,7 @@ void OBJECT_OT_convert(wmOperatorType *ot)
   ot->invoke = WM_menu_invoke;
   ot->exec = convert_exec;
   ot->poll = convert_poll;
+  ot->ui = convert_ui;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -2648,6 +2672,20 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                   0,
                   "Keep Original",
                   "Keep original objects instead of replacing them");
+
+  prop = RNA_def_float_rotation(ot->srna,
+                                "angle",
+                                0,
+                                NULL,
+                                DEG2RADF(0.0f),
+                                DEG2RADF(180.0f),
+                                "Angle",
+                                "",
+                                DEG2RADF(0.0f),
+                                DEG2RADF(180.0f));
+  RNA_def_property_float_default(prop, DEG2RADF(70.0f));
+
+  RNA_def_int(ot->srna, "thickness", 5, 1, 10000, "Thickness", "", 1, 200);
 }
 
 /** \} */

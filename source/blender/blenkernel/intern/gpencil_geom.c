@@ -1991,11 +1991,11 @@ typedef struct GpEdge {
   int flag;
 } GpEdge;
 
-static int gpencil_next_edge(GpEdge *gp_edges, int totedges, GpEdge *gped_init, const bool reverse)
+static int gpencil_next_edge(
+    GpEdge *gp_edges, int totedges, GpEdge *gped_init, const float threshold, const bool reverse)
 {
   int edge = -1;
   float last_angle = 999999.0f;
-  const float threshold = DEG2RADF(70.0f);
   for (int i = 0; i < totedges; i++) {
     GpEdge *gped = &gp_edges[i];
     if (gped->flag != 0) {
@@ -2027,13 +2027,14 @@ static int gpencil_walk_edge(GHash *v_table,
                              int totedges,
                              uint *stroke_array,
                              int init_idx,
+                             const float angle,
                              const bool reverse)
 {
   GpEdge *gped_init = &gp_edges[init_idx];
   int idx = 1;
   int edge = 0;
   while (edge > -1) {
-    edge = gpencil_next_edge(gp_edges, totedges, gped_init, reverse);
+    edge = gpencil_next_edge(gp_edges, totedges, gped_init, angle, reverse);
     if (edge > -1) {
       GpEdge *gped = &gp_edges[edge];
       stroke_array[idx] = edge;
@@ -2064,7 +2065,10 @@ static int gpencil_walk_edge(GHash *v_table,
   return idx;
 }
 
-static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
+static void gpencil_generate_edgeloops(Object *ob,
+                                       bGPDframe *gpf_stroke,
+                                       const float angle,
+                                       const int thickness)
 {
   Mesh *me = (Mesh *)ob->data;
   if (me->totedge == 0) {
@@ -2119,9 +2123,9 @@ static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
     /* Hash used to avoid loop over same vertice. */
     GHash *v_table = BLI_ghash_int_new(__func__);
     /* Look forward edges. */
-    int totedges = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_fw, e, false);
+    int totedges = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_fw, e, angle, false);
     /* Look backward edges. */
-    int totbw = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_bw, e, true);
+    int totbw = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_bw, e, angle, false);
 
     BLI_ghash_free(v_table, NULL, NULL);
 
@@ -2137,7 +2141,8 @@ static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
     }
 
     /* Create Stroke. */
-    bGPDstroke *gps_stroke = BKE_gpencil_stroke_add(gpf_stroke, 0, array_len + 1, 5, false);
+    bGPDstroke *gps_stroke = BKE_gpencil_stroke_add(
+        gpf_stroke, 0, array_len + 1, thickness, false);
 
     /* Create first segment. */
     uint v = stroke[0];
@@ -2183,6 +2188,8 @@ static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
  * \param gpencil_lines: Use lines for strokes.
  * \param use_collections: Create layers using collection names.
  * \param only_stroke: The material must be only stroke without fill.
+ * \param angle: Limit angle to consider a edgeloop ends.
+ * \param thickness: Thickness of the strokes.
  */
 void BKE_gpencil_convert_mesh(Main *bmain,
                               Depsgraph *depsgraph,
@@ -2190,7 +2197,9 @@ void BKE_gpencil_convert_mesh(Main *bmain,
                               Object *ob_gp,
                               Object *ob_mesh,
                               const bool gpencil_lines,
-                              const bool only_stroke)
+                              const bool only_stroke,
+                              const float angle,
+                              const int thickness)
 {
   if (ELEM(NULL, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
     return;
@@ -2262,12 +2271,11 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   /* Create stroke from edges. */
   bGPDlayer *gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
   bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_COPY);
-  gpencil_generate_edgeloops(ob_eval, gpf_stroke);
+  gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness);
 
   /* Tag for recalculation */
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 }
-
 /* Apply Transforms */
 void BKE_gpencil_transform(bGPdata *gpd, float mat[4][4])
 {

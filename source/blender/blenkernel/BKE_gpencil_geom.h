@@ -112,7 +112,9 @@ void BKE_gpencil_convert_mesh(struct Main *bmain,
                               struct Object *ob_gp,
                               struct Object *ob_mesh,
                               const bool gpencil_lines,
-                              const bool only_stroke);
+                              const bool only_stroke,
+                              const float angle,
+                              const int thickness);
 
 #ifdef __cplusplus
 }
