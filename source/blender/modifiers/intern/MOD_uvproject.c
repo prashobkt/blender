@@ -34,12 +34,14 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_camera.h"
 #include "BKE_context.h"
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -47,6 +49,7 @@
 #include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -321,35 +324,40 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return result;
 }
 
-// uiLayout *sub, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub;
+  uiLayout *layout = panel->layout;
 
-// PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
-// PointerRNA projector_ptr;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
 
-// uiItemS(col);
+  uiItemPointerR(layout, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
 
-// uiItemR(col, ptr, "projector_count", 0, IFACE_("Projectors"), ICON_NONE);
-// /* HANS-TODO: How to iterate with RNA outside or rna_*.c?
-// for proj in md.projectors:
-//     col.prop(proj, "object", text="")
-// */
-// for (int i = 0; i < RNA_int_get(ptr, "projector_count"); i++) {
-//   /* Something like this would make sense, not sure how to get the projector's ID though. */
-//   // RNA_pointer_create(NULL, &RNA_UVProjector, NULL, &projector_ptr);
-// }
+  sub = uiLayoutColumn(layout, true);
+  uiItemR(sub, &ptr, "aspect_x", 0, IFACE_("Aspect X"), ICON_NONE);
+  uiItemR(sub, &ptr, "aspect_y", 0, IFACE_("Aspect Y"), ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// sub = uiLayoutColumn(col, true);
-// uiItemR(sub, ptr, "aspect_x", 0, IFACE_("Aspect X"), ICON_NONE);
-// uiItemR(sub, ptr, "aspect_y", 0, IFACE_("Aspect Y"), ICON_NONE);
+  sub = uiLayoutColumn(layout, true);
+  uiItemR(sub, &ptr, "scale_x", 0, IFACE_("Scale X"), ICON_NONE);
+  uiItemR(sub, &ptr, "scale_y", 0, IFACE_("Scale Y"), ICON_NONE);
 
-// sub = uiLayoutColumn(col, true);
-// uiItemR(sub, ptr, "scale_x", 0, IFACE_("Scale X"), ICON_NONE);
-// uiItemR(sub, ptr, "scale_y", 0, IFACE_("Scale Y"), ICON_NONE);
+  uiItemR(layout, &ptr, "projector_count", 0, IFACE_("Projectors"), ICON_NONE);
+  RNA_BEGIN (&ptr, projector_ptr, "projectors") {
+    uiItemR(layout, &projector_ptr, "object", 0, "", ICON_NONE);
+  }
+  RNA_END;
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "UVProject", panel_draw);
+}
 
 ModifierTypeInfo modifierType_UVProject = {
     /* name */ "UVProject",
@@ -378,5 +386,5 @@ ModifierTypeInfo modifierType_UVProject = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

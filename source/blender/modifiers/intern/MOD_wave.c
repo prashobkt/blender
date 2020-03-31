@@ -31,6 +31,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -39,6 +40,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 #include "BKE_texture.h"
 
 #include "UI_interface.h"
@@ -50,6 +52,7 @@
 #include "RE_shader_ext.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "DEG_depsgraph.h"
@@ -357,73 +360,107 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// int texture_coords = RNA_enum_get(ptr, "texture_coords");
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Motion:"), ICON_NONE);
-// uiItemR(col, ptr, "use_x", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_y", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_cyclic", 0, NULL, ICON_NONE);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_normal", 0, NULL, ICON_NONE);
-// sub = uiLayoutColumn(col, false);
-// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_normal"));
-// uiItemR(sub, ptr, "use_normal_x", 0, "X", ICON_NONE);
-// uiItemR(sub, ptr, "use_normal_y", 0, "Y", ICON_NONE);
-// uiItemR(sub, ptr, "use_normal_z", 0, "Z", ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, true);
+  uiItemL(col, IFACE_("Motion:"), ICON_NONE);
+  uiItemR(col, &ptr, "use_x", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_y", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_cyclic", 0, NULL, ICON_NONE);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Time:"), ICON_NONE);
-// sub = uiLayoutColumn(col, true);
-// uiItemR(sub, ptr, "time_offset", 0, "Offset", ICON_NONE);
-// uiItemR(sub, ptr, "lifetime", 0, "Life", ICON_NONE);
-// uiItemR(col, ptr, "damping_time", 0, "Damping", ICON_NONE);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_normal", 0, NULL, ICON_NONE);
+  sub = uiLayoutColumn(col, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_normal"));
+  uiItemR(sub, &ptr, "use_normal_x", 0, "X", ICON_NONE);
+  uiItemR(sub, &ptr, "use_normal_y", 0, "Y", ICON_NONE);
+  uiItemR(sub, &ptr, "use_normal_z", 0, "Z", ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Position:"), ICON_NONE);
-// sub = uiLayoutColumn(col, true);
-// uiItemR(sub, ptr, "start_position_x", 0, "X", ICON_NONE);
-// uiItemR(sub, ptr, "start_position_y", 0, "Y", ICON_NONE);
-// uiItemR(col, ptr, "falloff_radius", 0, "Falloff", ICON_NONE);
+  uiItemR(layout, &ptr, "falloff_radius", 0, "Falloff", ICON_NONE);
+  uiItemR(layout, &ptr, "height", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "width", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "narrowness", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
-// uiItemS(layout);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// uiItemR(layout, ptr, "start_position_object", 0, NULL, ICON_NONE);
-// row = uiLayoutRow(layout, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_panel_end(layout, &ptr);
+}
 
-// split = uiLayoutSplit(layout, 0.333f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Texture:"), ICON_NONE);
-// col = uiLayoutColumn(split, false);
-// uiTemplateID(col, C, ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
+static void position_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
 
-// uiItemR(layout, ptr, "texture_coords", 0, NULL, ICON_NONE);
-// if (texture_coords == MOD_DISP_MAP_OBJECT) {
-//   uiItemR(layout, ptr, "texture_coords_object", 0, NULL, ICON_NONE);
-// }
-// else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(ob_ptr, "type") == OB_MESH) {
-//   PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
-//   uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
-// }
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "speed", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// uiItemR(col, ptr, "height", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "start_position_object", 0, "", ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "start_position_x", 0, "X", ICON_NONE);
+  uiItemR(col, &ptr, "start_position_y", 0, "Y", ICON_NONE);
+}
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "width", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// uiItemR(col, ptr, "narrowness", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+static void time_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "time_offset", 0, "Offset", ICON_NONE);
+  uiItemR(layout, &ptr, "lifetime", 0, "Life", ICON_NONE);
+  uiItemR(layout, &ptr, "damping_time", 0, "Damping", ICON_NONE);
+  uiItemR(layout, &ptr, "speed", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+}
+
+static void texture_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  int texture_coords = RNA_enum_get(&ptr, "texture_coords");
+
+  col = uiLayoutColumn(layout, false);
+  uiTemplateID(col, C, &ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
+
+  uiItemR(layout, &ptr, "texture_coords", 0, NULL, ICON_NONE);
+  if (texture_coords == MOD_DISP_MAP_OBJECT) {
+    uiItemR(layout, &ptr, "texture_coords_object", 0, "", ICON_NONE);
+  }
+  else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
+    PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+    uiItemPointerR(col, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", "", ICON_NONE);
+  }
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Wave", panel_draw);
+  modifier_subpanel_register(
+      region_type, "wave_position", "Start Position", NULL, position_panel_draw, true, panel_type);
+  modifier_subpanel_register(
+      region_type, "wave_time", "Time", NULL, time_panel_draw, true, panel_type);
+  modifier_subpanel_register(
+      region_type, "texture_position", "Texture", NULL, texture_panel_draw, false, panel_type);
+}
 
 ModifierTypeInfo modifierType_Wave = {
     /* name */ "Wave",
@@ -452,5 +489,5 @@ ModifierTypeInfo modifierType_Wave = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

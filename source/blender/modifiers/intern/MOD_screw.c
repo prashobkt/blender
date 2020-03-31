@@ -1212,9 +1212,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Screw", panel_draw);
-  // modifier_subpanel_register(
-  //     region_type, "hook_falloff", "Falloff", NULL, falloff_panel_draw, true, panel_type);
+  modifier_panel_register(region_type, "Screw", panel_draw);
 }
 
 ModifierTypeInfo modifierType_Screw = {

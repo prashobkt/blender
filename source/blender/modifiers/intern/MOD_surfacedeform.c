@@ -30,6 +30,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
@@ -39,6 +40,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -50,6 +52,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 typedef struct SDefAdjacency {
@@ -1389,30 +1392,44 @@ static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED
          !(smd->verts != NULL && !(smd->flags & MOD_SDEF_BIND));
 }
 
-// uiLayout *col;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
 
-// PointerRNA target_ptr = RNA_pointer_get(ptr, "target");
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// bool is_bound = RNA_boolean_get(ptr, "is_bound");
+  PointerRNA target_ptr = RNA_pointer_get(&ptr, "target");
 
-// col = uiLayoutColumn(layout, false);
-// uiLayoutSetActive(col, !is_bound);
-// uiItemR(col, ptr, "target", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "falloff", 0, NULL, ICON_NONE);
+  bool is_bound = RNA_boolean_get(&ptr, "is_bound");
 
-// uiItemS(layout);
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, !is_bound);
+  uiItemR(col, &ptr, "target", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "falloff", 0, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(layout, false);
-// if (is_bound) {
-//   uiItemO(col, IFACE_("Unbind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
-// }
-// else {
-//   uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
-//   uiItemO(col, IFACE_("Bind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
-// }
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
+  if (is_bound) {
+    uiItemO(col, IFACE_("Unbind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
+  }
+  else {
+    uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
+    uiItemO(col, IFACE_("Bind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
+  }
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "SurfaceDeform", panel_draw);
+}
 
 ModifierTypeInfo modifierType_SurfaceDeform = {
-    /* name */ "Surface Deform",
+    /* name */ "SurfaceDeform",
     /* structName */ "SurfaceDeformModifierData",
     /* structSize */ sizeof(SurfaceDeformModifierData),
     /* type */ eModifierTypeType_OnlyDeform,
@@ -1437,5 +1454,5 @@ ModifierTypeInfo modifierType_SurfaceDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

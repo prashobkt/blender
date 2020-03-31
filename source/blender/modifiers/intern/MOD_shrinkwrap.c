@@ -29,6 +29,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
@@ -36,6 +37,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 #include "BKE_shrinkwrap.h"
 
 #include "UI_interface.h"
@@ -45,6 +47,7 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 static bool dependsOnNormals(ModifierData *md);
@@ -206,69 +209,89 @@ static bool dependsOnNormals(ModifierData *md)
   return false;
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row;
+  uiLayout *layout = panel->layout;
 
-// int wrap_method = RNA_enum_get(ptr, "wrap_method");
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Target:"), ICON_NONE);
-// uiItemR(col, ptr, "target", 0, "", ICON_NONE);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "target", 0, "", ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Mode:"), ICON_NONE);
-// uiItemR(col, ptr, "wrap_method", 0, "", ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// if (ELEM(wrap_method,
-//          MOD_SHRINKWRAP_PROJECT,
-//          MOD_SHRINKWRAP_NEAREST_SURFACE,
-//          MOD_SHRINKWRAP_TARGET_PROJECT)) {
-//   uiItemR(col, ptr, "wrap_mode", 0, "", ICON_NONE);
-// }
+  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
-// if (wrap_method == MOD_SHRINKWRAP_PROJECT) {
-//   split = uiLayoutSplit(layout, 0.5f, false);
-//   col = uiLayoutColumn(split, false);
-//   uiItemR(col, ptr, "subsurf_levels", 0, NULL, ICON_NONE);
+  modifier_panel_end(layout, &ptr);
+}
 
-//   col = uiLayoutColumn(split, false);
-//   uiItemR(col, ptr, "project_limit", 0, IFACE_("Limit"), ICON_NONE);
+static void mode_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *split, *col;
+  uiLayout *layout = panel->layout;
 
-//   split = uiLayoutSplit(layout, 0.25f, false);
-//   col = uiLayoutColumn(split, false);
-//   uiItemL(col, IFACE_("Axis:"), ICON_NONE);
-//   uiItemR(col, ptr, "use_project_x", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "use_project_y", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "use_project_z", 0, NULL, ICON_NONE);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-//   col = uiLayoutColumn(split, false);
-//   uiItemL(col, IFACE_("Direction:"), ICON_NONE);
-//   uiItemR(col, ptr, "use_negative_direction", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "use_positive_direction", 0, NULL, ICON_NONE);
-//   sub = uiLayoutColumn(col, false);
-//   uiLayoutSetActive(sub,
-//                     RNA_boolean_get(ptr, "use_negative_direction") &&
-//                         RNA_enum_get(ptr, "cull_face") != 0);
-//   uiItemR(sub, ptr, "use_invert_cull", 0, NULL, ICON_NONE);
+  int wrap_method = RNA_enum_get(&ptr, "wrap_method");
 
-//   col = uiLayoutColumn(split, false);
-//   uiItemL(col, IFACE_("Cull Faces:"), ICON_NONE);
-//   uiItemR(col, ptr, "cull_face", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "wrap_method", 0, "", ICON_NONE);
 
-//   uiItemR(layout, ptr, "auxiliary_target", 0, NULL, ICON_NONE);
-// }
+  if (ELEM(wrap_method,
+           MOD_SHRINKWRAP_PROJECT,
+           MOD_SHRINKWRAP_NEAREST_SURFACE,
+           MOD_SHRINKWRAP_TARGET_PROJECT)) {
+    uiItemR(layout, &ptr, "wrap_mode", 0, "", ICON_NONE);
+  }
+
+  if (wrap_method == MOD_SHRINKWRAP_PROJECT) {
+    split = uiLayoutSplit(layout, 0.5f, false);
+    col = uiLayoutColumn(split, false);
+    uiItemR(col, &ptr, "subsurf_levels", 0, NULL, ICON_NONE);
+
+    col = uiLayoutColumn(split, false);
+    uiItemR(col, &ptr, "project_limit", 0, IFACE_("Limit"), ICON_NONE);
+
+    split = uiLayoutSplit(layout, 0.5f, false);
+    col = uiLayoutColumn(split, true);
+    uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+    uiItemR(col, &ptr, "use_project_x", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "use_project_y", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "use_project_z", 0, NULL, ICON_NONE);
+
+    col = uiLayoutColumn(split, true);
+    uiItemL(col, IFACE_("Direction:"), ICON_NONE);
+    uiItemR(col, &ptr, "use_negative_direction", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "use_positive_direction", 0, NULL, ICON_NONE);
+    sub = uiLayoutColumn(col, false);
+    uiLayoutSetActive(sub,
+                      RNA_boolean_get(&ptr, "use_negative_direction") &&
+                          RNA_enum_get(&ptr, "cull_face") != 0);
+    uiItemR(sub, &ptr, "use_invert_cull", 0, NULL, ICON_NONE);
+
+    col = uiLayoutColumn(layout, true);
+    uiItemL(col, IFACE_("Cull Faces:"), ICON_NONE);
+    row = uiLayoutRow(col, false);
+    uiItemR(row, &ptr, "cull_face", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+    uiItemR(layout, &ptr, "auxiliary_target", 0, NULL, ICON_NONE);
+  }
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Shrinkwrap", panel_draw);
+  modifier_subpanel_register(
+      region_type, "shrinkwrap_mode", "Mode", NULL, mode_panel_draw, true, panel_type);
+}
 
 ModifierTypeInfo modifierType_Shrinkwrap = {
     /* name */ "Shrinkwrap",
@@ -298,5 +321,5 @@ ModifierTypeInfo modifierType_Shrinkwrap = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

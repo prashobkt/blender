@@ -31,6 +31,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -38,6 +39,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_particle.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -45,6 +47,7 @@
 #include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 static void initData(ModifierData *md)
@@ -231,26 +234,43 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.25f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Axis:"), ICON_NONE);
-// uiItemR(col, ptr, "use_x", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_y", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_z", 0, NULL, ICON_NONE);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "factor", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "iterations", 0, NULL, ICON_NONE);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  split = uiLayoutSplit(layout, 0.25f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+  uiItemR(col, &ptr, "use_x", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_y", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_z", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "factor", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "iterations", 0, NULL, ICON_NONE);
+  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Smooth", panel_draw);
+  // modifier_subpanel_register(
+  //     region_type, "shrinkwrap_mode", "Mode", NULL, mode_panel_draw, true, panel_type);
+}
 
 ModifierTypeInfo modifierType_Smooth = {
     /* name */ "Smooth",
@@ -279,5 +299,5 @@ ModifierTypeInfo modifierType_Smooth = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

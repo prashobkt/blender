@@ -31,6 +31,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
 #include "BKE_colortools.h"
@@ -41,6 +42,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 #include "BKE_texture.h"
 
 #include "UI_interface.h"
@@ -53,6 +55,7 @@
 
 #include "RE_shader_ext.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 static void initData(ModifierData *md)
@@ -397,55 +400,94 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// bool use_falloff = (RNA_enum_get(ptr, "falloff_type") != eWarp_Falloff_None);
-// int texture_corrds = RNA_enum_get(ptr, "texture_coords");
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("From:"), ICON_NONE);
-// uiItemR(col, ptr, "object_from", 0, "", ICON_NONE);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// uiItemR(col, ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("From:"), ICON_NONE);
+  uiItemR(col, &ptr, "object_from", 0, "", ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("To:"), ICON_NONE);
-// uiItemR(col, ptr, "object_to", 0, "", ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(col, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
 
-// row = uiLayoutRow(layout, true);
-// uiItemR(row, ptr, "strength", 0, NULL, ICON_NONE);
-// if (use_falloff) {
-//   uiItemR(row, ptr, "falloff_radius", 0, NULL, ICON_NONE);
-// }
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("To:"), ICON_NONE);
+  uiItemR(col, &ptr, "object_to", 0, "", ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// uiItemR(layout, ptr, "falloff_type", 0, NULL, ICON_NONE);
-// if (use_falloff && RNA_enum_get(ptr, "falloff_type") == eWarp_Falloff_Curve) {
-//   uiTemplateCurveMapping(layout, ptr, "falloff_curve", 0, false, false, false, false);
-// }
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &ptr, "strength", 0, NULL, ICON_NONE);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Texture:"), ICON_NONE);
-// uiTemplateID(col, C, ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Texture Coordinates:"), ICON_NONE);
-// uiItemR(col, ptr, "texture_coords", 0, "", ICON_NONE);
+  modifier_panel_end(layout, &ptr);
+}
 
-// if (texture_corrds == MOD_DISP_MAP_OBJECT) {
-//   uiItemR(layout, ptr, "texture_coords_object", 0, NULL, ICON_NONE);
-// }
-// else if (texture_corrds == MOD_DISP_MAP_UV && RNA_enum_get(ob_ptr, "type") == OB_MESH) {
-//   PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
-//   uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
-// }
+static void falloff_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  bool use_falloff = (RNA_enum_get(&ptr, "falloff_type") != eWarp_Falloff_None);
+
+  uiItemR(layout, &ptr, "falloff_type", 0, NULL, ICON_NONE);
+
+  if (use_falloff) {
+    uiItemR(layout, &ptr, "falloff_radius", 0, NULL, ICON_NONE);
+  }
+
+  if (use_falloff && RNA_enum_get(&ptr, "falloff_type") == eWarp_Falloff_Curve) {
+    uiTemplateCurveMapping(layout, &ptr, "falloff_curve", 0, false, false, false, false);
+  }
+}
+
+static void texture_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  int texture_coords = RNA_enum_get(&ptr, "texture_coords");
+
+  uiTemplateID(layout, C, &ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
+
+  uiItemL(layout, IFACE_("Texture Coordinates:"), ICON_NONE);
+  uiItemR(layout, &ptr, "texture_coords", 0, "", ICON_NONE);
+
+  if (texture_coords == MOD_DISP_MAP_OBJECT) {
+    uiItemR(layout, &ptr, "texture_coords_object", 0, "", ICON_NONE);
+  }
+  else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
+    PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+    uiItemPointerR(layout, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", "", ICON_NONE);
+  }
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Warp", panel_draw);
+  modifier_subpanel_register(
+      region_type, "warp_falloff", "Falloff", NULL, falloff_panel_draw, false, panel_type);
+  modifier_subpanel_register(
+      region_type, "warp_texture", "Texture", NULL, texture_panel_draw, false, panel_type);
+}
 
 ModifierTypeInfo modifierType_Warp = {
     /* name */ "Warp",
@@ -473,5 +515,5 @@ ModifierTypeInfo modifierType_Warp = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };
