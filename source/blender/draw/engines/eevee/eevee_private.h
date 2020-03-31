@@ -1219,6 +1219,7 @@ void EEVEE_render_draw(EEVEE_Data *vedata,
 void EEVEE_render_update_passes(struct RenderEngine *engine,
                                 struct Scene *scene,
                                 struct ViewLayer *view_layer);
+bool EEVEE_render_do_motion_blur(const struct Depsgraph *depsgraph);
 
 /** eevee_lookdev.c */
 void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,

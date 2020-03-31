@@ -423,29 +423,38 @@ static void eevee_render_to_image(void *vedata,
                                   struct RenderLayer *render_layer,
                                   const rcti *rect)
 {
+  EEVEE_Data *ved = (EEVEE_Data *)vedata;
   const DRWContextState *draw_ctx = DRW_context_state_get();
 
-  if (!EEVEE_render_init(vedata, engine, draw_ctx->depsgraph)) {
-    return;
-  }
-
-  DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
-
-  {
-    EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
-    memset(psl, 0, sizeof(*psl));
-
+  if (EEVEE_render_do_motion_blur(draw_ctx->depsgraph)) {
     float time = DEG_get_ctime(draw_ctx->depsgraph);
-    RE_engine_frame_set(engine, time - 1.0, 0.0f);
+    RE_engine_frame_set(engine, time - 1.0f, 0.0f);
 
-    EEVEE_render_init(vedata, engine, draw_ctx->depsgraph);
+    if (!EEVEE_render_init(vedata, engine, draw_ctx->depsgraph)) {
+      return;
+    }
 
     if (RE_engine_test_break(engine)) {
       return;
     }
 
     DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
+
+    RE_engine_frame_set(engine, time, 0.0f);
+
+    /* Reset passlist. This is safe as they are stored into managed memory chunks. */
+    memset(ved->psl, 0, sizeof(*ved->psl));
   }
+
+  if (!EEVEE_render_init(vedata, engine, draw_ctx->depsgraph)) {
+    return;
+  }
+
+  if (RE_engine_test_break(engine)) {
+    return;
+  }
+
+  DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
 
   /* Actually do the rendering. */
   EEVEE_render_draw(vedata, engine, render_layer, rect);
