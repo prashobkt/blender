@@ -24,6 +24,8 @@
 
 #include "DRW_render.h"
 
+#include "BLI_rand.h"
+
 #include "BKE_animsys.h"
 #include "BKE_camera.h"
 #include "BKE_object.h"
@@ -167,6 +169,7 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
       DRWShadingGroup *grp = DRW_shgroup_create(e_data.motion_blur_sh, psl->motion_blur);
       DRW_shgroup_uniform_int_copy(grp, "samples", scene->eevee.motion_blur_samples);
       DRW_shgroup_uniform_float_copy(grp, "shutter", scene->eevee.motion_blur_shutter);
+      DRW_shgroup_uniform_float(grp, "sampleOffset", &effects->motion_blur_sample_offset, 1);
       DRW_shgroup_uniform_mat4(grp, "currInvViewProjMatrix", effects->current_ndc_to_world);
       DRW_shgroup_uniform_mat4(grp, "pastViewProjMatrix", effects->past_world_to_ndc);
       DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &effects->source_buffer);
@@ -241,6 +244,12 @@ void EEVEE_motion_blur_draw(EEVEE_Data *vedata)
 
   /* Motion Blur */
   if ((effects->enabled_effects & EFFECT_MOTION_BLUR) != 0) {
+    int sample = DRW_state_is_image_render() ? effects->taa_render_sample :
+                                               effects->taa_current_sample;
+    double r;
+    BLI_halton_1d(2, 0.0, sample - 1, &r);
+    effects->motion_blur_sample_offset = r;
+
     GPU_framebuffer_bind(effects->target_buffer);
     DRW_draw_pass(psl->motion_blur);
     SWAP_BUFFERS();

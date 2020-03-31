@@ -622,6 +622,7 @@ typedef struct EEVEE_EffectsInfo {
   CameraParams current_cam_params;
   float current_time;
   float past_time;
+  float motion_blur_sample_offset;
   bool cam_params_init;
   /* Velocity Pass */
   struct GPUTexture *velocity_tx; /* Texture from pool */

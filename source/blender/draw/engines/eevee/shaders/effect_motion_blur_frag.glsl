@@ -4,6 +4,7 @@ uniform sampler2D velocityBuffer;
 
 uniform int samples;
 uniform float shutter;
+uniform float sampleOffset;
 
 in vec4 uvcoordsvar;
 
@@ -23,7 +24,7 @@ float wang_hash_noise(uint s)
 
   float value = float(seed);
   value *= 1.0 / 4294967296.0;
-  return fract(value);
+  return fract(value + sampleOffset);
 }
 
 void main()
