@@ -1756,6 +1756,14 @@ const DRWView *DRW_view_default_get(void)
   return DST.view_default;
 }
 
+/* WARNING: Only use in render AND only if you are going to set view_default again. */
+void DRW_view_reset(void)
+{
+  DST.view_default = NULL;
+  DST.view_active = NULL;
+  DST.view_previous = NULL;
+}
+
 /* MUST only be called once per render and only in render mode. Sets default view. */
 void DRW_view_default_set(DRWView *view)
 {

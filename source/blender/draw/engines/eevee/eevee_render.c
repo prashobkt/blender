@@ -150,9 +150,8 @@ bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, struct Depsgraph *
 
   DRWView *view = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
   DRW_view_camtexco_set(view, camtexcofac);
-  if (DRW_view_default_get() == NULL) {
-    DRW_view_default_set(view);
-  }
+  DRW_view_reset();
+  DRW_view_default_set(view);
   DRW_view_set_active(view);
 
   /* `EEVEE_renderpasses_init` will set the active render passes used by `EEVEE_effects_init`.
