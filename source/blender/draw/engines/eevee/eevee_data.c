@@ -94,6 +94,8 @@ static void eevee_object_data_init(DrawData *dd)
 {
   EEVEE_ObjectEngineData *eevee_data = (EEVEE_ObjectEngineData *)dd;
   eevee_data->shadow_caster_id = -1;
+  eevee_data->curr_time = INT_MIN;
+  eevee_data->prev_time = INT_MIN;
 }
 
 EEVEE_ObjectEngineData *EEVEE_object_data_get(Object *ob)

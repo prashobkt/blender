@@ -14,5 +14,7 @@ void main()
 {
   prevWorldPos = (prevModelMatrix * vec4(pos, 1.0)).xyz;
   currWorldPos = (currModelMatrix * vec4(pos, 1.0)).xyz;
-  gl_Position = currViewProjectionMatrix * vec4(currWorldPos, 1.0);
+  /* Use jittered projmatrix to be able to match exact sample depth (depth equal test).
+   * Note that currModelMatrix needs to also be equal to ModelMatrix for the samples to match. */
+  gl_Position = ViewProjectionMatrix * vec4(currWorldPos, 1.0);
 }

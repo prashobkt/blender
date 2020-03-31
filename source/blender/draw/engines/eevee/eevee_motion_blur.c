@@ -50,12 +50,16 @@ static struct {
 extern char datatoc_effect_motion_blur_frag_glsl[];
 extern char datatoc_object_motion_frag_glsl[];
 extern char datatoc_object_motion_vert_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 
 static void eevee_create_shader_motion_blur(void)
 {
   e_data.motion_blur_sh = DRW_shader_create_fullscreen(datatoc_effect_motion_blur_frag_glsl, NULL);
-  e_data.motion_blur_object_sh = DRW_shader_create(
-      datatoc_object_motion_vert_glsl, NULL, datatoc_object_motion_frag_glsl, NULL);
+  e_data.motion_blur_object_sh = DRW_shader_create_with_lib(datatoc_object_motion_vert_glsl,
+                                                            NULL,
+                                                            datatoc_object_motion_frag_glsl,
+                                                            datatoc_common_view_lib_glsl,
+                                                            NULL);
 }
 
 static void eevee_motion_blur_past_persmat_get(const CameraParams *past_params,

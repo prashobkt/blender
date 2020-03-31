@@ -147,6 +147,8 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata,
 
   if (!stl->effects) {
     stl->effects = MEM_callocN(sizeof(EEVEE_EffectsInfo), "EEVEE_EffectsInfo");
+    stl->effects->current_time = INT_MIN;
+    stl->effects->past_time = INT_MIN;
   }
 
   effects = stl->effects;
@@ -505,12 +507,10 @@ static void EEVEE_velocity_resolve(EEVEE_Data *vedata)
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
-  struct DRWView *view = effects->taa_view;
 
   if ((effects->enabled_effects & EFFECT_VELOCITY_BUFFER) != 0) {
     DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
     e_data.depth_src = dtxl->depth;
-    DRW_view_persmat_get(view, effects->velocity_curr_persinv, true);
 
     GPU_framebuffer_bind(fbl->velocity_resolve_fb);
     DRW_draw_pass(psl->velocity_resolve);
@@ -520,7 +520,6 @@ static void EEVEE_velocity_resolve(EEVEE_Data *vedata)
       DRW_draw_pass(psl->velocity_object);
     }
   }
-  DRW_view_persmat_get(view, effects->velocity_past_persmat, false);
 }
 
 void EEVEE_draw_effects(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)

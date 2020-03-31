@@ -624,8 +624,6 @@ typedef struct EEVEE_EffectsInfo {
   float past_time;
   bool cam_params_init;
   /* Velocity Pass */
-  float velocity_curr_persinv[4][4];
-  float velocity_past_persmat[4][4];
   struct GPUTexture *velocity_tx; /* Texture from pool */
   /* Depth Of Field */
   float dof_near_far[2];
