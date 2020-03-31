@@ -2227,6 +2227,7 @@ static int convert_exec(bContext *C, wmOperator *op)
   const int thickness = RNA_int_get(op->ptr, "thickness");
   const bool use_seams = RNA_boolean_get(op->ptr, "seams");
   const bool use_faces = RNA_boolean_get(op->ptr, "faces");
+  const float offset = RNA_float_get(op->ptr, "offset");
 
   int a, mballConverted = 0;
   bool gpencilConverted = false;
@@ -2354,7 +2355,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       copy_v3_v3(gpencil_ob->scale, size);
 
       BKE_gpencil_convert_mesh(
-          bmain, depsgraph, scene, gpencil_ob, ob, angle, thickness, use_seams, use_faces);
+          bmain, depsgraph, scene, gpencil_ob, ob, angle, thickness, offset, use_seams, use_faces);
       gpencilConverted = true;
     }
     else if (ob->type == OB_MESH) {
@@ -2646,6 +2647,7 @@ static void convert_ui(bContext *C, wmOperator *op)
   if (RNA_enum_get(&ptr, "target") == OB_GPENCIL) {
     uiItemR(layout, &ptr, "angle", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "faces", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "seams", 0, NULL, ICON_NONE);
   }
@@ -2690,9 +2692,18 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                                 DEG2RADF(180.0f));
   RNA_def_property_float_default(prop, DEG2RADF(70.0f));
 
-  RNA_def_int(ot->srna, "thickness", 5, 1, 10000, "Thickness", "", 1, 200);
+  RNA_def_int(ot->srna, "thickness", 5, 1, 100, "Thickness", "", 1, 100);
   RNA_def_boolean(ot->srna, "seams", 0, "Only Seam Edges", "Convert only seam edges");
   RNA_def_boolean(ot->srna, "faces", 1, "Export Faces", "Export faces as filled strokes");
+  RNA_def_float_distance(ot->srna,
+                         "offset",
+                         0.01f,
+                         0.0,
+                         OBJECT_ADD_SIZE_MAXF,
+                         "Offset",
+                         "Offset strokes from fill",
+                         0.0,
+                         100.00);
 }
 
 /** \} */

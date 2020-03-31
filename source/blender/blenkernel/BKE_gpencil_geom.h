@@ -113,6 +113,7 @@ void BKE_gpencil_convert_mesh(struct Main *bmain,
                               struct Object *ob_mesh,
                               const float angle,
                               const int thickness,
+                              const float offset,
                               const bool use_seams,
                               const bool use_faces);
 

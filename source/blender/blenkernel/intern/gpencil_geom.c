@@ -2069,6 +2069,7 @@ static void gpencil_generate_edgeloops(Object *ob,
                                        bGPDframe *gpf_stroke,
                                        const float angle,
                                        const int thickness,
+                                       const float offset,
                                        const bool use_seams)
 {
   Mesh *me = (Mesh *)ob->data;
@@ -2080,6 +2081,7 @@ static void gpencil_generate_edgeloops(Object *ob,
   uint *stroke = MEM_callocN(sizeof(uint) * me->totedge * 2, __func__);
   uint *stroke_fw = MEM_callocN(sizeof(uint) * me->totedge, __func__);
   uint *stroke_bw = MEM_callocN(sizeof(uint) * me->totedge, __func__);
+  const float scale = (offset > 0.0f) ? 1.0f + offset : 1.0f;
 
   /* Create array with all edges. */
   GpEdge *gp_edges = MEM_callocN(sizeof(GpEdge) * me->totedge, __func__);
@@ -2148,18 +2150,18 @@ static void gpencil_generate_edgeloops(Object *ob,
 
     /* Create Stroke. */
     bGPDstroke *gps_stroke = BKE_gpencil_stroke_add(
-        gpf_stroke, 0, array_len + 1, thickness, false);
+        gpf_stroke, 0, array_len + 1, thickness * thickness, false);
 
     /* Create first segment. */
     uint v = stroke[0];
     gped = &gp_edges[v];
     bGPDspoint *pt = &gps_stroke->points[0];
-    copy_v3_v3(&pt->x, gped->v1_co);
+    mul_v3_v3fl(&pt->x, gped->v1_co, scale);
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
 
     pt = &gps_stroke->points[1];
-    copy_v3_v3(&pt->x, gped->v2_co);
+    mul_v3_v3fl(&pt->x, gped->v2_co, scale);
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
 
@@ -2169,7 +2171,7 @@ static void gpencil_generate_edgeloops(Object *ob,
       gped = &gp_edges[v];
 
       bGPDspoint *pt = &gps_stroke->points[i + 1];
-      copy_v3_v3(&pt->x, gped->v2_co);
+      mul_v3_v3fl(&pt->x, gped->v2_co, scale);
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
     }
@@ -2203,6 +2205,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
                               Object *ob_mesh,
                               const float angle,
                               const int thickness,
+                              const float offset,
                               const bool use_seams,
                               const bool use_faces)
 {
@@ -2279,7 +2282,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   /* Create stroke from edges. */
   bGPDlayer *gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
   bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_COPY);
-  gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness, use_seams);
+  gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness, offset, use_seams);
 
   /* Tag for recalculation */
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
