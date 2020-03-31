@@ -94,6 +94,11 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
 
+  /* Viewport support is experimental. */
+  if (!DRW_state_is_scene_render() && !U.experimental.use_viewport_motion_blur) {
+    return 0;
+  }
+
   if (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) {
     float ctime = DEG_get_ctime(draw_ctx->depsgraph);
 

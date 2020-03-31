@@ -2187,6 +2187,17 @@ class USERPREF_PT_experimental_system(ExperimentalPanel, Panel):
         )
 
 
+class USERPREF_PT_experimental_eevee(ExperimentalPanel, Panel):
+    bl_label = "EEVEE"
+
+    def draw(self, context):
+        self._draw_items(
+            context, (
+                ({"property": "use_viewport_motion_blur"}, "T68464"),
+            ),
+        )
+
+
 # -----------------------------------------------------------------------------
 # Class Registration
 
@@ -2279,6 +2290,7 @@ classes = (
 
     USERPREF_PT_experimental_ui,
     USERPREF_PT_experimental_system,
+    USERPREF_PT_experimental_eevee,
 
     # Add dynamically generated editor theme panels last,
     # so they show up last in the theme section.

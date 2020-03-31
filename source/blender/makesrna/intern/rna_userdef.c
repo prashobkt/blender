@@ -6060,6 +6060,13 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_menu_search", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_menu_search", 1);
   RNA_def_property_ui_text(prop, "Menu Search", "Search actions by menus instead of operators");
+
+  prop = RNA_def_property(srna, "use_viewport_motion_blur", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_viewport_motion_blur", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Viewport Motion Blur",
+      "Activate partial support of viewport motion blur relying on last previously drawn frame");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
