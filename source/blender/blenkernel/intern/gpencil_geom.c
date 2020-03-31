@@ -1986,7 +1986,11 @@ void BKE_gpencil_convert_curve(Main *bmain,
 
 typedef struct GpEdge {
   uint v1, v2;
+  /* Coordinates. */
   float v1_co[3], v2_co[3];
+  /* Normals. */
+  float n1[3], n2[3];
+  /* Direction of the segment. */
   float vec[3];
   int flag;
 } GpEdge;
@@ -2076,12 +2080,12 @@ static void gpencil_generate_edgeloops(Object *ob,
   if (me->totedge == 0) {
     return;
   }
+
   /* Arrays for all edge vertices (forward and backward) that form a edge loop.
    * This is reused for each edgeloop to create gpencil stroke. */
   uint *stroke = MEM_callocN(sizeof(uint) * me->totedge * 2, __func__);
   uint *stroke_fw = MEM_callocN(sizeof(uint) * me->totedge, __func__);
   uint *stroke_bw = MEM_callocN(sizeof(uint) * me->totedge, __func__);
-  const float scale = (offset > 0.0f) ? 1.0f + offset : 1.0f;
 
   /* Create array with all edges. */
   GpEdge *gp_edges = MEM_callocN(sizeof(GpEdge) * me->totedge, __func__);
@@ -2090,10 +2094,13 @@ static void gpencil_generate_edgeloops(Object *ob,
     MEdge *ed = &me->medge[i];
     gped = &gp_edges[i];
     MVert *mv1 = &me->mvert[ed->v1];
+    normal_short_to_float_v3(gped->n1, mv1->no);
+
     gped->v1 = ed->v1;
     copy_v3_v3(gped->v1_co, mv1->co);
 
     MVert *mv2 = &me->mvert[ed->v2];
+    normal_short_to_float_v3(gped->n2, mv2->no);
     gped->v2 = ed->v2;
     copy_v3_v3(gped->v2_co, mv2->co);
 
@@ -2153,15 +2160,18 @@ static void gpencil_generate_edgeloops(Object *ob,
         gpf_stroke, 0, array_len + 1, thickness * thickness, false);
 
     /* Create first segment. */
+    float fpt[3];
     uint v = stroke[0];
     gped = &gp_edges[v];
     bGPDspoint *pt = &gps_stroke->points[0];
-    mul_v3_v3fl(&pt->x, gped->v1_co, scale);
+    mul_v3_v3fl(fpt, gped->n1, offset);
+    add_v3_v3v3(&pt->x, gped->v1_co, fpt);
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
 
     pt = &gps_stroke->points[1];
-    mul_v3_v3fl(&pt->x, gped->v2_co, scale);
+    mul_v3_v3fl(fpt, gped->n2, offset);
+    add_v3_v3v3(&pt->x, gped->v2_co, fpt);
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
 
@@ -2171,7 +2181,8 @@ static void gpencil_generate_edgeloops(Object *ob,
       gped = &gp_edges[v];
 
       bGPDspoint *pt = &gps_stroke->points[i + 1];
-      mul_v3_v3fl(&pt->x, gped->v2_co, scale);
+      mul_v3_v3fl(fpt, gped->n2, offset);
+      add_v3_v3v3(&pt->x, gped->v2_co, fpt);
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
     }
