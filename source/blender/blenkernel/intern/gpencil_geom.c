@@ -1618,12 +1618,13 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
 /* Helper: Add gpencil material using material as base. */
 static Material *gpencil_add_material(Main *bmain,
                                       Object *ob_gp,
+                                      char *name,
                                       const float color[4],
                                       const bool use_stroke,
                                       const bool use_fill,
                                       int *r_idx)
 {
-  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gp, "Material", r_idx);
+  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gp, name, r_idx);
   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
   /* Stroke color. */
@@ -1770,7 +1771,7 @@ static void gpencil_convert_spline(Main *bmain,
   int r_idx = gpencil_check_same_material_color(ob_gp, color, &mat_gp);
   if ((ob_cu->totcol > 0) && (r_idx < 0)) {
     Material *mat_curve = BKE_object_material_get(ob_cu, 1);
-    mat_gp = gpencil_add_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+    mat_gp = gpencil_add_material(bmain, ob_gp, "Material", color, gpencil_lines, fill, &r_idx);
 
     if ((mat_curve) && (mat_curve->gp_style != NULL)) {
       MaterialGPencilStyle *gp_style_cur = mat_curve->gp_style;
@@ -2065,7 +2066,6 @@ static int gpencil_walk_edge(GHash *v_table,
 
 static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
 {
-  const float vert_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   Mesh *me = (Mesh *)ob->data;
   if (me->totedge == 0) {
     return;
@@ -2138,7 +2138,6 @@ static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
 
     /* Create Stroke. */
     bGPDstroke *gps_stroke = BKE_gpencil_stroke_add(gpf_stroke, 0, array_len + 1, 5, false);
-    copy_v4_v4(gps_stroke->vert_color_fill, vert_color);
 
     /* Create first segment. */
     uint v = stroke[0];
@@ -2147,13 +2146,11 @@ static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
     copy_v3_v3(&pt->x, gped->v1_co);
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
-    copy_v4_v4(pt->vert_color, vert_color);
 
     pt = &gps_stroke->points[1];
     copy_v3_v3(&pt->x, gped->v2_co);
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
-    copy_v4_v4(pt->vert_color, vert_color);
 
     /* Add next segments. */
     for (int i = 1; i < array_len; i++) {
@@ -2164,7 +2161,6 @@ static void gpencil_generate_edgeloops(Object *ob, bGPDframe *gpf_stroke)
       copy_v3_v3(&pt->x, gped->v2_co);
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
-      copy_v4_v4(pt->vert_color, vert_color);
     }
 
     BKE_gpencil_stroke_geometry_update(gps_stroke);
@@ -2217,12 +2213,25 @@ void BKE_gpencil_convert_mesh(Main *bmain,
     return;
   }
 
-  /* Create two materials, one for stroke, one for fill */
   int r_idx;
-  const float default_colors[3][4] = {
-      {0.0f, 0.0f, 0.0f, 1.0f}, {0.7f, 0.7f, 0.7f, 1.0f}, {0.5f, 0.5f, 0.5f, 1.0f}};
-  gpencil_add_material(bmain, ob_gp, default_colors[0], true, false, &r_idx);
-  gpencil_add_material(bmain, ob_gp, default_colors[1], false, true, &r_idx);
+  const float default_colors[2][4] = {{0.0f, 0.0f, 0.0f, 1.0f}, {0.7f, 0.7f, 0.7f, 1.0f}};
+  /* Create stroke material. */
+  gpencil_add_material(bmain, ob_gp, "Stroke", default_colors[0], true, false, &r_idx);
+
+  /* If no materials, create a simple fill. */
+  if (ob_mesh->totcol == 0) {
+    gpencil_add_material(bmain, ob_gp, "Fill", default_colors[1], false, true, &r_idx);
+  }
+  else {
+    /* Create all materials for fill. */
+    for (int i = 0; i < ob_mesh->totcol; i++) {
+      Material *ma = BKE_object_material_get(ob_mesh, i + 1);
+      float color[4];
+      copy_v3_v3(color, &ma->r);
+      color[3] = 1.0f;
+      gpencil_add_material(bmain, ob_gp, ma->id.name + 2, color, false, true, &r_idx);
+    }
+  }
 
   /* Read all polygons and create fill for each. */
   if (mpoly_len > 0) {
@@ -2230,22 +2239,10 @@ void BKE_gpencil_convert_mesh(Main *bmain,
     bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_COPY);
     for (i = 0, mp = mpoly; i < mpoly_len; i++, mp++) {
       MLoop *ml = &mloop[mp->loopstart];
-      /* Get color from Material Viewport color. */
-      Material *mat = me->mat != NULL ? me->mat[mp->mat_nr] : NULL;
-      float vert_color[4];
-      if (mat != NULL) {
-        copy_v3_v3(vert_color, &mat->r);
-        vert_color[3] = 1.0f;
-      }
-      else {
-        /* Use default. */
-        copy_v4_v4(vert_color, default_colors[2]);
-      }
-
       /* Create fill stroke. */
-      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, 1, mp->totloop, 10, false);
+      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(
+          gpf_fill, mp->mat_nr + 1, mp->totloop, 10, false);
       gps_fill->flag |= GP_STROKE_CYCLIC;
-      copy_v4_v4(gps_fill->vert_color_fill, vert_color);
 
       /* Add points to strokes. */
       int j;
@@ -2256,7 +2253,6 @@ void BKE_gpencil_convert_mesh(Main *bmain,
         copy_v3_v3(&pt->x, mv->co);
         pt->pressure = 1.0f;
         pt->strength = 1.0f;
-        copy_v4_v4(pt->vert_color, vert_color);
       }
 
       BKE_gpencil_stroke_geometry_update(gps_fill);
