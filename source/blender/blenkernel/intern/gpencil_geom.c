@@ -2236,6 +2236,9 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   int mpoly_len = me->totpoly;
   int i;
 
+  /* If the object has materials means it was created in a previous step. */
+  const bool create_mat = (ob_gp->totcol > 0) ? false : true;
+
   /* Need at least an edge. */
   if (me->totvert < 2) {
     return;
@@ -2244,28 +2247,34 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   int r_idx;
   const float default_colors[2][4] = {{0.0f, 0.0f, 0.0f, 1.0f}, {0.7f, 0.7f, 0.7f, 1.0f}};
   /* Create stroke material. */
-  gpencil_add_material(bmain, ob_gp, "Stroke", default_colors[0], true, false, &r_idx);
-
+  if (create_mat) {
+    gpencil_add_material(bmain, ob_gp, "Stroke", default_colors[0], true, false, &r_idx);
+  }
   /* Export faces as filled strokes. */
   if (use_faces) {
-    /* If no materials, create a simple fill. */
-    if (ob_mesh->totcol == 0) {
-      gpencil_add_material(bmain, ob_gp, "Fill", default_colors[1], false, true, &r_idx);
-    }
-    else {
-      /* Create all materials for fill. */
-      for (int i = 0; i < ob_mesh->totcol; i++) {
-        Material *ma = BKE_object_material_get(ob_mesh, i + 1);
-        float color[4];
-        copy_v3_v3(color, &ma->r);
-        color[3] = 1.0f;
-        gpencil_add_material(bmain, ob_gp, ma->id.name + 2, color, false, true, &r_idx);
+    if (create_mat) {
+      /* If no materials, create a simple fill. */
+      if (ob_mesh->totcol == 0) {
+        gpencil_add_material(bmain, ob_gp, "Fill", default_colors[1], false, true, &r_idx);
+      }
+      else {
+        /* Create all materials for fill. */
+        for (int i = 0; i < ob_mesh->totcol; i++) {
+          Material *ma = BKE_object_material_get(ob_mesh, i + 1);
+          float color[4];
+          copy_v3_v3(color, &ma->r);
+          color[3] = 1.0f;
+          gpencil_add_material(bmain, ob_gp, ma->id.name + 2, color, false, true, &r_idx);
+        }
       }
     }
 
     /* Read all polygons and create fill for each. */
     if (mpoly_len > 0) {
-      bGPDlayer *gpl_fill = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
+      bGPDlayer *gpl_fill = BKE_gpencil_layer_named_get(gpd, DATA_("Fills"));
+      if (gpl_fill == NULL) {
+        gpl_fill = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
+      }
       bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_COPY);
       for (i = 0, mp = mpoly; i < mpoly_len; i++, mp++) {
         MLoop *ml = &mloop[mp->loopstart];
@@ -2291,7 +2300,10 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   }
 
   /* Create stroke from edges. */
-  bGPDlayer *gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
+  bGPDlayer *gpl_stroke = BKE_gpencil_layer_named_get(gpd, DATA_("Lines"));
+  if (gpl_stroke == NULL) {
+    gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
+  }
   bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_COPY);
   gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness, offset, use_seams);
 
