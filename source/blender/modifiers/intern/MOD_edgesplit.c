@@ -34,10 +34,12 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -48,6 +50,7 @@
 #include "bmesh_tools.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd)
 {
@@ -135,17 +138,33 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
   return result;
 }
 
-// uiLayout *sub, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *col, *split;
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_edge_angle", 0, IFACE_("Edge Angle"), ICON_NONE);
-// sub = uiLayoutColumn(col, false);
-// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_edge_angle"));
-// uiItemR(col, ptr, "split_angle", 0, NULL, ICON_NONE);
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_edge_sharp", 0, IFACE_("Sharp Edges"), ICON_NONE);
+  row = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_edge_angle"));
+  uiItemR(row, &ptr, "split_angle", 0, NULL, ICON_NONE);
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_edge_angle", 0, IFACE_("Edge Angle"), ICON_NONE);
+
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_edge_sharp", 0, IFACE_("Sharp Edges"), ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "EdgeSplit", panel_draw);
+}
 
 ModifierTypeInfo modifierType_EdgeSplit = {
     /* name */ "EdgeSplit",
@@ -175,5 +194,5 @@ ModifierTypeInfo modifierType_EdgeSplit = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

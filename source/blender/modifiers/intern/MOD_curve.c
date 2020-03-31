@@ -30,6 +30,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
@@ -38,6 +39,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -49,6 +51,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 static void initData(ModifierData *md)
@@ -157,27 +160,35 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row;
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Object:"), ICON_NONE);
-// uiItemR(col, ptr, "object", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  uiItemL(layout, IFACE_("Deformation Axis:"), ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "deform_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
-// uiItemL(layout, IFACE_("Deformation Axis:"), ICON_NONE);
-// row = uiLayoutRow(layout, false);
-// uiItemR(row, ptr, "deform_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Curve", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Curve = {
     /* name */ "Curve",
@@ -206,5 +217,5 @@ ModifierTypeInfo modifierType_Curve = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

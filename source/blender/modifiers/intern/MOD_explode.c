@@ -34,6 +34,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -43,6 +44,7 @@
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -54,6 +56,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 static void initData(ModifierData *md)
 {
@@ -1182,34 +1185,50 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return mesh;
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
 
-// PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-// sub = uiLayoutColumn(col, false);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "protect", 0, NULL, ICON_NONE);
-// uiItemL(col, IFACE_("Particle UV:"), ICON_NONE);
-// uiItemPointerR(col, ptr, "particle_uv", &obj_data_ptr, "uv_layers", "", ICON_NONE);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_edge_cut", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "show_unborn", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "show_alive", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "show_dead", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_size", 0, NULL, ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, true);
+  col = uiLayoutColumn(split, true);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  col = uiLayoutColumn(split, true);
+  uiLayoutSetActive(col, has_vertex_group);
+  uiItemR(col, &ptr, "protect", 0, NULL, ICON_NONE);
 
-// uiItemO(layout, IFACE_("Refresh"), ICON_NONE, "OBJECT_OT_explode_refresh");
+  uiItemPointerR(layout, &ptr, "particle_uv", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "show_alive", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "show_dead", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "show_unborn", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_edge_cut", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_size", 0, NULL, ICON_NONE);
+
+  uiItemO(layout, IFACE_("Refresh"), ICON_NONE, "OBJECT_OT_explode_refresh");
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Explode", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Explode = {
     /* name */ "Explode",
@@ -1236,5 +1255,5 @@ ModifierTypeInfo modifierType_Explode = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

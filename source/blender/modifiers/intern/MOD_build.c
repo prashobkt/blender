@@ -32,6 +32,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -40,6 +41,7 @@
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -47,6 +49,7 @@
 #include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 static void initData(ModifierData *md)
 {
@@ -281,20 +284,34 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, str
   return result;
 }
 
-// uiLayout *col, *split, *sub;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col, *split, *sub;
 
-// split = uiLayoutSplit(layout, 0.5f, false);
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "frame_start", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "frame_duration", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_reverse", 0, NULL, ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_random_order", 0, NULL, ICON_NONE);
-// sub = uiLayoutColumn(col, true);
-// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_random_order"));
-// uiItemR(sub, ptr, "seed", 0, "", ICON_ARROW_LEFTRIGHT);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "frame_start", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "frame_duration", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_reverse", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_random_order", 0, NULL, ICON_NONE);
+  sub = uiLayoutColumn(col, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_random_order"));
+  uiItemR(sub, &ptr, "seed", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Build", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Build = {
     /* name */ "Build",
@@ -322,5 +339,5 @@ ModifierTypeInfo modifierType_Build = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

@@ -31,11 +31,13 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -46,6 +48,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "MEM_guardedalloc.h"
@@ -190,7 +193,21 @@ static void deformVerts(ModifierData *md,
   }
 }
 
-// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Surface", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Surface = {
     /* name */ "Surface",
@@ -219,5 +236,5 @@ ModifierTypeInfo modifierType_Surface = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

@@ -1941,6 +1941,8 @@ static PanelType *panel_type_from_modifier_type(ARegion *region, ModifierType ty
 
 void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
 {
+  /* HANS-TODO: Fix crash when panel's modifier type doesn't match. */
+
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);

@@ -30,10 +30,12 @@
 #include "DNA_mesh_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_particle.h"
+#include "BKE_screen.h"
 #include "BKE_softbody.h"
 
 #include "UI_interface.h"
@@ -47,6 +49,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 static void deformVerts(ModifierData *UNUSED(md),
                         const ModifierEvalContext *ctx,
@@ -81,7 +84,21 @@ static void updateDepsgraph(ModifierData *UNUSED(md), const ModifierUpdateDepsgr
   DEG_add_modifier_to_transform_relation(ctx->node, "SoftBody Modifier");
 }
 
-// uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Softbody", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Softbody = {
     /* name */ "Softbody",
@@ -111,5 +128,5 @@ ModifierTypeInfo modifierType_Softbody = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

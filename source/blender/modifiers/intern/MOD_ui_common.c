@@ -46,6 +46,9 @@ static bool modifier_ui_poll(const bContext *UNUSED(C), PanelType *UNUSED(pt))
   return true;
 }
 
+/**
+ * Draw modifier error message.
+ */
 void modifier_panel_end(uiLayout *layout, PointerRNA *ptr)
 {
   ModifierData *md = ptr->data;

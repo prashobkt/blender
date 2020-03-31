@@ -30,6 +30,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -38,6 +39,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -46,6 +48,7 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 static void initData(ModifierData *md)
@@ -526,43 +529,53 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
-// PointerRNA cast_object_ptr = RNA_pointer_get(ptr, "object");
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.25f, false);
-// uiItemL(split, IFACE_("Cast Type:"), ICON_NONE);
-// uiItemR(split, ptr, "cast_type", 0, "", ICON_NONE);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+  PointerRNA cast_object_ptr = RNA_pointer_get(&ptr, "object");
 
-// split = uiLayoutSplit(layout, 0.25f, false);
+  uiItemR(layout, &ptr, "cast_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_x", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_y", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_z", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "use_x", 0, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_y", 0, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_z", 0, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "factor", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "radius", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "size", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "factor", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "radius", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "size", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Control Object:"), ICON_NONE);
-// uiItemR(col, ptr, "object", 0, "", ICON_NONE);
-// if (!RNA_pointer_is_null(&cast_object_ptr)) {
-//   uiItemR(col, ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
-// }
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Control Object:"), ICON_NONE);
+  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
+  if (!RNA_pointer_is_null(&cast_object_ptr)) {
+    uiItemR(col, &ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
+  }
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Cast", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Cast = {
     /* name */ "Cast",
@@ -591,5 +604,5 @@ ModifierTypeInfo modifierType_Cast = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

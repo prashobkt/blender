@@ -33,6 +33,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -41,6 +42,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -48,6 +50,7 @@
 #include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "BLI_strict_flags.h"
@@ -771,37 +774,52 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// uiItemR(layout, ptr, "factor", 0, IFACE_("Factor"), ICON_NONE);
-// uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
-// uiItemR(layout, ptr, "scale", 0, NULL, ICON_NONE);
-// uiItemR(layout, ptr, "smooth_type", 0, NULL, ICON_NONE);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// split = uiLayoutSplit(layout, 0.5f, false);
+  uiItemR(layout, &ptr, "factor", 0, IFACE_("Factor"), ICON_NONE);
+  uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "smooth_type", 0, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  split = uiLayoutSplit(layout, 0.5f, false);
 
-// col = uiLayoutColumn(split, false);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// uiItemR(col, ptr, "use_only_smooth", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_pin_boundary", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(split, false);
 
-// uiItemR(layout, ptr, "rest_source", 0, NULL, ICON_NONE);
-// if (RNA_enum_get(ptr, "rest_source") == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {
-//   uiItemO(layout,
-//           (RNA_boolean_get(ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
-//           ICON_NONE,
-//           "OBJECT_OT_correctivesmooth_bind");
-// }
+  uiItemR(col, &ptr, "use_only_smooth", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_pin_boundary", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "rest_source", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(&ptr, "rest_source") == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {
+    uiItemO(layout,
+            (RNA_boolean_get(&ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
+            ICON_NONE,
+            "OBJECT_OT_correctivesmooth_bind");
+  }
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "CorrectiveSmooth", panel_draw);
+}
 
 ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* name */ "CorrectiveSmooth",
@@ -829,5 +847,5 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };
