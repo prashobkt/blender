@@ -32,11 +32,13 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -48,8 +50,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "MOD_meshcache_util.h" /* utility functions */
-
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 static void initData(ModifierData *md)
 {
@@ -295,54 +297,93 @@ static void deformVertsEM(ModifierData *md,
   meshcache_do(mcmd, scene, ctx->object, vertexCos, numVerts);
 }
 
-// uiLayout *row, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
 
-// uiItemR(layout, ptr, "cache_format", 0, NULL, ICON_NONE);
-// uiItemR(layout, ptr, "filepath", 0, NULL, ICON_NONE);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// uiItemL(layout, IFACE_("Evaluation:"), ICON_NONE);
-// uiItemR(layout, ptr, "factor", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// uiItemR(layout, ptr, "deform_mode", 0, NULL, ICON_NONE);
-// uiItemR(layout, ptr, "interpolation", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "cache_format", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "filepath", 0, NULL, ICON_NONE);
 
-// uiItemL(layout, IFACE_("Time Mapping:"), ICON_NONE);
-// row = uiLayoutRow(layout, false);
-// uiItemR(row, ptr, "time_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-// row = uiLayoutRow(layout, false);
-// uiItemR(row, ptr, "play_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "factor", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "deform_mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "interpolation", 0, NULL, ICON_NONE);
 
-// if (RNA_enum_get(ptr, "play_mode") == MOD_MESHCACHE_PLAY_CFEA) {
-//   uiItemR(layout, ptr, "frame_start", 0, NULL, ICON_NONE);
-//   uiItemR(layout, ptr, "frame_scale", 0, NULL, ICON_NONE);
-// }
-// else { /* play_mode == MOD_MESHCACHE_PLAY_EVAL */
-//   int time_mode = RNA_enum_get(ptr, "time_mode");
-//   if (time_mode == MOD_MESHCACHE_TIME_FRAME) {
-//     uiItemR(layout, ptr, "eval_frame", 0, NULL, ICON_NONE);
-//   }
-//   else if (time_mode == MOD_MESHCACHE_TIME_SECONDS) {
-//     uiItemR(layout, ptr, "eval_time", 0, NULL, ICON_NONE);
-//   }
-//   else { /* time_mode == MOD_MESHCACHE_TIME_FACTOR */
-//     uiItemR(layout, ptr, "eval_factor", 0, NULL, ICON_NONE);
-//   }
-// }
+  modifier_panel_end(layout, &ptr);
+}
 
-// uiItemL(layout, IFACE_("Time Mapping:"), ICON_NONE);
-// split = uiLayoutSplit(layout, 0.5f, false);
-// uiItemL(split, IFACE_("Forward/Up Axis:"), ICON_NONE);
-// row = uiLayoutRow(split, true);
-// uiLayoutSetRedAlert(row, RNA_enum_get(ptr, "forward_axis") == RNA_enum_get(ptr, "up_axis"));
-// uiItemR(row, ptr, "forward_axis", 0, "", ICON_NONE);
-// uiItemR(row, ptr, "up_axis", 0, "", ICON_NONE);
+static void time_remapping_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// uiItemL(split, IFACE_("Flip Axis:"), ICON_NONE);
-// row = uiLayoutRow(split, true);
-// uiItemR(row, ptr, "flip_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "time_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "play_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+  if (RNA_enum_get(&ptr, "play_mode") == MOD_MESHCACHE_PLAY_CFEA) {
+    uiItemR(layout, &ptr, "frame_start", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "frame_scale", 0, NULL, ICON_NONE);
+  }
+  else { /* play_mode == MOD_MESHCACHE_PLAY_EVAL */
+    int time_mode = RNA_enum_get(&ptr, "time_mode");
+    if (time_mode == MOD_MESHCACHE_TIME_FRAME) {
+      uiItemR(layout, &ptr, "eval_frame", 0, NULL, ICON_NONE);
+    }
+    else if (time_mode == MOD_MESHCACHE_TIME_SECONDS) {
+      uiItemR(layout, &ptr, "eval_time", 0, NULL, ICON_NONE);
+    }
+    else { /* time_mode == MOD_MESHCACHE_TIME_FACTOR */
+      uiItemR(layout, &ptr, "eval_factor", 0, NULL, ICON_NONE);
+    }
+  }
+}
+
+static void axis_mapping_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *split;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+  uiItemL(split, IFACE_("Forward/Up Axis:"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetRedAlert(row, RNA_enum_get(&ptr, "forward_axis") == RNA_enum_get(&ptr, "up_axis"));
+  uiItemR(row, &ptr, "forward_axis", 0, "", ICON_NONE);
+  uiItemR(row, &ptr, "up_axis", 0, "", ICON_NONE);
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+  uiItemL(split, IFACE_("Flip Axis:"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiItemR(row, &ptr, "flip_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "MeshCache", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "hook_time_remapping",
+                             "Time Remapping",
+                             NULL,
+                             time_remapping_panel_draw,
+                             false,
+                             panel_type);
+  modifier_subpanel_register(region_type,
+                             "hook_axis_mapping",
+                             "Axis Mapping",
+                             NULL,
+                             axis_mapping_panel_draw,
+                             false,
+                             panel_type);
+}
 
 ModifierTypeInfo modifierType_MeshCache = {
-    /* name */ "Mesh Cache",
+    /* name */ "MeshCache",
     /* structName */ "MeshCacheModifierData",
     /* structSize */ sizeof(MeshCacheModifierData),
     /* type */ eModifierTypeType_OnlyDeform,
@@ -368,5 +409,5 @@ ModifierTypeInfo modifierType_MeshCache = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

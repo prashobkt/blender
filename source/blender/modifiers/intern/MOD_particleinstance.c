@@ -34,6 +34,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_effect.h"
@@ -43,6 +44,7 @@
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -53,6 +55,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 static void initData(ModifierData *md)
 {
@@ -555,77 +558,115 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return result;
 }
 
-// uiLayout *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// PointerRNA particle_obj_ptr = RNA_pointer_get(ptr, "object");
-// PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// uiItemR(layout, ptr, "object", 0, NULL, ICON_NONE);
-// if (!RNA_pointer_is_null(&particle_obj_ptr)) {
-//   uiItemPointerR(layout,
-//                  ptr,
-//                  "particle_system",
-//                  &particle_obj_ptr,
-//                  "particle_systems",
-//                  "Particle System",
-//                  ICON_NONE);
-// }
-// else {
-//   uiItemR(layout, ptr, "particle_system_index", 0, IFACE_("Particle System"), ICON_NONE);
-// }
+  PointerRNA particle_obj_ptr = RNA_pointer_get(&ptr, "object");
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Create Form:"), ICON_NONE);
-// uiItemR(col, ptr, "use_normal", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_children", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_size", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+  if (!RNA_pointer_is_null(&particle_obj_ptr)) {
+    uiItemPointerR(layout,
+                   &ptr,
+                   "particle_system",
+                   &particle_obj_ptr,
+                   "particle_systems",
+                   "Particle System",
+                   ICON_NONE);
+  }
+  else {
+    uiItemR(layout, &ptr, "particle_system_index", 0, IFACE_("Particle System"), ICON_NONE);
+  }
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Create Form:"), ICON_NONE);
-// uiItemR(col, ptr, "show_alive", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "show_unborn", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "show_dead", 0, NULL, ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Create From:"), ICON_NONE);
+  uiItemR(col, &ptr, "use_normal", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_children", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_size", 0, NULL, ICON_NONE);
 
-// uiItemR(layout, ptr, "space", 0, "", ICON_NONE);
-// row = uiLayoutRow(layout, true);
-// uiItemR(row, ptr, "particle_amount", 0, IFACE_("Amount"), ICON_NONE);
-// uiItemR(row, ptr, "particle_offset", 0, IFACE_("Offset"), ICON_NONE);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Show Particles:"), ICON_NONE);
+  uiItemR(col, &ptr, "show_alive", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "show_unborn", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "show_dead", 0, NULL, ICON_NONE);
 
-// row = uiLayoutRow(layout, true);
-// uiItemR(row, ptr, "axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "space", 0, "", ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &ptr, "particle_amount", 0, IFACE_("Amount"), ICON_NONE);
+  uiItemR(row, &ptr, "particle_offset", 0, IFACE_("Offset"), ICON_NONE);
 
-// uiItemS(layout);
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &ptr, "axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
-// uiItemR(layout, ptr, "use_path", 0, IFACE_("Create Along Paths"), ICON_NONE);
+  modifier_panel_end(layout, &ptr);
+}
 
-// col = uiLayoutColumn(layout, false);
-// uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_path"));
-// uiItemR(col, ptr, "use_preserve_shape", 0, NULL, ICON_NONE);
+static void path_panel_draw_header(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
 
-// row = uiLayoutRow(col, true);
-// uiItemR(row, ptr, "position", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// uiItemR(row, ptr, "random_position", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemR(row, ptr, "rotation", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// uiItemR(row, ptr, "random_rotation", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// uiItemS(layout);
+  uiItemR(layout, &ptr, "use_path", 0, IFACE_("Create Along Paths"), ICON_NONE);
+}
 
-// uiItemPointerR(col,
-//                ptr,
-//                "index_layer_name",
-//                &obj_data_ptr,
-//                "vertex_colors",
-//                IFACE_("Index Layer"),
-//                ICON_NONE);
-// uiItemPointerR(col,
-//                ptr,
-//                "value_layer_name",
-//                &obj_data_ptr,
-//                "vertex_colors",
-//                IFACE_("Value Layer"),
-//                ICON_NONE);
+static void path_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_path"));
+  uiItemR(col, &ptr, "use_preserve_shape", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(col, true);
+  uiItemR(row, &ptr, "position", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "random_position", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemR(row, &ptr, "rotation", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "random_rotation", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
+
+  uiItemL(layout, IFACE_("Layers:"), ICON_NONE);
+  uiItemPointerR(layout,
+                 &ptr,
+                 "index_layer_name",
+                 &obj_data_ptr,
+                 "vertex_colors",
+                 IFACE_("Index"),
+                 ICON_NONE);
+  uiItemPointerR(layout,
+                 &ptr,
+                 "value_layer_name",
+                 &obj_data_ptr,
+                 "vertex_colors",
+                 IFACE_("Value"),
+                 ICON_NONE);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "ParticleInstance", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "particleinstance_paths",
+                             "",
+                             path_panel_draw_header,
+                             path_panel_draw,
+                             false,
+                             panel_type);
+}
 
 ModifierTypeInfo modifierType_ParticleInstance = {
     /* name */ "ParticleInstance",
@@ -654,5 +695,5 @@ ModifierTypeInfo modifierType_ParticleInstance = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

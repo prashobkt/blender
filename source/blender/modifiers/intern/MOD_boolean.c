@@ -379,6 +379,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   if (G.debug) {
     uiItemR(col, &ptr, "debug_options", 0, "", ICON_NONE);
   }
+
+  modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)

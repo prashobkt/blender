@@ -125,7 +125,6 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
 
   /* Modifier Name. */
   sub = uiLayoutRow(layout, false);
-  uiLayoutSetEmboss(sub, true);
   uiItemR(sub, &ptr, "name", 0, "", ICON_NONE);
 
   /* Mode enabling buttons. */

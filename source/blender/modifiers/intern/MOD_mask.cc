@@ -35,6 +35,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
 #include "BKE_context.h"
@@ -43,6 +44,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+// #include "BKE_screen.h" HANS-TODO: Fix errors with function pointers here.
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -53,6 +55,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #include "BLI_array_cxx.h"
 #include "BLI_listbase_wrapper.h"
@@ -394,33 +397,50 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   return mmd->ob_arm && mmd->ob_arm->type != OB_ARMATURE;
 }
 
-// uiLayout *sub, *row, *split, *col;
+// static void panel_draw(const bContext *C, Panel *panel)
+// {
+//   uiLayout *sub, *row, *split, *col;
+//   uiLayout *layout = panel->layout;
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+//   PointerRNA ptr;
+//   PointerRNA ob_ptr;
+//   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Mode:"), ICON_NONE);
-// uiItemR(col, ptr, "mode", 0, "", ICON_NONE);
+//   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// col = uiLayoutColumn(split, false);
-// int mode = RNA_enum_get(ptr, "mode");
-// if (mode == MOD_MASK_MODE_ARM) {
-//   uiItemL(col, IFACE_("Armature:"), ICON_NONE);
-//   row = uiLayoutRow(col, true);
-//   uiItemR(row, ptr, "armature", 0, "", ICON_NONE);
-//   uiItemR(row, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+//   split = uiLayoutSplit(layout, 0.5f, false);
+//   col = uiLayoutColumn(split, false);
+//   uiItemL(col, IFACE_("Mode:"), ICON_NONE);
+//   uiItemR(col, &ptr, "mode", 0, "", ICON_NONE);
+
+//   col = uiLayoutColumn(split, false);
+//   int mode = RNA_enum_get(&ptr, "mode");
+//   if (mode == MOD_MASK_MODE_ARM) {
+//     uiItemL(col, IFACE_("Armature:"), ICON_NONE);
+//     row = uiLayoutRow(col, true);
+//     uiItemR(row, &ptr, "armature", 0, "", ICON_NONE);
+//     uiItemR(row, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+//   }
+//   else if (mode == MOD_MASK_MODE_VGROUP) {
+//     uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+//     row = uiLayoutRow(col, true);
+//     uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+//     sub = uiLayoutRow(row, true);
+//     uiLayoutSetActive(sub, has_vertex_group);
+//     uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+//   }
+
+//   uiItemR(layout, &ptr, "threshold", 0, NULL, ICON_NONE);
+
+//   uiItemR(layout, &ptr, "use_falloff_uniform", 0, NULL, ICON_NONE);
+
+//   modifier_panel_end(layout, &ptr);
 // }
-// else if (mode == MOD_MASK_MODE_VGROUP) {
-//   uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-//   row = uiLayoutRow(col, true);
-//   uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-//   sub = uiLayoutRow(row, true);
-//   uiLayoutSetActive(sub, has_vertex_group);
-//   uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-// }
 
-// uiItemR(layout, ptr, "threshold", 0, NULL, ICON_NONE);
+// static void panelRegister(ARegionType *region_type)
+// {
+//   modifier_panel_register(region_type, "Mask", panel_draw);
+// }
 
 ModifierTypeInfo modifierType_Mask = {
     /* name */ "Mask",

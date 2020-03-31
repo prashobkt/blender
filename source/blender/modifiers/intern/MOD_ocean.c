@@ -35,12 +35,14 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_ocean.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -52,6 +54,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #ifdef WITH_OCEANSIM
 static void init_cache_data(Object *ob, struct OceanModifierData *omd)
@@ -505,114 +508,162 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return result;
 }
 
-// #ifdef WITH_OCEANSIM
-//   uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+#ifdef WITH_OCEANSIM
+  uiLayout *row, *col, *split;
 
-//   bool is_cached = RNA_boolean_get(ptr, "is_cached");
-//   bool use_foam = RNA_boolean_get(ptr, "use_foam");
-//   int spectrum = RNA_enum_get(ptr, "spectrum");
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-//   uiItemR(layout, ptr, "geometry_mode", 0, NULL, ICON_NONE);
-//   if (RNA_enum_get(ptr, "geometry_mode") == MOD_OCEAN_GEOM_GENERATE) {
-//     row = uiLayoutRow(layout, false);
-//     uiItemR(row, ptr, "repeat_x", 0, NULL, ICON_NONE);
-//     uiItemR(row, ptr, "repeat_y", 0, NULL, ICON_NONE);
-//   }
+  int spectrum = RNA_enum_get(&ptr, "spectrum");
 
-//   uiItemS(layout);
+  uiItemR(layout, &ptr, "geometry_mode", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(&ptr, "geometry_mode") == MOD_OCEAN_GEOM_GENERATE) {
+    row = uiLayoutRow(layout, false);
+    uiItemR(row, &ptr, "repeat_x", 0, NULL, ICON_NONE);
+    uiItemR(row, &ptr, "repeat_y", 0, NULL, ICON_NONE);
+  }
 
-//   split = uiLayoutSplit(layout, 0.5f, false);
-//   col = uiLayoutColumn(split, false);
-//   uiItemR(col, ptr, "time", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "depth", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "random_seed", 0, NULL, ICON_NONE);
+  uiItemS(layout);
 
-//   col = uiLayoutColumn(split, false);
-//   uiItemR(col, ptr, "resolution", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "size", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "spatial_size", 0, NULL, ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "time", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "depth", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "random_seed", 0, NULL, ICON_NONE);
 
-//   uiItemS(layout);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "resolution", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "size", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "spatial_size", 0, NULL, ICON_NONE);
 
-//   /* Spectrum settings. */
-//   uiItemR(layout, ptr, "spectrum", 0, NULL, ICON_NONE);
-//   if (ELEM(spectrum, MOD_OCEAN_SPECTRUM_TEXEL_MARSEN_ARSLOE, MOD_OCEAN_SPECTRUM_JONSWAP)) {
-//     split = uiLayoutSplit(layout, 0.5f, false);
-//     col = uiLayoutColumn(split, false);
-//     uiItemR(col, ptr, "sharpen_peak_jonswap", 0, NULL, ICON_NONE);
+  uiItemS(layout);
 
-//     col = uiLayoutColumn(split, false);
-//     uiItemR(col, ptr, "fetch_jonswap", 0, NULL, ICON_NONE);
-//   }
+  /* Spectrum settings. */
+  uiItemR(layout, &ptr, "spectrum", 0, NULL, ICON_NONE);
+  if (ELEM(spectrum, MOD_OCEAN_SPECTRUM_TEXEL_MARSEN_ARSLOE, MOD_OCEAN_SPECTRUM_JONSWAP)) {
+    uiItemR(layout, &ptr, "sharpen_peak_jonswap", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "fetch_jonswap", 0, NULL, ICON_NONE);
+  }
 
-//   uiItemL(layout, IFACE_("Waves:"), ICON_NONE);
+  uiItemR(layout, &ptr, "use_normals", 0, NULL, ICON_NONE);
 
-//   split = uiLayoutSplit(layout, 0.5f, false);
-//   col = uiLayoutColumn(split, false);
-//   uiItemR(col, ptr, "choppiness", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "wave_scale", 0, IFACE_("Scale"), ICON_NONE);
-//   uiItemR(col, ptr, "wave_scale_min", 0, NULL, ICON_NONE);
-//   uiItemR(col, ptr, "wind_velocity", 0, NULL, ICON_NONE);
+  modifier_panel_end(layout, &ptr);
 
-//   col = uiLayoutColumn(split, false);
-//   uiItemR(col, ptr, "wave_alignment", 0, IFACE_("Alignment"), ICON_NONE);
-//   sub = uiLayoutColumn(col, false);
-//   uiLayoutSetActive(sub, RNA_float_get(ptr, "wave_alignment") > 0.0f);
-//   uiItemR(sub, ptr, "wave_direction", 0, IFACE_("Direction"), ICON_NONE);
-//   uiItemR(sub, ptr, "damping", 0, NULL, ICON_NONE);
+#else  /* WITH_OCEANSIM */
+  uiItemL(layout, IFACE_("Built without Ocean modifier"), ICON_NONE);
+#endif /* WITH_OCEANSIM */
+}
 
-//   uiItemS(layout);
+#ifdef WITH_OCEANSIM
+static void waves_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *split, *col, *sub;
+  uiLayout *layout = panel->layout;
 
-//   uiItemR(layout, ptr, "use_normals", 0, NULL, ICON_NONE);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-//   split = uiLayoutSplit(layout, 0.5f, false);
-//   col = uiLayoutColumn(split, false);
-//   uiItemR(col, ptr, "use_foam", 0, NULL, ICON_NONE);
-//   sub = uiLayoutColumn(col, false);
-//   uiLayoutSetActive(sub, use_foam);
-//   uiItemR(sub, ptr, "foam_coverage", 0, IFACE_("Coverage"), ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "choppiness", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "wave_scale", 0, IFACE_("Scale"), ICON_NONE);
+  uiItemR(col, &ptr, "wave_scale_min", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "wind_velocity", 0, NULL, ICON_NONE);
 
-//   col = uiLayoutColumn(split, false);
-//   uiLayoutSetActive(col, use_foam);
-//   uiItemL(col, IFACE_("Foam Data Layer Name:"), ICON_NONE);
-//   uiItemR(col, ptr, "foam_layer_name", 0, "", ICON_NONE);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "wave_alignment", 0, IFACE_("Alignment"), ICON_NONE);
+  sub = uiLayoutColumn(col, false);
+  uiLayoutSetActive(sub, RNA_float_get(&ptr, "wave_alignment") > 0.0f);
+  uiItemR(sub, &ptr, "wave_direction", 0, IFACE_("Direction"), ICON_NONE);
+  uiItemR(sub, &ptr, "damping", 0, NULL, ICON_NONE);
+}
 
-//   uiItemS(layout);
+static void foam_panel_draw_header(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
 
-//   if (is_cached) {
-//     PointerRNA op_ptr;
-//     uiItemFullO(layout,
-//                 "OBJECT_OT_ocean_bake",
-//                 IFACE_("Delete Bake"),
-//                 ICON_NONE,
-//                 NULL,
-//                 WM_OP_EXEC_DEFAULT,
-//                 0,
-//                 &op_ptr);
-//     RNA_boolean_set(&op_ptr, "free", true);
-//   }
-//   else {
-//     uiItemO(layout, NULL, ICON_NONE, "OBJECT_OT_ocean_bake");
-//   }
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-//   split = uiLayoutSplit(layout, 0.5f, false);
-//   uiLayoutSetEnabled(split, !is_cached);
-//   col = uiLayoutColumn(split, false);
-//   sub = uiLayoutColumn(col, true);
-//   uiItemR(sub, ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
-//   uiItemR(sub, ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
-//   sub = uiLayoutColumn(col, false);
-//   uiLayoutSetActive(sub, use_foam);
-//   uiItemR(sub, ptr, "bake_foam_fade", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_foam", 0, IFACE_("Foam"), ICON_NONE);
+}
 
-//   col = uiLayoutColumn(split, false);
-//   uiItemL(col, IFACE_("Cache path:"), ICON_NONE);
-//   uiItemR(col, ptr, "filepath", 0, "", ICON_NONE);
+static void foam_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
 
-// #else  /* WITH_OCEANSIM */
-//   uiItemL(layout, IFACE_("Built without OceanSim modifier"), ICON_NONE);
-//   UNUSED_VARS(ptr);
-// #endif /* WITH_OCEANSIM */
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  bool use_foam = RNA_boolean_get(&ptr, "use_foam");
+
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, use_foam);
+  uiItemR(col, &ptr, "foam_coverage", 0, IFACE_("Coverage"), ICON_NONE);
+
+  col = uiLayoutColumn(layout, true);
+  uiLayoutSetActive(col, use_foam);
+  uiItemL(col, IFACE_("Data Layer Name:"), ICON_NONE);
+  uiItemR(col, &ptr, "foam_layer_name", 0, "", ICON_NONE);
+}
+
+static void bake_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  bool is_cached = RNA_boolean_get(&ptr, "is_cached");
+  bool use_foam = RNA_boolean_get(&ptr, "use_foam");
+
+  if (is_cached) {
+    PointerRNA op_ptr;
+    uiItemFullO(layout,
+                "OBJECT_OT_ocean_bake",
+                IFACE_("Delete Bake"),
+                ICON_NONE,
+                NULL,
+                WM_OP_EXEC_DEFAULT,
+                0,
+                &op_ptr);
+    RNA_boolean_set(&op_ptr, "free", true);
+  }
+  else {
+    uiItemO(layout, NULL, ICON_NONE, "OBJECT_OT_ocean_bake");
+  }
+
+  uiItemR(layout, &ptr, "filepath", 0, "", ICON_NONE);
+
+  col = uiLayoutColumn(layout, true);
+  uiLayoutSetEnabled(col, !is_cached);
+  uiItemR(col, &ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
+  uiItemR(col, &ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
+
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, use_foam);
+  uiItemR(col, &ptr, "bake_foam_fade", 0, NULL, ICON_NONE);
+}
+#endif /* WITH_OCEANSIM */
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Ocean", panel_draw);
+#ifdef WITH_OCEANSIM
+  modifier_subpanel_register(
+      region_type, "ocean_waves", "Waves", NULL, waves_panel_draw, true, panel_type);
+  modifier_subpanel_register(
+      region_type, "ocean_foam", "", foam_panel_draw_header, foam_panel_draw, false, panel_type);
+  modifier_subpanel_register(
+      region_type, "ocean_bake", "Bake", NULL, bake_panel_draw, false, panel_type);
+#endif /* WITH_OCEANSIM */
+}
 
 ModifierTypeInfo modifierType_Ocean = {
     /* name */ "Ocean",
@@ -641,5 +692,5 @@ ModifierTypeInfo modifierType_Ocean = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

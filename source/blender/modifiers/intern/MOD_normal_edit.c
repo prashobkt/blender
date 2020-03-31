@@ -32,12 +32,14 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -46,6 +48,7 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 static void generate_vert_coordinates(Mesh *mesh,
@@ -697,51 +700,74 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return normalEditModifier_do((NormalEditModifierData *)md, ctx, ctx->object, mesh);
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
 
-// int mode = RNA_enum_get(ptr, "mode");
-// PointerRNA target_ptr = RNA_pointer_get(ptr, "target");
-// bool needs_object_offset = (mode == MOD_NORMALEDIT_MODE_RADIAL &&
-//                             RNA_pointer_is_null(&target_ptr)) ||
-//                            (mode == MOD_NORMALEDIT_MODE_DIRECTIONAL &&
-//                             RNA_boolean_get(ptr, "use_direction_parallel"));
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// row = uiLayoutRow(layout, false);
-// uiItemR(row, ptr, "mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  int mode = RNA_enum_get(&ptr, "mode");
+  PointerRNA target_ptr = RNA_pointer_get(&ptr, "target");
+  bool needs_object_offset = (mode == MOD_NORMALEDIT_MODE_RADIAL &&
+                              RNA_pointer_is_null(&target_ptr)) ||
+                             (mode == MOD_NORMALEDIT_MODE_DIRECTIONAL &&
+                              RNA_boolean_get(&ptr, "use_direction_parallel"));
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "target", 0, "", ICON_NONE);
-// sub = uiLayoutColumn(col, true);
-// uiLayoutSetActive(sub, needs_object_offset);
-// uiItemR(sub, ptr, "offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// row = uiLayoutRow(col, false);
-// uiLayoutSetActive(row, mode == MOD_NORMALEDIT_MODE_DIRECTIONAL);
-// uiItemR(row, ptr, "use_direction_parallel", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(col, true);
-// uiItemL(col, IFACE_("Mix Mode:"), ICON_NONE);
-// uiItemR(col, ptr, "mix_mode", 0, "", ICON_NONE);
-// uiItemR(col, ptr, "mix_factor", 0, NULL, ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-// row = uiLayoutRow(col, true);
-// uiItemR(row, ptr, "mix_limit", 0, NULL, ICON_NONE);
-// uiItemR(row,
-//         ptr,
-//         "no_polynors_fix",
-//         0,
-//         "",
-//         (RNA_boolean_get(ptr, "no_polynors_fix") ? ICON_LOCKED : ICON_UNLOCKED));
+  col = uiLayoutColumn(layout, true);
+  uiLayoutSetActive(col, needs_object_offset);
+  uiItemR(col, &ptr, "offset", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, mode == MOD_NORMALEDIT_MODE_DIRECTIONAL);
+  uiItemR(col, &ptr, "use_direction_parallel", 0, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void mix_mode_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *sub;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+
+  uiItemR(layout, &ptr, "mix_mode", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "mix_factor", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &ptr, "mix_limit", 0, NULL, ICON_NONE);
+  uiItemR(row,
+          &ptr,
+          "no_polynors_fix",
+          0,
+          "",
+          (RNA_boolean_get(&ptr, "no_polynors_fix") ? ICON_LOCKED : ICON_UNLOCKED));
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "NormalEdit", panel_draw);
+  modifier_subpanel_register(
+      region_type, "normaledit_mix_mode", "Mix Mode", NULL, mix_mode_panel_draw, true, panel_type);
+}
 
 ModifierTypeInfo modifierType_NormalEdit = {
-    /* name */ "Set Split Normals",
+    /* name */ "NormalEdit",
     /* structName */ "NormalEditModifierData",
     /* structSize */ sizeof(NormalEditModifierData),
     /* type */ eModifierTypeType_Constructive,
@@ -767,5 +793,5 @@ ModifierTypeInfo modifierType_NormalEdit = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

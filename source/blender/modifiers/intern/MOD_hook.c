@@ -30,6 +30,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_action.h"
 #include "BKE_colortools.h"
@@ -40,6 +41,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -50,6 +52,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 static void initData(ModifierData *md)
@@ -396,53 +399,78 @@ static void deformVertsEM(struct ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// bool use_falloff = RNA_enum_get(ptr, "falloff_type") != eWarp_Falloff_None;
-// PointerRNA hook_object_ptr = RNA_pointer_get(ptr, "object");
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Object:"), ICON_NONE);
-// uiItemR(col, ptr, "object", 0, "", ICON_NONE);
-// if (!RNA_pointer_is_null(&hook_object_ptr) &&
-//     RNA_enum_get(&hook_object_ptr, "type") == OB_ARMATURE) {
-//   uiItemL(col, IFACE_("Bone:"), ICON_NONE);
-//   PointerRNA hook_object_data_ptr = RNA_pointer_get(&hook_object_ptr, "data");
-//   uiItemPointerR(col, ptr, "subtarget", &hook_object_data_ptr, "bones", "", ICON_NONE);
-// }
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  PointerRNA hook_object_ptr = RNA_pointer_get(&ptr, "object");
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// uiItemS(layout);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Object:"), ICON_NONE);
+  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
+  if (!RNA_pointer_is_null(&hook_object_ptr) &&
+      RNA_enum_get(&hook_object_ptr, "type") == OB_ARMATURE) {
+    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
+    PointerRNA hook_object_data_ptr = RNA_pointer_get(&hook_object_ptr, "data");
+    uiItemPointerR(col, &ptr, "subtarget", &hook_object_data_ptr, "bones", "", ICON_NONE);
+  }
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// row = uiLayoutRow(layout, true);
-// if (use_falloff) {
-//   uiItemR(row, ptr, "falloff_radius", 0, NULL, ICON_NONE);
-// }
-// uiItemR(row, ptr, "strength", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "strength", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
-// uiItemR(layout, ptr, "falloff_type", 0, NULL, ICON_NONE);
-// if (use_falloff && RNA_enum_get(ptr, "falloff_type") == eWarp_Falloff_Curve) {
-//   uiTemplateCurveMapping(layout, ptr, "falloff_curve", 0, false, false, false, false);
-// }
+  if (RNA_enum_get(&ob_ptr, "mode") == OB_MODE_EDIT) {
+    row = uiLayoutRow(layout, true);
+    uiItemO(row, "Reset", ICON_NONE, "OBJECT_OT_hook_reset");
+    uiItemO(row, "Recenter", ICON_NONE, "OBJECT_OT_hook_recenter");
+    row = uiLayoutRow(layout, true);
+    uiItemO(row, "Select", ICON_NONE, "OBJECT_OT_hook_select");
+    uiItemO(row, "Assign", ICON_NONE, "OBJECT_OT_hook_assign");
+  }
 
-// uiItemR(layout, ptr, "use_falloff_uniform", 0, NULL, ICON_NONE);
+  modifier_panel_end(layout, &ptr);
+}
 
-// if (RNA_enum_get(ob_ptr, "mode") == OB_MODE_EDIT) {
-//   row = uiLayoutRow(layout, true);
-//   uiItemO(row, "Reset", ICON_NONE, "OBJECT_OT_hook_reset");
-//   uiItemO(row, "Recenter", ICON_NONE, "OBJECT_OT_hook_recenter");
-//   row = uiLayoutRow(layout, true);
-//   uiItemO(row, "Select", ICON_NONE, "OBJECT_OT_hook_select");
-//   uiItemO(row, "Assign", ICON_NONE, "OBJECT_OT_hook_assign");
-// }
+static void falloff_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  bool use_falloff = RNA_enum_get(&ptr, "falloff_type") != eWarp_Falloff_None;
+
+  uiItemR(layout, &ptr, "falloff_type", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, use_falloff);
+  uiItemR(layout, &ptr, "falloff_radius", 0, NULL, ICON_NONE);
+
+  if (RNA_enum_get(&ptr, "falloff_type") == eWarp_Falloff_Curve) {
+    uiTemplateCurveMapping(layout, &ptr, "falloff_curve", 0, false, false, false, false);
+  }
+
+  uiItemR(layout, &ptr, "use_falloff_uniform", 0, NULL, ICON_NONE);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Hook", panel_draw);
+  modifier_subpanel_register(
+      region_type, "hook_falloff", "Falloff", NULL, falloff_panel_draw, true, panel_type);
+}
 
 ModifierTypeInfo modifierType_Hook = {
     /* name */ "Hook",
@@ -470,5 +498,5 @@ ModifierTypeInfo modifierType_Hook = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

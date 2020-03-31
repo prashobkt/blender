@@ -32,6 +32,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_cdderivedmesh.h"
 #include "BKE_context.h"
@@ -39,6 +40,7 @@
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
 #include "BKE_paint.h"
+#include "BKE_screen.h"
 #include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subdiv_deform.h"
@@ -53,6 +55,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 typedef struct MultiresRuntimeData {
   /* Cached subdivision surface descriptor, with topology and settings. */
@@ -278,37 +281,52 @@ static void deformMatrices(ModifierData *md,
   }
 }
 
-// uiLayout *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "levels", 0, IFACE_("Preview"), ICON_NONE);
-// /* TODO(sergey): Expose it again after T58473 is solved. */
-// /* uiItemR(col, ptr, "render_levels", 0, "Render", ICON_NONE); */
-// uiItemR(col, ptr, "quality", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "uv_smooth", 0, "", ICON_NONE);
-// uiItemR(col, ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_creases", 0, NULL, ICON_NONE);
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// col = uiLayoutColumn(split, false);
-// uiLayoutSetEnabled(col, RNA_enum_get(ob_ptr, "mode") == OB_MODE_EDIT);
-// uiItemO(col, IFACE_("Subdivide"), ICON_NONE, "OBJECT_OT_multires_subdivide");
-// uiItemO(col, IFACE_("Delete Higher"), ICON_NONE, "OBJECT_OT_multires_higher_levels_delete");
-// uiItemO(col, IFACE_("Reshape"), ICON_NONE, "OBJECT_OT_multires_reshape");
-// uiItemO(col, IFACE_("Apply Base"), ICON_NONE, "OBJECT_OT_multires_base_apply");
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "levels", 0, IFACE_("Preview"), ICON_NONE);
+  /* TODO(sergey): Expose it again after T58473 is solved. */
+  /* uiItemR(col, ptr, "render_levels", 0, "Render", ICON_NONE); */
+  uiItemR(col, &ptr, "quality", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "uv_smooth", 0, "", ICON_NONE);
+  uiItemR(col, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_creases", 0, NULL, ICON_NONE);
 
-// uiItemS(layout);
+  col = uiLayoutColumn(split, false);
+  uiLayoutSetEnabled(col, RNA_enum_get(&ob_ptr, "mode") == OB_MODE_EDIT);
+  uiItemO(col, IFACE_("Subdivide"), ICON_NONE, "OBJECT_OT_multires_subdivide");
+  uiItemO(col, IFACE_("Delete Higher"), ICON_NONE, "OBJECT_OT_multires_higher_levels_delete");
+  uiItemO(col, IFACE_("Reshape"), ICON_NONE, "OBJECT_OT_multires_reshape");
+  uiItemO(col, IFACE_("Apply Base"), ICON_NONE, "OBJECT_OT_multires_base_apply");
 
-// col = uiLayoutColumn(layout, false);
-// row = uiLayoutRow(col, false);
-// if (RNA_boolean_get(ptr, "is_external")) {
-//   uiItemO(row, IFACE_("Pack External"), ICON_NONE, "OBJECT_OT_multires_external_pack");
-//   row = uiLayoutRow(col, false);
-//   uiItemR(row, ptr, "filepath", 0, "", ICON_NONE);
-// }
-// else {
-//   uiItemO(col, IFACE_("Save External..."), ICON_NONE, "OBJECT_OT_multires_external_save");
-// }
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
+  row = uiLayoutRow(col, false);
+  if (RNA_boolean_get(&ptr, "is_external")) {
+    uiItemO(row, IFACE_("Pack External"), ICON_NONE, "OBJECT_OT_multires_external_pack");
+    row = uiLayoutRow(col, false);
+    uiItemR(row, &ptr, "filepath", 0, "", ICON_NONE);
+  }
+  else {
+    uiItemO(col, IFACE_("Save External..."), ICON_NONE, "OBJECT_OT_multires_external_save");
+  }
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "Multires", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Multires = {
     /* name */ "Multires",
@@ -337,5 +355,5 @@ ModifierTypeInfo modifierType_Multires = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

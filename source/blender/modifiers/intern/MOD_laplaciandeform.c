@@ -33,6 +33,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -41,12 +42,14 @@
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_particle.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
 
 #include "RNA_access.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "eigen_capi.h"
@@ -810,28 +813,43 @@ static void freeData(ModifierData *md)
   lmd->total_verts = 0;
 }
 
-// uiLayout *sub, *row;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row;
+  uiLayout *layout = panel->layout;
 
-// bool is_bind = RNA_boolean_get(ptr, "is_bind");
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
+  bool is_bind = RNA_boolean_get(&ptr, "is_bind");
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// row = uiLayoutRow(layout, true);
-// uiLayoutSetEnabled(row, !is_bind);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", NULL, ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
 
-// uiItemS(layout);
+  row = uiLayoutRow(layout, true);
+  uiLayoutSetEnabled(row, !is_bind);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// row = uiLayoutRow(layout, true);
-// uiLayoutSetEnabled(row, has_vertex_group);
-// uiItemO(row,
-//         (RNA_boolean_get(ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
-//         ICON_NONE,
-//         "OBJECT_OT_laplaciandeform_bind");
+  uiItemS(layout);
+
+  row = uiLayoutRow(layout, true);
+  uiLayoutSetEnabled(row, has_vertex_group);
+  uiItemO(row,
+          (RNA_boolean_get(&ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
+          ICON_NONE,
+          "OBJECT_OT_laplaciandeform_bind");
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "LaplacianDeform", panel_draw);
+}
 
 ModifierTypeInfo modifierType_LaplacianDeform = {
     /* name */ "LaplacianDeform",
@@ -858,5 +876,5 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

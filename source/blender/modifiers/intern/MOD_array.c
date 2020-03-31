@@ -882,6 +882,8 @@ static void array_merge_panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
   uiItemR(col, &ptr, "use_merge_vertices_cap", 0, IFACE_("First Last"), ICON_NONE);
   uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)

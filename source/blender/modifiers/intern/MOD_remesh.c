@@ -32,17 +32,20 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
-
-#include "MOD_modifiertypes.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+
+#include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -210,29 +213,43 @@ static Mesh *applyModifier(ModifierData *UNUSED(md),
 
 #endif /* !WITH_MOD_REMESH */
 
-// #ifdef WITH_MOD_REMESH
-//   uiLayout *row;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+#ifdef WITH_MOD_REMESH
+  uiLayout *row;
 
-//   uiItemR(layout, ptr, "mode", 0, NULL, ICON_NONE);
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-//   row = uiLayoutRow(layout, false);
-//   uiItemR(row, ptr, "octree_depth", 0, NULL, ICON_NONE);
-//   uiItemR(row, ptr, "scale", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
 
-//   if (RNA_enum_get(ptr, "mode") == MOD_REMESH_SHARP_FEATURES) {
-//     uiItemR(layout, ptr, "sharpness", 0, NULL, ICON_NONE);
-//   }
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "octree_depth", 0, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "scale", 0, NULL, ICON_NONE);
 
-//   uiItemR(layout, ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
-//   uiItemR(layout, ptr, "use_remove_disconnected", 0, NULL, ICON_NONE);
-//   row = uiLayoutRow(layout, false);
-//   uiLayoutSetActive(row, RNA_boolean_get(ptr, "use_remove_disconnected"));
-//   uiItemR(layout, ptr, "threshold", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(&ptr, "mode") == MOD_REMESH_SHARP_FEATURES) {
+    uiItemR(layout, &ptr, "sharpness", 0, NULL, ICON_NONE);
+  }
 
-// #else  /* WITH_MOD_REMESH */
-//   uiItemL(layout, IFACE_("Built without Remesh modifier"), ICON_NONE);
-//   UNUSED_VARS(ptr);
-// #endif /* WITH_MOD_REMESH */
+  uiItemR(layout, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_remove_disconnected", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_remove_disconnected"));
+  uiItemR(layout, &ptr, "threshold", 0, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+
+#else  /* WITH_MOD_REMESH */
+  uiItemL(layout, IFACE_("Built without Remesh modifier"), ICON_NONE);
+#endif /* WITH_MOD_REMESH */
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Remesh", panel_draw);
+}
 
 ModifierTypeInfo modifierType_Remesh = {
     /* name */ "Remesh",
@@ -261,5 +278,5 @@ ModifierTypeInfo modifierType_Remesh = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

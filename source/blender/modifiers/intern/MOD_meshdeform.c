@@ -32,6 +32,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -42,6 +43,7 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -53,6 +55,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #ifdef __SSE2__
@@ -559,36 +562,45 @@ void modifier_mdef_compact_influences(ModifierData *md)
   mmd->bindweights = NULL;
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col;
+  uiLayout *layout = panel->layout;
 
-// bool is_bound = RNA_boolean_get(ptr, "is_bound");
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiLayoutSetEnabled(col, !is_bound);
-// uiItemL(col, IFACE_("Object:"), ICON_NONE);
-// uiItemR(col, ptr, "object", 0, "", ICON_NONE);
+  bool is_bound = RNA_boolean_get(&ptr, "is_bound");
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  col = uiLayoutColumn(layout, true);
+  uiLayoutSetEnabled(col, !is_bound);
+  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
 
-// uiItemS(layout);
-// row = uiLayoutRow(layout, false);
-// uiLayoutSetEnabled(row, !is_bound);
-// uiItemR(row, ptr, "precision", 0, NULL, ICON_NONE);
-// uiItemR(row, ptr, "use_dynamic_bind", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-// uiItemS(layout);
-// uiItemO(layout,
-//         is_bound ? IFACE_("Unbind") : IFACE_("Bind"),
-//         ICON_NONE,
-//         "OBJECT_OT_meshdeform_bind");
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetEnabled(col, !is_bound);
+  uiItemR(col, &ptr, "precision", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_dynamic_bind", 0, NULL, ICON_NONE);
+
+  uiItemO(layout,
+          is_bound ? IFACE_("Unbind") : IFACE_("Bind"),
+          ICON_NONE,
+          "OBJECT_OT_meshdeform_bind");
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "MeshDeform", panel_draw);
+}
 
 ModifierTypeInfo modifierType_MeshDeform = {
     /* name */ "MeshDeform",
@@ -617,5 +629,5 @@ ModifierTypeInfo modifierType_MeshDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

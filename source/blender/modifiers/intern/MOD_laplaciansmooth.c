@@ -30,6 +30,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -39,12 +40,14 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
 
 #include "RNA_access.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "eigen_capi.h"
@@ -575,37 +578,52 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-// split = uiLayoutSplit(layout, 0.25f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Axis:"), ICON_NONE);
-// uiItemR(col, ptr, "use_x", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_y", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_z", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Lambda:"), ICON_NONE);
-// uiItemR(col, ptr, "lambda_factor", 0, "Factor", ICON_NONE);
-// uiItemR(col, ptr, "lambda_border", 0, "Border", ICON_NONE);
+  split = uiLayoutSplit(layout, 0.25f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+  uiItemR(col, &ptr, "use_x", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_y", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_z", 0, NULL, ICON_NONE);
 
-// uiItemS(col);
-// uiItemR(col, ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_normalized", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(split, false);
+  uiItemL(col, IFACE_("Lambda:"), ICON_NONE);
+  uiItemR(col, &ptr, "lambda_factor", 0, "Factor", ICON_NONE);
+  uiItemR(col, &ptr, "lambda_border", 0, "Border", ICON_NONE);
 
-// uiItemL(layout, IFACE_("Vertex Group:"), ICON_NONE);
-// row = uiLayoutRow(layout, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  uiItemS(col);
+  uiItemR(col, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_normalized", 0, NULL, ICON_NONE);
+
+  uiItemL(layout, IFACE_("Vertex Group:"), ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "LaplacianSmooth", panel_draw);
+}
 
 ModifierTypeInfo modifierType_LaplacianSmooth = {
-    /* name */ "Laplacian Smooth",
+    /* name */ "LaplacianSmooth",
     /* structName */ "LaplacianSmoothModifierData",
     /* structSize */ sizeof(LaplacianSmoothModifierData),
     /* type */ eModifierTypeType_OnlyDeform,
@@ -630,5 +648,5 @@ ModifierTypeInfo modifierType_LaplacianSmooth = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

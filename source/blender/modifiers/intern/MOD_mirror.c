@@ -28,6 +28,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -36,6 +37,7 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_mirror.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -51,6 +53,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 static void initData(ModifierData *md)
 {
@@ -121,65 +124,94 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return result;
 }
 
-// uiLayout *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col, *split;
+  uiLayout *layout = panel->layout;
 
-// split = uiLayoutSplit(layout, 0.333f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Axis:"), ICON_NONE);
-// PropertyRNA *prop = RNA_struct_find_property(ptr, "use_axis");
-// uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
-// uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
-// uiItemFullR(col, ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Bisect:"), ICON_NONE);
-// prop = RNA_struct_find_property(ptr, "use_bisect_axis");
-// uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
-// uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
-// uiItemFullR(col, ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+  split = uiLayoutSplit(layout, 0.333f, false);
+  col = uiLayoutColumn(split, true);
+  uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "use_axis");
+  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Flip:"), ICON_NONE);
-// prop = RNA_struct_find_property(ptr, "use_bisect_flip_axis");
-// uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
-// uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
-// uiItemFullR(col, ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+  col = uiLayoutColumn(split, true);
+  uiItemL(col, IFACE_("Bisect:"), ICON_NONE);
+  prop = RNA_struct_find_property(&ptr, "use_bisect_axis");
+  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
 
-// uiItemS(layout);
+  col = uiLayoutColumn(split, true);
+  uiItemL(col, IFACE_("Flip:"), ICON_NONE);
+  prop = RNA_struct_find_property(&ptr, "use_bisect_flip_axis");
+  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
 
-// uiItemL(layout, IFACE_("Mirror Object:"), ICON_NONE);
-// uiItemR(layout, ptr, "mirror_object", 0, "", ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemL(col, IFACE_("Mirror Object:"), ICON_NONE);
+  uiItemR(col, &ptr, "mirror_object", 0, "", ICON_NONE);
 
-// uiItemS(layout);
+  uiItemR(layout, &ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+}
 
-// uiItemL(layout, IFACE_("Options:"), ICON_NONE);
-// split = uiLayoutSplit(layout, 0.333f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
-// uiItemR(col, ptr, "use_mirror_merge", 0, IFACE_("Merge"), ICON_NONE);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
-// if (RNA_boolean_get(ptr, "use_mirror_merge")) {
-//   uiItemR(layout, ptr, "merge_threshold", 0, NULL, ICON_NONE);
-// }
+static void merge_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row;
+  uiLayout *layout = panel->layout;
 
-// uiItemS(layout);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// uiItemL(layout, IFACE_("Textures:"), ICON_NONE);
-// row = uiLayoutRow(layout, false);
-// uiItemR(row, ptr, "use_mirror_u", 0, IFACE_("Flip U"), ICON_NONE);
-// uiItemR(row, ptr, "use_mirror_v", 0, IFACE_("Flip V"), ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "use_mirror_merge", 0, IFACE_("Merge"), ICON_NONE);
+  uiItemR(row, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_merge"));
+  uiItemR(row, &ptr, "merge_threshold", 0, NULL, ICON_NONE);
+}
 
-// col = uiLayoutColumn(layout, true);
-// if (RNA_boolean_get(ptr, "use_mirror_u")) {
-//   uiItemR(col, ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// }
-// if (RNA_boolean_get(ptr, "use_mirror_v")) {
-//   uiItemR(col, ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// }
-// col = uiLayoutColumn(layout, true);
-// uiItemR(col, ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-// uiItemR(col, ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+static void textures_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col, *row;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "use_mirror_u", 0, IFACE_("Flip U"), ICON_NONE);
+  uiItemR(row, &ptr, "use_mirror_v", 0, IFACE_("Flip V"), ICON_NONE);
+
+  col = uiLayoutColumn(layout, true);
+  if (RNA_boolean_get(&ptr, "use_mirror_u")) {
+    uiItemR(col, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  }
+  if (RNA_boolean_get(&ptr, "use_mirror_v")) {
+    uiItemR(col, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  }
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Mirror", panel_draw);
+  modifier_subpanel_register(
+      region_type, "mirror_merge", "Merge", NULL, merge_panel_draw, false, panel_type);
+  modifier_subpanel_register(
+      region_type, "mirror_textures", "Textures", NULL, textures_panel_draw, false, panel_type);
+}
 
 ModifierTypeInfo modifierType_Mirror = {
     /* name */ "Mirror",
@@ -211,5 +243,5 @@ ModifierTypeInfo modifierType_Mirror = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

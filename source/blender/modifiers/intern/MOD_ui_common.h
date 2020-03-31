@@ -72,6 +72,10 @@ static void panel(ARegionType *region_type)
 }
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void modifier_panel_end(struct uiLayout *layout, PointerRNA *ptr);
 
 void modifier_panel_get_property_pointers(const bContext *C,
@@ -90,5 +94,9 @@ void modifier_subpanel_register(ARegionType *region_type,
                                 void *draw,
                                 bool open,
                                 PanelType *parent);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __MOD_UI_COMMON_H__ */

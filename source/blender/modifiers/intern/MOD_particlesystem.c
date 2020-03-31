@@ -273,6 +273,7 @@ static void panelRegister(ARegionType *region_type)
 {
   modifier_panel_register(region_type, "ParticleSystem", panel_draw);
 }
+
 ModifierTypeInfo modifierType_ParticleSystem = {
     /* name */ "ParticleSystem",
     /* structName */ "ParticleSystemModifierData",

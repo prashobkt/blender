@@ -34,10 +34,12 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -48,7 +50,9 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MEM_guardedalloc.h"
+
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #include "BLI_strict_flags.h"
 
@@ -1164,38 +1168,54 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
   walk(userData, ob, &ltmd->ob_axis, IDWALK_CB_NOP);
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col, *split;
+  uiLayout *layout = panel->layout;
 
-// PointerRNA screw_obj_ptr = RNA_pointer_get(ptr, "object");
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "axis", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "object", 0, IFACE_("Axis Object"), ICON_NONE);
-// uiItemR(col, ptr, "angle", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "steps", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "render_steps", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_merge_vertices", 0, NULL, ICON_NONE);
-// sub = uiLayoutColumn(col, false);
-// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_merge_vertices"));
-// uiItemR(sub, ptr, "merge_threshold", 0, NULL, ICON_NONE);
+  PointerRNA screw_obj_ptr = RNA_pointer_get(&ptr, "object");
 
-// col = uiLayoutColumn(split, false);
-// row = uiLayoutRow(col, false);
-// uiLayoutSetActive(sub,
-//                   RNA_pointer_is_null(&screw_obj_ptr) ||
-//                       !RNA_boolean_get(ptr, "use_object_screw_offset"));
-// uiItemR(row, ptr, "screw_offset", 0, NULL, ICON_NONE);
-// row = uiLayoutRow(col, false);
-// uiLayoutSetActive(sub, !RNA_pointer_is_null(&screw_obj_ptr));
-// uiItemR(row, ptr, "use_object_screw_offset", 0, NULL, ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "axis", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "object", 0, IFACE_("Axis Object"), ICON_NONE);
+  uiItemR(col, &ptr, "angle", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "steps", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "render_steps", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_merge_vertices", 0, NULL, ICON_NONE);
+  sub = uiLayoutColumn(col, false);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_merge_vertices"));
+  uiItemR(sub, &ptr, "merge_threshold", 0, NULL, ICON_NONE);
 
-// uiItemR(col, ptr, "use_normal_calculate", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_normal_flip", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "iterations", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_stretch_u", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_stretch_v", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(split, false);
+  row = uiLayoutRow(col, false);
+  uiLayoutSetActive(sub,
+                    RNA_pointer_is_null(&screw_obj_ptr) ||
+                        !RNA_boolean_get(&ptr, "use_object_screw_offset"));
+  uiItemR(row, &ptr, "screw_offset", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(col, false);
+  uiLayoutSetActive(sub, !RNA_pointer_is_null(&screw_obj_ptr));
+  uiItemR(row, &ptr, "use_object_screw_offset", 0, NULL, ICON_NONE);
+
+  uiItemR(col, &ptr, "use_normal_calculate", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_normal_flip", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "iterations", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_stretch_u", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_stretch_v", 0, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Screw", panel_draw);
+  // modifier_subpanel_register(
+  //     region_type, "hook_falloff", "Falloff", NULL, falloff_panel_draw, true, panel_type);
+}
 
 ModifierTypeInfo modifierType_Screw = {
     /* name */ "Screw",
@@ -1225,5 +1245,5 @@ ModifierTypeInfo modifierType_Screw = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

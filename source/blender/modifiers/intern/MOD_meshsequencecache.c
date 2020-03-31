@@ -31,11 +31,13 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_cachefile.h"
 #include "BKE_context.h"
 #include "BKE_lib_query.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -46,6 +48,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #ifdef WITH_ALEMBIC
 #  include "ABC_alembic.h"
@@ -192,29 +195,67 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
-// uiLayout *box, *row;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
 
-// PointerRNA cache_file_ptr = RNA_pointer_get(ptr, "cache_file");
-// bool has_cache_file = !RNA_pointer_is_null(&cache_file_ptr);
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// uiItemL(layout, IFACE_("Cache File Properties:"), ICON_NONE);
-// box = uiLayoutBox(layout);
-// uiTemplateCacheFile(box, C, ptr, "cache_file");
+  modifier_panel_end(layout, &ptr);
+}
 
-// uiItemL(layout, IFACE_("Modifier Properties:"), ICON_NONE);
-// box = uiLayoutBox(layout);
+static void cache_file_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
 
-// if (has_cache_file) {
-//   uiItemPointerR(box, ptr, "object_path", &cache_file_ptr, "object_paths", NULL, ICON_NONE);
-// }
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-// if (RNA_enum_get(ob_ptr, "type") == OB_MESH) {
-//   row = uiLayoutRow(box, false);
-//   uiItemR(row, ptr, "read_data", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-// }
+  uiTemplateCacheFile(layout, C, &ptr, "cache_file");
+}
+
+static void modifier_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  PointerRNA cache_file_ptr = RNA_pointer_get(&ptr, "cache_file");
+  bool has_cache_file = !RNA_pointer_is_null(&cache_file_ptr);
+
+  if (has_cache_file) {
+    uiItemPointerR(layout, &ptr, "object_path", &cache_file_ptr, "object_paths", NULL, ICON_NONE);
+  }
+
+  if (RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
+    uiItemR(layout, &ptr, "read_data", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  }
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "MeshSequenceCache", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "meshsequencecache_file",
+                             "Cache File",
+                             NULL,
+                             cache_file_panel_draw,
+                             true,
+                             panel_type);
+  modifier_subpanel_register(region_type,
+                             "meshsequencecache_properties",
+                             "Modifier",
+                             NULL,
+                             modifier_panel_draw,
+                             true,
+                             panel_type);
+}
 
 ModifierTypeInfo modifierType_MeshSequenceCache = {
-    /* name */ "Mesh Sequence Cache",
+    /* name */ "MeshSequenceCache",
     /* structName */ "MeshSeqCacheModifierData",
     /* structSize */ sizeof(MeshSeqCacheModifierData),
     /* type */ eModifierTypeType_Constructive,
@@ -239,5 +280,5 @@ ModifierTypeInfo modifierType_MeshSequenceCache = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };
