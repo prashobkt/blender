@@ -2684,14 +2684,14 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                                 NULL,
                                 DEG2RADF(0.0f),
                                 DEG2RADF(180.0f),
-                                "Angle",
-                                "",
+                                "Threshold Angle",
+                                "Threshold to determine ends of the strokes",
                                 DEG2RADF(0.0f),
                                 DEG2RADF(180.0f));
   RNA_def_property_float_default(prop, DEG2RADF(70.0f));
 
   RNA_def_int(ot->srna, "thickness", 5, 1, 10000, "Thickness", "", 1, 200);
-  RNA_def_boolean(ot->srna, "seams", 0, "Only Seams", "Convert only seam edges");
+  RNA_def_boolean(ot->srna, "seams", 0, "Only Seam Edges", "Convert only seam edges");
   RNA_def_boolean(ot->srna, "faces", 1, "Export Faces", "Export faces as filled strokes");
 }
 
