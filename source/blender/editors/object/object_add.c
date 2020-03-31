@@ -2357,6 +2357,21 @@ static int convert_exec(bContext *C, wmOperator *op)
       BKE_gpencil_convert_mesh(
           bmain, depsgraph, scene, gpencil_ob, ob, angle, thickness, offset, use_seams, use_faces);
       gpencilConverted = true;
+
+      /* Remove unused materials. */
+      int actcol = gpencil_ob->actcol;
+      for (int slot = 1; slot <= gpencil_ob->totcol; slot++) {
+        while (slot <= gpencil_ob->totcol &&
+               !BKE_object_material_slot_used(gpencil_ob->data, slot)) {
+          gpencil_ob->actcol = slot;
+          BKE_object_material_slot_remove(CTX_data_main(C), gpencil_ob);
+
+          if (actcol >= slot) {
+            actcol--;
+          }
+        }
+      }
+      gpencil_ob->actcol = actcol;
     }
     else if (ob->type == OB_MESH) {
       ob->flag |= OB_DONE;
