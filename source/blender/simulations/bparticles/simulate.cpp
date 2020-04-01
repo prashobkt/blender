@@ -14,12 +14,13 @@
 namespace BParticles {
 
 using BLI::ScopedVector;
+using BLI::Vector;
 using BLI::VectorAdaptor;
 using FN::CPPType;
 
 static bool point_inside_tri(const float mat[3][3],
                              const float point[3],
-                             ScopedVector<float3> &cur_tri_points)
+                             std::array<float3, 3> &cur_tri_points)
 {
   float mat_coords[3][2];
   float mat_new_pos[2];
@@ -50,7 +51,7 @@ axis_dominant_v3_to_m3(mat, new_norm);
 #define COLLISION_MIN_DISTANCE 0.0001f  // TODO check if this is needed
 #define COLLISION_ZERO 0.00001f
 static float nr_signed_distance_to_plane(float3 &p,
-                                         ScopedVector<float3> &cur_tri_points,
+                                         std::array<float3, 3> &cur_tri_points,
                                          float3 &nor)
 {
   float3 p0, e1, e2;
@@ -68,8 +69,8 @@ static float nr_signed_distance_to_plane(float3 &p,
   return d;
 }
 
-static void collision_interpolate_element(ScopedVector<std::pair<float3, float3>> &tri_points,
-                                          ScopedVector<float3> &cur_tri_points,
+static void collision_interpolate_element(std::array<std::pair<float3, float3>, 3> &tri_points,
+                                          std::array<float3, 3> &cur_tri_points,
                                           float t)
 {
   for (int i = 0; i < tri_points.size(); i++) {
@@ -79,11 +80,11 @@ static void collision_interpolate_element(ScopedVector<std::pair<float3, float3>
 
 /* find first root in range [0-1] starting from 0 */
 static float collision_newton_rhapson(std::pair<float3, float3> &particle_points,
-                                      ScopedVector<std::pair<float3, float3>> &tri_points,
+                                      std::array<std::pair<float3, float3>, 3> &tri_points,
                                       float radius,
                                       float3 &coll_normal)
 {
-  ScopedVector<float3> cur_tri_points{float3(), float3(), float3()};
+  std::array<float3, 3> cur_tri_points;
   float t0, t1, dt_init, d0, d1, dd;
   float3 p;
 
@@ -227,12 +228,12 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
   v1_new = new_verts[vt->tri[1]].co;
   v2_new = new_verts[vt->tri[2]].co;
 
-  ScopedVector<std::pair<float3, float3>> tri_points;
+  std::array<std::pair<float3, float3>, 3> tri_points;
   float3 coll_normal;
 
-  tri_points.append(std::pair<float3, float3>(v0, v0_new));
-  tri_points.append(std::pair<float3, float3>(v1, v1_new));
-  tri_points.append(std::pair<float3, float3>(v2, v2_new));
+  tri_points[0] = std::pair<float3, float3>(v0, v0_new);
+  tri_points[1] = std::pair<float3, float3>(v1, v1_new);
+  tri_points[2] = std::pair<float3, float3>(v2, v2_new);
 
   // Check if we get hit by the moving object
   float coll_time = collision_newton_rhapson(
@@ -256,13 +257,13 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
   }
 }
 
-BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_state,
+BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulation_state),
                                                  ParticleAllocator &UNUSED(particle_allocator),
                                                  MutableAttributesRef attributes,
                                                  ParticleSystemInfo &system_info,
                                                  MutableArrayRef<float> remaining_durations,
                                                  float UNUSED(end_time),
-                                                 ListBase *colliders)
+                                                 Vector<ColliderCache *> &colliders)
 {
   uint amount = attributes.size();
   BLI_assert(amount == remaining_durations.size());
@@ -291,10 +292,9 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
     velocities[pindex] += duration * forces[pindex] / mass;
 
     // Check if any 'collobjs' collide with the particles here
-    if (colliders) {
+    if (colliders.size() != 0) {
       // TODO Move this to be upper most loop
-      ColliderCache *col;
-      for (col = (ColliderCache *)colliders->first; col; col = col->next) {
+      for (auto col : colliders) {
         CollisionModifierData *collmd = col->collmd;
 
         if (!collmd->bvhtree) {
@@ -370,7 +370,10 @@ BLI_NOINLINE static void simulate_particles_for_time_span(SimulationState &simul
                                                           MutableAttributesRef particle_attributes)
 {
   // TODO check if we acutally have a collision node and take settings from that
-  ListBase *colliders = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
+  ListBase *coll_list = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
+
+  // Convert list to vector for speed, easier debugging, and type safety
+  Vector<ColliderCache *> colliders(*coll_list, true);
 
   BLI::blocked_parallel_for(IndexRange(particle_attributes.size()), 1000, [&](IndexRange range) {
     Array<float> remaining_durations(range.size(), time_span.size());
@@ -383,7 +386,7 @@ BLI_NOINLINE static void simulate_particles_for_time_span(SimulationState &simul
                             colliders);
   });
 
-  BKE_collider_cache_free(&colliders);
+  BKE_collider_cache_free(&coll_list);
 }
 
 BLI_NOINLINE static void simulate_particles_from_birth_to_end_of_step(
@@ -396,7 +399,10 @@ BLI_NOINLINE static void simulate_particles_from_birth_to_end_of_step(
   ArrayRef<float> all_birth_times = particle_attributes.get<float>("Birth Time");
 
   // TODO check if we acutally have a collision node and take settings from that
-  ListBase *colliders = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
+  ListBase *coll_list = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
+
+  // Convert list to vector for speed, easier debugging, and type safety
+  Vector<ColliderCache *> colliders(*coll_list, true);
 
   BLI::blocked_parallel_for(IndexRange(particle_attributes.size()), 1000, [&](IndexRange range) {
     ArrayRef<float> birth_times = all_birth_times.slice(range);
@@ -414,7 +420,7 @@ BLI_NOINLINE static void simulate_particles_from_birth_to_end_of_step(
                             end_time,
                             colliders);
   });
-  BKE_collider_cache_free(&colliders);
+  BKE_collider_cache_free(&coll_list);
 }
 
 BLI_NOINLINE static void simulate_existing_particles(
