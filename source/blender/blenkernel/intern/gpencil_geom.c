@@ -2074,6 +2074,7 @@ static void gpencil_generate_edgeloops(Object *ob,
                                        const float angle,
                                        const int thickness,
                                        const float offset,
+                                       const float matrix[4][4],
                                        const bool use_seams)
 {
   Mesh *me = (Mesh *)ob->data;
@@ -2166,12 +2167,16 @@ static void gpencil_generate_edgeloops(Object *ob,
     bGPDspoint *pt = &gps_stroke->points[0];
     mul_v3_v3fl(fpt, gped->n1, offset);
     add_v3_v3v3(&pt->x, gped->v1_co, fpt);
+    mul_m4_v3(matrix, &pt->x);
+
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
 
     pt = &gps_stroke->points[1];
     mul_v3_v3fl(fpt, gped->n2, offset);
     add_v3_v3v3(&pt->x, gped->v2_co, fpt);
+    mul_m4_v3(matrix, &pt->x);
+
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
 
@@ -2183,6 +2188,8 @@ static void gpencil_generate_edgeloops(Object *ob,
       bGPDspoint *pt = &gps_stroke->points[i + 1];
       mul_v3_v3fl(fpt, gped->n2, offset);
       add_v3_v3v3(&pt->x, gped->v2_co, fpt);
+      mul_m4_v3(matrix, &pt->x);
+
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
     }
@@ -2206,8 +2213,10 @@ static void gpencil_generate_edgeloops(Object *ob,
  * \param ob_mesh: Mesh to convert.
  * \param angle: Limit angle to consider a edgeloop ends.
  * \param thickness: Thickness of the strokes.
+ * \param offset: Offset along the normals.
+ * \param matrix: Transformation matrix.
  * \param use_seams: Only export seam edges.
- * \param use_seams: Export faces as filled strokes.
+ * \param use_faces: Export faces as filled strokes.
  */
 void BKE_gpencil_convert_mesh(Main *bmain,
                               Depsgraph *depsgraph,
@@ -2217,6 +2226,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
                               const float angle,
                               const int thickness,
                               const float offset,
+                              const float matrix[4][4],
                               const bool use_seams,
                               const bool use_faces)
 {
@@ -2275,7 +2285,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
       if (gpl_fill == NULL) {
         gpl_fill = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
       }
-      bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_COPY);
+      bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_NEW);
       for (i = 0, mp = mpoly; i < mpoly_len; i++, mp++) {
         MLoop *ml = &mloop[mp->loopstart];
         /* Create fill stroke. */
@@ -2290,6 +2300,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
 
           bGPDspoint *pt = &gps_fill->points[j];
           copy_v3_v3(&pt->x, mv->co);
+          mul_m4_v3(matrix, &pt->x);
           pt->pressure = 1.0f;
           pt->strength = 1.0f;
         }
@@ -2304,8 +2315,8 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   if (gpl_stroke == NULL) {
     gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
   }
-  bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_COPY);
-  gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness, offset, use_seams);
+  bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_NEW);
+  gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness, offset, matrix, use_seams);
 
   /* Tag for recalculation */
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);

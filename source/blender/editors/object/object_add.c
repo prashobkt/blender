@@ -2346,6 +2346,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       /* Create a new grease pencil object and copy transformations. */
       ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
       float loc[3], size[3], rot[3][3], eul[3];
+      float matrix[4][4];
       mat4_to_loc_rot_size(loc, rot, size, ob->obmat);
       mat3_to_eul(eul, rot);
 
@@ -2353,9 +2354,18 @@ static int convert_exec(bContext *C, wmOperator *op)
       copy_v3_v3(gpencil_ob->loc, loc);
       copy_v3_v3(gpencil_ob->rot, eul);
       copy_v3_v3(gpencil_ob->scale, size);
-
-      BKE_gpencil_convert_mesh(
-          bmain, depsgraph, scene, gpencil_ob, ob, angle, thickness, offset, use_seams, use_faces);
+      unit_m4(matrix);
+      BKE_gpencil_convert_mesh(bmain,
+                               depsgraph,
+                               scene,
+                               gpencil_ob,
+                               ob,
+                               angle,
+                               thickness,
+                               offset,
+                               matrix,
+                               use_seams,
+                               use_faces);
       gpencilConverted = true;
 
       /* Remove unused materials. */
