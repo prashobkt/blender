@@ -17,31 +17,22 @@ using BLI::ScopedVector;
 using BLI::VectorAdaptor;
 using FN::CPPType;
 
-/*
-static bool point_inside_v2(const float mat[3][3], const float point[2], BMFace *f){
-  //TODO maybe add a sanity check to see if the face is not a quad or a triangle
-  float (*mat_coords)[2] = BLI_array_alloca(mat_coords, f->len);
-  BMVert *vert;
-  BMIter iter_v;
-  int vert_idx;
-
-  BM_ITER_ELEM_INDEX (vert, &iter_v, f, BM_VERTS_OF_FACE, vert_idx) {
-    mul_v2_m3v3(mat_coords[vert_idx], mat, vert->co);
-  }
-
-  if( f->len == 3 ){
-    return isect_point_tri_v2(point, mat_coords[0], mat_coords[1], mat_coords[2]);
-  }
-  return isect_point_quad_v2(point, mat_coords[0], mat_coords[1], mat_coords[2], mat_coords[3]);
-}
-
-static bool point_inside(const float mat[3][3], const float point[3], BMFace *f){
+static bool point_inside_tri(const float mat[3][3],
+                             const float point[3],
+                             ScopedVector<float3> &cur_tri_points)
+{
+  float mat_coords[3][2];
   float mat_new_pos[2];
   mul_v2_m3v3(mat_new_pos, mat, point);
 
-  return point_inside_v2(mat, mat_new_pos, f);
+  for (int i = 0; i < 3; i++) {
+    mul_v2_m3v3(mat_coords[i], mat, cur_tri_points[i]);
+  }
+
+  return isect_point_tri_v2(mat_new_pos, mat_coords[0], mat_coords[1], mat_coords[2]);
 }
 
+/*
 axis_dominant_v3_to_m3(mat, new_norm);
 
 */
@@ -58,8 +49,9 @@ axis_dominant_v3_to_m3(mat, new_norm);
 #define COLLISION_MIN_RADIUS 0.001f     // TODO check if this is needed
 #define COLLISION_MIN_DISTANCE 0.0001f  // TODO check if this is needed
 #define COLLISION_ZERO 0.00001f
-static float nr_signed_distance_to_plane(
-    float3 &p, float radius, ScopedVector<float3> &cur_tri_points, float3 &nor, int &inv_nor)
+static float nr_signed_distance_to_plane(float3 &p,
+                                         ScopedVector<float3> &cur_tri_points,
+                                         float3 &nor)
 {
   float3 p0, e1, e2;
   float d;
@@ -73,21 +65,7 @@ static float nr_signed_distance_to_plane(
 
   d = dot_v3v3(p0, nor);
 
-  if (inv_nor == -1) {
-    if (d < 0.f) {
-      inv_nor = 1;
-    }
-    else {
-      inv_nor = 0;
-    }
-  }
-
-  if (inv_nor == 1) {
-    negate_v3(nor);
-    d = -d;
-  }
-
-  return d - radius;
+  return d;
 }
 
 static void collision_interpolate_element(ScopedVector<std::pair<float3, float3>> &tri_points,
@@ -109,14 +87,11 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
   float t0, t1, dt_init, d0, d1, dd;
   float3 p;
 
-  int inv_nor = -1;
-
   dt_init = 0.001f;
   /* start from the beginning */
   t0 = 0.f;
   collision_interpolate_element(tri_points, cur_tri_points, t0);
-  d0 = nr_signed_distance_to_plane(
-      particle_points.first, radius, cur_tri_points, coll_normal, inv_nor);
+  d0 = nr_signed_distance_to_plane(particle_points.first, cur_tri_points, coll_normal);
   t1 = dt_init;
   d1 = 0.f;
 
@@ -125,12 +100,13 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     collision_interpolate_element(tri_points, cur_tri_points, t1);
     p = float3::interpolate(particle_points.first, particle_points.second, t1);
 
-    d1 = nr_signed_distance_to_plane(p, radius, cur_tri_points, coll_normal, inv_nor);
+    d1 = nr_signed_distance_to_plane(p, cur_tri_points, coll_normal);
 
+    // TODO add radius check
+    // if (std::signbit(d0) != std::signbit(d1)) {
     // XXX Just a test return for now
-    if (std::signbit(d0) != std::signbit(d1)) {
-      return 1.0f;
-    }
+    //  return 1.0f;
+    //}
 
     /* particle already inside face, so report collision */
     if (iter == 0 && d0 < 0.f && d0 > -radius) {
@@ -147,8 +123,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       if (iter == 0) {
         t0 = 1.f;
         collision_interpolate_element(tri_points, cur_tri_points, t0);
-        d0 = nr_signed_distance_to_plane(
-            particle_points.second, radius, cur_tri_points, coll_normal, inv_nor);
+        d0 = nr_signed_distance_to_plane(particle_points.second, cur_tri_points, coll_normal);
         t1 = 1.0f - dt_init;
         d1 = 0.f;
         continue;
@@ -170,8 +145,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     if (iter == 0 && t1 < 0.f) {
       t0 = 1.f;
       collision_interpolate_element(tri_points, cur_tri_points, t0);
-      d0 = nr_signed_distance_to_plane(
-          particle_points.second, radius, cur_tri_points, coll_normal, inv_nor);
+      d0 = nr_signed_distance_to_plane(particle_points.second, cur_tri_points, coll_normal);
       t1 = 1.0f - dt_init;
       d1 = 0.f;
       continue;
@@ -182,8 +156,18 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
 
     if (d1 <= COLLISION_ZERO && d1 >= -COLLISION_ZERO) {
       if (t1 >= -COLLISION_ZERO && t1 <= 1.f) {
-        CLAMP(t1, 0.f, 1.f);
-        return t1;
+        /* Do we actually lie inside the triangle? */
+        float mat[3][3];
+        axis_dominant_v3_to_m3(mat, coll_normal);
+        if (point_inside_tri(mat, p, cur_tri_points)) {
+          // if (isect_point_tri_prism_v3(p, cur_tri_points[0], cur_tri_points[1],
+          // cur_tri_points[2])) { // This is a bit slower than point_inside_tri
+          CLAMP(t1, 0.f, 1.f);
+          return t1;
+        }
+        else {
+          return -1.f;
+        }
       }
       else {
         return -1.f;
@@ -227,7 +211,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
       dist = bvhtree_sphereray_tri_intersection(ray, ray->radius, hit->dist, v0, v1, v2);
     }
 
-    if (dist >= 0 && dist < hit->dist) {
+    if (dist >= 0.0f && dist < hit->dist) {
       hit->index = index;
       hit->dist = dist;
       madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
@@ -256,7 +240,13 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
 
   dist = float3::distance(rd->particle_points.first, rd->particle_points.second) * coll_time;
 
-  if (coll_time >= 0.f) {  //&& dist >= 0 && dist < hit->dist) {
+  if (coll_time >= 0.f) {
+    if (hit->index != -1 && dist >= 0.0f && dist >= hit->dist) {
+      /* We have already collided with and other object at closer distance */
+      // TODO we should actually not just flat out look at the distance here...
+      // we should take the collision with the smallest coll_time for this to be correct
+      return;
+    }
     // We have a collision!
     hit->index = index;
     hit->dist = dist;
@@ -271,7 +261,8 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
                                                  MutableAttributesRef attributes,
                                                  ParticleSystemInfo &system_info,
                                                  MutableArrayRef<float> remaining_durations,
-                                                 float UNUSED(end_time))
+                                                 float UNUSED(end_time),
+                                                 ListBase *colliders)
 {
   uint amount = attributes.size();
   BLI_assert(amount == remaining_durations.size());
@@ -289,11 +280,6 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
   // system_info.collision_objects
   // simulation_state.m_depsgraph;
   // cloth_bvh_collision
-  unsigned int numcollobj = 0;
-  Object **collobjs = NULL;
-
-  collobjs = BKE_collision_objects_create(
-      simulation_state.m_depsgraph, NULL, NULL, &numcollobj, eModifierType_Collision);
 
   for (uint pindex : IndexRange(amount)) {
     float mass = 1.0f;
@@ -305,19 +291,15 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
     velocities[pindex] += duration * forces[pindex] / mass;
 
     // Check if any 'collobjs' collide with the particles here
-    if (collobjs) {
+    if (colliders) {
       // TODO Move this to be upper most loop
-      for (int i = 0; i < numcollobj; i++) {
-        Object *collob = collobjs[i];
-        CollisionModifierData *collmd = (CollisionModifierData *)modifiers_findByType(
-            collob, eModifierType_Collision);
+      ColliderCache *col;
+      for (col = (ColliderCache *)colliders->first; col; col = col->next) {
+        CollisionModifierData *collmd = col->collmd;
 
         if (!collmd->bvhtree) {
           continue;
         }
-
-        /* Move the collision object to it's end position in this frame. */
-        collision_move_object(collmd, 1.0f, 0.0f, true);
 
         const int raycast_flag = BVH_RAYCAST_DEFAULT;
 
@@ -365,8 +347,6 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &simulation_sta
       positions[pindex] += duration * velocities[pindex];
     }
   }
-
-  BKE_collision_objects_free(collobjs);
 }  // namespace BParticles
 
 BLI_NOINLINE static void delete_tagged_particles_and_reorder(ParticleSet &particles)
@@ -389,6 +369,9 @@ BLI_NOINLINE static void simulate_particles_for_time_span(SimulationState &simul
                                                           FloatInterval time_span,
                                                           MutableAttributesRef particle_attributes)
 {
+  // TODO check if we acutally have a collision node and take settings from that
+  ListBase *colliders = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
+
   BLI::blocked_parallel_for(IndexRange(particle_attributes.size()), 1000, [&](IndexRange range) {
     Array<float> remaining_durations(range.size(), time_span.size());
     simulate_particle_chunk(simulation_state,
@@ -396,8 +379,11 @@ BLI_NOINLINE static void simulate_particles_for_time_span(SimulationState &simul
                             particle_attributes.slice(range),
                             system_info,
                             remaining_durations,
-                            time_span.end());
+                            time_span.end(),
+                            colliders);
   });
+
+  BKE_collider_cache_free(&colliders);
 }
 
 BLI_NOINLINE static void simulate_particles_from_birth_to_end_of_step(
@@ -408,6 +394,9 @@ BLI_NOINLINE static void simulate_particles_from_birth_to_end_of_step(
     MutableAttributesRef particle_attributes)
 {
   ArrayRef<float> all_birth_times = particle_attributes.get<float>("Birth Time");
+
+  // TODO check if we acutally have a collision node and take settings from that
+  ListBase *colliders = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
 
   BLI::blocked_parallel_for(IndexRange(particle_attributes.size()), 1000, [&](IndexRange range) {
     ArrayRef<float> birth_times = all_birth_times.slice(range);
@@ -422,8 +411,10 @@ BLI_NOINLINE static void simulate_particles_from_birth_to_end_of_step(
                             particle_attributes.slice(range),
                             system_info,
                             remaining_durations,
-                            end_time);
+                            end_time,
+                            colliders);
   });
+  BKE_collider_cache_free(&colliders);
 }
 
 BLI_NOINLINE static void simulate_existing_particles(
