@@ -18,26 +18,6 @@ using BLI::Vector;
 using BLI::VectorAdaptor;
 using FN::CPPType;
 
-static bool point_inside_tri(const float mat[3][3],
-                             const float point[3],
-                             std::array<float3, 3> &cur_tri_points)
-{
-  float mat_coords[3][2];
-  float mat_new_pos[2];
-  mul_v2_m3v3(mat_new_pos, mat, point);
-
-  for (int i = 0; i < 3; i++) {
-    mul_v2_m3v3(mat_coords[i], mat, cur_tri_points[i]);
-  }
-
-  return isect_point_tri_v2(mat_new_pos, mat_coords[0], mat_coords[1], mat_coords[2]);
-}
-
-/*
-axis_dominant_v3_to_m3(mat, new_norm);
-
-*/
-
 /************************************************
  * Collisions (taken from the old particle_system.c)
  *
@@ -110,7 +90,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     //}
 
     /* particle already inside face, so report collision */
-    if (iter == 0 && d0 < 0.f && d0 > -radius) {
+    if (iter == 0 && (abs(d0) - radius) <= COLLISION_ZERO) {
       p = particle_points.first;
       // pce->inside = 1;
       return 0.f;
@@ -155,14 +135,13 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       return -1.f;
     }
 
-    if (d1 <= COLLISION_ZERO && d1 >= -COLLISION_ZERO) {
+    if ((abs(d1) - radius) <= COLLISION_ZERO) {
       if (t1 >= -COLLISION_ZERO && t1 <= 1.f) {
-        /* Do we actually lie inside the triangle? */
-        float mat[3][3];
-        axis_dominant_v3_to_m3(mat, coll_normal);
-        if (point_inside_tri(mat, p, cur_tri_points)) {
-          // if (isect_point_tri_prism_v3(p, cur_tri_points[0], cur_tri_points[1],
-          // cur_tri_points[2])) { // This is a bit slower than point_inside_tri
+        /* Do we actually hit the triangle or did we only hit the math plane? */
+        float3 closest_point;
+        closest_on_tri_to_point_v3(
+            closest_point, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
+        if (float3::distance(closest_point, p) - radius <= COLLISION_ZERO) {
           CLAMP(t1, 0.f, 1.f);
           return t1;
         }
@@ -206,6 +185,8 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
   if (collmd->is_static) {
 
     if (ray->radius == 0.0f) {
+      // TODO particles probably need to always have somekind or radius, so this can probably be
+      // removed after testing is done.
       dist = bvhtree_ray_tri_intersection(ray, hit->dist, v0, v1, v2);
     }
     else {
@@ -215,7 +196,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     if (dist >= 0.0f && dist < hit->dist) {
       hit->index = index;
       hit->dist = dist;
-      madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
+      madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist - ray->radius);
 
       normal_tri_v3(hit->no, v0, v1, v2);
     }
@@ -263,7 +244,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
                                                  ParticleSystemInfo &system_info,
                                                  MutableArrayRef<float> remaining_durations,
                                                  float UNUSED(end_time),
-                                                 Vector<ColliderCache *> &colliders)
+                                                 ArrayRef<ColliderCache *> colliders)
 {
   uint amount = attributes.size();
   BLI_assert(amount == remaining_durations.size());
@@ -285,7 +266,8 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
   for (uint pindex : IndexRange(amount)) {
     float mass = 1.0f;
     float duration = remaining_durations[pindex];
-    bool collided = false;
+    bool collided;
+    int coll_num = 0;
 
     // Update the velocities here so that the potential distance traveled is correct in the
     // collision check.
@@ -293,59 +275,63 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
     // Check if any 'collobjs' collide with the particles here
     if (colliders.size() != 0) {
-      // TODO Move this to be upper most loop
-      for (auto col : colliders) {
-        CollisionModifierData *collmd = col->collmd;
-
-        if (!collmd->bvhtree) {
-          continue;
-        }
-
-        const int raycast_flag = BVH_RAYCAST_DEFAULT;
-
+      do {
+        collided = false;
+        BVHTreeRayHit best_hit;
         float max_move = (duration * velocities[pindex]).length();
+        best_hit.dist = FLT_MAX;
+        for (ColliderCache *col : colliders) {
+          CollisionModifierData *collmd = col->collmd;
 
-        BVHTreeRayHit hit;
-        hit.index = -1;
-        hit.dist = max_move;
-        float particle_radius = 0.0f;
-        float3 start = positions[pindex];
-        float3 dir = velocities[pindex].normalized();
+          if (!collmd->bvhtree) {
+            continue;
+          }
 
-        RayCastData rd;
+          const int raycast_flag = BVH_RAYCAST_DEFAULT;
 
-        rd.collmd = collmd;
-        rd.particle_points.first = start;
-        rd.particle_points.second = start + duration * velocities[pindex];
+          BVHTreeRayHit hit;
+          hit.index = -1;
+          hit.dist = max_move;
+          float particle_radius = 0.001f;
+          float3 start = positions[pindex];
+          float3 dir = velocities[pindex].normalized();
 
-        BLI_bvhtree_ray_cast_ex(collmd->bvhtree,
-                                start,
-                                dir,
-                                particle_radius,
-                                &hit,
-                                raycast_callback,
-                                &rd,
-                                raycast_flag);
+          RayCastData rd;
 
-        if (hit.index == -1) {
-          // We didn't hit anything
-          continue;
+          rd.collmd = collmd;
+          rd.particle_points.first = start;
+          rd.particle_points.second = start + duration * velocities[pindex];
+
+          BLI_bvhtree_ray_cast_ex(collmd->bvhtree,
+                                  start,
+                                  dir,
+                                  particle_radius,
+                                  &hit,
+                                  raycast_callback,
+                                  &rd,
+                                  raycast_flag);
+
+          if (hit.index == -1 || best_hit.dist < hit.dist) {
+            // We didn't hit anything
+            continue;
+          }
+
+          best_hit = hit;
+          collided = true;
         }
-        // TODO move particle to collision point and do additional collision check in the new
-        // direction.
-        // update final position of particle
-        positions[pindex] = hit.co;
-        //
-        // dot normal from vt with hit.co - start to see which way to deflect the particle
-        velocities[pindex] *= -1;
-        positions[pindex] += duration * (1.0f - hit.dist / max_move) * velocities[pindex];
-        collided = true;
-        break;
-      }
+        if (collided) {
+          // XXX TODO we need to notify the moving colliders somehow that the new pos is not at t=0
+          positions[pindex] = best_hit.co;
+          //
+          // dot normal from vt with hit.co - start to see which way to deflect the particle
+          velocities[pindex] *= -0.5f;
+          // Calculate the remaining duration
+          duration -= duration * (1.0f - best_hit.dist / max_move);
+          coll_num++;
+        }
+      } while (collided && coll_num < 10);
     }
-    if (!collided) {
-      positions[pindex] += duration * velocities[pindex];
-    }
+    positions[pindex] += duration * velocities[pindex];
   }
 }  // namespace BParticles
 
