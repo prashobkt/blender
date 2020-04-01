@@ -89,5 +89,5 @@ void weightvg_update_vg(struct MDeformVert *dvert,
                         const bool do_rem,
                         const float rem_thresh);
 
-void weightvg_ui_common(bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, uiLayout *layout);
+void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, uiLayout *layout);
 #endif /* __MOD_WEIGHTVG_UTIL_H__ */

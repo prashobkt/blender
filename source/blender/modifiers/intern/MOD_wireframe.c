@@ -26,10 +26,12 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
+#include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -37,6 +39,7 @@
 #include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #include "bmesh.h"
 #include "tools/bmesh_wireframe.h"
@@ -116,33 +119,92 @@ static Mesh *applyModifier(ModifierData *md,
   return WireframeModifier_do((WireframeModifierData *)md, ctx->object, mesh);
 }
 
-// uiLayout *sub, *row, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col, *split;
+  uiLayout *layout = panel->layout;
 
-// bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// split = uiLayoutSplit(layout, 0.5f, false);
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "thickness", 0, IFACE_("Thickness"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiItemPointerR(row, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// sub = uiLayoutRow(row, true);
-// uiLayoutSetActive(sub, has_vertex_group);
-// uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-// row = uiLayoutRow(col, true);
-// uiLayoutSetActive(row, has_vertex_group);
-// uiItemR(row, ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
-// uiItemR(col, ptr, "use_crease", 0, IFACE_("Crease Edges"), ICON_NONE);
-// row = uiLayoutRow(col, true);
-// uiLayoutSetActive(row, RNA_boolean_get(ptr, "use_crease"));
-// uiItemR(row, ptr, "crease_weight", 0, IFACE_("Crease Weight"), ICON_NONE);
+  uiItemR(layout, &ptr, "thickness", 0, IFACE_("Thickness"), ICON_NONE);
+  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "offset", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_even_offset", 0, IFACE_("Even Thickness"), ICON_NONE);
-// uiItemR(col, ptr, "use_relative_offset", 0, IFACE_("Relative Thickness"), ICON_NONE);
-// uiItemR(col, ptr, "use_boundary", 0, IFACE_("Boundary"), ICON_NONE);
-// uiItemR(col, ptr, "use_replace", 0, IFACE_("Replace Original"), ICON_NONE);
-// uiItemR(col, ptr, "material_offset", 0, IFACE_("Material Offset"), ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, false);
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_even_offset", 0, IFACE_("Even Thickness"), ICON_NONE);
+  uiItemR(col, &ptr, "use_relative_offset", 0, IFACE_("Relative Thickness"), ICON_NONE);
+
+  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "use_boundary", 0, IFACE_("Boundary"), ICON_NONE);
+  uiItemR(col, &ptr, "use_replace", 0, IFACE_("Replace Original"), ICON_NONE);
+
+  uiItemR(layout, &ptr, "material_offset", 0, IFACE_("Material Offset"), ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void vertex_group_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *sub;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  row = uiLayoutRow(layout, true);
+  uiLayoutSetActive(row, has_vertex_group);
+  uiItemR(row, &ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
+}
+
+static void crease_panel_draw_header(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_crease", 0, IFACE_("Crease Edges"), ICON_NONE);
+}
+
+static void crease_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_crease"));
+  uiItemR(layout, &ptr, "crease_weight", UI_ITEM_R_SLIDER, IFACE_("Crease Weight"), ICON_NONE);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Wireframe", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "wireframe_vertex_group",
+                             "Vertex Group",
+                             NULL,
+                             vertex_group_panel_draw,
+                             false,
+                             panel_type);
+  modifier_subpanel_register(region_type,
+                             "wireframe_crease",
+                             "",
+                             crease_panel_draw_header,
+                             crease_panel_draw,
+                             false,
+                             panel_type);
+}
 
 ModifierTypeInfo modifierType_Wireframe = {
     /* name */ "Wireframe",
@@ -170,5 +232,5 @@ ModifierTypeInfo modifierType_Wireframe = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };

@@ -34,12 +34,14 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_colortools.h" /* CurveMapping. */
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 #include "BKE_texture.h" /* Texture masking. */
 
 #include "UI_interface.h"
@@ -53,6 +55,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_weightvg_util.h"
 
 /**************************************
@@ -300,34 +303,79 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return mesh;
 }
 
-// uiLayout *sub, *col, *split;
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *col, *row;
+  uiLayout *layout = panel->layout;
 
-// split = uiLayoutSplit(layout, 0.5f, true);
-// col = uiLayoutColumn(split, false);
-// uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-// uiItemPointerR(col, ptr, "vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-// uiItemL(col, IFACE_("Default Weight:"), ICON_NONE);
-// uiItemR(col, ptr, "default_weight", 0, "", ICON_NONE);
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-// col = uiLayoutColumn(split, false);
-// uiItemR(col, ptr, "use_add", 0, NULL, ICON_NONE);
-// sub = uiLayoutColumn(col, false);
-// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_add"));
-// uiItemR(col, ptr, "add_threshold", 0, NULL, ICON_NONE);
-// uiItemR(col, ptr, "use_remove", 0, NULL, ICON_NONE);
-// sub = uiLayoutColumn(col, false);
-// uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_remove"));
-// uiItemR(col, ptr, "remove_threshold", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+  uiItemPointerR(col, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
 
-// uiItemS(layout);
+  uiItemR(layout, &ptr, "default_weight", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
-// uiItemR(layout, ptr, "falloff_type", 0, NULL, ICON_NONE);
-// if (RNA_enum_get(ptr, "falloff_type") == MOD_WVG_MAPPING_CURVE) {
-//   uiTemplateCurveMapping(layout, ptr, "map_curve", 0, false, false, false, false);
-// }
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "use_add", 0, NULL, ICON_NONE);
+  sub = uiLayoutColumn(row, false);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_add"));
+  uiItemR(sub, &ptr, "add_threshold", 0, IFACE_("Threshold"), ICON_NONE);
 
-// uiItemS(layout);
-// weightvg_ui_common(C, ob_ptr, ptr, layout);
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "use_remove", 0, NULL, ICON_NONE);
+  sub = uiLayoutColumn(row, false);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_remove"));
+  uiItemR(sub, &ptr, "remove_threshold", 0, IFACE_("Threshold"), ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void falloff_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  uiItemR(layout, &ptr, "falloff_type", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(&ptr, "falloff_type") == MOD_WVG_MAPPING_CURVE) {
+    uiTemplateCurveMapping(layout, &ptr, "map_curve", 0, false, false, false, false);
+  }
+}
+
+static void influence_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  weightvg_ui_common(C, &ob_ptr, &ptr, layout);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "VertexWeightEdit", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "vertexweightedit_falloff",
+                             "Falloff",
+                             NULL,
+                             falloff_panel_draw,
+                             false,
+                             panel_type);
+  modifier_subpanel_register(region_type,
+                             "vertexweightedit_influence",
+                             "Influence",
+                             NULL,
+                             influence_panel_draw,
+                             false,
+                             panel_type);
+}
 
 ModifierTypeInfo modifierType_WeightVGEdit = {
     /* name */ "VertexWeightEdit",
@@ -356,5 +404,5 @@ ModifierTypeInfo modifierType_WeightVGEdit = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
-    /* panelRegister */ NULL,
+    /* panelRegister */ panelRegister,
 };
