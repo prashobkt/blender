@@ -2370,9 +2370,6 @@ class VIEW3D_MT_object_animation(Menu):
         layout.separator()
 
         layout.operator("nla.bake", text="Bake Action...")
-
-        layout.separator()
-
         layout.operator("gpencil.bake_mesh_animation", text="Bake Mesh to Grease Pencil")
 
 
