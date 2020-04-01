@@ -431,7 +431,7 @@ void ED_object_modifier_clear(Main *bmain, Object *ob)
   DEG_relations_tag_update(bmain);
 }
 
-int ED_object_modifier_move_up(ReportList *reports, Object *ob, ModifierData *md)
+bool ED_object_modifier_move_up(ReportList *reports, Object *ob, ModifierData *md)
 {
   if (md->prev) {
     const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
@@ -441,18 +441,22 @@ int ED_object_modifier_move_up(ReportList *reports, Object *ob, ModifierData *md
 
       if (nmti->flags & eModifierTypeFlag_RequiresOriginalData) {
         BKE_report(reports, RPT_WARNING, "Cannot move above a modifier requiring original data");
-        return 0;
+        return false;
       }
     }
 
     BLI_remlink(&ob->modifiers, md);
     BLI_insertlinkbefore(&ob->modifiers, md->prev, md);
   }
+  else {
+    BKE_report(reports, RPT_WARNING, "Cannot move modifier beyond the start of the list");
+    return false;
+  }
 
-  return 1;
+  return true;
 }
 
-int ED_object_modifier_move_down(ReportList *reports, Object *ob, ModifierData *md)
+bool ED_object_modifier_move_down(ReportList *reports, Object *ob, ModifierData *md)
 {
   if (md->next) {
     const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
@@ -462,15 +466,53 @@ int ED_object_modifier_move_down(ReportList *reports, Object *ob, ModifierData *
 
       if (nmti->type != eModifierTypeType_OnlyDeform) {
         BKE_report(reports, RPT_WARNING, "Cannot move beyond a non-deforming modifier");
-        return 0;
+        return false;
       }
     }
 
     BLI_remlink(&ob->modifiers, md);
     BLI_insertlinkafter(&ob->modifiers, md->next, md);
   }
+  else {
+    BKE_report(reports, RPT_WARNING, "Cannot move modifier beyond the end of the list");
+    return false;
+  }
 
-  return 1;
+  return true;
+}
+
+bool ED_object_modifier_move_to_index(ReportList *reports,
+                                      Object *ob,
+                                      ModifierData *md,
+                                      const int index)
+{
+  BLI_assert(md != NULL);
+  BLI_assert(index > 0);
+  if (index >= BLI_listbase_count(&ob->modifiers)) {
+    BKE_report(reports, RPT_WARNING, "Cannot move modifier beyond the end of the stack");
+    return false;
+  }
+
+  int md_index = BLI_findindex(&ob->modifiers, md);
+  BLI_assert(md_index != -1);
+  if (md_index < index) {
+    /* Move modifier down in list. */
+    for (; md_index < index; md_index++) {
+      if (!ED_object_modifier_move_down(reports, ob, md)) {
+        break;
+      }
+    }
+  }
+  else {
+    /* Move modifier up in list. */
+    for (; md_index > index; md_index--) {
+      if (!ED_object_modifier_move_up(reports, ob, md)) {
+        break;
+      }
+    }
+  }
+
+  return true;
 }
 
 int ED_object_modifier_convert(ReportList *UNUSED(reports),
@@ -984,6 +1026,39 @@ bool edit_modifier_poll_generic(bContext *C,
   return true;
 }
 
+bool edit_active_modifier_poll_generic(bContext *C, const bool is_editmode_allowed)
+{
+  Object *ob = CTX_data_active_object(C);
+
+  if (!ob || ID_IS_LINKED(ob)) {
+    return false;
+  }
+
+  int modifiers_len = BLI_listbase_count(&ob->modifiers);
+  ModifierData *md = BLI_findlink(&ob->modifiers, ob->active_mod_index);
+
+  if (ob->active_mod_index >= modifiers_len) {
+    return false;
+  }
+  if (md == NULL) {
+    return false;
+  }
+
+  if (ID_IS_OVERRIDE_LIBRARY(ob)) {
+    if ((md->flag & eModifierFlag_OverrideLibrary_Local) == 0) {
+      CTX_wm_operator_poll_msg_set(C, "Cannot edit modifiers coming from library override");
+      return false;
+    }
+  }
+
+  if (!is_editmode_allowed && CTX_data_edit_object(C) != NULL) {
+    CTX_wm_operator_poll_msg_set(C, "This modifier operation is not allowed from Edit mode");
+    return false;
+  }
+
+  return true;
+}
+
 bool edit_modifier_poll(bContext *C)
 {
   return edit_modifier_poll_generic(C, &RNA_Modifier, 0, true);
@@ -1110,6 +1185,11 @@ void OBJECT_OT_modifier_remove(wmOperatorType *ot)
 /** \name Remove Active Modifier Operator
  * \{ */
 
+static bool modifier_active_remove_poll(bContext *C)
+{
+  return edit_active_modifier_poll_generic(C, true);
+}
+
 static int modifier_active_remove_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   if (edit_modifier_active_invoke_properties(C, op)) {
@@ -1128,7 +1208,7 @@ void OBJECT_OT_modifier_active_remove(wmOperatorType *ot)
 
   ot->invoke = modifier_active_remove_invoke;
   ot->exec = modifier_remove_exec;
-  ot->poll = edit_modifier_poll;
+  ot->poll = modifier_active_remove_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -1233,6 +1313,11 @@ void OBJECT_OT_modifier_move_down(wmOperatorType *ot)
 /** \name Move Active Modifier Operator
  * \{ */
 
+static bool modifier_active_move_poll(bContext *C)
+{
+  return edit_active_modifier_poll_generic(C, true);
+}
+
 static int modifier_active_move_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
@@ -1283,7 +1368,7 @@ void OBJECT_OT_modifier_active_move(wmOperatorType *ot)
 
   ot->invoke = modifier_active_move_invoke;
   ot->exec = modifier_active_move_exec;
-  ot->poll = edit_modifier_poll;
+  ot->poll = modifier_active_move_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
