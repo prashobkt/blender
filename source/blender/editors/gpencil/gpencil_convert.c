@@ -1859,7 +1859,7 @@ void GPENCIL_OT_image_to_grease_pencil(wmOperatorType *ot)
 }
 
 /* Extract mesh animation to Grease Pencil. */
-static bool gp_extract_mesh_animation_poll(bContext *C)
+static bool gp_bake_mesh_animation_poll(bContext *C)
 {
   if (CTX_data_mode_enum(C) != CTX_MODE_OBJECT) {
     return false;
@@ -1870,7 +1870,7 @@ static bool gp_extract_mesh_animation_poll(bContext *C)
   return (sa && sa->spacetype);
 }
 
-static int gp_extract_mesh_animation_exec(bContext *C, wmOperator *op)
+static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -1896,9 +1896,9 @@ static int gp_extract_mesh_animation_exec(bContext *C, wmOperator *op)
                               scene->r.sfra :
                               RNA_int_get(op->ptr, "start_frame");
 
-  const int end_frame = (scene->r.efra < RNA_int_get(op->ptr, "end_frame")) ?
+  const int end_frame = (scene->r.efra < start_frame + RNA_int_get(op->ptr, "length")) ?
                             scene->r.efra :
-                            RNA_int_get(op->ptr, "end_frame");
+                            start_frame + RNA_int_get(op->ptr, "length");
 
   const float angle = RNA_float_get(op->ptr, "angle");
   const int thickness = RNA_int_get(op->ptr, "thickness");
@@ -1969,18 +1969,18 @@ static int gp_extract_mesh_animation_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GPENCIL_OT_extract_mesh_animation(wmOperatorType *ot)
+void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Extract Mesh Animation to Grease Pencil";
-  ot->idname = "GPENCIL_OT_extract_mesh_animation";
-  ot->description = "Convert all animation of mesh in Grease Pencil strokes";
+  ot->name = "Bake Mesh Animation to Grease Pencil";
+  ot->idname = "GPENCIL_OT_bake_mesh_animation";
+  ot->description = "Bake Mesh Animation to Grease Pencil strokes";
 
   /* callbacks */
-  ot->exec = gp_extract_mesh_animation_exec;
-  ot->poll = gp_extract_mesh_animation_poll;
+  ot->exec = gp_bake_mesh_animation_exec;
+  ot->poll = gp_bake_mesh_animation_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1989,9 +1989,7 @@ void GPENCIL_OT_extract_mesh_animation(wmOperatorType *ot)
   ot->prop = RNA_def_int(
       ot->srna, "start_frame", 1, 1, 100000, "Start Frame", "The start frame", 1, 100000);
 
-  prop = RNA_def_int(
-      ot->srna, "end_frame", 250, 1, 100000, "End Frame", "The end frame", 1, 100000);
-  RNA_def_property_update_runtime(prop, gp_convert_set_end_frame);
+  prop = RNA_def_int(ot->srna, "length", 10, 1, 100, "Length", "Number of frames to bake", 1, 100);
 
   prop = RNA_def_int(ot->srna, "step", 1, 1, 100, "Step", "Step between generated frames", 1, 100);
 
