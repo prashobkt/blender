@@ -444,6 +444,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemL(col, IFACE_("Space:"), ICON_NONE);
     uiItemR(col, &ptr, "space", 0, "", ICON_NONE);
   }
+
+  col = uiLayoutColumn(layout, true);
   uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
   row = uiLayoutRow(col, true);
   uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);

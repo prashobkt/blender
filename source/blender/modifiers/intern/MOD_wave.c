@@ -438,8 +438,7 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
 
   int texture_coords = RNA_enum_get(&ptr, "texture_coords");
 
-  col = uiLayoutColumn(layout, false);
-  uiTemplateID(col, C, &ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
+  uiTemplateID(layout, C, &ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
 
   uiItemR(layout, &ptr, "texture_coords", 0, NULL, ICON_NONE);
   if (texture_coords == MOD_DISP_MAP_OBJECT) {
