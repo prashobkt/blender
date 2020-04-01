@@ -164,6 +164,7 @@
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
+#include "BKE_object.h"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 #include "BKE_sequencer.h"
@@ -1903,6 +1904,9 @@ static void write_shaderfxs(WriteData *wd, ListBase *fxbase)
 static void write_object(WriteData *wd, Object *ob, const void *id_address)
 {
   if (ob->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    BKE_object_runtime_reset(ob);
+
     /* write LibData */
     writestruct_at_address(wd, ID_OB, Object, 1, id_address, ob);
     write_iddata(wd, &ob->id);
@@ -1968,6 +1972,10 @@ static void write_object(WriteData *wd, Object *ob, const void *id_address)
 static void write_vfont(WriteData *wd, VFont *vf, const void *id_address)
 {
   if (vf->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    vf->data = NULL;
+    vf->temp_pf = NULL;
+
     /* write LibData */
     writestruct_at_address(wd, ID_VF, VFont, 1, id_address, vf);
     write_iddata(wd, &vf->id);
@@ -2022,6 +2030,14 @@ static void write_camera(WriteData *wd, Camera *cam, const void *id_address)
 static void write_mball(WriteData *wd, MetaBall *mb, const void *id_address)
 {
   if (mb->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    BLI_listbase_clear(&mb->disp);
+    mb->editelems = NULL;
+    /* Must always be cleared (meta's don't have their own edit-data). */
+    mb->needs_flush_to_id = 0;
+    mb->lastelem = NULL;
+    mb->batch_cache = NULL;
+
     /* write LibData */
     writestruct_at_address(wd, ID_MB, MetaBall, 1, id_address, mb);
     write_iddata(wd, &mb->id);
@@ -2041,6 +2057,11 @@ static void write_mball(WriteData *wd, MetaBall *mb, const void *id_address)
 static void write_curve(WriteData *wd, Curve *cu, const void *id_address)
 {
   if (cu->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    cu->editnurb = NULL;
+    cu->editfont = NULL;
+    cu->batch_cache = NULL;
+
     /* write LibData */
     writestruct_at_address(wd, ID_CU, Curve, 1, id_address, cu);
     write_iddata(wd, &cu->id);
@@ -2259,6 +2280,10 @@ static void write_mesh(WriteData *wd, Mesh *mesh, const void *id_address)
 static void write_lattice(WriteData *wd, Lattice *lt, const void *id_address)
 {
   if (lt->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    lt->editlatt = NULL;
+    lt->batch_cache = NULL;
+
     /* write LibData */
     writestruct_at_address(wd, ID_LT, Lattice, 1, id_address, lt);
     write_iddata(wd, &lt->id);
@@ -2344,6 +2369,10 @@ static void write_texture(WriteData *wd, Tex *tex, const void *id_address)
 static void write_material(WriteData *wd, Material *ma, const void *id_address)
 {
   if (ma->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    ma->texpaintslot = NULL;
+    BLI_listbase_clear(&ma->gpumaterial);
+
     /* write LibData */
     writestruct_at_address(wd, ID_MA, Material, 1, id_address, ma);
     write_iddata(wd, &ma->id);
@@ -2370,6 +2399,9 @@ static void write_material(WriteData *wd, Material *ma, const void *id_address)
 static void write_world(WriteData *wd, World *wrld, const void *id_address)
 {
   if (wrld->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    BLI_listbase_clear(&wrld->gpumaterial);
+
     /* write LibData */
     writestruct_at_address(wd, ID_WO, World, 1, id_address, wrld);
     write_iddata(wd, &wrld->id);
@@ -2435,6 +2467,12 @@ static void write_collection_nolib(WriteData *wd, Collection *collection)
 static void write_collection(WriteData *wd, Collection *collection, const void *id_address)
 {
   if (collection->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    collection->flag &= ~COLLECTION_HAS_OBJECT_CACHE;
+    collection->tag = 0;
+    BLI_listbase_clear(&collection->object_cache);
+    BLI_listbase_clear(&collection->parents);
+
     /* write LibData */
     writestruct_at_address(wd, ID_GR, Collection, 1, id_address, collection);
     write_iddata(wd, &collection->id);
@@ -2553,6 +2591,12 @@ static void write_lightcache(WriteData *wd, LightCache *cache)
 
 static void write_scene(WriteData *wd, Scene *sce, const void *id_address)
 {
+  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+  if (sce->ed) {
+    sce->ed->cache = NULL;
+    sce->ed->prefetch_job = NULL;
+  }
+
   /* write LibData */
   writestruct_at_address(wd, ID_SCE, Scene, 1, id_address, sce);
   write_iddata(wd, &sce->id);
@@ -2780,6 +2824,14 @@ static void write_scene(WriteData *wd, Scene *sce, const void *id_address)
 static void write_gpencil(WriteData *wd, bGPdata *gpd, const void *id_address)
 {
   if (gpd->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    /* XXX not sure why the whole runtime data is not cleared in readcode, for now mimicking it
+     * here. */
+    gpd->runtime.sbuffer = NULL;
+    gpd->runtime.sbuffer_used = 0;
+    gpd->runtime.sbuffer_size = 0;
+    gpd->runtime.tot_cp_points = 0;
+
     /* write gpd data block to file */
     writestruct_at_address(wd, ID_GD, bGPdata, 1, id_address, gpd);
     write_iddata(wd, &gpd->id);
@@ -3127,6 +3179,13 @@ static void write_bone(WriteData *wd, Bone *bone)
 static void write_armature(WriteData *wd, bArmature *arm, const void *id_address)
 {
   if (arm->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    arm->bonehash = NULL;
+    arm->edbo = NULL;
+    /* Must always be cleared (armatures don't have their own edit-data). */
+    arm->needs_flush_to_id = 0;
+    arm->act_edbone = NULL;
+
     writestruct_at_address(wd, ID_AR, bArmature, 1, id_address, arm);
     write_iddata(wd, &arm->id);
 
@@ -3147,6 +3206,9 @@ static void write_text(WriteData *wd, Text *text, const void *id_address)
   if ((text->flags & TXT_ISMEM) && (text->flags & TXT_ISEXT)) {
     text->flags &= ~TXT_ISEXT;
   }
+
+  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+  text->compiled = NULL;
 
   /* write LibData */
   writestruct_at_address(wd, ID_TXT, Text, 1, id_address, text);
@@ -3184,6 +3246,12 @@ static void write_speaker(WriteData *wd, Speaker *spk, const void *id_address)
 static void write_sound(WriteData *wd, bSound *sound, const void *id_address)
 {
   if (sound->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    sound->tags = 0;
+    sound->handle = NULL;
+    sound->playback_handle = NULL;
+    sound->spinlock = NULL;
+
     /* write LibData */
     writestruct_at_address(wd, ID_SO, bSound, 1, id_address, sound);
     write_iddata(wd, &sound->id);
@@ -3212,6 +3280,14 @@ static void write_probe(WriteData *wd, LightProbe *prb, const void *id_address)
 static void write_nodetree(WriteData *wd, bNodeTree *ntree, const void *id_address)
 {
   if (ntree->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    ntree->init = 0; /* to set callbacks and force setting types */
+    ntree->is_updating = false;
+    ntree->typeinfo = NULL;
+    ntree->interface_type = NULL;
+    ntree->progress = NULL;
+    ntree->execdata = NULL;
+
     writestruct_at_address(wd, ID_NT, bNodeTree, 1, id_address, ntree);
     /* Note that trees directly used by other IDs (materials etc.) are not 'real' ID, they cannot
      * be linked, etc., so we write actual id data here only, for 'real' ID trees. */
@@ -3315,6 +3391,11 @@ static void write_movieReconstruction(WriteData *wd, MovieTrackingReconstruction
 static void write_movieclip(WriteData *wd, MovieClip *clip, const void *id_address)
 {
   if (clip->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    clip->anim = NULL;
+    clip->tracking_context = NULL;
+    clip->tracking.stats = NULL;
+
     MovieTracking *tracking = &clip->tracking;
     MovieTrackingObject *object;
 
@@ -3678,6 +3759,12 @@ static void write_linestyle(WriteData *wd, FreestyleLineStyle *linestyle, const 
 static void write_cachefile(WriteData *wd, CacheFile *cache_file, const void *id_address)
 {
   if (cache_file->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    BLI_listbase_clear(&cache_file->object_paths);
+    cache_file->handle = NULL;
+    memset(cache_file->handle_filepath, 0, sizeof(cache_file->handle_filepath));
+    cache_file->handle_readers = NULL;
+
     writestruct_at_address(wd, ID_CF, CacheFile, 1, id_address, cache_file);
 
     if (cache_file->adt) {
@@ -3762,6 +3849,9 @@ static void write_pointcloud(WriteData *wd, PointCloud *pointcloud, const void *
 static void write_volume(WriteData *wd, Volume *volume, const void *id_address)
 {
   if (volume->id.us > 0 || wd->use_memfile) {
+    /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+    volume->runtime.grids = 0;
+
     /* write LibData */
     writestruct_at_address(wd, ID_VO, Volume, 1, id_address, volume);
     write_iddata(wd, &volume->id);
