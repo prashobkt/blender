@@ -1385,6 +1385,68 @@ void OBJECT_OT_modifier_active_move(wmOperatorType *ot)
 /** \} */
 
 /* ------------------------------------------------------------------- */
+/** \name Move to Index Modifier Operator
+ * \{ */
+
+static bool OBJECT_OT_modifier_move_to_index_poll(bContext *C)
+{
+  return edit_active_modifier_poll_generic(C, true);
+}
+
+static int OBJECT_OT_modifier_move_to_index_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  ModifierData *md = edit_modifier_property_get(op, ob, 0);
+  int index = RNA_enum_get(op->ptr, "index");
+
+  if (!ED_object_modifier_move_to_index(op->reports, ob, md, index)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+
+  return OPERATOR_FINISHED;
+}
+
+static int OBJECT_OT_modifier_move_to_index_invoke(bContext *C,
+                                                   wmOperator *op,
+                                                   const wmEvent *UNUSED(event))
+{
+  if (edit_modifier_active_invoke_properties(C, op)) {
+    return OBJECT_OT_modifier_move_to_index_exec(C, op);
+  }
+  else {
+    return OPERATOR_CANCELLED;
+  }
+}
+
+void OBJECT_OT_modifier_move_to_index(wmOperatorType *ot)
+{
+  static const EnumPropertyItem modifier_active_move[] = {
+      {-1, "UP", 0, "Up", ""},
+      {1, "DOWN", 0, "Down", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  ot->name = "Move Active Modifier to Index";
+  ot->description = "Move the active modifier to an index in the stack";
+  ot->idname = "OBJECT_OT_modifier_move_to_index";
+
+  ot->invoke = OBJECT_OT_modifier_move_to_index_invoke;
+  ot->exec = OBJECT_OT_modifier_move_to_index_exec;
+  ot->poll = OBJECT_OT_modifier_move_to_index_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  edit_modifier_properties(ot);
+  RNA_def_int(
+      ot->srna, "index", 0, 0, INT_MAX, "Index", "The index to move the modifier to", 0, INT_MAX);
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
 /** \name Apply Modifier Operator
  * \{ */
 

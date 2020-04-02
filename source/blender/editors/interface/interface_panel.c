@@ -39,7 +39,9 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_modifier_types.h"
 #include "DNA_userdef_types.h"
+/* HANS-TODO: Generalize this and move re-ordering code elsewhere. */
 
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -58,6 +60,8 @@
 
 #include "GPU_immediate.h"
 #include "GPU_state.h"
+
+#include "RNA_access.h"
 
 #include "interface_intern.h"
 
@@ -98,6 +102,7 @@ typedef struct uiHandlePanelData {
   /* animation */
   wmTimer *animtimer;
   double starttime;
+  bool is_drag_drop;
 
   /* dragging */
   int startx, starty;
@@ -506,7 +511,6 @@ void UI_panel_set_list_index(Panel *panel, int i)
 
 void UI_panel_delete(ListBase *panels, Panel *panel)
 {
-  printf("UI_PANEL_DELETE\n");
   /* Recursively delete children. */
   Panel *child = panel->children.first;
   while (child != NULL) {
@@ -526,7 +530,7 @@ void UI_panel_delete(ListBase *panels, Panel *panel)
 void UI_panels_free_recreate(ListBase *panels)
 {
   /* Delete panels with the recreate flag. */
-  printf("UI_PANELS_FREE_RECREATE\n");
+  // printf("UI_PANELS_FREE_RECREATE\n");
   Panel *panel = panels->first;
   Panel *panel_next = NULL;
   while (panel != NULL) {
@@ -1129,7 +1133,6 @@ static bool uiAlignPanelStep(ScrArea *sa, ARegion *region, const float fac, cons
       tot++;
     }
   }
-
   if (tot == 0) {
     return 0;
   }
@@ -1437,6 +1440,61 @@ static void check_panel_overlap(ARegion *region, Panel *panel)
 }
 
 /************************ panel dragging ****************************/
+
+static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
+{
+  if (panel->type == NULL) {
+    return;
+  }
+  char *context = panel->type->context;
+
+  /* Find how many recreate panels with this context string. */
+  int list_panels_len = 0;
+  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
+    if (list_panel->type) {
+      if ((strcmp(list_panel->type->context, context) == 0)) {
+        if (list_panel->type->flag & PANELTYPE_RECREATE) {
+          list_panels_len++;
+        }
+      }
+    }
+  }
+
+  /* Sort the matching recreate panels by their display order. */
+  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "panelsort");
+  PanelSort *sort_index = panel_sort;
+  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
+    if (list_panel->type) {
+      if ((strcmp(list_panel->type->context, context) == 0)) {
+        if (list_panel->type->flag & PANELTYPE_RECREATE) {
+          sort_index->pa = MEM_dupallocN(list_panel);
+          sort_index->orig = list_panel;
+          sort_index++;
+        }
+      }
+    }
+  }
+  qsort(panel_sort, list_panels_len, sizeof(PanelSort), compare_panel);
+
+  /* Find how many of those panels are above this panel. */
+  int move_to_index = 0;
+  for (; move_to_index < list_panels_len; move_to_index++) {
+    if (panel_sort[move_to_index].orig == panel) {
+      break;
+    }
+  }
+
+  /* Move this panel's list item to the corresponding index in its list. */
+  Object *ob = CTX_data_active_object(C);
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->list_index);
+  PointerRNA props_ptr;
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_move_to_index", false);
+  WM_operator_properties_create_ptr(&props_ptr, ot);
+  RNA_string_set(&props_ptr, "modifier", md->name);
+  RNA_int_set(&props_ptr, "index", move_to_index);
+  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr);
+  WM_operator_properties_free(&props_ptr);
+}
 
 static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
 {
@@ -2557,6 +2615,7 @@ static int ui_handler_panel(bContext *C, const wmEvent *event, void *userdata)
     int align = panel_aligned(sa, region);
 
     if (align) {
+      data->is_drag_drop = true;
       panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
     }
     else {
@@ -2630,6 +2689,10 @@ static void panel_activate_state(const bContext *C, Panel *pa, uiHandlePanelStat
   if (state == PANEL_STATE_EXIT) {
     MEM_freeN(data);
     pa->activedata = NULL;
+
+    if (data->is_drag_drop) {
+      reorder_recreate_panel_list(C, region, pa);
+    }
 
     WM_event_remove_ui_handler(
         &win->modalhandlers, ui_handler_panel, ui_handler_remove_panel, pa, false);
