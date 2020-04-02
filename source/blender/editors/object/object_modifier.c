@@ -400,7 +400,8 @@ bool ED_object_modifier_remove(ReportList *reports, Main *bmain, Object *ob, Mod
   }
 
   /* Lower the active index so it isn't out of bounds. */
-  ob->active_mod_index = min_ii(ob->active_mod_index, BLI_listbase_count(&ob->modifiers) - 1);
+  int modifiers_len = BLI_listbase_count(&ob->modifiers);
+  ob->active_mod_index = (modifiers_len > 0) ? min_ii(ob->active_mod_index, modifiers_len - 1) : 0;
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
