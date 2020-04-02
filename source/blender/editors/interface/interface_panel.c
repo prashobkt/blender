@@ -711,7 +711,7 @@ static void ui_draw_aligned_panel_header(
   Panel *panel = block->panel;
   rcti hrect;
   int pnl_icons;
-  const char *activename = panel->drawname[0] ? panel->drawname : panel->panelname;
+  const char *activename = panel->drawname;
   const bool is_subpanel = (panel->type && panel->type->parent);
   uiFontStyle *fontstyle = (is_subpanel) ? &style->widgetlabel : &style->paneltitle;
   uchar col_title[4];

@@ -105,29 +105,43 @@ static int modifier_is_simulation(ModifierData *md)
 
 static void modifier_panel_header(const bContext *C, Panel *panel)
 {
+  uiLayout *row;
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  ModifierData *md = ptr.data;
+  const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+  Scene *scene = CTX_data_scene(C);
+
+  /* Modifier Icon. */
+  row = uiLayoutRow(layout, false);
+  if (mti->isDisabled && mti->isDisabled(scene, md, 0)) {
+    uiLayoutSetRedAlert(row, true);
+  }
+  uiItemL(row, "", RNA_struct_ui_icon(ptr.type));
+
+  /* Modifier Name. */
+  uiItemR(layout, &ptr, "name", 0, "", ICON_NONE);
+
+  /* Mode enabling buttons. */
+}
+
+static void modifier_panel_header_modes(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
   ModifierData *md = ptr.data;
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
   int index = panel->list_index;
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
 
-  uiLayout *sub, *row;
-  uiLayout *layout = panel->layout;
-
-  /* Modifier Icon. */
-  sub = uiLayoutRow(layout, false);
-  if (mti->isDisabled && mti->isDisabled(scene, md, 0)) {
-    uiLayoutSetRedAlert(sub, true);
-  }
-  uiItemL(sub, "", RNA_struct_ui_icon(ptr.type));
-
-  /* Modifier Name. */
-  sub = uiLayoutRow(layout, false);
-  uiItemR(sub, &ptr, "name", 0, "", ICON_NONE);
-
-  /* Mode enabling buttons. */
   row = uiLayoutRow(layout, true);
   if (((md->type != eModifierType_Collision) || !(ob->pd && ob->pd->deflect)) &&
       (md->type != eModifierType_Surface)) {
@@ -168,6 +182,8 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
     uiItemStringO(
         layout, "", ICON_PROPERTIES, "WM_OT_properties_context_change", "context", "PARTICLES");
   }
+
+  uiItemS(layout);
 }
 
 /**
@@ -189,6 +205,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, v
   strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
 
   pt->draw_header = modifier_panel_header;
+  pt->draw_header_preset = modifier_panel_header_modes;
   pt->draw = draw;
   pt->poll = modifier_ui_poll;
 
