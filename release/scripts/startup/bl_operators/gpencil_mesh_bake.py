@@ -94,11 +94,6 @@ class GPENCIL_OT_mesh_bake(Operator):
                 (context.mode == 'OBJECT'))
 
     def execute(self, context):
-        # ob = context.object
-        # if ob is None or ob.type != 'MESH':
-        #     self.report({'INFO'}, "No Mesh selected to bake")
-        #     return {'CANCELLED'}
-
         bpy.ops.gpencil.bake_mesh_animation(
             frame_start=self.frame_start,
             frame_end=self.frame_end,
