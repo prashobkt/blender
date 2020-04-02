@@ -140,19 +140,17 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
 
-  row = uiLayoutRow(layout, true);
-  if (((md->type != eModifierType_Collision) || !(ob->pd && ob->pd->deflect)) &&
-      (md->type != eModifierType_Surface)) {
-    /* Collision and Surface are always enabled, hide buttons. */
-    uiItemR(row, &ptr, "show_render", 0, "", ICON_NONE);
-    uiItemR(row, &ptr, "show_viewport", 0, "", ICON_NONE);
-
-    if (mti->flags & eModifierTypeFlag_SupportsEditmode) {
-      sub = uiLayoutRow(row, true);
-      uiLayoutSetActive(sub, (md->mode & eModifierMode_Realtime));
-      uiItemR(sub, &ptr, "show_in_editmode", 0, "", ICON_NONE);
-    }
+  /* Switch context buttons. */
+  if (modifier_is_simulation(md) == 1) {
+    uiItemStringO(
+        layout, "", ICON_PROPERTIES, "WM_OT_properties_context_change", "context", "PHYSICS");
   }
+  else if (modifier_is_simulation(md) == 2) {
+    uiItemStringO(
+        layout, "", ICON_PROPERTIES, "WM_OT_properties_context_change", "context", "PARTICLES");
+  }
+
+  row = uiLayoutRow(layout, true);
   if (ob->type == OB_MESH) {
     int last_cage_index;
     int cage_index = modifiers_getCageIndex(scene, ob, &last_cage_index, 0);
@@ -170,15 +168,17 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
       uiItemR(layout, &ptr, "use_apply_on_spline", 0, "", ICON_NONE);
     }
   }
+  /* Collision and Surface are always enabled, hide buttons. */
+  if (((md->type != eModifierType_Collision) || !(ob->pd && ob->pd->deflect)) &&
+      (md->type != eModifierType_Surface)) {
 
-  /* Switch context buttons. */
-  if (modifier_is_simulation(md) == 1) {
-    uiItemStringO(
-        layout, "", ICON_PROPERTIES, "WM_OT_properties_context_change", "context", "PHYSICS");
-  }
-  else if (modifier_is_simulation(md) == 2) {
-    uiItemStringO(
-        layout, "", ICON_PROPERTIES, "WM_OT_properties_context_change", "context", "PARTICLES");
+    if (mti->flags & eModifierTypeFlag_SupportsEditmode) {
+      sub = uiLayoutRow(row, true);
+      uiLayoutSetActive(sub, (md->mode & eModifierMode_Realtime));
+      uiItemR(sub, &ptr, "show_in_editmode", 0, "", ICON_NONE);
+    }
+    uiItemR(row, &ptr, "show_viewport", 0, "", ICON_NONE);
+    uiItemR(row, &ptr, "show_render", 0, "", ICON_NONE);
   }
 
   uiItemS(layout);
