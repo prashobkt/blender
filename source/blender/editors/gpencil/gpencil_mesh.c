@@ -52,16 +52,16 @@
 
 #include "ED_gpencil.h"
 
-/* Check end_frame is always > start frame! */
-static void gp_bake_set_end_frame(struct Main *UNUSED(main),
+/* Check frame_end is always > start frame! */
+static void gp_bake_set_frame_end(struct Main *UNUSED(main),
                                   struct Scene *UNUSED(scene),
                                   struct PointerRNA *ptr)
 {
-  int start_frame = RNA_int_get(ptr, "start_frame");
-  int end_frame = RNA_int_get(ptr, "end_frame");
+  int frame_start = RNA_int_get(ptr, "frame_start");
+  int frame_end = RNA_int_get(ptr, "frame_end");
 
-  if (end_frame <= start_frame) {
-    RNA_int_set(ptr, "end_frame", start_frame + 1);
+  if (frame_end <= frame_start) {
+    RNA_int_set(ptr, "frame_end", frame_start + 1);
   }
 }
 
@@ -99,13 +99,13 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   /* Grab all relevant settings. */
   const int step = RNA_int_get(op->ptr, "step");
 
-  const int start_frame = (scene->r.sfra > RNA_int_get(op->ptr, "start_frame")) ?
+  const int frame_start = (scene->r.sfra > RNA_int_get(op->ptr, "frame_start")) ?
                               scene->r.sfra :
-                              RNA_int_get(op->ptr, "start_frame");
+                              RNA_int_get(op->ptr, "frame_start");
 
-  const int end_frame = (scene->r.efra < RNA_int_get(op->ptr, "end_frame")) ?
+  const int frame_end = (scene->r.efra < RNA_int_get(op->ptr, "frame_end")) ?
                             scene->r.efra :
-                            RNA_int_get(op->ptr, "end_frame");
+                            RNA_int_get(op->ptr, "frame_end");
 
   const float angle = RNA_float_get(op->ptr, "angle");
   const int thickness = RNA_int_get(op->ptr, "thickness");
@@ -121,10 +121,10 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   /* Loop all frame range. */
   int oldframe = (int)DEG_get_ctime(depsgraph);
   int key = -1;
-  for (int i = start_frame; i < end_frame + 1; i++) {
+  for (int i = frame_start; i < frame_end + 1; i++) {
     key++;
     /* Jump if not step limit but include last frame always. */
-    if ((key % step != 0) && (i != end_frame)) {
+    if ((key % step != 0) && (i != frame_end)) {
       continue;
     }
 
@@ -194,11 +194,11 @@ void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_int(
-      ot->srna, "start_frame", 1, 1, 100000, "Start Frame", "The start frame", 1, 100000);
+      ot->srna, "frame_start", 1, 1, 100000, "Start Frame", "The start frame", 1, 100000);
 
   prop = RNA_def_int(
-      ot->srna, "end_frame", 250, 1, 100000, "End Frame", "The end frame of animation", 1, 100000);
-  RNA_def_property_update_runtime(prop, gp_bake_set_end_frame);
+      ot->srna, "frame_end", 250, 1, 100000, "End Frame", "The end frame of animation", 1, 100000);
+  RNA_def_property_update_runtime(prop, gp_bake_set_frame_end);
 
   prop = RNA_def_int(ot->srna, "step", 1, 1, 100, "Step", "Step between generated frames", 1, 100);
 
