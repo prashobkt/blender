@@ -26,8 +26,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_userdef_types.h"
 #include "DNA_modifier_types.h"
+#include "DNA_userdef_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist_stack.h"
@@ -2593,18 +2593,15 @@ void ED_region_panels_layout_ex(const bContext *C,
     ed_panel_draw(C, sa, region, &region->panels, pt, panel, w, em, vertical);
   }
 
-  printf("ED_REGION_PANELS_LAYOUT_EX\n");
   if (has_always_recreate_panel) {
-    printf("  Drawing Recreate Panels:");
+    // printf("  Drawing Recreate Panels:");
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
         if (panel->type->flag & PANELTYPE_RECREATE) {
-          printf("  %s,", panel->type->idname);
           ed_panel_draw(C, sa, region, &region->panels, panel->type, panel, w, em, vertical);
         }
       }
     }
-    printf("\n");
   }
 
   /* align panels and return size */

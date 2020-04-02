@@ -124,8 +124,6 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
 
   /* Modifier Name. */
   uiItemR(layout, &ptr, "name", 0, "", ICON_NONE);
-
-  /* Mode enabling buttons. */
 }
 
 static void modifier_panel_header_modes(const bContext *C, Panel *panel)
