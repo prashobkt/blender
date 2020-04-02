@@ -1394,7 +1394,7 @@ static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col;
+  uiLayout *row, *col, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -1404,11 +1404,19 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA target_ptr = RNA_pointer_get(&ptr, "target");
 
   bool is_bound = RNA_boolean_get(&ptr, "is_bound");
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, !is_bound);
   uiItemR(col, &ptr, "target", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
   uiItemR(col, &ptr, "falloff", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "strength", 0, NULL, ICON_NONE);
 
   uiItemS(layout);
 

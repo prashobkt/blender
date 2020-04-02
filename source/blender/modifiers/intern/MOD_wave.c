@@ -429,7 +429,6 @@ static void time_panel_draw(const bContext *C, Panel *panel)
 
 static void texture_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -446,7 +445,7 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
   }
   else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
     PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-    uiItemPointerR(col, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", "", ICON_NONE);
+    uiItemPointerR(layout, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", "", ICON_NONE);
   }
 }
 

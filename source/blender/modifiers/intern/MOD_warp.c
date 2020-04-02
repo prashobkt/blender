@@ -412,16 +412,29 @@ static void panel_draw(const bContext *C, Panel *panel)
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
+  col = uiLayoutColumn(split, true);
   uiItemL(col, IFACE_("From:"), ICON_NONE);
   uiItemR(col, &ptr, "object_from", 0, "", ICON_NONE);
+  PointerRNA from_obj_ptr = RNA_pointer_get(&ptr, "object_from");
+  if (!RNA_pointer_is_null(&from_obj_ptr) && RNA_enum_get(&from_obj_ptr, "type") == OB_ARMATURE) {
+    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
+    PointerRNA from_obj_data_ptr = RNA_pointer_get(&from_obj_ptr, "data");
+    uiItemPointerR(col, &ptr, "bone_from", &from_obj_data_ptr, "bones", "", ICON_NONE);
+  }
 
-  uiItemR(col, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
-
-  col = uiLayoutColumn(split, false);
+  col = uiLayoutColumn(split, true);
   uiItemL(col, IFACE_("To:"), ICON_NONE);
   uiItemR(col, &ptr, "object_to", 0, "", ICON_NONE);
-  row = uiLayoutRow(col, true);
+  PointerRNA to_obj_ptr = RNA_pointer_get(&ptr, "object_to");
+  if (!RNA_pointer_is_null(&to_obj_ptr) && RNA_enum_get(&to_obj_ptr, "type") == OB_ARMATURE) {
+    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
+    PointerRNA to_obj_data_ptr = RNA_pointer_get(&to_obj_ptr, "data");
+    uiItemPointerR(col, &ptr, "bone_to", &to_obj_data_ptr, "bones", "", ICON_NONE);
+  }
+
+  uiItemR(layout, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(layout, true);
   uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
@@ -429,9 +442,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "strength", 0, NULL, ICON_NONE);
-
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
 
   modifier_panel_end(layout, &ptr);
 }

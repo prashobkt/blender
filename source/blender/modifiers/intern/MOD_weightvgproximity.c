@@ -656,8 +656,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "min_dist", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "max_dist", 0, NULL, ICON_NONE);
 
-  uiItemR(layout, &ptr, "falloff_type", 0, NULL, ICON_NONE);
-
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &ptr, "falloff_type", 0, IFACE_("Type"), ICON_NONE);
+  uiItemR(row, &ptr, "invert_falloff", 0, "", ICON_ARROW_LEFTRIGHT);
   modifier_panel_end(layout, &ptr);
 }
 

@@ -240,21 +240,28 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
+  int mode = RNA_enum_get(&ptr, "mode");
+
   uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "octree_depth", 0, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "scale", 0, NULL, ICON_NONE);
-
-  if (RNA_enum_get(&ptr, "mode") == MOD_REMESH_SHARP_FEATURES) {
-    uiItemR(layout, &ptr, "sharpness", 0, NULL, ICON_NONE);
+  if (mode == MOD_REMESH_VOXEL) {
+    uiItemR(layout, &ptr, "voxel_size", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "adaptivity", 0, NULL, ICON_NONE);
   }
+  else {
+    uiItemR(layout, &ptr, "octree_depth", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
 
+    if (mode == MOD_REMESH_SHARP_FEATURES) {
+      uiItemR(layout, &ptr, "sharpness", 0, NULL, ICON_NONE);
+    }
+
+    uiItemR(layout, &ptr, "use_remove_disconnected", 0, NULL, ICON_NONE);
+    row = uiLayoutRow(layout, false);
+    uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_remove_disconnected"));
+    uiItemR(layout, &ptr, "threshold", 0, NULL, ICON_NONE);
+  }
   uiItemR(layout, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_remove_disconnected", 0, NULL, ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_remove_disconnected"));
-  uiItemR(layout, &ptr, "threshold", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 
@@ -265,7 +272,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Remesh", panel_draw);
+  modifier_panel_register(region_type, "Remesh", panel_draw);
 }
 
 ModifierTypeInfo modifierType_Remesh = {

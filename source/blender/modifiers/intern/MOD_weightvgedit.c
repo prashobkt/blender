@@ -335,13 +335,16 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void falloff_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-  uiItemR(layout, &ptr, "falloff_type", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &ptr, "falloff_type", 0, IFACE_("Type"), ICON_NONE);
+  uiItemR(row, &ptr, "invert_falloff", 0, "", ICON_ARROW_LEFTRIGHT);
   if (RNA_enum_get(&ptr, "falloff_type") == MOD_WVG_MAPPING_CURVE) {
     uiTemplateCurveMapping(layout, &ptr, "map_curve", 0, false, false, false, false);
   }
