@@ -2594,7 +2594,6 @@ void ED_region_panels_layout_ex(const bContext *C,
   }
 
   if (has_always_recreate_panel) {
-    // printf("  Drawing Recreate Panels:");
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
         if (panel->type->flag & PANELTYPE_RECREATE) {

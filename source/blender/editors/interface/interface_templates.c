@@ -1863,69 +1863,6 @@ void uiTemplatePathBuilder(uiLayout *layout,
 //   /* Switch context button. */
 //   uiItemS(column);
 
-//   /* Apply / Convert / Copy Buttons. */
-//   if (!is_virtual && (md->mode & eModifierMode_Expanded)) {
-//     row = uiLayoutRow(column, false);
-
-//     if (!ELEM(md->type, eModifierType_Collision, eModifierType_Surface)) {
-//       /* only here obdata, the rest of modifiers is ob level */
-//       UI_block_lock_set(block, BKE_object_obdata_is_libdata(ob), ERROR_LIBDATA_MESSAGE);
-
-//       if (md->type == eModifierType_ParticleSystem) {
-//         ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
-
-//         if (!(ob->mode & OB_MODE_PARTICLE_EDIT)) {
-//           if (ELEM(psys->part->ren_as, PART_DRAW_GR, PART_DRAW_OB)) {
-//             uiItemO(row,
-//                     CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
-//                     ICON_NONE,
-//                     "OBJECT_OT_duplicates_make_real");
-//           }
-//           else if (psys->part->ren_as == PART_DRAW_PATH) {
-//             uiItemO(row,
-//                     CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
-//                     ICON_NONE,
-//                     "OBJECT_OT_modifier_convert");
-//           }
-//         }
-//       }
-//       else {
-//         uiLayoutSetOperatorContext(row, WM_OP_INVOKE_DEFAULT);
-//         uiItemEnumO(row,
-//                     "OBJECT_OT_modifier_apply",
-//                     CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
-//                     0,
-//                     "apply_as",
-//                     MODIFIER_APPLY_DATA);
-
-//         if (modifier_isSameTopology(md) && !modifier_isNonGeometrical(md)) {
-//           uiItemEnumO(row,
-//                       "OBJECT_OT_modifier_apply",
-//                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply as Shape Key"),
-//                       0,
-//                       "apply_as",
-//                       MODIFIER_APPLY_SHAPE);
-//         }
-//       }
-
-//       UI_block_lock_clear(block);
-//       UI_block_lock_set(block, ob && ID_IS_LINKED(ob), ERROR_LIBDATA_MESSAGE);
-
-//       if (!ELEM(md->type,
-//                 eModifierType_Fluidsim,
-//                 eModifierType_Softbody,
-//                 eModifierType_ParticleSystem,
-//                 eModifierType_Cloth,
-//                 eModifierType_Fluid)) {
-//         uiItemO(row,
-//                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
-//                 ICON_NONE,
-//                 "OBJECT_OT_modifier_copy");
-//       }
-//     }
-//   }
-// }
-
 static PanelType *panel_type_from_modifier_type(ARegion *region, ModifierType type)
 {
   ARegionType *region_type = region->type;
@@ -1990,7 +1927,13 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
         PanelType *panel_type = panel_type_from_modifier_type(region, md->type);
         BLI_assert(panel_type != NULL);
 
-        UI_panel_add(sa, region, &region->panels, panel_type, i);
+        Panel *new_panel = UI_panel_add_recreate(sa, region, &region->panels, panel_type, i);
+        if (md->mode & eModifierMode_Expanded) {
+          new_panel->flag |= PNL_CLOSEDY;
+        }
+        else {
+          new_panel->flag &= ~PNL_CLOSEDY;
+        }
       }
     }
   }

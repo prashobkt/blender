@@ -21,12 +21,16 @@
 
 #include "BKE_context.h"
 #include "BKE_modifier.h"
+#include "BKE_object.h"
 #include "BKE_screen.h"
 
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
+#include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+
+#include "ED_object.h"
 
 #include "BLT_translation.h"
 
@@ -34,6 +38,8 @@
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+
+#include "WM_types.h"
 
 #include "MOD_ui_common.h" /* Self include */
 
@@ -67,15 +73,79 @@ void modifier_panel_get_property_pointers(const bContext *C,
                                           PointerRNA *r_md_ptr)
 {
   Object *ob = CTX_data_active_object(C);
-  ModifierData *md = ob->modifiers.first;
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->list_index);
 
-  for (int i = 0; i < panel->list_index; i++) {
-    md = md->next;
-  }
   RNA_pointer_create(&ob->id, &RNA_Modifier, md, r_md_ptr);
 
   if (r_ob_ptr != NULL) {
     RNA_pointer_create(&ob->id, &RNA_Object, ob, r_ob_ptr);
+  }
+}
+
+#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
+void modifier_panel_buttons(const bContext *C, Panel *panel)
+{
+
+  uiLayout *row, *box;
+  uiLayout *layout = panel->layout;
+
+  box = uiLayoutBox(layout);
+  row = uiLayoutRow(box, false);
+
+  Object *ob = CTX_data_active_object(C);
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->list_index);
+
+  uiBlock *block = uiLayoutGetBlock(box);
+  UI_block_lock_set(
+      block, BKE_object_obdata_is_libdata(ob) || ID_IS_LINKED(ob), ERROR_LIBDATA_MESSAGE);
+
+  if (md->type == eModifierType_ParticleSystem) {
+    ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
+
+    if (!(ob->mode & OB_MODE_PARTICLE_EDIT)) {
+      if (ELEM(psys->part->ren_as, PART_DRAW_GR, PART_DRAW_OB)) {
+        uiItemO(row,
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
+                ICON_NONE,
+                "OBJECT_OT_duplicates_make_real");
+      }
+      else if (psys->part->ren_as == PART_DRAW_PATH) {
+        uiItemO(row,
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
+                ICON_NONE,
+                "OBJECT_OT_modifier_convert");
+      }
+    }
+  }
+  else {
+    uiLayoutSetOperatorContext(row, WM_OP_INVOKE_DEFAULT);
+    uiItemEnumO(row,
+                "OBJECT_OT_modifier_apply",
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
+                0,
+                "apply_as",
+                MODIFIER_APPLY_DATA);
+
+    if (modifier_isSameTopology(md) && !modifier_isNonGeometrical(md)) {
+      uiItemEnumO(row,
+                  "OBJECT_OT_modifier_apply",
+                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply as Shape Key"),
+                  0,
+                  "apply_as",
+                  MODIFIER_APPLY_SHAPE);
+    }
+  }
+
+  if (!ELEM(md->type,
+            eModifierType_Fluidsim,
+            eModifierType_Softbody,
+            eModifierType_ParticleSystem,
+            eModifierType_Cloth,
+            eModifierType_Fluid)) {
+    uiItemO(row,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
+            ICON_NONE,
+            "OBJECT_OT_modifier_copy");
   }
 }
 
@@ -224,7 +294,7 @@ void modifier_subpanel_register(ARegionType *region_type,
                                 bool open,
                                 PanelType *parent)
 {
-  /* Get the subpanel's ID name. */
+  /* Create the subpanel's ID name. */
   char panel_idname[BKE_ST_MAXNAME];
   strcpy(panel_idname, MODIFIER_TYPE_PANEL_PREFIX);
   strcat(panel_idname, name);

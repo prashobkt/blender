@@ -805,13 +805,13 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
-
+  uiLayout *sub, *col, *split;
   uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   PointerRNA ob_ptr;
-
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
 
   uiItemR(layout, &ptr, "fit_type", 0, NULL, ICON_NONE);
 
@@ -848,54 +848,57 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_object_offset"));
   uiItemR(col, &ptr, "offset_object", 0, "", ICON_NONE);
 
-  /* Rows. */
-  uiItemL(layout, IFACE_("UV Offsets:"), ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  sub = uiLayoutColumn(row, true);
-  uiItemR(sub, &ptr, "offset_u", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-  uiItemR(sub, &ptr, "offset_v", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-
-  uiItemS(layout);
   uiItemR(layout, &ptr, "start_cap", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "end_cap", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
 
-static void array_merge_header_draw(const bContext *C, Panel *panel)
+static void merge_header_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiItemR(layout, &ptr, "use_merge_vertices", 0, IFACE_("Merge"), ICON_NONE);
 }
 
-static void array_merge_panel_draw(const bContext *C, Panel *panel)
+static void merge_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiItemR(layout, &ptr, "use_merge_vertices", 0, IFACE_("Merge"), ICON_NONE);
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
   uiItemR(col, &ptr, "use_merge_vertices_cap", 0, IFACE_("First Last"), ICON_NONE);
   uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
+}
 
-  modifier_panel_end(layout, &ptr);
+static void uv_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *sub;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  row = uiLayoutRow(layout, false);
+  sub = uiLayoutColumn(row, true);
+  uiItemR(sub, &ptr, "offset_u", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(sub, &ptr, "offset_v", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Array", panel_draw);
-  modifier_subpanel_register(region_type,
-                             "array_merge",
-                             "",
-                             array_merge_header_draw,
-                             array_merge_panel_draw,
-                             false,
-                             panel_type);
+  modifier_subpanel_register(
+      region_type, "array_merge", "", merge_header_draw, merge_panel_draw, false, panel_type);
+  modifier_subpanel_register(
+      region_type, "array_uv", "UV Offsets", NULL, uv_panel_draw, false, panel_type);
 }
 
 ModifierTypeInfo modifierType_Array = {

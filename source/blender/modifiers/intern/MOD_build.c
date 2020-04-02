@@ -291,6 +291,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  modifier_panel_buttons(C, panel);
 
   split = uiLayoutSplit(layout, 0.5f, false);
 

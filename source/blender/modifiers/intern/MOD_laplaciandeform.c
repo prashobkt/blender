@@ -821,6 +821,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
 
   bool is_bind = RNA_boolean_get(&ptr, "is_bind");
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;

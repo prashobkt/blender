@@ -242,6 +242,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
@@ -267,9 +268,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Smooth", panel_draw);
-  // modifier_subpanel_register(
-  //     region_type, "shrinkwrap_mode", "Mode", NULL, mode_panel_draw, true, panel_type);
+  modifier_panel_register(region_type, "Smooth", panel_draw);
 }
 
 ModifierTypeInfo modifierType_Smooth = {

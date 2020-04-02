@@ -460,7 +460,7 @@ static void ui_offset_panel_block(uiBlock *block)
  * Called in situations where panels need to be added dynamically rather than only having one panel
  * corresponding to each PanelType.
  */
-Panel *UI_panel_add(
+Panel *UI_panel_add_recreate(
     ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int modifier_index)
 {
   Panel *panel = MEM_callocN(sizeof(Panel), "new panel");
@@ -490,7 +490,7 @@ Panel *UI_panel_add(
   /* Add the panel's children too. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
     PanelType *child = link->data;
-    UI_panel_add(sa, region, &panel->children, child, modifier_index);
+    UI_panel_add_recreate(sa, region, &panel->children, child, modifier_index);
   }
 
   BLI_addtail(panels, panel);

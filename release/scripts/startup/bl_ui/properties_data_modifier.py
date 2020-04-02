@@ -54,7 +54,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.operator("object.modifier_active_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
         layout.template_modifiers()
-        # HANS-TODO: Add new modifier properties since March 20th
 
 class DATA_UL_modifiers(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):

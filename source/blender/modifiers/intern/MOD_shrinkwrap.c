@@ -240,6 +240,7 @@ static void mode_panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  modifier_panel_buttons(C, panel);
 
   int wrap_method = RNA_enum_get(&ptr, "wrap_method");
 

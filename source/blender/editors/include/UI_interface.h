@@ -1663,11 +1663,11 @@ void UI_panel_end(const struct ScrArea *sa,
                   int width,
                   int height,
                   bool open);
-struct Panel *UI_panel_add(struct ScrArea *sa,
-                           struct ARegion *region,
-                           struct ListBase *panels,
-                           struct PanelType *panel_type,
-                           int modifier_index);
+struct Panel *UI_panel_add_recreate(struct ScrArea *sa,
+                                    struct ARegion *region,
+                                    struct ListBase *panels,
+                                    struct PanelType *panel_type,
+                                    int modifier_index);
 void UI_panel_set_list_index(struct Panel *panel, int i);
 void UI_panel_delete(struct ListBase *panels, struct Panel *panel);
 

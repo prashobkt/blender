@@ -349,6 +349,7 @@ static void axis_mapping_panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  modifier_panel_buttons(C, panel);
 
   split = uiLayoutSplit(layout, 0.5f, false);
   uiItemL(split, IFACE_("Forward/Up Axis:"), ICON_NONE);

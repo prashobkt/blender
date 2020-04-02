@@ -499,6 +499,7 @@ static void axis_origin_panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  modifier_panel_buttons(C, panel);
 
   int deform_method = RNA_enum_get(&ptr, "deform_method");
 

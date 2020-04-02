@@ -76,18 +76,20 @@ static void panel(ARegionType *region_type)
 extern "C" {
 #endif
 
+void modifier_panel_buttons(const struct bContext *C, struct Panel *panel);
+
 void modifier_panel_end(struct uiLayout *layout, PointerRNA *ptr);
 
 void modifier_panel_get_property_pointers(const bContext *C,
-                                          Panel *panel,
-                                          PointerRNA *r_ob_ptr,
-                                          PointerRNA *r_ptr);
+                                          struct Panel *panel,
+                                          struct PointerRNA *r_ob_ptr,
+                                          struct PointerRNA *r_ptr);
 
-PanelType *modifier_panel_register(ARegionType *region_type,
+PanelType *modifier_panel_register(struct ARegionType *region_type,
                                    const char *modifier_type,
                                    void *draw);
 
-void modifier_subpanel_register(ARegionType *region_type,
+void modifier_subpanel_register(struct ARegionType *region_type,
                                 const char *name,
                                 const char *label,
                                 void *draw_header,

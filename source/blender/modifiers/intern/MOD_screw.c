@@ -1175,6 +1175,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  modifier_panel_buttons(C, panel);
 
   PointerRNA screw_obj_ptr = RNA_pointer_get(&ptr, "object");
 
