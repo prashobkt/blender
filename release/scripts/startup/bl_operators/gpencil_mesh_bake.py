@@ -86,7 +86,19 @@ class GPENCIL_OT_mesh_bake(Operator):
         unit='LENGTH',
     )
 
+    @classmethod
+    def poll(self, context):
+        ob = context.active_object
+        return ((ob is not None) and
+                (ob.type == 'MESH') and
+                (context.mode == 'OBJECT'))
+
     def execute(self, context):
+        # ob = context.object
+        # if ob is None or ob.type != 'MESH':
+        #     self.report({'INFO'}, "No Mesh selected to bake")
+        #     return {'CANCELLED'}
+
         bpy.ops.gpencil.bake_mesh_animation(
             frame_start=self.frame_start,
             frame_end=self.frame_end,
