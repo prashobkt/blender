@@ -393,15 +393,15 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
   bool has_valid_context = true;
   const char *has_valid_context_error = IFACE_("Unsupported context");
   {
-    ScrArea *sa = CTX_wm_area(C);
-    if (sa == NULL) {
+    ScrArea *area = CTX_wm_area(C);
+    if (area == NULL) {
       has_valid_context = false;
     }
     else {
       PropertyRNA *prop = RNA_struct_find_property(but->opptr, "space_type");
       if (RNA_property_is_set(but->opptr, prop)) {
         const int space_type_prop = RNA_property_enum_get(but->opptr, prop);
-        if (space_type_prop != sa->spacetype) {
+        if (space_type_prop != area->spacetype) {
           has_valid_context = false;
         }
       }
@@ -1480,9 +1480,9 @@ ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz)
   return ui_tooltip_create_with_data(C, data, init_position, NULL, aspect);
 }
 
-void UI_tooltip_free(bContext *C, bScreen *sc, ARegion *region)
+void UI_tooltip_free(bContext *C, bScreen *screen, ARegion *region)
 {
-  ui_region_temp_remove(C, sc, region);
+  ui_region_temp_remove(C, screen, region);
 }
 
 /** \} */

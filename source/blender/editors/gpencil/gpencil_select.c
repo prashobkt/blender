@@ -1055,7 +1055,7 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
 
   const int mx = RNA_int_get(op->ptr, "x");
   const int my = RNA_int_get(op->ptr, "y");
@@ -1068,7 +1068,7 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
   bool changed = false;
 
   /* sanity checks */
-  if (sa == NULL) {
+  if (area == NULL) {
     BKE_report(op->reports, RPT_ERROR, "No active area");
     return OPERATOR_CANCELLED;
   }
@@ -1164,7 +1164,7 @@ static int gpencil_generic_select_exec(
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
 
   int selectmode;
   if (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) {
@@ -1191,7 +1191,7 @@ static int gpencil_generic_select_exec(
   bool changed = false;
 
   /* sanity checks */
-  if (sa == NULL) {
+  if (area == NULL) {
     BKE_report(op->reports, RPT_ERROR, "No active area");
     return OPERATOR_CANCELLED;
   }
@@ -1472,7 +1472,7 @@ static void deselect_all_selected(bContext *C)
 
 static int gpencil_select_exec(bContext *C, wmOperator *op)
 {
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
@@ -1500,7 +1500,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
   int hit_distance = radius_squared;
 
   /* sanity checks */
-  if (sa == NULL) {
+  if (area == NULL) {
     BKE_report(op->reports, RPT_ERROR, "No active area");
     return OPERATOR_CANCELLED;
   }

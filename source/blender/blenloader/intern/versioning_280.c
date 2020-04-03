@@ -116,10 +116,10 @@ static bScreen *screen_parent_find(const bScreen *screen)
   /* Can avoid lookup if screen state isn't maximized/full
    * (parent and child store the same state). */
   if (ELEM(screen->state, SCREENMAXIMIZED, SCREENFULL)) {
-    for (const ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      if (sa->full && sa->full != screen) {
-        BLI_assert(sa->full->state == screen->state);
-        return sa->full;
+    for (const ScrArea *area = screen->areabase.first; area; area = area->next) {
+      if (area->full && area->full != screen) {
+        BLI_assert(area->full->state == screen->state);
+        return area->full;
       }
     }
   }
@@ -609,9 +609,9 @@ static void do_versions_remove_region(ListBase *regionbase, ARegion *region)
 
 static void do_versions_remove_regions_by_type(ListBase *regionbase, int regiontype)
 {
-  ARegion *region, *ar_next;
-  for (region = regionbase->first; region; region = ar_next) {
-    ar_next = region->next;
+  ARegion *region, *region_next;
+  for (region = regionbase->first; region; region = region_next) {
+    region_next = region->next;
     if (region->regiontype == regiontype) {
       do_versions_remove_region(regionbase, region);
     }
@@ -649,13 +649,14 @@ static void do_versions_area_ensure_tool_region(Main *bmain,
                                                 const short region_flag)
 {
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+    for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+      for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
         if (sl->spacetype == space_type) {
-          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
-          ARegion *region = BKE_area_find_region_type(sa, RGN_TYPE_TOOLS);
+          ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                 &sl->regionbase;
+          ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_TOOLS);
           if (!region) {
-            ARegion *header = BKE_area_find_region_type(sa, RGN_TYPE_HEADER);
+            ARegion *header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
             region = do_versions_add_region(RGN_TYPE_TOOLS, "tools region");
             BLI_insertlinkafter(regionbase, header, region);
             region->alignment = RGN_ALIGN_LEFT;
@@ -1243,8 +1244,8 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
        * so same layer as BKE_view_layer_default_view would return */
       ViewLayer *layer = screen->scene->view_layers.first;
 
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *space = area->spacedata.first; space; space = space->next) {
           if (space->spacetype == SPACE_OUTLINER) {
             SpaceOutliner *soutliner = (SpaceOutliner *)space;
 
@@ -1273,8 +1274,8 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 0)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *space = area->spacedata.first; space; space = space->next) {
           if (space->spacetype == SPACE_IMAGE) {
             SpaceImage *sima = (SpaceImage *)space;
             if ((sima) && (sima->gpd)) {
@@ -1927,14 +1928,14 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 6)) {
     if (DNA_struct_elem_find(fd->filesdna, "SpaceOutliner", "int", "filter") == false) {
-      bScreen *sc;
-      ScrArea *sa;
+      bScreen *screen;
+      ScrArea *area;
       SpaceLink *sl;
 
       /* Update files using invalid (outdated) outlinevis Outliner values. */
-      for (sc = bmain->screens.first; sc; sc = sc->id.next) {
-        for (sa = sc->areabase.first; sa; sa = sa->next) {
-          for (sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (area = screen->areabase.first; area; area = area->next) {
+          for (sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_OUTLINER) {
               SpaceOutliner *so = (SpaceOutliner *)sl;
 
@@ -1972,9 +1973,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
-      for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_VIEW3D) {
             View3D *v3d = (View3D *)sl;
             v3d->shading.light = V3D_LIGHTING_STUDIO;
@@ -2066,10 +2067,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 12)) {
     /* Remove tool property regions. */
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (ELEM(sl->spacetype, SPACE_VIEW3D, SPACE_CLIP)) {
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
 
             for (ARegion *region = regionbase->first, *region_next; region; region = region_next) {
               region_next = region->next;
@@ -2095,8 +2097,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     /* Initialize new view3D options. */
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_VIEW3D) {
             View3D *v3d = (View3D *)sl;
             v3d->shading.light = V3D_LIGHTING_STUDIO;
@@ -2320,8 +2322,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
 
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_OUTLINER) {
               SpaceOutliner *soops = (SpaceOutliner *)sl;
               soops->filter_id_type = ID_GR;
@@ -2402,8 +2404,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
 
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.flag |= V3D_SHADING_SPECULAR_HIGHLIGHT;
@@ -2415,8 +2417,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "xray_alpha")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.xray_alpha = 0.5f;
@@ -2430,8 +2432,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       /* when loading the internal file is loaded before the matcaps */
       if (default_matcap) {
         for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-          for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-            for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+            for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
               if (sl->spacetype == SPACE_VIEW3D) {
                 View3D *v3d = (View3D *)sl;
                 BLI_strncpy(v3d->shading.matcap, default_matcap->name, FILE_MAXFILE);
@@ -2443,8 +2445,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "wireframe_threshold")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.wireframe_threshold = 0.5f;
@@ -2455,8 +2457,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "cavity_valley_factor")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.cavity_valley_factor = 1.0f;
@@ -2468,8 +2470,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "xray_alpha_bone")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.xray_alpha_bone = 0.5f;
@@ -2494,8 +2496,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     if (!DNA_struct_elem_find(fd->filesdna, "SpaceAction", "char", "mode_prev")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_ACTION) {
               SpaceAction *saction = (SpaceAction *)sl;
               /* "Dopesheet" should be default here,
@@ -2510,8 +2512,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_VIEW3D) {
             View3D *v3d = (View3D *)sl;
             if (v3d->drawtype == OB_TEXTURE) {
@@ -2535,8 +2537,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(
             fd->filesdna, "View3DOverlay", "float", "texture_paint_mode_opacity")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               enum {
                 V3D_SHOW_MODE_SHADE_OVERRIDE = (1 << 15),
@@ -2554,8 +2556,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "char", "background_type")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               copy_v3_fl(v3d->shading.background_color, 0.05f);
@@ -2619,8 +2621,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "short", "type")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               if (v3d->drawtype == OB_RENDER) {
@@ -2641,9 +2643,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     /* initialize grease pencil view data */
     if (!DNA_struct_elem_find(fd->filesdna, "SpaceView3D", "float", "vertex_opacity")) {
-      for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
-        for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->vertex_opacity = 1.0f;
@@ -2674,8 +2676,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "gpencil_paper_opacity")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.gpencil_paper_opacity = 0.5f;
@@ -2686,8 +2688,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "gpencil_grid_opacity")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.gpencil_grid_opacity = 0.5f;
@@ -2824,8 +2826,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 24)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_VIEW3D) {
             View3D *v3d = (View3D *)sl;
             v3d->overlay.edit_flag |= V3D_OVERLAY_EDIT_FACES | V3D_OVERLAY_EDIT_SEAMS |
@@ -2870,8 +2872,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "xray_alpha_wire")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.flag |= V3D_SHADING_XRAY_WIREFRAME;
@@ -2908,8 +2910,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 29)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_VIEW3D) {
             enum { V3D_OCCLUDE_WIRE = (1 << 14) };
             View3D *v3d = (View3D *)sl;
@@ -2931,12 +2933,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
      */
     if (!MAIN_VERSION_ATLEAST(bmain, 283, 1)) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
-            ARegion *ar_header = do_versions_find_region_or_null(regionbase, RGN_TYPE_HEADER);
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
+            ARegion *region_header = do_versions_find_region_or_null(regionbase, RGN_TYPE_HEADER);
 
-            if (!ar_header) {
+            if (!region_header) {
               /* Headers should always be first in the region list, except if there's also a
                * tool-header. These were only introduced in later versions though, so should be
                * fine to always insert headers first. */
@@ -2954,21 +2957,23 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_PROPERTIES) {
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
             ARegion *region = MEM_callocN(sizeof(ARegion), "navigation bar for properties");
-            ARegion *ar_header = NULL;
+            ARegion *region_header = NULL;
 
-            for (ar_header = regionbase->first; ar_header; ar_header = ar_header->next) {
-              if (ar_header->regiontype == RGN_TYPE_HEADER) {
+            for (region_header = regionbase->first; region_header;
+                 region_header = region_header->next) {
+              if (region_header->regiontype == RGN_TYPE_HEADER) {
                 break;
               }
             }
-            BLI_assert(ar_header);
+            BLI_assert(region_header);
 
-            BLI_insertlinkafter(regionbase, ar_header, region);
+            BLI_insertlinkafter(regionbase, region_header, region);
 
             region->regiontype = RGN_TYPE_NAV_BAR;
             region->alignment = RGN_ALIGN_LEFT;
@@ -2980,8 +2985,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* grease pencil fade layer opacity */
     if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "gpencil_fade_layer")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.gpencil_fade_layer = 0.5f;
@@ -3214,8 +3219,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 36)) {
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "curvature_ridge_factor")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.curvature_ridge_factor = 1.0f;
@@ -3246,8 +3251,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* Move studio_light selection to lookdev_light. */
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "char", "lookdev_light[256]")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               memcpy(v3d->shading.lookdev_light, v3d->shading.studio_light, sizeof(char) * 256);
@@ -3468,13 +3473,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             if (!execute_region) {
               ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
                                                                      &sl->regionbase;
-              ARegion *ar_navbar = BKE_spacedata_find_region_type(sl, area, RGN_TYPE_NAV_BAR);
+              ARegion *region_navbar = BKE_spacedata_find_region_type(sl, area, RGN_TYPE_NAV_BAR);
 
               execute_region = MEM_callocN(sizeof(ARegion), "execute region for properties");
 
-              BLI_assert(ar_navbar);
+              BLI_assert(region_navbar);
 
-              BLI_insertlinkafter(regionbase, ar_navbar, execute_region);
+              BLI_insertlinkafter(regionbase, region_navbar, execute_region);
 
               execute_region->regiontype = RGN_TYPE_EXECUTE;
               execute_region->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
@@ -3519,8 +3524,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* Add wireframe color. */
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "char", "wire_color_type")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.wire_color_type = V3D_SHADING_SINGLE_COLOR;
@@ -3699,10 +3704,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 55)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_TEXT) {
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
 
             /* Remove multiple footers that were added by mistake. */
             do_versions_remove_regions_by_type(regionbase, RGN_TYPE_FOOTER);
@@ -3711,8 +3717,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             ARegion *region = do_versions_add_region(RGN_TYPE_FOOTER, "footer for text");
             region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_TOP : RGN_ALIGN_BOTTOM;
 
-            ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
-            BLI_insertlinkafter(regionbase, ar_header, region);
+            ARegion *region_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
+            BLI_insertlinkafter(regionbase, region_header, region);
           }
         }
       }
@@ -3739,8 +3745,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 57)) {
     /* Enable Show Interpolation in dopesheet by default. */
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_ACTION) {
             SpaceAction *saction = (SpaceAction *)sl;
             if ((saction->flag & SACTION_SHOW_EXTREMES) == 0) {
@@ -3792,9 +3798,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
   /* Keep un-versioned until we're finished adding space types. */
   {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+          ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                 &sl->regionbase;
           /* All spaces that use tools must be eventually added. */
           ARegion *region = NULL;
           if (ELEM(sl->spacetype, SPACE_VIEW3D, SPACE_IMAGE, SPACE_SEQ) &&
@@ -3804,8 +3811,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             region = do_versions_add_region(RGN_TYPE_TOOL_HEADER, "tool header");
             region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
-            ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
-            BLI_insertlinkbefore(regionbase, ar_header, region);
+            ARegion *region_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
+            BLI_insertlinkbefore(regionbase, region_header, region);
             /* Hide by default, enable for painting workspaces (startup only). */
             region->flag |= RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER;
           }
@@ -3839,8 +3846,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(
             fd->filesdna, "View3DOverlay", "float", "sculpt_mode_mask_opacity")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.sculpt_mode_mask_opacity = 0.75f;
@@ -3903,10 +3910,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (ELEM(sl->spacetype, SPACE_CLIP, SPACE_GRAPH, SPACE_SEQ)) {
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
 
             ARegion *region = NULL;
             if (sl->spacetype == SPACE_CLIP) {
@@ -4055,10 +4063,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 281, 3)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_TEXT) {
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
             ARegion *region = do_versions_find_region_or_null(regionbase, RGN_TYPE_UI);
             if (region) {
               region->alignment = RGN_ALIGN_RIGHT;
@@ -4109,8 +4118,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 281, 6)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_VIEW3D) {
             View3D *v3d = (View3D *)sl;
             v3d->shading.flag |= V3D_SHADING_SCENE_LIGHTS_RENDER | V3D_SHADING_SCENE_WORLD_RENDER;
@@ -4131,29 +4140,31 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 281, 9)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_FILE) {
             SpaceFile *sfile = (SpaceFile *)sl;
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
-            ARegion *ar_ui = do_versions_find_region(regionbase, RGN_TYPE_UI);
-            ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
-            ARegion *ar_toolprops = do_versions_find_region_or_null(regionbase,
-                                                                    RGN_TYPE_TOOL_PROPS);
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
+            ARegion *region_ui = do_versions_find_region(regionbase, RGN_TYPE_UI);
+            ARegion *region_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
+            ARegion *region_toolprops = do_versions_find_region_or_null(regionbase,
+                                                                        RGN_TYPE_TOOL_PROPS);
 
             /* Reinsert UI region so that it spawns entire area width */
-            BLI_remlink(regionbase, ar_ui);
-            BLI_insertlinkafter(regionbase, ar_header, ar_ui);
+            BLI_remlink(regionbase, region_ui);
+            BLI_insertlinkafter(regionbase, region_header, region_ui);
 
-            ar_ui->flag |= RGN_FLAG_DYNAMIC_SIZE;
+            region_ui->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
-            if (ar_toolprops && (ar_toolprops->alignment == (RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV))) {
+            if (region_toolprops &&
+                (region_toolprops->alignment == (RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV))) {
               SpaceType *stype = BKE_spacetype_from_id(sl->spacetype);
 
               /* Remove empty region at old location. */
               BLI_assert(sfile->op == NULL);
-              BKE_area_region_free(stype, ar_toolprops);
-              BLI_freelinkN(regionbase, ar_toolprops);
+              BKE_area_region_free(stype, region_toolprops);
+              BLI_freelinkN(regionbase, region_toolprops);
             }
 
             if (sfile->params) {
@@ -4186,8 +4197,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* Added studiolight intensity */
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "studiolight_intensity")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.studiolight_intensity = 1.0f;
@@ -4224,13 +4235,14 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_VIEW3D) {
             View3D *v3d = (View3D *)sl;
 
-            for (ScrArea *sa_other = screen->areabase.first; sa_other; sa_other = sa_other->next) {
-              for (SpaceLink *sl_other = sa_other->spacedata.first; sl_other;
+            for (ScrArea *area_other = screen->areabase.first; area_other;
+                 area_other = area_other->next) {
+              for (SpaceLink *sl_other = area_other->spacedata.first; sl_other;
                    sl_other = sl_other->next) {
                 if (sl != sl_other && sl_other->spacetype == SPACE_VIEW3D) {
                   View3D *v3d_other = (View3D *)sl_other;
@@ -4243,25 +4255,27 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             }
           }
           else if (sl->spacetype == SPACE_FILE) {
-            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
-            ARegion *ar_tools = do_versions_find_region_or_null(regionbase, RGN_TYPE_TOOLS);
-            ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
+            ARegion *region_tools = do_versions_find_region_or_null(regionbase, RGN_TYPE_TOOLS);
+            ARegion *region_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
 
-            if (ar_tools) {
-              ARegion *ar_next = ar_tools->next;
+            if (region_tools) {
+              ARegion *region_next = region_tools->next;
 
               /* We temporarily had two tools regions, get rid of the second one. */
-              if (ar_next && ar_next->regiontype == RGN_TYPE_TOOLS) {
-                do_versions_remove_region(regionbase, ar_next);
+              if (region_next && region_next->regiontype == RGN_TYPE_TOOLS) {
+                do_versions_remove_region(regionbase, region_next);
               }
 
-              BLI_remlink(regionbase, ar_tools);
-              BLI_insertlinkafter(regionbase, ar_header, ar_tools);
+              BLI_remlink(regionbase, region_tools);
+              BLI_insertlinkafter(regionbase, region_header, region_tools);
             }
             else {
-              ar_tools = do_versions_add_region(RGN_TYPE_TOOLS, "versioning file tools region");
-              BLI_insertlinkafter(regionbase, ar_header, ar_tools);
-              ar_tools->alignment = RGN_ALIGN_LEFT;
+              region_tools = do_versions_add_region(RGN_TYPE_TOOLS,
+                                                    "versioning file tools region");
+              BLI_insertlinkafter(regionbase, region_header, region_tools);
+              region_tools->alignment = RGN_ALIGN_LEFT;
             }
           }
         }
@@ -4279,8 +4293,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     do_version_curvemapping_walker(bmain, do_version_curvemapping_flag_extend_extrapolate);
 
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        sa->flag &= ~AREA_FLAG_UNUSED_6;
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        area->flag &= ~AREA_FLAG_UNUSED_6;
       }
     }
 
@@ -4350,8 +4364,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
 
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.render_pass = SCE_PASS_COMBINED;
@@ -4425,8 +4439,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* UDIM Image Editor change. */
     if (!DNA_struct_elem_find(fd->filesdna, "SpaceImage", "int", "tile_grid_shape[2]")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_IMAGE) {
               SpaceImage *sima = (SpaceImage *)sl;
               sima->tile_grid_shape[0] = 1;
@@ -4500,8 +4514,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* Add Lookdev blur property. */
     if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "studiolight_blur")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->shading.studiolight_blur = 0.5f;
@@ -4781,8 +4795,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(
             fd->filesdna, "View3DOverlay", "float", "sculpt_mode_face_sets_opacity")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+          for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               v3d->overlay.sculpt_mode_face_sets_opacity = 1.0f;

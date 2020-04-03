@@ -298,10 +298,10 @@ void WM_gizmo_group_remove_by_tool(bContext *C,
                                    const bToolRef *tref)
 {
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_find(&gzgt->gzmap_params);
-  for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
-    for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
-      if (sa->runtime.tool == tref) {
-        for (ARegion *region = sa->regionbase.first; region; region = region->next) {
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+      if (area->runtime.tool == tref) {
+        for (ARegion *region = area->regionbase.first; region; region = region->next) {
           wmGizmoMap *gzmap = region->gizmo_map;
           if (gzmap && gzmap->type == gzmap_type) {
             wmGizmoGroup *gzgroup, *gzgroup_next;
@@ -908,10 +908,10 @@ void WM_gizmomaptype_group_init_runtime(const Main *bmain,
   }
 
   /* now create a gizmo for all existing areas */
-  for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
-    for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-        ListBase *lb = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+      for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+        ListBase *lb = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;
         for (ARegion *region = lb->first; region; region = region->next) {
           wmGizmoMap *gzmap = region->gizmo_map;
           if (gzmap && gzmap->type == gzmap_type) {
@@ -963,10 +963,10 @@ void WM_gizmomaptype_group_unlink(bContext *C,
                                   const wmGizmoGroupType *gzgt)
 {
   /* Free instances. */
-  for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
-    for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-        ListBase *lb = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+      for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+        ListBase *lb = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;
         for (ARegion *region = lb->first; region; region = region->next) {
           wmGizmoMap *gzmap = region->gizmo_map;
           if (gzmap && gzmap->type == gzmap_type) {
@@ -1132,9 +1132,9 @@ void WM_gizmo_group_type_unlink_delayed(const char *idname)
 
 void WM_gizmo_group_unlink_delayed_ptr_from_space(wmGizmoGroupType *gzgt,
                                                   wmGizmoMapType *gzmap_type,
-                                                  ScrArea *sa)
+                                                  ScrArea *area)
 {
-  for (ARegion *region = sa->regionbase.first; region; region = region->next) {
+  for (ARegion *region = area->regionbase.first; region; region = region->next) {
     wmGizmoMap *gzmap = region->gizmo_map;
     if (gzmap && gzmap->type == gzmap_type) {
       for (wmGizmoGroup *gzgroup = gzmap->groups.first; gzgroup; gzgroup = gzgroup->next) {

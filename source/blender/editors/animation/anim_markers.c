@@ -74,12 +74,12 @@
 /* ************* Marker API **************** */
 
 /* helper function for getting the list of markers to work on */
-static ListBase *context_get_markers(Scene *scene, ScrArea *sa)
+static ListBase *context_get_markers(Scene *scene, ScrArea *area)
 {
   /* local marker sets... */
-  if (sa) {
-    if (sa->spacetype == SPACE_ACTION) {
-      SpaceAction *saction = (SpaceAction *)sa->spacedata.first;
+  if (area) {
+    if (area->spacetype == SPACE_ACTION) {
+      SpaceAction *saction = (SpaceAction *)area->spacedata.first;
 
       /* local markers can only be shown when there's only a single active action to grab them from
        * - flag only takes effect when there's an action, otherwise it can get too confusing?
@@ -108,7 +108,7 @@ ListBase *ED_context_get_markers(const bContext *C)
 ListBase *ED_animcontext_get_markers(const bAnimContext *ac)
 {
   if (ac) {
-    return context_get_markers(ac->scene, ac->sa);
+    return context_get_markers(ac->scene, ac->area);
   }
   else {
     return NULL;
@@ -234,35 +234,35 @@ void ED_markers_get_minmax(ListBase *markers, short sel, float *r_first, float *
  */
 static bool ED_operator_markers_region_active(bContext *C)
 {
-  ScrArea *sa = CTX_wm_area(C);
-  if (sa == NULL) {
+  ScrArea *area = CTX_wm_area(C);
+  if (area == NULL) {
     return false;
   }
 
-  switch (sa->spacetype) {
+  switch (area->spacetype) {
     case SPACE_ACTION: {
-      SpaceAction *saction = sa->spacedata.first;
+      SpaceAction *saction = area->spacedata.first;
       if (saction->flag & SACTION_SHOW_MARKERS) {
         return true;
       }
       break;
     }
     case SPACE_GRAPH: {
-      SpaceGraph *sipo = sa->spacedata.first;
+      SpaceGraph *sipo = area->spacedata.first;
       if (sipo->mode != SIPO_MODE_DRIVERS && sipo->flag & SIPO_SHOW_MARKERS) {
         return true;
       }
       break;
     }
     case SPACE_NLA: {
-      SpaceNla *snla = sa->spacedata.first;
+      SpaceNla *snla = area->spacedata.first;
       if (snla->flag & SNLA_SHOW_MARKERS) {
         return true;
       }
       break;
     }
     case SPACE_SEQ: {
-      SpaceSeq *seq = sa->spacedata.first;
+      SpaceSeq *seq = area->spacedata.first;
       if (seq->flag & SEQ_SHOW_MARKERS) {
         return true;
       }
@@ -906,7 +906,7 @@ static int ed_marker_move_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 static void ed_marker_move_apply(bContext *C, wmOperator *op)
 {
 #ifdef DURIAN_CAMERA_SWITCH
-  bScreen *sc = CTX_wm_screen(C);
+  bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
   Object *camera = scene->camera;
 #endif
@@ -930,7 +930,7 @@ static void ed_marker_move_apply(bContext *C, wmOperator *op)
   BKE_scene_camera_switch_update(scene);
 
   if (camera != scene->camera) {
-    BKE_screen_view3d_scene_sync(sc, scene);
+    BKE_screen_view3d_scene_sync(screen, scene);
     WM_event_add_notifier(C, NC_SCENE | NA_EDITED, scene);
   }
 #endif
@@ -1621,7 +1621,7 @@ static void MARKER_OT_make_links_scene(wmOperatorType *ot)
 
 static int ed_marker_camera_bind_exec(bContext *C, wmOperator *op)
 {
-  bScreen *sc = CTX_wm_screen(C);
+  bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   ListBase *markers = ED_context_get_markers(C);
@@ -1658,7 +1658,7 @@ static int ed_marker_camera_bind_exec(bContext *C, wmOperator *op)
 
   /* camera may have changes */
   BKE_scene_camera_switch_update(scene);
-  BKE_screen_view3d_scene_sync(sc, scene);
+  BKE_screen_view3d_scene_sync(screen, scene);
 
   WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, NULL);
   WM_event_add_notifier(C, NC_ANIMATION | ND_MARKERS, NULL);

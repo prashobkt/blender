@@ -224,8 +224,8 @@ void ED_editors_exit(Main *bmain, bool do_undo_system)
   }
 
   /* global in meshtools... */
-  ED_mesh_mirror_spatial_table(NULL, NULL, NULL, NULL, 'e');
-  ED_mesh_mirror_topo_table(NULL, NULL, 'e');
+  ED_mesh_mirror_spatial_table_end(NULL);
+  ED_mesh_mirror_topo_table_end(NULL);
 }
 
 bool ED_editors_flush_edits_for_object_ex(Main *bmain,
@@ -472,12 +472,12 @@ void ED_region_draw_mouse_line_cb(const bContext *C, ARegion *region, void *arg_
  *
  * \param new_id: may be NULL to unlink \a old_id.
  */
-void ED_spacedata_id_remap(struct ScrArea *sa, struct SpaceLink *sl, ID *old_id, ID *new_id)
+void ED_spacedata_id_remap(struct ScrArea *area, struct SpaceLink *sl, ID *old_id, ID *new_id)
 {
   SpaceType *st = BKE_spacetype_from_id(sl->spacetype);
 
   if (st && st->id_remap) {
-    st->id_remap(sa, sl, old_id, new_id);
+    st->id_remap(area, sl, old_id, new_id);
   }
 }
 

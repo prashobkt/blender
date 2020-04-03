@@ -420,7 +420,7 @@ static void ui_block_region_draw(const bContext *C, ARegion *region)
  * Use to refresh centered popups on screen resizing (for splash).
  */
 static void ui_block_region_popup_window_listener(wmWindow *UNUSED(win),
-                                                  ScrArea *UNUSED(sa),
+                                                  ScrArea *UNUSED(area),
                                                   ARegion *region,
                                                   wmNotifier *wmn,
                                                   const Scene *UNUSED(scene))
@@ -525,36 +525,36 @@ void ui_popup_block_scrolltest(uiBlock *block)
 static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
 {
   wmWindow *ctx_win = CTX_wm_window(C);
-  ScrArea *ctx_sa = CTX_wm_area(C);
-  ARegion *ctx_ar = CTX_wm_region(C);
+  ScrArea *ctx_area = CTX_wm_area(C);
+  ARegion *ctx_region = CTX_wm_region(C);
 
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win = ctx_win;
-  bScreen *sc = CTX_wm_screen(C);
+  bScreen *screen = CTX_wm_screen(C);
 
   /* There may actually be a different window active than the one showing the popup, so lookup real
    * one. */
-  if (BLI_findindex(&sc->regionbase, handle->region) == -1) {
+  if (BLI_findindex(&screen->regionbase, handle->region) == -1) {
     for (win = wm->windows.first; win; win = win->next) {
-      sc = WM_window_get_active_screen(win);
-      if (BLI_findindex(&sc->regionbase, handle->region) != -1) {
+      screen = WM_window_get_active_screen(win);
+      if (BLI_findindex(&screen->regionbase, handle->region) != -1) {
         break;
       }
     }
   }
 
-  BLI_assert(win && sc);
+  BLI_assert(win && screen);
 
   CTX_wm_window_set(C, win);
-  ui_region_temp_remove(C, sc, handle->region);
+  ui_region_temp_remove(C, screen, handle->region);
 
   /* Reset context (area and region were NULL'ed when chaning context window). */
   CTX_wm_window_set(C, ctx_win);
-  CTX_wm_area_set(C, ctx_sa);
-  CTX_wm_region_set(C, ctx_ar);
+  CTX_wm_area_set(C, ctx_area);
+  CTX_wm_region_set(C, ctx_region);
 
   /* reset to region cursor (only if there's not another menu open) */
-  if (BLI_listbase_is_empty(&sc->regionbase)) {
+  if (BLI_listbase_is_empty(&screen->regionbase)) {
     win->tag_cursor_refresh = true;
   }
 

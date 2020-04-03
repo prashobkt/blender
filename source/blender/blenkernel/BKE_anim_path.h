@@ -12,22 +12,40 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
+ * All rights reserved.
  */
+#ifndef __BKE_ANIM_PATH_H__
+#define __BKE_ANIM_PATH_H__
 
 /** \file
- * \ingroup edinterface
- *
- * Share between interface_region_*.c files.
+ * \ingroup bke
  */
 
-#ifndef __INTERFACE_REGIONS_INTERN_H__
-#define __INTERFACE_REGIONS_INTERN_H__
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* interface_region_menu_popup.c */
-uint ui_popup_menu_hash(const char *str);
+struct ListBase;
+struct Object;
+struct Path;
 
-/* interface_regions_intern.h */
-ARegion *ui_region_temp_add(bScreen *screen);
-void ui_region_temp_remove(struct bContext *C, bScreen *screen, ARegion *region);
+/* ---------------------------------------------------- */
+/* Curve Paths */
 
-#endif /* __INTERFACE_REGIONS_INTERN_H__ */
+void free_path(struct Path *path);
+void calc_curvepath(struct Object *ob, struct ListBase *nurbs);
+int where_on_path(struct Object *ob,
+                  float ctime,
+                  float vec[4],
+                  float dir[3],
+                  float quat[4],
+                  float *radius,
+                  float *weight);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

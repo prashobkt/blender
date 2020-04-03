@@ -7847,17 +7847,17 @@ static void lib_link_windowmanager(FileData *fd, Main *UNUSED(bmain), wmWindowMa
 
 /* note: file read without screens option G_FILE_NO_UI;
  * check lib pointers in call below */
-static void lib_link_screen(FileData *fd, Main *UNUSED(bmain), bScreen *sc)
+static void lib_link_screen(FileData *fd, Main *UNUSED(bmain), bScreen *screen)
 {
   /* deprecated, but needed for versioning (will be NULL'ed then) */
-  sc->scene = newlibadr(fd, sc->id.lib, sc->scene);
+  screen->scene = newlibadr(fd, screen->id.lib, screen->scene);
 
-  sc->animtimer = NULL; /* saved in rare cases */
-  sc->tool_tip = NULL;
-  sc->scrubbing = false;
+  screen->animtimer = NULL; /* saved in rare cases */
+  screen->tool_tip = NULL;
+  screen->scrubbing = false;
 
-  for (ScrArea *area = sc->areabase.first; area; area = area->next) {
-    lib_link_area(fd, &sc->id, area);
+  for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+    lib_link_area(fd, &screen->id, area);
   }
 }
 
@@ -8063,8 +8063,8 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map,
 
   /* avoid conflicts with 2.8x branch */
   {
-    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+    for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+      for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
         if (sl->spacetype == SPACE_VIEW3D) {
           View3D *v3d = (View3D *)sl;
           ARegion *region;
@@ -8073,7 +8073,8 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map,
           v3d->ob_center = restore_pointer_by_name(id_map, (ID *)v3d->ob_center, USER_REAL);
 
           /* Free render engines for now. */
-          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+          ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                 &sl->regionbase;
           for (region = regionbase->first; region; region = region->next) {
             if (region->regiontype == RGN_TYPE_WINDOW) {
               RegionView3D *rv3d = region->regiondata;
@@ -8194,7 +8195,7 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map,
 
           scpt->script = restore_pointer_by_name(id_map, (ID *)scpt->script, USER_REAL);
 
-          /*sc->script = NULL; - 2.45 set to null, better re-run the script */
+          /*screen->script = NULL; - 2.45 set to null, better re-run the script */
           if (scpt->script) {
             SCRIPT_SET_NULL(scpt->script);
           }
@@ -8377,18 +8378,18 @@ void blo_do_versions_view3d_split_250(View3D *v3d, ListBase *regions)
   }
 }
 
-static bool direct_link_screen(FileData *fd, bScreen *sc)
+static bool direct_link_screen(FileData *fd, bScreen *screen)
 {
   bool wrong_id = false;
 
-  sc->regionbase.first = sc->regionbase.last = NULL;
-  sc->context = NULL;
-  sc->active_region = NULL;
+  screen->regionbase.first = screen->regionbase.last = NULL;
+  screen->context = NULL;
+  screen->active_region = NULL;
 
-  sc->preview = direct_link_preview_image(fd, sc->preview);
+  screen->preview = direct_link_preview_image(fd, screen->preview);
 
-  if (!direct_link_area_map(fd, AREAMAP_FROM_SCREEN(sc))) {
-    printf("Error reading Screen %s... removing it.\n", sc->id.name + 2);
+  if (!direct_link_area_map(fd, AREAMAP_FROM_SCREEN(screen))) {
+    printf("Error reading Screen %s... removing it.\n", screen->id.name + 2);
     wrong_id = true;
   }
 
@@ -9417,19 +9418,21 @@ static BHead *read_libblock(FileData *fd,
           if (do_partial_undo) {
             /* Even though we re-use the old ID as-is, it does not mean that we are 100% safe from
              * needing some depsgraph updates for it (it could depend on another ID which address
-             * did
-             * not change, but which actual content might have been re-read from the memfile). */
+             * did not change, but which actual content might have been re-read from the memfile).
+             * IMPORTANT: Do not fully overwrite recalc flag here, depsgraph may not have been ran
+             * yet for previous undo step(s), we do not want to erase flags set by those.
+             */
             if (fd->undo_direction < 0) {
               /* We are coming from the future (i.e. do an actual undo, and not a redo), we use our
                * old reused ID's 'accumulated recalc flags since last memfile undo step saving' as
                * recalc flags. */
-              id_old->recalc = id_old->recalc_undo_accumulated;
+              id_old->recalc |= id_old->recalc_undo_accumulated;
             }
             else {
               /* We are coming from the past (i.e. do a redo), we use the saved 'accumulated recalc
                * flags since last memfile undo step saving' from the newly read ID as recalc flags.
                */
-              id_old->recalc = id->recalc_undo_accumulated;
+              id_old->recalc |= id->recalc_undo_accumulated;
             }
             /* There is no need to flush the depsgraph's CoWs here, since that ID's data itself did
              * not change. */
