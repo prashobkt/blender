@@ -281,60 +281,39 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemPointerR(layout, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
+  col = uiLayoutColumn(layout, false);
   uiItemR(col, &ptr, "center", 0, NULL, ICON_NONE);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("UV Axis:"), ICON_NONE);
-  uiItemR(col, &ptr, "axis_u", 0, "", ICON_NONE);
-  uiItemR(col, &ptr, "axis_v", 0, "", ICON_NONE);
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "axis_u", 0, IFACE_("Axis U"), ICON_NONE);
+  uiItemR(col, &ptr, "axis_v", 0, IFACE_("V"), ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("From:"), ICON_NONE);
-  uiItemR(col, &ptr, "object_from", 0, "", ICON_NONE);
-
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("To:"), ICON_NONE);
-  uiItemR(col, &ptr, "object_to", 0, "", ICON_NONE);
-
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "object_from", 0, NULL, ICON_NONE);
   warp_obj_ptr = RNA_pointer_get(&ptr, "object_from");
   if (!RNA_pointer_is_null(&warp_obj_ptr) && RNA_enum_get(&warp_obj_ptr, "type") == OB_ARMATURE) {
-    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
     PointerRNA warp_obj_data_ptr = RNA_pointer_get(&warp_obj_ptr, "data");
     uiItemPointerR(col, &ptr, "bone_from", &warp_obj_data_ptr, "bones", NULL, ICON_NONE);
   }
 
-  col = uiLayoutColumn(split, false);
+  uiItemR(col, &ptr, "object_to", 0, IFACE_("To"), ICON_NONE);
   warp_obj_ptr = RNA_pointer_get(&ptr, "object_to");
   if (!RNA_pointer_is_null(&warp_obj_ptr) && RNA_enum_get(&warp_obj_ptr, "type") == OB_ARMATURE) {
-    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
     PointerRNA warp_obj_data_ptr = RNA_pointer_get(&warp_obj_ptr, "data");
     uiItemPointerR(col, &ptr, "bone_to", &warp_obj_data_ptr, "bones", NULL, ICON_NONE);
   }
 
-  split = uiLayoutSplit(layout, 0.333f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Offset:"), ICON_NONE);
-  uiItemR(col, &ptr, "offset", 0, "", ICON_NONE);
-
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Scale:"), ICON_NONE);
-  uiItemR(col, &ptr, "scale", 0, "", ICON_NONE);
-
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Rotate:"), ICON_NONE);
-  uiItemR(col, &ptr, "rotation", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "rotation", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
-  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
   row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);

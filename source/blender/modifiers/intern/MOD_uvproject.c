@@ -335,19 +335,21 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemPointerR(layout, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
 
   sub = uiLayoutColumn(layout, true);
   uiItemR(sub, &ptr, "aspect_x", 0, IFACE_("Aspect X"), ICON_NONE);
-  uiItemR(sub, &ptr, "aspect_y", 0, IFACE_("Aspect Y"), ICON_NONE);
+  uiItemR(sub, &ptr, "aspect_y", 0, IFACE_("Y"), ICON_NONE);
 
   sub = uiLayoutColumn(layout, true);
   uiItemR(sub, &ptr, "scale_x", 0, IFACE_("Scale X"), ICON_NONE);
-  uiItemR(sub, &ptr, "scale_y", 0, IFACE_("Scale Y"), ICON_NONE);
+  uiItemR(sub, &ptr, "scale_y", 0, IFACE_("Y"), ICON_NONE);
 
   uiItemR(layout, &ptr, "projector_count", 0, IFACE_("Projectors"), ICON_NONE);
   RNA_BEGIN (&ptr, projector_ptr, "projectors") {
-    uiItemR(layout, &projector_ptr, "object", 0, "", ICON_NONE);
+    uiItemR(layout, &projector_ptr, "object", 0, NULL, ICON_NONE);
   }
   RNA_END;
 
