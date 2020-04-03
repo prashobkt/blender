@@ -51,6 +51,9 @@
 #include "RNA_define.h"
 
 #include "ED_gpencil.h"
+#include "ED_transform_snap_object_context.h"
+
+#include "gpencil_intern.h"
 
 /* Check frame_end is always > start frame! */
 static void gp_bake_set_frame_end(struct Main *UNUSED(main),
@@ -82,6 +85,7 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
+  ARegion *region = CTX_wm_region(C);
   View3D *v3d = CTX_wm_view3d(C);
   Object *ob = CTX_data_active_object(C);
   Object *ob_gpencil = NULL;
@@ -116,6 +120,7 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   const int frame_offset = RNA_int_get(op->ptr, "frame_target") - frame_start;
   char target[64];
   RNA_string_get(op->ptr, "target", target);
+  const int project_type = RNA_enum_get(op->ptr, "project_type");
 
   /* Create a new grease pencil object in origin. */
   if (STREQ(target, "*NEW")) {
@@ -129,6 +134,26 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   if ((ob_gpencil == NULL) || (ob_gpencil->type != OB_GPENCIL)) {
     BKE_report(op->reports, RPT_ERROR, "Target grease pencil object not valid");
     return OPERATOR_CANCELLED;
+  }
+
+  bGPdata *gpd = (bGPdata *)ob_gpencil->data;
+  GP_SpaceConversion gsc = {NULL};
+  SnapObjectContext *sctx = NULL;
+  if (project_type != GP_REPROJECT_KEEP) {
+    /* Init space conversion stuff. */
+    gp_point_conversion_init(C, &gsc);
+    /* Init snap context for geometry projection. */
+    sctx = ED_transform_snap_object_context_create_view3d(
+        bmain, scene, 0, region, CTX_wm_view3d(C));
+
+    /* Tag all existing strokes to avoid reprojections. */
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+          gps->flag |= GP_STROKE_TAG;
+        }
+      }
+    }
   }
 
   /* Loop all frame range. */
@@ -158,6 +183,22 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
                              frame_offset,
                              use_seams,
                              use_faces);
+
+    /* Reproject all untaged created strokes. */
+    if (project_type != GP_REPROJECT_KEEP) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+        bGPDframe *gpf = gpl->actframe;
+        if (gpf != NULL) {
+          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+            if ((gps->flag & GP_STROKE_TAG) == 0) {
+              ED_gpencil_stroke_reproject(
+                  depsgraph, &gsc, sctx, gpl, gpf, gps, project_type, false);
+              gps->flag |= GP_STROKE_TAG;
+            }
+          }
+        }
+      }
+    }
   }
 
   /* Return scene frame state and DB to original state. */
@@ -178,6 +219,22 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   }
   ob_gpencil->actcol = actcol;
 
+  /* Untag all strokes. */
+  if (project_type != GP_REPROJECT_KEEP) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+          gps->flag &= ~GP_STROKE_TAG;
+        }
+      }
+    }
+  }
+
+  /* Free memory. */
+  if (sctx != NULL) {
+    ED_transform_snap_object_context_destroy(sctx);
+  }
+
   /* notifiers */
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_OBJECT | NA_ADDED, NULL);
@@ -192,6 +249,25 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
 
 void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
 {
+  static const EnumPropertyItem reproject_type[] = {
+      {GP_REPROJECT_KEEP, "KEEP", 0, "No Reproject", ""},
+      {GP_REPROJECT_FRONT, "FRONT", 0, "Front", "Reproject the strokes using the X-Z plane"},
+      {GP_REPROJECT_SIDE, "SIDE", 0, "Side", "Reproject the strokes using the Y-Z plane"},
+      {GP_REPROJECT_TOP, "TOP", 0, "Top", "Reproject the strokes using the X-Y plane"},
+      {GP_REPROJECT_VIEW,
+       "VIEW",
+       0,
+       "View",
+       "Reproject the strokes to end up on the same plane, as if drawn from the current viewpoint "
+       "using 'Cursor' Stroke Placement"},
+      {GP_REPROJECT_CURSOR,
+       "CURSOR",
+       0,
+       "Cursor",
+       "Reproject the strokes using the orientation of 3D cursor"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   PropertyRNA *prop;
 
   /* identifiers */
@@ -240,4 +316,6 @@ void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
                  64,
                  "",
                  "Target grease pencil object name. Leave empty for new object");
+
+  RNA_def_enum(ot->srna, "project_type", reproject_type, GP_REPROJECT_VIEW, "Projection Type", "");
 }

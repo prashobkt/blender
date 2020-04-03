@@ -75,6 +75,8 @@ typedef enum eGP_ReprojectModes {
   GP_REPROJECT_SURFACE,
   /* Reprojected on 3D cursor orientation */
   GP_REPROJECT_CURSOR,
+  /* Keep equals (used in some operators) */
+  GP_REPROJECT_KEEP,
 } eGP_ReprojectModes;
 
 /* ------------- Grease-Pencil Runtime Data ---------------- */

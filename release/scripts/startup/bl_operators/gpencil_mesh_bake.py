@@ -110,6 +110,18 @@ class GPENCIL_OT_mesh_bake(Operator):
         min=1, max=300000,
         default=1,
     )
+    project_type: EnumProperty(
+        name="Reproject Type",
+        description="Type of projection",
+        items=(
+            ("KEEP", "No Reproject", ""),
+            ("FRONT", "Front", "Reproject the strokes using the X-Z plane"),
+            ("SIDE", "Side", "Reproject the strokes using the Y-Z plane"),
+            ("TOP", "Top", "Reproject the strokes using the X-Y plane"),
+            ("VIEW", "View", "Reproject the strokes to current viewpoint"),
+            ("CURSOR", "Cursor", "Reproject the strokes using the orientation of 3D cursor")
+        )
+    )
 
     @classmethod
     def poll(self, context):
@@ -129,7 +141,8 @@ class GPENCIL_OT_mesh_bake(Operator):
             faces=self.faces,
             offset=self.offset,
             target=self.target,
-            frame_target=self.frame_target
+            frame_target=self.frame_target,
+            project_type=self.project_type
         )
 
         return {'FINISHED'}
