@@ -73,8 +73,8 @@ static bool gp_bake_mesh_animation_poll(bContext *C)
   }
 
   /* Only if the current view is 3D View. */
-  ScrArea *sa = CTX_wm_area(C);
-  return (sa && sa->spacetype);
+  ScrArea *area = CTX_wm_area(C);
+  return (area && area->spacetype);
 }
 
 static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
