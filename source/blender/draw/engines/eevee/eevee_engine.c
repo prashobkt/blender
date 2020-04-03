@@ -438,6 +438,8 @@ static void eevee_render_to_image(void *vedata,
       return;
     }
 
+    EEVEE_motion_blur_step_set(ved, 0);
+
     DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
 
     RE_engine_frame_set(engine, time, 0.0f);
@@ -457,12 +459,15 @@ static void eevee_render_to_image(void *vedata,
     return;
   }
 
+  EEVEE_motion_blur_step_set(ved, 1);
+
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
 
   /* Actually do the rendering. */
   EEVEE_render_draw(vedata, engine, render_layer, rect);
 
   EEVEE_volumes_free_smoke_textures();
+  EEVEE_motion_blur_data_free(&ved->stl->effects->motion_blur);
 }
 
 static void eevee_engine_free(void)

@@ -33,6 +33,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_camera_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_screen_types.h"
 
 #include "ED_screen.h"
@@ -94,10 +95,12 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
 
-  /* Viewport support is experimental. */
-  if (!DRW_state_is_scene_render() && !U.experimental.use_viewport_motion_blur) {
+  /* Viewport not supported for now. */
+  if (!DRW_state_is_scene_render()) {
     return 0;
   }
+
+  effects->motion_blur_step = 0;
 
   if (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) {
     float ctime = DEG_get_ctime(draw_ctx->depsgraph);
@@ -159,6 +162,13 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
   return 0;
 }
 
+void EEVEE_motion_blur_step_set(EEVEE_Data *vedata, int step)
+{
+  /* This might do more things in the future. */
+  BLI_assert(step < MAX_MB_DATA_STEP);
+  vedata->stl->effects->motion_blur_step = step;
+}
+
 void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
@@ -193,6 +203,8 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
       DRW_shgroup_uniform_mat4(grp, "currViewProjectionMatrix", effects->current_world_to_ndc);
       DRW_shgroup_uniform_float_copy(grp, "deltaTimeInv", 1.0f / delta_time);
     }
+
+    EEVEE_motion_blur_data_init(&effects->motion_blur);
   }
   else {
     psl->motion_blur = NULL;
@@ -200,42 +212,31 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
   }
 }
 
-void EEVEE_motion_blur_cache_populate(EEVEE_Data *vedata,
-                                      Object *ob,
-                                      EEVEE_ObjectEngineData *oedata,
-                                      struct GPUBatch *geom)
+void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
+                                      EEVEE_Data *vedata,
+                                      Object *ob)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
   DRWShadingGroup *grp = NULL;
 
-  if ((effects->enabled_effects & EFFECT_MOTION_BLUR) && oedata) {
-    if (oedata->curr_time != effects->current_time) {
-      copy_m4_m4(oedata->prev_matrix, oedata->curr_matrix);
-      oedata->prev_time = oedata->curr_time;
-    }
-    copy_m4_m4(oedata->curr_matrix, ob->obmat);
-    oedata->curr_time = effects->current_time;
+  EEVEE_ObjectMotionData *mbdata = EEVEE_motion_blur_object_data_get(&effects->motion_blur, ob);
 
-    if (oedata->motion_mats_init == false) {
-      /* Disable motion blur if not initialized. */
-      copy_m4_m4(oedata->prev_matrix, oedata->curr_matrix);
-      oedata->prev_time = oedata->curr_time;
-      oedata->motion_mats_init = true;
-    }
+  if (mbdata) {
+    /* Store transform  */
+    copy_m4_m4(mbdata->obmat[effects->motion_blur_step], ob->obmat);
 
-    float delta_time = oedata->curr_time - oedata->prev_time;
-    if (delta_time != 0.0f) {
+    struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    /* TODO(fclem) Copy pos vbo and store it in geometry motion steps. */
+
+    if (geom && effects->motion_blur_step == MAX_MB_DATA_STEP - 1) {
       grp = DRW_shgroup_create(e_data.motion_blur_object_sh, psl->velocity_object);
-      DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", oedata->prev_matrix);
-      DRW_shgroup_uniform_mat4(grp, "currModelMatrix", oedata->curr_matrix);
-      DRW_shgroup_uniform_float_copy(grp, "deltaTimeInv", 1.0f / delta_time);
+      DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", mbdata->obmat[0]);
+      DRW_shgroup_uniform_mat4(grp, "currModelMatrix", mbdata->obmat[1]);
+
       DRW_shgroup_call(grp, geom, ob);
     }
-  }
-  else if (oedata) {
-    oedata->motion_mats_init = false;
   }
 }
 
