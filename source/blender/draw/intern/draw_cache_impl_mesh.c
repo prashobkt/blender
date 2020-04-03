@@ -29,6 +29,7 @@
 #include "BLI_bitmap.h"
 #include "BLI_buffer.h"
 #include "BLI_edgehash.h"
+#include "BLI_listbase.h"
 #include "BLI_math_bits.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
@@ -143,7 +144,7 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Mesh *me,
     GPUMaterial *gpumat = gpumat_array[i];
     if (gpumat) {
       ListBase gpu_attrs = GPU_material_attributes(gpumat);
-      for (GPUMaterialAttribute *gpu_attr = gpu_attrs.first; gpu_attr; gpu_attr = gpu_attr->next) {
+      LISTBASE_FOREACH (GPUMaterialAttribute *, gpu_attr, &gpu_attrs) {
         const char *name = gpu_attr->name;
         int type = gpu_attr->type;
         int layer = -1;

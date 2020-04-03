@@ -35,6 +35,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
+#include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -82,7 +83,7 @@
 void ED_editors_init_for_undo(Main *bmain)
 {
   wmWindowManager *wm = bmain->wm.first;
-  for (wmWindow *win = wm->windows.first; win; win = win->next) {
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     ViewLayer *view_layer = WM_window_get_active_view_layer(win);
     Base *base = BASACT(view_layer);
     if (base != NULL) {
