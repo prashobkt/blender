@@ -48,6 +48,7 @@ struct RegionView3D;
 struct ReportList;
 struct Scene;
 struct ScrArea;
+struct SnapObjectContext;
 struct ToolSettings;
 struct View3D;
 struct ViewLayer;
@@ -61,6 +62,20 @@ struct bAnimContext;
 
 struct wmKeyConfig;
 struct wmOperator;
+
+/* Reproject stroke modes. */
+typedef enum eGP_ReprojectModes {
+  /* Axis */
+  GP_REPROJECT_FRONT = 0,
+  GP_REPROJECT_SIDE,
+  GP_REPROJECT_TOP,
+  /* On same plane, parallel to view-plane. */
+  GP_REPROJECT_VIEW,
+  /* Reprojected on to the scene geometry */
+  GP_REPROJECT_SURFACE,
+  /* Reprojected on 3D cursor orientation */
+  GP_REPROJECT_CURSOR,
+} eGP_ReprojectModes;
 
 /* ------------- Grease-Pencil Runtime Data ---------------- */
 
@@ -238,6 +253,15 @@ void ED_gpencil_drawing_reference_get(const struct Scene *scene,
 void ED_gpencil_project_stroke_to_view(struct bContext *C,
                                        struct bGPDlayer *gpl,
                                        struct bGPDstroke *gps);
+
+void ED_gpencil_stroke_reproject(struct Depsgraph *depsgraph,
+                                 const struct GP_SpaceConversion *gsc,
+                                 struct SnapObjectContext *sctx,
+                                 struct bGPDlayer *gpl,
+                                 struct bGPDframe *gpf,
+                                 struct bGPDstroke *gps,
+                                 const eGP_ReprojectModes mode,
+                                 const bool keep_original);
 
 /* set sculpt cursor */
 void ED_gpencil_toggle_brush_cursor(struct bContext *C, bool enable, void *customdata);
