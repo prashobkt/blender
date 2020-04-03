@@ -303,6 +303,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  modifier_panel_buttons(C, panel);
 
   uiItemR(layout, &ptr, "cache_format", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "filepath", 0, NULL, ICON_NONE);
@@ -349,7 +350,6 @@ static void axis_mapping_panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  modifier_panel_buttons(C, panel);
 
   split = uiLayoutSplit(layout, 0.5f, false);
   uiItemL(split, IFACE_("Forward/Up Axis:"), ICON_NONE);

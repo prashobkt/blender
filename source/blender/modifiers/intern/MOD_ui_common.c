@@ -159,17 +159,15 @@ void modifier_panel_get_property_pointers(const bContext *C,
 #define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 void modifier_panel_buttons(const bContext *C, Panel *panel)
 {
-
-  uiLayout *row, *box;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
 
-  box = uiLayoutBox(layout);
-  row = uiLayoutRow(box, false);
+  row = uiLayoutRow(layout, false);
 
   Object *ob = CTX_data_active_object(C);
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
 
-  uiBlock *block = uiLayoutGetBlock(box);
+  uiBlock *block = uiLayoutGetBlock(row);
   UI_block_lock_set(
       block, BKE_object_obdata_is_libdata(ob) || ID_IS_LINKED(ob), ERROR_LIBDATA_MESSAGE);
 

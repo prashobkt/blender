@@ -359,14 +359,16 @@ static void requiredDataMask(Object *UNUSED(ob),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
+  modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "operation", 0, "", ICON_NONE);
-  uiItemR(layout, &ptr, "object", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "operation", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
 
   if (G.debug) {
