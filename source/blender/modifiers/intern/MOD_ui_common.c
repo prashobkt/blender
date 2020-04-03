@@ -39,6 +39,7 @@
 
 #include "RNA_access.h"
 
+#include "WM_api.h"
 #include "WM_types.h"
 
 #include "MOD_ui_common.h" /* Self include */
@@ -50,6 +51,77 @@
 static bool modifier_ui_poll(const bContext *UNUSED(C), PanelType *UNUSED(pt))
 {
   return true;
+}
+
+/**
+ * Move a modifier to the index it's moved to after a drag and drop.
+ */
+static void modifier_re_order(bContext *C, Panel *panel, int new_index)
+{
+  Object *ob = CTX_data_active_object(C);
+
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
+  PointerRNA props_ptr;
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_move_to_index", false);
+  WM_operator_properties_create_ptr(&props_ptr, ot);
+  RNA_string_set(&props_ptr, "modifier", md->name);
+  RNA_int_set(&props_ptr, "index", new_index);
+  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr);
+  WM_operator_properties_free(&props_ptr);
+}
+
+static void panel_set_expand_from_flag_recursive(Panel *panel, short flag, short flag_index)
+{
+  bool open = (flag & (1 << flag_index));
+  if (open) {
+    panel->flag &= ~PNL_CLOSEDY;
+  }
+  else {
+    panel->flag |= PNL_CLOSEDY;
+  }
+  LISTBASE_FOREACH (Panel *, child, &panel->children) {
+    flag_index++;
+    panel_set_expand_from_flag_recursive(child, flag, flag_index);
+  }
+}
+
+static void panel_set_expand_from_flag(const bContext *C, Panel *panel)
+{
+  BLI_assert(panel->type != NULL);
+  BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
+
+  Object *ob = CTX_data_active_object(C);
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
+  short expand_flag = md->ui_expand_flag;
+
+  panel_set_expand_from_flag_recursive(panel, expand_flag, 0);
+}
+
+static void modifier_expand_flag_set_recursive(Panel *panel, short *flag, short flag_index)
+{
+  bool open = !(panel->flag & PNL_CLOSEDY);
+  if (open) {
+    *flag |= (1 << flag_index);
+  }
+  else {
+    *flag &= ~(1 << flag_index);
+  }
+  LISTBASE_FOREACH (Panel *, child, &panel->children) {
+    flag_index++;
+    modifier_expand_flag_set_recursive(child, flag, flag_index);
+  }
+}
+
+static void modifier_expand_flag_set_from_panel(const bContext *C, Panel *panel)
+{
+  BLI_assert(panel->type != NULL);
+  BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
+
+  Object *ob = CTX_data_active_object(C);
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
+  short *expand_flag = &md->ui_expand_flag;
+
+  modifier_expand_flag_set_recursive(panel, expand_flag, 0);
 }
 
 /**
@@ -73,13 +145,15 @@ void modifier_panel_get_property_pointers(const bContext *C,
                                           PointerRNA *r_md_ptr)
 {
   Object *ob = CTX_data_active_object(C);
-  ModifierData *md = BLI_findlink(&ob->modifiers, panel->list_index);
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
 
   RNA_pointer_create(&ob->id, &RNA_Modifier, md, r_md_ptr);
 
   if (r_ob_ptr != NULL) {
     RNA_pointer_create(&ob->id, &RNA_Object, ob, r_ob_ptr);
   }
+
+  uiLayoutSetContextPointer(panel->layout, "modifier", r_md_ptr);
 }
 
 #define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
@@ -93,7 +167,7 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
   row = uiLayoutRow(box, false);
 
   Object *ob = CTX_data_active_object(C);
-  ModifierData *md = BLI_findlink(&ob->modifiers, panel->list_index);
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
 
   uiBlock *block = uiLayoutGetBlock(box);
   UI_block_lock_set(
@@ -206,7 +280,7 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
 
   ModifierData *md = ptr.data;
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
-  int index = panel->list_index;
+  int index = panel->runtime.list_index;
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
 
@@ -265,25 +339,28 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, v
   strcpy(panel_idname, MODIFIER_TYPE_PANEL_PREFIX);
   strcat(panel_idname, name);
 
-  PanelType *pt = MEM_callocN(sizeof(PanelType), panel_idname);
+  PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);
 
-  strcpy(pt->idname, panel_idname);
-  strcpy(pt->label, "");
-  strcpy(pt->context, "modifier");
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  strcpy(panel_type->idname, panel_idname);
+  strcpy(panel_type->label, "");
+  strcpy(panel_type->context, "modifier");
+  strcpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
 
-  pt->draw_header = modifier_panel_header;
-  pt->draw_header_preset = modifier_panel_header_modes;
-  pt->draw = draw;
-  pt->poll = modifier_ui_poll;
+  panel_type->draw_header = modifier_panel_header;
+  panel_type->draw_header_preset = modifier_panel_header_modes;
+  panel_type->draw = draw;
+  panel_type->poll = modifier_ui_poll;
 
   /* Give the panel the special flag that says it was built here and corresponds to a
    * modifer rather than a PanelType. */
-  pt->flag = PANELTYPE_RECREATE;
+  panel_type->flag = PANELTYPE_RECREATE;
+  panel_type->re_order = modifier_re_order;
+  panel_type->set_expand_from_flag = panel_set_expand_from_flag;
+  panel_type->set_expand_flag_from_panel = modifier_expand_flag_set_from_panel;
 
-  BLI_addtail(&region_type->paneltypes, pt);
+  BLI_addtail(&region_type->paneltypes, panel_type);
 
-  return pt;
+  return panel_type;
 }
 
 void modifier_subpanel_register(ARegionType *region_type,
@@ -299,21 +376,21 @@ void modifier_subpanel_register(ARegionType *region_type,
   strcpy(panel_idname, MODIFIER_TYPE_PANEL_PREFIX);
   strcat(panel_idname, name);
 
-  PanelType *pt = MEM_callocN(sizeof(PanelType), panel_idname);
+  PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);
 
-  strcpy(pt->idname, panel_idname);
-  strcpy(pt->label, label);
-  strcpy(pt->context, "modifier");
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  strcpy(panel_type->idname, panel_idname);
+  strcpy(panel_type->label, label);
+  strcpy(panel_type->context, "modifier");
+  strcpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
 
-  pt->draw_header = draw_header;
-  pt->draw = draw;
-  pt->poll = modifier_ui_poll;
-  pt->flag = (open) ? 0 : PNL_DEFAULT_CLOSED;
+  panel_type->draw_header = draw_header;
+  panel_type->draw = draw;
+  panel_type->poll = modifier_ui_poll;
+  panel_type->flag = (open) ? 0 : PNL_DEFAULT_CLOSED;
 
   BLI_assert(parent != NULL);
-  strcpy(pt->parent_id, parent->idname);
-  pt->parent = parent;
-  BLI_addtail(&parent->children, BLI_genericNodeN(pt));
-  BLI_addtail(&region_type->paneltypes, pt);
+  strcpy(panel_type->parent_id, parent->idname);
+  panel_type->parent = parent;
+  BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
+  BLI_addtail(&region_type->paneltypes, panel_type);
 }

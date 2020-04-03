@@ -39,9 +39,7 @@
 
 #include "BLT_translation.h"
 
-#include "DNA_modifier_types.h"
 #include "DNA_userdef_types.h"
-/* HANS-TODO: Generalize this and move re-ordering code elsewhere. */
 
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -60,8 +58,6 @@
 
 #include "GPU_immediate.h"
 #include "GPU_state.h"
-
-#include "RNA_access.h"
 
 #include "interface_intern.h"
 
@@ -239,7 +235,32 @@ static bool panels_need_realign(ScrArea *sa, ARegion *region, Panel **r_pa_anima
 
 /****************************** panels ******************************/
 
-static void panels_collapse_all(ScrArea *sa, ARegion *region, const Panel *from_pa)
+/**
+ * Call the callback to store the panel and subpanel expansion settings in the list item that
+ * corresponds to this panel.
+ *
+ * NOTE: This needs to iterate through all of the regions panels because that panel with changed
+ * expansion could have been the subpanel of a recreate panel and might not know about its
+ * corresponding list item.
+ */
+static void set_list_panel_item_expansion_flag(const bContext *C, ARegion *region)
+{
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+    PanelType *panel_type = panel->type;
+    if (panel_type == NULL) {
+      continue;
+    }
+
+    if (panel->type->flag & PANELTYPE_RECREATE) {
+      panel->type->set_expand_flag_from_panel(C, panel);
+    }
+  }
+}
+
+static void panels_collapse_all(const bContext *C,
+                                ScrArea *sa,
+                                ARegion *region,
+                                const Panel *from_pa)
 {
   const bool has_category_tabs = UI_panel_category_is_visible(region);
   const char *category = has_category_tabs ? UI_panel_category_active_get(region, false) : NULL;
@@ -261,6 +282,7 @@ static void panels_collapse_all(ScrArea *sa, ARegion *region, const Panel *from_
       }
     }
   }
+  set_list_panel_item_expansion_flag(C, region);
 }
 
 Panel *UI_panel_find_by_type(ListBase *lb, PanelType *pt)
@@ -467,16 +489,6 @@ Panel *UI_panel_add_recreate(
   panel->type = panel_type;
   BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
 
-  if (panel_type->flag & PNL_DEFAULT_CLOSED) {
-    int align = panel_aligned(sa, region);
-    if (align == BUT_VERTICAL) {
-      panel->flag |= PNL_CLOSEDY;
-    }
-    else {
-      panel->flag |= PNL_CLOSEDX;
-    }
-  }
-
   panel->ofsx = 0;
   panel->ofsy = 0;
   panel->sizex = 0;
@@ -485,7 +497,7 @@ Panel *UI_panel_add_recreate(
   panel->blocksizey = 0;
   panel->runtime_flag |= PNL_NEW_ADDED;
 
-  panel->list_index = modifier_index;
+  panel->runtime.list_index = modifier_index;
 
   /* Add the panel's children too. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
@@ -500,7 +512,7 @@ Panel *UI_panel_add_recreate(
 
 void UI_panel_set_list_index(Panel *panel, int i)
 {
-  panel->list_index = i;
+  panel->runtime.list_index = i;
 
   Panel *child = panel->children.first;
   while (child != NULL) {
@@ -1443,7 +1455,7 @@ static void check_panel_overlap(ARegion *region, Panel *panel)
 
 static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
 {
-  if (panel->type == NULL) {
+  if (panel->type == NULL || !(panel->type->flag & PANELTYPE_RECREATE)) {
     return;
   }
   char *context = panel->type->context;
@@ -1483,17 +1495,17 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
       break;
     }
   }
+  // for (int i = 0; i < list_panels_len; i++) {
+  //   MEM_freeN(&panel_sort[i].pa);
+  // }
+  // MEM_freeN(panel_sort);
 
-  /* Move this panel's list item to the corresponding index in its list. */
-  Object *ob = CTX_data_active_object(C);
-  ModifierData *md = BLI_findlink(&ob->modifiers, panel->list_index);
-  PointerRNA props_ptr;
-  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_modifier_move_to_index", false);
-  WM_operator_properties_create_ptr(&props_ptr, ot);
-  RNA_string_set(&props_ptr, "modifier", md->name);
-  RNA_int_set(&props_ptr, "index", move_to_index);
-  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr);
-  WM_operator_properties_free(&props_ptr);
+  /* Move this panel's list item to the new index in its list. */
+  if (move_to_index == panel->runtime.list_index) {
+    return;
+  }
+  BLI_assert(panel->type->re_order != NULL);
+  panel->type->re_order(C, panel, move_to_index);
 }
 
 static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
@@ -1634,6 +1646,7 @@ static void ui_panel_drag_collapse(bContext *C,
       /* force panel to close */
       if (dragcol_data->was_first_open == true) {
         pa->flag |= (is_horizontal ? PNL_CLOSEDX : PNL_CLOSEDY);
+        set_list_panel_item_expansion_flag(C, region);
       }
       /* force panel to open */
       else {
@@ -1772,7 +1785,7 @@ static void ui_handle_panel_header(
     }
     else { /* collapse */
       if (ctrl) {
-        panels_collapse_all(sa, region, block->panel);
+        panels_collapse_all(C, sa, region, block->panel);
 
         /* reset the view - we don't want to display a view without content */
         UI_view2d_offset(&region->v2d, 0.0f, 1.0f);
@@ -1807,6 +1820,8 @@ static void ui_handle_panel_header(
           ui_panel_drag_collapse_handler_add(C, true);
         }
       }
+
+      set_list_panel_item_expansion_flag(C, region);
     }
 
     if (align) {

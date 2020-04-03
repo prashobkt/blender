@@ -225,6 +225,25 @@ typedef struct PanelType {
   /* draw entirely, view changes should be handled here */
   void (*draw)(const struct bContext *C, struct Panel *pa);
 
+  /* For recreate panels corresponding to a list. */
+
+  /** Reorder function, called when drag and drop finishes. */
+  void (*re_order)(struct bContext *C, struct Panel *pa, int new_index);
+  /**
+   * Set the panel and subpanel's expansion state from the corresponding expansion flag. Called
+   * on draw updates.
+   * NOTE: Subpanels are indexed in depth first order, the visual order you would see if all panels
+   * were expanded.
+   */
+  void (*set_expand_from_flag)(const struct bContext *C, struct Panel *pa);
+  /**
+   * Set the expand bitfield from the closed / open state of this panel and its subpanels. Called
+   * when the expansion state of the panel changes by user input.
+   * NOTE: Subpanels are indexed in depth first order, the visual order you would see if all panels
+   * were expanded.
+   */
+  void (*set_expand_flag_from_panel)(const struct bContext *C, struct Panel *pa);
+
   /* sub panels */
   struct PanelType *parent;
   ListBase children;

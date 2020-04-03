@@ -6565,12 +6565,16 @@ void RNA_def_modifier(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_MESH_DATA, 0);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Expanded);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
-  RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
+  /* HANS-TODO: Add expansion bitfield to RNA. Should have dynamic length too.. */
+  // prop = RNA_def_boolean_array(srna,
+  //                              "panel_expansion",
+  //                              16,
+  //                              false,
+  //                              "Show Expanded",
+  //                              "Whether the modifiers panels should be shown expanded in the
+  //                              UI");
+  // RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  // RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 
   prop = RNA_def_property(srna, "use_apply_on_spline", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_ApplyOnSpline);

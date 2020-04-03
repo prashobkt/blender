@@ -1897,15 +1897,16 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
         modifiers_changed = true;
         break;
       }
-
       if (panel_type_from_modifier_type(region, md->type) != panel->type) {
         /* The types of the corresponding panel and modifier don't match. */
         modifiers_changed = true;
         break;
       }
 
+      /* Set the list index of the panel anyway, two modifiers of the same type might have
+       * switched. */
       UI_panel_set_list_index(panel, i);
-      panel->list_index = i;
+      panel->runtime.list_index = i;
       md = md->next;
       i++;
     }
@@ -1928,12 +1929,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
         BLI_assert(panel_type != NULL);
 
         Panel *new_panel = UI_panel_add_recreate(sa, region, &region->panels, panel_type, i);
-        if (md->mode & eModifierMode_Expanded) {
-          new_panel->flag |= PNL_CLOSEDY;
-        }
-        else {
-          new_panel->flag &= ~PNL_CLOSEDY;
-        }
+        new_panel->type->set_expand_from_flag(C, new_panel);
       }
     }
   }

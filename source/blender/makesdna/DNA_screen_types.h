@@ -132,7 +132,9 @@ typedef struct ScrAreaMap {
 typedef struct Panel_Runtime {
   /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
   int region_ofsx;
-  char _pad[4];
+
+  /* For recreate panels: Index of the list item the panel corresponds to. */
+  int list_index;
 } Panel_Runtime;
 
 /** The part from uiBlock that needs saved in file. */
@@ -163,10 +165,6 @@ typedef struct Panel {
   int sortorder;
   /** Runtime for panel manipulation. */
   void *activedata;
-  /* For recreate type panels to store which instance of their panel type creator's object they
-   * correspond to. */
-  int list_index;
-  char _pad1[4];
   /** Sub panels. */
   ListBase children;
 
