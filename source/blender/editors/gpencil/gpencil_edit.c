@@ -3510,7 +3510,7 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
 
   GP_SpaceConversion gsc = {NULL};
   eGP_ReprojectModes mode = RNA_enum_get(op->ptr, "type");
-
+  bool keep_original = RNA_boolean_get(op->ptr, "keep_original");
   float origin[3];
 
   /* init space conversion stuff */
@@ -3520,6 +3520,7 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
   /* init snap context for geometry projection */
   sctx = ED_transform_snap_object_context_create_view3d(bmain, scene, 0, region, CTX_wm_view3d(C));
 
+  /* Get a list of strokes to reproject. */
   /* Go through each editable + selected stroke, adjusting each of its points one by one... */
   GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
     if (gps->flag & GP_STROKE_SELECT) {
@@ -3530,11 +3531,24 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
         CFRA = gpf_->framenum;
         BKE_scene_graph_update_for_newframe(depsgraph, bmain);
       }
-
       bGPDspoint *pt;
       int i;
+
+      /* If keep original, do a copy. */
+      bGPDstroke *gps_active = gps;
+      /* if duplicate, deselect all points. */
+      if (keep_original) {
+        gps_active = BKE_gpencil_stroke_duplicate(gps, true);
+        gps_active->flag &= ~GP_STROKE_SELECT;
+        for (i = 0, pt = gps_active->points; i < gps_active->totpoints; i++, pt++) {
+          pt->flag &= ~GP_SPOINT_SELECT;
+        }
+        /* Add to frame. */
+        BLI_addtail(&gpf_->strokes, gps_active);
+      }
+
       /* Adjust each point */
-      for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+      for (i = 0, pt = gps_active->points; i < gps_active->totpoints; i++, pt++) {
         float xy[2];
 
         /* 3D to Screen-space */
@@ -3544,7 +3558,7 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
 
         bGPDspoint pt2;
         gp_point_to_parent_space(pt, gpstroke_iter.diff_mat, &pt2);
-        gp_point_to_xy_fl(&gsc, gps, &pt2, &xy[0], &xy[1]);
+        gp_point_to_xy_fl(&gsc, gps_active, &pt2, &xy[0], &xy[1]);
 
         /* Project stroke in one axis */
         if (ELEM(mode,
@@ -3693,6 +3707,13 @@ void GPENCIL_OT_reproject(wmOperatorType *ot)
   /* properties */
   ot->prop = RNA_def_enum(
       ot->srna, "type", reproject_type, GP_REPROJECT_VIEW, "Projection Type", "");
+
+  RNA_def_boolean(
+      ot->srna,
+      "keep_original",
+      0,
+      "Keep Original",
+      "Keep original strokes and create a copy before reprojecting instead of reproject them");
 }
 
 static int gp_recalc_geometry_exec(bContext *C, wmOperator *UNUSED(op))
