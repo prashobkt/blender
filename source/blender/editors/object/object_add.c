@@ -2726,7 +2726,7 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                          0.01f,
                          0.0,
                          OBJECT_ADD_SIZE_MAXF,
-                         "Offset",
+                         "Stroke Offset",
                          "Offset strokes from fill",
                          0.0,
                          100.00);
