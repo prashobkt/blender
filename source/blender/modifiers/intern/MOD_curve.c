@@ -171,16 +171,16 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "object", 0, IFACE_("Curve Object"), ICON_NONE);
+  uiItemR(layout, &ptr, "deform_axis", 0, NULL, ICON_NONE);
+
   row = uiLayoutRow(layout, true);
   uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-
-  uiItemL(layout, IFACE_("Deformation Axis:"), ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "deform_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }

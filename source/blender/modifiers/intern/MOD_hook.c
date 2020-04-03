@@ -401,7 +401,7 @@ static void deformVertsEM(struct ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -411,20 +411,18 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA hook_object_ptr = RNA_pointer_get(&ptr, "object");
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Object:"), ICON_NONE);
-  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "object", 0, NULL, ICON_NONE);
   if (!RNA_pointer_is_null(&hook_object_ptr) &&
       RNA_enum_get(&hook_object_ptr, "type") == OB_ARMATURE) {
-    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
     PointerRNA hook_object_data_ptr = RNA_pointer_get(&hook_object_ptr, "data");
-    uiItemPointerR(col, &ptr, "subtarget", &hook_object_data_ptr, "bones", "", ICON_NONE);
+    uiItemPointerR(col, &ptr, "subtarget", &hook_object_data_ptr, "bones", "Bone", ICON_NONE);
   }
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
+  col = uiLayoutColumn(layout, false);
   row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
@@ -451,6 +449,8 @@ static void falloff_panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
   bool use_falloff = RNA_enum_get(&ptr, "falloff_type") != eWarp_Falloff_None;
+
+  uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "falloff_type", 0, NULL, ICON_NONE);
 

@@ -418,7 +418,7 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row, *col;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
@@ -426,51 +426,48 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
   PointerRNA texture_ptr = RNA_pointer_get(&ptr, "texture");
-  bool has_texture = RNA_pointer_is_null(&texture_ptr);
+  bool has_texture = !RNA_pointer_is_null(&texture_ptr);
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  uiItemL(layout, IFACE_("Texture:"), ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
   uiTemplateID(layout, C, &ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Direction:"), ICON_NONE);
-  uiItemR(col, &ptr, "direction", 0, "", ICON_NONE);
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, has_texture);
+  uiItemR(col, &ptr, "texture_coords", 0, 0, ICON_NONE);
+  int texture_coords = RNA_enum_get(&ptr, "texture_coords");
+  if (texture_coords == MOD_DISP_MAP_OBJECT) {
+    uiItemR(col, &ptr, "texture_coords_object", 0, NULL, ICON_NONE);
+  }
+  else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
+    uiItemR(col, &ptr, "uv_layer", 0, NULL, ICON_NONE);
+  }
+
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "direction", 0, 0, ICON_NONE);
   if (ELEM(RNA_enum_get(&ptr, "direction"),
            MOD_DISP_DIR_X,
            MOD_DISP_DIR_Y,
            MOD_DISP_DIR_Z,
            MOD_DISP_DIR_RGB_XYZ)) {
-    uiItemL(col, IFACE_("Space:"), ICON_NONE);
-    uiItemR(col, &ptr, "space", 0, "", ICON_NONE);
-  }
-
-  col = uiLayoutColumn(layout, true);
-  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-
-  col = uiLayoutColumn(split, false);
-  uiLayoutSetActive(col, has_texture);
-  uiItemL(col, IFACE_("Texture Coordinates:"), ICON_NONE);
-  uiItemR(col, &ptr, "texture_coords", 0, "", ICON_NONE);
-  int texture_coords = RNA_enum_get(&ptr, "texture_coords");
-  if (texture_coords == MOD_DISP_MAP_OBJECT) {
-    uiItemL(col, IFACE_("Object:"), ICON_NONE);
-    uiItemR(col, &ptr, "texture_coords_object", 0, "", ICON_NONE);
-  }
-  else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
-    uiItemL(col, IFACE_("UV Map:"), ICON_NONE);
-    uiItemR(col, &ptr, "uv_layer", 0, "", ICON_NONE);
+    uiItemR(col, &ptr, "space", 0, NULL, ICON_NONE);
   }
 
   uiItemS(layout);
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "mid_level", 0, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "strength", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "strength", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "mid_level", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", 0, ICON_NONE);
+  sub = uiLayoutColumn(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
   modifier_panel_end(layout, &ptr);
 }

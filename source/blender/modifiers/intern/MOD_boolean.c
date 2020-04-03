@@ -361,23 +361,18 @@ static void panel_draw(const bContext *C, Panel *panel)
 {
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *col, *split;
   uiLayout *layout = panel->layout;
 
-  split = uiLayoutSplit(layout, 0.5f, false);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Operation:"), ICON_NONE);
-  uiItemR(col, &ptr, "operation", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "operation", 0, 0, ICON_NONE);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Object:"), ICON_NONE);
-  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "object", 0, 0, ICON_NONE);
 
   uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
 
   if (G.debug) {
-    uiItemR(col, &ptr, "debug_options", 0, "", ICON_NONE);
+    uiItemR(layout, &ptr, "debug_options", 0, "", ICON_NONE);
   }
 
   modifier_panel_end(layout, &ptr);
