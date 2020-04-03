@@ -30,9 +30,8 @@ using FN::CPPType;
 #define COLLISION_MIN_RADIUS 0.001f     // TODO check if this is needed
 #define COLLISION_MIN_DISTANCE 0.0001f  // TODO check if this is needed
 #define COLLISION_ZERO 0.00001f
-static float nr_signed_distance_to_plane(float3 &p,
-                                         std::array<float3, 3> &cur_tri_points,
-                                         float3 &nor)
+static float nr_signed_distance_to_plane(
+    float3 &p, std::array<float3, 3> &cur_tri_points, float3 &nor, float radius, int8_t &inv_nor)
 {
   float3 p0, e1, e2;
   float d;
@@ -46,7 +45,24 @@ static float nr_signed_distance_to_plane(float3 &p,
 
   d = dot_v3v3(p0, nor);
 
-  return d;
+  if (inv_nor == -1) {
+    if (d < 0.f) {
+      inv_nor = 1;
+    }
+    else {
+      inv_nor = 0;
+    }
+  }
+
+  if (inv_nor == 1) {
+    negate_v3(nor);
+    d = -d;
+  }
+
+  // We are now in practise moving the math plane "up" along the normal by the particle radius.
+  // This means that we are now trying to find the time where the particle first touches the plane,
+  // not where it intersects.
+  return d - radius;
 }
 
 static void collision_interpolate_element(std::array<std::pair<float3, float3>, 3> &tri_points,
@@ -62,17 +78,22 @@ static void collision_interpolate_element(std::array<std::pair<float3, float3>, 
 static float collision_newton_rhapson(std::pair<float3, float3> &particle_points,
                                       std::array<std::pair<float3, float3>, 3> &tri_points,
                                       float radius,
-                                      float3 &coll_normal)
+                                      float3 &coll_normal,
+                                      float3 &hit_bary_weights)
 {
   std::array<float3, 3> cur_tri_points;
   float t0, t1, dt_init, d0, d1, dd;
   float3 p;
 
+  // Used to keep track of if we should invert the plane normal.
+  int8_t invert_tri_normal = -1;
+
   dt_init = 0.001f;
   /* start from the beginning */
   t0 = 0.f;
   collision_interpolate_element(tri_points, cur_tri_points, t0);
-  d0 = nr_signed_distance_to_plane(particle_points.first, cur_tri_points, coll_normal);
+  d0 = nr_signed_distance_to_plane(
+      particle_points.first, cur_tri_points, coll_normal, radius, invert_tri_normal);
   t1 = dt_init;
   d1 = 0.f;
 
@@ -81,17 +102,12 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     collision_interpolate_element(tri_points, cur_tri_points, t1);
     p = float3::interpolate(particle_points.first, particle_points.second, t1);
 
-    d1 = nr_signed_distance_to_plane(p, cur_tri_points, coll_normal);
-
-    // TODO add radius check
-    // if (std::signbit(d0) != std::signbit(d1)) {
-    // XXX Just a test return for now
-    //  return 1.0f;
-    //}
+    d1 = nr_signed_distance_to_plane(p, cur_tri_points, coll_normal, radius, invert_tri_normal);
 
     /* particle already inside face, so report collision */
-    if (iter == 0 && (abs(d0) - radius) <= COLLISION_ZERO) {
+    if (iter == 0 && d0 < 0.f && d0 > -radius) {
       p = particle_points.first;
+      // TODO need to check if inside triangle here too
       // pce->inside = 1;
       return 0.f;
     }
@@ -104,7 +120,8 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       if (iter == 0) {
         t0 = 1.f;
         collision_interpolate_element(tri_points, cur_tri_points, t0);
-        d0 = nr_signed_distance_to_plane(particle_points.second, cur_tri_points, coll_normal);
+        d0 = nr_signed_distance_to_plane(
+            particle_points.second, cur_tri_points, coll_normal, radius, invert_tri_normal);
         t1 = 1.0f - dt_init;
         d1 = 0.f;
         continue;
@@ -126,7 +143,8 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     if (iter == 0 && t1 < 0.f) {
       t0 = 1.f;
       collision_interpolate_element(tri_points, cur_tri_points, t0);
-      d0 = nr_signed_distance_to_plane(particle_points.second, cur_tri_points, coll_normal);
+      d0 = nr_signed_distance_to_plane(
+          particle_points.second, cur_tri_points, coll_normal, radius, invert_tri_normal);
       t1 = 1.0f - dt_init;
       d1 = 0.f;
       continue;
@@ -135,13 +153,23 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       return -1.f;
     }
 
-    if ((abs(d1) - radius) <= COLLISION_ZERO) {
+    if (abs(d1) <= COLLISION_ZERO) {
       if (t1 >= -COLLISION_ZERO && t1 <= 1.f) {
         /* Do we actually hit the triangle or did we only hit the math plane? */
         float3 closest_point;
         closest_on_tri_to_point_v3(
             closest_point, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
-        if (float3::distance(closest_point, p) - radius <= COLLISION_ZERO) {
+        if (float3::distance(closest_point, p) - radius <= 2.0f * COLLISION_ZERO) {
+          // We use "2.0f * COLLISION_ZERO" here because our applied radius offset to the math
+          // plane.
+          // This means that the distance from the actual plane can be: radius +/- COLLISION_ZERO.
+
+          // Save barycentric weight for velocity calculation later
+          interp_weights_tri_v3(hit_bary_weights,
+                                cur_tri_points[0],
+                                cur_tri_points[1],
+                                cur_tri_points[2],
+                                closest_point);
           CLAMP(t1, 0.f, 1.f);
           return t1;
         }
@@ -160,6 +188,9 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
 typedef struct RayCastData {
   std::pair<float3, float3> particle_points;
   CollisionModifierData *collmd;
+  float3 hit_vel;
+  float duration;
+  float start_time;
 } RayCastData;
 
 BLI_NOINLINE static void raycast_callback(void *userdata,
@@ -179,13 +210,10 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
   v1 = verts[vt->tri[1]].co;
   v2 = verts[vt->tri[2]].co;
 
-  // TODO implement triangle collision width
-  // use width + vertex normals to make the triangle thick
-
   if (collmd->is_static) {
 
     if (ray->radius == 0.0f) {
-      // TODO particles probably need to always have somekind or radius, so this can probably be
+      // TODO particles probably need to always have somekind of radius, so this can probably be
       // removed after testing is done.
       dist = bvhtree_ray_tri_intersection(ray, hit->dist, v0, v1, v2);
     }
@@ -211,30 +239,44 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
 
   std::array<std::pair<float3, float3>, 3> tri_points;
   float3 coll_normal;
+  float3 hit_bary_weights;
 
   tri_points[0] = std::pair<float3, float3>(v0, v0_new);
   tri_points[1] = std::pair<float3, float3>(v1, v1_new);
   tri_points[2] = std::pair<float3, float3>(v2, v2_new);
 
+  if (rd->start_time != 0.0f) {
+    // Adjust the triangle start positions
+    std::array<float3, 3> new_start_points;
+    collision_interpolate_element(tri_points, new_start_points, rd->start_time);
+    tri_points[0].first = new_start_points[0];
+    tri_points[1].first = new_start_points[1];
+    tri_points[2].first = new_start_points[2];
+  }
+
   // Check if we get hit by the moving object
   float coll_time = collision_newton_rhapson(
-      rd->particle_points, tri_points, ray->radius, coll_normal);
+      rd->particle_points, tri_points, ray->radius, coll_normal, hit_bary_weights);
 
   dist = float3::distance(rd->particle_points.first, rd->particle_points.second) * coll_time;
 
   if (coll_time >= 0.f) {
     if (hit->index != -1 && dist >= 0.0f && dist >= hit->dist) {
       /* We have already collided with and other object at closer distance */
-      // TODO we should actually not just flat out look at the distance here...
-      // we should take the collision with the smallest coll_time for this to be correct
       return;
     }
     // We have a collision!
     hit->index = index;
     hit->dist = dist;
-    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, hit->dist);
-    zero_v3(hit->co);
+    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, hit->dist - ray->radius);
+    // zero_v3(hit->co);
     copy_v3_v3(hit->no, coll_normal);
+
+    // Calculate the velocity of the point we hit
+    for (int i = 0; i < 3; i++) {
+      rd->hit_vel += (tri_points[i].second - tri_points[i].first) * hit_bary_weights[i] /
+                     rd->duration;
+    }
   }
 }
 
@@ -258,6 +300,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
   MutableArrayRef<float3> velocities = attributes.get<float3>("Velocity");
   MutableArrayRef<float3> positions = attributes.get<float3>("Position");
+  MutableArrayRef<bool> dead_state = attributes.get<bool>("Dead");
 
   // system_info.collision_objects
   // simulation_state.m_depsgraph;
@@ -272,14 +315,18 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
     // Update the velocities here so that the potential distance traveled is correct in the
     // collision check.
     velocities[pindex] += duration * forces[pindex] / mass;
+    // TODO check if there is issues with moving colliders and particles with 0 velocity
 
     // Check if any 'collobjs' collide with the particles here
     if (colliders.size() != 0) {
       do {
-        collided = false;
         BVHTreeRayHit best_hit;
+        float3 best_hit_vel;
         float max_move = (duration * velocities[pindex]).length();
+
         best_hit.dist = FLT_MAX;
+        collided = false;
+
         for (ColliderCache *col : colliders) {
           CollisionModifierData *collmd = col->collmd;
 
@@ -302,6 +349,12 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           rd.particle_points.first = start;
           rd.particle_points.second = start + duration * velocities[pindex];
 
+          zero_v3(rd.hit_vel);
+          rd.duration = duration;
+          rd.start_time = 1.0 - duration / remaining_durations[pindex];
+
+          // TODO perhaps have two callbacks and check for static colider here instead?
+          // So, if statis use callback A otherwise B
           BLI_bvhtree_ray_cast_ex(collmd->bvhtree,
                                   start,
                                   dir,
@@ -317,6 +370,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           }
 
           best_hit = hit;
+          best_hit_vel = rd.hit_vel;
           collided = true;
         }
         if (collided) {
@@ -324,16 +378,33 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           positions[pindex] = best_hit.co;
           //
           // dot normal from vt with hit.co - start to see which way to deflect the particle
-          velocities[pindex] *= -0.5f;
+          float normal_dot = dot_v3v3(best_hit.no, velocities[pindex]);
+
+          if (normal_dot < 0.0f) {
+            // The particle was moving into the collission plane
+            float3 normal = best_hit.no;
+            float3 deflect_vel = velocities[pindex] - 2 * normal_dot * normal;
+            velocities[pindex] = deflect_vel;
+          }
+
+          if (!is_zero_v3(best_hit_vel)) {
+            // XXX Put inside "is_zero" if statement for debugging
+            dead_state[pindex] = true;
+            velocities[pindex] += best_hit_vel;
+          }
           // Calculate the remaining duration
           duration -= duration * (1.0f - best_hit.dist / max_move);
           coll_num++;
         }
       } while (collided && coll_num < 10);
     }
-    positions[pindex] += duration * velocities[pindex];
+    float3 move_vec = duration * velocities[pindex];
+    if (move_vec.length() > 0.001f) {
+      // Do not move the particle very small amounts to avoid vibrating
+      positions[pindex] += move_vec;
+    }
   }
-}  // namespace BParticles
+}
 
 BLI_NOINLINE static void delete_tagged_particles_and_reorder(ParticleSet &particles)
 {
