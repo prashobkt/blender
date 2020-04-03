@@ -518,8 +518,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
-  int spectrum = RNA_enum_get(&ptr, "spectrum");
-
   uiItemR(layout, &ptr, "geometry_mode", 0, NULL, ICON_NONE);
   if (RNA_enum_get(&ptr, "geometry_mode") == MOD_OCEAN_GEOM_GENERATE) {
     row = uiLayoutRow(layout, false);
@@ -539,15 +537,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "resolution", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "size", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "spatial_size", 0, NULL, ICON_NONE);
-
-  uiItemS(layout);
-
-  /* Spectrum settings. */
-  uiItemR(layout, &ptr, "spectrum", 0, NULL, ICON_NONE);
-  if (ELEM(spectrum, MOD_OCEAN_SPECTRUM_TEXEL_MARSEN_ARSLOE, MOD_OCEAN_SPECTRUM_JONSWAP)) {
-    uiItemR(layout, &ptr, "sharpen_peak_jonswap", 0, NULL, ICON_NONE);
-    uiItemR(layout, &ptr, "fetch_jonswap", 0, NULL, ICON_NONE);
-  }
 
   uiItemR(layout, &ptr, "use_normals", 0, NULL, ICON_NONE);
 
@@ -613,6 +602,22 @@ static void foam_panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "foam_layer_name", 0, "", ICON_NONE);
 }
 
+static void spectrum_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  int spectrum = RNA_enum_get(&ptr, "spectrum");
+
+  uiItemR(layout, &ptr, "spectrum", 0, NULL, ICON_NONE);
+  if (ELEM(spectrum, MOD_OCEAN_SPECTRUM_TEXEL_MARSEN_ARSLOE, MOD_OCEAN_SPECTRUM_JONSWAP)) {
+    uiItemR(layout, &ptr, "sharpen_peak_jonswap", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "fetch_jonswap", 0, NULL, ICON_NONE);
+  }
+}
+
 static void bake_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *col;
@@ -658,9 +663,11 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = modifier_panel_register(region_type, "Ocean", panel_draw);
 #ifdef WITH_OCEANSIM
   modifier_subpanel_register(
-      region_type, "ocean_waves", "Waves", NULL, waves_panel_draw, true, panel_type);
+      region_type, "ocean_waves", "Waves", NULL, waves_panel_draw, false, panel_type);
   modifier_subpanel_register(
       region_type, "ocean_foam", "", foam_panel_draw_header, foam_panel_draw, false, panel_type);
+  modifier_subpanel_register(
+      region_type, "ocean_spectrum", "Spectrum", NULL, spectrum_panel_draw, false, panel_type);
   modifier_subpanel_register(
       region_type, "ocean_bake", "Bake", NULL, bake_panel_draw, false, panel_type);
 #endif /* WITH_OCEANSIM */
