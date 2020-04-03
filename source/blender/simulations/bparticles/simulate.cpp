@@ -30,39 +30,13 @@ using FN::CPPType;
 #define COLLISION_MIN_RADIUS 0.001f     // TODO check if this is needed
 #define COLLISION_MIN_DISTANCE 0.0001f  // TODO check if this is needed
 #define COLLISION_ZERO 0.00001f
-static float nr_signed_distance_to_plane(
-    float3 &p, std::array<float3, 3> &cur_tri_points, float3 &nor, float radius, int8_t &inv_nor)
+static float distance_to_tri(float3 &p, std::array<float3, 3> &cur_tri_points, float radius)
 {
-  float3 p0, e1, e2;
-  float d;
+  float3 closest_point;
+  closest_on_tri_to_point_v3(
+      closest_point, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
 
-  sub_v3_v3v3(e1, cur_tri_points[1], cur_tri_points[0]);
-  sub_v3_v3v3(e2, cur_tri_points[2], cur_tri_points[0]);
-  sub_v3_v3v3(p0, p, cur_tri_points[0]);
-
-  cross_v3_v3v3(nor, e1, e2);
-  normalize_v3(nor);
-
-  d = dot_v3v3(p0, nor);
-
-  if (inv_nor == -1) {
-    if (d < 0.f) {
-      inv_nor = 1;
-    }
-    else {
-      inv_nor = 0;
-    }
-  }
-
-  if (inv_nor == 1) {
-    negate_v3(nor);
-    d = -d;
-  }
-
-  // We are now in practise moving the math plane "up" along the normal by the particle radius.
-  // This means that we are now trying to find the time where the particle first touches the plane,
-  // not where it intersects.
-  return d - radius;
+  return float3::distance(closest_point, p) - radius;
 }
 
 static void collision_interpolate_element(std::array<std::pair<float3, float3>, 3> &tri_points,
@@ -85,15 +59,11 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
   float t0, t1, dt_init, d0, d1, dd;
   float3 p;
 
-  // Used to keep track of if we should invert the plane normal.
-  int8_t invert_tri_normal = -1;
-
   dt_init = 0.001f;
   /* start from the beginning */
   t0 = 0.f;
   collision_interpolate_element(tri_points, cur_tri_points, t0);
-  d0 = nr_signed_distance_to_plane(
-      particle_points.first, cur_tri_points, coll_normal, radius, invert_tri_normal);
+  d0 = distance_to_tri(particle_points.first, cur_tri_points, radius);
   t1 = dt_init;
   d1 = 0.f;
 
@@ -102,13 +72,16 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     collision_interpolate_element(tri_points, cur_tri_points, t1);
     p = float3::interpolate(particle_points.first, particle_points.second, t1);
 
-    d1 = nr_signed_distance_to_plane(p, cur_tri_points, coll_normal, radius, invert_tri_normal);
+    d1 = distance_to_tri(p, cur_tri_points, radius);
 
     /* particle already inside face, so report collision */
-    if (iter == 0 && d0 < 0.f && d0 > -radius) {
+    if (iter == 0 && d0 <= COLLISION_ZERO) {
       p = particle_points.first;
-      // TODO need to check if inside triangle here too
-      // pce->inside = 1;
+      // Save barycentric weight for velocity calculation later
+      interp_weights_tri_v3(
+          hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
+
+      normal_tri_v3(coll_normal, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
       return 0.f;
     }
 
@@ -120,8 +93,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       if (iter == 0) {
         t0 = 1.f;
         collision_interpolate_element(tri_points, cur_tri_points, t0);
-        d0 = nr_signed_distance_to_plane(
-            particle_points.second, cur_tri_points, coll_normal, radius, invert_tri_normal);
+        d0 = distance_to_tri(particle_points.second, cur_tri_points, radius);
         t1 = 1.0f - dt_init;
         d1 = 0.f;
         continue;
@@ -143,8 +115,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     if (iter == 0 && t1 < 0.f) {
       t0 = 1.f;
       collision_interpolate_element(tri_points, cur_tri_points, t0);
-      d0 = nr_signed_distance_to_plane(
-          particle_points.second, cur_tri_points, coll_normal, radius, invert_tri_normal);
+      d0 = distance_to_tri(particle_points.second, cur_tri_points, radius);
       t1 = 1.0f - dt_init;
       d1 = 0.f;
       continue;
@@ -155,27 +126,14 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
 
     if (abs(d1) <= COLLISION_ZERO) {
       if (t1 >= -COLLISION_ZERO && t1 <= 1.f) {
-        /* Do we actually hit the triangle or did we only hit the math plane? */
-        float3 closest_point;
-        closest_on_tri_to_point_v3(
-            closest_point, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
-        if (float3::distance(closest_point, p) - radius <= 2.0f * COLLISION_ZERO) {
-          // We use "2.0f * COLLISION_ZERO" here because our applied radius offset to the math
-          // plane.
-          // This means that the distance from the actual plane can be: radius +/- COLLISION_ZERO.
+        // Save barycentric weight for velocity calculation later
+        interp_weights_tri_v3(
+            hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
 
-          // Save barycentric weight for velocity calculation later
-          interp_weights_tri_v3(hit_bary_weights,
-                                cur_tri_points[0],
-                                cur_tri_points[1],
-                                cur_tri_points[2],
-                                closest_point);
-          CLAMP(t1, 0.f, 1.f);
-          return t1;
-        }
-        else {
-          return -1.f;
-        }
+        normal_tri_v3(coll_normal, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
+
+        CLAMP(t1, 0.f, 1.f);
+        return t1;
       }
       else {
         return -1.f;
@@ -268,7 +226,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     // We have a collision!
     hit->index = index;
     hit->dist = dist;
-    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, hit->dist - ray->radius);
+    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
     // zero_v3(hit->co);
     copy_v3_v3(hit->no, coll_normal);
 
@@ -389,8 +347,8 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
           if (!is_zero_v3(best_hit_vel)) {
             // XXX Put inside "is_zero" if statement for debugging
-            dead_state[pindex] = true;
-            velocities[pindex] += best_hit_vel;
+            // dead_state[pindex] = true;
+            velocities[pindex] = best_hit_vel;
           }
           // Calculate the remaining duration
           duration -= duration * (1.0f - best_hit.dist / max_move);
