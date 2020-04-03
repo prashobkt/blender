@@ -2671,11 +2671,11 @@ static void convert_ui(bContext *C, wmOperator *op)
   uiItemR(layout, &ptr, "keep_original", 0, NULL, ICON_NONE);
 
   if (RNA_enum_get(&ptr, "target") == OB_GPENCIL) {
-    uiItemR(layout, &ptr, "angle", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "angle", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
-    uiItemR(layout, &ptr, "faces", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "seams", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "faces", 0, NULL, ICON_NONE);
   }
 }
 
