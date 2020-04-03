@@ -70,16 +70,6 @@ class GPENCIL_OT_mesh_bake(Operator):
         min=1, max=100,
         default=1,
     )
-    seams: BoolProperty(
-        name="Only Seam Edges",
-        description="Convert only seam edges",
-        default=False,
-    )
-    faces: BoolProperty(
-        name="Export Faces",
-        description="Export faces as filled strokes",
-        default=True,
-    )
     angle: FloatProperty(
         name="Threshold Angle",
         description="Threshold to determine ends of the strokes",
@@ -99,16 +89,26 @@ class GPENCIL_OT_mesh_bake(Operator):
         subtype='DISTANCE',
         unit='LENGTH',
     )
+    seams: BoolProperty(
+        name="Only Seam Edges",
+        description="Convert only seam edges",
+        default=False,
+    )
+    faces: BoolProperty(
+        name="Export Faces",
+        description="Export faces as filled strokes",
+        default=True,
+    )
     target: EnumProperty(
         name="Target Object",
         description="Grease Pencil Object",
         items=my_objlist_callback
         )
-    frame_offset: IntProperty(
-        name="Frame Offset",
-        description="Number of frames to offset in target object",
-        min=-100, max=100,
-        default=0,
+    frame_target: IntProperty(
+        name="Target Frame",
+        description="Destination frame for the baked animation",
+        min=1, max=300000,
+        default=1,
     )
 
     @classmethod
@@ -129,7 +129,7 @@ class GPENCIL_OT_mesh_bake(Operator):
             faces=self.faces,
             offset=self.offset,
             target=self.target,
-            frame_offset=self.frame_offset
+            frame_target=self.frame_target
         )
 
         return {'FINISHED'}
@@ -138,6 +138,7 @@ class GPENCIL_OT_mesh_bake(Operator):
         scene = context.scene
         self.frame_start = scene.frame_start
         self.frame_end = scene.frame_end
+        self.frame_target = scene.frame_start
 
         wm = context.window_manager
         return wm.invoke_props_dialog(self)

@@ -2215,6 +2215,7 @@ static void gpencil_generate_edgeloops(Object *ob,
  * \param thickness: Thickness of the strokes.
  * \param offset: Offset along the normals.
  * \param matrix: Transformation matrix.
+ * \param frame_offset: Destination frame number offset.
  * \param use_seams: Only export seam edges.
  * \param use_faces: Export faces as filled strokes.
  */

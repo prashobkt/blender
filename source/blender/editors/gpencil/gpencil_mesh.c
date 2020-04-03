@@ -113,7 +113,7 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   const bool use_seams = RNA_boolean_get(op->ptr, "seams");
   const bool use_faces = RNA_boolean_get(op->ptr, "faces");
   const float offset = RNA_float_get(op->ptr, "offset");
-  const int frame_offset = RNA_int_get(op->ptr, "frame_offset");
+  const int frame_offset = RNA_int_get(op->ptr, "frame_target") - frame_start;
   char target[64];
   RNA_string_get(op->ptr, "target", target);
 
@@ -233,7 +233,7 @@ void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "faces", 1, "Export Faces", "Export faces as filled strokes");
   RNA_def_float_distance(
       ot->srna, "offset", 0.001f, 0.0, 100.0, "Offset", "Offset strokes from fill", 0.0, 100.00);
-  RNA_def_int(ot->srna, "frame_offset", 0, -1000, 1000, "Frame Offset", "", -1000, 1000);
+  RNA_def_int(ot->srna, "frame_target", 1, 1, 100000, "Frame Target", "", 1, 100000);
   RNA_def_string(ot->srna,
                  "target",
                  "Target",
