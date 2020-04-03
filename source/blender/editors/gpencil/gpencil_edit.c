@@ -3489,19 +3489,18 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ARegion *region = CTX_wm_region(C);
-  SnapObjectContext *sctx = NULL;
   int oldframe = (int)DEG_get_ctime(depsgraph);
-
-  GP_SpaceConversion gsc = {NULL};
   const eGP_ReprojectModes mode = RNA_enum_get(op->ptr, "type");
   const bool keep_original = RNA_boolean_get(op->ptr, "keep_original");
 
-  /* init space conversion stuff */
+  /* Init space conversion stuff. */
+  GP_SpaceConversion gsc = {NULL};
+  SnapObjectContext *sctx = NULL;
   gp_point_conversion_init(C, &gsc);
+  /* Init snap context for geometry projection. */
+  sctx = ED_transform_snap_object_context_create_view3d(bmain, scene, 0, region, CTX_wm_view3d(C));
 
   int cfra_prv = INT_MIN;
-  /* init snap context for geometry projection */
-  sctx = ED_transform_snap_object_context_create_view3d(bmain, scene, 0, region, CTX_wm_view3d(C));
 
   /* Go through each editable + selected stroke, adjusting each of its points one by one... */
   GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
