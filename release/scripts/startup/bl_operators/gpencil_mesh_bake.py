@@ -23,8 +23,22 @@ from bpy.types import Operator
 from bpy.props import (
     IntProperty,
     FloatProperty,
-    BoolProperty
+    BoolProperty,
+    EnumProperty,
 )
+
+gp_object_items = []
+
+
+def my_objlist_callback(scene, context):
+    gp_object_items.clear()
+    gp_object_items.append(('*NEW', "New Object", ""))
+    for o in context.scene.objects:
+        if o.type == 'GPENCIL':
+            gp_object_items.append((o.name, o.name, ""))
+
+    return gp_object_items
+
 
 class GPENCIL_OT_mesh_bake(Operator):
     """Bake all mesh animation into grease pencil strokes"""
@@ -85,6 +99,17 @@ class GPENCIL_OT_mesh_bake(Operator):
         subtype='DISTANCE',
         unit='LENGTH',
     )
+    target: EnumProperty(
+        name="Target Object",
+        description="Grease Pencil Object",
+        items=my_objlist_callback
+        )
+    frame_offset: IntProperty(
+        name="Frame Offset",
+        description="Number of frames to offset in target object",
+        min=-100, max=100,
+        default=0,
+    )
 
     @classmethod
     def poll(self, context):
@@ -102,7 +127,9 @@ class GPENCIL_OT_mesh_bake(Operator):
             thickness=self.thickness,
             seams=self.seams,
             faces=self.faces,
-            offset=self.offset
+            offset=self.offset,
+            target=self.target,
+            frame_offset=self.frame_offset
         )
 
         return {'FINISHED'}

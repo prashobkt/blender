@@ -2364,6 +2364,7 @@ static int convert_exec(bContext *C, wmOperator *op)
                                thickness,
                                offset,
                                matrix,
+                               0,
                                use_seams,
                                use_faces);
       gpencilConverted = true;

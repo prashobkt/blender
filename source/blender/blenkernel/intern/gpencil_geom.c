@@ -2227,6 +2227,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
                               const int thickness,
                               const float offset,
                               const float matrix[4][4],
+                              const int frame_offset,
                               const bool use_seams,
                               const bool use_faces)
 {
@@ -2246,8 +2247,8 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   int mpoly_len = me->totpoly;
   int i;
 
-  /* If the object has materials means it was created in a previous step. */
-  const bool create_mat = (ob_gp->totcol > 0) ? false : true;
+  /* If the object has enough materials means it was created in a previous step. */
+  const bool create_mat = (ob_gp->totcol >= ob_mesh->totcol) ? false : true;
 
   /* Need at least an edge. */
   if (me->totvert < 2) {
@@ -2285,7 +2286,8 @@ void BKE_gpencil_convert_mesh(Main *bmain,
       if (gpl_fill == NULL) {
         gpl_fill = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
       }
-      bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(gpl_fill, CFRA, GP_GETFRAME_ADD_NEW);
+      bGPDframe *gpf_fill = BKE_gpencil_layer_frame_get(
+          gpl_fill, CFRA + frame_offset, GP_GETFRAME_ADD_NEW);
       for (i = 0, mp = mpoly; i < mpoly_len; i++, mp++) {
         MLoop *ml = &mloop[mp->loopstart];
         /* Create fill stroke. */
@@ -2315,7 +2317,8 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   if (gpl_stroke == NULL) {
     gpl_stroke = BKE_gpencil_layer_addnew(gpd, DATA_("Lines"), true);
   }
-  bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(gpl_stroke, CFRA, GP_GETFRAME_ADD_NEW);
+  bGPDframe *gpf_stroke = BKE_gpencil_layer_frame_get(
+      gpl_stroke, CFRA + frame_offset, GP_GETFRAME_ADD_NEW);
   gpencil_generate_edgeloops(ob_eval, gpf_stroke, angle, thickness, offset, matrix, use_seams);
 
   /* Tag for recalculation */
