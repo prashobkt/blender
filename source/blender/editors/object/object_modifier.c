@@ -488,7 +488,7 @@ bool ED_object_modifier_move_to_index(ReportList *reports,
                                       const int index)
 {
   BLI_assert(md != NULL);
-  BLI_assert(index > 0);
+  BLI_assert(index >= 0);
   if (index >= BLI_listbase_count(&ob->modifiers)) {
     BKE_report(reports, RPT_WARNING, "Cannot move modifier beyond the end of the stack");
     return false;
@@ -1397,7 +1397,7 @@ static int OBJECT_OT_modifier_move_to_index_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
   ModifierData *md = edit_modifier_property_get(op, ob, 0);
-  int index = RNA_enum_get(op->ptr, "index");
+  int index = RNA_int_get(op->ptr, "index");
 
   if (!ED_object_modifier_move_to_index(op->reports, ob, md, index)) {
     return OPERATOR_CANCELLED;
@@ -1423,12 +1423,6 @@ static int OBJECT_OT_modifier_move_to_index_invoke(bContext *C,
 
 void OBJECT_OT_modifier_move_to_index(wmOperatorType *ot)
 {
-  static const EnumPropertyItem modifier_active_move[] = {
-      {-1, "UP", 0, "Up", ""},
-      {1, "DOWN", 0, "Down", ""},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   ot->name = "Move Active Modifier to Index";
   ot->description = "Move the active modifier to an index in the stack";
   ot->idname = "OBJECT_OT_modifier_move_to_index";

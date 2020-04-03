@@ -2575,12 +2575,12 @@ void ED_region_panels_layout_ex(const bContext *C,
   /* set view2d view matrix  - UI_block_begin() stores it */
   UI_view2d_view_ortho(v2d);
 
-  bool has_always_recreate_panel = false;
+  bool has_recreate_panel = false;
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
 
     if (pt->flag & PANELTYPE_RECREATE) {
-      has_always_recreate_panel = true;
+      has_recreate_panel = true;
       continue;
     }
     Panel *panel = UI_panel_find_by_type(&region->panels, pt);
@@ -2593,7 +2593,7 @@ void ED_region_panels_layout_ex(const bContext *C,
     ed_panel_draw(C, sa, region, &region->panels, pt, panel, w, em, vertical);
   }
 
-  if (has_always_recreate_panel) {
+  if (has_recreate_panel) {
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
         if (panel->type->flag & PANELTYPE_RECREATE) {
