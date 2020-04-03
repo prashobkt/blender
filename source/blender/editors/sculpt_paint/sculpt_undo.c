@@ -422,7 +422,7 @@ static void sculpt_undo_bmesh_restore_generic(bContext *C,
     }
   }
   else {
-    sculpt_pbvh_clear(ob);
+    SCULPT_pbvh_clear(ob);
   }
 }
 
@@ -432,7 +432,7 @@ static void sculpt_undo_bmesh_enable(Object *ob, SculptUndoNode *unode)
   SculptSession *ss = ob->sculpt;
   Mesh *me = ob->data;
 
-  sculpt_pbvh_clear(ob);
+  SCULPT_pbvh_clear(ob);
 
   /* Create empty BMesh and enable logging. */
   ss->bm = BM_mesh_create(&bm_mesh_allocsize_default,
@@ -440,7 +440,7 @@ static void sculpt_undo_bmesh_enable(Object *ob, SculptUndoNode *unode)
                               .use_toolflags = false,
                           }));
   BM_data_layer_add(ss->bm, &ss->bm->vdata, CD_PAINT_MASK);
-  sculpt_dyntopo_node_layers_add(ss);
+  SCULPT_dyntopo_node_layers_add(ss);
   me->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
 
   /* Restore the BMLog using saved entries. */
@@ -453,7 +453,7 @@ static void sculpt_undo_bmesh_restore_begin(bContext *C,
                                             SculptSession *ss)
 {
   if (unode->applied) {
-    sculpt_dynamic_topology_disable(C, unode);
+    SCULPT_dynamic_topology_disable(C, unode);
     unode->applied = false;
   }
   else {
@@ -481,7 +481,7 @@ static void sculpt_undo_bmesh_restore_end(bContext *C,
   }
   else {
     /* Disable dynamic topology sculpting. */
-    sculpt_dynamic_topology_disable(C, NULL);
+    SCULPT_dynamic_topology_disable(C, NULL);
     unode->applied = true;
   }
 }
@@ -552,7 +552,7 @@ static void sculpt_undo_geometry_free_data(SculptUndoNodeGeometry *geometry)
 
 static void sculpt_undo_geometry_restore(SculptUndoNode *unode, Object *object)
 {
-  sculpt_pbvh_clear(object);
+  SCULPT_pbvh_clear(object);
 
   if (unode->applied) {
     sculpt_undo_geometry_restore_data(&unode->geometry_modified, object);
@@ -1290,6 +1290,11 @@ void SCULPT_undo_push_begin(const char *name)
 
 void SCULPT_undo_push_end(void)
 {
+  SCULPT_undo_push_end_ex(false);
+}
+
+void SCULPT_undo_push_end_ex(const bool use_nested_undo)
+{
   UndoSculpt *usculpt = sculpt_undo_get_nodes();
   SculptUndoNode *unode;
 
@@ -1307,7 +1312,7 @@ void SCULPT_undo_push_end(void)
 
   /* We could remove this and enforce all callers run in an operator using 'OPTYPE_UNDO'. */
   wmWindowManager *wm = G_MAIN->wm.first;
-  if (wm->op_undo_depth == 0) {
+  if (wm->op_undo_depth == 0 || use_nested_undo) {
     UndoStack *ustack = ED_undo_stack_get();
     BKE_undosys_step_push(ustack, NULL, NULL);
     WM_file_tag_modified();
