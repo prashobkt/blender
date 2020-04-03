@@ -140,31 +140,50 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col, *split;
-
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  row = uiLayoutColumn(layout, false);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_edge_angle"));
-  uiItemR(row, &ptr, "split_angle", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "use_edge_angle", 0, IFACE_("Edge Angle"), ICON_NONE);
-
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "use_edge_sharp", 0, IFACE_("Sharp Edges"), ICON_NONE);
+  uiItemR(layout, &ptr, "use_edge_sharp", 0, IFACE_("Sharp Edges"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
 
+static void edge_angle_panel_draw_header(const bContext *C, Panel *panel)
+{
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  uiLayout *layout = panel->layout;
+
+  uiItemR(layout, &ptr, "use_edge_angle", 0, "", ICON_NONE);
+}
+
+static void edge_angle_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_edge_angle"));
+  uiItemR(layout, &ptr, "split_angle", 0, NULL, ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "EdgeSplit", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, "EdgeSplit", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "edgesplit_",
+                             "Edge Angle",
+                             edge_angle_panel_draw_header,
+                             edge_angle_panel_draw,
+                             false,
+                             panel_type);
 }
 
 ModifierTypeInfo modifierType_EdgeSplit = {
