@@ -79,7 +79,7 @@ class GPENCIL_OT_mesh_bake(Operator):
         subtype='ANGLE',
     )
     offset: FloatProperty(
-        name="Offset",
+        name="Stroke Offset",
         description="Offset strokes from fill",
         soft_min=0.0, soft_max=100.0,
         min=0.0, max=100.0,
