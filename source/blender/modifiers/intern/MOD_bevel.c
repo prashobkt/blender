@@ -388,13 +388,12 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Bevel", panel_draw);
   modifier_subpanel_register(
-      region_type, "bevel_miters", "Miters", NULL, miter_panel_draw, false, panel_type);
+      region_type, "bevel_miters", "Miters", NULL, miter_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
                              "bevel_custom_profile",
                              "",
                              custom_profile_panel_draw_header,
                              custom_profile_panel_draw,
-                             false,
                              panel_type);
 }
 

@@ -2003,7 +2003,7 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Skin", panel_draw);
   modifier_subpanel_register(
-      region_type, "skin_symmetry", "Symmetry", NULL, symmetry_panel_draw, false, panel_type);
+      region_type, "skin_symmetry", "Symmetry", NULL, symmetry_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Skin = {

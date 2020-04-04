@@ -68,7 +68,7 @@ static void panel(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "MODIFIER_TYPE", panel_draw);
   modifier_subpanel_register(
-    region_type, "IDNAME", "", subpanel_draw_header, subpanel_draw, true, panel_type);
+    region_type, "IDNAME", "", subpanel_draw_header, subpanel_draw, panel_type);
 }
  */
 
@@ -94,7 +94,6 @@ void modifier_subpanel_register(struct ARegionType *region_type,
                                 const char *label,
                                 void *draw_header,
                                 void *draw,
-                                bool open,
                                 PanelType *parent);
 
 #ifdef __cplusplus

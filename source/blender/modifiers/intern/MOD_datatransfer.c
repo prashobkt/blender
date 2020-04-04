@@ -402,29 +402,17 @@ static void panelRegister(ARegionType *region_type)
                              "",
                              vertex_panel_draw_header,
                              vertex_panel_draw,
-                             false,
                              panel_type);
-  modifier_subpanel_register(region_type,
-                             "data_transfer_edge",
-                             "",
-                             edge_panel_draw_header,
-                             edge_panel_draw,
-                             false,
-                             panel_type);
+  modifier_subpanel_register(
+      region_type, "data_transfer_edge", "", edge_panel_draw_header, edge_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
                              "data_transfer_face_corner",
                              "",
                              face_corner_panel_draw_header,
                              face_corner_panel_draw,
-                             false,
                              panel_type);
-  modifier_subpanel_register(region_type,
-                             "data_transfer_face",
-                             "",
-                             face_panel_draw_header,
-                             face_panel_draw,
-                             false,
-                             panel_type);
+  modifier_subpanel_register(
+      region_type, "data_transfer_face", "", face_panel_draw_header, face_panel_draw, panel_type);
 }
 
 #undef HIGH_POLY_WARNING

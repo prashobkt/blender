@@ -533,7 +533,6 @@ static void panelRegister(ARegionType *region_type)
                              "Orientation",
                              NULL,
                              axis_origin_panel_draw,
-                             true,
                              panel_type);
 }
 

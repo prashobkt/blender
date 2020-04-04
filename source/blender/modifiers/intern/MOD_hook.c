@@ -470,7 +470,7 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Hook", panel_draw);
   modifier_subpanel_register(
-      region_type, "hook_falloff", "Falloff", NULL, falloff_panel_draw, true, panel_type);
+      region_type, "hook_falloff", "Falloff", NULL, falloff_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Hook = {

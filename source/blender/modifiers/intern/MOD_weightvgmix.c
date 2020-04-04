@@ -487,7 +487,6 @@ static void panelRegister(ARegionType *region_type)
                              "Influence",
                              NULL,
                              influence_panel_draw,
-                             false,
                              panel_type);
 }
 

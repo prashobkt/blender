@@ -196,14 +196,12 @@ static void panelRegister(ARegionType *region_type)
                              "Vertex Group",
                              NULL,
                              vertex_group_panel_draw,
-                             false,
                              panel_type);
   modifier_subpanel_register(region_type,
                              "wireframe_crease",
                              "",
                              crease_panel_draw_header,
                              crease_panel_draw,
-                             false,
                              panel_type);
 }
 

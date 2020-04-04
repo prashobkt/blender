@@ -764,7 +764,7 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "NormalEdit", panel_draw);
   modifier_subpanel_register(
-      region_type, "normaledit_mix_mode", "Mix Mode", NULL, mix_mode_panel_draw, true, panel_type);
+      region_type, "normaledit_mix_mode", "Mix Mode", NULL, mix_mode_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_NormalEdit = {

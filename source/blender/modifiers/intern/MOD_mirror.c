@@ -209,9 +209,9 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Mirror", panel_draw);
   modifier_subpanel_register(
-      region_type, "mirror_merge", "Merge", NULL, merge_panel_draw, false, panel_type);
+      region_type, "mirror_merge", "Merge", NULL, merge_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "mirror_textures", "Textures", NULL, textures_panel_draw, false, panel_type);
+      region_type, "mirror_textures", "Textures", NULL, textures_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Mirror = {

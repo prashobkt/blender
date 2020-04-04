@@ -215,8 +215,8 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
             eModifierType_Cloth,
             eModifierType_Fluid)) {
     uiItemO(row,
-            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
-            ICON_NONE,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, ""),
+            ICON_DUPLICATE,
             "OBJECT_OT_modifier_copy");
   }
 }
@@ -366,7 +366,6 @@ void modifier_subpanel_register(ARegionType *region_type,
                                 const char *label,
                                 void *draw_header,
                                 void *draw,
-                                bool open,
                                 PanelType *parent)
 {
   /* Create the subpanel's ID name. */
@@ -384,7 +383,7 @@ void modifier_subpanel_register(ARegionType *region_type,
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = modifier_ui_poll;
-  panel_type->flag = (open) ? 0 : PNL_DEFAULT_CLOSED;
+  panel_type->flag = PNL_DEFAULT_CLOSED;
 
   BLI_assert(parent != NULL);
   strcpy(panel_type->parent_id, parent->idname);

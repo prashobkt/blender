@@ -200,15 +200,14 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Solidify", panel_draw);
   modifier_subpanel_register(
-      region_type, "solidify_crease", "Crease", NULL, draw_crease_panel, false, panel_type);
+      region_type, "solidify_crease", "Crease", NULL, draw_crease_panel, panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_clamp", "Clamp", NULL, draw_clamp_panel, false, panel_type);
+      region_type, "solidify_clamp", "Clamp", NULL, draw_clamp_panel, panel_type);
   modifier_subpanel_register(region_type,
                              "solidify_vertex_groups",
                              "Output Vertex Groups",
                              NULL,
                              draw_vertex_group_panel,
-                             false,
                              panel_type);
 }
 

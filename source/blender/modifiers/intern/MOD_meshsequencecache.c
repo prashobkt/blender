@@ -244,14 +244,12 @@ static void panelRegister(ARegionType *region_type)
                              "Cache File",
                              NULL,
                              cache_file_panel_draw,
-                             true,
                              panel_type);
   modifier_subpanel_register(region_type,
                              "meshsequencecache_properties",
                              "Modifier",
                              NULL,
                              modifier_panel_draw,
-                             true,
                              panel_type);
 }
 

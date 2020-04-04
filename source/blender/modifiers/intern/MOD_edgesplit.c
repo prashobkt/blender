@@ -182,7 +182,6 @@ static void panelRegister(ARegionType *region_type)
                              "Edge Angle",
                              edge_angle_panel_draw_header,
                              edge_angle_panel_draw,
-                             false,
                              panel_type);
 }
 

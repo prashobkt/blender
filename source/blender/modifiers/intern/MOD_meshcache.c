@@ -372,15 +372,9 @@ static void panelRegister(ARegionType *region_type)
                              "Time Remapping",
                              NULL,
                              time_remapping_panel_draw,
-                             false,
                              panel_type);
-  modifier_subpanel_register(region_type,
-                             "hook_axis_mapping",
-                             "Axis Mapping",
-                             NULL,
-                             axis_mapping_panel_draw,
-                             false,
-                             panel_type);
+  modifier_subpanel_register(
+      region_type, "hook_axis_mapping", "Axis Mapping", NULL, axis_mapping_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_MeshCache = {

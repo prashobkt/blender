@@ -1262,15 +1262,10 @@ static void screw_normals_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Screw", panel_draw);
-  modifier_subpanel_register(region_type,
-                             "screw_merge",
-                             "",
-                             screw_merge_header_draw,
-                             screw_merge_draw,
-                             false,
-                             panel_type);
   modifier_subpanel_register(
-      region_type, "screw_normals", "Normals", NULL, screw_normals_draw, false, panel_type);
+      region_type, "screw_merge", "", screw_merge_header_draw, screw_merge_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "screw_normals", "Normals", NULL, screw_normals_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Screw = {

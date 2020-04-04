@@ -291,7 +291,7 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Shrinkwrap", panel_draw);
   modifier_subpanel_register(
-      region_type, "shrinkwrap_mode", "Mode", NULL, mode_panel_draw, true, panel_type);
+      region_type, "shrinkwrap_mode", "Mode", NULL, mode_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Shrinkwrap = {
