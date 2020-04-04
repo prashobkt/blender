@@ -2702,12 +2702,12 @@ static void panel_activate_state(const bContext *C, Panel *pa, uiHandlePanelStat
   }
 
   if (state == PANEL_STATE_EXIT) {
-    MEM_freeN(data);
-    pa->activedata = NULL;
-
     if (data->is_drag_drop) {
       reorder_recreate_panel_list(C, region, pa);
     }
+
+    MEM_freeN(data);
+    pa->activedata = NULL;
 
     WM_event_remove_ui_handler(
         &win->modalhandlers, ui_handler_panel, ui_handler_remove_panel, pa, false);
