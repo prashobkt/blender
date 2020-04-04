@@ -268,7 +268,7 @@ typedef struct bNodeType {
   NodeGPUExecFunction gpufunc;
 
   /* RNA integration */
-  ExtensionRNA ext;
+  ExtensionRNA rna_ext;
 } bNodeType;
 
 /* nodetype->nclass, for add-menu and themes */
@@ -350,7 +350,7 @@ typedef struct bNodeTreeType {
   void (*node_add_init)(struct bNodeTree *ntree, struct bNode *bnode);
 
   /* RNA integration */
-  ExtensionRNA ext;
+  ExtensionRNA rna_ext;
 } bNodeTreeType;
 
 /** \} */
@@ -391,9 +391,6 @@ struct bNodeTree *ntreeCopyTree_ex(const struct bNodeTree *ntree,
                                    struct Main *bmain,
                                    const bool do_id_user);
 struct bNodeTree *ntreeCopyTree(struct Main *bmain, const struct bNodeTree *ntree);
-/* node->id user count */
-void ntreeUserIncrefID(struct bNodeTree *ntree);
-void ntreeUserDecrefID(struct bNodeTree *ntree);
 
 struct bNodeTree **BKE_ntree_ptr_from_id(struct ID *id);
 struct bNodeTree *ntreeFromID(struct ID *id);
@@ -1198,7 +1195,7 @@ void ntreeCompositRegisterPass(struct bNodeTree *ntree,
                                struct Scene *scene,
                                struct ViewLayer *view_layer,
                                const char *name,
-                               int type);
+                               eNodeSocketDatatype type);
 void ntreeCompositClearTags(struct bNodeTree *ntree);
 
 struct bNodeSocket *ntreeCompositOutputFileAddSocket(struct bNodeTree *ntree,

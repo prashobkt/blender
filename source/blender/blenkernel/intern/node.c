@@ -25,23 +25,23 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
 #include <limits.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 #include "DNA_light_types.h"
+#include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 #include "DNA_world_types.h"
-#include "DNA_linestyle_types.h"
 
-#include "BLI_listbase.h"
 #include "BLI_ghash.h"
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -50,6 +50,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -63,10 +64,10 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "NOD_socket.h"
 #include "NOD_common.h"
 #include "NOD_composite.h"
 #include "NOD_shader.h"
+#include "NOD_socket.h"
 #include "NOD_texture.h"
 
 #include "DEG_depsgraph.h"
@@ -112,7 +113,7 @@ static void ntree_copy_data(Main *UNUSED(bmain), ID *id_dst, const ID *id_src, c
   /* Since source nodes and sockets are unique pointers we can put everything in a single map. */
   GHash *new_pointers = BLI_ghash_ptr_new(__func__);
 
-  for (const bNode *node_src = ntree_src->nodes.first; node_src; node_src = node_src->next) {
+  LISTBASE_FOREACH (const bNode *, node_src, &ntree_src->nodes) {
     bNode *new_node = BKE_node_copy_ex(ntree_dst, node_src, flag_subdata, true);
     BLI_ghash_insert(new_pointers, (void *)node_src, new_node);
     /* Store mapping to inputs. */
@@ -194,8 +195,6 @@ static void ntree_free_data(ID *id)
   bNodeTree *ntree = (bNodeTree *)id;
   bNode *node, *next;
   bNodeSocket *sock, *nextsock;
-
-  BKE_animdata_free((ID *)ntree, false);
 
   /* XXX hack! node trees should not store execution graphs at all.
    * This should be removed when old tree types no longer require it.
@@ -1635,7 +1634,7 @@ void nodePositionRelative(bNode *from_node,
 
 void nodePositionPropagate(bNode *node)
 {
-  for (bNodeSocket *nsock = node->inputs.first; nsock; nsock = nsock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, nsock, &node->inputs) {
     if (nsock->link != NULL) {
       bNodeLink *link = nsock->link;
       nodePositionRelative(link->fromnode, link->tonode, link->fromsock, link->tosock);
@@ -1656,7 +1655,7 @@ bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
   }
   else {
     ntree = MEM_callocN(sizeof(bNodeTree), "new node tree");
-    ntree->id.flag |= LIB_PRIVATE_DATA;
+    ntree->id.flag |= LIB_EMBEDDED_DATA;
     *((short *)ntree->id.name) = ID_NT;
     BLI_strncpy(ntree->id.name + 2, name, sizeof(ntree->id.name));
   }
@@ -1682,21 +1681,6 @@ bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, const bool do_i
 bNodeTree *ntreeCopyTree(Main *bmain, const bNodeTree *ntree)
 {
   return ntreeCopyTree_ex(ntree, bmain, true);
-}
-
-void ntreeUserIncrefID(bNodeTree *ntree)
-{
-  bNode *node;
-  for (node = ntree->nodes.first; node; node = node->next) {
-    id_us_plus(node->id);
-  }
-}
-void ntreeUserDecrefID(bNodeTree *ntree)
-{
-  bNode *node;
-  for (node = ntree->nodes.first; node; node = node->next) {
-    id_us_min(node->id);
-  }
 }
 
 /* *************** Node Preview *********** */
@@ -2156,6 +2140,7 @@ static void free_localized_node_groups(bNodeTree *ntree)
 void ntreeFreeTree(bNodeTree *ntree)
 {
   ntree_free_data(&ntree->id);
+  BKE_animdata_free(&ntree->id, false);
 }
 
 void ntreeFreeNestedTree(bNodeTree *ntree)
@@ -2677,7 +2662,7 @@ void ntreeInterfaceTypeUpdate(bNodeTree *ntree)
 bNode *ntreeFindType(const bNodeTree *ntree, int type)
 {
   if (ntree) {
-    for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       if (node->type == type) {
         return node;
       }
@@ -3411,7 +3396,7 @@ void ntreeUpdateAllNew(Main *main)
    * might have been set in file reading or versioning. */
   FOREACH_NODETREE_BEGIN (main, ntree, owner_id) {
     if (owner_id->tag & LIB_TAG_NEW) {
-      for (bNode *node = ntree->nodes.first; node; node = node->next) {
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (node->typeinfo->group_update_func) {
           node->typeinfo->group_update_func(ntree, node);
         }
@@ -3429,7 +3414,7 @@ void ntreeUpdateAllUsers(Main *main, ID *ngroup)
   FOREACH_NODETREE_BEGIN (main, ntree, owner_id) {
     bool need_update = false;
 
-    for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       if (node->id == ngroup) {
         if (node->typeinfo->group_update_func) {
           node->typeinfo->group_update_func(ntree, node);
@@ -3640,9 +3625,9 @@ void node_type_base(bNodeType *ntype, int type, const char *name, short nclass, 
 #define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
   case ID: \
     BLI_strncpy(ntype->idname, #Category #StructName, sizeof(ntype->idname)); \
-    ntype->ext.srna = RNA_struct_find(#Category #StructName); \
-    BLI_assert(ntype->ext.srna != NULL); \
-    RNA_struct_blender_type_set(ntype->ext.srna, ntype); \
+    ntype->rna_ext.srna = RNA_struct_find(#Category #StructName); \
+    BLI_assert(ntype->rna_ext.srna != NULL); \
+    RNA_struct_blender_type_set(ntype->rna_ext.srna, ntype); \
     break;
 
   switch (type) {
@@ -4157,8 +4142,8 @@ void free_nodesystem(void)
 {
   if (nodetypes_hash) {
     NODE_TYPES_BEGIN (nt) {
-      if (nt->ext.free) {
-        nt->ext.free(nt->ext.data);
+      if (nt->rna_ext.free) {
+        nt->rna_ext.free(nt->rna_ext.data);
       }
     }
     NODE_TYPES_END;
@@ -4184,8 +4169,8 @@ void free_nodesystem(void)
 
   if (nodetreetypes_hash) {
     NODE_TREE_TYPES_BEGIN (nt) {
-      if (nt->ext.free) {
-        nt->ext.free(nt->ext.data);
+      if (nt->rna_ext.free) {
+        nt->rna_ext.free(nt->rna_ext.data);
       }
     }
     NODE_TREE_TYPES_END;
@@ -4260,7 +4245,7 @@ bool BKE_node_tree_iter_step(struct NodeTreeIterStore *ntreeiter,
 void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, const int layer_index)
 {
   BLI_assert(layer_index != -1);
-  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == CMP_NODE_R_LAYERS && (Scene *)node->id == scene) {
       if (node->custom1 == layer_index) {
         node->custom1 = 0;

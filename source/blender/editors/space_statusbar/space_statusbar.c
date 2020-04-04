@@ -18,8 +18,8 @@
  * \ingroup spstatusbar
  */
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -37,8 +37,8 @@
 #include "UI_view2d.h"
 
 #include "WM_api.h"
-#include "WM_types.h"
 #include "WM_message.h"
+#include "WM_types.h"
 
 /* ******************** default callbacks for statusbar space ********************  */
 
@@ -65,7 +65,7 @@ static void statusbar_free(SpaceLink *UNUSED(sl))
 }
 
 /* spacetype; init callback */
-static void statusbar_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(sa))
+static void statusbar_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
 {
 }
 
@@ -96,7 +96,7 @@ static void statusbar_keymap(struct wmKeyConfig *UNUSED(keyconf))
 }
 
 static void statusbar_header_region_listener(wmWindow *UNUSED(win),
-                                             ScrArea *UNUSED(sa),
+                                             ScrArea *UNUSED(area),
                                              ARegion *region,
                                              wmNotifier *wmn,
                                              const Scene *UNUSED(scene))
@@ -135,7 +135,7 @@ static void statusbar_header_region_message_subscribe(const bContext *UNUSED(C),
                                                       WorkSpace *UNUSED(workspace),
                                                       Scene *UNUSED(scene),
                                                       bScreen *UNUSED(screen),
-                                                      ScrArea *UNUSED(sa),
+                                                      ScrArea *UNUSED(area),
                                                       ARegion *region,
                                                       struct wmMsgBus *mbus)
 {

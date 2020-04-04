@@ -21,11 +21,11 @@
  * \ingroup edanimation
  */
 
-#include <stdio.h>
-#include <stddef.h>
-#include <string.h>
-#include <math.h>
 #include <float.h>
+#include <math.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -40,17 +40,18 @@
 #include "DNA_constraint_types.h"
 #include "DNA_key_types.h"
 #include "DNA_material_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_object_types.h"
 #include "DNA_rigidbody_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_action.h"
+#include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
-#include "BKE_idcode.h"
+#include "BKE_idtype.h"
 #include "BKE_key.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -62,10 +63,10 @@
 #include "DEG_depsgraph_query.h"
 
 #include "ED_anim_api.h"
-#include "ED_keyframing.h"
 #include "ED_keyframes_edit.h"
-#include "ED_screen.h"
+#include "ED_keyframing.h"
 #include "ED_object.h"
+#include "ED_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -494,7 +495,7 @@ int insert_vert_fcurve(
     FCurve *fcu, float x, float y, eBezTriple_KeyframeType keyframe_type, eInsertKeyFlags flag)
 {
   BezTriple beztr = {{{0}}};
-  unsigned int oldTot = fcu->totvert;
+  uint oldTot = fcu->totvert;
   int a;
 
   /* set all three points, for nicer start position
@@ -1657,7 +1658,7 @@ int delete_keyframe(Main *bmain,
                   RPT_WARNING,
                   "Not deleting keyframe for locked F-Curve '%s' for %s '%s'",
                   fcu->rna_path,
-                  BKE_idcode_to_name(GS(id->name)),
+                  BKE_idtype_idcode_to_name(GS(id->name)),
                   id->name + 2);
       continue;
     }
@@ -1761,7 +1762,7 @@ static int clear_keyframe(Main *bmain,
                   RPT_WARNING,
                   "Not clearing all keyframes from locked F-Curve '%s' for %s '%s'",
                   fcu->rna_path,
-                  BKE_idcode_to_name(GS(id->name)),
+                  BKE_idtype_idcode_to_name(GS(id->name)),
                   id->name + 2);
       continue;
     }
@@ -1793,11 +1794,11 @@ enum {
  */
 static bool modify_key_op_poll(bContext *C)
 {
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   Scene *scene = CTX_data_scene(C);
 
   /* if no area or active scene */
-  if (ELEM(NULL, sa, scene)) {
+  if (ELEM(NULL, area, scene)) {
     return false;
   }
 
@@ -2567,7 +2568,7 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
               RPT_WARNING,
               "Not deleting keyframe for locked F-Curve for NLA Strip influence on %s - %s '%s'",
               strip->name,
-              BKE_idcode_to_name(GS(id->name)),
+              BKE_idtype_idcode_to_name(GS(id->name)),
               id->name + 2);
         }
         else {
@@ -2709,7 +2710,7 @@ void ANIM_OT_keyframe_clear_button(wmOperatorType *ot)
 /* ******************************************* */
 /* AUTO KEYFRAME */
 
-bool autokeyframe_cfra_can_key(Scene *scene, ID *id)
+bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
 {
   float cfra = (float)CFRA;  // XXX for now, this will do
 
@@ -2937,10 +2938,10 @@ bool ED_autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks
   if (autokeyframe_cfra_can_key(scene, &ob->id)) {
     ListBase dsources = {NULL, NULL};
 
-    /* now insert the keyframe(s) using the Keying Set
-     * 1) add datasource override for the Object
-     * 2) insert keyframes
-     * 3) free the extra info
+    /* Now insert the key-frame(s) using the Keying Set:
+     * 1) Add data-source override for the Object.
+     * 2) Insert key-frames.
+     * 3) Free the extra info.
      */
     ANIM_relative_keyingset_add_source(&dsources, &ob->id, NULL, NULL);
     ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, (float)CFRA);
@@ -2959,10 +2960,10 @@ bool ED_autokeyframe_pchan(
   if (autokeyframe_cfra_can_key(scene, &ob->id)) {
     ListBase dsources = {NULL, NULL};
 
-    /* now insert the keyframe(s) using the Keying Set
-     * 1) add datasource override for the PoseChannel
-     * 2) insert keyframes
-     * 3) free the extra info
+    /* Now insert the keyframe(s) using the Keying Set:
+     * 1) Add data-source override for the pose-channel.
+     * 2) Insert key-frames.
+     * 3) Free the extra info.
      */
     ANIM_relative_keyingset_add_source(&dsources, &ob->id, &RNA_PoseBone, pchan);
     ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, (float)CFRA);

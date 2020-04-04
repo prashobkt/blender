@@ -27,7 +27,6 @@ extern "C" {
 #include "BLI_assert.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_anim.h"
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
@@ -58,7 +57,7 @@ bool USDGenericMeshWriter::is_supported(const HierarchyContext *context) const
   int base_flag;
 
   if (is_dupli) {
-    /* Construct the object's base flags from its dupliparent, just like is done in
+    /* Construct the object's base flags from its dupli-parent, just like is done in
      * deg_objects_dupli_iterator_next(). Without this, the visibility check below will fail. Doing
      * this here, instead of a more suitable location in AbstractHierarchyIterator, prevents
      * copying the Object for every dupli. */

@@ -27,14 +27,14 @@
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 
-#include "DNA_text_types.h"
-#include "DNA_space_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_space_types.h"
+#include "DNA_text_types.h"
 
 #include "BKE_context.h"
+#include "BKE_screen.h"
 #include "BKE_text.h"
 #include "BKE_text_suggestions.h"
-#include "BKE_screen.h"
 
 #include "ED_text.h"
 
@@ -45,8 +45,8 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "text_intern.h"
 #include "text_format.h"
+#include "text_intern.h"
 
 /******************** text font drawing ******************/
 
@@ -1812,7 +1812,7 @@ void text_scroll_to_cursor(SpaceText *st, ARegion *region, const bool center)
 }
 
 /* takes an area instead of a region, use for listeners */
-void text_scroll_to_cursor__area(SpaceText *st, ScrArea *sa, const bool center)
+void text_scroll_to_cursor__area(SpaceText *st, ScrArea *area, const bool center)
 {
   ARegion *region;
 
@@ -1820,7 +1820,7 @@ void text_scroll_to_cursor__area(SpaceText *st, ScrArea *sa, const bool center)
     return;
   }
 
-  region = BKE_area_find_region_type(sa, RGN_TYPE_WINDOW);
+  region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
 
   if (region) {
     text_scroll_to_cursor(st, region, center);
@@ -1829,10 +1829,10 @@ void text_scroll_to_cursor__area(SpaceText *st, ScrArea *sa, const bool center)
 
 void text_update_cursor_moved(bContext *C)
 {
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   SpaceText *st = CTX_wm_space_text(C);
 
-  text_scroll_to_cursor__area(st, sa, true);
+  text_scroll_to_cursor__area(st, area, true);
 }
 
 /**

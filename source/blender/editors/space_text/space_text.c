@@ -29,14 +29,14 @@
 
 #include "BLI_blenlib.h"
 
-#include "BKE_global.h"
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_screen.h"
 #include "BKE_text.h"
 
-#include "ED_space_api.h"
 #include "ED_screen.h"
+#include "ED_space_api.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -47,9 +47,9 @@
 
 #include "RNA_access.h"
 
+#include "GPU_framebuffer.h"
 #include "text_format.h"
 #include "text_intern.h" /* own include */
-#include "GPU_framebuffer.h"
 
 /* ******************** default callbacks for text space ***************** */
 
@@ -107,7 +107,7 @@ static void text_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void text_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(sa))
+static void text_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
 {
 }
 
@@ -123,11 +123,11 @@ static SpaceLink *text_duplicate(SpaceLink *sl)
 }
 
 static void text_listener(wmWindow *UNUSED(win),
-                          ScrArea *sa,
+                          ScrArea *area,
                           wmNotifier *wmn,
                           Scene *UNUSED(scene))
 {
-  SpaceText *st = sa->spacedata.first;
+  SpaceText *st = area->spacedata.first;
 
   /* context changes */
   switch (wmn->category) {
@@ -141,14 +141,14 @@ static void text_listener(wmWindow *UNUSED(win),
 
       switch (wmn->data) {
         case ND_DISPLAY:
-          ED_area_tag_redraw(sa);
+          ED_area_tag_redraw(area);
           break;
         case ND_CURSOR:
           if (st->text && st->text == wmn->reference) {
-            text_scroll_to_cursor__area(st, sa, true);
+            text_scroll_to_cursor__area(st, area, true);
           }
 
-          ED_area_tag_redraw(sa);
+          ED_area_tag_redraw(area);
           break;
       }
 
@@ -159,15 +159,15 @@ static void text_listener(wmWindow *UNUSED(win),
             text_update_edited(st->text);
           }
 
-          ED_area_tag_redraw(sa);
+          ED_area_tag_redraw(area);
           ATTR_FALLTHROUGH; /* fall down to tag redraw */
         case NA_ADDED:
         case NA_REMOVED:
-          ED_area_tag_redraw(sa);
+          ED_area_tag_redraw(area);
           break;
         case NA_SELECTED:
           if (st->text && st->text == wmn->reference) {
-            text_scroll_to_cursor__area(st, sa, true);
+            text_scroll_to_cursor__area(st, area, true);
           }
 
           break;
@@ -176,7 +176,7 @@ static void text_listener(wmWindow *UNUSED(win),
       break;
     case NC_SPACE:
       if (wmn->data == ND_SPACE_TEXT) {
-        ED_area_tag_redraw(sa);
+        ED_area_tag_redraw(area);
       }
       break;
   }
@@ -309,9 +309,9 @@ static void text_main_region_draw(const bContext *C, ARegion *region)
   /* scrollers? */
 }
 
-static void text_cursor(wmWindow *win, ScrArea *sa, ARegion *region)
+static void text_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 {
-  SpaceText *st = sa->spacedata.first;
+  SpaceText *st = area->spacedata.first;
   int wmcursor = WM_CURSOR_TEXT_EDIT;
 
   if (st->text && BLI_rcti_isect_pt(&st->runtime.scroll_region_handle,
@@ -328,7 +328,7 @@ static void text_cursor(wmWindow *win, ScrArea *sa, ARegion *region)
 static bool text_drop_poll(bContext *UNUSED(C),
                            wmDrag *drag,
                            const wmEvent *UNUSED(event),
-                           const char **UNUSED(tooltip))
+                           const char **UNUSED(r_tooltip))
 {
   if (drag->type == WM_DRAG_PATH) {
     /* rule might not work? */
@@ -348,7 +348,7 @@ static void text_drop_copy(wmDrag *drag, wmDropBox *drop)
 static bool text_drop_paste_poll(bContext *UNUSED(C),
                                  wmDrag *drag,
                                  const wmEvent *UNUSED(event),
-                                 const char **UNUSED(tooltip))
+                                 const char **UNUSED(r_tooltip))
 {
   return (drag->type == WM_DRAG_ID);
 }
@@ -413,14 +413,14 @@ static void text_properties_region_draw(const bContext *C, ARegion *region)
   if (st->flags & ST_FIND_ACTIVATE) {
     if (UI_textbutton_activate_rna(C, region, st, "find_text")) {
       /* if the panel was already open we need to do another redraw */
-      ScrArea *sa = CTX_wm_area(C);
-      WM_event_add_notifier(C, NC_SPACE | ND_SPACE_TEXT, sa);
+      ScrArea *area = CTX_wm_area(C);
+      WM_event_add_notifier(C, NC_SPACE | ND_SPACE_TEXT, area);
     }
     st->flags &= ~ST_FIND_ACTIVATE;
   }
 }
 
-static void text_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id, ID *new_id)
+static void text_id_remap(ScrArea *UNUSED(area), SpaceLink *slink, ID *old_id, ID *new_id)
 {
   SpaceText *stext = (SpaceText *)slink;
 

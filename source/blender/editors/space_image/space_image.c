@@ -22,12 +22,12 @@
  */
 
 #include "DNA_gpencil_types.h"
-#include "DNA_mesh_types.h"
+#include "DNA_image_types.h"
 #include "DNA_mask_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_image_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -59,23 +59,23 @@
 #include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_render.h"
-#include "ED_space_api.h"
 #include "ED_screen.h"
-#include "ED_uvedit.h"
+#include "ED_space_api.h"
 #include "ED_transform.h"
+#include "ED_uvedit.h"
 
 #include "WM_api.h"
-#include "WM_types.h"
 #include "WM_message.h"
+#include "WM_types.h"
 
-#include "UI_resources.h"
 #include "UI_interface.h"
+#include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "image_intern.h"
-#include "GPU_framebuffer.h"
 #include "GPU_batch_presets.h"
+#include "GPU_framebuffer.h"
 #include "GPU_viewport.h"
+#include "image_intern.h"
 
 /* TODO(fclem) remove bad level calls */
 #include "../draw/DRW_engine.h"
@@ -83,13 +83,13 @@
 
 /**************************** common state *****************************/
 
-static void image_scopes_tag_refresh(ScrArea *sa)
+static void image_scopes_tag_refresh(ScrArea *area)
 {
-  SpaceImage *sima = (SpaceImage *)sa->spacedata.first;
+  SpaceImage *sima = (SpaceImage *)area->spacedata.first;
   ARegion *region;
 
   /* only while histogram is visible */
-  for (region = sa->regionbase.first; region; region = region->next) {
+  for (region = area->regionbase.first; region; region = region->next) {
     if (region->regiontype == RGN_TYPE_TOOL_PROPS && region->flag & RGN_FLAG_HIDDEN) {
       return;
     }
@@ -186,12 +186,12 @@ static void image_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback, add handlers */
-static void image_init(struct wmWindowManager *UNUSED(wm), ScrArea *sa)
+static void image_init(struct wmWindowManager *UNUSED(wm), ScrArea *area)
 {
   ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, 0);
 
   /* add drop boxes */
-  WM_event_add_dropbox_handler(&sa->handlers, lb);
+  WM_event_add_dropbox_handler(&area->handlers, lb);
 }
 
 static SpaceLink *image_duplicate(SpaceLink *sl)
@@ -262,18 +262,22 @@ static void image_keymap(struct wmKeyConfig *keyconf)
 }
 
 /* dropboxes */
-static bool image_drop_poll(bContext *UNUSED(C),
+static bool image_drop_poll(bContext *C,
                             wmDrag *drag,
-                            const wmEvent *UNUSED(event),
-                            const char **UNUSED(tooltip))
+                            const wmEvent *event,
+                            const char **UNUSED(r_tooltip))
 {
+  ScrArea *area = CTX_wm_area(C);
+  if (ED_region_overlap_isect_any_xy(area, &event->x)) {
+    return false;
+  }
   if (drag->type == WM_DRAG_PATH) {
     /* rule might not work? */
     if (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE, ICON_FILE_BLANK)) {
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 }
 
 static void image_drop_copy(wmDrag *drag, wmDropBox *drop)
@@ -294,10 +298,10 @@ static void image_dropboxes(void)
  * \note take care not to get into feedback loop here,
  *       calling composite job causes viewer to refresh.
  */
-static void image_refresh(const bContext *C, ScrArea *sa)
+static void image_refresh(const bContext *C, ScrArea *area)
 {
   Scene *scene = CTX_data_scene(C);
-  SpaceImage *sima = sa->spacedata.first;
+  SpaceImage *sima = area->spacedata.first;
   Image *ima;
 
   ima = ED_space_image(sima);
@@ -314,53 +318,53 @@ static void image_refresh(const bContext *C, ScrArea *sa)
   }
 }
 
-static void image_listener(wmWindow *win, ScrArea *sa, wmNotifier *wmn, Scene *UNUSED(scene))
+static void image_listener(wmWindow *win, ScrArea *area, wmNotifier *wmn, Scene *UNUSED(scene))
 {
-  SpaceImage *sima = (SpaceImage *)sa->spacedata.first;
+  SpaceImage *sima = (SpaceImage *)area->spacedata.first;
 
   /* context changes */
   switch (wmn->category) {
     case NC_WINDOW:
       /* notifier comes from editing color space */
-      image_scopes_tag_refresh(sa);
-      ED_area_tag_redraw(sa);
+      image_scopes_tag_refresh(area);
+      ED_area_tag_redraw(area);
       break;
     case NC_SCENE:
       switch (wmn->data) {
         case ND_FRAME:
-          image_scopes_tag_refresh(sa);
-          ED_area_tag_refresh(sa);
-          ED_area_tag_redraw(sa);
+          image_scopes_tag_refresh(area);
+          ED_area_tag_refresh(area);
+          ED_area_tag_redraw(area);
           break;
         case ND_MODE:
           if (wmn->subtype == NS_EDITMODE_MESH) {
-            ED_area_tag_refresh(sa);
+            ED_area_tag_refresh(area);
           }
-          ED_area_tag_redraw(sa);
+          ED_area_tag_redraw(area);
           break;
         case ND_RENDER_RESULT:
         case ND_RENDER_OPTIONS:
         case ND_COMPO_RESULT:
           if (ED_space_image_show_render(sima)) {
-            image_scopes_tag_refresh(sa);
+            image_scopes_tag_refresh(area);
           }
-          ED_area_tag_redraw(sa);
+          ED_area_tag_redraw(area);
           break;
       }
       break;
     case NC_IMAGE:
       if (wmn->reference == sima->image || !wmn->reference) {
         if (wmn->action != NA_PAINTING) {
-          image_scopes_tag_refresh(sa);
-          ED_area_tag_refresh(sa);
-          ED_area_tag_redraw(sa);
+          image_scopes_tag_refresh(area);
+          ED_area_tag_refresh(area);
+          ED_area_tag_redraw(area);
         }
       }
       break;
     case NC_SPACE:
       if (wmn->data == ND_SPACE_IMAGE) {
-        image_scopes_tag_refresh(sa);
-        ED_area_tag_redraw(sa);
+        image_scopes_tag_refresh(area);
+        ED_area_tag_redraw(area);
       }
       break;
     case NC_MASK: {
@@ -370,23 +374,23 @@ static void image_listener(wmWindow *win, ScrArea *sa, wmNotifier *wmn, Scene *U
       if (sima->mode == SI_MODE_MASK) {
         switch (wmn->data) {
           case ND_SELECT:
-            ED_area_tag_redraw(sa);
+            ED_area_tag_redraw(area);
             break;
           case ND_DATA:
           case ND_DRAW:
             /* causes node-recalc */
-            ED_area_tag_redraw(sa);
-            ED_area_tag_refresh(sa);
+            ED_area_tag_redraw(area);
+            ED_area_tag_refresh(area);
             break;
         }
         switch (wmn->action) {
           case NA_SELECTED:
-            ED_area_tag_redraw(sa);
+            ED_area_tag_redraw(area);
             break;
           case NA_EDITED:
             /* causes node-recalc */
-            ED_area_tag_redraw(sa);
-            ED_area_tag_refresh(sa);
+            ED_area_tag_redraw(area);
+            ED_area_tag_refresh(area);
             break;
         }
       }
@@ -396,9 +400,9 @@ static void image_listener(wmWindow *win, ScrArea *sa, wmNotifier *wmn, Scene *U
       switch (wmn->data) {
         case ND_DATA:
         case ND_SELECT:
-          image_scopes_tag_refresh(sa);
-          ED_area_tag_refresh(sa);
-          ED_area_tag_redraw(sa);
+          image_scopes_tag_refresh(area);
+          ED_area_tag_refresh(area);
+          ED_area_tag_redraw(area);
           break;
       }
       break;
@@ -411,8 +415,8 @@ static void image_listener(wmWindow *win, ScrArea *sa, wmNotifier *wmn, Scene *U
           Object *ob = OBACT(view_layer);
           if (ob && (ob == wmn->reference) && (ob->mode & OB_MODE_EDIT)) {
             if (sima->lock && (sima->flag & SI_DRAWSHADOW)) {
-              ED_area_tag_refresh(sa);
-              ED_area_tag_redraw(sa);
+              ED_area_tag_refresh(area);
+              ED_area_tag_redraw(area);
             }
           }
           break;
@@ -423,14 +427,14 @@ static void image_listener(wmWindow *win, ScrArea *sa, wmNotifier *wmn, Scene *U
     }
     case NC_ID: {
       if (wmn->action == NA_RENAME) {
-        ED_area_tag_redraw(sa);
+        ED_area_tag_redraw(area);
       }
       break;
     }
     case NC_WM:
       if (wmn->data == ND_UNDO) {
-        ED_area_tag_redraw(sa);
-        ED_area_tag_refresh(sa);
+        ED_area_tag_redraw(area);
+        ED_area_tag_refresh(area);
       }
       break;
   }
@@ -642,8 +646,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
    * old context since we now use it for drawing the entire area. */
   gpu_batch_presets_reset();
 
-  GPUViewport *viewport =
-      region->draw_buffer->viewport[region->draw_buffer->stereo ? sima->iuser.multiview_eye : 0];
+  GPUViewport *viewport = region->draw_buffer->viewport;
   DefaultFramebufferList *fbl = GPU_viewport_framebuffer_list_get(viewport);
   GPU_framebuffer_bind(fbl->default_fb);
   GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
@@ -753,7 +756,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
 }
 
 static void image_main_region_listener(wmWindow *UNUSED(win),
-                                       ScrArea *sa,
+                                       ScrArea *area,
                                        ARegion *region,
                                        wmNotifier *wmn,
                                        const Scene *UNUSED(scene))
@@ -781,7 +784,7 @@ static void image_main_region_listener(wmWindow *UNUSED(win),
       break;
     case NC_MATERIAL:
       if (wmn->data == ND_SHADING_LINKS) {
-        SpaceImage *sima = sa->spacedata.first;
+        SpaceImage *sima = area->spacedata.first;
 
         if (sima->iuser.scene && (sima->iuser.scene->toolsettings->uv_flag & UV_SHOW_SAME_IMAGE)) {
           ED_region_tag_redraw(region);
@@ -870,7 +873,7 @@ static void image_buttons_region_draw(const bContext *C, ARegion *region)
 }
 
 static void image_buttons_region_listener(wmWindow *UNUSED(win),
-                                          ScrArea *UNUSED(sa),
+                                          ScrArea *UNUSED(area),
                                           ARegion *region,
                                           wmNotifier *wmn,
                                           const Scene *UNUSED(scene))
@@ -933,7 +936,7 @@ static void image_tools_region_draw(const bContext *C, ARegion *region)
 }
 
 static void image_tools_region_listener(wmWindow *UNUSED(win),
-                                        ScrArea *UNUSED(sa),
+                                        ScrArea *UNUSED(area),
                                         ARegion *region,
                                         wmNotifier *wmn,
                                         const Scene *UNUSED(scene))
@@ -981,8 +984,8 @@ static void image_header_region_init(wmWindowManager *UNUSED(wm), ARegion *regio
 
 static void image_header_region_draw(const bContext *C, ARegion *region)
 {
-  ScrArea *sa = CTX_wm_area(C);
-  SpaceImage *sima = sa->spacedata.first;
+  ScrArea *area = CTX_wm_area(C);
+  SpaceImage *sima = area->spacedata.first;
 
   image_user_refresh_scene(C, sima);
 
@@ -990,7 +993,7 @@ static void image_header_region_draw(const bContext *C, ARegion *region)
 }
 
 static void image_header_region_listener(wmWindow *UNUSED(win),
-                                         ScrArea *UNUSED(sa),
+                                         ScrArea *UNUSED(area),
                                          ARegion *region,
                                          wmNotifier *wmn,
                                          const Scene *UNUSED(scene))
@@ -1021,7 +1024,7 @@ static void image_header_region_listener(wmWindow *UNUSED(win),
   }
 }
 
-static void image_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id, ID *new_id)
+static void image_id_remap(ScrArea *UNUSED(area), SpaceLink *slink, ID *old_id, ID *new_id)
 {
   SpaceImage *simg = (SpaceImage *)slink;
 
@@ -1051,15 +1054,15 @@ static void image_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id, ID
  * The previous non-uv-edit mode is stored so switching back to the
  * image doesn't always reset the sub-mode.
  */
-static int image_space_subtype_get(ScrArea *sa)
+static int image_space_subtype_get(ScrArea *area)
 {
-  SpaceImage *sima = sa->spacedata.first;
+  SpaceImage *sima = area->spacedata.first;
   return sima->mode == SI_MODE_UV ? SI_MODE_UV : SI_MODE_VIEW;
 }
 
-static void image_space_subtype_set(ScrArea *sa, int value)
+static void image_space_subtype_set(ScrArea *area, int value)
 {
-  SpaceImage *sima = sa->spacedata.first;
+  SpaceImage *sima = area->spacedata.first;
   if (value == SI_MODE_UV) {
     if (sima->mode != SI_MODE_UV) {
       sima->mode_prev = sima->mode;

@@ -24,14 +24,14 @@
  */
 
 #include <float.h>
-#include <string.h>
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_blenlib.h"
+#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -44,9 +44,9 @@
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_brush.h"
 #include "BKE_colorband.h"
 #include "BKE_context.h"
-#include "BKE_brush.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -67,9 +67,9 @@
 #include "ED_view3d.h"
 
 #include "WM_api.h"
-#include "WM_types.h"
 #include "WM_message.h"
 #include "WM_toolsystem.h"
+#include "WM_types.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -120,7 +120,7 @@ void imapaint_region_tiles(
 }
 
 void ED_imapaint_dirty_region(
-    Image *ima, ImBuf *ibuf, int tile_number, int x, int y, int w, int h, bool find_old)
+    Image *ima, ImBuf *ibuf, ImageUser *iuser, int x, int y, int w, int h, bool find_old)
 {
   ImBuf *tmpibuf = NULL;
   int tilex, tiley, tilew, tileh, tx, ty;
@@ -153,7 +153,7 @@ void ED_imapaint_dirty_region(
   for (ty = tiley; ty <= tileh; ty++) {
     for (tx = tilex; tx <= tilew; tx++) {
       ED_image_paint_tile_push(
-          undo_tiles, ima, ibuf, &tmpibuf, tile_number, tx, ty, NULL, NULL, false, find_old);
+          undo_tiles, ima, ibuf, &tmpibuf, iuser, tx, ty, NULL, NULL, false, find_old);
     }
   }
 
@@ -764,9 +764,9 @@ void PAINT_OT_image_paint(wmOperatorType *ot)
 
 bool get_imapaint_zoom(bContext *C, float *zoomx, float *zoomy)
 {
-  ScrArea *sa = CTX_wm_area(C);
-  if (sa && sa->spacetype == SPACE_IMAGE) {
-    SpaceImage *sima = sa->spacedata.first;
+  ScrArea *area = CTX_wm_area(C);
+  if (area && area->spacetype == SPACE_IMAGE) {
+    SpaceImage *sima = area->spacedata.first;
     if (sima->mode == SI_MODE_PAINT) {
       ARegion *region = CTX_wm_region(C);
       ED_space_image_get_zoom(sima, region, zoomx, zoomy);
@@ -808,12 +808,12 @@ void ED_space_image_paint_update(Main *bmain, wmWindowManager *wm, Scene *scene)
   ImagePaintSettings *imapaint = &settings->imapaint;
   bool enabled = false;
 
-  for (wmWindow *win = wm->windows.first; win; win = win->next) {
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     bScreen *screen = WM_window_get_active_screen(win);
 
-    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      if (sa->spacetype == SPACE_IMAGE) {
-        if (((SpaceImage *)sa->spacedata.first)->mode == SI_MODE_PAINT) {
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      if (area->spacetype == SPACE_IMAGE) {
+        if (((SpaceImage *)area->spacedata.first)->mode == SI_MODE_PAINT) {
           enabled = true;
         }
       }
@@ -949,9 +949,9 @@ typedef struct {
 static void sample_color_update_header(SampleColorData *data, bContext *C)
 {
   char msg[UI_MAX_DRAW_STR];
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
 
-  if (sa) {
+  if (area) {
     BLI_snprintf(msg,
                  sizeof(msg),
                  TIP_("Sample color for %s"),
@@ -1159,7 +1159,7 @@ static int texture_paint_toggle_exec(bContext *C, wmOperator *op)
     toggle_paint_cursor(C, 0);
   }
   else {
-    bScreen *sc;
+    bScreen *screen;
     Image *ima = NULL;
     ImagePaintSettings *imapaint = &scene->toolsettings->imapaint;
 
@@ -1183,11 +1183,11 @@ static int texture_paint_toggle_exec(bContext *C, wmOperator *op)
     }
 
     if (ima) {
-      for (sc = bmain->screens.first; sc; sc = sc->id.next) {
-        ScrArea *sa;
-        for (sa = sc->areabase.first; sa; sa = sa->next) {
+      for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+        ScrArea *area;
+        for (area = screen->areabase.first; area; area = area->next) {
           SpaceLink *sl;
-          for (sl = sa->spacedata.first; sl; sl = sl->next) {
+          for (sl = area->spacedata.first; sl; sl = sl->next) {
             if (sl->spacetype == SPACE_IMAGE) {
               SpaceImage *sima = (SpaceImage *)sl;
 

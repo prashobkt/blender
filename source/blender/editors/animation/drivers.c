@@ -21,24 +21,25 @@
  * \ingroup edanimation
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_utildefines.h"
 #include "BLI_string.h"
+#include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
 #include "DNA_space_types.h"
 #include "DNA_texture_types.h"
 
+#include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_fcurve.h"
 #include "BKE_context.h"
+#include "BKE_fcurve.h"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"

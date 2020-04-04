@@ -18,19 +18,20 @@
  * \ingroup edmesh
  */
 
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 
 #include "BKE_context.h"
 #include "BKE_scene.h"
 
-#include "RNA_define.h"
 #include "RNA_access.h"
+#include "RNA_define.h"
 #include "RNA_enum_types.h"
 
 #include "WM_api.h"
-#include "WM_types.h"
 #include "WM_message.h"
 #include "WM_toolsystem.h"
+#include "WM_types.h"
 
 #include "ED_gizmo_utils.h"
 #include "ED_screen.h"
@@ -1030,7 +1031,7 @@ static void gizmo_mesh_spin_redo_draw_prepare(const bContext *UNUSED(C), wmGizmo
    * could shift because of float precision.
    * Updates in this case are also redundant. */
   bool is_modal = false;
-  for (wmGizmo *gz = gzgroup->gizmos.first; gz; gz = gz->next) {
+  LISTBASE_FOREACH (wmGizmo *, gz, &gzgroup->gizmos) {
     if (gz->state & WM_GIZMO_STATE_MODAL) {
       is_modal = true;
       break;

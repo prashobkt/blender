@@ -46,13 +46,13 @@
 
 #include "BLI_listbase.h"
 
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
-#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
-#include "BKE_screen.h"
 #include "BKE_report.h"
+#include "BKE_screen.h"
 
 #include "ED_screen.h"
 
@@ -94,7 +94,7 @@ static void ui_popover_create_block(bContext *C, uiPopover *pup, int opcontext)
 {
   BLI_assert(pup->ui_size_x != 0);
 
-  uiStyle *style = UI_style_get_dpi();
+  const uiStyle *style = UI_style_get_dpi();
 
   pup->block = UI_block_begin(C, NULL, __func__, UI_EMBOSS);
   UI_block_flag_enable(pup->block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_POPOVER);
@@ -171,7 +171,7 @@ static uiBlock *ui_block_func_POPOVER(bContext *C, uiPopupBlockHandle *handle, v
     }
 
     if (!slideout) {
-      ScrArea *sa = CTX_wm_area(C);
+      ScrArea *area = CTX_wm_area(C);
       ARegion *region = CTX_wm_region(C);
 
       if (region && region->panels.first) {
@@ -180,14 +180,14 @@ static uiBlock *ui_block_func_POPOVER(bContext *C, uiPopupBlockHandle *handle, v
         UI_block_direction_set(block, UI_DIR_UP | UI_DIR_CENTER_X);
       }
       /* Prefer popover from header to be positioned into the editor. */
-      else if (sa && region) {
+      else if (area && region) {
         if (ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
-          if (RGN_ALIGN_ENUM_FROM_MASK(ED_area_header_alignment(sa)) == RGN_ALIGN_BOTTOM) {
+          if (RGN_ALIGN_ENUM_FROM_MASK(ED_area_header_alignment(area)) == RGN_ALIGN_BOTTOM) {
             UI_block_direction_set(block, UI_DIR_UP | UI_DIR_CENTER_X);
           }
         }
         if (region->regiontype == RGN_TYPE_FOOTER) {
-          if (RGN_ALIGN_ENUM_FROM_MASK(ED_area_footer_alignment(sa)) == RGN_ALIGN_BOTTOM) {
+          if (RGN_ALIGN_ENUM_FROM_MASK(ED_area_footer_alignment(area)) == RGN_ALIGN_BOTTOM) {
             UI_block_direction_set(block, UI_DIR_UP | UI_DIR_CENTER_X);
           }
         }

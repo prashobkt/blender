@@ -29,8 +29,8 @@
 #include "DNA_text_types.h"
 #include "DNA_world_types.h"
 
-#include "BLI_math.h"
 #include "BLI_blenlib.h"
+#include "BLI_math.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -50,9 +50,9 @@
 #include "RE_pipeline.h"
 
 #include "ED_node.h" /* own include */
-#include "ED_select_utils.h"
-#include "ED_screen.h"
 #include "ED_render.h"
+#include "ED_screen.h"
+#include "ED_select_utils.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -67,10 +67,10 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "node_intern.h" /* own include */
 #include "NOD_composite.h"
 #include "NOD_shader.h"
 #include "NOD_texture.h"
+#include "node_intern.h" /* own include */
 
 #define USE_ESC_COMPO
 
@@ -127,12 +127,12 @@ static int compo_get_recalc_flags(const bContext *C)
   int recalc_flags = 0;
 
   for (win = wm->windows.first; win; win = win->next) {
-    const bScreen *sc = WM_window_get_active_screen(win);
-    ScrArea *sa;
+    const bScreen *screen = WM_window_get_active_screen(win);
+    ScrArea *area;
 
-    for (sa = sc->areabase.first; sa; sa = sa->next) {
-      if (sa->spacetype == SPACE_IMAGE) {
-        SpaceImage *sima = sa->spacedata.first;
+    for (area = screen->areabase.first; area; area = area->next) {
+      if (area->spacetype == SPACE_IMAGE) {
+        SpaceImage *sima = area->spacedata.first;
         if (sima->image) {
           if (sima->image->type == IMA_TYPE_R_RESULT) {
             recalc_flags |= COM_RECALC_COMPOSITE;
@@ -142,8 +142,8 @@ static int compo_get_recalc_flags(const bContext *C)
           }
         }
       }
-      else if (sa->spacetype == SPACE_NODE) {
-        SpaceNode *snode = sa->spacedata.first;
+      else if (area->spacetype == SPACE_NODE) {
+        SpaceNode *snode = area->spacedata.first;
         if (snode->flag & SNODE_BACKDRAW) {
           recalc_flags |= COM_RECALC_VIEWER;
         }
@@ -446,8 +446,17 @@ void ED_node_shader_default(const bContext *C, ID *id)
 
   if (GS(id->name) == ID_MA) {
     /* Materials */
+    Object *ob = CTX_data_active_object(C);
     Material *ma = (Material *)id;
-    Material *ma_default = BKE_material_default_surface();
+    Material *ma_default;
+
+    if (ob && ob->type == OB_VOLUME) {
+      ma_default = BKE_material_default_volume();
+    }
+    else {
+      ma_default = BKE_material_default_surface();
+    }
+
     ma->nodetree = ntreeCopyTree(bmain, ma_default->nodetree);
     ntreeUpdateTree(bmain, ma->nodetree);
   }
@@ -810,7 +819,7 @@ static int edit_node_invoke_properties(bContext *C, wmOperator *op)
 }
 
 static void edit_node_properties_get(
-    wmOperator *op, bNodeTree *ntree, bNode **rnode, bNodeSocket **rsock, int *rin_out)
+    wmOperator *op, bNodeTree *ntree, bNode **r_node, bNodeSocket **r_sock, int *r_in_out)
 {
   bNode *node;
   bNodeSocket *sock = NULL;
@@ -833,14 +842,14 @@ static void edit_node_properties_get(
       break;
   }
 
-  if (rnode) {
-    *rnode = node;
+  if (r_node) {
+    *r_node = node;
   }
-  if (rsock) {
-    *rsock = sock;
+  if (r_sock) {
+    *r_sock = sock;
   }
-  if (rin_out) {
-    *rin_out = in_out;
+  if (r_in_out) {
+    *r_in_out = in_out;
   }
 }
 #endif
@@ -1317,7 +1326,7 @@ void NODE_OT_duplicate(wmOperatorType *ot)
 
 bool ED_node_select_check(ListBase *lb)
 {
-  for (bNode *node = lb->first; node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, lb) {
     if (node->flag & NODE_SELECT) {
       return true;
     }
@@ -1337,7 +1346,7 @@ void ED_node_select_all(ListBase *lb, int action)
     }
   }
 
-  for (bNode *node = lb->first; node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, lb) {
     switch (action) {
       case SEL_SELECT:
         nodeSetSelected(node, true);
@@ -2450,7 +2459,7 @@ void NODE_OT_tree_socket_move(wmOperatorType *ot)
 static bool node_shader_script_update_poll(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
-  RenderEngineType *type = RE_engines_find(scene->r.engine);
+  const RenderEngineType *type = RE_engines_find(scene->r.engine);
   SpaceNode *snode = CTX_wm_space_node(C);
   bNode *node;
   Text *text;

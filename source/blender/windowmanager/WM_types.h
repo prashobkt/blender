@@ -81,7 +81,7 @@
  * ScrArea's store a list of space data (SpaceLinks), each of unique type.
  * The first one is the displayed in the UI, others are added as needed.
  *
- * +----------------------------+  <-- sa->spacedata.first;
+ * +----------------------------+  <-- area->spacedata.first;
  * |                            |
  * |                            |---+  <-- other inactive SpaceLink's stored.
  * |                            |   |
@@ -99,8 +99,8 @@
  *
  * A common way to get the space from the ScrArea:
  * \code{.c}
- * if (sa->spacetype == SPACE_VIEW3D) {
- *     View3D *v3d = sa->spacedata.first;
+ * if (area->spacetype == SPACE_VIEW3D) {
+ *     View3D *v3d = area->spacedata.first;
  *     ...
  * }
  * \endcode
@@ -120,15 +120,15 @@ struct wmEvent;
 struct wmOperator;
 struct wmWindowManager;
 
-#include "RNA_types.h"
+#include "BLI_compiler_attrs.h"
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
-#include "BLI_compiler_attrs.h"
+#include "RNA_types.h"
 
 /* exported types for WM */
+#include "gizmo/WM_gizmo_types.h"
 #include "wm_cursors.h"
 #include "wm_event_types.h"
-#include "gizmo/WM_gizmo_types.h"
 
 /* Include external gizmo API's */
 #include "gizmo/WM_gizmo_api.h"
@@ -310,6 +310,7 @@ typedef struct wmNotifier {
 #define ND_HISTORY (4 << 16)
 #define ND_JOB (5 << 16)
 #define ND_UNDO (6 << 16)
+#define ND_XR_DATA_CHANGED (7 << 17)
 
 /* NC_SCREEN */
 #define ND_LAYOUTBROWSE (1 << 16)
@@ -437,6 +438,7 @@ typedef struct wmNotifier {
 
 /* subtype 3d view editing */
 #define NS_VIEW3D_GPU (16 << 8)
+#define NS_VIEW3D_SHADING (16 << 9)
 
 /* action classification */
 #define NOTE_ACTION (0x000000FF)
@@ -758,7 +760,7 @@ typedef struct wmOperatorType {
   bool (*pyop_poll)(struct bContext *, struct wmOperatorType *ot) ATTR_WARN_UNUSED_RESULT;
 
   /** RNA integration */
-  ExtensionRNA ext;
+  ExtensionRNA rna_ext;
 
   /** Flag last for padding */
   short flag;

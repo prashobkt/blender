@@ -21,8 +21,8 @@
  * \ingroup spnla
  */
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -31,8 +31,8 @@
 
 #include "BLI_blenlib.h"
 
-#include "BKE_nla.h"
 #include "BKE_context.h"
+#include "BKE_nla.h"
 #include "BKE_screen.h"
 
 #include "ED_anim_api.h"
@@ -46,8 +46,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "UI_view2d.h"
 #include "UI_interface.h"
+#include "UI_view2d.h"
 
 #include "nla_intern.h"  // own include
 
@@ -308,7 +308,7 @@ static void nlaedit_strip_at_region_position(
     if (ale->type == ANIMTYPE_NLATRACK) {
       NlaTrack *nlt = (NlaTrack *)ale->data;
 
-      for (NlaStrip *strip = nlt->strips.first; strip; strip = strip->next) {
+      LISTBASE_FOREACH (NlaStrip *, strip, &nlt->strips) {
         if (BKE_nlastrip_within_bounds(strip, xmin, xmax)) {
           *r_ale = ale;
           *r_strip = strip;

@@ -24,8 +24,8 @@
 #ifndef __TRANSFORM_H__
 #define __TRANSFORM_H__
 
-#include "ED_transform.h"
 #include "ED_numinput.h"
+#include "ED_transform.h"
 #include "ED_view3d.h"
 
 #include "RE_engine.h"
@@ -581,7 +581,7 @@ typedef struct TransInfo {
   void *view;
   /** Only valid (non null) during an operator called function. */
   struct bContext *context;
-  struct ScrArea *sa;
+  struct ScrArea *area;
   struct ARegion *region;
   struct Depsgraph *depsgraph;
   struct Scene *scene;

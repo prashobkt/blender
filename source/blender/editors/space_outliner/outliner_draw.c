@@ -24,21 +24,21 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_gpencil_modifier_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
+#include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_constraint_types.h"
-#include "DNA_object_force_types.h"
 
-#include "BLI_math.h"
 #include "BLI_blenlib.h"
+#include "BLI_math.h"
+#include "BLI_mempool.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
-#include "BLI_mempool.h"
 
 #include "BLT_translation.h"
 
@@ -46,7 +46,7 @@
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil.h"
-#include "BKE_idcode.h"
+#include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_library.h"
@@ -91,7 +91,7 @@ static void outliner_tree_dimensions_impl(SpaceOutliner *soops,
                                           int *width,
                                           int *height)
 {
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     *width = MAX2(*width, te->xend);
     if (height != NULL) {
       *height += UI_UNIT_Y;
@@ -387,8 +387,7 @@ static void outliner_collection_set_flag_recursive(Scene *scene,
   if (base_or_object_prop) {
     /* Note: We can't use BKE_collection_object_cache_get()
      * otherwise we would not take collection exclusion into account. */
-    for (CollectionObject *cob = layer_collection->collection->gobject.first; cob;
-         cob = cob->next) {
+    LISTBASE_FOREACH (CollectionObject *, cob, &layer_collection->collection->gobject) {
 
       outliner_base_or_object_pointer_create(view_layer, collection, cob->ob, &ptr);
       RNA_property_boolean_set(&ptr, base_or_object_prop, value);
@@ -401,7 +400,7 @@ static void outliner_collection_set_flag_recursive(Scene *scene,
 
   /* Keep going recursively. */
   ListBase *lb = (layer_collection ? &layer_collection->layer_collections : &collection->children);
-  for (Link *link = lb->first; link; link = link->next) {
+  LISTBASE_FOREACH (Link *, link, lb) {
     LayerCollection *layer_collection_iter = layer_collection ? (LayerCollection *)link : NULL;
     Collection *collection_iter = layer_collection ?
                                       (collection ? layer_collection_iter->collection : NULL) :
@@ -467,7 +466,7 @@ static bool outliner_collection_is_isolated(Scene *scene,
 
   /* Keep going recursively. */
   ListBase *lb = (layer_collection ? &layer_collection->layer_collections : &collection->children);
-  for (Link *link = lb->first; link; link = link->next) {
+  LISTBASE_FOREACH (Link *, link, lb) {
     LayerCollection *layer_collection_iter = layer_collection ? (LayerCollection *)link : NULL;
     Collection *collection_iter = layer_collection ?
                                       (collection ? layer_collection_iter->collection : NULL) :
@@ -542,8 +541,7 @@ void outliner_collection_isolate_flag(Scene *scene,
   /* Make this collection direct parents also "visible". */
   if (layer_collection) {
     LayerCollection *lc_parent = layer_collection;
-    for (LayerCollection *lc_iter = top_layer_collection->layer_collections.first; lc_iter;
-         lc_iter = lc_iter->next) {
+    LISTBASE_FOREACH (LayerCollection *, lc_iter, &top_layer_collection->layer_collections) {
       if (BKE_layer_collection_has_layer_collection(lc_iter, layer_collection)) {
         lc_parent = lc_iter;
         break;
@@ -555,8 +553,7 @@ void outliner_collection_isolate_flag(Scene *scene,
           scene, lc_parent, collection ? lc_parent->collection : NULL, &ptr);
       RNA_property_boolean_set(&ptr, layer_or_collection_prop, !is_hide);
 
-      for (LayerCollection *lc_iter = lc_parent->layer_collections.first; lc_iter;
-           lc_iter = lc_iter->next) {
+      LISTBASE_FOREACH (LayerCollection *, lc_iter, &lc_parent->layer_collections) {
         if (BKE_layer_collection_has_layer_collection(lc_iter, layer_collection)) {
           lc_parent = lc_iter;
           break;
@@ -817,7 +814,7 @@ static void namebutton_cb(bContext *C, void *tsep, char *oldname)
           bGPDlayer *gpl = te->directdata;
 
           /* always make layer active */
-          BKE_gpencil_layer_setactive(gpd, gpl);
+          BKE_gpencil_layer_active_set(gpd, gpl);
 
           // XXX: name needs translation stuff
           BLI_uniquename(
@@ -1054,7 +1051,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
   /* Create buttons. */
   uiBut *bt;
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
     RestrictPropertiesActive props_active = props_active_parent;
 
@@ -1651,7 +1648,7 @@ static void outliner_draw_userbuts(uiBlock *block,
                                    ListBase *lb)
 {
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
     if (te->ys + 2 * UI_UNIT_Y >= region->v2d.cur.ymin && te->ys <= region->v2d.cur.ymax) {
       if (tselem->type == 0) {
@@ -1770,7 +1767,7 @@ static void outliner_draw_rnabuts(
   PointerRNA *ptr;
   PropertyRNA *prop;
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
     if (te->ys + 2 * UI_UNIT_Y >= region->v2d.cur.ymin && te->ys <= region->v2d.cur.ymax) {
       if (tselem->type == TSE_RNA_PROPERTY) {
@@ -2418,6 +2415,15 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         case OB_LIGHTPROBE:
           data.icon = ICON_OUTLINER_OB_LIGHTPROBE;
           break;
+        case OB_HAIR:
+          data.icon = ICON_OUTLINER_OB_HAIR;
+          break;
+        case OB_POINTCLOUD:
+          data.icon = ICON_OUTLINER_OB_POINTCLOUD;
+          break;
+        case OB_VOLUME:
+          data.icon = ICON_OUTLINER_OB_VOLUME;
+          break;
         case OB_EMPTY:
           if (ob->instance_collection && (ob->transflag & OB_DUPLICOLLECTION)) {
             data.icon = ICON_OUTLINER_OB_GROUP_INSTANCE;
@@ -2514,6 +2520,15 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
           break;
         case ID_GR:
           data.icon = ICON_GROUP;
+          break;
+        case ID_HA:
+          data.icon = ICON_OUTLINER_DATA_HAIR;
+          break;
+        case ID_PT:
+          data.icon = ICON_OUTLINER_DATA_POINTCLOUD;
+          break;
+        case ID_VO:
+          data.icon = ICON_OUTLINER_DATA_VOLUME;
           break;
         case ID_LI:
           if (tselem->id->tag & LIB_TAG_MISSING) {
@@ -2809,7 +2824,7 @@ int tree_element_id_type_to_index(TreeElement *te)
 {
   TreeStoreElem *tselem = TREESTORE(te);
 
-  const int id_index = tselem->type == 0 ? BKE_idcode_to_index(te->idcode) : INDEX_ID_GR;
+  const int id_index = tselem->type == 0 ? BKE_idtype_idcode_to_index(te->idcode) : INDEX_ID_GR;
   if (id_index < INDEX_ID_OB) {
     return id_index;
   }
@@ -2843,7 +2858,7 @@ static void outliner_draw_iconrow(bContext *C,
 {
   eOLDrawState active = OL_DRAWSEL_NONE;
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     /* object hierarchy always, further constrained on level */
@@ -3186,7 +3201,7 @@ static void outliner_draw_tree_element(bContext *C,
   if (TSELEM_OPEN(tselem, soops)) {
     *starty -= UI_UNIT_Y;
 
-    for (TreeElement *ten = te->subtree.first; ten; ten = ten->next) {
+    LISTBASE_FOREACH (TreeElement *, ten, &te->subtree) {
       /* check if element needs to be drawn grayed out, but also gray out
        * childs of a grayed out parent (pass on draw_grayed_out to childs) */
       bool draw_childs_grayed_out = draw_grayed_out || (ten->flag & TE_DRAGGING);
@@ -3205,7 +3220,7 @@ static void outliner_draw_tree_element(bContext *C,
     }
   }
   else {
-    for (TreeElement *ten = te->subtree.first; ten; ten = ten->next) {
+    LISTBASE_FOREACH (TreeElement *, ten, &te->subtree) {
       outliner_set_coord_tree_element(ten, startx, *starty);
     }
 
@@ -3339,7 +3354,7 @@ static void outliner_draw_struct_marks(ARegion *region,
                                        ListBase *lb,
                                        int *starty)
 {
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     /* selection status */
@@ -3388,7 +3403,7 @@ static void outliner_draw_highlights_recursive(uint pos,
   const bool is_searching = (SEARCHING_OUTLINER(soops) ||
                              (soops->outlinevis == SO_DATA_API && soops->search_string[0] != 0));
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     const TreeStoreElem *tselem = TREESTORE(te);
     const int start_y = *io_start_y;
 
@@ -3537,7 +3552,7 @@ static void outliner_draw_tree(bContext *C,
   // items themselves
   starty = (int)region->v2d.tot.ymax - UI_UNIT_Y - OL_Y_OFFSET;
   startx = 0;
-  for (TreeElement *te = soops->tree.first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, &soops->tree) {
     outliner_draw_tree_element(C,
                                block,
                                fstyle,

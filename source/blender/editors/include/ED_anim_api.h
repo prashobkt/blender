@@ -74,13 +74,13 @@ typedef struct bAnimContext {
 
   /** editor->mode */
   short mode;
-  /** sa->spacetype */
+  /** area->spacetype */
   short spacetype;
   /** active region -> type (channels or main) */
   short regiontype;
 
   /** editor host */
-  struct ScrArea *sa;
+  struct ScrArea *area;
   /** editor data */
   struct SpaceLink *sl;
   /** region within editor */
@@ -226,6 +226,9 @@ typedef enum eAnim_ChannelType {
   ANIMTYPE_DSSPK,
   ANIMTYPE_DSGPENCIL,
   ANIMTYPE_DSMCLIP,
+  ANIMTYPE_DSHAIR,
+  ANIMTYPE_DSPOINTCLOUD,
+  ANIMTYPE_DSVOLUME,
 
   ANIMTYPE_SHAPEKEY,
 
@@ -350,6 +353,9 @@ typedef enum eAnimFilter_Flags {
 #define FILTER_MESH_OBJD(me) (CHECK_TYPE_INLINE(me, Mesh *), ((me->flag & ME_DS_EXPAND)))
 #define FILTER_LATTICE_OBJD(lt) (CHECK_TYPE_INLINE(lt, Lattice *), ((lt->flag & LT_DS_EXPAND)))
 #define FILTER_SPK_OBJD(spk) (CHECK_TYPE_INLINE(spk, Speaker *), ((spk->flag & SPK_DS_EXPAND)))
+#define FILTER_HAIR_OBJD(ha) (CHECK_TYPE_INLINE(ha, Hair *), ((ha->flag & HA_DS_EXPAND)))
+#define FILTER_POINTS_OBJD(pt) (CHECK_TYPE_INLINE(pt, PointCloud *), ((pt->flag & PT_DS_EXPAND)))
+#define FILTER_VOLUME_OBJD(vo) (CHECK_TYPE_INLINE(vo, Volume *), ((vo->flag & VO_DS_EXPAND)))
 /* Variable use expanders */
 #define FILTER_NTREE_DATA(ntree) \
   (CHECK_TYPE_INLINE(ntree, bNodeTree *), ((ntree->flag & NTREE_DS_EXPAND)))
@@ -834,7 +840,7 @@ void ED_animedit_unlink_action(struct bContext *C,
                                bool force_delete);
 
 /* Drivers Editor - Utility to set up UI correctly */
-void ED_drivers_editor_init(struct bContext *C, struct ScrArea *sa);
+void ED_drivers_editor_init(struct bContext *C, struct ScrArea *area);
 
 /* ************************************************ */
 

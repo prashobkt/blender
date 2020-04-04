@@ -46,7 +46,7 @@ void ED_region_generic_tools_region_message_subscribe(const struct bContext *UNU
                                                       struct WorkSpace *UNUSED(workspace),
                                                       struct Scene *UNUSED(scene),
                                                       struct bScreen *UNUSED(screen),
-                                                      struct ScrArea *UNUSED(sa),
+                                                      struct ScrArea *UNUSED(area),
                                                       struct ARegion *region,
                                                       struct wmMsgBus *mbus)
 {
@@ -81,7 +81,7 @@ int ED_region_generic_tools_region_snap_size(const ARegion *region, int size, in
     if (size <= snap_units[ARRAY_SIZE(snap_units) - 1]) {
       for (uint i = 0; i < ARRAY_SIZE(snap_units); i += 1) {
         const int test_size = snap_units[i];
-        const int test_diff = ABS(test_size - size);
+        const int test_diff = abs(test_size - size);
         if (test_diff < best_diff) {
           best_size = test_size;
           best_diff = test_diff;

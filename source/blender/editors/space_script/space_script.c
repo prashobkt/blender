@@ -21,8 +21,8 @@
  * \ingroup spscript
  */
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -32,8 +32,8 @@
 #include "BKE_context.h"
 #include "BKE_screen.h"
 
-#include "ED_space_api.h"
 #include "ED_screen.h"
+#include "ED_space_api.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -44,8 +44,8 @@
 #ifdef WITH_PYTHON
 #endif
 
-#include "script_intern.h"  // own include
 #include "GPU_framebuffer.h"
+#include "script_intern.h"  // own include
 
 // static script_run_python(char *funcname, )
 
@@ -94,7 +94,7 @@ static void script_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void script_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(sa))
+static void script_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
 {
 }
 
@@ -160,7 +160,7 @@ static void script_header_region_draw(const bContext *C, ARegion *region)
 }
 
 static void script_main_region_listener(wmWindow *UNUSED(win),
-                                        ScrArea *UNUSED(sa),
+                                        ScrArea *UNUSED(area),
                                         ARegion *UNUSED(region),
                                         wmNotifier *UNUSED(wmn),
                                         const Scene *UNUSED(scene))

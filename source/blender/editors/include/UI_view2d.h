@@ -119,7 +119,7 @@ void UI_view2d_region_reinit(struct View2D *v2d, short type, int winx, int winy)
 
 void UI_view2d_curRect_validate(struct View2D *v2d);
 void UI_view2d_curRect_reset(struct View2D *v2d);
-void UI_view2d_sync(struct bScreen *screen, struct ScrArea *sa, struct View2D *v2dcur, int flag);
+void UI_view2d_sync(struct bScreen *screen, struct ScrArea *area, struct View2D *v2dcur, int flag);
 
 void UI_view2d_totRect_set(struct View2D *v2d, int width, int height);
 void UI_view2d_totRect_set_resize(struct View2D *v2d, int width, int height, bool resize);
@@ -250,13 +250,17 @@ char UI_view2d_rect_in_scrollers(const struct ARegion *region,
                                  const struct rcti *rect);
 
 /* cached text drawing in v2d, to allow pixel-aligned draw as post process */
-void UI_view2d_text_cache_add(
-    struct View2D *v2d, float x, float y, const char *str, size_t str_len, const char col[4]);
+void UI_view2d_text_cache_add(struct View2D *v2d,
+                              float x,
+                              float y,
+                              const char *str,
+                              size_t str_len,
+                              const unsigned char col[4]);
 void UI_view2d_text_cache_add_rectf(struct View2D *v2d,
                                     const struct rctf *rect_view,
                                     const char *str,
                                     size_t str_len,
-                                    const char col[4]);
+                                    const unsigned char col[4]);
 void UI_view2d_text_cache_draw(struct ARegion *region);
 
 /* operators */

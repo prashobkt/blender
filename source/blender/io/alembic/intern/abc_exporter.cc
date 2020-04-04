@@ -22,6 +22,7 @@
 
 #include <cmath>
 
+#include "abc_util.h"
 #include "abc_writer_archive.h"
 #include "abc_writer_camera.h"
 #include "abc_writer_curves.h"
@@ -31,18 +32,17 @@
 #include "abc_writer_nurbs.h"
 #include "abc_writer_points.h"
 #include "abc_writer_transform.h"
-#include "abc_util.h"
 
 extern "C" {
 #include "DNA_camera_types.h"
 #include "DNA_curve_types.h"
-#include "DNA_meta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_meta_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h" /* for FILE_MAX */
-#include "DNA_fluid_types.h"
 
 #include "BLI_string.h"
 
@@ -51,7 +51,7 @@ extern "C" {
 #  include "BLI_winstuff.h"
 #endif
 
-#include "BKE_anim.h"
+#include "BKE_duplilist.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"

@@ -31,8 +31,8 @@ struct GPUTexture;
 struct GPUViewport;
 
 typedef struct wmDrawBuffer {
-  struct GPUOffScreen *offscreen[2];
-  struct GPUViewport *viewport[2];
+  struct GPUOffScreen *offscreen;
+  struct GPUViewport *viewport;
   bool stereo;
   int bound_view;
 } wmDrawBuffer;
@@ -46,7 +46,7 @@ struct wmWindow;
 void wm_draw_update(struct bContext *C);
 void wm_draw_region_clear(struct wmWindow *win, struct ARegion *region);
 void wm_draw_region_blend(struct ARegion *region, int view, bool blend);
-void wm_draw_region_test(struct bContext *C, struct ScrArea *sa, struct ARegion *region);
+void wm_draw_region_test(struct bContext *C, struct ScrArea *area, struct ARegion *region);
 
 struct GPUTexture *wm_draw_region_texture(struct ARegion *region, int view);
 

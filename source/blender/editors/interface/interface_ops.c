@@ -26,9 +26,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_armature_types.h"
+#include "DNA_object_types.h" /* for OB_DATA_SUPPORT_ID */
 #include "DNA_screen_types.h"
 #include "DNA_text_types.h"
-#include "DNA_object_types.h" /* for OB_DATA_SUPPORT_ID */
 
 #include "BLI_blenlib.h"
 #include "BLI_math_color.h"
@@ -69,9 +69,9 @@
 #include "ED_keyframing.h"
 
 /* only for UI_OT_editsource */
-#include "ED_screen.h"
 #include "BKE_main.h"
 #include "BLI_ghash.h"
+#include "ED_screen.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Copy Data Path Operator
@@ -807,6 +807,9 @@ bool UI_context_copy_to_selected_list(bContext *C,
   else if (RNA_struct_is_a(ptr->type, &RNA_FCurve)) {
     *r_lb = CTX_data_collection_get(C, "selected_editable_fcurves");
   }
+  else if (RNA_struct_is_a(ptr->type, &RNA_NlaStrip)) {
+    *r_lb = CTX_data_collection_get(C, "selected_nla_strips");
+  }
   else if (RNA_struct_is_a(ptr->type, &RNA_Constraint) &&
            (path_from_bone = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_PoseBone)) !=
                NULL) {
@@ -1251,7 +1254,7 @@ static bool ui_editsource_uibut_match(uiBut *but_a, uiBut *but_b)
 
 void UI_editsource_active_but_test(uiBut *but)
 {
-  extern void PyC_FileAndNum_Safe(const char **filename, int *lineno);
+  extern void PyC_FileAndNum_Safe(const char **r_filename, int *r_lineno);
 
   struct uiEditSourceButStore *but_store = MEM_callocN(sizeof(uiEditSourceButStore), __func__);
 
@@ -1305,9 +1308,9 @@ static int editsource_text_edit(bContext *C,
   else {
     /* naughty!, find text area to set, not good behavior
      * but since this is a dev tool lets allow it - campbell */
-    ScrArea *sa = BKE_screen_find_big_area(CTX_wm_screen(C), SPACE_TEXT, 0);
-    if (sa) {
-      SpaceText *st = sa->spacedata.first;
+    ScrArea *area = BKE_screen_find_big_area(CTX_wm_screen(C), SPACE_TEXT, 0);
+    if (area) {
+      SpaceText *st = area->spacedata.first;
       st->text = text;
     }
     else {
@@ -1617,13 +1620,14 @@ static void UI_OT_reloadtranslation(wmOperatorType *ot)
 
 static int ui_button_press_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  bScreen *sc = CTX_wm_screen(C);
+  bScreen *screen = CTX_wm_screen(C);
   const bool skip_depressed = RNA_boolean_get(op->ptr, "skip_depressed");
-  ARegion *ar_prev = CTX_wm_region(C);
-  ARegion *region = sc ? BKE_screen_find_region_xy(sc, RGN_TYPE_ANY, event->x, event->y) : NULL;
+  ARegion *region_prev = CTX_wm_region(C);
+  ARegion *region = screen ? BKE_screen_find_region_xy(screen, RGN_TYPE_ANY, event->x, event->y) :
+                             NULL;
 
   if (region == NULL) {
-    region = ar_prev;
+    region = region_prev;
   }
 
   if (region == NULL) {
@@ -1632,7 +1636,7 @@ static int ui_button_press_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   CTX_wm_region_set(C, region);
   uiBut *but = UI_context_active_but_get(C);
-  CTX_wm_region_set(C, ar_prev);
+  CTX_wm_region_set(C, region_prev);
 
   if (but == NULL) {
     return OPERATOR_PASS_THROUGH;
@@ -1703,7 +1707,7 @@ static void UI_OT_button_string_clear(wmOperatorType *ot)
 bool UI_drop_color_poll(struct bContext *C,
                         wmDrag *drag,
                         const wmEvent *UNUSED(event),
-                        const char **UNUSED(tooltip))
+                        const char **UNUSED(r_tooltip))
 {
   /* should only return true for regions that include buttons, for now
    * return true always */

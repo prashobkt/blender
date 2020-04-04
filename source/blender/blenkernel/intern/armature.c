@@ -22,46 +22,45 @@
  */
 
 #include <ctype.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include <stdio.h>
 #include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-#include "BLI_listbase.h"
-#include "BLI_string.h"
+#include "BLI_alloca.h"
 #include "BLI_ghash.h"
+#include "BLI_listbase.h"
+#include "BLI_math.h"
+#include "BLI_string.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
-#include "BLI_alloca.h"
 #include "BLT_translation.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_gpencil_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_listBase.h"
+#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
-#include "BKE_animsys.h"
-#include "BKE_armature.h"
 #include "BKE_action.h"
-#include "BKE_anim.h"
+#include "BKE_anim_visualization.h"
+#include "BKE_armature.h"
 #include "BKE_constraint.h"
 #include "BKE_curve.h"
 #include "BKE_deform.h"
 #include "BKE_displist.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
-#include "BKE_lib_id.h"
 #include "BKE_lattice.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
@@ -138,7 +137,6 @@ static void armature_copy_data(Main *UNUSED(bmain), ID *id_dst, const ID *id_src
 static void armature_free_data(struct ID *id)
 {
   bArmature *armature = (bArmature *)id;
-  BKE_animdata_free(&armature->id, false);
 
   BKE_armature_bone_hash_free(armature);
   BKE_armature_bonelist_free(&armature->bonebase);
@@ -192,7 +190,7 @@ bArmature *BKE_armature_from_object(Object *ob)
 int BKE_armature_bonelist_count(ListBase *lb)
 {
   int i = 0;
-  for (Bone *bone = lb->first; bone; bone = bone->next) {
+  LISTBASE_FOREACH (Bone *, bone, lb) {
     i += 1 + BKE_armature_bonelist_count(&bone->childbase);
   }
 
@@ -305,7 +303,7 @@ static void armature_transform_recurse(ListBase *bonebase,
                                        const Bone *bone_parent,
                                        const float arm_mat_parent_inv[4][4])
 {
-  for (Bone *bone = bonebase->first; bone; bone = bone->next) {
+  LISTBASE_FOREACH (Bone *, bone, bonebase) {
 
     /* Store the initial bone roll in a matrix, this is needed even for child bones
      * so any change in head/tail doesn't cause the roll to change.
@@ -426,7 +424,7 @@ Bone *BKE_armature_find_bone_name(bArmature *arm, const char *name)
 
 static void armature_bone_from_name_insert_recursive(GHash *bone_hash, ListBase *lb)
 {
-  for (Bone *bone = lb->first; bone; bone = bone->next) {
+  LISTBASE_FOREACH (Bone *, bone, lb) {
     BLI_ghash_insert(bone_hash, bone->name, bone);
     armature_bone_from_name_insert_recursive(bone_hash, &bone->childbase);
   }
@@ -476,7 +474,7 @@ bool BKE_armature_bone_flag_test_recursive(const Bone *bone, int flag)
 
 static void armature_refresh_layer_used_recursive(bArmature *arm, ListBase *bones)
 {
-  for (Bone *bone = bones->first; bone; bone = bone->next) {
+  LISTBASE_FOREACH (Bone *, bone, bones) {
     arm->layer_used |= bone->layer;
     armature_refresh_layer_used_recursive(arm, &bone->childbase);
   }
@@ -1009,12 +1007,12 @@ void BKE_pchan_bbone_handles_compute(const BBoneSplineParameters *param,
    * - These properties allow users to hand-animate the
    *   bone curve/shape, without having to resort to using
    *   extra bones
-   * - The "bone" level offsets are for defining the restpose
+   * - The "bone" level offsets are for defining the rest-pose
    *   shape of the bone (e.g. for curved eyebrows for example).
    *   -> In the viewport, it's needed to define what the rest pose
    *      looks like
    *   -> For "rest == 0", we also still need to have it present
-   *      so that we can "cancel out" this restpose when it comes
+   *      so that we can "cancel out" this rest-pose when it comes
    *      time to deform some geometry, it won't cause double transforms.
    * - The "pchan" level offsets are the ones that animators actually
    *   end up animating
@@ -2524,7 +2522,7 @@ void BKE_armature_where_is(bArmature *arm)
 
 /* if bone layer is protected, copy the data from from->pose
  * when used with linked libraries this copies from the linked pose into the local pose */
-static void pose_proxy_synchronize(Object *ob, Object *from, int layer_protected)
+static void pose_proxy_sync(Object *ob, Object *from, int layer_protected)
 {
   bPose *pose = ob->pose, *frompose = from->pose;
   bPoseChannel *pchan, *pchanp;
@@ -2703,7 +2701,7 @@ static int rebuild_pose_bone(bPose *pose, Bone *bone, bPoseChannel *parchan, int
  */
 void BKE_pose_clear_pointers(bPose *pose)
 {
-  for (bPoseChannel *pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
     pchan->bone = NULL;
     pchan->child = NULL;
   }
@@ -2711,7 +2709,7 @@ void BKE_pose_clear_pointers(bPose *pose)
 
 void BKE_pose_remap_bone_pointers(bArmature *armature, bPose *pose)
 {
-  for (bPoseChannel *pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
     pchan->bone = BKE_armature_find_bone_name(armature, pchan->name);
   }
 }
@@ -2787,7 +2785,7 @@ void BKE_pose_rebuild(Main *bmain, Object *ob, bArmature *arm, const bool do_id_
    * using COW tag was working this morning, but not anymore... */
   if (ob->proxy != NULL && (ob->id.tag & LIB_TAG_NO_MAIN) == 0) {
     BKE_object_copy_proxy_drivers(ob, ob->proxy);
-    pose_proxy_synchronize(ob, ob->proxy, arm->layer_protected);
+    pose_proxy_sync(ob, ob->proxy, arm->layer_protected);
   }
 
   BKE_pose_update_constraint_flags(pose); /* for IK detection for example */

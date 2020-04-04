@@ -23,13 +23,12 @@
 
 #include <string.h>
 
-#include "DNA_object_types.h"
-#include "DNA_lightprobe_types.h"
 #include "DNA_defaults.h"
+#include "DNA_lightprobe_types.h"
+#include "DNA_object_types.h"
 
 #include "BLI_utildefines.h"
 
-#include "BKE_animsys.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lightprobe.h"
@@ -110,11 +109,6 @@ static void lightprobe_make_local(Main *bmain, ID *id, const int flags)
   BKE_lib_id_make_local_generic(bmain, id, flags);
 }
 
-static void lightprobe_free_data(ID *id)
-{
-  BKE_animdata_free(id, false);
-}
-
 IDTypeInfo IDType_ID_LP = {
     .id_code = ID_LP,
     .id_filter = FILTER_ID_LP,
@@ -127,6 +121,6 @@ IDTypeInfo IDType_ID_LP = {
 
     .init_data = lightprobe_init_data,
     .copy_data = lightprobe_copy_data,
-    .free_data = lightprobe_free_data,
+    .free_data = NULL,
     .make_local = lightprobe_make_local,
 };

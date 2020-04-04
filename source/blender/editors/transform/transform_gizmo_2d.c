@@ -42,15 +42,15 @@
 #include "UI_view2d.h"
 
 #include "WM_api.h"
+#include "WM_message.h"
 #include "WM_types.h"
 #include "wm.h" /* XXX */
-#include "WM_message.h"
 
+#include "ED_gizmo_library.h"
 #include "ED_gizmo_utils.h"
 #include "ED_image.h"
 #include "ED_screen.h"
 #include "ED_uvedit.h"
-#include "ED_gizmo_library.h"
 
 #include "transform.h" /* own include */
 
@@ -68,10 +68,10 @@ static bool gizmo2d_generic_poll(const bContext *C, wmGizmoGroupType *gzgt)
     return false;
   }
 
-  ScrArea *sa = CTX_wm_area(C);
-  switch (sa->spacetype) {
+  ScrArea *area = CTX_wm_area(C);
+  switch (area->spacetype) {
     case SPACE_IMAGE: {
-      SpaceImage *sima = sa->spacedata.first;
+      SpaceImage *sima = area->spacedata.first;
       Object *obedit = CTX_data_edit_object(C);
       if (!ED_space_image_show_uvedit(sima, obedit)) {
         return false;
@@ -86,7 +86,7 @@ static void gizmo2d_pivot_point_message_subscribe(struct wmGizmoGroup *gzgroup,
                                                   struct wmMsgBus *mbus,
                                                   /* Additional args. */
                                                   bScreen *screen,
-                                                  ScrArea *sa,
+                                                  ScrArea *area,
                                                   ARegion *region)
 {
   wmMsgSubscribeValue msg_sub_value_gz_tag_refresh = {
@@ -95,9 +95,9 @@ static void gizmo2d_pivot_point_message_subscribe(struct wmGizmoGroup *gzgroup,
       .notify = WM_gizmo_do_msg_notify_tag_refresh,
   };
 
-  switch (sa->spacetype) {
+  switch (area->spacetype) {
     case SPACE_IMAGE: {
-      SpaceImage *sima = sa->spacedata.first;
+      SpaceImage *sima = area->spacedata.first;
       PointerRNA ptr;
       RNA_pointer_create(&screen->id, &RNA_SpaceImageEditor, sima, &ptr);
       {
@@ -214,10 +214,10 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
     r_max = max_buf;
   }
 
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   bool changed = false;
-  if (sa->spacetype == SPACE_IMAGE) {
-    SpaceImage *sima = sa->spacedata.first;
+  if (area->spacetype == SPACE_IMAGE) {
+    SpaceImage *sima = area->spacedata.first;
     Scene *scene = CTX_data_scene(C);
     ViewLayer *view_layer = CTX_data_view_layer(C);
     Image *ima = ED_space_image(sima);
@@ -241,11 +241,11 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
 
 static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
 {
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   bool has_select = false;
   zero_v2(r_center);
-  if (sa->spacetype == SPACE_IMAGE) {
-    SpaceImage *sima = sa->spacedata.first;
+  if (area->spacetype == SPACE_IMAGE) {
+    SpaceImage *sima = area->spacedata.first;
     Scene *scene = CTX_data_scene(C);
     ViewLayer *view_layer = CTX_data_view_layer(C);
     ED_uvedit_center_from_pivot_ex(sima, scene, view_layer, r_center, sima->around, &has_select);
@@ -300,7 +300,7 @@ static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup
       /* set up widget data */
       RNA_float_set(gz->ptr, "length", 0.8f);
       float axis[3] = {0.0f};
-      axis[(i + 1) % 2] = 1.0f;
+      axis[i] = 1.0f;
       WM_gizmo_set_matrix_rotation_from_z_axis(gz, axis);
 
       float offset[3] = {0, 0, 0};
@@ -315,6 +315,11 @@ static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup
       WM_gizmo_set_scale(gz, 1.0f);
     }
     else {
+      float color[4], color_hi[4];
+      UI_GetThemeColor4fv(TH_GIZMO_VIEW_ALIGN, color);
+      copy_v4_v4(color_hi, color);
+      color[3] *= 0.6f;
+
       PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
       RNA_property_enum_set(gz->ptr, prop, ICON_NONE);
 
@@ -322,7 +327,8 @@ static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup
       /* Make the center low alpha. */
       WM_gizmo_set_line_width(gz, 2.0f);
       RNA_float_set(gz->ptr, "backdrop_fill_alpha", 0.0);
-      WM_gizmo_set_color(gz, (const float[4]){1, 1, 1, 0.6});
+      WM_gizmo_set_color(gz, color);
+      WM_gizmo_set_color_highlight(gz, color_hi);
 
       WM_gizmo_set_scale(gz, 0.2f);
     }
@@ -330,8 +336,8 @@ static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup
     /* Assign operator. */
     PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_translate, NULL);
     if (i < 2) {
-      bool constraint[3] = {0};
-      constraint[(i + 1) % 2] = 1;
+      bool constraint[3] = {false};
+      constraint[i] = true;
       if (RNA_struct_find_property(ptr, "constraint_axis")) {
         RNA_boolean_set_array(ptr, "constraint_axis", constraint);
       }
@@ -503,9 +509,9 @@ static void gizmo2d_xform_no_cage_message_subscribe(const struct bContext *C,
                                                     struct wmMsgBus *mbus)
 {
   bScreen *screen = CTX_wm_screen(C);
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  gizmo2d_pivot_point_message_subscribe(gzgroup, mbus, screen, sa, region);
+  gizmo2d_pivot_point_message_subscribe(gzgroup, mbus, screen, area, region);
 }
 
 void ED_widgetgroup_gizmo2d_xform_callbacks_set(wmGizmoGroupType *gzgt)
@@ -629,6 +635,11 @@ static void gizmo2d_resize_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgrou
       WM_gizmo_set_scale(gz, 1.0f);
     }
     else {
+      float color[4], color_hi[4];
+      UI_GetThemeColor4fv(TH_GIZMO_VIEW_ALIGN, color);
+      copy_v4_v4(color_hi, color);
+      color[3] *= 0.6f;
+
       PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
       RNA_property_enum_set(gz->ptr, prop, ICON_NONE);
 
@@ -636,7 +647,8 @@ static void gizmo2d_resize_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgrou
       /* Make the center low alpha. */
       WM_gizmo_set_line_width(gz, 2.0f);
       RNA_float_set(gz->ptr, "backdrop_fill_alpha", 0.0);
-      WM_gizmo_set_color(gz, (const float[4]){1, 1, 1, 0.6});
+      WM_gizmo_set_color(gz, color);
+      WM_gizmo_set_color_highlight(gz, color_hi);
 
       WM_gizmo_set_scale(gz, 1.2f);
     }
@@ -659,9 +671,9 @@ static void gizmo2d_resize_message_subscribe(const struct bContext *C,
                                              struct wmMsgBus *mbus)
 {
   bScreen *screen = CTX_wm_screen(C);
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  gizmo2d_pivot_point_message_subscribe(gzgroup, mbus, screen, sa, region);
+  gizmo2d_pivot_point_message_subscribe(gzgroup, mbus, screen, area, region);
 }
 
 void ED_widgetgroup_gizmo2d_resize_callbacks_set(wmGizmoGroupType *gzgt)
@@ -754,6 +766,9 @@ static void gizmo2d_rotate_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgrou
     WM_gizmo_set_scale(gz, 1.2f);
 
     {
+      float color[4];
+      UI_GetThemeColor4fv(TH_GIZMO_VIEW_ALIGN, color);
+
       PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
       RNA_property_enum_set(gz->ptr, prop, ICON_NONE);
 
@@ -761,7 +776,8 @@ static void gizmo2d_rotate_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgrou
       /* Make the center low alpha. */
       WM_gizmo_set_line_width(gz, 2.0f);
       RNA_float_set(gz->ptr, "backdrop_fill_alpha", 0.0);
-      WM_gizmo_set_color(gz, (const float[4]){1, 1, 1, 0.6});
+      WM_gizmo_set_color(gz, color);
+      WM_gizmo_set_color_highlight(gz, color);
     }
 
     /* Assign operator. */
@@ -775,9 +791,9 @@ static void gizmo2d_rotate_message_subscribe(const struct bContext *C,
                                              struct wmMsgBus *mbus)
 {
   bScreen *screen = CTX_wm_screen(C);
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  gizmo2d_pivot_point_message_subscribe(gzgroup, mbus, screen, sa, region);
+  gizmo2d_pivot_point_message_subscribe(gzgroup, mbus, screen, area, region);
 }
 
 void ED_widgetgroup_gizmo2d_rotate_callbacks_set(wmGizmoGroupType *gzgt)

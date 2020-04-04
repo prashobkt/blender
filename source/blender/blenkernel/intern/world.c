@@ -21,21 +21,20 @@
  * \ingroup bke
  */
 
-#include <string.h>
-#include <stdlib.h>
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_world_types.h"
+#include "DNA_defaults.h"
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
-#include "DNA_defaults.h"
+#include "DNA_world_types.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_listbase.h"
+#include "BLI_utildefines.h"
 
-#include "BKE_animsys.h"
 #include "BKE_icons.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
@@ -55,7 +54,6 @@
 static void world_free_data(ID *id)
 {
   World *wrld = (World *)id;
-  BKE_animdata_free(id, false);
 
   DRW_drawdata_free(id);
 

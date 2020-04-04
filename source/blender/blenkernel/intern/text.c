@@ -23,37 +23,37 @@
 
 #include <stdlib.h> /* abort */
 #include <string.h> /* strstr */
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <wctype.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
+#include "BLI_fileops.h"
+#include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_string_utf8.h"
-#include "BLI_listbase.h"
-#include "BLI_fileops.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "DNA_constraint_types.h"
+#include "DNA_material_types.h"
+#include "DNA_node_types.h"
+#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_userdef_types.h"
-#include "DNA_object_types.h"
-#include "DNA_node_types.h"
-#include "DNA_material_types.h"
 
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_text.h"
 #include "BKE_node.h"
+#include "BKE_text.h"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -164,7 +164,7 @@ static void text_copy_data(Main *UNUSED(bmain),
   text_dst->compiled = NULL;
 
   /* Walk down, reconstructing. */
-  for (TextLine *line_src = text_src->lines.first; line_src; line_src = line_src->next) {
+  LISTBASE_FOREACH (TextLine *, line_src, &text_src->lines) {
     TextLine *line_dst = MEM_mallocN(sizeof(*line_dst), __func__);
 
     line_dst->line = BLI_strdup(line_src->line);
@@ -1311,12 +1311,12 @@ void txt_sel_set(Text *text, int startl, int startc, int endl, int endc)
 char *txt_to_buf_for_undo(Text *text, int *r_buf_len)
 {
   int buf_len = 0;
-  for (const TextLine *l = text->lines.first; l; l = l->next) {
+  LISTBASE_FOREACH (const TextLine *, l, &text->lines) {
     buf_len += l->len + 1;
   }
   char *buf = MEM_mallocN(buf_len, __func__);
   char *buf_step = buf;
-  for (const TextLine *l = text->lines.first; l; l = l->next) {
+  LISTBASE_FOREACH (const TextLine *, l, &text->lines) {
     memcpy(buf_step, l->line, l->len);
     buf_step += l->len;
     *buf_step++ = '\n';

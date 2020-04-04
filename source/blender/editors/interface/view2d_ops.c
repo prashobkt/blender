@@ -29,9 +29,9 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_utildefines.h"
 #include "BLI_math_base.h"
 #include "BLI_math_vector.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 
@@ -43,8 +43,8 @@
 
 #include "ED_screen.h"
 
-#include "UI_view2d.h"
 #include "UI_interface.h"
+#include "UI_view2d.h"
 
 #include "PIL_time.h" /* USER_ZOOM_CONT */
 
@@ -62,7 +62,7 @@ static bool view2d_poll(bContext *C)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name View Pan Operator
+/** \name View Pan Shared Utilities
  * \{ */
 
 /**
@@ -74,14 +74,14 @@ static bool view2d_poll(bContext *C)
  * - `deltax, deltay` - define how much to move view by (relative to zoom-correction factor)
  */
 
-/* ------------------ Shared 'core' stuff ---------------------- */
-
-/* temp customdata for operator */
+/**
+ * Temporary custom-data for operator.
+ */
 typedef struct v2dViewPanData {
   /** screen where view pan was initiated */
-  bScreen *sc;
+  bScreen *screen;
   /** area where view pan was initiated */
-  ScrArea *sa;
+  ScrArea *area;
   /** region where view pan was initiated */
   ARegion *region;
   /** view2d we're operating in */
@@ -126,8 +126,8 @@ static int view_pan_init(bContext *C, wmOperator *op)
   op->customdata = vpd;
 
   /* set pointers to owners */
-  vpd->sc = CTX_wm_screen(C);
-  vpd->sa = CTX_wm_area(C);
+  vpd->screen = CTX_wm_screen(C);
+  vpd->area = CTX_wm_area(C);
   vpd->v2d = v2d;
   vpd->region = region;
 
@@ -190,7 +190,7 @@ static void view_pan_apply_ex(bContext *C, v2dViewPanData *vpd, float dx, float 
   /* request updates to be done... */
   WM_event_add_mousemove(CTX_wm_window(C));
 
-  UI_view2d_sync(vpd->sc, vpd->sa, v2d, V2D_LOCK_COPY);
+  UI_view2d_sync(vpd->screen, vpd->area, v2d, V2D_LOCK_COPY);
 }
 
 static void view_pan_apply(bContext *C, wmOperator *op)
@@ -209,7 +209,11 @@ static void view_pan_exit(wmOperator *op)
   }
 }
 
-/* ------------------ Modal Drag Version (1) ---------------------- */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name View Pan Operator (modal drag-pan)
+ * \{ */
 
 /* for 'redo' only, with no user input */
 static int view_pan_exec(bContext *C, wmOperator *op)
@@ -306,7 +310,7 @@ static int view_pan_modal(bContext *C, wmOperator *op, const wmEvent *event)
       }
 #endif
     default:
-      if (event->type == vpd->invoke_event || event->type == ESCKEY) {
+      if (event->type == vpd->invoke_event || event->type == EVT_ESCKEY) {
         if (event->val == KM_RELEASE) {
           /* calculate overall delta mouse-movement for redo */
           RNA_int_set(op->ptr, "deltax", (vpd->startx - vpd->lastx));
@@ -350,7 +354,11 @@ static void VIEW2D_OT_pan(wmOperatorType *ot)
   RNA_def_int(ot->srna, "deltay", 0, INT_MIN, INT_MAX, "Delta Y", "", INT_MIN, INT_MAX);
 }
 
-/* ------------------ Scrollwheel Versions (2) ---------------------- */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name View Pan Operator (single step)
+ * \{ */
 
 /* this operator only needs this single callback, where it calls the view_pan_*() methods */
 static int view_scrollright_exec(bContext *C, wmOperator *op)
@@ -541,7 +549,7 @@ static void VIEW2D_OT_scroll_up(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name View Zoom Operator (single-step)
+/** \name View Zoom Shared Utilities
  * \{ */
 
 /**
@@ -558,9 +566,9 @@ static void VIEW2D_OT_scroll_up(wmOperatorType *ot)
  *   amount to enlarge 'cur' by.
  */
 
-/* ------------------ 'Shared' stuff ------------------------ */
-
-/* temp customdata for operator */
+/**
+ * Temporary custom-data for operator.
+ */
 typedef struct v2dViewZoomData {
   View2D *v2d; /* view2d we're operating in */
   ARegion *region;
@@ -581,13 +589,13 @@ typedef struct v2dViewZoomData {
  */
 static void view_zoom_axis_lock_defaults(bContext *C, bool r_do_zoom_xy[2])
 {
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
 
   r_do_zoom_xy[0] = true;
   r_do_zoom_xy[1] = true;
 
   /* default not to zoom the sequencer vertically */
-  if (sa && sa->spacetype == SPACE_SEQ) {
+  if (area && area->spacetype == SPACE_SEQ) {
     ARegion *region = CTX_wm_region(C);
 
     if (region && region->regiontype == RGN_TYPE_WINDOW) {
@@ -750,8 +758,8 @@ static void view_zoomstep_apply_ex(
   UI_view2d_curRect_validate(v2d);
 
   if (ED_region_snap_size_apply(region, snap_test)) {
-    ScrArea *sa = CTX_wm_area(C);
-    ED_area_tag_redraw(sa);
+    ScrArea *area = CTX_wm_area(C);
+    ED_area_tag_redraw(area);
     WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, NULL);
   }
 
@@ -768,7 +776,11 @@ static void view_zoomstep_apply(bContext *C, wmOperator *op)
       C, vzd, zoom_to_pos, RNA_float_get(op->ptr, "zoomfacx"), RNA_float_get(op->ptr, "zoomfacy"));
 }
 
-/* --------------- Individual Operators ------------------- */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name View Zoom Operator (single step)
+ * \{ */
 
 /* cleanup temp customdata  */
 static void view_zoomstep_exit(wmOperator *op)
@@ -1005,8 +1017,8 @@ static void view_zoomdrag_apply(bContext *C, wmOperator *op)
   UI_view2d_curRect_validate(v2d);
 
   if (ED_region_snap_size_apply(vzd->region, snap_test)) {
-    ScrArea *sa = CTX_wm_area(C);
-    ED_area_tag_redraw(sa);
+    ScrArea *area = CTX_wm_area(C);
+    ED_area_tag_redraw(area);
     WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, NULL);
   }
 
@@ -1244,7 +1256,7 @@ static int view_zoomdrag_modal(bContext *C, wmOperator *op, const wmEvent *event
     /* apply zooming */
     view_zoomdrag_apply(C, op);
   }
-  else if (event->type == vzd->invoke_event || event->type == ESCKEY) {
+  else if (event->type == vzd->invoke_event || event->type == EVT_ESCKEY) {
     if (event->val == KM_RELEASE) {
 
       /* for redo, store the overall deltas - need to respect zoom-locks here... */
@@ -1399,6 +1411,12 @@ static void VIEW2D_OT_zoom_border(wmOperatorType *ot)
   /* rna */
   WM_operator_properties_gesture_box_zoom(ot);
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name NDOF Pan/Zoom Operator
+ * \{ */
 
 #ifdef WITH_INPUT_NDOF
 static int view2d_ndof_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -1730,8 +1748,6 @@ enum {
   SCROLLHANDLE_MIN_OUTSIDE,
   SCROLLHANDLE_MAX_OUTSIDE,
 } /*eV2DScrollerHandle_Zone*/;
-
-/* ------------------------ */
 
 /**
  * Check if mouse is within scroller handle.
@@ -2155,7 +2171,7 @@ static void VIEW2D_OT_scroller_activate(wmOperatorType *ot)
 
 static int reset_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  uiStyle *style = UI_style_get();
+  const uiStyle *style = UI_style_get();
   ARegion *region = CTX_wm_region(C);
   View2D *v2d = &region->v2d;
   int winx, winy;
@@ -2195,8 +2211,8 @@ static int reset_exec(bContext *C, wmOperator *UNUSED(op))
   UI_view2d_curRect_validate(v2d);
 
   if (ED_region_snap_size_apply(region, snap_test)) {
-    ScrArea *sa = CTX_wm_area(C);
-    ED_area_tag_redraw(sa);
+    ScrArea *area = CTX_wm_area(C);
+    ED_area_tag_redraw(area);
     WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, NULL);
   }
 

@@ -51,8 +51,8 @@
 
 #include "transform.h"
 #include "transform_convert.h"
-#include "transform_snap.h"
 #include "transform_mode.h"
+#include "transform_snap.h"
 
 /* -------------------------------------------------------------------- */
 /* Transform (Edge Slide) */
@@ -334,7 +334,7 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* background mode support */
-    v3d = t->sa ? t->sa->spacedata.first : NULL;
+    v3d = t->area ? t->area->spacedata.first : NULL;
     rv3d = t->region ? t->region->regiondata : NULL;
   }
 
@@ -858,7 +858,7 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *t
 
   /* use for visibility checks */
   if (t->spacetype == SPACE_VIEW3D) {
-    v3d = t->sa ? t->sa->spacedata.first : NULL;
+    v3d = t->area ? t->area->spacedata.first : NULL;
     rv3d = t->region ? t->region->regiondata : NULL;
     use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE &&
                             !XRAY_ENABLED(v3d));
@@ -899,7 +899,7 @@ static bool createEdgeSlideVerts_single_side(TransInfo *t, TransDataContainer *t
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* background mode support */
-    v3d = t->sa ? t->sa->spacedata.first : NULL;
+    v3d = t->area ? t->area->spacedata.first : NULL;
     rv3d = t->region ? t->region->regiondata : NULL;
   }
 
@@ -1043,7 +1043,7 @@ static bool createEdgeSlideVerts_single_side(TransInfo *t, TransDataContainer *t
 
   /* use for visibility checks */
   if (t->spacetype == SPACE_VIEW3D) {
-    v3d = t->sa ? t->sa->spacedata.first : NULL;
+    v3d = t->area ? t->area->spacedata.first : NULL;
     rv3d = t->region ? t->region->regiondata : NULL;
     use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE &&
                             !XRAY_ENABLED(v3d));
@@ -1098,21 +1098,21 @@ static eRedrawFlag handleEventEdgeSlide(struct TransInfo *t, const struct wmEven
 
     if (slp) {
       switch (event->type) {
-        case EKEY:
+        case EVT_EKEY:
           if (event->val == KM_PRESS) {
             slp->use_even = !slp->use_even;
             calcEdgeSlideCustomPoints(t);
             return TREDRAW_HARD;
           }
           break;
-        case FKEY:
+        case EVT_FKEY:
           if (event->val == KM_PRESS) {
             slp->flipped = !slp->flipped;
             calcEdgeSlideCustomPoints(t);
             return TREDRAW_HARD;
           }
           break;
-        case CKEY:
+        case EVT_CKEY:
           /* use like a modifier key */
           if (event->val == KM_PRESS) {
             t->flag ^= T_ALT_TRANSFORM;
@@ -1417,7 +1417,7 @@ static void applyEdgeSlide(TransInfo *t, const int UNUSED(mval[2]))
 
   recalcData(t);
 
-  ED_area_status_text(t->sa, str);
+  ED_area_status_text(t->area, str);
 }
 
 void initEdgeSlide_ex(

@@ -25,17 +25,17 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_ID.h"
 #include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_ID.h"
-#include "DNA_scene_types.h"
-#include "DNA_object_types.h"
 #include "DNA_material_types.h"
+#include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_dynstr.h"
-#include "BLI_utildefines.h"
 #include "BLI_path_util.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -44,7 +44,7 @@
 #include "BKE_blender_copybuffer.h"
 #include "BKE_collection.h"
 #include "BKE_context.h"
-#include "BKE_idcode.h"
+#include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
@@ -60,12 +60,12 @@
 
 #include "../blenloader/BLO_readfile.h"
 
+#include "ED_armature.h"
+#include "ED_keyframing.h"
 #include "ED_object.h"
 #include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
-#include "ED_keyframing.h"
-#include "ED_armature.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -1292,7 +1292,7 @@ static void outliner_show_active(SpaceOutliner *so, ARegion *region, TreeElement
     return;
   }
 
-  for (TreeElement *ten = te->subtree.first; ten; ten = ten->next) {
+  LISTBASE_FOREACH (TreeElement *, ten, &te->subtree) {
     outliner_show_active(so, region, ten, id);
   }
 }
@@ -1310,7 +1310,7 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
     ID *id = TREESTORE(active_element)->id;
 
     /* Expand all elements in the outliner with matching ID */
-    for (TreeElement *te = so->tree.first; te; te = te->next) {
+    LISTBASE_FOREACH (TreeElement *, te, &so->tree) {
       outliner_show_active(so, region, te, id);
     }
 
@@ -1675,8 +1675,8 @@ void OUTLINER_OT_show_hierarchy(wmOperatorType *ot)
 /* specialized poll callback for these operators to work in Datablocks view only */
 static bool ed_operator_outliner_datablocks_active(bContext *C)
 {
-  ScrArea *sa = CTX_wm_area(C);
-  if ((sa) && (sa->spacetype == SPACE_OUTLINER)) {
+  ScrArea *area = CTX_wm_area(C);
+  if ((area) && (area->spacetype == SPACE_OUTLINER)) {
     SpaceOutliner *so = CTX_wm_space_outliner(C);
     return (so->outlinevis == SO_DATA_API);
   }
@@ -2179,8 +2179,8 @@ void OUTLINER_OT_keyingset_remove_selected(wmOperatorType *ot)
 
 static bool ed_operator_outliner_id_orphans_active(bContext *C)
 {
-  ScrArea *sa = CTX_wm_area(C);
-  if (sa != NULL && sa->spacetype == SPACE_OUTLINER) {
+  ScrArea *area = CTX_wm_area(C);
+  if (area != NULL && area->spacetype == SPACE_OUTLINER) {
     SpaceOutliner *so = CTX_wm_space_outliner(C);
     return (so->outlinevis == SO_ID_ORPHANS);
   }
@@ -2194,7 +2194,7 @@ static void outliner_orphans_purge_tag(ID *id, int *num_tagged)
   if (id->us == 0) {
     id->tag |= LIB_TAG_DOIT;
     num_tagged[INDEX_ID_NULL]++;
-    num_tagged[BKE_idcode_to_index(GS(id->name))]++;
+    num_tagged[BKE_idtype_idcode_to_index(GS(id->name))]++;
   }
   else {
     id->tag &= ~LIB_TAG_DOIT;
@@ -2233,7 +2233,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
       BLI_dynstr_appendf(dyn_str,
                          "%d %s",
                          num_tagged[i],
-                         TIP_(BKE_idcode_to_name_plural(BKE_idcode_from_index(i))));
+                         TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))));
     }
   }
   BLI_dynstr_append(dyn_str, TIP_("). Click here to proceed..."));
@@ -2249,7 +2249,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
 static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   int num_tagged[INDEX_ID_MAX] = {0};
 
@@ -2276,7 +2276,7 @@ static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
    *      outliner several mouse events can be handled in one cycle without
    *      handling notifiers/redraw which leads to deleting the same object twice.
    *      cleanup tree here to prevent such cases. */
-  if ((sa != NULL) && (sa->spacetype == SPACE_OUTLINER)) {
+  if ((area != NULL) && (area->spacetype == SPACE_OUTLINER)) {
     outliner_cleanup_tree(soops);
   }
 

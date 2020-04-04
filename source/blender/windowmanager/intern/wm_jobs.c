@@ -38,8 +38,8 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
-#include "wm_event_types.h"
 #include "wm.h"
+#include "wm_event_types.h"
 
 #include "PIL_time.h"
 
@@ -76,17 +76,30 @@ struct wmJob {
 
   /** Should store entire own context, for start, update, free */
   void *customdata;
-  /** To prevent cpu overhead,
-   * use this one which only gets called when job really starts, not in thread */
+  /**
+   * To prevent cpu overhead, use this one which only gets called when job really starts.
+   * Executed in main thread.
+   */
   void (*initjob)(void *);
-  /** This runs inside thread, and does full job */
+  /**
+   * This performs the actual parallel work.
+   * Executed in worker thread(s).
+   */
   void (*startjob)(void *, short *stop, short *do_update, float *progress);
-  /** Update gets called if thread defines so, and max once per timerstep
-   * it runs outside thread, blocking blender, no drawing! */
+  /**
+   * Called if thread defines so (see `do_update` flag), and max once per timer step.
+   * Executed in main thread.
+   */
   void (*update)(void *);
-  /** Free entire customdata, doesn't run in thread */
+  /**
+   * Free callback (typically for customdata).
+   * Executed in main thread.
+   */
   void (*free)(void *);
-  /** Gets called when job is stopped, not in thread */
+  /**
+   * Called when job is stopped.
+   * Executed in main thread.
+   */
   void (*endjob)(void *);
 
   /** Running jobs each have own timer */
@@ -241,7 +254,7 @@ static void wm_jobs_update_progress_bars(wmWindowManager *wm)
   float total_progress = 0.f;
   float jobs_progress = 0;
 
-  for (wmJob *wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next) {
+  LISTBASE_FOREACH (wmJob *, wm_job, &wm->jobs) {
     if (wm_job->threads.first && !wm_job->ready) {
       if (wm_job->flag & WM_JOB_PROGRESS) {
         /* accumulate global progress for running jobs */

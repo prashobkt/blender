@@ -21,18 +21,18 @@
  * \ingroup edgpencil
  */
 
-#include <stdio.h>
+#include <math.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
-#include "BLI_utildefines.h"
 #include "BLI_math_geom.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
@@ -48,17 +48,17 @@
 #include "BKE_screen.h"
 #include "BKE_tracking.h"
 
+#include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "UI_view2d.h"
 
+#include "ED_clip.h"
 #include "ED_gpencil.h"
 #include "ED_screen.h"
 #include "ED_view3d.h"
-#include "ED_clip.h"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -114,7 +114,7 @@ typedef struct tGPsdata {
   /** window where painting originated. */
   wmWindow *win;
   /** area where painting originated. */
-  ScrArea *sa;
+  ScrArea *area;
   /** region where painting originated. */
   ARegion *region;
   /** needed for GP_STROKE_2DSPACE. */
@@ -521,7 +521,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
        * so initialize depth buffer before converting coordinates
        */
       if (gpencil_project_check(p)) {
-        View3D *v3d = p->sa->spacedata.first;
+        View3D *v3d = p->area->spacedata.first;
 
         view3d_region_operator_needs_opengl(p->win, p->region);
         ED_view3d_autodist_init(p->depsgraph,
@@ -537,9 +537,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       pts->pressure = pt->pressure;
       pts->strength = pt->strength;
       pts->time = pt->time;
-
-      /* force fill recalc */
-      gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+      gps->tot_triangles = 0;
     }
 
     /* increment counters */
@@ -604,14 +602,13 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   /* copy appropriate settings for stroke */
   gps->totpoints = totelem;
   gps->thickness = gpl->thickness;
-  gps->gradient_f = 1.0f;
-  gps->gradient_s[0] = 1.0f;
-  gps->gradient_s[1] = 1.0f;
+  gps->fill_opacity_fac = 1.0f;
+  gps->hardeness = 1.0f;
+  copy_v2_fl(gps->aspect_ratio, 1.0f);
+  gps->uv_scale = 1.0f;
   gps->flag = gpd->runtime.sbuffer_sflag;
   gps->inittime = p->inittime;
-
-  /* enable recalculation flag by default (only used if hq fill) */
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gps->tot_triangles = 0;
 
   /* allocate enough memory for a continuous array for storage points */
   gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
@@ -796,7 +793,7 @@ static bool gp_stroke_eraser_is_occluded(tGPsdata *p,
                                          const int x,
                                          const int y)
 {
-  if ((p->sa->spacetype == SPACE_VIEW3D) && (p->flags & GP_PAINTFLAG_V3D_ERASER_DEPTH)) {
+  if ((p->area->spacetype == SPACE_VIEW3D) && (p->flags & GP_PAINTFLAG_V3D_ERASER_DEPTH)) {
     RegionView3D *rv3d = p->region->regiondata;
     const int mval_i[2] = {x, y};
     float mval_3d[3];
@@ -819,7 +816,6 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
                                       bGPDframe *gpf,
                                       bGPDstroke *gps,
                                       const float mval[2],
-                                      const float mvalo[2],
                                       const int radius,
                                       const rcti *rect)
 {
@@ -888,7 +884,7 @@ static void gp_stroke_eraser_dostroke(tGPsdata *p,
          * eraser region  (either within stroke painted, or on its lines)
          *  - this assumes that linewidth is irrelevant
          */
-        if (gp_stroke_inside_circle(mval, mvalo, radius, pc1[0], pc1[1], pc2[0], pc2[1])) {
+        if (gp_stroke_inside_circle(mval, radius, pc1[0], pc1[1], pc2[0], pc2[1])) {
           if ((gp_stroke_eraser_is_occluded(p, pt1, pc1[0], pc1[1]) == false) ||
               (gp_stroke_eraser_is_occluded(p, pt2, pc2[0], pc2[1]) == false)) {
             /* Edge is affected - Check individual points now */
@@ -924,9 +920,9 @@ static void gp_stroke_doeraser(tGPsdata *p)
   rect.xmax = p->mval[0] + p->radius;
   rect.ymax = p->mval[1] + p->radius;
 
-  if (p->sa->spacetype == SPACE_VIEW3D) {
+  if (p->area->spacetype == SPACE_VIEW3D) {
     if (p->flags & GP_PAINTFLAG_V3D_ERASER_DEPTH) {
-      View3D *v3d = p->sa->spacedata.first;
+      View3D *v3d = p->area->spacedata.first;
       view3d_region_operator_needs_opengl(p->win, p->region);
       ED_view3d_autodist_init(p->depsgraph, p->region, v3d, 0);
     }
@@ -940,8 +936,8 @@ static void gp_stroke_doeraser(tGPsdata *p)
     /* Not all strokes in the datablock may be valid in the current editor/context
      * (e.g. 2D space strokes in the 3D view, if the same datablock is shared)
      */
-    if (ED_gpencil_stroke_can_use_direct(p->sa, gps)) {
-      gp_stroke_eraser_dostroke(p, gpf, gps, p->mval, p->mvalo, p->radius, &rect);
+    if (ED_gpencil_stroke_can_use_direct(p->area, gps)) {
+      gp_stroke_eraser_dostroke(p, gpf, gps, p->mval, p->radius, &rect);
     }
   }
 }
@@ -1001,7 +997,7 @@ static bool gp_session_initdata(bContext *C, tGPsdata *p)
        * - must verify that region data is 3D-view (and not something else)
        */
       /* CAUTION: If this is the "toolbar", then this will change on the first stroke */
-      p->sa = curarea;
+      p->area = curarea;
       p->region = region;
       p->align_flag = &ts->annotate_v3d_align;
 
@@ -1020,7 +1016,7 @@ static bool gp_session_initdata(bContext *C, tGPsdata *p)
       /* SpaceNode *snode = curarea->spacedata.first; */
 
       /* set current area */
-      p->sa = curarea;
+      p->area = curarea;
       p->region = region;
       p->v2d = &region->v2d;
       p->align_flag = &ts->gpencil_v2d_align;
@@ -1030,7 +1026,7 @@ static bool gp_session_initdata(bContext *C, tGPsdata *p)
       SpaceSeq *sseq = curarea->spacedata.first;
 
       /* set current area */
-      p->sa = curarea;
+      p->area = curarea;
       p->region = region;
       p->v2d = &region->v2d;
       p->align_flag = &ts->gpencil_seq_align;
@@ -1049,7 +1045,7 @@ static bool gp_session_initdata(bContext *C, tGPsdata *p)
       /* SpaceImage *sima = curarea->spacedata.first; */
 
       /* set the current area */
-      p->sa = curarea;
+      p->area = curarea;
       p->region = region;
       p->v2d = &region->v2d;
       p->align_flag = &ts->gpencil_ima_align;
@@ -1065,7 +1061,7 @@ static bool gp_session_initdata(bContext *C, tGPsdata *p)
       }
 
       /* set the current area */
-      p->sa = curarea;
+      p->area = curarea;
       p->region = region;
       p->v2d = &region->v2d;
       p->align_flag = &ts->gpencil_v2d_align;
@@ -1207,7 +1203,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
   ToolSettings *ts = scene->toolsettings;
 
   /* get active layer (or add a new one if non-existent) */
-  p->gpl = BKE_gpencil_layer_getactive(p->gpd);
+  p->gpl = BKE_gpencil_layer_active_get(p->gpd);
   if (p->gpl == NULL) {
     /* tag for annotations */
     p->gpd->flag |= GP_DATA_ANNOTATIONS;
@@ -1235,7 +1231,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
      */
     bool has_layer_to_erase = false;
 
-    if (gpencil_layer_is_editable(p->gpl)) {
+    if (BKE_gpencil_layer_is_editable(p->gpl)) {
       /* Ensure that there's stuff to erase here (not including selection mask below)... */
       if (p->gpl->actframe && p->gpl->actframe->strokes.first) {
         has_layer_to_erase = true;
@@ -1263,7 +1259,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
       add_frame_mode = GP_GETFRAME_ADD_NEW;
     }
 
-    p->gpf = BKE_gpencil_layer_getframe(p->gpl, CFRA, add_frame_mode);
+    p->gpf = BKE_gpencil_layer_frame_get(p->gpl, CFRA, add_frame_mode);
 
     if (p->gpf == NULL) {
       p->status = GP_STATUS_ERROR;
@@ -1283,7 +1279,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
     p->gpd->runtime.sbuffer_sflag |= GP_STROKE_ERASER;
 
     /* check if we should respect depth while erasing */
-    if (p->sa->spacetype == SPACE_VIEW3D) {
+    if (p->area->spacetype == SPACE_VIEW3D) {
       if (p->gpl->flag & GP_LAYER_NO_XRAY) {
         p->flags |= GP_PAINTFLAG_V3D_ERASER_DEPTH;
       }
@@ -1293,7 +1289,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
     /* disable eraser flags - so that we can switch modes during a session */
     p->gpd->runtime.sbuffer_sflag &= ~GP_STROKE_ERASER;
 
-    if (p->sa->spacetype == SPACE_VIEW3D) {
+    if (p->area->spacetype == SPACE_VIEW3D) {
       if (p->gpl->flag & GP_LAYER_NO_XRAY) {
         p->flags &= ~GP_PAINTFLAG_V3D_ERASER_DEPTH;
       }
@@ -1306,8 +1302,8 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
   /* when drawing in the camera view, in 2D space, set the subrect */
   p->subrect = NULL;
   if ((*p->align_flag & GP_PROJECT_VIEWSPACE) == 0) {
-    if (p->sa->spacetype == SPACE_VIEW3D) {
-      View3D *v3d = p->sa->spacedata.first;
+    if (p->area->spacetype == SPACE_VIEW3D) {
+      View3D *v3d = p->area->spacedata.first;
       RegionView3D *rv3d = p->region->regiondata;
 
       /* for camera view set the subrect */
@@ -1324,7 +1320,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
   p->gsc.gpd = p->gpd;
   p->gsc.gpl = p->gpl;
 
-  p->gsc.sa = p->sa;
+  p->gsc.area = p->area;
   p->gsc.region = p->region;
   p->gsc.v2d = p->v2d;
 
@@ -1335,7 +1331,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
 
   /* check if points will need to be made in view-aligned space */
   if (*p->align_flag & GP_PROJECT_VIEWSPACE) {
-    switch (p->sa->spacetype) {
+    switch (p->area->spacetype) {
       case SPACE_VIEW3D: {
         p->gpd->runtime.sbuffer_sflag |= GP_STROKE_3DSPACE;
         break;
@@ -1359,7 +1355,7 @@ static void gp_paint_strokeend(tGPsdata *p)
    * the conversions will project the values correctly...
    */
   if (gpencil_project_check(p)) {
-    View3D *v3d = p->sa->spacedata.first;
+    View3D *v3d = p->area->spacedata.first;
 
     /* need to restore the original projection settings before packing up */
     view3d_region_operator_needs_opengl(p->win, p->region);
@@ -1935,10 +1931,10 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
 }
 
 /* gpencil modal operator stores area, which can be removed while using it (like fullscreen) */
-static bool gpencil_area_exists(bContext *C, ScrArea *sa_test)
+static bool gpencil_area_exists(bContext *C, ScrArea *area_test)
 {
-  bScreen *sc = CTX_wm_screen(C);
-  return (BLI_findindex(&sc->areabase, sa_test) != -1);
+  bScreen *screen = CTX_wm_screen(C);
+  return (BLI_findindex(&screen->areabase, area_test) != -1);
 }
 
 static tGPsdata *gpencil_stroke_begin(bContext *C, wmOperator *op)
@@ -1948,7 +1944,7 @@ static tGPsdata *gpencil_stroke_begin(bContext *C, wmOperator *op)
   /* we must check that we're still within the area that we're set up to work from
    * otherwise we could crash (see bug #20586)
    */
-  if (CTX_wm_area(C) != p->sa) {
+  if (CTX_wm_area(C) != p->area) {
     printf("\t\t\tGP - wrong area execution abort!\n");
     p->status = GP_STATUS_ERROR;
   }
@@ -2053,20 +2049,35 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   /* We don't pass on key events, GP is used with key-modifiers -
    * prevents Dkey to insert drivers. */
   if (ISKEYBOARD(event->type)) {
-    if (ELEM(event->type, LEFTARROWKEY, DOWNARROWKEY, RIGHTARROWKEY, UPARROWKEY, ZKEY)) {
+    if (ELEM(event->type,
+             EVT_LEFTARROWKEY,
+             EVT_DOWNARROWKEY,
+             EVT_RIGHTARROWKEY,
+             EVT_UPARROWKEY,
+             EVT_ZKEY)) {
       /* allow some keys:
        *   - for frame changing [#33412]
        *   - for undo (during sketching sessions)
        */
     }
-    else if (ELEM(event->type, PAD0, PAD1, PAD2, PAD3, PAD4, PAD5, PAD6, PAD7, PAD8, PAD9)) {
+    else if (ELEM(event->type,
+                  EVT_PAD0,
+                  EVT_PAD1,
+                  EVT_PAD2,
+                  EVT_PAD3,
+                  EVT_PAD4,
+                  EVT_PAD5,
+                  EVT_PAD6,
+                  EVT_PAD7,
+                  EVT_PAD8,
+                  EVT_PAD9)) {
       /* allow numpad keys so that camera/view manipulations can still take place
        * - PAD0 in particular is really important for Grease Pencil drawing,
        *   as animators may be working "to camera", so having this working
        *   is essential for ensuring that they can quickly return to that view
        */
     }
-    else if ((event->type == BKEY) && (event->val == KM_RELEASE)) {
+    else if ((event->type == EVT_BKEY) && (event->val == KM_RELEASE)) {
       /* Add Blank Frame
        * - Since this operator is non-modal, we can just call it here, and keep going...
        * - This operator is especially useful when animating
@@ -2086,7 +2097,8 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
    * NOTE: cannot do RIGHTMOUSE (as is standard for canceling)
    * as that would break polyline T32647.
    */
-  if (event->val == KM_PRESS && ELEM(event->type, RETKEY, PADENTER, ESCKEY, SPACEKEY, EKEY)) {
+  if (event->val == KM_PRESS &&
+      ELEM(event->type, EVT_RETKEY, EVT_PADENTER, EVT_ESCKEY, EVT_SPACEKEY, EVT_EKEY)) {
     /* exit() ends the current stroke before cleaning up */
     /* printf("\t\tGP - end of paint op + end of stroke\n"); */
     p->status = GP_STATUS_DONE;
@@ -2156,18 +2168,19 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
        */
       if ((p->region) && (p->region->regiontype == RGN_TYPE_TOOLS)) {
         /* Change to whatever region is now under the mouse */
-        ARegion *current_region = BKE_area_find_region_xy(p->sa, RGN_TYPE_ANY, event->x, event->y);
+        ARegion *current_region = BKE_area_find_region_xy(
+            p->area, RGN_TYPE_ANY, event->x, event->y);
 
         if (G.debug & G_DEBUG) {
-          printf("found alternative region %p (old was %p) - at %d %d (sa: %d %d -> %d %d)\n",
+          printf("found alternative region %p (old was %p) - at %d %d (area: %d %d -> %d %d)\n",
                  current_region,
                  p->region,
                  event->x,
                  event->y,
-                 p->sa->totrct.xmin,
-                 p->sa->totrct.ymin,
-                 p->sa->totrct.xmax,
-                 p->sa->totrct.ymax);
+                 p->area->totrct.xmin,
+                 p->area->totrct.ymin,
+                 p->area->totrct.xmax,
+                 p->area->totrct.ymax);
         }
 
         if (current_region) {
@@ -2264,19 +2277,19 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
     }
     /* eraser size */
     else if ((p->paintmode == GP_PAINTMODE_ERASER) &&
-             ELEM(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE, PADPLUSKEY, PADMINUS)) {
+             ELEM(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE, EVT_PADPLUSKEY, EVT_PADMINUS)) {
       /* just resize the brush (local version)
        * TODO: fix the hardcoded size jumps (set to make a visible difference) and hardcoded keys
        */
       /* printf("\t\tGP - resize eraser\n"); */
       switch (event->type) {
         case WHEELDOWNMOUSE: /* larger */
-        case PADPLUSKEY:
+        case EVT_PADPLUSKEY:
           p->radius += 5;
           break;
 
         case WHEELUPMOUSE: /* smaller */
-        case PADMINUS:
+        case EVT_PADMINUS:
           p->radius -= 5;
 
           if (p->radius <= 0) {
@@ -2302,7 +2315,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   /* gpencil modal operator stores area, which can be removed while using it (like fullscreen) */
-  if (0 == gpencil_area_exists(C, p->sa)) {
+  if (0 == gpencil_area_exists(C, p->area)) {
     estate = OPERATOR_CANCELLED;
   }
   else {

@@ -26,23 +26,22 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
+#include "DNA_defaults.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
-#include "DNA_defaults.h"
 
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_animsys.h"
 #include "BKE_colortools.h"
 #include "BKE_icons.h"
 #include "BKE_idtype.h"
-#include "BKE_light.h"
 #include "BKE_lib_id.h"
+#include "BKE_light.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
 
@@ -143,7 +142,6 @@ static void light_make_local(Main *bmain, ID *id, const int flags)
 static void light_free_data(ID *id)
 {
   Light *la = (Light *)id;
-  BKE_animdata_free(&la->id, false);
 
   BKE_curvemapping_free(la->curfalloff);
 

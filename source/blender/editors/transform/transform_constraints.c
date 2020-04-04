@@ -21,10 +21,10 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -37,9 +37,9 @@
 #include "GPU_state.h"
 
 #include "BLI_math.h"
-#include "BLI_utildefines.h"
-#include "BLI_string.h"
 #include "BLI_rect.h"
+#include "BLI_string.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 
@@ -171,7 +171,7 @@ static void postConstraintChecks(TransInfo *t, float vec[3], float pvec[3])
 static void viewAxisCorrectCenter(const TransInfo *t, float t_con_center[3])
 {
   if (t->spacetype == SPACE_VIEW3D) {
-    // View3D *v3d = t->sa->spacedata.first;
+    // View3D *v3d = t->area->spacedata.first;
     const float min_dist = 1.0f; /* v3d->clip_start; */
     float dir[3];
     float l;

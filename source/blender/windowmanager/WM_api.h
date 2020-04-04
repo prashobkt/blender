@@ -31,9 +31,9 @@
  */
 
 /* dna-savable wmStructs here */
+#include "BLI_compiler_attrs.h"
 #include "DNA_windowmanager_types.h"
 #include "WM_keymap.h"
-#include "BLI_compiler_attrs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -188,7 +188,7 @@ void WM_lib_reload(struct Library *lib, struct bContext *C, struct ReportList *r
 
 /* mouse cursors */
 void WM_cursor_set(struct wmWindow *win, int curs);
-bool WM_cursor_set_from_tool(struct wmWindow *win, const ScrArea *sa, const ARegion *region);
+bool WM_cursor_set_from_tool(struct wmWindow *win, const ScrArea *area, const ARegion *region);
 void WM_cursor_modal_set(struct wmWindow *win, int curs);
 void WM_cursor_modal_restore(struct wmWindow *win);
 void WM_cursor_wait(bool val);
@@ -774,7 +774,7 @@ void WM_draw_region_viewport_unbind(struct ARegion *region);
 
 /* Region drawing */
 void WM_draw_region_free(struct ARegion *region);
-struct GPUViewport *WM_draw_region_get_viewport(struct ARegion *region, int view);
+struct GPUViewport *WM_draw_region_get_viewport(struct ARegion *region);
 struct GPUViewport *WM_draw_region_get_bound_viewport(struct ARegion *region);
 
 void WM_main_playanim(int argc, const char **argv);
@@ -794,7 +794,7 @@ const char *WM_window_cursor_keymap_status_get(const struct wmWindow *win,
 void WM_window_cursor_keymap_status_refresh(struct bContext *C, struct wmWindow *win);
 
 void WM_window_status_area_tag_redraw(struct wmWindow *win);
-struct ScrArea *WM_window_status_area_find(struct wmWindow *win, struct bScreen *sc);
+struct ScrArea *WM_window_status_area_find(struct wmWindow *win, struct bScreen *screen);
 bool WM_window_modal_keymap_status_draw(struct bContext *C,
                                         struct wmWindow *win,
                                         struct uiLayout *layout);
@@ -841,18 +841,18 @@ typedef struct ARegion *(*wmTooltipInitFn)(struct bContext *C,
 
 void WM_tooltip_immediate_init(struct bContext *C,
                                struct wmWindow *win,
-                               struct ScrArea *sa,
+                               struct ScrArea *area,
                                struct ARegion *region,
                                wmTooltipInitFn init);
 void WM_tooltip_timer_init_ex(struct bContext *C,
                               struct wmWindow *win,
-                              struct ScrArea *sa,
+                              struct ScrArea *area,
                               struct ARegion *region,
                               wmTooltipInitFn init,
                               double delay);
 void WM_tooltip_timer_init(struct bContext *C,
                            struct wmWindow *win,
-                           struct ScrArea *sa,
+                           struct ScrArea *area,
                            struct ARegion *region,
                            wmTooltipInitFn init);
 void WM_tooltip_timer_clear(struct bContext *C, struct wmWindow *win);
@@ -866,6 +866,18 @@ struct wmGenericCallback *WM_generic_callback_steal(struct wmGenericCallback *ca
 void WM_generic_callback_free(struct wmGenericCallback *callback);
 
 void WM_generic_user_data_free(struct wmGenericUserData *user_data);
+
+#ifdef WITH_XR_OPENXR
+/* wm_xr.c */
+bool WM_xr_session_exists(const wmXrData *xr);
+bool WM_xr_session_is_ready(const wmXrData *xr);
+struct wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr);
+bool WM_xr_session_state_viewer_pose_location_get(const wmXrData *xr, float r_location[3]);
+bool WM_xr_session_state_viewer_pose_rotation_get(const wmXrData *xr, float r_rotation[4]);
+bool WM_xr_session_state_viewer_pose_matrix_info_get(const wmXrData *xr,
+                                                     float r_viewmat[4][4],
+                                                     float *r_focal_len);
+#endif
 
 #ifdef __cplusplus
 }

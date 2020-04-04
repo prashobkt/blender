@@ -21,12 +21,12 @@
  * \ingroup edinterface
  */
 
+#include <ctype.h>
 #include <float.h>
 #include <limits.h>
 #include <math.h>
-#include <string.h>
-#include <ctype.h>
 #include <stddef.h> /* offsetof() */
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -36,15 +36,14 @@
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BLI_math.h"
 #include "BLI_listbase.h"
+#include "BLI_math.h"
+#include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_rect.h"
 
 #include "BLI_utildefines.h"
 
-#include "BKE_animsys.h"
 #include "BKE_context.h"
 #include "BKE_idprop.h"
 #include "BKE_main.h"
@@ -65,15 +64,15 @@
 #include "IMB_imbuf.h"
 
 #include "WM_api.h"
-#include "WM_types.h"
 #include "WM_message.h"
+#include "WM_types.h"
 
 #include "RNA_access.h"
 
 #include "BPY_extern.h"
 
-#include "ED_screen.h"
 #include "ED_numinput.h"
+#include "ED_screen.h"
 
 #include "IMB_colormanagement.h"
 
@@ -262,7 +261,7 @@ void ui_region_to_window(const ARegion *region, int *x, int *y)
 static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
 {
   int sepr_flex_len = 0;
-  for (uiBut *but = block->buttons.first; but; but = but->next) {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       sepr_flex_len++;
     }
@@ -284,7 +283,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
   /* We could get rid of this loop if we agree on a max number of spacer */
   int *spacers_pos = alloca(sizeof(*spacers_pos) * (size_t)sepr_flex_len);
   int i = 0;
-  for (uiBut *but = block->buttons.first; but; but = but->next) {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       ui_but_to_pixelrect(&rect, region, block, but);
       spacers_pos[i] = rect.xmax + UI_HEADER_OFFSET;
@@ -295,7 +294,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
   const float segment_width = region_width / (float)sepr_flex_len;
   float offset = 0, remaining_space = region_width - buttons_width;
   i = 0;
-  for (uiBut *but = block->buttons.first; but; but = but->next) {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     BLI_rctf_translate(&but->rect, offset, 0);
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       /* How much the next block overlap with the current segment */
@@ -366,7 +365,7 @@ void UI_block_translate(uiBlock *block, int x, int y)
 
 static void ui_block_bounds_calc_text(uiBlock *block, float offset)
 {
-  uiStyle *style = UI_style_get();
+  const uiStyle *style = UI_style_get();
   uiBut *bt, *init_col_bt, *col_bt;
   int i = 0, j, x1addval = offset;
 
@@ -899,7 +898,7 @@ bool UI_but_active_only(const bContext *C, ARegion *region, uiBlock *block, uiBu
 bool UI_block_active_only_flagged_buttons(const bContext *C, ARegion *region, uiBlock *block)
 {
   bool done = false;
-  for (uiBut *but = block->buttons.first; but; but = but->next) {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (but->flag & UI_BUT_ACTIVATE_ON_INIT) {
       but->flag &= ~UI_BUT_ACTIVATE_ON_INIT;
       if (ui_but_is_editable(but)) {
@@ -914,7 +913,7 @@ bool UI_block_active_only_flagged_buttons(const bContext *C, ARegion *region, ui
   if (done) {
     /* Run this in a second pass since it's possible activating the button
      * removes the buttons being looped over. */
-    for (uiBut *but = block->buttons.first; but; but = but->next) {
+    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       but->flag &= ~UI_BUT_ACTIVATE_ON_INIT;
     }
   }
@@ -971,7 +970,7 @@ static void ui_menu_block_set_keyaccels(uiBlock *block)
     /* 2 Passes, on for first letter only, second for any letter if first fails
      * fun first pass on all buttons so first word chars always get first priority */
 
-    for (uiBut *but = block->buttons.first; but; but = but->next) {
+    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       if (!ELEM(but->type,
                 UI_BTYPE_BUT,
                 UI_BTYPE_BUT_MENU,
@@ -1664,7 +1663,7 @@ static void ui_but_predefined_extra_operator_icons_add(uiBut *but)
   }
 
   if (optype) {
-    for (uiButExtraOpIcon *op_icon = but->extra_op_icons.first; op_icon; op_icon = op_icon->next) {
+    LISTBASE_FOREACH (uiButExtraOpIcon *, op_icon, &but->extra_op_icons) {
       if ((op_icon->optype_params->optype == optype) && (op_icon->icon == icon)) {
         /* Don't add the same operator icon twice (happens if button is kept alive while active).
          */
@@ -1935,7 +1934,7 @@ static void ui_block_message_subscribe(ARegion *region, struct wmMsgBus *mbus, u
 {
   uiBut *but_prev = NULL;
   /* possibly we should keep the region this block is contained in? */
-  for (uiBut *but = block->buttons.first; but; but = but->next) {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (but->rnapoin.type && but->rnaprop) {
       /* quick check to avoid adding buttons representing a vector, multiple times. */
       if ((but_prev && (but_prev->rnaprop == but->rnaprop) &&
@@ -1960,7 +1959,7 @@ static void ui_block_message_subscribe(ARegion *region, struct wmMsgBus *mbus, u
 
 void UI_region_message_subscribe(ARegion *region, struct wmMsgBus *mbus)
 {
-  for (uiBlock *block = region->uiblocks.first; block; block = block->next) {
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     ui_block_message_subscribe(region, mbus, block);
   }
 }
@@ -3207,8 +3206,9 @@ static void ui_but_free(const bContext *C, uiBut *but)
     MEM_freeN(but->hold_argN);
   }
 
-  if (but->free_search_arg) {
-    MEM_SAFE_FREE(but->search_arg);
+  if (but->search_arg_free_func) {
+    but->search_arg_free_func(but->search_arg);
+    but->search_arg = NULL;
   }
 
   if (but->active) {
@@ -3274,7 +3274,7 @@ void UI_blocklist_update_window_matrix(const bContext *C, const ListBase *lb)
   ARegion *region = CTX_wm_region(C);
   wmWindow *window = CTX_wm_window(C);
 
-  for (uiBlock *block = lb->first; block; block = block->next) {
+  LISTBASE_FOREACH (uiBlock *, block, lb) {
     if (block->active) {
       ui_update_window_matrix(window, region, block);
     }
@@ -3283,7 +3283,7 @@ void UI_blocklist_update_window_matrix(const bContext *C, const ListBase *lb)
 
 void UI_blocklist_draw(const bContext *C, const ListBase *lb)
 {
-  for (uiBlock *block = lb->first; block; block = block->next) {
+  LISTBASE_FOREACH (uiBlock *, block, lb) {
     if (block->active) {
       UI_block_draw(C, block);
     }
@@ -4115,9 +4115,9 @@ static void ui_def_but_rna__panel_type(bContext *C, uiLayout *layout, void *but_
 
 void ui_but_rna_menu_convert_to_panel_type(uiBut *but, const char *panel_type)
 {
-  BLI_assert(but->type == UI_BTYPE_MENU);
-  BLI_assert(but->menu_create_func == ui_def_but_rna__menu);
-  BLI_assert((void *)but->poin == but);
+  BLI_assert(ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_COLOR));
+  //  BLI_assert(but->menu_create_func == ui_def_but_rna__menu);
+  //  BLI_assert((void *)but->poin == but);
   but->menu_create_func = ui_def_but_rna__panel_type;
   but->func_argN = BLI_strdup(panel_type);
 }
@@ -4437,6 +4437,48 @@ uiBut *uiDefBut(uiBlock *block,
   ui_but_update(but);
 
   return but;
+}
+
+uiBut *uiDefButImage(
+    uiBlock *block, void *imbuf, int x, int y, short width, short height, const uchar color[4])
+{
+  uiBut *but = ui_def_but(
+      block, UI_BTYPE_IMAGE, 0, "", x, y, width, height, imbuf, 0, 0, 0, 0, "");
+  if (color) {
+    copy_v4_v4_uchar(but->col, color);
+  }
+  else {
+    but->col[0] = 255;
+    but->col[1] = 255;
+    but->col[2] = 255;
+    but->col[3] = 255;
+  }
+  ui_but_update(but);
+  return but;
+}
+
+uiBut *uiDefButAlert(uiBlock *block, int icon, int x, int y, short width, short height)
+{
+  struct ImBuf *ibuf = UI_alert_image(icon);
+
+  if (icon == ALERT_ICON_BLENDER) {
+    return uiDefButImage(block, ibuf, x, y, width, height, NULL);
+  }
+  else {
+    uchar icon_color[4];
+    ThemeColorID color_id = TH_INFO_WARNING;
+    if (icon == ALERT_ICON_ERROR) {
+      color_id = TH_INFO_ERROR;
+    }
+    else if (icon == ALERT_ICON_INFO) {
+      color_id = TH_INFO_INFO;
+    }
+    else if (icon == ALERT_ICON_QUESTION) {
+      color_id = TH_INFO_PROPERTY;
+    }
+    UI_GetThemeColorType4ubv(color_id, SPACE_INFO, icon_color);
+    return uiDefButImage(block, ibuf, x, y, width, height, icon_color);
+  }
 }
 
 /**
@@ -6294,7 +6336,7 @@ void UI_but_func_search_set(uiBut *but,
                             uiButSearchCreateFunc search_create_func,
                             uiButSearchFunc search_func,
                             void *arg,
-                            bool free_arg,
+                            uiButSearchArgFreeFunc search_arg_free_func,
                             uiButHandleFunc bfunc,
                             void *active)
 {
@@ -6304,14 +6346,16 @@ void UI_but_func_search_set(uiBut *but,
     search_create_func = ui_searchbox_create_generic;
   }
 
-  if (but->free_search_arg) {
-    MEM_SAFE_FREE(but->search_arg);
+  if (but->search_arg_free_func != NULL) {
+    but->search_arg_free_func(but->search_arg);
+    but->search_arg = NULL;
   }
 
   but->search_create_func = search_create_func;
   but->search_func = search_func;
+
   but->search_arg = arg;
-  but->free_search_arg = free_arg;
+  but->search_arg_free_func = search_arg_free_func;
 
   if (bfunc) {
 #ifdef DEBUG
@@ -6362,8 +6406,7 @@ static void operator_enum_search_cb(const struct bContext *C,
       /* note: need to give the index rather than the
        * identifier because the enum can be freed */
       if (BLI_strcasestr(item->name, str)) {
-        if (false ==
-            UI_search_item_add(items, item->name, POINTER_FROM_INT(item->value), item->icon)) {
+        if (!UI_search_item_add(items, item->name, POINTER_FROM_INT(item->value), item->icon, 0)) {
           break;
         }
       }
@@ -6420,7 +6463,7 @@ uiBut *uiDefSearchButO_ptr(uiBlock *block,
                          ui_searchbox_create_generic,
                          operator_enum_search_cb,
                          but,
-                         false,
+                         NULL,
                          operator_enum_call_cb,
                          NULL);
 
@@ -6564,8 +6607,8 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
             }
             else {
               /* Not all menus are from Python. */
-              if (mt->ext.srna) {
-                const char *t = RNA_struct_ui_description(mt->ext.srna);
+              if (mt->rna_ext.srna) {
+                const char *t = RNA_struct_ui_description(mt->rna_ext.srna);
                 if (t && t[0]) {
                   tmp = BLI_strdup(t);
                 }
@@ -6582,7 +6625,7 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
             }
             else {
               /* Not all panels are from Python. */
-              if (pt->ext.srna) {
+              if (pt->rna_ext.srna) {
                 /* Panels don't yet have descriptions, this may be added. */
               }
             }
@@ -6601,7 +6644,7 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
       else if (ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_PULLDOWN)) {
         MenuType *mt = UI_but_menutype_get(but);
         if (mt) {
-          _tmp = RNA_struct_translation_context(mt->ext.srna);
+          _tmp = RNA_struct_translation_context(mt->rna_ext.srna);
         }
       }
       if (BLT_is_default_context(_tmp)) {
