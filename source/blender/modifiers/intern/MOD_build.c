@@ -286,32 +286,49 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, str
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *split, *sub;
-
   uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   modifier_panel_buttons(C, panel);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "frame_start", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "frame_duration", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_reverse", 0, NULL, ICON_NONE);
-
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "use_random_order", 0, NULL, ICON_NONE);
-  sub = uiLayoutColumn(col, true);
-  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_random_order"));
-  uiItemR(sub, &ptr, "seed", 0, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(layout, &ptr, "frame_start", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "frame_duration", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_reverse", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
 
+static void random_panel_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_random_order", 0, NULL, ICON_NONE);
+}
+
+static void random_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_random_order"));
+  uiItemR(layout, &ptr, "seed", 0, NULL, ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "Build", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, "Build", panel_draw);
+  modifier_subpanel_register(
+      region_type, "build_randomize", "", random_panel_header_draw, random_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Build = {

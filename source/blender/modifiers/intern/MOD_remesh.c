@@ -243,6 +243,8 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   int mode = RNA_enum_get(&ptr, "mode");
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
 
   if (mode == MOD_REMESH_VOXEL) {
