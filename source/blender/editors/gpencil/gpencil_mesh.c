@@ -137,6 +137,8 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   }
 
   bGPdata *gpd = (bGPdata *)ob_gpencil->data;
+  gpd->draw_mode = (project_type == GP_REPROJECT_KEEP) ? GP_DRAWMODE_3D : GP_DRAWMODE_2D;
+
   GP_SpaceConversion gsc = {NULL};
   SnapObjectContext *sctx = NULL;
   if (project_type != GP_REPROJECT_KEEP) {

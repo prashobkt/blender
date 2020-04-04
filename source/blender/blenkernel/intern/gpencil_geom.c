@@ -2237,8 +2237,6 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   }
 
   bGPdata *gpd = (bGPdata *)ob_gp->data;
-  /* Set object in 3D mode. */
-  gpd->draw_mode = GP_DRAWMODE_3D;
 
   /* Use evaluated data to get mesh with all modifiers on top. */
   Object *ob_eval = (Object *)DEG_get_evaluated_object(depsgraph, ob_mesh);

@@ -2219,7 +2219,7 @@ static int convert_exec(bContext *C, wmOperator *op)
   Nurb *nu;
   MetaBall *mb;
   Mesh *me;
-  Object *gpencil_ob = NULL;
+  Object *ob_gpencil = NULL;
   const short target = RNA_enum_get(op->ptr, "target");
   bool keep_original = RNA_boolean_get(op->ptr, "keep_original");
 
@@ -2350,15 +2350,19 @@ static int convert_exec(bContext *C, wmOperator *op)
       mat4_to_loc_rot_size(loc, rot, size, ob->obmat);
       mat3_to_eul(eul, rot);
 
-      gpencil_ob = ED_gpencil_add_object(C, loc, local_view_bits);
-      copy_v3_v3(gpencil_ob->loc, loc);
-      copy_v3_v3(gpencil_ob->rot, eul);
-      copy_v3_v3(gpencil_ob->scale, size);
+      ob_gpencil = ED_gpencil_add_object(C, loc, local_view_bits);
+      copy_v3_v3(ob_gpencil->loc, loc);
+      copy_v3_v3(ob_gpencil->rot, eul);
+      copy_v3_v3(ob_gpencil->scale, size);
       unit_m4(matrix);
+      /* Set object in 3D mode. */
+      bGPdata *gpd = (bGPdata *)ob_gpencil->data;
+      gpd->draw_mode = GP_DRAWMODE_3D;
+
       BKE_gpencil_convert_mesh(bmain,
                                depsgraph,
                                scene,
-                               gpencil_ob,
+                               ob_gpencil,
                                ob,
                                angle,
                                thickness,
@@ -2370,19 +2374,19 @@ static int convert_exec(bContext *C, wmOperator *op)
       gpencilConverted = true;
 
       /* Remove unused materials. */
-      int actcol = gpencil_ob->actcol;
-      for (int slot = 1; slot <= gpencil_ob->totcol; slot++) {
-        while (slot <= gpencil_ob->totcol &&
-               !BKE_object_material_slot_used(gpencil_ob->data, slot)) {
-          gpencil_ob->actcol = slot;
-          BKE_object_material_slot_remove(CTX_data_main(C), gpencil_ob);
+      int actcol = ob_gpencil->actcol;
+      for (int slot = 1; slot <= ob_gpencil->totcol; slot++) {
+        while (slot <= ob_gpencil->totcol &&
+               !BKE_object_material_slot_used(ob_gpencil->data, slot)) {
+          ob_gpencil->actcol = slot;
+          BKE_object_material_slot_remove(CTX_data_main(C), ob_gpencil);
 
           if (actcol >= slot) {
             actcol--;
           }
         }
       }
-      gpencil_ob->actcol = actcol;
+      ob_gpencil->actcol = actcol;
     }
     else if (ob->type == OB_MESH) {
       ob->flag |= OB_DONE;
@@ -2523,10 +2527,10 @@ static int convert_exec(bContext *C, wmOperator *op)
            * Nurbs Surface are not supported.
            */
           ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
-          gpencil_ob = ED_gpencil_add_object(C, ob->loc, local_view_bits);
-          copy_v3_v3(gpencil_ob->rot, ob->rot);
-          copy_v3_v3(gpencil_ob->scale, ob->scale);
-          BKE_gpencil_convert_curve(bmain, scene, gpencil_ob, ob, false, false, true);
+          ob_gpencil = ED_gpencil_add_object(C, ob->loc, local_view_bits);
+          copy_v3_v3(ob_gpencil->rot, ob->rot);
+          copy_v3_v3(ob_gpencil->scale, ob->scale);
+          BKE_gpencil_convert_curve(bmain, scene, ob_gpencil, ob, false, false, true);
           gpencilConverted = true;
         }
       }
