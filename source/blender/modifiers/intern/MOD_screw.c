@@ -1179,41 +1179,98 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA screw_obj_ptr = RNA_pointer_get(&ptr, "object");
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "axis", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "object", 0, IFACE_("Axis Object"), ICON_NONE);
-  uiItemR(col, &ptr, "angle", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "steps", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "render_steps", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_merge_vertices", 0, NULL, ICON_NONE);
-  sub = uiLayoutColumn(col, false);
-  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_merge_vertices"));
-  uiItemR(sub, &ptr, "merge_threshold", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, false);
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "angle", 0, NULL, ICON_NONE);
   row = uiLayoutRow(col, false);
-  uiLayoutSetActive(sub,
+  uiLayoutSetActive(row,
                     RNA_pointer_is_null(&screw_obj_ptr) ||
                         !RNA_boolean_get(&ptr, "use_object_screw_offset"));
   uiItemR(row, &ptr, "screw_offset", 0, NULL, ICON_NONE);
-  row = uiLayoutRow(col, false);
-  uiLayoutSetActive(sub, !RNA_pointer_is_null(&screw_obj_ptr));
-  uiItemR(row, &ptr, "use_object_screw_offset", 0, NULL, ICON_NONE);
-
-  uiItemR(col, &ptr, "use_normal_calculate", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_normal_flip", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "iterations", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_stretch_u", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_stretch_v", 0, NULL, ICON_NONE);
+
+  uiItemS(layout);
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "axis", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "object", 0, IFACE_("Axis Object"), ICON_NONE);
+  sub = uiLayoutColumn(col, false);
+  uiLayoutSetActive(sub, !RNA_pointer_is_null(&screw_obj_ptr));
+  uiItemR(sub, &ptr, "use_object_screw_offset", 0, NULL, ICON_NONE);
+
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "render_steps", 0, IFACE_("Steps Render"), ICON_NONE);
+  uiItemR(col, &ptr, "steps", 0, IFACE_("Viewport"), ICON_NONE);
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Stretch"), ICON_NONE);
+
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "use_stretch_u", UI_ITEM_R_TOGGLE, IFACE_("U"), ICON_NONE);
+  uiItemR(row, &ptr, "use_stretch_v", UI_ITEM_R_TOGGLE, IFACE_("V"), ICON_NONE);
+  uiItemL(row, IFACE_(""), ICON_BLANK1);
 
   modifier_panel_end(layout, &ptr);
 }
 
+static void screw_merge_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_merge_vertices", 0, NULL, ICON_NONE);
+}
+
+static void screw_merge_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayout *col = uiLayoutColumn(layout, false);
+
+  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
+  uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
+}
+
+static void screw_normals_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayout *col = uiLayoutColumn(layout, false);
+
+  uiItemR(col, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_normal_calculate", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_normal_flip", 0, NULL, ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "Screw", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, "Screw", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "screw_merge",
+                             "",
+                             screw_merge_header_draw,
+                             screw_merge_draw,
+                             false,
+                             panel_type);
+  modifier_subpanel_register(
+      region_type, "screw_normals", "Normals", NULL, screw_normals_draw, false, panel_type);
 }
 
 ModifierTypeInfo modifierType_Screw = {
