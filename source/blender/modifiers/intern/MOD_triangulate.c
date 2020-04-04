@@ -128,7 +128,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *split;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -136,17 +135,12 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Quad Method:"), ICON_NONE);
-  uiItemR(col, &ptr, "quad_method", 0, "", ICON_NONE);
-  uiItemR(col, &ptr, "keep_custom_normals", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Ngon Method:"), ICON_NONE);
-  uiItemR(col, &ptr, "ngon_method", 0, "", ICON_NONE);
-  uiItemL(col, IFACE_("Minimum Vertices:"), ICON_NONE);
-  uiItemR(col, &ptr, "min_vertices", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "quad_method", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "ngon_method", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "min_vertices", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "keep_custom_normals", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
