@@ -311,34 +311,40 @@ void weightvg_update_vg(MDeformVert *dvert,
  */
 void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, uiLayout *layout)
 {
-  uiLayout *sub, *row, *split;
+  uiLayout *sub, *row;
 
   PointerRNA mask_texture_ptr = RNA_pointer_get(ptr, "mask_texture");
   bool has_mask_texture = !RNA_pointer_is_null(&mask_texture_ptr);
   bool has_mask_vertex_group = RNA_string_length(ptr, "mask_vertex_group") != 0;
   int mask_tex_mapping = RNA_enum_get(ptr, "mask_tex_mapping");
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, ptr, "mask_constant", UI_ITEM_R_SLIDER, IFACE_("Global Influence:"), ICON_NONE);
 
   if (!has_mask_texture) {
-    split = uiLayoutSplit(layout, 0.4f, false);
-    uiItemL(split, IFACE_("Vertex Group Mask:"), ICON_NONE);
-    row = uiLayoutRow(split, true);
-    uiItemPointerR(row, ptr, "mask_vertex_group", ob_ptr, "vertex_groups", "", ICON_NONE);
-    sub = uiLayoutRow(row, true);
+    row = uiLayoutRow(layout, true);
+    uiItemPointerR(row, ptr, "mask_vertex_group", ob_ptr, "vertex_groups", NULL, ICON_NONE);
+    sub = uiLayoutColumn(row, true);
     uiLayoutSetActive(sub, has_mask_vertex_group);
     uiItemR(sub, ptr, "invert_mask_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
   }
 
   if (!has_mask_vertex_group) {
-    uiItemL(layout, IFACE_("Mask Texture:"), ICON_NONE);
-    row = uiLayoutRow(layout, true);
-    uiTemplateID(row, C, ptr, "mask_texture", "texture.new", NULL, NULL, 0, ICON_NONE, "");
+    uiTemplateID(layout,
+                 C,
+                 ptr,
+                 "mask_texture",
+                 "texture.new",
+                 NULL,
+                 NULL,
+                 0,
+                 ICON_NONE,
+                 IFACE_("Mask Texture"));
 
     if (has_mask_texture) {
       uiItemR(layout, ptr, "mask_tex_use_channel", 0, IFACE_("Channel"), ICON_NONE);
-      uiItemL(layout, IFACE_("Texture Coordinates:"), ICON_NONE);
-      uiItemR(layout, ptr, "mask_tex_mapping", 0, "", ICON_NONE);
+      uiItemR(layout, ptr, "mask_tex_mapping", 0, NULL, ICON_NONE);
 
       if (mask_tex_mapping == MOD_DISP_MAP_OBJECT) {
         uiItemR(layout, ptr, "mask_tex_map_object", 0, IFACE_("Object"), ICON_NONE);

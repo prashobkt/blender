@@ -305,6 +305,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   modifier_panel_buttons(C, panel);
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "cache_format", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "filepath", 0, NULL, ICON_NONE);
 
@@ -323,6 +325,9 @@ static void time_remapping_panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
   uiItemR(layout, &ptr, "time_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "play_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
   if (RNA_enum_get(&ptr, "play_mode") == MOD_MESHCACHE_PLAY_CFEA) {
@@ -345,23 +350,20 @@ static void time_remapping_panel_draw(const bContext *C, Panel *panel)
 
 static void axis_mapping_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *split;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  uiItemL(split, IFACE_("Forward/Up Axis:"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetRedAlert(row, RNA_enum_get(&ptr, "forward_axis") == RNA_enum_get(&ptr, "up_axis"));
-  uiItemR(row, &ptr, "forward_axis", 0, "", ICON_NONE);
-  uiItemR(row, &ptr, "up_axis", 0, "", ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  uiItemL(split, IFACE_("Flip Axis:"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiItemR(row, &ptr, "flip_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiLayoutSetRedAlert(col, RNA_enum_get(&ptr, "forward_axis") == RNA_enum_get(&ptr, "up_axis"));
+  uiItemR(col, &ptr, "forward_axis", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "up_axis", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "flip_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)

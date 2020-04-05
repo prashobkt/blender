@@ -435,7 +435,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *split, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -443,22 +442,21 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  split = uiLayoutSplit(layout, 0.5f, true);
-  col = uiLayoutColumn(split, false);
-  sub = uiLayoutColumn(col, false);
-  uiItemL(sub, IFACE_("Vertex Group A:"), ICON_NONE);
-  uiItemPointerR(sub, &ptr, "vertex_group_a", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutColumn(col, false);
-  uiItemL(sub, IFACE_("Default Weight A:"), ICON_NONE);
-  uiItemR(sub, &ptr, "default_weight_a", 0, "", ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, false);
-  sub = uiLayoutColumn(col, false);
-  uiItemL(sub, IFACE_("Vertex Group B:"), ICON_NONE);
-  uiItemPointerR(sub, &ptr, "vertex_group_b", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutColumn(col, false);
-  uiItemL(sub, IFACE_("Default Weight B:"), ICON_NONE);
-  uiItemR(sub, &ptr, "default_weight_b", 0, "", ICON_NONE);
+  uiItemPointerR(layout, &ptr, "vertex_group_a", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "default_weight_a", 0, NULL, ICON_NONE);
+
+  uiItemPointerR(layout, &ptr, "vertex_group_b", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "default_weight_b", 0, NULL, ICON_NONE);
+
+  // col = uiLayoutColumn(split, false);
+  // sub = uiLayoutColumn(col, false);
+  // uiItemL(sub, IFACE_("Vertex Group B:"), ICON_NONE);
+  // uiItemPointerR(sub, &ptr, "vertex_group_b", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  // sub = uiLayoutColumn(col, false);
+  // uiItemL(sub, IFACE_("Default Weight B:"), ICON_NONE);
+  // uiItemR(sub, &ptr, "default_weight_b", 0, "", ICON_NONE);
 
   uiItemS(layout);
 

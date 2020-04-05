@@ -630,7 +630,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col, *split;
+  uiLayout *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -638,27 +638,23 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  split = uiLayoutSplit(layout, 0.5f, true);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-  uiItemPointerR(col, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, true);
-  uiItemL(col, IFACE_("Target Object:"), ICON_NONE);
-  uiItemR(col, &ptr, "target", 0, "", ICON_NONE);
+  uiItemPointerR(layout, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
 
-  uiItemL(layout, IFACE_("Distance:"), ICON_NONE);
-  uiItemR(layout, &ptr, "proximity_mode", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "proximity_mode", 0, NULL, ICON_NONE);
   if (RNA_enum_get(&ptr, "proximity_mode") == MOD_WVG_PROXIMITY_GEOMETRY) {
-    row = uiLayoutRow(layout, false);
-    uiItemR(row, &ptr, "proximity_geometry", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "proximity_geometry", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
   }
 
-  uiItemR(layout, &ptr, "min_dist", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "max_dist", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "min_dist", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "max_dist", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(layout, true);
-  uiItemR(row, &ptr, "falloff_type", 0, IFACE_("Type"), ICON_NONE);
+  uiItemR(row, &ptr, "falloff_type", 0, NULL, ICON_NONE);
   uiItemR(row, &ptr, "invert_falloff", 0, "", ICON_ARROW_LEFTRIGHT);
   modifier_panel_end(layout, &ptr);
 }
