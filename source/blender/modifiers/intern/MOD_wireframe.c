@@ -161,7 +161,9 @@ static void vertex_group_panel_draw(const bContext *C, Panel *panel)
   uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
   row = uiLayoutRow(layout, true);
   uiLayoutSetActive(row, has_vertex_group);
   uiItemR(row, &ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);

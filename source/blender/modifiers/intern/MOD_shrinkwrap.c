@@ -225,11 +225,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
 
-  /* HANS-TODO: Figure out how to deactivate invert buttons and still use decorators. */
   row = uiLayoutRow(layout, true);
   uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutColumn(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
   uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);

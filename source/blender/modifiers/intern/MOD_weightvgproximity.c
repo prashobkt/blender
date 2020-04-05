@@ -630,7 +630,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col;
+  uiLayout *row, *col, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -655,6 +655,8 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "falloff_type", 0, NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropSep(sub, false);
   uiItemR(row, &ptr, "invert_falloff", 0, "", ICON_ARROW_LEFTRIGHT);
   modifier_panel_end(layout, &ptr);
 }

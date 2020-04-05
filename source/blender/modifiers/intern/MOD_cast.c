@@ -531,7 +531,7 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row, *split;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
@@ -543,31 +543,35 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA cast_object_ptr = RNA_pointer_get(&ptr, "object");
 
   uiItemR(layout, &ptr, "cast_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "use_x", 0, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_y", 0, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_z", 0, NULL, ICON_NONE);
+  /* Aligned booleans with a single label. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Axis"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
   uiItemR(layout, &ptr, "factor", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "radius", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "size", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Control Object:"), ICON_NONE);
-  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
   if (!RNA_pointer_is_null(&cast_object_ptr)) {
-    uiItemR(col, &ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
   }
 
   modifier_panel_end(layout, &ptr);

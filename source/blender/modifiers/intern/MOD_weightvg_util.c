@@ -326,6 +326,7 @@ void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, 
     row = uiLayoutRow(layout, true);
     uiItemPointerR(row, ptr, "mask_vertex_group", ob_ptr, "vertex_groups", NULL, ICON_NONE);
     sub = uiLayoutColumn(row, true);
+    uiLayoutSetPropSep(sub, false);
     uiLayoutSetActive(sub, has_mask_vertex_group);
     uiItemR(sub, ptr, "invert_mask_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
   }
