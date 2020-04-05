@@ -1943,7 +1943,7 @@ static void requiredDataMask(Object *UNUSED(ob),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col;
+  uiLayout *row, *split;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -1956,14 +1956,26 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "branch_smoothing", 0, NULL, ICON_NONE);
+
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Symmetry"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "use_x_symmetry", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_y_symmetry", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_z_symmetry", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
+
   uiItemR(layout, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(layout, false);
   uiItemO(row, IFACE_("Create Armature"), ICON_NONE, "OBJECT_OT_skin_armature_create");
   uiItemO(row, NULL, ICON_NONE, "MESH_OT_customdata_skin_add");
 
-  col = uiLayoutColumn(layout, true);
-  uiItemFullO(col,
+  row = uiLayoutRow(layout, true);
+  uiItemFullO(row,
               "OBJECT_OT_skin_loose_mark_clear",
               IFACE_("Mark Loose"),
               ICON_NONE,
@@ -1972,7 +1984,7 @@ static void panel_draw(const bContext *C, Panel *panel)
               0,
               &op_ptr);
   RNA_enum_set(&op_ptr, "action", 0); /* SKIN_LOOSE_MARK */
-  uiItemFullO(col,
+  uiItemFullO(row,
               "OBJECT_OT_skin_loose_mark_clear",
               IFACE_("Clear Loose"),
               ICON_NONE,
@@ -1988,25 +2000,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, &ptr);
 }
 
-static void symmetry_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  uiItemR(layout, &ptr, "use_x_symmetry", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_y_symmetry", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_z_symmetry", 0, NULL, ICON_NONE);
-}
-
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Skin", panel_draw);
-  modifier_subpanel_register(
-      region_type, "skin_symmetry", "Symmetry", NULL, symmetry_panel_draw, panel_type);
+  modifier_panel_register(region_type, "Skin", panel_draw);
 }
 
 ModifierTypeInfo modifierType_Skin = {

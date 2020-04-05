@@ -291,7 +291,7 @@ static void deformMatrices(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -318,42 +318,36 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
   bool ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
 
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "subdivision_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  split = uiLayoutSplit(layout, 0.25f, false);
-  col = uiLayoutColumn(split, false);
+  uiItemR(layout, &ptr, "subdivision_type", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(layout, false);
   if (show_adaptive_options) {
-    uiItemL(col, "Render:", ICON_NONE);
-    uiItemR(row, &ob_cycles_ptr, "use_adaptive_subdivision", 0, "Adaptive", ICON_NONE);
+    uiItemR(col, &ob_cycles_ptr, "use_adaptive_subdivision", 0, "Adaptive", ICON_NONE);
+    sub = uiLayoutColumn(col, true);
     if (ob_use_adaptive_subdivision) {
-      uiItemR(row, &ob_cycles_ptr, "dicing_rate", 0, NULL, ICON_NONE);
+      uiItemR(sub, &ob_cycles_ptr, "dicing_rate", 0, NULL, ICON_NONE);
     }
     else {
-      uiItemR(row, &ptr, "render_levels", 0, "Levels", ICON_NONE);
+      uiItemR(sub, &ptr, "render_levels", 0, "Subdivisions Render", ICON_NONE);
     }
 
-    uiItemS(col);
-
-    uiItemL(col, IFACE_("Viewport:"), ICON_NONE);
-    uiItemR(row, &ptr, "levels", 0, "Levels", ICON_NONE);
+    uiItemR(sub, &ptr, "levels", 0, "Viewport", ICON_NONE);
   }
   else {
-    uiItemL(col, IFACE_("Subdivisions:"), ICON_NONE);
     sub = uiLayoutColumn(col, true);
-    uiItemR(sub, &ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
+    uiItemR(sub, &ptr, "render_levels", 0, IFACE_("Subdivisions Render"), ICON_NONE);
     uiItemR(sub, &ptr, "levels", 0, IFACE_("Viewport"), ICON_NONE);
 
     uiItemR(col, &ptr, "quality", 0, NULL, ICON_NONE);
   }
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Options:"), ICON_NONE);
   sub = uiLayoutColumn(col, true);
   uiLayoutSetActive(sub, !(show_adaptive_options && ob_use_adaptive_subdivision));
-  uiItemR(sub, &ptr, "uv_smooth", 0, "", ICON_NONE);
-  uiItemR(sub, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
+  uiItemR(sub, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
   uiItemR(sub, &ptr, "use_creases", 0, NULL, ICON_NONE);
+  uiItemR(sub, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
 
   if (show_adaptive_options && ob_use_adaptive_subdivision) {
     col = uiLayoutColumn(layout, true);
