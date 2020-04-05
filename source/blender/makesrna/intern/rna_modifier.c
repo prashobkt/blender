@@ -3837,6 +3837,12 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem prop_affect_items[] = {
+      {0, "EDGES", 0, "Edges", "Affect only edges"},
+      {MOD_BEVEL_VERT, "VERTICES", 0, "Vertices", "Affect only vertices"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "BevelModifier", "Modifier");
   RNA_def_struct_ui_text(
       srna, "Bevel Modifier", "Bevel modifier to make edges and vertices more rounded");
@@ -3863,9 +3869,10 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Segments", "Number of segments for round edges/verts");
   RNA_def_property_update(prop, 0, "rna_BevelModifier_update_segments");
 
-  prop = RNA_def_property(srna, "use_only_vertices", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_VERT);
-  RNA_def_property_ui_text(prop, "Only Vertices", "Bevel verts/corners, not edges");
+  prop = RNA_def_property(srna, "affect", PROP_ENUM, PROP_NONE); /* as an enum */
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "flags");
+  RNA_def_property_enum_items(prop, prop_affect_items);
+  RNA_def_property_ui_text(prop, "Affect", "Affect edges or vertices");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "limit_method", PROP_ENUM, PROP_NONE);
@@ -3913,7 +3920,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "mat");
   RNA_def_property_range(prop, -1, SHRT_MAX);
   RNA_def_property_ui_text(
-      prop, "Material", "Material index of generated faces, -1 for automatic");
+      prop, "Material Index Offset", "Material index of generated faces, -1 for automatic");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "loop_slide", PROP_BOOLEAN, PROP_NONE);

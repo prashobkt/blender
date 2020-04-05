@@ -287,7 +287,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  col = uiLayoutColumn(layout, true);
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "affect", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(layout, false);
   const char *offset_name = "";
   if (RNA_enum_get(&ptr, "offset_type") == BEVEL_AMT_PERCENT) {
     uiItemR(col, &ptr, "width_pct", 0, NULL, ICON_NONE);
@@ -306,15 +310,19 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
     uiItemR(col, &ptr, "width", 0, IFACE_(offset_name), ICON_NONE);
   }
-  row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "offset_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+  uiItemR(col, &ptr, "offset_type", 0, NULL, ICON_NONE);
+
+  uiItemS(layout);
+
   uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
 
   split = uiLayoutSplit(layout, 0.5f, true);
   col = uiLayoutColumn(split, true);
-  uiItemR(col, &ptr, "use_only_vertices", 0, NULL, ICON_NONE);
+
   uiItemR(col, &ptr, "use_clamp_overlap", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "loop_slide", 0, NULL, ICON_NONE);
+
   col = uiLayoutColumn(split, true);
   uiItemR(col, &ptr, "mark_seam", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "mark_sharp", 0, NULL, ICON_NONE);
@@ -324,31 +332,19 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
-  uiItemL(col, IFACE_("Limit Method:"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "limit_method", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "limit_method", 0, NULL, ICON_NONE);
   int limit_method = RNA_enum_get(&ptr, "limit_method");
   if (limit_method == MOD_BEVEL_ANGLE) {
     uiItemR(col, &ptr, "angle_limit", 0, NULL, ICON_NONE);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     row = uiLayoutRow(col, true);
-    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
     sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_vertex_group);
-    uiLayoutSetPropSep(sub, false);
+    uiLayoutSetPropDecorate(sub, false);
     uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
   }
-
-  col = uiLayoutColumn(layout, true);
-  uiItemL(col, IFACE_("Face Strength Mode:"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "face_strength_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-
-  col = uiLayoutColumn(layout, true);
-  uiItemL(col, IFACE_("Intersection Type:"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "vmesh_method", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
@@ -359,12 +355,25 @@ static void miter_panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   uiLayout *layout = panel->layout;
 
-  uiItemL(layout, IFACE_("Miter Type:"), ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "miter_outer", 0, IFACE_("Outer"), ICON_NONE);
   uiItemR(layout, &ptr, "miter_inner", 0, IFACE_("Inner"), ICON_NONE);
   if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
     uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
   }
+}
+
+static void advanced_panel_draw(const bContext *C, Panel *panel)
+{
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  uiLayout *layout = panel->layout;
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "vmesh_method", 0, NULL, ICON_NONE);
 }
 
 static void custom_profile_panel_draw_header(const bContext *C, Panel *panel)
@@ -396,6 +405,8 @@ static void panelRegister(ARegionType *region_type)
                              custom_profile_panel_draw_header,
                              custom_profile_panel_draw,
                              panel_type);
+  modifier_subpanel_register(
+      region_type, "bevel_advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Bevel = {
