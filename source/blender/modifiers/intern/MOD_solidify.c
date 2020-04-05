@@ -97,7 +97,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row, *col, *flow;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -106,10 +106,11 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_buttons(C, panel);
 
   int solidify_mode = RNA_enum_get(&ptr, "solidify_mode");
-
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "solidify_mode", 0, NULL, ICON_NONE);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "solidify_mode", 0, NULL, ICON_NONE);
 
   if (solidify_mode == MOD_SOLIDIFY_MODE_NONMANIFOLD) {
     uiItemR(layout, &ptr, "nonmanifold_thickness_mode", 0, IFACE_("Thickness"), ICON_NONE);
@@ -119,39 +120,50 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, has_vertex_group);
-  uiItemR(row, &ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
-
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, true);
+  flow = uiLayoutGridFlow(layout, true, 0, true, false, false);
+  col = uiLayoutColumn(flow, false);
   uiItemR(col, &ptr, "use_flip_normals", 0, NULL, ICON_NONE);
   if (solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE) {
     uiItemR(col, &ptr, "use_even_offset", 0, NULL, ICON_NONE);
     uiItemR(col, &ptr, "use_quality_normals", 0, NULL, ICON_NONE);
   }
-  col = uiLayoutColumn(split, true);
+
+  col = uiLayoutColumn(flow, false);
   uiItemR(col, &ptr, "use_rim", 0, NULL, ICON_NONE);
   sub = uiLayoutColumn(col, false);
   uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_rim"));
   uiItemR(sub, &ptr, "use_rim_only", 0, NULL, ICON_NONE);
 
-  col = uiLayoutColumn(layout, true);
-  uiItemL(col, IFACE_("Material Index Offset:"), ICON_NONE);
-  sub = uiLayoutColumn(col, false);
-  row = uiLayoutSplit(sub, 0.4f, true);
-  uiItemR(row, &ptr, "material_offset", 0, "", ICON_NONE);
-  row = uiLayoutRow(row, true);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_rim"));
-  uiItemR(row, &ptr, "material_offset_rim", 0, IFACE_("Rim"), ICON_NONE);
+  uiItemS(layout);
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, has_vertex_group);
+  uiItemR(row, &ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
+}
+
+static void solidify_materials_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "material_offset", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_rim"));
+  uiItemR(col, &ptr, "material_offset_rim", 0, IFACE_("Rim"), ICON_NONE);
 }
 
 static void draw_crease_panel(const bContext *C, Panel *panel)
@@ -163,6 +175,8 @@ static void draw_crease_panel(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
   int solidify_mode = RNA_enum_get(&ptr, "solidify_mode");
+
+  uiLayoutSetPropSep(layout, true);
 
   uiLayoutSetActive(layout, solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE);
   uiItemR(layout, &ptr, "edge_crease_inner", 0, IFACE_("Inner"), ICON_NONE);
@@ -179,6 +193,8 @@ static void draw_clamp_panel(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "thickness_clamp", 0, NULL, ICON_NONE);
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, RNA_float_get(&ptr, "thickness_clamp") > 0.0f);
@@ -193,6 +209,8 @@ static void draw_vertex_group_panel(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemPointerR(layout, &ptr, "shell_vertex_group", &ob_ptr, "vertex_groups", "Shell", ICON_NONE);
   uiItemPointerR(layout, &ptr, "rim_vertex_group", &ob_ptr, "vertex_groups", "Rim", ICON_NONE);
 }
@@ -200,6 +218,12 @@ static void draw_vertex_group_panel(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Solidify", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "solidify_materials",
+                             "Materials",
+                             NULL,
+                             solidify_materials_panel_draw,
+                             panel_type);
   modifier_subpanel_register(
       region_type, "solidify_crease", "Crease", NULL, draw_crease_panel, panel_type);
   modifier_subpanel_register(

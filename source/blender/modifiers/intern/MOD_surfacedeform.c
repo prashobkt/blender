@@ -1407,18 +1407,22 @@ static void panel_draw(const bContext *C, Panel *panel)
   bool is_bound = RNA_boolean_get(&ptr, "is_bound");
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
+  uiLayoutSetPropSep(layout, true);
+
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, !is_bound);
   uiItemR(col, &ptr, "target", 0, NULL, ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
   uiItemR(col, &ptr, "falloff", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "strength", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
   uiItemS(layout);
 
