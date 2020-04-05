@@ -211,7 +211,7 @@ static bool dependsOnNormals(ModifierData *md)
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
+  uiLayout *sub, *row, *split, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -222,31 +222,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
-
-  uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
-
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutColumn(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-
-  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
-
-  modifier_panel_end(layout, &ptr);
-}
-
-static void mode_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *row, *col, *split;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
   int wrap_method = RNA_enum_get(&ptr, "wrap_method");
 
   uiItemR(layout, &ptr, "wrap_method", 0, NULL, ICON_NONE);
@@ -283,16 +258,27 @@ static void mode_panel_draw(const bContext *C, Panel *panel)
                       RNA_boolean_get(&ptr, "use_negative_direction") &&
                           RNA_enum_get(&ptr, "cull_face") != 0);
     uiItemR(col, &ptr, "use_invert_cull", 0, NULL, ICON_NONE);
+  }
 
+  uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
+  if (wrap_method == MOD_SHRINKWRAP_PROJECT) {
     uiItemR(layout, &ptr, "auxiliary_target", 0, NULL, ICON_NONE);
   }
+  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutColumn(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Shrinkwrap", panel_draw);
-  modifier_subpanel_register(
-      region_type, "shrinkwrap_mode", "Mode", NULL, mode_panel_draw, panel_type);
+  modifier_panel_register(region_type, "Shrinkwrap", panel_draw);
 }
 
 ModifierTypeInfo modifierType_Shrinkwrap = {

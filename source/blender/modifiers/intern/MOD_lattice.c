@@ -155,6 +155,8 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(layout, true);
