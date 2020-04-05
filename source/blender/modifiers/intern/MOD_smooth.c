@@ -246,22 +246,30 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  split = uiLayoutSplit(layout, 0.25f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Axis:"), ICON_NONE);
-  uiItemR(col, &ptr, "use_x", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_y", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_z", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, false);
+  /* Aligned axis booleans with a single label and no decorators. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Axis"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "use_axis");
+  uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
+
+  col = uiLayoutColumn(layout, false);
   uiItemR(col, &ptr, "factor", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "iterations", 0, NULL, ICON_NONE);
-  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
+  uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
   modifier_panel_end(layout, &ptr);
