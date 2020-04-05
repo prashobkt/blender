@@ -1481,7 +1481,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
     if (list_panel->type) {
       if ((strcmp(list_panel->type->context, context) == 0)) {
         if (list_panel->type->flag & PANELTYPE_RECREATE) {
-          sort_index->pa = MEM_dupallocN(list_panel);
+          sort_index->panel = MEM_dupallocN(list_panel);
           sort_index->orig = list_panel;
           sort_index++;
         }
@@ -2705,7 +2705,7 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
 
   if (state == PANEL_STATE_EXIT) {
     if (data->is_drag_drop) {
-      reorder_recreate_panel_list(C, region, pa);
+      reorder_recreate_panel_list(C, region, panel);
     }
 
     MEM_freeN(data);
