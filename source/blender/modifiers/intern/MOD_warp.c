@@ -412,38 +412,37 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, true);
-  uiItemL(col, IFACE_("From:"), ICON_NONE);
-  uiItemR(col, &ptr, "object_from", 0, "", ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "object_from", 0, NULL, ICON_NONE);
   PointerRNA from_obj_ptr = RNA_pointer_get(&ptr, "object_from");
   if (!RNA_pointer_is_null(&from_obj_ptr) && RNA_enum_get(&from_obj_ptr, "type") == OB_ARMATURE) {
-    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
+
     PointerRNA from_obj_data_ptr = RNA_pointer_get(&from_obj_ptr, "data");
-    uiItemPointerR(col, &ptr, "bone_from", &from_obj_data_ptr, "bones", "", ICON_NONE);
+    uiItemPointerR(col, &ptr, "bone_from", &from_obj_data_ptr, "bones", NULL, ICON_NONE);
   }
 
-  col = uiLayoutColumn(split, true);
-  uiItemL(col, IFACE_("To:"), ICON_NONE);
-  uiItemR(col, &ptr, "object_to", 0, "", ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "object_to", 0, NULL, ICON_NONE);
   PointerRNA to_obj_ptr = RNA_pointer_get(&ptr, "object_to");
   if (!RNA_pointer_is_null(&to_obj_ptr) && RNA_enum_get(&to_obj_ptr, "type") == OB_ARMATURE) {
-    uiItemL(col, IFACE_("Bone:"), ICON_NONE);
     PointerRNA to_obj_data_ptr = RNA_pointer_get(&to_obj_ptr, "data");
-    uiItemPointerR(col, &ptr, "bone_to", &to_obj_data_ptr, "bones", "", ICON_NONE);
+    uiItemPointerR(col, &ptr, "bone_to", &to_obj_data_ptr, "bones", NULL, ICON_NONE);
   }
 
   uiItemR(layout, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  uiItemR(row, &ptr, "strength", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
   uiLayoutSetActive(sub, has_vertex_group);
   uiLayoutSetPropSep(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, &ptr, "strength", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
@@ -456,6 +455,8 @@ static void falloff_panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
   bool use_falloff = (RNA_enum_get(&ptr, "falloff_type") != eWarp_Falloff_None);
+
+  uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "falloff_type", 0, NULL, ICON_NONE);
 
@@ -480,15 +481,16 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
 
   uiTemplateID(layout, C, &ptr, "texture", "texture.new", NULL, NULL, 0, ICON_NONE, NULL);
 
-  uiItemL(layout, IFACE_("Texture Coordinates:"), ICON_NONE);
-  uiItemR(layout, &ptr, "texture_coords", 0, "", ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "texture_coords", 0, NULL, ICON_NONE);
 
   if (texture_coords == MOD_DISP_MAP_OBJECT) {
-    uiItemR(layout, &ptr, "texture_coords_object", 0, "", ICON_NONE);
+    uiItemR(layout, &ptr, "texture_coords_object", 0, "Object", ICON_NONE);
   }
   else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
     PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-    uiItemPointerR(layout, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", "", ICON_NONE);
+    uiItemPointerR(layout, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
   }
 }
 
