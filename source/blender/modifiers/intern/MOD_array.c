@@ -805,7 +805,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *col, *split;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -912,7 +912,7 @@ static void object_offset_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "offset_object", 0, NULL, ICON_NONE);
 }
 
-static void merge_header_draw(const bContext *C, Panel *panel)
+static void symmetry_panel_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -922,7 +922,7 @@ static void merge_header_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "use_merge_vertices", 0, IFACE_("Merge"), ICON_NONE);
 }
 
-static void merge_panel_draw(const bContext *C, Panel *panel)
+static void symmetry_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -974,7 +974,7 @@ static void panelRegister(ARegionType *region_type)
                              object_offset_draw,
                              panel_type);
   modifier_subpanel_register(
-      region_type, "array_merge", "", merge_header_draw, merge_panel_draw, panel_type);
+      region_type, "array_merge", "", symmetry_panel_header_draw, symmetry_panel_draw, panel_type);
   modifier_subpanel_register(region_type, "array_uv", "UVs", NULL, uv_panel_draw, panel_type);
 }
 

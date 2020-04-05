@@ -1213,12 +1213,12 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(row, false);
   uiItemR(row, &ptr, "use_stretch_u", UI_ITEM_R_TOGGLE, IFACE_("U"), ICON_NONE);
   uiItemR(row, &ptr, "use_stretch_v", UI_ITEM_R_TOGGLE, IFACE_("V"), ICON_NONE);
-  uiItemL(row, IFACE_(""), ICON_BLANK1);
+  uiItemL(row, "", ICON_BLANK1);
 
   modifier_panel_end(layout, &ptr);
 }
 
-static void screw_merge_header_draw(const bContext *C, Panel *panel)
+static void symmetry_panel_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -1228,8 +1228,9 @@ static void screw_merge_header_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "use_merge_vertices", 0, NULL, ICON_NONE);
 }
 
-static void screw_merge_draw(const bContext *C, Panel *panel)
+static void symmetry_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -1237,14 +1238,14 @@ static void screw_merge_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiLayout *col = uiLayoutColumn(layout, false);
-
+  col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
   uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
 }
 
-static void screw_normals_draw(const bContext *C, Panel *panel)
+static void normals_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -1252,8 +1253,7 @@ static void screw_normals_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiLayout *col = uiLayoutColumn(layout, false);
-
+  col = uiLayoutColumn(layout, false);
   uiItemR(col, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "use_normal_calculate", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "use_normal_flip", 0, NULL, ICON_NONE);
@@ -1263,9 +1263,9 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Screw", panel_draw);
   modifier_subpanel_register(
-      region_type, "screw_merge", "", screw_merge_header_draw, screw_merge_draw, panel_type);
+      region_type, "screw_merge", "", symmetry_panel_header_draw, symmetry_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "screw_normals", "Normals", NULL, screw_normals_draw, panel_type);
+      region_type, "screw_normals", "Normals", NULL, normals_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Screw = {

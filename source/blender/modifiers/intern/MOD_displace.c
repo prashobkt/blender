@@ -464,9 +464,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "mid_level", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", 0, ICON_NONE);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutColumn(row, true);
-  uiLayoutSetPropDecorate(sub, false);
   uiLayoutSetActive(sub, has_vertex_group);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
