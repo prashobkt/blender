@@ -228,7 +228,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
@@ -236,43 +236,34 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  /* Get info used later. */
+  uiLayoutSetPropSep(layout, true);
+
   int decimate_type = RNA_enum_get(&ptr, "decimate_type");
   char count_info[32];
   snprintf(count_info, 32, IFACE_("Face Count: %d"), RNA_int_get(&ptr, "face_count"));
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  uiItemR(layout, &ptr, "decimate_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "decimate_type", 0, NULL, ICON_NONE);
 
   if (decimate_type == MOD_DECIM_MODE_COLLAPSE) {
-    uiItemR(layout, &ptr, "ratio", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "ratio", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
-    split = uiLayoutSplit(layout, 0.5f, true);
-    col = uiLayoutColumn(split, true);
-    row = uiLayoutRow(col, true);
-    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
-    sub = uiLayoutRow(row, true);
+    row = uiLayoutRow(layout, true);
+    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+    sub = uiLayoutColumn(row, true);
     uiLayoutSetActive(sub, has_vertex_group);
     uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-    col = uiLayoutColumn(split, true);
-    uiItemR(col, &ptr, "vertex_group_factor", 0, NULL, ICON_NONE);
 
-    split = uiLayoutSplit(layout, 0.5f, false);
-    col = uiLayoutColumn(split, false);
-    uiItemR(col, &ptr, "use_collapse_triangulate", 0, NULL, ICON_NONE);
-    col = uiLayoutColumn(split, false);
-    row = uiLayoutSplit(col, 0.75f, false);
-    uiItemR(row, &ptr, "use_symmetry", 0, NULL, ICON_NONE);
-    uiItemR(row, &ptr, "symmetry_axis", 0, "", ICON_NONE);
+    uiItemR(layout, &ptr, "use_collapse_triangulate", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "use_symmetry", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "symmetry_axis", UI_ITEM_R_EXPAND, IFACE_("Symmetry Axis"), ICON_NONE);
   }
   else if (decimate_type == MOD_DECIM_MODE_UNSUBDIV) {
     uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
   }
   else { /* decimate_type == MOD_DECIM_MODE_DISSOLVE. */
     uiItemR(layout, &ptr, "angle_limit", 0, NULL, ICON_NONE);
-    uiItemL(layout, IFACE_("Delimit:"), ICON_NONE);
-    row = uiLayoutRow(layout, false);
-    uiItemR(row, &ptr, "delimit", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "delimit", 0, NULL, ICON_NONE);
     uiItemR(layout, &ptr, "use_dissolve_boundaries", 0, NULL, ICON_NONE);
   }
   uiItemL(layout, count_info, ICON_NONE);

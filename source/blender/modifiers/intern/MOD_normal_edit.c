@@ -710,6 +710,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
+  uiLayoutSetPropSep(layout, true);
+
   int mode = RNA_enum_get(&ptr, "mode");
   PointerRNA target_ptr = RNA_pointer_get(&ptr, "target");
   bool needs_object_offset = (mode == MOD_NORMALEDIT_MODE_RADIAL &&
@@ -718,7 +720,6 @@ static void panel_draw(const bContext *C, Panel *panel)
                               RNA_boolean_get(&ptr, "use_direction_parallel"));
 
   uiItemR(layout, &ptr, "mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-
   uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
@@ -741,15 +742,19 @@ static void mix_mode_panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
+  uiLayoutSetPropSep(layout, true);
+
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  uiItemR(layout, &ptr, "mix_mode", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "mix_mode", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "mix_factor", 0, NULL, ICON_NONE);
+
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutRow(row, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutColumn(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "mix_limit", 0, NULL, ICON_NONE);
   uiItemR(row,
@@ -764,7 +769,7 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "NormalEdit", panel_draw);
   modifier_subpanel_register(
-      region_type, "normaledit_mix_mode", "Mix Mode", NULL, mix_mode_panel_draw, panel_type);
+      region_type, "normaledit_mix", "Mix", NULL, mix_mode_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_NormalEdit = {

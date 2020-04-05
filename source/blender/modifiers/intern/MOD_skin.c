@@ -1953,12 +1953,14 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA op_ptr;
 
-  row = uiLayoutRow(layout, false);
-  uiItemO(row, IFACE_("Create Armature"), ICON_NONE, "OBJECT_OT_skin_armature_create");
-  uiItemO(row, NULL, ICON_NONE, "MESH_OT_customdata_skin_add");
+  uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "branch_smoothing", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(layout, false);
+  uiItemO(row, IFACE_("Create Armature"), ICON_NONE, "OBJECT_OT_skin_armature_create");
+  uiItemO(row, NULL, ICON_NONE, "MESH_OT_customdata_skin_add");
 
   col = uiLayoutColumn(layout, true);
   uiItemFullO(col,
@@ -1988,15 +1990,16 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void symmetry_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *layout = panel->layout;
+  uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "use_x_symmetry", 0, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_y_symmetry", 0, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_z_symmetry", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "use_x_symmetry", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_y_symmetry", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_z_symmetry", 0, NULL, ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)

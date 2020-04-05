@@ -126,7 +126,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *split;
+  uiLayout *row, *split;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -134,36 +134,63 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  split = uiLayoutSplit(layout, 0.333f, false);
-  col = uiLayoutColumn(split, true);
-  uiItemL(col, IFACE_("Axis:"), ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  /* Aligned axis booleans with a single label and no decorators. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Axis"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
   PropertyRNA *prop = RNA_struct_find_property(&ptr, "use_axis");
-  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
-  col = uiLayoutColumn(split, true);
-  uiItemL(col, IFACE_("Bisect:"), ICON_NONE);
+  /* Aligned axis booleans with a single label and no decorators. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Bisect"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
   prop = RNA_struct_find_property(&ptr, "use_bisect_axis");
-  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
-  col = uiLayoutColumn(split, true);
-  uiItemL(col, IFACE_("Flip:"), ICON_NONE);
+  /* Aligned axis booleans with a single label and no decorators. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Flip"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
   prop = RNA_struct_find_property(&ptr, "use_bisect_flip_axis");
-  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("X"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 2, 0, 0, IFACE_("Z"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
-  col = uiLayoutColumn(layout, true);
-  uiItemL(col, IFACE_("Mirror Object:"), ICON_NONE);
-  uiItemR(col, &ptr, "mirror_object", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "mirror_object", 0, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
 }
 
-static void merge_panel_draw(const bContext *C, Panel *panel)
+static void merge_panel_draw_header(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_mirror_merge", 0, IFACE_("Merge"), ICON_NONE);
+}
+
+static void symmetry_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
@@ -171,36 +198,42 @@ static void merge_panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "use_mirror_merge", 0, IFACE_("Merge"), ICON_NONE);
-  uiItemR(row, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_merge"));
   uiItemR(row, &ptr, "merge_threshold", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
 }
 
-static void textures_panel_draw(const bContext *C, Panel *panel)
+static void uv_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *row;
+  uiLayout *col, *row, *split;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "use_mirror_u", 0, IFACE_("Flip U"), ICON_NONE);
-  uiItemR(row, &ptr, "use_mirror_v", 0, IFACE_("Flip V"), ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  /* Flip U and V booleans aligned with one label. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Flip"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "use_mirror_u", UI_ITEM_R_TOGGLE, IFACE_("U"), ICON_NONE);
+  uiItemR(row, &ptr, "use_mirror_v", UI_ITEM_R_TOGGLE, IFACE_("V"), ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
   col = uiLayoutColumn(layout, true);
-  if (RNA_boolean_get(&ptr, "use_mirror_u")) {
-    uiItemR(col, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  }
-  if (RNA_boolean_get(&ptr, "use_mirror_v")) {
-    uiItemR(col, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  }
-  col = uiLayoutColumn(layout, true);
-  uiItemR(col, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_u"));
+  uiItemR(row, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, IFACE_("Offset U"), ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_v"));
+  uiItemR(row, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, IFACE_("V"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
@@ -209,9 +242,9 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Mirror", panel_draw);
   modifier_subpanel_register(
-      region_type, "mirror_merge", "Merge", NULL, merge_panel_draw, panel_type);
+      region_type, "mirror_merge", "", merge_panel_draw_header, symmetry_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "mirror_textures", "Textures", NULL, textures_panel_draw, panel_type);
+      region_type, "mirror_textures", "UVs", NULL, uv_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Mirror = {
