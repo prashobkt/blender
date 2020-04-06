@@ -576,8 +576,9 @@ typedef struct EEVEE_ObjectMotionData {
 } EEVEE_ObjectMotionData;
 
 typedef struct EEVEE_GeometryMotionData {
-  struct GPUBatch *batch;
-  struct GPUVertBuf *vbo[MAX_MB_DATA_STEP];
+  struct GPUBatch *batch;                       /* Batch for time = t. */
+  struct GPUVertBuf *vbo[MAX_MB_DATA_STEP - 1]; /* Vbo for time = t +/- step. */
+  int use_deform;                               /* To disable deform mb if vertcount mismatch. */
 } EEVEE_GeometryMotionData;
 
 /* ************ EFFECTS DATA ************* */
@@ -924,6 +925,8 @@ EEVEE_ViewLayerData *EEVEE_view_layer_data_ensure(void);
 EEVEE_ObjectEngineData *EEVEE_object_data_get(Object *ob);
 EEVEE_ObjectEngineData *EEVEE_object_data_ensure(Object *ob);
 EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *mb, Object *ob);
+EEVEE_GeometryMotionData *EEVEE_motion_blur_geometry_data_get(EEVEE_MotionBlurData *mb,
+                                                              Object *ob);
 EEVEE_LightProbeEngineData *EEVEE_lightprobe_data_get(Object *ob);
 EEVEE_LightProbeEngineData *EEVEE_lightprobe_data_ensure(Object *ob);
 EEVEE_LightEngineData *EEVEE_light_data_get(Object *ob);
@@ -1164,6 +1167,7 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Obje
 void EEVEE_motion_blur_step_set(EEVEE_Data *vedata, int step);
 void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
 void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Object *ob);
+void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata);
 void EEVEE_motion_blur_draw(EEVEE_Data *vedata);
 void EEVEE_motion_blur_free(void);
 

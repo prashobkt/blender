@@ -442,6 +442,8 @@ static void eevee_render_to_image(void *vedata,
 
     DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
 
+    EEVEE_motion_blur_cache_finish(vedata);
+
     RE_engine_frame_set(engine, time, 0.0f);
 
     /* Reset passlist. This is safe as they are stored into managed memory chunks. */
@@ -462,6 +464,8 @@ static void eevee_render_to_image(void *vedata,
   EEVEE_motion_blur_step_set(ved, 1);
 
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, EEVEE_render_cache);
+
+  EEVEE_motion_blur_cache_finish(vedata);
 
   /* Actually do the rendering. */
   EEVEE_render_draw(vedata, engine, render_layer, rect);

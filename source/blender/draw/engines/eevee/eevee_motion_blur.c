@@ -41,6 +41,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "GPU_batch.h"
 #include "GPU_texture.h"
 #include "eevee_private.h"
 
@@ -221,21 +222,79 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
   EEVEE_EffectsInfo *effects = stl->effects;
   DRWShadingGroup *grp = NULL;
 
-  EEVEE_ObjectMotionData *mbdata = EEVEE_motion_blur_object_data_get(&effects->motion_blur, ob);
+  EEVEE_ObjectMotionData *mb_data = EEVEE_motion_blur_object_data_get(&effects->motion_blur, ob);
 
-  if (mbdata) {
+  if (mb_data) {
+    int mb_step = effects->motion_blur_step;
     /* Store transform  */
-    copy_m4_m4(mbdata->obmat[effects->motion_blur_step], ob->obmat);
+    copy_m4_m4(mb_data->obmat[mb_step], ob->obmat);
 
-    struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
-    /* TODO(fclem) Copy pos vbo and store it in geometry motion steps. */
+    EEVEE_GeometryMotionData *mb_geom = EEVEE_motion_blur_geometry_data_get(&effects->motion_blur,
+                                                                            ob);
 
-    if (geom && effects->motion_blur_step == MAX_MB_DATA_STEP - 1) {
+    if (effects->motion_blur_step == MAX_MB_DATA_STEP - 1) {
+      GPUBatch *batch = DRW_cache_object_surface_get(ob);
+      if (batch == NULL || mb_geom->vbo[mb_step]) {
+        return;
+      }
+
       grp = DRW_shgroup_create(e_data.motion_blur_object_sh, psl->velocity_object);
-      DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", mbdata->obmat[0]);
-      DRW_shgroup_uniform_mat4(grp, "currModelMatrix", mbdata->obmat[1]);
+      DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", mb_data->obmat[0]);
+      DRW_shgroup_uniform_mat4(grp, "currModelMatrix", mb_data->obmat[1]);
+      DRW_shgroup_uniform_bool(grp, "useDeform", &mb_geom->use_deform, 1);
 
-      DRW_shgroup_call(grp, geom, ob);
+      DRW_shgroup_call(grp, batch, ob);
+      /* Keep to modify later (after init). */
+      mb_geom->batch = batch;
+    }
+    else {
+      /* Store vertex position buffer. */
+      mb_geom->vbo[mb_step] = DRW_cache_object_pos_vertbuf_get(ob);
+      /* TODO(fclem) only limit deform motion blur to object that needs it. */
+      mb_geom->use_deform = true;
+    }
+  }
+}
+
+void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
+{
+  EEVEE_StorageList *stl = vedata->stl;
+  EEVEE_EffectsInfo *effects = stl->effects;
+  GHashIterator ghi;
+  for (BLI_ghashIterator_init(&ghi, effects->motion_blur.geom);
+       BLI_ghashIterator_done(&ghi) == false;
+       BLI_ghashIterator_step(&ghi)) {
+    EEVEE_GeometryMotionData *mb_geom = BLI_ghashIterator_getValue(&ghi);
+
+    int mb_step = effects->motion_blur_step;
+
+    if (effects->motion_blur_step == MAX_MB_DATA_STEP - 1) {
+      /* Modify batch to have data from adjacent frames. */
+      GPUBatch *batch = mb_geom->batch;
+      GPUVertBuf *vbo = mb_geom->vbo[0];
+      if (vbo && batch) {
+        if (vbo->vertex_len != batch->verts[0]->vertex_len) {
+          /* Vertex count mismatch, disable deform motion blur. */
+          mb_geom->use_deform = false;
+          GPU_VERTBUF_DISCARD_SAFE(mb_geom->vbo[0]);
+          return;
+        }
+        /* Modify the batch to include the previous position. */
+        GPU_batch_vertbuf_add_ex(batch, vbo, true);
+        /* TODO(fclem) keep the vbo around for next (sub)frames. */
+        /* Only do once. */
+        mb_geom->vbo[0] = NULL;
+      }
+    }
+    else {
+      GPUVertBuf *vbo = mb_geom->vbo[mb_step];
+      /* Use the vbo to perform the copy on the GPU. */
+      GPU_vertbuf_use(vbo);
+      /* Perform a copy to avoid loosing it after RE_engine_frame_set(). */
+      mb_geom->vbo[mb_step] = vbo = GPU_vertbuf_duplicate(vbo);
+      /* Find and replace "pos" attrib name. */
+      int attrib_id = GPU_vertformat_attr_id_get(&vbo->format, "pos");
+      GPU_vertformat_attr_rename(&vbo->format, attrib_id, "prv");
     }
   }
 }

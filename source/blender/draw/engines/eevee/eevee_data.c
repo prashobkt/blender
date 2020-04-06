@@ -28,6 +28,10 @@
 
 #include "BKE_anim.h"
 
+#include "DEG_depsgraph_query.h"
+
+#include "GPU_vertex_buffer.h"
+
 #include "eevee_lightcache.h"
 #include "eevee_private.h"
 
@@ -35,6 +39,10 @@
 
 static void eevee_motion_blur_mesh_data_free(void *val)
 {
+  EEVEE_GeometryMotionData *geom_mb = (EEVEE_GeometryMotionData *)val;
+  for (int i = 0; i < ARRAY_SIZE(geom_mb->vbo); i++) {
+    GPU_VERTBUF_DISCARD_SAFE(geom_mb->vbo[i]);
+  }
   MEM_freeN(val);
 }
 
@@ -122,6 +130,24 @@ EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *
     BLI_ghash_insert(mb->object, key_p, ob_step);
   }
   return ob_step;
+}
+
+EEVEE_GeometryMotionData *EEVEE_motion_blur_geometry_data_get(EEVEE_MotionBlurData *mb, Object *ob)
+{
+  if (mb->geom == NULL) {
+    return NULL;
+  }
+
+  /* Use original data as key to ensure matching accross update. */
+  ID *id_orig = DEG_get_original_id(ob->data);
+
+  EEVEE_GeometryMotionData *geom_step = BLI_ghash_lookup(mb->geom, id_orig);
+  if (geom_step == NULL) {
+    geom_step = MEM_callocN(sizeof(EEVEE_GeometryMotionData), __func__);
+    BLI_ghash_insert(mb->geom, id_orig, geom_step);
+  }
+
+  return geom_step;
 }
 
 /* View Layer data. */
