@@ -2,9 +2,9 @@
 
 #include "NOD_simulation.h"
 
-#include "node_sim_util.h"
 #include "NOD_common.h"
 #include "node_common.h"
+#include "node_sim_util.h"
 
 void register_node_type_sim_group(void)
 {
@@ -17,9 +17,9 @@ void register_node_type_sim_group(void)
   ntype.poll_instance = node_group_poll_instance;
   ntype.insert_link = node_insert_link_default;
   ntype.update_internal_links = node_update_internal_links_default;
-  ntype.ext.srna = RNA_struct_find("SimulationNodeGroup");
-  BLI_assert(ntype.ext.srna != NULL);
-  RNA_struct_blender_type_set(ntype.ext.srna, &ntype);
+  ntype.rna_ext.srna = RNA_struct_find("SimulationNodeGroup");
+  BLI_assert(ntype.rna_ext.srna != NULL);
+  RNA_struct_blender_type_set(ntype.rna_ext.srna, &ntype);
 
   node_type_socket_templates(&ntype, NULL, NULL);
   node_type_size(&ntype, 140, 60, 400);

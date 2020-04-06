@@ -24,7 +24,7 @@ void register_node_tree_type_sim(void)
   tt->ui_icon = 0; /* defined in drawnode.c */
   strcpy(tt->ui_description, N_("Simulation nodes"));
   tt->poll = [](const bContext *UNUSED(C), bNodeTreeType *UNUSED(treetype)) { return true; };
-  tt->ext.srna = &RNA_SimulationNodeTree;
+  tt->rna_ext.srna = &RNA_SimulationNodeTree;
 
   ntreeTypeAdd(tt);
 }
