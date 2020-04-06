@@ -539,6 +539,17 @@ simulation_node_categories = [
         NodeItem("FunctionNodeSurfacePosition"),
         NodeItem("FunctionNodeSurfaceWeight"),
     ]),
+    FunctionNodeCategory("NOISE", "Noise", items=[
+        NodeItem("ShaderNodeTexWhiteNoise"),
+        NodeItem("ShaderNodeTexGradient"),
+        NodeItem("ShaderNodeTexNoise"),
+        NodeItem("ShaderNodeTexMagic"),
+        NodeItem("ShaderNodeTexWave"),
+        NodeItem("ShaderNodeTexMusgrave"),
+        NodeItem("ShaderNodeTexVoronoi"),
+        NodeItem("ShaderNodeTexChecker"),
+        NodeItem("ShaderNodeTexBrick"),
+    ]),
     SimulationNodeCategory("GROUPS", "Groups", items=node_group_items),
     SimulationNodeCategory("LAYOUT", "Layout", items=[
         NodeItem("NodeFrame"),
