@@ -109,7 +109,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
-#include "BKE_animsys.h"
+#include "BKE_anim_data.h"
 #include "BKE_armature.h"
 #include "BKE_brush.h"
 #include "BKE_collection.h"
@@ -2670,7 +2670,7 @@ static void IDP_LibLinkProperty(IDProperty *prop, FileData *fd)
     }
     case IDP_GROUP: /* PointerProperty */
     {
-      for (IDProperty *loop = prop->data.group.first; loop; loop = loop->next) {
+      LISTBASE_FOREACH (IDProperty *, loop, &prop->data.group) {
         IDP_LibLinkProperty(loop, fd);
       }
       break;
@@ -3030,7 +3030,7 @@ static PackedFile *direct_link_packedfile(FileData *fd, PackedFile *oldpf)
 // XXX deprecated - old animation system
 static void lib_link_ipo(FileData *fd, Main *UNUSED(bmain), Ipo *ipo)
 {
-  for (IpoCurve *icu = ipo->curve.first; icu; icu = icu->next) {
+  LISTBASE_FOREACH (IpoCurve *, icu, &ipo->curve) {
     if (icu->driver) {
       icu->driver->ob = newlibadr(fd, ipo->id.lib, icu->driver->ob);
     }
@@ -3251,7 +3251,7 @@ static void direct_link_fcurves(FileData *fd, ListBase *list)
 static void lib_link_action(FileData *fd, Main *UNUSED(bmain), bAction *act)
 {
   // XXX deprecated - old animation system <<<
-  for (bActionChannel *chan = act->chanbase.first; chan; chan = chan->next) {
+  LISTBASE_FOREACH (bActionChannel *, chan, &act->chanbase) {
     chan->ipo = newlibadr(fd, act->id.lib, chan->ipo);
     lib_link_constraint_channels(fd, &act->id, &chan->constraintChannels);
   }
@@ -3259,7 +3259,7 @@ static void lib_link_action(FileData *fd, Main *UNUSED(bmain), bAction *act)
 
   lib_link_fcurves(fd, &act->id, &act->curves);
 
-  for (TimeMarker *marker = act->markers.first; marker; marker = marker->next) {
+  LISTBASE_FOREACH (TimeMarker *, marker, &act->markers) {
     if (marker->camera) {
       marker->camera = newlibadr(fd, act->id.lib, marker->camera);
     }
@@ -3515,8 +3515,7 @@ static void direct_link_workspace(FileData *fd, WorkSpace *workspace, const Main
   link_list(fd, &workspace->owner_ids);
   link_list(fd, &workspace->tools);
 
-  for (WorkSpaceDataRelation *relation = workspace->hook_layout_relations.first; relation;
-       relation = relation->next) {
+  LISTBASE_FOREACH (WorkSpaceDataRelation *, relation, &workspace->hook_layout_relations) {
 
     /* data from window - need to access through global oldnew-map */
     relation->parent = newglobadr(fd, relation->parent);
@@ -3527,7 +3526,7 @@ static void direct_link_workspace(FileData *fd, WorkSpace *workspace, const Main
   /* Same issue/fix as in direct_link_workspace_link_scene_data: Can't read workspace data
    * when reading windows, so have to update windows after/when reading workspaces. */
   for (wmWindowManager *wm = main->wm.first; wm; wm = wm->id.next) {
-    for (wmWindow *win = wm->windows.first; win; win = win->next) {
+    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
       WorkSpaceLayout *act_layout = newdataadr(
           fd, BKE_workspace_active_layout_get(win->workspace_hook));
       if (act_layout) {
@@ -3536,7 +3535,7 @@ static void direct_link_workspace(FileData *fd, WorkSpace *workspace, const Main
     }
   }
 
-  for (bToolRef *tref = workspace->tools.first; tref; tref = tref->next) {
+  LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
     tref->runtime = NULL;
     tref->properties = newdataadr(fd, tref->properties);
     IDP_DirectLinkGroup_OrFree(&tref->properties, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
@@ -3578,25 +3577,25 @@ static void lib_link_ntree(FileData *fd, Library *lib, bNodeTree *ntree)
 
   ntree->gpd = newlibadr(fd, lib, ntree->gpd);
 
-  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     /* Link ID Properties -- and copy this comment EXACTLY for easy finding
      * of library blocks that implement this.*/
     IDP_LibLinkProperty(node->prop, fd);
 
     node->id = newlibadr(fd, lib, node->id);
 
-    for (bNodeSocket *sock = node->inputs.first; sock; sock = sock->next) {
+    LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       lib_link_node_socket(fd, lib, sock);
     }
-    for (bNodeSocket *sock = node->outputs.first; sock; sock = sock->next) {
+    LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
       lib_link_node_socket(fd, lib, sock);
     }
   }
 
-  for (bNodeSocket *sock = ntree->inputs.first; sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
     lib_link_node_socket(fd, lib, sock);
   }
-  for (bNodeSocket *sock = ntree->outputs.first; sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
     lib_link_node_socket(fd, lib, sock);
   }
 
@@ -3609,7 +3608,7 @@ static void lib_link_ntree(FileData *fd, Library *lib, bNodeTree *ntree)
   /* For nodes with static socket layout, add/remove sockets as needed
    * to match the static layout. */
   if (fd->memfile == NULL) {
-    for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       node_verify_socket_templates(ntree, node);
     }
   }
@@ -3943,7 +3942,7 @@ static void lib_link_pose(FileData *fd, Main *bmain, Object *ob, bPose *pose)
     }
   }
 
-  for (bPoseChannel *pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
     lib_link_constraints(fd, (ID *)ob, &pchan->constraints);
 
     pchan->bone = BKE_armature_find_bone_name(arm, pchan->name);
@@ -3972,14 +3971,14 @@ static void lib_link_bones(FileData *fd, Bone *bone)
 {
   IDP_LibLinkProperty(bone->prop, fd);
 
-  for (Bone *curbone = bone->childbase.first; curbone; curbone = curbone->next) {
+  LISTBASE_FOREACH (Bone *, curbone, &bone->childbase) {
     lib_link_bones(fd, curbone);
   }
 }
 
 static void lib_link_armature(FileData *fd, Main *UNUSED(bmain), bArmature *arm)
 {
-  for (Bone *curbone = arm->bonebase.first; curbone; curbone = curbone->next) {
+  LISTBASE_FOREACH (Bone *, curbone, &arm->bonebase) {
     lib_link_bones(fd, curbone);
   }
 }
@@ -4040,7 +4039,7 @@ static void lib_link_camera(FileData *fd, Main *UNUSED(bmain), Camera *ca)
   ca->dof_ob = newlibadr(fd, ca->id.lib, ca->dof_ob); /* deprecated, for versioning */
   ca->dof.focus_object = newlibadr(fd, ca->id.lib, ca->dof.focus_object);
 
-  for (CameraBGImage *bgpic = ca->bg_images.first; bgpic; bgpic = bgpic->next) {
+  LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
     bgpic->ima = newlibadr(fd, ca->id.lib, bgpic->ima);
     bgpic->clip = newlibadr(fd, ca->id.lib, bgpic->clip);
   }
@@ -4053,7 +4052,7 @@ static void direct_link_camera(FileData *fd, Camera *ca)
 
   link_list(fd, &ca->bg_images);
 
-  for (CameraBGImage *bgpic = ca->bg_images.first; bgpic; bgpic = bgpic->next) {
+  LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
     bgpic->iuser.ok = 1;
     bgpic->iuser.scene = NULL;
   }
@@ -4628,7 +4627,7 @@ static void lib_link_particlesettings(FileData *fd, Main *UNUSED(bmain), Particl
   }
 
   if (part->instance_weights.first && part->instance_collection) {
-    for (ParticleDupliWeight *dw = part->instance_weights.first; dw; dw = dw->next) {
+    LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
       dw->ob = newlibadr(fd, part->id.lib, dw->ob);
     }
   }
@@ -5273,7 +5272,7 @@ static void lib_link_object(FileData *fd, Main *bmain, Object *ob)
   lib_link_nlastrips(fd, &ob->id, &ob->nlastrips);
   // >>> XXX deprecated - old animation system
 
-  for (PartEff *paf = ob->effect.first; paf; paf = paf->next) {
+  LISTBASE_FOREACH (PartEff *, paf, &ob->effect) {
     if (paf->type == EFF_PARTICLE) {
       paf->group = newlibadr(fd, ob->id.lib, paf->group);
     }
@@ -6242,7 +6241,7 @@ static void direct_link_view_settings(FileData *fd, ColorManagedViewSettings *vi
 static void direct_link_layer_collections(FileData *fd, ListBase *lb, bool master)
 {
   link_list(fd, lb);
-  for (LayerCollection *lc = lb->first; lc; lc = lc->next) {
+  LISTBASE_FOREACH (LayerCollection *, lc, lb) {
 #ifdef USE_COLLECTION_COMPAT_28
     lc->scene_collection = newdataadr(fd, lc->scene_collection);
 #endif
@@ -6295,12 +6294,11 @@ static void lib_link_layer_collection(FileData *fd,
 
 static void lib_link_view_layer(FileData *fd, Library *lib, ViewLayer *view_layer)
 {
-  for (FreestyleModuleConfig *fmc = view_layer->freestyle_config.modules.first; fmc;
-       fmc = fmc->next) {
+  LISTBASE_FOREACH (FreestyleModuleConfig *, fmc, &view_layer->freestyle_config.modules) {
     fmc->script = newlibadr(fd, lib, fmc->script);
   }
 
-  for (FreestyleLineSet *fls = view_layer->freestyle_config.linesets.first; fls; fls = fls->next) {
+  LISTBASE_FOREACH (FreestyleLineSet *, fls, &view_layer->freestyle_config.linesets) {
     fls->linestyle = newlibadr(fd, lib, fls->linestyle);
     fls->group = newlibadr(fd, lib, fls->group);
   }
@@ -6343,19 +6341,19 @@ static void direct_link_scene_collection(FileData *fd, SceneCollection *sc)
   link_list(fd, &sc->objects);
   link_list(fd, &sc->scene_collections);
 
-  for (SceneCollection *nsc = sc->scene_collections.first; nsc; nsc = nsc->next) {
+  LISTBASE_FOREACH (SceneCollection *, nsc, &sc->scene_collections) {
     direct_link_scene_collection(fd, nsc);
   }
 }
 
 static void lib_link_scene_collection(FileData *fd, Library *lib, SceneCollection *sc)
 {
-  for (LinkData *link = sc->objects.first; link; link = link->next) {
+  LISTBASE_FOREACH (LinkData *, link, &sc->objects) {
     link->data = newlibadr(fd, lib, link->data);
     BLI_assert(link->data);
   }
 
-  for (SceneCollection *nsc = sc->scene_collections.first; nsc; nsc = nsc->next) {
+  LISTBASE_FOREACH (SceneCollection *, nsc, &sc->scene_collections) {
     lib_link_scene_collection(fd, lib, nsc);
   }
 }
@@ -6663,7 +6661,7 @@ static void lib_link_scene(FileData *fd, Main *UNUSED(bmain), Scene *sce)
   }
   SEQ_END;
 
-  for (TimeMarker *marker = sce->markers.first; marker; marker = marker->next) {
+  LISTBASE_FOREACH (TimeMarker *, marker, &sce->markers) {
     if (marker->camera) {
       marker->camera = newlibadr(fd, sce->id.lib, marker->camera);
     }
@@ -6687,12 +6685,12 @@ static void lib_link_scene(FileData *fd, Main *UNUSED(bmain), Scene *sce)
     composite_patch(sce->nodetree, sce);
   }
 
-  for (SceneRenderLayer *srl = sce->r.layers.first; srl; srl = srl->next) {
+  LISTBASE_FOREACH (SceneRenderLayer *, srl, &sce->r.layers) {
     srl->mat_override = newlibadr(fd, sce->id.lib, srl->mat_override);
-    for (FreestyleModuleConfig *fmc = srl->freestyleConfig.modules.first; fmc; fmc = fmc->next) {
+    LISTBASE_FOREACH (FreestyleModuleConfig *, fmc, &srl->freestyleConfig.modules) {
       fmc->script = newlibadr(fd, sce->id.lib, fmc->script);
     }
-    for (FreestyleLineSet *fls = srl->freestyleConfig.linesets.first; fls; fls = fls->next) {
+    LISTBASE_FOREACH (FreestyleLineSet *, fls, &srl->freestyleConfig.linesets) {
       fls->linestyle = newlibadr(fd, sce->id.lib, fls->linestyle);
       fls->group = newlibadr(fd, sce->id.lib, fls->group);
     }
@@ -6706,7 +6704,7 @@ static void lib_link_scene(FileData *fd, Main *UNUSED(bmain), Scene *sce)
   }
 #endif
 
-  for (ViewLayer *view_layer = sce->view_layers.first; view_layer; view_layer = view_layer->next) {
+  LISTBASE_FOREACH (ViewLayer *, view_layer, &sce->view_layers) {
     lib_link_view_layer(fd, sce->id.lib, view_layer);
   }
 
@@ -7237,11 +7235,11 @@ static void direct_link_panel_list(FileData *fd, ListBase *lb)
 {
   link_list(fd, lb);
 
-  for (Panel *pa = lb->first; pa; pa = pa->next) {
-    pa->runtime_flag = 0;
-    pa->activedata = NULL;
-    pa->type = NULL;
-    direct_link_panel_list(fd, &pa->children);
+  LISTBASE_FOREACH (Panel *, panel, lb) {
+    panel->runtime_flag = 0;
+    panel->activedata = NULL;
+    panel->type = NULL;
+    direct_link_panel_list(fd, &panel->children);
   }
 }
 
@@ -7562,7 +7560,7 @@ static void lib_link_area(FileData *fd, ID *parent_id, ScrArea *area)
 
   memset(&area->runtime, 0x0, sizeof(area->runtime));
 
-  for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+  LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
     switch (sl->spacetype) {
       case SPACE_VIEW3D: {
         View3D *v3d = (View3D *)sl;
@@ -7739,12 +7737,12 @@ static bool direct_link_area_map(FileData *fd, ScrAreaMap *area_map)
   link_list(fd, &area_map->vertbase);
   link_list(fd, &area_map->edgebase);
   link_list(fd, &area_map->areabase);
-  for (ScrArea *area = area_map->areabase.first; area; area = area->next) {
+  LISTBASE_FOREACH (ScrArea *, area, &area_map->areabase) {
     direct_link_area(fd, area);
   }
 
   /* edges */
-  for (ScrEdge *se = area_map->edgebase.first; se; se = se->next) {
+  LISTBASE_FOREACH (ScrEdge *, se, &area_map->edgebase) {
     se->v1 = newdataadr(fd, se->v1);
     se->v2 = newdataadr(fd, se->v2);
     BKE_screen_sort_scrvert(&se->v1, &se->v2);
@@ -7861,7 +7859,7 @@ static void direct_link_windowmanager(FileData *fd, wmWindowManager *wm)
 
 static void lib_link_windowmanager(FileData *fd, Main *UNUSED(bmain), wmWindowManager *wm)
 {
-  for (wmWindow *win = wm->windows.first; win; win = win->next) {
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     if (win->workspace_hook) { /* NULL for old files */
       lib_link_workspace_instance_hook(fd, win->workspace_hook, &wm->id);
     }
@@ -7869,7 +7867,7 @@ static void lib_link_windowmanager(FileData *fd, Main *UNUSED(bmain), wmWindowMa
     /* deprecated, but needed for versioning (will be NULL'ed then) */
     win->screen = newlibadr(fd, NULL, win->screen);
 
-    for (ScrArea *area = win->global_areas.areabase.first; area; area = area->next) {
+    LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
       lib_link_area(fd, &wm->id, area);
     }
 
@@ -7885,17 +7883,17 @@ static void lib_link_windowmanager(FileData *fd, Main *UNUSED(bmain), wmWindowMa
 
 /* note: file read without screens option G_FILE_NO_UI;
  * check lib pointers in call below */
-static void lib_link_screen(FileData *fd, Main *UNUSED(bmain), bScreen *sc)
+static void lib_link_screen(FileData *fd, Main *UNUSED(bmain), bScreen *screen)
 {
   /* deprecated, but needed for versioning (will be NULL'ed then) */
-  sc->scene = newlibadr(fd, sc->id.lib, sc->scene);
+  screen->scene = newlibadr(fd, screen->id.lib, screen->scene);
 
-  sc->animtimer = NULL; /* saved in rare cases */
-  sc->tool_tip = NULL;
-  sc->scrubbing = false;
+  screen->animtimer = NULL; /* saved in rare cases */
+  screen->tool_tip = NULL;
+  screen->scrubbing = false;
 
-  for (ScrArea *area = sc->areabase.first; area; area = area->next) {
-    lib_link_area(fd, &sc->id, area);
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    lib_link_area(fd, &screen->id, area);
   }
 }
 
@@ -8048,8 +8046,8 @@ static void lib_link_window_scene_data_restore(wmWindow *win, Scene *scene, View
 {
   bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
 
-  for (ScrArea *area = screen->areabase.first; area; area = area->next) {
-    for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
       if (sl->spacetype == SPACE_VIEW3D) {
         View3D *v3d = (View3D *)sl;
 
@@ -8077,7 +8075,7 @@ static void lib_link_window_scene_data_restore(wmWindow *win, Scene *scene, View
             /* Regionbase storage is different depending if the space is active. */
             ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
                                                                    &sl->regionbase;
-            for (ARegion *region = regionbase->first; region; region = region->next) {
+            LISTBASE_FOREACH (ARegion *, region, regionbase) {
               if (region->regiontype == RGN_TYPE_WINDOW) {
                 RegionView3D *rv3d = region->regiondata;
                 if (rv3d->localvd) {
@@ -8101,8 +8099,8 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map,
 
   /* avoid conflicts with 2.8x branch */
   {
-    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
         if (sl->spacetype == SPACE_VIEW3D) {
           View3D *v3d = (View3D *)sl;
           ARegion *region;
@@ -8111,7 +8109,8 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map,
           v3d->ob_center = restore_pointer_by_name(id_map, (ID *)v3d->ob_center, USER_REAL);
 
           /* Free render engines for now. */
-          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+          ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                 &sl->regionbase;
           for (region = regionbase->first; region; region = region->next) {
             if (region->regiontype == RGN_TYPE_WINDOW) {
               RegionView3D *rv3d = region->regiondata;
@@ -8232,7 +8231,7 @@ static void lib_link_workspace_layout_restore(struct IDNameLib_Map *id_map,
 
           scpt->script = restore_pointer_by_name(id_map, (ID *)scpt->script, USER_REAL);
 
-          /*sc->script = NULL; - 2.45 set to null, better re-run the script */
+          /*screen->script = NULL; - 2.45 set to null, better re-run the script */
           if (scpt->script) {
             SCRIPT_SET_NULL(scpt->script);
           }
@@ -8340,12 +8339,12 @@ void blo_lib_link_restore(Main *oldmain,
        workspace = workspace->id.next) {
     ListBase *layouts = BKE_workspace_layouts_get(workspace);
 
-    for (WorkSpaceLayout *layout = layouts->first; layout; layout = layout->next) {
+    LISTBASE_FOREACH (WorkSpaceLayout *, layout, layouts) {
       lib_link_workspace_layout_restore(id_map, newmain, layout);
     }
   }
 
-  for (wmWindow *win = curwm->windows.first; win; win = win->next) {
+  LISTBASE_FOREACH (wmWindow *, win, &curwm->windows) {
     WorkSpace *workspace = BKE_workspace_active_get(win->workspace_hook);
     ID *workspace_id = (ID *)workspace;
     Scene *oldscene = win->scene;
@@ -8415,18 +8414,18 @@ void blo_do_versions_view3d_split_250(View3D *v3d, ListBase *regions)
   }
 }
 
-static bool direct_link_screen(FileData *fd, bScreen *sc)
+static bool direct_link_screen(FileData *fd, bScreen *screen)
 {
   bool wrong_id = false;
 
-  sc->regionbase.first = sc->regionbase.last = NULL;
-  sc->context = NULL;
-  sc->active_region = NULL;
+  screen->regionbase.first = screen->regionbase.last = NULL;
+  screen->context = NULL;
+  screen->active_region = NULL;
 
-  sc->preview = direct_link_preview_image(fd, sc->preview);
+  screen->preview = direct_link_preview_image(fd, screen->preview);
 
-  if (!direct_link_area_map(fd, AREAMAP_FROM_SCREEN(sc))) {
-    printf("Error reading Screen %s... removing it.\n", sc->id.name + 2);
+  if (!direct_link_area_map(fd, AREAMAP_FROM_SCREEN(screen))) {
+    printf("Error reading Screen %s... removing it.\n", screen->id.name + 2);
     wrong_id = true;
   }
 
@@ -8723,7 +8722,7 @@ static void lib_link_movieclip(FileData *fd, Main *UNUSED(bmain), MovieClip *cli
   lib_link_movieTracks(fd, clip, &tracking->tracks);
   lib_link_moviePlaneTracks(fd, clip, &tracking->plane_tracks);
 
-  for (MovieTrackingObject *object = tracking->objects.first; object; object = object->next) {
+  LISTBASE_FOREACH (MovieTrackingObject *, object, &tracking->objects) {
     lib_link_movieTracks(fd, clip, &object->tracks);
     lib_link_moviePlaneTracks(fd, clip, &object->plane_tracks);
   }
@@ -8800,7 +8799,7 @@ static void lib_link_mask_parent(FileData *fd, Mask *mask, MaskParent *parent)
 
 static void lib_link_mask(FileData *fd, Main *UNUSED(bmain), Mask *mask)
 {
-  for (MaskLayer *masklay = mask->masklayers.first; masklay; masklay = masklay->next) {
+  LISTBASE_FOREACH (MaskLayer *, masklay, &mask->masklayers) {
     MaskSpline *spline;
 
     spline = masklay->splines.first;
@@ -9455,19 +9454,21 @@ static BHead *read_libblock(FileData *fd,
           if (do_partial_undo) {
             /* Even though we re-use the old ID as-is, it does not mean that we are 100% safe from
              * needing some depsgraph updates for it (it could depend on another ID which address
-             * did
-             * not change, but which actual content might have been re-read from the memfile). */
+             * did not change, but which actual content might have been re-read from the memfile).
+             * IMPORTANT: Do not fully overwrite recalc flag here, depsgraph may not have been ran
+             * yet for previous undo step(s), we do not want to erase flags set by those.
+             */
             if (fd->undo_direction < 0) {
               /* We are coming from the future (i.e. do an actual undo, and not a redo), we use our
                * old reused ID's 'accumulated recalc flags since last memfile undo step saving' as
                * recalc flags. */
-              id_old->recalc = id_old->recalc_undo_accumulated;
+              id_old->recalc |= id_old->recalc_undo_accumulated;
             }
             else {
               /* We are coming from the past (i.e. do a redo), we use the saved 'accumulated recalc
                * flags since last memfile undo step saving' from the newly read ID as recalc flags.
                */
-              id_old->recalc = id->recalc_undo_accumulated;
+              id_old->recalc |= id->recalc_undo_accumulated;
             }
             /* There is no need to flush the depsgraph's CoWs here, since that ID's data itself did
              * not change. */
@@ -10154,14 +10155,14 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
     }
   }
 
-  for (wmKeyConfigPref *kpt = user->user_keyconfig_prefs.first; kpt; kpt = kpt->next) {
+  LISTBASE_FOREACH (wmKeyConfigPref *, kpt, &user->user_keyconfig_prefs) {
     kpt->prop = newdataadr(fd, kpt->prop);
     IDP_DirectLinkGroup_OrFree(&kpt->prop, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
   }
 
-  for (bUserMenu *um = user->user_menus.first; um; um = um->next) {
+  LISTBASE_FOREACH (bUserMenu *, um, &user->user_menus) {
     link_list(fd, &um->items);
-    for (bUserMenuItem *umi = um->items.first; umi; umi = umi->next) {
+    LISTBASE_FOREACH (bUserMenuItem *, umi, &um->items) {
       if (umi->type == USER_MENU_TYPE_OPERATOR) {
         bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
         umi_op->prop = newdataadr(fd, umi_op->prop);
@@ -10323,7 +10324,7 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 
       /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
       blo_split_main(&mainlist, bfd->main);
-      for (Main *mainvar = mainlist.first; mainvar; mainvar = mainvar->next) {
+      LISTBASE_FOREACH (Main *, mainvar, &mainlist) {
         BLI_assert(mainvar->versionfile != 0);
         do_versions_after_linking(mainvar, fd->reports);
       }
@@ -10741,7 +10742,7 @@ static void expand_idprops(FileData *fd, Main *mainvar, IDProperty *prop)
       break;
     }
     case IDP_GROUP:
-      for (IDProperty *loop = prop->data.group.first; loop; loop = loop->next) {
+      LISTBASE_FOREACH (IDProperty *, loop, &prop->data.group) {
         expand_idprops(fd, mainvar, loop);
       }
       break;
@@ -10801,7 +10802,7 @@ static void expand_action(FileData *fd, Main *mainvar, bAction *act)
   /* F-Curves in Action */
   expand_fcurves(fd, mainvar, &act->curves);
 
-  for (TimeMarker *marker = act->markers.first; marker; marker = marker->next) {
+  LISTBASE_FOREACH (TimeMarker *, marker, &act->markers) {
     if (marker->camera) {
       expand_doit(fd, mainvar, marker->camera);
     }
@@ -10869,18 +10870,18 @@ static void expand_particlesettings(FileData *fd, Main *mainvar, ParticleSetting
     }
   }
 
-  for (ParticleDupliWeight *dw = part->instance_weights.first; dw; dw = dw->next) {
+  LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
     expand_doit(fd, mainvar, dw->ob);
   }
 }
 
 static void expand_collection(FileData *fd, Main *mainvar, Collection *collection)
 {
-  for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
+  LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     expand_doit(fd, mainvar, cob->ob);
   }
 
-  for (CollectionChild *child = collection->children.first; child; child = child->next) {
+  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     expand_doit(fd, mainvar, child->collection);
   }
 
@@ -11065,14 +11066,14 @@ static void expand_bones(FileData *fd, Main *mainvar, Bone *bone)
 {
   expand_idprops(fd, mainvar, bone->prop);
 
-  for (Bone *curBone = bone->childbase.first; curBone; curBone = curBone->next) {
+  LISTBASE_FOREACH (Bone *, curBone, &bone->childbase) {
     expand_bones(fd, mainvar, curBone);
   }
 }
 
 static void expand_armature(FileData *fd, Main *mainvar, bArmature *arm)
 {
-  for (Bone *curBone = arm->bonebase.first; curBone; curBone = curBone->next) {
+  LISTBASE_FOREACH (Bone *, curBone, &arm->bonebase) {
     expand_bones(fd, mainvar, curBone);
   }
 }
@@ -11210,11 +11211,11 @@ static void expand_object(FileData *fd, Main *mainvar, Object *ob)
 #ifdef USE_COLLECTION_COMPAT_28
 static void expand_scene_collection(FileData *fd, Main *mainvar, SceneCollection *sc)
 {
-  for (LinkData *link = sc->objects.first; link; link = link->next) {
+  LISTBASE_FOREACH (LinkData *, link, &sc->objects) {
     expand_doit(fd, mainvar, link->data);
   }
 
-  for (SceneCollection *nsc = sc->scene_collections.first; nsc; nsc = nsc->next) {
+  LISTBASE_FOREACH (SceneCollection *, nsc, &sc->scene_collections) {
     expand_scene_collection(fd, mainvar, nsc);
   }
 }
@@ -11226,7 +11227,7 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
   FreestyleModuleConfig *module;
   FreestyleLineSet *lineset;
 
-  for (Base *base_legacy = sce->base.first; base_legacy; base_legacy = base_legacy->next) {
+  LISTBASE_FOREACH (Base *, base_legacy, &sce->base) {
     expand_doit(fd, mainvar, base_legacy->object);
   }
   expand_doit(fd, mainvar, sce->camera);
@@ -11253,7 +11254,7 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
     }
   }
 
-  for (ViewLayer *view_layer = sce->view_layers.first; view_layer; view_layer = view_layer->next) {
+  LISTBASE_FOREACH (ViewLayer *, view_layer, &sce->view_layers) {
     expand_idprops(fd, mainvar, view_layer->id_properties);
 
     for (module = view_layer->freestyle_config.modules.first; module; module = module->next) {
@@ -11309,7 +11310,7 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
     expand_doit(fd, mainvar, sce->rigidbody_world->constraints);
   }
 
-  for (TimeMarker *marker = sce->markers.first; marker; marker = marker->next) {
+  LISTBASE_FOREACH (TimeMarker *, marker, &sce->markers) {
     if (marker->camera) {
       expand_doit(fd, mainvar, marker->camera);
     }
@@ -11332,7 +11333,7 @@ static void expand_camera(FileData *fd, Main *mainvar, Camera *ca)
 {
   expand_doit(fd, mainvar, ca->ipo);  // XXX deprecated - old animation system
 
-  for (CameraBGImage *bgpic = ca->bg_images.first; bgpic; bgpic = bgpic->next) {
+  LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
     if (bgpic->source == CAM_BGIMG_SOURCE_IMAGE) {
       expand_doit(fd, mainvar, bgpic->ima);
     }
@@ -11438,7 +11439,7 @@ static void expand_workspace(FileData *fd, Main *mainvar, WorkSpace *workspace)
 {
   ListBase *layouts = BKE_workspace_layouts_get(workspace);
 
-  for (WorkSpaceLayout *layout = layouts->first; layout; layout = layout->next) {
+  LISTBASE_FOREACH (WorkSpaceLayout *, layout, layouts) {
     expand_doit(fd, mainvar, BKE_workspace_layout_screen_get(layout));
   }
 }
@@ -12180,7 +12181,7 @@ static int has_linked_ids_to_read(Main *mainvar)
   int a = set_listbasepointers(mainvar, lbarray);
 
   while (a--) {
-    for (ID *id = lbarray[a]->first; id; id = id->next) {
+    LISTBASE_FOREACH (ID *, id, lbarray[a]) {
       if ((id->tag & LIB_TAG_ID_LINK_PLACEHOLDER) && !(id->flag & LIB_INDIRECT_WEAK_LINK)) {
         return true;
       }
