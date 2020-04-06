@@ -1814,55 +1814,6 @@ void uiTemplatePathBuilder(uiLayout *layout,
 
 #define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 
-// static void modifiers_convertToReal(bContext *C, void *ob_v, void *md_v)
-// {
-//   Object *ob = ob_v;
-//   ModifierData *md = md_v;
-//   ModifierData *nmd = modifier_new(md->type);
-
-//   modifier_copyData(md, nmd);
-//   nmd->mode &= ~eModifierMode_Virtual;
-
-//   BLI_addhead(&ob->modifiers, nmd);
-
-//   modifier_unique_name(&ob->modifiers, nmd);
-
-//   ob->partype = PAROBJECT;
-
-//   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
-//   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-
-//   ED_undo_push(C, "Modifier convert to real");
-// }
-
-// static void draw_modifier(uiLayout *layout,
-//                           bContext *C,
-//                           Scene *scene,
-//                           Object *ob,
-//                           ModifierData *md,
-//                           int index,
-//                           int cageIndex,
-//                           int lastCageIndex)
-// {
-//   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
-//   PointerRNA ptr;
-//   uiBut *but;
-//   uiBlock *block;
-//   uiLayout *column, *row, *sub;
-//   int is_virtual = (md->mode & eModifierMode_Virtual);
-//   char str[128];
-
-//   /* create RNA pointer */
-//   RNA_pointer_create(&ob->id, &RNA_Modifier, md, &ptr);
-
-//   column = uiLayoutColumn(layout, true);
-//   uiLayoutSetContextPointer(column, "modifier", &ptr);
-
-//   UI_block_align_end(block);
-
-//   /* Switch context button. */
-//   uiItemS(column);
-
 static PanelType *panel_type_from_modifier_type(ARegion *region, ModifierType type)
 {
   ARegionType *region_type = region->type;

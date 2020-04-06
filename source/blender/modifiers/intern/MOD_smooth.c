@@ -255,7 +255,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemL(row, IFACE_("Axis"), ICON_NONE);
   row = uiLayoutRow(split, true);
   uiLayoutSetPropSep(row, false);
-  PropertyRNA *prop = RNA_struct_find_property(&ptr, "use_axis");
   uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
