@@ -324,12 +324,9 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
     uiItemR(row, &ptr, "show_render", 0, "", ICON_NONE);
   }
 
-  uiItemS(layout);
-
   row = uiLayoutRow(layout, false);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
   uiItemO(row, "", ICON_X, "OBJECT_OT_modifier_remove");
-
-  uiItemS(layout);
 }
 
 /**
