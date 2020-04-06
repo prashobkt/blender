@@ -248,18 +248,19 @@ static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *sub, *row;
   uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
+
+  uiLayoutSetPropSep(layout, true);
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "object", 0, IFACE_("Source"), ICON_NONE);
   uiItemR(row, &ptr, "use_object_transform", 0, "", ICON_ORIENTATION_GLOBAL);
-
-  uiItemO(layout, "Generate Data Layers", ICON_NONE, "OBJECT_OT_datalayout_transfer");
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "max_distance", 0, NULL, ICON_NONE);
@@ -269,10 +270,14 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "mix_factor", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutRow(row, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutColumn(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
+
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  uiItemO(layout, "Generate Data Layers", ICON_NONE, "OBJECT_OT_datalayout_transfer");
 
   modifier_panel_end(layout, &ptr);
 }
@@ -289,49 +294,76 @@ static void vertex_panel_draw_header(const bContext *C, Panel *panel)
 static void vertex_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *row;
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
+
+  uiLayoutSetPropSep(layout, true);
 
   bool use_vert_data = RNA_boolean_get(&ptr, "use_vert_data");
   uiLayoutSetActive(layout, use_vert_data);
-  uiItemR(layout, &ptr, "vert_mapping", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "vert_mapping", 0, IFACE_("Mapping"), ICON_NONE);
   row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "data_types_verts", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-  if (RNA_enum_get(&ptr, "data_types_verts") & DT_TYPE_MDEFORMVERT) {
-    row = uiLayoutRow(layout, false);
-    uiItemR(row, &ptr, "layers_vgroup_select_src", 0, "", ICON_NONE);
-    uiItemL(row, NULL, ICON_RIGHTARROW);
-    uiItemR(row, &ptr, "layers_vgroup_select_dst", 0, "", ICON_NONE);
-  }
+  uiItemR(row, &ptr, "data_types_verts", 0, IFACE_("Data Types"), ICON_NONE);
+}
+
+static void vertex_vgroup_panel_draw_header(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "data_types_verts");
+  uiItemFullR(layout, &ptr, prop, 0, 1, 0, NULL, ICON_NONE);
+}
+
+static void vertex_vgroup_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, RNA_enum_get(&ptr, "data_types_verts") & DT_TYPE_MDEFORMVERT);
+  uiItemR(layout, &ptr, "layers_vgroup_select_src", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "layers_vgroup_select_dst", 0, NULL, ICON_NONE);
 }
 
 static void edge_panel_draw_header(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiItemR(layout, &ptr, "use_edge_data", 0, NULL, ICON_NONE);
 }
 
 static void edge_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
+
+  uiLayoutSetPropSep(layout, true);
 
   bool use_edge_data = RNA_boolean_get(&ptr, "use_edge_data");
   uiLayoutSetActive(layout, use_edge_data);
-  uiItemR(layout, &ptr, "edge_mapping", 0, "", ICON_NONE);
-  uiItemR(layout, &ptr, "data_types_edges", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "edge_mapping", 0, IFACE_("Mapping"), ICON_NONE);
+  uiItemR(layout, &ptr, "data_types_edges", 0, IFACE_("Data Types"), ICON_NONE);
 }
 
 static void face_corner_panel_draw_header(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiItemR(layout, &ptr, "use_loop_data", 0, NULL, ICON_NONE);
 }
@@ -339,15 +371,19 @@ static void face_corner_panel_draw_header(const bContext *C, Panel *panel)
 static void face_corner_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *row, *split, *col;
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
+
+  uiLayoutSetPropSep(layout, true);
 
   bool use_loop_data = RNA_boolean_get(&ptr, "use_loop_data");
   uiLayoutSetActive(layout, use_loop_data);
-  uiItemR(layout, &ptr, "loop_mapping", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "loop_mapping", 0, IFACE_("Mapping"), ICON_NONE);
   row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "data_types_loops", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "data_types_loops", 0, IFACE_("Data Types"), ICON_NONE);
+
   if (RNA_enum_get(&ptr, "data_types_loops") & DT_TYPE_VCOL) {
     split = uiLayoutSplit(layout, 0.3333f, false);
     col = uiLayoutColumn(split, false);
@@ -373,38 +409,48 @@ static void face_corner_panel_draw(const bContext *C, Panel *panel)
 
 static void face_panel_draw_header(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiItemR(layout, &ptr, "use_poly_data", 0, NULL, ICON_NONE);
 }
 
 static void face_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   uiLayout *row;
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
+
+  uiLayoutSetPropSep(layout, true);
 
   bool use_poly_data = RNA_boolean_get(&ptr, "use_poly_data");
   uiLayoutSetActive(layout, use_poly_data);
-  uiItemR(layout, &ptr, "poly_mapping", 0, "", ICON_NONE);
+  uiItemR(layout, &ptr, "poly_mapping", 0, IFACE_("Mapping"), ICON_NONE);
   row = uiLayoutRow(layout, false);
-  uiItemR(row, &ptr, "data_types_polys", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "data_types_polys", 0, IFACE_("Data Types"), ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "DataTransfer", panel_draw);
+  PanelType *vertex_panel = modifier_subpanel_register(region_type,
+                                                       "datatransfer_vertex",
+                                                       "",
+                                                       vertex_panel_draw_header,
+                                                       vertex_panel_draw,
+                                                       panel_type);
   modifier_subpanel_register(region_type,
-                             "data_transfer_vertex",
+                             "datatransfer_vertex_vgroup",
                              "",
-                             vertex_panel_draw_header,
-                             vertex_panel_draw,
-                             panel_type);
+                             vertex_vgroup_panel_draw_header,
+                             vertex_vgroup_panel_draw,
+                             vertex_panel);
   modifier_subpanel_register(
-      region_type, "data_transfer_edge", "", edge_panel_draw_header, edge_panel_draw, panel_type);
+      region_type, "datatransfer_edge", "", edge_panel_draw_header, edge_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
                              "data_transfer_face_corner",
                              "",
@@ -412,7 +458,7 @@ static void panelRegister(ARegionType *region_type)
                              face_corner_panel_draw,
                              panel_type);
   modifier_subpanel_register(
-      region_type, "data_transfer_face", "", face_panel_draw_header, face_panel_draw, panel_type);
+      region_type, "datatransfer_face", "", face_panel_draw_header, face_panel_draw, panel_type);
 }
 
 #undef HIGH_POLY_WARNING

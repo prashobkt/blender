@@ -252,7 +252,7 @@ static void deformMatrices(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
@@ -262,30 +262,21 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  split = uiLayoutSplit(layout, 0.5f, false);
+  uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Object:"), ICON_NONE);
-  uiItemR(col, &ptr, "object", 0, "", ICON_NONE);
-  uiItemR(col, &ptr, "use_deform_preserve_volume", 0, NULL, ICON_NONE);
-
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Bind to:"), ICON_NONE);
-  uiItemR(col, &ptr, "use_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
-  uiItemR(col, &ptr, "use_bone_envelopes", 0, IFACE_("Bone Envelopes"), ICON_NONE);
-
-  uiItemS(layout);
-
-  split = uiLayoutSplit(layout, 0.5f, false);
-
-  row = uiLayoutRow(split, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
+  uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-  uiItemR(split, &ptr, "use_multi_modifier", 0, NULL, ICON_NONE);
+  uiItemL(layout, IFACE_("Bind to:"), ICON_NONE);
+  uiItemR(layout, &ptr, "use_vertex_groups", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_bone_envelopes", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_deform_preserve_volume", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_multi_modifier", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }

@@ -285,7 +285,7 @@ static void deformMatrices(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col, *split;
+  uiLayout *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -293,17 +293,19 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "levels", 0, IFACE_("Preview"), ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "levels", 0, IFACE_("Preview Levels"), ICON_NONE);
   /* TODO(sergey): Expose it again after T58473 is solved. */
   /* uiItemR(col, ptr, "render_levels", 0, "Render", ICON_NONE); */
-  uiItemR(col, &ptr, "quality", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "uv_smooth", 0, "", ICON_NONE);
-  uiItemR(col, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_creases", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "quality", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_creases", 0, NULL, ICON_NONE);
 
-  col = uiLayoutColumn(split, false);
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
   uiLayoutSetEnabled(col, RNA_enum_get(&ob_ptr, "mode") == OB_MODE_EDIT);
   uiItemO(col, IFACE_("Subdivide"), ICON_NONE, "OBJECT_OT_multires_subdivide");
   uiItemO(col, IFACE_("Delete Higher"), ICON_NONE, "OBJECT_OT_multires_higher_levels_delete");

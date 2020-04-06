@@ -776,7 +776,7 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -786,27 +786,22 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "factor", 0, IFACE_("Factor"), ICON_NONE);
   uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "smooth_type", 0, NULL, ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Vertex Group:"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-
+  uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-  col = uiLayoutColumn(split, false);
-
-  uiItemR(col, &ptr, "use_only_smooth", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_pin_boundary", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_only_smooth", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_pin_boundary", 0, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "rest_source", 0, NULL, ICON_NONE);
   if (RNA_enum_get(&ptr, "rest_source") == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {

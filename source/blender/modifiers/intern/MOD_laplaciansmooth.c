@@ -580,7 +580,7 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row, *split;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -590,30 +590,33 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.25f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Axis:"), ICON_NONE);
-  uiItemR(col, &ptr, "use_x", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_y", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_z", 0, NULL, ICON_NONE);
+  /* Aligned axis booleans with a single label and no decorators. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Axis"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Lambda:"), ICON_NONE);
-  uiItemR(col, &ptr, "lambda_factor", 0, "Factor", ICON_NONE);
-  uiItemR(col, &ptr, "lambda_border", 0, "Border", ICON_NONE);
+  uiItemR(layout, &ptr, "lambda_factor", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "lambda_border", 0, NULL, ICON_NONE);
 
-  uiItemS(col);
-  uiItemR(col, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_normalized", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_normalized", 0, NULL, ICON_NONE);
 
-  uiItemL(layout, IFACE_("Vertex Group:"), ICON_NONE);
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
+  uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
   modifier_panel_end(layout, &ptr);
