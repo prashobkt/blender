@@ -242,7 +242,7 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
  * Call the callback to store the panel and subpanel expansion settings in the list item that
  * corresponds to this panel.
  *
- * NOTE: This needs to iterate through all of the regions panels because that panel with changed
+ * \note This needs to iterate through all of the regions panels because that panel with changed
  * expansion could have been the subpanel of a recreate panel and might not know about its
  * corresponding list item.
  */
@@ -488,7 +488,7 @@ static void ui_offset_panel_block(uiBlock *block)
 Panel *UI_panel_add_recreate(
     ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
-  Panel *panel = MEM_callocN(sizeof(Panel), "new panel");
+  Panel *panel = MEM_callocN(sizeof(Panel), "recreate panel");
   panel->type = panel_type;
   BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
 
@@ -1459,7 +1459,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
   }
 
   /* Sort the matching recreate panels by their display order. */
-  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "panelsort");
+  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "recreatepanelsort");
   PanelSort *sort_index = panel_sort;
   for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
     if (list_panel->type) {
@@ -1481,12 +1481,15 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
       break;
     }
   }
-  // for (int i = 0; i < list_panels_len; i++) {
-  //   MEM_freeN(&panel_sort[i].pa);
-  // }
-  // MEM_freeN(panel_sort);
 
-  /* Move this panel's list item to the new index in its list. */
+  /* Free panel sort array. */
+  int i = 0;
+  for (sort_index = panel_sort; i < list_panels_len; i++, sort_index++) {
+    MEM_freeN(sort_index->panel);
+  }
+  MEM_freeN(panel_sort);
+
+  /* Finally, move this panel's list item to the new index in its list. */
   if (move_to_index == panel->runtime.list_index) {
     return;
   }
