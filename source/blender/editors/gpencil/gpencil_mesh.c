@@ -135,7 +135,6 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
   View3D *v3d = CTX_wm_view3d(C);
-  Object *ob = CTX_data_active_object(C);
   Object *ob_gpencil = NULL;
 
   ListBase list = {NULL, NULL};
