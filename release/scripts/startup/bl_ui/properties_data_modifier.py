@@ -43,15 +43,15 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         layout.operator_menu_enum("object.modifier_add", "type")
 
-        row = layout.row()
-        row.template_list(
-            "DATA_UL_modifiers", "Modifiers", ob, 'modifiers', ob.modifiers, 'active_index')
+        # row = layout.row()
+        # row.template_list(
+        #     "DATA_UL_modifiers", "Modifiers", ob, 'modifiers', ob.modifiers, 'active_index')
         
-        col = row.column(align=True)
-        col.operator("object.modifier_active_remove", icon='X', text="")
-        col.separator()
-        col.operator("object.modifier_active_move", icon='TRIA_UP', text="").direction = 'UP'
-        col.operator("object.modifier_active_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+        # col = row.column(align=True)
+        # col.operator("object.modifier_active_remove", icon='X', text="")
+        # col.separator()
+        # col.operator("object.modifier_active_move", icon='TRIA_UP', text="").direction = 'UP'
+        # col.operator("object.modifier_active_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
         layout.template_modifiers()
 
