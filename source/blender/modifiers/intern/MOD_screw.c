@@ -1201,8 +1201,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemS(layout);
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, &ptr, "render_steps", 0, IFACE_("Steps Render"), ICON_NONE);
-  uiItemR(col, &ptr, "steps", 0, IFACE_("Viewport"), ICON_NONE);
+  uiItemR(col, &ptr, "steps", 0, IFACE_("Steps Viewport"), ICON_NONE);
+  uiItemR(col, &ptr, "render_steps", 0, IFACE_("Render"), ICON_NONE);
 
   split = uiLayoutSplit(layout, 0.5f, false);
   row = uiLayoutRow(split, false);

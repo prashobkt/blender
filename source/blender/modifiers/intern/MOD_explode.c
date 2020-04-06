@@ -1187,41 +1187,46 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
-
+  uiLayout *sub, *row, *split;
   uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
-  split = uiLayoutSplit(layout, 0.5f, true);
-  col = uiLayoutColumn(split, true);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
-
-  col = uiLayoutColumn(split, true);
-  uiLayoutSetActive(col, has_vertex_group);
-  uiItemR(col, &ptr, "protect", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
   uiItemPointerR(layout, &ptr, "particle_uv", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
 
+  /* Aligned axis booleans with a single label and no decorators. */
   split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "show_alive", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "show_dead", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "show_unborn", 0, NULL, ICON_NONE);
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "use_edge_cut", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_size", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Show"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "show_alive", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_dead", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_unborn", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
+
+  uiItemR(layout, &ptr, "use_edge_cut", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_size", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, has_vertex_group);
+  uiItemR(row, &ptr, "protect", 0, NULL, ICON_NONE);
 
   uiItemO(layout, IFACE_("Refresh"), ICON_NONE, "OBJECT_OT_explode_refresh");
 

@@ -560,7 +560,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col, *split;
+  uiLayout *row, *split;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -569,6 +569,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_buttons(C, panel);
 
   PointerRNA particle_obj_ptr = RNA_pointer_get(&ptr, "object");
+
+  uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
   if (!RNA_pointer_is_null(&particle_obj_ptr)) {
@@ -584,24 +586,38 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(layout, &ptr, "particle_system_index", 0, IFACE_("Particle System"), ICON_NONE);
   }
 
+  uiItemS(layout);
+
+  /* Aligned axis booleans with a single label and no decorators. */
   split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Create From:"), ICON_NONE);
-  uiItemR(col, &ptr, "use_normal", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_children", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_size", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Create Instances From"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "use_normal", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_children", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_size", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
-  col = uiLayoutColumn(split, false);
-  uiItemL(col, IFACE_("Show Particles:"), ICON_NONE);
-  uiItemR(col, &ptr, "show_alive", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "show_unborn", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "show_dead", 0, NULL, ICON_NONE);
+  /* Aligned axis booleans with a single label and no decorators. */
+  split = uiLayoutSplit(layout, 0.5f, false);
+  row = uiLayoutRow(split, false);
+  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+  uiItemL(row, IFACE_("Show"), ICON_NONE);
+  row = uiLayoutRow(split, true);
+  uiLayoutSetPropSep(row, false);
+  uiItemR(row, &ptr, "show_alive", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_dead", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_unborn", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+  uiItemL(row, "", ICON_BLANK1);
 
-  uiItemR(layout, &ptr, "space", 0, "", ICON_NONE);
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, &ptr, "particle_amount", 0, IFACE_("Amount"), ICON_NONE);
-  uiItemR(row, &ptr, "particle_offset", 0, IFACE_("Offset"), ICON_NONE);
+  uiItemR(layout, &ptr, "particle_amount", 0, IFACE_("Amount"), ICON_NONE);
+  uiItemR(layout, &ptr, "particle_offset", 0, IFACE_("Offset"), ICON_NONE);
 
+  uiItemS(layout);
+
+  uiItemR(layout, &ptr, "space", 0, IFACE_("Coordinate Space"), ICON_NONE);
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
@@ -620,7 +636,29 @@ static void path_panel_draw_header(const bContext *C, Panel *panel)
 
 static void path_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col;
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_path"));
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "position", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "random_position", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "rotation", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "random_rotation", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
+
+  uiItemR(layout, &ptr, "use_preserve_shape", 0, NULL, ICON_NONE);
+}
+
+static void layers_panel_draw(const bContext *C, Panel *panel)
+{
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -629,18 +667,8 @@ static void path_panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
 
-  col = uiLayoutColumn(layout, false);
-  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_path"));
-  uiItemR(col, &ptr, "use_preserve_shape", 0, NULL, ICON_NONE);
+  uiLayoutSetPropSep(layout, true);
 
-  row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "position", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "random_position", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiItemR(row, &ptr, "rotation", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "random_rotation", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
-
-  uiItemL(layout, IFACE_("Layers:"), ICON_NONE);
   uiItemPointerR(layout,
                  &ptr,
                  "index_layer_name",
@@ -666,6 +694,8 @@ static void panelRegister(ARegionType *region_type)
                              path_panel_draw_header,
                              path_panel_draw,
                              panel_type);
+  modifier_subpanel_register(
+      region_type, "particleinstance_layers", "Layers", NULL, layers_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_ParticleInstance = {

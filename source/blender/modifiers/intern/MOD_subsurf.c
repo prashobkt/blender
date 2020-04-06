@@ -324,21 +324,21 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   col = uiLayoutColumn(layout, false);
   if (show_adaptive_options) {
+    uiItemR(sub, &ptr, "levels", 0, "Subdivisions Viewport", ICON_NONE);
+
     uiItemR(col, &ob_cycles_ptr, "use_adaptive_subdivision", 0, "Adaptive", ICON_NONE);
     sub = uiLayoutColumn(col, true);
     if (ob_use_adaptive_subdivision) {
       uiItemR(sub, &ob_cycles_ptr, "dicing_rate", 0, NULL, ICON_NONE);
     }
     else {
-      uiItemR(sub, &ptr, "render_levels", 0, "Subdivisions Render", ICON_NONE);
+      uiItemR(sub, &ptr, "render_levels", 0, "Render", ICON_NONE);
     }
-
-    uiItemR(sub, &ptr, "levels", 0, "Viewport", ICON_NONE);
   }
   else {
     sub = uiLayoutColumn(col, true);
-    uiItemR(sub, &ptr, "render_levels", 0, IFACE_("Subdivisions Render"), ICON_NONE);
-    uiItemR(sub, &ptr, "levels", 0, IFACE_("Viewport"), ICON_NONE);
+    uiItemR(sub, &ptr, "levels", 0, IFACE_("Subdivisions Viewport"), ICON_NONE);
+    uiItemR(sub, &ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
 
     uiItemR(col, &ptr, "quality", 0, NULL, ICON_NONE);
   }
