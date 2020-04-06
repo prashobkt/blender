@@ -2240,17 +2240,17 @@ void BKE_gpencil_convert_mesh(Main *bmain,
 
   /* Use evaluated data to get mesh with all modifiers on top. */
   Object *ob_eval = (Object *)DEG_get_evaluated_object(depsgraph, ob_mesh);
-  Mesh *me = (Mesh *)ob_eval->data;
-  MPoly *mp, *mpoly = me->mpoly;
-  MLoop *mloop = me->mloop;
-  int mpoly_len = me->totpoly;
+  Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
+  MPoly *mp, *mpoly = me_eval->mpoly;
+  MLoop *mloop = me_eval->mloop;
+  int mpoly_len = me_eval->totpoly;
   int i;
 
   /* If the object has enough materials means it was created in a previous step. */
   const bool create_mat = (ob_gp->totcol >= ob_mesh->totcol) ? false : true;
 
   /* Need at least an edge. */
-  if (me->totvert < 2) {
+  if (me_eval->totvert < 2) {
     return;
   }
 
@@ -2297,7 +2297,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
         /* Add points to strokes. */
         int j;
         for (j = 0; j < mp->totloop; j++, ml++) {
-          MVert *mv = &me->mvert[ml->v];
+          MVert *mv = &me_eval->mvert[ml->v];
 
           bGPDspoint *pt = &gps_fill->points[j];
           copy_v3_v3(&pt->x, mv->co);
