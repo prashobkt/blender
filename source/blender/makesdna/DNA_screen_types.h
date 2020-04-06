@@ -545,11 +545,15 @@ enum {
 /* #define PNL_SNAP_DIST        9.0 */
 
 /* paneltype flag */
-#define PNL_DEFAULT_CLOSED 1
-#define PNL_NO_HEADER 2
-#define PNL_LAYOUT_VERT_BAR 4
-/** Delete panel after drawing, don't search for panel by type. */
-#define PANELTYPE_RECREATE 8
+#define PNL_DEFAULT_CLOSED (1 << 0)
+#define PNL_NO_HEADER (1 << 1)
+#define PNL_LAYOUT_VERT_BAR (1 << 2)
+enum {
+  /** Delete panel after drawing, don't search for panel by type. */
+  PANELTYPE_RECREATE = (1 << 3),
+  /** This panel marks the start of a recreate panel list. Not recreated on list change. */
+  PANELTYPE_RECREATE_LIST_START = (1 << 4),
+};
 
 /* Fallback panel category (only for old scripts which need updating) */
 #define PNL_CATEGORY_FALLBACK "Misc"

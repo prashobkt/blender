@@ -39,6 +39,7 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BKE_context.h"
@@ -479,11 +480,11 @@ static void ui_offset_panel_block(uiBlock *block)
 }
 
 /**
- * Called in situations where panels need to be added dynamically rather than only having one panel
+ * Called in situations where panels need to be added dynamically rather than having only one panel
  * corresponding to each PanelType.
  */
 Panel *UI_panel_add_recreate(
-    ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int modifier_index)
+    ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
   Panel *panel = MEM_callocN(sizeof(Panel), "new panel");
   panel->type = panel_type;
@@ -495,23 +496,54 @@ Panel *UI_panel_add_recreate(
   panel->sizey = 0;
   panel->blocksizex = 0;
   panel->blocksizey = 0;
-  panel->runtime_flag |= PNL_NEW_ADDED;
 
-  panel->runtime.list_index = modifier_index;
+  panel->runtime.list_index = list_index;
 
-  /* Add the panel's children too. */
+  /* Add the panel's children too. Although they aren't recreate panels, we can still use this
+   * function to creat them, as UI_panel_begin does other things we don't need to do. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
     PanelType *child = link->data;
-    UI_panel_add_recreate(sa, region, &panel->children, child, modifier_index);
+    UI_panel_add_recreate(sa, region, &panel->children, child, list_index);
   }
 
-  BLI_addtail(panels, panel);
+  /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
+   * context string to make sure we add to the right list.
+   *
+   * We can the panel list is also the display order because the recreate panel list is rebuild
+   * when the order changes. */
+  if (panel_type->flag & PANELTYPE_RECREATE) {
+    Panel *last_list_panel = NULL;
+
+    for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
+      if (list_panel->type == NULL) {
+        continue;
+      }
+      if (list_panel->type->flag & (PANELTYPE_RECREATE_LIST_START | PANELTYPE_RECREATE)) {
+        last_list_panel = list_panel;
+      }
+    }
+
+    /* There should always be a list panel or a list panel start before this panel. */
+    BLI_assert(last_list_panel);
+
+    panel->sortorder = last_list_panel->sortorder + 1;
+
+    BLI_insertlinkafter(panels, last_list_panel, panel);
+  }
+  else {
+    BLI_addtail(panels, panel);
+  }
 
   return panel;
 }
 
 void UI_panel_set_list_index(Panel *panel, int i)
 {
+  BLI_assert(panel->type != NULL);
+  if (panel->type->parent == NULL) {
+    BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
+  }
+
   panel->runtime.list_index = i;
 
   Panel *child = panel->children.first;
