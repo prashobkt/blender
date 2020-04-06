@@ -147,8 +147,6 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata,
 
   if (!stl->effects) {
     stl->effects = MEM_callocN(sizeof(EEVEE_EffectsInfo), "EEVEE_EffectsInfo");
-    stl->effects->current_time = INT_MIN;
-    stl->effects->past_time = INT_MIN;
   }
 
   effects = stl->effects;
@@ -227,7 +225,7 @@ void EEVEE_effects_init(EEVEE_ViewLayerData *sldata,
    */
   if ((effects->enabled_effects & EFFECT_VELOCITY_BUFFER) != 0) {
     effects->velocity_tx = DRW_texture_pool_query_2d(
-        size_fs[0], size_fs[1], GPU_RG16, &draw_engine_eevee_type);
+        size_fs[0], size_fs[1], GPU_RGBA16, &draw_engine_eevee_type);
 
     GPU_framebuffer_ensure_config(&fbl->velocity_fb,
                                   {
@@ -333,6 +331,8 @@ void EEVEE_effects_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 
   if ((effects->enabled_effects & EFFECT_VELOCITY_BUFFER) != 0) {
+    EEVEE_MotionBlurData *mb_data = &effects->motion_blur;
+
     /* This pass compute camera motions to the non moving objects. */
     DRW_PASS_CREATE(psl->velocity_resolve, DRW_STATE_WRITE_COLOR);
     grp = DRW_shgroup_create(EEVEE_shaders_velocity_resolve_sh_get(), psl->velocity_resolve);
@@ -340,8 +340,10 @@ void EEVEE_effects_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
     DRW_shgroup_uniform_block(
         grp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
-    DRW_shgroup_uniform_mat4(grp, "currPersinv", effects->current_ndc_to_world);
-    DRW_shgroup_uniform_mat4(grp, "pastPersmat", effects->past_world_to_ndc);
+
+    DRW_shgroup_uniform_mat4(grp, "prevViewProjMatrix", mb_data->camera[MB_PREV].persmat);
+    DRW_shgroup_uniform_mat4(grp, "currViewProjMatrixInv", mb_data->camera[MB_CURR].persinv);
+    DRW_shgroup_uniform_mat4(grp, "nextViewProjMatrix", mb_data->camera[MB_NEXT].persmat);
     DRW_shgroup_call(grp, quad, NULL);
   }
 }

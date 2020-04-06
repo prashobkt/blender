@@ -3,7 +3,6 @@ uniform sampler2D colorBuffer;
 uniform sampler2D velocityBuffer;
 
 uniform int samples;
-uniform float shutter;
 uniform float sampleOffset;
 
 in vec4 uvcoordsvar;
@@ -30,17 +29,20 @@ float wang_hash_noise(uint s)
 void main()
 {
   float inv_samples = 1.0 / float(samples);
-  float noise = 2.0 * wang_hash_noise(0u) * inv_samples;
+  float noise = wang_hash_noise(0u);
 
-  vec2 motion = texture(velocityBuffer, uvcoordsvar.xy).xy - 0.5;
-  motion *= shutter;
+  vec2 uv = uvcoordsvar.xy;
+  vec4 motion = texture(velocityBuffer, uv) * 2.0 - 1.0;
 
-  float inc = 2.0 * inv_samples;
-  float i = -1.0 + noise;
+  /* Needed to match cycles. Can't find why... (fclem) */
+  motion *= -0.25;
 
   FragColor = vec4(0.0);
-  for (int j = 0; j < samples && j < MAX_SAMPLE; j++) {
-    FragColor += textureLod(colorBuffer, uvcoordsvar.xy + motion * i, 0.0) * inv_samples;
-    i += inc;
+  for (float j = noise; j < 8.0; j++) {
+    FragColor += textureLod(colorBuffer, uv + motion.xy * (0.125 * j), 0.0);
   }
+  for (float j = noise; j < 8.0; j++) {
+    FragColor += textureLod(colorBuffer, uv + motion.zw * (0.125 * j), 0.0);
+  }
+  FragColor *= 1.0 / 16.0;
 }

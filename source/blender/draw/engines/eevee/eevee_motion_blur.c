@@ -66,6 +66,7 @@ static void eevee_create_shader_motion_blur(void)
                                                             NULL);
 }
 
+#if 0
 static void eevee_motion_blur_past_persmat_get(const CameraParams *past_params,
                                                const CameraParams *current_params,
                                                const RegionView3D *rv3d,
@@ -87,8 +88,11 @@ static void eevee_motion_blur_past_persmat_get(const CameraParams *past_params,
 
   mul_m4_m4m4(r_world_to_ndc, params.winmat, world_to_view);
 }
+#endif
 
-int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata, Object *camera)
+int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata),
+                           EEVEE_Data *vedata,
+                           Object *UNUSED(camera))
 {
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
@@ -101,15 +105,19 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
     return 0;
   }
 
-  effects->motion_blur_step = 0;
-
   if (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) {
-    float ctime = DEG_get_ctime(draw_ctx->depsgraph);
-
     if (!e_data.motion_blur_sh) {
       eevee_create_shader_motion_blur();
     }
 
+    if (DRW_state_is_scene_render()) {
+      int mb_step = effects->motion_blur_step;
+      DRW_view_viewmat_get(NULL, effects->motion_blur.camera[mb_step].viewmat, false);
+      DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persmat, false);
+      DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persinv, true);
+    }
+
+#if 0 /* For when we can do viewport motion blur. */
     /* Update Motion Blur Matrices */
     if (camera && (camera->type == OB_CAMERA) && (camera->data != NULL)) {
       if (effects->current_time != ctime) {
@@ -158,6 +166,7 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
       effects->past_time = effects->current_time = ctime;
       effects->cam_params_init = false;
     }
+#endif
     return EFFECT_MOTION_BLUR | EFFECT_POST_BUFFER | EFFECT_VELOCITY_BUFFER;
   }
   return 0;
@@ -165,8 +174,11 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
 
 void EEVEE_motion_blur_step_set(EEVEE_Data *vedata, int step)
 {
-  /* This might do more things in the future. */
-  BLI_assert(step < MAX_MB_DATA_STEP);
+  BLI_assert(step < 3);
+  /* Meh, code duplication. Could be avoided if render init would not contain cache init. */
+  if (vedata->stl->effects == NULL) {
+    vedata->stl->effects = MEM_callocN(sizeof(*vedata->stl->effects), __func__);
+  }
   vedata->stl->effects->motion_blur_step = step;
 }
 
@@ -175,6 +187,7 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
+  EEVEE_MotionBlurData *mb_data = &effects->motion_blur;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
 
@@ -184,28 +197,22 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
 
       DRWShadingGroup *grp = DRW_shgroup_create(e_data.motion_blur_sh, psl->motion_blur);
       DRW_shgroup_uniform_int_copy(grp, "samples", scene->eevee.motion_blur_samples);
-      DRW_shgroup_uniform_float_copy(grp, "shutter", scene->eevee.motion_blur_shutter);
       DRW_shgroup_uniform_float(grp, "sampleOffset", &effects->motion_blur_sample_offset, 1);
-      DRW_shgroup_uniform_mat4(grp, "currInvViewProjMatrix", effects->current_ndc_to_world);
-      DRW_shgroup_uniform_mat4(grp, "pastViewProjMatrix", effects->past_world_to_ndc);
       DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &effects->source_buffer);
       DRW_shgroup_uniform_texture_ref(grp, "velocityBuffer", &effects->velocity_tx);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
     }
     {
-      float delta_time = fabsf(effects->current_time - effects->past_time);
-
       DRW_PASS_CREATE(psl->velocity_object, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
 
       DRWShadingGroup *grp = DRW_shgroup_create(e_data.motion_blur_object_sh,
                                                 psl->velocity_object);
-
-      DRW_shgroup_uniform_mat4(grp, "prevViewProjectionMatrix", effects->past_world_to_ndc);
-      DRW_shgroup_uniform_mat4(grp, "currViewProjectionMatrix", effects->current_world_to_ndc);
-      DRW_shgroup_uniform_float_copy(grp, "deltaTimeInv", 1.0f / delta_time);
+      DRW_shgroup_uniform_mat4(grp, "prevViewProjMatrix", mb_data->camera[MB_PREV].persmat);
+      DRW_shgroup_uniform_mat4(grp, "currViewProjMatrix", mb_data->camera[MB_CURR].persmat);
+      DRW_shgroup_uniform_mat4(grp, "nextViewProjMatrix", mb_data->camera[MB_NEXT].persmat);
     }
 
-    EEVEE_motion_blur_data_init(&effects->motion_blur);
+    EEVEE_motion_blur_data_init(mb_data);
   }
   else {
     psl->motion_blur = NULL;
@@ -232,15 +239,16 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
     EEVEE_GeometryMotionData *mb_geom = EEVEE_motion_blur_geometry_data_get(&effects->motion_blur,
                                                                             ob);
 
-    if (effects->motion_blur_step == MAX_MB_DATA_STEP - 1) {
+    if (mb_step == MB_CURR) {
       GPUBatch *batch = DRW_cache_object_surface_get(ob);
-      if (batch == NULL || mb_geom->vbo[mb_step]) {
+      if (batch == NULL || mb_geom->vbo[0] == NULL) {
         return;
       }
 
       grp = DRW_shgroup_create(e_data.motion_blur_object_sh, psl->velocity_object);
-      DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", mb_data->obmat[0]);
-      DRW_shgroup_uniform_mat4(grp, "currModelMatrix", mb_data->obmat[1]);
+      DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", mb_data->obmat[MB_PREV]);
+      DRW_shgroup_uniform_mat4(grp, "currModelMatrix", mb_data->obmat[MB_CURR]);
+      DRW_shgroup_uniform_mat4(grp, "nextModelMatrix", mb_data->obmat[MB_NEXT]);
       DRW_shgroup_uniform_bool(grp, "useDeform", &mb_geom->use_deform, 1);
 
       DRW_shgroup_call(grp, batch, ob);
@@ -251,7 +259,7 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
       /* Store vertex position buffer. */
       mb_geom->vbo[mb_step] = DRW_cache_object_pos_vertbuf_get(ob);
       /* TODO(fclem) only limit deform motion blur to object that needs it. */
-      mb_geom->use_deform = true;
+      mb_geom->use_deform = (mb_geom->vbo[mb_step] != NULL);
     }
   }
 }
@@ -268,33 +276,45 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
 
     int mb_step = effects->motion_blur_step;
 
-    if (effects->motion_blur_step == MAX_MB_DATA_STEP - 1) {
+    if (!mb_geom->use_deform) {
+      continue;
+    }
+
+    if (mb_step == MB_CURR) {
       /* Modify batch to have data from adjacent frames. */
       GPUBatch *batch = mb_geom->batch;
-      GPUVertBuf *vbo = mb_geom->vbo[0];
-      if (vbo && batch) {
-        if (vbo->vertex_len != batch->verts[0]->vertex_len) {
-          /* Vertex count mismatch, disable deform motion blur. */
-          mb_geom->use_deform = false;
-          GPU_VERTBUF_DISCARD_SAFE(mb_geom->vbo[0]);
-          return;
+      for (int i = 0; i < MB_CURR; i++) {
+        GPUVertBuf *vbo = mb_geom->vbo[i];
+        if (vbo && batch) {
+          if (vbo->vertex_len != batch->verts[0]->vertex_len) {
+            /* Vertex count mismatch, disable deform motion blur. */
+            mb_geom->use_deform = false;
+            GPU_VERTBUF_DISCARD_SAFE(mb_geom->vbo[MB_PREV]);
+            GPU_VERTBUF_DISCARD_SAFE(mb_geom->vbo[MB_NEXT]);
+            break;
+          }
+          /* Modify the batch to include the previous position. */
+          GPU_batch_vertbuf_add_ex(batch, vbo, true);
+          /* TODO(fclem) keep the vbo around for next (sub)frames. */
+          /* Only do once. */
+          mb_geom->vbo[i] = NULL;
         }
-        /* Modify the batch to include the previous position. */
-        GPU_batch_vertbuf_add_ex(batch, vbo, true);
-        /* TODO(fclem) keep the vbo around for next (sub)frames. */
-        /* Only do once. */
-        mb_geom->vbo[0] = NULL;
       }
     }
     else {
       GPUVertBuf *vbo = mb_geom->vbo[mb_step];
-      /* Use the vbo to perform the copy on the GPU. */
-      GPU_vertbuf_use(vbo);
-      /* Perform a copy to avoid loosing it after RE_engine_frame_set(). */
-      mb_geom->vbo[mb_step] = vbo = GPU_vertbuf_duplicate(vbo);
-      /* Find and replace "pos" attrib name. */
-      int attrib_id = GPU_vertformat_attr_id_get(&vbo->format, "pos");
-      GPU_vertformat_attr_rename(&vbo->format, attrib_id, "prv");
+      /* If this assert fails, it means that different EEVEE_GeometryMotionDatas
+       * has been used for each motion blur step.  */
+      BLI_assert(vbo);
+      if (vbo) {
+        /* Use the vbo to perform the copy on the GPU. */
+        GPU_vertbuf_use(vbo);
+        /* Perform a copy to avoid loosing it after RE_engine_frame_set(). */
+        mb_geom->vbo[mb_step] = vbo = GPU_vertbuf_duplicate(vbo);
+        /* Find and replace "pos" attrib name. */
+        int attrib_id = GPU_vertformat_attr_id_get(&vbo->format, "pos");
+        GPU_vertformat_attr_rename(&vbo->format, attrib_id, (mb_step == MB_PREV) ? "prv" : "nxt");
+      }
     }
   }
 }

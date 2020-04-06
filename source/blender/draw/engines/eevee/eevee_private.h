@@ -555,11 +555,18 @@ enum {
 
 /* ************** MOTION BLUR ************ */
 
-#define MAX_MB_DATA_STEP 2
+#define MB_PREV 0
+#define MB_NEXT 1
+#define MB_CURR 2
 
 typedef struct EEVEE_MotionBlurData {
   struct GHash *object;
   struct GHash *geom;
+  struct {
+    float viewmat[4][4];
+    float persmat[4][4];
+    float persinv[4][4];
+  } camera[3];
 } EEVEE_MotionBlurData;
 
 typedef struct EEVEE_ObjectKey {
@@ -572,13 +579,13 @@ typedef struct EEVEE_ObjectKey {
 } EEVEE_ObjectKey;
 
 typedef struct EEVEE_ObjectMotionData {
-  float obmat[MAX_MB_DATA_STEP][4][4];
+  float obmat[3][4][4];
 } EEVEE_ObjectMotionData;
 
 typedef struct EEVEE_GeometryMotionData {
-  struct GPUBatch *batch;                       /* Batch for time = t. */
-  struct GPUVertBuf *vbo[MAX_MB_DATA_STEP - 1]; /* Vbo for time = t +/- step. */
-  int use_deform;                               /* To disable deform mb if vertcount mismatch. */
+  struct GPUBatch *batch;    /* Batch for time = t. */
+  struct GPUVertBuf *vbo[2]; /* Vbo for time = t +/- step. */
+  int use_deform;            /* To disable deform mb if vertcount mismatch. */
 } EEVEE_GeometryMotionData;
 
 /* ************ EFFECTS DATA ************* */
@@ -648,8 +655,6 @@ typedef struct EEVEE_EffectsInfo {
   float past_world_to_view[4][4];
   CameraParams past_cam_params;
   CameraParams current_cam_params;
-  float current_time;
-  float past_time;
   float motion_blur_sample_offset;
   char motion_blur_step; /* Which step we are evaluating. */
   bool cam_params_init;
