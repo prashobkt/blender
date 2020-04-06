@@ -85,16 +85,16 @@ void modifier_panel_get_property_pointers(const bContext *C,
                                           struct PointerRNA *r_ob_ptr,
                                           struct PointerRNA *r_ptr);
 
-PanelType *modifier_panel_register(struct ARegionType *region_type,
-                                   const char *modifier_type,
-                                   void *draw);
+struct PanelType *modifier_panel_register(struct ARegionType *region_type,
+                                          const char *modifier_type,
+                                          void *draw);
 
-void modifier_subpanel_register(struct ARegionType *region_type,
-                                const char *name,
-                                const char *label,
-                                void *draw_header,
-                                void *draw,
-                                PanelType *parent);
+struct PanelType *modifier_subpanel_register(struct ARegionType *region_type,
+                                             const char *name,
+                                             const char *label,
+                                             void *draw_header,
+                                             void *draw,
+                                             struct PanelType *parent);
 
 #ifdef __cplusplus
 }

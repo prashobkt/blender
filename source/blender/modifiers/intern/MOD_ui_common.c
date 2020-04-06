@@ -70,6 +70,7 @@ static void modifier_re_order(bContext *C, Panel *panel, int new_index)
   WM_operator_properties_free(&props_ptr);
 }
 
+/* HANS-TODO: It looks like sub-subpanels don't remember their closed / open state. */
 static void panel_set_expand_from_flag_recursive(Panel *panel, short flag, short flag_index)
 {
   bool open = (flag & (1 << flag_index));
@@ -324,6 +325,9 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
   }
 
   uiItemS(layout);
+
+  row = uiLayoutRow(layout, false);
+  uiItemO(row, "", ICON_X, "OBJECT_OT_modifier_remove");
 }
 
 /**
@@ -361,12 +365,12 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, v
   return panel_type;
 }
 
-void modifier_subpanel_register(ARegionType *region_type,
-                                const char *name,
-                                const char *label,
-                                void *draw_header,
-                                void *draw,
-                                PanelType *parent)
+PanelType *modifier_subpanel_register(ARegionType *region_type,
+                                      const char *name,
+                                      const char *label,
+                                      void *draw_header,
+                                      void *draw,
+                                      PanelType *parent)
 {
   /* Create the subpanel's ID name. */
   char panel_idname[BKE_ST_MAXNAME];
@@ -390,4 +394,6 @@ void modifier_subpanel_register(ARegionType *region_type,
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
   BLI_addtail(&region_type->paneltypes, panel_type);
+
+  return panel_type;
 }
