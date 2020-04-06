@@ -1612,6 +1612,8 @@ typedef enum eRemeshModifierMode {
   MOD_REMESH_MASS_POINT = 1,
   /* keeps sharp edges */
   MOD_REMESH_SHARP_FEATURES = 2,
+  /* Voxel remesh */
+  MOD_REMESH_VOXEL = 3,
 } eRemeshModifierMode;
 
 typedef struct RemeshModifierData {
@@ -1627,10 +1629,13 @@ typedef struct RemeshModifierData {
 
   /* octree depth */
   char depth;
-
   char flag;
   char mode;
   char _pad;
+
+  /* OpenVDB Voxel remesh properties. */
+  float voxel_size;
+  float adaptivity;
 } RemeshModifierData;
 
 /* Skin modifier */
