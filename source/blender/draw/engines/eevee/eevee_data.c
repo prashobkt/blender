@@ -139,12 +139,12 @@ EEVEE_GeometryMotionData *EEVEE_motion_blur_geometry_data_get(EEVEE_MotionBlurDa
   }
 
   /* Use original data as key to ensure matching accross update. */
-  ID *id_orig = DEG_get_original_id(ob->data);
+  Object *ob_orig = DEG_get_original_object(ob);
 
-  EEVEE_GeometryMotionData *geom_step = BLI_ghash_lookup(mb->geom, id_orig);
+  EEVEE_GeometryMotionData *geom_step = BLI_ghash_lookup(mb->geom, ob_orig->data);
   if (geom_step == NULL) {
     geom_step = MEM_callocN(sizeof(EEVEE_GeometryMotionData), __func__);
-    BLI_ghash_insert(mb->geom, id_orig, geom_step);
+    BLI_ghash_insert(mb->geom, ob_orig->data, geom_step);
   }
 
   return geom_step;
