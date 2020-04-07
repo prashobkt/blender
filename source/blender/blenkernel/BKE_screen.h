@@ -231,7 +231,7 @@ typedef struct PanelType {
   /* For recreate panels corresponding to a list. */
 
   /** Reorder function, called when drag and drop finishes. */
-  void (*re_order)(struct bContext *C, struct Panel *pa, int new_index);
+  void (*reorder)(struct bContext *C, struct Panel *pa, int new_index);
   /**
    * Set the panel and subpanel's expansion state from the corresponding expansion flag. Called
    * on draw updates.

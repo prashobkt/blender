@@ -13,6 +13,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+/** \file
+ * \ingroup modifiers
+ */
+
 #include <string.h>
 
 #include "BLI_listbase.h"
@@ -53,10 +57,14 @@ static bool modifier_ui_poll(const bContext *UNUSED(C), PanelType *UNUSED(pt))
   return true;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Panel Drag and Drop, Expansion Saving
+ * \{ */
+
 /**
  * Move a modifier to the index it's moved to after a drag and drop.
  */
-static void modifier_re_order(bContext *C, Panel *panel, int new_index)
+static void modifier_reorder(bContext *C, Panel *panel, int new_index)
 {
   Object *ob = CTX_data_active_object(C);
 
@@ -125,6 +133,12 @@ static void modifier_expand_flag_set_from_panel(const bContext *C, Panel *panel)
   modifier_expand_flag_set_recursive(panel, expand_flag, 0);
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Modifier Panel Layouts
+ * \{ */
+
 /**
  * Draw modifier error message.
  */
@@ -160,7 +174,8 @@ void modifier_panel_get_property_pointers(const bContext *C,
 #define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 void modifier_panel_buttons(const bContext *C, Panel *panel)
 {
-  uiLayout *row;
+  uiLayout *row, *sub;
+  uiBlock *block;
   uiLayout *layout = panel->layout;
 
   row = uiLayoutRow(layout, false);
@@ -168,7 +183,7 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
   Object *ob = CTX_data_active_object(C);
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
 
-  uiBlock *block = uiLayoutGetBlock(row);
+  block = uiLayoutGetBlock(row);
   UI_block_lock_set(
       block, BKE_object_obdata_is_libdata(ob) || ID_IS_LINKED(ob), ERROR_LIBDATA_MESSAGE);
 
@@ -192,7 +207,9 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
   }
   else {
     uiLayoutSetOperatorContext(row, WM_OP_INVOKE_DEFAULT);
-    uiItemEnumO(row,
+
+    sub = uiLayoutRow(row, true);
+    uiItemEnumO(sub,
                 "OBJECT_OT_modifier_apply",
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
                 0,
@@ -200,7 +217,7 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
                 MODIFIER_APPLY_DATA);
 
     if (modifier_isSameTopology(md) && !modifier_isNonGeometrical(md)) {
-      uiItemEnumO(row,
+      uiItemEnumO(sub,
                   "OBJECT_OT_modifier_apply",
                   CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply as Shape Key"),
                   0,
@@ -329,6 +346,12 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
   uiItemO(row, "", ICON_X, "OBJECT_OT_modifier_remove");
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Modifier Registration Helpers
+ * \{ */
+
 /**
  * Create a panel in the context's region
  */
@@ -355,7 +378,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, v
   /* Give the panel the special flag that says it was built here and corresponds to a
    * modifer rather than a PanelType. */
   panel_type->flag = PANELTYPE_RECREATE;
-  panel_type->re_order = modifier_re_order;
+  panel_type->reorder = modifier_reorder;
   panel_type->set_expand_from_flag = panel_set_expand_from_flag;
   panel_type->set_expand_flag_from_panel = modifier_expand_flag_set_from_panel;
 
@@ -396,3 +419,5 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
 
   return panel_type;
 }
+
+/** \} */

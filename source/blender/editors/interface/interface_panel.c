@@ -1473,7 +1473,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
     return;
   }
   /* Don't reorder if this recreate panel doesn't support drag and drop reordering. */
-  if (panel->type->re_order == NULL) {
+  if (panel->type->reorder == NULL) {
     return;
   }
 
@@ -1531,7 +1531,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
   panel->flag |= PNL_RECREATE_ORDER_CHANGED;
 
   /* Finally, move this panel's list item to the new index in its list. */
-  panel->type->re_order(C, panel, move_to_index);
+  panel->type->reorder(C, panel, move_to_index);
 }
 
 static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
