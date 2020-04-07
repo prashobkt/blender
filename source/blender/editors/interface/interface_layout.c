@@ -151,7 +151,10 @@ struct uiLayout {
 
   uiLayoutRoot *root;
   bContextStore *context;
+  uiLayout *parent;
   ListBase items;
+
+  char heading[UI_MAX_NAME_STR];
 
   /** Sub layout to add child items, if not the layout itself. */
   uiLayout *child_items_layout;
@@ -1863,6 +1866,37 @@ static void ui_item_rna_size(uiLayout *layout,
 }
 
 /**
+ * Returns a pointer to the heading string. It's non-const so it can be cleared to mark a heading
+ * as "added".
+ */
+static char *ui_layout_heading_find(uiLayout *cur_layout)
+{
+  for (uiLayout *parent = cur_layout; parent; parent = parent->parent) {
+    if (parent->heading[0]) {
+      return parent->heading;
+    }
+  }
+
+  return NULL;
+}
+
+static void ui_layout_heading_label_add(uiLayout *layout, char *heading, bool right_align)
+{
+  const int prev_alignment = layout->alignment;
+
+  if (right_align) {
+    uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_RIGHT);
+  }
+
+  uiItemL(layout, heading, ICON_NONE);
+  /* After adding the heading label, we have to mark it somehow as added, so it's not added again
+   * for other items in this layout. For now just clear it. */
+  heading[0] = '\0';
+
+  layout->alignment = prev_alignment;
+}
+
+/**
  * Hack to add further items in a row into the second part of the split layout, so the label part
  * keeps a fixed size.
  * \return The layout to place further items in for the split layout.
@@ -1888,9 +1922,12 @@ void uiItemFullR(uiLayout *layout,
   uiBlock *block = layout->root->block;
   char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
-
-  /* By default 'use_prop_sep' uses a separate column for labels.
-   * This is an exception for check-boxes otherwise only the small checkbox region is clickable.
+  /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
+   * a label to display in the first column, the heading is inserted there. Otherwise it's inserted
+   * as a new row before the first item. */
+  char *heading = ui_layout_heading_find(layout);
+  /* Although checkboxes use the split layout, they are an exception and should only place their
+   * label in the second column, to not make that almost empty.
    *
    * Keep using 'use_prop_sep' instead of disabling it entirely because
    * we need the ability to have decorators still. */
@@ -2031,6 +2068,7 @@ void uiItemFullR(uiLayout *layout,
 
   /* Split the label / property. */
   uiLayout *layout_parent = layout;
+
   if (use_prop_sep) {
     uiLayout *layout_row = NULL;
 #ifdef UI_PROP_DECORATE
@@ -2041,21 +2079,28 @@ void uiItemFullR(uiLayout *layout,
     }
 #endif /* UI_PROP_DECORATE */
 
-    if ((name[0] == '\0') || (use_prop_sep_split_label == false)) {
+    if (name[0] == '\0') {
       /* Ensure we get a column when text is not set. */
       layout = uiLayoutColumn(layout_row ? layout_row : layout, true);
       layout->space = 0;
+      if (heading) {
+        ui_layout_heading_label_add(layout, heading, false);
+      }
     }
     else {
       const PropertySubType subtype = RNA_property_subtype(prop);
       uiLayout *layout_split = uiLayoutSplit(
           layout_row ? layout_row : layout, UI_ITEM_PROP_SEP_DIVIDE, true);
+      bool label_added = false;
       layout_split->space = 0;
       uiLayout *layout_sub = uiLayoutColumn(layout_split, true);
       layout_sub->space = 0;
 
-      if ((index == RNA_NO_INDEX && is_array) &&
-          ((!expand && ELEM(subtype, PROP_COLOR, PROP_COLOR_GAMMA, PROP_DIRECTION)) == 0)) {
+      if (!use_prop_sep_split_label) {
+        /* Pass */
+      }
+      else if ((index == RNA_NO_INDEX && is_array) &&
+               ((!expand && ELEM(subtype, PROP_COLOR, PROP_COLOR_GAMMA, PROP_DIRECTION)) == 0)) {
         char name_with_suffix[UI_MAX_DRAW_STR + 2];
         char str[2] = {'\0'};
         for (int a = 0; a < len; a++) {
@@ -2084,6 +2129,8 @@ void uiItemFullR(uiLayout *layout,
                          "");
           but->drawflag |= UI_BUT_TEXT_RIGHT;
           but->drawflag &= ~UI_BUT_TEXT_LEFT;
+
+          label_added = true;
         }
       }
       else {
@@ -2092,12 +2139,16 @@ void uiItemFullR(uiLayout *layout,
               block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, NULL, 0.0, 0.0, 0, 0, "");
           but->drawflag |= UI_BUT_TEXT_RIGHT;
           but->drawflag &= ~UI_BUT_TEXT_LEFT;
+
+          label_added = true;
         }
       }
 
-      if (layout_parent) {
-        layout_split = ui_item_prop_split_layout_hack(layout_parent, layout_split);
+      if (!label_added && heading) {
+        ui_layout_heading_label_add(layout_sub, heading, true);
       }
+
+      layout_split = ui_item_prop_split_layout_hack(layout_parent, layout_split);
 
       /* Watch out! We can only write into the new layout now. */
       if ((type == PROP_ENUM) && (flag & UI_ITEM_R_EXPAND)) {
@@ -2113,7 +2164,9 @@ void uiItemFullR(uiLayout *layout,
         }
       }
       else {
-        name = "";
+        if (use_prop_sep_split_label) {
+          name = "";
+        }
         layout = uiLayoutColumn(layout_split, true);
       }
       layout->space = 0;
@@ -2132,6 +2185,10 @@ void uiItemFullR(uiLayout *layout,
 #endif /* UI_PROP_DECORATE */
   }
   /* End split. */
+  else if (heading) {
+    layout = uiLayoutColumn(layout_parent, true);
+    ui_layout_heading_label_add(layout, heading, false);
+  }
 
   /* array property */
   if (index == RNA_NO_INDEX && is_array) {
@@ -2213,12 +2270,6 @@ void uiItemFullR(uiLayout *layout,
 
     if (layout->activate_init) {
       UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
-    }
-
-    if (use_prop_sep && (use_prop_sep_split_label == false)) {
-      /* When the button uses it's own text right align it. */
-      but->drawflag |= UI_BUT_TEXT_RIGHT;
-      but->drawflag &= ~UI_BUT_TEXT_LEFT;
     }
   }
 
@@ -4464,9 +4515,11 @@ static void ui_litem_init_from_parent(uiLayout *litem, uiLayout *layout, int ali
 
   if (layout->child_items_layout) {
     BLI_addtail(&layout->child_items_layout->items, litem);
+    litem->parent = layout->child_items_layout;
   }
   else {
     BLI_addtail(&layout->items, litem);
+    litem->parent = layout;
   }
 }
 
@@ -4497,6 +4550,23 @@ uiLayout *uiLayoutColumn(uiLayout *layout, bool align)
   litem->space = (align) ? 0 : layout->root->style->buttonspacey;
 
   UI_block_layout_set_current(layout->root->block, litem);
+
+  return litem;
+}
+
+/**
+ * Variant of #uiLayoutColumn() that sets a heading label for the layout if the first item is added
+ * through #uiItemFullR(). If split layout is used and the item has no string to add to the first
+ * split-column, the heading is added there instead. Otherwise the heading inserted with a new row.
+ */
+uiLayout *uiLayoutColumnWithHeading(uiLayout *layout, bool align, const char *heading)
+{
+  uiLayout *litem = uiLayoutColumn(layout, align);
+
+  BLI_assert(litem->heading[0] == '\0');
+  if (heading) {
+    STRNCPY(litem->heading, heading);
+  }
 
   return litem;
 }
