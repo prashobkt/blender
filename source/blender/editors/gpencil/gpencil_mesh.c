@@ -164,7 +164,7 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   if (list.first == NULL) {
     BKE_report(op->reports, RPT_INFO, "No valid object selected");
     gp_bake_free_ob_list(&list);
-    return OPERATOR_FINISHED;
+    return OPERATOR_CANCELLED;
   }
 
   /* Grab all relevant settings. */
