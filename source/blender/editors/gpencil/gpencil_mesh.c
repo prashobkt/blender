@@ -86,36 +86,56 @@ typedef struct GpBakeOb {
   Object *ob;
 } GpBakeOb;
 
+static void gp_bake_duplilist(Depsgraph *depsgraph, Scene *scene, Object *ob, ListBase *list)
+{
+  GpBakeOb *elem = NULL;
+  ListBase *lb;
+  DupliObject *dob;
+  lb = object_duplilist(depsgraph, scene, ob);
+  for (dob = lb->first; dob; dob = dob->next) {
+    if (dob->ob->type != OB_MESH) {
+      continue;
+    }
+    elem = MEM_callocN(sizeof(GpBakeOb), __func__);
+    elem->ob = dob->ob;
+    BLI_addtail(list, elem);
+  }
+
+  free_object_duplilist(lb);
+}
+
 static void gp_bake_ob_list(bContext *C, Depsgraph *depsgraph, Scene *scene, ListBase *list)
 {
   GpBakeOb *elem = NULL;
-  Object *ob = NULL;
 
-  /* Add selected objects. */
-  CTX_DATA_BEGIN (C, Base *, base, selected_editable_bases) {
-    ob = base->object;
+  /* Add active object. In some files this could not be in selected array. */
+  Object *obact = CTX_data_active_object(C);
+
+  if (obact->type == OB_MESH) {
+    elem = MEM_callocN(sizeof(GpBakeOb), __func__);
+    elem->ob = obact;
+    BLI_addtail(list, elem);
+  }
+  /* Add duplilist. */
+  else if (obact->type == OB_EMPTY) {
+    gp_bake_duplilist(depsgraph, scene, obact, list);
+  }
+
+  /* Add other selected objects. */
+  CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
+    if (ob == obact) {
+      continue;
+    }
     /* Add selected meshes.*/
     if (ob->type == OB_MESH) {
       elem = MEM_callocN(sizeof(GpBakeOb), __func__);
-      elem->ob = base->object;
+      elem->ob = ob;
       BLI_addtail(list, elem);
     }
 
     /* Add duplilist. */
     if (ob->type == OB_EMPTY) {
-      ListBase *lb;
-      DupliObject *dob;
-      lb = object_duplilist(depsgraph, scene, ob);
-      for (dob = lb->first; dob; dob = dob->next) {
-        if (dob->ob->type != OB_MESH) {
-          continue;
-        }
-        elem = MEM_callocN(sizeof(GpBakeOb), __func__);
-        elem->ob = dob->ob;
-        BLI_addtail(list, elem);
-      }
-
-      free_object_duplilist(lb);
+      gp_bake_duplilist(depsgraph, scene, obact, list);
     }
   }
   CTX_DATA_END;
@@ -142,9 +162,9 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
 
   /* Cannot check this in poll because the active object changes. */
   if (list.first == NULL) {
-    BKE_report(op->reports, RPT_ERROR, "No valid object selected");
+    BKE_report(op->reports, RPT_INFO, "No valid object selected");
     gp_bake_free_ob_list(&list);
-    return OPERATOR_CANCELLED;
+    return OPERATOR_FINISHED;
   }
 
   /* Grab all relevant settings. */
