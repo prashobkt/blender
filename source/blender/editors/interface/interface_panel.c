@@ -481,6 +481,8 @@ static void ui_offset_panel_block(uiBlock *block)
   block->rect.xmin = block->rect.ymin = 0.0;
 }
 
+/***** Functions for recreate list panels. ***********/
+
 /**
  * Called in situations where panels need to be added dynamically rather than having only one panel
  * corresponding to each PanelType.
@@ -555,16 +557,42 @@ void UI_panel_set_list_index(Panel *panel, int i)
   }
 }
 
-void UI_panel_delete(ListBase *panels, Panel *panel)
+void UI_list_panel_unique_str(Panel *panel, char *r_name)
+{
+  snprintf(r_name, LIST_PANEL_UNIQUE_STR_LEN, "%d", panel->runtime.list_index);
+}
+
+static void panel_free_block(struct ARegion *region, struct Panel *panel)
+{
+  BLI_assert(panel->type);
+
+  char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
+  strncpy(block_name, panel->type->idname, BKE_ST_MAXNAME);
+  char unique_panel_str[LIST_PANEL_UNIQUE_STR_LEN];
+  UI_list_panel_unique_str(panel, unique_panel_str);
+  strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
+
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
+    if (STREQ(block->name, block_name)) {
+      // printf("Removing panel block %s\n", block_name);
+      BLI_remlink(&region->uiblocks, block);
+      UI_block_free(NULL, block);
+    }
+  }
+}
+
+void UI_panel_delete(ARegion *region, ListBase *panels, Panel *panel)
 {
   /* Recursively delete children. */
   Panel *child = panel->children.first;
   while (child != NULL) {
     Panel *child_next = child->next;
-    UI_panel_delete(&panel->children, child);
+    UI_panel_delete(region, &panel->children, child);
     child = child_next;
   }
   BLI_freelistN(&panel->children);
+
+  panel_free_block(region, panel);
 
   BLI_remlink(panels, panel);
   if (panel->activedata) {
@@ -573,10 +601,10 @@ void UI_panel_delete(ListBase *panels, Panel *panel)
   MEM_freeN(panel);
 }
 
-void UI_panels_free_recreate(ListBase *panels)
+void UI_panels_free_recreate(ARegion *region)
 {
   /* Delete panels with the recreate flag. */
-  // printf("UI_PANELS_FREE_RECREATE\n");
+  ListBase *panels = &region->panels;
   Panel *panel = panels->first;
   Panel *panel_next = NULL;
   while (panel != NULL) {
@@ -589,7 +617,7 @@ void UI_panels_free_recreate(ListBase *panels)
 
     panel_next = panel->next;
     if (remove) {
-      UI_panel_delete(panels, panel);
+      UI_panel_delete(region, panels, panel);
     }
     panel = panel_next;
   }
@@ -1444,6 +1472,11 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
   if (panel->type == NULL || !(panel->type->flag & PANELTYPE_RECREATE)) {
     return;
   }
+  /* Don't reorder if this recreate panel doesn't support drag and drop reordering. */
+  if (panel->type->re_order == NULL) {
+    return;
+  }
+
   char *context = panel->type->context;
 
   /* Find how many recreate panels with this context string. */
@@ -1489,11 +1522,15 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
   }
   MEM_freeN(panel_sort);
 
-  /* Finally, move this panel's list item to the new index in its list. */
+  /* Don't reorder the panel didn't change order after being dropped. */
   if (move_to_index == panel->runtime.list_index) {
     return;
   }
-  BLI_assert(panel->type->re_order != NULL);
+
+  /* Set the bit to tell the interface to recreate the list. */
+  panel->flag |= PNL_RECREATE_ORDER_CHANGED;
+
+  /* Finally, move this panel's list item to the new index in its list. */
   panel->type->re_order(C, panel, move_to_index);
 }
 

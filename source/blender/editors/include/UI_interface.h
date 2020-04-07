@@ -1663,15 +1663,18 @@ void UI_panel_end(const struct ScrArea *area,
                   int width,
                   int height,
                   bool open);
+
 struct Panel *UI_panel_add_recreate(struct ScrArea *sa,
                                     struct ARegion *region,
                                     struct ListBase *panels,
                                     struct PanelType *panel_type,
                                     int modifier_index);
 void UI_panel_set_list_index(struct Panel *panel, int i);
-void UI_panel_delete(struct ListBase *panels, struct Panel *panel);
+void UI_panel_delete(struct ARegion *region, struct ListBase *panels, struct Panel *panel);
+void UI_panels_free_recreate(struct ARegion *region);
+#define LIST_PANEL_UNIQUE_STR_LEN 4
+void UI_list_panel_unique_str(struct Panel *panel, char *r_name);
 
-void UI_panels_free_recreate(struct ListBase *panels);
 void UI_panels_scale(struct ARegion *region, float new_width);
 void UI_panel_label_offset(struct uiBlock *block, int *r_x, int *r_y);
 int UI_panel_size_y(const struct Panel *panel);

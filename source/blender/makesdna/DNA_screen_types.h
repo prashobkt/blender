@@ -533,6 +533,8 @@ enum {
   PNL_OVERLAP = (1 << 4),
   PNL_PIN = (1 << 5),
   PNL_POPOVER = (1 << 6),
+  /** Signals that the panel has been drag-drop reordered and the panel list needs rebuilding. */
+  PNL_RECREATE_ORDER_CHANGED = (1 << 7),
 };
 
 /** #Panel.snap - for snapping to screen edges */

@@ -1835,7 +1835,8 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
 
-  /* Check if the type corresponds between each panel consecutive panel and modifier. */
+  /* Check if the current modifier list corresponds to recreate panel list, or if the panels were
+   * reordered. */
   bool modifiers_changed = false;
   int modifiers_len = BLI_listbase_count(&ob->modifiers);
   int i = 0;
@@ -1843,21 +1844,24 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   Panel *panel = region->panels.first;
   while (panel != NULL) {
     if (panel->type != NULL && panel->type->flag & PANELTYPE_RECREATE) {
-      if (md == NULL) {
-        /* We reached the last modifier before the last recreate panel. */
-        modifiers_changed = true;
-        break;
-      }
-      if (panel_type_from_modifier_type(region, md->type) != panel->type) {
-        /* The types of the corresponding panel and modifier don't match. */
+      /* The panels were reordered by drag and drop. */
+      if (panel->flag & PNL_RECREATE_ORDER_CHANGED) {
         modifiers_changed = true;
         break;
       }
 
-      /* Set the list index of the panel anyway, two modifiers of the same type might have
-       * switched. */
-      UI_panel_set_list_index(panel, i);
-      panel->runtime.list_index = i;
+      /* We reached the last modifier before the last recreate panel. */
+      if (md == NULL) {
+        modifiers_changed = true;
+        break;
+      }
+
+      /* The types of the corresponding panel and modifier don't match. */
+      if (panel_type_from_modifier_type(region, md->type) != panel->type) {
+        modifiers_changed = true;
+        break;
+      }
+
       md = md->next;
       i++;
     }
@@ -1871,7 +1875,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
 
   /* If the modifier list has changed at all, clear all of the recreate panels and rebuild them. */
   if (modifiers_changed) {
-    UI_panels_free_recreate(&region->panels);
+    UI_panels_free_recreate(region);
     md = ob->modifiers.first;
     for (i = 0; md; i++, md = md->next) {
       const ModifierTypeInfo *mti = modifierType_getInfo(md->type);

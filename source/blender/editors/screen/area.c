@@ -2342,6 +2342,15 @@ BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
   return false;
 }
 
+/**
+ * Builds the panel layout for the input \a panel or type \a pt.
+ *
+ * \param panel The panel to draw. Can be null, in which case a panel with the type of \a pt will
+ * be found.
+ * \param unique_panel_str A unique identifier for the name of the \a uiBlock associated with the
+ * panel. Used when the panel is a recreate panel so a unique identifier is needed to find the
+ * correct old \a uiBlock, and NULL otherwise.
+ */
 static void ed_panel_draw(const bContext *C,
                           ScrArea *area,
                           ARegion *region,
@@ -2350,12 +2359,20 @@ static void ed_panel_draw(const bContext *C,
                           Panel *panel,
                           int w,
                           int em,
-                          bool vertical)
+                          bool vertical,
+                          char *unique_panel_str)
 {
   const uiStyle *style = UI_style_get_dpi();
 
-  /* draw panel */
-  uiBlock *block = UI_block_begin(C, region, pt->idname, UI_EMBOSS);
+  /* Draw panel. */
+
+  char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
+  strncpy(block_name, pt->idname, BKE_ST_MAXNAME);
+  if (unique_panel_str != NULL) {
+    /* Recreate panels should have already been added at this point. */
+    strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
+  }
+  uiBlock *block = UI_block_begin(C, region, block_name, UI_EMBOSS);
 
   bool open;
   panel = UI_panel_begin(area, region, lb, block, pt, panel, &open);
@@ -2446,7 +2463,16 @@ static void ed_panel_draw(const bContext *C,
       Panel *child_panel = UI_panel_find_by_type(&panel->children, child_pt);
 
       if (child_pt->draw && (!child_pt->poll || child_pt->poll(C, child_pt))) {
-        ed_panel_draw(C, area, region, &panel->children, child_pt, child_panel, w, em, vertical);
+        ed_panel_draw(C,
+                      area,
+                      region,
+                      &panel->children,
+                      child_pt,
+                      child_panel,
+                      w,
+                      em,
+                      vertical,
+                      unique_panel_str);
       }
     }
   }
@@ -2591,14 +2617,28 @@ void ED_region_panels_layout_ex(const bContext *C,
       }
     }
 
-    ed_panel_draw(C, area, region, &region->panels, pt, panel, w, em, vertical);
+    ed_panel_draw(C, area, region, &region->panels, pt, panel, w, em, vertical, NULL);
   }
 
   if (has_recreate_panel) {
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
         if (panel->type->flag & PANELTYPE_RECREATE) {
-          ed_panel_draw(C, area, region, &region->panels, panel->type, panel, w, em, vertical);
+          /* Use a unique identifier for recreate panels, otherwise an old block for a different
+           * panel of the same type might be found. */
+          char unique_panel_str[8];
+          UI_list_panel_unique_str(panel, unique_panel_str);
+
+          ed_panel_draw(C,
+                        area,
+                        region,
+                        &region->panels,
+                        panel->type,
+                        panel,
+                        w,
+                        em,
+                        vertical,
+                        unique_panel_str);
         }
       }
     }
