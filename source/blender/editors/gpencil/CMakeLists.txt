@@ -29,6 +29,7 @@ set(INC
   ../../windowmanager
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
+  ../../../../extern/potrace/src
 )
 
 set(INC_SYS
@@ -69,6 +70,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf_blenlib
+  extern_potrace
 )
 
 if(WITH_INTERNATIONAL)

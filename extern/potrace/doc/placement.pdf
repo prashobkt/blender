@@ -1,0 +1,13 @@
+Input image:
+
+                                           Output placement without −−tight (default):
+                                           margins
+
+                                                                                           width
+                                           margins
+Output placement with −−tight:                                                                                          height
+margins                                    height
+
+margins
+                                    width
+
