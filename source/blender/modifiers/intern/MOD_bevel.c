@@ -289,8 +289,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "affect", 0, NULL, ICON_NONE);
-
   col = uiLayoutColumn(layout, false);
   const char *offset_name = "";
   if (RNA_enum_get(&ptr, "offset_type") == BEVEL_AMT_PERCENT) {
@@ -315,18 +313,16 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemS(layout);
 
+  uiItemR(layout, &ptr, "affect", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.5f, true);
-  col = uiLayoutColumn(split, true);
-
+  col = uiLayoutColumn(layout, true);
   uiItemR(col, &ptr, "use_clamp_overlap", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "loop_slide", 0, NULL, ICON_NONE);
-
-  col = uiLayoutColumn(split, true);
-  uiItemR(col, &ptr, "mark_seam", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "mark_sharp", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "harden_normals", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumnWithHeading(layout, true, "Mark");
+  uiItemR(col, &ptr, "mark_seam", 0, IFACE_("Seam"), ICON_NONE);
+  uiItemR(col, &ptr, "mark_sharp", 0, IFACE_("Sharp"), ICON_NONE);
 
   uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
@@ -374,6 +370,7 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "vmesh_method", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
 }
 
 static void custom_profile_panel_draw_header(const bContext *C, Panel *panel)
