@@ -212,7 +212,6 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
 
         obj = context.object
         obj_type = obj.type
@@ -222,35 +221,22 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
         is_dupli = (obj.instance_type != 'NONE')
         is_gpencil = (obj_type == 'GPENCIL')
 
-        col = flow.column()
+        col = layout.column(heading = "Show")
         col.prop(obj, "show_name", text="Name")
-
-        col = flow.column()
         col.prop(obj, "show_axis", text="Axis")
 
         # Makes no sense for cameras, armatures, etc.!
         # but these settings do apply to dupli instances
         if is_geometry or is_dupli:
-            col = flow.column()
             col.prop(obj, "show_wire", text="Wireframe")
         if obj_type == 'MESH' or is_dupli:
-            col = flow.column()
             col.prop(obj, "show_all_edges", text="All Edges")
-
-        col = flow.column()
         if is_geometry:
             col.prop(obj, "show_texture_space", text="Texture Space")
-            col = flow.column()
             col.prop(obj.display, "show_shadows", text="Shadow")
-
-        col = flow.column()
         col.prop(obj, "show_in_front", text="In Front")
         # if obj_type == 'MESH' or is_empty_image:
         #    col.prop(obj, "show_transparent", text="Transparency")
-
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
-
-        col = flow.column()
         if is_wire:
             # wire objects only use the max. display type for duplis
             col.active = is_dupli
@@ -258,7 +244,6 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
 
         if is_geometry or is_dupli or is_empty_image or is_gpencil:
             # Only useful with object having faces/materials...
-            col = flow.column()
             col.prop(obj, "color")
 
 
@@ -295,7 +280,6 @@ class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
         row.prop(ob, "instance_type", expand=True)
 
         layout.use_property_split = True
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
 
         if ob.instance_type == 'VERTS':
             layout.prop(ob, "use_instance_vertices_rotation", text="Align to Vertex Normal")
@@ -305,9 +289,9 @@ class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
             col.prop(ob, "instance_collection", text="Collection")
 
         if ob.instance_type != 'NONE' or ob.particle_systems:
-            col = flow.column(align=True)
-            col.prop(ob, "show_instancer_for_viewport")
-            col.prop(ob, "show_instancer_for_render")
+            col = layout.column(heading = "Show Instancer", align=True)
+            col.prop(ob, "show_instancer_for_viewport", text="Viewport")
+            col.prop(ob, "show_instancer_for_render", text="Render")
 
 
 class OBJECT_PT_instancing_size(ObjectButtonsPanel, Panel):
@@ -385,19 +369,17 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
         layout = self.layout
         ob = context.object
 
-        col = flow.column()
-        col.prop(ob, "hide_viewport", text="Show in Viewports", toggle=False, invert_checkbox=True)
-        col = flow.column()
-        col.prop(ob, "hide_render", text="Show in Renders", toggle=False, invert_checkbox=True)
-        col = flow.column()
-        col.prop(ob, "hide_select", text="Selectable", toggle=False, invert_checkbox=True)
+        layout.prop(ob, "hide_select", text="Selectable", toggle=False, invert_checkbox=True)
+
+        col = layout.column(heading = "Show in")
+        col.prop(ob, "hide_viewport", text="Viewports", toggle=False, invert_checkbox=True)
+        col.prop(ob, "hide_render", text="Renders", toggle=False, invert_checkbox=True)
+        
 
         if context.object.type == 'GPENCIL':
-            col = flow.column()
             col.prop(ob, "use_grease_pencil_lights", toggle=False)
 
 
