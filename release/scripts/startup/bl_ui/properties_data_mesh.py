@@ -485,9 +485,11 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
             col.prop(mesh, "remesh_voxel_adaptivity")
             col.prop(mesh, "use_remesh_fix_poles")
             col.prop(mesh, "use_remesh_smooth_normals")
-            col.prop(mesh, "use_remesh_preserve_volume")
-            col.prop(mesh, "use_remesh_preserve_paint_mask")
-            col.prop(mesh, "use_remesh_preserve_sculpt_face_sets")
+
+            col = layout.column(heading = "Preserve")
+            col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
+            col.prop(mesh, "use_remesh_preserve_paint_mask", text="Paint Mask")
+            col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text="Face Sets")
             col.operator("object.voxel_remesh", text="Voxel Remesh")
         else:
             col.operator("object.quadriflow_remesh", text="QuadriFlow Remesh")
@@ -515,12 +517,12 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
         else:
             col.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
 
-        col = layout.column()
+        col = layout.column(heading = "Store")
 
         col.enabled = obj is not None and obj.mode != 'EDIT'
-        col.prop(me, "use_customdata_vertex_bevel")
-        col.prop(me, "use_customdata_edge_bevel")
-        col.prop(me, "use_customdata_edge_crease")
+        col.prop(me, "use_customdata_vertex_bevel", text = "Vertex Bevel Weight")
+        col.prop(me, "use_customdata_edge_bevel", text = "Edge Bevel Weight")
+        col.prop(me, "use_customdata_edge_crease", text = "Edge Crease")
 
 
 class DATA_PT_custom_props_mesh(MeshButtonsPanel, PropertyPanel, Panel):
