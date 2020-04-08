@@ -181,13 +181,18 @@ static void write_line(FILE *fptr, char *line)
   fprintf(fptr, "%s\n", line);
 }
 
-static void add_point(bGPDstroke *gps, int idx, float scale, float x, float y)
+static void add_point(bGPDstroke *gps, int idx, float scale, int offset[2], float x, float y)
 {
-  gps->points = MEM_recallocN(gps->points, sizeof(bGPDspoint) * gps->totpoints + 1);
+  if (gps->totpoints == 0) {
+    gps->points = MEM_callocN(sizeof(bGPDspoint), "gp_stroke_points");
+  }
+  else {
+    gps->points = MEM_recallocN(gps->points, sizeof(bGPDspoint) * (gps->totpoints + 1));
+  }
   bGPDspoint *pt = &gps->points[idx];
-  pt->x = x * scale;
+  pt->x = (x - offset[0]) * scale;
   pt->y = 0;
-  pt->z = y * scale;
+  pt->z = (y - offset[1]) * scale;
   pt->pressure = 1.0f;
   pt->strength = 1.0f;
 
@@ -199,8 +204,9 @@ static void add_point(bGPDstroke *gps, int idx, float scale, float x, float y)
  * \param st: Data with traced data
  * \param ob: Target grease pencil object
  * \param gpf: Currect grease pencil frame
+ * \param offset: Offset to center
  */
-void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf)
+void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf, int offset[2])
 {
   potrace_path_t *path = st->plist;
   int n, *tag;
@@ -217,18 +223,18 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf
     tag = path->curve.tag;
     c = path->curve.c;
     /* Create a new stroke. */
-    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, 1, 10, false);
+    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, 0, 10, false);
     int pt_idx = 0;
     /* Move to last point that is equals to start point. */
-    add_point(gps, pt_idx, scale, c[n - 1][2].x, c[n - 1][2].y);
+    add_point(gps, pt_idx, scale, offset, c[n - 1][2].x, c[n - 1][2].y);
     pt_idx++;
     for (int i = 0; i < n; i++) {
       switch (tag[i]) {
         case POTRACE_CORNER:
-          add_point(gps, pt_idx, scale, c[i][1].x, c[i][1].y);
+          add_point(gps, pt_idx, scale, offset, c[i][1].x, c[i][1].y);
           pt_idx++;
 
-          add_point(gps, pt_idx, scale, c[i][2].x, c[i][2].y);
+          add_point(gps, pt_idx, scale, offset, c[i][2].x, c[i][2].y);
           pt_idx++;
           break;
         case POTRACE_CURVETO:

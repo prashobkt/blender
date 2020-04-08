@@ -62,6 +62,9 @@ void ED_gpencil_trace_bm_free(const potrace_bitmap_t *bm);
 void ED_gpencil_trace_bm_invert(const potrace_bitmap_t *bm);
 
 void ED_gpencil_trace_image_to_bm(struct ImBuf *ibuf, const potrace_bitmap_t *bm);
-void ED_gpencil_trace_data_to_gp(potrace_state_t *st, struct Object *ob, struct bGPDframe *gpf);
+void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
+                                 struct Object *ob,
+                                 struct bGPDframe *gpf,
+                                 int offset[2]);
 
 #endif /* __GPENCIL_TRACE_H__ */

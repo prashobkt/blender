@@ -157,7 +157,10 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   ED_gpencil_trace_bm_free(bm);
 
   /* Convert the trace to strokes. */
-  ED_gpencil_trace_data_to_gp(st, ob_gpencil, gpf);
+  int offset[2];
+  offset[0] = ibuf->x / 2;
+  offset[1] = ibuf->y / 2;
+  ED_gpencil_trace_data_to_gp(st, ob_gpencil, gpf, offset);
 
   /* Free memory. */
   potrace_state_free(st);
