@@ -249,7 +249,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.5f, false);
+  split = uiLayoutSplit(layout, 0.4f, false);
   row = uiLayoutRow(split, false);
   uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
   uiItemL(row, IFACE_("Axis"), ICON_NONE);

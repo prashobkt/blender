@@ -514,7 +514,7 @@ static void axis_origin_panel_draw(const bContext *C, Panel *panel)
            MOD_SIMPLEDEFORM_MODE_TAPER,
            MOD_SIMPLEDEFORM_MODE_STRETCH,
            MOD_SIMPLEDEFORM_MODE_TWIST)) {
-    split = uiLayoutSplit(layout, 0.5f, false);
+    split = uiLayoutSplit(layout, 0.4f, false);
     row = uiLayoutRow(split, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
     uiItemL(row, IFACE_("Lock"), ICON_NONE);

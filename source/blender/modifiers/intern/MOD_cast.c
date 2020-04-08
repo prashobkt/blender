@@ -546,7 +546,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   /* Aligned booleans with a single label. */
-  split = uiLayoutSplit(layout, 0.5f, false);
+  split = uiLayoutSplit(layout, 0.4f, false);
   row = uiLayoutRow(split, false);
   uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
   uiItemL(row, IFACE_("Axis"), ICON_NONE);

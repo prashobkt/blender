@@ -1203,7 +1203,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemPointerR(layout, &ptr, "particle_uv", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
 
   /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.5f, false);
+  split = uiLayoutSplit(layout, 0.4f, false);
   row = uiLayoutRow(split, false);
   uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
   uiItemL(row, IFACE_("Show"), ICON_NONE);

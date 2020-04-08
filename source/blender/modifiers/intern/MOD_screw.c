@@ -1204,11 +1204,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "steps", 0, IFACE_("Steps Viewport"), ICON_NONE);
   uiItemR(col, &ptr, "render_steps", 0, IFACE_("Render"), ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
+  split = uiLayoutSplit(layout, 0.4f, false);
   row = uiLayoutRow(split, false);
   uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
   uiItemL(row, IFACE_("Stretch"), ICON_NONE);
-
   row = uiLayoutRow(split, true);
   uiLayoutSetPropSep(row, false);
   uiItemR(row, &ptr, "use_stretch_u", UI_ITEM_R_TOGGLE, IFACE_("U"), ICON_NONE);
