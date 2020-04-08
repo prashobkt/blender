@@ -252,7 +252,7 @@ static void deformMatrices(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
+  uiLayout *sub, *row, *col;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
@@ -272,11 +272,13 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
-  uiItemL(layout, IFACE_("Bind to:"), ICON_NONE);
-  uiItemR(layout, &ptr, "use_vertex_groups", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_bone_envelopes", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_deform_preserve_volume", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_multi_modifier", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "use_deform_preserve_volume", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_multi_modifier", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumnWithHeading(layout, true, "Bind to");
+  uiItemR(col, &ptr, "use_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+  uiItemR(col, &ptr, "use_bone_envelopes", 0, IFACE_("Bone Envelopes"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
