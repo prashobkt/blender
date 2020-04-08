@@ -75,6 +75,7 @@ static bool gp_trace_image_poll(bContext *C)
 static int gp_trace_image_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
   View3D *v3d = CTX_wm_view3d(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   Object *ob_gpencil = NULL;
@@ -128,8 +129,8 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
     MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
     linearrgb_to_srgb_v4(gp_style->stroke_rgba, default_color);
-    gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
-    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
+    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+    gp_style->flag &= ~GP_MATERIAL_FILL_SHOW;
   }
 
   /* Create Layer and frame. */
@@ -167,6 +168,13 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
     BKE_image_release_ibuf(sima->image, ibuf, lock);
   }
 
+  /* notifiers */
+  DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+
+  WM_event_add_notifier(C, NC_OBJECT | NA_ADDED, NULL);
+  WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
+
   return OPERATOR_FINISHED;
 }
 
@@ -187,7 +195,7 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
   /* properties */
   RNA_def_string(ot->srna,
                  "target",
-                 "Target",
+                 "*NEW",
                  64,
                  "",
                  "Target grease pencil object name. Leave empty for new object");

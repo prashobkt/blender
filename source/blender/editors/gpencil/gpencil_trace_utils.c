@@ -29,6 +29,8 @@
 
 #include "BLI_math.h"
 
+#include "BKE_gpencil.h"
+#include "BKE_gpencil_geom.h"
 #include "BKE_image.h"
 
 #include "DNA_gpencil_types.h"
@@ -179,6 +181,19 @@ static void write_line(FILE *fptr, char *line)
   fprintf(fptr, "%s\n", line);
 }
 
+static void add_point(bGPDstroke *gps, int idx, float scale, float x, float y)
+{
+  gps->points = MEM_recallocN(gps->points, sizeof(bGPDspoint) * gps->totpoints + 1);
+  bGPDspoint *pt = &gps->points[idx];
+  pt->x = x * scale;
+  pt->y = 0;
+  pt->z = y * scale;
+  pt->pressure = 1.0f;
+  pt->strength = 1.0f;
+
+  gps->totpoints++;
+}
+
 /**
  * Convert Potrace Bitmap to Grease Pencil strokes
  * \param st: Data with traced data
@@ -187,30 +202,34 @@ static void write_line(FILE *fptr, char *line)
  */
 void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf)
 {
-  potrace_path_t *p = st->plist;
+  potrace_path_t *path = st->plist;
   int n, *tag;
   potrace_dpoint_t(*c)[3];
 
   FILE *fout = stderr;
   char txt[256];
 
+  const float scale = 0.005f;
   /* Draw each curve. */
-  p = st->plist;
-  while (p != NULL) {
-    n = p->curve.n;
-    tag = p->curve.tag;
-    c = p->curve.c;
+  path = st->plist;
+  while (path != NULL) {
+    n = path->curve.n;
+    tag = path->curve.tag;
+    c = path->curve.c;
+    /* Create a new stroke. */
+    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, 1, 10, false);
+    int pt_idx = 0;
     /* Move to last point that is equals to start point. */
-    sprintf_s(txt, 256, "%f %f moveto", c[n - 1][2].x, c[n - 1][2].y);
-    write_line(fout, txt);
+    add_point(gps, pt_idx, scale, c[n - 1][2].x, c[n - 1][2].y);
+    pt_idx++;
     for (int i = 0; i < n; i++) {
       switch (tag[i]) {
         case POTRACE_CORNER:
-          sprintf_s(txt, 256, "%f %f lineto", c[i][1].x, c[i][1].y);
-          write_line(fout, txt);
+          add_point(gps, pt_idx, scale, c[i][1].x, c[i][1].y);
+          pt_idx++;
 
-          sprintf_s(txt, 256, "%f %f lineto", c[i][2].x, c[i][2].y);
-          write_line(fout, txt);
+          add_point(gps, pt_idx, scale, c[i][2].x, c[i][2].y);
+          pt_idx++;
           break;
         case POTRACE_CURVETO:
           sprintf_s(txt,
@@ -226,14 +245,17 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf
           break;
       }
     }
+    /* Update geometry. */
+    BKE_gpencil_stroke_geometry_update(gps);
+
     /* At the end of a group of a positive path and its negative
      *  children, fill.
      * Sign is the char +(43) or -(45) */
-    printf("%c\n", p->sign);
-    if (p->next == NULL || p->next->sign == '+') {
-      write_line(fout, "0 setgray fill");
-      printf("-------\n");
+#if 0
+    if (path->next == NULL || path->next->sign == '+') {
+      printf("-- End of group ---\n");
     }
-    p = p->next;
+#endif
+    path = path->next;
   }
 }
