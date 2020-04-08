@@ -5920,7 +5920,7 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
     {DT_TYPE_MDEFORMVERT,
      "VGROUP_WEIGHTS",
      0,
-     "Vertex Group(s)",
+     "Vertex Groups",
      "Transfer active or all vertex groups"},
 #  if 0 /* TODO */
     {DT_TYPE_SHAPEKEY, "SHAPEKEYS", 0, "Shapekey(s)", "Transfer active or all shape keys"},
@@ -5937,19 +5937,15 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
   static const EnumPropertyItem DT_layer_edge_items[] = {
       {DT_TYPE_SHARP_EDGE, "SHARP_EDGE", 0, "Sharp", "Transfer sharp mark"},
       {DT_TYPE_SEAM, "SEAM", 0, "UV Seam", "Transfer UV seam mark"},
-      {DT_TYPE_CREASE, "CREASE", 0, "Subsurf Crease", "Transfer crease values"},
+      {DT_TYPE_CREASE, "CREASE", 0, "Crease", "Transfer subdivision crease values"},
       {DT_TYPE_BWEIGHT_EDGE, "BEVEL_WEIGHT_EDGE", 0, "Bevel Weight", "Transfer bevel weights"},
-      {DT_TYPE_FREESTYLE_EDGE,
-       "FREESTYLE_EDGE",
-       0,
-       "Freestyle Mark",
-       "Transfer Freestyle edge mark"},
+      {DT_TYPE_FREESTYLE_EDGE, "FREESTYLE_EDGE", 0, "Freestyle", "Transfer Freestyle edge mark"},
       {0, NULL, 0, NULL, NULL},
   };
 
   static const EnumPropertyItem DT_layer_loop_items[] = {
       {DT_TYPE_LNOR, "CUSTOM_NORMAL", 0, "Custom Normals", "Transfer custom normals"},
-      {DT_TYPE_VCOL, "VCOL", 0, "VCol", "Vertex (face corners) colors"},
+      {DT_TYPE_VCOL, "VCOL", 0, "Vertex Colors", "Vertex (face corners) colors"},
       {DT_TYPE_UV, "UV", 0, "UVs", "Transfer UV layers"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -6132,7 +6128,7 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
       0.0f,
       0.0f,
       1.0f,
-      "Islands Handling Refinement",
+      "Islands Precision",
       "Factor controlling precision of islands handling "
       "(typically, 0.1 should be enough, higher values can make things really slow)",
       0.0f,
