@@ -606,6 +606,7 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_bake_mesh_animation);
 
   WM_operatortype_append(GPENCIL_OT_image_to_grease_pencil);
+  WM_operatortype_append(GPENCIL_OT_trace_image);
 
   WM_operatortype_append(GPENCIL_OT_stroke_arrange);
   WM_operatortype_append(GPENCIL_OT_stroke_change_color);
