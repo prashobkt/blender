@@ -163,7 +163,7 @@ static void pixel_at_index(const ImBuf *ibuf, const int idx, float r_col[4])
  * \param ibuf: ImBuf of the image
  * \param bm: Trace bitmap
  */
-void ED_gpencil_trace_image_to_bm(ImBuf *ibuf, const potrace_bitmap_t *bm)
+void ED_gpencil_trace_image_to_bm(ImBuf *ibuf, const potrace_bitmap_t *bm, const float threshold)
 {
   float rgba[4];
   int pixel = 0;
@@ -175,7 +175,7 @@ void ED_gpencil_trace_image_to_bm(ImBuf *ibuf, const potrace_bitmap_t *bm)
       /* Get a BW color. */
       mul_v3_fl(rgba, rgba[3]);
       float color = (rgba[0] + rgba[1] + rgba[2]) / 3.0f;
-      int bw = (color > 0.5f) ? 0 : 1;
+      int bw = (color > threshold) ? 0 : 1;
       BM_PUT(bm, x, y, bw);
     }
   }

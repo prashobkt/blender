@@ -87,6 +87,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   char target[64];
   RNA_string_get(op->ptr, "target", target);
   const int frame_target = RNA_int_get(op->ptr, "frame_target");
+  const float threshold = RNA_float_get(op->ptr, "threshold");
 
   ImBuf *ibuf;
   void *lock;
@@ -141,7 +142,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, frame_target, GP_GETFRAME_ADD_NEW);
 
   /* Load BW bitmap with image. */
-  ED_gpencil_trace_image_to_bm(ibuf, bm);
+  ED_gpencil_trace_image_to_bm(ibuf, bm, threshold);
 
   /* Trace the bitmap. */
   st = potrace_trace(param, bm);
@@ -203,4 +204,13 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
                  "",
                  "Target grease pencil object name. Leave empty for new object");
   RNA_def_int(ot->srna, "frame_target", 1, 1, 100000, "Frame Target", "", 1, 100000);
+  RNA_def_float_factor(ot->srna,
+                       "thershold",
+                       0.5f,
+                       0.0f,
+                       1.0f,
+                       "Color Threshold",
+                       "Determine what is considered whithe and what black",
+                       0.0f,
+                       1.0f);
 }
