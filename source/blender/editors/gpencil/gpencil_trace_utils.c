@@ -158,6 +158,11 @@ static void pixel_at_index(const ImBuf *ibuf, const int idx, float r_col[4])
   }
 }
 
+/**
+ * Convert image to BW bitmap for tracing
+ * \param ibuf: ImBuf of the image
+ * \param bm: Trace bitmap
+ */
 void ED_gpencil_trace_image_to_bm(ImBuf *ibuf, const potrace_bitmap_t *bm)
 {
   float rgba[4];
@@ -176,13 +181,10 @@ void ED_gpencil_trace_image_to_bm(ImBuf *ibuf, const potrace_bitmap_t *bm)
   }
 }
 
-static void write_line(FILE *fptr, char *line)
+/* Helper to add point to stroke. */
+static void add_point(bGPDstroke *gps, float scale, int offset[2], float x, float y)
 {
-  fprintf(fptr, "%s\n", line);
-}
-
-static void add_point(bGPDstroke *gps, int idx, float scale, int offset[2], float x, float y)
-{
+  int idx = gps->totpoints;
   if (gps->totpoints == 0) {
     gps->points = MEM_callocN(sizeof(bGPDspoint), "gp_stroke_points");
   }
@@ -199,6 +201,30 @@ static void add_point(bGPDstroke *gps, int idx, float scale, int offset[2], floa
   gps->totpoints++;
 }
 
+/* helper to generate all points of curve. */
+static void add_bezier(bGPDstroke *gps,
+                       float scale,
+                       int offset[2],
+                       int resolution,
+                       float bcp1[2],
+                       float bcp2[2],
+                       float bcp3[2],
+                       float bcp4[2],
+                       const bool skip)
+{
+  const float step = 1.0f / (float)(resolution - 1);
+  float a = 0.0f;
+
+  for (int i = 0; i < resolution; i++) {
+    if ((!skip) || (i > 0)) {
+      float fpt[3];
+      interp_v2_v2v2v2v2_cubic(fpt, bcp1, bcp2, bcp3, bcp4, a);
+      add_point(gps, scale, offset, fpt[0], fpt[1]);
+    }
+    a += step;
+  }
+}
+
 /**
  * Convert Potrace Bitmap to Grease Pencil strokes
  * \param st: Data with traced data
@@ -212,9 +238,6 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf
   int n, *tag;
   potrace_dpoint_t(*c)[3];
 
-  FILE *fout = stderr;
-  char txt[256];
-
   const float scale = 0.005f;
   /* Draw each curve. */
   path = st->plist;
@@ -224,30 +247,47 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf
     c = path->curve.c;
     /* Create a new stroke. */
     bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, 0, 10, false);
-    int pt_idx = 0;
-    /* Move to last point that is equals to start point. */
-    add_point(gps, pt_idx, scale, offset, c[n - 1][2].x, c[n - 1][2].y);
-    pt_idx++;
+    /* Last point that is equals to start point. */
+    float start_point[2], last[2];
+    start_point[0] = c[n - 1][2].x;
+    start_point[1] = c[n - 1][2].y;
+
     for (int i = 0; i < n; i++) {
       switch (tag[i]) {
-        case POTRACE_CORNER:
-          add_point(gps, pt_idx, scale, offset, c[i][1].x, c[i][1].y);
-          pt_idx++;
+        case POTRACE_CORNER: {
+          if (gps->totpoints == 0) {
+            add_point(gps, scale, offset, c[n - 1][2].x, c[n - 1][2].y);
+          }
+          add_point(gps, scale, offset, c[i][1].x, c[i][1].y);
 
-          add_point(gps, pt_idx, scale, offset, c[i][2].x, c[i][2].y);
-          pt_idx++;
+          add_point(gps, scale, offset, c[i][2].x, c[i][2].y);
           break;
-        case POTRACE_CURVETO:
-          sprintf_s(txt,
-                    256,
-                    "%f %f %f %f %f %f curveto",
-                    c[i][0].x,
-                    c[i][0].y,
-                    c[i][1].x,
-                    c[i][1].y,
-                    c[i][2].x,
-                    c[i][2].y);
-          write_line(fout, txt);
+        }
+        case POTRACE_CURVETO: {
+          float cp1[2], cp2[2], cp3[2], cp4[2];
+          if (gps->totpoints == 0) {
+            cp1[0] = start_point[0];
+            cp1[1] = start_point[1];
+          }
+          else {
+            copy_v2_v2(cp1, last);
+          }
+
+          cp2[0] = c[i][0].x;
+          cp2[1] = c[i][0].y;
+
+          cp3[0] = c[i][1].x;
+          cp3[1] = c[i][1].y;
+
+          cp4[0] = c[i][2].x;
+          cp4[1] = c[i][2].y;
+
+          add_bezier(
+              gps, scale, offset, 5, cp1, cp2, cp3, cp4, (gps->totpoints == 0) ? false : true);
+          copy_v2_v2(last, cp4);
+          break;
+        }
+        default:
           break;
       }
     }
