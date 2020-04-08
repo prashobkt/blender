@@ -107,10 +107,12 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   param->turdsize = 0;
 
   /* Create a new grease pencil object in origin. */
+  bool newob = false;
   if (STREQ(target, "*NEW")) {
     ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
     float loc[3] = {0.0f, 0.0f, 0.0f};
     ob_gpencil = ED_gpencil_add_object(C, loc, local_view_bits);
+    newob = true;
   }
   else {
     ob_gpencil = BLI_findstring(&bmain->objects, target, offsetof(ID, name) + 2);
@@ -173,6 +175,9 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   }
 
   /* notifiers */
+  if (newob) {
+    DEG_relations_tag_update(bmain);
+  }
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 
@@ -204,8 +209,9 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
                  "",
                  "Target grease pencil object name. Leave empty for new object");
   RNA_def_int(ot->srna, "frame_target", 1, 1, 100000, "Frame Target", "", 1, 100000);
+
   RNA_def_float_factor(ot->srna,
-                       "thershold",
+                       "threshold",
                        0.5f,
                        0.0f,
                        1.0f,

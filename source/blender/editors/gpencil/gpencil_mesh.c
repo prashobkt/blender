@@ -189,10 +189,12 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   const int project_type = RNA_enum_get(op->ptr, "project_type");
 
   /* Create a new grease pencil object in origin. */
+  bool newob = false;
   if (STREQ(target, "*NEW")) {
     ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
     float loc[3] = {0.0f, 0.0f, 0.0f};
     ob_gpencil = ED_gpencil_add_object(C, loc, local_view_bits);
+    newob = true;
   }
   else {
     ob_gpencil = BLI_findstring(&bmain->objects, target, offsetof(ID, name) + 2);
@@ -315,6 +317,9 @@ static int gp_bake_mesh_animation_exec(bContext *C, wmOperator *op)
   }
 
   /* notifiers */
+  if (newob) {
+    DEG_relations_tag_update(bmain);
+  }
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_OBJECT | NA_ADDED, NULL);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
