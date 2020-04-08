@@ -562,7 +562,7 @@ void UI_list_panel_unique_str(Panel *panel, char *r_name)
   snprintf(r_name, LIST_PANEL_UNIQUE_STR_LEN, "%d", panel->runtime.list_index);
 }
 
-static void panel_free_block(struct ARegion *region, struct Panel *panel)
+static void panel_free_block(ARegion *region, Panel *panel)
 {
   BLI_assert(panel->type);
 
@@ -577,6 +577,7 @@ static void panel_free_block(struct ARegion *region, struct Panel *panel)
       // printf("Removing panel block %s\n", block_name);
       BLI_remlink(&region->uiblocks, block);
       UI_block_free(NULL, block);
+      break; /* Only delete one block for this panel. */
     }
   }
 }
