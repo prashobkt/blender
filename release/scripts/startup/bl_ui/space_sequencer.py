@@ -1802,12 +1802,12 @@ class SEQUENCER_PT_cache_settings(SequencerButtonsPanel, Panel):
 
         ed = context.scene.sequence_editor
 
-        col = layout.column()
+        col = layout.column(heading = "Cache", align = True)
 
-        col.prop(ed, "use_cache_raw")
-        col.prop(ed, "use_cache_preprocessed")
-        col.prop(ed, "use_cache_composite")
-        col.prop(ed, "use_cache_final")
+        col.prop(ed, "use_cache_raw", text = "Raw")
+        col.prop(ed, "use_cache_preprocessed", text = "Pre-Processed")
+        col.prop(ed, "use_cache_composite", text = "Composite")
+        col.prop(ed, "use_cache_final", text = "Final")
         col.separator()
         col.prop(ed, "recycle_max_cost")
 
@@ -1926,10 +1926,10 @@ class SEQUENCER_PT_strip_cache(SequencerButtonsPanel, Panel):
         strip = act_strip(context)
         layout.active = strip.override_cache_settings
 
-        col = layout.column()
-        col.prop(strip, "use_cache_raw")
-        col.prop(strip, "use_cache_preprocessed")
-        col.prop(strip, "use_cache_composite")
+        col = layout.column(heading = "Cache")
+        col.prop(strip, "use_cache_raw", text = "Raw")
+        col.prop(strip, "use_cache_preprocessed", text = "Pre-Processed")
+        col.prop(strip, "use_cache_composite", text = "Composite")
 
 
 class SEQUENCER_PT_preview(SequencerButtonsPanel_Output, Panel):
