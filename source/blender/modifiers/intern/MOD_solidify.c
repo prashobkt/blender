@@ -97,7 +97,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *flow;
+  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -120,16 +120,15 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
-  flow = uiLayoutGridFlow(layout, true, 0, true, false, false);
-  col = uiLayoutColumn(flow, false);
+  col = uiLayoutColumnWithHeading(layout, false, "Normal");
   uiItemR(col, &ptr, "use_flip_normals", 0, NULL, ICON_NONE);
   if (solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE) {
+    uiItemR(col, &ptr, "use_quality_normals", 0, IFACE_("High Quality"), ICON_NONE);
     uiItemR(col, &ptr, "use_even_offset", 0, NULL, ICON_NONE);
-    uiItemR(col, &ptr, "use_quality_normals", 0, NULL, ICON_NONE);
   }
 
-  col = uiLayoutColumn(flow, false);
-  uiItemR(col, &ptr, "use_rim", 0, NULL, ICON_NONE);
+  col = uiLayoutColumnWithHeading(layout, false, "Rim");
+  uiItemR(col, &ptr, "use_rim", 0, IFACE_("Fill"), ICON_NONE);
   sub = uiLayoutColumn(col, false);
   uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_rim"));
   uiItemR(sub, &ptr, "use_rim_only", 0, NULL, ICON_NONE);
