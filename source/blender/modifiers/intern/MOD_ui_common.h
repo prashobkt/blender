@@ -26,55 +26,15 @@
 
 #include "DEG_depsgraph_build.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ARegionType;
 struct bContext;
 struct PanelType;
 struct uiLayout;
-
-/**
- * Template for modifier UI code:
- *
-static void panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-  PointerRNA ptr;
-  PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-
-  // Draw modifier layout
-
-  modifier_panel_end(layout, &ptr);
-}
-
-static void subpanel_draw(const bContext *C, Panel *panel)
-{
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
-
-  // Draw subpanel layout
-}
-
-static void subpanel_draw_header(const bContext *C, Panel *panel)
-{
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
-
-  // Draw header layout
-}
-
-static void panel(ARegionType *region_type)
-{
-  PanelType *panel_type = modifier_panel_register(region_type, "MODIFIER_TYPE", panel_draw);
-  modifier_subpanel_register(
-    region_type, "IDNAME", "", subpanel_draw_header, subpanel_draw, panel_type);
-}
- */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+typedef void (*PanelDrawFn)(const bContext *, Panel *);
 
 void modifier_panel_buttons(const struct bContext *C, struct Panel *panel);
 
@@ -87,13 +47,13 @@ void modifier_panel_get_property_pointers(const bContext *C,
 
 struct PanelType *modifier_panel_register(struct ARegionType *region_type,
                                           const char *modifier_type,
-                                          void *draw);
+                                          PanelDrawFn draw);
 
 struct PanelType *modifier_subpanel_register(struct ARegionType *region_type,
                                              const char *name,
                                              const char *label,
-                                             void *draw_header,
-                                             void *draw,
+                                             PanelDrawFn draw_header,
+                                             PanelDrawFn draw,
                                              struct PanelType *parent);
 
 #ifdef __cplusplus

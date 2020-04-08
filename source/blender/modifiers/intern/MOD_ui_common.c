@@ -355,7 +355,7 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
 /**
  * Create a panel in the context's region
  */
-PanelType *modifier_panel_register(ARegionType *region_type, const char *name, void *draw)
+PanelType *modifier_panel_register(ARegionType *region_type, const char *name, PanelDrawFn draw)
 {
 
   /* Get the name for the modifier's panel. */
@@ -390,8 +390,8 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, v
 PanelType *modifier_subpanel_register(ARegionType *region_type,
                                       const char *name,
                                       const char *label,
-                                      void *draw_header,
-                                      void *draw,
+                                      PanelDrawFn draw_header,
+                                      PanelDrawFn draw,
                                       PanelType *parent)
 {
   /* Create the subpanel's ID name. */
