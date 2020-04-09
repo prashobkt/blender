@@ -93,7 +93,8 @@ class USDExportTest(AbstractUSDTest):
         # Do some minimal assertions on the USDA file.
         self.assertTrue(usd.exists(), f"File {usd} should exist: {output}")
         usd_contents = usd.read_text(encoding='utf8')
-        self.assertIn('metersPerUnit = 1', usd_contents[:256])
+        self.assertIn('metersPerUnit = 1', usd_contents[:256],
+            f"Basic test failed, probably more info in Blender's output:\n\n{output}\n\n---")
         self.assertIn('upAxis = "Z"', usd_contents[:256])
 
         # Uncomment to get a copy of the file that won't be deleted.
