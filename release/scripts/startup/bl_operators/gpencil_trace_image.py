@@ -103,7 +103,7 @@ class GPENCIL_OT_trace(Operator):
 
     def invoke(self, context, _event):
         scene = context.scene
-        self.frame_target = scene.frame_start
+        self.frame_target = scene.frame_current
 
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
