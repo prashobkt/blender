@@ -2307,6 +2307,9 @@ void uiItemM_ptr(uiLayout *layout, struct MenuType *mt, const char *name, int ic
 void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon);
 /* menu contents */
 void uiItemMContents(uiLayout *layout, const char *menuname);
+/* Decorators */
+void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop, int index);
+void uiItemDecoratorR(uiLayout *layout, PointerRNA *ptr, const char *propname, int index);
 /* value */
 void uiItemV(uiLayout *layout, const char *name, int icon, int argval);
 /* separator */
