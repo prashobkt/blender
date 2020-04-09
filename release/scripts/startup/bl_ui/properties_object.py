@@ -246,25 +246,15 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
             # Only useful with object having faces/materials...
             col.prop(obj, "color")
 
-
-class OBJECT_PT_display_bounds(ObjectButtonsPanel, Panel):
-    bl_label = "Bounds"
-    bl_parent_id = "OBJECT_PT_display"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw_header(self, context):
-
-        obj = context.object
-
-        self.layout.prop(obj, "show_bounds", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        obj = context.object
-        layout.use_property_split = True
-
-        layout.active = obj.show_bounds or (obj.display_type == 'BOUNDS')
-        layout.prop(obj, "display_bounds_type", text="Shape")
+        col = layout.column(align=False, heading="Bounds")
+        col.use_property_decorate = False
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(obj, "show_bounds", text="")
+        sub = sub.row(align=True)
+        sub.active = obj.show_bounds or (obj.display_type == 'BOUNDS')
+        sub.prop(obj, "display_bounds_type", text="")
+        row.prop_decorator(obj, "display_bounds_type")
 
 
 class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
@@ -401,7 +391,6 @@ classes = (
     OBJECT_PT_motion_paths,
     OBJECT_PT_motion_paths_display,
     OBJECT_PT_display,
-    OBJECT_PT_display_bounds,
     OBJECT_PT_visibility,
     OBJECT_PT_custom_props,
 )
