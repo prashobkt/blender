@@ -141,7 +141,11 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   }
 
   /* Create Layer and frame. */
-  bGPDlayer *gpl = BKE_gpencil_layer_named_get(gpd, DATA_("Trace"));
+  bGPDlayer *gpl = NULL;
+  if (!newob) {
+    gpl = BKE_gpencil_layer_active_get(gpd);
+  }
+
   if (gpl == NULL) {
     gpl = BKE_gpencil_layer_addnew(gpd, DATA_("Trace"), true);
   }
