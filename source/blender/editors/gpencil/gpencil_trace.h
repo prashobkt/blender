@@ -67,6 +67,9 @@ void ED_gpencil_trace_image_to_bm(struct ImBuf *ibuf,
 void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
                                  struct Object *ob,
                                  struct bGPDframe *gpf,
-                                 int offset[2]);
+                                 int offset[2],
+                                 const float scale,
+                                 const int resolution,
+                                 const int thickness);
 
 #endif /* __GPENCIL_TRACE_H__ */

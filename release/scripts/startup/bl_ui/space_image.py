@@ -242,6 +242,7 @@ class IMAGE_MT_image(Menu):
             layout.separator()
             layout.operator("palette.extract_from_image", text="Extract Palette")
             layout.operator("gpencil.image_to_grease_pencil", text="Generate Grease Pencil")
+            layout.operator("gpencil.trace", text="Trace Image to Grease Pencil...")
 
 
 class IMAGE_MT_image_invert(Menu):

@@ -232,13 +232,19 @@ static void add_bezier(bGPDstroke *gps,
  * \param gpf: Currect grease pencil frame
  * \param offset: Offset to center
  */
-void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf, int offset[2])
+void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
+                                 Object *ob,
+                                 bGPDframe *gpf,
+                                 int offset[2],
+                                 const float scale,
+                                 const int resolution,
+                                 const int thickness)
 {
   potrace_path_t *path = st->plist;
   int n, *tag;
   potrace_dpoint_t(*c)[3];
 
-  const float scale = 0.005f;
+  const float scalef = 0.005f * scale;
   /* Draw each curve. */
   path = st->plist;
   while (path != NULL) {
@@ -246,7 +252,7 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf
     tag = path->curve.tag;
     c = path->curve.c;
     /* Create a new stroke. */
-    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, 0, 10, false);
+    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, 0, thickness, false);
     /* Last point that is equals to start point. */
     float start_point[2], last[2];
     start_point[0] = c[n - 1][2].x;
@@ -256,11 +262,11 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf
       switch (tag[i]) {
         case POTRACE_CORNER: {
           if (gps->totpoints == 0) {
-            add_point(gps, scale, offset, c[n - 1][2].x, c[n - 1][2].y);
+            add_point(gps, scalef, offset, c[n - 1][2].x, c[n - 1][2].y);
           }
-          add_point(gps, scale, offset, c[i][1].x, c[i][1].y);
+          add_point(gps, scalef, offset, c[i][1].x, c[i][1].y);
 
-          add_point(gps, scale, offset, c[i][2].x, c[i][2].y);
+          add_point(gps, scalef, offset, c[i][2].x, c[i][2].y);
           break;
         }
         case POTRACE_CURVETO: {
@@ -282,8 +288,15 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st, Object *ob, bGPDframe *gpf
           cp4[0] = c[i][2].x;
           cp4[1] = c[i][2].y;
 
-          add_bezier(
-              gps, scale, offset, 5, cp1, cp2, cp3, cp4, (gps->totpoints == 0) ? false : true);
+          add_bezier(gps,
+                     scalef,
+                     offset,
+                     resolution,
+                     cp1,
+                     cp2,
+                     cp3,
+                     cp4,
+                     (gps->totpoints == 0) ? false : true);
           copy_v2_v2(last, cp4);
           break;
         }

@@ -396,9 +396,9 @@ void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
   RNA_def_int(ot->srna, "frame_target", 1, 1, 100000, "Frame Target", "", 1, 100000);
   RNA_def_string(ot->srna,
                  "target",
-                 "Target",
+                 "*NEW",
                  64,
-                 "",
+                 "Target Object",
                  "Target grease pencil object name. Leave empty for new object");
 
   RNA_def_enum(ot->srna, "project_type", reproject_type, GP_REPROJECT_VIEW, "Projection Type", "");

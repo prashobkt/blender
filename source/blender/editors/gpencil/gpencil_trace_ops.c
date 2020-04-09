@@ -88,6 +88,9 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "target", target);
   const int frame_target = RNA_int_get(op->ptr, "frame_target");
   const float threshold = RNA_float_get(op->ptr, "threshold");
+  const float scale = RNA_float_get(op->ptr, "scale");
+  const int resolution = RNA_int_get(op->ptr, "resolution");
+  const int thickness = RNA_int_get(op->ptr, "thickness");
 
   ImBuf *ibuf;
   void *lock;
@@ -163,7 +166,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   int offset[2];
   offset[0] = ibuf->x / 2;
   offset[1] = ibuf->y / 2;
-  ED_gpencil_trace_data_to_gp(st, ob_gpencil, gpf, offset);
+  ED_gpencil_trace_data_to_gp(st, ob_gpencil, gpf, offset, scale, resolution, thickness);
 
   /* Free memory. */
   potrace_state_free(st);
@@ -206,17 +209,29 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
                  "target",
                  "*NEW",
                  64,
-                 "",
+                 "Target Object",
                  "Target grease pencil object name. Leave empty for new object");
   RNA_def_int(ot->srna, "frame_target", 1, 1, 100000, "Frame Target", "", 1, 100000);
+  RNA_def_int(ot->srna, "thickness", 10, 1, 1000, "Thickness", "", 1, 1000);
+  RNA_def_int(
+      ot->srna, "resolution", 5, 1, 20, "Resolution", "Resolution of the generated curves", 1, 20);
 
+  RNA_def_float(ot->srna,
+                "scale",
+                1.0f,
+                0.001f,
+                100.0f,
+                "Scale",
+                "Scale of the final stroke",
+                0.001f,
+                100.0f);
   RNA_def_float_factor(ot->srna,
                        "threshold",
                        0.5f,
                        0.0f,
                        1.0f,
                        "Color Threshold",
-                       "Determine what is considered whithe and what black",
+                       "Determine what is considered white and what black",
                        0.0f,
                        1.0f);
 }
