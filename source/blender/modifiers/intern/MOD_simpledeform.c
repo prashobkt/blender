@@ -497,7 +497,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void axis_origin_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *split;
+  uiLayout *row, *decorator_layout;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -514,13 +514,10 @@ static void axis_origin_panel_draw(const bContext *C, Panel *panel)
            MOD_SIMPLEDEFORM_MODE_TAPER,
            MOD_SIMPLEDEFORM_MODE_STRETCH,
            MOD_SIMPLEDEFORM_MODE_TWIST)) {
-    split = uiLayoutSplit(layout, 0.4f, false);
-    row = uiLayoutRow(split, true);
-    uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-    uiItemL(row, IFACE_("Lock"), ICON_NONE);
-    row = uiLayoutRow(split, true);
-    uiLayoutSetPropSep(row, false);
     int deform_axis = RNA_enum_get(&ptr, "deform_axis");
+
+    row = uiLayoutRow(layout, true);
+    decorator_layout = uiItemL_respect_property_split(row, IFACE_("Lock"), ICON_NONE);
     if (deform_axis != 0) {
       uiItemR(row, &ptr, "lock_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
     }
@@ -530,7 +527,7 @@ static void axis_origin_panel_draw(const bContext *C, Panel *panel)
     if (deform_axis != 2) {
       uiItemR(row, &ptr, "lock_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
     }
-    uiItemL(row, "", ICON_BLANK1);
+    uiItemL(decorator_layout, "", ICON_BLANK1);
   }
 }
 

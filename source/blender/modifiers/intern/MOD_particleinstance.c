@@ -560,7 +560,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *split;
+  uiLayout *row, *decorator_layout;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -588,29 +588,19 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemS(layout);
 
-  /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Create Instances From"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
+  row = uiLayoutRow(layout, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Create Instances"), ICON_NONE);
   uiItemR(row, &ptr, "use_normal", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_children", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_size", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
-  /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Show"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
+  row = uiLayoutRow(layout, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Show"), ICON_NONE);
   uiItemR(row, &ptr, "show_alive", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "show_dead", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "show_unborn", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
   uiItemR(layout, &ptr, "particle_amount", 0, IFACE_("Amount"), ICON_NONE);
   uiItemR(layout, &ptr, "particle_offset", 0, IFACE_("Offset"), ICON_NONE);

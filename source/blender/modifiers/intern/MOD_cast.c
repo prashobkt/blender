@@ -531,9 +531,9 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *split;
-
+  uiLayout *sub, *row, *decorator_layout;
   uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
@@ -543,19 +543,15 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA cast_object_ptr = RNA_pointer_get(&ptr, "object");
 
   uiItemR(layout, &ptr, "cast_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
   uiLayoutSetPropSep(layout, true);
 
-  /* Aligned booleans with a single label. */
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Axis"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
+  row = uiLayoutRow(layout, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Axis"), ICON_NONE);
   uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
   uiItemR(layout, &ptr, "factor", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "radius", 0, NULL, ICON_NONE);

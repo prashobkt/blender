@@ -141,7 +141,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   /* No decorators for the first few rows. */
   uiLayoutSetPropDecorate(col, false);
 
-  /* Aligned axis booleans with a single label and no decorators. */
   prop = RNA_struct_find_property(&ptr, "use_axis");
   row = uiLayoutRow(col, true);
   decorator_layout = uiItemL_respect_property_split(row, IFACE_("Axis"), ICON_NONE);
@@ -150,7 +149,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
   uiItemL(decorator_layout, "", ICON_BLANK1);
 
-  /* Aligned axis booleans with a single label and no decorators. */
   prop = RNA_struct_find_property(&ptr, "use_bisect_axis");
   row = uiLayoutRow(col, true);
   decorator_layout = uiItemL_respect_property_split(row, IFACE_("Bisect"), ICON_NONE);
@@ -159,7 +157,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
   uiItemL(decorator_layout, "", ICON_BLANK1);
 
-  /* Aligned axis booleans with a single label and no decorators. */
   prop = RNA_struct_find_property(&ptr, "use_bisect_flip_axis");
   row = uiLayoutRow(col, true);
   decorator_layout = uiItemL_respect_property_split(row, IFACE_("Flip"), ICON_NONE);
@@ -205,7 +202,7 @@ static void symmetry_panel_draw(const bContext *C, Panel *panel)
 
 static void uv_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *row, *split, *sub, *decorator_layout;
+  uiLayout *col, *row, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -215,7 +212,7 @@ static void uv_panel_draw(const bContext *C, Panel *panel)
 
   col = uiLayoutColumn(layout, false);
   row = uiLayoutRow(col, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Mirror U"), ICON_NONE);
+  uiItemL_respect_property_split(row, IFACE_("Mirror U"), ICON_NONE);
   uiItemR(row, &ptr, "use_mirror_u", 0, IFACE_(""), ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_mirror_u"));
@@ -223,7 +220,7 @@ static void uv_panel_draw(const bContext *C, Panel *panel)
 
   col = uiLayoutColumn(layout, false);
   row = uiLayoutRow(col, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("V"), ICON_NONE);
+  uiItemL_respect_property_split(row, IFACE_("V"), ICON_NONE);
   uiItemR(row, &ptr, "use_mirror_v", 0, IFACE_(""), ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_mirror_v"));

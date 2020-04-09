@@ -277,7 +277,7 @@ static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row, *col;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;

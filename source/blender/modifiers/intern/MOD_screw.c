@@ -1170,7 +1170,7 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *split;
+  uiLayout *sub, *row, *col, *decorator_layout;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -1204,15 +1204,11 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "steps", 0, IFACE_("Steps Viewport"), ICON_NONE);
   uiItemR(col, &ptr, "render_steps", 0, IFACE_("Render"), ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Stretch"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
+  row = uiLayoutRow(layout, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Stretch"), ICON_NONE);
   uiItemR(row, &ptr, "use_stretch_u", UI_ITEM_R_TOGGLE, IFACE_("U"), ICON_NONE);
   uiItemR(row, &ptr, "use_stretch_v", UI_ITEM_R_TOGGLE, IFACE_("V"), ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
   modifier_panel_end(layout, &ptr);
 }

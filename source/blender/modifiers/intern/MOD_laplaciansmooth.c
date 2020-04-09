@@ -580,7 +580,7 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *split;
+  uiLayout *sub, *row, *decorator_layout;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -594,17 +594,12 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
 
-  /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Axis"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
+  row = uiLayoutRow(layout, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Axis"), ICON_NONE);
   uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
   uiItemR(layout, &ptr, "lambda_factor", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "lambda_border", 0, NULL, ICON_NONE);

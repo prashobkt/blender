@@ -1943,7 +1943,7 @@ static void requiredDataMask(Object *UNUSED(ob),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *split;
+  uiLayout *row, *decorator_layout;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -1957,16 +1957,12 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "branch_smoothing", 0, NULL, ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Symmetry"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
+  row = uiLayoutRow(layout, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Symmetry"), ICON_NONE);
   uiItemR(row, &ptr, "use_x_symmetry", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_y_symmetry", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_z_symmetry", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
   uiItemR(layout, &ptr, "use_smooth_shade", 0, NULL, ICON_NONE);
 
