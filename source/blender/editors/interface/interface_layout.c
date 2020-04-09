@@ -3067,6 +3067,10 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
 {
   if (layout->item.flag & UI_ITEM_PROP_SEP) {
     uiBlock *block = uiLayoutGetBlock(layout);
+
+    /* Don't do further splits of the layout. */
+    uiLayoutSetPropSep(layout, false);
+
     uiLayout *layout_row = uiLayoutRow(layout, true);
     uiLayout *layout_split = uiLayoutSplit(layout_row, UI_ITEM_PROP_SEP_DIVIDE, true);
     uiLayout *layout_sub = uiLayoutColumn(layout_split, true);
@@ -3079,8 +3083,9 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
     layout_split = ui_item_prop_split_layout_hack(layout, layout_split);
     UI_block_layout_set_current(block, layout_split);
 
-    /* Give caller a new sub-row to place items in. */
-    return layout_row;
+    /* The decorator layout uses the row the split layout was inserted to.  */
+    uiLayout *layout_decorator = layout_row;
+    return layout_decorator;
   }
   else {
     char namestr[UI_MAX_NAME_STR];
