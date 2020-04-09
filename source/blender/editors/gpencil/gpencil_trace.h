@@ -69,6 +69,7 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
                                  struct bGPDframe *gpf,
                                  int offset[2],
                                  const float scale,
+                                 const float sample,
                                  const int resolution,
                                  const int thickness);
 

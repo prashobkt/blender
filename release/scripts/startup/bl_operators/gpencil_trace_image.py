@@ -75,9 +75,20 @@ class GPENCIL_OT_trace(Operator):
         max=100.0,
         default=1.0,
     )
+    sample: FloatProperty(
+        name="Sample Distance",
+        description="Determine distance between points",
+        soft_min=0.001, soft_max=100.0,
+        min=0.001, max=100.0,
+        default=0.05,
+        precision=3,
+        step=1,
+        subtype='DISTANCE',
+        unit='LENGTH',
+    )
     threshold: FloatProperty(
-        name="Colot Threshold",
-        description="Determine what is considered white and what blackl",
+        name="Color Threshold",
+        description="Determine what is considered white and what black",
         soft_min=0.0, soft_max=1.0,
         min=0.0, max=1.0,
         default=0.5,
@@ -96,6 +107,7 @@ class GPENCIL_OT_trace(Operator):
             thickness=self.thickness,
             resolution=self.resolution,
             scale=self.scale,
+            sample=self.sample,
             threshold=self.threshold
         )
 

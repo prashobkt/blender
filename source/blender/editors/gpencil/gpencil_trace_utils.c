@@ -231,12 +231,17 @@ static void add_bezier(bGPDstroke *gps,
  * \param ob: Target grease pencil object
  * \param gpf: Currect grease pencil frame
  * \param offset: Offset to center
+ * \param scale: Scale of the output
+ * \param sample: Sample distance to distribute points
+ * \param resolution: Resolution of curves
+ * \param thickness: Thickness of the stroke
  */
 void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
                                  Object *ob,
                                  bGPDframe *gpf,
                                  int offset[2],
                                  const float scale,
+                                 const float sample,
                                  const int resolution,
                                  const int thickness)
 {
@@ -304,6 +309,8 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
           break;
       }
     }
+    /* Resample stroke. */
+    BKE_gpencil_stroke_sample(gps, sample, false);
     /* Update geometry. */
     BKE_gpencil_stroke_geometry_update(gps);
 

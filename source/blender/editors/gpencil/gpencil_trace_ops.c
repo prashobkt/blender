@@ -89,6 +89,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   const int frame_target = RNA_int_get(op->ptr, "frame_target");
   const float threshold = RNA_float_get(op->ptr, "threshold");
   const float scale = RNA_float_get(op->ptr, "scale");
+  const float sample = RNA_float_get(op->ptr, "sample");
   const int resolution = RNA_int_get(op->ptr, "resolution");
   const int thickness = RNA_int_get(op->ptr, "thickness");
 
@@ -166,7 +167,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   int offset[2];
   offset[0] = ibuf->x / 2;
   offset[1] = ibuf->y / 2;
-  ED_gpencil_trace_data_to_gp(st, ob_gpencil, gpf, offset, scale, resolution, thickness);
+  ED_gpencil_trace_data_to_gp(st, ob_gpencil, gpf, offset, scale, sample, resolution, thickness);
 
   /* Free memory. */
   potrace_state_free(st);
@@ -223,6 +224,15 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
                 100.0f,
                 "Scale",
                 "Scale of the final stroke",
+                0.001f,
+                100.0f);
+  RNA_def_float(ot->srna,
+                "sample",
+                0.05f,
+                0.001f,
+                100.0f,
+                "Sample",
+                "Distance to sample points",
                 0.001f,
                 100.0f);
   RNA_def_float_factor(ot->srna,
