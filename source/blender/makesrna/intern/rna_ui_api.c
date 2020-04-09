@@ -893,6 +893,20 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   api_ui_item_common(func);
 
+  func = RNA_def_function(srna, "prop_decorator", "uiItemDecoratorR");
+  api_ui_item_rna_common(func);
+  RNA_def_int(func,
+              "index",
+              /* RNA_NO_INDEX == -1 */
+              -1,
+              -2,
+              INT_MAX,
+              "",
+              "The index of this button, when set a single member of an array can be accessed, "
+              "when set to -1 all array members are used",
+              -2,
+              INT_MAX);
+
   for (int is_menu_hold = 0; is_menu_hold < 2; is_menu_hold++) {
     func = (is_menu_hold) ? RNA_def_function(srna, "operator_menu_hold", "rna_uiItemOMenuHold") :
                             RNA_def_function(srna, "operator", "rna_uiItemO");
