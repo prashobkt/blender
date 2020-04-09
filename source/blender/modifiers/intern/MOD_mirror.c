@@ -126,58 +126,55 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *split;
+  uiLayout *row, *col, *decorator_layout;
   uiLayout *layout = panel->layout;
+  PropertyRNA *prop;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  uiLayoutSetPropSep(layout, true);
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetPropSep(col, true);
+
+  /* No decorators for the first few rows. */
+  uiLayoutSetPropDecorate(col, false);
 
   /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.4, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Axis"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
-  PropertyRNA *prop = RNA_struct_find_property(&ptr, "use_axis");
+  prop = RNA_struct_find_property(&ptr, "use_axis");
+  row = uiLayoutRow(col, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Axis"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
   /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Bisect"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
   prop = RNA_struct_find_property(&ptr, "use_bisect_axis");
+  row = uiLayoutRow(col, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Bisect"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
   /* Aligned axis booleans with a single label and no decorators. */
-  split = uiLayoutSplit(layout, 0.4, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Flip"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
   prop = RNA_struct_find_property(&ptr, "use_bisect_flip_axis");
+  row = uiLayoutRow(col, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Flip"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
   uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  uiItemL(decorator_layout, "", ICON_BLANK1);
 
-  uiItemR(layout, &ptr, "mirror_object", 0, NULL, ICON_NONE);
+  uiItemS(col);
+  /* Now decorators are fine, we don't insert multiple items in a single row anymore. */
+  uiLayoutSetPropDecorate(col, true);
 
-  uiItemR(layout, &ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+  uiItemR(col, &ptr, "mirror_object", 0, NULL, ICON_NONE);
+
+  uiItemR(col, &ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
 }
 
 static void merge_panel_draw_header(const bContext *C, Panel *panel)
