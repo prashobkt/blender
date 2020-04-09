@@ -372,7 +372,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
 
   if (G.debug) {
-    uiItemR(layout, &ptr, "debug_options", 0, "", ICON_NONE);
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiItemR(col, &ptr, "debug_options", 0, NULL, ICON_NONE);
   }
 
   modifier_panel_end(layout, &ptr);
