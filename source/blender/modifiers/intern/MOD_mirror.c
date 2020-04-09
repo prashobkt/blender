@@ -205,7 +205,7 @@ static void symmetry_panel_draw(const bContext *C, Panel *panel)
 
 static void uv_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *row, *split;
+  uiLayout *col, *row, *split, *sub, *decorator_layout;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -213,24 +213,21 @@ static void uv_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  /* Flip U and V booleans aligned with one label. */
-  split = uiLayoutSplit(layout, 0.4f, false);
-  row = uiLayoutRow(split, false);
-  uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-  uiItemL(row, IFACE_("Flip"), ICON_NONE);
-  row = uiLayoutRow(split, true);
-  uiLayoutSetPropSep(row, false);
-  uiItemR(row, &ptr, "use_mirror_u", UI_ITEM_R_TOGGLE, IFACE_("U"), ICON_NONE);
-  uiItemR(row, &ptr, "use_mirror_v", UI_ITEM_R_TOGGLE, IFACE_("V"), ICON_NONE);
-  uiItemL(row, "", ICON_BLANK1);
+  col = uiLayoutColumn(layout, false);
+  row = uiLayoutRow(col, true);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Mirror U"), ICON_NONE);
+  uiItemR(row, &ptr, "use_mirror_u", 0, IFACE_(""), ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_mirror_u"));
+  uiItemR(sub, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, IFACE_("Offset"), ICON_NONE);
 
-  col = uiLayoutColumn(layout, true);
+  col = uiLayoutColumn(layout, false);
   row = uiLayoutRow(col, true);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_u"));
-  uiItemR(row, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, IFACE_("Offset U"), ICON_NONE);
-  row = uiLayoutRow(col, true);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_v"));
-  uiItemR(row, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, IFACE_("V"), ICON_NONE);
+  decorator_layout = uiItemL_respect_property_split(row, IFACE_("V"), ICON_NONE);
+  uiItemR(row, &ptr, "use_mirror_v", 0, IFACE_(""), ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_mirror_v"));
+  uiItemR(sub, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, IFACE_("Offset"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
