@@ -1,15 +1,33 @@
 
+/*
+ * Based on:
+ * A Fast and Stable Feature-Aware Motion Blur Filter
+ * by Jean-Philippe Guertin, Morgan McGuire, Derek Nowrouzezahrai
+ *
+ * With modification from the presentation:
+ * Next Generation Post Processing in Call of Duty Advanced Warfare
+ * by Jorge Jimenez
+ */
 uniform sampler2D colorBuffer;
+uniform sampler2D depthBuffer;
 uniform sampler2D velocityBuffer;
 
 uniform int samples;
 uniform float sampleOffset;
+uniform vec2 viewportSize;
+uniform vec2 viewportSizeInv;
+/* TODO plug scene value */
+uniform vec2 nearFar = vec2(0.1, 100.0); /* Near & far view depths values */
+/* TODO make sure ortho works */
+#define linear_depth(z) \
+  ((true) ? (nearFar.x * nearFar.y) / (z * (nearFar.x - nearFar.y) + nearFar.y) : \
+            z * (nearFar.y - nearFar.x) + nearFar.x) /* Only true for camera view! */
 
 in vec4 uvcoordsvar;
 
 out vec4 FragColor;
 
-#define MAX_SAMPLE 64
+#define saturate(a) clamp(a, 0.0, 1.0)
 
 float wang_hash_noise(uint s)
 {
@@ -26,23 +44,177 @@ float wang_hash_noise(uint s)
   return fract(value + sampleOffset);
 }
 
+vec2 spread_compare(float center_motion_length, float sample_motion_length, float offset_length)
+{
+  return saturate(vec2(center_motion_length, sample_motion_length) - offset_length + 1.0);
+}
+
+/* TODO expose to user */
+#define DEPTH_SCALE (1.0 / 0.01)
+
+vec2 depth_compare(float center_depth, float sample_depth)
+{
+  return saturate(0.5 + vec2(DEPTH_SCALE, -DEPTH_SCALE) * (sample_depth - center_depth));
+}
+
+/* Kill contribution if not going the same direction. */
+float dir_compare(vec2 offset_dir, vec2 sample_motion, float sample_motion_length)
+{
+  if (sample_motion_length < 0.5) {
+    return 1.0;
+  }
+  return (dot(offset_dir, sample_motion / sample_motion_length) > 0.0) ? 1.0 : 0.0;
+}
+
+/* Return background (x) and foreground (y) weights. */
+vec2 sample_weight(float center_depth,
+                   float sample_depth,
+                   float center_motion_length,
+                   float sample_motion_length,
+                   float offset_length)
+{
+  /* Clasify foreground/background. */
+  vec2 depth_weight = depth_compare(center_depth, sample_depth);
+  /* Weight if sample is overlapping or under the center pixel. */
+  vec2 spread_weight = spread_compare(center_motion_length, sample_motion_length, offset_length);
+  return depth_weight * spread_weight;
+}
+
+vec4 sample_velocity(vec2 uv)
+{
+  vec4 data = texture(velocityBuffer, uv);
+  data = data * 2.0 - 1.0;
+  /* Needed to match cycles. Can't find why... (fclem) */
+  data *= 0.5;
+  /* Transpose to pixelspace. */
+  data *= viewportSize.xyxy;
+  return data;
+}
+
+vec2 sample_velocity(vec2 uv, const bool next)
+{
+  vec4 data = sample_velocity(uv);
+  data.xy = (next ? data.zw : data.xy);
+  return data.xy;
+}
+
+#define SEARCH_KERNEL 8.0
+#define KERNEL 8
+
+void gather_blur(vec2 uv,
+                 vec2 center_motion,
+                 float center_depth,
+                 vec2 max_motion,
+                 const bool next,
+                 inout vec4 accum,
+                 inout vec4 accum_bg,
+                 inout vec3 w_accum)
+{
+  float center_motion_length = length(center_motion);
+  float max_motion_length = length(max_motion);
+
+  if (max_motion_length < 0.5) {
+    return;
+  }
+
+  vec2 offset_dir = max_motion / max_motion_length;
+  float offset_length_inc = max_motion_length / float(KERNEL);
+  vec2 uv_inc = ((uv * viewportSize - max_motion) * viewportSizeInv - uv) / float(KERNEL);
+
+  float start_offset = -sampleOffset;
+  float offset_length = offset_length_inc * start_offset;
+  vec2 offset = uv_inc * start_offset;
+
+  for (int i = 0; i < KERNEL; i++) {
+    offset_length += offset_length_inc;
+    offset += uv_inc;
+
+    /* TODO snap uv to pixel center. Will avoid halo at object edges */
+    vec2 sample_uv = uv + offset;
+    vec2 sample_motion = sample_velocity(sample_uv, next);
+    float sample_motion_length = length(sample_motion);
+    float sample_depth = linear_depth(texture(depthBuffer, sample_uv).r);
+    vec4 col2 = textureLod(colorBuffer, sample_uv, 0.0);
+
+    float d2 = dir_compare(offset_dir, sample_motion, sample_motion_length);
+    vec2 w2 = sample_weight(
+        center_depth, sample_depth, center_motion_length, sample_motion_length, offset_length);
+
+    w2.xy *= d2;
+
+    accum += col2 * w2.y;
+    accum_bg += col2 * w2.x;
+    w_accum.xy += w2;
+    w_accum.z += d2;
+  }
+}
+
 void main()
 {
-  float inv_samples = 1.0 / float(samples);
-  float noise = wang_hash_noise(0u);
+  /* TODO use blue noise texture. */
+  float noise1 = wang_hash_noise(0u);
+  float noise2 = fract(wang_hash_noise(5u) * 97894.594987);
 
   vec2 uv = uvcoordsvar.xy;
-  vec4 motion = texture(velocityBuffer, uv) * 2.0 - 1.0;
 
-  /* Needed to match cycles. Can't find why... (fclem) */
-  motion *= -0.25;
+  /* Data of the center pixel of the gather (target). */
+  float center_depth = linear_depth(texture(depthBuffer, uv).r);
+  vec4 center_motion = sample_velocity(uv);
+  vec4 center_color = textureLod(colorBuffer, uv, 0.0);
 
-  FragColor = vec4(0.0);
-  for (float j = noise; j < 8.0; j++) {
-    FragColor += textureLod(colorBuffer, uv + motion.xy * (0.125 * j), 0.0);
+  /* TODO replace by preprocessing steps. */
+  vec4 max_motion = center_motion;
+  for (float j = 0.0; j <= 20.0; j++) {
+    for (float i = 0.0; i <= 20.0; i++) {
+      vec2 offset = vec2(i, j) * 3.0 - 20.0;
+      vec2 sample_uv = (floor(vec2(noise1, noise2) - 0.5 + uv * viewportSize / 20.0) * 20.0 +
+                        offset) *
+                       viewportSizeInv;
+      vec4 motion = sample_velocity(sample_uv);
+
+      if (length(motion.xy) > length(max_motion.xy)) {
+        max_motion.xy = motion.xy;
+      }
+      if (length(motion.zw) > length(max_motion.zw)) {
+        max_motion.zw = motion.zw;
+      }
+    }
   }
-  for (float j = noise; j < 8.0; j++) {
-    FragColor += textureLod(colorBuffer, uv + motion.zw * (0.125 * j), 0.0);
-  }
-  FragColor *= 1.0 / 16.0;
+
+  /* First (center) sample: time = T */
+  /* x: Background, y: Foreground, z: dir. */
+  vec3 w_accum = vec3(0.0, 0.0, 1.0);
+  vec4 accum_bg = vec4(0.0);
+  vec4 accum = vec4(0.0);
+  /* First linear gather. time = [T - delta, T] */
+  gather_blur(uv, center_motion.xy, center_depth, max_motion.xy, false, accum, accum_bg, w_accum);
+  /* Second linear gather. time = [T, T + delta] */
+  gather_blur(uv, center_motion.zw, center_depth, max_motion.zw, true, accum, accum_bg, w_accum);
+  /* Also sample in center motion direction.
+   * Allow to recover motion where there is conflicting
+   * motion between foreground and background.
+   * TODO(fclem) distribute samples between max motion and this direction inside the main loop.*/
+  gather_blur(
+      uv, center_motion.xy, center_depth, center_motion.xy, false, accum, accum_bg, w_accum);
+  gather_blur(
+      uv, center_motion.zw, center_depth, center_motion.zw, true, accum, accum_bg, w_accum);
+
+#if 1
+  /* Avoid division by 0.0. */
+  float w = 1.0 / (50.0 * float(KERNEL) * 4.0);
+  accum_bg += center_color * w;
+  w_accum.x += w;
+  /* Note: In Jimenez's presentation, they used center sample.
+   * We use background color as it contains more informations for foreground
+   * elements that have not enough weights.
+   * Yield beter blur in complex motion. */
+  center_color = accum_bg / w_accum.x;
+#endif
+  /* Merge background. */
+  accum += accum_bg;
+  w_accum.y += w_accum.x;
+  /* Balance accumulation for failled samples.
+   * We replace the missing foreground by the background. */
+  float blend_fac = saturate(1.0 - w_accum.y / w_accum.z);
+  FragColor = (accum / w_accum.z) + center_color * blend_fac;
 }

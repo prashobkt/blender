@@ -188,6 +188,7 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
   EEVEE_MotionBlurData *mb_data = &effects->motion_blur;
+  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
 
@@ -199,7 +200,10 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
       DRW_shgroup_uniform_int_copy(grp, "samples", scene->eevee.motion_blur_samples);
       DRW_shgroup_uniform_float(grp, "sampleOffset", &effects->motion_blur_sample_offset, 1);
       DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &effects->source_buffer);
+      DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
       DRW_shgroup_uniform_texture_ref(grp, "velocityBuffer", &effects->velocity_tx);
+      DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
+      DRW_shgroup_uniform_vec2(grp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
     }
     {
