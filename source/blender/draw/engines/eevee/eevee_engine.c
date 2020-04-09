@@ -429,7 +429,7 @@ static void eevee_render_to_image(void *vedata,
   if (EEVEE_render_do_motion_blur(draw_ctx->depsgraph)) {
     Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
-    float shutter = scene->eevee.motion_blur_shutter;
+    float shutter = scene->eevee.motion_blur_shutter * 0.5f;
     float time = DEG_get_ctime(draw_ctx->depsgraph);
     /* Centered on frame for now. */
     float start_time = time - shutter;
