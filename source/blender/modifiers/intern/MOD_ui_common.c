@@ -171,6 +171,45 @@ void modifier_panel_get_property_pointers(const bContext *C,
   uiLayoutSetContextPointer(panel->layout, "modifier", r_md_ptr);
 }
 
+static void modifier_extras_menu(bContext *UNUSED(C), uiLayout *layout, void *md_v)
+{
+  ModifierData *md = (ModifierData *)md_v;
+
+  if (modifier_isSameTopology(md) && !modifier_isNonGeometrical(md)) {
+    uiItemEnumO(layout,
+                "OBJECT_OT_modifier_apply",
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply as Shape Key"),
+                0,
+                "apply_as",
+                MODIFIER_APPLY_SHAPE);
+  }
+
+  if (md->prev) {
+    PointerRNA op_ptr;
+    uiItemFullO(layout,
+                "OBJECT_OT_modifier_move_up",
+                IFACE_("Move Up"),
+                ICON_NONE,
+                NULL,
+                WM_OP_EXEC_DEFAULT,
+                0,
+                &op_ptr);
+    RNA_string_set(&op_ptr, "modifier", md->name);
+  }
+  if (md->next) {
+    PointerRNA op_ptr;
+    uiItemFullO(layout,
+                "OBJECT_OT_modifier_move_down",
+                IFACE_("Move Down"),
+                ICON_NONE,
+                NULL,
+                WM_OP_EXEC_DEFAULT,
+                0,
+                &op_ptr);
+    RNA_string_set(&op_ptr, "modifier", md->name);
+  }
+}
+
 #define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 void modifier_panel_buttons(const bContext *C, Panel *panel)
 {
@@ -216,14 +255,7 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
                 "apply_as",
                 MODIFIER_APPLY_DATA);
 
-    if (modifier_isSameTopology(md) && !modifier_isNonGeometrical(md)) {
-      uiItemEnumO(sub,
-                  "OBJECT_OT_modifier_apply",
-                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply as Shape Key"),
-                  0,
-                  "apply_as",
-                  MODIFIER_APPLY_SHAPE);
-    }
+    uiItemMenuF(sub, "", ICON_DOWNARROW_HLT, modifier_extras_menu, md);
   }
 
   if (!ELEM(md->type,
