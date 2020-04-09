@@ -210,21 +210,25 @@ static void uv_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumn(layout, false);
+  col = uiLayoutColumnWithHeading(layout, false, IFACE_("Mirror U"));
   row = uiLayoutRow(col, true);
-  uiItemL_respect_property_split(row, IFACE_("Mirror U"), ICON_NONE);
-  uiItemR(row, &ptr, "use_mirror_u", 0, IFACE_(""), ICON_NONE);
+  uiLayoutSetPropDecorate(row, false);
   sub = uiLayoutRow(row, true);
+  uiItemR(sub, &ptr, "use_mirror_u", 0, "", ICON_NONE);
+  sub = uiLayoutRow(sub, true);
   uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_mirror_u"));
-  uiItemR(sub, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, IFACE_("Offset"), ICON_NONE);
+  uiItemR(sub, &ptr, "mirror_offset_u", UI_ITEM_R_SLIDER, "", ICON_NONE);
+  uiItemDecoratorR(row, &ptr, "mirror_offset_v", 0);
 
-  col = uiLayoutColumn(layout, false);
+  col = uiLayoutColumnWithHeading(layout, false, "V");
   row = uiLayoutRow(col, true);
-  uiItemL_respect_property_split(row, IFACE_("V"), ICON_NONE);
-  uiItemR(row, &ptr, "use_mirror_v", 0, IFACE_(""), ICON_NONE);
+  uiLayoutSetPropDecorate(row, false);
   sub = uiLayoutRow(row, true);
+  uiItemR(sub, &ptr, "use_mirror_v", 0, "", ICON_NONE);
+  sub = uiLayoutRow(sub, true);
   uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_mirror_v"));
-  uiItemR(sub, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, IFACE_("Offset"), ICON_NONE);
+  uiItemR(sub, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, "", ICON_NONE);
+  uiItemDecoratorR(row, &ptr, "mirror_offset_v", 0);
 
   modifier_panel_end(layout, &ptr);
 }
