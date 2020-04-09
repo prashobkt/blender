@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.7
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
 #  This program is free software; you can redistribute it and/or
@@ -21,9 +21,11 @@
 
 import argparse
 import collections
+import dataclasses
 import pathlib
 import sys
 import unittest
+from typing import Set, List
 
 from modules.test_utils import (
     with_tempdir,
@@ -39,7 +41,24 @@ class AbstractUSDTest(AbstractBlenderRunnerTest):
 # Defined here at top-level so that the string's contents don't get indented.
 # The opening parentheses on some lines are an indication that these "def"s
 # are referencing another one, i.e. they're instances.
-expected_hierarchy = """
+# The lines are sorted alphabetically to allow stable comparison.
+expected_hierarchy = """<root>
+def "_materials"
+    def Material "Head"
+        def Shader "previewShader"
+    def Material "Nose"
+        def Shader "previewShader"
+def Xform "Camera"
+    def Camera "Camera"
+def Xform "Dupli1"
+    def Xform "GEO_Head_0"
+        def Mesh "Face" (
+        def Xform "GEO_Ear_L_1"
+            def Mesh "Ear" (
+        def Xform "GEO_Ear_R_2"
+            def Mesh "Ear" (
+        def Xform "GEO_Nose_3"
+            def Mesh "Nose" (
 def Xform "Ground_plane"
     def Mesh "Plane"
     def Xform "OutsideDupliGrandParent"
@@ -52,20 +71,6 @@ def Xform "Ground_plane"
                     def Mesh "Ear"
                 def Xform "GEO_Nose"
                     def Mesh "Nose"
-def "_materials"
-    def Material "Head"
-        def Shader "previewShader"
-    def Material "Nose"
-        def Shader "previewShader"
-def Xform "Dupli1"
-    def Xform "GEO_Head_0"
-        def Mesh "Face" (
-        def Xform "GEO_Ear_L_1"
-            def Mesh "Ear" (
-        def Xform "GEO_Ear_R_2"
-            def Mesh "Ear" (
-        def Xform "GEO_Nose_3"
-            def Mesh "Nose" (
 def Xform "ParentOfDupli2"
     def Mesh "Icosphere"
     def Xform "Dupli2"
@@ -77,9 +82,59 @@ def Xform "ParentOfDupli2"
                 def Mesh "Ear" (
             def Xform "GEO_Nose_3"
                 def Mesh "Nose" (
-def Xform "Camera"
-    def Camera "Camera"
 """.strip()
+
+
+@dataclasses.dataclass
+class Node:
+    children: Set['Node']
+    line: str
+    level: int
+
+    def __eq__(self, other: 'Node') -> bool:
+        return (self.level, self.line) == (other.level, other.line)
+
+    def __lt__(self, other: 'Node') -> bool:
+        return (self.level, self.line) < (other.level, other.line)
+
+    def __hash__(self) -> int:
+        return hash((self.level, self.line))
+
+    def __str__(self) -> str:
+        return self.line
+
+    def to_sorted_lines(self) -> str:
+        my_indent = self.level * ' '
+        lines = [f'{my_indent}{self.line}']
+
+        for child in sorted(self.children):
+            lines.append(child.to_sorted_lines())
+
+        return '\n'.join(lines)
+
+
+def parse_usda_hierarchy(hierarchy_lines: List[str]) -> Node:
+    """Build a representation based on indent + 'def' keywords"""
+
+    root = Node(children=set(), line='<root>', level=-1)
+    parents: List[Node] = [root]
+
+    for line in hierarchy_lines:
+        unindented = line.lstrip()
+        if not unindented.startswith('def '):
+            continue
+
+        level = len(line) - len(unindented)
+
+        while level <= parents[-1].level:
+            parents.pop()
+        parent_node: Node = parents[-1]
+
+        node = Node(children=set(), line=unindented, level=level)
+        parent_node.children.add(node)
+        parents.append(node)
+
+    return root
 
 class USDExportTest(AbstractUSDTest):
     @with_tempdir
@@ -101,16 +156,9 @@ class USDExportTest(AbstractUSDTest):
         # import shutil
         # shutil.copy(usd, "/tmp/usd_hierarchy_export_test.usda")
 
-        # Build a representation based on indent + 'def' keywords
-        hierarchy = []
-        lines = usd_contents.splitlines()
-        for line in lines:
-            unindented = line.lstrip()
-            if not unindented.startswith('def '):
-                continue
-            hierarchy.append(line)
+        root = parse_usda_hierarchy(usd_contents.splitlines())
         self.maxDiff = 2 * len(expected_hierarchy)
-        self.assertEqual(expected_hierarchy, '\n'.join(hierarchy))
+        self.assertEqual(expected_hierarchy, root.to_sorted_lines())
 
 
 if __name__ == '__main__':
