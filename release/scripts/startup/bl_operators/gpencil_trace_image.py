@@ -87,7 +87,7 @@ class GPENCIL_OT_trace(Operator):
 
     @classmethod
     def poll(self, context):
-        return True
+        return context.space_data.type == 'IMAGE_EDITOR'
 
     def execute(self, context):
         bpy.ops.gpencil.trace_image(
