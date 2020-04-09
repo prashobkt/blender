@@ -665,6 +665,20 @@ if(WITH_ALEMBIC)
   )
 endif()
 
+if(WITH_USD)
+  find_package_wrapper(USD)
+  if(NOT USD_FOUND)
+    message(FATAL_ERROR "USD is enabled but cannot be found")
+  endif()
+
+  add_python_test(
+    usd_export_test
+    ${CMAKE_CURRENT_LIST_DIR}/usd_export_test.py
+    --blender "${TEST_BLENDER_EXE}"
+    --testdir "${TEST_SRC_DIR}/usd"
+  )
+endif()
+
 if(WITH_CODEC_FFMPEG)
   add_python_test(
     ffmpeg
