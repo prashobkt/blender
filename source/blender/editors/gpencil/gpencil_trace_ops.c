@@ -132,7 +132,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   if (ob_gpencil->totcol == 0) {
     const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     int r_idx;
-    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gpencil, "Fill", &r_idx);
+    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gpencil, "Material", &r_idx);
     MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
     linearrgb_to_srgb_v4(gp_style->stroke_rgba, default_color);
@@ -141,9 +141,9 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   }
 
   /* Create Layer and frame. */
-  bGPDlayer *gpl = BKE_gpencil_layer_named_get(gpd, DATA_("Fills"));
+  bGPDlayer *gpl = BKE_gpencil_layer_named_get(gpd, DATA_("Trace"));
   if (gpl == NULL) {
-    gpl = BKE_gpencil_layer_addnew(gpd, DATA_("Fills"), true);
+    gpl = BKE_gpencil_layer_addnew(gpd, DATA_("Trace"), true);
   }
   bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, frame_target, GP_GETFRAME_ADD_NEW);
 
