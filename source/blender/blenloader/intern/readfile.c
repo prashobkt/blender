@@ -2838,7 +2838,7 @@ static int direct_link_id_restore_recalc(const FileData *fd,
     recalc |= direct_link_id_restore_recalc_exceptions(id_current);
 
     /* Evaluations for the current state that have not been performed yet
-     * by the time we are perfoming this undo step. */
+     * by the time we are performing this undo step. */
     recalc |= id_current->recalc;
 
     /* Tags that were set between the target state and the current state,
@@ -9556,6 +9556,20 @@ static void read_libblock_undo_restore_identical(
   /* Recalc flags, mostly these just remain as they are. */
   id_old->recalc |= direct_link_id_restore_recalc_exceptions(id_old);
   id_old->recalc_undo_accumulated = 0;
+
+  /* As usual, proxies require some special love...
+   * In `blo_clear_proxy_pointers_from_lib()` we clear all `proxy_from` pointers to local IDs, for
+   * undo. This is required since we do not re-read linked data in that case, so we also do not
+   * re-'lib_link' their pointers.
+   * Those `proxy_from` pointers are then re-defined properly when lib_linking the newly read local
+   * object. However, in case of re-used data 'as-is', we never lib_link it again, so we have to
+   * fix those backward pointers here. */
+  if (GS(id_old->name) == ID_OB) {
+    Object *ob = (Object *)id_old;
+    if (ob->proxy != NULL) {
+      ob->proxy->proxy_from = ob;
+    }
+  }
 }
 
 /* For undo, store changed datablock at old address. */
@@ -9672,7 +9686,7 @@ static BHead *read_libblock(FileData *fd,
                             const bool placeholder_set_indirect_extern,
                             ID **r_id)
 {
-  /* First attemp to restore existing datablocks for undo.
+  /* First attempt to restore existing datablocks for undo.
    * When datablocks are changed but still exist, we restore them at the old
    * address and inherit recalc flags for the dependency graph. */
   ID *id_old = NULL;

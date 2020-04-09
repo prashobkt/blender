@@ -817,23 +817,27 @@ def brush_settings_advanced(layout, context, brush, popover=False):
         use_accumulate = capabilities.has_accumulate
         use_frontface = True
 
+        col = layout.column(heading = "Auto-Masking", align = True)
+
         # topology automasking
-        layout.prop(brush, "use_automasking_topology")
+        layout.prop(brush, "use_automasking_topology", text = "Topology")
 
         # face masks automasking
-        layout.prop(brush, "use_automasking_face_sets")
+        layout.prop(brush, "use_automasking_face_sets", text = "Face Sets")
         
         # boundary edges/face sets automasking
-        layout.prop(brush, "use_automasking_boundary_edges")
-        layout.prop(brush, "use_automasking_boundary_face_sets")
+        layout.prop(brush, "use_automasking_boundary_edges", text = "Mesh Boundary")
+        layout.prop(brush, "use_automasking_boundary_face_sets", text = "Face Sets")
         layout.prop(brush, "automasking_boundary_edges_propagation_steps")
 
+        layout.separator()
 
         # sculpt plane settings
         if capabilities.has_sculpt_plane:
             layout.prop(brush, "sculpt_plane")
-            layout.prop(brush, "use_original_normal")
-            layout.prop(brush, "use_original_plane")
+            col = layout.column(heading = "Original", align = True)
+            layout.prop(brush, "use_original_normal", text ="Normal")
+            layout.prop(brush, "use_original_plane", text ="Plane")
             layout.separator()
 
     # 3D and 2D Texture Paint.

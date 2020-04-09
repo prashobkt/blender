@@ -872,10 +872,13 @@ class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
         col.prop(mesh, "remesh_voxel_adaptivity")
         col.prop(mesh, "use_remesh_fix_poles")
         col.prop(mesh, "use_remesh_smooth_normals")
-        col.prop(mesh, "use_remesh_preserve_volume")
-        col.prop(mesh, "use_remesh_preserve_paint_mask")
-        col.prop(mesh, "use_remesh_preserve_sculpt_face_sets")
-        col.operator("object.voxel_remesh", text="Remesh")
+
+        col = layout.column(heading = "Preserve", align = True)
+        col.prop(mesh, "use_remesh_preserve_volume", text = "Volume")
+        col.prop(mesh, "use_remesh_preserve_paint_mask", text = "Paint Mask")
+        col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text = "Face Sets")
+
+        layout.operator("object.voxel_remesh", text="Remesh")
 
 
 # TODO, move to space_view3d.py
@@ -896,23 +899,19 @@ class VIEW3D_PT_sculpt_options(Panel, View3DPaintPanel):
         tool_settings = context.tool_settings
         sculpt = tool_settings.sculpt
 
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
-
-        col = flow.column()
+        col = layout.column(heading = "Display", align = True)
         col.prop(sculpt, "use_threaded", text="Threaded Sculpt")
-        col = flow.column()
         col.prop(sculpt, "show_low_resolution")
-        col = flow.column()
         col.prop(sculpt, "use_sculpt_delay_updates")
-        col = flow.column()
         col.prop(sculpt, "use_deform_only")
 
-        col = flow.column()
         col.separator()
-        col.prop(sculpt, "use_automasking_topology")
-        col.prop(sculpt, "use_automasking_face_sets")
-        col.prop(sculpt, "use_automasking_boundary_edges")
-        col.prop(sculpt, "use_automasking_boundary_face_sets")
+
+        col = layout.column(heading = "Auto-Masking", align = True)
+        col.prop(sculpt, "use_automasking_topology", text = "Topology")
+        col.prop(sculpt, "use_automasking_face_sets", text = "Face Sets")
+        col.prop(sculpt, "use_automasking_boundary_edges", text = "Boundary Edges")
+        col.prop(sculpt, "use_automasking_boundary_face_sets", text = "Boundary Face Sets")
 
 
 class VIEW3D_PT_sculpt_options_gravity(Panel, View3DPaintPanel):
@@ -1212,12 +1211,8 @@ class VIEW3D_PT_tools_imagepaint_options(View3DPaintPanel, Panel):
         layout.prop(ipaint, "seam_bleed")
         layout.prop(ipaint, "dither", slider=True)
 
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
-
-        col = flow.column()
+        col = layout.column()
         col.prop(ipaint, "use_occlude")
-
-        col = flow.column()
         col.prop(ipaint, "use_backface_culling", text="Backface Culling")
 
 
