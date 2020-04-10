@@ -1295,7 +1295,75 @@ static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
   *r_y = sizey;
 }
 
-static void ui_do_animate(const bContext *C, Panel *panel)
+static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
+{
+  /* Only reorder the data for list recreate panels. */
+  if (panel->type == NULL || !(panel->type->flag & PANELTYPE_RECREATE)) {
+    return;
+  }
+  /* Don't reorder if this recreate panel doesn't support drag and drop reordering. */
+  if (panel->type->reorder == NULL) {
+    return;
+  }
+
+  char *context = panel->type->context;
+
+  /* Find how many recreate panels with this context string. */
+  int list_panels_len = 0;
+  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
+    if (list_panel->type) {
+      if ((strcmp(list_panel->type->context, context) == 0)) {
+        if (list_panel->type->flag & PANELTYPE_RECREATE) {
+          list_panels_len++;
+        }
+      }
+    }
+  }
+
+  /* Sort the matching recreate panels by their display order. */
+  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "recreatepanelsort");
+  PanelSort *sort_index = panel_sort;
+  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
+    if (list_panel->type) {
+      if ((strcmp(list_panel->type->context, context) == 0)) {
+        if (list_panel->type->flag & PANELTYPE_RECREATE) {
+          sort_index->panel = MEM_dupallocN(list_panel);
+          sort_index->orig = list_panel;
+          sort_index++;
+        }
+      }
+    }
+  }
+  qsort(panel_sort, list_panels_len, sizeof(PanelSort), compare_panel);
+
+  /* Find how many of those panels are above this panel. */
+  int move_to_index = 0;
+  for (; move_to_index < list_panels_len; move_to_index++) {
+    if (panel_sort[move_to_index].orig == panel) {
+      break;
+    }
+  }
+
+  /* Free panel sort array. */
+  int i = 0;
+  for (sort_index = panel_sort; i < list_panels_len; i++, sort_index++) {
+    MEM_freeN(sort_index->panel);
+  }
+  MEM_freeN(panel_sort);
+
+  /* Don't reorder the panel didn't change order after being dropped. */
+  if (move_to_index == panel->runtime.list_index) {
+    return;
+  }
+
+  /* Set the bit to tell the interface to recreate the list. */
+  panel->flag |= PNL_RECREATE_ORDER_CHANGED;
+
+  /* Finally, move this panel's list item to the new index in its list. */
+  panel->type->reorder(C, panel, move_to_index);
+}
+
+static void ui_do_animate(bContext *C, Panel *panel)
 {
   uiHandlePanelData *data = panel->activedata;
   ScrArea *area = CTX_wm_area(C);
@@ -1315,6 +1383,11 @@ static void ui_do_animate(const bContext *C, Panel *panel)
 
   if (fac >= 1.0f) {
     panel_activate_state(C, panel, PANEL_STATE_EXIT);
+    if (data->is_drag_drop) {
+      /* Note: doing this in #panel_activate_state would require removing const for context in many
+       * other places. */
+      reorder_recreate_panel_list(C, region, panel);
+    }
     return;
   }
 }
@@ -1467,73 +1540,6 @@ static void check_panel_overlap(ARegion *region, Panel *panel)
 }
 
 /************************ panel dragging ****************************/
-
-static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
-{
-  if (panel->type == NULL || !(panel->type->flag & PANELTYPE_RECREATE)) {
-    return;
-  }
-  /* Don't reorder if this recreate panel doesn't support drag and drop reordering. */
-  if (panel->type->reorder == NULL) {
-    return;
-  }
-
-  char *context = panel->type->context;
-
-  /* Find how many recreate panels with this context string. */
-  int list_panels_len = 0;
-  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
-    if (list_panel->type) {
-      if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PANELTYPE_RECREATE) {
-          list_panels_len++;
-        }
-      }
-    }
-  }
-
-  /* Sort the matching recreate panels by their display order. */
-  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "recreatepanelsort");
-  PanelSort *sort_index = panel_sort;
-  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
-    if (list_panel->type) {
-      if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PANELTYPE_RECREATE) {
-          sort_index->panel = MEM_dupallocN(list_panel);
-          sort_index->orig = list_panel;
-          sort_index++;
-        }
-      }
-    }
-  }
-  qsort(panel_sort, list_panels_len, sizeof(PanelSort), compare_panel);
-
-  /* Find how many of those panels are above this panel. */
-  int move_to_index = 0;
-  for (; move_to_index < list_panels_len; move_to_index++) {
-    if (panel_sort[move_to_index].orig == panel) {
-      break;
-    }
-  }
-
-  /* Free panel sort array. */
-  int i = 0;
-  for (sort_index = panel_sort; i < list_panels_len; i++, sort_index++) {
-    MEM_freeN(sort_index->panel);
-  }
-  MEM_freeN(panel_sort);
-
-  /* Don't reorder the panel didn't change order after being dropped. */
-  if (move_to_index == panel->runtime.list_index) {
-    return;
-  }
-
-  /* Set the bit to tell the interface to recreate the list. */
-  panel->flag |= PNL_RECREATE_ORDER_CHANGED;
-
-  /* Finally, move this panel's list item to the new index in its list. */
-  panel->type->reorder(C, panel, move_to_index);
-}
 
 static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
 {
@@ -2732,9 +2738,9 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
   }
 
   if (state == PANEL_STATE_EXIT) {
-    if (data->is_drag_drop) {
-      reorder_recreate_panel_list(C, region, panel);
-    }
+    // if (data->is_drag_drop) {
+    //   reorder_recreate_panel_list(C, region, panel);
+    // }
 
     MEM_freeN(data);
     panel->activedata = NULL;
