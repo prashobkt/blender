@@ -114,12 +114,10 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
   if (wmd->map_object != NULL) {
     if (wmd->map_bone[0] && wmd->map_object->type == OB_ARMATURE) {
-      DEG_add_object_relation(
-          ctx->node, wmd->map_object, DEG_OB_COMP_EVAL_POSE, "Wave Modifier");
+      DEG_add_object_relation(ctx->node, wmd->map_object, DEG_OB_COMP_EVAL_POSE, "Wave Modifier");
     }
     else {
-      DEG_add_object_relation(
-          ctx->node, wmd->map_object, DEG_OB_COMP_TRANSFORM, "Wave Modifier");
+      DEG_add_object_relation(ctx->node, wmd->map_object, DEG_OB_COMP_TRANSFORM, "Wave Modifier");
     }
   }
   if (wmd->objectcenter != NULL || wmd->map_object != NULL) {
@@ -480,6 +478,18 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "texture_coords", 0, NULL, ICON_NONE);
   if (texture_coords == MOD_DISP_MAP_OBJECT) {
     uiItemR(layout, &ptr, "texture_coords_object", 0, NULL, ICON_NONE);
+    PointerRNA texture_coords_obj_ptr = RNA_pointer_get(&ptr, "texture_coords_object");
+    if (!RNA_pointer_is_null(&texture_coords_obj_ptr) &&
+        (RNA_enum_get(&texture_coords_obj_ptr, "type") == OB_ARMATURE)) {
+      PointerRNA texture_coords_obj_data_ptr = RNA_pointer_get(&texture_coords_obj_ptr, "data");
+      uiItemPointerR(layout,
+                     &ptr,
+                     "texture_coords_bone",
+                     &texture_coords_obj_data_ptr,
+                     "bones",
+                     IFACE_("Bone"),
+                     ICON_NONE);
+    }
   }
   else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
     PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
