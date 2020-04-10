@@ -3109,7 +3109,9 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
     uiBlock *block = uiLayoutGetBlock(layout);
 
     /* Don't do further splits of the layout. */
-    uiLayoutSetPropSep(layout, false);
+    if (layout->item.type == ITEM_LAYOUT_ROW) {
+      uiLayoutSetPropSep(layout, false);
+    }
 
     uiLayout *layout_row = uiLayoutRow(layout, true);
     uiLayout *layout_split = uiLayoutSplit(layout_row, UI_ITEM_PROP_SEP_DIVIDE, true);
