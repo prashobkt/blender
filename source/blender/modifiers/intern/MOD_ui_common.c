@@ -49,12 +49,14 @@
 #include "MOD_ui_common.h" /* Self include */
 
 /**
- * HANS-TODO: Implement poll function. Should depend on the show_ui modifier property.
- *            But the modifier pointer is in the Panel, not the PanelType...
+ * Poll function so these modifier panels don't show for other object types with modifiers (only
+ * grease pencil currently).
  */
-static bool modifier_ui_poll(const bContext *UNUSED(C), PanelType *UNUSED(pt))
+static bool modifier_ui_poll(const bContext *C, PanelType *UNUSED(pt))
 {
-  return true;
+  Object *ob = CTX_data_active_object(C);
+
+  return (ob != NULL) && (ob->type != OB_GPENCIL);
 }
 
 /* -------------------------------------------------------------------- */
