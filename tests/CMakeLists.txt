@@ -21,17 +21,27 @@ elseif(APPLE)
 else()
   set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/blender)
 
-  if(EXISTS ${PYTHON_EXECUTABLE})
-    message(STATUS "Using Python from PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
-    set(TEST_PYTHON_EXE ${PYTHON_EXECUTABLE})
+  # Search for the Python executable to use in the tests.
+  # The installation directory's Python is the best one to use. However, it can only be there after the install step, which means
+  # that Python will never be here on a fresh system. This is why the search continues to the pre-built libraries, and if that
+  # doesn't exist either, default to whatever Python CMake found.
+  set(_python_exe "${TEST_INSTALL_DIR}/${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}/python/bin/python${PYTHON_VERSION}m")
+  if(EXISTS ${_python_exe})
+    message(STATUS "Tests: Using Python from installation directory: ${_python_exe}")
+    set(TEST_PYTHON_EXE ${_python_exe})
   else()
     set(_python_exe "${LIBDIR}/python/bin/python${PYTHON_VERSION}m")
     if(EXISTS ${_python_exe})
-      message(STATUS "Using Python from pre-compiled LIBDIR: ${_python_exe}")
+      message(STATUS "Tests: Using Python from pre-compiled LIBDIR: ${_python_exe}")
       set(TEST_PYTHON_EXE ${_python_exe})
+    elseif(EXISTS ${PYTHON_EXECUTABLE})
+      message(STATUS "Tests: Using Python from PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+      set(TEST_PYTHON_EXE ${PYTHON_EXECUTABLE})
+    else()
+      message(FATAL_ERROR "Tests: unable to find a Python executable to run the tests.")
     endif()
-    unset(_python_exe)
   endif()
+  unset(_python_exe)
 endif()
 
 # For testing with Valgrind
