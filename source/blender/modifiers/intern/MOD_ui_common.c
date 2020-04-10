@@ -78,59 +78,18 @@ static void modifier_reorder(bContext *C, Panel *panel, int new_index)
   WM_operator_properties_free(&props_ptr);
 }
 
-/* HANS-TODO: It looks like sub-subpanels don't remember their closed / open state. */
-static void panel_set_expand_from_flag_recursive(Panel *panel, short flag, short flag_index)
+static short get_modifier_expand_flag(const bContext *C, Panel *panel)
 {
-  bool open = (flag & (1 << flag_index));
-  if (open) {
-    panel->flag &= ~PNL_CLOSEDY;
-  }
-  else {
-    panel->flag |= PNL_CLOSEDY;
-  }
-  LISTBASE_FOREACH (Panel *, child, &panel->children) {
-    flag_index++;
-    panel_set_expand_from_flag_recursive(child, flag, flag_index);
-  }
-}
-
-static void panel_set_expand_from_flag(const bContext *C, Panel *panel)
-{
-  BLI_assert(panel->type != NULL);
-  BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
-
   Object *ob = CTX_data_active_object(C);
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
-  short expand_flag = md->ui_expand_flag;
-
-  panel_set_expand_from_flag_recursive(panel, expand_flag, 0);
+  return md->ui_expand_flag;
 }
 
-static void modifier_expand_flag_set_recursive(Panel *panel, short *flag, short flag_index)
+static void set_modifier_expand_flag(const bContext *C, Panel *panel, short expand_flag)
 {
-  bool open = !(panel->flag & PNL_CLOSEDY);
-  if (open) {
-    *flag |= (1 << flag_index);
-  }
-  else {
-    *flag &= ~(1 << flag_index);
-  }
-  LISTBASE_FOREACH (Panel *, child, &panel->children) {
-    flag_index++;
-    modifier_expand_flag_set_recursive(child, flag, flag_index);
-  }
-}
-
-static void modifier_expand_flag_set_from_panel(const bContext *C, Panel *panel)
-{
-  BLI_assert(panel->type != NULL);
-  BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
-
   Object *ob = CTX_data_active_object(C);
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
-  short *expand_flag = &md->ui_expand_flag;
-
-  modifier_expand_flag_set_recursive(panel, expand_flag, 0);
+  md->ui_expand_flag = expand_flag;
 }
 
 /** \} */
@@ -379,8 +338,8 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, P
    * modifer rather than a PanelType. */
   panel_type->flag = PANELTYPE_RECREATE;
   panel_type->reorder = modifier_reorder;
-  panel_type->set_expand_from_flag = panel_set_expand_from_flag;
-  panel_type->set_expand_flag_from_panel = modifier_expand_flag_set_from_panel;
+  panel_type->get_list_data_expand_flag = get_modifier_expand_flag;
+  panel_type->set_list_data_expand_flag = set_modifier_expand_flag;
 
   BLI_addtail(&region_type->paneltypes, panel_type);
 

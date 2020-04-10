@@ -239,14 +239,65 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
 /****************************** panels ******************************/
 
 /**
+ * Recursive implementation for #UI_panel_set_expand_from_list_data.
+ */
+static void panel_set_expand_from_list_data_recursive(Panel *panel, short flag, short *flag_index)
+{
+  bool open = (flag & (1 << *flag_index));
+  if (open) {
+    panel->flag &= ~PNL_CLOSEDY;
+  }
+  else {
+    panel->flag |= PNL_CLOSEDY;
+  }
+  LISTBASE_FOREACH (Panel *, child, &panel->children) {
+    *flag_index = *flag_index + 1;
+    panel_set_expand_from_list_data_recursive(child, flag, flag_index);
+  }
+}
+
+/**
+ * Set the expansion of the panel and its subpanels from the flag stored by the list data
+ * corresponding to this panel. The flag has expansion stored in each bit in depth first
+ * order.
+ */
+void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
+{
+  BLI_assert(panel->type != NULL);
+  BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
+
+  short expand_flag = panel->type->get_list_data_expand_flag(C, panel);
+  short flag_index = 0;
+  panel_set_expand_from_list_data_recursive(panel, expand_flag, &flag_index);
+}
+
+/**
+ * Recursive implementation for #set_panels_list_data_expand_flag.
+ */
+static void get_panel_expand_flag(Panel *panel, short *flag, short *flag_index)
+{
+  bool open = !(panel->flag & PNL_CLOSEDY);
+  if (open) {
+    *flag |= (1 << *flag_index);
+  }
+  else {
+    *flag &= ~(1 << *flag_index);
+  }
+  LISTBASE_FOREACH (Panel *, child, &panel->children) {
+    *flag_index = *flag_index + 1;
+    get_panel_expand_flag(child, flag, flag_index);
+  }
+}
+
+/**
  * Call the callback to store the panel and subpanel expansion settings in the list item that
  * corresponds to this panel.
  *
- * \note This needs to iterate through all of the regions panels because that panel with changed
- * expansion could have been the subpanel of a recreate panel and might not know about its
- * corresponding list item.
+ * \note This needs to iterate through all of the regions panels because the panel with changed
+ * expansion could have been the subpanel of a recreate panel, meaning it might not know which
+ * list item it corresponds to.
  */
-static void set_list_panel_item_expansion_flag(const bContext *C, ARegion *region)
+static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
 {
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     PanelType *panel_type = panel->type;
@@ -255,7 +306,10 @@ static void set_list_panel_item_expansion_flag(const bContext *C, ARegion *regio
     }
 
     if (panel->type->flag & PANELTYPE_RECREATE) {
-      panel->type->set_expand_flag_from_panel(C, panel);
+      short expand_flag;
+      short flag_index = 0;
+      get_panel_expand_flag(panel, &expand_flag, &flag_index);
+      panel->type->set_list_data_expand_flag(C, panel, expand_flag);
     }
   }
 }
@@ -285,7 +339,7 @@ static void panels_collapse_all(const bContext *C,
       }
     }
   }
-  set_list_panel_item_expansion_flag(C, region);
+  set_panels_list_data_expand_flag(C, region);
 }
 
 Panel *UI_panel_find_by_type(ListBase *lb, PanelType *pt)
@@ -1679,7 +1733,7 @@ static void ui_panel_drag_collapse(bContext *C,
       /* force panel to close */
       if (dragcol_data->was_first_open == true) {
         panel->flag |= (is_horizontal ? PNL_CLOSEDX : PNL_CLOSEDY);
-        set_list_panel_item_expansion_flag(C, region);
+        set_panels_list_data_expand_flag(C, region);
       }
       /* force panel to open */
       else {
@@ -1857,7 +1911,7 @@ static void ui_handle_panel_header(
         }
       }
 
-      set_list_panel_item_expansion_flag(C, region);
+      set_panels_list_data_expand_flag(C, region);
     }
 
     if (align) {

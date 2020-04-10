@@ -238,14 +238,14 @@ typedef struct PanelType {
    * \note Subpanels are indexed in depth first order, the visual order you would see if all panels
    * were expanded.
    */
-  void (*set_expand_from_flag)(const struct bContext *C, struct Panel *pa);
+  short (*get_list_data_expand_flag)(const struct bContext *C, struct Panel *pa);
   /**
    * Set the expand bitfield from the closed / open state of this panel and its subpanels. Called
    * when the expansion state of the panel changes by user input.
    * \note Subpanels are indexed in depth first order, the visual order you would see if all panels
    * were expanded.
    */
-  void (*set_expand_flag_from_panel)(const struct bContext *C, struct Panel *pa);
+  void (*set_list_data_expand_flag)(const struct bContext *C, struct Panel *pa, short expand_flag);
 
   /* sub panels */
   struct PanelType *parent;

@@ -1884,7 +1884,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
         BLI_assert(panel_type != NULL);
 
         Panel *new_panel = UI_panel_add_recreate(sa, region, &region->panels, panel_type, i);
-        new_panel->type->set_expand_from_flag(C, new_panel);
+        UI_panel_set_expand_from_list_data(C, new_panel);
       }
     }
   }
