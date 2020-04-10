@@ -314,14 +314,6 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
     /* Update geometry. */
     BKE_gpencil_stroke_geometry_update(gps);
 
-    /* At the end of a group of a positive path and its negative
-     *  children, fill.
-     * Sign is the char +(43) or -(45) */
-#if 0
-    if (path->next == NULL || path->next->sign == '+') {
-      printf("-- End of group ---\n");
-    }
-#endif
     path = path->next;
   }
 }
