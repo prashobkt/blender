@@ -48,7 +48,7 @@ endfunction()
 
 # Run Python script outside Blender.
 function(add_python_test testname testscript)
-  if(MSVC)
+  if(TEST_PYTHON_EXE)
     add_test(
       NAME ${testname}
       COMMAND ${TEST_PYTHON_EXE} ${testscript} ${ARGN}
