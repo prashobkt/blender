@@ -278,8 +278,8 @@ static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *sub, *row, *col;
-
   uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
@@ -325,7 +325,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "mark_sharp", 0, IFACE_("Sharp"), ICON_NONE);
 
   uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
   uiItemR(col, &ptr, "limit_method", 0, NULL, ICON_NONE);
@@ -341,6 +340,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiLayoutSetPropDecorate(sub, false);
     uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
   }
+
+  uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
@@ -369,7 +370,7 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "vmesh_method", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "vmesh_method", 0, IFACE_("Intersections"), ICON_NONE);
   uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
 }
 

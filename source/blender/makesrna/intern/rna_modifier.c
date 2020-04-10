@@ -3920,7 +3920,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "mat");
   RNA_def_property_range(prop, -1, SHRT_MAX);
   RNA_def_property_ui_text(
-      prop, "Material Index Offset", "Material index of generated faces, -1 for automatic");
+      prop, "Material Index", "Material index of generated faces, -1 for automatic");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "loop_slide", PROP_BOOLEAN, PROP_NONE);
@@ -3947,7 +3947,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "face_str_mode");
   RNA_def_property_enum_items(prop, prop_harden_normals_items);
   RNA_def_property_ui_text(
-      prop, "Set Face Strength", "Whether to set face strength, and which faces to set it on");
+      prop, "Face Strength", "Whether to set face strength, and which faces to set it on");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "miter_outer", PROP_ENUM, PROP_NONE);
