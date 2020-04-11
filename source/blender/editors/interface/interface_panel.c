@@ -1436,8 +1436,11 @@ static void ui_do_animate(bContext *C, Panel *panel)
   }
 
   if (fac >= 1.0f) {
+    /* Store before data is freed. */
+    const bool is_drag_drop = data->is_drag_drop;
+
     panel_activate_state(C, panel, PANEL_STATE_EXIT);
-    if (data->is_drag_drop) {
+    if (is_drag_drop) {
       /* Note: doing this in #panel_activate_state would require removing const for context in many
        * other places. */
       reorder_recreate_panel_list(C, region, panel);
