@@ -141,6 +141,8 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
 
   row = uiLayoutRow(layout, false);
 
+  uiLayoutSetScaleY(row, 0.8f);
+
   Object *ob = CTX_data_active_object(C);
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
 
@@ -169,7 +171,7 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
   else {
     uiLayoutSetOperatorContext(row, WM_OP_INVOKE_DEFAULT);
 
-    sub = uiLayoutRow(row, true);
+    sub = uiLayoutRow(row, false);
     uiItemEnumO(sub,
                 "OBJECT_OT_modifier_apply",
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
@@ -180,7 +182,7 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
     if (modifier_isSameTopology(md) && !modifier_isNonGeometrical(md)) {
       uiItemEnumO(sub,
                   "OBJECT_OT_modifier_apply",
-                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply as Shape Key"),
+                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Shape"),
                   0,
                   "apply_as",
                   MODIFIER_APPLY_SHAPE);
@@ -193,10 +195,12 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
             eModifierType_ParticleSystem,
             eModifierType_Cloth,
             eModifierType_Fluid)) {
-    uiItemO(row,
-            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, ""),
-            ICON_DUPLICATE,
-            "OBJECT_OT_modifier_copy");
+    uiItemO(
+        row, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"), 0, "OBJECT_OT_modifier_copy");
+
+    row = uiLayoutRow(layout, false);
+    uiLayoutSetScaleY(row, 0.2f);
+    uiItemS(row);
   }
 }
 
