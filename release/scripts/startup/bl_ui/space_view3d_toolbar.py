@@ -959,37 +959,29 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
 
         sculpt = context.tool_settings.sculpt
 
-        col = layout.column(heading="Mirror")
-
-        row = col.row(align=True)
+        row = layout.row(align=True, heading="Mirror")
         row.prop(sculpt, "use_symmetry_x", text="X", toggle=True)
         row.prop(sculpt, "use_symmetry_y", text="Y", toggle=True)
         row.prop(sculpt, "use_symmetry_z", text="Z", toggle=True)
 
-        col = layout.column(heading="Lock")
-
-        row = col.row(align=True)
+        row = layout.row(align=True, heading="Lock")
         row.prop(sculpt, "lock_x", text="X", toggle=True)
         row.prop(sculpt, "lock_y", text="Y", toggle=True)
         row.prop(sculpt, "lock_z", text="Z", toggle=True)
 
-        col = layout.column(heading="Tiling")
-
-        row = col.row(align=True)
+        row = layout.row(align=True, heading="Tiling")
         row.prop(sculpt, "tile_x", text="X", toggle=True)
         row.prop(sculpt, "tile_y", text="Y", toggle=True)
         row.prop(sculpt, "tile_z", text="Z", toggle=True)
 
         layout.prop(sculpt, "use_symmetry_feather", text="Feather")
-        layout.column().prop(sculpt, "radial_symmetry", text="Radial")
-        layout.column().prop(sculpt, "tile_offset", text="Tile Offset")
+        layout.prop(sculpt, "radial_symmetry", text="Radial")
+        layout.prop(sculpt, "tile_offset", text="Tile Offset")
 
         layout.separator()
 
-        col = layout.column()
-
-        col.prop(sculpt, "symmetrize_direction")
-        col.operator("sculpt.symmetrize")
+        layout.prop(sculpt, "symmetrize_direction")
+        layout.operator("sculpt.symmetrize")
 
 
 class VIEW3D_PT_sculpt_symmetry_for_topbar(Panel):
