@@ -190,27 +190,20 @@ class DATA_PT_normals(MeshButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
-        pass
-
-
-class DATA_PT_normals_auto_smooth(MeshButtonsPanel, Panel):
-    bl_label = "Auto Smooth"
-    bl_parent_id = "DATA_PT_normals"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
-
-    def draw_header(self, context):
-        mesh = context.mesh
-
-        self.layout.prop(mesh, "use_auto_smooth", text="")
-
-    def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-
+        
         mesh = context.mesh
 
-        layout.active = mesh.use_auto_smooth and not mesh.has_custom_normals
-        layout.prop(mesh, "auto_smooth_angle", text="Angle")
+        col = layout.column(align=False, heading="Auto Smooth")
+        col.use_property_decorate = False
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(mesh, "use_auto_smooth", text="")
+        sub = sub.row(align=True)
+        sub.active = mesh.use_auto_smooth and not mesh.has_custom_normals
+        sub.prop(mesh, "auto_smooth_angle", text="")
+        row.prop_decorator(mesh, "auto_smooth_angle")
 
 
 class DATA_PT_texture_space(MeshButtonsPanel, Panel):
@@ -546,7 +539,6 @@ classes = (
     DATA_PT_vertex_colors,
     DATA_PT_face_maps,
     DATA_PT_normals,
-    DATA_PT_normals_auto_smooth,
     DATA_PT_texture_space,
     DATA_PT_remesh,
     DATA_PT_customdata,

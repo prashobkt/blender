@@ -693,7 +693,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   static float node_socket_color_default[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   /* simple layout specifiers */
-  func = RNA_def_function(srna, "row", "uiLayoutRow");
+  func = RNA_def_function(srna, "row", "uiLayoutRowWithHeading");
   parm = RNA_def_pointer(func, "layout", "UILayout", "", "Sub-layout to put items in");
   RNA_def_function_return(func, parm);
   RNA_def_function_ui_description(
@@ -701,6 +701,12 @@ void RNA_api_ui_layout(StructRNA *srna)
       "Sub-layout. Items placed in this sublayout are placed next to each other "
       "in a row");
   RNA_def_boolean(func, "align", false, "", "Align buttons to each other");
+  RNA_def_string(func,
+                 "heading",
+                 NULL,
+                 UI_MAX_NAME_STR,
+                 "Heading",
+                 "Label to insert into the layout for this row");
 
   func = RNA_def_function(srna, "column", "uiLayoutColumnWithHeading");
   parm = RNA_def_pointer(func, "layout", "UILayout", "", "Sub-layout to put items in");

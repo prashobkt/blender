@@ -135,10 +135,11 @@ enum {
 
   UI_ITEM_BOX_ITEM = 1 << 2, /* The item is "inside" a box item */
   UI_ITEM_PROP_SEP = 1 << 3,
+  UI_ITEM_INSIDE_PROP_SEP = 1 << 4,
   /* Show an icon button next to each property (to set keyframes, show status).
    * Enabled by default, depends on 'UI_ITEM_PROP_SEP'. */
-  UI_ITEM_PROP_DECORATE = 1 << 4,
-  UI_ITEM_PROP_DECORATE_NO_PAD = 1 << 5,
+  UI_ITEM_PROP_DECORATE = 1 << 5,
+  UI_ITEM_PROP_DECORATE_NO_PAD = 1 << 6,
 };
 
 typedef struct uiButtonItem {
@@ -1866,21 +1867,26 @@ static void ui_item_rna_size(uiLayout *layout,
 }
 
 /**
- * Returns a pointer to the heading string. It's non-const so it can be cleared to mark a heading
- * as "added".
+ * Find first layout ancestor (or self) with a heading set.
+ *
+ * \returns the layout to add the heading to as fallback (i.e. if it can't be placed in a split
+ *          layout). Its #uiLayout.heading member can be cleared to mark the heading as added (so
+ *          it's not added multiple times). Returns a pointer to the heading
  */
-static char *ui_layout_heading_find(uiLayout *cur_layout)
+static uiLayout *ui_layout_heading_find(uiLayout *cur_layout)
 {
   for (uiLayout *parent = cur_layout; parent; parent = parent->parent) {
     if (parent->heading[0]) {
-      return parent->heading;
+      return parent;
     }
   }
 
   return NULL;
 }
 
-static void ui_layout_heading_label_add(uiLayout *layout, char *heading, bool right_align)
+static void ui_layout_heading_label_add(uiLayout *layout,
+                                        uiLayout *heading_layout,
+                                        bool right_align)
 {
   const int prev_alignment = layout->alignment;
 
@@ -1888,10 +1894,10 @@ static void ui_layout_heading_label_add(uiLayout *layout, char *heading, bool ri
     uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_RIGHT);
   }
 
-  uiItemL(layout, heading, ICON_NONE);
+  uiItemL(layout, heading_layout->heading, ICON_NONE);
   /* After adding the heading label, we have to mark it somehow as added, so it's not added again
    * for other items in this layout. For now just clear it. */
-  heading[0] = '\0';
+  heading_layout->heading[0] = '\0';
 
   layout->alignment = prev_alignment;
 }
@@ -1903,7 +1909,14 @@ static void ui_layout_heading_label_add(uiLayout *layout, char *heading, bool ri
  */
 static uiLayout *ui_item_prop_split_layout_hack(uiLayout *layout_parent, uiLayout *layout_split)
 {
+  /* Tag item as using property split layout, this is inherited to children so they can get special
+   * treatment if needed. */
+  layout_parent->item.flag |= UI_ITEM_INSIDE_PROP_SEP;
+
   if (layout_parent->item.type == ITEM_LAYOUT_ROW) {
+    /* Prevent further splits within the row. */
+    uiLayoutSetPropSep(layout_parent, false);
+
     layout_parent->child_items_layout = uiLayoutRow(layout_split, true);
     return layout_parent->child_items_layout;
   }
@@ -1922,10 +1935,11 @@ void uiItemFullR(uiLayout *layout,
   uiBlock *block = layout->root->block;
   char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
+  const bool inside_prop_sep = ((layout->item.flag & UI_ITEM_INSIDE_PROP_SEP) != 0);
   /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
    * a label to display in the first column, the heading is inserted there. Otherwise it's inserted
    * as a new row before the first item. */
-  char *heading = ui_layout_heading_find(layout);
+  uiLayout *heading_layout = ui_layout_heading_find(layout);
   /* Although checkboxes use the split layout, they are an exception and should only place their
    * label in the second column, to not make that almost empty.
    *
@@ -2087,8 +2101,8 @@ void uiItemFullR(uiLayout *layout,
       /* Ensure we get a column when text is not set. */
       layout = uiLayoutColumn(layout_row ? layout_row : layout, true);
       layout->space = 0;
-      if (heading) {
-        ui_layout_heading_label_add(layout, heading, false);
+      if (heading_layout) {
+        ui_layout_heading_label_add(layout, heading_layout, false);
       }
     }
     else {
@@ -2148,8 +2162,8 @@ void uiItemFullR(uiLayout *layout,
         }
       }
 
-      if (!label_added && heading) {
-        ui_layout_heading_label_add(layout_sub, heading, true);
+      if (!label_added && heading_layout) {
+        ui_layout_heading_label_add(layout_sub, heading_layout, true);
       }
 
       layout_split = ui_item_prop_split_layout_hack(layout_parent, layout_split);
@@ -2189,9 +2203,16 @@ void uiItemFullR(uiLayout *layout,
 #endif /* UI_PROP_DECORATE */
   }
   /* End split. */
-  else if (heading) {
+  else if (heading_layout) {
+    /* Could not add heading to split layout, fallback to inserting it to the layout with the
+     * heading itself. */
+    ui_layout_heading_label_add(heading_layout, heading_layout, false);
+  }
+  else if (inside_prop_sep) {
+    /* When placing further items in a split row, add them to a column so they match the column
+     * layout of previous items (e.g. transform vector with lock icon for each item). */
     layout = uiLayoutColumn(layout_parent, true);
-    ui_layout_heading_label_add(layout, heading, false);
+    layout->space = 0;
   }
 
   /* array property */
@@ -3107,11 +3128,6 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
 {
   if (layout->item.flag & UI_ITEM_PROP_SEP) {
     uiBlock *block = uiLayoutGetBlock(layout);
-
-    /* Don't do further splits of the layout. */
-    if (layout->item.type == ITEM_LAYOUT_ROW) {
-      uiLayoutSetPropSep(layout, false);
-    }
 
     uiLayout *layout_row = uiLayoutRow(layout, true);
     uiLayout *layout_split = uiLayoutSplit(layout_row, UI_ITEM_PROP_SEP_DIVIDE, true);
@@ -4568,7 +4584,8 @@ static void ui_litem_init_from_parent(uiLayout *litem, uiLayout *layout, int ali
   litem->redalert = layout->redalert;
   litem->w = layout->w;
   litem->emboss = layout->emboss;
-  litem->item.flag = (layout->item.flag & (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE));
+  litem->item.flag = (layout->item.flag &
+                      (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE | UI_ITEM_INSIDE_PROP_SEP));
 
   if (layout->child_items_layout) {
     BLI_addtail(&layout->child_items_layout->items, litem);
@@ -4577,6 +4594,14 @@ static void ui_litem_init_from_parent(uiLayout *litem, uiLayout *layout, int ali
   else {
     BLI_addtail(&layout->items, litem);
     litem->parent = layout;
+  }
+}
+
+static void ui_layout_heading_set(uiLayout *layout, const char *heading)
+{
+  BLI_assert(layout->heading[0] == '\0');
+  if (heading) {
+    STRNCPY(layout->heading, heading);
   }
 }
 
@@ -4593,6 +4618,16 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
 
   UI_block_layout_set_current(layout->root->block, litem);
 
+  return litem;
+}
+
+/**
+ * See #uiLayoutColumnWithHeading().
+ */
+uiLayout *uiLayoutRowWithHeading(uiLayout *layout, bool align, const char *heading)
+{
+  uiLayout *litem = uiLayoutRow(layout, align);
+  ui_layout_heading_set(litem, heading);
   return litem;
 }
 
@@ -4620,12 +4655,7 @@ uiLayout *uiLayoutColumn(uiLayout *layout, bool align)
 uiLayout *uiLayoutColumnWithHeading(uiLayout *layout, bool align, const char *heading)
 {
   uiLayout *litem = uiLayoutColumn(layout, align);
-
-  BLI_assert(litem->heading[0] == '\0');
-  if (heading) {
-    STRNCPY(litem->heading, heading);
-  }
-
+  ui_layout_heading_set(litem, heading);
   return litem;
 }
 

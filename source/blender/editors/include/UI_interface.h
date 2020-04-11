@@ -1881,6 +1881,7 @@ bool uiLayoutGetPropDecorate(uiLayout *layout);
 
 /* layout specifiers */
 uiLayout *uiLayoutRow(uiLayout *layout, bool align);
+uiLayout *uiLayoutRowWithHeading(uiLayout *layout, bool align, const char *heading);
 uiLayout *uiLayoutColumn(uiLayout *layout, bool align);
 uiLayout *uiLayoutColumnWithHeading(uiLayout *layout, bool align, const char *heading);
 uiLayout *uiLayoutColumnFlow(uiLayout *layout, int number, bool align);
