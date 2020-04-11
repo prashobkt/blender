@@ -135,10 +135,11 @@ enum {
 
   UI_ITEM_BOX_ITEM = 1 << 2, /* The item is "inside" a box item */
   UI_ITEM_PROP_SEP = 1 << 3,
+  UI_ITEM_INSIDE_PROP_SEP = 1 << 4,
   /* Show an icon button next to each property (to set keyframes, show status).
    * Enabled by default, depends on 'UI_ITEM_PROP_SEP'. */
-  UI_ITEM_PROP_DECORATE = 1 << 4,
-  UI_ITEM_PROP_DECORATE_NO_PAD = 1 << 5,
+  UI_ITEM_PROP_DECORATE = 1 << 5,
+  UI_ITEM_PROP_DECORATE_NO_PAD = 1 << 6,
 };
 
 typedef struct uiButtonItem {
@@ -1903,7 +1904,14 @@ static void ui_layout_heading_label_add(uiLayout *layout, char *heading, bool ri
  */
 static uiLayout *ui_item_prop_split_layout_hack(uiLayout *layout_parent, uiLayout *layout_split)
 {
+  /* Tag item as using property split layout, this is inherited to children so they can get special
+   * treatment if needed. */
+  layout_parent->item.flag |= UI_ITEM_INSIDE_PROP_SEP;
+
   if (layout_parent->item.type == ITEM_LAYOUT_ROW) {
+    /* Prevent further splits within the row. */
+    uiLayoutSetPropSep(layout_parent, false);
+
     layout_parent->child_items_layout = uiLayoutRow(layout_split, true);
     return layout_parent->child_items_layout;
   }
@@ -1922,6 +1930,7 @@ void uiItemFullR(uiLayout *layout,
   uiBlock *block = layout->root->block;
   char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
+  const bool inside_prop_sep = ((layout->item.flag & UI_ITEM_INSIDE_PROP_SEP) != 0);
   /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
    * a label to display in the first column, the heading is inserted there. Otherwise it's inserted
    * as a new row before the first item. */
@@ -2192,6 +2201,12 @@ void uiItemFullR(uiLayout *layout,
   else if (heading) {
     layout = uiLayoutColumn(layout_parent, true);
     ui_layout_heading_label_add(layout, heading, false);
+  }
+  else if (inside_prop_sep) {
+    /* When placing further items in a split row, add them to a column so they match the column
+     * layout of previous items (e.g. transform vector with lock icon for each item). */
+    layout = uiLayoutColumn(layout_parent, true);
+    layout->space = 0;
   }
 
   /* array property */
@@ -3107,11 +3122,6 @@ uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int
 {
   if (layout->item.flag & UI_ITEM_PROP_SEP) {
     uiBlock *block = uiLayoutGetBlock(layout);
-
-    /* Don't do further splits of the layout. */
-    if (layout->item.type == ITEM_LAYOUT_ROW) {
-      uiLayoutSetPropSep(layout, false);
-    }
 
     uiLayout *layout_row = uiLayoutRow(layout, true);
     uiLayout *layout_split = uiLayoutSplit(layout_row, UI_ITEM_PROP_SEP_DIVIDE, true);
@@ -4568,7 +4578,8 @@ static void ui_litem_init_from_parent(uiLayout *litem, uiLayout *layout, int ali
   litem->redalert = layout->redalert;
   litem->w = layout->w;
   litem->emboss = layout->emboss;
-  litem->item.flag = (layout->item.flag & (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE));
+  litem->item.flag = (layout->item.flag &
+                      (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE | UI_ITEM_INSIDE_PROP_SEP));
 
   if (layout->child_items_layout) {
     BLI_addtail(&layout->child_items_layout->items, litem);
