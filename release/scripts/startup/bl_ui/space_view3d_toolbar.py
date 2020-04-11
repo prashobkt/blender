@@ -957,13 +957,18 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
 
         sculpt = context.tool_settings.sculpt
 
-        col = layout.column(align=False, heading = "Mirror")
-        col.use_property_decorate = False
+        split = layout.split()
+
+        col = split.column()
+        col.alignment = 'RIGHT'
+        col.label(text="Mirror")
+
+        col = split.column()
+
         row = col.row(align=True)
-        sub = row.row(align=True)
-        sub.prop(sculpt, "use_symmetry_x", text="X", toggle=True)
-        sub.prop(sculpt, "use_symmetry_y", text="Y", toggle=True)
-        sub.prop(sculpt, "use_symmetry_z", text="Z", toggle=True)
+        row.prop(sculpt, "use_symmetry_x", text="X", toggle=True)
+        row.prop(sculpt, "use_symmetry_y", text="Y", toggle=True)
+        row.prop(sculpt, "use_symmetry_z", text="Z", toggle=True)
 
         split = layout.split()
 
