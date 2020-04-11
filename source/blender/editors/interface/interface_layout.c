@@ -2319,14 +2319,18 @@ void uiItemFullR(uiLayout *layout,
 #ifdef UI_PROP_DECORATE
   if (ui_decorate.use_prop_decorate) {
     uiBut *but_decorate = ui_decorate.but ? ui_decorate.but->next : block->buttons.first;
+    const bool use_blank_decorator = (flag & UI_ITEM_R_FORCE_BLANK_DECORATE);
     uiLayout *layout_col = uiLayoutColumn(ui_decorate.layout, false);
     layout_col->space = 0;
     layout_col->emboss = UI_EMBOSS_NONE;
+
     int i;
     for (i = 0; i < ui_decorate.len && but_decorate; i++) {
+      PointerRNA *ptr_dec = use_blank_decorator ? NULL : &but_decorate->rnapoin;
+      PropertyRNA *prop_dec = use_blank_decorator ? NULL : but_decorate->rnaprop;
+
       /* The icons are set in 'ui_but_anim_flag' */
-      uiItemDecoratorR_prop(
-          layout_col, &but_decorate->rnapoin, but_decorate->rnaprop, but_decorate->rnaindex);
+      uiItemDecoratorR_prop(layout_col, ptr_dec, prop_dec, but_decorate->rnaindex);
       but = block->buttons.last;
 
       /* Order the decorator after the button we decorate, this is used so we can always
@@ -2903,10 +2907,14 @@ void uiItemMContents(uiLayout *layout, const char *menuname)
   UI_menutype_draw(C, mt, layout);
 }
 
+/**
+ * Insert a decorator item for a button with the same property as \a prop.
+ * To force inserting a blank dummy element, NULL can be passed for \a ptr and \a prop.
+ */
 void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop, int index)
 {
   uiBlock *block = layout->root->block;
-  const bool is_anim = RNA_property_animateable(ptr, prop);
+  const bool is_anim = ptr && prop && RNA_property_animateable(ptr, prop);
   uiBut *but = NULL;
   uiLayout *row;
 

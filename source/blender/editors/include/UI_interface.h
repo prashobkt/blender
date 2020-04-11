@@ -1784,6 +1784,8 @@ enum {
   UI_ITEM_O_DEPRESS = 1 << 10,
   UI_ITEM_R_COMPACT = 1 << 11,
   UI_ITEM_R_CHECKBOX_INVERT = 1 << 12,
+  /** Don't add a real decorator item, just blank space. */
+  UI_ITEM_R_FORCE_BLANK_DECORATE = 1 << 13,
 };
 
 #define UI_HEADER_OFFSET ((void)0, 0.4f * UI_UNIT_X)
