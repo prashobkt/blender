@@ -338,26 +338,29 @@ def basic_force_field_falloff_ui(self, field):
     if not field or field.type == 'NONE':
         return
 
-    flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
-
-    col = flow.column()
+    col = layout.column()
     col.prop(field, "z_direction")
     col.prop(field, "falloff_power", text="Power")
 
-    col = flow.column()
-    col.prop(field, "use_min_distance", text="Use Minimum")
-
-    sub = col.column(align=True)
+    col = layout.column(align=False, heading="Minimum Distance")
+    col.use_property_decorate = False
+    row = col.row(align=True)
+    sub = row.row(align=True)
+    sub.prop(field, "use_min_distance", text="")
+    sub = sub.row(align=True)
     sub.active = field.use_min_distance
-    sub.prop(field, "distance_min", text="Min Distance")
+    sub.prop(field, "distance_min", text="")
+    row.prop_decorator(field, "distance_min")
 
-    col = flow.column()
-    col.prop(field, "use_max_distance", text="Use Maximum")
-
-    sub = col.column(align=True)
+    col = layout.column(align=False, heading="Maximum Distance")
+    col.use_property_decorate = False
+    row = col.row(align=True)
+    sub = row.row(align=True)
+    sub.prop(field, "use_max_distance", text="")
+    sub = sub.row(align=True)
     sub.active = field.use_max_distance
-    sub.prop(field, "distance_max", text="Max Distance")
-
+    sub.prop(field, "distance_max", text="")
+    row.prop_decorator(field, "distance_max")
 
 classes = (
     PHYSICS_PT_add,
