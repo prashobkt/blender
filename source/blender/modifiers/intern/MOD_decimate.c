@@ -228,7 +228,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
+  uiLayout *sub, *row, *col;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
@@ -247,6 +247,17 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   if (decimate_type == MOD_DECIM_MODE_COLLAPSE) {
     uiItemR(layout, &ptr, "ratio", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
+    col = uiLayoutColumnWithHeading(layout, false, "Symmetry");
+    row = uiLayoutRow(col, true);
+    uiLayoutSetPropDecorate(row, false);
+    sub = uiLayoutRow(row, true);
+    uiItemR(sub, &ptr, "use_symmetry", 0, "", ICON_NONE);
+    sub = uiLayoutRow(sub, true);
+    uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_symmetry"));
+    uiLayoutSetPropSep(sub, false);
+    uiItemR(sub, &ptr, "symmetry_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+    uiItemDecoratorR(row, &ptr, "symmetry_axis", 0);
 
     uiItemR(layout, &ptr, "use_collapse_triangulate", 0, NULL, ICON_NONE);
 
@@ -271,47 +282,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, &ptr);
 }
 
-static void decimate_symmetry_panel_header_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  int decimate_type = RNA_enum_get(&ptr, "decimate_type");
-
-  uiLayoutSetActive(layout, decimate_type == MOD_DECIM_MODE_COLLAPSE);
-
-  uiItemR(layout, &ptr, "use_symmetry", 0, IFACE_("Symmetry"), ICON_NONE);
-}
-
-static void decimate_symmetry_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  int decimate_type = RNA_enum_get(&ptr, "decimate_type");
-
-  uiLayoutSetPropSep(layout, true);
-
-  uiLayoutSetActive(layout, decimate_type == MOD_DECIM_MODE_COLLAPSE);
-
-  uiLayout *row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_symmetry"));
-  uiItemR(row, &ptr, "symmetry_axis", UI_ITEM_R_EXPAND, IFACE_("Symmetry Axis"), ICON_NONE);
-}
-
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Decimate", panel_draw);
-  modifier_subpanel_register(region_type,
-                             "array_merge",
-                             "",
-                             decimate_symmetry_panel_header_draw,
-                             decimate_symmetry_panel_draw,
-                             panel_type);
+  modifier_panel_register(region_type, "Decimate", panel_draw);
 }
 
 ModifierTypeInfo modifierType_Decimate = {
