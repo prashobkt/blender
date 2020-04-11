@@ -126,8 +126,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col, *decorator_layout;
+  uiLayout *row, *col;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
   PropertyRNA *prop;
 
   PointerRNA ptr;
@@ -139,31 +140,25 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(col, true);
 
   /* No decorators for the first few rows. */
-  uiLayoutSetPropDecorate(col, false);
+  uiLayoutSetPropDecorate(col, true);
 
   prop = RNA_struct_find_property(&ptr, "use_axis");
-  row = uiLayoutRow(col, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Axis"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(col, true, IFACE_("Axis"));
+  uiItemFullR(row, &ptr, prop, 0, 0, toggles_flag, IFACE_("X"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 1, 0, toggles_flag, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 2, 0, toggles_flag, IFACE_("Z"), ICON_NONE);
 
   prop = RNA_struct_find_property(&ptr, "use_bisect_axis");
-  row = uiLayoutRow(col, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Bisect"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(col, true, IFACE_("Bisect"));
+  uiItemFullR(row, &ptr, prop, 0, 0, toggles_flag, IFACE_("X"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 1, 0, toggles_flag, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 2, 0, toggles_flag, IFACE_("Z"), ICON_NONE);
 
   prop = RNA_struct_find_property(&ptr, "use_bisect_flip_axis");
-  row = uiLayoutRow(col, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Flip"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 0, 0, UI_ITEM_R_TOGGLE, IFACE_("X"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 1, 0, UI_ITEM_R_TOGGLE, IFACE_("Y"), ICON_NONE);
-  uiItemFullR(row, &ptr, prop, 2, 0, UI_ITEM_R_TOGGLE, IFACE_("Z"), ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(col, true, IFACE_("Flip"));
+  uiItemFullR(row, &ptr, prop, 0, 0, toggles_flag, IFACE_("X"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 1, 0, toggles_flag, IFACE_("Y"), ICON_NONE);
+  uiItemFullR(row, &ptr, prop, 2, 0, toggles_flag, IFACE_("Z"), ICON_NONE);
 
   uiItemS(col);
   /* Now decorators are fine, we don't insert multiple items in a single row anymore. */
