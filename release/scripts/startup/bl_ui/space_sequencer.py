@@ -1868,21 +1868,19 @@ class SEQUENCER_PT_strip_proxy(SequencerButtonsPanel, Panel):
 
             flow = layout.column_flow()
             if ed.proxy_storage == 'PER_STRIP':
-                flow.prop(proxy, "use_proxy_custom_directory")
-                flow.prop(proxy, "use_proxy_custom_file")
-
+                col = layout.column(heading = "Custom Proxy")
+                col.prop(proxy, "use_proxy_custom_directory", text = "Directory")
                 if proxy.use_proxy_custom_directory and not proxy.use_proxy_custom_file:
-                    flow.prop(proxy, "directory")
+                    col.prop(proxy, "directory")
+                col.prop(proxy, "use_proxy_custom_file", text = "File")
                 if proxy.use_proxy_custom_file:
-                    flow.prop(proxy, "filepath")
+                    col.prop(proxy, "filepath")
 
-            box = layout.box()
-            row = box.row(align=True)
-            row.prop(strip.proxy, "build_25")
-            row.prop(strip.proxy, "build_75")
-            row = box.row(align=True)
-            row.prop(strip.proxy, "build_50")
-            row.prop(strip.proxy, "build_100")
+            row = layout.row(heading = "Resolutions", align = True)
+            row.prop(strip.proxy, "build_25", toggle = True)
+            row.prop(strip.proxy, "build_75", toggle = True)
+            row.prop(strip.proxy, "build_50", toggle = True)
+            row.prop(strip.proxy, "build_100", toggle = True)
 
             layout.use_property_split = True
             layout.use_property_decorate = False
