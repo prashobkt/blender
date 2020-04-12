@@ -1267,8 +1267,8 @@ class CYCLES_OBJECT_PT_visibility_ray_visibility(CyclesButtonsPanel, Panel):
         col.prop(visibility, "scatter")
 
         if ob.type != 'LIGHT':
-            col = flow.column()
-            col.prop(visibility, "shadow")
+            sub = col.column()
+            sub.prop(visibility, "shadow")
 
 
 class CYCLES_OBJECT_PT_visibility_culling(CyclesButtonsPanel, Panel):
