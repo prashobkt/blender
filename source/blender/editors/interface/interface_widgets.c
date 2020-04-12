@@ -4122,7 +4122,7 @@ static void widget_optionbut(uiWidgetColors *wcol,
   /* smaller */
   delta = 1 + BLI_rcti_size_y(&recttemp) / 8;
   BLI_rcti_resize(
-      &recttemp, BLI_rcti_size_x(&recttemp) - delta, BLI_rcti_size_y(&recttemp) - delta);
+      &recttemp, BLI_rcti_size_x(&recttemp) - delta * 2, BLI_rcti_size_y(&recttemp) - delta * 2);
   /* Keep one edge in place. */
   BLI_rcti_translate(&recttemp, text_before_widget ? delta : -delta, 0);
 
