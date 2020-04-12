@@ -2110,7 +2110,7 @@ class ExperimentalPanel:
         experimental = prefs.experimental
 
         layout = self.layout
-        layout.use_property_split = True
+        layout.use_property_split = False
         layout.use_property_decorate = False
 
         for prop_keywords, task in items:
