@@ -4121,10 +4121,10 @@ static void widget_optionbut(uiWidgetColors *wcol,
 
   /* smaller */
   delta = 1 + BLI_rcti_size_y(&recttemp) / 8;
-  recttemp.xmin += delta;
-  recttemp.ymin += delta;
-  recttemp.xmax -= delta;
-  recttemp.ymax -= delta;
+  BLI_rcti_resize(
+      &recttemp, BLI_rcti_size_x(&recttemp) - delta, BLI_rcti_size_y(&recttemp) - delta);
+  /* Keep one edge in place. */
+  BLI_rcti_translate(&recttemp, text_before_widget ? delta : -delta, 0);
 
   rad = wcol->roundness * BLI_rcti_size_y(&recttemp);
   round_box_edges(&wtb, UI_CNR_ALL, &recttemp, rad);
@@ -4136,8 +4136,8 @@ static void widget_optionbut(uiWidgetColors *wcol,
 
   widgetbase_draw(&wtb, wcol);
 
-  /* text space */
-  const float offset = BLI_rcti_size_y(rect) * 0.7 + delta;
+  /* Text space - factor is really just eyeballed. */
+  const float offset = BLI_rcti_size_y(rect) * 0.31f + delta;
   if (text_before_widget) {
     rect->xmax -= offset;
   }

@@ -1784,6 +1784,7 @@ static void ui_item_rna_size(uiLayout *layout,
   PropertyType type;
   PropertySubType subtype;
   int len, w = 0, h;
+  bool is_checkbox_only = false;
 
   /* arbitrary extended width by type */
   type = RNA_property_type(prop);
@@ -1795,6 +1796,10 @@ static void ui_item_rna_size(uiLayout *layout,
       name = "non-empty text";
     }
     else if (type == PROP_BOOLEAN) {
+      if (icon == ICON_NONE) {
+        /* Exception for checkboxes, they need a little less space to align nicely. */
+        is_checkbox_only = true;
+      }
       icon = ICON_DOT;
     }
     else if (type == PROP_ENUM) {
@@ -1853,6 +1858,9 @@ static void ui_item_rna_size(uiLayout *layout,
   if (ui_layout_variable_size(layout)) {
     if (type == PROP_BOOLEAN && name[0]) {
       w += UI_UNIT_X / 5;
+    }
+    else if (is_checkbox_only) {
+      w -= UI_UNIT_X / 4;
     }
     else if (type == PROP_ENUM && !icon_only) {
       w += UI_UNIT_X / 4;
