@@ -1687,18 +1687,15 @@ class SEQUENCER_PT_adjust_transform(SequencerButtonsPanel, Panel):
         layout = self.layout
         strip = act_strip(context)
 
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
         layout.active = not strip.mute
 
-        split = layout.split()
-
-        col = split.column()
-        col.alignment = 'RIGHT'
-        col.label(text="Mirror")
-
-        col = split.column()
-        row = col.row(align=True)
-        row.prop(strip, "use_flip_x", text="X", toggle=True)
-        row.prop(strip, "use_flip_y", text="Y", toggle=True)
+        row = layout.row(heading = "Mirror")
+        sub = row.row(align = True)
+        sub.prop(strip, "use_flip_x", text="X", toggle=True)
+        sub.prop(strip, "use_flip_y", text="Y", toggle=True)
 
 
 class SEQUENCER_PT_adjust_video(SequencerButtonsPanel, Panel):
