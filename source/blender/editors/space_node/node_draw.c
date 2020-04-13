@@ -832,15 +832,14 @@ static void node_socket_draw_nested(const bContext *C,
  * \note this is only called from external code, internally #node_socket_draw_nested() is used for
  *       optimized drawing of multiple/all sockets of a node.
  */
-void ED_node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4])
+void ED_node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4], float scale)
 {
-  const float size = 2.25f * NODE_SOCKSIZE;
+  const float size = 2.25f * NODE_SOCKSIZE * scale;
   rcti draw_rect = *rect;
   float outline_color[4] = {0};
 
   node_socket_outline_color_get(sock->flag & SELECT, outline_color);
 
-  /* Always use default size, could be optional. */
   BLI_rcti_resize(&draw_rect, size, size);
 
   GPUVertFormat *format = immVertexFormat();
