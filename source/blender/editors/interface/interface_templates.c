@@ -1843,7 +1843,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   ModifierData *md = ob->modifiers.first;
   Panel *panel = region->panels.first;
   while (panel != NULL) {
-    if (panel->type != NULL && panel->type->flag & PANELTYPE_RECREATE) {
+    if (panel->type != NULL && panel->type->flag & PNL_RECREATE) {
       /* The panels were reordered by drag and drop. */
       if (panel->flag & PNL_RECREATE_ORDER_CHANGED) {
         modifiers_changed = true;

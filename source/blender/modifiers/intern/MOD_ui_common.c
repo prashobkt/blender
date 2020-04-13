@@ -342,7 +342,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, P
 
   /* Give the panel the special flag that says it was built here and corresponds to a
    * modifer rather than a PanelType. */
-  panel_type->flag = PANELTYPE_RECREATE;
+  panel_type->flag = PNL_RECREATE;
   panel_type->reorder = modifier_reorder;
   panel_type->get_list_data_expand_flag = get_modifier_expand_flag;
   panel_type->set_list_data_expand_flag = set_modifier_expand_flag;

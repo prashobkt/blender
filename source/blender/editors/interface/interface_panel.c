@@ -264,7 +264,7 @@ static void panel_set_expand_from_list_data_recursive(Panel *panel, short flag, 
 void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
 {
   BLI_assert(panel->type != NULL);
-  BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
+  BLI_assert(panel->type->flag & PNL_RECREATE);
 
   short expand_flag = panel->type->get_list_data_expand_flag(C, panel);
   short flag_index = 0;
@@ -305,7 +305,7 @@ static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
       continue;
     }
 
-    if (panel->type->flag & PANELTYPE_RECREATE) {
+    if (panel->type->flag & PNL_RECREATE) {
       short expand_flag;
       short flag_index = 0;
       get_panel_expand_flag(panel, &expand_flag, &flag_index);
@@ -569,14 +569,14 @@ Panel *UI_panel_add_recreate(
    *
    * We can the panel list is also the display order because the recreate panel list is rebuild
    * when the order changes. */
-  if (panel_type->flag & PANELTYPE_RECREATE) {
+  if (panel_type->flag & PNL_RECREATE) {
     Panel *last_list_panel = NULL;
 
     for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
       if (list_panel->type == NULL) {
         continue;
       }
-      if (list_panel->type->flag & (PANELTYPE_RECREATE_LIST_START | PANELTYPE_RECREATE)) {
+      if (list_panel->type->flag & (PNL_RECREATE_LIST_START | PNL_RECREATE)) {
         last_list_panel = list_panel;
       }
     }
@@ -599,7 +599,7 @@ void UI_panel_set_list_index(Panel *panel, int i)
 {
   BLI_assert(panel->type != NULL);
   if (panel->type->parent == NULL) {
-    BLI_assert(panel->type->flag & PANELTYPE_RECREATE);
+    BLI_assert(panel->type->flag & PNL_RECREATE);
   }
 
   panel->runtime.list_index = i;
@@ -665,7 +665,7 @@ void UI_panels_free_recreate(ARegion *region)
   while (panel != NULL) {
     bool remove = false;
     if (panel->type != NULL) { /* Some panels don't have a type.. */
-      if (panel->type->flag & PANELTYPE_RECREATE) {
+      if (panel->type->flag & PNL_RECREATE) {
         remove = true;
       }
     }
@@ -1352,7 +1352,7 @@ static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
 {
   /* Only reorder the data for list recreate panels. */
-  if (panel->type == NULL || !(panel->type->flag & PANELTYPE_RECREATE)) {
+  if (panel->type == NULL || !(panel->type->flag & PNL_RECREATE)) {
     return;
   }
   /* Don't reorder if this recreate panel doesn't support drag and drop reordering. */
@@ -1367,7 +1367,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
   for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
     if (list_panel->type) {
       if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PANELTYPE_RECREATE) {
+        if (list_panel->type->flag & PNL_RECREATE) {
           list_panels_len++;
         }
       }
@@ -1380,7 +1380,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
   for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
     if (list_panel->type) {
       if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PANELTYPE_RECREATE) {
+        if (list_panel->type->flag & PNL_RECREATE) {
           sort_index->panel = MEM_dupallocN(list_panel);
           sort_index->orig = list_panel;
           sort_index++;

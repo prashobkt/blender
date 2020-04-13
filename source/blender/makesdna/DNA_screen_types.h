@@ -550,12 +550,10 @@ enum {
 #define PNL_DEFAULT_CLOSED (1 << 0)
 #define PNL_NO_HEADER (1 << 1)
 #define PNL_LAYOUT_VERT_BAR (1 << 2)
-enum {
-  /** Delete panel after drawing, don't search for panel by type. */
-  PANELTYPE_RECREATE = (1 << 3),
-  /** This panel marks the start of a recreate panel list. Not recreated on list change. */
-  PANELTYPE_RECREATE_LIST_START = (1 << 4),
-};
+/** Delete panel after drawing, don't search for panel by type. */
+#define PNL_RECREATE (1 << 3)
+/** This panel marks the start of a recreate panel list. Not recreated on list change. */
+#define PNL_RECREATE_LIST_START (1 << 4)
 
 /* Fallback panel category (only for old scripts which need updating) */
 #define PNL_CATEGORY_FALLBACK "Misc"
