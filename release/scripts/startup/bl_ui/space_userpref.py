@@ -1406,7 +1406,7 @@ class USERPREF_PT_input_tablet(InputPanel, CenterAlignMixIn, Panel):
             layout.prop(inputs, "tablet_api")
             layout.separator()
 
-        col = layouts.column(heading = "Pressure")
+        col = layout.column()
         col.prop(inputs, "pressure_threshold_max")
         col.prop(inputs, "pressure_softness")
 
