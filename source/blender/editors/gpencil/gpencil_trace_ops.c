@@ -92,6 +92,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
   const float sample = RNA_float_get(op->ptr, "sample");
   const int resolution = RNA_int_get(op->ptr, "resolution");
   const int thickness = RNA_int_get(op->ptr, "thickness");
+  const int turnpolicy = RNA_enum_get(op->ptr, "turnpolicy");
 
   ImBuf *ibuf;
   void *lock;
@@ -109,6 +110,7 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   param->turdsize = 0;
+  param->turnpolicy = turnpolicy;
 
   /* Create a new grease pencil object in origin. */
   bool newob = false;
@@ -197,6 +199,35 @@ static int gp_trace_image_exec(bContext *C, wmOperator *op)
 
 void GPENCIL_OT_trace_image(wmOperatorType *ot)
 {
+  static const EnumPropertyItem turnpolicy_type[] = {
+      {POTRACE_TURNPOLICY_BLACK,
+       "BLACK",
+       0,
+       "Black",
+       "prefers to connect black (foreground) components"},
+      {POTRACE_TURNPOLICY_WHITE,
+       "WHITE",
+       0,
+       "White",
+       "Prefers to connect white (background) components"},
+      {POTRACE_TURNPOLICY_LEFT, "LEFT", 0, "Left", "Always take a left turn"},
+      {POTRACE_TURNPOLICY_RIGHT, "RIGHT", 0, "Right", "Always take a right turn"},
+      {POTRACE_TURNPOLICY_MINORITY,
+       "MINORITY",
+       0,
+       "Minority",
+       "Prefers to connect the color (black or white) that occurs least frequently in a local "
+       "neighborhood of the current position"},
+      {POTRACE_TURNPOLICY_MAJORITY,
+       "MAJORITY",
+       0,
+       "Majority",
+       "Prefers to connect the color (black or white) that occurs most frequently in a local "
+       "neighborhood of the current position"},
+      {POTRACE_TURNPOLICY_RANDOM, "RANDOM", 0, "Random", "Choose pseudo-randomly"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   /* identifiers */
   ot->name = "Trace Image to Grease Pencil";
   ot->idname = "GPENCIL_OT_trace_image";
@@ -248,4 +279,10 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
                        "Determine what is considered white and what black",
                        0.0f,
                        1.0f);
+  RNA_def_enum(ot->srna,
+               "turnpolicy",
+               turnpolicy_type,
+               POTRACE_TURNPOLICY_MINORITY,
+               "Turn Policy",
+               "Determines how to resolve ambiguities during decomposition of bitmaps into paths");
 }

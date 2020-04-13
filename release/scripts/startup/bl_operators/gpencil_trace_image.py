@@ -95,6 +95,20 @@ class GPENCIL_OT_trace(Operator):
         precision=3,
         step=1,
     )
+    turnpolicy: EnumProperty(
+        name="Turn Policy",
+        description="Determines how to resolve ambiguities during decomposition of bitmaps into paths",
+        items=(
+            ("BLACK", "Black",  "prefers to connect black (foreground) components"),
+            ("WHITE", "White", "Prefers to connect white (background) components"),
+            ("LEFT", "Left", "Always take a left turn"),
+            ("RIGHT", "Right", "Always take a right turn"),
+            ("MINORITY", "Minority", "Prefers to connect the color (black or white) that occurs least frequently"),
+            ("MAJORITY", "Majority", "Prefers to connect the color (black or white) that occurs most frequently"),
+            ("RANDOM", "Random", "Choose pseudo-randomly.")
+        ),
+        default="MINORITY"
+    )
 
     @classmethod
     def poll(self, context):
@@ -108,7 +122,8 @@ class GPENCIL_OT_trace(Operator):
             resolution=self.resolution,
             scale=self.scale,
             sample=self.sample,
-            threshold=self.threshold
+            threshold=self.threshold,
+            turnpolicy=self.turnpolicy
         )
 
         return {'FINISHED'}
