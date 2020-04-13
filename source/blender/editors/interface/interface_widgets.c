@@ -42,6 +42,8 @@
 
 #include "BLF_api.h"
 
+#include "ED_node.h"
+
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
 
@@ -2394,6 +2396,28 @@ static void widget_draw_extra_icons(const uiWidgetColors *wcol,
   }
 }
 
+static void widget_draw_node_link_socket(const uiWidgetColors *wcol,
+                                         const rcti *rect,
+                                         uiBut *but,
+                                         float alpha)
+{
+  if (but->custom_data) {
+    float col[4];
+    rgba_uchar_to_float(col, but->col);
+    col[3] *= alpha;
+
+    GPU_blend(true);
+    UI_widgetbase_draw_cache_flush();
+    GPU_blend(false);
+
+    /* See UI_but_node_link_set() */
+    ED_node_socket_draw(but->custom_data, rect, col);
+  }
+  else {
+    widget_draw_icon(but, ICON_LAYER_USED, alpha, rect, wcol->text);
+  }
+}
+
 /* draws text and icons for buttons */
 static void widget_draw_text_icon(const uiFontStyle *fstyle,
                                   const uiWidgetColors *wcol,
@@ -2410,7 +2434,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
   if (ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_POPOVER) && (but->flag & UI_BUT_NODE_LINK)) {
     rcti temp = *rect;
     temp.xmin = rect->xmax - BLI_rcti_size_y(rect) - 1;
-    widget_draw_icon(but, ICON_LAYER_USED, alpha, &temp, wcol->text);
+    widget_draw_node_link_socket(wcol, &temp, but, alpha);
     rect->xmax = temp.xmin;
   }
 
