@@ -197,35 +197,21 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  modifier_panel_buttons(C, panel);
-
-  modifier_panel_end(layout, &ptr);
-}
-
-static void cache_file_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiTemplateCacheFile(layout, C, &ptr, "cache_file");
-}
-
-static void modifier_panel_draw(const bContext *C, Panel *panel)
-{
+  uiLayout *box;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
 
   PointerRNA cache_file_ptr = RNA_pointer_get(&ptr, "cache_file");
   bool has_cache_file = !RNA_pointer_is_null(&cache_file_ptr);
+
+  box = uiLayoutBox(layout);
+  uiTemplateCacheFile(box, C, &ptr, "cache_file");
+
+  uiLayoutSetPropSep(layout, true);
 
   if (has_cache_file) {
     uiItemPointerR(layout, &ptr, "object_path", &cache_file_ptr, "object_paths", NULL, ICON_NONE);
@@ -234,23 +220,13 @@ static void modifier_panel_draw(const bContext *C, Panel *panel)
   if (RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
     uiItemR(layout, &ptr, "read_data", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
   }
+
+  modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "MeshSequenceCache", panel_draw);
-  modifier_subpanel_register(region_type,
-                             "meshsequencecache_file",
-                             "Cache File",
-                             NULL,
-                             cache_file_panel_draw,
-                             panel_type);
-  modifier_subpanel_register(region_type,
-                             "meshsequencecache_properties",
-                             "Modifier",
-                             NULL,
-                             modifier_panel_draw,
-                             panel_type);
+  modifier_panel_register(region_type, "MeshSequenceCache", panel_draw);
 }
 
 ModifierTypeInfo modifierType_MeshSequenceCache = {

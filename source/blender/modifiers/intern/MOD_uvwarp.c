@@ -308,10 +308,6 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemPointerR(col, &ptr, "bone_to", &warp_obj_data_ptr, "bones", NULL, ICON_NONE);
   }
 
-  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "rotation", 0, NULL, ICON_NONE);
-
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
   uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
@@ -323,9 +319,25 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, &ptr);
 }
 
+static void transform_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "rotation", 0, NULL, ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "UVWarp", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, "UVWarp", panel_draw);
+  modifier_subpanel_register(
+      region_type, "uvwarp_offset", "Transform", NULL, transform_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_UVWarp = {

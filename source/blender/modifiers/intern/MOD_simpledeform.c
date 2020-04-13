@@ -460,7 +460,7 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -468,7 +468,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
   int deform_method = RNA_enum_get(&ptr, "deform_method");
 
   row = uiLayoutRow(layout, false);
@@ -482,33 +481,28 @@ static void panel_draw(const bContext *C, Panel *panel)
   else {
     uiItemR(layout, &ptr, "angle", 0, NULL, ICON_NONE);
   }
-  uiItemR(layout, &ptr, "limits", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
-  col = uiLayoutColumn(layout, true);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(layout, &ptr, "origin", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "deform_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }
 
-static void axis_origin_panel_draw(const bContext *C, Panel *panel)
+static void restrictions_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *decorator_layout;
+  uiLayout *col, *row, *sub, *decorator_layout;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
   int deform_method = RNA_enum_get(&ptr, "deform_method");
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "origin", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "deform_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "limits", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
   if (ELEM(deform_method,
            MOD_SIMPLEDEFORM_MODE_TAPER,
@@ -529,16 +523,24 @@ static void axis_origin_panel_draw(const bContext *C, Panel *panel)
     }
     uiItemL(decorator_layout, "", ICON_BLANK1);
   }
+
+  col = uiLayoutColumn(layout, true);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "SimpleDeform", panel_draw);
   modifier_subpanel_register(region_type,
-                             "simpledeform_orientation",
-                             "Orientation",
+                             "simpledeform_restrictions",
+                             "Restrictions",
                              NULL,
-                             axis_origin_panel_draw,
+                             restrictions_panel_draw,
                              panel_type);
 }
 

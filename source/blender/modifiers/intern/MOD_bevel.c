@@ -308,77 +308,77 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
     uiItemR(col, &ptr, "width", 0, IFACE_(offset_name), ICON_NONE);
   }
-
   uiItemR(col, &ptr, "offset_type", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
   uiItemS(layout);
 
   uiItemR(layout, &ptr, "affect", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
-
-  col = uiLayoutColumn(layout, true);
-  uiItemR(col, &ptr, "use_clamp_overlap", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "harden_normals", 0, NULL, ICON_NONE);
-
-  col = uiLayoutColumnWithHeading(layout, true, "Mark");
-  uiItemR(col, &ptr, "mark_seam", 0, IFACE_("Seam"), ICON_NONE);
-  uiItemR(col, &ptr, "mark_sharp", 0, IFACE_("Sharp"), ICON_NONE);
-
-  uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-
   col = uiLayoutColumn(layout, true);
   uiItemR(col, &ptr, "limit_method", 0, NULL, ICON_NONE);
   int limit_method = RNA_enum_get(&ptr, "limit_method");
   if (limit_method == MOD_BEVEL_ANGLE) {
-    uiItemR(col, &ptr, "angle_limit", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "angle_limit", 0, "", ICON_NONE);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     row = uiLayoutRow(col, true);
-    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
     sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_vertex_group);
     uiLayoutSetPropDecorate(sub, false);
     uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
   }
 
-  uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
-
   modifier_panel_end(layout, &ptr);
 }
 
-static void miter_panel_draw(const bContext *C, Panel *panel)
+static void geometry_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiLayoutSetPropSep(layout, true);
 
+  uiItemR(layout, &ptr, "miter_inner", 0, IFACE_("Miter Inner"), ICON_NONE);
   uiItemR(layout, &ptr, "miter_outer", 0, IFACE_("Outer"), ICON_NONE);
-  uiItemR(layout, &ptr, "miter_inner", 0, IFACE_("Inner"), ICON_NONE);
   if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
     uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
   }
+  uiItemR(layout, &ptr, "vmesh_method", 0, IFACE_("Intersections"), ICON_NONE);
+  uiItemR(layout, &ptr, "use_clamp_overlap", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
 }
 
-static void advanced_panel_draw(const bContext *C, Panel *panel)
+static void shading_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiLayoutSetPropSep(layout, true);
 
+  col = uiLayoutColumnWithHeading(layout, true, "Mark");
+  uiItemR(col, &ptr, "mark_seam", 0, IFACE_("Seam"), ICON_NONE);
+  uiItemR(col, &ptr, "mark_sharp", 0, IFACE_("Sharp"), ICON_NONE);
+
+  uiItemR(layout, &ptr, "harden_normals", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "vmesh_method", 0, IFACE_("Intersections"), ICON_NONE);
-  uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
 }
 
 static void custom_profile_panel_draw_header(const bContext *C, Panel *panel)
 {
+  uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  uiLayout *layout = panel->layout;
 
   uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
 }
@@ -396,15 +396,15 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Bevel", panel_draw);
   modifier_subpanel_register(
-      region_type, "bevel_miters", "Miters", NULL, miter_panel_draw, panel_type);
+      region_type, "bevel_geometry", "Bevel Geometry", NULL, geometry_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "bevel_shading", "Shading", NULL, shading_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
                              "bevel_custom_profile",
                              "",
                              custom_profile_panel_draw_header,
                              custom_profile_panel_draw,
                              panel_type);
-  modifier_subpanel_register(
-      region_type, "bevel_advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Bevel = {

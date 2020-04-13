@@ -164,9 +164,11 @@ static void panel_draw(const bContext *C, Panel *panel)
   /* Now decorators are fine, we don't insert multiple items in a single row anymore. */
   uiLayoutSetPropDecorate(col, true);
 
+  uiItemR(col, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
+
   uiItemR(col, &ptr, "mirror_object", 0, NULL, ICON_NONE);
 
-  uiItemR(col, &ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+  modifier_panel_end(layout, &ptr);
 }
 
 static void merge_panel_draw_header(const bContext *C, Panel *panel)
@@ -192,10 +194,9 @@ static void symmetry_panel_draw(const bContext *C, Panel *panel)
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_merge"));
   uiItemR(row, &ptr, "merge_threshold", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
 }
 
-static void uv_panel_draw(const bContext *C, Panel *panel)
+static void data_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *col, *row, *sub;
   uiLayout *layout = panel->layout;
@@ -225,7 +226,7 @@ static void uv_panel_draw(const bContext *C, Panel *panel)
   uiItemR(sub, &ptr, "mirror_offset_v", UI_ITEM_R_SLIDER, "", ICON_NONE);
   uiItemDecoratorR(row, &ptr, "mirror_offset_v", 0);
 
-  modifier_panel_end(layout, &ptr);
+  uiItemR(layout, &ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -234,7 +235,7 @@ static void panelRegister(ARegionType *region_type)
   modifier_subpanel_register(
       region_type, "mirror_merge", "", merge_panel_draw_header, symmetry_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "mirror_textures", "UVs", NULL, uv_panel_draw, panel_type);
+      region_type, "mirror_data", "Data", NULL, data_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Mirror = {

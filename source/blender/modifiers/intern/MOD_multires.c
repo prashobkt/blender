@@ -295,13 +295,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "levels", 0, IFACE_("Preview Levels"), ICON_NONE);
-  /* TODO(sergey): Expose it again after T58473 is solved. */
-  /* uiItemR(col, ptr, "render_levels", 0, "Render", ICON_NONE); */
-  uiItemR(layout, &ptr, "quality", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "subdivision_type", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
+  uiItemR(col, &ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
   uiItemR(layout, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_creases", 0, NULL, ICON_NONE);
 
   uiItemS(layout);
 
@@ -328,9 +326,25 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, &ptr);
 }
 
+static void advanced_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "quality", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_creases", 0, NULL, ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "Multires", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, "Multires", panel_draw);
+  modifier_subpanel_register(
+      region_type, "multires_advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Multires = {

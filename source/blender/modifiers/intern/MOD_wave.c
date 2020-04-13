@@ -379,10 +379,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumnWithHeading(layout, true, "Motion");
-  uiItemR(col, &ptr, "use_x", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_y", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_cyclic", 0, NULL, ICON_NONE);
+  row = uiLayoutRowWithHeading(layout, true, "Motion");
+  uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "use_cyclic", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   uiItemR(col, &ptr, "falloff_radius", 0, "Falloff", ICON_NONE);

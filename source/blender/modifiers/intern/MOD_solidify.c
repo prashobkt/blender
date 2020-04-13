@@ -121,11 +121,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumnWithHeading(layout, false, "Normal");
-  uiItemR(col, &ptr, "use_flip_normals", 0, NULL, ICON_NONE);
-  if (solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE) {
-    uiItemR(col, &ptr, "use_quality_normals", 0, IFACE_("High Quality"), ICON_NONE);
-    uiItemR(col, &ptr, "use_even_offset", 0, NULL, ICON_NONE);
-  }
 
   col = uiLayoutColumnWithHeading(layout, false, "Rim");
   uiItemR(col, &ptr, "use_rim", 0, IFACE_("Fill"), ICON_NONE);
@@ -148,7 +143,26 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, &ptr);
 }
 
-static void solidify_materials_panel_draw(const bContext *C, Panel *panel)
+static void normals_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  int solidify_mode = RNA_enum_get(&ptr, "solidify_mode");
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "use_flip_normals", 0, NULL, ICON_NONE);
+  if (solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE) {
+    uiItemR(layout, &ptr, "use_quality_normals", 0, IFACE_("High Quality"), ICON_NONE);
+    uiItemR(layout, &ptr, "use_even_offset", 0, NULL, ICON_NONE);
+  }
+}
+
+static void materials_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
@@ -165,7 +179,7 @@ static void solidify_materials_panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "material_offset_rim", 0, IFACE_("Rim"), ICON_NONE);
 }
 
-static void draw_crease_panel(const bContext *C, Panel *panel)
+static void crease_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -183,7 +197,7 @@ static void draw_crease_panel(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "edge_crease_rim", 0, IFACE_("Rim"), ICON_NONE);
 }
 
-static void draw_clamp_panel(const bContext *C, Panel *panel)
+static void clamp_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
@@ -200,7 +214,7 @@ static void draw_clamp_panel(const bContext *C, Panel *panel)
   uiItemR(row, &ptr, "use_thickness_angle_clamp", 0, NULL, ICON_NONE);
 }
 
-static void draw_vertex_group_panel(const bContext *C, Panel *panel)
+static void vertex_group_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -217,21 +231,19 @@ static void draw_vertex_group_panel(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Solidify", panel_draw);
-  modifier_subpanel_register(region_type,
-                             "solidify_materials",
-                             "Materials",
-                             NULL,
-                             solidify_materials_panel_draw,
-                             panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_crease", "Crease", NULL, draw_crease_panel, panel_type);
+      region_type, "solidify_normals", "Normals", NULL, normals_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_clamp", "Clamp", NULL, draw_clamp_panel, panel_type);
+      region_type, "solidify_materials", "Materials", NULL, materials_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "solidify_crease", "Crease", NULL, crease_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "solidify_clamp", "Clamp", NULL, clamp_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
                              "solidify_vertex_groups",
                              "Output Vertex Groups",
                              NULL,
-                             draw_vertex_group_panel,
+                             vertex_group_panel_draw,
                              panel_type);
 }
 

@@ -264,13 +264,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, &ptr, "use_object_transform", 0, "", ICON_ORIENTATION_GLOBAL);
 
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, &ptr, "max_distance", 0, NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "use_max_distance", 0, "", ICON_STYLUS_PRESSURE);
-
-  uiItemR(layout, &ptr, "ray_radius", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "mix_mode", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "mix_factor", 0, NULL, ICON_NONE);
 
@@ -436,6 +429,25 @@ static void face_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "poly_mapping", 0, IFACE_("Mapping"), ICON_NONE);
 }
 
+static void advanced_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *sub;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Max Distance"));
+  uiItemR(row, &ptr, "use_max_distance", 0, "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_max_distance"));
+  uiItemR(sub, &ptr, "max_distance", 0, "", ICON_NONE);
+
+  uiItemR(layout, &ptr, "ray_radius", 0, NULL, ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "DataTransfer", panel_draw);
@@ -476,6 +488,12 @@ static void panelRegister(ARegionType *region_type)
 
   modifier_subpanel_register(
       region_type, "datatransfer_face", "", face_panel_draw_header, face_panel_draw, panel_type);
+  modifier_subpanel_register(region_type,
+                             "datatransfer_advanced",
+                             "Topology Mapping",
+                             NULL,
+                             advanced_panel_draw,
+                             panel_type);
 }
 
 #undef HIGH_POLY_WARNING

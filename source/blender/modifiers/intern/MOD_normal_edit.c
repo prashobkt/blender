@@ -713,18 +713,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   int mode = RNA_enum_get(&ptr, "mode");
-  PointerRNA target_ptr = RNA_pointer_get(&ptr, "target");
-  bool needs_object_offset = (mode == MOD_NORMALEDIT_MODE_RADIAL &&
-                              RNA_pointer_is_null(&target_ptr)) ||
-                             (mode == MOD_NORMALEDIT_MODE_DIRECTIONAL &&
-                              RNA_boolean_get(&ptr, "use_direction_parallel"));
 
   uiItemR(layout, &ptr, "mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
-
-  col = uiLayoutColumn(layout, true);
-  uiLayoutSetActive(col, needs_object_offset);
-  uiItemR(col, &ptr, "offset", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, mode == MOD_NORMALEDIT_MODE_DIRECTIONAL);
@@ -735,6 +726,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void mix_mode_panel_draw(const bContext *C, Panel *panel)
 {
+  /* HANS-TODO: This panel should be open by default. */
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 
@@ -766,11 +758,33 @@ static void mix_mode_panel_draw(const bContext *C, Panel *panel)
           (RNA_boolean_get(&ptr, "no_polynors_fix") ? ICON_LOCKED : ICON_UNLOCKED));
 }
 
+static void offset_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  int mode = RNA_enum_get(&ptr, "mode");
+  PointerRNA target_ptr = RNA_pointer_get(&ptr, "target");
+  bool needs_object_offset = (mode == MOD_NORMALEDIT_MODE_RADIAL &&
+                              RNA_pointer_is_null(&target_ptr)) ||
+                             (mode == MOD_NORMALEDIT_MODE_DIRECTIONAL &&
+                              RNA_boolean_get(&ptr, "use_direction_parallel"));
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, needs_object_offset);
+  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "NormalEdit", panel_draw);
   modifier_subpanel_register(
       region_type, "normaledit_mix", "Mix", NULL, mix_mode_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "normaledit_offset", "Offset", NULL, offset_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_NormalEdit = {

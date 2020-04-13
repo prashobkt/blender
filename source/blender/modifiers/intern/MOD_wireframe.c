@@ -121,7 +121,7 @@ static Mesh *applyModifier(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *split;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -134,14 +134,12 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "thickness", 0, IFACE_("Thickness"), ICON_NONE);
   uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
-  split = uiLayoutSplit(layout, 0.5f, false);
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "use_even_offset", 0, IFACE_("Even Thickness"), ICON_NONE);
-  uiItemR(col, &ptr, "use_relative_offset", 0, IFACE_("Relative Thickness"), ICON_NONE);
+  uiItemR(layout, &ptr, "use_boundary", 0, IFACE_("Boundary"), ICON_NONE);
+  uiItemR(layout, &ptr, "use_replace", 0, IFACE_("Replace Original"), ICON_NONE);
 
-  col = uiLayoutColumn(split, false);
-  uiItemR(col, &ptr, "use_boundary", 0, IFACE_("Boundary"), ICON_NONE);
-  uiItemR(col, &ptr, "use_replace", 0, IFACE_("Replace Original"), ICON_NONE);
+  col = uiLayoutColumnWithHeading(layout, false, IFACE_("Thickness"));
+  uiItemR(col, &ptr, "use_even_offset", 0, IFACE_("Even"), ICON_NONE);
+  uiItemR(col, &ptr, "use_relative_offset", 0, IFACE_("Relative"), ICON_NONE);
 
   uiItemR(layout, &ptr, "material_offset", 0, IFACE_("Material Offset"), ICON_NONE);
 

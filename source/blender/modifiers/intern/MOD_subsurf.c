@@ -289,6 +289,26 @@ static void deformMatrices(ModifierData *md,
   }
 }
 
+static bool get_show_adaptive_options(const bContext *C)
+{
+  const struct Scene *scene = CTX_data_scene(C);
+  const struct RenderEngineType *engine_type;
+
+  PointerRNA scene_ptr;
+  RNA_id_pointer_create(&scene->id, &scene_ptr);
+
+  if (BKE_scene_uses_cycles(scene)) {
+    PointerRNA cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
+    if (RNA_enum_get(&cycles_ptr, "feature_set") /* == EXPERIMENTAL */) {
+      /* if modifier is last */
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/* HANS-TODO: Finish settings for this anc check them. */
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *sub, *col;
@@ -299,32 +319,17 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   modifier_panel_buttons(C, panel);
 
-  /* Find whether to display adaptive options, accounting for failing to get context. */
-  bool show_adaptive_options = false;
-  const struct RenderEngineType *engine_type;
-  const struct Scene *scene = CTX_data_scene(C);
-
-  PointerRNA scene_ptr;
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
-  if (BKE_scene_uses_cycles(scene)) {
-    PointerRNA cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
-    if (RNA_enum_get(&cycles_ptr, "feature_set") /* == EXPERIMENTAL */) {
-      /* HANS-TODO: Finish this... */
-      /* if modifier is last */
-      show_adaptive_options = true;
-    }
-  }
-
   PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
   bool ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
+  bool show_adaptive_options = get_show_adaptive_options(C);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "subdivision_type", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "subdivision_type", 0, IFACE_("Type"), ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   if (show_adaptive_options) {
-    uiItemR(sub, &ptr, "levels", 0, "Subdivisions Viewport", ICON_NONE);
+    uiItemR(layout, &ptr, "levels", 0, "Levels Viewport", ICON_NONE);
 
     uiItemR(col, &ob_cycles_ptr, "use_adaptive_subdivision", 0, "Adaptive", ICON_NONE);
     sub = uiLayoutColumn(col, true);
@@ -337,17 +342,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   }
   else {
     sub = uiLayoutColumn(col, true);
-    uiItemR(sub, &ptr, "levels", 0, IFACE_("Subdivisions Viewport"), ICON_NONE);
+    uiItemR(sub, &ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
     uiItemR(sub, &ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
-
-    uiItemR(col, &ptr, "quality", 0, NULL, ICON_NONE);
   }
-
-  sub = uiLayoutColumn(col, true);
-  uiLayoutSetActive(sub, !(show_adaptive_options && ob_use_adaptive_subdivision));
-  uiItemR(sub, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
-  uiItemR(sub, &ptr, "use_creases", 0, NULL, ICON_NONE);
-  uiItemR(sub, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
 
   if (show_adaptive_options && ob_use_adaptive_subdivision) {
     col = uiLayoutColumn(layout, true);
@@ -366,12 +363,38 @@ static void panel_draw(const bContext *C, Panel *panel)
     //   snprintf(output, 32, "Render %.2f px, Preview %.2f px", render, preview);
   }
 
+  uiItemR(layout, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void advanced_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
+  bool ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
+  bool show_adaptive_options = get_show_adaptive_options(C);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, !(show_adaptive_options && ob_use_adaptive_subdivision));
+  uiItemR(layout, &ptr, "quality", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_creases", 0, NULL, ICON_NONE);
+
   modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "Subdivision", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, "Subdivision", panel_draw);
+  modifier_subpanel_register(
+      region_type, "multires_advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Subsurf = {
