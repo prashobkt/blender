@@ -1894,7 +1894,8 @@ static uiLayout *ui_layout_heading_find(uiLayout *cur_layout)
 
 static void ui_layout_heading_label_add(uiLayout *layout,
                                         uiLayout *heading_layout,
-                                        bool right_align)
+                                        bool right_align,
+                                        bool respect_prop_split)
 {
   const int prev_alignment = layout->alignment;
 
@@ -1902,7 +1903,12 @@ static void ui_layout_heading_label_add(uiLayout *layout,
     uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_RIGHT);
   }
 
-  uiItemL(layout, heading_layout->heading, ICON_NONE);
+  if (respect_prop_split) {
+    uiItemL_respect_property_split(layout, heading_layout->heading, ICON_NONE);
+  }
+  else {
+    uiItemL(layout, heading_layout->heading, ICON_NONE);
+  }
   /* After adding the heading label, we have to mark it somehow as added, so it's not added again
    * for other items in this layout. For now just clear it. */
   heading_layout->heading[0] = '\0';
@@ -2110,7 +2116,7 @@ void uiItemFullR(uiLayout *layout,
       layout = uiLayoutColumn(layout_row ? layout_row : layout, true);
       layout->space = 0;
       if (heading_layout) {
-        ui_layout_heading_label_add(layout, heading_layout, false);
+        ui_layout_heading_label_add(layout, heading_layout, false, false);
       }
     }
     else {
@@ -2171,7 +2177,7 @@ void uiItemFullR(uiLayout *layout,
       }
 
       if (!label_added && heading_layout) {
-        ui_layout_heading_label_add(layout_sub, heading_layout, true);
+        ui_layout_heading_label_add(layout_sub, heading_layout, true, false);
       }
 
       layout_split = ui_item_prop_split_layout_hack(layout_parent, layout_split);
@@ -2214,7 +2220,7 @@ void uiItemFullR(uiLayout *layout,
   else if (heading_layout) {
     /* Could not add heading to split layout, fallback to inserting it to the layout with the
      * heading itself. */
-    ui_layout_heading_label_add(heading_layout, heading_layout, false);
+    ui_layout_heading_label_add(heading_layout, heading_layout, false, false);
   }
   else if (inside_prop_sep) {
     /* When placing further items in a split row, add them to a column so they match the column
@@ -2814,6 +2820,7 @@ static uiBut *ui_item_menu(uiLayout *layout,
                            bool force_menu)
 {
   uiBlock *block = layout->root->block;
+  uiLayout *heading_layout = ui_layout_heading_find(layout);
   uiBut *but;
   int w, h;
 
@@ -2841,6 +2848,10 @@ static uiBut *ui_item_menu(uiLayout *layout,
         w -= UI_UNIT_X / 2;
       }
     }
+  }
+
+  if (heading_layout) {
+    ui_layout_heading_label_add(layout, heading_layout, true, true);
   }
 
   if (name[0] && icon) {
