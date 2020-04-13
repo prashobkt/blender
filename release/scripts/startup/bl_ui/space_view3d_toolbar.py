@@ -125,21 +125,15 @@ class View3DPanel:
 # Used by vertex & weight paint
 def draw_vpaint_symmetry(layout, vpaint):
 
-    split = layout.split()
+    col = layout.column()
+    col.use_property_split = True
+    col.use_property_decorate = False
 
-    col = split.column()
-    col.alignment = 'RIGHT'
-    col.label(text="Mirror")
-
-    col = split.column()
-    row = col.row(align=True)
+    row = col.row(heading = "Mirror", align=True)
     row.prop(vpaint, "use_symmetry_x", text="X", toggle=True)
     row.prop(vpaint, "use_symmetry_y", text="Y", toggle=True)
     row.prop(vpaint, "use_symmetry_z", text="Z", toggle=True)
 
-    col = layout.column()
-    col.use_property_split = True
-    col.use_property_decorate = False
     col.prop(vpaint, "radial_symmetry", text="Radial")
 
 
@@ -209,16 +203,11 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
 
         split = layout.split()
 
-        col = split.column()
-        col.alignment = 'RIGHT'
-        col.label(text="Mirror")
-
-        col = split.column()
-
-        row = col.row(align=True)
-        row.prop(mesh, "use_mirror_x", text="X", toggle=True)
-        row.prop(mesh, "use_mirror_y", text="Y", toggle=True)
-        row.prop(mesh, "use_mirror_z", text="Z", toggle=True)
+        row = layout.row(heading = "Mirror")
+        sub = row.row(align=True)
+        sub.prop(mesh, "use_mirror_x", text="X", toggle=True)
+        sub.prop(mesh, "use_mirror_y", text="Y", toggle=True)
+        sub.prop(mesh, "use_mirror_z", text="Z", toggle=True)
 
         row = layout.row(align=True)
         row.active = ob.data.use_mirror_x or ob.data.use_mirror_y or ob.data.use_mirror_z
