@@ -122,7 +122,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
-  col = uiLayoutColumnWithHeading(layout, false, "Normal");
+  if (solidify_mode == MOD_SOLIDIFY_MODE_NONMANIFOLD) {
+    uiItemR(layout, &ptr, "nonmanifold_merge_threshold", 0, NULL, ICON_NONE);
+  }
 
   col = uiLayoutColumnWithHeading(layout, false, "Rim");
   uiItemR(col, &ptr, "use_rim", 0, IFACE_("Fill"), ICON_NONE);
@@ -141,6 +143,12 @@ static void panel_draw(const bContext *C, Panel *panel)
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, has_vertex_group);
   uiItemR(row, &ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
+
+  if (solidify_mode == MOD_SOLIDIFY_MODE_NONMANIFOLD) {
+    row = uiLayoutRow(layout, false);
+    uiLayoutSetActive(row, has_vertex_group);
+    uiItemR(row, &ptr, "use_flat_faces", 0, NULL, ICON_NONE);
+  }
 
   modifier_panel_end(layout, &ptr);
 }
@@ -181,7 +189,7 @@ static void materials_panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "material_offset_rim", 0, IFACE_("Rim"), ICON_NONE);
 }
 
-static void crease_panel_draw(const bContext *C, Panel *panel)
+static void edge_data_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -193,10 +201,12 @@ static void crease_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiLayoutSetActive(layout, solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE);
-  uiItemR(layout, &ptr, "edge_crease_inner", 0, IFACE_("Inner"), ICON_NONE);
-  uiItemR(layout, &ptr, "edge_crease_outer", 0, IFACE_("Outer"), ICON_NONE);
-  uiItemR(layout, &ptr, "edge_crease_rim", 0, IFACE_("Rim"), ICON_NONE);
+  if (solidify_mode == MOD_SOLIDIFY_MODE_EXTRUDE) {
+    uiItemR(layout, &ptr, "edge_crease_inner", 0, IFACE_("Inner"), ICON_NONE);
+    uiItemR(layout, &ptr, "edge_crease_outer", 0, IFACE_("Outer"), ICON_NONE);
+    uiItemR(layout, &ptr, "edge_crease_rim", 0, IFACE_("Rim"), ICON_NONE);
+  }
+  uiItemR(layout, &ptr, "bevel_convex", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 }
 
 static void clamp_panel_draw(const bContext *C, Panel *panel)
@@ -238,9 +248,9 @@ static void panelRegister(ARegionType *region_type)
   modifier_subpanel_register(
       region_type, "solidify_materials", "Materials", NULL, materials_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_crease", "Crease", NULL, crease_panel_draw, panel_type);
+      region_type, "solidify_edge_data", "Edge Data", NULL, edge_data_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_clamp", "Clamp", NULL, clamp_panel_draw, panel_type);
+      region_type, "solidify_clamp", "Thickness Clamp", NULL, clamp_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
                              "solidify_vertex_groups",
                              "Output Vertex Groups",
