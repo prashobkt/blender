@@ -1803,6 +1803,9 @@ enum {
   UI_TEMPLATE_OP_PROPS_SHOW_EMPTY = 1 << 1,
   UI_TEMPLATE_OP_PROPS_COMPACT = 1 << 2,
   UI_TEMPLATE_OP_PROPS_HIDE_ADVANCED = 1 << 3,
+  /* Disable property split for the default layout (custom ui callbacks still have full control
+   * over the layout and can enable it). */
+  UI_TEMPLATE_OP_PROPS_NO_SPLIT_LAYOUT = 1 << 4,
 };
 
 /* used for transp checkers */
@@ -2067,11 +2070,11 @@ void uiTemplateOperatorSearch(uiLayout *layout);
 void UI_but_func_menu_search(uiBut *but);
 void uiTemplateMenuSearch(uiLayout *layout);
 
-eAutoPropButsReturn uiTemplateOperatorPropertyButs(const struct bContext *C,
-                                                   uiLayout *layout,
-                                                   struct wmOperator *op,
-                                                   const eButLabelAlign label_align,
-                                                   const short flag);
+void uiTemplateOperatorPropertyButs(const struct bContext *C,
+                                    uiLayout *layout,
+                                    struct wmOperator *op,
+                                    eButLabelAlign label_align,
+                                    short flag);
 void uiTemplateHeader3D_mode(uiLayout *layout, struct bContext *C);
 void uiTemplateEditModeSelection(uiLayout *layout, struct bContext *C);
 void uiTemplateReportsBanner(uiLayout *layout, struct bContext *C);
