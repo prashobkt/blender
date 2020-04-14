@@ -192,7 +192,7 @@ class DATA_PT_normals(MeshButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        
+
         mesh = context.mesh
 
         col = layout.column(align=False, heading="Auto Smooth")

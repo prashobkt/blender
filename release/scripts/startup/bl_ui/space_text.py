@@ -131,7 +131,7 @@ class TEXT_PT_properties(Panel):
 
         if not st.text:
             layout.active = False
-        
+
         st = context.space_data
 
         col = layout.column(align=False, heading="Margin")
