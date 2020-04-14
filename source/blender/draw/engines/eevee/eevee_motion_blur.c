@@ -273,6 +273,11 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
   GHashIterator ghi;
+
+  if ((effects->enabled_effects & EFFECT_MOTION_BLUR) == 0) {
+    return;
+  }
+
   for (BLI_ghashIterator_init(&ghi, effects->motion_blur.geom);
        BLI_ghashIterator_done(&ghi) == false;
        BLI_ghashIterator_step(&ghi)) {
