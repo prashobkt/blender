@@ -1840,7 +1840,6 @@ static size_t animdata_filter_gpencil(bAnimContext *ac,
   bDopeSheet *ads = ac->ads;
   size_t items = 0;
 
-  Scene *scene = (Scene *)ads->source;
   ViewLayer *view_layer = (ViewLayer *)ac->view_layer;
   Base *base;
 
@@ -1881,13 +1880,12 @@ static size_t animdata_filter_gpencil(bAnimContext *ac,
         }
       }
 
-      /* check selection and object type filters only for Object mode */
-      if (ob->mode == OB_MODE_OBJECT) {
-        if ((ads->filterflag & ADS_FILTER_ONLYSEL) && !((base->flag & BASE_SELECTED))) {
-          /* only selected should be shown */
-          continue;
-        }
+      /* check selection and object type filters */
+      if ((ads->filterflag & ADS_FILTER_ONLYSEL) && !((base->flag & BASE_SELECTED))) {
+        /* only selected should be shown */
+        continue;
       }
+
       /* check if object belongs to the filtering group if option to filter
        * objects by the grouped status is on
        * - used to ease the process of doing multiple-character choreographies

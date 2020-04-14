@@ -1797,6 +1797,11 @@ static void rna_def_modifier_generic_map_info(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  prop = RNA_def_property(srna, "texture_coords_bone", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "map_bone");
+  RNA_def_property_ui_text(prop, "Texture Coordinate Bone", "Bone to set the texture coordinates");
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 }
 
 static void rna_def_modifier_warp(BlenderRNA *brna)
@@ -4530,6 +4535,14 @@ static void rna_def_modifier_solidify(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, nonmanifold_boundary_mode_items);
   RNA_def_property_ui_text(prop, "Boundary Shape", "Selects the boundary adjustment algorithm");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "nonmanifold_merge_threshold", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, NULL, "merge_tolerance");
+  RNA_def_property_range(prop, 0.0, 1.0);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 4);
+  RNA_def_property_ui_text(
+      prop, "Merge Threshold", "Distance within which degenerated geometry is merged");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_screw(BlenderRNA *brna)
@@ -4803,6 +4816,12 @@ static void rna_def_modifier_weightvg_mask(BlenderRNA *UNUSED(brna),
                            "coordinates from");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  prop = RNA_def_property(srna, "mask_tex_map_bone", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "mask_tex_map_bone");
+  RNA_def_property_ui_text(
+      prop, "Texture Coordinate Bone", "Which bone to take texture coordinates from");
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 }
 
