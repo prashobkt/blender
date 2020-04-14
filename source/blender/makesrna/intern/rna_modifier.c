@@ -4502,6 +4502,15 @@ static void rna_def_modifier_solidify(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Vertex Group Invert", "Invert the vertex group influence");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  prop = RNA_def_property(srna, "use_flat_faces", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_SOLIDIFY_NONMANIFOLD_FLAT_FACES);
+  RNA_def_property_ui_text(prop,
+                           "Flat Faces",
+                           "Make faces use the minimal vertex weight assigned to their vertices"
+                           "(ensures new faces remain parallel to their original ones, slow, "
+                           "disable when not needed)");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   prop = RNA_def_property(srna, "use_flip_normals", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_SOLIDIFY_FLIP);
   RNA_def_property_ui_text(prop, "Flip Normals", "Invert the face direction");
@@ -4530,6 +4539,13 @@ static void rna_def_modifier_solidify(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 4);
   RNA_def_property_ui_text(
       prop, "Merge Threshold", "Distance within which degenerated geometry is merged");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "bevel_convex", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "bevel_convex");
+  RNA_def_property_range(prop, -1.0, 1.0);
+  RNA_def_property_ui_range(prop, -1.0, 1.0, 0.1, 3);
+  RNA_def_property_ui_text(prop, "Bevel Convex", "Edge bevel weight to be added to outside edges");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

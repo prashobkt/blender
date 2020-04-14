@@ -175,6 +175,8 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
                         0;
   const bool do_clamp = (smd->offset_clamp != 0.0f);
 
+  const float bevel_convex = smd->bevel_convex;
+
   MDeformVert *dvert;
   const bool defgrp_invert = (smd->flag & MOD_SOLIDIFY_VGROUP_INV) != 0;
   int defgrp_index;
@@ -183,6 +185,8 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
   const int rim_defgrp_index = BKE_object_defgroup_name_index(ctx->object, smd->rim_defgrp_name);
 
   MOD_get_vgroup(ctx->object, mesh, smd->defgrp_name, &dvert, &defgrp_index);
+
+  const bool do_flat_faces = dvert && (smd->flag & MOD_SOLIDIFY_NONMANIFOLD_FLAT_FACES);
 
   orig_mvert = mesh->mvert;
   orig_medge = mesh->medge;
@@ -1303,6 +1307,30 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
 
   /* Calculate EdgeGroup vertex coordinates. */
   {
+    float *face_weight = NULL;
+
+    if (do_flat_faces) {
+      face_weight = MEM_malloc_arrayN(numPolys, sizeof(*face_weight), "face_weight in solidify");
+
+      mp = orig_mpoly;
+      for (uint i = 0; i < numPolys; i++, mp++) {
+        float scalar_vgroup = 1.0f;
+        int loopend = mp->loopstart + mp->totloop;
+        ml = orig_mloop + mp->loopstart;
+        for (int j = mp->loopstart; j < loopend; j++, ml++) {
+          MDeformVert *dv = &dvert[ml->v];
+          if (defgrp_invert) {
+            scalar_vgroup = min_ff(1.0f - BKE_defvert_find_weight(dv, defgrp_index),
+                                   scalar_vgroup);
+          }
+          else {
+            scalar_vgroup = min_ff(BKE_defvert_find_weight(dv, defgrp_index), scalar_vgroup);
+          }
+        }
+        face_weight[i] = scalar_vgroup;
+      }
+    }
+
     mv = orig_mvert;
     gs_ptr = orig_vert_groups_arr;
     for (uint i = 0; i < numVerts; i++, mv++, gs_ptr++) {
@@ -1335,14 +1363,22 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
                     NewFaceRef *face = edge->faces[l];
                     if (face && (first_edge == NULL ||
                                  (first_edge->faces[0] != face && first_edge->faces[1] != face))) {
-                      const float ofs = face->reversed ? ofs_back_clamped : ofs_front_clamped;
+                      float ofs = face->reversed ? ofs_back_clamped : ofs_front_clamped;
+                      /* Use face_weight here to make faces thinner. */
+                      if (do_flat_faces) {
+                        ofs *= face_weight[face->index];
+                      }
+
                       if (!null_faces[face->index]) {
+                        /* And normal to the queue. */
                         mul_v3_v3fl(normals_queue[queue_index],
                                     poly_nors[face->index],
                                     face->reversed ? -1 : 1);
                         normals_queue[queue_index++][3] = ofs;
                       }
                       else {
+                        /* Just use this approximate normal of the null face if there is no other
+                         * normal to use. */
                         mul_v3_v3fl(face_nors[0], poly_nors[face->index], face->reversed ? -1 : 1);
                         nor_ofs[0] = ofs;
                       }
@@ -1444,6 +1480,7 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
                 }
               }
               MEM_freeN(normals_queue);
+
               /* When up to 3 constraint normals are found. */
               if (ELEM(face_nors_len, 2, 3)) {
                 const float q = dot_v3v3(face_nors[0], face_nors[1]);
@@ -1498,6 +1535,11 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
                                  (first_edge->faces[0] != face && first_edge->faces[1] != face))) {
                       float angle = 1.0f;
                       float ofs = face->reversed ? -ofs_back_clamped : ofs_front_clamped;
+                      /* Use face_weight here to make faces thinner. */
+                      if (do_flat_faces) {
+                        ofs *= face_weight[face->index];
+                      }
+
                       if (smd->nonmanifold_offset_mode ==
                           MOD_SOLIDIFY_NONMANIFOLD_OFFSET_MODE_EVEN) {
                         MLoop *ml_next = orig_mloop + face->face->loopstart;
@@ -1667,7 +1709,7 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
             }
             float scalar_vgroup = 1;
             /* Use vertex group. */
-            if (dvert) {
+            if (dvert && !do_flat_faces) {
               MDeformVert *dv = &dvert[i];
               if (defgrp_invert) {
                 scalar_vgroup = 1.0f - BKE_defvert_find_weight(dv, defgrp_index);
@@ -1725,6 +1767,10 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
           }
         }
       }
+    }
+
+    if (do_flat_faces) {
+      MEM_freeN(face_weight);
     }
   }
 
@@ -1798,6 +1844,11 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
   int *origindex_edge = CustomData_get_layer(&result->edata, CD_ORIGINDEX);
   int *origindex_poly = CustomData_get_layer(&result->pdata, CD_ORIGINDEX);
 
+  if (bevel_convex != 0.0f) {
+    /* make sure bweight is enabled */
+    result->cd_flag |= ME_CDFLAG_EDGE_BWEIGHT;
+  }
+
   /* Checks that result has dvert data. */
   if (shell_defgrp_index != -1 || rim_defgrp_index != -1) {
     dvert = CustomData_duplicate_referenced_layer(&result->vdata, CD_MDEFORMVERT, result->totvert);
@@ -1863,6 +1914,17 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
             medge[insert].flag = orig_medge[(*l)->old_edge].flag | ME_EDGEDRAW | ME_EDGERENDER;
             medge[insert].crease = orig_medge[(*l)->old_edge].crease;
             medge[insert].bweight = orig_medge[(*l)->old_edge].bweight;
+            if (bevel_convex != 0.0f && (*l)->faces[1] != NULL) {
+              medge[insert].bweight = (char)clamp_i(
+                  (int)medge[insert].bweight + (int)(((*l)->angle > M_PI + FLT_EPSILON ?
+                                                          clamp_f(bevel_convex, 0.0f, 1.0f) :
+                                                          ((*l)->angle < M_PI - FLT_EPSILON ?
+                                                               clamp_f(bevel_convex, -1.0f, 0.0f) :
+                                                               0)) *
+                                                     255),
+                  0,
+                  255);
+            }
             (*l)->new_edge = insert;
           }
         }
@@ -1914,7 +1976,8 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
   /* Make boundary edges/faces. */
   {
     gs_ptr = orig_vert_groups_arr;
-    for (uint i = 0; i < numVerts; i++, gs_ptr++) {
+    mv = orig_mvert;
+    for (uint i = 0; i < numVerts; i++, gs_ptr++, mv++) {
       EdgeGroup *gs = *gs_ptr;
       if (gs) {
         EdgeGroup *g = gs;
@@ -1936,15 +1999,37 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
             max_crease = 0;
             max_bweight = 0;
             flag = 0;
-            for (uint k = 1; k < g->edges_len - 1; k++) {
-              ed = orig_medge + g->edges[k]->old_edge;
-              if (ed->crease > max_crease) {
-                max_crease = ed->crease;
+
+            BLI_assert(g->edges_len >= 2);
+
+            if (g->edges_len == 2) {
+              max_crease = min_cc(orig_medge[g->edges[0]->old_edge].crease,
+                                  orig_medge[g->edges[1]->old_edge].crease);
+            }
+            else {
+              for (uint k = 1; k < g->edges_len - 1; k++) {
+                ed = orig_medge + g->edges[k]->old_edge;
+                if (ed->crease > max_crease) {
+                  max_crease = ed->crease;
+                }
+                char bweight = medge[g->edges[k]->new_edge].bweight;
+                if (bweight > max_bweight) {
+                  max_bweight = bweight;
+                }
+                flag |= ed->flag;
               }
-              if (ed->bweight > max_bweight) {
-                max_bweight = ed->bweight;
+            }
+
+            const char bweight_open_edge = min_cc(
+                orig_medge[g->edges[0]->old_edge].bweight,
+                orig_medge[g->edges[g->edges_len - 1]->old_edge].bweight);
+            if (bweight_open_edge > 0) {
+              max_bweight = min_cc(bweight_open_edge, max_bweight);
+            }
+            else {
+              if (bevel_convex < 0.0f) {
+                max_bweight = 0;
               }
-              flag |= ed->flag;
             }
             if (!first_g) {
               first_g = g;
@@ -1966,8 +2051,9 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
               medge[edge_index].v2 = g->new_vert;
               medge[edge_index].flag = ME_EDGEDRAW | ME_EDGERENDER |
                                        ((last_flag | flag) & (ME_SEAM | ME_SHARP));
-              medge[edge_index].crease = MAX2(last_max_crease, max_crease);
-              medge[edge_index++].bweight = MAX2(last_max_bweight, max_bweight);
+              medge[edge_index].crease = min_cc(last_max_crease, max_crease);
+              medge[edge_index++].bweight = max_cc(mv->bweight,
+                                                   min_cc(last_max_bweight, max_bweight));
             }
             last_g = g;
             last_max_crease = max_crease;
@@ -1993,8 +2079,9 @@ Mesh *MOD_solidify_nonmanifold_applyModifier(ModifierData *md,
               medge[edge_index].v2 = first_g->new_vert;
               medge[edge_index].flag = ME_EDGEDRAW | ME_EDGERENDER |
                                        ((last_flag | first_flag) & (ME_SEAM | ME_SHARP));
-              medge[edge_index].crease = MAX2(last_max_crease, first_max_crease);
-              medge[edge_index++].bweight = MAX2(last_max_bweight, first_max_bweight);
+              medge[edge_index].crease = min_cc(last_max_crease, first_max_crease);
+              medge[edge_index++].bweight = max_cc(mv->bweight,
+                                                   min_cc(last_max_bweight, first_max_bweight));
 
               /* Loop data. */
               int *loops = MEM_malloc_arrayN(j, sizeof(*loops), "loops in solidify");
