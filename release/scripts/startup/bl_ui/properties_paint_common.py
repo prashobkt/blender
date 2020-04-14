@@ -600,19 +600,10 @@ def brush_settings(layout, context, brush, popover=False):
         # use_persistent, set_persistent_base
         if capabilities.has_persistence:
             ob = context.sculpt_object
-            do_persistent = True
-
-            # not supported yet for this case
-            for md in ob.modifiers:
-                if md.type == 'MULTIRES':
-                    do_persistent = False
-                    break
-
-            if do_persistent:
-                layout.separator()
-                layout.prop(brush, "use_persistent")
-                layout.operator("sculpt.set_persistent_base")
-                layout.separator()
+            layout.separator()
+            layout.prop(brush, "use_persistent")
+            layout.operator("sculpt.set_persistent_base")
+            layout.separator()
 
         if brush.sculpt_tool == 'CLAY_STRIPS':
             row = layout.row()
@@ -906,7 +897,7 @@ def draw_color_settings(context, layout, brush, color_type=False):
         UnifiedPaintPanel.prop_unified_color(row, context, brush, "secondary_color", text="")
         row.separator()
         row.operator("paint.brush_colors_flip", icon='FILE_REFRESH', text="", emboss=False)
-        row.prop(ups, "use_unified_color", text="", icon='WORLD')
+        row.prop(ups, "use_unified_color", text="", icon='BRUSHES_ALL')
     # Gradient
     elif brush.color_type == 'GRADIENT':
         layout.template_color_ramp(brush, "gradient", expand=True)
