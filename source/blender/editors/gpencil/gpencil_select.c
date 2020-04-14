@@ -1181,7 +1181,6 @@ static int gpencil_generic_select_exec(
                            ((gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0));
   const bool segmentmode = ((selectmode == GP_SELECTMODE_SEGMENT) &&
                             ((gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0));
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
   const float scale = ts->gp_sculpt.isect_threshold;
@@ -1224,10 +1223,7 @@ static int gpencil_generic_select_exec(
     int i;
     bool hit = false;
     for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-      if (pt->runtime.pt_orig == NULL) {
-        continue;
-      }
-      bGPDspoint *pt_active = pt->runtime.pt_orig;
+      bGPDspoint *pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
 
       /* convert point coords to screenspace */
       const bool is_inside = is_inside_fn(gps, pt, &gsc, gpstroke_iter.diff_mat, user_data);
@@ -1237,9 +1233,10 @@ static int gpencil_generic_select_exec(
         if (sel_op_result != -1) {
           SET_FLAG_FROM_TEST(pt_active->flag, sel_op_result, GP_SPOINT_SELECT);
           changed = true;
+          hit = true;
 
-          /* expand selection to segment */
-          if ((sel_op_result != -1) && (segmentmode)) {
+          /* Expand selection to segment. */
+          if (segmentmode) {
             bool hit_select = (bool)(pt_active->flag & GP_SPOINT_SELECT);
             float r_hita[3], r_hitb[3];
             ED_gpencil_select_stroke_segment(
@@ -1257,7 +1254,7 @@ static int gpencil_generic_select_exec(
 
     /* If nothing hit, check if the mouse is inside a filled stroke using the center or
      * Box or lasso area. */
-    if ((!hit) && (!changed)) {
+    if (!hit) {
       /* Only check filled strokes. */
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
       if ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0) {
@@ -1277,9 +1274,6 @@ static int gpencil_generic_select_exec(
       const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          if ((!is_multiedit) && (pt->runtime.pt_orig == NULL)) {
-            continue;
-          }
           bGPDspoint *pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
 
           if (sel_op_result) {
@@ -1315,7 +1309,6 @@ static int gpencil_generic_select_exec(
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, NULL);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, NULL);
   }
-
   return OPERATOR_FINISHED;
 }
 
