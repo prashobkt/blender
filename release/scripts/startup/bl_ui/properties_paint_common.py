@@ -587,7 +587,7 @@ def brush_settings(layout, context, brush, popover=False):
                 slider=True,
             )
 
-            row = layout.row(heading = "Plane Trim")
+            row = layout.row(heading="Plane Trim")
             row.prop(brush, "use_plane_trim", text="")
             sub = row.row()
             sub.active = brush.use_plane_trim
@@ -810,17 +810,17 @@ def brush_settings_advanced(layout, context, brush, popover=False):
         use_accumulate = capabilities.has_accumulate
         use_frontface = True
 
-        col = layout.column(heading = "Auto-Masking", align = True)
+        col = layout.column(heading="Auto-Masking", align=True)
 
         # topology automasking
-        col.prop(brush, "use_automasking_topology", text = "Topology")
+        col.prop(brush, "use_automasking_topology", text="Topology")
 
         # face masks automasking
-        col.prop(brush, "use_automasking_face_sets", text = "Face Sets")
-        
+        col.prop(brush, "use_automasking_face_sets", text="Face Sets")
+
         # boundary edges/face sets automasking
-        col.prop(brush, "use_automasking_boundary_edges", text = "Mesh Boundary")
-        col.prop(brush, "use_automasking_boundary_face_sets", text = "Face Sets")
+        col.prop(brush, "use_automasking_boundary_edges", text="Mesh Boundary")
+        col.prop(brush, "use_automasking_boundary_face_sets", text="Face Sets")
         col.prop(brush, "automasking_boundary_edges_propagation_steps")
 
         layout.separator()
@@ -828,9 +828,9 @@ def brush_settings_advanced(layout, context, brush, popover=False):
         # sculpt plane settings
         if capabilities.has_sculpt_plane:
             layout.prop(brush, "sculpt_plane")
-            col = layout.column(heading = "Use Original", align = True)
-            col.prop(brush, "use_original_normal", text ="Normal")
-            col.prop(brush, "use_original_plane", text ="Plane")
+            col = layout.column(heading="Use Original", align=True)
+            col.prop(brush, "use_original_normal", text="Normal")
+            col.prop(brush, "use_original_plane", text="Plane")
             layout.separator()
 
     # 3D and 2D Texture Paint.

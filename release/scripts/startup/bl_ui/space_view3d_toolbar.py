@@ -129,7 +129,7 @@ def draw_vpaint_symmetry(layout, vpaint):
     col.use_property_split = True
     col.use_property_decorate = False
 
-    row = col.row(heading = "Mirror", align=True)
+    row = col.row(heading="Mirror", align=True)
     row.prop(vpaint, "use_symmetry_x", text="X", toggle=True)
     row.prop(vpaint, "use_symmetry_y", text="Y", toggle=True)
     row.prop(vpaint, "use_symmetry_z", text="Z", toggle=True)
@@ -173,7 +173,7 @@ class VIEW3D_PT_tools_object_options_transform(View3DPanel, Panel):
 
         tool_settings = context.tool_settings
 
-        col = layout.column(heading = "Affect Only", align = True)
+        col = layout.column(heading="Affect Only", align=True)
         col.prop(tool_settings, "use_transform_data_origin", text="Origins")
         col.prop(tool_settings, "use_transform_pivot_point_align", text="Locations")
         col.prop(tool_settings, "use_transform_skip_children", text="Parents")
@@ -203,7 +203,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
 
         split = layout.split()
 
-        row = layout.row(heading = "Mirror")
+        row = layout.row(heading="Mirror")
         sub = row.row(align=True)
         sub.prop(mesh, "use_mirror_x", text="X", toggle=True)
         sub.prop(mesh, "use_mirror_y", text="Y", toggle=True)
@@ -862,10 +862,10 @@ class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
         col.prop(mesh, "use_remesh_fix_poles")
         col.prop(mesh, "use_remesh_smooth_normals")
 
-        col = layout.column(heading = "Preserve", align = True)
-        col.prop(mesh, "use_remesh_preserve_volume", text = "Volume")
-        col.prop(mesh, "use_remesh_preserve_paint_mask", text = "Paint Mask")
-        col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text = "Face Sets")
+        col = layout.column(heading="Preserve", align=True)
+        col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
+        col.prop(mesh, "use_remesh_preserve_paint_mask", text="Paint Mask")
+        col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text="Face Sets")
 
         layout.operator("object.voxel_remesh", text="Remesh")
 
@@ -888,7 +888,7 @@ class VIEW3D_PT_sculpt_options(Panel, View3DPaintPanel):
         tool_settings = context.tool_settings
         sculpt = tool_settings.sculpt
 
-        col = layout.column(heading = "Display", align = True)
+        col = layout.column(heading="Display", align=True)
         col.prop(sculpt, "use_threaded", text="Threaded Sculpt")
         col.prop(sculpt, "show_low_resolution")
         col.prop(sculpt, "use_sculpt_delay_updates")
@@ -896,11 +896,11 @@ class VIEW3D_PT_sculpt_options(Panel, View3DPaintPanel):
 
         col.separator()
 
-        col = layout.column(heading = "Auto-Masking", align = True)
-        col.prop(sculpt, "use_automasking_topology", text = "Topology")
-        col.prop(sculpt, "use_automasking_face_sets", text = "Face Sets")
-        col.prop(sculpt, "use_automasking_boundary_edges", text = "Boundary Edges")
-        col.prop(sculpt, "use_automasking_boundary_face_sets", text = "Boundary Face Sets")
+        col = layout.column(heading="Auto-Masking", align=True)
+        col.prop(sculpt, "use_automasking_topology", text="Topology")
+        col.prop(sculpt, "use_automasking_face_sets", text="Face Sets")
+        col.prop(sculpt, "use_automasking_boundary_edges", text="Boundary Edges")
+        col.prop(sculpt, "use_automasking_boundary_face_sets", text="Boundary Face Sets")
 
 
 class VIEW3D_PT_sculpt_options_gravity(Panel, View3DPaintPanel):

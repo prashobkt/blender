@@ -1692,8 +1692,8 @@ class SEQUENCER_PT_adjust_transform(SequencerButtonsPanel, Panel):
 
         layout.active = not strip.mute
 
-        row = layout.row(heading = "Mirror")
-        sub = row.row(align = True)
+        row = layout.row(heading="Mirror")
+        sub = row.row(align=True)
         sub.prop(strip, "use_flip_x", text="X", toggle=True)
         sub.prop(strip, "use_flip_y", text="Y", toggle=True)
 
@@ -1799,12 +1799,12 @@ class SEQUENCER_PT_cache_settings(SequencerButtonsPanel, Panel):
 
         ed = context.scene.sequence_editor
 
-        col = layout.column(heading = "Cache", align = True)
+        col = layout.column(heading="Cache", align=True)
 
-        col.prop(ed, "use_cache_raw", text = "Raw")
-        col.prop(ed, "use_cache_preprocessed", text = "Pre-Processed")
-        col.prop(ed, "use_cache_composite", text = "Composite")
-        col.prop(ed, "use_cache_final", text = "Final")
+        col.prop(ed, "use_cache_raw", text="Raw")
+        col.prop(ed, "use_cache_preprocessed", text="Pre-Processed")
+        col.prop(ed, "use_cache_composite", text="Composite")
+        col.prop(ed, "use_cache_final", text="Final")
         col.separator()
         col.prop(ed, "recycle_max_cost")
 
@@ -1868,19 +1868,19 @@ class SEQUENCER_PT_strip_proxy(SequencerButtonsPanel, Panel):
 
             flow = layout.column_flow()
             if ed.proxy_storage == 'PER_STRIP':
-                col = layout.column(heading = "Custom Proxy")
-                col.prop(proxy, "use_proxy_custom_directory", text = "Directory")
+                col = layout.column(heading="Custom Proxy")
+                col.prop(proxy, "use_proxy_custom_directory", text="Directory")
                 if proxy.use_proxy_custom_directory and not proxy.use_proxy_custom_file:
                     col.prop(proxy, "directory")
-                col.prop(proxy, "use_proxy_custom_file", text = "File")
+                col.prop(proxy, "use_proxy_custom_file", text="File")
                 if proxy.use_proxy_custom_file:
                     col.prop(proxy, "filepath")
 
-            row = layout.row(heading = "Resolutions", align = True)
-            row.prop(strip.proxy, "build_25", toggle = True)
-            row.prop(strip.proxy, "build_75", toggle = True)
-            row.prop(strip.proxy, "build_50", toggle = True)
-            row.prop(strip.proxy, "build_100", toggle = True)
+            row = layout.row(heading="Resolutions", align=True)
+            row.prop(strip.proxy, "build_25", toggle=True)
+            row.prop(strip.proxy, "build_75", toggle=True)
+            row.prop(strip.proxy, "build_50", toggle=True)
+            row.prop(strip.proxy, "build_100", toggle=True)
 
             layout.use_property_split = True
             layout.use_property_decorate = False
@@ -1921,10 +1921,10 @@ class SEQUENCER_PT_strip_cache(SequencerButtonsPanel, Panel):
         strip = act_strip(context)
         layout.active = strip.override_cache_settings
 
-        col = layout.column(heading = "Cache")
-        col.prop(strip, "use_cache_raw", text = "Raw")
-        col.prop(strip, "use_cache_preprocessed", text = "Pre-Processed")
-        col.prop(strip, "use_cache_composite", text = "Composite")
+        col = layout.column(heading="Cache")
+        col.prop(strip, "use_cache_raw", text="Raw")
+        col.prop(strip, "use_cache_preprocessed", text="Pre-Processed")
+        col.prop(strip, "use_cache_composite", text="Composite")
 
 
 class SEQUENCER_PT_preview(SequencerButtonsPanel_Output, Panel):

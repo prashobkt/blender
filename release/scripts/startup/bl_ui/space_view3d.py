@@ -5454,7 +5454,7 @@ class VIEW3D_PT_view3d_lock(Panel):
                     text="",
                 )
         else:
-            subcol = sub.column(heading = "Lock")
+            subcol = sub.column(heading="Lock")
             subcol.prop(view, "lock_cursor", text="To 3D Cursor")
 
         col.prop(view, "lock_camera", text="Camera to View")

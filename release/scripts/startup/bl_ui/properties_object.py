@@ -221,7 +221,7 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
         is_dupli = (obj.instance_type != 'NONE')
         is_gpencil = (obj_type == 'GPENCIL')
 
-        col = layout.column(heading = "Show")
+        col = layout.column(heading="Show")
         col.prop(obj, "show_name", text="Name")
         col.prop(obj, "show_axis", text="Axis")
 
@@ -279,7 +279,7 @@ class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
             col.prop(ob, "instance_collection", text="Collection")
 
         if ob.instance_type != 'NONE' or ob.particle_systems:
-            col = layout.column(heading = "Show Instancer", align=True)
+            col = layout.column(heading="Show Instancer", align=True)
             col.prop(ob, "show_instancer_for_viewport", text="Viewport")
             col.prop(ob, "show_instancer_for_render", text="Render")
 
@@ -364,10 +364,9 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
 
         layout.prop(ob, "hide_select", text="Selectable", toggle=False, invert_checkbox=True)
 
-        col = layout.column(heading = "Show in")
+        col = layout.column(heading="Show in")
         col.prop(ob, "hide_viewport", text="Viewports", toggle=False, invert_checkbox=True)
         col.prop(ob, "hide_render", text="Renders", toggle=False, invert_checkbox=True)
-        
 
         if context.object.type == 'GPENCIL':
             col.prop(ob, "use_grease_pencil_lights", toggle=False)

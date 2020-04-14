@@ -310,7 +310,7 @@ def basic_force_field_settings_ui(self, field):
     else:
         col.prop(field, "flow")
 
-    sub = col.column(heading = "Affect")
+    sub = col.column(heading="Affect")
 
     sub.prop(field, "apply_to_location", text="Location")
     sub.prop(field, "apply_to_rotation", text="Rotation")

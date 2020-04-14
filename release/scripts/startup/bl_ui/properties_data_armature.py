@@ -84,7 +84,7 @@ class DATA_PT_display(ArmatureButtonsPanel, Panel):
 
         layout.prop(arm, "display_type", text="Display As")
 
-        col = layout.column(heading = "Show")
+        col = layout.column(heading="Show")
         col.prop(arm, "show_names", text="Names")
         col.prop(arm, "show_axes", text="Axes")
         col.prop(arm, "show_bone_custom_shapes", text="Shapes")

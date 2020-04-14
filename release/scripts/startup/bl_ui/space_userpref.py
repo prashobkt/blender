@@ -207,10 +207,9 @@ class USERPREF_PT_interface_display(InterfacePanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_splash", text="Splash Screen")
         col.prop(view, "show_developer_ui")
 
-        col = layout.column(heading = "Tooltips")
+        col = layout.column(heading="Tooltips")
         col.prop(view, "show_tooltips")
         col.prop(view, "show_tooltips_python")
-        
 
 
 class USERPREF_PT_interface_text(InterfacePanel, CenterAlignMixIn, Panel):
@@ -246,7 +245,7 @@ class USERPREF_PT_interface_translation(InterfacePanel, CenterAlignMixIn, Panel)
 
         layout.prop(view, "language")
 
-        col = layout.column(heading = "Affect")
+        col = layout.column(heading="Affect")
         col.active = (bpy.app.translations.locale != 'en_US')
         col.prop(view, "use_translate_tooltips", text="Tooltips")
         col.prop(view, "use_translate_interface", text="Interface")
@@ -419,7 +418,7 @@ class USERPREF_PT_edit_gpencil(EditingPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         edit = prefs.edit
 
-        col = layout.column(heading = "Distance")
+        col = layout.column(heading="Distance")
         col.prop(edit, "grease_pencil_manhattan_distance", text="Manhattan")
         col.prop(edit, "grease_pencil_euclidean_distance", text="Euclidean")
 
@@ -506,7 +505,7 @@ class USERPREF_PT_animation_keyframes(AnimationPanel, CenterAlignMixIn, Panel):
         col.prop(edit, "use_visual_keying")
         col.prop(edit, "use_keyframe_insert_needed", text="Only Insert Needed")
 
-        col = layout.column(heading = "Auto-Keyframing")
+        col = layout.column(heading="Auto-Keyframing")
         col.prop(edit, "use_auto_keying_warning", text="Show Warning")
         col.prop(edit, "use_keyframe_insert_available", text="Only Insert Available")
         col.prop(edit, "use_auto_keying", text="Enable in New Scenes")
@@ -632,13 +631,12 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         view = prefs.view
 
-        col = layout.column(heading = "Show")
+        col = layout.column(heading="Show")
         col.prop(view, "show_object_info", text="Object Info")
         col.prop(view, "show_view_name", text="View Name")
         col.prop(view, "show_playback_fps", text="Playback FPS")
 
         layout.separator()
-
 
         col = layout.column()
         col.prop(view, "gizmo_size")
@@ -663,9 +661,9 @@ class USERPREF_PT_viewport_quality(ViewportPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.prop(system, "viewport_aa")
 
-        col = layout.column(heading = "Smooth Wires")
-        col.prop(system, "use_overlay_smooth_wire", text = "Overlay")
-        col.prop(system, "use_edit_mode_smooth_wire", text = "Edit Mode")
+        col = layout.column(heading="Smooth Wires")
+        col.prop(system, "use_overlay_smooth_wire", text="Overlay")
+        col.prop(system, "use_edit_mode_smooth_wire", text="Edit Mode")
 
 
 class USERPREF_PT_viewport_textures(ViewportPanel, CenterAlignMixIn, Panel):
@@ -1298,16 +1296,16 @@ class USERPREF_PT_saveload_blend(SaveLoadPanel, CenterAlignMixIn, Panel):
         paths = prefs.filepaths
         view = prefs.view
 
-        col = layout.column(heading = "Save")
+        col = layout.column(heading="Save")
         col.prop(view, "use_save_prompt")
         col.prop(paths, "use_save_preview_images")
 
-        col = layout.column(heading = "Default to")
+        col = layout.column(heading="Default to")
         col.prop(paths, "use_relative_paths")
         col.prop(paths, "use_file_compression")
         col.prop(paths, "use_load_ui")
-        
-        col = layout.column(heading = "Text Files")
+
+        col = layout.column(heading="Text Files")
         col.prop(paths, "use_tabs_as_spaces")
 
         col = layout.column()
@@ -1344,10 +1342,10 @@ class USERPREF_PT_saveload_file_browser(SaveLoadPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.prop(paths, "use_filter_files")
 
-        col = layout.column(heading = "Hide")
-        col.prop(paths, "show_hidden_files_datablocks", text = "Dot File & Datablocks")
-        col.prop(paths, "hide_recent_locations", text = "Recent Locations")
-        col.prop(paths, "hide_system_bookmarks", text = "System Bookmarks")
+        col = layout.column(heading="Hide")
+        col.prop(paths, "show_hidden_files_datablocks", text="Dot File & Datablocks")
+        col.prop(paths, "hide_recent_locations", text="Recent Locations")
+        col.prop(paths, "hide_system_bookmarks", text="System Bookmarks")
 
 
 # -----------------------------------------------------------------------------
@@ -1469,9 +1467,9 @@ class USERPREF_PT_navigation_orbit(NavigationPanel, CenterAlignMixIn, Panel):
         if sys.platform == "darwin":
             col.prop(inputs, "use_trackpad_natural", text="Natural Trackpad Direction")
 
-        col = layout.column(heading = "Auto")
-        col.prop(inputs, "use_auto_perspective", text = "Perspective")
-        col.prop(inputs, "use_mouse_depth_navigate", text = "Depth")
+        col = layout.column(heading="Auto")
+        col.prop(inputs, "use_auto_perspective", text="Perspective")
+        col.prop(inputs, "use_mouse_depth_navigate", text="Depth")
 
         col = layout.column()
         col.prop(view, "smooth_view")
@@ -1491,7 +1489,7 @@ class USERPREF_PT_navigation_zoom(NavigationPanel, CenterAlignMixIn, Panel):
         if inputs.view_zoom_method in {'DOLLY', 'CONTINUE'}:
             col.row().prop(inputs, "view_zoom_axis")
             col.prop(inputs, "use_zoom_to_mouse")
-            col = layout.column(heading = "Invert Zoom Direction", align = True)
+            col = layout.column(heading="Invert Zoom Direction", align=True)
             col.prop(inputs, "invert_mouse_zoom", text="Mouse")
             col.prop(inputs, "invert_zoom_wheel", text="Wheel")
         else:
@@ -1534,7 +1532,7 @@ class USERPREF_PT_navigation_fly_walk_navigation(NavigationPanel, CenterAlignMix
         col.prop(walk, "mouse_speed")
         col.prop(walk, "teleport_time")
 
-        col = layout.column(align = True)
+        col = layout.column(align=True)
         col.prop(walk, "walk_speed")
         col.prop(walk, "walk_speed_factor")
 

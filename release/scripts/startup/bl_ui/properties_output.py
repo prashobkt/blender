@@ -169,7 +169,7 @@ class RENDER_PT_post_processing(RenderOutputButtonsPanel, Panel):
 
         rd = context.scene.render
 
-        col = layout.column(heading = "Pipeline")
+        col = layout.column(heading="Pipeline")
         col.prop(rd, "use_compositing")
         col.prop(rd, "use_sequencer")
 
@@ -191,7 +191,7 @@ class RENDER_PT_stamp(RenderOutputButtonsPanel, Panel):
         if rd.use_sequencer:
             layout.prop(rd, "metadata_input")
 
-        col = layout.column(heading = "Include")
+        col = layout.column(heading="Include")
         col.prop(rd, "use_stamp_date", text="Date")
         col.prop(rd, "use_stamp_time", text="Time")
         col.prop(rd, "use_stamp_render_time", text="Render Time")
@@ -268,14 +268,14 @@ class RENDER_PT_output(RenderOutputButtonsPanel, Panel):
 
         layout.use_property_split = True
 
-        col = layout.column(heading = "Saving")
+        col = layout.column(heading="Saving")
         col.prop(rd, "use_file_extension")
         col.prop(rd, "use_render_cache")
 
         layout.template_image_settings(image_settings, color_management=False)
 
         if not rd.is_movie_format:
-            col = layout.column(heading = "Image Sequence")
+            col = layout.column(heading="Image Sequence")
             col.prop(rd, "use_overwrite")
             col.prop(rd, "use_placeholder")
 

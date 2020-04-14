@@ -360,9 +360,9 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
                     col.prop(bg, "rotation")
                     col.prop(bg, "scale")
 
-                    col = box.column(heading = "Flip")
-                    col.prop(bg, "use_flip_x", text = "X")
-                    col.prop(bg, "use_flip_y", text = "Y")
+                    col = box.column(heading="Flip")
+                    col.prop(bg, "use_flip_x", text="X")
+                    col.prop(bg, "use_flip_y", text="Y")
 
 
 class DATA_PT_camera_display(CameraButtonsPanel, Panel):
@@ -380,7 +380,7 @@ class DATA_PT_camera_display(CameraButtonsPanel, Panel):
 
         col.prop(cam, "display_size", text="Size")
 
-        col = layout.column(heading = "Show")
+        col = layout.column(heading="Show")
         col.prop(cam, "show_limits", text="Limits")
         col.prop(cam, "show_mist", text="Mist")
         col.prop(cam, "show_sensor", text="Sensor")
@@ -401,18 +401,18 @@ class DATA_PT_camera_display_composition_guides(CameraButtonsPanel, Panel):
 
         layout.prop(cam, "show_composition_thirds")
 
-        col = layout.column(heading = "Center", align = True)
+        col = layout.column(heading="Center", align=True)
         col.prop(cam, "show_composition_center")
-        col.prop(cam, "show_composition_center_diagonal", text = "Diagonal")
-        
-        col = layout.column(heading = "Golden", align = True)
-        col.prop(cam, "show_composition_golden", text = "Ratio")
-        col.prop(cam, "show_composition_golden_tria_a", text = "Triangle A")
-        col.prop(cam, "show_composition_golden_tria_b", text = "Triangle B")
+        col.prop(cam, "show_composition_center_diagonal", text="Diagonal")
 
-        col = layout.column(heading = "Harmony", align = True)
-        col.prop(cam, "show_composition_harmony_tri_a", text = "Triangle A")
-        col.prop(cam, "show_composition_harmony_tri_b", text = "Triangle B")
+        col = layout.column(heading="Golden", align=True)
+        col.prop(cam, "show_composition_golden", text="Ratio")
+        col.prop(cam, "show_composition_golden_tria_a", text="Triangle A")
+        col.prop(cam, "show_composition_golden_tria_b", text="Triangle B")
+
+        col = layout.column(heading="Harmony", align=True)
+        col.prop(cam, "show_composition_harmony_tri_a", text="Triangle A")
+        col.prop(cam, "show_composition_harmony_tri_b", text="Triangle B")
 
 
 class DATA_PT_camera_display_passepartout(CameraButtonsPanel, Panel):
