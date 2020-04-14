@@ -848,6 +848,8 @@ void ui_draw_aligned_panel(uiStyle *style,
                            * can't be dragged. This may be changed in future. */
                           show_background);
   const int panel_col = is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK;
+  const bool is_list_panel = (panel->type &&
+                              panel->type->flag & (PNL_RECREATE | PNL_RECREATE_SUBPANEL));
 
   if (panel->type && (panel->type->flag & PNL_NO_HEADER)) {
     if (show_background) {
@@ -875,28 +877,44 @@ void ui_draw_aligned_panel(uiStyle *style,
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 
+  /* Draw the header backdrop. */
   if (show_background && !is_subpanel) {
     float minx = rect->xmin;
     float maxx = is_closed_x ? (minx + PNL_HEADER / block->aspect) : rect->xmax;
     float y = headrect.ymax;
 
-    GPU_blend(true);
+    /* List panels have some roundness and a shaded header color to differentiate them. */
+    if (is_list_panel) {
+      /* Round all corners if the panel is closed. */
+      if (is_closed_y) {
+        UI_draw_roundbox_corner_set(UI_CNR_ALL);
+      }
+      else {
+        UI_draw_roundbox_corner_set(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
+      }
 
-    /* draw with background color */
-    immUniformThemeColor(TH_PANEL_HEADER);
-    immRectf(pos, minx, headrect.ymin, maxx, y);
+      UI_GetThemeColorShadeAlpha4fv(TH_PANEL_HEADER, -30, 125, color);
+      UI_draw_roundbox_aa(true, minx, headrect.ymin, maxx, y, UI_LIST_PANEL_ROUNDNESS, color);
+    }
+    else {
+      GPU_blend(true);
 
-    immBegin(GPU_PRIM_LINES, 4);
+      /* draw with background color */
+      immUniformThemeColor(TH_PANEL_HEADER);
+      immRectf(pos, minx, headrect.ymin, maxx, y);
 
-    immVertex2f(pos, minx, y);
-    immVertex2f(pos, maxx, y);
+      immBegin(GPU_PRIM_LINES, 4);
 
-    immVertex2f(pos, minx, y);
-    immVertex2f(pos, maxx, y);
+      immVertex2f(pos, minx, y);
+      immVertex2f(pos, maxx, y);
 
-    immEnd();
+      immVertex2f(pos, minx, y);
+      immVertex2f(pos, maxx, y);
 
-    GPU_blend(false);
+      immEnd();
+
+      GPU_blend(false);
+    }
   }
 
   immUnbindProgram();
@@ -968,11 +986,18 @@ void ui_draw_aligned_panel(uiStyle *style,
   else {
     /* in some occasions, draw a border */
     if (panel->flag & PNL_SELECT) {
+      float radius;
       if (panel->control & UI_PNL_SOLID) {
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
+        radius = 8.0f;
+      }
+      else if (is_list_panel) {
+        UI_draw_roundbox_corner_set(UI_CNR_ALL);
+        radius = UI_LIST_PANEL_ROUNDNESS;
       }
       else {
         UI_draw_roundbox_corner_set(UI_CNR_NONE);
+        radius = 0.0f;
       }
 
       UI_GetThemeColorShade4fv(TH_BACK, -120, color);
@@ -981,7 +1006,7 @@ void ui_draw_aligned_panel(uiStyle *style,
                           0.5f + rect->ymin,
                           0.5f + rect->xmax,
                           0.5f + headrect.ymax + 1,
-                          8,
+                          radius,
                           color);
     }
 
@@ -990,9 +1015,18 @@ void ui_draw_aligned_panel(uiStyle *style,
     GPU_blend(true);
 
     if (show_background) {
-      /* panel backdrop */
-      immUniformThemeColor(panel_col);
-      immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
+      /* Round the bottom corners as long as this isn't a subpanel between other subpanels. */
+      if (is_list_panel && !(is_subpanel && panel->next)) {
+        UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
+        UI_GetThemeColor4fv(panel_col, color);
+        UI_draw_roundbox_aa(
+            true, rect->xmin, rect->ymin, rect->xmax, rect->ymax, UI_LIST_PANEL_ROUNDNESS, color);
+      }
+      else {
+        /* panel backdrop */
+        immUniformThemeColor(panel_col);
+        immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
+      }
     }
 
     if (panel->control & UI_PNL_SCALE) {
@@ -1264,6 +1298,12 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsx = 0;
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
+  /* Extra margin if the first panel happens to be a list panel. */
+  bool first_is_list_panel = (ps->panel->type && ps->panel->type->flag & PNL_RECREATE);
+  if (first_is_list_panel) {
+    ps->panel->ofsx += UI_LIST_PANEL_MARGIN;
+    ps->panel->ofsy -= UI_LIST_PANEL_MARGIN;
+  }
 
   for (a = 0; a < tot - 1; a++, ps++) {
     psnext = ps + 1;
@@ -1271,6 +1311,13 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
     if (align == BUT_VERTICAL) {
       psnext->panel->ofsx = ps->panel->ofsx;
       psnext->panel->ofsy = get_panel_real_ofsy(ps->panel) - get_panel_size_y(psnext->panel);
+      /* Extra margin for list panels. */
+      if (psnext->panel->type && psnext->panel->type->flag & PNL_RECREATE) {
+        psnext->panel->ofsy -= UI_LIST_PANEL_MARGIN;
+        if (!first_is_list_panel) {
+          psnext->panel->ofsx = UI_LIST_PANEL_MARGIN;
+        }
+      }
     }
     else {
       psnext->panel->ofsx = get_panel_real_ofsx(ps->panel);

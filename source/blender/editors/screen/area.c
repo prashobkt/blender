@@ -2621,6 +2621,8 @@ void ED_region_panels_layout_ex(const bContext *C,
   }
 
   if (has_recreate_panel) {
+    /* List panels have some margin to differentiate them from regular panels. */
+    w -= UI_LIST_PANEL_MARGIN * 2.0f;
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
         if (panel->type->flag & PNL_RECREATE) {

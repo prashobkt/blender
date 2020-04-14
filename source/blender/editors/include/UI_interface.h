@@ -238,6 +238,9 @@ enum {
 
 #define UI_PANEL_CATEGORY_MARGIN_WIDTH (U.widget_unit * 1.0f)
 
+#define UI_LIST_PANEL_MARGIN (U.widget_unit * 0.15f)
+#define UI_LIST_PANEL_ROUNDNESS (U.widget_unit * 0.3f)
+
 /* but->drawflag - these flags should only affect how the button is drawn. */
 /* Note: currently, these flags _are not passed_ to the widget's state() or draw() functions
  *       (except for the 'align' ones)!

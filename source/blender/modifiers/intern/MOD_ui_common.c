@@ -374,7 +374,7 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = modifier_ui_poll;
-  panel_type->flag = PNL_DEFAULT_CLOSED;
+  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_RECREATE_SUBPANEL);
 
   BLI_assert(parent != NULL);
   strcpy(panel_type->parent_id, parent->idname);

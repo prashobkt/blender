@@ -552,8 +552,10 @@ enum {
 #define PNL_LAYOUT_VERT_BAR (1 << 2)
 /** Delete panel after drawing, don't search for panel by type. */
 #define PNL_RECREATE (1 << 3)
+/* Convenience flag to avoid searching through parents to tell if it belongs to a list panel. */
+#define PNL_RECREATE_SUBPANEL (1 << 4)
 /** This panel marks the start of a recreate panel list. Not recreated on list change. */
-#define PNL_RECREATE_LIST_START (1 << 4)
+#define PNL_RECREATE_LIST_START (1 << 5)
 
 /* Fallback panel category (only for old scripts which need updating) */
 #define PNL_CATEGORY_FALLBACK "Misc"
