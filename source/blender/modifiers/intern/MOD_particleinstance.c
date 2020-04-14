@@ -560,8 +560,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *decorator_layout;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
@@ -588,19 +589,15 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemS(layout);
 
-  row = uiLayoutRow(layout, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Create Instances"), ICON_NONE);
-  uiItemR(row, &ptr, "use_normal", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_children", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_size", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Create Instances"));
+  uiItemR(row, &ptr, "use_normal", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_children", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_size", toggles_flag, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Show"), ICON_NONE);
-  uiItemR(row, &ptr, "show_alive", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "show_dead", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "show_unborn", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Show"));
+  uiItemR(row, &ptr, "show_alive", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_dead", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_unborn", toggles_flag, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "particle_amount", 0, IFACE_("Amount"), ICON_NONE);
   uiItemR(layout, &ptr, "particle_offset", 0, IFACE_("Offset"), ICON_NONE);

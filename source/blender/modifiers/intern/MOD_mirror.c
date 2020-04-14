@@ -129,8 +129,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
-  PropertyRNA *prop;
 
+  PropertyRNA *prop;
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);

@@ -1170,8 +1170,9 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col, *decorator_layout;
+  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
@@ -1204,11 +1205,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "steps", 0, IFACE_("Steps Viewport"), ICON_NONE);
   uiItemR(col, &ptr, "render_steps", 0, IFACE_("Render"), ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Stretch"), ICON_NONE);
-  uiItemR(row, &ptr, "use_stretch_u", UI_ITEM_R_TOGGLE, IFACE_("U"), ICON_NONE);
-  uiItemR(row, &ptr, "use_stretch_v", UI_ITEM_R_TOGGLE, IFACE_("V"), ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Stretch UVs"));
+  uiItemR(row, &ptr, "use_stretch_u", toggles_flag, IFACE_("U"), ICON_NONE);
+  uiItemR(row, &ptr, "use_stretch_v", toggles_flag, IFACE_("V"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }

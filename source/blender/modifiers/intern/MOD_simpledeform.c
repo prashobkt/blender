@@ -490,8 +490,9 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void restrictions_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *row, *sub, *decorator_layout;
+  uiLayout *col, *row, *sub;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
@@ -510,18 +511,16 @@ static void restrictions_panel_draw(const bContext *C, Panel *panel)
            MOD_SIMPLEDEFORM_MODE_TWIST)) {
     int deform_axis = RNA_enum_get(&ptr, "deform_axis");
 
-    row = uiLayoutRow(layout, true);
-    decorator_layout = uiItemL_respect_property_split(row, IFACE_("Lock"), ICON_NONE);
+    row = uiLayoutRowWithHeading(layout, true, IFACE_("Lock"));
     if (deform_axis != 0) {
-      uiItemR(row, &ptr, "lock_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+      uiItemR(row, &ptr, "lock_x", toggles_flag, NULL, ICON_NONE);
     }
     if (deform_axis != 1) {
-      uiItemR(row, &ptr, "lock_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+      uiItemR(row, &ptr, "lock_y", toggles_flag, NULL, ICON_NONE);
     }
     if (deform_axis != 2) {
-      uiItemR(row, &ptr, "lock_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
+      uiItemR(row, &ptr, "lock_z", toggles_flag, NULL, ICON_NONE);
     }
-    uiItemL(decorator_layout, "", ICON_BLANK1);
   }
 
   col = uiLayoutColumn(layout, true);

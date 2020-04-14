@@ -580,8 +580,9 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *decorator_layout;
+  uiLayout *sub, *row;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
@@ -594,12 +595,10 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Axis"), ICON_NONE);
-  uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_z", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Axis"));
+  uiItemR(row, &ptr, "use_x", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_y", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "use_z", toggles_flag, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "lambda_factor", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "lambda_border", 0, NULL, ICON_NONE);

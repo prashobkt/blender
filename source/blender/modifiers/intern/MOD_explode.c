@@ -1187,8 +1187,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *decorator_layout;
+  uiLayout *sub, *row;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
@@ -1202,15 +1203,10 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemPointerR(layout, &ptr, "particle_uv", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
 
-  /* This shouldn't be needed, but the above seems to reset prop separation. */
-  uiLayoutSetPropSep(layout, true);
-
-  row = uiLayoutRow(layout, true);
-  decorator_layout = uiItemL_respect_property_split(row, IFACE_("Show"), ICON_NONE);
-  uiItemR(row, &ptr, "show_alive", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "show_dead", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "show_unborn", UI_ITEM_R_TOGGLE, NULL, ICON_NONE);
-  uiItemL(decorator_layout, "", ICON_BLANK1);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Show"));
+  uiItemR(row, &ptr, "show_alive", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_dead", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "show_unborn", toggles_flag, NULL, ICON_NONE);
 
   uiLayoutSetPropSep(layout, true);
 
