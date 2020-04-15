@@ -2136,16 +2136,6 @@ class USERPREF_PT_experimental_virtual_reality(ExperimentalPanel, Panel):
         )
 """
 
-class USERPREF_PT_experimental_ui(ExperimentalPanel, Panel):
-    bl_label = "UI"
-
-    def draw(self, context):
-        self._draw_items(
-            context, (
-                ({"property": "use_menu_search"}, "T74157"),
-            ),
-        )
-
 
 class USERPREF_PT_experimental_system(ExperimentalPanel, Panel):
     bl_label = "System"
@@ -2247,7 +2237,6 @@ classes = (
     # Popovers.
     USERPREF_PT_ndof_settings,
 
-    USERPREF_PT_experimental_ui,
     USERPREF_PT_experimental_system,
 
     # Add dynamically generated editor theme panels last,
