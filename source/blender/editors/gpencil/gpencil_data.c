@@ -3195,7 +3195,7 @@ void GPENCIL_OT_material_unlock_all(wmOperatorType *ot)
 
 /* ***************** Select all strokes using color ************************ */
 
-static int gpencil_select_material_exec(bContext *C, wmOperator *op)
+static int gpencil_material_select_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   Object *ob = CTX_data_active_object(C);
@@ -3265,15 +3265,15 @@ static int gpencil_select_material_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GPENCIL_OT_select_material(wmOperatorType *ot)
+void GPENCIL_OT_material_select(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Select Material";
-  ot->idname = "GPENCIL_OT_select_material";
+  ot->idname = "GPENCIL_OT_material_select";
   ot->description = "Select/Deselect all Grease Pencil strokes using current material";
 
   /* callbacks */
-  ot->exec = gpencil_select_material_exec;
+  ot->exec = gpencil_material_select_exec;
   ot->poll = gpencil_active_material_poll;
 
   /* flags */
