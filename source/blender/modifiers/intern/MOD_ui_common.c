@@ -342,7 +342,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, P
 
   /* Give the panel the special flag that says it was built here and corresponds to a
    * modifer rather than a PanelType. */
-  panel_type->flag = PNL_RECREATE;
+  panel_type->flag = PNL_LIST;
   panel_type->reorder = modifier_reorder;
   panel_type->get_list_data_expand_flag = get_modifier_expand_flag;
   panel_type->set_list_data_expand_flag = set_modifier_expand_flag;
@@ -374,7 +374,7 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = modifier_ui_poll;
-  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_RECREATE_SUBPANEL);
+  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_LIST_SUBPANEL);
 
   BLI_assert(parent != NULL);
   strcpy(panel_type->parent_id, parent->idname);

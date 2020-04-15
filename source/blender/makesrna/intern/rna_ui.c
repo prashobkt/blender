@@ -1285,17 +1285,17 @@ static void rna_def_panel(BlenderRNA *brna)
        "Hide Header",
        "If set to False, the panel shows a header, which contains a clickable "
        "arrow to collapse the panel and the label (see bl_label)"},
-      {PNL_RECREATE,
-       "RECREATE",
+      {PNL_LIST,
+       "LIST",
        0,
-       "Recreate Panel",
+       "List Panel",
        "Multiple panels with this type can be used as part of a list depending on data external "
        "to the UI, used to create panels for the modifier stack and other stacks."},
-      {PNL_RECREATE_LIST_START,
-       "RECREATE_LIST_START",
+      {PNL_LIST_START,
+       "LIST_START",
        0,
-       "Recreate List Start",
-       "The panel with this type marks the start of a recreate panel list"},
+       "List Panel Start",
+       "The panel with this type marks the start of a list panel sequence"},
       {0, NULL, 0, NULL, NULL},
   };
 

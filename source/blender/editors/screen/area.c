@@ -2348,7 +2348,7 @@ BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
  * \param panel The panel to draw. Can be null, in which case a panel with the type of \a pt will
  * be found.
  * \param unique_panel_str A unique identifier for the name of the \a uiBlock associated with the
- * panel. Used when the panel is a recreate panel so a unique identifier is needed to find the
+ * panel. Used when the panel is a list panel so a unique identifier is needed to find the
  * correct old \a uiBlock, and NULL otherwise.
  */
 static void ed_panel_draw(const bContext *C,
@@ -2369,7 +2369,7 @@ static void ed_panel_draw(const bContext *C,
   char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
   strncpy(block_name, pt->idname, BKE_ST_MAXNAME);
   if (unique_panel_str != NULL) {
-    /* Recreate panels should have already been added at this point. */
+    /* List panels should have already been added at this point. */
     strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
   }
   uiBlock *block = UI_block_begin(C, region, block_name, UI_EMBOSS);
@@ -2605,7 +2605,7 @@ void ED_region_panels_layout_ex(const bContext *C,
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
 
-    if (pt->flag & PNL_RECREATE) {
+    if (pt->flag & PNL_LIST) {
       has_recreate_panel = true;
       continue;
     }
@@ -2625,8 +2625,8 @@ void ED_region_panels_layout_ex(const bContext *C,
     w -= UI_LIST_PANEL_MARGIN * 2.0f;
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
-        if (panel->type->flag & PNL_RECREATE) {
-          /* Use a unique identifier for recreate panels, otherwise an old block for a different
+        if (panel->type->flag & PNL_LIST) {
+          /* Use a unique identifier for list panels, otherwise an old block for a different
            * panel of the same type might be found. */
           char unique_panel_str[8];
           UI_list_panel_unique_str(panel, unique_panel_str);

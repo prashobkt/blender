@@ -228,7 +228,7 @@ typedef struct PanelType {
   /* draw entirely, view changes should be handled here */
   void (*draw)(const struct bContext *C, struct Panel *panel);
 
-  /* For recreate panels corresponding to a list. */
+  /* For panels corresponding to a list: */
 
   /** Reorder function, called when drag and drop finishes. */
   void (*reorder)(struct bContext *C, struct Panel *pa, int new_index);

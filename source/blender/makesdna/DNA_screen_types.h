@@ -133,7 +133,7 @@ typedef struct Panel_Runtime {
   /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
   int region_ofsx;
 
-  /* For recreate panels: Index of the list item the panel corresponds to. */
+  /* For list panels: Index of the list item the panel corresponds to. */
   int list_index;
 } Panel_Runtime;
 
@@ -534,7 +534,7 @@ enum {
   PNL_PIN = (1 << 5),
   PNL_POPOVER = (1 << 6),
   /** Signals that the panel has been drag-drop reordered and the panel list needs rebuilding. */
-  PNL_RECREATE_ORDER_CHANGED = (1 << 7),
+  PNL_LIST_ORDER_CHANGED = (1 << 7),
 };
 
 /** #Panel.snap - for snapping to screen edges */
@@ -550,12 +550,12 @@ enum {
 #define PNL_DEFAULT_CLOSED (1 << 0)
 #define PNL_NO_HEADER (1 << 1)
 #define PNL_LAYOUT_VERT_BAR (1 << 2)
-/** Delete panel after drawing, don't search for panel by type. */
-#define PNL_RECREATE (1 << 3)
+/** This panel type represents data external to the UI. */
+#define PNL_LIST (1 << 3)
 /* Convenience flag to avoid searching through parents to tell if it belongs to a list panel. */
-#define PNL_RECREATE_SUBPANEL (1 << 4)
-/** This panel marks the start of a recreate panel list. Not recreated on list change. */
-#define PNL_RECREATE_LIST_START (1 << 5)
+#define PNL_LIST_SUBPANEL (1 << 4)
+/** This panel marks the start of a list panel sequence. Not recreated on list change. */
+#define PNL_LIST_START (1 << 5)
 
 /* Fallback panel category (only for old scripts which need updating) */
 #define PNL_CATEGORY_FALLBACK "Misc"

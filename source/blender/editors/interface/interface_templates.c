@@ -1841,7 +1841,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
 
-  /* Check if the current modifier list corresponds to recreate panel list, or if the panels were
+  /* Check if the current modifier list corresponds to list panels, or if the panels were
    * reordered. */
   bool modifiers_changed = false;
   int modifiers_len = BLI_listbase_count(&ob->modifiers);
@@ -1849,14 +1849,14 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   ModifierData *md = ob->modifiers.first;
   Panel *panel = region->panels.first;
   while (panel != NULL) {
-    if (panel->type != NULL && panel->type->flag & PNL_RECREATE) {
+    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
       /* The panels were reordered by drag and drop. */
-      if (panel->flag & PNL_RECREATE_ORDER_CHANGED) {
+      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
         modifiers_changed = true;
         break;
       }
 
-      /* We reached the last modifier before the last recreate panel. */
+      /* We reached the last modifier before the last list panel. */
       if (md == NULL) {
         modifiers_changed = true;
         break;
@@ -1879,7 +1879,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
     modifiers_changed = true;
   }
 
-  /* If the modifier list has changed at all, clear all of the recreate panels and rebuild them. */
+  /* If the modifier list has changed at all, clear all of the list panels and rebuild them. */
   if (modifiers_changed) {
     UI_panels_free_recreate(region);
     md = ob->modifiers.first;

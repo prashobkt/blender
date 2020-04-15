@@ -26,7 +26,7 @@ class ModifierButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "modifier"
-    bl_options = {'HIDE_HEADER', 'RECREATE_LIST_START'}
+    bl_options = {'HIDE_HEADER', 'LIST_START'}
 
 
 class DATA_PT_modifiers(ModifierButtonsPanel, Panel):

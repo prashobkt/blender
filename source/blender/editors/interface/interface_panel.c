@@ -264,7 +264,7 @@ static void panel_set_expand_from_list_data_recursive(Panel *panel, short flag, 
 void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
 {
   BLI_assert(panel->type != NULL);
-  BLI_assert(panel->type->flag & PNL_RECREATE);
+  BLI_assert(panel->type->flag & PNL_LIST);
 
   short expand_flag = panel->type->get_list_data_expand_flag(C, panel);
   short flag_index = 0;
@@ -294,8 +294,8 @@ static void get_panel_expand_flag(Panel *panel, short *flag, short *flag_index)
  * corresponds to this panel.
  *
  * \note This needs to iterate through all of the regions panels because the panel with changed
- * expansion could have been the subpanel of a recreate panel, meaning it might not know which
- * list item it corresponds to.
+ * expansion could have been the subpanel of a list panel, meaning it might not know which
+ * list item it corresponds to. HANS-TODO: Fix
  */
 static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
 {
@@ -305,7 +305,7 @@ static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
       continue;
     }
 
-    if (panel->type->flag & PNL_RECREATE) {
+    if (panel->type->flag & PNL_LIST) {
       short expand_flag;
       short flag_index = 0;
       get_panel_expand_flag(panel, &expand_flag, &flag_index);
@@ -544,7 +544,7 @@ static void ui_offset_panel_block(uiBlock *block)
 Panel *UI_panel_add_recreate(
     ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
-  Panel *panel = MEM_callocN(sizeof(Panel), "recreate panel");
+  Panel *panel = MEM_callocN(sizeof(Panel), "list panel");
   panel->type = panel_type;
   BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
 
@@ -557,7 +557,7 @@ Panel *UI_panel_add_recreate(
 
   panel->runtime.list_index = list_index;
 
-  /* Add the panel's children too. Although they aren't recreate panels, we can still use this
+  /* Add the panel's children too. Although they aren't list panels, we can still use this
    * function to creat them, as UI_panel_begin does other things we don't need to do. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
     PanelType *child = link->data;
@@ -567,16 +567,16 @@ Panel *UI_panel_add_recreate(
   /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
    * context string to make sure we add to the right list.
    *
-   * We can the panel list is also the display order because the recreate panel list is rebuild
+   * We can the panel list is also the display order because the list panel list is rebuild
    * when the order changes. */
-  if (panel_type->flag & PNL_RECREATE) {
+  if (panel_type->flag & PNL_LIST) {
     Panel *last_list_panel = NULL;
 
     for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
       if (list_panel->type == NULL) {
         continue;
       }
-      if (list_panel->type->flag & (PNL_RECREATE_LIST_START | PNL_RECREATE)) {
+      if (list_panel->type->flag & (PNL_LIST_START | PNL_LIST)) {
         last_list_panel = list_panel;
       }
     }
@@ -599,7 +599,7 @@ void UI_panel_set_list_index(Panel *panel, int i)
 {
   BLI_assert(panel->type != NULL);
   if (panel->type->parent == NULL) {
-    BLI_assert(panel->type->flag & PNL_RECREATE);
+    BLI_assert(panel->type->flag & PNL_LIST);
   }
 
   panel->runtime.list_index = i;
@@ -665,7 +665,7 @@ void UI_panels_free_recreate(ARegion *region)
   while (panel != NULL) {
     bool remove = false;
     if (panel->type != NULL) { /* Some panels don't have a type.. */
-      if (panel->type->flag & PNL_RECREATE) {
+      if (panel->type->flag & PNL_LIST) {
         remove = true;
       }
     }
@@ -848,8 +848,7 @@ void ui_draw_aligned_panel(uiStyle *style,
                            * can't be dragged. This may be changed in future. */
                           show_background);
   const int panel_col = is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK;
-  const bool is_list_panel = (panel->type &&
-                              panel->type->flag & (PNL_RECREATE | PNL_RECREATE_SUBPANEL));
+  const bool is_list_panel = (panel->type && panel->type->flag & (PNL_LIST | PNL_LIST_SUBPANEL));
 
   if (panel->type && (panel->type->flag & PNL_NO_HEADER)) {
     if (show_background) {
@@ -1299,7 +1298,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
   /* Extra margin if the first panel happens to be a list panel. */
-  bool first_is_list_panel = (ps->panel->type && ps->panel->type->flag & PNL_RECREATE);
+  bool first_is_list_panel = (ps->panel->type && ps->panel->type->flag & PNL_LIST);
   if (first_is_list_panel) {
     ps->panel->ofsx += UI_LIST_PANEL_MARGIN;
     ps->panel->ofsy -= UI_LIST_PANEL_MARGIN;
@@ -1312,7 +1311,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
       psnext->panel->ofsx = ps->panel->ofsx;
       psnext->panel->ofsy = get_panel_real_ofsy(ps->panel) - get_panel_size_y(psnext->panel);
       /* Extra margin for list panels. */
-      if (psnext->panel->type && psnext->panel->type->flag & PNL_RECREATE) {
+      if (psnext->panel->type && psnext->panel->type->flag & PNL_LIST) {
         psnext->panel->ofsy -= UI_LIST_PANEL_MARGIN;
         if (!first_is_list_panel) {
           psnext->panel->ofsx = UI_LIST_PANEL_MARGIN;
@@ -1398,36 +1397,36 @@ static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 
 static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
 {
-  /* Only reorder the data for list recreate panels. */
-  if (panel->type == NULL || !(panel->type->flag & PNL_RECREATE)) {
+  /* Only reorder the data for list panels. */
+  if (panel->type == NULL || !(panel->type->flag & PNL_LIST)) {
     return;
   }
-  /* Don't reorder if this recreate panel doesn't support drag and drop reordering. */
+  /* Don't reorder if this list panel doesn't support drag and drop reordering. */
   if (panel->type->reorder == NULL) {
     return;
   }
 
   char *context = panel->type->context;
 
-  /* Find how many recreate panels with this context string. */
+  /* Find how many list panels with this context string. */
   int list_panels_len = 0;
   for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
     if (list_panel->type) {
       if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PNL_RECREATE) {
+        if (list_panel->type->flag & PNL_LIST) {
           list_panels_len++;
         }
       }
     }
   }
 
-  /* Sort the matching recreate panels by their display order. */
+  /* Sort the matching list panels by their display order. */
   PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "recreatepanelsort");
   PanelSort *sort_index = panel_sort;
   for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
     if (list_panel->type) {
       if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PNL_RECREATE) {
+        if (list_panel->type->flag & PNL_LIST) {
           sort_index->panel = MEM_dupallocN(list_panel);
           sort_index->orig = list_panel;
           sort_index++;
@@ -1458,7 +1457,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *pan
   }
 
   /* Set the bit to tell the interface to recreate the list. */
-  panel->flag |= PNL_RECREATE_ORDER_CHANGED;
+  panel->flag |= PNL_LIST_ORDER_CHANGED;
 
   /* Finally, move this panel's list item to the new index in its list. */
   panel->type->reorder(C, panel, move_to_index);
