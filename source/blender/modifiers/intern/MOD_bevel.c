@@ -363,11 +363,11 @@ static void shading_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumnWithHeading(layout, true, "Mark");
+  uiItemR(layout, &ptr, "harden_normals", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumnWithHeading(layout, true, IFACE_("Mark"));
   uiItemR(col, &ptr, "mark_seam", 0, IFACE_("Seam"), ICON_NONE);
   uiItemR(col, &ptr, "mark_sharp", 0, IFACE_("Sharp"), ICON_NONE);
-
-  uiItemR(layout, &ptr, "harden_normals", 0, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);

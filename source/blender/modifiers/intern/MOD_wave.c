@@ -444,7 +444,7 @@ static void position_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "start_position_object", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "start_position_object", 0, IFACE_("Object"), ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
   uiItemR(col, &ptr, "start_position_x", 0, "Start position X", ICON_NONE);
@@ -482,7 +482,7 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "texture_coords", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "texture_coords", 0, IFACE_("Coordinates"), ICON_NONE);
   if (texture_coords == MOD_DISP_MAP_OBJECT) {
     uiItemR(layout, &ptr, "texture_coords_object", 0, NULL, ICON_NONE);
     PointerRNA texture_coords_obj_ptr = RNA_pointer_get(&ptr, "texture_coords_object");

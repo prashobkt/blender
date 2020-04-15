@@ -140,7 +140,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(col, true);
 
   /* No decorators for the first few rows. */
-  uiLayoutSetPropDecorate(col, true);
+  // uiLayoutSetPropDecorate(col, true);
 
   prop = RNA_struct_find_property(&ptr, "use_axis");
   row = uiLayoutRowWithHeading(col, true, IFACE_("Axis"));
@@ -162,11 +162,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemS(col);
   /* Now decorators are fine, we don't insert multiple items in a single row anymore. */
-  uiLayoutSetPropDecorate(col, true);
-
-  uiItemR(col, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
+  // uiLayoutSetPropDecorate(col, true);
 
   uiItemR(col, &ptr, "mirror_object", 0, NULL, ICON_NONE);
+
+  uiItemR(col, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }

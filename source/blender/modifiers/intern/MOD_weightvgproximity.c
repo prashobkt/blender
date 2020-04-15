@@ -655,14 +655,18 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
 
+  uiItemS(layout);
+
   uiItemR(layout, &ptr, "proximity_mode", 0, NULL, ICON_NONE);
   if (RNA_enum_get(&ptr, "proximity_mode") == MOD_WVG_PROXIMITY_GEOMETRY) {
-    uiItemR(layout, &ptr, "proximity_geometry", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "proximity_geometry", UI_ITEM_R_EXPAND, IFACE_("Geometry"), ICON_NONE);
   }
 
   col = uiLayoutColumn(layout, true);
   uiItemR(col, &ptr, "min_dist", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "max_dist", 0, NULL, ICON_NONE);
+
+  uiItemS(layout);
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "falloff_type", 0, NULL, ICON_NONE);

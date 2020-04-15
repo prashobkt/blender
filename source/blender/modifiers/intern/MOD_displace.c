@@ -438,6 +438,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA texture_ptr = RNA_pointer_get(&ptr, "texture");
   bool has_texture = !RNA_pointer_is_null(&texture_ptr);
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+  int texture_coords = RNA_enum_get(&ptr, "texture_coords");
 
   uiLayoutSetPropSep(layout, true);
 
@@ -445,8 +446,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, has_texture);
-  uiItemR(col, &ptr, "texture_coords", 0, 0, ICON_NONE);
-  int texture_coords = RNA_enum_get(&ptr, "texture_coords");
+  uiItemR(col, &ptr, "texture_coords", 0, IFACE_("Coordinates"), ICON_NONE);
   if (texture_coords == MOD_DISP_MAP_OBJECT) {
     uiItemR(col, &ptr, "texture_coords_object", 0, NULL, ICON_NONE);
     PointerRNA texture_coords_obj_ptr = RNA_pointer_get(&ptr, "texture_coords_object");

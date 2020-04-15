@@ -4790,7 +4790,7 @@ static void rna_def_modifier_weightvg_mask(BlenderRNA *UNUSED(brna),
 
   prop = RNA_def_property(srna, "mask_vertex_group", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "mask_defgrp_name");
-  RNA_def_property_ui_text(prop, "Mask VGroup", "Masking vertex group name");
+  RNA_def_property_ui_text(prop, "Mask Vertex Group", "Masking vertex group name");
   RNA_def_property_string_funcs(prop, NULL, NULL, mask_vgroup_setter);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -5249,7 +5249,7 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_remove_disconnected", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_FLOOD_FILL);
-  RNA_def_property_ui_text(prop, "Remove Disconnected Pieces", "");
+  RNA_def_property_ui_text(prop, "Remove Disconnected", "");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_smooth_shade", PROP_BOOLEAN, PROP_NONE);

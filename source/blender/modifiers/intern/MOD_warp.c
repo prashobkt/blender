@@ -419,7 +419,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   if (!RNA_pointer_is_null(&from_obj_ptr) && RNA_enum_get(&from_obj_ptr, "type") == OB_ARMATURE) {
 
     PointerRNA from_obj_data_ptr = RNA_pointer_get(&from_obj_ptr, "data");
-    uiItemPointerR(col, &ptr, "bone_from", &from_obj_data_ptr, "bones", NULL, ICON_NONE);
+    uiItemPointerR(col, &ptr, "bone_from", &from_obj_data_ptr, "bones", IFACE_("Bone"), ICON_NONE);
   }
 
   col = uiLayoutColumn(layout, true);
@@ -427,7 +427,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA to_obj_ptr = RNA_pointer_get(&ptr, "object_to");
   if (!RNA_pointer_is_null(&to_obj_ptr) && RNA_enum_get(&to_obj_ptr, "type") == OB_ARMATURE) {
     PointerRNA to_obj_data_ptr = RNA_pointer_get(&to_obj_ptr, "data");
-    uiItemPointerR(col, &ptr, "bone_to", &to_obj_data_ptr, "bones", NULL, ICON_NONE);
+    uiItemPointerR(col, &ptr, "bone_to", &to_obj_data_ptr, "bones", IFACE_("Bone"), ICON_NONE);
   }
 
   uiItemR(layout, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
@@ -482,7 +482,7 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "texture_coords", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "texture_coords", 0, IFACE_("Coordinates"), ICON_NONE);
 
   if (texture_coords == MOD_DISP_MAP_OBJECT) {
     uiItemR(layout, &ptr, "texture_coords_object", 0, "Object", ICON_NONE);
