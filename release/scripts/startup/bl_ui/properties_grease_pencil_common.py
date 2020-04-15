@@ -361,6 +361,29 @@ class GPENCIL_MT_layer_active(Menu):
         layout.operator("gpencil.layer_add", text="New Layer", icon='ADD')
 
 
+class GPENCIL_MT_material_active(Menu):
+    bl_label = "Change Active Material"
+
+    @classmethod
+    def poll(cls, context):
+        tool_settings = context.scene.tool_settings
+        mode = tool_settings.gpencil_paint.color_mode
+
+        return  (mode == 'MATERIAL')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+        ob = context.active_object
+        mat_active = ob.active_material
+
+        for slot in ob.material_slots:
+            mat = slot.material
+            if mat:
+                layout.operator("gpencil.material_set", text=mat.name,
+                                icon='MATERIAL' if mat == mat_active else 'BLANK1').slot = mat.name
+
+
 class GPENCIL_MT_gpencil_draw_delete(Menu):
     bl_label = "Delete"
 
@@ -931,6 +954,7 @@ classes = (
     GPENCIL_MT_cleanup,
     GPENCIL_MT_move_to_layer,
     GPENCIL_MT_layer_active,
+    GPENCIL_MT_material_active,
 
     GPENCIL_MT_gpencil_draw_delete,
     GPENCIL_MT_layer_mask_menu,

@@ -3284,6 +3284,48 @@ void GPENCIL_OT_material_select(wmOperatorType *ot)
   RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
+/* ***************** Set active material ************************* */
+static int gpencil_material_set_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+  int slot = RNA_enum_get(op->ptr, "slot");
+
+  /* Try to get material */
+  if ((slot < 1) || (slot > ob->totcol)) {
+    BKE_reportf(
+        op->reports, RPT_ERROR, "Cannot change to non-existent material (index = %d)", slot);
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Set active material. */
+  ob->actcol = slot;
+
+  /* updates */
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_material_set(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Material";
+  ot->idname = "GPENCIL_OT_material_set";
+  ot->description = "Set active material";
+
+  /* callbacks */
+  ot->exec = gpencil_material_set_exec;
+  ot->poll = gpencil_active_material_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Material to use (dynamic enum) */
+  ot->prop = RNA_def_enum(ot->srna, "slot", DummyRNA_DEFAULT_items, 0, "Material Slot", "");
+  RNA_def_enum_funcs(ot->prop, ED_gpencil_material_enum_itemf);
+}
+
 /* ***************** Set selected stroke material the active material ************************ */
 
 static int gpencil_set_active_material_exec(bContext *C, wmOperator *op)
