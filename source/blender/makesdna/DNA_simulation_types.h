@@ -31,6 +31,8 @@ typedef struct Simulation {
 
   int flag;
   int _pad1[1];
+
+  void *runtime;
 } Simulation;
 
 /* Simulation.flag */

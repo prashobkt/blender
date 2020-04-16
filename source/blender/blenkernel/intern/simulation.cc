@@ -47,6 +47,9 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+struct SimulationRuntime {
+};
+
 static void simulation_init_data(ID *id)
 {
   Simulation *simulation = (Simulation *)id;
@@ -69,6 +72,8 @@ static void simulation_copy_data(Main *bmain, ID *id_dst, const ID *id_src, cons
                    (ID **)&simulation_dst->nodetree,
                    flag_private_id_data);
   }
+
+  simulation_dst->runtime = nullptr;
 }
 
 static void simulation_make_local(Main *bmain, ID *id, const int flags)
@@ -86,6 +91,11 @@ static void simulation_free_data(ID *id)
     ntreeFreeNestedTree(simulation->nodetree);
     MEM_freeN(simulation->nodetree);
     simulation->nodetree = nullptr;
+  }
+
+  if (simulation->runtime) {
+    delete simulation->runtime;
+    simulation->runtime = nullptr;
   }
 }
 
@@ -118,7 +128,12 @@ IDTypeInfo IDType_ID_SIM = {
 
 void BKE_simulation_eval(Depsgraph *depsgraph, Simulation *simulation, Scene *scene)
 {
-  int current_frame = scene->r.cfra;
-  float current_subframe = scene->r.subframe;
-  printf("Output simulation state at frame %d + %f\n", current_frame, current_subframe);
+  Simulation *simulation_orig = (Simulation *)DEG_get_original_id(&simulation->id);
+  if (simulation_orig->runtime == nullptr) {
+    simulation_orig->runtime = new SimulationRuntime();
+  }
+  SimulationRuntime &sim_runtime = *(SimulationRuntime *)simulation_orig->runtime;
+
+  int output_scene_frame = scene->r.cfra;
+  float output_scene_subframe = scene->r.subframe;
 }

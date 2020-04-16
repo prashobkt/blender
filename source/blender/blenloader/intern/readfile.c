@@ -9194,6 +9194,7 @@ static void direct_link_simulation(FileData *fd, Simulation *simulation)
 {
   simulation->adt = newdataadr(fd, simulation->adt);
   direct_link_animdata(fd, simulation->adt);
+  simulation->runtime = NULL;
 }
 
 /** \} */
