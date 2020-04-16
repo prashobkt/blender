@@ -127,6 +127,7 @@ static SpaceLink *image_new(const ScrArea *UNUSED(area), const Scene *UNUSED(sce
   simage->zoom = 1.0f;
   simage->lock = true;
   simage->flag = SI_SHOW_GPENCIL | SI_USE_ALPHA | SI_COORDFLOATS;
+  simage->uv_opacity = 1.0f;
 
   BKE_imageuser_default(&simage->iuser);
   simage->iuser.flag = IMA_SHOW_STEREO | IMA_ANIM_ALWAYS;
@@ -669,13 +670,8 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
   /* we set view2d from own zoom and offset each time */
   image_main_region_set_view2d(sima, region);
 
-  /* Image are still drawn in display space. */
-  glDisable(GL_FRAMEBUFFER_SRGB);
-
   /* we draw image in pixelspace */
   draw_image_main(C, region);
-
-  glEnable(GL_FRAMEBUFFER_SRGB);
 
   /* and uvs in 0.0-1.0 space */
   UI_view2d_view_ortho(v2d);
