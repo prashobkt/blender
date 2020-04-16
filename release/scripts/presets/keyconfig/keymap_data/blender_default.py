@@ -3174,7 +3174,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.selectmode_toggle", {"type": 'THREE', "value": 'PRESS'},
          {"properties": [("mode", 2)]}),
         # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        op_panel("TOPBAR_PT_gpencil_layers", {"type": 'Y', "value": 'PRESS'}),
         # Keyframe menu
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
         # Context menu
@@ -3221,9 +3221,9 @@ def km_grease_pencil_stroke_paint_mode(params):
         ("gpencil.hide", {"type": 'H', "value": 'PRESS', "shift": True},
          {"properties": [("unselected", True)]}),
         # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        op_panel("TOPBAR_PT_gpencil_layers", {"type": 'Y', "value": 'PRESS'}),
         # Active material
-        op_menu("GPENCIL_MT_material_active", {"type": 'U', "value": 'PRESS'}),
+        op_panel("TOPBAR_PT_gpencil_materials", {"type": 'U', "value": 'PRESS'}),
         # Keyframe menu
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
         # Draw context menu
@@ -3383,7 +3383,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         ("gpencil.active_frames_delete_all", {"type": 'X', "value": 'PRESS', "shift": True}, None),
         ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        op_panel("TOPBAR_PT_gpencil_layers", {"type": 'Y', "value": 'PRESS'}),
         # Keyframe menu
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
         # Context menu
@@ -3595,7 +3595,7 @@ def km_grease_pencil_stroke_weight_mode(params):
         ("gpencil.active_frames_delete_all", {"type": 'X', "value": 'PRESS', "shift": True}, None),
         ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        op_panel("TOPBAR_PT_gpencil_layers", {"type": 'Y', "value": 'PRESS'}),
         # Keyframe menu
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
         # Context menu
@@ -3648,7 +3648,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
         ("gpencil.active_frames_delete_all", {"type": 'X', "value": 'PRESS', "shift": True}, None),
         ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        op_panel("TOPBAR_PT_gpencil_layers", {"type": 'Y', "value": 'PRESS'}),
         # Keyframe menu
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
         # Vertex Paint context menu
