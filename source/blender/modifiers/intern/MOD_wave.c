@@ -391,6 +391,14 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "use_cyclic", 0, NULL, ICON_NONE);
 
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Along Normals"));
+  uiItemR(row, &ptr, "use_normal", 0, "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_normal"));
+  uiItemR(sub, &ptr, "use_normal_x", UI_ITEM_R_TOGGLE, "X", ICON_NONE);
+  uiItemR(sub, &ptr, "use_normal_y", UI_ITEM_R_TOGGLE, "Y", ICON_NONE);
+  uiItemR(sub, &ptr, "use_normal_z", UI_ITEM_R_TOGGLE, "Z", ICON_NONE);
+
   col = uiLayoutColumn(layout, false);
   uiItemR(col, &ptr, "falloff_radius", 0, "Falloff", ICON_NONE);
   uiItemR(col, &ptr, "height", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
@@ -405,33 +413,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
 
   modifier_panel_end(layout, &ptr);
-}
-
-static void normal_panel_header_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiItemR(layout, &ptr, "use_normal", 0, IFACE_("Along Normals"), ICON_NONE);
-}
-
-static void normal_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *col;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  col = uiLayoutColumn(layout, true);
-  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_normal"));
-  uiItemR(col, &ptr, "use_normal_x", 0, "X", ICON_NONE);
-  uiItemR(col, &ptr, "use_normal_y", 0, "Y", ICON_NONE);
-  uiItemR(col, &ptr, "use_normal_z", 0, "Z", ICON_NONE);
 }
 
 static void position_panel_draw(const bContext *C, Panel *panel)
@@ -507,8 +488,6 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Wave", panel_draw);
-  modifier_subpanel_register(
-      region_type, "normal", "", normal_panel_header_draw, normal_panel_draw, panel_type);
   modifier_subpanel_register(
       region_type, "wave_position", "Start Position", NULL, position_panel_draw, panel_type);
   modifier_subpanel_register(region_type, "wave_time", "Time", NULL, time_panel_draw, panel_type);

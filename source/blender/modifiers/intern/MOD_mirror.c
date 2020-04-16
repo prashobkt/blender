@@ -126,7 +126,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col;
+  uiLayout *row, *col, *sub;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
@@ -168,32 +168,13 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(col, &ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
 
+  row = uiLayoutRowWithHeading(col, true, IFACE_("Merge"));
+  uiItemR(row, &ptr, "use_mirror_merge", 0, "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_mirror_merge"));
+  uiItemR(sub, &ptr, "merge_threshold", 0, "", ICON_NONE);
+
   modifier_panel_end(layout, &ptr);
-}
-
-static void merge_panel_draw_header(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiItemR(layout, &ptr, "use_mirror_merge", 0, IFACE_("Merge"), ICON_NONE);
-}
-
-static void symmetry_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *row;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_mirror_merge"));
-  uiItemR(row, &ptr, "merge_threshold", 0, NULL, ICON_NONE);
 }
 
 static void data_panel_draw(const bContext *C, Panel *panel)
@@ -232,8 +213,6 @@ static void data_panel_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Mirror", panel_draw);
-  modifier_subpanel_register(
-      region_type, "mirror_merge", "", merge_panel_draw_header, symmetry_panel_draw, panel_type);
   modifier_subpanel_register(
       region_type, "mirror_data", "Data", NULL, data_panel_draw, panel_type);
 }

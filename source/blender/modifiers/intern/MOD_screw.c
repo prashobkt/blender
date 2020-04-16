@@ -1193,7 +1193,8 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemS(layout);
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &ptr, "axis", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(col, false);
+  uiItemR(row, &ptr, "axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
   uiItemR(col, &ptr, "object", 0, IFACE_("Axis Object"), ICON_NONE);
   sub = uiLayoutColumn(col, false);
   uiLayoutSetActive(sub, !RNA_pointer_is_null(&screw_obj_ptr));
@@ -1205,36 +1206,21 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "steps", 0, IFACE_("Steps Viewport"), ICON_NONE);
   uiItemR(col, &ptr, "render_steps", 0, IFACE_("Render"), ICON_NONE);
 
+  uiItemS(layout);
+
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Merge"));
+  uiItemR(row, &ptr, "use_merge_vertices", 0, "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_merge_vertices"));
+  uiItemR(sub, &ptr, "merge_threshold", 0, "", ICON_NONE);
+
+  uiItemS(layout);
+
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Stretch UVs"));
   uiItemR(row, &ptr, "use_stretch_u", toggles_flag, IFACE_("U"), ICON_NONE);
   uiItemR(row, &ptr, "use_stretch_v", toggles_flag, IFACE_("V"), ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
-}
-
-static void symmetry_panel_header_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiItemR(layout, &ptr, "use_merge_vertices", 0, NULL, ICON_NONE);
-}
-
-static void symmetry_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *col;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  col = uiLayoutColumn(layout, false);
-  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
-  uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
 }
 
 static void normals_panel_draw(const bContext *C, Panel *panel)
@@ -1256,8 +1242,6 @@ static void normals_panel_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Screw", panel_draw);
-  modifier_subpanel_register(
-      region_type, "screw_merge", "", symmetry_panel_header_draw, symmetry_panel_draw, panel_type);
   modifier_subpanel_register(
       region_type, "screw_normals", "Normals", NULL, normals_panel_draw, panel_type);
 }

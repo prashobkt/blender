@@ -121,7 +121,7 @@ static Mesh *applyModifier(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col;
+  uiLayout *col, *row, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -134,12 +134,19 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "thickness", 0, IFACE_("Thickness"), ICON_NONE);
   uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
 
-  uiItemR(layout, &ptr, "use_boundary", 0, IFACE_("Boundary"), ICON_NONE);
-  uiItemR(layout, &ptr, "use_replace", 0, IFACE_("Replace Original"), ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "use_boundary", 0, IFACE_("Boundary"), ICON_NONE);
+  uiItemR(col, &ptr, "use_replace", 0, IFACE_("Replace Original"), ICON_NONE);
 
-  col = uiLayoutColumnWithHeading(layout, false, IFACE_("Thickness"));
+  col = uiLayoutColumnWithHeading(layout, true, IFACE_("Thickness"));
   uiItemR(col, &ptr, "use_even_offset", 0, IFACE_("Even"), ICON_NONE);
   uiItemR(col, &ptr, "use_relative_offset", 0, IFACE_("Relative"), ICON_NONE);
+
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Crease Edges"));
+  uiItemR(row, &ptr, "use_crease", 0, "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_crease"));
+  uiItemR(sub, &ptr, "crease_weight", UI_ITEM_R_SLIDER, "", ICON_NONE);
 
   uiItemR(layout, &ptr, "material_offset", 0, IFACE_("Material Offset"), ICON_NONE);
 
@@ -171,29 +178,6 @@ static void vertex_group_panel_draw(const bContext *C, Panel *panel)
   uiItemR(row, &ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
 }
 
-static void crease_panel_draw_header(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiItemR(layout, &ptr, "use_crease", 0, IFACE_("Crease Edges"), ICON_NONE);
-}
-
-static void crease_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_crease"));
-  uiItemR(layout, &ptr, "crease_weight", UI_ITEM_R_SLIDER, IFACE_("Crease Weight"), ICON_NONE);
-}
-
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Wireframe", panel_draw);
@@ -202,12 +186,6 @@ static void panelRegister(ARegionType *region_type)
                              "Vertex Group",
                              NULL,
                              vertex_group_panel_draw,
-                             panel_type);
-  modifier_subpanel_register(region_type,
-                             "wireframe_crease",
-                             "",
-                             crease_panel_draw_header,
-                             crease_panel_draw,
                              panel_type);
 }
 
