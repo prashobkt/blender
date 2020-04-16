@@ -112,3 +112,8 @@ IDTypeInfo IDType_ID_SIM = {
     /* free_data */ simulation_free_data,
     /* make_local */ simulation_make_local,
 };
+
+void BKE_simulation_eval(Depsgraph *depsgraph, Simulation *simulation)
+{
+  printf("%s %s\n", __func__, simulation->id.name);
+}

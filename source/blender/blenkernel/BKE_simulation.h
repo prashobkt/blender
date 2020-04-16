@@ -21,10 +21,13 @@
 extern "C" {
 #endif
 
+struct Depsgraph;
 struct Main;
 struct Simulation;
 
 void *BKE_simulation_add(struct Main *bmain, const char *name);
+
+void BKE_simulation_eval(struct Depsgraph *depsgraph, struct Simulation *simulation);
 
 #ifdef __cplusplus
 }

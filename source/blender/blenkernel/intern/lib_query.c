@@ -1298,6 +1298,7 @@ static void library_foreach_ID_link(Main *bmain,
         for (i = 0; i < pointcloud->totcol; i++) {
           CALLBACK_INVOKE(pointcloud->mat[i], IDWALK_CB_USER);
         }
+        CALLBACK_INVOKE(pointcloud->source_simulation, IDWALK_CB_USER);
         break;
       }
       case ID_VO: {

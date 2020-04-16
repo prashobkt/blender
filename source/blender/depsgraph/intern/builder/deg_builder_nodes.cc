@@ -98,6 +98,7 @@ extern "C" {
 #include "BKE_scene.h"
 #include "BKE_sequencer.h"
 #include "BKE_shader_fx.h"
+#include "BKE_simulation.h"
 #include "BKE_sound.h"
 #include "BKE_tracking.h"
 #include "BKE_volume.h"
@@ -1715,12 +1716,11 @@ void DepsgraphNodeBuilder::build_simulation(Simulation *simulation)
     return;
   }
 
-  {
-    add_operation_node(&simulation->id,
-                       NodeType::PARAMETERS,
-                       OperationCode::SIMULATION_EVAL,
-                       [](struct ::Depsgraph *depsgraph) { printf("Sim eval %p\n", depsgraph); });
-  }
+  Simulation *simulation_cow = get_cow_datablock(simulation);
+  add_operation_node(&simulation->id,
+                     NodeType::PARAMETERS,
+                     OperationCode::SIMULATION_EVAL,
+                     function_bind(BKE_simulation_eval, _1, simulation_cow));
 
   add_id_node(&simulation->id);
   build_animdata(&simulation->id);
