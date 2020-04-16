@@ -848,7 +848,16 @@ void ui_draw_aligned_panel(uiStyle *style,
                            * can't be dragged. This may be changed in future. */
                           show_background);
   const int panel_col = is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK;
+
   const bool is_list_panel = (panel->type && panel->type->flag & (PNL_LIST | PNL_LIST_SUBPANEL));
+  float list_panel_roundness = 0.0f;
+
+  /* For list panels, use roundness from the theme for box widgets. */
+  if (is_list_panel) {
+    bTheme *btheme = UI_GetTheme();
+    uiWidgetColors *wcol = &btheme->tui.wcol_box;
+    list_panel_roundness = wcol->roundness;
+  }
 
   if (panel->type && (panel->type->flag & PNL_NO_HEADER)) {
     if (show_background) {
@@ -884,16 +893,13 @@ void ui_draw_aligned_panel(uiStyle *style,
 
     /* List panels have some roundness and a shaded header color to differentiate them. */
     if (is_list_panel) {
-      /* Round all corners if the panel is closed. */
+      int roundbox_corners = (UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
       if (is_closed_y) {
-        UI_draw_roundbox_corner_set(UI_CNR_ALL);
+        roundbox_corners |= (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
       }
-      else {
-        UI_draw_roundbox_corner_set(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
-      }
-
-      UI_GetThemeColorShadeAlpha4fv(TH_PANEL_HEADER, -30, 125, color);
-      UI_draw_roundbox_aa(true, minx, headrect.ymin, maxx, y, UI_LIST_PANEL_ROUNDNESS, color);
+      /* Increase ymax a bit for even space on the top and bottom of the buttons in the header. */
+      rcti box_rect = {minx, maxx, headrect.ymin, y + U.pixelsize};
+      ui_draw_box_opaque(&box_rect, roundbox_corners);
     }
     else {
       GPU_blend(true);
@@ -992,7 +998,7 @@ void ui_draw_aligned_panel(uiStyle *style,
       }
       else if (is_list_panel) {
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
-        radius = UI_LIST_PANEL_ROUNDNESS;
+        radius = list_panel_roundness * U.widget_unit;
       }
       else {
         UI_draw_roundbox_corner_set(UI_CNR_NONE);
@@ -1014,12 +1020,25 @@ void ui_draw_aligned_panel(uiStyle *style,
     GPU_blend(true);
 
     if (show_background) {
-      /* Round the bottom corners as long as this isn't a subpanel between other subpanels. */
+      /* Draw list panels and their bottom subpanels with rounding. */
       if (is_list_panel && !(is_subpanel && panel->next)) {
-        UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
-        UI_GetThemeColor4fv(panel_col, color);
-        UI_draw_roundbox_aa(
-            true, rect->xmin, rect->ymin, rect->xmax, rect->ymax, UI_LIST_PANEL_ROUNDNESS, color);
+        /* The subpanel should blend with the panel, so it shouldn't be opaque. */
+        if (is_subpanel) {
+          UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
+          UI_GetThemeColor4fv(panel_col, color);
+          UI_draw_roundbox_aa(true,
+                              rect->xmin,
+                              rect->ymin,
+                              rect->xmax,
+                              rect->ymax,
+                              list_panel_roundness * U.widget_unit,
+                              color);
+        }
+        else {
+          /* Increase ymax a bit to so the top aligns with the header box rect. */
+          rcti box_rect = {rect->xmin, rect->xmax, rect->ymin, rect->ymax + U.pixelsize};
+          ui_draw_box_opaque(&box_rect, UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
+        }
       }
       else {
         /* panel backdrop */
