@@ -707,7 +707,7 @@ static void node_draw_mute_line(View2D *v2d, SpaceNode *snode, bNode *node)
 #define MARKER_SHAPE_CIRCLE 0x2
 #define MARKER_SHAPE_INNER_DOT 0x10
 
-static uint node_socket_draw(const bNodeSocket *sock,
+static void node_socket_draw(const bNodeSocket *sock,
                              const float color[4],
                              const float color_outline[4],
                              float size,
@@ -750,8 +750,6 @@ static uint node_socket_draw(const bNodeSocket *sock,
   immAttr1f(size_id, size);
   immAttr4fv(outline_col_id, color_outline);
   immVertex2f(pos_id, locx, locy);
-
-  return flags;
 }
 
 static void node_socket_outline_color_get(bool selected, float r_outline_color[4])

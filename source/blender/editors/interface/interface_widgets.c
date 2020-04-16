@@ -2401,6 +2401,7 @@ static void widget_draw_node_link_socket(const uiWidgetColors *wcol,
                                          uiBut *but,
                                          float alpha)
 {
+  /* Node socket pointer can be passed as custom_data, see UI_but_node_link_set(). */
   if (but->custom_data) {
     const float scale = 0.9f / but->block->aspect;
 
@@ -2412,7 +2413,6 @@ static void widget_draw_node_link_socket(const uiWidgetColors *wcol,
     UI_widgetbase_draw_cache_flush();
     GPU_blend(false);
 
-    /* See UI_but_node_link_set() */
     ED_node_socket_draw(but->custom_data, rect, col, scale);
   }
   else {
