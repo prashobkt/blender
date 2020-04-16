@@ -446,7 +446,8 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void falloff_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *layout = panel->layout;
+  uiLayout *row;
+  uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);

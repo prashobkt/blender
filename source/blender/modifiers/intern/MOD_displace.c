@@ -428,8 +428,8 @@ static void deformVertsEM(ModifierData *md,
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *sub, *row, *col;
-
   uiLayout *layout = panel->layout;
+
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);

@@ -139,9 +139,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
 
-  /* No decorators for the first few rows. */
-  // uiLayoutSetPropDecorate(col, true);
-
   prop = RNA_struct_find_property(&ptr, "use_axis");
   row = uiLayoutRowWithHeading(col, true, IFACE_("Axis"));
   uiItemFullR(row, &ptr, prop, 0, 0, toggles_flag, IFACE_("X"), ICON_NONE);
@@ -161,8 +158,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemFullR(row, &ptr, prop, 2, 0, toggles_flag, IFACE_("Z"), ICON_NONE);
 
   uiItemS(col);
-  /* Now decorators are fine, we don't insert multiple items in a single row anymore. */
-  // uiLayoutSetPropDecorate(col, true);
 
   uiItemR(col, &ptr, "mirror_object", 0, NULL, ICON_NONE);
 

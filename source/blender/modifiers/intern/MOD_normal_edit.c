@@ -726,7 +726,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void mix_mode_panel_draw(const bContext *C, Panel *panel)
 {
-  /* HANS-TODO: This panel should be open by default. */
+  /* This panel could be open by default. */
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 

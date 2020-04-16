@@ -456,14 +456,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemPointerR(layout, &ptr, "vertex_group_b", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
   uiItemR(layout, &ptr, "default_weight_b", 0, NULL, ICON_NONE);
 
-  // col = uiLayoutColumn(split, false);
-  // sub = uiLayoutColumn(col, false);
-  // uiItemL(sub, IFACE_("Vertex Group B:"), ICON_NONE);
-  // uiItemPointerR(sub, &ptr, "vertex_group_b", &ob_ptr, "vertex_groups", "", ICON_NONE);
-  // sub = uiLayoutColumn(col, false);
-  // uiItemL(sub, IFACE_("Default Weight B:"), ICON_NONE);
-  // uiItemR(sub, &ptr, "default_weight_b", 0, "", ICON_NONE);
-
   uiItemS(layout);
 
   uiItemR(layout, &ptr, "mix_set", 0, NULL, ICON_NONE);
