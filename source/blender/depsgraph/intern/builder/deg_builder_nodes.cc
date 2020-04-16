@@ -1717,10 +1717,11 @@ void DepsgraphNodeBuilder::build_simulation(Simulation *simulation)
   }
 
   Simulation *simulation_cow = get_cow_datablock(simulation);
+  Scene *scene_cow = get_cow_datablock(scene_);
   add_operation_node(&simulation->id,
                      NodeType::PARAMETERS,
                      OperationCode::SIMULATION_EVAL,
-                     function_bind(BKE_simulation_eval, _1, simulation_cow));
+                     function_bind(BKE_simulation_eval, _1, simulation_cow, scene_cow));
 
   add_id_node(&simulation->id);
   build_animdata(&simulation->id);

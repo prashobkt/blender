@@ -44,6 +44,9 @@
 
 #include "BLT_translation.h"
 
+#include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
+
 static void simulation_init_data(ID *id)
 {
   Simulation *simulation = (Simulation *)id;
@@ -113,7 +116,9 @@ IDTypeInfo IDType_ID_SIM = {
     /* make_local */ simulation_make_local,
 };
 
-void BKE_simulation_eval(Depsgraph *depsgraph, Simulation *simulation)
+void BKE_simulation_eval(Depsgraph *depsgraph, Simulation *simulation, Scene *scene)
 {
-  printf("%s %s\n", __func__, simulation->id.name);
+  int current_frame = scene->r.cfra;
+  float current_subframe = scene->r.subframe;
+  printf("Output simulation state at frame %d + %f\n", current_frame, current_subframe);
 }
