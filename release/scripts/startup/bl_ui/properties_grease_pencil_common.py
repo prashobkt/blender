@@ -366,10 +366,16 @@ class GPENCIL_MT_material_active(Menu):
 
     @classmethod
     def poll(cls, context):
+        ob = context.active_object
         tool_settings = context.scene.tool_settings
         mode = tool_settings.gpencil_paint.color_mode
+        if mode != 'MATERIAL':
+            return False
 
-        return  (mode == 'MATERIAL')
+        if ob is None or len(ob.material_slots) == 0:
+            return False
+
+        return True
 
     def draw(self, context):
         layout = self.layout

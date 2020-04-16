@@ -7057,7 +7057,7 @@ def draw_gpencil_layer_active(context, layout):
 
 def draw_gpencil_material_active(context, layout):
         ob = context.active_object
-        if ob.active_material_index >= 0:
+        if ob and len(ob.material_slots) > 0 and ob.active_material_index >= 0:
             ma = ob.material_slots[ob.active_material_index].material
             if ma:
                 layout.label(text="Active Material")
