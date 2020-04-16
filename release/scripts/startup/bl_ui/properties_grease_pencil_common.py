@@ -386,8 +386,8 @@ class GPENCIL_MT_material_active(Menu):
         for slot in ob.material_slots:
             mat = slot.material
             if mat:
-                layout.operator("gpencil.material_set", text=mat.name,
-                                icon='MATERIAL' if mat == mat_active else 'BLANK1').slot = mat.name
+                icon = mat.id_data.preview.icon_id
+                layout.operator("gpencil.material_set", text=mat.name, icon_value=icon).slot = mat.name
 
 
 class GPENCIL_MT_gpencil_draw_delete(Menu):

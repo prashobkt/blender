@@ -504,13 +504,7 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
       item_tmp.identifier = ma->id.name + 2;
       item_tmp.name = ma->id.name + 2;
       item_tmp.value = i;
-
-      if (i == ob->actcol) {
-        item_tmp.icon = ICON_MATERIAL;
-      }
-      else {
-        item_tmp.icon = ICON_NONE;
-      }
+      item_tmp.icon = ma->preview->icon_id;
 
       RNA_enum_item_add(&item, &totitem, &item_tmp);
     }
