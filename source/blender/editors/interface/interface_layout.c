@@ -2222,15 +2222,15 @@ void uiItemFullR(uiLayout *layout,
      * heading itself. */
     ui_layout_heading_label_add(heading_layout, heading_layout, false, false);
   }
-  else if (inside_prop_sep) {
-    /* When placing further items in a split row, add them to a column so they match the column
-     * layout of previous items (e.g. transform vector with lock icon for each item). */
-    layout = uiLayoutColumn(layout_parent, true);
-    layout->space = 0;
-  }
 
   /* array property */
   if (index == RNA_NO_INDEX && is_array) {
+    if (inside_prop_sep) {
+      /* Within a split row, add array items to a column so they match the column layout of
+       * previous items (e.g. transform vector with lock icon for each item). */
+      layout = uiLayoutColumn(layout, true);
+    }
+
     ui_item_array(layout,
                   block,
                   name,
