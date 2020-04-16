@@ -228,7 +228,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *sub, *row;
 
   uiLayout *layout = panel->layout;
   PointerRNA ptr;
@@ -248,14 +248,12 @@ static void panel_draw(const bContext *C, Panel *panel)
   if (decimate_type == MOD_DECIM_MODE_COLLAPSE) {
     uiItemR(layout, &ptr, "ratio", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
-    col = uiLayoutColumnWithHeading(layout, false, "Symmetry");
-    row = uiLayoutRow(col, true);
+    row = uiLayoutRowWithHeading(layout, true, "Symmetry");
     uiLayoutSetPropDecorate(row, false);
     sub = uiLayoutRow(row, true);
     uiItemR(sub, &ptr, "use_symmetry", 0, "", ICON_NONE);
     sub = uiLayoutRow(sub, true);
     uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_symmetry"));
-    uiLayoutSetPropSep(sub, false);
     uiItemR(sub, &ptr, "symmetry_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
     uiItemDecoratorR(row, &ptr, "symmetry_axis", 0);
 
