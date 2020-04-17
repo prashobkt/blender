@@ -14,35 +14,26 @@ endif()
 # Path to Blender and Python executables for all platforms.
 if(MSVC)
   set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/blender.exe)
-  set(TEST_PYTHON_EXE "${TEST_INSTALL_DIR}/${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}/python/bin/python$<$<CONFIG:Debug>:_d>")
+  set(_default_test_python_exe "${TEST_INSTALL_DIR}/${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}/python/bin/python$<$<CONFIG:Debug>:_d>")
 elseif(APPLE)
   set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/Blender.app/Contents/MacOS/Blender)
-  set(TEST_PYTHON_EXE)
+  set(_default_test_python_exe ${PYTHON_EXECUTABLE})
 else()
   set(TEST_BLENDER_EXE ${TEST_INSTALL_DIR}/blender)
-
-  # Search for the Python executable to use in the tests.
-  # The installation directory's Python is the best one to use. However, it can only be there after the install step, which means
-  # that Python will never be here on a fresh system. This is why the search continues to the pre-built libraries, and if that
-  # doesn't exist either, default to whatever Python CMake found.
-  set(_python_exe "${TEST_INSTALL_DIR}/${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}/python/bin/python${PYTHON_VERSION}m")
-  if(EXISTS ${_python_exe})
-    message(STATUS "Tests: Using Python from installation directory: ${_python_exe}")
-    set(TEST_PYTHON_EXE ${_python_exe})
-  else()
-    set(_python_exe "${LIBDIR}/python/bin/python${PYTHON_VERSION}m")
-    if(EXISTS ${_python_exe})
-      message(STATUS "Tests: Using Python from pre-compiled LIBDIR: ${_python_exe}")
-      set(TEST_PYTHON_EXE ${_python_exe})
-    elseif(EXISTS ${PYTHON_EXECUTABLE})
-      message(STATUS "Tests: Using Python from PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
-      set(TEST_PYTHON_EXE ${PYTHON_EXECUTABLE})
-    else()
-      message(FATAL_ERROR "Tests: unable to find a Python executable to run the tests.")
-    endif()
-  endif()
-  unset(_python_exe)
+  set(_default_test_python_exe ${PYTHON_EXECUTABLE})
 endif()
+
+# The installation directory's Python is the best one to use. However, it can only be there after the install step,
+# which means that Python will never be there on a fresh system. To suit different needs, the user can pass
+# -DTEST_PYTHON_EXE=/path/to/python to CMake.
+if (NOT TEST_PYTHON_EXE)
+  set(TEST_PYTHON_EXE ${_default_test_python_exe})
+  message(STATUS "Tests: Using Python executable: ${TEST_PYTHON_EXE}")
+elseif(NOT EXISTS ${TEST_PYTHON_EXE})
+  message(FATAL_ERROR "Tests: TEST_PYTHON_EXE ${TEST_PYTHON_EXE} does not exist")
+endif()
+unset(_default_test_python_exe)
+
 
 # For testing with Valgrind
 # set(TEST_BLENDER_EXE valgrind --track-origins=yes --error-limit=no ${TEST_BLENDER_EXE})
