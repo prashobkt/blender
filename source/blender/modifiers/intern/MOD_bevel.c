@@ -316,15 +316,18 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemS(layout);
 
   uiItemR(layout, &ptr, "affect", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-  col = uiLayoutColumn(layout, true);
+
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
   uiItemR(col, &ptr, "limit_method", 0, NULL, ICON_NONE);
   int limit_method = RNA_enum_get(&ptr, "limit_method");
   if (limit_method == MOD_BEVEL_ANGLE) {
-    uiItemR(col, &ptr, "angle_limit", 0, "", ICON_NONE);
+    uiItemR(col, &ptr, "angle_limit", 0, NULL, ICON_NONE);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     row = uiLayoutRow(col, true);
-    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", "", ICON_NONE);
+    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
     sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_vertex_group);
     uiLayoutSetPropDecorate(sub, false);
