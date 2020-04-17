@@ -2379,6 +2379,7 @@ static void ed_panel_draw(const bContext *C,
 
   /* bad fixed values */
   int xco, yco, h = 0;
+  int headerend = w - UI_UNIT_X;
 
   if (pt->draw_header_preset && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
     /* for preset menu */
@@ -2394,8 +2395,6 @@ static void ed_panel_draw(const bContext *C,
 
     pt->draw_header_preset(C, panel);
 
-    int headerend = w - UI_UNIT_X;
-
     UI_block_layout_resolve(block, &xco, &yco);
     UI_block_translate(block, headerend - xco, 0);
     panel->layout = NULL;
@@ -2403,11 +2402,27 @@ static void ed_panel_draw(const bContext *C,
 
   if (pt->draw_header && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
     int labelx, labely;
+
     UI_panel_label_offset(block, &labelx, &labely);
 
-    /* for enabled buttons */
-    panel->layout = UI_block_layout(
-        block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
+    /* Unusual case: Use extending layout (buttons stretch to available width). */
+    if (pt->flag & PNL_LAYOUT_HEADER_EXTEND) {
+      uiLayout *layout = UI_block_layout(block,
+                                         UI_LAYOUT_VERTICAL,
+                                         UI_LAYOUT_PANEL,
+                                         labelx,
+                                         labely,
+                                         headerend - 2 * style->panelspace,
+                                         1,
+                                         0,
+                                         style);
+      panel->layout = uiLayoutRow(layout, false);
+    }
+    /* Regular case: Normal panel with fixed size buttons. */
+    else {
+      panel->layout = UI_block_layout(
+          block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
+    }
 
     pt->draw_header(C, panel);
 

@@ -547,15 +547,18 @@ enum {
 /* #define PNL_SNAP_DIST        9.0 */
 
 /* paneltype flag */
-#define PNL_DEFAULT_CLOSED (1 << 0)
-#define PNL_NO_HEADER (1 << 1)
-#define PNL_LAYOUT_VERT_BAR (1 << 2)
-/** This panel type represents data external to the UI. */
-#define PNL_LIST (1 << 3)
-/* Convenience flag to avoid searching through parents to tell if it belongs to a list panel. */
-#define PNL_LIST_SUBPANEL (1 << 4)
-/** This panel marks the start of a list panel sequence. Not recreated on list change. */
-#define PNL_LIST_START (1 << 5)
+enum {
+  PNL_DEFAULT_CLOSED = (1 << 0),
+  PNL_NO_HEADER = (1 << 1),
+  PNL_LAYOUT_HEADER_EXTEND = (1 << 2),
+  PNL_LAYOUT_VERT_BAR = (1 << 3),
+  /** This panel type represents data external to the UI. */
+  PNL_LIST = (1 << 4),
+  /* Convenience flag to avoid searching through parents to tell if it belongs to a list panel. */
+  PNL_LIST_SUBPANEL = (1 << 5),
+  /** This panel marks the start of a list panel sequence. Not recreated on list change. */
+  PNL_LIST_START = (1 << 6),
+};
 
 /* Fallback panel category (only for old scripts which need updating) */
 #define PNL_CATEGORY_FALLBACK "Misc"

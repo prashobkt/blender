@@ -230,7 +230,7 @@ static int modifier_is_simulation(ModifierData *md)
 
 static void modifier_panel_header(const bContext *C, Panel *panel)
 {
-  uiLayout *row;
+  uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -239,6 +239,8 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   ModifierData *md = ptr.data;
   const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
   Scene *scene = CTX_data_scene(C);
+  Object *ob = CTX_data_active_object(C);
+  int index = panel->runtime.list_index;
 
   /* Modifier Icon. */
   row = uiLayoutRow(layout, false);
@@ -249,21 +251,6 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
 
   /* Modifier Name. */
   uiItemR(layout, &ptr, "name", 0, "", ICON_NONE);
-}
-
-static void modifier_panel_header_modes(const bContext *C, Panel *panel)
-{
-  uiLayout *sub, *row;
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  ModifierData *md = ptr.data;
-  const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
-  int index = panel->runtime.list_index;
-  Object *ob = CTX_data_active_object(C);
-  Scene *scene = CTX_data_scene(C);
 
   /* Switch context buttons. */
   if (modifier_is_simulation(md) == 1) {
@@ -309,6 +296,9 @@ static void modifier_panel_header_modes(const bContext *C, Panel *panel)
   row = uiLayoutRow(layout, false);
   uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
   uiItemO(row, "", ICON_X, "OBJECT_OT_modifier_remove");
+
+  /* Some extra padding at the end, so 'x' icon isn't too close to drag button. */
+  uiItemS(layout);
 }
 
 /** \} */
@@ -336,13 +326,12 @@ PanelType *modifier_panel_register(ARegionType *region_type, const char *name, P
   strcpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
 
   panel_type->draw_header = modifier_panel_header;
-  panel_type->draw_header_preset = modifier_panel_header_modes;
   panel_type->draw = draw;
   panel_type->poll = modifier_ui_poll;
 
   /* Give the panel the special flag that says it was built here and corresponds to a
    * modifer rather than a PanelType. */
-  panel_type->flag = PNL_LIST;
+  panel_type->flag = PNL_LAYOUT_HEADER_EXTEND | PNL_LIST;
   panel_type->reorder = modifier_reorder;
   panel_type->get_list_data_expand_flag = get_modifier_expand_flag;
   panel_type->set_list_data_expand_flag = set_modifier_expand_flag;
