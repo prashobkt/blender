@@ -68,6 +68,11 @@
 #define ANIMATION_TIME 0.30
 #define ANIMATION_INTERVAL 0.02
 
+/** Discance to scroll per second when panel dragged to boundary. */
+#define PNL_DRAG_SCROLL_SPEED (4.0 * U.widget_unit)
+/** Delay before drag scrolling in seconds. */
+#define PNL_DRAG_SCROLL_DELAY 0.25
+
 #define PNL_LAST_ADDED 1
 #define PNL_ACTIVE 2
 #define PNL_WAS_ACTIVE 4
@@ -105,6 +110,11 @@ typedef struct uiHandlePanelData {
   int startx, starty;
   int startofsx, startofsy;
   int startsizex, startsizey;
+
+  /* Drag Scrolling */
+  double starttime_drag_scroll;
+  float scroll_offset;
+
 } uiHandlePanelData;
 
 static int get_panel_real_size_y(const Panel *panel);
@@ -1304,15 +1314,55 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
   uiHandlePanelData *data = panel->activedata;
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  short align = panel_aligned(area, region), dx = 0, dy = 0;
+  short align = panel_aligned(area, region);
 
-  /* first clip for window, no dragging outside */
-  if (!BLI_rcti_isect_pt_v(&region->winrct, &event->x)) {
-    return;
+  /* Check for dragging outside the region, and return unless we want to apply a scroll. */
+  if (align == BUT_VERTICAL) {
+    if (!BLI_rcti_isect_x(&region->winrct, event->x)) {
+      return;
+    }
+  }
+  else {
+    if (!BLI_rcti_isect_pt_v(&region->winrct, &event->x)) {
+      return;
+    }
   }
 
-  dx = (event->x - data->startx) & ~(PNL_GRID - 1);
-  dy = (event->y - data->starty) & ~(PNL_GRID - 1);
+  /* Scroll the region if the panel is dragged to the bottom or the top. */
+  short d_scroll_y = 0;
+  if (data->state == PANEL_STATE_DRAG && align == BUT_VERTICAL) {
+    int scroll_dir = 0;
+    if (event->y > region->winrct.ymax - UI_UNIT_Y) {
+      scroll_dir = 1;
+    }
+    else if (event->y < region->winrct.ymin + UI_UNIT_Y) {
+      scroll_dir = -1;
+    }
+
+    if (scroll_dir == 0) {
+      data->starttime_drag_scroll = 0.0;
+    }
+    else {
+      if (data->starttime_drag_scroll == 0.0) {
+        data->starttime_drag_scroll = PIL_check_seconds_timer();
+        data->scroll_offset = 0.0f;
+      }
+      else {
+        double time = PIL_check_seconds_timer() - data->starttime_drag_scroll;
+        if (time > PNL_DRAG_SCROLL_DELAY) {
+          float scroll = (float)((time - PNL_DRAG_SCROLL_DELAY) * PNL_DRAG_SCROLL_SPEED) *
+                         (float)scroll_dir;
+          scroll -= data->scroll_offset;
+          BLI_rctf_translate(&region->v2d.cur, 0, scroll);
+          data->scroll_offset += scroll;
+          d_scroll_y = (short)scroll;
+        }
+      }
+    }
+  }
+
+  short dx = (event->x - data->startx) & ~(PNL_GRID - 1);
+  short dy = (event->y - data->starty) & ~(PNL_GRID - 1);
 
   dx *= (float)BLI_rctf_size_x(&region->v2d.cur) / (float)BLI_rcti_size_x(&region->winrct);
   dy *= (float)BLI_rctf_size_y(&region->v2d.cur) / (float)BLI_rcti_size_y(&region->winrct);
@@ -1332,7 +1382,8 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
     panel->snap = PNL_SNAP_NONE;
 
     panel->ofsx = data->startofsx + dx;
-    panel->ofsy = data->startofsy + dy;
+    panel->ofsy = data->startofsy + dy /* + data->scroll_offset*/;
+
     check_panel_overlap(region, panel);
 
     if (align) {
@@ -2537,6 +2588,8 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
     data->startsizex = panel->sizex;
     data->startsizey = panel->sizey;
     data->starttime = PIL_check_seconds_timer();
+    data->starttime_drag_scroll = 0.0;
+    data->scroll_offset = 0.0f;
   }
 
   ED_region_tag_redraw(region);
