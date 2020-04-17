@@ -69,7 +69,7 @@
 #define ANIMATION_INTERVAL 0.02
 
 /** Discance to scroll per second when panel dragged to boundary. */
-#define PNL_DRAG_SCROLL_SPEED (4.0 * U.widget_unit)
+#define PNL_DRAG_SCROLL_SPEED (10.0 * U.widget_unit)
 /** Delay before drag scrolling in seconds. */
 #define PNL_DRAG_SCROLL_DELAY 0.25
 
@@ -113,7 +113,9 @@ typedef struct uiHandlePanelData {
 
   /* Drag Scrolling */
   double starttime_drag_scroll;
-  float scroll_offset;
+  /* Note: There can be multiple drag scroll "sessions" if the mouse leaves the scoll zone, so we
+   * need to keep track of the total scroll separately from the scroll for each "session." */
+  float scroll_offset, scroll_offset_total;
 
 } uiHandlePanelData;
 
@@ -1329,8 +1331,8 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
   }
 
   /* Scroll the region if the panel is dragged to the bottom or the top. */
-  short d_scroll_y = 0;
   if (data->state == PANEL_STATE_DRAG && align == BUT_VERTICAL) {
+    /* Find whether the mouse is close to the top or bottom. */
     int scroll_dir = 0;
     if (event->y > region->winrct.ymax - UI_UNIT_Y) {
       scroll_dir = 1;
@@ -1340,22 +1342,27 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
     }
 
     if (scroll_dir == 0) {
+      /* Reset the drag scroll timer if the mouse isn't in the scroll zones. */
       data->starttime_drag_scroll = 0.0;
     }
     else {
+      /* We just entered the scroll sone, start the timer. */
       if (data->starttime_drag_scroll == 0.0) {
         data->starttime_drag_scroll = PIL_check_seconds_timer();
         data->scroll_offset = 0.0f;
       }
       else {
+        /* Scoll if the mouse has been in the zone for longer than the delay. */
         double time = PIL_check_seconds_timer() - data->starttime_drag_scroll;
-        if (time > PNL_DRAG_SCROLL_DELAY) {
-          float scroll = (float)((time - PNL_DRAG_SCROLL_DELAY) * PNL_DRAG_SCROLL_SPEED) *
-                         (float)scroll_dir;
+        time -= PNL_DRAG_SCROLL_DELAY;
+        if (time > 0.0) {
+          float scroll = (float)(time * PNL_DRAG_SCROLL_SPEED) * (float)scroll_dir;
+
+          /* Move the region by the distance we haven't already scrolled. */
           scroll -= data->scroll_offset;
           BLI_rctf_translate(&region->v2d.cur, 0, scroll);
           data->scroll_offset += scroll;
-          d_scroll_y = (short)scroll;
+          data->scroll_offset_total += scroll;
         }
       }
     }
@@ -1382,7 +1389,7 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
     panel->snap = PNL_SNAP_NONE;
 
     panel->ofsx = data->startofsx + dx;
-    panel->ofsy = data->startofsy + dy /* + data->scroll_offset*/;
+    panel->ofsy = data->startofsy + dy + data->scroll_offset_total;
 
     check_panel_overlap(region, panel);
 
