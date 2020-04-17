@@ -311,7 +311,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "offset_type", 0, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
   uiItemS(layout);
 
@@ -351,6 +350,8 @@ static void geometry_panel_draw(const bContext *C, Panel *panel)
   if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
     uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
   }
+  uiItemS(layout);
+
   uiItemR(layout, &ptr, "vmesh_method", 0, IFACE_("Intersections"), ICON_NONE);
   uiItemR(layout, &ptr, "use_clamp_overlap", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
@@ -376,6 +377,17 @@ static void shading_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "face_strength_mode", 0, NULL, ICON_NONE);
 }
 
+static void profile_panel_draw(const bContext *C, Panel *panel)
+{
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  uiLayout *layout = panel->layout;
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, IFACE_("Shape"), ICON_NONE);
+}
+
 static void custom_profile_panel_draw_header(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -392,22 +404,26 @@ static void custom_profile_panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   uiLayout *layout = panel->layout;
 
+  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_custom_profile"));
+
   uiTemplateCurveProfile(layout, &ptr, "custom_profile");
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Bevel", panel_draw);
-  modifier_subpanel_register(
-      region_type, "bevel_geometry", "Bevel Geometry", NULL, geometry_panel_draw, panel_type);
-  modifier_subpanel_register(
-      region_type, "bevel_shading", "Shading", NULL, shading_panel_draw, panel_type);
+  PanelType *bevel_profil_panel = modifier_subpanel_register(
+      region_type, "bevel_profile", "Profile", NULL, profile_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
                              "bevel_custom_profile",
                              "",
                              custom_profile_panel_draw_header,
                              custom_profile_panel_draw,
-                             panel_type);
+                             bevel_profil_panel);
+  modifier_subpanel_register(
+      region_type, "bevel_geometry", "Bevel Geometry", NULL, geometry_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "bevel_shading", "Shading", NULL, shading_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Bevel = {
