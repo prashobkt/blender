@@ -421,7 +421,7 @@ static void panelRegister(ARegionType *region_type)
                              custom_profile_panel_draw,
                              bevel_profil_panel);
   modifier_subpanel_register(
-      region_type, "bevel_geometry", "Bevel Geometry", NULL, geometry_panel_draw, panel_type);
+      region_type, "bevel_geometry", "Geometry", NULL, geometry_panel_draw, panel_type);
   modifier_subpanel_register(
       region_type, "bevel_shading", "Shading", NULL, shading_panel_draw, panel_type);
 }
