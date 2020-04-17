@@ -853,28 +853,15 @@ int UI_panel_size_y(const Panel *panel)
   return get_panel_real_size_y(panel);
 }
 
-/**
- * Return the offset of the panel, checking if the panel is opened or closed. This function is
- * needed because the #uiBlock and #Panel don't change sizey or location when closed.
- *
- * \param include_drag: When finding the total height of the region's panels for scrolling, we
- * should use starting position of the drag, because a drag and drop doesn't change the resulting
- * height of the region. This enables that behavior.
- */
-static int get_panel_real_ofsy(Panel *panel, bool include_drag)
+/* this function is needed because uiBlock and Panel itself don't
+ * change sizey or location when closed */
+static int get_panel_real_ofsy(Panel *panel)
 {
-  int offset = panel->ofsy;
-  if (!include_drag) {
-    uiHandlePanelData *data = panel->activedata;
-    if (data && data->state == PANEL_STATE_DRAG) {
-      offset = data->startofsy;
-    }
-  }
   if (panel->flag & PNL_CLOSEDY) {
-    return offset + panel->sizey;
+    return panel->ofsy + panel->sizey;
   }
   else {
-    return offset;
+    return panel->ofsy;
   }
 }
 
@@ -1059,7 +1046,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
 
     if (align == BUT_VERTICAL) {
       psnext->panel->ofsx = ps->panel->ofsx;
-      psnext->panel->ofsy = get_panel_real_ofsy(ps->panel, true) - get_panel_size_y(psnext->panel);
+      psnext->panel->ofsy = get_panel_real_ofsy(ps->panel) - get_panel_size_y(psnext->panel);
     }
     else {
       psnext->panel->ofsx = get_panel_real_ofsx(ps->panel);
@@ -1103,27 +1090,28 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
 
 static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 {
-  Panel *panel;
   int align = panel_aligned(area, region);
   int sizex = 0;
   int sizey = 0;
 
-  /* compute size taken up by panels, for setting in view2d */
-  for (panel = region->panels.first; panel; panel = panel->next) {
+  /* Compute size taken up by panels, for setting in view2d. */
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->runtime_flag & PNL_ACTIVE) {
-      int pa_sizex, pa_sizey;
-
+      int panel_offset_x;
       if (align == BUT_VERTICAL) {
-        pa_sizex = panel->ofsx + panel->sizex;
-        pa_sizey = get_panel_real_ofsy(panel, false);
+        panel_offset_x = panel->ofsx + panel->sizex;
+
+        int panel_size_y = get_panel_real_size_y(panel);
+        sizey -= panel_size_y;
       }
       else {
-        pa_sizex = get_panel_real_ofsx(panel) + panel->sizex;
-        pa_sizey = panel->ofsy + get_panel_size_y(panel);
+        panel_offset_x = get_panel_real_ofsx(panel) + panel->sizex;
+
+        int panel_offset_y = panel->ofsy + get_panel_size_y(panel);
+        sizey = min_ii(sizey, panel_offset_y);
       }
 
-      sizex = max_ii(sizex, pa_sizex);
-      sizey = min_ii(sizey, pa_sizey);
+      sizex = max_ii(sizex, panel_offset_x);
     }
   }
 
