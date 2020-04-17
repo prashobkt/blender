@@ -252,6 +252,8 @@ enum {
   UI_BUT_TEXT_RIGHT = 1 << 3,
   /** Prevent the button to show any tooltip. */
   UI_BUT_NO_TOOLTIP = 1 << 4,
+  /** Do not add the usual horizontal padding for text drawing. */
+  UI_BUT_NO_TEXT_PADDING = 1 << 5,
 
   /* Button align flag, for drawing groups together.
    * Used in 'uiBlock.flag', take care! */

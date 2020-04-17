@@ -2429,7 +2429,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
   const bool show_menu_icon = ui_but_draw_menu_icon(but);
   float alpha = (float)wcol->text[3] / 255.0f;
   char password_str[UI_MAX_DRAW_STR];
-  bool no_text_padding = false;
+  bool no_text_padding = but->drawflag & UI_BUT_NO_TEXT_PADDING;
 
   ui_but_text_password_hide(password_str, but, false);
 
@@ -4177,12 +4177,12 @@ static void widget_optionbut(uiWidgetColors *wcol,
   widgetbase_draw(&wtb, wcol);
 
   /* Text space - factor is really just eyeballed. */
-  const float offset = BLI_rcti_size_y(rect) * 0.31f + delta;
+  const float offset = delta * 0.9;
   if (text_before_widget) {
-    rect->xmax -= offset;
+    rect->xmax = recttemp.xmin - offset;
   }
   else {
-    rect->xmin += offset;
+    rect->xmin = recttemp.xmax + offset;
   }
 }
 
@@ -4739,9 +4739,14 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
       case UI_BTYPE_CHECKBOX_N:
         if (!(but->flag & UI_HAS_ICON)) {
           wt = widget_type(UI_WTYPE_CHECKBOX);
+
           if ((but->drawflag & (UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT)) == 0) {
             but->drawflag |= UI_BUT_TEXT_LEFT;
           }
+          /* widget_optionbut() carefully sets the text rectangle for fine tuned paddings. If the
+           * text drawing were to add its own padding, DPI and zoom factor would be applied twice
+           * in the final padding, so it's difficult to control it. */
+          but->drawflag |= UI_BUT_NO_TEXT_PADDING;
         }
         else {
           wt = widget_type(UI_WTYPE_TOGGLE);
@@ -5316,15 +5321,23 @@ void ui_draw_tooltip_background(const uiStyle *UNUSED(style), uiBlock *UNUSED(bl
   wt->draw(&wt->wcol, rect, 0, 0);
 }
 
-/* helper call to draw a menu item without button */
-/* state: UI_ACTIVE or 0 */
+/**
+ * Helper call to draw a menu item without a button.
+ *
+ * \param state: The state of the button,
+ * typically #UI_ACTIVE, #UI_BUT_DISABLED, #UI_BUT_INACTIVE.
+ * \param use_sep: When true, characters after the last #UI_SEP_CHAR are right aligned,
+ * use for displaying key shortcuts.
+ * \param r_xmax: The right hand position of the text, this takes into the icon,
+ * padding and text clipping when there is not enough room to display the full text.
+ */
 void ui_draw_menu_item(const uiFontStyle *fstyle,
                        rcti *rect,
                        const char *name,
                        int iconid,
                        int state,
                        bool use_sep,
-                       int *r_name_width)
+                       int *r_xmax)
 {
   uiWidgetType *wt = widget_type(UI_WTYPE_MENU_ITEM);
   rcti _rect = *rect;
@@ -5387,8 +5400,8 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
                          &xofs,
                          &yofs,
                          &info);
-    if (r_name_width != NULL) {
-      *r_name_width = xofs + info.width;
+    if (r_xmax != NULL) {
+      *r_xmax = xofs + info.width;
     }
   }
 
