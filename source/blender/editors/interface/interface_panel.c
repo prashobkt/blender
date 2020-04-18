@@ -277,6 +277,10 @@ void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
 {
   BLI_assert(panel->type != NULL);
   BLI_assert(panel->type->flag & PNL_LIST);
+  if (panel->type->get_list_data_expand_flag) {
+    /* List panel doesn't support loading expansion. */
+    return;
+  }
 
   short expand_flag = panel->type->get_list_data_expand_flag(C, panel);
   short flag_index = 0;
@@ -321,7 +325,9 @@ static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
       short expand_flag;
       short flag_index = 0;
       get_panel_expand_flag(panel, &expand_flag, &flag_index);
-      panel->type->set_list_data_expand_flag(C, panel, expand_flag);
+      if (panel->type->set_list_data_expand_flag) {
+        panel->type->set_list_data_expand_flag(C, panel, expand_flag);
+      }
     }
   }
 }

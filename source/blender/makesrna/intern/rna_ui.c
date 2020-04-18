@@ -1343,6 +1343,10 @@ static void rna_def_panel(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "drawname");
   RNA_def_property_ui_text(prop, "Text", "XXX todo");
 
+  prop = RNA_def_int(srna, "list_panel_index", 0, 0, INT_MAX, "List Panel Index", "", 0, 1000);
+  RNA_def_property_int_sdna(prop, NULL, "runtime.list_index");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
   /* registration */
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "type->idname");
