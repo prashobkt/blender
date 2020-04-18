@@ -543,9 +543,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
   PointerRNA cast_object_ptr = RNA_pointer_get(&ptr, "object");
 
-  uiItemR(layout, &ptr, "cast_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-
   uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "cast_type", 0, NULL, ICON_NONE);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Axis"));
   uiItemR(row, &ptr, "use_x", toggles_flag, NULL, ICON_NONE);

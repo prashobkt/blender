@@ -3271,7 +3271,7 @@ static void rna_def_modifier_cast(BlenderRNA *brna)
   prop = RNA_def_property(srna, "cast_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
   RNA_def_property_enum_items(prop, prop_cast_type_items);
-  RNA_def_property_ui_text(prop, "Cast Type", "Target object shape");
+  RNA_def_property_ui_text(prop, "Shape", "Target object shape");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
