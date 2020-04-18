@@ -1985,6 +1985,8 @@ void uiTemplatePathBuilder(uiLayout *layout,
                            struct PointerRNA *root_ptr,
                            const char *text);
 void uiTemplateModifiers(uiLayout *layout, struct bContext *C);
+void uiTemplateConstraints(uiLayout *layout, struct bContext *C);
+
 uiLayout *uiTemplateGpencilModifier(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);
 void uiTemplateGpencilColorPreview(uiLayout *layout,
                                    struct bContext *C,
@@ -1999,7 +2001,7 @@ uiLayout *uiTemplateShaderFx(uiLayout *layout, struct bContext *C, struct Pointe
 
 void uiTemplateOperatorRedoProperties(uiLayout *layout, const struct bContext *C);
 
-uiLayout *uiTemplateConstraint(uiLayout *layout, struct PointerRNA *ptr);
+void uiTemplateConstraintHeader(uiLayout *layout, struct PointerRNA *ptr);
 void uiTemplatePreview(uiLayout *layout,
                        struct bContext *C,
                        struct ID *id,

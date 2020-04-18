@@ -20,31 +20,61 @@
 from bpy.types import Panel
 
 
+class OBJECT_PT_constraints(Panel):
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_label = "Object Constraints"
+    bl_context = "constraint"
+    bl_options = {'LIST_START', 'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.object)
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator_menu_enum("object.constraint_add", "type", text="Add Object Constraint")
+
+        layout.template_constraints()
+
+
+class BONE_PT_constraints(Panel):
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_label = "Bone Constraints"
+    bl_context = "bone_constraint"
+    bl_options = {'LIST_START', 'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.pose_bone)
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator_menu_enum("pose.constraint_add", "type", text="Add Bone Constraint")
+
+        layout.template_constraints()
+
+
 class ConstraintButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
+    bl_label = ""
     bl_context = "constraint"
 
-    def draw_constraint(self, context, con):
-        layout = self.layout
+    @staticmethod
+    def draw_influence(layout, con):
+        if con.type in {'IK', 'SPLINE_IK'}:
+            # constraint.disable_keep_transform doesn't work well
+            # for these constraints.
+            layout.prop(con, "influence")
+        else:
+            row = layout.row(align=True)
+            row.prop(con, "influence")
+            row.operator("constraint.disable_keep_transform", text="", icon='CANCEL')
 
-        box = layout.template_constraint(con)
-
-        if box:
-            # match enum type to our functions, avoids a lookup table.
-            getattr(self, con.type)(context, box, con)
-
-            if con.type in {'RIGID_BODY_JOINT', 'NULL'}:
-                return
-
-            if con.type in {'IK', 'SPLINE_IK'}:
-                # constraint.disable_keep_transform doesn't work well
-                # for these constraints.
-                box.prop(con, "influence")
-            else:
-                row = box.row(align=True)
-                row.prop(con, "influence")
-                row.operator("constraint.disable_keep_transform", text="", icon='CANCEL')
 
     @staticmethod
     def space_template(layout, con, target=True, owner=True):
@@ -102,7 +132,28 @@ class ConstraintButtonsPanel:
         col = split.column()
         col.prop(con, "chain_count")
 
-    def CHILD_OF(self, _context, layout, con):
+    @staticmethod
+    def get_constraint(context, index):
+        if context.pose_bone:
+            return context.bose_bone.constraints[index]
+        else:
+            return context.active_object.constraints[index]
+
+    def draw_header(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
+        layout.template_constraint_header(con)
+
+
+class OBJECT_PT_bChildOfConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+        
         self.target_template(layout, con)
 
         split = layout.split()
@@ -129,7 +180,17 @@ class ConstraintButtonsPanel:
         row.operator("constraint.childof_set_inverse")
         row.operator("constraint.childof_clear_inverse")
 
-    def TRACK_TO(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bTrackToConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         row = layout.row()
@@ -142,7 +203,17 @@ class ConstraintButtonsPanel:
 
         self.space_template(layout, con)
 
-    def IK(self, context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bKinematicConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         if context.object.pose.ik_solver == 'ITASC':
             layout.prop(con, "ik_type")
             getattr(self, 'IK_' + con.ik_type)(context, layout, con)
@@ -185,7 +256,18 @@ class ConstraintButtonsPanel:
             sub.active = con.use_rotation
             sub.prop(con, "orient_weight", text="Rotation", slider=True)
 
-    def IK_COPY_POSE(self, _context, layout, con):
+            self.draw_influence(layout, con)
+
+
+# HANS-TODO: Find constraint type info name
+class OBJECT_PT_constraints_ik_copy_pose(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+        
         self.target_template(layout, con)
         self.ik_template(layout, con)
 
@@ -220,7 +302,18 @@ class ConstraintButtonsPanel:
         row.prop(con, "lock_rotation_z", text="Z")
         split.active = con.use_rotation
 
-    def IK_DISTANCE(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+# HANS-TODO: Find constraint type info name
+class OBJECT_PT_constraints_ik_distance(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
         self.ik_template(layout, con)
 
@@ -230,7 +323,17 @@ class ConstraintButtonsPanel:
         row.prop(con, "weight", text="Weight", slider=True)
         row.prop(con, "distance", text="Distance", slider=True)
 
-    def FOLLOW_PATH(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bFollowPathConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
         layout.operator("constraint.followpath_path_animate", text="Animate Path", icon='ANIM_DATA')
 
@@ -255,7 +358,17 @@ class ConstraintButtonsPanel:
         row.prop(con, "up_axis", text="Up")
         row.label()
 
-    def LIMIT_ROTATION(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bRotLimitConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         split = layout.split()
 
         col = split.column(align=True)
@@ -285,7 +398,17 @@ class ConstraintButtonsPanel:
         row.label(text="Convert:")
         row.prop(con, "owner_space", text="")
 
-    def LIMIT_LOCATION(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bLocLimitConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         split = layout.split()
 
         col = split.column()
@@ -326,7 +449,17 @@ class ConstraintButtonsPanel:
         row.label(text="Convert:")
         row.prop(con, "owner_space", text="")
 
-    def LIMIT_SCALE(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bSizeLimitConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         split = layout.split()
 
         col = split.column()
@@ -367,7 +500,17 @@ class ConstraintButtonsPanel:
         row.label(text="Convert:")
         row.prop(con, "owner_space", text="")
 
-    def COPY_ROTATION(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bRotateLikeConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         layout.prop(con, "euler_order", text="Order")
@@ -396,7 +539,17 @@ class ConstraintButtonsPanel:
 
         self.space_template(layout, con)
 
-    def COPY_LOCATION(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bLocateLikeConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         split = layout.split()
@@ -423,7 +576,17 @@ class ConstraintButtonsPanel:
 
         self.space_template(layout, con)
 
-    def COPY_SCALE(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bSizeLikeConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         row = layout.row(align=True)
@@ -442,7 +605,16 @@ class ConstraintButtonsPanel:
 
         self.space_template(layout, con)
 
-    def MAINTAIN_VOLUME(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bSameVolumeConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
 
         layout.prop(con, "mode")
 
@@ -456,16 +628,34 @@ class ConstraintButtonsPanel:
         row.label(text="Convert:")
         row.prop(con, "owner_space", text="")
 
-    def COPY_TRANSFORMS(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bTransLikeConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         layout.prop(con, "mix_mode", text="Mix")
 
         self.space_template(layout, con)
 
-    # def SCRIPT(self, context, layout, con):
+        self.draw_influence(layout, con)
 
-    def ACTION(self, _context, layout, con):
+
+class OBJECT_PT_bActionConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         split = layout.split()
@@ -494,7 +684,17 @@ class ConstraintButtonsPanel:
 
         layout.prop(con, "mix_mode", text="Mix")
 
-    def LOCKED_TRACK(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bLockTrackConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         row = layout.row()
@@ -505,7 +705,17 @@ class ConstraintButtonsPanel:
         row.label(text="Lock:")
         row.prop(con, "lock_axis", expand=True)
 
-    def LIMIT_DISTANCE(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bDistLimitConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         col = layout.column(align=True)
@@ -522,7 +732,17 @@ class ConstraintButtonsPanel:
 
         self.space_template(layout, con)
 
-    def STRETCH_TO(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bStretchToConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         row = layout.row()
@@ -555,7 +775,17 @@ class ConstraintButtonsPanel:
         row = split.row()
         row.prop(con, "keep_axis", expand=True)
 
-    def FLOOR(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bMinMaxConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         layout.prop(con, "use_rotation")
@@ -567,7 +797,18 @@ class ConstraintButtonsPanel:
 
         self.space_template(layout, con)
 
-    def RIGID_BODY_JOINT(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+# HANS-TODO: Deprecated.. delete?
+class OBJECT_PT_constraints_rigid_body_join(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con, subtargets=False)
 
         layout.prop(con, "pivot_type")
@@ -676,7 +917,17 @@ class ConstraintButtonsPanel:
             col.active = con.use_angular_limit_x
             col.prop(con, "limit_angle_max_x", text="Max")
 
-    def CLAMP_TO(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bClampToConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         row = layout.row()
@@ -685,7 +936,17 @@ class ConstraintButtonsPanel:
 
         layout.prop(con, "use_cyclic")
 
-    def TRANSFORM(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bTransformConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         layout.prop(con, "use_motion_extrapolate", text="Extrapolate")
@@ -770,7 +1031,17 @@ class ConstraintButtonsPanel:
 
         self.space_template(layout, con)
 
-    def SHRINKWRAP(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bShrinkwrapConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con, False)
 
         layout.prop(con, "distance")
@@ -804,14 +1075,34 @@ class ConstraintButtonsPanel:
             row.active = con.use_track_normal
             row.prop(con, "track_axis", expand=True)
 
-    def DAMPED_TRACK(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bDampTrackConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         row = layout.row()
         row.label(text="To:")
         row.prop(con, "track_axis", expand=True)
 
-    def SPLINE_IK(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bSplineIKConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         col = layout.column()
@@ -847,7 +1138,17 @@ class ConstraintButtonsPanel:
             col.active = con.use_bulge_min or con.use_bulge_max
             col.prop(con, "bulge_smooth", text="Smooth")
 
-    def PIVOT(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bPivotConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         self.target_template(layout, con)
 
         if con.target:
@@ -864,6 +1165,13 @@ class ConstraintButtonsPanel:
         col = layout.column()
         col.prop(con, "rotation_range", text="Pivot When")
 
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bFollowTrackConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
     @staticmethod
     def _getConstraintClip(context, con):
         if not con.use_active_clip:
@@ -871,7 +1179,10 @@ class ConstraintButtonsPanel:
         else:
             return context.scene.active_clip
 
-    def FOLLOW_TRACK(self, context, layout, con):
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         clip = self._getConstraintClip(context, con)
 
         row = layout.row()
@@ -907,7 +1218,17 @@ class ConstraintButtonsPanel:
 
         layout.operator("clip.constraint_to_fcurve")
 
-    def CAMERA_SOLVER(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bCameraSolverConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         layout.prop(con, "use_active_clip")
 
         if not con.use_active_clip:
@@ -915,7 +1236,17 @@ class ConstraintButtonsPanel:
 
         layout.operator("clip.constraint_to_fcurve")
 
-    def OBJECT_SOLVER(self, context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bObjectSolverConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         clip = self._getConstraintClip(context, con)
 
         layout.prop(con, "use_active_clip")
@@ -934,7 +1265,17 @@ class ConstraintButtonsPanel:
 
         layout.operator("clip.constraint_to_fcurve")
 
-    def TRANSFORM_CACHE(self, _context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bTransformCacheConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         layout.label(text="Cache File Properties:")
         box = layout.box()
         box.template_cache_file(con, "cache_file")
@@ -947,10 +1288,29 @@ class ConstraintButtonsPanel:
         if cache_file is not None:
             box.prop_search(con, "object_path", cache_file, "object_paths")
 
-    def SCRIPT(self, _context, layout, _con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bPythonConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+
         layout.label(text="Blender 2.6 doesn't support python constraints yet")
 
-    def ARMATURE(self, context, layout, con):
+        self.draw_influence(layout, con)
+
+
+class OBJECT_PT_bArmatureConstraint(ConstraintButtonsPanel, Panel):
+    bl_context = "constraint"
+    bl_options = {'LIST'}
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context, self.list_panel_index)
+
         topcol = layout.column()
         topcol.use_property_split = True
         topcol.operator("constraint.add_target", text="Add Target Bone")
@@ -990,48 +1350,44 @@ class ConstraintButtonsPanel:
         if context.pose_bone:
             topcol.prop(con, "use_current_location")
 
-
-class OBJECT_PT_constraints(ConstraintButtonsPanel, Panel):
-    bl_label = "Object Constraints"
-    bl_context = "constraint"
-    bl_options = {'HIDE_HEADER'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.object)
-
-    def draw(self, context):
-        layout = self.layout
-
-        obj = context.object
-
-        layout.operator_menu_enum("object.constraint_add", "type", text="Add Object Constraint")
-
-        for con in obj.constraints:
-            self.draw_constraint(context, con)
-
-
-class BONE_PT_constraints(ConstraintButtonsPanel, Panel):
-    bl_label = "Bone Constraints"
-    bl_context = "bone_constraint"
-    bl_options = {'HIDE_HEADER'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.pose_bone)
-
-    def draw(self, context):
-        layout = self.layout
-
-        layout.operator_menu_enum("pose.constraint_add", "type", text="Add Bone Constraint")
-
-        for con in context.pose_bone.constraints:
-            self.draw_constraint(context, con)
+        self.draw_influence(layout, con)
 
 
 classes = (
     OBJECT_PT_constraints,
     BONE_PT_constraints,
+    OBJECT_PT_bChildOfConstraint,
+    OBJECT_PT_bTrackToConstraint,
+    OBJECT_PT_bKinematicConstraint,
+    OBJECT_PT_constraints_ik_copy_pose,
+    OBJECT_PT_constraints_ik_distance,
+    OBJECT_PT_bFollowPathConstraint,
+    OBJECT_PT_bRotLimitConstraint,
+    OBJECT_PT_bLocLimitConstraint,
+    OBJECT_PT_bSizeLimitConstraint,
+    OBJECT_PT_bRotateLikeConstraint,
+    OBJECT_PT_bLocateLikeConstraint,
+    OBJECT_PT_bSizeLikeConstraint,
+    OBJECT_PT_bSameVolumeConstraint,
+    OBJECT_PT_bTransLikeConstraint,
+    OBJECT_PT_bActionConstraint,
+    OBJECT_PT_bLockTrackConstraint,
+    OBJECT_PT_bDistLimitConstraint,
+    OBJECT_PT_bStretchToConstraint,
+    OBJECT_PT_bMinMaxConstraint,
+    OBJECT_PT_constraints_rigid_body_join,
+    OBJECT_PT_bClampToConstraint,
+    OBJECT_PT_bTransformConstraint,
+    OBJECT_PT_bShrinkwrapConstraint,
+    OBJECT_PT_bDampTrackConstraint,
+    OBJECT_PT_bSplineIKConstraint,
+    OBJECT_PT_bPivotConstraint,
+    OBJECT_PT_bFollowTrackConstraint,
+    OBJECT_PT_bCameraSolverConstraint,
+    OBJECT_PT_bObjectSolverConstraint,
+    OBJECT_PT_bTransformCacheConstraint,
+    OBJECT_PT_bPythonConstraint,
+    OBJECT_PT_bArmatureConstraint,
 )
 
 if __name__ == "__main__":  # only for live edit.

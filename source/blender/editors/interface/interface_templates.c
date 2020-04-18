@@ -1900,6 +1900,88 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Constraints Template
+ *
+ *  Template for building the panel layout for the active object or bone's constraints.
+ * \{ */
+
+#define CONSTRAINT_TYPE_PANEL_PREFIX "OBJECT_PT_"
+static PanelType *panel_type_from_constraint_type(ARegion *region, eBConstraint_Types type)
+{
+  ARegionType *region_type = region->type;
+
+  /* Get the name of the modifier's panel type which was defined when the panel was registered. */
+  char panel_idname[BKE_ST_MAXNAME];
+  strcpy(panel_idname, CONSTRAINT_TYPE_PANEL_PREFIX);
+
+  /* ik_copy_pose ik_distance floor rigid_body_join */
+  const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(type);
+  strcat(panel_idname, cti->structName);
+
+  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
+}
+
+void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
+{
+  ScrArea *sa = CTX_wm_area(C);
+  ARegion *region = CTX_wm_region(C);
+  Object *ob = CTX_data_active_object(C);
+
+  /* Check if the current constraint list corresponds to list panels, or if the panels were
+   * reordered. */
+  bool constraints_changed = false;
+  int contraints_len = BLI_listbase_count(&ob->constraints);
+  int i = 0;
+  bConstraint *con = ob->constraints.first;
+  Panel *panel = region->panels.first;
+  while (panel != NULL) {
+    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
+      /* The panels were reordered by drag and drop. */
+      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
+        constraints_changed = true;
+        break;
+      }
+
+      /* We reached the last contraint before the last list panel. */
+      if (con == NULL) {
+        constraints_changed = true;
+        break;
+      }
+
+      /* The types of the corresponding panel and constraint don't match. */
+      if (panel_type_from_constraint_type(region, con->type) != panel->type) {
+        constraints_changed = true;
+        break;
+      }
+
+      con = con->next;
+      i++;
+    }
+    panel = panel->next;
+  }
+
+  /* If we didn't make it to the last modifier, the panel list isn't complete. */
+  if (i != contraints_len) {
+    constraints_changed = true;
+  }
+
+  /* If the modifier list has changed at all, clear all of the list panels and rebuild them. */
+  if (constraints_changed) {
+    UI_panels_free_recreate(region);
+    con = ob->constraints.first;
+    for (i = 0; con; i++, con = con->next) {
+      PanelType *panel_type = panel_type_from_constraint_type(region, con->type);
+      BLI_assert(panel_type != NULL);
+
+      Panel *new_panel = UI_panel_add_recreate(sa, region, &region->panels, panel_type, i);
+      UI_panel_set_expand_from_list_data(C, new_panel);
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Grease Pencil Modifier Template
  * \{ */
 
@@ -2474,13 +2556,12 @@ static void constraint_active_func(bContext *UNUSED(C), void *ob_v, void *con_v)
   ED_object_constraint_set_active(ob_v, con_v);
 }
 
-/* draw panel showing settings for a constraint */
-static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
+static void draw_constraint_header(uiLayout *layout, Object *ob, bConstraint *con)
 {
   bPoseChannel *pchan = BKE_pose_channel_active(ob);
   const bConstraintTypeInfo *cti;
   uiBlock *block;
-  uiLayout *result = NULL, *col, *box, *row;
+  uiLayout *sub;
   PointerRNA ptr;
   char typestr[32];
   short proxy_protected, xco = 0, yco = 0;
@@ -2512,35 +2593,22 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
 
   RNA_pointer_create(&ob->id, &RNA_Constraint, con, &ptr);
 
-  col = uiLayoutColumn(layout, true);
-  uiLayoutSetContextPointer(col, "constraint", &ptr);
-
-  box = uiLayoutBox(col);
-  row = uiLayoutRow(box, false);
-  block = uiLayoutGetBlock(box);
-
-  /* Draw constraint header */
-
-  /* open/close */
-  UI_block_emboss_set(block, UI_EMBOSS_NONE);
-  uiItemR(row, &ptr, "show_expanded", 0, "", ICON_NONE);
+  uiLayoutSetContextPointer(layout, "constraint", &ptr);
 
   /* constraint-type icon */
-  uiItemL(row, "", RNA_struct_ui_icon(ptr.type));
+  sub = uiLayoutRow(layout, false);
+  uiLayoutSetEmboss(sub, false);
+  uiLayoutSetRedAlert(sub, (con->flag & CONSTRAINT_DISABLE));
+  uiItemL(sub, "", RNA_struct_ui_icon(ptr.type));
+
   UI_block_emboss_set(block, UI_EMBOSS);
 
-  if (con->flag & CONSTRAINT_DISABLE) {
-    uiLayoutSetRedAlert(row, true);
-  }
-
   if (proxy_protected == 0) {
-    uiItemR(row, &ptr, "name", 0, "", ICON_NONE);
+    uiItemR(layout, &ptr, "name", 0, "", ICON_NONE);
   }
   else {
-    uiItemL(row, con->name, ICON_NONE);
+    uiItemL(layout, con->name, ICON_NONE);
   }
-
-  uiLayoutSetRedAlert(row, false);
 
   /* proxy-protected constraints cannot be edited, so hide up/down + close buttons */
   if (proxy_protected) {
@@ -2606,27 +2674,27 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
 
     /* enabled */
     UI_block_emboss_set(block, UI_EMBOSS_NONE);
-    uiItemR(row, &ptr, "mute", 0, "", 0);
+    uiItemR(layout, &ptr, "mute", 0, "", 0);
     UI_block_emboss_set(block, UI_EMBOSS);
 
-    uiLayoutSetOperatorContext(row, WM_OP_INVOKE_DEFAULT);
+    uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
     /* up/down */
     if (show_upbut || show_downbut) {
       UI_block_align_begin(block);
       if (show_upbut) {
-        uiItemO(row, "", ICON_TRIA_UP, "CONSTRAINT_OT_move_up");
+        uiItemO(layout, "", ICON_TRIA_UP, "CONSTRAINT_OT_move_up");
       }
 
       if (show_downbut) {
-        uiItemO(row, "", ICON_TRIA_DOWN, "CONSTRAINT_OT_move_down");
+        uiItemO(layout, "", ICON_TRIA_DOWN, "CONSTRAINT_OT_move_down");
       }
       UI_block_align_end(block);
     }
 
     /* Close 'button' - emboss calls here disable drawing of 'button' behind X */
     UI_block_emboss_set(block, UI_EMBOSS_NONE);
-    uiItemO(row, "", ICON_X, "CONSTRAINT_OT_delete");
+    uiItemO(layout, "", ICON_X, "CONSTRAINT_OT_delete");
     UI_block_emboss_set(block, UI_EMBOSS);
   }
 
@@ -2639,19 +2707,12 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
   if ((con->flag & CONSTRAINT_EXPAND) == 0) {
     (yco) -= 10.5f * UI_UNIT_Y;
   }
-  else {
-    box = uiLayoutBox(col);
-    block = uiLayoutAbsoluteBlock(box);
-    result = box;
-  }
 
   /* clear any locks set up for proxies/lib-linking */
   UI_block_lock_clear(block);
-
-  return result;
 }
 
-uiLayout *uiTemplateConstraint(uiLayout *layout, PointerRNA *ptr)
+void uiTemplateConstraintHeader(uiLayout *layout, PointerRNA *ptr)
 {
   Object *ob;
   bConstraint *con;
@@ -2659,7 +2720,7 @@ uiLayout *uiTemplateConstraint(uiLayout *layout, PointerRNA *ptr)
   /* verify we have valid data */
   if (!RNA_struct_is_a(ptr->type, &RNA_Constraint)) {
     RNA_warning("Expected constraint on object");
-    return NULL;
+    return;
   }
 
   ob = (Object *)ptr->owner_id;
@@ -2667,7 +2728,7 @@ uiLayout *uiTemplateConstraint(uiLayout *layout, PointerRNA *ptr)
 
   if (!ob || !(GS(ob->id.name) == ID_OB)) {
     RNA_warning("Expected constraint on object");
-    return NULL;
+    return;
   }
 
   UI_block_lock_set(uiLayoutGetBlock(layout), (ob && ID_IS_LINKED(ob)), ERROR_LIBDATA_MESSAGE);
@@ -2676,11 +2737,11 @@ uiLayout *uiTemplateConstraint(uiLayout *layout, PointerRNA *ptr)
   if (con->type == CONSTRAINT_TYPE_KINEMATIC) {
     bKinematicConstraint *data = con->data;
     if (data->flag & CONSTRAINT_IK_TEMP) {
-      return NULL;
+      return;
     }
   }
 
-  return draw_constraint(layout, ob, con);
+  draw_constraint_header(layout, ob, con);
 }
 
 /** \} */

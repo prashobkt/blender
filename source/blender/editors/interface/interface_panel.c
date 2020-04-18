@@ -277,7 +277,7 @@ void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
 {
   BLI_assert(panel->type != NULL);
   BLI_assert(panel->type->flag & PNL_LIST);
-  if (panel->type->get_list_data_expand_flag) {
+  if (panel->type->get_list_data_expand_flag == NULL) {
     /* List panel doesn't support loading expansion. */
     return;
   }
