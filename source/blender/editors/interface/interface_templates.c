@@ -1930,7 +1930,7 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
   /* Check if the current constraint list corresponds to list panels, or if the panels were
    * reordered. */
   bool constraints_changed = false;
-  int contraints_len = BLI_listbase_count(&ob->constraints);
+  int constraints_len = BLI_listbase_count(&ob->constraints);
   int i = 0;
   bConstraint *con = ob->constraints.first;
   Panel *panel = region->panels.first;
@@ -1961,7 +1961,7 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
   }
 
   /* If we didn't make it to the last modifier, the panel list isn't complete. */
-  if (i != contraints_len) {
+  if (i != constraints_len) {
     constraints_changed = true;
   }
 
