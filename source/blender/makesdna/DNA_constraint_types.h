@@ -61,7 +61,8 @@ typedef struct bConstraint {
   /** Constraint name, MAX_NAME. */
   char name[64];
 
-  char _pad[2];
+  /* Flag for panel and subpanel closed / open state in the UI. */
+  short ui_expand_flag;
 
   /** Amount of influence exherted by constraint (0.0-1.0). */
   float enforce;
@@ -689,7 +690,7 @@ typedef enum eBConstraint_Types {
 /* flag 0x20 (1 << 5) was used to indicate that a constraint was evaluated
  *                  using a 'local' hack for posebones only. */
 typedef enum eBConstraint_Flags {
-  /* expand for UI */
+  /* expand for UI. Deprecated */
   CONSTRAINT_EXPAND = (1 << 0),
   /* pre-check for illegal object name or bone name */
   CONSTRAINT_DISABLE = (1 << 2),

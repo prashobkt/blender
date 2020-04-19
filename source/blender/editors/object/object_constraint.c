@@ -1560,6 +1560,79 @@ void CONSTRAINT_OT_move_up(wmOperatorType *ot)
 /** \} */
 
 /* ------------------------------------------------------------------- */
+/** \name Move Constraint To Index Operator
+ * \{ */
+
+/* HANS-TODO: Implement poll function for constraint moving. The standard constraint function
+ * #edit_constraint_poll checks with #CTX_data_pointer_get_type, so I need to set that properly.
+ *
+ * Needed for modifiers as well. */
+static bool constraint_move_to_index_poll(bContext *C)
+{
+  return true;
+}
+
+static int constraint_move_to_index_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  bConstraint *con = edit_constraint_property_get(op, ob, 0);
+  int index = RNA_int_get(op->ptr, "index");
+
+  if (con) {
+    ListBase *conlist = get_constraint_lb(ob, con, NULL);
+    int current_index = BLI_findindex(conlist, con);
+
+    BLI_listbase_link_move(conlist, con, index - current_index);
+
+    WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
+
+    return OPERATOR_FINISHED;
+  }
+
+  return OPERATOR_CANCELLED;
+}
+
+static int constraint_move_to_index_invoke(bContext *C,
+                                           wmOperator *op,
+                                           const wmEvent *UNUSED(event))
+{
+  if (edit_constraint_invoke_properties(C, op)) {
+    return constraint_move_to_index_exec(C, op);
+  }
+  else {
+    return OPERATOR_CANCELLED;
+  }
+}
+
+void CONSTRAINT_OT_move_to_index(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Move Constraint To Index";
+  ot->idname = "CONSTRAINT_OT_move_to_index";
+  ot->description = "Move constraint to an index in the stack";
+
+  /* callbacks */
+  ot->exec = constraint_move_to_index_exec;
+  ot->invoke = constraint_move_to_index_invoke;
+  ot->poll = constraint_move_to_index_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  edit_constraint_properties(ot);
+  RNA_def_int(ot->srna,
+              "index",
+              0,
+              0,
+              INT_MAX,
+              "Index",
+              "The index to move the constraint to",
+              0,
+              INT_MAX);
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
 /** \name Clear Pose Constraints Operator
  * \{ */
 

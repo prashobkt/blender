@@ -5251,6 +5251,10 @@ static bConstraint *add_new_constraint_internal(const char *name, short type)
   con->flag |= CONSTRAINT_EXPAND | CONSTRAINT_OVERRIDE_LIBRARY_LOCAL;
   con->enforce = 1.0f;
 
+  /* Only open the main panel when constraints are created, not the subpanels.
+   * Note: This can be overriden for individual constraint types. */
+  con->ui_expand_flag = 1;
+
   /* Determine a basic name, and info */
   if (cti) {
     /* initialize constraint data */

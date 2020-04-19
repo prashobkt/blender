@@ -219,6 +219,7 @@ void CONSTRAINT_OT_delete(struct wmOperatorType *ot);
 
 void CONSTRAINT_OT_move_up(struct wmOperatorType *ot);
 void CONSTRAINT_OT_move_down(struct wmOperatorType *ot);
+void CONSTRAINT_OT_move_to_index(struct wmOperatorType *ot);
 
 void CONSTRAINT_OT_stretchto_reset(struct wmOperatorType *ot);
 void CONSTRAINT_OT_limitdistance_reset(struct wmOperatorType *ot);

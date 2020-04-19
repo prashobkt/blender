@@ -1905,6 +1905,49 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
  *  Template for building the panel layout for the active object or bone's constraints.
  * \{ */
 
+/**
+ * Move a constraint to the index it's moved to after a drag and drop.
+ */
+static void constraint_reorder(bContext *C, Panel *panel, int new_index)
+{
+  Object *ob = CTX_data_active_object(C);
+  ListBase *lb = get_active_constraints(ob);
+  bool constraint_from_bone = false;
+  if (ob->mode & OB_MODE_POSE) {
+    bPoseChannel *pchan;
+    pchan = BKE_pose_channel_active(ob);
+    if (pchan) {
+      constraint_from_bone = true;
+    }
+  }
+
+  bConstraint *con = BLI_findlink(lb, panel->runtime.list_index);
+  PointerRNA props_ptr;
+  wmOperatorType *ot = WM_operatortype_find("CONSTRAINT_OT_move_to_index", false);
+  WM_operator_properties_create_ptr(&props_ptr, ot);
+  RNA_string_set(&props_ptr, "constraint", con->name);
+  RNA_int_set(&props_ptr, "index", new_index);
+  RNA_enum_set(&props_ptr, "owner", constraint_from_bone ? 1 : 0);
+  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr);
+  WM_operator_properties_free(&props_ptr);
+}
+
+static short get_constraint_expand_flag(const bContext *C, Panel *panel)
+{
+  Object *ob = CTX_data_active_object(C);
+  ListBase *lb = get_active_constraints(ob);
+  bConstraint *con = BLI_findlink(lb, panel->runtime.list_index);
+  return con->ui_expand_flag;
+}
+
+static void set_constraint_expand_flag(const bContext *C, Panel *panel, short expand_flag)
+{
+  Object *ob = CTX_data_active_object(C);
+  ListBase *lb = get_active_constraints(ob);
+  bConstraint *con = BLI_findlink(lb, panel->runtime.list_index);
+  con->ui_expand_flag = expand_flag;
+}
+
 #define CONSTRAINT_TYPE_PANEL_PREFIX "OBJECT_PT_"
 static PanelType *panel_type_from_constraint_type(ARegion *region, eBConstraint_Types type)
 {
@@ -1974,6 +2017,12 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
       BLI_assert(panel_type != NULL);
 
       Panel *new_panel = UI_panel_add_recreate(sa, region, &region->panels, panel_type, i);
+
+      /* Set the list panel functionality function pointers since we don't do it with python. */
+      new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
+      new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
+      new_panel->type->reorder = constraint_reorder;
+
       UI_panel_set_expand_from_list_data(C, new_panel);
     }
   }
@@ -2678,19 +2727,6 @@ static void draw_constraint_header(uiLayout *layout, Object *ob, bConstraint *co
     UI_block_emboss_set(block, UI_EMBOSS);
 
     uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
-
-    /* up/down */
-    if (show_upbut || show_downbut) {
-      UI_block_align_begin(block);
-      if (show_upbut) {
-        uiItemO(layout, "", ICON_TRIA_UP, "CONSTRAINT_OT_move_up");
-      }
-
-      if (show_downbut) {
-        uiItemO(layout, "", ICON_TRIA_DOWN, "CONSTRAINT_OT_move_down");
-      }
-      UI_block_align_end(block);
-    }
 
     /* Close 'button' - emboss calls here disable drawing of 'button' behind X */
     UI_block_emboss_set(block, UI_EMBOSS_NONE);
