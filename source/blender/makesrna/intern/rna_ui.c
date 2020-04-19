@@ -1296,6 +1296,11 @@ static void rna_def_panel(BlenderRNA *brna)
        0,
        "List Panel Start",
        "The panel with this type marks the start of a list panel sequence"},
+      {PNL_LIST_SUBPANEL,
+       "LIST_SUBPANEL",
+       0,
+       "List Panel Child",
+       "A panel with this type is a child of a list panel"},
       {0, NULL, 0, NULL, NULL},
   };
 
