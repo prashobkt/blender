@@ -192,22 +192,20 @@ class OBJECT_PT_bTrackToConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con)
 
-        row = layout.row()
-        row.label(text="To:")
-        row.prop(con, "track_axis", expand=True)
-
-        row = layout.row()
-        row.prop(con, "up_axis", text="Up")
-        row.prop(con, "use_target_z")
+        layout.prop(con, "track_axis", expand=True)
+        layout.prop(con, "up_axis", text="Up", expand=True)
+        layout.prop(con, "use_target_z")
 
         self.space_template(layout, con)
 
         self.draw_influence(layout, con)
 
-
+# No option to add this in the UI ?
 class OBJECT_PT_bKinematicConstraint(ConstraintButtonsPanel):
 
     def draw(self, context):
@@ -327,30 +325,23 @@ class OBJECT_PT_bFollowPathConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
+
+        layout.prop(con, "use_curve_follow")
+        layout.prop(con, "use_curve_radius")
+
+        layout.prop(con, "use_fixed_location")
+        if con.use_fixed_location:
+            layout.prop(con, "offset_factor", text="Offset")
+        else:
+            layout.prop(con, "offset")
+
+        layout.prop(con, "forward_axis", expand=True)
+        layout.prop(con, "up_axis", text="Up")
 
         self.target_template(layout, con)
         layout.operator("constraint.followpath_path_animate", text="Animate Path", icon='ANIM_DATA')
-
-        split = layout.split()
-
-        col = split.column()
-        col.prop(con, "use_curve_follow")
-        col.prop(con, "use_curve_radius")
-
-        col = split.column()
-        col.prop(con, "use_fixed_location")
-        if con.use_fixed_location:
-            col.prop(con, "offset_factor", text="Offset")
-        else:
-            col.prop(con, "offset")
-
-        row = layout.row()
-        row.label(text="Forward:")
-        row.prop(con, "forward_axis", expand=True)
-
-        row = layout.row()
-        row.prop(con, "up_axis", text="Up")
-        row.label()
 
         self.draw_influence(layout, con)
 
@@ -362,7 +353,6 @@ class OBJECT_PT_bRotLimitConstraint(ConstraintButtonsPanel):
         con = self.get_constraint(context)
         layout.use_property_split = True
         layout.use_property_decorate = True
-
 
         row = layout.row(heading="Limit X", align=True)
         row.prop(con, "use_limit_x", text="")
@@ -621,30 +611,26 @@ class OBJECT_PT_bActionConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
-
+        layout.use_property_split = True
+        layout.use_property_decorate = True
+        
         self.target_template(layout, con)
 
-        split = layout.split()
+        layout.label(text="From Target:")
+        layout.prop(con, "transform_channel", text="")
+        layout.prop(con, "target_space", text="")
 
-        col = split.column()
-        col.label(text="From Target:")
-        col.prop(con, "transform_channel", text="")
-        col.prop(con, "target_space", text="")
-
-        col = split.column()
-        col.label(text="To Action:")
-        col.prop(con, "action", text="")
-        col.prop(con, "use_bone_object_action")
-
-        split = layout.split()
-
-        col = split.column(align=True)
+        col = layout.column(align=True)
         col.label(text="Target Range:")
         col.prop(con, "min", text="Min")
         col.prop(con, "max", text="Max")
 
-        col = split.column(align=True)
+        layout.label(text="To Action:")
+        layout.prop(con, "action", text="")
+        layout.prop(con, "use_bone_object_action")
+
         col.label(text="Action Range:")
+        col = layout.column(align=True)
         col.prop(con, "frame_start", text="Start")
         col.prop(con, "frame_end", text="End")
 
@@ -658,16 +644,13 @@ class OBJECT_PT_bLockTrackConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con)
 
-        row = layout.row()
-        row.label(text="To:")
-        row.prop(con, "track_axis", expand=True)
-
-        row = layout.row()
-        row.label(text="Lock:")
-        row.prop(con, "lock_axis", expand=True)
+        layout.prop(con, "track_axis", expand=True)
+        layout.prop(con, "lock_axis", expand=True)
 
         self.draw_influence(layout, con)
 
@@ -700,38 +683,35 @@ class OBJECT_PT_bStretchToConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con)
 
-        row = layout.row()
-        row.prop(con, "rest_length", text="Rest Length")
-        row.operator("constraint.stretchto_reset", text="Reset")
+        col = layout.column(heading="Rest Length", align=True)
+        col.prop(con, "rest_length")
+        col.operator("constraint.stretchto_reset", text="Reset")
 
         layout.prop(con, "bulge", text="Volume Variation")
-        split = layout.split()
-        col = split.column(align=True)
-        col.prop(con, "use_bulge_min", text="Volume Min")
-        sub = col.column()
+
+        row = layout.row(heading="Volume Min", align=True)
+        row.prop(con, "use_bulge_min", text="")
+        sub = row.row(align=True)
         sub.active = con.use_bulge_min
         sub.prop(con, "bulge_min", text="")
-        col = split.column(align=True)
-        col.prop(con, "use_bulge_max", text="Volume Max")
-        sub = col.column()
+
+        row = layout.row(heading="Max", align=True)
+        row.prop(con, "use_bulge_max", text="")
+        sub = row.row(align=True)
         sub.active = con.use_bulge_max
         sub.prop(con, "bulge_max", text="")
-        col = layout.column()
-        col.active = con.use_bulge_min or con.use_bulge_max
-        col.prop(con, "bulge_smooth", text="Smooth")
+        
+        row = layout.row()
+        row.active = con.use_bulge_min or con.use_bulge_max
+        row.prop(con, "bulge_smooth", text="Smooth")
 
-        split = layout.split(factor=0.3)
-        split.label(text="Volume:")
-        row = split.row()
-        row.prop(con, "volume", expand=True)
-
-        split = layout.split(factor=0.3)
-        split.label(text="Rotation:")
-        row = split.row()
-        row.prop(con, "keep_axis", expand=True)
+        layout.prop(con, "volume", expand=True)
+        layout.prop(con, "keep_axis", text="Rotation", expand=True)
 
         self.draw_influence(layout, con)
 
@@ -741,22 +721,20 @@ class OBJECT_PT_bMinMaxConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con)
 
         layout.prop(con, "use_rotation")
         layout.prop(con, "offset")
-
-        row = layout.row()
-        row.label(text="Min/Max:")
-        row.prop(con, "floor_location", expand=True)
+        layout.prop(con, "floor_location", expand=True, text="Min/Max")
 
         self.space_template(layout, con)
 
         self.draw_influence(layout, con)
 
 
-# HANS-TODO: Deprecated.. delete?
 class OBJECT_PT_constraints_rigid_body_join(ConstraintButtonsPanel):
 
     def draw(self, context):
@@ -879,12 +857,12 @@ class OBJECT_PT_bClampToConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con)
 
-        row = layout.row()
-        row.label(text="Main Axis:")
-        row.prop(con, "main_axis", expand=True)
+        layout.prop(con, "main_axis", expand=True)
 
         layout.prop(con, "use_cyclic")
 
@@ -995,39 +973,40 @@ class OBJECT_PT_bShrinkwrapConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con, False)
 
         layout.prop(con, "distance")
-        layout.prop(con, "shrinkwrap_type")
+        layout.prop(con, "shrinkwrap_type", text="Mode")
+
+        layout.separator()
 
         if con.shrinkwrap_type in {'PROJECT', 'NEAREST_SURFACE', 'TARGET_PROJECT'}:
             layout.prop(con, "wrap_mode", text="Snap Mode")
 
         if con.shrinkwrap_type == 'PROJECT':
-            row = layout.row(align=True)
-            row.prop(con, "project_axis", expand=True)
-            split = layout.split(factor=0.4)
-            split.label(text="Axis Space:")
-            rowsub = split.row()
-            rowsub.prop(con, "project_axis_space", text="")
-            split = layout.split(factor=0.4)
-            split.label(text="Face Culling:")
-            rowsub = split.row()
-            rowsub.prop(con, "cull_face", expand=True)
-            row = layout.row()
-            row.prop(con, "use_project_opposite")
-            rowsub = row.row()
-            rowsub.active = con.use_project_opposite and con.cull_face != 'OFF'
-            rowsub.prop(con, "use_invert_cull")
+            layout.prop(con, "project_axis")
+            layout.prop(con, "project_axis_space", text="Axis Space")
+            layout.prop(con, "use_project_opposite")
             layout.prop(con, "project_limit")
+
+            layout.separator()
+
+            layout.prop(con, "cull_face", expand=True)
+            row = layout.row()
+            row.active = con.use_project_opposite and con.cull_face != 'OFF'
+            row.prop(con, "use_invert_cull")
+
+            layout.separator()
 
         if con.shrinkwrap_type in {'PROJECT', 'NEAREST_SURFACE', 'TARGET_PROJECT'}:
             layout.prop(con, "use_track_normal")
 
             row = layout.row(align=True)
             row.active = con.use_track_normal
-            row.prop(con, "track_axis", expand=True)
+            row.prop(con, "track_axis")
 
         self.draw_influence(layout, con)
 
@@ -1037,12 +1016,12 @@ class OBJECT_PT_bDampTrackConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con)
 
-        row = layout.row()
-        row.label(text="To:")
-        row.prop(con, "track_axis", expand=True)
+        layout.prop(con, "track_axis", expand=True)
 
         self.draw_influence(layout, con)
 
@@ -1096,70 +1075,65 @@ class OBJECT_PT_bPivotConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         self.target_template(layout, con)
 
         if con.target:
-            col = layout.column()
-            col.prop(con, "offset", text="Pivot Offset")
+            layout.prop(con, "offset", text="Pivot Offset")
         else:
-            col = layout.column()
-            col.prop(con, "use_relative_location")
+            layout.prop(con, "use_relative_location")
             if con.use_relative_location:
-                col.prop(con, "offset", text="Relative Pivot Point")
+                layout.prop(con, "offset", text="Pivot Point")
             else:
-                col.prop(con, "offset", text="Absolute Pivot Point")
+                layout.prop(con, "offset", text="Pivot Point")
 
         col = layout.column()
-        col.prop(con, "rotation_range", text="Pivot When")
+        col.prop(con, "rotation_range", text="Rotation Range")
 
         self.draw_influence(layout, con)
 
 
 class OBJECT_PT_bFollowTrackConstraint(ConstraintButtonsPanel):
 
-
-    @staticmethod
-    def _getConstraintClip(context, con):
-        if not con.use_active_clip:
-            return con.clip
-        else:
-            return context.scene.active_clip
-
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
-        clip = self._getConstraintClip(context, con)
+        clip = None
+        if con.use_active_clip:
+            clip = context.scene.active_clip
+        else:
+            clip = con.clip
+
+        layout.prop(con, "use_active_clip")
+        layout.prop(con, "use_3d_position")
 
         row = layout.row()
-        row.prop(con, "use_active_clip")
-        row.prop(con, "use_3d_position")
+        row.active = not con.use_3d_position
+        row.prop(con, "use_undistorted_position")
 
-        sub = row.column()
-        sub.active = not con.use_3d_position
-        sub.prop(con, "use_undistorted_position")
-
-        col = layout.column()
 
         if not con.use_active_clip:
-            col.prop(con, "clip")
+            layout.prop(con, "clip")
 
-        row = col.row()
-        row.prop(con, "frame_method", expand=True)
+        layout.prop(con, "frame_method")
 
         if clip:
             tracking = clip.tracking
 
-            col.prop_search(con, "object", tracking, "objects", icon='OBJECT_DATA')
+            layout.prop_search(con, "object", tracking, "objects", icon='OBJECT_DATA')
 
             tracking_object = tracking.objects.get(con.object, tracking.objects[0])
 
-            col.prop_search(con, "track", tracking_object, "tracks", icon='ANIM_DATA')
+            layout.prop_search(con, "track", tracking_object, "tracks", icon='ANIM_DATA')
 
-        col.prop(con, "camera")
+        layout.prop(con, "camera")
 
-        row = col.row()
+        row = layout.row()
         row.active = not con.use_3d_position
         row.prop(con, "depth_object")
 
@@ -1173,6 +1147,8 @@ class OBJECT_PT_bCameraSolverConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         layout.prop(con, "use_active_clip")
 
@@ -1189,8 +1165,14 @@ class OBJECT_PT_bObjectSolverConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
-        clip = self._getConstraintClip(context, con)
+        clip = None
+        if con.use_active_clip:
+            clip = context.scene.active_clip
+        else:
+            clip = con.clip
 
         layout.prop(con, "use_active_clip")
 
@@ -1236,10 +1218,7 @@ class OBJECT_PT_bPythonConstraint(ConstraintButtonsPanel):
 
     def draw(self, context):
         layout = self.layout
-
         layout.label(text="Blender 2.6 doesn't support python constraints yet")
-
-        self.draw_influence(layout, con)
 
 
 class OBJECT_PT_bArmatureConstraint(ConstraintButtonsPanel):
@@ -1247,20 +1226,38 @@ class OBJECT_PT_bArmatureConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
-        topcol = layout.column()
-        topcol.use_property_split = True
-        topcol.operator("constraint.add_target", text="Add Target Bone")
+        layout.prop(con, "use_deform_preserve_volume")
+        layout.prop(con, "use_bone_envelopes")
+
+        if context.pose_bone:
+            layout.prop(con, "use_current_location")
+
+        layout.operator("constraint.add_target", text="Add Target Bone")
+
+        layout.operator("constraint.normalize_target_weights")
+
+        self.draw_influence(layout, con)
 
         if not con.targets:
-            box = topcol.box()
-            box.label(text="No target bones were added", icon='ERROR')
+            layout.label(text="No target bones added", icon='ERROR')
+
+class OBJECT_PT_bArmatureConstraint_bones(ConstraintButtonsSubPanel):
+    bl_parent_id = "OBJECT_PT_bArmatureConstraint"
+    bl_label = "Bones"
+
+    def draw(self, context):
+        layout = self.layout
+        con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
         for i, tgt in enumerate(con.targets):
-            box = topcol.box()
-
             has_target = tgt.target is not None
 
+            box = layout.box()
             header = box.row()
             header.use_property_split = False
 
@@ -1274,20 +1271,11 @@ class OBJECT_PT_bArmatureConstraint(ConstraintButtonsPanel):
             else:
                 row.prop(tgt, "subtarget", text="", icon='BONE_DATA')
 
-            header.operator("constraint.remove_target", text="", icon='REMOVE').index = i
+            header.operator("constraint.remove_target", text="", icon='X').index = i
 
-            col = box.column()
-            col.active = has_target and tgt.subtarget != ""
-            col.prop(tgt, "weight", slider=True)
-
-        topcol.operator("constraint.normalize_target_weights")
-        topcol.prop(con, "use_deform_preserve_volume")
-        topcol.prop(con, "use_bone_envelopes")
-
-        if context.pose_bone:
-            topcol.prop(con, "use_current_location")
-
-        self.draw_influence(layout, con)
+            row = box.row()
+            row.active = has_target and tgt.subtarget != ""
+            row.prop(tgt, "weight", slider=True, text="Weight")
 
 
 classes = (
@@ -1296,8 +1284,8 @@ classes = (
     OBJECT_PT_bChildOfConstraint,
     OBJECT_PT_bTrackToConstraint,
     OBJECT_PT_bKinematicConstraint,
-    OBJECT_PT_constraints_ik_copy_pose,
-    OBJECT_PT_constraints_ik_distance,
+    #OBJECT_PT_constraints_ik_copy_pose, HANS-TODO: Deprecated.. delete?
+    #OBJECT_PT_constraints_ik_distance,
     OBJECT_PT_bFollowPathConstraint,
     OBJECT_PT_bRotLimitConstraint,
     OBJECT_PT_bLocLimitConstraint,
@@ -1312,7 +1300,7 @@ classes = (
     OBJECT_PT_bDistLimitConstraint,
     OBJECT_PT_bStretchToConstraint,
     OBJECT_PT_bMinMaxConstraint,
-    OBJECT_PT_constraints_rigid_body_join,
+    #OBJECT_PT_constraints_rigid_body_join,
     OBJECT_PT_bClampToConstraint,
     OBJECT_PT_bTransformConstraint,
     OBJECT_PT_bTransformConstraint_mapping,
@@ -1328,6 +1316,7 @@ classes = (
     OBJECT_PT_bTransformCacheConstraint,
     OBJECT_PT_bPythonConstraint,
     OBJECT_PT_bArmatureConstraint,
+    OBJECT_PT_bArmatureConstraint_bones,
 )
 
 if __name__ == "__main__":  # only for live edit.
