@@ -12,33 +12,40 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2007 Blender Foundation.
- * All rights reserved.
  */
 
 /** \file
- * \ingroup nodes
+ * \ingroup RNA
  */
 
-#ifndef __NODE_COMMON_H__
-#define __NODE_COMMON_H__
+#include <stdlib.h>
 
-#include "DNA_listBase.h"
+#include "RNA_define.h"
+#include "RNA_enum_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "DNA_simulation_types.h"
 
-struct bNodeTree;
+#include "rna_internal.h"
 
-void node_group_label(struct bNodeTree *ntree, struct bNode *node, char *label, int maxlen);
-bool node_group_poll_instance(struct bNode *node, struct bNodeTree *nodetree);
+#ifdef RNA_RUNTIME
 
-void ntree_update_reroute_nodes(struct bNodeTree *ntree);
+#else
 
-#ifdef __cplusplus
+static void rna_def_simulation(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "Simulation", "ID");
+  RNA_def_struct_ui_text(srna, "Simulation", "Simulation data-block");
+  RNA_def_struct_ui_icon(srna, ICON_PHYSICS); /* TODO: Use correct icon. */
+
+  /* common */
+  rna_def_animdata_common(srna);
 }
-#endif
+
+void RNA_def_simulation(BlenderRNA *brna)
+{
+  rna_def_simulation(brna);
+}
 
 #endif

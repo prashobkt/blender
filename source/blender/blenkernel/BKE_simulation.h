@@ -12,33 +12,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2007 Blender Foundation.
- * All rights reserved.
  */
 
-/** \file
- * \ingroup nodes
- */
-
-#ifndef __NODE_COMMON_H__
-#define __NODE_COMMON_H__
-
-#include "DNA_listBase.h"
+#ifndef __BKE_SIMULATION_H__
+#define __BKE_SIMULATION_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct bNodeTree;
+struct Main;
+struct Simulation;
 
-void node_group_label(struct bNodeTree *ntree, struct bNode *node, char *label, int maxlen);
-bool node_group_poll_instance(struct bNode *node, struct bNodeTree *nodetree);
-
-void ntree_update_reroute_nodes(struct bNodeTree *ntree);
+void *BKE_simulation_add(struct Main *bmain, const char *name);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif /* __BKE_SIMULATION_H__ */

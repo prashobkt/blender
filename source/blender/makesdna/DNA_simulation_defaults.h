@@ -12,33 +12,29 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2007 Blender Foundation.
- * All rights reserved.
  */
 
 /** \file
- * \ingroup nodes
+ * \ingroup DNA
  */
 
-#ifndef __NODE_COMMON_H__
-#define __NODE_COMMON_H__
+#ifndef __DNA_SIMULATION_DEFAULTS_H__
+#define __DNA_SIMULATION_DEFAULTS_H__
 
-#include "DNA_listBase.h"
+/* Struct members on own line. */
+/* clang-format off */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/* -------------------------------------------------------------------- */
+/** \name Simulation Struct
+ * \{ */
 
-struct bNodeTree;
+#define _DNA_DEFAULT_Simulation \
+  { \
+    .flag = 0, \
+  }
 
-void node_group_label(struct bNodeTree *ntree, struct bNode *node, char *label, int maxlen);
-bool node_group_poll_instance(struct bNode *node, struct bNodeTree *nodetree);
+/** \} */
 
-void ntree_update_reroute_nodes(struct bNodeTree *ntree);
+/* clang-format on */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+#endif /* __DNA_SIMULATION_DEFAULTS_H__ */
