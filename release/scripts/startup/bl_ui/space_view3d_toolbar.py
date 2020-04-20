@@ -1606,7 +1606,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        brush = context.tool_settings.gpencil_paint.brush
+        tool_settings = context.tool_settings
+        brush = tool_settings.gpencil_paint.brush
+        mode = tool_settings.gpencil_paint.color_mode
         gp_settings = brush.gpencil_settings
 
         if self.is_popover:
@@ -1624,6 +1626,13 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row = col.row(align=True)
         row.prop(gp_settings, "pen_jitter", slider=True)
         row.prop(gp_settings, "use_jitter_pressure", text="", icon='STYLUS_PRESSURE')
+
+        col = layout.column()
+        col.enabled = mode == 'VERTEXCOLOR' and gp_settings.use_settings_random
+        col.separator()
+        col.prop(gp_settings, "random_hue_factor", slider=True)
+        col.prop(gp_settings, "random_saturation_factor", slider=True)
+        col.prop(gp_settings, "random_value_factor", slider=True)
 
 
 # Grease Pencil drawingcurves

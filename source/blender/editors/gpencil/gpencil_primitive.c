@@ -947,6 +947,15 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     tpt->strength = strength;
     tpt->time = p2d->time;
 
+    if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush)) {
+      copy_v3_v3(tpt->vert_color, brush->rgb);
+      pt->vert_color[3] = brush->gpencil_settings->vertex_factor;
+      srgb_to_linearrgb_v4(tpt->vert_color, pt->vert_color);
+    }
+    else {
+      zero_v4(tpt->vert_color);
+    }
+
     /* point uv */
     if (gpd->runtime.sbuffer_used > 0) {
       tGPspoint *tptb = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_used - 1;
@@ -995,7 +1004,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     pt->flag = 0;
     pt->uv_fac = tpt->uv_fac;
     /* Apply the vertex color to point. */
-    ED_gpencil_point_vertex_color_set(ts, brush, pt);
+    ED_gpencil_point_vertex_color_set(ts, brush, pt, NULL);
 
     if (gps->dvert != NULL) {
       MDeformVert *dvert = &gps->dvert[i];

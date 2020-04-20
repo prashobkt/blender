@@ -959,9 +959,10 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->pressure = ptc->pressure;
       pt->strength = ptc->strength;
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
+      copy_v4_v4(pt->vert_color, ptc->vert_color);
       pt->time = ptc->time;
       /* Apply the vertex color to point. */
-      ED_gpencil_point_vertex_color_set(ts, brush, pt);
+      ED_gpencil_point_vertex_color_set(ts, brush, pt, ptc);
 
       pt++;
 
@@ -994,7 +995,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
       /* Apply the vertex color to point. */
-      ED_gpencil_point_vertex_color_set(ts, brush, pt);
+      ED_gpencil_point_vertex_color_set(ts, brush, pt, ptc);
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
         BKE_gpencil_dvert_ensure(gps);
@@ -1113,11 +1114,12 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->pressure = ptc->pressure;
       pt->strength = ptc->strength;
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
+      copy_v4_v4(pt->vert_color, ptc->vert_color);
       pt->time = ptc->time;
       pt->uv_fac = ptc->uv_fac;
       pt->uv_rot = ptc->uv_rot;
       /* Apply the vertex color to point. */
-      ED_gpencil_point_vertex_color_set(ts, brush, pt);
+      ED_gpencil_point_vertex_color_set(ts, brush, pt, ptc);
 
       if (dvert != NULL) {
         dvert->totweight = 0;
@@ -3227,6 +3229,7 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
 
   corner[0] = midpoint[0] - (cp1[0] - midpoint[0]);
   corner[1] = midpoint[1] - (cp1[1] - midpoint[1]);
+  float stepcolor = 1.0f / segments;
 
   for (int i = 0; i < segments; i++) {
     pt = &points[idx_prev + i - 1];
@@ -3236,6 +3239,9 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
     /* Set pressure and strength equals to previous. It will be smoothed later. */
     pt->pressure = pt_prev->pressure;
     pt->strength = pt_prev->strength;
+    /* Interpolate vertex color. */
+    interp_v4_v4v4(
+        pt->vert_color, pt_before->vert_color, pt_prev->vert_color, stepcolor * (i + 1));
 
     /* Apply angle of stroke to brush size. */
     if (brush_settings->draw_angle_factor != 0.0f) {
@@ -3313,6 +3319,7 @@ static void gpencil_add_guide_points(const tGPsdata *p,
       /* Set pressure and strength equals to previous. It will be smoothed later. */
       pt->pressure = pt_before->pressure;
       pt->strength = pt_before->strength;
+      copy_v4_v4(pt->vert_color, pt_before->vert_color);
     }
   }
   else {
@@ -3329,6 +3336,7 @@ static void gpencil_add_guide_points(const tGPsdata *p,
       /* Set pressure and strength equals to previous. It will be smoothed later. */
       pt->pressure = pt_before->pressure;
       pt->strength = pt_before->strength;
+      copy_v4_v4(pt->vert_color, pt_before->vert_color);
     }
   }
 }

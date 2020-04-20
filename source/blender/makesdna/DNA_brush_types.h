@@ -118,7 +118,14 @@ typedef struct BrushGpencilSettings {
   int sculpt_mode_flag;
   /** Preset type (used to reset brushes - internal). */
   short preset_type;
-  char _pad3[6];
+  char _pad3[2];
+
+  /** Randomness for Hue. */
+  float random_hue;
+  /** Randomness for Saturation. */
+  float random_saturation;
+  /** Randomness for Value. */
+  float random_value;
 
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;
