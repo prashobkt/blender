@@ -2716,7 +2716,6 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts,
 void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd, Brush *brush, tGPspoint *tpt)
 {
   BrushGpencilSettings *brush_settings = brush->gpencil_settings;
-  const float soft = 0.50f;
   if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
 
     int ix = (int)tpt->x;
@@ -2729,17 +2728,17 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd, Brush *brush, tGPspoin
     /* Apply random to Hue. */
     if (brush_settings->random_hue > 0.0f) {
       float rand = BLI_hash_int_01(BLI_hash_int_2d(ix, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
-      factor_value[0] = rand * brush_settings->random_hue * soft;
+      factor_value[0] = rand * brush_settings->random_hue * 0.5f;
     }
     /* Apply random to Saturation. */
     if (brush_settings->random_saturation > 0.0f) {
       float rand = BLI_hash_int_01(BLI_hash_int_2d(iy, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
-      factor_value[1] = rand * brush_settings->random_saturation * soft;
+      factor_value[1] = rand * brush_settings->random_saturation;
     }
     /* Apply random to Value. */
     if (brush_settings->random_value > 0.0f) {
       float rand = BLI_hash_int_01(BLI_hash_int_2d(iz, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
-      factor_value[2] = rand * brush_settings->random_value * soft;
+      factor_value[2] = rand * brush_settings->random_value * 0.5f;
     }
     rgb_to_hsv_v(tpt->vert_color, hsv);
     add_v3_v3(hsv, factor_value);
