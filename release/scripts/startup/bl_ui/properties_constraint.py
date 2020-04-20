@@ -67,6 +67,7 @@ class ConstraintButtonsPanel(Panel):
 
     @staticmethod
     def draw_influence(layout, con):
+        layout.separator()
         if con.type in {'IK', 'SPLINE_IK'}:
             # constraint.disable_keep_transform doesn't work well
             # for these constraints.
@@ -80,10 +81,11 @@ class ConstraintButtonsPanel(Panel):
     @staticmethod
     def space_template(layout, con, target=True, owner=True):
         if target or owner:
+            layout.separator()
             if target:
-                layout.prop(con, "target_space")
+                layout.prop(con, "target_space", text="Target")
             if owner:
-                layout.prop(con, "owner_space")
+                layout.prop(con, "owner_space", text="Owner")
 
     @staticmethod
     def target_template(layout, con, subtargets=True):
@@ -338,7 +340,7 @@ class OBJECT_PT_bFollowPathConstraint(ConstraintButtonsPanel):
             layout.prop(con, "offset")
 
         layout.prop(con, "forward_axis", expand=True)
-        layout.prop(con, "up_axis", text="Up")
+        layout.prop(con, "up_axis", expand=True, text="Up")
 
         self.target_template(layout, con)
         layout.operator("constraint.followpath_path_animate", text="Animate Path", icon='ANIM_DATA')
@@ -617,21 +619,19 @@ class OBJECT_PT_bActionConstraint(ConstraintButtonsPanel):
         self.target_template(layout, con)
 
         layout.label(text="From Target:")
-        layout.prop(con, "transform_channel", text="")
-        layout.prop(con, "target_space", text="")
+        layout.prop(con, "transform_channel", text="Channel")
+        layout.prop(con, "target_space")
 
         col = layout.column(align=True)
-        col.label(text="Target Range:")
-        col.prop(con, "min", text="Min")
+        col.prop(con, "min", text="Range Min")
         col.prop(con, "max", text="Max")
 
         layout.label(text="To Action:")
-        layout.prop(con, "action", text="")
+        layout.prop(con, "action")
         layout.prop(con, "use_bone_object_action")
 
-        col.label(text="Action Range:")
         col = layout.column(align=True)
-        col.prop(con, "frame_start", text="Start")
+        col.prop(con, "frame_start", text="Frame Start")
         col.prop(con, "frame_end", text="End")
 
         layout.prop(con, "mix_mode", text="Mix")
@@ -688,9 +688,9 @@ class OBJECT_PT_bStretchToConstraint(ConstraintButtonsPanel):
 
         self.target_template(layout, con)
 
-        col = layout.column(heading="Rest Length", align=True)
+        col = layout.column()
         col.prop(con, "rest_length")
-        col.operator("constraint.stretchto_reset", text="Reset")
+        col.operator("constraint.stretchto_reset", text="Reset Length")
 
         layout.prop(con, "bulge", text="Volume Variation")
 
@@ -1002,11 +1002,12 @@ class OBJECT_PT_bShrinkwrapConstraint(ConstraintButtonsPanel):
             layout.separator()
 
         if con.shrinkwrap_type in {'PROJECT', 'NEAREST_SURFACE', 'TARGET_PROJECT'}:
-            layout.prop(con, "use_track_normal")
+            row = layout.row(heading = "Align to Normal")
+            row.prop(con, "use_track_normal", text = "")
 
-            row = layout.row(align=True)
-            row.active = con.use_track_normal
-            row.prop(con, "track_axis")
+            sub = row.row()
+            sub.active = con.use_track_normal
+            sub.prop(con, "track_axis", text = "")
 
         self.draw_influence(layout, con)
 
