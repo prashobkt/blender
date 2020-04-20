@@ -75,7 +75,7 @@ typedef struct BrushGpencilSettings {
   short fill_leak;
   /** Fill zoom factor */
   short fill_factor;
-  char _pad1[4];
+  int flag2;
 
   /** Number of simplify steps. */
   int fill_simplylvl;
@@ -210,6 +210,15 @@ typedef enum eGPDbrush_Flag {
   /* Post process trim stroke */
   GP_BRUSH_TRIM_STROKE = (1 << 16),
 } eGPDbrush_Flag;
+
+typedef enum eGPDbrush_Flag2 {
+  /* brush use random Hue at stroke level */
+  GP_BRUSH_USE_HUE_AT_STROKE = (1 << 0),
+  /* brush use random Saturation at stroke level */
+  GP_BRUSH_USE_SAT_AT_STROKE = (1 << 1),
+  /* brush use random Value at stroke level */
+  GP_BRUSH_USE_VAL_AT_STROKE = (1 << 2),
+} eGPDbrush_Flag2;
 
 /* BrushGpencilSettings->gp_fill_draw_mode */
 typedef enum eGP_FillDrawModes {

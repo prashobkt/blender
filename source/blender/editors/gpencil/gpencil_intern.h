@@ -230,6 +230,10 @@ typedef struct tGPDprimitive {
 
   /** size in pixels for uv calculation */
   float totpixlen;
+
+  /** Random vertex color by stroke */
+  float gps_random_color[3];
+
 } tGPDprimitive;
 
 /* Modal Operator Drawing Callbacks ------------------------ */

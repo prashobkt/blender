@@ -255,6 +255,10 @@ typedef struct tGPsdata {
   tGPguide guide;
 
   ReportList *reports;
+
+  /** Random vertex color by stroke */
+  float gps_random_color[3];
+
 } tGPsdata;
 
 /* ------ */
@@ -746,7 +750,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
 
     /* Set vertex colors for buffer. */
     ED_gpencil_sbuffer_vertex_color_set(
-        p->depsgraph, p->ob, p->scene->toolsettings, p->brush, p->material);
+        p->depsgraph, p->ob, p->scene->toolsettings, p->brush, p->material, p->gps_random_color);
 
     /* get pointer to destination point */
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
@@ -3044,6 +3048,8 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
   else {
     p = op->customdata;
   }
+  /* Init random vertex color. */
+  ED_gpencil_sbuffer_random_color(p->brush, event->mval, p->gps_random_color);
 
   /* TODO: set any additional settings that we can take from the events?
    * if eraser is on, draw radial aid */

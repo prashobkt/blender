@@ -79,9 +79,17 @@ def gpencil_active_brush_settings_simple(context, layout):
 
     col = layout.column()
     col.enabled = mode == 'VERTEXCOLOR'
-    col.prop(brush, "random_hue_factor", slider=True)
-    col.prop(brush, "random_saturation_factor", slider=True)
-    col.prop(brush, "random_value_factor", slider=True)
+    row = col.row(align=True)
+    row.prop(gp_settings, "random_hue_factor", slider=True)
+    row.prop(gp_settings, "use_stroke_random_hue", text="", icon='MOD_THICKNESS')
+
+    row = col.row(align=True)
+    row.prop(gp_settings, "random_saturation_factor", slider=True)
+    row.prop(gp_settings, "use_stroke_random_sat", text="", icon='MOD_THICKNESS')
+
+    row = col.row(align=True)
+    row.prop(gp_settings, "random_value_factor", slider=True)
+    row.prop(gp_settings, "use_stroke_random_val", text="", icon='MOD_THICKNESS')
 
 
 # XXX: To be replaced with active tools

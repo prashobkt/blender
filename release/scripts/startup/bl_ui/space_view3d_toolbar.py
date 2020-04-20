@@ -1630,9 +1630,17 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         col = layout.column()
         col.enabled = mode == 'VERTEXCOLOR' and gp_settings.use_settings_random
         col.separator()
-        col.prop(gp_settings, "random_hue_factor", slider=True)
-        col.prop(gp_settings, "random_saturation_factor", slider=True)
-        col.prop(gp_settings, "random_value_factor", slider=True)
+        row = col.row(align=True)
+        row.prop(gp_settings, "random_hue_factor", slider=True)
+        row.prop(gp_settings, "use_stroke_random_hue", text="", icon='MOD_THICKNESS')
+
+        row = col.row(align=True)
+        row.prop(gp_settings, "random_saturation_factor", slider=True)
+        row.prop(gp_settings, "use_stroke_random_sat", text="", icon='MOD_THICKNESS')
+
+        row = col.row(align=True)
+        row.prop(gp_settings, "random_value_factor", slider=True)
+        row.prop(gp_settings, "use_stroke_random_val", text="", icon='MOD_THICKNESS')
 
 
 # Grease Pencil drawingcurves

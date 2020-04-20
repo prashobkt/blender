@@ -2713,7 +2713,36 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts,
   }
 }
 
-void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd, Brush *brush, tGPspoint *tpt)
+void ED_gpencil_sbuffer_random_color(Brush *brush, const int mval[2], float r_value[3])
+{
+  /* Use mouse position to get randomness. */
+  int ix = mval[0] / 3;
+  int iy = mval[1];
+  int iz = ix + iy;
+  zero_v3(r_value);
+
+  BrushGpencilSettings *brush_settings = brush->gpencil_settings;
+  /* Apply random to Hue. */
+  if (brush_settings->random_hue > 0.0f) {
+    float rand = BLI_hash_int_01(BLI_hash_int_2d(ix, iy)) * 2.0f - 1.0f;
+    r_value[0] = rand * brush_settings->random_hue * 0.5f;
+  }
+  /* Apply random to Saturation. */
+  if (brush_settings->random_saturation > 0.0f) {
+    float rand = BLI_hash_int_01(BLI_hash_int_2d(iy, ix)) * 2.0f - 1.0f;
+    r_value[1] = rand * brush_settings->random_saturation;
+  }
+  /* Apply random to Value. */
+  if (brush_settings->random_value > 0.0f) {
+    float rand = BLI_hash_int_01(BLI_hash_int_2d(ix * iz, iy * iz)) * 2.0f - 1.0f;
+    r_value[2] = rand * brush_settings->random_value;
+  }
+}
+
+void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
+                                            Brush *brush,
+                                            tGPspoint *tpt,
+                                            float random_color[3])
 {
   BrushGpencilSettings *brush_settings = brush->gpencil_settings;
   if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
@@ -2727,18 +2756,34 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd, Brush *brush, tGPspoin
 
     /* Apply random to Hue. */
     if (brush_settings->random_hue > 0.0f) {
-      float rand = BLI_hash_int_01(BLI_hash_int_2d(ix, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
-      factor_value[0] = rand * brush_settings->random_hue * 0.5f;
+      if ((brush_settings->flag2 & GP_BRUSH_USE_HUE_AT_STROKE) == 0) {
+
+        float rand = BLI_hash_int_01(BLI_hash_int_2d(ix, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
+        factor_value[0] = rand * brush_settings->random_hue * 0.5f;
+      }
+      else {
+        factor_value[0] = random_color[0];
+      }
     }
     /* Apply random to Saturation. */
     if (brush_settings->random_saturation > 0.0f) {
-      float rand = BLI_hash_int_01(BLI_hash_int_2d(iy, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
-      factor_value[1] = rand * brush_settings->random_saturation;
+      if ((brush_settings->flag2 & GP_BRUSH_USE_SAT_AT_STROKE) == 0) {
+        float rand = BLI_hash_int_01(BLI_hash_int_2d(iy, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
+        factor_value[1] = rand * brush_settings->random_saturation;
+      }
+      else {
+        factor_value[1] = random_color[1];
+      }
     }
     /* Apply random to Value. */
     if (brush_settings->random_value > 0.0f) {
-      float rand = BLI_hash_int_01(BLI_hash_int_2d(iz, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
-      factor_value[2] = rand * brush_settings->random_value * 0.5f;
+      if ((brush_settings->flag2 & GP_BRUSH_USE_VAL_AT_STROKE) == 0) {
+        float rand = BLI_hash_int_01(BLI_hash_int_2d(iz, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
+        factor_value[2] = rand * brush_settings->random_value;
+      }
+      else {
+        factor_value[2] = random_color[2];
+      }
     }
     rgb_to_hsv_v(tpt->vert_color, hsv);
     add_v3_v3(hsv, factor_value);
@@ -2747,8 +2792,12 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd, Brush *brush, tGPspoin
   }
 }
 
-void ED_gpencil_sbuffer_vertex_color_set(
-    Depsgraph *depsgraph, Object *ob, ToolSettings *ts, Brush *brush, Material *material)
+void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
+                                         Object *ob,
+                                         ToolSettings *ts,
+                                         Brush *brush,
+                                         Material *material,
+                                         float random_color[3])
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
@@ -2781,7 +2830,7 @@ void ED_gpencil_sbuffer_vertex_color_set(
 
   /* Random Color. */
   if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
-    ED_gpencil_sbuffer_vertex_color_random(gpd, brush, tpt);
+    ED_gpencil_sbuffer_vertex_color_random(gpd, brush, tpt, random_color);
   }
 
   /* Copy to eval data because paint operators don't tag refresh until end for speedup
