@@ -2713,7 +2713,7 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts,
   }
 }
 
-void ED_gpencil_sbuffer_random_color(Brush *brush, const int mval[2], float r_value[3])
+void ED_gpencil_init_random_color(Brush *brush, const int mval[2], float r_value[3])
 {
   /* Use mouse position to get randomness. */
   int ix = mval[0] / 3;
@@ -2803,7 +2803,6 @@ void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
   Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob_eval->data;
   MaterialGPencilStyle *gp_style = material->gp_style;
-  BrushGpencilSettings *brush_settings = brush->gpencil_settings;
 
   int idx = gpd->runtime.sbuffer_used;
   tGPspoint *tpt = (tGPspoint *)gpd->runtime.sbuffer + idx;
@@ -2829,9 +2828,7 @@ void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
   }
 
   /* Random Color. */
-  if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
-    ED_gpencil_sbuffer_vertex_color_random(gpd, brush, tpt, random_color);
-  }
+  ED_gpencil_sbuffer_vertex_color_random(gpd, brush, tpt, random_color);
 
   /* Copy to eval data because paint operators don't tag refresh until end for speedup
      painting. */

@@ -3049,7 +3049,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
     p = op->customdata;
   }
   /* Init random vertex color. */
-  ED_gpencil_sbuffer_random_color(p->brush, event->mval, p->gps_random_color);
+  ED_gpencil_init_random_color(p->brush, event->mval, p->gps_random_color);
 
   /* TODO: set any additional settings that we can take from the events?
    * if eraser is on, draw radial aid */
