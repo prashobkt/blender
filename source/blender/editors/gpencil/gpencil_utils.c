@@ -36,6 +36,8 @@
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
 
+#include "PIL_time.h"
+
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_meshdata_types.h"
@@ -2715,10 +2717,11 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts,
 
 void ED_gpencil_init_random_color(Brush *brush, const int mval[2], float r_value[3])
 {
+  int seed = ((uint)(ceil(PIL_check_seconds_timer())) + 1) % 128;
   /* Use mouse position to get randomness. */
-  int ix = mval[0] / 3;
-  int iy = mval[1];
-  int iz = ix + iy;
+  int ix = mval[0] * seed;
+  int iy = mval[1] * seed;
+  int iz = ix + iy * seed;
   zero_v3(r_value);
 
   BrushGpencilSettings *brush_settings = brush->gpencil_settings;
@@ -2746,10 +2749,11 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
 {
   BrushGpencilSettings *brush_settings = brush->gpencil_settings;
   if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
+    int seed = ((uint)(ceil(PIL_check_seconds_timer())) + 1) % 128;
 
-    int ix = (int)tpt->x;
-    int iy = (int)tpt->y;
-    int iz = ix + iy;
+    int ix = (int)(tpt->x * seed);
+    int iy = (int)(tpt->y * seed);
+    int iz = ix + iy * seed;
     float hsv[3];
     float factor_value[3];
     zero_v3(factor_value);
