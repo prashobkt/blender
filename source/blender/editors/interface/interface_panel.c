@@ -311,7 +311,7 @@ static void get_panel_expand_flag(Panel *panel, short *flag, short *flag_index)
  *
  * \note This needs to iterate through all of the regions panels because the panel with changed
  * expansion could have been the subpanel of a list panel, meaning it might not know which
- * list item it corresponds to. HANS-TODO: Fix
+ * list item it corresponds to.
  */
 static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
 {
@@ -559,7 +559,7 @@ static void ui_offset_panel_block(uiBlock *block)
  * Called in situations where panels need to be added dynamically rather than having only one panel
  * corresponding to each PanelType.
  */
-Panel *UI_panel_add_recreate(
+Panel *UI_panel_add_list(
     ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
   Panel *panel = MEM_callocN(sizeof(Panel), "list panel");
@@ -579,7 +579,7 @@ Panel *UI_panel_add_recreate(
    * function to creat them, as UI_panel_begin does other things we don't need to do. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
     PanelType *child = link->data;
-    UI_panel_add_recreate(sa, region, &panel->children, child, list_index);
+    UI_panel_add_list(sa, region, &panel->children, child, list_index);
   }
 
   /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
@@ -613,22 +613,6 @@ Panel *UI_panel_add_recreate(
   return panel;
 }
 
-void UI_panel_set_list_index(Panel *panel, int i)
-{
-  BLI_assert(panel->type != NULL);
-  if (panel->type->parent == NULL) {
-    BLI_assert(panel->type->flag & PNL_LIST);
-  }
-
-  panel->runtime.list_index = i;
-
-  Panel *child = panel->children.first;
-  while (child != NULL) {
-    UI_panel_set_list_index(child, i);
-    child = child->next;
-  }
-}
-
 void UI_list_panel_unique_str(Panel *panel, char *r_name)
 {
   snprintf(r_name, LIST_PANEL_UNIQUE_STR_LEN, "%d", panel->runtime.list_index);
@@ -646,7 +630,6 @@ static void panel_free_block(ARegion *region, Panel *panel)
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     if (STREQ(block->name, block_name)) {
-      // printf("Removing panel block %s\n", block_name);
       BLI_remlink(&region->uiblocks, block);
       UI_block_free(NULL, block);
       break; /* Only delete one block for this panel. */
@@ -674,7 +657,7 @@ void UI_panel_delete(ARegion *region, ListBase *panels, Panel *panel)
   MEM_freeN(panel);
 }
 
-void UI_panels_free_recreate(ARegion *region)
+void UI_panels_free_list(bContext *C, ARegion *region)
 {
   /* Delete panels with the recreate flag. */
   ListBase *panels = &region->panels;
@@ -690,10 +673,61 @@ void UI_panels_free_recreate(ARegion *region)
 
     panel_next = panel->next;
     if (remove) {
+      if (panel->activedata != NULL) {
+        panel_activate_state(C, panel, PANEL_STATE_EXIT);
+      }
       UI_panel_delete(region, panels, panel);
     }
     panel = panel_next;
   }
+}
+
+/**
+ * Check if the list panels in the region's panel list corresponds to the list of data the panels
+ * represent. Returns false if the panels have been reordered or if the types from the list data
+ * don't match in any way.
+ *
+ * \param data: The list of data to check against the list panels.
+ * \param panel_type_func: Each type from the data list should have a corresponding panel type. For
+ * a mix of readabilty and generality, this can happen separately for each type of panel list.
+ */
+bool UI_panel_list_matches_data(ARegion *region,
+                                ListBase *data,
+                                uiListPanelTypeFromDataFunc panel_type_func)
+{
+  int data_len = BLI_listbase_count(data);
+  int i = 0;
+  Link *data_link = data->first;
+  Panel *panel = region->panels.first;
+  while (panel != NULL) {
+    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
+      /* The panels were reordered by drag and drop. */
+      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
+        return false;
+      }
+
+      /* We reached the last contraint before the last list panel. */
+      if (data_link == NULL) {
+        return false;
+      }
+
+      /* The types of the corresponding panel and constraint don't match. */
+      if (panel_type_func(region, data_link) != panel->type) {
+        return false;
+      }
+
+      data_link = data_link->next;
+      i++;
+    }
+    panel = panel->next;
+  }
+
+  /* If we didn't make it to the last list item, the panel list isn't complete. */
+  if (i != data_len) {
+    return false;
+  }
+
+  return true;
 }
 
 /**************************** drawing *******************************/
@@ -2943,10 +2977,6 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
   }
 
   if (state == PANEL_STATE_EXIT) {
-    // if (data->is_drag_drop) {
-    //   reorder_recreate_panel_list(C, region, panel);
-    // }
-
     MEM_freeN(data);
     panel->activedata = NULL;
 

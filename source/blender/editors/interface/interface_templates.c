@@ -1821,9 +1821,11 @@ void uiTemplatePathBuilder(uiLayout *layout,
 
 #define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 
-static PanelType *panel_type_from_modifier_type(ARegion *region, ModifierType type)
+static PanelType *panel_type_from_modifier(ARegion *region, Link *md_link)
 {
   ARegionType *region_type = region->type;
+  ModifierData *md = (ModifierData *)md_link;
+  ModifierType type = md->type;
   const ModifierTypeInfo *mti = modifierType_getInfo(type);
 
   /* Get the name of the modifier's panel type which was defined when the panel was registered. */
@@ -1836,61 +1838,23 @@ static PanelType *panel_type_from_modifier_type(ARegion *region, ModifierType ty
 
 void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
 {
-  /* HANS-TODO: Fix crash when panel's modifier type doesn't match. */
-
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
+  ListBase *modifiers = &ob->modifiers;
 
-  /* Check if the current modifier list corresponds to list panels, or if the panels were
-   * reordered. */
-  bool modifiers_changed = false;
-  int modifiers_len = BLI_listbase_count(&ob->modifiers);
-  int i = 0;
-  ModifierData *md = ob->modifiers.first;
-  Panel *panel = region->panels.first;
-  while (panel != NULL) {
-    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
-      /* The panels were reordered by drag and drop. */
-      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
-        modifiers_changed = true;
-        break;
-      }
+  bool panels_match = UI_panel_list_matches_data(region, modifiers, panel_type_from_modifier);
 
-      /* We reached the last modifier before the last list panel. */
-      if (md == NULL) {
-        modifiers_changed = true;
-        break;
-      }
-
-      /* The types of the corresponding panel and modifier don't match. */
-      if (panel_type_from_modifier_type(region, md->type) != panel->type) {
-        modifiers_changed = true;
-        break;
-      }
-
-      md = md->next;
-      i++;
-    }
-    panel = panel->next;
-  }
-
-  /* If we didn't make it to the last modifier, the panel list isn't complete. */
-  if (i != modifiers_len) {
-    modifiers_changed = true;
-  }
-
-  /* If the modifier list has changed at all, clear all of the list panels and rebuild them. */
-  if (modifiers_changed) {
-    UI_panels_free_recreate(region);
-    md = ob->modifiers.first;
-    for (i = 0; md; i++, md = md->next) {
+  if (!panels_match) {
+    UI_panels_free_list(C, region);
+    ModifierData *md = modifiers->first;
+    for (int i = 0; md; i++, md = md->next) {
       const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
       if (mti->panelRegister) {
-        PanelType *panel_type = panel_type_from_modifier_type(region, md->type);
+        PanelType *panel_type = panel_type_from_modifier(region, (Link *)md);
         BLI_assert(panel_type != NULL);
 
-        Panel *new_panel = UI_panel_add_recreate(sa, region, &region->panels, panel_type, i);
+        Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
         UI_panel_set_expand_from_list_data(C, new_panel);
       }
     }
@@ -1932,6 +1896,9 @@ static void constraint_reorder(bContext *C, Panel *panel, int new_index)
   WM_operator_properties_free(&props_ptr);
 }
 
+/**
+ * Get the expand flag from the active constraint to use for the panel.
+ */
 static short get_constraint_expand_flag(const bContext *C, Panel *panel)
 {
   Object *ob = CTX_data_active_object(C);
@@ -1940,6 +1907,9 @@ static short get_constraint_expand_flag(const bContext *C, Panel *panel)
   return con->ui_expand_flag;
 }
 
+/**
+ * Save the expand flag for the panel and subpanels to the constraint.
+ */
 static void set_constraint_expand_flag(const bContext *C, Panel *panel, short expand_flag)
 {
   Object *ob = CTX_data_active_object(C);
@@ -1949,9 +1919,18 @@ static void set_constraint_expand_flag(const bContext *C, Panel *panel, short ex
 }
 
 #define CONSTRAINT_TYPE_PANEL_PREFIX "OBJECT_PT_"
-static PanelType *panel_type_from_constraint_type(ARegion *region, eBConstraint_Types type)
+
+/**
+ * Get a constraint's panel type.
+ *
+ * \note: Constraint panel types are assumed to be named with the struct name field concatenated to
+ * the defined prefix.
+ */
+static PanelType *panel_type_from_constraint(ARegion *region, Link *con_link)
 {
   ARegionType *region_type = region->type;
+  bConstraint *con = (bConstraint *)con_link;
+  eBConstraint_Types type = con->type;
 
   /* Get the name of the modifier's panel type which was defined when the panel was registered. */
   char panel_idname[BKE_ST_MAXNAME];
@@ -1964,59 +1943,26 @@ static PanelType *panel_type_from_constraint_type(ARegion *region, eBConstraint_
   return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
 }
 
+/**
+ * Check if the constraint panels don't match the data and rebuild the panels if so.
+ */
 void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
 {
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
+  ListBase *constraints = get_active_constraints(ob);
 
-  /* Check if the current constraint list corresponds to list panels, or if the panels were
-   * reordered. */
-  bool constraints_changed = false;
-  int constraints_len = BLI_listbase_count(&ob->constraints);
-  int i = 0;
-  bConstraint *con = ob->constraints.first;
-  Panel *panel = region->panels.first;
-  while (panel != NULL) {
-    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
-      /* The panels were reordered by drag and drop. */
-      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
-        constraints_changed = true;
-        break;
-      }
+  bool panels_match = UI_panel_list_matches_data(region, constraints, panel_type_from_constraint);
 
-      /* We reached the last contraint before the last list panel. */
-      if (con == NULL) {
-        constraints_changed = true;
-        break;
-      }
-
-      /* The types of the corresponding panel and constraint don't match. */
-      if (panel_type_from_constraint_type(region, con->type) != panel->type) {
-        constraints_changed = true;
-        break;
-      }
-
-      con = con->next;
-      i++;
-    }
-    panel = panel->next;
-  }
-
-  /* If we didn't make it to the last modifier, the panel list isn't complete. */
-  if (i != constraints_len) {
-    constraints_changed = true;
-  }
-
-  /* If the modifier list has changed at all, clear all of the list panels and rebuild them. */
-  if (constraints_changed) {
-    UI_panels_free_recreate(region);
-    con = ob->constraints.first;
-    for (i = 0; con; i++, con = con->next) {
-      PanelType *panel_type = panel_type_from_constraint_type(region, con->type);
+  if (!panels_match) {
+    UI_panels_free_list(C, region);
+    Link *con_link = constraints->first;
+    for (int i = 0; con_link; i++, con_link = con_link->next) {
+      PanelType *panel_type = panel_type_from_constraint(region, con_link);
       BLI_assert(panel_type != NULL);
 
-      Panel *new_panel = UI_panel_add_recreate(sa, region, &region->panels, panel_type, i);
+      Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
 
       /* Set the list panel functionality function pointers since we don't do it with python. */
       new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
@@ -2697,30 +2643,6 @@ static void draw_constraint_header(uiLayout *layout, Object *ob, bConstraint *co
     UI_block_emboss_set(block, UI_EMBOSS);
   }
   else {
-    short prev_proxylock, show_upbut, show_downbut;
-
-    /* Up/Down buttons:
-     * Proxy-constraints are not allowed to occur after local (non-proxy) constraints
-     * as that poses problems when restoring them, so disable the "up" button where
-     * it may cause this situation.
-     *
-     * Up/Down buttons should only be shown (or not grayed - todo) if they serve some purpose.
-     */
-    if (BKE_constraints_proxylocked_owner(ob, pchan)) {
-      if (con->prev) {
-        prev_proxylock = (con->prev->flag & CONSTRAINT_PROXY_LOCAL) ? 0 : 1;
-      }
-      else {
-        prev_proxylock = 0;
-      }
-    }
-    else {
-      prev_proxylock = 0;
-    }
-
-    show_upbut = ((prev_proxylock == 0) && (con->prev));
-    show_downbut = (con->next) ? 1 : 0;
-
     /* enabled */
     UI_block_emboss_set(block, UI_EMBOSS_NONE);
     uiItemR(layout, &ptr, "mute", 0, "", 0);
