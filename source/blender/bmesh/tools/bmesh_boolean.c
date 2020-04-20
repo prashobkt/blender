@@ -29,7 +29,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_delaunay_2d.h"
@@ -148,10 +147,10 @@ typedef struct MeshAdd {
   int totvert;
   int totedge;
   int totface;
-  int vindex_start;   /* Add this to position in verts to get index of new vert. */
-  int eindex_start;   /* Add this to position in edges to get index of new edge. */
-  int findex_start;   /* Add this to position in faces to get index of new face. */
-  IMesh *im;          /* Underlying IMesh. */
+  int vindex_start; /* Add this to position in verts to get index of new vert. */
+  int eindex_start; /* Add this to position in edges to get index of new edge. */
+  int findex_start; /* Add this to position in faces to get index of new face. */
+  IMesh *im;        /* Underlying IMesh. */
 } MeshAdd;
 
 /* MeshDelete holds an incremental deletion to an IMesh.
@@ -239,17 +238,17 @@ typedef struct PartPartIntersect {
   int b_index;
 } PartPartIntersect;
 
+/* Bit to set in face_side per face flag inside BoolState. */
+#define SIDE_A 1
+#define SIDE_B 2
+#define BOTH_SIDES_OPP_NORMALS 4
+
 typedef struct BoolState {
   MemArena *mem_arena;
   IMesh im;
-  int boolean_mode;
   double eps;
-  int (*test_fn)(void *elem, void *user_data);
-  void *test_fn_user_data;
+  uchar *face_side;
 } BoolState;
-
-/* test_fn results used to distinguish parts of mesh. */
-enum { TEST_NONE = -1, TEST_B = 0, TEST_A = 1, TEST_ALL = 2 };
 
 /* Decoration to shut up gnu 'unused function' warning. */
 #ifdef __GNUC__
@@ -277,6 +276,7 @@ ATTU static void dump_meshchange(const MeshChange *change, const char *label);
 ATTU static void dump_cdt_input(const CDT_input *cdt, const char *label);
 ATTU static void dump_cdt_result(const CDT_result *cdt, const char *label, const char *prefix);
 ATTU static void dump_bm(struct BMesh *bm, const char *msg);
+ATTU bool analyze_bmesh_for_boolean(BMesh *bm, bool verbose, int side, uchar *face_side);
 #endif
 
 #ifdef PERFDEBUG
@@ -810,7 +810,9 @@ static bool isect_tri_tri_epsilon_v3_db_ex(const double t_a0[3],
 
 /* TODO: move these into math_geom.c. */
 /* What is interpolation factor that gives closest point on line to a given point? */
-static double line_interp_factor_v3_db(const double point[3], const double line_co1[3], const double line_co2[3])
+static double line_interp_factor_v3_db(const double point[3],
+                                       const double line_co1[3],
+                                       const double line_co2[3])
 {
   double h[3], seg_dir[3], seg_len_squared;
 
@@ -831,11 +833,11 @@ static double line_interp_factor_v3_db(const double point[3], const double line_
  * \note Similar logic to isect_ray_plane_v3.
  */
 static int isect_seg_plane_normalized_epsilon_v3_db(const double seg_co1[3],
-             const double seg_co2[3],
-             const double plane[4],
-             double epsilon,
-             double r_isect[3],
-             double *r_lambda)
+                                                    const double seg_co2[3],
+                                                    const double plane[4],
+                                                    double epsilon,
+                                                    double r_isect[3],
+                                                    double *r_lambda)
 {
   double h[3], plane_co[3], seg_dir[3], side1, side2;
   double dot, lambda;
@@ -884,7 +886,7 @@ static void init_imesh_from_bmesh(IMesh *im, BMesh *bm)
   im->bm = bm;
   im->me = NULL;
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
-  BM_mesh_elem_index_ensure(bm, BM_VERT| BM_EDGE | BM_FACE | BM_LOOP);
+  BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE | BM_LOOP);
   im->co_tree = make_im_co_tree(im);
 }
 
@@ -1202,21 +1204,6 @@ static void imesh_face_calc_tesselation(IMesh *im, int f, int (*r_index)[3])
   }
 }
 
-static int imesh_test_face(const IMesh *im, int (*test_fn)(void *, void *), void *user_data, int f)
-{
-  if (im->bm) {
-    BMFace *bmf = BM_face_at_index(im->bm, f);
-    if (bmf) {
-      return test_fn(bmf, user_data);
-    }
-    return 0;
-  }
-  else {
-    /* TODO */
-    return 0;
-  }
-}
-
 static int resolve_merge(int v, const IntIntMap *vert_merge_map)
 {
   int vmapped = v;
@@ -1228,14 +1215,28 @@ static int resolve_merge(int v, const IntIntMap *vert_merge_map)
   return vmapped;
 }
 
-/* Apply the change to the BMesh. Ensure that indices are valid afterwards.
- * Also, fill in r_both_side_faces with (new) indices of faces that have examples from
- * both sides of the boolean operation (because they came from coplanar face intersections).
+/* Trying this instead of trying to keep the tables up to date.
+ * I keep having this bug where strange BMVerts are being used
+ * and I hope this will fix it.
  */
-static void apply_meshchange_to_bmesh(BoolState *bs,
-                                      BMesh *bm,
-                                      MeshChange *change,
-                                      IntSet *r_both_side_faces)
+#define USE_BM_ELEM_COPY
+
+/* To store state of side (side a / side b / opp normals) we will
+ * use these hflag tags in BMFaces. Note that the modifier currently
+ * uses BM_ELEM_DRAW for side a / side b; we'll overwrite that as
+ * modifier code doesn't use it again after this routine returns.
+ */
+#define SIDE_A_TAG BM_ELEM_TAG
+#define SIDE_B_TAG BM_ELEM_DRAW
+#define BOTH_SIDES_OPP_NORMALS_TAG (1 << 6)
+#define ALL_SIDE_TAGS (SIDE_A_TAG | SIDE_B_TAG | BOTH_SIDES_OPP_NORMALS_TAG)
+
+/* Apply the change to the BMesh. Ensure that indices are valid afterwards.
+ * Also reallocate bs->face_side and set it appropriately,
+ * including marking those faces that have examples on both sides but have opposite
+ * normals with the flag that says that.
+ */
+static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *change)
 {
   int bm_tot_v, bm_tot_e, bm_tot_f, tot_new_v, tot_new_e, tot_new_f;
   int i, v, e, f, v1, v2;
@@ -1248,8 +1249,11 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
   BMEdge **new_bmes, **face_bmes;
   BMEdge *bme, *bme_eg;
   BMFace *bmf, *bmf_eg;
-  LinkNode *both_side_bmfaces, *opp_normals_flags, *ln, *ln2;
-  bool both_sides, opp_normals;
+#ifdef USE_BM_ELEM_COPY
+  BMFace **new_bmfs;
+#endif
+  int fside;
+
   MeshAdd *meshadd = &change->add;
   MeshDelete *meshdelete = &change->delete;
   IntIntMap *vert_merge_map = &change->vert_merge_map;
@@ -1269,10 +1273,18 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
 #endif
 
   /* Create new BMVerts. */
+  BM_mesh_elem_table_ensure(bm, BM_VERT);
   bm_tot_v = bm->totvert;
   tot_new_v = meshadd_totvert(meshadd);
+#ifdef USE_BM_ELEM_COPY
+  new_bmvs = MEM_mallocN((size_t)(bm_tot_v + tot_new_v) * sizeof(BMVert *), __func__);
+  BM_iter_as_array(bm, BM_VERTS_OF_MESH, NULL, (void **)new_bmvs, bm_tot_v);
+#endif
   if (tot_new_v > 0) {
+#ifndef USE_BM_ELEM_COPY
     new_bmvs = BLI_array_alloca(new_bmvs, (size_t)tot_new_v);
+#endif
+    BLI_assert(meshadd->vindex_start == bm_tot_v);
     for (v = meshadd->vindex_start; v < meshadd->vindex_start + tot_new_v; v++) {
       newvert = meshadd_get_newvert(meshadd, v);
       BLI_assert(newvert != NULL);
@@ -1284,21 +1296,34 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
         /* BM_mesh_validate(bm); */
       }
 #endif
+#ifdef USE_BM_ELEM_COPY
+      new_bmvs[v] = bmv;
+#else
       new_bmvs[v - meshadd->vindex_start] = bmv;
+#endif
     }
   }
 
+#ifndef USE_BM_ELEM_COPY
   /* Adding verts has made the vertex table dirty.
    * It is probably still ok, but just in case...
    * TODO: find a way to avoid regenerating this table, maybe.
    */
   BM_mesh_elem_table_ensure(bm, BM_VERT);
+#endif
 
   /* Now the edges. */
   bm_tot_e = bm->totedge;
   tot_new_e = meshadd_totedge(meshadd);
+#ifdef USE_BM_ELEM_COPY
+  new_bmes = MEM_mallocN((size_t)(bm_tot_e + tot_new_e) * sizeof(BMEdge *), __func__);
+  BM_iter_as_array(bm, BM_EDGES_OF_MESH, NULL, (void **)new_bmes, bm_tot_e);
+#endif
   if (tot_new_e > 0) {
+#ifndef USE_BM_ELEM_COPY
     new_bmes = BLI_array_alloca(new_bmes, (size_t)tot_new_e);
+#endif
+    BLI_assert(meshadd->eindex_start == bm_tot_e);
     for (e = meshadd->eindex_start; e < meshadd->eindex_start + tot_new_e; e++) {
       newedge = meshadd_get_newedge(meshadd, e);
       BLI_assert(newedge != NULL);
@@ -1307,7 +1332,11 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
          * though it may be technically dirty, all of the example indices
          * will still be OK since they should be from original edges. */
         BLI_assert(newedge->example < meshadd->eindex_start);
+#ifdef USE_BM_ELEM_COPY
+        bme_eg = new_bmes[newedge->example];
+#else
         bme_eg = bm->etable[newedge->example];
+#endif
         BLI_assert(bme_eg != NULL && bme_eg->head.htype == BM_EDGE);
       }
       else {
@@ -1315,6 +1344,12 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
       }
       v1 = newedge->v1;
       v2 = newedge->v2;
+#ifdef USE_BM_ELEM_COPY
+      if (v1 < bm_tot_v) {
+        v1 = resolve_merge(v1, vert_merge_map);
+      }
+      bmv1 = new_bmvs[v1];
+#else
       if (v1 < bm_tot_v) {
         v1 = resolve_merge(v1, vert_merge_map);
         bmv1 = BM_vert_at_index(bm, v1);
@@ -1322,7 +1357,14 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
       else {
         bmv1 = new_bmvs[v1 - meshadd->vindex_start];
       }
+#endif
       BLI_assert(bmv1 != NULL);
+#ifdef USE_BM_ELEM_COPY
+      if (v2 < bm_tot_v) {
+        v2 = resolve_merge(v2, vert_merge_map);
+      }
+      bmv2 = new_bmvs[v2];
+#else
       if (v2 < bm_tot_v) {
         v2 = resolve_merge(v2, vert_merge_map);
         bmv2 = BM_vert_at_index(bm, v2);
@@ -1330,7 +1372,9 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
       else {
         bmv2 = new_bmvs[v2 - meshadd->vindex_start];
       }
+#endif
       BLI_assert(bmv2 != NULL);
+      BLI_assert(v1 != v2 && bmv1 != bmv2);
       bme = BM_edge_create(bm, bmv1, bmv2, bme_eg, BM_CREATE_NO_DOUBLE);
       if (bme_eg) {
         BM_elem_select_copy(bm, bme, bme_eg);
@@ -1347,15 +1391,39 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
         /* BM_mesh_validate(bm); */
       }
 #endif
+#ifdef USE_BM_ELEM_COPY
+      new_bmes[e] = bme;
+#else
       new_bmes[e - meshadd->eindex_start] = bme;
+#endif
     }
   }
 
   /* Now the faces. */
-  both_side_bmfaces = NULL;
-  opp_normals_flags = NULL;
   bm_tot_f = bm->totface;
   tot_new_f = meshadd_totface(meshadd);
+#ifdef USE_BM_ELEM_COPY
+  new_bmfs = MEM_mallocN((size_t)(bm_tot_f + tot_new_f) * sizeof(BMFace *), __func__);
+  BM_iter_as_array(bm, BM_FACES_OF_MESH, NULL, (void **)new_bmfs, bm_tot_f);
+#endif
+  /* When we kill faces later, the faces will get new indices, destroying
+   * the correspondence with the bs->face_side table, so use tags for these
+   * so we can retrieve them from BMFaces later and create a new face_side table.
+   */
+  for (f = 0; f < bm_tot_f; f++) {
+    bmf = new_bmfs[f];
+    fside = bs->face_side[f];
+    BM_elem_flag_disable(bmf, ALL_SIDE_TAGS);
+    if (fside & SIDE_A) {
+      BM_elem_flag_enable(bmf, SIDE_A_TAG);
+    }
+    if (fside & SIDE_B) {
+      BM_elem_flag_enable(bmf, SIDE_B_TAG);
+    }
+    if (fside & BOTH_SIDES_OPP_NORMALS) {
+      BM_elem_flag_enable(bmf, BOTH_SIDES_OPP_NORMALS_TAG);
+    }
+  }
   if (tot_new_f > 0) {
     /* Find max face length so can allocate buffers just once. */
     max_facelen = 0;
@@ -1369,35 +1437,35 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
     for (f = meshadd->findex_start; f < meshadd->findex_start + tot_new_f; f++) {
       newface = meshadd_get_newface(meshadd, f);
       BLI_assert(newface != NULL);
-      both_sides = false;
-      opp_normals = false;
+      fside = 0;
       if (newface->example != -1) {
         BLI_assert(newface->example < meshadd->findex_start);
+#ifdef USE_BM_ELEM_COPY
+        bmf_eg = new_bmfs[newface->example];
+#else
         bmf_eg = bm->ftable[newface->example];
+#endif
+        fside = bs->face_side[newface->example];
 
         /* See if newface has examples on both sides of the boolean operation.
          * Add its BMFace to both_sides_faces if so. */
         if (newface->other_examples) {
-          bool in_a, in_b;
-          int testval, f_o;
-          ;
+          int f_o;
           BMFace *bmf_eg_o;
 
-          testval = bs->test_fn(bmf_eg, bs->test_fn_user_data);
-          in_a = (testval == TEST_A);
-          in_b = (testval == TEST_B);
           intset_iter_init(&is_iter, newface->other_examples);
           for (; !intset_iter_done(&is_iter); intset_iter_step(&is_iter)) {
             f_o = intset_iter_value(&is_iter);
+#ifdef USE_BM_ELEM_COPY
+            bmf_eg_o = new_bmfs[f_o];
+#else
             bmf_eg_o = bm->ftable[f_o];
-            testval = bs->test_fn(bmf_eg_o, bs->test_fn_user_data);
-            in_a |= (testval == TEST_A);
-            in_b |= (testval == TEST_B);
+#endif
+            fside |= bs->face_side[f_o];
             if (dot_v3v3(bmf_eg->no, bmf_eg_o->no) < 0.0f) {
-              opp_normals = true;
+              fside |= BOTH_SIDES_OPP_NORMALS;
             }
           }
-          both_sides = in_a && in_b;
         }
       }
       else {
@@ -1406,6 +1474,12 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
       facelen = newface->len;
       for (i = 0; i < facelen; i++) {
         v = newface->vert_edge_pairs[i].first;
+#ifdef USE_BM_ELEM_COPY
+        if (v < bm_tot_v) {
+          v = resolve_merge(v, vert_merge_map);
+        }
+        bmv = new_bmvs[v];
+#else
         if (v < bm_tot_v) {
           v = resolve_merge(v, vert_merge_map);
           bmv = BM_vert_at_index(bm, v);
@@ -1413,26 +1487,26 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
         else {
           bmv = new_bmvs[v - meshadd->vindex_start];
         }
+#endif
         BLI_assert(bmv != NULL);
         face_bmvs[i] = bmv;
         e = newface->vert_edge_pairs[i].second;
+#ifdef USE_BM_ELEM_COPY
+        bme = new_bmes[e];
+#else
         if (e < bm_tot_e) {
           bme = bm->etable[e];
         }
         else {
           bme = new_bmes[e - meshadd->eindex_start];
         }
+#endif
         BLI_assert(bme != NULL);
         face_bmes[i] = bme;
       }
       bmf = BM_face_create(bm, face_bmvs, face_bmes, facelen, bmf_eg, 0);
       if (bmf_eg) {
         BM_elem_select_copy(bm, bmf, bmf_eg);
-        if (both_sides) {
-          BLI_linklist_prepend_arena(&both_side_bmfaces, bmf, bs->mem_arena);
-          BLI_linklist_prepend_arena(
-              &opp_normals_flags, POINTER_FROM_INT(opp_normals), bs->mem_arena);
-        }
       }
       if (find_in_intset(&change->face_flip, f)) {
         BM_face_normal_flip(bm, bmf);
@@ -1442,14 +1516,28 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
         printf("created BMFace for new face %d\n", f);
         for (int j = 0; j < facelen; j++) {
           printf("    v=%d=>%d, bmv=%p, vco=(%f,%f,%f), e=%d=>%d, bme=%p\n",
-                 newface->vert_edge_pairs[j].first, BM_elem_index_get(face_bmvs[j]), face_bmvs[j],
+                 newface->vert_edge_pairs[j].first,
+                 BM_elem_index_get(face_bmvs[j]),
+                 face_bmvs[j],
                  F3(face_bmvs[j]->co),
-                 newface->vert_edge_pairs[j].second, BM_elem_index_get(face_bmes[j]), face_bmes[j]);
+                 newface->vert_edge_pairs[j].second,
+                 BM_elem_index_get(face_bmes[j]),
+                 face_bmes[j]);
         }
         printf("  -> bmf = %p\n", bmf);
         /* BM_mesh_validate(bm); */
       }
 #endif
+      new_bmfs[f] = bmf;
+      if (fside & SIDE_A) {
+        BM_elem_flag_enable(bmf, SIDE_A_TAG);
+      }
+      if (fside & SIDE_B) {
+        BM_elem_flag_enable(bmf, SIDE_B_TAG);
+      }
+      if (fside & BOTH_SIDES_OPP_NORMALS) {
+        BM_elem_flag_enable(bmf, BOTH_SIDES_OPP_NORMALS_TAG);
+      }
     }
   }
 
@@ -1467,12 +1555,16 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
   intset_iter_init(&is_iter, intersection_edges);
   for (; !intset_iter_done(&is_iter); intset_iter_step(&is_iter)) {
     e = intset_iter_value(&is_iter);
+#ifdef USE_BM_ELEM_COPY
+    bme = new_bmes[e];
+#else
     if (e < bm_tot_e) {
       bme = bm->etable[e];
     }
     else {
       bme = new_bmes[e - meshadd->eindex_start];
     }
+#endif
     BM_elem_flag_enable(bme, BM_ELEM_TAG);
   }
 
@@ -1521,36 +1613,35 @@ static void apply_meshchange_to_bmesh(BoolState *bs,
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
 
-  if (r_both_side_faces) {
-    /* Turn both_side_bmfaces list into face indices in r_both_side_faces. */
-    for (ln = both_side_bmfaces, ln2 = opp_normals_flags; ln; ln = ln->next, ln2 = ln2->next) {
-      bmf = (BMFace *)ln->link;
-      f = BM_elem_index_get(bmf);
-      /* Need to record f's other eg has opposite or same normal as eg.
-       * Indicate this by recording the index as negative if the normals
-       * are opposite. Except: negate (f+1) so that f==0 can be properly
-       * indicated as opposite. */
-      opp_normals = POINTER_AS_INT(ln2->link);
-      if (opp_normals) {
-        f = -(f + 1);
-      }
-      add_to_intset(bs, r_both_side_faces, f);
-#ifdef BOOLDEBUG
-      if (dbg_level > 0) {
-        printf("added %d to both_sides set, for bmf=%p\n", f, bmf);
-      }
-#endif
+  /* Make a new face_side table. */
+  bs->face_side = BLI_memarena_alloc(bs->mem_arena, (size_t)bm->totface * sizeof(uchar));
+  for (f = 0; f < bm->totface; f++) {
+    bmf = BM_face_at_index(bm, f);
+    fside = 0;
+    if (BM_elem_flag_test(bmf, SIDE_A_TAG)) {
+      fside |= SIDE_A;
     }
+    if (BM_elem_flag_test(bmf, SIDE_B_TAG)) {
+      fside |= SIDE_B;
+    }
+    if (BM_elem_flag_test(bmf, BOTH_SIDES_OPP_NORMALS_TAG)) {
+      fside |= BOTH_SIDES_OPP_NORMALS;
+    }
+    bs->face_side[f] = fside;
+    BM_elem_flag_disable(bmf, ALL_SIDE_TAGS);
   }
+
+#ifdef USE_BM_ELEM_COPY
+  MEM_freeN(new_bmvs);
+  MEM_freeN(new_bmes);
+  MEM_freeN(new_bmfs);
+#endif
 }
 
-static void apply_meshchange_to_imesh(BoolState *bs,
-                                      IMesh *im,
-                                      MeshChange *change,
-                                      IntSet *r_both_side_faces)
+static void apply_meshchange_to_imesh(BoolState *bs, IMesh *im, MeshChange *change)
 {
   if (im->bm) {
-    apply_meshchange_to_bmesh(bs, im->bm, change, r_both_side_faces);
+    apply_meshchange_to_bmesh(bs, im->bm, change);
   }
   else {
     /* TODO */
@@ -1571,38 +1662,43 @@ static void bb_update(double bbmin[3], double bbmax[3], int v, const IMesh *im)
   }
 }
 
-/* Used as user_data in call to BM_mesh_calc_face_groups. */
-struct BoolFilterWrap {
-  int (*test_fn)(BMFace *f, void *user_data);
-  void *user_data;
-};
-
 /* Function used for imesh_calc_face_groups to return true
  * when we should cross this loop l to new faces to accumulate
  * faces in the same group.
- * This allows such traversal if the edge isn't tagged (it
- * should be tagged if it was an intersection edge) and if
- * there is no other loop in the loop radial that has a face
- * on the opposite 'side' of the boolean operation.
- * (This assumes that test_fn returns 0 for one side, 1 for the
- * other side, and -1 for things not part of either side.)
+ * This allows such traversal if there is no other loop in the
+ * loop radial that has a face on the opposite 'side' of the boolean operation.
  */
 static bool boolfilterfn(const BMLoop *l, void *user_data)
 {
-  if (BM_elem_flag_test(l->e, BM_ELEM_TAG)) {
-    return false;
-  }
+  int fside, fside_other;
+#ifdef BOOLDEBUG
+  int dbg_level = 0;
+#endif
 
+#ifdef BOOLDEBUG
+  if (dbg_level > 0) {
+    printf("boolfilterfun: l = loop from v%d to v%d in face f%d\n",
+           BMI(l->v),
+           BMI(l->next->v),
+           BMI(l->f));
+  }
+#endif
   if (l->radial_next != l) {
-    struct BoolFilterWrap *data = user_data;
+    uchar *face_side = user_data;
     BMLoop *l_iter = l->radial_next;
-    const int face_side = data->test_fn(l->f, data->user_data);
+    fside = face_side[BM_elem_index_get(l->f)];
     do {
-      const int face_side_other = data->test_fn(l_iter->f, data->user_data);
-      if (UNLIKELY(face_side_other == -1)) {
-        /* pass */
+      fside_other = face_side[BM_elem_index_get(l_iter->f)];
+#ifdef BOOLDEBUG
+      if (dbg_level > 0) {
+        printf("  l_iter = loop from v%d to v%d in face f%d\n",
+               BMI(l_iter->v),
+               BMI(l_iter->next->v),
+               BMI(l_iter->f));
+        printf("  fside=%d fside_other=%d\n", fside, fside_other);
       }
-      else if (face_side_other != face_side) {
+#endif
+      if ((fside ^ fside_other) != 0) {
         return false;
       }
     } while ((l_iter = l_iter->radial_next) != l);
@@ -1630,14 +1726,10 @@ static int imesh_calc_face_groups(BoolState *bs, int *r_groups_array, int (**r_g
   IMesh *im = &bs->im;
 
   if (im->bm) {
-    struct BoolFilterWrap user_data_wrap = {
-        .test_fn = (int (*)(BMFace *, void *))bs->test_fn,
-        .user_data = bs->test_fn_user_data,
-    };
-
     BM_mesh_elem_table_ensure(im->bm, BM_FACE);
+    BM_mesh_elem_index_ensure(im->bm, BM_FACE);
     ngroups = BM_mesh_calc_face_groups(
-        im->bm, r_groups_array, r_group_index, boolfilterfn, &user_data_wrap, 0, BM_EDGE);
+        im->bm, r_groups_array, r_group_index, boolfilterfn, bs->face_side, 0, BM_EDGE);
   }
   else {
     /* TODO */
@@ -1660,7 +1752,8 @@ static void init_meshadd(BoolState *bs, MeshAdd *meshadd)
   meshadd->eindex_start = imesh_totedge(im);
   meshadd->findex_start = imesh_totface(im);
 
-  /* A typical intersection of two shells has O(sqrt(# of faces in bigger part)) intersection edges. */
+  /* A typical intersection of two shells has O(sqrt(# of faces in bigger part)) intersection
+   * edges. */
   guess_added_verts = (uint)min_ii(20 * (int)sqrtf((float)imesh_totvert(im)), 100);
   guess_added_edges = guess_added_verts;
   guess_added_faces = 2 * guess_added_edges;
@@ -1739,7 +1832,8 @@ static int meshadd_add_edge(
   int i;
 
   if (checkdup) {
-    i = POINTER_AS_INT(BLI_edgehash_lookup_default(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(-1)));
+    i = POINTER_AS_INT(
+        BLI_edgehash_lookup_default(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(-1)));
     if (i != -1) {
       return i;
     }
@@ -1915,7 +2009,8 @@ static int find_edge_by_verts_in_meshadd(const MeshAdd *meshadd, int v1, int v2)
 {
   int i;
 
-  i = POINTER_AS_INT(BLI_edgehash_lookup_default(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(-1)));
+  i = POINTER_AS_INT(
+      BLI_edgehash_lookup_default(meshadd->edge_hash, (uint)v1, (uint)v2, POINTER_FROM_INT(-1)));
   if (i != -1) {
     return meshadd->eindex_start + i;
   }
@@ -2402,15 +2497,12 @@ static bool find_coplanar_cb(void *user_data, int index, const float co[3], floa
  * Use bs->test_fn to check elements against test_val, to see whether or not it should be in the
  * result.
  */
-static void find_coplanar_parts(BoolState *bs,
-                                MeshPartSet *partset,
-                                int test_val,
-                                const char *label)
+static void find_coplanar_parts(BoolState *bs, MeshPartSet *partset, int sides, const char *label)
 {
   IMesh *im = &bs->im;
   MeshPart *part;
   MeshPart **face_part;
-  int im_nf, f, test;
+  int im_nf, f;
   int near_f;
   float plane[4];
   KDTree_4d *tree;
@@ -2422,7 +2514,7 @@ static void find_coplanar_parts(BoolState *bs,
 
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
-    printf("\nFIND_COPLANAR_PARTS %s, test_val=%d\n", label, test_val);
+    printf("\nFIND_COPLANAR_PARTS %s, sides=%d\n", label, sides);
   }
 #endif
   im_nf = imesh_totface(im);
@@ -2430,11 +2522,8 @@ static void find_coplanar_parts(BoolState *bs,
   tree = BLI_kdtree_4d_new((unsigned int)im_nf);
   face_part = MEM_calloc_arrayN((size_t)im_nf, sizeof(MeshPart *), __func__);
   for (f = 0; f < im_nf; f++) {
-    if (test_val != TEST_ALL) {
-      test = imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f);
-      if (test != test_val) {
-        continue;
-      }
+    if (!(bs->face_side[f] & sides)) {
+      continue;
     }
     imesh_get_face_plane(im, f, plane);
     canonicalize_plane(plane);
@@ -2449,11 +2538,8 @@ static void find_coplanar_parts(BoolState *bs,
   cb_data.eps = feps;
   cb_data.face_part = face_part;
   for (f = 0; f < im_nf; f++) {
-    if (test_val != TEST_ALL) {
-      test = imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f);
-      if (test != test_val) {
-        continue;
-      }
+    if (!(bs->face_side[f] & sides)) {
+      continue;
     }
     imesh_get_face_plane(im, f, plane);
     canonicalize_plane(plane);
@@ -2465,7 +2551,8 @@ static void find_coplanar_parts(BoolState *bs,
     // near_f = BLI_kdtree_4d_find_nearest_cb(tree, plane, find_coplanar_cb, face_part, &kdnear);
     cb_data.near_f_with_part = -1;
     copy_v4_v4(cb_data.test_plane, plane);
-    /* Use bigger epsilon for range search because comparison function we want is a bit different from 4d distance. */
+    /* Use bigger epsilon for range search because comparison function we want is a bit different
+     * from 4d distance. */
     BLI_kdtree_4d_range_search_cb(tree, plane, feps * 10.0f, find_coplanar_cb, &cb_data);
     near_f = cb_data.near_f_with_part;
 #ifdef BOOLDEBUG
@@ -3164,7 +3251,8 @@ static void find_face_line_intersects(BoolState *bs,
     }
     imesh_get_vert_co_db(im, v1, seg_co1);
     imesh_get_vert_co_db(im, v2, seg_co2);
-    is = isect_seg_plane_normalized_epsilon_v3_db(seg_co1, seg_co2, other_plane, eps, fi->isect, &lambda);
+    is = isect_seg_plane_normalized_epsilon_v3_db(
+        seg_co1, seg_co2, other_plane, eps, fi->isect, &lambda);
     if (is > 0) {
       fi->isect_ok = true;
       fi->factor = line_interp_factor_v3_db(is == 1 ? fi->isect : fi->co, line_co1, line_co2);
@@ -3223,7 +3311,7 @@ static void find_face_line_intersects(BoolState *bs,
     }
 #endif
     interval = BLI_memarena_alloc(bs->mem_arena, sizeof(IntervalInfo));
-	if (finfo[startpos].factor <= finfo[endpos].factor) {
+    if (finfo[startpos].factor <= finfo[endpos].factor) {
       interval->fac[0] = finfo[startpos].factor;
       interval->fac[1] = finfo[endpos].factor;
       copy_v3_v3_db(interval->co[0], finfo[startpos].isect);
@@ -3242,7 +3330,11 @@ static void find_face_line_intersects(BoolState *bs,
   }
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
-    printf("interval factors = (%f,%f), coords = (%f,%f,%f)(%f,%f,%f)\n", interval->fac[0], interval->fac[1], F3(interval->co[0]), F3(interval->co[1]));
+    printf("interval factors = (%f,%f), coords = (%f,%f,%f)(%f,%f,%f)\n",
+           interval->fac[0],
+           interval->fac[1],
+           F3(interval->co[0]),
+           F3(interval->co[1]));
   }
 #endif
   BLI_linklist_append_arena(intervals, interval, bs->mem_arena);
@@ -3387,10 +3479,20 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
 #ifdef BOOLDEBUG
       if (dbg_level > 0) {
         if (pi == 0) {
-          printf("doing %dth face of part a%d, f%d\nother_plane=(%f,%f,%f,%f) from b%d\n", i, a_index, f, F4(other_plane), b_index);
+          printf("doing %dth face of part a%d, f%d\nother_plane=(%f,%f,%f,%f) from b%d\n",
+                 i,
+                 a_index,
+                 f,
+                 F4(other_plane),
+                 b_index);
         }
         else {
-          printf("doing %dth face of part b%d, f%d\nother_plane=(%f,%f,%f,%f) from a%d\n", i, b_index, f, F4(other_plane), a_index);
+          printf("doing %dth face of part b%d, f%d\nother_plane=(%f,%f,%f,%f) from a%d\n",
+                 i,
+                 b_index,
+                 f,
+                 F4(other_plane),
+                 a_index);
         }
       }
 #endif
@@ -3399,14 +3501,18 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
       if (dbg_level > 0) {
         if (intervals[i].list == NULL) {
           printf("no intersections\n");
-		}
-		else {
-		  for (ln = intervals[i].list; ln; ln = ln->next) {
-		    iinfoa = (IntervalInfo *)ln->link;
-		    printf("  (%f,%f) -> (%f,%f,%f)(%f,%f,%f)\n", iinfoa->fac[0], iinfoa->fac[1], F3(iinfoa->co[0]), F3(iinfoa->co[1]));
-		  }
-		}
-	  }
+        }
+        else {
+          for (ln = intervals[i].list; ln; ln = ln->next) {
+            iinfoa = (IntervalInfo *)ln->link;
+            printf("  (%f,%f) -> (%f,%f,%f)(%f,%f,%f)\n",
+                   iinfoa->fac[0],
+                   iinfoa->fac[1],
+                   F3(iinfoa->co[0]),
+                   F3(iinfoa->co[1]));
+          }
+        }
+      }
 #endif
     }
   }
@@ -3454,16 +3560,16 @@ static PartPartIntersect *non_coplanar_part_part_intersect(BoolState *bs,
         else {
           if (facstart == faca1) {
             copy_v3_v3_db(co, iinfoa->co[0]);
-		  }
-		  else {
-		    copy_v3_v3_db(co, iinfob->co[0]);
-		  }
-		  if (facend == faca2) {
-		    copy_v3_v3_db(co2, iinfoa->co[1]);
-		  }
-		  else {
-		    copy_v3_v3_db(co2, iinfob->co[1]);
-		  }
+          }
+          else {
+            copy_v3_v3_db(co, iinfob->co[0]);
+          }
+          if (facend == faca2) {
+            copy_v3_v3_db(co2, iinfoa->co[1]);
+          }
+          else {
+            copy_v3_v3_db(co2, iinfob->co[1]);
+          }
 #ifdef BOOLDEBUG
           if (dbg_level > 0) {
             printf(
@@ -3587,11 +3693,11 @@ static void intersect_partset_pair(BoolState *bs,
   BVHTreeOverlap *overlap;
   float feps_margin = 20.0f * ((float)bs->eps);
   float bbpts[6];
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   int dbg_level = 0;
-#  endif
+#endif
 
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   if (dbg_level > 1) {
     printf("\nINTERSECT_PARTSET_PAIR\n\n");
     if (dbg_level > 0) {
@@ -3599,19 +3705,19 @@ static void intersect_partset_pair(BoolState *bs,
       dump_partset(b_partset);
     }
   }
-#  endif
+#endif
   tot_part_a = a_partset->tot_part;
   tot_part_b = b_partset->tot_part;
   a_isects = BLI_memarena_calloc(arena, (size_t)tot_part_a * sizeof(a_isects[0]));
   b_isects = BLI_memarena_calloc(arena, (size_t)tot_part_b * sizeof(b_isects[0]));
   bpart_coplanar_with_apart = BLI_BITMAP_NEW_MEMARENA(arena, tot_part_b);
 
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf(
         "\nIntersect_partset_pair: do all part - part preliminary intersections (using bvh)\n\n");
   }
-#  endif
+#endif
   /* Tree type is 8 => octtree; axis = 6 => using XYZ axes only. */
   tree_a = BLI_bvhtree_new(tot_part_a, feps_margin, 8, 6);
   for (a_index = 0; a_index < tot_part_a; a_index++) {
@@ -3637,23 +3743,24 @@ static void intersect_partset_pair(BoolState *bs,
 
   overlap = BLI_bvhtree_overlap(tree_a, tree_b, &tree_overlap_tot, NULL, NULL);
 
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("process %u overlaps\n\n", tree_overlap_tot);
   }
-#  endif
+#endif
 
   if (overlap) {
-    /* For stable results in the face of, especially, multithreaded bvhtree overlap, sort the overlaps. */
+    /* For stable results in the face of, especially, multithreaded bvhtree overlap, sort the
+     * overlaps. */
     qsort(overlap, tree_overlap_tot, sizeof(overlap[0]), bool_overlap_sort_fn);
     for (overlap_index = 0; overlap_index < tree_overlap_tot; overlap_index++) {
       a_index = overlap[overlap_index].indexA;
       b_index = overlap[overlap_index].indexB;
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
       if (dbg_level > 1) {
         printf("overlap: a%d and b%d\n", a_index, b_index);
       }
-#  endif
+#endif
       part_a = partset_part(a_partset, a_index);
       part_b = partset_part(b_partset, b_index);
       if (same_partsets) {
@@ -3668,14 +3775,14 @@ static void intersect_partset_pair(BoolState *bs,
       }
       isect = part_part_intersect(bs, part_a, a_index, part_b, b_index, meshchange);
       if (isect != NULL) {
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
         if (dbg_level > 0) {
           printf("Part a%d intersects part b%d\n", a_index, b_index);
           dump_partpartintersect(isect, "");
           printf("\n");
           dump_meshchange(meshchange, "incremental");
         }
-#  endif
+#endif
         BLI_linklist_append_arena(&a_isects[a_index], isect, arena);
         BLI_linklist_append_arena(&b_isects[b_index], isect, arena);
         if (same_partsets) {
@@ -3691,55 +3798,55 @@ static void intersect_partset_pair(BoolState *bs,
     BLI_bvhtree_free(tree_b);
   }
 
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("\nintersect_partset_pair: do self intersections\n\n");
   }
-#  endif
+#endif
   /* Now self-intersect the parts with their lists of isects. */
   for (a_index = 0; a_index < tot_part_a; a_index++) {
     part_a = partset_part(a_partset, a_index);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
     if (dbg_level > 0) {
       printf("\nSELF INTERSECT part a%d with its ppis\n", a_index);
     }
-#  endif
+#endif
     isect = self_intersect_part_and_ppis(bs, part_a, &a_isects[a_index], meshchange);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
     if (isect && dbg_level > 0) {
       dump_partpartintersect(isect, "after self intersect");
       dump_meshchange(meshchange, "after self intersect");
     }
-#  endif
+#endif
   }
   if (!same_partsets) {
     for (b_index = 0; b_index < tot_part_b; b_index++) {
       part_b = partset_part(b_partset, b_index);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
       if (dbg_level > 0) {
         printf("\nSELF INTERSECT part b%d with its ppis\n", b_index);
       }
-#  endif
+#endif
       if (BLI_BITMAP_TEST_BOOL(bpart_coplanar_with_apart, b_index)) {
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
         if (dbg_level > 0) {
           printf("skipping self_intersect because coplanar with some a part\n");
         }
-#  endif
+#endif
         continue;
       }
       isect = self_intersect_part_and_ppis(bs, part_b, &b_isects[b_index], meshchange);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
       if (isect && dbg_level > 0) {
         dump_partpartintersect(isect, "after self intersect b");
         dump_meshchange(meshchange, "after self intersect b");
       }
-#  endif
+#endif
     }
   }
 }
 
-static void do_boolean_op(BoolState *bm, const int boolean_mode, IntSet *both_side_faces);
+static void do_boolean_op(BoolState *bm, const int boolean_mode);
 
 /**
  * Intersect faces
@@ -3761,7 +3868,10 @@ bool BM_mesh_boolean(BMesh *bm,
   MeshPartSet all_parts, a_parts, b_parts;
   MeshChange meshchange;
   IntSet both_side_faces;
+  BMFace *bmf;
+  int f, test_val;
 #ifdef BOOLDEBUG
+  bool side_a_ok, side_b_ok;
   int dbg_level = 0;
 #endif
 
@@ -3770,28 +3880,43 @@ bool BM_mesh_boolean(BMesh *bm,
 #endif
 
   init_imesh_from_bmesh(&bs.im, bm);
-  bs.boolean_mode = boolean_mode;
   bs.eps = eps;
-  bs.test_fn = (int (*)(void *, void *))test_fn;
-  bs.test_fn_user_data = user_data;
   bs.mem_arena = BLI_memarena_new(MEM_SIZE_OPTIMAL(1 << 16), __func__);
+  bs.face_side = BLI_memarena_calloc(bs.mem_arena, (size_t)bm->totface * sizeof(uchar));
 
 #ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("\n\nBOOLEAN, use_self=%d, boolean_mode=%d, eps=%g\n", use_self, boolean_mode, eps);
   }
+  if (dbg_level > 1) {
+    side_a_ok = analyze_bmesh_for_boolean(bm, false, SIDE_A, bs.face_side);
+    side_b_ok = analyze_bmesh_for_boolean(bm, false, SIDE_B, bs.face_side);
+  }
 #endif
+
+  for (f = 0; f < bm->totface; f++) {
+    if (use_self) {
+      bs.face_side[f] = SIDE_A | SIDE_B;
+    }
+    else {
+      bmf = BM_face_at_index(bm, f);
+      test_val = test_fn(bmf, user_data);
+      if (test_val != -1) {
+        bs.face_side[f] = (test_val == 0) ? SIDE_A : SIDE_B;
+      }
+    }
+  }
 
   init_meshchange(&bs, &meshchange);
   init_intset(&both_side_faces);
 
   if (use_self) {
-    find_coplanar_parts(&bs, &all_parts, TEST_ALL, "all");
+    find_coplanar_parts(&bs, &all_parts, SIDE_A | SIDE_B, "all");
     intersect_partset_pair(&bs, &all_parts, &all_parts, &meshchange);
   }
   else {
-    find_coplanar_parts(&bs, &a_parts, TEST_A, "A");
-    find_coplanar_parts(&bs, &b_parts, TEST_B, "B");
+    find_coplanar_parts(&bs, &a_parts, SIDE_A, "A");
+    find_coplanar_parts(&bs, &b_parts, SIDE_B, "B");
     intersect_partset_pair(&bs, &a_parts, &b_parts, &meshchange);
   }
 
@@ -3802,11 +3927,21 @@ bool BM_mesh_boolean(BMesh *bm,
   }
 #endif
 
-  apply_meshchange_to_imesh(&bs, &bs.im, &meshchange, &both_side_faces);
+  apply_meshchange_to_imesh(&bs, &bs.im, &meshchange);
 
   if (boolean_mode != -1) {
-    do_boolean_op(&bs, boolean_mode, &both_side_faces);
+    do_boolean_op(&bs, boolean_mode);
   }
+
+#ifdef BOOLDEBUG
+  if (dbg_level > 1) {
+    if (!use_self && side_a_ok && side_b_ok) {
+      bool ok;
+      ok = analyze_bmesh_for_boolean(bm, false, 0, NULL);
+      BLI_assert(ok);
+    }
+  }
+#endif
 
   imesh_free_aux_data(&bs.im);
   meshchange_free_aux_data(&meshchange);
@@ -3830,48 +3965,39 @@ bool BM_mesh_boolean(BMesh *bm,
  * TOOD: speed up this calculation using the heirarchical algorithm in
  * that paper.
  */
-static double generalized_winding_number(BoolState *bs,
-                                         int side,
-                                         const double co[3],
-                                         IntSet *both_side_faces)
+static double generalized_winding_number(BoolState *bs, int side, const double co[3])
 {
   double gwn, fgwn;
-  int i, v1, v2, v3, f, totf, flen, tottri;
+  int i, v1, v2, v3, f, totf, flen, tottri, fside;
   IMesh *im = &bs->im;
   int(*index)[3];
   int index_buffer_len;
   bool negate;
   double p1[3], p2[3], p3[3], a[3], b[3], c[3], bxc[3];
   double alen, blen, clen, num, denom, x;
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   int dbg_level = 0;
 
   if (dbg_level > 0) {
     printf("generalized_winding_number, side=%d, co=(%f,%f,%f)\n", side, F3(co));
   }
-#  endif
+#endif
 
   /* Use the same buffer for all tesselations. Will increase size if necessary. */
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   index_buffer_len = 3;
-#  else
+#else
   index_buffer_len = 64;
-#  endif
+#endif
   index = MEM_mallocN((size_t)index_buffer_len * sizeof(index[0]), __func__);
   totf = imesh_totface(im);
   gwn = 0.0;
   for (f = 0; f < totf; f++) {
-    negate = false;
-    if (imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f) != side) {
-      if (!find_in_intset(both_side_faces, f)) {
-        if (!find_in_intset(both_side_faces, -(f + 1))) {
-          /* f is not in both_side faces at all, so doesn't contribute to gwn. */
-          continue;
-        }
-        /* f is in both_side_faces but with opposite normal. */
-        negate = true;
-      }
+    fside = bs->face_side[f];
+    if (!(fside & side)) {
+      continue;
     }
+    negate = (fside | BOTH_SIDES_OPP_NORMALS);
     flen = imesh_facelen(im, f);
     tottri = flen - 2;
     if (tottri > index_buffer_len) {
@@ -3887,11 +4013,11 @@ static double generalized_winding_number(BoolState *bs,
       imesh_get_vert_co_db(im, v2, p2);
       v3 = imesh_face_vert(im, f, index[i][2]);
       imesh_get_vert_co_db(im, v3, p3);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
       if (dbg_level > 1) {
         printf("face f%d tess tri %d is V=(%d,%d,%d)\n", f, i, v1, v2, v3);
       }
-#  endif
+#endif
       sub_v3_v3v3_db(a, p1, co);
       sub_v3_v3v3_db(b, p2, co);
       sub_v3_v3v3_db(c, p3, co);
@@ -3913,20 +4039,20 @@ static double generalized_winding_number(BoolState *bs,
       if (negate) {
         fgwn = -fgwn;
       }
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
       if (dbg_level > 1) {
         printf("face f%d tess tri %d contributes %f (negated=%d\n", f, i, fgwn, negate);
       }
-#  endif
+#endif
       gwn += fgwn;
     }
   }
   gwn = gwn / (M_PI * 4.0);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("gwn=%f\n\n", gwn);
   }
-#  endif
+#endif
 
   MEM_freeN(index);
   return gwn;
@@ -3935,33 +4061,30 @@ static double generalized_winding_number(BoolState *bs,
 /* Return true if point co is inside the volume implied by the
  * faces for which bs->test_fn returns the value side.
  */
-static bool point_is_inside_side(BoolState *bs,
-                                 int side,
-                                 const double co[3],
-                                 IntSet *both_side_faces)
+static bool point_is_inside_side(BoolState *bs, int side, const double co[3])
 {
   double gwn;
 
-  gwn = generalized_winding_number(bs, side, co, both_side_faces);
+  gwn = generalized_winding_number(bs, side, co);
   return (fabs(gwn) >= 0.5);
 }
 
-static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_side_faces)
+static void do_boolean_op(BoolState *bs, const int boolean_mode)
 {
   int *groups_array;
   int(*group_index)[2];
   int group_tot, totface;
   double co[3];
-  int i, f, fg, fg_end, side, otherside;
+  int i, f, fg, fg_end, fside, otherside;
   bool do_remove, do_flip, inside, both_sides, opp_normals;
   MeshChange meshchange;
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   bool dbg_level = 0;
 
   if (dbg_level > 0) {
     printf("\nDO_BOOLEAN_OP, boolean_mode=%d\n\n", boolean_mode);
   }
-#  endif
+#endif
 
   init_meshchange(bs, &meshchange);
   meshchange.use_face_kill_loose = true;
@@ -3972,7 +4095,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
   totface = imesh_totface(&bs->im);
   groups_array = BLI_memarena_alloc(bs->mem_arena, sizeof(*groups_array) * (size_t)totface);
   group_tot = imesh_calc_face_groups(bs, groups_array, &group_index);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   if (dbg_level > 0) {
     printf("Groups\n");
     for (i = 0; i < group_tot; i++) {
@@ -3985,7 +4108,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
       printf("\n");
     }
   }
-#  endif
+#endif
 
   /* For each group, determine if it is inside or outside the part
    * on the other side, and remove and/or flip the normals of the
@@ -3996,53 +4119,42 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
 
     /* Test if first face of group is inside. */
     f = groups_array[fg];
-    side = imesh_test_face(&bs->im, bs->test_fn, bs->test_fn_user_data, f);
-    if (find_in_intset(both_side_faces, f)) {
-      both_sides = true;
-      opp_normals = false;
-    }
-    else if (find_in_intset(both_side_faces, -(f + 1))) {
-      both_sides = true;
-      opp_normals = true;
-    }
-    else {
-      both_sides = false;
-      opp_normals = false;
-    }
-#  ifdef BOOLDEBUG
+    fside = bs->face_side[f];
+    both_sides = fside & (SIDE_A & SIDE_B);
+    opp_normals = fside & BOTH_SIDES_OPP_NORMALS;
+#ifdef BOOLDEBUG
     if (dbg_level > 0) {
-      printf("group %d side = %d, both_sides = %d, opp_normals = %d\n",
+      printf("group %d fside = %d, both_sides = %d, opp_normals = %d\n",
              i,
-             side,
+             fside,
              both_sides,
              opp_normals);
     }
-#  endif
+#endif
 
-    if (side == -1) {
+    if (fside == 0) {
       continue;
     }
-    BLI_assert(ELEM(side, 0, 1));
-    otherside = !side;
+    otherside = fside ^ (SIDE_A | SIDE_B);
 
     if (both_sides) {
       do_remove = boolean_mode == BMESH_BOOLEAN_UNION && opp_normals;
-      do_flip = boolean_mode == BMESH_BOOLEAN_DIFFERENCE && opp_normals && side == 0;
-#  ifdef BOOLDEBUG
+      do_flip = boolean_mode == BMESH_BOOLEAN_DIFFERENCE && opp_normals && (fside | SIDE_A);
+#ifdef BOOLDEBUG
       if (dbg_level > 0) {
         printf("both_sides case, do_remove=%d, do_flip=%d\n", do_remove, do_flip);
       }
-#  endif
+#endif
     }
     else {
       imesh_calc_point_in_face(&bs->im, f, co);
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
       if (dbg_level > 0) {
         printf("face %d test co=(%f,%f,%f)\n", f, F3(co));
       }
-#  endif
+#endif
 
-      inside = point_is_inside_side(bs, otherside, co, both_side_faces);
+      inside = point_is_inside_side(bs, otherside, co);
 
       switch (boolean_mode) {
         case BMESH_BOOLEAN_ISECT:
@@ -4054,12 +4166,12 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
           do_flip = false;
           break;
         case BMESH_BOOLEAN_DIFFERENCE:
-          do_remove = (side == 0) ? inside : !inside;
-          do_flip = (side == 1);
+          do_remove = (fside & SIDE_A) ? inside : !inside;
+          do_flip = (fside & SIDE_B);
           break;
       }
 
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
       if (dbg_level > 0) {
         printf("result for group %d: inside=%d, remove=%d, flip=%d\n\n",
                i,
@@ -4067,7 +4179,7 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
                do_remove,
                do_flip);
       }
-#  endif
+#endif
     }
 
     if (do_remove || do_flip) {
@@ -4083,17 +4195,16 @@ static void do_boolean_op(BoolState *bs, const int boolean_mode, IntSet *both_si
     }
   }
 
-#  ifdef BOOLDEBUG
+#ifdef BOOLDEBUG
   if (dbg_level > 0) {
     dump_meshchange(&meshchange, "after boolean op");
   }
-#  endif
+#endif
 
-  apply_meshchange_to_imesh(bs, &bs->im, &meshchange, NULL);
+  apply_meshchange_to_imesh(bs, &bs->im, &meshchange);
   meshchange_free_aux_data(&meshchange);
   MEM_freeN(group_index);
 }
-
 
 #ifdef BOOLDEBUG
 
@@ -4408,6 +4519,97 @@ ATTU static void dump_bm(struct BMesh *bm, const char *msg)
     }
   }
 }
+
+static bool face_in_tested_mesh(BMFace *bmf, int side, uchar *face_side)
+{
+  if (side == 0) {
+    return true;
+  }
+  return face_side[BM_elem_index_get(bmf)] & side;
+}
+
+static bool edge_in_tested_mesh(BMEdge *bme, int side, uchar *face_side)
+{
+  BMIter fiter;
+  BMFace *bmf;
+
+  if (side == 0) {
+    return true;
+  }
+  /* If any attached face passes test, then edge is in. */
+  BM_ITER_ELEM (bmf, &fiter, bme, BM_FACES_OF_EDGE) {
+    if (face_side[BM_elem_index_get(bmf)] & side) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Retricting to just the BMesh as defined by test_val etc.,
+ * analyze things that might cause problems.
+ */
+ATTU bool analyze_bmesh_for_boolean(BMesh *bm, bool verbose, int side, uchar *face_side)
+{
+  BMIter eiter, liter;
+  int i, face_count;
+  BMEdge *bme;
+  BMLoop *bml, *bml1, *bml2;
+  int tot_non_manifold_edges_1 = 0;
+  int tot_non_manifold_edges_3plus = 0;
+  int tot_wire_edges = 0;
+  int tot_inconsistent_normal_edges = 0;
+
+  if (verbose) {
+    printf("\nANALYZE_BMESH_FOR_BOOLEAN\n\n");
+  }
+  BM_ITER_MESH_INDEX (bme, &eiter, bm, BM_EDGES_OF_MESH, i) {
+    if (edge_in_tested_mesh(bme, side, face_side)) {
+      face_count = 0;
+      bml1 = bml2 = NULL;
+      BM_ITER_ELEM (bml, &liter, bme, BM_LOOPS_OF_EDGE) {
+        if (face_in_tested_mesh(bml->f, side, face_side)) {
+          face_count++;
+          if (bml1 == NULL) {
+            bml1 = bml;
+          }
+          else if (bml2 == NULL) {
+            bml2 = bml;
+          }
+        }
+      }
+      if (face_count == 0) {
+        tot_wire_edges++;
+        if (verbose) {
+          printf("wire edge e%d\n", i);
+        }
+      }
+      else if (face_count == 1) {
+        tot_non_manifold_edges_1++;
+        if (verbose) {
+          printf("one-face edge e%d\n", i);
+        }
+      }
+      else if (face_count == 2) {
+        /* For consistent normals, loops of the two faces should be opposite. */
+        if (bml1->v == bml2->v) {
+          tot_inconsistent_normal_edges++;
+          if (verbose) {
+            printf("inconsistent normal edge e%d\n", i);
+          }
+        }
+      }
+      else if (face_count >= 3) {
+        tot_non_manifold_edges_3plus++;
+        if (verbose) {
+          printf("three-plus-face edge e%d\n", i);
+        }
+      }
+    }
+  }
+  return tot_non_manifold_edges_1 == 0 && tot_non_manifold_edges_3plus == 0 &&
+         tot_wire_edges == 0 && tot_inconsistent_normal_edges == 0;
+}
+
 #endif
 
 #ifdef PERFDEBUG
