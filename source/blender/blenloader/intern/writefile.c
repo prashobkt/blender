@@ -133,6 +133,7 @@
 #include "DNA_sdna_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_shader_fx_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_space_types.h"
 #include "DNA_speaker_types.h"
@@ -990,9 +991,19 @@ static void write_node_socket_default_value(WriteData *wd, bNodeSocket *sock)
     case SOCK_STRING:
       writestruct(wd, DATA, bNodeSocketValueString, 1, sock->default_value);
       break;
+    case SOCK_OBJECT:
+      writestruct(wd, DATA, bNodeSocketValueObject, 1, sock->default_value);
+      break;
+    case SOCK_IMAGE:
+      writestruct(wd, DATA, bNodeSocketValueImage, 1, sock->default_value);
+      break;
     case __SOCK_MESH:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
+    case SOCK_EMITTERS:
+    case SOCK_EVENTS:
+    case SOCK_FORCES:
+    case SOCK_CONTROL_FLOW:
       BLI_assert(false);
       break;
   }
@@ -1132,11 +1143,6 @@ static void write_nodetree_nolib(WriteData *wd, bNodeTree *ntree)
   }
   for (sock = ntree->outputs.first; sock; sock = sock->next) {
     write_node_socket_interface(wd, sock);
-  }
-
-  /* Clear the accumulated recalc flags in case of undo step saving. */
-  if (wd->use_memfile) {
-    ntree->id.recalc_undo_accumulated = 0;
   }
 }
 
@@ -2453,11 +2459,6 @@ static void write_collection_nolib(WriteData *wd, Collection *collection)
 
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     writestruct(wd, DATA, CollectionChild, 1, child);
-  }
-
-  /* Clear the accumulated recalc flags in case of undo step saving. */
-  if (wd->use_memfile) {
-    collection->id.recalc_undo_accumulated = 0;
   }
 }
 
@@ -3858,6 +3859,24 @@ static void write_volume(WriteData *wd, Volume *volume, const void *id_address)
   }
 }
 
+static void write_simulation(WriteData *wd, Simulation *simulation)
+{
+  if (simulation->id.us > 0 || wd->use_memfile) {
+    writestruct(wd, ID_SIM, Simulation, 1, simulation);
+    write_iddata(wd, &simulation->id);
+
+    if (simulation->adt) {
+      write_animdata(wd, simulation->adt);
+    }
+
+    /* nodetree is integral part of simulation, no libdata */
+    if (simulation->nodetree) {
+      writestruct(wd, DATA, bNodeTree, 1, simulation->nodetree);
+      write_nodetree_nolib(wd, simulation->nodetree);
+    }
+  }
+}
+
 /* Keep it last of write_foodata functions. */
 static void write_libraries(WriteData *wd, Main *main)
 {
@@ -4069,6 +4088,28 @@ static bool write_file_handle(Main *mainvar,
           BKE_lib_override_library_operations_store_start(bmain, override_storage, id);
         }
 
+        if (wd->use_memfile) {
+          /* Record the changes that happened up to this undo push in
+           * recalc_up_to_undo_push, and clear recalc_after_undo_push again
+           * to start accumulating for the next undo push. */
+          id->recalc_up_to_undo_push = id->recalc_after_undo_push;
+          id->recalc_after_undo_push = 0;
+
+          bNodeTree *nodetree = ntreeFromID(id);
+          if (nodetree != NULL) {
+            nodetree->id.recalc_up_to_undo_push = nodetree->id.recalc_after_undo_push;
+            nodetree->id.recalc_after_undo_push = 0;
+          }
+          if (GS(id->name) == ID_SCE) {
+            Scene *scene = (Scene *)id;
+            if (scene->master_collection != NULL) {
+              scene->master_collection->id.recalc_up_to_undo_push =
+                  scene->master_collection->id.recalc_after_undo_push;
+              scene->master_collection->id.recalc_after_undo_push = 0;
+            }
+          }
+        }
+
         memcpy(id_buffer, id, idtype_struct_size);
 
         ((ID *)id_buffer)->tag = 0;
@@ -4185,6 +4226,9 @@ static bool write_file_handle(Main *mainvar,
           case ID_VO:
             write_volume(wd, (Volume *)id_buffer, id);
             break;
+          case ID_SIM:
+            write_simulation(wd, (Simulation *)id);
+            break;
           case ID_LI:
             /* Do nothing, handled below - and should never be reached. */
             BLI_assert(0);
@@ -4206,9 +4250,6 @@ static bool write_file_handle(Main *mainvar,
           /* Very important to do it after every ID write now, otherwise we cannot know whether a
            * specific ID changed or not. */
           mywrite_flush(wd);
-
-          /* Clear the accumulated recalc flags in case of undo step saving. */
-          id->recalc_undo_accumulated = 0;
         }
       }
 
@@ -4348,8 +4389,8 @@ bool BLO_write_file(Main *mainvar,
     BLI_split_dir_part(filepath, dir_dst, sizeof(dir_dst));
 
     /* Just in case there is some subtle difference. */
-    BLI_cleanup_path(mainvar->name, dir_dst);
-    BLI_cleanup_path(mainvar->name, dir_src);
+    BLI_path_normalize(mainvar->name, dir_dst);
+    BLI_path_normalize(mainvar->name, dir_src);
 
     if (G.relbase_valid && (BLI_path_cmp(dir_dst, dir_src) == 0)) {
       /* Saved to same path. Nothing to do. */

@@ -713,7 +713,7 @@ void SCULPT_OT_face_sets_init(wmOperatorType *ot)
       0.0f,
       1.0f,
       "Threshold",
-      "Minimum value to consider a certain atribute a boundary when creating the Face Sets",
+      "Minimum value to consider a certain attribute a boundary when creating the Face Sets",
       0.0f,
       1.0f);
 }
@@ -922,8 +922,8 @@ static int sculpt_face_sets_randomize_colors_invoke(bContext *C,
   SculptSession *ss = ob->sculpt;
   ARegion *region = CTX_wm_region(C);
 
-  /* Dyntopo and Multires not supported for now. */
-  if (BKE_pbvh_type(ss->pbvh) != PBVH_FACES) {
+  /* Dyntopo not supported. */
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
     return OPERATOR_CANCELLED;
   }
 

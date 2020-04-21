@@ -60,6 +60,7 @@ extern "C" {
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_texture_types.h"
@@ -481,6 +482,9 @@ void DepsgraphNodeBuilder::build_id(ID *id)
     case ID_SCE:
       build_scene_parameters((Scene *)id);
       break;
+    case ID_SIM:
+      build_simulation((Simulation *)id);
+      break;
     default:
       fprintf(stderr, "Unhandled ID %s\n", id->name);
       BLI_assert(!"Should never happen");
@@ -506,8 +510,7 @@ void DepsgraphNodeBuilder::build_collection(LayerCollection *from_layer_collecti
     }
     else if (from_layer_collection == nullptr && !id_node->is_collection_fully_expanded) {
       /* Initially collection was built from layer now, and was requested
-       * to not recurs into object. But nw it's asked to recurs into all
-       * objects. */
+       * to not recurs into object. But now it's asked to recurs into all objects. */
     }
     else {
       return;
@@ -1699,6 +1702,16 @@ void DepsgraphNodeBuilder::build_sound(bSound *sound)
   build_parameters(&sound->id);
 }
 
+void DepsgraphNodeBuilder::build_simulation(Simulation *simulation)
+{
+  if (built_map_.checkIsBuiltAndTag(simulation)) {
+    return;
+  }
+  add_id_node(&simulation->id);
+  build_animdata(&simulation->id);
+  build_parameters(&simulation->id);
+}
+
 void DepsgraphNodeBuilder::build_scene_sequencer(Scene *scene)
 {
   if (scene->ed == nullptr) {
@@ -1736,7 +1749,14 @@ void DepsgraphNodeBuilder::build_scene_audio(Scene *scene)
   if (built_map_.checkIsBuiltAndTag(scene, BuilderMap::TAG_SCENE_AUDIO)) {
     return;
   }
+
   add_operation_node(&scene->id, NodeType::AUDIO, OperationCode::SOUND_EVAL);
+
+  Scene *scene_cow = get_cow_datablock(scene);
+  add_operation_node(&scene->id,
+                     NodeType::AUDIO,
+                     OperationCode::AUDIO_VOLUME,
+                     function_bind(BKE_scene_update_tag_audio_volume, _1, scene_cow));
 }
 
 void DepsgraphNodeBuilder::build_scene_speakers(Scene * /*scene*/, ViewLayer *view_layer)

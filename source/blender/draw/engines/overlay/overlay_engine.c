@@ -69,6 +69,7 @@ static void OVERLAY_engine_init(void *vedata)
     pd->overlay.flag = V3D_OVERLAY_HIDE_TEXT | V3D_OVERLAY_HIDE_MOTION_PATHS |
                        V3D_OVERLAY_HIDE_BONES | V3D_OVERLAY_HIDE_OBJECT_XTRAS |
                        V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
+    pd->overlay.wireframe_threshold = v3d->overlay.wireframe_threshold;
   }
 
   if (v3d->shading.type == OB_WIRE) {
@@ -106,11 +107,12 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_Data *data = vedata;
   OVERLAY_StorageList *stl = data->stl;
   OVERLAY_PrivateData *pd = stl->pd;
-  const bool draw_edit_weights = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_WEIGHT);
 
   switch (pd->ctx_mode) {
     case CTX_MODE_EDIT_MESH:
       OVERLAY_edit_mesh_cache_init(vedata);
+      /* `pd->edit_mesh.flag` is valid after calling `OVERLAY_edit_mesh_cache_init`. */
+      const bool draw_edit_weights = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_WEIGHT);
       if (draw_edit_weights) {
         OVERLAY_paint_cache_init(vedata);
       }
@@ -494,7 +496,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_motion_path_draw(vedata);
   OVERLAY_extra_centers_draw(vedata);
 
-  if (DRW_state_is_select()) {
+  if (DRW_state_is_select() || DRW_state_is_depth()) {
     /* Edit modes have their own selection code. */
     return;
   }

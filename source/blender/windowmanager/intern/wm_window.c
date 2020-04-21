@@ -65,6 +65,9 @@
 #include "wm_platform_support.h"
 #include "wm_window.h"
 #include "wm_window_private.h"
+#ifdef WITH_XR_OPENXR
+#  include "wm_xr.h"
+#endif
 
 #include "ED_anim_api.h"
 #include "ED_fileselect.h"
@@ -1676,8 +1679,6 @@ void wm_ghost_init(bContext *C)
     }
 
     GHOST_UseWindowFocus(wm_init_state.window_focus);
-
-    WM_init_tablet_api();
   }
 }
 

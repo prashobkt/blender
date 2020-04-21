@@ -685,8 +685,6 @@ void BKE_pbvh_free(PBVH *bvh)
       if (node->face_vert_indices) {
         MEM_freeN((void *)node->face_vert_indices);
       }
-      BKE_pbvh_node_layer_disp_free(node);
-
       if (node->bm_faces) {
         BLI_gset_free(node->bm_faces, NULL);
       }
@@ -720,13 +718,6 @@ void BKE_pbvh_free(PBVH *bvh)
   }
 
   MEM_freeN(bvh);
-}
-
-void BKE_pbvh_free_layer_disp(PBVH *bvh)
-{
-  for (int i = 0; i < bvh->totnode; i++) {
-    BKE_pbvh_node_layer_disp_free(&bvh->nodes[i]);
-  }
 }
 
 static void pbvh_iter_begin(PBVHIter *iter,
@@ -2768,26 +2759,6 @@ void BKE_pbvh_grids_update(
   }
 }
 
-/* Get the node's displacement layer, creating it if necessary */
-float *BKE_pbvh_node_layer_disp_get(PBVH *bvh, PBVHNode *node)
-{
-  if (!node->layer_disp) {
-    int totvert = 0;
-    BKE_pbvh_node_num_verts(bvh, node, &totvert, NULL);
-    node->layer_disp = MEM_callocN(sizeof(float) * totvert, "layer disp");
-  }
-  return node->layer_disp;
-}
-
-/* If the node has a displacement layer, free it and set to null */
-void BKE_pbvh_node_layer_disp_free(PBVHNode *node)
-{
-  if (node->layer_disp) {
-    MEM_freeN(node->layer_disp);
-    node->layer_disp = NULL;
-  }
-}
-
 float (*BKE_pbvh_vert_coords_alloc(PBVH *pbvh))[3]
 {
   float(*vertCos)[3] = NULL;
@@ -2987,7 +2958,7 @@ bool pbvh_has_face_sets(PBVH *bvh)
 {
   switch (bvh->type) {
     case PBVH_GRIDS:
-      return false;
+      return (bvh->pdata && CustomData_get_layer(bvh->pdata, CD_SCULPT_FACE_SETS));
     case PBVH_FACES:
       return (bvh->pdata && CustomData_get_layer(bvh->pdata, CD_SCULPT_FACE_SETS));
     case PBVH_BMESH:

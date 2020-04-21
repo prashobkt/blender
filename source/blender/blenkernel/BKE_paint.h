@@ -279,6 +279,12 @@ typedef struct SculptClothSimulation {
 
 } SculptClothSimulation;
 
+typedef struct SculptLayerPersistentBase {
+  float co[3];
+  float no[3];
+  float disp;
+} SculptLayerPersistentBase;
+
 /* Session data (mode-specific) */
 
 typedef struct SculptSession {
@@ -288,10 +294,15 @@ typedef struct SculptSession {
     struct MultiresModifierData *modifier;
     int level;
   } multires;
+
+  /* These are always assigned to base mesh data when using PBVH_FACES and PBVH_GRIDS. */
   struct MVert *mvert;
   struct MPoly *mpoly;
   struct MLoop *mloop;
+
+  /* These contain the vertex and poly counts of the final mesh. */
   int totvert, totpoly;
+
   struct KeyBlock *shapekey_active;
   float *vmask;
 
@@ -300,6 +311,7 @@ typedef struct SculptSession {
   int *pmap_mem;
 
   /* Mesh Face Sets */
+  /* Total number of polys of the base mesh. */
   int totfaces;
   int *face_sets;
 
@@ -329,9 +341,6 @@ typedef struct SculptSession {
   unsigned int texcache_side, *texcache, texcache_actual;
   struct ImagePool *tex_pool;
 
-  /* Layer brush persistence between strokes */
-  float (*layer_co)[3]; /* Copy of the mesh vertices' locations */
-
   struct StrokeCache *cache;
   struct FilterCache *filter_cache;
 
@@ -358,6 +367,10 @@ typedef struct SculptSession {
   /* Pose Brush Preview */
   float pose_origin[3];
   SculptPoseIKChain *pose_ik_chain_preview;
+
+  /* Layer brush persistence between strokes */
+  /* This is freed with the PBVH, so it is always in sync with the mesh. */
+  SculptLayerPersistentBase *layer_base;
 
   /* Transform operator */
   float pivot_pos[3];

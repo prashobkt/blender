@@ -79,7 +79,8 @@ struct MANTA {
   // Write cache
   bool writeConfiguration(FluidModifierData *mmd, int framenr);
   bool writeData(FluidModifierData *mmd, int framenr);
-  // write call for noise, mesh and particles were left in bake calls for now
+  bool writeNoise(FluidModifierData *mmd, int framenr);
+  // write calls for mesh and particles were left in bake calls for now
 
   // Read cache (via Manta save/load)
   bool readConfiguration(FluidModifierData *mmd, int framenr);
@@ -403,6 +404,10 @@ struct MANTA {
   inline float *getPhiOutIn()
   {
     return mPhiOutIn;
+  }
+  inline float *getPhiOutStaticIn()
+  {
+    return mPhiOutStaticIn;
   }
   inline float *getPhi()
   {
@@ -843,6 +848,7 @@ struct MANTA {
   float *mPhiObsStaticIn;
   float *mPhiGuideIn;
   float *mPhiOutIn;
+  float *mPhiOutStaticIn;
   float *mPhi;
 
   // Mesh fields

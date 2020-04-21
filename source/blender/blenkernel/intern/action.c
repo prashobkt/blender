@@ -925,6 +925,7 @@ void BKE_pose_channel_free_ex(bPoseChannel *pchan, bool do_id_user)
 
   if (pchan->prop) {
     IDP_FreeProperty(pchan->prop);
+    pchan->prop = NULL;
   }
 
   /* Cached data, for new draw manager rendering code. */
@@ -1664,6 +1665,6 @@ void what_does_obaction(
     adt.action = act;
 
     /* execute effects of Action on to workob (or it's PoseChannels) */
-    BKE_animsys_evaluate_animdata(NULL, &workob->id, &adt, cframe, ADT_RECALC_ANIM, false);
+    BKE_animsys_evaluate_animdata(&workob->id, &adt, cframe, ADT_RECALC_ANIM, false);
   }
 }

@@ -36,6 +36,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_lib_id.h"
 #include "BKE_report.h"
 
 #include "MEM_guardedalloc.h"
@@ -293,7 +294,7 @@ eAutoPropButsReturn uiDefAutoButsRNA(uiLayout *layout,
                                      const bool compact)
 {
   eAutoPropButsReturn return_info = UI_PROP_BUTS_NONE_ADDED;
-  uiLayout *split, *col;
+  uiLayout *col;
   const char *name;
 
   RNA_STRUCT_BEGIN (ptr, prop) {
@@ -324,18 +325,10 @@ eAutoPropButsReturn uiDefAutoButsRNA(uiLayout *layout,
         }
         else {
           BLI_assert(label_align == UI_BUT_LABEL_ALIGN_SPLIT_COLUMN);
-          split = uiLayoutSplit(layout, 0.5f, false);
-
-          col = uiLayoutColumn(split, false);
-          uiItemL(col, (is_boolean) ? "" : name, ICON_NONE);
-          col = uiLayoutColumn(split, false);
+          col = uiLayoutColumn(layout, true);
+          /* Let uiItemFullR() create the split layout. */
+          uiLayoutSetPropSep(col, true);
         }
-
-        /* May need to add more cases here.
-         * don't override enum flag names */
-
-        /* name is shown above, empty name for button below */
-        name = (flag & PROP_ENUM_FLAG || is_boolean) ? NULL : "";
 
         break;
       }
@@ -395,11 +388,12 @@ void ui_rna_collection_search_cb(const struct bContext *C,
                                  uiSearchItems *items)
 {
   uiRNACollectionSearch *data = arg;
-  char *name;
   int i = 0, iconid = 0, flag = RNA_property_flag(data->target_prop);
   ListBase *items_list = MEM_callocN(sizeof(ListBase), "items_list");
   CollItemSearch *cis;
-  const bool skip_filter = (data->but_changed && !(*data->but_changed));
+  const bool skip_filter = data->search_but && !data->search_but->changed;
+  char name_buf[UI_MAX_DRAW_STR];
+  char *name;
 
   /* build a temporary list of relevant items first */
   RNA_PROP_BEGIN (&data->search_ptr, itemptr, data->search_prop) {
@@ -417,24 +411,31 @@ void ui_rna_collection_search_cb(const struct bContext *C,
       }
     }
 
-    /* Could use the string length here. */
-    name = RNA_struct_name_get_alloc(&itemptr, NULL, 0, NULL);
-
     iconid = 0;
     if (itemptr.type && RNA_struct_is_ID(itemptr.type)) {
       iconid = ui_id_icon_get(C, itemptr.data, false);
+
+      BKE_id_full_name_ui_prefix_get(name_buf, itemptr.data);
+      BLI_STATIC_ASSERT(sizeof(name_buf) >= MAX_ID_FULL_NAME_UI,
+                        "Name string buffer should be big enough to hold full UI ID name");
+      name = name_buf;
+    }
+    else {
+      name = RNA_struct_name_get_alloc(&itemptr, name_buf, sizeof(name_buf), NULL);
     }
 
     if (name) {
       if (skip_filter || BLI_strcasestr(name, str)) {
         cis = MEM_callocN(sizeof(CollItemSearch), "CollectionItemSearch");
         cis->data = itemptr.data;
-        cis->name = MEM_dupallocN(name);
+        cis->name = BLI_strdup(name);
         cis->index = i;
         cis->iconid = iconid;
         BLI_addtail(items_list, cis);
       }
-      MEM_freeN(name);
+      if (name != name_buf) {
+        MEM_freeN(name);
+      }
     }
 
     i++;
@@ -647,6 +648,7 @@ void UI_butstore_free(uiBlock *block, uiButStore *bs_handle)
   }
 
   BLI_freelistN(&bs_handle->items);
+  BLI_assert(BLI_findindex(&block->butstore, bs_handle) != -1);
   BLI_remlink(&block->butstore, bs_handle);
 
   MEM_freeN(bs_handle);
@@ -747,8 +749,7 @@ void UI_butstore_update(uiBlock *block)
   /* move this list to the new block */
   if (block->oldblock) {
     if (block->oldblock->butstore.first) {
-      block->butstore = block->oldblock->butstore;
-      BLI_listbase_clear(&block->oldblock->butstore);
+      BLI_movelisttolist(&block->butstore, &block->oldblock->butstore);
     }
   }
 

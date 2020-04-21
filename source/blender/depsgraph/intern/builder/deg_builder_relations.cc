@@ -62,6 +62,7 @@ extern "C" {
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_texture_types.h"
@@ -557,6 +558,9 @@ void DepsgraphRelationBuilder::build_id(ID *id)
       break;
     case ID_SCE:
       build_scene_parameters((Scene *)id);
+      break;
+    case ID_SIM:
+      build_simulation((Simulation *)id);
       break;
     default:
       fprintf(stderr, "Unhandled ID %s\n", id->name);
@@ -2502,6 +2506,15 @@ void DepsgraphRelationBuilder::build_sound(bSound *sound)
   build_parameters(&sound->id);
 }
 
+void DepsgraphRelationBuilder::build_simulation(Simulation *simulation)
+{
+  if (built_map_.checkIsBuiltAndTag(simulation)) {
+    return;
+  }
+  build_animdata(&simulation->id);
+  build_parameters(&simulation->id);
+}
+
 void DepsgraphRelationBuilder::build_scene_sequencer(Scene *scene)
 {
   if (scene->ed == nullptr) {
@@ -2544,8 +2557,16 @@ void DepsgraphRelationBuilder::build_scene_sequencer(Scene *scene)
   }
 }
 
-void DepsgraphRelationBuilder::build_scene_audio(Scene * /*scene*/)
+void DepsgraphRelationBuilder::build_scene_audio(Scene *scene)
 {
+  OperationKey scene_audio_volume_key(&scene->id, NodeType::AUDIO, OperationCode::AUDIO_VOLUME);
+  OperationKey scene_sound_eval_key(&scene->id, NodeType::AUDIO, OperationCode::SOUND_EVAL);
+  add_relation(scene_audio_volume_key, scene_sound_eval_key, "Audio Volume -> Sound");
+
+  if (scene->audio.flag & AUDIO_VOLUME_ANIMATED) {
+    ComponentKey scene_anim_key(&scene->id, NodeType::ANIMATION);
+    add_relation(scene_anim_key, scene_audio_volume_key, "Animation -> Audio Volume");
+  }
 }
 
 void DepsgraphRelationBuilder::build_scene_speakers(Scene * /*scene*/, ViewLayer *view_layer)

@@ -1306,8 +1306,9 @@ static void sculptsession_free_pbvh(Object *object)
   }
 
   MEM_SAFE_FREE(ss->pmap);
-
   MEM_SAFE_FREE(ss->pmap_mem);
+
+  MEM_SAFE_FREE(ss->layer_base);
 
   MEM_SAFE_FREE(ss->preview_vert_index_list);
   ss->preview_vert_index_count = 0;
@@ -1353,31 +1354,17 @@ void BKE_sculptsession_free(Object *ob)
       BM_log_free(ss->bm_log);
     }
 
-    if (ss->texcache) {
-      MEM_freeN(ss->texcache);
-    }
+    MEM_SAFE_FREE(ss->texcache);
 
     if (ss->tex_pool) {
       BKE_image_pool_free(ss->tex_pool);
     }
 
-    if (ss->layer_co) {
-      MEM_freeN(ss->layer_co);
-    }
+    MEM_SAFE_FREE(ss->orig_cos);
+    MEM_SAFE_FREE(ss->deform_cos);
+    MEM_SAFE_FREE(ss->deform_imats);
 
-    if (ss->orig_cos) {
-      MEM_freeN(ss->orig_cos);
-    }
-    if (ss->deform_cos) {
-      MEM_freeN(ss->deform_cos);
-    }
-    if (ss->deform_imats) {
-      MEM_freeN(ss->deform_imats);
-    }
-
-    if (ss->preview_vert_index_list) {
-      MEM_freeN(ss->preview_vert_index_list);
-    }
+    MEM_SAFE_FREE(ss->preview_vert_index_list);
 
     if (ss->pose_ik_chain_preview) {
       for (int i = 0; i < ss->pose_ik_chain_preview->tot_segments; i++) {
@@ -1527,9 +1514,12 @@ static void sculpt_update_object(
     ss->totvert = me_eval->totvert;
     ss->totpoly = me_eval->totpoly;
     ss->totfaces = me->totpoly;
-    ss->mvert = NULL;
-    ss->mpoly = NULL;
-    ss->mloop = NULL;
+
+    /* These are assigned to the base mesh in Multires. This is needed because Face Sets operators
+     * and tools use the Face Sets data from the base mesh when Multires is active. */
+    ss->mvert = me->mvert;
+    ss->mpoly = me->mpoly;
+    ss->mloop = me->mloop;
   }
   else {
     ss->totvert = me->totvert;
@@ -1864,7 +1854,7 @@ static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
                        subdiv_ccg->grid_flag_mats,
                        subdiv_ccg->grid_hidden);
   pbvh_show_mask_set(pbvh, ob->sculpt->show_mask);
-  pbvh_show_face_sets_set(pbvh, false);
+  pbvh_show_face_sets_set(pbvh, ob->sculpt->show_face_sets);
   return pbvh;
 }
 

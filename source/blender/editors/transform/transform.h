@@ -677,6 +677,10 @@ enum {
   T_MODAL_CURSOR_SET = 1 << 26,
 
   T_CLNOR_REBUILD = 1 << 27,
+
+  /* Special Aftertrans. */
+  T_AUTOMERGE = 1 << 28,
+  T_AUTOSPLIT = 1 << 29,
 };
 
 /** #TransInfo.modifiers */
@@ -967,14 +971,14 @@ bool checkUseAxisMatrix(TransInfo *t);
   (BLI_assert((t)->data_container_len == 1), (&(t)->data_container[0]))
 
 #define FOREACH_TRANS_DATA_CONTAINER(t, th) \
-  for (TransDataContainer *tc = t->data_container, \
-                          *tc_end = t->data_container + t->data_container_len; \
+  for (TransDataContainer *tc = (t)->data_container, \
+                          *tc_end = (t)->data_container + (t)->data_container_len; \
        th != tc_end; \
        th++)
 
 #define FOREACH_TRANS_DATA_CONTAINER_INDEX(t, th, i) \
-  for (TransDataContainer *tc = ((i = 0), t->data_container), \
-                          *tc_end = t->data_container + t->data_container_len; \
+  for (TransDataContainer *tc = ((i = 0), (t)->data_container), \
+                          *tc_end = (t)->data_container + (t)->data_container_len; \
        th != tc_end; \
        th++, i++)
 

@@ -1883,7 +1883,9 @@ bool BKE_object_obdata_is_libdata(const Object *ob)
   return (ob && ob->data && ID_IS_LINKED(ob->data));
 }
 
-/* *************** PROXY **************** */
+/* -------------------------------------------------------------------- */
+/** \name Object Proxy API
+ * \{ */
 
 /* when you make proxy, ensure the exposed layers are extern */
 static void armature_set_id_extern(Object *ob)
@@ -2093,7 +2095,11 @@ void BKE_object_obdata_size_init(struct Object *ob, const float size)
   }
 }
 
-/* *************** CALC ****************** */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Object Matrix Get/Set API
+ * \{ */
 
 void BKE_object_scale_to_mat3(Object *ob, float mat[3][3])
 {
@@ -2586,6 +2592,12 @@ void BKE_object_get_parent_matrix(Object *ob, Object *par, float parentmat[4][4]
   }
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Object Matrix Evaluation API
+ * \{ */
+
 /**
  * \param r_originmat: Optional matrix that stores the space the object is in
  * (without its own matrix applied)
@@ -2665,7 +2677,7 @@ void BKE_object_where_is_calc_time(Depsgraph *depsgraph, Scene *scene, Object *o
 {
   /* Execute drivers and animation. */
   const bool flush_to_original = DEG_is_active(depsgraph);
-  BKE_animsys_evaluate_animdata(scene, &ob->id, ob->adt, ctime, ADT_RECALC_ALL, flush_to_original);
+  BKE_animsys_evaluate_animdata(&ob->id, ob->adt, ctime, ADT_RECALC_ALL, flush_to_original);
   object_where_is_calc_ex(depsgraph, scene, ob, ctime, NULL, NULL);
 }
 
@@ -2790,6 +2802,12 @@ void BKE_object_apply_mat4(Object *ob,
   BKE_object_apply_mat4_ex(ob, mat, use_parent ? ob->parent : NULL, ob->parentinv, use_compat);
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Object Bounding Box API
+ * \{ */
+
 BoundBox *BKE_boundbox_alloc_unit(void)
 {
   BoundBox *bb;
@@ -2910,6 +2928,8 @@ void BKE_object_boundbox_calc_from_mesh(struct Object *ob, struct Mesh *me_eval)
 
   ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Object Dimension Get/Set
@@ -3594,9 +3614,11 @@ void BKE_object_delete_ptcache(Object *ob, int index)
   BLI_freelinkN(&ob->pc_ids, link);
 }
 
-/* shape key utility function */
+/* -------------------------------------------------------------------- */
+/** \name Object Data Shape Key Insert
+ * \{ */
 
-/************************* Mesh ************************/
+/* Mesh */
 static KeyBlock *insert_meshkey(Main *bmain, Object *ob, const char *name, const bool from_mix)
 {
   Mesh *me = ob->data;
@@ -3628,7 +3650,7 @@ static KeyBlock *insert_meshkey(Main *bmain, Object *ob, const char *name, const
 
   return kb;
 }
-/************************* Lattice ************************/
+/* Lattice */
 static KeyBlock *insert_lattkey(Main *bmain, Object *ob, const char *name, const bool from_mix)
 {
   Lattice *lt = ob->data;
@@ -3666,7 +3688,7 @@ static KeyBlock *insert_lattkey(Main *bmain, Object *ob, const char *name, const
 
   return kb;
 }
-/************************* Curve ************************/
+/* Curve */
 static KeyBlock *insert_curvekey(Main *bmain, Object *ob, const char *name, const bool from_mix)
 {
   Curve *cu = ob->data;
@@ -3706,6 +3728,12 @@ static KeyBlock *insert_curvekey(Main *bmain, Object *ob, const char *name, cons
 
   return kb;
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Object Shape Key API
+ * \{ */
 
 KeyBlock *BKE_object_shapekey_insert(Main *bmain,
                                      Object *ob,
@@ -3803,6 +3831,8 @@ bool BKE_object_shapekey_remove(Main *bmain, Object *ob, KeyBlock *kb)
 
   return true;
 }
+
+/** \} */
 
 bool BKE_object_flag_test_recursive(const Object *ob, short flag)
 {
@@ -4537,8 +4567,7 @@ bool BKE_object_modifier_update_subframe(Depsgraph *depsgraph,
   /* TODO(sergey): What about animation? */
   ob->id.recalc |= ID_RECALC_ALL;
   if (update_mesh) {
-    BKE_animsys_evaluate_animdata(
-        scene, &ob->id, ob->adt, frame, ADT_RECALC_ANIM, flush_to_original);
+    BKE_animsys_evaluate_animdata(&ob->id, ob->adt, frame, ADT_RECALC_ANIM, flush_to_original);
     /* ignore cache clear during subframe updates
      * to not mess up cache validity */
     object_cacheIgnoreClear(ob, 1);
@@ -4552,14 +4581,12 @@ bool BKE_object_modifier_update_subframe(Depsgraph *depsgraph,
   /* for curve following objects, parented curve has to be updated too */
   if (ob->type == OB_CURVE) {
     Curve *cu = ob->data;
-    BKE_animsys_evaluate_animdata(
-        scene, &cu->id, cu->adt, frame, ADT_RECALC_ANIM, flush_to_original);
+    BKE_animsys_evaluate_animdata(&cu->id, cu->adt, frame, ADT_RECALC_ANIM, flush_to_original);
   }
   /* and armatures... */
   if (ob->type == OB_ARMATURE) {
     bArmature *arm = ob->data;
-    BKE_animsys_evaluate_animdata(
-        scene, &arm->id, arm->adt, frame, ADT_RECALC_ANIM, flush_to_original);
+    BKE_animsys_evaluate_animdata(&arm->id, arm->adt, frame, ADT_RECALC_ANIM, flush_to_original);
     BKE_pose_where_is(depsgraph, scene, ob);
   }
 

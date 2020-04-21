@@ -320,7 +320,11 @@ void id_us_min(ID *id)
                  id->lib ? id->lib->filepath : "[Main]",
                  id->us,
                  limit);
-      BLI_assert(0);
+      if (GS(id->name) != ID_IP) {
+        /* Do not assert on deprecated ID types, we cannot really ensure that their ID refcounting
+         * is valid... */
+        BLI_assert(0);
+      }
       id->us = limit;
     }
     else {
@@ -659,7 +663,7 @@ static void id_swap(Main *bmain, ID *id_a, ID *id_b, const bool do_full_id)
  * Does a mere memory swap over the whole IDs data (including type-specific memory).
  * \note Most internal ID data itself is not swapped (only IDProperties are).
  *
- * \param bmain May be NULL, in which case there will be no remapping of internal pointers to
+ * \param bmain: May be NULL, in which case there will be no remapping of internal pointers to
  * itself.
  */
 void BKE_lib_id_swap(Main *bmain, ID *id_a, ID *id_b)
@@ -671,7 +675,7 @@ void BKE_lib_id_swap(Main *bmain, ID *id_a, ID *id_b)
  * Does a mere memory swap over the whole IDs data (including type-specific memory).
  * \note All internal ID data itself is also swapped.
  *
- * \param bmain May be NULL, in which case there will be no remapping of internal pointers to
+ * \param bmain: May be NULL, in which case there will be no remapping of internal pointers to
  * itself.
  */
 void BKE_lib_id_swap_full(Main *bmain, ID *id_a, ID *id_b)
@@ -1244,7 +1248,7 @@ ID *BKE_libblock_find_name(struct Main *bmain, const short type, const char *nam
  *
  * \note All other IDs beside given one are assumed already properly sorted in the list.
  *
- * \param id_sorting_hint Ignored if NULL. Otherwise, used to check if we can insert \a id
+ * \param id_sorting_hint: Ignored if NULL. Otherwise, used to check if we can insert \a id
  * immediately before or after that pointer. It must always be into given \a lb list.
  */
 void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
@@ -1716,21 +1720,31 @@ static void library_make_local_copying_check(ID *id,
     /* Used_to_user stores ID pointer, not pointer to ID pointer. */
     ID *par_id = (ID *)entry->id_pointer;
 
-    /* Our oh-so-beloved 'from' pointers... */
+    /* Our oh-so-beloved 'from' pointers... Those should always be ignored here, since the actual
+     * relation we want to check is in the other way around. */
     if (entry->usage_flag & IDWALK_CB_LOOPBACK) {
-      /* We totally disregard Object->proxy_from 'usage' here,
-       * this one would only generate fake positives. */
-      if (GS(par_id->name) == ID_OB) {
-        BLI_assert(((Object *)par_id)->proxy_from == (Object *)id);
-        continue;
+#ifndef NDEBUG
+      /* Some debug checks to ensure we explicitly are aware of all 'loop-back' cases, since those
+       * may not always be manageable in the same way... */
+      switch (GS(par_id->name)) {
+        case ID_OB:
+          BLI_assert(((Object *)par_id)->proxy_from == (Object *)id);
+          break;
+        case ID_KE:
+          BLI_assert(((Key *)par_id)->from == id);
+          break;
+        default:
+          BLI_assert(0);
       }
+#endif
+      continue;
+    }
 
-      /* Shapekeys are considered 'private' to their owner ID here, and never tagged
-       * (since they cannot be linked), so we have to switch effective parent to their owner.
-       */
-      if (GS(par_id->name) == ID_KE) {
-        par_id = ((Key *)par_id)->from;
-      }
+    /* Shapekeys are considered 'private' to their owner ID here, and never tagged
+     * (since they cannot be linked), so we have to switch effective parent to their owner.
+     */
+    if (GS(par_id->name) == ID_KE) {
+      par_id = ((Key *)par_id)->from;
     }
 
     if (par_id->lib == NULL) {

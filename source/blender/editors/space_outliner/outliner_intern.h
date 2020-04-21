@@ -108,7 +108,8 @@ typedef struct TreeElementIcon {
         ID_LP, \
         ID_HA, \
         ID_PT, \
-        ID_VO) || /* Only in 'blendfile' mode ... :/ */ \
+        ID_VO, \
+        ID_SIM) || /* Only in 'blendfile' mode ... :/ */ \
    ELEM(GS((_id)->name), \
         ID_SCR, \
         ID_WM, \
@@ -193,7 +194,8 @@ typedef enum {
 
 /* is the current element open? if so we also show children */
 #define TSELEM_OPEN(telm, sv) \
-  ((telm->flag & TSE_CLOSED) == 0 || (SEARCHING_OUTLINER(sv) && (telm->flag & TSE_CHILDSEARCH)))
+  (((telm)->flag & TSE_CLOSED) == 0 || \
+   (SEARCHING_OUTLINER(sv) && ((telm)->flag & TSE_CHILDSEARCH)))
 
 /**
  * Container to avoid passing around these variables to many functions.

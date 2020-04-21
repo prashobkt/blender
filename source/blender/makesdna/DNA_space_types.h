@@ -606,7 +606,7 @@ typedef enum eSpaceSeq_Flag {
   SEQ_DRAW_COLOR_SEPARATED = (1 << 2),
   SEQ_SHOW_SAFE_MARGINS = (1 << 3),
   SEQ_SHOW_GPENCIL = (1 << 4),
-  /* SEQ_NO_DRAW_CFRANUM = (1 << 5), DEPRECATED */
+  SEQ_SHOW_FCURVES = (1 << 5),
   SEQ_USE_ALPHA = (1 << 6),     /* use RGBA display mode for preview */
   SEQ_ALL_WAVEFORMS = (1 << 7), /* draw all waveforms */
   SEQ_NO_WAVEFORMS = (1 << 8),  /* draw no waveforms */
@@ -1075,7 +1075,9 @@ typedef struct SpaceImage {
   int flag;
 
   char pixel_snap_mode;
-  char _pad2[3];
+  char _pad2[7];
+
+  float uv_opacity;
 
   int tile_grid_shape[2];
 

@@ -890,8 +890,7 @@ static void node_id_remap(ScrArea *UNUSED(area), SpaceLink *slink, ID *old_id, I
     for (path = snode->treepath.first; path; path = path->next) {
       if ((ID *)path->nodetree == old_id) {
         path->nodetree = (bNodeTree *)new_id;
-        id_us_min(old_id);
-        id_us_plus(new_id);
+        id_us_ensure_real(new_id);
       }
       if (path == snode->treepath.first) {
         /* first nodetree in path is same as snode->nodetree */
@@ -939,6 +938,11 @@ static void node_space_subtype_item_extend(bContext *C, EnumPropertyItem **item,
   bool free;
   const EnumPropertyItem *item_src = RNA_enum_node_tree_types_itemf_impl(C, &free);
   for (const EnumPropertyItem *item_iter = item_src; item_iter->identifier; item_iter++) {
+#ifndef WITH_NEW_SIMULATION_TYPE
+    if (STREQ(item_iter->identifier, "SimulationNodeTree")) {
+      continue;
+    }
+#endif
     RNA_enum_item_add(item, totitem, item_iter);
   }
   if (free) {

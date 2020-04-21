@@ -290,12 +290,12 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 
 #  include "RNA_access.h"
 
-#  include "BKE_colorband.h"
 #  include "BKE_brush.h"
-#  include "BKE_icons.h"
+#  include "BKE_colorband.h"
 #  include "BKE_gpencil.h"
-#  include "BKE_paint.h"
+#  include "BKE_icons.h"
 #  include "BKE_material.h"
+#  include "BKE_paint.h"
 
 #  include "WM_api.h"
 
@@ -1806,7 +1806,7 @@ static void rna_def_brush(BlenderRNA *brna)
        "SURFACE",
        0,
        "Surface",
-       "Smooths the surface of the mesh, preserving the volue"},
+       "Smooths the surface of the mesh, preserving the volume"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -2094,6 +2094,7 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "height");
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_range(prop, 0, 1.0f);
+  RNA_def_property_ui_range(prop, 0, 0.2f, 1, 3);
   RNA_def_property_ui_text(
       prop, "Brush Height", "Affectable height of brush (layer height for layer tool, i.e.)");
   RNA_def_property_update(prop, 0, "rna_Brush_update");

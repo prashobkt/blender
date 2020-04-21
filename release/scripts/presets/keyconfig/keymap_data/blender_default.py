@@ -296,6 +296,17 @@ def _template_items_proportional_editing(*, connected=False):
     ]
 
 
+def _template_items_change_frame(params):
+    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        return [
+            ("anim.change_frame", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}, None),
+        ]
+    else:
+        return [
+            ("anim.change_frame", {"type": params.action_mouse, "value": 'PRESS'}, None),
+        ]
+
+
 # Tool System Templates
 
 def _template_items_tool_select(params, operator, cursor_operator, *, extend):
@@ -763,7 +774,9 @@ def km_outliner(params):
          {"properties": [("all", True)]}),
         ("outliner.item_openclose", {"type": 'EVT_TWEAK_L', "value": 'ANY'},
          {"properties": [("all", False)]}),
+        # Fall through to generic context menu if the item(s) selected have no type specific actions.
         ("outliner.operation", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        op_menu("OUTLINER_MT_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
         ("outliner.item_drag_drop", {"type": 'EVT_TWEAK_L', "value": 'ANY'}, None),
         ("outliner.item_drag_drop", {"type": 'EVT_TWEAK_L', "value": 'ANY', "shift": True}, None),
         ("outliner.show_hierarchy", {"type": 'HOME', "value": 'PRESS'}, None),
@@ -2071,6 +2084,7 @@ def km_dopesheet(params):
         ("marker.rename", {"type": 'M', "value": 'PRESS', "ctrl": True}, None),
         ("marker.camera_bind", {"type": 'B', "value": 'PRESS', "ctrl": True}, None),
         *_template_items_context_menu("DOPESHEET_MT_context_menu", params.context_menu_event),
+        *_template_items_change_frame(params),
     ])
 
     return keymap
@@ -2196,6 +2210,7 @@ def km_nla_editor(params):
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
         ("marker.rename", {"type": 'M', "value": 'PRESS', "ctrl": True}, None),
         *_template_items_context_menu("NLA_MT_context_menu", params.context_menu_event),
+        *_template_items_change_frame(params),
     ])
 
     return keymap
@@ -2347,6 +2362,7 @@ def km_text(params):
         ("text.scroll", {"type": 'TRACKPADPAN', "value": 'ANY'}, None),
         ("text.selection_set", {"type": 'EVT_TWEAK_L', "value": 'ANY'}, None),
         ("text.cursor_set", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("text.selection_set", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True}, None),
         ("text.scroll", {"type": 'WHEELUPMOUSE', "value": 'PRESS'},
          {"properties": [("lines", -1)]}),
         ("text.scroll", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS'},
@@ -2926,15 +2942,6 @@ def km_animation(params):
         ("anim.start_frame_set", {"type": 'HOME', "value": 'PRESS', "ctrl": True}, None),
         ("anim.end_frame_set", {"type": 'END', "value": 'PRESS', "ctrl": True}, None),
     ])
-
-    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
-        items.extend([
-            ("anim.change_frame", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}, None),
-        ])
-    else:
-        items.extend([
-            ("anim.change_frame", {"type": params.action_mouse, "value": 'PRESS'}, None),
-        ])
 
     return keymap
 
@@ -5865,6 +5872,23 @@ def km_3d_view_tool_edit_mesh_extrude_region(params):
         ]},
     )
 
+def km_3d_view_tool_edit_mesh_extrude_dissolve_and_intersect(params):
+    return (
+        "3D View Tool: Edit Mesh, Extrude Dissolve and Intersect",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("mesh.extrude_region_dissolve_move_intersect", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [
+                 ("MESH_OT_extrude_region", [("use_dissolve_ortho_edges", True)]),
+                 ("TRANSFORM_OT_translate", [
+                     ("release_confirm", True),
+                     ("use_automerge_and_split", True),
+                     ("constraint_axis", (False, False, True)),
+                     ("orient_type", 'NORMAL'),
+                 ]),
+              ]}),
+        ]},
+    )
 
 def km_3d_view_tool_edit_mesh_extrude_along_normals(params):
     return (
@@ -6499,6 +6523,7 @@ def km_sequencer_editor_tool_select(params):
         {"items": [
             ("sequencer.select", {"type": params.select_mouse, "value": 'PRESS'},
              {"properties": [("extend", False), ("deselect_all", not params.legacy)]}),
+            *_template_items_change_frame(params),
         ]},
     )
 
@@ -6507,10 +6532,25 @@ def km_sequencer_editor_tool_select_box(params):
     return (
         "Sequencer Tool: Select Box",
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
-        {"items": _template_items_tool_select_actions_simple(
-            "sequencer.select_box", type=params.tool_tweak, value='ANY',
-            properties=[("tweak", True)],
-        )},
+        {"items": [
+            *_template_items_tool_select_actions_simple(
+                "sequencer.select_box", type=params.tool_tweak, value='ANY',
+                properties=[("tweak", params.select_mouse == 'LEFTMOUSE')],
+            ),
+            # RMB select can already set the frame, match the tweak tool.
+            *(_template_items_change_frame(params)
+              if  params.select_mouse == 'LEFTMOUSE' else []),
+        ]},
+    )
+
+
+def km_sequencer_editor_tool_generic_sample(params):
+    return (
+        "Sequencer Tool: Sample",
+        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("sequencer.sample", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+        ]},
     )
 
 
@@ -6699,6 +6739,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_armature_extrude_to_cursor(params),
         km_3d_view_tool_edit_mesh_add_cube(params),
         km_3d_view_tool_edit_mesh_extrude_region(params),
+        km_3d_view_tool_edit_mesh_extrude_dissolve_and_intersect(params),
         km_3d_view_tool_edit_mesh_extrude_along_normals(params),
         km_3d_view_tool_edit_mesh_extrude_individual(params),
         km_3d_view_tool_edit_mesh_extrude_to_cursor(params),
@@ -6758,6 +6799,7 @@ def generate_keymaps(params=None):
         km_sequencer_editor_tool_select(params),
         km_sequencer_editor_tool_select_box(params),
         km_sequencer_editor_tool_blade(params),
+        km_sequencer_editor_tool_generic_sample(params),
     ]
 
 # ------------------------------------------------------------------------------

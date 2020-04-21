@@ -3316,13 +3316,7 @@ class VIEW3D_MT_pose(Menu):
 
         layout.separator()
 
-        layout.operator_context = 'EXEC_AREA'
-        layout.operator("pose.autoside_names", text="AutoName Left/Right").axis = 'XAXIS'
-        layout.operator("pose.autoside_names", text="AutoName Front/Back").axis = 'YAXIS'
-        layout.operator("pose.autoside_names", text="AutoName Top/Bottom").axis = 'ZAXIS'
-
-        layout.operator("pose.flip_names")
-
+        layout.menu("VIEW3D_MT_pose_names")
         layout.operator("pose.quaternions_flip")
 
         layout.separator()
@@ -3457,6 +3451,19 @@ class VIEW3D_MT_pose_constraints(Menu):
         layout.operator("pose.constraint_add_with_targets", text="Add (With Targets)...")
         layout.operator("pose.constraints_copy")
         layout.operator("pose.constraints_clear")
+
+
+class VIEW3D_MT_pose_names(Menu):
+    bl_label = "Names"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator_context = 'EXEC_REGION_WIN'
+        layout.operator("pose.autoside_names", text="AutoName Left/Right").axis = 'XAXIS'
+        layout.operator("pose.autoside_names", text="AutoName Front/Back").axis = 'YAXIS'
+        layout.operator("pose.autoside_names", text="AutoName Top/Bottom").axis = 'ZAXIS'
+        layout.operator("pose.flip_names")
 
 
 class VIEW3D_MT_pose_showhide(ShowHideMenu, Menu):
@@ -3872,6 +3879,8 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
         return menu
 
     def draw(self, context):
+        from math import pi
+
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
 
@@ -3881,6 +3890,7 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
         layout.separator()
 
         layout.operator("mesh.extrude_repeat")
+        layout.operator("mesh.spin").angle = pi * 2
 
 
 class VIEW3D_MT_edit_mesh_vertices(Menu):
@@ -4172,7 +4182,7 @@ class VIEW3D_MT_edit_mesh_normals(Menu):
         layout.operator("mesh.normals_tools", text="Copy Vectors").mode = 'COPY'
         layout.operator("mesh.normals_tools", text="Paste Vectors").mode = 'PASTE'
 
-        layout.operator("mesh.smoothen_normals", text="Smoothen Vectors")
+        layout.operator("mesh.smooth_normals", text="Smooth Vectors")
         layout.operator("mesh.normals_tools", text="Reset Vectors").mode = 'RESET'
 
         layout.separator()
@@ -5290,6 +5300,7 @@ class VIEW3D_MT_sculpt_mask_edit_pie(Menu):
         op.auto_iteration_count = False
 
 class VIEW3D_MT_sculpt_face_sets_edit_pie(Menu):
+
     bl_label = "Face Sets Edit"
 
     def draw(self, _context):
@@ -5385,8 +5396,8 @@ class VIEW3D_PT_view3d_properties(Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=True)
-        col = flow.column()
+
+        col = layout.column()
 
         subcol = col.column()
         subcol.active = bool(view.region_3d.view_perspective != 'CAMERA' or view.region_quadviews)
@@ -5396,20 +5407,22 @@ class VIEW3D_PT_view3d_properties(Panel):
         subcol.prop(view, "clip_start", text="Clip Start")
         subcol.prop(view, "clip_end", text="End")
 
-        subcol.separator()
+        layout.separator()
 
-        col = flow.column()
+        col = layout.column(align=False, heading="Local Camera")
+        col.use_property_decorate = False
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(view, "use_local_camera", text="")
+        sub = sub.row(align=True)
+        sub.enabled = view.use_local_camera
+        sub.prop(view, "camera", text="")
 
-        subcol = col.column()
-        subcol.prop(view, "use_local_camera")
+        layout.separator()
 
-        subcol = col.column()
-        subcol.enabled = view.use_local_camera
-        subcol.prop(view, "camera", text="Local Camera")
-
-        subcol = col.column(align=True)
-        subcol.prop(view, "use_render_border")
-        subcol.active = view.region_3d.view_perspective != 'CAMERA'
+        col = layout.column(align=True)
+        col.prop(view, "use_render_border")
+        col.active = view.region_3d.view_perspective != 'CAMERA'
 
 
 class VIEW3D_PT_view3d_lock(Panel):
@@ -5428,23 +5441,24 @@ class VIEW3D_PT_view3d_lock(Panel):
         view = context.space_data
 
         col = layout.column(align=True)
-        subcol = col.column()
-        subcol.active = bool(view.region_3d.view_perspective != 'CAMERA' or view.region_quadviews)
+        sub = col.column()
+        sub.active = bool(view.region_3d.view_perspective != 'CAMERA' or view.region_quadviews)
 
-        subcol.prop(view, "lock_object")
+        sub.prop(view, "lock_object")
         lock_object = view.lock_object
         if lock_object:
             if lock_object.type == 'ARMATURE':
-                subcol.prop_search(
+                sub.prop_search(
                     view, "lock_bone", lock_object.data,
                     "edit_bones" if lock_object.mode == 'EDIT'
                     else "bones",
                     text="",
                 )
         else:
-            subcol.prop(view, "lock_cursor", text="Lock to 3D Cursor")
+            subcol = sub.column(heading="Lock")
+            subcol.prop(view, "lock_cursor", text="To 3D Cursor")
 
-        col.prop(view, "lock_camera")
+        col.prop(view, "lock_camera", text="Camera to View")
 
 
 class VIEW3D_PT_view3d_cursor(Panel):
@@ -7443,6 +7457,7 @@ classes = (
     VIEW3D_MT_pose_group,
     VIEW3D_MT_pose_ik,
     VIEW3D_MT_pose_constraints,
+    VIEW3D_MT_pose_names,
     VIEW3D_MT_pose_showhide,
     VIEW3D_MT_pose_apply,
     VIEW3D_MT_pose_context_menu,

@@ -3977,7 +3977,9 @@ static ImBuf *load_sequence_single(
     iuser_t = *iuser;
   }
   else {
-    /* TODO(sergey): Do we need to initialize something here? */
+    /* BKE_image_user_file_path() uses this value for file name for sequences. */
+    iuser_t.framenr = frame;
+    /* TODO(sergey): Do we need to initialize something else here? */
   }
 
   iuser_t.view = view_id;
@@ -5316,8 +5318,8 @@ void BKE_image_user_file_path(ImageUser *iuser, Image *ima, char *filepath)
       index = (iuser && iuser->tile) ? iuser->tile : 1001;
     }
 
-    BLI_stringdec(filepath, head, tail, &numlen);
-    BLI_stringenc(filepath, head, tail, numlen, index);
+    BLI_path_sequence_decode(filepath, head, tail, &numlen);
+    BLI_path_sequence_encode(filepath, head, tail, numlen, index);
   }
 
   BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&ima->id));
@@ -5458,7 +5460,7 @@ float *BKE_image_get_float_pixels_for_frame(struct Image *image, int frame, int 
 
 int BKE_image_sequence_guess_offset(Image *image)
 {
-  return BLI_stringdec(image->name, NULL, NULL, NULL);
+  return BLI_path_sequence_decode(image->name, NULL, NULL, NULL);
 }
 
 bool BKE_image_has_anim(Image *ima)

@@ -76,7 +76,7 @@
 static bool clean_paths_visit_cb(void *UNUSED(userdata), char *path_dst, const char *path_src)
 {
   strcpy(path_dst, path_src);
-  BLI_path_native_slash(path_dst);
+  BLI_path_slash_native(path_dst);
   return !STREQ(path_dst, path_src);
 }
 
@@ -88,7 +88,7 @@ static void clean_paths(Main *main)
   BKE_bpath_traverse_main(main, clean_paths_visit_cb, BKE_BPATH_TRAVERSE_SKIP_MULTIFILE, NULL);
 
   for (scene = main->scenes.first; scene; scene = scene->id.next) {
-    BLI_path_native_slash(scene->r.pic);
+    BLI_path_slash_native(scene->r.pic);
   }
 }
 
@@ -257,9 +257,6 @@ static void setup_app_data(bContext *C,
   /* free G_MAIN Main database */
   //  CTX_wm_manager_set(C, NULL);
   BKE_blender_globals_clear();
-
-  /* clear old property update cache, in case some old references are left dangling */
-  RNA_property_update_cache_free();
 
   bmain = G_MAIN = bfd->main;
   bfd->main = NULL;

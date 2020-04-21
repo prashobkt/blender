@@ -340,7 +340,7 @@ static void scene_free_data(ID *id)
 
   /* is no lib link block, but scene extension */
   if (scene->nodetree) {
-    ntreeFreeNestedTree(scene->nodetree);
+    ntreeFreeEmbeddedTree(scene->nodetree);
     MEM_freeN(scene->nodetree);
     scene->nodetree = NULL;
   }
@@ -1278,6 +1278,14 @@ void BKE_scene_update_sound(Depsgraph *depsgraph, Main *bmain)
   BKE_sound_update_scene(depsgraph, scene);
 }
 
+void BKE_scene_update_tag_audio_volume(Depsgraph *UNUSED(depsgraph), Scene *scene)
+{
+  BLI_assert(DEG_is_evaluated_id(&scene->id));
+  /* The volume is actually updated in BKE_scene_update_sound(), from either
+   * scene_graph_update_tagged() or from BKE_scene_graph_update_for_newframe(). */
+  scene->id.recalc |= ID_RECALC_AUDIO_VOLUME;
+}
+
 /* TODO(sergey): This actually should become view_layer_graph or so.
  * Same applies to update_for_newframe.
  *
@@ -2167,8 +2175,6 @@ GHash *BKE_scene_undo_depsgraphs_extract(Main *bmain)
 void BKE_scene_undo_depsgraphs_restore(Main *bmain, GHash *depsgraph_extract)
 {
   for (Scene *scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
-    BLI_assert(scene->depsgraph_hash == NULL);
-
     for (ViewLayer *view_layer = scene->view_layers.first; view_layer != NULL;
          view_layer = view_layer->next) {
       char key_full[MAX_ID_NAME + FILE_MAX + MAX_NAME] = {0};

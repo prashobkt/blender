@@ -80,6 +80,13 @@ int manta_write_data(MANTA *fluid, FluidModifierData *mmd, int framenr)
   return fluid->writeData(mmd, framenr);
 }
 
+int manta_write_noise(MANTA *fluid, FluidModifierData *mmd, int framenr)
+{
+  if (!fluid || !mmd)
+    return 0;
+  return fluid->writeNoise(mmd, framenr);
+}
+
 int manta_read_config(MANTA *fluid, FluidModifierData *mmd, int framenr)
 {
   if (!fluid || !mmd)
@@ -382,6 +389,10 @@ float *manta_get_phiobsstatic_in(MANTA *fluid)
 float *manta_get_phiout_in(MANTA *fluid)
 {
   return fluid->getPhiOutIn();
+}
+float *manta_get_phioutstatic_in(MANTA *fluid)
+{
+  return fluid->getPhiOutStaticIn();
 }
 
 /* Smoke functions */

@@ -39,6 +39,7 @@
 #include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_volume_types.h"
 #include "DNA_world_types.h"
 
@@ -160,6 +161,7 @@ static void set_operation_types(SpaceOutliner *soops,
           case ID_HA:
           case ID_PT:
           case ID_VO:
+          case ID_SIM:
             is_standard_id = true;
             break;
           case ID_WM:
@@ -590,7 +592,7 @@ static uiBlock *merged_element_search_menu(bContext *C, ARegion *region, void *d
   but = uiDefSearchBut(
       block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, menu_width, UI_UNIT_Y, 0, 0, "");
   UI_but_func_search_set(
-      but, NULL, merged_element_search_cb, data, NULL, merged_element_search_call_cb, NULL);
+      but, NULL, merged_element_search_cb, data, NULL, merged_element_search_call_cb, NULL, NULL);
   UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
   /* Fake button to hold space for search items */
@@ -1383,12 +1385,14 @@ static int outliner_object_operation_exec(bContext *C, wmOperator *op)
     str = "Select Object Hierarchy";
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+    ED_outliner_select_sync_from_object_tag(C);
   }
   else if (event == OL_OP_DESELECT) {
     outliner_do_object_operation(C, op->reports, scene, soops, &soops->tree, object_deselect_cb);
     str = "Deselect Objects";
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+    ED_outliner_select_sync_from_object_tag(C);
   }
   else if (event == OL_OP_DELETE) {
     ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -1727,6 +1731,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
     }
     case OUTLINER_IDOP_PASTE: {
       WM_operator_name_call(C, "OUTLINER_OT_id_paste", WM_OP_INVOKE_DEFAULT, NULL);
+      ED_outliner_select_sync_from_all_tag(C);
       ED_undo_push(C, "Paste");
       break;
     }
@@ -1760,6 +1765,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
     case OUTLINER_IDOP_SELECT_LINKED:
       outliner_do_libdata_operation(
           C, op->reports, scene, soops, &soops->tree, id_select_linked_cb, NULL);
+      ED_outliner_select_sync_from_all_tag(C);
       ED_undo_push(C, "Select");
       break;
 
@@ -2332,11 +2338,9 @@ static int outliner_operator_menu(bContext *C, const char *opname)
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_REGION_WIN);
   uiItemsEnumO(layout, ot->idname, RNA_property_identifier(ot->prop));
 
-  MenuType *mt = WM_menutype_find("OUTLINER_MT_context", false);
-  if (mt) {
-    uiItemS(layout);
-    UI_menutype_draw(C, mt, layout);
-  }
+  uiItemS(layout);
+
+  uiItemMContents(layout, "OUTLINER_MT_context_menu");
 
   UI_popup_menu_end(C, pup);
 
@@ -2471,14 +2475,8 @@ static int outliner_operation(bContext *C, wmOperator *UNUSED(op), const wmEvent
     }
   }
 
-  /* Menus for clicking in empty space. */
-  if (soops->outlinevis == SO_VIEW_LAYER) {
-    WM_menu_name_call(C, "OUTLINER_MT_collection_new", WM_OP_INVOKE_REGION_WIN);
-    return OPERATOR_FINISHED;
-  }
-
-  WM_menu_name_call(C, "OUTLINER_MT_context", WM_OP_INVOKE_REGION_WIN);
-  return OPERATOR_FINISHED;
+  /* Let this fall through to 'OUTLINER_MT_context_menu'. */
+  return OPERATOR_PASS_THROUGH;
 }
 
 /* Menu only! Calls other operators */

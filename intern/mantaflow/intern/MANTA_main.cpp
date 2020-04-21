@@ -61,28 +61,29 @@ int MANTA::with_debug(0);
 MANTA::MANTA(int *res, FluidModifierData *mmd) : mCurrentID(++solverID)
 {
   if (with_debug)
-    std::cout << "MANTA: " << mCurrentID << " with res(" << res[0] << ", " << res[1] << ", "
+    std::cout << "FLUID: " << mCurrentID << " with res(" << res[0] << ", " << res[1] << ", "
               << res[2] << ")" << std::endl;
 
   mmd->domain->fluid = this;
 
   mUsingLiquid = (mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID);
   mUsingSmoke = (mmd->domain->type == FLUID_DOMAIN_TYPE_GAS);
-  mUsingHeat = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_HEAT) && mUsingSmoke;
-  mUsingFire = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_FIRE) && mUsingSmoke;
-  mUsingColors = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) && mUsingSmoke;
   mUsingNoise = (mmd->domain->flags & FLUID_DOMAIN_USE_NOISE) && mUsingSmoke;
   mUsingFractions = (mmd->domain->flags & FLUID_DOMAIN_USE_FRACTIONS) && mUsingLiquid;
+  mUsingMesh = (mmd->domain->flags & FLUID_DOMAIN_USE_MESH) && mUsingLiquid;
+  mUsingMVel = (mmd->domain->flags & FLUID_DOMAIN_USE_SPEED_VECTORS) && mUsingLiquid;
+  mUsingGuiding = (mmd->domain->flags & FLUID_DOMAIN_USE_GUIDE);
   mUsingDrops = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) && mUsingLiquid;
   mUsingBubbles = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) && mUsingLiquid;
   mUsingFloats = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) && mUsingLiquid;
   mUsingTracers = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_TRACER) && mUsingLiquid;
-  mUsingMesh = (mmd->domain->flags & FLUID_DOMAIN_USE_MESH) && mUsingLiquid;
-  mUsingMVel = (mmd->domain->flags & FLUID_DOMAIN_USE_SPEED_VECTORS) && mUsingLiquid;
+
+  mUsingHeat = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_HEAT) && mUsingSmoke;
+  mUsingFire = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_FIRE) && mUsingSmoke;
+  mUsingColors = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) && mUsingSmoke;
   mUsingObstacle = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OBSTACLE);
   mUsingInvel = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL);
   mUsingOutflow = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW);
-  mUsingGuiding = (mmd->domain->flags & FLUID_DOMAIN_USE_GUIDE);
 
   // Simulation constants
   mTempAmb = 0;  // TODO: Maybe use this later for buoyancy calculation
@@ -140,6 +141,7 @@ MANTA::MANTA(int *res, FluidModifierData *mmd) : mCurrentID(++solverID)
   mPhiIn = nullptr;
   mPhiStaticIn = nullptr;
   mPhiOutIn = nullptr;
+  mPhiOutStaticIn = nullptr;
   mPhi = nullptr;
 
   // Mesh
@@ -566,7 +568,7 @@ bool MANTA::runPythonString(std::vector<std::string> commands)
 void MANTA::initializeMantaflow()
 {
   if (with_debug)
-    std::cout << "Fluid: Initializing Mantaflow framework." << std::endl;
+    std::cout << "Fluid: Initializing Mantaflow framework" << std::endl;
 
   std::string filename = "manta_scene_" + std::to_string(mCurrentID) + ".py";
   std::vector<std::string> fill = std::vector<std::string>();
@@ -581,7 +583,7 @@ void MANTA::initializeMantaflow()
 void MANTA::terminateMantaflow()
 {
   if (with_debug)
-    std::cout << "Fluid: Releasing Mantaflow framework." << std::endl;
+    std::cout << "Fluid: Releasing Mantaflow framework" << std::endl;
 
   PyGILState_STATE gilstate = PyGILState_Ensure();
   Pb::finalize();  // Namespace from Mantaflow (registry)
@@ -1078,8 +1080,7 @@ bool MANTA::updateFlipStructures(FluidModifierData *mmd, int framenr)
     assert(result == expected);
   }
 
-  mFlipFromFile = true;
-  return (result == expected);
+  return mFlipFromFile = (result == expected);
 }
 
 bool MANTA::updateMeshStructures(FluidModifierData *mmd, int framenr)
@@ -1098,12 +1099,14 @@ bool MANTA::updateMeshStructures(FluidModifierData *mmd, int framenr)
   int expected = 0; /* Expected number of read successes for this frame. */
 
   /* Ensure empty data structures at start. */
-  if (!mMeshNodes || !mMeshTriangles || !mMeshVelocities)
+  if (!mMeshNodes || !mMeshTriangles)
     return false;
 
   mMeshNodes->clear();
   mMeshTriangles->clear();
-  mMeshVelocities->clear();
+
+  if (mMeshVelocities)
+    mMeshVelocities->clear();
 
   std::string mformat = getCacheFileEnding(mmd->domain->cache_mesh_format);
   std::string dformat = getCacheFileEnding(mmd->domain->cache_data_format);
@@ -1124,8 +1127,7 @@ bool MANTA::updateMeshStructures(FluidModifierData *mmd, int framenr)
     }
   }
 
-  mMeshFromFile = true;
-  return (result == expected);
+  return mMeshFromFile = (result == expected);
 }
 
 bool MANTA::updateParticleStructures(FluidModifierData *mmd, int framenr)
@@ -1175,8 +1177,7 @@ bool MANTA::updateParticleStructures(FluidModifierData *mmd, int framenr)
     assert(result == expected);
   }
 
-  mParticlesFromFile = true;
-  return (result == expected);
+  return mParticlesFromFile = (result == expected);
 }
 
 bool MANTA::updateSmokeStructures(FluidModifierData *mmd, int framenr)
@@ -1222,19 +1223,21 @@ bool MANTA::updateSmokeStructures(FluidModifierData *mmd, int framenr)
 
   if (mUsingColors) {
     file = getFile(mmd, FLUID_DOMAIN_DIR_DATA, FLUID_DOMAIN_FILE_COLORR, dformat, framenr);
-    expected += 3;
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mColorR, false);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_DATA, FLUID_DOMAIN_FILE_COLORG, dformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mColorG, false);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_DATA, FLUID_DOMAIN_FILE_COLORB, dformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mColorB, false);
       assert(result == expected);
@@ -1243,27 +1246,28 @@ bool MANTA::updateSmokeStructures(FluidModifierData *mmd, int framenr)
 
   if (mUsingFire) {
     file = getFile(mmd, FLUID_DOMAIN_DIR_DATA, FLUID_DOMAIN_FILE_FLAME, dformat, framenr);
-    expected += 3;
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mFlame, false);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_DATA, FLUID_DOMAIN_FILE_FUEL, dformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mFuel, false);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_DATA, FLUID_DOMAIN_FILE_REACT, dformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mReact, false);
       assert(result == expected);
     }
   }
 
-  mSmokeFromFile = true;
-  return (result == expected);
+  return mSmokeFromFile = (result == expected);
 }
 
 bool MANTA::updateNoiseStructures(FluidModifierData *mmd, int framenr)
@@ -1301,19 +1305,21 @@ bool MANTA::updateNoiseStructures(FluidModifierData *mmd, int framenr)
 
   if (mUsingColors) {
     file = getFile(mmd, FLUID_DOMAIN_DIR_NOISE, FLUID_DOMAIN_FILE_COLORRNOISE, nformat, framenr);
-    expected += 3;
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mColorRHigh, true);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_NOISE, FLUID_DOMAIN_FILE_COLORGNOISE, nformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mColorGHigh, true);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_NOISE, FLUID_DOMAIN_FILE_COLORBNOISE, nformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mColorBHigh, true);
       assert(result == expected);
@@ -1322,27 +1328,28 @@ bool MANTA::updateNoiseStructures(FluidModifierData *mmd, int framenr)
 
   if (mUsingFire) {
     file = getFile(mmd, FLUID_DOMAIN_DIR_NOISE, FLUID_DOMAIN_FILE_FLAMENOISE, nformat, framenr);
-    expected += 3;
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mFlameHigh, true);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_NOISE, FLUID_DOMAIN_FILE_FUELNOISE, nformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mFuelHigh, true);
       assert(result == expected);
     }
 
     file = getFile(mmd, FLUID_DOMAIN_DIR_NOISE, FLUID_DOMAIN_FILE_REACTNOISE, nformat, framenr);
+    expected += 1;
     if (BLI_exists(file.c_str())) {
       result += updateGridFromFile(file, mReactHigh, true);
       assert(result == expected);
     }
   }
 
-  mNoiseFromFile = true;
-  return (result == expected);
+  return mNoiseFromFile = (result == expected);
 }
 
 /* Dirty hack: Needed to format paths from python code that is run via PyRun_SimpleString */
@@ -1428,6 +1435,29 @@ bool MANTA::writeData(FluidModifierData *mmd, int framenr)
     ss.str("");
     ss << "liquid_save_data_" << mCurrentID << "('" << escapeSlashes(directory) << "', " << framenr
        << ", '" << dformat << "', " << resumable_cache << ")";
+    pythonCommands.push_back(ss.str());
+  }
+  return runPythonString(pythonCommands);
+}
+
+bool MANTA::writeNoise(FluidModifierData *mmd, int framenr)
+{
+  if (with_debug)
+    std::cout << "MANTA::writeNoise()" << std::endl;
+
+  std::ostringstream ss;
+  std::vector<std::string> pythonCommands;
+
+  std::string directory = getDirectory(mmd, FLUID_DOMAIN_DIR_NOISE);
+  std::string nformat = getCacheFileEnding(mmd->domain->cache_noise_format);
+
+  bool final_cache = (mmd->domain->cache_type == FLUID_DOMAIN_CACHE_FINAL);
+  std::string resumable_cache = (final_cache) ? "False" : "True";
+
+  if (mUsingSmoke && mUsingNoise) {
+    ss.str("");
+    ss << "smoke_save_noise_" << mCurrentID << "('" << escapeSlashes(directory) << "', " << framenr
+       << ", '" << nformat << "', " << resumable_cache << ")";
     pythonCommands.push_back(ss.str());
   }
   return runPythonString(pythonCommands);
@@ -1897,6 +1927,7 @@ void MANTA::exportSmokeScript(FluidModifierData *mmd)
   bool obstacle = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OBSTACLE;
   bool guiding = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_GUIDE;
   bool invel = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL;
+  bool outflow = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW;
 
   std::string manta_script;
 
@@ -1939,6 +1970,8 @@ void MANTA::exportSmokeScript(FluidModifierData *mmd)
     manta_script += fluid_alloc_obstacle;
   if (invel)
     manta_script += fluid_alloc_invel;
+  if (outflow)
+    manta_script += fluid_alloc_outflow;
 
   // Noise field
   if (noise)
@@ -2003,6 +2036,7 @@ void MANTA::exportLiquidScript(FluidModifierData *mmd)
   bool fractions = mmd->domain->flags & FLUID_DOMAIN_USE_FRACTIONS;
   bool guiding = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_GUIDE;
   bool invel = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL;
+  bool outflow = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW;
 
   std::string manta_script;
 
@@ -2041,6 +2075,8 @@ void MANTA::exportLiquidScript(FluidModifierData *mmd)
     manta_script += fluid_alloc_fractions;
   if (invel)
     manta_script += fluid_alloc_invel;
+  if (outflow)
+    manta_script += fluid_alloc_outflow;
 
   // Domain init
   manta_script += header_gridinit + liquid_init_phi;
@@ -2715,10 +2751,10 @@ bool MANTA::updateParticlesFromUni(std::string filename, bool isSecondarySys, bo
     return false;
   }
   if (!ibuffer[0]) {  // Any particles present?
-    std::cerr << "Fluid Error -- updateParticlesFromUni(): No particles present in file: "
-              << filename << std::endl;
+    if (with_debug)
+      std::cout << "Fluid: No particles present in file: " << filename << std::endl;
     gzclose(gzf);
-    return false;
+    return true;  // return true since having no particles in a cache file is valid
   }
 
   numParticles = ibuffer[0];
@@ -3090,6 +3126,8 @@ void MANTA::updatePointers()
 
   if (mUsingOutflow) {
     mPhiOutIn = (float *)pyObjectToPointer(callPythonFunction("phiOutIn" + solver_ext, func));
+    mPhiOutStaticIn = (float *)pyObjectToPointer(
+        callPythonFunction("phiOutSIn" + solver_ext, func));
   }
   if (mUsingObstacle) {
     mPhiObsIn = (float *)pyObjectToPointer(callPythonFunction("phiObsIn" + solver_ext, func));
@@ -3201,7 +3239,7 @@ bool MANTA::hasConfig(FluidModifierData *mmd, int framenr)
 
 bool MANTA::hasData(FluidModifierData *mmd, int framenr)
 {
-  std::string filename = (mUsingSmoke) ? FLUID_DOMAIN_FILE_DENSITY : FLUID_DOMAIN_FILE_PHI;
+  std::string filename = (mUsingSmoke) ? FLUID_DOMAIN_FILE_DENSITY : FLUID_DOMAIN_FILE_PP;
   std::string extension = getCacheFileEnding(mmd->domain->cache_data_format);
   return BLI_exists(getFile(mmd, FLUID_DOMAIN_DIR_DATA, filename, extension, framenr).c_str());
 }
