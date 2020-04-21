@@ -2405,8 +2405,8 @@ static void ed_panel_draw(const bContext *C,
 
     UI_panel_label_offset(block, &labelx, &labely);
 
-    /* Unusual case: Use extending layout (buttons stretch to available width). */
-    if (pt->flag & PNL_LAYOUT_HEADER_EXTEND) {
+    /* Unusual case: Use expanding layout (buttons stretch to available width). */
+    if (pt->flag & PNL_LAYOUT_HEADER_EXPAND) {
       uiLayout *layout = UI_block_layout(block,
                                          UI_LAYOUT_VERTICAL,
                                          UI_LAYOUT_PANEL,

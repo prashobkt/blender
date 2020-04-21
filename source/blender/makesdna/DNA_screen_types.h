@@ -550,7 +550,8 @@ enum {
 enum {
   PNL_DEFAULT_CLOSED = (1 << 0),
   PNL_NO_HEADER = (1 << 1),
-  PNL_LAYOUT_HEADER_EXTEND = (1 << 2),
+  /** Makes buttons in the header shrink/stretch to fill full layout width. */
+  PNL_LAYOUT_HEADER_EXPAND = (1 << 2),
   PNL_LAYOUT_VERT_BAR = (1 << 3),
   /** This panel type represents data external to the UI. */
   PNL_LIST = (1 << 4),
