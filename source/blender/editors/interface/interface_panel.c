@@ -1773,8 +1773,8 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
     }
   }
 
-  short dx = (event->x - data->startx) & ~(PNL_GRID - 1);
-  short dy = (event->y - data->starty) & ~(PNL_GRID - 1);
+  short dx = event->x - data->startx;
+  short dy = event->y - data->starty;
 
   dx *= (float)BLI_rctf_size_x(&region->v2d.cur) / (float)BLI_rcti_size_x(&region->winrct);
   dy *= (float)BLI_rctf_size_y(&region->v2d.cur) / (float)BLI_rcti_size_y(&region->winrct);
