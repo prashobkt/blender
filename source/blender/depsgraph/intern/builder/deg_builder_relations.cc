@@ -62,6 +62,7 @@ extern "C" {
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_texture_types.h"
@@ -557,6 +558,9 @@ void DepsgraphRelationBuilder::build_id(ID *id)
       break;
     case ID_SCE:
       build_scene_parameters((Scene *)id);
+      break;
+    case ID_SIM:
+      build_simulation((Simulation *)id);
       break;
     default:
       fprintf(stderr, "Unhandled ID %s\n", id->name);
@@ -2345,21 +2349,27 @@ void DepsgraphRelationBuilder::build_texture(Tex *texture)
     return;
   }
   /* texture itself */
+  ComponentKey texture_key(&texture->id, NodeType::GENERIC_DATABLOCK);
   build_animdata(&texture->id);
   build_parameters(&texture->id);
+
   /* texture's nodetree */
   build_nodetree(texture->nodetree);
+  build_nested_nodetree(&texture->id, texture->nodetree);
+
   /* Special cases for different IDs which texture uses. */
   if (texture->type == TEX_IMAGE) {
     if (texture->ima != nullptr) {
       build_image(texture->ima);
+
+      ComponentKey image_key(&texture->ima->id, NodeType::GENERIC_DATABLOCK);
+      add_relation(image_key, texture_key, "Texture Image");
     }
   }
-  build_nested_nodetree(&texture->id, texture->nodetree);
+
   if (check_id_has_anim_component(&texture->id)) {
     ComponentKey animation_key(&texture->id, NodeType::ANIMATION);
-    ComponentKey datablock_key(&texture->id, NodeType::GENERIC_DATABLOCK);
-    add_relation(animation_key, datablock_key, "Datablock Animation");
+    add_relation(animation_key, texture_key, "Datablock Animation");
   }
 }
 
@@ -2500,6 +2510,15 @@ void DepsgraphRelationBuilder::build_sound(bSound *sound)
   }
   build_animdata(&sound->id);
   build_parameters(&sound->id);
+}
+
+void DepsgraphRelationBuilder::build_simulation(Simulation *simulation)
+{
+  if (built_map_.checkIsBuiltAndTag(simulation)) {
+    return;
+  }
+  build_animdata(&simulation->id);
+  build_parameters(&simulation->id);
 }
 
 void DepsgraphRelationBuilder::build_scene_sequencer(Scene *scene)
