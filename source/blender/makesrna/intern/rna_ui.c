@@ -1302,7 +1302,7 @@ static void rna_def_panel(BlenderRNA *brna)
        "List Panel Child",
        "A panel with this type is a child of a list panel"},
       {PNL_LAYOUT_HEADER_EXPAND,
-       "HEADER_LAYOUT_EXTPAND",
+       "HEADER_LAYOUT_EXPAND",
        0,
        "Expand Header Layout",
        "Allow buttons in the header to stretch and shrink to fill the entire layout width"},
