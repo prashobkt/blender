@@ -63,7 +63,7 @@ class ConstraintButtonsPanel(Panel):
     bl_region_type = 'WINDOW'
     bl_label = ""
     bl_context = "constraint"
-    bl_options = {'LIST'}
+    bl_options = {'LIST', 'HEADER_LAYOUT_EXPAND'}
 
     @staticmethod
     def draw_influence(layout, con):
