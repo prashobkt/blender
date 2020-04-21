@@ -2654,6 +2654,9 @@ static void draw_constraint_header(uiLayout *layout, Object *ob, bConstraint *co
     UI_block_emboss_set(block, UI_EMBOSS_NONE);
     uiItemO(layout, "", ICON_X, "CONSTRAINT_OT_delete");
     UI_block_emboss_set(block, UI_EMBOSS);
+
+    /* Some extra padding at the end, so 'x' icon isn't too close to drag button. */
+    uiItemS(layout);
   }
 
   /* Set but-locks for protected settings (magic numbers are used here!) */
