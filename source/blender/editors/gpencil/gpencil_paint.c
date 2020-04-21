@@ -710,7 +710,7 @@ static void gp_apply_randomness(tGPsdata *p,
     else {
       pt->pressure *= 1.0 + random_settings.pressure * brush_settings->draw_random_press;
     }
-    CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
+    CLAMP(pt->pressure, 0.1f, 1.0f);
   }
 
   /* Apply randomness to color strength. */
@@ -3084,7 +3084,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
   else {
     p = op->customdata;
   }
-  /* Init random vertex color. */
+  /* Init random settings. */
   ED_gpencil_init_random_settings(p->brush, event->mval, &p->random_settings);
 
   /* TODO: set any additional settings that we can take from the events?

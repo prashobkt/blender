@@ -2750,7 +2750,8 @@ void ED_gpencil_init_random_settings(Brush *brush,
 
   /* Randomn to color strength. */
   if (brush_settings->draw_random_strength) {
-    random_settings->strength = BLI_hash_int_01(BLI_hash_int_2d(ix + iz, iy + iz)) * 2.0f - 1.0f;
+    random_settings->strength = BLI_hash_int_01(BLI_hash_int_2d(ix + iy, iy + iz + ix)) * 2.0f -
+                                1.0f;
   }
 
   /* Random to uv texture rotation. */

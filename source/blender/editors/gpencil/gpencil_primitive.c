@@ -681,6 +681,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
   ToolSettings *ts = tgpi->scene->toolsettings;
   bGPdata *gpd = tgpi->gpd;
   Brush *brush = tgpi->brush;
+  BrushGpencilSettings *brush_settings = brush->gpencil_settings;
+  GpRandomSettings random_settings = tgpi->random_settings;
   bGPDstroke *gps = tgpi->gpf->strokes.first;
   GP_Sculpt_Settings *gset = &ts->gp_sculpt;
   int depth_margin = (ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) ? 4 : 0;
@@ -735,11 +737,11 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
   if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
     BKE_curvemapping_initialize(ts->gp_sculpt.cur_primitive);
   }
-  if (tgpi->brush->gpencil_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
-    BKE_curvemapping_initialize(tgpi->brush->gpencil_settings->curve_jitter);
+  if (brush_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
+    BKE_curvemapping_initialize(brush_settings->curve_jitter);
   }
-  if (tgpi->brush->gpencil_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
-    BKE_curvemapping_initialize(tgpi->brush->gpencil_settings->curve_strength);
+  if (brush_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
+    BKE_curvemapping_initialize(brush_settings->curve_strength);
   }
 
   /* get an array of depths, far depths are blended */
@@ -841,10 +843,9 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     tGPspoint *p2d = &points2D[i];
 
     /* set rnd value for reuse */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) && (p2d->rnd_dirty != true)) {
+    if ((brush_settings->flag & GP_BRUSH_GROUP_RANDOM) && (p2d->rnd_dirty != true)) {
       p2d->rnd[0] = BLI_rng_get_float(tgpi->rng);
       p2d->rnd[1] = BLI_rng_get_float(tgpi->rng);
-      p2d->rnd[2] = BLI_rng_get_float(tgpi->rng);
       p2d->rnd_dirty = true;
     }
 
@@ -858,7 +859,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     /* calc pressure */
     float curve_pressure = 1.0;
     float pressure = 1.0;
-    float strength = brush->gpencil_settings->draw_strength;
+    float strength = brush_settings->draw_strength;
 
     /* normalize value to evaluate curve */
     if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
@@ -868,20 +869,18 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     }
 
     /* apply jitter to position */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->draw_jitter > 0.0f)) {
+    if ((brush_settings->flag & GP_BRUSH_GROUP_RANDOM) && (brush_settings->draw_jitter > 0.0f)) {
       float jitter;
 
-      if (brush->gpencil_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
-        jitter = BKE_curvemapping_evaluateF(
-            brush->gpencil_settings->curve_jitter, 0, curve_pressure);
+      if (brush_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
+        jitter = BKE_curvemapping_evaluateF(brush_settings->curve_jitter, 0, curve_pressure);
       }
       else {
-        jitter = brush->gpencil_settings->draw_jitter;
+        jitter = brush_settings->draw_jitter;
       }
 
       /* exponential value */
-      const float exfactor = square_f(brush->gpencil_settings->draw_jitter + 2.0f);
+      const float exfactor = square_f(brush_settings->draw_jitter + 2.0f);
       const float fac = p2d->rnd[0] * exfactor * jitter;
 
       /* vector */
@@ -906,55 +905,54 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
       add_v2_v2(&p2d->x, svec);
     }
 
-    /* apply randomness to pressure */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->draw_random_press > 0.0f)) {
-      if (p2d->rnd[0] > 0.5f) {
-        pressure -= (brush->gpencil_settings->draw_random_press * 2.0f) * p2d->rnd[1];
-      }
-      else {
-        pressure += (brush->gpencil_settings->draw_random_press * 2.0f) * p2d->rnd[2];
-      }
-    }
-
     /* color strength */
-    if (brush->gpencil_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
-      float curvef = BKE_curvemapping_evaluateF(
-          brush->gpencil_settings->curve_strength, 0, curve_pressure);
+    if (brush_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
+      float curvef = BKE_curvemapping_evaluateF(brush_settings->curve_strength, 0, curve_pressure);
       strength *= curvef;
-      strength *= brush->gpencil_settings->draw_strength;
+      strength *= brush_settings->draw_strength;
     }
 
     CLAMP(strength, GPENCIL_STRENGTH_MIN, 1.0f);
 
-    /* apply randomness to color strength */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->draw_random_strength > 0.0f)) {
-      if (p2d->rnd[2] > 0.5f) {
-        strength -= strength * brush->gpencil_settings->draw_random_strength * p2d->rnd[0];
+    if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
+      /* Apply randomness to pressure. */
+      if (brush_settings->draw_random_press > 0.0f) {
+        if ((brush_settings->flag2 & GP_BRUSH_USE_PRESS_AT_STROKE) == 0) {
+          float rand = BLI_rng_get_float(tgpi->rng) * 2.0f - 1.0f;
+          pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
+        }
+        else {
+          pressure *= 1.0 + random_settings.pressure * brush_settings->draw_random_press;
+        }
+        CLAMP(pressure, 0.1f, 1.0f);
       }
-      else {
-        strength += strength * brush->gpencil_settings->draw_random_strength * p2d->rnd[1];
+
+      /* Apply randomness to color strength. */
+      if (brush_settings->draw_random_strength) {
+        if ((brush_settings->flag2 & GP_BRUSH_USE_STRENGTH_AT_STROKE) == 0) {
+          float rand = BLI_rng_get_float(tgpi->rng) * 2.0f - 1.0f;
+          strength *= 1.0 + rand * brush_settings->draw_random_strength;
+        }
+        else {
+          strength *= 1.0 + random_settings.strength * brush_settings->draw_random_strength;
+        }
+        CLAMP(strength, GPENCIL_STRENGTH_MIN, 1.0f);
       }
-      CLAMP(strength, GPENCIL_STRENGTH_MIN, 1.0f);
     }
 
     copy_v2_v2(&tpt->x, &p2d->x);
-
-    CLAMP_MIN(pressure, 0.1f);
 
     tpt->pressure = pressure;
     tpt->strength = strength;
     tpt->time = p2d->time;
 
-    if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush)) {
-      copy_v3_v3(tpt->vert_color, brush->rgb);
-      pt->vert_color[3] = brush->gpencil_settings->vertex_factor;
-      srgb_to_linearrgb_v4(tpt->vert_color, pt->vert_color);
-    }
-    else {
-      zero_v4(tpt->vert_color);
-    }
+    /* Set vertex colors for buffer. */
+    ED_gpencil_sbuffer_vertex_color_set(tgpi->depsgraph,
+                                        tgpi->ob,
+                                        tgpi->scene->toolsettings,
+                                        tgpi->brush,
+                                        tgpi->material,
+                                        tgpi->random_settings.hsv);
 
     /* point uv */
     if (gpd->runtime.sbuffer_used > 0) {
@@ -1003,8 +1001,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     pt->time = 0.0f;
     pt->flag = 0;
     pt->uv_fac = tpt->uv_fac;
-    /* Apply the vertex color to point. */
-    ED_gpencil_point_vertex_color_set(ts, brush, pt, NULL);
+    copy_v4_v4(pt->vert_color, tpt->vert_color);
 
     if (gps->dvert != NULL) {
       MDeformVert *dvert = &gps->dvert[i];
@@ -1168,6 +1165,7 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
 
   /* Set Draw brush. */
   Brush *brush = BKE_paint_toolslots_brush_get(paint, 0);
+
   BKE_brush_tool_set(brush, paint, 0);
   BKE_paint_brush_set(paint, brush);
   tgpi->brush = brush;
@@ -1235,6 +1233,9 @@ static int gpencil_primitive_invoke(bContext *C, wmOperator *op, const wmEvent *
   gpencil_primitive_init(C, op);
   tgpi = op->customdata;
 
+  /* Init random settings. */
+  ED_gpencil_init_random_settings(tgpi->brush, event->mval, &tgpi->random_settings);
+
   const bool is_modal = RNA_boolean_get(op->ptr, "wait_for_input");
   if (!is_modal) {
     tgpi->flag = IN_PROGRESS;
@@ -1271,6 +1272,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
 
   ToolSettings *ts = tgpi->scene->toolsettings;
   Brush *brush = tgpi->brush;
+  BrushGpencilSettings *brush_settings = brush->gpencil_settings;
 
   const int def_nr = tgpi->ob->actdef - 1;
   const bool have_weight = (bool)BLI_findlink(&tgpi->ob->defbase, def_nr);
@@ -1294,8 +1296,8 @@ static void gpencil_primitive_interaction_end(bContext *C,
   gps = tgpi->gpf->strokes.first;
   if (gps) {
     gps->thickness = brush->size;
-    gps->hardeness = brush->gpencil_settings->hardeness;
-    copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
+    gps->hardeness = brush_settings->hardeness;
+    copy_v2_v2(gps->aspect_ratio, brush_settings->aspect_ratio);
 
     /* Calc geometry data. */
     BKE_gpencil_stroke_geometry_update(gps);
@@ -1458,23 +1460,25 @@ static void gpencil_primitive_edit_event_handling(
 static void gpencil_primitive_strength(tGPDprimitive *tgpi, bool reset)
 {
   Brush *brush = tgpi->brush;
+  BrushGpencilSettings *brush_settings = brush->gpencil_settings;
+
   if (brush) {
     if (reset) {
-      brush->gpencil_settings->draw_strength = tgpi->brush_strength;
+      brush_settings->draw_strength = tgpi->brush_strength;
       tgpi->brush_strength = 0.0f;
     }
     else {
       if (tgpi->brush_strength == 0.0f) {
-        tgpi->brush_strength = brush->gpencil_settings->draw_strength;
+        tgpi->brush_strength = brush_settings->draw_strength;
       }
       float move[2];
       sub_v2_v2v2(move, tgpi->mval, tgpi->mvalo);
       float adjust = (move[1] > 0.0f) ? 0.01f : -0.01f;
-      brush->gpencil_settings->draw_strength += adjust * fabsf(len_manhattan_v2(move));
+      brush_settings->draw_strength += adjust * fabsf(len_manhattan_v2(move));
     }
 
     /* limit low limit because below 0.2f the stroke is invisible */
-    CLAMP(brush->gpencil_settings->draw_strength, 0.2f, 1.0f);
+    CLAMP(brush_settings->draw_strength, 0.2f, 1.0f);
   }
 }
 
