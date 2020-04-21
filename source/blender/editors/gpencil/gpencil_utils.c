@@ -2791,6 +2791,15 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
     }
     rgb_to_hsv_v(tpt->vert_color, hsv);
     add_v3_v3(hsv, factor_value);
+    /* For Hue need to cover all range, but for Saturation and Value
+     * is not logic because the effect is too hard, so the value is just clamped. */
+    if (hsv[0] < 0.0f) {
+      hsv[0] += 1.0f;
+    }
+    else if (hsv[0] > 1.0f) {
+      hsv[0] -= 1.0f;
+    }
+
     CLAMP3(hsv, 0.0f, 1.0f);
     hsv_to_rgb_v(hsv, tpt->vert_color);
   }
