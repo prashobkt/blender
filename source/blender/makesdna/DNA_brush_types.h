@@ -212,12 +212,18 @@ typedef enum eGPDbrush_Flag {
 } eGPDbrush_Flag;
 
 typedef enum eGPDbrush_Flag2 {
-  /* brush use random Hue at stroke level */
+  /* Brush use random Hue at stroke level */
   GP_BRUSH_USE_HUE_AT_STROKE = (1 << 0),
-  /* brush use random Saturation at stroke level */
+  /* Brush use random Saturation at stroke level */
   GP_BRUSH_USE_SAT_AT_STROKE = (1 << 1),
-  /* brush use random Value at stroke level */
+  /* Brush use random Value at stroke level */
   GP_BRUSH_USE_VAL_AT_STROKE = (1 << 2),
+  /* Brush use random Pressure at stroke level */
+  GP_BRUSH_USE_PRESS_AT_STROKE = (1 << 3),
+  /* Brush use random Strength at stroke level */
+  GP_BRUSH_USE_STRENGTH_AT_STROKE = (1 << 4),
+  /* Brush use random UV at stroke level */
+  GP_BRUSH_USE_UV_AT_STROKE = (1 << 5),
 } eGPDbrush_Flag2;
 
 /* BrushGpencilSettings->gp_fill_draw_mode */

@@ -40,6 +40,7 @@ struct bGPDspoint;
 struct bGPDstroke;
 struct bGPdata;
 struct tGPspoint;
+struct GpRandomSettings;
 
 struct ARegion;
 struct Depsgraph;
@@ -331,7 +332,9 @@ void ED_gpencil_sbuffer_vertex_color_random(struct bGPdata *gpd,
                                             struct Brush *brush,
                                             struct tGPspoint *tpt,
                                             float random_color[3]);
-void ED_gpencil_init_random_color(struct Brush *brush, const int mval[2], float r_value[3]);
+void ED_gpencil_init_random_settings(struct Brush *brush,
+                                     const int mval[2],
+                                     struct GpRandomSettings *random_settings);
 
 bool ED_gpencil_stroke_check_collision(struct GP_SpaceConversion *gsc,
                                        struct bGPDstroke *gps,

@@ -256,8 +256,8 @@ typedef struct tGPsdata {
 
   ReportList *reports;
 
-  /** Random vertex color by stroke */
-  float gps_random_color[3];
+  /** Random settings by stroke */
+  GpRandomSettings random_settings;
 
 } tGPsdata;
 
@@ -691,6 +691,55 @@ static void gp_smooth_segment(bGPdata *gpd, const float inf, int from_idx, int t
   }
 }
 
+static void gp_apply_randomness(tGPsdata *p,
+                                BrushGpencilSettings *brush_settings,
+                                tGPspoint *pt,
+                                const bool press,
+                                const bool strength,
+                                const bool uv)
+{
+  bGPdata *gpd = p->gpd;
+  GpRandomSettings random_settings = p->random_settings;
+
+  /* Apply randomness to pressure. */
+  if ((brush_settings->draw_random_press > 0.0f) && (press)) {
+    if ((brush_settings->flag2 & GP_BRUSH_USE_PRESS_AT_STROKE) == 0) {
+      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
+      pt->pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
+    }
+    else {
+      pt->pressure *= 1.0 + random_settings.pressure * brush_settings->draw_random_press;
+    }
+    CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
+  }
+
+  /* Apply randomness to color strength. */
+  if ((brush_settings->draw_random_strength) && (strength)) {
+    if ((brush_settings->flag2 & GP_BRUSH_USE_STRENGTH_AT_STROKE) == 0) {
+      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
+      pt->strength *= 1.0 + rand * brush_settings->draw_random_strength;
+    }
+    else {
+      pt->strength *= 1.0 + random_settings.strength * brush_settings->draw_random_strength;
+    }
+    CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
+  }
+
+  /* Apply randomness to uv texture rotation. */
+  if ((brush_settings->uv_random > 0.0f) && (uv)) {
+    if ((brush_settings->flag2 & GP_BRUSH_USE_UV_AT_STROKE) == 0) {
+      float rand = BLI_hash_int_01(BLI_hash_int_2d((int)pt->x, gpd->runtime.sbuffer_used)) * 2.0f -
+                   1.0f;
+      pt->uv_rot += rand * M_PI_2 * brush_settings->uv_random;
+    }
+    else {
+      pt->uv_rot += random_settings.uv * M_PI_2 * brush_settings->uv_random;
+    }
+
+    CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
+  }
+}
+
 /* add current stroke-point to buffer (returns whether point was successfully added) */
 static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure, double curtime)
 {
@@ -749,8 +798,12 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
     }
 
     /* Set vertex colors for buffer. */
-    ED_gpencil_sbuffer_vertex_color_set(
-        p->depsgraph, p->ob, p->scene->toolsettings, p->brush, p->material, p->gps_random_color);
+    ED_gpencil_sbuffer_vertex_color_set(p->depsgraph,
+                                        p->ob,
+                                        p->scene->toolsettings,
+                                        p->brush,
+                                        p->material,
+                                        p->random_settings.hsv);
 
     /* get pointer to destination point */
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
@@ -785,26 +838,9 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
         const float fac = rand * square_f(exp_factor) * jitpress;
         gp_brush_jitter(gpd, pt, fac);
       }
-      /* apply randomness to pressure */
-      if (brush_settings->draw_random_press > 0.0f) {
-        float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
-        pt->pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
-        CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
-      }
-      /* apply randomness to uv texture rotation */
-      if (brush_settings->uv_random > 0.0f) {
-        float rand = BLI_hash_int_01(BLI_hash_int_2d((int)pt->x, gpd->runtime.sbuffer_used)) *
-                         2.0f -
-                     1.0f;
-        pt->uv_rot += rand * M_PI_2 * brush_settings->uv_random;
-        CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
-      }
-      /* apply randomness to color strength */
-      if (brush_settings->draw_random_strength) {
-        float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
-        pt->strength *= 1.0 + rand * brush_settings->draw_random_strength;
-        CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
-      }
+
+      /* Apply other randomness. */
+      gp_apply_randomness(p, brush_settings, pt, true, true, true);
     }
 
     /* apply angle of stroke to brush size */
@@ -3049,7 +3085,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
     p = op->customdata;
   }
   /* Init random vertex color. */
-  ED_gpencil_init_random_color(p->brush, event->mval, p->gps_random_color);
+  ED_gpencil_init_random_settings(p->brush, event->mval, &p->random_settings);
 
   /* TODO: set any additional settings that we can take from the events?
    * if eraser is on, draw radial aid */
@@ -3177,10 +3213,17 @@ static void gp_brush_angle_segment(tGPsdata *p, tGPspoint *pt_prev, tGPspoint *p
 static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
 {
   bGPdata *gpd = p->gpd;
+  BrushGpencilSettings *brush_settings = p->brush->gpencil_settings;
+
   if (gpd->runtime.sbuffer_used < 3) {
+    tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
+    /* Apply other randomness to first points. */
+    for (int i = 0; i < gpd->runtime.sbuffer_used; i++) {
+      tGPspoint *pt = &points[i];
+      gp_apply_randomness(p, brush_settings, pt, false, false, true);
+    }
     return;
   }
-  BrushGpencilSettings *brush_settings = p->brush->gpencil_settings;
   int idx_prev = gpd->runtime.sbuffer_used;
 
   /* Add space for new arc points. */
@@ -3254,26 +3297,8 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
       gp_brush_angle_segment(p, pt_prev, pt);
     }
 
-    /* Apply randomness to pressure. */
-    if (brush_settings->draw_random_press > 0.0f) {
-      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
-      pt->pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
-      CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
-    }
-    /* Apply randomness to color strength. */
-    if (brush_settings->draw_random_strength) {
-      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
-      pt->strength *= 1.0 + rand * brush_settings->draw_random_strength;
-      CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
-    }
-    /* Apply randomness to uv texture rotation. */
-    if (brush_settings->uv_random > 0.0f) {
-      float rand = BLI_hash_int_01(BLI_hash_int_2d((int)pt->x, gpd->runtime.sbuffer_used + i)) *
-                       2.0f -
-                   1.0f;
-      pt->uv_rot += rand * M_PI_2 * brush_settings->uv_random;
-      CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
-    }
+    /* Apply other randomness. */
+    gp_apply_randomness(p, brush_settings, pt, false, false, true);
 
     a += step;
   }

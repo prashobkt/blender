@@ -2715,30 +2715,47 @@ void ED_gpencil_point_vertex_color_set(ToolSettings *ts,
   }
 }
 
-void ED_gpencil_init_random_color(Brush *brush, const int mval[2], float r_value[3])
+void ED_gpencil_init_random_settings(Brush *brush,
+                                     const int mval[2],
+                                     GpRandomSettings *random_settings)
 {
   int seed = ((uint)(ceil(PIL_check_seconds_timer())) + 1) % 128;
   /* Use mouse position to get randomness. */
   int ix = mval[0] * seed;
   int iy = mval[1] * seed;
   int iz = ix + iy * seed;
-  zero_v3(r_value);
+  zero_v3(random_settings->hsv);
 
   BrushGpencilSettings *brush_settings = brush->gpencil_settings;
-  /* Apply random to Hue. */
+  /* Random to Hue. */
   if (brush_settings->random_hue > 0.0f) {
     float rand = BLI_hash_int_01(BLI_hash_int_2d(ix, iy)) * 2.0f - 1.0f;
-    r_value[0] = rand * brush_settings->random_hue * 0.5f;
+    random_settings->hsv[0] = rand * brush_settings->random_hue * 0.5f;
   }
-  /* Apply random to Saturation. */
+  /* Random to Saturation. */
   if (brush_settings->random_saturation > 0.0f) {
     float rand = BLI_hash_int_01(BLI_hash_int_2d(iy, ix)) * 2.0f - 1.0f;
-    r_value[1] = rand * brush_settings->random_saturation;
+    random_settings->hsv[1] = rand * brush_settings->random_saturation;
   }
-  /* Apply random to Value. */
+  /* Random to Value. */
   if (brush_settings->random_value > 0.0f) {
     float rand = BLI_hash_int_01(BLI_hash_int_2d(ix * iz, iy * iz)) * 2.0f - 1.0f;
-    r_value[2] = rand * brush_settings->random_value;
+    random_settings->hsv[2] = rand * brush_settings->random_value;
+  }
+
+  /* Random to pressure. */
+  if (brush_settings->draw_random_press > 0.0f) {
+    random_settings->pressure = BLI_hash_int_01(BLI_hash_int_2d(ix + iz, iy + iz)) * 2.0f - 1.0f;
+  }
+
+  /* Randomn to color strength. */
+  if (brush_settings->draw_random_strength) {
+    random_settings->strength = BLI_hash_int_01(BLI_hash_int_2d(ix + iz, iy + iz)) * 2.0f - 1.0f;
+  }
+
+  /* Random to uv texture rotation. */
+  if (brush_settings->uv_random > 0.0f) {
+    random_settings->uv = BLI_hash_int_01(BLI_hash_int_2d(iy + iz, ix * iz)) * 2.0f - 1.0f;
   }
 }
 

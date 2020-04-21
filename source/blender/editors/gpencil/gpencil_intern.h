@@ -68,6 +68,14 @@ struct PropertyRNA;
 
 /* Internal Operator-State Data ------------------------ */
 
+/** Random settings by stroke */
+typedef struct GpRandomSettings {
+  float hsv[3];
+  float pressure;
+  float strength;
+  float uv;
+} GpRandomSettings;
+
 /* Temporary draw data (no draw manager mode) */
 typedef struct tGPDdraw {
   struct RegionView3D *rv3d;   /* region to draw */
@@ -231,8 +239,8 @@ typedef struct tGPDprimitive {
   /** size in pixels for uv calculation */
   float totpixlen;
 
-  /** Random vertex color by stroke */
-  float gps_random_color[3];
+  /** Random settings by stroke */
+  GpRandomSettings random_settings;
 
 } tGPDprimitive;
 
