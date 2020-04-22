@@ -713,7 +713,8 @@ static void gp_apply_randomness(tGPsdata *p,
 
     /* Apply random curve. */
     if (brush_settings->flag2 & GP_BRUSH_USE_PRESSURE_RAND_PRESS) {
-      value *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->strength);
+      value *= BKE_curvemapping_evaluateF(
+          brush_settings->curve_rand_pressure, 0, random_settings.pen_press);
     }
 
     pt->pressure *= value;
@@ -732,7 +733,8 @@ static void gp_apply_randomness(tGPsdata *p,
 
     /* Apply random curve. */
     if (brush_settings->flag2 & GP_BRUSH_USE_STRENGTH_RAND_PRESS) {
-      value *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->strength);
+      value *= BKE_curvemapping_evaluateF(
+          brush_settings->curve_rand_pressure, 0, random_settings.pen_press);
     }
 
     pt->strength *= value;
@@ -752,7 +754,8 @@ static void gp_apply_randomness(tGPsdata *p,
 
     /* Apply random curve. */
     if (brush_settings->flag2 & GP_BRUSH_USE_UV_RAND_PRESS) {
-      value *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_uv, 0, pt->strength);
+      value *= BKE_curvemapping_evaluateF(
+          brush_settings->curve_rand_uv, 0, random_settings.pen_press);
     }
 
     pt->uv_rot += value;
@@ -769,6 +772,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
   tGPspoint *pt;
   Object *obact = (Object *)p->ownerPtr.data;
   RegionView3D *rv3d = p->region->regiondata;
+  p->random_settings.pen_press = pressure;
 
   /* check painting mode */
   if (p->paintmode == GP_PAINTMODE_DRAW_STRAIGHT) {
@@ -843,7 +847,8 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
                                         p->scene->toolsettings,
                                         p->brush,
                                         p->material,
-                                        p->random_settings.hsv);
+                                        p->random_settings.hsv,
+                                        p->random_settings.pen_press);
 
     if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
       /* Apply jitter to position */

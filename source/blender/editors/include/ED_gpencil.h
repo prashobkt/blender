@@ -327,11 +327,13 @@ void ED_gpencil_sbuffer_vertex_color_set(struct Depsgraph *depsgraph,
                                          struct ToolSettings *ts,
                                          struct Brush *brush,
                                          struct Material *material,
-                                         float random_color[3]);
+                                         float random_color[3],
+                                         float pen_pressure);
 void ED_gpencil_sbuffer_vertex_color_random(struct bGPdata *gpd,
                                             struct Brush *brush,
                                             struct tGPspoint *tpt,
-                                            float random_color[3]);
+                                            float random_color[3],
+                                            float pen_pressure);
 void ED_gpencil_init_random_settings(struct Brush *brush,
                                      const int mval[2],
                                      struct GpRandomSettings *random_settings);

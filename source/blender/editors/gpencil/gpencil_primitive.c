@@ -124,8 +124,13 @@ static void gp_session_validatebuffer(tGPDprimitive *p)
   gpd->runtime.sbuffer_sflag |= GP_STROKE_3DSPACE;
 
   /* Set vertex colors for buffer. */
-  ED_gpencil_sbuffer_vertex_color_set(
-      p->depsgraph, p->ob, p->scene->toolsettings, p->brush, p->material, p->random_settings.hsv);
+  ED_gpencil_sbuffer_vertex_color_set(p->depsgraph,
+                                      p->ob,
+                                      p->scene->toolsettings,
+                                      p->brush,
+                                      p->material,
+                                      p->random_settings.hsv,
+                                      1.0f);
 
   if (ELEM(p->type, GP_STROKE_BOX, GP_STROKE_CIRCLE)) {
     gpd->runtime.sbuffer_sflag |= GP_STROKE_CYCLIC;
@@ -964,7 +969,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
                                         tgpi->scene->toolsettings,
                                         tgpi->brush,
                                         tgpi->material,
-                                        tgpi->random_settings.hsv);
+                                        tgpi->random_settings.hsv,
+                                        strength);
 
     /* point uv */
     if (gpd->runtime.sbuffer_used > 0) {

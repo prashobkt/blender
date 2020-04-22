@@ -70,6 +70,9 @@ struct PropertyRNA;
 
 /** Random settings by stroke */
 typedef struct GpRandomSettings {
+  /** Pressure used for evaluated curves. */
+  float pen_press;
+
   float hsv[3];
   float pressure;
   float strength;
