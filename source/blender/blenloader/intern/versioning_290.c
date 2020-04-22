@@ -24,6 +24,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_genfile.h"
+#include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_collection.h"
@@ -58,6 +59,21 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
               SpaceImage *sima = (SpaceImage *)sl;
               sima->uv_opacity = 1.0f;
             }
+          }
+        }
+      }
+    }
+
+    /* Transition to saving expansion for all of a modifier's subpanels. */
+    if (!DNA_struct_elem_find(fd->filesdna, "SolidifyModifierData", "short", "ui_expand_flag")) {
+      printf("DOING VERIONING!\n");
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+          if (md->mode & eModifierMode_Expanded_DEPRECATED) {
+            md->ui_expand_flag = 1;
+          }
+          else {
+            md->ui_expand_flag = 0;
           }
         }
       }
