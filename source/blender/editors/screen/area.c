@@ -560,7 +560,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   memset(&region->drawrct, 0, sizeof(region->drawrct));
 
-  UI_blocklist_free_inactive(C, &region->uiblocks);
+  UI_blocklist_free_inactive(C, region);
 
   if (area) {
     const bScreen *screen = WM_window_get_active_screen(win);
@@ -2341,6 +2341,15 @@ BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
   return false;
 }
 
+/**
+ * Builds the panel layout for the input \a panel or type \a pt.
+ *
+ * \param panel The panel to draw. Can be null, in which case a panel with the type of \a pt will
+ * be found.
+ * \param unique_panel_str A unique identifier for the name of the \a uiBlock associated with the
+ * panel. Used when the panel is a list panel so a unique identifier is needed to find the
+ * correct old \a uiBlock, and NULL otherwise.
+ */
 static void ed_panel_draw(const bContext *C,
                           ScrArea *area,
                           ARegion *region,
@@ -2349,18 +2358,27 @@ static void ed_panel_draw(const bContext *C,
                           Panel *panel,
                           int w,
                           int em,
-                          bool vertical)
+                          bool vertical,
+                          char *unique_panel_str)
 {
   const uiStyle *style = UI_style_get_dpi();
 
-  /* draw panel */
-  uiBlock *block = UI_block_begin(C, region, pt->idname, UI_EMBOSS);
+  /* Draw panel. */
+
+  char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
+  strncpy(block_name, pt->idname, BKE_ST_MAXNAME);
+  if (unique_panel_str != NULL) {
+    /* List panels should have already been added at this point. */
+    strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
+  }
+  uiBlock *block = UI_block_begin(C, region, block_name, UI_EMBOSS);
 
   bool open;
   panel = UI_panel_begin(area, region, lb, block, pt, panel, &open);
 
   /* bad fixed values */
   int xco, yco, h = 0;
+  int headerend = w - UI_UNIT_X;
 
   if (pt->draw_header_preset && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
     /* for preset menu */
@@ -2376,8 +2394,6 @@ static void ed_panel_draw(const bContext *C,
 
     pt->draw_header_preset(C, panel);
 
-    int headerend = w - UI_UNIT_X;
-
     UI_block_layout_resolve(block, &xco, &yco);
     UI_block_translate(block, headerend - xco, 0);
     panel->layout = NULL;
@@ -2385,11 +2401,27 @@ static void ed_panel_draw(const bContext *C,
 
   if (pt->draw_header && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
     int labelx, labely;
+
     UI_panel_label_offset(block, &labelx, &labely);
 
-    /* for enabled buttons */
-    panel->layout = UI_block_layout(
-        block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
+    /* Unusual case: Use expanding layout (buttons stretch to available width). */
+    if (pt->flag & PNL_LAYOUT_HEADER_EXPAND) {
+      uiLayout *layout = UI_block_layout(block,
+                                         UI_LAYOUT_VERTICAL,
+                                         UI_LAYOUT_PANEL,
+                                         labelx,
+                                         labely,
+                                         headerend - 2 * style->panelspace,
+                                         1,
+                                         0,
+                                         style);
+      panel->layout = uiLayoutRow(layout, false);
+    }
+    /* Regular case: Normal panel with fixed size buttons. */
+    else {
+      panel->layout = UI_block_layout(
+          block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
+    }
 
     pt->draw_header(C, panel);
 
@@ -2445,7 +2477,16 @@ static void ed_panel_draw(const bContext *C,
       Panel *child_panel = UI_panel_find_by_type(&panel->children, child_pt);
 
       if (child_pt->draw && (!child_pt->poll || child_pt->poll(C, child_pt))) {
-        ed_panel_draw(C, area, region, &panel->children, child_pt, child_panel, w, em, vertical);
+        ed_panel_draw(C,
+                      area,
+                      region,
+                      &panel->children,
+                      child_pt,
+                      child_panel,
+                      w,
+                      em,
+                      vertical,
+                      unique_panel_str);
       }
     }
   }
@@ -2573,8 +2614,14 @@ void ED_region_panels_layout_ex(const bContext *C,
   /* set view2d view matrix  - UI_block_begin() stores it */
   UI_view2d_view_ortho(v2d);
 
+  bool has_recreate_panel = false;
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
+
+    if (pt->flag & PNL_LIST) {
+      has_recreate_panel = true;
+      continue;
+    }
     Panel *panel = UI_panel_find_by_type(&region->panels, pt);
 
     if (use_category_tabs && pt->category[0] && !STREQ(category, pt->category)) {
@@ -2583,7 +2630,33 @@ void ED_region_panels_layout_ex(const bContext *C,
       }
     }
 
-    ed_panel_draw(C, area, region, &region->panels, pt, panel, w, em, vertical);
+    ed_panel_draw(C, area, region, &region->panels, pt, panel, w, em, vertical, NULL);
+  }
+
+  if (has_recreate_panel) {
+    /* List panels have some margin to differentiate them from regular panels. */
+    w -= UI_LIST_PANEL_MARGIN * 2.0f;
+    for (Panel *panel = region->panels.first; panel; panel = panel->next) {
+      if (panel->type != NULL) { /* Some panels don't have a type.. */
+        if (panel->type->flag & PNL_LIST) {
+          /* Use a unique identifier for list panels, otherwise an old block for a different
+           * panel of the same type might be found. */
+          char unique_panel_str[8];
+          UI_list_panel_unique_str(panel, unique_panel_str);
+
+          ed_panel_draw(C,
+                        area,
+                        region,
+                        &region->panels,
+                        panel->type,
+                        panel,
+                        w,
+                        em,
+                        vertical,
+                        unique_panel_str);
+        }
+      }
+    }
   }
 
   /* align panels and return size */
