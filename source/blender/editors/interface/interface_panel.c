@@ -106,23 +106,21 @@ typedef struct uiHandlePanelData {
   /* animation */
   wmTimer *animtimer;
   double starttime;
-  bool is_drag_drop;
 
   /* dragging */
+  bool is_drag_drop;
   int startx, starty;
   int startofsx, startofsy;
   int startsizex, startsizey;
-
-  /* Drag Scrolling */
-  double starttime_drag_scroll;
-  /* Note: There can be multiple drag scroll "sessions" if the mouse leaves the scoll zone, so we
-   * need to keep track of the total scroll separately from the scroll for each "session." */
-  float scroll_offset, scroll_offset_total;
-
 } uiHandlePanelData;
+
+typedef struct PanelSort {
+  Panel *panel, *orig;
+} PanelSort;
 
 static int get_panel_real_size_y(const Panel *panel);
 static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelState state);
+static int compare_panel(const void *a1, const void *a2);
 
 static void panel_title_color_get(bool show_background, uchar color[4])
 {
@@ -248,7 +246,250 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
   return false;
 }
 
-/****************************** panels ******************************/
+/***** Functions for recreate list panels. ***********/
+
+/**
+ * Called in situations where panels need to be added dynamically rather than having only one panel
+ * corresponding to each PanelType.
+ */
+Panel *UI_panel_add_list(
+    ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
+{
+  Panel *panel = MEM_callocN(sizeof(Panel), "list panel");
+  panel->type = panel_type;
+  BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
+
+  panel->ofsx = 0;
+  panel->ofsy = 0;
+  panel->sizex = 0;
+  panel->sizey = 0;
+  panel->blocksizex = 0;
+  panel->blocksizey = 0;
+
+  panel->runtime.list_index = list_index;
+
+  /* Add the panel's children too. Although they aren't list panels, we can still use this
+   * function to creat them, as UI_panel_begin does other things we don't need to do. */
+  for (LinkData *link = panel_type->children.first; link; link = link->next) {
+    PanelType *child = link->data;
+    UI_panel_add_list(sa, region, &panel->children, child, list_index);
+  }
+
+  /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
+   * context string to make sure we add to the right list.
+   *
+   * We can the panel list is also the display order because the list panel list is rebuild
+   * when the order changes. */
+  if (panel_type->flag & PNL_LIST) {
+    Panel *last_list_panel = NULL;
+
+    for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
+      if (list_panel->type == NULL) {
+        continue;
+      }
+      if (list_panel->type->flag & (PNL_LIST_START | PNL_LIST)) {
+        last_list_panel = list_panel;
+      }
+    }
+
+    /* There should always be a list panel or a list panel start before this panel. */
+    BLI_assert(last_list_panel);
+
+    panel->sortorder = last_list_panel->sortorder + 1;
+
+    BLI_insertlinkafter(panels, last_list_panel, panel);
+  }
+  else {
+    BLI_addtail(panels, panel);
+  }
+
+  return panel;
+}
+
+void UI_list_panel_unique_str(Panel *panel, char *r_name)
+{
+  snprintf(r_name, LIST_PANEL_UNIQUE_STR_LEN, "%d", panel->runtime.list_index);
+}
+
+static void panel_free_block(ARegion *region, Panel *panel)
+{
+  BLI_assert(panel->type);
+
+  char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
+  strncpy(block_name, panel->type->idname, BKE_ST_MAXNAME);
+  char unique_panel_str[LIST_PANEL_UNIQUE_STR_LEN];
+  UI_list_panel_unique_str(panel, unique_panel_str);
+  strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
+
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
+    if (STREQ(block->name, block_name)) {
+      BLI_remlink(&region->uiblocks, block);
+      UI_block_free(NULL, block);
+      break; /* Only delete one block for this panel. */
+    }
+  }
+}
+
+void UI_panel_delete(ARegion *region, ListBase *panels, Panel *panel)
+{
+  /* Recursively delete children. */
+  Panel *child = panel->children.first;
+  while (child != NULL) {
+    Panel *child_next = child->next;
+    UI_panel_delete(region, &panel->children, child);
+    child = child_next;
+  }
+  BLI_freelistN(&panel->children);
+
+  panel_free_block(region, panel);
+
+  BLI_remlink(panels, panel);
+  if (panel->activedata) {
+    MEM_freeN(panel->activedata);
+  }
+  MEM_freeN(panel);
+}
+
+void UI_panels_free_list(bContext *C, ARegion *region)
+{
+  /* Delete panels with the recreate flag. */
+  ListBase *panels = &region->panels;
+  Panel *panel = panels->first;
+  Panel *panel_next = NULL;
+  while (panel != NULL) {
+    bool remove = false;
+    if (panel->type != NULL) { /* Some panels don't have a type.. */
+      if (panel->type->flag & PNL_LIST) {
+        remove = true;
+      }
+    }
+
+    panel_next = panel->next;
+    if (remove) {
+      if (panel->activedata != NULL) {
+        panel_activate_state(C, panel, PANEL_STATE_EXIT);
+      }
+      UI_panel_delete(region, panels, panel);
+    }
+    panel = panel_next;
+  }
+}
+
+/**
+ * Check if the list panels in the region's panel list corresponds to the list of data the panels
+ * represent. Returns false if the panels have been reordered or if the types from the list data
+ * don't match in any way.
+ *
+ * \param data: The list of data to check against the list panels.
+ * \param panel_type_func: Each type from the data list should have a corresponding panel type. For
+ * a mix of readabilty and generality, this can happen separately for each type of panel list.
+ */
+bool UI_panel_list_matches_data(ARegion *region,
+                                ListBase *data,
+                                uiListPanelTypeFromDataFunc panel_type_func)
+{
+  int data_len = BLI_listbase_count(data);
+  int i = 0;
+  Link *data_link = data->first;
+  Panel *panel = region->panels.first;
+  while (panel != NULL) {
+    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
+      /* The panels were reordered by drag and drop. */
+      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
+        return false;
+      }
+
+      /* We reached the last contraint before the last list panel. */
+      if (data_link == NULL) {
+        return false;
+      }
+
+      /* The types of the corresponding panel and constraint don't match. */
+      if (panel_type_func(region, data_link) != panel->type) {
+        return false;
+      }
+
+      data_link = data_link->next;
+      i++;
+    }
+    panel = panel->next;
+  }
+
+  /* If we didn't make it to the last list item, the panel list isn't complete. */
+  if (i != data_len) {
+    return false;
+  }
+
+  return true;
+}
+
+static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
+{
+  /* Only reorder the data for list panels. */
+  if (panel->type == NULL || !(panel->type->flag & PNL_LIST)) {
+    return;
+  }
+  /* Don't reorder if this list panel doesn't support drag and drop reordering. */
+  if (panel->type->reorder == NULL) {
+    return;
+  }
+
+  char *context = panel->type->context;
+
+  /* Find how many list panels with this context string. */
+  int list_panels_len = 0;
+  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
+    if (list_panel->type) {
+      if ((strcmp(list_panel->type->context, context) == 0)) {
+        if (list_panel->type->flag & PNL_LIST) {
+          list_panels_len++;
+        }
+      }
+    }
+  }
+
+  /* Sort the matching list panels by their display order. */
+  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "recreatepanelsort");
+  PanelSort *sort_index = panel_sort;
+  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
+    if (list_panel->type) {
+      if ((strcmp(list_panel->type->context, context) == 0)) {
+        if (list_panel->type->flag & PNL_LIST) {
+          sort_index->panel = MEM_dupallocN(list_panel);
+          sort_index->orig = list_panel;
+          sort_index++;
+        }
+      }
+    }
+  }
+  qsort(panel_sort, list_panels_len, sizeof(PanelSort), compare_panel);
+
+  /* Find how many of those panels are above this panel. */
+  int move_to_index = 0;
+  for (; move_to_index < list_panels_len; move_to_index++) {
+    if (panel_sort[move_to_index].orig == panel) {
+      break;
+    }
+  }
+
+  /* Free panel sort array. */
+  int i = 0;
+  for (sort_index = panel_sort; i < list_panels_len; i++, sort_index++) {
+    MEM_freeN(sort_index->panel);
+  }
+  MEM_freeN(panel_sort);
+
+  /* Don't reorder the panel didn't change order after being dropped. */
+  if (move_to_index == panel->runtime.list_index) {
+    return;
+  }
+
+  /* Set the bit to tell the interface to recreate the list. */
+  panel->flag |= PNL_LIST_ORDER_CHANGED;
+
+  /* Finally, move this panel's list item to the new index in its list. */
+  panel->type->reorder(C, panel, move_to_index);
+}
 
 /**
  * Recursive implementation for #UI_panel_set_expand_from_list_data.
@@ -331,6 +572,8 @@ static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
     }
   }
 }
+
+/****************************** panels ******************************/
 
 static void panels_collapse_all(const bContext *C,
                                 ScrArea *area,
@@ -552,183 +795,6 @@ static void ui_offset_panel_block(uiBlock *block)
   block->rect.xmax = block->panel->sizex;
   block->rect.ymax = block->panel->sizey;
   block->rect.xmin = block->rect.ymin = 0.0;
-}
-
-/***** Functions for recreate list panels. ***********/
-
-/**
- * Called in situations where panels need to be added dynamically rather than having only one panel
- * corresponding to each PanelType.
- */
-Panel *UI_panel_add_list(
-    ScrArea *sa, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
-{
-  Panel *panel = MEM_callocN(sizeof(Panel), "list panel");
-  panel->type = panel_type;
-  BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
-
-  panel->ofsx = 0;
-  panel->ofsy = 0;
-  panel->sizex = 0;
-  panel->sizey = 0;
-  panel->blocksizex = 0;
-  panel->blocksizey = 0;
-
-  panel->runtime.list_index = list_index;
-
-  /* Add the panel's children too. Although they aren't list panels, we can still use this
-   * function to creat them, as UI_panel_begin does other things we don't need to do. */
-  for (LinkData *link = panel_type->children.first; link; link = link->next) {
-    PanelType *child = link->data;
-    UI_panel_add_list(sa, region, &panel->children, child, list_index);
-  }
-
-  /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
-   * context string to make sure we add to the right list.
-   *
-   * We can the panel list is also the display order because the list panel list is rebuild
-   * when the order changes. */
-  if (panel_type->flag & PNL_LIST) {
-    Panel *last_list_panel = NULL;
-
-    for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
-      if (list_panel->type == NULL) {
-        continue;
-      }
-      if (list_panel->type->flag & (PNL_LIST_START | PNL_LIST)) {
-        last_list_panel = list_panel;
-      }
-    }
-
-    /* There should always be a list panel or a list panel start before this panel. */
-    BLI_assert(last_list_panel);
-
-    panel->sortorder = last_list_panel->sortorder + 1;
-
-    BLI_insertlinkafter(panels, last_list_panel, panel);
-  }
-  else {
-    BLI_addtail(panels, panel);
-  }
-
-  return panel;
-}
-
-void UI_list_panel_unique_str(Panel *panel, char *r_name)
-{
-  snprintf(r_name, LIST_PANEL_UNIQUE_STR_LEN, "%d", panel->runtime.list_index);
-}
-
-static void panel_free_block(ARegion *region, Panel *panel)
-{
-  BLI_assert(panel->type);
-
-  char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
-  strncpy(block_name, panel->type->idname, BKE_ST_MAXNAME);
-  char unique_panel_str[LIST_PANEL_UNIQUE_STR_LEN];
-  UI_list_panel_unique_str(panel, unique_panel_str);
-  strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
-
-  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    if (STREQ(block->name, block_name)) {
-      BLI_remlink(&region->uiblocks, block);
-      UI_block_free(NULL, block);
-      break; /* Only delete one block for this panel. */
-    }
-  }
-}
-
-void UI_panel_delete(ARegion *region, ListBase *panels, Panel *panel)
-{
-  /* Recursively delete children. */
-  Panel *child = panel->children.first;
-  while (child != NULL) {
-    Panel *child_next = child->next;
-    UI_panel_delete(region, &panel->children, child);
-    child = child_next;
-  }
-  BLI_freelistN(&panel->children);
-
-  panel_free_block(region, panel);
-
-  BLI_remlink(panels, panel);
-  if (panel->activedata) {
-    MEM_freeN(panel->activedata);
-  }
-  MEM_freeN(panel);
-}
-
-void UI_panels_free_list(bContext *C, ARegion *region)
-{
-  /* Delete panels with the recreate flag. */
-  ListBase *panels = &region->panels;
-  Panel *panel = panels->first;
-  Panel *panel_next = NULL;
-  while (panel != NULL) {
-    bool remove = false;
-    if (panel->type != NULL) { /* Some panels don't have a type.. */
-      if (panel->type->flag & PNL_LIST) {
-        remove = true;
-      }
-    }
-
-    panel_next = panel->next;
-    if (remove) {
-      if (panel->activedata != NULL) {
-        panel_activate_state(C, panel, PANEL_STATE_EXIT);
-      }
-      UI_panel_delete(region, panels, panel);
-    }
-    panel = panel_next;
-  }
-}
-
-/**
- * Check if the list panels in the region's panel list corresponds to the list of data the panels
- * represent. Returns false if the panels have been reordered or if the types from the list data
- * don't match in any way.
- *
- * \param data: The list of data to check against the list panels.
- * \param panel_type_func: Each type from the data list should have a corresponding panel type. For
- * a mix of readabilty and generality, this can happen separately for each type of panel list.
- */
-bool UI_panel_list_matches_data(ARegion *region,
-                                ListBase *data,
-                                uiListPanelTypeFromDataFunc panel_type_func)
-{
-  int data_len = BLI_listbase_count(data);
-  int i = 0;
-  Link *data_link = data->first;
-  Panel *panel = region->panels.first;
-  while (panel != NULL) {
-    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
-      /* The panels were reordered by drag and drop. */
-      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
-        return false;
-      }
-
-      /* We reached the last contraint before the last list panel. */
-      if (data_link == NULL) {
-        return false;
-      }
-
-      /* The types of the corresponding panel and constraint don't match. */
-      if (panel_type_func(region, data_link) != panel->type) {
-        return false;
-      }
-
-      data_link = data_link->next;
-      i++;
-    }
-    panel = panel->next;
-  }
-
-  /* If we didn't make it to the last list item, the panel list isn't complete. */
-  if (i != data_len) {
-    return false;
-  }
-
-  return true;
 }
 
 /**************************** drawing *******************************/
@@ -1072,6 +1138,7 @@ void ui_draw_aligned_panel(uiStyle *style,
 
     GPU_blend(true);
 
+    /* Panel backdrop. */
     if (show_background) {
       /* Draw list panels and their bottom subpanels with rounding. */
       if (is_list_panel && !(is_subpanel && panel->next)) {
@@ -1094,7 +1161,6 @@ void ui_draw_aligned_panel(uiStyle *style,
         }
       }
       else {
-        /* panel backdrop */
         immUniformThemeColor(panel_col);
         immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
       }
@@ -1205,10 +1271,6 @@ static int get_panel_real_ofsx(Panel *panel)
   }
 }
 
-typedef struct PanelSort {
-  Panel *panel, *orig;
-} PanelSort;
-
 /**
  * \note about sorting;
  * the sortorder has a lower value for new panels being added.
@@ -1317,6 +1379,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
       tot++;
     }
   }
+
   if (tot == 0) {
     return 0;
   }
@@ -1432,28 +1495,27 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
 
 static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 {
+  Panel *panel;
   int align = panel_aligned(area, region);
   int sizex = 0;
   int sizey = 0;
 
-  /* Compute size taken up by panels, for setting in view2d. */
-  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+  /* compute size taken up by panels, for setting in view2d */
+  for (panel = region->panels.first; panel; panel = panel->next) {
     if (panel->runtime_flag & PNL_ACTIVE) {
-      int panel_offset_x;
-      if (align == BUT_VERTICAL) {
-        panel_offset_x = panel->ofsx + panel->sizex;
+      int pa_sizex, pa_sizey;
 
-        int panel_size_y = get_panel_real_size_y(panel);
-        sizey -= panel_size_y;
+      if (align == BUT_VERTICAL) {
+        pa_sizex = panel->ofsx + panel->sizex;
+        pa_sizey = get_panel_real_ofsy(panel);
       }
       else {
-        panel_offset_x = get_panel_real_ofsx(panel) + panel->sizex;
-
-        int panel_offset_y = panel->ofsy + get_panel_size_y(panel);
-        sizey = min_ii(sizey, panel_offset_y);
+        pa_sizex = get_panel_real_ofsx(panel) + panel->sizex;
+        pa_sizey = panel->ofsy + get_panel_size_y(panel);
       }
 
-      sizex = max_ii(sizex, panel_offset_x);
+      sizex = max_ii(sizex, pa_sizex);
+      sizey = min_ii(sizey, pa_sizey);
     }
   }
 
@@ -1466,74 +1528,6 @@ static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 
   *r_x = sizex;
   *r_y = sizey;
-}
-
-static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *panel)
-{
-  /* Only reorder the data for list panels. */
-  if (panel->type == NULL || !(panel->type->flag & PNL_LIST)) {
-    return;
-  }
-  /* Don't reorder if this list panel doesn't support drag and drop reordering. */
-  if (panel->type->reorder == NULL) {
-    return;
-  }
-
-  char *context = panel->type->context;
-
-  /* Find how many list panels with this context string. */
-  int list_panels_len = 0;
-  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
-    if (list_panel->type) {
-      if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PNL_LIST) {
-          list_panels_len++;
-        }
-      }
-    }
-  }
-
-  /* Sort the matching list panels by their display order. */
-  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(PanelSort), "recreatepanelsort");
-  PanelSort *sort_index = panel_sort;
-  for (Panel *list_panel = region->panels.first; list_panel; list_panel = list_panel->next) {
-    if (list_panel->type) {
-      if ((strcmp(list_panel->type->context, context) == 0)) {
-        if (list_panel->type->flag & PNL_LIST) {
-          sort_index->panel = MEM_dupallocN(list_panel);
-          sort_index->orig = list_panel;
-          sort_index++;
-        }
-      }
-    }
-  }
-  qsort(panel_sort, list_panels_len, sizeof(PanelSort), compare_panel);
-
-  /* Find how many of those panels are above this panel. */
-  int move_to_index = 0;
-  for (; move_to_index < list_panels_len; move_to_index++) {
-    if (panel_sort[move_to_index].orig == panel) {
-      break;
-    }
-  }
-
-  /* Free panel sort array. */
-  int i = 0;
-  for (sort_index = panel_sort; i < list_panels_len; i++, sort_index++) {
-    MEM_freeN(sort_index->panel);
-  }
-  MEM_freeN(panel_sort);
-
-  /* Don't reorder the panel didn't change order after being dropped. */
-  if (move_to_index == panel->runtime.list_index) {
-    return;
-  }
-
-  /* Set the bit to tell the interface to recreate the list. */
-  panel->flag |= PNL_LIST_ORDER_CHANGED;
-
-  /* Finally, move this panel's list item to the new index in its list. */
-  panel->type->reorder(C, panel, move_to_index);
 }
 
 static void ui_do_animate(bContext *C, Panel *panel)
@@ -1722,60 +1716,15 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
   uiHandlePanelData *data = panel->activedata;
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  short align = panel_aligned(area, region);
+  short align = panel_aligned(area, region), dx = 0, dy = 0;
 
-  /* Check for dragging outside the region, and return unless we want to apply a scroll. */
-  if (align == BUT_VERTICAL) {
-    if (!BLI_rcti_isect_x(&region->winrct, event->x)) {
-      return;
-    }
-  }
-  else {
-    if (!BLI_rcti_isect_pt_v(&region->winrct, &event->x)) {
-      return;
-    }
+  /* first clip for window, no dragging outside */
+  if (!BLI_rcti_isect_pt_v(&region->winrct, &event->x)) {
+    return;
   }
 
-  /* Scroll the region if the panel is dragged to the bottom or the top. */
-  if (data->state == PANEL_STATE_DRAG && align == BUT_VERTICAL) {
-    /* Find whether the mouse is close to the top or bottom. */
-    int scroll_dir = 0;
-    if (event->y > region->winrct.ymax - UI_UNIT_Y) {
-      scroll_dir = 1;
-    }
-    else if (event->y < region->winrct.ymin + UI_UNIT_Y) {
-      scroll_dir = -1;
-    }
-
-    if (scroll_dir == 0) {
-      /* Reset the drag scroll timer if the mouse isn't in the scroll zones. */
-      data->starttime_drag_scroll = 0.0;
-    }
-    else {
-      /* We just entered the scroll sone, start the timer. */
-      if (data->starttime_drag_scroll == 0.0) {
-        data->starttime_drag_scroll = PIL_check_seconds_timer();
-        data->scroll_offset = 0.0f;
-      }
-      else {
-        /* Scoll if the mouse has been in the zone for longer than the delay. */
-        double time = PIL_check_seconds_timer() - data->starttime_drag_scroll;
-        time -= PNL_DRAG_SCROLL_DELAY;
-        if (time > 0.0) {
-          float scroll = (float)(time * PNL_DRAG_SCROLL_SPEED) * (float)scroll_dir;
-
-          /* Move the region by the distance we haven't already scrolled. */
-          scroll -= data->scroll_offset;
-          BLI_rctf_translate(&region->v2d.cur, 0, scroll);
-          data->scroll_offset += scroll;
-          data->scroll_offset_total += scroll;
-        }
-      }
-    }
-  }
-
-  short dx = event->x - data->startx;
-  short dy = event->y - data->starty;
+  dx = (event->x - data->startx);
+  dy = (event->y - data->starty);
 
   dx *= (float)BLI_rctf_size_x(&region->v2d.cur) / (float)BLI_rcti_size_x(&region->winrct);
   dy *= (float)BLI_rctf_size_y(&region->v2d.cur) / (float)BLI_rcti_size_y(&region->winrct);
@@ -1795,8 +1744,7 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
     panel->snap = PNL_SNAP_NONE;
 
     panel->ofsx = data->startofsx + dx;
-    panel->ofsy = data->startofsy + dy + data->scroll_offset_total;
-
+    panel->ofsy = data->startofsy + dy;
     check_panel_overlap(region, panel);
 
     if (align) {
@@ -1901,7 +1849,6 @@ static void ui_panel_drag_collapse(bContext *C,
       /* force panel to close */
       if (dragcol_data->was_first_open == true) {
         panel->flag |= (is_horizontal ? PNL_CLOSEDX : PNL_CLOSEDY);
-        set_panels_list_data_expand_flag(C, region);
       }
       /* force panel to open */
       else {
@@ -1914,6 +1861,8 @@ static void ui_panel_drag_collapse(bContext *C,
       }
     }
   }
+  /* Update the list panel data expand flags with the changes made here. */
+  set_panels_list_data_expand_flag(C, region);
 }
 
 /**
@@ -2888,7 +2837,6 @@ static int ui_handler_panel(bContext *C, const wmEvent *event, void *userdata)
     int align = panel_aligned(area, region);
 
     if (align) {
-      data->is_drag_drop = true;
       panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
     }
     else {
@@ -2954,6 +2902,8 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
     return;
   }
 
+  bool was_drag_drop = (data && data->state == PANEL_STATE_DRAG);
+
   if (state == PANEL_STATE_EXIT || state == PANEL_STATE_ANIMATION) {
     if (data && data->state != PANEL_STATE_ANIMATION) {
       /* XXX:
@@ -3005,8 +2955,10 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
     data->startsizex = panel->sizex;
     data->startsizey = panel->sizey;
     data->starttime = PIL_check_seconds_timer();
-    data->starttime_drag_scroll = 0.0;
-    data->scroll_offset = 0.0f;
+    data->is_drag_drop = was_drag_drop;
+    if (state == PANEL_STATE_DRAG) {
+      data->is_drag_drop = true;
+    }
   }
 
   ED_region_tag_redraw(region);
