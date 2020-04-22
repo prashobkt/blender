@@ -284,12 +284,12 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 };
 
 static EnumPropertyItem rna_enum_brush_curvetab_types_items[] = {
-    {GP_BRUSH_CURVETAB_PRESSURE, "PRESSURE", 0, "PS", "Pressure"},
-    {GP_BRUSH_CURVETAB_STRENGTH, "STRENGTH", 0, "ST", "Strength"},
+    {GP_BRUSH_CURVETAB_PRESSURE, "PRESSURE", 0, "Pressure", "Pressure"},
+    {GP_BRUSH_CURVETAB_STRENGTH, "STRENGTH", 0, "Strength", "Strength"},
     {GP_BRUSH_CURVETAB_UV, "UV", 0, "UV", "UV"},
-    {GP_BRUSH_CURVETAB_HUE, "HUE", 0, "H", "Hue"},
-    {GP_BRUSH_CURVETAB_SATURATION, "SATURATION", 0, "S", "Saturation"},
-    {GP_BRUSH_CURVETAB_VALUE, "VALUE", 0, "V", "Value"},
+    {GP_BRUSH_CURVETAB_HUE, "HUE", 0, "Hue", "Hue"},
+    {GP_BRUSH_CURVETAB_SATURATION, "SATURATION", 0, "Saturation", "Saturation"},
+    {GP_BRUSH_CURVETAB_VALUE, "VALUE", 0, "Value", "Value"},
     {0, NULL, 0, NULL, NULL},
 };
 

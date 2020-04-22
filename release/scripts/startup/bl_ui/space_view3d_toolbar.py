@@ -1741,13 +1741,11 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_random(View3DPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.use_property_split = True
-
         brush = context.tool_settings.gpencil_paint.brush
         gp_settings = brush.gpencil_settings
 
         row=layout.row(align=True)
-        row.prop(gp_settings, "curve_random_tab", expand=True)
+        row.prop(gp_settings, "curve_random_tab")
 
         if gp_settings.curve_random_tab == 'PRESSURE':
             curve = "curve_random_pressure"
