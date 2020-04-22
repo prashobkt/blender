@@ -118,7 +118,8 @@ typedef struct BrushGpencilSettings {
   int sculpt_mode_flag;
   /** Preset type (used to reset brushes - internal). */
   short preset_type;
-  char _pad3[2];
+  /** Curve type active tab for random curves. */
+  short curve_random_tab;
 
   /** Randomness for Hue. */
   float random_hue;
@@ -184,6 +185,17 @@ typedef enum eGPBrush_Presets {
   /* Weight Paint 300-399. */
   GP_BRUSH_PRESET_DRAW_WEIGHT = 300,
 } eGPBrush_Presets;
+
+/* BrushGpencilSettings->curve_tab_type */
+
+typedef enum eGPBrush_TabType {
+  GP_BRUSH_CURVETAB_PRESSURE = 0,
+  GP_BRUSH_CURVETAB_STRENGTH = 1,
+  GP_BRUSH_CURVETAB_UV = 2,
+  GP_BRUSH_CURVETAB_HUE = 3,
+  GP_BRUSH_CURVETAB_SATURATION = 4,
+  GP_BRUSH_CURVETAB_VALUE = 5,
+} eGPBrush_TabType;
 
 /* BrushGpencilSettings->gp_flag */
 typedef enum eGPDbrush_Flag {

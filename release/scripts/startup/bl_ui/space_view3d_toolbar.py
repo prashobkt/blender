@@ -1682,7 +1682,6 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
     bl_label = "Sensitivity"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1700,7 +1699,6 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_strength(View3DPanel, Panel):
     bl_label = "Strength"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1718,7 +1716,6 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
     bl_label = "Jitter"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1731,9 +1728,9 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
                                       use_negative_slope=True)
 
 
-class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_pressure(View3DPanel, Panel):
+class VIEW3D_PT_tools_grease_pencil_brushcurves_random(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
-    bl_label = "Random Pressure"
+    bl_label = "Random"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
     bl_options = {'DEFAULT_CLOSED'}
@@ -1749,117 +1746,25 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_pressure(View3DPanel, Panel
         brush = context.tool_settings.gpencil_paint.brush
         gp_settings = brush.gpencil_settings
 
-        layout.template_curve_mapping(gp_settings, "curve_random_pressure", brush=True,
-                                      use_negative_slope=True)
+        row=layout.row(align=True)
+        row.prop(gp_settings, "curve_random_tab", expand=True)
 
+        if gp_settings.curve_random_tab == 'PRESSURE':
+            curve = "curve_random_pressure"
+        elif gp_settings.curve_random_tab == 'STRENGTH':
+            curve = "curve_random_strength"
+        elif gp_settings.curve_random_tab == 'UV':
+            curve = "curve_random_uv"
+        elif gp_settings.curve_random_tab == 'HUE':
+            curve = "curve_random_hue"
+        elif gp_settings.curve_random_tab == 'SATURATION':
+            curve = "curve_random_saturation"
+        elif gp_settings.curve_random_tab == 'VALUE':
+            curve = "curve_random_value"
+        else:
+            curve = "curve_random_strength"
 
-class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_strength(View3DPanel, Panel):
-    bl_context = ".greasepencil_paint"
-    bl_label = "Random Strength"
-    bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.region.type != 'TOOL_HEADER')
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        brush = context.tool_settings.gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
-
-        layout.template_curve_mapping(gp_settings, "curve_random_strength", brush=True,
-                                      use_negative_slope=True)
-
-
-class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_uv(View3DPanel, Panel):
-    bl_context = ".greasepencil_paint"
-    bl_label = "Random UV"
-    bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.region.type != 'TOOL_HEADER')
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        brush = context.tool_settings.gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
-
-        layout.template_curve_mapping(gp_settings, "curve_random_uv", brush=True,
-                                      use_negative_slope=True)
-
-
-class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_hue(View3DPanel, Panel):
-    bl_context = ".greasepencil_paint"
-    bl_label = "Random Hue"
-    bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.region.type != 'TOOL_HEADER')
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        brush = context.tool_settings.gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
-
-        layout.template_curve_mapping(gp_settings, "curve_random_hue", brush=True,
-                                      use_negative_slope=True)
-
-
-class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_saturation(View3DPanel, Panel):
-    bl_context = ".greasepencil_paint"
-    bl_label = "Random Saturation"
-    bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.region.type != 'TOOL_HEADER')
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        brush = context.tool_settings.gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
-
-        layout.template_curve_mapping(gp_settings, "curve_random_saturation", brush=True,
-                                      use_negative_slope=True)
-
-
-class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_value(View3DPanel, Panel):
-    bl_context = ".greasepencil_paint"
-    bl_label = "Random Value"
-    bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.region.type != 'TOOL_HEADER')
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        brush = context.tool_settings.gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
-
-        layout.template_curve_mapping(gp_settings, "curve_random_value", brush=True,
+        layout.template_curve_mapping(gp_settings, curve, brush=True,
                                       use_negative_slope=True)
 
 
@@ -2442,12 +2347,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity,
     VIEW3D_PT_tools_grease_pencil_brushcurves_strength,
     VIEW3D_PT_tools_grease_pencil_brushcurves_jitter,
-    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_pressure,
-    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_strength,
-    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_uv,
-    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_hue,
-    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_saturation,
-    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_value,
+    VIEW3D_PT_tools_grease_pencil_brushcurves_random,
     VIEW3D_PT_tools_grease_pencil_paint_appearance,
     VIEW3D_PT_tools_grease_pencil_sculpt_select,
     VIEW3D_PT_tools_grease_pencil_sculpt_settings,

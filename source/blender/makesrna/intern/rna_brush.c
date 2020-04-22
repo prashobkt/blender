@@ -282,6 +282,17 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
     {GP_BRUSH_ICON_VERTEX_REPLACE, "REPLACE", ICON_BRUSH_MIX, "Replace", ""},
     {0, NULL, 0, NULL, NULL},
 };
+
+static EnumPropertyItem rna_enum_brush_curvetab_types_items[] = {
+    {GP_BRUSH_CURVETAB_PRESSURE, "PRESSURE", 0, "PS", "Pressure"},
+    {GP_BRUSH_CURVETAB_STRENGTH, "STRENGTH", 0, "ST", "Strength"},
+    {GP_BRUSH_CURVETAB_UV, "UV", 0, "UV", "UV"},
+    {GP_BRUSH_CURVETAB_HUE, "HUE", 0, "H", "Hue"},
+    {GP_BRUSH_CURVETAB_SATURATION, "SATURATION", 0, "S", "Saturation"},
+    {GP_BRUSH_CURVETAB_VALUE, "VALUE", 0, "V", "Value"},
+    {0, NULL, 0, NULL, NULL},
+};
+
 #endif
 
 #ifdef RNA_RUNTIME
@@ -1293,6 +1304,13 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "curve_jitter");
   RNA_def_property_struct_type(prop, "CurveMapping");
   RNA_def_property_ui_text(prop, "Curve Jitter", "Curve used for the jitter effect");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
+
+  prop = RNA_def_property(srna, "curve_random_tab", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "curve_random_tab");
+  RNA_def_property_enum_items(prop, rna_enum_brush_curvetab_types_items);
+  RNA_def_property_ui_text(prop, "Curve", "Curve Tab");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
