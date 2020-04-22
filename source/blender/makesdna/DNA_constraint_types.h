@@ -690,8 +690,8 @@ typedef enum eBConstraint_Types {
 /* flag 0x20 (1 << 5) was used to indicate that a constraint was evaluated
  *                  using a 'local' hack for posebones only. */
 typedef enum eBConstraint_Flags {
-  /* expand for UI. Deprecated */
-  CONSTRAINT_EXPAND = (1 << 0),
+  /* Expansion for old box constraint layouts. Just for versioning. */
+  CONSTRAINT_EXPAND_DEPRECATED = (1 << 0),
   /* pre-check for illegal object name or bone name */
   CONSTRAINT_DISABLE = (1 << 2),
   /* to indicate which Ipo should be shown, maybe for 3d access later too */

@@ -1316,7 +1316,7 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
       else {
         const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(curcon);
 
-        if ((cti && cti->get_constraint_targets) && (curcon->flag & CONSTRAINT_EXPAND)) {
+        if ((cti && cti->get_constraint_targets) && (curcon->ui_expand_flag)) {
           ListBase targets = {NULL, NULL};
           bConstraintTarget *ct;
 

@@ -2667,11 +2667,6 @@ static void draw_constraint_header(uiLayout *layout, Object *ob, bConstraint *co
     UI_block_lock_set(block, true, TIP_("Cannot edit Proxy-Protected Constraint"));
   }
 
-  /* Draw constraint data */
-  if ((con->flag & CONSTRAINT_EXPAND) == 0) {
-    (yco) -= 10.5f * UI_UNIT_Y;
-  }
-
   /* clear any locks set up for proxies/lib-linking */
   UI_block_lock_clear(block);
 }
