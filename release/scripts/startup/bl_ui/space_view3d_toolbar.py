@@ -1617,7 +1617,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
             row.label(text=self.bl_label)
 
         col = layout.column()
-        col.active = gp_settings.use_settings_random
+        col.enabled = gp_settings.use_settings_random
 
         row = col.row(align=True)
         row.prop(gp_settings, "random_pressure", text="Pressure", slider=True)
