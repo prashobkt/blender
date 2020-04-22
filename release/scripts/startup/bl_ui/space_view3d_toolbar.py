@@ -1682,27 +1682,16 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
 
 
 # Grease Pencil drawingcurves
-class VIEW3D_PT_tools_grease_pencil_brushcurves(View3DPanel, Panel):
+class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
-    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_settings'
-    bl_label = "Curves"
+    bl_label = "Sensitivity"
     bl_category = "Tool"
-    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brush_advanced"
 
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
         return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
-
-    def draw(self, context):
-        pass
-
-
-class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
-    bl_context = ".greasepencil_paint"
-    bl_label = "Sensitivity"
-    bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
 
     def draw(self, context):
         layout = self.layout
@@ -1719,7 +1708,12 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_strength(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
     bl_label = "Strength"
     bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brush_advanced"
+
+    @classmethod
+    def poll(cls, context):
+        brush = context.tool_settings.gpencil_paint.brush
+        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
 
     def draw(self, context):
         layout = self.layout
@@ -2307,7 +2301,6 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brush_post_processing,
     VIEW3D_PT_tools_grease_pencil_brush_random,
     VIEW3D_PT_tools_grease_pencil_brush_stabilizer,
-    VIEW3D_PT_tools_grease_pencil_brushcurves,
     VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity,
     VIEW3D_PT_tools_grease_pencil_brushcurves_strength,
     VIEW3D_PT_tools_grease_pencil_paint_appearance,
