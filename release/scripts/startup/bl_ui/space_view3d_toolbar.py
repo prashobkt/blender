@@ -2219,11 +2219,13 @@ class VIEW3D_PT_tools_grease_pencil_weight_appearance(GreasePencilDisplayPanel, 
     bl_category = "Tool"
     bl_label = "Cursor"
 
+
 class VIEW3D_PT_tools_grease_pencil_vertex_appearance(GreasePencilDisplayPanel, Panel, View3DPanel):
     bl_context = ".greasepencil_vertex"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_vertex_paint_settings'
     bl_category = "Tool"
     bl_label = "Cursor"
+
 
 class VIEW3D_PT_gpencil_brush_presets(Panel, PresetPanel):
     """Brush settings"""
