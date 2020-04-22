@@ -130,6 +130,12 @@ typedef struct BrushGpencilSettings {
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;
   struct CurveMapping *curve_jitter;
+  struct CurveMapping *curve_rand_pressure;
+  struct CurveMapping *curve_rand_strength;
+  struct CurveMapping *curve_rand_uv;
+  struct CurveMapping *curve_rand_hue;
+  struct CurveMapping *curve_rand_saturation;
+  struct CurveMapping *curve_rand_value;
 
   /* optional link of material to replace default in context */
   /** Material. */
@@ -224,6 +230,18 @@ typedef enum eGPDbrush_Flag2 {
   GP_BRUSH_USE_STRENGTH_AT_STROKE = (1 << 4),
   /* Brush use random UV at stroke level */
   GP_BRUSH_USE_UV_AT_STROKE = (1 << 5),
+  /* Brush use Hue random pressure */
+  GP_BRUSH_USE_HUE_RAND_PRESS = (1 << 6),
+  /* Brush use Saturation random pressure */
+  GP_BRUSH_USE_SAT_RAND_PRESS = (1 << 7),
+  /* Brush use Value random pressure */
+  GP_BRUSH_USE_VAL_RAND_PRESS = (1 << 8),
+  /* Brush use Pressure random pressure */
+  GP_BRUSH_USE_PRESSURE_RAND_PRESS = (1 << 9),
+  /* Brush use Strength random pressure */
+  GP_BRUSH_USE_STRENGTH_RAND_PRESS = (1 << 10),
+  /* Brush use UV random pressure */
+  GP_BRUSH_USE_UV_RAND_PRESS = (1 << 11),
 } eGPDbrush_Flag2;
 
 /* BrushGpencilSettings->gp_fill_draw_mode */

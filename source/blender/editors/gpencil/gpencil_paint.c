@@ -700,16 +700,23 @@ static void gp_apply_randomness(tGPsdata *p,
 {
   bGPdata *gpd = p->gpd;
   GpRandomSettings random_settings = p->random_settings;
-
+  float value = 0.0f;
   /* Apply randomness to pressure. */
   if ((brush_settings->draw_random_press > 0.0f) && (press)) {
     if ((brush_settings->flag2 & GP_BRUSH_USE_PRESS_AT_STROKE) == 0) {
       float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
-      pt->pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
+      value = 1.0 + rand * 2.0 * brush_settings->draw_random_press;
     }
     else {
-      pt->pressure *= 1.0 + random_settings.pressure * brush_settings->draw_random_press;
+      value = 1.0 + random_settings.pressure * brush_settings->draw_random_press;
     }
+
+    /* Apply random curve with point pressure. */
+    if (brush_settings->flag2 & GP_BRUSH_USE_PRESSURE_RAND_PRESS) {
+      value = BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->pressure);
+    }
+
+    pt->pressure *= value;
     CLAMP(pt->pressure, 0.1f, 1.0f);
   }
 
@@ -717,11 +724,18 @@ static void gp_apply_randomness(tGPsdata *p,
   if ((brush_settings->draw_random_strength) && (strength)) {
     if ((brush_settings->flag2 & GP_BRUSH_USE_STRENGTH_AT_STROKE) == 0) {
       float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
-      pt->strength *= 1.0 + rand * brush_settings->draw_random_strength;
+      value = 1.0 + rand * brush_settings->draw_random_strength;
     }
     else {
-      pt->strength *= 1.0 + random_settings.strength * brush_settings->draw_random_strength;
+      value = 1.0 + random_settings.strength * brush_settings->draw_random_strength;
     }
+
+    /* Apply random curve with point pressure. */
+    if (brush_settings->flag2 & GP_BRUSH_USE_STRENGTH_RAND_PRESS) {
+      value = BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->pressure);
+    }
+
+    pt->strength *= value;
     CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
   }
 
@@ -730,12 +744,18 @@ static void gp_apply_randomness(tGPsdata *p,
     if ((brush_settings->flag2 & GP_BRUSH_USE_UV_AT_STROKE) == 0) {
       float rand = BLI_hash_int_01(BLI_hash_int_2d((int)pt->x, gpd->runtime.sbuffer_used)) * 2.0f -
                    1.0f;
-      pt->uv_rot += rand * M_PI_2 * brush_settings->uv_random;
+      value = rand * M_PI_2 * brush_settings->uv_random;
     }
     else {
-      pt->uv_rot += random_settings.uv * M_PI_2 * brush_settings->uv_random;
+      value = random_settings.uv * M_PI_2 * brush_settings->uv_random;
     }
 
+    /* Apply random curve with point pressure. */
+    if (brush_settings->flag2 & GP_BRUSH_USE_UV_RAND_PRESS) {
+      value = BKE_curvemapping_evaluateF(brush_settings->curve_rand_uv, 0, pt->pressure);
+    }
+
+    pt->uv_rot += value;
     CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
   }
 }
@@ -1783,10 +1803,16 @@ static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
     BKE_brush_gpencil_paint_presets(bmain, ts);
     changed = true;
   }
-  /* be sure curves are initializated */
+  /* Be sure curves are initializated. */
   BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_sensitivity);
   BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_strength);
   BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_jitter);
+  BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_rand_pressure);
+  BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_rand_strength);
+  BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_rand_uv);
+  BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_rand_hue);
+  BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_rand_saturation);
+  BKE_curvemapping_initialize(paint->brush->gpencil_settings->curve_rand_value);
 
   /* assign to temp tGPsdata */
   p->brush = paint->brush;

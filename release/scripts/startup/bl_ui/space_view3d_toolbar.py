@@ -1622,14 +1622,17 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row = col.row(align=True)
         row.prop(gp_settings, "random_pressure", text="Pressure", slider=True)
         row.prop(gp_settings, "use_stroke_random_pressure", text="", icon='GP_SELECT_STROKES')
+        row.prop(gp_settings, "use_random_press_pressure", text="", icon='STYLUS_PRESSURE')
 
         row = col.row(align=True)
         row.prop(gp_settings, "random_strength", text="Strength", slider=True)
         row.prop(gp_settings, "use_stroke_random_strength", text="", icon='GP_SELECT_STROKES')
+        row.prop(gp_settings, "use_random_press_strength", text="", icon='STYLUS_PRESSURE')
 
         row = col.row(align=True)
         row.prop(gp_settings, "uv_random", text="UV", slider=True)
         row.prop(gp_settings, "use_stroke_random_uv", text="", icon='GP_SELECT_STROKES')
+        row.prop(gp_settings, "use_random_press_uv", text="", icon='STYLUS_PRESSURE')
 
         col.separator()
 
@@ -1638,14 +1641,17 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row = col1.row(align=True)
         row.prop(gp_settings, "random_hue_factor", slider=True)
         row.prop(gp_settings, "use_stroke_random_hue", text="", icon='GP_SELECT_STROKES')
+        row.prop(gp_settings, "use_random_press_hue", text="", icon='STYLUS_PRESSURE')
 
         row = col1.row(align=True)
         row.prop(gp_settings, "random_saturation_factor", slider=True)
         row.prop(gp_settings, "use_stroke_random_sat", text="", icon='GP_SELECT_STROKES')
+        row.prop(gp_settings, "use_random_press_sat", text="", icon='STYLUS_PRESSURE')
 
         row = col1.row(align=True)
         row.prop(gp_settings, "random_value_factor", slider=True)
         row.prop(gp_settings, "use_stroke_random_val", text="", icon='GP_SELECT_STROKES')
+        row.prop(gp_settings, "use_random_press_val", text="", icon='STYLUS_PRESSURE')
 
         col.separator()
 
@@ -1676,6 +1682,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
     bl_label = "Sensitivity"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1693,6 +1700,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_strength(View3DPanel, Panel):
     bl_label = "Strength"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1710,6 +1718,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
     bl_label = "Jitter"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -1719,6 +1728,138 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
         gp_settings = brush.gpencil_settings
 
         layout.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
+                                      use_negative_slope=True)
+
+
+class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_pressure(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Random Pressure"
+    bl_category = "Tool"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.region.type != 'TOOL_HEADER')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        brush = context.tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout.template_curve_mapping(gp_settings, "curve_random_pressure", brush=True,
+                                      use_negative_slope=True)
+
+
+class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_strength(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Random Strength"
+    bl_category = "Tool"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.region.type != 'TOOL_HEADER')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        brush = context.tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout.template_curve_mapping(gp_settings, "curve_random_strength", brush=True,
+                                      use_negative_slope=True)
+
+
+class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_uv(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Random UV"
+    bl_category = "Tool"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.region.type != 'TOOL_HEADER')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        brush = context.tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout.template_curve_mapping(gp_settings, "curve_random_uv", brush=True,
+                                      use_negative_slope=True)
+
+
+class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_hue(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Random Hue"
+    bl_category = "Tool"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.region.type != 'TOOL_HEADER')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        brush = context.tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout.template_curve_mapping(gp_settings, "curve_random_hue", brush=True,
+                                      use_negative_slope=True)
+
+
+class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_saturation(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Random Saturation"
+    bl_category = "Tool"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.region.type != 'TOOL_HEADER')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        brush = context.tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout.template_curve_mapping(gp_settings, "curve_random_saturation", brush=True,
+                                      use_negative_slope=True)
+
+
+class VIEW3D_PT_tools_grease_pencil_brushcurves_rand_value(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Random Value"
+    bl_category = "Tool"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brushcurves"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.region.type != 'TOOL_HEADER')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        brush = context.tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout.template_curve_mapping(gp_settings, "curve_random_value", brush=True,
                                       use_negative_slope=True)
 
 
@@ -2301,6 +2442,12 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity,
     VIEW3D_PT_tools_grease_pencil_brushcurves_strength,
     VIEW3D_PT_tools_grease_pencil_brushcurves_jitter,
+    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_pressure,
+    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_strength,
+    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_uv,
+    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_hue,
+    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_saturation,
+    VIEW3D_PT_tools_grease_pencil_brushcurves_rand_value,
     VIEW3D_PT_tools_grease_pencil_paint_appearance,
     VIEW3D_PT_tools_grease_pencil_sculpt_select,
     VIEW3D_PT_tools_grease_pencil_sculpt_settings,

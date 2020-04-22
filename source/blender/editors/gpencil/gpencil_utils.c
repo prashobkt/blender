@@ -2776,7 +2776,7 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
     float factor_value[3];
     zero_v3(factor_value);
 
-    /* Apply random to Hue. */
+    /* Apply randomness to Hue. */
     if (brush_settings->random_hue > 0.0f) {
       if ((brush_settings->flag2 & GP_BRUSH_USE_HUE_AT_STROKE) == 0) {
 
@@ -2786,8 +2786,15 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
       else {
         factor_value[0] = random_color[0];
       }
+
+      /* Apply random curve with point pressure. */
+      if (brush_settings->flag2 & GP_BRUSH_USE_HUE_RAND_PRESS) {
+        factor_value[0] = BKE_curvemapping_evaluateF(
+            brush_settings->curve_rand_hue, 0, tpt->pressure);
+      }
     }
-    /* Apply random to Saturation. */
+
+    /* Apply randomness to Saturation. */
     if (brush_settings->random_saturation > 0.0f) {
       if ((brush_settings->flag2 & GP_BRUSH_USE_SAT_AT_STROKE) == 0) {
         float rand = BLI_hash_int_01(BLI_hash_int_2d(iy, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
@@ -2796,8 +2803,15 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
       else {
         factor_value[1] = random_color[1];
       }
+
+      /* Apply random curve with point pressure. */
+      if (brush_settings->flag2 & GP_BRUSH_USE_SAT_RAND_PRESS) {
+        factor_value[1] = BKE_curvemapping_evaluateF(
+            brush_settings->curve_rand_saturation, 0, tpt->pressure);
+      }
     }
-    /* Apply random to Value. */
+
+    /* Apply randomness to Value. */
     if (brush_settings->random_value > 0.0f) {
       if ((brush_settings->flag2 & GP_BRUSH_USE_VAL_AT_STROKE) == 0) {
         float rand = BLI_hash_int_01(BLI_hash_int_2d(iz, gpd->runtime.sbuffer_used)) * 2.0f - 1.0f;
@@ -2806,7 +2820,14 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
       else {
         factor_value[2] = random_color[2];
       }
+
+      /* Apply random curve with point pressure. */
+      if (brush_settings->flag2 & GP_BRUSH_USE_VAL_RAND_PRESS) {
+        factor_value[2] = BKE_curvemapping_evaluateF(
+            brush_settings->curve_rand_value, 0, tpt->pressure);
+      }
     }
+
     rgb_to_hsv_v(tpt->vert_color, hsv);
     add_v3_v3(hsv, factor_value);
     /* For Hue need to cover all range, but for Saturation and Value
