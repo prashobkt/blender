@@ -2787,10 +2787,10 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
         factor_value[0] = random_color[0];
       }
 
-      /* Apply random curve with point pressure. */
+      /* Apply random curve. */
       if (brush_settings->flag2 & GP_BRUSH_USE_HUE_RAND_PRESS) {
-        factor_value[0] = BKE_curvemapping_evaluateF(
-            brush_settings->curve_rand_hue, 0, tpt->pressure);
+        factor_value[0] *= BKE_curvemapping_evaluateF(
+            brush_settings->curve_rand_hue, 0, tpt->strength);
       }
     }
 
@@ -2804,10 +2804,10 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
         factor_value[1] = random_color[1];
       }
 
-      /* Apply random curve with point pressure. */
+      /* Apply random curve. */
       if (brush_settings->flag2 & GP_BRUSH_USE_SAT_RAND_PRESS) {
-        factor_value[1] = BKE_curvemapping_evaluateF(
-            brush_settings->curve_rand_saturation, 0, tpt->pressure);
+        factor_value[1] *= BKE_curvemapping_evaluateF(
+            brush_settings->curve_rand_saturation, 0, tpt->strength);
       }
     }
 
@@ -2821,10 +2821,10 @@ void ED_gpencil_sbuffer_vertex_color_random(bGPdata *gpd,
         factor_value[2] = random_color[2];
       }
 
-      /* Apply random curve with point pressure. */
+      /* Apply random curve. */
       if (brush_settings->flag2 & GP_BRUSH_USE_VAL_RAND_PRESS) {
-        factor_value[2] = BKE_curvemapping_evaluateF(
-            brush_settings->curve_rand_value, 0, tpt->pressure);
+        factor_value[2] *= BKE_curvemapping_evaluateF(
+            brush_settings->curve_rand_value, 0, tpt->strength);
       }
     }
 

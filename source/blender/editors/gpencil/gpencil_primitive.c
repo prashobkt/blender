@@ -925,7 +925,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
           pressure *= 1.0 + random_settings.pressure * brush_settings->draw_random_press;
         }
 
-        /* Apply random curve with point pressure. */
+        /* Apply random curve. */
         if (brush_settings->flag2 & GP_BRUSH_USE_PRESSURE_RAND_PRESS) {
           pressure *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pressure);
         }
@@ -943,7 +943,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
           strength *= 1.0 + random_settings.strength * brush_settings->draw_random_strength;
         }
 
-        /* Apply random curve with point pressure. */
+        /* Apply random curve. */
         if (brush_settings->flag2 & GP_BRUSH_USE_STRENGTH_RAND_PRESS) {
           strength *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_strength, 0, pressure);
         }

@@ -711,9 +711,9 @@ static void gp_apply_randomness(tGPsdata *p,
       value = 1.0 + random_settings.pressure * brush_settings->draw_random_press;
     }
 
-    /* Apply random curve with point pressure. */
+    /* Apply random curve. */
     if (brush_settings->flag2 & GP_BRUSH_USE_PRESSURE_RAND_PRESS) {
-      value = BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->pressure);
+      value *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->strength);
     }
 
     pt->pressure *= value;
@@ -730,9 +730,9 @@ static void gp_apply_randomness(tGPsdata *p,
       value = 1.0 + random_settings.strength * brush_settings->draw_random_strength;
     }
 
-    /* Apply random curve with point pressure. */
+    /* Apply random curve. */
     if (brush_settings->flag2 & GP_BRUSH_USE_STRENGTH_RAND_PRESS) {
-      value = BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->pressure);
+      value *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_pressure, 0, pt->strength);
     }
 
     pt->strength *= value;
@@ -750,9 +750,9 @@ static void gp_apply_randomness(tGPsdata *p,
       value = random_settings.uv * M_PI_2 * brush_settings->uv_random;
     }
 
-    /* Apply random curve with point pressure. */
+    /* Apply random curve. */
     if (brush_settings->flag2 & GP_BRUSH_USE_UV_RAND_PRESS) {
-      value = BKE_curvemapping_evaluateF(brush_settings->curve_rand_uv, 0, pt->pressure);
+      value *= BKE_curvemapping_evaluateF(brush_settings->curve_rand_uv, 0, pt->strength);
     }
 
     pt->uv_rot += value;
@@ -817,14 +817,6 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       return GP_STROKEADD_INVALID;
     }
 
-    /* Set vertex colors for buffer. */
-    ED_gpencil_sbuffer_vertex_color_set(p->depsgraph,
-                                        p->ob,
-                                        p->scene->toolsettings,
-                                        p->brush,
-                                        p->material,
-                                        p->random_settings.hsv);
-
     /* get pointer to destination point */
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
 
@@ -844,6 +836,14 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       pt->strength *= BKE_curvemapping_evaluateF(brush_settings->curve_strength, 0, pressure);
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
     }
+
+    /* Set vertex colors for buffer. */
+    ED_gpencil_sbuffer_vertex_color_set(p->depsgraph,
+                                        p->ob,
+                                        p->scene->toolsettings,
+                                        p->brush,
+                                        p->material,
+                                        p->random_settings.hsv);
 
     if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
       /* Apply jitter to position */
