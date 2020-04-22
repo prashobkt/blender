@@ -26,16 +26,26 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 #include "BKE_texture.h" /* Texture masking. */
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -43,6 +53,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 #include "MOD_weightvg_util.h"
 
@@ -428,6 +439,53 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return mesh;
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemPointerR(layout, &ptr, "vertex_group_a", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "default_weight_a", 0, NULL, ICON_NONE);
+
+  uiItemPointerR(layout, &ptr, "vertex_group_b", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "default_weight_b", 0, NULL, ICON_NONE);
+
+  uiItemS(layout);
+
+  uiItemR(layout, &ptr, "mix_set", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "mix_mode", 0, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void influence_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  weightvg_ui_common(C, &ob_ptr, &ptr, layout);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "VertexWeightMix", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "vertexweightmix_influence",
+                             "Influence",
+                             NULL,
+                             influence_panel_draw,
+                             panel_type);
+}
+
 ModifierTypeInfo modifierType_WeightVGMix = {
     /* name */ "VertexWeightMix",
     /* structName */ "WeightVGMixModifierData",
@@ -455,4 +513,5 @@ ModifierTypeInfo modifierType_WeightVGMix = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* panelRegister */ panelRegister,
 };

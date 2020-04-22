@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+struct ARegionType;
 struct BMEditMesh;
 struct CustomData_MeshMasks;
 struct DepsNodeHandle;
@@ -338,7 +339,13 @@ typedef struct ModifierTypeInfo {
    *    more like "ensure the data is freed".
    */
   void (*freeRuntimeData)(void *runtime_data);
+
+  /* Register the panel types for the modifier's UI. */
+  void (*panelRegister)(struct ARegionType *region_type);
 } ModifierTypeInfo;
+
+/* Used to find a modifier's panel type. */
+#define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"
 
 /* Initialize modifier's global data (type info and some common global storages). */
 void BKE_modifier_init(void);

@@ -27,6 +27,8 @@
 #include "BLI_rand.h"
 #include "BLI_string.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_color_types.h" /* CurveMapping. */
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -35,10 +37,16 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_colortools.h" /* CurveMapping. */
+#include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_modifier.h"
 #include "BKE_texture.h" /* Texture masking. */
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -297,6 +305,58 @@ void weightvg_update_vg(MDeformVert *dvert,
     /* Else, add it if needed! */
     else if (do_add && w > add_thresh) {
       BKE_defvert_add_index_notest(dv, defgrp_idx, w);
+    }
+  }
+}
+
+/* Common vertex weight mask interface elements for the modifier panels.
+ */
+void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, uiLayout *layout)
+{
+  uiLayout *sub, *row;
+
+  PointerRNA mask_texture_ptr = RNA_pointer_get(ptr, "mask_texture");
+  bool has_mask_texture = !RNA_pointer_is_null(&mask_texture_ptr);
+  bool has_mask_vertex_group = RNA_string_length(ptr, "mask_vertex_group") != 0;
+  int mask_tex_mapping = RNA_enum_get(ptr, "mask_tex_mapping");
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, ptr, "mask_constant", UI_ITEM_R_SLIDER, IFACE_("Global Influence:"), ICON_NONE);
+
+  if (!has_mask_texture) {
+    row = uiLayoutRow(layout, true);
+    uiItemPointerR(row, ptr, "mask_vertex_group", ob_ptr, "vertex_groups", NULL, ICON_NONE);
+    sub = uiLayoutColumn(row, true);
+    uiLayoutSetPropSep(sub, false);
+    uiLayoutSetActive(sub, has_mask_vertex_group);
+    uiItemR(sub, ptr, "invert_mask_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  }
+
+  if (!has_mask_vertex_group) {
+    uiTemplateID(layout,
+                 C,
+                 ptr,
+                 "mask_texture",
+                 "texture.new",
+                 NULL,
+                 NULL,
+                 0,
+                 ICON_NONE,
+                 IFACE_("Mask Texture"));
+
+    if (has_mask_texture) {
+      uiItemR(layout, ptr, "mask_tex_use_channel", 0, IFACE_("Channel"), ICON_NONE);
+      uiItemR(layout, ptr, "mask_tex_mapping", 0, NULL, ICON_NONE);
+
+      if (mask_tex_mapping == MOD_DISP_MAP_OBJECT) {
+        uiItemR(layout, ptr, "mask_tex_map_object", 0, IFACE_("Object"), ICON_NONE);
+      }
+      else if (mask_tex_mapping == MOD_DISP_MAP_UV && RNA_enum_get(ob_ptr, "type") == OB_MESH) {
+        PointerRNA obj_data_ptr = RNA_pointer_get(ob_ptr, "data");
+        uiItemPointerR(
+            layout, ptr, "mask_tex_uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
+      }
     }
   }
 }

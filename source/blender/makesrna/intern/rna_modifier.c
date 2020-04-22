@@ -3271,7 +3271,7 @@ static void rna_def_modifier_cast(BlenderRNA *brna)
   prop = RNA_def_property(srna, "cast_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
   RNA_def_property_enum_items(prop, prop_cast_type_items);
-  RNA_def_property_ui_text(prop, "Cast Type", "Target object shape");
+  RNA_def_property_ui_text(prop, "Shape", "Target object shape");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
@@ -3842,6 +3842,12 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem prop_affect_items[] = {
+      {0, "EDGES", 0, "Edges", "Affect only edges"},
+      {MOD_BEVEL_VERT, "VERTICES", 0, "Vertices", "Affect only vertices"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "BevelModifier", "Modifier");
   RNA_def_struct_ui_text(
       srna, "Bevel Modifier", "Bevel modifier to make edges and vertices more rounded");
@@ -3868,9 +3874,10 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Segments", "Number of segments for round edges/verts");
   RNA_def_property_update(prop, 0, "rna_BevelModifier_update_segments");
 
-  prop = RNA_def_property(srna, "use_only_vertices", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_VERT);
-  RNA_def_property_ui_text(prop, "Only Vertices", "Bevel verts/corners, not edges");
+  prop = RNA_def_property(srna, "affect", PROP_ENUM, PROP_NONE); /* as an enum */
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "flags");
+  RNA_def_property_enum_items(prop, prop_affect_items);
+  RNA_def_property_ui_text(prop, "Affect", "Affect edges or vertices");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "limit_method", PROP_ENUM, PROP_NONE);
@@ -3918,7 +3925,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "mat");
   RNA_def_property_range(prop, -1, SHRT_MAX);
   RNA_def_property_ui_text(
-      prop, "Material", "Material index of generated faces, -1 for automatic");
+      prop, "Material Index", "Material index of generated faces, -1 for automatic");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "loop_slide", PROP_BOOLEAN, PROP_NONE);
@@ -3945,7 +3952,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "face_str_mode");
   RNA_def_property_enum_items(prop, prop_harden_normals_items);
   RNA_def_property_ui_text(
-      prop, "Set Face Strength", "Whether to set face strength, and which faces to set it on");
+      prop, "Face Strength", "Whether to set face strength, and which faces to set it on");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "miter_outer", PROP_ENUM, PROP_NONE);
@@ -4042,7 +4049,7 @@ static void rna_def_modifier_shrinkwrap(BlenderRNA *brna)
   prop = RNA_def_property(srna, "wrap_method", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "shrinkType");
   RNA_def_property_enum_items(prop, shrink_type_items);
-  RNA_def_property_ui_text(prop, "Mode", "");
+  RNA_def_property_ui_text(prop, "Wrap Method", "");
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   prop = RNA_def_property(srna, "wrap_mode", PROP_ENUM, PROP_NONE);
@@ -4783,7 +4790,7 @@ static void rna_def_modifier_weightvg_mask(BlenderRNA *UNUSED(brna),
 
   prop = RNA_def_property(srna, "mask_vertex_group", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "mask_defgrp_name");
-  RNA_def_property_ui_text(prop, "Mask VGroup", "Masking vertex group name");
+  RNA_def_property_ui_text(prop, "Mask Vertex Group", "Masking vertex group name");
   RNA_def_property_string_funcs(prop, NULL, NULL, mask_vgroup_setter);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -5242,7 +5249,7 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_remove_disconnected", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_REMESH_FLOOD_FILL);
-  RNA_def_property_ui_text(prop, "Remove Disconnected Pieces", "");
+  RNA_def_property_ui_text(prop, "Remove Disconnected", "");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_smooth_shade", PROP_BOOLEAN, PROP_NONE);
@@ -5778,6 +5785,8 @@ static void rna_def_modifier_meshseqcache(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_enum_sdna(prop, NULL, "read_flag");
   RNA_def_property_enum_items(prop, read_flag_items);
+  RNA_def_property_ui_text(prop, "Read Data", "Data to read from the cache");
+
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
@@ -5948,7 +5957,7 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
     {DT_TYPE_MDEFORMVERT,
      "VGROUP_WEIGHTS",
      0,
-     "Vertex Group(s)",
+     "Vertex Groups",
      "Transfer active or all vertex groups"},
 #  if 0 /* TODO */
     {DT_TYPE_SHAPEKEY, "SHAPEKEYS", 0, "Shapekey(s)", "Transfer active or all shape keys"},
@@ -5965,19 +5974,15 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
   static const EnumPropertyItem DT_layer_edge_items[] = {
       {DT_TYPE_SHARP_EDGE, "SHARP_EDGE", 0, "Sharp", "Transfer sharp mark"},
       {DT_TYPE_SEAM, "SEAM", 0, "UV Seam", "Transfer UV seam mark"},
-      {DT_TYPE_CREASE, "CREASE", 0, "Subsurf Crease", "Transfer crease values"},
+      {DT_TYPE_CREASE, "CREASE", 0, "Crease", "Transfer subdivision crease values"},
       {DT_TYPE_BWEIGHT_EDGE, "BEVEL_WEIGHT_EDGE", 0, "Bevel Weight", "Transfer bevel weights"},
-      {DT_TYPE_FREESTYLE_EDGE,
-       "FREESTYLE_EDGE",
-       0,
-       "Freestyle Mark",
-       "Transfer Freestyle edge mark"},
+      {DT_TYPE_FREESTYLE_EDGE, "FREESTYLE_EDGE", 0, "Freestyle", "Transfer Freestyle edge mark"},
       {0, NULL, 0, NULL, NULL},
   };
 
   static const EnumPropertyItem DT_layer_loop_items[] = {
       {DT_TYPE_LNOR, "CUSTOM_NORMAL", 0, "Custom Normals", "Transfer custom normals"},
-      {DT_TYPE_VCOL, "VCOL", 0, "VCol", "Vertex (face corners) colors"},
+      {DT_TYPE_VCOL, "VCOL", 0, "Vertex Colors", "Vertex (face corners) colors"},
       {DT_TYPE_UV, "UV", 0, "UVs", "Transfer UV layers"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -6160,7 +6165,7 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
       0.0f,
       0.0f,
       1.0f,
-      "Islands Handling Refinement",
+      "Islands Precision",
       "Factor controlling precision of islands handling "
       "(typically, 0.1 should be enough, higher values can make things really slow)",
       0.0f,
@@ -6602,7 +6607,7 @@ void RNA_def_modifier(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
-  RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_Expanded);
+  RNA_def_property_boolean_sdna(prop, NULL, "ui_expand_flag", 0);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
   RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);

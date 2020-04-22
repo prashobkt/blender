@@ -27,24 +27,35 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_cdderivedmesh.h"
+#include "BKE_context.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
 #include "BKE_paint.h"
+#include "BKE_screen.h"
 #include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subdiv_deform.h"
 #include "BKE_subdiv_mesh.h"
 #include "BKE_subsurf.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 typedef struct MultiresRuntimeData {
   /* Cached subdivision surface descriptor, with topology and settings. */
@@ -272,6 +283,70 @@ static void deformMatrices(ModifierData *md,
   }
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row, *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "subdivision_type", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, &ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
+  uiItemR(col, &ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
+  uiItemR(layout, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
+
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetEnabled(col, RNA_enum_get(&ob_ptr, "mode") == OB_MODE_EDIT);
+  uiItemO(col, IFACE_("Subdivide"), ICON_NONE, "OBJECT_OT_multires_subdivide");
+  uiItemO(col, IFACE_("Delete Higher"), ICON_NONE, "OBJECT_OT_multires_higher_levels_delete");
+  uiItemO(col, IFACE_("Reshape"), ICON_NONE, "OBJECT_OT_multires_reshape");
+  uiItemO(col, IFACE_("Apply Base"), ICON_NONE, "OBJECT_OT_multires_base_apply");
+
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
+  row = uiLayoutRow(col, false);
+  if (RNA_boolean_get(&ptr, "is_external")) {
+    uiItemO(row, IFACE_("Pack External"), ICON_NONE, "OBJECT_OT_multires_external_pack");
+    row = uiLayoutRow(col, false);
+    uiItemR(row, &ptr, "filepath", 0, "", ICON_NONE);
+  }
+  else {
+    uiItemO(col, IFACE_("Save External..."), ICON_NONE, "OBJECT_OT_multires_external_save");
+  }
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void advanced_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "quality", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_creases", 0, NULL, ICON_NONE);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "Multires", panel_draw);
+  modifier_subpanel_register(
+      region_type, "multires_advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
+}
+
 ModifierTypeInfo modifierType_Multires = {
     /* name */ "Multires",
     /* structName */ "MultiresModifierData",
@@ -299,4 +374,5 @@ ModifierTypeInfo modifierType_Multires = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
+    /* panelRegister */ panelRegister,
 };

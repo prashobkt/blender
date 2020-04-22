@@ -24,16 +24,27 @@
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
+#include "BKE_screen.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "bmesh.h"
@@ -700,8 +711,45 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
   return true;
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
+
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "weight", 0, IFACE_("Weight"), ICON_NONE);
+  uiItemR(layout, &ptr, "thresh", 0, IFACE_("Threshold"), ICON_NONE);
+
+  uiItemR(layout, &ptr, "keep_sharp", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "face_influence", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutColumn(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, "WeightedNormal", panel_draw);
+}
+
 ModifierTypeInfo modifierType_WeightedNormal = {
-    /* name */ "Weighted Normal",
+    /* name */ "WeightedNormal",
     /* structName */ "WeightedNormalModifierData",
     /* structSize */ sizeof(WeightedNormalModifierData),
     /* type */ eModifierTypeType_Constructive,
@@ -727,4 +775,5 @@ ModifierTypeInfo modifierType_WeightedNormal = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panelRegister */ panelRegister,
 };

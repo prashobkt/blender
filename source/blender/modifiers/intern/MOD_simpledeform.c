@@ -25,19 +25,30 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "bmesh.h"
@@ -447,6 +458,91 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *row;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  modifier_panel_buttons(C, panel);
+
+  int deform_method = RNA_enum_get(&ptr, "deform_method");
+
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, &ptr, "deform_method", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+  uiLayoutSetPropSep(layout, true);
+
+  if (ELEM(deform_method, MOD_SIMPLEDEFORM_MODE_TAPER, MOD_SIMPLEDEFORM_MODE_STRETCH)) {
+    uiItemR(layout, &ptr, "factor", 0, NULL, ICON_NONE);
+  }
+  else {
+    uiItemR(layout, &ptr, "angle", 0, NULL, ICON_NONE);
+  }
+
+  uiItemR(layout, &ptr, "origin", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "deform_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void restrictions_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col, *row, *sub;
+  uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  int deform_method = RNA_enum_get(&ptr, "deform_method");
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "limits", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
+  if (ELEM(deform_method,
+           MOD_SIMPLEDEFORM_MODE_TAPER,
+           MOD_SIMPLEDEFORM_MODE_STRETCH,
+           MOD_SIMPLEDEFORM_MODE_TWIST)) {
+    int deform_axis = RNA_enum_get(&ptr, "deform_axis");
+
+    row = uiLayoutRowWithHeading(layout, true, IFACE_("Lock"));
+    if (deform_axis != 0) {
+      uiItemR(row, &ptr, "lock_x", toggles_flag, NULL, ICON_NONE);
+    }
+    if (deform_axis != 1) {
+      uiItemR(row, &ptr, "lock_y", toggles_flag, NULL, ICON_NONE);
+    }
+    if (deform_axis != 2) {
+      uiItemR(row, &ptr, "lock_z", toggles_flag, NULL, ICON_NONE);
+    }
+  }
+
+  col = uiLayoutColumn(layout, true);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropSep(sub, false);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = modifier_panel_register(region_type, "SimpleDeform", panel_draw);
+  modifier_subpanel_register(region_type,
+                             "simpledeform_restrictions",
+                             "Restrictions",
+                             NULL,
+                             restrictions_panel_draw,
+                             panel_type);
+}
+
 ModifierTypeInfo modifierType_SimpleDeform = {
     /* name */ "SimpleDeform",
     /* structName */ "SimpleDeformModifierData",
@@ -476,4 +572,5 @@ ModifierTypeInfo modifierType_SimpleDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panelRegister */ panelRegister,
 };
