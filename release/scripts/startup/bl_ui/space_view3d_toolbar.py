@@ -1603,7 +1603,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.use_property_split = False
+        layout.use_property_split = True
         layout.use_property_decorate = False
 
         tool_settings = context.tool_settings
