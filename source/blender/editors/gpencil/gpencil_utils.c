@@ -2760,7 +2760,7 @@ void ED_gpencil_init_random_settings(Brush *brush,
   }
 }
 
-void ED_gpencil_sbuffer_vertex_color_random(
+static void gpencil_sbuffer_vertex_color_random(
     bGPdata *gpd, Brush *brush, tGPspoint *tpt, float random_color[3], float pen_pressure)
 {
   BrushGpencilSettings *brush_settings = brush->gpencil_settings;
@@ -2879,7 +2879,7 @@ void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
   }
 
   /* Random Color. */
-  ED_gpencil_sbuffer_vertex_color_random(gpd, brush, tpt, random_color, pen_pressure);
+  gpencil_sbuffer_vertex_color_random(gpd, brush, tpt, random_color, pen_pressure);
 
   /* Copy to eval data because paint operators don't tag refresh until end for speedup
      painting. */
