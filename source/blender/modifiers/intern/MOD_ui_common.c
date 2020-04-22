@@ -241,6 +241,7 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   int index = panel->runtime.list_index;
+  bool narrow_panel = (panel->sizex < UI_UNIT_X * 8 && panel->sizex != 0);
 
   /* Modifier Icon. */
   row = uiLayoutRow(layout, false);
@@ -250,7 +251,9 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   uiItemL(row, "", RNA_struct_ui_icon(ptr.type));
 
   /* Modifier Name. */
-  uiItemR(layout, &ptr, "name", 0, "", ICON_NONE);
+  if (!narrow_panel) {
+    uiItemR(layout, &ptr, "name", 0, "", ICON_NONE);
+  }
 
   /* Switch context buttons. */
   if (modifier_is_simulation(md) == 1) {
@@ -283,7 +286,6 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   /* Collision and Surface are always enabled, hide buttons. */
   if (((md->type != eModifierType_Collision) || !(ob->pd && ob->pd->deflect)) &&
       (md->type != eModifierType_Surface)) {
-
     if (mti->flags & eModifierTypeFlag_SupportsEditmode) {
       sub = uiLayoutRow(row, true);
       uiLayoutSetActive(sub, (md->mode & eModifierMode_Realtime));
