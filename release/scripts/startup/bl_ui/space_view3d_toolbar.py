@@ -1687,6 +1687,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
     bl_label = "Sensitivity"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brush_advanced"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -1709,6 +1710,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_strength(View3DPanel, Panel):
     bl_label = "Strength"
     bl_category = "Tool"
     bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brush_advanced"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
