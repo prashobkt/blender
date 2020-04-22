@@ -23,6 +23,7 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_constraint_types.h"
 #include "DNA_genfile.h"
 #include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
@@ -59,6 +60,20 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
               SpaceImage *sima = (SpaceImage *)sl;
               sima->uv_opacity = 1.0f;
             }
+          }
+        }
+      }
+    }
+
+    /* Transition to saving expansion for all of a constraint's subpanels. */
+    if (!DNA_struct_elem_find(fd->filesdna, "bSizeLikeConstraint", "short", "ui_expand_flag")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (bConstraint *, con, &object->constraints) {
+          if (con->flag & CONSTRAINT_EXPAND_DEPRECATED) {
+            con->ui_expand_flag = 1;
+          }
+          else {
+            con->ui_expand_flag = 0;
           }
         }
       }
