@@ -2762,8 +2762,8 @@ static void gpencil_draw_apply_event(bContext *C,
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;
-  /* By default use pen pressure for random curves. */
-  p->random_settings.pen_press = p->pressure;
+  /* By default use pen pressure for random curves but attenuated. */
+  p->random_settings.pen_press = p->pressure * p->pressure * p->pressure;
 
   /* Hack for pressure sensitive eraser on D+RMB when using a tablet:
    * The pen has to float over the tablet surface, resulting in
