@@ -29,7 +29,6 @@ extern "C" {
 #endif
 
 struct ARegionType;
-struct bContext;
 struct BMEditMesh;
 struct CustomData_MeshMasks;
 struct DepsNodeHandle;
@@ -40,10 +39,8 @@ struct Main;
 struct Mesh;
 struct ModifierData;
 struct Object;
-struct PointerRNA;
 struct Scene;
 struct bArmature;
-struct uiLayout;
 
 typedef enum {
   /* Should not be used, only for None modifier type */
@@ -347,6 +344,7 @@ typedef struct ModifierTypeInfo {
   void (*panelRegister)(struct ARegionType *region_type);
 } ModifierTypeInfo;
 
+/* Used to find a modifier's panel type. */
 #define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"
 
 /* Initialize modifier's global data (type info and some common global storages). */

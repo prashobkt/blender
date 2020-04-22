@@ -102,7 +102,8 @@ typedef enum ModifierMode {
   eModifierMode_Render = (1 << 1),
   eModifierMode_Editmode = (1 << 2),
   eModifierMode_OnCage = (1 << 3),
-  /* UNUSED = (1 << 4), */
+  /* Old modifier box expansion, just for do versions. */
+  eModifierMode_Expanded_DEPRECATED = (1 << 4),
   eModifierMode_Virtual = (1 << 5),
   eModifierMode_ApplyOnSpline = (1 << 6),
   eModifierMode_DisableTemporary = (1u << 31),
@@ -114,6 +115,7 @@ typedef struct ModifierData {
   int type, mode;
   int stackindex;
   short flag;
+  /* An "expand" bit for each of the modifier's (sub)panels. */
   short ui_expand_flag;
   /** MAX_NAME. */
   char name[64];
@@ -124,10 +126,6 @@ typedef struct ModifierData {
   struct ModifierData *orig_modifier_data;
   void *runtime;
 } ModifierData;
-
-/* No more than 15 subpanels per modifier. Conveniently, an "expand" bit for each panel will fit
- * into a short. */
-#define MAX_MODIFIER_SUBPANELS 15
 
 typedef enum {
   /* This modifier has been inserted in local override, and hence can be fully edited. */

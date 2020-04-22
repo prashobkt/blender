@@ -18,7 +18,7 @@
 
 # <pep8 compliant>
 import bpy
-from bpy.types import Panel, UIList
+from bpy.types import Panel
 from bpy.app.translations import pgettext_iface as iface_
 
 
@@ -39,46 +39,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        ob = context.object
-
         layout.operator_menu_enum("object.modifier_add", "type")
-
-        # row = layout.row()
-        # row.template_list(
-        #     "DATA_UL_modifiers", "Modifiers", ob, 'modifiers', ob.modifiers, 'active_index')
-        
-        # col = row.column(align=True)
-        # col.operator("object.modifier_active_remove", icon='X', text="")
-        # col.separator()
-        # col.operator("object.modifier_active_move", icon='TRIA_UP', text="").direction = 'UP'
-        # col.operator("object.modifier_active_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
-
         layout.template_modifiers()
-
-class DATA_UL_modifiers(UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        ob = data
-        md = item
-        md_type = md.type
-        icon = bpy.types.Modifier.bl_rna.properties['type'].enum_items[md_type].icon
-
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.prop(md, 'name', text="", emboss=False, icon_value=1, icon=icon)
-            layout.prop(md, 'show_viewport', text="", emboss=False, icon_only=True)
-            layout.prop(md, 'show_render', text="", emboss=False, icon_only=True)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.label(text="", icon_value=icon)
-
-    def draw_filter(self, context, layout):
-        row = layout.row()
-
-        subrow = row.row(align=True)
-        subrow.prop(self, "filter_name", text="")
-        icon = 'ZOOM_OUT' if self.use_filter_invert else 'ZOOM_IN'
-        subrow.prop(self, "use_filter_invert", text="",toggle=True, icon_only=True, icon=icon)
-
-
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"
 
@@ -564,7 +526,6 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
 classes = (
     DATA_PT_modifiers,
-    DATA_UL_modifiers,
     DATA_PT_gpencil_modifiers,
 )
 

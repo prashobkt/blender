@@ -401,10 +401,6 @@ bool ED_object_modifier_remove(ReportList *reports, Main *bmain, Object *ob, Mod
     return 0;
   }
 
-  /* Lower the active index so it isn't out of bounds. */
-  int modifiers_len = BLI_listbase_count(&ob->modifiers);
-  ob->active_mod_index = (modifiers_len > 0) ? min_ii(ob->active_mod_index, modifiers_len - 1) : 0;
-
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
 
@@ -1029,39 +1025,6 @@ bool edit_modifier_poll_generic(bContext *C,
   return true;
 }
 
-bool edit_active_modifier_poll_generic(bContext *C, const bool is_editmode_allowed)
-{
-  Object *ob = CTX_data_active_object(C);
-
-  if (!ob || ID_IS_LINKED(ob)) {
-    return false;
-  }
-
-  int modifiers_len = BLI_listbase_count(&ob->modifiers);
-  ModifierData *md = BLI_findlink(&ob->modifiers, ob->active_mod_index);
-
-  if (ob->active_mod_index >= modifiers_len) {
-    return false;
-  }
-  if (md == NULL) {
-    return false;
-  }
-
-  if (ID_IS_OVERRIDE_LIBRARY(ob)) {
-    if ((md->flag & eModifierFlag_OverrideLibrary_Local) == 0) {
-      CTX_wm_operator_poll_msg_set(C, "Cannot edit modifiers coming from library override");
-      return false;
-    }
-  }
-
-  if (!is_editmode_allowed && CTX_data_edit_object(C) != NULL) {
-    CTX_wm_operator_poll_msg_set(C, "This modifier operation is not allowed from Edit mode");
-    return false;
-  }
-
-  return true;
-}
-
 bool edit_modifier_poll(bContext *C)
 {
   return edit_modifier_poll_generic(C, &RNA_Modifier, 0, true);
@@ -1085,24 +1048,6 @@ int edit_modifier_invoke_properties(bContext *C, wmOperator *op)
     PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_Modifier);
     if (ptr.data) {
       md = ptr.data;
-      RNA_string_set(op->ptr, "modifier", md->name);
-      return true;
-    }
-  }
-
-  return false;
-}
-
-static int edit_modifier_active_invoke_properties(bContext *C, wmOperator *op)
-{
-  if (RNA_struct_property_is_set(op->ptr, "modifier")) {
-    return true;
-  }
-  else {
-    PointerRNA obj_ptr = CTX_data_pointer_get_type(C, "object", &RNA_Object);
-    if (!RNA_pointer_is_null(&obj_ptr)) {
-      Object *obj = (Object *)obj_ptr.data;
-      ModifierData *md = BLI_findlink(&obj->modifiers, obj->active_mod_index);
       RNA_string_set(op->ptr, "modifier", md->name);
       return true;
     }
@@ -1176,42 +1121,6 @@ void OBJECT_OT_modifier_remove(wmOperatorType *ot)
   ot->invoke = modifier_remove_invoke;
   ot->exec = modifier_remove_exec;
   ot->poll = edit_modifier_poll;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
-  edit_modifier_properties(ot);
-}
-
-/** \} */
-
-/* ------------------------------------------------------------------- */
-/** \name Remove Active Modifier Operator
- * \{ */
-
-static bool modifier_active_remove_poll(bContext *C)
-{
-  return edit_active_modifier_poll_generic(C, true);
-}
-
-static int modifier_active_remove_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
-{
-  if (edit_modifier_active_invoke_properties(C, op)) {
-    return modifier_remove_exec(C, op);
-  }
-  else {
-    return OPERATOR_CANCELLED;
-  }
-}
-
-void OBJECT_OT_modifier_active_remove(wmOperatorType *ot)
-{
-  ot->name = "Remove Active Modifier";
-  ot->description = "Remove the active modifier from the active object";
-  ot->idname = "OBJECT_OT_modifier_active_remove";
-
-  ot->invoke = modifier_active_remove_invoke;
-  ot->exec = modifier_remove_exec;
-  ot->poll = modifier_active_remove_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -1313,86 +1222,12 @@ void OBJECT_OT_modifier_move_down(wmOperatorType *ot)
 /** \} */
 
 /* ------------------------------------------------------------------- */
-/** \name Move Active Modifier Operator
- * \{ */
-
-static bool modifier_active_move_poll(bContext *C)
-{
-  return edit_active_modifier_poll_generic(C, true);
-}
-
-static int modifier_active_move_exec(bContext *C, wmOperator *op)
-{
-  Object *ob = ED_object_active_context(C);
-  ModifierData *md = edit_modifier_property_get(op, ob, 0);
-  int dir = RNA_enum_get(op->ptr, "direction");
-
-  if (dir == 1) {
-    if (!md || !ED_object_modifier_move_down(op->reports, ob, md)) {
-      return OPERATOR_CANCELLED;
-    }
-  }
-  if (dir == -1) {
-    if (!md || !ED_object_modifier_move_up(op->reports, ob, md)) {
-      return OPERATOR_CANCELLED;
-    }
-  }
-
-  ob->active_mod_index += dir;
-
-  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
-
-  return OPERATOR_FINISHED;
-}
-
-static int modifier_active_move_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
-{
-  if (edit_modifier_active_invoke_properties(C, op)) {
-    return modifier_active_move_exec(C, op);
-  }
-  else {
-    return OPERATOR_CANCELLED;
-  }
-}
-
-void OBJECT_OT_modifier_active_move(wmOperatorType *ot)
-{
-
-  static const EnumPropertyItem modifier_active_move[] = {
-      {-1, "UP", 0, "Up", ""},
-      {1, "DOWN", 0, "Down", ""},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  ot->name = "Move Modifier Active Modifier";
-  ot->description = "Move active modifier down in the stack";
-  ot->idname = "OBJECT_OT_modifier_active_move";
-
-  ot->invoke = modifier_active_move_invoke;
-  ot->exec = modifier_active_move_exec;
-  ot->poll = modifier_active_move_poll;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
-  edit_modifier_properties(ot);
-  RNA_def_enum(ot->srna,
-               "direction",
-               modifier_active_move,
-               0,
-               "Direction",
-               "Direction to move the active modifier");
-}
-
-/** \} */
-
-/* ------------------------------------------------------------------- */
 /** \name Move to Index Modifier Operator
  * \{ */
 
 static bool OBJECT_OT_modifier_move_to_index_poll(bContext *C)
 {
-  return edit_active_modifier_poll_generic(C, true);
+  return edit_modifier_poll(C);
 }
 
 static int OBJECT_OT_modifier_move_to_index_exec(bContext *C, wmOperator *op)
@@ -1415,7 +1250,7 @@ static int OBJECT_OT_modifier_move_to_index_invoke(bContext *C,
                                                    wmOperator *op,
                                                    const wmEvent *UNUSED(event))
 {
-  if (edit_modifier_active_invoke_properties(C, op)) {
+  if (edit_modifier_invoke_properties(C, op)) {
     return OBJECT_OT_modifier_move_to_index_exec(C, op);
   }
   else {

@@ -358,8 +358,7 @@ typedef struct Object {
   /** Current shape key for menu or pinned. */
   short shapenr;
 
-  /* Active modifier in list index. HANS-TODO: Ideally should operate on all selected. */
-  unsigned short active_mod_index;
+  char _pad3[2];
 
   /** Object constraints. */
   ListBase constraints;
