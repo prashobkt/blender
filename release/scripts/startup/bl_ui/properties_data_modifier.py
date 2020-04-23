@@ -41,6 +41,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout = self.layout
         layout.operator_menu_enum("object.modifier_add", "type")
         layout.template_modifiers()
+
+
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"
 

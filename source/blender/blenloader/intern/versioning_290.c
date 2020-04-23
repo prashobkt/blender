@@ -65,7 +65,7 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Transition to saving expansion for all of a modifier's subpanels. */
+    /* Transition to saving expansion for all of a constraint's subpanels. */
     if (!DNA_struct_elem_find(fd->filesdna, "bSizeLikeConstraint", "short", "ui_expand_flag")) {
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
         LISTBASE_FOREACH (bConstraint *, con, &object->constraints) {

@@ -259,7 +259,7 @@ class OBJECT_PT_bKinematicConstraint(ConstraintButtonsPanel):
             self.draw_influence(layout, con)
 
 
-# HANS-TODO: Find constraint type info name
+# Unreachable in UI
 class OBJECT_PT_constraints_ik_copy_pose(ConstraintButtonsPanel):
 
     def draw(self, context):
@@ -303,7 +303,7 @@ class OBJECT_PT_constraints_ik_copy_pose(ConstraintButtonsPanel):
         self.draw_influence(layout, con)
 
 
-# HANS-TODO: Find constraint type info name
+# Not currently accessible in UI
 class OBJECT_PT_constraints_ik_distance(ConstraintButtonsPanel):
 
     def draw(self, context):
@@ -889,7 +889,6 @@ class OBJECT_PT_bTransformConstraint_source(ConstraintButtonsSubPanel):
     bl_parent_id = "OBJECT_PT_bTransformConstraint"
     bl_label = "Source"
     bl_order = 1
-    # HANS-TODO: I'm guessing bl_order isn't working for subpanels, the order isn't working
 
     def draw(self, context):
         layout = self.layout
@@ -915,7 +914,7 @@ class OBJECT_PT_bTransformConstraint_source(ConstraintButtonsSubPanel):
 
         col = layout.column(align=True)
         col.prop(con, "from_min_z" + ext, text="Z Min")
-        col.prop(con, "from_max_z" + ext, text="Max")        
+        col.prop(con, "from_max_z" + ext, text="Max")
 
 class OBJECT_PT_bTransformConstraint_mapping(ConstraintButtonsSubPanel):
     bl_parent_id = "OBJECT_PT_bTransformConstraint"
@@ -1285,7 +1284,7 @@ classes = (
     OBJECT_PT_bChildOfConstraint,
     OBJECT_PT_bTrackToConstraint,
     OBJECT_PT_bKinematicConstraint,
-    #OBJECT_PT_constraints_ik_copy_pose, HANS-TODO: Deprecated.. delete?
+    #OBJECT_PT_constraints_ik_copy_pose, Deprecated unreachable UI. Delete?
     #OBJECT_PT_constraints_ik_distance,
     OBJECT_PT_bFollowPathConstraint,
     OBJECT_PT_bRotLimitConstraint,

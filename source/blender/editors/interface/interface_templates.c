@@ -2041,8 +2041,7 @@ static uiLayout *gpencil_draw_modifier(uiLayout *layout, Object *ob, GpencilModi
   uiItemO(row, "", ICON_X, "OBJECT_OT_gpencil_modifier_remove");
   UI_block_emboss_set(block, UI_EMBOSS);
 
-  /* modifier settings (under the header) ---------------------------------------------------
-   */
+  /* modifier settings (under the header) --------------------------------------------------- */
   if (md->mode & eGpencilModifierMode_Expanded) {
     /* apply/convert/copy */
     box = uiLayoutBox(column);
@@ -4884,8 +4883,8 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   uiLayoutRow(layout, false);
 
   /* Preset selector */
-  /* There is probably potential to use simpler "uiItemR" functions here, but automatic
-   * updating after a preset is selected would be more complicated. */
+  /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
+   * after a preset is selected would be more complicated. */
   bt = uiDefBlockBut(
       block, CurveProfile_buttons_presets, profile, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
@@ -5843,8 +5842,8 @@ static void uilist_filter_items_default(struct uiList *ui_list,
       int new_idx;
       /* note: order_idx equals either to ui_list->items_len if no filtering done,
        *       or to ui_list->items_shown if filter is enabled,
-       *       or to (ui_list->items_len - ui_list->items_shown) if filtered items are
-       * excluded. This way, we only sort items we actually intend to draw!
+       *       or to (ui_list->items_len - ui_list->items_shown) if filtered items are excluded.
+       *       This way, we only sort items we actually intend to draw!
        */
       qsort(names, order_idx, sizeof(StringCmp), cmpstringp);
 
@@ -5871,8 +5870,7 @@ typedef struct {
 } _uilist_item;
 
 typedef struct {
-  int visual_items; /* Visual number of items (i.e. number of items we have room to display).
-                     */
+  int visual_items; /* Visual number of items (i.e. number of items we have room to display). */
   int start_idx;    /* Index of first item to display. */
   int end_idx;      /* Index of last item to display + 1. */
 } uiListLayoutdata;
@@ -5945,8 +5943,7 @@ static void uilist_resize_update_cb(bContext *C, void *arg1, void *UNUSED(arg2))
   uiList *ui_list = arg1;
   uiListDyn *dyn_data = ui_list->dyn_data;
 
-  /* This way we get diff in number of additional items to show (positive) or hide (negative).
-   */
+  /* This way we get diff in number of additional items to show (positive) or hide (negative). */
   const int diff = round_fl_to_int((float)(dyn_data->resize - dyn_data->resize_prev) /
                                    (float)UI_UNIT_Y);
 
@@ -6276,6 +6273,7 @@ void uiTemplateList(uiLayout *layout,
           if (i == activei) {
             ui_layout_list_set_labels_active(sub);
           }
+
           UI_block_flag_disable(subblock, UI_BLOCK_LIST_ITEM);
         }
       }
@@ -6412,6 +6410,7 @@ void uiTemplateList(uiLayout *layout,
           if (i == activei) {
             ui_layout_list_set_labels_active(sub);
           }
+
           UI_block_flag_disable(subblock, UI_BLOCK_LIST_ITEM);
         }
       }
@@ -7111,8 +7110,7 @@ static struct MenuSearch_Data *menu_items_from_ui_create(bContext *C,
     UI_block_free(NULL, block);
 
     /* Add key-map items as a second pass,
-     * so all menus are accessed from the header & top-bar before key shortcuts are expanded.
-     */
+     * so all menus are accessed from the header & top-bar before key shortcuts are expanded. */
     if ((menu_stack == NULL) && (has_keymap_menu_items == false)) {
       has_keymap_menu_items = true;
       menu_types_add_from_keymap_items(
@@ -7675,8 +7673,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   /* icon and report message on top */
   icon = UI_icon_from_report_type(report->type);
 
-  /* XXX: temporary operator to dump all reports to a text block, but only if more than 1
-   * report to be shown instead of icon when appropriate...
+  /* XXX: temporary operator to dump all reports to a text block, but only if more than 1 report
+   * to be shown instead of icon when appropriate...
    */
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 

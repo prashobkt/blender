@@ -1200,7 +1200,7 @@ void RNA_api_ui_layout(StructRNA *srna)
 
   func = RNA_def_function(srna, "template_constraints", "uiTemplateConstraints");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
-  RNA_def_function_ui_description(func, "Generates the UI layout for the constraint stack");
+  RNA_def_function_ui_description(func, "Generates the panels for the constraint stack");
 
   func = RNA_def_function(srna, "template_greasepencil_modifier", "uiTemplateGpencilModifier");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
