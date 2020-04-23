@@ -1623,7 +1623,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row.prop(gp_settings, "random_pressure", text="Pressure", slider=True)
         row.prop(gp_settings, "use_stroke_random_pressure", text="", icon='GP_SELECT_STROKES')
         row.prop(gp_settings, "use_random_press_pressure", text="", icon='STYLUS_PRESSURE')
-        if gp_settings.use_random_press_pressure:
+        if gp_settings.use_random_press_pressure and self.is_popover is False:
             col.template_curve_mapping(gp_settings, "curve_random_pressure", brush=True,
                                 use_negative_slope=True)
 
@@ -1631,7 +1631,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row.prop(gp_settings, "random_strength", text="Strength", slider=True)
         row.prop(gp_settings, "use_stroke_random_strength", text="", icon='GP_SELECT_STROKES')
         row.prop(gp_settings, "use_random_press_strength", text="", icon='STYLUS_PRESSURE')
-        if gp_settings.use_random_press_strength:
+        if gp_settings.use_random_press_strength and self.is_popover is False:
             col.template_curve_mapping(gp_settings, "curve_random_strength", brush=True,
                                 use_negative_slope=True)
 
@@ -1639,7 +1639,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row.prop(gp_settings, "uv_random", text="UV", slider=True)
         row.prop(gp_settings, "use_stroke_random_uv", text="", icon='GP_SELECT_STROKES')
         row.prop(gp_settings, "use_random_press_uv", text="", icon='STYLUS_PRESSURE')
-        if gp_settings.use_random_press_uv:
+        if gp_settings.use_random_press_uv and self.is_popover is False:
             col.template_curve_mapping(gp_settings, "curve_random_uv", brush=True,
                                 use_negative_slope=True)
 
@@ -1651,7 +1651,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row.prop(gp_settings, "random_hue_factor", slider=True)
         row.prop(gp_settings, "use_stroke_random_hue", text="", icon='GP_SELECT_STROKES')
         row.prop(gp_settings, "use_random_press_hue", text="", icon='STYLUS_PRESSURE')
-        if gp_settings.use_random_press_hue:
+        if gp_settings.use_random_press_hue and self.is_popover is False:
             col1.template_curve_mapping(gp_settings, "curve_random_hue", brush=True,
                                 use_negative_slope=True)
 
@@ -1659,7 +1659,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row.prop(gp_settings, "random_saturation_factor", slider=True)
         row.prop(gp_settings, "use_stroke_random_sat", text="", icon='GP_SELECT_STROKES')
         row.prop(gp_settings, "use_random_press_sat", text="", icon='STYLUS_PRESSURE')
-        if gp_settings.use_random_press_sat:
+        if gp_settings.use_random_press_sat and self.is_popover is False:
             col1.template_curve_mapping(gp_settings, "curve_random_saturation", brush=True,
                                 use_negative_slope=True)
 
@@ -1667,7 +1667,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row.prop(gp_settings, "random_value_factor", slider=True)
         row.prop(gp_settings, "use_stroke_random_val", text="", icon='GP_SELECT_STROKES')
         row.prop(gp_settings, "use_random_press_val", text="", icon='STYLUS_PRESSURE')
-        if gp_settings.use_random_press_val:
+        if gp_settings.use_random_press_val and self.is_popover is False:
             col1.template_curve_mapping(gp_settings, "curve_random_value", brush=True,
                                 use_negative_slope=True)
 
@@ -1676,7 +1676,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row = col.row(align=True)
         row.prop(gp_settings, "pen_jitter", slider=True)
         row.prop(gp_settings, "use_jitter_pressure", text="", icon='STYLUS_PRESSURE')
-        if gp_settings.use_jitter_pressure:
+        if gp_settings.use_jitter_pressure and self.is_popover is False:
             col.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
                                 use_negative_slope=True)
 
@@ -1691,6 +1691,9 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
 
     @classmethod
     def poll(cls, context):
+        if context.area.type != 'PROPERTIES':
+            return False
+
         brush = context.tool_settings.gpencil_paint.brush
         return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
 
@@ -1702,29 +1705,6 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity(View3DPanel, Panel):
         gp_settings = brush.gpencil_settings
 
         layout.template_curve_mapping(gp_settings, "curve_sensitivity", brush=True,
-                                      use_negative_slope=True)
-
-
-class VIEW3D_PT_tools_grease_pencil_brushcurves_strength(View3DPanel, Panel):
-    bl_context = ".greasepencil_paint"
-    bl_label = "Strength"
-    bl_category = "Tool"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_brush_advanced"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        brush = context.tool_settings.gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
-
-        layout.template_curve_mapping(gp_settings, "curve_strength", brush=True,
                                       use_negative_slope=True)
 
 
@@ -2306,7 +2286,6 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brush_random,
     VIEW3D_PT_tools_grease_pencil_brush_stabilizer,
     VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity,
-    VIEW3D_PT_tools_grease_pencil_brushcurves_strength,
     VIEW3D_PT_tools_grease_pencil_paint_appearance,
     VIEW3D_PT_tools_grease_pencil_sculpt_select,
     VIEW3D_PT_tools_grease_pencil_sculpt_settings,
