@@ -867,31 +867,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, &ptr);
 }
 
-static void constant_offset_header_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiItemR(layout, &ptr, "use_constant_offset", 0, NULL, ICON_NONE);
-}
-
-static void constant_offset_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  uiLayout *col = uiLayoutColumn(layout, false);
-
-  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_constant_offset"));
-  uiItemR(col, &ptr, "constant_offset_displace", 0, "Distance", ICON_NONE);
-}
-
 static void relative_offset_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -914,9 +889,37 @@ static void relative_offset_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_relative_offset"));
-  uiItemR(col, &ptr, "relative_offset_displace", 0, "Distance", ICON_NONE);
+  uiItemR(col, &ptr, "relative_offset_displace", 0, IFACE_("Factor"), ICON_NONE);
 }
 
+static void constant_offset_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_constant_offset", 0, NULL, ICON_NONE);
+}
+
+static void constant_offset_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayout *col = uiLayoutColumn(layout, false);
+
+  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_constant_offset"));
+  uiItemR(col, &ptr, "constant_offset_displace", 0, IFACE_("Distance"), ICON_NONE);
+}
+
+/**
+ * Object offset in a subpanel for consistency with the other offset types.
+ */
 static void object_offset_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -964,7 +967,7 @@ static void symmetry_panel_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
   uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
-  uiItemR(col, &ptr, "use_merge_vertices_cap", 0, IFACE_("First Last"), ICON_NONE);
+  uiItemR(col, &ptr, "use_merge_vertices_cap", 0, IFACE_("First and Last Copies"), ICON_NONE);
 }
 
 static void uv_panel_draw(const bContext *C, Panel *panel)
@@ -986,16 +989,16 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Array", panel_draw);
   modifier_subpanel_register(region_type,
-                             "array_constant_offset",
-                             "",
-                             constant_offset_header_draw,
-                             constant_offset_draw,
-                             panel_type);
-  modifier_subpanel_register(region_type,
                              "array_relative_offset",
                              "",
                              relative_offset_header_draw,
                              relative_offset_draw,
+                             panel_type);
+  modifier_subpanel_register(region_type,
+                             "array_constant_offset",
+                             "",
+                             constant_offset_header_draw,
+                             constant_offset_draw,
                              panel_type);
   modifier_subpanel_register(region_type,
                              "array_object_offset",
