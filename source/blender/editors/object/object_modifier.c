@@ -1225,12 +1225,12 @@ void OBJECT_OT_modifier_move_down(wmOperatorType *ot)
 /** \name Move to Index Modifier Operator
  * \{ */
 
-static bool OBJECT_OT_modifier_move_to_index_poll(bContext *C)
+static bool modifier_move_to_index_poll(bContext *C)
 {
   return edit_modifier_poll(C);
 }
 
-static int OBJECT_OT_modifier_move_to_index_exec(bContext *C, wmOperator *op)
+static int modifier_move_to_index_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
   ModifierData *md = edit_modifier_property_get(op, ob, 0);
@@ -1246,9 +1246,7 @@ static int OBJECT_OT_modifier_move_to_index_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int OBJECT_OT_modifier_move_to_index_invoke(bContext *C,
-                                                   wmOperator *op,
-                                                   const wmEvent *UNUSED(event))
+static int modifier_move_to_index_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   if (edit_modifier_invoke_properties(C, op)) {
     return OBJECT_OT_modifier_move_to_index_exec(C, op);
@@ -1264,9 +1262,9 @@ void OBJECT_OT_modifier_move_to_index(wmOperatorType *ot)
   ot->description = "Move the active modifier to an index in the stack";
   ot->idname = "OBJECT_OT_modifier_move_to_index";
 
-  ot->invoke = OBJECT_OT_modifier_move_to_index_invoke;
-  ot->exec = OBJECT_OT_modifier_move_to_index_exec;
-  ot->poll = OBJECT_OT_modifier_move_to_index_poll;
+  ot->invoke = modifier_move_to_index_invoke;
+  ot->exec = modifier_move_to_index_exec;
+  ot->poll = modifier_move_to_index_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
