@@ -26,12 +26,16 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil_geom.h"
 #include "BKE_gpencil_modifier.h"
@@ -41,11 +45,18 @@
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "MEM_guardedalloc.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
 #include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_util.h"
+#include "MOD_ui_common.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -200,6 +211,24 @@ static void foreachObjectLink(GpencilModifierData *md,
   walk(userData, ob, &mmd->object, IDWALK_CB_NOP);
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_buttons(C, panel);
+
+  gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Lattice", panel_draw);
+}
+
 GpencilModifierTypeInfo modifierType_Gpencil_Lattice = {
     /* name */ "Lattice",
     /* structName */ "LatticeGpencilModifierData",
@@ -222,4 +251,5 @@ GpencilModifierTypeInfo modifierType_Gpencil_Lattice = {
     /* foreachObjectLink */ foreachObjectLink,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
+    /* panelRegister */ panelRegister,
 };

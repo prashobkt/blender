@@ -29,6 +29,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BLI_alloca.h"
 #include "BLI_blenlib.h"
@@ -36,6 +37,8 @@
 #include "BLI_math.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
+
+#include "BLT_translation.h"
 
 #include "BKE_collection.h"
 #include "BKE_context.h"
@@ -51,6 +54,7 @@
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
@@ -59,8 +63,14 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
 #include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_util.h"
+#include "MOD_ui_common.h"
 
 static void initData(GpencilModifierData *md)
 {
@@ -297,8 +307,27 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   }
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_buttons(C, panel);
+
+  gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = gpencil_modifier_panel_register(
+      region_type, "MultipleStrokes", panel_draw);
+}
+
 GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
-    /* name */ "Multiple Strokes",
+    /* name */ "MultipleStrokes",
     /* structName */ "MultiplyGpencilModifierData",
     /* structSize */ sizeof(MultiplyGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
@@ -319,4 +348,5 @@ GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
+    /* panelRegister */ panelRegister,
 };

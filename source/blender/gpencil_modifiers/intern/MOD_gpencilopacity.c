@@ -28,23 +28,34 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_vector.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_colortools.h"
+#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_screen.h"
 
 #include "DEG_depsgraph.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
 #include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_util.h"
+#include "MOD_ui_common.h"
 
 static void initData(GpencilModifierData *md)
 {
@@ -189,6 +200,24 @@ static void freeData(GpencilModifierData *md)
   }
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_buttons(C, panel);
+
+  gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Opacity", panel_draw);
+}
+
 GpencilModifierTypeInfo modifierType_Gpencil_Opacity = {
     /* name */ "Opacity",
     /* structName */ "OpacityGpencilModifierData",
@@ -211,4 +240,5 @@ GpencilModifierTypeInfo modifierType_Gpencil_Opacity = {
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
+    /* panelRegister */ panelRegister,
 };

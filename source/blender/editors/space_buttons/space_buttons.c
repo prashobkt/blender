@@ -30,9 +30,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_gpencil_modifier.h" /* Modifier types for regiestering panels. */
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
+#include "DNA_gpencil_modifier_types.h" /* Registering modifier panels. */
 #include "DNA_modifier_types.h"
 
 #include "ED_screen.h"
@@ -639,6 +641,12 @@ void ED_spacetype_buttons(void)
    * per modifier type. */
   for (int i = 0; i < NUM_MODIFIER_TYPES; i++) {
     const ModifierTypeInfo *mti = modifierType_getInfo(i);
+    if (mti != NULL && mti->panelRegister != NULL) {
+      mti->panelRegister(art);
+    }
+  }
+  for (int i = 0; i < NUM_GREASEPENCIL_MODIFIER_TYPES; i++) {
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(i);
     if (mti != NULL && mti->panelRegister != NULL) {
       mti->panelRegister(art);
     }

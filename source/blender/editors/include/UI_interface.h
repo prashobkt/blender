@@ -1994,6 +1994,7 @@ void uiTemplatePathBuilder(uiLayout *layout,
                            struct PointerRNA *root_ptr,
                            const char *text);
 void uiTemplateModifiers(uiLayout *layout, struct bContext *C);
+void uiTemplateGpencilModifiers(uiLayout *layout, struct bContext *C);
 void uiTemplateConstraints(uiLayout *layout, struct bContext *C);
 
 uiLayout *uiTemplateGpencilModifier(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);

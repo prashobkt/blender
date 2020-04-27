@@ -35,12 +35,16 @@
 #include "BLI_math.h"
 #include "BLI_rand.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_collection.h"
+#include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_geom.h"
@@ -51,6 +55,12 @@
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -58,6 +68,7 @@
 
 #include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_util.h"
+#include "MOD_ui_common.h"
 
 typedef struct tmpStrokes {
   struct tmpStrokes *next, *prev;
@@ -320,6 +331,24 @@ static void foreachObjectLink(GpencilModifierData *md,
   walk(userData, ob, &mmd->object, IDWALK_CB_NOP);
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *sub, *row, *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_buttons(C, panel);
+
+  gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Array", panel_draw);
+}
+
 GpencilModifierTypeInfo modifierType_Gpencil_Array = {
     /* name */ "Array",
     /* structName */ "ArrayGpencilModifierData",
@@ -342,4 +371,5 @@ GpencilModifierTypeInfo modifierType_Gpencil_Array = {
     /* foreachObjectLink */ foreachObjectLink,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
+    /* panelRegister */ panelRegister,
 };

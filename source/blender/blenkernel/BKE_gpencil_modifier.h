@@ -26,6 +26,7 @@
 extern "C" {
 #endif
 
+struct ARegionType;
 struct Depsgraph;
 struct GpencilModifierData;
 struct ID;
@@ -255,7 +256,12 @@ typedef struct GpencilModifierTypeInfo {
                          struct Object *ob,
                          GreasePencilTexWalkFunc walk,
                          void *userData);
+
+  /* Register the panel types for the modifier's UI. */
+  void (*panelRegister)(struct ARegionType *region_type);
 } GpencilModifierTypeInfo;
+
+#define GPENCIL_MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_gpencil_"
 
 /* Initialize modifier's global data (type info and some common global storages). */
 void BKE_gpencil_modifier_init(void);

@@ -60,20 +60,9 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-
-        ob = context.object
-
         layout.operator_menu_enum("object.gpencil_modifier_add", "type")
+        layout.template_grease_pencil_modifiers()
 
-        for md in ob.grease_pencil_modifiers:
-            box = layout.template_greasepencil_modifier(md)
-            if box:
-                # match enum type to our functions, avoids a lookup table.
-                getattr(self, md.type)(box, ob, md)
-
-    # the mt.type enum is (ab)used for a lookup on function names
-    # ...to avoid lengthy if statements
-    # so each type must have a function here.
 
     def gpencil_masking(self, layout, ob, md, use_vertex, use_curve=False):
         gpd = ob.data

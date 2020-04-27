@@ -508,7 +508,8 @@ bool BKE_gpencil_modifier_dependsOnTime(GpencilModifierData *md)
 const GpencilModifierTypeInfo *BKE_gpencil_modifierType_getInfo(GpencilModifierType type)
 {
   /* type unsigned, no need to check < 0 */
-  if (type < NUM_GREASEPENCIL_MODIFIER_TYPES && modifier_gpencil_types[type]->name[0] != '\0') {
+  if (type < NUM_GREASEPENCIL_MODIFIER_TYPES && type > 0 &&
+      modifier_gpencil_types[type]->name[0] != '\0') {
     return modifier_gpencil_types[type];
   }
   else {
