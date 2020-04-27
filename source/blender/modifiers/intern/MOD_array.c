@@ -364,7 +364,6 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                                    const ModifierEvalContext *ctx,
                                    Mesh *mesh)
 {
-  const float eps = 1e-6f;
   const MVert *src_mvert;
   MVert *mv, *mv_prev, *result_dm_verts;
 
@@ -484,20 +483,51 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     }
   }
 
+  /* About 67 million vertices max seems a decent limit for now. */
+  const size_t max_num_vertices = 1 << 26;
+
   /* calculate the maximum number of copies which will fit within the
    * prescribed length */
   if (amd->fit_type == MOD_ARR_FITLENGTH || amd->fit_type == MOD_ARR_FITCURVE) {
+    const float float_epsilon = 1e-6f;
+    bool offset_is_too_small = false;
     float dist = len_v3(offset[3]);
 
-    if (dist > eps) {
+    if (dist > float_epsilon) {
       /* this gives length = first copy start to last copy end
        * add a tiny offset for floating point rounding errors */
-      count = (length + eps) / dist + 1;
+      count = (length + float_epsilon) / dist + 1;
+
+      /* Ensure we keep things to a reasonable level, in terms of rough total amount of generated
+       * vertices.
+       */
+      if (((size_t)count * (size_t)chunk_nverts + (size_t)start_cap_nverts +
+           (size_t)end_cap_nverts) > max_num_vertices) {
+        count = 1;
+        offset_is_too_small = true;
+      }
     }
     else {
       /* if the offset has no translation, just make one copy */
       count = 1;
+      offset_is_too_small = true;
     }
+
+    if (offset_is_too_small) {
+      modifier_setError(
+          &amd->modifier,
+          "The offset is too small, we cannot generate the amount of geometry it would require");
+    }
+  }
+  /* Ensure we keep things to a reasonable level, in terms of rough total amount of generated
+   * vertices.
+   */
+  else if (((size_t)count * (size_t)chunk_nverts + (size_t)start_cap_nverts +
+            (size_t)end_cap_nverts) > max_num_vertices) {
+    count = 1;
+    modifier_setError(&amd->modifier,
+                      "The amount of copies is too high, we cannot generate the amount of "
+                      "geometry it would require");
   }
 
   if (count < 1) {
@@ -772,7 +802,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   return result;
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   ArrayModifierData *amd = (ArrayModifierData *)md;
   return arrayModifier_doArray(amd, ctx, mesh);
@@ -837,31 +867,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, &ptr);
 }
 
-static void constant_offset_header_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiItemR(layout, &ptr, "use_constant_offset", 0, NULL, ICON_NONE);
-}
-
-static void constant_offset_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-
-  uiLayoutSetPropSep(layout, true);
-
-  uiLayout *col = uiLayoutColumn(layout, false);
-
-  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_constant_offset"));
-  uiItemR(col, &ptr, "constant_offset_displace", 0, "Distance", ICON_NONE);
-}
-
 static void relative_offset_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -884,9 +889,37 @@ static void relative_offset_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_relative_offset"));
-  uiItemR(col, &ptr, "relative_offset_displace", 0, "Distance", ICON_NONE);
+  uiItemR(col, &ptr, "relative_offset_displace", 0, IFACE_("Factor"), ICON_NONE);
 }
 
+static void constant_offset_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_constant_offset", 0, NULL, ICON_NONE);
+}
+
+static void constant_offset_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayout *col = uiLayoutColumn(layout, false);
+
+  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_constant_offset"));
+  uiItemR(col, &ptr, "constant_offset_displace", 0, IFACE_("Distance"), ICON_NONE);
+}
+
+/**
+ * Object offset in a subpanel for consistency with the other offset types.
+ */
 static void object_offset_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -934,7 +967,7 @@ static void symmetry_panel_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_merge_vertices"));
   uiItemR(col, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
-  uiItemR(col, &ptr, "use_merge_vertices_cap", 0, IFACE_("First Last"), ICON_NONE);
+  uiItemR(col, &ptr, "use_merge_vertices_cap", 0, IFACE_("First and Last Copies"), ICON_NONE);
 }
 
 static void uv_panel_draw(const bContext *C, Panel *panel)
@@ -956,16 +989,16 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, "Array", panel_draw);
   modifier_subpanel_register(region_type,
-                             "array_constant_offset",
-                             "",
-                             constant_offset_header_draw,
-                             constant_offset_draw,
-                             panel_type);
-  modifier_subpanel_register(region_type,
                              "array_relative_offset",
                              "",
                              relative_offset_header_draw,
                              relative_offset_draw,
+                             panel_type);
+  modifier_subpanel_register(region_type,
+                             "array_constant_offset",
+                             "",
+                             constant_offset_header_draw,
+                             constant_offset_draw,
                              panel_type);
   modifier_subpanel_register(region_type,
                              "array_object_offset",
@@ -993,7 +1026,10 @@ ModifierTypeInfo modifierType_Array = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,
