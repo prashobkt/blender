@@ -112,7 +112,7 @@ static void requiredDataMask(Object *UNUSED(ob),
   }
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
 
@@ -216,7 +216,10 @@ ModifierTypeInfo modifierType_DynamicPaint = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

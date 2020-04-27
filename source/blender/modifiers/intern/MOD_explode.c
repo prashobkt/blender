@@ -1134,7 +1134,7 @@ static ParticleSystemModifierData *findPrecedingParticlesystem(Object *ob, Modif
   }
   return psmd;
 }
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   ExplodeModifierData *emd = (ExplodeModifierData *)md;
   ParticleSystemModifierData *psmd = findPrecedingParticlesystem(ctx->object, md);
@@ -1246,7 +1246,10 @@ ModifierTypeInfo modifierType_Explode = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

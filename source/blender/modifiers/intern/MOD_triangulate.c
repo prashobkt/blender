@@ -114,7 +114,7 @@ static void initData(ModifierData *md)
   tmd->min_vertices = 4;
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(ctx), Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *UNUSED(ctx), Mesh *mesh)
 {
   TriangulateModifierData *tmd = (TriangulateModifierData *)md;
   Mesh *result;
@@ -165,7 +165,10 @@ ModifierTypeInfo modifierType_Triangulate = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,  // requiredDataMask,

@@ -293,7 +293,7 @@ ModifierTypeInfo modifierType_Armature = {
     /* structName */ "ArmatureModifierData",
     /* structSize */ sizeof(ArmatureModifierData),
     /* type */ eModifierTypeType_OnlyDeform,
-    /* flags */ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsLattice |
+    /* flags */ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsVertexCosOnly |
         eModifierTypeFlag_SupportsEditmode,
 
     /* copyData */ copyData,
@@ -302,7 +302,10 @@ ModifierTypeInfo modifierType_Armature = {
     /* deformMatrices */ deformMatrices,
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ deformMatricesEM,
-    /* applyModifier */ NULL,
+    /* modifyMesh */ NULL,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

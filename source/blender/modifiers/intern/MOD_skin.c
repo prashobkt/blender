@@ -1924,7 +1924,7 @@ static void initData(ModifierData *md)
   smd->symmetry_axes = MOD_SKIN_SYMM_X;
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(ctx), Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *UNUSED(ctx), Mesh *mesh)
 {
   Mesh *result;
 
@@ -2013,7 +2013,10 @@ ModifierTypeInfo modifierType_Skin = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

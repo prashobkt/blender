@@ -190,7 +190,7 @@ static void initData(ModifierData *md)
   ltmd->merge_dist = 0.01f;
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
 {
   Mesh *mesh = meshData;
   Mesh *result;
@@ -1261,7 +1261,10 @@ ModifierTypeInfo modifierType_Screw = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,

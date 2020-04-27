@@ -168,7 +168,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   (DT_TYPE_BWEIGHT_VERT | DT_TYPE_BWEIGHT_EDGE | DT_TYPE_CREASE | DT_TYPE_SHARP_EDGE | \
    DT_TYPE_LNOR | DT_TYPE_SHARP_FACE)
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *me_mod)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *me_mod)
 {
   DataTransferModifierData *dtmd = (DataTransferModifierData *)md;
   struct Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
@@ -513,7 +513,10 @@ ModifierTypeInfo modifierType_DataTransfer = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
