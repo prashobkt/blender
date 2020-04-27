@@ -499,7 +499,7 @@ class OBJECT_PT_bRotateLikeConstraint(ConstraintButtonsPanel):
 
         layout.prop(con, "euler_order", text="Order")
 
-        row = layout.row(heading="Use")
+        row = layout.row(heading="Axis")
         row.prop(con, "use_x", text="X", toggle=True)
         row.prop(con, "use_y", text="Y", toggle=True)
         row.prop(con, "use_z", text="Z", toggle=True)
@@ -526,7 +526,7 @@ class OBJECT_PT_bLocateLikeConstraint(ConstraintButtonsPanel):
 
         self.target_template(layout, con)
 
-        row = layout.row(heading="Use")
+        row = layout.row(heading="Axis")
         row.prop(con, "use_x", text="X", toggle=True)
         row.prop(con, "use_y", text="Y", toggle=True)
         row.prop(con, "use_z", text="Z", toggle=True)
@@ -553,7 +553,7 @@ class OBJECT_PT_bSizeLikeConstraint(ConstraintButtonsPanel):
 
         self.target_template(layout, con)
 
-        row = layout.row(heading="Use")
+        row = layout.row(heading="Axis")
         row.prop(con, "use_x", text="X", toggle=True)
         row.prop(con, "use_y", text="Y", toggle=True)
         row.prop(con, "use_z", text="Z", toggle=True)
