@@ -2747,7 +2747,7 @@ static void rna_def_modifier_array(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   /* PROP_TRANSLATION causes units to be used which we don't want */
-  prop = RNA_def_property(srna, "relative_offset_displace", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "relative_offset_displace", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_float_sdna(prop, NULL, "scale");
   RNA_def_property_ui_text(
       prop,
@@ -2763,7 +2763,8 @@ static void rna_def_modifier_array(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_merge_vertices_cap", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_ARR_MERGEFINAL);
-  RNA_def_property_ui_text(prop, "Merge Vertices", "Merge vertices in first and last duplicates");
+  RNA_def_property_ui_text(
+      prop, "Merge End Vertices", "Merge vertices in first and last duplicates");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "merge_threshold", PROP_FLOAT, PROP_DISTANCE);
