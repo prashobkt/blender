@@ -53,6 +53,9 @@
 
 #include "MOD_gpencil_modifiertypes.h"
 
+#include "CLG_log.h"
+
+static CLG_LogRef LOG = {"bke.modifier"};
 static GpencilModifierTypeInfo *modifier_gpencil_types[NUM_GREASEPENCIL_MODIFIER_TYPES] = {NULL};
 
 /* *************************************************** */
@@ -586,6 +589,26 @@ GpencilModifierData *BKE_gpencil_modifiers_findByType(Object *ob, GpencilModifie
   }
 
   return md;
+}
+
+void BKE_gpencil_modifier_setError(GpencilModifierData *md, const char *_format, ...)
+{
+  char buffer[512];
+  va_list ap;
+  const char *format = TIP_(_format);
+
+  va_start(ap, _format);
+  vsnprintf(buffer, sizeof(buffer), format, ap);
+  va_end(ap);
+  buffer[sizeof(buffer) - 1] = '\0';
+
+  if (md->error) {
+    MEM_freeN(md->error);
+  }
+
+  md->error = BLI_strdup(buffer);
+
+  CLOG_STR_ERROR(&LOG, md->error);
 }
 
 void BKE_gpencil_modifiers_foreachIDLink(Object *ob, GreasePencilIDWalkFunc walk, void *userData)

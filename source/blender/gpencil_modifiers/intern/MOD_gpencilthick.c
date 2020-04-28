@@ -172,20 +172,42 @@ static void bakeModifier(struct Main *UNUSED(bmain),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "normalize_thickness", 0, NULL, ICON_NONE);
+
+  if (RNA_boolean_get(&ptr, "normalize_thickness")) {
+    uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
+  }
+  else {
+    uiItemR(layout, &ptr, "thickness_factor", 0, NULL, ICON_NONE);
+  }
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, true, true);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Thickness", panel_draw);
+  PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
+      region_type, "thicknes_mask", "Influence", NULL, mask_panel_draw, panel_type);
+  gpencil_modifier_subpanel_register(region_type,
+                                     "thickness_curve",
+                                     "",
+                                     gpencil_modifier_curve_header_draw,
+                                     gpencil_modifier_curve_panel_draw,
+                                     mask_panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Thick = {

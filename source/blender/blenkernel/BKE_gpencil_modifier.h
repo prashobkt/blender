@@ -20,6 +20,7 @@
  * \ingroup bke
  */
 
+#include "BLI_compiler_attrs.h"
 #include "DNA_gpencil_modifier_types.h" /* needed for all enum typdefs */
 
 #ifdef __cplusplus
@@ -282,6 +283,8 @@ void BKE_gpencil_modifier_copyData(struct GpencilModifierData *md,
 void BKE_gpencil_modifier_copyData_ex(struct GpencilModifierData *md,
                                       struct GpencilModifierData *target,
                                       const int flag);
+void BKE_gpencil_modifier_setError(struct GpencilModifierData *md, const char *format, ...)
+    ATTR_PRINTF_FORMAT(2, 3);
 void BKE_gpencil_modifiers_foreachIDLink(struct Object *ob,
                                          GreasePencilIDWalkFunc walk,
                                          void *userData);

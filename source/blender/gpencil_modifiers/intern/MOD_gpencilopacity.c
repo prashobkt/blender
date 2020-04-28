@@ -202,20 +202,75 @@ static void freeData(GpencilModifierData *md)
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  uiLayoutSetPropSep(layout, true);
+
+  int modify_color = RNA_enum_get(&ptr, "modify_color");
+
+  uiItemR(layout, &ptr, "modify_color", 0, NULL, ICON_NONE);
+
+  if (modify_color == GP_MODIFY_COLOR_HARDNESS) {
+    uiItemR(layout, &ptr, "hardness", 0, NULL, ICON_NONE);
+  }
+  else {
+    uiItemR(layout, &ptr, "normalize_opacity", 0, NULL, ICON_NONE);
+    const char *text = (RNA_boolean_get(&ptr, "normalize_opacity")) ? IFACE_("Strength") :
+                                                                      IFACE_("Opacity Factor");
+    uiItemR(layout, &ptr, "hardness", 0, text, ICON_NONE);
+  }
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  int modify_color = RNA_enum_get(&ptr, "modify_color");
+  bool show_vertex = (modify_color != GP_MODIFY_COLOR_HARDNESS);
+
+  gpencil_modifier_masking_panel_draw(C, panel, true, show_vertex);
+}
+
+static void curve_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  int modify_color = RNA_enum_get(&ptr, "modify_color");
+  uiLayoutSetActive(layout, modify_color != GP_MODIFY_COLOR_HARDNESS);
+
+  gpencil_modifier_curve_header_draw(C, panel);
+}
+
+static void curve_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  int modify_color = RNA_enum_get(&ptr, "modify_color");
+  uiLayoutSetActive(layout, modify_color != GP_MODIFY_COLOR_HARDNESS);
+
+  gpencil_modifier_curve_panel_draw(C, panel);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Opacity", panel_draw);
+  PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
+      region_type, "opacity_mask", "Influence", NULL, mask_panel_draw, panel_type);
+  gpencil_modifier_subpanel_register(
+      region_type, "noise_curve", "", curve_header_draw, curve_panel_draw, mask_panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Opacity = {

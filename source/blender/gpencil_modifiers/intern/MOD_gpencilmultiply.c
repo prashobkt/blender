@@ -309,21 +309,66 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "duplicates", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(layout, RNA_int_get(&ptr, "duplicates") > 0);
+  uiItemR(col, &ptr, "distance", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "offset", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void fade_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_fade", 0, NULL, ICON_NONE);
+}
+
+static void fade_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_fade"));
+
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "fading_center", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "fading_thickness", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "fading_opacity", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, true, false);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, "MultipleStrokes", panel_draw);
+  gpencil_modifier_subpanel_register(
+      region_type, "multiplestrokes_fade", "", fade_header_draw, fade_panel_draw, panel_type);
+  gpencil_modifier_subpanel_register(
+      region_type, "multiplestrokes_mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {

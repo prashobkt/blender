@@ -207,12 +207,28 @@ static void panel_draw(const bContext *C, Panel *panel)
   gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_vertex_group);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  col = uiLayoutColumnWithHeading(layout, true, "Bind to");
+  uiItemR(col, &ptr, "use_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+  uiItemR(col, &ptr, "use_bone_envelopes", 0, IFACE_("Bone Envelopes"), ICON_NONE);
+
   gpencil_modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Armature", panel_draw);
+  gpencil_modifier_panel_register(region_type, "Armature", panel_draw);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Armature = {

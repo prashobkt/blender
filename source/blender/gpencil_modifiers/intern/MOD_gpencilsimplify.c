@@ -136,20 +136,44 @@ static void bakeModifier(struct Main *UNUSED(bmain),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  int mode = RNA_enum_get(&ptr, "mode");
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
+
+  if (mode == GP_SIMPLIFY_FIXED) {
+    uiItemR(layout, &ptr, "step", 0, NULL, ICON_NONE);
+  }
+  else if (mode == GP_SIMPLIFY_ADAPTIVE) {
+    uiItemR(layout, &ptr, "factor", 0, NULL, ICON_NONE);
+  }
+  else if (mode == GP_SIMPLIFY_SAMPLE) {
+    uiItemR(layout, &ptr, "length", 0, NULL, ICON_NONE);
+  }
+  else if (mode == GP_SIMPLIFY_MERGE) {
+    uiItemR(layout, &ptr, "distance", 0, NULL, ICON_NONE);
+  }
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, true, false);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Simplify", panel_draw);
+  gpencil_modifier_subpanel_register(
+      region_type, "simplify_mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Simplify = {

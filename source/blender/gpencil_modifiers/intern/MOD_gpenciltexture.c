@@ -153,20 +153,50 @@ static void bakeModifier(struct Main *UNUSED(bmain),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  int mode = RNA_enum_get(&ptr, "mode");
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
+
+  if (ELEM(mode, STROKE, STROKE_AND_FILL)) {
+    col = uiLayoutColumn(layout, false);
+    uiItemR(col, &ptr, "fit_method", 0, IFACE_("Stroke Fit Method"), ICON_NONE);
+    uiItemR(col, &ptr, "uv_offset", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "uv_scale", 0, IFACE_("Scale"), ICON_NONE);
+  }
+
+  if (mode == STROKE_AND_FILL) {
+    uiItemS(layout);
+  }
+
+  if (ELEM(mode, FILL, STROKE_AND_FILL)) {
+    col = uiLayoutColumn(layout, false);
+    uiItemR(col, &ptr, "fill_rotation", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "fill_offset", 0, IFACE_("Offset"), ICON_NONE);
+    uiItemR(col, &ptr, "fill_scale", 0, IFACE_("Scale"), ICON_NONE);
+  }
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, true, true);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Texture", panel_draw);
+  gpencil_modifier_subpanel_register(
+      region_type, "texture_mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Texture = {

@@ -336,20 +336,52 @@ static void foreachObjectLink(GpencilModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  int tint_type = RNA_enum_get(&ptr, "tint_type");
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "vertex_mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "factor", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "tint_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+  if (tint_type == GP_TINT_UNIFORM) {
+    uiItemR(layout, &ptr, "color", 0, NULL, ICON_NONE);
+  }
+  else {
+    col = uiLayoutColumn(layout, false);
+    uiLayoutSetPropSep(col, false);
+    uiTemplateColorRamp(col, &ptr, "colors", true);
+    uiItemS(layout);
+    uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "radius", 0, NULL, ICON_NONE);
+  }
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, true, true);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Tint", panel_draw);
+  PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
+      region_type, "tint_mask", "Influence", NULL, mask_panel_draw, panel_type);
+  gpencil_modifier_subpanel_register(region_type,
+                                     "tint_curve",
+                                     "",
+                                     gpencil_modifier_curve_header_draw,
+                                     gpencil_modifier_curve_panel_draw,
+                                     mask_panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Tint = {

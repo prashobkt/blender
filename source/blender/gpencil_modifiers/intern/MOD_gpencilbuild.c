@@ -548,7 +548,6 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -556,12 +555,70 @@ static void panel_draw(const bContext *C, Panel *panel)
   gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  int mode = RNA_enum_get(&ptr, "mode");
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
+  if (mode == GP_BUILD_MODE_CONCURRENT) {
+    uiItemR(layout, &ptr, "concurrent_time_alignment", 0, NULL, ICON_NONE);
+  }
+
+  uiItemS(layout);
+
+  uiItemR(layout, &ptr, "transition", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "start_delay", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "length", 0, NULL, ICON_NONE);
+
+  /* Check for incompatible time modifier. */
+  Object *ob = ob_ptr.data;
+  GpencilModifierData *md = ptr.data;
+  if (BKE_gpencil_modifiers_findByType(ob, eGpencilModifierType_Time) != NULL) {
+    BKE_gpencil_modifier_setError(md, "Build and Time Offset modifiers are incompatible");
+  }
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void frame_range_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_restrict_frame_range", 0, NULL, ICON_NONE);
+}
+
+static void frame_range_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
+  uiItemR(layout, &ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, false, false);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Build", panel_draw);
+  gpencil_modifier_subpanel_register(region_type,
+                                     "build_frame_range",
+                                     "",
+                                     frame_range_header_draw,
+                                     frame_range_panel_draw,
+                                     panel_type);
+  gpencil_modifier_subpanel_register(
+      region_type, "build_mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 /* ******************************************** */

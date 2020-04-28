@@ -226,20 +226,36 @@ static void foreachObjectLink(GpencilModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  uiLayoutSetPropSep(layout, true);
+
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Axis"));
+  uiItemR(row, &ptr, "x_axis", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "y_axis", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "z_axis", toggles_flag, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, true, false);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Mirror", panel_draw);
+  gpencil_modifier_subpanel_register(
+      region_type, "mirror_mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Mirror = {

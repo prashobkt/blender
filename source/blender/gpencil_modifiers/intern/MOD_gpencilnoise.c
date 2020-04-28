@@ -272,20 +272,66 @@ static void bakeModifier(struct Main *UNUSED(bmain),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
   gpencil_modifier_panel_buttons(C, panel);
 
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "factor", 0, IFACE_("Position"), ICON_NONE);
+  uiItemR(layout, &ptr, "factor_strength", 0, IFACE_("Strength"), ICON_NONE);
+  uiItemR(layout, &ptr, "factor_thickness", 0, IFACE_("Thickness"), ICON_NONE);
+  uiItemR(layout, &ptr, "factor_uvs", 0, IFACE_("UV"), ICON_NONE);
+  uiItemR(layout, &ptr, "noise_scale", 0, NULL, ICON_NONE);
+
   gpencil_modifier_panel_end(layout, &ptr);
+}
+
+static void random_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "random", 0, IFACE_("Randomize"), ICON_NONE);
+}
+
+static void random_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "random"));
+
+  uiItemR(layout, &ptr, "step", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "seed", 0, NULL, ICON_NONE);
+}
+
+static void mask_panel_draw(const bContext *C, Panel *panel)
+{
+  gpencil_modifier_masking_panel_draw(C, panel, true, false);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Noise", panel_draw);
+  gpencil_modifier_subpanel_register(
+      region_type, "noise_randomize", "", random_header_draw, random_panel_draw, panel_type);
+  PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
+      region_type, "noise_mask", "Influence", NULL, mask_panel_draw, panel_type);
+  gpencil_modifier_subpanel_register(region_type,
+                                     "noise_curve",
+                                     "",
+                                     gpencil_modifier_curve_header_draw,
+                                     gpencil_modifier_curve_panel_draw,
+                                     mask_panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Noise = {

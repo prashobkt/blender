@@ -100,6 +100,89 @@ static void set_gpencil_modifier_expand_flag(const bContext *C, Panel *panel, sh
 /** \name Modifier Panel Layouts
  * \{ */
 
+void gpencil_modifier_masking_panel_draw(const bContext *C,
+                                         Panel *panel,
+                                         bool use_material,
+                                         bool use_vertex)
+{
+  uiLayout *row, *col, *sub;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+  bool has_layer = RNA_string_length(&ptr, "layer") != 0;
+
+  uiLayoutSetPropSep(layout, true);
+
+  col = uiLayoutColumn(layout, true);
+  row = uiLayoutRow(col, true);
+  uiItemPointerR(row, &ptr, "layer", &obj_data_ptr, "layers", NULL, ICON_GREASEPENCIL);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, has_layer);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_layers", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  row = uiLayoutRow(col, true);
+  uiItemR(row, &ptr, "layer_pass", 0, NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_int_get(&ptr, "layer_pass") != 0);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &ptr, "invert_layer_pass", 0, "", ICON_ARROW_LEFTRIGHT);
+
+  if (use_material) {
+    bool has_material = RNA_string_length(&ptr, "material") != 0;
+
+    col = uiLayoutColumn(layout, true);
+    row = uiLayoutRow(col, true);
+    uiItemPointerR(row, &ptr, "material", &obj_data_ptr, "materials", NULL, ICON_SHADING_TEXTURE);
+    sub = uiLayoutRow(row, true);
+    uiLayoutSetActive(sub, has_material);
+    uiLayoutSetPropDecorate(sub, false);
+    uiItemR(sub, &ptr, "invert_layers", 0, "", ICON_ARROW_LEFTRIGHT);
+
+    row = uiLayoutRow(col, true);
+    uiItemR(row, &ptr, "pass_index", 0, NULL, ICON_NONE);
+    sub = uiLayoutRow(row, true);
+    uiLayoutSetActive(sub, RNA_int_get(&ptr, "pass_index") != 0);
+    uiLayoutSetPropDecorate(sub, false);
+    uiItemR(sub, &ptr, "invert_material_pass", 0, "", ICON_ARROW_LEFTRIGHT);
+  }
+
+  if (use_vertex) {
+    bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+
+    row = uiLayoutRow(layout, true);
+    uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+    sub = uiLayoutRow(row, true);
+    uiLayoutSetActive(sub, has_vertex_group);
+    uiLayoutSetPropDecorate(sub, false);
+    uiItemR(sub, &ptr, "invert_vertex", 0, "", ICON_ARROW_LEFTRIGHT);
+  }
+}
+
+void gpencil_modifier_curve_header_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiItemR(layout, &ptr, "use_custom_curve", 0, NULL, ICON_NONE);
+}
+
+void gpencil_modifier_curve_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiTemplateCurveMapping(layout, &ptr, "curve", 0, false, false, false, false);
+}
+
 /**
  * Draw modifier error message.
  */
