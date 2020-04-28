@@ -289,11 +289,13 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Spawn particles from the shape"},
     {eModifierType_Softbody, "SOFT_BODY", ICON_MOD_SOFT, "Soft Body", ""},
     {eModifierType_Surface, "SURFACE", ICON_MODIFIER, "Surface", ""},
+#ifdef WITH_NEW_SIMULATION_TYPE
     {eModifierType_SimulationAccess,
      "SIMULATION_ACCESS",
      ICON_PHYSICS,
      "Simulation Access",
      ""}, /* TODO: Use correct icon. */
+#endif
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -6563,10 +6565,12 @@ static void rna_def_modifier_simulation_access(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SimulationAccessModifierData");
   RNA_def_struct_ui_icon(srna, ICON_PHYSICS); /* TODO: Use correct icon. */
 
+#  ifdef WITH_NEW_SIMULATION_TYPE
   prop = RNA_def_property(srna, "simulation", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "Simulation", "Simulation to access");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+#  endif
 
   prop = RNA_def_property(srna, "data_path", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(
