@@ -25,6 +25,7 @@
 
 #include "DNA_constraint_types.h"
 #include "DNA_genfile.h"
+#include "DNA_gpencil_modifier_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 
@@ -84,6 +85,21 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
         LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
           if (md->mode & eModifierMode_Expanded_DEPRECATED) {
+            md->ui_expand_flag = 1;
+          }
+          else {
+            md->ui_expand_flag = 0;
+          }
+        }
+      }
+    }
+
+    /* Transition to saving expansion for all of grease pencil modifier's subpanels. */
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "ThickGpencilModifierData", "short", "ui_expand_flag")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (GpencilModifierData *, md, &object->greasepencil_modifiers) {
+          if (md->mode & eGpencilModifierMode_Expanded_DEPRECATED) {
             md->ui_expand_flag = 1;
           }
           else {

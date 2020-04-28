@@ -428,9 +428,9 @@ GpencilModifierData *BKE_gpencil_modifier_new(int type)
   BLI_strncpy(md->name, DATA_(mti->name), sizeof(md->name));
 
   md->type = type;
-  md->mode = eGpencilModifierMode_Realtime | eGpencilModifierMode_Render |
-             eGpencilModifierMode_Expanded;
+  md->mode = eGpencilModifierMode_Realtime | eGpencilModifierMode_Render;
   md->flag = eGpencilModifierFlag_OverrideLibrary_Local;
+  md->ui_expand_flag = 1; /* Only expand the parent panel at first. */
 
   if (mti->flags & eGpencilModifierTypeFlag_EnableInEditmode) {
     md->mode |= eGpencilModifierMode_Editmode;
