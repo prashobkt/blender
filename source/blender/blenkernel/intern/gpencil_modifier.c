@@ -557,6 +557,7 @@ void BKE_gpencil_modifier_copyData_ex(GpencilModifierData *md,
 
   target->mode = md->mode;
   target->flag = md->flag;
+  target->ui_expand_flag = md->ui_expand_flag;
 
   if (mti->copyData) {
     mti->copyData(md, target);
