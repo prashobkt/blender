@@ -233,9 +233,9 @@ typedef struct PanelType {
   /** Reorder function, called when drag and drop finishes. */
   void (*reorder)(struct bContext *C, struct Panel *pa, int new_index);
   /**
-   * Set the panel and subpanel's expansion state from the corresponding expansion flag. Called
-   * on draw updates.
-   * \note Subpanels are indexed in depth first order, the visual order you would see if all panels
+   * Get the panel and subpanel's expansion state from the expansion flag in the corresponding data
+   * item. Called on draw updates.
+   * \note Subpanels are indexed in depth first order, the visualorder you would see if all panels
    * were expanded.
    */
   short (*get_list_data_expand_flag)(const struct bContext *C, struct Panel *pa);
