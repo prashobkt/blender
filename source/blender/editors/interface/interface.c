@@ -3321,16 +3321,16 @@ void UI_blocklist_free(const bContext *C, ListBase *lb)
   }
 }
 
-void UI_blocklist_free_inactive(const bContext *C, ARegion *region)
+void UI_blocklist_free_inactive(const bContext *C, ListBase *lb)
 {
   uiBlock *block, *nextblock;
 
-  for (block = region->uiblocks.first; block; block = nextblock) {
+  for (block = lb->first; block; block = nextblock) {
     nextblock = block->next;
 
     if (!block->handle) {
       if (!block->active) {
-        BLI_remlink(&region->uiblocks, block);
+        BLI_remlink(lb, block);
         UI_block_free(C, block);
       }
       else {

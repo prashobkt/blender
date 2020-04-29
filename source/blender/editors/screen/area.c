@@ -560,7 +560,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   memset(&region->drawrct, 0, sizeof(region->drawrct));
 
-  UI_blocklist_free_inactive(C, region);
+  UI_blocklist_free_inactive(C, &region->uiblocks);
 
   if (area) {
     const bScreen *screen = WM_window_get_active_screen(win);
