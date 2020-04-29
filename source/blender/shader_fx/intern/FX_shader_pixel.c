@@ -25,7 +25,18 @@
 
 #include "BLI_utildefines.h"
 
+#include "BKE_context.h"
+#include "BKE_screen.h"
+
+#include "DNA_screen_types.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
 #include "FX_shader_types.h"
+#include "FX_ui_common.h"
 
 static void initData(ShaderFxData *fx)
 {
@@ -37,6 +48,25 @@ static void initData(ShaderFxData *fx)
 static void copyData(const ShaderFxData *md, ShaderFxData *target)
 {
   BKE_shaderfx_copyData_generic(md, target);
+}
+
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  shaderfx_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "size", 0, NULL, ICON_NONE);
+
+  shaderfx_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  shaderfx_panel_register(region_type, "Pixelate", panel_draw);
 }
 
 ShaderFxTypeInfo shaderfx_Type_Pixel = {
@@ -55,4 +85,5 @@ ShaderFxTypeInfo shaderfx_Type_Pixel = {
     /* dependsOnTime */ NULL,
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
+    /* panelRegister */ panelRegister,
 };

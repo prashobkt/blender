@@ -1996,6 +1996,7 @@ void uiTemplatePathBuilder(uiLayout *layout,
 void uiTemplateModifiers(uiLayout *layout, struct bContext *C);
 void uiTemplateGpencilModifiers(uiLayout *layout, struct bContext *C);
 void uiTemplateConstraints(uiLayout *layout, struct bContext *C);
+void uiTemplateShaderFx(uiLayout *layout, struct bContext *C);
 
 uiLayout *uiTemplateGpencilModifier(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);
 void uiTemplateGpencilColorPreview(uiLayout *layout,
@@ -2006,8 +2007,6 @@ void uiTemplateGpencilColorPreview(uiLayout *layout,
                                    int cols,
                                    float scale,
                                    int filter);
-
-uiLayout *uiTemplateShaderFx(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);
 
 void uiTemplateOperatorRedoProperties(uiLayout *layout, const struct bContext *C);
 

@@ -156,7 +156,7 @@ bool BKE_shaderfx_dependsOnTime(ShaderFxData *fx)
 const ShaderFxTypeInfo *BKE_shaderfxType_getInfo(ShaderFxType type)
 {
   /* type unsigned, no need to check < 0 */
-  if (type < NUM_SHADER_FX_TYPES && shader_fx_types[type]->name[0] != '\0') {
+  if (type < NUM_SHADER_FX_TYPES && type > 0 && shader_fx_types[type]->name[0] != '\0') {
     return shader_fx_types[type];
   }
   else {
@@ -198,6 +198,7 @@ void BKE_shaderfx_copyData_ex(ShaderFxData *fx, ShaderFxData *target, const int 
 
   target->mode = fx->mode;
   target->flag = fx->flag;
+  target->ui_expand_flag = fx->ui_expand_flag;
 
   if (fxi->copyData) {
     fxi->copyData(fx, target);

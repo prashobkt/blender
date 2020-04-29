@@ -200,6 +200,41 @@ int ED_object_shaderfx_move_down(ReportList *UNUSED(reports), Object *ob, Shader
   return 1;
 }
 
+bool ED_object_shaderfx_move_to_index(ReportList *reports,
+                                      Object *ob,
+                                      ShaderFxData *fx,
+                                      const int index)
+{
+  BLI_assert(fx != NULL);
+  BLI_assert(index >= 0);
+  if (index >= BLI_listbase_count(&ob->greasepencil_modifiers)) {
+    BKE_report(reports, RPT_WARNING, "Cannot move effect beyond the end of the stack");
+    return false;
+  }
+
+  int fx_index = BLI_findindex(&ob->shader_fx, fx);
+  printf("moving fx at %d to %d\n", fx_index, index);
+  BLI_assert(fx_index != -1);
+  if (fx_index < index) {
+    /* Move shaderfx down in list. */
+    for (; fx_index < index; fx_index++) {
+      if (!ED_object_shaderfx_move_up(reports, ob, fx)) {
+        break;
+      }
+    }
+  }
+  else {
+    /* Move shaderfx up in list. */
+    for (; fx_index > index; fx_index--) {
+      if (!ED_object_shaderfx_move_down(reports, ob, fx)) {
+        break;
+      }
+    }
+  }
+
+  return true;
+}
+
 /************************ add effect operator *********************/
 
 static int shaderfx_add_exec(bContext *C, wmOperator *op)
@@ -491,4 +526,49 @@ void OBJECT_OT_shaderfx_move_down(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
   edit_shaderfx_properties(ot);
+}
+
+/************************ move down shaderfx operator *********************/
+
+static int shaderfx_move_to_index_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  ShaderFxData *fx = edit_shaderfx_property_get(op, ob, 0);
+  int index = RNA_int_get(op->ptr, "index");
+
+  if (!fx || !ED_object_shaderfx_move_to_index(op->reports, ob, fx, index)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+
+  return OPERATOR_FINISHED;
+}
+
+static int shaderfx_move_to_index_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  if (edit_shaderfx_invoke_properties(C, op)) {
+    return shaderfx_move_to_index_exec(C, op);
+  }
+  else {
+    return OPERATOR_CANCELLED;
+  }
+}
+
+void OBJECT_OT_shaderfx_move_to_index(wmOperatorType *ot)
+{
+  ot->name = "Move Effect to Index";
+  ot->description = "Move shaderfx to an index in the stack";
+  ot->idname = "OBJECT_OT_shaderfx_move_to_index";
+
+  ot->invoke = shaderfx_move_to_index_invoke;
+  ot->exec = shaderfx_move_to_index_exec;
+  ot->poll = edit_shaderfx_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  edit_shaderfx_properties(ot);
+  RNA_def_int(
+      ot->srna, "index", 0, 0, INT_MAX, "Index", "The index to move the effect to", 0, INT_MAX);
 }

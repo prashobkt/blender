@@ -26,10 +26,22 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
+#include "BKE_context.h"
+#include "BKE_screen.h"
+
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
 #include "FX_shader_types.h"
+#include "FX_ui_common.h"
 
 static void initData(ShaderFxData *fx)
 {
@@ -40,6 +52,28 @@ static void initData(ShaderFxData *fx)
 static void copyData(const ShaderFxData *md, ShaderFxData *target)
 {
   BKE_shaderfx_copyData_generic(md, target);
+}
+
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  shaderfx_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  col = uiLayoutColumnWithHeading(layout, false, IFACE_("Flip"));
+  uiItemR(col, &ptr, "flip_horizontal", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "flip_vertical", 0, NULL, ICON_NONE);
+
+  shaderfx_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  shaderfx_panel_register(region_type, "Flip", panel_draw);
 }
 
 ShaderFxTypeInfo shaderfx_Type_Flip = {
@@ -58,4 +92,5 @@ ShaderFxTypeInfo shaderfx_Type_Flip = {
     /* dependsOnTime */ NULL,
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
+    /* panelRegister */ panelRegister,
 };

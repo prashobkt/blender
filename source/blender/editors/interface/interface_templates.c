@@ -1822,8 +1822,6 @@ void uiTemplatePathBuilder(uiLayout *layout,
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
-#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
-
 static PanelType *panel_type_from_modifier(ARegion *region, Link *md_link)
 {
   ARegionType *region_type = region->type;
@@ -1871,8 +1869,6 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
  *
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
-
-#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 
 static PanelType *panel_type_from_gpencil_modifier(ARegion *region, Link *md_link)
 {
@@ -1986,7 +1982,8 @@ static PanelType *panel_type_from_constraint(ARegion *region, Link *con_link)
   bConstraint *con = (bConstraint *)con_link;
   eBConstraint_Types type = con->type;
 
-  /* Get the name of the modifier's panel type which was defined when the panel was registered. */
+  /* Get the name of the constraint's panel type which was defined when the panel was registered.
+   */
   char panel_idname[BKE_ST_MAXNAME];
   strcpy(panel_idname, CONSTRAINT_TYPE_PANEL_PREFIX);
 
@@ -2031,123 +2028,57 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Grease Pencil Shader FX Template
+/** \name ShaderFx Template
+ *
+ *  Template for building the panel layout for the active object's grease pencil shader effects.
  * \{ */
 
-static uiLayout *gpencil_draw_shaderfx(uiLayout *layout, Object *ob, ShaderFxData *md)
+/**
+ * Get an effect's panel type.
+ *
+ * \note: ShaderFx panel types are assumed to be named with the struct name field concatenated to
+ * the defined prefix.
+ */
+static PanelType *panel_type_from_shaderfx(ARegion *region, Link *fx_link)
 {
-  const ShaderFxTypeInfo *mti = BKE_shaderfxType_getInfo(md->type);
-  PointerRNA ptr;
-  uiBlock *block;
-  uiLayout *box, *column, *row, *sub;
-  uiLayout *result = NULL;
+  ARegionType *region_type = region->type;
+  ShaderFxData *fx = (ShaderFxData *)fx_link;
+  ShaderFxType type = fx->type;
 
-  /* create RNA pointer */
-  RNA_pointer_create(&ob->id, &RNA_ShaderFx, md, &ptr);
+  /* Get the name of the effect's panel type which was defined when the panel was registered.
+   */
+  char panel_idname[BKE_ST_MAXNAME];
+  strcpy(panel_idname, SHADERFX_TYPE_PANEL_PREFIX);
 
-  column = uiLayoutColumn(layout, true);
-  uiLayoutSetContextPointer(column, "shaderfx", &ptr);
+  const ShaderFxTypeInfo *fxti = BKE_shaderfxType_getInfo(type);
+  strcat(panel_idname, fxti->name);
 
-  /* rounded header ------------------------------------------------------------------- */
-  box = uiLayoutBox(column);
-
-  row = uiLayoutRow(box, false);
-  block = uiLayoutGetBlock(row);
-
-  UI_block_emboss_set(block, UI_EMBOSS_NONE);
-  /* Open/Close .................................  */
-  uiItemR(row, &ptr, "show_expanded", 0, "", ICON_NONE);
-
-  /* shader-type icon */
-  uiItemL(row, "", RNA_struct_ui_icon(ptr.type));
-  UI_block_emboss_set(block, UI_EMBOSS);
-
-  /* effect name */
-  if (mti->isDisabled && mti->isDisabled(md, 0)) {
-    uiLayoutSetRedAlert(row, true);
-  }
-  uiItemR(row, &ptr, "name", 0, "", ICON_NONE);
-  uiLayoutSetRedAlert(row, false);
-
-  /* mode enabling buttons */
-  UI_block_align_begin(block);
-  uiItemR(row, &ptr, "show_render", 0, "", ICON_NONE);
-  uiItemR(row, &ptr, "show_viewport", 0, "", ICON_NONE);
-
-  if (mti->flags & eShaderFxTypeFlag_SupportsEditmode) {
-    sub = uiLayoutRow(row, true);
-    uiLayoutSetActive(sub, false);
-    uiItemR(sub, &ptr, "show_in_editmode", 0, "", ICON_NONE);
-  }
-
-  UI_block_align_end(block);
-
-  /* Up/Down + Delete ........................... */
-  UI_block_align_begin(block);
-  uiItemO(row, "", ICON_TRIA_UP, "OBJECT_OT_shaderfx_move_up");
-  uiItemO(row, "", ICON_TRIA_DOWN, "OBJECT_OT_shaderfx_move_down");
-  UI_block_align_end(block);
-
-  UI_block_emboss_set(block, UI_EMBOSS_NONE);
-  uiItemO(row, "", ICON_X, "OBJECT_OT_shaderfx_remove");
-  UI_block_emboss_set(block, UI_EMBOSS);
-
-  /* effect settings (under the header) --------------------------------------------------- */
-  if (md->mode & eShaderFxMode_Expanded) {
-    /* apply/convert/copy */
-    box = uiLayoutBox(column);
-    row = uiLayoutRow(box, false);
-
-    /* only here obdata, the rest of effect is ob level */
-    UI_block_lock_set(block, BKE_object_obdata_is_libdata(ob), ERROR_LIBDATA_MESSAGE);
-
-    /* result is the layout block inside the box,
-     * that we return so that effect settings can be drawn */
-    result = uiLayoutColumn(box, false);
-    block = uiLayoutAbsoluteBlock(box);
-  }
-
-  /* error messages */
-  if (md->error) {
-    box = uiLayoutBox(column);
-    row = uiLayoutRow(box, false);
-    uiItemL(row, md->error, ICON_ERROR);
-  }
-
-  return result;
+  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
 }
 
-uiLayout *uiTemplateShaderFx(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+/**
+ * Check if the shader effect panels don't match the data and rebuild the panels if so.
+ */
+void uiTemplateShaderFx(uiLayout *UNUSED(layout), bContext *C)
 {
-  Object *ob;
-  ShaderFxData *fx, *vfx;
-  int i;
+  ScrArea *sa = CTX_wm_area(C);
+  ARegion *region = CTX_wm_region(C);
+  Object *ob = CTX_data_active_object(C);
+  ListBase *shaderfx = &ob->shader_fx;
 
-  /* verify we have valid data */
-  if (!RNA_struct_is_a(ptr->type, &RNA_ShaderFx)) {
-    RNA_warning("Expected shader fx on object");
-    return NULL;
-  }
+  bool panels_match = UI_panel_list_matches_data(region, shaderfx, panel_type_from_shaderfx);
 
-  ob = (Object *)ptr->owner_id;
-  fx = ptr->data;
+  if (!panels_match) {
+    UI_panels_free_list(C, region);
+    Link *fx_link = shaderfx->first;
+    for (int i = 0; fx_link; i++, fx_link = fx_link->next) {
+      PanelType *panel_type = panel_type_from_shaderfx(region, fx_link);
+      BLI_assert(panel_type != NULL);
 
-  if (!ob || !(GS(ob->id.name) == ID_OB)) {
-    RNA_warning("Expected shader fx on object");
-    return NULL;
-  }
-
-  UI_block_lock_set(uiLayoutGetBlock(layout), (ob && ID_IS_LINKED(ob)), ERROR_LIBDATA_MESSAGE);
-
-  /* find modifier and draw it */
-  vfx = ob->shader_fx.first;
-  for (i = 0; vfx; i++, vfx = vfx->next) {
-    if (fx == vfx) {
-      return gpencil_draw_shaderfx(layout, ob, fx);
+      Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
+      UI_panel_set_expand_from_list_data(C, new_panel);
     }
   }
-
-  return NULL;
 }
 
 /** \} */
@@ -2455,6 +2386,8 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
 /* -------------------------------------------------------------------- */
 /** \name Constraint Template
  * \{ */
+
+#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 
 static void constraint_active_func(bContext *UNUSED(C), void *ob_v, void *con_v)
 {

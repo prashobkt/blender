@@ -424,7 +424,7 @@ static void rna_def_shader_fx_shadow(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Offset", "Offset of the shadow");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_ShaderFx_update");
 
-  prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_float_sdna(prop, NULL, "scale");
   RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_text(prop, "Scale", "Offset of the shadow");
