@@ -124,7 +124,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       return -1.f;
     }
 
-    if (abs(d1) <= COLLISION_ZERO) {
+    if (d1 <= COLLISION_ZERO) {
       if (t1 >= -COLLISION_ZERO && t1 <= 1.f) {
         // Save barycentric weight for velocity calculation later
         interp_weights_tri_v3(
@@ -169,6 +169,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
   v2 = verts[vt->tri[2]].co;
 
   if (collmd->is_static) {
+    zero_v3(rd->hit_vel);
 
     if (ray->radius == 0.0f) {
       // TODO particles probably need to always have somekind of radius, so this can probably be
@@ -231,10 +232,12 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     copy_v3_v3(hit->no, coll_normal);
 
     // Calculate the velocity of the point we hit
+    zero_v3(rd->hit_vel);
     for (int i = 0; i < 3; i++) {
       rd->hit_vel += (tri_points[i].second - tri_points[i].first) * hit_bary_weights[i] /
                      rd->duration;
     }
+    // rd->hit_vel = float3(0, 0, 5.0);
   }
 }
 
@@ -259,6 +262,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
   MutableArrayRef<float3> velocities = attributes.get<float3>("Velocity");
   MutableArrayRef<float3> positions = attributes.get<float3>("Position");
   MutableArrayRef<bool> dead_state = attributes.get<bool>("Dead");
+  MutableArrayRef<bool> frozen_state = attributes.get<bool>("Frozen");
 
   // system_info.collision_objects
   // simulation_state.m_depsgraph;
@@ -272,7 +276,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
     // Update the velocities here so that the potential distance traveled is correct in the
     // collision check.
-    velocities[pindex] += duration * forces[pindex] / mass;
+    velocities[pindex] += duration * forces[pindex] * mass;
     // TODO check if there is issues with moving colliders and particles with 0 velocity
 
     // Check if any 'collobjs' collide with the particles here
@@ -297,7 +301,8 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           BVHTreeRayHit hit;
           hit.index = -1;
           hit.dist = max_move;
-          float particle_radius = 0.001f;
+          // TODO the particle radius seems a bit flaky with higher distances?
+          float particle_radius = 0.01f;
           float3 start = positions[pindex];
           float3 dir = velocities[pindex].normalized();
 
@@ -307,7 +312,6 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           rd.particle_points.first = start;
           rd.particle_points.second = start + duration * velocities[pindex];
 
-          zero_v3(rd.hit_vel);
           rd.duration = duration;
           rd.start_time = 1.0 - duration / remaining_durations[pindex];
 
@@ -330,37 +334,43 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           best_hit = hit;
           best_hit_vel = rd.hit_vel;
           collided = true;
+          // TODO need to make sure that we do not try to collide with the same triangle during the
+          // next subframe. Only applicable for moving colliders of course...
         }
         if (collided) {
-          // XXX TODO we need to notify the moving colliders somehow that the new pos is not at t=0
           positions[pindex] = best_hit.co;
           //
           // dot normal from vt with hit.co - start to see which way to deflect the particle
-          float normal_dot = dot_v3v3(best_hit.no, velocities[pindex]);
+          float3 normal = best_hit.no;
+          float normal_dot = dot_v3v3(velocities[pindex] - best_hit_vel, normal);
 
-          if (normal_dot < 0.0f) {
-            // The particle was moving into the collission plane
-            float3 normal = best_hit.no;
-            float3 deflect_vel = velocities[pindex] - 2 * normal_dot * normal;
-            velocities[pindex] = deflect_vel;
+          if (normal_dot > 0.0f) {
+            normal_dot *= -1.0f;
           }
+          // if (normal_dot < 0.0f) {
+          // The particle was moving into the collission plane
+          // print_v3("normal", normal);
+          // printf("normal dir %f\n", normal_dot);
+          // print_v3("vel hit", best_hit_vel);
+          // print_v3("vel_pre", velocities[pindex]);
+          float3 deflect_vel = velocities[pindex] - best_hit_vel - 2 * normal_dot * normal;
+          // print_v3("deflect_vel", deflect_vel);
+          velocities[pindex] = deflect_vel + best_hit_vel;
+          // print_v3("vel_post", velocities[pindex]);
+          //}
 
-          if (!is_zero_v3(best_hit_vel)) {
-            // XXX Put inside "is_zero" if statement for debugging
-            // dead_state[pindex] = true;
-            velocities[pindex] = best_hit_vel;
-          }
           // Calculate the remaining duration
-          duration -= duration * (1.0f - best_hit.dist / max_move);
+          // printf("old dur: %f\n", duration);
+          duration -= duration * (best_hit.dist / max_move);
+          // printf("new dur: %f\n", duration);
+          velocities[pindex] += duration * forces[pindex] * mass;
           coll_num++;
         }
-      } while (collided && coll_num < 10);
+      } while (collided && coll_num < 1);
     }
+
     float3 move_vec = duration * velocities[pindex];
-    if (move_vec.length() > 0.001f) {
-      // Do not move the particle very small amounts to avoid vibrating
-      positions[pindex] += move_vec;
-    }
+    positions[pindex] += move_vec;
   }
 }
 
