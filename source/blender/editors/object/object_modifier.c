@@ -1249,7 +1249,7 @@ static int modifier_move_to_index_exec(bContext *C, wmOperator *op)
 static int modifier_move_to_index_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   if (edit_modifier_invoke_properties(C, op)) {
-    return OBJECT_OT_modifier_move_to_index_exec(C, op);
+    return modifier_move_to_index_exec(C, op);
   }
   else {
     return OPERATOR_CANCELLED;

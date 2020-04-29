@@ -1822,21 +1822,15 @@ void uiTemplatePathBuilder(uiLayout *layout,
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
-#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
-
-static PanelType *panel_type_from_modifier(ARegion *region, Link *md_link)
+static void panel_id_from_modifier(Link *md_link, char *r_idname)
 {
-  ARegionType *region_type = region->type;
   ModifierData *md = (ModifierData *)md_link;
   ModifierType type = md->type;
   const ModifierTypeInfo *mti = modifierType_getInfo(type);
 
   /* Get the name of the modifier's panel type which was defined when the panel was registered. */
-  char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, MODIFIER_TYPE_PANEL_PREFIX);
-  strcat(panel_idname, mti->name);
-
-  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
+  strcpy(r_idname, MODIFIER_TYPE_PANEL_PREFIX);
+  strcat(r_idname, mti->name);
 }
 
 void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
@@ -1846,7 +1840,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   Object *ob = CTX_data_active_object(C);
   ListBase *modifiers = &ob->modifiers;
 
-  bool panels_match = UI_panel_list_matches_data(region, modifiers, panel_type_from_modifier);
+  bool panels_match = UI_panel_list_matches_data(region, modifiers, panel_id_from_modifier);
 
   if (!panels_match) {
     UI_panels_free_list(C, region);
@@ -1854,10 +1848,10 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
     for (int i = 0; md; i++, md = md->next) {
       const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
       if (mti->panelRegister) {
-        PanelType *panel_type = panel_type_from_modifier(region, (Link *)md);
-        BLI_assert(panel_type != NULL);
+        char panel_idname[MAX_NAME];
+        panel_id_from_modifier((Link *)md, panel_idname);
 
-        Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
+        Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_idname, i);
         UI_panel_set_expand_from_list_data(C, new_panel);
       }
     }
@@ -1869,6 +1863,8 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
 /* -------------------------------------------------------------------- */
 /** \name Grease Pencil Modifier Template
  * \{ */
+
+#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
 
 static uiLayout *gpencil_draw_modifier(uiLayout *layout, Object *ob, GpencilModifierData *md)
 {
