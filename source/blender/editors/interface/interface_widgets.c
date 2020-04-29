@@ -5027,19 +5027,19 @@ void ui_draw_box_opaque(rcti *rect, int roundboxalign)
   uiWidgetType *wt = widget_type(UI_WTYPE_BOX);
 
   /* Alpha blend with the region's background color to force an opaque background. */
-  bTheme *btheme = UI_GetTheme();
-  uiWidgetColors wcol = btheme->tui.wcol_box;
+  uiWidgetColors *wcol = &wt->wcol;
+  wt->state(wt, 0, 0);
   float background[4];
   UI_GetThemeColor4fv(TH_BACK, background);
   float new_inner[4];
-  rgba_uchar_to_float(new_inner, wcol.inner);
+  rgba_uchar_to_float(new_inner, wcol->inner);
   new_inner[0] = (new_inner[0] * new_inner[3]) + (background[0] * (1.0f - new_inner[3]));
   new_inner[1] = (new_inner[1] * new_inner[3]) + (background[1] * (1.0f - new_inner[3]));
   new_inner[2] = (new_inner[2] * new_inner[3]) + (background[2] * (1.0f - new_inner[3]));
   new_inner[3] = 1.0f;
-  rgba_float_to_uchar(wcol.inner, new_inner);
+  rgba_float_to_uchar(wcol->inner, new_inner);
 
-  wt->custom(NULL, &wcol, rect, 0, roundboxalign);
+  wt->custom(NULL, wcol, rect, 0, roundboxalign);
 }
 
 /**
