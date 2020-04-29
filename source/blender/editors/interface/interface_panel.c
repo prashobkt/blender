@@ -400,7 +400,8 @@ bool UI_panel_list_matches_data(ARegion *region,
       }
 
       /* The types of the corresponding panel and constraint don't match. */
-      char *panel_idname = panel_type_func(region, data_link);
+      char panel_idname[MAX_NAME];
+      panel_type_func(region, data_link, panel_idname);
       if (!STREQ(panel_idname, panel->type->idname)) {
         return false;
       }
