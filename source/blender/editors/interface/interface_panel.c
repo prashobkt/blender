@@ -1146,9 +1146,9 @@ void ui_draw_aligned_panel(uiStyle *style,
     if (show_background) {
       /* Draw list panels and their bottom subpanels with rounding. */
       if (is_list_panel && !(is_subpanel && panel->next)) {
-        /* Shrink the width a little bit to line up with sides. */
+        /* Change the width a little bit to line up with sides. */
         rcti box_rect = {
-            rect->xmin + U.pixelsize, rect->xmax - U.pixelsize, rect->ymin, rect->ymax};
+            rect->xmin - U.pixelsize, rect->xmax + U.pixelsize, rect->ymin, rect->ymax};
         if (is_subpanel) {
           UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
           UI_GetThemeColor4fv(panel_col, color);
