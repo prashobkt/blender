@@ -382,7 +382,7 @@ void UI_panels_free_list(bContext *C, ARegion *region)
  */
 bool UI_panel_list_matches_data(ARegion *region,
                                 ListBase *data,
-                                uiListPanelIDFromDataFunc panel_type_func)
+                                uiListPanelIDFromDataFunc panel_idname_func)
 {
   int data_len = BLI_listbase_count(data);
   int i = 0;
@@ -400,7 +400,8 @@ bool UI_panel_list_matches_data(ARegion *region,
       }
 
       /* The types of the corresponding panel and constraint don't match. */
-      char *panel_idname = panel_type_func(region, data_link);
+      char panel_idname[MAX_NAME];
+      panel_idname_func(data_link, panel_idname);
       if (!STREQ(panel_idname, panel->type->idname)) {
         return false;
       }
