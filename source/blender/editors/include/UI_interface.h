@@ -674,7 +674,7 @@ void UI_block_emboss_set(uiBlock *block, char dt);
 
 void UI_block_free(const struct bContext *C, uiBlock *block);
 void UI_blocklist_free(const struct bContext *C, struct ListBase *lb);
-void UI_blocklist_free_inactive(const struct bContext *C, struct ARegion *region);
+void UI_blocklist_free_inactive(const struct bContext *C, struct ListBase *lb);
 void UI_screen_free_active_but(const struct bContext *C, struct bScreen *screen);
 
 void UI_block_region_set(uiBlock *block, struct ARegion *region);
@@ -1695,12 +1695,11 @@ void UI_panel_category_draw_all(struct ARegion *region, const char *category_id_
 struct PanelType *UI_paneltype_find(int space_id, int region_id, const char *idname);
 
 /* Recreated list panels for representing a list. */
-struct Panel *UI_panel_add_list(struct ScrArea *sa,
+struct Panel *UI_panel_add_list(struct ScrArea *area,
                                 struct ARegion *region,
                                 struct ListBase *panels,
-                                struct PanelType *panel_type,
-                                int modifier_index);
-void UI_panel_delete(struct ARegion *region, struct ListBase *panels, struct Panel *panel);
+                                char *panel_idname,
+                                int list_index);
 void UI_panels_free_list(struct bContext *C, struct ARegion *region);
 
 #define LIST_PANEL_UNIQUE_STR_LEN 4
