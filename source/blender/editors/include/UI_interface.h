@@ -1707,11 +1707,10 @@ void UI_list_panel_unique_str(struct Panel *panel, char *r_name);
 
 void UI_panel_set_expand_from_list_data(const struct bContext *C, struct Panel *panel);
 
-typedef struct PanelType *(*uiListPanelTypeFromDataFunc)(struct ARegion *region,
-                                                         struct Link *data_link);
+typedef char *(*uiListPanelIDFromDataFunc)(struct ARegion *region, struct Link *data_link);
 bool UI_panel_list_matches_data(struct ARegion *region,
                                 struct ListBase *data,
-                                uiListPanelTypeFromDataFunc get_panel_type);
+                                uiListPanelIDFromDataFunc get_panel_type);
 
 /* Handlers
  *

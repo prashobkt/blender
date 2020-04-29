@@ -377,12 +377,12 @@ void UI_panels_free_list(bContext *C, ARegion *region)
  * don't match in any way.
  *
  * \param data: The list of data to check against the list panels.
- * \param panel_type_func: Each type from the data list should have a corresponding panel type.
- * For a readabilty and generality, the lookup happens separately for each type of panel list.
+ * \param panel_type_func: Function to find the panel type idname for each item in the data list.
+ * For a readabilty and generality, this lookup happens separately for each type of panel list.
  */
 bool UI_panel_list_matches_data(ARegion *region,
                                 ListBase *data,
-                                uiListPanelTypeFromDataFunc panel_type_func)
+                                uiListPanelIDFromDataFunc panel_type_func)
 {
   int data_len = BLI_listbase_count(data);
   int i = 0;
@@ -400,7 +400,8 @@ bool UI_panel_list_matches_data(ARegion *region,
       }
 
       /* The types of the corresponding panel and constraint don't match. */
-      if (panel_type_func(region, data_link) != panel->type) {
+      char *panel_idname = panel_type_func(region, data_link);
+      if (!STREQ(panel_idname, panel->type->idname)) {
         return false;
       }
 
