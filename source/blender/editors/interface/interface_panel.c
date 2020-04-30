@@ -242,9 +242,9 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
   return false;
 }
 
-/********* Functions for recreate list panels. ***********/
+/********* Functions for instanced panels. ***********/
 
-static Panel *UI_panel_add_recreate_list_ex(
+static Panel *UI_panel_add_instanced_ex(
     ScrArea *area, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
   Panel *panel = MEM_callocN(sizeof(Panel), "list panel");
@@ -264,7 +264,7 @@ static Panel *UI_panel_add_recreate_list_ex(
    * function to creat them, as UI_panel_begin does other things we don't need to do. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
     PanelType *child = link->data;
-    UI_panel_add_recreate_list_ex(area, region, &panel->children, child, list_index);
+    UI_panel_add_instanced_ex(area, region, &panel->children, child, list_index);
   }
 
   /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
@@ -272,14 +272,14 @@ static Panel *UI_panel_add_recreate_list_ex(
    *
    * We can the panel list is also the display order because the list panel list is rebuild
    * when the order changes. */
-  if (panel_type->flag & PNL_RECREATE_LIST) {
+  if (panel_type->flag & PNL_INSTANCED) {
     Panel *last_list_panel = NULL;
 
     for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
       if (list_panel->type == NULL) {
         continue;
       }
-      if (list_panel->type->flag & (PNL_RECREATE_LIST_START | PNL_RECREATE_LIST)) {
+      if (list_panel->type->flag & (PNL_INSTANCED_LIST_START | PNL_INSTANCED)) {
         last_list_panel = list_panel;
       }
     }
@@ -302,7 +302,7 @@ static Panel *UI_panel_add_recreate_list_ex(
  * Called in situations where panels need to be added dynamically rather than having only one panel
  * corresponding to each PanelType.
  */
-Panel *UI_panel_add_recreate_list(
+Panel *UI_panel_add_instanced(
     ScrArea *area, ARegion *region, ListBase *panels, char *panel_idname, int list_index)
 {
   ARegionType *region_type = region->type;
@@ -315,12 +315,12 @@ Panel *UI_panel_add_recreate_list(
     return NULL;
   }
 
-  return UI_panel_add_recreate_list_ex(area, region, panels, panel_type, list_index);
+  return UI_panel_add_instanced_ex(area, region, panels, panel_type, list_index);
 }
 
 /**
  * Find a unique key to append to the idname for the lookup to the panel's #uiBlock. Needed for
- * recreate list panels, where there can be multiple with the same type and idname.
+ * instanced panels, where there can be multiple with the same type and idname.
  */
 void UI_list_panel_unique_str(Panel *panel, char *r_name)
 {
@@ -374,13 +374,13 @@ static void panel_delete(ARegion *region, ListBase *panels, Panel *panel)
   MEM_freeN(panel);
 }
 
-void UI_panels_free_recreate_list(bContext *C, ARegion *region)
+void UI_panels_free_instanced(bContext *C, ARegion *region)
 {
-  /* Delete panels with the recreate flag. */
+  /* Delete panels with the instanced flag. */
   ListBase *panels = &region->panels;
   for (Panel *panel = panels->first, *panel_next; panel; panel = panel_next) {
     panel_next = panel->next;
-    if ((panel->type != NULL) && (panel->type->flag & PNL_RECREATE_LIST)) {
+    if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED)) {
       /* Make sure the panel's handler is removed before deleting it. */
       if (panel->activedata != NULL) {
         panel_activate_state(C, panel, PANEL_STATE_EXIT);
@@ -407,9 +407,9 @@ bool UI_panel_list_matches_data(ARegion *region,
   int i = 0;
   Link *data_link = data->first;
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-    if (panel->type != NULL && panel->type->flag & PNL_RECREATE_LIST) {
+    if (panel->type != NULL && panel->type->flag & PNL_INSTANCED) {
       /* The panels were reordered by drag and drop. */
-      if (panel->flag & PNL_RECREATE_LIST_ORDER_CHANGED) {
+      if (panel->flag & PNL_INSTANCED_LIST_ORDER_CHANGED) {
         return false;
       }
 
@@ -438,38 +438,38 @@ bool UI_panel_list_matches_data(ARegion *region,
   return true;
 }
 
-static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *drag_panel)
+static void reorder_instanced_panel_list(bContext *C, ARegion *region, Panel *drag_panel)
 {
   /* Without a type we cannot access the reorder callback. */
   if (drag_panel->type == NULL) {
     return;
   }
-  /* Don't reorder if this recreate list panel doesn't support drag and drop reordering. */
+  /* Don't reorder if this instanced list panel doesn't support drag and drop reordering. */
   if (drag_panel->type->reorder == NULL) {
     return;
   }
 
   char *context = drag_panel->type->context;
 
-  /* Find how many recreate list panels with this context string. */
+  /* Find how many instanced list panels with this context string. */
   int list_panels_len = 0;
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->type) {
       if (panel_type_context_poll(panel->type, context)) {
-        if (panel->type->flag & PNL_RECREATE_LIST) {
+        if (panel->type->flag & PNL_INSTANCED) {
           list_panels_len++;
         }
       }
     }
   }
 
-  /* Sort the matching recreate list panels by their display order. */
-  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(*panel_sort), "recreatepanelsort");
+  /* Sort the matching instanced list panels by their display order. */
+  PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(*panel_sort), "instancedpanelsort");
   PanelSort *sort_index = panel_sort;
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->type) {
       if (panel_type_context_poll(panel->type, context)) {
-        if (panel->type->flag & PNL_RECREATE_LIST) {
+        if (panel->type->flag & PNL_INSTANCED) {
           sort_index->panel = MEM_dupallocN(panel);
           sort_index->orig = panel;
           sort_index++;
@@ -499,8 +499,8 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *dra
     return;
   }
 
-  /* Set the bit to tell the interface to recreate the list. */
-  drag_panel->flag |= PNL_RECREATE_LIST_ORDER_CHANGED;
+  /* Set the bit to tell the interface to instanced the list. */
+  drag_panel->flag |= PNL_INSTANCED_LIST_ORDER_CHANGED;
 
   /* Finally, move this panel's list item to the new index in its list. */
   drag_panel->type->reorder(C, drag_panel, move_to_index);
@@ -532,9 +532,9 @@ static void panel_set_expand_from_list_data_recursive(Panel *panel, short flag, 
 void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
 {
   BLI_assert(panel->type != NULL);
-  BLI_assert(panel->type->flag & PNL_RECREATE_LIST);
+  BLI_assert(panel->type->flag & PNL_INSTANCED);
   if (panel->type->get_list_data_expand_flag == NULL) {
-    /* Recreate list panel doesn't support loading expansion. */
+    /* Instanced list panel doesn't support loading expansion. */
     return;
   }
 
@@ -566,8 +566,8 @@ static void get_panel_expand_flag(Panel *panel, short *flag, short *flag_index)
  * corresponds to this panel.
  *
  * \note This needs to iterate through all of the regions panels because the panel with changed
- * expansion could have been the subpanel of a recreate list panel, meaning it might not know which
- * list item it corresponds to.
+ * expansion could have been the subpanel of a instanced list panel, meaning it might not know
+ * which list item it corresponds to.
  */
 static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
 {
@@ -577,7 +577,7 @@ static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
       continue;
     }
 
-    if (panel->type->flag & PNL_RECREATE_LIST) {
+    if (panel->type->flag & PNL_INSTANCED) {
       short expand_flag = 0; /* Initialize to quite complaining compiler, value not used. */
       short flag_index = 0;
       get_panel_expand_flag(panel, &expand_flag, &flag_index);
@@ -992,7 +992,7 @@ void ui_draw_aligned_panel(uiStyle *style,
   const int panel_col = is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK;
   const bool draw_box_style = (panel->type && panel->type->flag & (PNL_DRAW_BOX));
 
-  /* For recreate recreate list panels, use roundness from the theme for box widgets. */
+  /* Use roundness from the theme for box widgets for box-style panels. */
   float box_panel_roundness = 0.0f;
   if (draw_box_style) {
     bTheme *btheme = UI_GetTheme();
@@ -1456,7 +1456,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsx = 0;
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
-  /* Extra margin if the first panel happens to be a recreate list panel. */
+  /* Extra margin if the first panel happens to be a instanced list panel. */
   bool first_is_box_panel = (ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX);
   if (first_is_box_panel) {
     ps->panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
@@ -1580,7 +1580,7 @@ static void ui_do_animate(bContext *C, Panel *panel)
     if (is_drag_drop) {
       /* Note: doing this in #panel_activate_state would require removing const for context in many
        * other places. */
-      reorder_recreate_panel_list(C, region, panel);
+      reorder_instanced_panel_list(C, region, panel);
     }
     return;
   }
@@ -1885,7 +1885,7 @@ static void ui_panel_drag_collapse(bContext *C,
       }
     }
   }
-  /* Update the recreate list panel data expand flags with the changes made here. */
+  /* Update the instanced list panel data expand flags with the changes made here. */
   set_panels_list_data_expand_flag(C, region);
 }
 

@@ -1694,13 +1694,13 @@ void UI_panel_category_draw_all(struct ARegion *region, const char *category_id_
 
 struct PanelType *UI_paneltype_find(int space_id, int region_id, const char *idname);
 
-/* Recreated recreate list panels for representing a list. */
-struct Panel *UI_panel_add_recreate_list(struct ScrArea *area,
-                                         struct ARegion *region,
-                                         struct ListBase *panels,
-                                         char *panel_idname,
-                                         int list_index);
-void UI_panels_free_recreate_list(struct bContext *C, struct ARegion *region);
+/* Polyinstantiated panels for representing a list of data. */
+struct Panel *UI_panel_add_instanced(struct ScrArea *area,
+                                     struct ARegion *region,
+                                     struct ListBase *panels,
+                                     char *panel_idname,
+                                     int list_index);
+void UI_panels_free_instanced(struct bContext *C, struct ARegion *region);
 
 #define LIST_PANEL_UNIQUE_STR_LEN 4
 void UI_list_panel_unique_str(struct Panel *panel, char *r_name);
