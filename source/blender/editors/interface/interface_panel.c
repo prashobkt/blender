@@ -244,10 +244,6 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
 
 /********* Functions for recreate list panels. ***********/
 
-/**
- * Called in situations where panels need to be added dynamically rather than having only one panel
- * corresponding to each PanelType.
- */
 static Panel *UI_panel_add_list_ex(
     ScrArea *area, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
@@ -276,14 +272,14 @@ static Panel *UI_panel_add_list_ex(
    *
    * We can the panel list is also the display order because the list panel list is rebuild
    * when the order changes. */
-  if (panel_type->flag & PNL_LIST) {
+  if (panel_type->flag & PNL_RECREATE_LIST) {
     Panel *last_list_panel = NULL;
 
     for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
       if (list_panel->type == NULL) {
         continue;
       }
-      if (list_panel->type->flag & (PNL_LIST_START | PNL_LIST)) {
+      if (list_panel->type->flag & (PNL_RECREATE_LIST_START | PNL_RECREATE_LIST)) {
         last_list_panel = list_panel;
       }
     }
@@ -302,7 +298,11 @@ static Panel *UI_panel_add_list_ex(
   return panel;
 }
 
-Panel *UI_panel_add_list(
+/**
+ * Called in situations where panels need to be added dynamically rather than having only one panel
+ * corresponding to each PanelType.
+ */
+Panel *UI_panel_add_recreate_list(
     ScrArea *area, ARegion *region, ListBase *panels, char *panel_idname, int list_index)
 {
   ARegionType *region_type = region->type;
@@ -310,14 +310,27 @@ Panel *UI_panel_add_list(
   PanelType *panel_type = BLI_findstring(
       &region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
 
+  if (panel_type == NULL) {
+    printf("ERROR: Panel type '%s' not found.\n", panel_idname);
+    return NULL;
+  }
+
   return UI_panel_add_list_ex(area, region, panels, panel_type, list_index);
 }
 
+/**
+ * Find a unique key to append to the idname for the lookup to the panel's #uiBlock. Needed for
+ * recreate list panels, where there can be multiple with the same type and idname.
+ */
 void UI_list_panel_unique_str(Panel *panel, char *r_name)
 {
   snprintf(r_name, LIST_PANEL_UNIQUE_STR_LEN, "%d", panel->runtime.list_index);
 }
 
+/**
+ * Remove the #uiBlock corresponding to a panel. The lookup is needed because panels don't store
+ * a reference to their corresponding #uiBlock.
+ */
 static void panel_free_block(ARegion *region, Panel *panel)
 {
   BLI_assert(panel->type);
@@ -337,6 +350,12 @@ static void panel_free_block(ARegion *region, Panel *panel)
   }
 }
 
+/**
+ * Free a panel and it's children.
+ *
+ * \note: The only panels that should need to be deleted at runtime are panels with the
+ * #PNL_RECREATE_LIST flag set.
+ */
 static void panel_delete(ARegion *region, ListBase *panels, Panel *panel)
 {
   /* Recursively delete children. */
@@ -355,13 +374,13 @@ static void panel_delete(ARegion *region, ListBase *panels, Panel *panel)
   MEM_freeN(panel);
 }
 
-void UI_panels_free_list(bContext *C, ARegion *region)
+void UI_panels_free_recreate_list(bContext *C, ARegion *region)
 {
   /* Delete panels with the recreate flag. */
   ListBase *panels = &region->panels;
   for (Panel *panel = panels->first, *panel_next; panel; panel = panel_next) {
     panel_next = panel->next;
-    if ((panel->type != NULL) && (panel->type->flag & PNL_LIST)) {
+    if ((panel->type != NULL) && (panel->type->flag & PNL_RECREATE_LIST)) {
       /* Make sure the panel's handler is removed before deleting it. */
       if (panel->activedata != NULL) {
         panel_activate_state(C, panel, PANEL_STATE_EXIT);
@@ -388,9 +407,9 @@ bool UI_panel_list_matches_data(ARegion *region,
   int i = 0;
   Link *data_link = data->first;
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-    if (panel->type != NULL && panel->type->flag & PNL_LIST) {
+    if (panel->type != NULL && panel->type->flag & PNL_RECREATE_LIST) {
       /* The panels were reordered by drag and drop. */
-      if (panel->flag & PNL_LIST_ORDER_CHANGED) {
+      if (panel->flag & PNL_RECREATE_LIST_ORDER_CHANGED) {
         return false;
       }
 
@@ -421,38 +440,38 @@ bool UI_panel_list_matches_data(ARegion *region,
 
 static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *drag_panel)
 {
-  /* Only reorder the data for list panels. */
-  if (drag_panel->type == NULL || !(drag_panel->type->flag & PNL_LIST)) {
+  /* Without a type we cannot access the reorder callback. */
+  if (drag_panel->type == NULL) {
     return;
   }
-  /* Don't reorder if this list panel doesn't support drag and drop reordering. */
+  /* Don't reorder if this recreate list panel doesn't support drag and drop reordering. */
   if (drag_panel->type->reorder == NULL) {
     return;
   }
 
   char *context = drag_panel->type->context;
 
-  /* Find how many list panels with this context string. */
+  /* Find how many recreate list panels with this context string. */
   int list_panels_len = 0;
-  LISTBASE_FOREACH (Panel *, list_panel, &region->panels) {
-    if (list_panel->type) {
-      if (panel_type_context_poll(list_panel->type, context)) {
-        if (list_panel->type->flag & PNL_LIST) {
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+    if (panel->type) {
+      if (panel_type_context_poll(panel->type, context)) {
+        if (panel->type->flag & PNL_RECREATE_LIST) {
           list_panels_len++;
         }
       }
     }
   }
 
-  /* Sort the matching list panels by their display order. */
+  /* Sort the matching recreate list panels by their display order. */
   PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(*panel_sort), "recreatepanelsort");
   PanelSort *sort_index = panel_sort;
-  LISTBASE_FOREACH (Panel *, list_panel, &region->panels) {
-    if (list_panel->type) {
-      if (panel_type_context_poll(list_panel->type, context)) {
-        if (list_panel->type->flag & PNL_LIST) {
-          sort_index->panel = MEM_dupallocN(list_panel);
-          sort_index->orig = list_panel;
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+    if (panel->type) {
+      if (panel_type_context_poll(panel->type, context)) {
+        if (panel->type->flag & PNL_RECREATE_LIST) {
+          sort_index->panel = MEM_dupallocN(panel);
+          sort_index->orig = panel;
           sort_index++;
         }
       }
@@ -481,7 +500,7 @@ static void reorder_recreate_panel_list(bContext *C, ARegion *region, Panel *dra
   }
 
   /* Set the bit to tell the interface to recreate the list. */
-  drag_panel->flag |= PNL_LIST_ORDER_CHANGED;
+  drag_panel->flag |= PNL_RECREATE_LIST_ORDER_CHANGED;
 
   /* Finally, move this panel's list item to the new index in its list. */
   drag_panel->type->reorder(C, drag_panel, move_to_index);
@@ -513,9 +532,9 @@ static void panel_set_expand_from_list_data_recursive(Panel *panel, short flag, 
 void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
 {
   BLI_assert(panel->type != NULL);
-  BLI_assert(panel->type->flag & PNL_LIST);
+  BLI_assert(panel->type->flag & PNL_RECREATE_LIST);
   if (panel->type->get_list_data_expand_flag == NULL) {
-    /* List panel doesn't support loading expansion. */
+    /* Recreate list panel doesn't support loading expansion. */
     return;
   }
 
@@ -547,7 +566,7 @@ static void get_panel_expand_flag(Panel *panel, short *flag, short *flag_index)
  * corresponds to this panel.
  *
  * \note This needs to iterate through all of the regions panels because the panel with changed
- * expansion could have been the subpanel of a list panel, meaning it might not know which
+ * expansion could have been the subpanel of a recreate list panel, meaning it might not know which
  * list item it corresponds to.
  */
 static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
@@ -558,7 +577,7 @@ static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
       continue;
     }
 
-    if (panel->type->flag & PNL_LIST) {
+    if (panel->type->flag & PNL_RECREATE_LIST) {
       short expand_flag = 0; /* Initialize to quite complaining compiler, value not used. */
       short flag_index = 0;
       get_panel_expand_flag(panel, &expand_flag, &flag_index);
@@ -971,15 +990,14 @@ void ui_draw_aligned_panel(uiStyle *style,
                            * can't be dragged. This may be changed in future. */
                           show_background);
   const int panel_col = is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK;
+  const bool draw_box_style = (panel->type && panel->type->flag & (PNL_DRAW_BOX));
 
-  const bool is_list_panel = (panel->type && panel->type->flag & (PNL_LIST | PNL_LIST_SUBPANEL));
-  float list_panel_roundness = 0.0f;
-
-  /* For list panels, use roundness from the theme for box widgets. */
-  if (is_list_panel) {
+  /* For recreate recreate list panels, use roundness from the theme for box widgets. */
+  float box_panel_roundness = 0.0f;
+  if (draw_box_style) {
     bTheme *btheme = UI_GetTheme();
     uiWidgetColors *wcol = &btheme->tui.wcol_box;
-    list_panel_roundness = wcol->roundness;
+    box_panel_roundness = wcol->roundness;
   }
 
   if (panel->type && (panel->type->flag & PNL_NO_HEADER)) {
@@ -1014,8 +1032,8 @@ void ui_draw_aligned_panel(uiStyle *style,
     float maxx = is_closed_x ? (minx + PNL_HEADER / block->aspect) : rect->xmax;
     float y = headrect.ymax;
 
-    /* List panels have some roundness and a shaded header color to differentiate them. */
-    if (is_list_panel) {
+    /* Box style panels have some roundness and a shaded header color to differentiate them. */
+    if (draw_box_style) {
       int roundbox_corners = (UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
       if (is_closed_y) {
         roundbox_corners |= (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
@@ -1119,9 +1137,9 @@ void ui_draw_aligned_panel(uiStyle *style,
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
         radius = 8.0f;
       }
-      else if (is_list_panel) {
+      else if (draw_box_style) {
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
-        radius = list_panel_roundness * U.widget_unit;
+        radius = box_panel_roundness * U.widget_unit;
       }
       else {
         UI_draw_roundbox_corner_set(UI_CNR_NONE);
@@ -1142,13 +1160,13 @@ void ui_draw_aligned_panel(uiStyle *style,
 
     GPU_blend(true);
 
-    /* Panel backdrop. Subpanels need to blend with panels, to they can't be opaque. */
+    /* Draw panel backdrop. Note: Subpanels blend with panels, to they can't be opaque. */
     if (show_background) {
-      /* Draw list panels and their bottom subpanels with rounding. */
-      if (is_list_panel && !(is_subpanel && panel->next)) {
-        /* Shrink the width a little bit to line up with sides. */
+      /* Draw box style panels and their bottom subpanels with rounding. */
+      if (draw_box_style && !(is_subpanel && panel->next)) {
+        /* Change the width a little bit to line up with sides. */
         rcti box_rect = {
-            rect->xmin + U.pixelsize, rect->xmax - U.pixelsize, rect->ymin, rect->ymax};
+            rect->xmin - U.pixelsize, rect->xmax + U.pixelsize, rect->ymin, rect->ymax};
         if (is_subpanel) {
           UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
           UI_GetThemeColor4fv(panel_col, color);
@@ -1157,7 +1175,7 @@ void ui_draw_aligned_panel(uiStyle *style,
                               rect->ymin,
                               rect->xmax,
                               rect->ymax,
-                              list_panel_roundness * U.widget_unit,
+                              box_panel_roundness * U.widget_unit,
                               color);
         }
         else {
@@ -1438,11 +1456,11 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsx = 0;
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
-  /* Extra margin if the first panel happens to be a list panel. */
-  bool first_is_list_panel = (ps->panel->type && ps->panel->type->flag & PNL_LIST);
-  if (first_is_list_panel) {
-    ps->panel->ofsx += UI_LIST_PANEL_MARGIN;
-    ps->panel->ofsy -= UI_LIST_PANEL_MARGIN;
+  /* Extra margin if the first panel happens to be a recreate list panel. */
+  bool first_is_box_panel = (ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX);
+  if (first_is_box_panel) {
+    ps->panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
+    ps->panel->ofsy -= UI_PANEL_BOX_STYLE_MARGIN;
   }
 
   for (a = 0; a < tot - 1; a++, ps++) {
@@ -1451,11 +1469,11 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
     if (align == BUT_VERTICAL) {
       psnext->panel->ofsx = ps->panel->ofsx;
       psnext->panel->ofsy = get_panel_real_ofsy(ps->panel) - get_panel_size_y(psnext->panel);
-      /* Extra margin for list panels. */
-      if (psnext->panel->type && psnext->panel->type->flag & PNL_LIST) {
-        psnext->panel->ofsy -= UI_LIST_PANEL_MARGIN;
-        if (!first_is_list_panel) {
-          psnext->panel->ofsx = UI_LIST_PANEL_MARGIN;
+      /* Extra margin for box style panels. */
+      if (psnext->panel->type && psnext->panel->type->flag & PNL_DRAW_BOX) {
+        psnext->panel->ofsy -= UI_PANEL_BOX_STYLE_MARGIN;
+        if (!first_is_box_panel) {
+          psnext->panel->ofsx = UI_PANEL_BOX_STYLE_MARGIN;
         }
       }
     }
@@ -1867,7 +1885,7 @@ static void ui_panel_drag_collapse(bContext *C,
       }
     }
   }
-  /* Update the list panel data expand flags with the changes made here. */
+  /* Update the recreate list panel data expand flags with the changes made here. */
   set_panels_list_data_expand_flag(C, region);
 }
 
@@ -2908,6 +2926,7 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
     return;
   }
 
+  /* Save whether the action was a drag-drop even if the state transitions to animation. */
   bool was_drag_drop = (data && data->state == PANEL_STATE_DRAG);
 
   if (state == PANEL_STATE_EXIT || state == PANEL_STATE_ANIMATION) {

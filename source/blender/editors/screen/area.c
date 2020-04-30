@@ -2401,7 +2401,6 @@ static void ed_panel_draw(const bContext *C,
 
   if (pt->draw_header && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
     int labelx, labely;
-
     UI_panel_label_offset(block, &labelx, &labely);
 
     /* Unusual case: Use expanding layout (buttons stretch to available width). */
@@ -2607,6 +2606,7 @@ void ED_region_panels_layout_ex(const bContext *C,
   }
 
   w -= margin_x;
+  int w_box_panel = w - UI_PANEL_BOX_STYLE_MARGIN * 2.0f;
 
   /* create panels */
   UI_panels_begin(C, region);
@@ -2618,7 +2618,7 @@ void ED_region_panels_layout_ex(const bContext *C,
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
 
-    if (pt->flag & PNL_LIST) {
+    if (pt->flag & PNL_RECREATE_LIST) {
       has_recreate_panel = true;
       continue;
     }
@@ -2630,15 +2630,23 @@ void ED_region_panels_layout_ex(const bContext *C,
       }
     }
 
-    ed_panel_draw(C, area, region, &region->panels, pt, panel, w, em, vertical, NULL);
+    ed_panel_draw(C,
+                  area,
+                  region,
+                  &region->panels,
+                  pt,
+                  panel,
+                  (pt->flag & PNL_DRAW_BOX) ? w_box_panel : w,
+                  em,
+                  vertical,
+                  NULL);
   }
 
+  /* Draw "polyinstanced" panels that don't have a 1 to 1 correspondence with their types. */
   if (has_recreate_panel) {
-    /* List panels have some margin to differentiate them from regular panels. */
-    w -= UI_LIST_PANEL_MARGIN * 2.0f;
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
-        if (panel->type->flag & PNL_LIST) {
+        if (panel->type->flag & PNL_RECREATE_LIST) {
           /* Use a unique identifier for list panels, otherwise an old block for a different
            * panel of the same type might be found. */
           char unique_panel_str[8];
@@ -2650,7 +2658,7 @@ void ED_region_panels_layout_ex(const bContext *C,
                         &region->panels,
                         panel->type,
                         panel,
-                        w,
+                        (panel->type->flag & PNL_DRAW_BOX) ? w_box_panel : w,
                         em,
                         vertical,
                         unique_panel_str);

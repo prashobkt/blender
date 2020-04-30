@@ -1285,18 +1285,18 @@ static void rna_def_panel(BlenderRNA *brna)
        "Hide Header",
        "If set to False, the panel shows a header, which contains a clickable "
        "arrow to collapse the panel and the label (see bl_label)"},
-      {PNL_LIST,
+      {PNL_RECREATE_LIST,
        "LIST",
        0,
        "List Panel",
        "Multiple panels with this type can be used as part of a list depending on data external "
        "to the UI, used to create panels for the modifier stack and other stacks."},
-      {PNL_LIST_START,
+      {PNL_RECREATE_LIST_START,
        "LIST_START",
        0,
        "List Panel Start",
        "The panel with this type marks the start of a list panel sequence"},
-      {PNL_LIST_SUBPANEL,
+      {PNL_RECREATE_LIST_SUBPANEL,
        "LIST_SUBPANEL",
        0,
        "List Panel Child",
@@ -1306,6 +1306,11 @@ static void rna_def_panel(BlenderRNA *brna)
        0,
        "Expand Header Layout",
        "Allow buttons in the header to stretch and shrink to fill the entire layout width"},
+      {PNL_DRAW_BOX,
+       "DRAW_BOX",
+       0,
+       "Box Style",
+       "Draw panel darker, with rounded corners, and with a margin"},
       {0, NULL, 0, NULL, NULL},
   };
 
