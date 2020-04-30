@@ -56,17 +56,18 @@ static void copyData(const ShaderFxData *md, ShaderFxData *target)
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
+  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
   shaderfx_panel_get_property_pointers(C, panel, NULL, &ptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  col = uiLayoutColumnWithHeading(layout, false, IFACE_("Flip"));
-  uiItemR(col, &ptr, "flip_horizontal", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "flip_vertical", 0, NULL, ICON_NONE);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Axis"));
+  uiItemR(row, &ptr, "flip_horizontal", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, &ptr, "flip_vertical", toggles_flag, NULL, ICON_NONE);
 
   shaderfx_panel_end(layout, &ptr);
 }

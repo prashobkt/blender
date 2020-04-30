@@ -25,6 +25,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_context.h"
 #include "BKE_screen.h"
 
@@ -52,6 +54,7 @@ static void copyData(const ShaderFxData *md, ShaderFxData *target)
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -59,7 +62,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "size", 0, NULL, ICON_NONE);
+  /* Add the X, Y labels manually because size is a #PROP_PIXEL. */
+  col = uiLayoutColumn(layout, true);
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "size");
+  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("Size X"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
 
   shaderfx_panel_end(layout, &ptr);
 }

@@ -64,14 +64,13 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "use_dof_mode", 0, IFACE_("Use Depth of Field"), ICON_NONE);
+  uiItemR(layout, &ptr, "samples", 0, NULL, ICON_NONE);
 
+  uiItemR(layout, &ptr, "use_dof_mode", 0, IFACE_("Use Depth of Field"), ICON_NONE);
   col = uiLayoutColumn(layout, false);
-  uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_dof_mode"));
+  uiLayoutSetActive(col, !RNA_boolean_get(&ptr, "use_dof_mode"));
   uiItemR(col, &ptr, "size", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "rotation", 0, NULL, ICON_NONE);
-
-  uiItemR(layout, &ptr, "samples", 0, NULL, ICON_NONE);
 
   shaderfx_panel_end(layout, &ptr);
 }

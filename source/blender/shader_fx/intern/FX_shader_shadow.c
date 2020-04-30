@@ -101,17 +101,22 @@ static void foreachObjectLink(ShaderFxData *fx,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row;
+  uiLayout *row, *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  PointerRNA ob_ptr;
-  shaderfx_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  shaderfx_panel_get_property_pointers(C, panel, NULL, &ptr);
 
   uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "shadow_color", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+
+  /* Add the X, Y labels manually because size is a #PROP_PIXEL. */
+  col = uiLayoutColumn(layout, true);
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "offset");
+  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("Offset X"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+
   uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "rotation", 0, NULL, ICON_NONE);
 
@@ -124,6 +129,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void blur_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -131,7 +137,12 @@ static void blur_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "blur", 0, NULL, ICON_NONE);
+  /* Add the X, Y labels manually because size is a #PROP_PIXEL. */
+  col = uiLayoutColumn(layout, true);
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "blur");
+  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("Blur X"), ICON_NONE);
+  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
+
   uiItemR(layout, &ptr, "samples", 0, NULL, ICON_NONE);
 }
 
