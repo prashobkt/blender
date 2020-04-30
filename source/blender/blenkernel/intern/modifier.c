@@ -115,6 +115,17 @@ const ModifierTypeInfo *modifierType_getInfo(ModifierType type)
   }
 }
 
+/**
+ * Get the idname of the modifier type's panel, which was defined in the #panelRegister callback.
+ */
+void modifierType_panelId(ModifierType type, char *r_idname)
+{
+  const ModifierTypeInfo *mti = modifierType_getInfo(type);
+
+  strcpy(r_idname, MODIFIER_TYPE_PANEL_PREFIX);
+  strcat(r_idname, mti->name);
+}
+
 /***/
 
 ModifierData *modifier_new(int type)

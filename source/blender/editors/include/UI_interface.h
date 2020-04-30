@@ -239,7 +239,7 @@ enum {
 
 #define UI_PANEL_CATEGORY_MARGIN_WIDTH (U.widget_unit * 1.0f)
 
-#define UI_LIST_PANEL_MARGIN (U.widget_unit * 0.15f)
+#define UI_PANEL_BOX_STYLE_MARGIN (U.widget_unit * 0.15f)
 
 /* but->drawflag - these flags should only affect how the button is drawn. */
 /* Note: currently, these flags _are not passed_ to the widget's state() or draw() functions
@@ -674,7 +674,7 @@ void UI_block_emboss_set(uiBlock *block, char dt);
 
 void UI_block_free(const struct bContext *C, uiBlock *block);
 void UI_blocklist_free(const struct bContext *C, struct ListBase *lb);
-void UI_blocklist_free_inactive(const struct bContext *C, struct ARegion *region);
+void UI_blocklist_free_inactive(const struct bContext *C, struct ListBase *lb);
 void UI_screen_free_active_but(const struct bContext *C, struct bScreen *screen);
 
 void UI_block_region_set(uiBlock *block, struct ARegion *region);
@@ -1694,25 +1694,23 @@ void UI_panel_category_draw_all(struct ARegion *region, const char *category_id_
 
 struct PanelType *UI_paneltype_find(int space_id, int region_id, const char *idname);
 
-/* Recreated list panels for representing a list. */
-struct Panel *UI_panel_add_list(struct ScrArea *sa,
-                                struct ARegion *region,
-                                struct ListBase *panels,
-                                struct PanelType *panel_type,
-                                int modifier_index);
-void UI_panel_delete(struct ARegion *region, struct ListBase *panels, struct Panel *panel);
-void UI_panels_free_list(struct bContext *C, struct ARegion *region);
+/* Polyinstantiated panels for representing a list of data. */
+struct Panel *UI_panel_add_instanced(struct ScrArea *area,
+                                     struct ARegion *region,
+                                     struct ListBase *panels,
+                                     char *panel_idname,
+                                     int list_index);
+void UI_panels_free_instanced(struct bContext *C, struct ARegion *region);
 
 #define LIST_PANEL_UNIQUE_STR_LEN 4
 void UI_list_panel_unique_str(struct Panel *panel, char *r_name);
 
 void UI_panel_set_expand_from_list_data(const struct bContext *C, struct Panel *panel);
 
-typedef struct PanelType *(*uiListPanelTypeFromDataFunc)(struct ARegion *region,
-                                                         struct Link *data_link);
+typedef void (*uiListPanelIDFromDataFunc)(void *data_link, char *r_idname);
 bool UI_panel_list_matches_data(struct ARegion *region,
                                 struct ListBase *data,
-                                uiListPanelTypeFromDataFunc get_panel_type);
+                                uiListPanelIDFromDataFunc panel_idname_func);
 
 /* Handlers
  *

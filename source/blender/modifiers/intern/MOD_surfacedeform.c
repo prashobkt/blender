@@ -1439,7 +1439,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "SurfaceDeform", panel_draw);
+  modifier_panel_register(region_type, eModifierType_SurfaceDeform, panel_draw);
 }
 
 ModifierTypeInfo modifierType_SurfaceDeform = {

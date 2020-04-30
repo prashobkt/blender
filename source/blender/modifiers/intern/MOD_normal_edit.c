@@ -780,7 +780,8 @@ static void offset_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "NormalEdit", panel_draw);
+  PanelType *panel_type = modifier_panel_register(
+      region_type, eModifierType_NormalEdit, panel_draw);
   modifier_subpanel_register(
       region_type, "normaledit_mix", "Mix", NULL, mix_mode_panel_draw, panel_type);
   modifier_subpanel_register(

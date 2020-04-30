@@ -52,6 +52,8 @@
 
 #include "RNA_access.h"
 
+#include "WM_types.h" /* For subdivide operator UI. */
+
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
@@ -285,13 +287,16 @@ static void deformMatrices(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *col;
+  uiLayout *row, *col, *split, *col2;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  MultiresModifierData *mmd = (MultiresModifierData *)ptr.data;
   modifier_panel_buttons(C, panel);
+
+  PointerRNA op_ptr;
 
   uiLayoutSetPropSep(layout, true);
 
@@ -303,14 +308,54 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemS(layout);
 
-  col = uiLayoutColumn(layout, false);
-  uiLayoutSetEnabled(col, RNA_enum_get(&ob_ptr, "mode") == OB_MODE_EDIT);
-  uiItemO(col, IFACE_("Subdivide"), ICON_NONE, "OBJECT_OT_multires_subdivide");
-  uiItemO(col, IFACE_("Delete Higher"), ICON_NONE, "OBJECT_OT_multires_higher_levels_delete");
+  split = uiLayoutSplit(layout, 0.5f, false);
+  uiLayoutSetEnabled(split, ELEM(RNA_enum_get(&ob_ptr, "mode"), OB_MODE_EDIT, OB_MODE_SCULPT));
+  col = uiLayoutColumn(split, false);
+  col2 = uiLayoutColumn(split, false);
+
+  uiItemO(col, IFACE_("Unsubdivide"), ICON_NONE, "OBJECT_OT_multires_unsubdivide");
+
+  row = uiLayoutRow(col2, true);
+  uiItemFullO(row,
+              "OBJECT_OT_multires_subdivide",
+              IFACE_("Subdivide"),
+              ICON_NONE,
+              NULL,
+              WM_OP_EXEC_DEFAULT,
+              0,
+              &op_ptr);
+  RNA_enum_set(&op_ptr, "mode", MULTIRES_SUBDIVIDE_CATMULL_CLARK);
+  uiItemFullO(row,
+              "OBJECT_OT_multires_subdivide",
+              IFACE_("Simple"),
+              ICON_NONE, /* TODO: Needs icon, remove text */
+              NULL,
+              WM_OP_EXEC_DEFAULT,
+              0,
+              &op_ptr);
+  RNA_enum_set(&op_ptr, "mode", MULTIRES_SUBDIVIDE_SIMPLE);
+  uiItemFullO(row,
+              "OBJECT_OT_multires_subdivide",
+              IFACE_("Linear"),
+              ICON_NONE, /* TODO: Needs icon, remove text */
+              NULL,
+              WM_OP_EXEC_DEFAULT,
+              0,
+              &op_ptr);
+  RNA_enum_set(&op_ptr, "mode", MULTIRES_SUBDIVIDE_LINEAR);
+
+  uiItemL(col, "", ICON_NONE);
+  uiItemO(col2, IFACE_("Delete Higher"), ICON_NONE, "OBJECT_OT_multires_higher_levels_delete");
+
   uiItemO(col, IFACE_("Reshape"), ICON_NONE, "OBJECT_OT_multires_reshape");
-  uiItemO(col, IFACE_("Apply Base"), ICON_NONE, "OBJECT_OT_multires_base_apply");
+  uiItemO(col2, IFACE_("Apply Base"), ICON_NONE, "OBJECT_OT_multires_base_apply");
 
   uiItemS(layout);
+
+  if (mmd->totlvl == 0) {
+    uiItemO(
+        layout, IFACE_("Rebuild Subdivisions"), ICON_NONE, "OBJECT_OT_multires_rebuild_subdiv");
+  }
 
   col = uiLayoutColumn(layout, false);
   row = uiLayoutRow(col, false);
@@ -342,7 +387,7 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Multires", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Multires, panel_draw);
   modifier_subpanel_register(
       region_type, "multires_advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
 }

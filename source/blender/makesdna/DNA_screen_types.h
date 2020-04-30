@@ -133,7 +133,7 @@ typedef struct Panel_Runtime {
   /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
   int region_ofsx;
 
-  /* For list panels: Index of the list item the panel corresponds to. */
+  /* For instanced panels: Index of the list item the panel corresponds to. */
   int list_index;
 } Panel_Runtime;
 
@@ -533,8 +533,8 @@ enum {
   PNL_OVERLAP = (1 << 4),
   PNL_PIN = (1 << 5),
   PNL_POPOVER = (1 << 6),
-  /** Signals that the panel has been drag-drop reordered and the panel list needs rebuilding. */
-  PNL_LIST_ORDER_CHANGED = (1 << 7),
+  /** The panel has been drag-drop reordered and the instanced panel list needs to be rebuilt. */
+  PNL_INSTANCED_LIST_ORDER_CHANGED = (1 << 7),
 };
 
 /** #Panel.snap - for snapping to screen edges */
@@ -554,11 +554,13 @@ enum {
   PNL_LAYOUT_HEADER_EXPAND = (1 << 2),
   PNL_LAYOUT_VERT_BAR = (1 << 3),
   /** This panel type represents data external to the UI. */
-  PNL_LIST = (1 << 4),
+  PNL_INSTANCED = (1 << 4),
   /* Convenience flag to avoid searching through parents to tell if it belongs to a list panel. */
-  PNL_LIST_SUBPANEL = (1 << 5),
+  PNL_INSTANCED_SUBPANEL = (1 << 5),
   /** This panel marks the start of a list panel sequence. Not recreated on list change. */
-  PNL_LIST_START = (1 << 6),
+  PNL_INSTANCED_LIST_START = (1 << 6),
+  /** Draw panel with a theme corresponding to box widgets. */
+  PNL_DRAW_BOX = (1 << 7),
 };
 
 /* Fallback panel category (only for old scripts which need updating) */

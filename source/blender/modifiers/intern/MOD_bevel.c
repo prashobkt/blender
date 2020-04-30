@@ -411,7 +411,7 @@ static void custom_profile_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Bevel", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Bevel, panel_draw);
   PanelType *bevel_profil_panel = modifier_subpanel_register(
       region_type, "bevel_profile", "Profile", NULL, profile_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
