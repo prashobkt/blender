@@ -342,20 +342,30 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           //
           // dot normal from vt with hit.co - start to see which way to deflect the particle
           float3 normal = best_hit.no;
-          float normal_dot = dot_v3v3(velocities[pindex] - best_hit_vel, normal);
+          float3 n_v = dot_v3v3(velocities[pindex], normal) * normal;
+          n_v = n_v.normalized();
+          float normal_dot = dot_v3v3(velocities[pindex] - best_hit_vel, n_v);
 
-          if (normal_dot > 0.0f) {
-            normal_dot *= -1.0f;
-          }
+          // if (normal_dot > 0.0f) {
+          //  normal_dot *= -1.0f;
+          //}
           // if (normal_dot < 0.0f) {
           // The particle was moving into the collission plane
           // print_v3("normal", normal);
           // printf("normal dir %f\n", normal_dot);
+          // print_v3("n_v", n_v);
           // print_v3("vel hit", best_hit_vel);
           // print_v3("vel_pre", velocities[pindex]);
-          float3 deflect_vel = velocities[pindex] - best_hit_vel - 2 * normal_dot * normal;
+          float3 deflect_vel = velocities[pindex] - best_hit_vel - 2.0f * normal_dot * n_v;
           // print_v3("deflect_vel", deflect_vel);
-          velocities[pindex] = deflect_vel + best_hit_vel;
+          // float temp = (1.0f + dot_v3v3(deflect_vel, best_hit_vel)) / 2.0f;
+          // printf("temp %f\n", temp);
+          float3 temp;
+          zero_v3(temp);
+          if (dot_v3v3(velocities[pindex], best_hit_vel) <= 0.0f) {
+            temp = float3::project(best_hit_vel, normal);
+          }
+          velocities[pindex] = deflect_vel + best_hit_vel - temp;
           // print_v3("vel_post", velocities[pindex]);
           //}
 
