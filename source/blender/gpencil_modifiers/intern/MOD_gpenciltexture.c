@@ -200,7 +200,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Texture = {
-    /* name */ "Texture",
+    /* name */ "Texture Mapping",
     /* structName */ "TextureGpencilModifierData",
     /* structSize */ sizeof(TextureGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
