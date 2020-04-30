@@ -326,7 +326,7 @@ static void random_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Build", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Build, panel_draw);
   modifier_subpanel_register(
       region_type, "build_randomize", "", random_panel_header_draw, random_panel_draw, panel_type);
 }

@@ -618,7 +618,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "LaplacianSmooth", panel_draw);
+  modifier_panel_register(region_type, eModifierType_LaplacianSmooth, panel_draw);
 }
 
 ModifierTypeInfo modifierType_LaplacianSmooth = {

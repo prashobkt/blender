@@ -368,7 +368,8 @@ static void axis_mapping_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "MeshCache", panel_draw);
+  PanelType *panel_type = modifier_panel_register(
+      region_type, eModifierType_MeshCache, panel_draw);
   modifier_subpanel_register(region_type,
                              "hook_time_remapping",
                              "Time Remapping",

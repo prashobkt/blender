@@ -1822,15 +1822,10 @@ void uiTemplatePathBuilder(uiLayout *layout,
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
-static void panel_id_from_modifier(Link *md_link, char *r_idname)
+static void modifier_panel_id(void *md_link, char *r_name)
 {
   ModifierData *md = (ModifierData *)md_link;
-  ModifierType type = md->type;
-  const ModifierTypeInfo *mti = modifierType_getInfo(type);
-
-  /* Get the name of the modifier's panel type which was defined when the panel was registered. */
-  strcpy(r_idname, MODIFIER_TYPE_PANEL_PREFIX);
-  strcat(r_idname, mti->name);
+  modifierType_panelId(md->type, r_name);
 }
 
 void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
@@ -1840,19 +1835,21 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   Object *ob = CTX_data_active_object(C);
   ListBase *modifiers = &ob->modifiers;
 
-  bool panels_match = UI_panel_list_matches_data(region, modifiers, panel_id_from_modifier);
+  bool panels_match = UI_panel_list_matches_data(region, modifiers, modifier_panel_id);
 
   if (!panels_match) {
-    UI_panels_free_list(C, region);
+    UI_panels_free_instanced(C, region);
     ModifierData *md = modifiers->first;
     for (int i = 0; md; i++, md = md->next) {
       const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
       if (mti->panelRegister) {
         char panel_idname[MAX_NAME];
-        panel_id_from_modifier((Link *)md, panel_idname);
+        modifier_panel_id((void *)md, panel_idname);
 
-        Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_idname, i);
-        UI_panel_set_expand_from_list_data(C, new_panel);
+        Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+        if (new_panel != NULL) {
+          UI_panel_set_expand_from_list_data(C, new_panel);
+        }
       }
     }
   }

@@ -46,7 +46,7 @@ void modifier_panel_get_property_pointers(const bContext *C,
                                           struct PointerRNA *r_ptr);
 
 struct PanelType *modifier_panel_register(struct ARegionType *region_type,
-                                          const char *modifier_type,
+                                          ModifierType type,
                                           PanelDrawFn draw);
 
 struct PanelType *modifier_subpanel_register(struct ARegionType *region_type,

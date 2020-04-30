@@ -690,7 +690,7 @@ static void influence_panel_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
-      region_type, "VertexWeightProximity", panel_draw);
+      region_type, eModifierType_WeightVGProximity, panel_draw);
   modifier_subpanel_register(region_type,
                              "vertexweightproximity_influence",
                              "Influence",
