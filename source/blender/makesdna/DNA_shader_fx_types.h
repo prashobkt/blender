@@ -50,7 +50,7 @@ typedef enum ShaderFxMode {
   eShaderFxMode_Realtime = (1 << 0),
   eShaderFxMode_Render = (1 << 1),
   eShaderFxMode_Editmode = (1 << 2),
-  eShaderFxMode_Expanded = (1 << 3),
+  eShaderFxMode_Expanded_DEPRECATED = (1 << 3),
 } ShaderFxMode;
 
 typedef enum {

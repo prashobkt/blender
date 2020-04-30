@@ -82,8 +82,9 @@ ShaderFxData *BKE_shaderfx_new(int type)
   BLI_strncpy(fx->name, DATA_(fxi->name), sizeof(fx->name));
 
   fx->type = type;
-  fx->mode = eShaderFxMode_Realtime | eShaderFxMode_Render | eShaderFxMode_Expanded;
+  fx->mode = eShaderFxMode_Realtime | eShaderFxMode_Render;
   fx->flag = eShaderFxFlag_OverrideLibrary_Local;
+  fx->ui_expand_flag = 1; /* Expand only the parent panel by default. */
 
   if (fxi->flags & eShaderFxTypeFlag_EnableInEditmode) {
     fx->mode |= eShaderFxMode_Editmode;
