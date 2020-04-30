@@ -45,6 +45,8 @@
 
 #include "RE_shader_ext.h"
 
+#include "BLO_read_write.h"
+
 #include "MOD_util.h"
 
 static void initData(ModifierData *md)
@@ -180,6 +182,24 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 
   if (need_transform_relation) {
     DEG_add_modifier_to_transform_relation(ctx->node, "Warp Modifier");
+  }
+}
+
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  WarpModifierData *tmd = (WarpModifierData *)md;
+  if (tmd->curfalloff) {
+    BKE_curvemapping_blend_write(writer, tmd->curfalloff);
+  }
+}
+
+static void blendReadData(BlendDataReader *reader, ModifierData *md)
+{
+  WarpModifierData *tmd = (WarpModifierData *)md;
+
+  BLO_read_data_address(reader, &tmd->curfalloff);
+  if (tmd->curfalloff) {
+    BKE_curvemapping_blend_read_data(reader, tmd->curfalloff);
   }
 }
 
@@ -417,4 +437,6 @@ ModifierTypeInfo modifierType_Warp = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ blendWrite,
+    /* blendReadData */ blendReadData,
 };

@@ -41,6 +41,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "BLO_read_write.h"
+
 #include "MOD_modifiertypes.h"
 
 #include "intern/CCGSubSurf.h"
@@ -106,6 +108,12 @@ static bool isDisabled(const Scene *scene, ModifierData *md, bool useRenderParam
   int levels = (useRenderParams) ? smd->renderLevels : smd->levels;
 
   return get_render_subsurf_level(&scene->r, levels, useRenderParams != 0) == 0;
+}
+
+static void blendReadData(BlendDataReader *UNUSED(reader), ModifierData *md)
+{
+  SubsurfModifierData *smd = (SubsurfModifierData *)md;
+  smd->emCache = smd->mCache = NULL;
 }
 
 static int subdiv_levels_for_modifier_get(const SubsurfModifierData *smd,
@@ -306,4 +314,6 @@ ModifierTypeInfo modifierType_Subsurf = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
+    /* blendWrite */ NULL,
+    /* blendReadData */ blendReadData,
 };

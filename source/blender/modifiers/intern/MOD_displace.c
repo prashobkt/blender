@@ -443,4 +443,6 @@ ModifierTypeInfo modifierType_Displace = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ NULL,
+    /* blendReadData */ NULL,
 };

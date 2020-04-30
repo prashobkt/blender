@@ -74,6 +74,8 @@
 
 #include "RNA_access.h"
 
+#include "BLO_read_write.h"
+
 #include "atomic_ops.h"
 
 //#define DEBUG_TIME
@@ -99,6 +101,11 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
     .copy_data = NULL,
     .free_data = NULL,
     .make_local = NULL,
+
+    .blend_write = NULL,
+    .blend_read_data = NULL,
+    .blend_read_lib = NULL,
+    .blend_expand = NULL,
 };
 
 /* GS reads the memory pointed at in a specific ordering.
@@ -2240,5 +2247,30 @@ void BKE_id_reorder(const ListBase *lb, ID *id, ID *relative, bool after)
     }
 
     *id_order = relative_order - 1;
+  }
+}
+
+void BKE_iddata_blend_write(BlendWriter *writer, ID *id)
+{
+  /* ID_WM's id->properties are considered runtime only, and never written in .blend file. */
+  if (id->properties && !ELEM(GS(id->name), ID_WM)) {
+    IDP_BlendWrite(writer, id->properties);
+  }
+
+  if (id->override_library) {
+    BLO_write_struct(writer, IDOverrideLibrary, id->override_library);
+
+    BLO_write_struct_list(writer, IDOverrideLibraryProperty, &id->override_library->properties);
+    for (IDOverrideLibraryProperty *op = id->override_library->properties.first; op;
+         op = op->next) {
+      BLO_write_string(writer, op->rna_path);
+
+      BLO_write_struct_list(writer, IDOverrideLibraryPropertyOperation, &op->operations);
+      for (IDOverrideLibraryPropertyOperation *opop = op->operations.first; opop;
+           opop = opop->next) {
+        BLO_write_string(writer, opop->subitem_reference_name);
+        BLO_write_string(writer, opop->subitem_local_name);
+      }
+    }
   }
 }

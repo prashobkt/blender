@@ -133,4 +133,6 @@ ModifierTypeInfo modifierType_Wireframe = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ NULL,
+    /* blendReadData */ NULL,
 };

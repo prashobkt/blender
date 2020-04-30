@@ -417,4 +417,6 @@ ModifierTypeInfo modifierType_Mask = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ NULL,
+    /* blendReadData */ NULL,
 };

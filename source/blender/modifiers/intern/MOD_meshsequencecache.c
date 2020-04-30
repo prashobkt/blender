@@ -37,6 +37,8 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
+#include "BLO_read_write.h"
+
 #include "MOD_modifiertypes.h"
 
 #ifdef WITH_ALEMBIC
@@ -184,6 +186,13 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
+static void blendReadData(BlendDataReader *UNUSED(reader), ModifierData *md)
+{
+  MeshSeqCacheModifierData *msmcd = (MeshSeqCacheModifierData *)md;
+  msmcd->reader = NULL;
+  msmcd->reader_object_path[0] = '\0';
+}
+
 ModifierTypeInfo modifierType_MeshSequenceCache = {
     /* name */ "Mesh Sequence Cache",
     /* structName */ "MeshSeqCacheModifierData",
@@ -213,4 +222,6 @@ ModifierTypeInfo modifierType_MeshSequenceCache = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ NULL,
+    /* blendReadData */ blendReadData,
 };

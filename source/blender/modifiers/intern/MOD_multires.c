@@ -302,4 +302,6 @@ ModifierTypeInfo modifierType_Multires = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
+    /* blendWrite */ NULL,
+    /* blendReadData */ NULL,
 };

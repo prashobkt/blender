@@ -1187,4 +1187,6 @@ ModifierTypeInfo modifierType_Screw = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ NULL,
+    /* blendReadData */ NULL,
 };

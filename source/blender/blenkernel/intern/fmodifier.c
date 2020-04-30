@@ -44,6 +44,8 @@
 #include "BKE_fcurve.h"
 #include "BKE_idprop.h"
 
+#include "BLO_read_write.h"
+
 static CLG_LogRef LOG = {"bke.fmodifier"};
 
 /* ******************************** F-Modifiers ********************************* */
@@ -1560,4 +1562,108 @@ void fcurve_bake_modifiers(FCurve *fcu, int start, int end)
 
   /* restore driver */
   fcu->driver = driver;
+}
+
+void BKE_fcurve_modifiers_blend_read_data(BlendDataReader *reader, ListBase *list, FCurve *fcurve)
+{
+  for (FModifier *fcm = list->first; fcm; fcm = fcm->next) {
+    /* relink general data */
+    BLO_read_data_address(reader, &fcm->data);
+    fcm->curve = fcurve;
+
+    /* do relinking of data for specific types */
+    switch (fcm->type) {
+      case FMODIFIER_TYPE_GENERATOR: {
+        FMod_Generator *data = (FMod_Generator *)fcm->data;
+        BLO_read_float_array(reader, data->arraysize, &data->coefficients);
+        break;
+      }
+      case FMODIFIER_TYPE_ENVELOPE: {
+        FMod_Envelope *data = (FMod_Envelope *)fcm->data;
+        BLO_read_data_address(reader, &data->data);
+        break;
+      }
+      case FMODIFIER_TYPE_PYTHON: {
+        FMod_Python *data = (FMod_Python *)fcm->data;
+        BLO_read_data_address(reader, &data->prop);
+        IDP_Group_BlendReadData(reader, &data->prop, __func__);
+        break;
+      }
+    }
+  }
+}
+
+void BKE_fcurve_modifiers_blend_read_lib(BlendLibReader *reader, ListBase *list, ID *id)
+{
+  for (FModifier *fcm = list->first; fcm; fcm = fcm->next) {
+    switch (fcm->type) {
+      case FMODIFIER_TYPE_PYTHON: {
+        FMod_Python *data = (FMod_Python *)fcm->data;
+        BLO_read_id_address(reader, id->lib, &data->script);
+        break;
+      }
+    }
+  }
+}
+
+void BKE_fcurve_modifiers_blend_expand(BlendExpander *expander, ListBase *list)
+{
+  LISTBASE_FOREACH (FModifier *, fcm, list) {
+    switch (fcm->type) {
+      case FMODIFIER_TYPE_PYTHON: {
+        FMod_Python *data = (FMod_Python *)fcm->data;
+        BLO_expand(expander, data->script);
+      }
+    }
+  }
+}
+
+void BKE_fcurve_modifiers_blend_write(BlendWriter *writer, ListBase *fmodifiers)
+{
+  /* Write all modifiers first (for faster reloading) */
+  BLO_write_struct_list(writer, FModifier, fmodifiers);
+
+  /* Modifiers */
+  for (FModifier *fcm = fmodifiers->first; fcm; fcm = fcm->next) {
+    const FModifierTypeInfo *fmi = fmodifier_get_typeinfo(fcm);
+
+    /* Write the specific data */
+    if (fmi && fcm->data) {
+      /* firstly, just write the plain fmi->data struct */
+      BLO_write_struct_by_name(writer, fmi->structName, fcm->data);
+
+      /* do any modifier specific stuff */
+      switch (fcm->type) {
+        case FMODIFIER_TYPE_GENERATOR: {
+          FMod_Generator *data = fcm->data;
+
+          /* write coefficients array */
+          if (data->coefficients) {
+            BLO_write_raw(writer, sizeof(float) * data->arraysize, data->coefficients);
+          }
+
+          break;
+        }
+        case FMODIFIER_TYPE_ENVELOPE: {
+          FMod_Envelope *data = fcm->data;
+
+          /* write envelope data */
+          if (data->data) {
+            BLO_write_struct_array(writer, FCM_EvenlopeData, data->totvert, data->data);
+          }
+
+          break;
+        }
+        case FMODIFIER_TYPE_PYTHON: {
+          FMod_Python *data = fcm->data;
+
+          /* Write ID Properties -- and copy this comment EXACTLY for easy finding
+           * of library blocks that implement this.*/
+          IDP_BlendWrite(writer, data->prop);
+
+          break;
+        }
+      }
+    }
+  }
 }

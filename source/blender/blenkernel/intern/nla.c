@@ -53,6 +53,8 @@
 #include "BKE_nla.h"
 #include "BKE_sound.h"
 
+#include "BLO_read_write.h"
+
 #include "RNA_access.h"
 #include "nla_private.h"
 
@@ -2173,4 +2175,104 @@ void BKE_nla_tweakmode_exit(AnimData *adt)
   adt->act_track = NULL;
   adt->actstrip = NULL;
   adt->flag &= ~ADT_NLA_EDIT_ON;
+}
+
+static void nla_strips_blend_read_data(BlendDataReader *reader, ListBase *list)
+{
+  for (NlaStrip *strip = list->first; strip; strip = strip->next) {
+    /* strip's child strips */
+    BLO_read_list(reader, &strip->strips, NULL);
+    nla_strips_blend_read_data(reader, &strip->strips);
+
+    /* strip's F-Curves */
+    BLO_read_list(reader, &strip->fcurves, NULL);
+    BKE_fcurve_blend_read_data(reader, &strip->fcurves);
+
+    /* strip's F-Modifiers */
+    BLO_read_list(reader, &strip->modifiers, NULL);
+    BKE_fcurve_modifiers_blend_read_data(reader, &strip->modifiers, NULL);
+  }
+}
+
+void BKE_nla_blend_read_data(BlendDataReader *reader, ListBase *list)
+{
+  for (NlaTrack *nlt = list->first; nlt; nlt = nlt->next) {
+    /* relink list of strips */
+    BLO_read_list(reader, &nlt->strips, NULL);
+
+    /* relink strip data */
+    nla_strips_blend_read_data(reader, &nlt->strips);
+  }
+}
+
+static void nla_strips_blend_read_lib(BlendLibReader *reader, ListBase *list, ID *id)
+{
+  for (NlaStrip *strip = list->first; strip; strip = strip->next) {
+    /* check strip's children */
+    nla_strips_blend_read_lib(reader, &strip->strips, id);
+
+    /* check strip's F-Curves */
+    BKE_fcurve_blend_read_lib(reader, &strip->fcurves, id);
+
+    /* reassign the counted-reference to action */
+    BLO_read_id_address(reader, id->lib, &strip->act);
+
+    /* fix action id-root (i.e. if it comes from a pre 2.57 .blend file) */
+    if ((strip->act) && (strip->act->idroot == 0)) {
+      strip->act->idroot = GS(id->name);
+    }
+  }
+}
+
+void BKE_nla_blend_read_lib(BlendLibReader *reader, ListBase *list, ID *id)
+{
+  /* we only care about the NLA strips inside the tracks */
+  for (NlaTrack *nlt = list->first; nlt; nlt = nlt->next) {
+    nla_strips_blend_read_lib(reader, &nlt->strips, id);
+  }
+}
+
+void BKE_nla_blend_expand(struct BlendExpander *expander, struct ListBase *list)
+{
+  for (NlaStrip *strip = list->first; strip; strip = strip->next) {
+    /* check child strips */
+    BKE_nla_blend_expand(expander, &strip->strips);
+
+    /* check F-Curves */
+    BKE_fcurve_blend_expand(expander, &strip->fcurves);
+
+    /* check F-Modifiers */
+    BKE_fcurve_modifiers_blend_expand(expander, &strip->modifiers);
+
+    /* relink referenced action */
+    BLO_expand(expander, strip->act);
+  }
+}
+
+static void write_nlastrips(BlendWriter *writer, ListBase *strips)
+{
+  BLO_write_struct_list(writer, NlaStrip, strips);
+
+  for (NlaStrip *strip = strips->first; strip; strip = strip->next) {
+    /* write the strip's F-Curves and modifiers */
+    BKE_fcurve_blend_write(writer, &strip->fcurves);
+    BKE_fcurve_modifiers_blend_write(writer, &strip->modifiers);
+
+    /* write the strip's children */
+    write_nlastrips(writer, &strip->strips);
+  }
+}
+
+void BKE_nla_blend_write(BlendWriter *writer, ListBase *nlabase)
+{
+  NlaTrack *nlt;
+
+  /* write all the tracks */
+  for (nlt = nlabase->first; nlt; nlt = nlt->next) {
+    /* write the track first */
+    BLO_write_struct(writer, NlaTrack, nlt);
+
+    /* write the track's strips */
+    write_nlastrips(writer, &nlt->strips);
+  }
 }

@@ -45,6 +45,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "BLO_read_write.h"
+
 #include "MOD_util.h"
 
 #ifdef __SSE2__
@@ -163,6 +165,36 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
   /* We need own transformation as well. */
   DEG_add_modifier_to_transform_relation(ctx->node, "Mesh Deform Modifier");
+}
+
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  MeshDeformModifierData *mmd = (MeshDeformModifierData *)md;
+  int size = mmd->dyngridsize;
+
+  BLO_write_struct_array(writer, MDefInfluence, mmd->totinfluence, mmd->bindinfluences);
+  BLO_write_int32_array(writer, mmd->totvert + 1, mmd->bindoffsets);
+  BLO_write_float3_array(writer, mmd->totcagevert, mmd->bindcagecos);
+
+  BLO_write_struct_array(writer, MDefCell, size * size * size, mmd->dyngrid);
+  BLO_write_struct_array(writer, MDefInfluence, mmd->totinfluence, mmd->dyninfluences);
+  BLO_write_int32_array(writer, mmd->totvert, mmd->dynverts);
+}
+
+static void blendReadData(BlendDataReader *reader, ModifierData *md)
+{
+  MeshDeformModifierData *mmd = (MeshDeformModifierData *)md;
+
+  BLO_read_data_address(reader, &mmd->bindinfluences);
+  BLO_read_int32_array(reader, mmd->totvert + 1, &mmd->bindoffsets);
+  BLO_read_float3_array(reader, mmd->totcagevert, &mmd->bindcagecos);
+
+  BLO_read_data_address(reader, &mmd->dyngrid);
+  BLO_read_data_address(reader, &mmd->dyninfluences);
+  BLO_read_int32_array(reader, mmd->totvert, &mmd->dynverts);
+
+  BLO_read_float_array(reader, mmd->totvert, &mmd->bindweights);
+  BLO_read_float3_array(reader, mmd->totcagevert, &mmd->bindcos);
 }
 
 static float meshdeform_dynamic_bind(MeshDeformModifierData *mmd, float (*dco)[3], float vec[3])
@@ -583,4 +615,6 @@ ModifierTypeInfo modifierType_MeshDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ blendWrite,
+    /* blendReadData */ blendReadData,
 };

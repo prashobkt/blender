@@ -44,6 +44,8 @@
 
 #include "MOD_util.h"
 
+#include "BLO_read_write.h"
+
 static void initData(ModifierData *md)
 {
   HookModifierData *hmd = (HookModifierData *)md;
@@ -121,6 +123,27 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
   /* We need own transformation as well. */
   DEG_add_modifier_to_transform_relation(ctx->node, "Hook Modifier");
+}
+
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  HookModifierData *hmd = (HookModifierData *)md;
+
+  BLO_write_int32_array(writer, hmd->totindex, hmd->indexar);
+  if (hmd->curfalloff) {
+    BKE_curvemapping_blend_write(writer, hmd->curfalloff);
+  }
+}
+
+static void blendReadData(BlendDataReader *reader, ModifierData *md)
+{
+  HookModifierData *hmd = (HookModifierData *)md;
+
+  BLO_read_int32_array(reader, hmd->totindex, &hmd->indexar);
+  BLO_read_data_address(reader, &hmd->curfalloff);
+  if (hmd->curfalloff) {
+    BKE_curvemapping_blend_read_data(reader, hmd->curfalloff);
+  }
 }
 
 struct HookData_cb {
@@ -417,4 +440,6 @@ ModifierTypeInfo modifierType_Hook = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ blendWrite,
+    /* blendReadData */ blendReadData,
 };

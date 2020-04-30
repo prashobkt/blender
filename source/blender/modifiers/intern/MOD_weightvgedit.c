@@ -48,6 +48,8 @@
 #include "MOD_util.h"
 #include "MOD_weightvg_util.h"
 
+#include "BLO_read_write.h"
+
 /**************************************
  * Modifiers functions.               *
  **************************************/
@@ -301,6 +303,25 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   return mesh;
 }
 
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
+
+  if (wmd->cmap_curve) {
+    BKE_curvemapping_blend_write(writer, wmd->cmap_curve);
+  }
+}
+
+static void blendReadData(BlendDataReader *reader, ModifierData *md)
+{
+  WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
+
+  BLO_read_data_address(reader, &wmd->cmap_curve);
+  if (wmd->cmap_curve) {
+    BKE_curvemapping_blend_read_data(reader, wmd->cmap_curve);
+  }
+}
+
 ModifierTypeInfo modifierType_WeightVGEdit = {
     /* name */ "VertexWeightEdit",
     /* structName */ "WeightVGEditModifierData",
@@ -331,4 +352,6 @@ ModifierTypeInfo modifierType_WeightVGEdit = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ blendWrite,
+    /* blendReadData */ blendReadData,
 };

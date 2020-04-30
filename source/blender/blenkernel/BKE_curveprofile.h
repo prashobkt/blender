@@ -30,6 +30,8 @@ extern "C" {
 
 struct CurveProfile;
 struct CurveProfilePoint;
+struct BlendWriter;
+struct BlendDataReader;
 
 void BKE_curveprofile_set_defaults(struct CurveProfile *profile);
 
@@ -77,6 +79,10 @@ void BKE_curveprofile_evaluate_length_portion(const struct CurveProfile *profile
                                               float length_portion,
                                               float *x_out,
                                               float *y_out);
+
+void BKE_curveprofile_blend_write(struct BlendWriter *writer, const struct CurveProfile *profile);
+void BKE_curveprofile_blend_read_data(struct BlendDataReader *reader,
+                                      struct CurveProfile *profile);
 
 #ifdef __cplusplus
 }

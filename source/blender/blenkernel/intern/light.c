@@ -121,6 +121,11 @@ IDTypeInfo IDType_ID_LA = {
     .copy_data = light_copy_data,
     .free_data = light_free_data,
     .make_local = NULL,
+
+    .blend_write = NULL,
+    .blend_read_data = NULL,
+    .blend_read_lib = NULL,
+    .blend_expand = NULL,
 };
 
 Light *BKE_light_add(Main *bmain, const char *name)

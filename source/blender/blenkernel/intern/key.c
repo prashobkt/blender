@@ -43,6 +43,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_animsys.h"
 #include "BKE_curve.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
@@ -55,7 +56,14 @@
 #include "BKE_mesh.h"
 #include "BKE_scene.h"
 
+#include "BLO_read_write.h"
+
 #include "RNA_access.h"
+
+/* old defines from DNA_ipo_types.h for data-type, stored in DNA - don't modify! */
+#define IPO_FLOAT 4
+#define IPO_BEZTRIPLE 100
+#define IPO_BPOINT 101
 
 static void shapekey_copy_data(Main *UNUSED(bmain),
                                ID *id_dst,
@@ -91,6 +99,94 @@ static void shapekey_free_data(ID *id)
   }
 }
 
+static void shapekey_blend_write(BlendWriter *writer, ID *id, const void *id_address)
+{
+  Key *key = (Key *)id;
+  if (key->id.us == 0 && !BLO_write_is_undo(writer)) {
+    return;
+  }
+
+  /* write LibData */
+  BLO_write_id_struct(writer, Key, id_address, id);
+  BKE_iddata_blend_write(writer, id);
+
+  if (key->adt) {
+    BKE_animsys_blend_write(writer, key->adt);
+  }
+
+  /* direct data */
+  for (KeyBlock *kb = key->block.first; kb; kb = kb->next) {
+    BLO_write_struct(writer, KeyBlock, kb);
+    if (kb->data) {
+      BLO_write_raw(writer, kb->totelem * key->elemsize, kb->data);
+    }
+  }
+}
+
+static void switch_endian_keyblock(Key *key, KeyBlock *kb)
+{
+  int elemsize, a, b;
+  char *data;
+
+  elemsize = key->elemsize;
+  data = kb->data;
+
+  for (a = 0; a < kb->totelem; a++) {
+    const char *cp = key->elemstr;
+    char *poin = data;
+
+    while (cp[0]) {    /* cp[0] == amount */
+      switch (cp[1]) { /* cp[1] = type */
+        case IPO_FLOAT:
+        case IPO_BPOINT:
+        case IPO_BEZTRIPLE:
+          b = cp[0];
+          BLI_endian_switch_float_array((float *)poin, b);
+          poin += sizeof(float) * b;
+          break;
+      }
+
+      cp += 2;
+    }
+    data += elemsize;
+  }
+}
+
+static void shapekey_blend_read_data(BlendDataReader *reader, ID *id)
+{
+  Key *key = (Key *)id;
+
+  BLO_read_list(reader, &key->block, NULL);
+
+  BLO_read_data_address(reader, &key->adt);
+  BKE_animsys_blend_read_data(reader, key->adt);
+
+  BLO_read_data_address(reader, &key->refkey);
+
+  for (KeyBlock *kb = key->block.first; kb; kb = kb->next) {
+    BLO_read_data_address(reader, &kb->data);
+
+    if (BLO_read_requires_endian_switch(reader)) {
+      switch_endian_keyblock(key, kb);
+    }
+  }
+}
+
+static void shapekey_blend_read_lib(BlendLibReader *reader, ID *id)
+{
+  Key *key = (Key *)id;
+  BLI_assert((key->id.tag & LIB_TAG_EXTERN) == 0);
+
+  BLO_read_id_address(reader, id->lib, &key->ipo);  // XXX deprecated - old animation system
+  BLO_read_id_address(reader, id->lib, &key->from);
+}
+
+static void shapekey_blend_expand(BlendExpander *expander, ID *id)
+{
+  Key *key = (Key *)id;
+  BLO_expand(expander, key->ipo);  // XXX deprecated - old animation system
+}
+
 IDTypeInfo IDType_ID_KE = {
     .id_code = ID_KE,
     .id_filter = 0,
@@ -105,16 +201,16 @@ IDTypeInfo IDType_ID_KE = {
     .copy_data = shapekey_copy_data,
     .free_data = shapekey_free_data,
     .make_local = NULL,
+
+    .blend_write = shapekey_blend_write,
+    .blend_read_data = shapekey_blend_read_data,
+    .blend_read_lib = shapekey_blend_read_lib,
+    .blend_expand = shapekey_blend_expand,
 };
 
 #define KEY_MODE_DUMMY 0 /* use where mode isn't checked for */
 #define KEY_MODE_BPOINT 1
 #define KEY_MODE_BEZTRIPLE 2
-
-/* old defines from DNA_ipo_types.h for data-type, stored in DNA - don't modify! */
-#define IPO_FLOAT 4
-#define IPO_BEZTRIPLE 100
-#define IPO_BPOINT 101
 
 /* Internal use only. */
 typedef struct WeightsArrayCache {

@@ -223,4 +223,6 @@ ModifierTypeInfo modifierType_Fluid = {
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ NULL,
+    /* blendReadData */ NULL,
 };

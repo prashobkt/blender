@@ -31,6 +31,10 @@ extern "C" {
 
 struct ID;
 struct IDProperty;
+struct BlendDataReader;
+struct BlendLibReader;
+struct BlendWriter;
+struct BlendExpander;
 
 typedef union IDPropertyTemplate {
   int i;
@@ -196,6 +200,16 @@ void IDP_repr_fn(const IDProperty *prop,
                  void (*str_append_fn)(void *user_data, const char *str, uint str_len),
                  void *user_data);
 void IDP_print(const struct IDProperty *prop);
+
+void IDP_BlendReadData(struct BlendDataReader *reader, struct IDProperty *prop);
+void IDP_BlendReadLib(struct BlendLibReader *reader, struct IDProperty *prop);
+void IDP_BlendExpand(struct BlendExpander *expander, struct IDProperty *prop);
+
+void IDP_Group_BlendReadData(struct BlendDataReader *reader,
+                             struct IDProperty **prop,
+                             const char *caller_func_id);
+
+void IDP_BlendWrite(struct BlendWriter *writer, const struct IDProperty *prop);
 
 #ifdef __cplusplus
 }

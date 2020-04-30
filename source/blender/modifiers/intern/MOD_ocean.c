@@ -41,6 +41,8 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "BLO_read_write.h"
+
 #include "MOD_modifiertypes.h"
 
 #ifdef WITH_OCEANSIM
@@ -181,6 +183,13 @@ static bool dependsOnNormals(ModifierData *md)
 {
   OceanModifierData *omd = (OceanModifierData *)md;
   return (omd->geometry_mode != MOD_OCEAN_GEOM_GENERATE);
+}
+
+static void blendReadData(BlendDataReader *UNUSED(reader), ModifierData *md)
+{
+  OceanModifierData *omd = (OceanModifierData *)md;
+  omd->oceancache = NULL;
+  omd->ocean = NULL;
 }
 
 #ifdef WITH_OCEANSIM
@@ -525,4 +534,6 @@ ModifierTypeInfo modifierType_Ocean = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ NULL,
+    /* blendReadData */ blendReadData,
 };

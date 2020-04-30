@@ -45,6 +45,8 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "BLO_read_write.h"
+
 static void initData(ModifierData *md)
 {
   BevelModifierData *bmd = (BevelModifierData *)md;
@@ -263,6 +265,23 @@ static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED
   return (bmd->value == 0.0f);
 }
 
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  BevelModifierData *bmd = (BevelModifierData *)md;
+  if (bmd->custom_profile) {
+    BKE_curveprofile_blend_write(writer, bmd->custom_profile);
+  }
+}
+
+static void blendReadData(BlendDataReader *reader, ModifierData *md)
+{
+  BevelModifierData *bmd = (BevelModifierData *)md;
+  BLO_read_data_address(reader, &bmd->custom_profile);
+  if (bmd->custom_profile) {
+    BKE_curveprofile_blend_read_data(reader, bmd->custom_profile);
+  }
+}
+
 ModifierTypeInfo modifierType_Bevel = {
     /* name */ "Bevel",
     /* structName */ "BevelModifierData",
@@ -290,4 +309,6 @@ ModifierTypeInfo modifierType_Bevel = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* blendWrite */ blendWrite,
+    /* blendReadData */ blendReadData,
 };

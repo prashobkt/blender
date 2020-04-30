@@ -56,6 +56,8 @@
 #include "BKE_nla.h"
 #include "BKE_object.h"
 
+#include "BLO_read_write.h"
+
 #include "RNA_access.h"
 
 #include "atomic_ops.h"
@@ -3268,4 +3270,150 @@ float calculate_fcurve(PathResolvedRNA *anim_rna, FCurve *fcu, float evaltime)
   }
   fcu->curval = curval; /* debug display only, not thread safe! */
   return curval;
+}
+
+void BKE_fcurve_blend_read_data(BlendDataReader *reader, ListBase *list)
+{
+  /* link F-Curve data to F-Curve again (non ID-libs) */
+  for (FCurve *fcu = list->first; fcu; fcu = fcu->next) {
+    /* curve data */
+    BLO_read_data_address(reader, &fcu->bezt);
+    BLO_read_data_address(reader, &fcu->fpt);
+
+    /* rna path */
+    BLO_read_data_address(reader, &fcu->rna_path);
+
+    /* group */
+    BLO_read_data_address(reader, &fcu->grp);
+
+    /* clear disabled flag - allows disabled drivers to be tried again ([#32155]),
+     * but also means that another method for "reviving disabled F-Curves" exists
+     */
+    fcu->flag &= ~FCURVE_DISABLED;
+
+    /* driver */
+    BLO_read_data_address(reader, &fcu->driver);
+    if (fcu->driver) {
+      ChannelDriver *driver = fcu->driver;
+
+      /* Compiled expression data will need to be regenerated
+       * (old pointer may still be set here). */
+      driver->expr_comp = NULL;
+      driver->expr_simple = NULL;
+
+      /* give the driver a fresh chance - the operating environment may be different now
+       * (addons, etc. may be different) so the driver namespace may be sane now [#32155]
+       */
+      driver->flag &= ~DRIVER_FLAG_INVALID;
+
+      /* relink variables, targets and their paths */
+      BLO_read_list(reader, &driver->variables, NULL);
+      LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
+        DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
+          /* only relink the targets being used */
+          if (tarIndex < dvar->num_targets) {
+            BLO_read_data_address(reader, &dtar->rna_path);
+          }
+          else {
+            dtar->rna_path = NULL;
+          }
+        }
+        DRIVER_TARGETS_LOOPER_END;
+      }
+    }
+
+    /* modifiers */
+    BLO_read_list(reader, &fcu->modifiers, NULL);
+    BKE_fcurve_modifiers_blend_read_data(reader, &fcu->modifiers, fcu);
+  }
+}
+
+void BKE_fcurve_blend_read_lib(BlendLibReader *reader, ListBase *list, ID *id)
+{
+  if (list == NULL) {
+    return;
+  }
+
+  for (FCurve *fcu = list->first; fcu; fcu = fcu->next) {
+    if (fcu->driver) {
+      ChannelDriver *driver = fcu->driver;
+
+      for (DriverVar *dvar = driver->variables.first; dvar; dvar = dvar->next) {
+        DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
+          /* only relink if still used */
+          if (tarIndex < dvar->num_targets) {
+            BLO_read_id_address(reader, id->lib, &dtar->id);
+          }
+          else {
+            dtar->id = NULL;
+          }
+        }
+        DRIVER_TARGETS_LOOPER_END;
+      }
+    }
+
+    BKE_fcurve_modifiers_blend_read_lib(reader, &fcu->modifiers, id);
+  }
+}
+
+void BKE_fcurve_blend_expand(BlendExpander *expander, ListBase *list)
+{
+  for (FCurve *fcu = list->first; fcu; fcu = fcu->next) {
+    /* Driver targets if there is a driver */
+    if (fcu->driver) {
+      ChannelDriver *driver = fcu->driver;
+      DriverVar *dvar;
+
+      for (dvar = driver->variables.first; dvar; dvar = dvar->next) {
+        DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
+          // TODO: only expand those that are going to get used?
+          BLO_expand(expander, dtar->id);
+        }
+        DRIVER_TARGETS_LOOPER_END;
+      }
+    }
+
+    /* F-Curve Modifiers */
+    BKE_fcurve_modifiers_blend_expand(expander, &fcu->modifiers);
+  }
+}
+
+void BKE_fcurve_blend_write(struct BlendWriter *writer, struct ListBase *fcurves)
+{
+  BLO_write_struct_list(writer, FCurve, fcurves);
+
+  for (FCurve *fcu = fcurves->first; fcu; fcu = fcu->next) {
+    /* curve data */
+    if (fcu->bezt) {
+      BLO_write_struct_array(writer, BezTriple, fcu->totvert, fcu->bezt);
+    }
+    if (fcu->fpt) {
+      BLO_write_struct_array(writer, FPoint, fcu->totvert, fcu->fpt);
+    }
+
+    if (fcu->rna_path) {
+      BLO_write_raw(writer, strlen(fcu->rna_path) + 1, fcu->rna_path);
+    }
+
+    /* driver data */
+    if (fcu->driver) {
+      ChannelDriver *driver = fcu->driver;
+
+      BLO_write_struct(writer, ChannelDriver, driver);
+
+      /* variables */
+      BLO_write_struct_list(writer, DriverVar, &driver->variables);
+      for (DriverVar *dvar = driver->variables.first; dvar; dvar = dvar->next) {
+        DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
+          if (dtar->rna_path) {
+            BLO_write_raw(writer, strlen(dtar->rna_path) + 1, dtar->rna_path);
+          }
+        }
+        DRIVER_TARGETS_LOOPER_END;
+      }
+    }
+
+    /* write F-Modifiers */
+    BKE_fcurve_modifiers_blend_write(writer, &fcu->modifiers);
+  }
 }
