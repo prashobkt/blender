@@ -2185,7 +2185,7 @@ static void gpencil_generate_edgeloops(Object *ob,
       v = stroke[i];
       gped = &gp_edges[v];
 
-      bGPDspoint *pt = &gps_stroke->points[i + 1];
+      pt = &gps_stroke->points[i + 1];
       mul_v3_v3fl(fpt, gped->n2, offset);
       add_v3_v3v3(&pt->x, gped->v2_co, fpt);
       mul_m4_v3(matrix, &pt->x);
