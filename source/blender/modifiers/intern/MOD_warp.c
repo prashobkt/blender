@@ -193,7 +193,7 @@ static void blendWrite(BlendWriter *writer, const ModifierData *md)
   }
 }
 
-static void blendReadData(BlendDataReader *reader, ModifierData *md)
+static void blendRead(BlendDataReader *reader, ModifierData *md)
 {
   WarpModifierData *tmd = (WarpModifierData *)md;
 
@@ -438,5 +438,5 @@ ModifierTypeInfo modifierType_Warp = {
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ blendWrite,
-    /* blendReadData */ blendReadData,
+    /* blendRead */ blendRead,
 };

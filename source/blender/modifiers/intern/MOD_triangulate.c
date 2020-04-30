@@ -146,5 +146,5 @@ ModifierTypeInfo modifierType_Triangulate = {
     /* foreachIDLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ NULL,
-    /* blendReadData */ NULL,
+    /* blendRead */ NULL,
 };

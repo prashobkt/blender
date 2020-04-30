@@ -230,5 +230,5 @@ ModifierTypeInfo modifierType_Shrinkwrap = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ NULL,
-    /* blendReadData */ NULL,
+    /* blendRead */ NULL,
 };

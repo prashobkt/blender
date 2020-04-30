@@ -312,7 +312,7 @@ static void blendWrite(BlendWriter *writer, const ModifierData *md)
   }
 }
 
-static void blendReadData(BlendDataReader *reader, ModifierData *md)
+static void blendRead(BlendDataReader *reader, ModifierData *md)
 {
   WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
 
@@ -353,5 +353,5 @@ ModifierTypeInfo modifierType_WeightVGEdit = {
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ blendWrite,
-    /* blendReadData */ blendReadData,
+    /* blendRead */ blendRead,
 };

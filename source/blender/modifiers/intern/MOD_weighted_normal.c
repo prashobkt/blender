@@ -731,5 +731,5 @@ ModifierTypeInfo modifierType_WeightedNormal = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ NULL,
-    /* blendReadData */ NULL,
+    /* blendRead */ NULL,
 };

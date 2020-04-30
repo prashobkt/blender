@@ -249,5 +249,5 @@ ModifierTypeInfo modifierType_Remesh = {
     /* foreachIDLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ NULL,
-    /* blendReadData */ NULL,
+    /* blendRead */ NULL,
 };

@@ -720,5 +720,5 @@ ModifierTypeInfo modifierType_NormalEdit = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ NULL,
-    /* blendReadData */ NULL,
+    /* blendRead */ NULL,
 };

@@ -5008,10 +5008,10 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb, Object *ob)
     if (is_allocated) {
       /* All the fields has been properly allocated. */
     }
-    else if (mdi && mdi->blendReadData) {
+    else if (mdi && mdi->blendRead) {
       BlendDataReader reader;
       reader.fd = fd;
-      mdi->blendReadData(&reader, md);
+      mdi->blendRead(&reader, md);
     }
     else if (md->type == eModifierType_Fluid) {
 
@@ -8642,6 +8642,10 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
       break;
     case ID_SIM:
       direct_link_simulation(fd, (Simulation *)id);
+      break;
+    case ID_AC:
+    case ID_KE:
+      /* Handled in type info callback. */
       break;
   }
 

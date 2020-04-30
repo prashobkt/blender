@@ -110,7 +110,7 @@ static bool isDisabled(const Scene *scene, ModifierData *md, bool useRenderParam
   return get_render_subsurf_level(&scene->r, levels, useRenderParams != 0) == 0;
 }
 
-static void blendReadData(BlendDataReader *UNUSED(reader), ModifierData *md)
+static void blendRead(BlendDataReader *UNUSED(reader), ModifierData *md)
 {
   SubsurfModifierData *smd = (SubsurfModifierData *)md;
   smd->emCache = smd->mCache = NULL;
@@ -315,5 +315,5 @@ ModifierTypeInfo modifierType_Subsurf = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ freeRuntimeData,
     /* blendWrite */ NULL,
-    /* blendReadData */ blendReadData,
+    /* blendRead */ blendRead,
 };

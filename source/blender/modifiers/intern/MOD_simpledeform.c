@@ -480,5 +480,5 @@ ModifierTypeInfo modifierType_SimpleDeform = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ NULL,
-    /* blendReadData */ NULL,
+    /* blendRead */ NULL,
 };

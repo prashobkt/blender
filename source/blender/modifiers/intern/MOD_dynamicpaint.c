@@ -142,7 +142,7 @@ static void blendWrite(BlendWriter *writer, const ModifierData *md)
   }
 }
 
-static void blendReadData(BlendDataReader *reader, ModifierData *md)
+static void blendRead(BlendDataReader *reader, ModifierData *md)
 {
   DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
 
@@ -268,5 +268,5 @@ ModifierTypeInfo modifierType_DynamicPaint = {
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ freeRuntimeData,
     /* blendWrite */ blendWrite,
-    /* blendReadData */ blendReadData,
+    /* blendRead */ blendRead,
 };

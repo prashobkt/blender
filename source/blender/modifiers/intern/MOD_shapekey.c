@@ -148,5 +148,5 @@ ModifierTypeInfo modifierType_ShapeKey = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* blendWrite */ NULL,
-    /* blendReadData */ NULL,
+    /* blendRead */ NULL,
 };
