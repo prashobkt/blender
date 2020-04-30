@@ -74,7 +74,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  shaderfx_panel_register(region_type, "Flip", panel_draw);
+  shaderfx_panel_register(region_type, eShaderFxType_Flip, panel_draw);
 }
 
 ShaderFxTypeInfo shaderfx_Type_Flip = {

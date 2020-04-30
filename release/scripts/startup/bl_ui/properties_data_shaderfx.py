@@ -39,9 +39,6 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-
-        ob = context.object
-
         layout.operator_menu_enum("object.shaderfx_add", "type")
         layout.template_shaderfx()
 

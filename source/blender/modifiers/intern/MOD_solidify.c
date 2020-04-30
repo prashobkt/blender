@@ -242,7 +242,7 @@ static void vertex_group_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Solidify", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Solidify, panel_draw);
   modifier_subpanel_register(
       region_type, "solidify_normals", "Normals", NULL, normals_panel_draw, panel_type);
   modifier_subpanel_register(

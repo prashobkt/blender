@@ -373,7 +373,8 @@ static void mask_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Tint", panel_draw);
+  PanelType *panel_type = gpencil_modifier_panel_register(
+      region_type, eGpencilModifierType_Tint, panel_draw);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
       region_type, "tint_mask", "Influence", NULL, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,

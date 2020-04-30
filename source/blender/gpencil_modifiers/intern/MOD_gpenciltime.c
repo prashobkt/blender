@@ -249,7 +249,8 @@ static void mask_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "TimeOffset", panel_draw);
+  PanelType *panel_type = gpencil_modifier_panel_register(
+      region_type, eGpencilModifierType_Time, panel_draw);
   gpencil_modifier_subpanel_register(region_type,
                                      "timeoffset_custom_range",
                                      "",

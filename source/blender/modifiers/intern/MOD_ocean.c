@@ -661,7 +661,7 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Ocean", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Ocean, panel_draw);
 #ifdef WITH_OCEANSIM
   modifier_subpanel_register(
       region_type, "ocean_waves", "Waves", NULL, waves_panel_draw, panel_type);

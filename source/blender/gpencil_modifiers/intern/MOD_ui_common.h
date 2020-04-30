@@ -50,9 +50,9 @@ void gpencil_modifier_panel_get_property_pointers(const bContext *C,
                                                   struct PointerRNA *r_ob_ptr,
                                                   struct PointerRNA *r_ptr);
 
-struct PanelType *gpencil_modifier_panel_register(struct ARegionType *region_type,
-                                                  const char *modifier_type,
-                                                  PanelDrawFn draw);
+PanelType *gpencil_modifier_panel_register(struct ARegionType *region_type,
+                                           GpencilModifierType type,
+                                           PanelDrawFn draw);
 
 struct PanelType *gpencil_modifier_subpanel_register(struct ARegionType *region_type,
                                                      const char *name,

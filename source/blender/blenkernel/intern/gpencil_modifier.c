@@ -520,6 +520,17 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifierType_getInfo(GpencilModifierT
   }
 }
 
+/**
+ * Get the idname of the modifier type's panel, which was defined in the #panelRegister callback.
+ */
+void BKE_gpencil_modifierType_panelId(GpencilModifierType type, char *r_idname)
+{
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(type);
+
+  strcpy(r_idname, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX);
+  strcat(r_idname, mti->name);
+}
+
 void BKE_gpencil_modifier_copyData_generic(const GpencilModifierData *md_src,
                                            GpencilModifierData *md_dst)
 {
@@ -557,7 +568,7 @@ void BKE_gpencil_modifier_copyData_ex(GpencilModifierData *md,
 
   target->mode = md->mode;
   target->flag = md->flag;
-  target->ui_expand_flag = md->ui_expand_flag;
+  target->ui_expand_flag = md->ui_expand_flag; /* Expand the parent panel by default. */
 
   if (mti->copyData) {
     mti->copyData(md, target);

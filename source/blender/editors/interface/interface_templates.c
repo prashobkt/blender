@@ -1822,19 +1822,10 @@ void uiTemplatePathBuilder(uiLayout *layout,
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
-static PanelType *panel_type_from_modifier(ARegion *region, Link *md_link)
+static void modifier_panel_id(void *md_link, char *r_name)
 {
-  ARegionType *region_type = region->type;
   ModifierData *md = (ModifierData *)md_link;
-  ModifierType type = md->type;
-  const ModifierTypeInfo *mti = modifierType_getInfo(type);
-
-  /* Get the name of the modifier's panel type which was defined when the panel was registered. */
-  char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, MODIFIER_TYPE_PANEL_PREFIX);
-  strcat(panel_idname, mti->name);
-
-  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
+  modifierType_panelId(md->type, r_name);
 }
 
 void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
@@ -1844,19 +1835,21 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   Object *ob = CTX_data_active_object(C);
   ListBase *modifiers = &ob->modifiers;
 
-  bool panels_match = UI_panel_list_matches_data(region, modifiers, panel_type_from_modifier);
+  bool panels_match = UI_panel_list_matches_data(region, modifiers, modifier_panel_id);
 
   if (!panels_match) {
-    UI_panels_free_list(C, region);
+    UI_panels_free_instanced(C, region);
     ModifierData *md = modifiers->first;
     for (int i = 0; md; i++, md = md->next) {
       const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
       if (mti->panelRegister) {
-        PanelType *panel_type = panel_type_from_modifier(region, (Link *)md);
-        BLI_assert(panel_type != NULL);
+        char panel_idname[MAX_NAME];
+        modifier_panel_id((void *)md, panel_idname);
 
-        Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
-        UI_panel_set_expand_from_list_data(C, new_panel);
+        Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+        if (new_panel != NULL) {
+          UI_panel_set_expand_from_list_data(C, new_panel);
+        }
       }
     }
   }
@@ -1870,19 +1863,10 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
-static PanelType *panel_type_from_gpencil_modifier(ARegion *region, Link *md_link)
+static void gpencil_modifier_panel_id(void *md_link, char *r_name)
 {
-  ARegionType *region_type = region->type;
-  GpencilModifierData *md = (GpencilModifierData *)md_link;
-  GpencilModifierType type = md->type;
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(type);
-
-  /* Get the name of the modifier's panel type which was defined when the panel was registered. */
-  char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX);
-  strcat(panel_idname, mti->name);
-
-  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
+  ModifierData *md = (ModifierData *)md_link;
+  BKE_gpencil_modifierType_panelId(md->type, r_name);
 }
 
 void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
@@ -1892,20 +1876,21 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
   Object *ob = CTX_data_active_object(C);
   ListBase *modifiers = &ob->greasepencil_modifiers;
 
-  bool panels_match = UI_panel_list_matches_data(
-      region, modifiers, panel_type_from_gpencil_modifier);
+  bool panels_match = UI_panel_list_matches_data(region, modifiers, gpencil_modifier_panel_id);
 
   if (!panels_match) {
-    UI_panels_free_list(C, region);
+    UI_panels_free_instanced(C, region);
     GpencilModifierData *md = modifiers->first;
     for (int i = 0; md; i++, md = md->next) {
       const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
       if (mti->panelRegister) {
-        PanelType *panel_type = panel_type_from_gpencil_modifier(region, (Link *)md);
-        BLI_assert(panel_type != NULL);
+        char panel_idname[MAX_NAME];
+        BKE_gpencil_modifierType_panelId(md->type, panel_idname);
 
-        Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
-        UI_panel_set_expand_from_list_data(C, new_panel);
+        Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+        if (new_panel != NULL) {
+          UI_panel_set_expand_from_list_data(C, new_panel);
+        }
       }
     }
   }
@@ -1968,30 +1953,10 @@ static void set_constraint_expand_flag(const bContext *C, Panel *panel, short ex
   con->ui_expand_flag = expand_flag;
 }
 
-#define CONSTRAINT_TYPE_PANEL_PREFIX "OBJECT_PT_"
-
-/**
- * Get a constraint's panel type.
- *
- * \note: Constraint panel types are assumed to be named with the struct name field concatenated to
- * the defined prefix.
- */
-static PanelType *panel_type_from_constraint(ARegion *region, Link *con_link)
+static void constraint_panel_id(void *md_link, char *r_name)
 {
-  ARegionType *region_type = region->type;
-  bConstraint *con = (bConstraint *)con_link;
-  eBConstraint_Types type = con->type;
-
-  /* Get the name of the constraint's panel type which was defined when the panel was registered.
-   */
-  char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, CONSTRAINT_TYPE_PANEL_PREFIX);
-
-  /* ik_copy_pose ik_distance floor rigid_body_join */
-  const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(type);
-  strcat(panel_idname, cti->structName);
-
-  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
+  bConstraint *con = (bConstraint *)md_link;
+  BKE_constraint_panelId(con->type, r_name);
 }
 
 /**
@@ -2004,23 +1969,24 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
   Object *ob = CTX_data_active_object(C);
   ListBase *constraints = get_active_constraints(ob);
 
-  bool panels_match = UI_panel_list_matches_data(region, constraints, panel_type_from_constraint);
+  bool panels_match = UI_panel_list_matches_data(region, constraints, constraint_panel_id);
 
   if (!panels_match) {
-    UI_panels_free_list(C, region);
-    Link *con_link = constraints->first;
-    for (int i = 0; con_link; i++, con_link = con_link->next) {
-      PanelType *panel_type = panel_type_from_constraint(region, con_link);
-      BLI_assert(panel_type != NULL);
+    UI_panels_free_instanced(C, region);
+    bConstraint *con = constraints->first;
+    for (int i = 0; con; i++, con = con->next) {
+      char panel_idname[MAX_NAME];
+      constraint_panel_id((void *)con, panel_idname);
 
-      Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
+      Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+      if (new_panel != NULL) {
+        /* Set the list panel functionality function pointers since we don't do it with python. */
+        new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
+        new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
+        new_panel->type->reorder = constraint_reorder;
 
-      /* Set the list panel functionality function pointers since we don't do it with python. */
-      new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
-      new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
-      new_panel->type->reorder = constraint_reorder;
-
-      UI_panel_set_expand_from_list_data(C, new_panel);
+        UI_panel_set_expand_from_list_data(C, new_panel);
+      }
     }
   }
 }
@@ -2034,26 +2000,12 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
  * \{ */
 
 /**
- * Get an effect's panel type.
- *
- * \note: ShaderFx panel types are assumed to be named with the struct name field concatenated to
- * the defined prefix.
+ * Get the idname of the effect type's panel, which was defined in the #panelRegister callback.
  */
-static PanelType *panel_type_from_shaderfx(ARegion *region, Link *fx_link)
+static void shaderfx_panel_id(void *fx_v, char *r_idname)
 {
-  ARegionType *region_type = region->type;
-  ShaderFxData *fx = (ShaderFxData *)fx_link;
-  ShaderFxType type = fx->type;
-
-  /* Get the name of the effect's panel type which was defined when the panel was registered.
-   */
-  char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, SHADERFX_TYPE_PANEL_PREFIX);
-
-  const ShaderFxTypeInfo *fxti = BKE_shaderfxType_getInfo(type);
-  strcat(panel_idname, fxti->name);
-
-  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
+  ShaderFxData *fx = (ShaderFxData *)fx_v;
+  BKE_shaderfxType_panelId(fx->type, r_idname);
 }
 
 /**
@@ -2066,17 +2018,19 @@ void uiTemplateShaderFx(uiLayout *UNUSED(layout), bContext *C)
   Object *ob = CTX_data_active_object(C);
   ListBase *shaderfx = &ob->shader_fx;
 
-  bool panels_match = UI_panel_list_matches_data(region, shaderfx, panel_type_from_shaderfx);
+  bool panels_match = UI_panel_list_matches_data(region, shaderfx, shaderfx_panel_id);
 
   if (!panels_match) {
-    UI_panels_free_list(C, region);
-    Link *fx_link = shaderfx->first;
-    for (int i = 0; fx_link; i++, fx_link = fx_link->next) {
-      PanelType *panel_type = panel_type_from_shaderfx(region, fx_link);
-      BLI_assert(panel_type != NULL);
+    UI_panels_free_instanced(C, region);
+    ShaderFxData *fx = shaderfx->first;
+    for (int i = 0; fx; i++, fx = fx->next) {
+      char panel_idname[MAX_NAME];
+      shaderfx_panel_id((void *)fx, panel_idname);
 
-      Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
-      UI_panel_set_expand_from_list_data(C, new_panel);
+      Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+      if (new_panel != NULL) {
+        UI_panel_set_expand_from_list_data(C, new_panel);
+      }
     }
   }
 }

@@ -270,7 +270,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, "Smooth", panel_draw);
+  modifier_panel_register(region_type, eModifierType_Smooth, panel_draw);
 }
 
 ModifierTypeInfo modifierType_Smooth = {

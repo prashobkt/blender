@@ -189,13 +189,12 @@ static bool shaderfx_ui_poll(const bContext *C, PanelType *UNUSED(pt))
 /**
  * Create a panel in the context's region
  */
-PanelType *shaderfx_panel_register(ARegionType *region_type, const char *name, PanelDrawFn draw)
+PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, PanelDrawFn draw)
 {
 
   /* Get the name for the effect's panel. */
   char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, SHADERFX_TYPE_PANEL_PREFIX);
-  strcat(panel_idname, name);
+  BKE_shaderfxType_panelId(type, panel_idname);
 
   PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);
 
@@ -210,7 +209,7 @@ PanelType *shaderfx_panel_register(ARegionType *region_type, const char *name, P
 
   /* Give the panel the special flag that says it was built here and corresponds to a
    * shader effect rather than a PanelType. */
-  panel_type->flag = PNL_LAYOUT_HEADER_EXPAND | PNL_LIST;
+  panel_type->flag = PNL_LAYOUT_HEADER_EXPAND | PNL_DRAW_BOX | PNL_INSTANCED;
   panel_type->reorder = shaderfx_reorder;
   panel_type->get_list_data_expand_flag = get_shaderfx_expand_flag;
   panel_type->set_list_data_expand_flag = set_shaderfx_expand_flag;
@@ -242,7 +241,7 @@ PanelType *shaderfx_subpanel_register(ARegionType *region_type,
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = shaderfx_ui_poll;
-  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_LIST_SUBPANEL);
+  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_INSTANCED_SUBPANEL | PNL_DRAW_BOX);
 
   BLI_assert(parent != NULL);
   strcpy(panel_type->parent_id, parent->idname);

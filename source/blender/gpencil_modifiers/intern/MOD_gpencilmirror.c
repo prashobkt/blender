@@ -253,7 +253,8 @@ static void mask_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Mirror", panel_draw);
+  PanelType *panel_type = gpencil_modifier_panel_register(
+      region_type, eGpencilModifierType_Mirror, panel_draw);
   gpencil_modifier_subpanel_register(
       region_type, "mirror_mask", "Influence", NULL, mask_panel_draw, panel_type);
 }

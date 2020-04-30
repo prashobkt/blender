@@ -38,6 +38,9 @@ struct bPoseChannel;
 extern "C" {
 #endif
 
+/** For building the panel UI for constraints. */
+#define CONSTRAINT_TYPE_PANEL_PREFIX "OBJECT_PT_"
+
 /* special struct for use in constraint evaluation */
 typedef struct bConstraintOb {
   /** to get evaluated armature. */
@@ -135,6 +138,8 @@ typedef struct bConstraintTypeInfo {
 /* Function Prototypes for bConstraintTypeInfo's */
 const bConstraintTypeInfo *BKE_constraint_typeinfo_get(struct bConstraint *con);
 const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type);
+
+void BKE_constraint_panelId(int type, char *r_name);
 
 /* ---------------------------------------------------------------------------- */
 

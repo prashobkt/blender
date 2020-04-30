@@ -5124,6 +5124,20 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type)
   return NULL;
 }
 
+/**
+ * Get the idname of the constraint type's panel, which was defined elsewhere.
+ *
+ * \note: Constraint panel types are assumed to be named with the struct name field concatenated to
+ * the defined prefix.
+ */
+void BKE_constraint_panelId(int type, char *r_idname)
+{
+  const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(type);
+
+  strcpy(r_idname, CONSTRAINT_TYPE_PANEL_PREFIX);
+  strcat(r_idname, cti->structName);
+}
+
 /* This function should always be used to get the appropriate type-info, as it
  * has checks which prevent segfaults in some weird cases.
  */
@@ -5249,7 +5263,7 @@ static bConstraint *add_new_constraint_internal(const char *name, short type)
   /* Set up a generic constraint data-block. */
   con->type = type;
   con->flag |= CONSTRAINT_OVERRIDE_LIBRARY_LOCAL;
-  con->ui_expand_flag = 1;
+  con->ui_expand_flag = 1; /* Only expand the parent panel by default. */
   con->enforce = 1.0f;
 
   /* Only open the main panel when constraints are created, not the subpanels.

@@ -63,7 +63,7 @@ class ConstraintButtonsPanel(Panel):
     bl_region_type = 'WINDOW'
     bl_label = ""
     bl_context = "constraint"
-    bl_options = {'LIST', 'HEADER_LAYOUT_EXPAND'}
+    bl_options = {'INSTANCED', 'HEADER_LAYOUT_EXPAND', 'DRAW_BOX'}
 
     @staticmethod
     def draw_influence(layout, con):
@@ -146,7 +146,7 @@ class ConstraintButtonsSubPanel(Panel):
     bl_region_type = 'WINDOW'
     bl_label = ""
     bl_context = "constraint"
-    bl_options = {'LIST_SUBPANEL'}
+    bl_options = {'INSTANCED_SUBPANEL', 'DRAW_BOX'}
 
     def get_constraint(self, context):
         con = None

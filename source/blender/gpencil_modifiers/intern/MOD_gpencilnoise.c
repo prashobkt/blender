@@ -321,7 +321,8 @@ static void mask_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Noise", panel_draw);
+  PanelType *panel_type = gpencil_modifier_panel_register(
+      region_type, eGpencilModifierType_Noise, panel_draw);
   gpencil_modifier_subpanel_register(
       region_type, "noise_randomize", "", random_header_draw, random_panel_draw, panel_type);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(

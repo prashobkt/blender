@@ -228,7 +228,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  gpencil_modifier_panel_register(region_type, "Armature", panel_draw);
+  gpencil_modifier_panel_register(region_type, eGpencilModifierType_Armature, panel_draw);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Armature = {

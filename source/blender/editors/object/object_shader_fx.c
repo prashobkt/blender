@@ -528,7 +528,12 @@ void OBJECT_OT_shaderfx_move_down(wmOperatorType *ot)
   edit_shaderfx_properties(ot);
 }
 
-/************************ move down shaderfx operator *********************/
+/************************ move shaderfx to index operator *********************/
+
+static bool shaderfx_move_to_index_poll(bContext *C)
+{
+  return true;
+}
 
 static int shaderfx_move_to_index_exec(bContext *C, wmOperator *op)
 {
@@ -564,7 +569,7 @@ void OBJECT_OT_shaderfx_move_to_index(wmOperatorType *ot)
 
   ot->invoke = shaderfx_move_to_index_invoke;
   ot->exec = shaderfx_move_to_index_exec;
-  ot->poll = edit_shaderfx_poll;
+  ot->poll = shaderfx_move_to_index_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;

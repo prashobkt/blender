@@ -449,7 +449,8 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "DataTransfer", panel_draw);
+  PanelType *panel_type = modifier_panel_register(
+      region_type, eModifierType_DataTransfer, panel_draw);
   PanelType *vertex_panel = modifier_subpanel_register(region_type,
                                                        "datatransfer_vertex",
                                                        "",

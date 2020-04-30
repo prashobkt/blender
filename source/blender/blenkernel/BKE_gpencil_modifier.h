@@ -268,6 +268,7 @@ typedef struct GpencilModifierTypeInfo {
 void BKE_gpencil_modifier_init(void);
 
 const GpencilModifierTypeInfo *BKE_gpencil_modifierType_getInfo(GpencilModifierType type);
+void BKE_gpencil_modifierType_panelId(GpencilModifierType type, char *r_idname);
 struct GpencilModifierData *BKE_gpencil_modifier_new(int type);
 void BKE_gpencil_modifier_free_ex(struct GpencilModifierData *md, const int flag);
 void BKE_gpencil_modifier_free(struct GpencilModifierData *md);

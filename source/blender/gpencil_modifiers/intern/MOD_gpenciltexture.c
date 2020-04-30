@@ -194,13 +194,14 @@ static void mask_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = gpencil_modifier_panel_register(region_type, "Texture", panel_draw);
+  PanelType *panel_type = gpencil_modifier_panel_register(
+      region_type, eGpencilModifierType_Texture, panel_draw);
   gpencil_modifier_subpanel_register(
       region_type, "texture_mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Texture = {
-    /* name */ "Texture Mapping",
+    /* name */ "TextureMapping",
     /* structName */ "TextureGpencilModifierData",
     /* structSize */ sizeof(TextureGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,

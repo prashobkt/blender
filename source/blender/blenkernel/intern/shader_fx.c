@@ -165,6 +165,20 @@ const ShaderFxTypeInfo *BKE_shaderfxType_getInfo(ShaderFxType type)
   }
 }
 
+/**
+ * Get an effect's panel type.
+ *
+ * \note: ShaderFx panel types are assumed to be named with the struct name field concatenated to
+ * the defined prefix.
+ */
+void BKE_shaderfxType_panelId(ShaderFxType type, char *r_idname)
+{
+  const ShaderFxTypeInfo *fxi = BKE_shaderfxType_getInfo(type);
+
+  strcpy(r_idname, SHADERFX_TYPE_PANEL_PREFIX);
+  strcat(r_idname, fxi->name);
+}
+
 void BKE_shaderfx_copyData_generic(const ShaderFxData *fx_src, ShaderFxData *fx_dst)
 {
   const ShaderFxTypeInfo *fxi = BKE_shaderfxType_getInfo(fx_src->type);

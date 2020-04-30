@@ -560,7 +560,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   memset(&region->drawrct, 0, sizeof(region->drawrct));
 
-  UI_blocklist_free_inactive(C, region);
+  UI_blocklist_free_inactive(C, &region->uiblocks);
 
   if (area) {
     const bScreen *screen = WM_window_get_active_screen(win);
@@ -2368,7 +2368,7 @@ static void ed_panel_draw(const bContext *C,
   char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
   strncpy(block_name, pt->idname, BKE_ST_MAXNAME);
   if (unique_panel_str != NULL) {
-    /* List panels should have already been added at this point. */
+    /* Instanced panels should have already been added at this point. */
     strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
   }
   uiBlock *block = UI_block_begin(C, region, block_name, UI_EMBOSS);
@@ -2401,7 +2401,6 @@ static void ed_panel_draw(const bContext *C,
 
   if (pt->draw_header && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
     int labelx, labely;
-
     UI_panel_label_offset(block, &labelx, &labely);
 
     /* Unusual case: Use expanding layout (buttons stretch to available width). */
@@ -2608,6 +2607,7 @@ void ED_region_panels_layout_ex(const bContext *C,
   }
 
   w -= margin_x;
+  int w_box_panel = w - UI_PANEL_BOX_STYLE_MARGIN * 2.0f;
 
   /* create panels */
   UI_panels_begin(C, region);
@@ -2615,12 +2615,12 @@ void ED_region_panels_layout_ex(const bContext *C,
   /* set view2d view matrix  - UI_block_begin() stores it */
   UI_view2d_view_ortho(v2d);
 
-  bool has_recreate_panel = false;
+  bool has_instanced_panel = false;
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
 
-    if (pt->flag & PNL_LIST) {
-      has_recreate_panel = true;
+    if (pt->flag & PNL_INSTANCED) {
+      has_instanced_panel = true;
       continue;
     }
     Panel *panel = UI_panel_find_by_type(&region->panels, pt);
@@ -2636,15 +2636,23 @@ void ED_region_panels_layout_ex(const bContext *C,
       update_tot_size = false;
     }
 
-    ed_panel_draw(C, area, region, &region->panels, pt, panel, w, em, vertical, NULL);
+    ed_panel_draw(C,
+                  area,
+                  region,
+                  &region->panels,
+                  pt,
+                  panel,
+                  (pt->flag & PNL_DRAW_BOX) ? w_box_panel : w,
+                  em,
+                  vertical,
+                  NULL);
   }
 
-  if (has_recreate_panel) {
-    /* List panels have some margin to differentiate them from regular panels. */
-    w -= UI_LIST_PANEL_MARGIN * 2.0f;
+  /* Draw "polyinstanced" panels that don't have a 1 to 1 correspondence with their types. */
+  if (has_instanced_panel) {
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
-        if (panel->type->flag & PNL_LIST) {
+        if (panel->type->flag & PNL_INSTANCED) {
           if (panel && UI_panel_is_dragging(panel)) {
             /* Prevent View2d.tot rectangle size changes while dragging panels. */
             update_tot_size = false;
@@ -2654,14 +2662,13 @@ void ED_region_panels_layout_ex(const bContext *C,
            * panel of the same type might be found. */
           char unique_panel_str[8];
           UI_list_panel_unique_str(panel, unique_panel_str);
-
           ed_panel_draw(C,
                         area,
                         region,
                         &region->panels,
                         panel->type,
                         panel,
-                        w,
+                        (panel->type->flag & PNL_DRAW_BOX) ? w_box_panel : w,
                         em,
                         vertical,
                         unique_panel_str);

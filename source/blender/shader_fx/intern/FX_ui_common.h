@@ -23,8 +23,6 @@
 
 #include "FX_shader_types.h"
 
-#include "DEG_depsgraph_build.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,9 +40,7 @@ void shaderfx_panel_get_property_pointers(const bContext *C,
                                           struct PointerRNA *r_ob_ptr,
                                           struct PointerRNA *r_ptr);
 
-struct PanelType *shaderfx_panel_register(struct ARegionType *region_type,
-                                          const char *modifier_type,
-                                          PanelDrawFn draw);
+PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, PanelDrawFn draw);
 
 struct PanelType *shaderfx_subpanel_register(struct ARegionType *region_type,
                                              const char *name,

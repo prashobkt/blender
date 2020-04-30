@@ -987,7 +987,7 @@ static void uv_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "Array", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Array, panel_draw);
   modifier_subpanel_register(region_type,
                              "array_relative_offset",
                              "",

@@ -323,7 +323,7 @@ static void transform_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = modifier_panel_register(region_type, "UVWarp", panel_draw);
+  PanelType *panel_type = modifier_panel_register(region_type, eModifierType_UVWarp, panel_draw);
   modifier_subpanel_register(
       region_type, "uvwarp_offset", "Transform", NULL, transform_panel_draw, panel_type);
 }

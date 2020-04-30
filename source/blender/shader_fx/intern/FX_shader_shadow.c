@@ -175,7 +175,7 @@ static void wave_panel_draw(const bContext *C, Panel *panel)
 
 static void panelRegister(ARegionType *region_type)
 {
-  PanelType *panel_type = shaderfx_panel_register(region_type, "Shadow", panel_draw);
+  PanelType *panel_type = shaderfx_panel_register(region_type, eShaderFxType_Shadow, panel_draw);
   shaderfx_subpanel_register(
       region_type, "shadow_blur", "Blur", NULL, blur_panel_draw, panel_type);
   shaderfx_subpanel_register(
