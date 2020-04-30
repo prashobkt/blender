@@ -2555,6 +2555,7 @@ void ED_region_panels_layout_ex(const bContext *C,
   int margin_x = 0;
   const bool region_layout_based = region->flag & RGN_FLAG_DYNAMIC_SIZE;
   const bool is_context_new = (contextnr != -1) ? UI_view2d_tab_set(v2d, contextnr) : false;
+  bool update_tot_size = true;
 
   /* before setting the view */
   if (vertical) {
@@ -2630,6 +2631,11 @@ void ED_region_panels_layout_ex(const bContext *C,
       }
     }
 
+    if (panel && UI_panel_is_dragging(panel)) {
+      /* Prevent View2d.tot rectangle size changes while dragging panels. */
+      update_tot_size = false;
+    }
+
     ed_panel_draw(C,
                   area,
                   region,
@@ -2647,11 +2653,15 @@ void ED_region_panels_layout_ex(const bContext *C,
     for (Panel *panel = region->panels.first; panel; panel = panel->next) {
       if (panel->type != NULL) { /* Some panels don't have a type.. */
         if (panel->type->flag & PNL_INSTANCED) {
+          if (panel && UI_panel_is_dragging(panel)) {
+            /* Prevent View2d.tot rectangle size changes while dragging panels. */
+            update_tot_size = false;
+          }
+
           /* Use a unique identifier for list panels, otherwise an old block for a different
            * panel of the same type might be found. */
           char unique_panel_str[8];
           UI_list_panel_unique_str(panel, unique_panel_str);
-
           ed_panel_draw(C,
                         area,
                         region,
@@ -2719,8 +2729,10 @@ void ED_region_panels_layout_ex(const bContext *C,
     y = -y;
   }
 
-  /* this also changes the 'cur' */
-  UI_view2d_totRect_set(v2d, x, y);
+  if (update_tot_size) {
+    /* this also changes the 'cur' */
+    UI_view2d_totRect_set(v2d, x, y);
+  }
 
   if (use_category_tabs) {
     region->runtime.category = category;
