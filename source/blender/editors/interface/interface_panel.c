@@ -244,7 +244,7 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
 
 /********* Functions for recreate list panels. ***********/
 
-static Panel *UI_panel_add_list_ex(
+static Panel *UI_panel_add_recreate_list_ex(
     ScrArea *area, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
   Panel *panel = MEM_callocN(sizeof(Panel), "list panel");
@@ -264,7 +264,7 @@ static Panel *UI_panel_add_list_ex(
    * function to creat them, as UI_panel_begin does other things we don't need to do. */
   for (LinkData *link = panel_type->children.first; link; link = link->next) {
     PanelType *child = link->data;
-    UI_panel_add_list_ex(area, region, &panel->children, child, list_index);
+    UI_panel_add_recreate_list_ex(area, region, &panel->children, child, list_index);
   }
 
   /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
@@ -311,11 +311,11 @@ Panel *UI_panel_add_recreate_list(
       &region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
 
   if (panel_type == NULL) {
-    printf("ERROR: Panel type '%s' not found.\n", panel_idname);
+    printf("Panel type '%s' not found.\n", panel_idname);
     return NULL;
   }
 
-  return UI_panel_add_list_ex(area, region, panels, panel_type, list_index);
+  return UI_panel_add_recreate_list_ex(area, region, panels, panel_type, list_index);
 }
 
 /**
