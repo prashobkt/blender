@@ -1251,7 +1251,8 @@ bool BKE_gpencil_stroke_trim(bGPDstroke *gps)
     return false;
   }
   bool intersect = false;
-  int start, end;
+  int start = 0;
+  int end = 0;
   float point[3];
   /* loop segments from start until we have an intersection */
   for (int i = 0; i < gps->totpoints - 2; i++) {
@@ -2269,7 +2270,7 @@ void BKE_gpencil_convert_mesh(Main *bmain,
       }
       else {
         /* Create all materials for fill. */
-        for (int i = 0; i < ob_mesh->totcol; i++) {
+        for (i = 0; i < ob_mesh->totcol; i++) {
           Material *ma = BKE_object_material_get(ob_mesh, i + 1);
           float color[4];
           copy_v3_v3(color, &ma->r);
