@@ -239,7 +239,7 @@ enum {
 
 #define UI_PANEL_CATEGORY_MARGIN_WIDTH (U.widget_unit * 1.0f)
 
-#define UI_LIST_PANEL_MARGIN (U.widget_unit * 0.15f)
+#define UI_PANEL_BOX_STYLE_MARGIN (U.widget_unit * 0.15f)
 
 /* but->drawflag - these flags should only affect how the button is drawn. */
 /* Note: currently, these flags _are not passed_ to the widget's state() or draw() functions
@@ -1694,13 +1694,13 @@ void UI_panel_category_draw_all(struct ARegion *region, const char *category_id_
 
 struct PanelType *UI_paneltype_find(int space_id, int region_id, const char *idname);
 
-/* Recreated list panels for representing a list. */
-struct Panel *UI_panel_add_list(struct ScrArea *area,
-                                struct ARegion *region,
-                                struct ListBase *panels,
-                                char *panel_idname,
-                                int list_index);
-void UI_panels_free_list(struct bContext *C, struct ARegion *region);
+/* Recreated recreate list panels for representing a list. */
+struct Panel *UI_panel_add_recreate_list(struct ScrArea *area,
+                                         struct ARegion *region,
+                                         struct ListBase *panels,
+                                         char *panel_idname,
+                                         int list_index);
+void UI_panels_free_recreate_list(struct bContext *C, struct ARegion *region);
 
 #define LIST_PANEL_UNIQUE_STR_LEN 4
 void UI_list_panel_unique_str(struct Panel *panel, char *r_name);
