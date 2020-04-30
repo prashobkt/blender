@@ -1912,29 +1912,10 @@ static void set_constraint_expand_flag(const bContext *C, Panel *panel, short ex
   con->ui_expand_flag = expand_flag;
 }
 
-#define CONSTRAINT_TYPE_PANEL_PREFIX "OBJECT_PT_"
-
-/**
- * Get a constraint's panel type.
- *
- * \note: Constraint panel types are assumed to be named with the struct name field concatenated to
- * the defined prefix.
- */
-static PanelType *panel_type_from_constraint(ARegion *region, Link *con_link)
+static void constraint_panel_id(void *md_link, char *r_name)
 {
-  ARegionType *region_type = region->type;
-  bConstraint *con = (bConstraint *)con_link;
-  eBConstraint_Types type = con->type;
-
-  /* Get the name of the modifier's panel type which was defined when the panel was registered. */
-  char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, CONSTRAINT_TYPE_PANEL_PREFIX);
-
-  /* ik_copy_pose ik_distance floor rigid_body_join */
-  const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(type);
-  strcat(panel_idname, cti->structName);
-
-  return BLI_findstring(&region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
+  bConstraint *con = (bConstraint *)md_link;
+  BKE_constraint_panelId(con->type, r_name);
 }
 
 /**
@@ -1947,23 +1928,24 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
   Object *ob = CTX_data_active_object(C);
   ListBase *constraints = get_active_constraints(ob);
 
-  bool panels_match = UI_panel_list_matches_data(region, constraints, panel_type_from_constraint);
+  bool panels_match = UI_panel_list_matches_data(region, constraints, constraint_panel_id);
 
   if (!panels_match) {
-    UI_panels_free_list(C, region);
-    Link *con_link = constraints->first;
-    for (int i = 0; con_link; i++, con_link = con_link->next) {
-      PanelType *panel_type = panel_type_from_constraint(region, con_link);
-      BLI_assert(panel_type != NULL);
+    UI_panels_free_instanced(C, region);
+    bConstraint *con = constraints->first;
+    for (int i = 0; con; i++, con = con->next) {
+      char panel_idname[MAX_NAME];
+      constraint_panel_id((void *)con, panel_idname);
 
-      Panel *new_panel = UI_panel_add_list(sa, region, &region->panels, panel_type, i);
+      Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+      if (new_panel) {
+        /* Set the list panel functionality function pointers since we don't do it with python. */
+        new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
+        new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
+        new_panel->type->reorder = constraint_reorder;
 
-      /* Set the list panel functionality function pointers since we don't do it with python. */
-      new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
-      new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
-      new_panel->type->reorder = constraint_reorder;
-
-      UI_panel_set_expand_from_list_data(C, new_panel);
+        UI_panel_set_expand_from_list_data(C, new_panel);
+      }
     }
   }
 }
