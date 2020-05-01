@@ -208,8 +208,7 @@ static void data_panel_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Mirror, panel_draw);
-  modifier_subpanel_register(
-      region_type, "mirror_data", "Data", NULL, data_panel_draw, panel_type);
+  modifier_subpanel_register(region_type, "data", "Data", NULL, data_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Mirror = {

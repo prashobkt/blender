@@ -371,13 +371,13 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_MeshCache, panel_draw);
   modifier_subpanel_register(region_type,
-                             "hook_time_remapping",
+                             "time_remapping",
                              "Time Remapping",
                              NULL,
                              time_remapping_panel_draw,
                              panel_type);
   modifier_subpanel_register(
-      region_type, "hook_axis_mapping", "Axis Mapping", NULL, axis_mapping_panel_draw, panel_type);
+      region_type, "axis_mapping", "Axis Mapping", NULL, axis_mapping_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_MeshCache = {

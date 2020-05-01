@@ -1008,7 +1008,7 @@ static void panelRegister(ARegionType *region_type)
                              panel_type);
   modifier_subpanel_register(
       region_type, "array_merge", "", symmetry_panel_header_draw, symmetry_panel_draw, panel_type);
-  modifier_subpanel_register(region_type, "array_uv", "UVs", NULL, uv_panel_draw, panel_type);
+  modifier_subpanel_register(region_type, "uv", "UVs", NULL, uv_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Array = {

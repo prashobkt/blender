@@ -676,14 +676,9 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_ParticleInstance, panel_draw);
-  modifier_subpanel_register(region_type,
-                             "particleinstance_paths",
-                             "",
-                             path_panel_draw_header,
-                             path_panel_draw,
-                             panel_type);
   modifier_subpanel_register(
-      region_type, "particleinstance_layers", "Layers", NULL, layers_panel_draw, panel_type);
+      region_type, "paths", "", path_panel_draw_header, path_panel_draw, panel_type);
+  modifier_subpanel_register(region_type, "layers", "Layers", NULL, layers_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_ParticleInstance = {

@@ -691,12 +691,8 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_WeightVGProximity, panel_draw);
-  modifier_subpanel_register(region_type,
-                             "vertexweightproximity_influence",
-                             "Influence",
-                             NULL,
-                             influence_panel_draw,
-                             panel_type);
+  modifier_subpanel_register(
+      region_type, "influence", "Influence", NULL, influence_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_WeightVGProximity = {
