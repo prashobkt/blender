@@ -942,7 +942,7 @@ static void object_offset_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_object_offset"));
-  uiItemR(col, &ptr, "offset_object", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "offset_object", 0, IFACE_("Object"), ICON_NONE);
 }
 
 static void symmetry_panel_header_draw(const bContext *C, Panel *panel)
@@ -989,26 +989,22 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Array, panel_draw);
   modifier_subpanel_register(region_type,
-                             "array_relative_offset",
+                             "relative_offset",
                              "",
                              relative_offset_header_draw,
                              relative_offset_draw,
                              panel_type);
   modifier_subpanel_register(region_type,
-                             "array_constant_offset",
+                             "constant_offset",
                              "",
                              constant_offset_header_draw,
                              constant_offset_draw,
                              panel_type);
-  modifier_subpanel_register(region_type,
-                             "array_object_offset",
-                             "",
-                             object_offset_header_draw,
-                             object_offset_draw,
-                             panel_type);
   modifier_subpanel_register(
-      region_type, "array_merge", "", symmetry_panel_header_draw, symmetry_panel_draw, panel_type);
-  modifier_subpanel_register(region_type, "array_uv", "UVs", NULL, uv_panel_draw, panel_type);
+      region_type, "object_offset", "", object_offset_header_draw, object_offset_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "merge", "", symmetry_panel_header_draw, symmetry_panel_draw, panel_type);
+  modifier_subpanel_register(region_type, "uv", "UVs", NULL, uv_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Array = {

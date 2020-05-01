@@ -404,7 +404,7 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Subsurf, panel_draw);
   modifier_subpanel_register(
-      region_type, "multires_advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
+      region_type, "advanced", "Advanced", NULL, advanced_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Subsurf = {

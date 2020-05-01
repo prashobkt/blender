@@ -663,13 +663,12 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Ocean, panel_draw);
 #ifdef WITH_OCEANSIM
+  modifier_subpanel_register(region_type, "waves", "Waves", NULL, waves_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "ocean_waves", "Waves", NULL, waves_panel_draw, panel_type);
+      region_type, "foam", "", foam_panel_draw_header, foam_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "ocean_foam", "", foam_panel_draw_header, foam_panel_draw, panel_type);
-  modifier_subpanel_register(
-      region_type, "ocean_spectrum", "Spectrum", NULL, spectrum_panel_draw, panel_type);
-  modifier_subpanel_register(region_type, "ocean_bake", "Bake", NULL, bake_panel_draw, panel_type);
+      region_type, "spectrum", "Spectrum", NULL, spectrum_panel_draw, panel_type);
+  modifier_subpanel_register(region_type, "bake", "Bake", NULL, bake_panel_draw, panel_type);
 #endif /* WITH_OCEANSIM */
 }
 

@@ -451,49 +451,33 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_DataTransfer, panel_draw);
-  PanelType *vertex_panel = modifier_subpanel_register(region_type,
-                                                       "datatransfer_vertex",
-                                                       "",
-                                                       vertex_panel_draw_header,
-                                                       vertex_panel_draw,
-                                                       panel_type);
-  modifier_subpanel_register(region_type,
-                             "datatransfer_vertex_vgroup",
-                             "Vertex Groups",
-                             NULL,
-                             vertex_vgroup_panel_draw,
-                             vertex_panel);
+  PanelType *vertex_panel = modifier_subpanel_register(
+      region_type, "vertex", "", vertex_panel_draw_header, vertex_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "vertex_vgroup", "Vertex Groups", NULL, vertex_vgroup_panel_draw, vertex_panel);
 
   modifier_subpanel_register(
-      region_type, "datatransfer_edge", "", edge_panel_draw_header, edge_panel_draw, panel_type);
+      region_type, "edge", "", edge_panel_draw_header, edge_panel_draw, panel_type);
 
   PanelType *face_corner_panel = modifier_subpanel_register(region_type,
-                                                            "data_transfer_face_corner",
+                                                            "face_corner",
                                                             "",
                                                             face_corner_panel_draw_header,
                                                             face_corner_panel_draw,
                                                             panel_type);
   modifier_subpanel_register(region_type,
-                             "datatransfer_face_corner_vcol",
+                             "face_corner_vcol",
                              "Vertex Colors",
                              NULL,
                              face_corner_vcol_panel_draw,
                              face_corner_panel);
-  modifier_subpanel_register(region_type,
-                             "datatransfer_face_corner_uv",
-                             "UVs",
-                             NULL,
-                             face_corner_uv_panel_draw,
-                             face_corner_panel);
+  modifier_subpanel_register(
+      region_type, "face_corner_uv", "UVs", NULL, face_corner_uv_panel_draw, face_corner_panel);
 
   modifier_subpanel_register(
-      region_type, "datatransfer_face", "", face_panel_draw_header, face_panel_draw, panel_type);
-  modifier_subpanel_register(region_type,
-                             "datatransfer_advanced",
-                             "Topology Mapping",
-                             NULL,
-                             advanced_panel_draw,
-                             panel_type);
+      region_type, "face", "", face_panel_draw_header, face_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "advanced", "Topology Mapping", NULL, advanced_panel_draw, panel_type);
 }
 
 #undef HIGH_POLY_WARNING

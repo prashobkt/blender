@@ -489,10 +489,10 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Wave, panel_draw);
   modifier_subpanel_register(
-      region_type, "wave_position", "Start Position", NULL, position_panel_draw, panel_type);
-  modifier_subpanel_register(region_type, "wave_time", "Time", NULL, time_panel_draw, panel_type);
+      region_type, "position", "Start Position", NULL, position_panel_draw, panel_type);
+  modifier_subpanel_register(region_type, "time", "Time", NULL, time_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "texture_position", "Texture", NULL, texture_panel_draw, panel_type);
+      region_type, "texture", "Texture", NULL, texture_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Wave = {
