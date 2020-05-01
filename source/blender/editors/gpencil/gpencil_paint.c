@@ -3337,11 +3337,6 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
     interp_v4_v4v4(
         pt->vert_color, pt_before->vert_color, pt_prev->vert_color, stepcolor * (i + 1));
 
-    /* Apply angle of stroke to brush size. */
-    if (brush_settings->draw_angle_factor != 0.0f) {
-      gp_brush_angle_segment(p, pt_prev, pt);
-    }
-
     /* Apply other randomness. */
     gp_apply_randomness(p, brush_settings, pt, false, false, true);
 
