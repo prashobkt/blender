@@ -413,9 +413,9 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Bevel, panel_draw);
   PanelType *bevel_profil_panel = modifier_subpanel_register(
-      region_type, "bevel_profile", "Profile", NULL, profile_panel_draw, panel_type);
+      region_type, "profile", "Profile", NULL, profile_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
-                             "bevel_custom_profile",
+                             "custom",
                              "",
                              custom_profile_panel_draw_header,
                              custom_profile_panel_draw,

@@ -391,13 +391,9 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_WeightVGEdit, panel_draw);
   modifier_subpanel_register(
-      region_type, "vertexweightedit_falloff", "Falloff", NULL, falloff_panel_draw, panel_type);
-  modifier_subpanel_register(region_type,
-                             "vertexweightedit_influence",
-                             "Influence",
-                             NULL,
-                             influence_panel_draw,
-                             panel_type);
+      region_type, "falloff", "Falloff", NULL, falloff_panel_draw, panel_type);
+  modifier_subpanel_register(
+      region_type, "influence", "Influence", NULL, influence_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_WeightVGEdit = {
