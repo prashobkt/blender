@@ -942,7 +942,7 @@ static void object_offset_draw(const bContext *C, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_object_offset"));
-  uiItemR(col, &ptr, "offset_object", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "offset_object", 0, IFACE_("Object"), ICON_NONE);
 }
 
 static void symmetry_panel_header_draw(const bContext *C, Panel *panel)
