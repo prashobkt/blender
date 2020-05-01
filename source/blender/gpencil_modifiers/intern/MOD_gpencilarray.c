@@ -450,27 +450,23 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Array, panel_draw);
   gpencil_modifier_subpanel_register(region_type,
-                                     "array_relative_offset",
+                                     "relative_offset",
                                      "",
                                      relative_offset_header_draw,
                                      relative_offset_draw,
                                      panel_type);
   gpencil_modifier_subpanel_register(region_type,
-                                     "array_constant_offset",
+                                     "constant_offset",
                                      "",
                                      constant_offset_header_draw,
                                      constant_offset_draw,
                                      panel_type);
-  gpencil_modifier_subpanel_register(region_type,
-                                     "array_object_offset",
-                                     "",
-                                     object_offset_header_draw,
-                                     object_offset_draw,
-                                     panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "array_randomize", "Randomize", NULL, random_panel_draw, panel_type);
+      region_type, "object_offset", "", object_offset_header_draw, object_offset_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "array_mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "randomize", "Randomize", NULL, random_panel_draw, panel_type);
+  gpencil_modifier_subpanel_register(
+      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Array = {

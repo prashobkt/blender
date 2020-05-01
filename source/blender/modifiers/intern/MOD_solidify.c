@@ -244,15 +244,15 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Solidify, panel_draw);
   modifier_subpanel_register(
-      region_type, "solidify_normals", "Normals", NULL, normals_panel_draw, panel_type);
+      region_type, "normals", "Normals", NULL, normals_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_materials", "Materials", NULL, materials_panel_draw, panel_type);
+      region_type, "materials", "Materials", NULL, materials_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_edge_data", "Edge Data", NULL, edge_data_panel_draw, panel_type);
+      region_type, "edge_data", "Edge Data", NULL, edge_data_panel_draw, panel_type);
   modifier_subpanel_register(
-      region_type, "solidify_clamp", "Thickness Clamp", NULL, clamp_panel_draw, panel_type);
+      region_type, "clamp", "Thickness Clamp", NULL, clamp_panel_draw, panel_type);
   modifier_subpanel_register(region_type,
-                             "solidify_vertex_groups",
+                             "vertex_groups",
                              "Output Vertex Groups",
                              NULL,
                              vertex_group_panel_draw,

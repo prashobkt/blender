@@ -536,12 +536,8 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_SimpleDeform, panel_draw);
-  modifier_subpanel_register(region_type,
-                             "simpledeform_restrictions",
-                             "Restrictions",
-                             NULL,
-                             restrictions_panel_draw,
-                             panel_type);
+  modifier_subpanel_register(
+      region_type, "restrictions", "Restrictions", NULL, restrictions_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_SimpleDeform = {

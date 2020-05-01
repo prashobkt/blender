@@ -328,7 +328,7 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Build, panel_draw);
   modifier_subpanel_register(
-      region_type, "build_randomize", "", random_panel_header_draw, random_panel_draw, panel_type);
+      region_type, "randomize", "", random_panel_header_draw, random_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_Build = {

@@ -324,11 +324,11 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Noise, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "noise_randomize", "", random_header_draw, random_panel_draw, panel_type);
+      region_type, "randomize", "", random_header_draw, random_panel_draw, panel_type);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "noise_mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,
-                                     "noise_curve",
+                                     "curve",
                                      "",
                                      gpencil_modifier_curve_header_draw,
                                      gpencil_modifier_curve_panel_draw,

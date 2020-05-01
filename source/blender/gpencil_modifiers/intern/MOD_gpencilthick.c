@@ -202,9 +202,9 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Thick, panel_draw);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "thicknes_mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,
-                                     "thickness_curve",
+                                     "curve",
                                      "",
                                      gpencil_modifier_curve_header_draw,
                                      gpencil_modifier_curve_panel_draw,

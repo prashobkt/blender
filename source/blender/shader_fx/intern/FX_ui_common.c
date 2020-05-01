@@ -219,6 +219,12 @@ PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, 
   return panel_type;
 }
 
+/**
+ * Add a child panel to the parent.
+ *
+ * \note To create the panel type's idname, it appends the \a name argument to the \a parent's
+ * idname.
+ */
 PanelType *shaderfx_subpanel_register(ARegionType *region_type,
                                       const char *name,
                                       const char *label,
@@ -228,7 +234,8 @@ PanelType *shaderfx_subpanel_register(ARegionType *region_type,
 {
   /* Create the subpanel's ID name. */
   char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, SHADERFX_TYPE_PANEL_PREFIX);
+  strcpy(panel_idname, parent->idname);
+  strcat(panel_idname, "_");
   strcat(panel_idname, name);
 
   PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);

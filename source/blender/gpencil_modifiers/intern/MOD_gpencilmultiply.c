@@ -366,9 +366,9 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Multiply, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "multiplestrokes_fade", "", fade_header_draw, fade_panel_draw, panel_type);
+      region_type, "fade", "", fade_header_draw, fade_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "multiplestrokes_mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {

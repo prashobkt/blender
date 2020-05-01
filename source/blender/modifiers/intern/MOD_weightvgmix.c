@@ -479,12 +479,8 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_WeightVGMix, panel_draw);
-  modifier_subpanel_register(region_type,
-                             "vertexweightmix_influence",
-                             "Influence",
-                             NULL,
-                             influence_panel_draw,
-                             panel_type);
+  modifier_subpanel_register(
+      region_type, "influence", "Influence", NULL, influence_panel_draw, panel_type);
 }
 
 ModifierTypeInfo modifierType_WeightVGMix = {

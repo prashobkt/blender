@@ -197,7 +197,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Texture, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "texture_mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Texture = {

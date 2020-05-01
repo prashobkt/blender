@@ -91,7 +91,7 @@ static void blur_panel_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = shaderfx_panel_register(region_type, eShaderFxType_Rim, panel_draw);
-  shaderfx_subpanel_register(region_type, "rim_blur", "Blur", NULL, blur_panel_draw, panel_type);
+  shaderfx_subpanel_register(region_type, "blur", "Blur", NULL, blur_panel_draw, panel_type);
 }
 
 ShaderFxTypeInfo shaderfx_Type_Rim = {
