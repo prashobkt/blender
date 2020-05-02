@@ -31,8 +31,13 @@ typedef struct BlendExpander BlendExpander;
 /* API for file writing.
  **********************************************/
 
-void BLO_write_raw(BlendWriter *writer, int size_in_bytes, const void *data_ptr);
+/**
+ * When NULL is passed as data_ptr, nothing is done.
+ */
 
+/**
+ * Write a single DNA struct to the file.
+ */
 void BLO_write_struct_by_name(BlendWriter *writer, const char *struct_name, const void *data_ptr);
 void BLO_write_struct_array_by_name(BlendWriter *writer,
                                     const char *struct_name,
@@ -68,12 +73,25 @@ int BLO_get_struct_id_by_name(BlendWriter *writer, const char *struct_name);
 #define BLO_write_id_struct(writer, struct_name, id_address, id) \
   blo_write_id_struct(writer, BLO_get_struct_id(writer, struct_name), id_address, id)
 
+/**
+ * Write the data in the given memory buffer to the file. The pointer is used to identify the
+ * buffer when the file is loaded.
+ */
+void BLO_write_raw(BlendWriter *writer, int size_in_bytes, const void *data_ptr);
+
+/**
+ * Wrappers around BLO_write_raw that are more convenient in many cases.
+ */
 void BLO_write_int32_array(BlendWriter *writer, int size, const int32_t *data_ptr);
 void BLO_write_uint32_array(BlendWriter *writer, int size, const uint32_t *data_ptr);
 void BLO_write_float_array(BlendWriter *writer, int size, const float *data_ptr);
 void BLO_write_float3_array(BlendWriter *writer, int size, const float *data_ptr);
 void BLO_write_string(BlendWriter *writer, const char *str);
 
+/**
+ * Sometimes different data is written depending on whether the file is saved to disk or used for
+ * undo. This function returns true when the current file-writing is done for undo.
+ */
 bool BLO_write_is_undo(BlendWriter *writer);
 
 /* API for data pointer reading.
