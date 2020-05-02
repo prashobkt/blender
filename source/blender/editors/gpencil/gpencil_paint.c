@@ -3235,10 +3235,8 @@ static void gp_brush_angle_segment(tGPsdata *p, tGPspoint *pt_prev, tGPspoint *p
   mvec[1] = pt->y - pt_prev->y;
   normalize_v2(mvec);
   fac = 1.0f - fabs(dot_v2v2(v0, mvec)); /* 0.0 to 1.0 */
-  /* interpolate with previous point for smoother transitions */
-  pt->pressure = interpf(pt->pressure - (sen * fac), pt_prev->pressure, 0.5f);
-
-  CLAMP(pt->pressure, pt_prev->pressure * 0.5f, 1.0f);
+  pt->pressure = pt->pressure - (sen * fac);
+  CLAMP(pt->pressure, pt_prev->pressure * 0.1f, 1.0f);
 }
 
 /* Add arc points between two mouse events using the previous segment to determine the vertice of
@@ -3338,7 +3336,7 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
     /* Apply angle of stroke to brush size to interpolated points but slightly attenuated.. */
     if (brush_settings->draw_angle_factor != 0.0f) {
       gp_brush_angle_segment(p, pt_step, pt);
-      CLAMP(pt->pressure, pt_prev->pressure * 0.8f, 1.0f);
+      CLAMP(pt->pressure, pt_prev->pressure * 0.6f, 1.0f);
       /* Use the previous interpolated point for next segment. */
       pt_step = pt;
     }
