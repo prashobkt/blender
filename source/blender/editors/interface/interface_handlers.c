@@ -753,10 +753,13 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
     after->rnapoin = but->rnapoin;
     after->rnaprop = but->rnaprop;
 
-    after->search_arg_free_func = but->search_arg_free_func;
-    after->search_arg = but->search_arg;
-    but->search_arg_free_func = NULL;
-    but->search_arg = NULL;
+    if (but->type == UI_BTYPE_SEARCH_MENU) {
+      uiButSearch *search_but = (uiButSearch *)but;
+      after->search_arg_free_func = search_but->item_collect_arg_free_func;
+      after->search_arg = search_but->item_collect_arg;
+      search_but->item_collect_arg_free_func = NULL;
+      search_but->item_collect_arg = NULL;
+    }
 
     if (but->context) {
       after->context = CTX_store_copy(but->context);
@@ -3316,7 +3319,9 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   /* optional searchbox */
   if (but->type == UI_BTYPE_SEARCH_MENU) {
-    data->searchbox = but->search_create_func(C, data->region, but);
+    uiButSearch *search_but = (uiButSearch *)but;
+
+    data->searchbox = search_but->popup_create_func(C, data->region, search_but);
     ui_searchbox_update(C, data->searchbox, but, true); /* true = reset */
   }
 

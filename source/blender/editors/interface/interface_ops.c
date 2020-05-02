@@ -1134,9 +1134,11 @@ static bool jump_to_target_button(bContext *C, bool poll)
     /* For string properties with prop_search, look up the search collection item. */
     else if (type == PROP_STRING) {
       const uiBut *but = UI_context_active_but_get(C);
+      const uiButSearch *search_but = (but->type == UI_BTYPE_SEARCH_MENU) ? (uiButSearch *)but :
+                                                                            NULL;
 
-      if (but->type == UI_BTYPE_SEARCH_MENU && but->search_func == ui_rna_collection_search_cb) {
-        uiRNACollectionSearch *coll_search = but->search_arg;
+      if (search_but && search_but->item_collect_func == ui_rna_collection_search_cb) {
+        uiRNACollectionSearch *coll_search = search_but->item_collect_arg;
 
         char str_buf[MAXBONENAME];
         char *str_ptr = RNA_property_string_get_alloc(&ptr, prop, str_buf, sizeof(str_buf), NULL);

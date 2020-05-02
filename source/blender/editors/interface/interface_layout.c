@@ -2278,7 +2278,7 @@ void uiItemFullR(uiLayout *layout,
   /* property with separate label */
   else if (type == PROP_ENUM || type == PROP_STRING || type == PROP_POINTER) {
     but = ui_item_with_label(layout, block, name, icon, ptr, prop, index, 0, 0, w, h, flag);
-    ui_but_add_search(but, ptr, prop, NULL, NULL);
+    but = ui_but_add_search(but, ptr, prop, NULL, NULL);
 
     if (layout->redalert) {
       UI_but_flag_enable(but, UI_BUT_REDALERT);
@@ -2652,7 +2652,10 @@ static void ui_rna_collection_search_free_cb(void *ptr)
   MEM_freeN(ptr);
 }
 
-void ui_but_add_search(
+/**
+ * \note May reallocate \a but, so the possibly new address is returned.
+ */
+uiBut *ui_but_add_search(
     uiBut *but, PointerRNA *ptr, PropertyRNA *prop, PointerRNA *searchptr, PropertyRNA *searchprop)
 {
   StructRNA *ptype;
@@ -2670,11 +2673,13 @@ void ui_but_add_search(
   /* turn button into search button */
   if (searchprop) {
     uiRNACollectionSearch *coll_search = MEM_mallocN(sizeof(*coll_search), __func__);
+    uiButSearch *search_but;
 
-    but->type = UI_BTYPE_SEARCH_MENU;
+    but = ui_but_change_type(but, UI_BTYPE_SEARCH_MENU);
+    search_but = (uiButSearch *)but;
+    search_but->rnasearchpoin = *searchptr;
+    search_but->rnasearchprop = searchprop;
     but->hardmax = MAX2(but->hardmax, 256.0f);
-    but->rnasearchpoin = *searchptr;
-    but->rnasearchprop = searchprop;
     but->drawflag |= UI_BUT_ICON_LEFT | UI_BUT_TEXT_LEFT;
     if (RNA_property_is_unlink(prop)) {
       but->flag |= UI_BUT_VALUE_CLEAR;
@@ -2709,6 +2714,8 @@ void ui_but_add_search(
      * so other code might have already set but->type to search menu... */
     but->flag |= UI_BUT_DISABLED;
   }
+
+  return but;
 }
 
 void uiItemPointerR_prop(uiLayout *layout,
@@ -4822,8 +4829,6 @@ void ui_layout_list_set_labels_active(uiLayout *layout)
 
 uiLayout *uiLayoutListBox(uiLayout *layout,
                           uiList *ui_list,
-                          PointerRNA *ptr,
-                          PropertyRNA *prop,
                           PointerRNA *actptr,
                           PropertyRNA *actprop)
 {
@@ -4832,8 +4837,6 @@ uiLayout *uiLayoutListBox(uiLayout *layout,
 
   but->custom_data = ui_list;
 
-  but->rnasearchpoin = *ptr;
-  but->rnasearchprop = prop;
   but->rnapoin = *actptr;
   but->rnaprop = actprop;
 
@@ -5412,6 +5415,7 @@ void ui_layout_add_but(uiLayout *layout, uiBut *but)
   else {
     BLI_addtail(&layout->items, bitem);
   }
+  but->layout = layout;
 
   if (layout->context) {
     but->context = layout->context;
@@ -5421,6 +5425,30 @@ void ui_layout_add_but(uiLayout *layout, uiBut *but)
   if (layout->emboss != UI_EMBOSS_UNDEFINED) {
     but->dt = layout->emboss;
   }
+}
+
+bool ui_layout_replace_but_ptr(uiLayout *layout, const void *old_but_ptr, uiBut *new_but)
+{
+  ListBase *child_list = layout->child_items_layout ? &layout->child_items_layout->items :
+                                                      &layout->items;
+
+  LISTBASE_FOREACH (uiItem *, item, child_list) {
+    if (item->type == ITEM_BUTTON) {
+      uiButtonItem *bitem = (uiButtonItem *)item;
+
+      if (bitem->but == old_but_ptr) {
+        bitem->but = new_but;
+        return true;
+      }
+    }
+    else {
+      if (ui_layout_replace_but_ptr((uiLayout *)item, old_but_ptr, new_but)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 void uiLayoutSetFixedSize(uiLayout *layout, bool fixed_size)

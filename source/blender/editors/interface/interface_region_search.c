@@ -337,7 +337,10 @@ void ui_searchbox_event(bContext *C, ARegion *region, uiBut *but, const wmEvent 
 /* region is the search box itself */
 void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool reset)
 {
+  uiButSearch *search_but = (uiButSearch *)but;
   uiSearchboxData *data = region->regiondata;
+
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
   /* reset vars */
   data->items.totitem = 0;
@@ -350,9 +353,9 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
     data->active = -1;
 
     /* handle active */
-    if (but->search_func && but->func_arg2) {
+    if (search_but->item_collect_func && but->func_arg2) {
       data->items.active = but->func_arg2;
-      but->search_func(C, but->search_arg, but->editstr, &data->items);
+      search_but->item_collect_func(C, search_but->item_collect_arg, but->editstr, &data->items);
       data->items.active = NULL;
 
       /* found active item, calculate real offset by centering it */
@@ -381,8 +384,8 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
   }
 
   /* callback */
-  if (but->search_func) {
-    but->search_func(C, but->search_arg, but->editstr, &data->items);
+  if (search_but->item_collect_func) {
+    search_but->item_collect_func(C, search_but->item_collect_arg, but->editstr, &data->items);
   }
 
   /* handle case where editstr is equal to one of items */
@@ -410,13 +413,16 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
 
 int ui_searchbox_autocomplete(bContext *C, ARegion *region, uiBut *but, char *str)
 {
+  uiButSearch *search_but = (uiButSearch *)but;
   uiSearchboxData *data = region->regiondata;
   int match = AUTOCOMPLETE_NO_MATCH;
+
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
   if (str[0]) {
     data->items.autocpl = UI_autocomplete_begin(str, ui_but_string_get_max_length(but));
 
-    but->search_func(C, but->search_arg, but->editstr, &data->items);
+    search_but->item_collect_func(C, search_but->item_collect_arg, but->editstr, &data->items);
 
     match = UI_autocomplete_end(data->items.autocpl, str);
     data->items.autocpl = NULL;
@@ -551,10 +557,11 @@ static void ui_searchbox_region_free_cb(ARegion *region)
   region->regiondata = NULL;
 }
 
-ARegion *ui_searchbox_create_generic(bContext *C, ARegion *butregion, uiBut *but)
+ARegion *ui_searchbox_create_generic(bContext *C, ARegion *butregion, uiButSearch *search_but)
 {
   wmWindow *win = CTX_wm_window(C);
   const uiStyle *style = UI_style_get();
+  uiBut *but = &search_but->but;
   static ARegionType type;
   ARegion *region;
   uiSearchboxData *data;
@@ -603,7 +610,7 @@ ARegion *ui_searchbox_create_generic(bContext *C, ARegion *butregion, uiBut *but
   if (but->optype != NULL || (but->drawflag & UI_BUT_HAS_SHORTCUT) != 0) {
     data->use_sep = true;
   }
-  data->sep_string = but->search_sep_string;
+  data->sep_string = search_but->item_sep_string;
 
   /* compute position */
   if (but->block->flag & UI_BLOCK_SEARCH_MENU) {
@@ -822,12 +829,12 @@ static void ui_searchbox_region_draw_cb__operator(const bContext *UNUSED(C), ARe
   }
 }
 
-ARegion *ui_searchbox_create_operator(bContext *C, ARegion *butregion, uiBut *but)
+ARegion *ui_searchbox_create_operator(bContext *C, ARegion *butregion, uiButSearch *search_but)
 {
   ARegion *region;
 
-  UI_but_drawflag_enable(but, UI_BUT_HAS_SHORTCUT);
-  region = ui_searchbox_create_generic(C, butregion, but);
+  UI_but_drawflag_enable(&search_but->but, UI_BUT_HAS_SHORTCUT);
+  region = ui_searchbox_create_generic(C, butregion, search_but);
 
   region->type->draw = ui_searchbox_region_draw_cb__operator;
 
@@ -844,12 +851,12 @@ static void ui_searchbox_region_draw_cb__menu(const bContext *UNUSED(C), ARegion
   /* Currently unused. */
 }
 
-ARegion *ui_searchbox_create_menu(bContext *C, ARegion *butregion, uiBut *but)
+ARegion *ui_searchbox_create_menu(bContext *C, ARegion *butregion, uiButSearch *search_but)
 {
   ARegion *region;
 
-  UI_but_drawflag_enable(but, UI_BUT_HAS_SHORTCUT);
-  region = ui_searchbox_create_generic(C, butregion, but);
+  UI_but_drawflag_enable(&search_but->but, UI_BUT_HAS_SHORTCUT);
+  region = ui_searchbox_create_generic(C, butregion, search_but);
 
   if (false) {
     region->type->draw = ui_searchbox_region_draw_cb__menu;
@@ -860,8 +867,9 @@ ARegion *ui_searchbox_create_menu(bContext *C, ARegion *butregion, uiBut *but)
 
 /* sets red alert if button holds a string it can't find */
 /* XXX weak: search_func adds all partial matches... */
-void ui_but_search_refresh(uiBut *but)
+void ui_but_search_refresh(uiButSearch *search_but)
 {
+  uiBut *but = &search_but->but;
   uiSearchItems *items;
   int x1;
 
@@ -881,7 +889,8 @@ void ui_but_search_refresh(uiBut *but)
     items->names[x1] = MEM_callocN(but->hardmax + 1, "search names");
   }
 
-  but->search_func(but->block->evil_C, but->search_arg, but->drawstr, items);
+  search_but->item_collect_func(
+      but->block->evil_C, search_but->item_collect_arg, but->drawstr, items);
 
   /* only redalert when we are sure of it, this can miss cases when >10 matches */
   if (items->totitem == 0) {

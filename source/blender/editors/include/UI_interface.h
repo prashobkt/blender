@@ -58,6 +58,7 @@ struct bNodeSocket;
 struct bNodeTree;
 struct bScreen;
 struct rcti;
+struct uiButSearch;
 struct uiFontStyle;
 struct uiList;
 struct uiStyle;
@@ -504,7 +505,7 @@ typedef void (*uiButHandleHoldFunc)(struct bContext *C, struct ARegion *butregio
 typedef int (*uiButCompleteFunc)(struct bContext *C, char *str, void *arg);
 typedef struct ARegion *(*uiButSearchCreateFunc)(struct bContext *C,
                                                  struct ARegion *butregion,
-                                                 uiBut *but);
+                                                 struct uiButSearch *search_but);
 typedef void (*uiButSearchFunc)(const struct bContext *C,
                                 void *arg,
                                 const char *str,
@@ -1894,8 +1895,6 @@ uiLayout *uiLayoutGridFlow(uiLayout *layout,
 uiLayout *uiLayoutBox(uiLayout *layout);
 uiLayout *uiLayoutListBox(uiLayout *layout,
                           struct uiList *ui_list,
-                          struct PointerRNA *ptr,
-                          struct PropertyRNA *prop,
                           struct PointerRNA *actptr,
                           struct PropertyRNA *actprop);
 uiLayout *uiLayoutAbsolute(uiLayout *layout, bool align);

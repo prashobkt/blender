@@ -807,8 +807,14 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
     SWAP(ListBase, but->extra_op_icons, oldbut->extra_op_icons);
 
-    SWAP(uiButSearchArgFreeFunc, oldbut->search_arg_free_func, but->search_arg_free_func);
-    SWAP(void *, oldbut->search_arg, but->search_arg);
+    if (oldbut->type == UI_BTYPE_SEARCH_MENU) {
+      uiButSearch *search_oldbut = (uiButSearch *)oldbut, *search_but = (uiButSearch *)but;
+
+      SWAP(uiButSearchArgFreeFunc,
+           search_oldbut->item_collect_arg_free_func,
+           search_but->item_collect_arg_free_func);
+      SWAP(void *, search_oldbut->item_collect_arg, search_but->item_collect_arg);
+    }
 
     /* copy hardmin for list rows to prevent 'sticking' highlight to mouse position
      * when scrolling without moving mouse (see [#28432]) */
@@ -2941,10 +2947,10 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
           return true;
         }
         else {
+          uiButSearch *search_but = (but->type == UI_BTYPE_SEARCH_MENU) ? (uiButSearch *)but :
+                                                                          NULL;
           /* RNA pointer */
           PointerRNA rptr;
-          PointerRNA ptr = but->rnasearchpoin;
-          PropertyRNA *prop = but->rnasearchprop;
 
           /* This is kind of hackish, in theory think we could only ever use the second member of
            * this if/else, since ui_searchbox_apply() is supposed to always set that pointer when
@@ -2952,7 +2958,9 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
            * to try to break as little as possible existing code. All this is band-aids anyway.
            * Fact remains, using editstr as main 'reference' over whole search button thingy
            * is utterly weak and should be redesigned imho, but that's not a simple task. */
-          if (prop && RNA_property_collection_lookup_string(&ptr, prop, str, &rptr)) {
+          if (search_but && search_but->rnasearchprop &&
+              RNA_property_collection_lookup_string(
+                  &search_but->rnasearchpoin, search_but->rnasearchprop, str, &rptr)) {
             RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr, NULL);
           }
           else if (but->func_arg2 != NULL) {
@@ -3207,6 +3215,27 @@ static void ui_set_but_soft_range(uiBut *but)
 
 /* ******************* Free ********************/
 
+/**
+ * Free data specific to a certain button type.
+ * For now just do in a switch-case, we could instead have a callback stored in #uiBut and set that
+ * in #ui_but_alloc().
+ */
+static void ui_but_free_type_specific(uiBut *but)
+{
+  switch (but->type) {
+    case UI_BTYPE_SEARCH_MENU: {
+      uiButSearch *search_but = (uiButSearch *)but;
+      if (search_but->item_collect_arg_free_func) {
+        search_but->item_collect_arg_free_func(search_but->item_collect_arg);
+        search_but->item_collect_arg = NULL;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 /* can be called with C==NULL */
 static void ui_but_free(const bContext *C, uiBut *but)
 {
@@ -3227,10 +3256,7 @@ static void ui_but_free(const bContext *C, uiBut *but)
     MEM_freeN(but->hold_argN);
   }
 
-  if (but->search_arg_free_func) {
-    but->search_arg_free_func(but->search_arg);
-    but->search_arg = NULL;
-  }
+  ui_but_free_type_specific(but);
 
   if (but->active) {
     /* XXX solve later, buttons should be free-able without context ideally,
@@ -3709,14 +3735,93 @@ void ui_block_cm_to_display_space_v3(uiBlock *block, float pixel[3])
   IMB_colormanagement_scene_linear_to_display_v3(pixel, display);
 }
 
-static uiBut *ui_but_alloc(const eButType type)
+static void ui_but_alloc_info(const eButType type,
+                              size_t *r_alloc_size,
+                              const char **r_alloc_str,
+                              bool *r_has_custom_type)
 {
+  size_t alloc_size;
+  const char *alloc_str;
+  bool has_custom_type = true;
+
   switch (type) {
     case UI_BTYPE_TAB:
-      return MEM_callocN(sizeof(uiButTab), "uiButTab");
+      alloc_size = sizeof(uiButTab);
+      alloc_str = "uiButTab";
+      break;
+    case UI_BTYPE_SEARCH_MENU:
+      alloc_size = sizeof(uiButSearch);
+      alloc_str = "uiButSearch";
+      break;
     default:
-      return MEM_callocN(sizeof(uiBut), "uiBut");
+      alloc_size = sizeof(uiBut);
+      alloc_str = "uiBut";
+      has_custom_type = false;
+      break;
   }
+
+  if (r_alloc_size) {
+    *r_alloc_size = alloc_size;
+  }
+  if (r_alloc_str) {
+    *r_alloc_str = alloc_str;
+  }
+  if (r_has_custom_type) {
+    *r_has_custom_type = has_custom_type;
+  }
+}
+
+static uiBut *ui_but_alloc(const eButType type)
+{
+  size_t alloc_size;
+  const char *alloc_str;
+
+  ui_but_alloc_info(type, &alloc_size, &alloc_str, NULL);
+
+  return MEM_callocN(alloc_size, alloc_str);
+}
+
+/**
+ * Reallocate the button (new address is returned) for a new button type.
+ * This should generally be avoided and instead the correct type be created right away.
+ *
+ * \note Only the #uiBut data can be kept. If the old button used a derived type (e.g. #uiButTab),
+ *       the data that is not inside #uiBut will be lost.
+ */
+uiBut *ui_but_change_type(uiBut *but, eButType new_type)
+{
+  if (but->type != new_type) {
+    size_t alloc_size;
+    const char *alloc_str;
+    uiBut *insert_after_but = but->prev;
+    bool new_has_custom_type, old_has_custom_type;
+
+    /* Remove old button address */
+    BLI_remlink(&but->block->buttons, but);
+
+    ui_but_alloc_info(but->type, NULL, NULL, &old_has_custom_type);
+    ui_but_alloc_info(new_type, &alloc_size, &alloc_str, &new_has_custom_type);
+
+    if (new_has_custom_type || old_has_custom_type) {
+      const void *old_but_ptr = but;
+      /* Button may have pointer to a member within itself, this will have to be updated. */
+      const bool has_str_ptr_to_self = but->str == but->strdata;
+
+      but = MEM_recallocN_id(but, alloc_size, alloc_str);
+      but->type = new_type;
+      if (has_str_ptr_to_self) {
+        but->str = but->strdata;
+      }
+
+      BLI_insertlinkafter(&but->block->buttons, insert_after_but, but);
+
+      const bool found_layout = ui_layout_replace_but_ptr(but->layout, old_but_ptr, but);
+      BLI_assert(found_layout);
+      UNUSED_VARS_NDEBUG(found_layout);
+    }
+  }
+
+  return but;
 }
 
 /**
@@ -6356,7 +6461,7 @@ uiBut *uiDefSearchBut(uiBlock *block,
  * showing the icon and highlighted text after the last instance of this string.
  */
 void UI_but_func_search_set(uiBut *but,
-                            uiButSearchCreateFunc search_create_func,
+                            uiButSearchCreateFunc popup_create_func,
                             uiButSearchFunc search_func,
                             void *arg,
                             uiButSearchArgFreeFunc search_arg_free_func,
@@ -6364,27 +6469,31 @@ void UI_but_func_search_set(uiBut *but,
                             const char *search_sep_string,
                             void *active)
 {
+  uiButSearch *but_search = (uiButSearch *)but;
+
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
+
   /* needed since callers don't have access to internal functions
    * (as an alternative we could expose it) */
-  if (search_create_func == NULL) {
-    search_create_func = ui_searchbox_create_generic;
+  if (popup_create_func == NULL) {
+    popup_create_func = ui_searchbox_create_generic;
   }
 
-  if (but->search_arg_free_func != NULL) {
-    but->search_arg_free_func(but->search_arg);
-    but->search_arg = NULL;
+  if (but_search->item_collect_arg_free_func != NULL) {
+    but_search->item_collect_arg_free_func(but_search->item_collect_arg);
+    but_search->item_collect_arg = NULL;
   }
 
-  but->search_create_func = search_create_func;
-  but->search_func = search_func;
+  but_search->popup_create_func = popup_create_func;
+  but_search->item_collect_func = search_func;
 
-  but->search_arg = arg;
-  but->search_arg_free_func = search_arg_free_func;
-  but->search_sep_string = search_sep_string;
+  but_search->item_collect_arg = arg;
+  but_search->item_collect_arg_free_func = search_arg_free_func;
+  but_search->item_sep_string = search_sep_string;
 
   if (bfunc) {
 #ifdef DEBUG
-    if (but->func) {
+    if (but_search->but.func) {
       /* watch this, can be cause of much confusion, see: T47691 */
       printf("%s: warning, overwriting button callback with search function callback!\n",
              __func__);
@@ -6397,7 +6506,7 @@ void UI_but_func_search_set(uiBut *but,
   if (0 == (but->block->flag & UI_BLOCK_LOOP)) {
     /* skip empty buttons, not all buttons need input, we only show invalid */
     if (but->drawstr[0]) {
-      ui_but_search_refresh(but);
+      ui_but_search_refresh(but_search);
     }
   }
 }

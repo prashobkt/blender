@@ -147,6 +147,9 @@ enum {
 
 struct uiBut {
   struct uiBut *next, *prev;
+
+  /* Pointer back to the layout item holding this button. */
+  uiLayout *layout;
   int flag, drawflag;
   eButType type;
   eButPointerType pointype;
@@ -200,12 +203,6 @@ struct uiBut {
 
   uiButCompleteFunc autocomplete_func;
   void *autofunc_arg;
-
-  uiButSearchCreateFunc search_create_func;
-  uiButSearchFunc search_func;
-  void *search_arg;
-  uiButSearchArgFreeFunc search_arg_free_func;
-  const char *search_sep_string;
 
   uiButHandleRenameFunc rename_func;
   void *rename_arg1;
@@ -285,10 +282,27 @@ struct uiBut {
   uiBlock *block;
 };
 
+/** Derived struct for #UI_BTYPE_TAB */
 typedef struct uiButTab {
   uiBut but;
   struct MenuType *menu;
 } uiButTab;
+
+/** Derived struct for #UI_BTYPE_SEARCH_MENU */
+typedef struct uiButSearch {
+  uiBut but;
+
+  uiButSearchCreateFunc popup_create_func;
+
+  uiButSearchFunc item_collect_func;
+  void *item_collect_arg;
+  uiButSearchArgFreeFunc item_collect_arg_free_func;
+
+  const char *item_sep_string;
+
+  struct PointerRNA rnasearchpoin;
+  struct PropertyRNA *rnasearchprop;
+} uiButSearch;
 
 /**
  * Additional, superimposed icon for a button, invoking an operator.
@@ -482,6 +496,8 @@ extern void ui_window_to_region_rcti(const ARegion *region, rcti *rect_dst, cons
 extern void ui_region_to_window(const struct ARegion *region, int *x, int *y);
 extern void ui_region_winrct_get_no_margin(const struct ARegion *region, struct rcti *r_rect);
 
+uiBut *ui_but_change_type(uiBut *but, eButType new_type);
+
 extern double ui_but_value_get(uiBut *but);
 extern void ui_but_value_set(uiBut *but, double value);
 extern void ui_but_hsv_set(uiBut *but);
@@ -648,9 +664,15 @@ ColorPicker *ui_block_colorpicker_create(struct uiBlock *block);
 
 /* interface_region_search.c */
 /* Searchbox for string button */
-ARegion *ui_searchbox_create_generic(struct bContext *C, struct ARegion *butregion, uiBut *but);
-ARegion *ui_searchbox_create_operator(struct bContext *C, struct ARegion *butregion, uiBut *but);
-ARegion *ui_searchbox_create_menu(struct bContext *C, struct ARegion *butregion, uiBut *but);
+ARegion *ui_searchbox_create_generic(struct bContext *C,
+                                     struct ARegion *butregion,
+                                     uiButSearch *search_but);
+ARegion *ui_searchbox_create_operator(struct bContext *C,
+                                      struct ARegion *butregion,
+                                      uiButSearch *search_but);
+ARegion *ui_searchbox_create_menu(struct bContext *C,
+                                  struct ARegion *butregion,
+                                  uiButSearch *search_but);
 
 bool ui_searchbox_inside(struct ARegion *region, int x, int y);
 int ui_searchbox_find_index(struct ARegion *region, const char *name);
@@ -662,7 +684,7 @@ void ui_searchbox_event(struct bContext *C,
                         const struct wmEvent *event);
 bool ui_searchbox_apply(uiBut *but, struct ARegion *region);
 void ui_searchbox_free(struct bContext *C, struct ARegion *region);
-void ui_but_search_refresh(uiBut *but);
+void ui_but_search_refresh(uiButSearch *but);
 
 /* interface_region_menu_popup.c */
 int ui_but_menu_step(uiBut *but, int step);
@@ -888,11 +910,12 @@ void ui_resources_free(void);
 
 /* interface_layout.c */
 void ui_layout_add_but(uiLayout *layout, uiBut *but);
-void ui_but_add_search(uiBut *but,
-                       PointerRNA *ptr,
-                       PropertyRNA *prop,
-                       PointerRNA *searchptr,
-                       PropertyRNA *searchprop);
+bool ui_layout_replace_but_ptr(uiLayout *layout, const void *old_but_ptr, uiBut *new_but);
+uiBut *ui_but_add_search(uiBut *but,
+                         PointerRNA *ptr,
+                         PropertyRNA *prop,
+                         PointerRNA *searchptr,
+                         PropertyRNA *searchprop);
 void ui_layout_list_set_labels_active(uiLayout *layout);
 /* menu callback */
 void ui_item_menutype_func(struct bContext *C, struct uiLayout *layout, void *arg_mt);

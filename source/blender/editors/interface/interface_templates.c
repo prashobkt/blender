@@ -6458,7 +6458,7 @@ void uiTemplateList(uiLayout *layout,
   switch (layout_type) {
     case UILST_LAYOUT_DEFAULT:
       /* layout */
-      box = uiLayoutListBox(layout, ui_list, dataptr, prop, active_dataptr, activeprop);
+      box = uiLayoutListBox(layout, ui_list, active_dataptr, activeprop);
       glob = uiLayoutColumn(box, true);
       row = uiLayoutRow(glob, false);
       col = uiLayoutColumn(row, true);
@@ -6596,7 +6596,7 @@ void uiTemplateList(uiLayout *layout,
       }
       break;
     case UILST_LAYOUT_GRID:
-      box = uiLayoutListBox(layout, ui_list, dataptr, prop, active_dataptr, activeprop);
+      box = uiLayoutListBox(layout, ui_list, active_dataptr, activeprop);
       glob = uiLayoutColumn(box, true);
       row = uiLayoutRow(glob, false);
       col = uiLayoutColumn(row, true);
