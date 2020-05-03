@@ -67,9 +67,9 @@ typedef void (*IDTypeMakeLocalFunction)(struct Main *bmain, struct ID *id, const
 typedef void (*IDTypeBlendWriteFunction)(struct BlendWriter *writer,
                                          struct ID *id,
                                          const void *id_address);
-typedef void (*IDTypeBlendReadDataFunction)(struct BlendDataReader *reader, struct ID *);
-typedef void (*IDTypeBlendReadLibFunction)(struct BlendLibReader *reader, struct ID *);
-typedef void (*IDTypeBlendExpandFunction)(struct BlendExpander *expander, struct ID *);
+typedef void (*IDTypeBlendReadDataFunction)(struct BlendDataReader *reader, struct ID *id);
+typedef void (*IDTypeBlendReadLibFunction)(struct BlendLibReader *reader, struct ID *id);
+typedef void (*IDTypeBlendExpandFunction)(struct BlendExpander *expander, struct ID *id);
 
 typedef struct IDTypeInfo {
   /* ********** General IDType data. ********** */
