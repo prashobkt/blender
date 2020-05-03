@@ -2948,29 +2948,28 @@ void uiItemMContents(uiLayout *layout, const char *menuname)
 void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop, int index)
 {
   uiBlock *block = layout->root->block;
-  uiBut *but = NULL;
-
   uiLayout *col;
+
   UI_block_layout_set_current(block, layout);
   col = uiLayoutColumn(layout, false);
   col->space = 0;
   col->emboss = UI_EMBOSS_NONE;
 
   if (ELEM(NULL, ptr, prop) || !RNA_property_animateable(ptr, prop)) {
-    but = uiDefIconBut(block,
-                       UI_BTYPE_BUT,
-                       0,
-                       ICON_BLANK1,
-                       0,
-                       0,
-                       UI_UNIT_X,
-                       UI_UNIT_Y,
-                       NULL,
-                       0.0,
-                       0.0,
-                       0.0,
-                       0.0,
-                       "");
+    uiBut *but = uiDefIconBut(block,
+                              UI_BTYPE_DECORATOR,
+                              0,
+                              ICON_BLANK1,
+                              0,
+                              0,
+                              UI_UNIT_X,
+                              UI_UNIT_Y,
+                              NULL,
+                              0.0,
+                              0.0,
+                              0.0,
+                              0.0,
+                              "");
     but->flag |= UI_BUT_DISABLED;
     return;
   }
@@ -2980,27 +2979,28 @@ void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop,
 
   /* Loop for the array-case, but only do in case of an expanded array. */
   for (int i = 0; i < (is_expand ? RNA_property_array_length(ptr, prop) : 1); i++) {
-    but = uiDefIconBut(block,
-                       UI_BTYPE_BUT,
-                       0,
-                       ICON_DOT,
-                       0,
-                       0,
-                       UI_UNIT_X,
-                       UI_UNIT_Y,
-                       NULL,
-                       0.0,
-                       0.0,
-                       0.0,
-                       0.0,
-                       TIP_("Animate property"));
-    UI_but_func_set(but, ui_but_anim_decorate_cb, but, NULL);
-    but->flag |= UI_BUT_UNDO | UI_BUT_DRAG_LOCK;
+    uiButDecorator *decorator_but = (uiButDecorator *)uiDefIconBut(block,
+                                                                   UI_BTYPE_DECORATOR,
+                                                                   0,
+                                                                   ICON_DOT,
+                                                                   0,
+                                                                   0,
+                                                                   UI_UNIT_X,
+                                                                   UI_UNIT_Y,
+                                                                   NULL,
+                                                                   0.0,
+                                                                   0.0,
+                                                                   0.0,
+                                                                   0.0,
+                                                                   TIP_("Animate property"));
+
+    UI_but_func_set(&decorator_but->but, ui_but_anim_decorate_cb, decorator_but, NULL);
+    decorator_but->but.flag |= UI_BUT_UNDO | UI_BUT_DRAG_LOCK;
     /* Reusing RNA search members, setting actual RNA data has many side-effects. */
-    but->rnasearchpoin = *ptr;
-    but->rnasearchprop = prop;
+    decorator_but->rnapoin = *ptr;
+    decorator_but->rnaprop = prop;
     /* ui_def_but_rna() sets non-array buttons to have a RNA index of 0. */
-    but->custom_data = POINTER_FROM_INT((!is_array || is_expand) ? i : index);
+    decorator_but->rnaindex = (!is_array || is_expand) ? i : index;
   }
 }
 

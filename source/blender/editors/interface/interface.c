@@ -1773,7 +1773,7 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
     ui_but_anim_flag(but, (scene) ? scene->r.cfra : 0.0f);
     ui_but_override_flag(but);
     if (UI_but_is_decorator(but)) {
-      ui_but_anim_decorate_update_from_flag(but);
+      ui_but_anim_decorate_update_from_flag((uiButDecorator *)but);
     }
     ui_but_predefined_extra_operator_icons_add(but);
   }
@@ -2021,6 +2021,7 @@ int ui_but_is_pushed_ex(uiBut *but, double *value)
       case UI_BTYPE_HOTKEY_EVENT:
       case UI_BTYPE_KEY_EVENT:
       case UI_BTYPE_COLOR:
+      case UI_BTYPE_DECORATOR:
         is_push = -1;
         break;
       case UI_BTYPE_BUT_TOGGLE:
@@ -3218,7 +3219,7 @@ static void ui_set_but_soft_range(uiBut *but)
 /**
  * Free data specific to a certain button type.
  * For now just do in a switch-case, we could instead have a callback stored in #uiBut and set that
- * in #ui_but_alloc().
+ * in #ui_but_alloc_info().
  */
 static void ui_but_free_type_specific(uiBut *but)
 {
@@ -3745,6 +3746,10 @@ static void ui_but_alloc_info(const eButType type,
   bool has_custom_type = true;
 
   switch (type) {
+    case UI_BTYPE_DECORATOR:
+      alloc_size = sizeof(uiButDecorator);
+      alloc_str = "uiButDecorator";
+      break;
     case UI_BTYPE_TAB:
       alloc_size = sizeof(uiButTab);
       alloc_str = "uiButTab";
@@ -3969,6 +3974,7 @@ static uiBut *ui_def_but(uiBlock *block,
   if (ELEM(but->type,
            UI_BTYPE_BLOCK,
            UI_BTYPE_BUT,
+           UI_BTYPE_DECORATOR,
            UI_BTYPE_LABEL,
            UI_BTYPE_PULLDOWN,
            UI_BTYPE_ROUNDBOX,

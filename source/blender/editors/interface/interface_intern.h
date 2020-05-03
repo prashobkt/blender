@@ -244,9 +244,6 @@ struct uiBut {
   struct PropertyRNA *rnaprop;
   int rnaindex;
 
-  struct PointerRNA rnasearchpoin;
-  struct PropertyRNA *rnasearchprop;
-
   /* Operator data */
   struct wmOperatorType *optype;
   struct PointerRNA *opptr;
@@ -303,6 +300,15 @@ typedef struct uiButSearch {
   struct PointerRNA rnasearchpoin;
   struct PropertyRNA *rnasearchprop;
 } uiButSearch;
+
+/** Derived struct for #UI_BTYPE_DECORATOR */
+typedef struct uiButDecorator {
+  uiBut but;
+
+  struct PointerRNA rnapoin;
+  struct PropertyRNA *rnaprop;
+  int rnaindex;
+} uiButDecorator;
 
 /**
  * Additional, superimposed icon for a button, invoking an operator.
@@ -936,7 +942,7 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str);
 void ui_but_anim_autokey(struct bContext *C, uiBut *but, struct Scene *scene, float cfra);
 
 void ui_but_anim_decorate_cb(struct bContext *C, void *arg_but, void *arg_dummy);
-void ui_but_anim_decorate_update_from_flag(uiBut *but);
+void ui_but_anim_decorate_update_from_flag(uiButDecorator *but);
 
 /* interface_query.c */
 bool ui_but_is_editable(const uiBut *but) ATTR_WARN_UNUSED_RESULT;

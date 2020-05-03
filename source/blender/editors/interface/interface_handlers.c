@@ -2079,6 +2079,7 @@ static void ui_apply_but(
   /* handle different types */
   switch (but->type) {
     case UI_BTYPE_BUT:
+    case UI_BTYPE_DECORATOR:
       ui_apply_but_BUT(C, but, data);
       break;
     case UI_BTYPE_TEXT:
@@ -7449,6 +7450,7 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
 
   switch (but->type) {
     case UI_BTYPE_BUT:
+    case UI_BTYPE_DECORATOR:
       retval = ui_do_but_BUT(C, but, data, event);
       break;
     case UI_BTYPE_KEY_EVENT:
@@ -8335,7 +8337,7 @@ void UI_context_update_anim_flag(const bContext *C)
         ui_but_anim_flag(but, (scene) ? scene->r.cfra : 0.0f);
         ui_but_override_flag(but);
         if (UI_but_is_decorator(but)) {
-          ui_but_anim_decorate_update_from_flag(but);
+          ui_but_anim_decorate_update_from_flag((uiButDecorator *)but);
         }
 
         ED_region_tag_redraw(region);
