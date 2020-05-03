@@ -4109,6 +4109,11 @@ void BLO_write_struct_list_by_id(BlendWriter *writer, int struct_id, ListBase *l
   writelist_nr(writer->wd, DATA, struct_id, list);
 }
 
+void BLO_write_struct_list_by_name(BlendWriter *writer, const char *struct_name, ListBase *list)
+{
+  BLO_write_struct_list_by_id(writer, BLO_get_struct_id_by_name(writer, struct_name), list);
+}
+
 void blo_write_id_struct(BlendWriter *writer, int struct_id, const void *id_address, const ID *id)
 {
   writestruct_at_address_nr(writer->wd, GS(id->name), struct_id, 1, id_address, id);
@@ -4141,6 +4146,9 @@ void BLO_write_float3_array(BlendWriter *writer, int size, const float *data_ptr
   BLO_write_raw(writer, sizeof(float) * 3 * size, data_ptr);
 }
 
+/**
+ * Write a null terminated string.
+ */
 void BLO_write_string(BlendWriter *writer, const char *str)
 {
   if (str != NULL) {
@@ -4148,6 +4156,10 @@ void BLO_write_string(BlendWriter *writer, const char *str)
   }
 }
 
+/**
+ * Sometimes different data is written depending on whether the file is saved to disk or used for
+ * undo. This function returns true when the current file-writing is done for undo.
+ */
 bool BLO_write_is_undo(BlendWriter *writer)
 {
   return writer->wd->use_memfile;
