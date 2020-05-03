@@ -17,7 +17,8 @@
 /** \file
  * \ingroup blenloader
  *
- * API that allows different parts of Blender to define what data is stored in .blend files.
+ * This file contains an API that allows different parts of Blender to define what data is stored
+ * in .blend files.
  *
  * Four callbacks have to be provided to fully implement .blend I/O for a piece of data. One of
  * those is related to file writing and three for file reading. Reading requires multiple
