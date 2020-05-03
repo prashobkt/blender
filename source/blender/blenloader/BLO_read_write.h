@@ -24,7 +24,7 @@
  * those is related to file writing and three for file reading. Reading requires multiple
  * callbacks, due to the way linking between files works.
  *
- * Quick description of the individual callbacks:
+ * Brief description of the individual callbacks:
  *  - Blend Write: Define which structs and memory buffers are saved.
  *  - Blend Read Data: Loads structs and memory buffers from file and updates pointers them.
  *  - Blend Read Lib: Updates pointers to ID data blocks.
