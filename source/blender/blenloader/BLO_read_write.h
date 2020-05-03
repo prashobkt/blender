@@ -51,8 +51,8 @@ typedef struct BlendDataReader BlendDataReader;
 typedef struct BlendLibReader BlendLibReader;
 typedef struct BlendExpander BlendExpander;
 
-/* ************************************************ */
-/* API for file writing.
+/* Blend Write API
+ * ===============
  *
  * Most functions fall into one of two categories. Either they write a DNA struct or a raw memory
  * buffer to the .blend file.
@@ -137,11 +137,29 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr);
 /* Misc. */
 bool BLO_write_is_undo(BlendWriter *writer);
 
-/* API for data pointer reading.
- **********************************************/
+/* Blend Read Data API
+ * ===================
+ *
+ * Generally, for every BLO_write_* call there should be a corresponding BLO_read_* call.
+ *
+ * Most BLO_read_* functions get a pointer to a pointer as argument. That allows the function to
+ * update the pointer to its new value.
+ *
+ * When the given pointer points to a memory buffer that was not stored in the file, the pointer is
+ * updated to be NULL. When it was pointing to NULL before, it will stay that way.
+ *
+ * Examples of matching calls:
+ *   BLO_write_struct(writer, ClothSimSettings, clmd->sim_parms);
+ *   BLO_read_data_address(reader, &clmd->sim_parms);
+ *
+ *   BLO_write_struct_list(writer, TimeMarker, &action->markers);
+ *   BLO_read_list(reader, &action->markers, NULL);
+ *
+ *   BLO_write_int32_array(writer, hmd->totindex, hmd->indexar);
+ *   BLO_read_int32_array(reader, hmd->totindex, &hmd->indexar);
+ */
 
 void *BLO_read_get_new_data_address(BlendDataReader *reader, const void *old_address);
-bool BLO_read_requires_endian_switch(BlendDataReader *reader);
 
 #define BLO_read_data_address(reader, ptr_p) \
   *(ptr_p) = BLO_read_get_new_data_address((reader), *(ptr_p))
@@ -149,6 +167,7 @@ bool BLO_read_requires_endian_switch(BlendDataReader *reader);
 typedef void (*BlendReadListFn)(BlendDataReader *reader, void *data);
 void BLO_read_list(BlendDataReader *reader, struct ListBase *list, BlendReadListFn callback);
 
+/* Update data pointers and correct byte-order if necessary. */
 void BLO_read_int32_array(BlendDataReader *reader, int array_size, int32_t **ptr_p);
 void BLO_read_uint32_array(BlendDataReader *reader, int array_size, uint32_t **ptr_p);
 void BLO_read_float_array(BlendDataReader *reader, int array_size, float **ptr_p);
@@ -156,16 +175,27 @@ void BLO_read_float3_array(BlendDataReader *reader, int array_size, float **ptr_
 void BLO_read_double_array(BlendDataReader *reader, int array_size, double **ptr_p);
 void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 
-/* API for id pointer reading.
- ***********************************************/
+/* Misc. */
+bool BLO_read_requires_endian_switch(BlendDataReader *reader);
+
+/* Blend Read Lib API
+ * ===================
+ *
+ * This API does almost the same as the Blend Read Data API. However, now only pointers to ID data
+ * blocks are updated.
+ */
 
 ID *BLO_read_get_new_id_address(BlendLibReader *reader, struct Library *lib, struct ID *id);
 
 #define BLO_read_id_address(reader, lib, id_ptr_p) \
   *(id_ptr_p) = (void *)BLO_read_get_new_id_address((reader), (lib), (ID *)*(id_ptr_p))
 
-/* API for expand process.
- **********************************************/
+/* Blend Expand API
+ * ===================
+ *
+ * BLO_expand has to be called for every data block that should be loaded. If the data block is in
+ * a separate .blend file, it will be pulled from there.
+ */
 
 void BLO_expand_id(BlendExpander *expander, struct ID *id);
 

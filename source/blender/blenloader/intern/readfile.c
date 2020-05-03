@@ -11718,6 +11718,11 @@ bool BLO_read_requires_endian_switch(BlendDataReader *reader)
   return (reader->fd->flags & FD_FLAGS_SWITCH_ENDIAN) != 0;
 }
 
+/**
+ * Updates all ->prev and ->next pointers of the list elements.
+ * Updates the list->first and list->last pointers.
+ * When not NULL, calls the callback on every element.
+ */
 void BLO_read_list(BlendDataReader *reader, ListBase *list, BlendReadListFn callback)
 {
   if (BLI_listbase_is_empty(list)) {
