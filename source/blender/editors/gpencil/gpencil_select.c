@@ -79,9 +79,9 @@ static bool gpencil_point_inside_stroke(bGPDstroke *gps,
     return hit;
   }
 
-  int(*mcords)[2] = NULL;
+  int(*mcoords)[2] = NULL;
   int len = gps->totpoints;
-  mcords = MEM_mallocN(sizeof(int) * 2 * len, __func__);
+  mcoords = MEM_mallocN(sizeof(int) * 2 * len, __func__);
 
   /* Convert stroke to 2D array of points. */
   bGPDspoint *pt;
@@ -89,20 +89,20 @@ static bool gpencil_point_inside_stroke(bGPDstroke *gps,
   for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
     bGPDspoint pt2;
     gp_point_to_parent_space(pt, diff_mat, &pt2);
-    gp_point_to_xy(gsc, gps, &pt2, &mcords[i][0], &mcords[i][1]);
+    gp_point_to_xy(gsc, gps, &pt2, &mcoords[i][0], &mcoords[i][1]);
   }
 
   /* Compute boundbox of lasso (for faster testing later). */
   rcti rect;
-  BLI_lasso_boundbox(&rect, mcords, len);
+  BLI_lasso_boundbox(&rect, mcoords, len);
 
   /* Test if point inside stroke. */
   hit = ((!ELEM(V2D_IS_CLIPPED, mouse[0], mouse[1])) &&
          BLI_rcti_isect_pt(&rect, mouse[0], mouse[1]) &&
-         BLI_lasso_is_point_inside(mcords, len, mouse[0], mouse[1], INT_MAX));
+         BLI_lasso_is_point_inside(mcoords, len, mouse[0], mouse[1], INT_MAX));
 
   /* Free memory. */
-  MEM_SAFE_FREE(mcords);
+  MEM_SAFE_FREE(mcoords);
 
   return hit;
 }
