@@ -48,39 +48,39 @@
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  SimulationAccessModifierData *samd = (SimulationAccessModifierData *)md;
-  if (samd->simulation) {
-    DEG_add_simulation_relation(ctx->node, samd->simulation, "Accessed Simulation");
+  SimulationModifierData *smd = (SimulationModifierData *)md;
+  if (smd->simulation) {
+    DEG_add_simulation_relation(ctx->node, smd->simulation, "Accessed Simulation");
   }
 }
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
 {
-  SimulationAccessModifierData *samd = (SimulationAccessModifierData *)md;
-  walk(userData, ob, (ID **)&samd->simulation, IDWALK_CB_USER);
+  SimulationModifierData *smd = (SimulationModifierData *)md;
+  walk(userData, ob, (ID **)&smd->simulation, IDWALK_CB_USER);
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene),
                        ModifierData *md,
                        bool UNUSED(useRenderParams))
 {
-  SimulationAccessModifierData *samd = (SimulationAccessModifierData *)md;
-  return samd->simulation == nullptr;
+  SimulationModifierData *smd = (SimulationModifierData *)md;
+  return smd->simulation == nullptr;
 }
 
 static PointCloud *modifyPointCloud(ModifierData *md,
                                     const ModifierEvalContext *UNUSED(ctx),
                                     PointCloud *pointcloud)
 {
-  SimulationAccessModifierData *samd = (SimulationAccessModifierData *)md;
-  UNUSED_VARS(samd);
+  SimulationModifierData *smd = (SimulationModifierData *)md;
+  UNUSED_VARS(smd);
   return pointcloud;
 }
 
-ModifierTypeInfo modifierType_SimulationAccess = {
-    /* name */ "Simulation Access",
-    /* structName */ "SimulationAccessModifierData",
-    /* structSize */ sizeof(SimulationAccessModifierData),
+ModifierTypeInfo modifierType_Simulation = {
+    /* name */ "Simulation",
+    /* structName */ "SimulationModifierData",
+    /* structSize */ sizeof(SimulationModifierData),
     /* type */ eModifierTypeType_None,
     /* flags */ (ModifierTypeFlag)0,
 

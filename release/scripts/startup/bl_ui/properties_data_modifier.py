@@ -1821,7 +1821,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "thresh", text="Threshold")
         col.prop(md, "face_influence")
 
-    def SIMULATION_ACCESS(self, layout, ob, md):
+    def SIMULATION(self, layout, ob, md):
         layout.prop(md, "simulation")
         layout.prop(md, "data_path")
 

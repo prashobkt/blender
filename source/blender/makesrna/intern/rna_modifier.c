@@ -290,10 +290,10 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
     {eModifierType_Softbody, "SOFT_BODY", ICON_MOD_SOFT, "Soft Body", ""},
     {eModifierType_Surface, "SURFACE", ICON_MODIFIER, "Surface", ""},
 #ifdef WITH_NEW_SIMULATION_TYPE
-    {eModifierType_SimulationAccess,
-     "SIMULATION_ACCESS",
+    {eModifierType_Simulation,
+     "SIMULATION",
      ICON_PHYSICS,
-     "Simulation Access",
+     "Simulation",
      ""}, /* TODO: Use correct icon. */
 #endif
     {0, NULL, 0, NULL, NULL},
@@ -723,8 +723,8 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
       return &RNA_SurfaceDeformModifier;
     case eModifierType_WeightedNormal:
       return &RNA_WeightedNormalModifier;
-    case eModifierType_SimulationAccess:
-      return &RNA_SimulationAccessModifier;
+    case eModifierType_Simulation:
+      return &RNA_SimulationModifier;
     /* Default */
     case eModifierType_Fluidsim: /* deprecated */
     case eModifierType_None:
@@ -6560,9 +6560,9 @@ static void rna_def_modifier_simulation_access(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "SimulationAccessModifier", "Modifier");
-  RNA_def_struct_ui_text(srna, "Simulation Access Modifier", "");
-  RNA_def_struct_sdna(srna, "SimulationAccessModifierData");
+  srna = RNA_def_struct(brna, "SimulationModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Simulation Modifier", "");
+  RNA_def_struct_sdna(srna, "SimulationModifierData");
   RNA_def_struct_ui_icon(srna, ICON_PHYSICS); /* TODO: Use correct icon. */
 
 #  ifdef WITH_NEW_SIMULATION_TYPE
