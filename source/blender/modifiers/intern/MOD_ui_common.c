@@ -196,8 +196,10 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
             eModifierType_ParticleSystem,
             eModifierType_Cloth,
             eModifierType_Fluid)) {
-    uiItemO(
-        row, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"), 0, "OBJECT_OT_modifier_copy");
+    uiItemO(row,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Duplicate"),
+            0,
+            "OBJECT_OT_modifier_copy");
 
     row = uiLayoutRow(layout, false);
     uiLayoutSetScaleY(row, 0.2f);
