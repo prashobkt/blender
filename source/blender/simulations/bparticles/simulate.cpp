@@ -183,7 +183,10 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     if (dist >= 0.0f && dist < hit->dist) {
       hit->index = index;
       hit->dist = dist;
-      madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist - ray->radius);
+      // Subract COLLISION_MIN_DISTANCE from the distance to make sure that we do not collide with
+      // the exact same point if the particle does not have time to move away from the collision
+      // point.
+      madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist - COLLISION_MIN_DISTANCE);
 
       normal_tri_v3(hit->no, v0, v1, v2);
     }
@@ -227,7 +230,10 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     // We have a collision!
     hit->index = index;
     hit->dist = dist;
-    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
+    // Subract COLLISION_MIN_DISTANCE from the distance to make sure that we do not collide with
+    // the exact same point if the particle does not have time to move away from the collision
+    // point.
+    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist - COLLISION_MIN_DISTANCE);
     // zero_v3(hit->co);
     copy_v3_v3(hit->no, coll_normal);
 
@@ -305,6 +311,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           hit.dist = max_move;
           // TODO the particle radius seems a bit flaky with higher distances?
           float particle_radius = 0.01f;
+
           float3 start = positions[pindex];
           float3 dir = velocities[pindex].normalized();
 
@@ -349,6 +356,9 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
         }
         if (collided) {
           positions[pindex] = best_hit.co;
+
+          // print_v3("best_hit", best_hit.co);
+
           //
           // dot normal from vt with hit.co - start to see which way to deflect the particle
           float3 normal = best_hit.no;
@@ -362,7 +372,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           float3 hit_normal_velo = float3::project(best_hit_vel, n_v);
           float3 local_velo = velocities[pindex] - hit_normal_velo;
 
-          float dampening = 0.2f;
+          float dampening = 0.5f;
           // Add the dampening factor
           local_velo *= (1.0f - dampening);
 
@@ -381,13 +391,15 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           //}
           // if (normal_dot < 0.0f) {
           // The particle was moving into the collission plane
+          float3 deflect_vel = local_velo - 2.0f * normal_dot * n_v;
+
           // print_v3("normal", normal);
           // printf("normal dir %f\n", normal_dot);
           // print_v3("n_v", n_v);
           // print_v3("vel hit", best_hit_vel);
           // print_v3("vel_pre", velocities[pindex]);
-          float3 deflect_vel = local_velo - 2.0f * normal_dot * n_v;
           // print_v3("deflect_vel", deflect_vel);
+
           // float temp = (1.0f + dot_v3v3(deflect_vel, best_hit_vel)) / 2.0f;
           // TODO if particle is moving away from the plane, it assumes the velocity of the
           // collider
