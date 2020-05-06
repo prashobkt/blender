@@ -1121,7 +1121,6 @@ static void collect_influences(FunctionTreeData &function_tree_data,
 
     AttributesInfoBuilder *attributes = new AttributesInfoBuilder();
     attributes->add<bool>("Dead", false);
-    attributes->add<bool>("Frozen", false);
     attributes->add<int32_t>("ID", 0);
     attributes->add<float>("Birth Time", 0);
     attributes->add<float3>("Position", float3(0, 0, 0));

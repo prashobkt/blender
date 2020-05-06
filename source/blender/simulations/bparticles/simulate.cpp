@@ -262,7 +262,6 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
   MutableArrayRef<float3> velocities = attributes.get<float3>("Velocity");
   MutableArrayRef<float3> positions = attributes.get<float3>("Position");
   MutableArrayRef<bool> dead_state = attributes.get<bool>("Dead");
-  MutableArrayRef<bool> frozen_state = attributes.get<bool>("Frozen");
 
   // system_info.collision_objects
   // simulation_state.m_depsgraph;
@@ -281,6 +280,9 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
     // Check if any 'collobjs' collide with the particles here
     if (colliders.size() != 0) {
+      CollisionModifierData *prev_collider = NULL;
+      int prev_hit_idx = -1;
+
       do {
         BVHTreeRayHit best_hit;
         float3 best_hit_vel;
@@ -330,21 +332,49 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
             // We didn't hit anything
             continue;
           }
+          if (prev_collider == collmd && prev_hit_idx == hit.index) {
+            // We collided with the same face twice in a row.
+            // Skip collision handling here as the set velocity from the previous collision
+            // handling should keep the particle from tunneling through the face.
+            continue;
+          }
 
           best_hit = hit;
           best_hit_vel = rd.hit_vel;
+          prev_collider = collmd;
+          prev_hit_idx = hit.index;
           collided = true;
-          // TODO need to make sure that we do not try to collide with the same triangle during the
-          // next subframe. Only applicable for moving colliders of course...
+          // TODO need to make sure that we do not try to collide with the same triangle during
+          // the next subframe. Only applicable for moving colliders of course...
         }
         if (collided) {
           positions[pindex] = best_hit.co;
           //
           // dot normal from vt with hit.co - start to see which way to deflect the particle
           float3 normal = best_hit.no;
-          float3 n_v = dot_v3v3(velocities[pindex], normal) * normal;
+          float3 n_v = float3::project(velocities[pindex], normal);
           n_v = n_v.normalized();
-          float normal_dot = dot_v3v3(velocities[pindex] - best_hit_vel, n_v);
+
+          // Local velocity on the particle with the collider as reference point.
+          // Note that we only take into account the velocity of the collider in the normal
+          // direction as the other velocity will be negated again when moving back to the
+          // global reference frame.
+          float3 hit_normal_velo = float3::project(best_hit_vel, n_v);
+          float3 local_velo = velocities[pindex] - hit_normal_velo;
+
+          float dampening = 0.2f;
+          // Add the dampening factor
+          local_velo *= (1.0f - dampening);
+
+          float normal_dot = dot_v3v3(n_v, local_velo) / hit_normal_velo.length();
+          // printf("normal dot %f\n", normal_dot);
+          if (normal_dot < 1.0f) {
+            // TODO Dampening messes this calulcation up as we assume that local_velo is just:
+            // "velocities[pindex] - hit_normal_velo" printf("trigger\n");
+            local_velo -= (1.0 + normal_dot) * hit_normal_velo;
+          }
+
+          normal_dot = dot_v3v3(local_velo, n_v);
 
           // if (normal_dot > 0.0f) {
           //  normal_dot *= -1.0f;
@@ -356,16 +386,12 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           // print_v3("n_v", n_v);
           // print_v3("vel hit", best_hit_vel);
           // print_v3("vel_pre", velocities[pindex]);
-          float3 deflect_vel = velocities[pindex] - best_hit_vel - 2.0f * normal_dot * n_v;
+          float3 deflect_vel = local_velo - 2.0f * normal_dot * n_v;
           // print_v3("deflect_vel", deflect_vel);
           // float temp = (1.0f + dot_v3v3(deflect_vel, best_hit_vel)) / 2.0f;
-          // printf("temp %f\n", temp);
-          float3 temp;
-          zero_v3(temp);
-          if (dot_v3v3(velocities[pindex], best_hit_vel) <= 0.0f) {
-            temp = float3::project(best_hit_vel, normal);
-          }
-          velocities[pindex] = deflect_vel + best_hit_vel - temp;
+          // TODO if particle is moving away from the plane, it assumes the velocity of the
+          // collider
+          velocities[pindex] = deflect_vel;
           // print_v3("vel_post", velocities[pindex]);
           //}
 
@@ -373,10 +399,15 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           // printf("old dur: %f\n", duration);
           duration -= duration * (best_hit.dist / max_move);
           // printf("new dur: %f\n", duration);
-          velocities[pindex] += duration * forces[pindex] * mass;
+          // float3 force_after_hit = velocities[pindex] + duration * forces[pindex] * mass;
+          // if (dot_v3v3(force_after_hit, hit_normal_velo) / hit_normal_velo.length() > 1.0f)
+          // {
+          //  // Do not apply forces if it would make the particle tunnel through colliders
+          // velocities[pindex] = force_after_hit;
+          //}
           coll_num++;
         }
-      } while (collided && coll_num < 1);
+      } while (collided && coll_num < 10);
     }
 
     float3 move_vec = duration * velocities[pindex];
