@@ -558,7 +558,7 @@ static void do_lasso_select_pose__do_tag(void *userData,
 static void do_lasso_tag_pose(ViewContext *vc,
                               Object *ob,
                               const int mcoords[][2],
-                              short mcoords_len)
+                              const int mcoords_len)
 {
   ViewContext vc_tmp;
   LassoSelectUserData data;
@@ -582,7 +582,7 @@ static void do_lasso_tag_pose(ViewContext *vc,
 
 static bool do_lasso_select_objects(ViewContext *vc,
                                     const int mcoords[][2],
-                                    const short mcoords_len,
+                                    const int mcoords_len,
                                     const eSelectOp sel_op)
 {
   View3D *v3d = vc->v3d;
@@ -693,7 +693,7 @@ static bool do_pose_tag_select_op_exec(Base **bases, const uint bases_len, const
 
 static bool do_lasso_select_pose(ViewContext *vc,
                                  const int mcoords[][2],
-                                 const short mcoords_len,
+                                 const int mcoords_len,
                                  const eSelectOp sel_op)
 {
   uint bases_len;
@@ -813,7 +813,7 @@ static void do_lasso_select_mesh__doSelectFace(void *userData,
 static bool do_lasso_select_mesh(ViewContext *vc,
                                  wmGenericUserData *wm_userdata,
                                  const int mcoords[][2],
-                                 short mcoords_len,
+                                 const int mcoords_len,
                                  const eSelectOp sel_op)
 {
   LassoSelectUserData data;
@@ -942,7 +942,7 @@ static void do_lasso_select_curve__doSelect(void *userData,
 
 static bool do_lasso_select_curve(ViewContext *vc,
                                   const int mcoords[][2],
-                                  short mcoords_len,
+                                  const int mcoords_len,
                                   const eSelectOp sel_op)
 {
   LassoSelectUserData data;
@@ -981,7 +981,7 @@ static void do_lasso_select_lattice__doSelect(void *userData, BPoint *bp, const 
 }
 static bool do_lasso_select_lattice(ViewContext *vc,
                                     const int mcoords[][2],
-                                    short mcoords_len,
+                                    const int mcoords_len,
                                     const eSelectOp sel_op)
 {
   LassoSelectUserData data;
@@ -1051,7 +1051,7 @@ static void do_lasso_select_armature__doSelectBone(void *userData,
 
 static bool do_lasso_select_armature(ViewContext *vc,
                                      const int mcoords[][2],
-                                     short mcoords_len,
+                                     const int mcoords_len,
                                      const eSelectOp sel_op)
 {
   LassoSelectUserData data;
@@ -1100,7 +1100,7 @@ static void do_lasso_select_mball__doSelectElem(void *userData,
 }
 static bool do_lasso_select_meta(ViewContext *vc,
                                  const int mcoords[][2],
-                                 short mcoords_len,
+                                 const int mcoords_len,
                                  const eSelectOp sel_op)
 {
   LassoSelectUserData data;
@@ -1144,7 +1144,7 @@ static void do_lasso_select_meshobject__doSelectVert(void *userData,
 static bool do_lasso_select_paintvert(ViewContext *vc,
                                       wmGenericUserData *wm_userdata,
                                       const int mcoords[][2],
-                                      short mcoords_len,
+                                      const int mcoords_len,
                                       const eSelectOp sel_op)
 {
   const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
@@ -1205,7 +1205,7 @@ static bool do_lasso_select_paintvert(ViewContext *vc,
 static bool do_lasso_select_paintface(ViewContext *vc,
                                       wmGenericUserData *wm_userdata,
                                       const int mcoords[][2],
-                                      short mcoords_len,
+                                      const int mcoords_len,
                                       const eSelectOp sel_op)
 {
   Object *ob = vc->obact;
@@ -1243,7 +1243,7 @@ static bool do_lasso_select_paintface(ViewContext *vc,
 }
 
 #if 0
-static void do_lasso_select_node(int mcoords[][2], short mcoords_len, const eSelectOp sel_op)
+static void do_lasso_select_node(int mcoords[][2], const int mcoords_len, const eSelectOp sel_op)
 {
   SpaceNode *snode = area->spacedata.first;
 
@@ -1279,7 +1279,7 @@ static void do_lasso_select_node(int mcoords[][2], short mcoords_len, const eSel
 static bool view3d_lasso_select(bContext *C,
                                 ViewContext *vc,
                                 const int mcoords[][2],
-                                short mcoords_len,
+                                const int mcoords_len,
                                 const eSelectOp sel_op)
 {
   Object *ob = CTX_data_active_object(C);
@@ -1685,19 +1685,30 @@ static int selectbuffer_ret_hits_5(uint *buffer,
 /**
  * Populate a select buffer with objects and bones, if there are any.
  * Checks three selection levels and compare.
+ *
+ * \param do_nearest_xray_if_supported: When set, read in hits that don't stop
+ * at the nearest surface. The hit's must still be ordered by depth.
+ * Needed so we can step to the next, non-active object when it's already selected, see: T76445.
  */
 static int mixed_bones_object_selectbuffer(ViewContext *vc,
                                            uint *buffer,
                                            const int mval[2],
                                            eV3DSelectObjectFilter select_filter,
-                                           bool do_nearest)
+                                           bool do_nearest,
+                                           bool do_nearest_xray_if_supported)
 {
   rcti rect;
   int hits15, hits9 = 0, hits5 = 0;
   bool has_bones15 = false, has_bones9 = false, has_bones5 = false;
 
-  const int select_mode = (do_nearest ? VIEW3D_SELECT_PICK_NEAREST : VIEW3D_SELECT_PICK_ALL);
+  int select_mode = (do_nearest ? VIEW3D_SELECT_PICK_NEAREST : VIEW3D_SELECT_PICK_ALL);
   int hits = 0;
+
+  if (do_nearest_xray_if_supported) {
+    if ((U.gpu_flag & USER_GPU_FLAG_NO_DEPT_PICK) == 0) {
+      select_mode = VIEW3D_SELECT_PICK_ALL;
+    }
+  }
 
   /* we _must_ end cache before return, use 'goto finally' */
   view3d_opengl_select_cache_begin();
@@ -1802,7 +1813,7 @@ static int mixed_bones_object_selectbuffer_extended(ViewContext *vc,
 
   do_nearest = do_nearest && !enumerate;
 
-  int hits = mixed_bones_object_selectbuffer(vc, buffer, mval, select_filter, do_nearest);
+  int hits = mixed_bones_object_selectbuffer(vc, buffer, mval, select_filter, do_nearest, true);
 
   return hits;
 }
@@ -1934,7 +1945,7 @@ Base *ED_view3d_give_base_under_cursor(bContext *C, const int mval[2])
 
   const bool do_nearest = !XRAY_ACTIVE(vc.v3d);
   const int hits = mixed_bones_object_selectbuffer(
-      &vc, buffer, mval, VIEW3D_SELECT_FILTER_NOP, do_nearest);
+      &vc, buffer, mval, VIEW3D_SELECT_FILTER_NOP, do_nearest, false);
 
   if (hits > 0) {
     const bool has_bones = selectbuffer_has_bones(buffer, hits);

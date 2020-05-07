@@ -768,7 +768,7 @@ static int node_lasso_select_invoke(bContext *C, wmOperator *op, const wmEvent *
 
 static bool do_lasso_select_node(bContext *C,
                                  const int mcoords[][2],
-                                 short mcoords_len,
+                                 const int mcoords_len,
                                  eSelectOp sel_op)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -1182,7 +1182,7 @@ static uiBlock *node_find_menu(bContext *C, ARegion *region, void *arg_op)
                        0,
                        0,
                        "");
-  UI_but_func_search_set(but, NULL, node_find_cb, op->type, NULL, node_find_call_cb, NULL, NULL);
+  UI_but_func_search_set(but, NULL, node_find_cb, op->type, NULL, node_find_call_cb, NULL);
   UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
   /* fake button, it holds space for search items */
