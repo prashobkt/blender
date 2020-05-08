@@ -1326,15 +1326,14 @@ static void drw_shgroup_material_texture(DRWShadingGroup *grp,
                                          int textarget)
 {
   GPUTexture *gputex = GPU_texture_from_blender(tex->ima, tex->iuser, NULL, textarget);
-  DRW_shgroup_uniform_texture(grp, name, gputex);
+  DRW_shgroup_uniform_texture_persistent(grp, name, gputex);
 
   GPUTexture **gputex_ref = BLI_memblock_alloc(DST.vmempool->images);
   *gputex_ref = gputex;
   GPU_texture_ref(gputex);
 }
 
-static DRWShadingGroup *drw_shgroup_material_inputs(DRWShadingGroup *grp,
-                                                    struct GPUMaterial *material)
+void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, struct GPUMaterial *material)
 {
   ListBase textures = GPU_material_textures(material);
 
@@ -1352,7 +1351,7 @@ static DRWShadingGroup *drw_shgroup_material_inputs(DRWShadingGroup *grp,
     }
     else if (tex->colorband) {
       /* Color Ramp */
-      DRW_shgroup_uniform_texture(grp, tex->sampler_name, *tex->colorband);
+      DRW_shgroup_uniform_texture_persistent(grp, tex->sampler_name, *tex->colorband);
     }
   }
 
@@ -1360,8 +1359,6 @@ static DRWShadingGroup *drw_shgroup_material_inputs(DRWShadingGroup *grp,
   if (ubo != NULL) {
     DRW_shgroup_uniform_block(grp, GPU_UBO_BLOCK_NAME, ubo);
   }
-
-  return grp;
 }
 
 GPUVertFormat *DRW_shgroup_instance_format_array(const DRWInstanceAttrFormat attrs[],
@@ -1386,7 +1383,7 @@ DRWShadingGroup *DRW_shgroup_material_create(struct GPUMaterial *material, DRWPa
 
   if (shgroup) {
     drw_shgroup_init(shgroup, GPU_pass_shader_get(gpupass));
-    drw_shgroup_material_inputs(shgroup, material);
+    DRW_shgroup_add_material_resources(shgroup, material);
   }
   return shgroup;
 }

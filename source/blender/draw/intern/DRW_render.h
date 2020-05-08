@@ -365,6 +365,8 @@ DRWShadingGroup *DRW_shgroup_transform_feedback_create(struct GPUShader *shader,
                                                        DRWPass *pass,
                                                        struct GPUVertBuf *tf_target);
 
+void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, struct GPUMaterial *material);
+
 /* return final visibility */
 typedef bool(DRWCallVisibilityFn)(bool vis_in, void *user_data);
 
