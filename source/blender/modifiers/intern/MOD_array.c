@@ -514,7 +514,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     }
 
     if (offset_is_too_small) {
-      modifier_setError(
+      BKE_modifier_set_error(
           &amd->modifier,
           "The offset is too small, we cannot generate the amount of geometry it would require");
     }
@@ -525,9 +525,9 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   else if (((size_t)count * (size_t)chunk_nverts + (size_t)start_cap_nverts +
             (size_t)end_cap_nverts) > max_num_vertices) {
     count = 1;
-    modifier_setError(&amd->modifier,
-                      "The amount of copies is too high, we cannot generate the amount of "
-                      "geometry it would require");
+    BKE_modifier_set_error(&amd->modifier,
+                           "The amount of copies is too high, we cannot generate the amount of "
+                           "geometry it would require");
   }
 
   if (count < 1) {
@@ -1016,7 +1016,7 @@ ModifierTypeInfo modifierType_Array = {
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_EnableInEditmode |
         eModifierTypeFlag_AcceptsCVs,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,

@@ -550,7 +550,7 @@ ModifierTypeInfo modifierType_SimpleDeform = {
         eModifierTypeFlag_AcceptsVertexCosOnly | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ deformVerts,
     /* deformMatrices */ NULL,

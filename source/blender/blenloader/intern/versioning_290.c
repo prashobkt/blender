@@ -23,11 +23,13 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_brush_types.h"
 #include "DNA_genfile.h"
 #include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_collection.h"
+#include "BKE_colortools.h"
 #include "BKE_main.h"
 
 #include "BLO_readfile.h"
@@ -74,6 +76,25 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
           else {
             md->ui_expand_flag = 0;
           }
+        }
+      }
+    }
+
+    /* Init Grease Pencil new random curves. */
+    if (!DNA_struct_elem_find(fd->filesdna, "BrushGpencilSettings", "float", "random_hue")) {
+      LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+        if ((brush->gpencil_settings) && (brush->gpencil_settings->curve_rand_pressure == NULL)) {
+          brush->gpencil_settings->curve_rand_pressure = BKE_curvemapping_add(
+              1, 0.0f, 0.0f, 1.0f, 1.0f);
+          brush->gpencil_settings->curve_rand_strength = BKE_curvemapping_add(
+              1, 0.0f, 0.0f, 1.0f, 1.0f);
+          brush->gpencil_settings->curve_rand_uv = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+          brush->gpencil_settings->curve_rand_hue = BKE_curvemapping_add(
+              1, 0.0f, 0.0f, 1.0f, 1.0f);
+          brush->gpencil_settings->curve_rand_saturation = BKE_curvemapping_add(
+              1, 0.0f, 0.0f, 1.0f, 1.0f);
+          brush->gpencil_settings->curve_rand_value = BKE_curvemapping_add(
+              1, 0.0f, 0.0f, 1.0f, 1.0f);
         }
       }
     }
