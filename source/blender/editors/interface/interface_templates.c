@@ -1817,7 +1817,7 @@ void uiTemplatePathBuilder(uiLayout *layout,
 static void modifier_panel_id(void *md_link, char *r_name)
 {
   ModifierData *md = (ModifierData *)md_link;
-  modifierType_panelId(md->type, r_name);
+  BKE_modifier_type_panel_id(md->type, r_name);
 }
 
 void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
@@ -1833,7 +1833,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
     UI_panels_free_instanced(C, region);
     ModifierData *md = modifiers->first;
     for (int i = 0; md; i++, md = md->next) {
-      const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+      const ModifierTypeInfo *mti = BKE_modifier_get_info(md->type);
       if (mti->panelRegister) {
         char panel_idname[MAX_NAME];
         modifier_panel_id((void *)md, panel_idname);

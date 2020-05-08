@@ -637,8 +637,8 @@ void ED_spacetype_buttons(void)
 
   /* Register the panel types from modifiers. The actual panels are built per modifier rather than
    * per modifier type. */
-  for (int i = 0; i < NUM_MODIFIER_TYPES; i++) {
-    const ModifierTypeInfo *mti = modifierType_getInfo(i);
+  for (ModifierType i = 0; i < NUM_MODIFIER_TYPES; i++) {
+    const ModifierTypeInfo *mti = BKE_modifier_get_info(i);
     if (mti != NULL && mti->panelRegister != NULL) {
       mti->panelRegister(art);
     }

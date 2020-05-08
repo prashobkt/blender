@@ -118,9 +118,9 @@ const ModifierTypeInfo *BKE_modifier_get_info(ModifierType type)
 /**
  * Get the idname of the modifier type's panel, which was defined in the #panelRegister callback.
  */
-void modifierType_panelId(ModifierType type, char *r_idname)
+void BKE_modifier_type_panel_id(ModifierType type, char *r_idname)
 {
-  const ModifierTypeInfo *mti = modifierType_getInfo(type);
+  const ModifierTypeInfo *mti = BKE_modifier_get_info(type);
 
   strcpy(r_idname, MODIFIER_TYPE_PANEL_PREFIX);
   strcat(r_idname, mti->name);

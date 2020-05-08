@@ -363,7 +363,7 @@ void BKE_modifier_init(void);
 const ModifierTypeInfo *BKE_modifier_get_info(ModifierType type);
 
 /* For modifier UI panels. */
-void modifierType_panelId(ModifierType type, char *r_idname);
+void BKE_modifier_type_panel_id(ModifierType type, char *r_idname);
 
 /* Modifier utility calls, do call through type pointer and return
  * default values if pointer is optional.
