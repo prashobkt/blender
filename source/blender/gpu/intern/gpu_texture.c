@@ -1576,6 +1576,7 @@ void GPU_texture_clear(GPUTexture *tex, eGPUDataFormat gpu_data_format, const vo
     glClearTexImage(tex->bindcode, 0, data_format, data_type, color);
   }
   else {
+    /* TODO(fclem) speedup using the copy framebuffer. */
     size_t buffer_len = gpu_texture_memory_footprint_compute(tex);
     unsigned char *pixels = MEM_mallocN(buffer_len, __func__);
     if (color) {
