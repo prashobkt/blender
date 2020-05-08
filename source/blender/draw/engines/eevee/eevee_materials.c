@@ -328,7 +328,7 @@ static char *eevee_get_defines(int options)
   if ((options & VAR_MAT_SHADOW) != 0) {
     BLI_dynstr_append(ds, "#define SHADOW_SHADER\n");
   }
-  if ((options & VAR_MAT_HASH) != 0) {
+  if ((options & (VAR_MAT_HASH | VAR_MAT_CLIP)) != 0) {
     BLI_dynstr_append(ds, "#define USE_ALPHA_HASH\n");
   }
   if ((options & VAR_MAT_BLEND) != 0) {
