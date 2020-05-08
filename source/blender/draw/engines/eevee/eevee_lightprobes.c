@@ -923,12 +923,10 @@ static void lightbake_render_scene_face(int face, EEVEE_BakeRenderData *user_dat
   GPU_framebuffer_bind(face_fb[face]);
   GPU_framebuffer_clear_depth(face_fb[face], 1.0f);
 
-  DRW_draw_pass(psl->depth_pass);
-  DRW_draw_pass(psl->depth_pass_cull);
+  DRW_draw_pass(psl->depth_ps);
   DRW_draw_pass(psl->probe_background);
-  EEVEE_materials_draw_opaque(sldata, psl);
-  DRW_draw_pass(psl->sss_pass); /* Only output standard pass */
-  DRW_draw_pass(psl->sss_pass_cull);
+  DRW_draw_pass(psl->material_ps);
+  DRW_draw_pass(psl->material_sss_ps); /* Only output standard pass */
   DRW_draw_pass(psl->transparent_pass);
 }
 
@@ -987,10 +985,8 @@ static void lightbake_render_scene_reflected(int layer, EEVEE_BakeRenderData *us
   /* Slight modification: we handle refraction as normal
    * shading and don't do SSRefraction. */
 
-  DRW_draw_pass(psl->depth_pass_clip);
-  DRW_draw_pass(psl->depth_pass_clip_cull);
-  DRW_draw_pass(psl->refract_depth_pass_clip);
-  DRW_draw_pass(psl->refract_depth_pass_clip_cull);
+  DRW_draw_pass(psl->depth_ps);
+  DRW_draw_pass(psl->depth_refract_ps);
 
   DRW_draw_pass(psl->probe_background);
   EEVEE_create_minmax_buffer(vedata, tmp_planar_depth, layer);
@@ -999,10 +995,9 @@ static void lightbake_render_scene_reflected(int layer, EEVEE_BakeRenderData *us
   GPU_framebuffer_bind(fbl->planarref_fb);
 
   /* Shading pass */
-  EEVEE_materials_draw_opaque(sldata, psl);
-  DRW_draw_pass(psl->sss_pass); /* Only output standard pass */
-  DRW_draw_pass(psl->sss_pass_cull);
-  DRW_draw_pass(psl->refract_pass);
+  DRW_draw_pass(psl->material_ps);
+  DRW_draw_pass(psl->material_sss_ps); /* Only output standard pass */
+  DRW_draw_pass(psl->material_refract_ps);
 
   /* Transparent */
   if (DRW_state_is_image_render()) {

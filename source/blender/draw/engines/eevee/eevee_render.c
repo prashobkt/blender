@@ -463,7 +463,7 @@ static void eevee_render_draw_background(EEVEE_Data *vedata)
                                  GPU_ATTACHMENT_NONE});
   GPU_framebuffer_bind(fbl->main_fb);
 
-  DRW_draw_pass(psl->background_pass);
+  DRW_draw_pass(psl->background_ps);
 
   GPU_framebuffer_ensure_config(&fbl->main_fb,
                                 {GPU_ATTACHMENT_LEAVE,

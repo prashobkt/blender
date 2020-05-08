@@ -274,8 +274,7 @@ static void eevee_draw_scene(void *vedata)
 
     /* Depth prepass */
     DRW_stats_group_start("Prepass");
-    DRW_draw_pass(psl->depth_pass);
-    DRW_draw_pass(psl->depth_pass_cull);
+    DRW_draw_pass(psl->depth_ps);
     DRW_stats_group_end();
 
     /* Create minmax texture */
@@ -289,9 +288,9 @@ static void eevee_draw_scene(void *vedata)
     /* Shading pass */
     DRW_stats_group_start("Shading");
     if (DRW_state_draw_background()) {
-      DRW_draw_pass(psl->background_pass);
+      DRW_draw_pass(psl->background_ps);
     }
-    EEVEE_materials_draw_opaque(sldata, psl);
+    DRW_draw_pass(psl->material_ps);
     EEVEE_subsurface_data_render(sldata, vedata);
     DRW_stats_group_end();
 
@@ -306,9 +305,8 @@ static void eevee_draw_scene(void *vedata)
 
     /* Opaque refraction */
     DRW_stats_group_start("Opaque Refraction");
-    DRW_draw_pass(psl->refract_depth_pass);
-    DRW_draw_pass(psl->refract_depth_pass_cull);
-    DRW_draw_pass(psl->refract_pass);
+    DRW_draw_pass(psl->depth_refract_ps);
+    DRW_draw_pass(psl->material_refract_ps);
     DRW_stats_group_end();
 
     /* Volumetrics Resolve Opaque */

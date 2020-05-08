@@ -1183,7 +1183,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 
   {
-    DRW_PASS_CREATE(psl->background_pass, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
+    DRW_PASS_CREATE(psl->background_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
 
     struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
     DRWShadingGroup *grp = NULL;
@@ -1193,7 +1193,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
     const float *col = G_draw.block.colorBackground;
 
-    EEVEE_lookdev_cache_init(vedata, sldata, &grp, psl->background_pass, wo, NULL);
+    EEVEE_lookdev_cache_init(vedata, sldata, &grp, psl->background_ps, wo, NULL);
 
     if (!grp && wo) {
       col = &wo->horr;
@@ -1205,7 +1205,7 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
         switch (GPU_material_status(gpumat)) {
           case GPU_MAT_SUCCESS:
-            grp = DRW_shgroup_material_create(gpumat, psl->background_pass);
+            grp = DRW_shgroup_material_create(gpumat, psl->background_ps);
             add_background_uniforms(grp, sldata, vedata);
             DRW_shgroup_call(grp, geom, NULL);
             break;
@@ -1224,82 +1224,50 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
     /* Fallback if shader fails or if not using nodetree. */
     if (grp == NULL) {
-      grp = DRW_shgroup_create(e_data.default_background, psl->background_pass);
+      grp = DRW_shgroup_create(e_data.default_background, psl->background_ps);
       DRW_shgroup_uniform_vec3(grp, "color", col, 1);
       DRW_shgroup_uniform_float(grp, "backgroundAlpha", &stl->g_data->background_alpha, 1);
       DRW_shgroup_call(grp, geom, NULL);
     }
   }
 
+#define EEVEE_PASS_CREATE(pass, state) \
+  do { \
+    DRW_PASS_CREATE(psl->pass##_ps, state); \
+    DRW_PASS_CREATE(psl->pass##_cull_ps, state | DRW_STATE_CULL_BACK); \
+    DRW_pass_link(psl->pass##_ps, psl->pass##_cull_ps); \
+  } while (0)
+
+#define EEVEE_CLIP_PASS_CREATE(pass, state) \
+  do { \
+    DRWState st = state | DRW_STATE_CLIP_PLANES; \
+    DRW_PASS_INSTANCE_CREATE(psl->pass##_clip_ps, psl->pass##_ps, st); \
+    DRW_PASS_INSTANCE_CREATE( \
+        psl->pass##_clip_cull_ps, psl->pass##_cull_ps, st | DRW_STATE_CULL_BACK); \
+    DRW_pass_link(psl->pass##_clip_ps, psl->pass##_clip_cull_ps); \
+  } while (0)
+
   {
-    DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    DRW_PASS_CREATE(psl->depth_pass, state);
-    stl->g_data->depth_shgrp = DRW_shgroup_create(e_data.default_prepass_sh, psl->depth_pass);
+    DRWState state_depth = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+    DRWState state_shading = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_CLIP_PLANES;
+    DRWState state_sss = DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
 
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK;
-    DRW_PASS_CREATE(psl->depth_pass_cull, state);
-    stl->g_data->depth_shgrp_cull = DRW_shgroup_create(e_data.default_prepass_sh,
-                                                       psl->depth_pass_cull);
+    EEVEE_PASS_CREATE(depth, state_depth);
+    EEVEE_CLIP_PASS_CREATE(depth, state_depth);
 
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CLIP_PLANES;
-    DRW_PASS_CREATE(psl->depth_pass_clip, state);
-    stl->g_data->depth_shgrp_clip = DRW_shgroup_create(e_data.default_prepass_clip_sh,
-                                                       psl->depth_pass_clip);
+    EEVEE_PASS_CREATE(depth_refract, state_depth);
+    EEVEE_CLIP_PASS_CREATE(depth_refract, state_depth);
 
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CLIP_PLANES |
-            DRW_STATE_CULL_BACK;
-    DRW_PASS_CREATE(psl->depth_pass_clip_cull, state);
-    stl->g_data->depth_shgrp_clip_cull = DRW_shgroup_create(e_data.default_prepass_clip_sh,
-                                                            psl->depth_pass_clip_cull);
+    EEVEE_PASS_CREATE(material, state_shading);
+    EEVEE_PASS_CREATE(material_refract, state_shading);
+    EEVEE_PASS_CREATE(material_sss, state_shading | state_sss);
   }
-
   {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_CLIP_PLANES;
-    DRW_PASS_CREATE(psl->material_pass, state);
-    DRW_PASS_CREATE(psl->material_pass_cull, state | DRW_STATE_CULL_BACK);
-  }
 
-  {
-    DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    DRW_PASS_CREATE(psl->refract_depth_pass, state);
-    stl->g_data->refract_depth_shgrp = DRW_shgroup_create(e_data.default_prepass_sh,
-                                                          psl->refract_depth_pass);
-
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK;
-    DRW_PASS_CREATE(psl->refract_depth_pass_cull, state);
-    stl->g_data->refract_depth_shgrp_cull = DRW_shgroup_create(e_data.default_prepass_sh,
-                                                               psl->refract_depth_pass_cull);
-
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CLIP_PLANES;
-    DRW_PASS_CREATE(psl->refract_depth_pass_clip, state);
-    stl->g_data->refract_depth_shgrp_clip = DRW_shgroup_create(e_data.default_prepass_clip_sh,
-                                                               psl->refract_depth_pass_clip);
-
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CLIP_PLANES |
-            DRW_STATE_CULL_BACK;
-    DRW_PASS_CREATE(psl->refract_depth_pass_clip_cull, state);
-    stl->g_data->refract_depth_shgrp_clip_cull = DRW_shgroup_create(
-        e_data.default_prepass_clip_sh, psl->refract_depth_pass_clip_cull);
-  }
-
-  {
-    DRWState state = (DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_CLIP_PLANES);
-    DRW_PASS_CREATE(psl->refract_pass, state);
-  }
-
-  {
-    DRWState state = (DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_CLIP_PLANES |
-                      DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS);
-    DRW_PASS_CREATE(psl->sss_pass, state);
-    DRW_PASS_CREATE(psl->sss_pass_cull, state | DRW_STATE_CULL_BACK);
-    e_data.sss_count = 0;
-  }
-
-  {
+  } {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CLIP_PLANES;
     DRW_PASS_CREATE(psl->transparent_pass, state);
   }
-
   {
     DRW_PASS_CREATE(psl->update_noise_pass, DRW_STATE_WRITE_COLOR);
     DRWShadingGroup *grp = DRW_shgroup_create(e_data.update_noise_sh, psl->update_noise_pass);
