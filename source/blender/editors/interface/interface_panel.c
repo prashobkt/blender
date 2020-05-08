@@ -255,7 +255,8 @@ static Panel *UI_panel_add_instanced_ex(
 
   /* Add the panel's children too. Although they aren't instanced panels, we can still use this
    * function to create them, as UI_panel_begin does other things we don't need to do. */
-  LISTBASE_FOREACH (PanelType *, child_type, &panel_type->children) {
+  LISTBASE_FOREACH (LinkData *, child, &panel_type->children) {
+    PanelType *child_type = child->data;
     UI_panel_add_instanced_ex(area, region, &panel->children, child_type, list_index);
   }
 
@@ -1004,7 +1005,8 @@ void ui_draw_aligned_panel(uiStyle *style,
 
   /* Draw a panel and header backdrops with an opaque box backdrop for box style panels. */
   if (draw_box_style && !is_subpanel) {
-    rcti box_rect = {rect->xmin, rect->xmax, rect->ymin, headrect.ymax};
+    /* Expand the top a tiny bit to give header buttons equal size above and below. */
+    rcti box_rect = {rect->xmin, rect->xmax, rect->ymin, headrect.ymax + U.pixelsize};
     ui_draw_box_opaque((is_closed_x || is_closed_y) ? &headrect : &box_rect, UI_CNR_ALL);
 
     /* Mimick the border between aligned box widgets for the bottom of the header. */
