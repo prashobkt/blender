@@ -605,7 +605,9 @@ void BKE_gpencil_modifiers_foreach_ID_link(Object *ob, GreasePencilIDWalkFunc wa
   }
 }
 
-void BKE_gpencil_modifiers_foreach_tex_link(Object *ob, GreasePencilTexWalkFunc walk, void *userData)
+void BKE_gpencil_modifiers_foreach_tex_link(Object *ob,
+                                            GreasePencilTexWalkFunc walk,
+                                            void *userData)
 {
   GpencilModifierData *md = ob->greasepencil_modifiers.first;
 
@@ -618,7 +620,7 @@ void BKE_gpencil_modifiers_foreach_tex_link(Object *ob, GreasePencilTexWalkFunc 
   }
 }
 
-GpencilModifierData *BKE_gpencil_modifiers_findny_name(Object *ob, const char *name)
+GpencilModifierData *BKE_gpencil_modifiers_findby_name(Object *ob, const char *name)
 {
   return BLI_findstring(&(ob->greasepencil_modifiers), name, offsetof(GpencilModifierData, name));
 }
