@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <string>
 
-extern "C" {
 #include "BKE_anim_data.h"
 #include "BKE_duplilist.h"
 #include "BKE_key.h"
@@ -41,7 +40,6 @@ extern "C" {
 #include "DNA_particle_types.h"
 
 #include "DEG_depsgraph_query.h"
-}
 
 namespace USD {
 
@@ -576,7 +574,7 @@ void AbstractHierarchyIterator::make_writers_particle_systems(
 
     HierarchyContext hair_context = *transform_context;
     hair_context.export_path = path_concatenate(transform_context->export_path,
-                                                get_id_name(&psys->part->id));
+                                                make_valid_name(psys->name));
     hair_context.particle_system = psys;
 
     AbstractHierarchyWriter *writer = nullptr;
