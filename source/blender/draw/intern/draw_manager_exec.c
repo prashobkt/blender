@@ -1442,6 +1442,11 @@ static void drw_draw_pass_ex(DRWPass *pass,
                              DRWShadingGroup *start_group,
                              DRWShadingGroup *end_group)
 {
+  if (pass->original) {
+    start_group = pass->original->shgroups.first;
+    end_group = pass->original->shgroups.last;
+  }
+
   if (start_group == NULL) {
     return;
   }
@@ -1528,6 +1533,9 @@ static void drw_draw_pass_ex(DRWPass *pass,
 void DRW_draw_pass(DRWPass *pass)
 {
   drw_draw_pass_ex(pass, pass->shgroups.first, pass->shgroups.last);
+  while ((pass = pass->next)) {
+    DRW_draw_pass(pass);
+  }
 }
 
 /* Draw only a subset of shgroups. Used in special situations as grease pencil strokes */

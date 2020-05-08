@@ -535,6 +535,8 @@ bool DRW_shgroup_is_empty(DRWShadingGroup *shgroup);
 
 /* Passes */
 DRWPass *DRW_pass_create(const char *name, DRWState state);
+DRWPass *DRW_pass_create_instance(const char *name, DRWPass *original, DRWState state);
+void DRW_pass_link(DRWPass *first, DRWPass *second);
 /* TODO Replace with passes inheritance. */
 void DRW_pass_state_set(DRWPass *pass, DRWState state);
 void DRW_pass_state_add(DRWPass *pass, DRWState state);
@@ -548,6 +550,8 @@ void DRW_pass_sort_shgroup_reverse(DRWPass *pass);
 bool DRW_pass_is_empty(DRWPass *pass);
 
 #define DRW_PASS_CREATE(pass, state) (pass = DRW_pass_create(#pass, state))
+#define DRW_PASS_INSTANCE_CREATE(pass, original, state) \
+  (pass = DRW_pass_create_instance(#pass, (original), state))
 
 /* Views */
 DRWView *DRW_view_create(const float viewmat[4][4],

@@ -1937,7 +1937,26 @@ DRWPass *DRW_pass_create(const char *name, DRWState state)
   pass->handle = DST.pass_handle;
   DRW_handle_increment(&DST.pass_handle);
 
+  pass->original = NULL;
+  pass->next = NULL;
+
   return pass;
+}
+
+DRWPass *DRW_pass_create_instance(const char *name, DRWPass *original, DRWState state)
+{
+  DRWPass *pass = DRW_pass_create(name, state);
+  pass->original = original;
+
+  return pass;
+}
+
+/* Link two passes so that they are both rendered if the first one is being drawn. */
+void DRW_pass_link(DRWPass *first, DRWPass *second)
+{
+  BLI_assert(first != second);
+  BLI_assert(first->next == NULL);
+  first->next = second;
 }
 
 bool DRW_pass_is_empty(DRWPass *pass)

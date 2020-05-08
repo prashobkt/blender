@@ -345,6 +345,13 @@ struct DRWPass {
     DRWShadingGroup *last;
   } shgroups;
 
+  /* Draw the shgroups of this pass instead.
+   * This avoid duplicating drawcalls/shgroups
+   * for similar passes. */
+  DRWPass *original;
+  /* Link list of additional passes to render. */
+  DRWPass *next;
+
   DRWResourceHandle handle;
   DRWState state;
   char name[MAX_PASS_NAME];
