@@ -971,6 +971,12 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
           bind_texture(tex, BIND_TEMP);
           GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
           break;
+        case DRW_UNIFORM_TEXTURE_REF_PERSIST:
+          tex = *((GPUTexture **)uni->pvalue);
+          BLI_assert(tex);
+          bind_texture(tex, BIND_PERSIST);
+          GPU_shader_uniform_texture(shgroup->shader, uni->location, tex);
+          break;
         case DRW_UNIFORM_BLOCK:
           ubo = (GPUUniformBuffer *)uni->pvalue;
           bind_ubo(ubo, BIND_TEMP);
@@ -978,6 +984,16 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
           break;
         case DRW_UNIFORM_BLOCK_PERSIST:
           ubo = (GPUUniformBuffer *)uni->pvalue;
+          bind_ubo(ubo, BIND_PERSIST);
+          GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
+          break;
+        case DRW_UNIFORM_BLOCK_REF:
+          ubo = *((GPUUniformBuffer **)uni->pvalue);
+          bind_ubo(ubo, BIND_TEMP);
+          GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
+          break;
+        case DRW_UNIFORM_BLOCK_REF_PERSIST:
+          ubo = *((GPUUniformBuffer **)uni->pvalue);
           bind_ubo(ubo, BIND_PERSIST);
           GPU_shader_uniform_buffer(shgroup->shader, uni->location, ubo);
           break;

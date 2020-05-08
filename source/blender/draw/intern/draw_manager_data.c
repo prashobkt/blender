@@ -228,7 +228,11 @@ static void drw_shgroup_uniform(DRWShadingGroup *shgroup,
                                 int arraysize)
 {
   int location;
-  if (ELEM(type, DRW_UNIFORM_BLOCK, DRW_UNIFORM_BLOCK_PERSIST)) {
+  if (ELEM(type,
+           DRW_UNIFORM_BLOCK,
+           DRW_UNIFORM_BLOCK_PERSIST,
+           DRW_UNIFORM_BLOCK_REF,
+           DRW_UNIFORM_BLOCK_REF_PERSIST)) {
     location = GPU_shader_get_uniform_block(shgroup->shader, name);
   }
   else {
@@ -284,6 +288,22 @@ void DRW_shgroup_uniform_texture_persistent(DRWShadingGroup *shgroup,
   drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_TEXTURE_PERSIST, tex, 0, 1);
 }
 
+void DRW_shgroup_uniform_texture_ref(DRWShadingGroup *shgroup, const char *name, GPUTexture **tex)
+{
+  BLI_assert(tex != NULL);
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_TEXTURE_REF, tex, 0, 1);
+}
+
+/* Same as DRW_shgroup_uniform_texture_ref but is guaranteed to be bound if shader does not change
+ * between shgrp. */
+void DRW_shgroup_uniform_texture_ref_persistent(DRWShadingGroup *shgroup,
+                                                const char *name,
+                                                GPUTexture **tex)
+{
+  BLI_assert(tex != NULL);
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_TEXTURE_REF_PERSIST, tex, 0, 1);
+}
+
 void DRW_shgroup_uniform_block(DRWShadingGroup *shgroup,
                                const char *name,
                                const GPUUniformBuffer *ubo)
@@ -302,9 +322,22 @@ void DRW_shgroup_uniform_block_persistent(DRWShadingGroup *shgroup,
   drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_BLOCK_PERSIST, ubo, 0, 1);
 }
 
-void DRW_shgroup_uniform_texture_ref(DRWShadingGroup *shgroup, const char *name, GPUTexture **tex)
+void DRW_shgroup_uniform_block_ref(DRWShadingGroup *shgroup,
+                                   const char *name,
+                                   GPUUniformBuffer **ubo)
 {
-  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_TEXTURE_REF, tex, 0, 1);
+  BLI_assert(ubo != NULL);
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_BLOCK_REF, ubo, 0, 1);
+}
+
+/* Same as DRW_shgroup_uniform_block_ref but is guaranteed to be bound if shader does not change
+ * between shgrp. */
+void DRW_shgroup_uniform_block_ref_persistent(DRWShadingGroup *shgroup,
+                                              const char *name,
+                                              GPUUniformBuffer **ubo)
+{
+  BLI_assert(ubo != NULL);
+  drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_BLOCK_REF_PERSIST, ubo, 0, 1);
 }
 
 void DRW_shgroup_uniform_bool(DRWShadingGroup *shgroup,
