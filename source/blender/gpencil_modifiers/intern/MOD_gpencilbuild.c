@@ -500,7 +500,9 @@ static void generate_geometry(GpencilModifierData *md,
   }
 
   /* Determine how far along we are between the keyframes */
-  float fac = (ctime - start_frame) / (end_frame - start_frame);
+  float fac = (mmd->flag & GP_BUILD_PERCENTAGE_MODE) ?
+                  mmd->percentage_fac :
+                  (ctime - start_frame) / (end_frame - start_frame);
 
   /* Time management mode */
   switch (mmd->mode) {
