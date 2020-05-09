@@ -34,7 +34,6 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-extern "C" {
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -105,7 +104,6 @@ extern "C" {
 
 #include "RNA_access.h"
 #include "RNA_types.h"
-} /* extern "C" */
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -1151,8 +1149,8 @@ void DepsgraphNodeBuilder::build_particle_systems(Object *object, bool is_object
    *     evaluation context for an object. It acts as the container
    *     for all the nodes associated with a particular set of particle
    *     systems.
-   *  2) Particle System Eval Operation - This operation node acts as a
-   *     blackbox evaluation step for one particle system referenced by
+   *  2) Particle System Evaluation Operation - This operation node acts as a
+   *     black-box evaluation step for one particle system referenced by
    *     the particle systems stack. All dependencies link to this operation. */
   /* Component for all particle systems. */
   ComponentNode *psys_comp = add_component_node(&object->id, NodeType::PARTICLE_SYSTEM);
