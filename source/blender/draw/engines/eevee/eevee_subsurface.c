@@ -262,8 +262,7 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_texture_ref(grp, "sssRadius", &effects->sss_radius);
     DRW_shgroup_uniform_block(grp, "sssProfile", sss_profile);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-    DRW_shgroup_uniform_block(
-        grp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
+    DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_stencil_mask(grp, sss_id);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
@@ -275,8 +274,7 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_texture_ref(grp, "sssRadius", &effects->sss_radius);
     DRW_shgroup_uniform_block(grp, "sssProfile", sss_profile);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-    DRW_shgroup_uniform_block(
-        grp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
+    DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_stencil_mask(grp, sss_id);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
@@ -293,8 +291,7 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
     DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-    DRW_shgroup_uniform_block(
-        grp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
+    DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_stencil_mask(grp, sss_id);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }

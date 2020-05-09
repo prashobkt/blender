@@ -905,7 +905,6 @@ void EEVEE_object_hair_cache_populate(EEVEE_Data *vedata,
                                       Object *ob,
                                       bool *cast_shadow);
 void EEVEE_materials_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
-struct GPUUniformBuffer *EEVEE_material_default_render_pass_ubo_get(EEVEE_ViewLayerData *sldata);
 void EEVEE_materials_free(void);
 void EEVEE_update_noise(EEVEE_PassList *psl, EEVEE_FramebufferList *fbl, const double offsets[3]);
 void EEVEE_update_viewvecs(float invproj[4][4], float winmat[4][4], float (*r_viewvecs)[4]);

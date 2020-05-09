@@ -107,12 +107,6 @@ struct GPUTexture *EEVEE_materials_get_util_tex(void)
   return e_data.util_tex;
 }
 
-/* Get the default render pass ubo. This is a ubo that enables all bsdf render passes. */
-struct GPUUniformBuffer *EEVEE_material_default_render_pass_ubo_get(EEVEE_ViewLayerData *sldata)
-{
-  return sldata->renderpass_ubo.combined;
-}
-
 /**
  * ssr_id can be null to disable ssr contribution.
  */

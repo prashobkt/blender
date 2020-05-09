@@ -201,8 +201,7 @@ void EEVEE_renderpasses_output_init(EEVEE_ViewLayerData *sldata,
         grp, "inputSecondLightBuffer", &g_data->renderpass_light_input);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-    DRW_shgroup_uniform_block(
-        grp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
+    DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_uniform_int(grp, "currentSample", &g_data->renderpass_current_sample, 1);
     DRW_shgroup_uniform_int(grp, "renderpassType", &g_data->renderpass_type, 1);
     DRW_shgroup_uniform_int(grp, "postProcessType", &g_data->renderpass_postprocess, 1);
