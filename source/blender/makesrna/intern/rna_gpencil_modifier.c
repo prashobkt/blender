@@ -1672,16 +1672,16 @@ static void rna_def_modifier_gpencilbuild(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   /* Use percentage */
-  prop = RNA_def_property(srna, "use_percentage_mode", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_BUILD_PERCENTAGE_MODE);
+  prop = RNA_def_property(srna, "use_percentage", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_BUILD_PERCENTAGE);
   RNA_def_property_ui_text(
-      prop, "Percentage Mode", "Us ethe percentage factor to determine the visible points");
+      prop, "Restrict Visible Points", "Use a percentage factor to determine the visible points");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   /* Percentage factor. */
   prop = RNA_def_property(srna, "percentage_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "percentage_fac");
-  RNA_def_property_ui_text(prop, "Percentage", "Defines how much of the stroke is visible");
+  RNA_def_property_ui_text(prop, "Factor", "Defines how much of the stroke is visible");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 

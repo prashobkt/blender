@@ -406,7 +406,7 @@ static void generate_geometry(GpencilModifierData *md,
 {
   BuildGpencilModifierData *mmd = (BuildGpencilModifierData *)md;
   const bool reverse = (mmd->transition != GP_BUILD_TRANSITION_GROW);
-  const bool is_percentage = (mmd->flag & GP_BUILD_PERCENTAGE_MODE);
+  const bool is_percentage = (mmd->flag & GP_BUILD_PERCENTAGE);
 
   const float ctime = DEG_get_ctime(depsgraph);
 

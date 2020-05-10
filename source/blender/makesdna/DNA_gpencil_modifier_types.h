@@ -410,7 +410,7 @@ typedef enum eBuildGpencil_Flag {
   GP_BUILD_INVERT_LAYERPASS = (1 << 3),
 
   /* Use a percentage instead of frame number to evaluate strokes. */
-  GP_BUILD_PERCENTAGE_MODE = (1 << 4),
+  GP_BUILD_PERCENTAGE = (1 << 4),
 } eBuildGpencil_Flag;
 
 typedef struct LatticeGpencilModifierData {
