@@ -406,7 +406,7 @@ GPUMaterial *DRW_shader_create_from_world(struct Scene *scene,
                                           bool deferred)
 {
   GPUMaterial *mat = NULL;
-  if (DRW_state_is_image_render()) {
+  if (DRW_state_is_image_render() || !deferred) {
     mat = GPU_material_from_nodetree_find(&wo->gpumaterial, engine_type, options);
   }
 
@@ -446,7 +446,7 @@ GPUMaterial *DRW_shader_create_from_material(struct Scene *scene,
                                              bool deferred)
 {
   GPUMaterial *mat = NULL;
-  if (DRW_state_is_image_render()) {
+  if (DRW_state_is_image_render() || !deferred) {
     mat = GPU_material_from_nodetree_find(&ma->gpumaterial, engine_type, options);
   }
 
