@@ -1884,7 +1884,15 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         split = col2.split(factor=0.6)
 
         row = split.row(align=True)
-        row.prop_search(md, "material", gpd, "materials", text="", icon='SHADING_TEXTURE')
+
+        valid = md.material in (slot.material for slot in ob.material_slots) or md.material is None
+        if valid:
+            icon = 'SHADING_TEXTURE'
+        else:
+            icon = 'ERROR'
+
+        row.alert = not valid
+        row.prop_search(md, "material", gpd, "materials", text="", icon=icon)
         row.prop(md, "invert_materials", text="", icon='ARROW_LEFTRIGHT')
 
         row = split.row(align=True)
