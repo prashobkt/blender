@@ -30,6 +30,7 @@ class GHOST_XrContext;
 class GHOST_XrSwapchain;
 struct GHOST_XrDrawInfo;
 struct OpenXRSessionData;
+struct GHOST_XrControllersData;
 
 class GHOST_XrSession {
  public:
@@ -44,7 +45,7 @@ class GHOST_XrSession {
   void start(const GHOST_XrSessionBeginInfo *begin_info);
   void requestEnd();
 
-  LifeExpectancy handleStateChangeEvent(const XrEventDataSessionStateChanged *lifecycle);
+  LifeExpectancy handleStateChangeEvent(const XrEventDataSessionStateChanged *lifecycle, bool debug = false);
 
   bool isRunning() const;
   bool needsUpsideDownDrawing() const;
@@ -80,6 +81,7 @@ class GHOST_XrSession {
                 XrCompositionLayerProjectionView &r_proj_layer_view,
                 XrSpaceLocation &view_location,
                 XrView &view,
+                GHOST_XrControllersData const& controllers_data,
                 void *draw_customdata);
   void beginFrameDrawing();
   void endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *> *layers);

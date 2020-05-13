@@ -37,7 +37,7 @@
 #include "wm_surface.h"
 #include "wm_xr_intern.h"
 
-void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4])
+void wm_xr_pose_to_viewmat(float r_viewmat[4][4], const GHOST_XrPose* pose)
 {
   float iquat[4];
   invert_qt_qt_normalized(iquat, pose->orientation_quat);
@@ -48,6 +48,7 @@ void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4])
 static void wm_xr_draw_matrices_create(const wmXrDrawData *draw_data,
                                        const GHOST_XrDrawViewInfo *draw_view,
                                        const XrSessionSettings *session_settings,
+                                       float scale,
                                        float r_view_mat[4][4],
                                        float r_proj_mat[4][4])
 {
@@ -65,15 +66,15 @@ static void wm_xr_draw_matrices_create(const wmXrDrawData *draw_data,
                      draw_view->fov.angle_right,
                      draw_view->fov.angle_up,
                      draw_view->fov.angle_down,
-                     session_settings->clip_start,
-                     session_settings->clip_end);
+                     session_settings->clip_start * scale,
+                     session_settings->clip_end * scale);
 
   float eye_mat[4][4];
   float base_mat[4][4];
 
-  wm_xr_pose_to_viewmat(&eye_pose, eye_mat);
+  wm_xr_pose_to_viewmat(eye_mat, &eye_pose);
   /* Calculate the base pose matrix (in world space!). */
-  wm_xr_pose_to_viewmat(&draw_data->base_pose, base_mat);
+  wm_xr_pose_to_viewmat(base_mat, &draw_data->base_pose);
 
   mul_m4_m4m4(r_view_mat, eye_mat, base_mat);
 }
@@ -93,6 +94,16 @@ static void wm_xr_draw_viewport_buffers_to_active_framebuffer(
     SWAP(int, rect.ymin, rect.ymax);
   }
   GPU_viewport_draw_to_screen_ex(surface_data->viewport, 0, &rect, draw_view->expects_srgb_buffer);
+}
+
+void apply_world_transform(float viewmat[4][4], GHOST_XrPose world_pose, float scale)
+{
+  float world[4][4];
+  float scalev[3] = {scale, scale, scale};
+
+  loc_quat_size_to_mat4(world, world_pose.position, world_pose.orientation_quat, scalev);  
+
+  mul_m4_m4m4(viewmat, viewmat, world);
 }
 
 /**
@@ -116,12 +127,18 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   BLI_assert(WM_xr_session_is_ready(xr_data));
 
   wm_xr_session_draw_data_update(session_state, settings, draw_view, draw_data);
-  wm_xr_draw_matrices_create(draw_data, draw_view, settings, viewmat, winmat);
-  wm_xr_session_state_update(settings, draw_data, draw_view, session_state);
+  wm_xr_draw_matrices_create(
+      draw_data, draw_view, settings, session_state->world_scale, viewmat, winmat);
+
+  apply_world_transform(viewmat, session_state->world_pose, session_state->world_scale);
+
+  wm_xr_session_state_update(settings, draw_data, draw_view, session_state, viewmat);
 
   if (!wm_xr_session_surface_offscreen_ensure(surface_data, draw_view)) {
     return;
   }
+
+ 
 
   /* In case a framebuffer is still bound from drawing the last eye. */
   GPU_framebuffer_restore();
@@ -138,8 +155,8 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   display_flags,
                                   viewmat,
                                   winmat,
-                                  settings->clip_start,
-                                  settings->clip_end,
+                                  settings->clip_start * session_state->world_scale,
+                                  settings->clip_end * session_state->world_scale,
                                   false,
                                   true,
                                   true,

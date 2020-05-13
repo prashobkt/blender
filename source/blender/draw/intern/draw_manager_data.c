@@ -1634,10 +1634,14 @@ static void draw_frustum_bound_sphere_calc(const BoundBox *bbox,
     bsphere->center[0] = farcenter[0] * z / e;
     bsphere->center[1] = farcenter[1] * z / e;
     bsphere->center[2] = z;
-    bsphere->radius = len_v3v3(bsphere->center, farpoint);
 
     /* Transform to world space. */
     mul_m4_v3(viewinv, bsphere->center);
+
+    /* In order to compute sphere radius, the farpoint need to be transformed as well */
+    /* (if viewinv contains scaling) */
+    mul_m4_v3(viewinv, farpoint);
+    bsphere->radius = len_v3v3(bsphere->center, farpoint);
   }
 }
 

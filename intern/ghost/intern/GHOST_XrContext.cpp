@@ -458,8 +458,15 @@ void GHOST_XrContext::startSession(const GHOST_XrSessionBeginInfo *begin_info)
   m_custom_funcs.session_exit_customdata = begin_info->exit_customdata;
 
   if (m_session == nullptr) {
+      if (isDebugMode()) printf("Create a new session object.\n");
     m_session = std::unique_ptr<GHOST_XrSession>(new GHOST_XrSession(this));
   }
+  else
+  {
+      if (isDebugMode()) printf("DONT Create a new session object, previous one is still != null.\n");
+  }
+
+  if (isDebugMode()) printf("Start the session.\n");
   m_session->start(begin_info);
 }
 
@@ -467,9 +474,13 @@ void GHOST_XrContext::endSession()
 {
   if (m_session) {
     if (m_session->isRunning()) {
+      if (isDebugMode())
+        printf("Request Session End.\n");
       m_session->requestEnd();
     }
     else {
+      if (isDebugMode())
+        printf("Session state is IDLE, destroying it.\n");
       m_session = nullptr;
     }
   }
@@ -491,7 +502,7 @@ void GHOST_XrContext::drawSessionViews(void *draw_customdata)
 void GHOST_XrContext::handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle)
 {
   if (m_session &&
-      m_session->handleStateChangeEvent(lifecycle) == GHOST_XrSession::SESSION_DESTROY) {
+      m_session->handleStateChangeEvent(lifecycle, isDebugMode()) == GHOST_XrSession::SESSION_DESTROY) {
     m_session = nullptr;
   }
 }

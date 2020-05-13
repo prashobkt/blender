@@ -878,6 +878,48 @@ bool WM_xr_session_state_viewer_pose_rotation_get(const wmXrData *xr, float r_ro
 bool WM_xr_session_state_viewer_pose_matrix_info_get(const wmXrData *xr,
                                                      float r_viewmat[4][4],
                                                      float *r_focal_len);
+
+/* world */
+bool WM_xr_session_state_world_location_get(const wmXrData* xr, float r_location[3]);
+bool WM_xr_session_state_world_location_set(const wmXrData* xr, const float r_location[3]);
+bool WM_xr_session_state_world_rotation_get(const wmXrData* xr, float r_rotation[4]);
+bool WM_xr_session_state_world_rotation_set(const wmXrData* xr, const float r_rotation[4]);
+float WM_xr_session_state_world_scale_get(const wmXrData* xr);
+bool WM_xr_session_state_world_scale_set(const wmXrData* xr, const float scale);
+bool WM_xr_session_state_world_matrix_get(const wmXrData* xr, float world_matrix[4][4]);
+
+/* controllers */
+bool WM_xr_session_state_left_controller_location_get(const wmXrData* xr, float r_location[3]);
+bool WM_xr_session_state_left_controller_rotation_get(const wmXrData* xr, float r_rotation[4]);
+bool WM_xr_session_state_right_controller_location_get(const wmXrData* xr, float r_location[3]);
+bool WM_xr_session_state_right_controller_rotation_get(const wmXrData* xr, float r_rotation[4]);
+
+float WM_xr_session_state_left_trigger_value_get(const wmXrData* xr);
+bool WM_xr_session_state_left_trigger_touch_get(const wmXrData* xr);
+float WM_xr_session_state_right_trigger_value_get(const wmXrData* xr);
+bool WM_xr_session_state_right_trigger_touch_get(const wmXrData* xr);
+
+float WM_xr_session_state_left_grip_value_get(const wmXrData* xr);
+float WM_xr_session_state_right_grip_value_get(const wmXrData* xr);
+
+bool WM_xr_session_state_left_primary_click_get(const wmXrData* xr);
+bool WM_xr_session_state_left_primary_touch_get(const wmXrData* xr);
+bool WM_xr_session_state_left_secondary_click_get(const wmXrData* xr);
+bool WM_xr_session_state_left_secondary_touch_get(const wmXrData* xr);
+bool WM_xr_session_state_right_primary_click_get(const wmXrData* xr);
+bool WM_xr_session_state_right_primary_touch_get(const wmXrData* xr);
+bool WM_xr_session_state_right_secondary_click_get(const wmXrData* xr);
+bool WM_xr_session_state_right_secondary_touch_get(const wmXrData* xr);
+
+float WM_xr_session_state_left_thumbstick_x_get(const wmXrData* xr);
+float WM_xr_session_state_left_thumbstick_y_get(const wmXrData* xr);
+float WM_xr_session_state_right_thumbstick_x_get(const wmXrData* xr);
+float WM_xr_session_state_right_thumbstick_y_get(const wmXrData* xr);
+bool WM_xr_session_state_left_thumbstick_click_get(const wmXrData* xr);
+bool WM_xr_session_state_right_thumbstick_click_get(const wmXrData* xr);
+bool WM_xr_session_state_left_thumbstick_touch_get(const wmXrData* xr);
+bool WM_xr_session_state_right_thumbstick_touch_get(const wmXrData* xr);
+
 #endif
 
 #ifdef __cplusplus

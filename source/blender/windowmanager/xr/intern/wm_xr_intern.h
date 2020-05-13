@@ -25,6 +25,33 @@
 
 #include "wm_xr.h"
 
+typedef struct wmXrControllersData {
+  GHOST_XrPose left_pose;
+  GHOST_XrPose right_pose;
+  float left_trigger_value;
+  float right_trigger_value;
+  bool left_trigger_touch;
+  bool right_trigger_touch;
+  float left_grip_value;
+  float right_grip_value;
+  bool left_primary_click;
+  bool left_primary_touch;
+  bool left_secondary_click;
+  bool left_secondary_touch;
+  bool right_primary_click;
+  bool right_primary_touch;
+  bool right_secondary_click;
+  bool right_secondary_touch;
+  float left_thumbstick_x;
+  float left_thumbstick_y;
+  bool left_thumbstick_click;
+  bool left_thumbstick_touch;
+  float right_thumbstick_x;
+  float right_thumbstick_y;
+  bool right_thumbstick_click;
+  bool right_thumbstick_touch;
+} wmXrControllersData;
+
 typedef struct wmXrSessionState {
   bool is_started;
 
@@ -38,6 +65,7 @@ typedef struct wmXrSessionState {
    * resetting to base pose. */
   char prev_base_pose_type; /* eXRSessionBasePoseType */
   Object *prev_base_pose_object;
+
   /** Copy of XrSessionSettings.flag created on the last draw call, stored to detect changes. */
   int prev_settings_flag;
   /** Copy of wmXrDrawData.eye_position_ofs. */
@@ -45,6 +73,13 @@ typedef struct wmXrSessionState {
 
   bool force_reset_to_base_pose;
   bool is_view_data_set;
+
+  /** World */
+  GHOST_XrPose world_pose;
+  float world_scale;
+
+  /** Controllers */
+  wmXrControllersData controllers_data;
 } wmXrSessionState;
 
 typedef struct wmXrRuntimeData {
@@ -84,13 +119,14 @@ void wm_xr_session_draw_data_update(const wmXrSessionState *state,
 void wm_xr_session_state_update(const XrSessionSettings *settings,
                                 const wmXrDrawData *draw_data,
                                 const GHOST_XrDrawViewInfo *draw_view,
-                                wmXrSessionState *state);
+                                wmXrSessionState *state,
+                                float viewmat[4][4]);
 bool wm_xr_session_surface_offscreen_ensure(wmXrSurfaceData *surface_data,
                                             const GHOST_XrDrawViewInfo *draw_view);
 void *wm_xr_session_gpu_binding_context_create(void);
 void wm_xr_session_gpu_binding_context_destroy(GHOST_ContextHandle context);
 
-void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4]);
+void wm_xr_pose_to_viewmat(float r_viewmat[4][4], const GHOST_XrPose* pose);
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata);
 
 #endif

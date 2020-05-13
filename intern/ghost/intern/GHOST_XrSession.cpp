@@ -35,6 +35,45 @@
 
 #include "GHOST_XrSession.h"
 
+/** Oculus Touch OpenXR profile data */
+struct OculusTouchProfile {
+  bool valid;
+
+  XrActionSet actionSet;
+  XrPath handPaths[2];
+  XrSpace handSpaces[2];
+
+  /* Common actions for each hands */
+  XrAction squeezeValueAction;
+  XrAction triggerValueAction;
+  XrAction triggerTouchAction;
+  XrAction thumbstickXAction;
+  XrAction thumbstickYAction;
+  XrAction thumbstickClickAction;
+  XrAction thumbstickTouchAction;
+  XrAction thumbrestTouchAction;
+  XrAction gripPoseAction;
+  XrAction aimPoseAction;
+  XrAction hapticAction;
+
+  /* Specific hand actions */
+  XrAction leftXClickAction;
+  XrAction leftXTouchAction;
+  XrAction leftYClickAction;
+  XrAction leftYTouchAction;
+  XrAction leftMenuClickAction;
+
+  XrAction rightAClickAction;
+  XrAction rightATouchAction;
+  XrAction rightBClickAction;
+  XrAction rightBTouchAction;
+  XrAction rightSystemClickAction;
+};
+
+enum class OpenXrProfile {
+    OCULUS_TOUCH
+};
+
 struct OpenXRSessionData {
   XrSystemId system_id = XR_NULL_SYSTEM_ID;
   XrSession session = XR_NULL_HANDLE;
@@ -46,6 +85,9 @@ struct OpenXRSessionData {
   XrSpace view_space;
   std::vector<XrView> views;
   std::vector<GHOST_XrSwapchain> swapchains;
+
+  OpenXrProfile detectedProfile;
+  OculusTouchProfile oculusTouchProfile;
 };
 
 struct GHOST_XrDrawInfo {
@@ -55,6 +97,36 @@ struct GHOST_XrDrawInfo {
   std::chrono::high_resolution_clock::time_point frame_begin_time;
   /* Time previous frames took for rendering (in ms). */
   std::list<double> last_frame_times;
+};
+
+/* One structure for all devices */
+struct GHOST_XrControllersData {
+  XrPosef left_pose;
+  float left_trigger_value;
+  bool left_trigger_touch;
+  float left_grip_value;
+  bool left_primary_click;
+  bool left_primary_touch;
+  bool left_secondary_click;
+  bool left_secondary_touch;
+
+  XrPosef right_pose;
+  float right_trigger_value;
+  bool right_trigger_touch;
+  float right_grip_value;
+  bool right_primary_click;
+  bool right_primary_touch;
+  bool right_secondary_click;
+  bool right_secondary_touch;
+
+  float left_thumbstick_x;
+  float left_thumbstick_y;
+  bool left_thumbstick_click;
+  bool left_thumbstick_touch;
+  float right_thumbstick_x;
+  float right_thumbstick_y;
+  bool right_thumbstick_click;
+  bool right_thumbstick_touch;
 };
 
 /* -------------------------------------------------------------------- */
@@ -70,6 +142,13 @@ GHOST_XrSession::GHOST_XrSession(GHOST_XrContext *xr_context)
 GHOST_XrSession::~GHOST_XrSession()
 {
   unbindGraphicsContext();
+
+  /* Destroy action set (which also destroy all handles of actions in that action set) */
+  switch (m_oxr->detectedProfile) {
+    case OpenXrProfile::OCULUS_TOUCH:
+      xrDestroyActionSet(m_oxr->oculusTouchProfile.actionSet);
+      break;
+  }
 
   m_oxr->swapchains.clear();
 
@@ -104,6 +183,18 @@ void GHOST_XrSession::initSystem()
 
   CHECK_XR(xrGetSystem(m_context->getInstance(), &system_info, &m_oxr->system_id),
            "Failed to get device information. Is a device plugged in?");
+
+  /* Get detected device */
+  XrSystemProperties xrSystemProperties = {XR_TYPE_SYSTEM_PROPERTIES};
+  xrSystemProperties.next = NULL;
+  xrSystemProperties.graphicsProperties = {0};
+  xrSystemProperties.trackingProperties = {0};
+  CHECK_XR(xrGetSystemProperties(m_context->getInstance(), m_oxr->system_id, &xrSystemProperties),
+      "Failed to get system properties.");
+
+  if (strcmp(xrSystemProperties.systemName, "Quest") == 0 || strcmp(xrSystemProperties.systemName, "Oculus Rift S") == 0) {
+    m_oxr->detectedProfile = OpenXrProfile::OCULUS_TOUCH;
+  }
 }
 
 /** \} */ /* Create, Initialize and Destruct */
@@ -148,6 +239,458 @@ static void create_reference_spaces(OpenXRSessionData *oxr, const GHOST_XrPose *
   create_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
   CHECK_XR(xrCreateReferenceSpace(oxr->session, &create_info, &oxr->view_space),
            "Failed to create view reference space.");
+}
+
+/* Helper function to create and bind an OpenXR action */
+static void create_and_bind_xr_action(XrInstance xrInstance,
+                             XrActionSet actionSet,
+                             const XrActionCreateInfo *actionInfo,
+                             XrAction *action,
+                             std::vector<XrActionSuggestedBinding> &bindings,
+                             const std::vector<std::string> &paths)
+{
+  std::string error_msg = "failed to create \"";
+  error_msg += actionInfo->actionName;
+  error_msg += "\" action";
+  CHECK_XR(xrCreateAction(actionSet, actionInfo, action), error_msg.c_str());
+  for (int i = 0; i < paths.size(); ++i) {
+    XrPath xrPaths;
+    xrStringToPath(xrInstance, paths[i].c_str(), &xrPaths);
+    bindings.push_back(XrActionSuggestedBinding{*action, xrPaths});
+  }
+}
+
+static void init_xr_oculus_touch_profile(OpenXRSessionData *oxr, XrInstance xrInstance)
+{
+  OculusTouchProfile *profile = &oxr->oculusTouchProfile;
+
+  /* Create action set */
+  XrActionSetCreateInfo actionSetInfo = {XR_TYPE_ACTION_SET_CREATE_INFO};
+  actionSetInfo.next = NULL;
+  actionSetInfo.priority = 0;
+  strcpy(actionSetInfo.actionSetName, "actionset");
+  strcpy(actionSetInfo.localizedActionSetName, "ActionSet");
+  CHECK_XR(xrCreateActionSet(xrInstance, &actionSetInfo, &profile->actionSet),
+           "Failed to create action set.");
+
+  /* Create common actions for each hand */
+  int const handsCount = 2;
+  xrStringToPath(xrInstance, "/user/hand/left", &profile->handPaths[0]);
+  xrStringToPath(xrInstance, "/user/hand/right", &profile->handPaths[1]);
+
+  std::vector<XrActionSuggestedBinding> bindings;
+
+  XrActionCreateInfo actionInfo = {XR_TYPE_ACTION_CREATE_INFO};
+  actionInfo.next = NULL;
+  actionInfo.countSubactionPaths = handsCount;
+  actionInfo.subactionPaths = profile->handPaths;
+
+  /* ...of type float */
+  actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
+
+  strcpy(actionInfo.actionName, "trigger");
+  strcpy(actionInfo.localizedActionName, "Trigger Value");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->triggerValueAction,
+                            bindings,
+                            {"/user/hand/left/input/trigger/value", "/user/hand/right/input/trigger/value"});
+
+  strcpy(actionInfo.actionName, "squeeze");
+  strcpy(actionInfo.localizedActionName, "Squeeze Value");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->squeezeValueAction,
+                            bindings,
+                            {"/user/hand/left/input/squeeze/value", "/user/hand/right/input/squeeze/value"});
+
+  strcpy(actionInfo.actionName, "thumbstick_x");
+  strcpy(actionInfo.localizedActionName, "Thumbstick X Value");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->thumbstickXAction,
+                            bindings,
+                            {"/user/hand/left/input/thumbstick/x", "/user/hand/right/input/thumbstick/x"});
+
+  strcpy(actionInfo.actionName, "thumbstick_y");
+  strcpy(actionInfo.localizedActionName, "Thumbstick Y Value");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->thumbstickYAction,
+                            bindings,
+                            {"/user/hand/left/input/thumbstick/y", "/user/hand/right/input/thumbstick/y"});
+
+  /* ...of type bool */
+  actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
+
+  strcpy(actionInfo.actionName, "thumbstickclick");
+  strcpy(actionInfo.localizedActionName, "Thumbstick Click");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->thumbstickClickAction,
+                            bindings,
+                            {"/user/hand/left/input/thumbstick/click", "/user/hand/right/input/thumbstick/click"});
+
+  strcpy(actionInfo.actionName, "thumbsticktouch");
+  strcpy(actionInfo.localizedActionName, "Thumbstick Touch");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->thumbstickTouchAction,
+                            bindings,
+                            {"/user/hand/left/input/thumbstick/touch", "/user/hand/right/input/thumbstick/touch"});
+
+  strcpy(actionInfo.actionName, "triggertouch");
+  strcpy(actionInfo.localizedActionName, "Trigger Touch");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->triggerTouchAction,
+                            bindings,
+                            {"/user/hand/left/input/trigger/touch", "/user/hand/right/input/trigger/touch"});
+
+  /* ...of type haptic */
+  actionInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
+
+  strcpy(actionInfo.actionName, "haptic");
+  strcpy(actionInfo.localizedActionName, "Haptic");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->hapticAction,
+                            bindings,
+                            {"/user/hand/left/output/haptic", "/user/hand/right/output/haptic"});
+
+  /* ...of type pose */
+  actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
+
+  strcpy(actionInfo.actionName, "handpose");
+  strcpy(actionInfo.localizedActionName, "Hand Pose");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->gripPoseAction,
+                            bindings,
+                            {"/user/hand/left/input/grip/pose", "/user/hand/right/input/grip/pose"});
+
+  /* Create spaces for poses */
+  XrActionSpaceCreateInfo actionSpaceInfo = {XR_TYPE_ACTION_SPACE_CREATE_INFO};
+  actionSpaceInfo.next = NULL;
+  actionSpaceInfo.action = profile->gripPoseAction;
+  actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
+  actionSpaceInfo.subactionPath = profile->handPaths[0];
+  CHECK_XR(xrCreateActionSpace(oxr->session, &actionSpaceInfo, &profile->handSpaces[0]),
+           "failed to create left hand pose space");
+
+  actionSpaceInfo.subactionPath = profile->handPaths[1];
+  CHECK_XR(xrCreateActionSpace(oxr->session, &actionSpaceInfo, &profile->handSpaces[1]),
+           "failed to create right hand pose space");
+
+  /* Create unique actions of each hand */
+  actionInfo.countSubactionPaths = 0;
+  actionInfo.subactionPaths = NULL;
+
+  actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
+
+  strcpy(actionInfo.actionName, "leftxclick");
+  strcpy(actionInfo.localizedActionName, "Left X Click");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->leftXClickAction,
+                            bindings,
+                            {"/user/hand/left/input/x/click"});
+
+  strcpy(actionInfo.actionName, "leftxtouch");
+  strcpy(actionInfo.localizedActionName, "Left X Touch");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->leftXTouchAction,
+                            bindings,
+                            {"/user/hand/left/input/x/touch"});
+
+  strcpy(actionInfo.actionName, "leftyclick");
+  strcpy(actionInfo.localizedActionName, "Left Y Click");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->leftYClickAction,
+                            bindings,
+                            {"/user/hand/left/input/y/click"});
+
+  strcpy(actionInfo.actionName, "leftytouch");
+  strcpy(actionInfo.localizedActionName, "Left Y Touch");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->leftYTouchAction,
+                            bindings,
+                            {"/user/hand/left/input/y/touch"});
+
+  strcpy(actionInfo.actionName, "rightaclick");
+  strcpy(actionInfo.localizedActionName, "Right A Click");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->rightAClickAction,
+                            bindings,
+                            {"/user/hand/right/input/a/click"});
+
+  strcpy(actionInfo.actionName, "rightatouch");
+  strcpy(actionInfo.localizedActionName, "Right A Touch");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->rightATouchAction,
+                            bindings,
+                            {"/user/hand/right/input/a/touch"});
+
+  strcpy(actionInfo.actionName, "rightbclick");
+  strcpy(actionInfo.localizedActionName, "Right B Click");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->rightBClickAction,
+                            bindings,
+                            {"/user/hand/right/input/b/click"});
+
+  strcpy(actionInfo.actionName, "rightbtouch");
+  strcpy(actionInfo.localizedActionName, "Right B Touch");
+  create_and_bind_xr_action(xrInstance,
+                            profile->actionSet,
+                            &actionInfo,
+                            &profile->rightBTouchAction,
+                            bindings,
+                            {"/user/hand/right/input/b/touch"});
+
+  /* Create interaction profile */
+  XrPath oculusInteractionProfilePath;
+  CHECK_XR(xrStringToPath(xrInstance,
+                          "/interaction_profiles/oculus/touch_controller",
+                          &oculusInteractionProfilePath),
+           "failed to get oculus interaction profile");
+
+  /* Suggest bindings */
+  XrInteractionProfileSuggestedBinding suggestedBindings = {
+      XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+  suggestedBindings.interactionProfile = oculusInteractionProfilePath;
+  suggestedBindings.countSuggestedBindings = bindings.size();
+  suggestedBindings.suggestedBindings = bindings.data();
+  CHECK_XR(xrSuggestInteractionProfileBindings(xrInstance, &suggestedBindings),
+           "failed to suggest bindings");
+
+  /* Attach action set to session */
+  XrSessionActionSetsAttachInfo attachInfo = {XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
+  attachInfo.next = NULL;
+  attachInfo.countActionSets = 1;
+  attachInfo.actionSets = &profile->actionSet;
+  CHECK_XR(xrAttachSessionActionSets(oxr->session, &attachInfo), "failed to attach action set");
+
+  profile->valid = true;
+}
+
+static void init_xr_controllers(OpenXRSessionData* oxr, XrInstance xrInstance)
+{
+  switch (oxr->detectedProfile) {
+    case OpenXrProfile::OCULUS_TOUCH:
+      init_xr_oculus_touch_profile(oxr, xrInstance);
+      break;
+  }
+}
+
+static void fetch_oculus_touch_xr_data(OpenXRSessionData *oxr,
+                                       GHOST_XrDrawInfo *drawInfo,
+                                       GHOST_XrControllersData &controllers_data)
+{
+  OculusTouchProfile profile = oxr->oculusTouchProfile;
+  if (!profile.valid) {
+    throw GHOST_XrException(
+        "Unable to fetch Oculus Touch controllers data: profile not initialized");
+  }
+
+  /* Retrieve active action set */
+  const XrActiveActionSet activeActionSet = {profile.actionSet, XR_NULL_PATH};
+
+  XrActionsSyncInfo syncInfo = {XR_TYPE_ACTIONS_SYNC_INFO};
+  syncInfo.countActiveActionSets = 1;
+  syncInfo.activeActionSets = &activeActionSet;
+  CHECK_XR(xrSyncActions(oxr->session, &syncInfo), "failed to sync actions");
+
+  XrActionStateFloat floatState = {XR_TYPE_ACTION_STATE_FLOAT};
+  floatState.next = NULL;
+  XrActionStateBoolean boolState = {XR_TYPE_ACTION_STATE_BOOLEAN};
+  boolState.next = NULL;
+
+  /* Retrieve hands common actions */
+  const int hands = 2;
+  for (int i = 0; i < hands; i++) {
+    XrActionStateGetInfo getInfo = {XR_TYPE_ACTION_STATE_GET_INFO};
+    getInfo.next = NULL;
+    getInfo.subactionPath = profile.handPaths[i];
+
+    /* Trigger values & touch */
+    getInfo.action = profile.triggerValueAction;
+    CHECK_XR(xrGetActionStateFloat(oxr->session, &getInfo, &floatState),
+             "failed to get trigger value!");
+    if (i == 0)
+      controllers_data.left_trigger_value = floatState.currentState;
+    else
+      controllers_data.right_trigger_value = floatState.currentState;
+
+    getInfo.action = profile.triggerTouchAction;
+    CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+             "failed to get trigger touch!");
+    if (i == 0)
+      controllers_data.left_trigger_touch = boolState.currentState;
+    else
+      controllers_data.right_trigger_touch = boolState.currentState;
+
+    /* Squeeze values */
+    getInfo.action = profile.squeezeValueAction;
+    CHECK_XR(xrGetActionStateFloat(oxr->session, &getInfo, &floatState),
+             "failed to get squeeze value!");
+    if (i == 0)
+      controllers_data.left_grip_value = floatState.currentState;
+    else
+      controllers_data.right_grip_value = floatState.currentState;
+
+    /* Thumbstick X values */
+    getInfo.action = profile.thumbstickXAction;
+    CHECK_XR(xrGetActionStateFloat(oxr->session, &getInfo, &floatState),
+             "failed to get thumb X value!");
+    if (i == 0)
+      controllers_data.left_thumbstick_x = floatState.currentState;
+    else
+      controllers_data.right_thumbstick_x = floatState.currentState;
+
+    /* Thumbstick Y values */
+    getInfo.action = profile.thumbstickYAction;
+    CHECK_XR(xrGetActionStateFloat(oxr->session, &getInfo, &floatState),
+             "failed to get thumb Y value!");
+    if (i == 0)
+      controllers_data.left_thumbstick_y = floatState.currentState;
+    else
+      controllers_data.right_thumbstick_y = floatState.currentState;
+
+    /* Thumbstick click values & touch */
+    getInfo.action = profile.thumbstickClickAction;
+    CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+             "failed to get thumb click value!");
+    if (i == 0)
+      controllers_data.left_thumbstick_click = boolState.currentState;
+    else
+      controllers_data.right_thumbstick_click = boolState.currentState;
+
+    getInfo.action = profile.thumbstickTouchAction;
+    CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+             "failed to get thumb touch value!");
+    if (i == 0)
+      controllers_data.left_thumbstick_touch = boolState.currentState;
+    else
+      controllers_data.right_thumbstick_touch = boolState.currentState;
+
+    /* Controller action poses */
+    getInfo.action = profile.gripPoseAction;
+    XrActionStatePose poseState = {XR_TYPE_ACTION_STATE_POSE};
+    poseState.next = NULL;
+    CHECK_XR(xrGetActionStatePose(oxr->session, &getInfo, &poseState),
+             "failed to get pose value!");
+  }
+
+  /* Left hand */
+  XrActionStateGetInfo getInfo = {XR_TYPE_ACTION_STATE_GET_INFO};
+  getInfo.next = NULL;
+  getInfo.subactionPath = profile.handPaths[0];
+
+  getInfo.action = profile.leftXClickAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get left X click value!");
+  controllers_data.left_primary_click = boolState.currentState;
+  /*controllers_data.left_primary_onpress = boolState.changedSinceLastSync &&
+                                           boolState.currentState;
+  controllers_data.left_primary_onrelease = boolState.changedSinceLastSync &&
+                                           !boolState.currentState;*/
+
+  getInfo.action = profile.leftXTouchAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get left X touch value!");
+  controllers_data.left_primary_touch = boolState.currentState;
+
+  getInfo.action = profile.leftYClickAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get left X click value!");
+  controllers_data.left_secondary_click = boolState.currentState;
+
+  getInfo.action = profile.leftYTouchAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get left Y touch value!");
+  controllers_data.left_secondary_touch = boolState.currentState;
+
+  /* Right hand */
+  getInfo.subactionPath = profile.handPaths[1];
+
+  getInfo.action = profile.rightAClickAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get right A click value!");
+  controllers_data.right_primary_click = boolState.currentState;
+
+  getInfo.action = profile.rightATouchAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get right A touch value!");
+  controllers_data.right_primary_touch = boolState.currentState;
+
+  getInfo.action = profile.rightBClickAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get right B click value!");
+  controllers_data.right_secondary_click = boolState.currentState;
+
+  getInfo.action = profile.rightBTouchAction;
+  CHECK_XR(xrGetActionStateBoolean(oxr->session, &getInfo, &boolState),
+           "failed to get right B touch value!");
+  controllers_data.right_secondary_touch = boolState.currentState;
+
+  /* Retrieve controller spaces */
+  XrSpaceLocation spaceLocation[hands];
+  bool spaceLocationValid[hands];
+  for (int i = 0; i < hands; i++) {
+    spaceLocation[i].type = XR_TYPE_SPACE_LOCATION;
+    spaceLocation[i].next = NULL;
+
+    CHECK_XR(xrLocateSpace(profile.handSpaces[i],
+                           oxr->reference_space,
+                           drawInfo->frame_state.predictedDisplayTime,
+                           &spaceLocation[i]),
+             "failed to locate space!");
+    spaceLocationValid[i] =
+        //(spaceLocation[i].locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0 &&
+        (spaceLocation[i].locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) != 0;
+
+    if (spaceLocationValid[i]) {
+      if (i == 0) {
+        memcpy(&controllers_data.left_pose, &spaceLocation[i].pose, sizeof(XrPosef));
+      }
+      else {
+        memcpy(&controllers_data.right_pose, &spaceLocation[i].pose, sizeof(XrPosef));
+      }
+    }
+  }
+}
+
+static void set_xr_controllers_data(OpenXRSessionData *oxr,
+                             GHOST_XrDrawInfo *drawInfo,
+    GHOST_XrControllersData& controllers_data)
+{
+  switch (oxr->detectedProfile) {
+    case OpenXrProfile::OCULUS_TOUCH:
+      fetch_oculus_touch_xr_data(oxr, drawInfo, controllers_data);
+      break;
+  }
 }
 
 void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
@@ -195,12 +738,15 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
            "detailed error information to the command line.");
 
   prepareDrawing();
+
   create_reference_spaces(m_oxr.get(), &begin_info->base_pose);
+
+  init_xr_controllers(m_oxr.get(), m_context->getInstance());
 }
 
 void GHOST_XrSession::requestEnd()
 {
-  xrRequestExitSession(m_oxr->session);
+  CHECK_XR(xrRequestExitSession(m_oxr->session), "Failed to request the end of the session.");
 }
 
 void GHOST_XrSession::beginSession()
@@ -217,7 +763,8 @@ void GHOST_XrSession::endSession()
 }
 
 GHOST_XrSession::LifeExpectancy GHOST_XrSession::handleStateChangeEvent(
-    const XrEventDataSessionStateChanged *lifecycle)
+    const XrEventDataSessionStateChanged *lifecycle,
+    bool debug)
 {
   m_oxr->session_state = lifecycle->state;
 
@@ -225,16 +772,47 @@ GHOST_XrSession::LifeExpectancy GHOST_XrSession::handleStateChangeEvent(
   assert((m_oxr->session == XR_NULL_HANDLE) || (m_oxr->session == lifecycle->session));
 
   switch (lifecycle->state) {
+    case XR_SESSION_STATE_IDLE: 
+    {
+        if (debug) printf("XR_SESSION_STATE_IDLE.\n");
+        break;
+    }
     case XR_SESSION_STATE_READY: {
+      if (debug) printf("XR_SESSION_STATE_READY.\n");
       beginSession();
       break;
     }
-    case XR_SESSION_STATE_STOPPING:
-      endSession();
-      break;
+    case XR_SESSION_STATE_SYNCHRONIZED:
+    {
+        if (debug) printf("XR_SESSION_STATE_SYNCHRONIZED.\n");
+        break;
+    }
+    case XR_SESSION_STATE_VISIBLE:
+    {
+        if (debug) printf("XR_SESSION_STATE_VISIBLE.\n");
+        break;
+    }
+    case XR_SESSION_STATE_FOCUSED:
+    {
+        if (debug) printf("XR_SESSION_STATE_FOCUSED.\n");
+        break;
+    }
+    case XR_SESSION_STATE_STOPPING: 
+    {
+        if (debug) printf("XR_SESSION_STATE_STOPPING.\n");
+        endSession();
+        break;
+    }
     case XR_SESSION_STATE_EXITING:
+    {
+        if (debug) printf("XR_SESSION_STATE_EXITING.\n");
+        return SESSION_DESTROY;
+    }
     case XR_SESSION_STATE_LOSS_PENDING:
-      return SESSION_DESTROY;
+    {
+        if (debug) printf("XR_SESSION_STATE_LOSS_PENDING.\n");
+        return SESSION_DESTROY;
+    }
     default:
       break;
   }
@@ -352,7 +930,7 @@ void GHOST_XrSession::draw(void *draw_customdata)
   endFrameDrawing(&layers);
 }
 
-static void copy_openxr_pose_to_ghost_pose(const XrPosef &oxr_pose, GHOST_XrPose &r_ghost_pose)
+static void copy_openxr_pose_to_ghost_pose(GHOST_XrPose &r_ghost_pose, const XrPosef &oxr_pose)
 {
   /* Set and convert to Blender coodinate space. */
   r_ghost_pose.position[0] = oxr_pose.position.x;
@@ -367,7 +945,7 @@ static void copy_openxr_pose_to_ghost_pose(const XrPosef &oxr_pose, GHOST_XrPose
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
 {
   /* Set and convert to Blender coodinate space. */
-  copy_openxr_pose_to_ghost_pose(view.pose, r_info.eye_pose);
+  copy_openxr_pose_to_ghost_pose(r_info.eye_pose, view.pose);
 
   r_info.fov.angle_left = view.fov.angleLeft;
   r_info.fov.angle_right = view.fov.angleRight;
@@ -383,14 +961,49 @@ static bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *contex
   return (context->getOpenXRRuntimeID() == OPENXR_RUNTIME_MONADO);
 }
 
+static void copy_controllers_data_to_draw_view_info(GHOST_XrDrawViewInfo *draw_view_info, GHOST_XrControllersData const &controllers_data)
+{
+  copy_openxr_pose_to_ghost_pose(draw_view_info->controllers_data.left_pose, controllers_data.left_pose);
+  copy_openxr_pose_to_ghost_pose(draw_view_info->controllers_data.right_pose, controllers_data.right_pose);
+  draw_view_info->controllers_data.left_grip_value = controllers_data.left_grip_value;
+  draw_view_info->controllers_data.right_grip_value = controllers_data.right_grip_value;
+
+  draw_view_info->controllers_data.left_trigger_value = controllers_data.left_trigger_value;
+  draw_view_info->controllers_data.left_trigger_touch = controllers_data.left_trigger_touch;
+  draw_view_info->controllers_data.right_trigger_value = controllers_data.right_trigger_value;
+  draw_view_info->controllers_data.right_trigger_touch = controllers_data.right_trigger_touch;
+
+  draw_view_info->controllers_data.left_thumbstick_x = controllers_data.left_thumbstick_x;
+  draw_view_info->controllers_data.left_thumbstick_y = controllers_data.left_thumbstick_y;
+  draw_view_info->controllers_data.left_thumbstick_click = controllers_data.left_thumbstick_click;
+  draw_view_info->controllers_data.left_thumbstick_touch = controllers_data.left_thumbstick_touch;
+
+  draw_view_info->controllers_data.right_thumbstick_x = controllers_data.right_thumbstick_x;
+  draw_view_info->controllers_data.right_thumbstick_y = controllers_data.right_thumbstick_y;
+  draw_view_info->controllers_data.right_thumbstick_click = controllers_data.right_thumbstick_click;
+  draw_view_info->controllers_data.right_thumbstick_touch = controllers_data.right_thumbstick_touch;
+
+  draw_view_info->controllers_data.left_primary_click = controllers_data.left_primary_click;
+  draw_view_info->controllers_data.left_primary_touch = controllers_data.left_primary_touch;
+  draw_view_info->controllers_data.left_secondary_click = controllers_data.left_secondary_click;
+  draw_view_info->controllers_data.left_secondary_touch = controllers_data.left_secondary_touch;
+
+  draw_view_info->controllers_data.right_primary_click = controllers_data.right_primary_click;
+  draw_view_info->controllers_data.right_primary_touch = controllers_data.right_primary_touch;
+  draw_view_info->controllers_data.right_secondary_click = controllers_data.right_secondary_click;
+  draw_view_info->controllers_data.right_secondary_touch = controllers_data.right_secondary_touch;
+}
+
 void GHOST_XrSession::drawView(GHOST_XrSwapchain &swapchain,
                                XrCompositionLayerProjectionView &r_proj_layer_view,
                                XrSpaceLocation &view_location,
                                XrView &view,
+                               GHOST_XrControllersData const& controllers_data,
                                void *draw_customdata)
 {
   XrSwapchainImageBaseHeader *swapchain_image = swapchain.acquireDrawableSwapchainImage();
   GHOST_XrDrawViewInfo draw_view_info = {};
+  copy_controllers_data_to_draw_view_info(&draw_view_info, controllers_data);
 
   r_proj_layer_view.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
   r_proj_layer_view.pose = view.pose;
@@ -402,7 +1015,8 @@ void GHOST_XrSession::drawView(GHOST_XrSwapchain &swapchain,
   draw_view_info.ofsy = r_proj_layer_view.subImage.imageRect.offset.y;
   draw_view_info.width = r_proj_layer_view.subImage.imageRect.extent.width;
   draw_view_info.height = r_proj_layer_view.subImage.imageRect.extent.height;
-  copy_openxr_pose_to_ghost_pose(view_location.pose, draw_view_info.local_pose);
+  copy_openxr_pose_to_ghost_pose(draw_view_info.local_pose, view_location.pose);
+
   ghost_xr_draw_view_info_from_view(view, draw_view_info);
 
   /* Draw! */
@@ -415,6 +1029,9 @@ void GHOST_XrSession::drawView(GHOST_XrSwapchain &swapchain,
 XrCompositionLayerProjection GHOST_XrSession::drawLayer(
     std::vector<XrCompositionLayerProjectionView> &r_proj_layer_views, void *draw_customdata)
 {
+  GHOST_XrControllersData controllersData = {};
+  set_xr_controllers_data(m_oxr.get(), m_draw_info.get(), controllersData);
+
   XrViewLocateInfo viewloc_info = {XR_TYPE_VIEW_LOCATE_INFO};
   XrViewState view_state = {XR_TYPE_VIEW_STATE};
   XrCompositionLayerProjection layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
@@ -446,6 +1063,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
              r_proj_layer_views[view_idx],
              view_location,
              m_oxr->views[view_idx],
+             controllersData,
              draw_customdata);
   }
 
@@ -500,6 +1118,7 @@ void GHOST_XrSession::bindGraphicsContext()
 {
   const GHOST_XrCustomFuncs &custom_funcs = m_context->getCustomFuncs();
   assert(custom_funcs.gpu_ctx_bind_fn);
+
   m_gpu_ctx = static_cast<GHOST_Context *>(custom_funcs.gpu_ctx_bind_fn());
 }
 

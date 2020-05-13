@@ -132,9 +132,19 @@ static void wm_xr_session_base_pose_calc(const Scene *scene,
     mat4_to_loc_quat(r_base_pose->position, tmp_quat, base_pose_object->obmat);
 
     /* Only use rotation around Z-axis to align view with floor. */
+    /*
     quat_to_eul(tmp_eul, tmp_quat);
     tmp_eul[0] = M_PI_2;
     tmp_eul[1] = 0;
+    eul_to_quat(r_base_pose->orientation_quat, tmp_eul);
+    */
+
+    /* TODO: find out why we did it */
+
+    /* override quat */
+    tmp_eul[0] = M_PI_2;
+    tmp_eul[1] = 0;
+    tmp_eul[2] = 0;
     eul_to_quat(r_base_pose->orientation_quat, tmp_eul);
   }
   else {
@@ -203,6 +213,24 @@ void wm_xr_session_draw_data_update(const wmXrSessionState *state,
   }
 }
 
+void wm_xr_session_controller_transform_update(GHOST_XrPose *dst_pose,
+                                               const GHOST_XrPose *base_pose,
+                                               const GHOST_XrPose *pose)
+{
+  copy_v3_v3(dst_pose->position, base_pose->position);
+  dst_pose->position[0] = base_pose->position[0] + pose->position[0];
+  dst_pose->position[1] = base_pose->position[1] - pose->position[2];
+  dst_pose->position[2] = base_pose->position[2] + pose->position[1];
+  
+  mul_qt_qtqt(dst_pose->orientation_quat, base_pose->orientation_quat, pose->orientation_quat);
+
+  float invBaseRotation[4];
+  copy_qt_qt(invBaseRotation, base_pose->orientation_quat);
+  invert_qt(invBaseRotation);
+
+  mul_qt_qtqt(dst_pose->orientation_quat, dst_pose->orientation_quat, invBaseRotation);
+}
+
 /**
  * Update information that is only stored for external state queries. E.g. for Python API to
  * request the current (as in, last known) viewer pose.
@@ -210,7 +238,8 @@ void wm_xr_session_draw_data_update(const wmXrSessionState *state,
 void wm_xr_session_state_update(const XrSessionSettings *settings,
                                 const wmXrDrawData *draw_data,
                                 const GHOST_XrDrawViewInfo *draw_view,
-                                wmXrSessionState *state)
+                                wmXrSessionState *state,
+                                float viewmat[4][4])
 {
   GHOST_XrPose viewer_pose;
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
@@ -221,6 +250,7 @@ void wm_xr_session_state_update(const XrSessionSettings *settings,
   copy_v3_v3(viewer_pose.position, draw_data->base_pose.position);
   /* The local pose and the eye pose (which is copied from an earlier local pose) both are view
    * space, so Y-up. In this case we need them in regular Z-up. */
+
   viewer_pose.position[0] += draw_data->eye_position_ofs[0];
   viewer_pose.position[1] -= draw_data->eye_position_ofs[2];
   viewer_pose.position[2] += draw_data->eye_position_ofs[1];
@@ -232,7 +262,14 @@ void wm_xr_session_state_update(const XrSessionSettings *settings,
 
   copy_v3_v3(state->viewer_pose.position, viewer_pose.position);
   copy_qt_qt(state->viewer_pose.orientation_quat, viewer_pose.orientation_quat);
-  wm_xr_pose_to_viewmat(&viewer_pose, state->viewer_viewmat);
+
+  /*
+  wm_xr_pose_to_viewmat(state->viewer_viewmat, &viewer_pose);
+  do not re-compute viewmat use the one that includes "world" transform
+  */
+  memcpy(state->viewer_viewmat, viewmat, 16 * sizeof(float));
+
+
   /* No idea why, but multiplying by two seems to make it match the VR view more. */
   state->focal_len = 2.0f *
                      fov_to_focallength(draw_view->fov.angle_right - draw_view->fov.angle_left,
@@ -243,6 +280,42 @@ void wm_xr_session_state_update(const XrSessionSettings *settings,
   state->prev_base_pose_type = settings->base_pose_type;
   state->prev_base_pose_object = settings->base_pose_object;
   state->is_view_data_set = true;
+
+  /* Controllers states */
+  wm_xr_session_controller_transform_update(&state->controllers_data.left_pose,
+                                            &draw_data->base_pose,
+                                            &draw_view->controllers_data.left_pose);
+  wm_xr_session_controller_transform_update(&state->controllers_data.right_pose,
+                                            &draw_data->base_pose,
+                                            &draw_view->controllers_data.right_pose);
+  state->controllers_data.left_trigger_value = draw_view->controllers_data.left_trigger_value;
+  state->controllers_data.left_trigger_touch = draw_view->controllers_data.left_trigger_touch;
+
+  state->controllers_data.right_trigger_value = draw_view->controllers_data.right_trigger_value;
+  state->controllers_data.right_trigger_touch = draw_view->controllers_data.right_trigger_touch;
+
+  state->controllers_data.left_grip_value = draw_view->controllers_data.left_grip_value;
+  state->controllers_data.right_grip_value = draw_view->controllers_data.right_grip_value;
+
+  state->controllers_data.left_primary_click = draw_view->controllers_data.left_primary_click;
+  state->controllers_data.left_primary_touch = draw_view->controllers_data.left_primary_touch;
+  state->controllers_data.left_secondary_click = draw_view->controllers_data.left_secondary_click;
+  state->controllers_data.left_secondary_touch = draw_view->controllers_data.left_secondary_touch;
+
+  state->controllers_data.right_primary_click = draw_view->controllers_data.right_primary_click;
+  state->controllers_data.right_primary_touch = draw_view->controllers_data.right_primary_touch;
+  state->controllers_data.right_secondary_click = draw_view->controllers_data.right_secondary_click;
+  state->controllers_data.right_secondary_touch = draw_view->controllers_data.right_secondary_touch;
+
+  state->controllers_data.left_thumbstick_x = draw_view->controllers_data.left_thumbstick_x;
+  state->controllers_data.left_thumbstick_y = draw_view->controllers_data.left_thumbstick_y;
+  state->controllers_data.left_thumbstick_click = draw_view->controllers_data.left_thumbstick_click;
+  state->controllers_data.left_thumbstick_touch = draw_view->controllers_data.left_thumbstick_touch;
+
+  state->controllers_data.right_thumbstick_x = draw_view->controllers_data.right_thumbstick_x;
+  state->controllers_data.right_thumbstick_y = draw_view->controllers_data.right_thumbstick_y;
+  state->controllers_data.right_thumbstick_click = draw_view->controllers_data.right_thumbstick_click;
+  state->controllers_data.right_thumbstick_touch = draw_view->controllers_data.right_thumbstick_touch;
 }
 
 wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr)
@@ -272,6 +345,252 @@ bool WM_xr_session_state_viewer_pose_rotation_get(const wmXrData *xr, float r_ro
   return true;
 }
 
+bool WM_xr_session_state_world_location_get(const wmXrData *xr, float r_location[3])
+{
+  if (!WM_xr_session_is_ready(xr)) {
+    zero_v3(r_location);
+    return false;
+  }
+
+  copy_v3_v3(r_location, xr->runtime->session_state.world_pose.position);
+  return true;
+}
+
+bool WM_xr_session_state_world_location_set(const wmXrData *xr, const float location[3])
+{
+  if (!WM_xr_session_is_ready(xr)) {
+    return false;
+  }
+
+  copy_v3_v3(xr->runtime->session_state.world_pose.position, location);
+  return true;
+}
+
+float WM_xr_session_state_get_float(const wmXrData *xr, float value, float defaultValue)
+{
+  if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
+    return defaultValue;
+  }
+  return value;
+}
+
+bool WM_xr_session_state_get_bool(const wmXrData *xr, bool value, bool defaultValue)
+{
+  if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
+    return defaultValue;
+  }
+  return value;
+}
+
+/* World matrix */
+bool WM_xr_session_state_world_rotation_get(const wmXrData *xr, float r_rotation[4])
+{
+  if (!WM_xr_session_is_ready(xr)) {
+    unit_qt(r_rotation);
+    return false;
+  }
+
+  copy_v4_v4(r_rotation, xr->runtime->session_state.world_pose.orientation_quat);
+  return true;
+}
+
+bool WM_xr_session_state_world_rotation_set(const wmXrData *xr, const float rotation[4])
+{
+  if (!WM_xr_session_is_ready(xr)) {
+    return false;
+  }
+
+  copy_v4_v4(xr->runtime->session_state.world_pose.orientation_quat, rotation);
+  return true;
+}
+
+float WM_xr_session_state_world_scale_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_float(xr, xr->runtime->session_state.world_scale, 1.f);
+}
+
+bool WM_xr_session_state_world_scale_set(const wmXrData *xr, const float scale)
+{
+  if (!WM_xr_session_is_ready(xr)) {
+    return false;
+  }
+
+  xr->runtime->session_state.world_scale = scale;
+  return true;
+}
+
+/* Thumbsticks */
+float WM_xr_session_state_left_thumbstick_x_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_float(xr, xr->runtime->session_state.controllers_data.left_thumbstick_x, 0.f);
+}
+
+float WM_xr_session_state_left_thumbstick_y_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_float(
+      xr, xr->runtime->session_state.controllers_data.left_thumbstick_y, 0.f);
+}
+
+float WM_xr_session_state_right_thumbstick_x_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_float(
+      xr, xr->runtime->session_state.controllers_data.right_thumbstick_x, 0.f);
+}
+
+float WM_xr_session_state_right_thumbstick_y_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_float(
+      xr, xr->runtime->session_state.controllers_data.right_thumbstick_y, 0.f);
+}
+
+bool WM_xr_session_state_left_thumbstick_click_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.left_thumbstick_click, false);
+}
+
+bool WM_xr_session_state_right_thumbstick_click_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.right_thumbstick_click, false);
+}
+
+bool WM_xr_session_state_left_thumbstick_touch_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.left_thumbstick_touch, false);
+}
+
+bool WM_xr_session_state_right_thumbstick_touch_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.right_thumbstick_touch, false);
+}
+
+/* Buttons */
+bool WM_xr_session_state_left_primary_click_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.left_primary_click, false);
+}
+
+bool WM_xr_session_state_left_primary_touch_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.left_primary_touch, false);
+}
+
+bool WM_xr_session_state_left_secondary_click_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.left_secondary_click, false);
+}
+
+bool WM_xr_session_state_left_secondary_touch_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.left_secondary_touch, false);
+}
+
+bool WM_xr_session_state_right_primary_click_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.right_primary_click, false);
+}
+
+bool WM_xr_session_state_right_primary_touch_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.right_primary_touch, false);
+}
+
+bool WM_xr_session_state_right_secondary_click_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.right_secondary_click, false);
+}
+
+bool WM_xr_session_state_right_secondary_touch_get(const wmXrData *xr)
+{
+  return WM_xr_session_state_get_bool(
+      xr, xr->runtime->session_state.controllers_data.right_secondary_touch, false);
+}
+
+bool WM_xr_session_state_get_vector3(float dst[3], const wmXrData *xr, float *src)
+{
+  if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
+    zero_v3(dst);
+    return false;
+  }
+
+  copy_v3_v3(dst, src);
+  return true;
+}
+
+bool WM_xr_session_state_get_quaternion(float dst[4], const wmXrData *xr, float *src)
+{
+  if (!WM_xr_session_is_ready(xr) || !xr->runtime->session_state.is_view_data_set) {
+    unit_qt(dst);
+    return false;
+  }
+
+  copy_v4_v4(dst, src);
+  return true;
+}
+
+/* Poses */
+bool WM_xr_session_state_left_controller_location_get(const wmXrData *xr, float r_location[3])
+{
+  return WM_xr_session_state_get_vector3(r_location, xr, xr->runtime->session_state.controllers_data.left_pose.position);
+}
+
+bool WM_xr_session_state_left_controller_rotation_get(const wmXrData *xr, float r_rotation[4])
+{
+  return WM_xr_session_state_get_quaternion(r_rotation, xr, xr->runtime->session_state.controllers_data.left_pose.orientation_quat);
+}
+
+bool WM_xr_session_state_right_controller_location_get(const wmXrData *xr, float r_location[3])
+{
+  return WM_xr_session_state_get_vector3(r_location, xr, xr->runtime->session_state.controllers_data.right_pose.position);
+}
+
+bool WM_xr_session_state_right_controller_rotation_get(const wmXrData *xr, float r_rotation[4])
+{
+  return WM_xr_session_state_get_quaternion(r_rotation, xr, xr->runtime->session_state.controllers_data.right_pose.orientation_quat);
+}
+
+/* Triggers */
+float WM_xr_session_state_left_trigger_value_get(const wmXrData *xr)
+{
+  return xr->runtime->session_state.controllers_data.left_trigger_value;
+}
+
+bool WM_xr_session_state_left_trigger_touch_get(const wmXrData *xr)
+{
+  return xr->runtime->session_state.controllers_data.left_trigger_touch;
+}
+
+float WM_xr_session_state_right_trigger_value_get(const wmXrData *xr)
+{
+  return xr->runtime->session_state.controllers_data.right_trigger_value;
+}
+
+bool WM_xr_session_state_right_trigger_touch_get(const wmXrData *xr)
+{
+  return xr->runtime->session_state.controllers_data.right_trigger_touch;
+}
+
+/* Grips */
+float WM_xr_session_state_left_grip_value_get(const wmXrData *xr)
+{
+  return xr->runtime->session_state.controllers_data.left_grip_value;
+}
+
+float WM_xr_session_state_right_grip_value_get(const wmXrData *xr)
+{
+  return xr->runtime->session_state.controllers_data.right_grip_value;
+}
+
 bool WM_xr_session_state_viewer_pose_matrix_info_get(const wmXrData *xr,
                                                      float r_viewmat[4][4],
                                                      float *r_focal_len)
@@ -284,6 +603,26 @@ bool WM_xr_session_state_viewer_pose_matrix_info_get(const wmXrData *xr,
 
   copy_m4_m4(r_viewmat, xr->runtime->session_state.viewer_viewmat);
   *r_focal_len = xr->runtime->session_state.focal_len;
+
+  return true;
+}
+
+bool WM_xr_session_state_world_matrix_get(const wmXrData *xr,
+                                                     float world_matrix[4][4])
+{
+  if (!WM_xr_session_is_ready(xr)) {
+    unit_m4(world_matrix);
+    return false;
+  }
+
+  float scale[3] = {xr->runtime->session_state.world_scale,
+                    xr->runtime->session_state.world_scale,
+                    xr->runtime->session_state.world_scale};
+
+  loc_quat_size_to_mat4(world_matrix,
+                        xr->runtime->session_state.world_pose.position,
+                        xr->runtime->session_state.world_pose.orientation_quat,
+                        scale);
 
   return true;
 }

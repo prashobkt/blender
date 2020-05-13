@@ -92,6 +92,172 @@ static void rna_XrSessionState_viewer_pose_rotation_get(PointerRNA *ptr, float *
 #  endif
 }
 
+static void rna_XrSessionState_world_location_get(PointerRNA *ptr, float *r_values)
+{
+#  ifdef WITH_XR_OPENXR
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  WM_xr_session_state_world_location_get(xr, r_values);
+#  else
+  UNUSED_VARS(ptr);
+  zero_v3(r_values);
+#  endif
+}
+
+static void rna_XrSessionState_world_location_set(PointerRNA *ptr, float* values)
+{
+#  ifdef WITH_XR_OPENXR
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  WM_xr_session_state_world_location_set(xr, values);
+#  else
+  UNUSED_VARS(ptr);
+  UNUSED_VARS(values);
+#  endif
+}
+
+static void rna_XrSessionState_world_rotation_get(PointerRNA *ptr, float *r_values)
+{
+#  ifdef WITH_XR_OPENXR
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  WM_xr_session_state_world_rotation_get(xr, r_values);
+#  else
+  UNUSED_VARS(ptr);
+  unit_qt(r_values);
+#  endif
+}
+
+static void rna_XrSessionState_world_rotation_set(PointerRNA *ptr, float *values)
+{
+#  ifdef WITH_XR_OPENXR
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  WM_xr_session_state_world_rotation_set(xr, values);
+#else
+  UNUSED_VARS(ptr);
+  UNUSED_VARS(values);
+#  endif
+}
+
+static float rna_XrSessionState_world_scale_get(PointerRNA *ptr)
+{
+#  ifdef WITH_XR_OPENXR
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  return WM_xr_session_state_world_scale_get(xr);
+#  else
+  return 1.f;
+#  endif
+}
+
+static void rna_XrSessionState_world_scale_set(PointerRNA *ptr, float value)
+{
+#  ifdef WITH_XR_OPENXR
+  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
+  WM_xr_session_state_world_scale_set(xr, value);
+#  else
+  UNUSED_VARS(ptr);
+  UNUSED_VARS(value);
+#  endif
+}
+
+
+#  ifdef WITH_XR_OPENXR
+#    define rna_XrSessionState(side, attribute, type, clearFn) \
+      static void rna_XrSessionState_##side##_controller_##attribute##_get(PointerRNA * ptr, \
+                                                                     type *r_values) \
+      { \
+        const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr); \
+        WM_xr_session_state_##side##_controller_##attribute##_get(xr, r_values); \
+      }
+#  else
+#    define rna_XrSessionState(name, type, clearFn) \
+      { \
+        static void rna_XrSessionState_##side##_controller_##attribute##_get(PointerRNA *ptr, \
+                                                                             type *r_values) \
+        { \
+          UNUSED_VARS(ptr); \
+          clearFn(r_values); \
+        }
+#  endif
+
+
+/* rna_XrSessionState_left_controller_location_get */
+rna_XrSessionState(left, location, float, zero_v3)
+
+/* rna_XrSessionState_left_controller_rotation_get */
+rna_XrSessionState(left, rotation, float, unit_qt)
+
+/* rna_XrSessionState_right_controller_location_get */
+rna_XrSessionState(right, location, float, zero_v3)
+
+/* rna_XrSessionState_right_controller_rotation_get */
+rna_XrSessionState(right, rotation, float, unit_qt)
+
+
+#  ifdef WITH_XR_OPENXR
+#  define rna_XrSessionControllerValue(side, attribute, type)\
+  static type rna_XrSessionState_##side##_controller_##attribute##_get(PointerRNA *ptr) \
+      { \
+        const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr); \
+        return WM_xr_session_state_##side##_##attribute##_get(xr); \
+      }
+#    else
+#    define rna_XrSessionControllerButton(side, attribute, type) \
+  static type rna_XrSessionState_##side##_controller_##attribute##_get(PointerRNA *ptr) \
+      { \
+        const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr); \
+        return (type)0; \
+      }
+#endif
+
+/* rna_XrSessionState_left_controller_trigger_value_get */
+rna_XrSessionControllerValue(left, trigger_value, float)
+/* rna_XrSessionState_Right_controller_trigger_value_get */
+rna_XrSessionControllerValue(right, trigger_value, float)
+/* rna_XrSessionState_left_controller_trigger_touch_get */
+rna_XrSessionControllerValue(left, trigger_touch, bool)
+/* rna_XrSessionState_Right_controller_trigger_touch_get */
+rna_XrSessionControllerValue(right, trigger_touch, bool)
+
+/* rna_XrSessionState_left_controller_grip_value_get */
+rna_XrSessionControllerValue(left, grip_value, float)
+/* rna_XrSessionState_Right_controller_grip_value_get */
+rna_XrSessionControllerValue(right, grip_value, float)
+
+/* rna_XrSessionState_left_controller_primary_click_get */
+rna_XrSessionControllerValue(left, primary_click, bool)
+/* rna_XrSessionState_left_controller_primary_touch_get */
+rna_XrSessionControllerValue(left, primary_touch, bool)
+/* rna_XrSessionState_left_controller_secondary_click_get */
+rna_XrSessionControllerValue(left, secondary_click, bool)
+/* rna_XrSessionState_left_controller_secondary_touch_get */
+rna_XrSessionControllerValue(left, secondary_touch, bool)
+
+/* rna_XrSessionState_right_controller_primary_click_get */
+rna_XrSessionControllerValue(right, primary_click, bool)
+/* rna_XrSessionState_right_controller_primary_touch_get */
+rna_XrSessionControllerValue(right, primary_touch, bool)
+/* rna_XrSessionState_right_controller_secondary_click_get */
+rna_XrSessionControllerValue(right, secondary_click, bool)
+/* rna_XrSessionState_right_controller_secondary_touch_get */
+rna_XrSessionControllerValue(right, secondary_touch, bool)
+
+/* rna_XrSessionState_left_controller_thumbstick_x_get */
+rna_XrSessionControllerValue(left, thumbstick_x, float)
+/* rna_XrSessionState_right_controller_thumbstick_x_get */
+rna_XrSessionControllerValue(right, thumbstick_x, float)
+
+/* rna_XrSessionState_left_controller_thumbstick_y_get */
+rna_XrSessionControllerValue(left, thumbstick_y, float)
+/* rna_XrSessionState_right_controller_thumbstick_y_get */
+rna_XrSessionControllerValue(right, thumbstick_y, float)
+
+/* rna_XrSessionState_left_controller_thumbstick_click_get */
+rna_XrSessionControllerValue(left, thumbstick_click, bool)
+/* rna_XrSessionState_right_controller_thumbstick_click_get */
+rna_XrSessionControllerValue(right, thumbstick_click, bool)
+/* rna_XrSessionState_left_controller_thumbstick_touch_get */
+rna_XrSessionControllerValue(left, thumbstick_touch, bool)
+/* rna_XrSessionState_right_controller_thumbstick_touch_get */
+rna_XrSessionControllerValue(right, thumbstick_touch, bool)
+
 #else /* RNA_RUNTIME */
 
 static void rna_def_xr_session_settings(BlenderRNA *brna)
@@ -189,6 +355,22 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 }
 
+static void rna_def_xr_define_sized_property(StructRNA *srna,
+                                       char *name,
+                                       char *description,
+                                       char *function_name,
+                                       PropertySubType sub_type,
+                                       PropertyType type,
+                                       int array_size)
+{
+  PropertyRNA *prop = RNA_def_property(srna, name, type, sub_type);
+  RNA_def_property_array(prop, array_size);
+  RNA_def_property_float_funcs(prop, function_name, NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, name, description);
+}
+
+
 static void rna_def_xr_session_state(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -230,6 +412,175 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
       prop,
       "Viewer Pose Rotation",
       "Last known rotation of the viewer pose (center between the eyes) in world space");
+
+  prop = RNA_def_property(srna, "world_location", PROP_FLOAT, PROP_TRANSLATION);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(prop,
+                               "rna_XrSessionState_world_location_get",
+                               "rna_XrSessionState_world_location_set",
+                               NULL);
+  RNA_def_property_ui_text(
+      prop,
+      "World Location",
+      "Last known location of the world in world space");
+
+  prop = RNA_def_property(srna, "world_rotation", PROP_FLOAT, PROP_QUATERNION);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop,
+                               "rna_XrSessionState_world_rotation_get",
+                               "rna_XrSessionState_world_rotation_set",
+                               NULL);
+  RNA_def_property_ui_text(
+      prop,
+      "World Rotation",
+      "Last known rotation of the world in world space");
+
+  prop = RNA_def_property(srna, "world_scale", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(
+      prop, "rna_XrSessionState_world_scale_get", "rna_XrSessionState_world_scale_set", NULL);
+  RNA_def_property_ui_text(prop, "World Scale", "Get World Scale Value");
+
+  rna_def_xr_define_sized_property(srna,
+                                   "left_controller_location",
+                                   "Last known location of the left controller in world space",
+                                   "rna_XrSessionState_left_controller_location_get",
+                                   PROP_TRANSLATION,
+                                   PROP_FLOAT,
+                                   3);
+
+  rna_def_xr_define_sized_property(srna,
+                                   "left_controller_rotation",
+                                   "Last known rotation of the left controller in world space",
+                                   "rna_XrSessionState_left_controller_rotation_get",
+                                   PROP_QUATERNION,
+                                   PROP_FLOAT,
+                                   4);
+
+  rna_def_xr_define_sized_property(srna,
+                                   "right_controller_location",
+                                   "Last known location of the right controller in world space",
+                                   "rna_XrSessionState_right_controller_location_get",
+                                   PROP_TRANSLATION,
+                                   PROP_FLOAT,
+                                   3);
+
+  rna_def_xr_define_sized_property(srna,
+                                   "right_controller_rotation",
+                                   "Last known rotation of the right controller in world space",
+                                   "rna_XrSessionState_right_controller_rotation_get",
+                                   PROP_QUATERNION,
+                                   PROP_FLOAT,
+                                   4);
+
+  prop = RNA_def_property(srna, "left_trigger_value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_left_controller_trigger_value_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Trigger", "Get Left Trigger Value");
+
+  prop = RNA_def_property(srna, "left_trigger_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_left_controller_trigger_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Trigger Touch", "Get Left Trigger Touch");
+
+  prop = RNA_def_property(srna, "right_trigger_value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_right_controller_trigger_value_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Trigger", "Get Right Trigger Value");
+
+  prop = RNA_def_property(srna, "right_trigger_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_right_controller_trigger_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Trigger Touch", "Get Right Trigger Touch");
+
+  prop = RNA_def_property(srna, "left_grip_value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_left_controller_grip_value_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Grip", "Get Left Grip Value");
+
+  prop = RNA_def_property(srna, "right_grip_value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_right_controller_grip_value_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Grip", "Get Right Grip Value");
+
+  prop = RNA_def_property(srna, "left_primary_click", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_left_controller_primary_click_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Primary Click", "Get Left Primary Click");
+
+  prop = RNA_def_property(srna, "left_primary_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_left_controller_primary_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Primary Touch", "Get Left Primary Touch");
+
+  prop = RNA_def_property(srna, "left_secondary_click", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_left_controller_secondary_click_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Secondary Click", "Get Left Secondary Click");
+
+  prop = RNA_def_property(srna, "left_secondary_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_left_controller_secondary_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Secondary Touch", "Get Left Secondary Touch");
+
+  prop = RNA_def_property(srna, "right_primary_click", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_right_controller_primary_click_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Primary Click", "Get Right Primary Click");
+
+  prop = RNA_def_property(srna, "right_primary_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_right_controller_primary_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Primary Touch", "Get Right Primary Touch");
+
+  prop = RNA_def_property(srna, "right_secondary_click", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_right_controller_secondary_click_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Secondary Click", "Get Right Secondary Click");
+
+  prop = RNA_def_property(srna, "right_secondary_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_right_controller_secondary_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Secondary Touch", "Get Right Secondary Touch");
+
+  prop = RNA_def_property(srna, "left_thumbstick_x", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_left_controller_thumbstick_x_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Thumbstick X", "Get Left Thumbstick X Value");
+
+  prop = RNA_def_property(srna, "left_thumbstick_y", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_left_controller_thumbstick_y_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Thumbstick Y", "Get Left Thumbstick Y Value");
+
+  prop = RNA_def_property(srna, "left_thumbstick_click", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_left_controller_thumbstick_click_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Thumbstick Click", "Get Left Thumbstick Click Value");
+
+  prop = RNA_def_property(srna, "left_thumbstick_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_left_controller_thumbstick_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Left Thumbstick Touch", "Get Left Thumbstick Touch Value");
+
+  prop = RNA_def_property(srna, "right_thumbstick_x", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_right_controller_thumbstick_x_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Thumbstick X", "Get Right Thumbstick X Value");
+
+  prop = RNA_def_property(srna, "right_thumbstick_y", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_right_controller_thumbstick_y_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Thumbstick Y", "Get Right Thumbstick Y Value");
+
+  prop = RNA_def_property(srna, "right_thumbstick_click", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_right_controller_thumbstick_click_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Thumbstick Click", "Get Right Thumbstick Click Value");
+
+  prop = RNA_def_property(srna, "right_thumbstick_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_XrSessionState_right_controller_thumbstick_touch_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Right Thumbstick Touch", "Get Right Thumbstick Touch Value");
 }
 
 void RNA_def_xr(BlenderRNA *brna)

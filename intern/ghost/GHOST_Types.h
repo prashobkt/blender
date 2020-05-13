@@ -654,6 +654,33 @@ typedef struct {
   void *exit_customdata;
 } GHOST_XrSessionBeginInfo;
 
+typedef struct GHOST_XrControllersDataInfo {
+  GHOST_XrPose left_pose;
+  GHOST_XrPose right_pose;
+  float left_trigger_value;
+  float right_trigger_value;
+  char left_trigger_touch;
+  char right_trigger_touch;
+  float left_grip_value;
+  float right_grip_value;
+  char left_primary_click;
+  char left_primary_touch;
+  char left_secondary_click;
+  char left_secondary_touch;
+  char right_primary_click;
+  char right_primary_touch;
+  char right_secondary_click;
+  char right_secondary_touch;
+  float left_thumbstick_x;
+  float left_thumbstick_y;
+  char left_thumbstick_click;
+  char left_thumbstick_touch;
+  float right_thumbstick_x;
+  float right_thumbstick_y;
+  char right_thumbstick_click;
+  char right_thumbstick_touch;
+} GHOST_XrControllersDataInfo;
+
 typedef struct GHOST_XrDrawViewInfo {
   int ofsx, ofsy;
   int width, height;
@@ -668,6 +695,13 @@ typedef struct GHOST_XrDrawViewInfo {
 
   /** Set if the buffer should be submitted with a srgb transfer applied. */
   char expects_srgb_buffer;
+
+  /** World transform */
+  GHOST_XrPose world_pose;
+  float world_scale;
+
+  /** Controllers poses and input states */
+  GHOST_XrControllersDataInfo controllers_data;
 } GHOST_XrDrawViewInfo;
 
 typedef struct GHOST_XrError {
