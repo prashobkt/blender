@@ -588,6 +588,10 @@ typedef struct FCurve {
   /** Total number of points which define the curve (i.e. size of arrays in FPoints). */
   unsigned int totvert;
 
+  /** Active keyframe for numerical editing in the interface. */
+  int active_key;
+  char _pad1[4];
+
   /* value cache + settings */
   /** Value stored from last time curve was evaluated (not threadsafe, debug display only!). */
   float curval;

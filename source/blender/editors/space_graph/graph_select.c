@@ -1511,6 +1511,12 @@ static int mouse_graph_keys(bAnimContext *ac,
           bezt->f3 |= SELECT;
         }
       }
+
+      /* Set the curve's active keyframe. */
+      if (BEZT_ISSEL_ANY(bezt)) {
+        BLI_assert(nvi->fcu != NULL);
+        nvi->fcu->active_key = (int)(bezt - nvi->fcu->bezt);
+      }
     }
     else if (nvi->fpt) {
       // TODO: need to handle sample points

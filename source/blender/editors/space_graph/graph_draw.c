@@ -209,6 +209,17 @@ static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, bool edit, u
   draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, false, pos);
   draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, true, pos);
 
+  /* One extra point for drawing the active keyframe. */
+  if (fcu->flag & FCURVE_ACTIVE) {
+    BezTriple *bezt = &fcu->bezt[fcu->active_key];
+    if (bezt->f2 & SELECT) {
+      immBegin(GPU_PRIM_POINTS, 1);
+      immUniformThemeColor(TH_VERTEX_ACTIVE);
+      immVertex2fv(pos, bezt->vec[1]);
+      immEnd();
+    }
+  }
+
   immUnbindProgram();
 }
 
@@ -270,6 +281,26 @@ static void draw_fcurve_handle_vertices(FCurve *fcu, View2D *v2d, bool sel_handl
 
   draw_fcurve_selected_handle_vertices(fcu, v2d, false, sel_handle_only, pos);
   draw_fcurve_selected_handle_vertices(fcu, v2d, true, sel_handle_only, pos);
+
+  /* Draw the extra handles for active points. */
+  if (fcu->flag & FCURVE_ACTIVE) {
+    BezTriple *bezt = &fcu->bezt[fcu->active_key];
+    if (!sel_handle_only || BEZT_ISSEL_ANY(bezt)) {
+      float active_col[4];
+      UI_GetThemeColor4fv(TH_VERTEX_ACTIVE, active_col);
+      immUniform4fv("outlineColor", active_col);
+      immUniformColor3fvAlpha(active_col, 0.01f); /* almost invisible - only keep for smoothness */
+      immBeginAtMost(GPU_PRIM_POINTS, 2);
+
+      if ((bezt->f1 & SELECT)) {
+        immVertex2fv(pos, bezt->vec[0]);
+      }
+      if ((bezt->f3 & SELECT)) {
+        immVertex2fv(pos, bezt->vec[2]);
+      }
+      immEnd();
+    }
+  }
 
   immUnbindProgram();
 }
@@ -343,6 +374,10 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
   uint color = GPU_vertformat_attr_add(
       format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
   immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
+  if ((sipo->flag & SIPO_BEAUTYDRAW_OFF) == 0) {
+    GPU_line_smooth(true);
+  }
+  GPU_blend(true);
 
   immBeginAtMost(GPU_PRIM_LINES, 4 * 2 * fcu->totvert);
 
