@@ -337,51 +337,29 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
     Scene *scene = draw_ctx->scene;
     World *wo = scene->world;
 
-    const float *col = G_draw.block.colorBackground;
-
     /* LookDev */
     EEVEE_lookdev_cache_init(vedata, sldata, &grp, psl->probe_background, wo, pinfo);
-    /* END */
+
     if (!grp && wo) {
-      col = &wo->horr;
+      struct GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, NULL, wo, VAR_WORLD_PROBE);
 
-      if (wo->use_nodes && wo->nodetree) {
-        static float error_col[3] = {1.0f, 0.0f, 1.0f};
-        static float queue_col[3] = {0.5f, 0.5f, 0.5f};
-        struct GPUMaterial *gpumat = EEVEE_material_world_lightprobe_get(scene, wo);
-
-        eGPUMaterialStatus status = GPU_material_status(gpumat);
-
-        switch (status) {
-          case GPU_MAT_SUCCESS:
-            grp = DRW_shgroup_material_create(gpumat, psl->probe_background);
-            DRW_shgroup_uniform_float_copy(grp, "backgroundAlpha", 1.0f);
-            /* TODO (fclem): remove those (need to clean the GLSL files). */
-            DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-            DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
-            DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
-            DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
-            DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
-            DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
-            DRW_shgroup_uniform_block(
-                grp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
-            DRW_shgroup_call(grp, geom, NULL);
-            break;
-          case GPU_MAT_QUEUED:
-            stl->g_data->queued_shaders_count++;
-            col = queue_col;
-            break;
-          default:
-            col = error_col;
-            break;
-        }
-      }
+      grp = DRW_shgroup_material_create(gpumat, psl->probe_background);
+      DRW_shgroup_uniform_float_copy(grp, "backgroundAlpha", 1.0f);
+      /* TODO (fclem): remove those (need to clean the GLSL files). */
+      DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
+      DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
+      DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
+      DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
+      DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
+      DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
+      DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
+      DRW_shgroup_call(grp, geom, NULL);
     }
 
     /* Fallback if shader fails or if not using nodetree. */
     if (grp == NULL) {
       grp = DRW_shgroup_create(EEVEE_shaders_probe_default_sh_get(), psl->probe_background);
-      DRW_shgroup_uniform_vec3(grp, "color", col, 1);
+      DRW_shgroup_uniform_vec3(grp, "color", G_draw.block.colorBackground, 1);
       DRW_shgroup_uniform_float_copy(grp, "backgroundAlpha", 1.0f);
       DRW_shgroup_call(grp, geom, NULL);
     }

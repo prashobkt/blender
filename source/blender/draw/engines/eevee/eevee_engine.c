@@ -88,7 +88,7 @@ static void eevee_engine_init(void *ved)
    * `EEVEE_effects_init` needs to go second for TAA. */
   EEVEE_renderpasses_init(vedata);
   EEVEE_effects_init(sldata, vedata, camera, false);
-  EEVEE_materials_init(sldata, stl, fbl);
+  EEVEE_materials_init(sldata, vedata, stl, fbl);
   EEVEE_shadows_init(sldata);
   EEVEE_lightprobes_init(sldata, vedata);
 }
@@ -230,7 +230,7 @@ static void eevee_draw_scene(void *vedata)
       BLI_halton_3d(primes, offset, samp, r);
       EEVEE_update_noise(psl, fbl, r);
       EEVEE_volumes_set_jitter(sldata, samp - 1);
-      EEVEE_materials_init(sldata, stl, fbl);
+      EEVEE_materials_init(sldata, vedata, stl, fbl);
     }
     /* Copy previous persmat to UBO data */
     copy_m4_m4(sldata->common_data.prev_persmat, stl->effects->prev_persmat);
