@@ -158,8 +158,6 @@ BLI_INLINE bool eevee_hdri_preview_overlay_enabled(const View3D *v3d)
   (EEVEE_RENDER_PASS_EMIT | EEVEE_RENDER_PASS_DIFFUSE_COLOR | EEVEE_RENDER_PASS_DIFFUSE_LIGHT | \
    EEVEE_RENDER_PASS_SPECULAR_COLOR | EEVEE_RENDER_PASS_SPECULAR_LIGHT | \
    EEVEE_RENDER_PASS_ENVIRONMENT)
-#define MAX_MATERIAL_RENDER_PASSES 6
-#define MAX_MATERIAL_RENDER_PASSES_UBO 6
 
 /* Material shader variations */
 enum {
@@ -178,8 +176,6 @@ enum {
   VAR_WORLD_VOLUME = (1 << 12),
   VAR_DEFAULT = (1 << 13),
 };
-
-#define VAR_MAT_MAX (1 << 7)
 
 /* ************ PROBE UBO ************* */
 
@@ -264,21 +260,6 @@ typedef struct EEVEE_PassList {
   struct DRWPass *maxz_copydepth_ps;
   struct DRWPass *maxz_copydepth_layer_ps;
 
-  struct DRWPass *depth_pass;
-  struct DRWPass *depth_pass_cull;
-  struct DRWPass *depth_pass_clip;
-  struct DRWPass *depth_pass_clip_cull;
-  struct DRWPass *refract_depth_pass;
-  struct DRWPass *refract_depth_pass_cull;
-  struct DRWPass *refract_depth_pass_clip;
-  struct DRWPass *refract_depth_pass_clip_cull;
-  struct DRWPass *default_pass[VAR_MAT_MAX];
-  struct DRWPass *sss_pass;
-  struct DRWPass *sss_pass_cull;
-  struct DRWPass *material_pass;
-  struct DRWPass *material_pass_cull;
-  struct DRWPass *material_accum_pass[MAX_MATERIAL_RENDER_PASSES];
-  struct DRWPass *refract_pass;
   /* Renderpass Accumulation. */
   struct DRWPass *material_accum_ps;
   struct DRWPass *background_accum_ps;
@@ -358,7 +339,6 @@ typedef struct EEVEE_TextureList {
   struct GPUTexture *mist_accum;
   struct GPUTexture *ao_accum;
   struct GPUTexture *sss_accum;
-  struct GPUTexture *material_accum[MAX_MATERIAL_RENDER_PASSES];
   struct GPUTexture *env_accum;
   struct GPUTexture *diff_color_accum;
   struct GPUTexture *diff_light_accum;
@@ -771,8 +751,6 @@ typedef struct EEVEE_ViewLayerData {
   struct GPUUniformBuffer *planar_ubo;
 
   /* Material Render passes */
-  struct EEVEE_RenderPassData renderpass_data[MAX_MATERIAL_RENDER_PASSES_UBO];
-  struct GPUUniformBuffer *renderpass_ubo_deprecated[MAX_MATERIAL_RENDER_PASSES_UBO];
   struct {
     struct GPUUniformBuffer *combined;
     struct GPUUniformBuffer *diff_color;
@@ -836,14 +814,6 @@ typedef struct EEVEE_Data {
 typedef struct EEVEE_PrivateData {
   struct DRWShadingGroup *shadow_shgrp;
   struct DRWShadingGroup *shadow_accum_shgrp;
-  struct DRWShadingGroup *depth_shgrp;
-  struct DRWShadingGroup *depth_shgrp_cull;
-  struct DRWShadingGroup *depth_shgrp_clip;
-  struct DRWShadingGroup *depth_shgrp_clip_cull;
-  struct DRWShadingGroup *refract_depth_shgrp;
-  struct DRWShadingGroup *refract_depth_shgrp_cull;
-  struct DRWShadingGroup *refract_depth_shgrp_clip;
-  struct DRWShadingGroup *refract_depth_shgrp_clip_cull;
   struct DRWCallBuffer *planar_display_shgrp;
   struct GHash *material_hash;
   float background_alpha; /* TODO find a better place for this. */
@@ -889,9 +859,6 @@ typedef struct EEVEE_PrivateData {
   GPUTexture *renderpass_input;
   GPUTexture *renderpass_col_input;
   GPUTexture *renderpass_light_input;
-  /* The number of active material based render passes */
-  uint render_passes_material_count;
-
   /* Renderpass ubo reference used by material pass. */
   struct GPUUniformBuffer *renderpass_ubo;
   /** For rendering shadows. */

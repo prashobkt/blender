@@ -57,11 +57,6 @@ static struct {
   char *geom_volume_shader_str;
   char *volume_shader_lib;
 
-  struct GPUShader *default_prepass_sh;
-  struct GPUShader *default_prepass_clip_sh;
-  struct GPUShader *default_hair_prepass_sh;
-  struct GPUShader *default_hair_prepass_clip_sh;
-  struct GPUShader *default_lit[VAR_MAT_MAX];
   struct GPUShader *default_background;
   struct GPUShader *update_noise_sh;
 
@@ -69,8 +64,6 @@ static struct {
    * Packing enables us to same precious textures slots. */
   struct GPUTexture *util_tex;
   struct GPUTexture *noise_tex;
-
-  uint sss_count;
 
   float noise_offsets[3];
 } e_data = {NULL}; /* Engine data */
@@ -108,36 +101,6 @@ extern char datatoc_volumetric_frag_glsl[];
 extern char datatoc_volumetric_lib_glsl[];
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 
-#define DEFAULT_RENDER_PASS_FLAG 0xefffffff
-
-/* Iterator for render passes. This iteration will only do the material based render passes. it
- * will ignore `EEVEE_RENDER_PASS_ENVIRONMENT`.
- *
- * parameters:
- * - `render_passes_` is a bitflag for render_passes that needs to be iterated over.
- * - `render_pass_index_` is a parameter name where the index of the render_pass will be available
- *   during iteration. This index can be used to select the right pass in the `psl`.
- * - `render_pass_` is the bitflag of the render_pass of the current iteration.
- *
- * The `render_pass_index_` parameter needs to be the same for the `RENDER_PASS_ITER_BEGIN` and
- * `RENDER_PASS_ITER_END`.
- */
-#define RENDER_PASS_ITER_BEGIN(render_passes_, render_pass_index_, render_pass_) \
-  const eViewLayerEEVEEPassType __filtered_##render_pass_index_ = render_passes_ & \
-                                                                  EEVEE_RENDERPASSES_MATERIAL & \
-                                                                  ~EEVEE_RENDER_PASS_ENVIRONMENT; \
-  if (__filtered_##render_pass_index_ != 0) { \
-    int render_pass_index_ = 1; \
-    for (int bit_##render_pass_ = 0; bit_##render_pass_ < EEVEE_RENDER_PASS_MAX_BIT; \
-         bit_##render_pass_++) { \
-      eViewLayerEEVEEPassType render_pass_ = (1 << bit_##render_pass_); \
-      if ((__filtered_##render_pass_index_ & render_pass_) != 0) {
-#define RENDER_PASS_ITER_END(render_pass_index_) \
-  render_pass_index_ += 1; \
-  } \
-  } \
-  } \
-  ((void)0)
 typedef struct EeveeMaterialCache {
   struct DRWShadingGroup *depth_grp;
   struct DRWShadingGroup *shading_grp;
@@ -416,33 +379,6 @@ struct GPUUniformBuffer *EEVEE_material_default_render_pass_ubo_get(EEVEE_ViewLa
   return sldata->renderpass_ubo.combined;
 }
 
-/* Get the render pass ubo for rendering the given render_pass. */
-static struct GPUUniformBuffer *get_render_pass_ubo(EEVEE_ViewLayerData *sldata,
-                                                    eViewLayerEEVEEPassType render_pass)
-{
-  int index;
-  switch (render_pass) {
-    case EEVEE_RENDER_PASS_DIFFUSE_COLOR:
-      index = 1;
-      break;
-    case EEVEE_RENDER_PASS_DIFFUSE_LIGHT:
-      index = 2;
-      break;
-    case EEVEE_RENDER_PASS_SPECULAR_COLOR:
-      index = 3;
-      break;
-    case EEVEE_RENDER_PASS_SPECULAR_LIGHT:
-      index = 4;
-      break;
-    case EEVEE_RENDER_PASS_EMIT:
-      index = 5;
-      break;
-    default:
-      index = 0;
-      break;
-  }
-  return sldata->renderpass_ubo_deprecated[index];
-}
 /**
  * ssr_id can be null to disable ssr contribution.
  */
@@ -506,36 +442,6 @@ void EEVEE_material_bind_resources(DRWShadingGroup *shgrp,
     DRW_shgroup_uniform_texture_ref_persistent(
         shgrp, "inTransmittance", &effects->volume_transmit);
   }
-}
-
-/* Add the uniforms for the background shader to `shgrp`. */
-static void add_background_uniforms(DRWShadingGroup *shgrp,
-                                    EEVEE_ViewLayerData *sldata,
-                                    EEVEE_Data *vedata)
-{
-  EEVEE_StorageList *stl = ((EEVEE_Data *)vedata)->stl;
-  DRW_shgroup_uniform_float(shgrp, "backgroundAlpha", &stl->g_data->background_alpha, 1);
-  /* TODO (fclem): remove those (need to clean the GLSL files). */
-  DRW_shgroup_uniform_block(shgrp, "common_block", sldata->common_ubo);
-  DRW_shgroup_uniform_block(shgrp, "grid_block", sldata->grid_ubo);
-  DRW_shgroup_uniform_block(shgrp, "probe_block", sldata->probe_ubo);
-  DRW_shgroup_uniform_block(shgrp, "planar_block", sldata->planar_ubo);
-  DRW_shgroup_uniform_block(shgrp, "light_block", sldata->light_ubo);
-  DRW_shgroup_uniform_block(shgrp, "shadow_block", sldata->shadow_ubo);
-  DRW_shgroup_uniform_block(
-      shgrp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
-}
-
-static void create_default_shader(int options)
-{
-  char *frag_str = BLI_string_joinN(e_data.frag_shader_lib, datatoc_default_frag_glsl);
-
-  char *defines = eevee_get_defines(options);
-
-  e_data.default_lit[options] = DRW_shader_create(e_data.vert_shader_str, NULL, frag_str, defines);
-
-  MEM_freeN(defines);
-  MEM_freeN(frag_str);
 }
 
 static void eevee_init_noise_texture(void)
@@ -720,24 +626,6 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
                                                            datatoc_default_world_frag_glsl,
                                                            datatoc_common_view_lib_glsl,
                                                            NULL);
-
-    char *vert_str = BLI_string_joinN(
-        datatoc_common_view_lib_glsl, datatoc_common_hair_lib_glsl, datatoc_prepass_vert_glsl);
-
-    e_data.default_prepass_sh = DRW_shader_create(vert_str, NULL, datatoc_prepass_frag_glsl, NULL);
-
-    e_data.default_prepass_clip_sh = DRW_shader_create(
-        vert_str, NULL, datatoc_prepass_frag_glsl, "#define CLIP_PLANES\n");
-
-    e_data.default_hair_prepass_sh = DRW_shader_create(
-        vert_str, NULL, datatoc_prepass_frag_glsl, "#define HAIR_SHADER\n");
-
-    e_data.default_hair_prepass_clip_sh = DRW_shader_create(vert_str,
-                                                            NULL,
-                                                            datatoc_prepass_frag_glsl,
-                                                            "#define HAIR_SHADER\n"
-                                                            "#define CLIP_PLANES\n");
-    MEM_freeN(vert_str);
 
     e_data.update_noise_sh = DRW_shader_create_fullscreen(datatoc_update_noise_frag_glsl, NULL);
 
@@ -1505,9 +1393,6 @@ void EEVEE_materials_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
 
 void EEVEE_materials_free(void)
 {
-  for (int i = 0; i < VAR_MAT_MAX; i++) {
-    DRW_SHADER_FREE_SAFE(e_data.default_lit[i]);
-  }
   MEM_SAFE_FREE(e_data.frag_shader_lib);
   MEM_SAFE_FREE(e_data.vert_shader_str);
   MEM_SAFE_FREE(e_data.vert_shadow_shader_str);
@@ -1515,10 +1400,6 @@ void EEVEE_materials_free(void)
   MEM_SAFE_FREE(e_data.vert_volume_shader_str);
   MEM_SAFE_FREE(e_data.geom_volume_shader_str);
   MEM_SAFE_FREE(e_data.volume_shader_lib);
-  DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_sh);
-  DRW_SHADER_FREE_SAFE(e_data.default_hair_prepass_clip_sh);
-  DRW_SHADER_FREE_SAFE(e_data.default_prepass_sh);
-  DRW_SHADER_FREE_SAFE(e_data.default_prepass_clip_sh);
   DRW_SHADER_FREE_SAFE(e_data.default_background);
   DRW_SHADER_FREE_SAFE(e_data.update_noise_sh);
   DRW_TEXTURE_FREE_SAFE(e_data.util_tex);
