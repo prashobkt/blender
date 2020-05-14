@@ -72,6 +72,7 @@ struct OculusTouchProfile {
 };
 
 enum class OpenXrProfile {
+    UNKNOWN,
     OCULUS_TOUCH
 };
 
@@ -87,7 +88,7 @@ struct OpenXRSessionData {
   std::vector<XrView> views;
   std::vector<GHOST_XrSwapchain> swapchains;
 
-  OpenXrProfile detectedProfile;
+  OpenXrProfile detectedProfile = OpenXrProfile::UNKNOWN;
   OculusTouchProfile oculusTouchProfile;
 };
 
