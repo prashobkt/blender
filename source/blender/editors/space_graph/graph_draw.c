@@ -374,10 +374,6 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
   uint color = GPU_vertformat_attr_add(
       format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
   immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
-  if ((sipo->flag & SIPO_BEAUTYDRAW_OFF) == 0) {
-    GPU_line_smooth(true);
-  }
-  GPU_blend(true);
 
   immBeginAtMost(GPU_PRIM_LINES, 4 * 2 * fcu->totvert);
 
