@@ -988,7 +988,7 @@ void ui_draw_aligned_panel(uiStyle *style,
     rcti box_rect = {rect->xmin,
                      rect->xmax,
                      (is_closed_x || is_closed_y) ? headrect.ymin : rect->ymin,
-                     (is_closed_x || is_closed_y) ? headrect.ymax : rect->ymax};
+                     headrect.ymax};
     ui_draw_box_opaque(&box_rect, UI_CNR_ALL);
 
     /* Mimick the border between aligned box widgets for the bottom of the header. */
