@@ -42,10 +42,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.operator_menu_enum("object.modifier_add", "type")
         layout.template_modifiers()
 
-    def SIMULATION(self, layout, ob, md):
-        layout.prop(md, "simulation")
-        layout.prop(md, "data_path")
-
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"
