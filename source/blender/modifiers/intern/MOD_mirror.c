@@ -203,6 +203,7 @@ static void data_panel_draw(const bContext *C, Panel *panel)
   uiItemDecoratorR(row, &ptr, "mirror_offset_v", 0);
 
   uiItemR(layout, &ptr, "use_mirror_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
+  uiItemR(layout, &ptr, "use_mirror_udim", 0, IFACE_("Flip UDIM"), ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
