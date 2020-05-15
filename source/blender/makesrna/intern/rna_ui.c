@@ -1291,11 +1291,6 @@ static void rna_def_panel(BlenderRNA *brna)
        "Instanced Panel",
        "Multiple panels with this type can be used as part of a list depending on data external "
        "to the UI. Used to create panels for the modifiers and other stacks."},
-      {PNL_INSTANCED_LIST_START,
-       "LIST_START",
-       0,
-       "Instanced List Start",
-       "The panel with this type marks the start of an instanced panel sequence"},
       {PNL_LAYOUT_HEADER_EXPAND,
        "HEADER_LAYOUT_EXPAND",
        0,
