@@ -555,8 +555,6 @@ enum {
   PNL_LAYOUT_VERT_BAR = (1 << 3),
   /** This panel type represents data external to the UI. */
   PNL_INSTANCED = (1 << 4),
-  /** The panel marks an instanced panel sequence start. Not recreated on list data change. */
-  PNL_INSTANCED_LIST_START = (1 << 5),
   /** Draw panel like a box widget. */
   PNL_DRAW_BOX = (1 << 6),
 };

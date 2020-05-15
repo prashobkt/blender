@@ -255,36 +255,16 @@ static Panel *UI_panel_add_instanced_ex(
 
   /* Add the panel's children too. Although they aren't instanced panels, we can still use this
    * function to create them, as UI_panel_begin does other things we don't need to do. */
-  LISTBASE_FOREACH (PanelType *, child_type, &panel_type->children) {
+  LISTBASE_FOREACH (LinkData *, child, &panel_type->children) {
+    PanelType *child_type = child->data;
     UI_panel_add_instanced_ex(area, region, &panel->children, child_type, list_index);
   }
 
-  /* If we're adding an instanced panel, make sure it's added to the end of the group of instanced
-   * panels. We can assume the panel list is also the display order because the instanced panel
+  /* Note: We could make sure that instanced panels are added to the end of the group of instanced
+   * panels here, but that works without special behavior here, so just add it to the end of the
+   * list. We can assume the panel list is also the display order because the instanced panel
    * list is rebuilt when the order changes. */
-  if (panel_type->flag & PNL_INSTANCED) {
-    Panel *last_list_panel = NULL;
-
-    LISTBASE_FOREACH (Panel *, existing_panel, panels) {
-      if (existing_panel->type == NULL) {
-        continue;
-      }
-      if (existing_panel->type->flag & (PNL_INSTANCED_LIST_START | PNL_INSTANCED)) {
-        last_list_panel = existing_panel;
-      }
-    }
-
-    /* There should always be a instanced panel or a panel with an instanced panel start flag
-     * before this panel. */
-    BLI_assert(last_list_panel);
-
-    panel->sortorder = last_list_panel->sortorder + 1;
-
-    BLI_insertlinkafter(panels, last_list_panel, panel);
-  }
-  else {
-    BLI_addtail(panels, panel);
-  }
+  BLI_addtail(panels, panel);
 
   return panel;
 }
@@ -1004,7 +984,8 @@ void ui_draw_aligned_panel(uiStyle *style,
 
   /* Draw a panel and header backdrops with an opaque box backdrop for box style panels. */
   if (draw_box_style && !is_subpanel) {
-    rcti box_rect = {rect->xmin, rect->xmax, rect->ymin, headrect.ymax};
+    /* Expand the top a tiny bit to give header buttons equal size above and below. */
+    rcti box_rect = {rect->xmin, rect->xmax, rect->ymin, headrect.ymax + U.pixelsize};
     ui_draw_box_opaque((is_closed_x || is_closed_y) ? &headrect : &box_rect, UI_CNR_ALL);
 
     /* Mimick the border between aligned box widgets for the bottom of the header. */
