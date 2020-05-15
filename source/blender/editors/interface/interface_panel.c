@@ -985,8 +985,11 @@ void ui_draw_aligned_panel(uiStyle *style,
   /* Draw a panel and header backdrops with an opaque box backdrop for box style panels. */
   if (draw_box_style && !is_subpanel) {
     /* Expand the top a tiny bit to give header buttons equal size above and below. */
-    rcti box_rect = {rect->xmin, rect->xmax, rect->ymin, headrect.ymax + U.pixelsize};
-    ui_draw_box_opaque((is_closed_x || is_closed_y) ? &headrect : &box_rect, UI_CNR_ALL);
+    rcti box_rect = {rect->xmin,
+                     rect->xmax,
+                     (is_closed_x || is_closed_y) ? headrect.ymin : rect->ymin,
+                     (is_closed_x || is_closed_y) ? headrect.ymax : rect->ymax};
+    ui_draw_box_opaque(&box_rect, UI_CNR_ALL);
 
     /* Mimick the border between aligned box widgets for the bottom of the header. */
     if (!(is_closed_x || is_closed_y)) {
