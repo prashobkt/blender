@@ -22,6 +22,11 @@
 /** \file
  * \ingroup bke
  */
+#include "BLI_listbase.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct Bone;
 struct Depsgraph;
@@ -57,21 +62,12 @@ typedef struct PoseTree {
   int stretch;                 /* disable stretching */
 } PoseTree;
 
-/*  Core armature functionality */
-#ifdef __cplusplus
-extern "C" {
-#endif
+/* Core armature functionality. */
 
 struct bArmature *BKE_armature_add(struct Main *bmain, const char *name);
 struct bArmature *BKE_armature_from_object(struct Object *ob);
 int BKE_armature_bonelist_count(struct ListBase *lb);
 void BKE_armature_bonelist_free(struct ListBase *lb);
-void BKE_armature_free(struct bArmature *arm);
-void BKE_armature_make_local(struct Main *bmain, struct bArmature *arm, const bool lib_local);
-void BKE_armature_copy_data(struct Main *bmain,
-                            struct bArmature *arm_dst,
-                            const struct bArmature *arm_src,
-                            const int flag);
 struct bArmature *BKE_armature_copy(struct Main *bmain, const struct bArmature *arm);
 
 void BKE_armature_copy_bone_transforms(struct bArmature *armature_dst,

@@ -30,19 +30,13 @@
 
 namespace DEG {
 
-/* TODO(sergey): Find a better place for this. */
-template<typename T> static void remove_from_vector(vector<T> *vector, const T &value)
-{
-  vector->erase(std::remove(vector->begin(), vector->end(), value), vector->end());
-}
-
 Relation::Relation(Node *from, Node *to, const char *description)
     : from(from), to(to), name(description), flag(0)
 {
   /* Hook it up to the nodes which use it.
    *
    * NOTE: We register relation in the nodes which this link connects to here
-   * in constructor but we don't unregister it in the destructor.
+   * in constructor but we don't un-register it in the destructor.
    *
    * Reasoning:
    *
@@ -50,10 +44,10 @@ Relation::Relation(Node *from, Node *to, const char *description)
    *   real need in avoiding dangling pointers, all the memory is to be freed
    *   anyway.
    *
-   * - Unregistering relation is not a cheap operation, so better to have it
+   * - Un-registering relation is not a cheap operation, so better to have it
    *   as an explicit call if we need this. */
-  from->outlinks.push_back(this);
-  to->inlinks.push_back(this);
+  from->outlinks.append(this);
+  to->inlinks.append(this);
 }
 
 Relation::~Relation()
@@ -66,8 +60,8 @@ void Relation::unlink()
 {
   /* Sanity check. */
   BLI_assert(from != nullptr && to != nullptr);
-  remove_from_vector(&from->outlinks, this);
-  remove_from_vector(&to->inlinks, this);
+  from->outlinks.remove_first_occurrence_and_reorder(this);
+  to->inlinks.remove_first_occurrence_and_reorder(this);
 }
 
 }  // namespace DEG

@@ -24,16 +24,17 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_cloth_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
-#include "BLI_utildefines.h"
+#include "BLI_edgehash.h"
+#include "BLI_ghash.h"
+#include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_rand.h"
-#include "BLI_edgehash.h"
-#include "BLI_linklist.h"
+#include "BLI_utildefines.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -332,13 +333,13 @@ static int do_init_cloth(Object *ob, ClothModifierData *clmd, Mesh *result, int 
   if (clmd->clothObject == NULL) {
     if (!cloth_from_object(ob, clmd, result, framenr, 1)) {
       BKE_ptcache_invalidate(cache);
-      modifier_setError(&(clmd->modifier), "Can't initialize cloth");
+      BKE_modifier_set_error(&(clmd->modifier), "Can't initialize cloth");
       return 0;
     }
 
     if (clmd->clothObject == NULL) {
       BKE_ptcache_invalidate(cache);
-      modifier_setError(&(clmd->modifier), "Null cloth object");
+      BKE_modifier_set_error(&(clmd->modifier), "Null cloth object");
       return 0;
     }
 
@@ -393,7 +394,7 @@ static int do_step_cloth(
   cloth_apply_vgroup(clmd, result);
 
   if ((clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_DYNAMIC_BASEMESH) ||
-      (clmd->sim_parms->vgroup_shrink > 0) || (clmd->sim_parms->shrink_min > 0.0f)) {
+      (clmd->sim_parms->vgroup_shrink > 0) || (clmd->sim_parms->shrink_min != 0.0f)) {
     cloth_update_spring_lengths(clmd, result);
   }
 
@@ -583,6 +584,11 @@ void cloth_free_modifier(ClothModifierData *clmd)
       BLI_edgeset_free(cloth->edgeset);
     }
 
+    if (cloth->sew_edge_graph) {
+      BLI_ghash_free(cloth->sew_edge_graph, MEM_freeN, NULL);
+      cloth->sew_edge_graph = NULL;
+    }
+
 #if 0
     if (clmd->clothObject->facemarks) {
       MEM_freeN(clmd->clothObject->facemarks);
@@ -658,6 +664,11 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
 
     if (cloth->edgeset) {
       BLI_edgeset_free(cloth->edgeset);
+    }
+
+    if (cloth->sew_edge_graph) {
+      BLI_ghash_free(cloth->sew_edge_graph, MEM_freeN, NULL);
+      cloth->sew_edge_graph = NULL;
     }
 
 #if 0
@@ -830,7 +841,7 @@ static int cloth_from_object(
     clmd->clothObject->edgeset = NULL;
   }
   else {
-    modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject");
+    BKE_modifier_set_error(&(clmd->modifier), "Out of memory on allocating clmd->clothObject");
     return 0;
   }
 
@@ -844,6 +855,8 @@ static int cloth_from_object(
   // create springs
   clmd->clothObject->springs = NULL;
   clmd->clothObject->numsprings = -1;
+
+  clmd->clothObject->sew_edge_graph = NULL;
 
   if (clmd->sim_parms->shapekey_rest &&
       !(clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_DYNAMIC_BASEMESH)) {
@@ -900,7 +913,7 @@ static int cloth_from_object(
 
   if (!cloth_build_springs(clmd, mesh)) {
     cloth_free_modifier(clmd);
-    modifier_setError(&(clmd->modifier), "Cannot build springs");
+    BKE_modifier_set_error(&(clmd->modifier), "Cannot build springs");
     return 0;
   }
 
@@ -930,7 +943,8 @@ static void cloth_from_mesh(ClothModifierData *clmd, Mesh *mesh)
                                          "clothVertex");
   if (clmd->clothObject->verts == NULL) {
     cloth_free_modifier(clmd);
-    modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject->verts");
+    BKE_modifier_set_error(&(clmd->modifier),
+                           "Out of memory on allocating clmd->clothObject->verts");
     printf("cloth_free_modifier clmd->clothObject->verts\n");
     return;
   }
@@ -946,7 +960,8 @@ static void cloth_from_mesh(ClothModifierData *clmd, Mesh *mesh)
   clmd->clothObject->tri = MEM_mallocN(sizeof(MVertTri) * looptri_num, "clothLoopTris");
   if (clmd->clothObject->tri == NULL) {
     cloth_free_modifier(clmd);
-    modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject->looptri");
+    BKE_modifier_set_error(&(clmd->modifier),
+                           "Out of memory on allocating clmd->clothObject->looptri");
     printf("cloth_free_modifier clmd->clothObject->looptri\n");
     return;
   }
@@ -1578,7 +1593,7 @@ static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
 
   bool use_internal_springs = (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_INTERNAL_SPRINGS);
 
-  if (use_internal_springs) {
+  if (use_internal_springs && numpolys > 0) {
     BVHTreeFromMesh treedata = {NULL};
     unsigned int tar_v_idx;
     BLI_bitmap *verts_used = NULL;
@@ -1644,6 +1659,13 @@ static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
     cloth->verts[i].avg_spring_len = 0.0f;
   }
 
+  if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW) {
+    /* cloth->sew_edge_graph should not exist before this */
+    BLI_assert(cloth->sew_edge_graph == NULL);
+    cloth->sew_edge_graph = BLI_ghash_new(
+        BLI_ghashutil_inthash_v2_p, BLI_ghashutil_inthash_v2_cmp, "cloth_sewing_edges_graph");
+  }
+
   /* Structural springs. */
   for (int i = 0; i < numedges; i++) {
     spring = (ClothSpring *)MEM_callocN(sizeof(ClothSpring), "cloth spring");
@@ -1655,6 +1677,19 @@ static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
         spring->restlen = 0.0f;
         spring->lin_stiffness = 1.0f;
         spring->type = CLOTH_SPRING_TYPE_SEWING;
+
+        /* set indices of verts of the sewing edge symmetrically in sew_edge_graph */
+        unsigned int *vertex_index_pair = MEM_mallocN(sizeof(unsigned int) * 2,
+                                                      "sewing_edge_index_pair_01");
+        if (medge[i].v1 < medge[i].v2) {
+          vertex_index_pair[0] = medge[i].v1;
+          vertex_index_pair[1] = medge[i].v2;
+        }
+        else {
+          vertex_index_pair[0] = medge[i].v2;
+          vertex_index_pair[1] = medge[i].v1;
+        }
+        BLI_ghash_insert(cloth->sew_edge_graph, vertex_index_pair, NULL);
       }
       else {
         shrink_factor = cloth_shrink_factor(clmd, cloth->verts, spring->ij, spring->kl);

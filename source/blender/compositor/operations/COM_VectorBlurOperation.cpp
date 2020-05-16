@@ -17,11 +17,12 @@
  */
 
 #include <string.h>
+
 #include "MEM_guardedalloc.h"
-#include "BLI_math.h"
-extern "C" {
+
 #include "BLI_jitter_2d.h"
-}
+#include "BLI_math.h"
+
 #include "COM_VectorBlurOperation.h"
 
 /* Defined */
@@ -659,7 +660,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
               dvz[1] = dvec2[-3];
               div++;
             }
-            else if ((ABS(dvec2[-4]) + ABS(dvec2[-3])) < (ABS(dvz[0]) + ABS(dvz[1]))) {
+            else if ((fabsf(dvec2[-4]) + fabsf(dvec2[-3])) < (fabsf(dvz[0]) + fabsf(dvz[1]))) {
               dvz[0] = dvec2[-4];
               dvz[1] = dvec2[-3];
             }
@@ -673,7 +674,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
               dvz[1] = dvec1[1];
               div++;
             }
-            else if ((ABS(dvec1[0]) + ABS(dvec1[1])) < (ABS(dvz[0]) + ABS(dvz[1]))) {
+            else if ((fabsf(dvec1[0]) + fabsf(dvec1[1])) < (fabsf(dvz[0]) + fabsf(dvz[1]))) {
               dvz[0] = dvec1[0];
               dvz[1] = dvec1[1];
             }
@@ -683,7 +684,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
               dvz[0] = dvec2[0];
               dvz[1] = dvec2[1];
             }
-            else if ((ABS(dvec2[0]) + ABS(dvec2[1])) < (ABS(dvz[0]) + ABS(dvz[1]))) {
+            else if ((fabsf(dvec2[0]) + fabsf(dvec2[1])) < (fabsf(dvz[0]) + fabsf(dvz[1]))) {
               dvz[0] = dvec2[0];
               dvz[1] = dvec2[1];
             }

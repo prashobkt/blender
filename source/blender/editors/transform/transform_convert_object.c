@@ -63,11 +63,9 @@ typedef struct TransDataObject {
    * - The key is object data #Object.
    * - The value is #XFormObjectSkipChild.
    */
-  struct GHash *obchild_in_obmode_map;
+  struct XFormObjectSkipChild_Container *xcs;
 
 } TransDataObject;
-
-static void trans_obchild_in_obmode_free_all(TransDataObject *tdo);
 
 static void freeTransObjectCustomData(TransInfo *t,
                                       TransDataContainer *UNUSED(tc),
@@ -81,7 +79,7 @@ static void freeTransObjectCustomData(TransInfo *t,
   }
 
   if (t->options & CTX_OBMODE_XFORM_SKIP_CHILDREN) {
-    trans_obchild_in_obmode_free_all(tdo);
+    ED_object_xform_skip_child_container_destroy(tdo->xcs);
   }
   MEM_freeN(tdo);
 }
@@ -117,140 +115,19 @@ void trans_obdata_in_obmode_update_all(TransInfo *t)
  * Don't transform unselected children, this is done using the parent inverse matrix.
  *
  * \note The complex logic here is caused by mixed selection within a single selection chain,
- * otherwise we only need #OB_SKIP_CHILD_PARENT_IS_XFORM for single objects.
+ * otherwise we only need #XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM for single objects.
  *
  * \{ */
-
-enum {
-  /**
-   * The parent is transformed, this is held in place.
-   */
-  OB_SKIP_CHILD_PARENT_IS_XFORM = 1,
-  /**
-   * The same as #OB_SKIP_CHILD_PARENT_IS_XFORM,
-   * however this objects parent isn't transformed directly.
-   */
-  OB_SKIP_CHILD_PARENT_IS_XFORM_INDIRECT = 3,
-  /**
-   * Use the parent invert matrix to apply transformation,
-   * this is needed, because breaks in the selection chain prevents this from being transformed.
-   * This is used to add the transform which would have been added
-   * if there weren't breaks in the parent/child chain.
-   */
-  OB_SKIP_CHILD_PARENT_APPLY_TRANSFORM = 2,
-};
-
-struct XFormObjectSkipChild {
-  float obmat_orig[4][4];
-  float parent_obmat_orig[4][4];
-  float parent_obmat_inv_orig[4][4];
-  float parent_recurse_obmat_orig[4][4];
-  float parentinv_orig[4][4];
-  Object *ob_parent_recurse;
-  int mode;
-};
-
-static void trans_obchild_in_obmode_ensure_object(TransDataObject *tdo,
-                                                  Object *ob,
-                                                  Object *ob_parent_recurse,
-                                                  int mode)
-{
-  if (tdo->obchild_in_obmode_map == NULL) {
-    tdo->obchild_in_obmode_map = BLI_ghash_ptr_new(__func__);
-  }
-
-  void **xf_p;
-  if (!BLI_ghash_ensure_p(tdo->obchild_in_obmode_map, ob, &xf_p)) {
-    struct XFormObjectSkipChild *xf = MEM_mallocN(sizeof(*xf), __func__);
-    copy_m4_m4(xf->parentinv_orig, ob->parentinv);
-    copy_m4_m4(xf->obmat_orig, ob->obmat);
-    copy_m4_m4(xf->parent_obmat_orig, ob->parent->obmat);
-    invert_m4_m4(xf->parent_obmat_inv_orig, ob->parent->obmat);
-    if (ob_parent_recurse) {
-      copy_m4_m4(xf->parent_recurse_obmat_orig, ob_parent_recurse->obmat);
-    }
-    xf->mode = mode;
-    xf->ob_parent_recurse = ob_parent_recurse;
-    *xf_p = xf;
-  }
-}
 
 void trans_obchild_in_obmode_update_all(TransInfo *t)
 {
   TransDataObject *tdo = t->custom.type.data;
-  if (tdo->obchild_in_obmode_map == NULL) {
+  if (tdo->xcs == NULL) {
     return;
   }
 
   struct Main *bmain = CTX_data_main(t->context);
-  BKE_scene_graph_evaluated_ensure(t->depsgraph, bmain);
-
-  GHashIterator gh_iter;
-  GHASH_ITER (gh_iter, tdo->obchild_in_obmode_map) {
-    Object *ob = BLI_ghashIterator_getKey(&gh_iter);
-    struct XFormObjectSkipChild *xf = BLI_ghashIterator_getValue(&gh_iter);
-
-    /* The following blocks below assign 'dmat'. */
-    float dmat[4][4];
-
-    if (xf->mode == OB_SKIP_CHILD_PARENT_IS_XFORM) {
-      /* Parent is transformed, this isn't so compensate. */
-      Object *ob_parent_eval = DEG_get_evaluated_object(t->depsgraph, ob->parent);
-      mul_m4_m4m4(dmat, xf->parent_obmat_inv_orig, ob_parent_eval->obmat);
-      invert_m4(dmat);
-    }
-    else if (xf->mode == OB_SKIP_CHILD_PARENT_IS_XFORM_INDIRECT) {
-      /* Calculate parent matrix (from the root transform). */
-      Object *ob_parent_recurse_eval = DEG_get_evaluated_object(t->depsgraph,
-                                                                xf->ob_parent_recurse);
-      float parent_recurse_obmat_inv[4][4];
-      invert_m4_m4(parent_recurse_obmat_inv, ob_parent_recurse_eval->obmat);
-      mul_m4_m4m4(dmat, xf->parent_recurse_obmat_orig, parent_recurse_obmat_inv);
-      invert_m4(dmat);
-      float parent_obmat_calc[4][4];
-      mul_m4_m4m4(parent_obmat_calc, dmat, xf->parent_obmat_orig);
-
-      /* Apply to the parent inverse matrix. */
-      mul_m4_m4m4(dmat, xf->parent_obmat_inv_orig, parent_obmat_calc);
-      invert_m4(dmat);
-    }
-    else {
-      BLI_assert(xf->mode == OB_SKIP_CHILD_PARENT_APPLY_TRANSFORM);
-      /* Transform this - without transform data. */
-      Object *ob_parent_recurse_eval = DEG_get_evaluated_object(t->depsgraph,
-                                                                xf->ob_parent_recurse);
-      float parent_recurse_obmat_inv[4][4];
-      invert_m4_m4(parent_recurse_obmat_inv, ob_parent_recurse_eval->obmat);
-      mul_m4_m4m4(dmat, xf->parent_recurse_obmat_orig, parent_recurse_obmat_inv);
-      invert_m4(dmat);
-      float obmat_calc[4][4];
-      mul_m4_m4m4(obmat_calc, dmat, xf->obmat_orig);
-      /* obmat_calc is just obmat. */
-
-      /* Get the matrices relative to the parent. */
-      float obmat_parent_relative_orig[4][4];
-      float obmat_parent_relative_calc[4][4];
-      float obmat_parent_relative_inv_orig[4][4];
-
-      mul_m4_m4m4(obmat_parent_relative_orig, xf->parent_obmat_inv_orig, xf->obmat_orig);
-      mul_m4_m4m4(obmat_parent_relative_calc, xf->parent_obmat_inv_orig, obmat_calc);
-      invert_m4_m4(obmat_parent_relative_inv_orig, obmat_parent_relative_orig);
-
-      /* Apply to the parent inverse matrix. */
-      mul_m4_m4m4(dmat, obmat_parent_relative_calc, obmat_parent_relative_inv_orig);
-    }
-
-    mul_m4_m4m4(ob->parentinv, dmat, xf->parentinv_orig);
-
-    DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
-  }
-}
-
-static void trans_obchild_in_obmode_free_all(TransDataObject *tdo)
-{
-  if (tdo->obchild_in_obmode_map != NULL) {
-    BLI_ghash_free(tdo->obchild_in_obmode_map, NULL, MEM_freeN);
-  }
+  ED_object_xform_skip_child_container_update_all(tdo->xcs, bmain, t->depsgraph);
 }
 
 /** \} */
@@ -320,7 +197,7 @@ static void ObjectToTransData(TransInfo *t, TransData *td, Object *ob)
   /* NOTE: This is not really following copy-on-write design and we should not
    * be re-evaluating the evaluated object. But as the comment above mentioned
    * this is part of a hack.
-   * More proper solution would be to make a shallow copy of the object  and
+   * More proper solution would be to make a shallow copy of the object and
    * evaluate that, and access matrix of that evaluated copy of the object.
    * Might be more tricky than it sounds, if some logic later on accesses the
    * object matrix via td->ob->obmat. */
@@ -413,7 +290,7 @@ static void ObjectToTransData(TransInfo *t, TransData *td, Object *ob)
 
 static void trans_object_base_deps_flag_prepare(ViewLayer *view_layer)
 {
-  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+  LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
     base->object->id.tag &= ~LIB_TAG_DOIT;
   }
 }
@@ -447,7 +324,7 @@ static void trans_object_base_deps_flag_finish(const TransInfo *t, ViewLayer *vi
 {
 
   if ((t->options & CTX_OBMODE_XFORM_OBDATA) == 0) {
-    for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
       if (base->object->id.tag & LIB_TAG_DOIT) {
         base->flag_legacy |= BA_SNAP_FIX_DEPS_FIASCO;
       }
@@ -478,7 +355,7 @@ static void set_trans_object_base_flags(TransInfo *t)
   /* Clear all flags we need. It will be used to detect dependencies. */
   trans_object_base_deps_flag_prepare(view_layer);
   /* Traverse all bases and set all possible flags. */
-  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+  LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
     base->flag_legacy &= ~(BA_WAS_SEL | BA_TRANSFORM_LOCKED_IN_PLACE);
     if (BASE_SELECTED_EDITABLE(v3d, base)) {
       Object *ob = base->object;
@@ -545,7 +422,7 @@ static int count_proportional_objects(TransInfo *t)
   if (!((t->around == V3D_AROUND_LOCAL_ORIGINS) &&
         (t->mode == TFM_ROTATION || t->mode == TFM_TRACKBALL))) {
     /* Mark all parents. */
-    for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
       if (BASE_SELECTED_EDITABLE(v3d, base) && BASE_SELECTABLE(v3d, base)) {
         Object *parent = base->object->parent;
         /* flag all parents */
@@ -556,7 +433,7 @@ static int count_proportional_objects(TransInfo *t)
       }
     }
     /* Mark all children. */
-    for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
       /* all base not already selected or marked that is editable */
       if ((base->object->flag & (BA_TRANSFORM_CHILD | BA_TRANSFORM_PARENT)) == 0 &&
           (base->flag & BASE_SELECTED) == 0 &&
@@ -566,7 +443,7 @@ static int count_proportional_objects(TransInfo *t)
     }
   }
   /* Flush changed flags to all dependencies. */
-  for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+  LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
     Object *ob = base->object;
     /* If base is not selected, not a parent of selection or not a child of
      * selection and it is editable and selectable.
@@ -715,7 +592,7 @@ void createTransObject(bContext *C, TransInfo *t)
     ViewLayer *view_layer = t->view_layer;
     View3D *v3d = t->view;
 
-    for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
       Object *ob = base->object;
 
       /* if base is not selected, not a parent of selection
@@ -746,6 +623,8 @@ void createTransObject(bContext *C, TransInfo *t)
 
   if (t->options & CTX_OBMODE_XFORM_SKIP_CHILDREN) {
 
+    tdo->xcs = ED_object_xform_skip_child_container_create();
+
 #define BASE_XFORM_INDIRECT(base) \
   ((base->flag_legacy & BA_WAS_SEL) && (base->flag & BASE_SELECTED) == 0)
 
@@ -760,7 +639,7 @@ void createTransObject(bContext *C, TransInfo *t)
 
     ViewLayer *view_layer = t->view_layer;
 
-    for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
       Object *ob = base->object;
       if (ob->parent != NULL) {
         if (ob->parent && !BLI_gset_haskey(objects_in_transdata, ob->parent) &&
@@ -778,8 +657,8 @@ void createTransObject(bContext *C, TransInfo *t)
                 }
 
                 if (ob_parent_recurse) {
-                  trans_obchild_in_obmode_ensure_object(
-                      tdo, ob, ob_parent_recurse, OB_SKIP_CHILD_PARENT_APPLY_TRANSFORM);
+                  ED_object_xform_skip_child_container_item_ensure(
+                      tdo->xcs, ob, ob_parent_recurse, XFORM_OB_SKIP_CHILD_PARENT_APPLY);
                   BLI_ghash_insert(objects_parent_root, ob, ob_parent_recurse);
                   base->flag_legacy |= BA_TRANSFORM_LOCKED_IN_PLACE;
                 }
@@ -790,7 +669,7 @@ void createTransObject(bContext *C, TransInfo *t)
       }
     }
 
-    for (Base *base = view_layer->object_bases.first; base; base = base->next) {
+    LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
       Object *ob = base->object;
 
       if (BASE_XFORM_INDIRECT(base) || BLI_gset_haskey(objects_in_transdata, ob)) {
@@ -801,14 +680,15 @@ void createTransObject(bContext *C, TransInfo *t)
         if (base_parent) {
           if (BASE_XFORM_INDIRECT(base_parent) ||
               BLI_gset_haskey(objects_in_transdata, ob->parent)) {
-            trans_obchild_in_obmode_ensure_object(tdo, ob, NULL, OB_SKIP_CHILD_PARENT_IS_XFORM);
+            ED_object_xform_skip_child_container_item_ensure(
+                tdo->xcs, ob, NULL, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
             base->flag_legacy |= BA_TRANSFORM_LOCKED_IN_PLACE;
           }
           else {
             Object *ob_parent_recurse = BLI_ghash_lookup(objects_parent_root, ob->parent);
             if (ob_parent_recurse) {
-              trans_obchild_in_obmode_ensure_object(
-                  tdo, ob, ob_parent_recurse, OB_SKIP_CHILD_PARENT_IS_XFORM_INDIRECT);
+              ED_object_xform_skip_child_container_item_ensure(
+                  tdo->xcs, ob, ob_parent_recurse, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM_INDIRECT);
             }
           }
         }

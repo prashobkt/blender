@@ -21,10 +21,10 @@
  * \ingroup spgraph
  */
 
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
 #include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
@@ -32,18 +32,19 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_blenlib.h"
+#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "BKE_animsys.h"
+#include "BKE_anim_data.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
-#include "BKE_main.h"
+#include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
+#include "BKE_main.h"
 #include "BKE_screen.h"
 #include "BKE_unit.h"
 
@@ -111,51 +112,65 @@ static bool graph_panel_poll(const bContext *C, PanelType *UNUSED(pt))
 
 /* -------------- */
 
-/* Graph Editor View Settings */
-static void graph_panel_view(const bContext *C, Panel *pa)
+static void graph_panel_cursor_header(const bContext *C, Panel *panel)
 {
-  bScreen *sc = CTX_wm_screen(C);
+  bScreen *screen = CTX_wm_screen(C);
   SpaceGraph *sipo = CTX_wm_space_graph(C);
   Scene *scene = CTX_data_scene(C);
   PointerRNA spaceptr, sceneptr;
-  uiLayout *col, *sub, *row;
+  uiLayout *col;
 
   /* get RNA pointers for use when creating the UI elements */
   RNA_id_pointer_create(&scene->id, &sceneptr);
-  RNA_pointer_create(&sc->id, &RNA_SpaceGraphEditor, sipo, &spaceptr);
+  RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo, &spaceptr);
 
   /* 2D-Cursor */
-  col = uiLayoutColumn(pa->layout, false);
-  uiItemR(col, &spaceptr, "show_cursor", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(panel->layout, false);
+  uiItemR(col, &spaceptr, "show_cursor", 0, "", ICON_NONE);
+}
+
+static void graph_panel_cursor(const bContext *C, Panel *panel)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  SpaceGraph *sipo = CTX_wm_space_graph(C);
+  Scene *scene = CTX_data_scene(C);
+  PointerRNA spaceptr, sceneptr;
+  uiLayout *layout = panel->layout;
+  uiLayout *col, *sub;
+
+  /* get RNA pointers for use when creating the UI elements */
+  RNA_id_pointer_create(&scene->id, &sceneptr);
+  RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo, &spaceptr);
+
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+
+  /* 2D-Cursor */
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, RNA_boolean_get(&spaceptr, "show_cursor"));
 
   sub = uiLayoutColumn(col, true);
-  uiLayoutSetActive(sub, RNA_boolean_get(&spaceptr, "show_cursor"));
-  uiItemO(sub, IFACE_("Cursor from Selection"), ICON_NONE, "GRAPH_OT_frame_jump");
-
-  sub = uiLayoutColumn(col, true);
-  uiLayoutSetActive(sub, RNA_boolean_get(&spaceptr, "show_cursor"));
-  row = uiLayoutSplit(sub, 0.7f, true);
   if (sipo->mode == SIPO_MODE_DRIVERS) {
-    uiItemR(row, &spaceptr, "cursor_position_x", 0, IFACE_("Cursor X"), ICON_NONE);
+    uiItemR(sub, &spaceptr, "cursor_position_x", 0, IFACE_("Cursor X"), ICON_NONE);
   }
   else {
-    uiItemR(row, &sceneptr, "frame_current", 0, IFACE_("Cursor X"), ICON_NONE);
+    uiItemR(sub, &sceneptr, "frame_current", 0, IFACE_("Cursor X"), ICON_NONE);
   }
-  uiItemEnumO(row, "GRAPH_OT_snap", IFACE_("To Keys"), 0, "type", GRAPHKEYS_SNAP_CFRA);
 
-  row = uiLayoutSplit(sub, 0.7f, true);
-  uiItemR(row, &spaceptr, "cursor_position_y", 0, IFACE_("Cursor Y"), ICON_NONE);
-  uiItemEnumO(row, "GRAPH_OT_snap", IFACE_("To Keys"), 0, "type", GRAPHKEYS_SNAP_VALUE);
+  uiItemR(sub, &spaceptr, "cursor_position_y", 0, IFACE_("Y"), ICON_NONE);
+
+  sub = uiLayoutColumn(col, true);
+  uiItemO(sub, IFACE_("Cursor to Selection"), ICON_NONE, "GRAPH_OT_frame_jump");
 }
 
 /* ******************* active F-Curve ************** */
 
-static void graph_panel_properties(const bContext *C, Panel *pa)
+static void graph_panel_properties(const bContext *C, Panel *panel)
 {
   bAnimListElem *ale;
   FCurve *fcu;
   PointerRNA fcu_ptr;
-  uiLayout *layout = pa->layout;
+  uiLayout *layout = panel->layout;
   uiLayout *col;
   char name[256];
   int icon = 0;
@@ -280,7 +295,7 @@ static void graphedit_activekey_handles_cb(bContext *C, void *fcu_ptr, void *bez
     bezt->h2 = HD_ALIGN;
   }
   else {
-    BKE_nurb_bezt_handle_test(bezt, SELECT, true);
+    BKE_nurb_bezt_handle_test(bezt, SELECT, true, false);
   }
 
   /* now call standard updates */
@@ -331,16 +346,16 @@ static void graphedit_activekey_right_handle_coord_cb(bContext *C, void *fcu_ptr
   bezt->f3 = f3;
 }
 
-static void graph_panel_key_properties(const bContext *C, Panel *pa)
+static void graph_panel_key_properties(const bContext *C, Panel *panel)
 {
   bAnimListElem *ale;
   FCurve *fcu;
   BezTriple *bezt, *prevbezt;
 
-  uiLayout *layout = pa->layout;
-  const ARegion *ar = CTX_wm_region(C);
+  uiLayout *layout = panel->layout;
+  const ARegion *region = CTX_wm_region(C);
   /* Just a width big enough so buttons use entire layout width (will be clamped by it then). */
-  const int but_max_width = ar->winx;
+  const int but_max_width = region->winx;
   uiLayout *col;
   uiBlock *block;
 
@@ -1213,7 +1228,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
 
 /* Panel to show property driven by the driver (in Drivers Editor) - duplicates Active FCurve,
  * but useful for clarity. */
-static void graph_panel_driven_property(const bContext *C, Panel *pa)
+static void graph_panel_driven_property(const bContext *C, Panel *panel)
 {
   bAnimListElem *ale;
   FCurve *fcu;
@@ -1222,14 +1237,14 @@ static void graph_panel_driven_property(const bContext *C, Panel *pa)
     return;
   }
 
-  graph_draw_driven_property_panel(pa->layout, ale->id, fcu);
+  graph_draw_driven_property_panel(panel->layout, ale->id, fcu);
 
   MEM_freeN(ale);
 }
 
 /* driver settings for active F-Curve
  * (only for 'Drivers' mode in Graph Editor, i.e. the full "Drivers Editor") */
-static void graph_panel_drivers(const bContext *C, Panel *pa)
+static void graph_panel_drivers(const bContext *C, Panel *panel)
 {
   bAnimListElem *ale;
   FCurve *fcu;
@@ -1239,7 +1254,7 @@ static void graph_panel_drivers(const bContext *C, Panel *pa)
     return;
   }
 
-  graph_draw_driver_settings_panel(pa->layout, ale->id, fcu, false);
+  graph_draw_driver_settings_panel(panel->layout, ale->id, fcu, false);
 
   /* cleanup */
   MEM_freeN(ale);
@@ -1255,9 +1270,9 @@ static bool graph_panel_drivers_popover_poll(const bContext *C, PanelType *UNUSE
 }
 
 /* popover panel for driver editing anywhere in ui */
-static void graph_panel_drivers_popover(const bContext *C, Panel *pa)
+static void graph_panel_drivers_popover(const bContext *C, Panel *panel)
 {
-  uiLayout *layout = pa->layout;
+  uiLayout *layout = panel->layout;
 
   PointerRNA ptr = {NULL};
   PropertyRNA *prop = NULL;
@@ -1289,7 +1304,7 @@ static void graph_panel_drivers_popover(const bContext *C, Panel *pa)
 
       /* Driven Property Settings */
       uiItemL(layout, IFACE_("Driven Property:"), ICON_NONE);
-      graph_draw_driven_property_panel(pa->layout, id, fcu);
+      graph_draw_driven_property_panel(panel->layout, id, fcu);
       /* TODO: All vs Single */
 
       uiItemS(layout);
@@ -1297,7 +1312,7 @@ static void graph_panel_drivers_popover(const bContext *C, Panel *pa)
 
       /* Drivers Settings */
       uiItemL(layout, IFACE_("Driver Settings:"), ICON_NONE);
-      graph_draw_driver_settings_panel(pa->layout, id, fcu, true);
+      graph_draw_driver_settings_panel(panel->layout, id, fcu, true);
     }
   }
 
@@ -1320,7 +1335,7 @@ static void do_graph_region_modifier_buttons(bContext *C, void *UNUSED(arg), int
   }
 }
 
-static void graph_panel_modifiers(const bContext *C, Panel *pa)
+static void graph_panel_modifiers(const bContext *C, Panel *panel)
 {
   bAnimListElem *ale;
   FCurve *fcu;
@@ -1333,12 +1348,12 @@ static void graph_panel_modifiers(const bContext *C, Panel *pa)
     return;
   }
 
-  block = uiLayoutGetBlock(pa->layout);
+  block = uiLayoutGetBlock(panel->layout);
   UI_block_func_handle_set(block, do_graph_region_modifier_buttons, NULL);
 
   /* 'add modifier' button at top of panel */
   {
-    row = uiLayoutRow(pa->layout, false);
+    row = uiLayoutRow(panel->layout, false);
 
     /* this is an operator button which calls a 'add modifier' operator...
      * a menu might be nicer but would be tricky as we need some custom filtering
@@ -1355,7 +1370,7 @@ static void graph_panel_modifiers(const bContext *C, Panel *pa)
   active = !(fcu->flag & FCURVE_MOD_OFF);
   /* draw each modifier */
   for (fcm = fcu->modifiers.first; fcm; fcm = fcm->next) {
-    col = uiLayoutColumn(pa->layout, true);
+    col = uiLayoutColumn(panel->layout, true);
     uiLayoutSetActive(col, active);
 
     ANIM_uiTemplate_fmodifier_draw(col, ale->fcurve_owner_id, &fcu->modifiers, fcm);
@@ -1429,9 +1444,10 @@ void graph_buttons_register(ARegionType *art)
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel view");
   strcpy(pt->idname, "GRAPH_PT_view");
-  strcpy(pt->label, N_("View Properties"));
+  strcpy(pt->label, N_("Show Cursor"));
   strcpy(pt->category, "View");
   strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
-  pt->draw = graph_panel_view;
+  pt->draw = graph_panel_cursor;
+  pt->draw_header = graph_panel_cursor_header;
   BLI_addtail(&art->paneltypes, pt);
 }

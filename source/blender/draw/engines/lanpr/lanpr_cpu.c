@@ -35,15 +35,15 @@
 
 #include "ED_lanpr.h"
 
-#include "BLI_listbase.h"
 #include "BLI_linklist.h"
+#include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_camera.h"
-#include "BKE_customdata.h"
 #include "BKE_collection.h"
+#include "BKE_customdata.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_modifier.h"
@@ -55,7 +55,6 @@
 #include "GPU_batch.h"
 #include "GPU_draw.h"
 #include "GPU_framebuffer.h"
-#include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_shader.h"
@@ -65,8 +64,8 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "WM_types.h"
 #include "WM_api.h"
+#include "WM_types.h"
 
 #include "bmesh.h"
 #include "bmesh_class.h"
@@ -261,8 +260,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, const int is_r
 
     unit_m4(identity_mat);
 
-    const DRWView *default_view = DRW_view_default_get();
-    DRW_view_winmat_get(default_view, win_mat, false);
+    DRW_view_winmat_get(NULL, win_mat, false);
 
     DRWView *view = DRW_view_create(identity_mat, win_mat, NULL, NULL, NULL);
     if (is_render) {

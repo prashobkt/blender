@@ -223,6 +223,7 @@ else:
         "aud",
         "bgl",
         "blf",
+        "imbuf",
         "bmesh",
         "bmesh.ops",
         "bmesh.types",
@@ -491,6 +492,11 @@ if _BPY_PROP_COLLECTION_FAKE:
 else:
     _BPY_PROP_COLLECTION_ID = "collection"
 
+if _BPY_STRUCT_FAKE:
+    bpy_struct = bpy.types.bpy_struct
+else:
+    bpy_struct = None
+
 
 def escape_rst(text):
     """ Escape plain text which may contain characters used by RST.
@@ -511,7 +517,7 @@ def is_struct_seq(value):
 
 
 def undocumented_message(module_name, type_name, identifier):
-    return "Undocumented `contribute <https://developer.blender.org/T51061>`"
+    return "Undocumented, consider `contributing <https://developer.blender.org/T51061>`__."
 
 
 def range_str(val):
@@ -1051,6 +1057,7 @@ context_type_map = {
     "selected_editable_fcurves": ("FCurve", True),
     "selected_editable_objects": ("Object", True),
     "selected_editable_sequences": ("Sequence", True),
+    "selected_nla_strips": ("NlaStrip", True),
     "selected_nodes": ("Node", True),
     "selected_objects": ("Object", True),
     "selected_pose_bones": ("PoseBone", True),
@@ -1072,6 +1079,7 @@ context_type_map = {
     "visible_pose_bones": ("PoseBone", True),
     "visible_fcurves": ("FCurve", True),
     "weight_paint_object": ("Object", False),
+    "volume": ("Volume", False),
     "world": ("World", False),
 }
 
@@ -1440,7 +1448,7 @@ def pyrna2sphinx(basepath):
 
             if _BPY_STRUCT_FAKE:
                 descr_items = [
-                    (key, descr) for key, descr in sorted(bpy.types.Struct.__bases__[0].__dict__.items())
+                    (key, descr) for key, descr in sorted(bpy_struct.__dict__.items())
                     if not key.startswith("__")
                 ]
 
@@ -1452,9 +1460,6 @@ def pyrna2sphinx(basepath):
             for base in bases:
                 for prop in base.properties:
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, prop.identifier))
-
-                for identifier, py_prop in base.get_py_properties():
-                    lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
 
                 for identifier, py_prop in base.get_py_properties():
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
@@ -1481,6 +1486,8 @@ def pyrna2sphinx(basepath):
                 for func in base.functions:
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, func.identifier))
                 for identifier, py_func in base.get_py_functions():
+                    lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
+                for identifier, py_func in base.get_py_c_functions():
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
 
             if lines:
@@ -1569,7 +1576,7 @@ def pyrna2sphinx(basepath):
 
         # write fake classes
         if _BPY_STRUCT_FAKE:
-            class_value = bpy.types.Struct.__bases__[0]
+            class_value = bpy_struct
             fake_bpy_type(
                 "bpy.types", class_value, _BPY_STRUCT_FAKE,
                 "built-in base class for all classes in bpy.types.", use_subclasses=True,
@@ -1709,7 +1716,7 @@ class PatchedPythonDomain(PythonDomain):
 
     fw("def setup(app):\n")
     fw("    app.add_stylesheet('css/theme_overrides.css')\n")
-    fw("    app.override_domain(PatchedPythonDomain)\n\n")
+    fw("    app.add_domain(PatchedPythonDomain, override=True)\n\n")
 
     file.close()
 
@@ -1755,6 +1762,7 @@ def write_rst_contents(basepath):
     app_modules = (
         "bpy.context",  # note: not actually a module
         "bpy.data",     # note: not actually a module
+        "bpy.msgbus",   # note: not actually a module
         "bpy.ops",
         "bpy.types",
 
@@ -1779,7 +1787,7 @@ def write_rst_contents(basepath):
 
     standalone_modules = (
         # submodules are added in parent page
-        "mathutils", "freestyle", "bgl", "blf", "gpu", "gpu_extras",
+        "mathutils", "freestyle", "bgl", "blf", "imbuf", "gpu", "gpu_extras",
         "aud", "bpy_extras", "idprop.types", "bmesh",
     )
 
@@ -1845,6 +1853,29 @@ def write_rst_ops_index(basepath):
         file.close()
 
 
+def write_rst_msgbus(basepath):
+    """
+    Write the rst files of bpy.msgbus module
+    """
+    if 'bpy.msgbus' in EXCLUDE_MODULES:
+        return
+
+    # Write the index.
+    filepath = os.path.join(basepath, "bpy.msgbus.rst")
+    file = open(filepath, "w", encoding="utf-8")
+    fw = file.write
+    fw(title_string("Message Bus (bpy.msgbus)", "="))
+    write_example_ref("", fw, "bpy.msgbus")
+    fw(".. toctree::\n")
+    fw("   :glob:\n\n")
+    fw("   bpy.msgbus.*\n\n")
+    file.close()
+
+    # Write the contents.
+    pymodule2sphinx(basepath, 'bpy.msgbus', bpy.msgbus, 'Message Bus')
+    EXAMPLE_SET_USED.add("bpy.msgbus")
+
+
 def write_rst_data(basepath):
     '''
     Write the rst file of bpy.data module
@@ -1886,6 +1917,7 @@ def write_rst_importable_modules(basepath):
         # C_modules
         "aud": "Audio System",
         "blf": "Font Drawing",
+        "imbuf": "Image Buffer",
         "gpu": "GPU Shader Module",
         "gpu.types": "GPU Types",
         "gpu.matrix": "GPU Matrix",
@@ -1998,6 +2030,7 @@ def rna2sphinx(basepath):
     write_rst_bpy(basepath)                 # bpy, disabled by default
     write_rst_types_index(basepath)         # bpy.types
     write_rst_ops_index(basepath)           # bpy.ops
+    write_rst_msgbus(basepath)              # bpy.msgbus
     pyrna2sphinx(basepath)                  # bpy.types.* and bpy.ops.*
     write_rst_data(basepath)                # bpy.data
     write_rst_importable_modules(basepath)

@@ -21,11 +21,11 @@
  * \ingroup draw
  */
 
-#include "BLI_listbase.h"
 #include "BLI_linklist.h"
-#include "BLI_task.h"
+#include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_rect.h"
+#include "BLI_task.h"
 
 #include "BKE_object.h"
 
@@ -65,6 +65,7 @@ extern char datatoc_lanpr_dpix_preview_frag_glsl[];
 extern char datatoc_lanpr_software_passthrough_vert_glsl[];
 extern char datatoc_gpu_shader_2D_smooth_color_vert_glsl[];
 extern char datatoc_gpu_shader_2D_smooth_color_frag_glsl[];
+extern char datatoc_gpu_shader_colorspace_lib_glsl[];
 
 LANPR_SharedResource lanpr_share;
 
@@ -79,14 +80,13 @@ static void lanpr_engine_init(void *ved)
     BLI_spin_init(&lanpr_share.lock_render_status);
   }
 
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->depth, GPU_DEPTH_COMPONENT32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->color, GPU_RGBA32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->normal, GPU_RGBA32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->edge_intermediate, GPU_RGBA32F, 8, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->depth, GPU_DEPTH_COMPONENT32F, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->color, GPU_RGBA32F, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->normal, GPU_RGBA32F, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->edge_intermediate, GPU_RGBA32F, 0);
 
-  DRW_texture_ensure_fullscreen_2D_multisample(
-      &txl->ms_resolve_depth, GPU_DEPTH_COMPONENT32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->ms_resolve_color, GPU_RGBA32F, 8, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->ms_resolve_depth, GPU_DEPTH_COMPONENT32F, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->ms_resolve_color, GPU_RGBA32F, 0);
 
   GPU_framebuffer_ensure_config(&fbl->passes,
                                 {GPU_ATTACHMENT_TEXTURE(txl->depth),
@@ -98,11 +98,14 @@ static void lanpr_engine_init(void *ved)
       {GPU_ATTACHMENT_TEXTURE(txl->depth), GPU_ATTACHMENT_TEXTURE(txl->edge_intermediate)});
 
   if (lanpr_share.multichannel_shader == NULL) {
-    lanpr_share.multichannel_shader = DRW_shader_create(
-        datatoc_gpu_shader_3D_smooth_color_vert_glsl,
-        NULL,
-        datatoc_gpu_shader_3D_smooth_color_frag_glsl,
-        NULL);
+    lanpr_share.multichannel_shader = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_gpu_shader_3D_smooth_color_vert_glsl, NULL},
+        .geom = (const char *[]){NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_colorspace_lib_glsl,
+                                 datatoc_gpu_shader_3D_smooth_color_frag_glsl,
+                                 NULL},
+        .defs = (const char *[]){NULL},
+    });
   }
 
   /* DPIX */
@@ -651,7 +654,7 @@ static void lanpr_render_matrices_init(RenderEngine *engine, Depsgraph *depsgrap
   float persmat[4][4], persinv[4][4];
   float unitmat[4][4];
 
-  RE_GetCameraWindow(engine->re, ob_camera_eval, frame, winmat);
+  RE_GetCameraWindow(engine->re, ob_camera_eval, winmat);
   RE_GetCameraModelMatrix(engine->re, ob_camera_eval, viewinv);
 
   invert_m4_m4(viewmat, viewinv);

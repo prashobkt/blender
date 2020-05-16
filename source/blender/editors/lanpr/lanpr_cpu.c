@@ -23,32 +23,32 @@
 
 #include "ED_lanpr.h"
 
-#include "BLI_listbase.h"
+#include "BLI_alloca.h"
 #include "BLI_linklist.h"
+#include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
-#include "BLI_alloca.h"
 
-#include "BKE_object.h"
-#include "DNA_mesh_types.h"
-#include "DNA_camera_types.h"
-#include "DNA_modifier_types.h"
-#include "DNA_text_types.h"
-#include "DNA_lanpr_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_gpencil_types.h"
-#include "DNA_meshdata_types.h"
-#include "BKE_customdata.h"
-#include "DEG_depsgraph_query.h"
 #include "BKE_camera.h"
-#include "BKE_gpencil.h"
 #include "BKE_collection.h"
-#include "BKE_report.h"
-#include "BKE_screen.h"
-#include "BKE_scene.h"
-#include "BKE_text.h"
 #include "BKE_context.h"
+#include "BKE_customdata.h"
+#include "BKE_gpencil.h"
+#include "BKE_object.h"
+#include "BKE_report.h"
+#include "BKE_scene.h"
+#include "BKE_screen.h"
+#include "BKE_text.h"
+#include "DEG_depsgraph_query.h"
+#include "DNA_camera_types.h"
+#include "DNA_gpencil_types.h"
+#include "DNA_lanpr_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_scene_types.h"
+#include "DNA_text_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "RNA_access.h"
@@ -61,8 +61,8 @@
 #include "bmesh_class.h"
 #include "bmesh_tools.h"
 
-#include "WM_types.h"
 #include "WM_api.h"
+#include "WM_types.h"
 
 #include "BKE_text.h"
 
@@ -648,8 +648,7 @@ static bool lanpr_calculation_is_canceled(void)
   return is_canceled;
 }
 static void lanpr_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(pool),
-                                                  LANPR_RenderTaskInfo *rti,
-                                                  int UNUSED(threadid))
+                                                  LANPR_RenderTaskInfo *rti)
 {
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   LinkData *lip;
@@ -703,7 +702,6 @@ static void lanpr_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
   int thread_count = rb->thread_count;
   LANPR_RenderTaskInfo *rti = MEM_callocN(sizeof(LANPR_RenderTaskInfo) * thread_count,
                                           "Task Pool");
-  TaskScheduler *scheduler = BLI_task_scheduler_get();
   int i;
 
   rb->contour_managed = rb->contours.first;
@@ -712,15 +710,12 @@ static void lanpr_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
   rb->material_managed = rb->material_lines.first;
   rb->edge_mark_managed = rb->edge_marks.first;
 
-  TaskPool *tp = BLI_task_pool_create(scheduler, 0);
+  TaskPool *tp = BLI_task_pool_create(NULL, TASK_PRIORITY_HIGH);
 
   for (i = 0; i < thread_count; i++) {
     rti[i].thread_id = i;
-    BLI_task_pool_push(tp,
-                       (TaskRunFunction)lanpr_calculate_line_occlusion_worker,
-                       &rti[i],
-                       0,
-                       TASK_PRIORITY_HIGH);
+    BLI_task_pool_push(
+        tp, (TaskRunFunction)lanpr_calculate_line_occlusion_worker, &rti[i], 0, NULL);
   }
   BLI_task_pool_work_and_wait(tp);
   BLI_task_pool_free(tp);
@@ -2004,7 +1999,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
   trans[1] -= cam_shift_y * 2;
 
   /* To accomodate k=0 and k=inf (vertical) lines. */
-  if (ABS(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > ABS(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
+  if (fabs(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > fabs(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
     cut = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], trans[0]);
   }
   else {
@@ -3814,8 +3809,7 @@ typedef struct LANPR_FeatureLineWorker {
 } LANPR_FeatureLineWorker;
 
 static void lanpr_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
-                                               LANPR_FeatureLineWorker *worker_data,
-                                               int UNUSED(threadid))
+                                               LANPR_FeatureLineWorker *worker_data)
 {
   ED_lanpr_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
 }
@@ -3842,18 +3836,16 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersec
   ED_lanpr_calculation_set_flag(LANPR_RENDER_RUNNING);
 
   LANPR_FeatureLineWorker *flw = MEM_callocN(sizeof(LANPR_FeatureLineWorker), "Task Pool");
-  TaskScheduler *scheduler = BLI_task_scheduler_get();
 
   flw->dg = dg;
   flw->intersection_only = intersection_only;
 
-  TaskPool *tp = BLI_task_pool_create_background(scheduler, flw);
+  TaskPool *tp = BLI_task_pool_create_background(flw, TASK_PRIORITY_HIGH);
   BLI_spin_lock(&lanpr_share.lock_render_status);
   lanpr_share.background_render_task = tp;
   BLI_spin_unlock(&lanpr_share.lock_render_status);
 
-  BLI_task_pool_push(
-      tp, (TaskRunFunction)lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
+  BLI_task_pool_push(tp, (TaskRunFunction)lanpr_compute_feature_lines_worker, flw, true, NULL);
 }
 
 static bool lanpr_camera_exists(bContext *c)
@@ -3998,7 +3990,7 @@ static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
     int array_idx = 0;
     int count = ED_lanpr_count_chain(rlc);
-    bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, color_idx, count, thickness);
+    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, color_idx, count, thickness, false);
 
     float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
 
@@ -4026,7 +4018,7 @@ static void lanpr_clear_gp_lanpr_flags(Depsgraph *dg, int frame)
       bGPdata *gpd = ((Object *)o->id.orig_id)->data;
       bGPDlayer *gpl;
       for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-        bGPDframe *gpf = BKE_gpencil_layer_find_frame(gpl, frame);
+        bGPDframe *gpf = BKE_gpencil_layer_frame_find(gpl, frame);
         if (gpf == NULL) {
           continue;
         }
@@ -4055,7 +4047,7 @@ static void lanpr_update_gp_strokes_single(Depsgraph *dg,
   if (gpl == NULL) {
     gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
   }
-  gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);
+  gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
 
   if (gpf->strokes.first &&
       !(DEG_get_evaluated_scene(dg)->lanpr.flags & LANPR_GPENCIL_OVERWRITE)) {

@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2006 Blender Foundation.
@@ -25,10 +25,14 @@
  */
 
 #include "DNA_ID.h"
+#include "DNA_boid_types.h"
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_object_force_types.h"
-#include "DNA_boid_types.h"
 #include <stdio.h> /* for FILE */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Point cache clearing option, for BKE_ptcache_id_clear, before
  * and after are non inclusive (they wont remove the cfra) */
@@ -274,9 +278,6 @@ typedef struct PTCacheEdit {
   ListBase pathcachebufs;
 
   int totpoint, totframes, totcached, edited;
-
-  unsigned char sel_col[3];
-  unsigned char nosel_col[3];
 } PTCacheEdit;
 
 /* Particle functions */
@@ -380,5 +381,9 @@ void BKE_ptcache_validate(struct PointCache *cache, int framenr);
 
 /* Set correct flags after unsuccessful simulation step */
 void BKE_ptcache_invalidate(struct PointCache *cache);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

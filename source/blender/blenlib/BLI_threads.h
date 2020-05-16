@@ -23,14 +23,17 @@
 /** \file
  * \ingroup bli
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <pthread.h>
 
+#include "BLI_sys_types.h"
+
 #ifdef __APPLE__
 #  include <libkern/OSAtomic.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /* for tables, button in UI, etc */
@@ -44,8 +47,6 @@ struct TaskScheduler;
 /*this is run once at startup*/
 void BLI_threadapi_init(void);
 void BLI_threadapi_exit(void);
-
-struct TaskScheduler *BLI_task_scheduler_get(void);
 
 void BLI_threadpool_init(struct ListBase *threadbase, void *(*do_thread)(void *), int tot);
 int BLI_available_threads(struct ListBase *threadbase);

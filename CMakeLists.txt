@@ -98,7 +98,9 @@ cmake_policy(SET CMP0010 NEW)
 cmake_policy(SET CMP0014 NEW)
 
 # Silence draco warning on macOS, new policy works fine.
-cmake_policy(SET CMP0068 NEW)
+if(POLICY CMP0068)
+  cmake_policy(SET CMP0068 NEW)
+endif()
 
 #-----------------------------------------------------------------------------
 # Load some macros.
@@ -135,11 +137,6 @@ get_blender_version()
 
 #-----------------------------------------------------------------------------
 # Options
-
-# First platform specific non-cached vars
-if(UNIX AND NOT (APPLE OR HAIKU))
-  set(WITH_X11 ON)
-endif()
 
 # Blender internal features
 option(WITH_BLENDER "Build blender (disable to build only the blender player)" ON)
@@ -178,6 +175,14 @@ option(WITH_BULLET        "Enable Bullet (Physics Engine)" ON)
 option(WITH_SYSTEM_BULLET "Use the systems bullet library (currently unsupported due to missing features in upstream!)" )
 mark_as_advanced(WITH_SYSTEM_BULLET)
 option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ON)
+if(APPLE)
+  # There's no OpenXR runtime in sight for macOS, neither is code well
+  # tested there -> disable it by default.
+  option(WITH_XR_OPENXR   "Enable VR features through the OpenXR specification" OFF)
+  mark_as_advanced(WITH_XR_OPENXR)
+else()
+  option(WITH_XR_OPENXR   "Enable VR features through the OpenXR specification" ON)
+endif()
 
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)
@@ -197,7 +202,15 @@ mark_as_advanced(WITH_GHOST_DEBUG)
 option(WITH_GHOST_SDL    "Enable building Blender against SDL for windowing rather than the native APIs" OFF)
 mark_as_advanced(WITH_GHOST_SDL)
 
-if(WITH_X11)
+if(UNIX AND NOT (APPLE OR HAIKU))
+  option(WITH_GHOST_X11 "Enable building Blender against X11 for windowing" ON)
+  mark_as_advanced(WITH_GHOST_X11)
+
+  option(WITH_GHOST_WAYLAND "Enable building Blender against Wayland for windowing (under development)" OFF)
+  mark_as_advanced(WITH_GHOST_WAYLAND)
+endif()
+
+if(WITH_GHOST_X11)
   option(WITH_GHOST_XDND    "Enable drag'n'drop support on X11 using XDND protocol" ON)
 endif()
 
@@ -222,7 +235,7 @@ if(UNIX AND NOT APPLE)
   mark_as_advanced(WITH_OPENMP_STATIC)
 endif()
 
-if(WITH_X11)
+if(WITH_GHOST_X11)
   option(WITH_X11_XINPUT    "Enable X11 Xinput (tablet support and unicode input)"  ON)
   option(WITH_X11_XF86VMODE "Enable X11 video mode switching"                       ON)
   option(WITH_X11_XFIXES    "Enable X11 XWayland cursor warping workaround"         ON)
@@ -311,6 +324,14 @@ option(WITH_FREESTYLE     "Enable Freestyle (advanced edges rendering)" ON)
 
 # LANPR
 option(WITH_LANPR     "Enable LANPR (more advanced edges rendering)" ON)
+
+# New object types
+option(WITH_NEW_OBJECT_TYPES "Enable new hair and pointcloud objects (use for development only, don't save in files)" OFF)
+mark_as_advanced(WITH_NEW_OBJECT_TYPES)
+
+# New simulation data block
+option(WITH_NEW_SIMULATION_TYPE "Enable simulation data block (use for development only, don't save in files)" OFF)
+mark_as_advanced(WITH_NEW_SIMULATION_TYPE)
 
 # Misc
 if(WIN32)
@@ -418,6 +439,8 @@ endif()
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
 option(WITH_OPENGL_RENDER_TESTS "Enable OpenGL render related unit testing (Experimental)" OFF)
 option(WITH_OPENGL_DRAW_TESTS "Enable OpenGL UI drawing related unit testing (Experimental)" OFF)
+set(TEST_PYTHON_EXE "" CACHE PATH "Python executable to run unit tests")
+mark_as_advanced(TEST_PYTHON_EXE)
 
 # Documentation
 if(UNIX AND NOT APPLE)
@@ -458,6 +481,8 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCC)
   option(WITH_LINKER_GOLD "Use ld.gold linker which is usually faster than ld.bfd" ON)
   mark_as_advanced(WITH_LINKER_GOLD)
+  option(WITH_LINKER_LLD "Use ld.lld linker which is usually faster than ld.gold" OFF)
+  mark_as_advanced(WITH_LINKER_LLD)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -493,7 +518,8 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     if(NOT MSVC)
       find_library(COMPILER_ASAN_LIBRARY asan ${CMAKE_C_IMPLICIT_LINK_DIRECTORIES})
     else()
-      find_library( COMPILER_ASAN_LIBRARY NAMES clang_rt.asan-x86_64
+      find_library(
+        COMPILER_ASAN_LIBRARY NAMES clang_rt.asan-x86_64
         PATHS
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/7.0.0/lib/windows
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/6.0.0/lib/windows
@@ -519,6 +545,15 @@ if(WIN32)
 
   option(WITH_WINDOWS_BUNDLE_CRT "Bundle the C runtime for install free distribution." ON)
   mark_as_advanced(WITH_WINDOWS_BUNDLE_CRT)
+
+  option(WITH_WINDOWS_SCCACHE "Use sccache to speed up builds (Ninja builder only)" OFF)
+  mark_as_advanced(WITH_WINDOWS_SCCACHE)
+
+  option(WITH_WINDOWS_PDB "Generate a pdb file for client side stacktraces" ON)
+  mark_as_advanced(WITH_WINDOWS_PDB)
+
+  option(WITH_WINDOWS_STRIPPED_PDB "Use a stripped PDB file" On)
+  mark_as_advanced(WITH_WINDOWS_STRIPPED_PDB)
 
 endif()
 
@@ -614,28 +649,28 @@ endif()
 
 # enable boost for cycles, audaspace or i18n
 # otherwise if the user disabled
-if(NOT WITH_BOOST)
-  # Explicitly disabled. so disable all deps.
-  macro(set_and_warn
-    _setting _val)
-    if(${${_setting}})
-      message(STATUS "'WITH_BOOST' is disabled: forcing 'set(${_setting} ${_val})'")
-    endif()
-    set(${_setting} ${_val})
-  endmacro()
 
-  set_and_warn(WITH_CYCLES         OFF)
-  set_and_warn(WITH_INTERNATIONAL  OFF)
-  set_and_warn(WITH_OPENVDB        OFF)
-  set_and_warn(WITH_OPENCOLORIO    OFF)
-  set_and_warn(WITH_QUADRIFLOW     OFF)
-elseif(WITH_CYCLES OR WITH_OPENIMAGEIO OR WITH_INTERNATIONAL OR
-       WITH_OPENVDB OR WITH_OPENCOLORIO)
-  # Keep enabled
-else()
-  # Disable boost if not needed.
+set_and_warn_dependency(WITH_BOOST WITH_CYCLES         OFF)
+set_and_warn_dependency(WITH_BOOST WITH_INTERNATIONAL  OFF)
+set_and_warn_dependency(WITH_BOOST WITH_OPENVDB        OFF)
+set_and_warn_dependency(WITH_BOOST WITH_OPENCOLORIO    OFF)
+set_and_warn_dependency(WITH_BOOST WITH_QUADRIFLOW     OFF)
+set_and_warn_dependency(WITH_BOOST WITH_USD            OFF)
+set_and_warn_dependency(WITH_BOOST WITH_ALEMBIC        OFF)
+
+if(WITH_BOOST AND NOT (WITH_CYCLES OR WITH_OPENIMAGEIO OR WITH_INTERNATIONAL OR
+   WITH_OPENVDB OR WITH_OPENCOLORIO OR WITH_USD OR WITH_ALEMBIC))
+  message(STATUS "No dependencies need 'WITH_BOOST' forcing WITH_BOOST=OFF")
   set(WITH_BOOST OFF)
 endif()
+
+set_and_warn_dependency(WITH_TBB WITH_USD               OFF)
+set_and_warn_dependency(WITH_TBB WITH_OPENIMAGEDENOISE  OFF)
+set_and_warn_dependency(WITH_TBB WITH_OPENVDB           OFF)
+set_and_warn_dependency(WITH_TBB WITH_MOD_FLUID         OFF)
+
+# OpenVDB uses 'half' type from OpenEXR & fails to link without OpenEXR enabled.
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
 
 # auto enable openimageio for cycles
 if(WITH_CYCLES)
@@ -666,13 +701,15 @@ if(WITH_INSTALL_PORTABLE)
 endif()
 
 if(WITH_GHOST_SDL OR WITH_HEADLESS)
-  set(WITH_X11           OFF)
+  set(WITH_GHOST_WAYLAND OFF)
+  set(WITH_GHOST_X11     OFF)
   set(WITH_X11_XINPUT    OFF)
   set(WITH_X11_XF86VMODE OFF)
   set(WITH_X11_XFIXES    OFF)
   set(WITH_X11_ALPHA     OFF)
   set(WITH_GHOST_XDND    OFF)
   set(WITH_INPUT_IME     OFF)
+  set(WITH_XR_OPENXR     OFF)
 endif()
 
 if(WITH_CPU_SSE)
@@ -794,61 +831,6 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
   endif()
 endif()
 
-#-----------------------------------------------------------------------------
-# Platform specifics
-
-if(WITH_X11)
-  find_package(X11 REQUIRED)
-
-  find_path(X11_XF86keysym_INCLUDE_PATH X11/XF86keysym.h ${X11_INC_SEARCH_PATH})
-  mark_as_advanced(X11_XF86keysym_INCLUDE_PATH)
-
-  list(APPEND PLATFORM_LINKLIBS ${X11_X11_LIB})
-
-  if(WITH_X11_XINPUT)
-    if(X11_Xinput_LIB)
-      list(APPEND PLATFORM_LINKLIBS ${X11_Xinput_LIB})
-    else()
-      message(FATAL_ERROR "LibXi not found. Disable WITH_X11_XINPUT if you
-      want to build without tablet support")
-    endif()
-  endif()
-
-  if(WITH_X11_XF86VMODE)
-    # XXX, why doesn't cmake make this available?
-    find_library(X11_Xxf86vmode_LIB Xxf86vm   ${X11_LIB_SEARCH_PATH})
-    mark_as_advanced(X11_Xxf86vmode_LIB)
-    if(X11_Xxf86vmode_LIB)
-      list(APPEND PLATFORM_LINKLIBS ${X11_Xxf86vmode_LIB})
-    else()
-      message(FATAL_ERROR "libXxf86vm not found. Disable WITH_X11_XF86VMODE if you
-      want to build without")
-    endif()
-  endif()
-
-  if(WITH_X11_XFIXES)
-    if(X11_Xfixes_LIB)
-      list(APPEND PLATFORM_LINKLIBS ${X11_Xfixes_LIB})
-    else()
-      message(FATAL_ERROR "libXfixes not found. Disable WITH_X11_XFIXES if you
-      want to build without")
-    endif()
-  endif()
-
-  if(WITH_X11_ALPHA)
-    find_library(X11_Xrender_LIB Xrender  ${X11_LIB_SEARCH_PATH})
-    mark_as_advanced(X11_Xrender_LIB)
-    if(X11_Xrender_LIB)
-      list(APPEND PLATFORM_LINKLIBS ${X11_Xrender_LIB})
-    else()
-      message(FATAL_ERROR "libXrender not found. Disable WITH_X11_ALPHA if you
-      want to build without")
-    endif()
-  endif()
-
-endif()
-
-
 # ----------------------------------------------------------------------------
 # Main Platform Checks
 #
@@ -956,6 +938,28 @@ endif()
 
 if(NOT WITH_SYSTEM_EIGEN3)
   set(EIGEN3_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/Eigen3)
+endif()
+
+if(WITH_OPENVDB)
+  list(APPEND OPENVDB_DEFINITIONS -DWITH_OPENVDB)
+
+  if(WITH_OPENVDB_3_ABI_COMPATIBLE)
+    list(APPEND OPENVDB_DEFINITIONS -DOPENVDB_3_ABI_COMPATIBLE)
+  endif()
+
+  list(APPEND OPENVDB_INCLUDE_DIRS
+    ${BOOST_INCLUDE_DIR}
+    ${TBB_INCLUDE_DIRS}
+    ${OPENEXR_INCLUDE_DIRS})
+
+  list(APPEND OPENVDB_LIBRARIES ${OPENEXR_LIBRARIES} ${ZLIB_LIBRARIES})
+
+  if(WITH_OPENVDB_BLOSC)
+    list(APPEND OPENVDB_DEFINITIONS -DWITH_OPENVDB_BLOSC)
+    list(APPEND OPENVDB_LIBRARIES ${BLOSC_LIBRARIES} ${ZLIB_LIBRARIES})
+  endif()
+
+  list(APPEND OPENVDB_LIBRARIES ${BOOST_LIBRARIES} ${TBB_LIBRARIES})
 endif()
 
 #-----------------------------------------------------------------------------
@@ -1461,6 +1465,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 
   # flags to undo strict flags
   ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_PARAMETER -Wno-unused-parameter)
+  ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_VARIABLE  -Wno-unused-variable)
   ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_MACROS    -Wno-unused-macros)
 
   ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_MISSING_VARIABLE_DECLARATIONS -Wno-missing-variable-declarations)
@@ -1479,6 +1484,8 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_REORDER -Wno-reorder)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_COMMENT -Wno-comment)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNUSED_TYPEDEFS -Wno-unused-local-typedefs)
+  ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNDEFINED_VAR_TEMPLATE -Wno-undefined-var-template)
+  ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_INSTANTIATION_AFTER_SPECIALIZATION -Wno-instantiation-after-specialization)
 
 elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
 
@@ -1730,11 +1737,13 @@ if(FIRST_RUN)
   info_cfg_option(WITH_FREESTYLE)
   info_cfg_option(WITH_LANPR)
   info_cfg_option(WITH_OPENCOLORIO)
+  info_cfg_option(WITH_XR_OPENXR)
   info_cfg_option(WITH_OPENIMAGEDENOISE)
   info_cfg_option(WITH_OPENVDB)
   info_cfg_option(WITH_ALEMBIC)
   info_cfg_option(WITH_QUADRIFLOW)
   info_cfg_option(WITH_USD)
+  info_cfg_option(WITH_TBB)
 
   info_cfg_text("Compiler Options:")
   info_cfg_option(WITH_BUILDINFO)

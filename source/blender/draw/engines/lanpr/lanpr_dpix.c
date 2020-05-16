@@ -47,8 +47,8 @@
 #include "GPU_uniformbuffer.h"
 #include "GPU_viewport.h"
 
-#include "lanpr_all.h"
 #include "bmesh.h"
+#include "lanpr_all.h"
 
 #include <math.h>
 
@@ -554,5 +554,5 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
 
   GPU_framebuffer_bind(DefaultFB);
   GPU_framebuffer_clear(DefaultFB, clear_bits, clear_col, clear_depth, clear_stencil);
-  DRW_multisamples_resolve(txl->depth, txl->color, 0);
+  // DRW_multisamples_resolve(txl->depth, txl->color, 0);
 }

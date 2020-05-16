@@ -89,11 +89,27 @@ set(DEFSRC
   rna_ui.c
   rna_userdef.c
   rna_vfont.c
+  rna_volume.c
   rna_wm.c
   rna_wm_gizmo.c
   rna_workspace.c
   rna_world.c
+  rna_xr.c
 )
+
+if(WITH_NEW_OBJECT_TYPES)
+  list(APPEND DEFSRC
+    rna_hair.c
+    rna_pointcloud.c
+  )
+endif()
+
+if (WITH_NEW_SIMULATION_TYPE)
+  list(APPEND DEFSRC
+    rna_simulation.c
+  )
+endif()
+
 
 set(APISRC
   rna_action_api.c
@@ -288,7 +304,7 @@ endif()
 
 if(WITH_ALEMBIC)
   list(APPEND INC
-    ../../alembic
+    ../../io/alembic
   )
   add_definitions(-DWITH_ALEMBIC)
 endif()
@@ -329,6 +345,19 @@ endif()
 if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
 endif()
+
+if(WITH_XR_OPENXR)
+  add_definitions(-DWITH_XR_OPENXR)
+endif()
+
+if(WITH_NEW_OBJECT_TYPES)
+  add_definitions(-DWITH_NEW_OBJECT_TYPES)
+endif()
+
+if (WITH_NEW_SIMULATION_TYPE)
+  add_definitions(-DWITH_NEW_SIMULATION_TYPE)
+endif()
+
 
 # Build makesrna executable
 blender_include_dirs(

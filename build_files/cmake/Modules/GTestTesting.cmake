@@ -46,6 +46,9 @@ macro(BLENDER_SRC_GTEST_EX)
       # that it is initialized before MKL and static library initialization order
       # issues are avoided.
       target_link_libraries(${TARGET_NAME} ${TBB_LIBRARIES})
+      if(WITH_OPENIMAGEDENOISE)
+        target_link_libraries(${TARGET_NAME} ${OPENIMAGEDENOISE_LIBRARIES})
+      endif()
     endif()
     target_link_libraries(${TARGET_NAME}
                           bf_testing_main
@@ -59,6 +62,12 @@ macro(BLENDER_SRC_GTEST_EX)
                           ${GFLAGS_LIBRARIES})
     if(WITH_OPENMP_STATIC)
       target_link_libraries(${TARGET_NAME} ${OpenMP_LIBRARIES})
+    endif()
+    if(UNIX AND NOT APPLE)
+      target_link_libraries(${TARGET_NAME} bf_intern_libc_compat)
+    endif()
+    if(WITH_TBB)
+      target_link_libraries(${TARGET_NAME} ${TBB_LIBRARIES})
     endif()
 
     get_property(GENERATOR_IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)

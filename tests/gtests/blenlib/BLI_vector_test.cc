@@ -1,5 +1,5 @@
+#include "BLI_vector.hh"
 #include "testing/testing.h"
-#include "BLI_vector.h"
 #include <forward_list>
 
 using BLI::Vector;
@@ -45,7 +45,7 @@ struct TestListValue {
   int value;
 };
 
-TEST(vector, IntrusiveListBaseConstructor)
+TEST(vector, ListBaseConstructor)
 {
   TestListValue *value1 = new TestListValue{0, 0, 4};
   TestListValue *value2 = new TestListValue{0, 0, 5};
@@ -55,7 +55,7 @@ TEST(vector, IntrusiveListBaseConstructor)
   BLI_addtail(&list, value1);
   BLI_addtail(&list, value2);
   BLI_addtail(&list, value3);
-  Vector<TestListValue *> vec(list, true);
+  Vector<TestListValue *> vec(list);
 
   EXPECT_EQ(vec.size(), 3);
   EXPECT_EQ(vec[0]->value, 4);
@@ -216,6 +216,38 @@ TEST(vector, Append)
   EXPECT_EQ(vec[2], 7);
 }
 
+TEST(vector, AppendAndGetIndex)
+{
+  IntVector vec;
+  EXPECT_EQ(vec.append_and_get_index(10), 0);
+  EXPECT_EQ(vec.append_and_get_index(10), 1);
+  EXPECT_EQ(vec.append_and_get_index(10), 2);
+  vec.append(10);
+  EXPECT_EQ(vec.append_and_get_index(10), 4);
+}
+
+TEST(vector, AppendNonDuplicates)
+{
+  IntVector vec;
+  vec.append_non_duplicates(4);
+  EXPECT_EQ(vec.size(), 1);
+  vec.append_non_duplicates(5);
+  EXPECT_EQ(vec.size(), 2);
+  vec.append_non_duplicates(4);
+  EXPECT_EQ(vec.size(), 2);
+}
+
+TEST(vector, ExtendNonDuplicates)
+{
+  IntVector vec;
+  vec.extend_non_duplicates({1, 2});
+  EXPECT_EQ(vec.size(), 2);
+  vec.extend_non_duplicates({3, 4});
+  EXPECT_EQ(vec.size(), 4);
+  vec.extend_non_duplicates({0, 1, 2, 3});
+  EXPECT_EQ(vec.size(), 5);
+}
+
 TEST(vector, Fill)
 {
   IntVector vec(5);
@@ -313,14 +345,14 @@ TEST(vector, RemoveLast)
   EXPECT_EQ(vec.size(), 0);
 }
 
-TEST(vector, Empty)
+TEST(vector, IsEmpty)
 {
   IntVector vec;
-  EXPECT_TRUE(vec.empty());
+  EXPECT_TRUE(vec.is_empty());
   vec.append(1);
-  EXPECT_FALSE(vec.empty());
+  EXPECT_FALSE(vec.is_empty());
   vec.remove_last();
-  EXPECT_TRUE(vec.empty());
+  EXPECT_TRUE(vec.is_empty());
 }
 
 TEST(vector, RemoveReorder)
@@ -336,7 +368,23 @@ TEST(vector, RemoveReorder)
   vec.remove_and_reorder(0);
   EXPECT_EQ(vec[0], 7);
   vec.remove_and_reorder(0);
-  EXPECT_TRUE(vec.empty());
+  EXPECT_TRUE(vec.is_empty());
+}
+
+TEST(vector, RemoveFirstOccurrenceAndReorder)
+{
+  IntVector vec = {4, 5, 6, 7};
+  vec.remove_first_occurrence_and_reorder(5);
+  EXPECT_EQ(vec[0], 4);
+  EXPECT_EQ(vec[1], 7);
+  EXPECT_EQ(vec[2], 6);
+  vec.remove_first_occurrence_and_reorder(6);
+  EXPECT_EQ(vec[0], 4);
+  EXPECT_EQ(vec[1], 7);
+  vec.remove_first_occurrence_and_reorder(4);
+  EXPECT_EQ(vec[0], 7);
+  vec.remove_first_occurrence_and_reorder(7);
+  EXPECT_EQ(vec.size(), 0);
 }
 
 TEST(vector, AllEqual_False)

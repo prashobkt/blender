@@ -27,16 +27,16 @@
  * \ingroup bli
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "BLI_compiler_attrs.h"
 #include "BLI_math_inline.h"
 
 #ifdef BLI_MATH_GCC_WARN_PRAGMA
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wredundant-decls"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /********************************** Polygons *********************************/
@@ -636,6 +636,13 @@ void perspective_m4(float mat[4][4],
                     const float top,
                     const float nearClip,
                     const float farClip);
+void perspective_m4_fov(float mat[4][4],
+                        const float angle_left,
+                        const float angle_right,
+                        const float angle_up,
+                        const float angle_down,
+                        const float nearClip,
+                        const float farClip);
 void orthographic_m4(float mat[4][4],
                      const float left,
                      const float right,

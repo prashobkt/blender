@@ -26,11 +26,10 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 
 #include "intern/depsgraph.h"
-#include "intern/node/deg_node_factory.h"
 #include "intern/node/deg_node_component.h"
+#include "intern/node/deg_node_factory.h"
 #include "intern/node/deg_node_id.h"
 
 namespace DEG {
@@ -61,9 +60,13 @@ const char *operationCodeAsString(OperationCode opcode)
     /* Scene related. */
     case OperationCode::SCENE_EVAL:
       return "SCENE_EVAL";
+    case OperationCode::AUDIO_VOLUME:
+      return "AUDIO_VOLUME";
     /* Object related. */
     case OperationCode::OBJECT_BASE_FLAGS:
       return "OBJECT_BASE_FLAGS";
+    case OperationCode::DIMENSIONS:
+      return "DIMENSIONS";
     /* Transform. */
     case OperationCode::TRANSFORM_INIT:
       return "TRANSFORM_INIT";
@@ -191,6 +194,8 @@ const char *operationCodeAsString(OperationCode opcode)
     /* instancing/duplication. */
     case OperationCode::DUPLI:
       return "DUPLI";
+    case OperationCode::SIMULATION_EVAL:
+      return "SIMULATION_EVAL";
   }
   BLI_assert(!"Unhandled operation code, should never happen.");
   return "UNKNOWN";
