@@ -193,6 +193,7 @@ static DLRBT_Node *nalloc_ak_bezt(void *data)
   ak->key_type = BEZKEYTYPE(bezt);
   ak->handle_type = bezt_handle_type(bezt);
   ak->extreme_type = bezt_extreme_type(chain);
+  ak->active = false;
 
   /* count keyframes in this column */
   ak->totkey = 1;
@@ -374,6 +375,7 @@ static const ActKeyBlockInfo dummy_keyblock = {0};
 
 static void compute_keyblock_data(ActKeyBlockInfo *info, BezTriple *prev, BezTriple *beztn)
 {
+
   memset(info, 0, sizeof(ActKeyBlockInfo));
 
   if (BEZKEYTYPE(beztn) == BEZT_KEYTYPE_MOVEHOLD) {
@@ -556,6 +558,7 @@ void draw_keyframe_shape(float x,
                          float y,
                          float size,
                          bool sel,
+                         bool active,
                          short key_type,
                          short mode,
                          float alpha,
@@ -636,8 +639,13 @@ void draw_keyframe_shape(float x,
   }
 
   if (draw_outline) {
-    /* exterior - black frame */
-    UI_GetThemeColor4ubv(sel ? TH_KEYBORDER_SELECT : TH_KEYBORDER, outline_col);
+    /* Draw outline, special outline if this is an active keyframe. */
+    if (active) {
+      UI_GetThemeColor4ubv(sel ? TH_KEYTYPE_KEYFRAME : TH_KEYBORDER, outline_col);
+    }
+    else {
+      UI_GetThemeColor4ubv(sel ? TH_KEYBORDER_SELECT : TH_KEYBORDER, outline_col);
+    }
     outline_col[3] *= alpha;
 
     if (!draw_fill) {
@@ -710,13 +718,14 @@ static void draw_keylist(View2D *v2d,
 
   /* draw keyblocks */
   if (keys) {
-    float sel_color[4], unsel_color[4];
+    float sel_color[4], unsel_color[4], active_color[4];
     float sel_mhcol[4], unsel_mhcol[4];
     float ipo_color[4], ipo_color_mix[4];
 
     /* cache colors first */
     UI_GetThemeColor4fv(TH_STRIP_SELECT, sel_color);
     UI_GetThemeColor4fv(TH_STRIP, unsel_color);
+    UI_GetThemeColor4fv(TH_VERTEX_ACTIVE, active_color);
     UI_GetThemeColor4fv(TH_DOPESHEET_IPOLINE, ipo_color);
 
     sel_color[3] *= alpha;
@@ -836,6 +845,7 @@ static void draw_keylist(View2D *v2d,
                               ypos,
                               icon_sz,
                               (ak->sel & SELECT),
+                              ak->active,
                               ak->key_type,
                               KEYFRAME_SHAPE_BOTH,
                               alpha,
@@ -1190,6 +1200,13 @@ void fcurve_to_keylist(AnimData *adt, FCurve *fcu, DLRBT_Tree *keys, int saction
 
     /* Update keyblocks. */
     update_keyblocks(keys, fcu->bezt, fcu->totvert);
+
+    /* Add active keyframe information if the FCurve is active. */
+    if (fcu->flag & FCURVE_ACTIVE) {
+      ActKeyColumn *active_column = (ActKeyColumn *)BLI_dlrbTree_search_exact(
+          keys, compare_ak_cfraPtr, &fcu->bezt[fcu->active_key].vec[1][0]);
+      active_column->active = true;
+    }
 
     /* unapply NLA-mapping if applicable */
     if (adt) {

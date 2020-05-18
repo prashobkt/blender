@@ -78,6 +78,8 @@ typedef struct ActKeyColumn {
   char extreme_type;
   short sel;
   float cfra;
+  /* Active keyframe in active FCurve. */
+  bool active;
 
   /* key-block info */
   ActKeyBlockInfo block;
@@ -141,6 +143,7 @@ void draw_keyframe_shape(float x,
                          float y,
                          float size,
                          bool sel,
+                         bool active,
                          short key_type,
                          short mode,
                          float alpha,
