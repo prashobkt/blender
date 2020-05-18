@@ -199,6 +199,22 @@ static void draw_fcurve_selected_keyframe_vertices(
   immEnd();
 }
 
+static void draw_fcurve_active_vertex(FCurve *fcu, View2D *v2d, bool edit, uint pos)
+{
+  if (edit && fcu->flag & FCURVE_ACTIVE) {
+    const float fac = 0.05f * BLI_rctf_size_x(&v2d->cur);
+    BezTriple *bezt = &fcu->bezt[fcu->active_key];
+    if (IN_RANGE(bezt->vec[1][0], (v2d->cur.xmin - fac), (v2d->cur.xmax + fac))) {
+      if (bezt->f2 & SELECT) {
+        immBegin(GPU_PRIM_POINTS, 1);
+        immUniformThemeColor(TH_VERTEX_ACTIVE);
+        immVertex2fv(pos, bezt->vec[1]);
+        immEnd();
+      }
+    }
+  }
+}
+
 /* helper func - draw keyframe vertices only for an F-Curve */
 static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, bool edit, uint pos)
 {
@@ -208,17 +224,7 @@ static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, bool edit, u
 
   draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, false, pos);
   draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, true, pos);
-
-  /* One extra point for drawing the active keyframe. */
-  if (fcu->flag & FCURVE_ACTIVE) {
-    BezTriple *bezt = &fcu->bezt[fcu->active_key];
-    if (bezt->f2 & SELECT) {
-      immBegin(GPU_PRIM_POINTS, 1);
-      immUniformThemeColor(TH_VERTEX_ACTIVE);
-      immVertex2fv(pos, bezt->vec[1]);
-      immEnd();
-    }
-  }
+  draw_fcurve_active_vertex(fcu, v2d, edit, pos);
 
   immUnbindProgram();
 }
@@ -269,19 +275,8 @@ static void draw_fcurve_selected_handle_vertices(
   immEnd();
 }
 
-/* helper func - draw handle vertices only for an F-Curve (if it is not protected) */
-static void draw_fcurve_handle_vertices(FCurve *fcu, View2D *v2d, bool sel_handle_only, uint pos)
+static void draw_fcurve_active_handle_vertices(FCurve *fcu, bool sel_handle_only, uint pos)
 {
-  /* smooth outlines for more consistent appearance */
-  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA);
-
-  /* set handle size */
-  immUniform1f("size", (1.4f * UI_GetThemeValuef(TH_HANDLE_VERTEX_SIZE)) * U.dpi_fac);
-  immUniform1f("outlineWidth", 1.5f * U.dpi_fac);
-
-  draw_fcurve_selected_handle_vertices(fcu, v2d, false, sel_handle_only, pos);
-  draw_fcurve_selected_handle_vertices(fcu, v2d, true, sel_handle_only, pos);
-
   /* Draw the extra handles for active points. */
   if (fcu->flag & FCURVE_ACTIVE) {
     BezTriple *bezt = &fcu->bezt[fcu->active_key];
@@ -301,6 +296,21 @@ static void draw_fcurve_handle_vertices(FCurve *fcu, View2D *v2d, bool sel_handl
       immEnd();
     }
   }
+}
+
+/* helper func - draw handle vertices only for an F-Curve (if it is not protected) */
+static void draw_fcurve_handle_vertices(FCurve *fcu, View2D *v2d, bool sel_handle_only, uint pos)
+{
+  /* smooth outlines for more consistent appearance */
+  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA);
+
+  /* set handle size */
+  immUniform1f("size", (1.4f * UI_GetThemeValuef(TH_HANDLE_VERTEX_SIZE)) * U.dpi_fac);
+  immUniform1f("outlineWidth", 1.5f * U.dpi_fac);
+
+  draw_fcurve_selected_handle_vertices(fcu, v2d, false, sel_handle_only, pos);
+  draw_fcurve_selected_handle_vertices(fcu, v2d, true, sel_handle_only, pos);
+  draw_fcurve_active_handle_vertices(fcu, sel_handle_only, pos);
 
   immUnbindProgram();
 }
