@@ -155,7 +155,6 @@ static void nla_action_draw_keyframes(
                           y,
                           6.0f,
                           false,
-                          false,
                           ak->key_type,
                           KEYFRAME_SHAPE_FRAME,
                           1.0f,
