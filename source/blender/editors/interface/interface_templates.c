@@ -1858,7 +1858,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
 static void gpencil_modifier_panel_id(void *md_link, char *r_name)
 {
   ModifierData *md = (ModifierData *)md_link;
-  BKE_gpencil_modifierType_panelId(md->type, r_name);
+  BKE_gpencil_modifierType_panel_id(md->type, r_name);
 }
 
 void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
@@ -1877,7 +1877,7 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
       const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
       if (mti->panelRegister) {
         char panel_idname[MAX_NAME];
-        BKE_gpencil_modifierType_panelId(md->type, panel_idname);
+        BKE_gpencil_modifierType_panel_id(md->type, panel_idname);
 
         Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
         if (new_panel != NULL) {
@@ -1948,7 +1948,7 @@ static void set_constraint_expand_flag(const bContext *C, Panel *panel, short ex
 static void constraint_panel_id(void *md_link, char *r_name)
 {
   bConstraint *con = (bConstraint *)md_link;
-  BKE_constraint_panelId(con->type, r_name);
+  BKE_constraint_panel_id(con->type, r_name);
 }
 
 /**
@@ -1997,7 +1997,7 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
 static void shaderfx_panel_id(void *fx_v, char *r_idname)
 {
   ShaderFxData *fx = (ShaderFxData *)fx_v;
-  BKE_shaderfxType_panelId(fx->type, r_idname);
+  BKE_shaderfxType_panel_id(fx->type, r_idname);
 }
 
 /**

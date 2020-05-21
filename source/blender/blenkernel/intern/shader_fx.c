@@ -171,7 +171,7 @@ const ShaderFxTypeInfo *BKE_shaderfx_get_info(ShaderFxType type)
  * \note: ShaderFx panel types are assumed to be named with the struct name field concatenated to
  * the defined prefix.
  */
-void BKE_shaderfxType_panelId(ShaderFxType type, char *r_idname)
+void BKE_shaderfxType_panel_id(ShaderFxType type, char *r_idname)
 {
   const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(type);
 

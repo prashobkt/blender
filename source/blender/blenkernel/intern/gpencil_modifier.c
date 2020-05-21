@@ -523,7 +523,7 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType
 /**
  * Get the idname of the modifier type's panel, which was defined in the #panelRegister callback.
  */
-void BKE_gpencil_modifierType_panelId(GpencilModifierType type, char *r_idname)
+void BKE_gpencil_modifierType_panel_id(GpencilModifierType type, char *r_idname)
 {
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(type);
 

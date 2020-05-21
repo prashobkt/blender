@@ -194,7 +194,7 @@ PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, 
 
   /* Get the name for the effect's panel. */
   char panel_idname[BKE_ST_MAXNAME];
-  BKE_shaderfxType_panelId(type, panel_idname);
+  BKE_shaderfxType_panel_id(type, panel_idname);
 
   PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);
 

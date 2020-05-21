@@ -5290,7 +5290,7 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type)
  * \note: Constraint panel types are assumed to be named with the struct name field concatenated to
  * the defined prefix.
  */
-void BKE_constraint_panelId(int type, char *r_idname)
+void BKE_constraint_panel_id(int type, char *r_idname)
 {
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(type);
 
