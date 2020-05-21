@@ -575,7 +575,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   /* Check for incompatible time modifier. */
   Object *ob = ob_ptr.data;
   GpencilModifierData *md = ptr.data;
-  if (BKE_gpencil_modifiers_findByType(ob, eGpencilModifierType_Time) != NULL) {
+  if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Time) != NULL) {
     BKE_gpencil_modifier_setError(md, "Build and Time Offset modifiers are incompatible");
   }
 

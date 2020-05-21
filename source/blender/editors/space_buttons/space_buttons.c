@@ -648,7 +648,7 @@ void ED_spacetype_buttons(void)
     }
   }
   for (int i = 0; i < NUM_GREASEPENCIL_MODIFIER_TYPES; i++) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(i);
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(i);
     if (mti != NULL && mti->panelRegister != NULL) {
       mti->panelRegister(art);
     }
@@ -657,7 +657,7 @@ void ED_spacetype_buttons(void)
     if (i == eShaderFxType_Light_deprecated) {
       continue;
     }
-    const ShaderFxTypeInfo *fxti = BKE_shaderfxType_getInfo(i);
+    const ShaderFxTypeInfo *fxti = BKE_shaderfx_get_info(i);
     if (fxti != NULL && fxti->panelRegister != NULL) {
       fxti->panelRegister(art);
     }

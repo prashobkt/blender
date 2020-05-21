@@ -28,7 +28,7 @@ class ShaderFxButtonsPanel:
 
 class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
     bl_label = "Effects"
-    bl_options = {'HIDE_HEADER', 'LIST_START'}
+    bl_options = {'HIDE_HEADER'}
 
     # Unused: always show for now.
 

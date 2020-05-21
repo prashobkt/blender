@@ -173,7 +173,7 @@ const ShaderFxTypeInfo *BKE_shaderfx_get_info(ShaderFxType type)
  */
 void BKE_shaderfxType_panelId(ShaderFxType type, char *r_idname)
 {
-  const ShaderFxTypeInfo *fxi = BKE_shaderfxType_getInfo(type);
+  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(type);
 
   strcpy(r_idname, SHADERFX_TYPE_PANEL_PREFIX);
   strcat(r_idname, fxi->name);

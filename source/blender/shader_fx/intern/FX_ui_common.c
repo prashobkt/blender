@@ -139,7 +139,7 @@ static void shaderfx_panel_header(const bContext *C, Panel *panel)
   Object *ob = CTX_data_active_object(C);
   ShaderFxData *fx = (ShaderFxData *)ptr.data;
 
-  const ShaderFxTypeInfo *fxti = BKE_shaderfxType_getInfo(fx->type);
+  const ShaderFxTypeInfo *fxti = BKE_shaderfx_get_info(fx->type);
 
   UI_block_lock_set(uiLayoutGetBlock(layout), (ob && ID_IS_LINKED(ob)), ERROR_LIBDATA_MESSAGE);
 
@@ -248,7 +248,7 @@ PanelType *shaderfx_subpanel_register(ARegionType *region_type,
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = shaderfx_ui_poll;
-  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_INSTANCED_SUBPANEL | PNL_DRAW_BOX);
+  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_DRAW_BOX);
 
   BLI_assert(parent != NULL);
   strcpy(panel_type->parent_id, parent->idname);

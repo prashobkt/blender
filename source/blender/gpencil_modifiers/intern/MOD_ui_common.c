@@ -228,7 +228,7 @@ void gpencil_modifier_panel_buttons(const bContext *C, Panel *panel)
 
   Object *ob = CTX_data_active_object(C);
   GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, panel->runtime.list_index);
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
   block = uiLayoutGetBlock(row);
   UI_block_lock_set(
@@ -266,7 +266,7 @@ static void gpencil_modifier_panel_header(const bContext *C, Panel *panel)
   gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
   GpencilModifierData *md = ptr.data;
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
   bool narrow_panel = (panel->sizex < UI_UNIT_X * 8 && panel->sizex != 0);
 
   /* Modifier Icon. */
@@ -367,7 +367,7 @@ PanelType *gpencil_modifier_subpanel_register(ARegionType *region_type,
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = gpencil_modifier_ui_poll;
-  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_DRAW_BOX | PNL_INSTANCED_SUBPANEL);
+  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_DRAW_BOX);
 
   BLI_assert(parent != NULL);
   strcpy(panel_type->parent_id, parent->idname);

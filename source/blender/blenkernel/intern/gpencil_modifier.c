@@ -525,7 +525,7 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType
  */
 void BKE_gpencil_modifierType_panelId(GpencilModifierType type, char *r_idname)
 {
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(type);
 
   strcpy(r_idname, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX);
   strcat(r_idname, mti->name);
