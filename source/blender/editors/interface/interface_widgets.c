@@ -27,7 +27,6 @@
 #include <string.h>
 
 #include "DNA_brush_types.h"
-#include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BLI_math.h"
@@ -4659,7 +4658,7 @@ static int widget_roundbox_set(uiBut *but, rcti *rect)
  * \{ */
 
 /* conversion from old to new buttons, so still messy */
-void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but, rcti *rect)
+void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBut *but, rcti *rect)
 {
   bTheme *btheme = UI_GetTheme();
   const ThemeUI *tui = &btheme->tui;
@@ -5118,7 +5117,10 @@ static void ui_draw_popover_back_impl(const uiWidgetColors *wcol,
   GPU_blend(false);
 }
 
-void ui_draw_popover_back(ARegion *region, uiStyle *UNUSED(style), uiBlock *block, rcti *rect)
+void ui_draw_popover_back(struct ARegion *region,
+                          uiStyle *UNUSED(style),
+                          uiBlock *block,
+                          rcti *rect)
 {
   uiWidgetType *wt = widget_type(UI_WTYPE_MENU_BACK);
 
@@ -5433,21 +5435,6 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
     }
   }
 
-  /* part text right aligned */
-  if (use_sep) {
-    if (cpoin) {
-      rect->xmax = _rect.xmax - 5;
-      UI_fontstyle_draw(fstyle,
-                        rect,
-                        cpoin + 1,
-                        wt->wcol.text,
-                        &(struct uiFontStyleDraw_Params){
-                            .align = UI_STYLE_TEXT_RIGHT,
-                        });
-      *cpoin = UI_SEP_CHAR;
-    }
-  }
-
   /* restore rect, was messed with */
   *rect = _rect;
 
@@ -5463,6 +5450,24 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
     /* XXX scale weak get from fstyle? */
     UI_icon_draw_ex(xs, ys, iconid, aspect, 1.0f, 0.0f, wt->wcol.text, false);
     GPU_blend(false);
+  }
+
+  /* part text right aligned */
+  if (use_sep) {
+    if (cpoin) {
+      /* Set inactive state for grayed out text. */
+      wt->state(wt, state | UI_BUT_INACTIVE, 0);
+
+      rect->xmax = _rect.xmax - 5;
+      UI_fontstyle_draw(fstyle,
+                        rect,
+                        cpoin + 1,
+                        wt->wcol.text,
+                        &(struct uiFontStyleDraw_Params){
+                            .align = UI_STYLE_TEXT_RIGHT,
+                        });
+      *cpoin = UI_SEP_CHAR;
+    }
   }
 }
 

@@ -25,7 +25,7 @@ class OBJECT_PT_constraints(Panel):
     bl_region_type = 'WINDOW'
     bl_label = "Object Constraints"
     bl_context = "constraint"
-    bl_options = {'LIST_START', 'HIDE_HEADER'}
+    bl_options = {'HIDE_HEADER'}
 
     @classmethod
     def poll(cls, context):
@@ -44,7 +44,7 @@ class BONE_PT_constraints(Panel):
     bl_region_type = 'WINDOW'
     bl_label = "Bone Constraints"
     bl_context = "bone_constraint"
-    bl_options = {'LIST_START', 'HIDE_HEADER'}
+    bl_options = {'HIDE_HEADER'}
 
     @classmethod
     def poll(cls, context):
@@ -146,7 +146,7 @@ class ConstraintButtonsSubPanel(Panel):
     bl_region_type = 'WINDOW'
     bl_label = ""
     bl_context = "constraint"
-    bl_options = {'INSTANCED_SUBPANEL', 'DRAW_BOX'}
+    bl_options = {'DRAW_BOX'}
 
     def get_constraint(self, context):
         con = None

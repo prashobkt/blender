@@ -126,7 +126,7 @@ void meshobject_foreachScreenVert(
   Scene *scene_eval = DEG_get_evaluated_scene(vc->depsgraph);
   Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, vc->obact);
 
-  me = mesh_get_eval_deform(vc->depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+  me = mesh_get_eval_final(vc->depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -388,7 +388,7 @@ void mesh_foreachScreenFace(
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_FACE);
 
-  if (modifiers_usesSubsurfFacedots(vc->scene, vc->obedit)) {
+  if (BKE_modifiers_uses_subsurf_facedots(vc->scene, vc->obedit)) {
     BKE_mesh_foreach_mapped_subdiv_face_center(
         me, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
   }

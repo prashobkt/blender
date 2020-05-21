@@ -321,7 +321,7 @@ bool BKE_gpencil_has_geometry_modifiers(Object *ob)
 {
   GpencilModifierData *md;
   for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
     if (mti && mti->generateStrokes) {
       return true;
@@ -335,7 +335,7 @@ bool BKE_gpencil_has_time_modifiers(Object *ob)
 {
   GpencilModifierData *md;
   for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
     if (mti && mti->remapTime) {
       return true;
@@ -372,7 +372,7 @@ static int gpencil_time_modifier(
 
   for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
     if (GPENCIL_MODIFIER_ACTIVE(md, is_render)) {
-      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
       if ((GPENCIL_MODIFIER_EDIT(md, is_edit)) && (!is_render)) {
         continue;
@@ -424,7 +424,7 @@ void BKE_gpencil_modifier_init(void)
 
 GpencilModifierData *BKE_gpencil_modifier_new(int type)
 {
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(type);
   GpencilModifierData *md = MEM_callocN(mti->struct_size, mti->struct_name);
 
   /* note, this name must be made unique later */
@@ -459,7 +459,7 @@ static void modifier_free_data_id_us_cb(void *UNUSED(userData),
 
 void BKE_gpencil_modifier_free_ex(GpencilModifierData *md, const int flag)
 {
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
     if (mti->foreachIDLink) {
@@ -490,7 +490,7 @@ void BKE_gpencil_modifier_free(GpencilModifierData *md)
 bool BKE_gpencil_modifier_unique_name(ListBase *modifiers, GpencilModifierData *gmd)
 {
   if (modifiers && gmd) {
-    const GpencilModifierTypeInfo *gmti = BKE_gpencil_modifierType_getInfo(gmd->type);
+    const GpencilModifierTypeInfo *gmti = BKE_gpencil_modifier_get_info(gmd->type);
     return BLI_uniquename(modifiers,
                           gmd,
                           DATA_(gmti->name),
@@ -501,14 +501,14 @@ bool BKE_gpencil_modifier_unique_name(ListBase *modifiers, GpencilModifierData *
   return false;
 }
 
-bool BKE_gpencil_modifier_dependsOnTime(GpencilModifierData *md)
+bool BKE_gpencil_modifier_depends_ontime(GpencilModifierData *md)
 {
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
   return mti->dependsOnTime && mti->dependsOnTime(md);
 }
 
-const GpencilModifierTypeInfo *BKE_gpencil_modifierType_getInfo(GpencilModifierType type)
+const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType type)
 {
   /* type unsigned, no need to check < 0 */
   if (type < NUM_GREASEPENCIL_MODIFIER_TYPES && type > 0 &&
@@ -531,10 +531,10 @@ void BKE_gpencil_modifierType_panelId(GpencilModifierType type, char *r_idname)
   strcat(r_idname, mti->name);
 }
 
-void BKE_gpencil_modifier_copyData_generic(const GpencilModifierData *md_src,
+void BKE_gpencil_modifier_copydata_generic(const GpencilModifierData *md_src,
                                            GpencilModifierData *md_dst)
 {
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md_src->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md_src->type);
 
   /* md_dst may have already be fully initialized with some extra allocated data,
    * we need to free it now to avoid memleak. */
@@ -560,11 +560,11 @@ static void gpencil_modifier_copy_data_id_us_cb(void *UNUSED(userData),
   }
 }
 
-void BKE_gpencil_modifier_copyData_ex(GpencilModifierData *md,
+void BKE_gpencil_modifier_copydata_ex(GpencilModifierData *md,
                                       GpencilModifierData *target,
                                       const int flag)
 {
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
   target->mode = md->mode;
   target->flag = md->flag;
@@ -585,12 +585,12 @@ void BKE_gpencil_modifier_copyData_ex(GpencilModifierData *md,
   }
 }
 
-void BKE_gpencil_modifier_copyData(GpencilModifierData *md, GpencilModifierData *target)
+void BKE_gpencil_modifier_copydata(GpencilModifierData *md, GpencilModifierData *target)
 {
-  BKE_gpencil_modifier_copyData_ex(md, target, 0);
+  BKE_gpencil_modifier_copydata_ex(md, target, 0);
 }
 
-GpencilModifierData *BKE_gpencil_modifiers_findByType(Object *ob, GpencilModifierType type)
+GpencilModifierData *BKE_gpencil_modifiers_findby_type(Object *ob, GpencilModifierType type)
 {
   GpencilModifierData *md = ob->greasepencil_modifiers.first;
 
@@ -623,12 +623,12 @@ void BKE_gpencil_modifier_setError(GpencilModifierData *md, const char *_format,
   CLOG_STR_ERROR(&LOG, md->error);
 }
 
-void BKE_gpencil_modifiers_foreachIDLink(Object *ob, GreasePencilIDWalkFunc walk, void *userData)
+void BKE_gpencil_modifiers_foreach_ID_link(Object *ob, GreasePencilIDWalkFunc walk, void *userData)
 {
   GpencilModifierData *md = ob->greasepencil_modifiers.first;
 
   for (; md; md = md->next) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
     if (mti->foreachIDLink) {
       mti->foreachIDLink(md, ob, walk, userData);
@@ -641,12 +641,14 @@ void BKE_gpencil_modifiers_foreachIDLink(Object *ob, GreasePencilIDWalkFunc walk
   }
 }
 
-void BKE_gpencil_modifiers_foreachTexLink(Object *ob, GreasePencilTexWalkFunc walk, void *userData)
+void BKE_gpencil_modifiers_foreach_tex_link(Object *ob,
+                                            GreasePencilTexWalkFunc walk,
+                                            void *userData)
 {
   GpencilModifierData *md = ob->greasepencil_modifiers.first;
 
   for (; md; md = md->next) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
     if (mti->foreachTexLink) {
       mti->foreachTexLink(md, ob, walk, userData);
@@ -654,7 +656,7 @@ void BKE_gpencil_modifiers_foreachTexLink(Object *ob, GreasePencilTexWalkFunc wa
   }
 }
 
-GpencilModifierData *BKE_gpencil_modifiers_findByName(Object *ob, const char *name)
+GpencilModifierData *BKE_gpencil_modifiers_findby_name(Object *ob, const char *name)
 {
   return BLI_findstring(&(ob->greasepencil_modifiers), name, offsetof(GpencilModifierData, name));
 }
@@ -917,7 +919,7 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
 
     if (GPENCIL_MODIFIER_ACTIVE(md, is_render)) {
-      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
 
       if ((GPENCIL_MODIFIER_EDIT(md, is_edit)) && (!is_render)) {
         continue;

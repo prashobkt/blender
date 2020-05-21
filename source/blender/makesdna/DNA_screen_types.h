@@ -555,12 +555,8 @@ enum {
   PNL_LAYOUT_VERT_BAR = (1 << 3),
   /** This panel type represents data external to the UI. */
   PNL_INSTANCED = (1 << 4),
-  /* Convenience flag to avoid searching through parents to tell if it belongs to a list panel. */
-  PNL_INSTANCED_SUBPANEL = (1 << 5),
-  /** This panel marks the start of a list panel sequence. Not recreated on list change. */
-  PNL_INSTANCED_LIST_START = (1 << 6),
-  /** Draw panel with a theme corresponding to box widgets. */
-  PNL_DRAW_BOX = (1 << 7),
+  /** Draw panel like a box widget. */
+  PNL_DRAW_BOX = (1 << 6),
 };
 
 /* Fallback panel category (only for old scripts which need updating) */

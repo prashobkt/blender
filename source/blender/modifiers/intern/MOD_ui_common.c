@@ -180,7 +180,7 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
                 "apply_as",
                 MODIFIER_APPLY_DATA);
 
-    if (modifier_isSameTopology(md) && !modifier_isNonGeometrical(md)) {
+    if (BKE_modifier_is_same_topology(md) && !BKE_modifier_is_non_geometrical(md)) {
       uiItemEnumO(sub,
                   "OBJECT_OT_modifier_apply",
                   CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Shape"),
@@ -207,8 +207,10 @@ void modifier_panel_buttons(const bContext *C, Panel *panel)
   }
 }
 
-/* Check whether Modifier is a simulation or not,
- * this is used for switching to the physics/particles context tab */
+/**
+ * Check whether Modifier is a simulation or not.Used for switching to the physics/particles
+ * context tab.
+ */
 static int modifier_is_simulation(ModifierData *md)
 {
   /* Physic Tab */
@@ -231,6 +233,28 @@ static int modifier_is_simulation(ModifierData *md)
   }
 }
 
+static bool modifier_can_delete(ModifierData *md)
+{
+  /* fluid particle modifier can't be deleted here */
+  if (md->type == eModifierType_ParticleSystem) {
+    short particle_type = ((ParticleSystemModifierData *)md)->psys->part->type;
+    if (ELEM(particle_type,
+             PART_FLUID,
+             PART_FLUID_FLIP,
+             PART_FLUID_FOAM,
+             PART_FLUID_SPRAY,
+             PART_FLUID_BUBBLE,
+             PART_FLUID_TRACER,
+             PART_FLUID_SPRAYFOAM,
+             PART_FLUID_SPRAYBUBBLE,
+             PART_FLUID_FOAMBUBBLE,
+             PART_FLUID_SPRAYFOAMBUBBLE)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static void modifier_panel_header(const bContext *C, Panel *panel)
 {
   uiLayout *row, *sub;
@@ -240,7 +264,7 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
   ModifierData *md = ptr.data;
-  const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+  const ModifierTypeInfo *mti = BKE_modifier_get_info(md->type);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   int index = panel->runtime.list_index;
@@ -271,10 +295,10 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   row = uiLayoutRow(layout, true);
   if (ob->type == OB_MESH) {
     int last_cage_index;
-    int cage_index = modifiers_getCageIndex(scene, ob, &last_cage_index, 0);
-    if (modifier_supportsCage(scene, md) && (index <= last_cage_index)) {
+    int cage_index = BKE_modifiers_get_cage_index(scene, ob, &last_cage_index, 0);
+    if (BKE_modifier_supports_cage(scene, md) && (index <= last_cage_index)) {
       sub = uiLayoutRow(row, true);
-      if (index < cage_index || !modifier_couldBeCage(scene, md)) {
+      if (index < cage_index || !BKE_modifier_couldbe_cage(scene, md)) {
         uiLayoutSetActive(sub, false);
       }
       uiItemR(sub, &ptr, "show_on_cage", 0, "", ICON_NONE);
@@ -300,7 +324,9 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
 
   row = uiLayoutRow(layout, false);
   uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
-  uiItemO(row, "", ICON_X, "OBJECT_OT_modifier_remove");
+  if (modifier_can_delete(md) && !modifier_is_simulation(md)) {
+    uiItemO(row, "", ICON_X, "OBJECT_OT_modifier_remove");
+  }
 
   /* Some extra padding at the end, so 'x' icon isn't too close to drag button. */
   uiItemS(layout);
@@ -320,7 +346,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, ModifierType type, 
 
   /* Get the name for the modifier's panel. */
   char panel_idname[BKE_ST_MAXNAME];
-  modifierType_panelId(type, panel_idname);
+  BKE_modifier_type_panel_id(type, panel_idname);
 
   PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);
 
@@ -374,7 +400,7 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = modifier_ui_poll;
-  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_DRAW_BOX | PNL_INSTANCED_SUBPANEL);
+  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_DRAW_BOX);
 
   BLI_assert(parent != NULL);
   strcpy(panel_type->parent_id, parent->idname);

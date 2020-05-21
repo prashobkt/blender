@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
@@ -66,9 +66,7 @@ static void initData(GpencilModifierData *md)
 {
   LatticeGpencilModifierData *gpmd = (LatticeGpencilModifierData *)md;
   gpmd->pass_index = 0;
-  gpmd->layername[0] = '\0';
-  gpmd->materialname[0] = '\0';
-  gpmd->vgname[0] = '\0';
+  gpmd->material = NULL;
   gpmd->object = NULL;
   gpmd->cache_data = NULL;
   gpmd->strength = 1.0f;
@@ -76,7 +74,7 @@ static void initData(GpencilModifierData *md)
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
-  BKE_gpencil_modifier_copyData_generic(md, target);
+  BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
 static void deformStroke(GpencilModifierData *md,
@@ -91,7 +89,7 @@ static void deformStroke(GpencilModifierData *md,
 
   if (!is_stroke_affected_by_modifier(ob,
                                       mmd->layername,
-                                      mmd->materialname,
+                                      mmd->material,
                                       mmd->pass_index,
                                       mmd->layer_pass,
                                       1,
@@ -211,6 +209,15 @@ static void foreachObjectLink(GpencilModifierData *md,
   walk(userData, ob, &mmd->object, IDWALK_CB_NOP);
 }
 
+static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+{
+  LatticeGpencilModifierData *mmd = (LatticeGpencilModifierData *)md;
+
+  walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
+
+  foreachObjectLink(md, ob, (ObjectWalkFunc)walk, userData);
+}
+
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *sub, *row, *col;
@@ -280,7 +287,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Lattice = {
     /* updateDepsgraph */ updateDepsgraph,
     /* dependsOnTime */ NULL,
     /* foreachObjectLink */ foreachObjectLink,
-    /* foreachIDLink */ NULL,
+    /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* panelRegister */ panelRegister,
 };

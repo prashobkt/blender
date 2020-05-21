@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2017, Blender Foundation
@@ -42,6 +42,8 @@
 #include "BKE_deform.h"
 #include "BKE_gpencil_geom.h"
 #include "BKE_gpencil_modifier.h"
+#include "BKE_lib_query.h"
+#include "BKE_modifier.h"
 #include "BKE_screen.h"
 
 #include "DEG_depsgraph.h"
@@ -59,9 +61,7 @@ static void initData(GpencilModifierData *md)
 {
   OffsetGpencilModifierData *gpmd = (OffsetGpencilModifierData *)md;
   gpmd->pass_index = 0;
-  gpmd->layername[0] = '\0';
-  gpmd->materialname[0] = '\0';
-  gpmd->vgname[0] = '\0';
+  gpmd->material = NULL;
   ARRAY_SET_ITEMS(gpmd->loc, 0.0f, 0.0f, 0.0f);
   ARRAY_SET_ITEMS(gpmd->rot, 0.0f, 0.0f, 0.0f);
   ARRAY_SET_ITEMS(gpmd->scale, 0.0f, 0.0f, 0.0f);
@@ -69,7 +69,7 @@ static void initData(GpencilModifierData *md)
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
-  BKE_gpencil_modifier_copyData_generic(md, target);
+  BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
 /* change stroke offsetness */
@@ -88,7 +88,7 @@ static void deformStroke(GpencilModifierData *md,
 
   if (!is_stroke_affected_by_modifier(ob,
                                       mmd->layername,
-                                      mmd->materialname,
+                                      mmd->material,
                                       mmd->pass_index,
                                       mmd->layer_pass,
                                       1,
@@ -138,6 +138,13 @@ static void bakeModifier(struct Main *UNUSED(bmain),
       }
     }
   }
+}
+
+static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+{
+  OffsetGpencilModifierData *mmd = (OffsetGpencilModifierData *)md;
+
+  walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
@@ -190,7 +197,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Offset = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* foreachObjectLink */ NULL,
-    /* foreachIDLink */ NULL,
+    /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* panelRegister */ panelRegister,
 };
