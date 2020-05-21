@@ -1147,7 +1147,7 @@ void testhandles_fcurve(FCurve *fcu, eBezTriple_Flag sel_flag, const bool use_ha
 
   /* loop over beztriples */
   for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-    BKE_nurb_bezt_handle_test(bezt, sel_flag, use_handle);
+    BKE_nurb_bezt_handle_test(bezt, sel_flag, use_handle, false);
   }
 
   /* recalculate handles */
@@ -1719,6 +1719,8 @@ static float fcurve_eval_keyframes_interpolate(FCurve *fcu, BezTriple *bezts, fl
     default:
       return prevbezt->vec[1][1];
   }
+
+  return 0.0f;
 }
 
 /* Calculate F-Curve value for 'evaltime' using BezTriple keyframes */

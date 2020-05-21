@@ -138,7 +138,7 @@ set(SRC
   intern/list_sort_impl.h
 
 
-
+  BLI_asan.h
   BLI_alloca.h
   BLI_allocator.hh
   BLI_args.h
@@ -285,6 +285,10 @@ if(WITH_TBB)
 
   list(APPEND INC_SYS
     ${TBB_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${TBB_LIBRARIES}
   )
 endif()
 

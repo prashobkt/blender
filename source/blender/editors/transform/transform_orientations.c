@@ -438,15 +438,10 @@ static int armature_bone_transflags_update_recursive(bArmature *arm,
   return total;
 }
 
-void initTransformOrientation(bContext *C, TransInfo *t)
+void initTransformOrientation(bContext *C, TransInfo *t, short orientation)
 {
   Object *ob = CTX_data_active_object(C);
   Object *obedit = CTX_data_active_object(C);
-
-  /* Use the custom orientation when it is set. */
-  short orientation = t->orientation.types[0] == V3D_ORIENT_CUSTOM_MATRIX ?
-                          V3D_ORIENT_CUSTOM_MATRIX :
-                          t->orientation.types[t->orientation.index];
 
   switch (orientation) {
     case V3D_ORIENT_GLOBAL:
@@ -491,7 +486,6 @@ void initTransformOrientation(bContext *C, TransInfo *t)
       else {
         unit_m3(mat);
       }
-      negate_v3(mat[2]);
       copy_m3_m3(t->spacemtx, mat);
       break;
     }
@@ -505,8 +499,9 @@ void initTransformOrientation(bContext *C, TransInfo *t)
       copy_m3_m3(t->spacemtx, t->orientation.custom_matrix);
       break;
     case V3D_ORIENT_CUSTOM:
+    default:
+      BLI_assert(orientation >= V3D_ORIENT_CUSTOM);
       BLI_strncpy(t->spacename, t->orientation.custom->name, sizeof(t->spacename));
-
       if (applyTransformOrientation(t->orientation.custom, t->spacemtx, t->spacename)) {
         /* pass */
       }
@@ -515,6 +510,8 @@ void initTransformOrientation(bContext *C, TransInfo *t)
       }
       break;
   }
+
+  invert_m3_m3(t->spacemtx_inv, t->spacemtx);
 }
 
 /**

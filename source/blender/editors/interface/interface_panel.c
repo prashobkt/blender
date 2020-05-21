@@ -247,53 +247,33 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
 static Panel *UI_panel_add_instanced_ex(
     ScrArea *area, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
 {
-  Panel *panel = MEM_callocN(sizeof(Panel), "list panel");
+  Panel *panel = MEM_callocN(sizeof(Panel), "instanced panel");
   panel->type = panel_type;
   BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
 
-  panel->ofsx = 0;
-  panel->ofsy = 0;
-  panel->sizex = 0;
-  panel->sizey = 0;
-  panel->blocksizex = 0;
-  panel->blocksizey = 0;
-
   panel->runtime.list_index = list_index;
 
-  /* Add the panel's children too. Although they aren't list panels, we can still use this
-   * function to creat them, as UI_panel_begin does other things we don't need to do. */
-  for (LinkData *link = panel_type->children.first; link; link = link->next) {
-    PanelType *child = link->data;
-    UI_panel_add_instanced_ex(area, region, &panel->children, child, list_index);
+  /* Add the panel's children too. Although they aren't instanced panels, we can still use this
+   * function to create them, as UI_panel_begin does other things we don't need to do. */
+  LISTBASE_FOREACH (LinkData *, child, &panel_type->children) {
+    PanelType *child_type = child->data;
+    UI_panel_add_instanced_ex(area, region, &panel->children, child_type, list_index);
   }
 
-  /* If we're adding a recreate list panel, make sure it's added to the end of the list. Check the
-   * context string to make sure we add to the right list.
+  /* Make sure the panel is added to the end of the display-order as well. This is needed for
+   * loading existing files.
    *
-   * We can the panel list is also the display order because the list panel list is rebuild
-   * when the order changes. */
-  if (panel_type->flag & PNL_INSTANCED) {
-    Panel *last_list_panel = NULL;
-
-    for (Panel *list_panel = panels->first; list_panel; list_panel = list_panel->next) {
-      if (list_panel->type == NULL) {
-        continue;
-      }
-      if (list_panel->type->flag & (PNL_INSTANCED_LIST_START | PNL_INSTANCED)) {
-        last_list_panel = list_panel;
-      }
+   * Note: We could use special behavior to place it after the panel that starts the list of
+   * instanced panels, but that would add complexity that isn't needed for now. */
+  int max_sortorder = 0;
+  LISTBASE_FOREACH (Panel *, existing_panel, panels) {
+    if (existing_panel->sortorder > max_sortorder) {
+      max_sortorder = existing_panel->sortorder;
     }
-
-    /* There should always be a list panel or a list panel start before this panel. */
-    BLI_assert(last_list_panel);
-
-    panel->sortorder = last_list_panel->sortorder + 1;
-
-    BLI_insertlinkafter(panels, last_list_panel, panel);
   }
-  else {
-    BLI_addtail(panels, panel);
-  }
+  panel->sortorder = max_sortorder + 1;
+
+  BLI_addtail(panels, panel);
 
   return panel;
 }
@@ -353,14 +333,13 @@ static void panel_free_block(ARegion *region, Panel *panel)
 /**
  * Free a panel and it's children.
  *
- * \note: The only panels that should need to be deleted at runtime are panels with the
- * #PNL_RECREATE_LIST flag set.
+ * \note The only panels that should need to be deleted at runtime are panels with the
+ * #PNL_INSTANCED flag set.
  */
 static void panel_delete(ARegion *region, ListBase *panels, Panel *panel)
 {
   /* Recursively delete children. */
-  for (Panel *child = panel->children.first, *child_next; child; child = child_next) {
-    child_next = child->next;
+  LISTBASE_FOREACH_MUTABLE (Panel *, child, &panel->children) {
     panel_delete(region, &panel->children, child);
   }
   BLI_freelistN(&panel->children);
@@ -377,25 +356,23 @@ static void panel_delete(ARegion *region, ListBase *panels, Panel *panel)
 void UI_panels_free_instanced(bContext *C, ARegion *region)
 {
   /* Delete panels with the instanced flag. */
-  ListBase *panels = &region->panels;
-  for (Panel *panel = panels->first, *panel_next; panel; panel = panel_next) {
-    panel_next = panel->next;
+  LISTBASE_FOREACH_MUTABLE (Panel *, panel, &region->panels) {
     if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED)) {
       /* Make sure the panel's handler is removed before deleting it. */
       if (panel->activedata != NULL) {
         panel_activate_state(C, panel, PANEL_STATE_EXIT);
       }
-      panel_delete(region, panels, panel);
+      panel_delete(region, &region->panels, panel);
     }
   }
 }
 
 /**
- * Check if the list panels in the region's panel list corresponds to the list of data the panels
+ * Check if the instanced panels in the region's panels correspond to the list of data the panels
  * represent. Returns false if the panels have been reordered or if the types from the list data
  * don't match in any way.
  *
- * \param data: The list of data to check against the list panels.
+ * \param data: The list of data to check against the instanced panels.
  * \param panel_type_func: Function to find the panel type idname for each item in the data list.
  * For a readabilty and generality, this lookup happens separately for each type of panel list.
  */
@@ -413,12 +390,12 @@ bool UI_panel_list_matches_data(ARegion *region,
         return false;
       }
 
-      /* We reached the last contraint before the last list panel. */
+      /* We reached the last data item before the last instanced panel. */
       if (data_link == NULL) {
         return false;
       }
 
-      /* The types of the corresponding panel and constraint don't match. */
+      /* Check if the panel type matches the panel type from the data item. */
       char panel_idname[MAX_NAME];
       panel_idname_func(data_link, panel_idname);
       if (!STREQ(panel_idname, panel->type->idname)) {
@@ -444,14 +421,14 @@ static void reorder_instanced_panel_list(bContext *C, ARegion *region, Panel *dr
   if (drag_panel->type == NULL) {
     return;
   }
-  /* Don't reorder if this instanced list panel doesn't support drag and drop reordering. */
+  /* Don't reorder if this instanced panel doesn't support drag and drop reordering. */
   if (drag_panel->type->reorder == NULL) {
     return;
   }
 
   char *context = drag_panel->type->context;
 
-  /* Find how many instanced list panels with this context string. */
+  /* Find how many instanced panels with this context string. */
   int list_panels_len = 0;
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->type) {
@@ -463,7 +440,7 @@ static void reorder_instanced_panel_list(bContext *C, ARegion *region, Panel *dr
     }
   }
 
-  /* Sort the matching instanced list panels by their display order. */
+  /* Sort the matching instanced panels by their display order. */
   PanelSort *panel_sort = MEM_callocN(list_panels_len * sizeof(*panel_sort), "instancedpanelsort");
   PanelSort *sort_index = panel_sort;
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
@@ -534,7 +511,7 @@ void UI_panel_set_expand_from_list_data(const bContext *C, Panel *panel)
   BLI_assert(panel->type != NULL);
   BLI_assert(panel->type->flag & PNL_INSTANCED);
   if (panel->type->get_list_data_expand_flag == NULL) {
-    /* Instanced list panel doesn't support loading expansion. */
+    /* Instanced panel doesn't support loading expansion. */
     return;
   }
 
@@ -566,7 +543,7 @@ static void get_panel_expand_flag(Panel *panel, short *flag, short *flag_index)
  * corresponds to this panel.
  *
  * \note This needs to iterate through all of the regions panels because the panel with changed
- * expansion could have been the subpanel of a instanced list panel, meaning it might not know
+ * expansion could have been the subpanel of a instanced panel, meaning it might not know
  * which list item it corresponds to.
  */
 static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
@@ -979,7 +956,6 @@ void ui_draw_aligned_panel(uiStyle *style,
                            const bool show_background)
 {
   Panel *panel = block->panel;
-  rcti headrect;
   rctf itemrect;
   float color[4];
   const bool is_closed_x = (panel->flag & PNL_CLOSEDX) ? true : false;
@@ -992,18 +968,17 @@ void ui_draw_aligned_panel(uiStyle *style,
   const int panel_col = is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK;
   const bool draw_box_style = (panel->type && panel->type->flag & (PNL_DRAW_BOX));
 
-  /* Use roundness from the theme for box widgets for box-style panels. */
-  float box_panel_roundness = 0.0f;
+  /* Use the theme for box widgets for box-style panels. */
+  uiWidgetColors *box_wcol = NULL;
   if (draw_box_style) {
     bTheme *btheme = UI_GetTheme();
-    uiWidgetColors *wcol = &btheme->tui.wcol_box;
-    box_panel_roundness = wcol->roundness;
+    box_wcol = &btheme->tui.wcol_box;
   }
+
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   if (panel->type && (panel->type->flag & PNL_NO_HEADER)) {
     if (show_background) {
-      uint pos = GPU_vertformat_attr_add(
-          immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
       immUniformThemeColor(panel_col);
       immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
@@ -1012,61 +987,68 @@ void ui_draw_aligned_panel(uiStyle *style,
     return;
   }
 
-  /* calculate header rect */
-  /* + 0.001f to prevent flicker due to float inaccuracy */
-  headrect = *rect;
-  headrect.ymin = headrect.ymax;
-  headrect.ymax = headrect.ymin + floor(PNL_HEADER / block->aspect + 0.001f);
+  /* Calculate header rect with + 0.001f to prevent flicker due to float inaccuracy */
+  rcti headrect = {
+      rect->xmin, rect->xmax, rect->ymax, rect->ymax + floor(PNL_HEADER / block->aspect + 0.001f)};
 
-  rcti titlerect = headrect;
-  if (is_subpanel) {
-    titlerect.xmin += (0.7f * UI_UNIT_X) / block->aspect + 0.001f;
+  /* Draw a panel and header backdrops with an opaque box backdrop for box style panels. */
+  if (draw_box_style && !is_subpanel) {
+    /* Expand the top a tiny bit to give header buttons equal size above and below. */
+    rcti box_rect = {rect->xmin,
+                     rect->xmax,
+                     (is_closed_x || is_closed_y) ? headrect.ymin : rect->ymin,
+                     headrect.ymax};
+    ui_draw_box_opaque(&box_rect, UI_CNR_ALL);
+
+    /* Mimick the border between aligned box widgets for the bottom of the header. */
+    if (!(is_closed_x || is_closed_y)) {
+      immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+      GPU_blend(true);
+
+      immUniformColor4ubv(box_wcol->outline);
+      immRectf(pos, rect->xmin, headrect.ymin - U.pixelsize, rect->xmax, headrect.ymin);
+      uchar emboss_col[4];
+      UI_GetThemeColor4ubv(TH_WIDGET_EMBOSS, emboss_col);
+      immUniformColor4ubv(emboss_col);
+      immRectf(pos,
+               rect->xmin,
+               headrect.ymin - U.pixelsize,
+               rect->xmax,
+               headrect.ymin - U.pixelsize - 1);
+
+      GPU_blend(false);
+      immUnbindProgram();
+    }
   }
 
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-
   /* Draw the header backdrop. */
-  if (show_background && !is_subpanel) {
+  if (show_background && !is_subpanel && !draw_box_style) {
     float minx = rect->xmin;
     float maxx = is_closed_x ? (minx + PNL_HEADER / block->aspect) : rect->xmax;
     float y = headrect.ymax;
 
-    /* Box style panels have some roundness and a shaded header color to differentiate them. */
-    if (draw_box_style) {
-      int roundbox_corners = (UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
-      if (is_closed_y) {
-        roundbox_corners |= (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
-      }
-      /* Increase ymax a bit for even space on the top and bottom of the buttons in the header. */
-      rcti box_rect = {minx, maxx, headrect.ymin, y + U.pixelsize};
-      ui_draw_box_opaque(&box_rect, roundbox_corners);
-    }
-    else {
-      GPU_blend(true);
+    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+    GPU_blend(true);
 
-      /* draw with background color */
-      immUniformThemeColor(TH_PANEL_HEADER);
-      immRectf(pos, minx, headrect.ymin, maxx, y);
+    /* draw with background color */
+    immUniformThemeColor(TH_PANEL_HEADER);
+    immRectf(pos, minx, headrect.ymin, maxx, y);
 
-      immBegin(GPU_PRIM_LINES, 4);
+    immBegin(GPU_PRIM_LINES, 4);
 
-      immVertex2f(pos, minx, y);
-      immVertex2f(pos, maxx, y);
+    immVertex2f(pos, minx, y);
+    immVertex2f(pos, maxx, y);
 
-      immVertex2f(pos, minx, y);
-      immVertex2f(pos, maxx, y);
+    immVertex2f(pos, minx, y);
+    immVertex2f(pos, maxx, y);
 
-      immEnd();
+    immEnd();
 
-      GPU_blend(false);
-    }
+    GPU_blend(false);
+    immUnbindProgram();
   }
 
-  immUnbindProgram();
-
-  /* draw optional pin icon */
-
+/* draw optional pin icon */
 #ifdef USE_PIN_HIDDEN
   if (show_pin && (block->panel->flag & PNL_PIN))
 #else
@@ -1089,6 +1071,10 @@ void ui_draw_aligned_panel(uiStyle *style,
   }
 
   /* horizontal title */
+  rcti titlerect = headrect;
+  if (is_subpanel) {
+    titlerect.xmin += (0.7f * UI_UNIT_X) / block->aspect + 0.001f;
+  }
   if (is_closed_x == false) {
     ui_draw_aligned_panel_header(style, block, &titlerect, 'h', show_background);
 
@@ -1117,9 +1103,7 @@ void ui_draw_aligned_panel(uiStyle *style,
     }
   }
 
-  /* if the panel is minimized vertically:
-   * (------)
-   */
+  /* Draw panel backdrop. */
   if (is_closed_y) {
     /* skip */
   }
@@ -1139,7 +1123,7 @@ void ui_draw_aligned_panel(uiStyle *style,
       }
       else if (draw_box_style) {
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
-        radius = box_panel_roundness * U.widget_unit;
+        radius = box_wcol->roundness * U.widget_unit;
       }
       else {
         UI_draw_roundbox_corner_set(UI_CNR_NONE);
@@ -1157,31 +1141,29 @@ void ui_draw_aligned_panel(uiStyle *style,
     }
 
     immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-
     GPU_blend(true);
 
-    /* Draw panel backdrop. Note: Subpanels blend with panels, to they can't be opaque. */
-    if (show_background) {
-      /* Draw box style panels and their bottom subpanels with rounding. */
-      if (draw_box_style && !(is_subpanel && panel->next)) {
-        /* Change the width a little bit to line up with sides. */
-        rcti box_rect = {
-            rect->xmin - U.pixelsize, rect->xmax + U.pixelsize, rect->ymin, rect->ymax};
-        if (is_subpanel) {
+    /* Draw panel backdrop if it wasn't aleady been drawn by the single opauque round box earlier.
+     * Note: Subpanels blend with panels, so they can't be opaque. */
+    if (show_background && !(draw_box_style && !is_subpanel)) {
+      /* Draw the bottom subpanels . */
+      if (draw_box_style) {
+        if (panel->next) {
+          immUniformThemeColor(panel_col);
+          immRectf(
+              pos, rect->xmin + U.pixelsize, rect->ymin, rect->xmax - U.pixelsize, rect->ymax);
+        }
+        else {
+          /* Change the width a little bit to line up with sides. */
           UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
           UI_GetThemeColor4fv(panel_col, color);
           UI_draw_roundbox_aa(true,
-                              rect->xmin,
-                              rect->ymin,
-                              rect->xmax,
+                              rect->xmin + U.pixelsize,
+                              rect->ymin + U.pixelsize,
+                              rect->xmax - U.pixelsize,
                               rect->ymax,
-                              box_panel_roundness * U.widget_unit,
+                              box_wcol->roundness * U.widget_unit,
                               color);
-        }
-        else {
-          /* Increase ymax a bit to so the top aligns with the header box rect. */
-          box_rect.ymax += U.pixelsize;
-          ui_draw_box_opaque(&box_rect, UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
         }
       }
       else {
@@ -1466,9 +1448,8 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsx = 0;
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
-  /* Extra margin if the first panel happens to be a instanced list panel. */
-  bool first_is_box_panel = (ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX);
-  if (first_is_box_panel) {
+  /* Extra margin if the panel happens to be a instanced panel. */
+  if (ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX) {
     ps->panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
     ps->panel->ofsy -= UI_PANEL_BOX_STYLE_MARGIN;
   }
@@ -1477,14 +1458,19 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
     psnext = ps + 1;
 
     if (align == BUT_VERTICAL) {
+      bool use_box = ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX;
+      bool use_box_next = psnext->panel->type && psnext->panel->type->flag & PNL_DRAW_BOX;
       psnext->panel->ofsx = ps->panel->ofsx;
       psnext->panel->ofsy = get_panel_real_ofsy(ps->panel) - get_panel_size_y(psnext->panel);
       /* Extra margin for box style panels. */
-      if (psnext->panel->type && psnext->panel->type->flag & PNL_DRAW_BOX) {
+      if (use_box || use_box_next) {
         psnext->panel->ofsy -= UI_PANEL_BOX_STYLE_MARGIN;
-        if (!first_is_box_panel) {
-          psnext->panel->ofsx = UI_PANEL_BOX_STYLE_MARGIN;
-        }
+      }
+      if (use_box && !use_box_next) {
+        psnext->panel->ofsx -= UI_PANEL_BOX_STYLE_MARGIN;
+      }
+      else if (!use_box && use_box_next) {
+        psnext->panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
       }
     }
     else {
@@ -1757,8 +1743,8 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
     return;
   }
 
-  dx = (event->x - data->startx) & ~(PNL_GRID - 1);
-  dy = (event->y - data->starty) & ~(PNL_GRID - 1);
+  dx = (event->x - data->startx);
+  dy = (event->y - data->starty);
 
   dx *= (float)BLI_rctf_size_x(&region->v2d.cur) / (float)BLI_rcti_size_x(&region->winrct);
   dy *= (float)BLI_rctf_size_y(&region->v2d.cur) / (float)BLI_rcti_size_y(&region->winrct);
@@ -1895,7 +1881,7 @@ static void ui_panel_drag_collapse(bContext *C,
       }
     }
   }
-  /* Update the instanced list panel data expand flags with the changes made here. */
+  /* Update the instanced panel data expand flags with the changes made here. */
   set_panels_list_data_expand_flag(C, region);
 }
 

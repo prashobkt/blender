@@ -139,8 +139,7 @@ typedef struct TransCon {
                    struct TransDataContainer *tc,
                    struct TransData *td,
                    const float in[3],
-                   float out[3],
-                   float pvec[3]);
+                   float out[3]);
   /** Apply function pointer for size transformation. */
   void (*applySize)(struct TransInfo *t,
                     struct TransDataContainer *tc,
@@ -520,6 +519,7 @@ typedef struct TransInfo {
 
   /** orientation matrix of the current space. */
   float spacemtx[3][3];
+  float spacemtx_inv[3][3];
   /** name of the current space, MAX_NAME. */
   char spacename[64];
 
@@ -912,7 +912,7 @@ void transform_data_ext_rotate(TransData *td, float mat[3][3], bool use_drot);
 
 /*********************** Transform Orientations ******************************/
 
-void initTransformOrientation(struct bContext *C, TransInfo *t);
+void initTransformOrientation(struct bContext *C, TransInfo *t, short orientation);
 
 /* Those two fill in mat and return non-zero on success */
 bool createSpaceNormal(float mat[3][3], const float normal[3]);

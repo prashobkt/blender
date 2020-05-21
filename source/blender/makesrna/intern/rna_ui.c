@@ -1288,19 +1288,9 @@ static void rna_def_panel(BlenderRNA *brna)
       {PNL_INSTANCED,
        "INSTANCED",
        0,
-       "Instanced List Panel",
+       "Instanced Panel",
        "Multiple panels with this type can be used as part of a list depending on data external "
        "to the UI. Used to create panels for the modifiers and other stacks."},
-      {PNL_INSTANCED_SUBPANEL,
-       "INSTANCED_SUBPANEL",
-       0,
-       "Instanced Panel Child",
-       "A panel with this type is a child of a list panel"},
-      {PNL_INSTANCED_LIST_START,
-       "LIST_START",
-       0,
-       "Instanced List Start",
-       "The panel with this type marks the start of a list panel sequence"},
       {PNL_LAYOUT_HEADER_EXPAND,
        "HEADER_LAYOUT_EXPAND",
        0,
@@ -1354,7 +1344,8 @@ static void rna_def_panel(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "drawname");
   RNA_def_property_ui_text(prop, "Text", "XXX todo");
 
-  prop = RNA_def_int(srna, "list_panel_index", 0, 0, INT_MAX, "List Panel Index", "", 0, INT_MAX);
+  prop = RNA_def_int(
+      srna, "list_panel_index", 0, 0, INT_MAX, "Instanced Panel Data Index", "", 0, INT_MAX);
   RNA_def_property_int_sdna(prop, NULL, "runtime.list_index");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 

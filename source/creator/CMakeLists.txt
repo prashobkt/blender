@@ -687,6 +687,13 @@ elseif(WIN32)
     )
   endif()
 
+  if(WITH_FFTW3)
+    install(
+          FILES ${LIBDIR}/fftw3/lib/libfftw3-3.dll
+          DESTINATION "."
+    )
+  endif()
+
   if(WITH_WINDOWS_PDB)
     if(WITH_WINDOWS_STRIPPED_PDB)
       # Icky hack for older cmake from https://stackoverflow.com/a/21198501
@@ -814,7 +821,20 @@ elseif(WIN32)
       DESTINATION "."
     )
   endif()
-
+  if(WITH_TBB)
+    install(
+      FILES
+        ${LIBDIR}/tbb/lib/tbb.dll
+      DESTINATION "."
+      CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+    )
+    install(
+      FILES
+        ${LIBDIR}/tbb/lib/debug/tbb_debug.dll
+      DESTINATION "."
+      CONFIGURATIONS Debug
+    )
+  endif()
   if(WITH_TBB_MALLOC_PROXY)
     install(
       FILES
