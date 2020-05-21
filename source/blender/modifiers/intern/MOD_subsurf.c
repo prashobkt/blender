@@ -331,10 +331,19 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA scene_ptr;
   Scene *scene = CTX_data_scene(C);
   RNA_id_pointer_create(&scene->id, &scene_ptr);
-  PointerRNA cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
-  PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
-  bool ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
-  bool show_adaptive_options = get_show_adaptive_options(C, panel);
+  /* Only test for adaptive subdivision if built with cycles. */
+  bool show_adaptive_options = false;
+  bool ob_use_adaptive_subdivision = false;
+  PointerRNA cycles_ptr = {NULL};
+  PointerRNA ob_cycles_ptr = {NULL};
+#ifdef WITH_CYCLES
+  cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
+  ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
+  if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
+    ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
+    show_adaptive_options = get_show_adaptive_options(C, panel);
+  }
+#endif
 
   uiLayoutSetPropSep(layout, true);
 

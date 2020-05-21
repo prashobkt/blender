@@ -162,6 +162,11 @@ if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
 endif()
 
+# To disable adaptive subdivision test in subsurf UI without cycles
+if(WITH_CYCLES)
+  add_definitions(-DWITH_CYCLES)
+endif()
+
 # So we can have special tricks in modifier system.
 add_definitions(${GL_DEFINITIONS})
 
