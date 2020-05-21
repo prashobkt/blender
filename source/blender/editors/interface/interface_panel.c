@@ -260,10 +260,19 @@ static Panel *UI_panel_add_instanced_ex(
     UI_panel_add_instanced_ex(area, region, &panel->children, child_type, list_index);
   }
 
-  /* Note: We could make sure that instanced panels are added to the end of the group of instanced
-   * panels here, but that works without special behavior here, so just add it to the end of the
-   * list. We can assume the panel list is also the display order because the instanced panel
-   * list is rebuilt when the order changes. */
+  /* Make sure the panel is added to the end of the display-order as well. This is needed for
+   * loading existing files.
+   *
+   * Note: We could use special behavior to place it after the panel that starts the list of
+   * instanced panels, but that would add complexity that isn't needed for now. */
+  int max_sortorder = 0;
+  LISTBASE_FOREACH (Panel *, existing_panel, panels) {
+    if (existing_panel->sortorder > max_sortorder) {
+      max_sortorder = existing_panel->sortorder;
+    }
+  }
+  panel->sortorder = max_sortorder + 1;
+
   BLI_addtail(panels, panel);
 
   return panel;
