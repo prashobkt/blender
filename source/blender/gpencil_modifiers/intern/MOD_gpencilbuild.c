@@ -550,6 +550,7 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -570,7 +571,15 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "transition", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "start_delay", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "length", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "length", 0, IFACE_("Frames"), ICON_NONE);
+
+  uiItemS(layout);
+
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Use Factor"));
+  uiItemR(row, &ptr, "use_percentage", 0, "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_percentage"));
+  uiItemR(sub, &ptr, "percentage_factor", 0, "", ICON_NONE);
 
   /* Check for incompatible time modifier. */
   Object *ob = ob_ptr.data;
