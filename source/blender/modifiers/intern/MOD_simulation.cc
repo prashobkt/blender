@@ -92,7 +92,6 @@ static PointCloud *modifyPointCloud(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
