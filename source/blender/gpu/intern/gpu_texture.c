@@ -1181,6 +1181,10 @@ GPUTexture *GPU_texture_from_bindcode(int textarget, int bindcode)
   tex->target = textarget;
   tex->target_base = textarget;
   tex->samples = 0;
+  tex->sampler_state = GPU_SAMPLER_REPEAT;
+  if (GPU_get_mipmap()) {
+    tex->sampler_state |= (GPU_SAMPLER_MIPMAP | GPU_SAMPLER_FILTER);
+  }
 
   if (!glIsTexture(tex->bindcode)) {
     GPU_print_error_debug("Blender Texture Not Loaded");
