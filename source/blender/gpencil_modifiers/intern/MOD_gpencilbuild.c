@@ -598,7 +598,7 @@ static void frame_range_header_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
-  uiItemR(layout, &ptr, "use_restrict_frame_range", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_restrict_frame_range", 0, IFACE_("Custom Range"), ICON_NONE);
 }
 
 static void frame_range_panel_draw(const bContext *C, Panel *panel)
