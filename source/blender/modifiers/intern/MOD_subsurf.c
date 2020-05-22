@@ -289,6 +289,7 @@ static void deformMatrices(ModifierData *md,
   }
 }
 
+#ifdef WITH_CYCLES
 static bool get_show_adaptive_options(const bContext *C, Panel *panel)
 {
   /* Don't show adaptive options if cycles isn't the active engine. */
@@ -318,6 +319,7 @@ static bool get_show_adaptive_options(const bContext *C, Panel *panel)
 
   return true;
 }
+#endif
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
@@ -395,9 +397,15 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
+  bool ob_use_adaptive_subdivision = false;
+  bool show_adaptive_options = false;
+#ifdef WITH_CYCLES
   PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
-  bool ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
-  bool show_adaptive_options = get_show_adaptive_options(C, panel);
+  if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
+    ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
+    show_adaptive_options = get_show_adaptive_options(C, panel);
+  }
+#endif
 
   uiLayoutSetPropSep(layout, true);
 
@@ -405,8 +413,6 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "quality", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_creases", 0, NULL, ICON_NONE);
-
-  modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
