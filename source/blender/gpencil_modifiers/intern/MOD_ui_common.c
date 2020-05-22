@@ -25,6 +25,7 @@
 
 #include "BKE_context.h"
 #include "BKE_gpencil_modifier.h"
+#include "BKE_material.h"
 #include "BKE_object.h"
 #include "BKE_screen.h"
 
@@ -133,15 +134,43 @@ void gpencil_modifier_masking_panel_draw(const bContext *C,
   uiItemR(sub, &ptr, "invert_layer_pass", 0, "", ICON_ARROW_LEFTRIGHT);
 
   if (use_material) {
-    bool has_material = RNA_string_length(&ptr, "material") != 0;
+    PointerRNA material_ptr = RNA_pointer_get(&ptr, "material");
+    bool has_material = !RNA_pointer_is_null(&material_ptr);
+
+    /* Because the Gpencil modifier material property used to be a string in an earlier version of
+     * Blender, we need to check if the material is valid and display it differently if so. */
+    bool valid = false;
+    {
+      if (!has_material) {
+        valid = true;
+      }
+      else {
+        Material *current_material = material_ptr.data;
+        Object *ob = ob_ptr.data;
+        for (int i = 0; i <= ob->totcol; i++) {
+          Material *mat = BKE_object_material_get(ob, i);
+          if (mat == current_material) {
+            valid = true;
+            break;
+          }
+        }
+      }
+    }
 
     col = uiLayoutColumn(layout, true);
     row = uiLayoutRow(col, true);
-    uiItemPointerR(row, &ptr, "material", &obj_data_ptr, "materials", NULL, ICON_SHADING_TEXTURE);
+    uiLayoutSetRedAlert(row, !valid);
+    uiItemPointerR(row,
+                   &ptr,
+                   "material",
+                   &obj_data_ptr,
+                   "materials",
+                   NULL,
+                   valid ? ICON_SHADING_TEXTURE : ICON_ERROR);
     sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_material);
     uiLayoutSetPropDecorate(sub, false);
-    uiItemR(sub, &ptr, "invert_layers", 0, "", ICON_ARROW_LEFTRIGHT);
+    uiItemR(sub, &ptr, "invert_materials", 0, "", ICON_ARROW_LEFTRIGHT);
 
     row = uiLayoutRow(col, true);
     uiItemR(row, &ptr, "pass_index", 0, NULL, ICON_NONE);
