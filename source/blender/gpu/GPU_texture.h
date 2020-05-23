@@ -55,8 +55,9 @@ typedef enum eGPUSamplerState {
   GPU_SAMPLER_REPEAT_R = (1 << 4),
   GPU_SAMPLER_CLAMP_BORDER = (1 << 5), /* Clamp to border color instead of border texel. */
   GPU_SAMPLER_COMPARE = (1 << 6),
+  GPU_SAMPLER_ANISO = (1 << 7),
   /* Don't use that. */
-  GPU_SAMPLER_MAX = (1 << 7),
+  GPU_SAMPLER_MAX = (1 << 8),
 } eGPUSamplerState;
 
 #define GPU_SAMPLER_DEFAULT GPU_SAMPLER_FILTER

@@ -1181,7 +1181,7 @@ GPUTexture *GPU_texture_from_bindcode(int textarget, int bindcode)
   tex->target = textarget;
   tex->target_base = textarget;
   tex->samples = 0;
-  tex->sampler_state = GPU_SAMPLER_REPEAT;
+  tex->sampler_state = GPU_SAMPLER_REPEAT | GPU_SAMPLER_ANISO;
   if (GPU_get_mipmap()) {
     tex->sampler_state |= (GPU_SAMPLER_MIPMAP | GPU_SAMPLER_FILTER);
   }
@@ -2024,6 +2024,9 @@ void GPU_samplers_init(void)
                             ((state & GPU_SAMPLER_MIPMAP) ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR) :
                             ((state & GPU_SAMPLER_MIPMAP) ? GL_NEAREST_MIPMAP_LINEAR : GL_NEAREST);
     GLenum compare_mode = (state & GPU_SAMPLER_COMPARE) ? GL_COMPARE_REF_TO_TEXTURE : GL_NONE;
+    float aniso_filter = ((state & GPU_SAMPLER_MIPMAP) && (state & GPU_SAMPLER_ANISO)) ?
+                             GPU_get_anisotropic() :
+                             1.0f;
 
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_WRAP_S, wrap_s);
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_WRAP_T, wrap_t);
@@ -2032,9 +2035,7 @@ void GPU_samplers_init(void)
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_MAG_FILTER, mag_filter);
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_COMPARE_MODE, compare_mode);
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-    if (state & GPU_SAMPLER_MIPMAP) {
-      glSamplerParameterf(GG.samplers[i], GL_TEXTURE_MAX_ANISOTROPY_EXT, GPU_get_anisotropic());
-    }
+    glSamplerParameterf(GG.samplers[i], GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso_filter);
 
     /** Other states are left to default:
      * - GL_TEXTURE_BORDER_COLOR is {0, 0, 0, 0}.
