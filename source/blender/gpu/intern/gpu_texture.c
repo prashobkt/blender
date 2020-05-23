@@ -56,6 +56,8 @@ static struct GPUTextureGlobal {
 
 /* Maximum number of FBOs a texture can be attached to. */
 #define GPU_TEX_MAX_FBO_ATTACHED 12
+/* Maximum number of texture unit a texture can be attached to. */
+#define GPU_TEX_MAX_BIND 4
 
 typedef enum eGPUTextureFormatFlag {
   GPU_FORMAT_DEPTH = (1 << 0),
@@ -72,14 +74,14 @@ typedef enum eGPUTextureFormatFlag {
 
 /* GPUTexture */
 struct GPUTexture {
-  int w, h, d;        /* width/height/depth */
-  int orig_w, orig_h; /* width/height (of source data), optional. */
-  int number;         /* number for multitexture binding */
-  int refcount;       /* reference count */
-  GLenum target;      /* GL_TEXTURE_* */
-  GLenum target_base; /* same as target, (but no multisample)
-                       * use it for unbinding */
-  GLuint bindcode;    /* opengl identifier for texture */
+  int w, h, d;                  /* width/height/depth */
+  int orig_w, orig_h;           /* width/height (of source data), optional. */
+  int number[GPU_TEX_MAX_BIND]; /* Texture unit(s) to which this texture is bound. */
+  int refcount;                 /* reference count */
+  GLenum target;                /* GL_TEXTURE_* */
+  GLenum target_base;           /* same as target, (but no multisample)
+                                 * use it for unbinding */
+  GLuint bindcode;              /* opengl identifier for texture */
 
   eGPUTextureFormat format;
   eGPUTextureFormatFlag format_flag;
@@ -829,12 +831,14 @@ GPUTexture *GPU_texture_create_nD(int w,
   tex->h = h;
   tex->d = d;
   tex->samples = samples;
-  tex->number = -1;
   tex->refcount = 1;
   tex->format = tex_format;
   tex->components = gpu_get_component_count(tex_format);
   tex->mipmaps = 0;
   tex->format_flag = 0;
+  for (int i = 0; i < GPU_TEX_MAX_BIND; i++) {
+    tex->number[i] = -1;
+  }
 
   if (n == 2) {
     if (d == 0) {
@@ -1003,12 +1007,14 @@ GPUTexture *GPU_texture_cube_create(int w,
   tex->h = w;
   tex->d = d;
   tex->samples = 0;
-  tex->number = -1;
   tex->refcount = 1;
   tex->format = tex_format;
   tex->components = gpu_get_component_count(tex_format);
   tex->mipmaps = 0;
   tex->format_flag = GPU_FORMAT_CUBE;
+  for (int i = 0; i < GPU_TEX_MAX_BIND; i++) {
+    tex->number[i] = -1;
+  }
 
   if (d == 0) {
     tex->target_base = tex->target = GL_TEXTURE_CUBE_MAP;
@@ -1123,13 +1129,16 @@ GPUTexture *GPU_texture_cube_create(int w,
 GPUTexture *GPU_texture_create_buffer(eGPUTextureFormat tex_format, const GLuint buffer)
 {
   GPUTexture *tex = MEM_callocN(sizeof(GPUTexture), "GPUTexture");
-  tex->number = -1;
   tex->refcount = 1;
   tex->format = tex_format;
   tex->components = gpu_get_component_count(tex_format);
   tex->format_flag = 0;
   tex->target_base = tex->target = GL_TEXTURE_BUFFER;
   tex->mipmaps = 0;
+
+  for (int i = 0; i < GPU_TEX_MAX_BIND; i++) {
+    tex->number[i] = -1;
+  }
 
   GLenum internalformat = gpu_format_to_gl_internalformat(tex_format);
 
@@ -1176,7 +1185,6 @@ GPUTexture *GPU_texture_from_bindcode(int textarget, int bindcode)
 {
   GPUTexture *tex = MEM_callocN(sizeof(GPUTexture), "GPUTexture");
   tex->bindcode = bindcode;
-  tex->number = -1;
   tex->refcount = 1;
   tex->target = textarget;
   tex->target_base = textarget;
@@ -1184,6 +1192,9 @@ GPUTexture *GPU_texture_from_bindcode(int textarget, int bindcode)
   tex->sampler_state = GPU_SAMPLER_REPEAT | GPU_SAMPLER_ANISO;
   if (GPU_get_mipmap()) {
     tex->sampler_state |= (GPU_SAMPLER_MIPMAP | GPU_SAMPLER_FILTER);
+  }
+  for (int i = 0; i < GPU_TEX_MAX_BIND; i++) {
+    tex->number[i] = -1;
   }
 
   if (!glIsTexture(tex->bindcode)) {
@@ -1619,11 +1630,11 @@ void GPU_invalid_tex_free(void)
   }
 }
 
-void GPU_texture_bind(GPUTexture *tex, int number)
+void GPU_texture_bind(GPUTexture *tex, int unit)
 {
-  BLI_assert(number >= 0);
+  BLI_assert(unit >= 0);
 
-  if (number >= GPU_max_textures()) {
+  if (unit >= GPU_max_textures()) {
     fprintf(stderr, "Not enough texture slots.\n");
     return;
   }
@@ -1640,41 +1651,49 @@ void GPU_texture_bind(GPUTexture *tex, int number)
     }
   }
 
-  glActiveTexture(GL_TEXTURE0 + number);
+  glActiveTexture(GL_TEXTURE0 + unit);
 
   if (tex->bindcode != 0) {
     glBindTexture(tex->target, tex->bindcode);
-    glBindSampler(number, GG.samplers[tex->sampler_state]);
+    glBindSampler(unit, GG.samplers[tex->sampler_state]);
   }
   else {
     GPU_invalid_tex_bind(tex->target_base);
-    glBindSampler(number, 0);
+    glBindSampler(unit, 0);
   }
 
-  tex->number = number;
+  for (int i = 0; i < GPU_TEX_MAX_BIND; i++) {
+    if (tex->number[i] == -1) {
+      tex->number[i] = unit;
+    }
+  }
 }
 
 void GPU_texture_unbind(GPUTexture *tex)
 {
-  if (tex->number == -1) {
+  if (tex->number[0] == -1) {
     return;
   }
 
-  glActiveTexture(GL_TEXTURE0 + tex->number);
-  glBindTexture(tex->target, 0);
-  glBindSampler(tex->number, 0);
-
-  tex->number = -1;
+  for (int i = 0; i < GPU_TEX_MAX_BIND; i++) {
+    if (tex->number[i] != -1) {
+      glActiveTexture(GL_TEXTURE0 + tex->number[i]);
+      glBindTexture(tex->target, 0);
+      glBindSampler(tex->number[i], 0);
+      tex->number[i] = -1;
+    }
+  }
 }
 
 int GPU_texture_bound_number(GPUTexture *tex)
 {
-  return tex->number;
+  /* TODO remove. Makes no sense now. */
+  return tex->number[0];
 }
 
 #define WARN_NOT_BOUND(_tex) \
   { \
-    if (_tex->number == -1) { \
+    if (_tex->number[0] == -1) { \
       fprintf(stderr, "Warning : Trying to set parameter on a texture not bound.\n"); \
       BLI_assert(0); \
       return; \
@@ -1689,7 +1708,7 @@ void GPU_texture_generate_mipmap(GPUTexture *tex)
   gpu_texture_memory_footprint_remove(tex);
   int levels = 1 + floor(log2(max_ii(tex->w, tex->h)));
 
-  glActiveTexture(GL_TEXTURE0 + tex->number);
+  glActiveTexture(GL_TEXTURE0 + tex->number[0]);
 
   if (GPU_texture_depth(tex)) {
     /* Some drivers have bugs when using glGenerateMipmap with depth textures (see T56789).
@@ -1835,7 +1854,7 @@ void GPU_texture_swizzle_channel_auto(GPUTexture *tex, int channels)
 {
   WARN_NOT_BOUND(tex);
 
-  glActiveTexture(GL_TEXTURE0 + tex->number);
+  glActiveTexture(GL_TEXTURE0 + tex->number[0]);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_R, GL_RED);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_G, (channels >= 2) ? GL_GREEN : GL_RED);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_B, (channels >= 3) ? GL_BLUE : GL_RED);
