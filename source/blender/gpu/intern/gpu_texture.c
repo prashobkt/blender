@@ -2054,7 +2054,9 @@ void GPU_samplers_init(void)
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_MAG_FILTER, mag_filter);
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_COMPARE_MODE, compare_mode);
     glSamplerParameteri(GG.samplers[i], GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-    glSamplerParameterf(GG.samplers[i], GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso_filter);
+    if (GLEW_EXT_texture_filter_anisotropic) {
+      glSamplerParameterf(GG.samplers[i], GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso_filter);
+    }
 
     /** Other states are left to default:
      * - GL_TEXTURE_BORDER_COLOR is {0, 0, 0, 0}.
