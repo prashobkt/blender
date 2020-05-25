@@ -408,7 +408,7 @@ int textview_draw(TextViewContext *tvc,
       if (do_draw) {
         /* We always want the cursor to draw. */
         if (tvc->draw_cursor && iter_index == 0) {
-          tvc->draw_cursor(tvc, tds.cwidth, tds.columns, tds.lofs);
+          tvc->draw_cursor(tvc, tds.cwidth, tds.columns);
         }
 
         /* When drawing, if we pass v2d->cur.ymax, then quit. */
@@ -428,6 +428,11 @@ int textview_draw(TextViewContext *tvc,
   }
 
   tvc->end(tvc);
+
+  /* Sanity checks (bugs here can be tricky to track down). */
+  BLI_assert(tds.lheight == tvc->lheight);
+  BLI_assert(tds.row_vpadding == tvc->row_vpadding);
+  BLI_assert(tds.do_draw == do_draw);
 
   xy[1] += tvc->lheight * 2;
 
