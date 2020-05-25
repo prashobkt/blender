@@ -3183,7 +3183,6 @@ class VIEW3D_MT_face_sets_init(Menu):
         op.mode = 'FACE_MAPS'
 
 
-
 class VIEW3D_MT_particle(Menu):
     bl_label = "Particle"
 
@@ -3762,6 +3761,11 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
             col.separator()
 
+            col.operator("mesh.mark_seam").clear = False
+            col.operator("mesh.mark_seam", text="Clear Seam").clear = True
+
+            col.separator()
+
             col.operator("mesh.mark_sharp")
             col.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
 
@@ -4004,6 +4008,11 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
 
         layout.operator("transform.edge_crease")
         layout.operator("transform.edge_bevelweight")
+
+        layout.separator()
+
+        layout.operator("mesh.mark_seam").clear = False
+        layout.operator("mesh.mark_seam", text="Clear Seam").clear = True
 
         layout.separator()
 
@@ -5270,6 +5279,7 @@ class VIEW3D_MT_sculpt_mask_edit_pie(Menu):
         op.mode = 'INVERT'
         op = pie.operator("paint.mask_flood_fill", text='Clear Mask')
         op.mode = 'VALUE'
+        op.value = 0.0
         op = pie.operator("sculpt.mask_filter", text='Smooth Mask')
         op.filter_type = 'SMOOTH'
         op.auto_iteration_count = True

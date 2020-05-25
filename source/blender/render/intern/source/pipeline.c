@@ -187,23 +187,20 @@ static int default_break(void *UNUSED(arg))
 
 static void stats_background(void *UNUSED(arg), RenderStats *rs)
 {
-  uintptr_t mem_in_use, mmap_in_use, peak_memory;
-  float megs_used_memory, mmap_used_memory, megs_peak_memory;
+  uintptr_t mem_in_use, peak_memory;
+  float megs_used_memory, megs_peak_memory;
   char info_time_str[32];
 
   mem_in_use = MEM_get_memory_in_use();
-  mmap_in_use = MEM_get_mapped_memory_in_use();
   peak_memory = MEM_get_peak_memory();
 
-  megs_used_memory = (mem_in_use - mmap_in_use) / (1024.0 * 1024.0);
-  mmap_used_memory = (mmap_in_use) / (1024.0 * 1024.0);
+  megs_used_memory = (mem_in_use) / (1024.0 * 1024.0);
   megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
 
   fprintf(stdout,
-          TIP_("Fra:%d Mem:%.2fM (%.2fM, Peak %.2fM) "),
+          TIP_("Fra:%d Mem:%.2fM (Peak %.2fM) "),
           rs->cfra,
           megs_used_memory,
-          mmap_used_memory,
           megs_peak_memory);
 
   if (rs->curfield) {
@@ -2955,5 +2952,5 @@ RenderPass *RE_create_gp_pass(RenderResult *rr, const char *layername, const cha
     BLI_freelinkN(&rl->passes, rp);
   }
   /* create a totally new pass */
-  return gp_add_pass(rr, rl, 4, RE_PASSNAME_COMBINED, viewname);
+  return render_layer_add_pass(rr, rl, 4, RE_PASSNAME_COMBINED, viewname, "RGBA");
 }

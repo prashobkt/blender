@@ -486,8 +486,7 @@ static bool eevee_volume_object_mesh_init(Scene *scene,
   ModifierData *md = NULL;
 
   /* Smoke Simulation */
-  if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
-      (md = BKE_modifiers_findby_type(ob, eModifierType_Fluid)) &&
+  if ((md = BKE_modifiers_findby_type(ob, eModifierType_Fluid)) &&
       (BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime)) &&
       ((FluidModifierData *)md)->domain != NULL) {
     FluidModifierData *mmd = (FluidModifierData *)md;
@@ -776,12 +775,8 @@ void EEVEE_volumes_compute(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
     /* We sample the shadow-maps using shadow sampler. We need to enable Comparison mode.
      * TODO(fclem) avoid this by using sampler objects.*/
-    GPU_texture_bind(sldata->shadow_cube_pool, 0);
     GPU_texture_compare_mode(sldata->shadow_cube_pool, true);
-    GPU_texture_unbind(sldata->shadow_cube_pool);
-    GPU_texture_bind(sldata->shadow_cascade_pool, 0);
     GPU_texture_compare_mode(sldata->shadow_cascade_pool, true);
-    GPU_texture_unbind(sldata->shadow_cascade_pool);
 
     GPU_framebuffer_bind(fbl->volumetric_fb);
     DRW_draw_pass(psl->volumetric_world_ps);
