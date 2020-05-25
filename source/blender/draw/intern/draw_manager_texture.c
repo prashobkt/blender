@@ -61,7 +61,6 @@ static bool drw_texture_format_supports_framebuffer(eGPUTextureFormat format)
 
 void drw_texture_set_parameters(GPUTexture *tex, DRWTextureFlag flags)
 {
-  GPU_texture_bind(tex, 0);
   if (flags & DRW_TEX_MIPMAP) {
     GPU_texture_mipmap_mode(tex, true, flags & DRW_TEX_FILTER);
     GPU_texture_generate_mipmap(tex);
@@ -71,7 +70,6 @@ void drw_texture_set_parameters(GPUTexture *tex, DRWTextureFlag flags)
   }
   GPU_texture_wrap_mode(tex, flags & DRW_TEX_WRAP, true);
   GPU_texture_compare_mode(tex, flags & DRW_TEX_COMPARE);
-  GPU_texture_unbind(tex);
 }
 
 GPUTexture *DRW_texture_create_1d(int w,
