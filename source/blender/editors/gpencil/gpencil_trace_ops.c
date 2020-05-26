@@ -231,7 +231,7 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Trace Image to Grease Pencil";
   ot->idname = "GPENCIL_OT_trace_image";
-  ot->description = "Extract Black and White image to Grease Pencil strokes";
+  ot->description = "Extract Grease Pencil strokes from Black and White image";
 
   /* callbacks */
   ot->exec = gp_trace_image_exec;

@@ -41,6 +41,7 @@ def my_objlist_callback(scene, context):
 
 
 class GPENCIL_OT_trace(Operator):
+    """Extract Grease Pencil strokes from Black and White image"""
     bl_idname = "gpencil.trace"
     bl_label = "Trace Image to Grease Pencil"
     bl_options = {'REGISTER', 'UNDO'}
