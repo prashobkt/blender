@@ -1532,9 +1532,8 @@ static void drw_draw_pass_ex(DRWPass *pass,
 
 void DRW_draw_pass(DRWPass *pass)
 {
-  drw_draw_pass_ex(pass, pass->shgroups.first, pass->shgroups.last);
-  while ((pass = pass->next)) {
-    DRW_draw_pass(pass);
+  for (; pass; pass = pass->next) {
+    drw_draw_pass_ex(pass, pass->shgroups.first, pass->shgroups.last);
   }
 }
 
