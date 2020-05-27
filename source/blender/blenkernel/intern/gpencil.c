@@ -1016,6 +1016,12 @@ bGPDframe *BKE_gpencil_layer_frame_get(bGPDlayer *gpl, int cframe, eGP_GetFrame_
     }
   }
 
+  /* Don't select first frame if greater than current frame. */
+  if ((gpl->actframe != NULL) && (gpl->actframe == gpl->frames.first) &&
+      (gpl->actframe->framenum > cframe)) {
+    gpl->actframe = NULL;
+  }
+
   /* return */
   return gpl->actframe;
 }
@@ -1861,6 +1867,7 @@ void BKE_gpencil_visible_stroke_iter(
   bGPdata *gpd = (bGPdata *)ob->data;
   const bool is_multiedit = GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   const bool is_onion = do_onion && ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0);
+  const bool is_drawing = (gpd->runtime.sbuffer_used > 0);
 
   /* Onion skinning. */
   const bool onion_mode_abs = (gpd->onion_mode == GP_ONION_MODE_ABSOLUTE);
@@ -1869,6 +1876,8 @@ void BKE_gpencil_visible_stroke_iter(
   const short onion_keytype = gpd->onion_keytype;
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    /* Reset by layer. */
+    bool is_before_first = false;
 
     bGPDframe *act_gpf = gpl->actframe;
     bGPDframe *sta_gpf = act_gpf;
@@ -1895,6 +1904,16 @@ void BKE_gpencil_visible_stroke_iter(
       }
     }
     else if (is_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN)) {
+      /* Special cases when cframe is before first frame. */
+      bGPDframe *gpf_first = gpl->frames.first;
+      if ((gpf_first != NULL) && (act_gpf != NULL) && (gpf_first->framenum > act_gpf->framenum)) {
+        is_before_first = true;
+      }
+      if ((gpf_first != NULL) && (act_gpf == NULL)) {
+        act_gpf = gpf_first;
+        is_before_first = true;
+      }
+
       if (act_gpf) {
         bGPDframe *last_gpf = gpl->frames.last;
 
@@ -1908,6 +1927,10 @@ void BKE_gpencil_visible_stroke_iter(
           bool is_in_range;
           int delta = (onion_mode_abs) ? (gpf->framenum - cfra) :
                                          (gpf->runtime.frameid - act_gpf->runtime.frameid);
+
+          if (is_before_first) {
+            delta++;
+          }
 
           if (onion_mode_sel) {
             is_in_range = (gpf->flag & GP_FRAME_SELECT) != 0;
@@ -1928,7 +1951,9 @@ void BKE_gpencil_visible_stroke_iter(
           gpf->runtime.onion_id = (is_wrong_keytype || !is_in_range) ? INT_MAX : delta;
         }
         /* Active frame is always shown. */
-        act_gpf->runtime.onion_id = 0;
+        if (!is_before_first || is_drawing) {
+          act_gpf->runtime.onion_id = 0;
+        }
       }
 
       sta_gpf = gpl->frames.first;
@@ -1948,8 +1973,13 @@ void BKE_gpencil_visible_stroke_iter(
 
     /* Draw multiedit/onion skinning first */
     for (bGPDframe *gpf = sta_gpf; gpf && gpf != end_gpf; gpf = gpf->next) {
-      if (gpf->runtime.onion_id == INT_MAX || gpf == act_gpf) {
+      if ((gpf->runtime.onion_id == INT_MAX || gpf == act_gpf) && (!is_before_first)) {
         continue;
+      }
+
+      /* Only do once for frame before first. */
+      if (is_before_first && gpf == act_gpf) {
+        is_before_first = false;
       }
 
       if (layer_cb) {
@@ -1966,8 +1996,8 @@ void BKE_gpencil_visible_stroke_iter(
     /* Draw Active frame on top. */
     /* Use evaluated frame (with modifiers for active stroke)/ */
     act_gpf = gpl->actframe;
-    act_gpf->runtime.onion_id = 0;
     if (act_gpf) {
+      act_gpf->runtime.onion_id = 0;
       if (layer_cb) {
         layer_cb(gpl, act_gpf, NULL, thunk);
       }
