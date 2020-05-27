@@ -98,6 +98,11 @@ enum {
 };
 
 enum {
+  VECTOR_DRAW_GRID_FLUID_VELOCITY = 0,
+  VECTOR_DRAW_GRID_GUIDE_VELOCITY = 1,
+};
+
+enum {
   SNDPARTICLE_BOUNDARY_DELETE = 0,
   SNDPARTICLE_BOUNDARY_PUSHOUT = 1,
 };
@@ -497,21 +502,23 @@ typedef struct FluidDomainSettings {
   struct ColorBand *coba;
   float vector_scale;
   char vector_draw_type;
+  char vector_draw_grid_type;
   char use_coba;
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
+  char _pad9[7]; /* Unused. */
 
   /* -- Deprecated / unsed options (below). -- */
 
   /* View options. */
   int viewsettings;
-  char _pad9[4]; /* Unused. */
+  char _pad10[4]; /* Unused. */
 
   /* OpenVDB cache options. */
   int openvdb_comp;
   float clipping;
   char data_depth;
-  char _pad10[7]; /* Unused. */
+  char _pad11[7]; /* Unused. */
 
   /* Pointcache options. */
   /* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading
@@ -521,7 +528,7 @@ typedef struct FluidDomainSettings {
   int cache_comp;
   int cache_high_comp;
   char cache_file_format;
-  char _pad11[7]; /* Unused. */
+  char _pad12[7]; /* Unused. */
 
 } FluidDomainSettings;
 

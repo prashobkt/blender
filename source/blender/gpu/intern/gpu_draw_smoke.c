@@ -376,10 +376,24 @@ void GPU_create_smoke_velocity(FluidModifierData *mmd)
 #else
   if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *mds = mmd->domain;
+    const float *vel_x, *vel_y, *vel_z;
+    const char grid_type = mds->vector_draw_grid_type;
 
-    const float *vel_x = manta_get_velocity_x(mds->fluid);
-    const float *vel_y = manta_get_velocity_y(mds->fluid);
-    const float *vel_z = manta_get_velocity_z(mds->fluid);
+  switch(grid_type) {
+    case VECTOR_DRAW_GRID_GUIDE_VELOCITY:
+      if (manta_get_guide_velocity_x(mds->fluid)) {
+        vel_x = manta_get_guide_velocity_x(mds->fluid);
+        vel_y = manta_get_guide_velocity_y(mds->fluid);
+        vel_z = manta_get_guide_velocity_z(mds->fluid);
+        break;
+      }
+
+    default:
+      vel_x = manta_get_velocity_x(mds->fluid);
+      vel_y = manta_get_velocity_y(mds->fluid);
+      vel_z = manta_get_velocity_z(mds->fluid);
+      break;
+  }
 
     if (ELEM(NULL, vel_x, vel_y, vel_z)) {
       return;

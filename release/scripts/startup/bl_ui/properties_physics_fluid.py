@@ -1236,7 +1236,7 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_gas_domain(context))
+        return (PhysicButtonsPanel.poll_fluid_domain(context))
 
     def draw(self, context):
         layout = self.layout
@@ -1307,7 +1307,7 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_gas_domain(context))
+        return (PhysicButtonsPanel.poll_fluid_domain(context))
 
     def draw_header(self, context):
         md = context.fluid.domain_settings
@@ -1324,6 +1324,10 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.active = domain.show_velocity
         col.prop(domain, "vector_display_type", text="Display As")
+        col.prop(domain, "vector_grid_type", text="Grid Type")
+        if ((not domain.use_guide) and domain.vector_grid_type == 'GUIDE_VELOCITY'):
+            note = layout.split()
+            note.label(icon='INFO', text="Enable Guides first! Defaulting to Fluid Velocity.")
         col.prop(domain, "vector_scale")
 
 

@@ -4970,6 +4970,7 @@ void BKE_fluid_modifier_create_type_data(struct FluidModifierData *mmd)
     mmd->domain->coba = NULL;
     mmd->domain->vector_scale = 1.0f;
     mmd->domain->vector_draw_type = VECTOR_DRAW_NEEDLE;
+    mmd->domain->vector_draw_grid_type = VECTOR_DRAW_GRID_FLUID_VELOCITY;
     mmd->domain->use_coba = false;
     mmd->domain->coba_field = FLUID_DOMAIN_FIELD_DENSITY;
 
@@ -5209,6 +5210,7 @@ void BKE_fluid_modifier_copy(const struct FluidModifierData *mmd,
     }
     tmds->vector_scale = mds->vector_scale;
     tmds->vector_draw_type = mds->vector_draw_type;
+    tmds->vector_draw_grid_type = mds->vector_draw_grid_type;
     tmds->use_coba = mds->use_coba;
     tmds->coba_field = mds->coba_field;
 
