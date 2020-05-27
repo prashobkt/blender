@@ -3643,7 +3643,7 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
   SnapObjectContext *sctx = NULL;
   gp_point_conversion_init(C, &gsc);
   /* Init snap context for geometry projection. */
-  sctx = ED_transform_snap_object_context_create_view3d(bmain, scene, 0, region, CTX_wm_view3d(C));
+  sctx = ED_transform_snap_object_context_create_view3d(scene, 0, region, CTX_wm_view3d(C));
 
   int cfra_prv = INT_MIN;
 
