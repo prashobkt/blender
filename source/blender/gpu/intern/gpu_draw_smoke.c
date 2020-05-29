@@ -369,6 +369,28 @@ void GPU_create_smoke(FluidModifierData *mmd, int highres)
 #endif /* WITH_FLUID */
 }
 
+bool get_smoke_velocity_field(FluidDomainSettings *mds,
+                              const float **r_velocity_x,
+                              const float **r_velocity_y,
+                              const float **r_velocity_z)
+{
+  const char grid_type = mds->vector_draw_grid_type;
+  switch (grid_type) {
+    case VECTOR_DRAW_GRID_FLUID_VELOCITY:
+      *r_velocity_x = manta_get_velocity_x(mds->fluid);
+      *r_velocity_y = manta_get_velocity_y(mds->fluid);
+      *r_velocity_z = manta_get_velocity_z(mds->fluid);
+      break;
+    case VECTOR_DRAW_GRID_GUIDE_VELOCITY:
+      *r_velocity_x = manta_get_guide_velocity_x(mds->fluid);
+      *r_velocity_y = manta_get_guide_velocity_y(mds->fluid);
+      *r_velocity_z = manta_get_guide_velocity_z(mds->fluid);
+      break;
+  }
+
+  return *r_velocity_x && *r_velocity_y && *r_velocity_z;
+}
+
 void GPU_create_smoke_velocity(FluidModifierData *mmd)
 {
 #ifndef WITH_FLUID
@@ -377,23 +399,11 @@ void GPU_create_smoke_velocity(FluidModifierData *mmd)
   if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *mds = mmd->domain;
     const float *vel_x, *vel_y, *vel_z;
-    const char grid_type = mds->vector_draw_grid_type;
 
-  switch(grid_type) {
-    case VECTOR_DRAW_GRID_GUIDE_VELOCITY:
-      if (manta_get_guide_velocity_x(mds->fluid)) {
-        vel_x = manta_get_guide_velocity_x(mds->fluid);
-        vel_y = manta_get_guide_velocity_y(mds->fluid);
-        vel_z = manta_get_guide_velocity_z(mds->fluid);
-        break;
-      }
-
-    default:
-      vel_x = manta_get_velocity_x(mds->fluid);
-      vel_y = manta_get_velocity_y(mds->fluid);
-      vel_z = manta_get_velocity_z(mds->fluid);
-      break;
-  }
+    if (!get_smoke_velocity_field(mds, &vel_x, &vel_y, &vel_z)) {
+      mds->vector_draw_grid_type = VECTOR_DRAW_GRID_FLUID_VELOCITY;
+      get_smoke_velocity_field(mds, &vel_x, &vel_y, &vel_z);
+    }
 
     if (ELEM(NULL, vel_x, vel_y, vel_z)) {
       return;
