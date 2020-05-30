@@ -110,7 +110,6 @@ typedef struct SnapObjectData {
 } SnapObjectData;
 
 struct SnapObjectContext {
-  Main *bmain;
   Scene *scene;
 
   int flag;
@@ -1707,8 +1706,14 @@ static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
                                      &nearest.dist_sq,
                                      nearest.co)) {
           nearest.index = vindex[v_id];
-          nearest2d.copy_vert_no(vindex[v_id], nearest.no, nearest2d.userdata);
           elem = SCE_SNAP_MODE_VERTEX;
+          if (r_no) {
+            float imat[4][4];
+            invert_m4_m4(imat, obmat);
+            nearest2d.copy_vert_no(vindex[v_id], r_no, nearest2d.userdata);
+            mul_transposed_mat3_m4_v3(imat, r_no);
+            normalize_v3(r_no);
+          }
         }
       }
     }
@@ -1726,10 +1731,6 @@ static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
                                      vmid,
                                      &nearest.dist_sq,
                                      nearest.co)) {
-          float v_nor[2][3];
-          nearest2d.copy_vert_no(vindex[0], v_nor[0], nearest2d.userdata);
-          nearest2d.copy_vert_no(vindex[1], v_nor[1], nearest2d.userdata);
-          mid_v3_v3v3(nearest.no, v_nor[0], v_nor[1]);
           nearest.index = *r_index;
           elem = SCE_SNAP_MODE_EDGE_MIDPOINT;
         }
@@ -1757,11 +1758,6 @@ static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
                                        v_near,
                                        &nearest.dist_sq,
                                        nearest.co)) {
-            float v_nor[2][3];
-            nearest2d.copy_vert_no(vindex[0], v_nor[0], nearest2d.userdata);
-            nearest2d.copy_vert_no(vindex[1], v_nor[1], nearest2d.userdata);
-            mid_v3_v3v3(nearest.no, v_nor[0], v_nor[1]);
-
             nearest.index = *r_index;
             elem = SCE_SNAP_MODE_EDGE_PERPENDICULAR;
           }
@@ -1776,15 +1772,6 @@ static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
     copy_v3_v3(r_loc, nearest.co);
     if (elem != SCE_SNAP_MODE_EDGE_PERPENDICULAR) {
       mul_m4_v3(obmat, r_loc);
-    }
-
-    if (r_no) {
-      float imat[4][4];
-      invert_m4_m4(imat, obmat);
-
-      copy_v3_v3(r_no, nearest.no);
-      mul_transposed_mat3_m4_v3(imat, r_no);
-      normalize_v3(r_no);
     }
 
     *r_index = nearest.index;
@@ -2863,13 +2850,12 @@ static short snapObjectsRay(SnapObjectContext *sctx,
 /** \name Public Object Snapping API
  * \{ */
 
-SnapObjectContext *ED_transform_snap_object_context_create(Main *bmain, Scene *scene, int flag)
+SnapObjectContext *ED_transform_snap_object_context_create(Scene *scene, int flag)
 {
   SnapObjectContext *sctx = MEM_callocN(sizeof(*sctx), __func__);
 
   sctx->flag = flag;
 
-  sctx->bmain = bmain;
   sctx->scene = scene;
 
   sctx->cache.object_map = BLI_ghash_ptr_new(__func__);
@@ -2880,14 +2866,13 @@ SnapObjectContext *ED_transform_snap_object_context_create(Main *bmain, Scene *s
   return sctx;
 }
 
-SnapObjectContext *ED_transform_snap_object_context_create_view3d(Main *bmain,
-                                                                  Scene *scene,
+SnapObjectContext *ED_transform_snap_object_context_create_view3d(Scene *scene,
                                                                   int flag,
                                                                   /* extra args for view3d */
                                                                   const ARegion *region,
                                                                   const View3D *v3d)
 {
-  SnapObjectContext *sctx = ED_transform_snap_object_context_create(bmain, scene, flag);
+  SnapObjectContext *sctx = ED_transform_snap_object_context_create(scene, flag);
 
   sctx->use_v3d = true;
   sctx->v3d_data.region = region;
