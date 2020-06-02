@@ -136,6 +136,7 @@ static void userpref_main_region_layout(const bContext *C, ARegion *region)
       i = 0;
     }
     const char *id = items[i].identifier;
+
     BLI_assert(strlen(id) < sizeof(id_lower));
     STRNCPY(id_lower, id);
     BLI_str_tolower_ascii(id_lower, strlen(id_lower));

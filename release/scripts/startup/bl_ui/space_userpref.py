@@ -1674,32 +1674,17 @@ class USERPREF_PT_keymap(KeymapPanel, Panel):
 class CustomMenuPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
-    bl_context = "CustomMenu"
-
-
-#class USERPREF_MT_keyconfigs(Menu):
-#    bl_label = "KeyPresets"
-#    preset_subdir = "keyconfig"
-#    preset_operator = "preferences.keyconfig_activate"
-
-#    def draw(self, context):
-#        Menu.draw_preset(self, context)
-
+    bl_context = "custom_menu"
 
 class USERPREF_PT_custom_menu(CustomMenuPanel, Panel):
-    bl_label = "CustomMenu"
+    bl_label = "custom_menu"
     bl_options = {'HIDE_HEADER'}
 
     def draw(self, context):
-        from rna_keymap_ui import draw_keymaps
+        from rna_custom_menu_ui import draw_custom_menu
 
         layout = self.layout
-
-        import time
-        start = time.time()
-        draw_keymaps(context, layout)
-        print("runtime", time.time() - start)
-
+        draw_custom_menu(context, layout)
 
 # -----------------------------------------------------------------------------
 # Add-On Panels
