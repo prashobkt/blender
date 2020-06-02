@@ -30,6 +30,19 @@ using FN::CPPType;
 #define COLLISION_MIN_RADIUS 0.001f     // TODO check if this is needed
 #define COLLISION_MIN_DISTANCE 0.0001f  // TODO check if this is needed
 #define COLLISION_ZERO 0.00001f
+
+static void normal_from_closest_point_to_tri(
+    float no[3], const float p[3], const float v0[3], const float v1[3], const float v2[3])
+{
+  // Calculate the normal using the closest point on the triangle. This makes sure that
+  // particles can collide and be deflected in the correct direction when colliding with verts
+  // or edges of the triangle.
+  float point_on_tri[3];
+  closest_on_tri_to_point_v3(point_on_tri, p, v0, v1, v2);
+  sub_v3_v3v3(no, p, point_on_tri);
+  normalize_v3(no);
+}
+
 static float distance_to_tri(float3 &p, std::array<float3, 3> &cur_tri_points, float radius)
 {
   float3 closest_point;
@@ -81,7 +94,8 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       interp_weights_tri_v3(
           hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
 
-      normal_tri_v3(coll_normal, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
+      normal_from_closest_point_to_tri(
+          coll_normal, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
       return 0.f;
     }
 
@@ -130,7 +144,8 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
         interp_weights_tri_v3(
             hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
 
-        normal_tri_v3(coll_normal, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
+        normal_from_closest_point_to_tri(
+            coll_normal, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
 
         CLAMP(t1, 0.f, 1.f);
         return t1;
@@ -188,7 +203,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
       // point.
       madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist - COLLISION_MIN_DISTANCE);
 
-      normal_tri_v3(hit->no, v0, v1, v2);
+      normal_from_closest_point_to_tri(hit->no, hit->co, v0, v1, v2);
     }
     return;
   }
@@ -230,12 +245,6 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     // We have a collision!
     hit->index = index;
     hit->dist = dist;
-    // Subract COLLISION_MIN_DISTANCE from the distance to make sure that we do not collide with
-    // the exact same point if the particle does not have time to move away from the collision
-    // point.
-    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist - COLLISION_MIN_DISTANCE);
-    // zero_v3(hit->co);
-    copy_v3_v3(hit->no, coll_normal);
 
     // Calculate the velocity of the point we hit
     zero_v3(rd->hit_vel);
@@ -244,6 +253,21 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
                      rd->duration;
     }
     // rd->hit_vel = float3(0, 0, 5.0);
+
+    // Subract COLLISION_MIN_DISTANCE from the distance to make sure that we do not collide with
+    // the exact same point if the particle does not have time to move away from the collision
+    // point.
+    float pad_dist = COLLISION_MIN_DISTANCE;
+
+    if (dot_v3v3(rd->hit_vel, ray->direction) > 0) {
+      // The particle is traveling in the same direction as the collider, add distance instead of
+      // subtracting it.
+      pad_dist *= -1.0f;
+    }
+
+    madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist - pad_dist);
+    // zero_v3(hit->co);
+    copy_v3_v3(hit->no, coll_normal);
   }
 }
 
@@ -282,7 +306,9 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
     // Update the velocities here so that the potential distance traveled is correct in the
     // collision check.
     velocities[pindex] += duration * forces[pindex] * mass;
-    // TODO check if there is issues with moving colliders and particles with 0 velocity
+    // TODO check if there is issues with moving colliders and particles with 0 velocity.
+    // (There is issues with particles with zero velocity as they will not collide with anything if
+    // the ray lenght is 0.
 
     // Check if any 'collobjs' collide with the particles here
     if (colliders.size() != 0) {
@@ -325,7 +351,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           rd.start_time = 1.0 - duration / remaining_durations[pindex];
 
           // TODO perhaps have two callbacks and check for static colider here instead?
-          // So, if statis use callback A otherwise B
+          // So, if static use callback A otherwise B
           BLI_bvhtree_ray_cast_ex(collmd->bvhtree,
                                   start,
                                   dir,
@@ -372,15 +398,18 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           float3 hit_normal_velo = float3::project(best_hit_vel, n_v);
           float3 local_velo = velocities[pindex] - hit_normal_velo;
 
-          float dampening = 0.5f;
+          float dampening = 0.1f;
           // Add the dampening factor
           local_velo *= (1.0f - dampening);
 
           float normal_dot = dot_v3v3(n_v, local_velo) / hit_normal_velo.length();
           // printf("normal dot %f\n", normal_dot);
           if (normal_dot < 1.0f) {
+            // We are not moving fast enough away from the collider. Make sure that we have at
+            // least the same speed as it to avoid tunneling.
             // TODO Dampening messes this calulcation up as we assume that local_velo is just:
-            // "velocities[pindex] - hit_normal_velo" printf("trigger\n");
+            // "velocities[pindex] - hit_normal_velo"
+            // printf("trigger\n");
             local_velo -= (1.0 + normal_dot) * hit_normal_velo;
           }
 
@@ -406,6 +435,9 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           velocities[pindex] = deflect_vel;
           // print_v3("vel_post", velocities[pindex]);
           //}
+
+          // TODO add a check here to see if we are inside the collider (current pos on the normal
+          // is less than radius)
 
           // Calculate the remaining duration
           // printf("old dur: %f\n", duration);
