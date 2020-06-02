@@ -1840,7 +1840,7 @@ void RNA_def_property_enum_items(PropertyRNA *prop, const EnumPropertyItem *item
 {
   StructRNA *srna = DefRNA.laststruct;
   int i, defaultfound = 0;
-
+  
   switch (prop->type) {
     case PROP_ENUM: {
       EnumPropertyRNA *eprop = (EnumPropertyRNA *)prop;

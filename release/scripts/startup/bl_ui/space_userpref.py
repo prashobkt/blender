@@ -1668,7 +1668,37 @@ class USERPREF_PT_keymap(KeymapPanel, Panel):
         # Keymap Settings
         draw_keymaps(context, layout)
 
-        # print("runtime", time.time() - start)
+# -----------------------------------------------------------------------------
+# Custom Menu Editor Panels
+
+class CustomMenuPanel:
+    bl_space_type = 'PREFERENCES'
+    bl_region_type = 'WINDOW'
+    bl_context = "CustomMenu"
+
+
+#class USERPREF_MT_keyconfigs(Menu):
+#    bl_label = "KeyPresets"
+#    preset_subdir = "keyconfig"
+#    preset_operator = "preferences.keyconfig_activate"
+
+#    def draw(self, context):
+#        Menu.draw_preset(self, context)
+
+
+class USERPREF_PT_custom_menu(CustomMenuPanel, Panel):
+    bl_label = "CustomMenu"
+    bl_options = {'HIDE_HEADER'}
+
+    def draw(self, context):
+        from rna_keymap_ui import draw_keymaps
+
+        layout = self.layout
+
+        import time
+        start = time.time()
+        draw_keymaps(context, layout)
+        print("runtime", time.time() - start)
 
 
 # -----------------------------------------------------------------------------
@@ -2223,6 +2253,7 @@ classes = (
     USERPREF_PT_navigation_fly_walk_gravity,
 
     USERPREF_PT_keymap,
+    USERPREF_PT_custom_menu,
     USERPREF_PT_addons,
 
     USERPREF_PT_studiolight_lights,

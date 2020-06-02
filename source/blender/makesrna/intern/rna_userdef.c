@@ -88,6 +88,7 @@ const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_INPUT, "INPUT", 0, "Input", ""},
     {USER_SECTION_NAVIGATION, "NAVIGATION", 0, "Navigation", ""},
     {USER_SECTION_KEYMAP, "KEYMAP", 0, "Keymap", ""},
+    {USER_SECTION_CUSTOM_MENU, "CUSTOM_MENU", 0, "Custom Menu", ""},
     {0, "", 0, NULL, NULL},
     {USER_SECTION_SYSTEM, "SYSTEM", 0, "System", ""},
     {USER_SECTION_SAVE_LOAD, "SAVE_LOAD", 0, "Save & Load", ""},
@@ -525,6 +526,11 @@ static PointerRNA rna_UserDef_input_get(PointerRNA *ptr)
 static PointerRNA rna_UserDef_keymap_get(PointerRNA *ptr)
 {
   return rna_pointer_inherit_refine(ptr, &RNA_PreferencesKeymap, ptr->data);
+}
+
+static PointerRNA rna_UserDef_custom_menu_get(PointerRNA *ptr)
+{
+  return rna_pointer_inherit_refine(ptr, &RNA_PreferencesCustomMenu, ptr->data);
 }
 
 static PointerRNA rna_UserDef_filepaths_get(PointerRNA *ptr)
@@ -5880,6 +5886,26 @@ static void rna_def_userdef_keymap(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Key Config", "The name of the active key configuration");
 }
 
+static void rna_def_userdef_custom_menu(BlenderRNA *brna)
+{
+  PropertyRNA *prop;
+
+  StructRNA *srna = RNA_def_struct(brna, "PreferencesCustomMenu", NULL);
+  RNA_def_struct_sdna(srna, "UserDef");
+  RNA_def_struct_nested(brna, srna, "Preferences");
+  RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
+  RNA_def_struct_ui_text(srna, "Custom Menu", "custom menu editor");
+
+  prop = RNA_def_property(srna, "show_ui_keyconfig", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(
+      prop, NULL, "space_data.flag", USER_SPACEDATA_INPUT_HIDE_UI_KEYCONFIG);
+  RNA_def_property_ui_text(prop, "Show UI Key-Config", "");
+
+  prop = RNA_def_property(srna, "active_keyconfig", PROP_STRING, PROP_DIRPATH);
+  RNA_def_property_string_sdna(prop, NULL, "keyconfigstr");
+  RNA_def_property_ui_text(prop, "Key Config", "The name of the active key configuration");
+}
+
 static void rna_def_userdef_filepaths(BlenderRNA *brna)
 {
   PropertyRNA *prop;
@@ -6200,6 +6226,12 @@ void RNA_def_userdef(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop, "rna_UserDef_keymap_get", NULL, NULL, NULL);
   RNA_def_property_ui_text(prop, "Keymap", "Shortcut setup for keyboards and other input devices");
 
+  prop = RNA_def_property(srna, "custom_menu", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_struct_type(prop, "PreferencesCustomMenu");
+  RNA_def_property_pointer_funcs(prop, "rna_UserDef_custom_menu_get", NULL, NULL, NULL);
+  RNA_def_property_ui_text(prop, "Custom Menu", "Custom Menu Editor");
+
   prop = RNA_def_property(srna, "filepaths", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_struct_type(prop, "PreferencesFilePaths");
@@ -6267,6 +6299,7 @@ void RNA_def_userdef(BlenderRNA *brna)
   rna_def_userdef_edit(brna);
   rna_def_userdef_input(brna);
   rna_def_userdef_keymap(brna);
+  rna_def_userdef_custom_menu(brna);
   rna_def_userdef_filepaths(brna);
   rna_def_userdef_system(brna);
   rna_def_userdef_addon(brna);

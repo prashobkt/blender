@@ -472,6 +472,7 @@ extern StructRNA RNA_PreferencesEdit;
 extern StructRNA RNA_PreferencesFilePaths;
 extern StructRNA RNA_PreferencesInput;
 extern StructRNA RNA_PreferencesKeymap;
+extern StructRNA RNA_PreferencesCustomMenu;
 extern StructRNA RNA_PreferencesSystem;
 extern StructRNA RNA_PreferencesView;
 extern StructRNA RNA_Property;
