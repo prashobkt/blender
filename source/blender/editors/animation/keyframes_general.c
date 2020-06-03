@@ -125,6 +125,9 @@ bool delete_fcurve_keys(FCurve *fcu)
     }
   }
 
+  /* Make sure the active keyframe index isn't too large. */
+  CLAMP_MAX(fcu->active_key, fcu->totvert - 1);
+
   /* Free the array of BezTriples if there are not keyframes */
   if (fcu->totvert == 0) {
     clear_fcurve_keys(fcu);
