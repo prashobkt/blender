@@ -1513,7 +1513,7 @@ static int mouse_graph_keys(bAnimContext *ac,
       }
 
       /* Set the curve's active keyframe. */
-      if (BEZT_ISSEL_ANY(bezt) && (select_mode == SELECT_ADD || !already_selected)) {
+      if (!run_modal && BEZT_ISSEL_ANY(bezt) && (select_mode == SELECT_ADD || !already_selected)) {
         BLI_assert(nvi->fcu != NULL);
         BLI_assert((bezt - nvi->fcu->bezt) >= 0);
         nvi->fcu->active_key = bezt - nvi->fcu->bezt;
@@ -1566,7 +1566,8 @@ static int mouse_graph_keys(bAnimContext *ac,
   /* set active F-Curve (NOTE: sync the filter flags with findnearest_fcurve_vert) */
   /* needs to be called with (sipo->flag & SIPO_SELCUVERTSONLY)
    * otherwise the active flag won't be set T26452. */
-  if (nvi->fcu->flag & FCURVE_SELECTED) {
+  if (!run_modal && (select_mode == SELECT_ADD || !already_selected) &&
+      nvi->fcu->flag & FCURVE_SELECTED) {
     int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_NODUPLIS);
     ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, nvi->fcu, nvi->ctype);
   }
