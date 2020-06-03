@@ -1515,7 +1515,8 @@ static int mouse_graph_keys(bAnimContext *ac,
       /* Set the curve's active keyframe. */
       if (BEZT_ISSEL_ANY(bezt) && (select_mode == SELECT_ADD || !already_selected)) {
         BLI_assert(nvi->fcu != NULL);
-        nvi->fcu->active_key = (int)(bezt - nvi->fcu->bezt);
+        BLI_assert((bezt - nvi->fcu->bezt) >= 0);
+        nvi->fcu->active_key = bezt - nvi->fcu->bezt;
       }
     }
     else if (nvi->fpt) {

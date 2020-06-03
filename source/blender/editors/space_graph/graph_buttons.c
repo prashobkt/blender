@@ -235,10 +235,12 @@ static void graph_panel_properties(const bContext *C, Panel *panel)
 /* ******************* active Keyframe ************** */
 
 /* get 'active' keyframe for panel editing */
-static bool get_active_fcurve_keyframe_edit(FCurve *fcu, BezTriple **bezt, BezTriple **prevbezt)
+static bool get_active_fcurve_keyframe_edit(FCurve *fcu,
+                                            BezTriple **r_bezt,
+                                            BezTriple **r_prevbezt)
 {
   /* zero the pointers */
-  *bezt = *prevbezt = NULL;
+  *r_bezt = *r_prevbezt = NULL;
 
   int active_key = fcu->active_key;
 
@@ -249,9 +251,9 @@ static bool get_active_fcurve_keyframe_edit(FCurve *fcu, BezTriple **bezt, BezTr
   }
 
   if (BEZT_ISSEL_ANY(&fcu->bezt[active_key])) {
-    *bezt = &fcu->bezt[active_key];
+    *r_bezt = &fcu->bezt[active_key];
     /* Previous is either one before the active, or the point itself if it's the first. */
-    *prevbezt = &fcu->bezt[(active_key > 0) ? active_key - 1 : active_key];
+    *r_prevbezt = &fcu->bezt[(active_key > 0) ? active_key - 1 : active_key];
     return true;
   }
 

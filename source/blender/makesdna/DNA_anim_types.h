@@ -589,7 +589,7 @@ typedef struct FCurve {
   unsigned int totvert;
 
   /** Active keyframe for numerical editing in the interface. */
-  int active_key;
+  unsigned int active_key;
   char _pad1[4];
 
   /* value cache + settings */
