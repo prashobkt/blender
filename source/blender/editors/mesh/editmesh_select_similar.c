@@ -229,7 +229,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
         if (ob->totcol == 0) {
           continue;
         }
-        material_array = give_matarar(ob);
+        material_array = BKE_object_material_array_p(ob);
         break;
       }
       case SIMFACE_FREESTYLE: {
@@ -353,7 +353,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
         if (ob->totcol == 0) {
           continue;
         }
-        material_array = give_matarar(ob);
+        material_array = BKE_object_material_array_p(ob);
         break;
       }
       case SIMFACE_FREESTYLE: {
@@ -497,7 +497,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(em, false, false);
+      EDBM_update_generic(ob->data, false, false);
     }
   }
 
@@ -519,7 +519,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
         }
       }
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(em, false, false);
+      EDBM_update_generic(ob->data, false, false);
     }
   }
 
@@ -917,7 +917,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(em, false, false);
+      EDBM_update_generic(ob->data, false, false);
     }
   }
 
@@ -939,7 +939,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
         }
       }
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(em, false, false);
+      EDBM_update_generic(ob->data, false, false);
     }
   }
 
@@ -1059,7 +1059,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
     if (type == SIMVERT_VGROUP) {
       /* We store the names of the vertex groups, so we can select
-       * vertex groups with the same name in  different objects. */
+       * vertex groups with the same name in different objects. */
       const int dvert_tot = BLI_listbase_count(&ob->defbase);
       for (int i = 0; i < dvert_tot; i++) {
         if (dvert_selected & (1 << i)) {
@@ -1186,7 +1186,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(em, false, false);
+      EDBM_update_generic(ob->data, false, false);
     }
   }
 
@@ -1218,12 +1218,15 @@ static int edbm_select_similar_exec(bContext *C, wmOperator *op)
     ts->select_thresh = RNA_property_float_get(op->ptr, prop);
   }
 
-  if (type < 100)
+  if (type < 100) {
     return similar_vert_select_exec(C, op);
-  else if (type < 200)
+  }
+  else if (type < 200) {
     return similar_edge_select_exec(C, op);
-  else
+  }
+  else {
     return similar_face_select_exec(C, op);
+  }
 }
 
 static const EnumPropertyItem *select_similar_type_itemf(bContext *C,
@@ -1233,8 +1236,9 @@ static const EnumPropertyItem *select_similar_type_itemf(bContext *C,
 {
   Object *obedit;
 
-  if (!C) /* needed for docs and i18n tools */
+  if (!C) { /* needed for docs and i18n tools */
     return prop_similar_types;
+  }
 
   obedit = CTX_data_edit_object(C);
 

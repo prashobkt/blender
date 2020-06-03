@@ -12,22 +12,22 @@ This API is generally stable but some areas are still being added and improved.
 
 The Blender/Python API can do the following:
 
-- Edit any data the user interface can (Scenes, Meshes, Particles etc.)
-- Modify user preferences, keymaps and themes
-- Run tools with own settings
-- Create user interface elements such as menus, headers and panels
-- Create new tools
-- Create interactive tools
-- Create new rendering engines that integrate with Blender
-- Define new settings in existing Blender data
-- Draw in the 3D view using OpenGL commands from Python
+- Edit any data the user interface can (Scenes, Meshes, Particles etc.).
+- Modify user preferences, key-maps and themes.
+- Run tools with own settings.
+- Create user interface elements such as menus, headers and panels.
+- Create new tools.
+- Create interactive tools.
+- Create new rendering engines that integrate with Blender.
+- Subscribe to changes to data and it's properties.
+- Define new settings in existing Blender data.
+- Draw in the 3D view using Python.
 
 
 The Blender/Python API **can't** (yet)...
 
 - Create new space types.
 - Assign custom properties to every type.
-- Define callbacks or listeners to be notified when data is changed.
 
 
 Before Starting
@@ -51,7 +51,7 @@ A quick list of helpful things to know before starting:
   | ``scripts/startup/bl_operators`` for operators.
 
   Exact location depends on platform, see:
-  :ref:`Configuration and Data Paths <blender_manual:getting-started_installing-config-directories>`.
+  :ref:`directory layout docs <blender_manual:blender-directory-layout>`.
 
 
 Running Scripts
@@ -228,13 +228,12 @@ Note that the context is read-only.
 These values cannot be modified directly,
 though they may be changed by running API functions or by using the data API.
 
-So ``bpy.context.object = obj`` will raise an error.
+So ``bpy.context.active_object = obj`` will raise an error.
 
-But ``bpy.context.scene.objects.active = obj`` will work as expected.
-
+But ``bpy.context.view_layer.objects.active = obj`` works as expected.
 
 The context attributes change depending on where they are accessed.
-The 3D view has different context members than the console,
+The 3D Viewport has different context members than the Python Console,
 so take care when accessing context attributes that the user state is known.
 
 See :mod:`bpy.context` API reference.
@@ -256,9 +255,9 @@ Examples:
    >>> bpy.ops.object.scale_apply()
    {'FINISHED'}
 
-.. note::
+.. tip::
 
-   The menu item: :menuselection:`Help --> Operator Cheat Sheet`
+   The :ref:`Operator Cheat Sheet <blender_manual:bpy.ops.wm.operator_cheat_sheet>`.
    gives a list of all operators and their default values in Python syntax, along with the generated docs.
    This is a good way to get an overview of all Blender's operators.
 
@@ -317,7 +316,9 @@ To run the script:
 #. Click the button labeled ``New`` and the confirmation pop up in order to create a new text block.
 #. Press :kbd:`Ctrl-V` to paste the code into the text panel (the upper left frame).
 #. Click on the button **Run Script**.
-#. Move your cursor into the 3D view, press spacebar for the operator search menu, and type "Simple".
+#. Move your cursor into the 3D Viewport,
+   open the :ref:`operator search menu <blender_manual:bpy.ops.wm.search_menu>`,
+   and type "Simple".
 #. Click on the "Simple Operator" item found in search.
 
 

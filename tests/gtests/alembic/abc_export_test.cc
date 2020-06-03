@@ -1,13 +1,13 @@
 #include "testing/testing.h"
 
 // Keep first since utildefines defines AT which conflicts with STL
-#include "intern/abc_util.h"
 #include "intern/abc_exporter.h"
+#include "intern/abc_util.h"
 
 extern "C" {
-#include "BLI_utildefines.h"
 #include "BKE_main.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 #include "DNA_scene_types.h"
 }
 
@@ -54,7 +54,7 @@ class AlembicExportTest : public testing::Test {
 
     /* TODO(sergey): Pass scene layer somehow? */
     ViewLayer *view_layer = (ViewLayer *)scene.view_layers.first;
-    settings.depsgraph = depsgraph = DEG_graph_new(&scene, view_layer, DAG_EVAL_VIEWPORT);
+    settings.depsgraph = depsgraph = DEG_graph_new(bmain, &scene, view_layer, DAG_EVAL_VIEWPORT);
 
     settings.scene = &scene;
     settings.view_layer = view_layer;

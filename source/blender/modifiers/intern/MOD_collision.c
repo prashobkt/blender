@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -25,15 +25,15 @@
 
 #include "BLI_math.h"
 
-#include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BKE_collision.h"
 #include "BKE_global.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
@@ -118,9 +118,9 @@ static void deformVerts(ModifierData *md,
 
   if (mesh_src) {
     float current_time = 0;
-    unsigned int mvert_num = 0;
+    uint mvert_num = 0;
 
-    BKE_mesh_apply_vert_coords(mesh_src, vertexCos);
+    BKE_mesh_vert_coords_apply(mesh_src, vertexCos);
     BKE_mesh_calc_normals(mesh_src);
 
     current_time = DEG_get_ctime(ctx->depsgraph);
@@ -141,8 +141,9 @@ static void deformVerts(ModifierData *md,
     }
 
     /* check if mesh has changed */
-    if (collmd->x && (mvert_num != collmd->mvert_num))
+    if (collmd->x && (mvert_num != collmd->mvert_num)) {
       freeData((ModifierData *)collmd);
+    }
 
     if (collmd->time_xnew == -1000) { /* first time */
 
@@ -230,7 +231,7 @@ static void deformVerts(ModifierData *md,
     }
   }
 
-  if (mesh_src != mesh) {
+  if (!ELEM(mesh_src, NULL, mesh)) {
     BKE_id_free(NULL, mesh_src);
   }
 }
@@ -253,7 +254,10 @@ ModifierTypeInfo modifierType_Collision = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ NULL,
+    /* modifyMesh */ NULL,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,

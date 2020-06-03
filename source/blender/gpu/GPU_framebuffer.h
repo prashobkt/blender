@@ -71,7 +71,7 @@ GPUFrameBuffer *GPU_framebuffer_active_get(void);
     } \
   } while (0)
 
-/* Framebuffer setup : You need to call GPU_framebuffer_bind for theses
+/* Framebuffer setup : You need to call GPU_framebuffer_bind for these
  * to be effective. */
 
 void GPU_framebuffer_texture_attach(GPUFrameBuffer *fb, struct GPUTexture *tex, int slot, int mip);
@@ -173,6 +173,8 @@ void GPU_framebuffer_clear(GPUFrameBuffer *fb,
 #define GPU_framebuffer_clear_color_depth_stencil(fb, col, depth, stencil) \
   GPU_framebuffer_clear(fb, GPU_COLOR_BIT | GPU_DEPTH_BIT | GPU_STENCIL_BIT, col, depth, stencil)
 
+void GPU_framebuffer_multi_clear(GPUFrameBuffer *fb, const float (*clear_cols)[4]);
+
 void GPU_framebuffer_read_depth(GPUFrameBuffer *fb, int x, int y, int w, int h, float *data);
 void GPU_framebuffer_read_color(
     GPUFrameBuffer *fb, int x, int y, int w, int h, int channels, int slot, float *data);
@@ -209,6 +211,7 @@ void GPU_offscreen_viewport_data_get(GPUOffScreen *ofs,
                                      struct GPUTexture **r_depth);
 
 void GPU_clear_color(float red, float green, float blue, float alpha);
+void GPU_clear_depth(float depth);
 void GPU_clear(eGPUFrameBufferBits flags);
 
 #ifdef __cplusplus

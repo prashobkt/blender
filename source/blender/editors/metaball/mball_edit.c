@@ -15,8 +15,6 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
-
  */
 
 /** \file
@@ -29,22 +27,22 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_kdtree.h"
 #include "BLI_math.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
-#include "BLI_kdtree.h"
 
 #include "DNA_defs.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_define.h"
 #include "RNA_access.h"
+#include "RNA_define.h"
 
 #include "BKE_context.h"
-#include "BKE_mball.h"
 #include "BKE_layer.h"
+#include "BKE_mball.h"
 #include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
@@ -458,7 +456,7 @@ static int select_random_metaelems_exec(bContext *C, wmOperator *op)
 
     RNG *rng = BLI_rng_new_srandom(seed_iter);
 
-    for (MetaElem *ml = mb->editelems->first; ml; ml = ml->next) {
+    LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {
       if (BLI_rng_get_float(rng) < randfac) {
         if (select) {
           ml->flag |= SELECT;
@@ -658,7 +656,7 @@ static int reveal_metaelems_exec(bContext *C, wmOperator *op)
   const bool select = RNA_boolean_get(op->ptr, "select");
   bool changed = false;
 
-  for (MetaElem *ml = mb->editelems->first; ml; ml = ml->next) {
+  LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {
     if (ml->flag & MB_HIDE) {
       SET_FLAG_FROM_TEST(ml->flag, select, SELECT);
       ml->flag &= ~MB_HIDE;
@@ -695,13 +693,14 @@ void MBALL_OT_reveal_metaelems(wmOperatorType *ot)
  * stiffness circle) */
 bool ED_mball_select_pick(bContext *C, const int mval[2], bool extend, bool deselect, bool toggle)
 {
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   static MetaElem *startelem = NULL;
   ViewContext vc;
   int a, hits;
-  unsigned int buffer[MAXPICKBUF];
+  uint buffer[MAXPICKBUF];
   rcti rect;
 
-  ED_view3d_viewcontext_init(C, &vc);
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
   BLI_rcti_init_pt_radius(&rect, mval, 12);
 
@@ -740,7 +739,7 @@ bool ED_mball_select_pick(bContext *C, const int mval[2], bool extend, bool dese
           }
 
           const uint hit_object = hitresult & 0xFFFF;
-          if (vc.obedit->select_id != hit_object) {
+          if (vc.obedit->runtime.select_id != hit_object) {
             continue;
           }
 
@@ -837,8 +836,9 @@ bool ED_mball_select_pick(bContext *C, const int mval[2], bool extend, bool dese
 
 bool ED_mball_deselect_all_multi(bContext *C)
 {
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc);
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
   uint bases_len = 0;
   Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
       vc.view_layer, vc.v3d, &bases_len);

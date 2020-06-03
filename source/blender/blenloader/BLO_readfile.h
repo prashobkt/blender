@@ -19,6 +19,8 @@
 #ifndef __BLO_READFILE_H__
 #define __BLO_READFILE_H__
 
+#include "BLI_sys_types.h"
+
 /** \file
  * \ingroup blenloader
  * \brief external readfile function prototypes.
@@ -40,7 +42,7 @@ struct Scene;
 struct UserDef;
 struct View3D;
 struct ViewLayer;
-struct bContext;
+struct WorkSpace;
 struct bScreen;
 struct wmWindowManager;
 
@@ -48,8 +50,8 @@ typedef struct BlendHandle BlendHandle;
 
 typedef enum eBlenFileType {
   BLENFILETYPE_BLEND = 1,
-  BLENFILETYPE_PUB = 2,
-  BLENFILETYPE_RUNTIME = 3,
+  /* BLENFILETYPE_PUB = 2, */     /* UNUSED */
+  /* BLENFILETYPE_RUNTIME = 3, */ /* UNUSED */
 } eBlenFileType;
 
 typedef struct BlendFileData {
@@ -74,8 +76,11 @@ typedef struct WorkspaceConfigFileData {
 } WorkspaceConfigFileData;
 
 struct BlendFileReadParams {
-  uint skip_flags : 2; /* eBLOReadSkip */
+  uint skip_flags : 3; /* eBLOReadSkip */
   uint is_startup : 1;
+
+  /** Whether we are reading the memfile for an undo (< 0) or a redo (> 0). */
+  int undo_direction : 2;
 };
 
 /* skip reading some data-block types (may want to skip screen data too). */
@@ -83,6 +88,8 @@ typedef enum eBLOReadSkip {
   BLO_READ_SKIP_NONE = 0,
   BLO_READ_SKIP_USERDEF = (1 << 0),
   BLO_READ_SKIP_DATA = (1 << 1),
+  /** Do not attempt to re-use IDs from old bmain for unchanged ones in case of undo. */
+  BLO_READ_SKIP_UNDO_OLD_MAIN = (1 << 2),
 } eBLOReadSkip;
 #define BLO_READ_SKIP_ALL (BLO_READ_SKIP_USERDEF | BLO_READ_SKIP_DATA)
 
@@ -96,7 +103,7 @@ BlendFileData *BLO_read_from_memory(const void *mem,
 BlendFileData *BLO_read_from_memfile(struct Main *oldmain,
                                      const char *filename,
                                      struct MemFile *memfile,
-                                     eBLOReadSkip skip_flags,
+                                     const struct BlendFileReadParams *params,
                                      struct ReportList *reports);
 
 void BLO_blendfiledata_free(BlendFileData *bfd);
@@ -145,9 +152,7 @@ void BLO_library_link_end(struct Main *mainl,
                           struct ViewLayer *view_layer,
                           const struct View3D *v3d);
 
-int BLO_library_link_copypaste(struct Main *mainl,
-                               BlendHandle *bh,
-                               const unsigned int id_types_mask);
+int BLO_library_link_copypaste(struct Main *mainl, BlendHandle *bh, const uint64_t id_types_mask);
 
 void *BLO_library_read_struct(struct FileData *fd, struct BHead *bh, const char *blockname);
 
@@ -164,8 +169,8 @@ void BLO_main_expander(BLOExpandDoitCallback expand_doit_func);
 void BLO_expand_main(void *fdhandle, struct Main *mainvar);
 
 /* Update defaults in startup.blend & userprefs.blend, without having to save and embed it */
-void BLO_update_defaults_userpref_blend(void);
 void BLO_update_defaults_startup_blend(struct Main *mainvar, const char *app_template);
+void BLO_update_defaults_workspace(struct WorkSpace *workspace, const char *app_template);
 
 /* Version patch user preferences. */
 void BLO_version_defaults_userpref_blend(struct Main *mainvar, struct UserDef *userdef);
@@ -174,6 +179,7 @@ struct BlendThumbnail *BLO_thumbnail_from_file(const char *filepath);
 
 /* datafiles (generated theme) */
 extern const struct bTheme U_theme_default;
+extern const struct UserDef U_default;
 
 #ifdef __cplusplus
 }

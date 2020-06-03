@@ -21,8 +21,8 @@
  * \ingroup edobj
  */
 
-#include <stdlib.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -37,9 +37,9 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "ED_object.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
-#include "ED_object.h"
 
 #include "DEG_depsgraph.h"
 
@@ -59,7 +59,7 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_origin_set);
 
   WM_operatortype_append(OBJECT_OT_mode_set);
-  WM_operatortype_append(OBJECT_OT_mode_set_or_submode);
+  WM_operatortype_append(OBJECT_OT_mode_set_with_submode);
   WM_operatortype_append(OBJECT_OT_editmode_toggle);
   WM_operatortype_append(OBJECT_OT_posemode_toggle);
   WM_operatortype_append(OBJECT_OT_proxy_make);
@@ -78,7 +78,7 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_track_set);
   WM_operatortype_append(OBJECT_OT_track_clear);
   WM_operatortype_append(OBJECT_OT_make_local);
-  WM_operatortype_append(OBJECT_OT_make_override_static);
+  WM_operatortype_append(OBJECT_OT_make_override_library);
   WM_operatortype_append(OBJECT_OT_make_single_user);
   WM_operatortype_append(OBJECT_OT_make_links_scene);
   WM_operatortype_append(OBJECT_OT_make_links_data);
@@ -109,6 +109,12 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_light_add);
   WM_operatortype_append(OBJECT_OT_camera_add);
   WM_operatortype_append(OBJECT_OT_speaker_add);
+#ifdef WITH_NEW_OBJECT_TYPES
+  WM_operatortype_append(OBJECT_OT_hair_add);
+  WM_operatortype_append(OBJECT_OT_pointcloud_add);
+#endif
+  WM_operatortype_append(OBJECT_OT_volume_add);
+  WM_operatortype_append(OBJECT_OT_volume_import);
   WM_operatortype_append(OBJECT_OT_add);
   WM_operatortype_append(OBJECT_OT_add_named);
   WM_operatortype_append(OBJECT_OT_effector_add);
@@ -131,6 +137,8 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_multires_reshape);
   WM_operatortype_append(OBJECT_OT_multires_higher_levels_delete);
   WM_operatortype_append(OBJECT_OT_multires_base_apply);
+  WM_operatortype_append(OBJECT_OT_multires_unsubdivide);
+  WM_operatortype_append(OBJECT_OT_multires_rebuild_subdiv);
   WM_operatortype_append(OBJECT_OT_multires_external_save);
   WM_operatortype_append(OBJECT_OT_multires_external_pack);
   WM_operatortype_append(OBJECT_OT_skin_root_mark);
@@ -257,6 +265,11 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_hide_view_clear);
   WM_operatortype_append(OBJECT_OT_hide_view_set);
   WM_operatortype_append(OBJECT_OT_hide_collection);
+
+  WM_operatortype_append(OBJECT_OT_voxel_remesh);
+  WM_operatortype_append(OBJECT_OT_voxel_size_edit);
+
+  WM_operatortype_append(OBJECT_OT_quadriflow_remesh);
 }
 
 void ED_operatormacros_object(void)
@@ -271,7 +284,7 @@ void ED_operatormacros_object(void)
   if (ot) {
     WM_operatortype_macro_define(ot, "OBJECT_OT_duplicate");
     otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
-    RNA_enum_set(otmacro->ptr, "proportional", PROP_EDIT_OFF);
+    RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
   }
 
   /* grr, should be able to pass options on... */
@@ -283,7 +296,7 @@ void ED_operatormacros_object(void)
     otmacro = WM_operatortype_macro_define(ot, "OBJECT_OT_duplicate");
     RNA_boolean_set(otmacro->ptr, "linked", true);
     otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
-    RNA_enum_set(otmacro->ptr, "proportional", PROP_EDIT_OFF);
+    RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
   }
 }
 

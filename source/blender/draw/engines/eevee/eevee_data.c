@@ -24,8 +24,10 @@
 
 #include "DRW_render.h"
 
-#include "eevee_private.h"
+#include "BLI_memblock.h"
+
 #include "eevee_lightcache.h"
+#include "eevee_private.h"
 
 void EEVEE_view_layer_data_free(void *storage)
 {
@@ -35,21 +37,13 @@ void EEVEE_view_layer_data_free(void *storage)
   MEM_SAFE_FREE(sldata->lights);
   DRW_UBO_FREE_SAFE(sldata->light_ubo);
   DRW_UBO_FREE_SAFE(sldata->shadow_ubo);
-  DRW_UBO_FREE_SAFE(sldata->shadow_render_ubo);
-  GPU_FRAMEBUFFER_FREE_SAFE(sldata->shadow_cube_target_fb);
-  GPU_FRAMEBUFFER_FREE_SAFE(sldata->shadow_cube_store_fb);
-  GPU_FRAMEBUFFER_FREE_SAFE(sldata->shadow_cascade_target_fb);
-  GPU_FRAMEBUFFER_FREE_SAFE(sldata->shadow_cascade_store_fb);
-  DRW_TEXTURE_FREE_SAFE(sldata->shadow_cube_target);
-  DRW_TEXTURE_FREE_SAFE(sldata->shadow_cube_blur);
+  GPU_FRAMEBUFFER_FREE_SAFE(sldata->shadow_fb);
   DRW_TEXTURE_FREE_SAFE(sldata->shadow_cube_pool);
-  DRW_TEXTURE_FREE_SAFE(sldata->shadow_cascade_target);
-  DRW_TEXTURE_FREE_SAFE(sldata->shadow_cascade_blur);
   DRW_TEXTURE_FREE_SAFE(sldata->shadow_cascade_pool);
-  MEM_SAFE_FREE(sldata->shcasters_buffers[0].shadow_casters);
-  MEM_SAFE_FREE(sldata->shcasters_buffers[0].flags);
-  MEM_SAFE_FREE(sldata->shcasters_buffers[1].shadow_casters);
-  MEM_SAFE_FREE(sldata->shcasters_buffers[1].flags);
+  for (int i = 0; i < 2; i++) {
+    MEM_SAFE_FREE(sldata->shcasters_buffers[i].bbox);
+    MEM_SAFE_FREE(sldata->shcasters_buffers[i].update);
+  }
 
   if (sldata->fallback_lightcache) {
     EEVEE_lightcache_free(sldata->fallback_lightcache);
@@ -62,7 +56,18 @@ void EEVEE_view_layer_data_free(void *storage)
   DRW_UBO_FREE_SAFE(sldata->grid_ubo);
   DRW_UBO_FREE_SAFE(sldata->planar_ubo);
   DRW_UBO_FREE_SAFE(sldata->common_ubo);
-  DRW_UBO_FREE_SAFE(sldata->clip_ubo);
+
+  DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.combined);
+  DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.diff_color);
+  DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.diff_light);
+  DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.spec_color);
+  DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.spec_light);
+  DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.emit);
+
+  if (sldata->material_cache) {
+    BLI_memblock_destroy(sldata->material_cache, NULL);
+    sldata->material_cache = NULL;
+  }
 }
 
 EEVEE_ViewLayerData *EEVEE_view_layer_data_get(void)
@@ -152,7 +157,6 @@ static void eevee_light_data_init(DrawData *dd)
 {
   EEVEE_LightEngineData *led = (EEVEE_LightEngineData *)dd;
   led->need_update = true;
-  led->prev_cube_shadow_id = -1;
 }
 
 EEVEE_LightEngineData *EEVEE_light_data_get(Object *ob)

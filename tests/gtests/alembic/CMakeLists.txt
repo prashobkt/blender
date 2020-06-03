@@ -23,7 +23,7 @@ set(INC
   ..
   ../../../source/blender/blenlib
   ../../../source/blender/blenkernel
-  ../../../source/blender/alembic
+  ../../../source/blender/io/alembic
   ../../../source/blender/makesdna
   ../../../source/blender/depsgraph
   ${ALEMBIC_INCLUDE_DIRS}
@@ -34,7 +34,12 @@ set(INC
 
 set(LIB
   bf_blenloader  # Should not be needed but gives linking error without it.
+  bf_intern_opencolorio # Should not be needed but gives windows linker errors if the ocio libs are linked before this
+  bf_gpu # Should not be needed but gives windows linker errors if the ocio libs are linked before this
   bf_alembic
+
+  ${OPENEXR_LIBRARIES}
+  ${BOOST_LIBRARIES}
 )
 
 include_directories(${INC})

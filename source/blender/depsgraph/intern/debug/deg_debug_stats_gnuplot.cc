@@ -32,9 +32,7 @@
 #include "intern/depsgraph.h"
 #include "intern/node/deg_node_id.h"
 
-extern "C" {
 #include "DNA_ID.h"
-} /* extern "C" */
 
 #define NL "\r\n"
 
@@ -85,7 +83,7 @@ string gnuplotify_name(const string &name)
 {
   string result = "";
   const int length = name.length();
-  for (int i = 0; i < length; ++i) {
+  for (int i = 0; i < length; i++) {
     const char ch = name[i];
     if (ch == '_') {
       result += "\\\\\\";
@@ -156,7 +154,7 @@ void DEG_debug_stats_gnuplot(const Depsgraph *depsgraph,
                              const char *label,
                              const char *output_filename)
 {
-  if (depsgraph == NULL) {
+  if (depsgraph == nullptr) {
     return;
   }
   DEG::DebugContext ctx;

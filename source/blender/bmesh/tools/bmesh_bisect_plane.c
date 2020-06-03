@@ -31,12 +31,12 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
-#include "BLI_utildefines_stack.h"
 #include "BLI_alloca.h"
 #include "BLI_linklist.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
+#include "BLI_utildefines_stack.h"
 
 #include "bmesh.h"
 #include "bmesh_bisect_plane.h" /* own include */
@@ -456,8 +456,7 @@ void BM_mesh_bisect_plane(BMesh *bm,
       /* check if either edge verts are aligned,
        * if so - tag and push all faces that use it into the stack */
       uint j;
-      BM_ITER_ELEM_INDEX(v, &iter, e, BM_VERTS_OF_EDGE, j)
-      {
+      BM_ITER_ELEM_INDEX (v, &iter, e, BM_VERTS_OF_EDGE, j) {
         if (side[j] == 0) {
           if (vert_is_center_test(v) == 0) {
             BMIter itersub;

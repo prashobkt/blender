@@ -27,13 +27,14 @@
 #include "util/util_list.h"
 #include "util/util_stats.h"
 #include "util/util_string.h"
-#include "util/util_thread.h"
 #include "util/util_texture.h"
+#include "util/util_thread.h"
 #include "util/util_types.h"
 #include "util/util_vector.h"
 
 CCL_NAMESPACE_BEGIN
 
+class BVH;
 class Progress;
 class RenderTile;
 
@@ -45,13 +46,15 @@ enum DeviceType {
   DEVICE_OPENCL,
   DEVICE_CUDA,
   DEVICE_NETWORK,
-  DEVICE_MULTI
+  DEVICE_MULTI,
+  DEVICE_OPTIX,
 };
 
 enum DeviceTypeMask {
   DEVICE_MASK_CPU = (1 << DEVICE_CPU),
   DEVICE_MASK_OPENCL = (1 << DEVICE_OPENCL),
   DEVICE_MASK_CUDA = (1 << DEVICE_CUDA),
+  DEVICE_MASK_OPTIX = (1 << DEVICE_OPTIX),
   DEVICE_MASK_NETWORK = (1 << DEVICE_NETWORK),
   DEVICE_MASK_ALL = ~0
 };
@@ -72,14 +75,16 @@ class DeviceInfo {
   string description;
   string id; /* used for user preferences, should stay fixed with changing hardware config */
   int num;
-  bool display_device;       /* GPU is used as a display device. */
-  bool has_half_images;      /* Support half-float textures. */
-  bool has_volume_decoupled; /* Decoupled volume shading. */
-  bool has_osl;              /* Support Open Shading Language. */
-  bool use_split_kernel;     /* Use split or mega kernel. */
-  bool has_profiling;        /* Supports runtime collection of profiling info. */
+  bool display_device;               /* GPU is used as a display device. */
+  bool has_half_images;              /* Support half-float textures. */
+  bool has_volume_decoupled;         /* Decoupled volume shading. */
+  bool has_adaptive_stop_per_sample; /* Per-sample adaptive sampling stopping. */
+  bool has_osl;                      /* Support Open Shading Language. */
+  bool use_split_kernel;             /* Use split or mega kernel. */
+  bool has_profiling;                /* Supports runtime collection of profiling info. */
   int cpu_threads;
   vector<DeviceInfo> multi_devices;
+  vector<DeviceInfo> denoising_devices;
 
   DeviceInfo()
   {
@@ -90,6 +95,7 @@ class DeviceInfo {
     display_device = false;
     has_half_images = false;
     has_volume_decoupled = false;
+    has_adaptive_stop_per_sample = false;
     has_osl = false;
     use_split_kernel = false;
     has_profiling = false;
@@ -380,7 +386,11 @@ class Device {
   }
 
   /* tasks */
-  virtual int get_split_task_count(DeviceTask &task) = 0;
+  virtual int get_split_task_count(DeviceTask &)
+  {
+    return 1;
+  }
+
   virtual void task_add(DeviceTask &task) = 0;
   virtual void task_wait() = 0;
   virtual void task_cancel() = 0;
@@ -398,6 +408,12 @@ class Device {
                            int dh,
                            bool transparent,
                            const DeviceDrawParams &draw_params);
+
+  /* acceleration structure building */
+  virtual bool build_optix_bvh(BVH *)
+  {
+    return false;
+  }
 
 #ifdef WITH_NETWORK
   /* networking */
@@ -456,6 +472,7 @@ class Device {
   static bool need_types_update, need_devices_update;
   static thread_mutex device_mutex;
   static vector<DeviceInfo> cuda_devices;
+  static vector<DeviceInfo> optix_devices;
   static vector<DeviceInfo> opencl_devices;
   static vector<DeviceInfo> cpu_devices;
   static vector<DeviceInfo> network_devices;

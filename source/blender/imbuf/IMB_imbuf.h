@@ -46,8 +46,7 @@
  *
  * IMB needs:
  * - \ref DNA module
- *     The listbase types are used for handling the memory
- *     management.
+ *     The #ListBase types are used for handling the memory management.
  * - \ref blenlib module
  *     blenlib handles guarded memory management in blender-style.
  *     BLI_winstuff.h makes a few windows specific behaviors
@@ -57,16 +56,21 @@
 #ifndef __IMB_IMBUF_H__
 #define __IMB_IMBUF_H__
 
-#define IM_MAX_SPACE 64
-
 /* for bool */
 #include "../blenlib/BLI_sys_types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define IM_MAX_SPACE 64
 
 /**
  *
  * \attention defined in ???
  */
 struct ImBuf;
+struct rcti;
 
 /**
  *
@@ -145,7 +149,8 @@ bool IMB_initImBuf(
 struct ImBuf *IMB_allocFromBuffer(const unsigned int *rect,
                                   const float *rectf,
                                   unsigned int w,
-                                  unsigned int h);
+                                  unsigned int h,
+                                  unsigned int channels);
 
 /**
  *
@@ -171,6 +176,13 @@ struct ImBuf *IMB_dupImBuf(const struct ImBuf *ibuf1);
  */
 bool addzbufImBuf(struct ImBuf *ibuf);
 bool addzbuffloatImBuf(struct ImBuf *ibuf);
+
+/**
+ * Approximate size of ImBuf in memory
+ *
+ * \attention Defined in allocimbuf.c
+ */
+size_t IMB_get_size_in_memory(struct ImBuf *ibuf);
 
 /**
  *
@@ -210,13 +222,20 @@ typedef enum IMB_BlendMode {
 } IMB_BlendMode;
 
 void IMB_blend_color_byte(unsigned char dst[4],
-                          unsigned char src1[4],
-                          unsigned char src2[4],
+                          const unsigned char src1[4],
+                          const unsigned char src2[4],
                           IMB_BlendMode mode);
-void IMB_blend_color_float(float dst[4], float src1[4], float src2[4], IMB_BlendMode mode);
+void IMB_blend_color_float(float dst[4],
+                           const float src1[4],
+                           const float src2[4],
+                           IMB_BlendMode mode);
+
+void IMB_rect_crop(struct ImBuf *ibuf, const struct rcti *crop);
+
+void IMB_rect_size_set(struct ImBuf *ibuf, const uint size[2]);
 
 void IMB_rectclip(struct ImBuf *dbuf,
-                  struct ImBuf *sbuf,
+                  const struct ImBuf *sbuf,
                   int *destx,
                   int *desty,
                   int *srcx,
@@ -224,7 +243,7 @@ void IMB_rectclip(struct ImBuf *dbuf,
                   int *width,
                   int *height);
 void IMB_rectcpy(struct ImBuf *drect,
-                 struct ImBuf *srect,
+                 const struct ImBuf *srect,
                  int destx,
                  int desty,
                  int srcx,
@@ -232,11 +251,11 @@ void IMB_rectcpy(struct ImBuf *drect,
                  int width,
                  int height);
 void IMB_rectblend(struct ImBuf *dbuf,
-                   struct ImBuf *obuf,
-                   struct ImBuf *sbuf,
+                   const struct ImBuf *obuf,
+                   const struct ImBuf *sbuf,
                    unsigned short *dmask,
-                   unsigned short *curvemask,
-                   unsigned short *mmask,
+                   const unsigned short *curvemask,
+                   const unsigned short *mmask,
                    float mask_max,
                    int destx,
                    int desty,
@@ -249,11 +268,11 @@ void IMB_rectblend(struct ImBuf *dbuf,
                    IMB_BlendMode mode,
                    bool accumulate);
 void IMB_rectblend_threaded(struct ImBuf *dbuf,
-                            struct ImBuf *obuf,
-                            struct ImBuf *sbuf,
+                            const struct ImBuf *obuf,
+                            const struct ImBuf *sbuf,
                             unsigned short *dmask,
-                            unsigned short *curvemask,
-                            unsigned short *mmask,
+                            const unsigned short *curvemask,
+                            const unsigned short *mmask,
                             float mask_max,
                             int destx,
                             int desty,
@@ -272,18 +291,20 @@ void IMB_rectblend_threaded(struct ImBuf *dbuf,
  */
 
 typedef enum IMB_Timecode_Type {
-  IMB_TC_NONE = 0, /* don't use timecode files at all */
-
-  IMB_TC_RECORD_RUN = 1, /* use images in the order as they are recorded
-                          * (currently, this is the only one implemented
-                          * and is a sane default) */
-
-  IMB_TC_FREE_RUN = 2,                       /* use global timestamp written by recording
-                          * device (prosumer camcorders e.g. can do that) */
-  IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN = 4, /* interpolate a global timestamp using the
-                                              * record date and time written by recording
-                                              * device (*every* consumer camcorder can do
-                                              * that :) )*/
+  /** Don't use timecode files at all. */
+  IMB_TC_NONE = 0,
+  /** use images in the order as they are recorded
+   * (currently, this is the only one implemented
+   * and is a sane default) */
+  IMB_TC_RECORD_RUN = 1,
+  /** Use global timestamp written by recording
+   * device (prosumer camcorders e.g. can do that). */
+  IMB_TC_FREE_RUN = 2,
+  /** Interpolate a global timestamp using the
+   * record date and time written by recording
+   * device (*every* consumer camcorder can do
+   * that :) )*/
+  IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN = 4,
   IMB_TC_RECORD_RUN_NO_GAPS = 8,
   IMB_TC_MAX_SLOT = 4,
 } IMB_Timecode_Type;
@@ -312,7 +333,7 @@ struct IndexBuildContext *IMB_anim_index_rebuild_context(struct anim *anim,
                                                          IMB_Timecode_Type tcs_in_use,
                                                          IMB_Proxy_Size proxy_sizes_in_use,
                                                          int quality,
-                                                         const bool overwite,
+                                                         const bool overwrite,
                                                          struct GSet *file_list);
 
 /* will rebuild all used indices and proxies at once */
@@ -465,14 +486,13 @@ int imb_get_anim_type(const char *name);
  *
  * \attention Defined in util.c
  */
-bool IMB_isfloat(struct ImBuf *ibuf);
+bool IMB_isfloat(const struct ImBuf *ibuf);
+
+/* Do byte/float and colorspace conversions need to take alpha into account? */
+bool IMB_alpha_affects_rgb(const struct ImBuf *ibuf);
 
 /* create char buffer, color corrected if necessary, for ImBufs that lack one */
 void IMB_rect_from_float(struct ImBuf *ibuf);
-/* Create char buffer for part of the image, color corrected if necessary,
- * Changed part will be stored in buffer. This is expected to be used for texture painting updates */
-void IMB_partial_rect_from_float(
-    struct ImBuf *ibuf, float *buffer, int x, int y, int w, int h, bool is_data);
 void IMB_float_from_rect(struct ImBuf *ibuf);
 void IMB_color_to_bw(struct ImBuf *ibuf);
 void IMB_saturation(struct ImBuf *ibuf, float sat);
@@ -545,7 +565,6 @@ void IMB_buffer_byte_from_byte(unsigned char *rect_to,
                                int height,
                                int stride_to,
                                int stride_from);
-void IMB_buffer_float_clamp(float *buf, int width, int height);
 void IMB_buffer_float_unpremultiply(float *buf, int width, int height);
 void IMB_buffer_float_premultiply(float *buf, int width, int height);
 
@@ -581,6 +600,9 @@ void bilinear_interpolation_color_wrap(
 
 void IMB_alpha_under_color_float(float *rect_float, int x, int y, float backcol[3]);
 void IMB_alpha_under_color_byte(unsigned char *rect, int x, int y, float backcol[3]);
+
+void IMB_sampleImageAtLocation(
+    struct ImBuf *ibuf, float x, float y, bool make_linear_rgb, float color[4]);
 
 /**
  *
@@ -658,7 +680,8 @@ void IMB_rectfill_area(struct ImBuf *ibuf,
                        struct ColorManagedDisplay *display);
 void IMB_rectfill_alpha(struct ImBuf *ibuf, const float value);
 
-/* this should not be here, really, we needed it for operating on render data, IMB_rectfill_area calls it */
+/* This should not be here, really,
+ * we needed it for operating on render data, IMB_rectfill_area calls it. */
 void buf_rectfill_area(unsigned char *rect,
                        float *rectf,
                        int width,
@@ -683,6 +706,8 @@ void imb_freemipmapImBuf(struct ImBuf *ibuf);
 
 bool imb_addtilesImBuf(struct ImBuf *ibuf);
 void imb_freetilesImBuf(struct ImBuf *ibuf);
+
+void imb_freerectImbuf_all(struct ImBuf *ibuf);
 
 /* threaded processors */
 void IMB_processor_apply_threaded(
@@ -736,5 +761,9 @@ void IMB_ImBufFromStereo3d(struct Stereo3dFormat *s3d,
                            struct ImBuf *ibuf_stereo,
                            struct ImBuf **r_ibuf_left,
                            struct ImBuf **r_ibuf_right);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

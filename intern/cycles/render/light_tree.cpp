@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "render/light.h"
 #include "render/light_tree.h"
+#include "render/light.h"
 #include "render/mesh.h"
 #include "render/object.h"
 
@@ -141,8 +141,8 @@ BoundBox LightTree::compute_bbox(const Primitive &prim)
   if (prim.prim_id >= 0) {
     /* extract bounding box from emissive triangle */
     const Object *object = scene->objects[prim.object_id];
-    const Mesh *mesh = object->mesh;
-    const int triangle_id = prim.prim_id - mesh->tri_offset;
+    const Mesh *mesh = (Mesh *)object->geometry;
+    const int triangle_id = prim.prim_id - mesh->prim_offset;
     const Mesh::Triangle triangle = mesh->get_triangle(triangle_id);
 
     float3 p0 = mesh->verts[triangle.v[0]];
@@ -200,8 +200,8 @@ Orientation LightTree::compute_bcone(const Primitive &prim)
   if (prim.prim_id >= 0) {
     /* extract bounding cone from emissive triangle */
     const Object *object = scene->objects[prim.object_id];
-    const Mesh *mesh = object->mesh;
-    const int triangle_id = prim.prim_id - mesh->tri_offset;
+    const Mesh *mesh = (Mesh *)object->geometry;
+    const int triangle_id = prim.prim_id - mesh->prim_offset;
     const Mesh::Triangle triangle = mesh->get_triangle(triangle_id);
 
     float3 p0 = mesh->verts[triangle.v[0]];
@@ -254,8 +254,8 @@ float LightTree::compute_energy(const Primitive &prim)
   if (prim.prim_id >= 0) {
     /* extract shader from emissive triangle */
     const Object *object = scene->objects[prim.object_id];
-    const Mesh *mesh = object->mesh;
-    const int triangle_id = prim.prim_id - mesh->tri_offset;
+    const Mesh *mesh = (Mesh *)object->geometry;
+    const int triangle_id = prim.prim_id - mesh->prim_offset;
 
     int shader_index = mesh->shader[triangle_id];
     shader = mesh->used_shaders.at(shader_index);

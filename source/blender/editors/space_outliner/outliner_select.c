@@ -27,16 +27,16 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_world_types.h"
-#include "DNA_gpencil_types.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_listbase.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_armature.h"
 #include "BKE_collection.h"
@@ -51,14 +51,16 @@
 #include "BKE_workspace.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_build.h"
 
 #include "ED_armature.h"
+#include "ED_gpencil.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
 #include "ED_sequencer.h"
 #include "ED_undo.h"
-#include "ED_gpencil.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -113,7 +115,7 @@ static void do_outliner_activate_obdata(
     bContext *C, Scene *scene, ViewLayer *view_layer, Base *base, const bool extend)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = OBACT(view_layer);
   Object *ob = base->object;
   bool use_all = false;
@@ -161,7 +163,7 @@ static void do_outliner_activate_pose(
     bContext *C, Scene *scene, ViewLayer *view_layer, Base *base, const bool extend)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = OBACT(view_layer);
   Object *ob = base->object;
   bool use_all = false;
@@ -251,9 +253,7 @@ static eOLDrawState active_viewlayer(bContext *C,
 }
 
 /**
- * Select object tree:
- * CTRL+LMB: Select/Deselect object and all children.
- * CTRL+SHIFT+LMB: Add/Remove object and all children.
+ * Select object tree
  */
 static void do_outliner_object_select_recursive(ViewLayer *view_layer,
                                                 Object *ob_parent,
@@ -263,7 +263,8 @@ static void do_outliner_object_select_recursive(ViewLayer *view_layer,
 
   for (base = FIRSTBASE(view_layer); base; base = base->next) {
     Object *ob = base->object;
-    if ((((base->flag & BASE_VISIBLE) != 0) && BKE_object_is_child_recursive(ob_parent, ob))) {
+    if ((((base->flag & BASE_VISIBLE_DEPSGRAPH) != 0) &&
+         BKE_object_is_child_recursive(ob_parent, ob))) {
       ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
     }
   }
@@ -307,17 +308,21 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
                                                    bool recursive)
 {
   TreeStoreElem *tselem = TREESTORE(te);
+  TreeStoreElem *parent_tselem = NULL;
   Scene *sce;
   Base *base;
   Object *ob = NULL;
+  TreeElement *te_ob = NULL;
 
   /* if id is not object, we search back */
   if (te->idcode == ID_OB) {
     ob = (Object *)tselem->id;
   }
   else {
-    ob = (Object *)outliner_search_back(soops, te, ID_OB);
-    if (ob == OBACT(view_layer)) {
+    ob = (Object *)outliner_search_back(te, ID_OB);
+
+    /* Don't return when activating children of the previous active object. */
+    if (ob == OBACT(view_layer) && set == OL_SETSEL_NONE) {
       return OL_DRAWSEL_NONE;
     }
   }
@@ -325,7 +330,7 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
     return OL_DRAWSEL_NONE;
   }
 
-  sce = (Scene *)outliner_search_back(soops, te, ID_SCE);
+  sce = (Scene *)outliner_search_back(te, ID_SCE);
   if (sce && scene != sce) {
     WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), sce);
     scene = sce;
@@ -341,7 +346,7 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
       if (base && !BKE_object_is_mode_compat(base->object, object_mode)) {
         if (object_mode == OB_MODE_OBJECT) {
           struct Main *bmain = CTX_data_main(C);
-          Depsgraph *depsgraph = CTX_data_depsgraph(C);
+          Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
           ED_object_mode_generic_exit(bmain, depsgraph, scene, base->object);
         }
         if (!BKE_object_is_mode_compat(base->object, object_mode)) {
@@ -351,14 +356,25 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
     }
   }
 
+  te_ob = outliner_find_id(soops, &soops->tree, (ID *)ob);
+  if (te_ob != NULL && te_ob != te) {
+    parent_tselem = TREESTORE(te_ob);
+  }
+
   if (base) {
     if (set == OL_SETSEL_EXTEND) {
       /* swap select */
       if (base->flag & BASE_SELECTED) {
         ED_object_base_select(base, BA_DESELECT);
+        if (parent_tselem) {
+          parent_tselem->flag &= ~TSE_SELECTED;
+        }
       }
       else {
         ED_object_base_select(base, BA_SELECT);
+        if (parent_tselem) {
+          parent_tselem->flag |= TSE_SELECTED;
+        }
       }
     }
     else {
@@ -374,6 +390,9 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
         BKE_view_layer_base_deselect_all(view_layer);
       }
       ED_object_base_select(base, BA_SELECT);
+      if (parent_tselem) {
+        parent_tselem->flag |= TSE_SELECTED;
+      }
     }
 
     if (recursive) {
@@ -397,7 +416,6 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
 static eOLDrawState tree_element_active_material(bContext *C,
                                                  Scene *UNUSED(scene),
                                                  ViewLayer *view_layer,
-                                                 SpaceOutliner *soops,
                                                  TreeElement *te,
                                                  const eOLSetState set)
 {
@@ -405,7 +423,7 @@ static eOLDrawState tree_element_active_material(bContext *C,
   Object *ob;
 
   /* we search for the object parent */
-  ob = (Object *)outliner_search_back(soops, te, ID_OB);
+  ob = (Object *)outliner_search_back(te, ID_OB);
   // note: ob->matbits can be NULL when a local object points to a library mesh.
   if (ob == NULL || ob != OBACT(view_layer) || ob->matbits == NULL) {
     return OL_DRAWSEL_NONE; /* just paranoia */
@@ -450,46 +468,30 @@ static eOLDrawState tree_element_active_material(bContext *C,
   return OL_DRAWSEL_NONE;
 }
 
-static eOLDrawState tree_element_active_light(bContext *UNUSED(C),
-                                              Scene *UNUSED(scene),
-                                              ViewLayer *view_layer,
-                                              SpaceOutliner *soops,
-                                              TreeElement *te,
-                                              const eOLSetState set)
-{
-  Object *ob;
-
-  /* we search for the object parent */
-  ob = (Object *)outliner_search_back(soops, te, ID_OB);
-  if (ob == NULL || ob != OBACT(view_layer)) {
-    /* just paranoia */
-    return OL_DRAWSEL_NONE;
-  }
-
-  if (set != OL_SETSEL_NONE) {
-    // XXX      extern_set_butspace(F5KEY, 0);
-  }
-  else {
-    return OL_DRAWSEL_NORMAL;
-  }
-
-  return OL_DRAWSEL_NONE;
-}
-
-static eOLDrawState tree_element_active_camera(bContext *UNUSED(C),
+static eOLDrawState tree_element_active_camera(bContext *C,
                                                Scene *scene,
-                                               ViewLayer *UNUSED(sl),
-                                               SpaceOutliner *soops,
+                                               ViewLayer *UNUSED(view_layer),
                                                TreeElement *te,
                                                const eOLSetState set)
 {
-  Object *ob = (Object *)outliner_search_back(soops, te, ID_OB);
+  Object *ob = (Object *)outliner_search_back(te, ID_OB);
 
   if (set != OL_SETSEL_NONE) {
+    scene->camera = ob;
+
+    Main *bmain = CTX_data_main(C);
+    wmWindowManager *wm = bmain->wm.first;
+
+    WM_windows_scene_data_sync(&wm->windows, scene);
+    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_relations_tag_update(bmain);
+    WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
+
     return OL_DRAWSEL_NONE;
   }
-
-  return scene->camera == ob;
+  else {
+    return scene->camera == ob;
+  }
 }
 
 static eOLDrawState tree_element_active_world(bContext *C,
@@ -547,10 +549,11 @@ static eOLDrawState tree_element_active_defgroup(bContext *C,
     WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, ob);
   }
   else {
-    if (ob == OBACT(view_layer))
+    if (ob == OBACT(view_layer)) {
       if (ob->actdef == te->index + 1) {
         return OL_DRAWSEL_NORMAL;
       }
+    }
   }
   return OL_DRAWSEL_NONE;
 }
@@ -569,7 +572,8 @@ static eOLDrawState tree_element_active_gplayer(bContext *C,
    */
   if (set != OL_SETSEL_NONE) {
     if (gpl) {
-      BKE_gpencil_layer_setactive(gpd, gpl);
+      BKE_gpencil_layer_active_set(gpd, gpl);
+      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
       WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, gpd);
     }
   }
@@ -608,6 +612,7 @@ static eOLDrawState tree_element_active_posegroup(bContext *C,
 static eOLDrawState tree_element_active_posechannel(bContext *C,
                                                     Scene *UNUSED(scene),
                                                     ViewLayer *view_layer,
+                                                    Object *ob_pose,
                                                     TreeElement *te,
                                                     TreeStoreElem *tselem,
                                                     const eOLSetState set,
@@ -623,8 +628,8 @@ static eOLDrawState tree_element_active_posechannel(bContext *C,
       if (set != OL_SETSEL_EXTEND) {
         /* Single select forces all other bones to get unselected. */
         uint objects_len = 0;
-        Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
-            view_layer, NULL, &objects_len, OB_MODE_POSE);
+        Object **objects = BKE_object_pose_array_get_unique(view_layer, NULL, &objects_len);
+
         for (uint object_index = 0; object_index < objects_len; object_index++) {
           Object *ob_iter = BKE_object_pose_armature_get(objects[object_index]);
 
@@ -664,7 +669,7 @@ static eOLDrawState tree_element_active_posechannel(bContext *C,
     }
   }
   else {
-    if (ob == OBACT(view_layer) && ob->pose) {
+    if (ob == ob_pose && ob->pose) {
       if (pchan->bone->flag & BONE_SELECTED) {
         return OL_DRAWSEL_NORMAL;
       }
@@ -1020,31 +1025,30 @@ static eOLDrawState tree_element_active_layer_collection(bContext *C,
 
 /* generic call for ID data check or make/check active in UI */
 eOLDrawState tree_element_active(bContext *C,
-                                 Scene *scene,
-                                 ViewLayer *view_layer,
+                                 const TreeViewContext *tvc,
                                  SpaceOutliner *soops,
                                  TreeElement *te,
                                  const eOLSetState set,
                                  const bool handle_all_types)
 {
   switch (te->idcode) {
-    /* Note: ID_OB only if handle_all_type is true, else objects are handled specially to allow multiple
-     * selection. See do_outliner_item_activate. */
+    /** \note #ID_OB only if handle_all_type is true,
+     * else objects are handled specially to allow multiple selection.
+     * See #do_outliner_item_activate. */
     case ID_OB:
       if (handle_all_types) {
-        return tree_element_set_active_object(C, scene, view_layer, soops, te, set, false);
+        return tree_element_set_active_object(
+            C, tvc->scene, tvc->view_layer, soops, te, set, false);
       }
       break;
     case ID_MA:
-      return tree_element_active_material(C, scene, view_layer, soops, te, set);
+      return tree_element_active_material(C, tvc->scene, tvc->view_layer, te, set);
     case ID_WO:
-      return tree_element_active_world(C, scene, view_layer, soops, te, set);
-    case ID_LA:
-      return tree_element_active_light(C, scene, view_layer, soops, te, set);
+      return tree_element_active_world(C, tvc->scene, tvc->view_layer, soops, te, set);
     case ID_TXT:
-      return tree_element_active_text(C, scene, view_layer, soops, te, set);
+      return tree_element_active_text(C, tvc->scene, tvc->view_layer, soops, te, set);
     case ID_CA:
-      return tree_element_active_camera(C, scene, view_layer, soops, te, set);
+      return tree_element_active_camera(C, tvc->scene, tvc->view_layer, te, set);
   }
   return OL_DRAWSEL_NONE;
 }
@@ -1053,8 +1057,7 @@ eOLDrawState tree_element_active(bContext *C,
  * Generic call for non-id data to make/check active in UI
  */
 eOLDrawState tree_element_type_active(bContext *C,
-                                      Scene *scene,
-                                      ViewLayer *view_layer,
+                                      const TreeViewContext *tvc,
                                       SpaceOutliner *soops,
                                       TreeElement *te,
                                       TreeStoreElem *tselem,
@@ -1063,41 +1066,42 @@ eOLDrawState tree_element_type_active(bContext *C,
 {
   switch (tselem->type) {
     case TSE_DEFGROUP:
-      return tree_element_active_defgroup(C, view_layer, te, tselem, set);
+      return tree_element_active_defgroup(C, tvc->view_layer, te, tselem, set);
     case TSE_BONE:
-      return tree_element_active_bone(C, view_layer, te, tselem, set, recursive);
+      return tree_element_active_bone(C, tvc->view_layer, te, tselem, set, recursive);
     case TSE_EBONE:
-      return tree_element_active_ebone(C, view_layer, te, tselem, set, recursive);
+      return tree_element_active_ebone(C, tvc->view_layer, te, tselem, set, recursive);
     case TSE_MODIFIER:
-      return tree_element_active_modifier(C, scene, view_layer, te, tselem, set);
+      return tree_element_active_modifier(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_LINKED_OB:
       if (set != OL_SETSEL_NONE) {
-        tree_element_set_active_object(C, scene, view_layer, soops, te, set, false);
+        tree_element_set_active_object(C, tvc->scene, tvc->view_layer, soops, te, set, false);
       }
-      else if (tselem->id == (ID *)OBACT(view_layer)) {
+      else if (tselem->id == (ID *)tvc->obact) {
         return OL_DRAWSEL_NORMAL;
       }
       break;
     case TSE_LINKED_PSYS:
-      return tree_element_active_psys(C, scene, te, tselem, set);
+      return tree_element_active_psys(C, tvc->scene, te, tselem, set);
     case TSE_POSE_BASE:
-      return tree_element_active_pose(C, scene, view_layer, te, tselem, set);
+      return tree_element_active_pose(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_POSE_CHANNEL:
-      return tree_element_active_posechannel(C, scene, view_layer, te, tselem, set, recursive);
+      return tree_element_active_posechannel(
+          C, tvc->scene, tvc->view_layer, tvc->ob_pose, te, tselem, set, recursive);
     case TSE_CONSTRAINT:
-      return tree_element_active_constraint(C, scene, view_layer, te, tselem, set);
+      return tree_element_active_constraint(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_R_LAYER:
-      return active_viewlayer(C, scene, view_layer, te, set);
+      return active_viewlayer(C, tvc->scene, tvc->view_layer, te, set);
     case TSE_POSEGRP:
-      return tree_element_active_posegroup(C, scene, view_layer, te, tselem, set);
+      return tree_element_active_posegroup(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_SEQUENCE:
-      return tree_element_active_sequence(C, scene, te, tselem, set);
+      return tree_element_active_sequence(C, tvc->scene, te, tselem, set);
     case TSE_SEQUENCE_DUP:
-      return tree_element_active_sequence_dup(scene, te, tselem, set);
+      return tree_element_active_sequence_dup(tvc->scene, te, tselem, set);
     case TSE_KEYMAP_ITEM:
-      return tree_element_active_keymap_item(C, scene, view_layer, te, tselem, set);
+      return tree_element_active_keymap_item(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_GP_LAYER:
-      return tree_element_active_gplayer(C, scene, te, tselem, set);
+      return tree_element_active_gplayer(C, tvc->scene, te, tselem, set);
       break;
     case TSE_VIEW_COLLECTION_BASE:
       return tree_element_active_master_collection(C, te, set);
@@ -1109,6 +1113,13 @@ eOLDrawState tree_element_type_active(bContext *C,
 
 /* ================================================ */
 
+/* Activate a tree store element and set the walk navigation start element */
+void outliner_element_activate(SpaceOutliner *soops, TreeStoreElem *tselem)
+{
+  outliner_flag_set(&soops->tree, TSE_ACTIVE | TSE_ACTIVE_WALK, false);
+  tselem->flag |= TSE_ACTIVE | TSE_ACTIVE_WALK;
+}
+
 /**
  * Action when clicking to activate an item (typically under the mouse cursor),
  * but don't do any cursor intersection checks.
@@ -1116,14 +1127,15 @@ eOLDrawState tree_element_type_active(bContext *C,
  * Needed to run from operators accessed from a menu.
  */
 static void do_outliner_item_activate_tree_element(bContext *C,
-                                                   Scene *scene,
-                                                   ViewLayer *view_layer,
+                                                   const TreeViewContext *tvc,
                                                    SpaceOutliner *soops,
                                                    TreeElement *te,
                                                    TreeStoreElem *tselem,
                                                    const bool extend,
-                                                   const bool recursive)
+                                                   const bool recursive,
+                                                   const bool is_over_name_icons)
 {
+  bool do_activate_data = soops->flag & SO_SYNC_SELECT || is_over_name_icons;
   /* Always makes active object, except for some specific types. */
   if (ELEM(tselem->type,
            TSE_SEQUENCE,
@@ -1131,8 +1143,8 @@ static void do_outliner_item_activate_tree_element(bContext *C,
            TSE_SEQUENCE_DUP,
            TSE_EBONE,
            TSE_LAYER_COLLECTION)) {
-    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects, we do not want
-     * to switch out of edit mode (see T48328 for details). */
+    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects,
+     * we do not want to switch out of edit mode (see T48328 for details). */
   }
   else if (tselem->id && OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
     /* Support edit-mode toggle, keeping the active object as is. */
@@ -1140,10 +1152,11 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   else if (tselem->type == TSE_POSE_BASE) {
     /* Support pose mode toggle, keeping the active object as is. */
   }
-  else {
+  else if (do_activate_data) {
+    /* Only activate when synced selection is enabled */
     tree_element_set_active_object(C,
-                                   scene,
-                                   view_layer,
+                                   tvc->scene,
+                                   tvc->view_layer,
                                    soops,
                                    te,
                                    (extend && tselem->type == 0) ? OL_SETSEL_EXTEND :
@@ -1151,20 +1164,25 @@ static void do_outliner_item_activate_tree_element(bContext *C,
                                    recursive && tselem->type == 0);
   }
 
+  /* Mark as active in the outliner */
+  outliner_element_activate(soops, tselem);
+
   if (tselem->type == 0) {  // the lib blocks
-    /* editmode? */
-    if (te->idcode == ID_SCE) {
-      if (scene != (Scene *)tselem->id) {
+    if (do_activate_data == false) {
+      /* Only select in outliner. */
+    }
+    else if (te->idcode == ID_SCE) {
+      if (tvc->scene != (Scene *)tselem->id) {
         WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), (Scene *)tselem->id);
       }
     }
-    else if (te->idcode == ID_GR) {
+    else if ((te->idcode == ID_GR) && (soops->outlinevis != SO_VIEW_LAYER)) {
       Collection *gr = (Collection *)tselem->id;
 
       if (extend) {
         int sel = BA_SELECT;
         FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (gr, object) {
-          Base *base = BKE_view_layer_base_find(view_layer, object);
+          Base *base = BKE_view_layer_base_find(tvc->view_layer, object);
           if (base && (base->flag & BASE_SELECTED)) {
             sel = BA_DESELECT;
             break;
@@ -1173,7 +1191,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
         FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
 
         FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (gr, object) {
-          Base *base = BKE_view_layer_base_find(view_layer, object);
+          Base *base = BKE_view_layer_base_find(tvc->view_layer, object);
           if (base) {
             ED_object_base_select(base, sel);
           }
@@ -1181,10 +1199,10 @@ static void do_outliner_item_activate_tree_element(bContext *C,
         FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
       }
       else {
-        BKE_view_layer_base_deselect_all(view_layer);
+        BKE_view_layer_base_deselect_all(tvc->view_layer);
 
         FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (gr, object) {
-          Base *base = BKE_view_layer_base_find(view_layer, object);
+          Base *base = BKE_view_layer_base_find(tvc->view_layer, object);
           /* Object may not be in this scene */
           if (base != NULL) {
             if ((base->flag & BASE_SELECTED) == 0) {
@@ -1195,15 +1213,15 @@ static void do_outliner_item_activate_tree_element(bContext *C,
         FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
       }
 
-      DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
-      WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+      DEG_id_tag_update(&tvc->scene->id, ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, tvc->scene);
     }
     else if (OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
-      Object *ob = (Object *)outliner_search_back(soops, te, ID_OB);
+      Object *ob = (Object *)outliner_search_back(te, ID_OB);
       if ((ob != NULL) && (ob->data == tselem->id)) {
-        Base *base = BKE_view_layer_base_find(view_layer, ob);
-        if ((base != NULL) && (base->flag & BASE_VISIBLE)) {
-          do_outliner_activate_obdata(C, scene, view_layer, base, extend);
+        Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
+        if ((base != NULL) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
+          do_outliner_activate_obdata(C, tvc->scene, tvc->view_layer, base, extend);
         }
       }
     }
@@ -1212,18 +1230,12 @@ static void do_outliner_item_activate_tree_element(bContext *C,
       WM_operator_name_call(C, "GPENCIL_OT_editmode_toggle", WM_OP_INVOKE_REGION_WIN, NULL);
     }
     else {  // rest of types
-      tree_element_active(C, scene, view_layer, soops, te, OL_SETSEL_NORMAL, false);
+      tree_element_active(C, tvc, soops, te, OL_SETSEL_NORMAL, false);
     }
   }
-  else {
-    tree_element_type_active(C,
-                             scene,
-                             view_layer,
-                             soops,
-                             te,
-                             tselem,
-                             extend ? OL_SETSEL_EXTEND : OL_SETSEL_NORMAL,
-                             recursive);
+  else if (do_activate_data) {
+    tree_element_type_active(
+        C, tvc, soops, te, tselem, extend ? OL_SETSEL_EXTEND : OL_SETSEL_NORMAL, recursive);
   }
 }
 
@@ -1237,7 +1249,8 @@ void outliner_item_select(SpaceOutliner *soops,
                           const bool toggle)
 {
   TreeStoreElem *tselem = TREESTORE(te);
-  const short new_flag = toggle ? (tselem->flag ^ TSE_SELECTED) : (tselem->flag | TSE_SELECTED);
+  const short new_flag = (toggle && (tselem->flag & TSE_ACTIVE)) ? (tselem->flag ^ TSE_SELECTED) :
+                                                                   (tselem->flag | TSE_SELECTED);
 
   if (extend == false) {
     outliner_flag_set(&soops->tree, TSE_SELECTED, false);
@@ -1245,36 +1258,83 @@ void outliner_item_select(SpaceOutliner *soops,
   tselem->flag = new_flag;
 }
 
-static void outliner_item_toggle_closed(TreeElement *te, const bool toggle_children)
+static bool do_outliner_range_select_recursive(ListBase *lb,
+                                               TreeElement *active,
+                                               TreeElement *cursor,
+                                               bool selecting)
 {
-  TreeStoreElem *tselem = TREESTORE(te);
-  if (toggle_children) {
-    tselem->flag &= ~TSE_CLOSED;
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
+    TreeStoreElem *tselem = TREESTORE(te);
 
-    const bool all_opened = !outliner_flag_is_any_test(&te->subtree, TSE_CLOSED, 1);
-    outliner_flag_set(&te->subtree, TSE_CLOSED, all_opened);
+    if (selecting) {
+      tselem->flag |= TSE_SELECTED;
+    }
+
+    /* Set state for selection */
+    if (te == active || te == cursor) {
+      selecting = !selecting;
+    }
+
+    if (selecting) {
+      tselem->flag |= TSE_SELECTED;
+    }
+
+    /* Don't look inside closed elements */
+    if (!(tselem->flag & TSE_CLOSED)) {
+      selecting = do_outliner_range_select_recursive(&te->subtree, active, cursor, selecting);
+    }
   }
-  else {
-    tselem->flag ^= TSE_CLOSED;
-  }
+
+  return selecting;
 }
 
-static bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
+/* Select a range of items between cursor and active element */
+static void do_outliner_range_select(bContext *C,
+                                     SpaceOutliner *soops,
+                                     TreeElement *cursor,
+                                     const bool extend)
 {
-  return ((te->flag & TE_ICONROW) == 0) && (view_co_x > te->xs) &&
-         (view_co_x < te->xs + UI_UNIT_X);
+  TreeElement *active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
+
+  /* If no active element exists, activate the element under the cursor */
+  if (!active) {
+    outliner_item_select(soops, cursor, false, false);
+    outliner_item_do_activate_from_tree_element(C, cursor, TREESTORE(cursor), false, false);
+    return;
+  }
+
+  TreeStoreElem *tselem = TREESTORE(active);
+  const bool active_selected = (tselem->flag & TSE_SELECTED);
+
+  if (!extend) {
+    outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  }
+
+  /* Select active if under cursor */
+  if (active == cursor) {
+    TREESTORE(cursor)->flag |= TSE_SELECTED;
+    return;
+  }
+
+  /* If active is not selected, select the element under the cursor */
+  if (!active_selected || !outliner_is_element_visible(active)) {
+    outliner_item_select(soops, cursor, false, false);
+    outliner_item_do_activate_from_tree_element(C, cursor, TREESTORE(cursor), false, false);
+    return;
+  }
+
+  do_outliner_range_select_recursive(&soops->tree, active, cursor, false);
 }
 
 static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *soops,
-                                                   const ARegion *ar,
+                                                   const ARegion *region,
                                                    float view_co_x)
 {
-  return ((soops->outlinevis != SO_DATA_API) && !(soops->flag & SO_HIDE_RESTRICTCOLS) &&
-          (view_co_x > ar->v2d.cur.xmax - OL_TOG_RESTRICT_VIEWX));
+  return (view_co_x > region->v2d.cur.xmax - outliner_restrict_columns_width(soops));
 }
 
 /**
- * A version of #outliner_item_do_acticate_from_cursor that takes the tree element directly.
+ * A version of #outliner_item_do_activate_from_cursor that takes the tree element directly.
  * and doesn't depend on the pointer position.
  *
  * This allows us to simulate clicking on an item without dealing with the mouse cursor.
@@ -1282,12 +1342,12 @@ static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *soops,
 void outliner_item_do_activate_from_tree_element(
     bContext *C, TreeElement *te, TreeStoreElem *tselem, bool extend, bool recursive)
 {
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
-  do_outliner_item_activate_tree_element(
-      C, scene, view_layer, soops, te, tselem, extend, recursive);
+  TreeViewContext tvc;
+  outliner_viewcontext_init(C, &tvc);
+
+  do_outliner_item_activate_tree_element(C, &tvc, soops, te, tselem, extend, recursive, false);
 }
 
 /**
@@ -1295,52 +1355,75 @@ void outliner_item_do_activate_from_tree_element(
  *
  * May expend/collapse branches or activate items.
  * */
-int outliner_item_do_activate_from_cursor(bContext *C,
-                                          const int mval[2],
-                                          bool extend,
-                                          bool recursive)
+static int outliner_item_do_activate_from_cursor(bContext *C,
+                                                 const int mval[2],
+                                                 const bool extend,
+                                                 const bool use_range,
+                                                 const bool deselect_all)
 {
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   TreeElement *te;
   float view_mval[2];
   bool changed = false, rebuild_tree = false;
 
-  UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
+  UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
 
-  if (outliner_is_co_within_restrict_columns(soops, ar, view_mval[0])) {
+  if (outliner_is_co_within_restrict_columns(soops, region, view_mval[0])) {
     return OPERATOR_CANCELLED;
   }
 
   if (!(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
-    /* skip */
+    if (deselect_all) {
+      outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+      changed = true;
+    }
   }
-  else if (outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
-    outliner_item_toggle_closed(te, extend);
-    changed = true;
-    rebuild_tree = true;
+  /* Don't allow toggle on scene collection */
+  else if ((TREESTORE(te)->type != TSE_VIEW_COLLECTION_BASE) &&
+           outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
   else {
-    Scene *scene = CTX_data_scene(C);
-    ViewLayer *view_layer = CTX_data_view_layer(C);
-    /* the row may also contain children, if one is hovered we want this instead of current te */
-    TreeElement *activate_te = outliner_find_item_at_x_in_row(soops, te, view_mval[0]);
+    /* The row may also contain children, if one is hovered we want this instead of current te */
+    bool merged_elements = false;
+    TreeElement *activate_te = outliner_find_item_at_x_in_row(
+        soops, te, view_mval[0], &merged_elements);
+
+    /* If the selected icon was an aggregate of multiple elements, run the search popup */
+    if (merged_elements) {
+      merged_element_search_menu_invoke(C, te, activate_te);
+      return OPERATOR_CANCELLED;
+    }
+
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
-    outliner_item_select(soops, activate_te, extend, extend);
-    do_outliner_item_activate_tree_element(
-        C, scene, view_layer, soops, activate_te, activate_tselem, extend, recursive);
+    if (use_range) {
+      do_outliner_range_select(C, soops, activate_te, extend);
+    }
+    else {
+      TreeViewContext tvc;
+      outliner_viewcontext_init(C, &tvc);
+
+      const bool is_over_name_icons = outliner_item_is_co_over_name_icons(activate_te,
+                                                                          view_mval[0]);
+      outliner_item_select(soops, activate_te, extend, extend);
+      do_outliner_item_activate_tree_element(
+          C, &tvc, soops, activate_te, activate_tselem, extend, false, is_over_name_icons);
+    }
+
     changed = true;
   }
 
   if (changed) {
     if (rebuild_tree) {
-      ED_region_tag_redraw(ar);
+      ED_region_tag_redraw(region);
     }
     else {
-      ED_region_tag_redraw_no_rebuild(ar);
+      ED_region_tag_redraw_no_rebuild(region);
     }
-    ED_undo_push(C, "Outliner selection change");
+
+    ED_outliner_select_sync_from_outliner(C, soops);
   }
 
   return OPERATOR_FINISHED;
@@ -1349,9 +1432,10 @@ int outliner_item_do_activate_from_cursor(bContext *C,
 /* event can enterkey, then it opens/closes */
 static int outliner_item_activate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  bool extend = RNA_boolean_get(op->ptr, "extend");
-  bool recursive = RNA_boolean_get(op->ptr, "recursive");
-  return outliner_item_do_activate_from_cursor(C, event->mval, extend, recursive);
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
+  const bool use_range = RNA_boolean_get(op->ptr, "extend_range");
+  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
+  return outliner_item_do_activate_from_cursor(C, event->mval, extend, use_range, deselect_all);
 }
 
 void OUTLINER_OT_item_activate(wmOperatorType *ot)
@@ -1364,8 +1448,20 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
 
   ot->poll = ED_operator_outliner_active;
 
+  ot->flag |= OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  PropertyRNA *prop;
   RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend selection for activation");
-  RNA_def_boolean(ot->srna, "recursive", false, "Recursive", "Select Objects and their children");
+  prop = RNA_def_boolean(
+      ot->srna, "extend_range", false, "Extend Range", "Select a range from active element");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "deselect_all",
+                         false,
+                         "Deselect On Nothing",
+                         "Deselect all when nothing under the cursor");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /* ****************************************************** */
@@ -1397,7 +1493,7 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   rctf rectf;
 
   const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
@@ -1407,17 +1503,40 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   }
 
   WM_operator_properties_border_to_rctf(op, &rectf);
-  UI_view2d_region_to_view_rctf(&ar->v2d, &rectf, &rectf);
+  UI_view2d_region_to_view_rctf(&region->v2d, &rectf, &rectf);
 
-  for (TreeElement *te = soops->tree.first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, &soops->tree) {
     outliner_item_box_select(soops, scene, &rectf, te, select);
   }
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
-  ED_region_tag_redraw(ar);
+  ED_region_tag_redraw(region);
+
+  ED_outliner_select_sync_from_outliner(C, soops);
 
   return OPERATOR_FINISHED;
+}
+
+static int outliner_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  ARegion *region = CTX_wm_region(C);
+  float view_mval[2];
+  const bool tweak = RNA_boolean_get(op->ptr, "tweak");
+
+  UI_view2d_region_to_view(
+      &region->v2d, event->mval[0], event->mval[1], &view_mval[0], &view_mval[1]);
+
+  /* Find element clicked on */
+  TreeElement *te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
+
+  /* Pass through if click is over name or icons, or not tweak event */
+  if (te && tweak && outliner_item_is_co_over_name_icons(te, view_mval[0])) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
+  return WM_gesture_box_invoke(C, op, event);
 }
 
 void OUTLINER_OT_select_box(wmOperatorType *ot)
@@ -1428,7 +1547,7 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
   ot->description = "Use box selection to select tree elements";
 
   /* api callbacks */
-  ot->invoke = WM_gesture_box_invoke;
+  ot->invoke = outliner_box_select_invoke;
   ot->exec = outliner_box_select_exec;
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
@@ -1439,8 +1558,226 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
+  PropertyRNA *prop;
+
+  prop = RNA_def_boolean(
+      ot->srna, "tweak", false, "Tweak", "Tweak gesture from empty space for box selection");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
   WM_operator_properties_gesture_box(ot);
   WM_operator_properties_select_operation_simple(ot);
+}
+
+/* ****************************************************** */
+
+/* **************** Walk Select Tool ****************** */
+
+/* Given a tree element return the rightmost child that is visible in the outliner */
+static TreeElement *outliner_find_rightmost_visible_child(SpaceOutliner *soops, TreeElement *te)
+{
+  while (te->subtree.last) {
+    if (TSELEM_OPEN(TREESTORE(te), soops)) {
+      te = te->subtree.last;
+    }
+    else {
+      break;
+    }
+  }
+  return te;
+}
+
+/* Find previous visible element in the tree  */
+static TreeElement *outliner_find_previous_element(SpaceOutliner *soops, TreeElement *walk_element)
+{
+  if (walk_element->prev) {
+    walk_element = outliner_find_rightmost_visible_child(soops, walk_element->prev);
+  }
+  else if (walk_element->parent) {
+    /* Use parent if at beginning of list */
+    walk_element = walk_element->parent;
+  }
+
+  return walk_element;
+}
+
+/* Recursively search up the tree until a successor to a given element is found */
+static TreeElement *outliner_element_find_successor_in_parents(TreeElement *te)
+{
+  TreeElement *successor = te;
+  while (successor->parent) {
+    if (successor->parent->next) {
+      te = successor->parent->next;
+      break;
+    }
+    else {
+      successor = successor->parent;
+    }
+  }
+
+  return te;
+}
+
+/* Find next visible element in the tree */
+static TreeElement *outliner_find_next_element(SpaceOutliner *soops, TreeElement *walk_element)
+{
+  TreeStoreElem *tselem = TREESTORE(walk_element);
+
+  if (TSELEM_OPEN(tselem, soops) && walk_element->subtree.first) {
+    walk_element = walk_element->subtree.first;
+  }
+  else if (walk_element->next) {
+    walk_element = walk_element->next;
+  }
+  else {
+    walk_element = outliner_element_find_successor_in_parents(walk_element);
+  }
+
+  return walk_element;
+}
+
+static TreeElement *do_outliner_select_walk(SpaceOutliner *soops,
+                                            TreeElement *walk_element,
+                                            const int direction,
+                                            const bool extend,
+                                            const bool toggle_all)
+{
+  TreeStoreElem *tselem = TREESTORE(walk_element);
+
+  if (!extend) {
+    outliner_flag_set(&soops->tree, TSE_SELECTED, false);
+  }
+  tselem->flag &= ~TSE_ACTIVE_WALK;
+
+  switch (direction) {
+    case UI_SELECT_WALK_UP:
+      walk_element = outliner_find_previous_element(soops, walk_element);
+      break;
+    case UI_SELECT_WALK_DOWN:
+      walk_element = outliner_find_next_element(soops, walk_element);
+      break;
+    case UI_SELECT_WALK_LEFT:
+      outliner_item_openclose(walk_element, false, toggle_all);
+      break;
+    case UI_SELECT_WALK_RIGHT:
+      outliner_item_openclose(walk_element, true, toggle_all);
+      break;
+  }
+
+  TreeStoreElem *tselem_new = TREESTORE(walk_element);
+
+  /* If new element is already selected, deselect the previous element */
+  if (extend) {
+    tselem->flag = (tselem_new->flag & TSE_SELECTED) ? (tselem->flag & ~TSE_SELECTED) :
+                                                       (tselem->flag | TSE_SELECTED);
+  }
+
+  tselem_new->flag |= TSE_SELECTED | TSE_ACTIVE_WALK;
+
+  return walk_element;
+}
+
+/* Find walk select element, or set it if it does not exist.
+ * Changed is set to true if walk element is found, false if it was set */
+static TreeElement *find_walk_select_start_element(SpaceOutliner *soops, bool *changed)
+{
+  TreeElement *walk_element = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE_WALK);
+
+  *changed = false;
+
+  /* If no walk element exists, start from active */
+  if (!walk_element) {
+    TreeElement *active_element = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
+
+    /* If no active element exists, use the first element in the tree */
+    if (!active_element) {
+      walk_element = soops->tree.first;
+    }
+    else {
+      walk_element = active_element;
+    }
+
+    *changed = true;
+  }
+
+  /* If walk element is not visible, set that element's first visible parent as walk element */
+  if (!outliner_is_element_visible(walk_element)) {
+    TREESTORE(walk_element)->flag &= ~TSE_ACTIVE_WALK;
+
+    while (!outliner_is_element_visible(walk_element)) {
+      walk_element = walk_element->parent;
+    }
+    *changed = true;
+  }
+
+  return walk_element;
+}
+
+/* Scroll the outliner when the walk element reaches the top or bottom boundary */
+static void outliner_walk_scroll(ARegion *region, TreeElement *te)
+{
+  /* Account for the header height */
+  int y_max = region->v2d.cur.ymax - UI_UNIT_Y;
+  int y_min = region->v2d.cur.ymin;
+
+  /* Scroll if walked position is beyond the border */
+  if (te->ys > y_max) {
+    outliner_scroll_view(region, te->ys - y_max);
+  }
+  else if (te->ys < y_min) {
+    outliner_scroll_view(region, -(y_min - te->ys));
+  }
+}
+
+static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  ARegion *region = CTX_wm_region(C);
+
+  const short direction = RNA_enum_get(op->ptr, "direction");
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
+  const bool toggle_all = RNA_boolean_get(op->ptr, "toggle_all");
+
+  bool changed;
+  TreeElement *walk_element = find_walk_select_start_element(soops, &changed);
+
+  /* If finding the starting walk select element did not move the element, proceed to walk */
+  if (!changed) {
+    walk_element = do_outliner_select_walk(soops, walk_element, direction, extend, toggle_all);
+  }
+  else {
+    TREESTORE(walk_element)->flag |= TSE_SELECTED | TSE_ACTIVE_WALK;
+  }
+
+  /* Scroll outliner to focus on walk element */
+  outliner_walk_scroll(region, walk_element);
+
+  ED_outliner_select_sync_from_outliner(C, soops);
+  ED_region_tag_redraw(region);
+
+  return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_select_walk(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Walk Select";
+  ot->idname = "OUTLINER_OT_select_walk";
+  ot->description = "Use walk navigation to select tree elements";
+
+  /* api callbacks */
+  ot->invoke = outliner_walk_select_invoke;
+  ot->poll = ED_operator_outliner_active;
+
+  ot->flag |= OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  PropertyRNA *prop;
+  WM_operator_properties_select_walk_direction(ot);
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend selection on walk");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(
+      ot->srna, "toggle_all", false, "Toggle All", "Toggle open/close hierarchy");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /* ****************************************************** */

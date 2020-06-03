@@ -22,9 +22,9 @@ set(INC
   .
   # ../blenkernel  # dont add this back!
   ../makesdna
-  ../../../intern/guardedalloc
   ../../../intern/atomic
   ../../../intern/eigen
+  ../../../intern/guardedalloc
   ../../../intern/numaapi/include
   ../../../extern/wcwidth
 )
@@ -44,10 +44,12 @@ set(SRC
   intern/BLI_ghash_utils.c
   intern/BLI_heap.c
   intern/BLI_heap_simple.c
+  intern/BLI_index_range.cc
   intern/BLI_kdopbvh.c
   intern/BLI_linklist.c
   intern/BLI_linklist_lockfree.c
   intern/BLI_memarena.c
+  intern/BLI_memblock.c
   intern/BLI_memiter.c
   intern/BLI_mempool.c
   intern/BLI_timer.c
@@ -60,8 +62,9 @@ set(SRC
   intern/bitmap_draw_2d.c
   intern/boxpack_2d.c
   intern/buffer.c
-  intern/callbacks.c
   intern/convexhull_2d.c
+  intern/delaunay_2d.c
+  intern/dot_export.cc
   intern/dynlib.c
   intern/easing.c
   intern/edgehash.c
@@ -116,10 +119,15 @@ set(SRC
   intern/string_utf8.c
   intern/string_utils.c
   intern/system.c
-  intern/task.c
+  intern/task_graph.cc
+  intern/task_iterator.c
+  intern/task_pool.cc
+  intern/task_range.cc
+  intern/task_scheduler.cc
   intern/threads.c
   intern/time.c
   intern/timecode.c
+  intern/timeit.cc
   intern/uvproject.c
   intern/voronoi_2d.c
   intern/voxel.c
@@ -130,12 +138,17 @@ set(SRC
   intern/kdtree_impl.h
   intern/list_sort_impl.h
 
+
   BLI_alloca.h
+  BLI_allocator.hh
   BLI_args.h
   BLI_array.h
+  BLI_array.hh
+  BLI_array_ref.hh
   BLI_array_store.h
   BLI_array_store_utils.h
   BLI_array_utils.h
+  BLI_asan.h
   BLI_assert.h
   BLI_astar.h
   BLI_bitmap.h
@@ -143,14 +156,17 @@ set(SRC
   BLI_blenlib.h
   BLI_boxpack_2d.h
   BLI_buffer.h
-  BLI_callbacks.h
+  BLI_color.hh
   BLI_compiler_attrs.h
   BLI_compiler_compat.h
   BLI_compiler_typecheck.h
   BLI_console.h
   BLI_convexhull_2d.h
+  BLI_delaunay_2d.h
   BLI_dial_2d.h
   BLI_dlrbTree.h
+  BLI_dot_export.hh
+  BLI_dot_export_attribute_enums.hh
   BLI_dynlib.h
   BLI_dynstr.h
   BLI_easing.h
@@ -160,15 +176,20 @@ set(SRC
   BLI_expr_pylike_eval.h
   BLI_fileops.h
   BLI_fileops_types.h
+  BLI_float2.hh
+  BLI_float3.hh
+  BLI_float4x4.hh
   BLI_fnmatch.h
   BLI_ghash.h
   BLI_gsqueue.h
   BLI_hash.h
+  BLI_hash.hh
   BLI_hash_md5.h
   BLI_hash_mm2a.h
   BLI_hash_mm3.h
   BLI_heap.h
   BLI_heap_simple.h
+  BLI_index_range.hh
   BLI_iterator.h
   BLI_jitter_2d.h
   BLI_kdopbvh.h
@@ -180,6 +201,8 @@ set(SRC
   BLI_linklist_lockfree.h
   BLI_linklist_stack.h
   BLI_listbase.h
+  BLI_listbase_wrapper.hh
+  BLI_map.hh
   BLI_math.h
   BLI_math_base.h
   BLI_math_bits.h
@@ -194,10 +217,14 @@ set(SRC
   BLI_math_statistics.h
   BLI_math_vector.h
   BLI_memarena.h
+  BLI_memblock.h
   BLI_memiter.h
   BLI_memory_utils.h
+  BLI_memory_utils.hh
   BLI_mempool.h
   BLI_noise.h
+  BLI_open_addressing.hh
+  BLI_optional.hh
   BLI_path_util.h
   BLI_polyfill_2d.h
   BLI_polyfill_2d_beautify.h
@@ -205,13 +232,17 @@ set(SRC
   BLI_rand.h
   BLI_rect.h
   BLI_scanfill.h
+  BLI_set.hh
   BLI_smallhash.h
   BLI_sort.h
   BLI_sort_utils.h
   BLI_stack.h
+  BLI_stack.hh
   BLI_strict_flags.h
   BLI_string.h
   BLI_string_cursor_utf8.h
+  BLI_string_map.hh
+  BLI_string_ref.hh
   BLI_string_utf8.h
   BLI_string_utils.h
   BLI_sys_types.h
@@ -219,12 +250,16 @@ set(SRC
   BLI_task.h
   BLI_threads.h
   BLI_timecode.h
+  BLI_timeit.hh
   BLI_timer.h
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h
   BLI_utildefines_variadic.h
+  BLI_utility_mixins.hh
   BLI_uvproject.h
+  BLI_vector.hh
+  BLI_vector_set.hh
   BLI_vfontdata.h
   BLI_voronoi_2d.h
   BLI_voxel.h
@@ -238,10 +273,24 @@ set(LIB
   bf_intern_guardedalloc
   bf_intern_numaapi
   extern_wcwidth
+
+  ${FREETYPE_LIBRARY}
 )
 
 if(WITH_MEM_VALGRIND)
   add_definitions(-DWITH_MEM_VALGRIND)
+endif()
+
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${TBB_LIBRARIES}
+  )
 endif()
 
 if(WIN32)
@@ -250,6 +299,22 @@ if(WIN32)
   )
   list(APPEND LIB
     bf_intern_utfconv
+  )
+  list(APPEND SRC
+    intern/system_win32.c
+  )
+endif()
+
+
+if(APPLE)
+  list(APPEND SRC
+    intern/storage_apple.mm
+  )
+endif()
+
+if(UNIX AND NOT APPLE)
+  list(APPEND LIB
+    bf_intern_libc_compat
   )
 endif()
 

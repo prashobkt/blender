@@ -22,13 +22,13 @@ set(INC
   ../../blenlib
   ../../blentranslation
   ../../depsgraph
-  ../../imbuf
   ../../gpu
+  ../../imbuf
   ../../makesdna
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
   ../../../../intern/glew-mx
+  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -43,7 +43,6 @@ set(SRC
   gpencil_add_monkey.c
   gpencil_add_stroke.c
   gpencil_armature.c
-  gpencil_brush.c
   gpencil_convert.c
   gpencil_data.c
   gpencil_edit.c
@@ -54,9 +53,14 @@ set(SRC
   gpencil_ops_versioning.c
   gpencil_paint.c
   gpencil_primitive.c
+  gpencil_sculpt_paint.c
   gpencil_select.c
   gpencil_undo.c
   gpencil_utils.c
+  gpencil_uv.c
+  gpencil_vertex_ops.c
+  gpencil_vertex_paint.c
+  gpencil_weight_paint.c
 
   gpencil_intern.h
 )

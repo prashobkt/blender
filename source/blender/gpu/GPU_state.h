@@ -21,6 +21,10 @@
 #ifndef __GPU_STATE_H__
 #define __GPU_STATE_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* These map directly to the GL_ blend functions, to minimize API add as needed*/
 typedef enum eGPUBlendFunction {
   GPU_ONE,
@@ -36,6 +40,12 @@ typedef enum eGPUFilterFunction {
   GPU_LINEAR,
 } eGPUFilterFunction;
 
+/* Initialize
+ * - sets the default Blender opengl state, if in doubt, check
+ *   the contents of this function
+ * - this is called when starting Blender, for opengl rendering. */
+void GPU_state_init(void);
+
 void GPU_blend(bool enable);
 void GPU_blend_set_func(eGPUBlendFunction sfactor, eGPUBlendFunction dfactor);
 void GPU_blend_set_func_separate(eGPUBlendFunction src_rgb,
@@ -49,6 +59,7 @@ void GPU_line_smooth(bool enable);
 void GPU_line_width(float width);
 void GPU_point_size(float size);
 void GPU_polygon_smooth(bool enable);
+void GPU_program_point_size(bool enable);
 void GPU_scissor(int x, int y, int width, int height);
 void GPU_scissor_get_f(float coords[4]);
 void GPU_scissor_get_i(int coords[4]);
@@ -57,5 +68,23 @@ void GPU_viewport_size_get_i(int coords[4]);
 
 void GPU_flush(void);
 void GPU_finish(void);
+
+void GPU_logic_op_invert_set(bool enable);
+
+/* Attribute push & pop. */
+typedef enum eGPUAttrMask {
+  GPU_DEPTH_BUFFER_BIT = (1 << 0),
+  GPU_ENABLE_BIT = (1 << 1),
+  GPU_SCISSOR_BIT = (1 << 2),
+  GPU_VIEWPORT_BIT = (1 << 3),
+  GPU_BLEND_BIT = (1 << 4),
+} eGPUAttrMask;
+
+void gpuPushAttr(eGPUAttrMask mask);
+void gpuPopAttr(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __GPU_STATE_H__ */

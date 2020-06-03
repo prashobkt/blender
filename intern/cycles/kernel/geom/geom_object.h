@@ -81,13 +81,7 @@ ccl_device_inline Transform object_fetch_transform_motion(KernelGlobals *kg,
   const uint num_steps = kernel_tex_fetch(__objects, object).numsteps * 2 + 1;
 
   Transform tfm;
-#  ifdef __EMBREE__
-  if (kernel_data.bvh.scene) {
-    transform_motion_array_interpolate_straight(&tfm, motion, num_steps, time);
-  }
-  else
-#  endif
-    transform_motion_array_interpolate(&tfm, motion, num_steps, time);
+  transform_motion_array_interpolate(&tfm, motion, num_steps, time);
 
   return tfm;
 }
@@ -227,6 +221,17 @@ ccl_device_inline float object_surface_area(KernelGlobals *kg, int object)
   return kernel_tex_fetch(__objects, object).surface_area;
 }
 
+/* Color of the object */
+
+ccl_device_inline float3 object_color(KernelGlobals *kg, int object)
+{
+  if (object == OBJECT_NONE)
+    return make_float3(0.0f, 0.0f, 0.0f);
+
+  const ccl_global KernelObject *kobject = &kernel_tex_fetch(__objects, object);
+  return make_float3(kobject->color[0], kobject->color[1], kobject->color[2]);
+}
+
 /* Pass ID number of object */
 
 ccl_device_inline float object_pass_id(KernelGlobals *kg, int object)
@@ -315,6 +320,26 @@ ccl_device_inline uint object_patch_map_offset(KernelGlobals *kg, int object)
   return kernel_tex_fetch(__objects, object).patch_map_offset;
 }
 
+/* Volume step size */
+
+ccl_device_inline float object_volume_density(KernelGlobals *kg, int object)
+{
+  if (object == OBJECT_NONE) {
+    return 1.0f;
+  }
+
+  return kernel_tex_fetch(__objects, object).surface_area;
+}
+
+ccl_device_inline float object_volume_step_size(KernelGlobals *kg, int object)
+{
+  if (object == OBJECT_NONE) {
+    return kernel_data.background.volume_step_size;
+  }
+
+  return kernel_tex_fetch(__object_volume_step, object);
+}
+
 /* Pass ID for shader */
 
 ccl_device int shader_pass_id(KernelGlobals *kg, const ShaderData *sd)
@@ -386,7 +411,8 @@ ccl_device float3 particle_angular_velocity(KernelGlobals *kg, int particle)
 
 ccl_device_inline float3 bvh_clamp_direction(float3 dir)
 {
-  /* clamp absolute values by exp2f(-80.0f) to avoid division by zero when calculating inverse direction */
+  /* clamp absolute values by exp2f(-80.0f) to avoid division by zero when calculating inverse
+   * direction */
 #if defined(__KERNEL_SSE__) && defined(__KERNEL_SSE2__)
   const ssef oopes(8.271806E-25f, 8.271806E-25f, 8.271806E-25f, 0.0f);
   const ssef mask = _mm_cmpgt_ps(fabs(dir), oopes);

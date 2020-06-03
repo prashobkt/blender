@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+// clang-format off
 #include "kernel/closure/bsdf_ashikhmin_velvet.h"
 #include "kernel/closure/bsdf_diffuse.h"
 #include "kernel/closure/bsdf_oren_nayar.h"
@@ -32,6 +33,7 @@
 #include "kernel/closure/bsdf_principled_sheen.h"
 #include "kernel/closure/bssrdf.h"
 #include "kernel/closure/volume.h"
+// clang-format on
 
 CCL_NAMESPACE_BEGIN
 
@@ -71,6 +73,40 @@ ccl_device_inline float bsdf_get_roughness_squared(const ShaderClosure *sc)
   }
 
   return bsdf_get_specular_roughness_squared(sc);
+}
+
+/* An additional term to smooth illumination on grazing angles when using bump mapping.
+ * Based on "Taming the Shadow Terminator" by Matt Jen-Yuan Chiang,
+ * Yining Karl Li and Brent Burley. */
+ccl_device_inline float bump_shadowing_term(float3 Ng, float3 N, float3 I)
+{
+  float g = safe_divide(dot(Ng, I), dot(N, I) * dot(Ng, N));
+
+  /* If the incoming light is on the unshadowed side, return full brightness. */
+  if (g >= 1.0f) {
+    return 1.0f;
+  }
+
+  /* If the incoming light points away from the surface, return black. */
+  if (g < 0.0f) {
+    return 0.0f;
+  }
+
+  /* Return smoothed value to avoid discontinuity at perpendicular angle. */
+  float g2 = sqr(g);
+  return -g2 * g + g2 + g;
+}
+
+/* Shadow terminator workaround, taken from Appleseed.
+ * Original code is under the MIT License
+ * Copyright (c) 2019 Francois Beaune, The appleseedhq Organization */
+ccl_device_inline float shift_cos_in(float cos_in, const float frequency_multiplier)
+{
+  cos_in = min(cos_in, 1.0f);
+
+  const float angle = fast_acosf(cos_in);
+  const float val = max(cosf(angle * frequency_multiplier), 0.0f) / cos_in;
+  return val;
 }
 
 ccl_device_inline int bsdf_sample(KernelGlobals *kg,
@@ -205,8 +241,6 @@ ccl_device_inline int bsdf_sample(KernelGlobals *kg,
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
-    case CLOSURE_BSDF_MICROFACET_GGX_ANISO_ID:
-    case CLOSURE_BSDF_MICROFACET_GGX_ANISO_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
       label = bsdf_microfacet_ggx_sample(kg,
                                          sc,
@@ -257,7 +291,6 @@ ccl_device_inline int bsdf_sample(KernelGlobals *kg,
                                                      &sd->lcg_state);
       break;
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
-    case CLOSURE_BSDF_MICROFACET_BECKMANN_ANISO_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:
       label = bsdf_microfacet_beckmann_sample(kg,
                                               sc,
@@ -274,7 +307,6 @@ ccl_device_inline int bsdf_sample(KernelGlobals *kg,
                                               pdf);
       break;
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
-    case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ANISO_ID:
       label = bsdf_ashikhmin_shirley_sample(sc,
                                             sd->Ng,
                                             sd->I,
@@ -424,6 +456,19 @@ ccl_device_inline int bsdf_sample(KernelGlobals *kg,
       }
     }
   }
+  else {
+    /* Shadow terminator offset. */
+    const float frequency_multiplier =
+        kernel_tex_fetch(__objects, sd->object).shadow_terminator_offset;
+    if (frequency_multiplier > 1.0f) {
+      *eval *= shift_cos_in(dot(*omega_in, sc->N), frequency_multiplier);
+    }
+    if (label & LABEL_DIFFUSE) {
+      if (!isequal_float3(sc->N, sd->N)) {
+        *eval *= bump_shadowing_term((label & LABEL_TRANSMIT) ? -sd->N : sd->N, sc->N, *omega_in);
+      }
+    }
+  }
 
   return label;
 }
@@ -475,8 +520,6 @@ ccl_device_inline
       case CLOSURE_BSDF_MICROFACET_GGX_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
-      case CLOSURE_BSDF_MICROFACET_GGX_ANISO_ID:
-      case CLOSURE_BSDF_MICROFACET_GGX_ANISO_FRESNEL_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
         eval = bsdf_microfacet_ggx_eval_reflect(sc, sd->I, omega_in, pdf);
         break;
@@ -490,12 +533,10 @@ ccl_device_inline
             sc, sd->I, omega_in, pdf, &sd->lcg_state);
         break;
       case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
-      case CLOSURE_BSDF_MICROFACET_BECKMANN_ANISO_ID:
       case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:
         eval = bsdf_microfacet_beckmann_eval_reflect(sc, sd->I, omega_in, pdf);
         break;
       case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
-      case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ANISO_ID:
         eval = bsdf_ashikhmin_shirley_eval_reflect(sc, sd->I, omega_in, pdf);
         break;
       case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:
@@ -535,6 +576,17 @@ ccl_device_inline
         eval = make_float3(0.0f, 0.0f, 0.0f);
         break;
     }
+    if (CLOSURE_IS_BSDF_DIFFUSE(sc->type)) {
+      if (!isequal_float3(sc->N, sd->N)) {
+        eval *= bump_shadowing_term(sd->N, sc->N, omega_in);
+      }
+    }
+    /* Shadow terminator offset. */
+    const float frequency_multiplier =
+        kernel_tex_fetch(__objects, sd->object).shadow_terminator_offset;
+    if (frequency_multiplier > 1.0f) {
+      eval *= shift_cos_in(dot(omega_in, sc->N), frequency_multiplier);
+    }
   }
   else {
     switch (sc->type) {
@@ -561,8 +613,6 @@ ccl_device_inline
       case CLOSURE_BSDF_MICROFACET_GGX_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
-      case CLOSURE_BSDF_MICROFACET_GGX_ANISO_ID:
-      case CLOSURE_BSDF_MICROFACET_GGX_ANISO_FRESNEL_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
         eval = bsdf_microfacet_ggx_eval_transmit(sc, sd->I, omega_in, pdf);
         break;
@@ -576,12 +626,10 @@ ccl_device_inline
             sc, sd->I, omega_in, pdf, &sd->lcg_state);
         break;
       case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
-      case CLOSURE_BSDF_MICROFACET_BECKMANN_ANISO_ID:
       case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:
         eval = bsdf_microfacet_beckmann_eval_transmit(sc, sd->I, omega_in, pdf);
         break;
       case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
-      case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ANISO_ID:
         eval = bsdf_ashikhmin_shirley_eval_transmit(sc, sd->I, omega_in, pdf);
         break;
       case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:
@@ -621,6 +669,11 @@ ccl_device_inline
         eval = make_float3(0.0f, 0.0f, 0.0f);
         break;
     }
+    if (CLOSURE_IS_BSDF_DIFFUSE(sc->type)) {
+      if (!isequal_float3(sc->N, sd->N)) {
+        eval *= bump_shadowing_term(-sd->N, sc->N, omega_in);
+      }
+    }
   }
 
   return eval;
@@ -640,18 +693,14 @@ ccl_device void bsdf_blur(KernelGlobals *kg, ShaderClosure *sc, float roughness)
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
-    case CLOSURE_BSDF_MICROFACET_GGX_ANISO_ID:
-    case CLOSURE_BSDF_MICROFACET_GGX_ANISO_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
       bsdf_microfacet_ggx_blur(sc, roughness);
       break;
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
-    case CLOSURE_BSDF_MICROFACET_BECKMANN_ANISO_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:
       bsdf_microfacet_beckmann_blur(sc, roughness);
       break;
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
-    case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ANISO_ID:
       bsdf_ashikhmin_shirley_blur(sc, roughness);
       break;
     case CLOSURE_BSDF_HAIR_PRINCIPLED_ID:
@@ -680,18 +729,14 @@ ccl_device bool bsdf_merge(ShaderClosure *a, ShaderClosure *b)
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
-    case CLOSURE_BSDF_MICROFACET_GGX_ANISO_ID:
-    case CLOSURE_BSDF_MICROFACET_GGX_ANISO_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_FRESNEL_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
-    case CLOSURE_BSDF_MICROFACET_BECKMANN_ANISO_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
-    case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ANISO_ID:
       return bsdf_microfacet_merge(a, b);
     case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:
       return bsdf_ashikhmin_velvet_merge(a, b);

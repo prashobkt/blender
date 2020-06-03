@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -36,8 +36,8 @@
 #include "DNA_object_types.h"
 
 #include "BKE_global.h" /* only to check G.debug */
-#include "BKE_library.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
@@ -71,7 +71,12 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
 {
   BooleanModifierData *bmd = (BooleanModifierData *)md;
 
-  return !bmd->object;
+  /* The object type check is only needed here in case we have a placeholder
+   * object assigned (because the library containing the mesh is missing).
+   *
+   * In other cases it should be impossible to have a type mismatch.
+   */
+  return !bmd->object || bmd->object->type != OB_MESH;
 }
 
 static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk, void *userData)
@@ -148,7 +153,7 @@ static int bm_face_isect_pair(BMFace *f, void *UNUSED(user_data))
   return BM_elem_flag_test(f, BM_FACE_TAG) ? 1 : 0;
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   BooleanModifierData *bmd = (BooleanModifierData *)md;
   Mesh *result = mesh;
@@ -255,15 +260,16 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
             /* Using original (not evaluated) object here since we are writing to it. */
             /* XXX Pretty sure comment above is fully wrong now with CoW & co ? */
-            BKE_material_remap_object_calc(ctx->object, other, material_remap);
+            BKE_object_material_remap_calc(ctx->object, other, material_remap);
 
             BMFace *efa;
             i = 0;
             BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
               mul_transposed_m3_v3(nmat, efa->no);
               normalize_v3(efa->no);
-              BM_elem_flag_enable(
-                  efa, BM_FACE_TAG); /* temp tag to test which side split faces are from */
+
+              /* Temp tag to test which side split faces are from. */
+              BM_elem_flag_enable(efa, BM_FACE_TAG);
 
               /* remap material */
               if (LIKELY(efa->mat_nr < ob_src_totcol)) {
@@ -310,7 +316,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         MEM_freeN(looptris);
       }
 
-      result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
+      result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);
 
       BM_mesh_free(bm);
 
@@ -323,8 +329,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
     /* if new mesh returned, return it; otherwise there was
      * an error, so delete the modifier object */
-    if (result == NULL)
-      modifier_setError(md, "Cannot execute boolean operation");
+    if (result == NULL) {
+      BKE_modifier_set_error(md, "Cannot execute boolean operation");
+    }
   }
 
   return result;
@@ -344,15 +351,18 @@ ModifierTypeInfo modifierType_Boolean = {
     /* structName */ "BooleanModifierData",
     /* structSize */ sizeof(BooleanModifierData),
     /* type */ eModifierTypeType_Nonconstructive,
-    /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_UsesPointCache,
+    /* flags */ eModifierTypeFlag_AcceptsMesh,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

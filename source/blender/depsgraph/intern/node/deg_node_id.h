@@ -23,8 +23,10 @@
 
 #pragma once
 
-#include "intern/node/deg_node.h"
+#include "BLI_ghash.h"
 #include "BLI_sys_types.h"
+#include "DNA_ID.h"
+#include "intern/node/deg_node.h"
 
 namespace DEG {
 
@@ -55,7 +57,7 @@ struct IDNode : public Node {
   };
 
   virtual void init(const ID *id, const char *subdata) override;
-  void init_copy_on_write(ID *id_cow_hint = NULL);
+  void init_copy_on_write(ID *id_cow_hint = nullptr);
   ~IDNode();
   void destroy();
 
@@ -71,11 +73,15 @@ struct IDNode : public Node {
   IDComponentsMask get_visible_components_mask() const;
 
   /* ID Block referenced. */
+  /* Type of the ID stored separately, so it's possible to perform check whether CoW is needed
+   * without de-referencing the id_cow (which is not safe when ID is NOT covered by CoW and has
+   * been deleted from the main database.) */
+  ID_Type id_type;
   ID *id_orig;
   ID *id_cow;
 
   /* Hash to make it faster to look up components. */
-  GHash *components;
+  Map<ComponentIDKey, ComponentNode *> components;
 
   /* Additional flags needed for scene evaluation.
    * TODO(sergey): Only needed for until really granular updates
@@ -96,6 +102,12 @@ struct IDNode : public Node {
    * recursed into. */
   bool is_collection_fully_expanded;
 
+  /* Is used to figure out whether object came to the dependency graph via a base. */
+  bool has_base;
+
+  /* Accumulated flag from operation. Is initialized and used during updates flush. */
+  bool is_user_modified;
+
   IDComponentsMask visible_components_mask;
   IDComponentsMask previously_visible_components_mask;
 
@@ -103,3 +115,16 @@ struct IDNode : public Node {
 };
 
 }  // namespace DEG
+
+namespace BLI {
+
+template<> struct DefaultHash<DEG::IDNode::ComponentIDKey> {
+  uint32_t operator()(const DEG::IDNode::ComponentIDKey &key) const
+  {
+    const int type_as_int = static_cast<int>(key.type);
+    return BLI_ghashutil_combine_hash(BLI_ghashutil_uinthash(type_as_int),
+                                      BLI_ghashutil_strhash_p(key.name));
+  }
+};
+
+}  // namespace BLI

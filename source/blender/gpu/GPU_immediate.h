@@ -26,12 +26,16 @@
 #ifndef __GPU_IMMEDIATE_H__
 #define __GPU_IMMEDIATE_H__
 
-#include "GPU_vertex_format.h"
-#include "GPU_primitive.h"
-#include "GPU_shader_interface.h"
 #include "GPU_batch.h"
 #include "GPU_immediate_util.h"
+#include "GPU_primitive.h"
 #include "GPU_shader.h"
+#include "GPU_shader_interface.h"
+#include "GPU_vertex_format.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Returns a cleared vertex format, ready for #add_attr. */
 GPUVertFormat *immVertexFormat(void);
@@ -47,9 +51,10 @@ void immBegin(GPUPrimType, uint vertex_len);
 void immBeginAtMost(GPUPrimType, uint max_vertex_len);
 void immEnd(void); /* finishes and draws. */
 
-/* ImmBegin a batch, then use standard immFunctions as usual. */
-/* ImmEnd will finalize the batch instead of drawing. */
-/* Then you can draw it as many times as you like! Partially replaces the need for display lists. */
+/* immBegin a batch, then use standard immFunctions as usual. */
+/* immEnd will finalize the batch instead of drawing. */
+/* Then you can draw it as many times as you like!
+ * Partially replaces the need for display lists. */
 GPUBatch *immBeginBatch(GPUPrimType, uint vertex_len);
 GPUBatch *immBeginBatchAtMost(GPUPrimType, uint vertex_len);
 
@@ -144,5 +149,9 @@ void immInit(void);
 void immActivate(void);
 void immDeactivate(void);
 void immDestroy(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __GPU_IMMEDIATE_H__ */

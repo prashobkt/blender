@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -27,6 +27,7 @@
 
 #include "BLI_math.h"
 
+#include "DNA_curveprofile_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -38,6 +39,7 @@
 
 #include "MOD_util.h"
 
+#include "BKE_curveprofile.h"
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
@@ -62,11 +64,16 @@ static void initData(ModifierData *md)
   bmd->profile = 0.5f;
   bmd->bevel_angle = DEG2RADF(30.0f);
   bmd->defgrp_name[0] = '\0';
+  bmd->custom_profile = BKE_curveprofile_add(PROF_PRESET_LINE);
 }
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
-  modifier_copyData_generic(md_src, md_dst, flag);
+  const BevelModifierData *bmd_src = (const BevelModifierData *)md_src;
+  BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
+
+  BKE_modifier_copydata_generic(md_src, md_dst, flag);
+  bmd_dst->custom_profile = BKE_curveprofile_copy(bmd_src->custom_profile);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -84,7 +91,7 @@ static void requiredDataMask(Object *UNUSED(ob),
 /*
  * This calls the new bevel code (added since 2.64)
  */
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result;
   BMesh *bm;
@@ -109,39 +116,46 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   const int miter_outer = bmd->miter_outer;
   const int miter_inner = bmd->miter_inner;
   const float spread = bmd->spread;
+  const bool use_custom_profile = (bmd->flags & MOD_BEVEL_CUSTOM_PROFILE);
+  const int vmesh_method = bmd->vmesh_method;
+  const bool invert_vgroup = (bmd->flags & MOD_BEVEL_INVERT_VGROUP) != 0;
 
-  bm = BKE_mesh_to_bmesh_ex(
-      mesh,
-      &(struct BMeshCreateParams){0},
-      &(struct BMeshFromMeshParams){
-          .calc_face_normal = true,
-          .add_key_index = false,
-          .use_shapekey = false,
-          .active_shapekey = 0,
-          /* XXX We probably can use CD_MASK_BAREMESH_ORIGDINDEX here instead (also for other modifiers cases)? */
-          .cd_mask_extra = {.vmask = CD_MASK_ORIGINDEX,
-                            .emask = CD_MASK_ORIGINDEX,
-                            .pmask = CD_MASK_ORIGINDEX},
-      });
+  bm = BKE_mesh_to_bmesh_ex(mesh,
+                            &(struct BMeshCreateParams){0},
+                            &(struct BMeshFromMeshParams){
+                                .calc_face_normal = true,
+                                .add_key_index = false,
+                                .use_shapekey = false,
+                                .active_shapekey = 0,
+                                /* XXX We probably can use CD_MASK_BAREMESH_ORIGDINDEX here instead
+                                 * (also for other modifiers cases)? */
+                                .cd_mask_extra = {.vmask = CD_MASK_ORIGINDEX,
+                                                  .emask = CD_MASK_ORIGINDEX,
+                                                  .pmask = CD_MASK_ORIGINDEX},
+                            });
 
-  if ((bmd->lim_flags & MOD_BEVEL_VGROUP) && bmd->defgrp_name[0])
+  if ((bmd->lim_flags & MOD_BEVEL_VGROUP) && bmd->defgrp_name[0]) {
     MOD_get_vgroup(ctx->object, mesh, bmd->defgrp_name, &dvert, &vgroup);
+  }
 
   if (vertex_only) {
     BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
-      if (!BM_vert_is_manifold(v))
-        continue;
       if (bmd->lim_flags & MOD_BEVEL_WEIGHT) {
         weight = BM_elem_float_data_get(&bm->vdata, v, CD_BWEIGHT);
-        if (weight == 0.0f)
+        if (weight == 0.0f) {
           continue;
+        }
       }
       else if (vgroup != -1) {
-        weight = defvert_array_find_weight_safe(dvert, BM_elem_index_get(v), vgroup);
+        weight = invert_vgroup ?
+                     1.0f -
+                         BKE_defvert_array_find_weight_safe(dvert, BM_elem_index_get(v), vgroup) :
+                     BKE_defvert_array_find_weight_safe(dvert, BM_elem_index_get(v), vgroup);
         /* Check is against 0.5 rather than != 0.0 because cascaded bevel modifiers will
          * interpolate weights for newly created vertices, and may cause unexpected "selection" */
-        if (weight < 0.5f)
+        if (weight < 0.5f) {
           continue;
+        }
       }
       BM_elem_flag_enable(v, BM_ELEM_TAG);
     }
@@ -165,14 +179,22 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
       if (BM_edge_is_manifold(e)) {
         if (bmd->lim_flags & MOD_BEVEL_WEIGHT) {
           weight = BM_elem_float_data_get(&bm->edata, e, CD_BWEIGHT);
-          if (weight == 0.0f)
+          if (weight == 0.0f) {
             continue;
+          }
         }
         else if (vgroup != -1) {
-          weight = defvert_array_find_weight_safe(dvert, BM_elem_index_get(e->v1), vgroup);
-          weight2 = defvert_array_find_weight_safe(dvert, BM_elem_index_get(e->v2), vgroup);
-          if (weight < 0.5f || weight2 < 0.5f)
+          weight = invert_vgroup ?
+                       1.0f - BKE_defvert_array_find_weight_safe(
+                                  dvert, BM_elem_index_get(e->v1), vgroup) :
+                       BKE_defvert_array_find_weight_safe(dvert, BM_elem_index_get(e->v1), vgroup);
+          weight2 = invert_vgroup ? 1.0f - BKE_defvert_array_find_weight_safe(
+                                               dvert, BM_elem_index_get(e->v2), vgroup) :
+                                    BKE_defvert_array_find_weight_safe(
+                                        dvert, BM_elem_index_get(e->v2), vgroup);
+          if (weight < 0.5f || weight2 < 0.5f) {
             continue;
+          }
         }
         BM_elem_flag_enable(e, BM_ELEM_TAG);
         BM_elem_flag_enable(e->v1, BM_ELEM_TAG);
@@ -181,8 +203,10 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
     }
   }
 
-  if (harden_normals && !(((Mesh *)ctx->object->data)->flag & ME_AUTOSMOOTH)) {
-    modifier_setError(md, "Enable 'Auto Smooth' option in mesh settings for hardening");
+  Object *ob = ctx->object;
+
+  if (harden_normals && (ob->type == OB_MESH) && !(((Mesh *)ob->data)->flag & ME_AUTOSMOOTH)) {
+    BKE_modifier_set_error(md, "Enable 'Auto Smooth' in Object Data Properties");
     harden_normals = false;
   }
 
@@ -205,12 +229,16 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                 miter_outer,
                 miter_inner,
                 spread,
-                mesh->smoothresh);
+                mesh->smoothresh,
+                use_custom_profile,
+                bmd->custom_profile,
+                vmesh_method);
 
-  result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
+  result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);
 
-  BLI_assert(bm->vtoolflagpool == NULL && bm->etoolflagpool == NULL &&
-             bm->ftoolflagpool == NULL); /* make sure we never alloc'd these */
+  /* Make sure we never alloc'd these. */
+  BLI_assert(bm->vtoolflagpool == NULL && bm->etoolflagpool == NULL && bm->ftoolflagpool == NULL);
+
   BM_mesh_free(bm);
 
   result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
@@ -223,6 +251,18 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
   return true;
 }
 
+static void freeData(ModifierData *md)
+{
+  BevelModifierData *bmd = (BevelModifierData *)md;
+  BKE_curveprofile_free(bmd->custom_profile);
+}
+
+static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED(userRenderParams))
+{
+  BevelModifierData *bmd = (BevelModifierData *)md;
+  return (bmd->value == 0.0f);
+}
+
 ModifierTypeInfo modifierType_Bevel = {
     /* name */ "Bevel",
     /* structName */ "BevelModifierData",
@@ -230,19 +270,19 @@ ModifierTypeInfo modifierType_Bevel = {
     /* type */ eModifierTypeType_Constructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_AcceptsCVs,
-
     /* copyData */ copyData,
-
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
-
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
-    /* freeData */ NULL,
-    /* isDisabled */ NULL,
+    /* freeData */ freeData,
+    /* isDisabled */ isDisabled,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* dependsOnNormals */ dependsOnNormals,

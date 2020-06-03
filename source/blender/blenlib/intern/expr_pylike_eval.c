@@ -38,24 +38,24 @@
  *      sin, cos, tan, asin, acos, atan, atan2,
  *      exp, log, sqrt, pow, fmod
  *
- * The implementation has no global state and can be used multithreaded.
+ * The implementation has no global state and can be used multi-threaded.
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stddef.h>
-#include <string.h>
-#include <float.h>
 #include <ctype.h>
-#include <stdlib.h>
 #include <fenv.h>
+#include <float.h>
+#include <math.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_expr_pylike_eval.h"
-#include "BLI_utildefines.h"
-#include "BLI_math_base.h"
 #include "BLI_alloca.h"
+#include "BLI_expr_pylike_eval.h"
+#include "BLI_math_base.h"
+#include "BLI_utildefines.h"
 
 #ifdef _MSC_VER
 #  pragma fenv_access(on)
@@ -140,6 +140,24 @@ bool BLI_expr_pylike_is_constant(ExprPyLike_Parsed *expr)
   return expr != NULL && expr->ops_count == 1 && expr->ops[0].opcode == OPCODE_CONST;
 }
 
+/** Check if the parsed expression uses the parameter with the given index. */
+bool BLI_expr_pylike_is_using_param(ExprPyLike_Parsed *expr, int index)
+{
+  int i;
+
+  if (expr == NULL) {
+    return false;
+  }
+
+  for (i = 0; i < expr->ops_count; i++) {
+    if (expr->ops[i].opcode == OPCODE_PARAMETER && expr->ops[i].arg.ival == index) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -164,7 +182,8 @@ eExprPyLike_EvalStatus BLI_expr_pylike_eval(ExprPyLike_Parsed *expr,
 #define FAIL_IF(condition) \
   if (condition) { \
     return EXPR_PYLIKE_FATAL_ERROR; \
-  }
+  } \
+  ((void)0)
 
   /* Check the stack requirement is at least remotely sane and allocate on the actual stack. */
   FAIL_IF(expr->max_stack <= 0 || expr->max_stack > 1000);
@@ -356,27 +375,36 @@ typedef struct BuiltinOpDef {
   void *funcptr;
 } BuiltinOpDef;
 
-static BuiltinOpDef builtin_ops[] = {{"radians", OPCODE_FUNC1, op_radians},
-                                     {"degrees", OPCODE_FUNC1, op_degrees},
-                                     {"abs", OPCODE_FUNC1, fabs},
-                                     {"fabs", OPCODE_FUNC1, fabs},
-                                     {"floor", OPCODE_FUNC1, floor},
-                                     {"ceil", OPCODE_FUNC1, ceil},
-                                     {"trunc", OPCODE_FUNC1, trunc},
-                                     {"int", OPCODE_FUNC1, trunc},
-                                     {"sin", OPCODE_FUNC1, sin},
-                                     {"cos", OPCODE_FUNC1, cos},
-                                     {"tan", OPCODE_FUNC1, tan},
-                                     {"asin", OPCODE_FUNC1, asin},
-                                     {"acos", OPCODE_FUNC1, acos},
-                                     {"atan", OPCODE_FUNC1, atan},
-                                     {"atan2", OPCODE_FUNC2, atan2},
-                                     {"exp", OPCODE_FUNC1, exp},
-                                     {"log", OPCODE_FUNC1, log},
-                                     {"sqrt", OPCODE_FUNC1, sqrt},
-                                     {"pow", OPCODE_FUNC2, pow},
-                                     {"fmod", OPCODE_FUNC2, fmod},
-                                     {NULL, OPCODE_CONST, NULL}};
+#ifdef _MSC_VER
+/* Prevent MSVC from inlining calls to ceil/floor so the table below can get a function pointer to
+ * them. */
+#  pragma function(ceil)
+#  pragma function(floor)
+#endif
+
+static BuiltinOpDef builtin_ops[] = {
+    {"radians", OPCODE_FUNC1, op_radians},
+    {"degrees", OPCODE_FUNC1, op_degrees},
+    {"abs", OPCODE_FUNC1, fabs},
+    {"fabs", OPCODE_FUNC1, fabs},
+    {"floor", OPCODE_FUNC1, floor},
+    {"ceil", OPCODE_FUNC1, ceil},
+    {"trunc", OPCODE_FUNC1, trunc},
+    {"int", OPCODE_FUNC1, trunc},
+    {"sin", OPCODE_FUNC1, sin},
+    {"cos", OPCODE_FUNC1, cos},
+    {"tan", OPCODE_FUNC1, tan},
+    {"asin", OPCODE_FUNC1, asin},
+    {"acos", OPCODE_FUNC1, acos},
+    {"atan", OPCODE_FUNC1, atan},
+    {"atan2", OPCODE_FUNC2, atan2},
+    {"exp", OPCODE_FUNC1, exp},
+    {"log", OPCODE_FUNC1, log},
+    {"sqrt", OPCODE_FUNC1, sqrt},
+    {"pow", OPCODE_FUNC2, pow},
+    {"fmod", OPCODE_FUNC2, fmod},
+    {NULL, OPCODE_CONST, NULL},
+};
 
 /** \} */
 
@@ -389,7 +417,8 @@ static BuiltinOpDef builtin_ops[] = {{"radians", OPCODE_FUNC1, op_radians},
 #define CHECK_ERROR(condition) \
   if (!(condition)) { \
     return false; \
-  }
+  } \
+  ((void)0)
 
 /* For simplicity simple token types are represented by their own character;
  * these are special identifiers for multi-character tokens. */
@@ -413,12 +442,14 @@ typedef struct KeywordTokenDef {
   short token;
 } KeywordTokenDef;
 
-static KeywordTokenDef keyword_list[] = {{"and", TOKEN_AND},
-                                         {"or", TOKEN_OR},
-                                         {"not", TOKEN_NOT},
-                                         {"if", TOKEN_IF},
-                                         {"else", TOKEN_ELSE},
-                                         {NULL, TOKEN_ID}};
+static KeywordTokenDef keyword_list[] = {
+    {"and", TOKEN_AND},
+    {"or", TOKEN_OR},
+    {"not", TOKEN_NOT},
+    {"if", TOKEN_IF},
+    {"else", TOKEN_ELSE},
+    {NULL, TOKEN_ID},
+};
 
 typedef struct ExprParseState {
   int param_names_len;
@@ -498,7 +529,9 @@ static bool parse_add_func(ExprParseState *state, eOpCode code, int args, void *
       if (jmp_gap >= 1 && prev_ops[-1].opcode == OPCODE_CONST) {
         UnaryOpFunc func = funcptr;
 
-        double result = func(prev_ops[-1].arg.dval);
+        /* volatile because some compilers overly aggressive optimize this call out.
+         * see D6012 for details. */
+        volatile double result = func(prev_ops[-1].arg.dval);
 
         if (fetestexcept(FE_DIVBYZERO | FE_INVALID) == 0) {
           prev_ops[-1].arg.dval = result;
@@ -514,7 +547,9 @@ static bool parse_add_func(ExprParseState *state, eOpCode code, int args, void *
           prev_ops[-1].opcode == OPCODE_CONST) {
         BinaryOpFunc func = funcptr;
 
-        double result = func(prev_ops[-2].arg.dval, prev_ops[-1].arg.dval);
+        /* volatile because some compilers overly aggressive optimize this call out.
+         * see D6012 for details. */
+        volatile double result = func(prev_ops[-2].arg.dval, prev_ops[-1].arg.dval);
 
         if (fetestexcept(FE_DIVBYZERO | FE_INVALID) == 0) {
           prev_ops[-2].arg.dval = result;

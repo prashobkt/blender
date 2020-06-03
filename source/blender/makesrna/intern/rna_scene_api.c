@@ -21,12 +21,12 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "BLI_utildefines.h"
 #include "BLI_kdopbvh.h"
 #include "BLI_path_util.h"
+#include "BLI_utildefines.h"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -38,7 +38,7 @@
 #include "rna_internal.h" /* own include */
 
 #ifdef WITH_ALEMBIC
-#  include "../../alembic/ABC_alembic.h"
+#  include "ABC_alembic.h"
 #endif
 
 const EnumPropertyItem rna_enum_abc_compression_items[] = {
@@ -50,7 +50,6 @@ const EnumPropertyItem rna_enum_abc_compression_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_animsys.h"
 #  include "BKE_editmesh.h"
 #  include "BKE_global.h"
 #  include "BKE_image.h"
@@ -80,7 +79,7 @@ static void rna_Scene_frame_set(Scene *scene, Main *bmain, int frame, float subf
 
   for (ViewLayer *view_layer = scene->view_layers.first; view_layer != NULL;
        view_layer = view_layer->next) {
-    Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
+    Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
     BKE_scene_graph_update_for_newframe(depsgraph, bmain);
   }
 
@@ -88,7 +87,11 @@ static void rna_Scene_frame_set(Scene *scene, Main *bmain, int frame, float subf
   BPy_END_ALLOW_THREADS;
 #  endif
 
-  BKE_scene_camera_switch_update(scene);
+  if (BKE_scene_camera_switch_update(scene)) {
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      BKE_screen_view3d_scene_sync(screen, scene);
+    }
+  }
 
   /* don't do notifier when we're rendering, avoid some viewport crashes
    * redrawing while the data is being modified for render */
@@ -116,31 +119,15 @@ static void rna_Scene_uvedit_aspect(Scene *scene, Object *ob, float *aspect)
   aspect[0] = aspect[1] = 1.0f;
 }
 
-static void rna_Scene_update_tagged(Scene *scene, Main *bmain)
-{
-#  ifdef WITH_PYTHON
-  BPy_BEGIN_ALLOW_THREADS;
-#  endif
-
-  for (ViewLayer *view_layer = scene->view_layers.first; view_layer != NULL;
-       view_layer = view_layer->next) {
-    Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
-    BKE_scene_graph_update_tagged(depsgraph, bmain);
-  }
-
-#  ifdef WITH_PYTHON
-  BPy_END_ALLOW_THREADS;
-#  endif
-}
-
 static void rna_SceneRender_get_frame_path(
     RenderData *rd, Main *bmain, int frame, bool preview, const char *view, char *name)
 {
   const char *suffix = BKE_scene_multiview_view_suffix_get(rd, view);
 
   /* avoid NULL pointer */
-  if (!suffix)
+  if (!suffix) {
     suffix = "";
+  }
 
   if (BKE_imtype_is_movie(rd->im_format.imtype)) {
     BKE_movie_filepath_get(name, rd, preview != 0, suffix);
@@ -172,10 +159,11 @@ static void rna_Scene_ray_cast(Scene *scene,
 {
   normalize_v3(direction);
 
-  Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
-  SnapObjectContext *sctx = ED_transform_snap_object_context_create(bmain, scene, depsgraph, 0);
+  Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
+  SnapObjectContext *sctx = ED_transform_snap_object_context_create(scene, 0);
 
   bool ret = ED_transform_snap_object_project_ray_ex(sctx,
+                                                     depsgraph,
                                                      &(const struct SnapObjectParams){
                                                          .snap_select = SNAP_ALL,
                                                      },
@@ -228,7 +216,7 @@ static void rna_Scene_alembic_export(Scene *scene,
                                      bool vcolors,
                                      bool apply_subdiv,
                                      bool flatten_hierarchy,
-                                     bool visible_layers_only,
+                                     bool visible_objects_only,
                                      bool renderable_only,
                                      bool face_sets,
                                      bool use_subdiv_schema,
@@ -263,7 +251,7 @@ static void rna_Scene_alembic_export(Scene *scene,
       .vcolors = vcolors,
       .apply_subdiv = apply_subdiv,
       .flatten_hierarchy = flatten_hierarchy,
-      .visible_layers_only = visible_layers_only,
+      .visible_objects_only = visible_objects_only,
       .renderable_only = renderable_only,
       .face_sets = face_sets,
       .use_subdiv_schema = use_subdiv_schema,
@@ -301,11 +289,6 @@ void RNA_api_scene(StructRNA *srna)
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   RNA_def_float(
       func, "subframe", 0.0, 0.0, 1.0, "", "Sub-frame time, between 0.0 and 1.0", 0.0, 1.0);
-  RNA_def_function_flag(func, FUNC_USE_MAIN);
-
-  func = RNA_def_function(srna, "update", "rna_Scene_update_tagged");
-  RNA_def_function_ui_description(
-      func, "Update data tagged to be updated from previous access to data or operators");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
 
   func = RNA_def_function(srna, "uvedit_aspect", "rna_Scene_uvedit_aspect");
@@ -382,7 +365,7 @@ void RNA_api_scene(StructRNA *srna)
   RNA_def_function_ui_description(func, "Clear sequence editor in this scene");
 
 #  ifdef WITH_ALEMBIC
-  /* XXX Deprecated, will be removed in 2.8 in favour of calling the export operator. */
+  /* XXX Deprecated, will be removed in 2.8 in favor of calling the export operator. */
   func = RNA_def_function(srna, "alembic_export", "rna_Scene_alembic_export");
   RNA_def_function_ui_description(
       func, "Export to Alembic file (deprecated, use the Alembic export operator)");
@@ -408,7 +391,7 @@ void RNA_api_scene(StructRNA *srna)
       func, "apply_subdiv", 1, "Subsurfs as meshes", "Export subdivision surfaces as meshes");
   RNA_def_boolean(func, "flatten", 0, "Flatten hierarchy", "Flatten hierarchy");
   RNA_def_boolean(func,
-                  "visible_layers_only",
+                  "visible_objects_only",
                   0,
                   "Visible layers only",
                   "Export only objects in visible layers");

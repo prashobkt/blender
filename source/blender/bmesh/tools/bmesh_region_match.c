@@ -33,17 +33,17 @@
 
 #include <string.h>
 
-#include "MEM_guardedalloc.h"
-#include "BLI_listbase.h"
-#include "BLI_linklist.h"
 #include "BLI_alloca.h"
 #include "BLI_ghash.h"
-#include "BLI_mempool.h"
+#include "BLI_linklist.h"
 #include "BLI_linklist_stack.h"
+#include "BLI_listbase.h"
+#include "BLI_mempool.h"
+#include "MEM_guardedalloc.h"
 
 #include "bmesh.h"
 
-#include "tools/bmesh_region_match.h" /* own incldue */
+#include "tools/bmesh_region_match.h" /* own include */
 
 /* avoid re-creating ghash and pools for each search */
 #define USE_WALKER_REUSE
@@ -95,13 +95,13 @@ typedef struct UUIDWalk {
   BLI_mempool *step_pool;
   BLI_mempool *step_pool_items;
 
-  /* Optionaly use face-tag to isolate search */
+  /* Optionally use face-tag to isolate search */
   bool use_face_isolate;
 
   /* Increment for each pass added */
   UUID_Int pass;
 
-  /* runtime vars, aviod re-creating each pass */
+  /* runtime vars, avoid re-creating each pass */
   struct {
     GHash *verts_uuid; /* BMVert -> UUID */
     GSet *faces_step;  /* BMFace */
@@ -854,8 +854,7 @@ static BMFace **bm_mesh_region_match_pair(
     uint i;
 
     faces_result = MEM_mallocN(sizeof(*faces_result) * (faces_result_len + 1), __func__);
-    GHASH_ITER_INDEX(gh_iter, w_dst->faces_uuid, i)
-    {
+    GHASH_ITER_INDEX (gh_iter, w_dst->faces_uuid, i) {
       BMFace *f = BLI_ghashIterator_getKey(&gh_iter);
       faces_result[i] = f;
     }
@@ -922,6 +921,11 @@ static void bm_face_array_visit(BMFace **faces,
 /* signed user id */
 typedef intptr_t SUID_Int;
 
+BLI_INLINE intptr_t abs_intptr(intptr_t a)
+{
+  return (a < 0) ? -a : a;
+}
+
 static bool bm_edge_is_region_boundary(BMEdge *e)
 {
   if (e->l->radial_next != e->l) {
@@ -985,7 +989,7 @@ static SUID_Int bm_face_region_vert_boundary_id(BMVert *v)
 
   id ^= (tot * PRIME_VERT_MID_B);
 
-  return id ? ABS(id) : 1;
+  return id ? abs_intptr(id) : 1;
 
 #  undef PRIME_VERT_SMALL_A
 #  undef PRIME_VERT_SMALL_B
@@ -1040,7 +1044,7 @@ static SUID_Int bm_face_region_vert_pass_id(GHash *gh, BMVert *v)
   /* disallow 0 & min (since it can't be flipped) */
   id = (UNLIKELY(id == 0) ? 1 : UNLIKELY(id < id_min) ? id_min : id);
 
-  return ABS(id);
+  return abs_intptr(id);
 
 #  undef PRIME_VERT_MID_A
 #  undef PRIME_VERT_MID_B
@@ -1100,7 +1104,7 @@ static BMEdge *bm_face_region_pivot_edge_find(BMFace **faces_region,
         }
       }
       else {
-        /* use incase (depth == 0), no interior verts */
+        /* Use in case (depth == 0), no interior verts. */
         e_pivot_fallback = e;
       }
     } while ((l_iter = l_iter->next) != l_first);

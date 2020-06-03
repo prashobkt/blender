@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -23,16 +23,18 @@
 
 #include <string.h>
 
+#include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
-#include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_object_types.h"
 
+#include "BKE_action.h"
 #include "BKE_editmesh.h"
 #include "BKE_lattice.h"
-#include "BKE_library.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 
@@ -55,11 +57,11 @@ static void initData(ModifierData *md)
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
 {
 #if 0
-  const ArmatureModifierData *amd = (const ArmatureModifierData *) md;
+  const ArmatureModifierData *amd = (const ArmatureModifierData *)md;
 #endif
   ArmatureModifierData *tamd = (ArmatureModifierData *)target;
 
-  modifier_copyData_generic(md, target, flag);
+  BKE_modifier_copydata_generic(md, target, flag);
   tamd->prevCos = NULL;
 }
 
@@ -77,7 +79,12 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
 {
   ArmatureModifierData *amd = (ArmatureModifierData *)md;
 
-  return !amd->object;
+  /* The object type check is only needed here in case we have a placeholder
+   * object assigned (because the library containing the armature is missing).
+   *
+   * In other cases it should be impossible to have a type mismatch.
+   */
+  return !amd->object || amd->object->type != OB_ARMATURE;
 }
 
 static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk, void *userData)
@@ -91,7 +98,27 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 {
   ArmatureModifierData *amd = (ArmatureModifierData *)md;
   if (amd->object != NULL) {
-    DEG_add_object_relation(ctx->node, amd->object, DEG_OB_COMP_EVAL_POSE, "Armature Modifier");
+    /* If not using envelopes,
+     * create relations to individual bones for more rigging flexibility. */
+    if ((amd->deformflag & ARM_DEF_ENVELOPE) == 0 && (amd->object->pose != NULL) &&
+        ELEM(ctx->object->type, OB_MESH, OB_LATTICE, OB_GPENCIL)) {
+      /* If neither vertex groups nor envelopes are used, the modifier has no bone dependencies. */
+      if ((amd->deformflag & ARM_DEF_VGROUP) != 0) {
+        /* Enumerate groups that match existing bones. */
+        LISTBASE_FOREACH (bDeformGroup *, dg, &ctx->object->defbase) {
+          if (BKE_pose_channel_find_name(amd->object->pose, dg->name) != NULL) {
+            /* Can't check BONE_NO_DEFORM because it can be animated. */
+            DEG_add_bone_relation(
+                ctx->node, amd->object, dg->name, DEG_OB_COMP_BONE, "Armature Modifier");
+          }
+        }
+      }
+    }
+    /* Otherwise require the whole pose to be complete. */
+    else {
+      DEG_add_object_relation(ctx->node, amd->object, DEG_OB_COMP_EVAL_POSE, "Armature Modifier");
+    }
+
     DEG_add_object_relation(ctx->node, amd->object, DEG_OB_COMP_TRANSFORM, "Armature Modifier");
   }
   DEG_add_modifier_to_transform_relation(ctx->node, "Armature Modifier");
@@ -134,6 +161,11 @@ static void deformVertsEM(ModifierData *md,
 {
   ArmatureModifierData *amd = (ArmatureModifierData *)md;
   Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, em, mesh, NULL, numVerts, false, false);
+
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
+  }
 
   MOD_previous_vcos_store(md, vertexCos); /* if next modifier needs original vertices */
 
@@ -207,7 +239,7 @@ static void deformMatrices(ModifierData *md,
                         amd->defgrp_name,
                         NULL);
 
-  if (mesh_src != mesh) {
+  if (!ELEM(mesh_src, NULL, mesh)) {
     BKE_id_free(NULL, mesh_src);
   }
 }
@@ -217,7 +249,7 @@ ModifierTypeInfo modifierType_Armature = {
     /* structName */ "ArmatureModifierData",
     /* structSize */ sizeof(ArmatureModifierData),
     /* type */ eModifierTypeType_OnlyDeform,
-    /* flags */ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsLattice |
+    /* flags */ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsVertexCosOnly |
         eModifierTypeFlag_SupportsEditmode,
 
     /* copyData */ copyData,
@@ -226,7 +258,10 @@ ModifierTypeInfo modifierType_Armature = {
     /* deformMatrices */ deformMatrices,
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ deformMatricesEM,
-    /* applyModifier */ NULL,
+    /* modifyMesh */ NULL,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

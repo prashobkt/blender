@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -27,14 +27,14 @@
 
 #include "BLI_utildefines.h"
 
+#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_mesh_types.h"
 
-#include "BKE_cdderivedmesh.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
+#include "BKE_subdiv_deform.h"
 #include "BKE_subdiv_mesh.h"
 #include "BKE_subsurf.h"
 
@@ -58,17 +58,17 @@ static void initData(ModifierData *md)
   smd->renderLevels = 2;
   smd->uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_CORNERS;
   smd->quality = 3;
-  smd->flags |= eSubsurfModifierFlag_UseCrease;
+  smd->flags |= (eSubsurfModifierFlag_UseCrease | eSubsurfModifierFlag_ControlEdges);
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
 {
 #if 0
-  const SubsurfModifierData *smd = (const SubsurfModifierData *) md;
+  const SubsurfModifierData *smd = (const SubsurfModifierData *)md;
 #endif
   SubsurfModifierData *tsmd = (SubsurfModifierData *)target;
 
-  modifier_copyData_generic(md, target, flag);
+  BKE_modifier_copydata_generic(md, target, flag);
 
   tsmd->emCache = tsmd->mCache = NULL;
 }
@@ -148,7 +148,8 @@ static void subdiv_mesh_settings_init(SubdivToMeshSettings *settings,
 {
   const int level = subdiv_levels_for_modifier_get(smd, ctx);
   settings->resolution = (1 << level) + 1;
-  settings->use_optimal_display = (smd->flags & eSubsurfModifierFlag_ControlEdges);
+  settings->use_optimal_display = (smd->flags & eSubsurfModifierFlag_ControlEdges) &&
+                                  !(ctx->flag & MOD_APPLY_TO_BASE_MESH);
 }
 
 static Mesh *subdiv_as_mesh(SubsurfModifierData *smd,
@@ -205,9 +206,13 @@ static SubsurfRuntimeData *subsurf_ensure_runtime(SubsurfModifierData *smd)
 
 /* Modifier itself. */
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result = mesh;
+#if !defined(WITH_OPENSUBDIV)
+  BKE_modifier_set_error(md, "Disabled, built without OpenSubdiv");
+  return result;
+#endif
   SubsurfModifierData *smd = (SubsurfModifierData *)md;
   SubdivSettings subdiv_settings;
   subdiv_settings_init(&subdiv_settings, smd);
@@ -236,6 +241,40 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   return result;
 }
 
+static void deformMatrices(ModifierData *md,
+                           const ModifierEvalContext *UNUSED(ctx),
+                           Mesh *mesh,
+                           float (*vertex_cos)[3],
+                           float (*deform_matrices)[3][3],
+                           int num_verts)
+{
+#if !defined(WITH_OPENSUBDIV)
+  BKE_modifier_set_error(md, "Disabled, built without OpenSubdiv");
+  return;
+#endif
+
+  /* Subsurf does not require extra space mapping, keep matrices as is. */
+  (void)deform_matrices;
+
+  SubsurfModifierData *smd = (SubsurfModifierData *)md;
+  SubdivSettings subdiv_settings;
+  subdiv_settings_init(&subdiv_settings, smd);
+  if (subdiv_settings.level == 0) {
+    return;
+  }
+  BKE_subdiv_settings_validate_for_mesh(&subdiv_settings, mesh);
+  SubsurfRuntimeData *runtime_data = subsurf_ensure_runtime(smd);
+  Subdiv *subdiv = subdiv_descriptor_ensure(smd, &subdiv_settings, mesh);
+  if (subdiv == NULL) {
+    /* Happens on bad topology, but also on empty input mesh. */
+    return;
+  }
+  BKE_subdiv_deform_coarse_vertices(subdiv, mesh, vertex_cos, num_verts);
+  if (subdiv != runtime_data->subdiv) {
+    BKE_subdiv_free(subdiv);
+  }
+}
+
 ModifierTypeInfo modifierType_Subsurf = {
     /* name */ "Subdivision",
     /* structName */ "SubsurfModifierData",
@@ -248,10 +287,13 @@ ModifierTypeInfo modifierType_Subsurf = {
     /* copyData */ copyData,
 
     /* deformVerts */ NULL,
-    /* deformMatrices */ NULL,
+    /* deformMatrices */ deformMatrices,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,

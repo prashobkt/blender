@@ -37,14 +37,16 @@ Convenience Targets
    * bpy:           Build as a python module which can be loaded from python directly.
    * deps:          Build library dependencies (intended only for platform maintainers).
 
+   * developer:     Enable faster builds, error checking and tests, recommended for developers.
    * config:        Run cmake configuration tool to set build options.
+   * ninja:         Use ninja build tool for faster builds.
 
    Note: passing the argument 'BUILD_DIR=path' when calling make will override the default build dir.
    Note: passing the argument 'BUILD_CMAKE_ARGS=args' lets you add cmake arguments.
 
 
 Project Files
-   Generate poject files for development environments.
+   Generate project files for development environments.
 
    * project_qtcreator:     QtCreator Project Files.
    * project_netbeans:      NetBeans Project Files.
@@ -60,8 +62,7 @@ Testing Targets
    Not associated with building Blender.
 
    * test:
-     Run ctest, currently tests import/export,
-     operator execution and that python modules load
+     Run automated tests with ctest.
    * test_cmake:
      Runs our own cmake file checker
      which detects errors in the cmake file list definitions
@@ -70,17 +71,6 @@ Testing Targets
      which are tagged to use the stricter formatting
    * test_deprecated:
      Checks for deprecation tags in our code which may need to be removed
-   * test_style_c:
-     Checks C/C++ conforms with blenders style guide:
-     https://wiki.blender.org/wiki/Source/Code_Style
-   * test_style_c_qtc:
-     Same as test_style but outputs QtCreator tasks format
-   * test_style_osl:
-     Checks OpenShadingLanguage conforms with blenders style guide:
-     https://wiki.blender.org/wiki/Source/Code_Style
-   * test_style_osl_qtc:
-     Checks OpenShadingLanguage conforms with blenders style guide:
-     https://wiki.blender.org/wiki/Source/Code_Style
 
 Static Source Code Checking
    Not associated with building Blender.
@@ -117,7 +107,7 @@ Utilities
      Example
         make icons_geom BLENDER_BIN=/path/to/blender
 
-   * tgz:
+   * source_archive:
      Create a compressed archive of the source code.
 
    * update:
@@ -162,9 +152,8 @@ CPU:=$(shell uname -m)
 BLENDER_DIR:=$(shell pwd -P)
 BUILD_TYPE:=Release
 
-ifndef BUILD_CMAKE_ARGS
-	BUILD_CMAKE_ARGS:=
-endif
+# CMake arguments, assigned to local variable to make it mutable.
+CMAKE_CONFIG_ARGS := $(BUILD_CMAKE_ARGS)
 
 ifndef BUILD_DIR
 	BUILD_DIR:=$(shell dirname "$(BLENDER_DIR)")/build_$(OS_NCASE)
@@ -191,6 +180,16 @@ ifndef PYTHON
 	PYTHON:=python3
 endif
 
+# For macOS python3 is not installed by default, so fallback to python binary
+# in libraries, or python 2 for running make update to get it.
+ifeq ($(OS_NCASE),darwin)
+	ifeq (, $(shell command -v $(PYTHON)))
+		PYTHON:=../lib/darwin/python/bin/python3.7m
+		ifeq (, $(shell command -v $(PYTHON)))
+			PYTHON:=python
+		endif
+	endif
+endif
 
 # -----------------------------------------------------------------------------
 # additional targets for the build configuration
@@ -202,25 +201,49 @@ ifneq "$(findstring debug, $(MAKECMDGOALS))" ""
 endif
 ifneq "$(findstring full, $(MAKECMDGOALS))" ""
 	BUILD_DIR:=$(BUILD_DIR)_full
-	BUILD_CMAKE_ARGS:=$(BUILD_CMAKE_ARGS) -C"$(BLENDER_DIR)/build_files/cmake/config/blender_full.cmake"
+	CMAKE_CONFIG_ARGS:=-C"$(BLENDER_DIR)/build_files/cmake/config/blender_full.cmake" $(CMAKE_CONFIG_ARGS)
 endif
 ifneq "$(findstring lite, $(MAKECMDGOALS))" ""
 	BUILD_DIR:=$(BUILD_DIR)_lite
-	BUILD_CMAKE_ARGS:=$(BUILD_CMAKE_ARGS) -C"$(BLENDER_DIR)/build_files/cmake/config/blender_lite.cmake"
+	CMAKE_CONFIG_ARGS:=-C"$(BLENDER_DIR)/build_files/cmake/config/blender_lite.cmake" $(CMAKE_CONFIG_ARGS)
 endif
 ifneq "$(findstring cycles, $(MAKECMDGOALS))" ""
 	BUILD_DIR:=$(BUILD_DIR)_cycles
-	BUILD_CMAKE_ARGS:=$(BUILD_CMAKE_ARGS) -C"$(BLENDER_DIR)/build_files/cmake/config/cycles_standalone.cmake"
+	CMAKE_CONFIG_ARGS:=-C"$(BLENDER_DIR)/build_files/cmake/config/cycles_standalone.cmake" $(CMAKE_CONFIG_ARGS)
 endif
 ifneq "$(findstring headless, $(MAKECMDGOALS))" ""
 	BUILD_DIR:=$(BUILD_DIR)_headless
-	BUILD_CMAKE_ARGS:=$(BUILD_CMAKE_ARGS) -C"$(BLENDER_DIR)/build_files/cmake/config/blender_headless.cmake"
+	CMAKE_CONFIG_ARGS:=-C"$(BLENDER_DIR)/build_files/cmake/config/blender_headless.cmake" $(CMAKE_CONFIG_ARGS)
 endif
 ifneq "$(findstring bpy, $(MAKECMDGOALS))" ""
 	BUILD_DIR:=$(BUILD_DIR)_bpy
-	BUILD_CMAKE_ARGS:=$(BUILD_CMAKE_ARGS) -C"$(BLENDER_DIR)/build_files/cmake/config/bpy_module.cmake"
+	CMAKE_CONFIG_ARGS:=-C"$(BLENDER_DIR)/build_files/cmake/config/bpy_module.cmake" $(CMAKE_CONFIG_ARGS)
 endif
 
+ifneq "$(findstring developer, $(MAKECMDGOALS))" ""
+	CMAKE_CONFIG_ARGS:=-C"$(BLENDER_DIR)/build_files/cmake/config/blender_developer.cmake" $(CMAKE_CONFIG_ARGS)
+endif
+
+# -----------------------------------------------------------------------------
+# build tool
+
+ifneq "$(findstring ninja, $(MAKECMDGOALS))" ""
+	CMAKE_CONFIG_ARGS:=$(CMAKE_CONFIG_ARGS) -G Ninja
+	BUILD_COMMAND:=ninja
+	DEPS_BUILD_COMMAND:=ninja
+else
+	ifneq ("$(wildcard $(BUILD_DIR)/build.ninja)","")
+		BUILD_COMMAND:=ninja
+	else
+		BUILD_COMMAND:=make -s
+	endif
+
+	ifneq ("$(wildcard $(DEPS_BUILD_DIR)/build.ninja)","")
+		DEPS_BUILD_COMMAND:=ninja
+	else
+		DEPS_BUILD_COMMAND:=make -s
+	endif
+endif
 
 # -----------------------------------------------------------------------------
 # Blender binary path
@@ -228,7 +251,7 @@ endif
 # Allow passing in own BLENDER_BIN so developers who don't
 # use the default build path can still use utility helpers.
 ifeq ($(OS), Darwin)
-	BLENDER_BIN?="$(BUILD_DIR)/bin/blender.app/Contents/MacOS/blender"
+	BLENDER_BIN?="$(BUILD_DIR)/bin/Blender.app/Contents/MacOS/Blender"
 else
 	BLENDER_BIN?="$(BUILD_DIR)/bin/blender"
 endif
@@ -241,7 +264,10 @@ ifndef NPROCS
 	ifeq ($(OS), Linux)
 		NPROCS:=$(shell nproc)
 	endif
-	ifneq (,$(filter $(OS),Darwin FreeBSD NetBSD))
+	ifeq ($(OS), NetBSD)
+		NPROCS:=$(shell getconf NPROCESSORS_ONLN)
+	endif
+	ifneq (,$(filter $(OS),Darwin FreeBSD))
 		NPROCS:=$(shell sysctl -n hw.ncpu)
 	endif
 endif
@@ -250,7 +276,7 @@ endif
 # -----------------------------------------------------------------------------
 # Macro for configuring cmake
 
-CMAKE_CONFIG = cmake $(BUILD_CMAKE_ARGS) \
+CMAKE_CONFIG = cmake $(CMAKE_CONFIG_ARGS) \
                      -H"$(BLENDER_DIR)" \
                      -B"$(BUILD_DIR)" \
                      -DCMAKE_BUILD_TYPE_INIT:STRING=$(BUILD_TYPE)
@@ -282,7 +308,7 @@ all: .FORCE
 
 	@echo
 	@echo Building Blender ...
-	$(MAKE) -C "$(BUILD_DIR)" -s -j $(NPROCS) install
+	$(BUILD_COMMAND) -C "$(BUILD_DIR)" -j $(NPROCS) install
 	@echo
 	@echo edit build configuration with: "$(BUILD_DIR)/CMakeCache.txt" run make again to rebuild.
 	@echo Blender successfully built, run from: $(BLENDER_BIN)
@@ -294,6 +320,8 @@ lite: all
 cycles: all
 headless: all
 bpy: all
+developer: all
+ninja: all
 
 # -----------------------------------------------------------------------------
 # Build dependencies
@@ -312,7 +340,7 @@ deps: .FORCE
 
 	@echo
 	@echo Building dependencies ...
-	$(MAKE) -C "$(DEPS_BUILD_DIR)" -s -j $(NPROCS) $(DEPS_TARGET)
+	$(DEPS_BUILD_COMMAND) -C "$(DEPS_BUILD_DIR)" -j $(NPROCS) $(DEPS_TARGET)
 	@echo
 	@echo Dependencies successfully built and installed to $(DEPS_INSTALL_DIR).
 	@echo
@@ -347,7 +375,7 @@ package_archive: .FORCE
 # Tests
 #
 test: .FORCE
-	cd $(BUILD_DIR) ; ctest . --output-on-failure
+	$(PYTHON) ./build_files/utils/make_test.py "$(BUILD_DIR)"
 
 # run pep8 check check on scripts we distribute.
 test_pep8: .FORCE
@@ -363,52 +391,13 @@ test_cmake: .FORCE
 test_deprecated: .FORCE
 	$(PYTHON) tests/check_deprecated.py
 
-test_style_c: .FORCE
-	# run our own checks on C/C++ style
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_style_c.py" \
-	    "$(BLENDER_DIR)/source/blender" \
-	    "$(BLENDER_DIR)/source/creator" \
-	    --no-length-check
-
-test_style_c_qtc: .FORCE
-	# run our own checks on C/C++ style
-	USE_QTC_TASK=1 \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_style_c.py" \
-	    "$(BLENDER_DIR)/source/blender" \
-	    "$(BLENDER_DIR)/source/creator" \
-	    --no-length-check \
-	    > \
-	    "$(BLENDER_DIR)/test_style.tasks"
-	@echo "written: test_style.tasks"
-
-
-test_style_osl: .FORCE
-	# run our own checks on C/C++ style
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_style_c.py" \
-	    "$(BLENDER_DIR)/intern/cycles/kernel/shaders" \
-	    "$(BLENDER_DIR)/release/scripts/templates_osl"
-
-
-test_style_osl_qtc: .FORCE
-	# run our own checks on C/C++ style
-	USE_QTC_TASK=1 \
-	PYTHONIOENCODING=utf_8 $(PYTHON) \
-	    "$(BLENDER_DIR)/source/tools/check_source/check_style_c.py" \
-	    "$(BLENDER_DIR)/intern/cycles/kernel/shaders" \
-	    "$(BLENDER_DIR)/release/scripts/templates_osl" \
-	    > \
-	    "$(BLENDER_DIR)/test_style.tasks"
-	@echo "written: test_style.tasks"
 
 # -----------------------------------------------------------------------------
 # Project Files
 #
 
 project_qtcreator: .FORCE
-	$(PYTHON) build_files/cmake/cmake_qtcreator_project.py "$(BUILD_DIR)"
+	$(PYTHON) build_files/cmake/cmake_qtcreator_project.py --build-dir "$(BUILD_DIR)"
 
 project_netbeans: .FORCE
 	$(PYTHON) build_files/cmake/cmake_netbeans_project.py "$(BUILD_DIR)"
@@ -488,8 +477,8 @@ check_descriptions: .FORCE
 # Utilities
 #
 
-tgz: .FORCE
-	./build_files/utils/build_tgz.sh
+source_archive: .FORCE
+	./build_files/utils/make_source_archive.sh
 
 INKSCAPE_BIN?="inkscape"
 icons: .FORCE
@@ -503,21 +492,11 @@ icons_geom: .FORCE
 	    "$(BLENDER_DIR)/release/datafiles/blender_icons_geom_update.py"
 
 update: .FORCE
-	if [ "$(OS_NCASE)" = "darwin" ] && [ ! -d "../lib/$(OS_NCASE)" ]; then \
-		svn checkout https://svn.blender.org/svnroot/bf-blender/trunk/lib/$(OS_NCASE) ../lib/$(OS_NCASE) ; \
-	fi
-	if [ -d "../lib" ]; then \
-		svn cleanup ../lib/* ; \
-		svn update ../lib/* ; \
-	fi
-	git pull --rebase
-	git submodule update --init --recursive
-	git submodule foreach git checkout master
-	git submodule foreach git pull --rebase origin master
+	$(PYTHON) ./build_files/utils/make_update.py
 
 format: .FORCE
-	PATH="../lib/${OS_NCASE}/llvm/bin/:$(PATH)" \
-		python3 source/tools/utils_maintenance/clang_format_paths.py --expand-tabs $(PATHS)
+	PATH="../lib/${OS_NCASE}_${CPU}/llvm/bin/:../lib/${OS_NCASE}_centos7_${CPU}/llvm/bin/:../lib/${OS_NCASE}/llvm/bin/:$(PATH)" \
+		$(PYTHON) source/tools/utils_maintenance/clang_format_paths.py $(PATHS)
 
 
 # -----------------------------------------------------------------------------
@@ -548,7 +527,7 @@ help_features: .FORCE
 	@$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_print_build_options.py" $(BLENDER_DIR)"/CMakeLists.txt"
 
 clean: .FORCE
-	$(MAKE) -C "$(BUILD_DIR)" clean
+	$(BUILD_COMMAND) -C "$(BUILD_DIR)" clean
 
 .PHONY: all
 

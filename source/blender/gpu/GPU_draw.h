@@ -24,39 +24,20 @@
 #ifndef __GPU_DRAW_H__
 #define __GPU_DRAW_H__
 
+#include "BLI_utildefines.h"
+#include "DNA_object_enums.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct DupliObject;
+struct FluidModifierData;
 struct ImBuf;
 struct Image;
 struct ImageUser;
 struct Main;
-struct Object;
-struct RegionView3D;
-struct Scene;
-struct SmokeModifierData;
-struct View3D;
-struct ViewLayer;
-
-#include "DNA_object_enums.h"
 
 /* OpenGL drawing functions related to shading. */
-
-/* Initialize
- * - sets the default Blender opengl state, if in doubt, check
- *   the contents of this function
- * - this is called when starting Blender, for opengl rendering. */
-
-void GPU_state_init(void);
-
-/* Programmable point size
- * - shaders set their own point size when enabled
- * - use glPointSize when disabled */
-
-void GPU_enable_program_point_size(void);
-void GPU_disable_program_point_size(void);
 
 /* Mipmap settings
  * - these will free textures on changes */
@@ -84,43 +65,28 @@ void GPU_create_gl_tex(unsigned int *bind,
                        int recth,
                        int textarget,
                        bool mipmap,
-                       bool use_hight_bit_depth,
+                       bool half_float,
+                       bool use_srgb,
                        struct Image *ima);
 void GPU_create_gl_tex_compressed(unsigned int *bind,
-                                  unsigned int *pix,
-                                  int x,
-                                  int y,
-                                  int mipmap,
                                   int textarget,
                                   struct Image *ima,
                                   struct ImBuf *ibuf);
-bool GPU_upload_dxt_texture(struct ImBuf *ibuf);
+bool GPU_upload_dxt_texture(struct ImBuf *ibuf, bool use_srgb);
 void GPU_free_image(struct Image *ima);
 void GPU_free_images(struct Main *bmain);
 void GPU_free_images_anim(struct Main *bmain);
 void GPU_free_images_old(struct Main *bmain);
 
-/* smoke drawing functions */
-void GPU_free_smoke(struct SmokeModifierData *smd);
-void GPU_free_smoke_velocity(struct SmokeModifierData *smd);
-void GPU_create_smoke(struct SmokeModifierData *smd, int highres);
-void GPU_create_smoke_coba_field(struct SmokeModifierData *smd);
-void GPU_create_smoke_velocity(struct SmokeModifierData *smd);
+/* gpu_draw_smoke.c  */
+void GPU_free_smoke(struct FluidModifierData *mmd);
+void GPU_free_smoke_velocity(struct FluidModifierData *mmd);
+void GPU_create_smoke(struct FluidModifierData *mmd, int highres);
+void GPU_create_smoke_coba_field(struct FluidModifierData *mmd);
+void GPU_create_smoke_velocity(struct FluidModifierData *mmd);
 
 /* Delayed free of OpenGL buffers by main thread */
 void GPU_free_unused_buffers(struct Main *bmain);
-
-/* utilities */
-typedef enum eGPUAttrMask {
-  GPU_DEPTH_BUFFER_BIT = (1 << 0),
-  GPU_ENABLE_BIT = (1 << 1),
-  GPU_SCISSOR_BIT = (1 << 2),
-  GPU_VIEWPORT_BIT = (1 << 3),
-  GPU_BLEND_BIT = (1 << 4),
-} eGPUAttrMask;
-
-void gpuPushAttr(eGPUAttrMask mask);
-void gpuPopAttr(void);
 
 #ifdef __cplusplus
 }

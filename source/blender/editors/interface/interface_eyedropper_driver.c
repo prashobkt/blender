@@ -29,11 +29,11 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
-#include "DNA_screen_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
-#include "BKE_context.h"
 #include "BKE_animsys.h"
+#include "BKE_context.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -48,8 +48,8 @@
 
 #include "ED_keyframing.h"
 
-#include "interface_intern.h"
 #include "interface_eyedropper_intern.h"
+#include "interface_intern.h"
 
 typedef struct DriverDropper {
   /* Destination property (i.e. where we'll add a driver) */
@@ -116,10 +116,10 @@ static void driverdropper_sample(bContext *C, wmOperator *op, const wmEvent *eve
     /* Now create driver(s) */
     if (target_path && dst_path) {
       int success = ANIM_add_driver_with_target(op->reports,
-                                                ddr->ptr.id.data,
+                                                ddr->ptr.owner_id,
                                                 dst_path,
                                                 ddr->index,
-                                                target_ptr->id.data,
+                                                target_ptr->owner_id,
                                                 target_path,
                                                 target_index,
                                                 flag,
@@ -130,7 +130,7 @@ static void driverdropper_sample(bContext *C, wmOperator *op, const wmEvent *eve
         /* send updates */
         UI_context_update_anim_flag(C);
         DEG_relations_tag_update(CTX_data_main(C));
-        DEG_id_tag_update(ddr->ptr.id.data, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+        DEG_id_tag_update(ddr->ptr.owner_id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
         WM_event_add_notifier(C, NC_ANIMATION | ND_FCURVES_ORDER, NULL);  // XXX
       }
     }
@@ -180,7 +180,10 @@ static int driverdropper_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
 {
   /* init */
   if (driverdropper_init(C, op)) {
-    WM_cursor_modal_set(CTX_wm_window(C), BC_EYEDROPPER_CURSOR);
+    wmWindow *win = CTX_wm_window(C);
+    /* Workaround for de-activating the button clearing the cursor, see T76794 */
+    UI_context_active_but_clear(C, win, CTX_wm_region(C));
+    WM_cursor_modal_set(win, WM_CURSOR_EYEDROPPER);
 
     /* add temp handler */
     WM_event_add_modal_handler(C, op);

@@ -23,10 +23,12 @@
  * Release.
  */
 
+// clang-format off
 #include "kernel/closure/alloc.h"
 #include "kernel/closure/bsdf_util.h"
 #include "kernel/closure/bsdf.h"
 #include "kernel/closure/emissive.h"
+// clang-format on
 
 #include "kernel/svm/svm.h"
 
@@ -48,10 +50,16 @@ ccl_device void shader_setup_object_transforms(KernelGlobals *kg, ShaderData *sd
 }
 #endif
 
-ccl_device_noinline void shader_setup_from_ray(KernelGlobals *kg,
-                                               ShaderData *sd,
-                                               const Intersection *isect,
-                                               const Ray *ray)
+#ifdef __KERNEL_OPTIX__
+ccl_device_inline
+#else
+ccl_device_noinline
+#endif
+    void
+    shader_setup_from_ray(KernelGlobals *kg,
+                          ShaderData *sd,
+                          const Intersection *isect,
+                          const Ray *ray)
 {
   PROFILING_INIT(kg, PROFILING_SHADER_SETUP);
 
@@ -686,8 +694,7 @@ ccl_device_inline const ShaderClosure *shader_bsdf_pick(ShaderData *sd, float *r
         if (r < next_sum) {
           sampled = i;
 
-          /* Rescale to reuse for direction sample, to better
-           * preserve stratifaction. */
+          /* Rescale to reuse for direction sample, to better preserve stratification. */
           *randu = (r - partial_sum) / sc->sample_weight;
           break;
         }
@@ -743,8 +750,7 @@ ccl_device_inline const ShaderClosure *shader_bssrdf_pick(ShaderData *sd,
             *throughput *= (sum_bsdf + sum_bssrdf) / sum_bssrdf;
             sampled = i;
 
-            /* Rescale to reuse for direction sample, to better
-             * preserve stratifaction. */
+            /* Rescale to reuse for direction sample, to better preserve stratification. */
             *randu = (r - partial_sum) / sc->sample_weight;
             break;
           }
@@ -780,7 +786,7 @@ ccl_device_inline int shader_bsdf_sample(KernelGlobals *kg,
   kernel_assert(CLOSURE_IS_BSDF(sc->type));
 
   int label;
-  float3 eval;
+  float3 eval = make_float3(0.0f, 0.0f, 0.0f);
 
   *pdf = 0.0f;
   label = bsdf_sample(kg, sd, sc, randu, randv, &eval, omega_in, domega_in, pdf);
@@ -810,7 +816,7 @@ ccl_device int shader_bsdf_sample_closure(KernelGlobals *kg,
   PROFILING_INIT(kg, PROFILING_CLOSURE_SAMPLE);
 
   int label;
-  float3 eval;
+  float3 eval = make_float3(0.0f, 0.0f, 0.0f);
 
   *pdf = 0.0f;
   label = bsdf_sample(kg, sd, sc, randu, randv, &eval, omega_in, domega_in, pdf);
@@ -897,7 +903,8 @@ ccl_device float3 shader_bsdf_diffuse(KernelGlobals *kg, ShaderData *sd)
   for (int i = 0; i < sd->num_closure; i++) {
     ShaderClosure *sc = &sd->closure[i];
 
-    if (CLOSURE_IS_BSDF_DIFFUSE(sc->type))
+    if (CLOSURE_IS_BSDF_DIFFUSE(sc->type) || CLOSURE_IS_BSSRDF(sc->type) ||
+        CLOSURE_IS_BSDF_BSSRDF(sc->type))
       eval += sc->weight;
   }
 
@@ -926,20 +933,6 @@ ccl_device float3 shader_bsdf_transmission(KernelGlobals *kg, ShaderData *sd)
     ShaderClosure *sc = &sd->closure[i];
 
     if (CLOSURE_IS_BSDF_TRANSMISSION(sc->type))
-      eval += sc->weight;
-  }
-
-  return eval;
-}
-
-ccl_device float3 shader_bsdf_subsurface(KernelGlobals *kg, ShaderData *sd)
-{
-  float3 eval = make_float3(0.0f, 0.0f, 0.0f);
-
-  for (int i = 0; i < sd->num_closure; i++) {
-    ShaderClosure *sc = &sd->closure[i];
-
-    if (CLOSURE_IS_BSSRDF(sc->type) || CLOSURE_IS_BSDF_BSSRDF(sc->type))
       eval += sc->weight;
   }
 
@@ -1072,6 +1065,7 @@ ccl_device float3 shader_holdout_eval(KernelGlobals *kg, ShaderData *sd)
 ccl_device void shader_eval_surface(KernelGlobals *kg,
                                     ShaderData *sd,
                                     ccl_addr_space PathState *state,
+                                    ccl_global float *buffer,
                                     int path_flag)
 {
   PROFILING_INIT(kg, PROFILING_SHADER_EVAL);
@@ -1092,7 +1086,7 @@ ccl_device void shader_eval_surface(KernelGlobals *kg,
 
 #ifdef __OSL__
   if (kg->osl) {
-    if (sd->object == OBJECT_NONE) {
+    if (sd->object == OBJECT_NONE && sd->lamp == LAMP_NONE) {
       OSLShader::eval_background(kg, sd, state, path_flag);
     }
     else {
@@ -1103,7 +1097,7 @@ ccl_device void shader_eval_surface(KernelGlobals *kg,
 #endif
   {
 #ifdef __SVM__
-    svm_eval_nodes(kg, sd, state, SHADER_TYPE_SURFACE, path_flag);
+    svm_eval_nodes(kg, sd, state, buffer, SHADER_TYPE_SURFACE, path_flag);
 #else
     if (sd->object == OBJECT_NONE) {
       sd->closure_emission_background = make_float3(0.8f, 0.8f, 0.8f);
@@ -1223,7 +1217,7 @@ ccl_device int shader_volume_phase_sample(KernelGlobals *kg,
    * depending on color channels, even if this is perhaps not a common case */
   const ShaderClosure *sc = &sd->closure[sampled];
   int label;
-  float3 eval;
+  float3 eval = make_float3(0.0f, 0.0f, 0.0f);
 
   *pdf = 0.0f;
   label = volume_phase_sample(sd, sc, randu, randv, &eval, omega_in, domega_in, pdf);
@@ -1248,7 +1242,7 @@ ccl_device int shader_phase_sample_closure(KernelGlobals *kg,
   PROFILING_INIT(kg, PROFILING_CLOSURE_VOLUME_SAMPLE);
 
   int label;
-  float3 eval;
+  float3 eval = make_float3(0.0f, 0.0f, 0.0f);
 
   *pdf = 0.0f;
   label = volume_phase_sample(sd, sc, randu, randv, &eval, omega_in, domega_in, pdf);
@@ -1315,7 +1309,7 @@ ccl_device_inline void shader_eval_volume(KernelGlobals *kg,
     else
 #    endif
     {
-      svm_eval_nodes(kg, sd, state, SHADER_TYPE_VOLUME, path_flag);
+      svm_eval_nodes(kg, sd, state, NULL, SHADER_TYPE_VOLUME, path_flag);
     }
 #  endif
 
@@ -1344,7 +1338,7 @@ ccl_device void shader_eval_displacement(KernelGlobals *kg,
   else
 #  endif
   {
-    svm_eval_nodes(kg, sd, state, SHADER_TYPE_DISPLACEMENT, 0);
+    svm_eval_nodes(kg, sd, state, NULL, SHADER_TYPE_DISPLACEMENT, 0);
   }
 #endif
 }
@@ -1358,7 +1352,7 @@ ccl_device bool shader_transparent_shadow(KernelGlobals *kg, Intersection *isect
   int shader = 0;
 
 #  ifdef __HAIR__
-  if (kernel_tex_fetch(__prim_type, isect->prim) & PRIMITIVE_ALL_TRIANGLE) {
+  if (isect->type & PRIMITIVE_ALL_TRIANGLE) {
 #  endif
     shader = kernel_tex_fetch(__tri_shader, prim);
 #  ifdef __HAIR__

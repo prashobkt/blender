@@ -21,18 +21,18 @@
  * \ingroup spseq
  */
 
-#include <stdlib.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "DNA_space_types.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "ED_sequencer.h"
 #include "ED_markers.h"
-#include "ED_transform.h" /* transform keymap */
 #include "ED_select_utils.h"
+#include "ED_sequencer.h"
+#include "ED_transform.h" /* Transform keymap. */
 
 #include "BKE_sequencer.h"
 
@@ -43,7 +43,7 @@
 void sequencer_operatortypes(void)
 {
   /* sequencer_edit.c */
-  WM_operatortype_append(SEQUENCER_OT_cut);
+  WM_operatortype_append(SEQUENCER_OT_split);
   WM_operatortype_append(SEQUENCER_OT_slip);
   WM_operatortype_append(SEQUENCER_OT_mute);
   WM_operatortype_append(SEQUENCER_OT_unmute);
@@ -88,6 +88,8 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_change_effect_type);
   WM_operatortype_append(SEQUENCER_OT_change_path);
 
+  WM_operatortype_append(SEQUENCER_OT_set_range_to_strips);
+
   /* sequencer_select.c */
   WM_operatortype_append(SEQUENCER_OT_select_all);
   WM_operatortype_append(SEQUENCER_OT_select);
@@ -96,7 +98,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_select_linked_pick);
   WM_operatortype_append(SEQUENCER_OT_select_linked);
   WM_operatortype_append(SEQUENCER_OT_select_handles);
-  WM_operatortype_append(SEQUENCER_OT_select_active_side);
+  WM_operatortype_append(SEQUENCER_OT_select_side);
   WM_operatortype_append(SEQUENCER_OT_select_box);
   WM_operatortype_append(SEQUENCER_OT_select_grouped);
 
@@ -108,9 +110,6 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_sound_strip_add);
   WM_operatortype_append(SEQUENCER_OT_image_strip_add);
   WM_operatortype_append(SEQUENCER_OT_effect_strip_add);
-
-  /* sequencer_buttons.c */
-  WM_operatortype_append(SEQUENCER_OT_properties);
 
   /* sequencer_modifiers.c */
   WM_operatortype_append(SEQUENCER_OT_strip_modifier_add);

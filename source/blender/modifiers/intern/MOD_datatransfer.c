@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2014 Blender Foundation.
@@ -32,8 +32,8 @@
 
 #include "BKE_customdata.h"
 #include "BKE_data_transfer.h"
-#include "BKE_library.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_remap.h"
 #include "BKE_modifier.h"
@@ -141,9 +141,14 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
                        ModifierData *md,
                        bool UNUSED(useRenderParams))
 {
-  DataTransferModifierData *dtmd = (DataTransferModifierData *)md;
   /* If no source object, bypass. */
-  return (dtmd->ob_source == NULL);
+  DataTransferModifierData *dtmd = (DataTransferModifierData *)md;
+  /* The object type check is only needed here in case we have a placeholder
+   * object assigned (because the library containing the mesh is missing).
+   *
+   * In other cases it should be impossible to have a type mismatch.
+   */
+  return !dtmd->ob_source || dtmd->ob_source->type != OB_MESH;
 }
 
 #define HIGH_POLY_WARNING 10000
@@ -151,14 +156,14 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   (DT_TYPE_BWEIGHT_VERT | DT_TYPE_BWEIGHT_EDGE | DT_TYPE_CREASE | DT_TYPE_SHARP_EDGE | \
    DT_TYPE_LNOR | DT_TYPE_SHARP_FACE)
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *me_mod)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *me_mod)
 {
   DataTransferModifierData *dtmd = (DataTransferModifierData *)md;
   struct Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   Mesh *result = me_mod;
   ReportList reports;
 
-  /* Only used to check wehther we are operating on org data or not... */
+  /* Only used to check whether we are operating on org data or not... */
   Mesh *me = ctx->object->data;
 
   Object *ob_source = dtmd->ob_source;
@@ -179,8 +184,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
   if (((result == me) || (me->mvert == result->mvert) || (me->medge == result->medge)) &&
       (dtmd->data_types & DT_TYPES_AFFECT_MESH)) {
-    /* We need to duplicate data here, otherwise setting custom normals, edges' shaprness, etc., could
-     * modify org mesh, see T43671. */
+    /* We need to duplicate data here, otherwise setting custom normals, edges' sharpness, etc.,
+     * could modify org mesh, see T43671. */
     BKE_id_copy_ex(NULL, &me_mod->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
   }
 
@@ -212,16 +217,15 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                               &reports);
 
   if (BKE_reports_contain(&reports, RPT_ERROR)) {
-    modifier_setError(md, "%s", BKE_reports_string(&reports, RPT_ERROR));
+    BKE_modifier_set_error(md, "%s", BKE_reports_string(&reports, RPT_ERROR));
   }
   else if ((dtmd->data_types & DT_TYPE_LNOR) && !(me->flag & ME_AUTOSMOOTH)) {
-    modifier_setError((ModifierData *)dtmd, "Enable 'Auto Smooth' option in mesh settings");
+    BKE_modifier_set_error((ModifierData *)dtmd, "Enable 'Auto Smooth' in Object Data Properties");
   }
   else if (result->totvert > HIGH_POLY_WARNING ||
            ((Mesh *)(ob_source->data))->totvert > HIGH_POLY_WARNING) {
-    modifier_setError(
-        md,
-        "You are using a rather high poly as source or destination, computation might be slow");
+    BKE_modifier_set_error(
+        md, "Source or destination object has a high polygon count, computation might be slow");
   }
 
   return result;
@@ -238,13 +242,16 @@ ModifierTypeInfo modifierType_DataTransfer = {
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_UsesPreview,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

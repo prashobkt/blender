@@ -18,6 +18,11 @@
  * \ingroup modifiers
  */
 
+#include <string.h>
+
+#include "BLI_string.h"
+#include "BLI_utildefines.h"
+
 #include "DNA_cachefile_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -26,7 +31,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_cachefile.h"
-#include "BKE_library_query.h"
+#include "BKE_lib_query.h"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph_build.h"
@@ -37,7 +42,7 @@
 #ifdef WITH_ALEMBIC
 #  include "ABC_alembic.h"
 #  include "BKE_global.h"
-#  include "BKE_library.h"
+#  include "BKE_lib_id.h"
 #endif
 
 static void initData(ModifierData *md)
@@ -47,6 +52,9 @@ static void initData(ModifierData *md)
   mcmd->cache_file = NULL;
   mcmd->object_path[0] = '\0';
   mcmd->read_flag = MOD_MESHSEQ_READ_ALL;
+
+  mcmd->reader = NULL;
+  mcmd->reader_object_path[0] = '\0';
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
@@ -56,9 +64,10 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 #endif
   MeshSeqCacheModifierData *tmcmd = (MeshSeqCacheModifierData *)target;
 
-  modifier_copyData_generic(md, target, flag);
+  BKE_modifier_copydata_generic(md, target, flag);
 
   tmcmd->reader = NULL;
+  tmcmd->reader_object_path[0] = '\0';
 }
 
 static void freeData(ModifierData *md)
@@ -66,10 +75,8 @@ static void freeData(ModifierData *md)
   MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *)md;
 
   if (mcmd->reader) {
-#ifdef WITH_ALEMBIC
-    CacheReader_free(mcmd->reader);
-#endif
-    mcmd->reader = NULL;
+    mcmd->reader_object_path[0] = '\0';
+    BKE_cachefile_reader_free(mcmd->cache_file, &mcmd->reader);
   }
 }
 
@@ -83,7 +90,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   return (mcmd->cache_file == NULL) || (mcmd->object_path[0] == '\0');
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
 #ifdef WITH_ALEMBIC
   MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *)md;
@@ -93,27 +100,35 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   Mesh *org_mesh = mesh;
 
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+  CacheFile *cache_file = mcmd->cache_file;
   const float frame = DEG_get_ctime(ctx->depsgraph);
-  const float time = BKE_cachefile_time_offset(mcmd->cache_file, frame, FPS);
+  const float time = BKE_cachefile_time_offset(cache_file, frame, FPS);
   const char *err_str = NULL;
 
-  CacheFile *cache_file = (CacheFile *)DEG_get_original_id(&mcmd->cache_file->id);
-
-  BKE_cachefile_ensure_handle(G.main, cache_file);
-
-  if (!mcmd->reader) {
-    mcmd->reader = CacheReader_open_alembic_object(
-        cache_file->handle, NULL, ctx->object, mcmd->object_path);
+  if (!mcmd->reader || !STREQ(mcmd->reader_object_path, mcmd->object_path)) {
+    STRNCPY(mcmd->reader_object_path, mcmd->object_path);
+    BKE_cachefile_reader_open(cache_file, &mcmd->reader, ctx->object, mcmd->object_path);
     if (!mcmd->reader) {
-      modifier_setError(md, "Could not create Alembic reader for file %s", cache_file->filepath);
+      BKE_modifier_set_error(
+          md, "Could not create Alembic reader for file %s", cache_file->filepath);
       return mesh;
     }
+  }
+
+  /* If this invocation is for the ORCO mesh, and the mesh in Alembic hasn't changed topology, we
+   * must return the mesh as-is instead of deforming it. */
+  if (ctx->flag & MOD_APPLY_ORCO &&
+      !ABC_mesh_topology_changed(mcmd->reader, ctx->object, mesh, time, &err_str)) {
+    return mesh;
   }
 
   if (me != NULL) {
     MVert *mvert = mesh->mvert;
     MEdge *medge = mesh->medge;
     MPoly *mpoly = mesh->mpoly;
+
+    /* TODO(sybren+bastien): possibly check relevant custom data layers (UV/color depending on
+     * flags) and duplicate those too. */
     if ((me->mvert == mvert) || (me->medge == medge) || (me->mpoly == mpoly)) {
       /* We need to duplicate data here, otherwise we'll modify org mesh, see T51701. */
       BKE_id_copy_ex(NULL,
@@ -127,7 +142,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   Mesh *result = ABC_read_mesh(mcmd->reader, ctx->object, mesh, time, &err_str, mcmd->read_flag);
 
   if (err_str) {
-    modifier_setError(md, "%s", err_str);
+    BKE_modifier_set_error(md, "%s", err_str);
   }
 
   if (!ELEM(result, NULL, mesh) && (mesh != org_mesh)) {
@@ -183,7 +198,10 @@ ModifierTypeInfo modifierType_MeshSequenceCache = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,

@@ -15,6 +15,7 @@ set(SRC
   bvh_build.cpp
   bvh_embree.cpp
   bvh_node.cpp
+  bvh_optix.cpp
   bvh_sort.cpp
   bvh_split.cpp
   bvh_unaligned.cpp
@@ -29,6 +30,7 @@ set(SRC_HEADERS
   bvh_build.h
   bvh_embree.h
   bvh_node.h
+  bvh_optix.h
   bvh_params.h
   bvh_sort.h
   bvh_split.h
@@ -37,9 +39,16 @@ set(SRC_HEADERS
 
 set(LIB
   cycles_render
+  cycles_util
 )
 
 include_directories(${INC})
 include_directories(SYSTEM ${INC_SYS})
+
+if(WITH_CYCLES_EMBREE)
+  list(APPEND LIB
+    ${EMBREE_LIBRARIES}
+  )
+endif()
 
 cycles_add_library(cycles_bvh "${LIB}" ${SRC} ${SRC_HEADERS})

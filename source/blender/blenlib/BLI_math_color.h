@@ -27,21 +27,11 @@
  * \ingroup bli
  */
 
+#include "BLI_math_inline.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "BLI_math_inline.h"
-
-/* primaries */
-#define BLI_XYZ_SMPTE 0
-#define BLI_XYZ_REC709_SRGB 1
-#define BLI_XYZ_CIE 2
-
-/* built-in profiles */
-#define BLI_PR_NONE 0
-#define BLI_PR_SRGB 1
-#define BLI_PR_REC709 2
 
 /* YCbCr */
 #define BLI_YCC_ITU_BT601 0
@@ -140,12 +130,18 @@ MINLINE void float_to_byte_dither_v3(
 #define rgba_float_args_set_ch(col, r, g, b, a) \
   rgba_float_args_set(col, (r) / 255.0f, (g) / 255.0f, (b) / 255.0f, (a) / 255.0f)
 
-MINLINE void rgba_char_args_set(
-    char col[4], const char r, const char g, const char b, const char a);
+MINLINE void rgba_uchar_args_set(unsigned char col[4],
+                                 const unsigned char r,
+                                 const unsigned char g,
+                                 const unsigned char b,
+                                 const unsigned char a);
 MINLINE void rgba_float_args_set(
     float col[4], const float r, const float g, const float b, const float a);
-MINLINE void rgba_char_args_test_set(
-    char col[4], const char r, const char g, const char b, const char a);
+MINLINE void rgba_uchar_args_test_set(unsigned char col[4],
+                                      const unsigned char r,
+                                      const unsigned char g,
+                                      const unsigned char b,
+                                      const unsigned char a);
 MINLINE void cpack_cpy_3ub(unsigned char r_col[3], const unsigned int pack);
 
 void blackbody_temperature_to_rgb_table(float *r_table, int width, float min, float max);

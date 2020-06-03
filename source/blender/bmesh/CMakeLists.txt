@@ -24,9 +24,9 @@ set(INC
   ../blenlib
   ../blentranslation
   ../makesdna
-  ../../../intern/guardedalloc
   ../../../intern/atomic
   ../../../intern/eigen
+  ../../../intern/guardedalloc
   ../../../extern/rangetree
 )
 
@@ -99,6 +99,8 @@ set(SRC
   intern/bmesh_mesh.h
   intern/bmesh_mesh_conv.c
   intern/bmesh_mesh_conv.h
+  intern/bmesh_mesh_duplicate.c
+  intern/bmesh_mesh_duplicate.h
   intern/bmesh_mesh_validate.c
   intern/bmesh_mesh_validate.h
   intern/bmesh_mods.c
@@ -143,6 +145,8 @@ set(SRC
   tools/bmesh_edgesplit.h
   tools/bmesh_intersect.c
   tools/bmesh_intersect.h
+  tools/bmesh_intersect_edges.c
+  tools/bmesh_intersect_edges.h
   tools/bmesh_path.c
   tools/bmesh_path.h
   tools/bmesh_path_region.c
@@ -179,6 +183,8 @@ if(WITH_BULLET)
   )
   list(APPEND LIB
     extern_bullet
+
+    ${BULLET_LIBRARIES}
   )
   add_definitions(-DWITH_BULLET)
 endif()

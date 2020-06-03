@@ -43,10 +43,12 @@ class Light : public Node {
   Light();
 
   LightType type;
+  float3 strength;
   float3 co;
 
   float3 dir;
   float size;
+  float angle;
 
   float3 axisu;
   float sizeu;
@@ -78,7 +80,7 @@ class Light : public Node {
 
   void tag_update(Scene *scene);
 
-  /* Check whether the light has contribution the the scene. */
+  /* Check whether the light has contribution the scene. */
   bool has_contribution(Scene *scene);
 };
 
@@ -87,16 +89,19 @@ class LightManager {
   bool use_light_visibility;
   bool need_update;
 
+  /* Need to update background (including multiple importance map) */
+  bool need_update_background;
+
   LightManager();
   ~LightManager();
 
   /* IES texture management */
-  int add_ies(ustring ies);
-  int add_ies_from_file(ustring filename);
+  int add_ies(const string &ies);
+  int add_ies_from_file(const string &filename);
   void remove_ies(int slot);
 
   void device_update(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
-  void device_free(Device *device, DeviceScene *dscene);
+  void device_free(Device *device, DeviceScene *dscene, const bool free_background = true);
 
   void tag_update(Scene *scene);
 

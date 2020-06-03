@@ -55,8 +55,8 @@
 
 #include "BLI_sys_types.h"  // for intptr_t support
 
-#include "ED_object.h"
 #include "ED_mesh.h"
+#include "ED_object.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -110,8 +110,9 @@ static bool object_shape_key_mirror(
   *r_totmirr = *r_totfail = 0;
 
   key = BKE_key_from_object(ob);
-  if (key == NULL)
+  if (key == NULL) {
     return 0;
+  }
 
   kb = BLI_findlink(&key->block, ob->shapenr - 1);
 
@@ -125,7 +126,7 @@ static bool object_shape_key_mirror(
       float *fp1, *fp2;
       float tvec[3];
 
-      ED_mesh_mirror_spatial_table(ob, NULL, NULL, NULL, 's');
+      ED_mesh_mirror_spatial_table_begin(ob, NULL, NULL);
 
       for (i1 = 0, mv = me->mvert; i1 < me->totvert; i1++, mv++) {
         i2 = mesh_get_x_mirror_vert(ob, NULL, i1, use_topology);
@@ -156,7 +157,7 @@ static bool object_shape_key_mirror(
         }
       }
 
-      ED_mesh_mirror_spatial_table(ob, NULL, NULL, NULL, 'e');
+      ED_mesh_mirror_spatial_table_end(ob);
     }
     else if (ob->type == OB_LATTICE) {
       Lattice *lt = ob->data;
@@ -335,11 +336,13 @@ static int shape_key_clear_exec(bContext *C, wmOperator *UNUSED(op))
   Key *key = BKE_key_from_object(ob);
   KeyBlock *kb = BKE_keyblock_from_object(ob);
 
-  if (!key || !kb)
+  if (!key || !kb) {
     return OPERATOR_CANCELLED;
+  }
 
-  for (kb = key->block.first; kb; kb = kb->next)
+  for (kb = key->block.first; kb; kb = kb->next) {
     kb->curval = 0.0f;
+  }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
@@ -370,8 +373,9 @@ static int shape_key_retime_exec(bContext *C, wmOperator *UNUSED(op))
   KeyBlock *kb = BKE_keyblock_from_object(ob);
   float cfra = 0.0f;
 
-  if (!key || !kb)
+  if (!key || !kb) {
     return OPERATOR_CANCELLED;
+  }
 
   for (kb = key->block.first; kb; kb = kb->next) {
     kb->pos = cfra;
@@ -405,8 +409,9 @@ static int shape_key_mirror_exec(bContext *C, wmOperator *op)
   int totmirr = 0, totfail = 0;
   bool use_topology = RNA_boolean_get(op->ptr, "use_topology");
 
-  if (!object_shape_key_mirror(C, ob, &totmirr, &totfail, use_topology))
+  if (!object_shape_key_mirror(C, ob, &totmirr, &totfail, use_topology)) {
     return OPERATOR_CANCELLED;
+  }
 
   ED_mesh_report_mirror(op, totmirr, totfail);
 

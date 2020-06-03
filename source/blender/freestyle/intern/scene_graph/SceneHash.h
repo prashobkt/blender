@@ -22,8 +22,8 @@
  */
 
 #include "IndexedFaceSet.h"
-#include "NodeViewLayer.h"
 #include "NodeCamera.h"
+#include "NodeViewLayer.h"
 #include "SceneVisitor.h"
 
 #include "BLI_sys_types.h"
@@ -45,9 +45,9 @@ class SceneHash : public SceneVisitor {
   {
   }
 
-  VISIT_DECL(NodeCamera)
-  VISIT_DECL(NodeViewLayer)
-  VISIT_DECL(IndexedFaceSet)
+  VISIT_DECL(NodeCamera);
+  VISIT_DECL(NodeViewLayer);
+  VISIT_DECL(IndexedFaceSet);
 
   string toString();
 

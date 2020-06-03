@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -25,9 +25,9 @@
 
 #include "BLI_math.h"
 
-#include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -73,7 +73,7 @@ static DecimateModifierData *getOriginalModifierData(const DecimateModifierData 
                                                      const ModifierEvalContext *ctx)
 {
   Object *ob_orig = DEG_get_original_object(ctx->object);
-  return (DecimateModifierData *)modifiers_findByName(ob_orig, dmd->modifier.name);
+  return (DecimateModifierData *)BKE_modifiers_findby_name(ob_orig, dmd->modifier.name);
 }
 
 static void updateFaceCount(const ModifierEvalContext *ctx,
@@ -89,7 +89,7 @@ static void updateFaceCount(const ModifierEvalContext *ctx,
   }
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
 {
   DecimateModifierData *dmd = (DecimateModifierData *)md;
   Mesh *mesh = meshData, *result = NULL;
@@ -128,7 +128,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   }
 
   if (dmd->face_count <= 3) {
-    modifier_setError(md, "Modifier requires more than 3 input faces");
+    BKE_modifier_set_error(md, "Modifier requires more than 3 input faces");
     return mesh;
   }
 
@@ -140,19 +140,19 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
       MOD_get_vgroup(ctx->object, mesh, dmd->defgrp_name, &dvert, &defgrp_index);
 
       if (dvert) {
-        const unsigned int vert_tot = mesh->totvert;
-        unsigned int i;
+        const uint vert_tot = mesh->totvert;
+        uint i;
 
         vweights = MEM_malloc_arrayN(vert_tot, sizeof(float), __func__);
 
         if (dmd->flag & MOD_DECIM_FLAG_INVERT_VGROUP) {
           for (i = 0; i < vert_tot; i++) {
-            vweights[i] = 1.0f - defvert_find_weight(&dvert[i], defgrp_index);
+            vweights[i] = 1.0f - BKE_defvert_find_weight(&dvert[i], defgrp_index);
           }
         }
         else {
           for (i = 0; i < vert_tot; i++) {
-            vweights[i] = defvert_find_weight(&dvert[i], defgrp_index);
+            vweights[i] = BKE_defvert_find_weight(&dvert[i], defgrp_index);
           }
         }
       }
@@ -199,9 +199,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
   updateFaceCount(ctx, dmd, bm->totface);
 
-  result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
-  BLI_assert(bm->vtoolflagpool == NULL && bm->etoolflagpool == NULL &&
-             bm->ftoolflagpool == NULL); /* make sure we never alloc'd these */
+  result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);
+  /* make sure we never alloc'd these */
+  BLI_assert(bm->vtoolflagpool == NULL && bm->etoolflagpool == NULL && bm->ftoolflagpool == NULL);
   BLI_assert(bm->vtable == NULL && bm->etable == NULL && bm->ftable == NULL);
 
   BM_mesh_free(bm);
@@ -222,13 +222,16 @@ ModifierTypeInfo modifierType_Decimate = {
     /* type */ eModifierTypeType_Nonconstructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

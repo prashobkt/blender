@@ -235,17 +235,7 @@ ccl_device float lamp_light_pdf(KernelGlobals *kg, const float3 Ng, const float3
 
 #ifdef __BACKGROUND_MIS__
 
-/* TODO(sergey): In theory it should be all fine to use noinline for all
- * devices, but we're so close to the release so better not screw things
- * up for CPU at least.
- */
-#  ifdef __KERNEL_GPU__
-ccl_device_noinline
-#  else
-ccl_device
-#  endif
-    float3
-    background_map_sample(KernelGlobals *kg, float randu, float randv, float *pdf)
+ccl_device float3 background_map_sample(KernelGlobals *kg, float randu, float randv, float *pdf)
 {
   /* for the following, the CDF values are actually a pair of floats, with the
    * function value as X and the actual CDF as Y.  The last entry's function
@@ -312,13 +302,13 @@ ccl_device
   float u = (index_u + du) / res_x;
 
   /* compute pdf */
-  float denom = cdf_last_u.x * cdf_last_v.x;
   float sin_theta = sinf(M_PI_F * v);
+  float denom = (M_2PI_F * M_PI_F * sin_theta) * cdf_last_u.x * cdf_last_v.x;
 
   if (sin_theta == 0.0f || denom == 0.0f)
     *pdf = 0.0f;
   else
-    *pdf = (cdf_u.x * cdf_v.x) / (M_2PI_F * M_PI_F * sin_theta * denom);
+    *pdf = (cdf_u.x * cdf_v.x) / denom;
 
   /* compute direction */
   return equirectangular_to_direction(u, v);
@@ -327,13 +317,7 @@ ccl_device
 /* TODO(sergey): Same as above, after the release we should consider using
  * 'noinline' for all devices.
  */
-#  ifdef __KERNEL_GPU__
-ccl_device_noinline
-#  else
-ccl_device
-#  endif
-    float
-    background_map_pdf(KernelGlobals *kg, float3 direction)
+ccl_device float background_map_pdf(KernelGlobals *kg, float3 direction)
 {
   float2 uv = direction_to_equirectangular(direction);
   int res_x = kernel_data.integrator.pdf_background_res_x;
@@ -353,7 +337,7 @@ ccl_device
                                        index_v * cdf_width + res_x);
   float2 cdf_last_v = kernel_tex_fetch(__light_background_marginal_cdf, res_y);
 
-  float denom = cdf_last_u.x * cdf_last_v.x;
+  float denom = (M_2PI_F * M_PI_F * sin_theta) * cdf_last_u.x * cdf_last_v.x;
 
   if (denom == 0.0f)
     return 0.0f;
@@ -363,7 +347,7 @@ ccl_device
                                   index_v * cdf_width + index_u);
   float2 cdf_v = kernel_tex_fetch(__light_background_marginal_cdf, index_v);
 
-  return (cdf_u.x * cdf_v.x) / (M_2PI_F * M_PI_F * sin_theta * denom);
+  return (cdf_u.x * cdf_v.x) / denom;
 }
 
 ccl_device_inline bool background_portal_data_fetch_and_check_side(
@@ -577,7 +561,8 @@ ccl_device float background_light_pdf(KernelGlobals *kg, float3 P, float3 direct
     portal_pdf = background_portal_pdf(kg, P, direction, -1, &is_possible) * portal_sampling_pdf;
     if (!is_possible) {
       /* Portal sampling is not possible here because all portals point to the wrong side.
-       * If map sampling is possible, it would be used instead, otherwise fallback sampling is used. */
+       * If map sampling is possible, it would be used instead,
+       * otherwise fallback sampling is used. */
       if (portal_sampling_pdf == 1.0f) {
         return 1.0f / M_4PI_F;
       }
@@ -1074,11 +1059,19 @@ ccl_device_forceinline void triangle_light_sample(KernelGlobals *kg,
     }
   }
   else {
-    /* compute random point in triangle */
-    randu = sqrtf(randu);
+    /* compute random point in triangle. From Eric Heitz's "A Low-Distortion Map Between Triangle
+     * and Square" */
+    float u = randu;
+    float v = randv;
+    if (v > u) {
+      u *= 0.5f;
+      v -= u;
+    }
+    else {
+      v *= 0.5f;
+      u -= v;
+    }
 
-    const float u = 1.0f - randu;
-    const float v = randv * randu;
     const float t = 1.0f - u - v;
     ls->P = u * V[0] + v * V[1] + t * V[2];
     /* compute incoming direction, distance and pdf */
@@ -1142,7 +1135,7 @@ ccl_device int light_distribution_sample(KernelGlobals *kg, float *randu)
   int len = kernel_data.integrator.num_distribution + 1;
   float r = *randu;
 
-  while (len > 0) {
+  do {
     int half_len = len >> 1;
     int middle = first + half_len;
 
@@ -1153,7 +1146,7 @@ ccl_device int light_distribution_sample(KernelGlobals *kg, float *randu)
       first = middle + 1;
       len = len - half_len - 1;
     }
-  }
+  } while (len > 0);
 
   /* Clamping should not be needed but float rounding errors seem to
    * make this fail on rare occasions. */
@@ -1170,7 +1163,7 @@ ccl_device int light_distribution_sample(KernelGlobals *kg, float *randu)
 
 /* Generic Light */
 
-ccl_device bool light_select_reached_max_bounces(KernelGlobals *kg, int index, int bounce)
+ccl_device_inline bool light_select_reached_max_bounces(KernelGlobals *kg, int index, int bounce)
 {
   return (bounce > kernel_tex_fetch(__lights, index).max_bounces);
 }
@@ -1484,7 +1477,7 @@ ccl_device int triangle_to_distribution(KernelGlobals *kg, int triangle_id, int 
     ++first;
   }
 
-  kernel_assert(kernel_tex_fetch(__triangle_to_distribution, first * 2) == triangle_id);
+  kernel_assert(kernel_tex_fetch(__triangle_to_distribution, first * 3) == triangle_id);
 
   return kernel_tex_fetch(__triangle_to_distribution, first * 3 + 2);
 }
@@ -1840,7 +1833,7 @@ ccl_device_noinline bool light_sample(KernelGlobals *kg,
   return (ls->pdf > 0.0f);
 }
 
-ccl_device int light_select_num_samples(KernelGlobals *kg, int index)
+ccl_device_inline int light_select_num_samples(KernelGlobals *kg, int index)
 {
   return kernel_tex_fetch(__lights, index).samples;
 }

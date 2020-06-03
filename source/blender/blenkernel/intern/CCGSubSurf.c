@@ -18,26 +18,19 @@
  * \ingroup bke
  */
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-#include "MEM_guardedalloc.h"
 #include "BLI_sys_types.h"  // for intptr_t support
+#include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h" /* for BLI_assert */
 
 #include "BKE_ccg.h"
+#include "BKE_subsurf.h"
 #include "CCGSubSurf.h"
 #include "CCGSubSurf_intern.h"
-#include "BKE_subsurf.h"
-
-#ifdef WITH_OPENSUBDIV
-#  include "opensubdiv_capi.h"
-#  include "opensubdiv_converter_capi.h"
-#  include "opensubdiv_evaluator_capi.h"
-#  include "opensubdiv_topology_refiner_capi.h"
-#endif
 
 #include "GPU_glew.h"
 
@@ -73,8 +66,9 @@ static CCGVert *_vert_new(CCGVertHDL vHDL, CCGSubSurf *ss)
 
   userData = ccgSubSurf_getVertUserData(ss, v);
   memset(userData, 0, ss->meshIFC.vertUserSize);
-  if (ss->useAgeCounts)
+  if (ss->useAgeCounts) {
     *((int *)&userData[ss->vertUserAgeOffset]) = ss->currentAge;
+  }
 
   return v;
 }
@@ -155,8 +149,9 @@ static CCGEdge *_edge_new(CCGEdgeHDL eHDL, CCGVert *v0, CCGVert *v1, float creas
 
   userData = ccgSubSurf_getEdgeUserData(ss, e);
   memset(userData, 0, ss->meshIFC.edgeUserSize);
-  if (ss->useAgeCounts)
+  if (ss->useAgeCounts) {
     *((int *)&userData[ss->edgeUserAgeOffset]) = ss->currentAge;
+  }
 
   return e;
 }
@@ -229,8 +224,9 @@ static CCGFace *_face_new(
 
   userData = ccgSubSurf_getFaceUserData(ss, f);
   memset(userData, 0, ss->meshIFC.faceUserSize);
-  if (ss->useAgeCounts)
+  if (ss->useAgeCounts) {
     *((int *)&userData[ss->faceUserAgeOffset]) = ss->currentAge;
+  }
 
   return f;
 }
@@ -302,21 +298,6 @@ CCGSubSurf *ccgSubSurf_new(CCGMeshIFC *ifc,
     ss->tempVerts = NULL;
     ss->tempEdges = NULL;
 
-#ifdef WITH_OPENSUBDIV
-    ss->osd_evaluator = NULL;
-    ss->osd_mesh = NULL;
-    ss->osd_topology_refiner = NULL;
-    ss->osd_mesh_invalid = false;
-    ss->osd_coarse_coords_invalid = false;
-    ss->osd_vao = 0;
-    ss->skip_grids = false;
-    ss->osd_compute = 0;
-    ss->osd_next_face_ptex_index = 0;
-    ss->osd_coarse_coords = NULL;
-    ss->osd_num_coarse_coords = 0;
-    ss->osd_subdiv_uvs = false;
-#endif
-
     return ss;
   }
 }
@@ -325,23 +306,6 @@ void ccgSubSurf_free(CCGSubSurf *ss)
 {
   CCGAllocatorIFC allocatorIFC = ss->allocatorIFC;
   CCGAllocatorHDL allocator = ss->allocator;
-#ifdef WITH_OPENSUBDIV
-  if (ss->osd_evaluator != NULL) {
-    openSubdiv_deleteEvaluator(ss->osd_evaluator);
-  }
-  if (ss->osd_mesh != NULL) {
-    ccgSubSurf__delete_osdGLMesh(ss->osd_mesh);
-  }
-  if (ss->osd_vao != 0) {
-    ccgSubSurf__delete_vertex_array(ss->osd_vao);
-  }
-  if (ss->osd_coarse_coords != NULL) {
-    MEM_freeN(ss->osd_coarse_coords);
-  }
-  if (ss->osd_topology_refiner != NULL) {
-    openSubdiv_deleteTopologyRefiner(ss->osd_topology_refiner);
-  }
-#endif
 
   if (ss->syncState) {
     ccg_ehash_free(ss->oldFMap, (EHEntryFreeFP)_face_free, ss);
@@ -354,8 +318,9 @@ void ccgSubSurf_free(CCGSubSurf *ss)
 
   CCGSUBSURF_free(ss, ss->r);
   CCGSUBSURF_free(ss, ss->q);
-  if (ss->defaultEdgeUserData)
+  if (ss->defaultEdgeUserData) {
     CCGSUBSURF_free(ss, ss->defaultEdgeUserData);
+  }
 
   ccg_ehash_free(ss->fMap, (EHEntryFreeFP)_face_free, ss);
   ccg_ehash_free(ss->eMap, (EHEntryFreeFP)_edge_free, ss);
@@ -395,13 +360,16 @@ void ccgSubSurf_getAllowEdgeCreation(CCGSubSurf *ss,
                                      float *defaultCreaseValue_r,
                                      void *defaultUserData_r)
 {
-  if (allowEdgeCreation_r)
+  if (allowEdgeCreation_r) {
     *allowEdgeCreation_r = ss->allowEdgeCreation;
+  }
   if (ss->allowEdgeCreation) {
-    if (defaultCreaseValue_r)
+    if (defaultCreaseValue_r) {
       *defaultCreaseValue_r = ss->defaultCreaseValue;
-    if (defaultUserData_r)
+    }
+    if (defaultUserData_r) {
       memcpy(defaultUserData_r, ss->defaultEdgeUserData, ss->meshIFC.edgeUserSize);
+    }
   }
 }
 
@@ -432,12 +400,15 @@ void ccgSubSurf_getUseAgeCounts(CCGSubSurf *ss,
 {
   *useAgeCounts_r = ss->useAgeCounts;
 
-  if (vertUserOffset_r)
+  if (vertUserOffset_r) {
     *vertUserOffset_r = ss->vertUserAgeOffset;
-  if (edgeUserOffset_r)
+  }
+  if (edgeUserOffset_r) {
     *edgeUserOffset_r = ss->edgeUserAgeOffset;
-  if (faceUserOffset_r)
+  }
+  if (faceUserOffset_r) {
     *faceUserOffset_r = ss->faceUserAgeOffset;
+  }
 }
 
 CCGError ccgSubSurf_setUseAgeCounts(
@@ -519,9 +490,6 @@ CCGError ccgSubSurf_initFullSync(CCGSubSurf *ss)
   ss->tempEdges = MEM_mallocN(sizeof(*ss->tempEdges) * ss->lenTempArrays, "CCGSubsurf tempEdges");
 
   ss->syncState = eSyncState_Vert;
-#ifdef WITH_OPENSUBDIV
-  ss->osd_next_face_ptex_index = 0;
-#endif
 
   return eCCGError_None;
 }
@@ -661,13 +629,11 @@ CCGError ccgSubSurf_syncVert(
       ccg_ehash_insert(ss->vMap, (EHEntry *)v);
       v->flags = 0;
     }
-#ifdef WITH_OPENSUBDIV
-    v->osd_index = ss->vMap->numEntries - 1;
-#endif
   }
 
-  if (v_r)
+  if (v_r) {
     *v_r = v;
+  }
   return eCCGError_None;
 }
 
@@ -731,8 +697,9 @@ CCGError ccgSubSurf_syncEdge(CCGSubSurf *ss,
     }
   }
 
-  if (e_r)
+  if (e_r) {
     *e_r = e;
+  }
   return eCCGError_None;
 }
 
@@ -783,8 +750,9 @@ CCGError ccgSubSurf_syncFace(
         ccg_ehash_insert(ss->fMap, (EHEntry *)fNew);
       }
 
-      for (k = 0; k < numVerts; k++)
+      for (k = 0; k < numVerts; k++) {
         FACE_getVerts(fNew)[k]->flags |= Vert_eEffected;
+      }
     }
   }
   else {
@@ -800,8 +768,9 @@ CCGError ccgSubSurf_syncFace(
     for (k = 0; k < numVerts; k++) {
       ss->tempVerts[k] = ccg_ehash_lookup(ss->vMap, vHDLs[k]);
 
-      if (!ss->tempVerts[k])
+      if (!ss->tempVerts[k]) {
         return eCCGError_InvalidValue;
+      }
     }
     for (k = 0; k < numVerts; k++) {
       ss->tempEdges[k] = _vert_findEdgeTo(ss->tempVerts[k], ss->tempVerts[(k + 1) % numVerts]);
@@ -841,8 +810,9 @@ CCGError ccgSubSurf_syncFace(
       ccg_ehash_insert(ss->fMap, (EHEntry *)f);
       ss->numGrids += numVerts;
 
-      for (k = 0; k < numVerts; k++)
+      for (k = 0; k < numVerts; k++) {
         FACE_getVerts(f)[k]->flags |= Vert_eEffected;
+      }
     }
     else {
       *prevp = f->next;
@@ -852,39 +822,24 @@ CCGError ccgSubSurf_syncFace(
 
       for (j = 0; j < f->numVerts; j++) {
         if (FACE_getVerts(f)[j]->flags & Vert_eChanged) {
-          for (k = 0; k < f->numVerts; k++)
+          for (k = 0; k < f->numVerts; k++) {
             FACE_getVerts(f)[k]->flags |= Vert_eEffected;
+          }
           break;
         }
       }
     }
-#ifdef WITH_OPENSUBDIV
-    f->osd_index = ss->osd_next_face_ptex_index;
-    if (numVerts == 4) {
-      ss->osd_next_face_ptex_index++;
-    }
-    else {
-      ss->osd_next_face_ptex_index += numVerts;
-    }
-#endif
   }
 
-  if (f_r)
+  if (f_r) {
     *f_r = f;
+  }
   return eCCGError_None;
 }
 
 static void ccgSubSurf__sync(CCGSubSurf *ss)
 {
-#ifdef WITH_OPENSUBDIV
-  if (ss->skip_grids) {
-    ccgSubSurf__sync_opensubdiv(ss);
-  }
-  else
-#endif
-  {
-    ccgSubSurf__sync_legacy(ss);
-  }
+  ccgSubSurf__sync_legacy(ss);
 }
 
 CCGError ccgSubSurf_processSync(CCGSubSurf *ss)
@@ -929,8 +884,9 @@ void ccgSubSurf__allFaces(CCGSubSurf *ss, CCGFace ***faces, int *numFaces, int *
     for (i = 0; i < ss->fMap->curSize; i++) {
       CCGFace *f = (CCGFace *)ss->fMap->buckets[i];
 
-      for (; f; f = f->next)
+      for (; f; f = f->next) {
         array[num++] = f;
+      }
     }
 
     *faces = array;
@@ -942,13 +898,13 @@ void ccgSubSurf__allFaces(CCGSubSurf *ss, CCGFace ***faces, int *numFaces, int *
   }
 }
 
-void ccgSubSurf__effectedFaceNeighbours(CCGSubSurf *ss,
-                                        CCGFace **faces,
-                                        int numFaces,
-                                        CCGVert ***verts,
-                                        int *numVerts,
-                                        CCGEdge ***edges,
-                                        int *numEdges)
+void ccgSubSurf__effectedFaceNeighbors(CCGSubSurf *ss,
+                                       CCGFace **faces,
+                                       int numFaces,
+                                       CCGVert ***verts,
+                                       int *numVerts,
+                                       CCGEdge ***edges,
+                                       int *numEdges)
 {
   CCGVert **arrayV;
   CCGEdge **arrayE;
@@ -967,9 +923,11 @@ void ccgSubSurf__effectedFaceNeighbours(CCGSubSurf *ss,
     CCGVert *v = (CCGVert *)ss->vMap->buckets[i];
 
     for (; v; v = v->next) {
-      for (j = 0; j < v->numFaces; j++)
-        if (!(v->faces[j]->flags & Face_eEffected))
+      for (j = 0; j < v->numFaces; j++) {
+        if (!(v->faces[j]->flags & Face_eEffected)) {
           break;
+        }
+      }
 
       if (j == v->numFaces) {
         arrayV[numV++] = v;
@@ -982,9 +940,11 @@ void ccgSubSurf__effectedFaceNeighbours(CCGSubSurf *ss,
     CCGEdge *e = (CCGEdge *)ss->eMap->buckets[i];
 
     for (; e; e = e->next) {
-      for (j = 0; j < e->numFaces; j++)
-        if (!(e->faces[j]->flags & Face_eEffected))
+      for (j = 0; j < e->numFaces; j++) {
+        if (!(e->faces[j]->flags & Face_eEffected)) {
           break;
+        }
+      }
 
       if (j == e->numFaces) {
         e->flags |= Edge_eEffected;
@@ -1023,8 +983,9 @@ CCGError ccgSubSurf_updateFromFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF
       VertDataCopy(
           VERT_getCo(FACE_getVerts(f)[S], lvl), FACE_getIFCo(f, lvl, S, cornerIdx, cornerIdx), ss);
 
-      for (x = 0; x < gridSize; x++)
+      for (x = 0; x < gridSize; x++) {
         VertDataCopy(FACE_getIECo(f, lvl, S, x), FACE_getIFCo(f, lvl, S, x, 0), ss);
+      }
 
       for (x = 0; x < gridSize; x++) {
         int eI = gridSize - 1 - x;
@@ -1038,8 +999,9 @@ CCGError ccgSubSurf_updateFromFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF
     }
   }
 
-  if (freeF)
+  if (freeF) {
     MEM_freeN(effectedF);
+  }
 
   return eCCGError_None;
 }
@@ -1086,8 +1048,9 @@ CCGError ccgSubSurf_updateToFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, 
     }
   }
 
-  if (freeF)
+  if (freeF) {
     MEM_freeN(effectedF);
+  }
 
   return eCCGError_None;
 }
@@ -1109,22 +1072,25 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
   cornerIdx = gridSize - 1;
 
   ccgSubSurf__allFaces(ss, &effectedF, &numEffectedF, &freeF);
-  ccgSubSurf__effectedFaceNeighbours(
+  ccgSubSurf__effectedFaceNeighbors(
       ss, effectedF, numEffectedF, &effectedV, &numEffectedV, &effectedE, &numEffectedE);
 
   /* zero */
   for (i = 0; i < numEffectedV; i++) {
     CCGVert *v = effectedV[i];
-    if (v->numFaces)
+    if (v->numFaces) {
       VertDataZero(VERT_getCo(v, lvl), ss);
+    }
   }
 
   for (i = 0; i < numEffectedE; i++) {
     CCGEdge *e = effectedE[i];
 
-    if (e->numFaces)
-      for (x = 0; x < edgeSize; x++)
+    if (e->numFaces) {
+      for (x = 0; x < edgeSize; x++) {
         VertDataZero(EDGE_getCo(e, lvl, x), ss);
+      }
+    }
   }
 
   /* add */
@@ -1133,9 +1099,11 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
 
     VertDataZero((float *)FACE_getCenterData(f), ss);
 
-    for (S = 0; S < f->numVerts; S++)
-      for (x = 0; x < gridSize; x++)
+    for (S = 0; S < f->numVerts; S++) {
+      for (x = 0; x < gridSize; x++) {
         VertDataZero(FACE_getIECo(f, lvl, S, x), ss);
+      }
+    }
 
     for (S = 0; S < f->numVerts; S++) {
       int prevS = (S + f->numVerts - 1) % f->numVerts;
@@ -1143,10 +1111,11 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
       CCGEdge *prevE = FACE_getEdges(f)[prevS];
 
       VertDataAdd((float *)FACE_getCenterData(f), FACE_getIFCo(f, lvl, S, 0, 0), ss);
-      if (FACE_getVerts(f)[S]->flags & Vert_eEffected)
+      if (FACE_getVerts(f)[S]->flags & Vert_eEffected) {
         VertDataAdd(VERT_getCo(FACE_getVerts(f)[S], lvl),
                     FACE_getIFCo(f, lvl, S, cornerIdx, cornerIdx),
                     ss);
+      }
 
       for (x = 1; x < gridSize - 1; x++) {
         VertDataAdd(FACE_getIECo(f, lvl, S, x), FACE_getIFCo(f, lvl, S, x, 0), ss);
@@ -1155,15 +1124,18 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
 
       for (x = 0; x < gridSize - 1; x++) {
         int eI = gridSize - 1 - x;
-        if (FACE_getEdges(f)[S]->flags & Edge_eEffected)
+        if (FACE_getEdges(f)[S]->flags & Edge_eEffected) {
           VertDataAdd(_edge_getCoVert(e, FACE_getVerts(f)[S], lvl, eI, vertDataSize),
                       FACE_getIFCo(f, lvl, S, cornerIdx, x),
                       ss);
-        if (FACE_getEdges(f)[prevS]->flags & Edge_eEffected)
-          if (x != 0)
+        }
+        if (FACE_getEdges(f)[prevS]->flags & Edge_eEffected) {
+          if (x != 0) {
             VertDataAdd(_edge_getCoVert(prevE, FACE_getVerts(f)[S], lvl, eI, vertDataSize),
                         FACE_getIFCo(f, lvl, S, x, cornerIdx),
                         ss);
+          }
+        }
       }
     }
   }
@@ -1171,8 +1143,9 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
   /* average */
   for (i = 0; i < numEffectedV; i++) {
     CCGVert *v = effectedV[i];
-    if (v->numFaces)
+    if (v->numFaces) {
       VertDataMulN(VERT_getCo(v, lvl), 1.0f / v->numFaces, ss);
+    }
   }
 
   for (i = 0; i < numEffectedE; i++) {
@@ -1181,9 +1154,11 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
     VertDataCopy(EDGE_getCo(e, lvl, 0), VERT_getCo(e->v0, lvl), ss);
     VertDataCopy(EDGE_getCo(e, lvl, edgeSize - 1), VERT_getCo(e->v1, lvl), ss);
 
-    if (e->numFaces)
-      for (x = 1; x < edgeSize - 1; x++)
+    if (e->numFaces) {
+      for (x = 1; x < edgeSize - 1; x++) {
         VertDataMulN(EDGE_getCo(e, lvl, x), 1.0f / e->numFaces, ss);
+      }
+    }
   }
 
   /* copy */
@@ -1192,9 +1167,11 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
 
     VertDataMulN((float *)FACE_getCenterData(f), 1.0f / f->numVerts, ss);
 
-    for (S = 0; S < f->numVerts; S++)
-      for (x = 1; x < gridSize - 1; x++)
+    for (S = 0; S < f->numVerts; S++) {
+      for (x = 1; x < gridSize - 1; x++) {
         VertDataMulN(FACE_getIECo(f, lvl, S, x), 0.5f, ss);
+      }
+    }
 
     for (S = 0; S < f->numVerts; S++) {
       int prevS = (S + f->numVerts - 1) % f->numVerts;
@@ -1227,17 +1204,21 @@ CCGError ccgSubSurf_stitchFaces(CCGSubSurf *ss, int lvl, CCGFace **effectedF, in
     }
   }
 
-  for (i = 0; i < numEffectedV; i++)
+  for (i = 0; i < numEffectedV; i++) {
     effectedV[i]->flags = 0;
-  for (i = 0; i < numEffectedE; i++)
+  }
+  for (i = 0; i < numEffectedE; i++) {
     effectedE[i]->flags = 0;
-  for (i = 0; i < numEffectedF; i++)
+  }
+  for (i = 0; i < numEffectedF; i++) {
     effectedF[i]->flags = 0;
+  }
 
   MEM_freeN(effectedE);
   MEM_freeN(effectedV);
-  if (freeF)
+  if (freeF) {
     MEM_freeN(effectedF);
+  }
 
   return eCCGError_None;
 }
@@ -1572,12 +1553,6 @@ int ccgSubSurf_getNumFinalVerts(const CCGSubSurf *ss)
                        ss->fMap->numEntries +
                        ss->numGrids * ((gridSize - 2) + ((gridSize - 2) * (gridSize - 2))));
 
-#ifdef WITH_OPENSUBDIV
-  if (ss->skip_grids) {
-    return 0;
-  }
-#endif
-
   return numFinalVerts;
 }
 int ccgSubSurf_getNumFinalEdges(const CCGSubSurf *ss)
@@ -1586,22 +1561,12 @@ int ccgSubSurf_getNumFinalEdges(const CCGSubSurf *ss)
   int gridSize = ccg_gridsize(ss->subdivLevels);
   int numFinalEdges = (ss->eMap->numEntries * (edgeSize - 1) +
                        ss->numGrids * ((gridSize - 1) + 2 * ((gridSize - 2) * (gridSize - 1))));
-#ifdef WITH_OPENSUBDIV
-  if (ss->skip_grids) {
-    return 0;
-  }
-#endif
   return numFinalEdges;
 }
 int ccgSubSurf_getNumFinalFaces(const CCGSubSurf *ss)
 {
   int gridSize = ccg_gridsize(ss->subdivLevels);
   int numFinalFaces = ss->numGrids * ((gridSize - 1) * (gridSize - 1));
-#ifdef WITH_OPENSUBDIV
-  if (ss->skip_grids) {
-    return 0;
-  }
-#endif
   return numFinalFaces;
 }
 
@@ -1616,20 +1581,24 @@ void CCG_key(CCGKey *key, const CCGSubSurf *ss, int level)
 
   /* if normals are present, always the last three floats of an
    * element */
-  if (key->has_normals)
+  if (key->has_normals) {
     key->normal_offset = key->elem_size - sizeof(float) * 3;
-  else
+  }
+  else {
     key->normal_offset = -1;
+  }
 
   key->grid_size = ccgSubSurf_getGridLevelSize(ss, level);
   key->grid_area = key->grid_size * key->grid_size;
   key->grid_bytes = key->elem_size * key->grid_area;
 
   key->has_mask = ss->allocMask;
-  if (key->has_mask)
+  if (key->has_mask) {
     key->mask_offset = ss->maskDataOffset;
-  else
+  }
+  else {
     key->mask_offset = -1;
+  }
 }
 
 void CCG_key_top_level(CCGKey *key, const CCGSubSurf *ss)

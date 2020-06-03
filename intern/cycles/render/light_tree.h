@@ -30,7 +30,7 @@ class Scene;
 /* Data structure to represent orientation bounds. It consists of two bounding
  * cones represented by a direction(axis) and two angles out from this axis.
  * This can be thought of as two cones.
-*/
+ */
 struct Orientation {
   Orientation()
   {

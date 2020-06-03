@@ -24,6 +24,8 @@ import bpy
 from bpy.types import Operator
 import os
 
+from bpy.app.translations import pgettext_tip as tip_
+
 
 def guess_player_path(preset):
     import sys
@@ -83,12 +85,13 @@ class PlayRenderedAnim(Operator):
         fps_final = rd.fps / rd.fps_base
 
         preset = prefs.filepaths.animation_player_preset
-        player_path = prefs.filepaths.animation_player
         # file_path = bpy.path.abspath(rd.filepath)  # UNUSED
         is_movie = rd.is_movie_format
 
         # try and guess a command line if it doesn't exist
-        if player_path == "":
+        if preset == 'CUSTOM':
+            player_path = prefs.filepaths.animation_player
+        else:
             player_path = guess_player_path(preset)
 
         if is_movie is False and preset in {'FRAMECYCLER', 'RV', 'MPLAYER'}:
@@ -114,15 +117,17 @@ class PlayRenderedAnim(Operator):
             file = rd.frame_path(frame=scene.frame_start, preview=scene.use_preview_range)
             file = bpy.path.abspath(file)  # expand '//'
             if not os.path.exists(file):
-                self.report({'WARNING'}, f"File {file!r} not found")
+                err_msg = tip_("File %r not found") % file
+                self.report({'WARNING'}, err_msg)
                 path_valid = False
 
             # one last try for full range if we used preview range
             if scene.use_preview_range and not path_valid:
                 file = rd.frame_path(frame=scene.frame_start, preview=False)
                 file = bpy.path.abspath(file)  # expand '//'
+                err_msg = tip_("File %r not found") % file
                 if not os.path.exists(file):
-                    self.report({'WARNING'}, f"File {file!r} not found")
+                    self.report({'WARNING'}, err_msg)
 
         cmd = [player_path]
         # extra options, fps controls etc.
@@ -179,10 +184,10 @@ class PlayRenderedAnim(Operator):
         try:
             subprocess.Popen(cmd, env=env_copy)
         except Exception as e:
+            err_msg = tip_("Couldn't run external animation player with command %r\n%s") % (cmd, e)
             self.report(
                 {'ERROR'},
-                "Couldn't run external animation player with command "
-                f"{cmd!r}\n{e!s}",
+                err_msg,
             )
             return {'CANCELLED'}
 

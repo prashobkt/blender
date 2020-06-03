@@ -21,36 +21,39 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "BLI_utildefines.h"
 #include "BLI_path_util.h"
+#include "BLI_utildefines.h"
 
-#include "RNA_define.h"
 #include "RNA_access.h"
+#include "RNA_define.h"
 
 #include "rna_internal.h"
 
 #ifdef RNA_RUNTIME
 
+#  include "BKE_global.h"
 #  include "BKE_main.h"
 #  include "BKE_mesh.h"
-#  include "BKE_global.h"
 
 /* all the list begin functions are added manually here, Main is not in SDNA */
 
 static bool rna_Main_use_autopack_get(PointerRNA *UNUSED(ptr))
 {
-  if (G.fileflags & G_FILE_AUTOPACK)
+  if (G.fileflags & G_FILE_AUTOPACK) {
     return 1;
+  }
 
   return 0;
 }
 
 static void rna_Main_use_autopack_set(PointerRNA *UNUSED(ptr), bool value)
 {
-  if (value)
+  if (value) {
     G.fileflags |= G_FILE_AUTOPACK;
-  else
+  }
+  else {
     G.fileflags &= ~G_FILE_AUTOPACK;
+  }
 }
 
 static bool rna_Main_is_saved_get(PointerRNA *UNUSED(ptr))
@@ -106,6 +109,9 @@ RNA_MAIN_LISTBASE_FUNCS_DEF(collections)
 RNA_MAIN_LISTBASE_FUNCS_DEF(curves)
 RNA_MAIN_LISTBASE_FUNCS_DEF(fonts)
 RNA_MAIN_LISTBASE_FUNCS_DEF(gpencils)
+#  ifdef WITH_NEW_OBJECT_TYPES
+RNA_MAIN_LISTBASE_FUNCS_DEF(hairs)
+#  endif
 RNA_MAIN_LISTBASE_FUNCS_DEF(images)
 RNA_MAIN_LISTBASE_FUNCS_DEF(lattices)
 RNA_MAIN_LISTBASE_FUNCS_DEF(libraries)
@@ -122,13 +128,20 @@ RNA_MAIN_LISTBASE_FUNCS_DEF(objects)
 RNA_MAIN_LISTBASE_FUNCS_DEF(paintcurves)
 RNA_MAIN_LISTBASE_FUNCS_DEF(palettes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(particles)
+#  ifdef WITH_NEW_OBJECT_TYPES
+RNA_MAIN_LISTBASE_FUNCS_DEF(pointclouds)
+#  endif
 RNA_MAIN_LISTBASE_FUNCS_DEF(scenes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(screens)
 RNA_MAIN_LISTBASE_FUNCS_DEF(shapekeys)
+#  ifdef WITH_NEW_SIMULATION_TYPE
+RNA_MAIN_LISTBASE_FUNCS_DEF(simulations)
+#  endif
 RNA_MAIN_LISTBASE_FUNCS_DEF(sounds)
 RNA_MAIN_LISTBASE_FUNCS_DEF(speakers)
 RNA_MAIN_LISTBASE_FUNCS_DEF(texts)
 RNA_MAIN_LISTBASE_FUNCS_DEF(textures)
+RNA_MAIN_LISTBASE_FUNCS_DEF(volumes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(wm)
 RNA_MAIN_LISTBASE_FUNCS_DEF(workspaces)
 RNA_MAIN_LISTBASE_FUNCS_DEF(worlds)
@@ -377,6 +390,29 @@ void RNA_def_main(BlenderRNA *brna)
        "LightProbes",
        "LightProbe data-blocks",
        RNA_def_main_lightprobes},
+#  ifdef WITH_NEW_OBJECT_TYPES
+      {"hairs", "Hair", "rna_Main_hairs_begin", "Hairs", "Hair data-blocks", RNA_def_main_hairs},
+      {"pointclouds",
+       "PointCloud",
+       "rna_Main_pointclouds_begin",
+       "Point Clouds",
+       "Point cloud data-blocks",
+       RNA_def_main_pointclouds},
+#  endif
+      {"volumes",
+       "Volume",
+       "rna_Main_volumes_begin",
+       "Volumes",
+       "Volume data-blocks",
+       RNA_def_main_volumes},
+#  ifdef WITH_NEW_SIMULATION_TYPE
+      {"simulations",
+       "Simulation",
+       "rna_Main_simulations_begin",
+       "Simulations",
+       "Simulation data-blocks",
+       RNA_def_main_simulations},
+#  endif
       {NULL, NULL, NULL, NULL, NULL, NULL},
   };
 
@@ -442,8 +478,9 @@ void RNA_def_main(BlenderRNA *brna)
 
     /* collection functions */
     func = lists[i].func;
-    if (func)
+    if (func) {
       func(brna, prop);
+    }
   }
 
   RNA_api_main(srna);

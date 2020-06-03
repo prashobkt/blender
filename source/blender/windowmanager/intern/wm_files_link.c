@@ -23,41 +23,40 @@
  * Functions for dealing with append/link operators and helpers.
  */
 
-#include <float.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stddef.h>
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
+#include <float.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_ID.h"
-#include "DNA_screen_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_bitmap.h"
+#include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 
 #include "BLO_readfile.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_library_remap.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
-#include "BKE_scene.h"
 
-#include "BKE_idcode.h"
+#include "BKE_idtype.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -75,7 +74,9 @@
 
 #include "wm_files.h"
 
-/* **************** link/append *************** */
+/* -------------------------------------------------------------------- */
+/** \name Link/Append Operator
+ * \{ */
 
 static bool wm_link_append_poll(bContext *C)
 {
@@ -103,7 +104,7 @@ static int wm_link_append_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
     else if (G.relbase_valid) {
       char path[FILE_MAX];
       BLI_strncpy(path, BKE_main_blendfile_path_from_global(), sizeof(path));
-      BLI_parent_dir(path);
+      BLI_path_parent_dir(path);
       RNA_string_set(op->ptr, "filepath", path);
     }
   }
@@ -152,7 +153,9 @@ typedef struct WMLinkAppendData {
   LinkNodePair items;
   int num_libraries;
   int num_items;
-  int flag; /* Combines eFileSel_Params_Flag from DNA_space_types.h and BLO_LibLinkFlags from BLO_readfile.h */
+  /** Combines #eFileSel_Params_Flag from DNA_space_types.h and
+   * BLO_LibLinkFlags from BLO_readfile.h */
+  int flag;
 
   /* Internal 'private' data */
   MemArena *memarena;
@@ -303,11 +306,11 @@ static bool wm_link_append_item_poll(ReportList *reports,
     return false;
   }
 
-  idcode = BKE_idcode_from_name(group);
+  idcode = BKE_idtype_idcode_from_name(group);
 
   /* XXX For now, we do a nasty exception for workspace, forbid linking them.
    *     Not nice, ultimately should be solved! */
-  if (!BKE_idcode_is_linkable(idcode) && (do_append || idcode != ID_WS)) {
+  if (!BKE_idtype_idcode_is_linkable(idcode) && (do_append || idcode != ID_WS)) {
     if (reports) {
       if (do_append) {
         BKE_reportf(reports,
@@ -443,7 +446,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 
         lib_idx = POINTER_AS_INT(BLI_ghash_lookup(libraries, libname));
 
-        item = wm_link_append_data_item_add(lapp_data, name, BKE_idcode_from_name(group), NULL);
+        item = wm_link_append_data_item_add(
+            lapp_data, name, BKE_idtype_idcode_from_name(group), NULL);
         BLI_BITMAP_ENABLE(item->libraries, lib_idx);
       }
     }
@@ -455,13 +459,15 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
     WMLinkAppendDataItem *item;
 
     wm_link_append_data_library_add(lapp_data, libname);
-    item = wm_link_append_data_item_add(lapp_data, name, BKE_idcode_from_name(group), NULL);
+    item = wm_link_append_data_item_add(lapp_data, name, BKE_idtype_idcode_from_name(group), NULL);
     BLI_BITMAP_ENABLE(item->libraries, 0);
   }
 
   if (lapp_data->num_items == 0) {
     /* Early out in case there is nothing to link. */
     wm_link_append_data_free(lapp_data);
+    /* Clear pre existing tag. */
+    BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
     return OPERATOR_CANCELLED;
   }
 
@@ -511,10 +517,11 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
   /* TODO(sergey): Use proper flag for tagging here. */
 
   /* TODO (dalai): Temporary solution!
-   * Ideally we only need to tag the new objects themselves, not the scene. This way we'll avoid flush of
-   * collection properties to all objects and limit update to the particular object only.
-   * But afraid first we need to change collection evaluation in DEG according to depsgraph manifesto.
-   */
+   * Ideally we only need to tag the new objects themselves, not the scene.
+   * This way we'll avoid flush of collection properties
+   * to all objects and limit update to the particular object only.
+   * But afraid first we need to change collection evaluation in DEG
+   * according to depsgraph manifesto. */
   DEG_id_tag_update(&scene->id, 0);
 
   /* recreate dependency graph to include new objects */
@@ -556,7 +563,7 @@ static void wm_link_append_properties_common(wmOperatorType *ot, bool is_link)
 
 void WM_OT_link(wmOperatorType *ot)
 {
-  ot->name = "Link from Library";
+  ot->name = "Link";
   ot->idname = "WM_OT_link";
   ot->description = "Link from a Library .blend file";
 
@@ -571,7 +578,7 @@ void WM_OT_link(wmOperatorType *ot)
                                  FILE_LOADLIB,
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
-                                     WM_FILESEL_RELPATH | WM_FILESEL_FILES,
+                                     WM_FILESEL_RELPATH | WM_FILESEL_FILES | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_ALPHA);
 
@@ -580,7 +587,7 @@ void WM_OT_link(wmOperatorType *ot)
 
 void WM_OT_append(wmOperatorType *ot)
 {
-  ot->name = "Append from Library";
+  ot->name = "Append";
   ot->idname = "WM_OT_append";
   ot->description = "Append from a Library .blend file";
 
@@ -595,7 +602,7 @@ void WM_OT_append(wmOperatorType *ot)
                                  FILE_LOADLIB,
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
-                                     WM_FILESEL_FILES,
+                                     WM_FILESEL_FILES | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_ALPHA);
 
@@ -613,8 +620,52 @@ void WM_OT_append(wmOperatorType *ot)
       "Localize all appended data, including those indirectly linked from other libraries");
 }
 
-/** \name Reload/relocate libraries.
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Append Single Data-Block & Return it
  *
+ * Used for appending workspace from startup files.
+ * \{ */
+
+ID *WM_file_append_datablock(Main *bmain,
+                             Scene *scene,
+                             ViewLayer *view_layer,
+                             View3D *v3d,
+                             const char *filepath,
+                             const short id_code,
+                             const char *id_name)
+{
+  /* Tag everything so we can make local only the new datablock. */
+  BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
+
+  /* Define working data, with just the one item we want to append. */
+  WMLinkAppendData *lapp_data = wm_link_append_data_new(0);
+
+  wm_link_append_data_library_add(lapp_data, filepath);
+  WMLinkAppendDataItem *item = wm_link_append_data_item_add(lapp_data, id_name, id_code, NULL);
+  BLI_BITMAP_ENABLE(item->libraries, 0);
+
+  /* Link datablock. */
+  wm_link_do(lapp_data, NULL, bmain, scene, view_layer, v3d);
+
+  /* Get linked datablock and free working data. */
+  ID *id = item->new_id;
+  wm_link_append_data_free(lapp_data);
+
+  /* Make datablock local. */
+  BKE_library_make_local(bmain, NULL, NULL, true, false);
+
+  /* Clear pre existing tag. */
+  BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
+
+  return id;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Library Relocate Operator & Library Reload API
  * \{ */
 
 static int wm_lib_relocate_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -661,8 +712,9 @@ static void lib_relocate_do(Main *bmain,
     ID *id = lbarray[lba_idx]->first;
     const short idcode = id ? GS(id->name) : 0;
 
-    if (!id || !BKE_idcode_is_linkable(idcode)) {
-      /* No need to reload non-linkable datatypes, those will get relinked with their 'users ID'. */
+    if (!id || !BKE_idtype_idcode_is_linkable(idcode)) {
+      /* No need to reload non-linkable datatypes,
+       * those will get relinked with their 'users ID'. */
       continue;
     }
 
@@ -719,12 +771,16 @@ static void lib_relocate_do(Main *bmain,
 
     BLI_assert(old_id);
     if (do_reload) {
-      /* Since we asked for placeholders in case of missing IDs, we expect to always get a valid one. */
+      /* Since we asked for placeholders in case of missing IDs,
+       * we expect to always get a valid one. */
       BLI_assert(new_id);
     }
     if (new_id) {
 #ifdef PRINT_DEBUG
-      printf("before remap, old_id users: %d, new_id users: %d\n", old_id->us, new_id->us);
+      printf("before remap of %s, old_id users: %d, new_id users: %d\n",
+             old_id->name,
+             old_id->us,
+             new_id->us);
 #endif
       BKE_libblock_remap_locked(bmain, old_id, new_id, remap_flags);
 
@@ -734,7 +790,10 @@ static void lib_relocate_do(Main *bmain,
       }
 
 #ifdef PRINT_DEBUG
-      printf("after remap, old_id users: %d, new_id users: %d\n", old_id->us, new_id->us);
+      printf("after remap of %s, old_id users: %d, new_id users: %d\n",
+             old_id->name,
+             old_id->us,
+             new_id->us);
 #endif
 
       /* In some cases, new_id might become direct link, remove parent of library in this case. */
@@ -747,9 +806,10 @@ static void lib_relocate_do(Main *bmain,
     }
 
     if (old_id->us > 0 && new_id && old_id->lib == new_id->lib) {
-      /* Note that this *should* not happen - but better be safe than sorry in this area, at least until we are
-       * 100% sure this cannot ever happen.
-       * Also, we can safely assume names were unique so far, so just replacing '.' by '~' should work,
+      /* Note that this *should* not happen - but better be safe than sorry in this area,
+       * at least until we are 100% sure this cannot ever happen.
+       * Also, we can safely assume names were unique so far,
+       * so just replacing '.' by '~' should work,
        * but this does not totally rules out the possibility of name collision. */
       size_t len = strlen(old_id->name);
       size_t dot_pos;
@@ -775,7 +835,7 @@ static void lib_relocate_do(Main *bmain,
         BLI_strncpy(&old_id->name[len], "~000", 7);
       }
 
-      id_sort_by_name(which_libbase(bmain, GS(old_id->name)), old_id);
+      id_sort_by_name(which_libbase(bmain, GS(old_id->name)), old_id, NULL);
 
       BKE_reportf(
           reports,
@@ -800,8 +860,8 @@ static void lib_relocate_do(Main *bmain,
     }
   }
 
-  /* Some datablocks can get reloaded/replaced 'silently' because they are not linkable (shape keys e.g.),
-   * so we need another loop here to clear old ones if possible. */
+  /* Some datablocks can get reloaded/replaced 'silently' because they are not linkable
+   * (shape keys e.g.), so we need another loop here to clear old ones if possible. */
   lba_idx = set_listbasepointers(bmain, lbarray);
   while (lba_idx--) {
     ID *id, *id_next;

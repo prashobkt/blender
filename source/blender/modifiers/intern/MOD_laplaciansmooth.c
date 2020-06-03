@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -33,7 +33,7 @@
 
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 
@@ -199,7 +199,7 @@ static void init_laplacian_matrix(LaplacianSystem *sys)
   float w1, w2, w3;
   float areaf;
   int i;
-  unsigned int idv1, idv2;
+  uint idv1, idv2;
 
   for (i = 0; i < sys->numEdges; i++) {
     idv1 = sys->medges[i].v1;
@@ -233,7 +233,7 @@ static void init_laplacian_matrix(LaplacianSystem *sys)
       const float *v_prev = sys->vertexCos[l_prev->v];
       const float *v_curr = sys->vertexCos[l_curr->v];
       const float *v_next = sys->vertexCos[l_next->v];
-      const unsigned int l_curr_index = l_curr - sys->mloop;
+      const uint l_curr_index = l_curr - sys->mloop;
 
       sys->numNeFa[l_curr->v] += 1;
 
@@ -274,7 +274,7 @@ static void init_laplacian_matrix(LaplacianSystem *sys)
 static void fill_laplacian_matrix(LaplacianSystem *sys)
 {
   int i;
-  unsigned int idv1, idv2;
+  uint idv1, idv2;
 
   for (i = 0; i < sys->numPolys; i++) {
     const MPoly *mp = &sys->mpoly[i];
@@ -284,7 +284,7 @@ static void fill_laplacian_matrix(LaplacianSystem *sys)
     const MLoop *l_curr = l_term - 1;
 
     for (; l_next != l_term; l_prev = l_curr, l_curr = l_next, l_next++) {
-      const unsigned int l_curr_index = l_curr - sys->mloop;
+      const uint l_curr_index = l_curr - sys->mloop;
 
       /* Is ring if number of faces == number of edges around vertice*/
       if (sys->numNeEd[l_curr->v] == sys->numNeFa[l_curr->v] && sys->zerola[l_curr->v] == 0) {
@@ -378,6 +378,7 @@ static void laplaciansmoothModifier_do(
   float w, wpaint;
   int i, iter;
   int defgrp_index;
+  const bool invert_vgroup = (smd->flag & MOD_LAPLACIANSMOOTH_INVERT_VGROUP) != 0;
 
   sys = init_laplacian_system(mesh->totedge, mesh->totpoly, mesh->totloop, numVerts);
   if (!sys) {
@@ -420,7 +421,8 @@ static void laplaciansmoothModifier_do(
       EIG_linear_solver_right_hand_side_add(sys->context, 2, i, vertexCos[i][2]);
       if (iter == 0) {
         if (dv) {
-          wpaint = defvert_find_weight(dv, defgrp_index);
+          wpaint = invert_vgroup ? 1.0f - BKE_defvert_find_weight(dv, defgrp_index) :
+                                   BKE_defvert_find_weight(dv, defgrp_index);
           dv++;
         }
         else {
@@ -501,8 +503,9 @@ static bool is_disabled(const struct Scene *UNUSED(scene),
   flag = smd->flag & (MOD_LAPLACIANSMOOTH_X | MOD_LAPLACIANSMOOTH_Y | MOD_LAPLACIANSMOOTH_Z);
 
   /* disable if modifier is off for X, Y and Z or if factor is 0 */
-  if (flag == 0)
+  if (flag == 0) {
     return 1;
+  }
 
   return 0;
 }
@@ -527,8 +530,9 @@ static void deformVerts(ModifierData *md,
 {
   Mesh *mesh_src;
 
-  if (numVerts == 0)
+  if (numVerts == 0) {
     return;
+  }
 
   mesh_src = MOD_deform_mesh_eval_get(ctx->object, NULL, mesh, NULL, numVerts, false, false);
 
@@ -549,10 +553,16 @@ static void deformVertsEM(ModifierData *md,
 {
   Mesh *mesh_src;
 
-  if (numVerts == 0)
+  if (numVerts == 0) {
     return;
+  }
 
   mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, NULL, numVerts, false, false);
+
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
+  }
 
   laplaciansmoothModifier_do(
       (LaplacianSmoothModifierData *)md, ctx->object, mesh_src, vertexCos, numVerts);
@@ -569,13 +579,16 @@ ModifierTypeInfo modifierType_LaplacianSmooth = {
     /* type */ eModifierTypeType_OnlyDeform,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ deformVerts,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ NULL,
+    /* modifyMesh */ NULL,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ init_data,
     /* requiredDataMask */ required_data_mask,

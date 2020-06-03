@@ -126,6 +126,19 @@ enum {
   BEVEL_MITER_ARC,
 };
 
+/* Bevel vertex mesh creation methods */
+enum {
+  BEVEL_VMESH_ADJ,
+  BEVEL_VMESH_CUTOFF,
+};
+
+/* Normal Face Strength values */
+enum {
+  FACE_STRENGTH_WEAK = -16384,
+  FACE_STRENGTH_MEDIUM = 0,
+  FACE_STRENGTH_STRONG = 16384,
+};
+
 extern const BMOpDefine *bmo_opdefines[];
 extern const int bmo_opdefines_total;
 

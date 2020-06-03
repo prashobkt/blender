@@ -25,8 +25,8 @@
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
-#include "../generic/python_utildefines.h"
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_utildefines.h"
 
 #ifndef MATH_STANDALONE
 #  include "BLI_dynstr.h"
@@ -176,13 +176,57 @@ static PyObject *Quaternion_to_axis_angle(QuaternionObject *self)
   return ret;
 }
 
+PyDoc_STRVAR(Quaternion_to_swing_twist_doc,
+             ".. method:: to_swing_twist(axis)\n"
+             "\n"
+             "   Split the rotation into a swing quaternion with the specified\n"
+             "   axis fixed at zero, and the remaining twist rotation angle.\n"
+             "\n"
+             "   :arg axis: twist axis as a string in ['X', 'Y', 'Z']\n"
+             "   :return: swing, twist angle.\n"
+             "   :rtype: (:class:`Quaternion`, float) pair\n");
+static PyObject *Quaternion_to_swing_twist(QuaternionObject *self, PyObject *axis_arg)
+{
+  PyObject *ret;
+
+  const char *axis_str = NULL;
+  float swing[4], twist;
+  int axis;
+
+  if (axis_arg && PyUnicode_Check(axis_arg)) {
+    axis_str = _PyUnicode_AsString(axis_arg);
+  }
+
+  if (axis_str && axis_str[0] >= 'X' && axis_str[0] <= 'Z' && axis_str[1] == 0) {
+    axis = axis_str[0] - 'X';
+  }
+  else {
+    PyErr_SetString(PyExc_ValueError,
+                    "Quaternion.to_swing_twist(): "
+                    "the axis argument must be "
+                    "a string in 'X', 'Y', 'Z'");
+    return NULL;
+  }
+
+  if (BaseMath_ReadCallback(self) == -1) {
+    return NULL;
+  }
+
+  twist = quat_split_swing_and_twist(self->quat, axis, swing, NULL);
+
+  ret = PyTuple_New(2);
+  PyTuple_SET_ITEMS(
+      ret, Quaternion_CreatePyObject(swing, Py_TYPE(self)), PyFloat_FromDouble(twist));
+  return ret;
+}
+
 PyDoc_STRVAR(
     Quaternion_to_exponential_map_doc,
     ".. method:: to_exponential_map()\n"
     "\n"
     "   Return the exponential map representation of the quaternion.\n"
     "\n"
-    "   This representation consist of the rotation axis multiplied by the rotation angle."
+    "   This representation consist of the rotation axis multiplied by the rotation angle.\n"
     "   Such a representation is useful for interpolation between multiple orientations.\n"
     "\n"
     "   :return: exponential map.\n"
@@ -236,7 +280,7 @@ PyDoc_STRVAR(Quaternion_dot_doc,
              "   :arg other: The other quaternion to perform the dot product with.\n"
              "   :type other: :class:`Quaternion`\n"
              "   :return: The dot product.\n"
-             "   :rtype: :class:`Quaternion`\n");
+             "   :rtype: float\n");
 static PyObject *Quaternion_dot(QuaternionObject *self, PyObject *value)
 {
   float tquat[QUAT_SIZE];
@@ -357,6 +401,38 @@ static PyObject *Quaternion_rotate(QuaternionObject *self, PyObject *value)
   mul_qt_fl(self->quat, length); /* maintain length after rotating */
 
   (void)BaseMath_WriteCallback(self);
+  Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(Quaternion_make_compatible_doc,
+             ".. method:: make_compatible(other)\n"
+             "\n"
+             "   Make this quaternion compatible with another,\n"
+             "   so interpolating between them works as intended.\n");
+static PyObject *Quaternion_make_compatible(QuaternionObject *self, PyObject *value)
+{
+  float quat[QUAT_SIZE];
+  float tquat[QUAT_SIZE];
+
+  if (BaseMath_ReadCallback_ForWrite(self) == -1) {
+    return NULL;
+  }
+
+  if (mathutils_array_parse(tquat,
+                            QUAT_SIZE,
+                            QUAT_SIZE,
+                            value,
+                            "Quaternion.make_compatible(other), invalid 'other' arg") == -1) {
+    return NULL;
+  }
+
+  /* Can only operate on unit length quaternions. */
+  const float quat_len = normalize_qt_qt(quat, self->quat);
+  quat_to_compatible_quat(self->quat, quat, tquat);
+  mul_qt_fl(self->quat, quat_len);
+
+  (void)BaseMath_WriteCallback(self);
+
   Py_RETURN_NONE;
 }
 
@@ -911,7 +987,7 @@ static PyObject *Quaternion_mul(PyObject *q1, PyObject *q2)
   return NULL;
 }
 /*------------------------obj *= obj------------------------------
- * inplace multiplication */
+ * in-place multiplication */
 static PyObject *Quaternion_imul(PyObject *q1, PyObject *q2)
 {
   float scalar;
@@ -935,7 +1011,7 @@ static PyObject *Quaternion_imul(PyObject *q1, PyObject *q2)
     mul_vn_vn(quat1->quat, quat2->quat, QUAT_SIZE);
 #else
     PyErr_Format(PyExc_TypeError,
-                 "Inplace element-wise multiplication: "
+                 "In place element-wise multiplication: "
                  "not supported between '%.200s' and '%.200s' types",
                  Py_TYPE(q1)->tp_name,
                  Py_TYPE(q2)->tp_name);
@@ -1015,7 +1091,7 @@ static PyObject *Quaternion_matmul(PyObject *q1, PyObject *q2)
   return NULL;
 }
 /*------------------------obj @= obj------------------------------
- * inplace quaternion multiplication */
+ * in-place quaternion multiplication */
 static PyObject *Quaternion_imatmul(PyObject *q1, PyObject *q2)
 {
   float quat[QUAT_SIZE];
@@ -1040,7 +1116,7 @@ static PyObject *Quaternion_imatmul(PyObject *q1, PyObject *q2)
   }
   else {
     PyErr_Format(PyExc_TypeError,
-                 "Inplace quaternion multiplication: "
+                 "In place quaternion multiplication: "
                  "not supported between '%.200s' and '%.200s' types",
                  Py_TYPE(q1)->tp_name,
                  Py_TYPE(q2)->tp_name);
@@ -1368,6 +1444,10 @@ static struct PyMethodDef Quaternion_methods[] = {
      (PyCFunction)Quaternion_to_axis_angle,
      METH_NOARGS,
      Quaternion_to_axis_angle_doc},
+    {"to_swing_twist",
+     (PyCFunction)Quaternion_to_swing_twist,
+     METH_O,
+     Quaternion_to_swing_twist_doc},
     {"to_exponential_map",
      (PyCFunction)Quaternion_to_exponential_map,
      METH_NOARGS,
@@ -1382,6 +1462,10 @@ static struct PyMethodDef Quaternion_methods[] = {
      Quaternion_rotation_difference_doc},
     {"slerp", (PyCFunction)Quaternion_slerp, METH_VARARGS, Quaternion_slerp_doc},
     {"rotate", (PyCFunction)Quaternion_rotate, METH_O, Quaternion_rotate_doc},
+    {"make_compatible",
+     (PyCFunction)Quaternion_make_compatible,
+     METH_O,
+     Quaternion_make_compatible_doc},
 
     /* base-math methods */
     {"freeze", (PyCFunction)BaseMathObject_freeze, METH_NOARGS, BaseMathObject_freeze_doc},
@@ -1396,56 +1480,48 @@ static struct PyMethodDef Quaternion_methods[] = {
 /* Python attributes get/set structure:                                      */
 /*****************************************************************************/
 static PyGetSetDef Quaternion_getseters[] = {
-    {(char *)"w",
+    {"w",
      (getter)Quaternion_axis_get,
      (setter)Quaternion_axis_set,
      Quaternion_axis_doc,
      (void *)0},
-    {(char *)"x",
+    {"x",
      (getter)Quaternion_axis_get,
      (setter)Quaternion_axis_set,
      Quaternion_axis_doc,
      (void *)1},
-    {(char *)"y",
+    {"y",
      (getter)Quaternion_axis_get,
      (setter)Quaternion_axis_set,
      Quaternion_axis_doc,
      (void *)2},
-    {(char *)"z",
+    {"z",
      (getter)Quaternion_axis_get,
      (setter)Quaternion_axis_set,
      Quaternion_axis_doc,
      (void *)3},
-    {(char *)"magnitude",
-     (getter)Quaternion_magnitude_get,
-     (setter)NULL,
-     Quaternion_magnitude_doc,
-     NULL},
-    {(char *)"angle",
+    {"magnitude", (getter)Quaternion_magnitude_get, (setter)NULL, Quaternion_magnitude_doc, NULL},
+    {"angle",
      (getter)Quaternion_angle_get,
      (setter)Quaternion_angle_set,
      Quaternion_angle_doc,
      NULL},
-    {(char *)"axis",
+    {"axis",
      (getter)Quaternion_axis_vector_get,
      (setter)Quaternion_axis_vector_set,
      Quaternion_axis_vector_doc,
      NULL},
-    {(char *)"is_wrapped",
+    {"is_wrapped",
      (getter)BaseMathObject_is_wrapped_get,
      (setter)NULL,
      BaseMathObject_is_wrapped_doc,
      NULL},
-    {(char *)"is_frozen",
+    {"is_frozen",
      (getter)BaseMathObject_is_frozen_get,
      (setter)NULL,
      BaseMathObject_is_frozen_doc,
      NULL},
-    {(char *)"owner",
-     (getter)BaseMathObject_owner_get,
-     (setter)NULL,
-     BaseMathObject_owner_doc,
-     NULL},
+    {"owner", (getter)BaseMathObject_owner_get, (setter)NULL, BaseMathObject_owner_doc, NULL},
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
 };
 
@@ -1479,7 +1555,7 @@ PyTypeObject quaternion_Type = {
     sizeof(QuaternionObject),                    /* tp_basicsize */
     0,                                           /* tp_itemsize */
     (destructor)BaseMathObject_dealloc,          /* tp_dealloc */
-    NULL,                                        /* tp_print */
+    (printfunc)NULL,                             /* tp_print */
     NULL,                                        /* tp_getattr */
     NULL,                                        /* tp_setattr */
     NULL,                                        /* tp_compare */
@@ -1579,9 +1655,7 @@ PyObject *Quaternion_CreatePyObject_wrap(float quat[4], PyTypeObject *base_type)
   return (PyObject *)self;
 }
 
-PyObject *Quaternion_CreatePyObject_cb(PyObject *cb_user,
-                                       unsigned char cb_type,
-                                       unsigned char cb_subtype)
+PyObject *Quaternion_CreatePyObject_cb(PyObject *cb_user, uchar cb_type, uchar cb_subtype)
 {
   QuaternionObject *self = (QuaternionObject *)Quaternion_CreatePyObject(NULL, NULL);
   if (self) {

@@ -221,11 +221,12 @@ There are 2 ways around this:
 
   .. code-block:: sh
 
-     PYTHONPATH=/usr/lib/python3.5 ./blender
+     PYTHONPATH=/usr/lib/python3.7 ./blender --python-use-system-env
 
   .. warning::
 
-     The Python version must match the one that Blender comes with.
+     The Python (major, minor) version must match the one that Blender comes with.
+     Therefor can't use Python 3.6 with Blender built to use Python 3.7.
 
 - Copy or link the extensions into Blender's Python sub-directory so Blender can access them,
   you could also copy the entire Python installation into Blenders sub-directory,
@@ -239,7 +240,7 @@ Drop Into a Python Interpreter in Your Script
 =============================================
 
 In the middle of a script you may want to inspect some variables,
-run some function and generally dig about to see whats going on.
+run some function and generally dig about to see what's going on.
 
 .. code-block:: python
 
@@ -301,7 +302,7 @@ Advantages include:
 This is marked advanced because to run Blender as a Python module requires a special build option.
 
 For instructions on building see
-`Building Blender as a Python module <https://wiki.blender.org/index.php/User:Ideasman42/BlenderAsPyModule>`_
+`Building Blender as a Python module <https://wiki.blender.org/wiki/Building_Blender/Other/BlenderAsPyModule>`_
 
 
 Python Safety (Build Option)

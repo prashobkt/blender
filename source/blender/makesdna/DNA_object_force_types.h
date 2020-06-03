@@ -24,12 +24,12 @@
 #ifndef __DNA_OBJECT_FORCE_TYPES_H__
 #define __DNA_OBJECT_FORCE_TYPES_H__
 
+#include "DNA_defs.h"
+#include "DNA_listBase.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "DNA_listBase.h"
-#include "DNA_defs.h"
 
 /* pd->forcefield:  Effector Fields types */
 typedef enum ePFieldType {
@@ -59,9 +59,10 @@ typedef enum ePFieldType {
   PFIELD_TURBULENCE = 11,
   /** Linear & quadratic drag. */
   PFIELD_DRAG = 12,
-  /** Force based on smoke simulation air flow. */
-  PFIELD_SMOKEFLOW = 13,
+  /** Force based on fluid simulation velocities. */
+  PFIELD_FLUIDFLOW = 13,
 
+  /* Keep last. */
   NUM_PFIELD_TYPES,
 } ePFieldType;
 
@@ -239,11 +240,12 @@ typedef struct PointCache {
    * buf for now it's the same for all points. Without adaptivity this can effect the perceived
    * simulation quite a bit though. If for example particles are colliding with a horizontal
    * plane (with high damping) they quickly come to a stop on the plane, however there are still
-   * forces acting on the particle (gravity and collisions), so the particle velocity isn't necessarily
-   * zero for the whole duration of the frame even if the particle seems stationary. If all simulation
-   * frames aren't cached (step > 1) these velocities are interpolated into movement for the non-cached
-   * frames. The result will look like the point is oscillating around the collision location. So for
-   * now cache step should be set to 1 for accurate reproduction of collisions.
+   * forces acting on the particle (gravity and collisions), so the particle velocity isn't
+   * necessarily zero for the whole duration of the frame even if the particle seems stationary.
+   * If all simulation frames aren't cached (step > 1) these velocities are interpolated into
+   * movement for the non-cached frames.
+   * The result will look like the point is oscillating around the collision location.
+   * So for now cache step should be set to 1 for accurate reproduction of collisions.
    */
   int step;
 
@@ -270,7 +272,7 @@ typedef struct PointCache {
 
   char name[64];
   char prev_name[64];
-  char info[64];
+  char info[128];
   /** File path, 1024 = FILE_MAX. */
   char path[1024];
 
@@ -491,10 +493,14 @@ typedef struct SoftBody {
 #define PTCACHE_READ_INFO (1 << 10)
 /** don't use the filename of the blendfile the data is linked from (write a local cache) */
 #define PTCACHE_IGNORE_LIBPATH (1 << 11)
-/** high resolution cache is saved for smoke for backwards compatibility,
- * so set this flag to know it's a "fake" cache */
+/**
+ * High resolution cache is saved for smoke for backwards compatibility,
+ * so set this flag to know it's a "fake" cache.
+ */
 #define PTCACHE_FAKE_SMOKE (1 << 12)
 #define PTCACHE_IGNORE_CLEAR (1 << 13)
+
+#define PTCACHE_FLAG_INFO_DIRTY (1 << 14)
 
 /* PTCACHE_OUTDATED + PTCACHE_FRAMES_SKIPPED */
 #define PTCACHE_REDO_NEEDED 258

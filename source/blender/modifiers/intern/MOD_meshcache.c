@@ -26,10 +26,10 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
-#include "DNA_scene_types.h"
-#include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_main.h"
 #include "BKE_mesh.h"
@@ -167,13 +167,13 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
 
     /* we could support any object type */
     if (UNLIKELY(ob->type != OB_MESH)) {
-      modifier_setError(&mcmd->modifier, "'Integrate' only valid for Mesh objects");
+      BKE_modifier_set_error(&mcmd->modifier, "'Integrate' only valid for Mesh objects");
     }
     else if (UNLIKELY(me->totvert != numVerts)) {
-      modifier_setError(&mcmd->modifier, "'Integrate' original mesh vertex mismatch");
+      BKE_modifier_set_error(&mcmd->modifier, "'Integrate' original mesh vertex mismatch");
     }
     else if (UNLIKELY(me->totpoly == 0)) {
-      modifier_setError(&mcmd->modifier, "'Integrate' requires faces");
+      BKE_modifier_set_error(&mcmd->modifier, "'Integrate' requires faces");
     }
     else {
       /* the moons align! */
@@ -212,7 +212,7 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
   /* -------------------------------------------------------------------- */
   /* Apply the transformation matrix (if needed) */
   if (UNLIKELY(err_str)) {
-    modifier_setError(&mcmd->modifier, "%s", err_str);
+    BKE_modifier_set_error(&mcmd->modifier, "%s", err_str);
   }
   else if (ok) {
     bool use_matrix = false;
@@ -226,12 +226,15 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
     if (mcmd->flip_axis) {
       float tmat[3][3];
       unit_m3(tmat);
-      if (mcmd->flip_axis & (1 << 0))
+      if (mcmd->flip_axis & (1 << 0)) {
         tmat[0][0] = -1.0f;
-      if (mcmd->flip_axis & (1 << 1))
+      }
+      if (mcmd->flip_axis & (1 << 1)) {
         tmat[1][1] = -1.0f;
-      if (mcmd->flip_axis & (1 << 2))
+      }
+      if (mcmd->flip_axis & (1 << 2)) {
         tmat[2][2] = -1.0f;
+      }
       mul_m3_m3m3(mat, tmat, mat);
 
       use_matrix = true;
@@ -289,16 +292,19 @@ ModifierTypeInfo modifierType_MeshCache = {
     /* structName */ "MeshCacheModifierData",
     /* structSize */ sizeof(MeshCacheModifierData),
     /* type */ eModifierTypeType_OnlyDeform,
-    /* flags */ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsLattice |
+    /* flags */ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsVertexCosOnly |
         eModifierTypeFlag_SupportsEditmode,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ deformVerts,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ NULL,
+    /* modifyMesh */ NULL,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,

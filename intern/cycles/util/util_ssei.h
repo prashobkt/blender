@@ -57,7 +57,7 @@ struct ssei {
   __forceinline ssei(const __m128i a) : m128(a)
   {
   }
-  __forceinline operator const __m128i &(void) const
+  __forceinline operator const __m128i &(void)const
   {
     return m128;
   }
@@ -308,6 +308,15 @@ __forceinline ssei &operator|=(ssei &a, const ssei &b)
 __forceinline ssei &operator|=(ssei &a, const int32_t &b)
 {
   return a = a | b;
+}
+
+__forceinline ssei &operator^=(ssei &a, const ssei &b)
+{
+  return a = a ^ b;
+}
+__forceinline ssei &operator^=(ssei &a, const int32_t &b)
+{
+  return a = a ^ b;
 }
 
 __forceinline ssei &operator<<=(ssei &a, const int32_t &b)

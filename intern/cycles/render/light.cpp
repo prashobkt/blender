@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "render/background.h"
+#include "render/light.h"
 #include "device/device.h"
-#include "render/integrator.h"
+#include "render/background.h"
 #include "render/film.h"
 #include "render/graph.h"
-#include "render/light.h"
+#include "render/integrator.h"
 #include "render/light_tree.h"
 #include "render/mesh.h"
 #include "render/nodes.h"
@@ -29,9 +29,9 @@
 
 #include "util/util_foreach.h"
 #include "util/util_hash.h"
+#include "util/util_logging.h"
 #include "util/util_path.h"
 #include "util/util_progress.h"
-#include "util/util_logging.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -115,10 +115,13 @@ NODE_DEFINE(Light)
   type_enum.insert("spot", LIGHT_SPOT);
   SOCKET_ENUM(type, "Type", type_enum, LIGHT_POINT);
 
+  SOCKET_COLOR(strength, "Strength", make_float3(1.0f, 1.0f, 1.0f));
+
   SOCKET_POINT(co, "Co", make_float3(0.0f, 0.0f, 0.0f));
 
   SOCKET_VECTOR(dir, "Dir", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_FLOAT(size, "Size", 0.0f);
+  SOCKET_FLOAT(angle, "Angle", 0.0f);
 
   SOCKET_VECTOR(axisu, "Axis U", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_FLOAT(sizeu, "Size U", 1.0f);
@@ -163,6 +166,9 @@ void Light::tag_update(Scene *scene)
 
 bool Light::has_contribution(Scene *scene)
 {
+  if (strength == make_float3(0.0f, 0.0f, 0.0f)) {
+    return false;
+  }
   if (is_portal) {
     return false;
   }
@@ -177,6 +183,7 @@ bool Light::has_contribution(Scene *scene)
 LightManager::LightManager()
 {
   need_update = true;
+  need_update_background = true;
   use_light_visibility = false;
 }
 
@@ -215,15 +222,12 @@ void LightManager::disable_ineffective_light(Scene *scene)
      * - If unsupported on a device
      * - If we don't need it (no HDRs etc.)
      */
-    Shader *shader = (scene->background->shader) ? scene->background->shader :
-                                                   scene->default_background;
-    bool disable_mis = !(has_portal || shader->has_surface_spatial_varying);
-    if (disable_mis) {
-      VLOG(1) << "Background MIS has been disabled.\n";
-      foreach (Light *light, scene->lights) {
-        if (light->type == LIGHT_BACKGROUND) {
-          light->is_enabled = false;
-        }
+    Shader *shader = scene->background->get_shader(scene);
+    const bool disable_mis = !(has_portal || shader->has_surface_spatial_varying);
+    VLOG_IF(1, disable_mis) << "Background MIS has been disabled.\n";
+    foreach (Light *light, scene->lights) {
+      if (light->type == LIGHT_BACKGROUND) {
+        light->is_enabled = !disable_mis;
       }
     }
   }
@@ -231,7 +235,10 @@ void LightManager::disable_ineffective_light(Scene *scene)
 
 bool LightManager::object_usable_as_light(Object *object)
 {
-  Mesh *mesh = object->mesh;
+  Geometry *geom = object->geometry;
+  if (geom->type != Geometry::MESH) {
+    return false;
+  }
   /* Skip objects with NaNs */
   if (!object->bounds.valid()) {
     return false;
@@ -242,10 +249,10 @@ bool LightManager::object_usable_as_light(Object *object)
   }
   /* Skip if we have no emission shaders. */
   /* TODO(sergey): Ideally we want to avoid such duplicated loop, since it'll
-   * iterate all mesh shaders twice (when counting and when calculating
+   * iterate all geometry shaders twice (when counting and when calculating
    * triangle area.
    */
-  foreach (const Shader *shader, mesh->used_shaders) {
+  foreach (const Shader *shader, geom->used_shaders) {
     if (shader->use_mis && shader->has_surface_emission) {
       return true;
     }
@@ -352,16 +359,16 @@ void LightManager::device_update_distribution(Device *device,
   bool background_mis = false;
 
   /* The emissive_prims vector contains all emissive primitives in the scene,
-  * i.e., all mesh light triangles and all lamps. The order of the primitives
-  * in the vector is important since it has the same order as the
-  * light_distribution array.
-  *
-  * If using the light tree then the order is important since the light tree
-  * reordered the lights so lights in the same node are next to each other
-  * in memory.
-  *
-  * If NOT using the light tree then the order is important since during
-  * sampling we assume all triangles are first in the array. */
+   * i.e., all mesh light triangles and all lamps. The order of the primitives
+   * in the vector is important since it has the same order as the
+   * light_distribution array.
+   *
+   * If using the light tree then the order is important since the light tree
+   * reordered the lights so lights in the same node are next to each other
+   * in memory.
+   *
+   * If NOT using the light tree then the order is important since during
+   * sampling we assume all triangles are first in the array. */
   vector<Primitive> emissive_prims;
   emissive_prims.reserve(scene->lights.size());
 
@@ -375,7 +382,7 @@ void LightManager::device_update_distribution(Device *device,
       continue;
     }
     /* Count emissive triangles. */
-    Mesh *mesh = object->mesh;
+    Mesh *mesh = static_cast<Mesh *>(object->geometry);
     size_t mesh_num_triangles = mesh->num_triangles();
     for (size_t i = 0; i < mesh_num_triangles; i++) {
       int shader_index = mesh->shader[i];
@@ -384,7 +391,7 @@ void LightManager::device_update_distribution(Device *device,
                            scene->default_surface;
 
       if (shader->use_mis && shader->has_surface_emission) {
-        emissive_prims.push_back(Primitive(i + mesh->tri_offset, object_id));
+        emissive_prims.push_back(Primitive(i + mesh->prim_offset, object_id));
         num_triangles++;
       }
     }
@@ -649,7 +656,7 @@ void LightManager::device_update_distribution(Device *device,
 
     const Object *object = scene->objects[prim.object_id];
     /* Sum area. */
-    const Mesh *mesh = object->mesh;
+    const Mesh *mesh = (Mesh *)object->geometry;
     int shader_flag = 0;
 
     if (!(object->visibility & PATH_RAY_DIFFUSE)) {
@@ -669,7 +676,7 @@ void LightManager::device_update_distribution(Device *device,
       use_light_visibility = true;
     }
 
-    int triangle_id = prim.prim_id - mesh->tri_offset;
+    int triangle_id = prim.prim_id - mesh->prim_offset;
     const float area = mesh->compute_triangle_area(triangle_id, object->tfm);
     distribution[offset].area = area;
     distribution[offset].totarea = totarea;
@@ -707,11 +714,18 @@ void LightManager::device_update_distribution(Device *device,
     distribution[offset].lamp.size = light->size;
     totarea += lightarea;
 
-    if (light->size > 0.0f && light->use_mis)
-      use_lamp_mis = true;
-    if (light->type == LIGHT_BACKGROUND) {
+    if (light->type == LIGHT_DISTANT) {
+      use_lamp_mis |= (light->angle > 0.0f && light->use_mis);
+    }
+    else if (light->type == LIGHT_POINT || light->type == LIGHT_SPOT) {
+      use_lamp_mis |= (light->size > 0.0f && light->use_mis);
+    }
+    else if (light->type == LIGHT_AREA) {
+      use_lamp_mis |= light->use_mis;
+    }
+    else if (light->type == LIGHT_BACKGROUND) {
       num_background_lights++;
-      background_mis = light->use_mis;
+      background_mis |= light->use_mis;
     }
     else if (light->type == LIGHT_DISTANT) {
       num_distant_lights++;
@@ -1004,7 +1018,6 @@ void LightManager::device_update_points(Device *, DeviceScene *dscene, Scene *sc
     float3 co = light->co;
     Shader *shader = (light->shader) ? light->shader : scene->default_light;
     int shader_id = scene->shader_manager->get_shader_id(shader);
-    int samples = light->samples;
     int max_bounces = light->max_bounces;
     float random = (float)light->random_id * (1.0f / (float)0xFFFFFFFF);
 
@@ -1029,7 +1042,10 @@ void LightManager::device_update_points(Device *, DeviceScene *dscene, Scene *sc
     }
 
     klights[light_index].type = light->type;
-    klights[light_index].samples = samples;
+    klights[light_index].samples = light->samples;
+    klights[light_index].strength[0] = light->strength.x;
+    klights[light_index].strength[1] = light->strength.y;
+    klights[light_index].strength[2] = light->strength.z;
 
     if (light->type == LIGHT_POINT) {
       shader_id &= ~SHADER_AREA_LIGHT;
@@ -1050,8 +1066,8 @@ void LightManager::device_update_points(Device *, DeviceScene *dscene, Scene *sc
     else if (light->type == LIGHT_DISTANT) {
       shader_id &= ~SHADER_AREA_LIGHT;
 
-      float radius = light->size;
-      float angle = atanf(radius);
+      float angle = light->angle / 2.0f;
+      float radius = tanf(angle);
       float cosangle = cosf(angle);
       float area = M_PI_F * radius * radius;
       float invarea = (area > 0.0f) ? 1.0f / area : 1.0f;
@@ -1218,7 +1234,7 @@ void LightManager::device_update(Device *device,
 
   VLOG(1) << "Total " << scene->lights.size() << " lights.";
 
-  device_free(device, dscene);
+  device_free(device, dscene, need_update_background);
 
   use_light_visibility = false;
 
@@ -1232,9 +1248,11 @@ void LightManager::device_update(Device *device,
   if (progress.get_cancel())
     return;
 
-  device_update_background(device, dscene, scene, progress);
-  if (progress.get_cancel())
-    return;
+  if (need_update_background) {
+    device_update_background(device, dscene, scene, progress);
+    if (progress.get_cancel())
+      return;
+  }
 
   device_update_ies(dscene);
   if (progress.get_cancel())
@@ -1246,9 +1264,10 @@ void LightManager::device_update(Device *device,
   }
 
   need_update = false;
+  need_update_background = false;
 }
 
-void LightManager::device_free(Device *, DeviceScene *dscene)
+void LightManager::device_free(Device *, DeviceScene *dscene, const bool free_background)
 {
   dscene->light_distribution.free();
   dscene->light_tree_nodes.free();
@@ -1256,8 +1275,10 @@ void LightManager::device_free(Device *, DeviceScene *dscene)
   dscene->lamp_to_distribution.free();
   dscene->triangle_to_distribution.free();
   dscene->lights.free();
-  dscene->light_background_marginal_cdf.free();
-  dscene->light_background_conditional_cdf.free();
+  if (free_background) {
+    dscene->light_background_marginal_cdf.free();
+    dscene->light_background_conditional_cdf.free();
+  }
   dscene->light_group_sample_prob.free();
   dscene->light_group_sample_cdf.free();
   dscene->leaf_to_first_emitter.free();
@@ -1270,7 +1291,7 @@ void LightManager::tag_update(Scene * /*scene*/)
   need_update = true;
 }
 
-int LightManager::add_ies_from_file(ustring filename)
+int LightManager::add_ies_from_file(const string &filename)
 {
   string content;
 
@@ -1279,10 +1300,10 @@ int LightManager::add_ies_from_file(ustring filename)
     content = "\n";
   }
 
-  return add_ies(ustring(content));
+  return add_ies(content);
 }
 
-int LightManager::add_ies(ustring content)
+int LightManager::add_ies(const string &content)
 {
   uint hash = hash_string(content.c_str());
 
@@ -1314,6 +1335,7 @@ int LightManager::add_ies(ustring content)
   ies_slots[slot]->hash = hash;
 
   need_update = true;
+  need_update_background = true;
 
   return slot;
 }
@@ -1332,6 +1354,7 @@ void LightManager::remove_ies(int slot)
 
   /* If the slot has no more users, update the device to remove it. */
   need_update |= (ies_slots[slot]->users == 0);
+  need_update_background |= need_update;
 }
 
 void LightManager::device_update_ies(DeviceScene *dscene)
@@ -1396,11 +1419,9 @@ int2 LightManager::get_background_map_resolution(const Light *background_light, 
     foreach (ShaderNode *node, shader->graph->nodes) {
       if (node->type == EnvironmentTextureNode::node_type) {
         EnvironmentTextureNode *env = (EnvironmentTextureNode *)node;
-        ImageMetaData metadata;
-        if (env->image_manager && env->image_manager->get_image_metadata(env->slot, metadata)) {
-          res.x = max(res.x, metadata.width);
-          res.y = max(res.y, metadata.height);
-        }
+        ImageMetaData metadata = env->handle.metadata();
+        res.x = max(res.x, metadata.width);
+        res.y = max(res.y, metadata.height);
       }
     }
     if (res.x > 0 && res.y > 0) {
