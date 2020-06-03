@@ -591,9 +591,6 @@ static void drw_viewport_var_init(void)
     ED_view3d_init_mats_rv3d(DST.draw_ctx.object_edit, rv3d);
   }
 
-  /* Alloc array of texture reference. */
-  memset(&DST.RST, 0x0, sizeof(DST.RST));
-
   if (G_draw.view_ubo == NULL) {
     G_draw.view_ubo = DRW_uniformbuffer_create(sizeof(DRWViewUboStorage), NULL);
   }
@@ -2249,7 +2246,7 @@ static void drw_draw_depth_loop_imp(struct Depsgraph *depsgraph,
       .engine_type = engine_type,
       .depsgraph = depsgraph,
   };
-
+  drw_task_graph_init();
   drw_engines_data_validate();
 
   /* Setup framebuffer */
@@ -2293,6 +2290,7 @@ static void drw_draw_depth_loop_imp(struct Depsgraph *depsgraph,
 
     DRW_render_instance_buffer_finish();
   }
+  drw_task_graph_deinit();
 
   /* Start Drawing */
   DRW_state_reset();
@@ -2382,7 +2380,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
       .obact = OBACT(view_layer),
       .depsgraph = depsgraph,
   };
-
+  drw_task_graph_init();
   drw_context_state_init();
 
   /* Setup viewport */
@@ -2417,6 +2415,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     drw_resource_buffer_finish(DST.vmempool);
 #endif
   }
+  drw_task_graph_deinit();
 
   /* Start Drawing */
   DRW_state_reset();
