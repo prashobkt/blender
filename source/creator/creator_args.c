@@ -460,7 +460,7 @@ static void arg_py_context_restore(bContext *C, struct BlendePyContextStore *c_p
 
 static void print_version_full(void)
 {
-  printf(BLEND_VERSION_STRING_FMT);
+  printf("Blender %s\n", BKE_blender_version_string());
 #  ifdef BUILD_DATE
   printf("\tbuild date: %s\n", build_date);
   printf("\tbuild time: %s\n", build_time);
@@ -481,13 +481,13 @@ static void print_version_short(void)
 #  ifdef BUILD_DATE
   /* NOTE: We include built time since sometimes we need to tell broken from
    * working built of the same hash. */
-  printf(BLEND_VERSION_FMT " (hash %s built %s %s)\n",
-         BLEND_VERSION_ARG,
+  printf("Blender %s (hash %s built %s %s)\n",
+         BKE_blender_version_string(),
          build_hash,
          build_date,
          build_time);
 #  else
-  printf(BLEND_VERSION_STRING_FMT);
+  printf("Blender %s\n", BKE_blender_version_string());
 #  endif
 }
 
@@ -513,7 +513,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 {
   bArgs *ba = (bArgs *)data;
 
-  printf(BLEND_VERSION_STRING_FMT);
+  printf("Blender %s\n", BKE_blender_version_string());
   printf("Usage: blender [args ...] [file] [args ...]\n\n");
 
   printf("Render Options:\n");
@@ -907,7 +907,7 @@ static const char arg_handle_debug_mode_set_doc[] =
 static int arg_handle_debug_mode_set(int UNUSED(argc), const char **UNUSED(argv), void *data)
 {
   G.debug |= G_DEBUG; /* std output printf's */
-  printf(BLEND_VERSION_STRING_FMT);
+  printf("Blender %s\n", BKE_blender_version_string());
   MEM_set_memory_debug();
 #  ifndef NDEBUG
   BLI_mempool_set_memory_debug();
@@ -1592,7 +1592,6 @@ static int arg_handle_render_frame(int argc, const char **argv, void *data)
       }
 
       re = RE_NewSceneRender(scene);
-      BLI_threaded_malloc_begin();
       BKE_reports_init(&reports, RPT_STORE);
       RE_SetReports(re, &reports);
       for (int i = 0; i < frames_range_len; i++) {
@@ -1608,7 +1607,6 @@ static int arg_handle_render_frame(int argc, const char **argv, void *data)
       }
       RE_SetReports(re, NULL);
       BKE_reports_clear(&reports);
-      BLI_threaded_malloc_end();
       MEM_freeN(frame_range_arr);
       return 1;
     }
@@ -1634,13 +1632,11 @@ static int arg_handle_render_animation(int UNUSED(argc), const char **UNUSED(arg
     Main *bmain = CTX_data_main(C);
     Render *re = RE_NewSceneRender(scene);
     ReportList reports;
-    BLI_threaded_malloc_begin();
     BKE_reports_init(&reports, RPT_STORE);
     RE_SetReports(re, &reports);
     RE_RenderAnim(re, bmain, scene, NULL, NULL, scene->r.sfra, scene->r.efra, scene->r.frame_step);
     RE_SetReports(re, NULL);
     BKE_reports_clear(&reports);
-    BLI_threaded_malloc_end();
   }
   else {
     printf("\nError: no blend loaded. cannot use '-a'.\n");
