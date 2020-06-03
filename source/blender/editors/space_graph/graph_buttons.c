@@ -235,7 +235,7 @@ static void graph_panel_properties(const bContext *C, Panel *panel)
 /* ******************* active Keyframe ************** */
 
 /* get 'active' keyframe for panel editing */
-static bool get_active_fcurve_keyframe_edit(FCurve *fcu,
+static bool get_active_fcurve_keyframe_edit(const FCurve *fcu,
                                             BezTriple **r_bezt,
                                             BezTriple **r_prevbezt)
 {
