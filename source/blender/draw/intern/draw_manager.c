@@ -27,6 +27,7 @@
 #include "BLI_memblock.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_task.h"
 #include "BLI_threads.h"
 
 #include "BLF_api.h"
@@ -115,17 +116,6 @@ static ListBase DRW_engines = {NULL, NULL};
 static void drw_state_prepare_clean_for_draw(DRWManager *dst)
 {
   memset(dst, 0x0, offsetof(DRWManager, gl_context));
-
-  /* Maybe not the best place for this. */
-  if (!DST.uniform_names.buffer) {
-    DST.uniform_names.buffer = MEM_callocN(DRW_UNIFORM_BUFFER_NAME, "Name Buffer");
-    DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
-  }
-  else if (DST.uniform_names.buffer_len > DRW_UNIFORM_BUFFER_NAME) {
-    DST.uniform_names.buffer = MEM_reallocN(DST.uniform_names.buffer, DRW_UNIFORM_BUFFER_NAME);
-    DST.uniform_names.buffer_len = DRW_UNIFORM_BUFFER_NAME;
-  }
-  DST.uniform_names.buffer_ofs = 0;
 }
 
 /* This function is used to reset draw manager to a state
@@ -138,6 +128,23 @@ static void drw_state_ensure_not_reused(DRWManager *dst)
   memset(dst, 0xff, offsetof(DRWManager, gl_context));
 }
 #endif
+
+/* -------------------------------------------------------------------- */
+/** \name Threading
+ * \{ */
+static void drw_task_graph_init(void)
+{
+  BLI_assert(DST.task_graph == NULL);
+  DST.task_graph = BLI_task_graph_create();
+}
+
+static void drw_task_graph_deinit(void)
+{
+  BLI_task_graph_work_and_wait(DST.task_graph);
+  BLI_task_graph_free(DST.task_graph);
+  DST.task_graph = NULL;
+}
+/* \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Settings
@@ -587,9 +594,6 @@ static void drw_viewport_var_init(void)
   if (DST.draw_ctx.object_edit) {
     ED_view3d_init_mats_rv3d(DST.draw_ctx.object_edit, rv3d);
   }
-
-  /* Alloc array of texture reference. */
-  memset(&DST.RST, 0x0, sizeof(DST.RST));
 
   if (G_draw.view_ubo == NULL) {
     G_draw.view_ubo = DRW_uniformbuffer_create(sizeof(DRWViewUboStorage), NULL);
@@ -1428,6 +1432,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
       /* reuse if caller sets */
       .evil_C = DST.draw_ctx.evil_C,
   };
+  drw_task_graph_init();
   drw_context_state_init();
 
   drw_viewport_var_init();
@@ -1492,6 +1497,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 #endif
   }
 
+  drw_task_graph_deinit();
   DRW_stats_begin();
 
   GPU_framebuffer_bind(DST.default_framebuffer);
@@ -1772,7 +1778,6 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
   DST.options.is_image_render = true;
   DST.options.is_scene_render = true;
   DST.options.draw_background = scene->r.alphamode == R_ADDSKY;
-
   DST.draw_ctx = (DRWContextState){
       .scene = scene,
       .view_layer = view_layer,
@@ -1857,9 +1862,9 @@ void DRW_render_object_iter(
     void (*callback)(void *vedata, Object *ob, RenderEngine *engine, struct Depsgraph *depsgraph))
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
-
   DRW_hair_init();
 
+  drw_task_graph_init();
   const int object_type_exclude_viewport = draw_ctx->v3d ?
                                                draw_ctx->v3d->object_type_exclude_viewport :
                                                0;
@@ -1882,6 +1887,7 @@ void DRW_render_object_iter(
   DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END;
 
   drw_duplidata_free();
+  drw_task_graph_deinit();
 }
 
 /* Assume a valid gl context is bound (and that the gl_context_mutex has been acquired).
@@ -2053,7 +2059,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
 
   DST.viewport = viewport;
   DST.options.is_select = true;
-
+  drw_task_graph_init();
   /* Get list of enabled engines */
   if (use_obedit) {
     drw_engines_enable_overlays();
@@ -2163,6 +2169,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     }
 
     drw_duplidata_free();
+    drw_task_graph_deinit();
     drw_engines_cache_finish();
 
     DRW_render_instance_buffer_finish();
@@ -2243,7 +2250,7 @@ static void drw_draw_depth_loop_imp(struct Depsgraph *depsgraph,
       .engine_type = engine_type,
       .depsgraph = depsgraph,
   };
-
+  drw_task_graph_init();
   drw_engines_data_validate();
 
   /* Setup framebuffer */
@@ -2287,6 +2294,7 @@ static void drw_draw_depth_loop_imp(struct Depsgraph *depsgraph,
 
     DRW_render_instance_buffer_finish();
   }
+  drw_task_graph_deinit();
 
   /* Start Drawing */
   DRW_state_reset();
@@ -2376,7 +2384,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
       .obact = OBACT(view_layer),
       .depsgraph = depsgraph,
   };
-
+  drw_task_graph_init();
   drw_context_state_init();
 
   /* Setup viewport */
@@ -2411,6 +2419,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     drw_resource_buffer_finish(DST.vmempool);
 #endif
   }
+  drw_task_graph_deinit();
 
   /* Start Drawing */
   DRW_state_reset();
@@ -2474,8 +2483,10 @@ void DRW_draw_depth_object(
       else {
         batch = DRW_mesh_batch_cache_get_surface(me);
       }
-
-      DRW_mesh_batch_cache_create_requested(object, me, scene, false, true);
+      struct TaskGraph *task_graph = BLI_task_graph_create();
+      DRW_mesh_batch_cache_create_requested(task_graph, object, me, scene, false, true);
+      BLI_task_graph_work_and_wait(task_graph);
+      BLI_task_graph_free(task_graph);
 
       const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
                                                           GPU_SHADER_CFG_DEFAULT;
@@ -2720,8 +2731,6 @@ void DRW_engines_free(void)
   DRW_UBO_FREE_SAFE(G_draw.view_ubo);
   DRW_TEXTURE_FREE_SAFE(G_draw.ramp);
   DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
-
-  MEM_SAFE_FREE(DST.uniform_names.buffer);
 
   if (DST.draw_list) {
     GPU_draw_list_discard(DST.draw_list);
