@@ -714,7 +714,7 @@ void blackbody_temperature_to_rgb_table(float *r_table, int width, float min, fl
 
 void phi_to_rgb(float *r_table, int width, float min, float max)
 {
-  for(int i = 0; i < width; i++) {
+  for (int i = 0; i < width; i++) {
     float value = min + (max - min) / (float)width * (float)i;
 
     float rgb[3];
