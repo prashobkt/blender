@@ -74,6 +74,15 @@ static bool collection_find_child_recursive(Collection *parent, Collection *coll
 
 /****************************** Collection Datablock ************************/
 
+static void collection_lanpr_copy(const Collection *src, Collection *dst)
+{
+  if (src->lanpr) {
+    CollectionLANPR *lanpr = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
+    dst->lanpr = lanpr;
+    memcpy(dst->lanpr, src->lanpr, sizeof(CollectionLANPR));
+  }
+}
+
 /**
  * Only copy internal data of Collection ID from source
  * to already allocated/initialized destination.
@@ -113,6 +122,7 @@ static void collection_copy_data(Main *bmain, ID *id_dst, const ID *id_src, cons
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, flag, false);
   }
+  collection_lanpr_copy(collection_src, collection_dst);
 }
 
 static void collection_free_data(ID *id)
@@ -127,6 +137,9 @@ static void collection_free_data(ID *id)
   BLI_freelistN(&collection->parents);
 
   BKE_collection_object_cache_free(collection);
+
+  /* Remove LANPR configurations */
+  MEM_SAFE_FREE(collection->lanpr);
 }
 
 static void collection_foreach_id(ID *id, LibraryForeachIDData *data)

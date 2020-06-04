@@ -2507,7 +2507,7 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, const float thr
 
 /* Buffer operations */
 
-void ED_lanpr_destroy_render_data(void)
+static void lanpr_destroy_render_data(void)
 {
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   if (rb == NULL) {
@@ -2542,13 +2542,21 @@ void ED_lanpr_destroy_render_data(void)
 
   mem_static_destroy(&rb->render_data_pool);
 }
+
+void ED_lanpr_destroy_render_data(void)
+{
+  lanpr_destroy_render_data();
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
+  if (rb) {
+    MEM_freeN(rb);
+  }
+}
+
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(Scene *s)
 {
   /* Re-init render_buffer_shared */
   if (lanpr_share.render_buffer_shared) {
-    LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
     ED_lanpr_destroy_render_data();
-    MEM_freeN(rb);
   }
 
   LANPR_RenderBuffer *rb = MEM_callocN(sizeof(LANPR_RenderBuffer), "LANPR render buffer");

@@ -221,6 +221,35 @@ static void scene_init_data(ID *id)
   BKE_view_layer_add(scene, "View Layer", NULL, VIEWLAYER_ADD_NEW);
 }
 
+static void BKE_lanpr_free_everything(Scene *s)
+{
+  SceneLANPR *lanpr = &s->lanpr;
+  LANPR_LineLayer *ll;
+
+  while ((ll = BLI_pophead(&lanpr->line_layers)) != NULL) {
+    MEM_freeN(ll);
+  }
+}
+
+static void BKE_lanpr_copy_data(const Scene *from, Scene *to)
+{
+  const SceneLANPR *lanpr = &from->lanpr;
+  LANPR_LineLayer *ll, *new_ll;
+
+  to->lanpr.line_layers.first = to->lanpr.line_layers.last = NULL;
+  memset(&to->lanpr.line_layers, 0, sizeof(ListBase));
+
+  for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
+    new_ll = MEM_callocN(sizeof(LANPR_LineLayer), "Copied Line Layer");
+    memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
+    new_ll->next = new_ll->prev = NULL;
+    new_ll->batch = NULL;
+    BLI_addtail(&to->lanpr.line_layers, new_ll);
+  }
+
+  /*  render_buffer now only accessible from lanpr_share */
+}
+
 static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
 {
   Scene *scene_dst = (Scene *)id_dst;
@@ -331,6 +360,9 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
     scene_dst->preview = NULL;
   }
 
+  /*  LANPR  data */
+  BKE_lanpr_copy_data(scene_src, scene_dst);
+
   BKE_scene_copy_data_eevee(scene_dst, scene_src);
 }
 
@@ -416,6 +448,9 @@ static void scene_free_data(ID *id)
     IDP_FreeProperty(scene->display.shading.prop);
     scene->display.shading.prop = NULL;
   }
+
+  /* LANPR data */
+  BKE_lanpr_free_everything(scene);
 
   /* These are freed on doversion. */
   BLI_assert(scene->layer_properties == NULL);
@@ -977,6 +1012,9 @@ Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
       remove_sequencer_fcurves(sce_copy);
       BKE_sequencer_editing_free(sce_copy, true);
     }
+
+    /*  LANPR  data */
+    BKE_lanpr_copy_data(sce, sce_copy);
 
     /* NOTE: part of SCE_COPY_FULL operations
      * are done outside of blenkernel with ED_object_single_users! */
