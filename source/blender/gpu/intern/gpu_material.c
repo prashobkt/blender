@@ -191,7 +191,7 @@ static void gpu_material_free_single(GPUMaterial *material)
 
 void GPU_material_free(ListBase *gpumaterial)
 {
-  for (LinkData *link = gpumaterial->first; link; link = link->next) {
+  LISTBASE_FOREACH (LinkData *, link, gpumaterial) {
     GPUMaterial *material = link->data;
     gpu_material_free_single(material);
     MEM_freeN(material);
@@ -207,6 +207,11 @@ Scene *GPU_material_scene(GPUMaterial *material)
 GPUPass *GPU_material_get_pass(GPUMaterial *material)
 {
   return material->pass;
+}
+
+GPUShader *GPU_material_get_shader(GPUMaterial *material)
+{
+  return material->pass ? GPU_pass_shader_get(material->pass) : NULL;
 }
 
 /* Return can be NULL if it's a world material. */
@@ -628,7 +633,7 @@ GPUMaterial *GPU_material_from_nodetree_find(ListBase *gpumaterials,
                                              const void *engine_type,
                                              int options)
 {
-  for (LinkData *link = gpumaterials->first; link; link = link->next) {
+  LISTBASE_FOREACH (LinkData *, link, gpumaterials) {
     GPUMaterial *current_material = (GPUMaterial *)link->data;
     if (current_material->engine_type == engine_type && current_material->options == options) {
       return current_material;
@@ -661,6 +666,9 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
 
   /* Caller must re-use materials. */
   BLI_assert(GPU_material_from_nodetree_find(gpumaterials, engine_type, options) == NULL);
+
+  /* HACK: Eevee assume this to create Ghash keys. */
+  BLI_assert(sizeof(GPUPass) > 16);
 
   /* allocate material */
   GPUMaterial *mat = MEM_callocN(sizeof(GPUMaterial), "GPUMaterial");

@@ -1027,6 +1027,11 @@ static void rigidbody_validate_sim_constraint(RigidBodyWorld *rbw, Object *ob, b
       return;
     }
 
+    /* When 'rbc->type' is unknown. */
+    if (rbc->physics_constraint == NULL) {
+      return;
+    }
+
     RB_constraint_set_enabled(rbc->physics_constraint, rbc->flag & RBC_FLAG_ENABLED);
 
     if (rbc->flag & RBC_FLAG_USE_BREAKING) {
@@ -2111,6 +2116,7 @@ void BKE_rigidbody_ensure_local_object(Main *bmain, Object *ob)
 
 bool BKE_rigidbody_add_object(Main *bmain, Scene *scene, Object *ob, int type, ReportList *reports)
 {
+  BKE_report(reports, RPT_ERROR, "Compiled without Bullet physics engine");
   return false;
 }
 

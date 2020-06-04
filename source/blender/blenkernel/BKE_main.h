@@ -87,7 +87,7 @@ enum {
 typedef struct Main {
   struct Main *next, *prev;
   char name[1024];                   /* 1024 = FILE_MAX */
-  short versionfile, subversionfile; /* see BLENDER_VERSION, BLENDER_SUBVERSION */
+  short versionfile, subversionfile; /* see BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION */
   short minversionfile, minsubversionfile;
   uint64_t build_commit_timestamp; /* commit's timestamp from buildinfo */
   char build_hash[16];             /* hash from buildinfo */
@@ -104,6 +104,12 @@ typedef struct Main {
    * instead do a complete full re-read/update from stored memfile.
    */
   char use_memfile_full_barrier;
+
+  /**
+   * When linking, disallow creation of new data-blocks.
+   * Make sure we don't do this by accident, see T76738.
+   */
+  char is_locked_for_linking;
 
   BlendThumbnail *blen_thumb;
 
@@ -147,6 +153,7 @@ typedef struct Main {
   ListBase hairs;
   ListBase pointclouds;
   ListBase volumes;
+  ListBase simulations;
 
   /**
    * Must be generated, used and freed by same code - never assume this is valid data unless you
@@ -220,16 +227,16 @@ const char *BKE_main_blendfile_path_from_global(void);
 
 struct ListBase *which_libbase(struct Main *mainlib, short type);
 
-#define MAX_LIBARRAY 40
+#define MAX_LIBARRAY 41
 int set_listbasepointers(struct Main *main, struct ListBase *lb[MAX_LIBARRAY]);
 
 #define MAIN_VERSION_ATLEAST(main, ver, subver) \
   ((main)->versionfile > (ver) || \
-   (main->versionfile == (ver) && (main)->subversionfile >= (subver)))
+   ((main)->versionfile == (ver) && (main)->subversionfile >= (subver)))
 
 #define MAIN_VERSION_OLDER(main, ver, subver) \
   ((main)->versionfile < (ver) || \
-   (main->versionfile == (ver) && (main)->subversionfile < (subver)))
+   ((main)->versionfile == (ver) && (main)->subversionfile < (subver)))
 
 #define BLEN_THUMB_SIZE 128
 

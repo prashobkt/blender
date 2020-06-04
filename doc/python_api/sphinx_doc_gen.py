@@ -403,32 +403,21 @@ MODULE_GROUPING = {
 
 # -------------------------------BLENDER----------------------------------------
 
-blender_version_strings = [str(v) for v in bpy.app.version]
-is_release = bpy.app.version_cycle in {"rc", "release"}
-
 # converting bytes to strings, due to T30154
 BLENDER_REVISION = str(bpy.app.build_hash, 'utf_8')
 
-if is_release:
-    # '2.62a'
-    BLENDER_VERSION_DOTS = ".".join(blender_version_strings[:2]) + bpy.app.version_char
-else:
-    # '2.62.1'
-    BLENDER_VERSION_DOTS = ".".join(blender_version_strings)
+# '2.83.0 Beta' or '2.83.0' or '2.83.1'
+BLENDER_VERSION_DOTS = bpy.app.version_string
 
 if BLENDER_REVISION != "Unknown":
-    # '2.62a SHA1' (release) or '2.62.1 SHA1' (non-release)
+    # SHA1 Git hash
     BLENDER_VERSION_HASH = BLENDER_REVISION
 else:
     # Fallback: Should not be used
     BLENDER_VERSION_HASH = "Hash Unknown"
 
-if is_release:
-    # '2_62a_release'
-    BLENDER_VERSION_PATH = "%s%s_release" % ("_".join(blender_version_strings[:2]), bpy.app.version_char)
-else:
-    # '2_62_1'
-    BLENDER_VERSION_PATH = "_".join(blender_version_strings)
+# '2_83'
+BLENDER_VERSION_PATH = "%d_%d" % (bpy.app.version[0], bpy.app.version[1])
 
 # --------------------------DOWNLOADABLE FILES----------------------------------
 
@@ -492,6 +481,11 @@ if _BPY_PROP_COLLECTION_FAKE:
 else:
     _BPY_PROP_COLLECTION_ID = "collection"
 
+if _BPY_STRUCT_FAKE:
+    bpy_struct = bpy.types.bpy_struct
+else:
+    bpy_struct = None
+
 
 def escape_rst(text):
     """ Escape plain text which may contain characters used by RST.
@@ -512,7 +506,7 @@ def is_struct_seq(value):
 
 
 def undocumented_message(module_name, type_name, identifier):
-    return "Undocumented `contribute <https://developer.blender.org/T51061>`"
+    return "Undocumented, consider `contributing <https://developer.blender.org/T51061>`__."
 
 
 def range_str(val):
@@ -1052,6 +1046,7 @@ context_type_map = {
     "selected_editable_fcurves": ("FCurve", True),
     "selected_editable_objects": ("Object", True),
     "selected_editable_sequences": ("Sequence", True),
+    "selected_nla_strips": ("NlaStrip", True),
     "selected_nodes": ("Node", True),
     "selected_objects": ("Object", True),
     "selected_pose_bones": ("PoseBone", True),
@@ -1442,7 +1437,7 @@ def pyrna2sphinx(basepath):
 
             if _BPY_STRUCT_FAKE:
                 descr_items = [
-                    (key, descr) for key, descr in sorted(bpy.types.Struct.__bases__[0].__dict__.items())
+                    (key, descr) for key, descr in sorted(bpy_struct.__dict__.items())
                     if not key.startswith("__")
                 ]
 
@@ -1454,9 +1449,6 @@ def pyrna2sphinx(basepath):
             for base in bases:
                 for prop in base.properties:
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, prop.identifier))
-
-                for identifier, py_prop in base.get_py_properties():
-                    lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
 
                 for identifier, py_prop in base.get_py_properties():
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
@@ -1483,6 +1475,8 @@ def pyrna2sphinx(basepath):
                 for func in base.functions:
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, func.identifier))
                 for identifier, py_func in base.get_py_functions():
+                    lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
+                for identifier, py_func in base.get_py_c_functions():
                     lines.append("   * :class:`%s.%s`\n" % (base.identifier, identifier))
 
             if lines:
@@ -1571,7 +1565,7 @@ def pyrna2sphinx(basepath):
 
         # write fake classes
         if _BPY_STRUCT_FAKE:
-            class_value = bpy.types.Struct.__bases__[0]
+            class_value = bpy_struct
             fake_bpy_type(
                 "bpy.types", class_value, _BPY_STRUCT_FAKE,
                 "built-in base class for all classes in bpy.types.", use_subclasses=True,
@@ -1711,7 +1705,7 @@ class PatchedPythonDomain(PythonDomain):
 
     fw("def setup(app):\n")
     fw("    app.add_stylesheet('css/theme_overrides.css')\n")
-    fw("    app.override_domain(PatchedPythonDomain)\n\n")
+    fw("    app.add_domain(PatchedPythonDomain, override=True)\n\n")
 
     file.close()
 

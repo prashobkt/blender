@@ -41,6 +41,7 @@ struct Object;
 struct Scene;
 struct SpaceImage;
 struct ToolSettings;
+struct ViewLayer;
 struct bDeformGroup;
 struct bGPDframe;
 struct bGPDlayer;
@@ -68,21 +69,21 @@ struct bGPdata;
 
 /* Vertex Color macros. */
 #define GPENCIL_USE_VERTEX_COLOR(toolsettings) \
-  ((toolsettings->gp_paint->mode == GPPAINT_FLAG_USE_VERTEXCOLOR))
+  (((toolsettings)->gp_paint->mode == GPPAINT_FLAG_USE_VERTEXCOLOR))
 #define GPENCIL_USE_VERTEX_COLOR_STROKE(toolsettings, brush) \
   ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
-    ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) || \
-     (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))))
+    (((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) || \
+     ((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))))
 #define GPENCIL_USE_VERTEX_COLOR_FILL(toolsettings, brush) \
   ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
-    ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) || \
-     (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))))
+    (((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) || \
+     ((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))))
 #define GPENCIL_TINT_VERTEX_COLOR_STROKE(brush) \
-  ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) || \
-   (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))
+  (((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) || \
+   ((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))
 #define GPENCIL_TINT_VERTEX_COLOR_FILL(brush) \
-  ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) || \
-   (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))
+  (((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) || \
+   ((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))
 
 /* ------------ Grease-Pencil API ------------------ */
 
@@ -253,7 +254,8 @@ typedef void (*gpIterCb)(struct bGPDlayer *layer,
                          struct bGPDstroke *stroke,
                          void *thunk);
 
-void BKE_gpencil_visible_stroke_iter(struct Object *ob,
+void BKE_gpencil_visible_stroke_iter(struct ViewLayer *view_layer,
+                                     struct Object *ob,
                                      gpIterCb layer_cb,
                                      gpIterCb stroke_cb,
                                      void *thunk,

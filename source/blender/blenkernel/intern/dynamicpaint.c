@@ -46,7 +46,6 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "BKE_animsys.h"
 #include "BKE_armature.h"
 #include "BKE_bvhutils.h" /* bvh tree */
 #include "BKE_collection.h"
@@ -541,7 +540,7 @@ static int surface_getBrushFlags(DynamicPaintSurface *surface, Depsgraph *depsgr
   for (int i = 0; i < numobjects; i++) {
     Object *brushObj = objects[i];
 
-    ModifierData *md = modifiers_findByType(brushObj, eModifierType_DynamicPaint);
+    ModifierData *md = BKE_modifiers_findby_type(brushObj, eModifierType_DynamicPaint);
     if (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render)) {
       DynamicPaintModifierData *pmd2 = (DynamicPaintModifierData *)md;
 
@@ -654,15 +653,15 @@ static void grid_bound_insert_cb_ex(void *__restrict userdata,
   boundInsert(grid_bound, bData->realCoord[bData->s_pos[i]].v);
 }
 
-static void grid_bound_insert_finalize(void *__restrict userdata, void *__restrict userdata_chunk)
+static void grid_bound_insert_reduce(const void *__restrict UNUSED(userdata),
+                                     void *__restrict chunk_join,
+                                     void *__restrict chunk)
 {
-  PaintBakeData *bData = userdata;
-  VolumeGrid *grid = bData->grid;
+  Bounds3D *join = chunk_join;
+  Bounds3D *grid_bound = chunk;
 
-  Bounds3D *grid_bound = userdata_chunk;
-
-  boundInsert(&grid->grid_bounds, grid_bound->min);
-  boundInsert(&grid->grid_bounds, grid_bound->max);
+  boundInsert(join, grid_bound->min);
+  boundInsert(join, grid_bound->max);
 }
 
 static void grid_cell_points_cb_ex(void *__restrict userdata,
@@ -686,17 +685,20 @@ static void grid_cell_points_cb_ex(void *__restrict userdata,
   s_num[temp_t_index[i]]++;
 }
 
-static void grid_cell_points_finalize(void *__restrict userdata, void *__restrict userdata_chunk)
+static void grid_cell_points_reduce(const void *__restrict userdata,
+                                    void *__restrict chunk_join,
+                                    void *__restrict chunk)
 {
-  PaintBakeData *bData = userdata;
-  VolumeGrid *grid = bData->grid;
+  const PaintBakeData *bData = userdata;
+  const VolumeGrid *grid = bData->grid;
   const int grid_cells = grid->dim[0] * grid->dim[1] * grid->dim[2];
 
-  int *s_num = userdata_chunk;
+  int *join_s_num = chunk_join;
+  int *s_num = chunk;
 
   /* calculate grid indexes */
   for (int i = 0; i < grid_cells; i++) {
-    grid->s_num[i] += s_num[i];
+    join_s_num[i] += s_num[i];
   }
 }
 
@@ -754,7 +756,7 @@ static void surfaceGenerateGrid(struct DynamicPaintSurface *surface)
       settings.use_threading = (sData->total_points > 1000);
       settings.userdata_chunk = &grid->grid_bounds;
       settings.userdata_chunk_size = sizeof(grid->grid_bounds);
-      settings.func_finalize = grid_bound_insert_finalize;
+      settings.func_reduce = grid_bound_insert_reduce;
       BLI_task_parallel_range(0, sData->total_points, bData, grid_bound_insert_cb_ex, &settings);
     }
     /* get dimensions */
@@ -815,7 +817,7 @@ static void surfaceGenerateGrid(struct DynamicPaintSurface *surface)
         settings.use_threading = (sData->total_points > 1000);
         settings.userdata_chunk = grid->s_num;
         settings.userdata_chunk_size = sizeof(*grid->s_num) * grid_cells;
-        settings.func_finalize = grid_cell_points_finalize;
+        settings.func_reduce = grid_cell_points_reduce;
         BLI_task_parallel_range(0, sData->total_points, bData, grid_cell_points_cb_ex, &settings);
       }
 
@@ -1097,7 +1099,7 @@ DynamicPaintSurface *dynamicPaint_createNewSurface(DynamicPaintCanvasSettings *c
   surface->wave_spring = 0.20f;
   surface->wave_smoothness = 1.0f;
 
-  modifier_path_init(
+  BKE_modifier_path_init(
       surface->image_output_path, sizeof(surface->image_output_path), "cache_dynamicpaint");
 
   /* Using ID_BRUSH i18n context, as we have no physics/dpaint one for now... */
@@ -2430,6 +2432,8 @@ static float dist_squared_to_looptri_uv_edges(const MLoopTri *mlooptri,
                                               int tri_index,
                                               const float point[2])
 {
+  BLI_assert(tri_index >= 0);
+
   float min_distance = FLT_MAX;
 
   for (int i = 0; i < 3; i++) {
@@ -2700,15 +2704,16 @@ static void dynamic_paint_find_island_border(const DynamicPaintCreateUVSurfaceDa
       }
     }
 
+    const int final_tri_index = tempPoints[final_index].tri_index;
     /* If found pixel still lies on wrong face ( mesh has smaller than pixel sized faces) */
-    if (tempPoints[final_index].tri_index != target_tri) {
+    if (final_tri_index != target_tri && final_tri_index != -1) {
       /* Check if it's close enough to likely touch the intended triangle. Any triangle
        * becomes thinner than a pixel at its vertices, so robustness requires some margin. */
       const float final_pt[2] = {((final_index % w) + 0.5f) / w, ((final_index / w) + 0.5f) / h};
       const float threshold = square_f(0.7f) / (w * h);
 
-      if (dist_squared_to_looptri_uv_edges(
-              mlooptri, mloopuv, tempPoints[final_index].tri_index, final_pt) > threshold) {
+      if (dist_squared_to_looptri_uv_edges(mlooptri, mloopuv, final_tri_index, final_pt) >
+          threshold) {
         continue;
       }
     }
@@ -4642,9 +4647,6 @@ static int dynamicPaint_paintParticles(DynamicPaintSurface *surface,
     return 1;
   }
 
-  /* begin thread safe malloc */
-  BLI_threaded_malloc_begin();
-
   /* only continue if particle bb is close enough to canvas bb */
   if (boundsIntersectDist(&grid->grid_bounds, &part_bb, range)) {
     int c_index;
@@ -4680,7 +4682,6 @@ static int dynamicPaint_paintParticles(DynamicPaintSurface *surface,
                               &settings);
     }
   }
-  BLI_threaded_malloc_end();
   BLI_kdtree_3d_free(tree);
 
   return 1;
@@ -4881,7 +4882,7 @@ static void dynamicPaint_prepareAdjacencyData(DynamicPaintSurface *surface, cons
       0, sData->total_points, sData, dynamic_paint_prepare_adjacency_cb, &settings);
 
   /* calculate average values (single thread).
-   * Note: tried to put this in threaded callback (using _finalize feature),
+   * Note: tried to put this in threaded callback (using _reduce feature),
    * but gave ~30% slower result! */
   bData->average_dist = 0.0;
   for (index = 0; index < sData->total_points; index++) {
@@ -6244,7 +6245,7 @@ static int dynamicPaint_doStep(Depsgraph *depsgraph,
       Object *brushObj = objects[i];
 
       /* check if target has an active dp modifier */
-      ModifierData *md = modifiers_findByType(brushObj, eModifierType_DynamicPaint);
+      ModifierData *md = BKE_modifiers_findby_type(brushObj, eModifierType_DynamicPaint);
       if (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render)) {
         DynamicPaintModifierData *pmd2 = (DynamicPaintModifierData *)md;
         /* make sure we're dealing with a brush */

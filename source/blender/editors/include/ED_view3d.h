@@ -129,6 +129,9 @@ enum eV3DCursorOrient {
 void ED_view3d_background_color_get(const struct Scene *scene,
                                     const struct View3D *v3d,
                                     float r_color[3]);
+bool ED_view3d_has_workbench_in_texture_color(const struct Scene *scene,
+                                              const struct Object *ob,
+                                              const struct View3D *v3d);
 void ED_view3d_cursor3d_position(struct bContext *C,
                                  const int mval[2],
                                  const bool use_depth,
@@ -246,6 +249,7 @@ void nurbs_foreachScreenVert(struct ViewContext *vc,
                                           struct BPoint *bp,
                                           struct BezTriple *bezt,
                                           int beztindex,
+                                          bool handle_visible,
                                           const float screen_co[2]),
                              void *userData,
                              const eV3DProjTest clip_flag);
@@ -560,10 +564,10 @@ bool edge_inside_circle(const float cent[2],
 struct RegionView3D *ED_view3d_context_rv3d(struct bContext *C);
 bool ED_view3d_context_user_region(struct bContext *C,
                                    struct View3D **r_v3d,
-                                   struct ARegion **r_ar);
-bool ED_view3d_area_user_region(const struct ScrArea *sa,
+                                   struct ARegion **r_region);
+bool ED_view3d_area_user_region(const struct ScrArea *area,
                                 const struct View3D *v3d,
-                                struct ARegion **r_ar);
+                                struct ARegion **r_region);
 bool ED_operator_rv3d_user_region_poll(struct bContext *C);
 
 void ED_view3d_init_mats_rv3d(struct Object *ob, struct RegionView3D *rv3d);
@@ -600,7 +604,7 @@ void ED_view3d_draw_setup_view(const struct wmWindowManager *wm,
 struct Base *ED_view3d_give_base_under_cursor(struct bContext *C, const int mval[2]);
 struct Object *ED_view3d_give_object_under_cursor(struct bContext *C, const int mval[2]);
 bool ED_view3d_is_object_under_cursor(struct bContext *C, const int mval[2]);
-void ED_view3d_quadview_update(struct ScrArea *sa, struct ARegion *region, bool do_clip);
+void ED_view3d_quadview_update(struct ScrArea *area, struct ARegion *region, bool do_clip);
 void ED_view3d_update_viewmat(struct Depsgraph *depsgraph,
                               const struct Scene *scene,
                               struct View3D *v3d,
@@ -702,7 +706,7 @@ void ED_view3d_operator_properties_viewmat_get(struct wmOperator *op,
 
 /* render */
 void ED_view3d_stop_render_preview(struct wmWindowManager *wm, struct ARegion *region);
-void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrArea *sa);
+void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrArea *area);
 
 #define XRAY_ALPHA(v3d) \
   (((v3d)->shading.type == OB_WIRE) ? (v3d)->shading.xray_alpha_wire : (v3d)->shading.xray_alpha)

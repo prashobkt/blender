@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2009 by Nicholas Bishop
@@ -230,8 +230,7 @@ static bool paint_tool_require_location(Brush *brush, ePaintMode mode)
                SCULPT_TOOL_THUMB)) {
         return false;
       }
-      else if (brush->sculpt_tool == SCULPT_TOOL_CLOTH &&
-               brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB) {
+      else if (SCULPT_is_cloth_deform_brush(brush)) {
         return false;
       }
       else {
@@ -963,7 +962,7 @@ void paint_stroke_free(bContext *C, wmOperator *op)
   }
 
   if (stroke->stroke_cursor) {
-    WM_paint_cursor_end(CTX_wm_manager(C), stroke->stroke_cursor);
+    WM_paint_cursor_end(stroke->stroke_cursor);
   }
 
   BLI_freelistN(&stroke->line);
@@ -1340,7 +1339,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
   Paint *p = BKE_paint_get_active_from_context(C);
   ePaintMode mode = BKE_paintmode_get_active_from_context(C);
   PaintStroke *stroke = op->customdata;
-  Brush *br = stroke->brush;
+  Brush *br = stroke->brush = BKE_paint_brush(p);
   PaintSample sample_average;
   float mouse[2];
   bool first_dab = false;
@@ -1386,12 +1385,8 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
     }
 
     if (paint_supports_smooth_stroke(br, mode)) {
-      stroke->stroke_cursor = WM_paint_cursor_activate(CTX_wm_manager(C),
-                                                       SPACE_TYPE_ANY,
-                                                       RGN_TYPE_ANY,
-                                                       paint_poll,
-                                                       paint_draw_smooth_cursor,
-                                                       stroke);
+      stroke->stroke_cursor = WM_paint_cursor_activate(
+          SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_poll, paint_draw_smooth_cursor, stroke);
     }
 
     stroke->stroke_init = true;
@@ -1417,12 +1412,8 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
       }
 
       if (br->flag & BRUSH_LINE) {
-        stroke->stroke_cursor = WM_paint_cursor_activate(CTX_wm_manager(C),
-                                                         SPACE_TYPE_ANY,
-                                                         RGN_TYPE_ANY,
-                                                         paint_poll,
-                                                         paint_draw_line_cursor,
-                                                         stroke);
+        stroke->stroke_cursor = WM_paint_cursor_activate(
+            SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_poll, paint_draw_line_cursor, stroke);
       }
 
       first_dab = true;
@@ -1597,13 +1588,14 @@ bool paint_poll(bContext *C)
 {
   Paint *p = BKE_paint_get_active_from_context(C);
   Object *ob = CTX_data_active_object(C);
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
 
-  if (p && ob && BKE_paint_brush(p) && (sa && ELEM(sa->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) &&
+  if (p && ob && BKE_paint_brush(p) &&
+      (area && ELEM(area->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) &&
       (region && region->regiontype == RGN_TYPE_WINDOW)) {
     /* Check the current tool is a brush. */
-    bToolRef *tref = sa->runtime.tool;
+    bToolRef *tref = area->runtime.tool;
     if (tref && tref->runtime && tref->runtime->data_block[0]) {
       return true;
     }

@@ -58,6 +58,10 @@ setup_platform_linker_flags()
 
 add_executable(makesdna ${SRC} ${SRC_DNA_INC})
 
+if(WIN32 AND NOT UNIX)
+  target_link_libraries(makesdna ${PTHREADS_LIBRARIES})
+endif()
+
 # Output dna.c
 add_custom_command(
   OUTPUT
@@ -146,6 +150,7 @@ set(SRC
   ../DNA_object_defaults.h
   ../DNA_pointcloud_defaults.h
   ../DNA_scene_defaults.h
+  ../DNA_simulation_defaults.h
   ../DNA_speaker_defaults.h
   ../DNA_texture_defaults.h
   ../DNA_vec_defaults.h

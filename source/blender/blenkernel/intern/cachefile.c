@@ -39,7 +39,6 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_animsys.h"
 #include "BKE_cachefile.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
@@ -98,6 +97,7 @@ IDTypeInfo IDType_ID_CF = {
     .copy_data = cache_file_copy_data,
     .free_data = cache_file_free_data,
     .make_local = NULL,
+    .foreach_id = NULL,
 };
 
 /* TODO: make this per cache file to avoid global locks. */

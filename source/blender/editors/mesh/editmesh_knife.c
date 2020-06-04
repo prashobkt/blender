@@ -1162,6 +1162,7 @@ static void knifetool_draw(const bContext *UNUSED(C), ARegion *UNUSED(region), v
     rgba_uchar_to_float(fcol, kcd->colors.point_a);
     GPU_batch_uniform_4fv(batch, "color", fcol);
     GPU_matrix_bind(batch->interface);
+    GPU_shader_set_srgb_uniform(batch->interface);
     GPU_point_size(11);
     if (snapped_verts_count > 0) {
       GPU_batch_draw_advanced(batch, 0, snapped_verts_count, 0, 0);
@@ -1579,7 +1580,7 @@ static void knife_find_line_hits(KnifeTool_OpData *kcd)
   float line_tol, line_tol_sq;
   float face_tol, face_tol_sq;
   int isect_kind;
-  unsigned int tot;
+  uint tot;
   int i;
   const bool use_hit_prev = true;
   const bool use_hit_curr = (kcd->is_drag_hold == false);
@@ -2419,7 +2420,7 @@ static void knife_make_face_cuts(KnifeTool_OpData *kcd, BMFace *f, ListBase *kfe
     edge_array_len = i;
 
 #ifdef USE_NET_ISLAND_CONNECT
-    unsigned int edge_array_holes_len;
+    uint edge_array_holes_len;
     BMEdge **edge_array_holes;
     if (BM_face_split_edgenet_connect_islands(bm,
                                               f,
@@ -2997,6 +2998,7 @@ static int knifetool_modal(bContext *C, wmOperator *op, const wmEvent *event)
       case MOUSEROTATE:
       case WHEELUPMOUSE:
       case WHEELDOWNMOUSE:
+      case NDOF_MOTION:
         return OPERATOR_PASS_THROUGH;
       case MOUSEMOVE: /* mouse moved somewhere to select another loop */
         if (kcd->mode != MODE_PANNING) {

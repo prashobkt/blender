@@ -88,6 +88,9 @@ extern char datatoc_gpu_shader_image_modulate_alpha_frag_glsl[];
 extern char datatoc_gpu_shader_3D_vert_glsl[];
 extern char datatoc_gpu_shader_3D_normal_vert_glsl[];
 extern char datatoc_gpu_shader_3D_flat_color_vert_glsl[];
+extern char datatoc_gpu_shader_3D_polyline_frag_glsl[];
+extern char datatoc_gpu_shader_3D_polyline_geom_glsl[];
+extern char datatoc_gpu_shader_3D_polyline_vert_glsl[];
 extern char datatoc_gpu_shader_3D_smooth_color_vert_glsl[];
 extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
 extern char datatoc_gpu_shader_3D_passthrough_vert_glsl[];
@@ -134,21 +137,25 @@ extern char datatoc_gpu_shader_gpencil_fill_vert_glsl[];
 extern char datatoc_gpu_shader_gpencil_fill_frag_glsl[];
 extern char datatoc_gpu_shader_cfg_world_clip_lib_glsl[];
 
+extern char datatoc_gpu_shader_colorspace_lib_glsl[];
+
 const struct GPUShaderConfigData GPU_shader_cfg_data[GPU_SHADER_CFG_LEN] = {
     [GPU_SHADER_CFG_DEFAULT] =
         {
             .lib = "",
-            .def = "",
+            .def = "#define blender_srgb_to_framebuffer_space(a) a\n",
         },
     [GPU_SHADER_CFG_CLIPPED] =
         {
             .lib = datatoc_gpu_shader_cfg_world_clip_lib_glsl,
-            .def = "#define USE_WORLD_CLIP_PLANES\n",
+            .def = "#define USE_WORLD_CLIP_PLANES\n"
+                   "#define blender_srgb_to_framebuffer_space(a) a\n",
         },
 };
 
 /* cache of built-in shaders (each is created on first use) */
 static GPUShader *builtin_shaders[GPU_SHADER_CFG_LEN][GPU_SHADER_BUILTIN_LEN] = {{NULL}};
+static int g_shader_builtin_srgb_transform = 0;
 
 #ifndef NDEBUG
 static uint g_shaderid = 0;
@@ -289,6 +296,28 @@ GPUShader *GPU_shader_create(const char *vertexcode,
       vertexcode, fragcode, geocode, libcode, defines, GPU_SHADER_TFB_NONE, NULL, 0, shname);
 }
 
+GPUShader *GPU_shader_create_from_python(const char *vertexcode,
+                                         const char *fragcode,
+                                         const char *geocode,
+                                         const char *libcode,
+                                         const char *defines)
+{
+  char *libcodecat = NULL;
+
+  if (libcode == NULL) {
+    libcode = datatoc_gpu_shader_colorspace_lib_glsl;
+  }
+  else {
+    libcode = libcodecat = BLI_strdupcat(libcode, datatoc_gpu_shader_colorspace_lib_glsl);
+  }
+
+  GPUShader *sh = GPU_shader_create_ex(
+      vertexcode, fragcode, geocode, libcode, defines, GPU_SHADER_TFB_NONE, NULL, 0, NULL);
+
+  MEM_SAFE_FREE(libcodecat);
+  return sh;
+}
+
 GPUShader *GPU_shader_load_from_binary(const char *binary,
                                        const int binary_format,
                                        const int binary_len,
@@ -302,6 +331,8 @@ GPUShader *GPU_shader_load_from_binary(const char *binary,
   glGetProgramiv(program, GL_LINK_STATUS, &success);
 
   if (success) {
+    glUseProgram(program);
+
     GPUShader *shader = MEM_callocN(sizeof(*shader), __func__);
     shader->interface = GPU_shaderinterface_create(program);
     shader->program = program;
@@ -543,6 +574,7 @@ GPUShader *GPU_shader_create_ex(const char *vertexcode,
     return NULL;
   }
 
+  glUseProgram(shader->program);
   shader->interface = GPU_shaderinterface_create(shader->program);
 
   return shader;
@@ -629,6 +661,7 @@ void GPU_shader_bind(GPUShader *shader)
 
   glUseProgram(shader->program);
   GPU_matrix_bind(shader->interface);
+  GPU_shader_set_srgb_uniform(shader->interface);
 }
 
 void GPU_shader_unbind(void)
@@ -696,21 +729,19 @@ int GPU_shader_get_uniform(GPUShader *shader, const char *name)
 {
   BLI_assert(shader && shader->program);
   const GPUShaderInput *uniform = GPU_shaderinterface_uniform(shader->interface, name);
-  return uniform ? uniform->location : -2;
-}
-
-int GPU_shader_get_uniform_ensure(GPUShader *shader, const char *name)
-{
-  BLI_assert(shader && shader->program);
-  const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(shader->interface, name);
   return uniform ? uniform->location : -1;
 }
 
 int GPU_shader_get_builtin_uniform(GPUShader *shader, int builtin)
 {
   BLI_assert(shader && shader->program);
-  const GPUShaderInput *uniform = GPU_shaderinterface_uniform_builtin(shader->interface, builtin);
-  return uniform ? uniform->location : -1;
+  return GPU_shaderinterface_uniform_builtin(shader->interface, builtin);
+}
+
+int GPU_shader_get_builtin_block(GPUShader *shader, int builtin)
+{
+  BLI_assert(shader && shader->program);
+  return GPU_shaderinterface_block_builtin(shader->interface, builtin);
 }
 
 int GPU_shader_get_uniform_block(GPUShader *shader, const char *name)
@@ -718,6 +749,20 @@ int GPU_shader_get_uniform_block(GPUShader *shader, const char *name)
   BLI_assert(shader && shader->program);
   const GPUShaderInput *ubo = GPU_shaderinterface_ubo(shader->interface, name);
   return ubo ? ubo->location : -1;
+}
+
+int GPU_shader_get_uniform_block_binding(GPUShader *shader, const char *name)
+{
+  BLI_assert(shader && shader->program);
+  const GPUShaderInput *ubo = GPU_shaderinterface_ubo(shader->interface, name);
+  return ubo ? ubo->binding : -1;
+}
+
+int GPU_shader_get_texture_binding(GPUShader *shader, const char *name)
+{
+  BLI_assert(shader && shader->program);
+  const GPUShaderInput *tex = GPU_shaderinterface_uniform(shader->interface, name);
+  return tex ? tex->binding : -1;
 }
 
 void *GPU_shader_get_interface(GPUShader *shader)
@@ -807,32 +852,12 @@ void GPU_shader_uniform_int(GPUShader *UNUSED(shader), int location, int value)
   glUniform1i(location, value);
 }
 
-void GPU_shader_uniform_buffer(GPUShader *shader, int location, GPUUniformBuffer *ubo)
+void GPU_shader_set_srgb_uniform(const GPUShaderInterface *interface)
 {
-  int bindpoint = GPU_uniformbuffer_bindpoint(ubo);
-
-  if (location == -1) {
-    return;
+  int32_t loc = GPU_shaderinterface_uniform_builtin(interface, GPU_UNIFORM_SRGB_TRANSFORM);
+  if (loc != -1) {
+    glUniform1i(loc, g_shader_builtin_srgb_transform);
   }
-
-  glUniformBlockBinding(shader->program, location, bindpoint);
-}
-
-void GPU_shader_uniform_texture(GPUShader *UNUSED(shader), int location, GPUTexture *tex)
-{
-  int number = GPU_texture_bound_number(tex);
-
-  if (number == -1) {
-    fprintf(stderr, "Texture is not bound.\n");
-    BLI_assert(0);
-    return;
-  }
-
-  if (location == -1) {
-    return;
-  }
-
-  glUniform1i(location, number);
 }
 
 int GPU_shader_get_attribute(GPUShader *shader, const char *name)
@@ -857,6 +882,11 @@ char *GPU_shader_get_binary(GPUShader *shader, uint *r_binary_format, int *r_bin
   }
 
   return r_binary;
+}
+
+void GPU_shader_set_framebuffer_srgb_target(int use_srgb_to_linear)
+{
+  g_shader_builtin_srgb_transform = use_srgb_to_linear;
 }
 
 static const GPUShaderStages builtin_shader_stages[GPU_SHADER_BUILTIN_LEN] = {
@@ -983,6 +1013,36 @@ static const GPUShaderStages builtin_shader_stages[GPU_SHADER_BUILTIN_LEN] = {
         {
             .vert = datatoc_gpu_shader_3D_clipped_uniform_color_vert_glsl,
             .frag = datatoc_gpu_shader_uniform_color_frag_glsl,
+        },
+
+    [GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR] =
+        {
+            .vert = datatoc_gpu_shader_3D_polyline_vert_glsl,
+            .geom = datatoc_gpu_shader_3D_polyline_geom_glsl,
+            .frag = datatoc_gpu_shader_3D_polyline_frag_glsl,
+            .defs = "#define UNIFORM\n",
+        },
+    [GPU_SHADER_3D_POLYLINE_CLIPPED_UNIFORM_COLOR] =
+        {
+            .vert = datatoc_gpu_shader_3D_polyline_vert_glsl,
+            .geom = datatoc_gpu_shader_3D_polyline_geom_glsl,
+            .frag = datatoc_gpu_shader_3D_polyline_frag_glsl,
+            .defs = "#define UNIFORM\n"
+                    "#define CLIP\n",
+        },
+    [GPU_SHADER_3D_POLYLINE_FLAT_COLOR] =
+        {
+            .vert = datatoc_gpu_shader_3D_polyline_vert_glsl,
+            .geom = datatoc_gpu_shader_3D_polyline_geom_glsl,
+            .frag = datatoc_gpu_shader_3D_polyline_frag_glsl,
+            .defs = "#define FLAT\n",
+        },
+    [GPU_SHADER_3D_POLYLINE_SMOOTH_COLOR] =
+        {
+            .vert = datatoc_gpu_shader_3D_polyline_vert_glsl,
+            .geom = datatoc_gpu_shader_3D_polyline_geom_glsl,
+            .frag = datatoc_gpu_shader_3D_polyline_frag_glsl,
+            .defs = "#define SMOOTH\n",
         },
 
     [GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR] =
@@ -1162,8 +1222,12 @@ GPUShader *GPU_shader_get_builtin_shader_with_config(eGPUBuiltinShader shader,
 
     /* common case */
     if (sh_cfg == GPU_SHADER_CFG_DEFAULT) {
-      *sh_p = GPU_shader_create(
-          stages->vert, stages->frag, stages->geom, NULL, stages->defs, __func__);
+      *sh_p = GPU_shader_create_from_arrays({
+          .vert = (const char *[]){stages->vert, NULL},
+          .geom = (const char *[]){stages->geom, NULL},
+          .frag = (const char *[]){datatoc_gpu_shader_colorspace_lib_glsl, stages->frag, NULL},
+          .defs = (const char *[]){stages->defs, NULL},
+      });
     }
     else if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
       /* Remove eventually, for now ensure support for each shader has been added. */
@@ -1182,7 +1246,7 @@ GPUShader *GPU_shader_get_builtin_shader_with_config(eGPUBuiltinShader shader,
       *sh_p = GPU_shader_create_from_arrays({
           .vert = (const char *[]){world_clip_lib, stages->vert, NULL},
           .geom = (const char *[]){stages->geom ? world_clip_lib : NULL, stages->geom, NULL},
-          .frag = (const char *[]){stages->frag, NULL},
+          .frag = (const char *[]){datatoc_gpu_shader_colorspace_lib_glsl, stages->frag, NULL},
           .defs = (const char *[]){world_clip_def, stages->defs, NULL},
       });
     }

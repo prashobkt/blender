@@ -212,7 +212,7 @@ uniform vec4 layerTint;
 uniform float layerOpacity; /* Used for onion skin. */
 uniform float strokeIndexOffset = 0.0;
 
-/* All of these attribs are quad loaded the same way
+/* All of these attributes are quad loaded the same way
  * as GL_LINES_ADJACENCY would feed a geometry shader:
  * - ma reference the previous adjacency point.
  * - ma1 reference the current line first point.
@@ -236,7 +236,7 @@ in vec4 uv2;
 in vec4 col1;
 in vec4 col2;
 in vec4 fcol1;
-/* WARNING: Max attrib count is actually 14 because OSX OpenGL implementation
+/* WARNING: Max attribute count is actually 14 because OSX OpenGL implementation
  * considers gl_VertexID and gl_InstanceID as vertex attribute. (see T74536) */
 #  define stroke_id1 ma1.y
 #  define point_id1 ma1.z
@@ -317,7 +317,7 @@ vec2 safe_normalize_len(vec2 v, out float len)
   }
 }
 
-float stroke_thickness_modulate(float thickness)
+float stroke_thickness_modulate(float thickness, out float opacity)
 {
   /* Modify stroke thickness by object and layer factors.-*/
   thickness *= thicknessScale;
@@ -333,6 +333,11 @@ float stroke_thickness_modulate(float thickness)
     /* World space point size. */
     thickness *= thicknessWorldScale * ProjectionMatrix[1][1] * sizeViewport.y;
   }
+  /* To avoid aliasing artifact, we clamp the line thickness and reduce its opacity. */
+  float min_thickness = gl_Position.w * 1.3;
+  opacity = smoothstep(0.0, gl_Position.w * 1.0, thickness);
+  thickness = max(min_thickness, thickness);
+
   return thickness;
 }
 
@@ -389,7 +394,7 @@ void stroke_vertex()
 
   mat4 model_mat = model_matrix_get();
 
-  /* Avoid using a vertex attrib for quad positioning. */
+  /* Avoid using a vertex attribute for quad positioning. */
   float x = float(gl_VertexID & 1) * 2.0 - 1.0; /* [-1..1] */
   float y = float(gl_VertexID & 2) - 1.0;       /* [-1..1] */
 
@@ -414,8 +419,9 @@ void stroke_vertex()
   vec2 line = safe_normalize_len(ss2 - ss1, line_len);
   vec2 line_adj = safe_normalize((use_curr) ? (ss1 - ss_adj) : (ss_adj - ss2));
 
+  float small_line_opacity;
   float thickness = abs((use_curr) ? thickness1 : thickness2);
-  thickness = stroke_thickness_modulate(thickness);
+  thickness = stroke_thickness_modulate(thickness, small_line_opacity);
 
   finalUvs = vec2(x, y) * 0.5 + 0.5;
   strokeHardeness = decode_hardness(use_curr ? hardness1 : hardness2);
@@ -473,8 +479,8 @@ void stroke_vertex()
     float miter_dot = dot(miter_tan, line_adj);
     /* Break corners after a certain angle to avoid really thick corners. */
     const float miter_limit = 0.5; /* cos(60°) */
-    bool miter_break = (miter_dot < miter_limit) || is_stroke_start || is_stroke_end;
-    miter_tan = (miter_break) ? line : (miter_tan / miter_dot);
+    bool miter_break = (miter_dot < miter_limit);
+    miter_tan = (miter_break || is_stroke_start || is_stroke_end) ? line : (miter_tan / miter_dot);
 
     vec2 miter = rotate_90deg(miter_tan);
 
@@ -487,7 +493,7 @@ void stroke_vertex()
 
     /* Reminder: we packed the cap flag into the sign of stength and thickness sign. */
     if ((is_stroke_start && strength1 > 0.0) || (is_stroke_end && thickness1 > 0.0) ||
-        miter_break) {
+        (miter_break && !is_stroke_start && !is_stroke_end)) {
       screen_ofs += line * x;
     }
 
@@ -505,7 +511,7 @@ void stroke_vertex()
   vec4 stroke_col = MATERIAL(m).stroke_color;
   float mix_tex = MATERIAL(m).stroke_texture_mix;
 
-  color_output(stroke_col, vert_col, vert_strength, mix_tex);
+  color_output(stroke_col, vert_col, vert_strength * small_line_opacity, mix_tex);
 
   matFlag = MATERIAL(m).flag & ~GP_FILL_FLAGS;
 #  endif

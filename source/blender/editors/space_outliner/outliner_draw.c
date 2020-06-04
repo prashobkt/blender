@@ -91,7 +91,7 @@ static void outliner_tree_dimensions_impl(SpaceOutliner *soops,
                                           int *width,
                                           int *height)
 {
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     *width = MAX2(*width, te->xend);
     if (height != NULL) {
       *height += UI_UNIT_Y;
@@ -178,20 +178,13 @@ static void restrictbutton_r_lay_cb(bContext *C, void *poin, void *UNUSED(poin2)
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, poin);
 }
 
-static void restrictbutton_bone_visibility_cb(bContext *C, void *poin, void *poin2)
+static void restrictbutton_bone_visibility_cb(bContext *C, void *poin, void *UNUSED(poin2))
 {
-  bArmature *arm = (bArmature *)poin;
-  Bone *bone = (Bone *)poin2;
-  if (bone->flag & BONE_HIDDEN_P) {
-    bone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-  }
+  Bone *bone = (Bone *)poin;
 
   if (CTX_wm_window(C)->eventstate->ctrl) {
     restrictbutton_recursive_bone(bone, BONE_HIDDEN_P, (bone->flag & BONE_HIDDEN_P) != 0);
   }
-
-  WM_event_add_notifier(C, NC_OBJECT | ND_POSE, NULL);
-  DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
 }
 
 static void restrictbutton_bone_select_cb(bContext *C, void *UNUSED(poin), void *poin2)
@@ -387,8 +380,7 @@ static void outliner_collection_set_flag_recursive(Scene *scene,
   if (base_or_object_prop) {
     /* Note: We can't use BKE_collection_object_cache_get()
      * otherwise we would not take collection exclusion into account. */
-    for (CollectionObject *cob = layer_collection->collection->gobject.first; cob;
-         cob = cob->next) {
+    LISTBASE_FOREACH (CollectionObject *, cob, &layer_collection->collection->gobject) {
 
       outliner_base_or_object_pointer_create(view_layer, collection, cob->ob, &ptr);
       RNA_property_boolean_set(&ptr, base_or_object_prop, value);
@@ -401,7 +393,7 @@ static void outliner_collection_set_flag_recursive(Scene *scene,
 
   /* Keep going recursively. */
   ListBase *lb = (layer_collection ? &layer_collection->layer_collections : &collection->children);
-  for (Link *link = lb->first; link; link = link->next) {
+  LISTBASE_FOREACH (Link *, link, lb) {
     LayerCollection *layer_collection_iter = layer_collection ? (LayerCollection *)link : NULL;
     Collection *collection_iter = layer_collection ?
                                       (collection ? layer_collection_iter->collection : NULL) :
@@ -467,7 +459,7 @@ static bool outliner_collection_is_isolated(Scene *scene,
 
   /* Keep going recursively. */
   ListBase *lb = (layer_collection ? &layer_collection->layer_collections : &collection->children);
-  for (Link *link = lb->first; link; link = link->next) {
+  LISTBASE_FOREACH (Link *, link, lb) {
     LayerCollection *layer_collection_iter = layer_collection ? (LayerCollection *)link : NULL;
     Collection *collection_iter = layer_collection ?
                                       (collection ? layer_collection_iter->collection : NULL) :
@@ -542,8 +534,7 @@ void outliner_collection_isolate_flag(Scene *scene,
   /* Make this collection direct parents also "visible". */
   if (layer_collection) {
     LayerCollection *lc_parent = layer_collection;
-    for (LayerCollection *lc_iter = top_layer_collection->layer_collections.first; lc_iter;
-         lc_iter = lc_iter->next) {
+    LISTBASE_FOREACH (LayerCollection *, lc_iter, &top_layer_collection->layer_collections) {
       if (BKE_layer_collection_has_layer_collection(lc_iter, layer_collection)) {
         lc_parent = lc_iter;
         break;
@@ -555,8 +546,7 @@ void outliner_collection_isolate_flag(Scene *scene,
           scene, lc_parent, collection ? lc_parent->collection : NULL, &ptr);
       RNA_property_boolean_set(&ptr, layer_or_collection_prop, !is_hide);
 
-      for (LayerCollection *lc_iter = lc_parent->layer_collections.first; lc_iter;
-           lc_iter = lc_iter->next) {
+      LISTBASE_FOREACH (LayerCollection *, lc_iter, &lc_parent->layer_collections) {
         if (BKE_layer_collection_has_layer_collection(lc_iter, layer_collection)) {
           lc_parent = lc_iter;
           break;
@@ -862,6 +852,7 @@ typedef struct RestrictProperties {
       *layer_collection_hide_viewport;
   PropertyRNA *modifier_show_viewport, *modifier_show_render;
   PropertyRNA *constraint_enable;
+  PropertyRNA *bone_hide_viewport;
 } RestrictProperties;
 
 /* We don't care about the value of the property
@@ -880,6 +871,7 @@ typedef struct RestrictPropertiesActive {
   bool modifier_show_viewport;
   bool modifier_show_render;
   bool constraint_enable;
+  bool bone_hide_viewport;
 } RestrictPropertiesActive;
 
 static void outliner_restrict_properties_enable_collection_set(
@@ -1014,6 +1006,8 @@ static void outliner_draw_restrictbuts(uiBlock *block,
 
     props.constraint_enable = RNA_struct_type_find_property(&RNA_Constraint, "mute");
 
+    props.bone_hide_viewport = RNA_struct_type_find_property(&RNA_Bone, "hide");
+
     props.initialized = true;
   }
 
@@ -1054,7 +1048,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
   /* Create buttons. */
   uiBut *bt;
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
     RestrictPropertiesActive props_active = props_active_parent;
 
@@ -1282,27 +1276,32 @@ static void outliner_draw_restrictbuts(uiBlock *block,
         }
       }
       else if (tselem->type == TSE_POSE_CHANNEL) {
+        PointerRNA ptr;
         bPoseChannel *pchan = (bPoseChannel *)te->directdata;
         Bone *bone = pchan->bone;
         Object *ob = (Object *)tselem->id;
+        bArmature *arm = ob->data;
+
+        RNA_pointer_create(&arm->id, &RNA_Bone, bone, &ptr);
 
         if (soops->show_restrict_flags & SO_RESTRICT_VIEWPORT) {
-          bt = uiDefIconButBitI(block,
-                                UI_BTYPE_ICON_TOGGLE,
-                                BONE_HIDDEN_P,
-                                0,
-                                ICON_RESTRICT_VIEW_OFF,
-                                (int)(region->v2d.cur.xmax - restrict_offsets.viewport),
-                                te->ys,
-                                UI_UNIT_X,
-                                UI_UNIT_Y,
-                                &(bone->flag),
-                                0,
-                                0,
-                                0,
-                                0,
-                                TIP_("Restrict visibility in the 3D View"));
-          UI_but_func_set(bt, restrictbutton_bone_visibility_cb, ob->data, bone);
+          bt = uiDefIconButR_prop(block,
+                                  UI_BTYPE_ICON_TOGGLE,
+                                  0,
+                                  0,
+                                  (int)(region->v2d.cur.xmax - restrict_offsets.viewport),
+                                  te->ys,
+                                  UI_UNIT_X,
+                                  UI_UNIT_Y,
+                                  &ptr,
+                                  props.bone_hide_viewport,
+                                  -1,
+                                  0,
+                                  0,
+                                  -1,
+                                  -1,
+                                  TIP_("Restrict visibility in the 3D View"));
+          UI_but_func_set(bt, restrictbutton_bone_visibility_cb, bone, NULL);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
           UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
         }
@@ -1651,7 +1650,7 @@ static void outliner_draw_userbuts(uiBlock *block,
                                    ListBase *lb)
 {
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
     if (te->ys + 2 * UI_UNIT_Y >= region->v2d.cur.ymin && te->ys <= region->v2d.cur.ymax) {
       if (tselem->type == 0) {
@@ -1770,7 +1769,7 @@ static void outliner_draw_rnabuts(
   PointerRNA *ptr;
   PropertyRNA *prop;
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
     if (te->ys + 2 * UI_UNIT_Y >= region->v2d.cur.ymin && te->ys <= region->v2d.cur.ymax) {
       if (tselem->type == TSE_RNA_PROPERTY) {
@@ -2194,6 +2193,9 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
             case eModifierType_WeightedNormal:
               data.icon = ICON_MOD_NORMALEDIT;
               break;
+            case eModifierType_Simulation:
+              data.icon = ICON_PHYSICS; /* TODO: Use correct icon. */
+              break;
               /* Default */
             case eModifierType_None:
             case eModifierType_ShapeKey:
@@ -2584,6 +2586,10 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         case ID_PC:
           data.icon = ICON_CURVE_BEZCURVE;
           break;
+        case ID_SIM:
+          /* TODO: Use correct icon. */
+          data.icon = ICON_PHYSICS;
+          break;
         default:
           break;
       }
@@ -2861,7 +2867,7 @@ static void outliner_draw_iconrow(bContext *C,
 {
   eOLDrawState active = OL_DRAWSEL_NONE;
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     /* object hierarchy always, further constrained on level */
@@ -3204,7 +3210,7 @@ static void outliner_draw_tree_element(bContext *C,
   if (TSELEM_OPEN(tselem, soops)) {
     *starty -= UI_UNIT_Y;
 
-    for (TreeElement *ten = te->subtree.first; ten; ten = ten->next) {
+    LISTBASE_FOREACH (TreeElement *, ten, &te->subtree) {
       /* check if element needs to be drawn grayed out, but also gray out
        * childs of a grayed out parent (pass on draw_grayed_out to childs) */
       bool draw_childs_grayed_out = draw_grayed_out || (ten->flag & TE_DRAGGING);
@@ -3223,7 +3229,7 @@ static void outliner_draw_tree_element(bContext *C,
     }
   }
   else {
-    for (TreeElement *ten = te->subtree.first; ten; ten = ten->next) {
+    LISTBASE_FOREACH (TreeElement *, ten, &te->subtree) {
       outliner_set_coord_tree_element(ten, startx, *starty);
     }
 
@@ -3357,7 +3363,7 @@ static void outliner_draw_struct_marks(ARegion *region,
                                        ListBase *lb,
                                        int *starty)
 {
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     /* selection status */
@@ -3406,7 +3412,7 @@ static void outliner_draw_highlights_recursive(uint pos,
   const bool is_searching = (SEARCHING_OUTLINER(soops) ||
                              (soops->outlinevis == SO_DATA_API && soops->search_string[0] != 0));
 
-  for (TreeElement *te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     const TreeStoreElem *tselem = TREESTORE(te);
     const int start_y = *io_start_y;
 
@@ -3555,7 +3561,7 @@ static void outliner_draw_tree(bContext *C,
   // items themselves
   starty = (int)region->v2d.tot.ymax - UI_UNIT_Y - OL_Y_OFFSET;
   startx = 0;
-  for (TreeElement *te = soops->tree.first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, &soops->tree) {
     outliner_draw_tree_element(C,
                                block,
                                fstyle,

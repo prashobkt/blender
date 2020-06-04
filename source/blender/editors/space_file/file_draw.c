@@ -220,7 +220,8 @@ static void file_draw_preview(uiBlock *block,
                               const bool is_icon,
                               const int typeflags,
                               const bool drag,
-                              const bool dimmed)
+                              const bool dimmed,
+                              const bool is_link)
 {
   uiBut *but;
   float fx, fy;
@@ -312,37 +313,57 @@ static void file_draw_preview(uiBlock *block,
   GPU_blend_set_func_separate(
       GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
-  if (icon && !(typeflags & FILE_TYPE_FTFONT)) {
-    /* size of center icon is scaled to fit container and UI scale */
+  if (icon && is_icon) {
+    /* Small icon in the middle of large image, scaled to fit container and UI scale */
     float icon_x, icon_y;
-
-    if (is_icon) {
-      const float icon_size = 16.0f / icon_aspect * U.dpi_fac;
-      float icon_opacity = 0.3f;
-      uchar icon_color[4] = {0, 0, 0, 255};
-      float bgcolor[4];
-      UI_GetThemeColor4fv(TH_ICON_FOLDER, bgcolor);
-      if (rgb_to_grayscale(bgcolor) < 0.5f) {
-        icon_color[0] = 255;
-        icon_color[1] = 255;
-        icon_color[2] = 255;
-      }
-      icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
-      icon_y = yco + (ey / 2.0f) - (icon_size * ((typeflags & FILE_TYPE_DIR) ? 0.78f : 0.75f));
-      UI_icon_draw_ex(
-          icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, icon_color, false);
+    const float icon_size = 16.0f / icon_aspect * U.dpi_fac;
+    float icon_opacity = 0.3f;
+    uchar icon_color[4] = {0, 0, 0, 255};
+    float bgcolor[4];
+    UI_GetThemeColor4fv(TH_ICON_FOLDER, bgcolor);
+    if (rgb_to_grayscale(bgcolor) < 0.5f) {
+      icon_color[0] = 255;
+      icon_color[1] = 255;
+      icon_color[2] = 255;
     }
-    else {
+    icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
+    icon_y = yco + (ey / 2.0f) - (icon_size * ((typeflags & FILE_TYPE_DIR) ? 0.78f : 0.75f));
+    UI_icon_draw_ex(
+        icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, icon_color, false);
+  }
+
+  if (is_link) {
+    /* Arrow icon to indicate it is a shortcut, link, or alias. */
+    float icon_x, icon_y;
+    icon_x = xco + (2.0f * UI_DPI_FAC);
+    icon_y = yco + (2.0f * UI_DPI_FAC);
+    const int arrow = ICON_LOOP_FORWARDS;
+    if (!is_icon) {
+      /* Arrow at very bottom-left if preview style. */
       const uchar dark[4] = {0, 0, 0, 255};
       const uchar light[4] = {255, 255, 255, 255};
-
-      /* Smaller, fainter icon for preview image thumbnail. */
-      icon_x = xco + (2.0f * UI_DPI_FAC);
-      icon_y = yco + (2.0f * UI_DPI_FAC);
-
-      UI_icon_draw_ex(icon_x + 1, icon_y - 1, icon, 1.0f / U.dpi_fac, 0.2f, 0.0f, dark, false);
-      UI_icon_draw_ex(icon_x, icon_y, icon, 1.0f / U.dpi_fac, 0.6f, 0.0f, light, false);
+      UI_icon_draw_ex(icon_x + 1, icon_y - 1, arrow, 1.0f / U.dpi_fac, 0.2f, 0.0f, dark, false);
+      UI_icon_draw_ex(icon_x, icon_y, arrow, 1.0f / U.dpi_fac, 0.6f, 0.0f, light, false);
     }
+    else {
+      /* Link to folder or non-previewed file. */
+      uchar icon_color[4];
+      UI_GetThemeColor4ubv(TH_BACK, icon_color);
+      icon_x = xco + ((typeflags & FILE_TYPE_DIR) ? 0.14f : 0.23f) * scaledx;
+      icon_y = yco + ((typeflags & FILE_TYPE_DIR) ? 0.24f : 0.14f) * scaledy;
+      UI_icon_draw_ex(
+          icon_x, icon_y, arrow, icon_aspect / U.dpi_fac * 1.8, 0.3f, 0.0f, icon_color, false);
+    }
+  }
+  else if (icon && !is_icon && !(typeflags & FILE_TYPE_FTFONT)) {
+    /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
+    float icon_x, icon_y;
+    const uchar dark[4] = {0, 0, 0, 255};
+    const uchar light[4] = {255, 255, 255, 255};
+    icon_x = xco + (2.0f * UI_DPI_FAC);
+    icon_y = yco + (2.0f * UI_DPI_FAC);
+    UI_icon_draw_ex(icon_x + 1, icon_y - 1, icon, 1.0f / U.dpi_fac, 0.2f, 0.0f, dark, false);
+    UI_icon_draw_ex(icon_x, icon_y, icon, 1.0f / U.dpi_fac, 0.6f, 0.0f, light, false);
   }
 
   /* Contrasting outline around some preview types. */
@@ -448,7 +469,7 @@ static void draw_dividers(FileLayout *layout, View2D *v2d)
 
   const int step = (layout->tile_w + 2 * layout->tile_border_x);
 
-  unsigned int vertex_len = 0;
+  uint vertex_len = 0;
   int sx = (int)v2d->tot.xmin;
   while (sx < v2d->cur.xmax) {
     sx += step;
@@ -457,7 +478,7 @@ static void draw_dividers(FileLayout *layout, View2D *v2d)
 
   if (vertex_len > 0) {
     int v1[2], v2[2];
-    unsigned char col_hi[3], col_lo[3];
+    uchar col_hi[3], col_lo[3];
 
     UI_GetThemeColorShade3ubv(TH_BACK, 30, col_hi);
     UI_GetThemeColorShade3ubv(TH_BACK, -30, col_lo);
@@ -685,7 +706,7 @@ void file_draw_list(const bContext *C, ARegion *region)
   bool is_icon;
   eFontStyle_Align align;
   bool do_drag;
-  unsigned char text_col[4];
+  uchar text_col[4];
   const bool draw_columnheader = (params->display == FILE_VERTICALDISPLAY);
   const float thumb_icon_aspect = MIN2(64.0f / (float)(params->thumbnail_size), 1.0f);
 
@@ -753,7 +774,7 @@ void file_draw_list(const bContext *C, ARegion *region)
   UI_GetThemeColor4ubv(TH_TEXT, text_col);
 
   for (i = offset; (i < numfiles) && (i < offset + numfiles_layout); i++) {
-    unsigned int file_selflag;
+    uint file_selflag;
     char path[FILE_MAX_LIBEXTRA];
     int padx = 0.1f * UI_UNIT_X;
     int icon_ofs = 0;
@@ -788,6 +809,7 @@ void file_draw_list(const bContext *C, ARegion *region)
     /* don't drag parent or refresh items */
     do_drag = !(FILENAME_IS_CURRPAR(file->relpath));
     const bool is_hidden = (file->attributes & FILE_ATTR_HIDDEN);
+    const bool is_link = (file->attributes & FILE_ATTR_ANY_LINK);
 
     if (FILE_IMGDISPLAY == params->display) {
       const int icon = filelist_geticon(files, i, false);
@@ -809,7 +831,8 @@ void file_draw_list(const bContext *C, ARegion *region)
                         is_icon,
                         file->typeflag,
                         do_drag,
-                        is_hidden);
+                        is_hidden,
+                        is_link);
     }
     else {
       file_draw_icon(block,

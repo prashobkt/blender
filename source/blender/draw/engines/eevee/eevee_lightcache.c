@@ -379,9 +379,7 @@ static bool eevee_lightcache_static_load(LightCache *lcache)
                                                 0,
                                                 false,
                                                 NULL);
-    GPU_texture_bind(lcache->grid_tx.tex, 0);
     GPU_texture_filter_mode(lcache->grid_tx.tex, true);
-    GPU_texture_unbind(lcache->grid_tx.tex);
   }
 
   if (lcache->cube_tx.tex == NULL) {
@@ -406,13 +404,11 @@ static bool eevee_lightcache_static_load(LightCache *lcache)
                                                   NULL);
     }
 
-    GPU_texture_bind(lcache->cube_tx.tex, 0);
-    GPU_texture_mipmap_mode(lcache->cube_tx.tex, true, true);
     for (int mip = 0; mip < lcache->mips_len; mip++) {
       GPU_texture_add_mipmap(
           lcache->cube_tx.tex, GPU_DATA_10_11_11_REV, mip + 1, lcache->cube_mips[mip].data);
     }
-    GPU_texture_unbind(lcache->cube_tx.tex);
+    GPU_texture_mipmap_mode(lcache->cube_tx.tex, true, true);
   }
   return true;
 }
@@ -777,8 +773,6 @@ static void eevee_lightbake_delete_resources(EEVEE_LightBake *lbake)
   if (!lbake->resource_only) {
     BLI_mutex_unlock(lbake->mutex);
   }
-
-  EEVEE_volumes_free_smoke_textures();
 }
 
 /* Cache as in draw cache not light cache. */
@@ -824,7 +818,7 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
   DRW_render_viewport_size_set(viewport_size);
 
   EEVEE_effects_init(sldata, vedata, NULL, true);
-  EEVEE_materials_init(sldata, stl, fbl);
+  EEVEE_materials_init(sldata, vedata, stl, fbl);
   EEVEE_shadows_init(sldata);
   EEVEE_lightprobes_init(sldata, vedata);
 
@@ -1347,6 +1341,9 @@ void EEVEE_lightbake_job(void *custom_data, short *stop, short *do_update, float
   }
 
   eevee_lightbake_delete_resources(lbake);
+
+  /* Free GPU smoke textures and the smoke domain list correctly: See also T73921.*/
+  EEVEE_volumes_free_smoke_textures();
 }
 
 /* This is to update the world irradiance and reflection contribution from

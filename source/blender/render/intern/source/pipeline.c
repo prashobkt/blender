@@ -51,6 +51,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_anim_data.h"
 #include "BKE_animsys.h" /* <------ should this be here?, needed for sequencer update */
 #include "BKE_callbacks.h"
 #include "BKE_camera.h"
@@ -186,31 +187,21 @@ static int default_break(void *UNUSED(arg))
 
 static void stats_background(void *UNUSED(arg), RenderStats *rs)
 {
-  uintptr_t mem_in_use, mmap_in_use, peak_memory;
-  float megs_used_memory, mmap_used_memory, megs_peak_memory;
+  uintptr_t mem_in_use, peak_memory;
+  float megs_used_memory, megs_peak_memory;
   char info_time_str[32];
 
   mem_in_use = MEM_get_memory_in_use();
-  mmap_in_use = MEM_get_mapped_memory_in_use();
   peak_memory = MEM_get_peak_memory();
 
-  megs_used_memory = (mem_in_use - mmap_in_use) / (1024.0 * 1024.0);
-  mmap_used_memory = (mmap_in_use) / (1024.0 * 1024.0);
+  megs_used_memory = (mem_in_use) / (1024.0 * 1024.0);
   megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
 
   fprintf(stdout,
-          TIP_("Fra:%d Mem:%.2fM (%.2fM, Peak %.2fM) "),
+          TIP_("Fra:%d Mem:%.2fM (Peak %.2fM) "),
           rs->cfra,
           megs_used_memory,
-          mmap_used_memory,
           megs_peak_memory);
-
-  if (rs->curfield) {
-    fprintf(stdout, TIP_("Field %d "), rs->curfield);
-  }
-  if (rs->curblur) {
-    fprintf(stdout, TIP_("Blur %d "), rs->curblur);
-  }
 
   BLI_timecode_string_from_time_simple(
       info_time_str, sizeof(info_time_str), PIL_check_seconds_timer() - rs->starttime);
@@ -220,23 +211,12 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
     fprintf(stdout, "%s", rs->infostr);
   }
   else {
-    if (rs->tothalo) {
-      fprintf(stdout,
-              TIP_("Sce: %s Ve:%d Fa:%d Ha:%d La:%d"),
-              rs->scene_name,
-              rs->totvert,
-              rs->totface,
-              rs->tothalo,
-              rs->totlamp);
-    }
-    else {
-      fprintf(stdout,
-              TIP_("Sce: %s Ve:%d Fa:%d La:%d"),
-              rs->scene_name,
-              rs->totvert,
-              rs->totface,
-              rs->totlamp);
-    }
+    fprintf(stdout,
+            TIP_("Sce: %s Ve:%d Fa:%d La:%d"),
+            rs->scene_name,
+            rs->totvert,
+            rs->totface,
+            rs->totlamp);
   }
 
   /* Flush stdout to be sure python callbacks are printing stuff after blender. */
@@ -1818,42 +1798,42 @@ bool RE_is_rendering_allowed(Scene *scene,
     }
   }
 
-  if (scemode & R_DOCOMP) {
-    if (scene->use_nodes) {
-      if (!scene->nodetree) {
-        BKE_report(reports, RPT_ERROR, "No node tree in scene");
-        return 0;
-      }
-
-      if (!check_composite_output(scene)) {
-        BKE_report(reports, RPT_ERROR, "No render output node in scene");
-        return 0;
-      }
-
-      if (scemode & R_FULL_SAMPLE) {
-        if (composite_needs_render(scene, 0) == 0) {
-          BKE_report(reports, RPT_ERROR, "Full sample AA not supported without 3D rendering");
-          return 0;
-        }
-      }
-    }
-  }
-
-  /* check valid camera, without camera render is OK (compo, seq) */
-  if (!check_valid_camera(scene, camera_override, reports)) {
-    return 0;
-  }
-
   if (RE_seq_render_active(scene, &scene->r)) {
+    /* Sequencer */
     if (scene->r.mode & R_BORDER) {
       BKE_report(reports, RPT_ERROR, "Border rendering is not supported by sequencer");
       return false;
     }
   }
+  else if ((scemode & R_DOCOMP) && scene->use_nodes) {
+    /* Compositor */
+    if (!scene->nodetree) {
+      BKE_report(reports, RPT_ERROR, "No node tree in scene");
+      return 0;
+    }
 
-  /* layer flag tests */
-  if (!render_scene_has_layers_to_render(scene, single_layer)) {
-    BKE_report(reports, RPT_ERROR, "All render layers are disabled");
+    if (!check_composite_output(scene)) {
+      BKE_report(reports, RPT_ERROR, "No render output node in scene");
+      return 0;
+    }
+
+    if (scemode & R_FULL_SAMPLE) {
+      if (composite_needs_render(scene, 0) == 0) {
+        BKE_report(reports, RPT_ERROR, "Full sample AA not supported without 3D rendering");
+        return 0;
+      }
+    }
+  }
+  else {
+    /* Regular Render */
+    if (!render_scene_has_layers_to_render(scene, single_layer)) {
+      BKE_report(reports, RPT_ERROR, "All render layers are disabled");
+      return 0;
+    }
+  }
+
+  /* check valid camera, without camera render is OK (compo, seq) */
+  if (!check_valid_camera(scene, camera_override, reports)) {
     return 0;
   }
 
@@ -2094,14 +2074,13 @@ void RE_RenderFreestyleExternal(Render *re)
 
   FRS_init_stroke_renderer(re);
 
-  for (RenderView *rv = re->result->views.first; rv; rv = rv->next) {
+  LISTBASE_FOREACH (RenderView *, rv, &re->result->views) {
     RE_SetActiveRenderView(re, rv->name);
 
     ViewLayer *active_view_layer = BLI_findlink(&re->view_layers, re->active_view_layer);
     FRS_begin_stroke_rendering(re);
 
-    for (ViewLayer *view_layer = (ViewLayer *)re->view_layers.first; view_layer;
-         view_layer = view_layer->next) {
+    LISTBASE_FOREACH (ViewLayer *, view_layer, &re->view_layers) {
       if ((re->r.scemode & R_SINGLE_LAYER) && view_layer != active_view_layer) {
         continue;
       }
@@ -2514,7 +2493,7 @@ void RE_RenderAnim(Render *re,
       {
         float ctime = BKE_scene_frame_get(scene);
         AnimData *adt = BKE_animdata_from_id(&scene->id);
-        BKE_animsys_evaluate_animdata(scene, &scene->id, adt, ctime, ADT_RECALC_ALL, false);
+        BKE_animsys_evaluate_animdata(&scene->id, adt, ctime, ADT_RECALC_ALL, false);
       }
 
       render_update_depsgraph(re);
@@ -2865,7 +2844,7 @@ bool RE_layers_have_name(struct RenderResult *rr)
 
 bool RE_passes_have_name(struct RenderLayer *rl)
 {
-  for (RenderPass *rp = rl->passes.first; rp; rp = rp->next) {
+  LISTBASE_FOREACH (RenderPass *, rp, &rl->passes) {
     if (!STREQ(rp->name, "Combined")) {
       return true;
     }
@@ -2955,5 +2934,5 @@ RenderPass *RE_create_gp_pass(RenderResult *rr, const char *layername, const cha
     BLI_freelinkN(&rl->passes, rp);
   }
   /* create a totally new pass */
-  return gp_add_pass(rr, rl, 4, RE_PASSNAME_COMBINED, viewname);
+  return render_layer_add_pass(rr, rl, 4, RE_PASSNAME_COMBINED, viewname, "RGBA");
 }

@@ -39,7 +39,7 @@ extern "C" {
 #define GPU_VERT_ATTR_NAMES_BUF_LEN 256
 #define GPU_VERT_FORMAT_MAX_NAMES 63 /* More than enough, actual max is ~30. */
 /* Computed as GPU_VERT_ATTR_NAMES_BUF_LEN / 30 (actual max format name). */
-#define GPU_MAX_SAFE_ATTRIB_NAME 12
+#define GPU_MAX_SAFE_ATTR_NAME 12
 
 typedef enum {
   GPU_COMP_I8,
@@ -94,19 +94,18 @@ typedef struct GPUVertFormat {
   uint packed : 1;
   /** Current offset in names[]. */
   uint name_offset : 8;
-  /** Store each attrib in one contiguous buffer region. */
+  /** Store each attribute in one contiguous buffer region. */
   uint deinterleaved : 1;
 
   GPUVertAttr attrs[GPU_VERT_ATTR_MAX_LEN];
   char names[GPU_VERT_ATTR_NAMES_BUF_LEN];
 } GPUVertFormat;
 
-struct GPUShaderInterface;
+struct GPUShader;
 
 void GPU_vertformat_clear(GPUVertFormat *);
 void GPU_vertformat_copy(GPUVertFormat *dest, const GPUVertFormat *src);
-void GPU_vertformat_from_interface(GPUVertFormat *format,
-                                   const struct GPUShaderInterface *shaderface);
+void GPU_vertformat_from_shader(GPUVertFormat *format, const struct GPUShader *shader);
 
 uint GPU_vertformat_attr_add(
     GPUVertFormat *, const char *name, GPUVertCompType, uint comp_len, GPUVertFetchMode);
@@ -129,7 +128,7 @@ BLI_INLINE const char *GPU_vertformat_attr_name_get(const GPUVertFormat *format,
  * WARNING: This removes all other aliases of this attrib */
 void GPU_vertformat_attr_rename(GPUVertFormat *format, int attr, const char *new_name);
 
-void GPU_vertformat_safe_attrib_name(const char *attrib_name, char *r_safe_name, uint max_len);
+void GPU_vertformat_safe_attr_name(const char *attr_name, char *r_safe_name, uint max_len);
 
 /* format conversion */
 

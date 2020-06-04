@@ -145,18 +145,22 @@ void WM_cursor_set(wmWindow *win, int curs)
     return; /* Can't set custom cursor before Window init */
   }
 
+  if (curs == WM_CURSOR_DEFAULT && win->modalcursor) {
+    curs = win->modalcursor;
+  }
+
+  if (win->cursor == curs) {
+    return; /* Cursor is already set */
+  }
+
+  win->cursor = curs;
+
   if (curs == WM_CURSOR_NONE) {
     GHOST_SetCursorVisibility(win->ghostwin, 0);
     return;
   }
 
   GHOST_SetCursorVisibility(win->ghostwin, 1);
-
-  if (curs == WM_CURSOR_DEFAULT && win->modalcursor) {
-    curs = win->modalcursor;
-  }
-
-  win->cursor = curs;
 
   if (curs < 0 || curs >= WM_CURSOR_NUM) {
     BLI_assert(!"Invalid cursor number");
@@ -183,13 +187,13 @@ void WM_cursor_set(wmWindow *win, int curs)
   }
 }
 
-bool WM_cursor_set_from_tool(struct wmWindow *win, const ScrArea *sa, const ARegion *region)
+bool WM_cursor_set_from_tool(struct wmWindow *win, const ScrArea *area, const ARegion *region)
 {
   if (region && (region->regiontype != RGN_TYPE_WINDOW)) {
     return false;
   }
 
-  bToolRef_Runtime *tref_rt = (sa && sa->runtime.tool) ? sa->runtime.tool->runtime : NULL;
+  bToolRef_Runtime *tref_rt = (area && area->runtime.tool) ? area->runtime.tool->runtime : NULL;
   if (tref_rt && tref_rt->cursor != WM_CURSOR_DEFAULT) {
     if (win->modalcursor == 0) {
       WM_cursor_set(win, tref_rt->cursor);

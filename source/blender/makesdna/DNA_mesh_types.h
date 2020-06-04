@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 struct AnimData;
+struct BVHCache;
 struct Ipo;
 struct Key;
 struct LinkNode;
@@ -99,8 +100,8 @@ typedef struct Mesh_Runtime {
 
   struct MLoopTri_Store looptris;
 
-  /** 'BVHCache', for 'BKE_bvhutil.c' */
-  struct LinkNode *bvh_cache;
+  /** `BVHCache` defined in 'BKE_bvhutil.c' */
+  struct BVHCache *bvh_cache;
 
   /** Non-manifold boundary data for Shrinkwrap Target Project. */
   struct ShrinkwrapBoundaryData *shrinkwrap_data;
@@ -112,7 +113,20 @@ typedef struct Mesh_Runtime {
    * In the future we may leave the mesh-data empty
    * since its not needed if we can use edit-mesh data. */
   char is_original;
-  char _pad[6];
+
+  /** #eMeshWrapperType and others. */
+  char wrapper_type;
+  /**
+   * A type mask from wrapper_type,
+   * in case there are differences in finalizing logic between types.
+   */
+  char wrapper_type_finalize;
+
+  char _pad[4];
+
+  /** Needed in case we need to lazily initialize the mesh. */
+  CustomData_MeshMasks cd_mask_extra;
+
 } Mesh_Runtime;
 
 typedef struct Mesh {
@@ -228,6 +242,15 @@ typedef struct TFace {
 
 /* **************** MESH ********************* */
 
+/** #Mesh_Runtime.wrapper_type */
+typedef enum eMeshWrapperType {
+  /** Use mesh data (#Mesh.mvert,#Mesh.medge, #Mesh.mloop, #Mesh.mpoly). */
+  ME_WRAPPER_TYPE_MDATA = 0,
+  /** Use edit-mesh data (#Mesh.#edit_mesh, #Mesh_Runtime.edit_data). */
+  ME_WRAPPER_TYPE_BMESH = 1,
+  /* ME_WRAPPER_TYPE_SUBD = 2, */ /* TODO */
+} eMeshWrapperType;
+
 /* texflag */
 enum {
   ME_AUTOSPACE = 1,
@@ -248,9 +271,9 @@ enum {
 /* we cant have both flags enabled at once,
  * flags defined in DNA_scene_types.h */
 #define ME_EDIT_PAINT_SEL_MODE(_me) \
-  ((_me->editflag & ME_EDIT_PAINT_FACE_SEL) ? \
+  (((_me)->editflag & ME_EDIT_PAINT_FACE_SEL) ? \
        SCE_SELECT_FACE : \
-       (_me->editflag & ME_EDIT_PAINT_VERT_SEL) ? SCE_SELECT_VERTEX : 0)
+       ((_me)->editflag & ME_EDIT_PAINT_VERT_SEL) ? SCE_SELECT_VERTEX : 0)
 
 /* me->flag */
 enum {

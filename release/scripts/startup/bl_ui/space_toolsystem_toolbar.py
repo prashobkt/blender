@@ -137,7 +137,6 @@ class _defs_view3d_generic:
             idname="builtin.measure",
             label="Measure",
             description=description,
-            cursor='CROSSHAIR',
             icon="ops.view3d.ruler",
             widget="VIEW3D_GGT_ruler",
             keymap="3D View Tool: Measure",
@@ -148,6 +147,8 @@ class _defs_annotate:
 
     def draw_settings_common(context, layout, tool):
         gpd = context.annotation_data
+        region_type = context.region.type
+
         if gpd is not None:
             if gpd.layers.active_note is not None:
                 text = gpd.layers.active_note
@@ -160,17 +161,24 @@ class _defs_annotate:
             gpl = context.active_annotation_layer
             if gpl is not None:
                 layout.label(text="Annotation:")
-                sub = layout.row(align=True)
-                sub.ui_units_x = 8
+                if context.space_data.type == 'VIEW_3D':
+                    if region_type == 'TOOL_HEADER':
+                        sub = layout.split(align=True, factor=0.5)
+                        sub.ui_units_x = 6.5
+                        sub.prop(gpl, "color", text="")
+                    else:
+                        sub = layout.row(align=True)
+                        sub.prop(gpl, "color", text="")
+                    sub.popover(
+                        panel="TOPBAR_PT_annotation_layers",
+                        text=text,
+                    )
+                else:
+                    layout.prop(gpl, "color", text="")
 
-                sub.prop(gpl, "color", text="")
-                sub.popover(
-                    panel="TOPBAR_PT_annotation_layers",
-                    text=text,
-                )
-
-        tool_settings = context.tool_settings
         space_type = tool.space_type
+        tool_settings = context.tool_settings
+
         if space_type == 'VIEW_3D':
             layout.separator()
 
@@ -180,6 +188,29 @@ class _defs_annotate:
                 row.prop(tool_settings.gpencil_sculpt, "lockaxis")
             elif tool_settings.gpencil_stroke_placement_view3d in {'SURFACE', 'STROKE'}:
                 row.prop(tool_settings, "use_gpencil_stroke_endpoints")
+
+        if tool.idname == "builtin.annotate_line":
+            layout.separator()
+
+            props = tool.operator_properties("gpencil.annotate")
+            if region_type == 'TOOL_HEADER':
+                row = layout.row()
+                row.ui_units_x = 15
+                row.prop(props, "arrowstyle_start", text="Start")
+                row.separator()
+                row.prop(props, "arrowstyle_end", text="End")
+            else:
+                col = layout.row().column(align=True)
+                col.prop(props, "arrowstyle_start", text="Style Start")
+                col.prop(props, "arrowstyle_end", text="End")
+        elif tool.idname == "builtin.annotate" and region_type != 'TOOL_HEADER':
+            layout.separator()
+            props = tool.operator_properties("gpencil.annotate")
+            layout.prop(props, "use_stabilizer", text="Stabilize Stroke")
+            col = layout.column(align=False)
+            col.active = props.use_stabilizer
+            col.prop(props, "stabilizer_radius", text="Radius", slider=True)
+            col.prop(props, "stabilizer_factor", text="Factor", slider=True)
 
     @ToolDef.from_fn.with_args(draw_settings=draw_settings_common)
     def scribble(*, draw_settings):
@@ -375,7 +406,6 @@ class _defs_view3d_select:
             label="Select Lasso",
             icon="ops.generic.select_lasso",
             widget=None,
-            cursor='DEFAULT',
             keymap="3D View Tool: Select Lasso",
             draw_settings=draw_settings,
         )
@@ -400,16 +430,129 @@ class _defs_view3d_select:
             label="Select Circle",
             icon="ops.generic.select_circle",
             widget=None,
-            cursor='DEFAULT',
             keymap="3D View Tool: Select Circle",
             draw_settings=draw_settings,
             draw_cursor=draw_cursor,
         )
 
 
+class _defs_view3d_add:
+
+    # Layout tweaks here would be good to avoid,
+    # this shows limits in layout engine, as buttons are using a lot of space.
+    @staticmethod
+    def draw_settings_interactive_add(layout, tool):
+        props = tool.operator_properties("view3d.interactive_add")
+        row = layout.row()
+        row.scale_x = 0.8
+        row.label(text="Depth:")
+        row = layout.row()
+        row.scale_x = 0.9
+        row.prop(props, "plane_depth", text="")
+        row = layout.row()
+        row.prop(props, "plane_axis", text="")
+        row = layout.row()
+        row.scale_x = 0.7
+        row.prop(props, "plane_origin")
+
+    @ToolDef.from_fn
+    def cube_add():
+        def draw_settings(_context, layout, tool):
+            _defs_view3d_add.draw_settings_interactive_add(layout, tool)
+        return dict(
+            idname="builtin.primitive_cube_add",
+            label="Add Cube",
+            icon="ops.mesh.primitive_cube_add_gizmo",
+            description=(
+                "Add cube to mesh interactively"
+            ),
+            widget="VIEW3D_GGT_placement",
+            keymap="3D View Tool: Object, Add Primitive",
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def cone_add():
+        def draw_settings(_context, layout, tool):
+            _defs_view3d_add.draw_settings_interactive_add(layout, tool)
+
+            props = tool.operator_properties("mesh.primitive_cone_add")
+            layout.prop(props, "vertices")
+            layout.prop(props, "end_fill_type")
+        return dict(
+            idname="builtin.primitive_cone_add",
+            label="Add Cone",
+            icon="ops.mesh.primitive_cube_add_gizmo",
+            description=(
+                "Add cone to mesh interactively"
+            ),
+            widget="VIEW3D_GGT_placement",
+            keymap="3D View Tool: Object, Add Primitive",
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def cylinder_add():
+        def draw_settings(_context, layout, tool):
+            _defs_view3d_add.draw_settings_interactive_add(layout, tool)
+
+            props = tool.operator_properties("mesh.primitive_cylinder_add")
+            layout.prop(props, "vertices")
+            layout.prop(props, "end_fill_type")
+        return dict(
+            idname="builtin.primitive_cylinder_add",
+            label="Add Cylinder",
+            icon="ops.mesh.primitive_cylinder_add_gizmo",
+            description=(
+                "Add cylinder to mesh interactively"
+            ),
+            widget="VIEW3D_GGT_placement",
+            keymap="3D View Tool: Object, Add Primitive",
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def uv_sphere_add():
+        def draw_settings(_context, layout, tool):
+            _defs_view3d_add.draw_settings_interactive_add(layout, tool)
+
+            props = tool.operator_properties("mesh.primitive_uv_sphere_add")
+            layout.prop(props, "segments")
+            layout.prop(props, "ring_count")
+        return dict(
+            idname="builtin.primitive_uv_sphere_add",
+            label="Add UV Sphere",
+            icon="ops.mesh.primitive_sphere_add_gizmo",
+            description=(
+                "Add cylinder to mesh interactively"
+            ),
+            widget="VIEW3D_GGT_placement",
+            keymap="3D View Tool: Object, Add Primitive",
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def ico_sphere_add():
+        def draw_settings(_context, layout, tool):
+            _defs_view3d_add.draw_settings_interactive_add(layout, tool)
+
+            props = tool.operator_properties("mesh.primitive_ico_sphere_add")
+            layout.prop(props, "subdivisions")
+        return dict(
+            idname="builtin.primitive_ico_sphere_add",
+            label="Add Ico Sphere",
+            icon="ops.mesh.primitive_sphere_add_gizmo",
+            description=(
+                "Add cylinder to mesh interactively"
+            ),
+            widget="VIEW3D_GGT_placement",
+            keymap="3D View Tool: Object, Add Primitive",
+            draw_settings=draw_settings,
+        )
+
+
 # -----------------------------------------------------------------------------
 # Object Modes (named based on context.mode)
-
 
 class _defs_edit_armature:
 
@@ -467,19 +610,6 @@ class _defs_edit_armature:
 
 
 class _defs_edit_mesh:
-
-    @ToolDef.from_fn
-    def cube_add():
-        return dict(
-            idname="builtin.add_cube",
-            label="Add Cube",
-            icon="ops.mesh.primitive_cube_add_gizmo",
-            description=(
-                "Add cube to mesh interactively"
-            ),
-            widget=None,
-            keymap=(),
-        )
 
     @ToolDef.from_fn
     def rip_region():
@@ -628,9 +758,10 @@ class _defs_edit_mesh:
                 layout.prop(props, "vertex_only")
                 layout.prop(props, "clamp_overlap")
                 layout.prop(props, "loop_slide")
-                layout.prop(props, "mark_seam")
-                layout.prop(props, "mark_sharp")
                 layout.prop(props, "harden_normals")
+                col = layout.column(heading="Mark")
+                col.prop(props, "mark_seam", text="Seam")
+                col.prop(props, "mark_sharp", text="Sharp")
 
                 layout.prop(props, "material")
 
@@ -668,6 +799,19 @@ class _defs_edit_mesh:
             operator="view3d.edit_mesh_extrude_move_normal",
             keymap=(),
             draw_settings=_template_widget.VIEW3D_GGT_xform_extrude.draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def extrude_dissolve_and_intersect():
+        return dict(
+            idname="builtin.extrude_dissolve_and_intersect",
+            label="Extrude Dissolve and Intersect",
+            description=(
+                "Extrude, dissolves edges whose faces form a flat surface and intersect new edges"
+            ),
+            icon="none",
+            widget="VIEW3D_GGT_tool_generic_handle_normal",
+            keymap=(),
         )
 
     @ToolDef.from_fn
@@ -845,23 +989,61 @@ class _defs_edit_curve:
 
     @ToolDef.from_fn
     def draw():
-        def draw_settings(context, layout, _tool):
+        def draw_settings(context, layout, tool, *, extra=False):
             # Tool settings initialize operator options.
             tool_settings = context.tool_settings
             cps = tool_settings.curve_paint_settings
+            region_type = context.region.type
 
-            col = layout.column()
+            if region_type == 'TOOL_HEADER':
+                if not extra:
+                    layout.prop(cps, "curve_type", text="")
+                    layout.prop(cps, "depth_mode", expand=True)
+                    layout.popover("TOPBAR_PT_tool_settings_extra", text="...")
+                    return
 
-            col.prop(cps, "curve_type")
+            layout.use_property_split = True
+            layout.use_property_decorate = False
 
+            if region_type != 'TOOL_HEADER':
+                layout.prop(cps, "curve_type")
+                layout.separator()
             if cps.curve_type == 'BEZIER':
-                col.prop(cps, "error_threshold")
-                col.prop(cps, "fit_method")
-                col.prop(cps, "use_corners_detect")
+                layout.prop(cps, "fit_method")
+                layout.prop(cps, "error_threshold")
+                if region_type != 'TOOL_HEADER':
+                    row = layout.row(heading="Detect Corners", align=True)
+                else:
+                    row = layout.row(heading="Corners", align=True)
+                row.prop(cps, "use_corners_detect", text="")
+                sub = row.row(align=True)
+                sub.active = cps.use_corners_detect
+                sub.prop(cps, "corner_angle", text="")
+                layout.separator()
 
-                col = layout.row()
-                col.active = cps.use_corners_detect
-                col.prop(cps, "corner_angle")
+
+            col = layout.column(align=True)
+            col.prop(cps, "radius_taper_start", text="Taper Start", slider=True)
+            col.prop(cps, "radius_taper_end", text="End", slider=True)
+            col = layout.column(align=True)
+            col.prop(cps, "radius_min", text="Radius Min")
+            col.prop(cps, "radius_max", text="Max")
+            col.prop(cps, "use_pressure_radius")
+
+            layout.separator()
+
+            if region_type != 'TOOL_HEADER':
+                row = layout.row()
+                row.prop(cps, "depth_mode", expand=True)
+            if cps.depth_mode == 'SURFACE':
+                col = layout.column()
+                col.prop(cps, "surface_offset")
+                col.prop(cps, "use_offset_absolute")
+                col.prop(cps, "use_stroke_endpoints")
+                if cps.use_stroke_endpoints:
+                    colsub = layout.column(align=True)
+                    colsub.prop(cps, "surface_plane")
+
 
         return dict(
             idname="builtin.draw",
@@ -1034,11 +1216,32 @@ class _defs_sculpt:
             if (props.type == "SURFACE_SMOOTH"):
                 layout.prop(props, "surface_smooth_shape_preservation", expand=False)
                 layout.prop(props, "surface_smooth_current_vertex", expand=False)
+            if (props.type == "SHARPEN"):
+                layout.prop(props, "sharpen_smooth_ratio", expand=False)
 
         return dict(
             idname="builtin.mesh_filter",
             label="Mesh Filter",
             icon="ops.sculpt.mesh_filter",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def cloth_filter():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("sculpt.cloth_filter")
+            layout.prop(props, "type", expand=False)
+            layout.prop(props, "strength")
+            layout.prop(props, "cloth_mass")
+            layout.prop(props, "cloth_damping")
+            layout.prop(props, "use_face_sets")
+
+        return dict(
+            idname="builtin.cloth_filter",
+            label="Cloth Filter",
+            icon="ops.sculpt.cloth_filter",
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
@@ -1807,6 +2010,21 @@ class _defs_sequencer_generic:
             draw_settings=draw_settings,
         )
 
+    @ToolDef.from_fn
+    def sample():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("sequencer.sample")
+        return dict(
+            idname="builtin.sample",
+            label="Sample",
+            description=(
+                "Sample pixel values under the cursor"
+            ),
+            icon="ops.paint.weight_sample",  # XXX, needs own icon.
+            keymap="Sequencer Tool: Sample",
+            draw_settings=draw_settings,
+        )
+
 
 class _defs_sequencer_select:
     @ToolDef.from_fn
@@ -2049,6 +2267,14 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ),
     )
 
+    _tools_view3d_add = (
+        _defs_view3d_add.cube_add,
+        _defs_view3d_add.cone_add,
+        _defs_view3d_add.cylinder_add,
+        _defs_view3d_add.uv_sphere_add,
+        _defs_view3d_add.ico_sphere_add,
+    )
+
     _tools_default = (
         *_tools_select,
         _defs_view3d_generic.cursor,
@@ -2067,6 +2293,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'OBJECT': [
             *_tools_default,
+
+            None,
+            _tools_view3d_add,
         ],
         'POSE': [
             *_tools_default,
@@ -2095,8 +2324,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'EDIT_MESH': [
             *_tools_default,
             None,
+            _tools_view3d_add,
+            None,
             (
                 _defs_edit_mesh.extrude,
+                _defs_edit_mesh.extrude_dissolve_and_intersect,
                 _defs_edit_mesh.extrude_normals,
                 _defs_edit_mesh.extrude_individual,
                 _defs_edit_mesh.extrude_cursor,
@@ -2189,6 +2421,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_sculpt.hide_border,
             None,
             _defs_sculpt.mesh_filter,
+            _defs_sculpt.cloth_filter,
             None,
             _defs_transform.translate,
             _defs_transform.rotate,
@@ -2348,6 +2581,7 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
         None: [
         ],
         'PREVIEW': [
+            _defs_sequencer_generic.sample,
             *_tools_annotate,
         ],
         'SEQUENCER': [
@@ -2355,6 +2589,7 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_sequencer_generic.blade,
         ],
         'SEQUENCER_PREVIEW': [
+            _defs_sequencer_generic.sample,
             *_tools_select,
             *_tools_annotate,
             _defs_sequencer_generic.blade,

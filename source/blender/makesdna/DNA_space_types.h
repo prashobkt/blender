@@ -212,7 +212,7 @@ typedef enum eSpaceButtons_Context {
   BCONTEXT_SHADERFX = 15,
   BCONTEXT_OUTPUT = 16,
 
-  /* always as last... */
+  /* Keep last. */
   BCONTEXT_TOT,
 } eSpaceButtons_Context;
 
@@ -606,7 +606,7 @@ typedef enum eSpaceSeq_Flag {
   SEQ_DRAW_COLOR_SEPARATED = (1 << 2),
   SEQ_SHOW_SAFE_MARGINS = (1 << 3),
   SEQ_SHOW_GPENCIL = (1 << 4),
-  /* SEQ_NO_DRAW_CFRANUM = (1 << 5), DEPRECATED */
+  SEQ_SHOW_FCURVES = (1 << 5),
   SEQ_USE_ALPHA = (1 << 6),     /* use RGBA display mode for preview */
   SEQ_ALL_WAVEFORMS = (1 << 7), /* draw all waveforms */
   SEQ_NO_WAVEFORMS = (1 << 8),  /* draw no waveforms */
@@ -833,9 +833,10 @@ typedef enum eFileSel_Params_RenameFlag {
   FILE_PARAMS_RENAME_POSTSCROLL_ACTIVE = 1 << 3,
 } eFileSel_Params_RenameFlag;
 
-/* files in filesel list: file types
- * Note we could use mere values (instead of bitflags) for file types themselves,
- * but since we do not lack of bytes currently...
+/**
+ * Files in the file selector list: file types
+ * Note we could use mere values (instead of bit-flags) for file types themselves,
+ * but since we do not lack of bytes currently.
  */
 typedef enum eFileSel_File_Types {
   FILE_TYPE_BLENDER = (1 << 2),
@@ -1075,7 +1076,9 @@ typedef struct SpaceImage {
   int flag;
 
   char pixel_snap_mode;
-  char _pad2[3];
+  char _pad2[7];
+
+  float uv_opacity;
 
   int tile_grid_shape[2];
 
@@ -1718,7 +1721,7 @@ typedef enum eSpace_Type {
   SPACE_TOPBAR = 21,
   SPACE_STATUSBAR = 22,
 
-  SPACE_TYPE_LAST = SPACE_STATUSBAR,
+#define SPACE_TYPE_LAST SPACE_STATUSBAR
 } eSpace_Type;
 
 /* use for function args */

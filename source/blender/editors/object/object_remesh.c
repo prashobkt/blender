@@ -92,6 +92,10 @@
 /* TODO(sebpa): unstable, can lead to unrecoverable errors. */
 // #define USE_MESH_CURVATURE
 
+/* -------------------------------------------------------------------- */
+/** \name Voxel Remesh Operator
+ * \{ */
+
 static bool object_remesh_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
@@ -110,7 +114,7 @@ static bool object_remesh_poll(bContext *C)
     return false;
   }
 
-  if (modifiers_usesMultires(ob)) {
+  if (BKE_modifiers_uses_multires(ob)) {
     CTX_wm_operator_poll_msg_set(
         C, "The remesher cannot run with a Multires modifier in the modifier stack");
     return false;
@@ -202,6 +206,12 @@ void OBJECT_OT_voxel_remesh(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Voxel Size Operator
+ * \{ */
 
 #define VOXEL_SIZE_EDIT_MAX_GRIDS_LINES 500
 #define VOXEL_SIZE_EDIT_MAX_STR_LEN 20
@@ -320,7 +330,7 @@ static void voxel_size_edit_draw(const bContext *UNUSED(C), ARegion *UNUSED(ar),
       pos3d, cd->preview_plane[1], cd->preview_plane[2], cd->preview_plane[0], cd->voxel_size);
 
   /* Draw text */
-  uiStyle *style = UI_style_get();
+  const uiStyle *style = UI_style_get();
   const uiFontStyle *fstyle = &style->widget;
   const int fontid = fstyle->uifont_id;
   float strwidth, strheight;
@@ -399,7 +409,7 @@ static int voxel_size_edit_modal(bContext *C, wmOperator *op, const wmEvent *eve
     d = d * 0.0005f;
   }
   else {
-    /* Multiply d by the initial voxel size to prevent incontrolable speeds when using low voxel
+    /* Multiply d by the initial voxel size to prevent uncontrollable speeds when using low voxel
      * sizes. */
     /* When the voxel size is slower, it needs more precision. */
     d = d * min_ff(pow2f(cd->init_voxel_size), 0.1f) * 0.05f;
@@ -568,7 +578,7 @@ static int voxel_size_edit_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   ED_region_tag_redraw(ar);
 
   const char *status_str = TIP_(
-      "Move the mouse to change the voxel size. LBM: confirm size, ESC/RMB: cancel");
+      "Move the mouse to change the voxel size. LMB: confirm size, ESC/RMB: cancel");
   ED_workspace_status_text(C, status_str);
 
   return OPERATOR_RUNNING_MODAL;
@@ -590,7 +600,11 @@ void OBJECT_OT_voxel_size_edit(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-/****************** quadriflow remesh operator *********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Quadriflow Remesh Operator
+ * \{ */
 
 #define QUADRIFLOW_MIRROR_BISECT_TOLERANCE 0.005f
 
@@ -639,13 +653,13 @@ static bool mesh_is_manifold_consistent(Mesh *mesh)
   const MLoop *mloop = mesh->mloop;
   char *edge_faces = (char *)MEM_callocN(mesh->totedge * sizeof(char), "remesh_manifold_check");
   int *edge_vert = (int *)MEM_malloc_arrayN(
-      mesh->totedge, sizeof(unsigned int), "remesh_consistent_check");
+      mesh->totedge, sizeof(uint), "remesh_consistent_check");
 
-  for (unsigned int i = 0; i < mesh->totedge; i++) {
+  for (uint i = 0; i < mesh->totedge; i++) {
     edge_vert[i] = -1;
   }
 
-  for (unsigned int loop_idx = 0; loop_idx < mesh->totloop; loop_idx++) {
+  for (uint loop_idx = 0; loop_idx < mesh->totloop; loop_idx++) {
     const MLoop *loop = &mloop[loop_idx];
     edge_faces[loop->e] += 1;
     if (edge_faces[loop->e] > 2) {
@@ -665,7 +679,7 @@ static bool mesh_is_manifold_consistent(Mesh *mesh)
 
   if (is_manifold_consistent) {
     /* check for wire edges */
-    for (unsigned int i = 0; i < mesh->totedge; i++) {
+    for (uint i = 0; i < mesh->totedge; i++) {
       if (edge_faces[i] == 0) {
         is_manifold_consistent = false;
         break;
@@ -1166,3 +1180,5 @@ void OBJECT_OT_quadriflow_remesh(wmOperatorType *ot)
               0,
               255);
 }
+
+/** \} */

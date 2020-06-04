@@ -25,6 +25,7 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_math_base.h"
+#include "BLI_threads.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -136,7 +137,7 @@ static void dualcon_add_quad(void *output_v, const int vert_indices[4])
   output->curface++;
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(ctx), Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *UNUSED(ctx), Mesh *mesh)
 {
   RemeshModifierData *rmd;
   DualConOutput *output;
@@ -177,7 +178,11 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
         BLI_assert(false);
         break;
     }
-
+    /* TODO(jbakker): Dualcon crashes when run in parallel. Could be related to incorrect
+     * input data or that the library isn't thread safe. This was identified when changing the task
+     * isolations during T76553. */
+    static ThreadMutex dualcon_mutex = BLI_MUTEX_INITIALIZER;
+    BLI_mutex_lock(&dualcon_mutex);
     output = dualcon(&input,
                      dualcon_alloc_output,
                      dualcon_add_vert,
@@ -188,6 +193,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
                      rmd->hermite_num,
                      rmd->scale,
                      rmd->depth);
+    BLI_mutex_unlock(&dualcon_mutex);
+
     result = output->mesh;
     MEM_freeN(output);
   }
@@ -210,9 +217,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
 
 #else /* !WITH_MOD_REMESH */
 
-static Mesh *applyModifier(ModifierData *UNUSED(md),
-                           const ModifierEvalContext *UNUSED(ctx),
-                           Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *UNUSED(md),
+                        const ModifierEvalContext *UNUSED(ctx),
+                        Mesh *mesh)
 {
   return mesh;
 }
@@ -227,13 +234,16 @@ ModifierTypeInfo modifierType_Remesh = {
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |
         eModifierTypeFlag_SupportsEditmode,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,

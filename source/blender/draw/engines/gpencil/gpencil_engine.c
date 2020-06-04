@@ -33,6 +33,7 @@
 #include "BKE_global.h" /* for G.debug */
 
 #include "BLI_link_utils.h"
+#include "BLI_listbase.h"
 #include "BLI_memblock.h"
 
 #include "DNA_camera_types.h"
@@ -90,6 +91,7 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->gp_object_pool = vldata->gp_object_pool;
   stl->pd->gp_layer_pool = vldata->gp_layer_pool;
   stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
+  stl->pd->view_layer = ctx->view_layer;
   stl->pd->scene = ctx->scene;
   stl->pd->v3d = ctx->v3d;
   stl->pd->last_light_pool = NULL;
@@ -291,7 +293,7 @@ void GPENCIL_cache_init(void *ved)
     grp = DRW_shgroup_create(sh, psl->merge_depth_ps);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuf", &pd->depth_tx);
     DRW_shgroup_uniform_bool(grp, "strokeOrder3d", &pd->is_stroke_order_3d, 1);
-    DRW_shgroup_uniform_vec4(grp, "gpModelMatrix[0]", pd->object_bound_mat[0], 4);
+    DRW_shgroup_uniform_vec4(grp, "gpModelMatrix", pd->object_bound_mat[0], 4);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
   {
@@ -467,7 +469,7 @@ static void gpencil_layer_cache_populate(bGPDlayer *gpl,
 
   /* Iterator dependent uniforms. */
   DRWShadingGroup *grp = iter->grp = tgp_layer->base_shgrp;
-  DRW_shgroup_uniform_block_persistent(grp, "gpLightBlock", iter->ubo_lights);
+  DRW_shgroup_uniform_block(grp, "gpLightBlock", iter->ubo_lights);
   DRW_shgroup_uniform_block(grp, "gpMaterialBlock", iter->ubo_mat);
   DRW_shgroup_uniform_texture(grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(grp, "gpStrokeTexture", iter->tex_stroke);
@@ -597,6 +599,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_TextureList *txl = vedata->txl;
+  const bool is_final_render = DRW_state_is_image_render();
 
   /* object must be visible */
   if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
@@ -616,7 +619,8 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     bGPdata *gpd = (bGPdata *)ob->data;
     bool do_onion = (!pd->is_render) ? pd->do_onion : (gpd->onion_flag & GP_ONION_GHOST_ALWAYS);
 
-    BKE_gpencil_visible_stroke_iter(ob,
+    BKE_gpencil_visible_stroke_iter(is_final_render ? pd->view_layer : NULL,
+                                    ob,
                                     gpencil_layer_cache_populate,
                                     gpencil_stroke_cache_populate,
                                     &iter,
@@ -743,8 +747,8 @@ static void GPENCIL_draw_scene_depth_only(void *ved)
     GPU_framebuffer_bind(dfbl->depth_only_fb);
   }
 
-  for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
-    for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
+  LISTBASE_FOREACH (GPENCIL_tObject *, ob, &pd->tobjects) {
+    LISTBASE_FOREACH (GPENCIL_tLayer *, layer, &ob->layers) {
       DRW_draw_pass(layer->geom_ps);
     }
   }
@@ -825,7 +829,7 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
     GPU_framebuffer_multi_clear(fb_object, clear_cols);
   }
 
-  for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
+  LISTBASE_FOREACH (GPENCIL_tLayer *, layer, &ob->layers) {
     if (layer->mask_bits) {
       gpencil_draw_mask(vedata, ob, layer);
     }
@@ -846,7 +850,7 @@ static void GPENCIL_draw_object(GPENCIL_Data *vedata, GPENCIL_tObject *ob)
     }
   }
 
-  for (GPENCIL_tVfx *vfx = ob->vfx.first; vfx; vfx = vfx->next) {
+  LISTBASE_FOREACH (GPENCIL_tVfx *, vfx, &ob->vfx) {
     GPU_framebuffer_bind(*(vfx->target_fb));
     DRW_draw_pass(vfx->vfx_ps);
   }
@@ -892,7 +896,7 @@ static void GPENCIL_fast_draw_end(GPENCIL_Data *vedata)
     pd->snapshot_buffer_dirty = false;
   }
   /* Draw the sbuffer stroke(s). */
-  for (GPENCIL_tObject *ob = pd->sbuffer_tobjects.first; ob; ob = ob->next) {
+  LISTBASE_FOREACH (GPENCIL_tObject *, ob, &pd->sbuffer_tobjects) {
     GPENCIL_draw_object(vedata, ob);
   }
 }
@@ -933,7 +937,7 @@ void GPENCIL_draw_scene(void *ved)
     GPU_framebuffer_multi_clear(fbl->gpencil_fb, clear_cols);
   }
 
-  for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
+  LISTBASE_FOREACH (GPENCIL_tObject *, ob, &pd->tobjects) {
     GPENCIL_draw_object(vedata, ob);
   }
 

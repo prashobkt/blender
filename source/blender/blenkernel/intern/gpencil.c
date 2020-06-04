@@ -55,6 +55,7 @@
 #include "BKE_idtype.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_paint.h"
@@ -97,6 +98,19 @@ static void greasepencil_free_data(ID *id)
   BKE_gpencil_free((bGPdata *)id, true);
 }
 
+static void greasepencil_foreach_id(ID *id, LibraryForeachIDData *data)
+{
+  bGPdata *gpencil = (bGPdata *)id;
+  /* materials */
+  for (int i = 0; i < gpencil->totcol; i++) {
+    BKE_LIB_FOREACHID_PROCESS(data, gpencil->mat[i], IDWALK_CB_USER);
+  }
+
+  LISTBASE_FOREACH (bGPDlayer *, gplayer, &gpencil->layers) {
+    BKE_LIB_FOREACHID_PROCESS(data, gplayer->parent, IDWALK_CB_NOP);
+  }
+}
+
 IDTypeInfo IDType_ID_GD = {
     .id_code = ID_GD,
     .id_filter = FILTER_ID_GD,
@@ -111,6 +125,7 @@ IDTypeInfo IDType_ID_GD = {
     .copy_data = greasepencil_copy_data,
     .free_data = greasepencil_free_data,
     .make_local = NULL,
+    .foreach_id = greasepencil_foreach_id,
 };
 
 /* ************************************************** */
@@ -541,7 +556,12 @@ bGPDstroke *BKE_gpencil_stroke_new(int mat_idx, int totpoints, short thickness)
   gps->flag = GP_STROKE_3DSPACE;
 
   gps->totpoints = totpoints;
-  gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+  if (gps->totpoints > 0) {
+    gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+  }
+  else {
+    gps->points = NULL;
+  }
 
   /* initialize triangle memory to dummy data */
   gps->triangles = NULL;
@@ -639,7 +659,7 @@ bGPDframe *BKE_gpencil_frame_duplicate(const bGPDframe *gpf_src)
 
   /* copy strokes */
   BLI_listbase_clear(&gpf_dst->strokes);
-  for (bGPDstroke *gps_src = gpf_src->strokes.first; gps_src; gps_src = gps_src->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps_src, &gpf_src->strokes) {
     /* make copy of source stroke */
     gps_dst = BKE_gpencil_stroke_duplicate(gps_src, true);
     BLI_addtail(&gpf_dst->strokes, gps_dst);
@@ -660,7 +680,7 @@ void BKE_gpencil_frame_copy_strokes(bGPDframe *gpf_src, struct bGPDframe *gpf_ds
 
   /* copy strokes */
   BLI_listbase_clear(&gpf_dst->strokes);
-  for (bGPDstroke *gps_src = gpf_src->strokes.first; gps_src; gps_src = gps_src->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps_src, &gpf_src->strokes) {
     /* make copy of source stroke */
     gps_dst = BKE_gpencil_stroke_duplicate(gps_src, true);
     BLI_addtail(&gpf_dst->strokes, gps_dst);
@@ -1743,7 +1763,18 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
   GpPaint *gp_paint = ts->gp_paint;
   Paint *paint = &gp_paint->paint;
 
+  if (paint->palette != NULL) {
+    return;
+  }
+
   paint->palette = BLI_findstring(&bmain->palettes, "Palette", offsetof(ID, name) + 2);
+  /* Try with first palette. */
+  if (bmain->palettes.first != NULL) {
+    paint->palette = bmain->palettes.first;
+    ts->gp_vertexpaint->paint.palette = paint->palette;
+    return;
+  }
+
   if (paint->palette == NULL) {
     paint->palette = BKE_palette_add(bmain, "Palette");
     ts->gp_vertexpaint->paint.palette = paint->palette;
@@ -1824,8 +1855,13 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
  *
  * \{ */
 
-void BKE_gpencil_visible_stroke_iter(
-    Object *ob, gpIterCb layer_cb, gpIterCb stroke_cb, void *thunk, bool do_onion, int cfra)
+void BKE_gpencil_visible_stroke_iter(ViewLayer *view_layer,
+                                     Object *ob,
+                                     gpIterCb layer_cb,
+                                     gpIterCb stroke_cb,
+                                     void *thunk,
+                                     bool do_onion,
+                                     int cfra)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   const bool is_multiedit = GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
@@ -1844,6 +1880,14 @@ void BKE_gpencil_visible_stroke_iter(
     bGPDframe *end_gpf = act_gpf ? act_gpf->next : NULL;
 
     if (gpl->flag & GP_LAYER_HIDE) {
+      continue;
+    }
+
+    /* Hide the layer if it's defined a view layer filter. This is used to
+     * generate renders, putting only selected GP layers for each View Layer.
+     * This is used only in final render and never in Viewport. */
+    if ((view_layer != NULL) && (gpl->viewlayername[0] != '\0') &&
+        (!STREQ(view_layer->name, gpl->viewlayername))) {
       continue;
     }
 
@@ -1966,8 +2010,11 @@ void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig
         if (i > gps_eval->totpoints - 1) {
           break;
         }
+        bGPDspoint *pt_orig = &gps_orig->points[i];
         bGPDspoint *pt_eval = &gps_eval->points[i];
-        pt_eval->runtime.pt_orig = &gps_orig->points[i];
+        pt_orig->runtime.pt_orig = NULL;
+        pt_orig->runtime.idx_orig = i;
+        pt_eval->runtime.pt_orig = pt_orig;
         pt_eval->runtime.idx_orig = i;
       }
       /* Increase pointer. */

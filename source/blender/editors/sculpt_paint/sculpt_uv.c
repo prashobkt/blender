@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) Blender Foundation, 2002-2009
@@ -70,8 +70,8 @@ typedef struct UvAdjacencyElement {
 } UvAdjacencyElement;
 
 typedef struct UvEdge {
-  unsigned int uv1;
-  unsigned int uv2;
+  uint uv1;
+  uint uv2;
   /* general use flag
    * (Used to check if edge is boundary here, and propagates to adjacency elements) */
   char flag;
@@ -315,7 +315,7 @@ static void uv_sculpt_stroke_apply(bContext *C,
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
-  unsigned int tool;
+  uint tool;
   UvSculptData *sculptdata = (UvSculptData *)op->customdata;
   SpaceImage *sima;
   int invert;
@@ -386,7 +386,7 @@ static void uv_sculpt_stroke_apply(bContext *C,
    * Smooth Tool
    */
   else if (tool == UV_SCULPT_TOOL_RELAX) {
-    unsigned int method = toolsettings->uv_relax_method;
+    uint method = toolsettings->uv_relax_method;
     if (method == UV_SCULPT_TOOL_RELAX_HC) {
       HC_relaxation_iteration_uv(em, sculptdata, co, alpha, radius, aspectRatio);
     }
@@ -464,7 +464,7 @@ static int uv_element_offset_from_face_get(
   return element - map->buf;
 }
 
-static unsigned int uv_edge_hash(const void *key)
+static uint uv_edge_hash(const void *key)
 {
   const UvEdge *edge = key;
   return (BLI_ghashutil_uinthash(edge->uv2) + BLI_ghashutil_uinthash(edge->uv1));
@@ -548,8 +548,7 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
     if (do_island_optimization) {
       UvElement *element;
       UvNearestHit hit = UV_NEAREST_HIT_INIT;
-      Image *ima = CTX_data_edit_image(C);
-      uv_find_nearest_vert(scene, ima, obedit, co, 0.0f, &hit);
+      uv_find_nearest_vert(scene, obedit, co, 0.0f, &hit);
 
       element = BM_uv_element_get(data->elementMap, hit.efa, hit.l);
       island_index = element->island;

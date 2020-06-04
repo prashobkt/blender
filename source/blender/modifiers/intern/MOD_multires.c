@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -66,7 +66,7 @@ static void initData(ModifierData *md)
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
-  modifier_copyData_generic(md_src, md_dst, flag);
+  BKE_modifier_copydata_generic(md_src, md_dst, flag);
 }
 
 static void freeRuntimeData(void *runtime_data_v)
@@ -172,11 +172,11 @@ static Mesh *multires_as_ccg(MultiresModifierData *mmd,
   return result;
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result = mesh;
 #if !defined(WITH_OPENSUBDIV)
-  modifier_setError(md, "Disabled, built without OpenSubdiv");
+  BKE_modifier_set_error(md, "Disabled, built without OpenSubdiv");
   return result;
 #endif
   MultiresModifierData *mmd = (MultiresModifierData *)md;
@@ -211,7 +211,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
     if (ctx->object->sculpt != NULL) {
       SculptSession *sculpt_session = ctx->object->sculpt;
       sculpt_session->subdiv_ccg = result->runtime.subdiv_ccg;
-      sculpt_session->multires = mmd;
+      sculpt_session->multires.active = true;
+      sculpt_session->multires.modifier = mmd;
+      sculpt_session->multires.level = mmd->sculptlvl;
       sculpt_session->totvert = mesh->totvert;
       sculpt_session->totpoly = mesh->totpoly;
       sculpt_session->mvert = NULL;
@@ -243,7 +245,7 @@ static void deformMatrices(ModifierData *md,
 
 {
 #if !defined(WITH_OPENSUBDIV)
-  modifier_setError(md, "Disabled, built without OpenSubdiv");
+  BKE_modifier_set_error(md, "Disabled, built without OpenSubdiv");
   return;
 #endif
 
@@ -284,7 +286,10 @@ ModifierTypeInfo modifierType_Multires = {
     /* deformMatrices */ deformMatrices,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,

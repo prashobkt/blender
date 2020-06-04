@@ -194,7 +194,7 @@ ccl_device_inline void kernel_write_data_passes(KernelGlobals *kg,
         average(shader_bsdf_alpha(kg, sd)) >= kernel_data.film.pass_alpha_threshold) {
       if (state->sample == 0) {
         if (flag & PASSMASK(DEPTH)) {
-          float depth = camera_distance(kg, sd->P);
+          float depth = camera_z_depth(kg, sd->P);
           kernel_write_pass_float(buffer + kernel_data.film.pass_depth, depth);
         }
         if (flag & PASSMASK(OBJECT_ID)) {
@@ -403,9 +403,13 @@ ccl_device_inline void kernel_write_result(KernelGlobals *kg,
                                make_float4(L_sum.x * 2.0f, L_sum.y * 2.0f, L_sum.z * 2.0f, 0.0f));
     }
 #ifdef __KERNEL_CPU__
-    if (sample > kernel_data.integrator.adaptive_min_samples &&
-        (sample & (ADAPTIVE_SAMPLE_STEP - 1)) == (ADAPTIVE_SAMPLE_STEP - 1)) {
-      kernel_do_adaptive_stopping(kg, buffer, sample);
+    if ((sample > kernel_data.integrator.adaptive_min_samples) &&
+        kernel_data.integrator.adaptive_stop_per_sample) {
+      const int step = kernel_data.integrator.adaptive_step;
+
+      if ((sample & (step - 1)) == (step - 1)) {
+        kernel_do_adaptive_stopping(kg, buffer, sample);
+      }
     }
 #endif
   }

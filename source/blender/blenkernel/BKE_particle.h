@@ -270,7 +270,7 @@ BLI_INLINE float psys_frand(ParticleSystem *psys, unsigned int seed)
   /* XXX far from ideal, this simply scrambles particle random numbers a bit
    * to avoid obvious correlations.
    * Can't use previous psys->frand arrays because these require initialization
-   * inside psys_check_enabled, which wreaks havoc in multi-threaded depgraph updates.
+   * inside psys_check_enabled, which wreaks havoc in multi-threaded depsgraph updates.
    */
   unsigned int offset = PSYS_FRAND_SEED_OFFSET[psys->seed % PSYS_FRAND_COUNT];
   unsigned int multiplier = PSYS_FRAND_SEED_MULTIPLIER[psys->seed % PSYS_FRAND_COUNT];
@@ -430,7 +430,7 @@ void psys_apply_child_modifiers(struct ParticleThreadContext *ctx,
                                 const float parent_orco[3]);
 
 void psys_sph_init(struct ParticleSimulationData *sim, struct SPHData *sphdata);
-void psys_sph_finalise(struct SPHData *sphdata);
+void psys_sph_finalize(struct SPHData *sphdata);
 void psys_sph_density(struct BVHTree *tree, struct SPHData *data, float co[3], float vars[2]);
 
 /* for anim.c */
