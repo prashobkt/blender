@@ -23,6 +23,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_types.h"
+#include "DNA_lanpr_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_modifier_types.h"
@@ -32,8 +33,6 @@
 #include "DNA_screen_types.h" /* TransformOrientation */
 #include "DNA_userdef_types.h"
 #include "DNA_view3d_types.h"
-#include "DNA_screen_types.h" /* TransformOrientation */
-#include "DNA_lanpr_types.h"
 #include "DNA_world_types.h"
 
 #include "IMB_imbuf_types.h"
@@ -2633,13 +2632,17 @@ void rna_lanpr_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
   lanpr->active_layer = value.data;
 }
 
-static bool rna_lanpr_shader_error_get(PointerRNA *UNUSED(ptr))
+static void rna_lanpr_enable_set(PointerRNA *ptr, bool value)
 {
-#  ifdef WITH_LANPR
-  return ED_lanpr_dpix_shader_error();
-#  else
-  return false;
-#  endif
+  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+
+  if (value) {
+    lanpr->flags |= LANPR_ENABLED;
+    ED_lanpr_init_locks();
+  }
+  else {
+    lanpr->flags &= ~LANPR_ENABLED;
+  }
 }
 
 static char *rna_FFmpegSettings_path(PointerRNA *UNUSED(ptr))
@@ -7310,11 +7313,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem rna_enum_lanpr_master_mode[] = {
-      {LANPR_MASTER_MODE_SOFTWARE, "SOFTWARE", 0, "CPU", "Software edge calculation"},
-      {LANPR_MASTER_MODE_DPIX, "DPIX", 0, "GPU", "DPIX GPU edge extraction"},
-      {0, NULL, 0, NULL, NULL}};
-
   static const EnumPropertyItem rna_enum_lanpr_gpu_cache_size[] = {
       {LANPR_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
       {LANPR_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
@@ -7331,8 +7329,9 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_ENABLED);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_lanpr_enable_set");
   RNA_def_property_ui_text(prop, "Enabled", "Is LANPR enabled");
-  RNA_def_property_update(prop, NC_WINDOW, NULL);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_AUTO_UPDATE);
@@ -7346,20 +7345,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "GPencil Overwrite",
                            "Overwrite existing strokes in the current frame of target GP objects");
-
-  prop = RNA_def_property(srna, "master_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_lanpr_master_mode);
-  RNA_def_property_enum_default(prop, LANPR_MASTER_MODE_DPIX);
-  RNA_def_property_ui_text(prop, "Master Mode", "Choose calculation mode for NPR Line");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "gpu_cache_size", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_lanpr_gpu_cache_size);
-  RNA_def_property_enum_default(prop, LANPR_GPU_CACHE_SIZE_512);
-  RNA_def_property_ui_text(prop, "GPU Cache Size", "Texture cache size for DPIX algorithm");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "depth_width_influence", PROP_FLOAT, PROP_PERCENTAGE);
   RNA_def_property_float_default(prop, 0.3f);
@@ -7387,40 +7372,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Alpha Curve", "alpha curve");
   RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1f, 1);
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "taper_left_distance", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 20.0f);
-  RNA_def_property_ui_text(prop, "Left Distance", "Left side taper distance");
-  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1f, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "taper_right_distance", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 20.0f);
-  RNA_def_property_ui_text(prop, "Right Distance", "Right side taper distance");
-  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1f, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "taper_left_strength", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_ui_text(prop, "Left Strength", "Left side taper strength");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "taper_right_strength", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_ui_text(prop, "Right Strength", "Right side taper strength");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "use_same_taper", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_SAME_TAPER);
-  RNA_def_property_ui_text(prop, "Same Taper", "Same/Different taper value");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "line_color", PROP_FLOAT, PROP_COLOR);
@@ -7455,15 +7406,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_USE_CHAINING);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Enable Chaining", "Chain Feature Lines After Occlusion Test");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  /* should be read-only */
-  prop = RNA_def_property(srna, "shader_error", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_boolean_funcs(prop, "rna_lanpr_shader_error_get", NULL);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   /* Below these two are only for grease pencil, thus no viewport updates. */

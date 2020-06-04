@@ -68,8 +68,7 @@
 
 #include "lanpr_intern.h"
 
-extern LANPR_SharedResource lanpr_share;
-extern const char *RE_engine_id_BLENDER_LANPR;
+LANPR_SharedResource lanpr_share;
 
 /* Own functions */
 
@@ -228,23 +227,9 @@ static int lanpr_move_line_layer_exec(bContext *C, wmOperator *op)
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
-
   return OPERATOR_FINISHED;
 }
 
-static int ED_lanpr_rebuild_all_commands_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-
-  ED_lanpr_rebuild_all_command(scene);
-
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
-
-  return OPERATOR_FINISHED;
-}
 static int lanpr_enable_all_line_types_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
@@ -299,8 +284,6 @@ static int lanpr_auto_create_line_layer_exec(bContext *C, wmOperator *op)
 
   lanpr_enable_all_line_types_exec(C, op);
 
-  ED_lanpr_rebuild_all_command(scene);
-
   return OPERATOR_FINISHED;
 }
 
@@ -321,15 +304,6 @@ void SCENE_OT_lanpr_delete_line_layer(wmOperatorType *ot)
   ot->idname = "SCENE_OT_lanpr_delete_line_layer";
 
   ot->exec = lanpr_delete_line_layer_exec;
-}
-void SCENE_OT_lanpr_rebuild_all_commands(wmOperatorType *ot)
-{
-
-  ot->name = "Refresh Drawing Commands";
-  ot->description = "Refresh LANPR line layer drawing commands";
-  ot->idname = "SCENE_OT_lanpr_rebuild_all_commands";
-
-  ot->exec = ED_lanpr_rebuild_all_commands_exec;
 }
 void SCENE_OT_lanpr_auto_create_line_layer(wmOperatorType *ot)
 {
@@ -2539,8 +2513,6 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
     return;
   }
 
-  ED_lanpr_render_buffer_cache_free(rb);
-
   rb->contour_count = 0;
   rb->contour_managed = 0;
   rb->intersection_count = 0;
@@ -2605,13 +2577,16 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(Scene *s)
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);
 
+  return rb;
+}
+
+void ED_lanpr_init_locks()
+{
   if (!(lanpr_share.init_complete & LANPR_INIT_LOCKS)) {
     BLI_spin_init(&lanpr_share.lock_loader);
     BLI_spin_init(&lanpr_share.lock_render_status);
     lanpr_share.init_complete |= LANPR_INIT_LOCKS;
   }
-
-  return rb;
 }
 
 void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag)
@@ -2695,16 +2670,7 @@ static int lanpr_max_occlusion_in_targets(Depsgraph *depsgraph)
 }
 static int lanpr_get_max_occlusion_level(Depsgraph *dg)
 {
-  Scene *s = DEG_get_evaluated_scene(dg);
-  SceneLANPR *lanpr = s->id.orig_id ? &((Scene *)s->id.orig_id)->lanpr : &s->lanpr;
-  if (!strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
-    /* Use the line layers in scene LANPR settings */
-    return ED_lanpr_max_occlusion_in_line_layers(lanpr);
-  }
-  else {
-    /* Other engines, use GPencil configurations */
-    return lanpr_max_occlusion_in_targets(dg);
-  }
+  return lanpr_max_occlusion_in_targets(dg);
 }
 
 static int lanpr_get_render_triangle_size(LANPR_RenderBuffer *rb, const Scene *s)
@@ -3718,9 +3684,8 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int inte
   LANPR_RenderBuffer *rb;
   Scene *s = DEG_get_evaluated_scene(depsgraph);
   SceneLANPR *lanpr = &s->lanpr;
-  int is_lanpr_engine = !strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && (lanpr->flags & LANPR_ENABLED) == 0) {
+  if ((lanpr->flags & LANPR_ENABLED) == 0) {
     /* Release lock when early return. */
     BLI_spin_unlock(&lanpr_share.lock_loader);
     return OPERATOR_CANCELLED;
@@ -3770,17 +3735,17 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int inte
   ED_lanpr_update_render_progress("LANPR: Chaining.");
 
   /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
-  if (((lanpr->flags & LANPR_USE_CHAINING) || !is_lanpr_engine) && (!intersectons_only)) {
+  if ((lanpr->flags & LANPR_USE_CHAINING) && (!intersectons_only)) {
     float t_image = s->lanpr.chaining_image_threshold;
     float t_geom = s->lanpr.chaining_geometry_threshold;
 
     ED_lanpr_NO_THREAD_chain_feature_lines(rb);
 
-    if (is_lanpr_engine) {
-      /* Enough with it. We can provide an option after we have LANPR internal smoothing */
-      ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
-      return OPERATOR_FINISHED;
-    }
+    // if (is_lanpr_engine) {
+    //  /* Enough with it. We can provide an option after we have LANPR internal smoothing */
+    //  ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
+    //  return OPERATOR_FINISHED;
+    //}
 
     /* Below are simply for better GPencil experience. */
 
@@ -3858,9 +3823,8 @@ static int lanpr_compute_feature_lines_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
   int result;
-  int is_lanpr_engine = !strcmp(scene->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && (lanpr->flags & LANPR_ENABLED) == 0) {
+  if ((lanpr->flags & LANPR_ENABLED) == 0) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3870,7 +3834,7 @@ static int lanpr_compute_feature_lines_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  int intersections_only = (is_lanpr_engine && lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
+  // int intersections_only = (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
 
   /** Lock caller thread before calling feature line computation.
    * This worker is not a background task, so we don't need to try another lock
@@ -3879,9 +3843,7 @@ static int lanpr_compute_feature_lines_exec(bContext *C, wmOperator *op)
   BLI_spin_lock(&lanpr_share.lock_loader);
 
   result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph_pointer(C),
-                                                   intersections_only);
-
-  ED_lanpr_rebuild_all_command(scene);
+                                                   0);  // intersections_only);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
@@ -3903,12 +3865,6 @@ void SCENE_OT_lanpr_calculate_feature_lines(wmOperatorType *ot)
   ot->poll = lanpr_camera_exists;
   ot->cancel = lanpr_compute_feature_lines_cancel;
   ot->exec = lanpr_compute_feature_lines_exec;
-}
-
-/* Access */
-bool ED_lanpr_dpix_shader_error()
-{
-  return lanpr_share.dpix_shader_error;
 }
 
 /* Grease Pencil bindings */
@@ -3948,9 +3904,6 @@ static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
   if (rb == NULL) {
     printf("NULL LANPR rb!\n");
-    return;
-  }
-  if (scene->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE) {
     return;
   }
 
@@ -4456,12 +4409,13 @@ void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
   if ((s->lanpr.flags & LANPR_ENABLED) == 0 || !(s->lanpr.flags & LANPR_AUTO_UPDATE)) {
     return;
   }
-  if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
-    /* Not LANPR engine, do GPencil updates. */
-    /* LANPR engine will automatically update when drawing the viewport. */
-    if (s->lanpr.flags & LANPR_AUTO_UPDATE) {
-      ED_lanpr_compute_feature_lines_internal(dg, 0);
-      lanpr_update_gp_strokes_actual(s, dg);
-    }
+  if (s->lanpr.flags & LANPR_AUTO_UPDATE) {
+    ED_lanpr_compute_feature_lines_internal(dg, 0);
+    lanpr_update_gp_strokes_actual(s, dg);
   }
+}
+
+void ED_lanpr_update_render_progress(const char *text)
+{
+  // TODO
 }

@@ -28,8 +28,8 @@
 #  error LANPR code included in non-LANPR-enabled build
 #endif
 
-#include "BLI_listbase.h"
 #include "BLI_linklist.h"
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_threads.h"
 
@@ -194,10 +194,6 @@ typedef struct LANPR_RenderBuffer {
   ListBase all_render_lines;
 
   ListBase intersecting_vertex_buffer;
-
-  struct GPUBatch *DPIXIntersectionTransformBatch;
-  struct GPUBatch *DPIXIntersectionBatch;
-
   /** Use the one comes with LANPR. */
   LANPR_StaticMemPool render_data_pool;
 
@@ -234,9 +230,6 @@ typedef struct LANPR_RenderBuffer {
   ListBase edge_marks;
 
   ListBase chains;
-  struct GPUBatch *chain_draw_batch;
-
-  struct DRWShadingGroup *chain_shgrp;
 
   /** For managing calculation tasks for multiple threads. */
   SpinLock lock_task;
@@ -292,26 +285,7 @@ typedef struct LANPR_SharedResource {
   struct BLI_mempool *mp_line_strip_point;
   struct BLI_mempool *mp_batch_list;
 
-  /* Shared */
-  struct GPUShader *multichannel_shader;
-
-  /* GPU */
-  struct GPUShader *dpix_transform_shader;
-  struct GPUShader *dpix_preview_shader;
-  bool dpix_shader_error;
-  int texture_size;
-  ListBase dpix_batch_list;
-  int dpix_reloaded;
-  int dpix_reloaded_deg;
-
-  /* CPU */
-  struct GPUShader *software_shader;
-  struct GPUShader *software_chaining_shader;
-
   struct TaskPool *background_render_task;
-
-  void *ved_viewport;
-  void *ved_render;
 
   LANPR_INIT_STATUS init_complete;
 
@@ -328,9 +302,6 @@ typedef struct LANPR_SharedResource {
    * LANPR finishes loading. Also keep this in lanpr_share.
    */
   SpinLock lock_loader;
-
-  /** Set before rendering and cleared upon finish! */
-  struct RenderEngine *re_render;
 
   /** When drawing in the viewport, use the following values. */
   /** Set to override to -1 before creating lanpr render buffer to use scene camera. */
@@ -548,6 +519,8 @@ int ED_lanpr_point_inside_triangled(double v[2], double v0[2], double v1[2], dou
 struct Depsgraph;
 struct SceneLANPR;
 
+void ED_lanpr_init_locks(void);
+
 int ED_lanpr_object_collection_usage_check(struct Collection *c, struct Object *o);
 
 void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
@@ -577,13 +550,6 @@ void ED_lanpr_compute_feature_lines_background(struct Depsgraph *dg, const int i
 
 struct Scene;
 
-LANPR_RenderBuffer *ED_lanpr_create_render_buffer(struct Scene *s);
-void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
-
-bool ED_lanpr_dpix_shader_error(void);
-
-void ED_lanpr_render_buffer_cache_free(struct LANPR_RenderBuffer *rb);
-
 int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
 LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
 
@@ -595,8 +561,6 @@ LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb
 void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
 struct SceneLANPR;
-
-void ED_lanpr_rebuild_all_command(struct Scene *s);
 
 void ED_lanpr_update_render_progress(const char *text);
 
@@ -610,7 +574,6 @@ struct wmOperatorType;
 void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_delete_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_rebuild_all_commands(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);

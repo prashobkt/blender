@@ -1694,11 +1694,6 @@ typedef struct SceneEEVEE {
 struct LANPR_RenderBuffer;
 struct LANPR_LineLayer;
 
-typedef enum LANPR_MasterMode {
-  LANPR_MASTER_MODE_SOFTWARE = 0,
-  LANPR_MASTER_MODE_DPIX = 1,
-} LANPR_MasterMode;
-
 typedef enum LANPR_PostProcessingStatus {
   LANPR_POST_PROCESSING_DISABLED = 0,
   LANPR_POST_PROCESSING_ENABLED = 1,
@@ -1721,13 +1716,6 @@ typedef struct SceneLANPR {
 
   int flags;
 
-  int master_mode; /* LANPR_MasterMode */
-
-  float taper_left_distance;
-  float taper_left_strength;
-  float taper_right_distance;
-  float taper_right_strength;
-
   /* shared */
 
   float contour_fade;          /* for dpix contour fading,reserved for future usage */
@@ -1740,8 +1728,6 @@ typedef struct SceneLANPR {
   float depth_width_curve;
   float depth_alpha_influence;
   float depth_alpha_curve;
-
-  int gpu_cache_size; /* enum! */
 
   /* CPU mode */
   ListBase line_layers;

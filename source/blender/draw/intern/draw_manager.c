@@ -97,10 +97,6 @@
 #include "engines/select/select_engine.h"
 #include "engines/workbench/workbench_engine.h"
 
-#ifdef WITH_LANPR
-#  include "engines/lanpr/lanpr_all.h"
-#endif
-
 #include "GPU_context.h"
 
 #include "DEG_depsgraph.h"
@@ -2657,9 +2653,6 @@ void DRW_engines_register(void)
 {
   RE_engines_register(&DRW_engine_viewport_eevee_type);
   RE_engines_register(&DRW_engine_viewport_workbench_type);
-#ifdef WITH_LANPR
-  RE_engines_register(&DRW_engine_viewport_lanpr_type);
-#endif
 
   DRW_engine_register(&draw_engine_gpencil_type);
 

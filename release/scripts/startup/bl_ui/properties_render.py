@@ -69,7 +69,7 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
     bl_label = "Color Management"
     bl_options = {'DEFAULT_CLOSED'}
     bl_order = 100
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -102,7 +102,7 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
     bl_label = "Use Curves"
     bl_parent_id = "RENDER_PT_color_management"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
 
@@ -466,7 +466,7 @@ class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_film(RenderButtonsPanel, Panel):
     bl_label = "Film"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_LANPR'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
     @classmethod
     def poll(cls, context):
@@ -694,35 +694,24 @@ class LANPR_UL_linesets(UIList):
         layout.prop(item,"name", text="", emboss=False)
 
 class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
     bl_label = "LANPR"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, context):
-        if context.scene.render.engine != 'BLENDER_LANPR':
-            self.layout.prop(context.scene.lanpr, "enabled", text="")
+        self.layout.prop(context.scene.lanpr, "enabled", text="")
 
     def draw(self, context):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer 
-        mode = lanpr.master_mode
 
         layout = self.layout
-        layout.active = scene.render.engine=="BLENDER_LANPR" or lanpr.enabled
+        layout.active = lanpr.enabled
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
         col = layout.column()
-
-        if scene.render.engine=="BLENDER_LANPR":
-            col.prop(lanpr, "master_mode") 
-        else:
-            mode = "SOFTWARE"
-
-        if mode == "DPIX" and lanpr.shader_error:
-            layout.label(text="DPIX transform shader compile error!")
-            return
         
         layout.prop(lanpr, "crease_threshold", slider=True)
 
@@ -738,30 +727,22 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         c=col.column()
         c.enabled = has_camera
 
-        if scene.render.engine=="BLENDER_LANPR":
-            txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
-            if not lanpr.auto_update:
-                c.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
+        if not lanpr.auto_update:
+            c.operator("scene.lanpr_calculate", icon='FILE_REFRESH')
 
-        if mode == "DPIX" and len(lanpr.layers)==0:
-            layout.label(text="You don't have a layer to display.")
-            layout.operator("scene.lanpr_add_line_layer");
-
-        if scene.render.engine=="BLENDER_LANPR" and mode == "SOFTWARE":
-            layout.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
-            row=layout.row()
-            row.template_list("LANPR_UL_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
-            col=row.column(align=True)
-            if active_layer:
-                col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
-                col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
-                col.separator()
-                col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
-                col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
-                col.separator()
-                col.operator("scene.lanpr_rebuild_all_commands",icon="FILE_REFRESH", text='')
-            else:
-                col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+        layout.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
+        row=layout.row()
+        row.template_list("LANPR_UL_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
+        col=row.column(align=True)
+        if active_layer:
+            col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+            col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
+            col.separator()
+            col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
+            col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
+            col.separator()
+        else:
+            col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
 
 def lanpr_make_line_type(expand,layout,line_type,label):
     layout.prop(line_type, "use", text=label)
@@ -774,14 +755,11 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
     bl_label = "Layer Settings"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
     def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer
+        return True
 
     def draw(self, context):
         scene = context.scene
@@ -792,19 +770,11 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
-        mode = lanpr.master_mode
-        if scene.render.engine!="BLENDER_LANPR" and mode != "SOFTWARE":
-            mode = "SOFTWARE"
-
-        if active_layer and mode == "DPIX":
-            active_layer = lanpr.layers[0]
-
-        if mode == "SOFTWARE":
-            layout.prop(active_layer, "use_multiple_levels", text="Multiple Levels")
-            col = layout.column(align=True)
-            col.prop(active_layer, "level_start", text='Level Start')
-            if active_layer.use_multiple_levels:
-                col.prop(active_layer, "level_end", text='End')
+        layout.prop(active_layer, "use_multiple_levels", text="Multiple Levels")
+        col = layout.column(align=True)
+        col.prop(active_layer, "level_start", text='Level Start')
+        if active_layer.use_multiple_levels:
+            col.prop(active_layer, "level_end", text='End')
         
         layout.prop(active_layer,"use_same_style")
 
@@ -829,14 +799,11 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
     bl_label = "Normal Based Line Weight"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     @classmethod
     def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer
+        return True
 
     def draw_header(self, context):
         active_layer = context.scene.lanpr.layers.active_layer
@@ -862,49 +829,11 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
             col.prop(active_layer,"normal_thickness_start", slider=True)
             col.prop(active_layer,"normal_thickness_end", slider=True, text="End")
 
-class RENDER_PT_lanpr_line_gpu_effects(RenderButtonsPanel, Panel):
-    bl_label = "Effects"
-    bl_parent_id = "RENDER_PT_lanpr"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode == "DPIX"
-
-    def draw(self, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        col = layout.column(align = True)
-        col.prop(lanpr, "crease_threshold")
-        col.prop(lanpr, "crease_fade_threshold", text="Fade")
-        col = layout.column(align = True)
-        col.prop(lanpr, "depth_width_influence")
-        col.prop(lanpr, "depth_width_curve", text="Curve")
-        col = layout.column(align = True)
-        col.prop(lanpr, "depth_alpha_influence")
-        col.prop(lanpr, "depth_alpha_curve", text="Curve")
-        
 class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
     bl_label = "Grease Pencil"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        return scene.render.engine!='BLENDER_LANPR'
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         scene = context.scene
@@ -927,48 +856,11 @@ class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
             layout.operator("scene.lanpr_update_gp_strokes", icon='FILE_REFRESH', text='Update Grease Pencil Targets')
         layout.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
 
-class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
-    bl_label = "Chaining"
-    bl_parent_id = "RENDER_PT_lanpr"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        return scene.render.engine!='BLENDER_LANPR' or lanpr.enable_chaining and (not (scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='DPIX'))
-
-    def draw(self, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        if scene.render.engine=="BLENDER_LANPR":
-            layout.prop(lanpr, "use_same_taper", text="Taper Tips")
-            if lanpr.use_same_taper == "DISABLED":
-                col = layout.column(align = True)
-                col.prop(lanpr,"taper_left_distance")
-                col.prop(lanpr,"taper_left_strength", text="Strength")
-                col = layout.column(align = True)
-                col.prop(lanpr,"taper_right_distance")
-                col.prop(lanpr,"taper_right_strength", text="Strength")
-            else:
-                col = layout.column(align = True)
-                col.prop(lanpr,"taper_left_distance", text="Distance")
-                col.prop(lanpr,"taper_left_strength", text="Strength")
-        else:
-            layout.prop(lanpr, "chaining_geometry_threshold")
-            layout.prop(lanpr, "chaining_image_threshold")
-
 class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
     bl_label = "Settings"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         scene = context.scene
@@ -978,17 +870,7 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        mode = lanpr.master_mode
-        if scene.render.engine!="BLENDER_LANPR":
-            mode = "SOFTWARE"
-
-        if mode == "DPIX":
-            layout.prop(lanpr,"gpu_cache_size")
-
         layout.prop(lanpr,"use_intersections")
-
-        if scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='SOFTWARE':
-            layout.prop(lanpr,"enable_chaining", text = "Chained Lines")
 
 
 classes = (
@@ -1026,8 +908,6 @@ classes = (
     RENDER_PT_lanpr_layer_settings,
     RENDER_PT_lanpr_gpencil,
     RENDER_PT_lanpr_line_normal_effects,
-    RENDER_PT_lanpr_line_gpu_effects,
-    RENDER_PT_lanpr_software_chain_styles,
     RENDER_PT_lanpr_options,
     LANPR_UL_linesets,
 )
