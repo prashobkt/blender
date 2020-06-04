@@ -1168,8 +1168,16 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem vector_draw_grid_items[] = {
-      {VECTOR_DRAW_GRID_FLUID_VELOCITY, "FLUID_VELOCITY", 0, "Fluid Velocity", "Display fluid velocity grid"},
-      {VECTOR_DRAW_GRID_GUIDE_VELOCITY, "GUIDE_VELOCITY", 0, "Guide Velocity", "Display guide velocity grid"},
+      {VECTOR_DRAW_GRID_FLUID_VELOCITY,
+       "FLUID_VELOCITY",
+       0,
+       "Fluid Velocity",
+       "Display fluid velocity grid"},
+      {VECTOR_DRAW_GRID_GUIDE_VELOCITY,
+       "GUIDE_VELOCITY",
+       0,
+       "Guide Velocity",
+       "Display guide velocity grid"},
       {0, NULL, 0, NULL, NULL},
   };
 
