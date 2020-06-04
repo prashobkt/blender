@@ -73,7 +73,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   DRWShadingGroup *grp = NULL;
 
   /* Don't try to show liquid domains here */
-  if (!mds->fluid || !(mds->type == FLUID_DOMAIN_TYPE_GAS)) {
+  if (!mds->fluid) {
     return;
   }
 
@@ -81,10 +81,10 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   if (mds->use_coba) {
     GPU_create_smoke_coba_field(mmd);
   }
-  else if (!(mds->flags & FLUID_DOMAIN_USE_NOISE)) {
+  else if (!(mds->flags & FLUID_DOMAIN_USE_NOISE) && (mds->type == FLUID_DOMAIN_TYPE_GAS)) {
     GPU_create_smoke(mmd, 0);
   }
-  else if (mds->flags & FLUID_DOMAIN_USE_NOISE) {
+  else if ((mds->flags & FLUID_DOMAIN_USE_NOISE) && (mds->type == FLUID_DOMAIN_TYPE_GAS)) {
     GPU_create_smoke(mmd, 1);
   }
 

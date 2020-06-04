@@ -1278,7 +1278,7 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_gas_domain(context))
+        return (PhysicButtonsPanel.poll_fluid_domain(context))
 
     def draw_header(self, context):
         md = context.fluid.domain_settings
@@ -1292,12 +1292,16 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
         domain = context.fluid.domain_settings
         col = layout.column()
         col.active = domain.use_color_ramp
-        col.prop(domain, "coba_field")
+        if (domain.domain_type == "GAS"):
+            col.prop(domain, "coba_field_gas")
+        else:
+            col.prop(domain, "coba_field_liquid")
 
         col.use_property_split = False
 
-        col = col.column()
-        col.template_color_ramp(domain, "color_ramp", expand=True)
+        if (domain.domain_type == "GAS" or (not domain.coba_field_liquid == "PHI")):
+            col = col.column()
+            col.template_color_ramp(domain, "color_ramp", expand=True)
 
 
 class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):

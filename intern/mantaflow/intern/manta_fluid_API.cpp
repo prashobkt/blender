@@ -394,6 +394,10 @@ float *manta_get_phioutstatic_in(MANTA *fluid)
 {
   return fluid->getPhiOutStaticIn();
 }
+float *manta_get_phi(MANTA *fluid)
+{
+  return fluid->getPhi();
+}
 
 /* Smoke functions */
 void manta_smoke_export_script(MANTA *smoke, FluidModifierData *mmd)

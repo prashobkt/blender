@@ -711,3 +711,29 @@ void blackbody_temperature_to_rgb_table(float *r_table, int width, float min, fl
     r_table[i * 4 + 3] = 0.0f;
   }
 }
+
+void phi_to_rgb(float *r_table, int width, float min, float max)
+{
+  for(int i = 0; i < width; i++) {
+    float value = min + (max - min) / (float)width * (float)i;
+
+    float rgb[3];
+
+    value = (value * 0.2 < 1.0f) ? value * 0.2f : 1.0f;
+    value = (value >= -1.0f) ? value : -1.0f;
+
+    if (value >= 0.0f) {
+      rgb[0] = value;
+      rgb[1] = 0.0f;
+      rgb[2] = 0.5f;
+    }
+    else {
+      rgb[0] = 0.5f;
+      rgb[1] = 1.0f + value;
+      rgb[2] = 0.0f;
+    }
+
+    copy_v3_v3(&r_table[i * 4], rgb);
+    r_table[i * 4 + 3] = 0.0f;
+  }
+}

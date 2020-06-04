@@ -2274,7 +2274,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       "Render a simulation field while mapping its voxels values to the colors of a ramp");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
-  static const EnumPropertyItem coba_field_items[] = {
+  static const EnumPropertyItem coba_field_gas_items[] = {
       {FLUID_DOMAIN_FIELD_COLOR_R, "COLOR_R", 0, "Red", "Red component of the color field"},
       {FLUID_DOMAIN_FIELD_COLOR_G, "COLOR_G", 0, "Green", "Green component of the color field"},
       {FLUID_DOMAIN_FIELD_COLOR_B, "COLOR_B", 0, "Blue", "Blue component of the color field"},
@@ -2300,9 +2300,35 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  prop = RNA_def_property(srna, "coba_field", PROP_ENUM, PROP_NONE);
+  static const EnumPropertyItem coba_field_liquid_items[] = {
+      {FLUID_DOMAIN_FIELD_VELOCITY_X,
+       "VELOCITY_X",
+       0,
+       "X Velocity",
+       "X component of the velocity field"},
+      {FLUID_DOMAIN_FIELD_VELOCITY_Y,
+       "VELOCITY_Y",
+       0,
+       "Y Velocity",
+       "Y component of the velocity field"},
+      {FLUID_DOMAIN_FIELD_VELOCITY_Z,
+       "VELOCITY_Z",
+       0,
+       "Z Velocity",
+       "Z component of the velocity field"},
+      {FLUID_DOMAIN_FIELD_PHI, "PHI", 0, "Phi", "Phi grid"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "coba_field_gas", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "coba_field");
-  RNA_def_property_enum_items(prop, coba_field_items);
+  RNA_def_property_enum_items(prop, coba_field_gas_items);
+  RNA_def_property_ui_text(prop, "Field", "Simulation field to color map");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+  prop = RNA_def_property(srna, "coba_field_liquid", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "coba_field");
+  RNA_def_property_enum_items(prop, coba_field_liquid_items);
   RNA_def_property_ui_text(prop, "Field", "Simulation field to color map");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
