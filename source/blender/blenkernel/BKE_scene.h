@@ -257,11 +257,6 @@ void BKE_scene_cursor_from_mat4(struct View3DCursor *cursor,
  */
 void BKE_scene_eval_sequencer_sequences(struct Depsgraph *depsgraph, struct Scene *scene);
 
-/* LANPR */
-
-void BKE_lanpr_copy_data(const struct Scene *from, struct Scene *to);
-void BKE_lanpr_free_everything(struct Scene *s);
-
 #ifdef __cplusplus
 }
 #endif

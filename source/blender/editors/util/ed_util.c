@@ -60,6 +60,7 @@
 #include "ED_armature.h"
 #include "ED_buttons.h"
 #include "ED_image.h"
+#include "ED_lanpr.h"
 #include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_object.h"
@@ -187,6 +188,11 @@ void ED_editors_init(bContext *C)
 
   SWAP(int, reports->flag, reports_flag_prev);
   wm->op_undo_depth--;
+
+  /* LANPR data lock duing async calculation */
+#ifdef WITH_LANPR
+  ED_lanpr_init_locks();
+#endif
 }
 
 /* frees all editmode stuff */
@@ -227,6 +233,11 @@ void ED_editors_exit(Main *bmain, bool do_undo_system)
   /* global in meshtools... */
   ED_mesh_mirror_spatial_table_end(NULL);
   ED_mesh_mirror_topo_table_end(NULL);
+
+  /* LANPR data*/
+#ifdef WITH_LANPR
+  ED_lanpr_destroy_render_data();
+#endif
 }
 
 bool ED_editors_flush_edits_for_object_ex(Main *bmain,

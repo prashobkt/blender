@@ -521,6 +521,8 @@ struct SceneLANPR;
 
 void ED_lanpr_init_locks(void);
 
+void ED_lanpr_destroy_render_data(void);
+
 int ED_lanpr_object_collection_usage_check(struct Collection *c, struct Object *o);
 
 void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
