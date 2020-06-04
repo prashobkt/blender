@@ -871,7 +871,45 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
         layout.use_property_decorate = False
 
         layout.prop(lanpr,"use_intersections")
+        layout.prop(lanpr,"enable_chaining", text = "Chained Lines")
 
+
+class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
+    bl_label = "Chaining"
+    bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        lanpr = scene.lanpr
+        return scene.render.engine!='BLENDER_LANPR' or lanpr.enable_chaining and (not (scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='DPIX'))
+
+    def draw(self, context):
+        scene = context.scene
+        lanpr = scene.lanpr
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        if scene.render.engine=="BLENDER_LANPR":
+            layout.prop(lanpr, "use_same_taper", text="Taper Tips")
+            if lanpr.use_same_taper == "DISABLED":
+                col = layout.column(align = True)
+                col.prop(lanpr,"taper_left_distance")
+                col.prop(lanpr,"taper_left_strength", text="Strength")
+                col = layout.column(align = True)
+                col.prop(lanpr,"taper_right_distance")
+                col.prop(lanpr,"taper_right_strength", text="Strength")
+            else:
+                col = layout.column(align = True)
+                col.prop(lanpr,"taper_left_distance", text="Distance")
+                col.prop(lanpr,"taper_left_strength", text="Strength")
+        else:
+            layout.prop(lanpr, "chaining_geometry_threshold")
+            layout.prop(lanpr, "chaining_image_threshold")
 
 classes = (
     RENDER_PT_context,
@@ -909,6 +947,7 @@ classes = (
     RENDER_PT_lanpr_gpencil,
     RENDER_PT_lanpr_line_normal_effects,
     RENDER_PT_lanpr_options,
+    RENDER_PT_lanpr_software_chain_styles,
     LANPR_UL_linesets,
 )
 
