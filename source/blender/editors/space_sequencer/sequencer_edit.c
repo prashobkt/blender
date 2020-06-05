@@ -56,6 +56,7 @@
 
 #include "ED_anim_api.h"
 #include "ED_numinput.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_sequencer.h"
 #include "ED_space_api.h"
@@ -213,20 +214,41 @@ static void seq_proxy_build_job(const bContext *C, ReportList *reports)
   }
 
   file_list = BLI_gset_new(BLI_ghashutil_strhash_p, BLI_ghashutil_strcmp, "file list");
+  bool selected = false; /* Check for no selected strips */
+
   SEQP_BEGIN (ed, seq) {
-    if ((seq->flag & SELECT)) {
-      bool success = BKE_sequencer_proxy_rebuild_context(
-          pj->main, pj->depsgraph, pj->scene, seq, file_list, &pj->queue);
-      if (!success) {
-        BKE_reportf(reports, RPT_ERROR, "Could not build proxy for strip %s", seq->name);
-      }
+    if (!ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE, SEQ_TYPE_META) ||
+        (seq->flag & SELECT) == 0) {
+      continue;
+    }
+
+    selected = true;
+    if (!(seq->flag & SEQ_USE_PROXY)) {
+      BKE_reportf(reports, RPT_WARNING, "Proxy is not enabled for %s, skipping.", seq->name);
+      continue;
+    }
+    else if (seq->strip->proxy->build_size_flags == 0) {
+      BKE_reportf(reports, RPT_WARNING, "Resolution is not selected for %s, skipping.", seq->name);
+      continue;
+    }
+
+    bool success = BKE_sequencer_proxy_rebuild_context(
+        pj->main, pj->depsgraph, pj->scene, seq, file_list, &pj->queue);
+
+    if (!success && (seq->strip->proxy->build_flags & SEQ_PROXY_SKIP_EXISTING) != 0) {
+      BKE_reportf(reports, RPT_WARNING, "Overwrite is not checked for %s, skipping.", seq->name);
     }
   }
   SEQ_END;
 
+  if (!selected) {
+    BKE_reportf(reports, RPT_WARNING, "Select movie or image strips.");
+    return;
+  }
+
   BLI_gset_free(file_list, MEM_freeN);
 
-  if (!WM_jobs_is_running(wm_job)) {
+  if (selected && !WM_jobs_is_running(wm_job)) {
     G.is_break = false;
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
@@ -254,7 +276,7 @@ void boundbox_seq(Scene *scene, rctf *rect)
     return;
   }
 
-  min[0] = 0.0;
+  min[0] = SFRA;
   max[0] = EFRA + 1;
   min[1] = 0.0;
   max[1] = 8.0;
@@ -289,7 +311,7 @@ static int mouse_frame_side(View2D *v2d, short mouse_x, int frame)
   mval[0] = mouse_x;
   mval[1] = 0;
 
-  /* Choose the side based on which side of the playhead the mouse is on. */
+  /* Choose the side based on which side of the current frame the mouse is on. */
   UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouseloc[0], &mouseloc[1]);
 
   return mouseloc[0] > frame ? SEQ_SIDE_RIGHT : SEQ_SIDE_LEFT;
@@ -1354,7 +1376,7 @@ static int sequencer_snap_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
 void SEQUENCER_OT_snap(struct wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Snap Strips to Playhead";
+  ot->name = "Snap Strips to the Current Frame";
   ot->idname = "SEQUENCER_OT_snap";
   ot->description = "Frame where selected strips will be snapped";
 
@@ -1651,10 +1673,10 @@ static void sequencer_slip_update_header(Scene *scene, ScrArea *area, SlipData *
     if (hasNumInput(&data->num_input)) {
       char num_str[NUM_STR_REP_LEN];
       outputNumInput(&data->num_input, num_str, &scene->unit);
-      BLI_snprintf(msg, sizeof(msg), TIP_("Trim offset: %s"), num_str);
+      BLI_snprintf(msg, sizeof(msg), TIP_("Slip offset: %s"), num_str);
     }
     else {
-      BLI_snprintf(msg, sizeof(msg), TIP_("Trim offset: %d"), offset);
+      BLI_snprintf(msg, sizeof(msg), TIP_("Slip offset: %d"), offset);
     }
   }
 
@@ -1705,7 +1727,7 @@ static int sequencer_slip_modal(bContext *C, wmOperator *op, const wmEvent *even
           mouse_x = event->mval[0];
         }
 
-        /* Choose the side based on which side of the playhead the mouse is. */
+        /* Choose the side based on which side of the current frame the mouse is. */
         UI_view2d_region_to_view(v2d, mouse_x, 0, &mouseloc[0], &mouseloc[1]);
         offset = mouseloc[0] - data->init_mouseloc[0];
 
@@ -2352,7 +2374,7 @@ void SEQUENCER_OT_split(struct wmOperatorType *ot)
                   "use_cursor_position",
                   0,
                   "Use Cursor Position",
-                  "Split at position of the cursor instead of playhead");
+                  "Split at position of the cursor instead of current frame");
 
   prop = RNA_def_enum(ot->srna,
                       "side",
@@ -2507,7 +2529,7 @@ static int sequencer_delete_invoke(bContext *C, wmOperator *op, const wmEvent *e
     }
   }
 
-  return WM_operator_confirm(C, op, event);
+  return sequencer_delete_exec(C, op);
 }
 
 void SEQUENCER_OT_delete(wmOperatorType *ot)
@@ -2929,7 +2951,7 @@ static int sequencer_view_all_exec(bContext *C, wmOperator *op)
 void SEQUENCER_OT_view_all(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "View All";
+  ot->name = "Frame All";
   ot->idname = "SEQUENCER_OT_view_all";
   ot->description = "View all the strips in the sequencer";
 
@@ -2954,7 +2976,7 @@ void SEQUENCER_OT_view_frame(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Go to Current Frame";
   ot->idname = "SEQUENCER_OT_view_frame";
-  ot->description = "Move the view to the playhead";
+  ot->description = "Move the view to the current frame";
 
   /* Api callbacks. */
   ot->exec = sequencer_view_frame_exec;
@@ -3016,7 +3038,7 @@ static int sequencer_view_all_preview_exec(bContext *C, wmOperator *UNUSED(op))
 void SEQUENCER_OT_view_all_preview(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "View All";
+  ot->name = "Frame All";
   ot->idname = "SEQUENCER_OT_view_all_preview";
   ot->description = "Zoom preview to fit in the area";
 
@@ -3455,8 +3477,6 @@ static int sequencer_copy_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Editing *ed = BKE_sequencer_editing_get(scene, false);
 
-  ListBase nseqbase = {NULL, NULL};
-
   BKE_sequencer_free_clipboard();
 
   if (BKE_sequence_base_isolated_sel_check(ed->seqbasep) == false) {
@@ -3465,27 +3485,7 @@ static int sequencer_copy_exec(bContext *C, wmOperator *op)
   }
 
   BKE_sequence_base_dupli_recursive(
-      scene, scene, &nseqbase, ed->seqbasep, SEQ_DUPE_UNIQUE_NAME, LIB_ID_CREATE_NO_USER_REFCOUNT);
-
-  /* Make sure that copied strips have unique names.
-   * Add them temporarily to the end of the original seqbase (bug 25932). */
-  if (nseqbase.first) {
-    Sequence *seq, *first_seq = nseqbase.first;
-    BLI_movelisttolist(ed->seqbasep, &nseqbase);
-
-    for (seq = first_seq; seq; seq = seq->next) {
-      BKE_sequencer_recursive_apply(seq, apply_unique_name_fn, scene);
-    }
-
-    seqbase_clipboard.first = first_seq;
-    seqbase_clipboard.last = ed->seqbasep->last;
-
-    if (first_seq->prev) {
-      first_seq->prev->next = NULL;
-      ed->seqbasep->last = first_seq->prev;
-      first_seq->prev = NULL;
-    }
-  }
+      scene, scene, &seqbase_clipboard, ed->seqbasep, 0, LIB_ID_CREATE_NO_USER_REFCOUNT);
 
   seqbase_clipboard_frame = scene->r.cfra;
 
@@ -3532,28 +3532,19 @@ static int sequencer_paste_exec(bContext *C, wmOperator *UNUSED(op))
    * must happen on the clipboard itself, so that copying does user counting
    * on the actual data-blocks. */
   BKE_sequencer_base_clipboard_pointers_restore(&seqbase_clipboard, bmain);
-  BKE_sequence_base_dupli_recursive(
-      scene, scene, &nseqbase, &seqbase_clipboard, SEQ_DUPE_UNIQUE_NAME, 0);
-  BKE_sequencer_base_clipboard_pointers_store(bmain, &seqbase_clipboard);
-
-  /* Transform pasted strips before adding. */
-  if (ofs) {
-    for (iseq = nseqbase.first; iseq; iseq = iseq->next) {
-      BKE_sequence_translate(scene, iseq, ofs);
-    }
-  }
+  BKE_sequence_base_dupli_recursive(scene, scene, &nseqbase, &seqbase_clipboard, 0, 0);
 
   iseq_first = nseqbase.first;
 
   BLI_movelisttolist(ed->seqbasep, &nseqbase);
 
-  /* Make sure, that pasted strips have unique names. */
   for (iseq = iseq_first; iseq; iseq = iseq->next) {
+    /* Make sure, that pasted strips have unique names. */
     BKE_sequencer_recursive_apply(iseq, apply_unique_name_fn, scene);
-  }
-
-  /* Ensure, that pasted strips don't overlap. */
-  for (iseq = iseq_first; iseq; iseq = iseq->next) {
+    /* Translate after name has been changed, otherwise this will affect animdata of original
+     * strip. */
+    BKE_sequence_translate(scene, iseq, ofs);
+    /* Ensure, that pasted strips don't overlap. */
     if (BKE_sequence_test_overlap(ed->seqbasep, iseq)) {
       BKE_sequence_base_shuffle(ed->seqbasep, iseq, scene);
     }
@@ -3561,6 +3552,7 @@ static int sequencer_paste_exec(bContext *C, wmOperator *UNUSED(op))
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  ED_outliner_select_sync_from_sequence_tag(C);
 
   return OPERATOR_FINISHED;
 }
@@ -3786,12 +3778,7 @@ static int sequencer_enable_proxies_exec(bContext *C, wmOperator *op)
 
   SEQP_BEGIN (ed, seq) {
     if ((seq->flag & SELECT)) {
-      if (ELEM(seq->type,
-               SEQ_TYPE_MOVIE,
-               SEQ_TYPE_IMAGE,
-               SEQ_TYPE_META,
-               SEQ_TYPE_SCENE,
-               SEQ_TYPE_MULTICAM)) {
+      if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE, SEQ_TYPE_META)) {
         BKE_sequencer_proxy_set(seq, turnon);
         if (seq->strip->proxy == NULL) {
           continue;

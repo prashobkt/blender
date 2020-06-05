@@ -781,9 +781,9 @@ void createTransEditVerts(TransInfo *t)
     }
 
     /* detect CrazySpace [tm] */
-    if (modifiers_getCageIndex(t->scene, tc->obedit, NULL, 1) != -1) {
+    if (BKE_modifiers_get_cage_index(t->scene, tc->obedit, NULL, 1) != -1) {
       int totleft = -1;
-      if (modifiers_isCorrectableDeformed(t->scene, tc->obedit)) {
+      if (BKE_modifiers_is_correctable_deformed(t->scene, tc->obedit)) {
         BKE_scene_graph_evaluated_ensure(t->depsgraph, CTX_data_main(t->context));
 
         /* Use evaluated state because we need b-bone cache. */
@@ -1450,7 +1450,6 @@ static void UVsToTransData(const float aspect[2],
 void createTransUVs(bContext *C, TransInfo *t)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
-  Image *ima = CTX_data_edit_image(C);
   Scene *scene = t->scene;
   ToolSettings *ts = CTX_data_tool_settings(C);
 
@@ -1500,7 +1499,7 @@ void createTransUVs(bContext *C, TransInfo *t)
     BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
       BMLoop *l;
 
-      if (!uvedit_face_visible_test(scene, tc->obedit, ima, efa)) {
+      if (!uvedit_face_visible_test(scene, efa)) {
         BM_elem_flag_disable(efa, BM_ELEM_TAG);
         continue;
       }

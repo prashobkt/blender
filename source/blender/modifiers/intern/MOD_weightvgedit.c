@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2011 by Bastien Montagne.
@@ -80,7 +80,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   const WeightVGEditModifierData *wmd = (const WeightVGEditModifierData *)md;
   WeightVGEditModifierData *twmd = (WeightVGEditModifierData *)target;
 
-  modifier_copyData_generic(md, target, flag);
+  BKE_modifier_copydata_generic(md, target, flag);
 
   twmd->cmap_curve = BKE_curvemapping_copy(wmd->cmap_curve);
 }
@@ -239,6 +239,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* Do mapping. */
   const bool do_invert_mapping = (wmd->edit_flags & MOD_WVG_INVERT_FALLOFF) != 0;
+  const bool do_normalize = (wmd->edit_flags & MOD_WVG_EDIT_WEIGHTS_NORMALIZE) != 0;
   if (do_invert_mapping || wmd->falloff_type != MOD_WVG_MAPPING_NONE) {
     RNG *rng = NULL;
 
@@ -283,7 +284,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                      do_add,
                      wmd->add_threshold,
                      do_rem,
-                     wmd->rem_threshold);
+                     wmd->rem_threshold,
+                     do_normalize);
 
   /* If weight preview enabled... */
 #if 0 /* XXX Currently done in mod stack :/ */

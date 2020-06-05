@@ -249,7 +249,9 @@ static void draw_azone_arrow(float x1, float y1, float x2, float y2, AZEdge edge
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   GPU_blend(true);
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+  /* NOTE(fclem): There is something strange going on with Mesa and GPU_SHADER_2D_UNIFORM_COLOR
+   * that causes a crash on some GPUs (see T76113). Using 3D variant avoid the issue. */
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   immUniformColor4f(0.8f, 0.8f, 0.8f, 0.4f);
 
   immBegin(GPU_PRIM_TRI_FAN, 6);
@@ -267,7 +269,7 @@ static void draw_azone_arrow(float x1, float y1, float x2, float y2, AZEdge edge
   GPU_blend(false);
 }
 
-static void region_draw_azone_tab_arrow(AZone *az)
+static void region_draw_azone_tab_arrow(ScrArea *area, ARegion *region, AZone *az)
 {
   GPU_blend(true);
 
@@ -287,7 +289,9 @@ static void region_draw_azone_tab_arrow(AZone *az)
       break;
   }
 
-  float color[4] = {0.05f, 0.05f, 0.05f, 0.4f};
+  /* Workaround for different color spaces between normal areas and the ones using GPUViewports. */
+  float alpha = WM_region_use_viewport(area, region) ? 0.6f : 0.4f;
+  float color[4] = {0.05f, 0.05f, 0.05f, alpha};
   UI_draw_roundbox_aa(
       true, (float)az->x1, (float)az->y1, (float)az->x2, (float)az->y2, 4.0f, color);
 
@@ -328,7 +332,7 @@ static void region_draw_azones(ScrArea *area, ARegion *region)
         if (az->region) {
           /* only display tab or icons when the region is hidden */
           if (az->region->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) {
-            region_draw_azone_tab_arrow(az);
+            region_draw_azone_tab_arrow(area, region, az);
           }
         }
       }
@@ -2341,6 +2345,15 @@ BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
   return false;
 }
 
+/**
+ * Builds the panel layout for the input \a panel or type \a pt.
+ *
+ * \param panel The panel to draw. Can be null, in which case a panel with the type of \a pt will
+ * be created.
+ * \param unique_panel_str A unique identifier for the name of the \a uiBlock associated with the
+ * panel. Used when the panel is an instanced panel so a unique identifier is needed to find the
+ * correct old \a uiBlock, and NULL otherwise.
+ */
 static void ed_panel_draw(const bContext *C,
                           ScrArea *area,
                           ARegion *region,
@@ -2349,18 +2362,27 @@ static void ed_panel_draw(const bContext *C,
                           Panel *panel,
                           int w,
                           int em,
-                          bool vertical)
+                          bool vertical,
+                          char *unique_panel_str)
 {
   const uiStyle *style = UI_style_get_dpi();
 
-  /* draw panel */
-  uiBlock *block = UI_block_begin(C, region, pt->idname, UI_EMBOSS);
+  /* Draw panel. */
+
+  char block_name[BKE_ST_MAXNAME + LIST_PANEL_UNIQUE_STR_LEN];
+  strncpy(block_name, pt->idname, BKE_ST_MAXNAME);
+  if (unique_panel_str != NULL) {
+    /* Instanced panels should have already been added at this point. */
+    strncat(block_name, unique_panel_str, LIST_PANEL_UNIQUE_STR_LEN);
+  }
+  uiBlock *block = UI_block_begin(C, region, block_name, UI_EMBOSS);
 
   bool open;
   panel = UI_panel_begin(area, region, lb, block, pt, panel, &open);
 
   /* bad fixed values */
   int xco, yco, h = 0;
+  int headerend = w - UI_UNIT_X;
 
   if (pt->draw_header_preset && !(pt->flag & PNL_NO_HEADER) && (open || vertical)) {
     /* for preset menu */
@@ -2376,8 +2398,6 @@ static void ed_panel_draw(const bContext *C,
 
     pt->draw_header_preset(C, panel);
 
-    int headerend = w - UI_UNIT_X;
-
     UI_block_layout_resolve(block, &xco, &yco);
     UI_block_translate(block, headerend - xco, 0);
     panel->layout = NULL;
@@ -2387,9 +2407,24 @@ static void ed_panel_draw(const bContext *C,
     int labelx, labely;
     UI_panel_label_offset(block, &labelx, &labely);
 
-    /* for enabled buttons */
-    panel->layout = UI_block_layout(
-        block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
+    /* Unusual case: Use expanding layout (buttons stretch to available width). */
+    if (pt->flag & PNL_LAYOUT_HEADER_EXPAND) {
+      uiLayout *layout = UI_block_layout(block,
+                                         UI_LAYOUT_VERTICAL,
+                                         UI_LAYOUT_PANEL,
+                                         labelx,
+                                         labely,
+                                         headerend - 2 * style->panelspace,
+                                         1,
+                                         0,
+                                         style);
+      panel->layout = uiLayoutRow(layout, false);
+    }
+    /* Regular case: Normal panel with fixed size buttons. */
+    else {
+      panel->layout = UI_block_layout(
+          block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
+    }
 
     pt->draw_header(C, panel);
 
@@ -2445,7 +2480,16 @@ static void ed_panel_draw(const bContext *C,
       Panel *child_panel = UI_panel_find_by_type(&panel->children, child_pt);
 
       if (child_pt->draw && (!child_pt->poll || child_pt->poll(C, child_pt))) {
-        ed_panel_draw(C, area, region, &panel->children, child_pt, child_panel, w, em, vertical);
+        ed_panel_draw(C,
+                      area,
+                      region,
+                      &panel->children,
+                      child_pt,
+                      child_panel,
+                      w,
+                      em,
+                      vertical,
+                      unique_panel_str);
       }
     }
   }
@@ -2567,6 +2611,7 @@ void ED_region_panels_layout_ex(const bContext *C,
   }
 
   w -= margin_x;
+  int w_box_panel = w - UI_PANEL_BOX_STYLE_MARGIN * 2.0f;
 
   /* create panels */
   UI_panels_begin(C, region);
@@ -2574,8 +2619,14 @@ void ED_region_panels_layout_ex(const bContext *C,
   /* set view2d view matrix  - UI_block_begin() stores it */
   UI_view2d_view_ortho(v2d);
 
+  bool has_instanced_panel = false;
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
+
+    if (pt->flag & PNL_INSTANCED) {
+      has_instanced_panel = true;
+      continue;
+    }
     Panel *panel = UI_panel_find_by_type(&region->panels, pt);
 
     if (use_category_tabs && pt->category[0] && !STREQ(category, pt->category)) {
@@ -2589,7 +2640,46 @@ void ED_region_panels_layout_ex(const bContext *C,
       update_tot_size = false;
     }
 
-    ed_panel_draw(C, area, region, &region->panels, pt, panel, w, em, vertical);
+    ed_panel_draw(C,
+                  area,
+                  region,
+                  &region->panels,
+                  pt,
+                  panel,
+                  (pt->flag & PNL_DRAW_BOX) ? w_box_panel : w,
+                  em,
+                  vertical,
+                  NULL);
+  }
+
+  /* Draw "polyinstantaited" panels that don't have a 1 to 1 correspondence with their types. */
+  if (has_instanced_panel) {
+    LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+      if (panel->type == NULL) {
+        continue; /* Some panels don't have a type.. */
+      }
+      if (panel->type->flag & PNL_INSTANCED) {
+        if (panel && UI_panel_is_dragging(panel)) {
+          /* Prevent View2d.tot rectangle size changes while dragging panels. */
+          update_tot_size = false;
+        }
+
+        /* Use a unique identifier for instanced panels, otherwise an old block for a different
+         * panel of the same type might be found. */
+        char unique_panel_str[8];
+        UI_list_panel_unique_str(panel, unique_panel_str);
+        ed_panel_draw(C,
+                      area,
+                      region,
+                      &region->panels,
+                      panel->type,
+                      panel,
+                      (panel->type->flag & PNL_DRAW_BOX) ? w_box_panel : w,
+                      em,
+                      vertical,
+                      unique_panel_str);
+      }
+    }
   }
 
   /* align panels and return size */

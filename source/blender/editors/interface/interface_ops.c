@@ -1137,8 +1137,8 @@ static bool jump_to_target_button(bContext *C, bool poll)
       const uiButSearch *search_but = (but->type == UI_BTYPE_SEARCH_MENU) ? (uiButSearch *)but :
                                                                             NULL;
 
-      if (search_but && search_but->item_collect_func == ui_rna_collection_search_cb) {
-        uiRNACollectionSearch *coll_search = search_but->item_collect_arg;
+      if (search_but && search_but->search && search_but->search->update_fn == ui_rna_collection_search_update_fn) {
+        uiRNACollectionSearch *coll_search = search_but->search->arg;
 
         char str_buf[MAXBONENAME];
         char *str_ptr = RNA_property_string_get_alloc(&ptr, prop, str_buf, sizeof(str_buf), NULL);
@@ -1680,7 +1680,7 @@ static void UI_OT_button_execute(wmOperatorType *ot)
 
 static int button_string_clear_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  uiBut *but = UI_context_active_but_get(C);
+  uiBut *but = UI_context_active_but_get_respect_menu(C);
 
   if (but) {
     ui_but_active_string_clear_and_exit(C, but);

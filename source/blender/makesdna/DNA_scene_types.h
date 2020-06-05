@@ -29,10 +29,6 @@
 /* XXX, temp feature - campbell */
 #define DURIAN_CAMERA_SWITCH
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "DNA_ID.h"
 #include "DNA_collection_types.h"
 #include "DNA_color_types.h" /* color management */
@@ -45,6 +41,10 @@ extern "C" {
 #include "DNA_userdef_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_view3d_types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct AnimData;
 struct Brush;
@@ -555,13 +555,14 @@ typedef struct BakeData {
   short margin, flag;
 
   float cage_extrusion;
+  float max_ray_distance;
   int pass_filter;
 
   char normal_swizzle[3];
   char normal_space;
 
   char save_mode;
-  char _pad[3];
+  char _pad[7];
 
   struct Object *cage_object;
 } BakeData;
@@ -907,8 +908,6 @@ typedef struct ImagePaintSettings {
   /** Mode used for texture painting. */
   int mode;
 
-  /** Wm handle. */
-  void *paintcursor;
   /** Workaround until we support true layer masks. */
   struct Image *stencil;
   /** Clone layer for image mode for projective texture painting. */
@@ -1644,6 +1643,11 @@ typedef struct SceneEEVEE {
   float light_threshold;
 } SceneEEVEE;
 
+typedef struct SceneGpencil {
+  float smaa_threshold;
+  char _pad[4];
+} SceneGpencil;
+
 /* *************************************************************** */
 /* Scene ID-Block */
 
@@ -1775,6 +1779,7 @@ typedef struct Scene {
 
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
+  struct SceneGpencil grease_pencil_settings;
 } Scene;
 
 /* **************** RENDERDATA ********************* */

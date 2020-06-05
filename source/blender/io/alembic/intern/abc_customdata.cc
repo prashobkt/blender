@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2016 Kévin Dietrich.
@@ -27,7 +27,6 @@
 #include <algorithm>
 #include <unordered_map>
 
-extern "C" {
 #include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 
@@ -35,7 +34,6 @@ extern "C" {
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
-}
 
 /* NOTE: for now only UVs and Vertex Colors are supported for streaming.
  * Although Alembic only allows for a single UV layer per {I|O}Schema, and does
@@ -146,7 +144,7 @@ const char *get_uv_sample(UVSample &sample, const CDStreamConfig &config, Custom
  * - (optional due to its behavior) tag as UV using Alembic::AbcGeom::SetIsUV
  */
 static void write_uv(const OCompoundProperty &prop,
-                     const CDStreamConfig &config,
+                     CDStreamConfig &config,
                      void *data,
                      const char *name)
 {
@@ -159,13 +157,18 @@ static void write_uv(const OCompoundProperty &prop,
     return;
   }
 
-  OV2fGeomParam param(prop, name, true, kFacevaryingScope, 1);
+  std::string uv_map_name(name);
+  OV2fGeomParam param = config.abc_uv_maps[uv_map_name];
 
+  if (!param.valid()) {
+    param = OV2fGeomParam(prop, name, true, kFacevaryingScope, 1);
+  }
   OV2fGeomParam::Sample sample(V2fArraySample(&uvs.front(), uvs.size()),
                                UInt32ArraySample(&indices.front(), indices.size()),
                                kFacevaryingScope);
-
   param.set(sample);
+
+  config.abc_uv_maps[uv_map_name] = param;
 }
 
 /* Convention to write Vertex Colors:
@@ -219,7 +222,7 @@ static void write_mcol(const OCompoundProperty &prop,
 }
 
 void write_custom_data(const OCompoundProperty &prop,
-                       const CDStreamConfig &config,
+                       CDStreamConfig &config,
                        CustomData *data,
                        int data_type)
 {

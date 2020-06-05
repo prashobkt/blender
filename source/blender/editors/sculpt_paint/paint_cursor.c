@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2009 by Nicholas Bishop
@@ -1674,23 +1674,13 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
 /* Public API */
 
-void paint_cursor_start(bContext *C, bool (*poll)(bContext *C))
+void paint_cursor_start(Paint *p, bool (*poll)(bContext *C))
 {
-  Paint *p = BKE_paint_get_active_from_context(C);
-
   if (p && !p->paint_cursor) {
     p->paint_cursor = WM_paint_cursor_activate(
-        CTX_wm_manager(C), SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
+        SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
   }
 
   /* Invalidate the paint cursors. */
   BKE_paint_invalidate_overlay_all();
-}
-
-void paint_cursor_start_explicit(Paint *p, wmWindowManager *wm, bool (*poll)(bContext *C))
-{
-  if (p && !p->paint_cursor) {
-    p->paint_cursor = WM_paint_cursor_activate(
-        wm, SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
-  }
 }

@@ -281,7 +281,7 @@ option(WITH_ALEMBIC             "Enable Alembic Support" ON)
 option(WITH_ALEMBIC_HDF5        "Enable Legacy Alembic Support (not officially supported)" OFF)
 
 # Universal Scene Description support
-option(WITH_USD                 "Enable Universal Scene Description (USD) Support" OFF)
+option(WITH_USD                 "Enable Universal Scene Description (USD) Support" ON)
 
 # 3D format support
 # Disable opencollada when we don't have precompiled libs
@@ -546,6 +546,12 @@ if(WIN32)
   option(WITH_WINDOWS_SCCACHE "Use sccache to speed up builds (Ninja builder only)" OFF)
   mark_as_advanced(WITH_WINDOWS_SCCACHE)
 
+  option(WITH_WINDOWS_PDB "Generate a pdb file for client side stacktraces" ON)
+  mark_as_advanced(WITH_WINDOWS_PDB)
+
+  option(WITH_WINDOWS_STRIPPED_PDB "Use a stripped PDB file" On)
+  mark_as_advanced(WITH_WINDOWS_STRIPPED_PDB)
+
 endif()
 
 # The following only works with the Ninja generator in CMake >= 3.0.
@@ -620,12 +626,6 @@ endif()
 # python module, needs some different options
 if(WITH_PYTHON_MODULE AND WITH_PYTHON_INSTALL)
   message(FATAL_ERROR "WITH_PYTHON_MODULE requires WITH_PYTHON_INSTALL to be OFF")
-endif()
-
-
-# may as well build python module without a UI
-if(WITH_PYTHON_MODULE)
-  set(WITH_HEADLESS ON)
 endif()
 
 if(NOT WITH_PYTHON)
@@ -1733,6 +1733,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_ALEMBIC)
   info_cfg_option(WITH_QUADRIFLOW)
   info_cfg_option(WITH_USD)
+  info_cfg_option(WITH_TBB)
 
   info_cfg_text("Compiler Options:")
   info_cfg_option(WITH_BUILDINFO)

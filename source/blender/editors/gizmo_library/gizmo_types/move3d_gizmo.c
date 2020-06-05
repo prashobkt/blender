@@ -106,7 +106,8 @@ static void move_geom_draw(const wmGizmo *gz,
   wm_gizmo_geometryinfo_draw(&wm_gizmo_geom_data_move3d, select);
 #else
   const int draw_style = RNA_enum_get(gz->ptr, "draw_style");
-  const bool filled = ((draw_options & (select ? (ED_GIZMO_MOVE_DRAW_FLAG_FILL |
+  const bool filled = (draw_style != ED_GIZMO_MOVE_STYLE_CROSS_2D) &&
+                      ((draw_options & (select ? (ED_GIZMO_MOVE_DRAW_FLAG_FILL |
                                                   ED_GIZMO_MOVE_DRAW_FLAG_FILL_SELECT) :
                                                  ED_GIZMO_MOVE_DRAW_FLAG_FILL)));
 
@@ -381,7 +382,7 @@ static int gizmo_move_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
       switch (area->spacetype) {
         case SPACE_VIEW3D: {
           inter->snap_context_v3d = ED_transform_snap_object_context_create_view3d(
-              CTX_data_main(C), CTX_data_scene(C), 0, CTX_wm_region(C), CTX_wm_view3d(C));
+              CTX_data_scene(C), 0, CTX_wm_region(C), CTX_wm_view3d(C));
           break;
         }
         default:

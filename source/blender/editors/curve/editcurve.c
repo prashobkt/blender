@@ -58,6 +58,7 @@
 
 #include "ED_curve.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_transform.h"
 #include "ED_transform_snap_object_context.h"
@@ -935,13 +936,13 @@ static void fcurve_path_rename(AnimData *adt,
     nextfcu = fcu->next;
     if (STREQLEN(fcu->rna_path, orig_rna_path, len)) {
       char *spath, *suffix = fcu->rna_path + len;
-      nfcu = copy_fcurve(fcu);
+      nfcu = BKE_fcurve_copy(fcu);
       spath = nfcu->rna_path;
       nfcu->rna_path = BLI_sprintfN("%s%s", rna_path, suffix);
 
-      /* copy_fcurve() sets nfcu->grp to NULL. To maintain the groups, we need to keep the pointer.
-       * As a result, the group's 'channels' pointers will be wrong, which is fixed by calling
-       * `action_groups_reconstruct(action)` later, after all fcurves have been renamed. */
+      /* BKE_fcurve_copy() sets nfcu->grp to NULL. To maintain the groups, we need to keep the
+       * pointer. As a result, the group's 'channels' pointers will be wrong, which is fixed by
+       * calling `action_groups_reconstruct(action)` later, after all fcurves have been renamed. */
       nfcu->grp = fcu->grp;
       BLI_addtail(curves, nfcu);
 
@@ -955,7 +956,7 @@ static void fcurve_path_rename(AnimData *adt,
         BLI_remlink(&adt->drivers, fcu);
       }
 
-      free_fcurve(fcu);
+      BKE_fcurve_free(fcu);
 
       MEM_freeN(spath);
     }
@@ -971,7 +972,7 @@ static void fcurve_remove(AnimData *adt, ListBase *orig_curves, FCurve *fcu)
     action_groups_remove_channel(adt->action, fcu);
   }
 
-  free_fcurve(fcu);
+  BKE_fcurve_free(fcu);
 }
 
 static void curve_rename_fcurves(Curve *cu, ListBase *orig_curves)
@@ -1499,6 +1500,8 @@ static int separate_exec(bContext *C, wmOperator *op)
     }
     return OPERATOR_CANCELLED;
   }
+
+  ED_outliner_select_sync_from_object_tag(C);
 
   return OPERATOR_FINISHED;
 }
@@ -3589,6 +3592,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
 
               memcpy(bpn, nextbp, sizeof(BPoint));
               interp_v4_v4v4(bpn->vec, bp->vec, nextbp->vec, factor);
+              bpn->radius = interpf(bp->radius, nextbp->radius, factor);
               bpn++;
             }
           }
@@ -4919,7 +4923,7 @@ bool ED_curve_editnurb_select_pick(
       }
     }
     else {
-      BKE_nurbList_flag_set(editnurb, 0);
+      BKE_nurbList_flag_set(editnurb, SELECT, false);
 
       if (bezt) {
 
@@ -5631,7 +5635,7 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       const float mval[2] = {UNPACK2(event->mval)};
 
       struct SnapObjectContext *snap_context = ED_transform_snap_object_context_create_view3d(
-          vc.bmain, vc.scene, 0, vc.region, vc.v3d);
+          vc.scene, 0, vc.region, vc.v3d);
 
       ED_transform_snap_object_project_view3d(
           snap_context,

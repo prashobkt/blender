@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2009 by Nicholas Bishop
@@ -23,6 +23,9 @@
 /** \file
  * \ingroup bke
  */
+
+#include "BLI_utildefines.h"
+#include "DNA_object_enums.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,9 +67,6 @@ struct bToolRef;
 struct tPaletteColorHSV;
 
 enum eOverlayFlags;
-
-#include "BLI_utildefines.h"
-#include "DNA_object_enums.h"
 
 extern const char PAINT_CURSOR_SCULPT[3];
 extern const char PAINT_CURSOR_VERTEX_PAINT[3];
@@ -239,6 +239,7 @@ typedef struct SculptPoseIKChainSegment {
   float initial_orig[3];
   float initial_head[3];
   float len;
+  float scale;
   float rot[4];
   float *weights;
 
@@ -252,6 +253,7 @@ typedef struct SculptPoseIKChainSegment {
 typedef struct SculptPoseIKChain {
   SculptPoseIKChainSegment *segments;
   int tot_segments;
+  float grab_delta_offset[3];
 } SculptPoseIKChain;
 
 /* Cloth Brush */
@@ -402,7 +404,7 @@ typedef struct SculptSession {
     /* TODO: identify sculpt-only fields */
     // struct { ... } sculpt;
   } mode;
-  int mode_type;
+  eObjectMode mode_type;
 
   /* This flag prevents PBVH from being freed when creating the vp_handle for texture paint. */
   bool building_vp_handle;

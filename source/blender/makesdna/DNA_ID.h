@@ -25,13 +25,12 @@
 #ifndef __DNA_ID_H__
 #define __DNA_ID_H__
 
+#include "DNA_defs.h"
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "DNA_defs.h"
 
 struct FileData;
 struct GHash;
@@ -328,7 +327,7 @@ typedef struct Library {
 
   /* Temp data needed by read/write code. */
   int temp_index;
-  /** See BLENDER_VERSION, BLENDER_SUBVERSION, needed for do_versions. */
+  /** See BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION, needed for do_versions. */
   short versionfile, subversionfile;
 } Library;
 

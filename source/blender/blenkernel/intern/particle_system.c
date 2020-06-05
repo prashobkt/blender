@@ -2163,7 +2163,7 @@ static void psys_sph_flush_springs(SPHData *sphdata)
   BLI_buffer_field_free(&sphdata->new_springs);
 }
 
-void psys_sph_finalise(SPHData *sphdata)
+void psys_sph_finalize(SPHData *sphdata)
 {
   psys_sph_flush_springs(sphdata);
 
@@ -3450,7 +3450,7 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
   bool realloc_roots;
 
   if (!psys->clmd) {
-    psys->clmd = (ClothModifierData *)modifier_new(eModifierType_Cloth);
+    psys->clmd = (ClothModifierData *)BKE_modifier_new(eModifierType_Cloth);
     psys->clmd->sim_parms->goalspring = 0.0f;
     psys->clmd->sim_parms->flags |= CLOTH_SIMSETTINGS_FLAG_RESIST_SPRING_COMPRESS;
     psys->clmd->coll_parms->flags &= ~CLOTH_COLLSETTINGS_FLAG_SELF;
@@ -4046,7 +4046,7 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 
       BLI_spin_end(&task_data.spin);
 
-      psys_sph_finalise(&sphdata);
+      psys_sph_finalize(&sphdata);
       break;
     }
   }
@@ -4183,7 +4183,8 @@ static void particles_fluid_step(ParticleSimulationData *sim,
 #else
   {
     Object *ob = sim->ob;
-    FluidModifierData *mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Fluid);
+    FluidModifierData *mmd = (FluidModifierData *)BKE_modifiers_findby_type(ob,
+                                                                            eModifierType_Fluid);
 
     if (mmd && mmd->domain && mmd->domain->fluid) {
       FluidDomainSettings *mds = mmd->domain;

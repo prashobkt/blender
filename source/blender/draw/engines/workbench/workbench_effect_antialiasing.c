@@ -19,7 +19,7 @@
 /** \file
  * \ingroup draw_engine
  *
- * Anti-aliasing:
+ * Anti-Aliasing:
  *
  * We use SMAA (Smart Morphological Anti-Aliasing) as a fast antialiasing solution.
  *
@@ -176,6 +176,14 @@ void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata)
     }
   }
 
+  /* Reset the TAA when we have already draw a sample, but the sample count differs from previous
+   * time. This removes render artifacts when the viewport anti-aliasing in the user preferences is
+   * set to a lower value. */
+  if (wpd->taa_sample_len != wpd->taa_sample_len_previous) {
+    wpd->taa_sample = 0;
+    wpd->taa_sample_len_previous = wpd->taa_sample_len;
+  }
+
   if (wpd->view_updated) {
     wpd->taa_sample = 0;
     wpd->view_updated = false;
@@ -258,13 +266,8 @@ void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata)
                                                 false,
                                                 NULL);
 
-      GPU_texture_bind(txl->smaa_search_tx, 0);
       GPU_texture_filter_mode(txl->smaa_search_tx, true);
-      GPU_texture_unbind(txl->smaa_search_tx);
-
-      GPU_texture_bind(txl->smaa_area_tx, 0);
       GPU_texture_filter_mode(txl->smaa_area_tx, true);
-      GPU_texture_unbind(txl->smaa_area_tx);
     }
   }
   else {

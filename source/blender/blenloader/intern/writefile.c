@@ -162,6 +162,7 @@
 #include "BKE_gpencil_modifier.h"
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
+#include "BKE_lib_id.h"
 #include "BKE_lib_override.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
@@ -176,6 +177,7 @@
 
 #include "BLO_blend_defs.h"
 #include "BLO_blend_validate.h"
+#include "BLO_read_write.h"
 #include "BLO_readfile.h"
 #include "BLO_undofile.h"
 #include "BLO_writefile.h"
@@ -326,12 +328,7 @@ typedef struct {
   bool error;
 
   /** #MemFile writing (used for undo). */
-  struct {
-    MemFile *current;
-    MemFile *compare;
-    /** Use to de-duplicate chunks when writing. */
-    MemFileChunk *compare_chunk;
-  } mem;
+  MemFileWriteData mem;
   /** When true, write to #WriteData.current, could also call 'is_undo'. */
   bool use_memfile;
 
@@ -342,6 +339,10 @@ typedef struct {
    */
   WriteWrap *ww;
 } WriteData;
+
+typedef struct BlendWriter {
+  WriteData *wd;
+} BlendWriter;
 
 static WriteData *writedata_new(WriteWrap *ww)
 {
@@ -370,7 +371,7 @@ static void writedata_do_write(WriteData *wd, const void *mem, int memlen)
 
   /* memory based save */
   if (wd->use_memfile) {
-    memfile_chunk_add(wd->mem.current, mem, memlen, &wd->mem.compare_chunk);
+    BLO_memfile_chunk_add(&wd->mem, mem, memlen);
   }
   else {
     if (wd->ww->write(wd->ww, mem, memlen) != memlen) {
@@ -471,9 +472,7 @@ static WriteData *mywrite_begin(WriteWrap *ww, MemFile *compare, MemFile *curren
   WriteData *wd = writedata_new(ww);
 
   if (current != NULL) {
-    wd->mem.current = current;
-    wd->mem.compare = compare;
-    wd->mem.compare_chunk = compare ? compare->chunks.first : NULL;
+    BLO_memfile_write_init(&wd->mem, current, compare);
     wd->use_memfile = true;
   }
 
@@ -493,10 +492,56 @@ static bool mywrite_end(WriteData *wd)
     wd->buf_used_len = 0;
   }
 
+  if (wd->use_memfile) {
+    BLO_memfile_write_finalize(&wd->mem);
+  }
+
   const bool err = wd->error;
   writedata_free(wd);
 
   return err;
+}
+
+/**
+ * Start writing of data related to a single ID.
+ *
+ * Only does something when storing an undo step.
+ */
+static void mywrite_id_begin(WriteData *wd, ID *id)
+{
+  if (wd->use_memfile) {
+    wd->mem.current_id_session_uuid = id->session_uuid;
+
+    /* If current next memchunk does not match the ID we are about to write, try to find the
+     * correct memchunk in the mapping using ID's session_uuid. */
+    if (wd->mem.id_session_uuid_mapping != NULL &&
+        (wd->mem.reference_current_chunk == NULL ||
+         wd->mem.reference_current_chunk->id_session_uuid != id->session_uuid)) {
+      void *ref = BLI_ghash_lookup(wd->mem.id_session_uuid_mapping,
+                                   POINTER_FROM_UINT(id->session_uuid));
+      if (ref != NULL) {
+        wd->mem.reference_current_chunk = ref;
+      }
+      /* Else, no existing memchunk found, i.e. this is supposed to be a new ID. */
+    }
+    /* Otherwise, we try with the current memchunk in any case, whether it is matching current
+     * ID's session_uuid or not. */
+  }
+}
+
+/**
+ * Start writing of data related to a single ID.
+ *
+ * Only does something when storing an undo step.
+ */
+static void mywrite_id_end(WriteData *wd, ID *UNUSED(id))
+{
+  if (wd->use_memfile) {
+    /* Very important to do it after every ID write now, otherwise we cannot know whether a
+     * specific ID changed or not. */
+    mywrite_flush(wd);
+    wd->mem.current_id_session_uuid = MAIN_ID_SESSION_UUID_UNSET;
+  }
 }
 
 /** \} */
@@ -634,79 +679,86 @@ static void writelist_id(WriteData *wd, int filecode, const char *structname, co
  * These functions are used by blender's .blend system for file saving/loading.
  * \{ */
 
-void IDP_WriteProperty_OnlyData(const IDProperty *prop, void *wd);
-void IDP_WriteProperty(const IDProperty *prop, void *wd);
+void IDP_WriteProperty_OnlyData(const IDProperty *prop, BlendWriter *writer);
+void IDP_WriteProperty(const IDProperty *prop, WriteData *wd);
+void IDP_WriteProperty_new_api(const IDProperty *prop, BlendWriter *writer);
 
-static void IDP_WriteArray(const IDProperty *prop, void *wd)
+static void IDP_WriteArray(const IDProperty *prop, BlendWriter *writer)
 {
   /*REMEMBER to set totalen to len in the linking code!!*/
   if (prop->data.pointer) {
-    writedata(wd, DATA, MEM_allocN_len(prop->data.pointer), prop->data.pointer);
+    BLO_write_raw(writer, MEM_allocN_len(prop->data.pointer), prop->data.pointer);
 
     if (prop->subtype == IDP_GROUP) {
       IDProperty **array = prop->data.pointer;
       int a;
 
       for (a = 0; a < prop->len; a++) {
-        IDP_WriteProperty(array[a], wd);
+        IDP_WriteProperty_new_api(array[a], writer);
       }
     }
   }
 }
 
-static void IDP_WriteIDPArray(const IDProperty *prop, void *wd)
+static void IDP_WriteIDPArray(const IDProperty *prop, BlendWriter *writer)
 {
   /*REMEMBER to set totalen to len in the linking code!!*/
   if (prop->data.pointer) {
     const IDProperty *array = prop->data.pointer;
     int a;
 
-    writestruct(wd, DATA, IDProperty, prop->len, array);
+    BLO_write_struct_array(writer, IDProperty, prop->len, array);
 
     for (a = 0; a < prop->len; a++) {
-      IDP_WriteProperty_OnlyData(&array[a], wd);
+      IDP_WriteProperty_OnlyData(&array[a], writer);
     }
   }
 }
 
-static void IDP_WriteString(const IDProperty *prop, void *wd)
+static void IDP_WriteString(const IDProperty *prop, BlendWriter *writer)
 {
   /*REMEMBER to set totalen to len in the linking code!!*/
-  writedata(wd, DATA, prop->len, prop->data.pointer);
+  BLO_write_raw(writer, prop->len, prop->data.pointer);
 }
 
-static void IDP_WriteGroup(const IDProperty *prop, void *wd)
+static void IDP_WriteGroup(const IDProperty *prop, BlendWriter *writer)
 {
   IDProperty *loop;
 
   for (loop = prop->data.group.first; loop; loop = loop->next) {
-    IDP_WriteProperty(loop, wd);
+    IDP_WriteProperty_new_api(loop, writer);
   }
 }
 
 /* Functions to read/write ID Properties */
-void IDP_WriteProperty_OnlyData(const IDProperty *prop, void *wd)
+void IDP_WriteProperty_OnlyData(const IDProperty *prop, BlendWriter *writer)
 {
   switch (prop->type) {
     case IDP_GROUP:
-      IDP_WriteGroup(prop, wd);
+      IDP_WriteGroup(prop, writer);
       break;
     case IDP_STRING:
-      IDP_WriteString(prop, wd);
+      IDP_WriteString(prop, writer);
       break;
     case IDP_ARRAY:
-      IDP_WriteArray(prop, wd);
+      IDP_WriteArray(prop, writer);
       break;
     case IDP_IDPARRAY:
-      IDP_WriteIDPArray(prop, wd);
+      IDP_WriteIDPArray(prop, writer);
       break;
   }
 }
 
-void IDP_WriteProperty(const IDProperty *prop, void *wd)
+void IDP_WriteProperty_new_api(const IDProperty *prop, BlendWriter *writer)
 {
-  writestruct(wd, DATA, IDProperty, 1, prop);
-  IDP_WriteProperty_OnlyData(prop, wd);
+  BLO_write_struct(writer, IDProperty, prop);
+  IDP_WriteProperty_OnlyData(prop, writer);
+}
+
+void IDP_WriteProperty(const IDProperty *prop, WriteData *wd)
+{
+  BlendWriter writer = {wd};
+  IDP_WriteProperty_new_api(prop, &writer);
 }
 
 static void write_iddata(WriteData *wd, ID *id)
@@ -1646,7 +1698,7 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
   }
 
   for (md = modbase->first; md; md = md->next) {
-    const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+    const ModifierTypeInfo *mti = BKE_modifier_get_info(md->type);
     if (mti == NULL) {
       return;
     }
@@ -1829,7 +1881,7 @@ static void write_gpencil_modifiers(WriteData *wd, ListBase *modbase)
   }
 
   for (md = modbase->first; md; md = md->next) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
     if (mti == NULL) {
       return;
     }
@@ -1896,7 +1948,7 @@ static void write_shaderfxs(WriteData *wd, ListBase *fxbase)
   }
 
   for (fx = fxbase->first; fx; fx = fx->next) {
-    const ShaderFxTypeInfo *fxi = BKE_shaderfxType_getInfo(fx->type);
+    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
     if (fxi == NULL) {
       return;
     }
@@ -3105,11 +3157,11 @@ static void write_area_map(WriteData *wd, ScrAreaMap *area_map)
   }
 }
 
-static void write_windowmanager(WriteData *wd, wmWindowManager *wm, const void *id_address)
+static void write_windowmanager(BlendWriter *writer, wmWindowManager *wm, const void *id_address)
 {
-  writestruct_at_address(wd, ID_WM, wmWindowManager, 1, id_address, wm);
-  write_iddata(wd, &wm->id);
-  write_wm_xr_data(wd, &wm->xr);
+  BLO_write_id_struct(writer, wmWindowManager, id_address, &wm->id);
+  write_iddata(writer->wd, &wm->id);
+  write_wm_xr_data(writer->wd, &wm->xr);
 
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
 #ifndef WITH_GLOBAL_AREA_WRITING
@@ -3121,12 +3173,12 @@ static void write_windowmanager(WriteData *wd, wmWindowManager *wm, const void *
     /* update deprecated screen member (for so loading in 2.7x uses the correct screen) */
     win->screen = BKE_workspace_active_screen_get(win->workspace_hook);
 
-    writestruct(wd, DATA, wmWindow, 1, win);
-    writestruct(wd, DATA, WorkSpaceInstanceHook, 1, win->workspace_hook);
-    writestruct(wd, DATA, Stereo3dFormat, 1, win->stereo3d_format);
+    BLO_write_struct(writer, wmWindow, win);
+    BLO_write_struct(writer, WorkSpaceInstanceHook, win->workspace_hook);
+    BLO_write_struct(writer, Stereo3dFormat, win->stereo3d_format);
 
 #ifdef WITH_GLOBAL_AREA_WRITING
-    write_area_map(wd, &win->global_areas);
+    write_area_map(writer->wd, &win->global_areas);
 #else
     win->global_areas = global_areas;
 #endif
@@ -3314,6 +3366,24 @@ static void write_brush(WriteData *wd, Brush *brush, const void *id_address)
       }
       if (brush->gpencil_settings->curve_jitter) {
         write_curvemapping(wd, brush->gpencil_settings->curve_jitter);
+      }
+      if (brush->gpencil_settings->curve_rand_pressure) {
+        write_curvemapping(wd, brush->gpencil_settings->curve_rand_pressure);
+      }
+      if (brush->gpencil_settings->curve_rand_strength) {
+        write_curvemapping(wd, brush->gpencil_settings->curve_rand_strength);
+      }
+      if (brush->gpencil_settings->curve_rand_uv) {
+        write_curvemapping(wd, brush->gpencil_settings->curve_rand_uv);
+      }
+      if (brush->gpencil_settings->curve_rand_hue) {
+        write_curvemapping(wd, brush->gpencil_settings->curve_rand_hue);
+      }
+      if (brush->gpencil_settings->curve_rand_saturation) {
+        write_curvemapping(wd, brush->gpencil_settings->curve_rand_saturation);
+      }
+      if (brush->gpencil_settings->curve_rand_value) {
+        write_curvemapping(wd, brush->gpencil_settings->curve_rand_value);
       }
     }
     if (brush->gradient) {
@@ -3769,19 +3839,17 @@ static void write_cachefile(WriteData *wd, CacheFile *cache_file, const void *id
   }
 }
 
-static void write_workspace(WriteData *wd, WorkSpace *workspace, const void *id_address)
+static void write_workspace(BlendWriter *writer, WorkSpace *workspace, const void *id_address)
 {
-  ListBase *layouts = BKE_workspace_layouts_get(workspace);
-
-  writestruct_at_address(wd, ID_WS, WorkSpace, 1, id_address, workspace);
-  write_iddata(wd, &workspace->id);
-  writelist(wd, DATA, WorkSpaceLayout, layouts);
-  writelist(wd, DATA, WorkSpaceDataRelation, &workspace->hook_layout_relations);
-  writelist(wd, DATA, wmOwnerID, &workspace->owner_ids);
-  writelist(wd, DATA, bToolRef, &workspace->tools);
+  BLO_write_id_struct(writer, WorkSpace, id_address, &workspace->id);
+  write_iddata(writer->wd, &workspace->id);
+  BLO_write_struct_list(writer, WorkSpaceLayout, &workspace->layouts);
+  BLO_write_struct_list(writer, WorkSpaceDataRelation, &workspace->hook_layout_relations);
+  BLO_write_struct_list(writer, wmOwnerID, &workspace->owner_ids);
+  BLO_write_struct_list(writer, bToolRef, &workspace->tools);
   LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
     if (tref->properties) {
-      IDP_WriteProperty(tref->properties, wd);
+      IDP_WriteProperty_new_api(tref->properties, writer);
     }
   }
 }
@@ -3899,6 +3967,11 @@ static void write_libraries(WriteData *wd, Main *main)
     if (main->curlib && main->curlib->packedfile) {
       found_one = true;
     }
+    else if (wd->use_memfile) {
+      /* When writing undo step we always write all existing libraries, makes reading undo step
+       * much easier when dealing with purely indirectly used libraries. */
+      found_one = true;
+    }
     else {
       found_one = false;
       while (!found_one && tot--) {
@@ -3986,12 +4059,12 @@ static void write_global(WriteData *wd, int fileflags, Main *mainvar)
 
   fg.globalf = G.f;
   BLI_strncpy(fg.filename, mainvar->name, sizeof(fg.filename));
-  sprintf(subvstr, "%4d", BLENDER_SUBVERSION);
+  sprintf(subvstr, "%4d", BLENDER_FILE_SUBVERSION);
   memcpy(fg.subvstr, subvstr, 4);
 
-  fg.subversion = BLENDER_SUBVERSION;
-  fg.minversion = BLENDER_MINVERSION;
-  fg.minsubversion = BLENDER_MINSUBVERSION;
+  fg.subversion = BLENDER_FILE_SUBVERSION;
+  fg.minversion = BLENDER_FILE_MIN_VERSION;
+  fg.minsubversion = BLENDER_FILE_MIN_SUBVERSION;
 #ifdef WITH_BUILDINFO
   {
     extern unsigned long build_commit_timestamp;
@@ -4045,7 +4118,7 @@ static bool write_file_handle(Main *mainvar,
           "BLENDER%c%c%.3d",
           (sizeof(void *) == 8) ? '-' : '_',
           (ENDIAN_ORDER == B_ENDIAN) ? 'V' : 'v',
-          BLENDER_VERSION);
+          BLENDER_FILE_VERSION);
 
   mywrite(wd, buf, 12);
 
@@ -4117,16 +4190,25 @@ static bool write_file_handle(Main *mainvar,
           }
         }
 
+        mywrite_id_begin(wd, id);
+
         memcpy(id_buffer, id, idtype_struct_size);
 
         ((ID *)id_buffer)->tag = 0;
+        /* Those listbase data change every time we add/remove an ID, and also often when renaming
+         * one (due to re-sorting). This avoids generating a lot of false 'is changed' detections
+         * between undo steps. */
+        ((ID *)id_buffer)->prev = NULL;
+        ((ID *)id_buffer)->next = NULL;
+
+        BlendWriter writer = {wd};
 
         switch ((ID_Type)GS(id->name)) {
           case ID_WM:
-            write_windowmanager(wd, (wmWindowManager *)id_buffer, id);
+            write_windowmanager(&writer, (wmWindowManager *)id_buffer, id);
             break;
           case ID_WS:
-            write_workspace(wd, (WorkSpace *)id_buffer, id);
+            write_workspace(&writer, (WorkSpace *)id_buffer, id);
             break;
           case ID_SCR:
             write_screen(wd, (bScreen *)id_buffer, id);
@@ -4253,11 +4335,7 @@ static bool write_file_handle(Main *mainvar,
           BKE_lib_override_library_operations_store_end(override_storage, id);
         }
 
-        if (wd->use_memfile) {
-          /* Very important to do it after every ID write now, otherwise we cannot know whether a
-           * specific ID changed or not. */
-          mywrite_flush(wd);
-        }
+        mywrite_id_end(wd, id);
       }
 
       if (id_buffer != id_buffer_static) {
@@ -4470,6 +4548,100 @@ bool BLO_write_file_mem(Main *mainvar, MemFile *compare, MemFile *current, int w
   const bool err = write_file_handle(mainvar, NULL, compare, current, write_flags, NULL);
 
   return (err == 0);
+}
+
+void BLO_write_raw(BlendWriter *writer, int size_in_bytes, const void *data_ptr)
+{
+  writedata(writer->wd, DATA, size_in_bytes, data_ptr);
+}
+
+void BLO_write_struct_by_name(BlendWriter *writer, const char *struct_name, const void *data_ptr)
+{
+  int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
+  BLO_write_struct_by_id(writer, struct_id, data_ptr);
+}
+
+void BLO_write_struct_array_by_name(BlendWriter *writer,
+                                    const char *struct_name,
+                                    int array_size,
+                                    const void *data_ptr)
+{
+  int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
+  BLO_write_struct_array_by_id(writer, struct_id, array_size, data_ptr);
+}
+
+void BLO_write_struct_by_id(BlendWriter *writer, int struct_id, const void *data_ptr)
+{
+  writestruct_nr(writer->wd, DATA, struct_id, 1, data_ptr);
+}
+
+void BLO_write_struct_array_by_id(BlendWriter *writer,
+                                  int struct_id,
+                                  int array_size,
+                                  const void *data_ptr)
+{
+  writestruct_nr(writer->wd, DATA, struct_id, array_size, data_ptr);
+}
+
+void BLO_write_struct_list_by_id(BlendWriter *writer, int struct_id, ListBase *list)
+{
+  writelist_nr(writer->wd, DATA, struct_id, list);
+}
+
+void BLO_write_struct_list_by_name(BlendWriter *writer, const char *struct_name, ListBase *list)
+{
+  BLO_write_struct_list_by_id(writer, BLO_get_struct_id_by_name(writer, struct_name), list);
+}
+
+void blo_write_id_struct(BlendWriter *writer, int struct_id, const void *id_address, const ID *id)
+{
+  writestruct_at_address_nr(writer->wd, GS(id->name), struct_id, 1, id_address, id);
+}
+
+int BLO_get_struct_id_by_name(BlendWriter *writer, const char *struct_name)
+{
+  int struct_id = DNA_struct_find_nr(writer->wd->sdna, struct_name);
+  BLI_assert(struct_id >= 0);
+  return struct_id;
+}
+
+void BLO_write_int32_array(BlendWriter *writer, int size, const int32_t *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(int32_t) * size, data_ptr);
+}
+
+void BLO_write_uint32_array(BlendWriter *writer, int size, const uint32_t *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(uint32_t) * size, data_ptr);
+}
+
+void BLO_write_float_array(BlendWriter *writer, int size, const float *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(float) * size, data_ptr);
+}
+
+void BLO_write_float3_array(BlendWriter *writer, int size, const float *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(float) * 3 * size, data_ptr);
+}
+
+/**
+ * Write a null terminated string.
+ */
+void BLO_write_string(BlendWriter *writer, const char *str)
+{
+  if (str != NULL) {
+    BLO_write_raw(writer, strlen(str) + 1, str);
+  }
+}
+
+/**
+ * Sometimes different data is written depending on whether the file is saved to disk or used for
+ * undo. This function returns true when the current file-writing is done for undo.
+ */
+bool BLO_write_is_undo(BlendWriter *writer)
+{
+  return writer->wd->use_memfile;
 }
 
 /** \} */

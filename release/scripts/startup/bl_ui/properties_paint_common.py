@@ -125,7 +125,7 @@ class UnifiedPaintPanel:
 
         if unified_name and not header:
             # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
-            row.prop(ups, unified_name, text="", icon="BRUSHES_ALL")
+            row.prop(ups, unified_name, text="", icon='BRUSHES_ALL')
 
         return row
 
@@ -619,10 +619,12 @@ def brush_settings(layout, context, brush, popover=False):
 
         if brush.sculpt_tool == 'POSE':
             layout.separator()
+            layout.prop(brush, "pose_deform_type")
             layout.prop(brush, "pose_origin_type")
             layout.prop(brush, "pose_offset")
             layout.prop(brush, "pose_smooth_iterations")
-            layout.prop(brush, "pose_ik_segments")
+            if brush.pose_deform_type == 'ROTATE_TWIST' and brush.pose_origin_type in ('TOPOLOGY','FACE_SETS'):
+              layout.prop(brush, "pose_ik_segments")
             layout.prop(brush, "use_pose_ik_anchored")
             layout.separator()
 
@@ -820,7 +822,7 @@ def brush_settings_advanced(layout, context, brush, popover=False):
 
         # boundary edges/face sets automasking
         col.prop(brush, "use_automasking_boundary_edges", text="Mesh Boundary")
-        col.prop(brush, "use_automasking_boundary_face_sets", text="Face Sets")
+        col.prop(brush, "use_automasking_boundary_face_sets", text="Face Sets Boundary")
         col.prop(brush, "automasking_boundary_edges_propagation_steps")
 
         layout.separator()
@@ -1076,9 +1078,21 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row = layout.row(align=True)
         row.prop(brush, "size", text="Radius")
         row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
+
+        if gp_settings.use_pressure and context.area.type == 'PROPERTIES':
+            col = layout.column()
+            col.template_curve_mapping(gp_settings, "curve_sensitivity", brush=True,
+                                      use_negative_slope=True)
+
         row = layout.row(align=True)
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
+
+        if gp_settings.use_strength_pressure and context.area.type == 'PROPERTIES':
+            col = layout.column()
+            col.template_curve_mapping(gp_settings, "curve_strength", brush=True,
+                                        use_negative_slope=True)
+
         if brush.gpencil_tool == 'TINT':
             row = layout.row(align=True)
             row.prop(gp_settings, "vertex_mode", text="Mode")

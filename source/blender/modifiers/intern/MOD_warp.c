@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
@@ -64,7 +64,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   const WarpModifierData *wmd = (const WarpModifierData *)md;
   WarpModifierData *twmd = (WarpModifierData *)target;
 
-  modifier_copyData_generic(md, target, flag);
+  BKE_modifier_copydata_generic(md, target, flag);
 
   twmd->curfalloff = BKE_curvemapping_copy(wmd->curfalloff);
 }
@@ -379,6 +379,11 @@ static void deformVertsEM(ModifierData *md,
   if (wmd->defgrp_name[0] != '\0' || wmd->texture != NULL) {
     /* mesh_src is only needed for vgroups and textures. */
     mesh_src = MOD_deform_mesh_eval_get(ctx->object, em, mesh, NULL, numVerts, false, false);
+  }
+
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
   }
 
   warpModifier_do(wmd, ctx, mesh_src, vertexCos, numVerts);

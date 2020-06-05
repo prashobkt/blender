@@ -833,9 +833,10 @@ typedef enum eFileSel_Params_RenameFlag {
   FILE_PARAMS_RENAME_POSTSCROLL_ACTIVE = 1 << 3,
 } eFileSel_Params_RenameFlag;
 
-/* files in filesel list: file types
- * Note we could use mere values (instead of bitflags) for file types themselves,
- * but since we do not lack of bytes currently...
+/**
+ * Files in the file selector list: file types
+ * Note we could use mere values (instead of bit-flags) for file types themselves,
+ * but since we do not lack of bytes currently.
  */
 typedef enum eFileSel_File_Types {
   FILE_TYPE_BLENDER = (1 << 2),
@@ -1720,7 +1721,7 @@ typedef enum eSpace_Type {
   SPACE_TOPBAR = 21,
   SPACE_STATUSBAR = 22,
 
-  SPACE_TYPE_LAST = SPACE_STATUSBAR,
+#define SPACE_TYPE_LAST SPACE_STATUSBAR
 } eSpace_Type;
 
 /* use for function args */

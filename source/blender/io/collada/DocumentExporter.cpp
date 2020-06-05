@@ -58,7 +58,6 @@
 
 #include "MEM_guardedalloc.h"
 
-extern "C" {
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -96,13 +95,12 @@ extern "C" {
 
 #include "ED_keyframing.h"
 #ifdef WITH_BUILDINFO
-extern char build_commit_date[];
-extern char build_commit_time[];
-extern char build_hash[];
+extern "C" char build_commit_date[];
+extern "C" char build_commit_time[];
+extern "C" char build_hash[];
 #endif
 
 #include "RNA_access.h"
-}
 
 #include "DocumentExporter.h"
 #include "collada_internal.h"
@@ -245,20 +243,13 @@ int DocumentExporter::exportCurrentScene()
 #ifdef WITH_BUILDINFO
   BLI_snprintf(version_buf,
                sizeof(version_buf),
-               "Blender %d.%02d.%d commit date:%s, commit time:%s, hash:%s",
-               BLENDER_VERSION / 100,
-               BLENDER_VERSION % 100,
-               BLENDER_SUBVERSION,
+               "Blender %s commit date:%s, commit time:%s, hash:%s",
+               BKE_blender_version_string(),
                build_commit_date,
                build_commit_time,
                build_hash);
 #else
-  BLI_snprintf(version_buf,
-               sizeof(version_buf),
-               "Blender %d.%02d.%d",
-               BLENDER_VERSION / 100,
-               BLENDER_VERSION % 100,
-               BLENDER_SUBVERSION);
+  BLI_snprintf(version_buf, sizeof(version_buf), "Blender %s", BKE_blender_version_string());
 #endif
   asset.getContributor().mAuthoringTool = version_buf;
   asset.add();

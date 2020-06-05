@@ -360,7 +360,7 @@ static void rna_userdef_load_ui_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
 
 static void rna_userdef_anisotropic_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  GPU_set_anisotropic(bmain, U.anisotropic_filter);
+  GPU_set_anisotropic(U.anisotropic_filter);
   rna_userdef_update(bmain, scene, ptr);
 }
 
@@ -4716,7 +4716,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_text_antialiasing", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "text_render", USER_TEXT_DISABLE_AA);
-  RNA_def_property_ui_text(prop, "Text Anti-aliasing", "Draw user interface text anti-aliased");
+  RNA_def_property_ui_text(prop, "Text Anti-Aliasing", "Draw user interface text anti-aliased");
   RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
   prop = RNA_def_property(srna, "text_hinting", PROP_ENUM, PROP_NONE);
@@ -4839,6 +4839,12 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ADD_EDITMODE);
   RNA_def_property_ui_text(
       prop, "Enter Edit Mode", "Enter Edit Mode automatically after adding a new object");
+
+  prop = RNA_def_property(srna, "collection_instance_empty_size", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.001f, FLT_MAX);
+  RNA_def_property_ui_text(prop,
+                           "Collection Instance Empty Size",
+                           "Display size of the empty when new collection instances are created");
 
   /* Undo */
 
@@ -5792,8 +5798,9 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "ndof_fly_helicopter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "ndof_flag", NDOF_FLY_HELICOPTER);
-  RNA_def_property_ui_text(
-      prop, "Helicopter Mode", "Device up/down directly controls your Z position");
+  RNA_def_property_ui_text(prop,
+                           "Helicopter Mode",
+                           "Device up/down directly controls the Z position of the 3D viewport");
 
   /* let Python know whether NDOF is enabled */
   prop = RNA_def_boolean(srna, "use_ndof", true, "", "");

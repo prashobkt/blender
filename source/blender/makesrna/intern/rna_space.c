@@ -483,6 +483,13 @@ const EnumPropertyItem rna_enum_file_sort_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
+    {CURVE_HANDLE_NONE, "NONE", 0, "None", ""},
+    {CURVE_HANDLE_SELECTED, "SELECTED", 0, "Selected", ""},
+    {CURVE_HANDLE_ALL, "ALL", 0, "All", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include "DNA_anim_types.h"
@@ -532,7 +539,7 @@ static StructRNA *rna_Space_refine(struct PointerRNA *ptr)
 {
   SpaceLink *space = (SpaceLink *)ptr->data;
 
-  switch (space->spacetype) {
+  switch ((eSpace_Type)space->spacetype) {
     case SPACE_VIEW3D:
       return &RNA_SpaceView3D;
     case SPACE_GRAPH:
@@ -563,9 +570,16 @@ static StructRNA *rna_Space_refine(struct PointerRNA *ptr)
       return &RNA_SpacePreferences;
     case SPACE_CLIP:
       return &RNA_SpaceClipEditor;
-    default:
-      return &RNA_Space;
+
+      /* Currently no type info. */
+    case SPACE_SCRIPT:
+    case SPACE_EMPTY:
+    case SPACE_TOPBAR:
+    case SPACE_STATUSBAR:
+      break;
   }
+
+  return &RNA_Space;
 }
 
 static ScrArea *rna_area_from_space(PointerRNA *ptr)
@@ -3810,9 +3824,11 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
       prop, "Indices", "Display the index numbers of selected vertices, edges, and faces");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
-  prop = RNA_def_property(srna, "show_curve_handles", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "overlay.edit_flag", V3D_OVERLAY_EDIT_CU_HANDLES);
-  RNA_def_property_ui_text(prop, "Draw Handles", "Display Bezier handles in editmode");
+  prop = RNA_def_property(srna, "display_handle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "overlay.handle_display");
+  RNA_def_property_enum_items(prop, rna_enum_curve_display_handle_items);
+  RNA_def_property_ui_text(
+      prop, "Display Handles", "Limit the display of curve handles in edit mode");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "show_curve_normals", PROP_BOOLEAN, PROP_NONE);
@@ -3896,6 +3912,11 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "gp_flag", V3D_GP_FADE_NOACTIVE_GPENCIL);
   RNA_def_property_ui_text(
       prop, "Fade Grease Pencil Objects", "Fade Grease Pencil Objects, except the active one");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
+
+  prop = RNA_def_property(srna, "use_gpencil_canvas_xray", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "gp_flag", V3D_GP_SHOW_GRID_XRAY);
+  RNA_def_property_ui_text(prop, "Canvas X-Ray", "Show Canvas grid in front");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
 
   prop = RNA_def_property(srna, "use_gpencil_show_directions", PROP_BOOLEAN, PROP_NONE);
@@ -6375,7 +6396,7 @@ static void rna_def_space_clip(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem gpencil_source_items[] = {
+  static const EnumPropertyItem annotation_source_items[] = {
       {SC_GPENCIL_SRC_CLIP,
        "CLIP",
        0,
@@ -6637,10 +6658,10 @@ static void rna_def_space_clip(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_MOVIECLIP | ND_DISPLAY, NULL);
 
   /* grease pencil source */
-  prop = RNA_def_property(srna, "grease_pencil_source", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "annotation_source", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "gpencil_src");
-  RNA_def_property_enum_items(prop, gpencil_source_items);
-  RNA_def_property_ui_text(prop, "Grease Pencil Source", "Where the grease pencil comes from");
+  RNA_def_property_enum_items(prop, annotation_source_items);
+  RNA_def_property_ui_text(prop, "Annotation Source", "Where the annotation comes from");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MOVIECLIP);
   RNA_def_property_update(prop, NC_MOVIECLIP | ND_DISPLAY, NULL);
 

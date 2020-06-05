@@ -64,8 +64,6 @@ set(SRC
   ${CMAKE_SOURCE_DIR}/release/datafiles/userdef/userdef_default.c
   intern/CCGSubSurf.c
   intern/CCGSubSurf_legacy.c
-  intern/CCGSubSurf_opensubdiv.c
-  intern/CCGSubSurf_opensubdiv_converter.c
   intern/CCGSubSurf_util.c
   intern/DerivedMesh.c
   intern/action.c
@@ -122,6 +120,7 @@ set(SRC
   intern/font.c
   intern/freestyle.c
   intern/gpencil.c
+  intern/gpencil_curve.c
   intern/gpencil_geom.c
   intern/gpencil_modifier.c
   intern/hair.c
@@ -169,6 +168,7 @@ set(SRC
   intern/mesh_runtime.c
   intern/mesh_tangent.c
   intern/mesh_validate.c
+  intern/mesh_wrapper.c
   intern/modifier.c
   intern/movieclip.c
   intern/multires.c
@@ -308,6 +308,7 @@ set(SRC
   BKE_freestyle.h
   BKE_global.h
   BKE_gpencil.h
+  BKE_gpencil_curve.h
   BKE_gpencil_geom.h
   BKE_gpencil_modifier.h
   BKE_hair.h
@@ -670,17 +671,6 @@ if(WITH_QUADRIFLOW)
      bf_intern_quadriflow
   )
   add_definitions(-DWITH_QUADRIFLOW)
-endif()
-
-if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
-
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
 endif()
 
 if(WITH_XR_OPENXR)
