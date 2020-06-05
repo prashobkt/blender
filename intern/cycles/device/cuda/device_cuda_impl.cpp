@@ -2347,16 +2347,6 @@ void CUDADevice::thread_run(DeviceTask &task)
   }
 }
 
-class CUDADeviceTask : public Task {
- public:
-  CUDADeviceTask(CUDADevice *device, DeviceTask &task) : task(task)
-  {
-    run = function_bind(&CUDADevice::thread_run, device, task);
-  }
-
-  DeviceTask task;
-};
-
 void CUDADevice::task_add(DeviceTask &task)
 {
   CUDAContextScope scope(this);
@@ -2372,7 +2362,10 @@ void CUDADevice::task_add(DeviceTask &task)
     film_convert(task, task.buffer, task.rgba_byte, task.rgba_half);
   }
   else {
-    task_pool.push(new CUDADeviceTask(this, task));
+    task_pool.push([=] {
+      DeviceTask task_copy = task;
+      thread_run(task_copy);
+    });
   }
 }
 
