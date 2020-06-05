@@ -251,11 +251,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
-
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "object", 0, IFACE_("Source"), ICON_NONE);
@@ -266,12 +263,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "mix_mode", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "mix_factor", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutColumn(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   uiItemO(layout, "Generate Data Layers", ICON_NONE, "OBJECT_OT_datalayout_transfer");
 

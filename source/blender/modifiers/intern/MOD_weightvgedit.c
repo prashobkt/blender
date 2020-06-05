@@ -250,6 +250,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* Do mapping. */
   const bool do_invert_mapping = (wmd->edit_flags & MOD_WVG_INVERT_FALLOFF) != 0;
+  const bool do_normalize = (wmd->edit_flags & MOD_WVG_EDIT_WEIGHTS_NORMALIZE) != 0;
   if (do_invert_mapping || wmd->falloff_type != MOD_WVG_MAPPING_NONE) {
     RNG *rng = NULL;
 
@@ -294,7 +295,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                      do_add,
                      wmd->add_threshold,
                      do_rem,
-                     wmd->rem_threshold);
+                     wmd->rem_threshold,
+                     do_normalize);
 
   /* If weight preview enabled... */
 #if 0 /* XXX Currently done in mod stack :/ */
@@ -320,7 +322,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -350,6 +351,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(sub, false);
   uiItemR(sub, &ptr, "remove_threshold", UI_ITEM_R_SLIDER, "Threshold", ICON_NONE);
   uiItemDecoratorR(row, &ptr, "remove_threshold", 0);
+
+  uiItemR(layout, &ptr, "normalize", 0, NULL, ICON_NONE);
 
   modifier_panel_end(layout, &ptr);
 }

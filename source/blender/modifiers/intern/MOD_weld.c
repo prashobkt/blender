@@ -1688,8 +1688,18 @@ static Mesh *weldModifier_doWeld(WeldModifierData *wmd, const ModifierEvalContex
   /* Get overlap map. */
   /* TODO: For a better performanse use KD-Tree. */
   struct BVHTreeFromMesh treedata;
-  BVHTree *bvhtree = bvhtree_from_mesh_verts_ex(
-      &treedata, mvert, totvert, false, v_mask, v_mask_act, wmd->merge_dist / 2, 2, 6, 0, NULL);
+  BVHTree *bvhtree = bvhtree_from_mesh_verts_ex(&treedata,
+                                                mvert,
+                                                totvert,
+                                                false,
+                                                v_mask,
+                                                v_mask_act,
+                                                wmd->merge_dist / 2,
+                                                2,
+                                                6,
+                                                0,
+                                                NULL,
+                                                NULL);
 
   if (v_mask) {
     MEM_freeN(v_mask);
@@ -1942,26 +1952,17 @@ static void requiredDataMask(Object *UNUSED(ob),
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
-
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
   uiItemR(layout, &ptr, "max_interactions", 0, NULL, ICON_NONE);
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   modifier_panel_end(layout, &ptr);
 }

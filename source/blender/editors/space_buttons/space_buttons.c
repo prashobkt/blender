@@ -30,7 +30,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
-#include "BKE_gpencil_modifier.h" /* Types for regiestering panels. */
+#include "BKE_gpencil_modifier.h" /* Types for registering panels. */
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
@@ -38,6 +38,8 @@
 #include "DNA_gpencil_modifier_types.h" /* Registering list panels. */
 #include "DNA_modifier_types.h"
 #include "DNA_shader_fx_types.h"
+
+#include "DNA_modifier_types.h"
 
 #include "ED_screen.h"
 #include "ED_space_api.h"

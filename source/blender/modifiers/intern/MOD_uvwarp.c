@@ -258,17 +258,15 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   PointerRNA warp_obj_ptr;
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
@@ -296,13 +294,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemPointerR(col, &ptr, "bone_to", &warp_obj_data_ptr, "bones", NULL, ICON_NONE);
   }
 
-  col = uiLayoutColumn(layout, true);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   modifier_panel_end(layout, &ptr);
 }

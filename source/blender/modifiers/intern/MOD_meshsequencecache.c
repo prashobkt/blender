@@ -204,7 +204,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   PointerRNA cache_file_ptr = RNA_pointer_get(&ptr, "cache_file");
   bool has_cache_file = !RNA_pointer_is_null(&cache_file_ptr);

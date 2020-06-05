@@ -418,6 +418,11 @@ static void deformVertsEM(ModifierData *md,
   Mesh *mesh_src = MOD_deform_mesh_eval_get(
       ctx->object, editData, mesh, NULL, numVerts, false, false);
 
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
+  }
+
   displaceModifier_do((DisplaceModifierData *)md, ctx, mesh_src, vertexCos, numVerts);
 
   if (!ELEM(mesh_src, NULL, mesh)) {
@@ -427,17 +432,15 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row, *col;
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   PointerRNA texture_ptr = RNA_pointer_get(&ptr, "texture");
   bool has_texture = !RNA_pointer_is_null(&texture_ptr);
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
   int texture_coords = RNA_enum_get(&ptr, "texture_coords");
 
   uiLayoutSetPropSep(layout, true);
@@ -484,12 +487,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &ptr, "strength", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "mid_level", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutColumn(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(col, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   modifier_panel_end(layout, &ptr);
 }

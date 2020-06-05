@@ -517,7 +517,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -542,6 +541,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 #else  /* WITH_OCEANSIM */
   uiItemL(layout, IFACE_("Built without Ocean modifier"), ICON_NONE);
+  UNUSED_VARS(C);
 #endif /* WITH_OCEANSIM */
 }
 
@@ -669,6 +669,8 @@ static void panelRegister(ARegionType *region_type)
   modifier_subpanel_register(
       region_type, "spectrum", "Spectrum", NULL, spectrum_panel_draw, panel_type);
   modifier_subpanel_register(region_type, "bake", "Bake", NULL, bake_panel_draw, panel_type);
+#else
+  UNUSED_VARS(panel_type);
 #endif /* WITH_OCEANSIM */
 }
 

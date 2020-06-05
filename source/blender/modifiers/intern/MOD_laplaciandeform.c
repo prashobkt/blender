@@ -39,6 +39,7 @@
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
+#include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_particle.h"
@@ -794,6 +795,11 @@ static void deformVertsEM(ModifierData *md,
   Mesh *mesh_src = MOD_deform_mesh_eval_get(
       ctx->object, editData, mesh, NULL, numVerts, false, false);
 
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
+  }
+
   LaplacianDeformModifier_do(
       (LaplacianDeformModifierData *)md, ctx->object, mesh_src, vertexCos, numVerts);
 
@@ -815,13 +821,12 @@ static void freeData(ModifierData *md)
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   bool is_bind = RNA_boolean_get(&ptr, "is_bind");
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
@@ -830,20 +835,14 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  uiLayoutSetEnabled(row, !is_bind);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   uiItemS(layout);
 
   row = uiLayoutRow(layout, true);
   uiLayoutSetEnabled(row, has_vertex_group);
   uiItemO(row,
-          (RNA_boolean_get(&ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
+          is_bind ? IFACE_("Unbind") : IFACE_("Bind"),
           ICON_NONE,
           "OBJECT_OT_laplaciandeform_bind");
 

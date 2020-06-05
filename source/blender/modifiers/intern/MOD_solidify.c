@@ -105,7 +105,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   int solidify_mode = RNA_enum_get(&ptr, "solidify_mode");
   bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
@@ -134,12 +133,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemS(layout);
 
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetPropDecorate(sub, false);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, has_vertex_group);
   uiItemR(row, &ptr, "thickness_vertex_group", 0, IFACE_("Factor"), ICON_NONE);
@@ -228,6 +222,7 @@ static void clamp_panel_draw(const bContext *C, Panel *panel)
 
 static void vertex_group_panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -236,8 +231,9 @@ static void vertex_group_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemPointerR(layout, &ptr, "shell_vertex_group", &ob_ptr, "vertex_groups", "Shell", ICON_NONE);
-  uiItemPointerR(layout, &ptr, "rim_vertex_group", &ob_ptr, "vertex_groups", "Rim", ICON_NONE);
+  col = uiLayoutColumn(layout, false);
+  uiItemPointerR(col, &ptr, "shell_vertex_group", &ob_ptr, "vertex_groups", "Shell", ICON_NONE);
+  uiItemPointerR(col, &ptr, "rim_vertex_group", &ob_ptr, "vertex_groups", "Rim", ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)

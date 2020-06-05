@@ -570,6 +570,11 @@ static void deformVertsEM(ModifierData *md,
 
   mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, NULL, numVerts, false, false);
 
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
+  }
+
   laplaciansmoothModifier_do(
       (LaplacianSmoothModifierData *)md, ctx->object, mesh_src, vertexCos, numVerts);
 
@@ -580,16 +585,13 @@ static void deformVertsEM(ModifierData *md,
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
-
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
@@ -606,12 +608,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "use_volume_preserve", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_normalized", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   modifier_panel_end(layout, &ptr);
 }

@@ -935,7 +935,13 @@ static Mesh *subdivide_base(Mesh *orig)
 
     u = e->v1;
     radrat = (half_v2(outnode[e->v2].radius) / half_v2(outnode[e->v1].radius));
-    radrat = (radrat + 1) / 2;
+    if (isfinite(radrat)) {
+      radrat = (radrat + 1) / 2;
+    }
+    else {
+      /* Happens when skin is scaled to zero. */
+      radrat = 1.0f;
+    }
 
     /* Add vertices and edge segments */
     for (j = 0; j < edge_subd[i]; j++, v++, outedge++) {
@@ -1950,7 +1956,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   PointerRNA op_ptr;
 

@@ -125,7 +125,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -153,7 +152,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void vertex_group_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row, *sub;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -164,12 +163,7 @@ static void vertex_group_panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropDecorate(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   row = uiLayoutRow(layout, true);
   uiLayoutSetActive(row, has_vertex_group);

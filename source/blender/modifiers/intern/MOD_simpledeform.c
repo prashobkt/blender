@@ -451,6 +451,11 @@ static void deformVertsEM(ModifierData *md,
     mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, NULL, numVerts, false, false);
   }
 
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
+  }
+
   SimpleDeformModifier_do(sdmd, ctx, ctx->object, mesh_src, vertexCos, numVerts);
 
   if (!ELEM(mesh_src, NULL, mesh)) {
@@ -466,7 +471,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   int deform_method = RNA_enum_get(&ptr, "deform_method");
 
@@ -490,7 +494,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void restrictions_panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *col, *row, *sub;
+  uiLayout *row;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
@@ -499,7 +503,6 @@ static void restrictions_panel_draw(const bContext *C, Panel *panel)
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
   int deform_method = RNA_enum_get(&ptr, "deform_method");
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
@@ -523,13 +526,7 @@ static void restrictions_panel_draw(const bContext *C, Panel *panel)
     }
   }
 
-  col = uiLayoutColumn(layout, true);
-  row = uiLayoutRow(col, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 }
 
 static void panelRegister(ARegionType *region_type)

@@ -34,9 +34,16 @@ struct ARegionType;
 struct bContext;
 struct PanelType;
 struct uiLayout;
-typedef void (*PanelDrawFn)(const bContext *, Panel *);
+typedef void (*PanelDrawFn)(const bContext *, struct Panel *);
 
 void modifier_panel_buttons(const struct bContext *C, struct Panel *panel);
+
+void modifier_vgroup_ui(struct uiLayout *layout,
+                        struct PointerRNA *ptr,
+                        struct PointerRNA *ob_ptr,
+                        const char *vgroup_prop,
+                        const char *invert_vgroup_prop,
+                        const char *text);
 
 void modifier_panel_end(struct uiLayout *layout, PointerRNA *ptr);
 

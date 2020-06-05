@@ -328,22 +328,22 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
-
-  PointerRNA scene_ptr;
-  Scene *scene = CTX_data_scene(C);
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
   /* Only test for adaptive subdivision if built with cycles. */
   bool show_adaptive_options = false;
   bool ob_use_adaptive_subdivision = false;
   PointerRNA cycles_ptr = {NULL};
   PointerRNA ob_cycles_ptr = {NULL};
 #ifdef WITH_CYCLES
-  cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
-  ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
-  if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
-    ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
-    show_adaptive_options = get_show_adaptive_options(C, panel);
+  PointerRNA scene_ptr;
+  Scene *scene = CTX_data_scene(C);
+  RNA_id_pointer_create(&scene->id, &scene_ptr);
+  if (BKE_scene_uses_cycles(scene)) {
+    cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
+    ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
+    if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
+      ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
+      show_adaptive_options = get_show_adaptive_options(C, panel);
+    }
   }
 #endif
 
@@ -358,30 +358,27 @@ static void panel_draw(const bContext *C, Panel *panel)
             0,
             IFACE_("Adaptive Subdivision"),
             ICON_NONE);
-    if (ob_use_adaptive_subdivision) {
-      uiItemR(layout, &ob_cycles_ptr, "dicing_rate", 0, NULL, ICON_NONE);
-      float render = MAX2(RNA_float_get(&cycles_ptr, "dicing_rate") *
-                              RNA_float_get(&ob_cycles_ptr, "dicing_rate"),
-                          0.1f);
-      float preview = MAX2(RNA_float_get(&cycles_ptr, "preview_dicing_rate") *
-                               RNA_float_get(&ob_cycles_ptr, "dicing_rate"),
-                           0.1f);
-      char output[64];
-      snprintf(output, 64, "Final Scale: Render %.2f px, Viewport %.2f px", render, preview);
-      uiItemL(layout, output, ICON_NONE);
+  }
+  if (ob_use_adaptive_subdivision && show_adaptive_options) {
+    uiItemR(layout, &ob_cycles_ptr, "dicing_rate", 0, NULL, ICON_NONE);
+    float render = MAX2(RNA_float_get(&cycles_ptr, "dicing_rate") *
+                            RNA_float_get(&ob_cycles_ptr, "dicing_rate"),
+                        0.1f);
+    float preview = MAX2(RNA_float_get(&cycles_ptr, "preview_dicing_rate") *
+                             RNA_float_get(&ob_cycles_ptr, "dicing_rate"),
+                         0.1f);
+    char output[64];
+    snprintf(output, 64, "Final Scale: Render %.2f px, Viewport %.2f px", render, preview);
+    uiItemL(layout, output, ICON_NONE);
 
-      uiItemS(layout);
+    uiItemS(layout);
 
-      uiItemR(layout, &ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
-    }
-    else {
-      uiItemR(layout, &ptr, "render_levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
-      uiItemR(layout, &ptr, "levels", 0, IFACE_("Viewport"), ICON_NONE);
-    }
+    uiItemR(layout, &ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
   }
   else {
-    uiItemR(layout, &ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
-    uiItemR(layout, &ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiItemR(col, &ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
+    uiItemR(col, &ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
   }
 
   uiItemR(layout, &ptr, "show_only_control_edges", 0, NULL, ICON_NONE);
@@ -400,10 +397,13 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
   bool ob_use_adaptive_subdivision = false;
   bool show_adaptive_options = false;
 #ifdef WITH_CYCLES
-  PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
-  if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
-    ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
-    show_adaptive_options = get_show_adaptive_options(C, panel);
+  Scene *scene = CTX_data_scene(C);
+  if (BKE_scene_uses_cycles(scene)) {
+    PointerRNA ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
+    if (!RNA_pointer_is_null(&ob_cycles_ptr)) {
+      ob_use_adaptive_subdivision = RNA_boolean_get(&ob_cycles_ptr, "use_adaptive_subdivision");
+      show_adaptive_options = get_show_adaptive_options(C, panel);
+    }
   }
 #endif
 
@@ -413,6 +413,8 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "quality", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "uv_smooth", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_creases", 0, NULL, ICON_NONE);
+
+  modifier_panel_end(layout, &ptr);
 }
 
 static void panelRegister(ARegionType *region_type)

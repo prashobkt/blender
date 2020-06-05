@@ -227,7 +227,7 @@ static void deformVerts(ModifierData *md,
 
   if (DEG_is_active(ctx->depsgraph)) {
     Object *object_orig = DEG_get_original_object(ctx->object);
-    ModifierData *md_orig = BKE_modifiers_findny_name(object_orig, psmd->modifier.name);
+    ModifierData *md_orig = BKE_modifiers_findby_name(object_orig, psmd->modifier.name);
     BLI_assert(md_orig != NULL);
     ParticleSystemModifierData *psmd_orig = (ParticleSystemModifierData *)md_orig;
     psmd_orig->flag = psmd->flag;
@@ -263,9 +263,29 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  Object *ob = ob_ptr.data;
+  ModifierData *md = (ModifierData *)ptr.data;
+  ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
 
   uiItemL(layout, IFACE_("Settings are in the particle tab"), ICON_NONE);
+
+  if (!(ob->mode & OB_MODE_PARTICLE_EDIT)) {
+    if (ELEM(psys->part->ren_as, PART_DRAW_GR, PART_DRAW_OB)) {
+      uiItemO(layout,
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
+              ICON_NONE,
+              "OBJECT_OT_duplicates_make_real");
+    }
+    else if (psys->part->ren_as == PART_DRAW_PATH) {
+      uiItemO(layout,
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
+              ICON_NONE,
+              "OBJECT_OT_modifier_convert");
+    }
+  }
 
   modifier_panel_end(layout, &ptr);
 }

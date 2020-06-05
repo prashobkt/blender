@@ -33,6 +33,7 @@
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_space_types.h"
 
 #include "ED_object.h"
 
@@ -49,13 +50,24 @@
 #include "MOD_modifiertypes.h"
 #include "MOD_ui_common.h" /* Self include */
 
+static Object *get_modifier_object(const bContext *C)
+{
+  SpaceProperties *sbuts = CTX_wm_space_properties(C);
+  if (sbuts != NULL && (sbuts->pinid != NULL) && GS(sbuts->pinid->name) == ID_OB) {
+    return (Object *)sbuts->pinid;
+  }
+  else {
+    return CTX_data_active_object(C);
+  }
+}
+
 /**
  * Poll function so these modifier panels don't show for other object types with modifiers (only
  * grease pencil currently).
  */
 static bool modifier_ui_poll(const bContext *C, PanelType *UNUSED(pt))
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_modifier_object(C);
 
   return (ob != NULL) && (ob->type != OB_GPENCIL);
 }
@@ -69,7 +81,7 @@ static bool modifier_ui_poll(const bContext *C, PanelType *UNUSED(pt))
  */
 static void modifier_reorder(bContext *C, Panel *panel, int new_index)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_modifier_object(C);
 
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
   PointerRNA props_ptr;
@@ -83,14 +95,14 @@ static void modifier_reorder(bContext *C, Panel *panel, int new_index)
 
 static short get_modifier_expand_flag(const bContext *C, Panel *panel)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_modifier_object(C);
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
   return md->ui_expand_flag;
 }
 
 static void set_modifier_expand_flag(const bContext *C, Panel *panel, short expand_flag)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_modifier_object(C);
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
   md->ui_expand_flag = expand_flag;
 }
@@ -114,14 +126,17 @@ void modifier_panel_end(uiLayout *layout, PointerRNA *ptr)
 }
 
 /**
- * Gets RNA pointers for the active object and the panel's modifier data.
+ * Gets RNA pointers for the active object and the panel's modifier data. Also locks
+ * the layout if the modifer is from a linked object, and sets the context pointer.
  */
+#define ERROR_LIBDATA_MESSAGE TIP_("External library data")
 void modifier_panel_get_property_pointers(const bContext *C,
                                           Panel *panel,
                                           PointerRNA *r_ob_ptr,
                                           PointerRNA *r_md_ptr)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_modifier_object(C);
+
   ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
 
   RNA_pointer_create(&ob->id, &RNA_Modifier, md, r_md_ptr);
@@ -130,86 +145,41 @@ void modifier_panel_get_property_pointers(const bContext *C,
     RNA_pointer_create(&ob->id, &RNA_Object, ob, r_ob_ptr);
   }
 
-  uiLayoutSetContextPointer(panel->layout, "modifier", r_md_ptr);
-}
-
-#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
-void modifier_panel_buttons(const bContext *C, Panel *panel)
-{
-  uiLayout *row, *sub;
-  uiBlock *block;
-  uiLayout *layout = panel->layout;
-
-  row = uiLayoutRow(layout, false);
-
-  uiLayoutSetScaleY(row, 0.8f);
-
-  Object *ob = CTX_data_active_object(C);
-  ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
-
-  block = uiLayoutGetBlock(row);
+  uiBlock *block = uiLayoutGetBlock(panel->layout);
   UI_block_lock_set(
       block, BKE_object_obdata_is_libdata(ob) || ID_IS_LINKED(ob), ERROR_LIBDATA_MESSAGE);
 
-  if (md->type == eModifierType_ParticleSystem) {
-    ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
+  uiLayoutSetContextPointer(panel->layout, "modifier", r_md_ptr);
+}
 
-    if (!(ob->mode & OB_MODE_PARTICLE_EDIT)) {
-      if (ELEM(psys->part->ren_as, PART_DRAW_GR, PART_DRAW_OB)) {
-        uiItemO(row,
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
-                ICON_NONE,
-                "OBJECT_OT_duplicates_make_real");
-      }
-      else if (psys->part->ren_as == PART_DRAW_PATH) {
-        uiItemO(row,
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
-                ICON_NONE,
-                "OBJECT_OT_modifier_convert");
-      }
-    }
+/**
+ * Helper function for modifier layouts to draw vertex group settings.
+ */
+void modifier_vgroup_ui(uiLayout *layout,
+                        PointerRNA *ptr,
+                        PointerRNA *ob_ptr,
+                        const char *vgroup_prop,
+                        const char *invert_vgroup_prop,
+                        const char *text)
+{
+  bool has_vertex_group = RNA_string_length(ptr, vgroup_prop) != 0;
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiItemPointerR(row, ptr, vgroup_prop, ob_ptr, "vertex_groups", text, ICON_NONE);
+  if (invert_vgroup_prop != NULL) {
+    uiLayout *sub = uiLayoutRow(row, true);
+    uiLayoutSetActive(sub, has_vertex_group);
+    uiLayoutSetPropDecorate(sub, false);
+    uiItemR(sub, ptr, invert_vgroup_prop, 0, "", ICON_ARROW_LEFTRIGHT);
   }
-  else {
-    uiLayoutSetOperatorContext(row, WM_OP_INVOKE_DEFAULT);
-
-    sub = uiLayoutRow(row, false);
-    uiItemEnumO(sub,
-                "OBJECT_OT_modifier_apply",
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
-                0,
-                "apply_as",
-                MODIFIER_APPLY_DATA);
-
-    if (BKE_modifier_is_same_topology(md) && !BKE_modifier_is_non_geometrical(md)) {
-      uiItemEnumO(sub,
-                  "OBJECT_OT_modifier_apply",
-                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Shape"),
-                  0,
-                  "apply_as",
-                  MODIFIER_APPLY_SHAPE);
-    }
-  }
-
-  if (!ELEM(md->type,
-            eModifierType_Fluidsim,
-            eModifierType_Softbody,
-            eModifierType_ParticleSystem,
-            eModifierType_Cloth,
-            eModifierType_Fluid)) {
-    uiItemO(row,
-            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Duplicate"),
-            0,
-            "OBJECT_OT_modifier_copy");
-
-    row = uiLayoutRow(layout, false);
-    uiLayoutSetScaleY(row, 0.2f);
-    uiItemS(row);
+  if (uiLayoutGetPropDecorate(layout)) {
+    uiItemL(row, "", ICON_BLANK1);
   }
 }
 
 /**
- * Check whether Modifier is a simulation or not.Used for switching to the physics/particles
- * context tab.
+ * Check whether Modifier is a simulation or not. Used for switching to the
+ * physics/particles context tab.
  */
 static int modifier_is_simulation(ModifierData *md)
 {
@@ -255,18 +225,63 @@ static bool modifier_can_delete(ModifierData *md)
   return true;
 }
 
+static void modifier_ops_extra_draw(bContext *UNUSED(C), uiLayout *layout, void *md_v)
+{
+  ModifierData *md = (ModifierData *)md_v;
+
+  uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
+
+  uiItemEnumO(layout,
+              "OBJECT_OT_modifier_apply",
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
+              0,
+              "apply_as",
+              MODIFIER_APPLY_DATA);
+
+  if (BKE_modifier_is_same_topology(md) && !BKE_modifier_is_non_geometrical(md)) {
+    uiItemEnumO(layout,
+                "OBJECT_OT_modifier_apply",
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply As Shapekey"),
+                ICON_SHAPEKEY_DATA,
+                "apply_as",
+                MODIFIER_APPLY_SHAPE);
+  }
+
+  if (!ELEM(md->type,
+            eModifierType_Fluidsim,
+            eModifierType_Softbody,
+            eModifierType_ParticleSystem,
+            eModifierType_Cloth,
+            eModifierType_Fluid)) {
+    uiItemO(layout,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Duplicate"),
+            ICON_DUPLICATE,
+            "OBJECT_OT_modifier_copy");
+  }
+
+  if (modifier_can_delete(md) && !modifier_is_simulation(md)) {
+    uiItemO(layout,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Delete"),
+            ICON_X,
+            "OBJECT_OT_modifier_remove");
+  }
+}
+
 static void modifier_panel_header(const bContext *C, Panel *panel)
 {
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  Object *ob = get_modifier_object(C);
 
-  ModifierData *md = ptr.data;
+  /* Don't use #modifier_panel_get_property_pointers, we don't want to lock the header. */
+  ModifierData *md = BLI_findlink(&ob->modifiers, panel->runtime.list_index);
+  RNA_pointer_create(&ob->id, &RNA_Modifier, md, &ptr);
+  uiLayoutSetContextPointer(panel->layout, "modifier", &ptr);
+
   const ModifierTypeInfo *mti = BKE_modifier_get_info(md->type);
   Scene *scene = CTX_data_scene(C);
-  Object *ob = CTX_data_active_object(C);
   int index = panel->runtime.list_index;
   bool narrow_panel = (panel->sizex < UI_UNIT_X * 8 && panel->sizex != 0);
 
@@ -292,6 +307,7 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
         layout, "", ICON_PROPERTIES, "WM_OT_properties_context_change", "context", "PARTICLES");
   }
 
+  /* Mode switching buttons. */
   row = uiLayoutRow(layout, true);
   if (ob->type == OB_MESH) {
     int last_cage_index;
@@ -323,12 +339,9 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   }
 
   row = uiLayoutRow(layout, false);
-  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
-  if (modifier_can_delete(md) && !modifier_is_simulation(md)) {
-    uiItemO(row, "", ICON_X, "OBJECT_OT_modifier_remove");
-  }
+  uiItemMenuF(row, "", ICON_DOWNARROW_HLT, modifier_ops_extra_draw, md);
 
-  /* Some extra padding at the end, so 'x' icon isn't too close to drag button. */
+  /* Some padding at the end, so the buttons aren't too close to the drag button. */
   uiItemS(layout);
 }
 
@@ -343,7 +356,6 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
  */
 PanelType *modifier_panel_register(ARegionType *region_type, ModifierType type, PanelDrawFn draw)
 {
-
   /* Get the name for the modifier's panel. */
   char panel_idname[BKE_ST_MAXNAME];
   BKE_modifier_type_panel_id(type, panel_idname);
@@ -372,7 +384,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, ModifierType type, 
 }
 
 /**
- * Add a child panel to the parent.
+ * Add a shild panel to the parent.
  *
  * \note To create the panel type's idname, it appends the \a name argument to the \a parent's
  * idname.

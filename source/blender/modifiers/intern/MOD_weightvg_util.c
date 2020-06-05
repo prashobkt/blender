@@ -52,6 +52,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MEM_guardedalloc.h"
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 #include "MOD_weightvg_util.h"
 #include "RE_shader_ext.h" /* Texture masking. */
@@ -280,9 +281,35 @@ void weightvg_update_vg(MDeformVert *dvert,
                         const bool do_add,
                         const float add_thresh,
                         const bool do_rem,
-                        const float rem_thresh)
+                        const float rem_thresh,
+                        const bool do_normalize)
 {
   int i;
+
+  float min_w = weights[0];
+  float norm_fac = 1.0f;
+  if (do_normalize) {
+    float max_w = weights[0];
+    for (i = 1; i < num; i++) {
+      const float w = weights[i];
+
+      /* No need to clamp here, normalization will ensure we stay within [0.0, 1.0] range. */
+      if (w < min_w) {
+        min_w = w;
+      }
+      else if (w > max_w) {
+        max_w = w;
+      }
+    }
+
+    const float range = max_w - min_w;
+    if (fabsf(range) > FLT_EPSILON) {
+      norm_fac = 1.0f / range;
+    }
+    else {
+      min_w = 0.0f;
+    }
+  }
 
   for (i = 0; i < num; i++) {
     float w = weights[i];
@@ -290,6 +317,9 @@ void weightvg_update_vg(MDeformVert *dvert,
     MDeformWeight *dw = dws ? dws[i] :
                               ((defgrp_idx >= 0) ? BKE_defvert_find_index(dv, defgrp_idx) : NULL);
 
+    if (do_normalize) {
+      w = (w - min_w) * norm_fac;
+    }
     /* Never allow weights out of [0.0, 1.0] range. */
     CLAMP(w, 0.0f, 1.0f);
 
@@ -313,8 +343,6 @@ void weightvg_update_vg(MDeformVert *dvert,
  */
 void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, uiLayout *layout)
 {
-  uiLayout *sub, *row;
-
   PointerRNA mask_texture_ptr = RNA_pointer_get(ptr, "mask_texture");
   bool has_mask_texture = !RNA_pointer_is_null(&mask_texture_ptr);
   bool has_mask_vertex_group = RNA_string_length(ptr, "mask_vertex_group") != 0;
@@ -325,12 +353,7 @@ void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, 
   uiItemR(layout, ptr, "mask_constant", UI_ITEM_R_SLIDER, IFACE_("Global Influence:"), ICON_NONE);
 
   if (!has_mask_texture) {
-    row = uiLayoutRow(layout, true);
-    uiItemPointerR(row, ptr, "mask_vertex_group", ob_ptr, "vertex_groups", NULL, ICON_NONE);
-    sub = uiLayoutColumn(row, true);
-    uiLayoutSetPropSep(sub, false);
-    uiLayoutSetActive(sub, has_mask_vertex_group);
-    uiItemR(sub, ptr, "invert_mask_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+    modifier_vgroup_ui(layout, ptr, ob_ptr, "mask_vertex_group", "invert_mask_vertex_group", NULL);
   }
 
   if (!has_mask_vertex_group) {

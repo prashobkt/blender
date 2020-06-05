@@ -440,6 +440,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   int i;
   const bool invert_vgroup_mask = (wmd->proximity_flags & MOD_WVG_PROXIMITY_INVERT_VGROUP_MASK) !=
                                   0;
+  const bool do_normalize = (wmd->proximity_flags & MOD_WVG_PROXIMITY_WEIGHTS_NORMALIZE) != 0;
   /* Flags. */
 #if 0
   const bool do_prev = (wmd->modifier.mode & eModifierMode_DoWeightPreview) != 0;
@@ -615,7 +616,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                    invert_vgroup_mask);
 
   /* Update vgroup. Note we never add nor remove vertices from vgroup here. */
-  weightvg_update_vg(dvert, defgrp_index, dw, numIdx, indices, org_w, false, 0.0f, false, 0.0f);
+  weightvg_update_vg(
+      dvert, defgrp_index, dw, numIdx, indices, org_w, false, 0.0f, false, 0.0f, do_normalize);
 
   /* If weight preview enabled... */
 #if 0 /* XXX Currently done in mod stack :/ */
@@ -647,7 +649,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -674,6 +675,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(sub, false);
   uiItemR(row, &ptr, "invert_falloff", 0, "", ICON_ARROW_LEFTRIGHT);
   modifier_panel_end(layout, &ptr);
+
+  uiItemS(layout);
+
+  uiItemR(layout, &ptr, "normalize", 0, NULL, ICON_NONE);
 }
 
 static void influence_panel_draw(const bContext *C, Panel *panel)

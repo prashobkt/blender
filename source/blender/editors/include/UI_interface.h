@@ -1938,7 +1938,7 @@ uiLayout *uiLayoutRadial(uiLayout *layout);
 /* templates */
 void uiTemplateHeader(uiLayout *layout, struct bContext *C);
 void uiTemplateID(uiLayout *layout,
-                  struct bContext *C,
+                  const struct bContext *C,
                   struct PointerRNA *ptr,
                   const char *propname,
                   const char *newop,
@@ -2113,7 +2113,7 @@ void uiTemplateComponentMenu(uiLayout *layout,
                              const char *name);
 void uiTemplateNodeSocket(uiLayout *layout, struct bContext *C, float *color);
 void uiTemplateCacheFile(uiLayout *layout,
-                         struct bContext *C,
+                         const struct bContext *C,
                          struct PointerRNA *ptr,
                          const char *propname);
 
@@ -2146,7 +2146,7 @@ void uiTemplateNodeView(uiLayout *layout,
                         struct bNodeSocket *input);
 void uiTemplateTextureUser(uiLayout *layout, struct bContext *C);
 void uiTemplateTextureShow(uiLayout *layout,
-                           struct bContext *C,
+                           const struct bContext *C,
                            struct PointerRNA *ptr,
                            struct PropertyRNA *prop);
 

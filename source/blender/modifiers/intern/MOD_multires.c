@@ -294,7 +294,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
   MultiresModifierData *mmd = (MultiresModifierData *)ptr.data;
-  modifier_panel_buttons(C, panel);
 
   PointerRNA op_ptr;
 

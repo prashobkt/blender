@@ -713,15 +713,11 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *sub, *row;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
-  modifier_panel_buttons(C, panel);
-
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
@@ -733,12 +729,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "keep_sharp", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "face_influence", 0, NULL, ICON_NONE);
 
-  row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
-  sub = uiLayoutColumn(row, true);
-  uiLayoutSetActive(sub, has_vertex_group);
-  uiLayoutSetPropSep(sub, false);
-  uiItemR(sub, &ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   modifier_panel_end(layout, &ptr);
 }
