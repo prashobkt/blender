@@ -147,25 +147,65 @@ void INFO_OT_report_replay(wmOperatorType *ot)
 
 static int select_report_pick_exec(bContext *C, wmOperator *op)
 {
-  int report_index = RNA_int_get(op->ptr, "report_index");
-  bool extend = RNA_boolean_get(op->ptr, "extend");
-
-  Report *report = BLI_findlink(&CTX_wm_reports(C)->list, report_index);
+  const int report_index = RNA_int_get(op->ptr, "report_index");
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
+  const bool use_range = RNA_boolean_get(op->ptr, "extend_range");
+  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
 
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ReportList *reports = CTX_wm_reports(C);
   const int report_mask = info_report_mask(sinfo);
+
+  if (report_index == -1) {  // click in empty area
+    reports_select_all(reports, report_mask, SEL_DESELECT);
+    ED_area_tag_redraw(CTX_wm_area(C));
+    return OPERATOR_FINISHED;
+  }
+
+  Report *report = BLI_findlink(&CTX_wm_reports(C)->list, report_index);
   if (!report) {
     return OPERATOR_CANCELLED;
   }
 
-  if (!extend) {
+  if (deselect_all) {
     reports_select_all(reports, report_mask, SEL_DESELECT);
   }
-  report->flag ^= SELECT; /* toggle */
+
+  if (use_range) {  // shift click
+    const Report *active_report = BLI_findlink(&CTX_wm_reports(C)->list,
+                                               sinfo->active_report_index);
+    if (active_report == NULL) {
+      report->flag = SELECT;
+      sinfo->active_report_index = BLI_findindex(&reports->list, report);
+
+      ED_area_tag_redraw(CTX_wm_area(C));
+      return OPERATOR_FINISHED;
+    }
+
+    if (report_index < sinfo->active_report_index) {
+      for (Report *i = report; i && i->prev != active_report; i = i->next) {
+        i->flag = SELECT;
+      }
+    }
+    else {
+      for (Report *i = report; i && i->next != active_report; i = i->prev) {
+        i->flag = SELECT;
+      }
+    }
+
+    ED_area_tag_redraw(CTX_wm_area(C));
+    return OPERATOR_FINISHED;
+  }
+
+  if (extend) {
+    report->flag ^= SELECT;
+  }
+  else {
+    report->flag = SELECT;
+    sinfo->active_report_index = BLI_findindex(&reports->list, report);
+  }
 
   ED_area_tag_redraw(CTX_wm_area(C));
-
   return OPERATOR_FINISHED;
 }
 
@@ -178,7 +218,12 @@ static int select_report_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
 
   report = info_text_pick(sinfo, region, reports, event->mval[1]);
 
-  RNA_int_set(op->ptr, "report_index", BLI_findindex(&reports->list, report));
+  if (report == NULL) {
+    RNA_int_set(op->ptr, "report_index", -1);
+  }
+  else {
+    RNA_int_set(op->ptr, "report_index", BLI_findindex(&reports->list, report));
+  }
 
   return select_report_pick_exec(C, op);
 }
@@ -201,8 +246,17 @@ void INFO_OT_select_pick(wmOperatorType *ot)
   /* properties */
   PropertyRNA *prop;
   RNA_def_int(
-      ot->srna, "report_index", 0, 0, INT_MAX, "Report", "Index of the report", 0, INT_MAX);
+      ot->srna, "report_index", 0, -1, INT_MAX, "Report", "Index of the report", 0, INT_MAX);
   prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend report selection");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(
+      ot->srna, "extend_range", false, "Extend range", "Select a range from active element");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(ot->srna,
+                         "deselect_all",
+                         true,
+                         "Deselect On Nothing",
+                         "Deselect all when nothing under the cursor");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 

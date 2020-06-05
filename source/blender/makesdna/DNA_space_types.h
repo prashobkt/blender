@@ -112,7 +112,8 @@ typedef struct SpaceInfo {
   /* End 'SpaceLink' header. */
 
   char rpt_mask;
-  char _pad[7];
+  char _pad[3];
+  int active_report_index;
 } SpaceInfo;
 
 /* SpaceInfo.rpt_mask */
