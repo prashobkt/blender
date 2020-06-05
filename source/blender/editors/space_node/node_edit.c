@@ -69,6 +69,7 @@
 
 #include "NOD_composite.h"
 #include "NOD_shader.h"
+#include "NOD_simulation.h"
 #include "NOD_texture.h"
 #include "node_intern.h" /* own include */
 
@@ -127,12 +128,12 @@ static int compo_get_recalc_flags(const bContext *C)
   int recalc_flags = 0;
 
   for (win = wm->windows.first; win; win = win->next) {
-    const bScreen *sc = WM_window_get_active_screen(win);
-    ScrArea *sa;
+    const bScreen *screen = WM_window_get_active_screen(win);
+    ScrArea *area;
 
-    for (sa = sc->areabase.first; sa; sa = sa->next) {
-      if (sa->spacetype == SPACE_IMAGE) {
-        SpaceImage *sima = sa->spacedata.first;
+    for (area = screen->areabase.first; area; area = area->next) {
+      if (area->spacetype == SPACE_IMAGE) {
+        SpaceImage *sima = area->spacedata.first;
         if (sima->image) {
           if (sima->image->type == IMA_TYPE_R_RESULT) {
             recalc_flags |= COM_RECALC_COMPOSITE;
@@ -142,8 +143,8 @@ static int compo_get_recalc_flags(const bContext *C)
           }
         }
       }
-      else if (sa->spacetype == SPACE_NODE) {
-        SpaceNode *snode = sa->spacedata.first;
+      else if (area->spacetype == SPACE_NODE) {
+        SpaceNode *snode = area->spacedata.first;
         if (snode->flag & SNODE_BACKDRAW) {
           recalc_flags |= COM_RECALC_VIEWER;
         }
@@ -438,6 +439,11 @@ bool ED_node_is_texture(struct SpaceNode *snode)
   return STREQ(snode->tree_idname, ntreeType_Texture->idname);
 }
 
+bool ED_node_is_simulation(struct SpaceNode *snode)
+{
+  return STREQ(snode->tree_idname, ntreeType_Simulation->idname);
+}
+
 /* assumes nothing being done in ntree yet, sets the default in/out node */
 /* called from shading buttons or header */
 void ED_node_shader_default(const bContext *C, ID *id)
@@ -642,9 +648,12 @@ void snode_update(SpaceNode *snode, bNode *node)
   }
 }
 
-void ED_node_set_active(Main *bmain, bNodeTree *ntree, bNode *node)
+void ED_node_set_active(Main *bmain, bNodeTree *ntree, bNode *node, bool *r_active_texture_changed)
 {
   const bool was_active_texture = (node->flag & NODE_ACTIVE_TEXTURE) != 0;
+  if (r_active_texture_changed) {
+    *r_active_texture_changed = false;
+  }
 
   nodeSetActive(ntree, node);
 
@@ -713,6 +722,9 @@ void ED_node_set_active(Main *bmain, bNodeTree *ntree, bNode *node)
           }
         }
 
+        if (r_active_texture_changed) {
+          *r_active_texture_changed = true;
+        }
         ED_node_tag_update_nodetree(bmain, ntree, node);
         WM_main_add_notifier(NC_IMAGE, NULL);
       }
@@ -1284,7 +1296,7 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
       newnode = node->new_node;
 
       nodeSetSelected(node, false);
-      node->flag &= ~NODE_ACTIVE;
+      node->flag &= ~(NODE_ACTIVE | NODE_ACTIVE_TEXTURE);
       nodeSetSelected(newnode, true);
 
       do_tag_update |= (do_tag_update || node_connected_to_output(bmain, ntree, newnode));
@@ -1326,7 +1338,7 @@ void NODE_OT_duplicate(wmOperatorType *ot)
 
 bool ED_node_select_check(ListBase *lb)
 {
-  for (bNode *node = lb->first; node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, lb) {
     if (node->flag & NODE_SELECT) {
       return true;
     }
@@ -1346,7 +1358,7 @@ void ED_node_select_all(ListBase *lb, int action)
     }
   }
 
-  for (bNode *node = lb->first; node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, lb) {
     switch (action) {
       case SEL_SELECT:
         nodeSetSelected(node, true);

@@ -244,8 +244,10 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
     copy_m4_m4(effects->prev_drw_persmat, persmat);
 
     /* Prevent ghosting from probe data. */
-    view_is_valid = view_is_valid && (effects->prev_drw_support == DRW_state_draw_support());
+    view_is_valid = view_is_valid && (effects->prev_drw_support == DRW_state_draw_support()) &&
+                    (effects->prev_is_navigating == DRW_state_is_navigating());
     effects->prev_drw_support = DRW_state_draw_support();
+    effects->prev_is_navigating = DRW_state_is_navigating();
 
     if (((effects->taa_total_sample == 0) ||
          (effects->taa_current_sample < effects->taa_total_sample)) ||
@@ -290,8 +292,7 @@ void EEVEE_temporal_sampling_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data 
     DRW_shgroup_uniform_texture_ref(grp, "colorHistoryBuffer", &txl->taa_history);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &effects->source_buffer);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-    DRW_shgroup_uniform_block(
-        grp, "renderpass_block", EEVEE_material_default_render_pass_ubo_get(sldata));
+    DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
     if (effects->enabled_effects & EFFECT_TAA_REPROJECT) {
       // DefaultTextureList *dtxl = DRW_viewport_texture_list_get();

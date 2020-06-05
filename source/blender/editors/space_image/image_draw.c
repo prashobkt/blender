@@ -476,7 +476,7 @@ static void sima_draw_zbuf_pixels(
 
   IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
   GPU_shader_uniform_vector(
-      state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, red);
+      state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, red);
 
   immDrawPixelsTex(
       &state, x1, y1, rectx, recty, GL_RED, GL_INT, GL_NEAREST, recti, zoomx, zoomy, NULL);
@@ -524,7 +524,7 @@ static void sima_draw_zbuffloat_pixels(Scene *scene,
 
   IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
   GPU_shader_uniform_vector(
-      state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, red);
+      state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, red);
 
   immDrawPixelsTex(
       &state, x1, y1, rectx, recty, GL_RED, GL_FLOAT, GL_NEAREST, rectf, zoomx, zoomy, NULL);
@@ -575,6 +575,9 @@ static void draw_image_buffer(const bContext *C,
                               float zoomx,
                               float zoomy)
 {
+  /* Image are still drawn in display space. */
+  glDisable(GL_FRAMEBUFFER_SRGB);
+
   int x, y;
   int sima_flag = sima->flag & ED_space_image_get_display_channel_mask(ibuf);
 
@@ -634,7 +637,7 @@ static void draw_image_buffer(const bContext *C,
 
       IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
       GPU_shader_uniform_vector(
-          state.shader, GPU_shader_get_uniform_ensure(state.shader, "shuffle"), 4, 1, shuffle);
+          state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, shuffle);
 
       IMB_colormanagement_display_settings_from_ctx(C, &view_settings, &display_settings);
       display_buffer = IMB_display_buffer_acquire(
@@ -666,6 +669,8 @@ static void draw_image_buffer(const bContext *C,
       GPU_blend(false);
     }
   }
+
+  glEnable(GL_FRAMEBUFFER_SRGB);
 }
 
 static void draw_image_buffer_repeated(const bContext *C,

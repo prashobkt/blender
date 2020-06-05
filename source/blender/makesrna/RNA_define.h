@@ -50,6 +50,7 @@ void RNA_free(BlenderRNA *brna);
 void RNA_define_verify_sdna(bool verify);
 void RNA_define_animate_sdna(bool animate);
 void RNA_define_fallback_property_update(int noteflag, const char *updatefunc);
+void RNA_define_lib_overridable(const bool make_overridable);
 
 void RNA_init(void);
 void RNA_exit(void);
@@ -76,7 +77,7 @@ void RNA_def_struct_identifier_no_struct_map(StructRNA *srna, const char *identi
 void RNA_def_struct_identifier(BlenderRNA *brna, StructRNA *srna, const char *identifier);
 void RNA_def_struct_ui_text(StructRNA *srna, const char *name, const char *description);
 void RNA_def_struct_ui_icon(StructRNA *srna, int icon);
-void RNA_struct_free_extension(StructRNA *srna, ExtensionRNA *ext);
+void RNA_struct_free_extension(StructRNA *srna, ExtensionRNA *rna_ext);
 void RNA_struct_free(BlenderRNA *brna, StructRNA *srna);
 
 void RNA_def_struct_translation_context(StructRNA *srna, const char *context);

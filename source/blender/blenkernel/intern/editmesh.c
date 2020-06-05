@@ -32,6 +32,7 @@
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_editmesh.h"
+#include "BKE_editmesh_cache.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_iterators.h"
@@ -66,6 +67,10 @@ BMEditMesh *BKE_editmesh_copy(BMEditMesh *em)
    * in that case it makes more sense to do the
    * tessellation only when/if that copy ends up getting used. */
   em_copy->looptris = NULL;
+
+  /* Copy various settings. */
+  em_copy->selectmode = em->selectmode;
+  em_copy->mat_nr = em->mat_nr;
 
   return em_copy;
 }
@@ -262,7 +267,7 @@ BoundBox *BKE_editmesh_cage_boundbox_get(BMEditMesh *em)
     float min[3], max[3];
     INIT_MINMAX(min, max);
     if (em->mesh_eval_cage) {
-      BKE_mesh_minmax(em->mesh_eval_cage, min, max);
+      BKE_mesh_wrapper_minmax(em->mesh_eval_cage, min, max);
     }
 
     em->bb_cage = MEM_callocN(sizeof(BoundBox), "BMEditMesh.bb_cage");

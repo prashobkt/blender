@@ -83,7 +83,7 @@ static void immDrawPixelsTexSetupAttributes(IMMDrawPixelsTexState *state)
 /* To be used before calling immDrawPixelsTex
  * Default shader is GPU_SHADER_2D_IMAGE_COLOR
  * You can still set uniforms with :
- * GPU_shader_uniform_int(shader, GPU_shader_get_uniform_ensure(shader, "name"), 0);
+ * GPU_shader_uniform_int(shader, GPU_shader_get_uniform(shader, "name"), 0);
  * */
 IMMDrawPixelsTexState immDrawPixelsTexSetup(int builtin)
 {
@@ -132,7 +132,7 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
                                      float yzoom,
                                      float color[4])
 {
-  unsigned char *uc_rect = (unsigned char *)rect;
+  uchar *uc_rect = (uchar *)rect;
   const float *f_rect = (float *)rect;
   int subpart_x, subpart_y, tex_w, tex_h;
   int seamless, offset_x, offset_y, nsubparts_x, nsubparts_y;
@@ -185,13 +185,13 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_w, tex_h, 0, format, GL_UNSIGNED_BYTE, NULL);
   }
 
-  unsigned int pos = state->pos, texco = state->texco;
+  uint pos = state->pos, texco = state->texco;
 
   /* optional */
   /* NOTE: Shader could be null for GLSL OCIO drawing, it is fine, since
    * it does not need color.
    */
-  if (state->shader != NULL && GPU_shader_get_uniform_ensure(state->shader, "color") != -1) {
+  if (state->shader != NULL && GPU_shader_get_uniform(state->shader, "color") != -1) {
     immUniformColor4fv((color) ? color : white);
   }
 
@@ -650,7 +650,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
 
   /* In case GLSL failed or not usable, fallback to glaDrawPixelsAuto */
   if (need_fallback) {
-    unsigned char *display_buffer;
+    uchar *display_buffer;
     void *cache_handle;
 
     display_buffer = IMB_display_buffer_acquire(
@@ -758,7 +758,7 @@ int ED_draw_imbuf_method(ImBuf *ibuf)
 
 /* don't move to GPU_immediate_util.h because this uses user-prefs
  * and isn't very low level */
-void immDrawBorderCorners(unsigned int pos, const rcti *border, float zoomx, float zoomy)
+void immDrawBorderCorners(uint pos, const rcti *border, float zoomx, float zoomy)
 {
   float delta_x = 4.0f * UI_DPI_FAC / zoomx;
   float delta_y = 4.0f * UI_DPI_FAC / zoomy;

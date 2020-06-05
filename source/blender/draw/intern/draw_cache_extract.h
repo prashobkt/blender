@@ -23,6 +23,8 @@
 #ifndef __DRAW_CACHE_EXTRACT_H__
 #define __DRAW_CACHE_EXTRACT_H__
 
+struct TaskGraph;
+
 /* Vertex Group Selection and display options */
 typedef struct DRW_MeshWeightState {
   int defgroup_active;
@@ -249,10 +251,12 @@ typedef struct MeshBatchCache {
   bool no_loose_wire;
 } MeshBatchCache;
 
-void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
+void mesh_buffer_cache_create_requested(struct TaskGraph *task_graph,
+                                        MeshBatchCache *cache,
                                         MeshBufferCache mbc,
                                         Mesh *me,
                                         const bool is_editmode,
+                                        const bool is_paint_mode,
                                         const float obmat[4][4],
                                         const bool do_final,
                                         const bool do_uvedit,

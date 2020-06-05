@@ -105,6 +105,7 @@ extern char datatoc_particle_frag_glsl[];
 extern char datatoc_pointcloud_vert_glsl[];
 extern char datatoc_pointcloud_frag_glsl[];
 extern char datatoc_sculpt_mask_vert_glsl[];
+extern char datatoc_sculpt_mask_frag_glsl[];
 extern char datatoc_volume_velocity_vert_glsl[];
 extern char datatoc_wireframe_vert_glsl[];
 extern char datatoc_wireframe_frag_glsl[];
@@ -163,8 +164,10 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_particle_strand;
   GPUShader *edit_particle_point;
   GPUShader *extra;
+  GPUShader *extra_select;
   GPUShader *extra_groundline;
   GPUShader *extra_wire[2];
+  GPUShader *extra_wire_select;
   GPUShader *extra_point;
   GPUShader *extra_lightprobe_grid;
   GPUShader *extra_loose_point;
@@ -233,10 +236,12 @@ GPUShader *OVERLAY_shader_background(void)
 GPUShader *OVERLAY_shader_clipbound(void)
 {
   OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[0];
   if (!sh_data->clipbound) {
     sh_data->clipbound = GPU_shader_create_from_arrays({
         .vert = (const char *[]){datatoc_common_view_lib_glsl, datatoc_clipbound_vert_glsl, NULL},
         .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
     });
   }
   return sh_data->clipbound;
@@ -713,7 +718,7 @@ GPUShader *OVERLAY_shader_edit_mesh_normal(void)
                                  datatoc_edit_mesh_normal_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define INSTANCED_ATTRIB\n", NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define INSTANCED_ATTR\n", NULL},
     });
   }
   return sh_data->edit_mesh_normals;
@@ -750,7 +755,7 @@ GPUShader *OVERLAY_shader_edit_mesh_skin_root(void)
                                  datatoc_edit_mesh_skin_root_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define INSTANCED_ATTRIB\n", NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define INSTANCED_ATTR\n", NULL},
     });
   }
   return sh_data->edit_mesh_skin_root;
@@ -794,23 +799,24 @@ GPUShader *OVERLAY_shader_edit_particle_point(void)
   return sh_data->edit_particle_point;
 }
 
-GPUShader *OVERLAY_shader_extra(void)
+GPUShader *OVERLAY_shader_extra(bool is_select)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->extra) {
-    sh_data->extra = GPU_shader_create_from_arrays({
+  GPUShader **sh = (is_select) ? &sh_data->extra_select : &sh_data->extra;
+  if (!*sh) {
+    *sh = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
                                  datatoc_extra_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_common_view_lib_glsl, datatoc_extra_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, NULL},
+        .defs = (const char *[]){sh_cfg->def, (is_select) ? "#define SELECT_EDGES\n" : NULL, NULL},
     });
   }
-  return sh_data->extra;
+  return *sh;
 }
 
 GPUShader *OVERLAY_shader_extra_grid(void)
@@ -852,12 +858,13 @@ GPUShader *OVERLAY_shader_extra_groundline(void)
   return sh_data->extra_groundline;
 }
 
-GPUShader *OVERLAY_shader_extra_wire(bool use_object)
+GPUShader *OVERLAY_shader_extra_wire(bool use_object, bool is_select)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->extra_wire[use_object]) {
+  GPUShader **sh = (is_select) ? &sh_data->extra_wire_select : &sh_data->extra_wire[use_object];
+  if (!*sh) {
     char colorids[1024];
     /* NOTE: define all ids we need here. */
     BLI_snprintf(colorids,
@@ -872,7 +879,7 @@ GPUShader *OVERLAY_shader_extra_wire(bool use_object)
                  TH_TRANSFORM,
                  TH_WIRE,
                  TH_CAMERA_PATH);
-    sh_data->extra_wire[use_object] = GPU_shader_create_from_arrays({
+    *sh = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
@@ -881,11 +888,12 @@ GPUShader *OVERLAY_shader_extra_wire(bool use_object)
         .frag = (const char *[]){datatoc_common_view_lib_glsl, datatoc_extra_wire_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg->def,
                                  colorids,
+                                 (is_select) ? "#define SELECT_EDGES\n" : "",
                                  (use_object) ? "#define OBJECT_WIRE \n" : NULL,
                                  NULL},
     });
   }
-  return sh_data->extra_wire[use_object];
+  return *sh;
 }
 
 GPUShader *OVERLAY_shader_extra_loose_point(void)
@@ -1269,7 +1277,7 @@ GPUShader *OVERLAY_shader_particle_shape(void)
                                  datatoc_particle_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define INSTANCED_ATTRIB\n", NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define INSTANCED_ATTR\n", NULL},
     });
   }
   return sh_data->particle_shape;
@@ -1305,7 +1313,7 @@ GPUShader *OVERLAY_shader_sculpt_mask(void)
                                  datatoc_common_view_lib_glsl,
                                  datatoc_sculpt_mask_vert_glsl,
                                  NULL},
-        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
+        .frag = (const char *[]){datatoc_sculpt_mask_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg->def, NULL},
     });
   }
@@ -1339,6 +1347,7 @@ struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)
         NULL,
         datatoc_gpu_shader_flat_color_frag_glsl,
         datatoc_common_view_lib_glsl,
+        "#define blender_srgb_to_framebuffer_space(a) a\n"
         "#define USE_NEEDLE\n");
   }
   else if (!sh_data->volume_velocity_sh) {
@@ -1347,7 +1356,7 @@ struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)
         NULL,
         datatoc_gpu_shader_flat_color_frag_glsl,
         datatoc_common_view_lib_glsl,
-        NULL);
+        "#define blender_srgb_to_framebuffer_space(a) a\n");
   }
   return (use_needle) ? sh_data->volume_velocity_needle_sh : sh_data->volume_velocity_sh;
 }

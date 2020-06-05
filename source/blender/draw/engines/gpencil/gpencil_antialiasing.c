@@ -78,13 +78,8 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
                                               false,
                                               NULL);
 
-    GPU_texture_bind(txl->smaa_search_tx, 0);
     GPU_texture_filter_mode(txl->smaa_search_tx, true);
-    GPU_texture_unbind(txl->smaa_search_tx);
-
-    GPU_texture_bind(txl->smaa_area_tx, 0);
     GPU_texture_filter_mode(txl->smaa_area_tx, true);
-    GPU_texture_unbind(txl->smaa_area_tx);
   }
 
   {
@@ -115,6 +110,8 @@ void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
     DRW_shgroup_uniform_texture(grp, "colorTex", pd->color_tx);
     DRW_shgroup_uniform_texture(grp, "revealTex", pd->reveal_tx);
     DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
+    DRW_shgroup_uniform_float_copy(
+        grp, "lumaWeight", pd->scene->grease_pencil_settings.smaa_threshold);
 
     DRW_shgroup_clear_framebuffer(grp, GPU_COLOR_BIT, 0, 0, 0, 0, 0.0f, 0x0);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);

@@ -102,14 +102,18 @@ void OVERLAY_outline_init(OVERLAY_Data *vedata)
 
     if (pd->antialiasing.enabled) {
       GPU_framebuffer_ensure_config(&fbl->outlines_resolve_fb,
-                                    {GPU_ATTACHMENT_NONE,
-                                     GPU_ATTACHMENT_TEXTURE(txl->overlay_color_tx),
-                                     GPU_ATTACHMENT_TEXTURE(txl->overlay_line_tx)});
+                                    {
+                                        GPU_ATTACHMENT_NONE,
+                                        GPU_ATTACHMENT_TEXTURE(txl->overlay_color_tx),
+                                        GPU_ATTACHMENT_TEXTURE(txl->overlay_line_tx),
+                                    });
     }
     else {
-      GPU_framebuffer_ensure_config(
-          &fbl->outlines_resolve_fb,
-          {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+      GPU_framebuffer_ensure_config(&fbl->outlines_resolve_fb,
+                                    {
+                                        GPU_ATTACHMENT_NONE,
+                                        GPU_ATTACHMENT_TEXTURE(dtxl->color_overlay),
+                                    });
     }
   }
 }
@@ -255,7 +259,7 @@ static void OVERLAY_outline_gpencil(OVERLAY_PrivateData *pd, Object *ob)
   }
 
   BKE_gpencil_visible_stroke_iter(
-      ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, false, pd->cfra);
+      NULL, ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter, false, pd->cfra);
 }
 
 void OVERLAY_outline_cache_populate(OVERLAY_Data *vedata,

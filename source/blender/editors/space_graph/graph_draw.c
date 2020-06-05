@@ -343,6 +343,10 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
   uint color = GPU_vertformat_attr_add(
       format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
   immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
+  if ((sipo->flag & SIPO_BEAUTYDRAW_OFF) == 0) {
+    GPU_line_smooth(true);
+  }
+  GPU_blend(true);
 
   immBeginAtMost(GPU_PRIM_LINES, 4 * 2 * fcu->totvert);
 
@@ -419,6 +423,10 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
 
   immEnd();
   immUnbindProgram();
+  GPU_blend(false);
+  if ((sipo->flag & SIPO_BEAUTYDRAW_OFF) == 0) {
+    GPU_line_smooth(false);
+  }
 }
 
 /* Samples ---------------- */
@@ -1151,7 +1159,7 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
      *   we must obey this.
      */
     if (!(sipo->flag & SIPO_SELCUVERTSONLY) || (fcu->flag & FCURVE_SELECTED)) {
-      if (!fcurve_are_keyframes_usable(fcu) && !(fcu->fpt && fcu->totvert)) {
+      if (!BKE_fcurve_are_keyframes_usable(fcu) && !(fcu->fpt && fcu->totvert)) {
         /* only draw controls if this is the active modifier */
         if ((fcu->flag & FCURVE_ACTIVE) && (fcm)) {
           switch (fcm->type) {
@@ -1181,9 +1189,7 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
 
           if (do_handles) {
             /* only draw handles/vertices on keyframes */
-            GPU_blend(true);
             draw_fcurve_handles(sipo, fcu);
-            GPU_blend(false);
           }
 
           draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY));

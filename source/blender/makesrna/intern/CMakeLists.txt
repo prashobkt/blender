@@ -103,6 +103,13 @@ if(WITH_NEW_OBJECT_TYPES)
   )
 endif()
 
+if (WITH_NEW_SIMULATION_TYPE)
+  list(APPEND DEFSRC
+    rna_simulation.c
+  )
+endif()
+
+
 set(APISRC
   rna_action_api.c
   rna_animation_api.c
@@ -342,6 +349,11 @@ if(WITH_NEW_OBJECT_TYPES)
   add_definitions(-DWITH_NEW_OBJECT_TYPES)
 endif()
 
+if (WITH_NEW_SIMULATION_TYPE)
+  add_definitions(-DWITH_NEW_SIMULATION_TYPE)
+endif()
+
+
 # Build makesrna executable
 blender_include_dirs(
   .
@@ -381,6 +393,10 @@ add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
 
 target_link_libraries(makesrna bf_dna)
 target_link_libraries(makesrna bf_dna_blenlib)
+
+if(WIN32 AND NOT UNIX)
+  target_link_libraries(makesrna ${PTHREADS_LIBRARIES})
+endif()
 
 # Output rna_*_gen.c
 # note (linux only): with crashes try add this after COMMAND: valgrind --leak-check=full --track-origins=yes

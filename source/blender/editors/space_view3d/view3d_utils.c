@@ -86,6 +86,26 @@ void ED_view3d_background_color_get(const Scene *scene, const View3D *v3d, float
   UI_GetThemeColor3fv(TH_BACK, r_color);
 }
 
+bool ED_view3d_has_workbench_in_texture_color(const Scene *scene,
+                                              const Object *ob,
+                                              const View3D *v3d)
+{
+  if (v3d->shading.type == OB_SOLID) {
+    if (v3d->shading.color_type == V3D_SHADING_TEXTURE_COLOR) {
+      return true;
+    }
+    if (ob->mode == OB_MODE_TEXTURE_PAINT) {
+      return true;
+    }
+  }
+  else if (v3d->shading.type == OB_RENDER) {
+    if (STREQ(scene->r.engine, RE_engine_id_BLENDER_WORKBENCH)) {
+      return scene->display.shading.color_type == V3D_SHADING_TEXTURE_COLOR;
+    }
+  }
+  return false;
+}
+
 Camera *ED_view3d_camera_data_get(View3D *v3d, RegionView3D *rv3d)
 {
   /* establish the camera object,
@@ -228,26 +248,26 @@ void ED_view3d_polygon_offset(const RegionView3D *rv3d, const float dist)
 
 bool ED_view3d_context_activate(bContext *C)
 {
-  bScreen *sc = CTX_wm_screen(C);
-  ScrArea *sa = CTX_wm_area(C);
+  bScreen *screen = CTX_wm_screen(C);
+  ScrArea *area = CTX_wm_area(C);
   ARegion *region;
 
-  /* sa can be NULL when called from python */
-  if (sa == NULL || sa->spacetype != SPACE_VIEW3D) {
-    sa = BKE_screen_find_big_area(sc, SPACE_VIEW3D, 0);
+  /* area can be NULL when called from python */
+  if (area == NULL || area->spacetype != SPACE_VIEW3D) {
+    area = BKE_screen_find_big_area(screen, SPACE_VIEW3D, 0);
   }
 
-  if (sa == NULL) {
+  if (area == NULL) {
     return false;
   }
 
-  region = BKE_area_find_region_active_win(sa);
+  region = BKE_area_find_region_active_win(area);
   if (region == NULL) {
     return false;
   }
 
   /* bad context switch .. */
-  CTX_wm_area_set(C, sa);
+  CTX_wm_area_set(C, area);
   CTX_wm_region_set(C, region);
 
   return true;
@@ -666,7 +686,7 @@ bool ED_view3d_camera_lock_autokey(View3D *v3d,
  * Use with quad-split so each view is clipped by the bounds of each view axis.
  * \{ */
 
-static void view3d_boxview_clip(ScrArea *sa)
+static void view3d_boxview_clip(ScrArea *area)
 {
   ARegion *region;
   BoundBox *bb = MEM_callocN(sizeof(BoundBox), "clipbb");
@@ -675,7 +695,7 @@ static void view3d_boxview_clip(ScrArea *sa)
   int val;
 
   /* create bounding box */
-  for (region = sa->regionbase.first; region; region = region->next) {
+  for (region = area->regionbase.first; region; region = region->next) {
     if (region->regiontype == RGN_TYPE_WINDOW) {
       RegionView3D *rv3d = region->regiondata;
 
@@ -747,7 +767,7 @@ static void view3d_boxview_clip(ScrArea *sa)
   }
 
   /* create bounding box */
-  for (region = sa->regionbase.first; region; region = region->next) {
+  for (region = area->regionbase.first; region; region = region->next) {
     if (region->regiontype == RGN_TYPE_WINDOW) {
       RegionView3D *rv3d = region->regiondata;
 
@@ -812,13 +832,13 @@ static void view3d_boxview_sync_axis(RegionView3D *rv3d_dst, RegionView3D *rv3d_
 }
 
 /* sync center/zoom view of region to others, for view transforms */
-void view3d_boxview_sync(ScrArea *sa, ARegion *region)
+void view3d_boxview_sync(ScrArea *area, ARegion *region)
 {
   ARegion *artest;
   RegionView3D *rv3d = region->regiondata;
   short clip = 0;
 
-  for (artest = sa->regionbase.first; artest; artest = artest->next) {
+  for (artest = area->regionbase.first; artest; artest = artest->next) {
     if (artest != region && artest->regiontype == RGN_TYPE_WINDOW) {
       RegionView3D *rv3dtest = artest->regiondata;
 
@@ -833,18 +853,18 @@ void view3d_boxview_sync(ScrArea *sa, ARegion *region)
   }
 
   if (clip) {
-    view3d_boxview_clip(sa);
+    view3d_boxview_clip(area);
   }
 }
 
 /* for home, center etc */
-void view3d_boxview_copy(ScrArea *sa, ARegion *region)
+void view3d_boxview_copy(ScrArea *area, ARegion *region)
 {
   ARegion *artest;
   RegionView3D *rv3d = region->regiondata;
   bool clip = false;
 
-  for (artest = sa->regionbase.first; artest; artest = artest->next) {
+  for (artest = area->regionbase.first; artest; artest = artest->next) {
     if (artest != region && artest->regiontype == RGN_TYPE_WINDOW) {
       RegionView3D *rv3dtest = artest->regiondata;
 
@@ -859,14 +879,14 @@ void view3d_boxview_copy(ScrArea *sa, ARegion *region)
   }
 
   if (clip) {
-    view3d_boxview_clip(sa);
+    view3d_boxview_clip(area);
   }
 }
 
 /* 'clip' is used to know if our clip setting has changed */
-void ED_view3d_quadview_update(ScrArea *sa, ARegion *region, bool do_clip)
+void ED_view3d_quadview_update(ScrArea *area, ARegion *region, bool do_clip)
 {
-  ARegion *ar_sync = NULL;
+  ARegion *region_sync = NULL;
   RegionView3D *rv3d = region->regiondata;
   short viewlock;
   /* this function copies flags from the first of the 3 other quadview
@@ -892,21 +912,21 @@ void ED_view3d_quadview_update(ScrArea *sa, ARegion *region, bool do_clip)
         rv3d->rflag &= ~RV3D_BOXCLIP;
       }
 
-      /* use ar_sync so we sync with one of the aligned views below
+      /* use region_sync so we sync with one of the aligned views below
        * else the view jumps on changing view settings like 'clip'
        * since it copies from the perspective view */
-      ar_sync = region;
+      region_sync = region;
     }
   }
 
   if (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXVIEW) {
-    view3d_boxview_sync(sa, ar_sync ? ar_sync : sa->regionbase.last);
+    view3d_boxview_sync(area, region_sync ? region_sync : area->regionbase.last);
   }
 
   /* ensure locked regions have an axis, locked user views don't make much sense */
   if (viewlock & RV3D_LOCK_ROTATION) {
     int index_qsplit = 0;
-    for (region = sa->regionbase.first; region; region = region->next) {
+    for (region = area->regionbase.first; region; region = region->next) {
       if (region->alignment == RGN_ALIGN_QSPLIT) {
         rv3d = region->regiondata;
         if (rv3d->viewlock) {
@@ -922,7 +942,7 @@ void ED_view3d_quadview_update(ScrArea *sa, ARegion *region, bool do_clip)
     }
   }
 
-  ED_area_tag_redraw(sa);
+  ED_area_tag_redraw(area);
 }
 
 /** \} */

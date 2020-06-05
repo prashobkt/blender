@@ -45,10 +45,12 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
+#include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
+#include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
@@ -182,7 +184,7 @@ FCurve *ED_action_fcurve_find(struct bAction *act, const char rna_path[], const 
   if (ELEM(NULL, act, rna_path)) {
     return NULL;
   }
-  return list_find_fcurve(&act->curves, rna_path, array_index);
+  return BKE_fcurve_find(&act->curves, rna_path, array_index);
 }
 
 /**
@@ -208,11 +210,11 @@ FCurve *ED_action_fcurve_ensure(struct Main *bmain,
    * - add if not found and allowed to add one
    *   TODO: add auto-grouping support? how this works will need to be resolved
    */
-  fcu = list_find_fcurve(&act->curves, rna_path, array_index);
+  fcu = BKE_fcurve_find(&act->curves, rna_path, array_index);
 
   if (fcu == NULL) {
     /* use default settings to make a F-Curve */
-    fcu = MEM_callocN(sizeof(FCurve), "FCurve");
+    fcu = BKE_fcurve_create();
 
     fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
     fcu->auto_smoothing = U.auto_smoothing_new;
@@ -494,7 +496,7 @@ int insert_vert_fcurve(
     FCurve *fcu, float x, float y, eBezTriple_KeyframeType keyframe_type, eInsertKeyFlags flag)
 {
   BezTriple beztr = {{{0}}};
-  unsigned int oldTot = fcu->totvert;
+  uint oldTot = fcu->totvert;
   int a;
 
   /* set all three points, for nicer start position
@@ -1118,7 +1120,7 @@ static bool insert_keyframe_value(ReportList *reports,
                                   eInsertKeyFlags flag)
 {
   /* F-Curve not editable? */
-  if (fcurve_is_keyframable(fcu) == 0) {
+  if (BKE_fcurve_is_keyframable(fcu) == 0) {
     BKE_reportf(
         reports,
         RPT_ERROR,
@@ -1793,11 +1795,11 @@ enum {
  */
 static bool modify_key_op_poll(bContext *C)
 {
-  ScrArea *sa = CTX_wm_area(C);
+  ScrArea *area = CTX_wm_area(C);
   Scene *scene = CTX_data_scene(C);
 
   /* if no area or active scene */
-  if (ELEM(NULL, sa, scene)) {
+  if (ELEM(NULL, area, scene)) {
     return false;
   }
 
@@ -1825,7 +1827,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
    * updated since the last switching to the edit mode will be keyframed correctly
    */
   if (obedit && ANIM_keyingset_find_id(ks, (ID *)obedit->data)) {
-    ED_object_mode_toggle(C, OB_MODE_EDIT);
+    ED_object_mode_set(C, OB_MODE_OBJECT);
     ob_edit_mode = true;
   }
 
@@ -1841,7 +1843,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
 
   /* restore the edit mode if necessary */
   if (ob_edit_mode) {
-    ED_object_mode_toggle(C, OB_MODE_EDIT);
+    ED_object_mode_set(C, OB_MODE_EDIT);
   }
 
   /* report failure or do updates? */
@@ -2398,7 +2400,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
        * not have any effect.
        */
       NlaStrip *strip = ptr.data;
-      FCurve *fcu = list_find_fcurve(&strip->fcurves, RNA_property_identifier(prop), index);
+      FCurve *fcu = BKE_fcurve_find(&strip->fcurves, RNA_property_identifier(prop), index);
 
       if (fcu) {
         changed = insert_keyframe_direct(
@@ -2415,7 +2417,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       FCurve *fcu;
       bool driven, special;
 
-      fcu = rna_get_fcurve_context_ui(C, &ptr, prop, index, NULL, NULL, &driven, &special);
+      fcu = BKE_fcurve_find_by_rna_context_ui(C, &ptr, prop, index, NULL, NULL, &driven, &special);
 
       if (fcu && driven) {
         changed = insert_keyframe_direct(
@@ -2558,7 +2560,7 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
        */
       ID *id = ptr.owner_id;
       NlaStrip *strip = ptr.data;
-      FCurve *fcu = list_find_fcurve(&strip->fcurves, RNA_property_identifier(prop), 0);
+      FCurve *fcu = BKE_fcurve_find(&strip->fcurves, RNA_property_identifier(prop), 0);
 
       if (fcu) {
         if (BKE_fcurve_is_protected(fcu)) {
@@ -2999,7 +3001,8 @@ bool ED_autokeyframe_property(
   bool special;
   bool changed = false;
 
-  fcu = rna_get_fcurve_context_ui(C, ptr, prop, rnaindex, NULL, &action, &driven, &special);
+  fcu = BKE_fcurve_find_by_rna_context_ui(
+      C, ptr, prop, rnaindex, NULL, &action, &driven, &special);
 
   if (fcu == NULL) {
     return changed;

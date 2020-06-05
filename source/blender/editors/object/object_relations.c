@@ -55,7 +55,7 @@
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_action.h"
-#include "BKE_animsys.h"
+#include "BKE_anim_data.h"
 #include "BKE_armature.h"
 #include "BKE_camera.h"
 #include "BKE_collection.h"
@@ -557,7 +557,7 @@ static void object_remove_parent_deform_modifiers(Object *ob, const Object *par)
       /* free modifier if match */
       if (free) {
         BLI_remlink(&ob->modifiers, md);
-        modifier_free(md);
+        BKE_modifier_free(md);
       }
     }
   }
@@ -803,7 +803,7 @@ bool ED_object_parent_set(ReportList *reports,
 
           switch (partype) {
             case PAR_CURVE: /* curve deform */
-              if (modifiers_isDeformedByCurve(ob) != par) {
+              if (BKE_modifiers_is_deformed_by_curve(ob) != par) {
                 md = ED_object_modifier_add(reports, bmain, scene, ob, NULL, eModifierType_Curve);
                 if (md) {
                   ((CurveModifierData *)md)->object = par;
@@ -814,7 +814,7 @@ bool ED_object_parent_set(ReportList *reports,
               }
               break;
             case PAR_LATTICE: /* lattice deform */
-              if (modifiers_isDeformedByLattice(ob) != par) {
+              if (BKE_modifiers_is_deformed_by_lattice(ob) != par) {
                 md = ED_object_modifier_add(
                     reports, bmain, scene, ob, NULL, eModifierType_Lattice);
                 if (md) {
@@ -823,7 +823,7 @@ bool ED_object_parent_set(ReportList *reports,
               }
               break;
             default: /* armature deform */
-              if (modifiers_isDeformedByArmature(ob) != par) {
+              if (BKE_modifiers_is_deformed_by_armature(ob) != par) {
                 md = ED_object_modifier_add(
                     reports, bmain, scene, ob, NULL, eModifierType_Armature);
                 if (md) {
@@ -899,7 +899,10 @@ bool ED_object_parent_set(ReportList *reports,
         invert_m4_m4(ob->parentinv, workob.obmat);
       }
       else if (pararm && (ob->type == OB_GPENCIL) && (par->type == OB_ARMATURE)) {
-        if (partype == PAR_ARMATURE_NAME) {
+        if (partype == PAR_ARMATURE) {
+          ED_gpencil_add_armature(C, reports, ob, par);
+        }
+        else if (partype == PAR_ARMATURE_NAME) {
           ED_gpencil_add_armature_weights(C, reports, ob, par, GP_PAR_ARMATURE_NAME);
         }
         else if ((partype == PAR_ARMATURE_AUTO) || (partype == PAR_ARMATURE_ENVELOPE)) {
@@ -1424,7 +1427,7 @@ void OBJECT_OT_track_set(wmOperatorType *ot)
  * \{ */
 
 #if 0
-static void link_to_scene(Main *UNUSED(bmain), unsigned short UNUSED(nr))
+static void link_to_scene(Main *UNUSED(bmain), ushort UNUSED(nr))
 {
   Scene *sce = (Scene *)BLI_findlink(&bmain->scene, G.curscreen->scenenr - 1);
   Base *base, *nbase;
@@ -1753,7 +1756,7 @@ static void libblock_relink_collection(Collection *collection, const bool do_col
     BKE_libblock_relink_to_newid(&cob->ob->id);
   }
 
-  for (CollectionChild *child = collection->children.first; child; child = child->next) {
+  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     libblock_relink_collection(child->collection, true);
   }
 }
@@ -1772,7 +1775,7 @@ static Collection *single_object_users_collection(Main *bmain,
   }
 
   /* We do not remap to new objects here, this is done in separate step. */
-  for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
+  LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     Object *ob = cob->ob;
     /* an object may be in more than one collection */
     if ((ob->id.newid == NULL) && ((ob->flag & flag) == flag)) {
@@ -2069,7 +2072,7 @@ void ED_object_single_users(Main *bmain,
 
     /* Duplicating obdata and other IDs may require another update of the collections and objects
      * pointers, especially regarding drivers and custom props, see T66641.
-     * Note that this whole scene duplication code and 'make single user' functions have te be
+     * Note that this whole scene duplication code and 'make single user' functions have to be
      * rewritten at some point to make use of proper modern ID management code,
      * but that is no small task.
      * For now we are doomed to that kind of band-aid to try to cover most of remapping cases. */
@@ -2106,7 +2109,7 @@ void ED_object_single_users(Main *bmain,
 
     if (scene->nodetree) {
       IDP_RelinkProperty(scene->nodetree->id.properties);
-      for (bNode *node = scene->nodetree->nodes.first; node; node = node->next) {
+      LISTBASE_FOREACH (bNode *, node, &scene->nodetree->nodes) {
         IDP_RelinkProperty(node->prop);
       }
     }
@@ -2245,7 +2248,7 @@ static void make_local_animdata_tag(AnimData *adt)
     /* TODO: need to handle the ID-targets too? */
 
     /* NLA Data */
-    for (NlaTrack *nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
+    LISTBASE_FOREACH (NlaTrack *, nlt, &adt->nla_tracks) {
       make_local_animdata_tag_strips(&nlt->strips);
     }
   }
@@ -2513,7 +2516,8 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
     ViewLayer *view_layer = CTX_data_view_layer(C);
     Collection *new_collection = (Collection *)collection->id.newid;
 
-    BKE_collection_child_add(bmain, scene->master_collection, new_collection);
+    BKE_collection_add_from_object(bmain, scene, obcollection, new_collection);
+
     FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (new_collection, new_ob) {
       if (new_ob != NULL && new_ob->id.override_library != NULL) {
         if ((base = BKE_view_layer_base_find(view_layer, new_ob)) == NULL) {
@@ -2521,14 +2525,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
           base = BKE_view_layer_base_find(view_layer, new_ob);
           DEG_id_tag_update_ex(bmain, &new_ob->id, ID_RECALC_TRANSFORM | ID_RECALC_BASE_FLAGS);
         }
-        /* parent to 'collection' empty */
-        /* Disabled for now, according to some artist this is probably not really useful anyway.
-         * And it breaks things like objects parented to bones
-         * (most likely due to missing proper setting of inverse parent matrix?)... */
-        /* Note: we might even actually want to get rid of that instantiating empty... */
-        if (0 && new_ob->parent == NULL) {
-          new_ob->parent = obcollection;
-        }
+
         if (new_ob == (Object *)obact->id.newid) {
           /* TODO: is setting active needed? */
           BKE_view_layer_base_select_and_set_active(view_layer, base);
@@ -2543,9 +2540,9 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
     }
     FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
 
-    /* obcollection is no more duplicollection-ing,
-     * it merely parents whole collection of overriding instantiated objects. */
-    obcollection->instance_collection = NULL;
+    /* Remove the instance empty from this scene, the items now have an overridden collection
+     * instead. */
+    ED_object_base_free_and_unlink(bmain, scene, obcollection);
 
     /* Also, we'd likely want to lock by default things like
      * transformations of implicitly overridden objects? */

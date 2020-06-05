@@ -120,12 +120,10 @@ typedef struct EditBone {
   } temp;
 } EditBone;
 
-#define BONESEL_ROOT (1 << 28)
-#define BONESEL_TIP (1 << 29)
-#define BONESEL_BONE (1 << 30)
+#define BONESEL_ROOT (2 << 29u)
+#define BONESEL_TIP (1 << 30u)
+#define BONESEL_BONE (1 << 31u)
 #define BONESEL_ANY (BONESEL_TIP | BONESEL_ROOT | BONESEL_BONE)
-
-#define BONESEL_NOSEL (1u << 31u)
 
 /* useful macros */
 #define EBONE_VISIBLE(arm, ebone) \
@@ -134,7 +132,7 @@ typedef struct EditBone {
    (((arm)->layer & (ebone)->layer) && !((ebone)->flag & BONE_HIDDEN_A)))
 
 #define EBONE_SELECTABLE(arm, ebone) \
-  (EBONE_VISIBLE(arm, ebone) && !(ebone->flag & BONE_UNSELECTABLE))
+  (EBONE_VISIBLE(arm, ebone) && !((ebone)->flag & BONE_UNSELECTABLE))
 
 #define EBONE_EDITABLE(ebone) \
   (CHECK_TYPE_INLINE(ebone, EditBone *), \
@@ -187,6 +185,10 @@ struct Object *ED_armature_object_and_ebone_from_select_buffer(struct Object **o
                                                                uint objects_len,
                                                                int hit,
                                                                struct EditBone **r_ebone);
+struct Base *ED_armature_base_and_pchan_from_select_buffer(struct Base **bases,
+                                                           uint bases_len,
+                                                           int hit,
+                                                           struct bPoseChannel **r_pchan);
 struct Base *ED_armature_base_and_bone_from_select_buffer(struct Base **bases,
                                                           uint bases_len,
                                                           int hit,

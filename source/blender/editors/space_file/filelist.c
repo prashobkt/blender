@@ -264,7 +264,7 @@ enum {
 
 typedef struct FileListEntryPreview {
   char path[FILE_MAX];
-  unsigned int flags;
+  uint flags;
   int index;
   ImBuf *img;
 } FileListEntryPreview;
@@ -635,7 +635,7 @@ static bool is_hidden_dot_filename(const char *filename, FileListInternEntry *fi
   /* filename might actually be a piece of path, in which case we have to check all its parts. */
 
   bool hidden = false;
-  char *sep = (char *)BLI_last_slash(filename);
+  char *sep = (char *)BLI_path_slash_rfind(filename);
 
   if (!hidden && sep) {
     char tmp_filename[FILE_MAX_LIBEXTRA];
@@ -654,7 +654,7 @@ static bool is_hidden_dot_filename(const char *filename, FileListInternEntry *fi
         break;
       }
       *sep = '\0';
-      sep = (char *)BLI_last_slash(tmp_filename);
+      sep = (char *)BLI_path_slash_rfind(tmp_filename);
     }
   }
   return hidden;
@@ -1015,6 +1015,7 @@ static int filelist_geticon_ex(FileDirEntry *file,
       /* If this path is in System list or path cache then use that icon. */
       struct FSMenu *fsmenu = ED_fsmenu_get();
       FSMenuCategory categories[] = {
+          FS_CATEGORY_SYSTEM,
           FS_CATEGORY_SYSTEM_BOOKMARKS,
           FS_CATEGORY_OTHER,
       };
@@ -1022,10 +1023,16 @@ static int filelist_geticon_ex(FileDirEntry *file,
       for (int i = 0; i < ARRAY_SIZE(categories); i++) {
         FSMenuEntry *tfsm = ED_fsmenu_get_category(fsmenu, categories[i]);
         char fullpath[FILE_MAX_LIBEXTRA];
-        BLI_join_dirfile(fullpath, sizeof(fullpath), root, file->relpath);
-        BLI_add_slash(fullpath);
+        char *target = fullpath;
+        if (file->redirection_path) {
+          target = file->redirection_path;
+        }
+        else {
+          BLI_join_dirfile(fullpath, sizeof(fullpath), root, file->relpath);
+          BLI_path_slash_ensure(fullpath);
+        }
         for (; tfsm; tfsm = tfsm->next) {
-          if (STREQ(tfsm->path, fullpath)) {
+          if (STREQ(tfsm->path, target)) {
             /* Never want a little folder inside a large one. */
             return (tfsm->icon == ICON_FILE_FOLDER) ? ICON_NONE : tfsm->icon;
           }
@@ -1033,10 +1040,7 @@ static int filelist_geticon_ex(FileDirEntry *file,
       }
     }
 
-    if (file->attributes & FILE_ATTR_ANY_LINK) {
-      return ICON_LOOP_FORWARDS;
-    }
-    else if (file->attributes & FILE_ATTR_OFFLINE) {
+    if (file->attributes & FILE_ATTR_OFFLINE) {
       return ICON_ERROR;
     }
     else if (file->attributes & FILE_ATTR_TEMPORARY) {
@@ -1112,7 +1116,7 @@ int filelist_geticon(struct FileList *filelist, const int index, const bool is_m
 
 static void parent_dir_until_exists_or_default_root(char *dir)
 {
-  if (!BLI_parent_dir_until_exists(dir)) {
+  if (!BLI_path_parent_dir_until_exists(dir)) {
 #ifdef WIN32
     get_default_root(dir);
 #else
@@ -1264,11 +1268,9 @@ static void filelist_intern_free(FileListIntern *filelist_intern)
   MEM_SAFE_FREE(filelist_intern->filtered);
 }
 
-static void filelist_cache_preview_runf(TaskPool *__restrict pool,
-                                        void *taskdata,
-                                        int UNUSED(threadid))
+static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdata)
 {
-  FileListEntryCache *cache = BLI_task_pool_userdata(pool);
+  FileListEntryCache *cache = BLI_task_pool_user_data(pool);
   FileListEntryPreviewTaskData *preview_taskdata = taskdata;
   FileListEntryPreview *preview = preview_taskdata->preview;
 
@@ -1306,9 +1308,7 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool,
   //  printf("%s: End (%d)...\n", __func__, threadid);
 }
 
-static void filelist_cache_preview_freef(TaskPool *__restrict UNUSED(pool),
-                                         void *taskdata,
-                                         int UNUSED(threadid))
+static void filelist_cache_preview_freef(TaskPool *__restrict UNUSED(pool), void *taskdata)
 {
   FileListEntryPreviewTaskData *preview_taskdata = taskdata;
   FileListEntryPreview *preview = preview_taskdata->preview;
@@ -1327,9 +1327,7 @@ static void filelist_cache_preview_freef(TaskPool *__restrict UNUSED(pool),
 static void filelist_cache_preview_ensure_running(FileListEntryCache *cache)
 {
   if (!cache->previews_pool) {
-    TaskScheduler *scheduler = BLI_task_scheduler_get();
-
-    cache->previews_pool = BLI_task_pool_create_background(scheduler, cache);
+    cache->previews_pool = BLI_task_pool_create_background(cache, TASK_PRIORITY_LOW);
     cache->previews_done = BLI_thread_queue_init();
 
     IMB_thumb_locks_acquire();
@@ -1381,8 +1379,15 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
       (entry->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT |
                           FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB))) {
     FileListEntryPreview *preview = MEM_mallocN(sizeof(*preview), __func__);
-    BLI_join_dirfile(
-        preview->path, sizeof(preview->path), filelist->filelist.root, entry->relpath);
+
+    if (entry->redirection_path) {
+      BLI_strncpy(preview->path, entry->redirection_path, FILE_MAXDIR);
+    }
+    else {
+      BLI_join_dirfile(
+          preview->path, sizeof(preview->path), filelist->filelist.root, entry->relpath);
+    }
+
     preview->index = index;
     preview->flags = entry->typeflag;
     preview->img = NULL;
@@ -1393,12 +1398,11 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     FileListEntryPreviewTaskData *preview_taskdata = MEM_mallocN(sizeof(*preview_taskdata),
                                                                  __func__);
     preview_taskdata->preview = preview;
-    BLI_task_pool_push_ex(cache->previews_pool,
-                          filelist_cache_preview_runf,
-                          preview_taskdata,
-                          true,
-                          filelist_cache_preview_freef,
-                          TASK_PRIORITY_LOW);
+    BLI_task_pool_push(cache->previews_pool,
+                       filelist_cache_preview_runf,
+                       preview_taskdata,
+                       true,
+                       filelist_cache_preview_freef);
   }
 }
 
@@ -1624,7 +1628,7 @@ void filelist_setdir(struct FileList *filelist, char *r_dir)
 {
   BLI_assert(strlen(r_dir) < FILE_MAX_LIBEXTRA);
 
-  BLI_cleanup_dir(BKE_main_blendfile_path_from_global(), r_dir);
+  BLI_path_normalize_dir(BKE_main_blendfile_path_from_global(), r_dir);
   const bool is_valid_path = filelist->checkdirf(filelist, r_dir, true);
   BLI_assert(is_valid_path);
   UNUSED_VARS_NDEBUG(is_valid_path);
@@ -2277,13 +2281,6 @@ int ED_path_extension_type(const char *path)
   return 0;
 }
 
-static int file_extension_type(const char *dir, const char *relpath)
-{
-  char path[FILE_MAX];
-  BLI_join_dirfile(path, sizeof(path), dir, relpath);
-  return ED_path_extension_type(path);
-}
-
 int ED_file_extension_icon(const char *path)
 {
   const int type = ED_path_extension_type(path);
@@ -2325,16 +2322,16 @@ int filelist_empty(struct FileList *filelist)
   return (filelist->filelist.nbr_entries == 0);
 }
 
-unsigned int filelist_entry_select_set(const FileList *filelist,
-                                       const FileDirEntry *entry,
-                                       FileSelType select,
-                                       unsigned int flag,
-                                       FileCheckType check)
+uint filelist_entry_select_set(const FileList *filelist,
+                               const FileDirEntry *entry,
+                               FileSelType select,
+                               uint flag,
+                               FileCheckType check)
 {
   /* Default NULL pointer if not found is fine here! */
   void **es_p = BLI_ghash_lookup_p(filelist->selection_state, entry->uuid);
-  unsigned int entry_flag = es_p ? POINTER_AS_UINT(*es_p) : 0;
-  const unsigned int org_entry_flag = entry_flag;
+  uint entry_flag = es_p ? POINTER_AS_UINT(*es_p) : 0;
+  const uint org_entry_flag = entry_flag;
 
   BLI_assert(entry);
   BLI_assert(ELEM(check, CHECK_DIRS, CHECK_FILES, CHECK_ALL));
@@ -2373,11 +2370,8 @@ unsigned int filelist_entry_select_set(const FileList *filelist,
   return entry_flag;
 }
 
-void filelist_entry_select_index_set(FileList *filelist,
-                                     const int index,
-                                     FileSelType select,
-                                     unsigned int flag,
-                                     FileCheckType check)
+void filelist_entry_select_index_set(
+    FileList *filelist, const int index, FileSelType select, uint flag, FileCheckType check)
 {
   FileDirEntry *entry = filelist_file(filelist, index);
 
@@ -2386,11 +2380,8 @@ void filelist_entry_select_index_set(FileList *filelist,
   }
 }
 
-void filelist_entries_select_index_range_set(FileList *filelist,
-                                             FileSelection *sel,
-                                             FileSelType select,
-                                             unsigned int flag,
-                                             FileCheckType check)
+void filelist_entries_select_index_range_set(
+    FileList *filelist, FileSelection *sel, FileSelType select, uint flag, FileCheckType check)
 {
   /* select all valid files between first and last indicated */
   if ((sel->first >= 0) && (sel->first < filelist->filelist.nbr_entries_filtered) &&
@@ -2402,9 +2393,7 @@ void filelist_entries_select_index_range_set(FileList *filelist,
   }
 }
 
-unsigned int filelist_entry_select_get(FileList *filelist,
-                                       FileDirEntry *entry,
-                                       FileCheckType check)
+uint filelist_entry_select_get(FileList *filelist, FileDirEntry *entry, FileCheckType check)
 {
   BLI_assert(entry);
   BLI_assert(ELEM(check, CHECK_DIRS, CHECK_FILES, CHECK_ALL));
@@ -2418,9 +2407,7 @@ unsigned int filelist_entry_select_get(FileList *filelist,
   return 0;
 }
 
-unsigned int filelist_entry_select_index_get(FileList *filelist,
-                                             const int index,
-                                             FileCheckType check)
+uint filelist_entry_select_index_get(FileList *filelist, const int index, FileCheckType check)
 {
   FileDirEntry *entry = filelist_file(filelist, index);
 
@@ -2436,7 +2423,7 @@ unsigned int filelist_entry_select_index_get(FileList *filelist,
  */
 void filelist_entry_parent_select_set(FileList *filelist,
                                       FileSelType select,
-                                      unsigned int flag,
+                                      uint flag,
                                       FileCheckType check)
 {
   if ((filelist->filter_data.flags & FLF_HIDE_PARENT) == 0) {
@@ -2458,7 +2445,7 @@ static int groupname_to_code(const char *group)
   BLI_assert(group);
 
   BLI_strncpy(buf, group, sizeof(buf));
-  lslash = (char *)BLI_last_slash(buf);
+  lslash = (char *)BLI_path_slash_rfind(buf);
   if (lslash) {
     lslash[0] = '\0';
   }
@@ -2492,7 +2479,8 @@ static int filelist_readjob_list_dir(const char *root,
 {
   struct direntry *files;
   int nbr_files, nbr_entries = 0;
-  char path[FILE_MAX];
+  /* Full path of the item. */
+  char full_path[FILE_MAX];
 
   nbr_files = BLI_filelist_dir_contents(root, &files);
   if (files) {
@@ -2508,38 +2496,53 @@ static int filelist_readjob_list_dir(const char *root,
       entry->relpath = MEM_dupallocN(files[i].relname);
       entry->st = files[i].s;
 
-      BLI_join_dirfile(path, sizeof(path), root, entry->relpath);
+      BLI_join_dirfile(full_path, FILE_MAX, root, entry->relpath);
+      char *target = full_path;
 
-      /* Set file type. */
+      /* Set initial file type and attributes. */
+      entry->attributes = BLI_file_attributes(full_path);
       if (S_ISDIR(files[i].s.st_mode)) {
         entry->typeflag = FILE_TYPE_DIR;
       }
-      else if (do_lib && BLO_has_bfile_extension(entry->relpath)) {
-        /* If we are considering .blend files as libs, promote them to directory status. */
-        entry->typeflag = FILE_TYPE_BLENDER;
-        /* prevent current file being used as acceptable dir */
-        if (BLI_path_cmp(main_name, path) != 0) {
-          entry->typeflag |= FILE_TYPE_DIR;
+
+      /* Is this a file that points to another file? */
+      if (entry->attributes & FILE_ATTR_ALIAS) {
+        entry->redirection_path = MEM_callocN(FILE_MAXDIR, __func__);
+        if (BLI_file_alias_target(entry->redirection_path, full_path)) {
+          if (BLI_is_dir(entry->redirection_path)) {
+            entry->typeflag = FILE_TYPE_DIR;
+            BLI_path_slash_ensure(entry->redirection_path);
+          }
+          else {
+            entry->typeflag = ED_path_extension_type(entry->redirection_path);
+          }
+          target = entry->redirection_path;
+#ifdef WIN32
+          /* On Windows don't show ".lnk" extension for valid shortcuts. */
+          BLI_path_extension_replace(entry->relpath, FILE_MAXDIR, "");
+#endif
         }
-      }
-      /* Otherwise, do not check extensions for directories! */
-      else if (!(entry->typeflag & FILE_TYPE_DIR)) {
-        entry->typeflag = file_extension_type(root, entry->relpath);
-        if (filter_glob[0] && BLI_path_extension_check_glob(entry->relpath, filter_glob)) {
-          entry->typeflag |= FILE_TYPE_OPERATOR;
+        else {
+          MEM_freeN(entry->redirection_path);
+          entry->redirection_path = NULL;
+          entry->attributes |= FILE_ATTR_HIDDEN;
         }
       }
 
-      /* Set file attributes. */
-      entry->attributes = BLI_file_attributes(path);
-      if (entry->attributes & FILE_ATTR_ALIAS) {
-        entry->redirection_path = MEM_callocN(FILE_MAXDIR, __func__);
-        if (BLI_file_alias_target(entry->redirection_path, path)) {
-          if (BLI_is_dir(entry->redirection_path)) {
-            entry->typeflag = FILE_TYPE_DIR;
+      if (!(entry->typeflag & FILE_TYPE_DIR)) {
+        if (do_lib && BLO_has_bfile_extension(target)) {
+          /* If we are considering .blend files as libs, promote them to directory status. */
+          entry->typeflag = FILE_TYPE_BLENDER;
+          /* prevent current file being used as acceptable dir */
+          if (BLI_path_cmp(main_name, target) != 0) {
+            entry->typeflag |= FILE_TYPE_DIR;
           }
-          else
-            entry->typeflag = ED_path_extension_type(entry->redirection_path);
+        }
+        else {
+          entry->typeflag = ED_path_extension_type(target);
+          if (filter_glob[0] && BLI_path_extension_check_glob(target, filter_glob)) {
+            entry->typeflag |= FILE_TYPE_OPERATOR;
+          }
         }
       }
 
@@ -2627,7 +2630,7 @@ static int filelist_readjob_list_lib(const char *root, ListBase *entries, const 
 /* Kept for reference here, in case we want to add back that feature later.
  * We do not need it currently. */
 /* Code ***NOT*** updated for job stuff! */
-static void filelist_readjob_main_rec(Main *bmain, FileList *filelist)
+static void filelist_readjob_main_recursive(Main *bmain, FileList *filelist)
 {
   ID *id;
   FileDirEntry *files, *firstlib = NULL;
@@ -2826,7 +2829,7 @@ static void filelist_readjob_do(const bool do_lib,
   BLI_strncpy(dir, filelist->filelist.root, sizeof(dir));
   BLI_strncpy(filter_glob, filelist->filter_data.filter_glob, sizeof(filter_glob));
 
-  BLI_cleanup_dir(main_name, dir);
+  BLI_path_normalize_dir(main_name, dir);
   td_dir->dir = BLI_strdup(dir);
 
   while (!BLI_stack_is_empty(todo_dirs) && !(*stop)) {
@@ -2852,7 +2855,7 @@ static void filelist_readjob_do(const bool do_lib,
      * Note that in the end, this means we 'cache' valid relative subdir once here,
      * this is actually better. */
     BLI_strncpy(rel_subdir, subdir, sizeof(rel_subdir));
-    BLI_cleanup_dir(root, rel_subdir);
+    BLI_path_normalize_dir(root, rel_subdir);
     BLI_path_rel(rel_subdir, root);
 
     if (do_lib) {
@@ -2894,7 +2897,7 @@ static void filelist_readjob_do(const bool do_lib,
         else {
           /* We have a directory we want to list, add it to todo list! */
           BLI_join_dirfile(dir, sizeof(dir), root, entry->relpath);
-          BLI_cleanup_dir(main_name, dir);
+          BLI_path_normalize_dir(main_name, dir);
           td_dir = BLI_stack_push_r(todo_dirs);
           td_dir->level = recursion_level + 1;
           td_dir->dir = BLI_strdup(dir);

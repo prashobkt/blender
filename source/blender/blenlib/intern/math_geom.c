@@ -2379,7 +2379,10 @@ bool isect_tri_tri_epsilon_v3(const float t_a0[3],
         if (UNLIKELY(edge_fac == -1.0f)) {
           /* pass */
         }
-        else if (edge_fac > 0.0f && edge_fac < 1.0f) {
+        /* Important to include 0.0f and 1.0f as one of the triangles vertices may be placed
+         * exactly on the plane. In this case both it's edges will have a factor of 0 or 1,
+         * but not be going through the plane. See T73566. */
+        else if (edge_fac >= 0.0f && edge_fac <= 1.0f) {
           float ix_tri[3];
           float span_fac;
 
@@ -4217,7 +4220,19 @@ static float mean_value_half_tan_v2(const struct Float2_Len *d_curr,
 
 void interp_weights_poly_v3(float *w, float v[][3], const int n, const float co[3])
 {
-  const float eps = 1e-5f; /* take care, low values cause [#36105] */
+  /* Before starting to calculate the weight, we need to figure out the floating point precision we
+   * can expect from the supplied data. */
+  float max_value = 0;
+
+  for (int i = 0; i < n; i++) {
+    max_value = max_ff(max_value, fabsf(v[i][0] - co[0]));
+    max_value = max_ff(max_value, fabsf(v[i][1] - co[1]));
+    max_value = max_ff(max_value, fabsf(v[i][2] - co[2]));
+  }
+
+  /* These to values we derived by empirically testing different values that works for the test
+   * files in D7772. */
+  const float eps = 16.0f * FLT_EPSILON * max_value;
   const float eps_sq = eps * eps;
   const float *v_curr, *v_next;
   float ht_prev, ht; /* half tangents */
@@ -4290,8 +4305,20 @@ void interp_weights_poly_v3(float *w, float v[][3], const int n, const float co[
 
 void interp_weights_poly_v2(float *w, float v[][2], const int n, const float co[2])
 {
-  const float eps = 1e-5f; /* take care, low values cause [#36105] */
+  /* Before starting to calculate the weight, we need to figure out the floating point precision we
+   * can expect from the supplied data. */
+  float max_value = 0;
+
+  for (int i = 0; i < n; i++) {
+    max_value = max_ff(max_value, fabsf(v[i][0] - co[0]));
+    max_value = max_ff(max_value, fabsf(v[i][1] - co[1]));
+  }
+
+  /* These to values we derived by empirically testing different values that works for the test
+   * files in D7772. */
+  const float eps = 16.0f * FLT_EPSILON * max_value;
   const float eps_sq = eps * eps;
+
   const float *v_curr, *v_next;
   float ht_prev, ht; /* half tangents */
   float totweight = 0.0f;

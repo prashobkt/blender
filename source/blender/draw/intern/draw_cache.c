@@ -2898,12 +2898,12 @@ GPUBatch *DRW_cache_curve_edge_overlay_get(Object *ob)
   return DRW_curve_batch_cache_get_edit_edges(cu);
 }
 
-GPUBatch *DRW_cache_curve_vert_overlay_get(Object *ob, bool handles)
+GPUBatch *DRW_cache_curve_vert_overlay_get(Object *ob)
 {
   BLI_assert(ELEM(ob->type, OB_CURVE, OB_SURF));
 
   struct Curve *cu = ob->data;
-  return DRW_curve_batch_cache_get_edit_verts(cu, handles);
+  return DRW_curve_batch_cache_get_edit_verts(cu);
 }
 
 GPUBatch *DRW_cache_curve_surface_get(Object *ob)
@@ -3081,8 +3081,7 @@ GPUBatch *DRW_cache_text_loose_edges_get(Object *ob)
     return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
   }
   else {
-    /* TODO */
-    return NULL;
+    return DRW_curve_batch_cache_get_wire_edge(cu);
   }
 }
 
@@ -3535,13 +3534,15 @@ void drw_batch_cache_generate_requested(Object *ob)
   struct Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
   switch (ob->type) {
     case OB_MESH:
-      DRW_mesh_batch_cache_create_requested(ob, (Mesh *)ob->data, scene, is_paint_mode, use_hide);
+      DRW_mesh_batch_cache_create_requested(
+          DST.task_graph, ob, (Mesh *)ob->data, scene, is_paint_mode, use_hide);
       break;
     case OB_CURVE:
     case OB_FONT:
     case OB_SURF:
       if (mesh_eval) {
-        DRW_mesh_batch_cache_create_requested(ob, mesh_eval, scene, is_paint_mode, use_hide);
+        DRW_mesh_batch_cache_create_requested(
+            DST.task_graph, ob, mesh_eval, scene, is_paint_mode, use_hide);
       }
       DRW_curve_batch_cache_create_requested(ob);
       break;

@@ -156,27 +156,27 @@ static void depthdropper_depth_sample_pt(
 {
   /* we could use some clever */
   bScreen *screen = CTX_wm_screen(C);
-  ScrArea *sa = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, mx, my);
+  ScrArea *area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, mx, my);
   Scene *scene = CTX_data_scene(C);
 
   ScrArea *area_prev = CTX_wm_area(C);
-  ARegion *ar_prev = CTX_wm_region(C);
+  ARegion *region_prev = CTX_wm_region(C);
 
   ddr->name[0] = '\0';
 
-  if (sa) {
-    if (sa->spacetype == SPACE_VIEW3D) {
-      ARegion *region = BKE_area_find_region_xy(sa, RGN_TYPE_WINDOW, mx, my);
+  if (area) {
+    if (area->spacetype == SPACE_VIEW3D) {
+      ARegion *region = BKE_area_find_region_xy(area, RGN_TYPE_WINDOW, mx, my);
       if (region) {
         struct Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-        View3D *v3d = sa->spacedata.first;
+        View3D *v3d = area->spacedata.first;
         RegionView3D *rv3d = region->regiondata;
         /* weak, we could pass in some reference point */
         const float *view_co = v3d->camera ? v3d->camera->obmat[3] : rv3d->viewinv[3];
         const int mval[2] = {mx - region->winrct.xmin, my - region->winrct.ymin};
         float co[3];
 
-        CTX_wm_area_set(C, sa);
+        CTX_wm_area_set(C, area);
         CTX_wm_region_set(C, region);
 
         /* grr, always draw else we leave stale text */
@@ -209,7 +209,7 @@ static void depthdropper_depth_sample_pt(
   }
 
   CTX_wm_area_set(C, area_prev);
-  CTX_wm_region_set(C, ar_prev);
+  CTX_wm_region_set(C, region_prev);
 }
 
 /* sets the sample depth RGB, maintaining A */
@@ -311,7 +311,10 @@ static int depthdropper_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 {
   /* init */
   if (depthdropper_init(C, op)) {
-    WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EYEDROPPER);
+    wmWindow *win = CTX_wm_window(C);
+    /* Workaround for de-activating the button clearing the cursor, see T76794 */
+    UI_context_active_but_clear(C, win, CTX_wm_region(C));
+    WM_cursor_modal_set(win, WM_CURSOR_EYEDROPPER);
 
     /* add temp handler */
     WM_event_add_modal_handler(C, op);

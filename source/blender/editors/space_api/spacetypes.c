@@ -135,6 +135,7 @@ void ED_spacetypes_init(void)
   ED_gizmotypes_blank_3d();
   ED_gizmotypes_cage_2d();
   ED_gizmotypes_cage_3d();
+  ED_gizmotypes_snap_3d();
 
   /* register types for operators and gizmos */
   spacetypes = BKE_spacetypes_list();
@@ -268,7 +269,7 @@ void ED_region_draw_cb_draw(const bContext *C, ARegion *region, int type)
 void ED_spacetype_xxx(void);
 
 /* allocate and init some vars */
-static SpaceLink *xxx_new(const ScrArea *UNUSED(sa), const Scene *UNUSED(scene))
+static SpaceLink *xxx_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scene))
 {
   return NULL;
 }
@@ -279,7 +280,7 @@ static void xxx_free(SpaceLink *UNUSED(sl))
 }
 
 /* spacetype; init callback for usage, should be redoable */
-static void xxx_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(sa))
+static void xxx_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
 {
 
   /* link area to SpaceXXX struct */

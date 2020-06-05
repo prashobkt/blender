@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2011 by Bastien Montagne.
@@ -43,6 +43,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "MOD_modifiertypes.h"
+#include "MOD_util.h"
 #include "MOD_weightvg_util.h"
 
 /**
@@ -180,19 +181,23 @@ static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   WeightVGMixModifierData *wmd = (WeightVGMixModifierData *)md;
-  if (wmd->mask_tex_map_obj != NULL && wmd->mask_tex_mapping == MOD_DISP_MAP_OBJECT) {
-    DEG_add_object_relation(
-        ctx->node, wmd->mask_tex_map_obj, DEG_OB_COMP_TRANSFORM, "WeightVGMix Modifier");
-    DEG_add_object_relation(
-        ctx->node, wmd->mask_tex_map_obj, DEG_OB_COMP_GEOMETRY, "WeightVGMix Modifier");
+  bool need_transform_relation = false;
 
-    DEG_add_modifier_to_transform_relation(ctx->node, "WeightVGMix Modifier");
-  }
-  else if (wmd->mask_tex_mapping == MOD_DISP_MAP_GLOBAL) {
-    DEG_add_modifier_to_transform_relation(ctx->node, "WeightVGMix Modifier");
-  }
   if (wmd->mask_texture != NULL) {
     DEG_add_generic_id_relation(ctx->node, &wmd->mask_texture->id, "WeightVGMix Modifier");
+
+    if (wmd->mask_tex_map_obj != NULL && wmd->mask_tex_mapping == MOD_DISP_MAP_OBJECT) {
+      MOD_depsgraph_update_object_bone_relation(
+          ctx->node, wmd->mask_tex_map_obj, wmd->mask_tex_map_bone, "WeightVGMix Modifier");
+      need_transform_relation = true;
+    }
+    else if (wmd->mask_tex_mapping == MOD_DISP_MAP_GLOBAL) {
+      need_transform_relation = true;
+    }
+  }
+
+  if (need_transform_relation) {
+    DEG_add_modifier_to_transform_relation(ctx->node, "WeightVGMix Modifier");
   }
 }
 
@@ -205,7 +210,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   return (wmd->defgrp_name_a[0] == '\0');
 }
 
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   BLI_assert(mesh != NULL);
 
@@ -219,6 +224,17 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   int numIdx = 0;
   int i;
   const bool invert_vgroup_mask = (wmd->flag & MOD_WVG_MIX_INVERT_VGROUP_MASK) != 0;
+  const bool do_normalize = (wmd->flag & MOD_WVG_MIX_WEIGHTS_NORMALIZE) != 0;
+
+  /*
+   * Note that we only invert the weight values within provided vgroups, the selection based on
+   * which vertice is affected because it belongs or not to a group remains unchanged.
+   * In other words, vertices not belonging to a group won't be affected, even though their
+   * inverted 'virtual' weight would be 1.0f.
+   */
+  const bool invert_vgroup_a = (wmd->flag & MOD_WVG_MIX_INVERT_VGROUP_A) != 0;
+  const bool invert_vgroup_b = (wmd->flag & MOD_WVG_MIX_INVERT_VGROUP_B) != 0;
+
   /* Flags. */
 #if 0
   const bool do_prev = (wmd->modifier.mode & eModifierMode_DoWeightPreview) != 0;
@@ -373,8 +389,18 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   /* Mix weights. */
   for (i = 0; i < numIdx; i++) {
     float weight2;
-    org_w[i] = dw1[i] ? dw1[i]->weight : wmd->default_weight_a;
-    weight2 = dw2[i] ? dw2[i]->weight : wmd->default_weight_b;
+    if (invert_vgroup_a) {
+      org_w[i] = 1.0f - (dw1[i] ? dw1[i]->weight : wmd->default_weight_a);
+    }
+    else {
+      org_w[i] = dw1[i] ? dw1[i]->weight : wmd->default_weight_a;
+    }
+    if (invert_vgroup_b) {
+      weight2 = 1.0f - (dw2[i] ? dw2[i]->weight : wmd->default_weight_b);
+    }
+    else {
+      weight2 = dw2[i] ? dw2[i]->weight : wmd->default_weight_b;
+    }
 
     new_w[i] = mix_weight(org_w[i], weight2, wmd->mix_mode);
   }
@@ -395,6 +421,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                    wmd->mask_tex_use_channel,
                    wmd->mask_tex_mapping,
                    wmd->mask_tex_map_obj,
+                   wmd->mask_tex_map_bone,
                    wmd->mask_tex_uvlayer_name,
                    invert_vgroup_mask);
 
@@ -402,7 +429,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
    * XXX Depending on the MOD_WVG_SET_xxx option chosen, we might have to add vertices to vgroup.
    */
   weightvg_update_vg(
-      dvert, defgrp_index, dw1, numIdx, indices, org_w, true, -FLT_MAX, false, 0.0f);
+      dvert, defgrp_index, dw1, numIdx, indices, org_w, true, -FLT_MAX, false, 0.0f, do_normalize);
 
   /* If weight preview enabled... */
 #if 0 /* XXX Currently done in mod stack :/ */
@@ -430,13 +457,16 @@ ModifierTypeInfo modifierType_WeightVGMix = {
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_UsesPreview,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,

@@ -419,7 +419,7 @@ static wmKeyMap *rna_keymap_new(wmKeyConfig *keyconf,
     keymap = WM_keymap_ensure(keyconf, idname, spaceid, regionid);
   }
   else {
-    keymap = WM_modalkeymap_add(keyconf, idname, NULL); /* items will be lazy init */
+    keymap = WM_modalkeymap_ensure(keyconf, idname, NULL); /* items will be lazy init */
   }
 
   if (keymap && tool) {
@@ -645,6 +645,9 @@ static wmEvent *rna_Window_event_add_simulate(wmWindow *win,
     e.ascii = ascii;
     STRNCPY(e.utf8_buf, unicode);
   }
+
+  /* Until we expose setting tablet values here. */
+  WM_event_tablet_data_default_set(&e.tablet);
 
   return WM_event_add_simulate(win, &e);
 }

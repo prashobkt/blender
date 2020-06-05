@@ -383,7 +383,13 @@ class OptiXDevice : public CUDADevice {
 
     {  // Load and compile PTX module with OptiX kernels
       string ptx_data, ptx_filename = path_get("lib/kernel_optix.ptx");
-      if (use_adaptive_compilation()) {
+      if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
+        if (!getenv("OPTIX_ROOT_DIR")) {
+          set_error(
+              "OPTIX_ROOT_DIR environment variable not set, must be set with the path to the "
+              "Optix SDK in order to compile the Optix kernel on demand.");
+          return false;
+        }
         ptx_filename = compile_kernel(requested_features, "kernel_optix", "optix", true);
       }
       if (ptx_filename.empty() || !path_read_text(ptx_filename, ptx_data)) {
@@ -918,7 +924,8 @@ class OptiXDevice : public CUDADevice {
                              &rtiles[9].h,
                              &rtiles[9].offset,
                              &rtiles[9].stride,
-                             &task.pass_stride};
+                             &task.pass_stride,
+                             &rtile.sample};
       launch_filter_kernel(
           "kernel_cuda_filter_convert_from_rgb", rtiles[9].w, rtiles[9].h, output_args);
 #  endif
@@ -1528,43 +1535,25 @@ bool device_optix_init()
   return true;
 }
 
-void device_optix_info(vector<DeviceInfo> &devices)
+void device_optix_info(const vector<DeviceInfo> &cuda_devices, vector<DeviceInfo> &devices)
 {
-  // Simply add all supported CUDA devices as OptiX devices again
-  vector<DeviceInfo> cuda_devices;
-  device_cuda_info(cuda_devices);
+  devices.reserve(cuda_devices.size());
 
-  for (auto it = cuda_devices.begin(); it != cuda_devices.end();) {
-    DeviceInfo &info = *it;
+  // Simply add all supported CUDA devices as OptiX devices again
+  for (DeviceInfo info : cuda_devices) {
     assert(info.type == DEVICE_CUDA);
+
+    int major;
+    cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, info.num);
+    if (major < 5) {
+      continue;  // Only Maxwell and up are supported by OptiX
+    }
+
     info.type = DEVICE_OPTIX;
     info.id += "_OptiX";
 
-    // Figure out RTX support
-    CUdevice cuda_device = 0;
-    CUcontext cuda_context = NULL;
-    unsigned int rtcore_version = 0;
-    if (cuDeviceGet(&cuda_device, info.num) == CUDA_SUCCESS &&
-        cuDevicePrimaryCtxRetain(&cuda_context, cuda_device) == CUDA_SUCCESS) {
-      OptixDeviceContext optix_context = NULL;
-      if (optixDeviceContextCreate(cuda_context, nullptr, &optix_context) == OPTIX_SUCCESS) {
-        optixDeviceContextGetProperty(optix_context,
-                                      OPTIX_DEVICE_PROPERTY_RTCORE_VERSION,
-                                      &rtcore_version,
-                                      sizeof(rtcore_version));
-        optixDeviceContextDestroy(optix_context);
-      }
-      cuDevicePrimaryCtxRelease(cuda_device);
-    }
-
-    // Only add devices with RTX support
-    if (rtcore_version == 0 && !getenv("CYCLES_OPTIX_TEST"))
-      it = cuda_devices.erase(it);
-    else
-      ++it;
+    devices.push_back(info);
   }
-
-  devices.insert(devices.end(), cuda_devices.begin(), cuda_devices.end());
 }
 
 Device *device_optix_create(DeviceInfo &info, Stats &stats, Profiler &profiler, bool background)

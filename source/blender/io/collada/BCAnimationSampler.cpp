@@ -27,20 +27,21 @@
 #include "ExportSettings.h"
 #include "collada_utils.h"
 
-extern "C" {
 #include "BKE_action.h"
 #include "BKE_constraint.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+
 #include "BLI_listbase.h"
+
 #include "DNA_anim_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_key_types.h"
 #include "DNA_scene_types.h"
+
 #include "ED_object.h"
-}
 
 static std::string EMPTY_STRING;
 static BCAnimationCurveMap BCEmptyAnimationCurves;
@@ -270,7 +271,7 @@ void BCAnimationSampler::find_depending_animated(std::set<Object *> &animated_ob
     std::set<Object *>::iterator it;
     for (it = candidates.begin(); it != candidates.end(); ++it) {
       Object *cob = *it;
-      ListBase *conlist = get_active_constraints(cob);
+      ListBase *conlist = ED_object_constraint_list_from_context(cob);
       if (is_animated_by_constraint(cob, conlist, animated_objects)) {
         animated_objects.insert(cob);
         candidates.erase(cob);

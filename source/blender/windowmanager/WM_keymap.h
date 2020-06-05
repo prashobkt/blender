@@ -82,7 +82,7 @@ wmKeyMap *WM_keymap_find_all_spaceid_or_empty(struct wmWindowManager *wm,
                                               const char *idname,
                                               int spaceid,
                                               int regionid);
-wmKeyMap *WM_keymap_active(struct wmWindowManager *wm, struct wmKeyMap *keymap);
+wmKeyMap *WM_keymap_active(const struct wmWindowManager *wm, struct wmKeyMap *keymap);
 bool WM_keymap_remove(struct wmKeyConfig *keyconfig, struct wmKeyMap *keymap);
 bool WM_keymap_poll(struct bContext *C, struct wmKeyMap *keymap);
 
@@ -135,10 +135,10 @@ char *WM_modalkeymap_operator_items_to_string_buf(struct wmOperatorType *ot,
                                                   int *r_available_len,
                                                   char **r_result);
 
-wmKeyMap *WM_modalkeymap_add(struct wmKeyConfig *keyconf,
-                             const char *idname,
-                             const struct EnumPropertyItem *items);
-wmKeyMap *WM_modalkeymap_get(struct wmKeyConfig *keyconf, const char *idname);
+wmKeyMap *WM_modalkeymap_ensure(struct wmKeyConfig *keyconf,
+                                const char *idname,
+                                const struct EnumPropertyItem *items);
+wmKeyMap *WM_modalkeymap_find(struct wmKeyConfig *keyconf, const char *idname);
 wmKeyMapItem *WM_modalkeymap_add_item(
     struct wmKeyMap *km, int type, int val, int modifier, int keymodifier, int value);
 wmKeyMapItem *WM_modalkeymap_add_item_str(
