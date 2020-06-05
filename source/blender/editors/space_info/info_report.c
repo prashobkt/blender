@@ -41,6 +41,8 @@
 
 #include "info_intern.h"
 
+#define REPORT_INDEX_INVALID -1
+
 static void reports_select_all(ReportList *reports, int report_mask, int action)
 {
   if (action == SEL_TOGGLE) {
@@ -156,13 +158,13 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   ReportList *reports = CTX_wm_reports(C);
   const int report_mask = info_report_mask(sinfo);
 
-  if (report_index == -1) {  // click in empty area
+  if (report_index == REPORT_INDEX_INVALID) {  // click in empty area
     reports_select_all(reports, report_mask, SEL_DESELECT);
     ED_area_tag_redraw(CTX_wm_area(C));
     return OPERATOR_FINISHED;
   }
 
-  Report *report = BLI_findlink(&CTX_wm_reports(C)->list, report_index);
+  Report *report = BLI_findlink((const struct ListBase *)reports, report_index);
   if (!report) {
     return OPERATOR_CANCELLED;
   }
@@ -172,11 +174,11 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   }
 
   if (use_range) {  // shift click
-    const Report *active_report = BLI_findlink(&CTX_wm_reports(C)->list,
+    const Report *active_report = BLI_findlink((const struct ListBase *)reports,
                                                sinfo->active_report_index);
     if (active_report == NULL) {
       report->flag = SELECT;
-      sinfo->active_report_index = BLI_findindex(&reports->list, report);
+      sinfo->active_report_index = report_index;
 
       ED_area_tag_redraw(CTX_wm_area(C));
       return OPERATOR_FINISHED;
@@ -188,8 +190,9 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
       }
     }
     else {
-      for (Report *i = report; i && i->next != active_report; i = i->prev) {
-        i->flag = SELECT;
+      for (Report *report_iter = report; report_iter && report_iter->next != active_report;
+           report_iter = report_iter->prev) {
+        report_iter->flag = SELECT;
       }
     }
 
@@ -219,7 +222,7 @@ static int select_report_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
   report = info_text_pick(sinfo, region, reports, event->mval[1]);
 
   if (report == NULL) {
-    RNA_int_set(op->ptr, "report_index", -1);
+    RNA_int_set(op->ptr, "report_index", REPORT_INDEX_INVALID);
   }
   else {
     RNA_int_set(op->ptr, "report_index", BLI_findindex(&reports->list, report));
@@ -245,8 +248,15 @@ void INFO_OT_select_pick(wmOperatorType *ot)
 
   /* properties */
   PropertyRNA *prop;
-  RNA_def_int(
-      ot->srna, "report_index", 0, -1, INT_MAX, "Report", "Index of the report", 0, INT_MAX);
+  RNA_def_int(ot->srna,
+              "report_index",
+              0,
+              REPORT_INDEX_INVALID,
+              INT_MAX,
+              "Report",
+              "Index of the report",
+              0,
+              INT_MAX);
   prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend report selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
