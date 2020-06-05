@@ -1902,6 +1902,75 @@ static void outliner_buttons(const bContext *C,
   }
 }
 
+static void outliner_set_active_data_fn(struct bContext *C, void *te_poin, void *UNUSED(arg2))
+{
+  Scene *scene = CTX_data_scene(C);
+  TreeElement *te = (TreeElement *)te_poin;
+
+  outliner_set_active_camera(C, scene, te);
+}
+
+static void outliner_draw_left_column(uiBlock *block,
+                                      TreeViewContext *tvc,
+                                      SpaceOutliner *soops,
+                                      ListBase *tree)
+{
+  TreeStoreElem *tselem;
+  uiBut *but;
+
+  LISTBASE_FOREACH (TreeElement *, te, tree) {
+    tselem = TREESTORE(te);
+
+    if (tselem->type == 0 && te->idcode == ID_OB) {
+      Object *ob = (Object *)tselem->id;
+
+      if (ob->type == OB_CAMERA) {
+        if (tvc->scene->camera == ob) {
+          /* Draw check for active camera */
+          but = uiDefIconBut(block,
+                             UI_BTYPE_ICON_TOGGLE,
+                             0,
+                             ICON_CHECKMARK,
+                             0,
+                             te->ys,
+                             UI_UNIT_X,
+                             UI_UNIT_Y,
+                             NULL,
+                             0.0,
+                             0.0,
+                             0.0,
+                             0.0,
+                             TIP_(""));
+          UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
+        }
+        else {
+          /* Draw empty icon to set active camera */
+          but = uiDefIconBut(block,
+                             UI_BTYPE_ICON_TOGGLE,
+                             0,
+                             ICON_DOT,
+                             0,
+                             te->ys,
+                             UI_UNIT_X,
+                             UI_UNIT_Y,
+                             NULL,
+                             0.0,
+                             0.0,
+                             0.0,
+                             0.0,
+                             TIP_("Set active camera"));
+          UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
+          UI_but_func_set(but, outliner_set_active_data_fn, te, NULL);
+        }
+      }
+    }
+
+    if (TSELEM_OPEN(tselem, soops)) {
+      outliner_draw_left_column(block, tvc, soops, &te->subtree);
+    }
+  }
+}
+
 /* ****************************************************** */
 /* Normal Drawing... */
 
@@ -3727,6 +3796,11 @@ void draw_outliner(const bContext *C)
     memset(&props_active, 1, sizeof(RestrictPropertiesActive));
     outliner_draw_restrictbuts(
         block, tvc.scene, tvc.view_layer, region, soops, &soops->tree, props_active);
+  }
+
+  /* Draw mode toggle and activation icons */
+  if (use_left_column) {
+    outliner_draw_left_column(block, &tvc, soops, &soops->tree);
   }
 
   UI_block_emboss_set(block, UI_EMBOSS);

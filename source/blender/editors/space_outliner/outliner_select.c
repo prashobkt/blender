@@ -494,6 +494,22 @@ static eOLDrawState tree_element_active_camera(bContext *C,
   }
 }
 
+/* TODO: Temporary while testing */
+void outliner_set_active_camera(bContext *C, Scene *scene, TreeElement *te)
+{
+  TreeStoreElem *tselem = TREESTORE(te);
+  Object *ob = (Object *)tselem->id;
+
+  scene->camera = ob;
+  Main *bmain = CTX_data_main(C);
+  wmWindowManager *wm = bmain->wm.first;
+
+  WM_windows_scene_data_sync(&wm->windows, scene);
+  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_relations_tag_update(bmain);
+  WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
+}
+
 static eOLDrawState tree_element_active_world(bContext *C,
                                               Scene *scene,
                                               ViewLayer *UNUSED(sl),
@@ -1370,6 +1386,9 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
 
   if (outliner_is_co_within_restrict_columns(soops, region, view_mval[0])) {
+    return OPERATOR_CANCELLED;
+  }
+  if (soops->flag & SO_LEFT_COLUMN && mval[0] < UI_UNIT_X) {
     return OPERATOR_CANCELLED;
   }
 
