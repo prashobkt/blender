@@ -261,36 +261,41 @@ static int box_select_exec(bContext *C, wmOperator *op)
   report_min = info_text_pick(sinfo, region, reports, rect.ymax);
   report_max = info_text_pick(sinfo, region, reports, rect.ymin);
 
-  /* get the first report if none found */
-  if (report_min == NULL) {
-    // printf("find_min\n");
-    LISTBASE_FOREACH (Report *, report, &reports->list) {
-      if (report->type & report_mask) {
-        report_min = report;
-        break;
+  if (report_min == NULL && report_max == NULL) {
+    reports_select_all(reports, report_mask, SEL_DESELECT);
+  }
+  else {
+    /* get the first report if none found */
+    if (report_min == NULL) {
+      // printf("find_min\n");
+      LISTBASE_FOREACH (Report *, report, &reports->list) {
+        if (report->type & report_mask) {
+          report_min = report;
+          break;
+        }
       }
     }
-  }
 
-  if (report_max == NULL) {
-    // printf("find_max\n");
-    for (Report *report = reports->list.last; report; report = report->prev) {
-      if (report->type & report_mask) {
-        report_max = report;
-        break;
+    if (report_max == NULL) {
+      // printf("find_max\n");
+      for (Report *report = reports->list.last; report; report = report->prev) {
+        if (report->type & report_mask) {
+          report_max = report;
+          break;
+        }
       }
     }
-  }
 
-  if (report_min == NULL || report_max == NULL) {
-    return OPERATOR_CANCELLED;
-  }
-
-  for (Report *report = report_min; (report != report_max->next); report = report->next) {
-    if ((report->type & report_mask) == 0) {
-      continue;
+    if (report_min == NULL || report_max == NULL) {
+      return OPERATOR_CANCELLED;
     }
-    SET_FLAG_FROM_TEST(report->flag, select, SELECT);
+
+    for (Report *report = report_min; (report != report_max->next); report = report->next) {
+      if ((report->type & report_mask) == 0) {
+        continue;
+      }
+      SET_FLAG_FROM_TEST(report->flag, select, SELECT);
+    }
   }
 
   ED_area_tag_redraw(CTX_wm_area(C));
