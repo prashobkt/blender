@@ -3523,10 +3523,17 @@ static void outliner_draw_tree(bContext *C,
                                ARegion *region,
                                SpaceOutliner *soops,
                                const float restrict_column_width,
+                               const bool use_left_column,
                                TreeElement **te_edit)
 {
   const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   int starty, startx;
+
+  /* Move the tree a unit left in view layer mode */
+  short left_column_offset = use_left_column ? UI_UNIT_X : 0;
+  if (soops->outlinevis & SO_VIEW_LAYER) {
+    left_column_offset -= UI_UNIT_X;
+  }
 
   GPU_blend_set_func_separate(
       GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);  // only once
@@ -3555,12 +3562,12 @@ static void outliner_draw_tree(bContext *C,
   // gray hierarchy lines
 
   starty = (int)region->v2d.tot.ymax - UI_UNIT_Y / 2 - OL_Y_OFFSET;
-  startx = UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
+  startx = left_column_offset + UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
   outliner_draw_hierarchy_lines(soops, &soops->tree, startx, &starty);
 
   // items themselves
   starty = (int)region->v2d.tot.ymax - UI_UNIT_Y - OL_Y_OFFSET;
-  startx = 0;
+  startx = left_column_offset;
   LISTBASE_FOREACH (TreeElement *, te, &soops->tree) {
     outliner_draw_tree_element(C,
                                block,
@@ -3683,11 +3690,16 @@ void draw_outliner(const bContext *C)
   /* set matrix for 2d-view controls */
   UI_view2d_view_ortho(v2d);
 
+  /* Only show mode toggle and activation column in View Layers and Scenes view */
+  const bool use_left_column = (soops->flag & SO_LEFT_COLUMN) &&
+                               (ELEM(soops->outlinevis, SO_VIEW_LAYER, SO_SCENES));
+
   /* draw outliner stuff (background, hierarchy lines and names) */
   const float restrict_column_width = outliner_restrict_columns_width(soops);
   outliner_back(region);
   block = UI_block_begin(C, region, __func__, UI_EMBOSS);
-  outliner_draw_tree((bContext *)C, block, &tvc, region, soops, restrict_column_width, &te_edit);
+  outliner_draw_tree(
+      (bContext *)C, block, &tvc, region, soops, restrict_column_width, use_left_column, &te_edit);
 
   /* Compute outliner dimensions after it has been drawn. */
   int tree_width, tree_height;
