@@ -202,6 +202,9 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
 
   if (extend) {
     report->flag ^= SELECT;
+    if (report->flag && SELECT) {
+      sinfo->active_report_index = BLI_findindex(&reports->list, report);
+    }
   }
   else {
     report->flag = SELECT;
