@@ -58,8 +58,8 @@
 #include "RNA_access.h"
 
 #include "MOD_gpencil_modifiertypes.h"
+#include "MOD_gpencil_ui_common.h"
 #include "MOD_gpencil_util.h"
-#include "MOD_ui_common.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"

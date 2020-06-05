@@ -532,7 +532,7 @@ void OBJECT_OT_shaderfx_move_down(wmOperatorType *ot)
 
 static bool shaderfx_move_to_index_poll(bContext *C)
 {
-  return true;
+  return edit_shaderfx_poll_generic(C, &RNA_ShaderFx, 0);
 }
 
 static int shaderfx_move_to_index_exec(bContext *C, wmOperator *op)

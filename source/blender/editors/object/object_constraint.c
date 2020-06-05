@@ -1581,7 +1581,7 @@ static int constraint_move_to_index_exec(bContext *C, wmOperator *op)
   int index = RNA_int_get(op->ptr, "index");
 
   if (con) {
-    ListBase *conlist = get_constraint_lb(ob, con, NULL);
+    ListBase *conlist = ED_object_constraint_list_from_constraint(ob, con, NULL);
     int current_index = BLI_findindex(conlist, con);
 
     BLI_listbase_link_move(conlist, con, index - current_index);

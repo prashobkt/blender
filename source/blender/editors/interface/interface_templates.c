@@ -1917,7 +1917,7 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
 static void constraint_reorder(bContext *C, Panel *panel, int new_index)
 {
   Object *ob = CTX_data_active_object(C);
-  ListBase *lb = get_active_constraints(ob);
+  ListBase *lb = ED_object_constraint_list_from_context(ob);
   bool constraint_from_bone = false;
   if (ob->mode & OB_MODE_POSE) {
     bPoseChannel *pchan;
@@ -1944,7 +1944,7 @@ static void constraint_reorder(bContext *C, Panel *panel, int new_index)
 static short get_constraint_expand_flag(const bContext *C, Panel *panel)
 {
   Object *ob = CTX_data_active_object(C);
-  ListBase *lb = get_active_constraints(ob);
+  ListBase *lb = ED_object_constraint_list_from_context(ob);
   bConstraint *con = BLI_findlink(lb, panel->runtime.list_index);
   return con->ui_expand_flag;
 }
@@ -1955,7 +1955,7 @@ static short get_constraint_expand_flag(const bContext *C, Panel *panel)
 static void set_constraint_expand_flag(const bContext *C, Panel *panel, short expand_flag)
 {
   Object *ob = CTX_data_active_object(C);
-  ListBase *lb = get_active_constraints(ob);
+  ListBase *lb = ED_object_constraint_list_from_context(ob);
   bConstraint *con = BLI_findlink(lb, panel->runtime.list_index);
   con->ui_expand_flag = expand_flag;
 }
@@ -1974,7 +1974,7 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
-  ListBase *constraints = get_active_constraints(ob);
+  ListBase *constraints = ED_object_constraint_list_from_context(ob);
 
   bool panels_match = UI_panel_list_matches_data(region, constraints, constraint_panel_id);
 

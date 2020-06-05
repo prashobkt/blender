@@ -47,7 +47,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "MOD_ui_common.h" /* Self include */
+#include "MOD_gpencil_ui_common.h" /* Self include */
 
 /**
  * Poll function so these modifier panels only show for grease pencil objects.

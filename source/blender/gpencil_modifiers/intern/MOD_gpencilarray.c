@@ -67,8 +67,8 @@
 #include "DEG_depsgraph_query.h"
 
 #include "MOD_gpencil_modifiertypes.h"
+#include "MOD_gpencil_ui_common.h"
 #include "MOD_gpencil_util.h"
-#include "MOD_ui_common.h"
 
 typedef struct tmpStrokes {
   struct tmpStrokes *next, *prev;
