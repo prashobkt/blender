@@ -3225,7 +3225,7 @@ static void ui_but_free_type_specific(uiBut *but)
 
       if (search_but->search != NULL) {
         if (search_but->search->arg_free_fn) {
-          search_but->search->arg_free_fn(but->search->arg);
+          search_but->search->arg_free_fn(search_but->search->arg);
           search_but->search->arg = NULL;
         }
         MEM_freeN(search_but->search);
@@ -6531,8 +6531,10 @@ void UI_but_func_search_set(uiBut *but,
 
 void UI_but_func_search_set_context_menu(uiBut *but, uiButSearchContextMenuFn context_menu_fn)
 {
-  struct uiButSearchData *search = but->search;
-  search->context_menu_fn = context_menu_fn;
+  uiButSearch *but_search = (uiButSearch *)but;
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
+
+  but_search->search->context_menu_fn = context_menu_fn;
 }
 
 /**
@@ -6541,14 +6543,18 @@ void UI_but_func_search_set_context_menu(uiBut *but, uiButSearchContextMenuFn co
  */
 void UI_but_func_search_set_sep_string(uiBut *but, const char *search_sep_string)
 {
-  struct uiButSearchData *search = but->search;
-  search->sep_string = search_sep_string;
+  uiButSearch *but_search = (uiButSearch *)but;
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
+
+  but_search->search->sep_string = search_sep_string;
 }
 
 void UI_but_func_search_set_tooltip(uiBut *but, uiButSearchTooltipFn tooltip_fn)
 {
-  struct uiButSearchData *search = but->search;
-  search->tooltip_fn = tooltip_fn;
+  uiButSearch *but_search = (uiButSearch *)but;
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
+
+  but_search->search->tooltip_fn = tooltip_fn;
 }
 
 /* Callbacks for operator search button. */

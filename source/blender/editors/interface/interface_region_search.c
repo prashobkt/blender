@@ -307,8 +307,13 @@ static struct ARegion *wm_searchbox_tooltip_init(struct bContext *C,
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-      if (but->search && but->search->tooltip_fn) {
-        return but->search->tooltip_fn(C, region, but->search->arg, but->func_arg2);
+      if (but->type != UI_BTYPE_SEARCH_MENU) {
+        continue;
+      }
+
+      uiButSearch *search_but = (uiButSearch *)but;
+      if (search_but->search && search_but->search->tooltip_fn) {
+        return search_but->search->tooltip_fn(C, region, search_but->search->arg, but->func_arg2);
       }
     }
   }
@@ -319,9 +324,12 @@ bool ui_searchbox_event(
     bContext *C, ARegion *region, uiBut *but, ARegion *butregion, const wmEvent *event)
 {
   uiSearchboxData *data = region->regiondata;
+  uiButSearch *search_but = (uiButSearch *)but;
   int type = event->type, val = event->val;
   bool handled = false;
   bool tooltip_timer_started = false;
+
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
   if (type == MOUSEPAN) {
     ui_pan_to_scroll(event, &type, &val);
@@ -340,7 +348,7 @@ bool ui_searchbox_event(
       break;
     case RIGHTMOUSE:
       if (val) {
-        if (but->search->context_menu_fn) {
+        if (search_but->search->context_menu_fn) {
           if (data->active != -1) {
             /* Check the cursor is over the active element
              * (a little confusing if this isn't the case, although it does work). */
@@ -350,7 +358,7 @@ bool ui_searchbox_event(
                     &rect, event->x - region->winrct.xmin, event->y - region->winrct.ymin)) {
 
               void *active = data->items.pointers[data->active];
-              if (but->search->context_menu_fn(C, but->search->arg, active, event)) {
+              if (search_but->search->context_menu_fn(C, search_but->search->arg, active, event)) {
                 handled = true;
               }
             }
@@ -404,11 +412,14 @@ bool ui_searchbox_event(
 }
 
 /** Wrap #uiButSearchUpdateFn callback. */
-static void ui_searchbox_update_fn(bContext *C, uiBut *but, const char *str, uiSearchItems *items)
+static void ui_searchbox_update_fn(bContext *C,
+                                   uiButSearch *search_but,
+                                   const char *str,
+                                   uiSearchItems *items)
 {
   wmWindow *win = CTX_wm_window(C);
   WM_tooltip_clear(C, win);
-  but->search->update_fn(C, but->search->arg, str, items);
+  search_but->search->update_fn(C, search_but->search->arg, str, items);
 }
 
 /* region is the search box itself */
@@ -432,7 +443,7 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
     /* handle active */
     if (search_but->search->update_fn && but->func_arg2) {
       data->items.active = but->func_arg2;
-      ui_searchbox_update_fn(C, but, but->editstr, &data->items);
+      ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
       data->items.active = NULL;
 
       /* found active item, calculate real offset by centering it */
@@ -462,7 +473,7 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
 
   /* callback */
   if (search_but->search->update_fn) {
-    ui_searchbox_update_fn(C, but, but->editstr, &data->items);
+    ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
   }
 
   /* handle case where editstr is equal to one of items */
@@ -499,7 +510,7 @@ int ui_searchbox_autocomplete(bContext *C, ARegion *region, uiBut *but, char *st
   if (str[0]) {
     data->items.autocpl = UI_autocomplete_begin(str, ui_but_string_get_max_length(but));
 
-    ui_searchbox_update_fn(C, but, but->editstr, &data->items);
+    ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
 
     match = UI_autocomplete_end(data->items.autocpl, str);
     data->items.autocpl = NULL;
@@ -966,7 +977,7 @@ void ui_but_search_refresh(uiButSearch *search_but)
     items->names[x1] = MEM_callocN(but->hardmax + 1, "search names");
   }
 
-  ui_searchbox_update_fn(but->block->evil_C, but, but->drawstr, items);
+  ui_searchbox_update_fn(but->block->evil_C, search_but, but->drawstr, items);
 
   /* only redalert when we are sure of it, this can miss cases when >10 matches */
   if (items->totitem == 0) {

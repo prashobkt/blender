@@ -217,12 +217,6 @@ struct uiBut {
   uiButCompleteFunc autocomplete_func;
   void *autofunc_arg;
 
-  uiButSearchCreateFunc search_create_func;
-  uiButSearchFunc search_func;
-  void *search_arg;
-  uiButSearchArgFreeFunc search_arg_free_func;
-  const char *search_sep_string;
-
   uiButHandleRenameFunc rename_func;
   void *rename_arg1;
   void *rename_orig;
@@ -307,7 +301,6 @@ typedef struct uiButTab {
 /** Derived struct for #UI_BTYPE_SEARCH_MENU */
 typedef struct uiButSearch {
   uiBut but;
-
 
   struct uiButSearchData *search;
 
