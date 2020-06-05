@@ -147,17 +147,6 @@ enum {
 /* max amount of items a radial menu (pie menu) can contain */
 #define PIE_MAX_ITEMS 8
 
-struct uiButSearchData {
-  uiButSearchCreateFn create_fn;
-  uiButSearchUpdateFn update_fn;
-  void *arg;
-  uiButSearchArgFreeFn arg_free_fn;
-  uiButSearchContextMenuFn context_menu_fn;
-  uiButSearchTooltipFn tooltip_fn;
-
-  const char *sep_string;
-};
-
 struct uiBut {
   struct uiBut *next, *prev;
 
@@ -302,7 +291,14 @@ typedef struct uiButTab {
 typedef struct uiButSearch {
   uiBut but;
 
-  struct uiButSearchData *search;
+  uiButSearchCreateFn popup_create_fn;
+  uiButSearchUpdateFn items_update_fn;
+
+  void *arg;
+  uiButSearchArgFreeFn arg_free_fn;
+
+  uiButSearchContextMenuFn item_context_menu_fn;
+  uiButSearchTooltipFn item_tooltip_fn;
 
   const char *item_sep_string;
 

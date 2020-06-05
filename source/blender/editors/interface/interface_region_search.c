@@ -312,8 +312,8 @@ static struct ARegion *wm_searchbox_tooltip_init(struct bContext *C,
       }
 
       uiButSearch *search_but = (uiButSearch *)but;
-      if (search_but->search && search_but->search->tooltip_fn) {
-        return search_but->search->tooltip_fn(C, region, search_but->search->arg, but->func_arg2);
+      if (search_but->item_tooltip_fn) {
+        return search_but->item_tooltip_fn(C, region, search_but->arg, but->func_arg2);
       }
     }
   }
@@ -348,7 +348,7 @@ bool ui_searchbox_event(
       break;
     case RIGHTMOUSE:
       if (val) {
-        if (search_but->search->context_menu_fn) {
+        if (search_but->item_context_menu_fn) {
           if (data->active != -1) {
             /* Check the cursor is over the active element
              * (a little confusing if this isn't the case, although it does work). */
@@ -358,7 +358,7 @@ bool ui_searchbox_event(
                     &rect, event->x - region->winrct.xmin, event->y - region->winrct.ymin)) {
 
               void *active = data->items.pointers[data->active];
-              if (search_but->search->context_menu_fn(C, search_but->search->arg, active, event)) {
+              if (search_but->item_context_menu_fn(C, search_but->arg, active, event)) {
                 handled = true;
               }
             }
@@ -419,7 +419,7 @@ static void ui_searchbox_update_fn(bContext *C,
 {
   wmWindow *win = CTX_wm_window(C);
   WM_tooltip_clear(C, win);
-  search_but->search->update_fn(C, search_but->search->arg, str, items);
+  search_but->items_update_fn(C, search_but->arg, str, items);
 }
 
 /* region is the search box itself */
@@ -441,7 +441,7 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
     data->active = -1;
 
     /* handle active */
-    if (search_but->search->update_fn && but->func_arg2) {
+    if (search_but->items_update_fn && but->func_arg2) {
       data->items.active = but->func_arg2;
       ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
       data->items.active = NULL;
@@ -472,7 +472,7 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
   }
 
   /* callback */
-  if (search_but->search->update_fn) {
+  if (search_but->items_update_fn) {
     ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
   }
 
@@ -698,7 +698,7 @@ ARegion *ui_searchbox_create_generic(bContext *C, ARegion *butregion, uiButSearc
   if (but->optype != NULL || (but->drawflag & UI_BUT_HAS_SHORTCUT) != 0) {
     data->use_sep = true;
   }
-  data->sep_string = search_but->search->sep_string;
+  data->sep_string = search_but->item_sep_string;
 
   /* compute position */
   if (but->block->flag & UI_BLOCK_SEARCH_MENU) {

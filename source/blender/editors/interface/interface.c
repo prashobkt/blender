@@ -809,7 +809,9 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
     if (oldbut->type == UI_BTYPE_SEARCH_MENU) {
       uiButSearch *search_oldbut = (uiButSearch *)oldbut, *search_but = (uiButSearch *)but;
-      SWAP(struct uiButSearchData *, search_oldbut->search, search_but->search);
+
+      SWAP(uiButSearchArgFreeFn, search_oldbut->arg_free_fn, search_but->arg_free_fn);
+      SWAP(void *, search_oldbut->arg, search_but->arg);
     }
 
     /* copy hardmin for list rows to prevent 'sticking' highlight to mouse position
@@ -3223,14 +3225,10 @@ static void ui_but_free_type_specific(uiBut *but)
     case UI_BTYPE_SEARCH_MENU: {
       uiButSearch *search_but = (uiButSearch *)but;
 
-      if (search_but->search != NULL) {
-        if (search_but->search->arg_free_fn) {
-          search_but->search->arg_free_fn(search_but->search->arg);
-          search_but->search->arg = NULL;
-        }
-        MEM_freeN(search_but->search);
+      if (search_but->arg_free_fn) {
+        search_but->arg_free_fn(search_but->arg);
+        search_but->arg = NULL;
       }
-
       break;
     }
     default:
@@ -6481,7 +6479,7 @@ void UI_but_func_search_set(uiBut *but,
                             uiButHandleFunc search_exec_fn,
                             void *active)
 {
-  uiButSearch *but_search = (uiButSearch *)but;
+  uiButSearch *search_but = (uiButSearch *)but;
 
   BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
@@ -6491,40 +6489,33 @@ void UI_but_func_search_set(uiBut *but,
     search_create_fn = ui_searchbox_create_generic;
   }
 
-  struct uiButSearchData *search = but_search->search;
-  if (search != NULL) {
-    if (search->arg_free_fn != NULL) {
-      search->arg_free_fn(but_search->search->arg);
-      search->arg = NULL;
-    }
-  }
-  else {
-    search = MEM_callocN(sizeof(*but_search->search), __func__);
-    but_search->search = search;
+  if (search_but->arg_free_fn != NULL) {
+    search_but->arg_free_fn(search_but->arg);
+    search_but->arg = NULL;
   }
 
-  search->create_fn = search_create_fn;
-  search->update_fn = search_update_fn;
+  search_but->popup_create_fn = search_create_fn;
+  search_but->items_update_fn = search_update_fn;
 
-  search->arg = arg;
-  search->arg_free_fn = search_arg_free_fn;
+  search_but->arg = arg;
+  search_but->arg_free_fn = search_arg_free_fn;
 
   if (search_exec_fn) {
 #ifdef DEBUG
-    if (but_search->but.func) {
+    if (search_but->but.func) {
       /* watch this, can be cause of much confusion, see: T47691 */
       printf("%s: warning, overwriting button callback with search function callback!\n",
              __func__);
     }
 #endif
-    UI_but_func_set(but, search_exec_fn, search->arg, active);
+    UI_but_func_set(but, search_exec_fn, search_but->arg, active);
   }
 
   /* search buttons show red-alert if item doesn't exist, not for menus */
   if (0 == (but->block->flag & UI_BLOCK_LOOP)) {
     /* skip empty buttons, not all buttons need input, we only show invalid */
     if (but->drawstr[0]) {
-      ui_but_search_refresh(but_search);
+      ui_but_search_refresh(search_but);
     }
   }
 }
@@ -6534,7 +6525,7 @@ void UI_but_func_search_set_context_menu(uiBut *but, uiButSearchContextMenuFn co
   uiButSearch *but_search = (uiButSearch *)but;
   BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
-  but_search->search->context_menu_fn = context_menu_fn;
+  but_search->item_context_menu_fn = context_menu_fn;
 }
 
 /**
@@ -6546,7 +6537,7 @@ void UI_but_func_search_set_sep_string(uiBut *but, const char *search_sep_string
   uiButSearch *but_search = (uiButSearch *)but;
   BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
-  but_search->search->sep_string = search_sep_string;
+  but_search->item_sep_string = search_sep_string;
 }
 
 void UI_but_func_search_set_tooltip(uiBut *but, uiButSearchTooltipFn tooltip_fn)
@@ -6554,7 +6545,7 @@ void UI_but_func_search_set_tooltip(uiBut *but, uiButSearchTooltipFn tooltip_fn)
   uiButSearch *but_search = (uiButSearch *)but;
   BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
-  but_search->search->tooltip_fn = tooltip_fn;
+  but_search->item_tooltip_fn = tooltip_fn;
 }
 
 /* Callbacks for operator search button. */

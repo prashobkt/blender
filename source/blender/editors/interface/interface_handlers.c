@@ -758,10 +758,10 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
 
     if (but->type == UI_BTYPE_SEARCH_MENU) {
       uiButSearch *search_but = (uiButSearch *)but;
-      after->search_arg_free_fn = search_but->search->arg_free_fn;
-      after->search_arg = search_but->search->arg;
-      search_but->search->arg_free_fn = NULL;
-      search_but->search->arg = NULL;
+      after->search_arg_free_fn = search_but->arg_free_fn;
+      after->search_arg = search_but->arg;
+      search_but->arg_free_fn = NULL;
+      search_but->arg = NULL;
     }
 
     if (but->context) {
@@ -3321,7 +3321,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   if (but->type == UI_BTYPE_SEARCH_MENU) {
     uiButSearch *search_but = (uiButSearch *)but;
 
-    data->searchbox = search_but->search->create_fn(C, data->region, search_but);
+    data->searchbox = search_but->popup_create_fn(C, data->region, search_but);
     ui_searchbox_update(C, data->searchbox, but, true); /* true = reset */
   }
 
