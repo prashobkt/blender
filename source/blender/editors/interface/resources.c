@@ -974,6 +974,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_INFO_SELECTED:
           cp = ts->info_selected;
           break;
+        case TH_INFO_ACTIVE:
+          cp = ts->info_active;
+          break;
         case TH_INFO_SELECTED_TEXT:
           cp = ts->info_selected_text;
           break;

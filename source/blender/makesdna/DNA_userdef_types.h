@@ -415,7 +415,7 @@ typedef struct ThemeSpace {
   unsigned char nla_sound[4], nla_sound_sel[4];
 
   /* info */
-  unsigned char info_selected[4], info_selected_text[4];
+  unsigned char info_selected[4], info_active[4], info_selected_text[4];
   unsigned char info_error[4], info_error_text[4];
   unsigned char info_warning[4], info_warning_text[4];
   unsigned char info_info[4], info_info_text[4];
@@ -428,6 +428,7 @@ typedef struct ThemeSpace {
 
   unsigned char metadatabg[4];
   unsigned char metadatatext[4];
+  char _pad2[4];
 
 } ThemeSpace;
 

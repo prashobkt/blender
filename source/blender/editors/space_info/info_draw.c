@@ -21,6 +21,7 @@
  * \ingroup spinfo
  */
 
+#include <BLI_blenlib.h>
 #include <limits.h>
 #include <string.h>
 
@@ -47,13 +48,24 @@ static enum eTextViewContext_LineFlag report_line_data(TextViewContext *tvc,
                                                        uchar r_icon_bg[4])
 {
   const Report *report = tvc->iter;
+  const SpaceInfo *sinfo = tvc->arg1;
+  const ReportList *reports = tvc->arg2;
+  const Report *active_report = BLI_findlink((const struct ListBase *)reports,
+                                             sinfo->active_report_index);
 
   /* Same text color no matter what type of report. */
   UI_GetThemeColor4ubv((report->flag & SELECT) ? TH_INFO_SELECTED_TEXT : TH_TEXT, fg);
 
-  /* Zebra striping for background. */
-  int bg_id = (report->flag & SELECT) ? TH_INFO_SELECTED : TH_BACK;
-  int shade = (tvc->iter_tmp % 2) ? 4 : -4;
+  /* Zebra striping for background, only for deselected reports. */
+  int bg_id, shade;
+  if (report->flag & SELECT) {
+    bg_id = (report == active_report) ? TH_INFO_ACTIVE : TH_INFO_SELECTED;
+    shade = 0;
+  }
+  else {
+    bg_id = TH_BACK;
+    shade = (tvc->iter_tmp % 2) ? 4 : -4;
+  }
   UI_GetThemeColorShade4ubv(bg_id, shade, bg);
 
   /* Icon color and backgound depend of report type. */
