@@ -1910,138 +1910,206 @@ static void outliner_set_active_data_fn(bContext *C, void *te_poin, void *UNUSED
   outliner_set_active_camera(C, scene, te);
 }
 
+/* Draw icons for setting activation when in object mode */
+static void outliner_draw_left_column_activation(const bContext *C,
+                                                 uiBlock *block,
+                                                 TreeViewContext *tvc,
+                                                 TreeElement *te,
+                                                 TreeStoreElem *tselem)
+{
+  uiBut *but;
+
+  if (tselem->type == 0 && te->idcode == ID_OB) {
+    Object *ob = (Object *)tselem->id;
+
+    if (ob->type == OB_CAMERA) {
+      if (tvc->scene->camera == ob) {
+        /* Draw check for active camera */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_LABEL,
+                           0,
+                           ICON_CHECKMARK,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_(""));
+      }
+      else {
+        /* Draw dot icon to set active camera */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_LABEL,
+                           0,
+                           ICON_DOT,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_("Set active camera"));
+        /* TODO: adding functions to these buttons doesn't work well */
+        /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
+      }
+    }
+  }
+  else if (tselem->type == 0 && te->idcode == ID_SCE) {
+    Scene *scene = (Scene *)tselem->id;
+
+    if (tvc->scene == scene) {
+      /* Draw check for active scene */
+      but = uiDefIconBut(block,
+                         UI_BTYPE_LABEL,
+                         0,
+                         ICON_CHECKMARK,
+                         0,
+                         te->ys,
+                         UI_UNIT_X,
+                         UI_UNIT_Y,
+                         NULL,
+                         0.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         TIP_(""));
+    }
+    else {
+      /* Draw dot icon to set active scene */
+      but = uiDefIconBut(block,
+                         UI_BTYPE_LABEL,
+                         0,
+                         ICON_DOT,
+                         0,
+                         te->ys,
+                         UI_UNIT_X,
+                         UI_UNIT_Y,
+                         NULL,
+                         0.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         TIP_("Set active scene"));
+      /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
+    }
+  }
+  else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
+    LayerCollection *active = CTX_data_layer_collection(C);
+
+    if ((tselem->type == TSE_VIEW_COLLECTION_BASE &&
+         active == tvc->view_layer->layer_collections.first) ||
+        (tselem->type == TSE_LAYER_COLLECTION && active == te->directdata)) {
+      /* Draw check for active collection */
+      but = uiDefIconBut(block,
+                         UI_BTYPE_LABEL,
+                         0,
+                         ICON_CHECKMARK,
+                         0,
+                         te->ys,
+                         UI_UNIT_X,
+                         UI_UNIT_Y,
+                         NULL,
+                         0.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         TIP_(""));
+    }
+    else {
+      /* Draw dot icon to set active collection */
+      but = uiDefIconBut(block,
+                         UI_BTYPE_LABEL,
+                         0,
+                         ICON_DOT,
+                         0,
+                         te->ys,
+                         UI_UNIT_X,
+                         UI_UNIT_Y,
+                         NULL,
+                         0.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         TIP_("Set active collection"));
+      /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
+    }
+  }
+}
+
+/* Draw icons for adding and removing objects from the current interation mode */
+static void outliner_draw_left_column_mode_toggle(const bContext *C,
+                                                  uiBlock *block,
+                                                  TreeViewContext *tvc,
+                                                  TreeElement *te,
+                                                  TreeStoreElem *tselem)
+{
+  uiBut *but;
+
+  if (tselem->type == 0 && te->idcode == ID_OB) {
+    Object *ob = (Object *)tselem->id;
+
+    if (OB_TYPE_SUPPORT_EDITMODE(ob->type) && ob->type == tvc->ob_edit->type) {
+      if (ob->mode == tvc->ob_edit->mode) {
+        /* Draw mode icon for objects in edit mode */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_LABEL,
+                           0,
+                           ICON_EDITMODE_HLT,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_(""));
+      }
+      else {
+        /* Draw dot for objects that are compatible with the current edit mode */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_LABEL,
+                           0,
+                           ICON_DOT,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_(""));
+      }
+    }
+  }
+}
+
 static void outliner_draw_left_column(
     const bContext *C, uiBlock *block, TreeViewContext *tvc, SpaceOutliner *soops, ListBase *tree)
 {
   TreeStoreElem *tselem;
-  uiBut *but;
 
   LISTBASE_FOREACH (TreeElement *, te, tree) {
     tselem = TREESTORE(te);
 
-    if (tselem->type == 0 && te->idcode == ID_OB) {
-      Object *ob = (Object *)tselem->id;
-
-      if (ob->type == OB_CAMERA) {
-        if (tvc->scene->camera == ob) {
-          /* Draw check for active camera */
-          but = uiDefIconBut(block,
-                             UI_BTYPE_LABEL,
-                             0,
-                             ICON_CHECKMARK,
-                             0,
-                             te->ys,
-                             UI_UNIT_X,
-                             UI_UNIT_Y,
-                             NULL,
-                             0.0,
-                             0.0,
-                             0.0,
-                             0.0,
-                             TIP_(""));
-          UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
-        }
-        else {
-          /* Draw dot icon to set active camera */
-          but = uiDefIconBut(block,
-                             UI_BTYPE_LABEL,
-                             0,
-                             ICON_DOT,
-                             0,
-                             te->ys,
-                             UI_UNIT_X,
-                             UI_UNIT_Y,
-                             NULL,
-                             0.0,
-                             0.0,
-                             0.0,
-                             0.0,
-                             TIP_("Set active camera"));
-          UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
-          /* TODO: adding functions to these buttons doesn't work well */
-          /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
-        }
+    if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
+      /* Only support edit mode right now */
+      if (tvc->ob_edit) {
+        outliner_draw_left_column_mode_toggle(C, block, tvc, te, tselem);
       }
     }
-    else if (tselem->type == 0 && te->idcode == ID_SCE) {
-      Scene *scene = (Scene *)tselem->id;
-
-      if (tvc->scene == scene) {
-        /* Draw check for active scene */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
-                           0,
-                           ICON_CHECKMARK,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_(""));
-      }
-      else {
-        /* Draw dot icon to set active scene */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
-                           0,
-                           ICON_DOT,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_("Set active scene"));
-        /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
-      }
-    }
-    else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
-      LayerCollection *active = CTX_data_layer_collection(C);
-
-      if ((tselem->type == TSE_VIEW_COLLECTION_BASE &&
-           active == tvc->view_layer->layer_collections.first) ||
-          (tselem->type == TSE_LAYER_COLLECTION && active == te->directdata)) {
-        /* Draw check for active collection */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
-                           0,
-                           ICON_CHECKMARK,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_(""));
-      }
-      else {
-        /* Draw dot icon to set active collection */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
-                           0,
-                           ICON_DOT,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_("Set active collection"));
-        /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
-      }
+    else {
+      outliner_draw_left_column_activation(C, block, tvc, te, tselem);
     }
 
     if (TSELEM_OPEN(tselem, soops)) {
