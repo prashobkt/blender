@@ -1902,7 +1902,7 @@ static void outliner_buttons(const bContext *C,
   }
 }
 
-static void outliner_set_active_data_fn(struct bContext *C, void *te_poin, void *UNUSED(arg2))
+static void outliner_set_active_data_fn(bContext *C, void *te_poin, void *UNUSED(arg2))
 {
   Scene *scene = CTX_data_scene(C);
   TreeElement *te = (TreeElement *)te_poin;
@@ -1910,10 +1910,8 @@ static void outliner_set_active_data_fn(struct bContext *C, void *te_poin, void 
   outliner_set_active_camera(C, scene, te);
 }
 
-static void outliner_draw_left_column(uiBlock *block,
-                                      TreeViewContext *tvc,
-                                      SpaceOutliner *soops,
-                                      ListBase *tree)
+static void outliner_draw_left_column(
+    const bContext *C, uiBlock *block, TreeViewContext *tvc, SpaceOutliner *soops, ListBase *tree)
 {
   TreeStoreElem *tselem;
   uiBut *but;
@@ -1944,7 +1942,7 @@ static void outliner_draw_left_column(uiBlock *block,
           UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
         }
         else {
-          /* Draw empty icon to set active camera */
+          /* Draw dot icon to set active camera */
           but = uiDefIconBut(block,
                              UI_BTYPE_ICON_TOGGLE,
                              0,
@@ -1960,13 +1958,95 @@ static void outliner_draw_left_column(uiBlock *block,
                              0.0,
                              TIP_("Set active camera"));
           UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
-          UI_but_func_set(but, outliner_set_active_data_fn, te, NULL);
+          /* TODO: adding functions to these buttons doesn't work well */
+          /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
         }
+      }
+    }
+    else if (tselem->type == 0 && te->idcode == ID_SCE) {
+      Scene *scene = (Scene *)tselem->id;
+
+      if (tvc->scene == scene) {
+        /* Draw check for active scene */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_ICON_TOGGLE,
+                           0,
+                           ICON_CHECKMARK,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_(""));
+      }
+      else {
+        /* Draw dot icon to set active scene */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_ICON_TOGGLE,
+                           0,
+                           ICON_DOT,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_("Set active scene"));
+        /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
+      }
+    }
+    else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
+      LayerCollection *active = CTX_data_layer_collection(C);
+
+      if ((tselem->type == TSE_VIEW_COLLECTION_BASE &&
+           active == tvc->view_layer->layer_collections.first) ||
+          (tselem->type == TSE_LAYER_COLLECTION && active == te->directdata)) {
+        /* Draw check for active collection */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_ICON_TOGGLE,
+                           0,
+                           ICON_CHECKMARK,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_(""));
+      }
+      else {
+        /* Draw dot icon to set active collection */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_ICON_TOGGLE,
+                           0,
+                           ICON_DOT,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_("Set active collection"));
+        UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
+        /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
       }
     }
 
     if (TSELEM_OPEN(tselem, soops)) {
-      outliner_draw_left_column(block, tvc, soops, &te->subtree);
+      outliner_draw_left_column(C, block, tvc, soops, &te->subtree);
     }
   }
 }
@@ -3800,7 +3880,7 @@ void draw_outliner(const bContext *C)
 
   /* Draw mode toggle and activation icons */
   if (use_left_column) {
-    outliner_draw_left_column(block, &tvc, soops, &soops->tree);
+    outliner_draw_left_column(C, block, &tvc, soops, &soops->tree);
   }
 
   UI_block_emboss_set(block, UI_EMBOSS);
