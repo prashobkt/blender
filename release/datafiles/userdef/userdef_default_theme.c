@@ -484,6 +484,7 @@ const bTheme U_theme_default = {
     .outline_width = 1,
     .facedot_size = 4,
     .info_selected = RGBA(0x223A5Bff),
+    .row_alternate = RGBA(0xffffff07),
     .info_active = RGBA(0x3B5689ff),
     .info_selected_text = RGBA(0xffffffff),
     .info_error = RGBA(0xff613dff),

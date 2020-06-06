@@ -1124,6 +1124,18 @@ void UI_GetThemeColorBlend3ubv(int colorid1, int colorid2, float fac, uchar col[
   col[2] = floorf((1.0f - fac) * cp1[2] + fac * cp2[2]);
 }
 
+void UI_GetThemeColorBlend4ubv(int colorid1, int colorid2, float fac, uchar col[4])
+{
+  const uchar *cp1 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid1);
+  const uchar *cp2 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid2);
+
+  CLAMP(fac, 0.0f, 1.0f);
+  col[0] = floorf((1.0f - fac) * cp1[0] + fac * cp2[0]);
+  col[1] = floorf((1.0f - fac) * cp1[1] + fac * cp2[1]);
+  col[2] = floorf((1.0f - fac) * cp1[2] + fac * cp2[2]);
+  col[3] = floorf((1.0f - fac) * cp1[3] + fac * cp2[3]);
+}
+
 void UI_GetThemeColorBlend3f(int colorid1, int colorid2, float fac, float r_col[3])
 {
   const uchar *cp1 = UI_ThemeGetColorPtr(theme_active, theme_spacetype, colorid1);
