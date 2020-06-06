@@ -84,6 +84,13 @@ static void wm_paintcursor_draw(bContext *C, ScrArea *area, ARegion *region)
   bScreen *screen = WM_window_get_active_screen(win);
   wmPaintCursor *pc;
 
+  /* Don't draw paint cursors with locked interface. Painting is not possible
+   * then, and cursor drawing can use scene data that another thread may be
+   * modifying. */
+  if (wm->is_interface_locked) {
+    return;
+  }
+
   if (region->visible && region == screen->active_region) {
     for (pc = wm->paintcursors.first; pc; pc = pc->next) {
 
@@ -286,7 +293,7 @@ static bool wm_region_use_viewport_by_type(short space_type, short region_type)
   return (ELEM(space_type, SPACE_VIEW3D, SPACE_IMAGE) && region_type == RGN_TYPE_WINDOW);
 }
 
-static bool wm_region_use_viewport(ScrArea *area, ARegion *region)
+bool WM_region_use_viewport(ScrArea *area, ARegion *region)
 {
   return wm_region_use_viewport_by_type(area->spacetype, region->regiontype);
 }
@@ -567,13 +574,13 @@ void wm_draw_region_blend(ARegion *region, int view, bool blend)
     alpha = 1.0f;
   }
 
-  glUniform1i(GPU_shader_get_uniform_ensure(shader, "image"), 0);
-  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_icon"),
+  glUniform1i(GPU_shader_get_uniform(shader, "image"), 0);
+  glUniform4f(GPU_shader_get_uniform(shader, "rect_icon"),
               rect_tex.xmin,
               rect_tex.ymin,
               rect_tex.xmax,
               rect_tex.ymax);
-  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_geom"),
+  glUniform4f(GPU_shader_get_uniform(shader, "rect_geom"),
               rect_geo.xmin,
               rect_geo.ymin,
               rect_geo.xmax,
@@ -618,8 +625,7 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
   bScreen *screen = WM_window_get_active_screen(win);
 
   /* Draw screen areas into own frame buffer. */
-  ED_screen_areas_iter(win, screen, area)
-  {
+  ED_screen_areas_iter (win, screen, area) {
     CTX_wm_area_set(C, area);
 
     /* Compute UI layouts for dynamically size regions. */
@@ -652,7 +658,7 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       if (region->visible && region->do_draw) {
         CTX_wm_region_set(C, region);
-        bool use_viewport = wm_region_use_viewport(area, region);
+        bool use_viewport = WM_region_use_viewport(area, region);
 
         if (stereo && wm_draw_region_stereo_set(bmain, area, region, STEREO_LEFT_ID)) {
           wm_draw_region_buffer_create(region, true, use_viewport);
@@ -734,8 +740,7 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
 #endif
 
   /* Blit non-overlapping area regions. */
-  ED_screen_areas_iter(win, screen, area)
-  {
+  ED_screen_areas_iter (win, screen, area) {
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       if (region->visible && region->overlap == false) {
         /* Blit from offscreen buffer. */
@@ -746,8 +751,7 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
 
   /* Draw paint cursors. */
   if (wm->paintcursors.first) {
-    ED_screen_areas_iter(win, screen, area)
-    {
+    ED_screen_areas_iter (win, screen, area) {
       LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
         if (region->visible && region == screen->active_region) {
           CTX_wm_area_set(C, area);
@@ -766,8 +770,7 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
   }
 
   /* Blend in overlapping area regions */
-  ED_screen_areas_iter(win, screen, area)
-  {
+  ED_screen_areas_iter (win, screen, area) {
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       if (region->visible && region->overlap) {
         wm_draw_region_blend(region, 0, true);
@@ -845,6 +848,7 @@ static void wm_draw_window(bContext *C, wmWindow *win)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, GPU_texture_opengl_bindcode(texture));
 
+        wmWindowViewport(win);
         if (win->stereo3d_format->display_mode == S3D_DISPLAY_SIDEBYSIDE) {
           wm_stereo3d_draw_sidebyside(win, view);
         }
@@ -907,8 +911,7 @@ static bool wm_draw_update_test_window(Main *bmain, bContext *C, wmWindow *win)
     }
   }
 
-  ED_screen_areas_iter(win, screen, area)
-  {
+  ED_screen_areas_iter (win, screen, area) {
     for (region = area->regionbase.first; region; region = region->next) {
       wm_region_test_gizmo_do_draw(C, area, region, true);
       wm_region_test_render_do_draw(scene, depsgraph, area, region);
@@ -955,8 +958,7 @@ static void wm_draw_update_clear_window(bContext *C, wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);
 
-  ED_screen_areas_iter(win, screen, area)
-  {
+  ED_screen_areas_iter (win, screen, area) {
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       wm_region_test_gizmo_do_draw(C, area, region, false);
     }
@@ -980,10 +982,6 @@ void wm_draw_update(bContext *C)
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win;
-
-#ifdef WITH_OPENSUBDIV
-  BKE_subsurf_free_unused_buffers();
-#endif
 
   GPU_free_unused_buffers(bmain);
 
@@ -1030,16 +1028,18 @@ void wm_draw_region_clear(wmWindow *win, ARegion *UNUSED(region))
   screen->do_draw = true;
 }
 
-void WM_draw_region_free(ARegion *region)
+void WM_draw_region_free(ARegion *region, bool hide)
 {
   wm_draw_region_buffer_free(region);
-  region->visible = 0;
+  if (hide) {
+    region->visible = 0;
+  }
 }
 
 void wm_draw_region_test(bContext *C, ScrArea *area, ARegion *region)
 {
   /* Function for redraw timer benchmark. */
-  bool use_viewport = wm_region_use_viewport(area, region);
+  bool use_viewport = WM_region_use_viewport(area, region);
   wm_draw_region_buffer_create(region, false, use_viewport);
   wm_draw_region_bind(region, 0);
   ED_region_do_draw(C, region);

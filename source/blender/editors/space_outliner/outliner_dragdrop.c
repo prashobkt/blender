@@ -675,6 +675,10 @@ static bool collection_drop_init(bContext *C,
   if (ID_IS_LINKED(to_collection)) {
     return false;
   }
+  /* Currently this should not be allowed (might be supported in the future though...). */
+  if (ID_IS_OVERRIDE_LIBRARY(to_collection)) {
+    return false;
+  }
 
   /* Get drag datablocks. */
   if (drag->type != WM_DRAG_ID) {
@@ -981,6 +985,8 @@ static int outliner_item_drag_drop_invoke(bContext *C,
     /* Add single ID. */
     WM_drag_add_ID(drag, data.drag_id, data.drag_parent);
   }
+
+  ED_outliner_select_sync_from_all_tag(C);
 
   return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
 }

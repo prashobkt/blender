@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Copyright 2017, Blender Foundation.
@@ -24,25 +24,35 @@
 #include "BLI_math_geom.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "BKE_bvhutils.h"
+#include "BKE_context.h"
+#include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
-#include "BKE_deform.h"
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
 #include "MEM_guardedalloc.h"
 
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 typedef struct SDefAdjacency {
@@ -180,7 +190,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   const SurfaceDeformModifierData *smd = (const SurfaceDeformModifierData *)md;
   SurfaceDeformModifierData *tsmd = (SurfaceDeformModifierData *)target;
 
-  modifier_copyData_generic(md, target, flag);
+  BKE_modifier_copydata_generic(md, target, flag);
 
   if (smd->verts) {
     tsmd->verts = MEM_dupallocN(smd->verts);
@@ -1017,20 +1027,20 @@ static bool surfacedeformBind(SurfaceDeformModifierData *smd_orig,
 
   vert_edges = MEM_calloc_arrayN(tnumverts, sizeof(*vert_edges), "SDefVertEdgeMap");
   if (vert_edges == NULL) {
-    modifier_setError((ModifierData *)smd_eval, "Out of memory");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Out of memory");
     return false;
   }
 
   adj_array = MEM_malloc_arrayN(tnumedges, 2 * sizeof(*adj_array), "SDefVertEdge");
   if (adj_array == NULL) {
-    modifier_setError((ModifierData *)smd_eval, "Out of memory");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Out of memory");
     MEM_freeN(vert_edges);
     return false;
   }
 
   edge_polys = MEM_calloc_arrayN(tnumedges, sizeof(*edge_polys), "SDefEdgeFaceMap");
   if (edge_polys == NULL) {
-    modifier_setError((ModifierData *)smd_eval, "Out of memory");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Out of memory");
     MEM_freeN(vert_edges);
     MEM_freeN(adj_array);
     return false;
@@ -1038,14 +1048,14 @@ static bool surfacedeformBind(SurfaceDeformModifierData *smd_orig,
 
   smd_orig->verts = MEM_malloc_arrayN(numverts, sizeof(*smd_orig->verts), "SDefBindVerts");
   if (smd_orig->verts == NULL) {
-    modifier_setError((ModifierData *)smd_eval, "Out of memory");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Out of memory");
     freeAdjacencyMap(vert_edges, adj_array, edge_polys);
     return false;
   }
 
   BKE_bvhtree_from_mesh_get(&treeData, target, BVHTREE_FROM_LOOPTRI, 2);
   if (treeData.tree == NULL) {
-    modifier_setError((ModifierData *)smd_eval, "Out of memory");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Out of memory");
     freeAdjacencyMap(vert_edges, adj_array, edge_polys);
     MEM_freeN(smd_orig->verts);
     smd_orig->verts = NULL;
@@ -1056,7 +1066,8 @@ static bool surfacedeformBind(SurfaceDeformModifierData *smd_orig,
       mpoly, medge, mloop, tnumpoly, tnumedges, vert_edges, adj_array, edge_polys);
 
   if (adj_result == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
-    modifier_setError((ModifierData *)smd_eval, "Target has edges with more than two polygons");
+    BKE_modifier_set_error((ModifierData *)smd_eval,
+                           "Target has edges with more than two polygons");
     freeAdjacencyMap(vert_edges, adj_array, edge_polys);
     free_bvhtree_from_mesh(&treeData);
     MEM_freeN(smd_orig->verts);
@@ -1083,7 +1094,7 @@ static bool surfacedeformBind(SurfaceDeformModifierData *smd_orig,
   };
 
   if (data.targetCos == NULL) {
-    modifier_setError((ModifierData *)smd_eval, "Out of memory");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Out of memory");
     freeData((ModifierData *)smd_orig);
     return false;
   }
@@ -1102,19 +1113,20 @@ static bool surfacedeformBind(SurfaceDeformModifierData *smd_orig,
   MEM_freeN(data.targetCos);
 
   if (data.success == MOD_SDEF_BIND_RESULT_MEM_ERR) {
-    modifier_setError((ModifierData *)smd_eval, "Out of memory");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Out of memory");
     freeData((ModifierData *)smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
-    modifier_setError((ModifierData *)smd_eval, "Target has edges with more than two polygons");
+    BKE_modifier_set_error((ModifierData *)smd_eval,
+                           "Target has edges with more than two polygons");
     freeData((ModifierData *)smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_CONCAVE_ERR) {
-    modifier_setError((ModifierData *)smd_eval, "Target contains concave polygons");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Target contains concave polygons");
     freeData((ModifierData *)smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_OVERLAP_ERR) {
-    modifier_setError((ModifierData *)smd_eval, "Target contains overlapping verts");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Target contains overlapping verts");
     freeData((ModifierData *)smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_GENERIC_ERR) {
@@ -1122,7 +1134,7 @@ static bool surfacedeformBind(SurfaceDeformModifierData *smd_orig,
      * to explain this with a reasonably sized message.
      * Though it shouldn't really matter all that much,
      * because this is very unlikely to occur */
-    modifier_setError((ModifierData *)smd_eval, "Target contains invalid polygons");
+    BKE_modifier_set_error((ModifierData *)smd_eval, "Target contains invalid polygons");
     freeData((ModifierData *)smd_orig);
   }
 
@@ -1219,10 +1231,10 @@ static void surfacedeformModifier_do(ModifierData *md,
   if (!(smd->flags & MOD_SDEF_BIND)) {
     if (smd->verts != NULL) {
       if (!DEG_is_active(ctx->depsgraph)) {
-        modifier_setError(md, "Attempt to bind from inactive dependency graph");
+        BKE_modifier_set_error(md, "Attempt to bind from inactive dependency graph");
         return;
       }
-      ModifierData *md_orig = modifier_get_original(md);
+      ModifierData *md_orig = BKE_modifier_get_original(md);
       freeData(md_orig);
     }
     return;
@@ -1231,7 +1243,7 @@ static void surfacedeformModifier_do(ModifierData *md,
   Object *ob_target = smd->target;
   target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target, false);
   if (!target) {
-    modifier_setError(md, "No valid target mesh");
+    BKE_modifier_set_error(md, "No valid target mesh");
     return;
   }
 
@@ -1241,11 +1253,12 @@ static void surfacedeformModifier_do(ModifierData *md,
   /* If not bound, execute bind. */
   if (smd->verts == NULL) {
     if (!DEG_is_active(ctx->depsgraph)) {
-      modifier_setError(md, "Attempt to unbind from inactive dependency graph");
+      BKE_modifier_set_error(md, "Attempt to unbind from inactive dependency graph");
       return;
     }
 
-    SurfaceDeformModifierData *smd_orig = (SurfaceDeformModifierData *)modifier_get_original(md);
+    SurfaceDeformModifierData *smd_orig = (SurfaceDeformModifierData *)BKE_modifier_get_original(
+        md);
     float tmp_mat[4][4];
 
     invert_m4_m4(tmp_mat, ob->obmat);
@@ -1260,11 +1273,11 @@ static void surfacedeformModifier_do(ModifierData *md,
 
   /* Poly count checks */
   if (smd->numverts != numverts) {
-    modifier_setError(md, "Verts changed from %u to %u", smd->numverts, numverts);
+    BKE_modifier_set_error(md, "Verts changed from %u to %u", smd->numverts, numverts);
     return;
   }
   else if (smd->numpoly != tnumpoly) {
-    modifier_setError(md, "Target polygons changed from %u to %u", smd->numpoly, tnumpoly);
+    BKE_modifier_set_error(md, "Target polygons changed from %u to %u", smd->numpoly, tnumpoly);
     return;
   }
 
@@ -1382,8 +1395,50 @@ static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED
          !(smd->verts != NULL && !(smd->flags & MOD_SDEF_BIND));
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *col;
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  PointerRNA ob_ptr;
+  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  PointerRNA target_ptr = RNA_pointer_get(&ptr, "target");
+
+  bool is_bound = RNA_boolean_get(&ptr, "is_bound");
+
+  uiLayoutSetPropSep(layout, true);
+
+  col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(col, !is_bound);
+  uiItemR(col, &ptr, "target", 0, NULL, ICON_NONE);
+
+  uiItemR(col, &ptr, "falloff", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "strength", 0, NULL, ICON_NONE);
+
+  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
+
+  uiItemS(layout);
+
+  col = uiLayoutColumn(layout, false);
+  if (is_bound) {
+    uiItemO(col, IFACE_("Unbind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
+  }
+  else {
+    uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
+    uiItemO(col, IFACE_("Bind"), ICON_NONE, "OBJECT_OT_surfacedeform_bind");
+  }
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, eModifierType_SurfaceDeform, panel_draw);
+}
+
 ModifierTypeInfo modifierType_SurfaceDeform = {
-    /* name */ "Surface Deform",
+    /* name */ "SurfaceDeform",
     /* structName */ "SurfaceDeformModifierData",
     /* structSize */ sizeof(SurfaceDeformModifierData),
     /* type */ eModifierTypeType_OnlyDeform,
@@ -1395,7 +1450,10 @@ ModifierTypeInfo modifierType_SurfaceDeform = {
     /* deformMatrices */ NULL,
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ NULL,
+    /* modifyMesh */ NULL,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
@@ -1408,4 +1466,5 @@ ModifierTypeInfo modifierType_SurfaceDeform = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panelRegister */ panelRegister,
 };

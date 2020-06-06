@@ -35,6 +35,7 @@
 
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
+#include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_nla.h"
@@ -60,7 +61,7 @@ static FCurve *ui_but_get_fcurve(
    * but works well enough in typical cases */
   int rnaindex = (but->rnaindex == -1) ? 0 : but->rnaindex;
 
-  return rna_get_fcurve_context_ui(
+  return BKE_fcurve_find_by_rna_context_ui(
       but->block->evil_C, &but->rnapoin, but->rnaprop, rnaindex, adt, action, r_driven, r_special);
 }
 
@@ -123,10 +124,11 @@ static uiBut *ui_but_anim_decorate_find_attached_button(uiBut *but_decorate)
   BLI_assert(but_decorate->rnasearchpoin.data && but_decorate->rnasearchprop);
 
   LISTBASE_CIRCULAR_BACKWARD_BEGIN (&but_decorate->block->buttons, but_iter, but_decorate->prev) {
-    if (but_iter != but_decorate && ui_but_rna_equals_ex(but_decorate,
-                                                         &but_iter->rnasearchpoin,
-                                                         but_iter->rnasearchprop,
-                                                         POINTER_AS_INT(but_iter->custom_data))) {
+    if (but_iter != but_decorate &&
+        ui_but_rna_equals_ex(but_iter,
+                             &but_decorate->rnasearchpoin,
+                             but_decorate->rnasearchprop,
+                             POINTER_AS_INT(but_decorate->custom_data))) {
       return but_iter;
     }
   }
@@ -140,9 +142,10 @@ void ui_but_anim_decorate_update_from_flag(uiBut *but)
   const uiBut *but_anim = ui_but_anim_decorate_find_attached_button(but);
 
   if (!but_anim) {
-    printf("Could not find button with matching property to decorate (%s.%s)",
-           RNA_struct_identifier(but->rnapoin.type),
-           RNA_property_identifier(but->rnaprop));
+    printf("Could not find button with matching property to decorate (%s.%s)\n",
+           RNA_struct_identifier(but->rnasearchpoin.type),
+           RNA_property_identifier(but->rnasearchprop));
+    return;
   }
 
   int flag = but_anim->flag;

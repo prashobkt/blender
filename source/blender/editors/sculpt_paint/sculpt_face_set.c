@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2020 Blender Foundation.
@@ -87,6 +87,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, data->brush->falloff_shape);
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
   {
@@ -107,7 +108,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                       vd.fno,
                                                                       vd.mask ? *vd.mask : 0.0f,
                                                                       vd.index,
-                                                                      tls->thread_id);
+                                                                      thread_id);
 
           if (fade > 0.05f && ss->face_sets[vert_map->indices[j]] > 0) {
             ss->face_sets[vert_map->indices[j]] = abs(ss->cache->paint_face_set);
@@ -127,7 +128,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                       vd.fno,
                                                                       vd.mask ? *vd.mask : 0.0f,
                                                                       vd.index,
-                                                                      tls->thread_id);
+                                                                      thread_id);
 
           if (fade > 0.05f) {
             SCULPT_vertex_face_set_set(ss, vd.index, ss->cache->paint_face_set);
@@ -160,6 +161,8 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
     bstrength *= 2.0f;
   }
 
+  const int thread_id = BLI_task_parallel_thread_id(tls);
+
   BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
   {
     if (sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -172,7 +175,7 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                     vd.fno,
                                                                     vd.mask ? *vd.mask : 0.0f,
                                                                     vd.index,
-                                                                    tls->thread_id);
+                                                                    thread_id);
 
         SCULPT_relax_vertex(ss, &vd, fade * bstrength, relax_face_sets, vd.co);
         if (vd.mvert) {
@@ -189,18 +192,6 @@ void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, in
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
-  if (ss->cache->first_time && ss->cache->mirror_symmetry_pass == 0 &&
-      ss->cache->radial_symmetry_pass == 0) {
-    if (ss->cache->invert) {
-      /* When inverting the brush, pick the paint face mask ID from the mesh. */
-      ss->cache->paint_face_set = SCULPT_active_face_set_get(ss);
-    }
-    else {
-      /* By default create a new Face Sets. */
-      ss->cache->paint_face_set = SCULPT_face_set_next_available_get(ss);
-    }
-  }
-
   BKE_curvemapping_initialize(brush->curve);
 
   /* Threaded loop over nodes. */
@@ -211,15 +202,15 @@ void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, in
       .nodes = nodes,
   };
 
-  PBVHParallelSettings settings;
+  TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, (sd->flags & SCULPT_USE_OPENMP), totnode);
   if (ss->cache->alt_smooth) {
     for (int i = 0; i < 4; i++) {
-      BKE_pbvh_parallel_range(0, totnode, &data, do_relax_face_sets_brush_task_cb_ex, &settings);
+      BLI_task_parallel_range(0, totnode, &data, do_relax_face_sets_brush_task_cb_ex, &settings);
     }
   }
   else {
-    BKE_pbvh_parallel_range(0, totnode, &data, do_draw_face_sets_brush_task_cb_ex, &settings);
+    BLI_task_parallel_range(0, totnode, &data, do_draw_face_sets_brush_task_cb_ex, &settings);
   }
 }
 
@@ -264,7 +255,7 @@ static EnumPropertyItem prop_sculpt_face_set_create_types[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-static int sculpt_face_set_create_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -306,6 +297,25 @@ static int sculpt_face_set_create_invoke(bContext *C, wmOperator *op, const wmEv
   }
 
   if (mode == SCULPT_FACE_SET_VISIBLE) {
+
+    /* If all vertices in the sculpt are visible, create the new face set and update the default
+     * color. This way the new face set will be white, which is a quick way of disabling all face
+     * sets and the performance hit of rendering the overlay. */
+    bool all_visible = true;
+    for (int i = 0; i < tot_vert; i++) {
+      if (!SCULPT_vertex_visible_get(ss, i)) {
+        all_visible = false;
+        break;
+      }
+    }
+
+    if (all_visible) {
+      Mesh *mesh = ob->data;
+      mesh->face_sets_color_default = next_face_set;
+      BKE_pbvh_face_sets_color_set(
+          ss->pbvh, mesh->face_sets_color_seed, mesh->face_sets_color_default);
+    }
+
     for (int i = 0; i < tot_vert; i++) {
       if (SCULPT_vertex_visible_get(ss, i)) {
         SCULPT_vertex_face_set_set(ss, i, next_face_set);
@@ -366,7 +376,7 @@ void SCULPT_OT_face_sets_create(wmOperatorType *ot)
   ot->description = "Create a new Face Set";
 
   /* api callbacks */
-  ot->invoke = sculpt_face_set_create_invoke;
+  ot->exec = sculpt_face_set_create_exec;
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -513,7 +523,7 @@ static void sculpt_face_sets_init_flood_fill(Object *ob,
                          .calc_face_normal = true,
                      }));
 
-  bool *visited_faces = MEM_callocN(sizeof(bool) * mesh->totpoly, "visited faces");
+  BLI_bitmap *visited_faces = BLI_BITMAP_NEW(mesh->totpoly, "visited faces");
   const int totfaces = mesh->totpoly;
 
   int *face_sets = ss->face_sets;
@@ -524,12 +534,12 @@ static void sculpt_face_sets_init_flood_fill(Object *ob,
   int next_face_set = 1;
 
   for (int i = 0; i < totfaces; i++) {
-    if (!visited_faces[i]) {
+    if (!BLI_BITMAP_TEST(visited_faces, i)) {
       GSQueue *queue;
       queue = BLI_gsqueue_new(sizeof(int));
 
       face_sets[i] = next_face_set;
-      visited_faces[i] = true;
+      BLI_BITMAP_ENABLE(visited_faces, i);
       BLI_gsqueue_push(queue, &i);
 
       while (!BLI_gsqueue_is_empty(queue)) {
@@ -546,10 +556,10 @@ static void sculpt_face_sets_init_flood_fill(Object *ob,
           BM_ITER_ELEM (f_neighbor, &iter_b, ed, BM_FACES_OF_EDGE) {
             if (f_neighbor != f) {
               int neighbor_face_index = BM_elem_index_get(f_neighbor);
-              if (!visited_faces[neighbor_face_index]) {
+              if (!BLI_BITMAP_TEST(visited_faces, neighbor_face_index)) {
                 if (test(bm, f, ed, f_neighbor, threshold)) {
                   face_sets[neighbor_face_index] = next_face_set;
-                  visited_faces[neighbor_face_index] = true;
+                  BLI_BITMAP_ENABLE(visited_faces, neighbor_face_index);
                   BLI_gsqueue_push(queue, &neighbor_face_index);
                 }
               }
@@ -606,7 +616,7 @@ static void sculpt_face_sets_init_loop(Object *ob, const int mode)
   BM_mesh_free(bm);
 }
 
-static int sculpt_face_set_init_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -699,7 +709,7 @@ void SCULPT_OT_face_sets_init(wmOperatorType *ot)
   ot->description = "Initializes all Face Sets in the mesh";
 
   /* api callbacks */
-  ot->invoke = sculpt_face_set_init_invoke;
+  ot->exec = sculpt_face_set_init_exec;
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -765,9 +775,7 @@ static EnumPropertyItem prop_sculpt_face_sets_change_visibility_types[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-static int sculpt_face_sets_change_visibility_invoke(bContext *C,
-                                                     wmOperator *op,
-                                                     const wmEvent *UNUSED(event))
+static int sculpt_face_sets_change_visibility_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -900,7 +908,7 @@ void SCULPT_OT_face_sets_change_visibility(wmOperatorType *ot)
   ot->description = "Change the visibility of the Face Sets of the sculpt";
 
   /* Api callbacks. */
-  ot->invoke = sculpt_face_sets_change_visibility_invoke;
+  ot->exec = sculpt_face_sets_change_visibility_exec;
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -913,9 +921,7 @@ void SCULPT_OT_face_sets_change_visibility(wmOperatorType *ot)
                "");
 }
 
-static int sculpt_face_sets_randomize_colors_invoke(bContext *C,
-                                                    wmOperator *UNUSED(op),
-                                                    const wmEvent *UNUSED(event))
+static int sculpt_face_sets_randomize_colors_exec(bContext *C, wmOperator *UNUSED(op))
 {
 
   Object *ob = CTX_data_active_object(C);
@@ -967,7 +973,7 @@ void SCULPT_OT_face_sets_randomize_colors(wmOperatorType *ot)
   ot->description = "Generates a new set of random colors to render the Face Sets in the viewport";
 
   /* Api callbacks. */
-  ot->invoke = sculpt_face_sets_randomize_colors_invoke;
+  ot->exec = sculpt_face_sets_randomize_colors_exec;
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

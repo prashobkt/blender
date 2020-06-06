@@ -24,6 +24,7 @@
 
 #include "ceres/ceres.h"
 #include "ceres/rotation.h"
+#include "libmv/base/map.h"
 #include "libmv/base/vector.h"
 #include "libmv/logging/logging.h"
 #include "libmv/multiview/fundamental.h"
@@ -66,6 +67,12 @@ enum {
 
 namespace {
 
+bool NeedUseInvertIntrinsicsPipeline(const CameraIntrinsics *intrinsics) {
+  const DistortionModelType distortion_model =
+      intrinsics->GetDistortionModelType();
+  return (distortion_model == DISTORTION_MODEL_NUKE);
+}
+
 // Apply distortion model (distort the input) on the input point in the
 // normalized space to get distorted coordinate in the image space.
 //
@@ -89,8 +96,6 @@ void ApplyDistortionModelUsingIntrinsicsBlock(
   const T& principal_point_x = intrinsics_block[OFFSET_PRINCIPAL_POINT_X];
   const T& principal_point_y = intrinsics_block[OFFSET_PRINCIPAL_POINT_Y];
 
-  // Apply distortion to the normalized points to get (xd, yd).
-  //
   // TODO(keir): Do early bailouts for zero distortion; these are expensive
   // jet operations.
   switch (invariant_intrinsics->GetDistortionModelType()) {
@@ -127,9 +132,80 @@ void ApplyDistortionModelUsingIntrinsicsBlock(
                                      distorted_x, distorted_y);
         return;
       }
+
+    case DISTORTION_MODEL_NUKE:
+      {
+        LOG(FATAL) << "Unsupported distortion model.";
+        return;
+      }
   }
 
   LOG(FATAL) << "Unknown distortion model.";
+}
+
+// Invert distortion model (undistort the input) on the input point in the
+// image space to get undistorted coordinate in the normalized space.
+//
+// Using intrinsics values from the parameter block, which makes this function
+// suitable for use from a cost functor.
+//
+// Only use for distortion models which are analytically defined for their
+// Invert() function.
+//
+// The invariant_intrinsics are used to access intrinsics which are never
+// packed into parameter block: for example, distortion model type and image
+// dimension.
+template<typename T>
+void InvertDistortionModelUsingIntrinsicsBlock(
+    const CameraIntrinsics *invariant_intrinsics,
+    const T* const intrinsics_block,
+    const T& image_x, const T& image_y,
+    T* normalized_x, T* normalized_y) {
+  // Unpack the intrinsics.
+  const T& focal_length      = intrinsics_block[OFFSET_FOCAL_LENGTH];
+  const T& principal_point_x = intrinsics_block[OFFSET_PRINCIPAL_POINT_X];
+  const T& principal_point_y = intrinsics_block[OFFSET_PRINCIPAL_POINT_Y];
+
+  // TODO(keir): Do early bailouts for zero distortion; these are expensive
+  // jet operations.
+  switch (invariant_intrinsics->GetDistortionModelType()) {
+    case DISTORTION_MODEL_POLYNOMIAL:
+    case DISTORTION_MODEL_DIVISION:
+      LOG(FATAL) << "Unsupported distortion model.";
+      return;
+
+    case DISTORTION_MODEL_NUKE:
+      {
+        const T& k1 = intrinsics_block[OFFSET_K1];
+        const T& k2 = intrinsics_block[OFFSET_K2];
+
+        InvertNukeDistortionModel(focal_length,
+                                  focal_length,
+                                  principal_point_x,
+                                  principal_point_y,
+                                  invariant_intrinsics->image_width(),
+                                  invariant_intrinsics->image_height(),
+                                  k1, k2,
+                                  image_x, image_y,
+                                  normalized_x, normalized_y);
+        return;
+      }
+  }
+
+  LOG(FATAL) << "Unknown distortion model.";
+}
+
+template<typename T>
+void NormalizedToImageSpace(const T* const intrinsics_block,
+                            const T& normalized_x, const T& normalized_y,
+                            T* image_x, T* image_y) {
+  // Unpack the intrinsics.
+  const T& focal_length      = intrinsics_block[OFFSET_FOCAL_LENGTH];
+  const T& principal_point_x = intrinsics_block[OFFSET_PRINCIPAL_POINT_X];
+  const T& principal_point_y = intrinsics_block[OFFSET_PRINCIPAL_POINT_Y];
+
+  *image_x = normalized_x * focal_length + principal_point_x;
+  *image_y = normalized_y * focal_length + principal_point_y;
 }
 
 // Cost functor which computes reprojection error of 3D point X on camera
@@ -138,8 +214,8 @@ void ApplyDistortionModelUsingIntrinsicsBlock(
 //
 // This functor can only be used for distortion models which have analytically
 // defined Apply() function.
-struct OpenCVReprojectionErrorApplyIntrinsics {
-  OpenCVReprojectionErrorApplyIntrinsics(
+struct ReprojectionErrorApplyIntrinsics {
+  ReprojectionErrorApplyIntrinsics(
       const CameraIntrinsics *invariant_intrinsics,
       const double observed_distorted_x,
       const double observed_distorted_y,
@@ -182,6 +258,81 @@ struct OpenCVReprojectionErrorApplyIntrinsics {
     // The error is the difference between the predicted and observed position.
     residuals[0] = (predicted_distorted_x - T(observed_distorted_x_)) * weight_;
     residuals[1] = (predicted_distorted_y - T(observed_distorted_y_)) * weight_;
+    return true;
+  }
+
+  const CameraIntrinsics *invariant_intrinsics_;
+  const double observed_distorted_x_;
+  const double observed_distorted_y_;
+  const double weight_;
+};
+
+// Cost functor which computes reprojection error of 3D point X on camera
+// defined by angle-axis rotation and it's translation (which are in the same
+// block due to optimization reasons).
+//
+// This functor can only be used for distortion models which have analytically
+// defined Invert() function.
+struct ReprojectionErrorInvertIntrinsics {
+  ReprojectionErrorInvertIntrinsics(
+      const CameraIntrinsics *invariant_intrinsics,
+      const double observed_distorted_x,
+      const double observed_distorted_y,
+      const double weight)
+      : invariant_intrinsics_(invariant_intrinsics),
+        observed_distorted_x_(observed_distorted_x),
+        observed_distorted_y_(observed_distorted_y),
+        weight_(weight) {}
+
+  template <typename T>
+  bool operator()(const T* const intrinsics,
+                  const T* const R_t,  // Rotation denoted by angle axis
+                                       // followed with translation
+                  const T* const X,    // Point coordinates 3x1.
+                  T* residuals) const {
+    // Unpack the intrinsics.
+    const T& focal_length      = intrinsics[OFFSET_FOCAL_LENGTH];
+    const T& principal_point_x = intrinsics[OFFSET_PRINCIPAL_POINT_X];
+    const T& principal_point_y = intrinsics[OFFSET_PRINCIPAL_POINT_Y];
+
+    // Compute projective coordinates: x = RX + t.
+    T x[3];
+
+    ceres::AngleAxisRotatePoint(R_t, X, x);
+    x[0] += R_t[3];
+    x[1] += R_t[4];
+    x[2] += R_t[5];
+
+    // Prevent points from going behind the camera.
+    if (x[2] < T(0)) {
+      return false;
+    }
+
+    // Compute normalized coordinates: x /= x[2].
+    T xn = x[0] / x[2];
+    T yn = x[1] / x[2];
+
+    // Compute image space coordinate from normalized.
+    T predicted_x = focal_length * xn + principal_point_x;
+    T predicted_y = focal_length * yn + principal_point_y;
+
+    T observed_undistorted_normalized_x, observed_undistorted_normalized_y;
+    InvertDistortionModelUsingIntrinsicsBlock(
+        invariant_intrinsics_,
+        intrinsics,
+        T(observed_distorted_x_), T(observed_distorted_y_),
+        &observed_undistorted_normalized_x, &observed_undistorted_normalized_y);
+
+    T observed_undistorted_image_x, observed_undistorted_image_y;
+    NormalizedToImageSpace(
+        intrinsics,
+        observed_undistorted_normalized_x, observed_undistorted_normalized_y,
+        &observed_undistorted_image_x, &observed_undistorted_image_y);
+
+    // The error is the difference between the predicted and observed position.
+    residuals[0] = (predicted_x - observed_undistorted_image_x) * weight_;
+    residuals[1] = (predicted_y - observed_undistorted_image_y) * weight_;
+
     return true;
   }
 
@@ -257,47 +408,39 @@ void UnpackIntrinsicsFromArray(const double intrinsics_block[OFFSET_MAX],
 // Get a vector of camera's rotations denoted by angle axis
 // conjuncted with translations into single block
 //
-// Element with index i matches to a rotation+translation for
+// Element with key i matches to a rotation+translation for
 // camera at image i.
-vector<Vec6> PackCamerasRotationAndTranslation(
-    const Tracks &tracks,
+map<int, Vec6> PackCamerasRotationAndTranslation(
     const EuclideanReconstruction &reconstruction) {
-  vector<Vec6> all_cameras_R_t;
-  int max_image = tracks.MaxImage();
+  map<int, Vec6> all_cameras_R_t;
 
-  all_cameras_R_t.resize(max_image + 1);
-
-  for (int i = 0; i <= max_image; i++) {
-    const EuclideanCamera *camera = reconstruction.CameraForImage(i);
-
-    if (!camera) {
-      continue;
-    }
-
-    ceres::RotationMatrixToAngleAxis(&camera->R(0, 0),
-                                     &all_cameras_R_t[i](0));
-    all_cameras_R_t[i].tail<3>() = camera->t;
+  vector<EuclideanCamera> all_cameras = reconstruction.AllCameras();
+  for (const EuclideanCamera& camera : all_cameras) {
+    Vec6 camera_R_t;
+    ceres::RotationMatrixToAngleAxis(&camera.R(0, 0), &camera_R_t(0));
+    camera_R_t.tail<3>() = camera.t;
+    all_cameras_R_t.insert(make_pair(camera.image, camera_R_t));
   }
+
   return all_cameras_R_t;
 }
 
 // Convert cameras rotations fro mangle axis back to rotation matrix.
 void UnpackCamerasRotationAndTranslation(
-    const Tracks &tracks,
-    const vector<Vec6> &all_cameras_R_t,
+    const map<int, Vec6> &all_cameras_R_t,
     EuclideanReconstruction *reconstruction) {
-  int max_image = tracks.MaxImage();
 
-  for (int i = 0; i <= max_image; i++) {
-    EuclideanCamera *camera = reconstruction->CameraForImage(i);
+  for (map<int, Vec6>::value_type image_and_camera_R_T : all_cameras_R_t) {
+    const int image = image_and_camera_R_T.first;
+    const Vec6& camera_R_t = image_and_camera_R_T.second;
 
+    EuclideanCamera *camera = reconstruction->CameraForImage(image);
     if (!camera) {
       continue;
     }
 
-    ceres::AngleAxisToRotationMatrix(&all_cameras_R_t[i](0),
-                                     &camera->R(0, 0));
-    camera->t = all_cameras_R_t[i].tail<3>();
+    ceres::AngleAxisToRotationMatrix(&camera_R_t(0), &camera->R(0, 0));
+    camera->t = camera_R_t.tail<3>();
   }
 }
 
@@ -326,7 +469,7 @@ void CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix,
 
 void EuclideanBundlerPerformEvaluation(const Tracks &tracks,
                                        EuclideanReconstruction *reconstruction,
-                                       vector<Vec6> *all_cameras_R_t,
+                                       map<int, Vec6> *all_cameras_R_t,
                                        ceres::Problem *problem,
                                        BundleEvaluation *evaluation) {
   int max_track = tracks.MaxTrack();
@@ -421,14 +564,25 @@ void AddResidualBlockToProblem(const CameraIntrinsics *invariant_intrinsics,
                                double *camera_R_t,
                                EuclideanPoint *point,
                                ceres::Problem* problem) {
-  AddResidualBlockToProblemImpl<OpenCVReprojectionErrorApplyIntrinsics>(
-      invariant_intrinsics,
-      marker.x, marker.y,
-      marker_weight,
-      intrinsics_block,
-      camera_R_t,
-      point,
-      problem);
+  if (NeedUseInvertIntrinsicsPipeline(invariant_intrinsics)) {
+    AddResidualBlockToProblemImpl<ReprojectionErrorInvertIntrinsics>(
+            invariant_intrinsics,
+            marker.x, marker.y,
+            marker_weight,
+            intrinsics_block,
+            camera_R_t,
+            point,
+            problem);
+  } else {
+    AddResidualBlockToProblemImpl<ReprojectionErrorApplyIntrinsics>(
+            invariant_intrinsics,
+            marker.x, marker.y,
+            marker_weight,
+            intrinsics_block,
+            camera_R_t,
+            point,
+            problem);
+  }
 }
 
 // This is an utility function to only bundle 3D position of
@@ -442,7 +596,7 @@ void AddResidualBlockToProblem(const CameraIntrinsics *invariant_intrinsics,
 // are to be totally still here.
 void EuclideanBundlePointsOnly(const CameraIntrinsics *invariant_intrinsics,
                                const vector<Marker> &markers,
-                               vector<Vec6> &all_cameras_R_t,
+                               map<int, Vec6> &all_cameras_R_t,
                                double intrinsics_block[OFFSET_MAX],
                                EuclideanReconstruction *reconstruction) {
   ceres::Problem::Options problem_options;
@@ -538,8 +692,8 @@ void EuclideanBundleCommonIntrinsics(
   //
   // Block for minimization has got the following structure:
   //   <3 elements for angle-axis> <3 elements for translation>
-  vector<Vec6> all_cameras_R_t =
-    PackCamerasRotationAndTranslation(tracks, *reconstruction);
+  map<int, Vec6> all_cameras_R_t =
+    PackCamerasRotationAndTranslation(*reconstruction);
 
   // Parameterization used to restrict camera motion for modal solvers.
   ceres::SubsetParameterization *constant_translation_parameterization = NULL;
@@ -666,9 +820,7 @@ void EuclideanBundleCommonIntrinsics(
   LG << "Final report:\n" << summary.FullReport();
 
   // Copy rotations and translations back.
-  UnpackCamerasRotationAndTranslation(tracks,
-                                      all_cameras_R_t,
-                                      reconstruction);
+  UnpackCamerasRotationAndTranslation(all_cameras_R_t, reconstruction);
 
   // Copy intrinsics back.
   if (bundle_intrinsics != BUNDLE_NO_INTRINSICS)

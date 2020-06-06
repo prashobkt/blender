@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2020 Blender Foundation.
@@ -112,15 +112,18 @@ void SCULPT_filter_cache_init(Object *ob, Sculpt *sd)
       .nodes = ss->filter_cache->nodes,
   };
 
-  PBVHParallelSettings settings;
+  TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(
       &settings, (sd->flags & SCULPT_USE_OPENMP), ss->filter_cache->totnode);
-  BKE_pbvh_parallel_range(
+  BLI_task_parallel_range(
       0, ss->filter_cache->totnode, &data, filter_cache_init_task_cb, &settings);
 }
 
 void SCULPT_filter_cache_free(SculptSession *ss)
 {
+  if (ss->filter_cache->cloth_sim) {
+    SCULPT_cloth_simulation_free(ss->filter_cache->cloth_sim);
+  }
   MEM_SAFE_FREE(ss->filter_cache->nodes);
   MEM_SAFE_FREE(ss->filter_cache->mask_update_it);
   MEM_SAFE_FREE(ss->filter_cache->prev_mask);
@@ -129,7 +132,6 @@ void SCULPT_filter_cache_free(SculptSession *ss)
   MEM_SAFE_FREE(ss->filter_cache->automask);
   MEM_SAFE_FREE(ss->filter_cache->surface_smooth_laplacian_disp);
   MEM_SAFE_FREE(ss->filter_cache->sharpen_factor);
-  MEM_SAFE_FREE(ss->filter_cache->accum_disp);
   MEM_SAFE_FREE(ss->filter_cache);
 }
 
@@ -344,9 +346,18 @@ static void mesh_filter_task_cb(void *__restrict userdata,
         /* This filter can't work at full strength as it needs multiple iterations to reach a
          * stable state. */
         fade = clamp_f(fade, 0.0f, 0.5f);
+        float disp_sharpen[3] = {0.0f, 0.0f, 0.0f};
 
-        float disp_sharpen[3];
-        copy_v3_v3(disp_sharpen, ss->filter_cache->accum_disp[vd.index]);
+        SculptVertexNeighborIter ni;
+        SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd.index, ni) {
+          float disp_n[3];
+          sub_v3_v3v3(
+              disp_n, SCULPT_vertex_co_get(ss, ni.index), SCULPT_vertex_co_get(ss, vd.index));
+          mul_v3_fl(disp_n, ss->filter_cache->sharpen_factor[ni.index]);
+          add_v3_v3(disp_sharpen, disp_n);
+        }
+        SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
+
         mul_v3_fl(disp_sharpen, 1.0f - ss->filter_cache->sharpen_factor[vd.index]);
 
         float disp_avg[3];
@@ -401,24 +412,6 @@ static void mesh_filter_sharpen_init_factors(SculptSession *ss)
   for (int i = 0; i < totvert; i++) {
     ss->filter_cache->sharpen_factor[i] *= max_factor;
     ss->filter_cache->sharpen_factor[i] = 1.0f - pow2f(1.0f - ss->filter_cache->sharpen_factor[i]);
-  }
-}
-
-static void mesh_filter_sharpen_accumulate_displacement(SculptSession *ss)
-{
-  const int totvert = SCULPT_vertex_count_get(ss);
-  for (int i = 0; i < totvert; i++) {
-    zero_v3(ss->filter_cache->accum_disp[i]);
-  }
-  for (int i = 0; i < totvert; i++) {
-    SculptVertexNeighborIter ni;
-    SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, i, ni) {
-      float disp_n[3];
-      sub_v3_v3v3(disp_n, SCULPT_vertex_co_get(ss, i), SCULPT_vertex_co_get(ss, ni.index));
-      mul_v3_fl(disp_n, ss->filter_cache->sharpen_factor[i]);
-      add_v3_v3(ss->filter_cache->accum_disp[ni.index], disp_n);
-    }
-    SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
   }
 }
 
@@ -484,10 +477,6 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   bool needs_pmap = sculpt_mesh_filter_needs_pmap(filter_type, use_face_sets);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_pmap, false);
 
-  if (filter_type == MESH_FILTER_SHARPEN) {
-    mesh_filter_sharpen_accumulate_displacement(ss);
-  }
-
   SculptThreadedTaskData data = {
       .sd = sd,
       .ob = ob,
@@ -496,13 +485,13 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
       .filter_strength = filter_strength,
   };
 
-  PBVHParallelSettings settings;
+  TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(
       &settings, (sd->flags & SCULPT_USE_OPENMP), ss->filter_cache->totnode);
-  BKE_pbvh_parallel_range(0, ss->filter_cache->totnode, &data, mesh_filter_task_cb, &settings);
+  BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, mesh_filter_task_cb, &settings);
 
   if (filter_type == MESH_FILTER_SURFACE_SMOOTH) {
-    BKE_pbvh_parallel_range(0,
+    BLI_task_parallel_range(0,
                             ss->filter_cache->totnode,
                             &data,
                             mesh_filter_surface_smooth_displace_task_cb,
@@ -565,8 +554,7 @@ static int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent 
   SCULPT_filter_cache_init(ob, sd);
 
   if (use_face_sets) {
-    ss->filter_cache->active_face_set = SCULPT_vertex_face_set_get(ss,
-                                                                   SCULPT_active_vertex_get(ss));
+    ss->filter_cache->active_face_set = SCULPT_active_face_set_get(ss);
   }
   else {
     ss->filter_cache->active_face_set = SCULPT_FACE_SET_NONE;
@@ -584,7 +572,6 @@ static int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent 
   if (RNA_enum_get(op->ptr, "type") == MESH_FILTER_SHARPEN) {
     ss->filter_cache->sharpen_smooth_ratio = RNA_float_get(op->ptr, "sharpen_smooth_ratio");
     ss->filter_cache->sharpen_factor = MEM_mallocN(sizeof(float) * totvert, "sharpen factor");
-    ss->filter_cache->accum_disp = MEM_mallocN(3 * sizeof(float) * totvert, "orco");
 
     mesh_filter_sharpen_init_factors(ss);
   }

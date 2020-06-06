@@ -520,10 +520,8 @@ def km_outliner(params):
         ("anim.keyframe_delete", {"type": 'S', "value": 'PRESS', "alt": True}, None),
         ("outliner.drivers_add_selected", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
         ("outliner.drivers_delete_selected", {"type": 'D', "value": 'PRESS', "ctrl": True, "alt": True}, None),
-        ("outliner.collection_delete", {"type": 'BACK_SPACE', "value": 'PRESS'}, None),
-        ("outliner.collection_delete", {"type": 'DEL', "value": 'PRESS'}, None),
-        ("outliner.object_operation", {"type": 'BACK_SPACE', "value": 'PRESS'},  {"properties": [("type", 'DELETE')]}),
-        ("outliner.object_operation", {"type": 'DEL', "value": 'PRESS'},  {"properties": [("type", 'DELETE')]}),
+        ("outliner.delete", {"type": 'BACK_SPACE', "value": 'PRESS'}, None),
+        ("outliner.delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("object.move_to_collection", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
         ("object.link_to_collection", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         ("outliner.collection_exclude_set", {"type": 'E', "value": 'PRESS'}, None),
@@ -1787,17 +1785,17 @@ def km_sequencer(params):
              )
         ),
         ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-         {"properties": [("extend", False), ("deselect_all", True), ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", False)]}),
+         {"properties": [("deselect_all", True)]}),
         ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-         {"properties": [("extend", True), ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", False)]}),
+         {"properties": [("extend", True)]}),
         ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-         {"properties": [("extend", False), ("linked_handle", True), ("left_right", 'NONE'), ("linked_time", False)]}),
+         {"properties": [("linked_handle", True)]}),
         ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
-         {"properties": [("extend", True), ("linked_handle", True), ("left_right", 'NONE'), ("linked_time", False)]}),
+         {"properties": [("extend", True), ("linked_handle", True)]}),
         ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("extend", False), ("linked_handle", False), ("left_right", 'MOUSE'), ("linked_time", True)]}),
+         {"properties": [("side_of_frame", True), ("linked_time", True)]}),
         ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
-         {"properties": [("extend", True), ("linked_handle", False), ("left_right", 'NONE'), ("linked_time", True)]}),
+         {"properties": [("extend", True), ("side_of_frame", True), ("linked_time", True)]}),
         ("sequencer.select_more", {"type": 'UP_ARROW', "value": 'PRESS'}, None),
         ("sequencer.select_less", {"type": 'DOWN_ARROW', "value": 'PRESS'}, None),
         ("sequencer.select_linked_pick", {"type": 'RIGHT_BRACKET', "value": 'PRESS'},
@@ -2376,7 +2374,7 @@ def km_grease_pencil_stroke_paint_mode(params):
         op_tool_cycle("builtin.cutter", {"type": 'K', "value": 'PRESS'}),
         op_tool_cycle("builtin.cursor", {"type": 'C', "value": 'PRESS'}),
         # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'M', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Keyframe menu
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
     ])
@@ -3770,6 +3768,8 @@ def km_object_non_modal(params):
     )
 
     items.extend([
+        ("object.mode_set",{"type": 'ONE', "value": 'PRESS'},
+         {"properties": [("mode", 'PAINT_GPENCIL')]}),
         ("object.mode_set",{"type": 'THREE', "value": 'PRESS'},
          {"properties": [("mode", 'POSE')]}),
         ("object.mode_set_with_submode",{"type": 'ONE', "value": 'PRESS'},
@@ -3792,11 +3792,11 @@ def km_object_non_modal(params):
          {"properties": [("mode", 'TEXTURE_PAINT')]}),
         ("object.mode_set",{"type": 'TWO', "value": 'PRESS'},
          {"properties": [("mode", 'EDIT_GPENCIL')]}),
-        ("object.mode_set",{"type": 'THREE', "value": 'PRESS'},
-         {"properties": [("mode", 'SCULPT_GPENCIL')]}),
-        ("object.mode_set",{"type": 'FOUR', "value": 'PRESS'},
-         {"properties": [("mode", 'PAINT_GPENCIL')]}),
         ("object.mode_set",{"type": 'FIVE', "value": 'PRESS'},
+         {"properties": [("mode", 'SCULPT_GPENCIL')]}),
+        ("object.mode_set",{"type": 'SIX', "value": 'PRESS'},
+         {"properties": [("mode", 'VERTEX_GPENCIL')]}),
+        ("object.mode_set",{"type": 'SEVEN', "value": 'PRESS'},
          {"properties": [("mode", 'WEIGHT_GPENCIL')]}),
 
     ])

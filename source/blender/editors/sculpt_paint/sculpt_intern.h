@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2006 by Nicholas Bishop
@@ -120,7 +120,7 @@ void SCULPT_vertex_neighbors_get(struct SculptSession *ss,
   SCULPT_vertex_neighbors_get(ss, v_index, false, &neighbor_iterator); \
   for (neighbor_iterator.i = 0; neighbor_iterator.i < neighbor_iterator.size; \
        neighbor_iterator.i++) { \
-    neighbor_iterator.index = ni.neighbors[ni.i];
+    neighbor_iterator.index = neighbor_iterator.neighbors[neighbor_iterator.i];
 
 /* Iterate over neighboring and duplicate vertices (for PBVH_GRIDS). Duplicates come
  * first since they are nearest for floodfill. */
@@ -128,8 +128,8 @@ void SCULPT_vertex_neighbors_get(struct SculptSession *ss,
   SCULPT_vertex_neighbors_get(ss, v_index, true, &neighbor_iterator); \
   for (neighbor_iterator.i = neighbor_iterator.size - 1; neighbor_iterator.i >= 0; \
        neighbor_iterator.i--) { \
-    neighbor_iterator.index = ni.neighbors[ni.i]; \
-    neighbor_iterator.is_duplicate = (ni.i >= \
+    neighbor_iterator.index = neighbor_iterator.neighbors[neighbor_iterator.i]; \
+    neighbor_iterator.is_duplicate = (neighbor_iterator.i >= \
                                       neighbor_iterator.size - neighbor_iterator.num_duplicates);
 
 #define SCULPT_VERTEX_NEIGHBORS_ITER_END(neighbor_iterator) \
@@ -233,7 +233,7 @@ void SCULPT_flip_quat_by_symm_area(float quat[3],
 /* Flood Fill. */
 typedef struct {
   GSQueue *queue;
-  char *visited_vertices;
+  BLI_bitmap *visited_vertices;
 } SculptFloodFill;
 
 void SCULPT_floodfill_init(struct SculptSession *ss, SculptFloodFill *flood);
@@ -333,6 +333,13 @@ void SCULPT_cloth_plane_falloff_preview_draw(const uint gpuattr,
                                              struct SculptSession *ss,
                                              const float outline_col[3],
                                              float outline_alpha);
+
+BLI_INLINE bool SCULPT_is_cloth_deform_brush(const Brush *brush)
+{
+  return brush->sculpt_tool == SCULPT_TOOL_CLOTH &&
+         brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB;
+}
+
 /* Pose Brush. */
 void SCULPT_do_pose_brush(struct Sculpt *sd,
                           struct Object *ob,
@@ -585,6 +592,9 @@ typedef struct SculptThreadedTaskData {
   float transform_mats[8][4][4];
 
   float cloth_time_step;
+  SculptClothSimulation *cloth_sim;
+  float *cloth_sim_initial_location;
+  float cloth_sim_radius;
 
   float dirty_mask_min;
   float dirty_mask_max;
@@ -824,11 +834,14 @@ typedef struct FilterCache {
   /* Sharpen mesh filter. */
   float sharpen_smooth_ratio;
   float *sharpen_factor;
-  float (*accum_disp)[3];
 
   /* unmasked nodes */
   PBVHNode **nodes;
   int totnode;
+
+  /* Cloth filter. */
+  SculptClothSimulation *cloth_sim;
+  float cloth_sim_pinch_point[3];
 
   /* mask expand iteration caches */
   int mask_update_current_it;
@@ -856,6 +869,7 @@ void SCULPT_cache_free(StrokeCache *cache);
 
 SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType type);
 SculptUndoNode *SCULPT_undo_get_node(PBVHNode *node);
+SculptUndoNode *SCULPT_undo_get_first_node(void);
 void SCULPT_undo_push_begin(const char *name);
 void SCULPT_undo_push_end(void);
 void SCULPT_undo_push_end_ex(const bool use_nested_undo);
@@ -882,6 +896,9 @@ void SCULPT_OT_set_pivot_position(struct wmOperatorType *ot);
 
 /* Mesh Filter. */
 void SCULPT_OT_mesh_filter(struct wmOperatorType *ot);
+
+/* Cloth Filter. */
+void SCULPT_OT_cloth_filter(struct wmOperatorType *ot);
 
 /* Mask filter and Dirty Mask. */
 void SCULPT_OT_mask_filter(struct wmOperatorType *ot);

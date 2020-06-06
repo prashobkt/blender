@@ -44,6 +44,7 @@
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
@@ -124,16 +125,14 @@
 #include "GPU_material.h"
 
 #include "BKE_sound.h"
+#include "BKE_subdiv.h"
+
 #include "COM_compositor.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
 #include "DRW_engine.h"
-
-#ifdef WITH_OPENSUBDIV
-#  include "BKE_subsurf.h"
-#endif
 
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_OPERATORS, "wm.operator");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_HANDLERS, "wm.handler");
@@ -188,17 +187,16 @@ void WM_init_opengl(Main *bmain)
   GPU_init();
   GPU_set_mipmap(bmain, true);
   GPU_set_linear_mipmap(true);
-  GPU_set_anisotropic(bmain, U.anisotropic_filter);
+  GPU_set_anisotropic(U.anisotropic_filter);
 
   GPU_pass_cache_init();
 
-#ifdef WITH_OPENSUBDIV
-  BKE_subsurf_osd_init();
-#endif
+  BKE_subdiv_init();
+
   opengl_is_init = true;
 }
 
-static void sound_jack_sync_callback(Main *bmain, int mode, float time)
+static void sound_jack_sync_callback(Main *bmain, int mode, double time)
 {
   /* Ugly: Blender doesn't like it when the animation is played back during rendering. */
   if (G.is_rendering) {
@@ -575,11 +573,9 @@ void WM_exit_ex(bContext *C, const bool do_python)
   COM_deinitialize();
 #endif
 
-  if (opengl_is_init) {
-#ifdef WITH_OPENSUBDIV
-    BKE_subsurf_osd_cleanup();
-#endif
+  BKE_subdiv_exit();
 
+  if (opengl_is_init) {
     GPU_free_unused_buffers(G_MAIN);
   }
 
@@ -648,6 +644,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
   DNA_sdna_current_free();
 
   BLI_threadapi_exit();
+  BLI_task_scheduler_exit();
 
   /* No need to call this early, rather do it late so that other
    * pieces of Blender using sound may exit cleanly, see also T50676. */

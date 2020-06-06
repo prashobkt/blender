@@ -238,6 +238,9 @@ void ED_view3d_stop_render_preview(wmWindowManager *wm, ARegion *region)
     RE_engine_free(rv3d->render_engine);
     rv3d->render_engine = NULL;
   }
+
+  /* A bit overkill but this make sure the viewport is reset completely. (fclem) */
+  WM_draw_region_free(region, false);
 }
 
 void ED_view3d_shade_update(Main *bmain, View3D *v3d, ScrArea *area)
@@ -672,6 +675,8 @@ static void view3d_widgets(void)
   WM_gizmogrouptype_append(VIEW3D_GGT_ruler);
   WM_gizmotype_append(VIEW3D_GT_ruler_item);
 
+  WM_gizmogrouptype_append(VIEW3D_GGT_placement);
+
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_navigate);
   WM_gizmotype_append(VIEW3D_GT_navigate_rotate);
 }
@@ -1079,9 +1084,19 @@ static void view3d_main_region_message_subscribe(const struct bContext *C,
   }
 }
 
+/* concept is to retrieve cursor type context-less */
 static void view3d_main_region_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 {
-  if (!WM_cursor_set_from_tool(win, area, region)) {
+  if (WM_cursor_set_from_tool(win, area, region)) {
+    return;
+  }
+
+  ViewLayer *view_layer = WM_window_get_active_view_layer(win);
+  Object *obedit = OBEDIT_FROM_VIEW_LAYER(view_layer);
+  if (obedit) {
+    WM_cursor_set(win, WM_CURSOR_EDIT);
+  }
+  else {
     WM_cursor_set(win, WM_CURSOR_DEFAULT);
   }
 }

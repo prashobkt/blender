@@ -217,8 +217,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   if (!v3d || (v3d->shading.type == OB_RENDER && BKE_scene_uses_blender_workbench(scene))) {
     /* FIXME: This reproduce old behavior when workbench was separated in 2 engines.
      * But this is a workaround for a missing update tagging from operators. */
-    if (scene->display.shading.type != wpd->shading.type ||
-        (v3d && (XRAY_ENABLED(v3d) != XRAY_ENABLED(&scene->display))) ||
+    if ((v3d && (XRAY_ENABLED(v3d) != XRAY_ENABLED(&scene->display))) ||
         (scene->display.shading.flag != wpd->shading.flag)) {
       wpd->view_updated = true;
     }
@@ -245,13 +244,14 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   else {
     /* FIXME: This reproduce old behavior when workbench was separated in 2 engines.
      * But this is a workaround for a missing update tagging from operators. */
-    if (v3d->shading.type != wpd->shading.type || XRAY_ENABLED(v3d) != XRAY_ENABLED(wpd) ||
-        v3d->shading.flag != wpd->shading.flag) {
+    if (XRAY_ENABLED(v3d) != XRAY_ENABLED(wpd) || v3d->shading.flag != wpd->shading.flag) {
       wpd->view_updated = true;
     }
 
     wpd->shading = v3d->shading;
     if (wpd->shading.type < OB_SOLID) {
+      wpd->shading.light = V3D_LIGHTING_FLAT;
+      wpd->shading.color_type = V3D_SHADING_OBJECT_COLOR;
       wpd->shading.xray_alpha = 0.0f;
     }
     else if (XRAY_ENABLED(v3d)) {

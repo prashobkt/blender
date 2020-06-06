@@ -61,9 +61,6 @@ extern pthread_key_t gomp_tls_key;
 static void *thread_tls_data;
 #endif
 
-/* We're using one global task scheduler for all kind of tasks. */
-static TaskScheduler *task_scheduler = NULL;
-
 /* ********** basic thread control API ************
  *
  * Many thread cases have an X amount of jobs, and only an Y amount of
@@ -107,7 +104,6 @@ static TaskScheduler *task_scheduler = NULL;
  *     BLI_threadpool_end(&lb);
  *
  ************************************************ */
-static SpinLock _malloc_lock;
 static pthread_mutex_t _image_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _image_draw_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _viewer_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -135,21 +131,9 @@ typedef struct ThreadSlot {
   int avail;
 } ThreadSlot;
 
-static void BLI_lock_malloc_thread(void)
-{
-  BLI_spin_lock(&_malloc_lock);
-}
-
-static void BLI_unlock_malloc_thread(void)
-{
-  BLI_spin_unlock(&_malloc_lock);
-}
-
 void BLI_threadapi_init(void)
 {
   mainid = pthread_self();
-
-  BLI_spin_init(&_malloc_lock);
   if (numaAPI_Initialize() == NUMAAPI_SUCCESS) {
     is_numa_available = true;
   }
@@ -157,25 +141,6 @@ void BLI_threadapi_init(void)
 
 void BLI_threadapi_exit(void)
 {
-  if (task_scheduler) {
-    BLI_task_scheduler_free(task_scheduler);
-    task_scheduler = NULL;
-  }
-  BLI_spin_end(&_malloc_lock);
-}
-
-TaskScheduler *BLI_task_scheduler_get(void)
-{
-  if (task_scheduler == NULL) {
-    int tot_thread = BLI_system_thread_count();
-
-    /* Do a lazy initialization, so it happens after
-     * command line arguments parsing
-     */
-    task_scheduler = BLI_task_scheduler_create(tot_thread);
-  }
-
-  return task_scheduler;
 }
 
 /* tot = 0 only initializes malloc mutex in a safe way (see sequence.c)
@@ -206,8 +171,6 @@ void BLI_threadpool_init(ListBase *threadbase, void *(*do_thread)(void *), int t
 
   unsigned int level = atomic_fetch_and_add_u(&thread_levels, 1);
   if (level == 0) {
-    MEM_set_lock_callback(BLI_lock_malloc_thread, BLI_unlock_malloc_thread);
-
 #ifdef USE_APPLE_OMP_FIX
     /* workaround for Apple gcc 4.2.1 omp vs background thread bug,
      * we copy gomp thread local storage pointer to setting it again
@@ -333,11 +296,6 @@ void BLI_threadpool_end(ListBase *threadbase)
       }
     }
     BLI_freelistN(threadbase);
-  }
-
-  unsigned int level = atomic_sub_and_fetch_u(&thread_levels, 1);
-  if (level == 0) {
-    MEM_set_lock_callback(NULL, NULL);
   }
 }
 
@@ -830,29 +788,6 @@ void BLI_thread_queue_wait_finish(ThreadQueue *queue)
   }
 
   pthread_mutex_unlock(&queue->mutex);
-}
-
-/* ************************************************ */
-
-void BLI_threaded_malloc_begin(void)
-{
-  unsigned int level = atomic_fetch_and_add_u(&thread_levels, 1);
-  if (level == 0) {
-    MEM_set_lock_callback(BLI_lock_malloc_thread, BLI_unlock_malloc_thread);
-    /* There is a little chance that two threads will need to access to a
-     * scheduler which was not yet created from main thread. which could
-     * cause scheduler created multiple times.
-     */
-    BLI_task_scheduler_get();
-  }
-}
-
-void BLI_threaded_malloc_end(void)
-{
-  unsigned int level = atomic_sub_and_fetch_u(&thread_levels, 1);
-  if (level == 0) {
-    MEM_set_lock_callback(NULL, NULL);
-  }
 }
 
 /* **** Special functions to help performance on crazy NUMA setups. **** */

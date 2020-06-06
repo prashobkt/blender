@@ -81,7 +81,7 @@ node_tree_group_type = {
 }
 
 
-# generic node group items generator for shader, compositor and texture node groups
+# generic node group items generator for shader, compositor, simulation and texture node groups
 def node_group_items(context):
     if context is None:
         return
@@ -483,6 +483,7 @@ simulation_node_categories = [
     SimulationNodeCategory("SIM_INPUTS", "Input", items=[
         NodeItem("SimulationNodeTime"),
         NodeItem("SimulationNodeParticleAttribute"),
+        NodeItem("FunctionNodeGroupInstanceID"),
     ]),
     SimulationNodeCategory("SIM_EMITTERS", "Emitters", items=[
         NodeItem("SimulationNodeParticleMeshEmitter"),
@@ -527,6 +528,7 @@ simulation_node_categories = [
         NodeItem("FunctionNodeBooleanMath"),
         NodeItem("FunctionNodeFloatCompare"),
         NodeItem("FunctionNodeSwitch"),
+        NodeItem("FunctionNodeCombineStrings"),
     ]),
     SimulationNodeCategory("SIM_GROUP", "Group", items=node_group_items),
     SimulationNodeCategory("SIM_LAYOUT", "Layout", items=[

@@ -36,6 +36,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_constraint_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -58,6 +59,7 @@
 #include "BKE_idtype.h"
 #include "BKE_image.h" /* openanim */
 #include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_movieclip.h"
 #include "BKE_node.h"
@@ -106,6 +108,27 @@ static void movie_clip_free_data(ID *id)
   BKE_tracking_free(&movie_clip->tracking);
 }
 
+static void movie_clip_foreach_id(ID *id, LibraryForeachIDData *data)
+{
+  MovieClip *movie_clip = (MovieClip *)id;
+  MovieTracking *tracking = &movie_clip->tracking;
+
+  BKE_LIB_FOREACHID_PROCESS(data, movie_clip->gpd, IDWALK_CB_USER);
+
+  LISTBASE_FOREACH (MovieTrackingTrack *, track, &tracking->tracks) {
+    BKE_LIB_FOREACHID_PROCESS(data, track->gpd, IDWALK_CB_USER);
+  }
+  LISTBASE_FOREACH (MovieTrackingObject *, object, &tracking->objects) {
+    LISTBASE_FOREACH (MovieTrackingTrack *, track, &object->tracks) {
+      BKE_LIB_FOREACHID_PROCESS(data, track->gpd, IDWALK_CB_USER);
+    }
+  }
+
+  LISTBASE_FOREACH (MovieTrackingPlaneTrack *, plane_track, &tracking->plane_tracks) {
+    BKE_LIB_FOREACHID_PROCESS(data, plane_track->image, IDWALK_CB_USER);
+  }
+}
+
 IDTypeInfo IDType_ID_MC = {
     .id_code = ID_MC,
     .id_filter = FILTER_ID_MC,
@@ -120,6 +143,7 @@ IDTypeInfo IDType_ID_MC = {
     .copy_data = movie_clip_copy_data,
     .free_data = movie_clip_free_data,
     .make_local = NULL,
+    .foreach_id = movie_clip_foreach_id,
 };
 
 /*********************** movieclip buffer loaders *************************/
@@ -460,6 +484,7 @@ typedef struct MovieClipCache {
     float principal[2];
     float polynomial_k[3];
     float division_k[2];
+    float nuke_k[2];
     short distortion_model;
     bool undistortion_used;
 
@@ -908,6 +933,9 @@ static bool check_undistortion_cache_flags(const MovieClip *clip)
   if (!equals_v2v2(&camera->division_k1, cache->postprocessed.division_k)) {
     return false;
   }
+  if (!equals_v2v2(&camera->nuke_k1, cache->postprocessed.nuke_k)) {
+    return false;
+  }
 
   return true;
 }
@@ -1010,6 +1038,7 @@ static void put_postprocessed_frame_to_cache(
     copy_v2_v2(cache->postprocessed.principal, camera->principal);
     copy_v3_v3(cache->postprocessed.polynomial_k, &camera->k1);
     copy_v2_v2(cache->postprocessed.division_k, &camera->division_k1);
+    copy_v2_v2(cache->postprocessed.nuke_k, &camera->nuke_k1);
     cache->postprocessed.undistortion_used = true;
   }
   else {

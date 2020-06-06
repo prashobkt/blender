@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
@@ -31,17 +31,28 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_global.h" /* only to check G.debug */
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_screen.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "RNA_access.h"
+
+#include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "DEG_depsgraph_query.h"
@@ -50,8 +61,8 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "tools/bmesh_intersect.h"
 #include "tools/bmesh_boolean.h"
+#include "tools/bmesh_intersect.h"
 
 #ifdef DEBUG_TIME
 #  include "PIL_time.h"
@@ -160,8 +171,7 @@ static int bm_face_isect_pair(BMFace *f, void *UNUSED(user_data))
   return BM_elem_flag_test(f, BM_FACE_TAG) ? 1 : 0;
 }
 
-/* TODO: use Mesh's instead of BMesh's with new boolean code. */
-static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   BooleanModifierData *bmd = (BooleanModifierData *)md;
   Mesh *result = mesh;
@@ -314,22 +324,23 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         }
 
         if (newbool) {
-          BM_mesh_boolean(bm, bm_face_isect_pair, NULL, false, false, bmd->operation, bmd->double_threshold);
+          BM_mesh_boolean(
+              bm, bm_face_isect_pair, NULL, false, false, bmd->operation, bmd->double_threshold);
         }
         else {
           BM_mesh_intersect(bm,
-                          looptris,
-                          tottri,
-                          bm_face_isect_pair,
-                          NULL,
-                          false,
-                          use_separate,
-                          use_dissolve,
-                          use_island_connect,
-                          false,
-                          false,
-                          bmd->operation,
-                          bmd->double_threshold);
+                            looptris,
+                            tottri,
+                            bm_face_isect_pair,
+                            NULL,
+                            false,
+                            use_separate,
+                            use_dissolve,
+                            use_island_connect,
+                            false,
+                            false,
+                            bmd->operation,
+                            bmd->double_threshold);
 
           MEM_freeN(looptris);
         }
@@ -349,7 +360,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
     /* if new mesh returned, return it; otherwise there was
      * an error, so delete the modifier object */
     if (result == NULL) {
-      modifier_setError(md, "Cannot execute boolean operation");
+      BKE_modifier_set_error(md, "Cannot execute boolean operation");
     }
   }
 
@@ -365,6 +376,32 @@ static void requiredDataMask(Object *UNUSED(ob),
   r_cddata_masks->fmask |= CD_MASK_MTFACE;
 }
 
+static void panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA ptr;
+  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "operation", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
+
+  if (G.debug) {
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiItemR(col, &ptr, "debug_options", 0, NULL, ICON_NONE);
+  }
+
+  modifier_panel_end(layout, &ptr);
+}
+
+static void panelRegister(ARegionType *region_type)
+{
+  modifier_panel_register(region_type, eModifierType_Boolean, panel_draw);
+}
+
 ModifierTypeInfo modifierType_Boolean = {
     /* name */ "Boolean",
     /* structName */ "BooleanModifierData",
@@ -372,13 +409,16 @@ ModifierTypeInfo modifierType_Boolean = {
     /* type */ eModifierTypeType_Nonconstructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh,
 
-    /* copyData */ modifier_copyData_generic,
+    /* copyData */ BKE_modifier_copydata_generic,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
-    /* applyModifier */ applyModifier,
+    /* modifyMesh */ modifyMesh,
+    /* modifyHair */ NULL,
+    /* modifyPointCloud */ NULL,
+    /* modifyVolume */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
@@ -391,4 +431,5 @@ ModifierTypeInfo modifierType_Boolean = {
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
+    /* panelRegister */ panelRegister,
 };

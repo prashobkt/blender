@@ -21,12 +21,12 @@
 #ifndef __DNA_LAYER_TYPES_H__
 #define __DNA_LAYER_TYPES_H__
 
+#include "DNA_freestyle_types.h"
+#include "DNA_listBase.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "DNA_freestyle_types.h"
-#include "DNA_listBase.h"
 
 /**
  * Render-passes for EEVEE.
@@ -115,6 +115,7 @@ typedef struct ViewLayer {
   ListBase object_bases;
   /** Default allocated now. */
   struct SceneStats *stats;
+  char footer_str[128];
   struct Base *basact;
 
   /** A view layer has one top level layer collection, because a scene has only one top level

@@ -25,7 +25,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_ghash.h"
 #include "BLI_utildefines.h"
 
 #include "intern/depsgraph.h"
@@ -173,6 +172,8 @@ const char *operationCodeAsString(OperationCode opcode)
       return "SHADING";
     case OperationCode::MATERIAL_UPDATE:
       return "MATERIAL_UPDATE";
+    case OperationCode::LIGHT_UPDATE:
+      return "LIGHT_UPDATE";
     case OperationCode::WORLD_UPDATE:
       return "WORLD_UPDATE";
     /* Movie clip. */
@@ -195,6 +196,8 @@ const char *operationCodeAsString(OperationCode opcode)
     /* instancing/duplication. */
     case OperationCode::DUPLI:
       return "DUPLI";
+    case OperationCode::SIMULATION_EVAL:
+      return "SIMULATION_EVAL";
   }
   BLI_assert(!"Unhandled operation code, should never happen.");
   return "UNKNOWN";

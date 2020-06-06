@@ -1627,7 +1627,7 @@ static void apply_meshchange_to_bmesh(BoolState *bs, BMesh *bm, MeshChange *chan
     if (BM_elem_flag_test(bmf, BOTH_SIDES_OPP_NORMALS_TAG)) {
       fside |= BOTH_SIDES_OPP_NORMALS;
     }
-    bs->face_side[f] = fside;
+    bs->face_side[f] = (uchar)fside;
     BM_elem_flag_disable(bmf, ALL_SIDE_TAGS);
   }
 

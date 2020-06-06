@@ -59,7 +59,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_fcurve.h"
+#include "BKE_fcurve_driver.h"
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -1427,9 +1427,9 @@ static void outliner_add_layer_collections_recursive(SpaceOutliner *soops,
       ten->name = id->name + 2;
       ten->directdata = lc;
 
-      /* Open by default. */
+      /* Open by default, except linked collections, which may contain many elements. */
       TreeStoreElem *tselem = TREESTORE(ten);
-      if (!tselem->used) {
+      if (!(tselem->used || ID_IS_LINKED(id) || ID_IS_OVERRIDE_LIBRARY(id))) {
         tselem->flag &= ~TSE_CLOSED;
       }
 

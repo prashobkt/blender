@@ -40,6 +40,10 @@ struct StampData;
 struct ViewLayer;
 struct bMovieHandle;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* this include is what is exposed of render to outside world */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -156,8 +160,7 @@ typedef struct RenderResult {
 
 typedef struct RenderStats {
   int cfra;
-  int totface, totvert, totstrand, tothalo, totlamp, totpart;
-  short curfield, curblur, curpart, partsdone, convertdone, curfsa;
+  int totface, totvert, totlamp, totpart;
   bool localview;
   double starttime, lastframetime;
   const char *infostr, *statstr;
@@ -385,5 +388,9 @@ struct RenderView *RE_RenderViewGetById(struct RenderResult *res, const int view
 struct RenderView *RE_RenderViewGetByName(struct RenderResult *res, const char *viewname);
 
 RenderResult *RE_DuplicateRenderResult(RenderResult *rr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __RE_PIPELINE_H__ */

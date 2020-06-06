@@ -188,16 +188,16 @@
  * - Use two different iterator types for BMO map/buffer types.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "DNA_customdata_types.h" /* BMesh struct in bmesh_class.h uses */
 #include "DNA_listBase.h"         /* selection history uses */
 
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "bmesh_class.h"
 
@@ -215,7 +215,7 @@ extern "C" {
 #include "intern/bmesh_log.h"
 #include "intern/bmesh_marking.h"
 #include "intern/bmesh_mesh.h"
-#include "intern/bmesh_mesh_conv.h"
+#include "intern/bmesh_mesh_convert.h"
 #include "intern/bmesh_mesh_duplicate.h"
 #include "intern/bmesh_mesh_validate.h"
 #include "intern/bmesh_mods.h"

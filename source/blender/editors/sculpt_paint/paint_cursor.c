@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
+ * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2009 by Nicholas Bishop
@@ -171,6 +171,8 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
   bool convert_to_linear = false;
   struct ColorSpace *colorspace = NULL;
 
+  const int thread_id = BLI_task_parallel_thread_id(tls);
+
   if (mtex->tex && mtex->tex->type == TEX_IMAGE && mtex->tex->ima) {
     ImBuf *tex_ibuf = BKE_image_pool_acquire_ibuf(mtex->tex->ima, &mtex->tex->iuser, pool);
     /* For consistency, sampling always returns color in linear space. */
@@ -214,8 +216,7 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
       if (col) {
         float rgba[4];
 
-        paint_get_tex_pixel_col(
-            mtex, x, y, rgba, pool, tls->thread_id, convert_to_linear, colorspace);
+        paint_get_tex_pixel_col(mtex, x, y, rgba, pool, thread_id, convert_to_linear, colorspace);
 
         buffer[index * 4] = rgba[0] * 255;
         buffer[index * 4 + 1] = rgba[1] * 255;
@@ -223,7 +224,7 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
         buffer[index * 4 + 3] = rgba[3] * 255;
       }
       else {
-        float avg = paint_get_tex_pixel(mtex, x, y, pool, tls->thread_id);
+        float avg = paint_get_tex_pixel(mtex, x, y, pool, thread_id);
 
         avg += br->texture_sample_bias;
 
@@ -1673,23 +1674,13 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
 /* Public API */
 
-void paint_cursor_start(bContext *C, bool (*poll)(bContext *C))
+void paint_cursor_start(Paint *p, bool (*poll)(bContext *C))
 {
-  Paint *p = BKE_paint_get_active_from_context(C);
-
   if (p && !p->paint_cursor) {
     p->paint_cursor = WM_paint_cursor_activate(
-        CTX_wm_manager(C), SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
+        SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
   }
 
   /* Invalidate the paint cursors. */
   BKE_paint_invalidate_overlay_all();
-}
-
-void paint_cursor_start_explicit(Paint *p, wmWindowManager *wm, bool (*poll)(bContext *C))
-{
-  if (p && !p->paint_cursor) {
-    p->paint_cursor = WM_paint_cursor_activate(
-        wm, SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
-  }
 }

@@ -27,7 +27,6 @@
 #include <string.h>
 
 #include "DNA_brush_types.h"
-#include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BLI_math.h"
@@ -2094,6 +2093,25 @@ static void widget_draw_text_ime_underline(const uiFontStyle *fstyle,
 }
 #endif /* WITH_INPUT_IME */
 
+static bool widget_draw_text_underline_calc_center_x(const char *UNUSED(str),
+                                                     const size_t str_step_ofs,
+                                                     const rcti *glyph_step_bounds,
+                                                     const int UNUSED(glyph_advance_x),
+                                                     const rctf *glyph_bounds,
+                                                     const int glyph_bearing[2],
+                                                     void *user_data)
+{
+  /* The index of the character to get, set to the x-position. */
+  int *ul_data = user_data;
+  if (ul_data[0] == (int)str_step_ofs) {
+    ul_data[1] = glyph_step_bounds->xmin + glyph_bearing[0] +
+                 (BLI_rctf_size_x(glyph_bounds) / 2.0f);
+    /* Early exit. */
+    return false;
+  }
+  return true;
+}
+
 static void widget_draw_text(const uiFontStyle *fstyle,
                              const uiWidgetColors *wcol,
                              uiBut *but,
@@ -2322,31 +2340,40 @@ static void widget_draw_text(const uiFontStyle *fstyle,
                            NULL);
 
       if (but->menu_key != '\0') {
-        char fixedbuf[128];
-        const char *str;
+        const char *drawstr_ofs = drawstr + but->ofs;
+        int ul_index = -1;
 
-        BLI_strncpy(fixedbuf, drawstr + but->ofs, min_ii(sizeof(fixedbuf), drawlen));
-
-        str = strchr(fixedbuf, but->menu_key - 32); /* upper case */
-        if (str == NULL) {
-          str = strchr(fixedbuf, but->menu_key);
+        {
+          /* Find upper case, fallback to lower case. */
+          const char *drawstr_end = drawstr_ofs + drawlen;
+          const char keys[] = {but->menu_key - 32, but->menu_key};
+          for (int i = 0; i < ARRAY_SIZE(keys); i++) {
+            const char *drawstr_menu = strchr(drawstr_ofs, keys[i]);
+            if (drawstr_menu != NULL && drawstr_menu < drawstr_end) {
+              ul_index = (int)(drawstr_menu - drawstr_ofs);
+              break;
+            }
+          }
         }
 
-        if (str) {
-          int ul_index = -1;
-          float ul_advance;
-
-          ul_index = (int)(str - fixedbuf);
-
+        if (ul_index != -1) {
           if (fstyle->kerning == 1) {
             BLF_enable(fstyle->uifont_id, BLF_KERNING_DEFAULT);
           }
 
-          fixedbuf[ul_index] = '\0';
-          ul_advance = BLF_width(fstyle->uifont_id, fixedbuf, ul_index) + (1.0f * UI_DPI_FAC);
+          int ul_data[2] = {
+              ul_index, /* Character index to test. */
+              0,        /* Write the x-offset here. */
+          };
+          BLF_boundbox_foreach_glyph(fstyle->uifont_id,
+                                     drawstr_ofs,
+                                     ul_index + 1,
+                                     widget_draw_text_underline_calc_center_x,
+                                     ul_data);
+          ul_data[1] -= BLF_width(fstyle->uifont_id, "_", 2) / 2.0f;
 
           BLF_position(fstyle->uifont_id,
-                       rect->xmin + font_xofs + (int)ul_advance,
+                       rect->xmin + font_xofs + ul_data[1],
                        rect->ymin + font_yofs,
                        0.0f);
           BLF_color4ubv(fstyle->uifont_id, wcol->text);
@@ -4238,7 +4265,7 @@ static void widget_box(
   copy_v3_v3_uchar(old_col, wcol->inner);
 
   /* abuse but->hsv - if it's non-zero, use this color as the box's background */
-  if (but->col[3]) {
+  if (but != NULL && but->col[3]) {
     wcol->inner[0] = but->col[0];
     wcol->inner[1] = but->col[1];
     wcol->inner[2] = but->col[2];
@@ -4631,7 +4658,7 @@ static int widget_roundbox_set(uiBut *but, rcti *rect)
  * \{ */
 
 /* conversion from old to new buttons, so still messy */
-void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but, rcti *rect)
+void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBut *but, rcti *rect)
 {
   bTheme *btheme = UI_GetTheme();
   const ThemeUI *tui = &btheme->tui;
@@ -4994,6 +5021,30 @@ void ui_draw_menu_back(uiStyle *UNUSED(style), uiBlock *block, rcti *rect)
 }
 
 /**
+ * Uses the widget base drawing and colors from from the box widget, but ensures an opaque
+ * inner color.
+ */
+void ui_draw_box_opaque(rcti *rect, int roundboxalign)
+{
+  uiWidgetType *wt = widget_type(UI_WTYPE_BOX);
+
+  /* Alpha blend with the region's background color to force an opaque background. */
+  uiWidgetColors *wcol = &wt->wcol;
+  wt->state(wt, 0, 0);
+  float background[4];
+  UI_GetThemeColor4fv(TH_BACK, background);
+  float new_inner[4];
+  rgba_uchar_to_float(new_inner, wcol->inner);
+  new_inner[0] = (new_inner[0] * new_inner[3]) + (background[0] * (1.0f - new_inner[3]));
+  new_inner[1] = (new_inner[1] * new_inner[3]) + (background[1] * (1.0f - new_inner[3]));
+  new_inner[2] = (new_inner[2] * new_inner[3]) + (background[2] * (1.0f - new_inner[3]));
+  new_inner[3] = 1.0f;
+  rgba_float_to_uchar(wcol->inner, new_inner);
+
+  wt->custom(NULL, wcol, rect, 0, roundboxalign);
+}
+
+/**
  * Similar to 'widget_menu_back', however we can't use the widget preset system
  * because we need to pass in the original location so we know where to show the arrow.
  */
@@ -5066,7 +5117,10 @@ static void ui_draw_popover_back_impl(const uiWidgetColors *wcol,
   GPU_blend(false);
 }
 
-void ui_draw_popover_back(ARegion *region, uiStyle *UNUSED(style), uiBlock *block, rcti *rect)
+void ui_draw_popover_back(struct ARegion *region,
+                          uiStyle *UNUSED(style),
+                          uiBlock *block,
+                          rcti *rect)
 {
   uiWidgetType *wt = widget_type(UI_WTYPE_MENU_BACK);
 
@@ -5381,21 +5435,6 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
     }
   }
 
-  /* part text right aligned */
-  if (use_sep) {
-    if (cpoin) {
-      rect->xmax = _rect.xmax - 5;
-      UI_fontstyle_draw(fstyle,
-                        rect,
-                        cpoin + 1,
-                        wt->wcol.text,
-                        &(struct uiFontStyleDraw_Params){
-                            .align = UI_STYLE_TEXT_RIGHT,
-                        });
-      *cpoin = UI_SEP_CHAR;
-    }
-  }
-
   /* restore rect, was messed with */
   *rect = _rect;
 
@@ -5411,6 +5450,24 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
     /* XXX scale weak get from fstyle? */
     UI_icon_draw_ex(xs, ys, iconid, aspect, 1.0f, 0.0f, wt->wcol.text, false);
     GPU_blend(false);
+  }
+
+  /* part text right aligned */
+  if (use_sep) {
+    if (cpoin) {
+      /* Set inactive state for grayed out text. */
+      wt->state(wt, state | UI_BUT_INACTIVE, 0);
+
+      rect->xmax = _rect.xmax - 5;
+      UI_fontstyle_draw(fstyle,
+                        rect,
+                        cpoin + 1,
+                        wt->wcol.text,
+                        &(struct uiFontStyleDraw_Params){
+                            .align = UI_STYLE_TEXT_RIGHT,
+                        });
+      *cpoin = UI_SEP_CHAR;
+    }
   }
 }
 

@@ -61,6 +61,18 @@ bool transdata_check_local_center(TransInfo *t, short around)
            (t->options & (CTX_MOVIECLIP | CTX_MASK | CTX_PAINT_CURVE))));
 }
 
+/* Informs if the mode can be switched during modal. */
+bool transform_mode_is_changeable(const int mode)
+{
+  return ELEM(mode,
+              TFM_ROTATION,
+              TFM_RESIZE,
+              TFM_TRACKBALL,
+              TFM_TRANSLATION,
+              TFM_EDGE_SLIDE,
+              TFM_VERT_SLIDE);
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Transform Locks
  * \{ */
@@ -529,7 +541,7 @@ void headerRotation(TransInfo *t, char str[UI_MAX_DRAW_STR], float final)
 void postInputRotation(TransInfo *t, float values[3])
 {
   float axis_final[3];
-  copy_v3_v3(axis_final, t->orient_matrix[t->orient_axis]);
+  copy_v3_v3(axis_final, t->spacemtx[t->orient_axis]);
   if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
     t->con.applyRot(t, NULL, NULL, axis_final, values);
   }

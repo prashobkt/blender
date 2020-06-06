@@ -46,6 +46,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
+#include "BKE_editmesh_cache.h"
 #include "BKE_global.h"
 #include "BKE_mesh.h"
 #include "BKE_multires.h"
@@ -396,6 +397,21 @@ void BKE_mesh_ensure_normals(Mesh *mesh)
  */
 void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
 {
+  switch ((eMeshWrapperType)mesh->runtime.wrapper_type) {
+    case ME_WRAPPER_TYPE_MDATA:
+      /* Run code below. */
+      break;
+    case ME_WRAPPER_TYPE_BMESH: {
+      struct BMEditMesh *em = mesh->edit_mesh;
+      EditMeshData *emd = mesh->runtime.edit_data;
+      if (emd->vertexCos) {
+        BKE_editmesh_cache_ensure_vert_normals(em, emd);
+        BKE_editmesh_cache_ensure_poly_normals(em, emd);
+      }
+      return;
+    }
+  }
+
   float(*poly_nors)[3] = CustomData_get_layer(&mesh->pdata, CD_NORMAL);
   const bool do_vert_normals = (mesh->runtime.cd_dirty_vert & CD_MASK_NORMAL) != 0;
   const bool do_poly_normals = (mesh->runtime.cd_dirty_poly & CD_MASK_NORMAL || poly_nors == NULL);
@@ -1300,9 +1316,9 @@ static void loop_split_worker_do(LoopSplitTaskDataCommon *common_data,
   }
 }
 
-static void loop_split_worker(TaskPool *__restrict pool, void *taskdata, int UNUSED(threadid))
+static void loop_split_worker(TaskPool *__restrict pool, void *taskdata)
 {
-  LoopSplitTaskDataCommon *common_data = BLI_task_pool_userdata(pool);
+  LoopSplitTaskDataCommon *common_data = BLI_task_pool_user_data(pool);
   LoopSplitTaskData *data = taskdata;
 
   /* Temp edge vectors stack, only used when computing lnor spacearr. */
@@ -1704,11 +1720,7 @@ void BKE_mesh_normals_loop_split(const MVert *mverts,
     loop_split_generator(NULL, &common_data);
   }
   else {
-    TaskScheduler *task_scheduler;
-    TaskPool *task_pool;
-
-    task_scheduler = BLI_task_scheduler_get();
-    task_pool = BLI_task_pool_create(task_scheduler, &common_data, TASK_PRIORITY_HIGH);
+    TaskPool *task_pool = BLI_task_pool_create(&common_data, TASK_PRIORITY_HIGH);
 
     loop_split_generator(task_pool, &common_data);
 

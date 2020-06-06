@@ -87,6 +87,7 @@
 #include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
+#include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
@@ -987,7 +988,7 @@ static bAnimListElem *make_new_animlistelem(void *data,
              * then free the MEM_alloc'd string
              */
             if (rna_path) {
-              ale->key_data = (void *)list_find_fcurve(&act->curves, rna_path, 0);
+              ale->key_data = (void *)BKE_fcurve_find(&act->curves, rna_path, 0);
               MEM_freeN(rna_path);
             }
           }
@@ -2427,7 +2428,7 @@ static size_t animdata_filter_ds_modifiers(
   afm.filter_mode = filter_mode;
 
   /* 2) walk over dependencies */
-  modifiers_foreachIDLink(ob, animfilter_modifier_idpoin_cb, &afm);
+  BKE_modifiers_foreach_ID_link(ob, animfilter_modifier_idpoin_cb, &afm);
 
   /* 3) extract data from the context, merging it back into the standard list */
   if (afm.items) {

@@ -30,6 +30,7 @@
 #include "ED_view3d.h"
 
 #include "BKE_object.h"
+#include "BKE_paint.h"
 
 #include "overlay_engine.h"
 #include "overlay_private.h"
@@ -45,6 +46,8 @@ static void OVERLAY_engine_init(void *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const RegionView3D *rv3d = draw_ctx->rv3d;
   const View3D *v3d = draw_ctx->v3d;
+  const Scene *scene = draw_ctx->scene;
+  const ToolSettings *ts = scene->toolsettings;
 
   if (!stl->pd) {
     /* Alloc transient pointers */
@@ -76,6 +79,17 @@ static void OVERLAY_engine_init(void *vedata)
     pd->overlay.flag |= V3D_OVERLAY_WIREFRAMES;
   }
 
+  if (ts->sculpt) {
+    if (ts->sculpt->flags & SCULPT_HIDE_FACE_SETS) {
+      pd->overlay.sculpt_mode_face_sets_opacity = 0.0f;
+    }
+    if (ts->sculpt->flags & SCULPT_HIDE_MASK) {
+      pd->overlay.sculpt_mode_mask_opacity = 0.0f;
+    }
+  }
+
+  pd->use_in_front = (v3d->shading.type <= OB_SOLID) ||
+                     BKE_scene_uses_blender_workbench(draw_ctx->scene);
   pd->wireframe_mode = (v3d->shading.type == OB_WIRE);
   pd->clipping_state = RV3D_CLIPPING_ENABLED(v3d, rv3d) ? DRW_STATE_CLIP_PLANES : 0;
   pd->xray_opacity = XRAY_ALPHA(v3d);
@@ -232,10 +246,12 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool renderable = DRW_object_is_renderable(ob);
   const bool in_pose_mode = ob->type == OB_ARMATURE && OVERLAY_armature_is_pose_mode(ob, draw_ctx);
   const bool in_edit_mode = overlay_object_is_edit_mode(pd, ob);
-  const bool in_particle_edit_mode = ob->mode == OB_MODE_PARTICLE_EDIT;
+  const bool in_particle_edit_mode = (ob->mode == OB_MODE_PARTICLE_EDIT) &&
+                                     (pd->ctx_mode == CTX_MODE_PARTICLE);
   const bool in_paint_mode = (ob == draw_ctx->obact) &&
                              (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
-  const bool in_sculpt_mode = (ob == draw_ctx->obact) && (ob->sculpt != NULL);
+  const bool in_sculpt_mode = (ob == draw_ctx->obact) && (ob->sculpt != NULL) &&
+                              (ob->sculpt->mode_type == OB_MODE_SCULPT);
   const bool has_surface = ELEM(ob->type,
                                 OB_MESH,
                                 OB_CURVE,
@@ -478,6 +494,12 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_grid_draw(vedata);
 
   OVERLAY_xray_depth_infront_copy(vedata);
+
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(fbl->overlay_in_front_fb);
+  }
+
+  OVERLAY_facing_infront_draw(vedata);
 
   if (DRW_state_is_fbo()) {
     GPU_framebuffer_bind(fbl->overlay_line_in_front_fb);

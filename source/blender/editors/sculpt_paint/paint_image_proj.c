@@ -4022,7 +4022,7 @@ static void project_paint_bleed_add_face_user(const ProjPaintState *ps,
      * Ideally this would be checked later, not to add to the cost of computing non-degenerate
      * triangles, but that would allow other triangles to still find adjacent seams on degenerate
      * triangles, potentially causing incorrect results. */
-    if (area_tri_v2(UNPACK3(lt_tri_uv)) > FLT_EPSILON) {
+    if (area_tri_v2(UNPACK3(lt_tri_uv)) > 0.0f) {
       const int lt_vtri[3] = {PS_LOOPTRI_AS_VERT_INDEX_3(ps, lt)};
       void *tri_index_p = POINTER_FROM_INT(tri_index);
 
@@ -5168,9 +5168,7 @@ static void copy_original_alpha_channel(ProjPixel *pixel, bool is_floatbuf)
 }
 
 /* Run this for single and multi-threaded painting. */
-static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
-                                   void *ph_v,
-                                   int UNUSED(threadid))
+static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool), void *ph_v)
 {
   /* First unpack args from the struct */
   ProjPaintState *ps = ((ProjectHandle *)ph_v)->ps;
@@ -5605,7 +5603,6 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
   bool touch_any = false;
 
   ProjectHandle handles[BLENDER_MAX_THREADS];
-  TaskScheduler *scheduler = NULL;
   TaskPool *task_pool = NULL;
   int a, i;
 
@@ -5616,8 +5613,7 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
   }
 
   if (ps->thread_tot > 1) {
-    scheduler = BLI_task_scheduler_get();
-    task_pool = BLI_task_pool_create_suspended(scheduler, NULL, TASK_PRIORITY_HIGH);
+    task_pool = BLI_task_pool_create_suspended(NULL, TASK_PRIORITY_HIGH);
   }
 
   image_pool = BKE_image_pool_new();
@@ -5661,7 +5657,7 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
     BLI_task_pool_free(task_pool);
   }
   else {
-    do_projectpaint_thread(NULL, &handles[0], 0);
+    do_projectpaint_thread(NULL, &handles[0]);
   }
 
   BKE_image_pool_free(image_pool);

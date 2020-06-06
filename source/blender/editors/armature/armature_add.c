@@ -53,6 +53,7 @@
 #include "WM_types.h"
 
 #include "ED_armature.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
@@ -222,6 +223,7 @@ static int armature_click_extrude_exec(bContext *C, wmOperator *UNUSED(op))
 
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
   DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);
+  ED_outliner_select_sync_from_edit_bone_tag(C);
 
   return OPERATOR_FINISHED;
 }
@@ -514,11 +516,11 @@ static void updateDuplicateActionConstraintSettings(EditBone *dup_bone,
   /* See if there is any channels that uses this bone */
   ListBase ani_curves;
   BLI_listbase_clear(&ani_curves);
-  if (list_find_data_fcurves(&ani_curves, &act->curves, "pose.bones[", orig_bone->name)) {
+  if (BKE_fcurves_filter(&ani_curves, &act->curves, "pose.bones[", orig_bone->name)) {
     /* Create a copy and mirror the animation */
     for (LinkData *ld = ani_curves.first; ld; ld = ld->next) {
       FCurve *old_curve = ld->data;
-      FCurve *new_curve = copy_fcurve(old_curve);
+      FCurve *new_curve = BKE_fcurve_copy(old_curve);
       bActionGroup *agrp;
 
       char *old_path = new_curve->rna_path;
@@ -1049,6 +1051,8 @@ static int armature_duplicate_selected_exec(bContext *C, wmOperator *op)
   }
   MEM_freeN(objects);
 
+  ED_outliner_select_sync_from_edit_bone_tag(C);
+
   return OPERATOR_FINISHED;
 }
 
@@ -1521,7 +1525,13 @@ static int armature_extrude_exec(bContext *C, wmOperator *op)
   }
   MEM_freeN(objects);
 
-  return changed_multi ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+  if (!changed_multi) {
+    return OPERATOR_CANCELLED;
+  }
+
+  ED_outliner_select_sync_from_edit_bone_tag(C);
+
+  return OPERATOR_FINISHED;
 }
 
 void ARMATURE_OT_extrude(wmOperatorType *ot)
@@ -1592,6 +1602,7 @@ static int armature_bone_primitive_add_exec(bContext *C, wmOperator *op)
   /* note, notifier might evolve */
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
   DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);
+  ED_outliner_select_sync_from_edit_bone_tag(C);
 
   return OPERATOR_FINISHED;
 }
@@ -1682,6 +1693,7 @@ static int armature_subdivide_exec(bContext *C, wmOperator *op)
   /* note, notifier might evolve */
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
   DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);
+  ED_outliner_select_sync_from_edit_bone_tag(C);
 
   return OPERATOR_FINISHED;
 }

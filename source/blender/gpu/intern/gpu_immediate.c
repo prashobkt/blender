@@ -48,7 +48,6 @@ typedef struct ImmediateDrawBuffer {
   GLubyte *buffer_data;
   uint buffer_offset;
   uint buffer_size;
-  uint default_size;
 } ImmediateDrawBuffer;
 
 typedef struct {
@@ -96,12 +95,10 @@ void immInit(void)
 
   imm.draw_buffer.vbo_id = GPU_buf_alloc();
   imm.draw_buffer.buffer_size = DEFAULT_INTERNAL_BUFFER_SIZE;
-  imm.draw_buffer.default_size = DEFAULT_INTERNAL_BUFFER_SIZE;
   glBindBuffer(GL_ARRAY_BUFFER, imm.draw_buffer.vbo_id);
   glBufferData(GL_ARRAY_BUFFER, imm.draw_buffer.buffer_size, NULL, GL_DYNAMIC_DRAW);
   imm.draw_buffer_strict.vbo_id = GPU_buf_alloc();
-  imm.draw_buffer_strict.buffer_size = 0;
-  imm.draw_buffer_strict.default_size = 0;
+  imm.draw_buffer_strict.buffer_size = DEFAULT_INTERNAL_BUFFER_SIZE;
   glBindBuffer(GL_ARRAY_BUFFER, imm.draw_buffer_strict.vbo_id);
   glBufferData(GL_ARRAY_BUFFER, imm.draw_buffer_strict.buffer_size, NULL, GL_DYNAMIC_DRAW);
 
@@ -251,10 +248,10 @@ void immBegin(GPUPrimType prim_type, uint vertex_len)
     active_buffer->buffer_size = bytes_needed;
     recreate_buffer = true;
   }
-  else if (bytes_needed < active_buffer->default_size &&
-           active_buffer->buffer_size > active_buffer->default_size) {
+  else if (bytes_needed < DEFAULT_INTERNAL_BUFFER_SIZE &&
+           active_buffer->buffer_size > DEFAULT_INTERNAL_BUFFER_SIZE) {
     /* shrink the internal buffer */
-    active_buffer->buffer_size = active_buffer->default_size;
+    active_buffer->buffer_size = DEFAULT_INTERNAL_BUFFER_SIZE;
     recreate_buffer = true;
   }
 
@@ -274,6 +271,14 @@ void immBegin(GPUPrimType prim_type, uint vertex_len)
   }
 
   /*  printf("mapping %u to %u\n", imm.buffer_offset, imm.buffer_offset + bytes_needed - 1); */
+
+#if TRUST_NO_ONE
+  {
+    GLint bufsize;
+    glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bufsize);
+    assert(active_buffer->buffer_offset + bytes_needed <= bufsize);
+  }
+#endif
 
   active_buffer->buffer_data = glMapBufferRange(
       GL_ARRAY_BUFFER,
@@ -754,13 +759,11 @@ void immVertex2iv(uint attr_id, const int data[2])
 #if 0
 #  if TRUST_NO_ONE
 #    define GET_UNIFORM \
-      const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(imm.shader_interface, \
-                                                                         name); \
+      const GPUShaderInput *uniform = GPU_shaderinterface_uniform(imm.shader_interface, name); \
       assert(uniform);
 #  else
 #    define GET_UNIFORM \
-      const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(imm.shader_interface, \
-                                                                         name);
+      const GPUShaderInput *uniform = GPU_shaderinterface_uniform(imm.shader_interface, name);
 #  endif
 #else
 /* NOTE: It is possible to have uniform fully optimized out from the shader.
@@ -768,8 +771,7 @@ void immVertex2iv(uint attr_id, const int data[2])
  * TODO(sergey): How can we detect existing-but-optimized-out uniform but still
  *               catch typos in uniform names passed to immUniform*() functions? */
 #  define GET_UNIFORM \
-    const GPUShaderInput *uniform = GPU_shaderinterface_uniform_ensure(imm.shader_interface, \
-                                                                       name); \
+    const GPUShaderInput *uniform = GPU_shaderinterface_uniform(imm.shader_interface, name); \
     if (uniform == NULL) \
       return;
 #endif
@@ -807,20 +809,9 @@ void immUniform3fv(const char *name, const float data[3])
 /* can increase this limit or move to another file */
 #define MAX_UNIFORM_NAME_LEN 60
 
-void immUniformArray3fv(const char *bare_name, const float *data, int count)
+/* Note array index is not supported for name (i.e: "array[0]"). */
+void immUniformArray3fv(const char *name, const float *data, int count)
 {
-  /* look up "name[0]" when given "name" */
-  const size_t len = strlen(bare_name);
-#if TRUST_NO_ONE
-  assert(len <= MAX_UNIFORM_NAME_LEN);
-#endif
-  char name[MAX_UNIFORM_NAME_LEN];
-  strcpy(name, bare_name);
-  name[len + 0] = '[';
-  name[len + 1] = '0';
-  name[len + 2] = ']';
-  name[len + 3] = '\0';
-
   GET_UNIFORM
   glUniform3fv(uniform->location, count, data);
 }
@@ -837,20 +828,9 @@ void immUniform4fv(const char *name, const float data[4])
   glUniform4fv(uniform->location, 1, data);
 }
 
-void immUniformArray4fv(const char *bare_name, const float *data, int count)
+/* Note array index is not supported for name (i.e: "array[0]"). */
+void immUniformArray4fv(const char *name, const float *data, int count)
 {
-  /* look up "name[0]" when given "name" */
-  const size_t len = strlen(bare_name);
-#if TRUST_NO_ONE
-  assert(len <= MAX_UNIFORM_NAME_LEN);
-#endif
-  char name[MAX_UNIFORM_NAME_LEN];
-  strcpy(name, bare_name);
-  name[len + 0] = '[';
-  name[len + 1] = '0';
-  name[len + 2] = ']';
-  name[len + 3] = '\0';
-
   GET_UNIFORM
   glUniform4fv(uniform->location, count, data);
 }
@@ -877,12 +857,10 @@ void immUniform4iv(const char *name, const int data[4])
 
 void immUniformColor4f(float r, float g, float b, float a)
 {
-  const GPUShaderInput *uniform = GPU_shaderinterface_uniform_builtin(imm.shader_interface,
-                                                                      GPU_UNIFORM_COLOR);
-#if TRUST_NO_ONE
-  assert(uniform != NULL);
-#endif
-  glUniform4f(uniform->location, r, g, b, a);
+  int32_t uniform_loc = GPU_shaderinterface_uniform_builtin(imm.shader_interface,
+                                                            GPU_UNIFORM_COLOR);
+  BLI_assert(uniform_loc != -1);
+  glUniform4f(uniform_loc, r, g, b, a);
 }
 
 void immUniformColor4fv(const float rgba[4])

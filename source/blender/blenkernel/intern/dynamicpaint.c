@@ -540,7 +540,7 @@ static int surface_getBrushFlags(DynamicPaintSurface *surface, Depsgraph *depsgr
   for (int i = 0; i < numobjects; i++) {
     Object *brushObj = objects[i];
 
-    ModifierData *md = modifiers_findByType(brushObj, eModifierType_DynamicPaint);
+    ModifierData *md = BKE_modifiers_findby_type(brushObj, eModifierType_DynamicPaint);
     if (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render)) {
       DynamicPaintModifierData *pmd2 = (DynamicPaintModifierData *)md;
 
@@ -1099,7 +1099,7 @@ DynamicPaintSurface *dynamicPaint_createNewSurface(DynamicPaintCanvasSettings *c
   surface->wave_spring = 0.20f;
   surface->wave_smoothness = 1.0f;
 
-  modifier_path_init(
+  BKE_modifier_path_init(
       surface->image_output_path, sizeof(surface->image_output_path), "cache_dynamicpaint");
 
   /* Using ID_BRUSH i18n context, as we have no physics/dpaint one for now... */
@@ -2432,6 +2432,8 @@ static float dist_squared_to_looptri_uv_edges(const MLoopTri *mlooptri,
                                               int tri_index,
                                               const float point[2])
 {
+  BLI_assert(tri_index >= 0);
+
   float min_distance = FLT_MAX;
 
   for (int i = 0; i < 3; i++) {
@@ -2702,15 +2704,16 @@ static void dynamic_paint_find_island_border(const DynamicPaintCreateUVSurfaceDa
       }
     }
 
+    const int final_tri_index = tempPoints[final_index].tri_index;
     /* If found pixel still lies on wrong face ( mesh has smaller than pixel sized faces) */
-    if (tempPoints[final_index].tri_index != target_tri) {
+    if (final_tri_index != target_tri && final_tri_index != -1) {
       /* Check if it's close enough to likely touch the intended triangle. Any triangle
        * becomes thinner than a pixel at its vertices, so robustness requires some margin. */
       const float final_pt[2] = {((final_index % w) + 0.5f) / w, ((final_index / w) + 0.5f) / h};
       const float threshold = square_f(0.7f) / (w * h);
 
-      if (dist_squared_to_looptri_uv_edges(
-              mlooptri, mloopuv, tempPoints[final_index].tri_index, final_pt) > threshold) {
+      if (dist_squared_to_looptri_uv_edges(mlooptri, mloopuv, final_tri_index, final_pt) >
+          threshold) {
         continue;
       }
     }
@@ -4644,9 +4647,6 @@ static int dynamicPaint_paintParticles(DynamicPaintSurface *surface,
     return 1;
   }
 
-  /* begin thread safe malloc */
-  BLI_threaded_malloc_begin();
-
   /* only continue if particle bb is close enough to canvas bb */
   if (boundsIntersectDist(&grid->grid_bounds, &part_bb, range)) {
     int c_index;
@@ -4682,7 +4682,6 @@ static int dynamicPaint_paintParticles(DynamicPaintSurface *surface,
                               &settings);
     }
   }
-  BLI_threaded_malloc_end();
   BLI_kdtree_3d_free(tree);
 
   return 1;
@@ -6246,7 +6245,7 @@ static int dynamicPaint_doStep(Depsgraph *depsgraph,
       Object *brushObj = objects[i];
 
       /* check if target has an active dp modifier */
-      ModifierData *md = modifiers_findByType(brushObj, eModifierType_DynamicPaint);
+      ModifierData *md = BKE_modifiers_findby_type(brushObj, eModifierType_DynamicPaint);
       if (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render)) {
         DynamicPaintModifierData *pmd2 = (DynamicPaintModifierData *)md;
         /* make sure we're dealing with a brush */

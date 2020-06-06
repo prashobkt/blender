@@ -2980,7 +2980,7 @@ static int view3d_all_exec(bContext *C, wmOperator *op)
 void VIEW3D_OT_view_all(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "View All";
+  ot->name = "Frame All";
   ot->description = "View all objects in scene";
   ot->idname = "VIEW3D_OT_view_all";
 
@@ -3349,7 +3349,7 @@ void VIEW3D_OT_view_center_pick(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name View Camera Center Operator
+/** \name Frame Camera Bounds Operator
  * \{ */
 
 static int view3d_center_camera_exec(bContext *C, wmOperator *UNUSED(op))
@@ -3386,8 +3386,8 @@ static int view3d_center_camera_exec(bContext *C, wmOperator *UNUSED(op))
 void VIEW3D_OT_view_center_camera(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "View Camera Center";
-  ot->description = "Center the camera view";
+  ot->name = "Frame Camera Bounds";
+  ot->description = "Center the camera view, resizing the view to fit its bounds";
   ot->idname = "VIEW3D_OT_view_center_camera";
 
   /* api callbacks */
@@ -5018,7 +5018,6 @@ void ED_view3d_cursor3d_position_rotation(bContext *C,
                                           float cursor_co[3],
                                           float cursor_quat[4])
 {
-  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   View3D *v3d = CTX_wm_view3d(C);
   ARegion *region = CTX_wm_region(C);
@@ -5052,7 +5051,7 @@ void ED_view3d_cursor3d_position_rotation(bContext *C,
     float ray_co[3];
 
     struct SnapObjectContext *snap_context = ED_transform_snap_object_context_create_view3d(
-        bmain, scene, 0, region, v3d);
+        scene, 0, region, v3d);
 
     float obmat[4][4];
     Object *ob_dummy = NULL;
@@ -5372,6 +5371,7 @@ void VIEW3D_OT_toggle_xray(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Toggle X-Ray";
   ot->idname = "VIEW3D_OT_toggle_xray";
+  ot->description = "Transparent scene display. Allow selecting through items";
 
   /* api callbacks */
   ot->exec = toggle_xray_exec;

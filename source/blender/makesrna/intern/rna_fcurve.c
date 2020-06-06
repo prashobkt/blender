@@ -213,6 +213,7 @@ static StructRNA *rna_FModifierType_refine(struct PointerRNA *ptr)
 
 #  include "BKE_anim_data.h"
 #  include "BKE_fcurve.h"
+#  include "BKE_fcurve_driver.h"
 
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
@@ -578,7 +579,7 @@ static void rna_FCurve_group_set(PointerRNA *ptr,
 /* calculate time extents of F-Curve */
 static void rna_FCurve_range(FCurve *fcu, float range[2])
 {
-  calc_fcurve_range(fcu, range, range + 1, false, false);
+  BKE_fcurve_calc_range(fcu, range, range + 1, false, false);
 }
 
 static bool rna_FCurve_is_empty_get(PointerRNA *ptr)
@@ -2297,7 +2298,7 @@ static void rna_def_fcurve(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "group", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "grp");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_PTR_NO_OWNERSHIP);
   RNA_def_property_ui_text(prop, "Group", "Action Group that this F-Curve belongs to");
   RNA_def_property_pointer_funcs(prop, NULL, "rna_FCurve_group_set", NULL, NULL);
   RNA_def_property_update(prop, NC_ANIMATION, NULL);

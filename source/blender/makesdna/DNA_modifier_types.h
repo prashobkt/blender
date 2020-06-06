@@ -94,6 +94,7 @@ typedef enum ModifierType {
   eModifierType_WeightedNormal = 54,
   eModifierType_Weld = 55,
   eModifierType_Fluid = 56,
+  eModifierType_Simulation = 57,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -102,7 +103,8 @@ typedef enum ModifierMode {
   eModifierMode_Render = (1 << 1),
   eModifierMode_Editmode = (1 << 2),
   eModifierMode_OnCage = (1 << 3),
-  eModifierMode_Expanded = (1 << 4),
+  /* Old modifier box expansion, just for versioning. */
+  eModifierMode_Expanded_DEPRECATED = (1 << 4),
   eModifierMode_Virtual = (1 << 5),
   eModifierMode_ApplyOnSpline = (1 << 6),
   eModifierMode_DisableTemporary = (1u << 31),
@@ -114,7 +116,8 @@ typedef struct ModifierData {
   int type, mode;
   int stackindex;
   short flag;
-  char _pad[2];
+  /* An "expand" bit for each of the modifier's (sub)panels. */
+  short ui_expand_flag;
   /** MAX_NAME. */
   char name[64];
 
@@ -363,6 +366,7 @@ enum {
   MOD_MIR_BISECT_FLIP_AXIS_X = (1 << 11),
   MOD_MIR_BISECT_FLIP_AXIS_Y = (1 << 12),
   MOD_MIR_BISECT_FLIP_AXIS_Z = (1 << 13),
+  MOD_MIR_MIRROR_UDIM = (1 << 14),
 };
 
 typedef struct EdgeSplitModifierData {
@@ -452,23 +456,23 @@ enum {
 
 /* BevelModifierData->face_str_mode */
 enum {
-  MOD_BEVEL_FACE_STRENGTH_NONE,
-  MOD_BEVEL_FACE_STRENGTH_NEW,
-  MOD_BEVEL_FACE_STRENGTH_AFFECTED,
-  MOD_BEVEL_FACE_STRENGTH_ALL,
+  MOD_BEVEL_FACE_STRENGTH_NONE = 0,
+  MOD_BEVEL_FACE_STRENGTH_NEW = 1,
+  MOD_BEVEL_FACE_STRENGTH_AFFECTED = 2,
+  MOD_BEVEL_FACE_STRENGTH_ALL = 3,
 };
 
 /* BevelModifier->miter_inner and ->miter_outer */
 enum {
-  MOD_BEVEL_MITER_SHARP,
-  MOD_BEVEL_MITER_PATCH,
-  MOD_BEVEL_MITER_ARC,
+  MOD_BEVEL_MITER_SHARP = 0,
+  MOD_BEVEL_MITER_PATCH = 1,
+  MOD_BEVEL_MITER_ARC = 2,
 };
 
 /* BevelModifier->vmesh_method */
 enum {
-  MOD_BEVEL_VMESH_ADJ,
-  MOD_BEVEL_VMESH_CUTOFF,
+  MOD_BEVEL_VMESH_ADJ = 0,
+  MOD_BEVEL_VMESH_CUTOFF = 1,
 };
 
 typedef struct FluidModifierData {
@@ -594,10 +598,10 @@ enum {
 };
 
 enum {
-  MOD_DECIM_MODE_COLLAPSE,
-  MOD_DECIM_MODE_UNSUBDIV,
+  MOD_DECIM_MODE_COLLAPSE = 0,
+  MOD_DECIM_MODE_UNSUBDIV = 1,
   /** called planar in the UI */
-  MOD_DECIM_MODE_DISSOLVE,
+  MOD_DECIM_MODE_DISSOLVE = 2,
 };
 
 typedef struct SmoothModifierData {
@@ -1414,7 +1418,7 @@ typedef struct WeightVGEditModifierData {
 
 /* WeightVGEdit flags. */
 enum {
-  /* (1 << 0) is free for future use! */
+  MOD_WVG_EDIT_WEIGHTS_NORMALIZE = (1 << 0),
   MOD_WVG_INVERT_FALLOFF = (1 << 1),
   MOD_WVG_EDIT_INVERT_VGROUP_MASK = (1 << 2),
   /** Add vertices with higher weight than threshold to vgroup. */
@@ -1502,6 +1506,9 @@ enum {
 /* WeightVGMix->flag */
 enum {
   MOD_WVG_MIX_INVERT_VGROUP_MASK = (1 << 0),
+  MOD_WVG_MIX_WEIGHTS_NORMALIZE = (1 << 1),
+  MOD_WVG_MIX_INVERT_VGROUP_A = (1 << 2),
+  MOD_WVG_MIX_INVERT_VGROUP_B = (1 << 3),
 };
 
 typedef struct WeightVGProximityModifierData {
@@ -1564,6 +1571,7 @@ enum {
   MOD_WVG_PROXIMITY_GEOM_FACES = (1 << 2),
   MOD_WVG_PROXIMITY_INVERT_VGROUP_MASK = (1 << 3),
   MOD_WVG_PROXIMITY_INVERT_FALLOFF = (1 << 4),
+  MOD_WVG_PROXIMITY_WEIGHTS_NORMALIZE = (1 << 3),
 };
 
 /* Defines common to all WeightVG modifiers. */
@@ -1694,15 +1702,15 @@ enum {
 /* Triangulate methods - NGons */
 enum {
   MOD_TRIANGULATE_NGON_BEAUTY = 0,
-  MOD_TRIANGULATE_NGON_EARCLIP,
+  MOD_TRIANGULATE_NGON_EARCLIP = 1,
 };
 
 /* Triangulate methods - Quads */
 enum {
   MOD_TRIANGULATE_QUAD_BEAUTY = 0,
-  MOD_TRIANGULATE_QUAD_FIXED,
-  MOD_TRIANGULATE_QUAD_ALTERNATE,
-  MOD_TRIANGULATE_QUAD_SHORTEDGE,
+  MOD_TRIANGULATE_QUAD_FIXED = 1,
+  MOD_TRIANGULATE_QUAD_ALTERNATE = 2,
+  MOD_TRIANGULATE_QUAD_SHORTEDGE = 3,
 };
 
 typedef struct LaplacianSmoothModifierData {
@@ -2116,6 +2124,13 @@ enum {
 
 #define MOD_MESHSEQ_READ_ALL \
   (MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY | MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)
+
+typedef struct SimulationModifierData {
+  ModifierData modifier;
+
+  struct Simulation *simulation;
+  char data_path[64];
+} SimulationModifierData;
 
 #ifdef __cplusplus
 }

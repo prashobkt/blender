@@ -210,8 +210,9 @@ ViewLayer *BKE_view_layer_add(Scene *scene,
     case VIEWLAYER_ADD_COPY: {
       /* Allocate and copy view layer data */
       view_layer_new = MEM_callocN(sizeof(ViewLayer), "View Layer");
-      BLI_addtail(&scene->view_layers, view_layer_new);
+      *view_layer_new = *view_layer_source;
       BKE_view_layer_copy_data(scene, scene, view_layer_new, view_layer_source, 0);
+      BLI_addtail(&scene->view_layers, view_layer_new);
 
       BLI_strncpy_utf8(view_layer_new->name, name, sizeof(view_layer_new->name));
       break;
@@ -467,6 +468,10 @@ void BKE_view_layer_copy_data(Scene *scene_dst,
 
   LayerCollection *lc_scene_dst = view_layer_dst->layer_collections.first;
   lc_scene_dst->collection = scene_dst->master_collection;
+
+  if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
+    id_us_plus((ID *)view_layer_dst->mat_override);
+  }
 }
 
 void BKE_view_layer_rename(Main *bmain, Scene *scene, ViewLayer *view_layer, const char *newname)
@@ -689,14 +694,14 @@ int BKE_layer_collection_findindex(ViewLayer *view_layer, const LayerCollection 
  * in at least one layer collection. That list is also synchronized here, and
  * stores state like selection. */
 
-static short layer_collection_sync(ViewLayer *view_layer,
-                                   const ListBase *lb_scene,
-                                   ListBase *lb_layer,
-                                   ListBase *new_object_bases,
-                                   short parent_exclude,
-                                   short parent_restrict,
-                                   short parent_layer_restrict,
-                                   unsigned short parent_local_collections_bits)
+static void layer_collection_sync(ViewLayer *view_layer,
+                                  const ListBase *lb_scene,
+                                  ListBase *lb_layer,
+                                  ListBase *new_object_bases,
+                                  short parent_exclude,
+                                  short parent_restrict,
+                                  short parent_layer_restrict,
+                                  unsigned short parent_local_collections_bits)
 {
   /* TODO: support recovery after removal of intermediate collections, reordering, ..
    * For local edits we can make editing operating do the appropriate thing, but for
@@ -727,7 +732,6 @@ static short layer_collection_sync(ViewLayer *view_layer,
 
   /* Add layer collections for any new scene collections, and ensure order is the same. */
   ListBase new_lb_layer = {NULL, NULL};
-  short runtime_flag = 0;
 
   LISTBASE_FOREACH (const CollectionChild *, child, lb_scene) {
     Collection *collection = child->collection;
@@ -758,22 +762,19 @@ static short layer_collection_sync(ViewLayer *view_layer,
     }
 
     /* Sync child collections. */
-    short child_runtime_flag = layer_collection_sync(view_layer,
-                                                     &collection->children,
-                                                     &lc->layer_collections,
-                                                     new_object_bases,
-                                                     lc->flag,
-                                                     child_restrict,
-                                                     child_layer_restrict,
-                                                     local_collections_bits);
+    layer_collection_sync(view_layer,
+                          &collection->children,
+                          &lc->layer_collections,
+                          new_object_bases,
+                          lc->flag,
+                          child_restrict,
+                          child_layer_restrict,
+                          local_collections_bits);
 
     /* Layer collection exclude is not inherited. */
+    lc->runtime_flag = 0;
     if (lc->flag & LAYER_COLLECTION_EXCLUDE) {
-      lc->runtime_flag = 0;
       continue;
-    }
-    else {
-      lc->runtime_flag = child_runtime_flag;
     }
 
     /* We separate restrict viewport and visible view layer because a layer collection can be
@@ -841,15 +842,11 @@ static short layer_collection_sync(ViewLayer *view_layer,
 
       lc->runtime_flag |= LAYER_COLLECTION_HAS_OBJECTS;
     }
-
-    runtime_flag |= lc->runtime_flag;
   }
 
   /* Replace layer collection list with new one. */
   *lb_layer = new_lb_layer;
   BLI_assert(BLI_listbase_count(lb_scene) == BLI_listbase_count(lb_layer));
-
-  return runtime_flag;
 }
 
 /**

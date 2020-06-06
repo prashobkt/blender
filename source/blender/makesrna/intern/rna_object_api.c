@@ -36,10 +36,12 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_gpencil_geom.h"
+#include "BKE_gpencil_curve.h"
 #include "BKE_layer.h"
 
 #include "DEG_depsgraph.h"
+
+#include "ED_outliner.h"
 
 #include "rna_internal.h" /* own include */
 
@@ -114,6 +116,7 @@ static void rna_Object_select_set(
   Scene *scene = CTX_data_scene(C);
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
+  ED_outliner_select_sync_from_object_tag(C);
 }
 
 static bool rna_Object_select_get(Object *ob, bContext *C, ViewLayer *view_layer)
@@ -951,7 +954,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_function_ui_description(func, "Clears mesh data-block created by to_mesh()");
 
   /* Armature */
-  func = RNA_def_function(srna, "find_armature", "modifiers_isDeformedByArmature");
+  func = RNA_def_function(srna, "find_armature", "BKE_modifiers_is_deformed_by_armature");
   RNA_def_function_ui_description(
       func, "Find armature influencing this object as a parent or via a modifier");
   parm = RNA_def_pointer(

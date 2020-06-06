@@ -770,8 +770,9 @@ class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
         col.prop(view_layer, "use_strand", text="Hair")
         col.prop(view_layer, "use_volumes", text="Volumes")
         if with_freestyle:
-            col.prop(view_layer, "use_freestyle", text="Freestyle")
-            col.active = rd.use_freestyle
+            sub = col.row(align=True)
+            sub.prop(view_layer, "use_freestyle", text="Freestyle")
+            sub.active = rd.use_freestyle
 
 
 class CYCLES_RENDER_PT_override(CyclesButtonsPanel, Panel):
@@ -1208,6 +1209,27 @@ def has_geometry_visibility(ob):
     return ob and ((ob.type in {'MESH', 'CURVE', 'SURFACE', 'FONT', 'META', 'LIGHT'}) or
                     (ob.instance_type == 'COLLECTION' and ob.instance_collection))
 
+class CYCLES_OBJECT_PT_shading(CyclesButtonsPanel, Panel):
+    bl_label = "Shading"
+    bl_context = "object"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return  CyclesButtonsPanel.poll(context) and (context.object)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
+        layout = self.layout
+        ob = context.object
+        cob = ob.cycles
+
+        if has_geometry_visibility(ob):
+            col = flow.column()
+            col.prop(cob, "shadow_terminator_offset")
 
 class CYCLES_OBJECT_PT_visibility(CyclesButtonsPanel, Panel):
     bl_label = "Visibility"
@@ -1366,7 +1388,7 @@ class CYCLES_LIGHT_PT_light(CyclesButtonsPanel, Panel):
         col.separator()
 
         if light.type in {'POINT', 'SPOT'}:
-            col.prop(light, "shadow_soft_size", text="Size")
+            col.prop(light, "shadow_soft_size", text="Radius")
         elif light.type == 'SUN':
             col.prop(light, "angle")
         elif light.type == 'AREA':
@@ -1408,6 +1430,8 @@ class CYCLES_LIGHT_PT_nodes(CyclesButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+
+        layout.use_property_split = True
 
         light = context.light
         panel_node_draw(layout, light, 'OUTPUT_LIGHT', 'Surface')
@@ -1458,6 +1482,8 @@ class CYCLES_WORLD_PT_surface(CyclesButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
+        layout.use_property_split = True
+
         world = context.world
 
         if not panel_node_draw(layout, world, 'OUTPUT_WORLD', 'Surface'):
@@ -1476,6 +1502,8 @@ class CYCLES_WORLD_PT_volume(CyclesButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+
+        layout.use_property_split = True
 
         world = context.world
         panel_node_draw(layout, world, 'OUTPUT_WORLD', 'Volume')
@@ -1664,6 +1692,8 @@ class CYCLES_MATERIAL_PT_surface(CyclesButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
+        layout.use_property_split = True
+
         mat = context.material
         if not panel_node_draw(layout, mat, 'OUTPUT_MATERIAL', 'Surface'):
             layout.prop(mat, "diffuse_color")
@@ -1682,6 +1712,8 @@ class CYCLES_MATERIAL_PT_volume(CyclesButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
+        layout.use_property_split = True
+
         mat = context.material
         # cmat = mat.cycles
 
@@ -1699,6 +1731,8 @@ class CYCLES_MATERIAL_PT_displacement(CyclesButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+
+        layout.use_property_split = True
 
         mat = context.material
         panel_node_draw(layout, mat, 'OUTPUT_MATERIAL', 'Displacement')
@@ -1894,10 +1928,15 @@ class CYCLES_RENDER_PT_bake_selected_to_active(CyclesButtonsPanel, Panel):
 
         col.prop(cbk, "use_cage", text="Cage")
         if cbk.use_cage:
-            col.prop(cbk, "cage_extrusion", text="Extrusion")
-            col.prop(cbk, "cage_object", text="Cage Object")
+            col.prop(cbk, "cage_object")
+            col = layout.column()
+            col.prop(cbk, "cage_extrusion")
+            col.active = cbk.cage_object is None
         else:
-            col.prop(cbk, "cage_extrusion", text="Ray Distance")
+            col.prop(cbk, "cage_extrusion", text="Extrusion")
+
+        col = layout.column()
+        col.prop(cbk, "max_ray_distance")
 
 
 class CYCLES_RENDER_PT_bake_output(CyclesButtonsPanel, Panel):
@@ -2250,6 +2289,7 @@ classes = (
     CYCLES_CAMERA_PT_dof_aperture,
     CYCLES_PT_context_material,
     CYCLES_OBJECT_PT_motion_blur,
+    CYCLES_OBJECT_PT_shading,
     CYCLES_OBJECT_PT_visibility,
     CYCLES_OBJECT_PT_visibility_ray_visibility,
     CYCLES_OBJECT_PT_visibility_culling,

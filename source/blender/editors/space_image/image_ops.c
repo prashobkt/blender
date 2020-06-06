@@ -58,6 +58,7 @@
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_image_save.h"
+#include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
@@ -825,7 +826,7 @@ void IMAGE_OT_view_all(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "View All";
+  ot->name = "Frame All";
   ot->idname = "IMAGE_OT_view_all";
   ot->description = "View the entire image";
 
@@ -884,7 +885,6 @@ static int image_view_selected_exec(bContext *C, wmOperator *UNUSED(op))
   Scene *scene;
   ViewLayer *view_layer;
   Object *obedit;
-  Image *ima;
 
   /* retrieve state */
   sima = CTX_wm_space_image(C);
@@ -893,12 +893,15 @@ static int image_view_selected_exec(bContext *C, wmOperator *UNUSED(op))
   view_layer = CTX_data_view_layer(C);
   obedit = CTX_data_edit_object(C);
 
-  ima = ED_space_image(sima);
-
   /* get bounds */
   float min[2], max[2];
   if (ED_space_image_show_uvedit(sima, obedit)) {
-    if (!ED_uvedit_minmax(scene, ima, obedit, min, max)) {
+    uint objects_len = 0;
+    Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+        view_layer, ((View3D *)NULL), &objects_len);
+    bool success = ED_uvedit_minmax_multi(scene, objects, objects_len, min, max);
+    MEM_freeN(objects);
+    if (!success) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -980,7 +983,7 @@ void IMAGE_OT_view_zoom_in(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "View Zoom In";
+  ot->name = "Zoom In";
   ot->idname = "IMAGE_OT_view_zoom_in";
   ot->description = "Zoom in the image (centered around 2D cursor)";
 
@@ -1039,7 +1042,7 @@ void IMAGE_OT_view_zoom_out(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "View Zoom Out";
+  ot->name = "Zoom Out";
   ot->idname = "IMAGE_OT_view_zoom_out";
   ot->description = "Zoom out the image (centered around 2D cursor)";
 
