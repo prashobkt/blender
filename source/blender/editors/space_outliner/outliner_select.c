@@ -494,22 +494,6 @@ static eOLDrawState tree_element_active_camera(bContext *C,
   }
 }
 
-/* TODO: Temporary while testing */
-void outliner_set_active_camera(bContext *C, Scene *scene, TreeElement *te)
-{
-  TreeStoreElem *tselem = TREESTORE(te);
-  Object *ob = (Object *)tselem->id;
-
-  scene->camera = ob;
-  Main *bmain = CTX_data_main(C);
-  wmWindowManager *wm = bmain->wm.first;
-
-  WM_windows_scene_data_sync(&wm->windows, scene);
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-  DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
-}
-
 static eOLDrawState tree_element_active_world(bContext *C,
                                               Scene *scene,
                                               ViewLayer *UNUSED(sl),
@@ -1127,6 +1111,46 @@ eOLDrawState tree_element_type_active(bContext *C,
   return OL_DRAWSEL_NONE;
 }
 
+/* TODO: Temporary while testing */
+void outliner_set_active_camera(bContext *C, Scene *scene, TreeElement *te)
+{
+  TreeStoreElem *tselem = TREESTORE(te);
+  Object *ob = (Object *)tselem->id;
+
+  scene->camera = ob;
+  Main *bmain = CTX_data_main(C);
+  wmWindowManager *wm = bmain->wm.first;
+
+  WM_windows_scene_data_sync(&wm->windows, scene);
+  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_relations_tag_update(bmain);
+  WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
+}
+
+static void outliner_set_active_data(bContext *C, SpaceOutliner *soops, TreeElement *te)
+{
+  TreeViewContext tvc;
+  TreeStoreElem *tselem = TREESTORE(te);
+
+  outliner_viewcontext_init(C, &tvc);
+
+  if (tselem->type == 0 && te->idcode == ID_OB) {
+    Object *ob = (Object *)tselem->id;
+    if (ob->type == OB_CAMERA) {
+      outliner_set_active_camera(C, tvc.scene, te);
+    }
+  }
+  else if (tselem->type == 0 && te->idcode == ID_SCE) {
+    Scene *scene = (Scene *)tselem->id;
+    if (scene != tvc.scene) {
+      WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), scene);
+    }
+  }
+  else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
+    tree_element_type_active(C, &tvc, soops, te, tselem, OL_SETSEL_NORMAL, false);
+  }
+}
+
 /* ================================================ */
 
 /* Activate a tree store element and set the walk navigation start element */
@@ -1186,11 +1210,6 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   if (tselem->type == 0) {  // the lib blocks
     if (do_activate_data == false) {
       /* Only select in outliner. */
-    }
-    else if (te->idcode == ID_SCE) {
-      if (tvc->scene != (Scene *)tselem->id) {
-        WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), (Scene *)tselem->id);
-      }
     }
     else if ((te->idcode == ID_GR) && (soops->outlinevis != SO_VIEW_LAYER)) {
       Collection *gr = (Collection *)tselem->id;
@@ -1388,9 +1407,6 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   if (outliner_is_co_within_restrict_columns(soops, region, view_mval[0])) {
     return OPERATOR_CANCELLED;
   }
-  if (soops->flag & SO_LEFT_COLUMN && mval[0] < UI_UNIT_X) {
-    return OPERATOR_CANCELLED;
-  }
 
   if (!(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
     if (deselect_all) {
@@ -1402,6 +1418,11 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   else if ((TREESTORE(te)->type != TSE_VIEW_COLLECTION_BASE) &&
            outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+  /* Set active data on left column click */
+  /* TODO: Decide if this is best as button callbacks or here in outliner_select */
+  else if (soops->flag & SO_LEFT_COLUMN && view_mval[0] < UI_UNIT_X) {
+    outliner_set_active_data(C, soops, te);
   }
   else {
     /* The row may also contain children, if one is hovered we want this instead of current te */

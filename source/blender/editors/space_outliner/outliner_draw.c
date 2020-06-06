@@ -1926,7 +1926,7 @@ static void outliner_draw_left_column(
         if (tvc->scene->camera == ob) {
           /* Draw check for active camera */
           but = uiDefIconBut(block,
-                             UI_BTYPE_ICON_TOGGLE,
+                             UI_BTYPE_LABEL,
                              0,
                              ICON_CHECKMARK,
                              0,
@@ -1944,7 +1944,7 @@ static void outliner_draw_left_column(
         else {
           /* Draw dot icon to set active camera */
           but = uiDefIconBut(block,
-                             UI_BTYPE_ICON_TOGGLE,
+                             UI_BTYPE_LABEL,
                              0,
                              ICON_DOT,
                              0,
@@ -1969,7 +1969,7 @@ static void outliner_draw_left_column(
       if (tvc->scene == scene) {
         /* Draw check for active scene */
         but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
+                           UI_BTYPE_LABEL,
                            0,
                            ICON_CHECKMARK,
                            0,
@@ -1986,7 +1986,7 @@ static void outliner_draw_left_column(
       else {
         /* Draw dot icon to set active scene */
         but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
+                           UI_BTYPE_LABEL,
                            0,
                            ICON_DOT,
                            0,
@@ -2010,7 +2010,7 @@ static void outliner_draw_left_column(
           (tselem->type == TSE_LAYER_COLLECTION && active == te->directdata)) {
         /* Draw check for active collection */
         but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
+                           UI_BTYPE_LABEL,
                            0,
                            ICON_CHECKMARK,
                            0,
@@ -2027,7 +2027,7 @@ static void outliner_draw_left_column(
       else {
         /* Draw dot icon to set active collection */
         but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
+                           UI_BTYPE_LABEL,
                            0,
                            ICON_DOT,
                            0,
@@ -2040,7 +2040,6 @@ static void outliner_draw_left_column(
                            0.0,
                            0.0,
                            TIP_("Set active collection"));
-        UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
         /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
       }
     }
