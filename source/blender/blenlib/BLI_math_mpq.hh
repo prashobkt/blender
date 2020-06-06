@@ -14,35 +14,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BMESH_TOOLS_H__
-#define __BMESH_TOOLS_H__
+#ifndef __BLI_MATH_MPQ_HH__
+#define __BLI_MATH_MPQ_HH__
 
-/** \file
- * \ingroup bmesh
- *
- * Utility functions that operate directly on the BMesh,
- * These can be used by both Modifiers and BMesh-Operators.
- */
+#include "gmpxx.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace BLI {
 
-#include "tools/bmesh_beautify.h"
-#include "tools/bmesh_bevel.h"
-#include "tools/bmesh_bisect_plane.h"
-#include "tools/bmesh_boolean.h"
-#include "tools/bmesh_decimate.h"
-#include "tools/bmesh_edgenet.h"
-#include "tools/bmesh_edgesplit.h"
-#include "tools/bmesh_path.h"
-#include "tools/bmesh_path_region.h"
-#include "tools/bmesh_region_match.h"
-#include "tools/bmesh_separate.h"
-#include "tools/bmesh_triangulate.h"
+}  // namespace BLI
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __BMESH_TOOLS_H__ */
+#endif /* __BLI_MATH_NPQ_HH__ */

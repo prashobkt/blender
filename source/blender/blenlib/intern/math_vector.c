@@ -745,16 +745,6 @@ void project_plane_normalized_v3_v3v3(float out[3], const float p[3], const floa
   out[2] = p[2] - (mul * v_plane[2]);
 }
 
-void project_plane_normalized_v3_v3v3_db(double out[3], const double p[3], const double v_plane[3])
-{
-  BLI_ASSERT_UNIT_V3_DB(v_plane);
-  const double mul = dot_v3v3_db(p, v_plane);
-
-  out[0] = p[0] - (mul * v_plane[0]);
-  out[1] = p[1] - (mul * v_plane[1]);
-  out[2] = p[2] - (mul * v_plane[2]);
-}
-
 void project_plane_normalized_v2_v2v2(float out[2], const float p[2], const float v_plane[2])
 {
   BLI_ASSERT_UNIT_V2(v_plane);
@@ -817,6 +807,17 @@ void reflect_v3_v3v3(float out[3], const float v[3], const float normal[3])
   out[2] = v[2] - (dot2 * normal[2]);
 }
 
+void reflect_v3_v3v3_db(double out[3], const double v[3], const double normal[3])
+{
+  const double dot2 = 2.0 * dot_v3v3_db(v, normal);
+
+  BLI_ASSERT_UNIT_V3_DB(normal);
+
+  out[0] = v[0] - (dot2 * normal[0]);
+  out[1] = v[1] - (dot2 * normal[1]);
+  out[2] = v[2] - (dot2 * normal[2]);
+}
+
 /**
  * Takes a vector and computes 2 orthogonal directions.
  *
@@ -844,31 +845,6 @@ void ortho_basis_v3v3_v3(float r_n1[3], float r_n2[3], const float n[3])
     r_n1[0] = (n[2] < 0.0f) ? -1.0f : 1.0f;
     r_n1[1] = r_n1[2] = r_n2[0] = r_n2[2] = 0.0f;
     r_n2[1] = 1.0f;
-  }
-}
-
-void ortho_basis_v3v3_v3_db(double r_n1[3], double r_n2[3], const double n[3])
-{
-  const double eps = FLT_EPSILON;
-  const double f = len_squared_v2_db(n);
-
-  if (f > eps) {
-    const double d = 1.0 / sqrt(f);
-
-    BLI_assert(isfinite(d));
-
-    r_n1[0] = n[1] * d;
-    r_n1[1] = -n[0] * d;
-    r_n1[2] = 0.0;
-    r_n2[0] = -n[2] * r_n1[1];
-    r_n2[1] = n[2] * r_n1[0];
-    r_n2[2] = n[0] * r_n1[1] - n[1] * r_n1[0];
-  }
-  else {
-    /* degenerate case */
-    r_n1[0] = (n[2] < 0.0f) ? -1.0f : 1.0f;
-    r_n1[1] = r_n1[2] = r_n2[0] = r_n2[2] = 0.0f;
-    r_n2[1] = 1.0;
   }
 }
 

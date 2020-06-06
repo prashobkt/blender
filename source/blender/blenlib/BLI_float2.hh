@@ -48,6 +48,11 @@ struct float2 {
     return &x;
   }
 
+  float length() const
+  {
+    return len_v2(*this);
+  }
+
   friend float2 operator+(const float2 &a, const float2 &b)
   {
     return {a.x + b.x, a.y + b.y};
@@ -74,11 +79,52 @@ struct float2 {
     return b * a;
   }
 
+  friend bool operator==(const float2 &a, const float2 &b)
+  {
+    return a.x == b.x && a.y == b.y;
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const float2 &v)
   {
     stream << "(" << v.x << ", " << v.y << ")";
     return stream;
   }
+
+  static float dot(const float2 &a, const float2 &b)
+  {
+    return a.x * b.x + a.y * b.y;
+  }
+
+  static float2 interpolate(const float2 &a, const float2 &b, float t)
+  {
+    return a * (1 - t) + b * t;
+  }
+
+  static float distance(const float2 &a, const float2 &b)
+  {
+    return (a - b).length();
+  }
+
+  static float distance_squared(const float2 &a, const float2 &b)
+  {
+    return float2::dot(a, b);
+  }
+
+  struct isect_result {
+    enum {
+      LINE_LINE_COLINEAR = -1,
+      LINE_LINE_NONE = 0,
+      LINE_LINE_EXACT = 1,
+      LINE_LINE_CROSS = 2,
+    } kind;
+    float lambda;
+    float mu;
+  };
+
+  static isect_result isect_seg_seg(const float2 &v1,
+                                    const float2 &v2,
+                                    const float2 &v3,
+                                    const float2 &v4);
 };
 
 }  // namespace BLI

@@ -316,3 +316,8 @@ set(MESA_HASH d60828056d77bfdbae0970f9b15fb1be)
 set(XR_OPENXR_SDK_VERSION 1.0.8)
 set(XR_OPENXR_SDK_URI https://github.com/KhronosGroup/OpenXR-SDK/archive/release-${XR_OPENXR_SDK_VERSION}.tar.gz)
 set(XR_OPENXR_SDK_HASH c6de63d2e0f9029aa58dfa97cad8ce07)
+
+set(GMP_VERSION 6.2.0)
+set(GMP_URI https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz)
+set(GMP_HASH a325e3f09e6d91e62101e59f9bda3ec1)
+

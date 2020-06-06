@@ -61,7 +61,6 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "tools/bmesh_boolean.h"
 #include "tools/bmesh_intersect.h"
 
 #ifdef DEBUG_TIME
@@ -71,15 +70,9 @@
 
 static void initData(ModifierData *md)
 {
-  bool newbool = true;
   BooleanModifierData *bmd = (BooleanModifierData *)md;
 
-  if (newbool) {
-    bmd->double_threshold = 1e-5f;
-  }
-  else {
-    bmd->double_threshold = 1e-6f;
-  }
+  bmd->double_threshold = 1e-6f;
   bmd->operation = eBooleanModifierOp_Difference;
 }
 
@@ -175,7 +168,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 {
   BooleanModifierData *bmd = (BooleanModifierData *)md;
   Mesh *result = mesh;
-  bool newbool = true;
 
   Mesh *mesh_other;
 
@@ -235,14 +227,9 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
         int tottri;
         BMLoop *(*looptris)[3];
 
-        if (newbool) {
-          looptris = NULL;
-          tottri = 0;
-        }
-        else {
-          looptris = MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__);
-          BM_mesh_calc_tessellation_beauty(bm, looptris, &tottri);
-        }
+        looptris = MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__);
+
+        BM_mesh_calc_tessellation_beauty(bm, looptris, &tottri);
 
         /* postpone this until after tessellating
          * so we can use the original normals before the vertex are moved */
@@ -323,27 +310,21 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                                0;
         }
 
-        if (newbool) {
-          BM_mesh_boolean(
-              bm, bm_face_isect_pair, NULL, false, false, bmd->operation, bmd->double_threshold);
-        }
-        else {
-          BM_mesh_intersect(bm,
-                            looptris,
-                            tottri,
-                            bm_face_isect_pair,
-                            NULL,
-                            false,
-                            use_separate,
-                            use_dissolve,
-                            use_island_connect,
-                            false,
-                            false,
-                            bmd->operation,
-                            bmd->double_threshold);
+        BM_mesh_intersect(bm,
+                          looptris,
+                          tottri,
+                          bm_face_isect_pair,
+                          NULL,
+                          false,
+                          use_separate,
+                          use_dissolve,
+                          use_island_connect,
+                          false,
+                          false,
+                          bmd->operation,
+                          bmd->double_threshold);
 
-          MEM_freeN(looptris);
-        }
+        MEM_freeN(looptris);
       }
 
       result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);

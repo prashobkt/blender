@@ -172,6 +172,11 @@ struct float3 {
     return {a.x / b, a.y / b, a.z / b};
   }
 
+  friend bool operator==(const float3 &a, const float3 &b)
+  {
+    return a.x == b.x && a.y == b.y && a.z == b.z;
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const float3 &v)
   {
     stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";

@@ -79,6 +79,10 @@ if(WITH_TBB)
   link_directories(${LIBDIR}/tbb/lib)
 endif()
 
+if(WITH_GMP)
+  blender_include_dirs(${GMP_INCLUDE_DIRS})
+  link_directories(${LIBDIR}/gmp/lib)
+endif()
 
 if(WITH_PYTHON)
   blender_include_dirs(../blender/python)
@@ -693,6 +697,23 @@ elseif(WIN32)
           DESTINATION "."
     )
   endif()
+
+  if(WITH_GMP)
+    install(
+          FILES ${LIBDIR}/gmp/lib/libgmp-10.dll
+          DESTINATION "."
+    )
+    install(
+          FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
+          DESTINATION "."
+          CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+    )
+    install(
+          FILES ${LIBDIR}/gmp/lib/libgmpxx_d.dll
+          DESTINATION "."
+          CONFIGURATIONS Debug
+    )
+    endif()
 
   if(WITH_WINDOWS_PDB)
     if(WITH_WINDOWS_STRIPPED_PDB)

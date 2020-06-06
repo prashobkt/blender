@@ -27,6 +27,10 @@ set(INC
   ../../../intern/atomic
 )
 
+if(WITH_GMP)
+   list(APPEND INC ${GMP_INCLUDE_DIRS})
+endif()
+
 setup_libdirs()
 include_directories(${INC})
 
@@ -43,6 +47,7 @@ BLENDER_TEST(BLI_array "bf_blenlib")
 BLENDER_TEST(BLI_array_ref "bf_blenlib")
 BLENDER_TEST(BLI_array_store "bf_blenlib")
 BLENDER_TEST(BLI_array_utils "bf_blenlib")
+BLENDER_TEST(BLI_boolean "bf_blenlib")
 BLENDER_TEST(BLI_delaunay_2d "bf_blenlib")
 BLENDER_TEST(BLI_edgehash "bf_blenlib")
 BLENDER_TEST(BLI_expr_pylike_eval "bf_blenlib")
@@ -61,6 +66,7 @@ BLENDER_TEST(BLI_math_color "bf_blenlib")
 BLENDER_TEST(BLI_math_geom "bf_blenlib")
 BLENDER_TEST(BLI_math_vector "bf_blenlib")
 BLENDER_TEST(BLI_memiter "bf_blenlib")
+BLENDER_TEST(BLI_mesh_intersect "bf_blenlib")
 BLENDER_TEST(BLI_optional "bf_blenlib")
 BLENDER_TEST(BLI_path_util "${BLI_path_util_extra_libs}")
 BLENDER_TEST(BLI_polyfill_2d "bf_blenlib")

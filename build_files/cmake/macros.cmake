@@ -440,6 +440,10 @@ function(SETUP_LIBDIRS)
       link_directories(${HDF5_LIBPATH})
     endif()
 
+    if(WITH_GMP)
+      link_directories(${GMP_LIBPATH})
+    endif()
+
     if(WITH_GHOST_WAYLAND)
       link_directories(
         ${wayland-client_LIBRARY_DIRS}

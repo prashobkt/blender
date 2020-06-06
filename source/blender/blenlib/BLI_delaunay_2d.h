@@ -19,6 +19,9 @@
 
 /** \file
  * \ingroup bli
+ *
+ *  This header file contains both a C interface and a C++ interface
+ *  to the 2D Constrained Delaunay Triangulation library routine.
  */
 
 #ifdef __cplusplus
@@ -108,11 +111,6 @@ extern "C" {
  * If zero is supplied for epsilon, an internal value of 1e-8 used
  * instead, since this code will not work correctly if it is not allowed
  * to merge "too near" vertices.
- *
- * Normally, if epsilon is non-zero, there is an "input modify" pass which
- * checks to see if some vertices are within epsilon of other edges, and
- * snapping them to those edges if so. You can skip this pass by setting
- * skip_input_modify to true. (This is also useful in some unit tests.)
  */
 typedef struct CDT_input {
   int verts_len;
@@ -124,7 +122,6 @@ typedef struct CDT_input {
   int *faces_start_table;
   int *faces_len_table;
   float epsilon;
-  bool skip_input_modify;
 } CDT_input;
 
 /**
@@ -208,6 +205,55 @@ void BLI_delaunay_2d_cdt_free(CDT_result *result);
 
 #ifdef __cplusplus
 }
-#endif
+
+/* C++ Interface. */
+
+#  include "gmpxx.h"
+
+#  include "BLI_array.hh"
+#  include "BLI_double2.hh"
+#  include "BLI_linklist.h"
+#  include "BLI_mempool.h"
+#  include "BLI_mpq2.hh"
+#  include "BLI_vector.hh"
+
+namespace BLI {
+
+template<typename Arith_t> struct vec2_impl;
+template<> struct vec2_impl<double> {
+  typedef double2 type;
+};
+template<> struct vec2_impl<mpq_class> {
+  typedef mpq2 type;
+};
+template<typename Arith_t> using vec2 = typename vec2_impl<Arith_t>::type;
+
+template<typename Arith_t> class CDT_input {
+ public:
+  Array<vec2<Arith_t>> vert;
+  Array<std::pair<int, int>> edge;
+  Array<Vector<int>> face;
+  Arith_t epsilon{0};
+};
+
+template<typename Arith_t> class CDT_result {
+ public:
+  Array<vec2<Arith_t>> vert;
+  Array<std::pair<int, int>> edge;
+  Array<Vector<int>> face;
+  Array<Vector<int>> vert_orig;
+  Array<Vector<int>> edge_orig;
+  Array<Vector<int>> face_orig;
+  int face_edge_offset;
+};
+
+CDT_result<double> delaunay_2d_calc(const CDT_input<double> &input, CDT_output_type output_type);
+
+CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<mpq_class> &input,
+                                       CDT_output_type output_type);
+
+} /* namespace BLI */
+
+#endif /* __cplusplus */
 
 #endif /* __BLI_DELAUNAY_2D_H__ */

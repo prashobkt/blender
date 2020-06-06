@@ -32,6 +32,7 @@ set(INC
 set(INC_SYS
   ${ZLIB_INCLUDE_DIRS}
   ${FREETYPE_INCLUDE_DIRS}
+  ${GMP_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -60,10 +61,11 @@ set(SRC
   intern/astar.c
   intern/bitmap.c
   intern/bitmap_draw_2d.c
+  intern/boolean.cc
   intern/boxpack_2d.c
   intern/buffer.c
   intern/convexhull_2d.c
-  intern/delaunay_2d.c
+  intern/delaunay_2d.cc
   intern/dot_export.cc
   intern/dynlib.c
   intern/easing.c
@@ -97,9 +99,11 @@ set(SRC
   intern/math_rotation.c
   intern/math_solvers.c
   intern/math_statistics.c
+  intern/math_vec.cc
   intern/math_vector.c
   intern/math_vector_inline.c
   intern/memory_utils.c
+  intern/mesh_intersect.cc
   intern/noise.c
   intern/path_util.c
   intern/polyfill_2d.c
@@ -154,6 +158,7 @@ set(SRC
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
   BLI_blenlib.h
+  BLI_boolean.h
   BLI_boxpack_2d.h
   BLI_buffer.h
   BLI_color.hh
@@ -167,6 +172,8 @@ set(SRC
   BLI_dlrbTree.h
   BLI_dot_export.hh
   BLI_dot_export_attribute_enums.hh
+  BLI_double2.hh
+  BLI_double3.hh
   BLI_dynlib.h
   BLI_dynstr.h
   BLI_easing.h
@@ -211,6 +218,7 @@ set(SRC
   BLI_math_geom.h
   BLI_math_inline.h
   BLI_math_interp.h
+  BLI_math_mpq.hh
   BLI_math_matrix.h
   BLI_math_rotation.h
   BLI_math_solvers.h
@@ -222,6 +230,9 @@ set(SRC
   BLI_memory_utils.h
   BLI_memory_utils.hh
   BLI_mempool.h
+  BLI_mesh_intersect.hh
+  BLI_mpq2.hh
+  BLI_mpq3.hh
   BLI_noise.h
   BLI_open_addressing.hh
   BLI_optional.hh
@@ -290,6 +301,18 @@ if(WITH_TBB)
 
   list(APPEND LIB
     ${TBB_LIBRARIES}
+  )
+endif()
+
+if(WITH_GMP)
+  add_definitions(-DWITH_GMP)
+
+  list(APPEND INC_SYS
+    ${GMP_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${GMP_LIBRARIES}
   )
 endif()
 
