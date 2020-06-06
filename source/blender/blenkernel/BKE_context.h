@@ -256,6 +256,7 @@ struct ViewLayer *CTX_data_view_layer(const bContext *C);
 struct RenderEngineType *CTX_data_engine_type(const bContext *C);
 struct ToolSettings *CTX_data_tool_settings(const bContext *C);
 
+const char **CTX_data_list_mode_string(void);
 const char *CTX_data_mode_string(const bContext *C);
 enum eContextObjectMode CTX_data_mode_enum_ex(const struct Object *obedit,
                                               const struct Object *ob,

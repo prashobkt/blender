@@ -1156,6 +1156,11 @@ const char *CTX_data_mode_string(const bContext *C)
   return data_mode_strings[CTX_data_mode_enum(C)];
 }
 
+const char **CTX_data_list_mode_string(void)
+{
+  return data_mode_strings;
+}
+
 void CTX_data_scene_set(bContext *C, Scene *scene)
 {
   C->data.scene = scene;

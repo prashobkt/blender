@@ -138,8 +138,8 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
                 draw_km(display_keymaps, kc, kmm, None, layout, level + 1)
                 layout.context_pointer_set("keymap", km)
 
-def draw_shortcut(context, layout):
-    display_keymaps = keyconfig_merge(kc_user, kc_user)
+#def draw_shortcut(context, layout):
+    #display_keymaps = keyconfig_merge(kc_user, kc_user)
 
 def draw_custom_menu(context, layout):
     from bl_keymap_utils.io import keyconfig_merge
@@ -149,13 +149,12 @@ def draw_custom_menu(context, layout):
     kc_active = wm.keyconfigs.active
     spref = context.space_data
 
+    prefs = context.preferences
+    cm = prefs.custom_menu
+
     menu_name_active = None
     if not menu_name_active:
         menu_name_active = "Quick favourites"
-
-    space_name_active = None
-    if not space_name_active:
-        space_name_active = "3D View"
 
     spacesub_name_active = None
     if not spacesub_name_active:
@@ -168,18 +167,19 @@ def draw_custom_menu(context, layout):
     split = layout.split(factor=0.4)
 
     row = split.row()
+    col = layout.column()
 
     rowsub = row.row(align=True)
-    rowsub.menu("USERPREF_MT_keyconfigs", text=menu_name_active)
+    rowsub.menu("USERPREF_MT_menu_select", text=menu_name_active)
     rowsub.operator("wm.keyconfig_preset_add", text="", icon='ADD')
     rowsub.operator("wm.keyconfig_preset_add", text="", icon='REMOVE').remove_active = True
 
     rowsub = split.row(align=True)
-    rowsub.menu("USERPREF_MT_keyconfigs", text=space_name_active)
+    rowsub.prop(cm, "cm_space_selected", text="")
 
 
     rowsub = split.row(align=True)
-    rowsub.menu("USERPREF_MT_keyconfigs", text=spacesub_name_active)
+    rowsub.prop(cm, "cm_context_selected", text="")
 
     rowsub = split.row(align=True)
     rowsub.operator("preferences.keyconfig_import", text="", icon='IMPORT')
@@ -195,7 +195,7 @@ def draw_custom_menu(context, layout):
     rowsub.menu("USERPREF_MT_keyconfigs", text=type_name_active)
     rowsub = row.row(align=True)
     rowsub.label(text="Shortcut :")
-    draw_shortcut(context, layout)
+    #draw_shortcut(context, layout)
 
     row = layout.row()
     col = layout.column()

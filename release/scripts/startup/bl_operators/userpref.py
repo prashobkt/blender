@@ -1138,6 +1138,20 @@ class PREFERENCES_OT_studiolight_show(Operator):
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
         return {'FINISHED'}
 
+class PREFERENCES_OT_custommenu_select(Operator):
+    bl_idname = "preferences.custommenu_select"
+    bl_label = "select custom menu to edit"
+
+    filepath: StringProperty(
+        subtype='FILE_PATH',
+    )
+
+    def execute(self, _context):
+        if bpy.utils.keyconfig_set(self.filepath, report=self.report):
+            return {'FINISHED'}
+        else:
+            return {'CANCELLED'}
+
 
 classes = (
     PREFERENCES_OT_addon_disable,
@@ -1164,4 +1178,5 @@ classes = (
     PREFERENCES_OT_studiolight_uninstall,
     PREFERENCES_OT_studiolight_copy_settings,
     PREFERENCES_OT_studiolight_show,
+    PREFERENCES_OT_custommenu_select,
 )

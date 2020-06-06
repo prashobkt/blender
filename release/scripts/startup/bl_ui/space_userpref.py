@@ -1646,7 +1646,7 @@ class KeymapPanel:
 class USERPREF_MT_keyconfigs(Menu):
     bl_label = "KeyPresets"
     preset_subdir = "keyconfig"
-    preset_operator = "preferences.keyconfig_activate"
+    preset_operator = "preferences.custommenu_select"
 
     def draw(self, context):
         Menu.draw_preset(self, context)
@@ -1675,6 +1675,30 @@ class CustomMenuPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
     bl_context = "custom_menu"
+
+class USERPREF_MT_menu_select(Menu):
+    bl_label = "Menu select"
+    preset_subdir = "custom_menu_editor"
+    preset_operator = "preferences.custommenu_select"
+
+    def draw(self, context):
+        Menu.draw_preset(self, context)
+
+class USERPREF_MT_menu_space_select(Menu):
+    bl_label = "Menu select"
+    preset_subdir = "custom_menu_editor"
+    preset_operator = "preferences.custommenu_select"
+
+    def draw(self, context):
+        Menu.draw_preset(self, context)
+
+class USERPREF_MT_menu_space_select(Menu):
+    bl_label = "Menu select"
+    preset_subdir = "custom_menu_editor"
+    preset_operator = "preferences.custommenu_select"
+
+    def draw(self, context):
+        Menu.draw_preset(self, context)
 
 class USERPREF_PT_custom_menu(CustomMenuPanel, Panel):
     bl_label = "custom_menu"
@@ -2238,6 +2262,7 @@ classes = (
     USERPREF_PT_navigation_fly_walk_gravity,
 
     USERPREF_PT_keymap,
+    USERPREF_MT_menu_select,
     USERPREF_PT_custom_menu,
     USERPREF_PT_addons,
 

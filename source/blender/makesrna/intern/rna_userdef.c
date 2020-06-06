@@ -779,6 +779,73 @@ static const EnumPropertyItem *rna_userdef_audio_device_itemf(bContext *UNUSED(C
   return item;
 }
 
+static const EnumPropertyItem *rna_userdef_spacetypes_itemf(bContext *UNUSED(C),
+                                                              PointerRNA *UNUSED(ptr),
+                                                              PropertyRNA *UNUSED(prop),
+                                                              bool *r_free)
+{
+  int totitem = 0;
+  EnumPropertyItem *item = NULL;
+
+  int i;
+
+  const ListBase *spacetypes = BKE_spacetypes_list();
+  SpaceType *st = NULL;
+
+  for (i = 0, st = spacetypes->first; st; st = st->next, i++) {
+    EnumPropertyItem new_item = {i, st->name, 0, st->name, st->name};
+    RNA_enum_item_add(&item, &totitem, &new_item);
+  }
+
+#  ifndef NDEBUG
+  if (i == 0) {
+    EnumPropertyItem new_item = {i, "NO_SPACETYPE", 0, "No spacetype available", ""};
+    RNA_enum_item_add(&item, &totitem, &new_item);
+  }
+#  endif
+
+  /* may be unused */
+  UNUSED_VARS(audio_device_items);
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
+}
+
+static const EnumPropertyItem *rna_userdef_contexts_itemf(bContext *UNUSED(C),
+                                                              PointerRNA *UNUSED(ptr),
+                                                              PropertyRNA *UNUSED(prop),
+                                                              bool *r_free)
+{
+  int totitem = 0;
+  EnumPropertyItem *item = NULL;
+
+  int i;
+
+  const char **contexts_list = CTX_data_list_mode_string();
+
+  for (i = 0; contexts_list[i]; i++) {
+    EnumPropertyItem new_item = {i, contexts_list[i], 0, contexts_list[i], contexts_list[i]};
+    RNA_enum_item_add(&item, &totitem, &new_item);
+  }
+
+#  ifndef NDEBUG
+  if (i == 0) {
+    EnumPropertyItem new_item = {i, "NO_CONSTEXT", 0, "No context available", ""};
+    RNA_enum_item_add(&item, &totitem, &new_item);
+  }
+#  endif
+
+  /* may be unused */
+  UNUSED_VARS(audio_device_items);
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
+}
+
 #  ifdef WITH_INTERNATIONAL
 static const EnumPropertyItem *rna_lang_enum_properties_itemf(bContext *UNUSED(C),
                                                               PointerRNA *UNUSED(ptr),
@@ -1068,6 +1135,12 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
 {
   StudioLight *sl = (StudioLight *)ptr->data;
   copy_v3_v3(values, sl->light_ambient);
+}
+
+static void rna_userdef_cm_space_selected_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  BKE_sound_init(bmain);
+  USERDEF_TAG_DIRTY;
 }
 
 #else
@@ -5890,20 +5963,47 @@ static void rna_def_userdef_custom_menu(BlenderRNA *brna)
 {
   PropertyRNA *prop;
 
+  //U.user_menus.
+  static const EnumPropertyItem custom_menu_space_default_items[] = {
+      {0, "NULL", 0, "None", "No spacetypes found"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem custom_menu_context_default_items[] = {
+      {0, "NULL", 0, "None", "No context found"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   StructRNA *srna = RNA_def_struct(brna, "PreferencesCustomMenu", NULL);
   RNA_def_struct_sdna(srna, "UserDef");
   RNA_def_struct_nested(brna, srna, "Preferences");
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
   RNA_def_struct_ui_text(srna, "Custom Menu", "custom menu editor");
 
-  prop = RNA_def_property(srna, "show_ui_keyconfig", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(
-      prop, NULL, "space_data.flag", USER_SPACEDATA_INPUT_HIDE_UI_KEYCONFIG);
-  RNA_def_property_ui_text(prop, "Show UI Key-Config", "");
+  //prop = RNA_def_property(srna, "show_ui_keyconfig", PROP_BOOLEAN, PROP_NONE);
+  //RNA_def_property_boolean_negative_sdna(
+  //    prop, NULL, "space_data.flag", USER_SPACEDATA_INPUT_HIDE_UI_KEYCONFIG);
+  //RNA_def_property_ui_text(prop, "Show UI Key-Config", "");
 
-  prop = RNA_def_property(srna, "active_keyconfig", PROP_STRING, PROP_DIRPATH);
-  RNA_def_property_string_sdna(prop, NULL, "keyconfigstr");
-  RNA_def_property_ui_text(prop, "Key Config", "The name of the active key configuration");
+  //prop = RNA_def_property(srna, "active_keyconfig", PROP_STRING, PROP_DIRPATH);
+  //RNA_def_property_string_sdna(prop, NULL, "keyconfigstr");
+  //RNA_def_property_ui_text(prop, "Key Config", "The name of the active key configuration");
+
+  prop = RNA_def_property(srna, "cm_space_selected", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "cmspaceselect");
+  RNA_def_property_enum_items(prop, custom_menu_space_default_items);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_userdef_spacetypes_itemf");
+  RNA_def_property_ui_text(
+      prop, "space type selected", "the space type selected");
+  RNA_def_property_update(prop, 0, "rna_userdef_cm_space_selected_update");
+
+  prop = RNA_def_property(srna, "cm_context_selected", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "cmcontextselect");
+  RNA_def_property_enum_items(prop, custom_menu_context_default_items);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_userdef_contexts_itemf");
+  RNA_def_property_ui_text(
+      prop, "context selected", "the context selected");
+  RNA_def_property_update(prop, 0, "rna_userdef_cm_space_selected_update");
 }
 
 static void rna_def_userdef_filepaths(BlenderRNA *brna)
