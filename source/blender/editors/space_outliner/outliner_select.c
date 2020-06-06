@@ -229,14 +229,12 @@ static void outliner_item_mode_toggle(bContext *C,
 {
   TreeStoreElem *tselem = TREESTORE(te);
 
-  if (tselem->type == 0) {
-    if (OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
-      Object *ob = (Object *)outliner_search_back(te, ID_OB);
-      if ((ob != NULL) && (ob->data == tselem->id)) {
-        Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
-        if ((base != NULL) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
-          do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
-        }
+  if (tselem->type == 0 && te->idcode == ID_OB) {
+    Object *ob = (Object *)tselem->id;
+    if (OB_TYPE_SUPPORT_EDITMODE(ob->type)) {
+      Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
+      if ((base != NULL) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
+        do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
       }
     }
     else if (ELEM(te->idcode, ID_GD)) {
@@ -1158,27 +1156,43 @@ void outliner_set_active_camera(bContext *C, Scene *scene, TreeElement *te)
   WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
 }
 
-static void outliner_set_active_data(bContext *C, SpaceOutliner *soops, TreeElement *te)
+static void outliner_set_active_data(bContext *C,
+                                     TreeViewContext *tvc,
+                                     SpaceOutliner *soops,
+                                     TreeElement *te,
+                                     TreeStoreElem *tselem)
 {
-  TreeViewContext tvc;
-  TreeStoreElem *tselem = TREESTORE(te);
-
-  outliner_viewcontext_init(C, &tvc);
-
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
     if (ob->type == OB_CAMERA) {
-      outliner_set_active_camera(C, tvc.scene, te);
+      outliner_set_active_camera(C, tvc->scene, te);
     }
   }
   else if (tselem->type == 0 && te->idcode == ID_SCE) {
     Scene *scene = (Scene *)tselem->id;
-    if (scene != tvc.scene) {
+    if (scene != tvc->scene) {
       WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), scene);
     }
   }
   else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
-    tree_element_type_active(C, &tvc, soops, te, tselem, OL_SETSEL_NORMAL, false);
+    tree_element_type_active(C, tvc, soops, te, tselem, OL_SETSEL_NORMAL, false);
+  }
+}
+
+static void outliner_left_column_click(bContext *C, SpaceOutliner *soops, TreeElement *te)
+{
+  TreeStoreElem *tselem = TREESTORE(te);
+  TreeViewContext tvc;
+  outliner_viewcontext_init(C, &tvc);
+
+  if (tvc.obact && tvc.obact->mode != OB_MODE_OBJECT) {
+    /* Only support edit mode */
+    if (tvc.ob_edit) {
+      outliner_item_mode_toggle(C, &tvc, te, true);
+    }
+  }
+  else {
+    outliner_set_active_data(C, &tvc, soops, te, tselem);
   }
 }
 
@@ -1329,7 +1343,7 @@ void outliner_item_select(bContext *C,
 
     /* Mode toggle on data activate for now, but move later */
     if (select_flag & OL_ITEM_TOGGLE_MODE) {
-      outliner_item_mode_toggle(C, &tvc, te, extend);
+      /* outliner_item_mode_toggle(C, &tvc, te, extend); */
     }
   }
 }
@@ -1444,7 +1458,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   /* Set active data on left column click */
   /* TODO: Decide if this is best as button callbacks or here in outliner_select */
   else if (soops->flag & SO_LEFT_COLUMN && view_mval[0] < UI_UNIT_X) {
-    outliner_set_active_data(C, soops, te);
+    outliner_left_column_click(C, soops, te);
   }
   else {
     /* The row may also contain children, if one is hovered we want this instead of current te */
