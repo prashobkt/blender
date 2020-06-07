@@ -1138,6 +1138,9 @@ class PREFERENCES_OT_studiolight_show(Operator):
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
         return {'FINISHED'}
 
+# -----------------------------------------------------------------------------
+# Custom Menus Operators
+
 class PREFERENCES_OT_custommenu_select(Operator):
     bl_idname = "preferences.custommenu_select"
     bl_label = "select custom menu to edit"

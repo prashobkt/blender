@@ -185,6 +185,7 @@ static const EnumPropertyItem rna_enum_userdef_viewport_aa_items[] = {
 #  include "BKE_paint.h"
 #  include "BKE_pbvh.h"
 #  include "BKE_screen.h"
+#  include "BKE_blender_user_menu.h"
 
 #  include "DEG_depsgraph.h"
 
@@ -793,7 +794,8 @@ static const EnumPropertyItem *rna_userdef_spacetypes_itemf(bContext *UNUSED(C),
   SpaceType *st = NULL;
 
   for (i = 0, st = spacetypes->first; st; st = st->next, i++) {
-    EnumPropertyItem new_item = {i, st->name, 0, st->name, st->name};
+    int id = st->spaceid;
+    EnumPropertyItem new_item = {id, st->name, 0, st->name, st->name};
     RNA_enum_item_add(&item, &totitem, &new_item);
   }
 
@@ -1139,8 +1141,34 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
 
 static void rna_userdef_cm_space_selected_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  BKE_sound_init(bmain);
   USERDEF_TAG_DIRTY;
+}
+
+static const char *rna_CustomMenus_refresh(UserDef *userdef, const char *spacetype, const char *context, int index)
+{
+  int i = 0;
+  const ListBase *spacetypes = BKE_spacetypes_list();
+  SpaceType *st = NULL;
+
+  for (i = 0, st = spacetypes->first; st; st = st->next, i++) {
+    int id = st->spaceid;
+    char *space_name = st->name;
+    if (!strcmp(space_name, spacetype))
+      break;
+  }
+  if (st == NULL) return "";
+
+  bUserMenu *bum = BKE_blender_user_menu_find(&userdef->user_menus, st->spaceid, context);
+  if (!bum) return "";
+
+  ListBase *lb = &bum->items;
+  i = 0;
+  for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
+    if (i == index)
+      return umi->ui_name;
+  }
+  
+  return "";
 }
 
 #else
@@ -5962,8 +5990,9 @@ static void rna_def_userdef_keymap(BlenderRNA *brna)
 static void rna_def_userdef_custom_menu(BlenderRNA *brna)
 {
   PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
-  //U.user_menus.
   static const EnumPropertyItem custom_menu_space_default_items[] = {
       {0, "NULL", 0, "None", "No spacetypes found"},
       {0, NULL, 0, NULL, NULL},
@@ -6004,6 +6033,34 @@ static void rna_def_userdef_custom_menu(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "context selected", "the context selected");
   RNA_def_property_update(prop, 0, "rna_userdef_cm_space_selected_update");
+
+  func = RNA_def_function(srna, "refresh", "rna_CustomMenus_refresh");
+  RNA_def_function_ui_description(func, "Refresh custom menu editor");
+  parm = RNA_def_string(func,
+                        "spacetype",
+                        NULL,
+                        0,
+                        "SpaceType",
+                        "space type of the menu");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func,
+                        "context",
+                        NULL,
+                        0,
+                        "Context",
+                        "context of the menu");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_int(func, "index", 0, 0, 100, "Index", "index of the item in list", 0, 100);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func,
+                        "user_menu",
+                        NULL,
+                        0,
+                        "",
+                        "active user menu");
+  //parm = RNA_def_pointer(func, "user_menu", "bUserMenu", "", "found user menu");
+  RNA_def_function_return(func, parm);
+
 }
 
 static void rna_def_userdef_filepaths(BlenderRNA *brna)

@@ -1646,7 +1646,7 @@ class KeymapPanel:
 class USERPREF_MT_keyconfigs(Menu):
     bl_label = "KeyPresets"
     preset_subdir = "keyconfig"
-    preset_operator = "preferences.custommenu_select"
+    preset_operator = "preferences.keyconfig_activate"
 
     def draw(self, context):
         Menu.draw_preset(self, context)
@@ -1677,22 +1677,6 @@ class CustomMenuPanel:
     bl_context = "custom_menu"
 
 class USERPREF_MT_menu_select(Menu):
-    bl_label = "Menu select"
-    preset_subdir = "custom_menu_editor"
-    preset_operator = "preferences.custommenu_select"
-
-    def draw(self, context):
-        Menu.draw_preset(self, context)
-
-class USERPREF_MT_menu_space_select(Menu):
-    bl_label = "Menu select"
-    preset_subdir = "custom_menu_editor"
-    preset_operator = "preferences.custommenu_select"
-
-    def draw(self, context):
-        Menu.draw_preset(self, context)
-
-class USERPREF_MT_menu_space_select(Menu):
     bl_label = "Menu select"
     preset_subdir = "custom_menu_editor"
     preset_operator = "preferences.custommenu_select"

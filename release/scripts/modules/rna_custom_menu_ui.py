@@ -177,7 +177,6 @@ def draw_custom_menu(context, layout):
     rowsub = split.row(align=True)
     rowsub.prop(cm, "cm_space_selected", text="")
 
-
     rowsub = split.row(align=True)
     rowsub.prop(cm, "cm_context_selected", text="")
 
@@ -200,5 +199,12 @@ def draw_custom_menu(context, layout):
     row = layout.row()
     col = layout.column()
     rowsub = row.split(factor=0.4, align=True)
+
+    item_index = 0
+    active = cm.refresh(context=cm.cm_context_selected, index=0, spacetype=cm.cm_space_selected)
+    while active != "":
+        col.label(text=active)
+        item_index = item_index + 1
+        active = cm.refresh(context=cm.cm_context_selected, index=item_index, spacetype=cm.cm_space_selected)
 
     layout.separator()
