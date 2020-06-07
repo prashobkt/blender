@@ -3819,9 +3819,11 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
 
       BLI_insertlinkafter(&but->block->buttons, insert_after_but, but);
 
-      const bool found_layout = ui_layout_replace_but_ptr(but->layout, old_but_ptr, but);
-      BLI_assert(found_layout);
-      UNUSED_VARS_NDEBUG(found_layout);
+      if (but->layout) {
+        const bool found_layout = ui_layout_replace_but_ptr(but->layout, old_but_ptr, but);
+        BLI_assert(found_layout);
+        UNUSED_VARS_NDEBUG(found_layout);
+      }
     }
   }
 
