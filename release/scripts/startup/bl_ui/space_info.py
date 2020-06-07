@@ -27,8 +27,19 @@ class INFO_HT_header(Header):
         layout = self.layout
         layout.template_header()
 
+        sinfo = context.space_data
+
         INFO_MT_editor_menus.draw_collapsible(context, layout)
 
+        layout.separator_spacer()
+
+        row = layout.row(align=True)
+        row.prop(sinfo,"show_report_debug", icon_only=True)
+        row.prop(sinfo,"show_report_info", icon_only=True)
+        row.prop(sinfo,"show_report_operator", icon_only=True)
+        row.prop(sinfo,"show_report_warning", icon_only=True)
+        row.prop(sinfo,"show_report_error", icon_only=True)
+        row.prop(sinfo,"show_report_property", icon_only=True)
 
 class INFO_MT_editor_menus(Menu):
     bl_idname = "INFO_MT_editor_menus"

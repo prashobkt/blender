@@ -176,6 +176,10 @@ static void blo_update_defaults_screen(bScreen *screen,
       SpaceSeq *seq = area->spacedata.first;
       seq->flag |= SEQ_SHOW_MARKERS | SEQ_SHOW_FCURVES;
     }
+    else if (area->spacetype == SPACE_INFO) {
+      SpaceInfo *sinfo = area->spacedata.first;
+      sinfo->report_mask_exclude = 0;
+    }
     else if (area->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */
       SpaceText *stext = area->spacedata.first;
