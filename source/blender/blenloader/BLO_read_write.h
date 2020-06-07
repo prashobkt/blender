@@ -41,6 +41,9 @@
 #ifndef __BLO_READ_WRITE_H__
 #define __BLO_READ_WRITE_H__
 
+/* for SDNA_TYPE_FROM_STRUCT() macro */
+#include "dna_type_offsets.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -65,8 +68,7 @@ typedef struct BlendExpander BlendExpander;
  *
  * DNA struct types can be identified in different ways:
  *  - Run-time Name: The name is provided as const char *.
- *  - Compile-time Name: The name is provided at compile time. This can be more efficient. Note
- *      that this optimization is not implemented currently.
+ *  - Compile-time Name: The name is provided at compile time. This is more efficient.
  *  - Struct ID: Every DNA struct type has an integer ID that can be queried with
  *      BLO_get_struct_id_by_name. Providing this ID can be a useful optimization when many structs
  *      of the same type are stored AND if those structs are not in a continuous array.
@@ -88,13 +90,22 @@ typedef struct BlendExpander BlendExpander;
 
 /* Mapping between names and ids. */
 int BLO_get_struct_id_by_name(BlendWriter *writer, const char *struct_name);
-#define BLO_get_struct_id(writer, struct_name) BLO_get_struct_id_by_name(writer, #struct_name)
+#define BLO_get_struct_id(writer, struct_name) SDNA_TYPE_FROM_STRUCT(struct_name)
 
 /* Write single struct. */
 void BLO_write_struct_by_name(BlendWriter *writer, const char *struct_name, const void *data_ptr);
 void BLO_write_struct_by_id(BlendWriter *writer, int struct_id, const void *data_ptr);
 #define BLO_write_struct(writer, struct_name, data_ptr) \
   BLO_write_struct_by_id(writer, BLO_get_struct_id(writer, struct_name), data_ptr)
+
+/* Write single struct at address. */
+void BLO_write_struct_at_address_by_id(BlendWriter *writer,
+                                       int struct_id,
+                                       const void *address,
+                                       const void *data_ptr);
+#define BLO_write_struct_at_address(writer, struct_name, address, data_ptr) \
+  BLO_write_struct_at_address_by_id( \
+      writer, BLO_get_struct_id(writer, struct_name), address, data_ptr)
 
 /* Write struct array. */
 void BLO_write_struct_array_by_name(BlendWriter *writer,
@@ -108,6 +119,13 @@ void BLO_write_struct_array_by_id(BlendWriter *writer,
 #define BLO_write_struct_array(writer, struct_name, array_size, data_ptr) \
   BLO_write_struct_array_by_id( \
       writer, BLO_get_struct_id(writer, struct_name), array_size, data_ptr)
+
+/* Write struct array at address. */
+void BLO_write_struct_array_at_address_by_id(
+    BlendWriter *writer, int struct_id, int array_size, const void *address, const void *data_ptr);
+#define BLO_write_struct_array_at_address(writer, struct_name, array_size, address, data_ptr) \
+  BLO_write_struct_array_at_address_by_id( \
+      writer, BLO_get_struct_id(writer, struct_name), array_size, address, data_ptr)
 
 /* Write struct list. */
 void BLO_write_struct_list_by_name(BlendWriter *writer,
@@ -131,6 +149,7 @@ void BLO_write_int32_array(BlendWriter *writer, int size, const int32_t *data_pt
 void BLO_write_uint32_array(BlendWriter *writer, int size, const uint32_t *data_ptr);
 void BLO_write_float_array(BlendWriter *writer, int size, const float *data_ptr);
 void BLO_write_float3_array(BlendWriter *writer, int size, const float *data_ptr);
+void BLO_write_pointer_array(BlendWriter *writer, int size, const void *data_ptr);
 void BLO_write_string(BlendWriter *writer, const char *data_ptr);
 
 /* Misc. */
@@ -152,7 +171,7 @@ bool BLO_write_is_undo(BlendWriter *writer);
  *   BLO_read_data_address(reader, &clmd->sim_parms);
  *
  *   BLO_write_struct_list(writer, TimeMarker, &action->markers);
- *   BLO_read_list(reader, &action->markers, NULL);
+ *   BLO_read_list(reader, &action->markers);
  *
  *   BLO_write_int32_array(writer, hmd->totindex, hmd->indexar);
  *   BLO_read_int32_array(reader, hmd->totindex, &hmd->indexar);
@@ -164,7 +183,8 @@ void *BLO_read_get_new_data_address(BlendDataReader *reader, const void *old_add
   *(ptr_p) = BLO_read_get_new_data_address((reader), *(ptr_p))
 
 typedef void (*BlendReadListFn)(BlendDataReader *reader, void *data);
-void BLO_read_list(BlendDataReader *reader, struct ListBase *list, BlendReadListFn callback);
+void BLO_read_list_cb(BlendDataReader *reader, struct ListBase *list, BlendReadListFn callback);
+void BLO_read_list(BlendDataReader *reader, struct ListBase *list);
 
 /* Update data pointers and correct byte-order if necessary. */
 void BLO_read_int32_array(BlendDataReader *reader, int array_size, int32_t **ptr_p);
