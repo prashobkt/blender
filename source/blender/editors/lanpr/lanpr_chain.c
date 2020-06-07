@@ -21,8 +21,8 @@
  * \ingroup editors
  */
 
-#include "BLI_listbase.h"
 #include "BLI_linklist.h"
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 
 #include "BKE_customdata.h"
@@ -103,6 +103,21 @@ static LANPR_RenderLineChain *lanpr_create_render_line_chain(LANPR_RenderBuffer 
   return rlc;
 }
 
+static bool lanpr_check_point_overlapping(LANPR_RenderLineChainItem *rlci,
+                                          float x,
+                                          float y,
+                                          float threshold)
+{
+  if (!rlci) {
+    return false;
+  }
+  if (rlci->pos[0] + threshold > x && rlci->pos[0] - threshold < x &&
+      rlci->pos[1] + threshold > y && rlci->pos[1] - threshold < y) {
+    return true;
+  }
+  return false;
+}
+
 static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuffer *rb,
                                                                        LANPR_RenderLineChain *rlc,
                                                                        float x,
@@ -115,6 +130,11 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
                                                                        int level)
 {
   LANPR_RenderLineChainItem *rlci;
+
+  if (lanpr_check_point_overlapping(rlc->chain.last, x, y, 1e-5)) {
+    return rlc->chain.last;
+  }
+
   rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
 
   rlci->pos[0] = x;
@@ -144,6 +164,11 @@ static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_Rende
                                                                      int level)
 {
   LANPR_RenderLineChainItem *rlci;
+
+  if (lanpr_check_point_overlapping(rlc->chain.first, x, y, 1e-5)) {
+    return rlc->chain.first;
+  }
+
   rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
 
   rlci->pos[0] = x;
@@ -563,9 +588,14 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
                                      int reverse_1,
                                      int reverse_2)
 {
+  LANPR_RenderLineChainItem *rlci;
   if (!reverse_1) {  /*  L--R L-R */
     if (reverse_2) { /*  L--R R-L */
       BLI_listbase_reverse(&sub->chain);
+    }
+    rlci = sub->chain.first;
+    if (lanpr_check_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
+      BLI_pophead(&sub->chain);
     }
     ((LANPR_RenderLineChainItem *)onto->chain.last)->next = sub->chain.first;
     ((LANPR_RenderLineChainItem *)sub->chain.first)->prev = onto->chain.last;
@@ -574,6 +604,10 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
   else {              /*  L-R L--R */
     if (!reverse_2) { /*  R-L L--R */
       BLI_listbase_reverse(&sub->chain);
+    }
+    rlci = onto->chain.first;
+    if (lanpr_check_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
+      BLI_pophead(&onto->chain);
     }
     ((LANPR_RenderLineChainItem *)sub->chain.last)->next = onto->chain.first;
     ((LANPR_RenderLineChainItem *)onto->chain.first)->prev = sub->chain.last;
