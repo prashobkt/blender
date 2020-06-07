@@ -3743,8 +3743,8 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int inte
 
   ED_lanpr_update_render_progress("LANPR: Chaining.");
 
-  /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
-  if ((lanpr->flags & LANPR_USE_CHAINING) && (!intersectons_only)) {
+  /* intersection_only is preserved for furure functions.*/
+  if (!intersectons_only) {
     float t_image = s->lanpr.chaining_image_threshold;
     float t_geom = s->lanpr.chaining_geometry_threshold;
 
@@ -3908,7 +3908,6 @@ static void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                               Collection *col,
                                               int types)
 {
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
 
   if (rb == NULL) {

@@ -7402,12 +7402,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
-  prop = RNA_def_property(srna, "enable_chaining", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_USE_CHAINING);
-  RNA_def_property_boolean_default(prop, 1);
-  RNA_def_property_ui_text(prop, "Enable Chaining", "Chain Feature Lines After Occlusion Test");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
   /* Below these two are only for grease pencil, thus no viewport updates. */
 
   prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);

@@ -518,9 +518,11 @@ int ED_lanpr_point_inside_triangled(double v[2], double v0[2], double v1[2], dou
 
 struct Depsgraph;
 struct SceneLANPR;
+struct Scene;
+struct LANPR_RenderBuffer;
 
 void ED_lanpr_init_locks(void);
-
+struct LANPR_RenderBuffer *ED_lanpr_create_render_buffer(struct Scene *s);
 void ED_lanpr_destroy_render_data(void);
 
 int ED_lanpr_object_collection_usage_check(struct Collection *c, struct Object *o);

@@ -4427,7 +4427,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
           scene->lanpr.crease_threshold = 0.7;
 
-          scene->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
+          scene->lanpr.flags |= (LANPR_USE_INTERSECTIONS);
 
           zero_v4(scene->lanpr.line_color);
 

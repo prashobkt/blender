@@ -758,10 +758,6 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
-    @classmethod
-    def poll(cls, context):
-        return True
-
     def draw(self, context):
         scene = context.scene
         lanpr = scene.lanpr
@@ -801,10 +797,6 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        return True
 
     def draw_header(self, context):
         active_layer = context.scene.lanpr.layers.active_layer
@@ -872,7 +864,6 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
         layout.use_property_decorate = False
 
         layout.prop(lanpr,"use_intersections")
-        layout.prop(lanpr,"enable_chaining", text = "Chained Lines")
 
 
 class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
@@ -880,12 +871,6 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        return scene.render.engine!='BLENDER_LANPR' or lanpr.enable_chaining and (not (scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='DPIX'))
 
     def draw(self, context):
         scene = context.scene

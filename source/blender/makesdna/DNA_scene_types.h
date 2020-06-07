@@ -1706,7 +1706,7 @@ typedef enum LANPR_MainFlags {
   LANPR_SAME_TAPER = (1 << 2),
   /* Edge split modifier will cause problems in LANPR. */
   LANPR_DISABLE_EDGE_SPLITS = (1 << 3),
-  LANPR_USE_CHAINING = (1 << 4),
+  LANPR_USE_CHAINING = (1 << 4), /* Deprecated */
   LANPR_USE_INTERSECTIONS = (1 << 5),
   /* Overwrite existing strokes in this frame. */
   LANPR_GPENCIL_OVERWRITE = (1 << 6),
