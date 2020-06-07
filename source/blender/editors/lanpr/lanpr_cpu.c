@@ -1557,6 +1557,7 @@ static void lanpr_make_render_geometry_buffers_object(Object *o,
   LANPR_RenderLine *rl;
   LANPR_RenderTriangle *rt;
   double new_mvp[4][4], new_mv[4][4], normal[4][4];
+  float imat[4][4];
   LANPR_RenderElementLinkNode *reln;
   LANPR_RenderVert *orv;
   LANPR_RenderLine *orl;
@@ -1576,9 +1577,9 @@ static void lanpr_make_render_geometry_buffers_object(Object *o,
     mul_m4db_m4db_m4fl_uniq(new_mvp, mvp_mat, o->obmat);
     mul_m4db_m4db_m4fl_uniq(new_mv, mv_mat, o->obmat);
 
-    invert_m4_m4(o->imat, o->obmat);
-    transpose_m4(o->imat);
-    copy_m4d_m4(normal, o->imat);
+    invert_m4_m4(imat, o->obmat);
+    transpose_m4(imat);
+    copy_m4d_m4(normal, imat);
 
     const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(((Mesh *)(o->data)));
     bm = BM_mesh_create(&allocsize,
