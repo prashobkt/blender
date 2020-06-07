@@ -173,7 +173,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     reports_select_all(reports, report_mask, SEL_DESELECT);
   }
 
-  if (use_range) {  // shift click
+  if (use_range) {
     const Report *active_report = BLI_findlink((const struct ListBase *)reports,
                                                sinfo->active_report_index);
     if (active_report == NULL) {
@@ -200,11 +200,8 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  if (extend) {
-    report->flag ^= SELECT;
-    if (report->flag && SELECT) {
-      sinfo->active_report_index = BLI_findindex(&reports->list, report);
-    }
+  if (extend && (report->flag & SELECT) && report_index == sinfo->active_report_index) {
+    report->flag = ~SELECT;
   }
   else {
     report->flag = SELECT;
