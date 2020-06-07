@@ -319,14 +319,24 @@ class OUTLINER_PT_filter(Panel):
 
     def draw(self, context):
         layout = self.layout
-
         space = context.space_data
+        layout.label(text="Restriction Toggles:")
+        row = layout.row(align=True)
+        row.prop(space, "show_restrict_column_enable")
+        row.prop(space, "show_restrict_column_select", text="")
+        row.prop(space, "show_restrict_column_hide", text="")
+        row.prop(space, "show_restrict_column_viewport", text="")
+        row.prop(space, "show_restrict_column_render", text="")
+        row.prop(space, "show_restrict_column_holdout", text="")
+        row.prop(space, "show_restrict_column_indirect_only", text="")
+        layout.separator()
+
         display_mode = space.display_mode
 
         if display_mode == 'VIEW_LAYER':
             layout.label(text="Restriction Toggles:")
             row = layout.row(align=True)
-            row.prop(space, "show_restrict_column_enable", text="")
+            row.prop(space, "show_restrict_column_enable")
             row.prop(space, "show_restrict_column_select", text="")
             row.prop(space, "show_restrict_column_hide", text="")
             row.prop(space, "show_restrict_column_viewport", text="")

@@ -17,7 +17,7 @@
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
-from bpy.types import Header, Menu
+from bpy.types import Header, Menu, Panel
 
 
 class INFO_HT_header(Header):
@@ -27,19 +27,13 @@ class INFO_HT_header(Header):
         layout = self.layout
         layout.template_header()
 
-        sinfo = context.space_data
-
         INFO_MT_editor_menus.draw_collapsible(context, layout)
 
         layout.separator_spacer()
 
         row = layout.row(align=True)
-        row.prop(sinfo,"show_report_debug", icon_only=True)
-        row.prop(sinfo,"show_report_info", icon_only=True)
-        row.prop(sinfo,"show_report_operator", icon_only=True)
-        row.prop(sinfo,"show_report_warning", icon_only=True)
-        row.prop(sinfo,"show_report_error", icon_only=True)
-        row.prop(sinfo,"show_report_property", icon_only=True)
+        row.popover(panel="INFO_PT_report_type_visibility", text="", icon="FILTER")
+
 
 class INFO_MT_editor_menus(Menu):
     bl_idname = "INFO_MT_editor_menus"
@@ -125,6 +119,28 @@ class INFO_MT_context_menu(Menu):
         layout.operator("info.report_delete", text="Delete")
 
 
+class INFO_PT_report_type_visibility(Panel):
+    bl_space_type = 'INFO'
+    bl_region_type = 'HEADER'
+    bl_label = "Report Types"
+    # bl_ui_units_x = 8
+
+    def draw(self, context):
+        layout = self.layout
+
+        sinfo = context.space_data
+
+        layout.label(text="Report Types Visibility")
+        col = layout.column(align=True)
+        col.prop(sinfo, "show_report_debug", text="Debug")
+        col.prop(sinfo, "show_report_info", text="Info")
+        col.prop(sinfo, "show_report_operator", text="Operator")
+        col.prop(sinfo, "show_report_warning", text="Warning")
+        col.prop(sinfo, "show_report_error", text="Error")
+        col.prop(sinfo, "show_report_property", text="Property")
+        layout.separator()
+
+
 classes = (
     INFO_HT_header,
     INFO_MT_editor_menus,
@@ -132,6 +148,7 @@ classes = (
     INFO_MT_view,
     INFO_MT_info,
     INFO_MT_context_menu,
+    INFO_PT_report_type_visibility
 )
 
 if __name__ == "__main__":  # only for live edit.
