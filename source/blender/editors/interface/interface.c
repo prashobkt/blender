@@ -2962,10 +2962,10 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
                   &search_but->rnasearchpoin, search_but->rnasearchprop, str, &rptr)) {
             RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr, NULL);
           }
-          else if (but->func_arg2 != NULL) {
+          else if (search_but->item_active != NULL) {
             RNA_pointer_create(NULL,
                                RNA_property_pointer_type(&but->rnapoin, but->rnaprop),
-                               but->func_arg2,
+                               search_but->item_active,
                                &rptr);
             RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr, NULL);
           }
@@ -6496,6 +6496,7 @@ void UI_but_func_search_set(uiBut *but,
 
   search_but->popup_create_fn = search_create_fn;
   search_but->items_update_fn = search_update_fn;
+  search_but->item_active = active;
 
   search_but->arg = arg;
   search_but->arg_free_fn = search_arg_free_fn;
@@ -6508,7 +6509,8 @@ void UI_but_func_search_set(uiBut *but,
              __func__);
     }
 #endif
-    UI_but_func_set(but, search_exec_fn, search_but->arg, active);
+    /* Handling will pass the active item as arg2 later, so keep it NULL here. */
+    UI_but_func_set(but, search_exec_fn, search_but->arg, NULL);
   }
 
   /* search buttons show red-alert if item doesn't exist, not for menus */

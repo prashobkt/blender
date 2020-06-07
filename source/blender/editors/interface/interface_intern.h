@@ -293,6 +293,7 @@ typedef struct uiButSearch {
 
   uiButSearchCreateFn popup_create_fn;
   uiButSearchUpdateFn items_update_fn;
+  void *item_active;
 
   void *arg;
   uiButSearchArgFreeFn arg_free_fn;

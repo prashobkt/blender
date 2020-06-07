@@ -272,8 +272,11 @@ bool ui_searchbox_inside(ARegion *region, int x, int y)
 bool ui_searchbox_apply(uiBut *but, ARegion *region)
 {
   uiSearchboxData *data = region->regiondata;
+  uiButSearch *search_but = (uiButSearch *)but;
 
-  but->func_arg2 = NULL;
+  BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
+
+  search_but->item_active = NULL;
 
   if (data->active != -1) {
     const char *name = data->items.names[data->active];
@@ -281,7 +284,7 @@ bool ui_searchbox_apply(uiBut *but, ARegion *region)
 
     BLI_strncpy(but->editstr, name, name_sep ? (name_sep - name) : data->items.maxstrlen);
 
-    but->func_arg2 = data->items.pointers[data->active];
+    search_but->item_active = data->items.pointers[data->active];
 
     return true;
   }
@@ -313,7 +316,7 @@ static struct ARegion *wm_searchbox_tooltip_init(struct bContext *C,
 
       uiButSearch *search_but = (uiButSearch *)but;
       if (search_but->item_tooltip_fn) {
-        return search_but->item_tooltip_fn(C, region, search_but->arg, but->func_arg2);
+        return search_but->item_tooltip_fn(C, region, search_but->arg, search_but->item_active);
       }
     }
   }
@@ -392,7 +395,7 @@ bool ui_searchbox_event(
         if (is_inside) {
           if (data->active != -1) {
             ScrArea *area = CTX_wm_area(C);
-            but->func_arg2 = data->items.pointers[data->active];
+            search_but->item_active = data->items.pointers[data->active];
             WM_tooltip_timer_init(C, CTX_wm_window(C), area, butregion, wm_searchbox_tooltip_init);
             tooltip_timer_started = true;
           }
@@ -441,8 +444,8 @@ void ui_searchbox_update(bContext *C, ARegion *region, uiBut *but, const bool re
     data->active = -1;
 
     /* handle active */
-    if (search_but->items_update_fn && but->func_arg2) {
-      data->items.active = but->func_arg2;
+    if (search_but->items_update_fn && search_but->item_active) {
+      data->items.active = search_but->item_active;
       ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
       data->items.active = NULL;
 

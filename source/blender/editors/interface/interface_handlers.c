@@ -1037,7 +1037,18 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
     but->rename_orig = data->origstr;
     data->origstr = NULL;
   }
+
+  void *orig_arg2 = but->func_arg2;
+
+  /* If arg2 isn't in use already, pass the active search item through it. */
+  if ((but->func_arg2 == NULL) && (but->type == UI_BTYPE_SEARCH_MENU)) {
+    uiButSearch *search_but = (uiButSearch *)but;
+    but->func_arg2 = search_but->item_active;
+  }
+
   ui_apply_but_func(C, but);
+
+  but->func_arg2 = orig_arg2;
 
   data->retval = but->retval;
   data->applied = true;
