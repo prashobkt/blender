@@ -6,8 +6,8 @@
 #include <iostream>
 #include <sstream>
 
-#include "gmpxx.h"
 #include "MEM_guardedalloc.h"
+#include "gmpxx.h"
 
 #include "BLI_array.hh"
 #include "BLI_boolean.h"
@@ -19,7 +19,7 @@
  * then all the tris as vert index triples.
  */
 class BT_input {
-public:
+ public:
   BT_input(const char *spec)
   {
     std::istringstream ss(spec);
@@ -30,7 +30,7 @@ public:
     m_bti.tri = nullptr;
     hdrss >> m_bti.vert_len >> m_bti.tri_len;
     if (m_bti.vert_len > 0 && m_bti.tri_len > 0) {
-      m_bti.vert_coord = new float [m_bti.vert_len][3];
+      m_bti.vert_coord = new float[m_bti.vert_len][3];
       m_bti.tri = new int[m_bti.tri_len][3];
       int i = 0;
       while (i < m_bti.vert_len && getline(ss, line)) {
@@ -49,15 +49,16 @@ public:
 
   ~BT_input()
   {
-    delete [] m_bti.vert_coord;
-    delete [] m_bti.tri;
+    delete[] m_bti.vert_coord;
+    delete[] m_bti.tri;
   }
 
-  Boolean_trimesh_input *input() {
+  Boolean_trimesh_input *input()
+  {
     return &m_bti;
   }
 
-private:
+ private:
   Boolean_trimesh_input m_bti;
 };
 

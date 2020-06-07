@@ -17,7 +17,6 @@
 #ifndef __BLI_BOOLEAN_H__
 #define __BLI_BOOLEAN_H__
 
-
 /** \file
  * \ingroup bli
  */
@@ -55,6 +54,5 @@ void BLI_boolean_trimesh_free(Boolean_trimesh_output *output);
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* __BLI_BOOLEAN_H__ */

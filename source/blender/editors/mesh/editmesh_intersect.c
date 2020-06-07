@@ -195,28 +195,23 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
     }
 
     if (exact) {
-      has_isect = BM_mesh_boolean_knife(em->bm,
-                                        em->looptris,
-                                        em->tottri,
-                                        test_fn,
-                                        NULL,
-                                        use_self,
-                                        use_separate_all);
+      has_isect = BM_mesh_boolean_knife(
+          em->bm, em->looptris, em->tottri, test_fn, NULL, use_self, use_separate_all);
     }
     else {
       has_isect = BM_mesh_intersect(em->bm,
-                                  em->looptris,
-                                  em->tottri,
-                                  test_fn,
-                                  NULL,
-                                  use_self,
-                                  use_separate_all,
-                                  true,
-                                  true,
-                                  true,
-                                  true,
-                                  -1,
-                                  eps);
+                                    em->looptris,
+                                    em->tottri,
+                                    test_fn,
+                                    NULL,
+                                    use_self,
+                                    use_separate_all,
+                                    true,
+                                    true,
+                                    true,
+                                    true,
+                                    -1,
+                                    eps);
     }
 
     if (use_separate_cut) {
@@ -325,28 +320,23 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
     }
 
     if (use_exact) {
-      has_isect = BM_mesh_boolean(em->bm,
-                                  em->looptris,
-                                  em->tottri,
-                                  test_fn,
-                                  NULL,
-                                  use_self,
-                                  boolean_operation);
+      has_isect = BM_mesh_boolean(
+          em->bm, em->looptris, em->tottri, test_fn, NULL, use_self, boolean_operation);
     }
     else {
       has_isect = BM_mesh_intersect(em->bm,
-                                  em->looptris,
-                                  em->tottri,
-                                  test_fn,
-                                  NULL,
-                                  false,
-                                  false,
-                                  true,
-                                  true,
-                                  false,
-                                  true,
-                                  boolean_operation,
-                                  eps);
+                                    em->looptris,
+                                    em->tottri,
+                                    test_fn,
+                                    NULL,
+                                    false,
+                                    false,
+                                    true,
+                                    true,
+                                    false,
+                                    true,
+                                    boolean_operation,
+                                    eps);
     }
 
     edbm_intersect_select(em, obedit->data, has_isect);
