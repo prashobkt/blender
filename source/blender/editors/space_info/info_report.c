@@ -169,35 +169,48 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+
+  const Report *active_report = BLI_findlink((const struct ListBase *)reports,
+                                             sinfo->active_report_index);
+  const bool is_active_report_selected = active_report->flag & SELECT;
+
   if (deselect_all) {
     reports_select_all(reports, report_mask, SEL_DESELECT);
   }
 
+  if (active_report == NULL) {
+    report->flag = SELECT;
+    sinfo->active_report_index = report_index;
+
+    ED_area_tag_redraw(CTX_wm_area(C));
+    return OPERATOR_FINISHED;
+  }
+
   if (use_range) {
-    const Report *active_report = BLI_findlink((const struct ListBase *)reports,
-                                               sinfo->active_report_index);
-    if (active_report == NULL) {
+    if (is_active_report_selected) {
+      if (report_index < sinfo->active_report_index) {
+        for (Report *i = report; i && i->prev != active_report; i = i->next) {
+          i->flag = SELECT;
+        }
+      }
+      else {
+        for (Report *report_iter = report; report_iter && report_iter->next != active_report;
+             report_iter = report_iter->prev) {
+          report_iter->flag = SELECT;
+        }
+      }
+
+      ED_area_tag_redraw(CTX_wm_area(C));
+      return OPERATOR_FINISHED;
+    }
+    else {
+      reports_select_all(reports, report_mask, SEL_DESELECT);
       report->flag = SELECT;
       sinfo->active_report_index = report_index;
 
       ED_area_tag_redraw(CTX_wm_area(C));
       return OPERATOR_FINISHED;
     }
-
-    if (report_index < sinfo->active_report_index) {
-      for (Report *i = report; i && i->prev != active_report; i = i->next) {
-        i->flag = SELECT;
-      }
-    }
-    else {
-      for (Report *report_iter = report; report_iter && report_iter->next != active_report;
-           report_iter = report_iter->prev) {
-        report_iter->flag = SELECT;
-      }
-    }
-
-    ED_area_tag_redraw(CTX_wm_area(C));
-    return OPERATOR_FINISHED;
   }
 
   if (extend && (report->flag & SELECT) && report_index == sinfo->active_report_index) {
