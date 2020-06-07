@@ -1355,7 +1355,7 @@ static TriMesh tmesh_to_trimesh(const TMesh &tm)
 /* This is the main routine for calculating the self_intersection of a TriMesh. */
 static TriMesh tpl_trimesh_self_intersect(const TriMesh &tm_in)
 {
-  constexpr int dbg_level = 1;
+  constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nTRIMESH_SELF_INTERSECT\n";
   }

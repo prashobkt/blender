@@ -41,18 +41,28 @@ namespace MeshIntersect {
  * and it packs nicely into this structure, so keeping it here will save
  * memory.
  */
-struct IndexedTriangle {
-  IndexedTriangle() : m_v{-1, -1, -1}, m_orig{-1}
-  {
-  }
+class IndexedTriangle {
+ public:
+  IndexedTriangle() = default;
   IndexedTriangle(int v0, int v1, int v2, int orig) : m_v{v0, v1, v2}, m_orig{orig}
   {
   }
-  IndexedTriangle(const IndexedTriangle &other) : m_orig{other.m_orig}
+  IndexedTriangle(const IndexedTriangle &other)
   {
-    for (int i = 0; i < 3; ++i) {
-      this->m_v[i] = other.m_v[i];
+    m_v[0] = other.m_v[0];
+    m_v[1] = other.m_v[1];
+    m_v[2] = other.m_v[2];
+    m_orig = other.m_orig;
+  }
+  IndexedTriangle &operator=(const IndexedTriangle &other)
+  {
+    if (this != &other) {
+      m_v[0] = other.m_v[0];
+      m_v[1] = other.m_v[1];
+      m_v[2] = other.m_v[2];
+      m_orig = other.m_orig;
     }
+    return *this;
   }
 
   int v0() const
@@ -81,8 +91,8 @@ struct IndexedTriangle {
   }
 
  private:
-  int m_v[3];
-  int m_orig;
+  int m_v[3]{-1, -1, -1};
+  int m_orig{-1};
 };
 
 struct TriMesh {

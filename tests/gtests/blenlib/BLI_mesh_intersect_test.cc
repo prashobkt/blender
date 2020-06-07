@@ -154,7 +154,7 @@ TEST(mesh_intersect, TwoTris)
     int co1_i = 3 * tri1_index;
     int co2_i = 3 * tri2_index;
 
-    const bool verbose = true;
+    const bool verbose = false;
 
     if (verbose) {
       std::cout << "\nTest " << test << ": T" << tri1_index << " intersect T" << tri2_index
