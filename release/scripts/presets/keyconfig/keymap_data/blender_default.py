@@ -1801,7 +1801,6 @@ def km_node_editor(params):
 
     return keymap
 
-
 def km_info(params):
     items = []
     keymap = (
@@ -1812,8 +1811,12 @@ def km_info(params):
 
     items.extend([
         ("info.select_pick", {"type": 'LEFTMOUSE', "value": 'CLICK'}, None),
+        ("info.select_pick", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True},
+         {"properties": [("extend", True), ("deselect_all", False)]}),
         ("info.select_pick", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
-         {"properties": [("extend", True)]}),
+         {"properties": [("extend_range", True)]}),
+        ("info.select_pick", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True, "shift": True},
+         {"properties": [("deselect_all", False), ("extend_range", True)]}),
         ("info.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY'},
          {"properties": [("wait_for_input", False)]}),
         *_template_items_select_actions(params, "info.select_all"),

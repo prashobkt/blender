@@ -326,6 +326,7 @@ typedef enum ThemeColorID {
   TH_BACKGROUND_TYPE,
 
   TH_INFO_SELECTED,
+  TH_INFO_ACTIVE,
   TH_INFO_SELECTED_TEXT,
   TH_INFO_ERROR,
   TH_INFO_ERROR_TEXT,
@@ -371,6 +372,7 @@ int UI_GetThemeValueType(int colorid, int spacetype);
 // get three color values, scaled to 0.0-1.0 range
 void UI_GetThemeColor3fv(int colorid, float col[3]);
 void UI_GetThemeColorBlend3ubv(int colorid1, int colorid2, float fac, unsigned char col[3]);
+void UI_GetThemeColorBlend4ubv(int colorid1, int colorid2, float fac, unsigned char col[4]);
 void UI_GetThemeColorBlend3f(int colorid1, int colorid2, float fac, float r_col[3]);
 void UI_GetThemeColorBlend4f(int colorid1, int colorid2, float fac, float r_col[4]);
 // get the color, range 0.0-1.0, complete with shading offset

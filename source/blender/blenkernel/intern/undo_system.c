@@ -877,11 +877,11 @@ static void UNUSED_FUNCTION(BKE_undosys_foreach_ID_ref(UndoStack *ustack,
 
 void BKE_undosys_print(UndoStack *ustack)
 {
-  printf("Undo %d Steps (*: active, #=applied, M=memfile-active, S=skip)\n",
+  CLOG_INFO(&LOG, 1, "Undo %d Steps (*: active, #=applied, M=memfile-active, S=skip)",
          BLI_listbase_count(&ustack->steps));
   int index = 0;
   LISTBASE_FOREACH (UndoStep *, us, &ustack->steps) {
-    printf("[%c%c%c%c] %3d {%p} type='%s', name='%s'\n",
+    CLOG_INFO(&LOG, 1, "[%c%c%c%c] %3d {%p} type='%s', name='%s'",
            (us == ustack->step_active) ? '*' : ' ',
            us->is_applied ? '#' : ' ',
            (us == ustack->step_active_memfile) ? 'M' : ' ',
