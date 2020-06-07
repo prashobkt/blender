@@ -4028,6 +4028,8 @@ static void lanpr_update_gp_strokes_single(Depsgraph *dg,
 
   lanpr_generate_gpencil_from_chain(
       dg, ob, gpl, gpf, level_start, level_end, use_material, col, type);
+
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 }
 static void lanpr_update_gp_strokes_recursive(
     Depsgraph *dg, struct Collection *col, int frame, Object *source_only, Object *target_only)
