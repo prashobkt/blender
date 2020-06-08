@@ -129,6 +129,8 @@ typedef enum eMaterialGPencilStyle_Flag {
   GP_MATERIAL_STROKE_TEX_MIX = (1 << 11),
   /* disable stencil clipping (overlap) */
   GP_MATERIAL_DISABLE_STENCIL = (1 << 12),
+  /* Material used as masking. */
+  GP_MATERIAL_IS_MASK = (1 << 13),
 } eMaterialGPencilStyle_Flag;
 
 typedef enum eMaterialGPencilStyle_Mode {

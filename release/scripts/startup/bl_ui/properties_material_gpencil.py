@@ -70,6 +70,9 @@ class GPENCIL_UL_matslots(UIList):
                 row.prop(ma, "name", text="", emboss=False, icon_value=icon)
 
                 row = layout.row(align=True)
+                icon_mask = 'MOD_MASK' if gpcolor.use_masking else 'LAYER_ACTIVE'
+                row.prop(gpcolor, "use_masking", text="", icon=icon_mask, emboss=False)
+
                 if gpcolor.ghost is True:
                     icon = 'ONIONSKIN_OFF'
                 else:
