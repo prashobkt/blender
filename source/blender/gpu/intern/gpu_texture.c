@@ -1771,6 +1771,12 @@ void GPU_texture_unbind(GPUTexture *tex)
 
 void GPU_texture_unbind_all(void)
 {
+  if (GLEW_ARB_multi_bind) {
+    glBindTextures(0, GPU_max_textures(), NULL);
+    glBindSamplers(0, GPU_max_textures(), NULL);
+    return;
+  }
+
   for (int i = 0; i < GPU_max_textures(); i++) {
     glActiveTexture(GL_TEXTURE0 + i);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -1785,6 +1791,8 @@ void GPU_texture_unbind_all(void)
     }
     glBindSampler(i, 0);
   }
+
+  glActiveTexture(GL_TEXTURE0);
 }
 
 #define WARN_NOT_BOUND(_tex) \
@@ -1862,7 +1870,7 @@ void GPU_texture_copy(GPUTexture *dst, GPUTexture *src)
   BLI_assert(dst->d == 0);
   BLI_assert(dst->format == src->format);
 
-  if (GLEW_ARB_copy_image) {
+  if (GLEW_ARB_copy_image && !GPU_texture_copy_workaround()) {
     /* Opengl 4.3 */
     glCopyImageSubData(src->bindcode,
                        src->target,
