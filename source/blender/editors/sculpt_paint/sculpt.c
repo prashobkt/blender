@@ -5486,7 +5486,8 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
     }
 
     /* The cloth brush adds the gravity as a regular force and it is processed in the solver. */
-    if (ss->cache->supports_gravity && brush->sculpt_tool != SCULPT_TOOL_CLOTH) {
+    if (ss->cache->supports_gravity &&
+        !ELEM(brush->sculpt_tool, SCULPT_TOOL_CLOTH, SCULPT_TOOL_DRAW_FACE_SETS)) {
       do_gravity(sd, ob, nodes, totnode, sd->gravity_factor);
     }
 
@@ -7532,7 +7533,7 @@ static void SCULPT_OT_symmetrize(wmOperatorType *ot)
                 0.001f,
                 0.0f,
                 FLT_MAX,
-                "Merge Limit",
+                "Merge Distance",
                 "Distance within which symmetrical vertices are merged",
                 0.0f,
                 1.0f);

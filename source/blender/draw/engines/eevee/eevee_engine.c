@@ -450,7 +450,7 @@ static void eevee_render_to_image(void *vedata,
       /* Reset passlist. This is safe as they are stored into managed memory chunks. */
       memset(ved->psl, 0, sizeof(*ved->psl));
       /* Fix memleak */
-      BLI_ghash_free(ved->stl->g_data->material_hash, NULL, MEM_freeN);
+      BLI_ghash_free(ved->stl->g_data->material_hash, NULL, NULL);
       ved->stl->g_data->material_hash = NULL;
     }
 
@@ -465,7 +465,7 @@ static void eevee_render_to_image(void *vedata,
       /* Reset passlist. This is safe as they are stored into managed memory chunks. */
       memset(ved->psl, 0, sizeof(*ved->psl));
       /* Fix memleak */
-      BLI_ghash_free(ved->stl->g_data->material_hash, NULL, MEM_freeN);
+      BLI_ghash_free(ved->stl->g_data->material_hash, NULL, NULL);
       ved->stl->g_data->material_hash = NULL;
     }
 
