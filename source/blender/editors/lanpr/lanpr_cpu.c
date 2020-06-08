@@ -3772,8 +3772,8 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int inte
     /* This configuration ensures there won't be accidental lost of short segments */
     ED_lanpr_discard_short_chains(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
   }
-
-  ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
+  // Set after GP done.
+  // ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
 
   return OPERATOR_FINISHED;
 }
@@ -3783,10 +3783,14 @@ typedef struct LANPR_FeatureLineWorker {
   int intersection_only;
 } LANPR_FeatureLineWorker;
 
+static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg);
+
 static void lanpr_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
                                                LANPR_FeatureLineWorker *worker_data)
 {
   ED_lanpr_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
+  lanpr_update_gp_strokes_actual(DEG_get_evaluated_scene(worker_data->dg), worker_data->dg);
+  ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
 }
 
 void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersection_only)
@@ -3797,7 +3801,7 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersec
   BLI_spin_unlock(&lanpr_share.lock_render_status);
 
   /* If the calculation is already started then bypass it. */
-  if (!ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {
+  if (ED_lanpr_calculation_flag_check(LANPR_RENDER_RUNNING)) {
     /* Release lock when early return. */
     BLI_spin_unlock(&lanpr_share.lock_loader);
     return;
@@ -3852,12 +3856,12 @@ static int lanpr_compute_feature_lines_exec(bContext *C, wmOperator *op)
    */
   BLI_spin_lock(&lanpr_share.lock_loader);
 
-  result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph_pointer(C),
-                                                   0);  // intersections_only);
+  ED_lanpr_compute_feature_lines_background(CTX_data_depsgraph_pointer(C),
+                                            0);  // intersections_only);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
-  return result;
+  return OPERATOR_FINISHED;
 }
 static void lanpr_compute_feature_lines_cancel(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
@@ -4421,8 +4425,11 @@ void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
     return;
   }
   if (s->lanpr.flags & LANPR_AUTO_UPDATE) {
-    ED_lanpr_compute_feature_lines_internal(dg, 0);
-    lanpr_update_gp_strokes_actual(s, dg);
+    ED_lanpr_compute_feature_lines_background(dg, 0);
+
+    /* Wait for loading finish */
+    BLI_spin_lock(&lanpr_share.lock_loader);
+    BLI_spin_unlock(&lanpr_share.lock_loader);
   }
 }
 
