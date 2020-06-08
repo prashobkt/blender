@@ -233,6 +233,11 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
   EEVEE_EffectsInfo *effects = stl->effects;
   DRWShadingGroup *grp = NULL;
 
+  /* TODO(fclem) Also detect if object has any motion. */
+  if (!DRW_state_is_scene_render() || psl->velocity_object == NULL) {
+    return;
+  }
+
   EEVEE_ObjectMotionData *mb_data = EEVEE_motion_blur_object_data_get(&effects->motion_blur, ob);
 
   if (mb_data) {
