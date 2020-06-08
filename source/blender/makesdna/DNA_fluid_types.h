@@ -90,6 +90,7 @@ enum {
 enum {
   VOLUME_INTERP_LINEAR = 0,
   VOLUME_INTERP_CUBIC = 1,
+  VOLUME_INTERP_RAW = 2,
 };
 
 enum {

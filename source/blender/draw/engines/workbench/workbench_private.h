@@ -413,7 +413,7 @@ GPUShader *workbench_shader_outline_get(void);
 GPUShader *workbench_shader_antialiasing_accumulation_get(void);
 GPUShader *workbench_shader_antialiasing_get(int stage);
 
-GPUShader *workbench_shader_volume_get(bool slice, bool coba, bool cubic, bool smoke);
+GPUShader *workbench_shader_volume_get(bool slice, bool coba, char cubic, bool smoke);
 
 void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
                                          GPUShader **downsample_sh,

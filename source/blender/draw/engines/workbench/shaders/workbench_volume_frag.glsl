@@ -95,10 +95,20 @@ vec4 sample_tricubic(sampler3D ima, vec3 co)
   return color;
 }
 
+vec4 sample_raw(sampler3D ima, vec3 co)
+{
+  co -= 0.5;
+  vec3 dim = vec3(textureSize(ima, 0).xyz);
+  co = co - mod(co, 1.0 / dim) + 0.5 / dim + 0.5;
+  return texture(ima, co);
+}
+
 #ifdef USE_TRICUBIC
 #  define sample_volume_texture sample_tricubic
-#else
+#elif defined(USE_TRILINEAR)
 #  define sample_volume_texture sample_trilinear
+#else
+#  define sample_volume_texture sample_raw
 #endif
 
 void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)

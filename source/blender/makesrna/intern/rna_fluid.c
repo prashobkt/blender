@@ -1146,6 +1146,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
        0,
        "Cubic",
        "Smoothed high quality interpolation, but slower"},
+      {VOLUME_INTERP_RAW, "RAW", 0, "Raw", "No interpolation"},
       {0, NULL, 0, NULL, NULL},
   };
 

@@ -107,7 +107,7 @@ static struct {
   struct GPUShader *aa_accum_sh;
   struct GPUShader *smaa_sh[3];
 
-  struct GPUShader *volume_sh[2][2][2][2];
+  struct GPUShader *volume_sh[2][2][3][2];
 
   struct DRWShaderLibrary *lib;
 } e_data = {{{{NULL}}}};
@@ -441,7 +441,7 @@ GPUShader *workbench_shader_antialiasing_get(int stage)
   return e_data.smaa_sh[stage];
 }
 
-GPUShader *workbench_shader_volume_get(bool slice, bool coba, bool cubic, bool smoke)
+GPUShader *workbench_shader_volume_get(bool slice, bool coba, char cubic, bool smoke)
 {
   GPUShader **shader = &e_data.volume_sh[slice][coba][cubic][smoke];
 
@@ -454,8 +454,13 @@ GPUShader *workbench_shader_volume_get(bool slice, bool coba, bool cubic, bool s
     if (coba) {
       BLI_dynstr_append(ds, "#define USE_COBA\n");
     }
-    if (cubic) {
-      BLI_dynstr_append(ds, "#define USE_TRICUBIC\n");
+    switch (cubic) {
+      case 0:
+        BLI_dynstr_append(ds, "#define USE_TRILINEAR\n");
+        break;
+      case 1:
+        BLI_dynstr_append(ds, "#define USE_TRICUBIC\n");
+        break;
     }
     if (smoke) {
       BLI_dynstr_append(ds, "#define VOLUME_SMOKE\n");
