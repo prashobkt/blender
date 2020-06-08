@@ -50,7 +50,7 @@ vec2 spread_compare(float center_motion_length, float sample_motion_length, floa
 }
 
 /* TODO expose to user */
-#define DEPTH_SCALE (1.0 / 0.01)
+#define DEPTH_SCALE 100.0
 
 vec2 depth_compare(float center_depth, float sample_depth)
 {
@@ -147,9 +147,9 @@ void gather_blur(vec2 screen_uv,
 
   float ofs = fract(wang_hash_noise(0u) + sampleOffset);
 
-  for (int i = 0; i < KERNEL; i++) {
-    float t = (float(i) + ofs) / float(KERNEL);
-
+  int i;
+  float t, inc = 1.0 / float(KERNEL);
+  for (i = 0, t = ofs * inc; i < KERNEL; i++, t += inc) {
     gather_sample(screen_uv,
                   center_depth,
                   center_motion_len,
@@ -159,7 +159,13 @@ void gather_blur(vec2 screen_uv,
                   accum,
                   accum_bg,
                   w_accum);
+  }
 
+  if (center_motion_len < 0.5) {
+    return;
+  }
+
+  for (i = 0, t = ofs * inc; i < KERNEL; i++, t += inc) {
     /* Also sample in center motion direction.
      * Allow to recover motion where there is conflicting
      * motion between foreground and background. */
