@@ -464,6 +464,9 @@ static LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBu
 static LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
                                                              LANPR_RenderLineChainItem *rlci)
 {
+  if (!rlci) {
+    return NULL;
+  }
   LANPR_BoundingArea *root = ED_lanpr_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
   if (root == NULL) {
     return NULL;
@@ -582,11 +585,12 @@ void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
 }
 
 /*  note: segment type (crease/material/contour...) is ambiguous after this. */
-static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
-                                     LANPR_RenderLineChain *onto,
-                                     LANPR_RenderLineChain *sub,
-                                     int reverse_1,
-                                     int reverse_2)
+static void __attribute__((optimize("O0")))
+lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
+                         LANPR_RenderLineChain *onto,
+                         LANPR_RenderLineChain *sub,
+                         int reverse_1,
+                         int reverse_2)
 {
   LANPR_RenderLineChainItem *rlci;
   if (!reverse_1) {  /*  L--R L-R */
@@ -596,6 +600,9 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
     rlci = sub->chain.first;
     if (lanpr_check_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
       BLI_pophead(&sub->chain);
+      if (sub->chain.first == NULL) {
+        return;
+      }
     }
     ((LANPR_RenderLineChainItem *)onto->chain.last)->next = sub->chain.first;
     ((LANPR_RenderLineChainItem *)sub->chain.first)->prev = onto->chain.last;
@@ -608,6 +615,9 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
     rlci = onto->chain.first;
     if (lanpr_check_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
       BLI_pophead(&onto->chain);
+      if (onto->chain.first == NULL) {
+        return;
+      }
     }
     ((LANPR_RenderLineChainItem *)sub->chain.last)->next = onto->chain.first;
     ((LANPR_RenderLineChainItem *)onto->chain.first)->prev = sub->chain.last;
@@ -649,7 +659,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
     occlusion = ((LANPR_RenderLineChainItem *)rlc->chain.first)->occlusion;
 
     rlci = rlc->chain.last;
-    while ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL) {
+    while (rlci && ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL)) {
       dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
@@ -660,13 +670,13 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
         if (cre->rlc->object_ref != rlc->object_ref) {
           continue;
         }
-        if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
-            (cre->rlc->type != rlc->type)) {
-          continue;
-        }
         if (cre->rlc->picked) {
           BLI_remlink(&ba->linked_chains, cre);
+          continue;
+        }
+        if (cre->rlc == rlc || (!cre->rlc->chain.first) ||
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
+            (cre->rlc->type != rlc->type)) {
           continue;
         }
         float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
@@ -695,7 +705,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
     }
 
     rlci = rlc->chain.first;
-    while ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL) {
+    while (rlci && ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL)) {
       dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
@@ -706,13 +716,13 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
         if (cre->rlc->object_ref != rlc->object_ref) {
           continue;
         }
-        if (cre->rlc == rlc ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
-            (cre->rlc->type != rlc->type)) {
-          continue;
-        }
         if (cre->rlc->picked) {
           BLI_remlink(&ba->linked_chains, cre);
+          continue;
+        }
+        if (cre->rlc == rlc || (!cre->rlc->chain.first) ||
+            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
+            (cre->rlc->type != rlc->type)) {
           continue;
         }
         float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
