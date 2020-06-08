@@ -111,18 +111,19 @@ typedef struct SpaceInfo {
   char _pad0[6];
   /* End 'SpaceLink' header. */
 
-  char rpt_mask;
+  char report_mask_exclude;
   char _pad[3];
   int active_report_index;
 } SpaceInfo;
 
-/* SpaceInfo.rpt_mask */
+/* SpaceInfo.report_mask_exclude */
 typedef enum eSpaceInfo_RptMask {
   INFO_RPT_DEBUG = (1 << 0),
   INFO_RPT_INFO = (1 << 1),
   INFO_RPT_OP = (1 << 2),
   INFO_RPT_WARN = (1 << 3),
   INFO_RPT_ERR = (1 << 4),
+  INFO_RPT_PROP = (1 << 5),
 } eSpaceInfo_RptMask;
 
 /** \} */
