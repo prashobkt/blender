@@ -585,12 +585,11 @@ void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
 }
 
 /*  note: segment type (crease/material/contour...) is ambiguous after this. */
-static void __attribute__((optimize("O0")))
-lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
-                         LANPR_RenderLineChain *onto,
-                         LANPR_RenderLineChain *sub,
-                         int reverse_1,
-                         int reverse_2)
+static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
+                                     LANPR_RenderLineChain *onto,
+                                     LANPR_RenderLineChain *sub,
+                                     int reverse_1,
+                                     int reverse_2)
 {
   LANPR_RenderLineChainItem *rlci;
   if (!reverse_1) {  /*  L--R L-R */
