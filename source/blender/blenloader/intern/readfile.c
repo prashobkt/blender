@@ -6668,8 +6668,6 @@ static void lib_link_scene(FileData *fd, Main *UNUSED(bmain), Scene *sce)
   }
 
   if (sce->nodetree) {
-    lib_link_ntree(fd, &sce->id, sce->nodetree);
-    sce->nodetree->id.lib = sce->id.lib;
     composite_patch(sce->nodetree, sce);
   }
 
