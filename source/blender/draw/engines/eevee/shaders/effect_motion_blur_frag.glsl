@@ -58,20 +58,20 @@ vec2 depth_compare(float center_depth, float sample_depth)
 }
 
 /* Kill contribution if not going the same direction. */
-float dir_compare(vec2 offset_dir, vec2 sample_motion, float sample_motion_length)
+float dir_compare(vec2 offset, vec2 sample_motion, float sample_motion_length)
 {
   if (sample_motion_length < 0.5) {
     return 1.0;
   }
-  return (dot(offset_dir, sample_motion / sample_motion_length) > 0.0) ? 1.0 : 0.0;
+  return (dot(offset, sample_motion) > 0.0) ? 1.0 : 0.0;
 }
 
 /* Return background (x) and foreground (y) weights. */
-vec2 sample_weight(float center_depth,
-                   float sample_depth,
-                   float center_motion_length,
-                   float sample_motion_length,
-                   float offset_length)
+vec2 sample_weights(float center_depth,
+                    float sample_depth,
+                    float center_motion_length,
+                    float sample_motion_length,
+                    float offset_length)
 {
   /* Clasify foreground/background. */
   vec2 depth_weight = depth_compare(center_depth, sample_depth);
@@ -101,7 +101,35 @@ vec2 sample_velocity(vec2 uv, const bool next)
 #define SEARCH_KERNEL 8.0
 #define KERNEL 8
 
-void gather_blur(vec2 uv,
+void gather_sample(vec2 screen_uv,
+                   float center_depth,
+                   float center_motion_len,
+                   vec2 offset,
+                   float offset_len,
+                   const bool next,
+                   inout vec4 accum,
+                   inout vec4 accum_bg,
+                   inout vec3 w_accum)
+{
+  /* TODO snap uv to pixel center. Will avoid halo at object edges */
+  vec2 sample_uv = screen_uv - offset * viewportSizeInv;
+  vec2 sample_motion = sample_velocity(sample_uv, next);
+  float sample_motion_len = length(sample_motion);
+  float sample_depth = linear_depth(texture(depthBuffer, sample_uv).r);
+  vec4 col = textureLod(colorBuffer, sample_uv, 0.0);
+
+  vec3 weights;
+  weights.xy = sample_weights(
+      center_depth, sample_depth, center_motion_len, sample_motion_len, offset_len);
+  weights.z = dir_compare(offset, sample_motion, sample_motion_len);
+  weights.xy *= weights.z;
+
+  accum += col * weights.y;
+  accum_bg += col * weights.x;
+  w_accum += weights;
+}
+
+void gather_blur(vec2 screen_uv,
                  vec2 center_motion,
                  float center_depth,
                  vec2 max_motion,
@@ -110,42 +138,40 @@ void gather_blur(vec2 uv,
                  inout vec4 accum_bg,
                  inout vec3 w_accum)
 {
-  float center_motion_length = length(center_motion);
-  float max_motion_length = length(max_motion);
+  float center_motion_len = length(center_motion);
+  float max_motion_len = length(max_motion);
 
-  if (max_motion_length < 0.5) {
+  if (max_motion_len < 0.5) {
     return;
   }
 
-  vec2 offset_dir = max_motion / max_motion_length;
-  float offset_length_inc = max_motion_length / float(KERNEL);
-  vec2 uv_inc = ((uv * viewportSize - max_motion) * viewportSizeInv - uv) / float(KERNEL);
-
-  float start_offset = -sampleOffset;
-  float offset_length = offset_length_inc * start_offset;
-  vec2 offset = uv_inc * start_offset;
+  float ofs = fract(wang_hash_noise(0u) + sampleOffset);
 
   for (int i = 0; i < KERNEL; i++) {
-    offset_length += offset_length_inc;
-    offset += uv_inc;
+    float t = (float(i) + ofs) / float(KERNEL);
 
-    /* TODO snap uv to pixel center. Will avoid halo at object edges */
-    vec2 sample_uv = uv + offset;
-    vec2 sample_motion = sample_velocity(sample_uv, next);
-    float sample_motion_length = length(sample_motion);
-    float sample_depth = linear_depth(texture(depthBuffer, sample_uv).r);
-    vec4 col2 = textureLod(colorBuffer, sample_uv, 0.0);
+    gather_sample(screen_uv,
+                  center_depth,
+                  center_motion_len,
+                  max_motion * t,
+                  max_motion_len * t,
+                  next,
+                  accum,
+                  accum_bg,
+                  w_accum);
 
-    float d2 = dir_compare(offset_dir, sample_motion, sample_motion_length);
-    vec2 w2 = sample_weight(
-        center_depth, sample_depth, center_motion_length, sample_motion_length, offset_length);
-
-    w2.xy *= d2;
-
-    accum += col2 * w2.y;
-    accum_bg += col2 * w2.x;
-    w_accum.xy += w2;
-    w_accum.z += d2;
+    /* Also sample in center motion direction.
+     * Allow to recover motion where there is conflicting
+     * motion between foreground and background. */
+    gather_sample(screen_uv,
+                  center_depth,
+                  center_motion_len,
+                  center_motion * t,
+                  center_motion_len * t,
+                  next,
+                  accum,
+                  accum_bg,
+                  w_accum);
   }
 }
 
@@ -190,14 +216,6 @@ void main()
   gather_blur(uv, center_motion.xy, center_depth, max_motion.xy, false, accum, accum_bg, w_accum);
   /* Second linear gather. time = [T, T + delta] */
   gather_blur(uv, center_motion.zw, center_depth, max_motion.zw, true, accum, accum_bg, w_accum);
-  /* Also sample in center motion direction.
-   * Allow to recover motion where there is conflicting
-   * motion between foreground and background.
-   * TODO(fclem) distribute samples between max motion and this direction inside the main loop.*/
-  gather_blur(
-      uv, center_motion.xy, center_depth, center_motion.xy, false, accum, accum_bg, w_accum);
-  gather_blur(
-      uv, center_motion.zw, center_depth, center_motion.zw, true, accum, accum_bg, w_accum);
 
 #if 1
   /* Avoid division by 0.0. */
