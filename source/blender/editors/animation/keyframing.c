@@ -555,6 +555,9 @@ int insert_vert_fcurve(
   /* add temp beztriple to keyframes */
   a = insert_bezt_fcurve(fcu, &beztr, flag);
 
+  /* Set the FCurve's active keyframe to this index. */
+  fcu->active_key = a;
+
   /* what if 'a' is a negative index?
    * for now, just exit to prevent any segfaults
    */
