@@ -97,8 +97,8 @@ vec4 sample_tricubic(sampler3D ima, vec3 co)
 
 vec4 sample_raw(sampler3D ima, vec3 co)
 {
-  vec3 texel_size = vec3(textureSize(ima, 0).xyz);
-  vec3 texel_center = co - mod(co, 1.0 / texel_size) + 0.5 / texel_size;
+  vec3 texture_size = vec3(textureSize(ima, 0).xyz);
+  vec3 texel_center = co - mod(co, 1.0 / texture_size) + 0.5 / texture_size;
   return texture(ima, texel_center);
 }
 
