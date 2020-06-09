@@ -284,7 +284,7 @@ void BKE_gpencil_modifier_copydata(struct GpencilModifierData *md,
 void BKE_gpencil_modifier_copydata_ex(struct GpencilModifierData *md,
                                       struct GpencilModifierData *target,
                                       const int flag);
-void BKE_gpencil_modifier_setError(struct GpencilModifierData *md, const char *format, ...)
+void BKE_gpencil_modifier_set_error(struct GpencilModifierData *md, const char *format, ...)
     ATTR_PRINTF_FORMAT(2, 3);
 void BKE_gpencil_modifiers_foreach_ID_link(struct Object *ob,
                                            GreasePencilIDWalkFunc walk,

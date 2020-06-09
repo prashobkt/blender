@@ -1560,26 +1560,22 @@ void CONSTRAINT_OT_move_up(wmOperatorType *ot)
 /** \name Move Constraint To Index Operator
  * \{ */
 
-/* HANS-TODO: Implement poll function for constraint moving. The standard constraint function
- * #edit_constraint_poll checks with #CTX_data_pointer_get_type, so I need to set that properly.
- *
- * Needed for modifiers as well. */
-static bool constraint_move_to_index_poll(bContext *C)
-{
-  return true;
-}
-
 static int constraint_move_to_index_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
   bConstraint *con = edit_constraint_property_get(op, ob, 0);
-  int index = RNA_int_get(op->ptr, "index");
+
+  int new_index = RNA_int_get(op->ptr, "index");
+  if (new_index < 0) {
+    new_index = 0;
+  }
 
   if (con) {
     ListBase *conlist = ED_object_constraint_list_from_constraint(ob, con, NULL);
     int current_index = BLI_findindex(conlist, con);
+    BLI_assert(current_index >= 0);
 
-    BLI_listbase_link_move(conlist, con, index - current_index);
+    BLI_listbase_link_move(conlist, con, new_index - current_index);
 
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
 
@@ -1606,12 +1602,13 @@ void CONSTRAINT_OT_move_to_index(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Move Constraint To Index";
   ot->idname = "CONSTRAINT_OT_move_to_index";
-  ot->description = "Move constraint to an index in the stack";
+  ot->description =
+      "Change the constraint's index in the list so  it evaluates after the set number of others";
 
   /* callbacks */
   ot->exec = constraint_move_to_index_exec;
   ot->invoke = constraint_move_to_index_invoke;
-  ot->poll = constraint_move_to_index_poll;
+  ot->poll = edit_constraint_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

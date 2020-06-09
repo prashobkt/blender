@@ -1877,6 +1877,9 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
+/**
+ * Function with void * argument for #uiListPanelIDFromDataFunc.
+ */
 static void gpencil_modifier_panel_id(void *md_link, char *r_name)
 {
   ModifierData *md = (ModifierData *)md_link;
@@ -1899,7 +1902,7 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
       const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
       if (mti->panelRegister) {
         char panel_idname[MAX_NAME];
-        BKE_gpencil_modifierType_panel_id(md->type, panel_idname);
+        gpencil_modifier_panel_id(md, panel_idname);
 
         Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
         if (new_panel != NULL) {
@@ -1940,6 +1943,7 @@ static void constraint_reorder(bContext *C, Panel *panel, int new_index)
   WM_operator_properties_create_ptr(&props_ptr, ot);
   RNA_string_set(&props_ptr, "constraint", con->name);
   RNA_int_set(&props_ptr, "index", new_index);
+  /* Set owner to #EDIT_CONSTRAINT_OWNER_OBJECT or #EDIT_CONSTRAINT_OWNER_BONE. */
   RNA_enum_set(&props_ptr, "owner", constraint_from_bone ? 1 : 0);
   WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr);
   WM_operator_properties_free(&props_ptr);
@@ -1990,7 +1994,7 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
     bConstraint *con = constraints->first;
     for (int i = 0; con; i++, con = con->next) {
       char panel_idname[MAX_NAME];
-      constraint_panel_id((void *)con, panel_idname);
+      constraint_panel_id(con, panel_idname);
 
       Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
       if (new_panel) {
@@ -2014,7 +2018,7 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C)
  * \{ */
 
 /**
- * Get the idname of the effect type's panel, which was defined in the #panelRegister callback.
+ * Function with void * argument for #uiListPanelIDFromDataFunc.
  */
 static void shaderfx_panel_id(void *fx_v, char *r_idname)
 {
@@ -2039,7 +2043,7 @@ void uiTemplateShaderFx(uiLayout *UNUSED(layout), bContext *C)
     ShaderFxData *fx = shaderfx->first;
     for (int i = 0; fx; i++, fx = fx->next) {
       char panel_idname[MAX_NAME];
-      shaderfx_panel_id((void *)fx, panel_idname);
+      shaderfx_panel_id(fx, panel_idname);
 
       Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
       if (new_panel != NULL) {

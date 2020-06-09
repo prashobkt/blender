@@ -603,7 +603,7 @@ GpencilModifierData *BKE_gpencil_modifiers_findby_type(Object *ob, GpencilModifi
   return md;
 }
 
-void BKE_gpencil_modifier_setError(GpencilModifierData *md, const char *_format, ...)
+void BKE_gpencil_modifier_set_error(GpencilModifierData *md, const char *_format, ...)
 {
   char buffer[512];
   va_list ap;

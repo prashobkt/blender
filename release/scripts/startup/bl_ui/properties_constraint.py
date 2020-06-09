@@ -329,15 +329,16 @@ class OBJECT_PT_bFollowPathConstraint(ConstraintButtonsPanel):
         con = self.get_constraint(context)
         layout.use_property_split = True
         layout.use_property_decorate = True
+        
+        col = layout.column()
+        col.prop(con, "use_curve_follow")
+        col.prop(con, "use_curve_radius")
 
-        layout.prop(con, "use_curve_follow")
-        layout.prop(con, "use_curve_radius")
-
-        layout.prop(con, "use_fixed_location")
+        col.prop(con, "use_fixed_location")
         if con.use_fixed_location:
-            layout.prop(con, "offset_factor", text="Offset")
+            col.prop(con, "offset_factor", text="Offset")
         else:
-            layout.prop(con, "offset")
+            col.prop(con, "offset")
 
         layout.prop(con, "forward_axis", expand=True)
         layout.prop(con, "up_axis", expand=True, text="Up")
@@ -391,39 +392,41 @@ class OBJECT_PT_bLocLimitConstraint(ConstraintButtonsPanel):
         layout.use_property_split = True
         layout.use_property_decorate = True
 
-        row = layout.row(heading="Minimum X", align=True)
+        col = layout.column()
+
+        row = col.row(heading="Minimum X", align=True)
         row.prop(con, "use_min_x", text="")
         sub = row.row()
         sub.active = con.use_min_x
         sub.prop(con, "min_x", text="")
 
-        row = layout.row(heading="Y", align=True)
+        row = col.row(heading="Y", align=True)
         row.prop(con, "use_min_y", text="")
         sub = row.row()
         sub.active = con.use_min_y
         sub.prop(con, "min_y", text="")
 
-        row = layout.row(heading="Z", align=True)
+        row = col.row(heading="Z", align=True)
         row.prop(con, "use_min_z", text="")
         sub = row.row()
         sub.active = con.use_min_z
         sub.prop(con, "min_z", text="")
 
-        layout.separator()
+        col.separator()
 
-        row = layout.row(heading="Maximum X", align=True)
+        row = col.row(heading="Maximum X", align=True)
         row.prop(con, "use_max_x", text="")
         sub = row.row()
         sub.active = con.use_max_x
         sub.prop(con, "max_x", text="")
 
-        row = layout.row(heading="Y", align=True)
+        row = col.row(heading="Y", align=True)
         row.prop(con, "use_max_y", text="")
         sub = row.row()
         sub.active = con.use_max_y
         sub.prop(con, "max_y", text="")
 
-        row = layout.row(heading="Z", align=True)
+        row = col.row(heading="Z", align=True)
         row.prop(con, "use_max_z", text="")
         sub = row.row()
         sub.active = con.use_max_z
@@ -558,11 +561,12 @@ class OBJECT_PT_bSizeLikeConstraint(ConstraintButtonsPanel):
         row.prop(con, "use_y", text="Y", toggle=True)
         row.prop(con, "use_z", text="Z", toggle=True)
 
-        layout.prop(con, "power")
-        layout.prop(con, "use_make_uniform")
+        col = layout.column()
+        col.prop(con, "power")
+        col.prop(con, "use_make_uniform")
 
-        layout.prop(con, "use_offset")
-        row = layout.row()
+        col.prop(con, "use_offset")
+        row = col.row()
         row.active = con.use_offset
         row.prop(con, "use_add")
 
@@ -1198,18 +1202,15 @@ class OBJECT_PT_bTransformCacheConstraint(ConstraintButtonsPanel):
     def draw(self, context):
         layout = self.layout
         con = self.get_constraint(context)
+        layout.use_property_split = True
+        layout.use_property_decorate = True
 
-        layout.label(text="Cache File Properties:")
-        box = layout.box()
-        box.template_cache_file(con, "cache_file")
+        layout.template_cache_file(con, "cache_file")
 
         cache_file = con.cache_file
 
-        layout.label(text="Constraint Properties:")
-        box = layout.box()
-
         if cache_file is not None:
-            box.prop_search(con, "object_path", cache_file, "object_paths")
+            layout.prop_search(con, "object_path", cache_file, "object_paths")
 
         self.draw_influence(layout, con)
 
@@ -1229,8 +1230,9 @@ class OBJECT_PT_bArmatureConstraint(ConstraintButtonsPanel):
         layout.use_property_split = True
         layout.use_property_decorate = True
 
-        layout.prop(con, "use_deform_preserve_volume")
-        layout.prop(con, "use_bone_envelopes")
+        col = layout.column()
+        col.prop(con, "use_deform_preserve_volume")
+        col.prop(con, "use_bone_envelopes")
 
         if context.pose_bone:
             layout.prop(con, "use_current_location")

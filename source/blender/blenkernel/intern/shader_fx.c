@@ -166,7 +166,7 @@ const ShaderFxTypeInfo *BKE_shaderfx_get_info(ShaderFxType type)
 }
 
 /**
- * Get an effect's panel type.
+ * Get an effect's panel type, which was defined in the #panelRegister callback.
  *
  * \note: ShaderFx panel types are assumed to be named with the struct name field concatenated to
  * the defined prefix.

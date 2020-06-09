@@ -35,8 +35,6 @@
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
-#include "DNA_modifier_types.h"
-
 #include "ED_screen.h"
 #include "ED_space_api.h"
 #include "ED_view3d.h" /* To draw toolbar UI. */
