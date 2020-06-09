@@ -507,7 +507,6 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
   Ray light_ray ccl_optional_struct_init;
   BsdfEval L_light ccl_optional_struct_init;
   bool is_lamp = false;
-  bool has_emission = false;
 
   light_ray.t = 0.0f;
 #    ifdef __OBJECT_MOTION__
@@ -531,31 +530,21 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
                      &ls,
                      has_volume)) {
       float terminate = path_state_rng_light_termination(kg, state);
-      has_emission = direct_emission(
-          kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
+      accum_light_contribution(kg,
+                               sd,
+                               emission_sd,
+                               &ls,
+                               state,
+                               &light_ray,
+                               &L_light,
+                               L,
+                               &is_lamp,
+                               terminate,
+                               throughput,
+                               1.0f);
     }
   }
 
-  /* trace shadow ray */
-  float3 shadow;
-
-  const bool blocked = shadow_blocked(kg, sd, emission_sd, state, &light_ray, &shadow);
-
-  if (has_emission) {
-    /* accumulate */
-    accum_light_contribution(kg,
-                             sd,
-                             emission_sd,
-                             &ls,
-                             state,
-                             &light_ray,
-                             &L_light,
-                             L,
-                             &is_lamp,
-                             terminate,
-                             throughput,
-                             1.0f);
-  }
 #  endif
 #endif
 }
