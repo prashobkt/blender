@@ -195,13 +195,14 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
   if ((effects->enabled_effects & EFFECT_MOTION_BLUR) != 0) {
     {
       DRW_PASS_CREATE(psl->motion_blur, DRW_STATE_WRITE_COLOR);
+      eGPUSamplerState state = 0;
 
       DRWShadingGroup *grp = DRW_shgroup_create(e_data.motion_blur_sh, psl->motion_blur);
       DRW_shgroup_uniform_int_copy(grp, "samples", scene->eevee.motion_blur_samples);
       DRW_shgroup_uniform_float(grp, "sampleOffset", &effects->motion_blur_sample_offset, 1);
-      DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", &effects->source_buffer);
-      DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
-      DRW_shgroup_uniform_texture_ref(grp, "velocityBuffer", &effects->velocity_tx);
+      DRW_shgroup_uniform_texture_ref_ex(grp, "colorBuffer", &effects->source_buffer, state);
+      DRW_shgroup_uniform_texture_ref_ex(grp, "depthBuffer", &dtxl->depth, state);
+      DRW_shgroup_uniform_texture_ref_ex(grp, "velocityBuffer", &effects->velocity_tx, state);
       DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
       DRW_shgroup_uniform_vec2(grp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);

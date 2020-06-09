@@ -111,7 +111,6 @@ void gather_sample(vec2 screen_uv,
                    inout vec4 accum_bg,
                    inout vec3 w_accum)
 {
-  /* TODO snap uv to pixel center. Will avoid halo at object edges */
   vec2 sample_uv = screen_uv - offset * viewportSizeInv;
   vec2 sample_motion = sample_velocity(sample_uv, next);
   float sample_motion_len = length(sample_motion);
