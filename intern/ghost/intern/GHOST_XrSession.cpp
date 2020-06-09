@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <list>
 #include <sstream>
+#include <string>
 
 #include "GHOST_C-api.h"
 
@@ -46,7 +47,57 @@ struct OpenXRSessionData {
   XrSpace view_space;
   std::vector<XrView> views;
   std::vector<GHOST_XrSwapchain> swapchains;
+
+  std::map<std::string, GHOST_XrActionSet> actionSetMap;
 };
+
+GHOST_XrAction::GHOST_XrAction(XrAction action, XrActionType actionType)
+{
+  this->action = action;
+  this->actionType = actionType;
+}
+
+GHOST_XrActionSet::~GHOST_XrActionSet()
+{
+  xrDestroyActionSet(actionSet);
+}
+
+void GHOST_XrActionSet::createAction(XrActionCreateInfo *info)
+{
+  XrAction action;
+
+  CHECK_XR(xrCreateAction(actionSet, info, &action),
+           "Action set creation failed.");
+
+  this->actionMap.insert({ info->actionName, GHOST_XrAction(action, info->actionType) });
+}
+
+GHOST_XrActionSet::GHOST_XrActionSet(XrActionSet actionSet)
+{
+  this->actionSet = actionSet;
+}
+
+void GHOST_XrSession::createActionSet(char *name, char *localizedName)
+{
+  XrActionSetCreateInfo actionSetInfo = {XR_TYPE_ACTION_SET_CREATE_INFO};
+  actionSetInfo.priority = 0;
+  actionSetInfo.next = NULL;
+
+  strncpy(actionSetInfo.actionSetName, name, XR_MAX_ACTION_SET_NAME_SIZE);
+  strncpy(actionSetInfo.localizedActionSetName, localizedName,
+          XR_MAX_LOCALIZED_ACTION_SET_NAME_SIZE);
+
+  XrActionSet set;
+
+  CHECK_XR(xrCreateActionSet(m_context->getInstance(), &actionSetInfo, &set),
+           "Action set creation failed.");
+
+  m_oxr->actionSetMap.insert({ name, GHOST_XrActionSet(set) });
+}
+
+void GHOST_XrSession::updateActions() {
+
+}
 
 struct GHOST_XrDrawInfo {
   XrFrameState frame_state;
@@ -415,6 +466,9 @@ void GHOST_XrSession::drawView(GHOST_XrSwapchain &swapchain,
 XrCompositionLayerProjection GHOST_XrSession::drawLayer(
     std::vector<XrCompositionLayerProjectionView> &r_proj_layer_views, void *draw_customdata)
 {
+  //TODO: Temporary controller state query, should go elsewhere
+  updateActions();
+
   XrViewLocateInfo viewloc_info = {XR_TYPE_VIEW_LOCATE_INFO};
   XrViewState view_state = {XR_TYPE_VIEW_STATE};
   XrCompositionLayerProjection layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};

@@ -31,6 +31,24 @@ class GHOST_XrSwapchain;
 struct GHOST_XrDrawInfo;
 struct OpenXRSessionData;
 
+class GHOST_XrAction {
+ public:
+  XrAction action;
+  XrActionType actionType;
+  GHOST_XrAction(XrAction action, XrActionType);
+};
+
+class GHOST_XrActionSet {
+ private:
+  XrActionSet actionSet;
+  std::map<std::string, GHOST_XrAction> actionMap;
+
+ public:
+  GHOST_XrActionSet(XrActionSet actionSet);
+  ~GHOST_XrActionSet();
+  void createAction(XrActionCreateInfo *info);
+};
+
 class GHOST_XrSession {
  public:
   enum LifeExpectancy {
@@ -40,6 +58,9 @@ class GHOST_XrSession {
 
   GHOST_XrSession(GHOST_XrContext *xr_context);
   ~GHOST_XrSession();
+
+  void createActionSet(char *name, char *localizedName);
+  void updateActions();
 
   void start(const GHOST_XrSessionBeginInfo *begin_info);
   void requestEnd();
