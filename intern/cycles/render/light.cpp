@@ -715,6 +715,7 @@ void LightManager::device_update_distribution(Device *device,
     totarea += lightarea;
 
     if (light->type == LIGHT_DISTANT) {
+      num_distant_lights++;
       use_lamp_mis |= (light->angle > 0.0f && light->use_mis);
     }
     else if (light->type == LIGHT_POINT || light->type == LIGHT_SPOT) {
@@ -726,9 +727,6 @@ void LightManager::device_update_distribution(Device *device,
     else if (light->type == LIGHT_BACKGROUND) {
       num_background_lights++;
       background_mis |= light->use_mis;
-    }
-    else if (light->type == LIGHT_DISTANT) {
-      num_distant_lights++;
     }
 
     offset++;

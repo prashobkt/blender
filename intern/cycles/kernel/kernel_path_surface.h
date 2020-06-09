@@ -116,7 +116,7 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
     /* pick a point on the chosen light(distribution_id) and calculate the
      * probability of picking this point */
     LightSample ls;
-    light_point_sample(kg, randu, randv, time, P, bounce, distribution_id, &ls);
+    light_point_sample(kg, -1, randu, randv, time, P, bounce, distribution_id, &ls);
 
     /* combine pdfs */
     ls.pdf *= pdf_factor;
@@ -292,7 +292,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
 
     /* sample a point on the given distant/background light */
     LightSample ls;
-    light_point_sample(kg, randu, randv, sd->time, sd->P, state->bounce, index, &ls);
+    light_point_sample(kg, -1, randu, randv, sd->time, sd->P, state->bounce, index, &ls);
 
     /* combine pdfs */
     ls.pdf *= group_prob;
@@ -315,10 +315,10 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
                              throughput,
                              num_samples_adjust);
   }
-  else if (!use_light_tree) {
+  else {
     int num_lights = 0;
     if (kernel_data.integrator.use_direct_light) {
-      if (sample_all_lights) {
+      if (sample_all_lights && !use_light_tree) {
         num_lights = kernel_data.integrator.num_all_lights;
         if (kernel_data.integrator.pdf_triangles != 0.0f) {
           num_lights += 1;
@@ -332,13 +332,12 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
     for (int i = 0; i < num_lights; i++) {
       /* sample one light at random */
       int num_samples = 1;
-      int num_all_lights = 1;
       uint lamp_rng_hash = state->rng_hash;
       bool double_pdf = false;
       bool is_mesh_light = false;
       bool is_lamp = false;
 
-      if (sample_all_lights) {
+      if (sample_all_lights && !use_light_tree) {
         /* lamp sampling */
         is_lamp = i < kernel_data.integrator.num_all_lights;
         if (is_lamp) {
@@ -346,7 +345,6 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
             continue;
           }
           num_samples = ceil_to_int(num_samples_adjust * light_select_num_samples(kg, i));
-          num_all_lights = kernel_data.integrator.num_all_lights;
           lamp_rng_hash = cmj_hash(state->rng_hash, i);
           double_pdf = kernel_data.integrator.pdf_triangles != 0.0f;
         }
@@ -367,7 +365,6 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
 #    ifdef __OBJECT_MOTION__
         light_ray.time = sd->time;
 #    endif
-        bool has_emission = false;
         float light_u, light_v;
         float terminate;
 
@@ -383,7 +380,9 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
           }
 
           LightSample ls ccl_optional_struct_init;
+          const int lamp = is_lamp ? i : -1;
           if (light_sample(kg,
+                           lamp,
                            light_u,
                            light_v,
                            sd->time,
@@ -398,26 +397,6 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
             if (double_pdf) {
               ls.pdf *= 2.0f;
             }
-            has_emission = direct_emission(
-                kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
-          }
-        }
-
-        /* trace shadow ray */
-        float3 shadow;
-
-        if (has_emission) {
-          /* accumulate */
-          LightSample ls;
-          if (light_sample(kg,
-                           light_u,
-                           light_v,
-                           sd->time,
-                           sd->P_pick,
-                           sd->N_pick,
-                           state->bounce,
-                           &ls,
-                           false)) {
             accum_light_contribution(kg,
                                      sd,
                                      emission_sd,
@@ -542,6 +521,7 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
 
     LightSample ls ccl_optional_struct_init;
     if (light_sample(kg,
+                     -1,
                      light_u,
                      light_v,
                      sd->time,
