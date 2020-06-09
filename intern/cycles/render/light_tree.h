@@ -187,7 +187,8 @@ struct BVHPrimitiveInfo {
 };
 
 /* A custom pointer struct that points to an emissive triangle or a lamp. */
-struct Primitive {
+class Primitive {
+ public:
   /* If prim_id >= 0 then the primitive is a triangle and prim_id is a global
    * triangle index.
    * If prim_id < 0 then the primitive is a lamp and -prim_id-1 is an index
