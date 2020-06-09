@@ -441,7 +441,7 @@ GPUShader *workbench_shader_antialiasing_get(int stage)
   return e_data.smaa_sh[stage];
 }
 
-GPUShader *workbench_shader_volume_get(bool slice, bool coba, char cubic, bool smoke)
+GPUShader *workbench_shader_volume_get(bool slice, bool coba, InterpType cubic, bool smoke)
 {
   GPUShader **shader = &e_data.volume_sh[slice][coba][cubic][smoke];
 
@@ -455,10 +455,10 @@ GPUShader *workbench_shader_volume_get(bool slice, bool coba, char cubic, bool s
       BLI_dynstr_append(ds, "#define USE_COBA\n");
     }
     switch (cubic) {
-      case 0:
+      case INTERP_LINEAR:
         BLI_dynstr_append(ds, "#define USE_TRILINEAR\n");
         break;
-      case 1:
+      case INTERP_CUBIC:
         BLI_dynstr_append(ds, "#define USE_TRICUBIC\n");
         break;
     }

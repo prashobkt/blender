@@ -367,6 +367,13 @@ typedef struct WORKBENCH_ViewLayerData {
   int cavity_sample_count;
 } WORKBENCH_ViewLayerData;
 
+/* Types of interpolation. */
+typedef enum {
+  INTERP_LINEAR = 0,
+  INTERP_CUBIC = 1,
+  INTERP_RAW = 2,
+} InterpType;
+
 /* inline helper functions */
 BLI_INLINE bool workbench_is_specular_highlight_enabled(WORKBENCH_PrivateData *wpd)
 {
@@ -413,7 +420,7 @@ GPUShader *workbench_shader_outline_get(void);
 GPUShader *workbench_shader_antialiasing_accumulation_get(void);
 GPUShader *workbench_shader_antialiasing_get(int stage);
 
-GPUShader *workbench_shader_volume_get(bool slice, bool coba, char cubic, bool smoke);
+GPUShader *workbench_shader_volume_get(bool slice, bool coba, InterpType cubic, bool smoke);
 
 void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
                                          GPUShader **downsample_sh,
