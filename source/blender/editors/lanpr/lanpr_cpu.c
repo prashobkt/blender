@@ -4328,6 +4328,7 @@ static int lanpr_bake_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
     // BKE_scene_frame_set(scene,frame);
     DEG_evaluate_on_framechange(CTX_data_main(C), dg, frame);
 
+    BLI_spin_lock(&lanpr_share.lock_loader);
     ED_lanpr_compute_feature_lines_internal(dg, 0);
 
     ED_lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);

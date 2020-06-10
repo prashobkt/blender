@@ -146,6 +146,10 @@ static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   Collection *collection = (Collection *)id;
 
+  if (collection->lanpr) {
+    BKE_LIB_FOREACHID_PROCESS(data, collection->lanpr->target, IDWALK_CB_NOP);
+  }
+
   LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     BKE_LIB_FOREACHID_PROCESS(data, cob->ob, IDWALK_CB_USER);
   }
