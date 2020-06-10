@@ -23,6 +23,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 #include "GHOST_Xr_intern.h"
 
@@ -33,20 +34,20 @@ struct OpenXRSessionData;
 
 class GHOST_XrAction {
  public:
-  XrAction action;
+  XrAction handle;
   XrActionType actionType;
   GHOST_XrAction(XrAction action, XrActionType);
 };
 
 class GHOST_XrActionSet {
  private:
-  XrActionSet actionSet;
   std::map<std::string, GHOST_XrAction> actionMap;
 
  public:
+  XrActionSet handle;
   GHOST_XrActionSet(XrActionSet actionSet);
   ~GHOST_XrActionSet();
-  void createAction(XrActionCreateInfo *info);
+  XrAction createAction(XrActionCreateInfo *info);
 };
 
 class GHOST_XrSession {
@@ -59,7 +60,7 @@ class GHOST_XrSession {
   GHOST_XrSession(GHOST_XrContext *xr_context);
   ~GHOST_XrSession();
 
-  void createActionSet(char *name, char *localizedName);
+  GHOST_XrActionSet* createActionSet(std::string name, std::string localizedName);
   void updateActions();
 
   void start(const GHOST_XrSessionBeginInfo *begin_info);
@@ -91,6 +92,8 @@ class GHOST_XrSession {
   void initSystem();
   void beginSession();
   void endSession();
+
+  void init_xr_action_default();
 
   void bindGraphicsContext();
 

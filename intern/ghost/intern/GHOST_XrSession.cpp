@@ -18,13 +18,13 @@
  * \ingroup GHOST
  */
 
+#include <iterator>
 #include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstdio>
 #include <list>
 #include <sstream>
-#include <string>
 
 #include "GHOST_C-api.h"
 
@@ -35,6 +35,13 @@
 #include "GHOST_Xr_intern.h"
 
 #include "GHOST_XrSession.h"
+
+struct OpenXRActionData {
+  std::map<std::string, GHOST_XrActionSet> actionSetMap;
+
+  XrPath controlPaths[2];
+  XrSpace controlSpaces[2];
+};
 
 struct OpenXRSessionData {
   XrSystemId system_id = XR_NULL_SYSTEM_ID;
@@ -47,44 +54,44 @@ struct OpenXRSessionData {
   XrSpace view_space;
   std::vector<XrView> views;
   std::vector<GHOST_XrSwapchain> swapchains;
-
-  std::map<std::string, GHOST_XrActionSet> actionSetMap;
+  OpenXRActionData actionData;
 };
 
 GHOST_XrAction::GHOST_XrAction(XrAction action, XrActionType actionType)
 {
-  this->action = action;
+  handle = action;
   this->actionType = actionType;
 }
 
 GHOST_XrActionSet::~GHOST_XrActionSet()
 {
-  xrDestroyActionSet(actionSet);
+  xrDestroyActionSet(handle);
 }
 
-void GHOST_XrActionSet::createAction(XrActionCreateInfo *info)
+XrAction GHOST_XrActionSet::createAction(XrActionCreateInfo *info)
 {
   XrAction action;
 
-  CHECK_XR(xrCreateAction(actionSet, info, &action),
+  CHECK_XR(xrCreateAction(handle, info, &action),
            "Action set creation failed.");
 
   this->actionMap.insert({ info->actionName, GHOST_XrAction(action, info->actionType) });
+  return action;
 }
 
 GHOST_XrActionSet::GHOST_XrActionSet(XrActionSet actionSet)
 {
-  this->actionSet = actionSet;
+  handle = actionSet;
 }
 
-void GHOST_XrSession::createActionSet(char *name, char *localizedName)
+GHOST_XrActionSet* GHOST_XrSession::createActionSet(std::string name, std::string localizedName)
 {
   XrActionSetCreateInfo actionSetInfo = {XR_TYPE_ACTION_SET_CREATE_INFO};
   actionSetInfo.priority = 0;
   actionSetInfo.next = NULL;
 
-  strncpy(actionSetInfo.actionSetName, name, XR_MAX_ACTION_SET_NAME_SIZE);
-  strncpy(actionSetInfo.localizedActionSetName, localizedName,
+  strncpy(actionSetInfo.actionSetName, name.c_str(), XR_MAX_ACTION_SET_NAME_SIZE);
+  strncpy(actionSetInfo.localizedActionSetName, localizedName.c_str(),
           XR_MAX_LOCALIZED_ACTION_SET_NAME_SIZE);
 
   XrActionSet set;
@@ -92,7 +99,14 @@ void GHOST_XrSession::createActionSet(char *name, char *localizedName)
   CHECK_XR(xrCreateActionSet(m_context->getInstance(), &actionSetInfo, &set),
            "Action set creation failed.");
 
-  m_oxr->actionSetMap.insert({ name, GHOST_XrActionSet(set) });
+  auto setMap = &m_oxr->actionData.actionSetMap;
+
+  std::pair<std::map<std::string, GHOST_XrActionSet>::iterator, bool> res =
+      setMap->insert({ name, GHOST_XrActionSet(set) });
+
+  assert(res.second);
+
+  return &res.first->second;
 }
 
 void GHOST_XrSession::updateActions() {
@@ -247,6 +261,50 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
 
   prepareDrawing();
   create_reference_spaces(m_oxr.get(), &begin_info->base_pose);
+
+  init_xr_action_default();
+}
+
+void GHOST_XrSession::init_xr_action_default() {
+  OpenXRActionData *actionData = &m_oxr->actionData;
+  XrInstance xrInstance = m_context->getInstance();
+
+  auto setMap = &actionData->actionSetMap;
+  createActionSet("default_action_set", "Default Action Set");
+
+  auto it = setMap->find("default_action_set");
+  assert(it != setMap->end());
+  GHOST_XrActionSet *set = &it->second;
+
+  CHECK_XR(xrStringToPath(xrInstance, "/user/hand/left", &actionData->controlPaths[0]),
+           "Failed to create left hand path.");
+
+  CHECK_XR(xrStringToPath(xrInstance, "/user/hand/right", &actionData->controlPaths[1]),
+           "Failed to create right hand path.");
+
+  XrActionCreateInfo actionInfo = {XR_TYPE_ACTION_CREATE_INFO};
+
+  actionInfo.next = NULL;
+  actionInfo.countSubactionPaths = 2;
+  actionInfo.subactionPaths = actionData->controlPaths;
+  actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
+
+  strcpy(actionInfo.actionName, "controller_pose");
+  strcpy(actionInfo.localizedActionName, "Controller Pose");
+
+  XrAction gripPoseAction = set->createAction(&actionInfo);
+
+  XrActionSpaceCreateInfo actionSpaceInfo = {XR_TYPE_ACTION_SPACE_CREATE_INFO};
+  actionSpaceInfo.next = NULL;
+  actionSpaceInfo.action = gripPoseAction;
+  actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
+
+  CHECK_XR(xrCreateActionSpace(m_oxr->session, &actionSpaceInfo, &actionData->controlSpaces[0]),
+           "Creation of left hand pose failed.");
+
+  CHECK_XR(xrCreateActionSpace(m_oxr->session, &actionSpaceInfo, &actionData->controlSpaces[1]),
+           "Creation of right hand pose failed.");
+
 }
 
 void GHOST_XrSession::requestEnd()
