@@ -2546,10 +2546,14 @@ static void lanpr_destroy_render_data(void)
 
 void ED_lanpr_destroy_render_data(void)
 {
+  while (lanpr_share.init_complete && ED_lanpr_calculation_flag_check(LANPR_RENDER_RUNNING)) {
+    /* Wait to finish, XXX: should cancel here */
+  }
   lanpr_destroy_render_data();
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   if (rb) {
     MEM_freeN(rb);
+    lanpr_share.render_buffer_shared = NULL;
   }
 }
 
@@ -3703,6 +3707,9 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int inte
 
   rb = ED_lanpr_create_render_buffer(s);
 
+  /* Has to be set after render buffer creation, to avoid locking from editor undo. */
+  ED_lanpr_calculation_set_flag(LANPR_RENDER_RUNNING);
+
   lanpr_share.render_buffer_shared = rb;
 
   rb->w = s->r.xsch;
@@ -3812,9 +3819,7 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersec
     lanpr_share.background_render_task = NULL;
   }
 
-  ED_lanpr_calculation_set_flag(LANPR_RENDER_RUNNING);
-
-  LANPR_FeatureLineWorker *flw = MEM_callocN(sizeof(LANPR_FeatureLineWorker), "Task Pool");
+  LANPR_FeatureLineWorker *flw = MEM_callocN(sizeof(LANPR_FeatureLineWorker), "LANPR Worker");
 
   flw->dg = dg;
   flw->intersection_only = intersection_only;
@@ -4267,8 +4272,6 @@ static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 {
   int frame = scene->r.cfra;
 
-  ED_lanpr_compute_feature_lines_internal(dg, 0);
-
   ED_lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
 
   lanpr_update_gp_strokes_recursive(dg, scene->master_collection, frame, NULL, NULL);
@@ -4282,7 +4285,11 @@ static int lanpr_update_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
 
+  BLI_spin_lock(&lanpr_share.lock_loader);
+  ED_lanpr_compute_feature_lines_internal(dg, 0);
   lanpr_update_gp_strokes_actual(scene, dg);
+
+  ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
