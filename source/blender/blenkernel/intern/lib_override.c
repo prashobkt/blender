@@ -46,6 +46,11 @@
 #include "RNA_types.h"
 
 #define OVERRIDE_AUTO_CHECK_DELAY 0.2 /* 200ms between auto-override checks. */
+//#define DEBUG_OVERRIDE_TIMEIT
+
+#ifdef DEBUG_OVERRIDE_TIMEIT
+#  include "PIL_time_utildefines.h"
+#endif
 
 static void lib_override_library_property_copy(IDOverrideLibraryProperty *op_dst,
                                                IDOverrideLibraryProperty *op_src);
@@ -932,6 +937,12 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
     return;
   }
 
+  /* This ID name is problematic, since it is an 'rna name property' it should not be editable or
+   * different from reference linked ID. But local ID names need to be unique in a given type list
+   * of Main, so we cannot always keep it identical, which is why we need this special manual
+   * handling here. */
+  BLI_strncpy(tmp_id->name, local->name, sizeof(tmp_id->name));
+
   PointerRNA rnaptr_src, rnaptr_dst, rnaptr_storage_stack, *rnaptr_storage = NULL;
   RNA_id_pointer_create(local, &rnaptr_src);
   RNA_id_pointer_create(tmp_id, &rnaptr_dst);
@@ -1027,7 +1038,7 @@ ID *BKE_lib_override_library_operations_store_start(Main *bmain,
 
   ID *storage_id;
 #ifdef DEBUG_OVERRIDE_TIMEIT
-  TIMEIT_START_AVERAGED(BKE_override_operations_store_start);
+  TIMEIT_START_AVERAGED(BKE_lib_override_library_operations_store_start);
 #endif
 
   /* XXX TODO We may also want a specialized handling of things here too, to avoid copying heavy
@@ -1055,12 +1066,13 @@ ID *BKE_lib_override_library_operations_store_start(Main *bmain,
   local->override_library->storage = storage_id;
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
-  TIMEIT_END_AVERAGED(BKE_override_operations_store_start);
+  TIMEIT_END_AVERAGED(BKE_lib_override_library_operations_store_start);
 #endif
   return storage_id;
 }
 
-/** Restore given ID modified by \a BKE_override_operations_store_start, to its original state. */
+/** Restore given ID modified by \a BKE_lib_override_library_operations_store_start, to its
+ * original state. */
 void BKE_lib_override_library_operations_store_end(
     OverrideLibraryStorage *UNUSED(override_storage), ID *local)
 {

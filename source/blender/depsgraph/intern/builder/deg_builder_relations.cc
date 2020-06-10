@@ -1500,7 +1500,10 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
       }
     }
     if (property_entry_key.prop != nullptr && RNA_property_is_idprop(property_entry_key.prop)) {
-      RNAPathKey property_exit_key(id, rna_path, RNAPointerSource::EXIT);
+      RNAPathKey property_exit_key(property_entry_key.id,
+                                   property_entry_key.ptr,
+                                   property_entry_key.prop,
+                                   RNAPointerSource::EXIT);
       OperationKey parameters_key(id, NodeType::PARAMETERS, OperationCode::PARAMETERS_EVAL);
       add_relation(property_exit_key, parameters_key, "Driven Property -> Properties");
     }
@@ -2884,11 +2887,14 @@ void DepsgraphRelationBuilder::build_driver_relations(IDNode *id_node)
   }
 
   // Mapping from RNA prefix -> set of driver evaluation nodes:
-  typedef vector<Node *> DriverGroup;
+  typedef Vector<Node *> DriverGroup;
   typedef map<string, DriverGroup> DriverGroupMap;
   DriverGroupMap driver_groups;
 
   LISTBASE_FOREACH (FCurve *, fcu, &adt->drivers) {
+    if (fcu->rna_path == nullptr) {
+      continue;
+    }
     // Get the RNA path except the part after the last dot.
     char *last_dot = strrchr(fcu->rna_path, '.');
     string rna_prefix;
@@ -2900,7 +2906,7 @@ void DepsgraphRelationBuilder::build_driver_relations(IDNode *id_node)
     OperationKey driver_key(
         id_orig, NodeType::PARAMETERS, OperationCode::DRIVER, fcu->rna_path, fcu->array_index);
     Node *node_driver = get_node(driver_key);
-    driver_groups[rna_prefix].push_back(node_driver);
+    driver_groups[rna_prefix].append(node_driver);
   }
 
   for (pair<string, DriverGroup> prefix_group : driver_groups) {
@@ -2939,7 +2945,7 @@ void DepsgraphRelationBuilder::build_driver_relations(IDNode *id_node)
       }
     }
   }
-}
+}  // namespace DEG
 
 /* **** ID traversal callbacks functions **** */
 

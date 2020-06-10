@@ -108,6 +108,7 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
 #include "BKE_node.h"
@@ -2087,8 +2088,8 @@ void BKE_object_copy_proxy_drivers(Object *ob, Object *target)
     }
 
     /* make a copy of all the drivers (for now), then correct any links that need fixing */
-    free_fcurves(&ob->adt->drivers);
-    copy_fcurves(&ob->adt->drivers, &target->adt->drivers);
+    BKE_fcurves_free(&ob->adt->drivers);
+    BKE_fcurves_copy(&ob->adt->drivers, &target->adt->drivers);
 
     for (fcu = ob->adt->drivers.first; fcu; fcu = fcu->next) {
       ChannelDriver *driver = fcu->driver;

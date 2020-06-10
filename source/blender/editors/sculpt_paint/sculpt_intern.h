@@ -834,7 +834,6 @@ typedef struct FilterCache {
   /* Sharpen mesh filter. */
   float sharpen_smooth_ratio;
   float *sharpen_factor;
-  float (*accum_disp)[3];
 
   /* unmasked nodes */
   PBVHNode **nodes;
@@ -891,6 +890,7 @@ void SCULPT_OT_face_sets_randomize_colors(struct wmOperatorType *ot);
 void SCULPT_OT_face_sets_change_visibility(struct wmOperatorType *ot);
 void SCULPT_OT_face_sets_init(struct wmOperatorType *ot);
 void SCULPT_OT_face_sets_create(struct wmOperatorType *ot);
+void SCULPT_OT_face_sets_edit(struct wmOperatorType *ot);
 
 /* Transform. */
 void SCULPT_OT_set_pivot_position(struct wmOperatorType *ot);
