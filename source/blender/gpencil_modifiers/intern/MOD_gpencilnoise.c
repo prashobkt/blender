@@ -282,19 +282,20 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
   gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  gpencil_modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "factor", 0, IFACE_("Position"), ICON_NONE);
-  uiItemR(layout, &ptr, "factor_strength", 0, IFACE_("Strength"), ICON_NONE);
-  uiItemR(layout, &ptr, "factor_thickness", 0, IFACE_("Thickness"), ICON_NONE);
-  uiItemR(layout, &ptr, "factor_uvs", 0, IFACE_("UV"), ICON_NONE);
-  uiItemR(layout, &ptr, "noise_scale", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "factor", 0, IFACE_("Position"), ICON_NONE);
+  uiItemR(col, &ptr, "factor_strength", 0, IFACE_("Strength"), ICON_NONE);
+  uiItemR(col, &ptr, "factor_thickness", 0, IFACE_("Thickness"), ICON_NONE);
+  uiItemR(col, &ptr, "factor_uvs", 0, IFACE_("UV"), ICON_NONE);
+  uiItemR(col, &ptr, "noise_scale", 0, NULL, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, &ptr);
 }

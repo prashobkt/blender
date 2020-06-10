@@ -153,7 +153,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  gpencil_modifier_panel_buttons(C, panel);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -166,7 +165,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void mask_panel_draw(const bContext *C, Panel *panel)
 {
-  gpencil_modifier_masking_panel_draw(C, panel, true, false);
+  gpencil_modifier_masking_panel_draw(C, panel, true, true);
 }
 
 static void panelRegister(ARegionType *region_type)

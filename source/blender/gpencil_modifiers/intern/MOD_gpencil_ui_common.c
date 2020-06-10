@@ -34,6 +34,7 @@
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_space_types.h"
 
 #include "ED_object.h"
 
@@ -49,12 +50,23 @@
 
 #include "MOD_gpencil_ui_common.h" /* Self include */
 
+static Object *get_gpencilmodifier_object(const bContext *C)
+{
+  SpaceProperties *sbuts = CTX_wm_space_properties(C);
+  if (sbuts != NULL && (sbuts->pinid != NULL) && GS(sbuts->pinid->name) == ID_OB) {
+    return (Object *)sbuts->pinid;
+  }
+  else {
+    return CTX_data_active_object(C);
+  }
+}
+
 /**
  * Poll function so these modifier panels only show for grease pencil objects.
  */
 static bool gpencil_modifier_ui_poll(const bContext *C, PanelType *UNUSED(pt))
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_gpencilmodifier_object(C);
 
   return (ob != NULL) && (ob->type == OB_GPENCIL);
 }
@@ -68,7 +80,7 @@ static bool gpencil_modifier_ui_poll(const bContext *C, PanelType *UNUSED(pt))
  */
 static void gpencil_modifier_reorder(bContext *C, Panel *panel, int new_index)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_gpencilmodifier_object(C);
 
   GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, panel->runtime.list_index);
   PointerRNA props_ptr;
@@ -82,7 +94,7 @@ static void gpencil_modifier_reorder(bContext *C, Panel *panel, int new_index)
 
 static short get_gpencil_modifier_expand_flag(const bContext *C, Panel *panel)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_gpencilmodifier_object(C);
   GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, panel->runtime.list_index);
   return md->ui_expand_flag;
   return 0;
@@ -90,7 +102,7 @@ static short get_gpencil_modifier_expand_flag(const bContext *C, Panel *panel)
 
 static void set_gpencil_modifier_expand_flag(const bContext *C, Panel *panel, short expand_flag)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_gpencilmodifier_object(C);
   GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, panel->runtime.list_index);
   md->ui_expand_flag = expand_flag;
 }
@@ -227,12 +239,13 @@ void gpencil_modifier_panel_end(uiLayout *layout, PointerRNA *ptr)
 /**
  * Gets RNA pointers for the active object and the panel's modifier data.
  */
+#define ERROR_LIBDATA_MESSAGE TIP_("External library data")
 void gpencil_modifier_panel_get_property_pointers(const bContext *C,
                                                   Panel *panel,
                                                   PointerRNA *r_ob_ptr,
                                                   PointerRNA *r_md_ptr)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object *ob = get_gpencilmodifier_object(C);
   GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, panel->runtime.list_index);
 
   RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md, r_md_ptr);
@@ -241,49 +254,38 @@ void gpencil_modifier_panel_get_property_pointers(const bContext *C,
     RNA_pointer_create(&ob->id, &RNA_Object, ob, r_ob_ptr);
   }
 
-  uiLayoutSetContextPointer(panel->layout, "modifier", r_md_ptr);
-}
-
-#define ERROR_LIBDATA_MESSAGE TIP_("Can't edit external library data")
-void gpencil_modifier_panel_buttons(const bContext *C, Panel *panel)
-{
-  uiLayout *row;
-  uiBlock *block;
-  uiLayout *layout = panel->layout;
-
-  row = uiLayoutRow(layout, false);
-
-  uiLayoutSetScaleY(row, 0.8f);
-
-  Object *ob = CTX_data_active_object(C);
-  GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, panel->runtime.list_index);
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
-
-  block = uiLayoutGetBlock(row);
-  UI_block_lock_set(
-      block, BKE_object_obdata_is_libdata(ob) || ID_IS_LINKED(ob), ERROR_LIBDATA_MESSAGE);
-
-  if (mti->flags & eGpencilModifierTypeFlag_NoApply) {
-    uiLayoutSetEnabled(row, false);
-  }
-  uiItemEnumO(row,
-              "OBJECT_OT_gpencil_modifier_apply",
-              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
-              0,
-              "apply_as",
-              MODIFIER_APPLY_DATA);
-
+  uiBlock *block = uiLayoutGetBlock(panel->layout);
   UI_block_lock_clear(block);
   UI_block_lock_set(block, ob && ID_IS_LINKED(ob), ERROR_LIBDATA_MESSAGE);
 
-  uiItemO(row,
-          CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
-          ICON_NONE,
+  uiLayoutSetContextPointer(panel->layout, "modifier", r_md_ptr);
+}
+
+static void gpencil_modifier_ops_extra_draw(bContext *UNUSED(C), uiLayout *layout, void *md_v)
+{
+  GpencilModifierData *md = (GpencilModifierData *)md_v;
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
+
+  uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
+
+  if (!(mti->flags & eGpencilModifierTypeFlag_NoApply)) {
+    uiItemEnumO(layout,
+                "OBJECT_OT_gpencil_modifier_apply",
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
+                0,
+                "apply_as",
+                MODIFIER_APPLY_DATA);
+  }
+
+  uiItemO(layout,
+          CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Duplicate"),
+          ICON_DUPLICATE,
           "OBJECT_OT_gpencil_modifier_copy");
 
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetScaleY(row, 0.2f);
-  uiItemS(row);
+  uiItemO(layout,
+          CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Delete"),
+          ICON_X,
+          "OBJECT_OT_gpencil_modifier_remove");
 }
 
 static void gpencil_modifier_panel_header(const bContext *C, Panel *panel)
@@ -291,10 +293,12 @@ static void gpencil_modifier_panel_header(const bContext *C, Panel *panel)
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 
+  Object *ob = get_gpencilmodifier_object(C);
+  GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, panel->runtime.list_index);
   PointerRNA ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md, &ptr);
+  uiLayoutSetContextPointer(panel->layout, "modifier", &ptr);
 
-  GpencilModifierData *md = ptr.data;
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
   bool narrow_panel = (panel->sizex < UI_UNIT_X * 8 && panel->sizex != 0);
 
@@ -319,8 +323,7 @@ static void gpencil_modifier_panel_header(const bContext *C, Panel *panel)
   uiItemR(row, &ptr, "show_render", 0, "", ICON_NONE);
 
   row = uiLayoutRow(layout, false);
-  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
-  uiItemO(row, "", ICON_X, "OBJECT_OT_gpencil_modifier_remove");
+  uiItemMenuF(row, "", ICON_DOWNARROW_HLT, gpencil_modifier_ops_extra_draw, md);
 
   /* Some extra padding at the end, so 'x' icon isn't too close to drag button. */
   uiItemS(layout);

@@ -148,7 +148,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  gpencil_modifier_panel_buttons(C, panel);
 
   int mode = RNA_enum_get(&ptr, "mode");
 

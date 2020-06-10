@@ -192,7 +192,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ptr;
   gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
-  gpencil_modifier_panel_buttons(C, panel);
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "use_edit_position", UI_ITEM_R_TOGGLE, IFACE_("Position"), ICON_NONE);
