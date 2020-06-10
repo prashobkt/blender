@@ -260,6 +260,9 @@ typedef struct EEVEE_PassList {
   struct DRWPass *color_downsample_cube_ps;
   struct DRWPass *velocity_object;
   struct DRWPass *velocity_resolve;
+  struct DRWPass *velocity_tiles_x;
+  struct DRWPass *velocity_tiles;
+  struct DRWPass *velocity_tiles_expand;
   struct DRWPass *taa_resolve;
   struct DRWPass *alpha_checker;
 
@@ -331,6 +334,9 @@ typedef struct EEVEE_FramebufferList {
   struct GPUFrameBuffer *ao_accum_fb;
   struct GPUFrameBuffer *velocity_resolve_fb;
   struct GPUFrameBuffer *velocity_fb;
+  struct GPUFrameBuffer *velocity_tiles_x_fb;
+  struct GPUFrameBuffer *velocity_tiles_fb;
+  struct GPUFrameBuffer *velocity_tiles_expand_fb;
 
   struct GPUFrameBuffer *update_noise_fb;
 
@@ -665,12 +671,16 @@ typedef struct EEVEE_EffectsInfo {
   CameraParams current_cam_params;
   float motion_blur_sample_offset;
   char motion_blur_step; /* Which step we are evaluating. */
+  int motion_blur_max;   /* Maximum distance in pixels a motion blured pixel can cover. */
   bool cam_params_init;
   /* TODO(fclem) Only used in render mode for now.
    * This is because we are missing a per scene persistent place to hold this. */
   struct EEVEE_MotionBlurData motion_blur;
   /* Velocity Pass */
   struct GPUTexture *velocity_tx; /* Texture from pool */
+  struct GPUTexture *velocity_tiles_x_tx;
+  struct GPUTexture *velocity_tiles_tx;
+  struct GPUTexture *velocity_tiles_expand_tx;
   /* Depth Of Field */
   float dof_near_far[2];
   float dof_params[2];

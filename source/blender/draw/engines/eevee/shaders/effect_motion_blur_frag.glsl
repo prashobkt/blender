@@ -11,7 +11,9 @@
 uniform sampler2D colorBuffer;
 uniform sampler2D depthBuffer;
 uniform sampler2D velocityBuffer;
+uniform sampler2D tileMaxBuffer;
 
+uniform int maxBlurRadius;
 uniform int samples;
 uniform float sampleOffset;
 uniform vec2 viewportSize;
@@ -25,7 +27,7 @@ uniform vec2 nearFar = vec2(0.1, 100.0); /* Near & far view depths values */
 
 in vec4 uvcoordsvar;
 
-out vec4 FragColor;
+out vec4 fragColor;
 
 #define saturate(a) clamp(a, 0.0, 1.0)
 
@@ -80,15 +82,20 @@ vec2 sample_weights(float center_depth,
   return depth_weight * spread_weight;
 }
 
+vec4 decode_velocity(vec4 velocity)
+{
+  velocity = velocity * 2.0 - 1.0;
+  /* Needed to match cycles. Can't find why... (fclem) */
+  velocity *= 0.5;
+  /* Transpose to pixelspace. */
+  velocity *= viewportSize.xyxy;
+  return velocity;
+}
+
 vec4 sample_velocity(vec2 uv)
 {
   vec4 data = texture(velocityBuffer, uv);
-  data = data * 2.0 - 1.0;
-  /* Needed to match cycles. Can't find why... (fclem) */
-  data *= 0.5;
-  /* Transpose to pixelspace. */
-  data *= viewportSize.xyxy;
-  return data;
+  return decode_velocity(data);
 }
 
 vec2 sample_velocity(vec2 uv, const bool next)
@@ -144,6 +151,7 @@ void gather_blur(vec2 screen_uv,
     return;
   }
 
+  /* TODO use blue noise texture. */
   float ofs = fract(wang_hash_noise(0u) + sampleOffset);
 
   int i;
@@ -182,10 +190,6 @@ void gather_blur(vec2 screen_uv,
 
 void main()
 {
-  /* TODO use blue noise texture. */
-  float noise1 = wang_hash_noise(0u);
-  float noise2 = fract(wang_hash_noise(5u) * 97894.594987);
-
   vec2 uv = uvcoordsvar.xy;
 
   /* Data of the center pixel of the gather (target). */
@@ -193,24 +197,8 @@ void main()
   vec4 center_motion = sample_velocity(uv);
   vec4 center_color = textureLod(colorBuffer, uv, 0.0);
 
-  /* TODO replace by preprocessing steps. */
-  vec4 max_motion = center_motion;
-  for (float j = 0.0; j <= 20.0; j++) {
-    for (float i = 0.0; i <= 20.0; i++) {
-      vec2 offset = vec2(i, j) * 3.0 - 20.0;
-      vec2 sample_uv = (floor(vec2(noise1, noise2) - 0.5 + uv * viewportSize / 20.0) * 20.0 +
-                        offset) *
-                       viewportSizeInv;
-      vec4 motion = sample_velocity(sample_uv);
-
-      if (length(motion.xy) > length(max_motion.xy)) {
-        max_motion.xy = motion.xy;
-      }
-      if (length(motion.zw) > length(max_motion.zw)) {
-        max_motion.zw = motion.zw;
-      }
-    }
-  }
+  vec4 max_motion = texelFetch(tileMaxBuffer, ivec2(gl_FragCoord.xy) / maxBlurRadius, 0);
+  max_motion = decode_velocity(max_motion);
 
   /* First (center) sample: time = T */
   /* x: Background, y: Foreground, z: dir. */
@@ -239,5 +227,5 @@ void main()
   /* Balance accumulation for failled samples.
    * We replace the missing foreground by the background. */
   float blend_fac = saturate(1.0 - w_accum.y / w_accum.z);
-  FragColor = (accum / w_accum.z) + center_color * blend_fac;
+  fragColor = (accum / w_accum.z) + center_color * blend_fac;
 }
