@@ -4325,8 +4325,8 @@ static int lanpr_bake_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
   int frame_end = scene->r.efra;
 
   for (frame = frame_begin; frame <= frame_end; frame++) {
-    // BKE_scene_frame_set(scene,frame);
-    DEG_evaluate_on_framechange(CTX_data_main(C), dg, frame);
+    BKE_scene_frame_set(scene, frame);
+    BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
 
     BLI_spin_lock(&lanpr_share.lock_loader);
     ED_lanpr_compute_feature_lines_internal(dg, 0);
