@@ -147,6 +147,13 @@ void gather_blur(vec2 screen_uv,
   float center_motion_len = length(center_motion);
   float max_motion_len = length(max_motion);
 
+  /* Tile boundaries randomization can fetch a tile where there is less motion than this pixel.
+   * Fix this by overriding the max_motion. */
+  if (max_motion_len < center_motion_len) {
+    max_motion_len = center_motion_len;
+    max_motion = center_motion;
+  }
+
   if (max_motion_len < 0.5) {
     return;
   }
@@ -197,8 +204,14 @@ void main()
   vec4 center_motion = sample_velocity(uv);
   vec4 center_color = textureLod(colorBuffer, uv, 0.0);
 
-  vec4 max_motion = texelFetch(tileMaxBuffer, ivec2(gl_FragCoord.xy) / maxBlurRadius, 0);
-  max_motion = decode_velocity(max_motion);
+  /* TODO use blue noise texture. */
+  float rand = fract(wang_hash_noise(68241u) + sampleOffset) * 2.0 - 1.0;
+
+  /* Randomize tile boundary to avoid ugly discontinuities. Randomize 1/4th of the tile.
+   * Note this randomize only in one direction but in practice it's enough. */
+  ivec2 tile = ivec2(gl_FragCoord.xy + rand * float(maxBlurRadius) * 0.25) / maxBlurRadius;
+  tile = clamp(tile, ivec2(0), textureSize(tileMaxBuffer, 0).xy - 1);
+  vec4 max_motion = decode_velocity(texelFetch(tileMaxBuffer, tile, 0));
 
   /* First (center) sample: time = T */
   /* x: Background, y: Foreground, z: dir. */
