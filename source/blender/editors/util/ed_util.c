@@ -236,7 +236,7 @@ void ED_editors_exit(Main *bmain, bool do_undo_system)
 
   /* LANPR data*/
 #ifdef WITH_LANPR
-  ED_lanpr_destroy_render_data();
+  ED_lanpr_destroy_render_data_external();
 #endif
 }
 

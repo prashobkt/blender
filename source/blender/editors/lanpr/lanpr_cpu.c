@@ -2546,15 +2546,35 @@ static void lanpr_destroy_render_data(void)
 
 void ED_lanpr_destroy_render_data(void)
 {
-  while (lanpr_share.init_complete && ED_lanpr_calculation_flag_check(LANPR_RENDER_RUNNING)) {
-    /* Wait to finish, XXX: should cancel here */
-  }
+
   lanpr_destroy_render_data();
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   if (rb) {
     MEM_freeN(rb);
     lanpr_share.render_buffer_shared = NULL;
   }
+}
+
+void ED_lanpr_destroy_render_data_external(void)
+{
+  if (!lanpr_share.init_complete) {
+    return;
+  }
+  while (ED_lanpr_calculation_flag_check(LANPR_RENDER_RUNNING)) {
+    /* Wait to finish, XXX: should cancel here */
+  }
+
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  TaskPool *tp_read = lanpr_share.background_render_task;
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
+
+  if (tp_read) {
+    BLI_task_pool_work_and_wait(lanpr_share.background_render_task);
+    BLI_task_pool_free(lanpr_share.background_render_task);
+    lanpr_share.background_render_task = NULL;
+  }
+
+  ED_lanpr_destroy_render_data();
 }
 
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(Scene *s)
@@ -3815,6 +3835,7 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersec
   }
 
   if (tp_read) {
+    BLI_task_pool_work_and_wait(lanpr_share.background_render_task);
     BLI_task_pool_free(lanpr_share.background_render_task);
     lanpr_share.background_render_task = NULL;
   }
@@ -3824,7 +3845,7 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersec
   flw->dg = dg;
   flw->intersection_only = intersection_only;
 
-  TaskPool *tp = BLI_task_pool_create_background(flw, TASK_PRIORITY_HIGH);
+  TaskPool *tp = BLI_task_pool_create_background(0, TASK_PRIORITY_HIGH);
   BLI_spin_lock(&lanpr_share.lock_render_status);
   lanpr_share.background_render_task = tp;
   BLI_spin_unlock(&lanpr_share.lock_render_status);
