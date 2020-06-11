@@ -45,7 +45,6 @@ set(SRC
   geometry/geom_arrow_gizmo.c
   geometry/geom_cube_gizmo.c
   geometry/geom_dial_gizmo.c
-  gizmo_types/arrow2d_gizmo.c
   gizmo_types/arrow3d_gizmo.c
   gizmo_types/blank3d_gizmo.c
   gizmo_types/button2d_gizmo.c
@@ -54,6 +53,7 @@ set(SRC
   gizmo_types/dial3d_gizmo.c
   gizmo_types/move3d_gizmo.c
   gizmo_types/primitive3d_gizmo.c
+  gizmo_types/snap3d_gizmo.c
 )
 
 set(LIB

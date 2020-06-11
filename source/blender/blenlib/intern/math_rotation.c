@@ -23,8 +23,8 @@
  * \ingroup bli
  */
 
-#include <assert.h>
 #include "BLI_math.h"
+#include <assert.h>
 
 #include "BLI_strict_flags.h"
 
@@ -212,11 +212,13 @@ void quat_to_compatible_quat(float q[4], const float a[4], const float old[4])
   float old_unit[4];
   /* Skips `!finite_v4(old)` case too. */
   if (normalize_qt_qt(old_unit, old) > eps) {
+    float q_negate[4];
     float delta[4];
     rotation_between_quats_to_quat(delta, old_unit, a);
     mul_qt_qtqt(q, old, delta);
-    if ((q[0] < 0.0f) != (old[0] < 0.0f)) {
-      negate_v4(q);
+    negate_v4_v4(q_negate, q);
+    if (len_squared_v4v4(q_negate, old) < len_squared_v4v4(q, old)) {
+      copy_qt_qt(q, q_negate);
     }
   }
   else {
@@ -1951,7 +1953,7 @@ void mat4_to_dquat(DualQuat *dq, const float basemat[4][4], const float mat[4][4
   copy_m3_m4(mat3, mat);
 
   if (!is_orthonormal_m3(mat3) || (determinant_m4(mat) < 0.0f) ||
-      len_squared_v3(dscale) > SQUARE(1e-4f)) {
+      len_squared_v3(dscale) > square_f(1e-4f)) {
     /* extract R and S  */
     float tmp[4][4];
 

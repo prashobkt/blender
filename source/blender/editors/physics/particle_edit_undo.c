@@ -21,15 +21,15 @@
  * \ingroup edphys
  */
 
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
 #include <assert.h>
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_scene_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_listbase.h"
@@ -253,7 +253,7 @@ static void particle_undosys_step_decode(struct bContext *C,
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   /* TODO(campbell): undo_system: use low-level API to set mode. */
-  ED_object_mode_set(C, OB_MODE_PARTICLE_EDIT);
+  ED_object_mode_set_ex(C, OB_MODE_PARTICLE_EDIT, false, NULL);
   BLI_assert(particle_undosys_poll(C));
 
   ParticleUndoStep *us = (ParticleUndoStep *)us_p;
@@ -262,6 +262,11 @@ static void particle_undosys_step_decode(struct bContext *C,
   PTCacheEdit *edit = PE_get_current(depsgraph, scene, ob);
   if (edit) {
     undoptcache_to_editcache(&us->data, edit);
+    ParticleEditSettings *pset = &scene->toolsettings->particle;
+    if ((pset->flag & PE_DRAW_PART) != 0) {
+      psys_free_path_cache(NULL, edit);
+      BKE_particle_batch_cache_dirty_tag(edit->psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
+    }
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
   else {

@@ -24,8 +24,11 @@
 #ifndef __ED_MBALL_H__
 #define __ED_MBALL_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct Base;
-struct MetaBall;
 struct Object;
 struct UndoType;
 struct bContext;
@@ -51,10 +54,12 @@ void ED_mball_editmball_load(struct Object *obedit);
 /* editmball_undo.c */
 void ED_mball_undosys_type(struct UndoType *ut);
 
-#define MBALLSEL_STIFF (1 << 29)
-#define MBALLSEL_RADIUS (1 << 30)
+#define MBALLSEL_STIFF (1u << 30)
+#define MBALLSEL_RADIUS (1u << 31)
 #define MBALLSEL_ANY (MBALLSEL_STIFF | MBALLSEL_RADIUS)
 
-#define MBALL_NOSEL (1u << 31u)
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __ED_MBALL_H__ */

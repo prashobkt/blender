@@ -35,8 +35,8 @@
 #include "RNA_define.h"
 
 #include "BKE_global.h"
-#include "BKE_main.h"
 #include "BKE_idprop.h"
+#include "BKE_main.h"
 
 #include "WM_api.h"
 #include "WM_toolsystem.h"
@@ -55,8 +55,8 @@
 #include "wm.h"
 
 /* own includes */
-#include "wm_gizmo_wmapi.h"
 #include "wm_gizmo_intern.h"
+#include "wm_gizmo_wmapi.h"
 
 static void wm_gizmo_register(wmGizmoGroup *gzgroup, wmGizmo *gz);
 
@@ -502,9 +502,6 @@ void wm_gizmo_calculate_scale(wmGizmo *gz, const bContext *C)
 
       /* Exclude matrix_offset from scale. */
       scale *= ED_view3d_pixel_size_no_ui_scale(rv3d, matrix_world[3]);
-    }
-    else {
-      scale *= 0.02f;
     }
   }
 

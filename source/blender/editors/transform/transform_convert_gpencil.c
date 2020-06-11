@@ -25,12 +25,13 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_ghash.h"
 #include "BLI_math.h"
 
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
-#include "BKE_report.h"
+#include "BKE_gpencil_geom.h"
 
 #include "ED_gpencil.h"
 
@@ -63,6 +64,10 @@ static void createTransGPencil_center_get(bGPDstroke *gps, float r_center[3])
 
 void createTransGPencil(bContext *C, TransInfo *t)
 {
+  if (t->data_container_len == 0) {
+    return;
+  }
+
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
@@ -80,6 +85,8 @@ void createTransGPencil(bContext *C, TransInfo *t)
 
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
   const bool is_prop_edit_connected = (t->flag & T_PROP_CONNECTED) != 0;
+  const bool is_scale_thickness = ((t->mode == TFM_GPENCIL_SHRINKFATTEN) ||
+                                   (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_SCALE_THICKNESS));
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
@@ -105,7 +112,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
    */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       bGPDframe *gpf;
       bGPDstroke *gps;
       bGPDframe *init_gpf = gpl->actframe;
@@ -177,7 +184,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
   /* Second Pass: Build transdata array */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* only editable and visible layers are considered */
-    if (gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
       const int cfra = (gpl->flag & GP_LAYER_FRAMELOCK) ? gpl->actframe->framenum : cfra_scene;
       bGPDframe *gpf = gpl->actframe;
       bGPDstroke *gps;
@@ -193,11 +200,11 @@ void createTransGPencil(bContext *C, TransInfo *t)
       int f_end = 0;
 
       if (use_multiframe_falloff) {
-        BKE_gpencil_get_range_selected(gpl, &f_init, &f_end);
+        BKE_gpencil_frame_range_selected(gpl, &f_init, &f_end);
       }
 
       /* calculate difference matrix */
-      ED_gpencil_parent_location(depsgraph, obact, gpd, gpl, diff_mat);
+      BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
       /* undo matrix */
       invert_m4_m4(inverse_diff_mat, diff_mat);
 
@@ -223,10 +230,11 @@ void createTransGPencil(bContext *C, TransInfo *t)
       for (gpf = init_gpf; gpf; gpf = gpf->next) {
         if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
 
-          /* if multiframe and falloff, recalculate and save value */
+          /* If multi-frame and falloff, recalculate and save value. */
           float falloff = 1.0f; /* by default no falloff */
           if ((is_multiedit) && (use_multiframe_falloff)) {
-            /* Faloff depends on distance to active frame (relative to the overall frame range) */
+            /* Falloff depends on distance to active frame
+             * (relative to the overall frame range). */
             falloff = BKE_gpencil_multiframe_falloff_calc(
                 gpf, gpl->actframe->framenum, f_init, f_end, ts->gp_sculpt.cur_falloff);
           }
@@ -309,12 +317,14 @@ void createTransGPencil(bContext *C, TransInfo *t)
                   }
 
                   /* for other transform modes (e.g. shrink-fatten), need to additional data
-                   * but never for scale or mirror
+                   * but never for mirror
                    */
-                  if ((t->mode != TFM_RESIZE) && (t->mode != TFM_MIRROR)) {
+                  if (t->mode != TFM_MIRROR) {
                     if (t->mode != TFM_GPENCIL_OPACITY) {
-                      td->val = &pt->pressure;
-                      td->ival = pt->pressure;
+                      if (is_scale_thickness) {
+                        td->val = &pt->pressure;
+                        td->ival = pt->pressure;
+                      }
                     }
                     else {
                       td->val = &pt->strength;
@@ -366,6 +376,25 @@ void createTransGPencil(bContext *C, TransInfo *t)
       }
     }
   }
+}
+
+/* force recalculation of triangles during transformation */
+void recalcData_gpencil_strokes(TransInfo *t)
+{
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+  GHash *strokes = BLI_ghash_ptr_new(__func__);
+
+  TransData *td = tc->data;
+  for (int i = 0; i < tc->data_len; i++, td++) {
+    bGPDstroke *gps = td->extra;
+
+    if ((gps != NULL) && (!BLI_ghash_haskey(strokes, gps))) {
+      BLI_ghash_insert(strokes, gps, gps);
+      /* Calc geometry data. */
+      BKE_gpencil_stroke_geometry_update(gps);
+    }
+  }
+  BLI_ghash_free(strokes, NULL, NULL);
 }
 
 /** \} */

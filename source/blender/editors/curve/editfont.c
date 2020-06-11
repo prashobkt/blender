@@ -21,11 +21,11 @@
  * \ingroup edcurve
  */
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
 #include <wchar.h>
-#include <errno.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -36,14 +36,14 @@
 
 #include "DNA_curve_types.h"
 #include "DNA_object_types.h"
-#include "DNA_vfont_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_text_types.h"
+#include "DNA_vfont_types.h"
 
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_font.h"
-#include "BKE_library.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
@@ -76,7 +76,7 @@ static int kill_selection(Object *obedit, int ins);
 /** \name Internal Utilities
  * \{ */
 
-static wchar_t findaccent(wchar_t char1, unsigned int code)
+static wchar_t findaccent(wchar_t char1, uint code)
 {
   wchar_t new = 0;
 
@@ -1320,20 +1320,36 @@ static int change_spacing_exec(bContext *C, wmOperator *op)
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
   int kern, delta = RNA_int_get(op->ptr, "delta");
+  int selstart, selend;
+  bool changed = false;
 
-  kern = ef->textbufinfo[ef->pos - 1].kern;
-  kern += delta;
-  CLAMP(kern, -20, 20);
+  const bool has_select = BKE_vfont_select_get(obedit, &selstart, &selend);
+  if (has_select) {
+    selstart -= 1;
+  }
+  else {
+    selstart = selend = ef->pos - 1;
+  }
+  selstart = max_ii(0, selstart);
 
-  if (ef->textbufinfo[ef->pos - 1].kern == kern) {
-    return OPERATOR_CANCELLED;
+  for (int i = selstart; i <= selend; i++) {
+    kern = ef->textbufinfo[i].kern + delta;
+    CLAMP(kern, -20, 20);
+
+    if (ef->textbufinfo[i].kern != kern) {
+      ef->textbufinfo[i].kern = kern;
+      changed = true;
+    }
   }
 
-  ef->textbufinfo[ef->pos - 1].kern = kern;
+  if (changed) {
+    text_update_edited(C, obedit, FO_EDIT);
 
-  text_update_edited(C, obedit, FO_EDIT);
-
-  return OPERATOR_FINISHED;
+    return OPERATOR_FINISHED;
+  }
+  else {
+    return OPERATOR_CANCELLED;
+  }
 }
 
 void FONT_OT_change_spacing(wmOperatorType *ot)
@@ -1668,7 +1684,7 @@ static int insert_text_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   /* tab should exit editmode, but we allow it to be typed using modifier keys */
-  if (event_type == TABKEY) {
+  if (event_type == EVT_TABKEY) {
     if ((alt || ctrl || shift) == 0) {
       return OPERATOR_PASS_THROUGH;
     }
@@ -1677,7 +1693,7 @@ static int insert_text_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
 
-  if (event_type == BACKSPACEKEY) {
+  if (event_type == EVT_BACKSPACEKEY) {
     if (alt && ef->len != 0 && ef->pos > 0) {
       accentcode = 1;
     }
@@ -2240,7 +2256,7 @@ bool ED_curve_editfont_select_pick(
 
     for (j = 0; j < 4; j++) {
       if (ED_view3d_project_float_object(
-              vc.ar, obedit_co[j], screen_co[j], V3D_PROJ_TEST_CLIP_BB) == V3D_PROJ_RET_OK) {
+              vc.region, obedit_co[j], screen_co[j], V3D_PROJ_TEST_CLIP_BB) == V3D_PROJ_RET_OK) {
         project_ok |= (1 << j);
       }
     }
@@ -2256,7 +2272,7 @@ bool ED_curve_editfont_select_pick(
       }
     }
 
-    /* bias in pixels to cycle seletion */
+    /* Bias in pixels to cycle selection. */
     if (i_iter == 0) {
       dist_sq_min += active_bias_px;
     }

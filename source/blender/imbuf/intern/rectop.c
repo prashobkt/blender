@@ -24,15 +24,15 @@
 
 #include <stdlib.h>
 
-#include "BLI_utildefines.h"
-#include "BLI_rect.h"
 #include "BLI_math_base.h"
 #include "BLI_math_color.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_vector.h"
+#include "BLI_rect.h"
+#include "BLI_utildefines.h"
 
-#include "IMB_imbuf_types.h"
 #include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
 
 #include "IMB_colormanagement.h"
 
@@ -282,7 +282,7 @@ void IMB_rect_crop(ImBuf *ibuf, const rcti *crop)
 }
 
 /**
- * Re-alloc buffers at a new size.
+ * Re-allocate buffers at a new size.
  */
 static void rect_realloc_4bytes(void **buf_p, const uint size[2])
 {

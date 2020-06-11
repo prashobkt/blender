@@ -25,13 +25,16 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 
 #include "BKE_context.h"
 #include "BKE_curve.h"
-#include "BKE_report.h"
 
 #include "transform.h"
+#include "transform_snap.h"
+
+/* Own include. */
 #include "transform_convert.h"
 
 /* -------------------------------------------------------------------- */
@@ -93,13 +96,12 @@ void createTransCurveVerts(TransInfo *t)
     int count = 0, countsel = 0;
     const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
     View3D *v3d = t->view;
-    short hide_handles = (v3d != NULL) ?
-                             ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_HANDLES) == 0) :
-                             false;
+    short hide_handles = (v3d != NULL) ? (v3d->overlay.handle_display == CURVE_HANDLE_NONE) :
+                                         false;
 
     /* count total of vertices, check identical as in 2nd loop for making transdata! */
     ListBase *nurbs = BKE_curve_editNurbs_get(cu);
-    for (Nurb *nu = nurbs->first; nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, nurbs) {
       if (nu->type == CU_BEZIER) {
         for (a = 0, bezt = nu->bezt; a < nu->pntsu; a++, bezt++) {
           if (bezt->hide == 0) {
@@ -163,10 +165,11 @@ void createTransCurveVerts(TransInfo *t)
     int a;
     const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
     View3D *v3d = t->view;
-    short hide_handles = (v3d != NULL) ?
-                             ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_HANDLES) == 0) :
-                             false;
+    short hide_handles = (v3d != NULL) ? (v3d->overlay.handle_display == CURVE_HANDLE_NONE) :
+                                         false;
 
+    bool use_around_origins_for_handles_test = ((t->around == V3D_AROUND_LOCAL_ORIGINS) &&
+                                                transform_mode_use_local_origins(t));
     float mtx[3][3], smtx[3][3];
 
     copy_m3_m4(mtx, tc->obedit->obmat);
@@ -174,7 +177,7 @@ void createTransCurveVerts(TransInfo *t)
 
     TransData *td = tc->data;
     ListBase *nurbs = BKE_curve_editNurbs_get(cu);
-    for (Nurb *nu = nurbs->first; nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, nurbs) {
       if (nu->type == CU_BEZIER) {
         TransData *head, *tail;
         head = tail = td;
@@ -342,7 +345,7 @@ void createTransCurveVerts(TransInfo *t)
         if (ELEM(t->mode, TFM_CURVE_SHRINKFATTEN, TFM_TILT, TFM_DUMMY) == 0) {
           /* sets the handles based on their selection,
            * do this after the data is copied to the TransData */
-          BKE_nurb_handles_test(nu, !hide_handles);
+          BKE_nurb_handles_test(nu, !hide_handles, use_around_origins_for_handles_test);
         }
       }
       else {
@@ -417,6 +420,38 @@ void createTransCurveVerts(TransInfo *t)
 #undef SEL_F1
 #undef SEL_F2
 #undef SEL_F3
+}
+
+void recalcData_curve(TransInfo *t)
+{
+  if (t->state != TRANS_CANCEL) {
+    clipMirrorModifier(t);
+    applyProject(t);
+  }
+
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    Curve *cu = tc->obedit->data;
+    ListBase *nurbs = BKE_curve_editNurbs_get(cu);
+    Nurb *nu = nurbs->first;
+
+    DEG_id_tag_update(tc->obedit->data, 0); /* sets recalc flags */
+
+    if (t->state == TRANS_CANCEL) {
+      while (nu) {
+        /* Cant do testhandlesNurb here, it messes up the h1 and h2 flags */
+        BKE_nurb_handles_calc(nu);
+        nu = nu->next;
+      }
+    }
+    else {
+      /* Normal updating */
+      while (nu) {
+        BKE_nurb_test_2d(nu);
+        BKE_nurb_handles_calc(nu);
+        nu = nu->next;
+      }
+    }
+  }
 }
 
 /** \} */

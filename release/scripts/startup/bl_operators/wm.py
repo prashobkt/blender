@@ -87,8 +87,10 @@ def context_path_validate(context, data_path):
             # One of the items in the rna path is None, just ignore this
             value = Ellipsis
         else:
-            # We have a real error in the rna path, don't ignore that
-            raise
+            # Print invalid path, but don't show error to the users and fully
+            # break the UI if the operator is bound to an event like left click.
+            print("context_path_validate error: context.%s not found (invalid keymap entry?)" % data_path)
+            value = Ellipsis
 
     return value
 
@@ -1014,10 +1016,15 @@ def _wm_doc_get_id(doc_id, do_url=True, url_prefix=""):
             else:
                 rna = "bpy.ops.%s.%s" % (class_name, class_prop)
         else:
-            # an RNA setting, common case
-            rna_class = getattr(bpy.types, class_name)
+            # An RNA setting, common case.
 
-            # detect if this is a inherited member and use that name instead
+            # Check the built-in RNA types.
+            rna_class = getattr(bpy.types, class_name, None)
+            if rna_class is None:
+                # Check class for dynamically registered types.
+                rna_class = bpy.types.PropertyGroup.bl_rna_get_subclass_py(class_name)
+
+            # Detect if this is a inherited member and use that name instead.
             rna_parent = rna_class.bl_rna
             rna_prop = rna_parent.properties.get(class_prop)
             if rna_prop:
@@ -1104,8 +1111,8 @@ class WM_OT_doc_view(Operator):
 
     doc_id: doc_id
     if bpy.app.version_cycle in {"release", "rc", "beta"}:
-        _prefix = ("https://docs.blender.org/api/%d.%d%s" %
-                   (bpy.app.version[0], bpy.app.version[1], bpy.app.version_char))
+        _prefix = ("https://docs.blender.org/api/%d.%d" %
+                   (bpy.app.version[0], bpy.app.version[1]))
     else:
         _prefix = ("https://docs.blender.org/api/master")
 
@@ -1147,22 +1154,26 @@ rna_property = StringProperty(
 
 rna_min = FloatProperty(
     name="Min",
+    description="Minimum value of the property",
     default=-10000.0,
     precision=3,
 )
 
 rna_max = FloatProperty(
     name="Max",
+    description="Maximum value of the property",
     default=10000.0,
     precision=3,
 )
 
 rna_use_soft_limits = BoolProperty(
     name="Use Soft Limits",
+    description="Limits the Property Value slider to a range, values outside the range must be inputted numerically",
 )
 
 rna_is_overridable_library = BoolProperty(
     name="Is Library Overridable",
+    description="Allow the property to be overridden when the Data-Block is linked",
     default=False,
 )
 
@@ -1177,6 +1188,7 @@ rna_vector_subtype_items = (
 
 
 class WM_OT_properties_edit(Operator):
+    """Edit the attributes of the property"""
     bl_idname = "wm.properties_edit"
     bl_label = "Edit Property"
     # register only because invoke_props_popup requires.
@@ -1468,6 +1480,7 @@ class WM_OT_properties_edit(Operator):
 
 
 class WM_OT_properties_add(Operator):
+    """Add your own property to the data-block"""
     bl_idname = "wm.properties_add"
     bl_label = "Add Property"
     bl_options = {'UNDO', 'INTERNAL'}
@@ -1645,6 +1658,12 @@ class WM_OT_tool_set_by_id(Operator):
         default=False,
         options={'SKIP_SAVE'},
     )
+    as_fallback: BoolProperty(
+        name="Set Fallback",
+        description="Set the fallback tool instead of the primary tool",
+        default=False,
+        options={'SKIP_SAVE', 'HIDDEN'},
+    )
 
     space_type: rna_space_type_prop
 
@@ -1672,7 +1691,10 @@ class WM_OT_tool_set_by_id(Operator):
             space_type = context.space_data.type
 
         fn = activate_by_id_or_cycle if self.cycle else activate_by_id
-        if fn(context, space_type, self.name):
+        if fn(context, space_type, self.name, as_fallback=self.as_fallback):
+            if self.as_fallback:
+                tool_settings = context.tool_settings
+                tool_settings.workspace_tool_type = 'FALLBACK'
             return {'FINISHED'}
         else:
             self.report({'WARNING'}, f"Tool {self.name!r:s} not found for space {space_type!r:s}.")
@@ -1699,13 +1721,20 @@ class WM_OT_tool_set_by_index(Operator):
         default=True,
     )
 
+    as_fallback: BoolProperty(
+        name="Set Fallback",
+        description="Set the fallback tool instead of the primary",
+        default=False,
+        options={'SKIP_SAVE', 'HIDDEN'},
+    )
+
     space_type: rna_space_type_prop
 
     def execute(self, context):
         from bl_ui.space_toolsystem_common import (
             activate_by_id,
             activate_by_id_or_cycle,
-            item_from_index,
+            item_from_index_active,
             item_from_flat_index,
         )
 
@@ -1714,7 +1743,7 @@ class WM_OT_tool_set_by_index(Operator):
         else:
             space_type = context.space_data.type
 
-        fn = item_from_flat_index if self.expand else item_from_index
+        fn = item_from_flat_index if self.expand else item_from_index_active
         item = fn(context, space_type, self.index)
         if item is None:
             # Don't report, since the number of tools may change.
@@ -1722,7 +1751,10 @@ class WM_OT_tool_set_by_index(Operator):
 
         # Same as: WM_OT_tool_set_by_id
         fn = activate_by_id_or_cycle if self.cycle else activate_by_id
-        if fn(context, space_type, item.idname):
+        if fn(context, space_type, item.idname, as_fallback=self.as_fallback):
+            if self.as_fallback:
+                tool_settings = context.tool_settings
+                tool_settings.workspace_tool_type = 'FALLBACK'
             return {'FINISHED'}
         else:
             # Since we already have the tool, this can't happen.
@@ -1773,6 +1805,38 @@ class WM_OT_toolbar(Operator):
 
         wm = context.window_manager
         wm.popover(draw_menu, ui_units_x=8, keymap=keymap)
+        return {'FINISHED'}
+
+
+class WM_OT_toolbar_fallback_pie(Operator):
+    bl_idname = "wm.toolbar_fallback_pie"
+    bl_label = "Fallback Tool Pie Menu"
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data is not None
+
+    def invoke(self, context, event):
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+        space_type = context.space_data.type
+        cls = ToolSelectPanelHelper._tool_class_from_space_type(space_type)
+        if cls is None:
+            return {'PASS_THROUGH'}
+
+        # It's possible we don't have the fallback tool available.
+        # This can happen in the image editor for example when there is no selection
+        # in painting modes.
+        item, _ = cls._tool_get_by_id(context, cls.tool_fallback_id)
+        if item is None:
+            print("Tool", cls.tool_fallback_id, "not active in", cls)
+            return {'PASS_THROUGH'}
+
+        def draw_cb(self, context):
+            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+            ToolSelectPanelHelper.draw_fallback_tool_items_for_pie_menu(self.layout, context)
+
+        wm = context.window_manager
+        wm.popup_menu_pie(draw_func=draw_cb, title="Fallback Tool", event=event)
         return {'FINISHED'}
 
 
@@ -2366,7 +2430,14 @@ class WM_MT_splash(Menu):
 
         col = split.column()
 
-        col.label()
+        sub = col.split(factor=0.35)
+        row = sub.row()
+        row.alignment = 'RIGHT'
+        row.label(text="Language")
+        prefs = context.preferences
+        sub.prop(prefs.view, "language", text="")
+
+        col.separator()
 
         sub = col.split(factor=0.35)
         row = sub.row()
@@ -2408,14 +2479,6 @@ class WM_MT_splash(Menu):
             label = "Blender Dark"
         sub.menu("USERPREF_MT_interface_theme_presets", text=label)
 
-        # We need to make switching to a language easier first
-        #sub = col.split(factor=0.35)
-        #row = sub.row()
-        #row.alignment = 'RIGHT'
-        # row.label(text="Language:")
-        #prefs = context.preferences
-        #sub.prop(prefs.system, "language", text="")
-
         # Keep height constant
         if not has_select_mouse:
             col.label()
@@ -2427,8 +2490,8 @@ class WM_MT_splash(Menu):
         row = layout.row()
 
         sub = row.row()
-        if bpy.types.PREFERENCES_OT_copy_prev.poll(context):
-            old_version = bpy.types.PREFERENCES_OT_copy_prev.previous_version()
+        old_version = bpy.types.PREFERENCES_OT_copy_prev.previous_version()
+        if bpy.types.PREFERENCES_OT_copy_prev.poll(context) and old_version:
             sub.operator("preferences.copy_prev", text="Load %d.%d Settings" % old_version)
             sub.operator("wm.save_userpref", text="Save New Settings")
         else:
@@ -2499,6 +2562,36 @@ class WM_MT_splash(Menu):
         layout.separator()
 
 
+class WM_MT_splash_about(Menu):
+    bl_label = "About"
+
+    def draw(self, context):
+
+        layout = self.layout
+        layout.operator_context = 'EXEC_DEFAULT'
+
+        layout.label(text="Blender is free software")
+        layout.label(text="Licensed under the GNU General Public License")
+        layout.separator()
+        layout.separator()
+
+        split = layout.split()
+        split.emboss = 'PULLDOWN_MENU'
+        split.scale_y = 1.3
+
+        col1 = split.column()
+
+        col1.operator("wm.url_open_preset", text="Release Notes", icon='URL').type = 'RELEASE_NOTES'
+        col1.operator("wm.url_open_preset", text="Credits", icon='URL').type = 'CREDITS'
+        col1.operator("wm.url_open", text="License", icon='URL').url = "https://www.blender.org/about/license/"
+
+        col2 = split.column()
+
+        col2.operator("wm.url_open_preset", text="Blender Website", icon='URL').type = 'BLENDER'
+        col2.operator("wm.url_open", text="Blender Store", icon='URL').url = "https://store.blender.org"
+        col2.operator("wm.url_open_preset", text="Development Fund", icon='FUND').type = 'FUND'
+
+
 class WM_OT_drop_blend_file(Operator):
     bl_idname = "wm.drop_blend_file"
     bl_label = "Handle dropped .blend file"
@@ -2563,8 +2656,10 @@ classes = (
     WM_OT_tool_set_by_id,
     WM_OT_tool_set_by_index,
     WM_OT_toolbar,
+    WM_OT_toolbar_fallback_pie,
     WM_OT_toolbar_prompt,
     BatchRenameAction,
     WM_OT_batch_rename,
     WM_MT_splash,
+    WM_MT_splash_about,
 )
