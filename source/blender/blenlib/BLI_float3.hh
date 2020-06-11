@@ -21,7 +21,7 @@
 
 #include "BLI_math_vector.h"
 
-namespace BLI {
+namespace blender {
 
 struct float3 {
   float x, y, z;
@@ -218,6 +218,6 @@ struct float3 {
   }
 };
 
-}  // namespace BLI
+}  // namespace blender
 
 #endif /* __BLI_FLOAT3_HH__ */

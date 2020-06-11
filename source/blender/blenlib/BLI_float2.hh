@@ -19,7 +19,7 @@
 
 #include "BLI_float3.hh"
 
-namespace BLI {
+namespace blender {
 
 struct float2 {
   float x, y;
@@ -127,6 +127,6 @@ struct float2 {
                                     const float2 &v4);
 };
 
-}  // namespace BLI
+}  // namespace blender
 
 #endif /* __BLI_FLOAT2_HH__ */
