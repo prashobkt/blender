@@ -17,6 +17,7 @@ uniform int samplesLen = 256;
 uniform float noiseOfs = 0.0;
 uniform float stepLength;   /* Step length in local space. */
 uniform float densityScale; /* Simple Opacity multiplicator. */
+uniform float gridScale;    /* Multiplicator for grid scaling. */
 uniform vec3 activeColor;
 
 uniform float slicePosition;
@@ -115,6 +116,12 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
   vec3 co = ls_pos * 0.5 + 0.5;
 #ifdef USE_COBA
   float val = sample_volume_texture(densityTexture, co).r;
+#  ifdef SHOW_PHI
+  /* Scaling the value holding 0.5 as neutral. */
+  val = 0.5 + (val - 0.5) * gridScale;
+#  else
+  val *= gridScale;
+#  endif
   vec4 tval = texture(transferTexture, val) * densityScale;
   tval.rgb = pow(tval.rgb, vec3(2.2));
   scattering = tval.rgb * 1500.0;

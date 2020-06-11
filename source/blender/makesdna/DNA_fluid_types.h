@@ -592,13 +592,14 @@ typedef struct FluidDomainSettings {
   float slice_depth;
   float display_thickness;
   struct ColorBand *coba;
+  float grid_scale;
   float vector_scale;
   char vector_draw_type;
   char vector_draw_grid_type;
   char use_coba;
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
-  char _pad9[7]; /* Unused. */
+  char _pad9[3]; /* Unused. */
 
   /* -- Deprecated / unsed options (below). -- */
 

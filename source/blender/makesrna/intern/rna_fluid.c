@@ -2333,6 +2333,14 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Field", "Simulation field to color map");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
+  prop = RNA_def_property(srna, "coba_field_scale", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "grid_scale");
+  RNA_def_property_range(prop, 0.001, 100000.0);
+  RNA_def_property_ui_range(prop, 0.001, 1000.0, 0.1, 3);
+  RNA_def_property_ui_text(
+      prop, "Scale", "Multiplier for scaling the selected field to color map");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
   prop = RNA_def_property(srna, "color_ramp", PROP_POINTER, PROP_NEVER_NULL);
   RNA_def_property_pointer_sdna(prop, NULL, "coba");
   RNA_def_property_struct_type(prop, "ColorRamp");

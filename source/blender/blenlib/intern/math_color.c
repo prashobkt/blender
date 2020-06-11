@@ -722,7 +722,7 @@ void phi_to_rgb(float *r_table, int width, float min, float max)
 
     float rgb[3];
 
-    value = (value * 0.2 < 1.0f) ? value * 0.2f : 1.0f;
+    value = (value < 1.0f) ? value : 1.0f;
     value = (value >= -1.0f) ? value : -1.0f;
 
     if (value >= 0.0f) {

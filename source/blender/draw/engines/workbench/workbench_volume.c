@@ -96,7 +96,9 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   const bool use_slice = (mds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
                           mds->axis_slice_method == AXIS_SLICE_SINGLE);
   const InterpType cubic_interp = (InterpType)mds->interp_method;
-  GPUShader *sh = workbench_shader_volume_get(use_slice, mds->use_coba, cubic_interp, true);
+  const bool show_phi = (mds->coba_field == FLUID_DOMAIN_FIELD_PHI);
+  GPUShader *sh = workbench_shader_volume_get(
+      use_slice, mds->use_coba, cubic_interp, true, show_phi);
 
   if (use_slice) {
     float invviewmat[4][4];
@@ -139,6 +141,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   if (mds->use_coba) {
     DRW_shgroup_uniform_texture(grp, "densityTexture", mds->tex_field);
     DRW_shgroup_uniform_texture(grp, "transferTexture", mds->tex_coba);
+    DRW_shgroup_uniform_float_copy(grp, "gridScale", mds->grid_scale);
   }
   else {
     static float white[3] = {1.0f, 1.0f, 1.0f};
@@ -201,7 +204,7 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
   wpd->volumes_do = true;
 
   /* Create shader. */
-  GPUShader *sh = workbench_shader_volume_get(false, false, false, false);
+  GPUShader *sh = workbench_shader_volume_get(false, false, false, false, false);
 
   /* Compute color. */
   float color[3];

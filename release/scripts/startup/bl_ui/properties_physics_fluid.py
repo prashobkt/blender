@@ -1297,6 +1297,8 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
         else:
             col.prop(domain, "coba_field_liquid")
 
+        col.prop(domain, "coba_field_scale")
+
         col.use_property_split = False
 
         if (domain.domain_type == "GAS" or (not domain.coba_field_liquid == "PHI")):

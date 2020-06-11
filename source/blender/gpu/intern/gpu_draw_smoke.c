@@ -105,8 +105,8 @@ static void create_color_ramp(const struct ColorBand *coba, float *data)
 
 static void create_phi_spectrum_texture(float *data)
 {
-#  define MAX_PHI_VALUE 7.0f
-#  define MIN_PHI_VALUE -7.0f
+#  define MAX_PHI_VALUE 1.0f
+#  define MIN_PHI_VALUE -1.0f
 
   float *spec_pixels = MEM_mallocN(TFUNC_WIDTH * 4 * 16 * 16 * sizeof(float), "spec_pixels");
 
