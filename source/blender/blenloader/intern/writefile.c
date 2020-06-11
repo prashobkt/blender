@@ -737,7 +737,7 @@ static void write_iddata(BlendWriter *writer, ID *id)
     IDP_WriteProperty(id->properties, writer);
   }
   if (id->uuid) {
-    writestruct(wd, DATA, AssetUUID, 1, id->uuid);
+    BLO_write_struct(writer, AssetUUID, id->uuid);
   }
 
   if (id->override_library) {
@@ -4019,7 +4019,7 @@ static void write_libraries(WriteData *wd, Main *main)
              * the whole asset info would be completely lost when reloading the linked data-block,
              * especially in case it is not immediately found and needs to go through the whole
              * 'asset engine update' process after main .blend read process is finished. */
-            write_iddata(wd, id);
+            write_iddata(&writer, id);
           }
         }
       }

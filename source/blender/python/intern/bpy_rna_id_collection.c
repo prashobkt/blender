@@ -29,8 +29,8 @@
 #include "BLI_utildefines.h"
 
 #include "RNA_access.h"
-#include "RNA_types.h"
 #include "RNA_enum_types.h"
+#include "RNA_types.h"
 
 #include "BKE_asset_engine.h"
 #include "BKE_global.h"
@@ -488,16 +488,6 @@ static PyObject *bpy_orphans_purge(PyObject *UNUSED(self),
 
   Py_INCREF(Py_None);
 
-  static PyMethodDef asset_uuid_search = {
-      "asset_uuid_search",
-      (PyCFunction)bpy_asset_uuid_search,
-      METH_VARARGS | METH_KEYWORDS,
-      bpy_asset_uuid_search_doc,
-  };
-
-  PyModule_AddObject(
-      mod_par, "_rna_id_collection_asset_uuid_search", PyCFunction_New(&asset_uuid_search, NULL));
-
   return Py_None;
 }
 
@@ -518,4 +508,10 @@ PyMethodDef BPY_rna_id_collection_orphans_purge_method_def = {
     (PyCFunction)bpy_orphans_purge,
     METH_STATIC | METH_VARARGS | METH_KEYWORDS,
     bpy_orphans_purge_doc,
+};
+PyMethodDef BPY_rna_id_collection_asset_uuid_search_method_def = {
+    "asset_uuid_search",
+    (PyCFunction)bpy_asset_uuid_search,
+    METH_STATIC | METH_VARARGS | METH_KEYWORDS,
+    bpy_asset_uuid_search_doc,
 };

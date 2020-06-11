@@ -61,6 +61,8 @@ void BKE_libblock_free_data(ID *id, const bool do_id_user)
   }
 
   BKE_animdata_free(id, do_id_user);
+
+  MEM_SAFE_FREE(id->uuid);
 }
 
 void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))

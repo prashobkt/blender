@@ -55,6 +55,7 @@ static struct PyMethodDef pyrna_blenddata_methods[] = {
     {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_user_map_method_def */
     {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_batch_remove_method_def */
     {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_orphans_purge_method_def */
+    {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_asset_uuid_search_method_def */
     {NULL, NULL, 0, NULL},
 };
 
@@ -195,8 +196,9 @@ void BPY_rna_types_extend_capi(void)
   ARRAY_SET_ITEMS(pyrna_blenddata_methods,
                   BPY_rna_id_collection_user_map_method_def,
                   BPY_rna_id_collection_batch_remove_method_def,
-                  BPY_rna_id_collection_orphans_purge_method_def);
-  BLI_assert(ARRAY_SIZE(pyrna_blenddata_methods) == 4);
+                  BPY_rna_id_collection_orphans_purge_method_def,
+                  BPY_rna_id_collection_asset_uuid_search_method_def);
+  BLI_assert(ARRAY_SIZE(pyrna_blenddata_methods) == 5);
   pyrna_struct_type_extend_capi(&RNA_BlendData, pyrna_blenddata_methods, NULL);
 
   /* BlendDataLibraries */

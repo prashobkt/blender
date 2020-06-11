@@ -2878,7 +2878,7 @@ static void direct_link_id_common(
   }
 
   if (id->uuid) {
-    BLO_read_data_address(fd, &id->uuid);
+    BLO_read_data_address(reader, &id->uuid);
     /* Make sure runtime fields are always zeroed out. */
     BKE_asset_uuid_runtime_reset(id->uuid);
   }
@@ -2886,7 +2886,6 @@ static void direct_link_id_common(
   /* Handle 'private IDs'. */
   direct_link_id_embedded_id(reader, current_library, id, id_old);
 }
-
 
 /** \} */
 
@@ -9748,13 +9747,12 @@ static BHead *read_libblock(FileData *fd,
 
     if (id->uuid) {
       /* Read all data into fd->datamap. */
-      bhead = read_data_into_oldnewmap(fd, bhead, __func__);
+      bhead = read_data_into_datamap(fd, bhead, __func__);
 
       id->uuid = newdataadr(fd, id->uuid);
       /* Make sure runtime fields are always zeroed out. */
       BKE_asset_uuid_runtime_reset(id->uuid);
 
-      oldnewmap_free_unused(fd->datamap);
       oldnewmap_clear(fd->datamap);
       return bhead;
     }
