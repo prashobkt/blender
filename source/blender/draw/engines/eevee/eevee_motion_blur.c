@@ -324,8 +324,15 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
   EEVEE_EffectsInfo *effects = stl->effects;
   DRWShadingGroup *grp = NULL;
 
-  /* TODO(fclem) Also detect if object has any motion. */
-  if (!DRW_state_is_scene_render() || psl->velocity_object == NULL) {
+  if (!DRW_state_is_scene_render() || psl->velocity_object == NULL ||
+      (ob->base_flag & BASE_FROM_DUPLI)) {
+    return;
+  }
+
+  const bool object_moves = BKE_object_moves_in_time(ob, true);
+  const bool is_deform = BKE_object_is_deform_modified(DRW_context_state_get()->scene, ob);
+
+  if (!(object_moves || is_deform)) {
     return;
   }
 
@@ -341,7 +348,7 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
 
     if (mb_step == MB_CURR) {
       GPUBatch *batch = DRW_cache_object_surface_get(ob);
-      if (batch == NULL || mb_geom->vbo[0] == NULL) {
+      if (batch == NULL) {
         return;
       }
 
@@ -352,14 +359,20 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
       DRW_shgroup_uniform_bool(grp, "useDeform", &mb_geom->use_deform, 1);
 
       DRW_shgroup_call(grp, batch, ob);
-      /* Keep to modify later (after init). */
-      mb_geom->batch = batch;
+
+      if (mb_geom->use_deform) {
+        /* Keep to modify later (after init). */
+        mb_geom->batch = batch;
+      }
     }
-    else {
+    else if (is_deform) {
       /* Store vertex position buffer. */
       mb_geom->vbo[mb_step] = DRW_cache_object_pos_vertbuf_get(ob);
-      /* TODO(fclem) only limit deform motion blur to object that needs it. */
       mb_geom->use_deform = (mb_geom->vbo[mb_step] != NULL);
+    }
+    else {
+      mb_geom->vbo[mb_step] = NULL;
+      mb_geom->use_deform = false;
     }
   }
 }
