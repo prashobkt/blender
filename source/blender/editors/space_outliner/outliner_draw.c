@@ -1902,11 +1902,19 @@ static void outliner_buttons(const bContext *C,
   }
 }
 
-static void outliner_set_active_data_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
+static void outliner_left_column_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
 {
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
   Scene *scene = CTX_data_scene(C);
+  TreeStoreElem *tselem = (TreeStoreElem *)tselem_poin;
 
-  outliner_set_active_camera(C, scene, tselem_poin);
+  /* TODO: Try to pass necessary data instead of searching for tree elem */
+  TreeElement *te = outliner_find_tree_element(&soops->tree, tselem);
+  if (!te) {
+    return;
+  }
+
+  outliner_left_column_click(C, soops, te);
 }
 
 /* Draw icons for setting activation when in object mode */
@@ -1953,8 +1961,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                            0.0,
                            0.0,
                            TIP_("Set active camera"));
-        /* TODO: adding functions to these buttons doesn't work well */
-        UI_but_func_set(but, outliner_set_active_data_fn, tselem, NULL);
+        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
       }
     }
   }
@@ -1992,7 +1999,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                          0.0,
                          0.0,
                          TIP_("Set active scene"));
-      UI_but_func_set(but, outliner_set_active_data_fn, tselem, NULL);
+      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
     }
   }
   else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
@@ -2031,7 +2038,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                          0.0,
                          0.0,
                          TIP_("Set active collection"));
-      UI_but_func_set(but, outliner_set_active_data_fn, tselem, NULL);
+      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
     }
   }
 }
@@ -2065,6 +2072,7 @@ static void outliner_draw_left_column_mode_toggle(const bContext *C,
                            0.0,
                            0.0,
                            TIP_(""));
+        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
       }
       else {
         /* Draw dot for objects that are compatible with the current edit mode */
@@ -2081,7 +2089,8 @@ static void outliner_draw_left_column_mode_toggle(const bContext *C,
                            0.0,
                            0.0,
                            0.0,
-                           TIP_(""));
+                           TIP_("Toggle edit mode"));
+        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
       }
     }
   }

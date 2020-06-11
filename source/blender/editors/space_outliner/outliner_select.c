@@ -1141,7 +1141,7 @@ eOLDrawState tree_element_type_active(bContext *C,
 }
 
 /* TODO: Temporary while testing */
-void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem *tselem)
+static void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem *tselem)
 {
   Object *ob = (Object *)tselem->id;
 
@@ -1178,7 +1178,7 @@ static void outliner_set_active_data(bContext *C,
   }
 }
 
-static void outliner_left_column_click(bContext *C, SpaceOutliner *soops, TreeElement *te)
+void outliner_left_column_click(bContext *C, SpaceOutliner *soops, TreeElement *te)
 {
   TreeStoreElem *tselem = TREESTORE(te);
   TreeViewContext tvc;

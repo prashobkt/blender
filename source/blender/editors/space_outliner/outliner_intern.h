@@ -291,8 +291,7 @@ void outliner_set_walk_element(struct SpaceOutliner *soops, struct TreeStoreElem
 bool outliner_item_is_co_over_name_icons(const TreeElement *te, float view_co_x);
 bool outliner_item_is_co_within_close_toggle(const TreeElement *te, float view_co_x);
 
-/* TODO: Temporary while testing */
-void outliner_set_active_camera(struct bContext *C, Scene *scene, struct TreeStoreElem *tselem);
+void outliner_left_column_click(struct bContext *C, struct SpaceOutliner *soops, TreeElement *te);
 
 /* outliner_edit.c ---------------------------------------------- */
 typedef void (*outliner_operation_cb)(struct bContext *C,
