@@ -142,7 +142,6 @@ static void file_draw_icon(uiBlock *block,
                            int icon,
                            int width,
                            int height,
-                           bool drag,
                            bool dimmed,
                            uiDragLibraryHandle *drag_data)
 {
@@ -213,7 +212,6 @@ void file_calc_previews(const bContext *C, ARegion *region)
 }
 
 static void file_draw_preview(uiBlock *block,
-                              const char *path,
                               int sx,
                               int sy,
                               const float icon_aspect,
@@ -222,9 +220,9 @@ static void file_draw_preview(uiBlock *block,
                               FileLayout *layout,
                               const bool is_icon,
                               const int typeflags,
-                              const bool drag,
                               const bool dimmed,
-                              const bool is_link)
+                              const bool is_link,
+                              const uiDragLibraryHandle *drag_data)
 {
   uiBut *but;
   float fx, fy;
@@ -847,7 +845,6 @@ void file_draw_list(const bContext *C, ARegion *region)
       }
 
       file_draw_preview(block,
-                        path,
                         sx,
                         sy,
                         thumb_icon_aspect,
@@ -856,7 +853,6 @@ void file_draw_list(const bContext *C, ARegion *region)
                         layout,
                         is_icon,
                         file->typeflag,
-                        do_drag,
                         is_hidden,
                         is_link,
                         drag_data);
@@ -869,7 +865,6 @@ void file_draw_list(const bContext *C, ARegion *region)
                      filelist_geticon(files, i, true),
                      ICON_DEFAULT_WIDTH_SCALE,
                      ICON_DEFAULT_HEIGHT_SCALE,
-                     do_drag,
                      is_hidden,
                      drag_data);
       icon_ofs += ICON_DEFAULT_WIDTH_SCALE + 0.2f * UI_UNIT_X;

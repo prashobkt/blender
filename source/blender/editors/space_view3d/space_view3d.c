@@ -41,8 +41,8 @@
 #include "BKE_curve.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
-#include "BKE_idcode.h"
 #include "BKE_idprop.h"
+#include "BKE_idtype.h"
 #include "BKE_lattice.h"
 #include "BKE_main.h"
 #include "BKE_mball.h"
@@ -480,7 +480,7 @@ static bool view3d_path_link_append_drop_poll(bContext *C,
                                     &name) /* later... && (!aet || !path_to_idcode(path))*/) {
         return false;
       }
-      switch (BKE_idcode_from_name(group)) {
+      switch (BKE_idtype_idcode_from_name(group)) {
         case ID_OB:
           return true;
         case ID_MA: {
@@ -618,18 +618,6 @@ static bool view3d_volume_drop_poll(bContext *UNUSED(C),
                                     const char **UNUSED(r_tooltip))
 {
   return (drag->type == WM_DRAG_PATH) && (drag->icon == ICON_FILE_VOLUME);
-}
-
-static bool view3d_ima_mesh_drop_poll(bContext *C,
-                                      wmDrag *drag,
-                                      const wmEvent *event,
-                                      const char **tooltip)
-{
-  Base *base = ED_view3d_give_base_under_cursor(C, event->mval);
-
-  if (base && base->object->type == OB_MESH)
-    return view3d_ima_drop_poll(C, drag, event, tooltip);
-  return false;
 }
 
 static void view3d_path_link_drop_copy(wmDrag *drag, wmDropBox *drop)

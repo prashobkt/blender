@@ -183,8 +183,8 @@ static void file_init(wmWindowManager *UNUSED(wm), ScrArea *area)
 
   if (!BKE_asset_engines_find(sfile->asset_engine)) {
     BKE_asset_engines_get_default(sfile->asset_engine, sizeof(sfile->asset_engine));
-    ED_area_tag_refresh(sa);
-    ED_area_tag_redraw(sa);
+    ED_area_tag_refresh(area);
+    ED_area_tag_redraw(area);
   }
 
   if (sfile->layout) {

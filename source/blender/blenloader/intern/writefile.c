@@ -4037,7 +4037,7 @@ static void write_libraries(WriteData *wd, Main *main)
             if (id->us > 0 &&
                 ((id->tag & LIB_TAG_EXTERN) ||
                  ((id->tag & LIB_TAG_INDIRECT) && (id->flag & LIB_INDIRECT_WEAK_LINK)))) {
-              if (!BKE_idcode_is_linkable(GS(id->name))) {
+              if (!BKE_idtype_idcode_is_linkable(GS(id->name))) {
                 printf(
                     "ERROR: write file: data-block '%s' from lib '%s' is not linkable "
                     "but is flagged as directly linked",
@@ -4047,9 +4047,10 @@ static void write_libraries(WriteData *wd, Main *main)
               }
               writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
               /* It is mandatory to write id's asset uuid reference for placeholders too, otherwise
-               * the whole asset info would be completely lost when reloading the linked data-block,
-               * especially in case it is not immediately found and needs to go through the whole
-               * 'asset engine update' process after main .blend read process is finished. */
+               * the whole asset info would be completely lost when reloading the linked
+               * data-block, especially in case it is not immediately found and needs to go through
+               * the whole 'asset engine update' process after main .blend read process is
+               * finished. */
               write_iddata(&writer, id);
             }
           }

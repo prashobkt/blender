@@ -4356,43 +4356,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-<<<<<<< HEAD
-  if (1 || !DNA_struct_find(fd->filesdna, "AssetUUID")) {
-    /* struct_find will have to wait, not working for now... */
-    /* Move non-op filebrowsers to 'library browsing' type/mode. */
-    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-          if (sl->spacetype == SPACE_FILE) {
-            SpaceFile *sfile = (SpaceFile *)sl;
-            if (sfile->params != NULL) {
-              sfile->params->type = FILE_LOADLIB;
-              sfile->params->filter = FILE_TYPE_FOLDER | FILE_TYPE_BLENDERLIB;
-              /* For now, always init filterid to 'all true' */
-              sfile->params->filter_id = FILTER_ID_AC | FILTER_ID_AR | FILTER_ID_BR |
-                                         FILTER_ID_CA | FILTER_ID_CU | FILTER_ID_GD |
-                                         FILTER_ID_GR | FILTER_ID_IM | FILTER_ID_LA |
-                                         FILTER_ID_LS | FILTER_ID_LT | FILTER_ID_MA |
-                                         FILTER_ID_MB | FILTER_ID_MC | FILTER_ID_ME |
-                                         FILTER_ID_MSK | FILTER_ID_NT | FILTER_ID_OB |
-                                         FILTER_ID_PA | FILTER_ID_PAL | FILTER_ID_PC |
-                                         FILTER_ID_SCE | FILTER_ID_SPK | FILTER_ID_SO |
-                                         FILTER_ID_TE | FILTER_ID_TXT | FILTER_ID_VF |
-                                         FILTER_ID_WO | FILTER_ID_CF;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  {
-    /* Versioning code until next subversion bump goes here. */
-=======
   if (!MAIN_VERSION_ATLEAST(bmain, 282, 2)) {
     do_version_curvemapping_walker(bmain, do_version_curvemapping_flag_extend_extrapolate);
 
->>>>>>> asset-uuid
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         area->flag &= ~AREA_FLAG_UNUSED_6;
@@ -5111,5 +5077,34 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+  }
+
+  if (1 || !DNA_struct_find(fd->filesdna, "AssetUUID")) {
+    /* struct_find will have to wait, not working for now... */
+    /* Move non-op filebrowsers to 'library browsing' type/mode. */
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype == SPACE_FILE) {
+            SpaceFile *sfile = (SpaceFile *)sl;
+            if (sfile->params != NULL) {
+              sfile->params->type = FILE_LOADLIB;
+              sfile->params->filter = FILE_TYPE_FOLDER | FILE_TYPE_BLENDERLIB;
+              /* For now, always init filterid to 'all true' */
+              sfile->params->filter_id = FILTER_ID_AC | FILTER_ID_AR | FILTER_ID_BR |
+                                         FILTER_ID_CA | FILTER_ID_CU | FILTER_ID_GD |
+                                         FILTER_ID_GR | FILTER_ID_IM | FILTER_ID_LA |
+                                         FILTER_ID_LS | FILTER_ID_LT | FILTER_ID_MA |
+                                         FILTER_ID_MB | FILTER_ID_MC | FILTER_ID_ME |
+                                         FILTER_ID_MSK | FILTER_ID_NT | FILTER_ID_OB |
+                                         FILTER_ID_PA | FILTER_ID_PAL | FILTER_ID_PC |
+                                         FILTER_ID_SCE | FILTER_ID_SPK | FILTER_ID_SO |
+                                         FILTER_ID_TE | FILTER_ID_TXT | FILTER_ID_VF |
+                                         FILTER_ID_WO | FILTER_ID_CF;
+            }
+          }
+        }
+      }
+    }
   }
 }

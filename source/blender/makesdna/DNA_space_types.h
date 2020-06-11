@@ -960,6 +960,8 @@ typedef struct FileDirEntry {
   /* eFileAttributes defined in BLI_fileops.h */
   int attributes;
 
+  char _pad[4];
+
   ListBase variants;
   int nbr_variants;
   int act_variant;

@@ -1386,11 +1386,19 @@ static void filelist_cache_preview_ensure_running(FileListEntryCache *cache, Ass
 
 static void filelist_cache_previews_clear(FileListEntryCache *cache, AssetEngine *ae)
 {
-  FileListEntryPreview *preview;
+  if (ae) {
+    if (cache->ae_preview_job != AE_JOB_ID_UNSET) {
+      ae->type->kill(ae, cache->ae_preview_job);
+      cache->ae_preview_job = AE_JOB_ID_UNSET;
+    }
+    for (int i = cache->ae_preview_uuids.nbr_uuids; i--;) {
+      MEM_SAFE_FREE(cache->ae_preview_uuids.uuids[i].preview_image_buffer);
+    }
+    MEM_SAFE_FREE(cache->ae_preview_uuids.uuids);
+    cache->ae_preview_uuids.nbr_uuids = 0;
+  }
 
   if (cache->previews_pool) {
-    FileListEntryPreview *preview;
-
     BLI_task_pool_cancel(cache->previews_pool);
 
     FileListEntryPreview *preview;
@@ -1469,12 +1477,11 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
       //          preview->img);
 
       filelist_cache_preview_ensure_running(cache, filelist->ae);
-      BLI_task_pool_push_ex(cache->previews_pool,
-                            filelist_cache_preview_runf,
-                            preview,
-                            true,
-                            filelist_cache_preview_freef,
-                            TASK_PRIORITY_LOW);
+      BLI_task_pool_push(cache->previews_pool,
+                         filelist_cache_preview_runf,
+                         preview,
+                         true,
+                         filelist_cache_preview_freef);
     }
   }
 }
@@ -1819,10 +1826,10 @@ static FileDirEntry *filelist_file_create_entry(FileList *filelist, const int in
     view = MEM_callocN(sizeof(*view), __func__);
 
     view->size = (uint64_t)entry->st.st_size;
-  ret->attributes = entry->attributes;
-  if (entry->redirection_path) {
-    ret->redirection_path = BLI_strdup(entry->redirection_path);
-  }
+    ret->attributes = entry->attributes;
+    if (entry->redirection_path) {
+      ret->redirection_path = BLI_strdup(entry->redirection_path);
+    }
     view->time = (int64_t)entry->st.st_mtime;
 
     ret->entry = view;

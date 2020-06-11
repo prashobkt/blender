@@ -133,6 +133,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.h"
 #include "BKE_lib_query.h"
+#include "BKE_library.h"
 #include "BKE_main.h"  // for Main
 #include "BKE_main_idmap.h"
 #include "BKE_material.h"

@@ -48,10 +48,6 @@
 
 static void library_free_data(ID *id)
 {
-  if (lib->flag & LIBRARY_FLAG_VIRTUAL) {
-    return;
-  }
-
   Library *library = (Library *)id;
   if (library->packedfile) {
     BKE_packedfile_free(library->packedfile);

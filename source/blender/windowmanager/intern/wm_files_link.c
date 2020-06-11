@@ -44,7 +44,6 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
@@ -60,13 +59,14 @@
 #include "BKE_asset_engine.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_remap.h"
-#include "BKE_material.h"
 #include "BKE_image.h"
+#include "BKE_layer.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_override.h"
+#include "BKE_lib_remap.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h" /* BKE_ST_MAXNAME */
@@ -79,8 +79,8 @@
 #include "IMB_colormanagement.h"
 
 #include "ED_datafiles.h"
-#include "ED_screen.h"
 #include "ED_fileselect.h"
+#include "ED_screen.h"
 #include "ED_view3d.h"
 
 #include "WM_api.h"
@@ -341,7 +341,7 @@ static void wm_link_virtual_lib(WMLinkAppendData *lapp_data,
       if (generate_overrides) {
         /* Create local override of virtually linked datablock, since we nearly always want to be
          * able to edit pretty much everything about it. */
-        new_id = BKE_override_library_create_from_id(bmain, new_id, true);
+        new_id = BKE_lib_override_library_create_from_id(bmain, new_id, true);
         /* TODO: will need to protect some fields on type-by-type case (path field). */
       }
 
@@ -658,7 +658,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
     if (group) {
       wm_link_append_data_library_add(lapp_data, libname);
       item = wm_link_append_data_item_add(
-          lapp_data, name, BKE_idcode_from_name(group), &uuid, NULL);
+          lapp_data, name, BKE_idtype_idcode_from_name(group), &uuid, NULL);
       BLI_BITMAP_ENABLE(item->libraries, 0);
     }
     else if (aet) { /* Non-blend paths are only valid in asset engine context (virtual libraries).
@@ -708,11 +708,11 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
         ID *new_id = ((WMLinkAppendDataItem *)(itemlink->link))->new_id;
 
         if (new_id && GS(new_id->name) == ID_MA) {
-          assign_material(bmain,
-                          obbase->object,
-                          (Material *)new_id,
-                          obbase->object->actcol,
-                          BKE_MAT_ASSIGN_USERPREF);
+          BKE_object_material_assign(bmain,
+                                     obbase->object,
+                                     (Material *)new_id,
+                                     obbase->object->actcol,
+                                     BKE_MAT_ASSIGN_USERPREF);
         }
       }
     }
@@ -996,11 +996,11 @@ static void lib_relocate_do(Main *bmain,
       ID *id = lbarray[lba_idx]->first;
       const short idcode = id ? GS(id->name) : 0;
 
-    if (!id || !BKE_idtype_idcode_is_linkable(idcode)) {
-      /* No need to reload non-linkable datatypes,
-       * those will get relinked with their 'users ID'. */
-      continue;
-    }
+      if (!id || !BKE_idtype_idcode_is_linkable(idcode)) {
+        /* No need to reload non-linkable datatypes,
+         * those will get relinked with their 'users ID'. */
+        continue;
+      }
 
       for (; id; id = id->next) {
         if (id->lib == library) {
@@ -1817,7 +1817,7 @@ static int wm_assets_reload_exec(bContext *C, wmOperator *op)
       const char *libname_def, *name_def;
 
       if (BLO_library_path_explode(path, libname, &group, &name)) {
-        idcode = BKE_idcode_from_name(group);
+        idcode = BKE_idtype_idcode_from_name(group);
         libname_def = libname;
         name_def = name;
       }

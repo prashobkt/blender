@@ -41,8 +41,9 @@
 #include "RNA_types.h"
 
 #include "BKE_asset_engine.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_library.h"
-#include "BKE_library_query.h"
 #include "BKE_main.h"
 
 /* Asset managing - TODO: we most likely want to turn this into a hashing at some point, could
@@ -172,23 +173,20 @@ void BKE_libraries_asset_repositories_clear(Main *bmain)
   BKE_main_id_tag_all(bmain, LIB_TAG_ASSET, false);
 }
 
-static int library_asset_dependencies_rebuild_cb(void *userdata,
-                                                 ID *id_self,
-                                                 ID **idp,
-                                                 int UNUSED(cd_flag))
+static int library_asset_dependencies_rebuild_cb(LibraryIDLinkCallbackData *data)
 {
-  if (!idp || !*idp) {
+  if (!data->id_pointer || !*data->id_pointer) {
     return IDWALK_RET_NOP;
   }
 
-  AssetRef *aref = userdata;
-  ID *id = *idp;
+  AssetRef *aref = data->user_data;
+  ID *id = *data->id_pointer;
 
   if (id->uuid) {
     return IDWALK_RET_STOP_RECURSION;
   }
 
-  printf("%s (from %s)\n", id->name, id_self->name);
+  printf("%s (from %s)\n", id->name, data->id_self->name);
 
   BKE_library_asset_repository_subdata_add(aref, (const void *)id);
   id->tag |= LIB_TAG_ASSET;

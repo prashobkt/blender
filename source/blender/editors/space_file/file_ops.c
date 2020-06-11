@@ -1434,13 +1434,13 @@ void FILE_OT_cancel(struct wmOperatorType *ot)
 /** \name Operator Utilities
  * \{ */
 
-void file_sfile_to_operator_ex(bContext *C,
+void file_sfile_to_operator_ex(bContext *UNUSED(C),
                                wmOperator *op,
                                SpaceFile *sfile,
                                char filepath[FILE_MAX_LIBEXTRA],
                                const bool is_fake)
 {
-  Main *bmain = CTX_data_main(C);
+  // Main *bmain = CTX_data_main(C);
   PropertyRNA *prop, *prop_files, *prop_dirs;
   /* Note filebrowser does not create ae for default NONE 'engine', we'll get NULL in this case
    * here. */
@@ -1470,7 +1470,7 @@ void file_sfile_to_operator_ex(bContext *C,
 
   if (selection->nbr_entries != 0) {
     const char *filename;
-    int i, numfiles = filelist_files_ensure(sfile->files);
+    int i, numfiles = filelist_files_ensure(sfile->files, sfile->params);
 
     if ((prop = RNA_struct_find_property(op->ptr, "files"))) {
       PointerRNA itemptr;
