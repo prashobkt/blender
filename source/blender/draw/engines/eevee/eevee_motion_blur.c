@@ -184,7 +184,7 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
     }
 #endif
 
-    effects->motion_blur_max = 32;
+    effects->motion_blur_max = max_ii(16, scene->eevee.motion_blur_max);
     const float *fs_size = DRW_viewport_size_get();
     int tx_size[2] = {1 + ((int)fs_size[0] / effects->motion_blur_max),
                       1 + ((int)fs_size[1] / effects->motion_blur_max)};
@@ -274,14 +274,13 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
       eGPUSamplerState state = 0;
 
       grp = DRW_shgroup_create(e_data.motion_blur_sh, psl->motion_blur);
-      DRW_shgroup_uniform_int_copy(grp, "samples", scene->eevee.motion_blur_samples);
-      DRW_shgroup_uniform_float(grp, "sampleOffset", &effects->motion_blur_sample_offset, 1);
       DRW_shgroup_uniform_texture(grp, "utilTex", EEVEE_materials_get_util_tex());
       DRW_shgroup_uniform_texture_ref_ex(grp, "colorBuffer", &effects->source_buffer, state);
       DRW_shgroup_uniform_texture_ref_ex(grp, "depthBuffer", &dtxl->depth, state);
       DRW_shgroup_uniform_texture_ref_ex(grp, "velocityBuffer", &effects->velocity_tx, state);
       DRW_shgroup_uniform_texture_ref_ex(
           grp, "tileMaxBuffer", &effects->velocity_tiles_expand_tx, state);
+      DRW_shgroup_uniform_float_copy(grp, "depthScale", scene->eevee.motion_blur_depth_scale);
       DRW_shgroup_uniform_int_copy(grp, "maxBlurRadius", effects->motion_blur_max);
       DRW_shgroup_uniform_vec2(grp, "nearFar", effects->motion_blur_near_far, 1);
       DRW_shgroup_uniform_bool_copy(grp, "isPerspective", DRW_view_is_persp_get(NULL));

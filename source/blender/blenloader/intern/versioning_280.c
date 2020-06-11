@@ -5076,5 +5076,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* EEVEE Motion blur new parameters. */
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "motion_blur_depth_scale")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.motion_blur_depth_scale = 100.0f;
+        scene->eevee.motion_blur_max = 32;
+      }
+    }
   }
 }

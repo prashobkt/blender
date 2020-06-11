@@ -21,8 +21,7 @@ uniform sampler2DArray utilTex;
 #define texelfetch_noise_tex(coord) texelFetch(utilTex, ivec3(ivec2(coord) % LUT_SIZE, 2.0), 0)
 
 uniform int maxBlurRadius;
-uniform int samples;
-uniform float sampleOffset;
+uniform float depthScale;
 uniform vec2 viewportSize;
 uniform vec2 viewportSizeInv;
 uniform bool isPerspective;
@@ -43,12 +42,9 @@ vec2 spread_compare(float center_motion_length, float sample_motion_length, floa
   return saturate(vec2(center_motion_length, sample_motion_length) - offset_length + 1.0);
 }
 
-/* TODO expose to user */
-#define DEPTH_SCALE 100.0
-
 vec2 depth_compare(float center_depth, float sample_depth)
 {
-  return saturate(0.5 + vec2(DEPTH_SCALE, -DEPTH_SCALE) * (sample_depth - center_depth));
+  return saturate(0.5 + vec2(depthScale, -depthScale) * (sample_depth - center_depth));
 }
 
 /* Kill contribution if not going the same direction. */
