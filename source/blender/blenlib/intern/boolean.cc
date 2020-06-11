@@ -456,7 +456,7 @@ static PatchesInfo find_patches(const TriMesh &tm, const TriMeshTopology &tmtopo
  * Also, e may be reversed in tri.
  * Set *r_rev to true if it is reversed, else false.
  */
-int find_flap_vert(const IndexedTriangle &tri, const Edge e, bool *r_rev)
+static int find_flap_vert(const IndexedTriangle &tri, const Edge e, bool *r_rev)
 {
   *r_rev = false;
   int flapv;
@@ -791,9 +791,9 @@ static CellsInfo find_cells(const TriMesh &tm, const TriMeshTopology &tmtopo, Pa
  * all other cells.
  */
 static int find_ambient_cell(const TriMesh &tm,
-                             const TriMeshTopology &tmtopo,
-                             const PatchesInfo &pinfo,
-                             const CellsInfo &cinfo)
+                             const TriMeshTopology &UNUSED(tmtopo),
+                             const PatchesInfo &UNUSED(pinfo),
+                             const CellsInfo &UNUSED(cinfo))
 {
   int dbg_level = 1;
   if (dbg_level > 0) {
@@ -817,9 +817,7 @@ static int find_ambient_cell(const TriMesh &tm,
   return 0;
 }
 
-static void propagate_windings_and_flag(const TriMesh &tm,
-                                        const TriMeshTopology &tmtopo,
-                                        PatchesInfo &pinfo,
+static void propagate_windings_and_flag(PatchesInfo &pinfo,
                                         CellsInfo &cinfo,
                                         int c_ambient,
                                         int bool_optype)
@@ -923,7 +921,7 @@ static TriMesh self_boolean(const TriMesh &tm_in, int bool_optype)
   CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
   cinfo.init_windings(1);
   int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo, cinfo);
-  propagate_windings_and_flag(tm_si, tm_si_topo, pinfo, cinfo, c_ambient, bool_optype);
+  propagate_windings_and_flag(pinfo, cinfo, c_ambient, bool_optype);
   return tm_si;
 }
 

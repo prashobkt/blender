@@ -141,8 +141,6 @@ struct mpq2 {
   uint32_t hash() const;
 };
 
-uint32_t hash_mpq_class(const mpq_class &value);
-
 }  // namespace blender
 
 #endif /* __BLI_MPQ_HH__ */
