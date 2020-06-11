@@ -4338,6 +4338,8 @@ static int lanpr_bake_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
     lanpr_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, NULL);
   }
 
+  ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
+
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
   return OPERATOR_FINISHED;
