@@ -1905,7 +1905,6 @@ static void outliner_buttons(const bContext *C,
 static void outliner_left_column_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
 {
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
-  Scene *scene = CTX_data_scene(C);
   TreeStoreElem *tselem = (TreeStoreElem *)tselem_poin;
 
   /* TODO: Try to pass necessary data instead of searching for tree elem */
@@ -2044,8 +2043,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
 }
 
 /* Draw icons for adding and removing objects from the current interation mode */
-static void outliner_draw_left_column_mode_toggle(const bContext *C,
-                                                  uiBlock *block,
+static void outliner_draw_left_column_mode_toggle(uiBlock *block,
                                                   TreeViewContext *tvc,
                                                   TreeElement *te,
                                                   TreeStoreElem *tselem)
@@ -2055,7 +2053,7 @@ static void outliner_draw_left_column_mode_toggle(const bContext *C,
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
 
-    if (OB_TYPE_SUPPORT_EDITMODE(ob->type) && ob->type == tvc->ob_edit->type) {
+    if (tvc->ob_edit && OB_TYPE_SUPPORT_EDITMODE(ob->type) && ob->type == tvc->ob_edit->type) {
       if (ob->mode == tvc->ob_edit->mode) {
         /* Draw mode icon for objects in edit mode */
         but = uiDefIconBut(block,
@@ -2093,6 +2091,44 @@ static void outliner_draw_left_column_mode_toggle(const bContext *C,
         UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
       }
     }
+    else if (tvc->ob_pose && ob->type == OB_ARMATURE) {
+      if (ob->mode == tvc->ob_pose->mode) {
+        /* Draw mode icon for armatures in pose mode */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_ICON_TOGGLE,
+                           0,
+                           ICON_POSE_HLT,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_(""));
+        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+      }
+      else {
+        /* Draw dot for armatures that can be toggled into pose mode */
+        but = uiDefIconBut(block,
+                           UI_BTYPE_ICON_TOGGLE,
+                           0,
+                           ICON_DOT,
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_("Toggle pose mode"));
+        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+      }
+    }
   }
 }
 
@@ -2104,15 +2140,14 @@ static void outliner_draw_left_column(
   LISTBASE_FOREACH (TreeElement *, te, tree) {
     tselem = TREESTORE(te);
 
-    if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
-      /* Only support edit mode right now */
-      if (tvc->ob_edit) {
-        outliner_draw_left_column_mode_toggle(C, block, tvc, te, tselem);
-      }
+    /* Only edit and pose mode support multi-object editing */
+    if (tvc->obact && ELEM(tvc->obact->mode, OB_MODE_EDIT, OB_MODE_POSE)) {
+      outliner_draw_left_column_mode_toggle(block, tvc, te, tselem);
     }
-    else {
-      outliner_draw_left_column_activation(C, block, tvc, te, tselem);
-    }
+
+    // else {
+    outliner_draw_left_column_activation(C, block, tvc, te, tselem);
+    // }
 
     if (TSELEM_OPEN(tselem, soops)) {
       outliner_draw_left_column(C, block, tvc, soops, &te->subtree);

@@ -1185,8 +1185,8 @@ void outliner_left_column_click(bContext *C, SpaceOutliner *soops, TreeElement *
   outliner_viewcontext_init(C, &tvc);
 
   if (tvc.obact && tvc.obact->mode != OB_MODE_OBJECT) {
-    /* Only support edit mode */
-    if (tvc.ob_edit) {
+    /* Only edit and pose mode support multi-object editing */
+    if (ELEM(tvc.obact->mode, OB_MODE_EDIT, OB_MODE_POSE)) {
       outliner_item_mode_toggle(C, &tvc, te, true);
     }
   }
