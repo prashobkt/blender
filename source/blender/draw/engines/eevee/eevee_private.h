@@ -670,8 +670,9 @@ typedef struct EEVEE_EffectsInfo {
   CameraParams past_cam_params;
   CameraParams current_cam_params;
   float motion_blur_sample_offset;
-  char motion_blur_step; /* Which step we are evaluating. */
-  int motion_blur_max;   /* Maximum distance in pixels a motion blured pixel can cover. */
+  char motion_blur_step;         /* Which step we are evaluating. */
+  int motion_blur_max;           /* Maximum distance in pixels a motion blured pixel can cover. */
+  float motion_blur_near_far[2]; /* Camera near/far clip distances (positive). */
   bool cam_params_init;
   /* TODO(fclem) Only used in render mode for now.
    * This is because we are missing a per scene persistent place to hold this. */

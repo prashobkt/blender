@@ -97,9 +97,7 @@ static void eevee_motion_blur_past_persmat_get(const CameraParams *past_params,
 }
 #endif
 
-int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata),
-                           EEVEE_Data *vedata,
-                           Object *UNUSED(camera))
+int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata, Object *camera)
 {
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -123,6 +121,16 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata),
       DRW_view_viewmat_get(NULL, effects->motion_blur.camera[mb_step].viewmat, false);
       DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persmat, false);
       DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persinv, true);
+    }
+
+    if (camera != NULL) {
+      Camera *cam = camera->data;
+      effects->motion_blur_near_far[0] = cam->clip_start;
+      effects->motion_blur_near_far[1] = cam->clip_end;
+    }
+    else {
+      /* Not supported yet. */
+      BLI_assert(0);
     }
 
 #if 0 /* For when we can do viewport motion blur. */
@@ -175,6 +183,7 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata),
       effects->cam_params_init = false;
     }
 #endif
+
     effects->motion_blur_max = 32;
     const float *fs_size = DRW_viewport_size_get();
     int tx_size[2] = {1 + ((int)fs_size[0] / effects->motion_blur_max),
@@ -274,6 +283,8 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
       DRW_shgroup_uniform_texture_ref_ex(
           grp, "tileMaxBuffer", &effects->velocity_tiles_expand_tx, state);
       DRW_shgroup_uniform_int_copy(grp, "maxBlurRadius", effects->motion_blur_max);
+      DRW_shgroup_uniform_vec2(grp, "nearFar", effects->motion_blur_near_far, 1);
+      DRW_shgroup_uniform_bool_copy(grp, "isPerspective", DRW_view_is_persp_get(NULL));
       DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
       DRW_shgroup_uniform_vec2(grp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);

@@ -25,12 +25,12 @@ uniform int samples;
 uniform float sampleOffset;
 uniform vec2 viewportSize;
 uniform vec2 viewportSizeInv;
-/* TODO plug scene value */
-uniform vec2 nearFar = vec2(0.1, 100.0); /* Near & far view depths values */
-/* TODO make sure ortho works */
+uniform bool isPerspective;
+uniform vec2 nearFar; /* Near & far view depths values */
+
 #define linear_depth(z) \
-  ((true) ? (nearFar.x * nearFar.y) / (z * (nearFar.x - nearFar.y) + nearFar.y) : \
-            z * (nearFar.y - nearFar.x) + nearFar.x) /* Only true for camera view! */
+  ((isPerspective) ? (nearFar.x * nearFar.y) / (z * (nearFar.x - nearFar.y) + nearFar.y) : \
+                     z * (nearFar.y - nearFar.x) + nearFar.x) /* Only true for camera view! */
 
 in vec4 uvcoordsvar;
 
