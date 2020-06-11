@@ -292,7 +292,7 @@ bool outliner_item_is_co_over_name_icons(const TreeElement *te, float view_co_x)
 bool outliner_item_is_co_within_close_toggle(const TreeElement *te, float view_co_x);
 
 /* TODO: Temporary while testing */
-void outliner_set_active_camera(struct bContext *C, Scene *scene, TreeElement *te);
+void outliner_set_active_camera(struct bContext *C, Scene *scene, struct TreeStoreElem *tselem);
 
 /* outliner_edit.c ---------------------------------------------- */
 typedef void (*outliner_operation_cb)(struct bContext *C,

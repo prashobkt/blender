@@ -1141,9 +1141,8 @@ eOLDrawState tree_element_type_active(bContext *C,
 }
 
 /* TODO: Temporary while testing */
-void outliner_set_active_camera(bContext *C, Scene *scene, TreeElement *te)
+void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem *tselem)
 {
-  TreeStoreElem *tselem = TREESTORE(te);
   Object *ob = (Object *)tselem->id;
 
   scene->camera = ob;
@@ -1165,7 +1164,7 @@ static void outliner_set_active_data(bContext *C,
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
     if (ob->type == OB_CAMERA) {
-      outliner_set_active_camera(C, tvc->scene, te);
+      outliner_set_active_camera(C, tvc->scene, tselem);
     }
   }
   else if (tselem->type == 0 && te->idcode == ID_SCE) {
@@ -1443,6 +1442,9 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   if (outliner_is_co_within_restrict_columns(soops, region, view_mval[0])) {
     return OPERATOR_CANCELLED;
   }
+  else if (soops->flag & SO_LEFT_COLUMN && view_mval[0] < UI_UNIT_X) {
+    return OPERATOR_CANCELLED;
+  }
 
   if (!(te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]))) {
     if (deselect_all) {
@@ -1454,11 +1456,6 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   else if ((TREESTORE(te)->type != TSE_VIEW_COLLECTION_BASE) &&
            outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
-  }
-  /* Set active data on left column click */
-  /* TODO: Decide if this is best as button callbacks or here in outliner_select */
-  else if (soops->flag & SO_LEFT_COLUMN && view_mval[0] < UI_UNIT_X) {
-    outliner_left_column_click(C, soops, te);
   }
   else {
     /* The row may also contain children, if one is hovered we want this instead of current te */

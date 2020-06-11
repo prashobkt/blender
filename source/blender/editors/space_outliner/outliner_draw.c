@@ -1902,12 +1902,11 @@ static void outliner_buttons(const bContext *C,
   }
 }
 
-static void outliner_set_active_data_fn(bContext *C, void *te_poin, void *UNUSED(arg2))
+static void outliner_set_active_data_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
 {
   Scene *scene = CTX_data_scene(C);
-  TreeElement *te = (TreeElement *)te_poin;
 
-  outliner_set_active_camera(C, scene, te);
+  outliner_set_active_camera(C, scene, tselem_poin);
 }
 
 /* Draw icons for setting activation when in object mode */
@@ -1926,7 +1925,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
       if (tvc->scene->camera == ob) {
         /* Draw check for active camera */
         but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
+                           UI_BTYPE_ICON_TOGGLE,
                            0,
                            ICON_CHECKMARK,
                            0,
@@ -1943,7 +1942,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
       else {
         /* Draw dot icon to set active camera */
         but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
+                           UI_BTYPE_ICON_TOGGLE,
                            0,
                            ICON_DOT,
                            0,
@@ -1957,7 +1956,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                            0.0,
                            TIP_("Set active camera"));
         /* TODO: adding functions to these buttons doesn't work well */
-        /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
+        UI_but_func_set(but, outliner_set_active_data_fn, tselem, NULL);
       }
     }
   }
@@ -1967,7 +1966,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
     if (tvc->scene == scene) {
       /* Draw check for active scene */
       but = uiDefIconBut(block,
-                         UI_BTYPE_LABEL,
+                         UI_BTYPE_ICON_TOGGLE,
                          0,
                          ICON_CHECKMARK,
                          0,
@@ -1984,7 +1983,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
     else {
       /* Draw dot icon to set active scene */
       but = uiDefIconBut(block,
-                         UI_BTYPE_LABEL,
+                         UI_BTYPE_ICON_TOGGLE,
                          0,
                          ICON_DOT,
                          0,
@@ -1997,7 +1996,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                          0.0,
                          0.0,
                          TIP_("Set active scene"));
-      /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
+      UI_but_func_set(but, outliner_set_active_data_fn, tselem, NULL);
     }
   }
   else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
@@ -2008,7 +2007,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
         (tselem->type == TSE_LAYER_COLLECTION && active == te->directdata)) {
       /* Draw check for active collection */
       but = uiDefIconBut(block,
-                         UI_BTYPE_LABEL,
+                         UI_BTYPE_ICON_TOGGLE,
                          0,
                          ICON_CHECKMARK,
                          0,
@@ -2025,7 +2024,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
     else {
       /* Draw dot icon to set active collection */
       but = uiDefIconBut(block,
-                         UI_BTYPE_LABEL,
+                         UI_BTYPE_ICON_TOGGLE,
                          0,
                          ICON_DOT,
                          0,
@@ -2038,7 +2037,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                          0.0,
                          0.0,
                          TIP_("Set active collection"));
-      /* UI_but_func_set(but, outliner_set_active_data_fn, te, NULL); */
+      UI_but_func_set(but, outliner_set_active_data_fn, tselem, NULL);
     }
   }
 }
@@ -2059,7 +2058,7 @@ static void outliner_draw_left_column_mode_toggle(const bContext *C,
       if (ob->mode == tvc->ob_edit->mode) {
         /* Draw mode icon for objects in edit mode */
         but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
+                           UI_BTYPE_ICON_TOGGLE,
                            0,
                            ICON_EDITMODE_HLT,
                            0,
@@ -2076,7 +2075,7 @@ static void outliner_draw_left_column_mode_toggle(const bContext *C,
       else {
         /* Draw dot for objects that are compatible with the current edit mode */
         but = uiDefIconBut(block,
-                           UI_BTYPE_LABEL,
+                           UI_BTYPE_ICON_TOGGLE,
                            0,
                            ICON_DOT,
                            0,
