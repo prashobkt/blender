@@ -93,11 +93,9 @@ class IndexedTriangle {
   {
     /* Let equality happen with any cyclic ordering difference, but not orientation difference. */
     return (((m_v[0] == other.m_v[0] && m_v[1] == other.m_v[1] && m_v[2] == other.m_v[2]) ||
-            (m_v[0] == other.m_v[1] && m_v[1] == other.m_v[2] && m_v[2] == other.m_v[0]) ||
-            (m_v[0] == other.m_v[2] && m_v[1] == other.m_v[0] && m_v[2] == other.m_v[1])
-            )
-            && m_orig == other.m_orig
-            );
+             (m_v[0] == other.m_v[1] && m_v[1] == other.m_v[2] && m_v[2] == other.m_v[0]) ||
+             (m_v[0] == other.m_v[2] && m_v[1] == other.m_v[0] && m_v[2] == other.m_v[1])) &&
+            m_orig == other.m_orig);
   }
 
  private:

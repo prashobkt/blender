@@ -181,7 +181,7 @@ class Patch {
   {
     return m_tri;
   }
-  
+
   int cell_above{-1};
   int cell_below{-1};
 
@@ -193,8 +193,7 @@ static std::ostream &operator<<(std::ostream &os, const Patch &patch)
 {
   os << "Patch " << patch.tri();
   if (patch.cell_above != -1) {
-    os << " cell_above=" << patch.cell_above
-    << " cell_below=" << patch.cell_below;
+    os << " cell_above=" << patch.cell_above << " cell_below=" << patch.cell_below;
   }
   return os;
 }
@@ -260,7 +259,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding);
  * One cell, the Ambient cell, contains all other cells.
  */
 class Cell {
-public:
+ public:
   Cell() = default;
 
   void add_patch(int p)
@@ -297,15 +296,17 @@ public:
     m_flag = apply_bool_op(bool_optype, m_winding);
   }
 
-  bool flag() const {
+  bool flag() const
+  {
     return m_flag;
   }
 
-  bool winding_assigned() const {
+  bool winding_assigned() const
+  {
     return m_winding_assigned;
   }
 
-private:
+ private:
   Vector<int> m_patches;
   Array<int> m_winding;
   bool m_winding_assigned{false};
@@ -323,16 +324,16 @@ static std::ostream &operator<<(std::ostream &os, const Cell &cell)
 }
 
 /* Information about all the Cells. */
-class CellsInfo
-{
-public:
+class CellsInfo {
+ public:
   CellsInfo() = default;
-  
-  int add_cell() {
+
+  int add_cell()
+  {
     uint index = m_cell.append_and_get_index(Cell());
     return static_cast<int>(index);
   }
-  
+
   Cell &cell(int c)
   {
     return m_cell[c];
@@ -355,7 +356,7 @@ public:
     }
   }
 
-private:
+ private:
   Vector<Cell> m_cell;
 };
 
@@ -510,7 +511,10 @@ int find_flap_vert(const IndexedTriangle &tri, const Edge e, bool *r_rev)
  * that if a triangle is in class 1 then it is has the same flap vert
  * as tri0.
  */
-static int sort_tris_class(const IndexedTriangle &tri, const IndexedTriangle &tri0, const TriMesh &tm, const Edge e)
+static int sort_tris_class(const IndexedTriangle &tri,
+                           const IndexedTriangle &tri0,
+                           const TriMesh &tm,
+                           const Edge e)
 {
   const int dbg_level = 0;
   if (dbg_level > 0) {
@@ -542,7 +546,8 @@ static int sort_tris_class(const IndexedTriangle &tri, const IndexedTriangle &tr
     ans = flapv == flapv0 ? 1 : 2;
   }
   if (dbg_level > 0) {
-    std::cout << " orient " << " = " << orient << " ans = " << ans << "\n";
+    std::cout << " orient "
+              << " = " << orient << " ans = " << ans << "\n";
   }
   return ans;
 }
@@ -585,7 +590,7 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
     else {
       std::cout << "  ";
     }
-    std::cout << "sort_tris_around_edge " << e <<"\n";
+    std::cout << "sort_tris_around_edge " << e << "\n";
     std::cout << "tris = " << tris << "\n";
   }
   Vector<int> g1{tris[0]};
@@ -668,7 +673,8 @@ static void find_cells_from_edge(const TriMesh &tm,
   }
   const Vector<int> *edge_tris = tmtopo.edge_tris(e);
   BLI_assert(edge_tris != nullptr);
-  Array<int> sorted_tris = sort_tris_around_edge(tm, tmtopo, e, ArrayRef<int>(*edge_tris), (*edge_tris)[0]);
+  Array<int> sorted_tris = sort_tris_around_edge(
+      tm, tmtopo, e, ArrayRef<int>(*edge_tris), (*edge_tris)[0]);
 
   int n_edge_tris = static_cast<int>(edge_tris->size());
   Array<int> edge_patches(n_edge_tris);
@@ -692,8 +698,10 @@ static void find_cells_from_edge(const TriMesh &tm,
     if (dbg_level > 0) {
       std::cout << "process patch pair " << r_index << " " << rnext_index << "\n";
       std::cout << "  r_flipped = " << r_flipped << " rnext_flipped = " << rnext_flipped << "\n";
-      std::cout << "  r_follow_cell (" << (r_flipped ? "below" : "above") << ") = " << *r_follow_cell << "\n";
-      std::cout << "  rnext_prev_cell (" << (rnext_flipped ? "above" : "below") << ") = " << *rnext_prev_cell << "\n";
+      std::cout << "  r_follow_cell (" << (r_flipped ? "below" : "above")
+                << ") = " << *r_follow_cell << "\n";
+      std::cout << "  rnext_prev_cell (" << (rnext_flipped ? "above" : "below")
+                << ") = " << *rnext_prev_cell << "\n";
     }
     if (*r_follow_cell == -1 && *rnext_prev_cell == -1) {
       /* Neither is assigned: make a new cell. */
@@ -731,7 +739,6 @@ static void find_cells_from_edge(const TriMesh &tm,
     }
   }
 }
-  
 
 /* Find the partition of 3-space into Cells.
  * This assignes the cell_above and cell_below for each Patch,
@@ -803,11 +810,11 @@ static int find_ambient_cell(const TriMesh &tm,
 }
 
 static void propagate_windings_and_flag(const TriMesh &tm,
-                               const TriMeshTopology &tmtopo,
-                               PatchesInfo &pinfo,
-                               CellsInfo &cinfo,
-                               int c_ambient,
-                               int bool_optype)
+                                        const TriMeshTopology &tmtopo,
+                                        PatchesInfo &pinfo,
+                                        CellsInfo &cinfo,
+                                        int c_ambient,
+                                        int bool_optype)
 {
   int dbg_level = 1;
   if (dbg_level > 0) {
@@ -860,8 +867,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
   int nw = static_cast<int>(winding.size());
   BLI_assert(nw > 0);
   switch (bool_optype) {
-    case BOOLEAN_ISECT:
-    {
+    case BOOLEAN_ISECT: {
       for (int i = 0; i < nw; ++i) {
         if (winding[i] == 0) {
           return false;
@@ -869,8 +875,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
       }
       return true;
     } break;
-    case BOOLEAN_UNION:
-    {
+    case BOOLEAN_UNION: {
       for (int i = 0; i < nw; ++i) {
         if (winding[i] != 0) {
           return true;
@@ -878,8 +883,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
       }
       return false;
     } break;
-    case BOOLEAN_DIFFERENCE:
-    {
+    case BOOLEAN_DIFFERENCE: {
       /* if nw > 2, make it shape 0 minus the union of the rest. */
       if (winding[0] == 0) {
         return false;

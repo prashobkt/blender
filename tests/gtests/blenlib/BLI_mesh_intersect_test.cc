@@ -371,7 +371,8 @@ TEST(mesh_intersect, TetTet)
   TriMesh out = trimesh_self_intersect(in);
   EXPECT_EQ(out.vert.size(), 11);
   EXPECT_EQ(out.tri.size(), 20);
-  /* Expect there to be a triangle with these three verts, oriented this way, with original face 1. */
+  /* Expect there to be a triangle with these three verts, oriented this way, with original face 1.
+   */
   const mpq3 *pv1 = std::find(out.vert.begin(), out.vert.end(), mpq3(2, 0, 0));
   const mpq3 *pv4 = std::find(out.vert.begin(), out.vert.end(), mpq3(0.5, 0.5, 1));
   const mpq3 *pv5 = std::find(out.vert.begin(), out.vert.end(), mpq3(1.5, 0.5, 1));
@@ -379,7 +380,8 @@ TEST(mesh_intersect, TetTet)
   int v1 = pv1 - out.vert.begin();
   int v4 = pv4 - out.vert.begin();
   int v5 = pv5 - out.vert.begin();
-  const IndexedTriangle *pt2 = std::find(out.tri.begin(), out.tri.end(), IndexedTriangle(v1, v4, v5, 1));
+  const IndexedTriangle *pt2 = std::find(
+      out.tri.begin(), out.tri.end(), IndexedTriangle(v1, v4, v5, 1));
   EXPECT_NE(pt2, out.tri.end());
   if (DO_DRAW) {
     write_html_trimesh(out.vert, out.tri, draw_file, "TriCornerCross3");
