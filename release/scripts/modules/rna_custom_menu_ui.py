@@ -141,8 +141,32 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
 #def draw_shortcut(context, layout):
     #display_keymaps = keyconfig_merge(kc_user, kc_user)
 
+def draw_item_box(context, row):
+    prefs = context.preferences
+    cm = prefs.custom_menu
+
+    box_line = row.box()
+    box_col = box_line.column(align=True)
+
+    item_index = 0
+    active = cm.item_name_get(context=cm.cm_context_selected, index=0, spacetype=cm.cm_space_selected)
+    if active == "":
+        box_col.label(text="none")
+    while active != "":
+        box_col.label(text=active)
+        item_index = item_index + 1
+        active = cm.item_name_get(context=cm.cm_context_selected, index=item_index, spacetype=cm.cm_space_selected)
+    
+    row = row.split(factor=0.9, align=True)
+    col = row.column(align=True)
+
+    col.operator("preferences.menuitem_add", text="", icon='ADD')
+    col.operator("preferences.menuitem_remove", text="", icon='REMOVE')
+    col.operator("wm.keyconfig_preset_add", text="", icon='TRIA_UP')
+    col.operator("wm.keyconfig_preset_add", text="", icon='TRIA_DOWN').remove_active = True
+    row.separator()
+
 def draw_custom_menu(context, layout):
-    from bl_keymap_utils.io import keyconfig_merge
 
     wm = context.window_manager
     kc_user = wm.keyconfigs.user
@@ -189,22 +213,17 @@ def draw_custom_menu(context, layout):
     rowsub = row.split(factor=0.4, align=True)
 
     layout.separator()
-    rowsub = row.row(align=True)
-    rowsub.label(text="Display type :")
-    rowsub.menu("USERPREF_MT_keyconfigs", text=type_name_active)
-    rowsub = row.row(align=True)
-    rowsub.label(text="Shortcut :")
+    #rowsub = row.row(align=True)
+    #rowsub.label(text="Display type :")
+    #rowsub.menu("USERPREF_MT_keyconfigs", text=type_name_active)
+    #rowsub = row.row(align=True)
+    #rowsub.label(text="Shortcut :")
     #draw_shortcut(context, layout)
 
-    row = layout.row()
     col = layout.column()
-    rowsub = row.split(factor=0.4, align=True)
-
-    item_index = 0
-    active = cm.refresh(context=cm.cm_context_selected, index=0, spacetype=cm.cm_space_selected)
-    while active != "":
-        col.label(text=active)
-        item_index = item_index + 1
-        active = cm.refresh(context=cm.cm_context_selected, index=item_index, spacetype=cm.cm_space_selected)
+    row = layout.row()
+       
+    draw_item_box(context=context, row=row)
+    row.label(text="riht")
 
     layout.separator()

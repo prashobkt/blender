@@ -1144,7 +1144,7 @@ static void rna_userdef_cm_space_selected_update(Main *bmain, Scene *scene, Poin
   USERDEF_TAG_DIRTY;
 }
 
-static const char *rna_CustomMenus_refresh(UserDef *userdef, const char *spacetype, const char *context, int index)
+static const char *rna_UserDef_usermenu_item_name_get(UserDef *userdef, const char *spacetype, const char *context, int index)
 {
   int i = 0;
   const ListBase *spacetypes = BKE_spacetypes_list();
@@ -1169,6 +1169,30 @@ static const char *rna_CustomMenus_refresh(UserDef *userdef, const char *spacety
   }
   
   return "";
+}
+
+static void rna_UserDef_usermenu_item_add(UserDef *userdef, const char *spacetype, const char *context)
+{
+  int i = 0;
+  const ListBase *spacetypes = BKE_spacetypes_list();
+  SpaceType *st = NULL;
+
+  for (i = 0, st = spacetypes->first; st; st = st->next, i++) {
+    int id = st->spaceid;
+    char *space_name = st->name;
+    if (!strcmp(space_name, spacetype))
+      break;
+  }
+  if (st == NULL) return;
+
+  bUserMenu *bum = BKE_blender_user_menu_find(&userdef->user_menus, st->spaceid, context);
+  if (!bum) return;
+
+  ListBase *lb = &bum->items;
+  bUserMenuItem_Op *bumi = (bUserMenuItem_Op *)BKE_blender_user_menu_item_add(
+      lb, USER_MENU_TYPE_OPERATOR);
+  STRNCPY(bumi->item.ui_name, "new item");
+  //printf("%s\n", bumi->item.ui_name);
 }
 
 #else
@@ -6034,7 +6058,7 @@ static void rna_def_userdef_custom_menu(BlenderRNA *brna)
       prop, "context selected", "the context selected");
   RNA_def_property_update(prop, 0, "rna_userdef_cm_space_selected_update");
 
-  func = RNA_def_function(srna, "refresh", "rna_CustomMenus_refresh");
+  func = RNA_def_function(srna, "item_name_get", "rna_UserDef_usermenu_item_name_get");
   RNA_def_function_ui_description(func, "Refresh custom menu editor");
   parm = RNA_def_string(func,
                         "spacetype",
@@ -6053,13 +6077,30 @@ static void rna_def_userdef_custom_menu(BlenderRNA *brna)
   parm = RNA_def_int(func, "index", 0, 0, 100, "Index", "index of the item in list", 0, 100);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_string(func,
-                        "user_menu",
+                        "item_name",
                         NULL,
                         0,
                         "",
-                        "active user menu");
+                        "the item name");
   //parm = RNA_def_pointer(func, "user_menu", "bUserMenu", "", "found user menu");
   RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "item_add", "rna_UserDef_usermenu_item_add");
+  RNA_def_function_ui_description(func, "add an item to a menu");
+  parm = RNA_def_string(func,
+                        "spacetype",
+                        NULL,
+                        0,
+                        "SpaceType",
+                        "space type of the menu");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func,
+                        "context",
+                        NULL,
+                        0,
+                        "Context",
+                        "context of the menu");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
 }
 

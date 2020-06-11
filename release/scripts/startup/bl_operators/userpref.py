@@ -1155,6 +1155,43 @@ class PREFERENCES_OT_custommenu_select(Operator):
         else:
             return {'CANCELLED'}
 
+class PREFERENCES_OT_menuitem_add(Operator):
+    """Add user menu item"""
+    bl_idname = "preferences.menuitem_add"
+    bl_label = "Add User Menu Item"
+
+    def execute(self, context):
+        prefs = context.preferences
+        cm = prefs.custom_menu
+
+        
+        cm.item_add(context=cm.cm_context_selected, spacetype=cm.cm_space_selected)
+        context.preferences.is_dirty = True
+        return {'FINISHED'}
+
+
+class PREFERENCES_OT_menuitem_remove(Operator):
+    """Remove user menu item"""
+    bl_idname = "preferences.menuitem_remove"
+    bl_label = "Remove User Menu Item"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to remove",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context, "keymap")
+
+    def execute(self, context):
+        km = context.keymap
+        kmi = km.keymap_items.from_id(self.item_id)
+        km.keymap_items.remove(kmi)
+
+        context.preferences.is_dirty = True
+        return {'FINISHED'}
+
 
 classes = (
     PREFERENCES_OT_addon_disable,
@@ -1182,4 +1219,6 @@ classes = (
     PREFERENCES_OT_studiolight_copy_settings,
     PREFERENCES_OT_studiolight_show,
     PREFERENCES_OT_custommenu_select,
+    PREFERENCES_OT_menuitem_add,
+    PREFERENCES_OT_menuitem_remove,
 )

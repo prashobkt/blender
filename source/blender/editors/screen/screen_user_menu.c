@@ -90,7 +90,6 @@ bUserMenu **ED_screen_user_menus_find(const bContext *C, uint *r_len)
   um_array[2] = (sl->spacetype == SPACE_VIEW3D) ?
                     BKE_blender_user_menu_find(&U.user_menus, SPACE_PROPERTIES, context_mode) :
                     NULL;
-
   *r_len = array_len;
   return um_array;
 }
