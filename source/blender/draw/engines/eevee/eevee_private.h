@@ -262,7 +262,7 @@ typedef struct EEVEE_PassList {
   struct DRWPass *velocity_resolve;
   struct DRWPass *velocity_tiles_x;
   struct DRWPass *velocity_tiles;
-  struct DRWPass *velocity_tiles_expand;
+  struct DRWPass *velocity_tiles_expand[2];
   struct DRWPass *taa_resolve;
   struct DRWPass *alpha_checker;
 
@@ -334,9 +334,7 @@ typedef struct EEVEE_FramebufferList {
   struct GPUFrameBuffer *ao_accum_fb;
   struct GPUFrameBuffer *velocity_resolve_fb;
   struct GPUFrameBuffer *velocity_fb;
-  struct GPUFrameBuffer *velocity_tiles_x_fb;
-  struct GPUFrameBuffer *velocity_tiles_fb;
-  struct GPUFrameBuffer *velocity_tiles_expand_fb;
+  struct GPUFrameBuffer *velocity_tiles_fb[2];
 
   struct GPUFrameBuffer *update_noise_fb;
 
@@ -681,7 +679,6 @@ typedef struct EEVEE_EffectsInfo {
   struct GPUTexture *velocity_tx; /* Texture from pool */
   struct GPUTexture *velocity_tiles_x_tx;
   struct GPUTexture *velocity_tiles_tx;
-  struct GPUTexture *velocity_tiles_expand_tx;
   /* Depth Of Field */
   float dof_near_far[2];
   float dof_params[2];

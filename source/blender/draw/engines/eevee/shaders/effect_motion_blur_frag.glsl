@@ -20,8 +20,8 @@ uniform sampler2DArray utilTex;
 #define LUT_SIZE 64
 #define texelfetch_noise_tex(coord) texelFetch(utilTex, ivec3(ivec2(coord) % LUT_SIZE, 2.0), 0)
 
-uniform int maxBlurRadius;
 uniform float depthScale;
+uniform ivec2 tileBufferSize;
 uniform vec2 viewportSize;
 uniform vec2 viewportSizeInv;
 uniform bool isPerspective;
@@ -192,8 +192,9 @@ void main()
   /* Randomize tile boundary to avoid ugly discontinuities. Randomize 1/4th of the tile.
    * Note this randomize only in one direction but in practice it's enough. */
   rand.x = rand.x * 2.0 - 1.0;
-  ivec2 tile = ivec2(gl_FragCoord.xy + rand.x * float(maxBlurRadius) * 0.25) / maxBlurRadius;
-  tile = clamp(tile, ivec2(0), textureSize(tileMaxBuffer, 0).xy - 1);
+  ivec2 tile = ivec2(gl_FragCoord.xy + rand.x * float(EEVEE_VELOCITY_TILE_SIZE) * 0.25) /
+               EEVEE_VELOCITY_TILE_SIZE;
+  tile = clamp(tile, ivec2(0), tileBufferSize - 1);
   vec4 max_motion = decode_velocity(texelFetch(tileMaxBuffer, tile, 0));
 
   /* First (center) sample: time = T */
@@ -226,4 +227,9 @@ void main()
    * We replace the missing foreground by the background. */
   float blend_fac = saturate(1.0 - w_accum.y / w_accum.z);
   fragColor = (accum / w_accum.z) + center_color * blend_fac;
+
+#if 0 /* For debugging. */
+  fragColor.rgb = fragColor.ggg;
+  fragColor.rg += max_motion.xy;
+#endif
 }

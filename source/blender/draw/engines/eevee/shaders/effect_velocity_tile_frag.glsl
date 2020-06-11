@@ -11,12 +11,13 @@
 uniform sampler2D velocityBuffer;
 uniform vec2 viewportSize;
 uniform vec2 viewportSizeInv;
+uniform ivec2 velocityBufferSize;
 
 out vec4 tileMaxVelocity;
 
 vec4 sample_velocity(ivec2 texel)
 {
-  texel = clamp(texel, ivec2(0), textureSize(velocityBuffer, 0).xy - 1);
+  texel = clamp(texel, ivec2(0), velocityBufferSize - 1);
   vec4 data = texelFetch(velocityBuffer, texel, 0);
   /* Decode data. */
   return (data * 2.0 - 1.0) * viewportSize.xyxy;
@@ -29,7 +30,6 @@ vec4 encode_velocity(vec4 velocity)
 
 #ifdef TILE_GATHER
 
-uniform int maxBlurRadius;
 uniform ivec2 gatherStep;
 
 void main()
@@ -38,9 +38,9 @@ void main()
   float max_motion_len_sqr_prev = 0.0;
   float max_motion_len_sqr_next = 0.0;
   ivec2 texel = ivec2(gl_FragCoord.xy);
-  texel = texel * gatherStep.yx + texel * maxBlurRadius * gatherStep;
+  texel = texel * gatherStep.yx + texel * EEVEE_VELOCITY_TILE_SIZE * gatherStep;
 
-  for (int i = 0; i < maxBlurRadius; ++i) {
+  for (int i = 0; i < EEVEE_VELOCITY_TILE_SIZE; ++i) {
     vec4 motion = sample_velocity(texel + i * gatherStep);
     float motion_len_sqr_prev = dot(motion.xy, motion.xy);
     float motion_len_sqr_next = dot(motion.zw, motion.zw);
@@ -122,7 +122,7 @@ void main()
   float max_motion_len_sqr_next = -1.0;
 
   ivec2 tile = ivec2(gl_FragCoord.xy);
-  ivec2 offset;
+  ivec2 offset = ivec2(0);
   for (offset.y = -1; offset.y <= 1; ++offset.y) {
     for (offset.x = -1; offset.x <= 1; ++offset.x) {
       vec4 motion = sample_velocity(tile + offset);
