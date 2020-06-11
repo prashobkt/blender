@@ -2,6 +2,7 @@
 
 #include "testing/testing.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -337,6 +338,49 @@ TEST(mesh_intersect, TriCornerCross3)
   TriMesh out = trimesh_self_intersect(in);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.tri.size(), 16);
+  if (DO_DRAW) {
+    write_html_trimesh(out.vert, out.tri, draw_file, "TriCornerCross3");
+  }
+  if (DO_OBJ) {
+    write_obj_trimesh(out.vert, out.tri, "test_tc_3");
+  }
+}
+
+TEST(mesh_intersect, TetTet)
+{
+  const char *spec = R"(8 8
+  0 0 0
+  2 0 0
+  1 2 0
+  1 1 2
+  0 0 1
+  2 0 1
+  1 2 1
+  1 1 3
+  0 1 2
+  0 3 1
+  1 3 2
+  2 3 0
+  4 5 6
+  4 7 5
+  5 7 6
+  6 7 4
+  )";
+
+  TriMesh in = fill_input_from_string(spec);
+  TriMesh out = trimesh_self_intersect(in);
+  EXPECT_EQ(out.vert.size(), 11);
+  EXPECT_EQ(out.tri.size(), 20);
+  /* Expect there to be a triangle with these three verts, oriented this way, with original face 1. */
+  const mpq3 *pv1 = std::find(out.vert.begin(), out.vert.end(), mpq3(2, 0, 0));
+  const mpq3 *pv4 = std::find(out.vert.begin(), out.vert.end(), mpq3(0.5, 0.5, 1));
+  const mpq3 *pv5 = std::find(out.vert.begin(), out.vert.end(), mpq3(1.5, 0.5, 1));
+  EXPECT_TRUE(pv1 != out.vert.end() && pv4 != out.vert.end() && pv5 != out.vert.end());
+  int v1 = pv1 - out.vert.begin();
+  int v4 = pv4 - out.vert.begin();
+  int v5 = pv5 - out.vert.begin();
+  const IndexedTriangle *pt2 = std::find(out.tri.begin(), out.tri.end(), IndexedTriangle(v1, v4, v5, 1));
+  EXPECT_NE(pt2, out.tri.end());
   if (DO_DRAW) {
     write_html_trimesh(out.vert, out.tri, draw_file, "TriCornerCross3");
   }

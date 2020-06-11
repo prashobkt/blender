@@ -1380,6 +1380,10 @@ static TriMesh tpl_trimesh_self_intersect(const TriMesh &tm_in)
     }
   }
   TMesh combined = union_tri_subdivides(tri_subdivided);
+  if (dbg_level > 1) {
+    std::cout << "TRIMESH_SELF_INTERSECT answer:\n";
+    std::cout << combined;
+  }
   return tmesh_to_trimesh(combined);
 }
 

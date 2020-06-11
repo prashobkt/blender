@@ -89,6 +89,16 @@ class IndexedTriangle {
   {
     return m_v[i];
   }
+  bool operator==(const IndexedTriangle &other)
+  {
+    /* Let equality happen with any cyclic ordering difference, but not orientation difference. */
+    return (((m_v[0] == other.m_v[0] && m_v[1] == other.m_v[1] && m_v[2] == other.m_v[2]) ||
+            (m_v[0] == other.m_v[1] && m_v[1] == other.m_v[2] && m_v[2] == other.m_v[0]) ||
+            (m_v[0] == other.m_v[2] && m_v[1] == other.m_v[0] && m_v[2] == other.m_v[1])
+            )
+            && m_orig == other.m_orig
+            );
+  }
 
  private:
   int m_v[3]{-1, -1, -1};
