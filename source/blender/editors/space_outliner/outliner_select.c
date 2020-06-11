@@ -1339,11 +1339,6 @@ void outliner_item_select(bContext *C,
                                            extend,
                                            select_flag & OL_ITEM_RECURSIVE,
                                            activate_data || soops->flag & SO_SYNC_SELECT);
-
-    /* Mode toggle on data activate for now, but move later */
-    if (select_flag & OL_ITEM_TOGGLE_MODE) {
-      /* outliner_item_mode_toggle(C, &tvc, te, extend); */
-    }
   }
 }
 
@@ -1483,7 +1478,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
 
       const short select_flag = OL_ITEM_ACTIVATE | (select ? OL_ITEM_SELECT : OL_ITEM_DESELECT) |
                                 (is_over_name_icons ? OL_ITEM_SELECT_DATA : 0) |
-                                (extend ? OL_ITEM_EXTEND : 0) | OL_ITEM_TOGGLE_MODE;
+                                (extend ? OL_ITEM_EXTEND : 0);
 
       outliner_item_select(C, soops, activate_te, select_flag);
     }

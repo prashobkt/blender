@@ -223,7 +223,6 @@ typedef enum TreeItemSelect {
   OL_ITEM_ACTIVATE = (1 << 2),    /* Activate the item */
   OL_ITEM_EXTEND = (1 << 3),      /* Extend the current selection */
   OL_ITEM_RECURSIVE = (1 << 4),   /* Select recursively */
-  OL_ITEM_TOGGLE_MODE = (1 << 5)  /* Temporary */
 } TreeItemSelect;
 
 /* outliner_tree.c ----------------------------------------------- */
