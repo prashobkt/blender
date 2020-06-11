@@ -38,9 +38,6 @@ struct bNodeTree;
 struct uiLayout;
 struct wmOperatorType;
 
-/* Display the context path in the header instead of the main window */
-#define USE_HEADER_CONTEXT_PATH
-
 /* context data */
 
 typedef struct ButsContextPath {
@@ -84,7 +81,6 @@ void buttons_context_compute(const struct bContext *C, struct SpaceProperties *s
 int buttons_context(const struct bContext *C,
                     const char *member,
                     struct bContextDataResult *result);
-void buttons_context_draw(const struct bContext *C, struct uiLayout *layout);
 void buttons_context_register(struct ARegionType *art);
 struct ID *buttons_context_id_path(const struct bContext *C);
 
@@ -94,6 +90,7 @@ extern const char *buttons_context_dir[]; /* doc access */
 void buttons_texture_context_compute(const struct bContext *C, struct SpaceProperties *sbuts);
 
 /* buttons_ops.c */
+void BUTTONS_OT_start_filter(struct wmOperatorType *ot);
 void BUTTONS_OT_file_browse(struct wmOperatorType *ot);
 void BUTTONS_OT_directory_browse(struct wmOperatorType *ot);
 void BUTTONS_OT_context_menu(struct wmOperatorType *ot);

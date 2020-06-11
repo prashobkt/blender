@@ -75,6 +75,7 @@
 #define PNL_ANIM_ALIGN 8
 #define PNL_NEW_ADDED 16
 #define PNL_FIRST 32
+#define PNL_SEARCH_FILTERED 64
 
 /* only show pin header button for pinned panels */
 #define USE_PIN_HIDDEN
@@ -229,6 +230,7 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
   Panel *panel_animation = NULL;
   bool no_animation = false;
   if (panel_active_animation_changed(&region->panels, &panel_animation, &no_animation)) {
+    // printf("no_animation %d:\n panel_animation: %p\n", no_animation, panel_animation);
     return true;
   }
 
@@ -637,6 +639,7 @@ Panel *UI_panel_begin(ScrArea *area,
                       Panel *panel,
                       bool *r_open)
 {
+  // printf("UI PANEL BEGIN\n");
   Panel *panel_last, *panel_next;
   const char *drawname = CTX_IFACE_(pt->translation_context, pt->label);
   const char *idname = pt->idname;
@@ -750,7 +753,7 @@ void UI_panel_end(
 
   /* Compute total panel size including children. */
   LISTBASE_FOREACH (Panel *, pachild, &panel->children) {
-    if (pachild->runtime_flag & PNL_ACTIVE) {
+    if (pachild->runtime_flag & PNL_ACTIVE && !(pachild->runtime_flag & PNL_SEARCH_FILTERED)) {
       width = max_ii(width, pachild->sizex);
       height += get_panel_real_size_y(pachild);
     }
@@ -805,6 +808,58 @@ static void ui_offset_panel_block(uiBlock *block)
   block->rect.xmax = block->panel->sizex;
   block->rect.ymax = block->panel->sizey;
   block->rect.xmin = block->rect.ymin = 0.0;
+}
+
+/**
+ * T
+ *
+ * \return True if the block was removed because its panel was empty
+ */
+static bool panels_remove_search_filtered_recursive(ARegion *region, uiBlock *block)
+{
+  BLI_assert(block->panel != NULL);
+
+  Panel *panel = block->panel;
+
+  bool all_children_filtered = true;
+  LISTBASE_FOREACH (Panel *, child_panel, &panel->children) {
+    uiBlock *child_block = child_panel->runtime.block;
+    if (child_block != NULL) {
+      all_children_filtered &= panels_remove_search_filtered_recursive(region, child_block);
+    }
+  }
+
+  if (all_children_filtered && panel->runtime_flag & PNL_SEARCH_FILTERED) {
+    // printf("Removing panel %s\n", panel->panelname);
+    panel->runtime_flag &= ~PNL_ACTIVE;
+    panel->runtime_flag |= PNL_WAS_ACTIVE;
+    panel->runtime.block = NULL;
+    BLI_remlink(&region->uiblocks, block);
+    UI_block_free(NULL, block);
+    return true;
+  }
+  return false;
+}
+
+void UI_panels_remove_search_filtered(ARegion *region)
+{
+  LISTBASE_FOREACH_MUTABLE (uiBlock *, block, &region->uiblocks) {
+    if (block->panel == NULL) {
+      continue;
+    }
+
+    panels_remove_search_filtered_recursive(region, block);
+  }
+}
+
+void ui_panel_set_search_filtered(struct Panel *panel, const bool value)
+{
+  if (value) {
+    panel->runtime_flag |= PNL_SEARCH_FILTERED;
+  }
+  else {
+    panel->runtime_flag &= ~PNL_SEARCH_FILTERED;
+  }
 }
 
 /**************************** drawing *******************************/
@@ -1409,6 +1464,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   if (tot == 0) {
     return 0;
   }
+  // printf("Aligning %d panels, factor = %.2f\n", tot, fac);
 
   /* extra; change close direction? */
   for (panel = region->panels.first; panel; panel = panel->next) {
@@ -1667,13 +1723,15 @@ void UI_panels_draw(const bContext *C, ARegion *region)
    * UI blocks are added in reverse order and we need child panels
    * to draw on top. */
   for (block = region->uiblocks.last; block; block = block->prev) {
-    if (block->active && block->panel && !(block->panel->flag & PNL_SELECT)) {
+    if (block->active && block->panel && !(block->panel->flag & PNL_SELECT) &&
+        !(block->flag & UI_BLOCK_FILTERED_EMPTY)) {
       UI_block_draw(C, block);
     }
   }
 
   for (block = region->uiblocks.last; block; block = block->prev) {
-    if (block->active && block->panel && (block->panel->flag & PNL_SELECT)) {
+    if (block->active && block->panel && (block->panel->flag & PNL_SELECT) &&
+        !(block->flag & UI_BLOCK_FILTERED_EMPTY)) {
       UI_block_draw(C, block);
     }
   }

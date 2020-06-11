@@ -159,6 +159,9 @@ typedef struct SpaceProperties {
   int pathflag, dataicon;
   ID *pinid;
 
+  /* For filtering properties displayed in the space. */
+  char search_string[64];
+
   void *texuser;
 } SpaceProperties;
 

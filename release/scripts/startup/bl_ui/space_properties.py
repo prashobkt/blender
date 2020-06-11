@@ -23,10 +23,20 @@ from bpy.types import Header, Panel
 class PROPERTIES_HT_header(Header):
     bl_space_type = 'PROPERTIES'
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
+        view = context.space_data
 
         layout.template_header()
+
+        layout.separator_spacer()
+        layout.prop(view, "filter_text", icon='VIEWZOOM', text="")
+        layout.separator_spacer()
+        
+        # Note: pin ID doesn't properly work with this simple button in python yet.
+        row = layout.row()
+        row.emboss = 'NONE'
+        row.prop(view, "use_pin_id", icon=('PINNED' if view.use_pin_id else 'UNPINNED'), text="")
 
 
 class PROPERTIES_PT_navigation_bar(Panel):

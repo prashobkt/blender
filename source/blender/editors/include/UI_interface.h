@@ -158,6 +158,8 @@ enum {
   UI_BLOCK_POPOVER_ONCE = 1 << 22,
   /** Always show keymaps, even for non-menus. */
   UI_BLOCK_SHOW_SHORTCUT_ALWAYS = 1 << 23,
+  /** All items have been removed from the block by the search filter. */
+  UI_BLOCK_FILTERED_EMPTY = 1 << 24,
 };
 
 /** #uiPopupBlockHandle.menuretval */
@@ -1705,6 +1707,8 @@ void UI_panel_category_clear_all(struct ARegion *region);
 void UI_panel_category_draw_all(struct ARegion *region, const char *category_id_active);
 
 struct PanelType *UI_paneltype_find(int space_id, int region_id, const char *idname);
+
+void UI_panels_remove_search_filtered(struct ARegion *region);
 
 /* Polyinstantiated panels for representing a list of data. */
 struct Panel *UI_panel_add_instanced(struct ScrArea *area,

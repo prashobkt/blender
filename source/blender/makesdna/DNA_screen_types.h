@@ -135,6 +135,10 @@ typedef struct Panel_Runtime {
 
   /* For instanced panels: Index of the list item the panel corresponds to. */
   int list_index;
+
+  /* Runtime reference to the panel's #uiBlock. Only filled if the panel is currently being drawn.
+   * Used to quickly find the #uiBlocks for the panel's children. */
+  struct uiBlock *block;
 } Panel_Runtime;
 
 /** The part from uiBlock that needs saved in file. */

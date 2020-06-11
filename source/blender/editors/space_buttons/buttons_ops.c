@@ -38,6 +38,7 @@
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_screen.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -51,6 +52,30 @@
 #include "UI_resources.h"
 
 #include "buttons_intern.h" /* own include */
+
+/********************** filter operator *********************/
+/* Note: almost duplicate of file browser operator. */
+
+static int buttons_start_filter_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  ARegion *region = CTX_wm_region(C);
+  SpaceProperties *space = CTX_wm_space_properties(C);
+
+  UI_textbutton_activate_rna(C, region, space, "filter_text");
+  return OPERATOR_FINISHED;
+}
+
+void BUTTONS_OT_start_filter(struct wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Filter";
+  ot->description = "Start entering filter text";
+  ot->idname = "BUTTONS_OT_start_filter";
+
+  /* api callbacks */
+  ot->exec = buttons_start_filter_exec;
+  ot->poll = ED_operator_buttons_active;
+}
 
 /********************** context_menu operator *********************/
 

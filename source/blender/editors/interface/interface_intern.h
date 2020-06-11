@@ -79,6 +79,8 @@ enum {
   UI_HAS_ICON = (1 << 3),
   UI_HIDDEN = (1 << 4),
   UI_SELECT_DRAW = (1 << 5), /* Display selected, doesn't impact interaction. */
+  /** Filtered by the search string */
+  UI_FILTERED = (1 << 12),
   /* warn: rest of uiBut->flag in UI_interface.h */
 };
 
@@ -454,6 +456,8 @@ struct uiBlock {
    */
   char display_device[64];
 
+  char *search_filter;
+
   struct PieMenuData pie_data;
 };
 
@@ -738,6 +742,7 @@ extern void ui_draw_aligned_panel(struct uiStyle *style,
                                   const rcti *rect,
                                   const bool show_pin,
                                   const bool show_background);
+void ui_panel_set_search_filtered(struct Panel *panel, const bool value);
 
 /* interface_draw.c */
 extern void ui_draw_dropshadow(

@@ -140,6 +140,7 @@ enum {
    * Enabled by default, depends on 'UI_ITEM_PROP_SEP'. */
   UI_ITEM_PROP_DECORATE = 1 << 5,
   UI_ITEM_PROP_DECORATE_NO_PAD = 1 << 6,
+  UI_ITEM_USE_SEARCH_FILTER = 1 << 7,
 };
 
 typedef struct uiButtonItem {
@@ -176,6 +177,8 @@ struct uiLayout {
   char emboss;
   /** for fixed width or height to avoid UI size changes */
   float units[2];
+
+  bool property_search_layout_temp_debug;
 };
 
 typedef struct uiLayoutItemFlow {
@@ -4638,8 +4641,9 @@ static void ui_litem_init_from_parent(uiLayout *litem, uiLayout *layout, int ali
   litem->redalert = layout->redalert;
   litem->w = layout->w;
   litem->emboss = layout->emboss;
-  litem->item.flag = (layout->item.flag &
-                      (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE | UI_ITEM_INSIDE_PROP_SEP));
+  /* Only pass certain flags to child layouts. */
+  litem->item.flag = (layout->item.flag & (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE |
+                                           UI_ITEM_INSIDE_PROP_SEP | UI_ITEM_USE_SEARCH_FILTER));
 
   if (layout->child_items_layout) {
     BLI_addtail(&layout->child_items_layout->items, litem);
@@ -5343,8 +5347,7 @@ uiLayout *UI_block_layout(uiBlock *block,
   layout = MEM_callocN(sizeof(uiLayout), "uiLayout");
   layout->item.type = (type == UI_LAYOUT_VERT_BAR) ? ITEM_LAYOUT_COLUMN : ITEM_LAYOUT_ROOT;
 
-  /* Only used when 'UI_ITEM_PROP_SEP' is set. */
-  layout->item.flag = UI_ITEM_PROP_DECORATE;
+  layout->item.flag = UI_ITEM_PROP_DECORATE | UI_ITEM_USE_SEARCH_FILTER;
 
   layout->x = x;
   layout->y = y;
@@ -5451,11 +5454,233 @@ void uiLayoutSetFunc(uiLayout *layout, uiMenuHandleFunc handlefunc, void *argv)
   layout->root->argv = argv;
 }
 
+static bool ui_layout_search_filter_clean(uiLayout *labels,
+                                          uiLayout *properties,
+                                          uiLayout *decorators,
+                                          uiLayout *layout)
+{
+  // printf("UI_LAYOUT_SEARCH_FILTER_CLEAN\n");
+  BLI_assert(layout->item.type != ITEM_BUTTON);
+
+  bool empty = true;
+
+  if ((layout->item.flag & UI_ITEM_USE_SEARCH_FILTER) == 0) {
+    return false;
+  }
+
+  /* TODO: FIGURE OUT WHY THERE ARE STILL EMPTY LAYOUTS AFTER THIS FUNCTION RUNS ON A ROOT. */
+
+  /* Remove filtered button items. */
+  LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
+    if (item->type == ITEM_BUTTON) {
+      uiButtonItem *button_item = (uiButtonItem *)item;
+
+      /* Free item and the button if it has been filtered. */
+      if (button_item->but->flag & UI_FILTERED) {
+        // ui_but_free(NULL, button_item->but);
+        button_item->but->flag |= UI_HIDDEN;
+        BLI_remlink(&layout->items, item);
+        MEM_freeN(item);
+        continue;
+      }
+      else {
+        empty = false;
+      }
+    }
+    else {
+      /* If this item isn't a button it may contain other items, so recursively search them. */
+      uiLayout *child_layout = (uiLayout *)item;
+      empty &= ui_layout_search_filter_clean(labels, properties, decorators, child_layout);
+
+      if (empty && !ELEM(child_layout, labels, properties, decorators)) {
+        BLI_remlink(&layout->items, item);
+        MEM_freeN(item);
+        continue;
+      }
+    }
+  }
+
+  if (empty) {
+    return true;
+  }
+
+  /* Move unfiltered items to the root layouts. */
+  LISTBASE_FOREACH (uiItem *, item, &layout->items) {
+    if (item->type == ITEM_BUTTON) {
+      uiButtonItem *button_item = (uiButtonItem *)item;
+
+      /* Move the item. */
+      BLI_remlink(&layout->items, item);
+      BLI_addtail(&properties->items, item);
+
+      /* Add a label if the text isn't contained in the button. */
+      if (button_item->but->rnaprop) {
+        if (ELEM(button_item->but->type,
+                 UI_BTYPE_CHECKBOX,
+                 UI_BTYPE_TOGGLE_N,
+                 UI_BTYPE_ICON_TOGGLE_N,
+                 UI_BTYPE_CHECKBOX_N,
+                 UI_BTYPE_LABEL)) {
+          /* Toggle buttons with no outside label have their text changed to the RNA name. */
+          uiItemL(labels, "", ICON_NONE);
+        }
+        else {
+          char name[MAX_NAME];
+          strcpy(name, RNA_property_ui_name(button_item->but->rnaprop));
+          strcat(name, " SEARCH");
+          uiItemL(labels, name, ICON_NONE);
+          /* Add a decorator for animatable properties. */
+          if (/* RNA_property_animateable(...) */ 1) {
+            // uiItemL(decorators, "", ICON_NONE);
+          }
+        }
+      }
+      else {
+        uiItemL(labels, "EMPTY", ICON_NONE);
+      }
+    }
+  }
+
+  if (empty) {
+    ui_layout_free(layout);
+  }
+  return empty;
+}
+
+static void ui_block_search_filter_tag_buttons(uiBlock *block)
+{
+  // printf("UI_BLOCK_SEARCH_FILTER_TAG_BUTTONS: %s\n", block->search_filter);
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    if (but->rnaprop == NULL) {
+      // printf("  removing button %s\n", but->drawstr);
+      but->flag |= UI_FILTERED;
+      continue;
+    }
+
+    /* Flag all label buttons, we don't want to re-display them. */
+    if (but->type == UI_BTYPE_LABEL) {
+      but->flag |= UI_FILTERED;
+    }
+
+    /* Do the shorter check first, in case the check returns true. */
+    if (BLI_strcasestr(but->str, block->search_filter) ||
+        BLI_strcasestr(RNA_property_ui_name(but->rnaprop), block->search_filter) ||
+        BLI_strcasestr(RNA_property_description(but->rnaprop), block->search_filter)) {
+      continue;
+    }
+    // printf("  removing button %s\n", but->drawstr);
+    but->flag |= UI_FILTERED;
+  }
+}
+
+static void debug_print_layout(uiItem *item, int depth)
+{
+  uiItemType type = item->type;
+
+  for (int i = 0; i < depth; i++) {
+    printf("| ");
+  }
+
+  if (type == ITEM_BUTTON) {
+    printf("Button: ");
+    uiButtonItem *button_item = (uiButtonItem *)item;
+    uiBut *but = button_item->but;
+
+    if (but == NULL) {
+      printf("NULL BUT");
+    }
+    else if (but->str && but->str[0]) {
+      printf(but->str);
+    }
+    else if (!RNA_pointer_is_null(&but->rnapoin)) {
+      printf(RNA_property_ui_name(but->rnaprop));
+    }
+    else if (but->type == UI_BTYPE_SEPR) {
+      printf("(Padding)");
+    }
+    else {
+      printf("NOSTR");
+    }
+    printf("\n");
+    return;
+  }
+
+  switch (type) {
+    case ITEM_BUTTON: {
+      BLI_assert(0);
+      return;
+    }
+    case ITEM_LAYOUT_ROW: {
+      printf("Row:");
+      break;
+    }
+    case ITEM_LAYOUT_COLUMN: {
+      printf("Column:");
+      break;
+    }
+    case ITEM_LAYOUT_COLUMN_FLOW: {
+      printf("Flow:");
+      break;
+    }
+    case ITEM_LAYOUT_ROW_FLOW: {
+      printf("Row Flow:");
+      break;
+    }
+    case ITEM_LAYOUT_GRID_FLOW: {
+      printf("Grid Flow:");
+      break;
+    }
+    case ITEM_LAYOUT_BOX: {
+      printf("Box:");
+      break;
+    }
+    case ITEM_LAYOUT_ABSOLUTE: {
+      printf("Absolute:");
+      break;
+    }
+    case ITEM_LAYOUT_SPLIT: {
+      printf("Split:");
+      break;
+    }
+    case ITEM_LAYOUT_OVERLAP: {
+      printf("Overlap:");
+      break;
+    }
+    case ITEM_LAYOUT_RADIAL: {
+      printf("Radial:");
+      break;
+    }
+    case ITEM_LAYOUT_ROOT: {
+      printf("Root:");
+      break;
+    }
+  }
+  uiLayout *layout = (uiLayout *)item;
+
+  if (layout->property_search_layout_temp_debug) {
+    printf(" (search layout)");
+  }
+
+  printf("\n");
+
+  if (layout->child_items_layout != NULL) {
+    debug_print_layout((uiItem *)layout->child_items_layout, depth + 2);
+  }
+  LISTBASE_FOREACH (uiItem *, child_item, &layout->items) {
+    debug_print_layout(child_item, depth + 1);
+  }
+}
+
+/**
+ * Finish the layout process and solve for the size of a block's layout. Also returns whether
+ * the block was emptied by property search and should be removed.
+ */
 void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
 {
-  uiLayoutRoot *root;
-
+  // printf("UI_BLOCK_LAYOUT_RESOLVE\n");
   BLI_assert(block->active);
+
+  bool use_filter = block->search_filter && block->search_filter[0];
 
   if (r_x) {
     *r_x = 0;
@@ -5466,12 +5691,57 @@ void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
 
   block->curlayout = NULL;
 
-  for (root = block->layouts.first; root; root = root->next) {
+  /* Apply search filter. */
+  if (use_filter) {
+    ui_block_search_filter_tag_buttons(block);
+  }
+
+  bool all_roots_empty = use_filter;
+  LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
+    if (use_filter && root->type != UI_LAYOUT_HEADER) {
+      /* Build property search results layout. */
+      uiLayoutSetPropSep(root->layout, false);
+      uiLayout *split = uiLayoutSplit(root->layout, UI_ITEM_PROP_SEP_DIVIDE, false);
+      uiLayout *labels = uiLayoutColumn(split, false);
+      labels->property_search_layout_temp_debug = true;
+      uiLayoutSetAlignment(labels, UI_LAYOUT_ALIGN_RIGHT);
+      uiLayout *properties = uiLayoutColumn(split, false);
+      properties->property_search_layout_temp_debug = true;
+
+      /* Move the buttons to a property search results layout and remove the extras. */
+      bool empty = false;
+      empty = ui_layout_search_filter_clean(labels, properties, NULL, root->layout);
+      all_roots_empty &= empty;
+
+      if (empty) {
+        ui_layout_free(root->layout);
+        continue;
+      }
+      else {
+        // printf("Not empty??\n");
+      }
+    }
+
     ui_layout_add_padding_button(root);
+
+    if (block->panel && strstr(block->panel->panelname, "data")) {
+      debug_print_layout((uiItem *)root->layout, 0);
+    }
 
     /* NULL in advance so we don't interfere when adding button */
     ui_layout_end(block, root->layout, r_x, r_y);
     ui_layout_free(root->layout);
+  }
+
+  /* Set empty flags. */
+  if (use_filter && block->panel != NULL) {
+    ui_panel_set_search_filtered(block->panel, all_roots_empty);
+  }
+  if (all_roots_empty) {
+    block->flag |= UI_BLOCK_FILTERED_EMPTY;
+  }
+  else {
+    block->flag &= ~UI_BLOCK_FILTERED_EMPTY;
   }
 
   BLI_freelistN(&block->layouts);

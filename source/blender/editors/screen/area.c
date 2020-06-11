@@ -2379,6 +2379,7 @@ static void ed_panel_draw(const bContext *C,
 
   bool open;
   panel = UI_panel_begin(area, region, lb, block, pt, panel, &open);
+  panel->runtime.block = block;
 
   /* bad fixed values */
   int xco, yco, h = 0;
@@ -2510,6 +2511,7 @@ void ED_region_panels_layout_ex(const bContext *C,
                                 const bool vertical,
                                 const char *category_override)
 {
+  // printf("ED_REGION_PANELS_LAYOUT_EX\n");
   /* collect panels to draw */
   WorkSpace *workspace = CTX_wm_workspace(C);
   LinkNode *panel_types_stack = NULL;
@@ -2799,6 +2801,7 @@ void ED_region_panels_ex(
   /* TODO: remove? */
   ED_region_panels_layout_ex(
       C, region, &region->type->paneltypes, contexts, contextnr, vertical, NULL);
+  UI_panels_remove_search_filtered(region);
   ED_region_panels_draw(C, region);
 }
 
