@@ -60,6 +60,7 @@ set(SRC_HEADERS
   util_debug.h
   util_defines.h
   util_deque.h
+  util_disjoint_set.h
   util_guarded_allocator.cpp
   util_foreach.h
   util_function.h
@@ -101,6 +102,7 @@ set(SRC_HEADERS
   util_sky_model_data.h
   util_avxf.h
   util_avxb.h
+  util_semaphore.h
   util_sseb.h
   util_ssef.h
   util_ssei.h

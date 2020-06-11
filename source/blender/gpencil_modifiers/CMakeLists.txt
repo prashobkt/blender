@@ -30,7 +30,6 @@ set(INC
   ../makesdna
   ../makesrna
   ../render/extern/include
-  ../../../intern/elbeem/extern
   ../../../intern/eigen
   ../../../intern/guardedalloc
 )
@@ -57,6 +56,7 @@ set(SRC
   intern/MOD_gpencilsimplify.c
   intern/MOD_gpencilsmooth.c
   intern/MOD_gpencilsubdiv.c
+  intern/MOD_gpenciltexture.c
   intern/MOD_gpencilthick.c
   intern/MOD_gpenciltime.c
   intern/MOD_gpenciltint.c

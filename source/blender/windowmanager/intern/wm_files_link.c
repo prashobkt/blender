@@ -23,21 +23,21 @@
  * Functions for dealing with append/link operators and helpers.
  */
 
-#include <float.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stddef.h>
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
+#include <float.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_ID.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
-#include "DNA_screen_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
@@ -46,11 +46,12 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_bitmap.h"
+#include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 
 #include "PIL_time.h"
 
@@ -61,8 +62,8 @@
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
-#include "BKE_library_override.h"
-#include "BKE_library_remap.h"
+#include "BKE_lib_id.h"
+#include "BKE_lib_remap.h"
 #include "BKE_material.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
@@ -70,7 +71,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h" /* BKE_ST_MAXNAME */
 
-#include "BKE_idcode.h"
+#include "BKE_idtype.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -87,7 +88,9 @@
 
 #include "wm_files.h"
 
-/* **************** link/append *************** */
+/* -------------------------------------------------------------------- */
+/** \name Link/Append Operator
+ * \{ */
 
 static bool wm_link_append_poll(bContext *C)
 {
@@ -122,7 +125,7 @@ static int wm_link_append_invoke(bContext *C, wmOperator *op, const wmEvent *eve
     else if (G.relbase_valid) {
       char path[FILE_MAX];
       BLI_strncpy(path, BKE_main_blendfile_path_from_global(), sizeof(path));
-      BLI_parent_dir(path);
+      BLI_path_parent_dir(path);
       RNA_string_set(op->ptr, "filepath", path);
     }
     WM_event_add_fileselect(C, op);
@@ -454,11 +457,11 @@ static bool wm_link_append_item_poll(ReportList *reports,
     return false;
   }
 
-  idcode = BKE_idcode_from_name(group);
+  idcode = BKE_idtype_idcode_from_name(group);
 
   /* XXX For now, we do a nasty exception for workspace, forbid linking them.
    *     Not nice, ultimately should be solved! */
-  if (!BKE_idcode_is_linkable(idcode) && (do_append || idcode != ID_WS)) {
+  if (!BKE_idtype_idcode_is_linkable(idcode) && (do_append || idcode != ID_WS)) {
     if (reports) {
       if (do_append) {
         BKE_reportf(reports,
@@ -623,7 +626,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 
         lib_idx = POINTER_AS_INT(BLI_ghash_lookup(libraries, libname));
         item = wm_link_append_data_item_add(
-            lapp_data, name, BKE_idcode_from_name(group), &uuid, NULL);
+            lapp_data, name, BKE_idtype_idcode_from_name(group), &uuid, NULL);
         BLI_BITMAP_ENABLE(item->libraries, lib_idx);
       }
       else if (aet) { /* Non-blend paths are only valid in asset engine context (virtual
@@ -887,19 +890,22 @@ void WM_OT_append(wmOperatorType *ot)
       "Localize all appended data, including those indirectly linked from other libraries");
 }
 
-/** \name Append single datablock and return it.
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Append Single Data-Block & Return it
  *
  * Used for appending workspace from startup files.
- *
  * \{ */
 
-ID *WM_file_append_datablock(bContext *C,
+ID *WM_file_append_datablock(Main *bmain,
+                             Scene *scene,
+                             ViewLayer *view_layer,
+                             View3D *v3d,
                              const char *filepath,
                              const short id_code,
                              const char *id_name)
 {
-  Main *bmain = CTX_data_main(C);
-
   /* Tag everything so we can make local only the new datablock. */
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
 
@@ -912,9 +918,6 @@ ID *WM_file_append_datablock(bContext *C,
   BLI_BITMAP_ENABLE(item->libraries, 0);
 
   /* Link datablock. */
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  View3D *v3d = CTX_wm_view3d(C);
   wm_link_do(lapp_data, NULL, bmain, NULL, scene, view_layer, v3d);
 
   /* Get linked datablock and free working data. */
@@ -931,6 +934,10 @@ ID *WM_file_append_datablock(bContext *C,
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Library Relocate Operator & Library Reload API
+ * \{ */
 
 static int wm_lib_relocate_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
@@ -989,11 +996,11 @@ static void lib_relocate_do(Main *bmain,
       ID *id = lbarray[lba_idx]->first;
       const short idcode = id ? GS(id->name) : 0;
 
-      if (!id || !BKE_idcode_is_linkable(idcode)) {
-        /* No need to reload non-linkable datatypes,
-         * those will get relinked with their 'users ID'. */
-        continue;
-      }
+    if (!id || !BKE_idtype_idcode_is_linkable(idcode)) {
+      /* No need to reload non-linkable datatypes,
+       * those will get relinked with their 'users ID'. */
+      continue;
+    }
 
       for (; id; id = id->next) {
         if (id->lib == library) {
@@ -1114,7 +1121,7 @@ static void lib_relocate_do(Main *bmain,
         BLI_strncpy(&old_id->name[len], "~000", 7);
       }
 
-      id_sort_by_name(which_libbase(bmain, GS(old_id->name)), old_id);
+      id_sort_by_name(which_libbase(bmain, GS(old_id->name)), old_id, NULL);
 
       BKE_reportf(
           reports,

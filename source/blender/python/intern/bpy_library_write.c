@@ -26,9 +26,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
-#include "BLI_string.h"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_blendfile.h"
 #include "BKE_global.h"
@@ -37,9 +37,9 @@
 
 #include "RNA_types.h"
 
-#include "bpy_rna.h"
 #include "bpy_capi_utils.h"
 #include "bpy_library.h"
+#include "bpy_rna.h"
 
 #include "../generic/py_capi_utils.h"
 
@@ -204,16 +204,9 @@ finally:
   return ret;
 }
 
-int BPY_library_write_module(PyObject *mod_par)
-{
-  static PyMethodDef write_meth = {
-      "write",
-      (PyCFunction)bpy_lib_write,
-      METH_STATIC | METH_VARARGS | METH_KEYWORDS,
-      bpy_lib_write_doc,
-  };
-
-  PyModule_AddObject(mod_par, "_library_write", PyCFunction_New(&write_meth, NULL));
-
-  return 0;
-}
+PyMethodDef BPY_library_write_method_def = {
+    "write",
+    (PyCFunction)bpy_lib_write,
+    METH_STATIC | METH_VARARGS | METH_KEYWORDS,
+    bpy_lib_write_doc,
+};

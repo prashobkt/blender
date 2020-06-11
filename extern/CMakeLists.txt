@@ -72,7 +72,7 @@ if(WITH_CYCLES OR WITH_COMPOSITOR OR WITH_OPENSUBDIV)
   endif()
 endif()
 
-if(WITH_X11 AND WITH_GHOST_XDND)
+if(WITH_GHOST_X11 AND WITH_GHOST_XDND)
   add_subdirectory(xdnd)
 endif()
 
@@ -104,4 +104,8 @@ endif()
 if(WITH_QUADRIFLOW)
   set(QUADRIFLOW_CMAKE_CFG ${CMAKE_CURRENT_SOURCE_DIR}/quadriflow/blender_config.cmake)
   add_subdirectory(quadriflow)
+endif()
+
+if(WITH_MOD_FLUID)
+  add_subdirectory(mantaflow)
 endif()
