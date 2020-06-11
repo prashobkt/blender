@@ -26,27 +26,31 @@ import random
 from pathlib import Path
 
 offset_x = 5
-flag = 0
+fail = 0
 
 
-def vertex_selection(mesh, vert_set: set, randomize: bool):
-    """Selecting vertices which will be later assigned to vertex groups"""
+def vertex_selection(object, vert_set: set, randomize: bool):
+    """
+    Selecting vertices which will be later assigned to vertex groups
+    :param: object: the selected object for vertex group
+    :param: object: vert_set: set of indices e.g.{0,2,3)
+    :parm: randomize: bool: select vertices randomly"""
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode='OBJECT')
-    mesh.select_set(1)
 
     if not randomize:
         for index in vert_set:
-            mesh.data.vertices[index].select = True
+            object.data.vertices[index].select = True
+
     else:
-        max_vert = len(mesh.data.vertices)
+        max_vert = len(object.data.vertices)
         random_size = random.randint(1, max_vert)
         print(random_size)
         for index in range(random_size):
             random_index = random.randint(0, random_size)
             print(random_index)
-            mesh.data.vertices[random_index].select = True
+            object.data.vertices[random_index].select = True
 
 
 def create_vertex_group(obj_name, vg_name, vg_vert_set, randomize):
@@ -59,24 +63,31 @@ def create_vertex_group(obj_name, vg_name, vg_vert_set, randomize):
     #   Validating user input
     #  -checking for whether the object exists
     #  -index value is within the right range
-
-    if obj_name not in bpy.data.objects:
-        global flag
-        flag = 1
+    if not randomize and len(vg_vert_set) == 0:
+        global fail
+        fail = 1
+        raise Exception('Set is empty!')
+    if obj_name not in bpy.data.objects.keys():
+        fail = 1
         raise Exception('Object {} not Found!'.format(obj_name))
-    mesh = bpy.data.objects[obj_name]
-    max_vert = len(mesh.data.vertices)
+    object = bpy.data.objects[obj_name]
+    bpy.ops.object.select_all(action='DESELECT')
+    object.select_set(True)
+    bpy.context.view_layer.objects.active = object
+
+    max_vert = len(object.data.vertices)
     for i in vg_vert_set:
         if not isinstance(i, int) or i < 0 or i > max_vert - 1:
-            flag = 1
+            fail = 1
             raise Exception("Please enter a valid index(integer).")
 
-    mesh.vertex_groups.new(name=vg_name)
-    vertex_selection(mesh, vg_vert_set, randomize)
+    object.vertex_groups.new(name=vg_name)
+    vertex_selection(object, vg_vert_set, randomize)
 
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.object.vertex_group_assign()
     bpy.ops.object.mode_set(mode='OBJECT')
+    print("'{}' vertex group is created.".format(vg_name))
 
 
 def get_last_location():
@@ -136,9 +147,9 @@ def create_test_objects(obj_dict):
             elif obj_type == "Grid":
                 bpy.ops.mesh.primitive_grid_add(location=(0, offset_y, 0))
             else:
-                global flag
-                flag = 1
-                raise Exception("{} Object type not yet supported".format(obj_type))
+                global fail
+                fail = 1
+                raise Exception("'{}' object type not yet supported.".format(obj_type))
 
             test_obj_list.append(test_obj_name)
             bpy.context.active_object.name = test_obj_name
@@ -149,7 +160,7 @@ def create_test_objects(obj_dict):
         else:
             print("Object already present.")
 
-    if not flag:
+    if not fail:
         print("{} were successfully created!".format(test_obj_list))
 
 
@@ -157,8 +168,9 @@ argv = sys.argv
 argv = argv[argv.index("--") + 1:]
 
 # Converting the path to be platform independent and then into string
-path_to_file = str(Path(argv[0]))
-
+actual_path = Path(argv[0])
+path_to_file = str(actual_path)
+new_file = 0
 print(path_to_file)
 if os.path.exists(path_to_file):
 
@@ -166,16 +178,21 @@ if os.path.exists(path_to_file):
 
 
 else:
-    # Looking at the global flag variable
-    if not flag:
-        bpy.ops.wm.save_as_mainfile(filepath=path_to_file)
-
+    # Looking at the global fail variable
+    new_file = 1
+    bpy.ops.wm.save_as_mainfile(filepath=path_to_file)
     # Cleaning up a new blend file
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.object.delete(use_global=False)
+    bpy.data.objects['Light'].hide_set(True)
+    bpy.data.objects['Camera'].hide_set(True)
 
-create_test_objects({'Cube2': 'Cube', 'Cy2': "Cylinder"})
+# Function calls
+try:
+    create_test_objects({'Cube1': 'Cube', 'Cy455': "Cylinder"})
+    create_vertex_group('expObjCube', "vg_solidify", {0, 1, 2, 3}, False)
+finally:
+    if fail and new_file:
+        os.remove(path_to_file)
+        print("There was an error! The file is not created!")
 
-create_vertex_group('expObjCube', "vg_solidify8", {1, 2, 3, 4}, True)
-
-bpy.ops.wm.save_mainfile(filepath=path_to_file)
+if not fail:
+    bpy.ops.wm.save_mainfile(filepath=path_to_file)
