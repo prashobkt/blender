@@ -22,7 +22,7 @@
 #include "BLI_math_mpq.hh"
 #include "BLI_mpq3.hh"
 
-namespace BLI {
+namespace blender {
 
 struct mpq2 {
   mpq_class x, y;
@@ -37,7 +37,7 @@ struct mpq2 {
   {
   }
 
-  mpq2(const mpq3 &other) : x(other.x), y(other.y)
+  mpq2(const blender::mpq3 &other) : x(other.x), y(other.y)
   {
   }
 
@@ -136,8 +136,13 @@ struct mpq2 {
   static int orient2d(const mpq2 &a, const mpq2 &b, const mpq2 &c);
 
   static int incircle(const mpq2 &a, const mpq2 &b, const mpq2 &c, const mpq2 &d);
+
+  /* There is a sensible use for hashing on exact arithmetic types. */
+  uint32_t hash() const;
 };
 
-}  // namespace BLI
+uint32_t hash_mpq_class(const mpq_class &value);
+
+}  // namespace blender
 
 #endif /* __BLI_MPQ_HH__ */

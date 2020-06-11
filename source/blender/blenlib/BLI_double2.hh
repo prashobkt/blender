@@ -19,7 +19,7 @@
 
 #include "BLI_double3.hh"
 
-namespace BLI {
+namespace blender {
 
 struct double2 {
   double x, y;
@@ -135,6 +135,6 @@ struct double2 {
   static int incircle_fast(const double2 &a, const double2 &b, const double2 &c, const double2 &d);
 };
 
-}  // namespace BLI
+}  // namespace blender
 
 #endif /* __BLI_DOUBLE_HH__ */

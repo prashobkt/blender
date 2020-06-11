@@ -34,7 +34,7 @@ extern "C" {
  * <int> <int>   [#edges lines]
  * <int> <int> ... <int>   [#faces lines]
  */
-template<typename T> BLI::CDT_input<T> fill_input_from_string(const char *spec)
+template<typename T> blender::CDT_input<T> fill_input_from_string(const char *spec)
 {
   std::istringstream ss(spec);
   std::string line;
@@ -43,11 +43,11 @@ template<typename T> BLI::CDT_input<T> fill_input_from_string(const char *spec)
   int nverts, nedges, nfaces;
   hdrss >> nverts >> nedges >> nfaces;
   if (nverts == 0) {
-    return BLI::CDT_input<T>();
+    return blender::CDT_input<T>();
   }
-  BLI::Array<BLI::vec2<T>> verts(nverts);
-  BLI::Array<std::pair<int, int>> edges(nedges);
-  BLI::Array<BLI::Vector<int>> faces(nfaces);
+  blender::Array<blender::vec2<T>> verts(nverts);
+  blender::Array<std::pair<int, int>> edges(nedges);
+  blender::Array<blender::Vector<int>> faces(nfaces);
   int i = 0;
   while (i < nverts && getline(ss, line)) {
     std::istringstream iss(line);
@@ -55,7 +55,7 @@ template<typename T> BLI::CDT_input<T> fill_input_from_string(const char *spec)
     iss >> dp0 >> dp1;
     T p0(dp0);
     T p1(dp1);
-    verts[i] = BLI::vec2<T>(p0, p1);
+    verts[i] = blender::vec2<T>(p0, p1);
     i++;
   }
   i = 0;
@@ -75,7 +75,7 @@ template<typename T> BLI::CDT_input<T> fill_input_from_string(const char *spec)
     }
     i++;
   }
-  BLI::CDT_input<T> ans;
+  blender::CDT_input<T> ans;
   ans.vert = verts;
   ans.edge = edges;
   ans.face = faces;
@@ -91,7 +91,7 @@ template<typename T> BLI::CDT_input<T> fill_input_from_string(const char *spec)
 /* Find an original index in a table mapping new to original.
  * Return -1 if not found.
  */
-int get_orig_index(const BLI::Array<BLI::Vector<int>> &out_to_orig, int orig_index)
+int get_orig_index(const blender::Array<blender::Vector<int>> &out_to_orig, int orig_index)
 {
   int n = static_cast<int>(out_to_orig.size());
   for (int i = 0; i < n; ++i) {
@@ -135,7 +135,7 @@ template<> double math_abs(const double v)
 /* Find an output index corresponding to a given coordinate (appproximately).
  * Return -1 if not found.
  */
-template<typename T> int get_vertex_by_coord(const BLI::CDT_result<T> &out, double x, double y)
+template<typename T> int get_vertex_by_coord(const blender::CDT_result<T> &out, double x, double y)
 {
   int nv = static_cast<int>(out.vert.size());
   for (int i = 0; i < nv; ++i) {
@@ -150,7 +150,7 @@ template<typename T> int get_vertex_by_coord(const BLI::CDT_result<T> &out, doub
 
 /* Find an edge between two given output vertex indices. -1 if not found, */
 template<typename T>
-int get_output_edge_index(const BLI::CDT_result<T> &out, int out_index_1, int out_index_2)
+int get_output_edge_index(const blender::CDT_result<T> &out, int out_index_1, int out_index_2)
 {
   int ne = static_cast<int>(out.edge.size());
   for (int i = 0; i < ne; ++i) {
@@ -163,7 +163,9 @@ int get_output_edge_index(const BLI::CDT_result<T> &out, int out_index_1, int ou
 }
 
 template<typename T>
-bool output_edge_has_input_id(const BLI::CDT_result<T> &out, int out_edge_index, int in_edge_index)
+bool output_edge_has_input_id(const blender::CDT_result<T> &out,
+                              int out_edge_index,
+                              int in_edge_index)
 {
   return out_edge_index < static_cast<int>(out.edge_orig.size()) &&
          out.edge_orig[out_edge_index].contains(in_edge_index);
@@ -173,7 +175,7 @@ bool output_edge_has_input_id(const BLI::CDT_result<T> &out, int out_edge_index,
  * Allow for cyclic shifts vertices of one poly vs the other.
  */
 template<typename T>
-int get_output_face_index(const BLI::CDT_result<T> &out, const BLI::Array<int> &poly)
+int get_output_face_index(const blender::CDT_result<T> &out, const blender::Array<int> &poly)
 {
   int nf = static_cast<int>(out.face.size());
   int npolyv = static_cast<int>(poly.size());
@@ -197,24 +199,26 @@ int get_output_face_index(const BLI::CDT_result<T> &out, const BLI::Array<int> &
 }
 
 template<typename T>
-int get_output_tri_index(const BLI::CDT_result<T> &out,
+int get_output_tri_index(const blender::CDT_result<T> &out,
                          int out_index_1,
                          int out_index_2,
                          int out_index_3)
 {
-  BLI::Array<int> tri{out_index_1, out_index_2, out_index_3};
+  blender::Array<int> tri{out_index_1, out_index_2, out_index_3};
   return get_output_face_index(out, tri);
 }
 
 template<typename T>
-bool output_face_has_input_id(const BLI::CDT_result<T> &out, int out_face_index, int in_face_index)
+bool output_face_has_input_id(const blender::CDT_result<T> &out,
+                              int out_face_index,
+                              int in_face_index)
 {
   return out_face_index < static_cast<int>(out.face_orig.size()) &&
          out.face_orig[out_face_index].contains(in_face_index);
 }
 
 /* For debugging. */
-template<typename T> std::ostream &operator<<(std::ostream &os, const BLI::CDT_result<T> &r)
+template<typename T> std::ostream &operator<<(std::ostream &os, const blender::CDT_result<T> &r)
 {
   os << "\nRESULT\n";
   os << r.vert.size() << " verts, " << r.edge.size() << " edges, " << r.face.size() << " faces\n";
@@ -256,9 +260,9 @@ static bool draw_append = false; /* Willbe set to true after first call. */
 
 template<typename T>
 void graph_draw(const std::string &label,
-                const BLI::Array<BLI::vec2<T>> &verts,
-                const BLI::Array<std::pair<int, int>> &edges,
-                const BLI::Array<BLI::Vector<int>> &faces)
+                const blender::Array<blender::vec2<T>> &verts,
+                const blender::Array<std::pair<int, int>> &edges,
+                const blender::Array<blender::Vector<int>> &faces)
 {
   constexpr const char *drawfile = "/tmp/cdt_test_draw.html";
   constexpr int max_draw_width = 1400;
@@ -271,9 +275,9 @@ void graph_draw(const std::string &label,
   if (verts.size() == 0) {
     return;
   }
-  BLI::vec2<double> vmin(1e10, 1e10);
-  BLI::vec2<double> vmax(-1e10, -1e10);
-  for (const BLI::vec2<T> &v : verts) {
+  blender::vec2<double> vmin(1e10, 1e10);
+  blender::vec2<double> vmax(-1e10, -1e10);
+  for (const blender::vec2<T> &v : verts) {
     for (int i = 0; i < 2; ++i) {
       double dvi = math_to_double(v[i]);
       if (dvi < vmin[i]) {
@@ -324,8 +328,8 @@ void graph_draw(const std::string &label,
     << "width=\"" << view_width << "\" height=\"" << view_height << "\">n";
 
   for (const std::pair<int, int> &e : edges) {
-    const BLI::vec2<T> &uco = verts[e.first];
-    const BLI::vec2<T> &vco = verts[e.second];
+    const blender::vec2<T> &uco = verts[e.first];
+    const blender::vec2<T> &vco = verts[e.second];
     int strokew = thin_line;
     f << "<line fill=\"none\" stroke=\"black\" stroke-width=\"" << strokew << "\" x1=\""
       << SX(uco[0]) << "\" y1=\"" << SY(uco[1]) << "\" x2=\"" << SX(vco[0]) << "\" y2=\""
@@ -340,7 +344,7 @@ void graph_draw(const std::string &label,
   }
 
   int i = 0;
-  for (const BLI::vec2<T> &vco : verts) {
+  for (const blender::vec2<T> &vco : verts) {
     f << "<circle fill=\"black\" cx=\"" << SX(vco[0]) << "\" cy=\"" << SY(vco[1]) << "\" r=\""
       << vert_radius << "\">\n";
     f << "  <title>[" << i << "]" << vco << "</title>\n";
@@ -360,18 +364,20 @@ void graph_draw(const std::string &label,
 /* Should tests draw their output to an html file? */
 constexpr bool DO_DRAW = true;
 
-template<typename T> void expect_coord_near(const BLI::vec2<T> &testco, const BLI::vec2<T> &refco);
+template<typename T>
+void expect_coord_near(const blender::vec2<T> &testco, const blender::vec2<T> &refco);
 
 template<>
-void expect_coord_near<mpq_class>(const BLI::vec2<mpq_class> &testco,
-                                  const BLI::vec2<mpq_class> &refco)
+void expect_coord_near<mpq_class>(const blender::vec2<mpq_class> &testco,
+                                  const blender::vec2<mpq_class> &refco)
 {
   EXPECT_EQ(testco[0], refco[0]);
   EXPECT_EQ(testco[0], refco[0]);
 }
 
 template<>
-void expect_coord_near<double>(const BLI::vec2<double> &testco, const BLI::vec2<double> &refco)
+void expect_coord_near<double>(const blender::vec2<double> &testco,
+                               const blender::vec2<double> &refco)
 {
   EXPECT_NEAR(testco[0], refco[0], 1e-5);
   EXPECT_NEAR(testco[1], refco[1], 1e-5);
@@ -381,9 +387,9 @@ void expect_coord_near<double>(const BLI::vec2<double> &testco, const BLI::vec2<
 
 template<typename T> void empty_test()
 {
-  BLI::CDT_input<T> in;
+  blender::CDT_input<T> in;
 
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(0, out.vert.size());
   EXPECT_EQ(0, out.edge.size());
   EXPECT_EQ(0, out.face.size());
@@ -398,13 +404,13 @@ template<typename T> void onept_test()
   0.0 0.0
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 1);
   EXPECT_EQ(out.edge.size(), 0);
   EXPECT_EQ(out.face.size(), 0);
   if (out.vert.size() >= 1) {
-    expect_coord_near<T>(out.vert[0], BLI::vec2<T>(0, 0));
+    expect_coord_near<T>(out.vert[0], blender::vec2<T>(0, 0));
   }
 }
 
@@ -415,8 +421,8 @@ template<typename T> void twopt_test()
   0.0 0.75
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 2);
   EXPECT_EQ(out.edge.size(), 1);
   EXPECT_EQ(out.face.size(), 0);
@@ -426,8 +432,8 @@ template<typename T> void twopt_test()
   EXPECT_NE(v1_out, -1);
   EXPECT_NE(v0_out, v1_out);
   if (out.vert.size() >= 1) {
-    expect_coord_near<T>(out.vert[v0_out], BLI::vec2<T>(0.0, -0.75));
-    expect_coord_near<T>(out.vert[v1_out], BLI::vec2<T>(0.0, 0.75));
+    expect_coord_near<T>(out.vert[v0_out], blender::vec2<T>(0.0, -0.75));
+    expect_coord_near<T>(out.vert[v1_out], blender::vec2<T>(0.0, 0.75));
   }
   int e0_out = get_output_edge_index(out, v0_out, v1_out);
   EXPECT_EQ(e0_out, 0);
@@ -444,8 +450,8 @@ template<typename T> void threept_test()
   0.5 0.5
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 3);
   EXPECT_EQ(out.edge.size(), 3);
   EXPECT_EQ(out.face.size(), 1);
@@ -479,8 +485,8 @@ template<typename T> void mixedpts_test()
   2 3
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 6);
   int v0_out = get_orig_index(out.vert_orig, 0);
@@ -509,8 +515,8 @@ template<typename T> void quad0_test()
   2.25 0.5
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
   int e_diag_out = get_output_edge_index(out, 1, 3);
@@ -529,8 +535,8 @@ template<typename T> void quad1_test()
   0.9 3.0
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
   int e_diag_out = get_output_edge_index(out, 0, 2);
@@ -549,8 +555,8 @@ template<typename T> void quad2_test()
   .45 0.35
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
   int e_diag_out = get_output_edge_index(out, 1, 3);
@@ -569,8 +575,8 @@ template<typename T> void quad3_test()
   .45 0.35
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
   int e_diag_out = get_output_edge_index(out, 0, 2);
@@ -589,8 +595,8 @@ template<typename T> void quad4_test()
   0.0 1.0
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
   int e_diag_out = get_output_edge_index(out, 0, 1);
@@ -613,14 +619,14 @@ template<typename T> void lineinsquare_test()
   0 1 3 2
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.face.size(), 6);
   if (DO_DRAW) {
     graph_draw<T>("LineInSquare - full", out.vert, out.edge, out.face);
   }
-  BLI::CDT_result<T> out2 = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS);
+  blender::CDT_result<T> out2 = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out2.vert.size(), 6);
   EXPECT_EQ(out2.face.size(), 1);
   if (DO_DRAW) {
@@ -639,8 +645,8 @@ template<typename T> void crosssegs_test()
   2 3
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 5);
   EXPECT_EQ(out.edge.size(), 8);
   EXPECT_EQ(out.face.size(), 4);
@@ -659,7 +665,7 @@ template<typename T> void crosssegs_test()
     }
     EXPECT_NE(v_intersect, -1);
     if (v_intersect != -1) {
-      expect_coord_near<T>(out.vert[v_intersect], BLI::vec2<T>(0, 0));
+      expect_coord_near<T>(out.vert[v_intersect], blender::vec2<T>(0, 0));
     }
   }
   if (DO_DRAW) {
@@ -685,8 +691,8 @@ template<typename T> void diamondcross_test()
   5 6
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
   EXPECT_EQ(out.face.size(), 2);
@@ -721,8 +727,8 @@ template<typename T> void twodiamondscross_test()
   10 11
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 15);
   EXPECT_EQ(out.face.size(), 8);
@@ -810,8 +816,8 @@ template<typename T> void manycross_test()
   25 26
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 19);
   EXPECT_EQ(out.edge.size(), 46);
   EXPECT_EQ(out.face.size(), 28);
@@ -833,8 +839,8 @@ template<typename T> void twoface_test()
   3 4 5
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.edge.size(), 9);
   EXPECT_EQ(out.face.size(), 4);
@@ -878,8 +884,8 @@ template<typename T> void twoface2_test()
   3 4 5
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_INSIDE);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_INSIDE);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.edge.size(), 18);
   EXPECT_EQ(out.face.size(), 9);
@@ -961,8 +967,8 @@ template<typename T> void overlapfaces_test()
   8 9 10 11
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_FULL);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 14);
   EXPECT_EQ(out.edge.size(), 33);
   EXPECT_EQ(out.face.size(), 20);
@@ -979,8 +985,8 @@ template<typename T> void overlapfaces_test()
       v_int1 = 13;
       v_int2 = 12;
     }
-    expect_coord_near<T>(out.vert[v_int1], BLI::vec2<T>(1, 0.5));
-    expect_coord_near<T>(out.vert[v_int2], BLI::vec2<T>(0.5, 1));
+    expect_coord_near<T>(out.vert[v_int1], blender::vec2<T>(1, 0.5));
+    expect_coord_near<T>(out.vert[v_int2], blender::vec2<T>(0.5, 1));
     EXPECT_EQ(out.vert_orig[v_int1].size(), 0);
     EXPECT_EQ(out.vert_orig[v_int2].size(), 0);
     int f0_out = get_output_tri_index(out, v_out[1], v_int1, v_out[4]);
@@ -1003,19 +1009,19 @@ template<typename T> void overlapfaces_test()
   }
 
   /* Different output types. */
-  BLI::CDT_result<T> out2 = BLI::delaunay_2d_calc(in, CDT_INSIDE);
+  blender::CDT_result<T> out2 = blender::delaunay_2d_calc(in, CDT_INSIDE);
   EXPECT_EQ(out2.face.size(), 18);
   if (DO_DRAW) {
     graph_draw<T>("OverlapFaces - inside", out2.vert, out2.edge, out2.face);
   }
 
-  BLI::CDT_result<T> out3 = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS);
+  blender::CDT_result<T> out3 = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out3.face.size(), 4);
   if (DO_DRAW) {
     graph_draw<T>("OverlapFaces - constraints", out3.vert, out3.edge, out3.face);
   }
 
-  BLI::CDT_result<T> out4 = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
+  blender::CDT_result<T> out4 = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out4.face.size(), 5);
   if (DO_DRAW) {
     graph_draw<T>("OverlapFaces - valid bmesh", out4.vert, out4.edge, out4.face);
@@ -1037,8 +1043,8 @@ template<typename T> void twosquaresoverlap_test()
   3 2 1 0
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.edge.size(), 12);
   EXPECT_EQ(out.face.size(), 3);
@@ -1060,8 +1066,8 @@ template<typename T> void twofaceedgeoverlap_test()
   5 4 3
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.vert.size(), 5);
   EXPECT_EQ(out.edge.size(), 7);
   EXPECT_EQ(out.face.size(), 3);
@@ -1121,8 +1127,8 @@ template<typename T> void triintri_test()
   3 4 5
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.edge.size(), 8);
   EXPECT_EQ(out.face.size(), 3);
@@ -1146,8 +1152,8 @@ template<typename T> void diamondinsquare_test()
   4 5 6 7
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 10);
   EXPECT_EQ(out.face.size(), 3);
@@ -1177,8 +1183,8 @@ template<typename T> void diamondinsquarewire_test()
   7 4
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 8);
   EXPECT_EQ(out.face.size(), 2);
@@ -1200,8 +1206,8 @@ template<typename T> void repeatedge_test()
   2 3
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 2);
   if (DO_DRAW) {
     graph_draw<T>("RepeatEdge", out.vert, out.edge, out.face);
@@ -1218,8 +1224,8 @@ template<typename T> void repeattri_test()
   0 1 2
   )";
 
-  BLI::CDT_input<T> in = fill_input_from_string<T>(spec);
-  BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, CDT_CONSTRAINTS);
+  blender::CDT_input<T> in = fill_input_from_string<T>(spec);
+  blender::CDT_result<T> out = blender::delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 3);
   EXPECT_EQ(out.face.size(), 1);
   EXPECT_TRUE(output_face_has_input_id(out, 0, 0));
@@ -1526,7 +1532,7 @@ void rand_delaunay_test(int test_kind,
 {
   constexpr bool print_timing = true;
   RNG *rng = BLI_rng_new(0);
-  BLI::Array<double> times(max_lg_size + 1);
+  blender::Array<double> times(max_lg_size + 1);
 
   /* For powers of 2 sizes up to max_lg_size power of 2. */
   for (int lg_size = start_lg_size; lg_size <= max_lg_size; ++lg_size) {
@@ -1604,13 +1610,13 @@ void rand_delaunay_test(int test_kind,
         }
       }
 
-      BLI::CDT_input<T> in;
-      in.vert = BLI::Array<BLI::vec2<T>>(npts);
+      blender::CDT_input<T> in;
+      in.vert = blender::Array<blender::vec2<T>>(npts);
       if (nedges > 0) {
-        in.edge = BLI::Array<std::pair<int, int>>(nedges);
+        in.edge = blender::Array<std::pair<int, int>>(nedges);
       }
       if (nfaces > 0) {
-        in.face = BLI::Array<BLI::Vector<int>>(nfaces);
+        in.face = blender::Array<blender::Vector<int>>(nfaces);
       }
 
       /* Make vertices and edges or faces. */
@@ -1678,7 +1684,7 @@ void rand_delaunay_test(int test_kind,
             in.vert[ic][1] = T((param * sin(angle3)));
             /* Put the coordinates in ccw order. */
             in.face[i].append(ia);
-            int orient = BLI::vec2<T>::orient2d(in.vert[ia], in.vert[ib], in.vert[ic]);
+            int orient = blender::vec2<T>::orient2d(in.vert[ia], in.vert[ib], in.vert[ic]);
             if (orient >= 0) {
               in.face[i].append(ib);
               in.face[i].append(ic);
@@ -1693,7 +1699,7 @@ void rand_delaunay_test(int test_kind,
 
       /* Run the test. */
       double tstart = PIL_check_seconds_timer();
-      BLI::CDT_result<T> out = BLI::delaunay_2d_calc(in, otype);
+      blender::CDT_result<T> out = blender::delaunay_2d_calc(in, otype);
       EXPECT_NE(out.vert.size(), 0);
       times[lg_size] += PIL_check_seconds_timer() - tstart;
       if (DO_DRAW) {

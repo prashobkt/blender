@@ -19,20 +19,21 @@
 #include "gmpxx.h"
 
 #include "BLI_array.hh"
-#include "BLI_array_ref.hh"
 #include "BLI_assert.h"
 #include "BLI_hash.hh"
 #include "BLI_map.hh"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_set.hh"
+#include "BLI_span.hh"
 #include "BLI_stack.hh"
 #include "BLI_vector.hh"
 
 #include "BLI_boolean.h"
 
-namespace BLI {
-namespace MeshIntersect {
+namespace blender {
+
+namespace meshintersect {
 
 /* Edge as two vert indices, in a canonical order (lower vert index first). */
 class Edge {
@@ -67,6 +68,13 @@ class Edge {
     return m_v[0] == other.m_v[0] && m_v[1] == other.m_v[1];
   }
 
+  uint32_t hash() const
+  {
+    uint32_t v0hash = DefaultHash<int>{}(m_v[0]);
+    uint32_t v1hash = DefaultHash<int>{}(m_v[1]);
+    return v0hash ^ (v1hash * 33);
+  }
+
  private:
   int m_v[2]{-1, -1};
 };
@@ -77,7 +85,7 @@ static std::ostream &operator<<(std::ostream &os, const Edge &e)
   return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const ArrayRef<int> &a)
+static std::ostream &operator<<(std::ostream &os, const Span<int> &a)
 {
   for (uint i = 0; i < a.size(); ++i) {
     os << a[i];
@@ -90,13 +98,13 @@ static std::ostream &operator<<(std::ostream &os, const ArrayRef<int> &a)
 
 static std::ostream &operator<<(std::ostream &os, const Vector<int> &ivec)
 {
-  os << ArrayRef<int>(ivec);
+  os << Span<int>(ivec);
   return os;
 }
 
 static std::ostream &operator<<(std::ostream &os, const Array<int> &iarr)
 {
-  os << ArrayRef<int>(iarr);
+  os << Span<int>(iarr);
   return os;
 }
 
@@ -146,7 +154,7 @@ TriMeshTopology::TriMeshTopology(const TriMesh *tm)
       Edge e(tri[i], tri[(i + 1) % 3]);
       auto createf = [t](Vector<int> **pvec) { *pvec = new Vector<int>{t}; };
       auto modifyf = [t](Vector<int> **pvec) { (*pvec)->append_non_duplicates(t); };
-      this->m_edge_tri.add_or_modify(e, createf, modifyf);
+      this->m_edge_tri.add_or_modify(Edge(tri[i], tri[(i + 1) % 3]), createf, modifyf);
     }
   }
   /* Debugging. */
@@ -155,7 +163,7 @@ TriMeshTopology::TriMeshTopology(const TriMesh *tm)
     for (auto item : m_edge_tri.items()) {
       std::cout << item.key << ": " << *item.value << "\n";
       if (false) {
-        m_edge_tri.print_table();
+        m_edge_tri.print_stats();
       }
     }
   }
@@ -565,7 +573,7 @@ static int sort_tris_class(const IndexedTriangle &tri,
 static Array<int> sort_tris_around_edge(const TriMesh &tm,
                                         const TriMeshTopology &tmtopo,
                                         const Edge e,
-                                        const ArrayRef<int> &tris,
+                                        const Span<int> &tris,
                                         const int t0)
 {
   /* Divide and conquer, quicsort-like sort.
@@ -624,7 +632,7 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
       g3tris[i] = tris[g3[i]];
     }
     Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3tris, t0);
-    BLI::copy(g3sorted.begin(), g3sorted.end(), g3.begin());
+    std::copy(g3sorted.begin(), g3sorted.end(), g3.begin());
   }
   if (g4.size() > 1) {
     Array<int> g4tris(g4.size());
@@ -632,22 +640,22 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
       g4tris[i] = tris[g4[i]];
     }
     Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4tris, t0);
-    BLI::copy(g4sorted.begin(), g4sorted.end(), g4.begin());
+    std::copy(g4sorted.begin(), g4sorted.end(), g4.begin());
   }
   uint group_tot_size = g1.size() + g2.size() + g3.size() + g4.size();
   Array<int> ans(group_tot_size);
   int *p = ans.begin();
   if (tris[0] == t0) {
-    p = BLI::copy(g1.begin(), g1.end(), p);
-    p = BLI::copy(g3.begin(), g3.end(), p);
-    p = BLI::copy(g2.begin(), g2.end(), p);
-    BLI::copy(g4.begin(), g4.end(), p);
+    p = std::copy(g1.begin(), g1.end(), p);
+    p = std::copy(g3.begin(), g3.end(), p);
+    p = std::copy(g2.begin(), g2.end(), p);
+    std::copy(g4.begin(), g4.end(), p);
   }
   else {
-    p = BLI::copy(g3.begin(), g3.end(), p);
-    p = BLI::copy(g1.begin(), g1.end(), p);
-    p = BLI::copy(g4.begin(), g4.end(), p);
-    BLI::copy(g2.begin(), g2.end(), p);
+    p = std::copy(g3.begin(), g3.end(), p);
+    p = std::copy(g1.begin(), g1.end(), p);
+    p = std::copy(g4.begin(), g4.end(), p);
+    std::copy(g2.begin(), g2.end(), p);
   }
   if (dbg_level > 0) {
     const char *indent = (t0 == tris[0] ? "" : "  ");
@@ -674,7 +682,7 @@ static void find_cells_from_edge(const TriMesh &tm,
   const Vector<int> *edge_tris = tmtopo.edge_tris(e);
   BLI_assert(edge_tris != nullptr);
   Array<int> sorted_tris = sort_tris_around_edge(
-      tm, tmtopo, e, ArrayRef<int>(*edge_tris), (*edge_tris)[0]);
+      tm, tmtopo, e, Span<int>(*edge_tris), (*edge_tris)[0]);
 
   int n_edge_tris = static_cast<int>(edge_tris->size());
   Array<int> edge_patches(n_edge_tris);
@@ -919,39 +927,29 @@ static TriMesh self_boolean(const TriMesh &tm_in, int bool_optype)
   return tm_si;
 }
 
-}  // namespace MeshIntersect
-
-template<> struct DefaultHash<MeshIntersect::Edge> {
-  uint32_t operator()(const MeshIntersect::Edge &value) const
-  {
-    uint32_t hash0 = DefaultHash<int>{}(value.v0());
-    uint32_t hash1 = DefaultHash<int>{}(value.v1());
-    return hash0 ^ (hash1 * 33);
-  }
-};
-
-}  // namespace BLI
+}  // namespace meshintersect
+}  // namespace blender
 
 extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_input *input,
                                                        int bool_optype)
 {
   constexpr int dbg_level = 1;
-  BLI::MeshIntersect::TriMesh tm_in;
-  tm_in.vert = BLI::Array<BLI::mpq3>(input->vert_len);
+  blender::meshintersect::TriMesh tm_in;
+  tm_in.vert = blender::Array<blender::mpq3>(input->vert_len);
   for (int v = 0; v < input->vert_len; ++v) {
-    tm_in.vert[v] = BLI::mpq3(
+    tm_in.vert[v] = blender::mpq3(
         input->vert_coord[v][0], input->vert_coord[v][1], input->vert_coord[v][2]);
   }
-  tm_in.tri = BLI::Array<BLI::MeshIntersect::IndexedTriangle>(input->tri_len);
+  tm_in.tri = blender::Array<blender::meshintersect::IndexedTriangle>(input->tri_len);
   for (int t = 0; t < input->tri_len; ++t) {
-    tm_in.tri[t] = BLI::MeshIntersect::IndexedTriangle(
+    tm_in.tri[t] = blender::meshintersect::IndexedTriangle(
         input->tri[t][0], input->tri[t][1], input->tri[t][2], t);
   }
-  BLI::MeshIntersect::TriMesh tm_out = self_boolean(tm_in, bool_optype);
+  blender::meshintersect::TriMesh tm_out = self_boolean(tm_in, bool_optype);
   if (dbg_level > 0) {
-    BLI::MeshIntersect::write_html_trimesh(
+    blender::meshintersect::write_html_trimesh(
         tm_out.vert, tm_out.tri, "mesh_boolean_test.html", "after self_boolean");
-    BLI::MeshIntersect::write_obj_trimesh(tm_out.vert, tm_out.tri, "test_tettet");
+    blender::meshintersect::write_obj_trimesh(tm_out.vert, tm_out.tri, "test_tettet");
   }
   int nv = tm_out.vert.size();
   int nt = tm_out.tri.size();

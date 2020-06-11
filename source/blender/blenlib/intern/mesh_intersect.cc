@@ -19,7 +19,6 @@
 
 #include "BLI_allocator.hh"
 #include "BLI_array.hh"
-#include "BLI_array_ref.hh"
 #include "BLI_assert.h"
 #include "BLI_delaunay_2d.h"
 #include "BLI_double3.hh"
@@ -27,14 +26,15 @@
 #include "BLI_map.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_mpq3.hh"
+#include "BLI_span.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
 #include "BLI_mesh_intersect.hh"
 
-namespace BLI {
-namespace MeshIntersect {
+namespace blender {
 
+namespace meshintersect {
 /* A plane whose equation is dot(n, p) + d = 0. */
 struct planeq {
   mpq3 n;
@@ -54,6 +54,15 @@ struct planeq {
   operator mpq_class *()
   {
     return &n.x;
+  }
+
+  uint32_t hash() const
+  {
+    uint32_t hashx = hash_mpq_class(this->n.x);
+    uint32_t hashy = hash_mpq_class(this->n.y);
+    uint32_t hashz = hash_mpq_class(this->n.z);
+    uint32_t hashd = hash_mpq_class(this->d);
+    return hashx ^ (hashy * 33) ^ (hashz * 33 * 37) ^ (hashd * 33 * 37 * 39);
   }
 };
 
@@ -195,7 +204,7 @@ class TMesh {
 
   int add_vert(const mpq3 &co)
   {
-    int co_index = this->m_verts.index_try(co);
+    int co_index = this->m_verts.index_of_try(co);
     if (co_index == -1) {
       co_index = static_cast<int>(this->m_verts.size());
       this->m_verts.add_new(co);
@@ -898,7 +907,7 @@ static void do_cdt(CDT_data &cd)
     }
   }
   cdt_in.epsilon = 0; /* TODO: needs attention for non-exact T. */
-  cd.cdt_out = BLI::delaunay_2d_calc(cdt_in, CDT_INSIDE);
+  cd.cdt_out = blender::delaunay_2d_calc(cdt_in, CDT_INSIDE);
   if (dbg_level > 0) {
     std::cout << "\nCDT result\nVerts:\n";
     for (uint i = 0; i < cd.cdt_out.vert.size(); ++i) {
@@ -930,8 +939,8 @@ static TMesh extract_subdivided_tri(const CDT_data &cd, const TMesh &in_tm, int 
   /* We want all triangles in cdt_out that had t (as indexed in the CDT_input) as an orig. */
   /* Which output verts do we need in our answer? */
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
-  Array<bool> needvert(cdt_out.vert.size()); /* Initialized to all false. */
-  Array<bool> needtri(cdt_out.face.size());  /* Initialized to all false. */
+  Array<bool> needvert(cdt_out.vert.size(), false);
+  Array<bool> needtri(cdt_out.face.size(), false);
   int t_in_cdt = -1;
   for (int i = 0; i < static_cast<int>(cd.input_face.size()); ++i) {
     if (cd.input_face[i] == t) {
@@ -1061,7 +1070,7 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo, int c
   return cd_data;
 }
 
-static TMesh union_tri_subdivides(const BLI::Array<TMesh> &tri_subdivided)
+static TMesh union_tri_subdivides(const blender::Array<TMesh> &tri_subdivided)
 {
   TMesh ans;
   for (const TMesh &tmsub : tri_subdivided) {
@@ -1317,7 +1326,7 @@ static CoplanarClusterInfo find_clusters(const TMesh &tmesh)
         for (CoplanarCluster *cl_no_int : no_int_cls) {
           newvec.append(*cl_no_int);
         }
-        plane_cls.add_override(canon_tplane, newvec);
+        plane_cls.add_overwrite(canon_tplane, newvec);
       }
     }
     else {
@@ -1365,11 +1374,11 @@ static TriMesh tpl_trimesh_self_intersect(const TriMesh &tm_in)
   if (dbg_level > 1) {
     std::cout << clinfo;
   }
-  BLI::Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
+  blender::Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (int c = 0; c < clinfo.tot_cluster(); ++c) {
     cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tmesh);
   }
-  BLI::Array<TMesh> tri_subdivided(ntri);
+  blender::Array<TMesh> tri_subdivided(ntri);
   for (int t = 0; t < ntri; ++t) {
     int c = clinfo.tri_cluster(t);
     if (c == -1) {
@@ -1536,7 +1545,7 @@ void write_html_trimesh(const Array<mpq3> &vert,
     << "height='" << draw_height << "px'>\n"
     << "<scene>\n";
 
-  BLI::Array<bool> vused(vert.size());
+  blender::Array<bool> vused(vert.size());
   int i = 0;
   for (const IndexedTriangle &t : tri) {
     double3 dv0, dv1, dv2;
@@ -1626,34 +1635,6 @@ void write_obj_trimesh(const Array<mpq3> &vert,
   }
 }
 
-};  // namespace MeshIntersect
+};  // namespace meshintersect
 
-template<> struct DefaultHash<mpq_class> {
-  uint32_t operator()(const mpq_class &value) const
-  {
-    return DefaultHash<float>{}(static_cast<float>(value.get_d()));
-  }
-};
-
-template<> struct DefaultHash<mpq3> {
-  uint32_t operator()(const mpq3 &value) const
-  {
-    uint32_t hashx = DefaultHash<mpq_class>{}(value.x);
-    uint32_t hashy = DefaultHash<mpq_class>{}(value.y);
-    uint32_t hashz = DefaultHash<mpq_class>{}(value.z);
-    return hashx ^ (hashy * 33) ^ (hashz * 33 * 37);
-  }
-};
-
-template<> struct DefaultHash<MeshIntersect::planeq> {
-  uint32_t operator()(const MeshIntersect::planeq &value) const
-  {
-    uint32_t hashx = DefaultHash<mpq_class>{}(value.n.x);
-    uint32_t hashy = DefaultHash<mpq_class>{}(value.n.y);
-    uint32_t hashz = DefaultHash<mpq_class>{}(value.n.z);
-    uint32_t hashd = DefaultHash<mpq_class>{}(value.d);
-    return hashx ^ (hashy * 33) ^ (hashz * 33 * 37) ^ (hashd * 33 * 37 * 39);
-  }
-};
-
-}  // namespace BLI
+}  // namespace blender

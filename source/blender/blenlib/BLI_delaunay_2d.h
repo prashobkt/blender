@@ -217,7 +217,7 @@ void BLI_delaunay_2d_cdt_free(CDT_result *result);
 #  include "BLI_mpq2.hh"
 #  include "BLI_vector.hh"
 
-namespace BLI {
+namespace blender {
 
 template<typename Arith_t> struct vec2_impl;
 template<> struct vec2_impl<double> {
@@ -252,7 +252,7 @@ CDT_result<double> delaunay_2d_calc(const CDT_input<double> &input, CDT_output_t
 CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<mpq_class> &input,
                                        CDT_output_type output_type);
 
-} /* namespace BLI */
+} /* namespace blender */
 
 #endif /* __cplusplus */
 

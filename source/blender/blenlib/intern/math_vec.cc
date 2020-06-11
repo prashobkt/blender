@@ -24,11 +24,12 @@
 #include "BLI_double3.hh"
 #include "BLI_float2.hh"
 #include "BLI_float3.hh"
+#include "BLI_hash.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_utildefines.h"
 
-namespace BLI {
+namespace blender {
 
 float2::isect_result float2::isect_seg_seg(const float2 &v1,
                                            const float2 &v2,
@@ -118,6 +119,27 @@ mpq2::isect_result mpq2::isect_seg_seg(const mpq2 &v1,
     }
   }
   return ans;
+}
+
+uint32_t hash_mpq_class(const mpq_class &value)
+{
+  /* TODO: better/faster implementation of this. */
+  return DefaultHash<float>{}(static_cast<float>(value.get_d()));
+}
+
+uint32_t mpq2::hash() const
+{
+  uint32_t hashx = hash_mpq_class(this->x);
+  uint32_t hashy = hash_mpq_class(this->y);
+  return hashx ^ (hashy * 33);
+}
+
+uint32_t mpq3::hash() const
+{
+  uint32_t hashx = hash_mpq_class(this->x);
+  uint32_t hashy = hash_mpq_class(this->y);
+  uint32_t hashz = hash_mpq_class(this->z);
+  return hashx ^ (hashy * 33) ^ (hashz * 33 * 37);
 }
 
 int mpq2::orient2d(const mpq2 &a, const mpq2 &b, const mpq2 &c)
@@ -2549,12 +2571,12 @@ static int sgn(double x)
 
 int double2::orient2d(const double2 &a, const double2 &b, const double2 &c)
 {
-  return sgn(BLI::robust_pred::orient2d(a, b, c));
+  return sgn(blender::robust_pred::orient2d(a, b, c));
 }
 
 int double2::orient2d_fast(const double2 &a, const double2 &b, const double2 &c)
 {
-  return sgn(BLI::robust_pred::orient2dfast(a, b, c));
+  return sgn(blender::robust_pred::orient2dfast(a, b, c));
 }
 
 int double2::incircle(const double2 &a, const double2 &b, const double2 &c, const double2 &d)
@@ -2589,4 +2611,4 @@ int double3::insphere_fast(
   return sgn(robust_pred::inspherefast(a, b, c, d, e));
 }
 
-}  // namespace BLI
+}  // namespace blender

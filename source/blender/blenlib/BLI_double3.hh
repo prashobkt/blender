@@ -21,7 +21,7 @@
 
 #include "BLI_math_vector.h"
 
-namespace BLI {
+namespace blender {
 
 struct double3 {
   double x, y, z;
@@ -233,6 +233,6 @@ struct double3 {
       const double3 &a, const double3 &b, const double3 &c, const double3 &d, const double3 &e);
 };
 
-}  // namespace BLI
+}  // namespace blender
 
 #endif /* __BLI_DOUBLE3_HH__ */

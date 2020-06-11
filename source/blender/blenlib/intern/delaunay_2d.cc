@@ -30,8 +30,8 @@
 
 #include "BLI_delaunay_2d.h"
 
-namespace BLI {
-namespace CDT {
+namespace blender {
+namespace cdt {
 
 /* Throughout this file, template argument T will be an
  * arithmetic-like type, like float, double, or gmp.
@@ -1445,7 +1445,7 @@ template<typename T> void dump_crossings(const Vector<CrossData<T>, 128> &crossi
  * If \a r_edges is not NULL, the #CDTEdges generated or found that go from
  * v1 to v2 are put into that linked list, in order.
  *
- * Assumes that #BLI_constrained_delaunay_get_output has not been called yet.
+ * Assumes that #blender_constrained_delaunay_get_output has not been called yet.
  */
 template<typename T>
 void add_edge_constraint(
@@ -2114,20 +2114,20 @@ CDT_result<T> delaunay_calc(const CDT_input<T> &input, CDT_output_type output_ty
   return get_cdt_output(&cdt, input, output_type);
 }
 
-} /* namespace CDT */
+} /* namespace cdt */
 
 CDT_result<double> delaunay_2d_calc(const CDT_input<double> &input, CDT_output_type output_type)
 {
-  return CDT::delaunay_calc(input, output_type);
+  return cdt::delaunay_calc(input, output_type);
 }
 
 CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<mpq_class> &input,
                                        CDT_output_type output_type)
 {
-  return CDT::delaunay_calc(input, output_type);
+  return cdt::delaunay_calc(input, output_type);
 }
 
-} /* namespace BLI */
+} /* namespace blender */
 
 /* C interface. */
 
@@ -2140,20 +2140,20 @@ CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<mpq_class> &input,
 extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
                                                   const CDT_output_type output_type)
 {
-  BLI::CDT_input<double> in;
-  in.vert = BLI::Array<BLI::vec2<double>>(input->verts_len);
-  in.edge = BLI::Array<std::pair<int, int>>(input->edges_len);
-  in.face = BLI::Array<BLI::Vector<int>>(input->faces_len);
+  blender::CDT_input<double> in;
+  in.vert = blender::Array<blender::vec2<double>>(input->verts_len);
+  in.edge = blender::Array<std::pair<int, int>>(input->edges_len);
+  in.face = blender::Array<blender::Vector<int>>(input->faces_len);
   for (int v = 0; v < input->verts_len; ++v) {
     double x = static_cast<double>(input->vert_coords[v][0]);
     double y = static_cast<double>(input->vert_coords[v][1]);
-    in.vert[v] = BLI::vec2<double>(x, y);
+    in.vert[v] = blender::vec2<double>(x, y);
   }
   for (int e = 0; e < input->edges_len; ++e) {
     in.edge[e] = std::pair<int, int>(input->edges[e][0], input->edges[e][1]);
   }
   for (int f = 0; f < input->faces_len; ++f) {
-    in.face[f] = BLI::Vector<int>(input->faces_len_table[f]);
+    in.face[f] = blender::Vector<int>(input->faces_len_table[f]);
     int fstart = input->faces_start_table[f];
     for (int j = 0; j < input->faces_len_table[f]; ++j) {
       in.face[f][j] = input->faces[fstart + j];
@@ -2161,7 +2161,7 @@ extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
   }
   in.epsilon = static_cast<double>(input->epsilon);
 
-  BLI::CDT_result<double> res = BLI::CDT::delaunay_calc(in, output_type);
+  blender::CDT_result<double> res = blender::cdt::delaunay_calc(in, output_type);
 
   ::CDT_result *output = static_cast<::CDT_result *>(MEM_mallocN(sizeof(*output), __func__));
   int nv = output->verts_len = static_cast<int>(res.vert.size());

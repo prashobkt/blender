@@ -23,7 +23,7 @@
 #include "BLI_math_mpq.hh"
 #include "gmpxx.h"
 
-namespace BLI {
+namespace blender {
 
 struct mpq3 {
   mpq_class x, y, z;
@@ -250,8 +250,13 @@ struct mpq3 {
   }
 
   static int orient3d(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &d);
+
+  /* There is a sensible use for hashing on exact arithmetic types. */
+  uint32_t hash() const;
 };
 
-}  // namespace BLI
+uint32_t hash_mpq_class(const mpq_class &value);
+
+}  // namespace blender
 
 #endif /* __BLI_MPQ3_HH__ */

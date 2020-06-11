@@ -31,9 +31,9 @@
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-namespace BLI {
+namespace blender {
 
-namespace MeshIntersect {
+namespace meshintersect {
 
 /* The indices are for vertices in some external space of coordinates.
  * The "orig" component is used to track how a triangle originally came
@@ -104,7 +104,7 @@ class IndexedTriangle {
 };
 
 struct TriMesh {
-  Array<mpq3> vert;
+  Array<blender::mpq3> vert;
   Array<IndexedTriangle> tri;
 
   TriMesh() = default;
@@ -133,8 +133,8 @@ void write_obj_trimesh(const Array<mpq3> &vert,
                        const Array<IndexedTriangle> &tri,
                        const std::string &objname);
 
-} /* namespace MeshIntersect */
+} /* namespace meshintersect */
 
-} /* namespace BLI */
+} /* namespace blender */
 
 #endif /* __BLI_MESH_INTERSECT_HH__ */
