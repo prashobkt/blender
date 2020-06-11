@@ -1923,11 +1923,10 @@ static void outliner_draw_left_column_activation(const bContext *C,
 
     if (ob->type == OB_CAMERA) {
       if (tvc->scene->camera == ob) {
-        /* Draw check for active camera */
         but = uiDefIconBut(block,
                            UI_BTYPE_ICON_TOGGLE,
                            0,
-                           ICON_CHECKMARK,
+                           ICON_RADIOBUT_ON,
                            0,
                            te->ys,
                            UI_UNIT_X,
@@ -1940,11 +1939,10 @@ static void outliner_draw_left_column_activation(const bContext *C,
                            TIP_(""));
       }
       else {
-        /* Draw dot icon to set active camera */
         but = uiDefIconBut(block,
                            UI_BTYPE_ICON_TOGGLE,
                            0,
-                           ICON_DOT,
+                           ICON_RADIOBUT_OFF,
                            0,
                            te->ys,
                            UI_UNIT_X,
@@ -1964,11 +1962,10 @@ static void outliner_draw_left_column_activation(const bContext *C,
     Scene *scene = (Scene *)tselem->id;
 
     if (tvc->scene == scene) {
-      /* Draw check for active scene */
       but = uiDefIconBut(block,
                          UI_BTYPE_ICON_TOGGLE,
                          0,
-                         ICON_CHECKMARK,
+                         ICON_RADIOBUT_ON,
                          0,
                          te->ys,
                          UI_UNIT_X,
@@ -1981,11 +1978,10 @@ static void outliner_draw_left_column_activation(const bContext *C,
                          TIP_(""));
     }
     else {
-      /* Draw dot icon to set active scene */
       but = uiDefIconBut(block,
                          UI_BTYPE_ICON_TOGGLE,
                          0,
-                         ICON_DOT,
+                         ICON_RADIOBUT_OFF,
                          0,
                          te->ys,
                          UI_UNIT_X,
@@ -2005,11 +2001,10 @@ static void outliner_draw_left_column_activation(const bContext *C,
     if ((tselem->type == TSE_VIEW_COLLECTION_BASE &&
          active == tvc->view_layer->layer_collections.first) ||
         (tselem->type == TSE_LAYER_COLLECTION && active == te->directdata)) {
-      /* Draw check for active collection */
       but = uiDefIconBut(block,
                          UI_BTYPE_ICON_TOGGLE,
                          0,
-                         ICON_CHECKMARK,
+                         ICON_RADIOBUT_ON,
                          0,
                          te->ys,
                          UI_UNIT_X,
@@ -2022,11 +2017,10 @@ static void outliner_draw_left_column_activation(const bContext *C,
                          TIP_(""));
     }
     else {
-      /* Draw dot icon to set active collection */
       but = uiDefIconBut(block,
                          UI_BTYPE_ICON_TOGGLE,
                          0,
-                         ICON_DOT,
+                         ICON_RADIOBUT_OFF,
                          0,
                          te->ys,
                          UI_UNIT_X,
