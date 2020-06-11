@@ -13,6 +13,13 @@ uniform sampler2D depthBuffer;
 uniform sampler2D velocityBuffer;
 uniform sampler2D tileMaxBuffer;
 
+#define KERNEL 8
+
+/* TODO(fclem) deduplicate this code. */
+uniform sampler2DArray utilTex;
+#define LUT_SIZE 64
+#define texelfetch_noise_tex(coord) texelFetch(utilTex, ivec3(ivec2(coord) % LUT_SIZE, 2.0), 0)
+
 uniform int maxBlurRadius;
 uniform int samples;
 uniform float sampleOffset;
@@ -30,21 +37,6 @@ in vec4 uvcoordsvar;
 out vec4 fragColor;
 
 #define saturate(a) clamp(a, 0.0, 1.0)
-
-float wang_hash_noise(uint s)
-{
-  uint seed = (uint(gl_FragCoord.x) * 1664525u + uint(gl_FragCoord.y)) + s;
-
-  seed = (seed ^ 61u) ^ (seed >> 16u);
-  seed *= 9u;
-  seed = seed ^ (seed >> 4u);
-  seed *= 0x27d4eb2du;
-  seed = seed ^ (seed >> 15u);
-
-  float value = float(seed);
-  value *= 1.0 / 4294967296.0;
-  return fract(value + sampleOffset);
-}
 
 vec2 spread_compare(float center_motion_length, float sample_motion_length, float offset_length)
 {
@@ -105,9 +97,6 @@ vec2 sample_velocity(vec2 uv, const bool next)
   return data.xy;
 }
 
-#define SEARCH_KERNEL 8.0
-#define KERNEL 8
-
 void gather_sample(vec2 screen_uv,
                    float center_depth,
                    float center_motion_len,
@@ -139,6 +128,7 @@ void gather_blur(vec2 screen_uv,
                  vec2 center_motion,
                  float center_depth,
                  vec2 max_motion,
+                 float ofs,
                  const bool next,
                  inout vec4 accum,
                  inout vec4 accum_bg,
@@ -157,9 +147,6 @@ void gather_blur(vec2 screen_uv,
   if (max_motion_len < 0.5) {
     return;
   }
-
-  /* TODO use blue noise texture. */
-  float ofs = fract(wang_hash_noise(0u) + sampleOffset);
 
   int i;
   float t, inc = 1.0 / float(KERNEL);
@@ -204,12 +191,12 @@ void main()
   vec4 center_motion = sample_velocity(uv);
   vec4 center_color = textureLod(colorBuffer, uv, 0.0);
 
-  /* TODO use blue noise texture. */
-  float rand = fract(wang_hash_noise(68241u) + sampleOffset) * 2.0 - 1.0;
+  vec2 rand = texelfetch_noise_tex(gl_FragCoord.xy).xy;
 
   /* Randomize tile boundary to avoid ugly discontinuities. Randomize 1/4th of the tile.
    * Note this randomize only in one direction but in practice it's enough. */
-  ivec2 tile = ivec2(gl_FragCoord.xy + rand * float(maxBlurRadius) * 0.25) / maxBlurRadius;
+  rand.x = rand.x * 2.0 - 1.0;
+  ivec2 tile = ivec2(gl_FragCoord.xy + rand.x * float(maxBlurRadius) * 0.25) / maxBlurRadius;
   tile = clamp(tile, ivec2(0), textureSize(tileMaxBuffer, 0).xy - 1);
   vec4 max_motion = decode_velocity(texelFetch(tileMaxBuffer, tile, 0));
 
@@ -219,9 +206,11 @@ void main()
   vec4 accum_bg = vec4(0.0);
   vec4 accum = vec4(0.0);
   /* First linear gather. time = [T - delta, T] */
-  gather_blur(uv, center_motion.xy, center_depth, max_motion.xy, false, accum, accum_bg, w_accum);
+  gather_blur(
+      uv, center_motion.xy, center_depth, max_motion.xy, rand.y, false, accum, accum_bg, w_accum);
   /* Second linear gather. time = [T, T + delta] */
-  gather_blur(uv, center_motion.zw, center_depth, max_motion.zw, true, accum, accum_bg, w_accum);
+  gather_blur(
+      uv, center_motion.zw, center_depth, max_motion.zw, rand.y, true, accum, accum_bg, w_accum);
 
 #if 1
   /* Avoid division by 0.0. */
