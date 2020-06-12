@@ -324,12 +324,13 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
   EEVEE_EffectsInfo *effects = stl->effects;
   DRWShadingGroup *grp = NULL;
 
-  if (!DRW_state_is_scene_render() || psl->velocity_object == NULL ||
-      (ob->base_flag & BASE_FROM_DUPLI)) {
+  if (!DRW_state_is_scene_render() || psl->velocity_object == NULL) {
     return;
   }
 
-  const bool object_moves = BKE_object_moves_in_time(ob, true);
+  /* For now we assume dupli objects are moving. */
+  const bool object_moves = (ob->base_flag & BASE_FROM_DUPLI) ||
+                            BKE_object_moves_in_time(ob, true);
   const bool is_deform = BKE_object_is_deform_modified(DRW_context_state_get()->scene, ob);
 
   if (!(object_moves || is_deform)) {
