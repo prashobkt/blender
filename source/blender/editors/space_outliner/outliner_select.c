@@ -231,22 +231,19 @@ static void outliner_item_mode_toggle(bContext *C,
 
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
-    if (OB_TYPE_SUPPORT_EDITMODE(ob->type)) {
+
+    if (tvc->ob_edit && OB_TYPE_SUPPORT_EDITMODE(ob->type)) {
       Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
       if ((base != NULL) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
         do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
       }
     }
-    else if (ELEM(te->idcode, ID_GD)) {
-      /* set grease pencil to object mode */
-      WM_operator_name_call(C, "GPENCIL_OT_editmode_toggle", WM_OP_INVOKE_REGION_WIN, NULL);
-    }
-  }
-  else if (tselem->type == TSE_POSE_BASE) {
-    Object *ob = (Object *)tselem->id;
-    Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
-    if (base != NULL) {
-      do_outliner_item_posemode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
+
+    else if (tvc->ob_pose && ob->type == OB_ARMATURE) {
+      Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
+      if (base != NULL) {
+        do_outliner_item_posemode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
+      }
     }
   }
 }
@@ -1173,7 +1170,7 @@ static void outliner_set_active_data(bContext *C,
       WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), scene);
     }
   }
-  else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
+  else if (outliner_is_collection_tree_element(te)) {
     tree_element_type_active(C, tvc, soops, te, tselem, OL_SETSEL_NORMAL, false);
   }
 }

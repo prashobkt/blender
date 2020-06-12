@@ -1929,114 +1929,73 @@ static void outliner_draw_left_column_activation(const bContext *C,
     Object *ob = (Object *)tselem->id;
 
     if (ob->type == OB_CAMERA) {
-      if (tvc->scene->camera == ob) {
-        but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
-                           0,
-                           ICON_RADIOBUT_ON,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_(""));
-      }
-      else {
-        but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
-                           0,
-                           ICON_RADIOBUT_OFF,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_("Set active camera"));
+      const bool is_active_camera = tvc->scene->camera == ob;
+
+      but = uiDefIconBut(block,
+                         UI_BTYPE_ICON_TOGGLE,
+                         0,
+                         (is_active_camera ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF),
+                         0,
+                         te->ys,
+                         UI_UNIT_X,
+                         UI_UNIT_Y,
+                         NULL,
+                         0.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         (is_active_camera ? "" : TIP_("Set active camera")));
+
+      if (!is_active_camera) {
         UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
       }
     }
   }
   else if (tselem->type == 0 && te->idcode == ID_SCE) {
     Scene *scene = (Scene *)tselem->id;
+    const bool is_active_scene = tvc->scene == scene;
 
-    if (tvc->scene == scene) {
-      but = uiDefIconBut(block,
-                         UI_BTYPE_ICON_TOGGLE,
-                         0,
-                         ICON_RADIOBUT_ON,
-                         0,
-                         te->ys,
-                         UI_UNIT_X,
-                         UI_UNIT_Y,
-                         NULL,
-                         0.0,
-                         0.0,
-                         0.0,
-                         0.0,
-                         TIP_(""));
-    }
-    else {
-      but = uiDefIconBut(block,
-                         UI_BTYPE_ICON_TOGGLE,
-                         0,
-                         ICON_RADIOBUT_OFF,
-                         0,
-                         te->ys,
-                         UI_UNIT_X,
-                         UI_UNIT_Y,
-                         NULL,
-                         0.0,
-                         0.0,
-                         0.0,
-                         0.0,
-                         TIP_("Set active scene"));
+    but = uiDefIconBut(block,
+                       UI_BTYPE_ICON_TOGGLE,
+                       0,
+                       (is_active_scene ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF),
+                       0,
+                       te->ys,
+                       UI_UNIT_X,
+                       UI_UNIT_Y,
+                       NULL,
+                       0.0,
+                       0.0,
+                       0.0,
+                       0.0,
+                       (is_active_scene ? "" : TIP_("Set active scene")));
+
+    if (!is_active_scene) {
       UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
     }
   }
-  else if (ELEM(tselem->type, TSE_VIEW_COLLECTION_BASE, TSE_LAYER_COLLECTION)) {
-    LayerCollection *active = CTX_data_layer_collection(C);
+  else if (outliner_is_collection_tree_element(te)) {
+    Collection *active_collection = CTX_data_layer_collection(C)->collection;
 
-    if ((tselem->type == TSE_VIEW_COLLECTION_BASE &&
-         active == tvc->view_layer->layer_collections.first) ||
-        (tselem->type == TSE_LAYER_COLLECTION && active == te->directdata)) {
-      but = uiDefIconBut(block,
-                         UI_BTYPE_ICON_TOGGLE,
-                         0,
-                         ICON_RADIOBUT_ON,
-                         0,
-                         te->ys,
-                         UI_UNIT_X,
-                         UI_UNIT_Y,
-                         NULL,
-                         0.0,
-                         0.0,
-                         0.0,
-                         0.0,
-                         TIP_(""));
-    }
-    else {
-      but = uiDefIconBut(block,
-                         UI_BTYPE_ICON_TOGGLE,
-                         0,
-                         ICON_RADIOBUT_OFF,
-                         0,
-                         te->ys,
-                         UI_UNIT_X,
-                         UI_UNIT_Y,
-                         NULL,
-                         0.0,
-                         0.0,
-                         0.0,
-                         0.0,
-                         TIP_("Set active collection"));
+    const bool is_active_collection = active_collection ==
+                                      outliner_collection_from_tree_element(te);
+
+    but = uiDefIconBut(block,
+                       UI_BTYPE_ICON_TOGGLE,
+                       0,
+                       (is_active_collection ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF),
+                       0,
+                       te->ys,
+                       UI_UNIT_X,
+                       UI_UNIT_Y,
+                       NULL,
+                       0.0,
+                       0.0,
+                       0.0,
+                       0.0,
+                       (is_active_collection ? "" : TIP_("Set active collection")));
+
+    if (!is_active_collection) {
       UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
     }
   }
@@ -2054,80 +2013,44 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
     Object *ob = (Object *)tselem->id;
 
     if (tvc->ob_edit && OB_TYPE_SUPPORT_EDITMODE(ob->type) && ob->type == tvc->ob_edit->type) {
-      if (ob->mode == tvc->ob_edit->mode) {
-        /* Draw mode icon for objects in edit mode */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
-                           0,
-                           ICON_EDITMODE_HLT,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_(""));
-        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
-      }
-      else {
-        /* Draw dot for objects that are compatible with the current edit mode */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
-                           0,
-                           ICON_DOT,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_("Toggle edit mode"));
-        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
-      }
+      const bool is_in_editmode = ob->mode == tvc->ob_edit->mode;
+
+      /* Draw mode icon for objects in edit mode */
+      but = uiDefIconBut(block,
+                         UI_BTYPE_ICON_TOGGLE,
+                         0,
+                         (is_in_editmode ? ICON_EDITMODE_HLT : ICON_DOT),
+                         0,
+                         te->ys,
+                         UI_UNIT_X,
+                         UI_UNIT_Y,
+                         NULL,
+                         0.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         TIP_("Toggle edit mode"));
+      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
     }
     else if (tvc->ob_pose && ob->type == OB_ARMATURE) {
-      if (ob->mode == tvc->ob_pose->mode) {
-        /* Draw mode icon for armatures in pose mode */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
-                           0,
-                           ICON_POSE_HLT,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_(""));
-        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
-      }
-      else {
-        /* Draw dot for armatures that can be toggled into pose mode */
-        but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
-                           0,
-                           ICON_DOT,
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_("Toggle pose mode"));
-        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
-      }
+      const bool is_in_posemode = ob->mode == tvc->ob_pose->mode;
+
+      /* Draw mode icon for armatures in pose mode */
+      but = uiDefIconBut(block,
+                         UI_BTYPE_ICON_TOGGLE,
+                         0,
+                         (is_in_posemode ? ICON_POSE_HLT : ICON_DOT),
+                         0,
+                         te->ys,
+                         UI_UNIT_X,
+                         UI_UNIT_Y,
+                         NULL,
+                         0.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         TIP_("Toggle pose mode"));
+      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
     }
   }
 }
