@@ -1292,16 +1292,12 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
         domain = context.fluid.domain_settings
         col = layout.column()
         col.active = domain.use_color_ramp
-        if (domain.domain_type == "GAS"):
-            col.prop(domain, "coba_field_gas")
-        else:
-            col.prop(domain, "coba_field_liquid")
-
+        col.prop(domain, "coba_field")
         col.prop(domain, "coba_field_scale")
 
         col.use_property_split = False
 
-        if (domain.domain_type == "GAS" or (not domain.coba_field_liquid == "PHI")):
+        if (not domain.coba_field == "PHI"):
             col = col.column()
             col.template_color_ramp(domain, "color_ramp", expand=True)
 

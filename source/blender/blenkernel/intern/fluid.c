@@ -4663,6 +4663,29 @@ void BKE_fluid_effector_type_set(Object *UNUSED(object), FluidEffectorSettings *
   settings->type = type;
 }
 
+void BKE_fluid_coba_field_check(Object *object, FluidDomainSettings *settings)
+{
+  /* Based on the domain type, the coba field is defaulted accordingly if the selected field
+   * is unsupported. */
+  const char field = settings->coba_field;
+
+  if (settings->type == FLUID_DOMAIN_TYPE_GAS) {
+    if (field == FLUID_DOMAIN_FIELD_PHI) {
+      /* Defaulted to density for gas domain. */
+      settings->coba_field = FLUID_DOMAIN_FIELD_DENSITY;
+    }
+  }
+  else if (settings->type == FLUID_DOMAIN_TYPE_LIQUID) {
+    if (field == FLUID_DOMAIN_FIELD_COLOR_R || field == FLUID_DOMAIN_FIELD_COLOR_G ||
+        field == FLUID_DOMAIN_FIELD_COLOR_B || field == FLUID_DOMAIN_FIELD_DENSITY ||
+        field == FLUID_DOMAIN_FIELD_FLAME || field == FLUID_DOMAIN_FIELD_FUEL ||
+        field == FLUID_DOMAIN_FIELD_HEAT) {
+      /* Defaulted to phi for liquid domain. */
+      settings->coba_field = FLUID_DOMAIN_FIELD_PHI;
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

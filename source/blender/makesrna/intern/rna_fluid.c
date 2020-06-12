@@ -632,6 +632,7 @@ static void rna_Fluid_domaintype_set(struct PointerRNA *ptr, int value)
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   Object *ob = (Object *)ptr->owner_id;
   BKE_fluid_domain_type_set(ob, settings, value);
+  BKE_fluid_coba_field_check(ob, settings);
 }
 
 static char *rna_FluidDomainSettings_path(PointerRNA *ptr)
@@ -997,6 +998,112 @@ static void rna_Fluid_flowtype_set(struct PointerRNA *ptr, int value)
       settings->surface_distance = 1.5f;
     }
   }
+}
+
+static void rna_Fluid_cobafield_set(struct PointerRNA *ptr, int value)
+{
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
+
+  if (value != settings->coba_field) {
+    settings->coba_field = value;
+  }
+}
+
+static const EnumPropertyItem *rna_Fluid_cobafield_itemf(bContext *UNUSED(C),
+                                                         PointerRNA *ptr,
+                                                         PropertyRNA *UNUSED(prop),
+                                                         bool *r_free)
+{
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
+
+  EnumPropertyItem *item = NULL;
+  EnumPropertyItem tmp = {0, "", 0, "", ""};
+  int totitem = 0;
+
+  tmp.value = FLUID_DOMAIN_FIELD_VELOCITY_X;
+  tmp.identifier = "VELOCITY_X";
+  tmp.icon = 0;
+  tmp.name = "X Velocity";
+  tmp.description = "X component of the velocity field";
+  RNA_enum_item_add(&item, &totitem, &tmp);
+
+  tmp.value = FLUID_DOMAIN_FIELD_VELOCITY_Y;
+  tmp.identifier = "VELOCITY_Y";
+  tmp.icon = 0;
+  tmp.name = "Y Velocity";
+  tmp.description = "Y component of the velocity field";
+  RNA_enum_item_add(&item, &totitem, &tmp);
+
+  tmp.value = FLUID_DOMAIN_FIELD_VELOCITY_Z;
+  tmp.identifier = "VELOCITY_Z";
+  tmp.icon = 0;
+  tmp.name = "Z Velocity";
+  tmp.description = "Z component of the velocity field";
+  RNA_enum_item_add(&item, &totitem, &tmp);
+
+  if (settings->type == FLUID_DOMAIN_TYPE_GAS) {
+    tmp.value = FLUID_DOMAIN_FIELD_COLOR_R;
+    tmp.identifier = "COLOR_R";
+    tmp.icon = 0;
+    tmp.name = "Red";
+    tmp.description = "Red component of the color field";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_COLOR_G;
+    tmp.identifier = "COLOR_G";
+    tmp.icon = 0;
+    tmp.name = "Green";
+    tmp.description = "Green component of the color field";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_COLOR_B;
+    tmp.identifier = "COLOR_B";
+    tmp.icon = 0;
+    tmp.name = "Blue";
+    tmp.description = "Blue component of the color field";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_DENSITY;
+    tmp.identifier = "DENSITY";
+    tmp.icon = 0;
+    tmp.name = "Density";
+    tmp.description = "Quantity of soot in the fluid";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_FLAME;
+    tmp.identifier = "FLAME";
+    tmp.icon = 0;
+    tmp.name = "Flame";
+    tmp.description = "Flame field";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_FUEL;
+    tmp.identifier = "FUEL";
+    tmp.icon = 0;
+    tmp.name = "Fuel";
+    tmp.description = "Fuel field";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_HEAT;
+    tmp.identifier = "HEAT";
+    tmp.icon = 0;
+    tmp.name = "Heat";
+    tmp.description = "Temperature of the fluid";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+  }
+  else if (settings->type == FLUID_DOMAIN_TYPE_LIQUID) {
+    tmp.value = FLUID_DOMAIN_FIELD_PHI;
+    tmp.identifier = "PHI";
+    tmp.icon = 0;
+    tmp.name = "Phi";
+    tmp.description = "Phi grid";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
 }
 
 #else
@@ -2275,61 +2382,16 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       "Render a simulation field while mapping its voxels values to the colors of a ramp");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
-  static const EnumPropertyItem coba_field_gas_items[] = {
-      {FLUID_DOMAIN_FIELD_COLOR_R, "COLOR_R", 0, "Red", "Red component of the color field"},
-      {FLUID_DOMAIN_FIELD_COLOR_G, "COLOR_G", 0, "Green", "Green component of the color field"},
-      {FLUID_DOMAIN_FIELD_COLOR_B, "COLOR_B", 0, "Blue", "Blue component of the color field"},
-      {FLUID_DOMAIN_FIELD_DENSITY, "DENSITY", 0, "Density", "Quantity of soot in the fluid"},
-      {FLUID_DOMAIN_FIELD_FLAME, "FLAME", 0, "Flame", "Flame field"},
-      {FLUID_DOMAIN_FIELD_FUEL, "FUEL", 0, "Fuel", "Fuel field"},
-      {FLUID_DOMAIN_FIELD_HEAT, "HEAT", 0, "Heat", "Temperature of the fluid"},
-      {FLUID_DOMAIN_FIELD_VELOCITY_X,
-       "VELOCITY_X",
-       0,
-       "X Velocity",
-       "X component of the velocity field"},
-      {FLUID_DOMAIN_FIELD_VELOCITY_Y,
-       "VELOCITY_Y",
-       0,
-       "Y Velocity",
-       "Y component of the velocity field"},
-      {FLUID_DOMAIN_FIELD_VELOCITY_Z,
-       "VELOCITY_Z",
-       0,
-       "Z Velocity",
-       "Z component of the velocity field"},
+  /* Coba field items - generated dynamically based on domain type */
+  static const EnumPropertyItem coba_field_items[] = {
+      {0, "NONE", 0, "", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem coba_field_liquid_items[] = {
-      {FLUID_DOMAIN_FIELD_VELOCITY_X,
-       "VELOCITY_X",
-       0,
-       "X Velocity",
-       "X component of the velocity field"},
-      {FLUID_DOMAIN_FIELD_VELOCITY_Y,
-       "VELOCITY_Y",
-       0,
-       "Y Velocity",
-       "Y component of the velocity field"},
-      {FLUID_DOMAIN_FIELD_VELOCITY_Z,
-       "VELOCITY_Z",
-       0,
-       "Z Velocity",
-       "Z component of the velocity field"},
-      {FLUID_DOMAIN_FIELD_PHI, "PHI", 0, "Phi", "Phi grid"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  prop = RNA_def_property(srna, "coba_field_gas", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "coba_field", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "coba_field");
-  RNA_def_property_enum_items(prop, coba_field_gas_items);
-  RNA_def_property_ui_text(prop, "Field", "Simulation field to color map");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-
-  prop = RNA_def_property(srna, "coba_field_liquid", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "coba_field");
-  RNA_def_property_enum_items(prop, coba_field_liquid_items);
+  RNA_def_property_enum_items(prop, coba_field_items);
+  RNA_def_property_enum_funcs(prop, NULL, "rna_Fluid_cobafield_set", "rna_Fluid_cobafield_itemf");
   RNA_def_property_ui_text(prop, "Field", "Simulation field to color map");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 

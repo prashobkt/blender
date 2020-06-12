@@ -399,6 +399,9 @@ class QuickSmoke(ObjectModeOperator, Operator):
         if self.style == 'FIRE' or self.style == 'BOTH':
             obj.modifiers[-1].domain_settings.use_noise = True
 
+        # set color mapping field to show density for smoke
+        obj.modifiers[-1].domain_settings.coba_field = 'DENSITY'
+
         # set correct cache file format for smoke
         obj.modifiers[-1].domain_settings.cache_data_format = 'UNI'
 
@@ -519,6 +522,9 @@ class QuickLiquid(Operator):
 
         # change domain type, will also allocate and show particle system for FLIP
         obj.modifiers[-1].domain_settings.domain_type = 'LIQUID'
+
+        # set color mapping field to show phi grid for liquid
+        obj.modifiers[-2].domain_settings.coba_field = 'PHI'
 
         # make the domain smooth so it renders nicely
         bpy.ops.object.shade_smooth()
