@@ -174,7 +174,7 @@ TEST(eboolean, TetTet)
   EXPECT_EQ(out2->vert_len, 10);
   EXPECT_EQ(out2->tri_len, 16);
   if (DO_OBJ) {
-    write_obj(out, "tettet_union");
+    write_obj(out2, "tettet_union");
   }
   BLI_boolean_trimesh_free(out2);
 }

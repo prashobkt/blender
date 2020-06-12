@@ -23,6 +23,7 @@
 #include "BLI_assert.h"
 #include "BLI_hash.hh"
 #include "BLI_map.hh"
+#include "BLI_math.h"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_set.hh"
@@ -112,6 +113,8 @@ static std::ostream &operator<<(std::ostream &os, const Array<int> &iarr)
 class TriMeshTopology {
  public:
   TriMeshTopology(const TriMesh *tm);
+  TriMeshTopology(const TriMeshTopology &other) = delete;
+  TriMeshTopology(const TriMeshTopology &&other) = delete;
   ~TriMeshTopology();
 
   /* If e is manifold, return index of the other triangle (not t) that has it. Else return -1. */
@@ -134,38 +137,59 @@ class TriMeshTopology {
   {
     return m_edge_tri.lookup_default(e, nullptr);
   }
+  const Vector<Edge> &vert_edges(int v) const
+  {
+    return m_vert_edge[v];
+  }
 
  private:
   Map<Edge, Vector<int> *> m_edge_tri; /* Triangles that contain a given Edge (either order). */
+  Array<Vector<Edge>> m_vert_edge;     /* Edges incident on each vertex. */
 };
 
 TriMeshTopology::TriMeshTopology(const TriMesh *tm)
 {
-  const int dbg_level = 0;
+  const int dbg_level = 1;
   if (dbg_level > 0) {
     std::cout << "TriMeshTopology construction\n";
   }
   /* If everything were manifold, there would be about 3V edges (from Euler's formula). */
   const uint estimate_num_edges = 4 * tm->vert.size();
   this->m_edge_tri.reserve(estimate_num_edges);
+  this->m_vert_edge = Array<Vector<Edge>>(tm->vert.size());
   int ntri = static_cast<int>(tm->tri.size());
   for (int t = 0; t < ntri; ++t) {
     const IndexedTriangle &tri = tm->tri[t];
     for (int i = 0; i < 3; ++i) {
-      Edge e(tri[i], tri[(i + 1) % 3]);
+      int v = tri[i];
+      int vnext = tri[(i + 1) % 3];
+      Edge e(v, vnext);
+      if (!m_vert_edge[v].contains(e)) {
+        m_vert_edge[v].append(e);
+      }
+      if (!m_vert_edge[vnext].contains(e)) {
+        m_vert_edge[vnext].append(e);
+      }
       auto createf = [t](Vector<int> **pvec) { *pvec = new Vector<int>{t}; };
       auto modifyf = [t](Vector<int> **pvec) { (*pvec)->append_non_duplicates(t); };
-      this->m_edge_tri.add_or_modify(Edge(tri[i], tri[(i + 1) % 3]), createf, modifyf);
+      this->m_edge_tri.add_or_modify(Edge(v, vnext), createf, modifyf);
     }
   }
   /* Debugging. */
   if (dbg_level > 0) {
     std::cout << "After TriMeshTopology construction\n";
     for (auto item : m_edge_tri.items()) {
-      std::cout << item.key << ": " << *item.value << "\n";
+      std::cout << "tris for edge " << item.key << ": " << *item.value << "\n";
       if (false) {
         m_edge_tri.print_stats();
       }
+    }
+    for (uint v = 0; v < m_vert_edge.size(); ++v) {
+      std::cout << "edges for vert " << v << ": ";
+      for (Edge e : m_vert_edge[v]) {
+        std::cout << e << " ";
+      }
+      std::cout << "\n";
     }
   }
 }
@@ -519,11 +543,13 @@ static int find_flap_vert(const IndexedTriangle &tri, const Edge e, bool *r_rev)
  * Because of the way the intersect mesh was made, we can assume
  * that if a triangle is in class 1 then it is has the same flap vert
  * as tri0.
+ * If extra_coord is not null, use then a vert index of INT_MAX should use it.
  */
 static int sort_tris_class(const IndexedTriangle &tri,
                            const IndexedTriangle &tri0,
                            const TriMesh &tm,
-                           const Edge e)
+                           const Edge e,
+                           const mpq3 *extra_coord)
 {
   const int dbg_level = 0;
   if (dbg_level > 0) {
@@ -542,7 +568,7 @@ static int sort_tris_class(const IndexedTriangle &tri,
     std::cout << " rev = " << rev << " flapv = " << flapv << "\n";
   }
   BLI_assert(flapv != -1 && flapv0 != -1);
-  mpq3 flap = tm.vert[flapv];
+  const mpq3 flap = flapv == INT_MAX ? *extra_coord : tm.vert[flapv];
   int orient = mpq3::orient3d(a0, a1, a2, flap);
   int ans;
   if (orient > 0) {
@@ -570,12 +596,19 @@ static int sort_tris_class(const IndexedTriangle &tri,
  * Care is taken in the case of duplicate triangles to have
  * an ordering that is consistent with that which would happen
  * if another edge of the triangle were sorted around.
+ *
+ * We sometimes need to do this with an extra triangle that is not part of tm.
+ * To accommodate this:
+ * If extra_tri is non-null, then an index of INT_MAX should use it for the triangle.
+ * If extra_coord is non-null,then an index of INT_MAX should use it for the coordinate.
  */
 static Array<int> sort_tris_around_edge(const TriMesh &tm,
                                         const TriMeshTopology &tmtopo,
                                         const Edge e,
                                         const Span<int> &tris,
-                                        const int t0)
+                                        const int t0,
+                                        const IndexedTriangle *extra_tri,
+                                        const mpq3 *extra_coord)
 {
   /* Divide and conquer, quicsort-like sort.
    * Pick a triangle t0, then partition into groups:
@@ -588,7 +621,7 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
    * be only 3 or 4 - so OK to make copies of arrays instead of swapping
    * around in a single array.
    */
-  const int dbg_level = 1;
+  const int dbg_level = 0;
   if (tris.size() == 0) {
     return Array<int>();
   }
@@ -610,8 +643,9 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
   const IndexedTriangle &tri0 = tm.tri[t0];
   for (uint i = 1; i < tris.size(); ++i) {
     int t = tris[i];
-    const IndexedTriangle &tri = tm.tri[t];
-    int group_num = sort_tris_class(tri, tri0, tm, e);
+    BLI_assert(t < static_cast<int>(tm.tri.size()) || extra_tri != nullptr);
+    const IndexedTriangle &tri = (t == INT_MAX) ? *extra_tri : tm.tri[t];
+    int group_num = sort_tris_class(tri, tri0, tm, e, extra_coord);
     groups[group_num - 1]->append(t);
   }
   if (dbg_level > 1) {
@@ -632,7 +666,7 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
     for (uint i = 0; i < g3.size(); ++i) {
       g3tris[i] = tris[g3[i]];
     }
-    Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3tris, t0);
+    Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3tris, t0, extra_tri, extra_coord);
     std::copy(g3sorted.begin(), g3sorted.end(), g3.begin());
   }
   if (g4.size() > 1) {
@@ -640,7 +674,7 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
     for (uint i = 0; i < g4.size(); ++i) {
       g4tris[i] = tris[g4[i]];
     }
-    Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4tris, t0);
+    Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4tris, t0, extra_tri, extra_coord);
     std::copy(g4sorted.begin(), g4sorted.end(), g4.begin());
   }
   uint group_tot_size = g1.size() + g2.size() + g3.size() + g4.size();
@@ -683,7 +717,7 @@ static void find_cells_from_edge(const TriMesh &tm,
   const Vector<int> *edge_tris = tmtopo.edge_tris(e);
   BLI_assert(edge_tris != nullptr);
   Array<int> sorted_tris = sort_tris_around_edge(
-      tm, tmtopo, e, Span<int>(*edge_tris), (*edge_tris)[0]);
+      tm, tmtopo, e, Span<int>(*edge_tris), (*edge_tris)[0], nullptr, nullptr);
 
   int n_edge_tris = static_cast<int>(edge_tris->size());
   Array<int> edge_patches(n_edge_tris);
@@ -792,30 +826,91 @@ static CellsInfo find_cells(const TriMesh &tm, const TriMeshTopology &tmtopo, Pa
  * all other cells.
  */
 static int find_ambient_cell(const TriMesh &tm,
-                             const TriMeshTopology &UNUSED(tmtopo),
-                             const PatchesInfo &UNUSED(pinfo),
-                             const CellsInfo &UNUSED(cinfo))
+                             const TriMeshTopology &tmtopo,
+                             const PatchesInfo pinfo,
+                             const CellsInfo cinfo)
 {
-  int dbg_level = 1;
+  int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "FIND_AMBIENT_CELL\n";
   }
   /* First find a vertex with the maximum x value. */
-  int v_with_max_x = 0;
-  mpq_class max_x = tm.vert[0].x;
+  int v_extreme = 0;
+  mpq_class extreme_x = tm.vert[0].x;
   for (int i = 1; i < static_cast<int>(tm.vert.size()); ++i) {
-    mpq_class cox = tm.vert[i].x;
-    if (cox > max_x) {
-      v_with_max_x = i;
-      max_x = cox;
+    const mpq_class &cox = tm.vert[i].x;
+    if (cox > extreme_x) {
+      v_extreme = i;
+      extreme_x = cox;
     }
   }
   if (dbg_level > 0) {
-    std::cout << "v_with_max_x = " << v_with_max_x << "\n";
+    std::cout << "v_extreme = " << v_extreme << "\n";
   }
-  /* TODO: Implement the rest of this properly! */
-
-  return 0;
+  /* Find edge attached to v_extreme with max absolute slope
+   * when projected onto the xy plane. That edge is guaranteed to
+   * be on the convex hull of the mesh.
+   */
+  const Vector<Edge> &edges = tmtopo.vert_edges(v_extreme);
+  const mpq_class extreme_y = tm.vert[v_extreme].y;
+  Edge ehull(-1, -1);
+  mpq_class max_abs_slope = -1;
+  for (Edge e : edges) {
+    const int v_other = (e.v0() == v_extreme) ? e.v1() : e.v0();
+    const mpq3 &co_other = tm.vert[v_other];
+    mpq_class delta_x = co_other.x - extreme_x;
+    if (delta_x == 0) {
+      /* Vertical slope. */
+      ehull = e;
+      break;
+    }
+    mpq_class abs_slope = abs((co_other.y - extreme_y) / delta_x);
+    if (abs_slope > max_abs_slope) {
+      ehull = e;
+      max_abs_slope = abs_slope;
+    }
+  }
+  if (dbg_level > 0) {
+    std::cout << "ehull = " << ehull << " slope = " << max_abs_slope << "\n";
+  }
+  /* Sort triangles around ehull, including a dummy triangle that include a known point in ambient
+   * cell. */
+  mpq3 p_in_ambient = tm.vert[v_extreme];
+  p_in_ambient.x += 1;
+  const Vector<int> *ehull_edge_tris = tmtopo.edge_tris(ehull);
+  const int dummy_vert = INT_MAX;
+  const int dummy_tri = INT_MAX;
+  IndexedTriangle dummytri = IndexedTriangle(ehull.v0(), ehull.v1(), dummy_vert, -1);
+  Array<int> edge_tris(ehull_edge_tris->size() + 1);
+  std::copy(ehull_edge_tris->begin(), ehull_edge_tris->end(), edge_tris.begin());
+  edge_tris[edge_tris.size() - 1] = dummy_tri;
+  Array<int> sorted_tris = sort_tris_around_edge(
+      tm, tmtopo, ehull, edge_tris, edge_tris[0], &dummytri, &p_in_ambient);
+  if (dbg_level > 0) {
+    std::cout << "sorted tris = " << sorted_tris << "\n";
+  }
+  int *p_sorted_dummy = std::find(sorted_tris.begin(), sorted_tris.end(), dummy_tri);
+  BLI_assert(p_sorted_dummy != sorted_tris.end());
+  int dummy_index = p_sorted_dummy - sorted_tris.begin();
+  int prev_tri = (dummy_index == 0) ? sorted_tris[sorted_tris.size() - 1] :
+                                      sorted_tris[dummy_index - 1];
+  int next_tri = (dummy_index == static_cast<int>(sorted_tris.size())) ?
+                     sorted_tris[0] :
+                     sorted_tris[dummy_index + 1];
+  if (dbg_level > 0) {
+    std::cout << "prev tri to dummy = " << prev_tri << ";  next tri to dummy = " << next_tri
+              << "\n";
+  }
+  const Patch &prev_patch = pinfo.patch(pinfo.tri_patch(prev_tri));
+  const Patch &next_patch = pinfo.patch(pinfo.tri_patch(next_tri));
+  if (dbg_level > 0) {
+    std::cout << "prev_patch = " << prev_patch << ", next_patch = " << next_patch << "\n";
+  }
+  BLI_assert(prev_patch.cell_above == next_patch.cell_above);
+  if (dbg_level > 0) {
+    std::cout << "FIND_AMBIENT_CELL returns " << prev_patch.cell_above << "\n";
+  }
+  return prev_patch.cell_above;
 }
 
 /* Starting with ambient cell c_ambient, with all zeros for winding numbers,
@@ -939,7 +1034,7 @@ static TriMesh extract_from_flag_diffs(const TriMesh &tm_subdivided,
                                        const PatchesInfo &pinfo,
                                        const CellsInfo &cinfo)
 {
-  const int dbg_level = 1;
+  const int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nEXTRACT_FROM_FLAG_DIFFS\n";
   }
@@ -1057,7 +1152,6 @@ extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_inp
   if (dbg_level > 0) {
     blender::meshintersect::write_html_trimesh(
         tm_out.vert, tm_out.tri, "mesh_boolean_test.html", "after self_boolean");
-    blender::meshintersect::write_obj_trimesh(tm_out.vert, tm_out.tri, "test_tettet");
   }
   int nv = tm_out.vert.size();
   int nt = tm_out.tri.size();
