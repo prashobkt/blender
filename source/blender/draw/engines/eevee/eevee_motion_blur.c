@@ -328,9 +328,9 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
     return;
   }
 
+  const bool is_dupli = (ob->base_flag & BASE_FROM_DUPLI) != 0;
   /* For now we assume dupli objects are moving. */
-  const bool object_moves = (ob->base_flag & BASE_FROM_DUPLI) ||
-                            BKE_object_moves_in_time(ob, true);
+  const bool object_moves = is_dupli || BKE_object_moves_in_time(ob, true);
   const bool is_deform = BKE_object_is_deform_modified(DRW_context_state_get()->scene, ob);
 
   if (!(object_moves || is_deform)) {
@@ -351,6 +351,14 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
       GPUBatch *batch = DRW_cache_object_surface_get(ob);
       if (batch == NULL) {
         return;
+      }
+
+      /* Fill missing matrices if the object was hidden in previous or next frame. */
+      if (is_zero_m4(mb_data->obmat[MB_PREV])) {
+        copy_m4_m4(mb_data->obmat[MB_PREV], mb_data->obmat[MB_CURR]);
+      }
+      if (is_zero_m4(mb_data->obmat[MB_NEXT])) {
+        copy_m4_m4(mb_data->obmat[MB_NEXT], mb_data->obmat[MB_CURR]);
       }
 
       grp = DRW_shgroup_create(e_data.motion_blur_object_sh, psl->velocity_object);
