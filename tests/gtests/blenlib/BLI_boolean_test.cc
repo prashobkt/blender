@@ -62,7 +62,72 @@ class BT_input {
   Boolean_trimesh_input m_bti;
 };
 
-#if 0
+/* Some contrasting colors to use for distinguishing triangles. */
+static const char *drawcolor[] = {
+    "0.67 0.14 0.14", /* red */
+    "0.16 0.29 0.84", /* blue */
+    "0.11 0.41 0.08", /* green */
+    "0.50 0.29 0.10", /* brown */
+    "0.50 0.15 0.75", /* purple */
+    "0.62 0.62 0.62", /* light grey */
+    "0.50 0.77 0.49", /* light green */
+    "0.61 0.68 1.00", /* light blue */
+    "0.16 0.82 0.82", /* cyan */
+    "1.00 0.57 0.20", /* orange */
+    "1.00 0.93 0.20", /* yellow */
+    "0.91 0.87 0.73", /* tan */
+    "1.00 0.80 0.95", /* pink */
+    "0.34 0.34 0.34"  /* dark grey */
+};
+static constexpr int numcolors = sizeof(drawcolor) / sizeof(drawcolor[0]);
+
+static void write_obj(const Boolean_trimesh_output *out, const std::string objname)
+{
+  constexpr const char *objdir = "/tmp/";
+  if (out->tri_len == 0) {
+    return;
+  }
+
+  std::string fname = std::string(objdir) + objname + std::string(".obj");
+  std::string matfname = std::string(objdir) + std::string("dumpobj.mtl");
+  std::ofstream f;
+  f.open(fname);
+  if (!f) {
+    std::cout << "Could not open file " << fname << "\n";
+    return;
+  }
+
+  f << "mtllib dumpobj.mtl\n";
+
+  for (int v = 0; v < out->vert_len; ++v) {
+    float *co = out->vert_coord[v];
+    f << "v " << co[0] << " " << co[1] << " " << co[2] << "\n";
+  }
+
+  for (int i = 0; i < out->tri_len; ++i) {
+    int matindex = i % numcolors;
+    f << "usemtl mat" + std::to_string(matindex) + "\n";
+    /* OBJ files use 1-indexing for vertices. */
+    int *tri = out->tri[i];
+    f << "f " << tri[0] + 1 << " " << tri[1] + 1 << " " << tri[2] + 1 << "\n";
+  }
+  f.close();
+
+  /* Could check if it already exists, but why bother. */
+  std::ofstream mf;
+  mf.open(matfname);
+  if (!mf) {
+    std::cout << "Could not open file " << matfname << "\n";
+    return;
+  }
+  for (int c = 0; c < numcolors; ++c) {
+    mf << "newmtl mat" + std::to_string(c) + "\n";
+    mf << "Kd " << drawcolor[c] << "\n";
+  }
+}
+
+constexpr bool DO_OBJ = true;
+
 TEST(eboolean, Empty)
 {
   Boolean_trimesh_input in;
@@ -75,7 +140,6 @@ TEST(eboolean, Empty)
   EXPECT_EQ(out->tri_len, 0);
   BLI_boolean_trimesh_free(out);
 }
-#endif
 
 TEST(eboolean, TetTet)
 {
@@ -98,14 +162,19 @@ TEST(eboolean, TetTet)
   6 7 4
   )";
   BT_input bti(spec);
-#if 0
   Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), BOOLEAN_NONE);
   EXPECT_EQ(out->vert_len, 11);
   EXPECT_EQ(out->tri_len, 20);
   BLI_boolean_trimesh_free(out);
-#endif
+  if (DO_OBJ) {
+    write_obj(out, "tettet");
+  }
+
   Boolean_trimesh_output *out2 = BLI_boolean_trimesh(bti.input(), BOOLEAN_UNION);
   EXPECT_EQ(out2->vert_len, 10);
   EXPECT_EQ(out2->tri_len, 16);
+  if (DO_OBJ) {
+    write_obj(out, "tettet_union");
+  }
   BLI_boolean_trimesh_free(out2);
 }

@@ -14,6 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include <algorithm>
 #include <iostream>
 
 #include "gmpxx.h"
@@ -817,6 +818,14 @@ static int find_ambient_cell(const TriMesh &tm,
   return 0;
 }
 
+/* Starting with ambient cell c_ambient, with all zeros for winding numbers,
+ * propagate winding numbers to all the other cells.
+ * As one crosses a patch into a new cell, the original shape (mesh part)
+ * that that patch was part of dictates which winding number changes.
+ * Also, as soon as the winding numbers for a cell are set, use bool_optype
+ * to decide whether that cell is included or excluded from the boolean output.
+ * If included, the cell's flag will be set to true.
+ */
 static void propagate_windings_and_flag(PatchesInfo &pinfo,
                                         CellsInfo &cinfo,
                                         int c_ambient,
@@ -868,6 +877,14 @@ static void propagate_windings_and_flag(PatchesInfo &pinfo,
   }
 }
 
+/* Given an array of winding numbers, where the ith entry is a cell's winding
+ * number with respect to input shape (mesh part) i, return true if the
+ * cell should be included in the output of the boolean operation.
+ *   Intersection: all the winding numbers must be nonzero.
+ *   Union: at least one winding number must be nonzero.
+ *   Difference (first shape minus the rest): first winding number must be nonzero
+ *      and the rest must have at least one zero winding number.
+ */
 static bool apply_bool_op(int bool_optype, const Array<int> &winding)
 {
   int nw = static_cast<int>(winding.size());
@@ -909,20 +926,113 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
   }
 }
 
+/* Extract the output mesh from tm_subdivided and return it as a new mesh.
+ * The cells in cinfo must have cells-to-be-retained flagged.
+ * We keep only triangles between flagged and unflagged cells.
+ * We flip the normals of any triangle that has a flagged cell above
+ * and an unflagged cell below.
+ * For all stacks of exact duplicate coplanar triangles, add up orientations
+ * as +1 or -1 for each according to CCW vs CW. If the result is nonzero,
+ * keep one copy with orientation chosen according to the dominant sign.
+ */
+static TriMesh extract_from_flag_diffs(const TriMesh &tm_subdivided,
+                                       const PatchesInfo &pinfo,
+                                       const CellsInfo &cinfo)
+{
+  const int dbg_level = 1;
+  if (dbg_level > 0) {
+    std::cout << "\nEXTRACT_FROM_FLAG_DIFFS\n";
+  }
+  int tri_tot = static_cast<int>(tm_subdivided.tri.size());
+  int vert_tot = static_cast<int>(tm_subdivided.vert.size());
+  Array<bool> need_vert(vert_tot, false);
+  Array<bool> need_tri(tri_tot, false);
+  Array<bool> flip_tri(tri_tot, false);
+  for (int t = 0; t < tri_tot; ++t) {
+    int p = pinfo.tri_patch(t);
+    const Patch &patch = pinfo.patch(p);
+    const Cell &cell_above = cinfo.cell(patch.cell_above);
+    const Cell &cell_below = cinfo.cell(patch.cell_below);
+    if (dbg_level > 0) {
+      std::cout << "tri " << t << ": cell_above=" << patch.cell_above
+                << " cell_below=" << patch.cell_below << "\n";
+      std::cout << " flag_above=" << cell_above.flag() << " flag_below=" << cell_below.flag()
+                << "\n";
+    }
+    if (cell_above.flag() ^ cell_below.flag()) {
+      need_tri[t] = true;
+      if (dbg_level > 0) {
+        std::cout << "need tri " << t << "\n";
+      }
+      if (cell_above.flag()) {
+        flip_tri[t] = true;
+      }
+      const IndexedTriangle &tri = tm_subdivided.tri[t];
+      for (int i = 0; i < 3; ++i) {
+        need_vert[tri[i]] = true;
+        if (dbg_level > 0) {
+          std::cout << "need vert " << tri[i] << "\n";
+        }
+      }
+    }
+  }
+  auto iftrue = [](bool v) { return v; };
+  int out_vert_tot = std::count_if(need_vert.begin(), need_vert.end(), iftrue);
+  int out_tri_tot = std::count_if(need_tri.begin(), need_tri.end(), iftrue);
+  TriMesh tm_out;
+  tm_out.vert = Array<mpq3>(out_vert_tot);
+  tm_out.tri = Array<IndexedTriangle>(out_tri_tot);
+  Array<int> in_v_to_out_v(vert_tot);
+  int out_v_index = 0;
+  for (int v = 0; v < vert_tot; ++v) {
+    if (need_vert[v]) {
+      BLI_assert(out_v_index < out_vert_tot);
+      in_v_to_out_v[v] = out_v_index;
+      tm_out.vert[out_v_index++] = tm_subdivided.vert[v];
+    }
+    else {
+      in_v_to_out_v[v] = -1;
+    }
+  }
+  BLI_assert(out_v_index == out_vert_tot);
+  int out_t_index = 0;
+  for (int t = 0; t < tri_tot; ++t) {
+    if (need_tri[t]) {
+      BLI_assert(out_t_index < out_tri_tot);
+      const IndexedTriangle &tri = tm_subdivided.tri[t];
+      int v0 = in_v_to_out_v[tri.v0()];
+      int v1 = in_v_to_out_v[tri.v1()];
+      int v2 = in_v_to_out_v[tri.v2()];
+      if (flip_tri[t]) {
+        std::swap<int>(v1, v2);
+      }
+      tm_out.tri[out_t_index++] = IndexedTriangle(v0, v1, v2, tri.orig());
+    }
+  }
+  return tm_out;
+}
+
 static TriMesh self_boolean(const TriMesh &tm_in, int bool_optype)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nSELF_BOOLEAN op=" << bool_optype << "\n";
   }
+  if (tm_in.vert.size() == 0 || tm_in.tri.size() == 0) {
+    return tm_in;
+  }
   TriMesh tm_si = trimesh_self_intersect(tm_in);
+  if (bool_optype == BOOLEAN_NONE) {
+    return tm_si;
+  }
   TriMeshTopology tm_si_topo(&tm_si);
   PatchesInfo pinfo = find_patches(tm_si, tm_si_topo);
   CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
   cinfo.init_windings(1);
   int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo, cinfo);
   propagate_windings_and_flag(pinfo, cinfo, c_ambient, bool_optype);
-  return tm_si;
+  TriMesh tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo);
+  return tm_out;
 }
 
 }  // namespace meshintersect
