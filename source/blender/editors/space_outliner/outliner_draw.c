@@ -2001,6 +2001,38 @@ static void outliner_draw_left_column_activation(const bContext *C,
   }
 }
 
+/* Return the icon for a given interaction mode
+ * Should this be more generic (in a different file?) */
+static int outliner_get_mode_icon(const int mode)
+{
+  switch (mode) {
+    case OB_MODE_OBJECT:
+      return ICON_OBJECT_DATAMODE;
+    case OB_MODE_EDIT:
+    case OB_MODE_EDIT_GPENCIL:
+      return ICON_EDITMODE_HLT;
+    case OB_MODE_SCULPT:
+    case OB_MODE_SCULPT_GPENCIL:
+      return ICON_SCULPTMODE_HLT;
+    case OB_MODE_VERTEX_PAINT:
+    case OB_MODE_VERTEX_GPENCIL:
+      return ICON_VPAINT_HLT;
+    case OB_MODE_WEIGHT_PAINT:
+    case OB_MODE_WEIGHT_GPENCIL:
+      return ICON_WPAINT_HLT;
+    case OB_MODE_TEXTURE_PAINT:
+      return ICON_TPAINT_HLT;
+    case OB_MODE_PARTICLE_EDIT:
+      return ICON_PARTICLEMODE;
+    case OB_MODE_POSE:
+      return ICON_POSE_HLT;
+    case OB_MODE_PAINT_GPENCIL:
+      return ICON_GREASEPENCIL;
+    default:
+      return ICON_DOT;
+  }
+}
+
 /* Draw icons for adding and removing objects from the current interation mode */
 static void outliner_draw_left_column_mode_toggle(uiBlock *block,
                                                   TreeViewContext *tvc,
@@ -2012,44 +2044,22 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
 
-    if (tvc->ob_edit && OB_TYPE_SUPPORT_EDITMODE(ob->type) && ob->type == tvc->ob_edit->type) {
-      const bool is_in_editmode = ob->mode == tvc->ob_edit->mode;
-
-      /* Draw mode icon for objects in edit mode */
-      but = uiDefIconBut(block,
-                         UI_BTYPE_ICON_TOGGLE,
-                         0,
-                         (is_in_editmode ? ICON_EDITMODE_HLT : ICON_DOT),
-                         0,
-                         te->ys,
-                         UI_UNIT_X,
-                         UI_UNIT_Y,
-                         NULL,
-                         0.0,
-                         0.0,
-                         0.0,
-                         0.0,
-                         TIP_("Toggle edit mode"));
-      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
-    }
-    else if (tvc->ob_pose && ob->type == OB_ARMATURE) {
-      const bool is_in_posemode = ob->mode == tvc->ob_pose->mode;
-
-      /* Draw mode icon for armatures in pose mode */
-      but = uiDefIconBut(block,
-                         UI_BTYPE_ICON_TOGGLE,
-                         0,
-                         (is_in_posemode ? ICON_POSE_HLT : ICON_DOT),
-                         0,
-                         te->ys,
-                         UI_UNIT_X,
-                         UI_UNIT_Y,
-                         NULL,
-                         0.0,
-                         0.0,
-                         0.0,
-                         0.0,
-                         TIP_("Toggle pose mode"));
+    if (ob->type == tvc->obact->type) {
+      but = uiDefIconBut(
+          block,
+          UI_BTYPE_ICON_TOGGLE,
+          0,
+          (ob->mode == tvc->obact->mode ? outliner_get_mode_icon(ob->mode) : ICON_DOT),
+          0,
+          te->ys,
+          UI_UNIT_X,
+          UI_UNIT_Y,
+          NULL,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          TIP_("Toggle edit mode")); /* TODO: Change tooltip by type */
       UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
     }
   }
@@ -2063,14 +2073,11 @@ static void outliner_draw_left_column(
   LISTBASE_FOREACH (TreeElement *, te, tree) {
     tselem = TREESTORE(te);
 
-    /* Only edit and pose mode support multi-object editing */
-    if (tvc->obact && ELEM(tvc->obact->mode, OB_MODE_EDIT, OB_MODE_POSE)) {
+    if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
       outliner_draw_left_column_mode_toggle(block, tvc, te, tselem);
     }
-
-    // else {
+    /* TODO: Should the active icons always draw, or be hidden in non-object modes? */
     outliner_draw_left_column_activation(C, block, tvc, te, tselem);
-    // }
 
     if (TSELEM_OPEN(tselem, soops)) {
       outliner_draw_left_column(C, block, tvc, soops, &te->subtree);

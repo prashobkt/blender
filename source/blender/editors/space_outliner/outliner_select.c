@@ -209,6 +209,12 @@ static void do_outliner_item_posemode_toggle(
   }
 }
 
+/* Toggle interaction mode for modes that do not allow multi-object editing */
+static void do_outliner_item_mode_toggle_generic(bContext *C)
+{
+  /* TODO: switch active object and call operator */
+}
+
 /* For draw callback to run mode switching */
 void outliner_object_mode_toggle(bContext *C, Scene *scene, ViewLayer *view_layer, Base *base)
 {
@@ -238,12 +244,14 @@ static void outliner_item_mode_toggle(bContext *C,
         do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
       }
     }
-
     else if (tvc->ob_pose && ob->type == OB_ARMATURE) {
       Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
       if (base != NULL) {
         do_outliner_item_posemode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
       }
+    }
+    else {
+      do_outliner_item_mode_toggle_generic(C);
     }
   }
 }
@@ -1182,10 +1190,7 @@ void outliner_left_column_click(bContext *C, SpaceOutliner *soops, TreeElement *
   outliner_viewcontext_init(C, &tvc);
 
   if (tvc.obact && tvc.obact->mode != OB_MODE_OBJECT) {
-    /* Only edit and pose mode support multi-object editing */
-    if (ELEM(tvc.obact->mode, OB_MODE_EDIT, OB_MODE_POSE)) {
-      outliner_item_mode_toggle(C, &tvc, te, true);
-    }
+    outliner_item_mode_toggle(C, &tvc, te, true);
   }
   else {
     outliner_set_active_data(C, &tvc, soops, te, tselem);
