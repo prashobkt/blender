@@ -2040,35 +2040,40 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
                                                   TreeStoreElem *tselem)
 {
   uiBut *but;
-  const int mode_icon = outliner_get_mode_icon(tvc->obact->mode);
+  const int active_mode = tvc->obact->mode;
 
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
 
     if (ob->type == tvc->obact->type) {
       if (ob->mode == tvc->obact->mode) {
-        but = uiDefIconBut(block,
-                           UI_BTYPE_ICON_TOGGLE,
-                           0,
-                           (ob->mode == tvc->obact->mode ? mode_icon : ICON_DOT),
-                           0,
-                           te->ys,
-                           UI_UNIT_X,
-                           UI_UNIT_Y,
-                           NULL,
-                           0.0,
-                           0.0,
-                           0.0,
-                           0.0,
-                           TIP_("Remove from the current mode"));
+        but = uiDefIconBut(
+            block,
+            UI_BTYPE_ICON_TOGGLE,
+            0,
+            (ob->mode == tvc->obact->mode ? outliner_get_mode_icon(active_mode) : ICON_DOT),
+            0,
+            te->ys,
+            UI_UNIT_X,
+            UI_UNIT_Y,
+            NULL,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            TIP_("Remove from the current mode"));
         UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
       }
       else {
+        /* Not all objects have particle systems */
+        if (active_mode == OB_MODE_PARTICLE_EDIT && !ob->particlesystem.first) {
+          return;
+        }
         but = uiDefIconBut(
             block,
             (tselem->flag & TSE_HIGHLIGHTED ? UI_BTYPE_ICON_TOGGLE : UI_BTYPE_LABEL),
             0,
-            mode_icon,
+            outliner_get_mode_icon(active_mode),
             0,
             te->ys,
             UI_UNIT_X,
@@ -2078,7 +2083,7 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
             0.0,
             1.0,
             0.6,
-            TIP_("Add too the current mode"));
+            TIP_("Add to the current mode"));
         UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
       }
     }

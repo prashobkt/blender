@@ -210,9 +210,26 @@ static void do_outliner_item_posemode_toggle(
 }
 
 /* Toggle interaction mode for modes that do not allow multi-object editing */
-static void do_outliner_item_mode_toggle_generic(bContext *C)
+static void do_outliner_item_mode_toggle_generic(bContext *C, TreeViewContext *tvc, Base *base)
 {
-  /* TODO: switch active object and call operator */
+  Main *bmain = CTX_data_main(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  const int active_mode = tvc->obact->mode;
+
+  /* Remove the active object from the mode */
+  if (tvc->scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) {
+    ED_object_mode_generic_exit(bmain, depsgraph, tvc->scene, tvc->obact);
+  }
+
+  Base *base_old = BKE_view_layer_base_find(tvc->view_layer, tvc->obact);
+  if (base_old) {
+    ED_object_base_select(base_old, BA_DESELECT);
+  }
+  ED_object_base_activate(C, base);
+  ED_object_base_select(base, BA_SELECT);
+  ED_object_mode_set(C, active_mode);
+
+  ED_outliner_select_sync_from_object_tag(C);
 }
 
 /* For draw callback to run mode switching */
@@ -237,21 +254,20 @@ static void outliner_item_mode_toggle(bContext *C,
 
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
+    Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
+
+    if (!base || !(base->flag & BASE_VISIBLE_DEPSGRAPH)) {
+      return;
+    }
 
     if (tvc->ob_edit && OB_TYPE_SUPPORT_EDITMODE(ob->type)) {
-      Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
-      if ((base != NULL) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
-        do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
-      }
+      do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
     }
     else if (tvc->ob_pose && ob->type == OB_ARMATURE) {
-      Base *base = BKE_view_layer_base_find(tvc->view_layer, ob);
-      if (base != NULL) {
-        do_outliner_item_posemode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
-      }
+      do_outliner_item_posemode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
     }
     else {
-      do_outliner_item_mode_toggle_generic(C);
+      do_outliner_item_mode_toggle_generic(C, tvc, base);
     }
   }
 }
