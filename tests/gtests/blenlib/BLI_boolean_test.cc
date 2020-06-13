@@ -128,6 +128,7 @@ static void write_obj(const Boolean_trimesh_output *out, const std::string objna
 
 constexpr bool DO_OBJ = true;
 
+#if 0
 TEST(eboolean, Empty)
 {
   Boolean_trimesh_input in;
@@ -135,7 +136,7 @@ TEST(eboolean, Empty)
   in.tri_len = 0;
   in.vert_coord = NULL;
   in.tri = NULL;
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(&in, BOOLEAN_NONE);
+  Boolean_trimesh_output *out = BLI_boolean_trimesh(&in, nullptr, BOOLEAN_NONE);
   EXPECT_EQ(out->vert_len, 0);
   EXPECT_EQ(out->tri_len, 0);
   BLI_boolean_trimesh_free(out);
@@ -162,15 +163,15 @@ TEST(eboolean, TetTet)
   6 4 7
   )";
   BT_input bti(spec);
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), BOOLEAN_NONE);
+  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_NONE);
   EXPECT_EQ(out->vert_len, 11);
   EXPECT_EQ(out->tri_len, 20);
-  BLI_boolean_trimesh_free(out);
   if (DO_OBJ) {
     write_obj(out, "tettet");
   }
+  BLI_boolean_trimesh_free(out);
 
-  Boolean_trimesh_output *out2 = BLI_boolean_trimesh(bti.input(), BOOLEAN_UNION);
+  Boolean_trimesh_output *out2 = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_UNION);
   EXPECT_EQ(out2->vert_len, 10);
   EXPECT_EQ(out2->tri_len, 16);
   if (DO_OBJ) {
@@ -201,11 +202,89 @@ TEST(eboolean, TetTet2)
   )";
 
   BT_input bti(spec);
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), BOOLEAN_UNION);
+  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_UNION);
   EXPECT_EQ(out->vert_len, 10);
   EXPECT_EQ(out->tri_len, 16);
   if (DO_OBJ) {
     write_obj(out, "tettet2_union");
+  }
+  BLI_boolean_trimesh_free(out);
+}
+
+TEST(eboolean, CubeTet)
+{
+  const char *spec = R"(12 16
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  0 0.5 0.5
+  0.5 -0.25 0.5
+  -0.5 -0.25 0.5
+  0 0 1.5
+  0 1 3
+  0 3 2
+  2 3 7
+  2 7 6
+  6 7 5
+  6 5 4
+  4 5 1
+  4 1 0
+  2 6 4
+  2 4 0
+  7 3 1
+  7 1 5
+  8 11 9
+  8 9 10
+  9 11 10
+  10 11 8
+  )";
+
+  BT_input bti(spec);
+  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_UNION);
+  EXPECT_EQ(out->vert_len, 14);
+  EXPECT_EQ(out->tri_len, 24);
+  if (DO_OBJ) {
+    write_obj(out, "cubetet_union");
+  }
+  BLI_boolean_trimesh_free(out);
+}
+#endif
+
+TEST(eboolean, BinaryTetTet)
+{
+  const char *spec_a = R"(4 4
+  0.0 0.0 0.0
+  2.0 0.0 0.0
+  1.0 2.0 0.0
+  1.0 1.0 2.0
+  0 2 1
+  0 1 3
+  1 2 3
+  2 0 3
+  )";
+  const char *spec_b = R"(4 4
+  0.0 0.0 1.0
+  2.0 0.0 1.0
+  1.0 2.0 1.0
+  1.0 1.0 3.0
+  0 2 1
+  0 1 3
+  1 2 3
+  2 0 3
+  )";
+
+  BT_input bti_a(spec_a);
+  BT_input bti_b(spec_b);
+  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti_a.input(), bti_b.input(), BOOLEAN_ISECT);
+  EXPECT_EQ(out->vert_len, 4);
+  EXPECT_EQ(out->tri_len, 4);
+  if (DO_OBJ) {
+    write_obj(out, "binary_tettet_isect");
   }
   BLI_boolean_trimesh_free(out);
 }

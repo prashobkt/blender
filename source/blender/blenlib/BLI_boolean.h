@@ -47,7 +47,9 @@ typedef struct Boolean_trimesh_output {
   int (*tri)[3];
 } Boolean_trimesh_output;
 
-Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_input *input, int bool_optype);
+Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_input *in0,
+                                            const Boolean_trimesh_input *in1,
+                                            int bool_optype);
 
 void BLI_boolean_trimesh_free(Boolean_trimesh_output *output);
 

@@ -375,7 +375,7 @@ void MESH_OT_intersect_boolean(struct wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "operation",
                isect_boolean_operation_items,
-               BMESH_ISECT_BOOLEAN_UNION, /* DEBUG!! old default is Difference. */
+               BMESH_ISECT_BOOLEAN_DIFFERENCE,
                "Boolean",
                "");
   RNA_def_boolean(ot->srna,
@@ -383,11 +383,7 @@ void MESH_OT_intersect_boolean(struct wmOperatorType *ot)
                   false,
                   "Swap",
                   "Use with difference intersection to swap which side is kept");
-  RNA_def_boolean(ot->srna,
-                  "use_self",
-                  true, /* DEBUG!! */
-                  "Self",
-                  "Do self-union or self-intersection");
+  RNA_def_boolean(ot->srna, "use_self", false, "Self", "Do self-union or self-intersection");
   RNA_def_float_distance(
       ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
   RNA_def_boolean(ot->srna,

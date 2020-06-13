@@ -101,15 +101,18 @@ class TMesh {
       if (orig == -1) {
         orig = t;
       }
-      if (v0 == v1 || v0 == v2 || v1 == v2 || v0 < 0 || v0 >= nvert || v1 < 0 || v1 >= nvert ||
-          v2 < 0 || v2 >= nvert) {
-        /* Skip degenerate triangle and ones with invalid indices. */
-        /* TODO: test for collinear v0, v1, v2 and skip if so, too. */
+      if (v0 < 0 || v0 >= nvert || v1 < 0 || v1 >= nvert || v2 < 0 || v2 >= nvert) {
+        /* Skip triangles with invalid indices. */
         continue;
       }
       int tmv0 = input_v_to_tm_v[v0];
       int tmv1 = input_v_to_tm_v[v1];
       int tmv2 = input_v_to_tm_v[v2];
+      if (tmv0 == tmv1 || tmv0 == tmv2 || tmv1 == tmv2) {
+        /* Skip triangles with zero area because two verts are the same. */
+        /* TODO: check for 3d collinearity of tmv0 tmv1 and tmv2 and skip those too. */
+        continue;
+      }
       this->m_tris.append(IndexedTriangle(tmv0, tmv1, tmv2, orig));
     }
     if (want_planes) {
@@ -147,11 +150,12 @@ class TMesh {
     int ntri = this->tot_tri();
     m_planes.reserve(ntri);
     for (int t = 0; t < ntri; ++t) {
-      IndexedTriangle &tri = m_tris[t];
+      const IndexedTriangle &tri = m_tris[t];
       mpq3 tr02 = m_verts[tri[0]] - m_verts[tri[2]];
       mpq3 tr12 = m_verts[tri[1]] - m_verts[tri[2]];
       mpq3 n = mpq3::cross(tr02, tr12);
       mpq_class d = -mpq3::dot(n, m_verts[tri[0]]);
+      BLI_assert(!(n.x == 0 && n.y == 0 && n.z == 0));
       this->m_planes.append(planeq(n, d));
     }
     m_has_planes = true;
