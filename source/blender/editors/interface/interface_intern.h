@@ -361,7 +361,7 @@ struct uiBlock {
 
   ListBase butstore; /* UI_butstore_* runtime function */
 
-  ListBase layouts;
+  ListBase layouts; /* Note: Should be called layout_roots. */
   struct uiLayout *curlayout;
 
   ListBase contexts;
