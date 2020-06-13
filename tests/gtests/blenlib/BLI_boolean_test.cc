@@ -152,14 +152,14 @@ TEST(eboolean, TetTet)
   2.0 0.0 1.0
   1.0 2.0 1.0
   1.0 1.0 3.0
-  0 1 2
-  0 3 1
-  1 3 2
-  2 3 0
-  4 5 6
-  4 7 5
-  5 7 6
-  6 7 4
+  0 2 1
+  0 1 3
+  1 2 3
+  2 0 3
+  4 6 5
+  4 5 7
+  5 6 7
+  6 4 7
   )";
   BT_input bti(spec);
   Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), BOOLEAN_NONE);
@@ -177,4 +177,35 @@ TEST(eboolean, TetTet)
     write_obj(out2, "tettet_union");
   }
   BLI_boolean_trimesh_free(out2);
+}
+
+TEST(eboolean, TetTet2)
+{
+  const char *spec = R"(8 8
+  0.0 1.0 -1.0
+  0.875 -0.5 -1.0
+  -0.875 -0.5 -1.0
+  0.0 0.0 1.0
+  0.0 1.0 0.0
+  0.875 -0.5 0.0
+  -0.875 -0.5 0.0
+  0.0 0.0 2.0
+  0 3 1
+  0 1 2
+  1 3 2
+  2 3 0
+  4 7 5
+  4 5 6
+  5 7 6
+  6 7 4
+  )";
+
+  BT_input bti(spec);
+  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), BOOLEAN_UNION);
+  EXPECT_EQ(out->vert_len, 10);
+  EXPECT_EQ(out->tri_len, 16);
+  if (DO_OBJ) {
+    write_obj(out, "tettet2_union");
+  }
+  BLI_boolean_trimesh_free(out);
 }

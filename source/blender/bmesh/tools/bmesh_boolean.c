@@ -68,6 +68,25 @@ static void free_trimesh_input(Boolean_trimesh_input *in)
   MEM_freeN(in);
 }
 
+static void apply_trimesh_output_to_bmesh(BMesh *bm, Boolean_trimesh_output *out)
+{
+  /* For now, for testing, just create new BMesh elements for returned subdivided mesh. */
+  int v, t;
+
+  if (out->vert_len > 0 && out->tri_len > 0) {
+    BMVert **new_bmv = MEM_malloc_arrayN(out->vert_len, sizeof(BMVert *), __func__);
+    for (v = 0; v < out->vert_len; v++) {
+      new_bmv[v] = BM_vert_create(bm, out->vert_coord[v], NULL, BM_CREATE_NOP);
+    }
+    for (t = 0; t < out->tri_len; t++) {
+      BMVert *v0 = new_bmv[out->tri[t][0]];
+      BMVert *v1 = new_bmv[out->tri[t][1]];
+      BMVert *v2 = new_bmv[out->tri[t][2]];
+      BM_face_create_quad_tri(bm, v0, v1, v2, NULL, NULL, BM_CREATE_NOP);
+    }
+  }
+}
+
 bool BM_mesh_boolean(BMesh *bm,
                      struct BMLoop *(*looptris)[3],
                      const int looptris_tot,
@@ -81,9 +100,11 @@ bool BM_mesh_boolean(BMesh *bm,
       bm, looptris, looptris_tot, test_fn, user_data);
   Boolean_trimesh_output *out = BLI_boolean_trimesh(in, boolean_mode);
   BLI_assert(out != NULL);
+  bool intersections_found = out->vert_len != in->vert_len || out->tri_len != in->tri_len;
+  apply_trimesh_output_to_bmesh(bm, out);
   free_trimesh_input(in);
   BLI_boolean_trimesh_free(out);
-  return false;
+  return intersections_found;
 }
 
 bool BM_mesh_boolean_knife(BMesh *bm,
@@ -94,27 +115,13 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                            const bool UNUSED(use_self),
                            const bool UNUSED(use_separate_all))
 {
-  int v, t;
-
   Boolean_trimesh_input *in = trimesh_input_from_bm(
       bm, looptris, looptris_tot, test_fn, user_data);
   Boolean_trimesh_output *out = BLI_boolean_trimesh(in, BOOLEAN_NONE);
-
-  /* For now, for testing, just create new BMesh elements for returned subdivided mesh. */
-  if (out->vert_len > 0 && out->tri_len > 0) {
-    BMVert **new_bmv = MEM_malloc_arrayN(out->vert_len, sizeof(BMVert *), __func__);
-    for (v = 0; v < out->vert_len; v++) {
-      new_bmv[v] = BM_vert_create(bm, out->vert_coord[v], NULL, BM_CREATE_NOP);
-    }
-    for (t = 0; t < out->tri_len; t++) {
-      BMVert *v0 = new_bmv[out->tri[t][0]];
-      BMVert *v1 = new_bmv[out->tri[t][1]];
-      BMVert *v2 = new_bmv[out->tri[t][2]];
-      BM_face_create_quad_tri(bm, v0, v1, v2, NULL, NULL, BM_CREATE_NOP);
-    }
-  }
-
+  BLI_assert(out != NULL);
+  bool intersections_found = out->vert_len != in->vert_len || out->tri_len != in->tri_len;
+  apply_trimesh_output_to_bmesh(bm, out);
   free_trimesh_input(in);
   BLI_boolean_trimesh_free(out);
-  return false;
+  return intersections_found;
 }

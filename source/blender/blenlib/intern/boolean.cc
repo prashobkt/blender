@@ -551,7 +551,7 @@ static int sort_tris_class(const IndexedTriangle &tri,
                            const Edge e,
                            const mpq3 *extra_coord)
 {
-  const int dbg_level = 0;
+  const int dbg_level = 1;
   if (dbg_level > 0) {
     std::cout << "classify  e = " << e << "\n";
   }
@@ -621,7 +621,7 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
    * be only 3 or 4 - so OK to make copies of arrays instead of swapping
    * around in a single array.
    */
-  const int dbg_level = 0;
+  const int dbg_level = 2;
   if (tris.size() == 0) {
     return Array<int>();
   }
@@ -682,9 +682,9 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
   int *p = ans.begin();
   if (tris[0] == t0) {
     p = std::copy(g1.begin(), g1.end(), p);
-    p = std::copy(g3.begin(), g3.end(), p);
+    p = std::copy(g4.begin(), g4.end(), p);
     p = std::copy(g2.begin(), g2.end(), p);
-    std::copy(g4.begin(), g4.end(), p);
+    std::copy(g3.begin(), g3.end(), p);
   }
   else {
     p = std::copy(g3.begin(), g3.end(), p);
@@ -710,7 +710,7 @@ static void find_cells_from_edge(const TriMesh &tm,
                                  CellsInfo &cinfo,
                                  const Edge e)
 {
-  const int dbg_level = 0;
+  const int dbg_level = 2;
   if (dbg_level > 0) {
     std::cout << "find_cells_from_edge " << e << "\n";
   }
@@ -755,7 +755,11 @@ static void find_cells_from_edge(const TriMesh &tm,
       cell.add_patch(r_index);
       cell.add_patch(rnext_index);
       if (dbg_level > 0) {
-        std::cout << "  assigned new cell " << c << " to both\n";
+        std::cout << "  made new cell " << c << "\n";
+        std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
+                  << c << "\n";
+        std::cout << "  p" << rnext_index << "." << (rnext_flipped ? "cell_above" : "cell_below")
+                  << " = c" << c << "\n";
       }
     }
     else if (*r_follow_cell != -1 && *rnext_prev_cell == -1) {
@@ -763,7 +767,8 @@ static void find_cells_from_edge(const TriMesh &tm,
       *rnext_prev_cell = c;
       cinfo.cell(c).add_patch(rnext_index);
       if (dbg_level > 0) {
-        std::cout << "  assigned r_follow_cell " << c << " to other";
+        std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
+                  << c << "\n";
       }
     }
     else if (*r_follow_cell == -1 && *rnext_prev_cell != -1) {
@@ -771,7 +776,8 @@ static void find_cells_from_edge(const TriMesh &tm,
       *r_follow_cell = c;
       cinfo.cell(c).add_patch(r_index);
       if (dbg_level > 0) {
-        std::cout << "  assigned rnext_prev_cell " << c << " to other";
+        std::cout << "  p" << rnext_index << "." << (rnext_flipped ? "cell_above" : "cwll_below")
+                  << " = c" << c << "\n";
       }
     }
     else {
@@ -894,7 +900,7 @@ static int find_ambient_cell(const TriMesh &tm,
   int dummy_index = p_sorted_dummy - sorted_tris.begin();
   int prev_tri = (dummy_index == 0) ? sorted_tris[sorted_tris.size() - 1] :
                                       sorted_tris[dummy_index - 1];
-  int next_tri = (dummy_index == static_cast<int>(sorted_tris.size())) ?
+  int next_tri = (dummy_index == static_cast<int>(sorted_tris.size() - 1)) ?
                      sorted_tris[0] :
                      sorted_tris[dummy_index + 1];
   if (dbg_level > 0) {
@@ -1136,7 +1142,23 @@ static TriMesh self_boolean(const TriMesh &tm_in, int bool_optype)
 extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_input *input,
                                                        int bool_optype)
 {
-  constexpr int dbg_level = 1;
+  constexpr int dbg_level = 2;
+  if (dbg_level > 0) {
+    std::cout << "BLI_BOOLEAN_TRIMESH op=";
+    switch (bool_optype) {
+      case BOOLEAN_NONE:
+        std::cout << "none\n";
+        break;
+      case BOOLEAN_ISECT:
+        std::cout << "intersect\n";
+        break;
+      case BOOLEAN_UNION:
+        std::cout << "union\n";
+        break;
+      case BOOLEAN_DIFFERENCE:
+        std::cout << "difference\n";
+    }
+  }
   blender::meshintersect::TriMesh tm_in;
   tm_in.vert = blender::Array<blender::mpq3>(input->vert_len);
   for (int v = 0; v < input->vert_len; ++v) {
@@ -1147,6 +1169,19 @@ extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_inp
   for (int t = 0; t < input->tri_len; ++t) {
     tm_in.tri[t] = blender::meshintersect::IndexedTriangle(
         input->tri[t][0], input->tri[t][1], input->tri[t][2], t);
+  }
+  if (dbg_level > 1) {
+    std::cout << "Input:\n";
+    std::cout << tm_in.vert.size() << " verts:\n";
+    for (uint v = 0; v < tm_in.vert.size(); ++v) {
+      std::cout << v << ": " << tm_in.vert[v] << "\n";
+    }
+    std::cout << "\n" << tm_in.tri.size() << " tris:\n";
+    for (uint t = 0; t < tm_in.tri.size(); ++t) {
+      std::cout << t << ": " << tm_in.tri[t] << "\n";
+    }
+    std::cout << "\n";
+    blender::meshintersect::write_obj_trimesh(tm_in.vert, tm_in.tri, "boolean_input");
   }
   blender::meshintersect::TriMesh tm_out = self_boolean(tm_in, bool_optype);
   if (dbg_level > 0) {
