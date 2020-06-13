@@ -290,7 +290,16 @@ void outliner_set_walk_element(struct SpaceOutliner *soops, struct TreeStoreElem
 bool outliner_item_is_co_over_name_icons(const TreeElement *te, float view_co_x);
 bool outliner_item_is_co_within_close_toggle(const TreeElement *te, float view_co_x);
 
-void outliner_left_column_click(struct bContext *C, struct SpaceOutliner *soops, TreeElement *te);
+void outliner_item_mode_toggle(struct bContext *C,
+                               TreeViewContext *tvc,
+                               TreeElement *te,
+                               const bool extend);
+
+void outliner_set_active_data(struct bContext *C,
+                              TreeViewContext *tvc,
+                              SpaceOutliner *soops,
+                              TreeElement *te,
+                              struct TreeStoreElem *tselem);
 
 /* outliner_edit.c ---------------------------------------------- */
 typedef void (*outliner_operation_cb)(struct bContext *C,

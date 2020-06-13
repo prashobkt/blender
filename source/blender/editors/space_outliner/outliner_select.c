@@ -245,10 +245,10 @@ void outliner_object_mode_toggle(bContext *C, Scene *scene, ViewLayer *view_laye
 }
 
 /* Toggle the item's interaction mode if supported */
-static void outliner_item_mode_toggle(bContext *C,
-                                      TreeViewContext *tvc,
-                                      TreeElement *te,
-                                      const bool extend)
+void outliner_item_mode_toggle(bContext *C,
+                               TreeViewContext *tvc,
+                               TreeElement *te,
+                               const bool extend)
 {
   TreeStoreElem *tselem = TREESTORE(te);
 
@@ -1176,11 +1176,11 @@ static void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem 
   WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
 }
 
-static void outliner_set_active_data(bContext *C,
-                                     TreeViewContext *tvc,
-                                     SpaceOutliner *soops,
-                                     TreeElement *te,
-                                     TreeStoreElem *tselem)
+void outliner_set_active_data(bContext *C,
+                              TreeViewContext *tvc,
+                              SpaceOutliner *soops,
+                              TreeElement *te,
+                              TreeStoreElem *tselem)
 {
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
@@ -1196,21 +1196,6 @@ static void outliner_set_active_data(bContext *C,
   }
   else if (outliner_is_collection_tree_element(te)) {
     tree_element_type_active(C, tvc, soops, te, tselem, OL_SETSEL_NORMAL, false);
-  }
-}
-
-void outliner_left_column_click(bContext *C, SpaceOutliner *soops, TreeElement *te)
-{
-  TreeStoreElem *tselem = TREESTORE(te);
-  TreeViewContext tvc;
-  outliner_viewcontext_init(C, &tvc);
-
-  if (tvc.obact && tvc.obact->mode != OB_MODE_OBJECT) {
-    /* TODO (Nathan): this runs when clicking activation icons in non-object modes */
-    outliner_item_mode_toggle(C, &tvc, te, true);
-  }
-  else {
-    outliner_set_active_data(C, &tvc, soops, te, tselem);
   }
 }
 

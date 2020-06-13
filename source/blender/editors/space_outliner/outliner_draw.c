@@ -1902,18 +1902,34 @@ static void outliner_buttons(const bContext *C,
   }
 }
 
-static void outliner_left_column_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
+static void outliner_data_activate_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
 {
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   TreeStoreElem *tselem = (TreeStoreElem *)tselem_poin;
+  TreeViewContext tvc;
+  outliner_viewcontext_init(C, &tvc);
 
-  /* TODO (Nathan): Try to pass necessary data instead of searching for tree elem */
   TreeElement *te = outliner_find_tree_element(&soops->tree, tselem);
   if (!te) {
     return;
   }
 
-  outliner_left_column_click(C, soops, te);
+  outliner_set_active_data(C, &tvc, soops, te, tselem);
+}
+
+static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
+{
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  TreeStoreElem *tselem = (TreeStoreElem *)tselem_poin;
+  TreeViewContext tvc;
+  outliner_viewcontext_init(C, &tvc);
+
+  TreeElement *te = outliner_find_tree_element(&soops->tree, tselem);
+  if (!te) {
+    return;
+  }
+
+  outliner_item_mode_toggle(C, &tvc, te, true);
 }
 
 /* Draw icons for setting activation when in object mode */
@@ -1947,7 +1963,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                          (is_active_camera ? "" : TIP_("Set active camera")));
 
       if (!is_active_camera) {
-        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+        UI_but_func_set(but, outliner_data_activate_fn, tselem, NULL);
       }
     }
   }
@@ -1971,7 +1987,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                        (is_active_scene ? "" : TIP_("Set active scene")));
 
     if (!is_active_scene) {
-      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+      UI_but_func_set(but, outliner_data_activate_fn, tselem, NULL);
     }
   }
   else if (outliner_is_collection_tree_element(te)) {
@@ -1996,7 +2012,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                        (is_active_collection ? "" : TIP_("Set active collection")));
 
     if (!is_active_collection) {
-      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+      UI_but_func_set(but, outliner_data_activate_fn, tselem, NULL);
     }
   }
 }
@@ -2062,7 +2078,7 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
             0.0,
             0.0,
             TIP_("Remove from the current mode"));
-        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+        UI_but_func_set(but, outliner_mode_toggle_fn, tselem, NULL);
       }
       else {
         /* Not all objects have particle systems */
@@ -2084,7 +2100,7 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
             1.0,
             0.6,
             TIP_("Add to the current mode"));
-        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+        UI_but_func_set(but, outliner_mode_toggle_fn, tselem, NULL);
       }
     }
   }
