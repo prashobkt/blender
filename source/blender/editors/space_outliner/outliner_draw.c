@@ -2040,27 +2040,47 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
                                                   TreeStoreElem *tselem)
 {
   uiBut *but;
+  const int mode_icon = outliner_get_mode_icon(tvc->obact->mode);
 
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
 
     if (ob->type == tvc->obact->type) {
-      but = uiDefIconBut(
-          block,
-          UI_BTYPE_ICON_TOGGLE,
-          0,
-          (ob->mode == tvc->obact->mode ? outliner_get_mode_icon(ob->mode) : ICON_DOT),
-          0,
-          te->ys,
-          UI_UNIT_X,
-          UI_UNIT_Y,
-          NULL,
-          0.0,
-          0.0,
-          0.0,
-          0.0,
-          TIP_("Toggle edit mode")); /* TODO: Change tooltip by type */
-      UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+      if (ob->mode == tvc->obact->mode) {
+        but = uiDefIconBut(block,
+                           UI_BTYPE_ICON_TOGGLE,
+                           0,
+                           (ob->mode == tvc->obact->mode ? mode_icon : ICON_DOT),
+                           0,
+                           te->ys,
+                           UI_UNIT_X,
+                           UI_UNIT_Y,
+                           NULL,
+                           0.0,
+                           0.0,
+                           0.0,
+                           0.0,
+                           TIP_("Remove from the current mode"));
+        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+      }
+      else {
+        but = uiDefIconBut(
+            block,
+            (tselem->flag & TSE_HIGHLIGHTED ? UI_BTYPE_ICON_TOGGLE : UI_BTYPE_LABEL),
+            0,
+            mode_icon,
+            0,
+            te->ys,
+            UI_UNIT_X,
+            UI_UNIT_Y,
+            NULL,
+            0.0,
+            0.0,
+            1.0,
+            0.6,
+            TIP_("Add too the current mode"));
+        UI_but_func_set(but, outliner_left_column_fn, tselem, NULL);
+      }
     }
   }
 }
