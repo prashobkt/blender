@@ -1145,7 +1145,7 @@ eOLDrawState tree_element_type_active(bContext *C,
   return OL_DRAWSEL_NONE;
 }
 
-/* TODO: Temporary while testing */
+/* TODO (Nathan): Temporary while testing */
 static void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem *tselem)
 {
   Object *ob = (Object *)tselem->id;
@@ -1190,6 +1190,7 @@ void outliner_left_column_click(bContext *C, SpaceOutliner *soops, TreeElement *
   outliner_viewcontext_init(C, &tvc);
 
   if (tvc.obact && tvc.obact->mode != OB_MODE_OBJECT) {
+    /* TODO (Nathan): this runs when clicking activation icons in non-object modes */
     outliner_item_mode_toggle(C, &tvc, te, true);
   }
   else {

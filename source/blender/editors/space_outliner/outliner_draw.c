@@ -1907,7 +1907,7 @@ static void outliner_left_column_fn(bContext *C, void *tselem_poin, void *UNUSED
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   TreeStoreElem *tselem = (TreeStoreElem *)tselem_poin;
 
-  /* TODO: Try to pass necessary data instead of searching for tree elem */
+  /* TODO (Nathan): Try to pass necessary data instead of searching for tree elem */
   TreeElement *te = outliner_find_tree_element(&soops->tree, tselem);
   if (!te) {
     return;
@@ -2096,7 +2096,7 @@ static void outliner_draw_left_column(
     if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
       outliner_draw_left_column_mode_toggle(block, tvc, te, tselem);
     }
-    /* TODO: Should the active icons always draw, or be hidden in non-object modes? */
+    /* TODO (Nathan): Should the active icons always draw, or be hidden in non-object modes? */
     outliner_draw_left_column_activation(C, block, tvc, te, tselem);
 
     if (TSELEM_OPEN(tselem, soops)) {
