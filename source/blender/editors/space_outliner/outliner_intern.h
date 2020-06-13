@@ -297,7 +297,6 @@ void outliner_item_mode_toggle(struct bContext *C,
 
 void outliner_set_active_data(struct bContext *C,
                               TreeViewContext *tvc,
-                              SpaceOutliner *soops,
                               TreeElement *te,
                               struct TreeStoreElem *tselem);
 

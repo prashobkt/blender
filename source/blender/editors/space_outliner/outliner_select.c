@@ -519,7 +519,7 @@ static eOLDrawState tree_element_active_material(bContext *C,
   return OL_DRAWSEL_NONE;
 }
 
-static eOLDrawState tree_element_active_camera(bContext *C,
+static eOLDrawState tree_element_active_camera(bContext *UNUSED(C),
                                                Scene *scene,
                                                ViewLayer *UNUSED(view_layer),
                                                TreeElement *te,
@@ -528,16 +528,6 @@ static eOLDrawState tree_element_active_camera(bContext *C,
   Object *ob = (Object *)outliner_search_back(te, ID_OB);
 
   if (set != OL_SETSEL_NONE) {
-    scene->camera = ob;
-
-    Main *bmain = CTX_data_main(C);
-    wmWindowManager *wm = bmain->wm.first;
-
-    WM_windows_scene_data_sync(&wm->windows, scene);
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-    DEG_relations_tag_update(bmain);
-    WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
-
     return OL_DRAWSEL_NONE;
   }
   else {
@@ -1039,12 +1029,6 @@ static eOLDrawState tree_element_active_master_collection(bContext *C,
       return OL_DRAWSEL_NORMAL;
     }
   }
-  else {
-    ViewLayer *view_layer = CTX_data_view_layer(C);
-    LayerCollection *layer_collection = view_layer->layer_collections.first;
-    BKE_layer_collection_activate(view_layer, layer_collection);
-    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
-  }
 
   return OL_DRAWSEL_NONE;
 }
@@ -1059,13 +1043,6 @@ static eOLDrawState tree_element_active_layer_collection(bContext *C,
     if (active == te->directdata) {
       return OL_DRAWSEL_NORMAL;
     }
-  }
-  else {
-    Scene *scene = CTX_data_scene(C);
-    LayerCollection *layer_collection = te->directdata;
-    ViewLayer *view_layer = BKE_view_layer_find_from_collection(scene, layer_collection);
-    BKE_layer_collection_activate(view_layer, layer_collection);
-    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
   }
 
   return OL_DRAWSEL_NONE;
@@ -1178,7 +1155,6 @@ static void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem 
 
 void outliner_set_active_data(bContext *C,
                               TreeViewContext *tvc,
-                              SpaceOutliner *soops,
                               TreeElement *te,
                               TreeStoreElem *tselem)
 {
@@ -1194,8 +1170,18 @@ void outliner_set_active_data(bContext *C,
       WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), scene);
     }
   }
-  else if (outliner_is_collection_tree_element(te)) {
-    tree_element_type_active(C, tvc, soops, te, tselem, OL_SETSEL_NORMAL, false);
+  else if (tselem->type == TSE_VIEW_COLLECTION_BASE) {
+    ViewLayer *view_layer = CTX_data_view_layer(C);
+    LayerCollection *layer_collection = view_layer->layer_collections.first;
+    BKE_layer_collection_activate(view_layer, layer_collection);
+    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
+  }
+  else if (tselem->type == TSE_LAYER_COLLECTION) {
+    Scene *scene = CTX_data_scene(C);
+    LayerCollection *layer_collection = te->directdata;
+    ViewLayer *view_layer = BKE_view_layer_find_from_collection(scene, layer_collection);
+    BKE_layer_collection_activate(view_layer, layer_collection);
+    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
   }
 }
 

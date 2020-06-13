@@ -1914,7 +1914,7 @@ static void outliner_data_activate_fn(bContext *C, void *tselem_poin, void *UNUS
     return;
   }
 
-  outliner_set_active_data(C, &tvc, soops, te, tselem);
+  outliner_set_active_data(C, &tvc, te, tselem);
 }
 
 static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
