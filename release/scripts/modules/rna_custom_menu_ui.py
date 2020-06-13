@@ -152,10 +152,11 @@ def draw_item_box(context, row):
     active = cm.item_name_get(context=cm.cm_context_selected, index=0, spacetype=cm.cm_space_selected)
     if active == "":
         box_col.label(text="none")
-    while active != "":
-        box_col.label(text=active)
-        item_index = item_index + 1
-        active = cm.item_name_get(context=cm.cm_context_selected, index=item_index, spacetype=cm.cm_space_selected)
+    #while active != "":
+    #    box_col.label(text=active)
+    #    item_index = item_index + 1
+    #    active = cm.item_name_get(context=cm.cm_context_selected, index=item_index, spacetype=cm.cm_space_selected)
+    box_col.prop(cm, "cm_item_selected", text="", expand=True)
     
     row = row.split(factor=0.9, align=True)
     col = row.column(align=True)
@@ -165,6 +166,22 @@ def draw_item_box(context, row):
     col.operator("wm.keyconfig_preset_add", text="", icon='TRIA_UP')
     col.operator("wm.keyconfig_preset_add", text="", icon='TRIA_DOWN').remove_active = True
     row.separator()
+
+def draw_item_editor(context, row):
+    prefs = context.preferences
+    cm = prefs.custom_menu
+
+    col = row.column()
+
+    active = cm.item_name_get(context=cm.cm_context_selected, index=0, spacetype=cm.cm_space_selected)
+    if (active == ""):
+        col.label(text="No item in this list.")
+        col.label(text="Add one or choose another list to get started")
+    elif (cm.item_selected() >= 0):
+        col.prop(cm, "cm_item_name")
+    else :
+        col.label(text="No item selected.")
+
 
 def draw_custom_menu(context, layout):
 
@@ -224,6 +241,6 @@ def draw_custom_menu(context, layout):
     row = layout.row()
        
     draw_item_box(context=context, row=row)
-    row.label(text="riht")
+    draw_item_editor(context=context, row=row)
 
     layout.separator()

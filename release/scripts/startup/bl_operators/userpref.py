@@ -1182,13 +1182,14 @@ class PREFERENCES_OT_menuitem_remove(Operator):
 
     @classmethod
     def poll(cls, context):
-        return hasattr(context, "keymap")
+        return True#hasattr(context, "keymap")
 
     def execute(self, context):
-        km = context.keymap
-        kmi = km.keymap_items.from_id(self.item_id)
-        km.keymap_items.remove(kmi)
+        prefs = context.preferences
+        cm = prefs.custom_menu
 
+        
+        cm.item_remove(context=cm.cm_context_selected, spacetype=cm.cm_space_selected, index=(cm.item_selected()))
         context.preferences.is_dirty = True
         return {'FINISHED'}
 

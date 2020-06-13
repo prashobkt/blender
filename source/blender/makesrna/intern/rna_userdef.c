@@ -187,6 +187,8 @@ static const EnumPropertyItem rna_enum_userdef_viewport_aa_items[] = {
 #  include "BKE_screen.h"
 #  include "BKE_blender_user_menu.h"
 
+#  include "ED_screen.h"
+
 #  include "DEG_depsgraph.h"
 
 #  include "GPU_draw.h"
@@ -848,6 +850,52 @@ static const EnumPropertyItem *rna_userdef_contexts_itemf(bContext *UNUSED(C),
   return item;
 }
 
+static const EnumPropertyItem *rna_userdef_item_set(bContext *UNUSED(C),
+                                                              PointerRNA *ptr,
+                                                              PropertyRNA *UNUSED(prop),
+                                                              bool *r_free)
+{
+  UserDef *userdef = ptr->data;
+  int totitem = 0;
+  EnumPropertyItem *item = NULL;
+  const char **contexts_list = CTX_data_list_mode_string();
+
+  int i = 0;
+
+  if (userdef->cmspaceselect > 0 && userdef->cmcontextselect >= 0) {
+    bUserMenu *bum = BKE_blender_user_menu_find(&U.user_menus,
+                                                userdef->cmspaceselect,
+                                                contexts_list[userdef->cmcontextselect]);
+    if (bum) {
+
+      ListBase *lb = &bum->items;
+      i = 0;
+      for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
+        EnumPropertyItem new_item;
+        if (!strcmp(umi->ui_name, ""))
+          new_item = (EnumPropertyItem){i + 1, " ", 0, " ", " "};
+        else
+          new_item = (EnumPropertyItem){i + 1, umi->ui_name, 0, umi->ui_name, umi->ui_name};
+        RNA_enum_item_add(&item, &totitem, &new_item);
+      }
+    }
+  }
+
+#  ifndef NDEBUG
+  if (i == 0) {
+    //do nothing for now
+  }
+#  endif
+
+  /* may be unused */
+  UNUSED_VARS(audio_device_items);
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
+}
+
 #  ifdef WITH_INTERNATIONAL
 static const EnumPropertyItem *rna_lang_enum_properties_itemf(bContext *UNUSED(C),
                                                               PointerRNA *UNUSED(ptr),
@@ -1164,8 +1212,11 @@ static const char *rna_UserDef_usermenu_item_name_get(UserDef *userdef, const ch
   ListBase *lb = &bum->items;
   i = 0;
   for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
-    if (i == index)
+    if (i == index) {
+      if (!strcmp(umi->ui_name, ""))
+        return " ";
       return umi->ui_name;
+    }
   }
   
   return "";
@@ -1185,14 +1236,112 @@ static void rna_UserDef_usermenu_item_add(UserDef *userdef, const char *spacetyp
   }
   if (st == NULL) return;
 
-  bUserMenu *bum = BKE_blender_user_menu_find(&userdef->user_menus, st->spaceid, context);
-  if (!bum) return;
+  bUserMenu *bum = BKE_blender_user_menu_ensure(&userdef->user_menus, st->spaceid, context);
 
   ListBase *lb = &bum->items;
   bUserMenuItem_Op *bumi = (bUserMenuItem_Op *)BKE_blender_user_menu_item_add(
       lb, USER_MENU_TYPE_OPERATOR);
+  
+  //auto operator setup might be removed in futur updates
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_add", true);
   STRNCPY(bumi->item.ui_name, "new item");
-  //printf("%s\n", bumi->item.ui_name);
+  STRNCPY(bumi->op_idname, ot->idname);
+}
+
+static void rna_UserDef_usermenu_item_remove(UserDef *userdef, const char *spacetype, const char *context, int index)
+{
+  int i = 0;
+  const ListBase *spacetypes = BKE_spacetypes_list();
+  SpaceType *st = NULL;
+
+  for (i = 0, st = spacetypes->first; st; st = st->next, i++) {
+    int id = st->spaceid;
+    char *space_name = st->name;
+    if (!strcmp(space_name, spacetype))
+      break;
+  }
+  if (st == NULL) return;
+
+  bUserMenu *bum = BKE_blender_user_menu_find(&userdef->user_menus, st->spaceid, context);
+  if (!bum) return;
+
+  ListBase *lb = &bum->items;
+  i = 0;
+  for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
+    if (i == index) {
+      ED_screen_user_menu_item_remove(lb, umi);
+      return;
+    }
+  }
+}
+
+static int rna_UserDef_usermenu_item_selected(UserDef *userdef)
+{
+  return userdef->cmitemselect - 1;
+}
+
+/* usermenu item name */
+static void rna_UserDef_usermenu_name_get(PointerRNA *ptr, char *value)
+{
+  int i = 0;
+  UserDef *userdef = (UserDef *)ptr->data;
+  const char **contexts_list = CTX_data_list_mode_string();
+  
+  if (userdef->cmspaceselect > 0 && userdef->cmcontextselect >= 0) {
+    bUserMenu *bum = BKE_blender_user_menu_find(&userdef->user_menus, userdef->cmspaceselect, contexts_list[userdef->cmcontextselect]);
+    if (!bum) return;
+
+    ListBase *lb = &bum->items;
+    i = 0;
+    for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
+      if (i == userdef->cmitemselect - 1) {
+        BLI_strncpy(value, umi->ui_name, FILE_MAX);
+        return;
+      }
+    }
+  }
+}
+
+static void rna_UserDef_usermenu_name_set(PointerRNA *ptr, char *value)
+{
+  int i = 0;
+  UserDef *userdef = (UserDef *)ptr->data;
+  const char **contexts_list = CTX_data_list_mode_string();
+  
+  if (userdef->cmspaceselect > 0 && userdef->cmcontextselect >= 0) {
+    bUserMenu *bum = BKE_blender_user_menu_find(&userdef->user_menus, userdef->cmspaceselect, contexts_list[userdef->cmcontextselect]);
+    if (!bum) return;
+
+    ListBase *lb = &bum->items;
+    i = 0;
+    for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
+      if (i == userdef->cmitemselect - 1) {
+        BLI_strncpy(umi->ui_name, value, FILE_MAX);
+        return;
+      }
+    }
+  }
+}
+
+static int rna_UserDef_usermenu_item_length(PointerRNA *ptr)
+{
+  int i = 0;
+  UserDef *userdef = (UserDef *)ptr->data;
+  const char **contexts_list = CTX_data_list_mode_string();
+  
+  if (userdef->cmspaceselect > 0 && userdef->cmcontextselect >= 0) {
+    bUserMenu *bum = BKE_blender_user_menu_find(&userdef->user_menus, userdef->cmspaceselect, contexts_list[userdef->cmcontextselect]);
+    if (!bum) return 0;
+
+    ListBase *lb = &bum->items;
+    i = 0;
+    for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
+      if (i == userdef->cmitemselect - 1) {
+        return strlen(umi->ui_name);
+      }
+    }
+  }
+  return 0;
 }
 
 #else
@@ -6027,6 +6176,19 @@ static void rna_def_userdef_custom_menu(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem custom_menu_null[] = {
+    {0, "NULL", 0, "None", "No context found"},
+    {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem custom_menu_type_items[] = {
+    {1, "OPERATOR", 0, "Operator", "Operator"},
+    {2, "MENU", 0, "Menu", "Menu"},
+    {3, "SEPARATOR", 0, "Separator", "Separator"},
+    {4, "PROPERTY", 0, "Property", "Property"},
+    {0, NULL, 0, NULL, NULL},
+  };
+
   StructRNA *srna = RNA_def_struct(brna, "PreferencesCustomMenu", NULL);
   RNA_def_struct_sdna(srna, "UserDef");
   RNA_def_struct_nested(brna, srna, "Preferences");
@@ -6057,6 +6219,42 @@ static void rna_def_userdef_custom_menu(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "context selected", "the context selected");
   RNA_def_property_update(prop, 0, "rna_userdef_cm_space_selected_update");
+
+  prop = RNA_def_property(srna, "cm_item_selected", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "cmitemselect");
+  RNA_def_property_enum_items(prop, custom_menu_null);
+  RNA_def_property_ui_text(
+      prop, "item selected", "the item selected");
+  RNA_def_property_enum_funcs_runtime(prop, NULL, NULL, "rna_userdef_item_set");
+
+  //item properties
+  prop = RNA_def_property(srna, "cm_item_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "cmitemname");
+  RNA_def_property_string_funcs(
+      prop, "rna_UserDef_usermenu_name_get", "rna_UserDef_usermenu_item_length", "rna_UserDef_usermenu_name_set");
+  RNA_def_property_ui_text(prop, "Name", "The name to display");
+
+  //prop = RNA_def_property(srna, "cm_item_operator", PROP_STRING, PROP_NONE);
+  //RNA_def_property_string_sdna(prop, NULL, "cmitemop");
+  //RNA_def_property_string_funcs(
+  //    prop, "rna_UserDef_usermenu_name_get", "rna_UserDef_usermenu_item_length", "rna_UserDef_usermenu_name_set");
+  //RNA_def_property_ui_text(prop, "operator", "The operator to display");
+
+  //prop = RNA_def_property(srna, "cm_item_type", PROP_ENUM, PROP_NONE);
+  //RNA_def_property_enum_sdna(prop, NULL, "cmitemtype");
+  //RNA_def_property_enum_items(prop, custom_menu_type_items);
+  //RNA_def_property_ui_text(
+  //    prop, "type", "the type of item");
+
+  //functions
+  func = RNA_def_function(srna, "item_selected", "rna_UserDef_usermenu_item_selected");
+  RNA_def_function_ui_description(func, "Refresh custom menu editor");
+  parm = RNA_def_int(func,
+                        "item_id",
+                        0, 0, 1000,
+                        "",
+                        "the item id", 0, 1000);
+  RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "item_name_get", "rna_UserDef_usermenu_item_name_get");
   RNA_def_function_ui_description(func, "Refresh custom menu editor");
@@ -6100,6 +6298,25 @@ static void rna_def_userdef_custom_menu(BlenderRNA *brna)
                         0,
                         "Context",
                         "context of the menu");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "item_remove", "rna_UserDef_usermenu_item_remove");
+  RNA_def_function_ui_description(func, "add an item to a menu");
+  parm = RNA_def_string(func,
+                        "spacetype",
+                        NULL,
+                        0,
+                        "SpaceType",
+                        "space type of the menu");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func,
+                        "context",
+                        NULL,
+                        0,
+                        "Context",
+                        "context of the menu");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_int(func, "index", 0, 0, 100, "Index", "index of the item in list", 0, 100);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
 }

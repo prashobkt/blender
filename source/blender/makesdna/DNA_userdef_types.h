@@ -882,7 +882,9 @@ typedef struct UserDef {
 
   /** custom menu **/
   int cmspaceselect;
-  int cmcontextselect;
+  short cmcontextselect;
+  short cmitemselect;
+  char cmitemname[64];
 
   /** The UI for the user preferences. */
   UserDef_SpaceData space_data;
