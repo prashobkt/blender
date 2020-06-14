@@ -881,10 +881,12 @@ typedef struct UserDef {
   struct WalkNavigation walk_navigation;
 
   /** custom menu **/
-  int cmspaceselect;
+  short cmspaceselect;
   short cmcontextselect;
   short cmitemselect;
+  short cmitemtype;
   char cmitemname[64];
+  char cmitemop[64];
 
   /** The UI for the user preferences. */
   UserDef_SpaceData space_data;
