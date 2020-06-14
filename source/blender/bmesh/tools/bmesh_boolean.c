@@ -124,6 +124,7 @@ static void apply_trimesh_output_to_bmesh(BMesh *bm, Boolean_trimesh_output *out
       BMVert *v2 = new_bmv[out->tri[t][2]];
       BM_face_create_quad_tri(bm, v0, v1, v2, NULL, NULL, BM_CREATE_NOP);
     }
+    MEM_freeN(new_bmv);
   }
 }
 

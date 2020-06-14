@@ -403,7 +403,9 @@ class CellsInfo {
   Vector<Cell> m_cell;
 };
 
-/* Concatenate two TriMeshes to make a new one. */
+/* Concatenate two TriMeshes to make a new one.
+ * The second one gets offset vertex indices, and offset original triangles.
+ */
 static TriMesh concat_trimeshes(const TriMesh &tm_a, const TriMesh &tm_b)
 {
   int a_tot_v = static_cast<int>(tm_a.vert.size());
@@ -425,7 +427,7 @@ static TriMesh concat_trimeshes(const TriMesh &tm_a, const TriMesh &tm_b)
   for (int t = 0; t < b_tot_t; ++t) {
     const IndexedTriangle &tri = tm_b.tri[t];
     tm.tri[t + a_tot_t] = IndexedTriangle(
-        tri.v0() + a_tot_v, tri.v1() + a_tot_v, tri.v2() + a_tot_v, tri.orig());
+        tri.v0() + a_tot_v, tri.v1() + a_tot_v, tri.v2() + a_tot_v, tri.orig() + a_tot_t);
   }
   return tm;
 }
@@ -832,7 +834,7 @@ static void find_cells_from_edge(const TriMesh &tm,
  */
 static CellsInfo find_cells(const TriMesh &tm, const TriMeshTopology &tmtopo, PatchesInfo &pinfo)
 {
-  const int dbg_level = 1;
+  const int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nFIND_CELLS\n";
   }
@@ -974,7 +976,7 @@ static void propagate_windings_and_flag(PatchesInfo &pinfo,
                                         int nshapes,
                                         std::function<int(int)> shape_fn)
 {
-  int dbg_level = 2;
+  int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "PROPAGATE_WINDINGS, ambient cell = " << c_ambient << "\n";
   }
@@ -1190,7 +1192,7 @@ static TriMesh nary_boolean(const TriMesh &tm_in,
                             int nshapes,
                             std::function<int(int)> shape_fn)
 {
-  constexpr int dbg_level = 1;
+  constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "BOOLEAN of " << nshapes << " operand" << (nshapes == 1 ? "" : "s")
               << " op=" << bool_optype_name(bool_optype) << "\n";
@@ -1203,12 +1205,19 @@ static TriMesh nary_boolean(const TriMesh &tm_in,
   if (tm_si.tri.size() == 0 || bool_optype == BOOLEAN_NONE) {
     return tm_si;
   }
+  auto si_shape_fn = [shape_fn, tm_si](int t) { return shape_fn(tm_si.tri[t].orig()); };
+  if (dbg_level > 1) {
+    write_obj_trimesh(tm_si.vert, tm_si.tri, "boolean_input");
+    for (int t = 0; t < static_cast<int>(tm_si.tri.size()); ++t) {
+      std::cout << "tri " << t << " = " << tm_si.tri[t] << " shape " << si_shape_fn(t) << "\n";
+    }
+  }
   TriMeshTopology tm_si_topo(&tm_si);
   PatchesInfo pinfo = find_patches(tm_si, tm_si_topo);
   CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
   cinfo.init_windings(nshapes);
   int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo);
-  propagate_windings_and_flag(pinfo, cinfo, c_ambient, bool_optype, nshapes, shape_fn);
+  propagate_windings_and_flag(pinfo, cinfo, c_ambient, bool_optype, nshapes, si_shape_fn);
   TriMesh tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo);
   return tm_out;
 }
@@ -1235,7 +1244,7 @@ static TriMesh binary_boolean(const TriMesh &tm_in_a, const TriMesh &tm_in_b, in
 static blender::meshintersect::TriMesh trimesh_from_input(const Boolean_trimesh_input *in,
                                                           int side)
 {
-  constexpr int dbg_level = 1;
+  constexpr int dbg_level = 0;
   BLI_assert(in != nullptr);
   blender::meshintersect::TriMesh tm_in;
   tm_in.vert = blender::Array<blender::mpq3>(in->vert_len);
@@ -1271,7 +1280,7 @@ extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_inp
                                                        const Boolean_trimesh_input *in_b,
                                                        int bool_optype)
 {
-  constexpr int dbg_level = 2;
+  constexpr int dbg_level = 0;
   bool is_binary = in_b != NULL;
   if (dbg_level > 0) {
     std::cout << "BLI_BOOLEAN_TRIMESH op=" << blender::meshintersect::bool_optype_name(bool_optype)
