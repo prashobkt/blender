@@ -127,7 +127,7 @@ class MeshTest:
     the public method run_test().
     """
 
-    def __init__(self, test_object_name: str, expected_object_name: str, operations_stack=None, apply_modifiers=False, threshold=None):
+    def __init__(self, test_name: str, test_object_name: str, expected_object_name: str, operations_stack=None, apply_modifiers=False, threshold=None):
         """
         Constructs a MeshTest object. Raises a KeyError if objects with names expected_object_name
         or test_object_name don't exist.
@@ -137,6 +137,7 @@ class MeshTest:
         :param operations_stack: list - stack holding operations to perform on the test_object.
         :param apply_modifier: bool - True if we want to apply the modifiers right after adding them to the object.
                                This affects operations of type ModifierSpec only.
+        :param test_name: str - unique test name identifier.
         """
         if operations_stack is None:
             operations_stack = []
@@ -148,6 +149,7 @@ class MeshTest:
         self.operations_stack = operations_stack
         self.apply_modifier = apply_modifiers
         self.threshold = threshold
+        self.test_name = test_name
 
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
         self.update = os.getenv('BLENDER_TEST_UPDATE') is not None
@@ -258,7 +260,6 @@ class MeshTest:
         if self.apply_modifier:
             bpy.ops.object.modifier_apply(modifier=modifier_spec.modifier_name)
 
-
     def _bake_current_simulation(self, obj, test_mod_type, test_mod_name, frame_end):
         for scene in bpy.data.scenes:
             for modifier in obj.modifiers:
@@ -281,7 +282,6 @@ class MeshTest:
             print("Created modifier '{}' of type '{}'.".
                   format(physics_spec.modifier_name, physics_spec.modifier_type))
 
-
         for param_name in physics_spec.modifier_parameters:
             try:
                 setattr(physics_setting, param_name, physics_spec.modifier_parameters[param_name])
@@ -299,7 +299,6 @@ class MeshTest:
         self._bake_current_simulation(test_object, physics_spec.modifier_type, physics_spec.modifier_name, physics_spec.frame_end)
         if self.apply_modifier:
             bpy.ops.object.modifier_apply(modifier=physics_spec.modifier_name)
-
 
     def _apply_operator(self, test_object, operator: OperatorSpec):
         """
@@ -511,15 +510,34 @@ class ModifierTest:
         Construct a modifier test.
         :param modifier_tests: list - list of modifier test cases. Each element in the list must contain the following
          in the correct order:
+             0) test_name: str - unique test name
              1) test_object_name: bpy.Types.Object - test object
              2) expected_object_name: bpy.Types.Object - expected object
              3) modifiers: list - list of mesh_test.ModifierSpec objects.
         """
+
         self.modifier_tests = modifier_tests
+        self._check_for_unique()
         self.apply_modifiers = apply_modifiers
         self.threshold = threshold
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
         self._failed_tests_list = []
+
+    def _check_for_unique(self):
+        """
+        Check if the test name is unique
+        """
+        all_test_names = []
+        for index, _ in enumerate(self.modifier_tests):
+            test_name = self.modifier_tests[index][0]
+            all_test_names.append(test_name)
+        seen_name = set()
+        for ele in all_test_names:
+            elem = {ele}
+            if elem and seen_name:
+                raise ValueError("{} is a duplicate, write a new unique name.".format(ele))
+            else:
+                seen_name.add(ele)
 
     def run_test(self, index: int):
         """
@@ -528,13 +546,15 @@ class ModifierTest:
         :return: bool - True if test passed, False otherwise.
         """
         case = self.modifier_tests[index]
-        if len(case) != 3:
-            raise ValueError("Expected exactly 3 parameters for each test case, got {}".format(len(case)))
-        test_object_name = case[0]
-        expected_object_name = case[1]
-        spec_list = case[2]
+        if len(case) != 4:
+            print(len(case))
+            raise ValueError("Expected exactly 4 parameters for each test case, got {}".format(len(case)))
+        test_name = case[0]
+        test_object_name = case[1]
+        expected_object_name = case[2]
+        spec_list = case[3]
 
-        test = MeshTest(test_object_name, expected_object_name, threshold=self.threshold)
+        test = MeshTest(test_name, test_object_name, expected_object_name, threshold=self.threshold)
         if self.apply_modifiers:
             test.apply_modifier = True
 
