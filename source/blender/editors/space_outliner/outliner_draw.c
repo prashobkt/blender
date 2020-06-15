@@ -2053,16 +2053,26 @@ static int outliner_get_mode_icon(const int mode)
 static void outliner_draw_left_column_mode_toggle(uiBlock *block,
                                                   TreeViewContext *tvc,
                                                   TreeElement *te,
-                                                  TreeStoreElem *tselem)
+                                                  TreeStoreElem *tselem,
+                                                  const bool lock_object_modes)
 {
   uiBut *but;
   const int active_mode = tvc->obact->mode;
+  bool draw_active_icon = true;
 
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
 
+    /* When not locking object modes, objects can remain in non-object modes. For modes that do not
+     * allow multi-object editing, these other objects should still show be viewed as not in the
+     * mode. Otherwise multiple objects show the same mode icon in the outliner even though only
+     * one object is actually editable in the mode. */
+    if (!lock_object_modes && ob != tvc->obact && !(tvc->ob_edit || tvc->ob_pose)) {
+      draw_active_icon = false;
+    }
+
     if (ob->type == tvc->obact->type) {
-      if (ob->mode == tvc->obact->mode) {
+      if (draw_active_icon && ob->mode == tvc->obact->mode) {
         but = uiDefIconBut(block,
                            UI_BTYPE_ICON_TOGGLE,
                            0,
@@ -2108,15 +2118,18 @@ static void outliner_draw_left_column(
     const bContext *C, uiBlock *block, TreeViewContext *tvc, SpaceOutliner *soops, ListBase *tree)
 {
   TreeStoreElem *tselem;
+  const bool lock_object_modes = tvc->scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK;
 
   LISTBASE_FOREACH (TreeElement *, te, tree) {
     tselem = TREESTORE(te);
 
     if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
-      outliner_draw_left_column_mode_toggle(block, tvc, te, tselem);
+      outliner_draw_left_column_mode_toggle(block, tvc, te, tselem, lock_object_modes);
     }
     /* TODO (Nathan): Should the active icons always draw, or be hidden in non-object modes? */
-    outliner_draw_left_column_activation(C, block, tvc, te, tselem);
+    else {
+      outliner_draw_left_column_activation(C, block, tvc, te, tselem);
+    }
 
     if (TSELEM_OPEN(tselem, soops)) {
       outliner_draw_left_column(C, block, tvc, soops, &te->subtree);
