@@ -214,6 +214,15 @@ static GPUTexture *create_field_texture(FluidDomainSettings *mds)
     case FLUID_DOMAIN_FIELD_PHI:
       field = manta_get_phi(mds->fluid);
       break;
+    case FLUID_DOMAIN_FIELD_PHI_IN:
+      field = manta_get_phi_in(mds->fluid);
+      break;
+    case FLUID_DOMAIN_FIELD_PHI_OUT:
+      field = manta_get_phiout_in(mds->fluid);
+      break;
+    case FLUID_DOMAIN_FIELD_PHI_OBSTACLE:
+      field = manta_get_phiobs_in(mds->fluid);
+      break;
     default:
       return NULL;
   }
@@ -363,7 +372,10 @@ void GPU_create_smoke_coba_field(FluidModifierData *mmd)
       mds->tex_field = create_field_texture(mds);
     }
     if (!mds->tex_coba) {
-      if (mds->coba_field == FLUID_DOMAIN_FIELD_PHI) {
+      if (mds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
+          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
+          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
+          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE) {
         mds->tex_coba = create_transfer_function(TFUNC_PHI_SPECTRUM, mds->coba);
       }
       else {

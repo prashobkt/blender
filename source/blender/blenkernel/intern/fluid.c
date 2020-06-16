@@ -4670,7 +4670,8 @@ void BKE_fluid_coba_field_check(FluidDomainSettings *settings)
   const char field = settings->coba_field;
 
   if (settings->type == FLUID_DOMAIN_TYPE_GAS) {
-    if (field == FLUID_DOMAIN_FIELD_PHI) {
+    if (field == FLUID_DOMAIN_FIELD_PHI || field == FLUID_DOMAIN_FIELD_PHI_IN ||
+        field == FLUID_DOMAIN_FIELD_PHI_OUT || field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE) {
       /* Defaulted to density for gas domain. */
       settings->coba_field = FLUID_DOMAIN_FIELD_DENSITY;
     }

@@ -1297,7 +1297,7 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
 
         col.use_property_split = False
 
-        if (not domain.coba_field == "PHI"):
+        if (not domain.coba_field[:3] == "PHI"):
             col = col.column()
             col.template_color_ramp(domain, "color_ramp", expand=True)
 

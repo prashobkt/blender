@@ -1098,6 +1098,27 @@ static const EnumPropertyItem *rna_Fluid_cobafield_itemf(bContext *UNUSED(C),
     tmp.name = "Phi";
     tmp.description = "Phi grid";
     RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_PHI_IN;
+    tmp.identifier = "PHI_IN";
+    tmp.icon = 0;
+    tmp.name = "Phi In";
+    tmp.description = "Phi In grid";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_PHI_OUT;
+    tmp.identifier = "PHI_OUT";
+    tmp.icon = 0;
+    tmp.name = "Phi Out";
+    tmp.description = "Phi Out grid";
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    tmp.value = FLUID_DOMAIN_FIELD_PHI_OBSTACLE;
+    tmp.identifier = "PHI_OBSTACLE";
+    tmp.icon = 0;
+    tmp.name = "Phi Obstacle";
+    tmp.description = "Phi Obstacle grid";
+    RNA_enum_item_add(&item, &totitem, &tmp);
   }
 
   RNA_enum_item_end(&item, &totitem);

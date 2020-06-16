@@ -96,7 +96,10 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   const bool use_slice = (mds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
                           mds->axis_slice_method == AXIS_SLICE_SINGLE);
   const InterpType cubic_interp = (InterpType)mds->interp_method;
-  const bool show_phi = (mds->coba_field == FLUID_DOMAIN_FIELD_PHI);
+  const bool show_phi = (mds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
+                         mds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
+                         mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
+                         mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE);
   GPUShader *sh = workbench_shader_volume_get(
       use_slice, mds->use_coba, cubic_interp, true, show_phi);
 
