@@ -593,7 +593,7 @@ ccl_device bool kernel_path_surface_bounce(KernelGlobals *kg,
 
     /* setup ray */
     ray->P = ray_offset(sd->P, (label & LABEL_TRANSMIT) ? -sd->Ng : sd->Ng);
-    kernel_update_light_picking(sd, state);
+    kernel_update_light_picking(kg, sd, state);
     ray->D = normalize(bsdf_omega_in);
 
     if (state->bounce == 0)
@@ -626,7 +626,7 @@ ccl_device bool kernel_path_surface_bounce(KernelGlobals *kg,
 
     /* setup ray position, direction stays unchanged */
     ray->P = ray_offset(sd->P, -sd->Ng);
-    kernel_update_light_picking(sd, state);
+    kernel_update_light_picking(kg, sd, state);
 
 #  ifdef __RAY_DIFFERENTIALS__
     ray->dP = sd->dP;

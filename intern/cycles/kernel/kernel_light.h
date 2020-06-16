@@ -42,25 +42,29 @@ typedef struct LightSample {
  * importance for the lights in the lower hemisphere. This is done by setting
  * the normal to either [0,0,0] to indicate that it should not be used in the
  * importance calculations or to flip the normal if we know it must refract. */
-ccl_device void kernel_update_light_picking(ShaderData *sd, ccl_addr_space PathState *state)
+ccl_device void kernel_update_light_picking(KernelGlobals *kg,
+                                            ShaderData *sd,
+                                            ccl_addr_space PathState *state)
 {
   bool transmission = false;
   bool reflective = false;
   bool glass = false;
   bool transparent = false;
-  for (int i = 0; i < sd->num_closure; ++i) {
-    const ShaderClosure *sc = &sd->closure[i];
-    if (CLOSURE_IS_GLASS(sc->type)) {
-      glass = true;
-    }
-    if (CLOSURE_IS_BSDF_TRANSMISSION(sc->type)) {
-      transmission = true;
-    }
-    if (CLOSURE_IS_BSDF_DIFFUSE(sc->type) || CLOSURE_IS_BSDF_GLOSSY(sc->type)) {
-      reflective = true;
-    }
-    if (CLOSURE_IS_BSDF_TRANSPARENT(sc->type)) {
-      transparent = true;
+  if (sd->num_closure < kernel_data.integrator.max_closures) {
+    for (int i = 0; i < sd->num_closure; ++i) {
+      const ShaderClosure *sc = &sd->closure[i];
+      if (CLOSURE_IS_GLASS(sc->type)) {
+        glass = true;
+      }
+      if (CLOSURE_IS_BSDF_TRANSMISSION(sc->type)) {
+        transmission = true;
+      }
+      if (CLOSURE_IS_BSDF_DIFFUSE(sc->type) || CLOSURE_IS_BSDF_GLOSSY(sc->type)) {
+        reflective = true;
+      }
+      if (CLOSURE_IS_BSDF_TRANSPARENT(sc->type)) {
+        transparent = true;
+      }
     }
   }
 
