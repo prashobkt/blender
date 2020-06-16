@@ -356,13 +356,19 @@ static void panel_delete(ARegion *region, ListBase *panels, Panel *panel)
   MEM_freeN(panel);
 }
 
+/**
+ * Remove instanced panels from the region's panel list.
+ *
+ * \note Can be called with NULL \a C, but it should be avoided because
+ * handlers might not be removed.
+ */
 void UI_panels_free_instanced(bContext *C, ARegion *region)
 {
   /* Delete panels with the instanced flag. */
   LISTBASE_FOREACH_MUTABLE (Panel *, panel, &region->panels) {
     if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED)) {
       /* Make sure the panel's handler is removed before deleting it. */
-      if (panel->activedata != NULL) {
+      if (C != NULL && panel->activedata != NULL) {
         panel_activate_state(C, panel, PANEL_STATE_EXIT);
       }
       panel_delete(region, &region->panels, panel);
@@ -588,9 +594,8 @@ static void panels_collapse_all(const bContext *C,
   const char *category = has_category_tabs ? UI_panel_category_active_get(region, false) : NULL;
   const int flag = ((panel_aligned(area, region) == BUT_HORIZONTAL) ? PNL_CLOSEDX : PNL_CLOSEDY);
   const PanelType *from_pt = from_panel->type;
-  Panel *panel;
 
-  for (panel = region->panels.first; panel; panel = panel->next) {
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     PanelType *pt = panel->type;
 
     /* close panels with headers in the same context */
@@ -617,10 +622,9 @@ static bool panel_type_context_poll(PanelType *panel_type, const char *context)
 
 Panel *UI_panel_find_by_type(ListBase *lb, PanelType *pt)
 {
-  Panel *panel;
   const char *idname = pt->idname;
 
-  for (panel = lb->first; panel; panel = panel->next) {
+  LISTBASE_FOREACH (Panel *, panel, lb) {
     if (STREQLEN(panel->panelname, idname, sizeof(panel->panelname))) {
       return panel;
     }
@@ -639,8 +643,7 @@ Panel *UI_panel_begin(ScrArea *area,
                       Panel *panel,
                       bool *r_open)
 {
-  // printf("UI PANEL BEGIN\n");
-  Panel *panel_last, *panel_next;
+  Panel *panel_last;
   const char *drawname = CTX_IFACE_(pt->translation_context, pt->label);
   const char *idname = pt->idname;
   const bool newpanel = (panel == NULL);
@@ -701,7 +704,7 @@ Panel *UI_panel_begin(ScrArea *area,
   if (newpanel) {
     panel->sortorder = (panel_last) ? panel_last->sortorder + 1 : 0;
 
-    for (panel_next = lb->first; panel_next; panel_next = panel_next->next) {
+    LISTBASE_FOREACH (Panel *, panel_next, lb) {
       if (panel_next != panel && panel_next->sortorder >= panel->sortorder) {
         panel_next->sortorder++;
       }
@@ -1448,14 +1451,13 @@ static void align_sub_panels(Panel *panel)
 /* returns 1 when it did something */
 static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, const bool drag)
 {
-  Panel *panel;
   PanelSort *ps, *panelsort, *psnext;
   int a, tot = 0;
   bool done;
   int align = panel_aligned(area, region);
 
   /* count active, not tabbed panels */
-  for (panel = region->panels.first; panel; panel = panel->next) {
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->runtime_flag & PNL_ACTIVE) {
       tot++;
     }
@@ -1467,7 +1469,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   // printf("Aligning %d panels, factor = %.2f\n", tot, fac);
 
   /* extra; change close direction? */
-  for (panel = region->panels.first; panel; panel = panel->next) {
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->runtime_flag & PNL_ACTIVE) {
       if ((panel->flag & PNL_CLOSEDX) && (align == BUT_VERTICAL)) {
         panel->flag ^= PNL_CLOSED;
@@ -1482,7 +1484,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   panelsort = MEM_callocN(tot * sizeof(PanelSort), "panelsort");
 
   ps = panelsort;
-  for (panel = region->panels.first; panel; panel = panel->next) {
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->runtime_flag & PNL_ACTIVE) {
       ps->panel = MEM_dupallocN(panel);
       ps->orig = panel;
@@ -1562,7 +1564,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   }
 
   /* set locations for tabbed and sub panels */
-  for (panel = region->panels.first; panel; panel = panel->next) {
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->runtime_flag & PNL_ACTIVE) {
       if (panel->children.first) {
         align_sub_panels(panel);
@@ -1581,13 +1583,12 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
 
 static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 {
-  Panel *panel;
   int align = panel_aligned(area, region);
   int sizex = 0;
   int sizey = 0;
 
   /* compute size taken up by panels, for setting in view2d */
-  for (panel = region->panels.first; panel; panel = panel->next) {
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->runtime_flag & PNL_ACTIVE) {
       int pa_sizex, pa_sizey;
 
@@ -1673,11 +1674,10 @@ void UI_panels_begin(const bContext *UNUSED(C), ARegion *region)
 void UI_panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y)
 {
   ScrArea *area = CTX_wm_area(C);
-  uiBlock *block;
   Panel *panel, *panel_first;
 
   /* offset contents */
-  for (block = region->uiblocks.first; block; block = block->next) {
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel) {
       ui_offset_panel_block(block);
     }
@@ -1695,7 +1695,7 @@ void UI_panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y)
 
   /* tag first panel */
   panel_first = NULL;
-  for (block = region->uiblocks.first; block; block = block->next) {
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel) {
       if (!panel_first || block->panel->sortorder < panel_first->sortorder) {
         panel_first = block->panel;
@@ -1713,8 +1713,6 @@ void UI_panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y)
 
 void UI_panels_draw(const bContext *C, ARegion *region)
 {
-  uiBlock *block;
-
   if (region->alignment != RGN_ALIGN_FLOAT) {
     UI_ThemeClearColor(TH_BACK);
   }
@@ -1722,14 +1720,14 @@ void UI_panels_draw(const bContext *C, ARegion *region)
   /* Draw panels, selected on top. Also in reverse order, because
    * UI blocks are added in reverse order and we need child panels
    * to draw on top. */
-  for (block = region->uiblocks.last; block; block = block->prev) {
+  LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && !(block->panel->flag & PNL_SELECT) &&
         !(block->flag & UI_BLOCK_FILTERED_EMPTY)) {
       UI_block_draw(C, block);
     }
   }
 
-  for (block = region->uiblocks.last; block; block = block->prev) {
+  LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && (block->panel->flag & PNL_SELECT) &&
         !(block->flag & UI_BLOCK_FILTERED_EMPTY)) {
       UI_block_draw(C, block);
@@ -1739,15 +1737,12 @@ void UI_panels_draw(const bContext *C, ARegion *region)
 
 void UI_panels_scale(ARegion *region, float new_width)
 {
-  uiBlock *block;
-  uiBut *but;
-
-  for (block = region->uiblocks.first; block; block = block->next) {
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     if (block->panel) {
       float fac = new_width / (float)block->panel->sizex;
       block->panel->sizex = new_width;
 
-      for (but = block->buttons.first; but; but = but->next) {
+      LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
         but->rect.xmin *= fac;
         but->rect.xmax *= fac;
       }
@@ -1903,10 +1898,9 @@ static void ui_panel_drag_collapse(bContext *C,
 {
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  uiBlock *block;
   Panel *panel;
 
-  for (block = region->uiblocks.first; block; block = block->next) {
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     float xy_a_block[2] = {UNPACK2(dragcol_data->xy_init)};
     float xy_b_block[2] = {UNPACK2(xy_dst)};
     rctf rect = block->rect;
@@ -2218,9 +2212,7 @@ void UI_panel_category_active_set_default(ARegion *region, const char *idname)
 
 const char *UI_panel_category_active_get(ARegion *region, bool set_fallback)
 {
-  PanelCategoryStack *pc_act;
-
-  for (pc_act = region->panels_category_active.first; pc_act; pc_act = pc_act->next) {
+  LISTBASE_FOREACH (PanelCategoryStack *, pc_act, &region->panels_category_active) {
     if (UI_panel_category_find(region, pc_act->idname)) {
       return pc_act->idname;
     }
@@ -2239,9 +2231,7 @@ const char *UI_panel_category_active_get(ARegion *region, bool set_fallback)
 
 PanelCategoryDyn *UI_panel_category_find_mouse_over_ex(ARegion *region, const int x, const int y)
 {
-  PanelCategoryDyn *ptd;
-
-  for (ptd = region->panels_category.first; ptd; ptd = ptd->next) {
+  LISTBASE_FOREACH (PanelCategoryDyn *, ptd, &region->panels_category) {
     if (BLI_rcti_isect_pt(&ptd->rect, x, y)) {
       return ptd;
     }
@@ -2409,7 +2399,6 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
   const uiFontStyle *fstyle = &style->widget;
   const int fontid = fstyle->uifont_id;
   short fstyle_points = fstyle->points;
-  PanelCategoryDyn *pc_dyn;
   const float aspect = ((uiBlock *)region->uiblocks.first)->aspect;
   const float zoom = 1.0f / aspect;
   const int px = max_ii(1, round_fl_to_int(U.pixelsize));
@@ -2486,7 +2475,8 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
   }
 
   /* calculate tab rect's and check if we need to scale down */
-  for (pc_dyn = region->panels_category.first; pc_dyn; pc_dyn = pc_dyn->next) {
+  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->panels_category) {
+
     rcti *rct = &pc_dyn->rect;
     const char *category_id = pc_dyn->idname;
     const char *category_id_draw = IFACE_(category_id);
@@ -2504,7 +2494,7 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
   if (y_ofs > BLI_rcti_size_y(&v2d->mask)) {
     scaletabs = (float)BLI_rcti_size_y(&v2d->mask) / (float)y_ofs;
 
-    for (pc_dyn = region->panels_category.first; pc_dyn; pc_dyn = pc_dyn->next) {
+    LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->panels_category) {
       rcti *rct = &pc_dyn->rect;
       rct->ymin = ((rct->ymin - v2d->mask.ymax) * scaletabs) + v2d->mask.ymax;
       rct->ymax = ((rct->ymax - v2d->mask.ymax) * scaletabs) + v2d->mask.ymax;
@@ -2549,7 +2539,7 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
   const int divider_xmax = is_left ? (v2d->mask.xmin + category_tabs_width) :
                                      (v2d->mask.xmax - (category_tabs_width + px)) + px;
 
-  for (pc_dyn = region->panels_category.first; pc_dyn; pc_dyn = pc_dyn->next) {
+  LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->panels_category) {
     const rcti *rct = &pc_dyn->rect;
     const char *category_id = pc_dyn->idname;
     const char *category_id_draw = IFACE_(category_id);
@@ -2745,7 +2735,6 @@ int ui_handler_panel_region(bContext *C,
                             ARegion *region,
                             const uiBut *active_but)
 {
-  uiBlock *block;
   Panel *panel;
   int retval, mx, my;
   bool has_category_tabs = UI_panel_category_is_visible(region);
@@ -2784,7 +2773,7 @@ int ui_handler_panel_region(bContext *C,
     return retval;
   }
 
-  for (block = region->uiblocks.last; block; block = block->prev) {
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     uiPanelMouseState mouse_state;
 
     mx = event->x;
