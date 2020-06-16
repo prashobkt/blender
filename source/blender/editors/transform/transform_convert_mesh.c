@@ -535,7 +535,7 @@ static TransDataMirror *editmesh_mirror_data_calc(BMEditMesh *em,
   TransDataMirror *td_mirror_iter, *td_mirror = NULL;
   if (mirror_elem_len != 0) {
     td_mirror = MEM_mallocN(mirror_elem_len * sizeof(*td_mirror), __func__);
-    td_mirror_iter = &td_mirror_iter[0];
+    td_mirror_iter = &td_mirror[0];
 
     *r_mirror_bitmap = BLI_BITMAP_NEW(bm->totvert, __func__);
 
@@ -707,9 +707,10 @@ void createTransEditVerts(TransInfo *t)
      *
      * \note ignore modes here, even in edge/face modes,
      * transform data is created by selected vertices.
-     * \note in prop mode we need at least 1 selected.
      */
-    if (bm->totvertsel == 0) {
+
+    /* Support other objects using PET to adjust these, unless connected is enabled. */
+    if ((!prop_mode || (prop_mode & T_PROP_CONNECTED)) && (bm->totvertsel == 0)) {
       goto cleanup;
     }
 
@@ -732,6 +733,10 @@ void createTransEditVerts(TransInfo *t)
         if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
           data_len++;
         }
+      }
+
+      if (data_len == 0) {
+        goto cleanup;
       }
 
       /* allocating scratch arrays */
@@ -1070,105 +1075,99 @@ static void create_trans_vert_customdata_layer(BMVert *v,
   BLI_ghash_insert(tcld->origverts, v, r_tcld_vert);
 }
 
-void trans_mesh_customdata_correction_init(TransInfo *t)
+void trans_mesh_customdata_correction_init(TransInfo *t, TransDataContainer *tc)
 {
-  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    if (tc->custom.type.data) {
-      if (tc->custom.type.free_cb == trans_mesh_customdata_free_cb) {
-        /* Custom data correction has initiated before. */
-        continue;
-      }
-      else {
-        BLI_assert(false);
-      }
+  if (tc->custom.type.data) {
+    /* Custom data correction has initiated before. */
+    BLI_assert(tc->custom.type.free_cb == trans_mesh_customdata_free_cb);
+    return;
+  }
+  int i;
+
+  BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
+  BMesh *bm = em->bm;
+
+  bool use_origfaces;
+  int cd_loop_mdisp_offset;
+  {
+    const bool has_layer_math = CustomData_has_math(&bm->ldata);
+    cd_loop_mdisp_offset = CustomData_get_offset(&bm->ldata, CD_MDISPS);
+    if ((t->settings->uvcalc_flag & UVCALC_TRANSFORM_CORRECT) &&
+        /* don't do this at all for non-basis shape keys, too easy to
+         * accidentally break uv maps or vertex colors then */
+        (bm->shapenr <= 1) && (has_layer_math || (cd_loop_mdisp_offset != -1))) {
+      use_origfaces = true;
     }
-    int i;
+    else {
+      use_origfaces = false;
+      cd_loop_mdisp_offset = -1;
+    }
+  }
 
-    BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
-    BMesh *bm = em->bm;
+  if (use_origfaces) {
+    /* create copies of faces for customdata projection */
+    bmesh_edit_begin(bm, BMO_OPTYPE_FLAG_UNTAN_MULTIRES);
 
-    bool use_origfaces;
-    int cd_loop_mdisp_offset;
+    struct GHash *origfaces = BLI_ghash_ptr_new(__func__);
+    struct BMesh *bm_origfaces = BM_mesh_create(&bm_mesh_allocsize_default,
+                                                &((struct BMeshCreateParams){
+                                                    .use_toolflags = false,
+                                                }));
+
+    /* we need to have matching customdata */
+    BM_mesh_copy_init_customdata(bm_origfaces, bm, NULL);
+
+    int *layer_math_map = NULL;
+    int layer_index_dst = 0;
     {
-      const bool has_layer_math = CustomData_has_math(&bm->ldata);
-      cd_loop_mdisp_offset = CustomData_get_offset(&bm->ldata, CD_MDISPS);
-      if ((t->settings->uvcalc_flag & UVCALC_TRANSFORM_CORRECT) &&
-          /* don't do this at all for non-basis shape keys, too easy to
-           * accidentally break uv maps or vertex colors then */
-          (bm->shapenr <= 1) && (has_layer_math || (cd_loop_mdisp_offset != -1))) {
-        use_origfaces = true;
-      }
-      else {
-        use_origfaces = false;
-        cd_loop_mdisp_offset = -1;
-      }
-    }
-
-    if (use_origfaces) {
-      /* create copies of faces for customdata projection */
-      bmesh_edit_begin(bm, BMO_OPTYPE_FLAG_UNTAN_MULTIRES);
-
-      struct GHash *origfaces = BLI_ghash_ptr_new(__func__);
-      struct BMesh *bm_origfaces = BM_mesh_create(&bm_mesh_allocsize_default,
-                                                  &((struct BMeshCreateParams){
-                                                      .use_toolflags = false,
-                                                  }));
-
-      /* we need to have matching customdata */
-      BM_mesh_copy_init_customdata(bm_origfaces, bm, NULL);
-
-      int *layer_math_map = NULL;
-      int layer_index_dst = 0;
-      {
-        /* TODO: We don't need `sod->layer_math_map` when there are no loops linked
-         * to one of the sliding vertices. */
-        if (CustomData_has_math(&bm->ldata)) {
-          /* over alloc, only 'math' layers are indexed */
-          layer_math_map = MEM_mallocN(bm->ldata.totlayer * sizeof(int), __func__);
-          for (i = 0; i < bm->ldata.totlayer; i++) {
-            if (CustomData_layer_has_math(&bm->ldata, i)) {
-              layer_math_map[layer_index_dst++] = i;
-            }
+      /* TODO: We don't need `sod->layer_math_map` when there are no loops linked
+       * to one of the sliding vertices. */
+      if (CustomData_has_math(&bm->ldata)) {
+        /* over alloc, only 'math' layers are indexed */
+        layer_math_map = MEM_mallocN(bm->ldata.totlayer * sizeof(int), __func__);
+        for (i = 0; i < bm->ldata.totlayer; i++) {
+          if (CustomData_layer_has_math(&bm->ldata, i)) {
+            layer_math_map[layer_index_dst++] = i;
           }
-          BLI_assert(layer_index_dst != 0);
         }
+        BLI_assert(layer_index_dst != 0);
       }
-
-      struct TransCustomDataLayer *tcld;
-      tc->custom.type.data = tcld = MEM_mallocN(sizeof(*tcld), __func__);
-      tc->custom.type.free_cb = trans_mesh_customdata_free_cb;
-
-      tcld->bm = bm;
-      tcld->origfaces = origfaces;
-      tcld->bm_origfaces = bm_origfaces;
-      tcld->cd_loop_mdisp_offset = cd_loop_mdisp_offset;
-      tcld->layer_math_map = layer_math_map;
-      tcld->layer_math_map_num = layer_index_dst;
-      tcld->arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
-
-      int data_len = tc->data_len + tc->data_mirror_len;
-      struct GHash *origverts = BLI_ghash_ptr_new_ex(__func__, data_len);
-      tcld->origverts = origverts;
-
-      struct TransCustomDataLayerVert *tcld_vert, *tcld_vert_iter;
-      tcld_vert = BLI_memarena_alloc(tcld->arena, data_len * sizeof(*tcld_vert));
-      tcld_vert_iter = &tcld_vert[0];
-
-      TransData *tob;
-      for (i = tc->data_len, tob = tc->data; i--; tob++, tcld_vert_iter++) {
-        BMVert *v = tob->extra;
-        create_trans_vert_customdata_layer(v, tcld, tcld_vert_iter);
-      }
-
-      TransDataMirror *td_mirror = tc->data_mirror;
-      for (i = tc->data_mirror_len; i--; td_mirror++, tcld_vert_iter++) {
-        BMVert *v = td_mirror->extra;
-        create_trans_vert_customdata_layer(v, tcld, tcld_vert_iter);
-      }
-
-      tcld->data = tcld_vert;
-      tcld->data_len = data_len;
     }
+
+    struct TransCustomDataLayer *tcld;
+    tc->custom.type.data = tcld = MEM_mallocN(sizeof(*tcld), __func__);
+    tc->custom.type.free_cb = trans_mesh_customdata_free_cb;
+
+    tcld->bm = bm;
+    tcld->origfaces = origfaces;
+    tcld->bm_origfaces = bm_origfaces;
+    tcld->cd_loop_mdisp_offset = cd_loop_mdisp_offset;
+    tcld->layer_math_map = layer_math_map;
+    tcld->layer_math_map_num = layer_index_dst;
+    tcld->arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+
+    int data_len = tc->data_len + tc->data_mirror_len;
+    struct GHash *origverts = BLI_ghash_ptr_new_ex(__func__, data_len);
+    tcld->origverts = origverts;
+
+    struct TransCustomDataLayerVert *tcld_vert, *tcld_vert_iter;
+    tcld_vert = BLI_memarena_alloc(tcld->arena, data_len * sizeof(*tcld_vert));
+    tcld_vert_iter = &tcld_vert[0];
+
+    TransData *tob;
+    for (i = tc->data_len, tob = tc->data; i--; tob++, tcld_vert_iter++) {
+      BMVert *v = tob->extra;
+      create_trans_vert_customdata_layer(v, tcld, tcld_vert_iter);
+    }
+
+    TransDataMirror *td_mirror = tc->data_mirror;
+    for (i = tc->data_mirror_len; i--; td_mirror++, tcld_vert_iter++) {
+      BMVert *v = td_mirror->extra;
+      create_trans_vert_customdata_layer(v, tcld, tcld_vert_iter);
+    }
+
+    tcld->data = tcld_vert;
+    tcld->data_len = data_len;
   }
 }
 
@@ -1313,7 +1312,7 @@ static void trans_mesh_customdata_correction_apply_vert(struct TransCustomDataLa
   }
 }
 
-void trans_mesh_customdata_correction_apply(struct TransDataContainer *tc, bool is_final)
+static void trans_mesh_customdata_correction_apply(struct TransDataContainer *tc, bool is_final)
 {
   struct TransCustomDataLayer *tcld = tc->custom.type.data;
   if (!tcld) {
@@ -1387,11 +1386,10 @@ void recalcData_mesh(TransInfo *t)
     }
   }
 
-  if (t->mode == TFM_EDGE_SLIDE) {
-    projectEdgeSlideData(t, false);
-  }
-  else if (t->mode == TFM_VERT_SLIDE) {
-    projectVertSlideData(t, false);
+  if (ELEM(t->mode, TFM_EDGE_SLIDE, TFM_VERT_SLIDE)) {
+    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+      trans_mesh_customdata_correction_apply(tc, false);
+    }
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -1399,6 +1397,83 @@ void recalcData_mesh(TransInfo *t)
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
     EDBM_mesh_normals_update(em);
     BKE_editmesh_looptri_calc(em);
+  }
+}
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Special After Transform Mesh
+ * \{ */
+
+void special_aftertrans_update__mesh(bContext *UNUSED(C), TransInfo *t)
+{
+  const bool canceled = (t->state == TRANS_CANCEL);
+
+  if (canceled) {
+    /* Exception, edge slide transformed UVs too. */
+    if (t->mode == TFM_EDGE_SLIDE) {
+      doEdgeSlide(t, 0.0f);
+    }
+    else if (t->mode == TFM_VERT_SLIDE) {
+      doVertSlide(t, 0.0f);
+    }
+  }
+
+  if (ELEM(t->mode, TFM_EDGE_SLIDE, TFM_VERT_SLIDE)) {
+    /* Handle multires re-projection, done
+     * on transform completion since it's
+     * really slow -joeedh. */
+    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+      trans_mesh_customdata_correction_apply(tc, !canceled);
+    }
+  }
+
+  bool use_automerge = !canceled && (t->flag & (T_AUTOMERGE | T_AUTOSPLIT)) != 0;
+  if (use_automerge) {
+    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+
+      BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
+      BMesh *bm = em->bm;
+      char hflag;
+      bool has_face_sel = (bm->totfacesel != 0);
+
+      if (tc->use_mirror_axis_any) {
+        /* Rather then adjusting the selection (which the user would notice)
+         * tag all mirrored verts, then auto-merge those. */
+        BM_mesh_elem_hflag_disable_all(bm, BM_VERT, BM_ELEM_TAG, false);
+
+        TransDataMirror *td_mirror = tc->data_mirror;
+        for (int i = tc->data_mirror_len; i--; td_mirror++) {
+          BM_elem_flag_enable((BMVert *)td_mirror->extra, BM_ELEM_TAG);
+        }
+
+        hflag = BM_ELEM_SELECT | BM_ELEM_TAG;
+      }
+      else {
+        hflag = BM_ELEM_SELECT;
+      }
+
+      if (t->flag & T_AUTOSPLIT) {
+        EDBM_automerge_and_split(
+            tc->obedit, true, true, true, hflag, t->scene->toolsettings->doublimit);
+      }
+      else {
+        EDBM_automerge(tc->obedit, true, hflag, t->scene->toolsettings->doublimit);
+      }
+
+      /* Special case, this is needed or faces won't re-select.
+       * Flush selected edges to faces. */
+      if (has_face_sel && (em->selectmode == SCE_SELECT_FACE)) {
+        EDBM_selectmode_flush_ex(em, SCE_SELECT_EDGE);
+      }
+    }
+  }
+
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    /* table needs to be created for each edit command, since vertices can move etc */
+    ED_mesh_mirror_spatial_table_end(tc->obedit);
+    /* TODO(campbell): xform: We need support for many mirror objects at once! */
+    break;
   }
 }
 /** \} */

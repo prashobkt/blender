@@ -64,6 +64,7 @@
 #include "BKE_idtype.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_override.h"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -122,6 +123,16 @@ static void lib_id_library_local_paths(Main *bmain, Library *lib, ID *id)
                         (void *)bpath_user_data);
 }
 
+static int lib_id_clear_library_data_users_update_cb(LibraryIDLinkCallbackData *cb_data)
+{
+  ID *id = cb_data->user_data;
+  if (*cb_data->id_pointer == id) {
+    DEG_id_tag_update_ex(cb_data->bmain, cb_data->id_owner, ID_RECALC_TAG_FOR_UNDO);
+    return IDWALK_RET_STOP_ITER;
+  }
+  return IDWALK_RET_NOP;
+}
+
 /**
  * Pull an ID out of a library (make it local). Only call this for IDs that
  * don't have other library users.
@@ -143,6 +154,21 @@ static void lib_id_clear_library_data_ex(Main *bmain, ID *id)
       bmain->is_memfile_undo_written = false;
     }
   }
+
+  /* Conceptually, an ID made local is not the same as the linked one anymore. Reflect that by
+   * regenerating its session UUID. */
+  BKE_lib_libblock_session_uuid_renew(id);
+
+  /* We need to tag this IDs and all of its users, conceptually new local ID and original linked
+   * ones are two completely different data-blocks that were virtually remaped, even though in
+   * reality they remain the same data. For undo this info is critical now. */
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_COPY_ON_WRITE);
+  ID *id_iter;
+  FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
+    BKE_library_foreach_ID_link(
+        bmain, id_iter, lib_id_clear_library_data_users_update_cb, id, IDWALK_READONLY);
+  }
+  FOREACH_MAIN_ID_END;
 
   /* Internal shape key blocks inside data-blocks also stores id->lib,
    * make sure this stays in sync (note that we do not need any explicit handling for real EMBEDDED
@@ -1046,8 +1072,10 @@ void BKE_lib_libblock_session_uuid_ensure(ID *id)
 /**
  * Re-generate a new session-wise uuid for the given \a id.
  *
- * \warning This has a very specific use-case (to handle UI-related data-blocks that are kept
- * across new file reading, when we do keep existing UI). No other usage is expected currently.
+ * \warning This has a few very specific use-cases, no other usage is expected currently:
+ *   - To handle UI-related data-blocks that are kept across new file reading, when we do keep
+ * existing UI.
+ *   - For IDs that are made local without needing any copying.
  */
 void BKE_lib_libblock_session_uuid_renew(ID *id)
 {
@@ -1153,14 +1181,13 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int ori
     new_id->properties = IDP_CopyProperty_ex(id->properties, copy_data_flag);
   }
 
-  /* XXX Again... We need a way to control what we copy in a much more refined way.
-   * We cannot always copy this, some internal copying will die on it! */
-  /* For now, upper level code will have to do that itself when required. */
-#if 0
-  if (id->override != NULL) {
-    BKE_override_copy(new_id, id);
+  /* We may need our own flag to control that at some point, but for now 'no main' one should be
+   * good enough. */
+  if ((orig_flag & LIB_ID_CREATE_NO_MAIN) == 0 && id->override_library != NULL) {
+    /* We do not want to copy existing override rules here, as they would break the proper
+     * remapping between IDs. Proper overrides rules will be re-generated anyway. */
+    BKE_lib_override_library_copy(new_id, id, false);
   }
-#endif
 
   if (id_can_have_animdata(new_id)) {
     IdAdtTemplate *iat = (IdAdtTemplate *)new_id;
@@ -1694,7 +1721,7 @@ static void library_make_local_copying_check(ID *id,
       continue;
     }
 
-    /* Shapekeys are considered 'private' to their owner ID here, and never tagged
+    /* Shape-keys are considered 'private' to their owner ID here, and never tagged
      * (since they cannot be linked), so we have to switch effective parent to their owner.
      */
     if (GS(par_id->name) == ID_KE) {
@@ -2068,9 +2095,11 @@ void BKE_libblock_rename(Main *bmain, ID *id, const char *name)
  * \note Result is unique to a given ID type in a given Main database.
  *
  * \param name: An allocated string of minimal length #MAX_ID_FULL_NAME,
- * will be filled with generated string.
+ *              will be filled with generated string.
+ * \param separator_char: Character to use for separating name and library name. Can be 0 to use
+ *                        default (' ').
  */
-void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id)
+void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separator_char)
 {
   strcpy(name, id->name + 2);
 
@@ -2078,7 +2107,7 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id)
     const size_t idname_len = strlen(id->name + 2);
     const size_t libname_len = strlen(id->lib->id.name + 2);
 
-    name[idname_len] = ' ';
+    name[idname_len] = separator_char ? separator_char : ' ';
     name[idname_len + 1] = '[';
     strcpy(name + idname_len + 2, id->lib->id.name + 2);
     name[idname_len + 2 + libname_len] = ']';
@@ -2094,15 +2123,19 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id)
  * \note Result is unique to a given ID type in a given Main database.
  *
  * \param name: An allocated string of minimal length #MAX_ID_FULL_NAME_UI,
- * will be filled with generated string.
+ *              will be filled with generated string.
+ * \param separator_char: Character to use for separating name and library name. Can be 0 to use
+ *                        default (' ').
  */
-void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI], const ID *id)
+void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
+                                    const ID *id,
+                                    char separator_char)
 {
   name[0] = id->lib ? (ID_MISSING(id) ? 'M' : 'L') : ID_IS_OVERRIDE_LIBRARY(id) ? 'O' : ' ';
   name[1] = (id->flag & LIB_FAKEUSER) ? 'F' : ((id->us == 0) ? '0' : ' ');
   name[2] = ' ';
 
-  BKE_id_full_name_get(name + 3, id);
+  BKE_id_full_name_get(name + 3, id, separator_char);
 }
 
 /**

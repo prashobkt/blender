@@ -29,6 +29,7 @@
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_simulation_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -1631,6 +1632,32 @@ static void rna_ParticleInstanceModifier_particle_system_set(PointerRNA *ptr,
   CLAMP_MIN(psmd->psys, 1);
 }
 
+#  ifdef WITH_NEW_SIMULATION_TYPE
+static void rna_SimulationModifier_simulation_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  SimulationModifierData *smd = ptr->data;
+  if (smd->simulation != NULL) {
+    DEG_id_tag_update(&smd->simulation->id, ID_RECALC_ALL);
+  }
+  rna_Modifier_dependency_update(bmain, scene, ptr);
+}
+#  endif
+
+/**
+ * Special set callback that just changes the first bit of the expansion flag.
+ * This way the expansion state of all the subpanels is not changed by RNA.
+ */
+static void rna_Modifier_show_expanded_set(PointerRNA *ptr, bool value)
+{
+  ModifierData *md = ptr->data;
+  if (value) {
+    md->ui_expand_flag |= (1 << 0);
+  }
+  else {
+    md->ui_expand_flag &= ~(1 << 0);
+  }
+}
+
 #else
 
 /* NOTE: *MUST* return subdivision_type property. */
@@ -1715,7 +1742,7 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "SubsurfModifier", "Modifier");
-  RNA_def_struct_ui_text(srna, "Subsurf Modifier", "Subdivision surface modifier");
+  RNA_def_struct_ui_text(srna, "Subdivision Surface Modifier", "Subdivision surface modifier");
   RNA_def_struct_sdna(srna, "SubsurfModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_SUBSURF);
 
@@ -6131,7 +6158,8 @@ static void rna_def_modifier_wireframe(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_crease", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_WIREFRAME_CREASE);
-  RNA_def_property_ui_text(prop, "Offset Relative", "Crease hub edges for improved subsurf");
+  RNA_def_property_ui_text(
+      prop, "Offset Relative", "Crease hub edges for improved subdivision surface");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "crease_weight", PROP_FLOAT, PROP_NONE);
@@ -6794,7 +6822,7 @@ static void rna_def_modifier_simulation(BlenderRNA *brna)
   prop = RNA_def_property(srna, "simulation", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "Simulation", "Simulation to access");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+  RNA_def_property_update(prop, 0, "rna_SimulationModifier_simulation_update");
 #  endif
 
   prop = RNA_def_property(srna, "data_path", PROP_STRING, PROP_NONE);
@@ -6860,11 +6888,13 @@ void RNA_def_modifier(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_Modifier_show_expanded_set");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_boolean_sdna(prop, NULL, "ui_expand_flag", 0);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
   RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
   prop = RNA_def_property(srna, "use_apply_on_spline", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "mode", eModifierMode_ApplyOnSpline);

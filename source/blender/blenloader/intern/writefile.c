@@ -126,6 +126,7 @@
 #include "DNA_object_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
+#include "DNA_pointcache_types.h"
 #include "DNA_pointcloud_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
@@ -1135,7 +1136,7 @@ static void write_nodetree_nolib(BlendWriter *writer, bNodeTree *ntree)
         }
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
       }
-      else {
+      else if (node->typeinfo != &NodeTypeUndefined) {
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
       }
     }
@@ -1375,6 +1376,7 @@ static const char *ptcache_data_struct[] = {
 static const char *ptcache_extra_struct[] = {
     "",
     "ParticleSpring",
+    "vec3f",
 };
 static void write_pointcaches(BlendWriter *writer, ListBase *ptcaches)
 {
@@ -1792,11 +1794,6 @@ static void write_modifiers(BlendWriter *writer, ListBase *modbase)
         write_curvemapping(writer, wmd->cmap_curve);
       }
     }
-    else if (md->type == eModifierType_LaplacianDeform) {
-      LaplacianDeformModifierData *lmd = (LaplacianDeformModifierData *)md;
-
-      BLO_write_float3_array(writer, lmd->total_verts, lmd->vertexco);
-    }
     else if (md->type == eModifierType_CorrectiveSmooth) {
       CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
 
@@ -1836,6 +1833,10 @@ static void write_modifiers(BlendWriter *writer, ListBase *modbase)
       if (bmd->custom_profile) {
         write_CurveProfile(writer, bmd->custom_profile);
       }
+    }
+
+    if (mti->blendWrite != NULL) {
+      mti->blendWrite(writer, md);
     }
   }
 }
@@ -3915,6 +3916,30 @@ static void write_simulation(BlendWriter *writer, Simulation *simulation, const 
       BLO_write_struct(writer, bNodeTree, simulation->nodetree);
       write_nodetree_nolib(writer, simulation->nodetree);
     }
+
+    LISTBASE_FOREACH (SimulationState *, state, &simulation->states) {
+      switch ((eSimulationStateType)state->type) {
+        case SIM_STATE_TYPE_PARTICLES: {
+          ParticleSimulationState *particle_state = (ParticleSimulationState *)state;
+          BLO_write_struct(writer, ParticleSimulationState, particle_state);
+
+          CustomDataLayer *layers = NULL;
+          CustomDataLayer layers_buff[CD_TEMP_CHUNK_SIZE];
+          CustomData_file_write_prepare(
+              &particle_state->attributes, &layers, layers_buff, ARRAY_SIZE(layers_buff));
+
+          write_customdata(writer,
+                           &simulation->id,
+                           particle_state->tot_particles,
+                           &particle_state->attributes,
+                           layers,
+                           CD_MASK_ALL);
+
+          write_pointcaches(writer, &particle_state->ptcaches);
+          break;
+        }
+      }
+    }
   }
 }
 
@@ -4523,8 +4548,7 @@ void BLO_write_raw(BlendWriter *writer, int size_in_bytes, const void *data_ptr)
 
 void BLO_write_struct_by_name(BlendWriter *writer, const char *struct_name, const void *data_ptr)
 {
-  int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
-  BLO_write_struct_by_id(writer, struct_id, data_ptr);
+  BLO_write_struct_array_by_name(writer, struct_name, 1, data_ptr);
 }
 
 void BLO_write_struct_array_by_name(BlendWriter *writer,
@@ -4533,6 +4557,10 @@ void BLO_write_struct_array_by_name(BlendWriter *writer,
                                     const void *data_ptr)
 {
   int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
+  if (UNLIKELY(struct_id == -1)) {
+    printf("error: can't find SDNA code <%s>\n", struct_name);
+    return;
+  }
   BLO_write_struct_array_by_id(writer, struct_id, array_size, data_ptr);
 }
 
@@ -4570,7 +4598,12 @@ void BLO_write_struct_list_by_id(BlendWriter *writer, int struct_id, ListBase *l
 
 void BLO_write_struct_list_by_name(BlendWriter *writer, const char *struct_name, ListBase *list)
 {
-  BLO_write_struct_list_by_id(writer, BLO_get_struct_id_by_name(writer, struct_name), list);
+  int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
+  if (UNLIKELY(struct_id == -1)) {
+    printf("error: can't find SDNA code <%s>\n", struct_name);
+    return;
+  }
+  BLO_write_struct_list_by_id(writer, struct_id, list);
 }
 
 void blo_write_id_struct(BlendWriter *writer, int struct_id, const void *id_address, const ID *id)
@@ -4581,7 +4614,6 @@ void blo_write_id_struct(BlendWriter *writer, int struct_id, const void *id_addr
 int BLO_get_struct_id_by_name(BlendWriter *writer, const char *struct_name)
 {
   int struct_id = DNA_struct_find_nr(writer->wd->sdna, struct_name);
-  BLI_assert(struct_id >= 0);
   return struct_id;
 }
 

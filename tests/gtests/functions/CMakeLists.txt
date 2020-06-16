@@ -16,27 +16,24 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-set(HDF5_EXTRA_ARGS
-  -DHDF5_ENABLE_THREADSAFE=Off
-  -DHDF5_BUILD_CPP_LIB=Off
-  -DBUILD_TESTING=Off
-  -DHDF5_BUILD_TOOLS=Off
-  -DHDF5_BUILD_EXAMPLES=Off
-  -DHDF5_BUILD_HL_LIB=On
-  -DBUILD_STATIC_CRT_LIBS=On
-  -DBUILD_SHARED_LIBS=On
+set(INC
+  .
+  ..
+  ../../../source/blender/blenlib
+  ../../../source/blender/functions
+  ../../../source/blender/makesdna
+  ../../../intern/guardedalloc
 )
 
-if(WIN32)
-  set(HDF5_PATCH ${PATCH_CMD} --verbose -p 0 -d ${BUILD_DIR}/hdf5/src/external_hdf5 < ${PATCH_DIR}/hdf5.diff)
+setup_libdirs()
+include_directories(${INC})
+
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINKFLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${PLATFORM_LINKFLAGS_DEBUG}")
+
+if(WITH_BUILDINFO)
+  set(BUILDINFO buildinfoobj)
 endif()
 
-ExternalProject_Add(external_hdf5
-  URL ${HDF5_URI}
-  DOWNLOAD_DIR ${DOWNLOAD_DIR}
-  URL_HASH MD5=${HDF5_HASH}
-  PREFIX ${BUILD_DIR}/hdf5
-  PATCH_COMMAND ${HDF5_PATCH}
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/hdf5 ${HDF5_EXTRA_ARGS}
-  INSTALL_DIR ${LIBDIR}/hdf5
-)
+BLENDER_TEST(FN_cpp_type "bf_blenlib;bf_functions;${BUILDINFO}")
