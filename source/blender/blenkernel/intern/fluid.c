@@ -4663,7 +4663,7 @@ void BKE_fluid_effector_type_set(Object *UNUSED(object), FluidEffectorSettings *
   settings->type = type;
 }
 
-void BKE_fluid_coba_field_check(Object *object, FluidDomainSettings *settings)
+void BKE_fluid_coba_field_check(FluidDomainSettings *settings)
 {
   /* Based on the domain type, the coba field is defaulted accordingly if the selected field
    * is unsupported. */

@@ -632,7 +632,7 @@ static void rna_Fluid_domaintype_set(struct PointerRNA *ptr, int value)
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   Object *ob = (Object *)ptr->owner_id;
   BKE_fluid_domain_type_set(ob, settings, value);
-  BKE_fluid_coba_field_check(ob, settings);
+  BKE_fluid_coba_field_check(settings);
 }
 
 static char *rna_FluidDomainSettings_path(PointerRNA *ptr)
