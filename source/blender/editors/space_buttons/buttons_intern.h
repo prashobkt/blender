@@ -91,6 +91,7 @@ void buttons_texture_context_compute(const struct bContext *C, struct SpacePrope
 
 /* buttons_ops.c */
 void BUTTONS_OT_start_filter(struct wmOperatorType *ot);
+void BUTTONS_OT_clear_filter(struct wmOperatorType *ot);
 void BUTTONS_OT_file_browse(struct wmOperatorType *ot);
 void BUTTONS_OT_directory_browse(struct wmOperatorType *ot);
 void BUTTONS_OT_context_menu(struct wmOperatorType *ot);

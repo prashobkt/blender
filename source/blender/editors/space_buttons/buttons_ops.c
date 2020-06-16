@@ -58,10 +58,15 @@
 
 static int buttons_start_filter_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  ARegion *region = CTX_wm_region(C);
   SpaceProperties *space = CTX_wm_space_properties(C);
+  ScrArea *area = CTX_wm_area(C);
+  ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
 
+  ARegion *region_ctx = CTX_wm_region(C);
+  CTX_wm_region_set(C, region);
   UI_textbutton_activate_rna(C, region, space, "filter_text");
+  CTX_wm_region_set(C, region_ctx);
+
   return OPERATOR_FINISHED;
 }
 
@@ -74,6 +79,32 @@ void BUTTONS_OT_start_filter(struct wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = buttons_start_filter_exec;
+  ot->poll = ED_operator_buttons_active;
+}
+
+/********************** clear filter operator *********************/
+
+static int buttons_clear_filter_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  ScrArea *area = CTX_wm_area(C);
+  SpaceProperties *space = CTX_wm_space_properties(C);
+
+  strcpy(space->search_string, "");
+
+  ED_area_tag_redraw(area);
+
+  return OPERATOR_FINISHED;
+}
+
+void BUTTONS_OT_clear_filter(struct wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Clear Filter";
+  ot->description = "Clear the search filter";
+  ot->idname = "BUTTONS_OT_clear_filter";
+
+  /* api callbacks */
+  ot->exec = buttons_clear_filter_exec;
   ot->poll = ED_operator_buttons_active;
 }
 
