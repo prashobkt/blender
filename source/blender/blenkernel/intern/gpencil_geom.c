@@ -1745,7 +1745,7 @@ static void gpencil_generate_edgeloops(Object *ob,
     /* Look forward edges. */
     int totedges = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_fw, e, angle, false);
     /* Look backward edges. */
-    int totbw = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_bw, e, angle, false);
+    int totbw = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_bw, e, angle, true);
 
     BLI_ghash_free(v_table, NULL, NULL);
 
@@ -1888,7 +1888,8 @@ void BKE_gpencil_convert_mesh(Main *bmain,
   int i;
 
   /* If the object has enough materials means it was created in a previous step. */
-  const bool create_mat = (ob_gp->totcol >= ob_mesh->totcol) ? false : true;
+  const bool create_mat = ((ob_gp->totcol > 0) && (ob_gp->totcol >= ob_mesh->totcol)) ? false :
+                                                                                        true;
 
   /* Need at least an edge. */
   if (me_eval->totvert < 2) {
