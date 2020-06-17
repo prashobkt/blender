@@ -539,6 +539,18 @@ static eOLDrawState tree_element_active_camera(bContext *C,
   }
 }
 
+static eOLDrawState tree_element_active_curve(bContext *C,
+                                              Scene *UNUSED(scene),
+                                              ViewLayer *UNUSED(view_layer),
+                                              TreeElement *UNUSED(te),
+                                              const eOLSetState set)
+{
+  if (set != OL_SETSEL_NONE) {
+    ED_buttons_set_context(C, BCONTEXT_DATA);
+  }
+  return OL_DRAWSEL_NONE;
+}
+
 static eOLDrawState tree_element_active_world(bContext *C,
                                               Scene *scene,
                                               ViewLayer *UNUSED(sl),
@@ -892,7 +904,7 @@ static int tree_element_active_constraint(bContext *C,
     Object *ob = (Object *)tselem->id;
 
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
-    // XXX      extern_set_butspace(F7KEY, 0);
+    ED_buttons_set_context(C, BCONTEXT_CONSTRAINT);
   }
 
   return OL_DRAWSEL_NONE;
@@ -1081,6 +1093,8 @@ eOLDrawState tree_element_active(bContext *C,
       return tree_element_active_text(C, tvc->scene, tvc->view_layer, soops, te, set);
     case ID_CA:
       return tree_element_active_camera(C, tvc->scene, tvc->view_layer, te, set);
+    case ID_CU:
+      return tree_element_active_curve(C, tvc->scene, tvc->view_layer, te, set);
   }
   return OL_DRAWSEL_NONE;
 }
@@ -1103,6 +1117,7 @@ eOLDrawState tree_element_type_active(bContext *C,
       return tree_element_active_bone(C, tvc->view_layer, te, tselem, set, recursive);
     case TSE_EBONE:
       return tree_element_active_ebone(C, tvc->view_layer, te, tselem, set, recursive);
+    case TSE_MODIFIER_BASE:
     case TSE_MODIFIER:
       return tree_element_active_modifier(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_LINKED_OB:
@@ -1120,6 +1135,7 @@ eOLDrawState tree_element_type_active(bContext *C,
     case TSE_POSE_CHANNEL:
       return tree_element_active_posechannel(
           C, tvc->scene, tvc->view_layer, tvc->ob_pose, te, tselem, set, recursive);
+    case TSE_CONSTRAINT_BASE:
     case TSE_CONSTRAINT:
       return tree_element_active_constraint(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_R_LAYER:
@@ -1223,12 +1239,6 @@ static void do_outliner_item_activate_tree_element(bContext *C,
            TSE_LAYER_COLLECTION)) {
     /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects,
      * we do not want to switch out of edit mode (see T48328 for details). */
-  }
-  else if (tselem->id && OB_DATA_SUPPORT_EDITMODE(te->idcode)) {
-    /* Support edit-mode toggle, keeping the active object as is. */
-  }
-  else if (tselem->type == TSE_POSE_BASE) {
-    /* Support pose mode toggle, keeping the active object as is. */
   }
   else if (do_activate_data) {
     tree_element_set_active_object(C,
