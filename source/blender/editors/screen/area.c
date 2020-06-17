@@ -2801,7 +2801,6 @@ void ED_region_panels_ex(
   /* TODO: remove? */
   ED_region_panels_layout_ex(
       C, region, &region->type->paneltypes, contexts, contextnr, vertical, NULL);
-  UI_panels_remove_search_filtered(region);
   ED_region_panels_draw(C, region);
 }
 

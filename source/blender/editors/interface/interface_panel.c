@@ -167,6 +167,7 @@ static int panel_aligned(const ScrArea *area, const ARegion *region)
     return BUT_VERTICAL;
   }
 
+  printf("REGION IS ALIGNED HORIZONTAL\n");
   return 0;
 }
 
@@ -814,56 +815,28 @@ static void ui_offset_panel_block(uiBlock *block)
   block->rect.xmin = block->rect.ymin = 0.0;
 }
 
-/**
- * T
- *
- * \return True if the block was removed because its panel was empty
- */
-static bool panels_remove_search_filtered_recursive(ARegion *region, uiBlock *block)
-{
-  BLI_assert(block->panel != NULL);
-
-  Panel *panel = block->panel;
-
-  bool all_children_filtered = true;
-  LISTBASE_FOREACH (Panel *, child_panel, &panel->children) {
-    uiBlock *child_block = child_panel->runtime.block;
-    if (child_block != NULL) {
-      all_children_filtered &= panels_remove_search_filtered_recursive(region, child_block);
-    }
-  }
-
-  if (all_children_filtered && panel->runtime_flag & PNL_SEARCH_FILTERED) {
-    // printf("Removing panel %s\n", panel->panelname);
-    panel->runtime_flag &= ~PNL_ACTIVE;
-    panel->runtime_flag |= PNL_WAS_ACTIVE;
-    panel->runtime.block = NULL;
-    BLI_remlink(&region->uiblocks, block);
-    UI_block_free(NULL, block);
-    return true;
-  }
-  return false;
-}
-
-void UI_panels_remove_search_filtered(ARegion *region)
-{
-  LISTBASE_FOREACH_MUTABLE (uiBlock *, block, &region->uiblocks) {
-    if (block->panel == NULL) {
-      continue;
-    }
-
-    panels_remove_search_filtered_recursive(region, block);
-  }
-}
-
 void ui_panel_set_search_filtered(struct Panel *panel, const bool value)
 {
-  if (value) {
-    panel->runtime_flag |= PNL_SEARCH_FILTERED;
+  SET_FLAG_FROM_TEST(panel->runtime_flag, value, PNL_SEARCH_FILTERED);
+}
+
+static bool panel_is_search_filtered_recursive(const Panel *panel)
+{
+  bool is_search_filtered = panel->runtime_flag & PNL_SEARCH_FILTERED;
+
+  /* If the panel is filtered (removed) we need to check that its children are too. */
+  if (is_search_filtered) {
+    LISTBASE_FOREACH (const Panel *, child_panel, &panel->children) {
+      is_search_filtered &= panel_is_search_filtered_recursive(child_panel);
+    }
   }
-  else {
-    panel->runtime_flag &= ~PNL_SEARCH_FILTERED;
-  }
+
+  return is_search_filtered;
+}
+
+bool UI_panel_is_search_filtered(const Panel *panel)
+{
+  return panel_is_search_filtered_recursive(panel);
 }
 
 /**************************** drawing *******************************/
@@ -1388,6 +1361,18 @@ static int find_highest_panel(const void *a1, const void *a2)
 {
   const PanelSort *ps1 = a1, *ps2 = a2;
 
+  /* Sort search-filtered panels to the bottom */
+  if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED &&
+      ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
+    /* Skip and check for offset and sort order below. */
+  }
+  else if (ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
+    return -1;
+  }
+  else if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED) {
+    return 1;
+  }
+
   /* stick uppermost header-less panels to the top of the region -
    * prevent them from being sorted (multiple header-less panels have to be sorted though) */
   if (ps1->panel->type->flag & PNL_NO_HEADER && ps2->panel->type->flag & PNL_NO_HEADER) {
@@ -1467,7 +1452,6 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   if (tot == 0) {
     return 0;
   }
-  // printf("Aligning %d panels, factor = %.2f\n", tot, fac);
 
   /* extra; change close direction? */
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
@@ -1496,6 +1480,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   if (drag) {
     /* while we are dragging, we sort on location and update sortorder */
     if (align == BUT_VERTICAL) {
+      printf("FIND HIGHEST PANEL\n");
       qsort(panelsort, tot, sizeof(PanelSort), find_highest_panel);
     }
     else {
@@ -1590,7 +1575,7 @@ static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 
   /* compute size taken up by panels, for setting in view2d */
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-    if (panel->runtime_flag & PNL_ACTIVE) {
+    if (panel->runtime_flag & PNL_ACTIVE && !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
       int pa_sizex, pa_sizey;
 
       if (align == BUT_VERTICAL) {
@@ -1723,14 +1708,14 @@ void UI_panels_draw(const bContext *C, ARegion *region)
    * to draw on top. */
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && !(block->panel->flag & PNL_SELECT) &&
-        !(block->flag & UI_BLOCK_FILTERED_EMPTY)) {
+        !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }
 
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && (block->panel->flag & PNL_SELECT) &&
-        !(block->flag & UI_BLOCK_FILTERED_EMPTY)) {
+        !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }

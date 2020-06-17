@@ -1689,6 +1689,7 @@ void UI_panels_scale(struct ARegion *region, float new_width);
 void UI_panel_label_offset(struct uiBlock *block, int *r_x, int *r_y);
 int UI_panel_size_y(const struct Panel *panel);
 bool UI_panel_is_dragging(const struct Panel *panel);
+bool UI_panel_is_search_filtered(const struct Panel *panel);
 
 bool UI_panel_category_is_visible(const struct ARegion *region);
 void UI_panel_category_add(struct ARegion *region, const char *name);
@@ -1707,8 +1708,6 @@ void UI_panel_category_clear_all(struct ARegion *region);
 void UI_panel_category_draw_all(struct ARegion *region, const char *category_id_active);
 
 struct PanelType *UI_paneltype_find(int space_id, int region_id, const char *idname);
-
-void UI_panels_remove_search_filtered(struct ARegion *region);
 
 /* Polyinstantiated panels for representing a list of data. */
 struct Panel *UI_panel_add_instanced(struct ScrArea *area,

@@ -218,7 +218,6 @@ static void buttons_main_region_layout(const bContext *C, ARegion *region)
   }
   else {
     buttons_main_region_layout_properties(C, sbuts, region);
-    UI_panels_remove_search_filtered(region);
   }
 
   sbuts->mainbo = sbuts->mainb;
