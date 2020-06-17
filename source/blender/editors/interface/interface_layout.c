@@ -5265,9 +5265,9 @@ static bool ui_search_layout_fill(uiLayout *labels, uiLayout *properties, uiLayo
 
       /* Free item and the button if it has been filtered. */
       if (button_item->but->flag & UI_FILTERED) {
-        // ui_but_free(NULL, button_item->but);
         button_item->but->flag |= UI_HIDDEN;
         BLI_remlink(&layout->items, item);
+        MEM_freeN(item);
       }
       else {
         move_button_to_search_filter_layout(item, layout, labels, properties);
