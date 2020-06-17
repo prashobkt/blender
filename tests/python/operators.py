@@ -39,114 +39,114 @@ def main():
     tests = [
         #### 0
         # bisect
-        ['FACE', {0, 1, 2, 3, 4, 5}, "testCubeBisect", "expectedCubeBisect", "bisect",
+        ['FACE', {0, 1, 2, 3, 4, 5}, "CubeBisect",  "testCubeBisect", "expectedCubeBisect", "bisect",
          {"plane_co": (0, 0, 0), "plane_no": (0, 1, 1), "clear_inner": True, "use_fill": True}],
 
         # blend from shape
-        ['FACE', {0, 1, 2, 3, 4, 5}, "testCubeBlendFromShape", "expectedCubeBlendFromShape", "blend_from_shape",
+        ['FACE', {0, 1, 2, 3, 4, 5}, "CubeBlendFromShape",  "testCubeBlendFromShape", "expectedCubeBlendFromShape", "blend_from_shape",
          {"shape": "Key 1"}],
 
         # bridge edge loops
-        ["FACE", {0, 1}, "testCubeBrigeEdgeLoop", "expectedCubeBridgeEdgeLoop", "bridge_edge_loops", {}],
+        ["FACE", {0, 1}, "CubeBridgeEdgeLoop",  "testCubeBrigeEdgeLoop", "expectedCubeBridgeEdgeLoop", "bridge_edge_loops", {}],
 
         # decimate
-        ["FACE", {i for i in range(500)}, "testMonkeyDecimate", "expectedMonkeyDecimate", "decimate", {"ratio": 0.1}],
+        ["FACE", {i for i in range(500)}, "MonkeyDecimate",  "testMonkeyDecimate", "expectedMonkeyDecimate", "decimate", {"ratio": 0.1}],
 
         ### 4
         # delete
-        ["VERT", {3}, "testCubeDeleteVertices", "expectedCubeDeleteVertices", "delete", {}],
-        ["FACE", {0}, "testCubeDeleteFaces", "expectedCubeDeleteFaces", "delete", {}],
-        ["EDGE", {0, 1, 2, 3}, "testCubeDeleteEdges", "expectedCubeDeleteEdges", "delete", {}],
+        ["VERT", {3}, "CubeDeleteVertices",  "testCubeDeleteVertices", "expectedCubeDeleteVertices", "delete", {}],
+        ["FACE", {0}, "CubeDeleteFaces",  "testCubeDeleteFaces", "expectedCubeDeleteFaces", "delete", {}],
+        ["EDGE", {0, 1, 2, 3}, "CubeDeleteEdges",  "testCubeDeleteEdges", "expectedCubeDeleteEdges", "delete", {}],
 
         # delete edge loop
-        ["VERT", MONKEY_LOOP_VERT, "testMokneyDeleteEdgeLoopVertices", "expectedMonkeyDeleteEdgeLoopVertices",
+        ["VERT", MONKEY_LOOP_VERT, "MonkeyDeleteEdgeLoopVertices", "testMokneyDeleteEdgeLoopVertices", "expectedMonkeyDeleteEdgeLoopVertices",
          "delete_edgeloop", {}],
-        ["EDGE", MONKEY_LOOP_EDGE, "testMokneyDeleteEdgeLoopEdges", "expectedMonkeyDeleteEdgeLoopEdges",
+        ["EDGE", MONKEY_LOOP_EDGE, "MonkeyDeleteEdgeLoopEdges", "testMokneyDeleteEdgeLoopEdges", "expectedMonkeyDeleteEdgeLoopEdges",
          "delete_edgeloop", {}],
 
         ### 9
         # delete loose
-        ["VERT", {i for i in range(12)}, "testCubeDeleteLooseVertices", "expectedCubeDeleteLooseVertices",
+        ["VERT", {i for i in range(12)}, "CubeDeleteLooseVertices",  "testCubeDeleteLooseVertices", "expectedCubeDeleteLooseVertices",
          "delete_loose", {"use_verts": True, "use_edges": False, "use_faces": False}],
-        ["EDGE", {i for i in range(14)}, "testCubeDeleteLooseEdges", "expectedCubeDeleteLooseEdges",
+        ["EDGE", {i for i in range(14)}, "CubeDeleteLooseEdges",  "testCubeDeleteLooseEdges", "expectedCubeDeleteLooseEdges",
          "delete_loose", {"use_verts": False, "use_edges": True, "use_faces": False}],
-        ["FACE", {i for i in range(7)}, "testCubeDeleteLooseFaces", "expectedCubeDeleteLooseFaces",
+        ["FACE", {i for i in range(7)}, "CubeDeleteLooseFaces",  "testCubeDeleteLooseFaces", "expectedCubeDeleteLooseFaces",
          "delete_loose", {"use_verts": False, "use_edges": False, "use_faces": True}],
 
         # dissolve degenerate
-        ["VERT", {i for i in range(8)}, "testCubeDissolveDegenerate", "expectedCubeDissolveDegenerate",
+        ["VERT", {i for i in range(8)}, "CubeDissolveDegenerate",  "testCubeDissolveDegenerate", "expectedCubeDissolveDegenerate",
          "dissolve_degenerate", {}],
 
         ### 13
         # dissolve edges
-        ["EDGE", {0, 5, 6, 9}, "testCylinderDissolveEdges", "expectedCylinderDissolveEdges",
+        ["EDGE", {0, 5, 6, 9}, "CylinderDissolveEdges",  "testCylinderDissolveEdges", "expectedCylinderDissolveEdges",
          "dissolve_edges", {}],
 
         # dissolve faces
-        ["VERT", {5, 34, 47, 49, 83, 91, 95}, "testCubeDissolveFaces", "expectedCubeDissolveFaces", "dissolve_faces",
+        ["VERT", {5, 34, 47, 49, 83, 91, 95}, "CubeDissolveFaces",  "testCubeDissolveFaces", "expectedCubeDissolveFaces", "dissolve_faces",
          {}],
 
         ### 15
         # dissolve verts
-        ["VERT", {16, 20, 22, 23, 25}, "testCubeDissolveVerts", "expectedCubeDissolveVerts", "dissolve_verts", {}],
+        ["VERT", {16, 20, 22, 23, 25}, "CubeDissolveVerts",  "testCubeDissolveVerts", "expectedCubeDissolveVerts", "dissolve_verts", {}],
 
         # duplicate
-        ["VERT", {i for i in range(33)} - {23}, "testConeDuplicateVertices", "expectedConeDuplicateVertices",
+        ["VERT", {i for i in range(33)} - {23}, "ConeDuplicateVertices",  "testConeDuplicateVertices", "expectedConeDuplicateVertices",
          "duplicate", {}],
-        ["VERT", {23}, "testConeDuplicateOneVertex", "expectedConeDuplicateOneVertex", "duplicate", {}],
-        ["FACE", {6, 9}, "testConeDuplicateFaces", "expectedConeDuplicateFaces", "duplicate", {}],
-        ["EDGE", {i for i in range(64)}, "testConeDuplicateEdges", "expectedConeDuplicateEdges", "duplicate", {}],
+        ["VERT", {23}, "ConeDuplicateOneVertex",  "testConeDuplicateOneVertex", "expectedConeDuplicateOneVertex", "duplicate", {}],
+        ["FACE", {6, 9}, "ConeDuplicateFaces",  "testConeDuplicateFaces", "expectedConeDuplicateFaces", "duplicate", {}],
+        ["EDGE", {i for i in range(64)}, "ConeDuplicateEdges",  "testConeDuplicateEdges", "expectedConeDuplicateEdges", "duplicate", {}],
 
         ### 20
         # edge collapse
-        ["EDGE", {1, 9, 4}, "testCylinderEdgeCollapse", "expectedCylinderEdgeCollapse", "edge_collapse", {}],
+        ["EDGE", {1, 9, 4}, "CylinderEdgeCollapse",  "testCylinderEdgeCollapse", "expectedCylinderEdgeCollapse", "edge_collapse", {}],
 
         # edge face add
-        ["VERT", {1, 3, 4, 5, 7}, "testCubeEdgeFaceAddFace", "expectedCubeEdgeFaceAddFace", "edge_face_add", {}],
-        ["VERT", {4, 5}, "testCubeEdgeFaceAddEdge", "expectedCubeEdgeFaceAddEdge", "edge_face_add", {}],
+        ["VERT", {1, 3, 4, 5, 7}, "CubeEdgeFaceAddFace",  "testCubeEdgeFaceAddFace", "expectedCubeEdgeFaceAddFace", "edge_face_add", {}],
+        ["VERT", {4, 5}, "CubeEdgeFaceAddEdge",  "testCubeEdgeFaceAddEdge", "expectedCubeEdgeFaceAddEdge", "edge_face_add", {}],
 
         # edge rotate
-        ["EDGE", {1}, "testCubeEdgeRotate", "expectedCubeEdgeRotate", "edge_rotate", {}],
+        ["EDGE", {1}, "CubeEdgeRotate",  "testCubeEdgeRotate", "expectedCubeEdgeRotate", "edge_rotate", {}],
 
         # edge split
-        ["EDGE", {2, 5, 8, 11, 14, 17, 20, 23}, "testCubeEdgeSplit", "expectedCubeEdgeSplit", "edge_split", {}],
+        ["EDGE", {2, 5, 8, 11, 14, 17, 20, 23}, "CubeEdgeSplit",  "testCubeEdgeSplit", "expectedCubeEdgeSplit", "edge_split", {}],
 
         ### 25
         # face make planar
-        ["FACE", {i for i in range(500)}, "testMonkeyFaceMakePlanar", "expectedMonkeyFaceMakePlanar",
+        ["FACE", {i for i in range(500)}, "MonkeyFaceMakePlanar",  "testMonkeyFaceMakePlanar", "expectedMonkeyFaceMakePlanar",
          "face_make_planar", {}],
 
         # face split by edges
-        ["VERT", {i for i in range(6)}, "testPlaneFaceSplitByEdges", "expectedPlaneFaceSplitByEdges",
+        ["VERT", {i for i in range(6)}, "PlaneFaceSplitByEdges",  "testPlaneFaceSplitByEdges", "expectedPlaneFaceSplitByEdges",
          "face_split_by_edges", {}],
 
         # fill
-        ["EDGE", {20, 21, 22, 23, 24, 45, 46, 47, 48, 49}, "testIcosphereFill", "expectedIcosphereFill",
+        ["EDGE", {20, 21, 22, 23, 24, 45, 46, 47, 48, 49}, "IcosphereFill",  "testIcosphereFill", "expectedIcosphereFill",
          "fill", {}],
-        ["EDGE", {20, 21, 22, 23, 24, 45, 46, 47, 48, 49}, "testIcosphereFillUseBeautyFalse",
+        ["EDGE", {20, 21, 22, 23, 24, 45, 46, 47, 48, 49}, "IcosphereFillUseBeautyFalse",  "testIcosphereFillUseBeautyFalse",
          "expectedIcosphereFillUseBeautyFalse", "fill", {"use_beauty": False}],
 
         # fill grid
-        ["EDGE", {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15}, "testPlaneFillGrid", "expectedPlaneFillGrid",
+        ["EDGE", {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15}, "PlaneFillGrid",  "testPlaneFillGrid", "expectedPlaneFillGrid",
          "fill_grid", {}],
-        ["EDGE", {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15}, "testPlaneFillGridSimpleBlending",
+        ["EDGE", {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15}, "PlaneFillGridSimpleBlending",  "testPlaneFillGridSimpleBlending",
          "expectedPlaneFillGridSimpleBlending", "fill_grid", {"use_interp_simple": True}],
 
         ### 31
         # fill holes
-        ["VERT", {i for i in range(481)}, "testSphereFillHoles", "expectedSphereFillHoles", "fill_holes", {"sides": 9}],
+        ["VERT", {i for i in range(481)}, "SphereFillHoles",  "testSphereFillHoles", "expectedSphereFillHoles", "fill_holes", {"sides": 9}],
 
         # inset faces
-        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95}, "testCubeInset",
+        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95}, "CubeInset",  "testCubeInset",
          "expectedCubeInset", "inset", {"thickness": 0.2}],
-        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95},
+        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95}, "CubeInsetEvenOffsetFalse",
          "testCubeInsetEvenOffsetFalse", "expectedCubeInsetEvenOffsetFalse",
          "inset", {"thickness": 0.2, "use_even_offset": False}],
-        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95}, "testCubeInsetDepth",
+        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95}, "CubeInsetDepth",  "testCubeInsetDepth",
          "expectedCubeInsetDepth", "inset", {"thickness": 0.2, "depth": 0.2}],
-        ["FACE", {35, 36, 37, 45, 46, 47, 55, 56, 57}, "testGridInsetRelativeOffset", "expectedGridInsetRelativeOffset",
+        ["FACE", {35, 36, 37, 45, 46, 47, 55, 56, 57}, "GridInsetRelativeOffset",  "testGridInsetRelativeOffset", "expectedGridInsetRelativeOffset",
          "inset", {"thickness": 0.4, "use_relative_offset": True}],
-         ]
+    ]
 
     operators_test = OperatorTest(tests)
 

@@ -29,7 +29,7 @@ from modules.mesh_test import ModifierTest, PhysicsSpec
 
 def main():
     test = [
-        ["testCloth", "expectedCloth",
+        ["ClothSimple", "testCloth", "expectedCloth",
          [PhysicsSpec('Cloth', 'CLOTH', {'quality': 5}, 35)]],
     ]
     cloth_test = ModifierTest(test, threshold=1e-3)
