@@ -600,12 +600,12 @@ class AddPresetOperator(AddPresetBase, Operator):
         prefix, suffix = operator.split("_OT_", 1)
         return os.path.join("operator", "%s.%s" % (prefix.lower(), suffix))
 
-class AddPresetCustomMenu(AddPresetBase, Operator):
-    """Add or remove a custom menu"""
-    bl_idname = "wm.custom_menu_preset_add"
+class AddPresetUserMenus(AddPresetBase, Operator):
+    """Add or remove an user menu"""
+    bl_idname = "wm.user_menus_preset_add"
     bl_label = "Add Custom Menu Preset"
     preset_menu = "USERPREF_MT_menu_select"
-    preset_subdir = "custom_menu_editor"
+    preset_subdir = "user_menus_editor"
 
     def add(self, _context, filepath):
         bpy.ops.preferences.keyconfig_export(filepath=filepath)

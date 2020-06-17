@@ -1139,11 +1139,11 @@ class PREFERENCES_OT_studiolight_show(Operator):
         return {'FINISHED'}
 
 # -----------------------------------------------------------------------------
-# Custom Menus Operators
+# User Menus Operators
 
-class PREFERENCES_OT_custommenu_select(Operator):
-    bl_idname = "preferences.custommenu_select"
-    bl_label = "select custom menu to edit"
+class PREFERENCES_OT_usermenus_select(Operator):
+    bl_idname = "preferences.usermenus_select"
+    bl_label = "select user menu to edit"
 
     filepath: StringProperty(
         subtype='FILE_PATH',
@@ -1162,10 +1162,10 @@ class PREFERENCES_OT_menuitem_add(Operator):
 
     def execute(self, context):
         prefs = context.preferences
-        cm = prefs.custom_menu
+        um = prefs.user_menus
 
         
-        cm.item_add(context=cm.cm_context_selected, spacetype=cm.cm_space_selected)
+        um.item_add()
         context.preferences.is_dirty = True
         return {'FINISHED'}
 
@@ -1182,14 +1182,64 @@ class PREFERENCES_OT_menuitem_remove(Operator):
 
     @classmethod
     def poll(cls, context):
-        return True#hasattr(context, "keymap")
+        prefs = context.preferences
+        um = prefs.user_menus
+        can_remove = um.sitem_id() >= 0
+        return can_remove
 
     def execute(self, context):
         prefs = context.preferences
-        cm = prefs.custom_menu
+        um = prefs.user_menus
+        um.item_remove()
+        context.preferences.is_dirty = True
+        return {'FINISHED'}
 
-        
-        cm.item_remove(context=cm.cm_context_selected, spacetype=cm.cm_space_selected, index=(cm.item_selected()))
+class PREFERENCES_OT_menuitem_up(Operator):
+    """move up an user menu item"""
+    bl_idname = "preferences.menuitem_up"
+    bl_label = "Move Up An User Menu Item"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to remove",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+        can_move_up = um.sitem_id() > 0
+        return can_move_up
+
+    def execute(self, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+        um.item_move(up=True)
+        context.preferences.is_dirty = True
+        return {'FINISHED'}
+
+class PREFERENCES_OT_menuitem_down(Operator):
+    """move up an user menu item"""
+    bl_idname = "preferences.menuitem_down"
+    bl_label = "Move Up An User Menu Item"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to remove",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+        id = um.sitem_id()
+        can_move_down = id >= 0 and id + 1 < um.items_len()
+        return can_move_down
+
+    def execute(self, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+        um.item_move(up=False)
         context.preferences.is_dirty = True
         return {'FINISHED'}
 
@@ -1219,7 +1269,9 @@ classes = (
     PREFERENCES_OT_studiolight_uninstall,
     PREFERENCES_OT_studiolight_copy_settings,
     PREFERENCES_OT_studiolight_show,
-    PREFERENCES_OT_custommenu_select,
+    PREFERENCES_OT_usermenus_select,
     PREFERENCES_OT_menuitem_add,
     PREFERENCES_OT_menuitem_remove,
+    PREFERENCES_OT_menuitem_up,
+    PREFERENCES_OT_menuitem_down,
 )

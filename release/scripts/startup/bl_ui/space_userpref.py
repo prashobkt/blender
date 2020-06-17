@@ -1671,28 +1671,28 @@ class USERPREF_PT_keymap(KeymapPanel, Panel):
 # -----------------------------------------------------------------------------
 # Custom Menu Editor Panels
 
-class CustomMenuPanel:
+class UserMenusPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
-    bl_context = "custom_menu"
+    bl_context = "user_menus"
 
 class USERPREF_MT_menu_select(Menu):
     bl_label = "Menu select"
-    preset_subdir = "custom_menu_editor"
-    preset_operator = "preferences.custommenu_select"
+    preset_subdir = "user_menus_editor"
+    preset_operator = "preferences.usermenus_select"
 
     def draw(self, context):
         Menu.draw_preset(self, context)
 
-class USERPREF_PT_custom_menu(CustomMenuPanel, Panel):
-    bl_label = "custom_menu"
+class USERPREF_PT_user_menus(UserMenusPanel, Panel):
+    bl_label = "user_menus"
     bl_options = {'HIDE_HEADER'}
 
     def draw(self, context):
-        from rna_custom_menu_ui import draw_custom_menu
+        from rna_user_menus_ui import draw_user_menus
 
         layout = self.layout
-        draw_custom_menu(context, layout)
+        draw_user_menus(context, layout)
 
 # -----------------------------------------------------------------------------
 # Add-On Panels
@@ -2247,7 +2247,7 @@ classes = (
 
     USERPREF_PT_keymap,
     USERPREF_MT_menu_select,
-    USERPREF_PT_custom_menu,
+    USERPREF_PT_user_menus,
     USERPREF_PT_addons,
 
     USERPREF_PT_studiolight_lights,

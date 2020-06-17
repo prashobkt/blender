@@ -50,6 +50,7 @@ bUserMenu *BKE_blender_user_menu_ensure(ListBase *lb, char space_type, const cha
 {
   bUserMenu *um = BKE_blender_user_menu_find(lb, space_type, context);
   if (um == NULL) {
+
     um = MEM_callocN(sizeof(bUserMenu), __func__);
     um->space_type = space_type;
     STRNCPY(um->context, context);
@@ -87,7 +88,8 @@ bUserMenuItem *BKE_blender_user_menu_item_add(ListBase *lb, int type)
 
   bUserMenuItem *umi = MEM_callocN(size, __func__);
   umi->type = type;
-  BLI_addtail(lb, umi);
+  if (lb)
+    BLI_addtail(lb, umi);
   return umi;
 }
 

@@ -167,6 +167,7 @@ void ED_screen_user_menu_item_add_operator(ListBase *lb,
   if (!STREQ(ui_name, ot->name)) {
     STRNCPY(umi_op->item.ui_name, ui_name);
   }
+  IDProperty *properties;
   STRNCPY(umi_op->op_idname, ot->idname);
   umi_op->prop = prop ? IDP_CopyProperty(prop) : NULL;
 }
@@ -181,7 +182,8 @@ void ED_screen_user_menu_item_add_menu(ListBase *lb, const char *ui_name, const 
   STRNCPY(umi_mt->mt_idname, mt->idname);
 }
 
-void ED_screen_user_menu_item_add_prop(ListBase *lb,
+void ED_screen_user_menu_item_add_prop(bContext *C,
+                                       ListBase *lb,
                                        const char *ui_name,
                                        const char *context_data_path,
                                        const char *prop_id,
@@ -193,6 +195,41 @@ void ED_screen_user_menu_item_add_prop(ListBase *lb,
   STRNCPY(umi_pr->context_data_path, context_data_path);
   STRNCPY(umi_pr->prop_id, prop_id);
   umi_pr->prop_index = prop_index;
+
+  /* Copy current context name into ui_name if null */
+  if (ui_name && ui_name[0] != '\0') return;
+  char *data_path = strchr(umi_pr->context_data_path, '.');
+  if (data_path) {
+    *data_path = '\0';
+  }
+
+  PointerRNA ptr = CTX_data_pointer_get(C, umi_pr->context_data_path);
+  if (ptr.type == NULL) {
+    PointerRNA ctx_ptr;
+    RNA_pointer_create(NULL, &RNA_Context, (void *)C, &ctx_ptr);
+    if (!RNA_path_resolve_full(&ctx_ptr, umi_pr->context_data_path, &ptr, NULL, NULL)) {
+      ptr.type = NULL;
+    }
+  }
+  if (data_path) {
+    *data_path = '.';
+     data_path += 1;
+  }
+
+  if (ptr.type != NULL) {
+    PropertyRNA *prop = NULL;
+    PointerRNA prop_ptr = ptr;
+     if ((data_path == NULL) ||
+         RNA_path_resolve_full(&ptr, data_path, &prop_ptr, NULL, NULL)) {
+      prop = RNA_struct_find_property(&prop_ptr, umi_pr->prop_id);
+
+     }
+     if (prop) {
+      char *name = RNA_property_ui_name(prop);
+      BLI_strncpy(umi_pr->item.ui_name, name, FILE_MAX);
+    }
+
+  }
 }
 
 void ED_screen_user_menu_item_remove(ListBase *lb, bUserMenuItem *umi)

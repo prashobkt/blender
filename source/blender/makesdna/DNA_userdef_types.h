@@ -881,12 +881,12 @@ typedef struct UserDef {
   struct WalkNavigation walk_navigation;
 
   /** custom menu **/
-  short cmspaceselect;
-  short cmcontextselect;
-  short cmitemselect;
-  short cmitemtype;
-  char cmitemname[64];
-  char cmitemop[64];
+  short um_space_select;
+  short um_context_select;
+  short um_item_select;
+  short um_item_type;
+  char um_item_name[64];
+  char um_item_op[64];
 
   /** The UI for the user preferences. */
   UserDef_SpaceData space_data;
@@ -917,7 +917,7 @@ typedef enum eUserPref_Section {
   USER_SECTION_ADDONS = 6,
   USER_SECTION_LIGHT = 7,
   USER_SECTION_KEYMAP = 8,
-  USER_SECTION_CUSTOM_MENU = 9,
+  USER_SECTION_USER_MENUS = 9,
 #ifdef WITH_USERDEF_WORKSPACES
   USER_SECTION_WORKSPACE_CONFIG = 10,
   USER_SECTION_WORKSPACE_ADDONS = 11,

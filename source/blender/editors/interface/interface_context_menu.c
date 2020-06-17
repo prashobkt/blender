@@ -435,7 +435,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
     }
     const char *prop_id = RNA_property_identifier(but->rnaprop);
     /* Note, ignore 'drawstr', use property idname always. */
-    ED_screen_user_menu_item_add_prop(&um->items, "", member_id_data_path, prop_id, but->rnaindex);
+    ED_screen_user_menu_item_add_prop(C, &um->items, "", member_id_data_path, prop_id, but->rnaindex);
     if (data_path) {
       MEM_freeN((void *)data_path);
     }
