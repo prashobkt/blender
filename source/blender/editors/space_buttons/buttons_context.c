@@ -102,6 +102,20 @@ static PointerRNA *get_pointer_type(ButsContextPath *path, StructRNA *type)
 
 /************************* Creating the Path ************************/
 
+void ED_buttons_set_context(const bContext *C, const short context)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+      if (sl->spacetype == SPACE_PROPERTIES) {
+        SpaceProperties *sbuts = (SpaceProperties *)sl;
+        sbuts->mainbuser = context;
+        sbuts->mainb = sbuts->mainbuser;
+      }
+    }
+  }
+}
+
 static int buttons_context_path_scene(ButsContextPath *path)
 {
   PointerRNA *ptr = &path->ptr[path->len - 1];

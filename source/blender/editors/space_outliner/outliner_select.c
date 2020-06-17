@@ -54,6 +54,7 @@
 #include "DEG_depsgraph_build.h"
 
 #include "ED_armature.h"
+#include "ED_buttons.h"
 #include "ED_gpencil.h"
 #include "ED_object.h"
 #include "ED_outliner.h"
@@ -515,11 +516,13 @@ static eOLDrawState tree_element_active_material(bContext *C,
      * Note that RNA material update does it too, see e.g. rna_MaterialSlot_update(). */
     DEG_id_tag_update((ID *)ob, ID_RECALC_TRANSFORM);
     WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_LINKS, NULL);
+
+    ED_buttons_set_context(C, BCONTEXT_MATERIAL);
   }
   return OL_DRAWSEL_NONE;
 }
 
-static eOLDrawState tree_element_active_camera(bContext *UNUSED(C),
+static eOLDrawState tree_element_active_camera(bContext *C,
                                                Scene *scene,
                                                ViewLayer *UNUSED(view_layer),
                                                TreeElement *te,
@@ -528,6 +531,7 @@ static eOLDrawState tree_element_active_camera(bContext *UNUSED(C),
   Object *ob = (Object *)outliner_search_back(te, ID_OB);
 
   if (set != OL_SETSEL_NONE) {
+    ED_buttons_set_context(C, BCONTEXT_DATA);
     return OL_DRAWSEL_NONE;
   }
   else {
@@ -559,6 +563,7 @@ static eOLDrawState tree_element_active_world(bContext *C,
     if (sce && scene != sce) {
       WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), sce);
     }
+    ED_buttons_set_context(C, BCONTEXT_WORLD);
   }
 
   if (tep == NULL || tselem->id == (ID *)scene) {
@@ -853,7 +858,7 @@ static eOLDrawState tree_element_active_modifier(bContext *C,
 
     WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
-    // XXX      extern_set_butspace(F9KEY, 0);
+    ED_buttons_set_context(C, BCONTEXT_MODIFIER);
   }
 
   return OL_DRAWSEL_NONE;

@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+struct bContext;
+
+void ED_buttons_set_context(const struct bContext *C, const short context);
+
 #ifdef __cplusplus
 }
 #endif
