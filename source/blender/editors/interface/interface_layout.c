@@ -140,7 +140,7 @@ enum {
    * Enabled by default, depends on 'UI_ITEM_PROP_SEP'. */
   UI_ITEM_PROP_DECORATE = 1 << 5,
   UI_ITEM_PROP_DECORATE_NO_PAD = 1 << 6,
-  UI_ITEM_USE_SEARCH_FILTER = 1 << 7, /* HANS-TODO: Expose to RNA, comment. */
+  UI_ITEM_USE_SEARCH_FILTER = 1 << 7,
 };
 
 typedef struct uiButtonItem {
