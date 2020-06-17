@@ -94,7 +94,7 @@ template<
      * that (unlike vector) initializing a map has a O(n) cost in the number of slots.
      *
      * When Key or Value are large, the small buffer optimization is disabled by default to avoid
-     * large unexpected allocations on the stack. It can still be enabled explicitely though.
+     * large unexpected allocations on the stack. It can still be enabled explicitly though.
      */
     uint32_t InlineBufferCapacity = (sizeof(Key) + sizeof(Value) < 100) ? 4 : 0,
     /**
@@ -470,7 +470,7 @@ class Map {
                         const ModifyValueF &modify_value) -> decltype(create_value(nullptr))
   {
     return this->add_or_modify__impl(
-        std::forward<Key>(key), create_value, modify_value, m_hash(key));
+        std::forward<ForwardKey>(key), create_value, modify_value, m_hash(key));
   }
 
   /**
@@ -641,7 +641,7 @@ class Map {
    */
   template<typename FuncT> void foreach_item(const FuncT &func) const
   {
-    uint32_t size = this->size();
+    uint32_t size = m_slots.size();
     for (uint32_t i = 0; i < size; i++) {
       const Slot &slot = m_slots[i];
       if (slot.is_occupied()) {
@@ -1175,7 +1175,7 @@ class Map {
   bool add_overwrite__impl(ForwardKey &&key, ForwardValue &&value, uint32_t hash)
   {
     auto create_func = [&](Value *ptr) {
-      new (ptr) Value(std::forward<ForwardValue>(value));
+      new ((void *)ptr) Value(std::forward<ForwardValue>(value));
       return true;
     };
     auto modify_func = [&](Value *ptr) {
