@@ -111,8 +111,11 @@ void ED_buttons_set_context(const bContext *C, const short context)
 
     if (sl->spacetype == SPACE_PROPERTIES) {
       SpaceProperties *sbuts = (SpaceProperties *)sl;
-      sbuts->mainbuser = context;
-      sbuts->mainb = sbuts->mainbuser;
+
+      if (!sbuts->pinid) {
+        sbuts->mainbuser = context;
+        sbuts->mainb = sbuts->mainbuser;
+      }
     }
   }
 }
