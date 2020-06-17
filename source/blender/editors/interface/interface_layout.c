@@ -5073,6 +5073,7 @@ int uiLayoutGetEmboss(uiLayout *layout)
 
 static void ui_layout_free(uiLayout *layout);
 
+#ifdef DEBUG_LAYOUT_ROOTS
 /* Keep order the same as enum above. */
 const char *item_type_names[12] = {
     "Button",      /* ITEM_BUTTON */
@@ -5142,6 +5143,7 @@ static void debug_print_layout(uiItem *item, int depth)
     }
   }
 }
+#endif /* DEBUG_LAYOUT_ROOTS */
 
 /**
  * Free all layouts except if a child layout has a
@@ -5346,9 +5348,11 @@ static bool ui_block_search_layout(uiBlock *block)
     }
   }
 
-  LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
+#ifdef DEBUG_LAYOUT_ROOTS
+  LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
     debug_print_layout((uiItem *)root->layout, 0);
   }
+#endif
 
   /* Set empty flags. */
   if (block->panel != NULL) {

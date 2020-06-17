@@ -1698,17 +1698,20 @@ static void ui_but_predefined_extra_operator_icons_add(uiBut *but)
 
 void UI_block_update_from_old(const bContext *C, uiBlock *block)
 {
-  if (block->oldblock == NULL) {
+  uiBut *but_old;
+  uiBut *but;
+
+  if (!block->oldblock) {
     return;
   }
 
-  uiBut *but_old = block->oldblock->buttons.first;
+  but_old = block->oldblock->buttons.first;
 
   if (BLI_listbase_is_empty(&block->oldblock->butstore) == false) {
     UI_butstore_update(block);
   }
 
-  for (uiBut *but = block->buttons.first; but; but = but->next) {
+  for (but = block->buttons.first; but; but = but->next) {
     if (ui_but_update_from_old_block(C, block, &but, &but_old)) {
       ui_but_update(but);
 
@@ -3364,7 +3367,6 @@ void UI_block_region_set(uiBlock *block, ARegion *region)
 
 uiBlock *UI_block_begin(const bContext *C, ARegion *region, const char *name, short dt)
 {
-  // printf("UI_BLOCK_BEGIN\n");
   uiBlock *block;
   wmWindow *window;
   Scene *scn;
@@ -3377,15 +3379,12 @@ uiBlock *UI_block_begin(const bContext *C, ARegion *region, const char *name, sh
   block->active = 1;
   block->dt = dt;
   block->evil_C = (void *)C; /* XXX */
+
+  /* Set the search filter int he properties area. */
   if ((region && region->regiontype == RGN_TYPE_WINDOW) &&
       (area && area->spacetype == SPACE_PROPERTIES)) {
-    /* HANS-TODO: Generalize. */
     SpaceProperties *sbuts = CTX_wm_space_properties(C);
     block->search_filter = sbuts->search_string;
-    // printf("  Adding search string: %s\n", block->search_filter);
-  }
-  else {
-    block->search_filter = NULL;
   }
 
   if (scn) {

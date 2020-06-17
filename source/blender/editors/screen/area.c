@@ -2379,7 +2379,6 @@ static void ed_panel_draw(const bContext *C,
 
   bool open;
   panel = UI_panel_begin(area, region, lb, block, pt, panel, &open);
-  panel->runtime.block = block;
 
   /* bad fixed values */
   int xco, yco, h = 0;

@@ -79,8 +79,7 @@ enum {
   UI_HAS_ICON = (1 << 3),
   UI_HIDDEN = (1 << 4),
   UI_SELECT_DRAW = (1 << 5), /* Display selected, doesn't impact interaction. */
-  /** Filtered by the search string */
-  UI_FILTERED = (1 << 12),
+  UI_FILTERED = (1 << 12),   /* Filtered by the search string, removed if in a layout. */
   /* warn: rest of uiBut->flag in UI_interface.h */
 };
 
