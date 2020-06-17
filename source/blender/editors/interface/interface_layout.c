@@ -5071,6 +5071,9 @@ int uiLayoutGetEmboss(uiLayout *layout)
 /** \name Block Layout Search Filtering
  * \{ */
 
+// #define PROPERTY_SEARCH_USE_TOOLTIPS
+// #define DEBUG_LAYOUT_ROOTS
+
 static void ui_layout_free(uiLayout *layout);
 
 #ifdef DEBUG_LAYOUT_ROOTS
@@ -5192,8 +5195,11 @@ static bool ui_block_search_filter_tag_buttons(uiBlock *block)
 
     /* Do the shorter check first, in case the check returns true. */
     if (BLI_strcasestr(but->str, block->search_filter) ||
-        BLI_strcasestr(RNA_property_ui_name(but->rnaprop), block->search_filter) ||
-        BLI_strcasestr(RNA_property_description(but->rnaprop), block->search_filter)) {
+        BLI_strcasestr(RNA_property_ui_name(but->rnaprop), block->search_filter)
+#ifdef PROPERTY_SEARCH_USE_TOOLTIPS
+        || BLI_strcasestr(RNA_property_description(but->rnaprop), block->search_filter)
+#endif
+    ) {
       continue;
     }
 
@@ -5242,9 +5248,52 @@ static void move_button_to_search_filter_layout(uiItem *item,
   }
 }
 
+/**
+ * Check for an expanded / aligned row or column, and move the buttons over to the property search
+ * layout if the special case applies. Assumes all filtered buttons have already been removed.
+ *
+ * \return True if this special case applied and the function did anything.
+ */
+static bool move_aligned_layout_special_case(uiLayout *labels,
+                                             uiLayout *properties,
+                                             uiLayout *layout)
+{
+  /* Check for simple special case conditions. */
+  if (!layout->align || !ELEM(((uiItem *)layout)->type, ITEM_LAYOUT_ROW)) {
+    return false;
+  }
+
+  /* Only apply the special case if there are no sublayouts. */
+  LISTBASE_FOREACH (uiItem *, item, &layout->items) {
+    if (item->type != ITEM_BUTTON) {
+      return false;
+    }
+  }
+
+  /* Add a label to the label column based on the first button. */
+  uiButtonItem *button_item = (uiButtonItem *)layout->items.first;
+  char name[MAX_NAME];
+  strcpy(name, RNA_property_ui_name(button_item->but->rnaprop));
+  uiItemL(labels, name, ICON_NONE);
+
+  /* Move the buttons to a subrow of the search layout. */
+  uiLayout *aligned_row = uiLayoutRow(properties, true);
+  LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
+    BLI_assert(item->type == ITEM_BUTTON);
+
+    /* Move the item. */
+    BLI_remlink(&layout->items, item);
+    BLI_addtail(&aligned_row->items, item);
+  }
+
+  return true;
+}
+
+/* HANS-TODO: Use uiLayoutRowWithHeading instead of keeping track of labels
+ * and properties separately. */
+
 static bool ui_search_layout_fill(uiLayout *labels, uiLayout *properties, uiLayout *layout)
 {
-  // printf("UI_LAYOUT_SEARCH_FILTER_CLEAN\n");
   BLI_assert(layout->item.type != ITEM_BUTTON);
 
   /* Don't affect the search layouts. */
@@ -5252,36 +5301,53 @@ static bool ui_search_layout_fill(uiLayout *labels, uiLayout *properties, uiLayo
     return true;
   }
 
-  if ((layout->item.flag & UI_ITEM_USE_SEARCH_FILTER) == 0) {
+  if (!(layout->item.flag & UI_ITEM_USE_SEARCH_FILTER)) {
     return false;
   }
 
   bool empty = true;
 
-  /* Remove filtered button items. */
+  /* Remove filtered buttons, checking if the layout will be empty without them. */
   LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
     if (item->type == ITEM_BUTTON) {
       uiButtonItem *button_item = (uiButtonItem *)item;
-
-      /* Free item and the button if it has been filtered. */
       if (button_item->but->flag & UI_FILTERED) {
         button_item->but->flag |= UI_HIDDEN;
         BLI_remlink(&layout->items, item);
         MEM_freeN(item);
       }
       else {
-        move_button_to_search_filter_layout(item, layout, labels, properties);
         empty = false;
       }
     }
-    else {
-      /* If this item isn't a button it may contain other items, so recursively search them. */
-      uiLayout *child_layout = (uiLayout *)item;
-      empty &= ui_search_layout_fill(labels, properties, child_layout);
+  }
+
+  /* Move the remaining filtered items to the property search layout. */
+  if (empty) {
+    /* Pass and move on to the sublayouts. */
+  }
+  else if (move_aligned_layout_special_case(labels, properties, layout)) {
+  }
+  else {
+    /* General case. */
+    LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
+      if (item->type == ITEM_BUTTON) {
+        uiButtonItem *button_item = (uiButtonItem *)item;
+        BLI_assert(!(button_item->but->flag & UI_FILTERED)); /* Filtered buttons removed above. */
+
+        move_button_to_search_filter_layout(item, layout, labels, properties);
+      }
     }
   }
 
-  /* Also filter buttons in the #child_items_layout. */
+  /* All the button items have been moved, next deal with the sublayouts. */
+  LISTBASE_FOREACH (uiItem *, item, &layout->items) {
+    BLI_assert(item->type != ITEM_BUTTON);
+    uiLayout *child_layout = (uiLayout *)item;
+    empty &= ui_search_layout_fill(labels, properties, child_layout);
+  }
+
+  /* Also filter buttons in the "child layout". */
   if (layout->child_items_layout != NULL) {
     empty &= ui_search_layout_fill(labels, properties, layout->child_items_layout);
   }

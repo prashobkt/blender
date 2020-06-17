@@ -1500,7 +1500,6 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   if (drag) {
     /* while we are dragging, we sort on location and update sortorder */
     if (align == BUT_VERTICAL) {
-      printf("FIND HIGHEST PANEL\n");
       qsort(panelsort, tot, sizeof(PanelSort), find_highest_panel);
     }
     else {
