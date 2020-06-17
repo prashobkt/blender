@@ -911,7 +911,7 @@ static void do_cdt(CDT_data &cd)
     }
   }
   cdt_in.epsilon = 0; /* TODO: needs attention for non-exact T. */
-  cd.cdt_out = blender::delaunay_2d_calc(cdt_in, CDT_INSIDE);
+  cd.cdt_out = blender::meshintersect::delaunay_2d_calc(cdt_in, CDT_INSIDE);
   if (dbg_level > 0) {
     std::cout << "\nCDT result\nVerts:\n";
     for (uint i = 0; i < cd.cdt_out.vert.size(); ++i) {

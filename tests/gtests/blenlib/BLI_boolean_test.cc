@@ -62,6 +62,43 @@ class BT_input {
   Boolean_trimesh_input m_bti;
 };
 
+class BP_input {
+ public:
+  blender::meshintersect::PolyMesh polymesh;
+
+  BP_input(const char *spec)
+  {
+    std::istringstream ss(spec);
+    std::string line;
+    getline(ss, line);
+    std::istringstream hdrss(line);
+    int nv, nf;
+    hdrss >> nv >> nf;
+    polymesh.vert = blender::Array<blender::mpq3>(nv);
+    polymesh.face = blender::Array<blender::Array<int>>(nf);
+    if (nv > 0 && nf > 0) {
+      int i = 0;
+      while (i < nv && getline(ss, line)) {
+        std::istringstream iss(line);
+        iss >> polymesh.vert[i][0] >> polymesh.vert[i][1] >> polymesh.vert[i][2];
+        ++i;
+      }
+      i = 0;
+      while (i < nf && getline(ss, line)) {
+        std::istringstream tss(line);
+        blender::Vector<int> f;
+        int v;
+        while (tss >> v) {
+          f.append(v);
+        }
+        polymesh.face[i] = blender::Array<int>(f.size());
+        std::copy(f.begin(), f.end(), polymesh.face[i].begin());
+        ++i;
+      }
+    }
+  }
+};
+
 /* Some contrasting colors to use for distinguishing triangles. */
 static const char *drawcolor[] = {
     "0.67 0.14 0.14", /* red */
@@ -253,7 +290,6 @@ TEST(eboolean, CubeTet)
   }
   BLI_boolean_trimesh_free(out);
 }
-#endif
 
 TEST(eboolean, BinaryTetTet)
 {
@@ -287,4 +323,45 @@ TEST(eboolean, BinaryTetTet)
     write_obj(out, "binary_tettet_isect");
   }
   BLI_boolean_trimesh_free(out);
+}
+#endif
+
+TEST(eboolean, PolyCubeCube)
+{
+  const char *spec = R"(16 12
+  -1 -1 -1
+  -1 -1 1
+  -1 1 1
+  -1 1 -1
+  1 1 1
+  1 1 -1
+  1 -1 1
+  1 -1 -1
+  0.5 0.5 0.5
+  0.5 0.5 2.5
+  0.5 2.5 2.5
+  0.5 2.5 0.5
+  2.5 2.5 2.5
+  2.5 2.5 0.5
+  2.5 0.5 2.5
+  2.5 0.5 0.5
+  0 2 6 4
+  0 4 5 1
+  4 6 7 5
+  6 2 3 7
+  2 0 1 3
+  1 5 7 3
+  8 10 14 12
+  8 12 13 9
+  12 14 15 13
+  14 10 11 15
+  10 8 9 11
+  9 13 15 11
+  )";
+
+  BP_input bpi(spec);
+  std::cout << "bpi " << bpi.polymesh.vert.size() << " " << bpi.polymesh.face.size() << "\n";
+  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
+      bpi.polymesh, BOOLEAN_ISECT, 1, [](int UNUSED(t)) { return 0; });
+  EXPECT_EQ(out.vert.size(), 8);
 }

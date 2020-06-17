@@ -55,6 +55,34 @@ void BLI_boolean_trimesh_free(Boolean_trimesh_output *output);
 
 #ifdef __cplusplus
 }
+
+#  include "BLI_array.hh"
+#  include "BLI_mesh_intersect.hh"
+#  include "BLI_mpq3.hh"
+#  include "BLI_optional.hh"
+#  include "gmpxx.h"
+
+namespace blender {
+namespace meshintersect {
+
+struct PolyMeshOrig {
+  Array<int> vert_orig;
+  Array<Array<int>> face_orig;
+  Array<Array<std::pair<int, int>>> edge_orig;
+};
+
+struct PolyMesh {
+  Array<mpq3> vert;
+  Array<Array<int>> face;
+  Optional<Array<Array<IndexedTriangle>>> triangulation;
+  Optional<PolyMeshOrig> orig;
+};
+
+PolyMesh boolean(PolyMesh &pm, int bool_optype, int nshapes, std::function<int(int)> shape_fn);
+
+}  // namespace meshintersect
+}  // namespace blender
+
 #endif
 
 #endif /* __BLI_BOOLEAN_H__ */

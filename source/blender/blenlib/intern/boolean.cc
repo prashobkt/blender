@@ -26,6 +26,7 @@
 #include "BLI_math.h"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_mpq3.hh"
+#include "BLI_optional.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
@@ -1238,13 +1239,47 @@ static TriMesh binary_boolean(const TriMesh &tm_in_a, const TriMesh &tm_in_b, in
   return nary_boolean(tm_in, bool_optype, 2, shape_fn);
 }
 
+/* Will add triangulation if it isn't already there. */
+static TriMesh trimesh_from_polymesh(PolyMesh &pm)
+{
+  TriMesh ans;
+  ans.vert = pm.vert;
+  if (pm.triangulation.has_value()) {
+    const Array<Array<IndexedTriangle>> &tri_arrays = pm.triangulation.value();
+    int tot_tri = 0;
+    for (const Array<IndexedTriangle> &a : tri_arrays) {
+      tot_tri += static_cast<int>(a.size());
+    }
+    ans.tri = Array<IndexedTriangle>(tot_tri);
+    int t = 0;
+    for (const Array<IndexedTriangle> &a : tri_arrays) {
+      for (uint i = 0; i < a.size(); ++i) {
+        ans.tri[t++] = a[i++];
+      }
+    }
+  }
+  else {
+    std::cout << "IMPLEMENT ME - triangulate polymesh\n";
+    // BLI_assert(false);
+    return ans;
+  }
+  return ans;
+}
+
+/* pm arg isn't const because will add triangulation if it is not there. */
+PolyMesh boolean(PolyMesh &pm, int bool_optype, int nshapes, std::function<int(int)> shape_fn)
+{
+  TriMesh tm = trimesh_from_polymesh(pm);
+  return PolyMesh();
+}
+
 }  // namespace meshintersect
 }  // namespace blender
 
 static blender::meshintersect::TriMesh trimesh_from_input(const Boolean_trimesh_input *in,
                                                           int side)
 {
-  constexpr int dbg_level = 0;
+  constexpr int dbg_level = 1;
   BLI_assert(in != nullptr);
   blender::meshintersect::TriMesh tm_in;
   tm_in.vert = blender::Array<blender::mpq3>(in->vert_len);
