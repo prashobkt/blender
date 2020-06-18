@@ -515,30 +515,21 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
             constraint_velo = min_add(constraint_velo, best_hit_vel);
           }
 
-          // Local velocity on the particle with the collider as reference point.
-          // Note that we only take into account the velocity of the collider in the normal
-          // direction as the other velocity will be negated again when moving back to the
-          // global reference frame.
-          float3 hit_normal_velo = float3::project(best_hit_vel, normal);
-
-          // --- old
-          // float3 local_velo = velocities[pindex] - hit_normal_velo;
-
-          // Add the dampening factor
-          // local_velo *= (1.0f - dampening);
-
-          // float normal_dot = dot_v3v3(normal, local_velo);
-
-          // float3 deflect_vel = local_velo - 2.0f * normal_dot * normal;
-
-          //--- old end
+          float3 hit_velo_normal = float3::project(best_hit_vel, normal);
 
           float3 part_velo_normal = float3::project(velocities[pindex], normal);
           float3 part_velo_tangent = velocities[pindex] - part_velo_normal;
 
-          part_velo_normal += hit_normal_velo;
+          float3 deflect_vel = part_velo_tangent - (part_velo_normal - hit_velo_normal);
 
-          float3 deflect_vel = part_velo_tangent - part_velo_normal;
+          if (dot_v3v3(best_hit_vel, velocities[pindex]) > 0.0f) {
+            // The collider were traveling in the same direction as the particle.
+            // We need to add the initial particle velocity back (in the normal direction) to get
+            // the final velocity.
+            // Otherwise, we would only get how much speed is gained from the collision.
+            deflect_vel += part_velo_normal;
+          }
+
           deflect_vel *= (1.0f - dampening);
 
           // print_v3("normal", normal);
@@ -550,15 +541,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           // print_v3("vel_local", local_velo);
           // print_v3("deflect_vel", deflect_vel);
           // print_v3("const vel", constraint_velo);
-
-          if (dot_v3v3(deflect_vel, normal) < 0) {
-            // TODO this is needed when a particle collides two times on an edge or vert...
-            // Perhaps there is a way to solve this more elegantly?
-            // This is bascially a safety check to see that we are actually moving away from the
-            // collider and not further into it.
-            deflect_vel *= -1.0f;
-            // printf("invert\n");
-          }
+          // printf("\n");
 
           float3 temp;
 
