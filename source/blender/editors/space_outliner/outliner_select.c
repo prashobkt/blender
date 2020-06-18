@@ -550,6 +550,18 @@ static eOLDrawState tree_element_active_curve(bContext *C,
   return OL_DRAWSEL_NONE;
 }
 
+static eOLDrawState tree_element_active_mesh(bContext *C,
+                                             Scene *UNUSED(scene),
+                                             ViewLayer *UNUSED(view_layer),
+                                             TreeElement *UNUSED(te),
+                                             const eOLSetState set)
+{
+  if (set != OL_SETSEL_NONE) {
+    ED_buttons_set_context(C, BCONTEXT_DATA);
+  }
+  return OL_DRAWSEL_NONE;
+}
+
 static eOLDrawState tree_element_active_world(bContext *C,
                                               Scene *scene,
                                               ViewLayer *UNUSED(sl),
@@ -1094,6 +1106,8 @@ eOLDrawState tree_element_active(bContext *C,
       return tree_element_active_camera(C, tvc->scene, tvc->view_layer, te, set);
     case ID_CU:
       return tree_element_active_curve(C, tvc->scene, tvc->view_layer, te, set);
+    case ID_ME:
+      return tree_element_active_mesh(C, tvc->scene, tvc->view_layer, te, set);
   }
   return OL_DRAWSEL_NONE;
 }
