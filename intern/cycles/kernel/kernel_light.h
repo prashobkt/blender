@@ -1216,8 +1216,11 @@ ccl_device float calc_importance(KernelGlobals *kg,
   }
 
   /* cos(theta') */
-  const float theta = fast_acosf(dot(axis, centroid_to_P_dir));
-  const float theta_prime = fmaxf(theta - theta_o - theta_u, 0.0f);
+  float cos_theta = fabsf(dot(axis, centroid_to_P_dir));
+  /* theta is the angle between the axis and the line between P and the centroid. There are two
+   * such angles so take the smaller one. */
+  const float theta = fast_acosf(cos_theta);
+  const float theta_prime = fminf(fmaxf(theta - theta_o - theta_u, 0.0f), theta_e);
   if (theta_prime >= theta_e) {
     return 0.0f;
   }
