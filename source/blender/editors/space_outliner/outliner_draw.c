@@ -1940,7 +1940,7 @@ static void outliner_draw_left_column_activation(const bContext *C,
                                                  TreeStoreElem *tselem)
 {
   uiBut *but;
-
+#ifdef OL_SCENE_CAMERA_TOGGLE
   if (tselem->type == 0 && te->idcode == ID_OB) {
     Object *ob = (Object *)tselem->id;
 
@@ -1990,7 +1990,8 @@ static void outliner_draw_left_column_activation(const bContext *C,
       UI_but_func_set(but, outliner_data_activate_fn, tselem, NULL);
     }
   }
-  else if (outliner_is_collection_tree_element(te)) {
+#endif
+  if (outliner_is_collection_tree_element(te)) {
     Collection *active_collection = CTX_data_layer_collection(C)->collection;
 
     const bool is_active_collection = active_collection ==
