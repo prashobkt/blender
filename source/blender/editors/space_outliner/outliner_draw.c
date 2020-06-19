@@ -1935,7 +1935,7 @@ static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void *UNUSED
 /* Draw icons for setting activation when in object mode */
 static void outliner_draw_left_column_activation(const bContext *C,
                                                  uiBlock *block,
-                                                 TreeViewContext *tvc,
+                                                 TreeViewContext *UNUSED(tvc),
                                                  TreeElement *te,
                                                  TreeStoreElem *tselem)
 {
