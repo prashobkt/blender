@@ -526,6 +526,9 @@ class QuickLiquid(Operator):
         # set color mapping field to show phi grid for liquid
         obj.modifiers[-2].domain_settings.coba_field = 'PHI'
 
+        # set display thickness to a lower value for more detailed display of phi grids
+        obj.modifiers[-2].domain_settings.display_thickness = 0.02
+
         # make the domain smooth so it renders nicely
         bpy.ops.object.shade_smooth()
 
