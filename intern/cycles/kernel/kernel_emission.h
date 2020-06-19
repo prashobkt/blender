@@ -349,14 +349,8 @@ ccl_device_noinline_cpu float3 indirect_background(KernelGlobals *kg,
   /* consider shading point at previous non-transparent bounce */
   float3 P_pick;
   float3 N_pick;
-  if (state->ray_t == 0.0f) {  // Non-transparent bounce
-    P_pick = emission_sd->P_pick;
-    N_pick = emission_sd->N_pick;
-  }
-  else {  // Transparent bounce
-    P_pick = ray->P - state->ray_t * ray->D;
-    N_pick = state->ray_N;
-  }
+  P_pick = ray->P - state->ray_t * ray->D;
+  N_pick = state->ray_N;
 
   /* check if background light exists or if we should skip pdf */
   int res_x = kernel_data.integrator.pdf_background_res_x;

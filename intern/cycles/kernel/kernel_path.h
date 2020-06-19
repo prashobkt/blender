@@ -98,15 +98,8 @@ ccl_device_forceinline void kernel_path_lamp_emission(KernelGlobals *kg,
     /* ray starting from previous non-transparent bounce */
     Ray light_ray ccl_optional_struct_init;
     float3 N_pick;
-    if (state->ray_t == 0.0f) {
-      light_ray.P = emission_sd->P_pick;
-      N_pick = emission_sd->N_pick;
-    }
-    else {
-      /* Current bounce was on a transparent surface */
-      light_ray.P = ray->P - state->ray_t * ray->D;
-      N_pick = state->ray_N;
-    }
+    light_ray.P = ray->P - state->ray_t * ray->D;
+    N_pick = state->ray_N;
 
     state->ray_t += isect->t;
     light_ray.D = ray->D;
@@ -337,14 +330,8 @@ ccl_device_forceinline bool kernel_path_shader_apply(KernelGlobals *kg,
     /* ray starting from previous non-transparent bounce */
     float3 P_pick;
     float3 N_pick;
-    if (state->ray_t == 0.0f) {  // Non-transparent bounce
-      P_pick = sd->P_pick;
-      N_pick = sd->N_pick;
-    }
-    else {  // Transparent bounce
-      P_pick = ray->P - state->ray_t * ray->D;
-      N_pick = state->ray_N;
-    }
+    P_pick = ray->P - state->ray_t * ray->D;
+    N_pick = state->ray_N;
 
     float ray_length = state->ray_t + sd->ray_length;
 
