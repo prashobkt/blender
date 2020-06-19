@@ -24,6 +24,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_genfile.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_modifier_types.h"
@@ -267,10 +268,47 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
   {
     /* Keep this block, even when empty. */
 
+    /* Transition to saving expansion for all of a modifier's subpanels. */
     if (!DNA_struct_elem_find(fd->filesdna, "ModifierData", "short", "ui_expand_flag")) {
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
         LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
           if (md->mode & eModifierMode_Expanded_DEPRECATED) {
+            md->ui_expand_flag = 1;
+          }
+          else {
+            md->ui_expand_flag = 0;
+          }
+        }
+      }
+    }
+
+    /* EEVEE Motion blur new parameters. */
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "motion_blur_depth_scale")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.motion_blur_depth_scale = 100.0f;
+        scene->eevee.motion_blur_max = 32;
+      }
+    }
+
+    /* Transition to saving expansion for all of a constraint's subpanels. */
+    if (!DNA_struct_elem_find(fd->filesdna, "bConstraint", "short", "ui_expand_flag")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (bConstraint *, con, &object->constraints) {
+          if (con->flag & CONSTRAINT_EXPAND_DEPRECATED) {
+            con->ui_expand_flag = 1;
+          }
+          else {
+            con->ui_expand_flag = 0;
+          }
+        }
+      }
+    }
+
+    /* Transition to saving expansion for all of grease pencil modifier's subpanels. */
+    if (!DNA_struct_elem_find(fd->filesdna, "GpencilModifierData", "short", "ui_expand_flag")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (GpencilModifierData *, md, &object->greasepencil_modifiers) {
+          if (md->mode & eGpencilModifierMode_Expanded_DEPRECATED) {
             md->ui_expand_flag = 1;
           }
           else {

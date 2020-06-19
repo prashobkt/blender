@@ -1095,7 +1095,6 @@ eOLDrawState tree_element_type_active(bContext *C,
       return tree_element_active_bone(C, tvc->view_layer, te, tselem, set, recursive);
     case TSE_EBONE:
       return tree_element_active_ebone(C, tvc->view_layer, te, tselem, set, recursive);
-    case TSE_MODIFIER_BASE:
     case TSE_MODIFIER:
       return tree_element_active_modifier(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_LINKED_OB:
@@ -1113,7 +1112,6 @@ eOLDrawState tree_element_type_active(bContext *C,
     case TSE_POSE_CHANNEL:
       return tree_element_active_posechannel(
           C, tvc->scene, tvc->view_layer, tvc->ob_pose, te, tselem, set, recursive);
-    case TSE_CONSTRAINT_BASE:
     case TSE_CONSTRAINT:
       return tree_element_active_constraint(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_R_LAYER:
@@ -1391,7 +1389,7 @@ void outliner_item_select(bContext *C,
   const bool activate_data = select_flag & OL_ITEM_SELECT_DATA;
 
   /* Clear previous active when activating and clear selection when not extending selection */
-  const short clear_flag = (activate ? TSE_ACTIVE : 0) | (!extend ? TSE_SELECTED : 0);
+  const short clear_flag = (activate ? TSE_ACTIVE : 0) | (extend ? 0 : TSE_SELECTED);
   if (clear_flag) {
     outliner_flag_set(&soops->tree, clear_flag, false);
   }

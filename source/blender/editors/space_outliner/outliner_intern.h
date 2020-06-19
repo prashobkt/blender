@@ -216,14 +216,14 @@ typedef struct TreeViewContext {
   Object *ob_pose;
 } TreeViewContext;
 
-typedef enum TreeItemSelect {
+typedef enum TreeItemSelectAction {
   OL_ITEM_DESELECT = 0,           /* Deselect the item */
   OL_ITEM_SELECT = (1 << 0),      /* Select the item */
   OL_ITEM_SELECT_DATA = (1 << 1), /* Select object data */
   OL_ITEM_ACTIVATE = (1 << 2),    /* Activate the item */
   OL_ITEM_EXTEND = (1 << 3),      /* Extend the current selection */
   OL_ITEM_RECURSIVE = (1 << 4),   /* Select recursively */
-} TreeItemSelect;
+} TreeItemSelectAction;
 
 /* outliner_tree.c ----------------------------------------------- */
 
@@ -236,6 +236,8 @@ void outliner_build_tree(struct Main *mainvar,
                          struct ViewLayer *view_layer,
                          struct SpaceOutliner *soops,
                          struct ARegion *region);
+
+bool outliner_element_needs_rebuild_on_open_change(const TreeStoreElem *tselem);
 
 typedef struct IDsSelectedData {
   struct ListBase selected_array;
