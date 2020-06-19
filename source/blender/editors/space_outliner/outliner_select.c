@@ -1137,6 +1137,98 @@ eOLDrawState tree_element_type_active(bContext *C,
   return OL_DRAWSEL_NONE;
 }
 
+static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreElem *tselem)
+{
+  /* ID Types */
+  if (tselem->type == 0) {
+    switch (te->idcode) {
+      case ID_SCE:
+        ED_buttons_set_context(C, BCONTEXT_SCENE);
+        break;
+      case ID_OB:
+        ED_buttons_set_context(C, BCONTEXT_OBJECT);
+        break;
+      case ID_ME:
+      case ID_CU:
+      case ID_MB:
+      case ID_IM:
+      case ID_LT:
+      case ID_LA:
+      case ID_CA:
+      case ID_KE:
+      case ID_SPK:
+      case ID_AR:
+      case ID_GD:
+      case ID_LP:
+      case ID_VO:
+        ED_buttons_set_context(C, BCONTEXT_DATA);
+        break;
+      case ID_MA:
+        ED_buttons_set_context(C, BCONTEXT_MATERIAL);
+        break;
+      case ID_WO:
+        ED_buttons_set_context(C, BCONTEXT_WORLD);
+        break;
+    }
+  }
+  else {
+    switch (tselem->type) {
+      case TSE_DEFGROUP_BASE:
+      case TSE_DEFGROUP:
+        ED_buttons_set_context(C, BCONTEXT_DATA);
+        break;
+      case TSE_CONSTRAINT_BASE:
+      case TSE_CONSTRAINT: {
+        bool is_bone_constraint = false;
+
+        /* Check if parent is a bone */
+        te = te->parent;
+        while (te) {
+          tselem = TREESTORE(te);
+          if (tselem->type == TSE_POSE_CHANNEL) {
+            is_bone_constraint = true;
+            break;
+          }
+          te = te->parent;
+        }
+        if (is_bone_constraint) {
+          ED_buttons_set_context(C, BCONTEXT_BONE_CONSTRAINT);
+        }
+        else {
+          ED_buttons_set_context(C, BCONTEXT_CONSTRAINT);
+        }
+        break;
+      }
+      case TSE_MODIFIER_BASE:
+      case TSE_MODIFIER:
+        ED_buttons_set_context(C, BCONTEXT_MODIFIER);
+        break;
+      case TSE_BONE:
+      case TSE_EBONE:
+      case TSE_POSE_CHANNEL:
+        ED_buttons_set_context(C, BCONTEXT_BONE);
+        break;
+      case TSE_POSE_BASE:
+        ED_buttons_set_context(C, BCONTEXT_DATA);
+        break;
+      case TSE_R_LAYER_BASE:
+      case TSE_R_LAYER:
+        ED_buttons_set_context(C, BCONTEXT_VIEW_LAYER);
+        break;
+      case TSE_POSEGRP_BASE:
+      case TSE_POSEGRP:
+        ED_buttons_set_context(C, BCONTEXT_DATA);
+        break;
+      case TSE_LINKED_PSYS:
+        ED_buttons_set_context(C, BCONTEXT_PARTICLE);
+        break;
+      case TSE_GP_LAYER:
+        ED_buttons_set_context(C, BCONTEXT_DATA);
+        break;
+    }
+  }
+}
+
 /* TODO (Nathan): Temporary while testing */
 static void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem *tselem)
 {
@@ -1283,6 +1375,8 @@ static void do_outliner_item_activate_tree_element(bContext *C,
     tree_element_type_active(
         C, tvc, soops, te, tselem, extend ? OL_SETSEL_EXTEND : OL_SETSEL_NORMAL, recursive);
   }
+
+  outliner_set_properties_tab(C, te, tselem);
 }
 
 /* Select the item using the set flags */
