@@ -515,13 +515,11 @@ static eOLDrawState tree_element_active_material(bContext *C,
      * Note that RNA material update does it too, see e.g. rna_MaterialSlot_update(). */
     DEG_id_tag_update((ID *)ob, ID_RECALC_TRANSFORM);
     WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_LINKS, NULL);
-
-    ED_buttons_set_context(C, BCONTEXT_MATERIAL);
   }
   return OL_DRAWSEL_NONE;
 }
 
-static eOLDrawState tree_element_active_camera(bContext *C,
+static eOLDrawState tree_element_active_camera(bContext *UNUSED(C),
                                                Scene *scene,
                                                ViewLayer *UNUSED(view_layer),
                                                TreeElement *te,
@@ -530,36 +528,11 @@ static eOLDrawState tree_element_active_camera(bContext *C,
   Object *ob = (Object *)outliner_search_back(te, ID_OB);
 
   if (set != OL_SETSEL_NONE) {
-    ED_buttons_set_context(C, BCONTEXT_DATA);
     return OL_DRAWSEL_NONE;
   }
   else {
     return scene->camera == ob;
   }
-}
-
-static eOLDrawState tree_element_active_curve(bContext *C,
-                                              Scene *UNUSED(scene),
-                                              ViewLayer *UNUSED(view_layer),
-                                              TreeElement *UNUSED(te),
-                                              const eOLSetState set)
-{
-  if (set != OL_SETSEL_NONE) {
-    ED_buttons_set_context(C, BCONTEXT_DATA);
-  }
-  return OL_DRAWSEL_NONE;
-}
-
-static eOLDrawState tree_element_active_mesh(bContext *C,
-                                             Scene *UNUSED(scene),
-                                             ViewLayer *UNUSED(view_layer),
-                                             TreeElement *UNUSED(te),
-                                             const eOLSetState set)
-{
-  if (set != OL_SETSEL_NONE) {
-    ED_buttons_set_context(C, BCONTEXT_DATA);
-  }
-  return OL_DRAWSEL_NONE;
 }
 
 static eOLDrawState tree_element_active_world(bContext *C,
@@ -586,7 +559,6 @@ static eOLDrawState tree_element_active_world(bContext *C,
     if (sce && scene != sce) {
       WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), sce);
     }
-    ED_buttons_set_context(C, BCONTEXT_WORLD);
   }
 
   if (tep == NULL || tselem->id == (ID *)scene) {
@@ -880,8 +852,6 @@ static eOLDrawState tree_element_active_modifier(bContext *C,
     Object *ob = (Object *)tselem->id;
 
     WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
-
-    ED_buttons_set_context(C, BCONTEXT_MODIFIER);
   }
 
   return OL_DRAWSEL_NONE;
@@ -915,7 +885,6 @@ static int tree_element_active_constraint(bContext *C,
     Object *ob = (Object *)tselem->id;
 
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
-    ED_buttons_set_context(C, BCONTEXT_CONSTRAINT);
   }
 
   return OL_DRAWSEL_NONE;
@@ -1104,10 +1073,6 @@ eOLDrawState tree_element_active(bContext *C,
       return tree_element_active_text(C, tvc->scene, tvc->view_layer, soops, te, set);
     case ID_CA:
       return tree_element_active_camera(C, tvc->scene, tvc->view_layer, te, set);
-    case ID_CU:
-      return tree_element_active_curve(C, tvc->scene, tvc->view_layer, te, set);
-    case ID_ME:
-      return tree_element_active_mesh(C, tvc->scene, tvc->view_layer, te, set);
   }
   return OL_DRAWSEL_NONE;
 }
