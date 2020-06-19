@@ -1441,7 +1441,7 @@ static void align_sub_panels(Panel *panel)
   int ofsy = panel->ofsy + panel->sizey - panel->blocksizey;
 
   LISTBASE_FOREACH (Panel *, pachild, &panel->children) {
-    if (pachild->runtime_flag & PNL_ACTIVE) {
+    if (pachild->runtime_flag & PNL_ACTIVE && !UI_panel_is_search_filtered(pachild)) {
       pachild->ofsx = panel->ofsx;
       pachild->ofsy = ofsy - get_panel_size_y(pachild);
       ofsy -= get_panel_real_size_y(pachild);
@@ -1726,15 +1726,15 @@ void UI_panels_draw(const bContext *C, ARegion *region)
    * UI blocks are added in reverse order and we need child panels
    * to draw on top. */
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
-    if (block->active && block->panel && !(block->panel->flag & PNL_SELECT) &&
-        !UI_panel_is_search_filtered(block->panel)) {
+    if (block->active && !block->search_only && block->panel &&
+        !(block->panel->flag & PNL_SELECT) && !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }
 
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
-    if (block->active && block->panel && (block->panel->flag & PNL_SELECT) &&
-        !UI_panel_is_search_filtered(block->panel)) {
+    if (block->active && !block->search_only && block->panel &&
+        (block->panel->flag & PNL_SELECT) && !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }

@@ -3436,6 +3436,16 @@ void UI_block_theme_style_set(uiBlock *block, char theme_style)
   block->theme_style = theme_style;
 }
 
+bool UI_block_has_search_filter(uiBlock *block)
+{
+  return block->search_filter != NULL && block->search_filter[0] != '\0';
+}
+
+void UI_block_set_search_only(uiBlock *block, bool search_only)
+{
+  block->search_only = search_only;
+}
+
 static void ui_but_build_drawstr_float(uiBut *but, double value)
 {
   size_t slen = 0;

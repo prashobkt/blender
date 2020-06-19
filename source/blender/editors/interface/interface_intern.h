@@ -456,6 +456,7 @@ struct uiBlock {
   char display_device[64];
 
   char *search_filter;
+  bool search_only;
 
   struct PieMenuData pie_data;
 };

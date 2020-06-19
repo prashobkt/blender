@@ -85,6 +85,8 @@ typedef struct uiLayoutRoot {
   int type;
   int opcontext;
 
+  bool search_only;
+
   int emw, emh;
   int padding;
 
@@ -5065,6 +5067,11 @@ int uiLayoutGetEmboss(uiLayout *layout)
   }
 }
 
+void uiLayoutRootSetSearchOnly(uiLayout *layout, bool search_only)
+{
+  layout->root->search_only = search_only;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -5147,6 +5154,23 @@ static void debug_print_layout(uiItem *item, int depth)
   }
 }
 #endif /* DEBUG_LAYOUT_ROOTS */
+
+static void ui_layout_free_hide_buttons(uiLayout *layout)
+{
+  LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
+    if (item->type == ITEM_BUTTON) {
+      uiButtonItem *button_item = (uiButtonItem *)item;
+      BLI_assert(button_item->but != NULL);
+      button_item->but->flag |= UI_HIDDEN;
+      MEM_freeN(item);
+    }
+    else {
+      ui_layout_free_hide_buttons((uiLayout *)item);
+    }
+  }
+
+  MEM_freeN(layout);
+}
 
 /**
  * Tag all buttons with whether they matched the search filter or not.
@@ -5232,6 +5256,11 @@ static bool ui_layout_search_filter_clean_recursive(uiLayout *layout)
  */
 static bool ui_block_search_filter_clean(uiBlock *block)
 {
+
+  if (block->panel && STREQ(block->panel->panelname, "VIEWLAYER_PT_eevee_layer_passes")) {
+    printf(" ");
+  }
+
   bool all_roots_empty = true;
   LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
     /* Find exceptions to search layout. */
@@ -5258,8 +5287,6 @@ static void ui_layout_search_build_recursive(uiLayout *layout,
                                              bool has_had_horizontal_vertical_switch)
 {
   BLI_assert(uiLayoutGetPropSearch(layout) || !BLI_listbase_is_empty(&layout->items));
-
-  uiLayoutSetPropSep(layout, true);
 
   bool is_horizontal = uiLayoutGetLocalDir(layout) == UI_LAYOUT_HORIZONTAL &&
                        (layout->item.type != ITEM_LAYOUT_ROOT);
@@ -5365,13 +5392,22 @@ static bool ui_block_search_layout(uiBlock *block)
   /* Remove filtered buttons and now-empty layouts. */
   bool all_roots_empty = ui_block_search_filter_clean(block);
 
+  /* Remove search only layout roots before the next step. */
+  LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
+    if (root->search_only) {
+      ui_layout_free_hide_buttons(root->layout);
+      BLI_remlink(&block->layouts, root);
+      MEM_freeN(root);
+    }
+  }
+
   /* Change layouts to the single column search layout. */
-  if (!all_roots_empty) {
+  if (!all_roots_empty && !block->search_only) {
     ui_block_build_search_layout(block);
   }
 
   /* Set empty flags. */
-  SET_FLAG_FROM_TEST(block->flag, all_roots_empty, UI_BLOCK_FILTERED_EMPTY);
+  SET_FLAG_FROM_TEST(block->flag, all_roots_empty || block->search_only, UI_BLOCK_FILTERED_EMPTY);
   if (block->panel != NULL) {
     ui_panel_set_search_filtered(block->panel, all_roots_empty);
   }
@@ -5385,7 +5421,7 @@ static bool ui_block_search_layout(uiBlock *block)
   }
 #endif
 
-  return all_roots_empty;
+  return all_roots_empty || block->search_only;
 }
 
 /** \} */

@@ -681,6 +681,8 @@ enum {
 void UI_block_theme_style_set(uiBlock *block, char theme_style);
 char UI_block_emboss_get(uiBlock *block);
 void UI_block_emboss_set(uiBlock *block, char dt);
+bool UI_block_has_search_filter(uiBlock *block);
+void UI_block_set_search_only(uiBlock *block, bool search_only);
 
 void UI_block_free(const struct bContext *C, uiBlock *block);
 void UI_blocklist_free(const struct bContext *C, struct ListBase *lb);
@@ -1915,6 +1917,7 @@ int uiLayoutGetEmboss(uiLayout *layout);
 bool uiLayoutGetPropSep(uiLayout *layout);
 bool uiLayoutGetPropDecorate(uiLayout *layout);
 bool uiLayoutGetPropSearch(uiLayout *layout);
+void uiLayoutRootSetSearchOnly(uiLayout *layout, bool search_only);
 
 /* layout specifiers */
 uiLayout *uiLayoutRow(uiLayout *layout, bool align);
