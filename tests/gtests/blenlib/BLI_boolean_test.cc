@@ -331,37 +331,38 @@ TEST(eboolean, PolyCubeCube)
   const char *spec = R"(16 12
   -1 -1 -1
   -1 -1 1
-  -1 1 1
   -1 1 -1
-  1 1 1
-  1 1 -1
-  1 -1 1
+  -1 1 1
   1 -1 -1
-  0.5 0.5 0.5
-  0.5 0.5 2.5
-  0.5 2.5 2.5
-  0.5 2.5 0.5
-  2.5 2.5 2.5
-  2.5 2.5 0.5
-  2.5 0.5 2.5
-  2.5 0.5 0.5
-  0 2 6 4
-  0 4 5 1
-  4 6 7 5
+  1 -1 1
+  1 1 -1
+  1 1 1
+  1/2 1/2 1/2
+  1/2 1/2 5/2
+  1/2 5/2 1/2
+  1/2 5/2 5/2
+  5/2 1/2 1/2
+  5/2 1/2 5/2
+  5/2 5/2 1/2
+  5/2 5/2 5/2
+  0 1 3 2
   6 2 3 7
-  2 0 1 3
-  1 5 7 3
-  8 10 14 12
-  8 12 13 9
-  12 14 15 13
+  4 6 7 5
+  0 4 5 1
+  0 2 6 4
+  3 1 5 7
+  8 9 11 10
   14 10 11 15
-  10 8 9 11
-  9 13 15 11
+  12 14 15 13
+  8 12 13 9
+  8 10 14 12
+  11 9 13 15
   )";
 
   BP_input bpi(spec);
   std::cout << "bpi " << bpi.polymesh.vert.size() << " " << bpi.polymesh.face.size() << "\n";
   blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
-      bpi.polymesh, BOOLEAN_ISECT, 1, [](int UNUSED(t)) { return 0; });
-  EXPECT_EQ(out.vert.size(), 8);
+      bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
+  EXPECT_EQ(out.vert.size(), 20);
+  EXPECT_EQ(out.face.size(), 12);
 }

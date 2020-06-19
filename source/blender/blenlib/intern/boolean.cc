@@ -16,11 +16,13 @@
 
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 
 #include "gmpxx.h"
 
 #include "BLI_array.hh"
 #include "BLI_assert.h"
+#include "BLI_delaunay_2d.h"
 #include "BLI_hash.hh"
 #include "BLI_map.hh"
 #include "BLI_math.h"
@@ -450,6 +452,9 @@ static PatchesInfo find_patches(const TriMesh &tm, const TriMeshTopology &tmtopo
       int cur_patch_index = pinfo.add_patch();
       while (!cur_patch_grow.is_empty()) {
         int tcand = cur_patch_grow.pop();
+        if (dbg_level > 1) {
+          std::cout << "pop tcand = " << tcand << "; assigned = " << pinfo.tri_is_assigned(tcand) << "\n";
+        }
         if (pinfo.tri_is_assigned(tcand)) {
           continue;
         }
@@ -466,17 +471,26 @@ static PatchesInfo find_patches(const TriMesh &tm, const TriMeshTopology &tmtopo
           }
           if (t_other != -1) {
             if (!pinfo.tri_is_assigned(t_other)) {
+              if (dbg_level > 1) {
+                std::cout << "    push t_other = " << t_other << "\n";
+              }
               cur_patch_grow.push(t_other);
             }
           }
           else {
             /* e is non-manifold. Set any patch-patch incidences we can. */
+            if (dbg_level > 1) {
+              std::cout << "    e non-manifold case\n";
+            }
             const Vector<int> *etris = tmtopo.edge_tris(e);
             if (etris) {
               for (uint i = 0; i < etris->size(); ++i) {
                 int t_other = (*etris)[i];
                 if (t_other != tcand && pinfo.tri_is_assigned(t_other)) {
                   int p_other = pinfo.tri_patch(t_other);
+                  if (p_other == cur_patch_index) {
+                    continue;
+                  }
                   if (pinfo.patch_patch_edge(cur_patch_index, p_other) == Edge(-1, -1)) {
                     pinfo.add_new_patch_patch_edge(cur_patch_index, p_other, e);
                     if (dbg_level > 1) {
@@ -1193,7 +1207,7 @@ static TriMesh nary_boolean(const TriMesh &tm_in,
                             int nshapes,
                             std::function<int(int)> shape_fn)
 {
-  constexpr int dbg_level = 0;
+  constexpr int dbg_level = 2;
   if (dbg_level > 0) {
     std::cout << "BOOLEAN of " << nshapes << " operand" << (nshapes == 1 ? "" : "s")
               << " op=" << bool_optype_name(bool_optype) << "\n";
@@ -1208,7 +1222,7 @@ static TriMesh nary_boolean(const TriMesh &tm_in,
   }
   auto si_shape_fn = [shape_fn, tm_si](int t) { return shape_fn(tm_si.tri[t].orig()); };
   if (dbg_level > 1) {
-    write_obj_trimesh(tm_si.vert, tm_si.tri, "boolean_input");
+    write_obj_trimesh(tm_si.vert, tm_si.tri, "boolean_tm_input");
     for (int t = 0; t < static_cast<int>(tm_si.tri.size()); ++t) {
       std::cout << "tri " << t << " = " << tm_si.tri[t] << " shape " << si_shape_fn(t) << "\n";
     }
@@ -1218,8 +1232,16 @@ static TriMesh nary_boolean(const TriMesh &tm_in,
   CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
   cinfo.init_windings(nshapes);
   int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo);
+  if (c_ambient == -1) {
+    /* TODO: find a way to propagate this error to user properly. */
+    std::cout << "Could not find an ambient cell; input not valid?\n";
+    return TriMesh(tm_si);
+  }
   propagate_windings_and_flag(pinfo, cinfo, c_ambient, bool_optype, nshapes, si_shape_fn);
   TriMesh tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo);
+  if (dbg_level > 1) {
+    write_obj_trimesh(tm_out.vert, tm_out.tri, "boolean_tm_output");
+  }
   return tm_out;
 }
 
@@ -1239,38 +1261,173 @@ static TriMesh binary_boolean(const TriMesh &tm_in_a, const TriMesh &tm_in_b, in
   return nary_boolean(tm_in, bool_optype, 2, shape_fn);
 }
 
+static void triangulate_polymesh(PolyMesh &pm) {
+  int face_tot = static_cast<int>(pm.face.size());
+  Array<Array<IndexedTriangle>> face_tris(face_tot);
+  for (int f = 0; f < face_tot; ++f) {
+    /* Tesselate face f, following plan similar to BM_face_calc_tesselation. */
+    int flen = static_cast<int>(pm.face[f].size());
+    if (flen == 3) {
+      face_tris[f] = Array<IndexedTriangle>{ IndexedTriangle(pm.face[f][0], pm.face[f][1], pm.face[f][2], f) };
+    }
+    else if (flen == 4) {
+      face_tris[f] = Array<IndexedTriangle>{
+        IndexedTriangle(pm.face[f][0], pm.face[f][1], pm.face[f][2], f),
+        IndexedTriangle(pm.face[f][0], pm.face[f][2], pm.face[f][3], f)
+      };
+    }
+    else {
+      /* TODO: use CDT to do this. cf do_cdt in mesh_intersect.cc */
+      std::cout << "IMPLEMENT ME - TESSELATE FACES OF SIZE > 4\n";
+      BLI_assert(false);
+    }
+  }
+  pm.triangulation.set(face_tris);
+}
+
 /* Will add triangulation if it isn't already there. */
 static TriMesh trimesh_from_polymesh(PolyMesh &pm)
 {
   TriMesh ans;
   ans.vert = pm.vert;
-  if (pm.triangulation.has_value()) {
-    const Array<Array<IndexedTriangle>> &tri_arrays = pm.triangulation.value();
-    int tot_tri = 0;
-    for (const Array<IndexedTriangle> &a : tri_arrays) {
-      tot_tri += static_cast<int>(a.size());
-    }
-    ans.tri = Array<IndexedTriangle>(tot_tri);
-    int t = 0;
-    for (const Array<IndexedTriangle> &a : tri_arrays) {
-      for (uint i = 0; i < a.size(); ++i) {
-        ans.tri[t++] = a[i++];
-      }
+  if (!pm.triangulation.has_value()) {
+    triangulate_polymesh(pm);
+  }
+  const Array<Array<IndexedTriangle>> &tri_arrays = pm.triangulation.value();
+  int tot_tri = 0;
+  for (const Array<IndexedTriangle> &a : tri_arrays) {
+    tot_tri += static_cast<int>(a.size());
+  }
+  ans.tri = Array<IndexedTriangle>(tot_tri);
+  int t = 0;
+  for (const Array<IndexedTriangle> &a : tri_arrays) {
+    for (uint i = 0; i < a.size(); ++i) {
+      ans.tri[t++] = a[i];
     }
   }
-  else {
-    std::cout << "IMPLEMENT ME - triangulate polymesh\n";
-    // BLI_assert(false);
-    return ans;
+
+  return ans;
+}
+
+/* For Debugging. */
+static void write_obj_polymesh(const Array<mpq3> &vert, const Array<Array<int>> &face, const std::string &objname)
+{
+  constexpr const char *objdir = "/tmp/";
+  if (face.size() == 0) {
+    return;
+  }
+
+  std::string fname = std::string(objdir) + objname + std::string(".obj");
+  std::ofstream f;
+  f.open(fname);
+  if (!f) {
+    std::cout << "Could not open file " << fname << "\n";
+    return;
+  }
+
+  for (const mpq3 &vco : vert) {
+    double3 dv(vco[0].get_d(), vco[1].get_d(), vco[2].get_d());
+    f << "v " << dv[0] << " " << dv[1] << " " << dv[2] << "\n";
+  }
+  int i = 0;
+  for (const Array<int> &face_verts : face) {
+    /* OBJ files use 1-indexing for vertices. */
+    f << "f ";
+    for (int v : face_verts) {
+      f << v + 1 << " ";
+    }
+    f << "\n";
+    ++i;
+  }
+  f.close();
+}
+
+static Vector<Vector<int>> merge_tris_for_face(Vector<int> tris, const TriMesh &tm)
+{
+  /* Only approximately right. TODO: fixme. */
+  Vector<Vector<int>> ans;
+  if (tris.size() == 2) {
+    /* Is this a case where quad with one diagonal remained unchanged? */
+    /* Even do special case of order, which output sometimes has. TODO: fix. */
+    const IndexedTriangle &tri1 = tm.tri[tris[0]];
+    const IndexedTriangle &tri2 = tm.tri[tris[1]];
+    if (tri1.v1() == tri2.v2() && tri1.v2() == tri2.v1()) {
+      ans.append(Vector<int>());
+      ans[0].append(tri1.v2());
+      ans[0].append(tri1.v0());
+      ans[0].append(tri1.v1());
+      ans[0].append(tri2.v0());
+      return ans;
+    }
+  }
+  for (uint i = 0; i < tris.size(); ++i) {
+    ans.append(Vector<int>());
+    const IndexedTriangle &tri = tm.tri[tris[i]];
+    ans[i].append(tri.v0());
+    ans[i].append(tri.v1());
+    ans[i].append(tri.v2());
   }
   return ans;
 }
 
-/* pm arg isn't const because will add triangulation if it is not there. */
-PolyMesh boolean(PolyMesh &pm, int bool_optype, int nshapes, std::function<int(int)> shape_fn)
+static PolyMesh polymesh_from_trimesh_with_dissolve(const TriMesh &tm_out, const PolyMesh &pm_in)
 {
-  TriMesh tm = trimesh_from_polymesh(pm);
-  return PolyMesh();
+  const int dbg_level = 2;
+  if (dbg_level > 0) {
+    std::cout << "\nPOLYMESH_FROM_TRIMESH_WITH_DISSOLVE\n";
+  }
+  /* Gather all output triangles that are part of each input face.
+   * face_output_tris[f] will be indices of triangles in tm_out
+   * that have f as their original face.
+   */
+  int tot_in_face = static_cast<int>(pm_in.face.size());
+  Array<Vector<int>> face_output_tris(tot_in_face);
+  int tot_out_tri = static_cast<int>(tm_out.tri.size());
+  for (int t = 0; t < tot_out_tri; ++t) {
+    const IndexedTriangle &tri = tm_out.tri[t];
+    int in_face = tri.orig();
+    face_output_tris[in_face].append(t);
+  }
+  if (dbg_level > 1) {
+    std::cout << "face_output_tri:\n";
+    for (int f = 0; f < tot_in_face; ++f) {
+      std::cout << f << ": " << face_output_tris[f] << "\n";
+    }
+  }
+  /* Merge triangles that we can from face_output_tri to make faces for output.
+   * face_output_face[f] will be subfaces (as vectors of vertex indices) that
+   * make up whatever part of the boolean output remains of input face f.
+   */
+  Array<Vector<Vector<int>>> face_output_face(tot_in_face);
+  int tot_out_face = 0;
+  for (int in_f = 0; in_f < tot_in_face; ++in_f) {
+    face_output_face[in_f] = merge_tris_for_face(face_output_tris[in_f], tm_out);
+    tot_out_face += static_cast<int>(face_output_face[in_f].size());
+  }
+  PolyMesh pm_out;
+  pm_out.vert = tm_out.vert;
+  pm_out.face = Array<Array<int>>(tot_out_face);
+  int out_f = 0;
+  for (int in_f = 0; in_f < tot_in_face; ++in_f) {
+    const Vector<Vector<int>> &f_faces = face_output_face[in_f];
+    for (uint i = 0; i < f_faces.size(); ++i) {
+      pm_out.face[out_f] = Array<int>(f_faces[i].size());
+      std::copy(f_faces[i].begin(), f_faces[i].end(), pm_out.face[out_f].begin());
+      ++out_f;
+    }
+  }
+  if (dbg_level > 1) {
+    write_obj_polymesh(pm_out.vert, pm_out.face, "boolean_post_dissolve");
+  }
+  return pm_out;
+}
+
+/* pm arg isn't const because will add triangulation if it is not there. */
+PolyMesh boolean(PolyMesh &pm_in, int bool_optype, int nshapes, std::function<int(int)> shape_fn)
+{
+  TriMesh tm_in = trimesh_from_polymesh(pm_in);
+  TriMesh tm_out = nary_boolean(tm_in, bool_optype, nshapes, shape_fn);
+  return polymesh_from_trimesh_with_dissolve(tm_out, pm_in);
 }
 
 }  // namespace meshintersect
