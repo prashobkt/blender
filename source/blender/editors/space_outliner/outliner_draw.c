@@ -53,6 +53,7 @@
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
+#include "BKE_particle.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -2070,7 +2071,7 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
       }
       else {
         /* Not all objects have particle systems */
-        if (active_mode == OB_MODE_PARTICLE_EDIT && !ob->particlesystem.first) {
+        if (active_mode == OB_MODE_PARTICLE_EDIT && !psys_get_current(ob)) {
           return;
         }
         but = uiDefIconBut(block,
