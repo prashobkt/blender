@@ -3768,7 +3768,7 @@ static void outliner_draw_tree(bContext *C,
 
   /* Move the tree a unit left in view layer mode */
   short left_column_offset = use_left_column ? UI_UNIT_X : 0;
-  if (soops->outlinevis & SO_VIEW_LAYER) {
+  if (soops->outlinevis == SO_VIEW_LAYER) {
     left_column_offset -= UI_UNIT_X;
   }
 
