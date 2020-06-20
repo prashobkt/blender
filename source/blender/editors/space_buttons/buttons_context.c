@@ -760,6 +760,31 @@ void buttons_context_compute(const bContext *C, SpaceProperties *sbuts)
   sbuts->pathflag = flag;
 }
 
+void ED_buttons_set_context(const bContext *C, const short context)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  Object *obact = CTX_data_active_object(C);
+  ID *active_id;
+  if (obact) {
+    active_id = &obact->id;
+  }
+
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    /* Only update for properties editors that are visible */
+    SpaceLink *sl = area->spacedata.first;
+
+    if (sl->spacetype == SPACE_PROPERTIES) {
+      SpaceProperties *sbuts = (SpaceProperties *)sl;
+
+      ButsContextPath path;
+      if (buttons_context_path(C, sbuts, &path, context, 0)) {
+        sbuts->mainbuser = context;
+        sbuts->mainb = sbuts->mainbuser;
+      }
+    }
+  }
+}
+
 /************************* Context Callback ************************/
 
 const char *buttons_context_dir[] = {
@@ -1291,29 +1316,4 @@ ID *buttons_context_id_path(const bContext *C)
   }
 
   return NULL;
-}
-
-void ED_buttons_set_context(const bContext *C, const short context)
-{
-  bScreen *screen = CTX_wm_screen(C);
-  Object *obact = CTX_data_active_object(C);
-  ID *active_id;
-  if (obact) {
-    active_id = &obact->id;
-  }
-
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    /* Only update for properties editors that are visible */
-    SpaceLink *sl = area->spacedata.first;
-
-    if (sl->spacetype == SPACE_PROPERTIES) {
-      SpaceProperties *sbuts = (SpaceProperties *)sl;
-
-      ButsContextPath path;
-      if (buttons_context_path(C, sbuts, &path, context, 0)) {
-        sbuts->mainbuser = context;
-        sbuts->mainb = sbuts->mainbuser;
-      }
-    }
-  }
 }
