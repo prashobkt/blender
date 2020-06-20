@@ -102,24 +102,6 @@ static PointerRNA *get_pointer_type(ButsContextPath *path, StructRNA *type)
 
 /************************* Creating the Path ************************/
 
-void ED_buttons_set_context(const bContext *C, const short context)
-{
-  bScreen *screen = CTX_wm_screen(C);
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    /* Only update for properties editors that are visible */
-    SpaceLink *sl = area->spacedata.first;
-
-    if (sl->spacetype == SPACE_PROPERTIES) {
-      SpaceProperties *sbuts = (SpaceProperties *)sl;
-
-      if (!sbuts->pinid) {
-        sbuts->mainbuser = context;
-        sbuts->mainb = sbuts->mainbuser;
-      }
-    }
-  }
-}
-
 static int buttons_context_path_scene(ButsContextPath *path)
 {
   PointerRNA *ptr = &path->ptr[path->len - 1];
@@ -554,11 +536,11 @@ static bool buttons_context_linestyle_pinnable(const bContext *C, ViewLayer *vie
 }
 #endif
 
-static int buttons_context_path(const bContext *C, ButsContextPath *path, int mainb, int flag)
+static int buttons_context_path(
+    const bContext *C, SpaceProperties *sbuts, ButsContextPath *path, int mainb, int flag)
 {
   /* Note we don't use CTX_data here, instead we get it from the window.
    * Otherwise there is a loop reading the context that we are setting. */
-  SpaceProperties *sbuts = CTX_wm_space_properties(C);
   wmWindow *window = CTX_wm_window(C);
   Scene *scene = WM_window_get_active_scene(window);
   ViewLayer *view_layer = WM_window_get_active_view_layer(window);
@@ -704,14 +686,14 @@ void buttons_context_compute(const bContext *C, SpaceProperties *sbuts)
   path = sbuts->path;
 
   /* Set scene path. */
-  buttons_context_path(C, path, BCONTEXT_SCENE, pflag);
+  buttons_context_path(C, sbuts, path, BCONTEXT_SCENE, pflag);
 
   buttons_texture_context_compute(C, sbuts);
 
   /* for each context, see if we can compute a valid path to it, if
    * this is the case, we know we have to display the button */
   for (a = 0; a < BCONTEXT_TOT; a++) {
-    if (buttons_context_path(C, path, a, pflag)) {
+    if (buttons_context_path(C, sbuts, path, a, pflag)) {
       flag |= (1 << a);
 
       /* setting icon for data context */
@@ -757,7 +739,7 @@ void buttons_context_compute(const bContext *C, SpaceProperties *sbuts)
     }
   }
 
-  buttons_context_path(C, path, sbuts->mainb, pflag);
+  buttons_context_path(C, sbuts, path, sbuts->mainb, pflag);
 
   if (!(flag & (1 << sbuts->mainb))) {
     if (flag & (1 << BCONTEXT_OBJECT)) {
@@ -1309,4 +1291,29 @@ ID *buttons_context_id_path(const bContext *C)
   }
 
   return NULL;
+}
+
+void ED_buttons_set_context(const bContext *C, const short context)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  Object *obact = CTX_data_active_object(C);
+  ID *active_id;
+  if (obact) {
+    active_id = &obact->id;
+  }
+
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    /* Only update for properties editors that are visible */
+    SpaceLink *sl = area->spacedata.first;
+
+    if (sl->spacetype == SPACE_PROPERTIES) {
+      SpaceProperties *sbuts = (SpaceProperties *)sl;
+
+      ButsContextPath path;
+      if (buttons_context_path(C, sbuts, &path, context, 0)) {
+        sbuts->mainbuser = context;
+        sbuts->mainb = sbuts->mainbuser;
+      }
+    }
+  }
 }
