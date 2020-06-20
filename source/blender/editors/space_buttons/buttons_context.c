@@ -760,14 +760,19 @@ void buttons_context_compute(const bContext *C, SpaceProperties *sbuts)
   sbuts->pathflag = flag;
 }
 
-void ED_buttons_set_context(const bContext *C, const short context)
+static bool is_pointer_in_path(ButsContextPath *path, PointerRNA *ptr)
+{
+  for (int i = 0; i < path->len; ++i) {
+    if (ptr->owner_id == path->ptr[i].owner_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void ED_buttons_set_context(const bContext *C, PointerRNA *ptr, const short context)
 {
   bScreen *screen = CTX_wm_screen(C);
-  Object *obact = CTX_data_active_object(C);
-  ID *active_id;
-  if (obact) {
-    active_id = &obact->id;
-  }
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     /* Only update for properties editors that are visible */
@@ -778,8 +783,10 @@ void ED_buttons_set_context(const bContext *C, const short context)
 
       ButsContextPath path;
       if (buttons_context_path(C, sbuts, &path, context, 0)) {
-        sbuts->mainbuser = context;
-        sbuts->mainb = sbuts->mainbuser;
+        if (is_pointer_in_path(&path, ptr)) {
+          sbuts->mainbuser = context;
+          sbuts->mainb = sbuts->mainbuser;
+        }
       }
     }
   }

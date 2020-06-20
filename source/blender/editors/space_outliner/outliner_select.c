@@ -46,6 +46,7 @@
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
+#include "BKE_particle.h"
 #include "BKE_scene.h"
 #include "BKE_sequencer.h"
 #include "BKE_workspace.h"
@@ -1137,14 +1138,18 @@ eOLDrawState tree_element_type_active(bContext *C,
 
 static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreElem *tselem)
 {
+  PointerRNA ptr;
+
   /* ID Types */
   if (tselem->type == 0) {
+    RNA_id_pointer_create(tselem->id, &ptr);
+
     switch (te->idcode) {
       case ID_SCE:
-        ED_buttons_set_context(C, BCONTEXT_SCENE);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_SCENE);
         break;
       case ID_OB:
-        ED_buttons_set_context(C, BCONTEXT_OBJECT);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_OBJECT);
         break;
       case ID_ME:
       case ID_CU:
@@ -1158,14 +1163,16 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
       case ID_AR:
       case ID_GD:
       case ID_LP:
+      case ID_HA:
+      case ID_PT:
       case ID_VO:
-        ED_buttons_set_context(C, BCONTEXT_DATA);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_DATA);
         break;
       case ID_MA:
-        ED_buttons_set_context(C, BCONTEXT_MATERIAL);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_MATERIAL);
         break;
       case ID_WO:
-        ED_buttons_set_context(C, BCONTEXT_WORLD);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_WORLD);
         break;
     }
   }
@@ -1173,10 +1180,12 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
     switch (tselem->type) {
       case TSE_DEFGROUP_BASE:
       case TSE_DEFGROUP:
-        ED_buttons_set_context(C, BCONTEXT_DATA);
+        RNA_id_pointer_create(tselem->id, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_DATA);
         break;
       case TSE_CONSTRAINT_BASE:
       case TSE_CONSTRAINT: {
+        RNA_id_pointer_create(tselem->id, &ptr);
         bool is_bone_constraint = false;
 
         /* Check if parent is a bone */
@@ -1184,44 +1193,88 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
         while (te) {
           tselem = TREESTORE(te);
           if (tselem->type == TSE_POSE_CHANNEL) {
+            bPoseChannel *pchan = (bPoseChannel *)te->directdata;
+            RNA_pointer_create(tselem->id, &RNA_PoseBone, pchan, &ptr);
+
             is_bone_constraint = true;
             break;
           }
           te = te->parent;
         }
         if (is_bone_constraint) {
-          ED_buttons_set_context(C, BCONTEXT_BONE_CONSTRAINT);
+          ED_buttons_set_context(C, &ptr, BCONTEXT_BONE_CONSTRAINT);
         }
         else {
-          ED_buttons_set_context(C, BCONTEXT_CONSTRAINT);
+          ED_buttons_set_context(C, &ptr, BCONTEXT_CONSTRAINT);
         }
         break;
       }
       case TSE_MODIFIER_BASE:
       case TSE_MODIFIER:
-        ED_buttons_set_context(C, BCONTEXT_MODIFIER);
+        RNA_id_pointer_create(tselem->id, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_MODIFIER);
         break;
-      case TSE_BONE:
-      case TSE_EBONE:
-      case TSE_POSE_CHANNEL:
-        ED_buttons_set_context(C, BCONTEXT_BONE);
+      case TSE_BONE: {
+        bArmature *arm = (bArmature *)tselem->id;
+        Bone *bone = te->directdata;
+
+        RNA_pointer_create(&arm->id, &RNA_Bone, bone, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_BONE);
         break;
-      case TSE_POSE_BASE:
-        ED_buttons_set_context(C, BCONTEXT_DATA);
+      }
+      case TSE_EBONE: {
+        bArmature *arm = (bArmature *)tselem->id;
+        EditBone *ebone = te->directdata;
+
+        RNA_pointer_create(&arm->id, &RNA_EditBone, ebone, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_BONE);
         break;
+      }
+      case TSE_POSE_CHANNEL: {
+        Object *ob = (Object *)tselem->id;
+        bArmature *arm = ob->data;
+        bPoseChannel *pchan = te->directdata;
+
+        RNA_pointer_create(&arm->id, &RNA_PoseBone, pchan, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_BONE);
+        break;
+      }
+      case TSE_POSE_BASE: {
+        Object *ob = (Object *)tselem->id;
+        bArmature *arm = ob->data;
+
+        RNA_pointer_create(&arm->id, &RNA_Armature, arm, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_DATA);
+        break;
+      }
       case TSE_R_LAYER_BASE:
-      case TSE_R_LAYER:
-        ED_buttons_set_context(C, BCONTEXT_VIEW_LAYER);
+      case TSE_R_LAYER: {
+        ViewLayer *view_layer = te->directdata;
+
+        RNA_pointer_create(tselem->id, &RNA_ViewLayer, view_layer, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_VIEW_LAYER);
         break;
+      }
       case TSE_POSEGRP_BASE:
-      case TSE_POSEGRP:
-        ED_buttons_set_context(C, BCONTEXT_DATA);
+      case TSE_POSEGRP: {
+        Object *ob = (Object *)tselem->id;
+        bArmature *arm = ob->data;
+
+        RNA_pointer_create(&arm->id, &RNA_Armature, arm, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_DATA);
         break;
-      case TSE_LINKED_PSYS:
-        ED_buttons_set_context(C, BCONTEXT_PARTICLE);
+      }
+      case TSE_LINKED_PSYS: {
+        Object *ob = (Object *)tselem->id;
+        ParticleSystem *psys = psys_get_current(ob);
+
+        RNA_pointer_create(&ob->id, &RNA_ParticleSystem, psys, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_PARTICLE);
         break;
+      }
       case TSE_GP_LAYER:
-        ED_buttons_set_context(C, BCONTEXT_DATA);
+        RNA_id_pointer_create(tselem->id, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_DATA);
         break;
     }
   }

@@ -29,7 +29,7 @@ extern "C" {
 
 struct bContext;
 
-void ED_buttons_set_context(const struct bContext *C, const short context);
+void ED_buttons_set_context(const struct bContext *C, PointerRNA *ptr, const short context);
 
 #ifdef __cplusplus
 }
