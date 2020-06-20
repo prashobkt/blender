@@ -6286,7 +6286,7 @@ static void rna_def_userdef_user_menus(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, um_items_null);
   RNA_def_property_ui_text(
       prop, "item selected", "the item selected");
-  RNA_def_property_enum_funcs_runtime(prop, NULL, NULL, "rna_UserDef_usermenus_items_itemf");
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_UserDef_usermenus_items_itemf");
 
   //item properties
   prop = RNA_def_property(srna, "item_name", PROP_STRING, PROP_NONE);

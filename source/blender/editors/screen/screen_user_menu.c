@@ -225,7 +225,7 @@ void ED_screen_user_menu_item_add_prop(bContext *C,
 
      }
      if (prop) {
-      char *name = RNA_property_ui_name(prop);
+      const char *name = RNA_property_ui_name(prop);
       BLI_strncpy(umi_pr->item.ui_name, name, FILE_MAX);
     }
 
