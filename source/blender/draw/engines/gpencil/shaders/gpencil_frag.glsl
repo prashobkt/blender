@@ -99,15 +99,14 @@ void main()
     fragColor = texture(matMaskColorTexture, uv);
     revealColor = texture(matMaskRevealTexture, uv);
     gl_FragDepth = texture(matMaskDepthTexture, uv).r;
-    return;
   }
-
-  /* For compatibility with colored alpha buffer.
-   * Note that we are limited to mono-chromatic alpha blending here
-   * because of the blend equation and the limit of 1 color target
-   * when using custom color blending. */
-  revealColor = vec4(0.0, 0.0, 0.0, fragColor.a);
-
+  else {
+    /* For compatibility with colored alpha buffer.
+     * Note that we are limited to mono-chromatic alpha blending here
+     * because of the blend equation and the limit of 1 color target
+     * when using custom color blending. */
+    revealColor = vec4(0.0, 0.0, 0.0, fragColor.a);
+  }
   if (fragColor.a < 0.001) {
     discard;
   }
