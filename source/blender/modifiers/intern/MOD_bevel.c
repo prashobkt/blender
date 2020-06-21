@@ -287,8 +287,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &ptr, "offset_type", 0, NULL, ICON_NONE);
-  
   const char *offset_name = "";
   if (RNA_enum_get(&ptr, "offset_type") == BEVEL_AMT_PERCENT) {
     uiItemR(col, &ptr, "width_pct", 0, NULL, ICON_NONE);
@@ -304,9 +302,13 @@ static void panel_draw(const bContext *C, Panel *panel)
       case BEVEL_AMT_OFFSET:
         offset_name = "Offset";
         break;
+      case BEVEL_AMT_ABSOLUTE:
+        offset_name = "Absolute";
+        break;
     }
     uiItemR(col, &ptr, "width", 0, IFACE_(offset_name), ICON_NONE);
   }
+  uiItemR(col, &ptr, "offset_type", 0, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
 
@@ -447,4 +449,6 @@ ModifierTypeInfo modifierType_Bevel = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* uiPanel */ panelRegister,
+    /* blendWrite */ NULL,
+    /* blendRead */ NULL,
 };

@@ -378,6 +378,8 @@ typedef struct GPENCIL_PrivateData {
   float xray_alpha;
   /* Mask invert uniform. */
   int mask_invert;
+  /* Vertex Paint opacity. */
+  float vertex_paint_opacity;
 } GPENCIL_PrivateData;
 
 /* geometry batch cache functions */

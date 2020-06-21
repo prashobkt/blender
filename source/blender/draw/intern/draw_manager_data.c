@@ -247,18 +247,34 @@ static void drw_shgroup_uniform(DRWShadingGroup *shgroup,
   drw_shgroup_uniform_create_ex(shgroup, location, type, value, 0, length, arraysize);
 }
 
-void DRW_shgroup_uniform_texture(DRWShadingGroup *shgroup, const char *name, const GPUTexture *tex)
+void DRW_shgroup_uniform_texture_ex(DRWShadingGroup *shgroup,
+                                    const char *name,
+                                    const GPUTexture *tex,
+                                    eGPUSamplerState sampler_state)
 {
   BLI_assert(tex != NULL);
   int loc = GPU_shader_get_texture_binding(shgroup->shader, name);
-  drw_shgroup_uniform_create_ex(shgroup, loc, DRW_UNIFORM_TEXTURE, tex, GPU_SAMPLER_MAX, 0, 1);
+  drw_shgroup_uniform_create_ex(shgroup, loc, DRW_UNIFORM_TEXTURE, tex, sampler_state, 0, 1);
+}
+
+void DRW_shgroup_uniform_texture(DRWShadingGroup *shgroup, const char *name, const GPUTexture *tex)
+{
+  DRW_shgroup_uniform_texture_ex(shgroup, name, tex, GPU_SAMPLER_MAX);
+}
+
+void DRW_shgroup_uniform_texture_ref_ex(DRWShadingGroup *shgroup,
+                                        const char *name,
+                                        GPUTexture **tex,
+                                        eGPUSamplerState sampler_state)
+{
+  BLI_assert(tex != NULL);
+  int loc = GPU_shader_get_texture_binding(shgroup->shader, name);
+  drw_shgroup_uniform_create_ex(shgroup, loc, DRW_UNIFORM_TEXTURE_REF, tex, sampler_state, 0, 1);
 }
 
 void DRW_shgroup_uniform_texture_ref(DRWShadingGroup *shgroup, const char *name, GPUTexture **tex)
 {
-  BLI_assert(tex != NULL);
-  int loc = GPU_shader_get_texture_binding(shgroup->shader, name);
-  drw_shgroup_uniform_create_ex(shgroup, loc, DRW_UNIFORM_TEXTURE_REF, tex, GPU_SAMPLER_MAX, 0, 1);
+  DRW_shgroup_uniform_texture_ref_ex(shgroup, name, tex, GPU_SAMPLER_MAX);
 }
 
 void DRW_shgroup_uniform_block(DRWShadingGroup *shgroup,
@@ -1278,8 +1294,7 @@ static void drw_shgroup_material_texture(DRWShadingGroup *grp,
 {
   GPUTexture *gputex = GPU_texture_from_blender(tex->ima, tex->iuser, NULL, textarget);
 
-  int loc = GPU_shader_get_texture_binding(grp->shader, name);
-  drw_shgroup_uniform_create_ex(grp, loc, DRW_UNIFORM_TEXTURE, gputex, state, 0, 1);
+  DRW_shgroup_uniform_texture_ex(grp, name, gputex, state);
 
   GPUTexture **gputex_ref = BLI_memblock_alloc(DST.vmempool->images);
   *gputex_ref = gputex;
@@ -1777,6 +1792,14 @@ void DRW_view_update(DRWView *view,
 const DRWView *DRW_view_default_get(void)
 {
   return DST.view_default;
+}
+
+/* WARNING: Only use in render AND only if you are going to set view_default again. */
+void DRW_view_reset(void)
+{
+  DST.view_default = NULL;
+  DST.view_active = NULL;
+  DST.view_previous = NULL;
 }
 
 /* MUST only be called once per render and only in render mode. Sets default view. */
