@@ -446,6 +446,7 @@ enum {
   MOD_BEVEL_AMT_WIDTH = 1,
   MOD_BEVEL_AMT_DEPTH = 2,
   MOD_BEVEL_AMT_PERCENT = 3,
+  MOD_BEVEL_AMT_ABSOLUTE = 4,
 };
 
 /* BevelModifierData->edge_flags */
@@ -693,12 +694,12 @@ enum {
 typedef struct ArmatureModifierData {
   ModifierData modifier;
 
-  /** Deformflag replaces armature->deformflag. */
+  /** #eArmature_DeformFlag use instead of #bArmature.deformflag. */
   short deformflag, multi;
   char _pad2[4];
   struct Object *object;
-  /** Stored input of previous modifier, for vertexgroup blending. */
-  float *prevCos;
+  /** Stored input of previous modifier, for vertex-group blending. */
+  float (*vert_coords_prev)[3];
   /** MAX_VGROUP_NAME. */
   char defgrp_name[64];
 } ArmatureModifierData;

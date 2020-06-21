@@ -90,7 +90,7 @@ static void rna_Collection_objects_link(Collection *collection,
   if (ID_IS_OVERRIDE_LIBRARY(&collection->id)) {
     BKE_reportf(reports,
                 RPT_ERROR,
-                "Could not link the object '%s' because the collection '%s' is overridden.",
+                "Could not link the object '%s' because the collection '%s' is overridden",
                 object->id.name + 2,
                 collection->id.name + 2);
     return;
@@ -98,7 +98,7 @@ static void rna_Collection_objects_link(Collection *collection,
   if (ID_IS_LINKED(&collection->id)) {
     BKE_reportf(reports,
                 RPT_ERROR,
-                "Could not link the object '%s' because the collection '%s' is linked.",
+                "Could not link the object '%s' because the collection '%s' is linked",
                 object->id.name + 2,
                 collection->id.name + 2);
     return;
