@@ -526,6 +526,12 @@ bool GHOST_XrContext::needsUpsideDownDrawing() const
   return m_session->needsUpsideDownDrawing();
 }
 
+GHOST_XrPose GHOST_XrContext::getSpacePose(GHOST_XrSpace space) const
+{
+  assert(m_session);
+  return m_session->getSpacePose(space);
+}
+
 /** \} */ /* Public Accessors and Mutators */
 
 /* -------------------------------------------------------------------- */

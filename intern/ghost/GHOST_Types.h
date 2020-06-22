@@ -17,29 +17,32 @@
  * All rights reserved.
  */
 
+#include <stdbool.h>
+#include <stdint.h>
+
 /** \file
  * \ingroup GHOST
  */
 
 #ifndef __GHOST_TYPES_H__
-#define __GHOST_TYPES_H__
+#  define __GHOST_TYPES_H__
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
+#  ifdef WITH_CXX_GUARDEDALLOC
+#    include "MEM_guardedalloc.h"
+#  endif
 
-#if defined(WITH_CXX_GUARDEDALLOC) && defined(__cplusplus)
-#  define GHOST_DECLARE_HANDLE(name) \
-    typedef struct name##__ { \
-      int unused; \
-      MEM_CXX_CLASS_ALLOC_FUNCS(#name) \
-    } * name
-#else
-#  define GHOST_DECLARE_HANDLE(name) \
-    typedef struct name##__ { \
-      int unused; \
-    } * name
-#endif
+#  if defined(WITH_CXX_GUARDEDALLOC) && defined(__cplusplus)
+#    define GHOST_DECLARE_HANDLE(name) \
+      typedef struct name##__ { \
+        int unused; \
+        MEM_CXX_CLASS_ALLOC_FUNCS(#name) \
+      } * name
+#  else
+#    define GHOST_DECLARE_HANDLE(name) \
+      typedef struct name##__ { \
+        int unused; \
+      } * name
+#  endif
 
 /**
  * Creates a "handle" for a C++ GHOST object.
@@ -56,6 +59,9 @@ GHOST_DECLARE_HANDLE(GHOST_RectangleHandle);
 GHOST_DECLARE_HANDLE(GHOST_EventConsumerHandle);
 GHOST_DECLARE_HANDLE(GHOST_ContextHandle);
 GHOST_DECLARE_HANDLE(GHOST_XrContextHandle);
+
+GHOST_DECLARE_HANDLE(GHOST_XrActionSetHandle);
+GHOST_DECLARE_HANDLE(GHOST_XrActionHandle);
 
 typedef char GHOST_TInt8;
 typedef unsigned char GHOST_TUns8;
@@ -79,13 +85,13 @@ typedef enum GHOST_DialogOptions {
   GHOST_DialogError = (1 << 1),
 } GHOST_DialogOptions;
 
-#ifdef _MSC_VER
+#  ifdef _MSC_VER
 typedef __int64 GHOST_TInt64;
 typedef unsigned __int64 GHOST_TUns64;
-#else
+#  else
 typedef long long GHOST_TInt64;
 typedef unsigned long long GHOST_TUns64;
-#endif
+#  endif
 
 typedef void *GHOST_TUserDataPtr;
 
@@ -157,9 +163,9 @@ typedef enum { GHOST_kWindowOrderTop = 0, GHOST_kWindowOrderBottom } GHOST_TWind
 typedef enum {
   GHOST_kDrawingContextTypeNone = 0,
   GHOST_kDrawingContextTypeOpenGL,
-#ifdef WIN32
+#  ifdef WIN32
   GHOST_kDrawingContextTypeD3D,
-#endif
+#  endif
 } GHOST_TDrawingContextType;
 
 typedef enum {
@@ -183,10 +189,10 @@ typedef enum {
   GHOST_kEventWheel,       /// Mouse wheel event
   GHOST_kEventTrackpad,    /// Trackpad event
 
-#ifdef WITH_INPUT_NDOF
+#  ifdef WITH_INPUT_NDOF
   GHOST_kEventNDOFMotion,  /// N degree of freedom device motion event
   GHOST_kEventNDOFButton,  /// N degree of freedom device button event
-#endif
+#  endif
 
   GHOST_kEventKeyDown,
   GHOST_kEventKeyUp,
@@ -519,7 +525,7 @@ typedef enum {
   GHOST_kFinished
 } GHOST_TProgress;
 
-#ifdef WITH_INPUT_NDOF
+#  ifdef WITH_INPUT_NDOF
 typedef struct {
   /** N-degree of freedom device data v3 [GSoC 2010] */
   // Each component normally ranges from -1 to +1, but can exceed that.
@@ -539,7 +545,7 @@ typedef struct {
   GHOST_TButtonAction action;
   short button;
 } GHOST_TEventNDOFButtonData;
-#endif  // WITH_INPUT_NDOF
+#  endif  // WITH_INPUT_NDOF
 
 typedef struct {
   /** The key code. */
@@ -574,29 +580,29 @@ typedef struct {
   GHOST_TUns32 frequency;
 } GHOST_DisplaySetting;
 
-#ifdef _WIN32
+#  ifdef _WIN32
 typedef void *GHOST_TEmbedderWindowID;
-#endif  // _WIN32
+#  endif  // _WIN32
 
-#ifndef _WIN32
+#  ifndef _WIN32
 // I can't use "Window" from "<X11/Xlib.h>" because it conflits with Window defined in winlay.h
 typedef int GHOST_TEmbedderWindowID;
-#endif  // _WIN32
+#  endif  // _WIN32
 
 /**
  * A timer task callback routine.
  * \param task The timer task object.
  * \param time The current time.
  */
-#ifdef __cplusplus
+#  ifdef __cplusplus
 class GHOST_ITimerTask;
 typedef void (*GHOST_TimerProcPtr)(GHOST_ITimerTask *task, GHOST_TUns64 time);
-#else
+#  else
 struct GHOST_TimerTaskHandle__;
 typedef void (*GHOST_TimerProcPtr)(struct GHOST_TimerTaskHandle__ *task, GHOST_TUns64 time);
-#endif
+#  endif
 
-#ifdef WITH_XR_OPENXR
+#  ifdef WITH_XR_OPENXR
 
 struct GHOST_XrDrawViewInfo;
 struct GHOST_XrError;
@@ -610,9 +616,9 @@ struct GHOST_XrError;
 typedef enum GHOST_TXrGraphicsBinding {
   GHOST_kXrGraphicsUnknown = 0,
   GHOST_kXrGraphicsOpenGL,
-#  ifdef WIN32
+#    ifdef WIN32
   GHOST_kXrGraphicsD3D11,
-#  endif
+#    endif
   /* For later */
   //  GHOST_kXrGraphicsVulkan,
 } GHOST_TXrGraphicsBinding;
@@ -676,6 +682,37 @@ typedef struct GHOST_XrError {
   void *customdata;
 } GHOST_XrError;
 
-#endif
+/* Nanoseconds */
+typedef int64_t GHOST_XrTime;
+
+typedef struct GHOST_XrActionStateBoolean {
+  bool currentState;
+  GHOST_XrTime lastChangeTime;
+  bool changedSinceSync;
+  bool isActive;
+} GHOST_XrActionStateBool;
+
+typedef struct GHOST_XrActionStateFloat {
+  float currentState;
+  GHOST_XrTime lastChangeTime;
+  bool changedSinceSync;
+  bool isActive;
+} GHOST_XrActionStateFloat;
+
+typedef struct GHOST_XrActionStateVector2f {
+  float currentX;
+  float currentY;
+  GHOST_XrTime lastChangeTime;
+  bool changedSinceSync;
+  bool isActive;
+} GHOST_XrActionStateVector2f;
+
+typedef enum GHOST_XrSpace {
+  GHOST_SPACE_VIEW,
+  GHOST_SPACE_LEFT_HAND,
+  GHOST_SPACE_RIGHT_HAND,
+} GHOST_XrSpace;
+
+#  endif
 
 #endif  // __GHOST_TYPES_H__
