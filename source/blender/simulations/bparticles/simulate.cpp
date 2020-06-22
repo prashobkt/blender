@@ -66,6 +66,7 @@ static void collision_interpolate_element(std::array<std::pair<float3, float3>, 
 static float collision_newton_rhapson(std::pair<float3, float3> &particle_points,
                                       std::array<std::pair<float3, float3>, 3> &tri_points,
                                       float radius,
+                                      float radius_epsilon,
                                       float3 &coll_normal,
                                       float3 &hit_bary_weights,
                                       float3 &point_on_plane)
@@ -97,9 +98,9 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     float3 p2;
     closest_on_tri_to_point_v3(p2, point, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
     float new_d = (p2 - point).length();
-    if (new_d < radius + COLLISION_MIN_DISTANCE) {
+    if (new_d < radius + radius_epsilon) {
       // printf("too close!\n");
-      point_on_plane = p2 + normal * (radius + COLLISION_MIN_DISTANCE);
+      point_on_plane = p2 + normal * (radius + radius_epsilon);
     }
     else {
       point_on_plane = p;
@@ -111,6 +112,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     // print_v3("first", particle_points.first);
     // print_v3("second", particle_points.second);
     // print_v3("point on plane", point_on_plane);
+    // printf("t0\n");
 
     return 0.f;
   }
@@ -158,10 +160,10 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
         closest_on_tri_to_point_v3(
             p2, point, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
         float new_d = (p2 - point).length();
-        if (new_d < radius + COLLISION_MIN_DISTANCE) {
+        if (new_d < radius + radius_epsilon) {
           // TODO should probably always do this
           // printf("too close!\n");
-          point_on_plane = p2 + normal * (radius + COLLISION_MIN_DISTANCE);
+          point_on_plane = p2 + normal * (radius + radius_epsilon);
         }
         else {
           point_on_plane = p;
@@ -175,6 +177,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
         // print_v3("point on plane", point_on_plane);
 
         CLAMP(t1, 0.f, 1.f);
+        // printf("t1 last: %f\n", t1);
         return t1;
       }
       else {
@@ -213,6 +216,8 @@ typedef struct RayCastData {
   float3 hit_vel;
   float duration;
   float start_time;
+  float radius_epsilon;
+  float rel_dt;  // A relative number between 0.0f-1.0f
 } RayCastData;
 
 BLI_NOINLINE static void raycast_callback(void *userdata,
@@ -256,11 +261,13 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
       float3 p2;
       closest_on_tri_to_point_v3(p2, point, v0, v1, v2);
       float new_d = (p2 - point).length();
-      if (new_d < ray->radius + COLLISION_MIN_DISTANCE) {
+      if (new_d < ray->radius + rd->radius_epsilon) {
         // printf("too close!\n");
-        point = p2 + normal * (ray->radius + COLLISION_MIN_DISTANCE);
+        point = p2 + normal * (ray->radius + rd->radius_epsilon);
         copy_v3_v3(hit->co, point);
       }
+      // No dt info available for static collisions, will manually calculate this later.
+      rd->rel_dt = 0.0f;
     }
     return;
   }
@@ -294,8 +301,13 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
   zero_v3(point_on_plane);
 
   // Check if we get hit by the moving object
-  float coll_time = collision_newton_rhapson(
-      rd->particle_points, tri_points, ray->radius, coll_normal, hit_bary_weights, point_on_plane);
+  float coll_time = collision_newton_rhapson(rd->particle_points,
+                                             tri_points,
+                                             ray->radius,
+                                             rd->radius_epsilon,
+                                             coll_normal,
+                                             hit_bary_weights,
+                                             point_on_plane);
 
   dist = float3::distance(rd->particle_points.first, rd->particle_points.second) * coll_time;
 
@@ -307,6 +319,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     // We have a collision!
     hit->index = index;
     hit->dist = dist;
+    rd->rel_dt = coll_time;
 
     // TODO might need to derive the velocity from acceleration to avoid "staircase effects" on
     // moving colliders
@@ -387,11 +400,11 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
   // cloth_bvh_collision
 
   for (uint pindex : IndexRange(amount)) {
-    // if (pindex != 11) {
+    // if (pindex != 422) {
     //  continue;
     //}
 
-    // if (positions[pindex][2] > -1.0f) {
+    // if (positions[pindex][2] > -0.7f) {
     //  printf("pindex: %d\n", pindex);
     //}
 
@@ -411,6 +424,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
         BVHTreeRayHit best_hit;
         float3 best_hit_vel;
         PartDeflect *best_hit_settings;
+        float best_dt;
         float max_move;
 
         float3 dir;
@@ -419,7 +433,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           // If velocity is zero, then no collisions will be detected with moving colliders. Make
           // sure that we have a forced check by setting the dir to something that is not zero.
           dir = float3(0, 0, 1.0f);
-          max_move = COLLISION_MIN_DISTANCE;
+          max_move = FLT_EPSILON;
         }
         else {
           dir = velocities[pindex].normalized();
@@ -455,6 +469,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
           rd.duration = duration;
           rd.start_time = 1.0 - duration / remaining_durations[pindex];
+          rd.radius_epsilon = (1.0f + 10.0f * floor(coll_num / 5.0f)) * COLLISION_MIN_DISTANCE;
 
           // TODO perhaps have two callbacks and check for static colider here instead?
           // So, if static use callback A otherwise B
@@ -488,17 +503,24 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
           prev_collider = collmd;
           prev_hit_idx = hit.index;
+
+          if (collmd->is_static) {
+            best_dt = duration * (best_hit.dist / max_move);
+          }
+          else {
+            best_dt = duration * rd.rel_dt;
+          }
+
           collided = true;
         }
         if (collided) {
           // Calculate the remaining duration
           // printf("old dur: %f\n", duration);
-          float elapsed_time = duration * (best_hit.dist / max_move);
-          duration -= elapsed_time;
+          duration -= best_dt;
           // printf("new dur: %f\n", duration);
 
           // Update the current velocity from forces
-          velocities[pindex] += elapsed_time * forces[pindex] * mass;
+          velocities[pindex] += best_dt * forces[pindex] * mass;
 
           // dead_state[pindex] = true;
           // TODO rename "dampening, in the old particle system dampening here was used to only
@@ -609,7 +631,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           // print_v3("vel_post", velocities[pindex]);
           //}
 
-          // printf("pindex: %d collnum: %d\n\n", pindex, coll_num);
+          // printf("pindex: %d collnum: %d hit_idx %d\n\n", pindex, coll_num, prev_hit_idx);
           coll_num++;
         }
       } while (collided && coll_num < 100);
