@@ -2978,3 +2978,134 @@ bool ED_gpencil_stroke_point_is_inside(bGPDstroke *gps,
 
   return hit;
 }
+
+/* Helper to move a point in buffer. */
+void gpencil_spread_point(
+    Brush *brush, GP_SpaceConversion *gsc, const int pt_index, const float x, const float y)
+{
+  RegionView3D *rv3d = gsc->region->regiondata;
+  float pixsize = rv3d->pixsize * 1000.0f;
+  const float factor = brush->size * pixsize;
+  float rand = 1.0f;
+
+  bGPdata *gpd = gsc->gpd;
+  tGPspoint *pt = ((tGPspoint *)(gpd->runtime.sbuffer) + pt_index);
+  rand = BLI_hash_int_01(BLI_hash_int_2d(pt->x + gpd->runtime.sbuffer_used, pt->y)) * 2.0f - 1.0f;
+  pt->x += x * factor * rand;
+
+  rand = BLI_hash_int_01(BLI_hash_int_2d(pt->y + gpd->runtime.sbuffer_used, pt->x)) * 2.0f - 1.0f;
+  pt->y += y * factor * rand;
+
+  /* Randomness to other factors. */
+  rand = BLI_hash_int_01(BLI_hash_int_2d(pt->x, pt->y)) * 2.0f - 1.0f;
+  pt->pressure += rand * 1.5f;
+
+  rand = BLI_hash_int_01(BLI_hash_int_2d(pt->x + pt->y, pt->x)) * 2.0f - 1.0f;
+  pt->strength += rand * 1.5f;
+  CLAMP(pt->strength, 0.1f, 1.0f);
+}
+
+/**
+ * Spread last buffer point to get more topoly
+ * @param brush  Current brush
+ * @param gpd  Current datablock
+ */
+void ED_gpencil_stroke_buffer_spread(Brush *brush, GP_SpaceConversion *gsc)
+{
+  bGPdata *gpd = gsc->gpd;
+  const int spread = brush->gpencil_settings->draw_spread;
+  if (spread == 0) {
+    return;
+  }
+  const int last_index = gpd->runtime.sbuffer_used - 1;
+
+  /* Increase the buffer size to hold the new points.
+   * As the function add 1, add only spread point minus 1. */
+  gpd->runtime.sbuffer_used += spread - 1;
+  gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
+      gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
+  /* Increment counters after expand buffer. */
+  gpd->runtime.sbuffer_used++;
+
+  /* Duplicate las point to the new point. */
+  tGPspoint *pt_orig = ((tGPspoint *)(gpd->runtime.sbuffer) + last_index);
+  for (int i = 0; i < spread; i++) {
+    tGPspoint *pt = ((tGPspoint *)(gpd->runtime.sbuffer) + last_index + i + 1);
+    copy_v2_v2(&pt->x, &pt_orig->x);
+    pt->pressure = pt_orig->pressure;
+    pt->strength = pt_orig->strength;
+    pt->time = pt_orig->time;
+    pt->uv_fac = pt_orig->uv_fac;
+    pt->uv_rot = pt_orig->uv_rot;
+    copy_v3_v3(pt->rnd, pt_orig->rnd);
+    pt->rnd_dirty = pt_orig->rnd_dirty;
+    copy_v4_v4(pt->vert_color, pt_orig->vert_color);
+  }
+  /* Spread the points. */
+  switch (spread) {
+    case 1: {
+      gpencil_spread_point(brush, gsc, last_index, -1.0f, 0.0f);
+      gpencil_spread_point(brush, gsc, last_index + 1, 1.0f, 0.0f);
+      break;
+    }
+    case 2: {
+      gpencil_spread_point(brush, gsc, last_index, -0.7f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 2, 0.7f, -1.0f);
+      break;
+    }
+    case 3: {
+      gpencil_spread_point(brush, gsc, last_index, -1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 1, 1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 3, 0.0f, -1.0f);
+      break;
+    }
+    case 4: {
+      gpencil_spread_point(brush, gsc, last_index, -1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 1, 1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 3, -1.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 4, 1.0f, -1.0f);
+      break;
+    }
+    case 5: {
+      gpencil_spread_point(brush, gsc, last_index, -1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 1, 0.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 2, 1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 4, -1.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 5, 1.0f, -1.0f);
+      break;
+    }
+    case 6: {
+      gpencil_spread_point(brush, gsc, last_index, -1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 1, 0.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 2, 1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 4, -1.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 5, 0.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 6, 1.0f, -1.0f);
+      break;
+    }
+    case 7: {
+      gpencil_spread_point(brush, gsc, last_index, -1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 1, 0.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 2, 1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 3, -0.7f, 0.0f);
+      gpencil_spread_point(brush, gsc, last_index + 4, 0.7f, 0.0f);
+      gpencil_spread_point(brush, gsc, last_index + 5, -1.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 6, 0.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 7, 1.0f, -1.0f);
+      break;
+    }
+    case 8: {
+      gpencil_spread_point(brush, gsc, last_index, -1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 1, 0.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 2, 1.0f, 1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 3, -1.0f, 0.0f);
+      gpencil_spread_point(brush, gsc, last_index + 5, 1.0f, 0.0f);
+      gpencil_spread_point(brush, gsc, last_index + 6, -1.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 7, 0.0f, -1.0f);
+      gpencil_spread_point(brush, gsc, last_index + 8, 1.0f, -1.0f);
+      break;
+    }
+    default:
+      break;
+  }
+}

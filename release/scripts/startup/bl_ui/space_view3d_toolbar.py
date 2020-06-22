@@ -1623,6 +1623,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
             col.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
                                 use_negative_slope=True)
 
+        row = col.row(align=True)
+        row.prop(gp_settings, "pen_spread")
+
 
 class VIEW3D_PT_tools_grease_pencil_brush_paint_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
     bl_context = ".greasepencil_paint"

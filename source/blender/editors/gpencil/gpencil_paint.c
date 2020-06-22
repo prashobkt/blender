@@ -911,6 +911,11 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       }
     }
 
+    /* Spread points. */
+    if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
+      ED_gpencil_stroke_buffer_spread(brush, &p->gsc);
+    }
+
     /* Update evaluated data. */
     ED_gpencil_sbuffer_update_eval(gpd, p->ob_eval);
 
