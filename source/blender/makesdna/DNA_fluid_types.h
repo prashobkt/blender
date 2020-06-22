@@ -66,12 +66,6 @@ enum {
   FLUID_DOMAIN_FILE_BIN_OBJECT = (1 << 4),
 };
 
-/* Slice method. */
-enum {
-  FLUID_DOMAIN_SLICE_VIEW_ALIGNED = 0,
-  FLUID_DOMAIN_SLICE_AXIS_ALIGNED = 1,
-};
-
 /* Axis aligned method. */
 enum {
   AXIS_SLICE_FULL = 0,
@@ -589,20 +583,21 @@ typedef struct FluidDomainSettings {
   int timesteps_maximum;
 
   /* Display options. */
-  char slice_method, axis_slice_method;
-  char slice_axis, draw_velocity;
   float slice_per_voxel;
   float slice_depth;
   float display_thickness;
-  struct ColorBand *coba;
   float grid_scale;
+  struct ColorBand *coba;
   float vector_scale;
+  char axis_slice_method;
+  char slice_axis;
+  char draw_velocity;
   char vector_draw_type;
   char vector_draw_grid_type;
   char use_coba;
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
-  char _pad9[3]; /* Unused. */
+  char _pad9[4]; /* Unused. */
 
   /* -- Deprecated / unsed options (below). -- */
 

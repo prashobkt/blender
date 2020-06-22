@@ -1390,8 +1390,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     int slice_axis = -1;
     line_count *= mds->res[0] * mds->res[1] * mds->res[2];
 
-    if (mds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
-        mds->axis_slice_method == AXIS_SLICE_SINGLE) {
+    if (mds->axis_slice_method == AXIS_SLICE_SINGLE) {
       float viewinv[4][4];
       DRW_view_viewmat_get(NULL, viewinv, true);
 

@@ -93,8 +93,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
     return;
   }
 
-  const bool use_slice = (mds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
-                          mds->axis_slice_method == AXIS_SLICE_SINGLE);
+  const bool use_slice = (mds->axis_slice_method == AXIS_SLICE_SINGLE);
   const InterpType cubic_interp = (InterpType)mds->interp_method;
   const bool show_phi = (mds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
                          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||

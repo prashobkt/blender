@@ -4983,7 +4983,6 @@ void BKE_fluid_modifier_create_type_data(struct FluidModifierData *mmd)
     mmd->domain->timesteps_maximum = 4;
 
     /* display options */
-    mmd->domain->slice_method = FLUID_DOMAIN_SLICE_VIEW_ALIGNED;
     mmd->domain->axis_slice_method = AXIS_SLICE_FULL;
     mmd->domain->slice_axis = 0;
     mmd->domain->interp_method = 0;
@@ -5222,7 +5221,6 @@ void BKE_fluid_modifier_copy(const struct FluidModifierData *mmd,
     tmds->timesteps_maximum = mds->timesteps_maximum;
 
     /* display options */
-    tmds->slice_method = mds->slice_method;
     tmds->axis_slice_method = mds->axis_slice_method;
     tmds->slice_axis = mds->slice_axis;
     tmds->interp_method = mds->interp_method;

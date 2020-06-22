@@ -1244,10 +1244,8 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
         domain = context.fluid.domain_settings
-        slice_method = domain.slice_method
         axis_slice_method = domain.axis_slice_method
 
-        do_axis_slicing = (slice_method == 'AXIS_ALIGNED')
         do_full_slicing = (axis_slice_method == 'FULL')
 
         col = flow.column(align=False)
@@ -1256,18 +1254,14 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
         col.separator()
 
         col = flow.column()
-        col.prop(domain, "slice_method", text="Slicing")
-
-        col = col.column()
-        col.active = do_axis_slicing
         col.prop(domain, "axis_slice_method")
 
-        if not do_full_slicing and do_axis_slicing:
+        if not do_full_slicing:
             col.prop(domain, "slice_axis")
             col.prop(domain, "slice_depth")
 
         col = col.column()
-        col.active = do_full_slicing or not do_axis_slicing
+        col.active = do_full_slicing
         col.prop(domain, "slice_per_voxel")
 
 

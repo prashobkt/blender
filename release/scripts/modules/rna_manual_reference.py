@@ -207,7 +207,6 @@ url_manual_mapping = (
 	("bpy.types.fluiddomainsettings.guide_source*", "physics/fluid/type/domain/guides.html#bpy-types-fluiddomainsettings-guide-source"),
 	("bpy.types.fluiddomainsettings.particle_max*", "physics/fluid/type/domain/settings.html#bpy-types-fluiddomainsettings-particle-max"),
 	("bpy.types.fluiddomainsettings.particle_min*", "physics/fluid/type/domain/settings.html#bpy-types-fluiddomainsettings-particle-min"),
-	("bpy.types.fluiddomainsettings.slice_method*", "physics/fluid/type/domain/gas/viewport_display.html#bpy-types-fluiddomainsettings-slice-method"),
 	("bpy.types.fluiddomainsettings.vector_scale*", "physics/fluid/type/domain/gas/viewport_display.html#bpy-types-fluiddomainsettings-vector-scale"),
 	("bpy.types.fluideffectorsettings.guide_mode*", "physics/fluid/type/effector.html#bpy-types-fluideffectorsettings-guide-mode"),
 	("bpy.types.fluidflowsettings.texture_offset*", "physics/fluid/type/flow.html#bpy-types-fluidflowsettings-texture-offset"),
