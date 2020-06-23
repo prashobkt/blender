@@ -3094,7 +3094,7 @@ static void gpencil_copy_buffer_point(tGPspoint *pt_from, tGPspoint *pt_dst)
 }
 
 /**
- * Spread last buffer point to get more topoly
+ * Spread last buffer point to get more topology
  * @param brush  Current brush
  * @param gpd  Current datablock
  */
@@ -3123,4 +3123,44 @@ void ED_gpencil_stroke_buffer_spread(Brush *brush, GP_SpaceConversion *gsc)
   }
   /* Spread the points. */
   gpencil_spread_points(brush, gsc, spread, last_index);
+}
+
+/**
+ * Spread a segment of buffer points to get more topology.
+ * This function assumes the segment is at the end of the stroke.
+ *
+ * @param brush  Current brush
+ * @param gpd  Current datablock
+ * @param from_index Index of the first point to spread
+ * @param to_index Index of the last point to spread
+ */
+void ED_gpencil_stroke_buffer_spread_segment(struct Brush *brush,
+                                             struct GP_SpaceConversion *gsc,
+                                             int from_index,
+                                             int to_index)
+{
+  bGPdata *gpd = gsc->gpd;
+  const int spread = brush->gpencil_settings->draw_spread;
+  if (spread == 0) {
+    return;
+  }
+
+  const int totpoints = to_index - from_index;
+
+  /* Increase the buffer size to hold the new points.
+   * As the function add 1, add only spread point minus 1. */
+  gpd->runtime.sbuffer_used += (spread * totpoints) - 1;
+  gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
+      gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
+  /* Increment counters after expand buffer. */
+  gpd->runtime.sbuffer_used++;
+
+  /* Move original points to the right index depending of spread value. */
+  for (int i = totpoints; i > 0; i--) {
+    tGPspoint *pt_orig = ((tGPspoint *)(gpd->runtime.sbuffer) + from_index + i);
+    tGPspoint *pt_dst = ((tGPspoint *)(gpd->runtime.sbuffer) + from_index + (spread * i));
+    gpencil_copy_buffer_point(pt_orig, pt_dst);
+  }
+
+  /* Copy each point is his segment. */
 }

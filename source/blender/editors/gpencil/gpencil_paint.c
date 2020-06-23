@@ -3758,6 +3758,9 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
         for (int r = 0; r < 5; r++) {
           gp_smooth_segment(p->gpd, 0.15f, size_before - 1, size_after - 1);
         }
+        /* Spread the points if needed. */
+        ED_gpencil_stroke_buffer_spread_segment(
+            p->brush, &p->gsc, size_before - 1, size_after - 1);
       }
 
       /* finish painting operation if anything went wrong just now */

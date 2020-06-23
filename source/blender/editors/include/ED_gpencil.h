@@ -357,6 +357,10 @@ bool ED_gpencil_stroke_point_is_inside(struct bGPDstroke *gps,
                                        const float diff_mat[4][4]);
 
 void ED_gpencil_stroke_buffer_spread(struct Brush *brush, struct GP_SpaceConversion *gsc);
+void ED_gpencil_stroke_buffer_spread_segment(struct Brush *brush,
+                                             struct GP_SpaceConversion *gsc,
+                                             int from_index,
+                                             int to_index);
 
 #ifdef __cplusplus
 }
