@@ -1131,13 +1131,13 @@ static void rna_UserDef_usermenus_buttons_delete(ListBase *lb, bUserMenuItem_But
 
 static void rna_UserDef_usermenus_buttons_free_list(ListBase *lb)
 {
-  bUserMenuItem_But *umib = buttons->first;
+  bUserMenuItem_But *umib = lb->first;
 
   if (!umib)
     return;
   for (bUserMenuItem_But *next_umib; umib; umib = next_umib) {
     next_umib = umib->next;
-    rna_UserDef_usermenus_buttons_delete(buttons, umib);
+    rna_UserDef_usermenus_buttons_delete(lb, umib);
   }
 }
 
