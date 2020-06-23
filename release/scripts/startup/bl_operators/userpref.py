@@ -1184,7 +1184,7 @@ class PREFERENCES_OT_menuitem_remove(Operator):
     def poll(cls, context):
         prefs = context.preferences
         um = prefs.user_menus
-        can_remove = um.sitem_id() >= 0
+        can_remove = um.active_item
         return can_remove
 
     def execute(self, context):
@@ -1208,8 +1208,13 @@ class PREFERENCES_OT_menuitem_up(Operator):
     def poll(cls, context):
         prefs = context.preferences
         um = prefs.user_menus
-        can_move_up = um.sitem_id() > 0
-        return can_move_up
+        current = um.active_item
+        if not current:
+            return False
+        prev_item = current.prev
+        if prev_item:
+            return True
+        return False
 
     def execute(self, context):
         prefs = context.preferences
@@ -1232,9 +1237,13 @@ class PREFERENCES_OT_menuitem_down(Operator):
     def poll(cls, context):
         prefs = context.preferences
         um = prefs.user_menus
-        id = um.sitem_id()
-        can_move_down = id >= 0 and id + 1 < um.items_len()
-        return can_move_down
+        current = um.active_item
+        if not current:
+            return False
+        next_item = current.next
+        if next_item:
+            return True
+        return False
 
     def execute(self, context):
         prefs = context.preferences
@@ -1242,7 +1251,6 @@ class PREFERENCES_OT_menuitem_down(Operator):
         um.item_move(up=False)
         context.preferences.is_dirty = True
         return {'FINISHED'}
-
 
 classes = (
     PREFERENCES_OT_addon_disable,

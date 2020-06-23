@@ -26,6 +26,19 @@ import bpy
 from bpy.app.translations import pgettext_iface as iface_
 from bpy.app.translations import contexts as i18n_contexts
 
+def draw_item(context, box, but_list):
+    prefs = context.preferences
+    um = prefs.user_menus
+
+    for items in but_list:
+        name = items.item.name
+        if items.item.type == "SEPARATOR":
+            name = "___________"
+        box.prop(items, "pressed", text=name, toggle=1)
+        if items.item.type == "MENU":
+            sub_box = box.box()
+            draw_item(context, sub_box, items.subbut)
+
 def draw_item_box(context, row):
     prefs = context.preferences
     um = prefs.user_menus
@@ -36,7 +49,15 @@ def draw_item_box(context, row):
     has_item = um.has_item()
     if not has_item :
         box_col.label(text="none")
-    box_col.prop(um, "item_selected", expand=True)
+    #box_col.prop(um, "item_selected", expand=True)
+    um.buttons_refresh()
+    for items in um.buttons:
+        name = items.item.name
+        if items.item.type == "SEPARATOR":
+            name = "___________"
+        box_col.prop(items, "pressed", text=name, toggle=1)
+        if items.item.type == "MENU":
+            sub_box = box_col.box()
     
     row = row.split(factor=0.9, align=True)
     col = row.column(align=True)
@@ -54,16 +75,17 @@ def draw_item_editor(context, row):
     col = row.column()
 
     has_item = um.has_item()
+    current = um.active_item
     if not has_item :
         col.label(text="No item in this list.")
         col.label(text="Add one or choose another list to get started")
-    elif (um.sitem_id() >= 0):
-        type = um.sitem_type()
-        col.prop(um, "item_type")
-        if (type != "SEPARATOR"):
-            col.prop(um, "item_name")
-        if (type == "OPERATOR"):
-            col.prop(um, "item_operator")
+    elif current:
+        col.prop(current, "type")
+        if (current.type != "SEPARATOR"):
+            col.prop(current, "name")
+        if (current.type == "OPERATOR"):
+            umi_op = current.get_operator()
+            col.prop(umi_op, "operator")
     else :
         col.label(text="No item selected.")
 
@@ -105,7 +127,7 @@ def draw_user_menus(context, layout):
 
     col = layout.column()
     row = layout.row()
-       
+
     draw_item_box(context=context, row=row)
     draw_item_editor(context=context, row=row)
 

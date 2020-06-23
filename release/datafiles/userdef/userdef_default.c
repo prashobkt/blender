@@ -232,5 +232,10 @@ const UserDef U_default = {
     .runtime =
         {
             .is_dirty = 0,
+
+            .um_space_select = 1,
+            .um_context_select = 0,
+            .um_item_select = NULL,
+            .um_buttons = {NULL},
         },
 };

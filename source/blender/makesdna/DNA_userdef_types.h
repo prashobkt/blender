@@ -518,6 +518,13 @@ typedef struct bPathCompare {
   char _pad0[7];
 } bPathCompare;
 
+typedef struct bUserMenusGroup {
+  struct bUserMenuGroup *next, *prev;
+  char name[64];
+  /* bUserMenu */
+  ListBase menus;
+} bUserMenusGroup;
+
 typedef struct bUserMenu {
   struct bUserMenu *next, *prev;
   char space_type;
@@ -556,6 +563,15 @@ typedef struct bUserMenuItem_Prop {
   char _pad0[4];
 } bUserMenuItem_Prop;
 
+typedef struct bUserMenuItem_But {
+  struct bUserMenuItem_But *next, *prev;
+  struct bUserMenuItem *item;
+  int index;
+  unsigned char pressed;
+  char _pad0[3];
+  struct ListBase subbut;
+} bUserMenuItem_But;
+
 enum {
   USER_MENU_TYPE_SEP = 1,
   USER_MENU_TYPE_OPERATOR = 2,
@@ -585,7 +601,14 @@ typedef struct WalkNavigation {
 
 typedef struct UserDef_Runtime {
   char is_dirty;
-  char _pad0[7];
+
+  /* User menu editor runtime datas */
+  char um_space_select;
+  char um_context_select;
+  char _pad0[5];
+  struct bUserMenuItem *um_item_select;
+  /** #bUserMenuItem_But. */
+  struct ListBase um_buttons;
 } UserDef_Runtime;
 
 /**
@@ -879,14 +902,6 @@ typedef struct UserDef {
   char _pad10[4];
 
   struct WalkNavigation walk_navigation;
-
-  /** custom menu **/
-  short um_space_select;
-  short um_context_select;
-  short um_item_select;
-  short um_item_type;
-  char um_item_name[64];
-  char um_item_op[64];
 
   /** The UI for the user preferences. */
   UserDef_SpaceData space_data;

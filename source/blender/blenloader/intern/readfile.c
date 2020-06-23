@@ -10330,6 +10330,10 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   /* Clear runtime data. */
   user->runtime.is_dirty = false;
   user->edit_studio_light = 0;
+  user->runtime.um_space_select = 1;
+  user->runtime.um_context_select = 1;
+  user->runtime.um_item_select = NULL;
+  BLI_listbase_clear(&user->runtime.um_buttons);
 
   /* free fd->datamap again */
   oldnewmap_clear(fd->datamap);
