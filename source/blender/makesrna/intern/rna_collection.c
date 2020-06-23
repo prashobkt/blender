@@ -387,6 +387,29 @@ void RNA_def_collections(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem collection_color_items[] = {
+      {COLLECTION_COLOR_NONE, "NONE", 0, "None", "Assign no color tag to the collection"},
+      {COLLECTION_COLOR_RED, "RED", 0, "Red", "Assign a red color tag to the collection"},
+      {COLLECTION_COLOR_ORANGE,
+       "ORANGE",
+       0,
+       "Orange",
+       "Assign an orange color tag to the collection"},
+      {COLLECTION_COLOR_YELLOW,
+       "YELLOW",
+       0,
+       "Yellow",
+       "Assign a yellow color tag to the collection"},
+      {COLLECTION_COLOR_GREEN, "GREEN", 0, "Green", "Assign a green color tag to the collection"},
+      {COLLECTION_COLOR_BLUE, "BLUE", 0, "Blue", "Assign a blue color tag to the collection"},
+      {COLLECTION_COLOR_PURPLE,
+       "PURPLE",
+       0,
+       "Purple",
+       "Assign a purple color tag to the collection"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "Collection", "ID");
   RNA_def_struct_ui_text(srna, "Collection", "Collection of Object data-blocks");
   RNA_def_struct_ui_icon(srna, ICON_GROUP);
@@ -473,6 +496,12 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, -1);
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
+
+  prop = RNA_def_property(srna, "color", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "color");
+  RNA_def_property_enum_items(prop, collection_color_items);
+  RNA_def_property_ui_text(prop, "Collection Color", "Color tag for a collection");
+  RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, NULL);
 
   RNA_define_lib_overridable(false);
 }

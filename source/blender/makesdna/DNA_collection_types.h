@@ -59,7 +59,9 @@ typedef struct Collection {
   short flag;
   /* Runtime-only, always cleared on file load. */
   short tag;
-  char _pad[4];
+
+  short color;
+  char _pad[2];
 
   /* Runtime. Cache of objects in this collection and all its
    * children. This is created on demand when e.g. some physics
@@ -92,6 +94,17 @@ enum {
    * is called from very low-level places, like e.g ID remapping...
    * Using a generic tag like LIB_TAG_DOIT for this is just impossible, we need our very own. */
   COLLECTION_TAG_RELATION_REBUILD = (1 << 0),
+};
+
+/* Collection->color */
+enum {
+  COLLECTION_COLOR_NONE = 0,
+  COLLECTION_COLOR_RED = 1,
+  COLLECTION_COLOR_ORANGE = 2,
+  COLLECTION_COLOR_YELLOW = 3,
+  COLLECTION_COLOR_GREEN = 4,
+  COLLECTION_COLOR_BLUE = 5,
+  COLLECTION_COLOR_PURPLE = 6,
 };
 
 #endif /* __DNA_COLLECTION_TYPES_H__ */
