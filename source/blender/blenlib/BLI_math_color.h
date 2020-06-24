@@ -145,7 +145,6 @@ MINLINE void rgba_uchar_args_test_set(unsigned char col[4],
 MINLINE void cpack_cpy_3ub(unsigned char r_col[3], const unsigned int pack);
 
 void blackbody_temperature_to_rgb_table(float *r_table, int width, float min, float max);
-void phi_to_rgb(float *r_table, int width, float min, float max);
 
 /********* lift/gamma/gain / ASC-CDL conversion ***********/
 

@@ -23,6 +23,8 @@ uniform vec3 activeColor;
 uniform float slicePosition;
 uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
 
+uniform bool showPhi;
+
 #ifdef VOLUME_SLICE
 in vec3 localPos;
 #endif
@@ -115,14 +117,29 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 {
   vec3 co = ls_pos * 0.5 + 0.5;
 #ifdef USE_COBA
-  float val = sample_volume_texture(densityTexture, co).r;
-#  ifdef SHOW_PHI
-  /* Scaling the value holding 0.5 as neutral. */
-  val = 0.5 + (val - 0.5) * gridScale;
-#  else
-  val *= gridScale;
-#  endif
-  vec4 tval = texture(transferTexture, val) * densityScale;
+  float val = sample_volume_texture(densityTexture, co).r * gridScale;
+  vec4 tval;
+  if(showPhi) {
+    /* Color mapping for level-set representation */
+    val = (val * 0.2 < 1.0) ? val * 0.2 : 1.0;
+    val = (val >= -1.0) ? val : -1.0;
+
+    if (val >= 0.0) {
+      tval.r = val;
+      tval.g = 0.0;
+      tval.b = 0.5;
+    }
+    else {
+      tval.r = 0.5;
+      tval.g = 1.0 + val;
+      tval.b = 0.0;
+    }
+    tval.a = 0.06;
+  }
+  else {
+    tval = texture(transferTexture, val);
+  }
+  tval *= densityScale;
   tval.rgb = pow(tval.rgb, vec3(2.2));
   scattering = tval.rgb * 1500.0;
   extinction = max(1e-4, tval.a * 50.0);

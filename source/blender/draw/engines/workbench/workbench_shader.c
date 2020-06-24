@@ -441,8 +441,7 @@ GPUShader *workbench_shader_antialiasing_get(int stage)
   return e_data.smaa_sh[stage];
 }
 
-GPUShader *workbench_shader_volume_get(
-    bool slice, bool coba, InterpType cubic, bool smoke, bool show_phi)
+GPUShader *workbench_shader_volume_get(bool slice, bool coba, InterpType cubic, bool smoke)
 {
   GPUShader **shader = &e_data.volume_sh[slice][coba][cubic][smoke];
 
@@ -465,9 +464,6 @@ GPUShader *workbench_shader_volume_get(
     }
     if (smoke) {
       BLI_dynstr_append(ds, "#define VOLUME_SMOKE\n");
-    }
-    if (show_phi) {
-      BLI_dynstr_append(ds, "#define SHOW_PHI\n");
     }
 
     char *defines = BLI_dynstr_get_cstring(ds);

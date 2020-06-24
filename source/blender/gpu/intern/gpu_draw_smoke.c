@@ -52,7 +52,6 @@
 enum {
   TFUNC_FLAME_SPECTRUM = 0,
   TFUNC_COLOR_RAMP = 1,
-  TFUNC_PHI_SPECTRUM = 2,
 };
 
 #  define TFUNC_WIDTH 256
@@ -103,35 +102,6 @@ static void create_color_ramp(const struct ColorBand *coba, float *data)
   }
 }
 
-static void create_phi_spectrum_texture(float *data)
-{
-#  define MAX_PHI_VALUE 1.0f
-#  define MIN_PHI_VALUE -1.0f
-
-  float *spec_pixels = MEM_mallocN(TFUNC_WIDTH * 4 * 16 * 16 * sizeof(float), "spec_pixels");
-
-  phi_to_rgb(data, TFUNC_WIDTH, MIN_PHI_VALUE, MAX_PHI_VALUE);
-
-  for (int i = 0; i < 16; i++) {
-    for (int j = 0; j < 16; j++) {
-      for (int k = 0; k < TFUNC_WIDTH; k++) {
-        int index = (j * TFUNC_WIDTH * 16 + i * TFUNC_WIDTH + k) * 4;
-        spec_pixels[index] = (data[k * 4]);
-        spec_pixels[index + 1] = (data[k * 4 + 1]);
-        spec_pixels[index + 2] = (data[k * 4 + 2]);
-        spec_pixels[index + 3] = 0.06f;
-      }
-    }
-  }
-
-  memcpy(data, spec_pixels, sizeof(float) * 4 * TFUNC_WIDTH);
-
-  MEM_freeN(spec_pixels);
-
-#  undef MAX_PHI_VALUE
-#  undef MIN_PHI_VALUE
-}
-
 static GPUTexture *create_transfer_function(int type, const struct ColorBand *coba)
 {
   float *data = MEM_mallocN(sizeof(float) * 4 * TFUNC_WIDTH, __func__);
@@ -142,9 +112,6 @@ static GPUTexture *create_transfer_function(int type, const struct ColorBand *co
       break;
     case TFUNC_COLOR_RAMP:
       create_color_ramp(coba, data);
-      break;
-    case TFUNC_PHI_SPECTRUM:
-      create_phi_spectrum_texture(data);
       break;
   }
 
@@ -167,6 +134,7 @@ static void swizzle_texture_channel_single(GPUTexture *tex)
 static GPUTexture *create_field_texture(FluidDomainSettings *mds)
 {
   float *field = NULL;
+  eGPUTextureFormat texture_format = GPU_R8;
 
   switch (mds->coba_field) {
     case FLUID_DOMAIN_FIELD_DENSITY:
@@ -213,22 +181,34 @@ static GPUTexture *create_field_texture(FluidDomainSettings *mds)
       break;
     case FLUID_DOMAIN_FIELD_PHI:
       field = manta_get_phi(mds->fluid);
+      texture_format = GPU_R16F;
       break;
     case FLUID_DOMAIN_FIELD_PHI_IN:
       field = manta_get_phi_in(mds->fluid);
+      texture_format = GPU_R16F;
       break;
     case FLUID_DOMAIN_FIELD_PHI_OUT:
       field = manta_get_phiout_in(mds->fluid);
+      texture_format = GPU_R16F;
       break;
     case FLUID_DOMAIN_FIELD_PHI_OBSTACLE:
       field = manta_get_phiobs_in(mds->fluid);
+      texture_format = GPU_R16F;
       break;
     default:
       return NULL;
   }
 
-  GPUTexture *tex = GPU_texture_create_nD(
-      mds->res[0], mds->res[1], mds->res[2], 3, field, GPU_R8, GPU_DATA_FLOAT, 0, true, NULL);
+  GPUTexture *tex = GPU_texture_create_nD(mds->res[0],
+                                          mds->res[1],
+                                          mds->res[2],
+                                          3,
+                                          field,
+                                          texture_format,
+                                          GPU_DATA_FLOAT,
+                                          0,
+                                          true,
+                                          NULL);
 
   swizzle_texture_channel_single(tex);
   return tex;
@@ -371,16 +351,11 @@ void GPU_create_smoke_coba_field(FluidModifierData *mmd)
     if (!mds->tex_field) {
       mds->tex_field = create_field_texture(mds);
     }
-    if (!mds->tex_coba) {
-      if (mds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
-          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
-          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
-          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE) {
-        mds->tex_coba = create_transfer_function(TFUNC_PHI_SPECTRUM, mds->coba);
-      }
-      else {
-        mds->tex_coba = create_transfer_function(TFUNC_COLOR_RAMP, mds->coba);
-      }
+    if (!mds->tex_coba && !(mds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
+                            mds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
+                            mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
+                            mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE)) {
+      mds->tex_coba = create_transfer_function(TFUNC_COLOR_RAMP, mds->coba);
     }
   }
 #endif
