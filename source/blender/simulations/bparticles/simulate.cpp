@@ -106,14 +106,6 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
       point_on_plane = p;
     }
 
-    // printf("t = 0, d0 = %f\n", d0);
-
-    // print_v3("p", p);
-    // print_v3("first", particle_points.first);
-    // print_v3("second", particle_points.second);
-    // print_v3("point on plane", point_on_plane);
-    // printf("t0\n");
-
     return 0.f;
   }
 
@@ -169,15 +161,7 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
           point_on_plane = p;
         }
 
-        // printf("old_d %f\n", new_d);
-        // printf("new_d %f\n", (point_on_plane - p2).length());
-        // print_v3("p", p);
-        // print_v3("first", particle_points.first);
-        // print_v3("second", particle_points.second);
-        // print_v3("point on plane", point_on_plane);
-
         CLAMP(t1, 0.f, 1.f);
-        // printf("t1 last: %f\n", t1);
         return t1;
       }
       else {
@@ -331,16 +315,21 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
                      rd->duration;
     }
 
-    // printf("====Best hit so far!\n");
-
     copy_v3_v3(hit->co, point_on_plane);
     copy_v3_v3(hit->no, coll_normal);
   }
 }
 
+// TODO come up with a better function name...
 static float3 min_add(float3 a, float3 b)
 {
-  // TODO come up with a better function name...
+
+  if (dot_v3v3(a, b) == -1.0f) {
+    // If a == -b then we will get NaN in this function.
+    // So just return a and hope for the best.
+    return a;
+  }
+
   if (is_zero_v3(a)) {
     return b;
   }
@@ -362,10 +351,6 @@ static float3 min_add(float3 a, float3 b)
     b = temp;
     proj = float3::project(a, b);
   }
-
-  // TODO do a NaN check here in case a == -b which will lead to division by zero.
-
-  // print_v3("proj", proj);
 
   b += a - proj;
 
@@ -393,11 +378,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
   MutableArrayRef<float3> velocities = attributes.get<float3>("Velocity");
   MutableArrayRef<float3> positions = attributes.get<float3>("Position");
   MutableArrayRef<float> sizes = attributes.get<float>("Size");
-  MutableArrayRef<bool> dead_state = attributes.get<bool>("Dead");
-
-  // system_info.collision_objects
-  // simulation_state.m_depsgraph;
-  // cloth_bvh_collision
+  // MutableArrayRef<bool> dead_state = attributes.get<bool>("Dead");
 
   for (uint pindex : IndexRange(amount)) {
     // if (pindex != 422) {
@@ -456,7 +437,6 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
           hit.index = -1;
           hit.dist = max_move;
 
-          // TODO the particle radius seems a bit flaky with higher distances?
           float particle_radius = sizes[pindex];
 
           float3 start = positions[pindex];
@@ -486,14 +466,12 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
             // We didn't hit anything
             continue;
           }
-          if (false && prev_collider == collmd && prev_hit_idx == hit.index) {
-            // TODO look into removing this check as it shouldn't be needed anymore. If the
-            // particle hits the same face twice in a row, it must be because it couldn't move
-            // enough and should be poked again by this face.
-
+          if (!collmd->is_static && prev_collider == collmd && prev_hit_idx == hit.index) {
             // We collided with the same face twice in a row.
             // Skip collision handling here as the set velocity from the previous collision
             // handling should keep the particle from tunneling through the face.
+            // (If it is static, otherwise dampening and friction might make it collide again
+            // during the same time step)
             continue;
           }
 
@@ -533,14 +511,6 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
 
           float dot_epsilon = 1e-5f;
 
-          // printf("==== COLLIDED ====\n");
-          // print_v3("best_hit", best_hit.co);
-
-          // print_v3("hit normal", normal);
-          // print_v3("hit velo", best_hit_vel);
-          // print_v3("part velo", velocities[pindex]);
-          // print_v3("const vel pre", constraint_velo);
-
           // Modify constraint_velo so if it is along the collider normal if it is moving into
           // the collision plane.
           if (dot_v3v3(constraint_velo, normal) < -dot_epsilon) {
@@ -558,11 +528,8 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
             // The collider is moving towards the particle, we need to make sure that the particle
             // has enough velocity to not tunnel through.
             // The minimal distance we have to travel to still be outside is in the normal
-            // direction.
+            // direction. (Disregarding any other colliders of course...)
             float3 min_move = float3::project(best_hit_vel, normal);
-            // print_v3("normal", normal);
-            // print_v3("min_move", min_move);
-            // min_move *= best_hit_vel.length() / min_move.length();
 
             constraint_velo = min_add(constraint_velo, min_move);
           }
@@ -586,50 +553,29 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
             deflect_vel += part_velo_normal;
           }
 
-          // deflect_vel *= (1.0f - dampening);
-
           // print_v3("normal", normal);
-          // printf("normal dir %f\n", normal_dot);
-          // print_v3("n_v", n_v);
           // print_v3("best hit vel", best_hit_vel);
-          // print_v3("hit_normal_velo", hit_normal_velo);
           // print_v3("pos", positions[pindex]);
           // print_v3("velo", velocities[pindex]);
-          // print_v3("vel_local", local_velo);
           // print_v3("deflect_vel", deflect_vel);
           // print_v3("const vel", constraint_velo);
           // printf("\n");
-
-          float3 temp;
-
-          sub_v3_v3v3(temp, positions[pindex], best_hit.co);
-
-          // if (temp.length() > velocities[pindex].length()) {
-          //  // We moved further than our velocity should have allowed us to.
-          //  print_v3("best_hit", best_hit.co);
-          //  printf("pindex: %d\n\n\n\n", pindex);
-          //}
 
           if (!is_zero_v3(constraint_velo)) {
             if (coll_num == 99) {
               // If we are at the last collision check, just try to go into the constraint velocity
               // direction and hope for the best.
-              deflect_vel = float3(0, 0, 1);
-              printf("Gahh\n");
+              deflect_vel = constraint_velo;
             }
             else if (float3::project(deflect_vel, constraint_velo).length() <
                      constraint_velo.length()) {
-              // printf("gapp\n");
-              // print_v3("def old vel", deflect_vel);
+              // We are not moving out the required amount, try to fix that.
               deflect_vel = min_add(deflect_vel, constraint_velo);
-              // print_v3("const def new vel", deflect_vel);
             }
           }
 
           positions[pindex] = best_hit.co;
           velocities[pindex] = deflect_vel;
-          // print_v3("vel_post", velocities[pindex]);
-          //}
 
           // printf("pindex: %d collnum: %d hit_idx %d\n\n", pindex, coll_num, prev_hit_idx);
           coll_num++;
