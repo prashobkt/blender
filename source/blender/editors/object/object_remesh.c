@@ -174,6 +174,11 @@ static int voxel_remesh_exec(bContext *C, wmOperator *op)
     BKE_remesh_reproject_sculpt_face_sets(new_mesh, mesh);
   }
 
+  if (mesh->flag & ME_REMESH_REPROJECT_VERTEX_COLORS) {
+    BKE_mesh_runtime_clear_geometry(mesh);
+    BKE_remesh_reproject_vertex_paint(new_mesh, mesh);
+  }
+
   BKE_mesh_nomain_to_mesh(new_mesh, mesh, ob, &CD_MASK_MESH, true);
 
   if (mesh->flag & ME_REMESH_SMOOTH_NORMALS) {
@@ -338,7 +343,7 @@ static void voxel_size_edit_draw(const bContext *UNUSED(C), ARegion *UNUSED(ar),
   char str[VOXEL_SIZE_EDIT_MAX_STR_LEN];
   short strdrawlen = 0;
 
-  BLI_snprintf(str, VOXEL_SIZE_EDIT_MAX_STR_LEN, "%3.4f%%", cd->voxel_size);
+  BLI_snprintf(str, VOXEL_SIZE_EDIT_MAX_STR_LEN, "%.4f", cd->voxel_size);
   strdrawlen = BLI_strlen_utf8(str);
 
   immUnbindProgram();
@@ -569,8 +574,8 @@ static int voxel_size_edit_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   copy_v3_v3(cd->text_mat[3], text_pos);
 
   /* Scale the text.  */
-  unit_m4(scale_mat);
-  scale_m4_fl(scale_mat, 0.0008f);
+  const float pixelsize = ED_view3d_pixel_size(rv3d, text_pos);
+  scale_m4_fl(scale_mat, pixelsize * 0.5f);
   mul_m4_m4_post(cd->text_mat, scale_mat);
 
   WM_event_add_modal_handler(C, op);

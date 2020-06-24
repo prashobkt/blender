@@ -44,7 +44,6 @@
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_object.h"
@@ -55,8 +54,6 @@
 #include "ED_armature.h"
 #include "ED_transform_snap_object_context.h"
 #include "ED_view3d.h"
-
-#include "ED_transform.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Data Types
@@ -2057,15 +2054,15 @@ static short snapCurve(SnapData *snapdata,
 }
 
 /* may extend later (for now just snaps to empty center) */
-static short snapEmpty(SnapData *snapdata,
-                       Object *ob,
-                       const float obmat[4][4],
-                       /* read/write args */
-                       float *dist_px,
-                       /* return args */
-                       float r_loc[3],
-                       float *UNUSED(r_no),
-                       int *r_index)
+static short snap_object_center(SnapData *snapdata,
+                                Object *ob,
+                                const float obmat[4][4],
+                                /* read/write args */
+                                float *dist_px,
+                                /* return args */
+                                float r_loc[3],
+                                float *UNUSED(r_no),
+                                int *r_index)
 {
   short retval = 0;
 
@@ -2120,7 +2117,7 @@ static short snapCamera(const SnapObjectContext *sctx,
                         float *dist_px,
                         /* return args */
                         float r_loc[3],
-                        float *UNUSED(r_no),
+                        float *r_no,
                         int *r_index)
 {
   short retval = 0;
@@ -2135,7 +2132,7 @@ static short snapCamera(const SnapObjectContext *sctx,
   MovieTracking *tracking;
 
   if (clip == NULL) {
-    return retval;
+    return snap_object_center(snapdata, object, obmat, dist_px, r_loc, r_no, r_index);
   }
   if (object->transflag & OB_DUPLI) {
     return retval;
@@ -2732,10 +2729,10 @@ static void sanp_obj_fn(SnapObjectContext *sctx,
       break;
     }
     case OB_EMPTY:
-      retval = snapEmpty(dt->snapdata, ob, obmat, dt->dist_px, dt->r_loc, dt->r_no, dt->r_index);
-      break;
     case OB_GPENCIL:
-      retval = snapEmpty(dt->snapdata, ob, obmat, dt->dist_px, dt->r_loc, dt->r_no, dt->r_index);
+    case OB_LAMP:
+      retval = snap_object_center(
+          dt->snapdata, ob, obmat, dt->dist_px, dt->r_loc, dt->r_no, dt->r_index);
       break;
     case OB_CAMERA:
       retval = snapCamera(

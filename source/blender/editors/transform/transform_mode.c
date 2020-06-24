@@ -39,17 +39,33 @@
 
 #include "RNA_access.h"
 
-#include "ED_screen.h"
-
 #include "UI_interface.h"
 
 #include "BLT_translation.h"
 
 #include "transform.h"
+#include "transform_convert.h"
 #include "transform_snap.h"
 
 /* Own include. */
 #include "transform_mode.h"
+
+int transform_mode_really_used(bContext *C, int mode)
+{
+  if (mode == TFM_BONESIZE) {
+    Object *ob = CTX_data_active_object(C);
+    BLI_assert(ob);
+    if (ob->type != OB_ARMATURE) {
+      return TFM_RESIZE;
+    }
+    bArmature *arm = ob->data;
+    if (arm->drawtype == ARM_ENVELOPE) {
+      return TFM_BONE_ENVELOPE_DIST;
+    }
+  }
+
+  return mode;
+}
 
 bool transdata_check_local_center(TransInfo *t, short around)
 {
@@ -937,7 +953,7 @@ void ElementResize(TransInfo *t, TransDataContainer *tc, TransData *td, float ma
   if (td->ext && td->ext->size) {
     float fsize[3];
 
-    if ((t->options & CTX_SCULPT) || t->flag & (T_OBJECT | T_TEXTURE | T_POSE)) {
+    if (ELEM(t->data_type, TC_SCULPT, TC_OBJECT, TC_OBJECT_TEXSPACE, TC_POSE)) {
       float obsizemat[3][3];
       /* Reorient the size mat to fit the oriented object. */
       mul_m3_m3m3(obsizemat, tmat, td->axismtx);
@@ -1175,25 +1191,12 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
     case TFM_CREASE:
       initCrease(t);
       break;
-    case TFM_BONESIZE: { /* used for both B-Bone width (bonesize) as for deform-dist (envelope) */
-      /* Note: we have to pick one, use the active object. */
-      TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_OK(t);
-      bArmature *arm = tc->poseobj->data;
-      if (arm->drawtype == ARM_ENVELOPE) {
-        initBoneEnvelope(t);
-        t->mode = TFM_BONE_ENVELOPE_DIST;
-      }
-      else {
-        initBoneSize(t);
-      }
+    case TFM_BONESIZE:
+      initBoneSize(t);
       break;
-    }
     case TFM_BONE_ENVELOPE:
-      initBoneEnvelope(t);
-      break;
     case TFM_BONE_ENVELOPE_DIST:
       initBoneEnvelope(t);
-      t->mode = TFM_BONE_ENVELOPE_DIST;
       break;
     case TFM_EDGE_SLIDE:
     case TFM_VERT_SLIDE: {

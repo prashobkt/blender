@@ -46,7 +46,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_object_force_types.h"
+#include "DNA_pointcache_types.h"
 #include "DNA_rigidbody_types.h"
 
 #include "DEG_depsgraph_query.h"
@@ -1318,7 +1318,7 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
       else {
         const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(curcon);
 
-        if ((cti && cti->get_constraint_targets) && (curcon->flag & CONSTRAINT_EXPAND)) {
+        if ((cti && cti->get_constraint_targets) && (curcon->ui_expand_flag && (1 << 0))) {
           ListBase targets = {NULL, NULL};
           bConstraintTarget *ct;
 

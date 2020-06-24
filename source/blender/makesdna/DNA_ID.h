@@ -225,9 +225,6 @@ typedef struct IDOverrideLibrary {
   /** List of IDOverrideProperty structs. */
   ListBase properties;
 
-  short flag;
-  char _pad[6];
-
   /* Read/write data. */
   /* Temp ID storing extra override data (used for differential operations only currently).
    * Always NULL outside of read/write context. */
@@ -235,10 +232,6 @@ typedef struct IDOverrideLibrary {
 
   IDOverrideLibraryRuntime *runtime;
 } IDOverrideLibrary;
-
-enum eOverrideLibrary_Flag {
-  OVERRIDE_LIBRARY_AUTO = 1 << 0, /* Allow automatic generation of overriding rules. */
-};
 
 /* watch it: Sequence has identical beginning. */
 /**
@@ -309,16 +302,17 @@ typedef struct Library {
   ID id;
   struct FileData *filedata;
   /** Path name used for reading, can be relative and edited in the outliner. */
-  char name[1024];
+  char filepath[1024];
 
   /**
-   * Absolute filepath, this is only for convenience,
-   * 'name' is the real path used on file read but in
-   * some cases its useful to access the absolute one.
-   * This is set on file read.
-   * Use BKE_library_filepath_set() rather than setting 'name'
-   * directly and it will be kept in sync - campbell */
-  char filepath[1024];
+   * Run-time only, absolute file-path (set on read).
+   * This is only for convenience, `filepath` is the real path
+   * used on file read but in some cases its useful to access the absolute one.
+   *
+   * Use #BKE_library_filepath_set() rather than setting `filepath`
+   * directly and it will be kept in sync - campbell
+   */
+  char filepath_abs[1024];
 
   /** Set for indirectly linked libs, used in the outliner and while reading. */
   struct Library *parent;
@@ -463,9 +457,9 @@ typedef enum ID_Type {
   ((GS((id)->name) != ID_SCR) && (GS((id)->name) != ID_WM) && (GS((id)->name) != ID_WS))
 
 #define ID_BLEND_PATH(_bmain, _id) \
-  ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path((_bmain)))
+  ((_id)->lib ? (_id)->lib->filepath_abs : BKE_main_blendfile_path((_bmain)))
 #define ID_BLEND_PATH_FROM_GLOBAL(_id) \
-  ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path_from_global())
+  ((_id)->lib ? (_id)->lib->filepath_abs : BKE_main_blendfile_path_from_global())
 
 #define ID_MISSING(_id) ((((ID *)(_id))->tag & LIB_TAG_MISSING) != 0)
 
@@ -481,10 +475,6 @@ typedef enum ID_Type {
 
 #define ID_IS_OVERRIDE_LIBRARY_TEMPLATE(_id) \
   (((ID *)(_id))->override_library != NULL && ((ID *)(_id))->override_library->reference == NULL)
-
-#define ID_IS_OVERRIDE_LIBRARY_AUTO(_id) \
-  (!ID_IS_LINKED((_id)) && ID_IS_OVERRIDE_LIBRARY((_id)) && \
-   (((ID *)(_id))->override_library->flag & OVERRIDE_LIBRARY_AUTO))
 
 /* Check whether datablock type is covered by copy-on-write. */
 #define ID_TYPE_IS_COW(_id_type) (!ELEM(_id_type, ID_BR, ID_PAL, ID_IM))
@@ -679,6 +669,15 @@ typedef enum IDRecalcFlag {
    * Applies to movie clips to inform that copy-on-written version is to be refreshed for the new
    * input file or for color space changes. */
   ID_RECALC_SOURCE = (1 << 23),
+
+  /* Virtual recalc tag/marker required for undo in some cases, where actual data does not change
+   * and hence do not require an update, but conceptually we are dealing with something new.
+   *
+   * Current known case: linked IDs made local without requiring any copy. While their users do not
+   * require any update, they have actually been 'virtually' remapped from the linked ID to the
+   * local one.
+   */
+  ID_RECALC_TAG_FOR_UNDO = (1 << 24),
 
   /***************************************************************************
    * Pseudonyms, to have more semantic meaning in the actual code without

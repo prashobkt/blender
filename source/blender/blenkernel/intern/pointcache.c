@@ -138,6 +138,7 @@ static int ptcache_data_size[] = {
 static int ptcache_extra_datasize[] = {
     0,
     sizeof(ParticleSpring),
+    sizeof(float) * 3,
 };
 
 /* forward declarations */
@@ -175,6 +176,23 @@ static int ptcache_basic_header_write(PTCacheFile *pf)
   }
 
   return 1;
+}
+static void ptcache_add_extra_data(PTCacheMem *pm,
+                                   unsigned int type,
+                                   unsigned int count,
+                                   void *data)
+{
+  PTCacheExtra *extra = MEM_callocN(sizeof(PTCacheExtra), "Point cache: extra data descriptor");
+
+  extra->type = type;
+  extra->totdata = count;
+
+  size_t size = extra->totdata * ptcache_extra_datasize[extra->type];
+
+  extra->data = MEM_mallocN(size, "Point cache: extra data");
+  memcpy(extra->data, data, size);
+
+  BLI_addtail(&pm->extradata, extra);
 }
 /* Softbody functions */
 static int ptcache_softbody_write(int index, void *soft_v, void **data, int UNUSED(cfra))
@@ -467,21 +485,12 @@ static int ptcache_particle_totwrite(void *psys_v, int cfra)
 static void ptcache_particle_extra_write(void *psys_v, PTCacheMem *pm, int UNUSED(cfra))
 {
   ParticleSystem *psys = psys_v;
-  PTCacheExtra *extra = NULL;
 
   if (psys->part->phystype == PART_PHYS_FLUID && psys->part->fluid &&
       psys->part->fluid->flag & SPH_VISCOELASTIC_SPRINGS && psys->tot_fluidsprings &&
       psys->fluid_springs) {
-    extra = MEM_callocN(sizeof(PTCacheExtra), "Point cache: fluid extra data");
-
-    extra->type = BPHYS_EXTRA_FLUID_SPRINGS;
-    extra->totdata = psys->tot_fluidsprings;
-
-    extra->data = MEM_callocN(extra->totdata * ptcache_extra_datasize[extra->type],
-                              "Point cache: extra data");
-    memcpy(extra->data, psys->fluid_springs, extra->totdata * ptcache_extra_datasize[extra->type]);
-
-    BLI_addtail(&pm->extradata, extra);
+    ptcache_add_extra_data(
+        pm, BPHYS_EXTRA_FLUID_SPRINGS, psys->tot_fluidsprings, psys->fluid_springs);
   }
 }
 
@@ -573,6 +582,33 @@ static void ptcache_cloth_interpolate(
   copy_v3_v3(vert->v, keys->vel);
 
   /* should vert->xconst be interpolated somehow too? - jahka */
+}
+
+static void ptcache_cloth_extra_write(void *cloth_v, PTCacheMem *pm, int UNUSED(cfra))
+{
+  ClothModifierData *clmd = cloth_v;
+  Cloth *cloth = clmd->clothObject;
+
+  if (!is_zero_v3(cloth->average_acceleration)) {
+    ptcache_add_extra_data(pm, BPHYS_EXTRA_CLOTH_ACCELERATION, 1, cloth->average_acceleration);
+  }
+}
+static void ptcache_cloth_extra_read(void *cloth_v, PTCacheMem *pm, float UNUSED(cfra))
+{
+  ClothModifierData *clmd = cloth_v;
+  Cloth *cloth = clmd->clothObject;
+  PTCacheExtra *extra = pm->extradata.first;
+
+  zero_v3(cloth->average_acceleration);
+
+  for (; extra; extra = extra->next) {
+    switch (extra->type) {
+      case BPHYS_EXTRA_CLOTH_ACCELERATION: {
+        copy_v3_v3(cloth->average_acceleration, extra->data);
+        break;
+      }
+    }
+  }
 }
 
 static int ptcache_cloth_totpoint(void *cloth_v, int UNUSED(cfra))
@@ -1026,7 +1062,7 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
   FluidModifierData *mmd = (FluidModifierData *)smoke_v;
   FluidDomainSettings *mds = mmd->domain;
 
-  OpenVDBWriter_set_flags(writer, mds->openvdb_comp, (mds->data_depth == 16));
+  OpenVDBWriter_set_flags(writer, mds->openvdb_compression, (mds->openvdb_data_depth == 16));
 
   OpenVDBWriter_add_meta_int(writer, "blender/smoke/active_fields", mds->active_fields);
   OpenVDBWriter_add_meta_v3_int(writer, "blender/smoke/resolution", mds->res);
@@ -1681,8 +1717,8 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
   pid->write_stream = NULL;
   pid->read_stream = NULL;
 
-  pid->write_extra_data = NULL;
-  pid->read_extra_data = NULL;
+  pid->write_extra_data = ptcache_cloth_extra_write;
+  pid->read_extra_data = ptcache_cloth_extra_read;
   pid->interpolate_extra_data = NULL;
 
   pid->write_header = ptcache_basic_header_write;
@@ -2154,7 +2190,7 @@ static int ptcache_path(PTCacheID *pid, char *filename)
 {
   Library *lib = (pid->ob) ? pid->ob->id.lib : NULL;
   const char *blendfilename = (lib && (pid->cache->flag & PTCACHE_IGNORE_LIBPATH) == 0) ?
-                                  lib->filepath :
+                                  lib->filepath_abs :
                                   BKE_main_blendfile_path_from_global();
   size_t i;
 
@@ -2651,6 +2687,13 @@ static void ptcache_extra_free(PTCacheMem *pm)
     BLI_freelistN(&pm->extradata);
   }
 }
+
+static void ptcache_mem_clear(PTCacheMem *pm)
+{
+  ptcache_data_free(pm);
+  ptcache_extra_free(pm);
+}
+
 static int ptcache_old_elemsize(PTCacheID *pid)
 {
   if (pid->type == PTCACHE_TYPE_SOFTBODY) {
@@ -2801,8 +2844,7 @@ static PTCacheMem *ptcache_disk_frame_to_mem(PTCacheID *pid, int cfra)
   }
 
   if (error && pm) {
-    ptcache_data_free(pm);
-    ptcache_extra_free(pm);
+    ptcache_mem_clear(pm);
     MEM_freeN(pm);
     pm = NULL;
   }
@@ -3037,8 +3079,7 @@ static int ptcache_read(PTCacheID *pid, int cfra)
 
     /* clean up temporary memory cache */
     if (pid->cache->flag & PTCACHE_DISK_CACHE) {
-      ptcache_data_free(pm);
-      ptcache_extra_free(pm);
+      ptcache_mem_clear(pm);
       MEM_freeN(pm);
     }
   }
@@ -3094,8 +3135,7 @@ static int ptcache_interpolate(PTCacheID *pid, float cfra, int cfra1, int cfra2)
 
     /* clean up temporary memory cache */
     if (pid->cache->flag & PTCACHE_DISK_CACHE) {
-      ptcache_data_free(pm);
-      ptcache_extra_free(pm);
+      ptcache_mem_clear(pm);
       MEM_freeN(pm);
     }
   }
@@ -3323,15 +3363,13 @@ static int ptcache_write(PTCacheID *pid, int cfra, int overwrite)
 
     // if (pm) /* pm is always set */
     {
-      ptcache_data_free(pm);
-      ptcache_extra_free(pm);
+      ptcache_mem_clear(pm);
       MEM_freeN(pm);
     }
 
     if (pm2) {
       error += !ptcache_mem_frame_to_disk(pid, pm2);
-      ptcache_data_free(pm2);
-      ptcache_extra_free(pm2);
+      ptcache_mem_clear(pm2);
       MEM_freeN(pm2);
     }
   }
@@ -3543,8 +3581,7 @@ void BKE_ptcache_id_clear(PTCacheID *pid, int mode, unsigned int cfra)
           /*we want startframe if the cache starts before zero*/
           pid->cache->last_exact = MIN2(pid->cache->startframe, 0);
           for (; pm; pm = pm->next) {
-            ptcache_data_free(pm);
-            ptcache_extra_free(pm);
+            ptcache_mem_clear(pm);
           }
           BLI_freelistN(&pid->cache->mem_cache);
 
@@ -3560,8 +3597,7 @@ void BKE_ptcache_id_clear(PTCacheID *pid, int mode, unsigned int cfra)
               if (pid->cache->cached_frames && pm->frame >= sta && pm->frame <= end) {
                 pid->cache->cached_frames[pm->frame - sta] = 0;
               }
-              ptcache_data_free(pm);
-              ptcache_extra_free(pm);
+              ptcache_mem_clear(pm);
               pm = pm->next;
               BLI_freelinkN(&pid->cache->mem_cache, link);
             }
@@ -3585,8 +3621,7 @@ void BKE_ptcache_id_clear(PTCacheID *pid, int mode, unsigned int cfra)
 
         for (; pm; pm = pm->next) {
           if (pm->frame == cfra) {
-            ptcache_data_free(pm);
-            ptcache_extra_free(pm);
+            ptcache_mem_clear(pm);
             BLI_freelinkN(&pid->cache->mem_cache, pm);
             break;
           }
@@ -3940,8 +3975,7 @@ void BKE_ptcache_free_mem(ListBase *mem_cache)
 
   if (pm) {
     for (; pm; pm = pm->next) {
-      ptcache_data_free(pm);
-      ptcache_extra_free(pm);
+      ptcache_mem_clear(pm);
     }
 
     BLI_freelistN(mem_cache);
