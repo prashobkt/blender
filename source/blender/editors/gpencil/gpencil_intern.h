@@ -399,7 +399,7 @@ typedef enum eGPencil_PaintModes {
 } eGPencil_PaintModes;
 
 /* chunk size for gp-session buffer (the total size is a multiple of this number) */
-#define GP_STROKE_BUFFER_CHUNK 2048
+#define GP_STROKE_BUFFER_CHUNK 8192
 
 /* stroke editing ----- */
 
