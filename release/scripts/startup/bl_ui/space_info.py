@@ -26,8 +26,12 @@ class INFO_HT_header(Header):
     def draw(self, context):
         layout = self.layout
         layout.template_header()
+        sinfo = context.space_data
 
         INFO_MT_editor_menus.draw_collapsible(context, layout)
+        row = layout.row(align=True)
+        row.prop(sinfo, "filter_text", text="")
+        layout.separator_spacer()
 
 
 class INFO_MT_editor_menus(Menu):

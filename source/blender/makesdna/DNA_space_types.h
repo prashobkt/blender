@@ -113,6 +113,7 @@ typedef struct SpaceInfo {
 
   char rpt_mask;
   char _pad[7];
+  char search_string[64];
 } SpaceInfo;
 
 /* SpaceInfo.rpt_mask */
