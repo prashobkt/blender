@@ -3145,7 +3145,7 @@ void ED_gpencil_stroke_buffer_spread_segment(struct Brush *brush,
     return;
   }
 
-  const int totpoints = to_index - from_index;
+  const int totpoints = to_index - from_index - 1;
 
   /* Increase the buffer size to hold the new points.
    * As the function add 1, add only spread point minus 1. */
@@ -3156,11 +3156,24 @@ void ED_gpencil_stroke_buffer_spread_segment(struct Brush *brush,
   gpd->runtime.sbuffer_used++;
 
   /* Move original points to the right index depending of spread value. */
+  int step = spread + 1;
+  int offset = gpd->runtime.sbuffer_used - 1;
   for (int i = totpoints; i > 0; i--) {
-    tGPspoint *pt_orig = ((tGPspoint *)(gpd->runtime.sbuffer) + from_index + i);
-    tGPspoint *pt_dst = ((tGPspoint *)(gpd->runtime.sbuffer) + from_index + (spread * i));
+    tGPspoint *pt_orig = ((tGPspoint *)(gpd->runtime.sbuffer) + from_index + i + 1);
+    tGPspoint *pt_dst = ((tGPspoint *)(gpd->runtime.sbuffer) + offset);
     gpencil_copy_buffer_point(pt_orig, pt_dst);
+    offset -= step;
   }
 
-  /* Copy each point is his segment. */
+  /* Copy each point to its segment. */
+  for (int i = 0; i < totpoints; i++) {
+    int idx = from_index + (step * i) + 1;
+    tGPspoint *pt_orig = ((tGPspoint *)(gpd->runtime.sbuffer) + idx);
+    for (int x = 0; x < spread; x++) {
+      tGPspoint *pt_dst = ((tGPspoint *)(gpd->runtime.sbuffer) + idx + x + 1);
+      gpencil_copy_buffer_point(pt_orig, pt_dst);
+    }
+    /* Spread the points. */
+    gpencil_spread_points(brush, gsc, spread, idx);
+  }
 }
