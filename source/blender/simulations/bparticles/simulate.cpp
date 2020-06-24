@@ -62,6 +62,29 @@ static void collision_interpolate_element(std::array<std::pair<float3, float3>, 
   }
 }
 
+static void calc_hit_point_data_tri(float co[3],
+                                    float no[3],
+                                    const float v0[3],
+                                    const float v1[3],
+                                    const float v2[3],
+                                    float offset)
+{
+  // Calculate normal of the point we hit.
+  normal_from_closest_point_to_tri(no, co, v0, v1, v2);
+
+  // Calcualte a point that is not directly in contact with the current triangle. This is so we do
+  // not stick to the surface as it will collide with the same triangle immediately next time we
+  // check, even if it moving away from it.
+  // The offset should be greater than the particle radius
+  float3 point = co;
+  float3 normal = no;
+  float3 p_on_tri;
+  closest_on_tri_to_point_v3(p_on_tri, point, v0, v1, v2);
+
+  point = p_on_tri + normal * offset;
+  copy_v3_v3(co, point);
+}
+
 /* find first root in range [0-1] starting from 0 */
 static float collision_newton_rhapson(std::pair<float3, float3> &particle_points,
                                       std::array<std::pair<float3, float3>, 3> &tri_points,
@@ -90,21 +113,13 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
     interp_weights_tri_v3(
         hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
 
-    normal_from_closest_point_to_tri(
-        coll_normal, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
-    // TODO clean up
-    float3 point = p;
-    float3 normal = coll_normal;
-    float3 p2;
-    closest_on_tri_to_point_v3(p2, point, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
-    float new_d = (p2 - point).length();
-    if (new_d < radius + radius_epsilon) {
-      // printf("too close!\n");
-      point_on_plane = p2 + normal * (radius + radius_epsilon);
-    }
-    else {
-      point_on_plane = p;
-    }
+    calc_hit_point_data_tri(p,
+                            coll_normal,
+                            cur_tri_points[0],
+                            cur_tri_points[1],
+                            cur_tri_points[2],
+                            radius + radius_epsilon);
+    point_on_plane = p;
 
     return 0.f;
   }
@@ -140,24 +155,13 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
         interp_weights_tri_v3(
             hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
 
-        normal_from_closest_point_to_tri(
-            coll_normal, p, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
-
-        // TODO clean up
-        float3 point = p;
-        float3 normal = coll_normal;
-        float3 p2;
-        closest_on_tri_to_point_v3(
-            p2, point, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2]);
-        float new_d = (p2 - point).length();
-        if (new_d < radius + radius_epsilon) {
-          // TODO should probably always do this
-          // printf("too close!\n");
-          point_on_plane = p2 + normal * (radius + radius_epsilon);
-        }
-        else {
-          point_on_plane = p;
-        }
+        calc_hit_point_data_tri(p,
+                                coll_normal,
+                                cur_tri_points[0],
+                                cur_tri_points[1],
+                                cur_tri_points[2],
+                                radius + radius_epsilon);
+        point_on_plane = p;
 
         CLAMP(t1, 0.f, 1.f);
         return t1;
@@ -240,18 +244,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
       hit->dist = dist;
       madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
 
-      normal_from_closest_point_to_tri(hit->no, hit->co, v0, v1, v2);
-      // TODO clean up (unify this into a function and using it in the rapson code)
-      float3 point = hit->co;
-      float3 normal = hit->no;
-      float3 p2;
-      closest_on_tri_to_point_v3(p2, point, v0, v1, v2);
-      float new_d = (p2 - point).length();
-      if (new_d < ray->radius + rd->radius_epsilon) {
-        // printf("too close!\n");
-        point = p2 + normal * (ray->radius + rd->radius_epsilon);
-        copy_v3_v3(hit->co, point);
-      }
+      calc_hit_point_data_tri(hit->co, hit->no, v0, v1, v2, ray->radius + rd->radius_epsilon);
       // No dt info available for static collisions, will manually calculate this later.
       rd->rel_dt = 0.0f;
     }
