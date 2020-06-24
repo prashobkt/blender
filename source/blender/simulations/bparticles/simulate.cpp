@@ -110,8 +110,6 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
   }
 
   for (int iter = 0; iter < 10; iter++) {  //, itersum++) {
-    // printf("\nt1 %f\n", t1);
-
     /* get current location */
     collision_interpolate_element(tri_points, cur_tri_points, t1);
     p = float3::interpolate(particle_points.first, particle_points.second, t1);
@@ -233,6 +231,10 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
       dist = bvhtree_sphereray_tri_intersection(ray, ray->radius, hit->dist, v0, v1, v2);
     }
 
+    // TODO perhaps check if the new collision is inside the triangle and the distance is within
+    // COLLISION_MIN_DISTANCE, then we take the collision that is inside the face. Note that this
+    // only for the same coll object
+
     if (dist >= 0.0f && dist < hit->dist) {
       hit->index = index;
       hit->dist = dist;
@@ -297,7 +299,7 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
 
   if (coll_time >= 0.f) {
     if (hit->index != -1 && dist >= 0.0f && dist >= hit->dist) {
-      /* We have already collided with and other object at closer distance */
+      /* We have already collided with an other object at closer distance */
       return;
     }
     // We have a collision!
@@ -311,6 +313,10 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
     // Calculate the velocity of the point we hit
     zero_v3(rd->hit_vel);
     for (int i = 0; i < 3; i++) {
+      // Make sure that all the weights are between 0-1. They can be negative or above 1 if the
+      // point lies slightly outside of the triangle.
+      CLAMP(hit_bary_weights[i], 0.f, 1.f);
+
       rd->hit_vel += (tri_points[i].second - tri_points[i].first) * hit_bary_weights[i] /
                      rd->duration;
     }
