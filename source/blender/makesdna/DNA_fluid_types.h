@@ -625,13 +625,13 @@ typedef struct FluidDomainSettings {
   int openvdb_compression;
   float clipping;
   char openvdb_data_depth;
-  char _pad9[7]; /* Unused. */
+  char _pad10[7]; /* Unused. */
 
   /* -- Deprecated / unsed options (below). -- */
 
   /* View options. */
   int viewsettings;
-  char _pad10[4]; /* Unused. */
+  char _pad11[4]; /* Unused. */
 
   /* Pointcache options. */
   /* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading
