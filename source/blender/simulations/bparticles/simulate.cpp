@@ -85,7 +85,7 @@ static void calc_hit_point_data_tri(float co[3],
     // We are inside the triangle, use the triangle normal as this is more accurate than the
     // calulated one below.
     normal_tri_v3(no, v0, v1, v2);
-    // Make sure the normal is pointing in the right direction
+    // Make sure the normal is pointing in the right direction (out towards the particle)
     float3 point_vec;
     sub_v3_v3v3(point_vec, co, v0);
     if (dot_v3v3(no, point_vec) < 0.0f) {
