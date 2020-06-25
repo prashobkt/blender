@@ -153,6 +153,21 @@ class OUTLINER_MT_edit_datablocks(Menu):
         layout.operator("outliner.drivers_delete_selected")
 
 
+class OUTLINER_MT_collection_color_tag(Menu):
+    bl_label = "Color Tag"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator("outliner.collection_color_tag_set", text="None").color = 'NONE'
+        layout.operator("outliner.collection_color_tag_set", text="Red").color = 'RED'
+        layout.operator("outliner.collection_color_tag_set", text="Orange").color = 'ORANGE'
+        layout.operator("outliner.collection_color_tag_set", text="Yellow").color = 'YELLOW'
+        layout.operator("outliner.collection_color_tag_set", text="Green").color = 'GREEN'
+        layout.operator("outliner.collection_color_tag_set", text="Blue").color = 'BLUE'
+        layout.operator("outliner.collection_color_tag_set", text="Purple").color = 'PURPLE'
+
+
 class OUTLINER_MT_collection_view_layer(Menu):
     bl_label = "View Layer"
 
@@ -235,6 +250,8 @@ class OUTLINER_MT_collection(Menu):
         if space.display_mode == 'VIEW_LAYER':
             layout.separator()
             layout.menu("OUTLINER_MT_collection_view_layer", icon='RENDERLAYERS')
+            layout.separator()
+            layout.menu("OUTLINER_MT_collection_color_tag")
 
         layout.separator()
 
@@ -430,6 +447,7 @@ classes = (
     OUTLINER_MT_collection_new,
     OUTLINER_MT_collection_visibility,
     OUTLINER_MT_collection_view_layer,
+    OUTLINER_MT_collection_color_tag,
     OUTLINER_MT_object,
     OUTLINER_MT_context_menu,
     OUTLINER_MT_context_menu_view,
