@@ -1391,17 +1391,17 @@ static int find_highest_panel(const void *a1, const void *a2)
 {
   const PanelSort *ps1 = a1, *ps2 = a2;
 
-  /* Sort search-filtered panels to the bottom */
-  if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED &&
-      ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
-    /* Skip and check for offset and sort order below. */
-  }
-  else if (ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
-    return -1;
-  }
-  else if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED) {
-    return 1;
-  }
+  // /* Sort search-filtered panels to the bottom */
+  // if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED &&
+  //     ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
+  //   /* Skip and check for offset and sort order below. */
+  // }
+  // else if (ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
+  //   return -1;
+  // }
+  // else if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED) {
+  //   return 1;
+  // }
 
   /* stick uppermost header-less panels to the top of the region -
    * prevent them from being sorted (multiple header-less panels have to be sorted though) */
@@ -1532,14 +1532,19 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
 
+  PanelSort *ps_last_visible = ps;
+
   for (a = 0; a < tot - 1; a++, ps++) {
     psnext = ps + 1;
 
     if (align == BUT_VERTICAL) {
-      bool use_box = ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX;
+      bool use_box = ps_last_visible->panel->type &&
+                     ps_last_visible->panel->type->flag & PNL_DRAW_BOX;
       bool use_box_next = psnext->panel->type && psnext->panel->type->flag & PNL_DRAW_BOX;
-      psnext->panel->ofsx = ps->panel->ofsx;
-      psnext->panel->ofsy = get_panel_real_ofsy(ps->panel) - get_panel_size_y(psnext->panel);
+
+      psnext->panel->ofsx = ps_last_visible->panel->ofsx;
+      psnext->panel->ofsy = get_panel_real_ofsy(ps_last_visible->panel) -
+                            get_panel_size_y(psnext->panel);
 
       /* Extra margin for box style panels. */
       ps->panel->ofsx += (use_box) ? UI_PANEL_BOX_STYLE_MARGIN : 0.0f;
@@ -1551,6 +1556,10 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
       psnext->panel->ofsx = get_panel_real_ofsx(ps->panel);
       psnext->panel->ofsy = ps->panel->ofsy + get_panel_size_y(ps->panel) -
                             get_panel_size_y(psnext->panel);
+    }
+
+    if (!UI_panel_is_search_filtered(psnext->panel)) {
+      ps_last_visible = psnext;
     }
   }
   /* Extra margin for the last panel if it's a box-style panel. */
@@ -1575,7 +1584,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
 
   /* set locations for tabbed and sub panels */
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-    if (panel->runtime_flag & PNL_ACTIVE) {
+    if ((panel->runtime_flag & PNL_ACTIVE) && !UI_panel_is_search_filtered(panel)) {
       if (panel->children.first) {
         align_sub_panels(panel);
       }
