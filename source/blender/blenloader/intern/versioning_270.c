@@ -43,6 +43,7 @@
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
+#include "DNA_pointcache_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_sdna_types.h"
@@ -980,7 +981,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
         BLI_addtail(&ima->packedfiles, imapf);
 
         imapf->packedfile = ima->packedfile;
-        BLI_strncpy(imapf->filepath, ima->name, FILE_MAX);
+        BLI_strncpy(imapf->filepath, ima->filepath, FILE_MAX);
         ima->packedfile = NULL;
       }
     }

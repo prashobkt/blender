@@ -20,7 +20,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
@@ -32,7 +31,6 @@
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
-#include "BKE_layer.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -1051,11 +1049,11 @@ static void TRANSFORM_OT_bbone_resize(struct wmOperatorType *ot)
   ot->exec = transform_exec;
   ot->modal = transform_modal;
   ot->cancel = transform_cancel;
-  ot->poll = ED_operator_editarmature;
+  ot->poll = ED_operator_object_active;
   ot->poll_property = transform_poll_property;
 
   RNA_def_float_translation(
-      ot->srna, "value", 2, VecOne, -FLT_MAX, FLT_MAX, "Display Size", "", -FLT_MAX, FLT_MAX);
+      ot->srna, "value", 3, VecOne, -FLT_MAX, FLT_MAX, "Display Size", "", -FLT_MAX, FLT_MAX);
 
   WM_operatortype_props_advanced_begin(ot);
 

@@ -176,17 +176,6 @@ class SEQUENCER_MT_editor_menus(Menu):
             layout.menu("SEQUENCER_MT_strip")
 
 
-class SEQUENCER_MT_view_toggle(Menu):
-    bl_label = "View Type"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("sequencer.view_toggle").type = 'SEQUENCER'
-        layout.operator("sequencer.view_toggle").type = 'PREVIEW'
-        layout.operator("sequencer.view_toggle").type = 'SEQUENCER_PREVIEW'
-
-
 class SEQUENCER_MT_view_cache(Menu):
     bl_label = "Cache"
 
@@ -244,6 +233,20 @@ class SEQUENCER_MT_preview_zoom(Menu):
         layout.operator_context = 'INVOKE_DEFAULT'
 
 
+class SEQUENCER_MT_proxy(Menu):
+    bl_label = "Proxy"
+
+    def draw(self, context):
+        layout = self.layout
+
+        st = context.space_data
+        col = layout.column()
+        col.operator("sequencer.enable_proxies", text="Setup")
+        col.operator("sequencer.rebuild_proxy", text="Rebuild")
+        col.enabled = selected_sequences_len(context) >= 1
+        layout.prop(st, "proxy_render_size", text="")
+
+
 class SEQUENCER_MT_view(Menu):
     bl_label = "View"
 
@@ -290,6 +293,10 @@ class SEQUENCER_MT_view(Menu):
             else:
                 layout.operator("view2d.zoom_border", text="Zoom")
                 layout.menu("SEQUENCER_MT_preview_zoom")
+
+            layout.separator()
+
+            layout.menu("SEQUENCER_MT_proxy")
 
             layout.operator_context = 'INVOKE_DEFAULT'
 
@@ -339,6 +346,20 @@ class SEQUENCER_MT_view(Menu):
 
         layout.separator()
 
+        # Note that the context is needed for the shortcut to display properly.
+        layout.operator_context = 'INVOKE_REGION_PREVIEW' if is_preview else 'INVOKE_REGION_WIN'
+        props = layout.operator(
+            "wm.context_toggle_enum",
+            text="Toggle Sequencer/Preview",
+            icon='SEQ_SEQUENCER' if is_preview else 'SEQ_PREVIEW',
+        )
+        props.data_path = "space_data.view_type"
+        props.value_1 = 'SEQUENCER'
+        props.value_2 = 'PREVIEW'
+        layout.operator_context = 'INVOKE_DEFAULT'
+
+        layout.separator()
+
         layout.menu("INFO_MT_area")
 
 
@@ -376,20 +397,6 @@ class SEQUENCER_MT_select_linked(Menu):
         layout.operator("sequencer.select_more", text="More")
 
 
-class SEQUENCER_MT_select_playhead(Menu):
-    bl_label = "Select Playhead"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        props = layout.operator("sequencer.select", text="Left")
-        props.left_right = 'LEFT'
-        props.linked_time = True
-        props = layout.operator("sequencer.select", text="Right")
-        props.left_right = 'RIGHT'
-        props.linked_time = True
-
-
 class SEQUENCER_MT_select(Menu):
     bl_label = "Select"
 
@@ -408,7 +415,7 @@ class SEQUENCER_MT_select(Menu):
 
         layout.separator()
 
-        layout.menu("SEQUENCER_MT_select_playhead", text="Playhead")
+        layout.operator_menu_enum("sequencer.select_side_of_frame", "side", text="Side of Frame...")
         layout.menu("SEQUENCER_MT_select_handle", text="Handle")
         layout.menu("SEQUENCER_MT_select_channel", text="Channel")
         layout.menu("SEQUENCER_MT_select_linked", text="Linked")
@@ -724,7 +731,7 @@ class SEQUENCER_MT_strip(Menu):
         layout.operator("sequencer.copy", text="Copy")
         layout.operator("sequencer.paste", text="Paste")
         layout.operator("sequencer.duplicate_move")
-        layout.operator("sequencer.delete", text="Delete...")
+        layout.operator("sequencer.delete", text="Delete")
 
         strip = act_strip(context)
 
@@ -769,9 +776,6 @@ class SEQUENCER_MT_strip(Menu):
 
         layout.separator()
         layout.menu("SEQUENCER_MT_strip_input")
-
-        layout.separator()
-        layout.operator("sequencer.rebuild_proxy")
 
 
 class SEQUENCER_MT_context_menu(Menu):
@@ -1042,7 +1046,8 @@ class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
         strip_type = strip.type
 
         if strip_type == 'COLOR':
-            layout.prop(strip, "color")
+            layout.template_color_picker(strip, "color", value_slider=True, cubic=True)
+            layout.prop(strip, "color", text="")
 
         elif strip_type == 'WIPE':
             col = layout.column()
@@ -1133,9 +1138,13 @@ class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
 
         elif strip_type == 'TEXT':
             layout = self.layout
-            layout.use_property_split = False
-            layout.prop(strip, "text", text="")
-            layout.use_property_split = True
+            col = layout.column()
+            col.scale_x = 1.3
+            col.scale_y = 1.3
+            col.use_property_split = False
+            col.prop(strip, "text", text="")
+            col.use_property_split = True
+            layout.prop(strip, "wrap_width", text="Wrap Width")
 
         col = layout.column(align=True)
         if strip_type == 'SPEED':
@@ -1172,9 +1181,8 @@ class SEQUENCER_PT_effect_text_layout(SequencerButtonsPanel, Panel):
         layout.use_property_split = True
         col = layout.column()
         col.prop(strip, "location", text="Location")
-        col.prop(strip, "align_x", text="Alignment X")
+        col.prop(strip, "align_x", text="Anchor X")
         col.prop(strip, "align_y", text="Y")
-        col.prop(strip, "wrap_width", text="Wrap Width")
 
 
 class SEQUENCER_PT_effect_text_style(SequencerButtonsPanel, Panel):
@@ -1563,10 +1571,10 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.alignment = 'RIGHT'
         split.label(text="Playhead")
         split = split.split(factor=0.8 + max_factor, align=True)
-        playhead = frame_current - frame_final_start
-        split.label(text="{:>14}".format(smpte_from_frame(playhead)))
+        frame_display = frame_current - frame_final_start
+        split.label(text="{:>14}".format(smpte_from_frame(frame_display)))
         split.alignment = 'RIGHT'
-        split.label(text=str(playhead) + " ")
+        split.label(text=str(frame_display) + " ")
 
         if strip.type == 'SCENE':
             scene = strip.scene
@@ -1664,7 +1672,7 @@ class SEQUENCER_PT_adjust_transform(SequencerButtonsPanel, Panel):
 
         return strip.type in {
             'MOVIE', 'IMAGE', 'SCENE', 'MOVIECLIP', 'MASK',
-            'META', 'ADD', 'SUBTRACT', 'ALPHA_OVER',
+            'META', 'ADD', 'SUBTRACT', 'ALPHA_OVER', 'TEXT',
             'ALPHA_UNDER', 'CROSS', 'GAMMA_CROSS', 'MULTIPLY',
             'OVER_DROP', 'WIPE', 'GLOW', 'TRANSFORM', 'COLOR',
             'MULTICAM', 'SPEED', 'ADJUSTMENT', 'COLORMIX'
@@ -2196,9 +2204,8 @@ classes = (
     SEQUENCER_MT_range,
     SEQUENCER_MT_view,
     SEQUENCER_MT_view_cache,
-    SEQUENCER_MT_view_toggle,
     SEQUENCER_MT_preview_zoom,
-    SEQUENCER_MT_select_playhead,
+    SEQUENCER_MT_proxy,
     SEQUENCER_MT_select_handle,
     SEQUENCER_MT_select_channel,
     SEQUENCER_MT_select_linked,

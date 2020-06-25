@@ -642,8 +642,10 @@ typedef struct UserDef_FileSpaceData {
 
 typedef struct UserDef_Experimental {
   char use_undo_legacy;
+  char use_new_particle_system;
+  char use_new_hair_type;
   /** `makesdna` does not allow empty structs. */
-  char _pad0[7];
+  char _pad0[5];
 } UserDef_Experimental;
 
 #define USER_EXPERIMENTAL_TEST(userdef, member) \
@@ -656,12 +658,12 @@ typedef struct UserDef {
   /** #eUserPref_Flag. */
   int flag;
   /** #eDupli_ID_Flags. */
-  short dupflag;
+  unsigned int dupflag;
   /** #eUserPref_PrefFlag preferences for the preferences. */
   char pref_flag;
   char savetime;
   char mouse_emulate_3_button_modifier;
-  char _pad4[3];
+  char _pad4[1];
   /** FILE_MAXDIR length. */
   char tempdir[768];
   char fontdir[768];
@@ -1174,6 +1176,13 @@ typedef enum eDupli_ID_Flags {
   USER_DUP_HAIR = (1 << 14),
   USER_DUP_POINTCLOUD = (1 << 15),
   USER_DUP_VOLUME = (1 << 16),
+
+  USER_DUP_OBDATA = (~0) & ((1 << 24) - 1),
+
+  /* Those are not exposed as user preferences, only used internaly. */
+  USER_DUP_OBJECT = (1 << 24),
+  /* USER_DUP_COLLECTION = (1 << 25), */ /* UNUSED, keep because we may implement. */
+
 } eDupli_ID_Flags;
 
 /**
@@ -1213,7 +1222,7 @@ typedef enum eColorPicker_Types {
 } eColorPicker_Types;
 
 /**
- * Timecode display styles
+ * Time-code display styles.
  * #UserDef.timecode_style
  */
 typedef enum eTimecodeStyles {
