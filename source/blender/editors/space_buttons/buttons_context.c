@@ -251,14 +251,12 @@ static int buttons_context_path_data(ButsContextPath *path, int type)
   else if (RNA_struct_is_a(ptr->type, &RNA_GreasePencil) && (type == -1 || type == OB_GPENCIL)) {
     return 1;
   }
-#ifdef WITH_NEW_OBJECT_TYPES
   else if (RNA_struct_is_a(ptr->type, &RNA_Hair) && (type == -1 || type == OB_HAIR)) {
     return 1;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_PointCloud) && (type == -1 || type == OB_POINTCLOUD)) {
     return 1;
   }
-#endif
   else if (RNA_struct_is_a(ptr->type, &RNA_Volume) && (type == -1 || type == OB_VOLUME)) {
     return 1;
   }
@@ -828,10 +826,8 @@ const char *buttons_context_dir[] = {
     "line_style",
     "collection",
     "gpencil",
-#ifdef WITH_NEW_OBJECT_TYPES
     "hair",
     "pointcloud",
-#endif
     "volume",
     NULL,
 };
@@ -910,7 +906,6 @@ int buttons_context(const bContext *C, const char *member, bContextDataResult *r
     set_pointer_type(path, result, &RNA_LightProbe);
     return 1;
   }
-#ifdef WITH_NEW_OBJECT_TYPES
   else if (CTX_data_equals(member, "hair")) {
     set_pointer_type(path, result, &RNA_Hair);
     return 1;
@@ -919,7 +914,6 @@ int buttons_context(const bContext *C, const char *member, bContextDataResult *r
     set_pointer_type(path, result, &RNA_PointCloud);
     return 1;
   }
-#endif
   else if (CTX_data_equals(member, "volume")) {
     set_pointer_type(path, result, &RNA_Volume);
     return 1;
