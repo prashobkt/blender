@@ -64,13 +64,37 @@ static void collision_interpolate_element(std::array<std::pair<float3, float3>, 
 
 static void calc_hit_point_data_tri(float co[3],
                                     float no[3],
+                                    float w[3],
                                     const float v0[3],
                                     const float v1[3],
                                     const float v2[3],
                                     float offset)
 {
+  bool inside = true;
+
+  interp_weights_tri_v3(w, v0, v1, v2, co);
+
+  for (int i = 0; i < 3; i++) {
+    if (w[i] < 0.0f || w[i] > 1.0f) {
+      inside = false;
+      break;
+    }
+  }
   // Calculate normal of the point we hit.
-  normal_from_closest_point_to_tri(no, co, v0, v1, v2);
+  if (inside) {
+    // We are inside the triangle, use the triangle normal as this is more accurate than the
+    // calulated one below.
+    normal_tri_v3(no, v0, v1, v2);
+    // Make sure the normal is pointing in the right direction
+    float3 point_vec;
+    sub_v3_v3v3(point_vec, co, v0);
+    if (dot_v3v3(no, point_vec) < 0.0f) {
+      mul_v3_fl(no, -1.0f);
+    }
+  }
+  else {
+    normal_from_closest_point_to_tri(no, co, v0, v1, v2);
+  }
 
   // Calcualte a point that is not directly in contact with the current triangle. This is so we do
   // not stick to the surface as it will collide with the same triangle immediately next time we
@@ -109,12 +133,10 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
   /* particle already inside face, so report collision */
   if (d0 <= COLLISION_ZERO) {
     p = particle_points.first;
-    // Save barycentric weight for velocity calculation later
-    interp_weights_tri_v3(
-        hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
 
     calc_hit_point_data_tri(p,
                             coll_normal,
+                            hit_bary_weights,
                             cur_tri_points[0],
                             cur_tri_points[1],
                             cur_tri_points[2],
@@ -151,12 +173,10 @@ static float collision_newton_rhapson(std::pair<float3, float3> &particle_points
 
     if (d1 <= COLLISION_ZERO) {
       if (t1 >= -COLLISION_ZERO && t1 <= 1.f) {
-        // Save barycentric weight for velocity calculation later
-        interp_weights_tri_v3(
-            hit_bary_weights, cur_tri_points[0], cur_tri_points[1], cur_tri_points[2], p);
 
         calc_hit_point_data_tri(p,
                                 coll_normal,
+                                hit_bary_weights,
                                 cur_tri_points[0],
                                 cur_tri_points[1],
                                 cur_tri_points[2],
@@ -244,7 +264,9 @@ BLI_NOINLINE static void raycast_callback(void *userdata,
       hit->dist = dist;
       madd_v3_v3v3fl(hit->co, ray->origin, ray->direction, dist);
 
-      calc_hit_point_data_tri(hit->co, hit->no, v0, v1, v2, ray->radius + rd->radius_epsilon);
+      float3 w;
+
+      calc_hit_point_data_tri(hit->co, hit->no, w, v0, v1, v2, ray->radius + rd->radius_epsilon);
       // No dt info available for static collisions, will manually calculate this later.
       rd->rel_dt = 0.0f;
     }
@@ -465,7 +487,7 @@ BLI_NOINLINE static void simulate_particle_chunk(SimulationState &UNUSED(simulat
             // We didn't hit anything
             continue;
           }
-          if (!collmd->is_static && prev_collider == collmd && prev_hit_idx == hit.index) {
+          if (collmd->is_static && prev_collider == collmd && prev_hit_idx == hit.index) {
             // We collided with the same face twice in a row.
             // Skip collision handling here as the set velocity from the previous collision
             // handling should keep the particle from tunneling through the face.
