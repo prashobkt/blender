@@ -45,6 +45,9 @@ class GHOST_XrAction {
   XrInstance xrInstance;
 
  public:
+  GHOST_XrAction(const GHOST_XrAction&) = delete;
+  void operator=(const GHOST_XrAction&) = delete;
+
   XrAction handle;
   XrPath subPath;
   GHOST_XrAction(XrSession xrSession, XrInstance xrInstance, XrAction handle, XrPath subPath);
@@ -64,6 +67,9 @@ class GHOST_XrActionSet {
   XrInstance xrInstance;
 
  public:
+  GHOST_XrActionSet(const GHOST_XrActionSet&) = delete;
+  void operator=(const GHOST_XrActionSet&) = delete;
+
   XrActionSet handle;
 
   GHOST_XrAction &getAction(const std::string &actionID);

@@ -25,6 +25,7 @@
 #include <iterator>
 #include <list>
 #include <sstream>
+#include <tuple>
 
 #include "GHOST_C-api.h"
 
@@ -111,7 +112,7 @@ void GHOST_XrSession::suggestBinding(XrAction handle,
   XrPath profilePath = stringToPath(m_context->getInstance(), profile);
   XrPath bindingPath = stringToPath(m_context->getInstance(), binding);
 
-  m_oxr->actionData.interactionMap.at(profilePath).push_back(
+  m_oxr->actionData.interactionMap[profilePath].push_back(
       XrActionSuggestedBinding{handle, bindingPath});
 }
 
@@ -139,8 +140,7 @@ void GHOST_XrSession::bindAndAttachActions()
 
   /* Push all action sets in the action set hashmap to a vector. */
   std::vector<XrActionSet> actionSets;
-  for (GHOST_XrActionSetMap::iterator it = actionSetMap.begin(); it != actionSetMap.end();
-       it++) {
+  for (GHOST_XrActionSetMap::iterator it = actionSetMap.begin(); it != actionSetMap.end(); it++) {
     actionSets.push_back(it->second.handle);
   }
 
@@ -165,7 +165,9 @@ GHOST_XrAction &GHOST_XrActionSet::createAction(GHOST_XrActionCreateInfo info)
   XrAction action;
   CHECK_XR(xrCreateAction(handle, &actionInfo, &action), "Action creation failed.");
 
-  actionMap.insert({info.name, GHOST_XrAction(xrSession, xrInstance, action, XR_NULL_PATH)});
+  actionMap.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(info.name),
+                    std::forward_as_tuple(xrSession, xrInstance, action, XR_NULL_PATH));
 
   return actionMap.at(info.name);
 }
@@ -191,15 +193,18 @@ GHOST_XrAction &GHOST_XrActionSet::createSubactions(GHOST_XrSubactionsCreateInfo
   actionInfo.subactionPaths = subactionPaths.data();
 
   XrAction action;
-  CHECK_XR(xrCreateAction(handle, &actionInfo, &action), "Action creation failed.");
+  CHECK_XR(xrCreateAction(handle, &actionInfo, &action), "Subactions creation failed.");
 
   /* Create the parent action GHOST_XrAction (same handle, no subpath). */
-  actionMap.insert({info.parentName, GHOST_XrAction(xrSession, xrInstance, action, XR_NULL_PATH)});
+  actionMap.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(info.parentName),
+                    std::forward_as_tuple(xrSession, xrInstance, action, XR_NULL_PATH));
 
   /* Create a GHOST_XrAction object for each subaction path (duplicate XrAction handle). */
   for (int i = 0; i < info.subactions.size(); i++) {
-    actionMap.insert({info.subactions[i].name, GHOST_XrAction(
-        xrSession, xrInstance, action, subactionPaths[i])});
+    actionMap.emplace(std::piecewise_construct,
+                      std::forward_as_tuple(info.subactions[i].name),
+                      std::forward_as_tuple(xrSession, xrInstance, action, subactionPaths[i]));
   }
 
   return actionMap.at(info.parentName);
@@ -232,7 +237,9 @@ GHOST_XrActionSet &GHOST_XrSession::createActionSet(const std::string &name,
 
   GHOST_XrActionSetMap &setMap = m_oxr->actionData.actionSetMap;
 
-  setMap.insert({name, GHOST_XrActionSet(xrSession, xrInstance, set)});
+  setMap.emplace(std::piecewise_construct,
+                 std::forward_as_tuple(name),
+                 std::forward_as_tuple(xrSession, xrInstance, set));
 
   return setMap.at(name);
 }
@@ -347,7 +354,7 @@ XrSpace GHOST_XrSession::createSpace(GHOST_XrAction &action, XrPosef poseInSpace
   XrSpace xrSpace;
 
   CHECK_XR(xrCreateActionSpace(m_oxr->session, &actionSpaceInfo, &xrSpace),
-           "Creation of action space failed failed.");
+           "Creation of action space failed.");
 
   return xrSpace;
 }
@@ -365,13 +372,15 @@ void GHOST_XrSession::initXrActionsDefault()
 
   GHOST_XrAction &parent_action = set.createSubactions(createInfo);
 
-  suggestBinding(
-      parent_action.handle, "/interaction_profiles/oculus/touch_controller", "/user/hand/left/input/grip/pose");
-  suggestBinding(
-      parent_action.handle, "/interaction_profiles/oculus/touch_controller", "/user/hand/right/input/grip/pose");
+  suggestBinding(parent_action.handle,
+                 "/interaction_profiles/oculus/touch_controller",
+                 "/user/hand/left/input/grip/pose");
+  suggestBinding(parent_action.handle,
+                 "/interaction_profiles/oculus/touch_controller",
+                 "/user/hand/right/input/grip/pose");
 
   /* Create hand spaces. */
-  XrPosef poseInSpace;
+  XrPosef poseInSpace = {};
   poseInSpace.orientation.w = 1.f;
 
   m_oxr->actionData.handSpaces[0] = createSpace(set.getAction("hand_pose_left"), poseInSpace);
