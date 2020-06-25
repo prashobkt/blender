@@ -132,7 +132,12 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
   LANPR_RenderLineChainItem *rlci;
 
   if (lanpr_check_point_overlapping(rlc->chain.last, x, y, 1e-5)) {
-    return rlc->chain.last;
+    /* Because segment type is determined by the leading chain point, so we need to ensure the type
+     * and occlusion is correct after omitting overlapping point*/
+    LANPR_RenderLineChainItem *old_rlci = rlc->chain.last;
+    old_rlci->line_type = type;
+    old_rlci->occlusion = level;
+    return old_rlci;
   }
 
   rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
