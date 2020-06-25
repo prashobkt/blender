@@ -73,6 +73,7 @@ void gpencil_modifier_type_init(GpencilModifierTypeInfo *types[])
   INIT_GP_TYPE(Time);
   INIT_GP_TYPE(Multiply);
   INIT_GP_TYPE(Texture);
+  INIT_GP_TYPE(LANPR);
 #undef INIT_GP_TYPE
 }
 
