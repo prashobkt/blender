@@ -640,7 +640,10 @@ BLI_NOINLINE static void simulate_particles_for_time_span(SimulationState &simul
   ListBase *coll_list = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
 
   // Convert list to vector for speed, easier debugging, and type safety
-  Vector<ColliderCache *> colliders(*coll_list, true);
+  Vector<ColliderCache *> colliders;
+  if (coll_list != NULL) {
+    colliders = Vector<ColliderCache *>(*coll_list, true);
+  }
 
   BLI::blocked_parallel_for(IndexRange(particle_attributes.size()), 1000, [&](IndexRange range) {
     Array<float> remaining_durations(range.size(), time_span.size());
@@ -669,7 +672,10 @@ BLI_NOINLINE static void simulate_particles_from_birth_to_end_of_step(
   ListBase *coll_list = BKE_collider_cache_create(simulation_state.m_depsgraph, NULL, NULL);
 
   // Convert list to vector for speed, easier debugging, and type safety
-  Vector<ColliderCache *> colliders(*coll_list, true);
+  Vector<ColliderCache *> colliders;
+  if (coll_list != NULL) {
+    colliders = Vector<ColliderCache *>(*coll_list, true);
+  }
 
   BLI::blocked_parallel_for(IndexRange(particle_attributes.size()), 1000, [&](IndexRange range) {
     ArrayRef<float> birth_times = all_birth_times.slice(range);
