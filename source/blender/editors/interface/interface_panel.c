@@ -390,9 +390,19 @@ bool UI_panel_list_matches_data(ARegion *region,
                                 ListBase *data,
                                 uiListPanelIDFromDataFunc panel_idname_func)
 {
-  int data_len = BLI_listbase_count(data);
+  /* Check for NULL data. */
+  int data_len = 0;
+  Link *data_link = NULL;
+  if (data == NULL) {
+    data_len = 0;
+    data_link = NULL;
+  }
+  else {
+    data_len = BLI_listbase_count(data);
+    data_link = data->first;
+  }
+
   int i = 0;
-  Link *data_link = data->first;
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
     if (panel->type != NULL && panel->type->flag & PNL_INSTANCED) {
       /* The panels were reordered by drag and drop. */
@@ -496,7 +506,7 @@ static void reorder_instanced_panel_list(bContext *C, ARegion *region, Panel *dr
 /**
  * Recursive implementation for #UI_panel_set_expand_from_list_data.
  *
- * \return Whether the closed flag for the panel or any subpanels changed.
+ * \return Whether the closed flag for the panel or any sub-panels changed.
  */
 static bool panel_set_expand_from_list_data_recursive(Panel *panel, short flag, short *flag_index)
 {
@@ -516,7 +526,7 @@ static bool panel_set_expand_from_list_data_recursive(Panel *panel, short flag, 
 }
 
 /**
- * Set the expansion of the panel and its subpanels from the flag stored by the list data
+ * Set the expansion of the panel and its sub-panels from the flag stored by the list data
  * corresponding to this panel. The flag has expansion stored in each bit in depth first
  * order.
  */
@@ -587,7 +597,7 @@ static void set_panels_list_data_expand_flag(const bContext *C, ARegion *region)
 /****************************** panels ******************************/
 
 /**
- * Set flag state for a panel and its subpanels.
+ * Set flag state for a panel and its sub-panels.
  *
  * \return True if this function changed any of the flags, false if it didn't.
  */
@@ -1208,7 +1218,7 @@ void ui_draw_aligned_panel(uiStyle *style,
     /* Draw panel backdrop if it wasn't already been drawn by the single opaque round box earlier.
      * Note: Sub-panels blend with panels, so they can't be opaque. */
     if (show_background && !(draw_box_style && !is_subpanel)) {
-      /* Draw the bottom subpanels . */
+      /* Draw the bottom sub-panels. */
       if (draw_box_style) {
         if (panel->next) {
           immUniformThemeColor(panel_col);
@@ -2083,24 +2093,24 @@ static void ui_handle_panel_header(
       /* Collapse and expand panels. */
 
       if (ctrl) {
-        /* Only collapse all for parent panels. */
+        /* For parent panels, collapse all other panels or toggle children. */
         if (block->panel->type != NULL && block->panel->type->parent == NULL) {
           if (block->panel->flag & PNL_CLOSED || BLI_listbase_is_empty(&block->panel->children)) {
             panels_collapse_all(C, area, region, block->panel);
+
+            /* Reset the view - we don't want to display a view without content. */
+            UI_view2d_offset(&region->v2d, 0.0f, 1.0f);
           }
           else {
             const int closed_flag = (align == BUT_HORIZONTAL) ? PNL_CLOSEDX : PNL_CLOSEDY;
-            /* If a panel has subpanels and it's open, toggle the expansion
-             * of the subpanels (based on the expansion of the first subpanel). */
+            /* If a panel has sub-panels and it's open, toggle the expansion
+             * of the sub-panels (based on the expansion of the first subpanel). */
             Panel *first_child = block->panel->children.first;
             BLI_assert(first_child != NULL);
             panel_set_flag_recursive(
                 block->panel, closed_flag, (first_child->flag & PNL_CLOSED) == 0);
             block->panel->flag |= closed_flag;
           }
-
-          /* reset the view - we don't want to display a view without content */
-          UI_view2d_offset(&region->v2d, 0.0f, 1.0f);
         }
       }
 
@@ -2987,7 +2997,7 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
 
   bool was_drag_drop = (data && data->state == PANEL_STATE_DRAG);
 
-  /* Set selection state for the panel and its subpanels, which need to know they are selected
+  /* Set selection state for the panel and its sub-panels, which need to know they are selected
    * too so they can be drawn above their parent when it's dragged. */
   if (state == PANEL_STATE_EXIT || state == PANEL_STATE_ANIMATION) {
     if (data && data->state != PANEL_STATE_ANIMATION) {

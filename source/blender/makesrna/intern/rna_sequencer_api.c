@@ -114,7 +114,7 @@ static Sequence *rna_Sequences_new_clip(ID *id,
   Scene *scene = (Scene *)id;
   Sequence *seq;
 
-  seq = alloc_generic_sequence(ed, name, frame_start, channel, SEQ_TYPE_MOVIECLIP, clip->name);
+  seq = alloc_generic_sequence(ed, name, frame_start, channel, SEQ_TYPE_MOVIECLIP, clip->filepath);
   seq->clip = clip;
   seq->len = BKE_movieclip_get_duration(clip);
   id_us_plus((ID *)clip);
@@ -265,7 +265,8 @@ static Sequence *rna_Sequences_new_sound(ID *id,
     BKE_report(reports, RPT_ERROR, "Sequences.new_sound: unable to open sound file");
     return NULL;
   }
-  seq = alloc_generic_sequence(ed, name, frame_start, channel, SEQ_TYPE_SOUND_RAM, sound->name);
+  seq = alloc_generic_sequence(
+      ed, name, frame_start, channel, SEQ_TYPE_SOUND_RAM, sound->filepath);
   seq->sound = sound;
   seq->len = ceil((double)info.length * FPS);
 
@@ -504,7 +505,8 @@ void RNA_api_sequence_strip(StructRNA *srna)
 
   func = RNA_def_function(srna, "invalidate_cache", "rna_Sequence_invalidate_cache_rnafunc");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID);
-  RNA_def_function_ui_description(func, "Invalidate Cached images for strip and all dependant strips. ");
+  RNA_def_function_ui_description(func,
+                                  "Invalidate Cached images for strip and all dependant strips. ");
   parm = RNA_def_enum(func, "type", seq_cahce_type_items, 0, "Type", "Cache Type");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 }

@@ -646,7 +646,7 @@ void ED_region_tag_redraw(ARegion *region)
 void ED_region_tag_redraw_cursor(ARegion *region)
 {
   if (region) {
-    region->do_draw_overlay = RGN_DRAW;
+    region->do_draw_paintcursor = RGN_DRAW;
   }
 }
 
@@ -1556,7 +1556,14 @@ static void region_rect_recursive(
 
   /* Tag for redraw if size changes. */
   if (region->winx != prev_winx || region->winy != prev_winy) {
-    ED_region_tag_redraw(region);
+    /* 3D View needs a full rebuild in case a progressive render runs. Rest can live with
+     * no-rebuild (e.g. Outliner) */
+    if (area->spacetype == SPACE_VIEW3D) {
+      ED_region_tag_redraw(region);
+    }
+    else {
+      ED_region_tag_redraw_no_rebuild(region);
+    }
   }
 
   /* Clear, initialize on demand. */
@@ -2798,9 +2805,7 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
     mask_buf.xmax -= UI_PANEL_CATEGORY_MARGIN_WIDTH;
     mask = &mask_buf;
   }
-  View2DScrollers *scrollers = UI_view2d_scrollers_calc(v2d, mask);
-  UI_view2d_scrollers_draw(v2d, scrollers);
-  UI_view2d_scrollers_free(scrollers);
+  UI_view2d_scrollers_draw(v2d, mask);
 }
 
 void ED_region_panels_ex(
