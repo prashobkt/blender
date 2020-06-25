@@ -131,7 +131,7 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
 {
   LANPR_RenderLineChainItem *rlci;
 
-  if (lanpr_check_point_overlapping(rlc->chain.last, x, y, 1e-5)) {
+  if (lanpr_check_point_overlapping(rlc->chain.last, x, y, 1e-10)) {
     /* Because segment type is determined by the leading chain point, so we need to ensure the type
      * and occlusion is correct after omitting overlapping point*/
     LANPR_RenderLineChainItem *old_rlci = rlc->chain.last;
@@ -170,7 +170,7 @@ static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_Rende
 {
   LANPR_RenderLineChainItem *rlci;
 
-  if (lanpr_check_point_overlapping(rlc->chain.first, x, y, 1e-5)) {
+  if (lanpr_check_point_overlapping(rlc->chain.first, x, y, 1e-10)) {
     return rlc->chain.first;
   }
 
@@ -541,7 +541,7 @@ static void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb,
 void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc, *new_rlc;
-  LANPR_RenderLineChainItem *rlci, *next_rlci;
+  LANPR_RenderLineChainItem *rlci, *next_rlci, *prev_rlci;
   ListBase swap = {0};
 
   swap.first = rb->chains.first;
@@ -557,7 +557,13 @@ void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
     rlc->level = fixed_occ;
     for (rlci = first_rlci->next; rlci; rlci = next_rlci) {
       next_rlci = rlci->next;
+      prev_rlci = rlci->prev;
       if (rlci->occlusion != fixed_occ) {
+        if (lanpr_check_point_overlapping(prev_rlci, rlci->pos[0], rlci->pos[1], 1e-10)) {
+          fixed_occ = rlci->occlusion;
+          rlc->level = fixed_occ;
+          continue;
+        }
         new_rlc = lanpr_create_render_line_chain(rb);
         new_rlc->chain.first = rlci;
         new_rlc->chain.last = rlc->chain.last;
@@ -602,7 +608,7 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
       BLI_listbase_reverse(&sub->chain);
     }
     rlci = sub->chain.first;
-    if (lanpr_check_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
+    if (lanpr_check_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
       BLI_pophead(&sub->chain);
       if (sub->chain.first == NULL) {
         return;
@@ -617,7 +623,7 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
       BLI_listbase_reverse(&sub->chain);
     }
     rlci = onto->chain.first;
-    if (lanpr_check_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
+    if (lanpr_check_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
       BLI_pophead(&onto->chain);
       if (onto->chain.first == NULL) {
         return;

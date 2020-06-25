@@ -432,6 +432,8 @@ static Collection *collection_duplicate_recursive(Main *bmain,
     collection_child_remove(collection_new, child_collection_old);
   }
 
+  collection_lanpr_copy(collection_old, collection_new);
+
   return collection_new;
 }
 

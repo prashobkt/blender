@@ -2651,8 +2651,14 @@ static int lanpr_max_occlusion_in_collections(Collection *c)
   CollectionChild *cc;
   int max_occ = 0;
   int max;
+
+  for (cc = c->children.first; cc; cc = cc->next) {
+    max = lanpr_max_occlusion_in_collections(cc->collection);
+    max_occ = MAX2(max, max_occ);
+  }
+
   if (!(c->flag & COLLECTION_CONFIGURED_FOR_LANPR)) {
-    return 0;
+    return max_occ;
   }
 
   if (c->lanpr->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) {
@@ -2662,11 +2668,6 @@ static int lanpr_max_occlusion_in_collections(Collection *c)
     max = c->lanpr->level_start;
   }
   max_occ = MAX2(max, max_occ);
-
-  for (cc = c->children.first; cc; cc = cc->next) {
-    max = lanpr_max_occlusion_in_collections(cc->collection);
-    max_occ = MAX2(max, max_occ);
-  }
 
   return max_occ;
 }
