@@ -64,6 +64,7 @@ def get_generate_modifiers_list(test_object_name, randomize=False):
         # ModifierSpec('screw', 'SCREW', {}), # screw can make the test very slow. Skipping for now.
         # ModifierSpec('skin', 'SKIN', {}), # skin is not reproducible .
 
+
         ModifierSpec('solidify', 'SOLIDIFY', {}),
         ModifierSpec('subsurf', 'SUBSURF', {}),
         ModifierSpec('triangulate', 'TRIANGULATE', {}),
@@ -212,7 +213,10 @@ def main():
          [ModifierSpec('triangulate', 'TRIANGULATE', {})]],
         ["MonkeyWireframe", "testMonkeyWireframe", "expectedMonkeyWireframe",
          [ModifierSpec('wireframe', 'WIREFRAME', {})]],
-        # ModifierSpec('skin', 'SKIN', {}), # skin is not reproducible .
+
+        # Duplicate the object, test object and expected object have same world coordinates.
+        ["Skin", "testObjPlaneSkin", "expObjPlaneSkin",
+         [ModifierSpec('skin', 'SKIN', {})]],
 
         ["MergedWeld", "testMergedWeld", "expectedMergedWeld",
          [ModifierSpec("weld", 'WELD', {"merge_threshold": 0.021})]],
@@ -235,23 +239,15 @@ def main():
         ["MonkeyDisplace", "testMonkeyDisplace", "expectedMonkeyDisplace",
          [ModifierSpec('displace', "DISPLACE", {})]],
 
-        # Hook modifier requires moving the hook object to get a mesh change, so can't test it with the current framework
-        # ["testMonkeyHook", "expectedMonkeyHook",
-        # [ModifierSpec('hook', 'HOOK', {'object': bpy.data.objects["EmptyHook"], 'vertex_group': "HookVertexGroup"})]],
+        # Hook modifier requires moving the hook object to get a mesh change
+        # so can't test it with the current framework
+        ["MonkeyHook", "testMonkeyHook", "expectedMonkeyHook",
+         [ModifierSpec('hook', 'HOOK', {'object': bpy.data.objects["EmptyHook"], 'vertex_group': "HookVertexGroup"})]],
 
         # 43
         # ModifierSpec('laplacian_deform', 'LAPLACIANDEFORM', {}) Laplacian requires a more complex mesh
         ["CubeLattice", "testCubeLattice", "expectedCubeLattice",
          [ModifierSpec('lattice', 'LATTICE', {'object': bpy.data.objects["testLattice"]})]],
-
-        # ModifierSpec('laplacian_deform', 'LAPLACIANDEFORM', {}) Laplacian requires a more complex mesh
-
-        # Mesh Deform Modifier requires user input, so skip.
-
-        # mesh_test = MeshTest("testMonkeyDeform", "expectedMonkeyDeform",[
-        #        ModifierSpec('mesh_deform', 'MESH_DEFORM', {'object': bpy.data.objects["testDeformStructure"]}),
-        #        OperatorSpec('meshdeform_bind',{'modifier':'MeshDeform'},'FACE',{i for in range(500)})
-        # ] ,True)
 
         ["PlaneShrinkWrap", "testPlaneShrinkWrap", "expectedPlaneShrinkWrap",
          [ModifierSpec('shrinkwrap', 'SHRINKWRAP', {'target': bpy.data.objects["testCubeWrap"], 'offset': 0.5})]],
@@ -267,9 +263,8 @@ def main():
         ["BalloonLaplacianSmooth", "testBalloonLaplacianSmooth", "expectedBalloonLaplacianSmooth",
          [ModifierSpec('laplaciansmooth', 'LAPLACIANSMOOTH', {'lambda_factor': 12, 'lambda_border': 12})]],
 
-        # Surface Deform and Warp requires user input, so skip.
-
-        # Wave - requires complex mesh, so skip.
+        ["WavePlane", "testObjPlaneWave", "expObjPlaneWave",
+         [ModifierSpec('wave', 'WAVE', {})]],
 
     ]
 
