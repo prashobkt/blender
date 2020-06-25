@@ -4431,19 +4431,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       ToolSettings *ts = scene->toolsettings;
       UnifiedPaintSettings *ups = &ts->unified_paint_settings;
       ups->flag &= ~(UNIFIED_PAINT_FLAG_UNUSED_0 | UNIFIED_PAINT_FLAG_UNUSED_1);
-
-      if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
-        for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-
-          scene->lanpr.crease_threshold = 0.7;
-
-          scene->lanpr.flags |= (LANPR_USE_INTERSECTIONS);
-
-          zero_v4(scene->lanpr.line_color);
-
-          scene->lanpr.line_color[3] = 1;
-        }
-      }
     }
 
     /* Set the default render pass in the viewport to Combined. */
@@ -5111,6 +5098,21 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
         if (part->pd2) {
           part->pd2->f_wind_factor = 1.0f;
+        }
+      }
+    }
+
+    for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
+        for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+
+          scene->lanpr.crease_threshold = 0.7;
+
+          scene->lanpr.flags |= (LANPR_USE_INTERSECTIONS);
+
+          zero_v4(scene->lanpr.line_color);
+
+          scene->lanpr.line_color[3] = 1;
         }
       }
     }
