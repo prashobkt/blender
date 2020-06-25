@@ -50,6 +50,7 @@
 #include "MEM_guardedalloc.h"
 
 /* own include. */
+#include "../../source/blender/makesdna/DNA_listBase.h"
 #include "CLG_log.h"
 
 /* Local utility defines */
@@ -71,6 +72,17 @@ typedef struct CLG_IDFilter {
   /** Over alloc. */
   char match[0];
 } CLG_IDFilter;
+
+typedef struct LogRecord {
+  /** track where does the log comes from */
+  CLG_LogType *type;
+  enum CLG_Severity severity;
+  uint64_t timestamp;
+  const char *file;
+  const char *line;
+  const char *function;
+  char *message;
+} LogRecord;
 
 typedef struct CLogContext {
   /** Single linked list of types.  */
@@ -101,6 +113,9 @@ typedef struct CLogContext {
     void (*fatal_fn)(void *file_handle);
     void (*backtrace_fn)(void *file_handle);
   } callbacks;
+
+  ListBase log_records;
+
 } CLogContext;
 
 /** \} */
@@ -382,6 +397,8 @@ static uint64_t clg_timestamp_ticks_get(void)
 /** \name Logging API
  * \{ */
 
+
+
 static void write_timestamp(CLogStringBuf *cstr, const uint64_t timestamp_tick_start)
 {
   char timestamp_str[64];
@@ -508,6 +525,8 @@ void CLG_logf(CLG_LogType *lg,
   /* could be optional */
   int bytes_written = write(lg->ctx->output, cstr.data, cstr.len);
   (void)bytes_written;
+
+  //  BKE_reportf(reports, RPT_WARNING, "reported from logs");
 
   clg_str_free(&cstr);
 

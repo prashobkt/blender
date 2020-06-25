@@ -20,6 +20,7 @@ set(INC
   .
   ../atomic
   ../guardedalloc
+  ../../../source/blender/makesdna
 )
 
 set(INC_SYS
