@@ -87,6 +87,50 @@
 /* ****************************************************** */
 /* Tree Size Functions */
 
+static void outliner_get_collection_color(uchar ucolor[4], short color)
+{
+  float col[4];
+  switch (color) {
+    case COLLECTION_COLOR_RED:
+      col[0] = 0.741f;
+      col[1] = 0.067f;
+      col[2] = 0.067f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_ORANGE:
+      col[0] = 0.964f;
+      col[1] = 0.411f;
+      col[2] = 0.074f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_YELLOW:
+      col[0] = 0.890196f;
+      col[1] = 0.796079f;
+      col[2] = 0.345098;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_GREEN:
+      col[0] = 0.34902f;
+      col[1] = 0.717647f;
+      col[2] = 0.043137f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_BLUE:
+      col[0] = 0.211765f;
+      col[1] = 0.403922f;
+      col[2] = 0.87451f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_PURPLE:
+      col[0] = 0.301961f;
+      col[1] = 0.207843f;
+      col[2] = 0.588235f;
+      col[3] = 1.0f;
+      break;
+  }
+  rgba_float_to_uchar(ucolor, col);
+}
+
 static void outliner_tree_dimensions_impl(SpaceOutliner *soops,
                                           ListBase *lb,
                                           int *width,
@@ -2905,20 +2949,37 @@ static void tselem_draw_icon(uiBlock *block,
     }
   }
   else {
-    uiDefIconBut(block,
-                 UI_BTYPE_LABEL,
-                 0,
-                 data.icon,
-                 x,
-                 y,
-                 UI_UNIT_X,
-                 UI_UNIT_Y,
-                 NULL,
-                 0.0,
-                 0.0,
-                 1.0,
-                 alpha,
-                 (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath : "");
+    if (outliner_is_collection_tree_element(te)) {
+      uchar color[4];
+      float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
+      x += 2.0f * aspect;
+      y += 2.0f * aspect;
+      Collection *collection = outliner_collection_from_tree_element(te);
+      if (collection->color != COLLECTION_COLOR_NONE) {
+        outliner_get_collection_color(color, collection->color);
+        UI_icon_draw_ex(x, y, data.icon, U.inv_dpi_fac, alpha, 0.0f, color, true);
+      }
+      else {
+        UI_icon_draw_ex(x, y, data.icon, U.inv_dpi_fac, alpha, 0.0f, NULL, false);
+      }
+    }
+    else {
+      uiDefIconBut(block,
+                   UI_BTYPE_LABEL,
+                   0,
+                   data.icon,
+                   x,
+                   y,
+                   UI_UNIT_X,
+                   UI_UNIT_Y,
+                   NULL,
+                   0.0,
+                   0.0,
+                   1.0,
+                   alpha,
+                   (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath :
+                                                                  "");
+    }
   }
 }
 
