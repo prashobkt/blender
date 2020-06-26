@@ -1177,6 +1177,7 @@ ccl_device float calc_importance(KernelGlobals *kg,
                                  float3 P,
                                  float3 N,
                                  float3 bboxMax,
+                                 float3 bboxMin,
                                  float theta_o,
                                  float theta_e,
                                  float3 axis,
@@ -1185,14 +1186,6 @@ ccl_device float calc_importance(KernelGlobals *kg,
 {
   /* eq. 3 */
 
-  /* "theta_u captures the solid angle of the entire box" */
-  /* approixmate solid angle of box with solid angle of bounding sphere */
-  /* (---r---C       )
-   *  \     /
-   *   \ th/ <--- d
-   *    \ /
-   *     P
-   * sin(th) = r/d <=> sin^2(th) = r^2 / d^2 */
   const float3 centroid_to_P = P - centroid;
   const float3 centroid_to_P_dir = normalize(centroid_to_P);
   const float r2 = len_squared(bboxMax - centroid);
@@ -1201,26 +1194,42 @@ ccl_device float calc_importance(KernelGlobals *kg,
   /* based on comment in the implementation details of the paper */
   const bool splitting = kernel_data.integrator.splitting_threshold != 0.0f;
   if (!splitting) {
-    d2 = max(d2, r2 * 0.25f);
+    d2 = fmaxf(d2, r2 * 0.25f);
   }
 
+  /* "theta_u captures the solid angle of the entire box" */
+
   float theta_u;
-  if (d2 <= r2) {
-    /* P is inside bounding sphere */
+  if (P.x < bboxMax.x && P.y < bboxMax.y && P.z < bboxMax.z && P.x > bboxMin.x &&
+      P.y > bboxMin.y && P.z > bboxMin.z) {
+    /* P is inside bounding box */
     theta_u = M_PI_F;
   }
   else {
-    const float sin_theta_u_squared = r2 / d2;
-    const float cos_theta_u = safe_sqrtf(1.0f - sin_theta_u_squared);
-    theta_u = fast_acosf(cos_theta_u);
+    /* Find the smallest cone that contains the bounding box by checking which bbox vertex is
+     * farthest out. If we use a bounding sphere we get a too big cone. For example consider a long
+     * skinny bbox oriented with P next to one of the small sides. */
+    theta_u = 0;
+    float3 corners[8];
+    corners[0] = bboxMin;
+    corners[1] = make_float3(bboxMin.x, bboxMin.y, bboxMax.z);
+    corners[2] = make_float3(bboxMin.x, bboxMax.y, bboxMin.z);
+    corners[3] = make_float3(bboxMin.x, bboxMax.y, bboxMax.z);
+    corners[4] = make_float3(bboxMax.x, bboxMin.y, bboxMin.z);
+    corners[5] = make_float3(bboxMax.x, bboxMin.y, bboxMax.z);
+    corners[6] = make_float3(bboxMax.x, bboxMax.y, bboxMin.z);
+    corners[7] = bboxMax;
+    for (int i = 0; i < 8; ++i) {
+      float3 P_to_corner = normalize(P - corners[i]);
+      const float cos_theta_u = dot(-centroid_to_P_dir, P_to_corner);
+      theta_u = fmaxf(fast_acosf(cos_theta_u), theta_u);
+    }
   }
 
   /* cos(theta') */
-  float cos_theta = fabsf(dot(axis, centroid_to_P_dir));
-  /* theta is the angle between the axis and the line between P and the centroid. There are two
-   * such angles so take the smaller one. */
+  float cos_theta = dot(axis, centroid_to_P_dir);
   const float theta = fast_acosf(cos_theta);
-  const float theta_prime = fminf(fmaxf(theta - theta_o - theta_u, 0.0f), theta_e);
+  const float theta_prime = fmaxf(theta - theta_o - theta_u, 0.0f);
   if (theta_prime >= theta_e) {
     return 0.0f;
   }
@@ -1228,7 +1237,8 @@ ccl_device float calc_importance(KernelGlobals *kg,
 
   /* f_a|cos(theta'_i)| -- diffuse approximation */
   if (N != make_float3(0.0f, 0.0f, 0.0f)) {
-    const float theta_i = fast_acosf(dot(N, -centroid_to_P_dir));
+    const float cos_theta_i = dot(N, -centroid_to_P_dir);
+    const float theta_i = fast_acosf(cos_theta_i);
     const float theta_i_prime = fmaxf(theta_i - theta_u, 0.0f);
     const float cos_theta_i_prime = fast_cosf(theta_i_prime);
     const float abs_cos_theta_i_prime = fabsf(cos_theta_i_prime);
@@ -1268,7 +1278,7 @@ ccl_device float calc_light_importance(
   const float energy = data2.w;
   const float3 centroid = 0.5f * (bbox_max + bbox_min);
 
-  return calc_importance(kg, P, N, bbox_max, theta_o, theta_e, axis, energy, centroid);
+  return calc_importance(kg, P, N, bbox_max, bbox_min, theta_o, theta_e, axis, energy, centroid);
 }
 
 /* the combined energy, spatial and orientation bounds for all the lights for the
@@ -1291,7 +1301,7 @@ ccl_device float calc_node_importance(KernelGlobals *kg, float3 P, float3 N, int
   const float3 axis = make_float3(node3.x, node3.y, node3.z);
   const float3 centroid = 0.5f * (bbox_max + bbox_min);
 
-  return calc_importance(kg, P, N, bbox_max, theta_o, theta_e, axis, energy, centroid);
+  return calc_importance(kg, P, N, bbox_max, bbox_min, theta_o, theta_e, axis, energy, centroid);
 }
 
 /* given a node offset, this function loads and decodes the minimum amount of
@@ -1594,7 +1604,6 @@ ccl_device float light_tree_pdf(KernelGlobals *kg,
                                 float pdf,
                                 bool can_split)
 {
-
   /* find mapping from distribution_id to node_id */
   int node_id = kernel_tex_fetch(__light_distribution_to_node, distribution_id);
 
