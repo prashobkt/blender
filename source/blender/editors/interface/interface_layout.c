@@ -5279,7 +5279,7 @@ static void ui_block_search_filter_tag_buttons(uiBlock *block)
 static bool ui_layout_search_filter_clean_recursive(uiLayout *layout)
 {
   /* Remove all search filtered button items. */
-  bool layout_emptied = true;
+  bool layout_emptied = uiLayoutGetPropSearch(layout);
   if (uiLayoutGetPropSearch(layout)) {
     LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
       if (item->type == ITEM_BUTTON) {
@@ -5436,7 +5436,7 @@ static bool ui_block_search_layout(uiBlock *block)
 
 #ifdef DEBUG_LAYOUT_ROOTS
   if (block->panel && (block->panel->flag & PNL_SELECT)) {
-    printf("\nBEFORE\n");
+    printf("\nBEFORE %s %p\n", block->name, block);
     LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
       debug_print_layout((uiItem *)root->layout, 0, false);
     }
