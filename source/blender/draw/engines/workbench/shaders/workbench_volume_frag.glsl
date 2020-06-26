@@ -136,22 +136,26 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
   }
   else if(showFlags) {
     /* Color mapping for flags */
-    uint val = texture(flagTexture, co).r;
-    /* Cell types: 1 is Fluid, 2 is Obstacle, 4 is Empty, 16 is Outflow */
-    if (val == uint(1)) {
-      tval = vec4(0.0, 0.0, 0.75, 0.06); /* blue */
+    uint flag = texture(flagTexture, co).r;
+    tval = vec4(0.0, 0.0, 0.0, 0.06);
+    /* Cell types: 1 is Fluid, 2 is Obstacle, 4 is Empty, 8 is Inflow, 16 is Outflow */
+    if (bool(flag & uint(1))) {
+      tval.rgb += vec3(0.0, 0.0, 0.75); /* blue */
     }
-    else if (val == uint(2)) {
-      tval = vec4(0.2, 0.2, 0.2, 0.06); /* dark gray */
+    if (bool(flag & uint(2))) {
+      tval.rgb += vec3(0.2, 0.2, 0.2); /* dark gray */
     }
-    else if (val == uint(4)) {
-      tval = vec4(0.25, 0.0, 0.2, 0.06); /* dark purple */
+    if (bool(flag & uint(4))) {
+      tval.rgb += vec3(0.25, 0.0, 0.2); /* dark purple */
     }
-    else if (val == uint(16)) {
-      tval = vec4(0.9, 0.3, 0.0, 0.06); /* orange */
+    if (bool(flag & uint(8))) {
+      tval.rgb += vec3(0.0, 0.5, 0.0); /* dark green */
     }
-    else {
-      tval = vec4(0.5, 0.0, 0.0, 0.06); /* medium red */
+    if (bool(flag & uint(16))) {
+      tval.rgb += vec3(0.9, 0.3, 0.0); /* orange */
+    }
+    if (tval.rgb == vec3(0.0)) {
+      tval.rgb += vec3(0.5, 0.0, 0.0); /* medium red */
     }
   } 
   else {
