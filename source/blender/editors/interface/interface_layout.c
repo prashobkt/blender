@@ -5154,6 +5154,10 @@ const char *item_type_names[12] = {
     "Root",        /* ITEM_LAYOUT_ROOT */
 };
 
+#  define PRINT_DEFAULT "\x1B[0m"
+#  define PRINT_GREEN "\x1B[32m"
+#  define PRINT_RED "\x1B[31m"
+#  define PRINT_WHITE "\x1B[37m"
 static void debug_print_button_item(uiButtonItem *button_item)
 {
   uiBut *but = button_item->but;
@@ -5163,7 +5167,7 @@ static void debug_print_button_item(uiButtonItem *button_item)
     return;
   }
 
-  printf("%s: ", but_type_string(but->type));
+  printf("%s%s%s: ", PRINT_RED, but_type_string(but->type), PRINT_DEFAULT);
 
   if (but->str && but->str[0]) {
     printf(but->str);
@@ -5176,13 +5180,15 @@ static void debug_print_button_item(uiButtonItem *button_item)
   }
 }
 
-static void debug_print_layout(uiItem *item, int depth)
+static void debug_print_layout(uiItem *item, int depth, bool child_items_layout)
 {
   uiItemType type = item->type;
 
+  printf("%s", PRINT_WHITE);
   for (int i = 0; i < depth; i++) {
     printf("| ");
   }
+  printf("%s", PRINT_DEFAULT);
 
   if (type == ITEM_BUTTON) {
     uiButtonItem *button_item = (uiButtonItem *)item;
@@ -5191,19 +5197,26 @@ static void debug_print_layout(uiItem *item, int depth)
     printf("\n");
   }
   else {
+    printf("%s%s%s: ", PRINT_GREEN, item_type_names[item->type], PRINT_DEFAULT);
     uiLayout *layout = (uiLayout *)item;
-    printf("%s: ", item_type_names[item->type]);
 
+    printf("%s", PRINT_WHITE);
     if (layout->property_search_layout_temp_debug) {
-      printf(" (search layout)");
+      printf("(search layout)");
     }
+    if (child_items_layout) {
+      printf("(child_items_layout)");
+    }
+    printf("%s", PRINT_DEFAULT);
+
     printf("\n");
 
     if (layout->child_items_layout != NULL) {
-      debug_print_layout((uiItem *)layout->child_items_layout, depth + 2);
+
+      debug_print_layout((uiItem *)layout->child_items_layout, depth + 1, true);
     }
     LISTBASE_FOREACH (uiItem *, child_item, &layout->items) {
-      debug_print_layout(child_item, depth + 1);
+      debug_print_layout(child_item, depth + 1, false);
     }
   }
 }
@@ -5425,7 +5438,7 @@ static bool ui_block_search_layout(uiBlock *block)
   if (block->panel && (block->panel->flag & PNL_SELECT)) {
     printf("\nBEFORE\n");
     LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
-      debug_print_layout((uiItem *)root->layout, 0);
+      debug_print_layout((uiItem *)root->layout, 0, false);
     }
   }
 #endif
@@ -5470,7 +5483,7 @@ static bool ui_block_search_layout(uiBlock *block)
   if (block->panel && (block->panel->flag & PNL_SELECT)) {
     printf("\nAFTER\n");
     LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
-      debug_print_layout((uiItem *)root->layout, 0);
+      debug_print_layout((uiItem *)root->layout, 0, false);
     }
   }
 #endif
