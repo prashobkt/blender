@@ -133,7 +133,8 @@ static void swizzle_texture_channel_single(GPUTexture *tex)
 
 static GPUTexture *create_field_texture(FluidDomainSettings *mds)
 {
-  float *field = NULL;
+  void *field = NULL;
+  eGPUDataFormat data_format = GPU_DATA_FLOAT;
   eGPUTextureFormat texture_format = GPU_R8;
 
   switch (mds->coba_field) {
@@ -195,20 +196,17 @@ static GPUTexture *create_field_texture(FluidDomainSettings *mds)
       field = manta_get_phiobs_in(mds->fluid);
       texture_format = GPU_R16F;
       break;
+    case FLUID_DOMAIN_FIELD_FLAGS:
+      field = manta_smoke_get_flags(mds->fluid);
+      data_format = GPU_DATA_INT;
+      texture_format = GPU_R8UI;
+      break;
     default:
       return NULL;
   }
 
-  GPUTexture *tex = GPU_texture_create_nD(mds->res[0],
-                                          mds->res[1],
-                                          mds->res[2],
-                                          3,
-                                          field,
-                                          texture_format,
-                                          GPU_DATA_FLOAT,
-                                          0,
-                                          true,
-                                          NULL);
+  GPUTexture *tex = GPU_texture_create_nD(
+      mds->res[0], mds->res[1], mds->res[2], 3, field, texture_format, data_format, 0, true, NULL);
 
   swizzle_texture_channel_single(tex);
   return tex;
@@ -354,7 +352,8 @@ void GPU_create_smoke_coba_field(FluidModifierData *mmd)
     if (!mds->tex_coba && !(mds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
                             mds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
                             mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
-                            mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE)) {
+                            mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE ||
+                            mds->coba_field == FLUID_DOMAIN_FIELD_FLAGS)) {
       mds->tex_coba = create_transfer_function(TFUNC_COLOR_RAMP, mds->coba);
     }
   }

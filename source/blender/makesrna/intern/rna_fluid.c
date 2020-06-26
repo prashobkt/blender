@@ -1025,6 +1025,13 @@ static const EnumPropertyItem *rna_Fluid_cobafield_itemf(bContext *UNUSED(C),
   EnumPropertyItem tmp = {0, "", 0, "", ""};
   int totitem = 0;
 
+  tmp.value = FLUID_DOMAIN_FIELD_FLAGS;
+  tmp.identifier = "FLAGS";
+  tmp.icon = 0;
+  tmp.name = "Flags";
+  tmp.description = "Flag grid of the fluid domain";
+  RNA_enum_item_add(&item, &totitem, &tmp);
+
   tmp.value = FLUID_DOMAIN_FIELD_VELOCITY_X;
   tmp.identifier = "VELOCITY_X";
   tmp.icon = 0;

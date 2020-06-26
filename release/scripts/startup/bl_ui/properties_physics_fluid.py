@@ -1257,7 +1257,10 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
 
         col = flow.column(align=False)
         col.prop(domain, "display_thickness")
-        col.prop(domain, "display_interpolation")
+
+        if (not (domain.use_color_ramp and domain.coba_field == "FLAGS")):
+            col.prop(domain, "display_interpolation")
+        
         col.separator()
 
         col = flow.column()
@@ -1294,11 +1297,13 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
         col = layout.column()
         col.active = domain.use_color_ramp
         col.prop(domain, "coba_field")
-        col.prop(domain, "coba_field_scale")
+
+        if (not domain.coba_field == "FLAGS"):
+            col.prop(domain, "coba_field_scale")
 
         col.use_property_split = False
 
-        if (not domain.coba_field[:3] == "PHI"):
+        if (not (domain.coba_field[:3] == "PHI" or domain.coba_field == "FLAGS")):
             col = col.column()
             col.template_color_ramp(domain, "color_ramp", expand=True)
 

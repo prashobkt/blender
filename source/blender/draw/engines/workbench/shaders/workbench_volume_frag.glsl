@@ -9,6 +9,7 @@ uniform sampler2D depthBuffer;
 uniform sampler3D densityTexture;
 uniform sampler3D shadowTexture;
 uniform sampler3D flameTexture;
+uniform usampler3D flagTexture;
 uniform sampler1D flameColorTexture;
 uniform sampler1D transferTexture;
 uniform mat4 volumeObjectToTexture;
@@ -24,6 +25,7 @@ uniform float slicePosition;
 uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
 
 uniform bool showPhi;
+uniform bool showFlags;
 
 #ifdef VOLUME_SLICE
 in vec3 localPos;
@@ -117,26 +119,43 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 {
   vec3 co = ls_pos * 0.5 + 0.5;
 #ifdef USE_COBA
-  float val = sample_volume_texture(densityTexture, co).r * gridScale;
   vec4 tval;
   if(showPhi) {
     /* Color mapping for level-set representation */
+    float val = sample_volume_texture(densityTexture, co).r * gridScale;
+    
     val = (val * 0.2 < 1.0) ? val * 0.2 : 1.0;
     val = (val >= -1.0) ? val : -1.0;
 
     if (val >= 0.0) {
-      tval.r = val;
-      tval.g = 0.0;
-      tval.b = 0.5;
+      tval = vec4(val, 0.0, 0.5, 0.06);
     }
     else {
-      tval.r = 0.5;
-      tval.g = 1.0 + val;
-      tval.b = 0.0;
+      tval = vec4(0.5, 1.0 + val, 0.0, 0.06);
     }
-    tval.a = 0.06;
   }
+  else if(showFlags) {
+    /* Color mapping for flags */
+    uint val = texture(flagTexture, co).r;
+    /* Cell types: 1 is Fluid, 2 is Obstacle, 4 is Empty, 16 is Outflow */
+    if (val == uint(1)) {
+      tval = vec4(0.0, 0.0, 0.75, 0.06); /* blue */
+    }
+    else if (val == uint(2)) {
+      tval = vec4(0.2, 0.2, 0.2, 0.06); /* dark gray */
+    }
+    else if (val == uint(4)) {
+      tval = vec4(0.25, 0.0, 0.2, 0.06); /* dark purple */
+    }
+    else if (val == uint(16)) {
+      tval = vec4(0.9, 0.3, 0.0, 0.06); /* orange */
+    }
+    else {
+      tval = vec4(0.5, 0.0, 0.0, 0.06); /* medium red */
+    }
+  } 
   else {
+    float val = sample_volume_texture(densityTexture, co).r * gridScale;
     tval = texture(transferTexture, val);
   }
   tval *= densityScale;

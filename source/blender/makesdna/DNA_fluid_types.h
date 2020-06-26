@@ -130,6 +130,7 @@ enum {
   FLUID_DOMAIN_FIELD_PHI_IN = 15,
   FLUID_DOMAIN_FIELD_PHI_OUT = 16,
   FLUID_DOMAIN_FIELD_PHI_OBSTACLE = 17,
+  FLUID_DOMAIN_FIELD_FLAGS = 18,
 };
 
 /* Fluid domain types. */
@@ -331,8 +332,9 @@ enum {
 #define FLUID_NAME_PP_MESH "pp_mesh"
 #define FLUID_NAME_FLAGS_MESH "flags_mesh"
 #define FLUID_NAME_LMESH "lMesh"
-#define FLUID_NAME_VELOCITYVEC_MESH "vertex_velocities_mesh" /* == OpenVDB grid attribute name. \
-                                                              */
+#define FLUID_NAME_VELOCITYVEC_MESH \
+  "vertex_velocities_mesh" /* == OpenVDB grid attribute name. \
+                            */
 #define FLUID_NAME_VELOCITY_MESH "velocity_mesh"
 #define FLUID_NAME_PINDEX_MESH "pindex_mesh"
 #define FLUID_NAME_GPI_MESH "gpi_mesh"
@@ -356,9 +358,10 @@ enum {
 #define FLUID_NAME_NORMAL_PARTICLES "normal_secondary"
 #define FLUID_NAME_NEIGHBORRATIO_PARTICLES "neighbor_ratio_secondary"
 #define FLUID_NAME_TRAPPEDAIR_PARTICLES \
-  "trapped_air_secondary"                                     /* == OpenVDB grid attribute name. */
-#define FLUID_NAME_WAVECREST_PARTICLES "wave_crest_secondary" /* == OpenVDB grid attribute name. \
-                                                               */
+  "trapped_air_secondary" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_WAVECREST_PARTICLES \
+  "wave_crest_secondary" /* == OpenVDB grid attribute name. \
+                          */
 #define FLUID_NAME_KINETICENERGY_PARTICLES \
   "kinetic_energy_secondary" /* == OpenVDB grid attribute name. */
 
