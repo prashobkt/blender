@@ -87,48 +87,46 @@
 /* ****************************************************** */
 /* Tree Size Functions */
 
-static void outliner_get_collection_color(uchar ucolor[4], short color)
+static void outliner_get_collection_color(float col[4], short color)
 {
-  float col[4];
   switch (color) {
     case COLLECTION_COLOR_RED:
-      col[0] = 0.741f;
-      col[1] = 0.067f;
-      col[2] = 0.067f;
+      col[0] = 0.945f;
+      col[1] = 0.568f;
+      col[2] = 0.560f;
       col[3] = 1.0f;
       break;
     case COLLECTION_COLOR_ORANGE:
-      col[0] = 0.964f;
-      col[1] = 0.411f;
-      col[2] = 0.074f;
+      col[0] = 0.945f;
+      col[1] = 0.580f;
+      col[2] = 0.384f;
       col[3] = 1.0f;
       break;
     case COLLECTION_COLOR_YELLOW:
-      col[0] = 0.890196f;
-      col[1] = 0.796079f;
-      col[2] = 0.345098;
+      col[0] = 0.752f;
+      col[1] = 0.674f;
+      col[2] = 0.309f;
       col[3] = 1.0f;
       break;
     case COLLECTION_COLOR_GREEN:
-      col[0] = 0.34902f;
-      col[1] = 0.717647f;
-      col[2] = 0.043137f;
+      col[0] = 0.576f;
+      col[1] = 0.717f;
+      col[2] = 0.305f;
       col[3] = 1.0f;
       break;
     case COLLECTION_COLOR_BLUE:
-      col[0] = 0.211765f;
-      col[1] = 0.403922f;
-      col[2] = 0.87451f;
+      col[0] = 0.329f;
+      col[1] = 0.733f;
+      col[2] = 0.705f;
       col[3] = 1.0f;
       break;
     case COLLECTION_COLOR_PURPLE:
-      col[0] = 0.301961f;
-      col[1] = 0.207843f;
-      col[2] = 0.588235f;
+      col[0] = 0.721f;
+      col[1] = 0.619f;
+      col[2] = 0.929f;
       col[3] = 1.0f;
       break;
   }
-  rgba_float_to_uchar(ucolor, col);
 }
 
 static void outliner_tree_dimensions_impl(SpaceOutliner *soops,
@@ -2951,12 +2949,14 @@ static void tselem_draw_icon(uiBlock *block,
   else {
     if (outliner_is_collection_tree_element(te)) {
       uchar color[4];
+      float col[4];
       float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
       x += 2.0f * aspect;
       y += 2.0f * aspect;
       Collection *collection = outliner_collection_from_tree_element(te);
       if (collection->color != COLLECTION_COLOR_NONE) {
-        outliner_get_collection_color(color, collection->color);
+        outliner_get_collection_color(col, collection->color);
+        rgba_float_to_uchar(color, col);
         UI_icon_draw_ex(x, y, data.icon, U.inv_dpi_fac, alpha, 0.0f, color, true);
       }
       else {
@@ -3742,6 +3742,19 @@ static void outliner_draw_highlights_recursive(uint pos,
           immUniformColor4fv(col_highlight);
           immRecti(pos, 0, start_y, end_x, start_y + UI_UNIT_Y);
         }
+      }
+    }
+
+    /* collection color */
+    if (outliner_is_collection_tree_element(te)) {
+      Collection *collection = outliner_collection_from_tree_element(te);
+
+      if (collection->color != COLLECTION_COLOR_NONE) {
+        float col[4];
+
+        outliner_get_collection_color(col, collection->color);
+        immUniformColor4fv(col);
+        immRecti(pos, 0, start_y, U.pixelsize * 3, start_y + UI_UNIT_Y);
       }
     }
 
