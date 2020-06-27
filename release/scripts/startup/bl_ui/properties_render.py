@@ -706,7 +706,8 @@ class LRT_UL_linesets(UIList):
 
 
 class RENDER_PT_lineart(RenderButtonsPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL',
+                      'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     bl_label = "Line Art"
     bl_options = {'DEFAULT_CLOSED'}
 
