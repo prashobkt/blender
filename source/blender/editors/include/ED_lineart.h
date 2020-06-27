@@ -102,19 +102,6 @@ typedef struct LineartRenderVert {
   char edge_used;
 } LineartRenderVert;
 
-typedef enum eLineartEdgeFlag {
-  LRT_EDGE_FLAG_EDGE_MARK = (1 << 0),
-  LRT_EDGE_FLAG_CONTOUR = (1 << 1),
-  LRT_EDGE_FLAG_CREASE = (1 << 2),
-  LRT_EDGE_FLAG_MATERIAL = (1 << 3),
-  LRT_EDGE_FLAG_INTERSECTION = (1 << 4),
-  /**  floating edge, unimplemented yet */
-  LRT_EDGE_FLAG_FLOATING = (1 << 5),
-  LRT_EDGE_FLAG_CHAIN_PICKED = (1 << 6),
-} eLineartEdgeFlag;
-
-#define LRT_EDGE_FLAG_ALL_TYPE 0x3f
-
 typedef struct LineartRenderLine {
   struct LineartRenderLine *next, *prev;
   struct LineartRenderVert *l, *r;

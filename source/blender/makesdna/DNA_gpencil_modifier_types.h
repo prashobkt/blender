@@ -802,10 +802,27 @@ typedef enum eTextureGpencil_Mode {
   STROKE_AND_FILL = 2,
 } eTextureGpencil_Mode;
 
+typedef enum eLineartGpencilModifierSource {
+  LRT_SOURCE_COLLECTION = 0,
+  LRT_SOURCE_OBJECT = 1,
+} eLineartGpencilModifierSource;
+
 typedef struct LineartGpencilModifierData {
   GpencilModifierData modifier;
 
-  /* Fill in here for Line Art */
+  short line_types; /* line type enable flags, bits in eLineartEdgeFlag */
+
+  char source_type; /* Object or Collection, from eLineartGpencilModifierSource */
+
+  char use_multiple_levels;
+  short level_start;
+  short level_end;
+
+  struct Object *source_gp;
+  struct Collection *source_collection;
+
+  struct Material *target_gp_material;
+  char target_gp_layer[64];
 
 } LineartGpencilModifierData;
 
