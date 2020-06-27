@@ -46,23 +46,22 @@
 
 #define LANPR_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
 
-static LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
-                                                         LANPR_RenderVert *rv,
-                                                         LANPR_RenderVert **new_rv,
-                                                         int match_flag)
+static eLineArtRenderLine *lineart_get_connected_render_line(eLineArtBoundingArea *ba,
+                                                             eLineArtRenderVert *rv,
+                                                             eLineArtRenderVert **new_rv,
+                                                             int match_flag)
 {
   LinkData *lip;
-  LANPR_RenderLine *nrl;
+  eLineArtRenderLine *nrl;
 
   for (lip = ba->linked_lines.first; lip; lip = lip->next) {
     nrl = lip->data;
 
-    if ((!(nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) ||
-        (nrl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED)) {
+    if ((!(nrl->flags & LRT_EDGE_FLAG_ALL_TYPE)) || (nrl->flags & LRT_EDGE_FLAG_CHAIN_PICKED)) {
       continue;
     }
 
-    if (match_flag && ((nrl->flags & LANPR_EDGE_FLAG_ALL_TYPE) & match_flag) == 0) {
+    if (match_flag && ((nrl->flags & LRT_EDGE_FLAG_ALL_TYPE) & match_flag) == 0) {
       continue;
     }
 
@@ -71,7 +70,7 @@ static LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
     /*  if(cosine whatever) continue; */
 
     if (rv != nrl->l && rv != nrl->r) {
-      if (nrl->flags & LANPR_EDGE_FLAG_INTERSECTION) {
+      if (nrl->flags & LRT_EDGE_FLAG_INTERSECTION) {
         if (rv->fbcoord[0] == nrl->l->fbcoord[0] && rv->fbcoord[1] == nrl->l->fbcoord[1]) {
           *new_rv = LANPR_OTHER_RV(nrl, nrl->l);
           return nrl;
@@ -93,20 +92,20 @@ static LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
   return 0;
 }
 
-static LANPR_RenderLineChain *lanpr_create_render_line_chain(LANPR_RenderBuffer *rb)
+static eLineArtRenderLineChain *lineart_create_render_line_chain(eLineArtRenderBuffer *rb)
 {
-  LANPR_RenderLineChain *rlc;
-  rlc = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChain));
+  eLineArtRenderLineChain *rlc;
+  rlc = mem_static_aquire(&rb->render_data_pool, sizeof(eLineArtRenderLineChain));
 
   BLI_addtail(&rb->chains, rlc);
 
   return rlc;
 }
 
-static bool lanpr_check_point_overlapping(LANPR_RenderLineChainItem *rlci,
-                                          float x,
-                                          float y,
-                                          float threshold)
+static bool lineart_check_point_overlapping(eLineArtRenderLineChainItem *rlci,
+                                            float x,
+                                            float y,
+                                            float threshold)
 {
   if (!rlci) {
     return false;
@@ -118,29 +117,30 @@ static bool lanpr_check_point_overlapping(LANPR_RenderLineChainItem *rlci,
   return false;
 }
 
-static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuffer *rb,
-                                                                       LANPR_RenderLineChain *rlc,
-                                                                       float x,
-                                                                       float y,
-                                                                       float gx,
-                                                                       float gy,
-                                                                       float gz,
-                                                                       float *normal,
-                                                                       char type,
-                                                                       int level)
+static eLineArtRenderLineChainItem *lineart_append_render_line_chain_point(
+    eLineArtRenderBuffer *rb,
+    eLineArtRenderLineChain *rlc,
+    float x,
+    float y,
+    float gx,
+    float gy,
+    float gz,
+    float *normal,
+    char type,
+    int level)
 {
-  LANPR_RenderLineChainItem *rlci;
+  eLineArtRenderLineChainItem *rlci;
 
-  if (lanpr_check_point_overlapping(rlc->chain.last, x, y, 1e-10)) {
+  if (lineart_check_point_overlapping(rlc->chain.last, x, y, 1e-10)) {
     /* Because segment type is determined by the leading chain point, so we need to ensure the type
      * and occlusion is correct after omitting overlapping point*/
-    LANPR_RenderLineChainItem *old_rlci = rlc->chain.last;
+    eLineArtRenderLineChainItem *old_rlci = rlc->chain.last;
     old_rlci->line_type = type;
     old_rlci->occlusion = level;
     return old_rlci;
   }
 
-  rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
+  rlci = mem_static_aquire(&rb->render_data_pool, sizeof(eLineArtRenderLineChainItem));
 
   rlci->pos[0] = x;
   rlci->pos[1] = y;
@@ -148,7 +148,7 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
   rlci->gpos[1] = gy;
   rlci->gpos[2] = gz;
   copy_v3_v3(rlci->normal, normal);
-  rlci->line_type = type & LANPR_EDGE_FLAG_ALL_TYPE;
+  rlci->line_type = type & LRT_EDGE_FLAG_ALL_TYPE;
   rlci->occlusion = level;
   BLI_addtail(&rlc->chain, rlci);
 
@@ -157,24 +157,25 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
   return rlci;
 }
 
-static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_RenderBuffer *rb,
-                                                                     LANPR_RenderLineChain *rlc,
-                                                                     float x,
-                                                                     float y,
-                                                                     float gx,
-                                                                     float gy,
-                                                                     float gz,
-                                                                     float *normal,
-                                                                     char type,
-                                                                     int level)
+static eLineArtRenderLineChainItem *lineart_push_render_line_chain_point(
+    eLineArtRenderBuffer *rb,
+    eLineArtRenderLineChain *rlc,
+    float x,
+    float y,
+    float gx,
+    float gy,
+    float gz,
+    float *normal,
+    char type,
+    int level)
 {
-  LANPR_RenderLineChainItem *rlci;
+  eLineArtRenderLineChainItem *rlci;
 
-  if (lanpr_check_point_overlapping(rlc->chain.first, x, y, 1e-10)) {
+  if (lineart_check_point_overlapping(rlc->chain.first, x, y, 1e-10)) {
     return rlc->chain.first;
   }
 
-  rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
+  rlci = mem_static_aquire(&rb->render_data_pool, sizeof(eLineArtRenderLineChainItem));
 
   rlci->pos[0] = x;
   rlci->pos[1] = y;
@@ -182,7 +183,7 @@ static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_Rende
   rlci->gpos[1] = gy;
   rlci->gpos[2] = gz;
   copy_v3_v3(rlci->normal, normal);
-  rlci->line_type = type & LANPR_EDGE_FLAG_ALL_TYPE;
+  rlci->line_type = type & LRT_EDGE_FLAG_ALL_TYPE;
   rlci->occlusion = level;
   BLI_addhead(&rlc->chain, rlci);
 
@@ -191,30 +192,30 @@ static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_Rende
   return rlci;
 }
 
-void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
+void ED_lineart_NO_THREAD_chain_feature_lines(eLineArtRenderBuffer *rb)
 {
-  LANPR_RenderLineChain *rlc;
-  LANPR_RenderLineChainItem *rlci;
-  LANPR_RenderLine *rl;
-  LANPR_BoundingArea *ba;
-  LANPR_RenderLineSegment *rls;
+  eLineArtRenderLineChain *rlc;
+  eLineArtRenderLineChainItem *rlci;
+  eLineArtRenderLine *rl;
+  eLineArtBoundingArea *ba;
+  eLineArtRenderLineSegment *rls;
   int last_occlusion;
 
   for (rl = rb->all_render_lines.first; rl; rl = rl->next) {
 
-    if ((!(rl->flags & LANPR_EDGE_FLAG_ALL_TYPE)) || (rl->flags & LANPR_EDGE_FLAG_CHAIN_PICKED)) {
+    if ((!(rl->flags & LRT_EDGE_FLAG_ALL_TYPE)) || (rl->flags & LRT_EDGE_FLAG_CHAIN_PICKED)) {
       continue;
     }
 
-    rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
+    rl->flags |= LRT_EDGE_FLAG_CHAIN_PICKED;
 
-    rlc = lanpr_create_render_line_chain(rb);
+    rlc = lineart_create_render_line_chain(rb);
 
     rlc->object_ref = rl->object_ref; /*  can only be the same object in a chain. */
-    rlc->type = (rl->flags & LANPR_EDGE_FLAG_ALL_TYPE);
+    rlc->type = (rl->flags & LRT_EDGE_FLAG_ALL_TYPE);
 
-    LANPR_RenderLine *new_rl = rl;
-    LANPR_RenderVert *new_rv;
+    eLineArtRenderLine *new_rl = rl;
+    eLineArtRenderVert *new_rv;
     float N[3] = {0};
 
     if (rl->tl) {
@@ -232,21 +233,21 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     }
 
     /*  step 1: grow left */
-    ba = ED_lanpr_get_point_bounding_area_deep(rb, rl->l->fbcoord[0], rl->l->fbcoord[1]);
+    ba = ED_lineart_get_point_bounding_area_deep(rb, rl->l->fbcoord[0], rl->l->fbcoord[1]);
     new_rv = rl->l;
     rls = rl->segments.first;
-    lanpr_push_render_line_chain_point(rb,
-                                       rlc,
-                                       new_rv->fbcoord[0],
-                                       new_rv->fbcoord[1],
-                                       new_rv->gloc[0],
-                                       new_rv->gloc[1],
-                                       new_rv->gloc[2],
-                                       N,
-                                       rl->flags,
-                                       rls->occlusion);
-    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
-      new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
+    lineart_push_render_line_chain_point(rb,
+                                         rlc,
+                                         new_rv->fbcoord[0],
+                                         new_rv->fbcoord[1],
+                                         new_rv->gloc[0],
+                                         new_rv->gloc[1],
+                                         new_rv->gloc[2],
+                                         N,
+                                         rl->flags,
+                                         rls->occlusion);
+    while (ba && (new_rl = lineart_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
+      new_rl->flags |= LRT_EDGE_FLAG_CHAIN_PICKED;
 
       if (new_rl->tl || new_rl->tr) {
         zero_v3(N);
@@ -268,16 +269,16 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
           double gpos[3], lpos[3];
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
-          lanpr_push_render_line_chain_point(rb,
-                                             rlc,
-                                             lpos[0],
-                                             lpos[1],
-                                             gpos[0],
-                                             gpos[1],
-                                             gpos[2],
-                                             N,
-                                             new_rl->flags,
-                                             rls->occlusion);
+          lineart_push_render_line_chain_point(rb,
+                                               rlc,
+                                               lpos[0],
+                                               lpos[1],
+                                               gpos[0],
+                                               gpos[1],
+                                               gpos[2],
+                                               N,
+                                               new_rl->flags,
+                                               rls->occlusion);
           last_occlusion = rls->occlusion;
         }
       }
@@ -289,30 +290,30 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
           double gpos[3], lpos[3];
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
-          lanpr_push_render_line_chain_point(rb,
+          lineart_push_render_line_chain_point(rb,
+                                               rlc,
+                                               lpos[0],
+                                               lpos[1],
+                                               gpos[0],
+                                               gpos[1],
+                                               gpos[2],
+                                               N,
+                                               new_rl->flags,
+                                               last_occlusion);
+          last_occlusion = rls->occlusion;
+        }
+        lineart_push_render_line_chain_point(rb,
                                              rlc,
-                                             lpos[0],
-                                             lpos[1],
-                                             gpos[0],
-                                             gpos[1],
-                                             gpos[2],
+                                             new_rl->r->fbcoord[0],
+                                             new_rl->r->fbcoord[1],
+                                             new_rl->r->gloc[0],
+                                             new_rl->r->gloc[1],
+                                             new_rl->r->gloc[2],
                                              N,
                                              new_rl->flags,
                                              last_occlusion);
-          last_occlusion = rls->occlusion;
-        }
-        lanpr_push_render_line_chain_point(rb,
-                                           rlc,
-                                           new_rl->r->fbcoord[0],
-                                           new_rl->r->fbcoord[1],
-                                           new_rl->r->gloc[0],
-                                           new_rl->r->gloc[1],
-                                           new_rl->r->gloc[2],
-                                           N,
-                                           new_rl->flags,
-                                           last_occlusion);
       }
-      ba = ED_lanpr_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
+      ba = ED_lineart_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
 
     /* Restore normal value */
@@ -332,34 +333,34 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     }
     /*  step 2: this line */
     rls = rl->segments.first;
-    last_occlusion = ((LANPR_RenderLineSegment *)rls)->occlusion;
+    last_occlusion = ((eLineArtRenderLineSegment *)rls)->occlusion;
     for (rls = rls->next; rls; rls = rls->next) {
       double gpos[3], lpos[3];
       interp_v3_v3v3_db(lpos, rl->l->fbcoord, rl->r->fbcoord, rls->at);
       interp_v3_v3v3_db(gpos, rl->l->gloc, rl->r->gloc, rls->at);
-      lanpr_append_render_line_chain_point(
+      lineart_append_render_line_chain_point(
           rb, rlc, lpos[0], lpos[1], gpos[0], gpos[1], gpos[2], N, rl->flags, rls->occlusion);
       last_occlusion = rls->occlusion;
     }
-    lanpr_append_render_line_chain_point(rb,
-                                         rlc,
-                                         rl->r->fbcoord[0],
-                                         rl->r->fbcoord[1],
-                                         rl->r->gloc[0],
-                                         rl->r->gloc[1],
-                                         rl->r->gloc[2],
-                                         N,
-                                         rl->flags,
-                                         last_occlusion);
+    lineart_append_render_line_chain_point(rb,
+                                           rlc,
+                                           rl->r->fbcoord[0],
+                                           rl->r->fbcoord[1],
+                                           rl->r->gloc[0],
+                                           rl->r->gloc[1],
+                                           rl->r->gloc[2],
+                                           N,
+                                           rl->flags,
+                                           last_occlusion);
 
     /*  step 3: grow right */
-    ba = ED_lanpr_get_point_bounding_area_deep(rb, rl->r->fbcoord[0], rl->r->fbcoord[1]);
+    ba = ED_lineart_get_point_bounding_area_deep(rb, rl->r->fbcoord[0], rl->r->fbcoord[1]);
     new_rv = rl->r;
     /*  below already done in step 2 */
-    /*  lanpr_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
+    /*  lineart_push_render_line_chain_point(rb,rlc,new_rv->fbcoord[0],new_rv->fbcoord[1],rl->flags,0);
      */
-    while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
-      new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
+    while (ba && (new_rl = lineart_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
+      new_rl->flags |= LRT_EDGE_FLAG_CHAIN_PICKED;
 
       if (new_rl->tl || new_rl->tr) {
         zero_v3(N);
@@ -378,7 +379,7 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 
       /*  fix leading vertex type */
       rlci = rlc->chain.last;
-      rlci->line_type = new_rl->flags & LANPR_EDGE_FLAG_ALL_TYPE;
+      rlci->line_type = new_rl->flags & LRT_EDGE_FLAG_ALL_TYPE;
 
       if (new_rv == new_rl->l) {
         rls = new_rl->segments.last;
@@ -389,16 +390,16 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
           last_occlusion = rls->prev ? rls->prev->occlusion : last_occlusion;
-          lanpr_append_render_line_chain_point(rb,
-                                               rlc,
-                                               lpos[0],
-                                               lpos[1],
-                                               gpos[0],
-                                               gpos[1],
-                                               gpos[2],
-                                               N,
-                                               new_rl->flags,
-                                               last_occlusion);
+          lineart_append_render_line_chain_point(rb,
+                                                 rlc,
+                                                 lpos[0],
+                                                 lpos[1],
+                                                 gpos[0],
+                                                 gpos[1],
+                                                 gpos[2],
+                                                 N,
+                                                 new_rl->flags,
+                                                 last_occlusion);
         }
       }
       else if (new_rv == new_rl->r) {
@@ -410,73 +411,72 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
           double gpos[3], lpos[3];
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, rls->at);
-          lanpr_append_render_line_chain_point(rb,
-                                               rlc,
-                                               lpos[0],
-                                               lpos[1],
-                                               gpos[0],
-                                               gpos[1],
-                                               gpos[2],
-                                               N,
-                                               new_rl->flags,
-                                               rls->occlusion);
+          lineart_append_render_line_chain_point(rb,
+                                                 rlc,
+                                                 lpos[0],
+                                                 lpos[1],
+                                                 gpos[0],
+                                                 gpos[1],
+                                                 gpos[2],
+                                                 N,
+                                                 new_rl->flags,
+                                                 rls->occlusion);
           last_occlusion = rls->occlusion;
         }
-        lanpr_append_render_line_chain_point(rb,
-                                             rlc,
-                                             new_rl->r->fbcoord[0],
-                                             new_rl->r->fbcoord[1],
-                                             new_rl->r->gloc[0],
-                                             new_rl->r->gloc[1],
-                                             new_rl->r->gloc[2],
-                                             N,
-                                             new_rl->flags,
-                                             last_occlusion);
+        lineart_append_render_line_chain_point(rb,
+                                               rlc,
+                                               new_rl->r->fbcoord[0],
+                                               new_rl->r->fbcoord[1],
+                                               new_rl->r->gloc[0],
+                                               new_rl->r->gloc[1],
+                                               new_rl->r->gloc[2],
+                                               N,
+                                               new_rl->flags,
+                                               last_occlusion);
       }
-      ba = ED_lanpr_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
+      ba = ED_lineart_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
   }
 }
 
-static LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBuffer *rb,
-                                                                  LANPR_BoundingArea *root,
-                                                                  LANPR_RenderLineChainItem *rlci)
+static eLineArtBoundingArea *lineart_get_rlci_bounding_area_recursive(
+    eLineArtRenderBuffer *rb, eLineArtBoundingArea *root, eLineArtRenderLineChainItem *rlci)
 {
   if (root->child == NULL) {
     return root;
   }
   else {
-    LANPR_BoundingArea *ch = root->child;
+    eLineArtBoundingArea *ch = root->child;
 #define IN_BOUND(ba, rlci) \
   ba.l <= rlci->pos[0] && ba.r >= rlci->pos[0] && ba.b <= rlci->pos[1] && ba.u >= rlci->pos[1]
 
     if (IN_BOUND(ch[0], rlci)) {
-      return lanpr_get_rlci_bounding_area_recursive(rb, &ch[0], rlci);
+      return lineart_get_rlci_bounding_area_recursive(rb, &ch[0], rlci);
     }
     else if (IN_BOUND(ch[1], rlci)) {
-      return lanpr_get_rlci_bounding_area_recursive(rb, &ch[1], rlci);
+      return lineart_get_rlci_bounding_area_recursive(rb, &ch[1], rlci);
     }
     else if (IN_BOUND(ch[2], rlci)) {
-      return lanpr_get_rlci_bounding_area_recursive(rb, &ch[2], rlci);
+      return lineart_get_rlci_bounding_area_recursive(rb, &ch[2], rlci);
     }
     else if (IN_BOUND(ch[3], rlci)) {
-      return lanpr_get_rlci_bounding_area_recursive(rb, &ch[3], rlci);
+      return lineart_get_rlci_bounding_area_recursive(rb, &ch[3], rlci);
     }
 #undef IN_BOUND
   }
   return NULL;
 }
-static LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
-                                                             LANPR_RenderLineChainItem *rlci)
+static eLineArtBoundingArea *lineart_get_end_point_bounding_area(eLineArtRenderBuffer *rb,
+                                                                 eLineArtRenderLineChainItem *rlci)
 {
   if (!rlci) {
     return NULL;
   }
-  LANPR_BoundingArea *root = ED_lanpr_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
+  eLineArtBoundingArea *root = ED_lineart_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
   if (root == NULL) {
     return NULL;
   }
-  return lanpr_get_rlci_bounding_area_recursive(rb, root, rlci);
+  return lineart_get_rlci_bounding_area_recursive(rb, root, rlci);
 }
 
 /*  if reduction threshold is even larger than a small bounding area, */
@@ -484,14 +484,14 @@ static LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer 
 /*       2) probably need to add it to root bounding area which has larger surface area then it
  * will */
 /*       cover typical threshold values. */
-static void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb,
-                                                          LANPR_BoundingArea *root,
-                                                          LANPR_RenderLineChain *rlc,
-                                                          LANPR_RenderLineChainItem *rlci)
+static void lineart_link_point_with_bounding_area_recursive(eLineArtRenderBuffer *rb,
+                                                            eLineArtBoundingArea *root,
+                                                            eLineArtRenderLineChain *rlc,
+                                                            eLineArtRenderLineChainItem *rlci)
 {
   if (root->child == NULL) {
-    LANPR_ChainRegisterEntry *cre = list_append_pointer_static_sized(
-        &root->linked_chains, &rb->render_data_pool, rlc, sizeof(LANPR_ChainRegisterEntry));
+    eLineArtChainRegisterEntry *cre = list_append_pointer_static_sized(
+        &root->linked_chains, &rb->render_data_pool, rlc, sizeof(eLineArtChainRegisterEntry));
 
     cre->rlci = rlci;
 
@@ -500,48 +500,48 @@ static void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb
     }
   }
   else {
-    LANPR_BoundingArea *ch = root->child;
+    eLineArtBoundingArea *ch = root->child;
 
 #define IN_BOUND(ba, rlci) \
   ba.l <= rlci->pos[0] && ba.r >= rlci->pos[0] && ba.b <= rlci->pos[1] && ba.u >= rlci->pos[1]
 
     if (IN_BOUND(ch[0], rlci)) {
-      lanpr_link_point_with_bounding_area_recursive(rb, &ch[0], rlc, rlci);
+      lineart_link_point_with_bounding_area_recursive(rb, &ch[0], rlc, rlci);
     }
     else if (IN_BOUND(ch[1], rlci)) {
-      lanpr_link_point_with_bounding_area_recursive(rb, &ch[1], rlc, rlci);
+      lineart_link_point_with_bounding_area_recursive(rb, &ch[1], rlc, rlci);
     }
     else if (IN_BOUND(ch[2], rlci)) {
-      lanpr_link_point_with_bounding_area_recursive(rb, &ch[2], rlc, rlci);
+      lineart_link_point_with_bounding_area_recursive(rb, &ch[2], rlc, rlci);
     }
     else if (IN_BOUND(ch[3], rlci)) {
-      lanpr_link_point_with_bounding_area_recursive(rb, &ch[3], rlc, rlci);
+      lineart_link_point_with_bounding_area_recursive(rb, &ch[3], rlc, rlci);
     }
 
 #undef IN_BOUND
   }
 }
 
-static void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb,
-                                                 LANPR_RenderLineChain *rlc)
+static void lineart_link_chain_with_bounding_areas(eLineArtRenderBuffer *rb,
+                                                   eLineArtRenderLineChain *rlc)
 {
-  LANPR_RenderLineChainItem *pl = rlc->chain.first;
-  LANPR_RenderLineChainItem *pr = rlc->chain.last;
-  LANPR_BoundingArea *ba1 = ED_lanpr_get_point_bounding_area(rb, pl->pos[0], pl->pos[1]);
-  LANPR_BoundingArea *ba2 = ED_lanpr_get_point_bounding_area(rb, pr->pos[0], pr->pos[1]);
+  eLineArtRenderLineChainItem *pl = rlc->chain.first;
+  eLineArtRenderLineChainItem *pr = rlc->chain.last;
+  eLineArtBoundingArea *ba1 = ED_lineart_get_point_bounding_area(rb, pl->pos[0], pl->pos[1]);
+  eLineArtBoundingArea *ba2 = ED_lineart_get_point_bounding_area(rb, pr->pos[0], pr->pos[1]);
 
   if (ba1) {
-    lanpr_link_point_with_bounding_area_recursive(rb, ba1, rlc, pl);
+    lineart_link_point_with_bounding_area_recursive(rb, ba1, rlc, pl);
   }
   if (ba2) {
-    lanpr_link_point_with_bounding_area_recursive(rb, ba2, rlc, pr);
+    lineart_link_point_with_bounding_area_recursive(rb, ba2, rlc, pr);
   }
 }
 
-void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
+void ED_lineart_split_chains_for_fixed_occlusion(eLineArtRenderBuffer *rb)
 {
-  LANPR_RenderLineChain *rlc, *new_rlc;
-  LANPR_RenderLineChainItem *rlci, *next_rlci, *prev_rlci;
+  eLineArtRenderLineChain *rlc, *new_rlc;
+  eLineArtRenderLineChainItem *rlci, *next_rlci, *prev_rlci;
   ListBase swap = {0};
 
   swap.first = rb->chains.first;
@@ -552,36 +552,36 @@ void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
   while ((rlc = BLI_pophead(&swap)) != NULL) {
     rlc->next = rlc->prev = NULL;
     BLI_addtail(&rb->chains, rlc);
-    LANPR_RenderLineChainItem *first_rlci = (LANPR_RenderLineChainItem *)rlc->chain.first;
+    eLineArtRenderLineChainItem *first_rlci = (eLineArtRenderLineChainItem *)rlc->chain.first;
     int fixed_occ = first_rlci->occlusion;
     rlc->level = fixed_occ;
     for (rlci = first_rlci->next; rlci; rlci = next_rlci) {
       next_rlci = rlci->next;
       prev_rlci = rlci->prev;
       if (rlci->occlusion != fixed_occ) {
-        if (lanpr_check_point_overlapping(prev_rlci, rlci->pos[0], rlci->pos[1], 1e-10)) {
+        if (lineart_check_point_overlapping(prev_rlci, rlci->pos[0], rlci->pos[1], 1e-10)) {
           fixed_occ = rlci->occlusion;
           rlc->level = fixed_occ;
           continue;
         }
-        new_rlc = lanpr_create_render_line_chain(rb);
+        new_rlc = lineart_create_render_line_chain(rb);
         new_rlc->chain.first = rlci;
         new_rlc->chain.last = rlc->chain.last;
         rlc->chain.last = rlci->prev;
-        ((LANPR_RenderLineChainItem *)rlc->chain.last)->next = 0;
+        ((eLineArtRenderLineChainItem *)rlc->chain.last)->next = 0;
         rlci->prev = 0;
 
         /*  end the previous one */
-        lanpr_append_render_line_chain_point(rb,
-                                             rlc,
-                                             rlci->pos[0],
-                                             rlci->pos[1],
-                                             rlci->gpos[0],
-                                             rlci->gpos[1],
-                                             rlci->gpos[2],
-                                             rlci->normal,
-                                             rlci->line_type,
-                                             fixed_occ);
+        lineart_append_render_line_chain_point(rb,
+                                               rlc,
+                                               rlci->pos[0],
+                                               rlci->pos[1],
+                                               rlci->gpos[0],
+                                               rlci->gpos[1],
+                                               rlci->gpos[2],
+                                               rlci->normal,
+                                               rlci->line_type,
+                                               fixed_occ);
         new_rlc->object_ref = rlc->object_ref;
         new_rlc->type = rlc->type;
         rlc = new_rlc;
@@ -591,31 +591,31 @@ void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
     }
   }
   for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
-    lanpr_link_chain_with_bounding_areas(rb, rlc);
+    lineart_link_chain_with_bounding_areas(rb, rlc);
   }
 }
 
 /*  note: segment type (crease/material/contour...) is ambiguous after this. */
-static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
-                                     LANPR_RenderLineChain *onto,
-                                     LANPR_RenderLineChain *sub,
-                                     int reverse_1,
-                                     int reverse_2)
+static void lineart_connect_two_chains(eLineArtRenderBuffer *UNUSED(rb),
+                                       eLineArtRenderLineChain *onto,
+                                       eLineArtRenderLineChain *sub,
+                                       int reverse_1,
+                                       int reverse_2)
 {
-  LANPR_RenderLineChainItem *rlci;
+  eLineArtRenderLineChainItem *rlci;
   if (!reverse_1) {  /*  L--R L-R */
     if (reverse_2) { /*  L--R R-L */
       BLI_listbase_reverse(&sub->chain);
     }
     rlci = sub->chain.first;
-    if (lanpr_check_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
+    if (lineart_check_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
       BLI_pophead(&sub->chain);
       if (sub->chain.first == NULL) {
         return;
       }
     }
-    ((LANPR_RenderLineChainItem *)onto->chain.last)->next = sub->chain.first;
-    ((LANPR_RenderLineChainItem *)sub->chain.first)->prev = onto->chain.last;
+    ((eLineArtRenderLineChainItem *)onto->chain.last)->next = sub->chain.first;
+    ((eLineArtRenderLineChainItem *)sub->chain.first)->prev = onto->chain.last;
     onto->chain.last = sub->chain.last;
   }
   else {              /*  L-R L--R */
@@ -623,26 +623,26 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
       BLI_listbase_reverse(&sub->chain);
     }
     rlci = onto->chain.first;
-    if (lanpr_check_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
+    if (lineart_check_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
       BLI_pophead(&onto->chain);
       if (onto->chain.first == NULL) {
         return;
       }
     }
-    ((LANPR_RenderLineChainItem *)sub->chain.last)->next = onto->chain.first;
-    ((LANPR_RenderLineChainItem *)onto->chain.first)->prev = sub->chain.last;
+    ((eLineArtRenderLineChainItem *)sub->chain.last)->next = onto->chain.first;
+    ((eLineArtRenderLineChainItem *)onto->chain.first)->prev = sub->chain.last;
     onto->chain.first = sub->chain.first;
   }
 }
 
 /*  this only does head-tail connection. */
 /*  overlapping / tiny isolated segment / loop reduction not implemented here yet. */
-void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space)
+void ED_lineart_connect_chains(eLineArtRenderBuffer *rb, const int do_geometry_space)
 {
-  LANPR_RenderLineChain *rlc;
-  LANPR_RenderLineChainItem *rlci;
-  LANPR_BoundingArea *ba;
-  LANPR_ChainRegisterEntry *cre, *next_cre, *closest_cre;
+  eLineArtRenderLineChain *rlc;
+  eLineArtRenderLineChainItem *rlci;
+  eLineArtBoundingArea *ba;
+  eLineArtChainRegisterEntry *cre, *next_cre, *closest_cre;
   float dist;
   int occlusion;
   ListBase swap = {0};
@@ -666,10 +666,10 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
 
     rlc->picked = 1;
 
-    occlusion = ((LANPR_RenderLineChainItem *)rlc->chain.first)->occlusion;
+    occlusion = ((eLineArtRenderLineChainItem *)rlc->chain.first)->occlusion;
 
     rlci = rlc->chain.last;
-    while (rlci && ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL)) {
+    while (rlci && ((ba = lineart_get_end_point_bounding_area(rb, rlci)) != NULL)) {
       dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
@@ -685,7 +685,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
           continue;
         }
         if (cre->rlc == rlc || (!cre->rlc->chain.first) ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
+            ((eLineArtRenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
             (cre->rlc->type != rlc->type)) {
           continue;
         }
@@ -701,10 +701,10 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
         closest_cre->rlc->picked = 1;
         BLI_remlink(&ba->linked_chains, cre);
         if (closest_cre->is_left) {
-          lanpr_connect_two_chains(rb, rlc, closest_cre->rlc, 0, 0);
+          lineart_connect_two_chains(rb, rlc, closest_cre->rlc, 0, 0);
         }
         else {
-          lanpr_connect_two_chains(rb, rlc, closest_cre->rlc, 0, 1);
+          lineart_connect_two_chains(rb, rlc, closest_cre->rlc, 0, 1);
         }
         BLI_remlink(&swap, closest_cre->rlc);
       }
@@ -715,7 +715,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
     }
 
     rlci = rlc->chain.first;
-    while (rlci && ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL)) {
+    while (rlci && ((ba = lineart_get_end_point_bounding_area(rb, rlci)) != NULL)) {
       dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
@@ -731,7 +731,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
           continue;
         }
         if (cre->rlc == rlc || (!cre->rlc->chain.first) ||
-            ((LANPR_RenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
+            ((eLineArtRenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
             (cre->rlc->type != rlc->type)) {
           continue;
         }
@@ -747,10 +747,10 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
         closest_cre->rlc->picked = 1;
         BLI_remlink(&ba->linked_chains, cre);
         if (closest_cre->is_left) {
-          lanpr_connect_two_chains(rb, rlc, closest_cre->rlc, 1, 0);
+          lineart_connect_two_chains(rb, rlc, closest_cre->rlc, 1, 0);
         }
         else {
-          lanpr_connect_two_chains(rb, rlc, closest_cre->rlc, 1, 1);
+          lineart_connect_two_chains(rb, rlc, closest_cre->rlc, 1, 1);
         }
         BLI_remlink(&swap, closest_cre->rlc);
       }
@@ -763,9 +763,9 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
 }
 
 /* length is in image space */
-float ED_lanpr_compute_chain_length(LANPR_RenderLineChain *rlc)
+float ED_lineart_compute_chain_length(eLineArtRenderLineChain *rlc)
 {
-  LANPR_RenderLineChainItem *rlci;
+  eLineArtRenderLineChainItem *rlci;
   float offset_accum = 0;
   float dist;
   float last_point[2];
@@ -780,20 +780,20 @@ float ED_lanpr_compute_chain_length(LANPR_RenderLineChain *rlc)
   return offset_accum;
 }
 
-void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, const float threshold)
+void ED_lineart_discard_short_chains(eLineArtRenderBuffer *rb, const float threshold)
 {
-  LANPR_RenderLineChain *rlc, *next_rlc;
+  eLineArtRenderLineChain *rlc, *next_rlc;
   for (rlc = rb->chains.first; rlc; rlc = next_rlc) {
     next_rlc = rlc->next;
-    if (ED_lanpr_compute_chain_length(rlc) < threshold) {
+    if (ED_lineart_compute_chain_length(rlc) < threshold) {
       BLI_remlink(&rb->chains, rlc);
     }
   }
 }
 
-int ED_lanpr_count_chain(const LANPR_RenderLineChain *rlc)
+int ED_lineart_count_chain(const eLineArtRenderLineChain *rlc)
 {
-  LANPR_RenderLineChainItem *rlci;
+  eLineArtRenderLineChainItem *rlci;
   int count = 0;
   for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
     count++;
@@ -801,9 +801,9 @@ int ED_lanpr_count_chain(const LANPR_RenderLineChain *rlc)
   return count;
 }
 
-void ED_lanpr_chain_clear_picked_flag(LANPR_RenderBuffer *rb)
+void ED_lineart_chain_clear_picked_flag(eLineArtRenderBuffer *rb)
 {
-  LANPR_RenderLineChain *rlc;
+  eLineArtRenderLineChain *rlc;
   if (rb == NULL) {
     return;
   }

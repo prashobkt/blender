@@ -25,7 +25,7 @@ class LanprButtonsPanel:
     bl_context = "lanpr"
     COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
-def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
+def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from):
     col.prop(line_type, "use", text=text_disp)
     if line_type.use and expand:
         col.prop_search(line_type, "layer", search_from, "layers", icon='GREASEPENCIL')
@@ -66,10 +66,10 @@ class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
             layout.prop_search(obl, 'target_material', obl.target.data, "materials", icon='SHADING_TEXTURE')
         
         expand = not obl.use_same_style
-        lanpr_make_line_type_entry(layout, obl.contour, "Contour", expand, obl.target.data)
-        lanpr_make_line_type_entry(layout, obl.crease, "Crease", expand, obl.target.data)
-        lanpr_make_line_type_entry(layout, obl.material, "Material", expand, obl.target.data)
-        lanpr_make_line_type_entry(layout, obl.edge_mark, "Edge Mark", expand, obl.target.data)
+        lineart_make_line_type_entry(layout, obl.contour, "Contour", expand, obl.target.data)
+        lineart_make_line_type_entry(layout, obl.crease, "Crease", expand, obl.target.data)
+        lineart_make_line_type_entry(layout, obl.material, "Material", expand, obl.target.data)
+        lineart_make_line_type_entry(layout, obl.edge_mark, "Edge Mark", expand, obl.target.data)
 
 
 class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):

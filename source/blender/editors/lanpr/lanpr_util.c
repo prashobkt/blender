@@ -21,8 +21,8 @@
  * \ingroup editors
  */
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 /* #include <time.h> */
 #include "ED_lanpr.h"
 #include "MEM_guardedalloc.h"
@@ -32,7 +32,7 @@
 
 /* ===================================================================[slt] */
 
-void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
+void *list_append_pointer_static(ListBase *h, eLineArtStaticMemPool *smp, void *data)
 {
   LinkData *lip;
   if (h == NULL) {
@@ -43,7 +43,10 @@ void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *da
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *data, int size)
+void *list_append_pointer_static_sized(ListBase *h,
+                                       eLineArtStaticMemPool *smp,
+                                       void *data,
+                                       int size)
 {
   LinkData *lip;
   if (h == NULL) {
@@ -55,7 +58,7 @@ void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, vo
   return lip;
 }
 
-void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *data)
+void *list_append_pointer_static_pool(eLineArtStaticMemPool *mph, ListBase *h, void *data)
 {
   LinkData *lip;
   if (h == NULL) {
@@ -82,19 +85,19 @@ void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
   BLI_remlink(h, (void *)lip);
 }
 
-LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp)
+eLineArtStaticMemPoolNode *mem_new_static_pool(eLineArtStaticMemPool *smp)
 {
-  LANPR_StaticMemPoolNode *smpn = MEM_callocN(LANPR_MEMORY_POOL_128MB, "mempool");
-  smpn->used_byte = sizeof(LANPR_StaticMemPoolNode);
+  eLineArtStaticMemPoolNode *smpn = MEM_callocN(LRT_MEMORY_POOL_128MB, "mempool");
+  smpn->used_byte = sizeof(eLineArtStaticMemPoolNode);
   BLI_addhead(&smp->pools, smpn);
   return smpn;
 }
-void *mem_static_aquire(LANPR_StaticMemPool *smp, int size)
+void *mem_static_aquire(eLineArtStaticMemPool *smp, int size)
 {
-  LANPR_StaticMemPoolNode *smpn = smp->pools.first;
+  eLineArtStaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
-  if (!smpn || (smpn->used_byte + size) > LANPR_MEMORY_POOL_128MB) {
+  if (!smpn || (smpn->used_byte + size) > LRT_MEMORY_POOL_128MB) {
     smpn = mem_new_static_pool(smp);
   }
 
@@ -104,14 +107,14 @@ void *mem_static_aquire(LANPR_StaticMemPool *smp, int size)
 
   return ret;
 }
-void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
+void *mem_static_aquire_thread(eLineArtStaticMemPool *smp, int size)
 {
-  LANPR_StaticMemPoolNode *smpn = smp->pools.first;
+  eLineArtStaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
   BLI_spin_lock(&smp->lock_mem);
 
-  if (!smpn || (smpn->used_byte + size) > LANPR_MEMORY_POOL_128MB) {
+  if (!smpn || (smpn->used_byte + size) > LRT_MEMORY_POOL_128MB) {
     smpn = mem_new_static_pool(smp);
   }
 
@@ -123,9 +126,9 @@ void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
 
   return ret;
 }
-void *mem_static_destroy(LANPR_StaticMemPool *smp)
+void *mem_static_destroy(eLineArtStaticMemPool *smp)
 {
-  LANPR_StaticMemPoolNode *smpn;
+  eLineArtStaticMemPoolNode *smpn;
   void *ret = 0;
 
   while ((smpn = BLI_pophead(&smp->pools)) != NULL) {

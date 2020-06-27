@@ -102,7 +102,7 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, int update
 #ifdef WITH_LANPR
   /* Temporary solution for updating LANPR GPencil targets. */
   if (updated) {
-    ED_lanpr_post_frame_update_external(scene, update_ctx->depsgraph);
+    ED_lineart_post_frame_update_external(scene, update_ctx->depsgraph);
   }
 #endif
   recursive_check = true;

@@ -731,23 +731,23 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         c.enabled = has_camera
 
         if not lanpr.auto_update:
-            c.operator("scene.lanpr_calculate", icon='FILE_REFRESH')
+            c.operator("scene.lineart_calculate", icon='FILE_REFRESH')
 
-        layout.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
+        layout.operator("scene.lineart_auto_create_line_layer", text = "Default", icon = "ADD")
         row=layout.row()
         row.template_list("LANPR_UL_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
         col=row.column(align=True)
         if active_layer:
-            col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
-            col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
+            col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
+            col.operator("scene.lineart_delete_line_layer", icon="REMOVE", text='')
             col.separator()
-            col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
-            col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
+            col.operator("scene.lineart_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
+            col.operator("scene.lineart_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
             col.separator()
         else:
-            col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+            col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
 
-def lanpr_make_line_type(expand,layout,line_type,label):
+def lineart_make_line_type(expand,layout,line_type,label):
     layout.prop(line_type, "use", text=label)
     if expand and line_type.use:
         c = layout.column(align=True)
@@ -784,13 +784,13 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
             col.prop(active_layer, "color")
         col.prop(active_layer, "thickness", text="Main Thickness")
 
-        lanpr_make_line_type(expand,layout,active_layer.contour,"Contour")
-        lanpr_make_line_type(expand,layout,active_layer.crease,"Crease")
-        lanpr_make_line_type(expand,layout,active_layer.edge_mark,"EdgeMark")
-        lanpr_make_line_type(expand,layout,active_layer.material_separate,"Material")
+        lineart_make_line_type(expand,layout,active_layer.contour,"Contour")
+        lineart_make_line_type(expand,layout,active_layer.crease,"Crease")
+        lineart_make_line_type(expand,layout,active_layer.edge_mark,"EdgeMark")
+        lineart_make_line_type(expand,layout,active_layer.material_separate,"Material")
 
         if lanpr.use_intersections:
-            lanpr_make_line_type(expand,layout,active_layer.intersection,"Intersection")
+            lineart_make_line_type(expand,layout,active_layer.intersection,"Intersection")
         else:
             layout.label(text= "Intersection calculation disabled.")
 
@@ -848,8 +848,8 @@ class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
         layout.prop(lanpr,"auto_update", text='Auto Update')
         layout.prop(lanpr,"gpencil_overwrite", text='Overwrite')
         if not lanpr.auto_update:
-            layout.operator("scene.lanpr_update_gp_strokes", icon='FILE_REFRESH', text='Update Grease Pencil Targets')
-        layout.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
+            layout.operator("scene.lineart_update_gp_strokes", icon='FILE_REFRESH', text='Update Grease Pencil Targets')
+        layout.operator("scene.lineart_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
 
 class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
     bl_label = "Settings"

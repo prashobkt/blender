@@ -2638,7 +2638,7 @@ static void rna_lanpr_enable_set(PointerRNA *ptr, bool value)
 
   if (value) {
     lanpr->flags |= LANPR_ENABLED;
-    ED_lanpr_init_locks();
+    ED_lineart_init_locks();
   }
   else {
     lanpr->flags &= ~LANPR_ENABLED;

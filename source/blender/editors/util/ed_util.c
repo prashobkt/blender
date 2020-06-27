@@ -191,7 +191,7 @@ void ED_editors_init(bContext *C)
 
   /* LANPR data lock duing async calculation */
 #ifdef WITH_LANPR
-  ED_lanpr_init_locks();
+  ED_lineart_init_locks();
 #endif
 }
 
@@ -236,7 +236,7 @@ void ED_editors_exit(Main *bmain, bool do_undo_system)
 
   /* LANPR data*/
 #ifdef WITH_LANPR
-  ED_lanpr_destroy_render_data_external();
+  ED_lineart_destroy_render_data_external();
 #endif
 }
 

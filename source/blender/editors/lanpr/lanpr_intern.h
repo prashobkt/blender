@@ -24,8 +24,8 @@
 #ifndef __LANPR_INTERN_H__
 #define __LANPR_INTERN_H__
 
-#include "BLI_listbase.h"
 #include "BLI_linklist.h"
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_threads.h"
 
@@ -34,29 +34,29 @@
 #include <math.h>
 #include <string.h>
 
-struct LANPR_StaticMemPoolNode;
-struct LANPR_RenderLine;
-struct LANPR_RenderBuffer;
+struct eLineArtStaticMemPoolNode;
+struct eLineArtRenderLine;
+struct eLineArtRenderBuffer;
 
-void *list_append_pointer_static(ListBase *h, struct LANPR_StaticMemPool *smp, void *p);
+void *list_append_pointer_static(ListBase *h, struct eLineArtStaticMemPool *smp, void *p);
 void *list_append_pointer_static_sized(ListBase *h,
-                                       struct LANPR_StaticMemPool *smp,
+                                       struct eLineArtStaticMemPool *smp,
                                        void *p,
                                        int size);
-void *list_push_pointer_static(ListBase *h, struct LANPR_StaticMemPool *smp, void *p);
+void *list_push_pointer_static(ListBase *h, struct eLineArtStaticMemPool *smp, void *p);
 void *list_push_pointer_static_sized(ListBase *h,
-                                     struct LANPR_StaticMemPool *smp,
+                                     struct eLineArtStaticMemPool *smp,
                                      void *p,
                                      int size);
 
-void *list_append_pointer_static_pool(struct LANPR_StaticMemPool *mph, ListBase *h, void *p);
+void *list_append_pointer_static_pool(struct eLineArtStaticMemPool *mph, ListBase *h, void *p);
 void *list_pop_pointer_no_free(ListBase *h);
 void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
 
-LANPR_StaticMemPoolNode *mem_new_static_pool(struct LANPR_StaticMemPool *smp);
-void *mem_static_aquire(struct LANPR_StaticMemPool *smp, int size);
-void *mem_static_aquire_thread(struct LANPR_StaticMemPool *smp, int size);
-void *mem_static_destroy(LANPR_StaticMemPool *smp);
+eLineArtStaticMemPoolNode *mem_new_static_pool(struct eLineArtStaticMemPool *smp);
+void *mem_static_aquire(struct eLineArtStaticMemPool *smp, int size);
+void *mem_static_aquire_thread(struct eLineArtStaticMemPool *smp, int size);
+void *mem_static_destroy(eLineArtStaticMemPool *smp);
 
 void tmat_make_ortho_matrix_44d(double (*mProjection)[4],
                                 double xMin,
@@ -68,7 +68,7 @@ void tmat_make_ortho_matrix_44d(double (*mProjection)[4],
 void tmat_make_perspective_matrix_44d(
     double (*mProjection)[4], double fFov_rad, double fAspect, double zMin, double zMax);
 
-int lanpr_count_this_line(struct LANPR_RenderLine *rl, struct LANPR_LineLayer *ll);
-int lanpr_count_intersection_segment_count(struct LANPR_RenderBuffer *rb);
+int lineart_count_this_line(struct eLineArtRenderLine *rl, struct LANPR_LineLayer *ll);
+int lineart_count_intersection_segment_count(struct eLineArtRenderBuffer *rb);
 
 #endif

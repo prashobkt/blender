@@ -30,7 +30,7 @@ class CollectionButtonsPanel:
         return (context.engine in cls.COMPAT_ENGINES)
 
 
-def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
+def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from):
     col.prop(line_type, "use", text=text_disp)
     if line_type.use and expand:
         col.prop_search(line_type, "layer", search_from, "layers", icon='GREASEPENCIL')
@@ -108,11 +108,11 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
                     layout.prop_search(lanpr, 'target_material', lanpr.target.data, "materials", icon='SHADING_TEXTURE')
 
                 expand = not lanpr.use_same_style
-                lanpr_make_line_type_entry(layout, lanpr.contour, "Contour", expand, lanpr.target.data)
-                lanpr_make_line_type_entry(layout, lanpr.crease, "Crease", expand, lanpr.target.data)
-                lanpr_make_line_type_entry(layout, lanpr.material, "Material", expand, lanpr.target.data)
-                lanpr_make_line_type_entry(layout, lanpr.edge_mark, "Edge Mark", expand, lanpr.target.data)
-                lanpr_make_line_type_entry(layout, lanpr.intersection, "Intersection", expand, lanpr.target.data)
+                lineart_make_line_type_entry(layout, lanpr.contour, "Contour", expand, lanpr.target.data)
+                lineart_make_line_type_entry(layout, lanpr.crease, "Crease", expand, lanpr.target.data)
+                lineart_make_line_type_entry(layout, lanpr.material, "Material", expand, lanpr.target.data)
+                lineart_make_line_type_entry(layout, lanpr.edge_mark, "Edge Mark", expand, lanpr.target.data)
+                lineart_make_line_type_entry(layout, lanpr.intersection, "Intersection", expand, lanpr.target.data)
 
 classes = (
     COLLECTION_PT_collection_flags,

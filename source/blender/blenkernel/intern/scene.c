@@ -247,7 +247,7 @@ static void BKE_lanpr_copy_data(const Scene *from, Scene *to)
     BLI_addtail(&to->lanpr.line_layers, new_ll);
   }
 
-  /*  render_buffer now only accessible from lanpr_share */
+  /*  render_buffer now only accessible from lineart_share */
 }
 
 static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
