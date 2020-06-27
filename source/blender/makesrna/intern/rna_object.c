@@ -2549,13 +2549,13 @@ static void rna_def_object_display(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Shadow", "Object cast shadows in the 3d viewport");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 }
-static void rna_def_object_lanpr(BlenderRNA *brna)
+static void rna_def_object_lineart(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "ObjectLANPRLineType", NULL);
-  RNA_def_struct_ui_text(srna, "Object LANPR Line Type", "Object lanpr line type");
+  RNA_def_struct_ui_text(srna, "Object LANPR Line Type", "Object lineart line type");
   RNA_def_struct_sdna(srna, "ObjectLANPRLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
@@ -2595,7 +2595,7 @@ static void rna_def_object_lanpr(BlenderRNA *brna)
   };
 
   srna = RNA_def_struct(brna, "ObjectLANPR", NULL);
-  RNA_def_struct_ui_text(srna, "Object LANPR", "Object lanpr settings");
+  RNA_def_struct_ui_text(srna, "Object LANPR", "Object lineart settings");
   RNA_def_struct_sdna(srna, "ObjectLANPR");
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
@@ -3413,7 +3413,7 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Object Display", "Object display settings for 3d viewport");
 
   /* LANPR */
-  prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ObjectLANPR");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the object");
 
@@ -3429,7 +3429,7 @@ void RNA_def_object(BlenderRNA *brna)
   rna_def_face_map(brna);
   rna_def_material_slot(brna);
   rna_def_object_display(brna);
-  rna_def_object_lanpr(brna);
+  rna_def_object_lineart(brna);
   RNA_define_animate_sdna(true);
 }
 

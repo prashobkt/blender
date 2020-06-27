@@ -165,17 +165,17 @@ static void buttons_main_region_layout_properties(const bContext *C,
       break;
 
     case BCONTEXT_COLLECTION:
-#ifdef WITH_LANPR
+#ifdef WITH_LINEART
       contexts[0] = "collection";
 #else
-      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
+      BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
 #endif
       break;
     case BCONTEXT_LANPR:
-#ifdef WITH_LANPR
-      contexts[0] = "lanpr";
+#ifdef WITH_LINEART
+      contexts[0] = "lineart";
 #else
-      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
+      BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
 #endif
       break;
     case BCONTEXT_OBJECT:

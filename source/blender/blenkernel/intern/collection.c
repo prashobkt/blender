@@ -81,12 +81,12 @@ static bool collection_find_child_recursive(Collection *parent, Collection *coll
 /** \name Collection Data-Block
  * \{ */
 
-static void collection_lanpr_copy(const Collection *src, Collection *dst)
+static void collection_lineart_copy(const Collection *src, Collection *dst)
 {
-  if (src->lanpr) {
-    CollectionLANPR *lanpr = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
-    dst->lanpr = lanpr;
-    memcpy(dst->lanpr, src->lanpr, sizeof(CollectionLANPR));
+  if (src->lineart) {
+    CollectionLANPR *lineart = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
+    dst->lineart = lineart;
+    memcpy(dst->lineart, src->lineart, sizeof(CollectionLANPR));
   }
 }
 
@@ -129,7 +129,7 @@ static void collection_copy_data(Main *bmain, ID *id_dst, const ID *id_src, cons
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, flag, false);
   }
-  collection_lanpr_copy(collection_src, collection_dst);
+  collection_lineart_copy(collection_src, collection_dst);
 }
 
 static void collection_free_data(ID *id)
@@ -146,15 +146,15 @@ static void collection_free_data(ID *id)
   BKE_collection_object_cache_free(collection);
 
   /* Remove LANPR configurations */
-  MEM_SAFE_FREE(collection->lanpr);
+  MEM_SAFE_FREE(collection->lineart);
 }
 
 static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   Collection *collection = (Collection *)id;
 
-  if (collection->lanpr) {
-    BKE_LIB_FOREACHID_PROCESS(data, collection->lanpr->target, IDWALK_CB_NOP);
+  if (collection->lineart) {
+    BKE_LIB_FOREACHID_PROCESS(data, collection->lineart->target, IDWALK_CB_NOP);
   }
 
   LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
@@ -278,7 +278,7 @@ void BKE_collection_free(Collection *collection)
   collection_free_data(&collection->id);
 
   /* Remove LANPR configurations */
-  MEM_SAFE_FREE(collection->lanpr);
+  MEM_SAFE_FREE(collection->lineart);
 }
 
 /**
@@ -432,7 +432,7 @@ static Collection *collection_duplicate_recursive(Main *bmain,
     collection_child_remove(collection_new, child_collection_old);
   }
 
-  collection_lanpr_copy(collection_old, collection_new);
+  collection_lineart_copy(collection_old, collection_new);
 
   return collection_new;
 }

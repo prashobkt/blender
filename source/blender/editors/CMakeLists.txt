@@ -65,7 +65,7 @@ endif()
 
 add_subdirectory(datafiles)
 
-if(WITH_LANPR)
-  add_definitions(-DWITH_LANPR)
+if(WITH_LINEART)
+  add_definitions(-DWITH_LINEART)
   add_subdirectory(lanpr)
 endif()

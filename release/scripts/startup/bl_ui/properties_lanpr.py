@@ -22,7 +22,7 @@ from bpy.types import Panel
 class LanprButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
-    bl_context = "lanpr"
+    bl_context = "lineart"
     COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
 def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from):
@@ -31,22 +31,22 @@ def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from)
         col.prop_search(line_type, "layer", search_from, "layers", icon='GREASEPENCIL')
         col.prop_search(line_type, "material",  search_from, "materials", icon='SHADING_TEXTURE')
 
-class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
+class OBJECT_PT_lineart_settings(LanprButtonsPanel, Panel):
     bl_label = "LANPR settings"
     COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):
         ob = context.object
-        obl = ob.lanpr
-        return (context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled) and\
+        obl = ob.lineart
+        return (context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lineart.enabled) and\
             obl.usage == 'INCLUDE' and obl.target
 
     def draw(self,context):
         collection = context.collection
-        lanpr = collection.lanpr
+        lineart = collection.lineart
         ob = context.object
-        obl = ob.lanpr
+        obl = ob.lineart
 
         layout = self.layout
         layout.use_property_split = True
@@ -72,26 +72,26 @@ class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
         lineart_make_line_type_entry(layout, obl.edge_mark, "Edge Mark", expand, obl.target.data)
 
 
-class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):
+class OBJECT_PT_lineart(LanprButtonsPanel, Panel):
     bl_label = "Usage"
     COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):
-        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
+        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lineart.enabled
 
     def draw(self, context):
         layout=self.layout
-        lanpr = context.object.lanpr
+        lineart = context.object.lineart
         if context.object.type == 'MESH':
-            layout.prop(lanpr,'usage')
-            if lanpr.usage == 'INCLUDE':
-                layout.prop(lanpr, "target")
+            layout.prop(lineart,'usage')
+            if lineart.usage == 'INCLUDE':
+                layout.prop(lineart, "target")
 
 
 classes = (
-    OBJECT_PT_lanpr,
-    OBJECT_PT_lanpr_settings,
+    OBJECT_PT_lineart,
+    OBJECT_PT_lineart_settings,
 )
 
 if __name__ == "__main__":  # only for live edit.

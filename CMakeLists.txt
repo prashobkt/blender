@@ -322,7 +322,7 @@ mark_as_advanced(WITH_SYSTEM_GLOG)
 option(WITH_FREESTYLE     "Enable Freestyle (advanced edges rendering)" ON)
 
 # LANPR
-option(WITH_LANPR     "Enable LANPR (more advanced edges rendering)" ON)
+option(WITH_LINEART     "Enable LANPR (more advanced edges rendering)" ON)
 
 # Misc
 if(WIN32)
@@ -1716,7 +1716,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_INPUT_NDOF)
   info_cfg_option(WITH_CYCLES)
   info_cfg_option(WITH_FREESTYLE)
-  info_cfg_option(WITH_LANPR)
+  info_cfg_option(WITH_LINEART)
   info_cfg_option(WITH_OPENCOLORIO)
   info_cfg_option(WITH_XR_OPENXR)
   info_cfg_option(WITH_OPENIMAGEDENOISE)

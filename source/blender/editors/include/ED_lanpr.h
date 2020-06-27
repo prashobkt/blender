@@ -24,7 +24,7 @@
 #ifndef __ED_LANPR_H__
 #define __ED_LANPR_H__
 
-#ifndef WITH_LANPR
+#ifndef WITH_LINEART
 #  error LANPR code included in non-LANPR-enabled build
 #endif
 
@@ -252,7 +252,7 @@ typedef struct eLineArtRenderBuffer {
   int use_intersections;
   int _pad;
 
-  /** Keep an copy of these data so the scene can be freed when lanpr is runnning. */
+  /** Keep an copy of these data so the scene can be freed when lineart is runnning. */
   char cam_is_persp;
   float cam_obmat[4][4];
   double camera_pos[3];
@@ -304,7 +304,7 @@ typedef struct eLineArtSharedResource {
   SpinLock lock_loader;
 
   /** When drawing in the viewport, use the following values. */
-  /** Set to override to -1 before creating lanpr render buffer to use scene camera. */
+  /** Set to override to -1 before creating lineart render buffer to use scene camera. */
   int viewport_camera_override;
   char camera_is_persp;
   float camera_pos[3];
@@ -511,8 +511,8 @@ void ED_lineart_compute_feature_lines_background(struct Depsgraph *dg,
 
 struct Scene;
 
-int ED_lineart_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
-LANPR_LineLayer *ED_lineart_new_line_layer(struct SceneLANPR *lanpr);
+int ED_lineart_max_occlusion_in_line_layers(struct SceneLANPR *lineart);
+LANPR_LineLayer *ED_lineart_new_line_layer(struct SceneLANPR *lineart);
 
 eLineArtBoundingArea *ED_lineart_get_point_bounding_area(eLineArtRenderBuffer *rb,
                                                          double x,
@@ -547,6 +547,6 @@ void SCENE_OT_lineart_bake_gp_strokes(struct wmOperatorType *ot);
 void OBJECT_OT_lineart_update_gp_target(struct wmOperatorType *ot);
 void OBJECT_OT_lineart_update_gp_source(struct wmOperatorType *ot);
 
-void ED_operatortypes_lanpr(void);
+void ED_operatortypes_lineart(void);
 
 #endif /* __ED_LANPR_H__ */

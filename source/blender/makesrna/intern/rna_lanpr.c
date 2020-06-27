@@ -20,15 +20,15 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_lanpr.c
+/** \file blender/makesrna/intern/rna_lineart.c
  *  \ingroup RNA
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "BLI_utildefines.h"
 #include "BLI_string_utils.h"
+#include "BLI_utildefines.h"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -39,19 +39,19 @@
 #include "DNA_material_types.h"
 #include "DNA_texture_types.h"
 
-#include "WM_types.h"
 #include "WM_api.h"
+#include "WM_types.h"
 
 #ifdef RNA_RUNTIME
 
 #else
 
-static void rna_def_lanpr_line_layer(BlenderRNA *brna)
+static void rna_def_lineart_line_layer(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem rna_enum_lanpr_normal_mode[] = {
+  static const EnumPropertyItem rna_enum_lineart_normal_mode[] = {
       {LANPR_NORMAL_DIRECTIONAL,
        "DIRECTIONAL",
        0,
@@ -73,7 +73,7 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Enabled", "Enable normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_lanpr_normal_mode);
+  RNA_def_property_enum_items(prop, rna_enum_lineart_normal_mode);
   RNA_def_property_ui_text(prop, "Normal", "Normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_effect_inverse", PROP_BOOLEAN, PROP_NONE);
@@ -160,7 +160,7 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
 }
 
-static void rna_def_lanpr_line_type(BlenderRNA *brna)
+static void rna_def_lineart_line_type(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -183,10 +183,10 @@ static void rna_def_lanpr_line_type(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Color", "Color of this line type");
 }
 
-void RNA_def_lanpr(BlenderRNA *brna)
+void RNA_def_lineart(BlenderRNA *brna)
 {
-  rna_def_lanpr_line_type(brna);
-  rna_def_lanpr_line_layer(brna);
+  rna_def_lineart_line_type(brna);
+  rna_def_lineart_line_layer(brna);
 }
 
 #endif

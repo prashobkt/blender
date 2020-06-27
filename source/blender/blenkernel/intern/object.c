@@ -523,7 +523,7 @@ static void object_foreach_id(ID *id, LibraryForeachIDData *data)
     }
   }
 
-  BKE_LIB_FOREACHID_PROCESS(data, object->lanpr.target, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS(data, object->lineart.target, IDWALK_CB_NOP);
 }
 
 IDTypeInfo IDType_ID_OB = {

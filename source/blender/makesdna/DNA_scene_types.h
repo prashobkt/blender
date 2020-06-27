@@ -998,7 +998,7 @@ typedef struct UvSculpt {
 typedef struct GpPaint {
   Paint paint;
   int flag; /* LANPR stuff */
-  /*struct SceneLANPR lanpr; XXX: Why this ended up here? */
+  /*struct SceneLANPR lineart; XXX: Why this ended up here? */
   /* Mode of paint (Materials or Vertex Color). */
   int mode;
 } GpPaint;
@@ -1886,7 +1886,7 @@ typedef struct Scene {
   struct SceneGpencil grease_pencil_settings;
 
   /* LANPR stuff */
-  struct SceneLANPR lanpr;
+  struct SceneLANPR lineart;
 } Scene;
 
 /* **************** RENDERDATA ********************* */

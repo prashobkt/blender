@@ -2393,8 +2393,8 @@ static void write_collection_nolib(BlendWriter *writer, Collection *collection)
     BLO_write_struct(writer, CollectionChild, child);
   }
 
-  if (collection->lanpr != NULL) {
-    writestruct(writer->wd, DATA, CollectionLANPR, 1, collection->lanpr);
+  if (collection->lineart != NULL) {
+    writestruct(writer->wd, DATA, CollectionLANPR, 1, collection->lineart);
   }
 }
 
@@ -2748,7 +2748,7 @@ static void write_scene(BlendWriter *writer, Scene *sce, const void *id_address)
   }
 
   /* LANPR Line Layers */
-  for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+  for (LANPR_LineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
     writestruct(writer->wd, DATA, LANPR_LineLayer, 1, ll);
   }
   write_view3dshading(writer, &sce->display.shading);

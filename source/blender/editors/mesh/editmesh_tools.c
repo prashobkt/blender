@@ -7721,7 +7721,7 @@ void MESH_OT_symmetry_snap(struct wmOperatorType *ot)
 
 /** \} */
 
-#if (defined(WITH_FREESTYLE) || defined(WITH_LANPR))
+#if (defined(WITH_FREESTYLE) || defined(WITH_LINEART))
 
 /* -------------------------------------------------------------------- */
 /** \name Mark Edge (Freestyle) Operator
@@ -7881,7 +7881,7 @@ void MESH_OT_mark_freestyle_face(wmOperatorType *ot)
 
 /** \} */
 
-#endif /* WITH_FREESTYLE || WITH_LANPR */
+#endif /* WITH_FREESTYLE || WITH_LINEART */
 
 /* -------------------------------------------------------------------- */
 /** \name Loop Normals Editing Tools Modal Map

@@ -89,8 +89,8 @@ if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
 endif()
 
-if(WITH_LANPR)
-  add_definitions(-DWITH_LANPR)
+if(WITH_LINEART)
+  add_definitions(-DWITH_LINEART)
 endif()
 
 if(WITH_BULLET)

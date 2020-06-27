@@ -2316,7 +2316,7 @@ static void rna_def_modifier_gpenciltexture(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 }
 
-static void rna_def_modifier_gpencillanpr(BlenderRNA *brna)
+static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -2401,7 +2401,7 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpencilarmature(brna);
   rna_def_modifier_gpencilmultiply(brna);
   rna_def_modifier_gpenciltexture(brna);
-  rna_def_modifier_gpencillanpr(brna);
+  rna_def_modifier_gpencillineart(brna);
 }
 
 #endif

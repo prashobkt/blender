@@ -5106,13 +5106,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
         for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 
-          scene->lanpr.crease_threshold = 0.7;
+          scene->lineart.crease_threshold = 0.7;
 
-          scene->lanpr.flags |= (LANPR_USE_INTERSECTIONS);
+          scene->lineart.flags |= (LANPR_USE_INTERSECTIONS);
 
-          zero_v4(scene->lanpr.line_color);
+          zero_v4(scene->lineart.line_color);
 
-          scene->lanpr.line_color[3] = 1;
+          scene->lineart.line_color[3] = 1;
         }
       }
     }

@@ -696,30 +696,30 @@ class LANPR_UL_linesets(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         layout.prop(item,"name", text="", emboss=False)
 
-class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
+class RENDER_PT_lineart(RenderButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
     bl_label = "LANPR"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, context):
-        self.layout.prop(context.scene.lanpr, "enabled", text="")
+        self.layout.prop(context.scene.lineart, "enabled", text="")
 
     def draw(self, context):
         scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer 
+        lineart = scene.lineart
+        active_layer = lineart.layers.active_layer 
 
         layout = self.layout
-        layout.active = lanpr.enabled
+        layout.active = lineart.enabled
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
         col = layout.column()
         
-        layout.prop(lanpr, "crease_threshold", slider=True)
+        layout.prop(lineart, "crease_threshold", slider=True)
 
 
-        col.prop(lanpr,'auto_update', text='Auto Update')
+        col.prop(lineart,'auto_update', text='Auto Update')
 
         if not scene.camera:
             has_camera=False
@@ -730,12 +730,12 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         c=col.column()
         c.enabled = has_camera
 
-        if not lanpr.auto_update:
+        if not lineart.auto_update:
             c.operator("scene.lineart_calculate", icon='FILE_REFRESH')
 
         layout.operator("scene.lineart_auto_create_line_layer", text = "Default", icon = "ADD")
         row=layout.row()
-        row.template_list("LANPR_UL_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
+        row.template_list("LANPR_UL_linesets", "", lineart, "layers", lineart.layers, "active_layer_index", rows=4)
         col=row.column(align=True)
         if active_layer:
             col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
@@ -754,16 +754,16 @@ def lineart_make_line_type(expand,layout,line_type,label):
         c.prop(line_type, "color", text="Color")
         c.prop(line_type, "thickness", slider=True)
 
-class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
+class RENDER_PT_lineart_layer_settings(RenderButtonsPanel, Panel):
     bl_label = "Layer Settings"
-    bl_parent_id = "RENDER_PT_lanpr"
+    bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
+        lineart = scene.lineart
+        active_layer = lineart.layers.active_layer
 
         layout = self.layout
         layout.use_property_split = True
@@ -789,25 +789,25 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
         lineart_make_line_type(expand,layout,active_layer.edge_mark,"EdgeMark")
         lineart_make_line_type(expand,layout,active_layer.material_separate,"Material")
 
-        if lanpr.use_intersections:
+        if lineart.use_intersections:
             lineart_make_line_type(expand,layout,active_layer.intersection,"Intersection")
         else:
             layout.label(text= "Intersection calculation disabled.")
 
-class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
+class RENDER_PT_lineart_line_normal_effects(RenderButtonsPanel, Panel):
     bl_label = "Normal Based Line Weight"
-    bl_parent_id = "RENDER_PT_lanpr"
+    bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     def draw_header(self, context):
-        active_layer = context.scene.lanpr.layers.active_layer
+        active_layer = context.scene.lineart.layers.active_layer
         self.layout.prop(active_layer, "normal_enabled", text="")   
 
     def draw(self, context):
         scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
+        lineart = scene.lineart
+        active_layer = lineart.layers.active_layer
 
         layout = self.layout
         layout.use_property_split = True
@@ -824,15 +824,15 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
             col.prop(active_layer,"normal_thickness_start", slider=True)
             col.prop(active_layer,"normal_thickness_end", slider=True, text="End")
 
-class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
+class RENDER_PT_lineart_gpencil(RenderButtonsPanel, Panel):
     bl_label = "Grease Pencil"
-    bl_parent_id = "RENDER_PT_lanpr"
+    bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         scene = context.scene
-        lanpr = scene.lanpr
+        lineart = scene.lineart
 
         layout = self.layout
         layout.use_property_split = True
@@ -845,59 +845,59 @@ class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
             has_camera=True
 
         layout.enabled=has_camera
-        layout.prop(lanpr,"auto_update", text='Auto Update')
-        layout.prop(lanpr,"gpencil_overwrite", text='Overwrite')
-        if not lanpr.auto_update:
+        layout.prop(lineart,"auto_update", text='Auto Update')
+        layout.prop(lineart,"gpencil_overwrite", text='Overwrite')
+        if not lineart.auto_update:
             layout.operator("scene.lineart_update_gp_strokes", icon='FILE_REFRESH', text='Update Grease Pencil Targets')
         layout.operator("scene.lineart_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
 
-class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
+class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
     bl_label = "Settings"
-    bl_parent_id = "RENDER_PT_lanpr"
+    bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         scene = context.scene
-        lanpr = scene.lanpr
+        lineart = scene.lineart
 
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        layout.prop(lanpr,"use_intersections")
+        layout.prop(lineart,"use_intersections")
 
 
-class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
+class RENDER_PT_lineart_software_chain_styles(RenderButtonsPanel, Panel):
     bl_label = "Chaining"
-    bl_parent_id = "RENDER_PT_lanpr"
+    bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         scene = context.scene
-        lanpr = scene.lanpr
+        lineart = scene.lineart
 
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
 
         if scene.render.engine=="BLENDER_LANPR":
-            layout.prop(lanpr, "use_same_taper", text="Taper Tips")
-            if lanpr.use_same_taper == "DISABLED":
+            layout.prop(lineart, "use_same_taper", text="Taper Tips")
+            if lineart.use_same_taper == "DISABLED":
                 col = layout.column(align = True)
-                col.prop(lanpr,"taper_left_distance")
-                col.prop(lanpr,"taper_left_strength", text="Strength")
+                col.prop(lineart,"taper_left_distance")
+                col.prop(lineart,"taper_left_strength", text="Strength")
                 col = layout.column(align = True)
-                col.prop(lanpr,"taper_right_distance")
-                col.prop(lanpr,"taper_right_strength", text="Strength")
+                col.prop(lineart,"taper_right_distance")
+                col.prop(lineart,"taper_right_strength", text="Strength")
             else:
                 col = layout.column(align = True)
-                col.prop(lanpr,"taper_left_distance", text="Distance")
-                col.prop(lanpr,"taper_left_strength", text="Strength")
+                col.prop(lineart,"taper_left_distance", text="Distance")
+                col.prop(lineart,"taper_left_strength", text="Strength")
         else:
-            layout.prop(lanpr, "chaining_geometry_threshold")
-            layout.prop(lanpr, "chaining_image_threshold")
+            layout.prop(lineart, "chaining_geometry_threshold")
+            layout.prop(lineart, "chaining_image_threshold")
 
 classes = (
     RENDER_PT_context,
@@ -930,12 +930,12 @@ classes = (
     RENDER_PT_simplify_viewport,
     RENDER_PT_simplify_render,
     RENDER_PT_simplify_greasepencil,
-    RENDER_PT_lanpr,
-    RENDER_PT_lanpr_layer_settings,
-    RENDER_PT_lanpr_gpencil,
-    RENDER_PT_lanpr_line_normal_effects,
-    RENDER_PT_lanpr_options,
-    RENDER_PT_lanpr_software_chain_styles,
+    RENDER_PT_lineart,
+    RENDER_PT_lineart_layer_settings,
+    RENDER_PT_lineart_gpencil,
+    RENDER_PT_lineart_line_normal_effects,
+    RENDER_PT_lineart_options,
+    RENDER_PT_lineart_software_chain_styles,
     LANPR_UL_linesets,
 )
 

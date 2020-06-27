@@ -32,9 +32,9 @@
  *  \ingroup DNA
  */
 
-#include "DNA_listBase.h"
 #include "DNA_ID.h"
 #include "DNA_collection_types.h"
+#include "DNA_listBase.h"
 
 struct Object;
 struct Material;
@@ -78,8 +78,8 @@ typedef struct LANPR_LineType {
 } LANPR_LineType;
 
 typedef enum LANPR_LineLayerFlags {
-  LANPR_LINE_LAYER_USE_SAME_STYLE = (1 << 0),      /* Share with object lanpr flags */
-  LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS = (1 << 1), /* Share with object lanpr flags */
+  LANPR_LINE_LAYER_USE_SAME_STYLE = (1 << 0),      /* Share with object lineart flags */
+  LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS = (1 << 1), /* Share with object lineart flags */
   LANPR_LINE_LAYER_NORMAL_ENABLED = (1 << 2),
   LANPR_LINE_LAYER_NORMAL_INVERSE = (1 << 3),
   LANPR_LINE_LAYER_REPLACE_STROKES = (1 << 4),

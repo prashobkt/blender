@@ -61,62 +61,62 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
         col.prop(collection,"hide_viewport")
         col.prop(collection,"hide_render")
 
-class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
+class COLLECTION_PT_lineart_collection(CollectionButtonsPanel, Panel):
     bl_label = "Collection LANPR"
     COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):
-        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
+        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lineart.enabled
 
     def draw_header(self, context):
         layout = self.layout
         collection = context.collection
-        layout.prop(collection, "configure_lanpr", text="")
+        layout.prop(collection, "configure_lineart", text="")
 
     def draw(self,context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
         collection = context.collection
-        if not collection.configure_lanpr:
+        if not collection.configure_lineart:
             return
         
-        lanpr = collection.lanpr
+        lineart = collection.lineart
         row = layout.row()
-        row.prop(lanpr,"usage")
-        if lanpr.usage!='INCLUDE':
-            layout.prop(lanpr,"force")
+        row.prop(lineart,"usage")
+        if lineart.usage!='INCLUDE':
+            layout.prop(lineart,"force")
         else:
-            layout.prop(lanpr,"target")
+            layout.prop(lineart,"target")
             
-            if lanpr.target:
+            if lineart.target:
 
-                layout.prop(lanpr,'use_multiple_levels', text="Multiple Levels")
+                layout.prop(lineart,'use_multiple_levels', text="Multiple Levels")
                 
-                if lanpr.use_multiple_levels:
+                if lineart.use_multiple_levels:
                     col = layout.column(align=True)
-                    col.prop(lanpr,'level_start',text="Level Begin")
-                    col.prop(lanpr,'level_end',text="End")
+                    col.prop(lineart,'level_start',text="Level Begin")
+                    col.prop(lineart,'level_end',text="End")
                 else:
-                    layout.prop(lanpr,'level_start',text="Level")
+                    layout.prop(lineart,'level_start',text="Level")
                 
-                layout.prop(lanpr, "use_same_style")
+                layout.prop(lineart, "use_same_style")
 
-                if lanpr.use_same_style:
-                    layout.prop_search(lanpr, 'target_layer', lanpr.target.data, "layers", icon='GREASEPENCIL')
-                    layout.prop_search(lanpr, 'target_material', lanpr.target.data, "materials", icon='SHADING_TEXTURE')
+                if lineart.use_same_style:
+                    layout.prop_search(lineart, 'target_layer', lineart.target.data, "layers", icon='GREASEPENCIL')
+                    layout.prop_search(lineart, 'target_material', lineart.target.data, "materials", icon='SHADING_TEXTURE')
 
-                expand = not lanpr.use_same_style
-                lineart_make_line_type_entry(layout, lanpr.contour, "Contour", expand, lanpr.target.data)
-                lineart_make_line_type_entry(layout, lanpr.crease, "Crease", expand, lanpr.target.data)
-                lineart_make_line_type_entry(layout, lanpr.material, "Material", expand, lanpr.target.data)
-                lineart_make_line_type_entry(layout, lanpr.edge_mark, "Edge Mark", expand, lanpr.target.data)
-                lineart_make_line_type_entry(layout, lanpr.intersection, "Intersection", expand, lanpr.target.data)
+                expand = not lineart.use_same_style
+                lineart_make_line_type_entry(layout, lineart.contour, "Contour", expand, lineart.target.data)
+                lineart_make_line_type_entry(layout, lineart.crease, "Crease", expand, lineart.target.data)
+                lineart_make_line_type_entry(layout, lineart.material, "Material", expand, lineart.target.data)
+                lineart_make_line_type_entry(layout, lineart.edge_mark, "Edge Mark", expand, lineart.target.data)
+                lineart_make_line_type_entry(layout, lineart.intersection, "Intersection", expand, lineart.target.data)
 
 classes = (
     COLLECTION_PT_collection_flags,
-    COLLECTION_PT_lanpr_collection,
+    COLLECTION_PT_lineart_collection,
 )
 
 if __name__ == "__main__":  # only for live edit.

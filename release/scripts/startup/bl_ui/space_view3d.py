@@ -3790,7 +3790,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.mark_sharp", text="Clear Sharp").clear = True
 
             scene = context.scene
-            if render.use_freestyle or scene.lanpr.enabled or scene.render.engine=="BLENDER_LANPR":
+            if render.use_freestyle or scene.lineart.enabled or scene.render.engine=="BLENDER_LANPR":
                 layout.separator()
                 col.operator("mesh.mark_freestyle_edge").clear = False
                 col.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
@@ -3986,7 +3986,7 @@ class VIEW3D_MT_edit_mesh_edges_data(Menu):
         props.use_verts = True
         props.clear = True
 
-        if render.use_freestyle or context.scene.lanpr.enabled or render.engine=="BLENDER_LANPR":
+        if render.use_freestyle or context.scene.lineart.enabled or render.engine=="BLENDER_LANPR":
             layout.separator()
             layout.operator("mesh.mark_freestyle_edge").clear = False
             layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
@@ -4044,7 +4044,7 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         props.clear = True
 
         scene = context.scene
-        if with_freestyle or scene.lanpr.enabled or scene.render.engine=="BLENDER_LANPR":
+        if with_freestyle or scene.lineart.enabled or scene.render.engine=="BLENDER_LANPR":
             layout.separator()
             layout.operator("mesh.mark_freestyle_edge").clear = False
             layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
@@ -4069,7 +4069,7 @@ class VIEW3D_MT_edit_mesh_faces_data(Menu):
         layout.operator("mesh.uvs_reverse")
 
         scene = context.scene
-        if with_freestyle or scene.lanpr.enabled or scene.render.engine=="BLENDER_LANPR":
+        if with_freestyle or scene.lineart.enabled or scene.render.engine=="BLENDER_LANPR":
             layout.separator()
             layout.operator("mesh.mark_freestyle_face").clear = False
             layout.operator("mesh.mark_freestyle_face", text="Clear Freestyle Face").clear = True

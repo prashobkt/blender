@@ -190,7 +190,7 @@ void ED_editors_init(bContext *C)
   wm->op_undo_depth--;
 
   /* LANPR data lock duing async calculation */
-#ifdef WITH_LANPR
+#ifdef WITH_LINEART
   ED_lineart_init_locks();
 #endif
 }
@@ -235,7 +235,7 @@ void ED_editors_exit(Main *bmain, bool do_undo_system)
   ED_mesh_mirror_topo_table_end(NULL);
 
   /* LANPR data*/
-#ifdef WITH_LANPR
+#ifdef WITH_LINEART
   ED_lineart_destroy_render_data_external();
 #endif
 }

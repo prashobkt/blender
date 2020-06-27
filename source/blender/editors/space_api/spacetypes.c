@@ -64,7 +64,7 @@
 #include "ED_userpref.h"
 #include "ED_uvedit.h"
 
-#ifdef WITH_LANPR
+#ifdef WITH_LINEART
 #  include "ED_lanpr.h"
 #endif
 
@@ -127,8 +127,8 @@ void ED_spacetypes_init(void)
   ED_operatortypes_view2d();
   ED_operatortypes_ui();
 
-#ifdef WITH_LANPR
-  ED_operatortypes_lanpr();
+#ifdef WITH_LINEART
+  ED_operatortypes_lineart();
 #endif
 
   ED_screen_user_menu_register();

@@ -59,7 +59,7 @@
 #include "ED_render.h"
 #include "ED_view3d.h"
 
-#ifdef WITH_LANPR
+#ifdef WITH_LINEART
 #  include "ED_lanpr.h"
 #endif
 
@@ -99,7 +99,7 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, int update
     return;
   }
 
-#ifdef WITH_LANPR
+#ifdef WITH_LINEART
   /* Temporary solution for updating LANPR GPencil targets. */
   if (updated) {
     ED_lineart_post_frame_update_external(scene, update_ctx->depsgraph);

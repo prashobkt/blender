@@ -36,7 +36,7 @@ static PyStructSequence_Field app_builtopts_info_fields[] = {
     {"cycles", NULL},
     {"cycles_osl", NULL},
     {"freestyle", NULL},
-    {"lanpr", NULL},
+    {"lineart", NULL},
     {"image_cineon", NULL},
     {"image_dds", NULL},
     {"image_hdr", NULL},
@@ -133,7 +133,7 @@ static PyObject *make_builtopts_info(void)
   SetObjIncref(Py_False);
 #endif
 
-#ifdef WITH_LANPR
+#ifdef WITH_LINEART
   SetObjIncref(Py_True);
 #else
   SetObjIncref(Py_False);

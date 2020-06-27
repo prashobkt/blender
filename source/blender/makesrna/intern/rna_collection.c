@@ -332,21 +332,21 @@ static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *pt
 
 /* LANPR */
 
-static bool rna_Collection_lanpr_configure_get(PointerRNA *ptr)
+static bool rna_Collection_lineart_configure_get(PointerRNA *ptr)
 {
   Collection *c = (Collection *)ptr->owner_id;
   return (c->flag & COLLECTION_CONFIGURED_FOR_LANPR);
 }
-static void rna_Collection_lanpr_configure_set(PointerRNA *ptr, const bool value)
+static void rna_Collection_lineart_configure_set(PointerRNA *ptr, const bool value)
 {
   Collection *c = (Collection *)ptr->owner_id;
-  CollectionLANPR *lanpr = c->lanpr;
+  CollectionLANPR *lineart = c->lineart;
 
   if (value) {
     c->flag |= COLLECTION_CONFIGURED_FOR_LANPR;
-    if (!lanpr) {
-      lanpr = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
-      c->lanpr = lanpr;
+    if (!lineart) {
+      lineart = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
+      c->lineart = lineart;
     }
   }
   else { /* !value */
@@ -411,13 +411,13 @@ static void rna_def_collection_children(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 }
 
-static void rna_def_collection_lanpr(BlenderRNA *brna)
+static void rna_def_collection_lineart(BlenderRNA *brna)
 {
   PropertyRNA *prop;
   StructRNA *srna;
 
   srna = RNA_def_struct(brna, "CollectionLANPRLineType", NULL);
-  RNA_def_struct_ui_text(srna, "Collection LANPR Line Type", "Collection lanpr line type");
+  RNA_def_struct_ui_text(srna, "Collection LANPR Line Type", "Collection lineart line type");
   RNA_def_struct_sdna(srna, "CollectionLANPRLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
@@ -434,7 +434,7 @@ static void rna_def_collection_lanpr(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Material", "Grease Pencil material to use to generate the results");
 
-  static const EnumPropertyItem rna_collection_lanpr_usage[] = {
+  static const EnumPropertyItem rna_collection_lineart_usage[] = {
       {COLLECTION_FEATURE_LINE_INCLUDE,
        "INCLUDE",
        0,
@@ -458,7 +458,7 @@ static void rna_def_collection_lanpr(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_collection_lanpr_usage);
+  RNA_def_property_enum_items(prop, rna_collection_lineart_usage);
   RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LANPR");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -628,15 +628,15 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
-  prop = RNA_def_property(srna, "configure_lanpr", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "configure_lineart", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
-      prop, "rna_Collection_lanpr_configure_get", "rna_Collection_lanpr_configure_set");
+      prop, "rna_Collection_lineart_configure_get", "rna_Collection_lineart_configure_set");
   RNA_def_property_ui_text(prop, "Configure", "Configure this collection for LANPR");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
-  rna_def_collection_lanpr(brna);
+  rna_def_collection_lineart(brna);
 
-  prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CollectionLANPR");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the collection");
 

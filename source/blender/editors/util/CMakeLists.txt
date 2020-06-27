@@ -113,8 +113,8 @@ if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
 endif()
 
-if(WITH_LANPR)
-  add_definitions(-DWITH_LANPR)
+if(WITH_LINEART)
+  add_definitions(-DWITH_LINEART)
 endif()
 
 if(WITH_PYTHON)

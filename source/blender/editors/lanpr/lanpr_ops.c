@@ -29,9 +29,9 @@
 
 #include "ED_lanpr.h"
 
-void ED_operatortypes_lanpr(void)
+void ED_operatortypes_lineart(void)
 {
-  /* lanpr:  */
+  /* lineart:  */
   WM_operatortype_append(SCENE_OT_lineart_calculate_feature_lines);
   WM_operatortype_append(SCENE_OT_lineart_add_line_layer);
   WM_operatortype_append(SCENE_OT_lineart_delete_line_layer);

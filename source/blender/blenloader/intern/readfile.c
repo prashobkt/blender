@@ -6171,7 +6171,7 @@ static void direct_link_collection(BlendDataReader *reader, Collection *collecti
   }
 #endif
 
-  BLO_read_data_address(reader, &collection->lanpr);
+  BLO_read_data_address(reader, &collection->lineart);
 }
 
 static void lib_link_collection_data(BlendLibReader *reader, Library *lib, Collection *collection)
@@ -6189,8 +6189,8 @@ static void lib_link_collection_data(BlendLibReader *reader, Library *lib, Colle
     BLO_read_id_address(reader, lib, &child->collection);
   }
 
-  if (collection->lanpr) {
-    collection->lanpr->target = newlibadr(reader->fd, lib, collection->lanpr->target);
+  if (collection->lineart) {
+    collection->lineart->target = newlibadr(reader->fd, lib, collection->lineart->target);
   }
 }
 
@@ -6497,7 +6497,7 @@ static void lib_link_scene(BlendLibReader *reader, Scene *sce)
     }
   }
 
-  for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+  for (LANPR_LineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
     BLO_read_id_address(reader, sce->id.lib, &ll->normal_control_object);
   }
 
@@ -6940,9 +6940,9 @@ static void direct_link_scene(BlendDataReader *reader, Scene *sce)
   }
   EEVEE_lightcache_info_update(&sce->eevee);
 
-  BLO_read_data_address(reader, &sce->lanpr.active_layer);
-  BLO_read_list(reader, &(sce->lanpr.line_layers));
-  for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+  BLO_read_data_address(reader, &sce->lineart.active_layer);
+  BLO_read_list(reader, &(sce->lineart.line_layers));
+  for (LANPR_LineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
     ll->batch = NULL;
     ll->shgrp = NULL;
   }
@@ -10792,7 +10792,7 @@ static void expand_collection(BlendExpander *expander, Collection *collection)
     BLO_expand(expander, child->collection);
   }
 
-  BLO_expand(expander, collection->lanpr->target);
+  BLO_expand(expander, collection->lineart->target);
 
 #ifdef USE_COLLECTION_COMPAT_28
   if (collection->collection != NULL) {
@@ -11175,7 +11175,7 @@ static void expand_scene(BlendExpander *expander, Scene *sce)
     }
   }
 
-  for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+  for (LANPR_LineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
     if (ll->normal_control_object) {
       BLO_expand(expander, ll->normal_control_object);
     }

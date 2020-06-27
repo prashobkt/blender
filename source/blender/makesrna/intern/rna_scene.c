@@ -2581,67 +2581,67 @@ static char *rna_UnitSettings_path(PointerRNA *UNUSED(ptr))
   return BLI_strdup("unit_settings");
 }
 
-/* lanpr */
+/* lineart */
 
-void rna_lanpr_active_line_layer_index_range(
+void rna_lineart_active_line_layer_index_range(
     PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
 {
-  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
   *min = 0;
-  *max = max_ii(0, BLI_listbase_count(&lanpr->line_layers) - 1);
+  *max = max_ii(0, BLI_listbase_count(&lineart->line_layers) - 1);
 }
 
-int rna_lanpr_active_line_layer_index_get(PointerRNA *ptr)
+int rna_lineart_active_line_layer_index_get(PointerRNA *ptr)
 {
-  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
   LANPR_LineLayer *ls;
   int i = 0;
-  for (ls = lanpr->line_layers.first; ls; ls = ls->next) {
-    if (ls == lanpr->active_layer)
+  for (ls = lineart->line_layers.first; ls; ls = ls->next) {
+    if (ls == lineart->active_layer)
       return i;
     i++;
   }
   return 0;
 }
 
-void rna_lanpr_active_line_layer_index_set(PointerRNA *ptr, int value)
+void rna_lineart_active_line_layer_index_set(PointerRNA *ptr, int value)
 {
-  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
   LANPR_LineLayer *ls;
   int i = 0;
-  for (ls = lanpr->line_layers.first; ls; ls = ls->next) {
+  for (ls = lineart->line_layers.first; ls; ls = ls->next) {
     if (i == value) {
-      lanpr->active_layer = ls;
+      lineart->active_layer = ls;
       return;
     }
     i++;
   }
-  lanpr->active_layer = 0;
+  lineart->active_layer = 0;
 }
 
-PointerRNA rna_lanpr_active_line_layer_get(PointerRNA *ptr)
+PointerRNA rna_lineart_active_line_layer_get(PointerRNA *ptr)
 {
-  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
-  LANPR_LineLayer *ls = lanpr->active_layer;
+  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  LANPR_LineLayer *ls = lineart->active_layer;
   return rna_pointer_inherit_refine(ptr, &RNA_LANPR_LineLayer, ls);
 }
 
-void rna_lanpr_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
+void rna_lineart_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
 {
-  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
-  lanpr->active_layer = value.data;
+  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  lineart->active_layer = value.data;
 }
 
-static void rna_lanpr_enable_set(PointerRNA *ptr, bool value)
+static void rna_lineart_enable_set(PointerRNA *ptr, bool value)
 {
-  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
 
   if (value) {
-    lanpr->flags |= LANPR_ENABLED;
+    lineart->flags |= LANPR_ENABLED;
     ED_lineart_init_locks();
   }
   else {
-    lanpr->flags &= ~LANPR_ENABLED;
+    lineart->flags &= ~LANPR_ENABLED;
   }
 }
 
@@ -7329,12 +7329,12 @@ static void rna_def_scene_gpencil(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 }
 
-static void rna_def_scene_lanpr(BlenderRNA *brna)
+static void rna_def_scene_lineart(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem rna_enum_lanpr_gpu_cache_size[] = {
+  static const EnumPropertyItem rna_enum_lineart_gpu_cache_size[] = {
       {LANPR_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
       {LANPR_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
       {LANPR_GPU_CACHE_SIZE_2K, "S2K", 0, "2K", "2K px texture as cache"},
@@ -7350,7 +7350,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_ENABLED);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_lanpr_enable_set");
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_lineart_enable_set");
   RNA_def_property_ui_text(prop, "Enabled", "Is LANPR enabled");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -7461,15 +7461,15 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active_layer", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "LANPR_LineLayer");
   RNA_def_property_pointer_funcs(
-      prop, "rna_lanpr_active_line_layer_get", "rna_lanpr_active_line_layer_set", NULL, NULL);
+      prop, "rna_lineart_active_line_layer_get", "rna_lineart_active_line_layer_set", NULL, NULL);
   RNA_def_property_ui_text(prop, "Active Line Layer", "Active line layer being displayed");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "active_layer_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_funcs(prop,
-                             "rna_lanpr_active_line_layer_index_get",
-                             "rna_lanpr_active_line_layer_index_set",
-                             "rna_lanpr_active_line_layer_index_range");
+                             "rna_lineart_active_line_layer_index_get",
+                             "rna_lineart_active_line_layer_index_set",
+                             "rna_lineart_active_line_layer_index_range");
   RNA_def_property_ui_text(prop, "Active Line Layer Index", "Index of active line layer slot");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 }
@@ -7948,7 +7948,7 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "EEVEE", "EEVEE settings for the scene");
 
   /* LANPR */
-  prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "SceneLANPR");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the scene");
 
@@ -7974,7 +7974,7 @@ void RNA_def_scene(BlenderRNA *brna)
   rna_def_display_safe_areas(brna);
   rna_def_scene_display(brna);
   rna_def_scene_eevee(brna);
-  rna_def_scene_lanpr(brna);
+  rna_def_scene_lineart(brna);
   rna_def_view_layer_eevee(brna);
   rna_def_scene_gpencil(brna);
   RNA_define_animate_sdna(true);

@@ -27,8 +27,8 @@
 
 #include "DNA_object_enums.h"
 
-#include "DNA_defs.h"
 #include "DNA_customdata_types.h"
+#include "DNA_defs.h"
 #include "DNA_lanpr_types.h"
 #include "DNA_listBase.h"
 
@@ -439,7 +439,7 @@ typedef struct Object {
 
   struct PreviewImage *preview;
 
-  ObjectLANPR lanpr;
+  ObjectLANPR lineart;
 
   /** Runtime evaluation data (keep last). */
   Object_Runtime runtime;
