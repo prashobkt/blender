@@ -50,7 +50,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Time = 16,
   eGpencilModifierType_Multiply = 17,
   eGpencilModifierType_Texture = 18,
-  eGpencilModifierType_LRT = 19,
+  eGpencilModifierType_Lineart = 19,
   /* Keep last. */
   NUM_GREASEPENCIL_MODIFIER_TYPES,
 } GpencilModifierType;
@@ -818,7 +818,7 @@ typedef struct LineartGpencilModifierData {
   short level_start;
   short level_end;
 
-  struct Object *source_gp;
+  struct Object *source_object;
   struct Collection *source_collection;
 
   struct Material *target_gp_material;

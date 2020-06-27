@@ -88,11 +88,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      ICON_MOD_SUBSURF,
      "Subdivide",
      "Subdivide stroke adding more control points"},
-    {eGpencilModifierType_LRT,
-     "GP_LRT",
+    {eGpencilModifierType_Lineart,
+     "GP_LINEART",
      ICON_MOD_EDGESPLIT,
-     "LRT",
-     "Generate LRT strokes from selected source"},
+     "Line Art",
+     "Generate Line Art strokes from selected source"},
     {0, "", 0, N_("Deform"), ""},
     {eGpencilModifierType_Armature,
      "GP_ARMATURE",
@@ -246,7 +246,7 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_MultiplyGpencilModifier;
     case eGpencilModifierType_Texture:
       return &RNA_TextureGpencilModifier;
-    case eGpencilModifierType_LRT:
+    case eGpencilModifierType_Lineart:
       return &RNA_LineartGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
@@ -2328,14 +2328,28 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   };
 
   srna = RNA_def_struct(brna, "LineartGpencilModifier", "GpencilModifier");
-  RNA_def_struct_ui_text(srna, "LRT Modifier", "Genreate LRT strokes from selected source");
+  RNA_def_struct_ui_text(
+      srna, "Line Art Modifier", "Genreate Line Art strokes from selected source");
   RNA_def_struct_sdna(srna, "LineartGpencilModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_EDGESPLIT);
 
   prop = RNA_def_property(srna, "source_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_enum_items(prop, modifier_lineart_source_type);
   RNA_def_property_ui_text(prop, "Source Type", "Lineart stroke source type");
+
+  prop = RNA_def_property(srna, "source_object", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_struct_type(prop, "Object");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(
+      prop, "Source Object", "Source object that this modifier grabs data from");
+
+  prop = RNA_def_property(srna, "source_collection", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_struct_type(prop, "Collection");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(
+      prop, "Source Collection", "Source collection that this modifier grabs data from");
 
   /* types */
   prop = RNA_def_property(srna, "use_contour", PROP_BOOLEAN, PROP_NONE);

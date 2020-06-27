@@ -26,13 +26,13 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math_color.h"
 #include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
+#include "DNA_lineart_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -59,6 +59,8 @@
 #include "MOD_gpencil_ui_common.h"
 #include "MOD_gpencil_util.h"
 
+#include "ED_lineart.h"
+
 static void initData(GpencilModifierData *md)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
@@ -72,7 +74,6 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
-/* color correction strokes */
 static void deformStroke(GpencilModifierData *md,
                          Depsgraph *UNUSED(depsgraph),
                          Object *ob,
@@ -118,37 +119,63 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ptr;
   gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
 
+  int source_type = RNA_enum_get(&ptr, "source_type");
+
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "modify_color", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "hue", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "saturation", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "value", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "source_type", 0, NULL, ICON_NONE);
+
+  if (source_type == LRT_SOURCE_OBJECT) {
+    uiItemR(layout, &ptr, "source_object", 0, NULL, ICON_CUBE);
+  }
+  else if (source_type == LRT_SOURCE_COLLECTION) {
+    uiItemR(layout, &ptr, "source_collection", 0, NULL, ICON_GROUP);
+  }
+
+  uiItemR(layout, &ptr, "use_contour", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_crease", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_material", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_edge_mark", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_intersection", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "target_gp_material", 0, NULL, ICON_NONE); /* How to filter??? */
+  uiItemR(layout, &ptr, "target_gp_layer", 0, NULL, ICON_NONE); /* How to do selector there??? */
 
   gpencil_modifier_panel_end(layout, &ptr);
 }
 
-static void mask_panel_draw(const bContext *C, Panel *panel)
+static void occlusion_panel_draw(const bContext *C, Panel *panel)
 {
-  gpencil_modifier_masking_panel_draw(C, panel, true, false);
+  PointerRNA ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+
+  uiLayout *layout = panel->layout;
+
+  bool use_multiple_levels = RNA_boolean_get(&ptr, "use_multiple_levels");
+
+  uiItemR(layout, &ptr, "use_multiple_levels", 0, "Multiple Levels", ICON_NONE);
+
+  if (use_multiple_levels) {
+    /* How to align and stuff... */
+    uiItemR(layout, &ptr, "level_start", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "level_end", 0, NULL, ICON_NONE);
+  }
+  else {
+    uiItemR(layout, &ptr, "level_start", 0, "Level", ICON_NONE);
+  }
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(
-      region_type, eGpencilModifierType_Color, panel_draw);
-  PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
-  gpencil_modifier_subpanel_register(region_type,
-                                     "curve",
-                                     "",
-                                     gpencil_modifier_curve_header_draw,
-                                     gpencil_modifier_curve_panel_draw,
-                                     mask_panel_type);
+      region_type, eGpencilModifierType_Lineart, panel_draw);
+
+  PanelType *occlusion_panel_type = gpencil_modifier_subpanel_register(
+      region_type, "occlusion", "Occlusion", NULL, occlusion_panel_draw, panel_type);
 }
 
-GpencilModifierTypeInfo modifierType_Gpencil_LRT = {
-    /* name */ "Hue/Saturation",
+GpencilModifierTypeInfo modifierType_Gpencil_Lineart = {
+    /* name */ "Line Art",
     /* structName */ "LineartGpencilModifierData",
     /* structSize */ sizeof(LineartGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
