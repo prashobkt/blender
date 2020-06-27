@@ -22,7 +22,7 @@
 
 #include "DNA_collection_types.h"
 
-#include "DNA_lanpr_types.h"
+#include "DNA_lineart_types.h"
 
 #include "BLI_utildefines.h"
 

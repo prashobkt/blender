@@ -23,8 +23,8 @@
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_types.h"
-#include "DNA_lanpr_types.h"
 #include "DNA_layer_types.h"
+#include "DNA_lineart_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_particle_types.h"
@@ -47,7 +47,7 @@
 #include "BKE_paint.h"
 
 #include "ED_gpencil.h"
-#include "ED_lanpr.h"
+#include "ED_lineart.h"
 #include "ED_object.h"
 
 #include "DRW_engine.h"

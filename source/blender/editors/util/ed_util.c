@@ -60,7 +60,7 @@
 #include "ED_armature.h"
 #include "ED_buttons.h"
 #include "ED_image.h"
-#include "ED_lanpr.h"
+#include "ED_lineart.h"
 #include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_object.h"

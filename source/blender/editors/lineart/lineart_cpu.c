@@ -21,7 +21,7 @@
  * \ingroup editors
  */
 
-#include "ED_lanpr.h"
+#include "ED_lineart.h"
 
 #include "BLI_alloca.h"
 #include "BLI_linklist.h"
@@ -43,7 +43,7 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_camera_types.h"
 #include "DNA_gpencil_types.h"
-#include "DNA_lanpr_types.h"
+#include "DNA_lineart_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
@@ -66,7 +66,7 @@
 
 #include "BKE_text.h"
 
-#include "lanpr_intern.h"
+#include "lineart_intern.h"
 
 LineartSharedResource lineart_share;
 

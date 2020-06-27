@@ -67,5 +67,5 @@ add_subdirectory(datafiles)
 
 if(WITH_LINEART)
   add_definitions(-DWITH_LINEART)
-  add_subdirectory(lanpr)
+  add_subdirectory(lineart)
 endif()

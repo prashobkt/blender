@@ -60,7 +60,7 @@
 #include "ED_view3d.h"
 
 #ifdef WITH_LINEART
-#  include "ED_lanpr.h"
+#  include "ED_lineart.h"
 #endif
 
 #include "DEG_depsgraph.h"

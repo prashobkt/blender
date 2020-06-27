@@ -33,7 +33,7 @@
 #include "BLI_math.h"
 #include "BLI_threads.h"
 
-#include "DNA_lanpr_types.h"
+#include "DNA_lineart_types.h"
 
 #include <math.h>
 #include <string.h>

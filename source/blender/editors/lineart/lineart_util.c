@@ -24,11 +24,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 /* #include <time.h> */
-#include "ED_lanpr.h"
+#include "ED_lineart.h"
 #include "MEM_guardedalloc.h"
 #include <math.h>
 
-#include "lanpr_intern.h"
+#include "lineart_intern.h"
 
 /* ===================================================================[slt] */
 

@@ -35,7 +35,7 @@
 
 #include "rna_internal.h"
 
-#include "DNA_lanpr_types.h"
+#include "DNA_lineart_types.h"
 #include "DNA_material_types.h"
 #include "DNA_texture_types.h"
 

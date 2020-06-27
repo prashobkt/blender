@@ -65,7 +65,7 @@
 #include "ED_uvedit.h"
 
 #ifdef WITH_LINEART
-#  include "ED_lanpr.h"
+#  include "ED_lineart.h"
 #endif
 
 #include "io_ops.h"

@@ -31,25 +31,25 @@
 #include "DEG_depsgraph_query.h"
 
 #include "DNA_camera_types.h"
-#include "DNA_lanpr_types.h"
+#include "DNA_lineart_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
-#include "ED_lanpr.h"
+#include "ED_lineart.h"
 
 #include "bmesh.h"
 
-#include "lanpr_intern.h"
+#include "lineart_intern.h"
 
 #include <math.h>
 
 #define LRT_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
 
 static LineartRenderLine *lineart_get_connected_render_line(LineartBoundingArea *ba,
-                                                             LineartRenderVert *rv,
-                                                             LineartRenderVert **new_rv,
-                                                             int match_flag)
+                                                            LineartRenderVert *rv,
+                                                            LineartRenderVert **new_rv,
+                                                            int match_flag)
 {
   LinkData *lip;
   LineartRenderLine *nrl;
@@ -467,7 +467,7 @@ static LineartBoundingArea *lineart_get_rlci_bounding_area_recursive(
   return NULL;
 }
 static LineartBoundingArea *lineart_get_end_point_bounding_area(LineartRenderBuffer *rb,
-                                                                 LineartRenderLineChainItem *rlci)
+                                                                LineartRenderLineChainItem *rlci)
 {
   if (!rlci) {
     return NULL;

@@ -37,7 +37,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "ED_lanpr.h"
+#include "ED_lineart.h"
 
 #include "BKE_context.h"
 #include "BKE_gpencil.h"

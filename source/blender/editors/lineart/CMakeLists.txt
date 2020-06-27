@@ -32,12 +32,12 @@ set(INC_SYS
 )
 
 set(SRC
-  lanpr_ops.c
-  lanpr_cpu.c
-  lanpr_chain.c
-  lanpr_util.c
+  lineart_ops.c
+  lineart_cpu.c
+  lineart_chain.c
+  lineart_util.c
 
-  lanpr_intern.h
+  lineart_intern.h
 )
 
 set(LIB

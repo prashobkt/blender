@@ -28,7 +28,7 @@
 #ifndef __DNA_LRT_TYPES_H__
 #define __DNA_LRT_TYPES_H__
 
-/** \file DNA_lanpr_types.h
+/** \file DNA_lineart_types.h
  *  \ingroup DNA
  */
 

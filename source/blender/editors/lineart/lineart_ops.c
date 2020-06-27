@@ -27,7 +27,7 @@
 
 #include "WM_api.h"
 
-#include "ED_lanpr.h"
+#include "ED_lineart.h"
 
 void ED_operatortypes_lineart(void)
 {
