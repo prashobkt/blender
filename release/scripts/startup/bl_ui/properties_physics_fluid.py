@@ -1269,6 +1269,7 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
         if not do_full_slicing:
             col.prop(domain, "slice_axis")
             col.prop(domain, "slice_depth")
+            col.prop(domain, "show_gridlines", text="Show Gridlines")
 
         col = col.column()
         col.active = do_full_slicing

@@ -118,6 +118,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
     DRW_shgroup_uniform_float_copy(grp, "slicePosition", mds->slice_depth);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", axis);
     DRW_shgroup_uniform_float_copy(grp, "stepLength", step_length);
+    DRW_shgroup_uniform_bool_copy(grp, "showGridlines", mds->show_gridlines);
     DRW_shgroup_state_disable(grp, DRW_STATE_CULL_FRONT);
   }
   else {

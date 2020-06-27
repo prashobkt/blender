@@ -4960,6 +4960,7 @@ void BKE_fluid_modifier_create_type_data(struct FluidModifierData *mmd)
     mmd->domain->slice_per_voxel = 5.0f;
     mmd->domain->slice_depth = 0.5f;
     mmd->domain->display_thickness = 1.0f;
+    mmd->domain->show_gridlines = false;
     mmd->domain->coba = NULL;
     mmd->domain->grid_scale = 1.0f;
     mmd->domain->vector_scale = 1.0f;
@@ -5198,6 +5199,7 @@ void BKE_fluid_modifier_copy(const struct FluidModifierData *mmd,
     tmds->slice_per_voxel = mds->slice_per_voxel;
     tmds->slice_depth = mds->slice_depth;
     tmds->display_thickness = mds->display_thickness;
+    tmds->show_gridlines = mds->show_gridlines;
     if (mds->coba) {
       tmds->coba = MEM_dupallocN(mds->coba);
     }

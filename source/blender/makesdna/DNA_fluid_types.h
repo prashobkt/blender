@@ -616,13 +616,14 @@ typedef struct FluidDomainSettings {
   float vector_scale;
   char axis_slice_method;
   char slice_axis;
+  char show_gridlines;
   char draw_velocity;
   char vector_draw_type;
   char vector_draw_grid_type;
   char use_coba;
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
-  char _pad9[4]; /* Unused. */
+  char _pad9[3]; /* Unused. */
 
   /* OpenVDB cache options. */
   int openvdb_compression;
