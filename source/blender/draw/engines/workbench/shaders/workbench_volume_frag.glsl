@@ -124,8 +124,7 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
     /* Color mapping for level-set representation */
     float val = sample_volume_texture(densityTexture, co).r * gridScale;
     
-    val = (val * 0.2 < 1.0) ? val * 0.2 : 1.0;
-    val = (val >= -1.0) ? val : -1.0;
+    val = max(min(val * 0.2, 1.0), -1.0);
 
     if (val >= 0.0) {
       tval = vec4(val, 0.0, 0.5, 0.06);
