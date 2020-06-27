@@ -2555,7 +2555,7 @@ static void rna_def_object_lineart(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "ObjectLineartLineType", NULL);
-  RNA_def_struct_ui_text(srna, "Object LRT Line Type", "Object lineart line type");
+  RNA_def_struct_ui_text(srna, "Object Line Art Line Type", "Object lineart line type");
   RNA_def_struct_sdna(srna, "ObjectLineartLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
@@ -2595,7 +2595,7 @@ static void rna_def_object_lineart(BlenderRNA *brna)
   };
 
   srna = RNA_def_struct(brna, "ObjectLineart", NULL);
-  RNA_def_struct_ui_text(srna, "Object LRT", "Object lineart settings");
+  RNA_def_struct_ui_text(srna, "Object Line Art", "Object lineart settings");
   RNA_def_struct_sdna(srna, "ObjectLineart");
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);

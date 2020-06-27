@@ -25,7 +25,7 @@
 #define __ED_LRT_H__
 
 #ifndef WITH_LINEART
-#  error LRT code included in non-LRT-enabled build
+#  error Lineart code included in non-Lineart-enabled build
 #endif
 
 #include "BLI_linklist.h"

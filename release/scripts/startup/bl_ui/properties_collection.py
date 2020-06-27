@@ -62,7 +62,7 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
         col.prop(collection,"hide_render")
 
 class COLLECTION_PT_lineart_collection(CollectionButtonsPanel, Panel):
-    bl_label = "Collection LRT"
+    bl_label = "Collection Line Art"
     COMPAT_ENGINES =  { 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES' }
 
     @classmethod

@@ -7334,15 +7334,6 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem rna_enum_lineart_gpu_cache_size[] = {
-      {LRT_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
-      {LRT_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
-      {LRT_GPU_CACHE_SIZE_2K, "S2K", 0, "2K", "2K px texture as cache"},
-      {LRT_GPU_CACHE_SIZE_4K, "S4K", 0, "4K", "4K px texture as cache"},
-      {LRT_GPU_CACHE_SIZE_8K, "S8K", 0, "8K", "8K px texture as cache"},
-      {LRT_GPU_CACHE_SIZE_16K, "S16K", 0, "16K", "16K px texture as cache"},
-      {0, NULL, 0, NULL, NULL}};
-
   srna = RNA_def_struct(brna, "SceneLineart", NULL);
   RNA_def_struct_sdna(srna, "SceneLineart");
   RNA_def_struct_ui_text(srna, "Scene Line Art Config", "Line Art global config");

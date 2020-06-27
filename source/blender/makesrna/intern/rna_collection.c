@@ -417,7 +417,7 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
   StructRNA *srna;
 
   srna = RNA_def_struct(brna, "CollectionLineartLineType", NULL);
-  RNA_def_struct_ui_text(srna, "Collection LRT Line Type", "Collection lineart line type");
+  RNA_def_struct_ui_text(srna, "Collection Line Art Line Type", "Collection lineart line type");
   RNA_def_struct_sdna(srna, "CollectionLineartLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
@@ -454,7 +454,7 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "CollectionLineart", NULL);
   RNA_def_struct_sdna(srna, "CollectionLineart");
-  RNA_def_struct_ui_text(srna, "Collection LRT Usage", "LRT usage for this collection");
+  RNA_def_struct_ui_text(srna, "Collection Line Art Usage", "LRT usage for this collection");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
