@@ -1693,7 +1693,6 @@ typedef struct SceneEEVEE {
 
 /* LANPR Global Config */
 
-struct LANPR_RenderBuffer;
 struct LANPR_LineLayer;
 
 typedef enum LANPR_PostProcessingStatus {
