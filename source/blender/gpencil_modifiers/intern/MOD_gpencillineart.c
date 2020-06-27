@@ -109,15 +109,19 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
-  // walk(userData, ob, (ID **)&lmd->material, IDWALK_CB_USER);
+  walk(userData, ob, (ID **)&lmd->target_gp_material, IDWALK_CB_USER);
+  walk(userData, ob, (ID **)&lmd->source_object, IDWALK_CB_USER);
+  walk(userData, ob, (ID **)&lmd->source_collection, IDWALK_CB_USER);
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA ptr, ob_ptr;
+  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
 
   int source_type = RNA_enum_get(&ptr, "source_type");
 
@@ -138,8 +142,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "use_edge_mark", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_intersection", 0, NULL, ICON_NONE);
 
-  uiItemR(layout, &ptr, "target_gp_material", 0, NULL, ICON_NONE); /* How to filter??? */
-  uiItemR(layout, &ptr, "target_gp_layer", 0, NULL, ICON_NONE); /* How to do selector there??? */
+  uiItemPointerR(
+      layout, &ptr, "target_gp_layer", &obj_data_ptr, "layers", NULL, ICON_GREASEPENCIL);
+  uiItemPointerR(
+      layout, &ptr, "target_gp_material", &obj_data_ptr, "materials", NULL, ICON_SHADING_TEXTURE);
 
   gpencil_modifier_panel_end(layout, &ptr);
 }
@@ -156,9 +162,9 @@ static void occlusion_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "use_multiple_levels", 0, "Multiple Levels", ICON_NONE);
 
   if (use_multiple_levels) {
-    /* How to align and stuff... */
-    uiItemR(layout, &ptr, "level_start", 0, NULL, ICON_NONE);
-    uiItemR(layout, &ptr, "level_end", 0, NULL, ICON_NONE);
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiItemR(col, &ptr, "level_start", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "level_end", 0, NULL, ICON_NONE);
   }
   else {
     uiItemR(layout, &ptr, "level_start", 0, "Level", ICON_NONE);
