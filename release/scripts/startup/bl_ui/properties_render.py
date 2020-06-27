@@ -79,7 +79,8 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         scene = context.scene
         view = scene.view_settings
 
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=True)
+        flow = layout.grid_flow(row_major=True, columns=0,
+                                even_columns=False, even_rows=False, align=True)
 
         col = flow.column()
         col.prop(scene.display_settings, "display_device")
@@ -122,7 +123,8 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
 
         layout.enabled = view.use_curve_mapping
 
-        layout.template_curve_mapping(view, "curve_mapping", type='COLOR', levels=True)
+        layout.template_curve_mapping(
+            view, "curve_mapping", type='COLOR', levels=True)
 
 
 class RENDER_PT_eevee_ambient_occlusion(RenderButtonsPanel, Panel):
@@ -421,8 +423,10 @@ class RENDER_PT_eevee_indirect_lighting(RenderButtonsPanel, Panel):
         props = scene.eevee
 
         col = layout.column()
-        col.operator("scene.light_cache_bake", text="Bake Indirect Lighting", icon='RENDER_STILL')
-        col.operator("scene.light_cache_bake", text="Bake Cubemap Only", icon='LIGHTPROBE_CUBEMAP').subset = 'CUBEMAPS'
+        col.operator("scene.light_cache_bake",
+                     text="Bake Indirect Lighting", icon='RENDER_STILL')
+        col.operator("scene.light_cache_bake", text="Bake Cubemap Only",
+                     icon='LIGHTPROBE_CUBEMAP').subset = 'CUBEMAPS'
         col.operator("scene.light_cache_free", text="Delete Lighting Cache")
 
         cache_info = scene.eevee.gi_cache_info
@@ -654,7 +658,8 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
 
         layout.active = rd.use_simplify
 
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=True)
+        flow = layout.grid_flow(row_major=True, columns=0,
+                                even_columns=False, even_rows=False, align=True)
 
         col = flow.column()
         col.prop(rd, "simplify_subdivision", text="Max Subdivision")
@@ -676,25 +681,29 @@ class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):
 
         layout.active = rd.use_simplify
 
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=True)
+        flow = layout.grid_flow(row_major=True, columns=0,
+                                even_columns=False, even_rows=False, align=True)
 
         col = flow.column()
         col.prop(rd, "simplify_subdivision_render", text="Max Subdivision")
 
         col = flow.column()
-        col.prop(rd, "simplify_child_particles_render", text="Max Child Particles")
+        col.prop(rd, "simplify_child_particles_render",
+                 text="Max Child Particles")
 
 
 class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel, GreasePencilSimplifyPanel):
     bl_label = "Grease Pencil"
     bl_parent_id = "RENDER_PT_simplify"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_GAME', 'BLENDER_CLAY', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_GAME',
+                      'BLENDER_CLAY', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     bl_options = {'DEFAULT_CLOSED'}
 
 
 class LRT_UL_linesets(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        layout.prop(item,"name", text="", emboss=False)
+        layout.prop(item, "name", text="", emboss=False)
+
 
 class RENDER_PT_lineart(RenderButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
@@ -707,7 +716,7 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
     def draw(self, context):
         scene = context.scene
         lineart = scene.lineart
-        active_layer = lineart.layers.active_layer 
+        active_layer = lineart.layers.active_layer
 
         layout = self.layout
         layout.active = lineart.enabled
@@ -715,44 +724,50 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
         layout.use_property_decorate = False  # No animation.
 
         col = layout.column()
-        
+
         layout.prop(lineart, "crease_threshold", slider=True)
 
-
-        col.prop(lineart,'auto_update', text='Auto Update')
+        col.prop(lineart, 'auto_update', text='Auto Update')
 
         if not scene.camera:
-            has_camera=False
+            has_camera = False
             col.label(text="No active camera.")
         else:
-            has_camera=True
-        
-        c=col.column()
+            has_camera = True
+
+        c = col.column()
         c.enabled = has_camera
 
         if not lineart.auto_update:
             c.operator("scene.lineart_calculate", icon='FILE_REFRESH')
 
-        layout.operator("scene.lineart_auto_create_line_layer", text = "Default", icon = "ADD")
-        row=layout.row()
-        row.template_list("LRT_UL_linesets", "", lineart, "layers", lineart.layers, "active_layer_index", rows=4)
-        col=row.column(align=True)
+        layout.operator("scene.lineart_auto_create_line_layer",
+                        text="Default", icon="ADD")
+        row = layout.row()
+        row.template_list("LRT_UL_linesets", "", lineart, "layers",
+                          lineart.layers, "active_layer_index", rows=4)
+        col = row.column(align=True)
         if active_layer:
             col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
-            col.operator("scene.lineart_delete_line_layer", icon="REMOVE", text='')
+            col.operator("scene.lineart_delete_line_layer",
+                         icon="REMOVE", text='')
             col.separator()
-            col.operator("scene.lineart_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
-            col.operator("scene.lineart_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
+            col.operator("scene.lineart_move_line_layer",
+                         icon='TRIA_UP', text='').direction = "UP"
+            col.operator("scene.lineart_move_line_layer",
+                         icon='TRIA_DOWN', text='').direction = "DOWN"
             col.separator()
         else:
             col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
 
-def lineart_make_line_type(expand,layout,line_type,label):
+
+def lineart_make_line_type(expand, layout, line_type, label):
     layout.prop(line_type, "use", text=label)
     if expand and line_type.use:
         c = layout.column(align=True)
         c.prop(line_type, "color", text="Color")
         c.prop(line_type, "thickness", slider=True)
+
 
 class RENDER_PT_lineart_layer_settings(RenderButtonsPanel, Panel):
     bl_label = "Layer Settings"
@@ -769,13 +784,14 @@ class RENDER_PT_lineart_layer_settings(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
-        layout.prop(active_layer, "use_multiple_levels", text="Multiple Levels")
+        layout.prop(active_layer, "use_multiple_levels",
+                    text="Multiple Levels")
         col = layout.column(align=True)
         col.prop(active_layer, "level_start", text='Level Start')
         if active_layer.use_multiple_levels:
             col.prop(active_layer, "level_end", text='End')
-        
-        layout.prop(active_layer,"use_same_style")
+
+        layout.prop(active_layer, "use_same_style")
 
         expand = not active_layer.use_same_style
 
@@ -784,15 +800,19 @@ class RENDER_PT_lineart_layer_settings(RenderButtonsPanel, Panel):
             col.prop(active_layer, "color")
         col.prop(active_layer, "thickness", text="Main Thickness")
 
-        lineart_make_line_type(expand,layout,active_layer.contour,"Contour")
-        lineart_make_line_type(expand,layout,active_layer.crease,"Crease")
-        lineart_make_line_type(expand,layout,active_layer.edge_mark,"EdgeMark")
-        lineart_make_line_type(expand,layout,active_layer.material_separate,"Material")
+        lineart_make_line_type(expand, layout, active_layer.contour, "Contour")
+        lineart_make_line_type(expand, layout, active_layer.crease, "Crease")
+        lineart_make_line_type(
+            expand, layout, active_layer.edge_mark, "EdgeMark")
+        lineart_make_line_type(
+            expand, layout, active_layer.material_separate, "Material")
 
         if lineart.use_intersections:
-            lineart_make_line_type(expand,layout,active_layer.intersection,"Intersection")
+            lineart_make_line_type(
+                expand, layout, active_layer.intersection, "Intersection")
         else:
-            layout.label(text= "Intersection calculation disabled.")
+            layout.label(text="Intersection calculation disabled.")
+
 
 class RENDER_PT_lineart_line_normal_effects(RenderButtonsPanel, Panel):
     bl_label = "Normal Based Line Weight"
@@ -802,7 +822,7 @@ class RENDER_PT_lineart_line_normal_effects(RenderButtonsPanel, Panel):
 
     def draw_header(self, context):
         active_layer = context.scene.lineart.layers.active_layer
-        self.layout.prop(active_layer, "normal_enabled", text="")   
+        self.layout.prop(active_layer, "normal_enabled", text="")
 
     def draw(self, context):
         scene = context.scene
@@ -812,17 +832,19 @@ class RENDER_PT_lineart_line_normal_effects(RenderButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-        
-        layout.prop(active_layer,"normal_mode", text="Mode")
+
+        layout.prop(active_layer, "normal_mode", text="Mode")
         if active_layer.normal_mode != "DISABLED":
-            layout.prop(active_layer,"normal_control_object")
-            layout.prop(active_layer,"normal_effect_inverse")
+            layout.prop(active_layer, "normal_control_object")
+            layout.prop(active_layer, "normal_effect_inverse")
             col = layout.column(align=True)
-            col.prop(active_layer,"normal_ramp_begin")
-            col.prop(active_layer,"normal_ramp_end", text="End")
+            col.prop(active_layer, "normal_ramp_begin")
+            col.prop(active_layer, "normal_ramp_end", text="End")
             col = layout.column(align=True)
-            col.prop(active_layer,"normal_thickness_start", slider=True)
-            col.prop(active_layer,"normal_thickness_end", slider=True, text="End")
+            col.prop(active_layer, "normal_thickness_start", slider=True)
+            col.prop(active_layer, "normal_thickness_end",
+                     slider=True, text="End")
+
 
 class RENDER_PT_lineart_gpencil(RenderButtonsPanel, Panel):
     bl_label = "Grease Pencil"
@@ -839,17 +861,20 @@ class RENDER_PT_lineart_gpencil(RenderButtonsPanel, Panel):
         layout.use_property_decorate = False
 
         if not scene.camera:
-            has_camera=False
+            has_camera = False
             layout.label(text="No active camera.")
         else:
-            has_camera=True
+            has_camera = True
 
-        layout.enabled=has_camera
-        layout.prop(lineart,"auto_update", text='Auto Update')
-        layout.prop(lineart,"gpencil_overwrite", text='Overwrite')
+        layout.enabled = has_camera
+        layout.prop(lineart, "auto_update", text='Auto Update')
+        layout.prop(lineart, "gpencil_overwrite", text='Overwrite')
         if not lineart.auto_update:
-            layout.operator("scene.lineart_update_gp_strokes", icon='FILE_REFRESH', text='Update Grease Pencil Targets')
-        layout.operator("scene.lineart_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
+            layout.operator("scene.lineart_update_gp_strokes",
+                            icon='FILE_REFRESH', text='Update Grease Pencil Targets')
+        layout.operator("scene.lineart_bake_gp_strokes",
+                        icon='RENDER_ANIMATION', text='Bake All Frames')
+
 
 class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
     bl_label = "Settings"
@@ -865,7 +890,10 @@ class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        layout.prop(lineart,"use_intersections")
+        layout.prop(lineart, "use_intersections")
+        layout.prop(lineart, "chaining_image_threshold")
+        layout.prop(lineart, "chaining_geometry_threshold")
+
 
 classes = (
     RENDER_PT_context,
