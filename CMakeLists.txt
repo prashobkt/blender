@@ -321,8 +321,8 @@ mark_as_advanced(WITH_SYSTEM_GLOG)
 # Freestyle
 option(WITH_FREESTYLE     "Enable Freestyle (advanced edges rendering)" ON)
 
-# LANPR
-option(WITH_LINEART     "Enable LANPR (more advanced edges rendering)" ON)
+# LRT
+option(WITH_LINEART     "Enable LRT (more advanced edges rendering)" ON)
 
 # Misc
 if(WIN32)

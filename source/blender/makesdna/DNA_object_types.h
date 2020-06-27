@@ -206,7 +206,7 @@ typedef struct ObjectLineartLineType {
 typedef struct ObjectLineart {
   int usage;
 
-  /* Separate flags for LANPR shared flag values. */
+  /* Separate flags for Line Art shared flag values. */
   int flags;
 
   struct Object *target;

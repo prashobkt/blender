@@ -224,7 +224,7 @@ static void scene_init_data(ID *id)
 static void BKE_lineart_free_everything(Scene *s)
 {
   SceneLineart *lineart = &s->lineart;
-  LANPR_LineLayer *ll;
+  LineartLineLayer *ll;
 
   while ((ll = BLI_pophead(&lineart->line_layers)) != NULL) {
     MEM_freeN(ll);
@@ -234,14 +234,14 @@ static void BKE_lineart_free_everything(Scene *s)
 static void BKE_lineart_copy_data(const Scene *from, Scene *to)
 {
   const SceneLineart *lineart = &from->lineart;
-  LANPR_LineLayer *ll, *new_ll;
+  LineartLineLayer *ll, *new_ll;
 
   to->lineart.line_layers.first = to->lineart.line_layers.last = NULL;
   memset(&to->lineart.line_layers, 0, sizeof(ListBase));
 
   for (ll = lineart->line_layers.first; ll; ll = ll->next) {
-    new_ll = MEM_callocN(sizeof(LANPR_LineLayer), "Copied Line Layer");
-    memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
+    new_ll = MEM_callocN(sizeof(LineartLineLayer), "Copied Line Layer");
+    memcpy(new_ll, ll, sizeof(LineartLineLayer));
     new_ll->next = new_ll->prev = NULL;
     new_ll->batch = NULL;
     BLI_addtail(&to->lineart.line_layers, new_ll);
@@ -360,7 +360,7 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
     scene_dst->preview = NULL;
   }
 
-  /*  LANPR  data */
+  /*  Line Art  data */
   BKE_lineart_copy_data(scene_src, scene_dst);
 
   BKE_scene_copy_data_eevee(scene_dst, scene_src);
@@ -449,7 +449,7 @@ static void scene_free_data(ID *id)
     scene->display.shading.prop = NULL;
   }
 
-  /* LANPR data */
+  /* Line Art data */
   BKE_lineart_free_everything(scene);
 
   /* These are freed on doversion. */
@@ -1048,9 +1048,9 @@ Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
       BKE_sequencer_editing_free(sce_copy, true);
     }
 
-    /*  LANPR  data */
+    /*  Line Art  data */
     BKE_lineart_copy_data(sce, sce_copy);
-    
+
     return sce_copy;
   }
 }

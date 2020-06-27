@@ -50,7 +50,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Time = 16,
   eGpencilModifierType_Multiply = 17,
   eGpencilModifierType_Texture = 18,
-  eGpencilModifierType_LANPR = 19,
+  eGpencilModifierType_LRT = 19,
   /* Keep last. */
   NUM_GREASEPENCIL_MODIFIER_TYPES,
 } GpencilModifierType;
@@ -802,11 +802,11 @@ typedef enum eTextureGpencil_Mode {
   STROKE_AND_FILL = 2,
 } eTextureGpencil_Mode;
 
-typedef struct LANPRGpencilModifierData {
+typedef struct LineartGpencilModifierData {
   GpencilModifierData modifier;
 
-  /* Fill in here for LANPR */
+  /* Fill in here for Line Art */
 
-} LANPRGpencilModifierData;
+} LineartGpencilModifierData;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

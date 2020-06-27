@@ -52,24 +52,24 @@ static void rna_def_lineart_line_layer(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem rna_enum_lineart_normal_mode[] = {
-      {LANPR_NORMAL_DIRECTIONAL,
+      {LRT_NORMAL_DIRECTIONAL,
        "DIRECTIONAL",
        0,
        "Directional",
        "Use directional vector to control line width"},
       /* Seems working... */
-      {LANPR_NORMAL_POINT, "POINT", 0, "Point", "Use Point Light Style"},
+      {LRT_NORMAL_POINT, "POINT", 0, "Point", "Use Point Light Style"},
       {0, NULL, 0, NULL, NULL}};
 
-  srna = RNA_def_struct(brna, "LANPR_LineLayer", NULL);
-  RNA_def_struct_sdna(srna, "LANPR_LineLayer");
-  RNA_def_struct_ui_text(srna, "Line Layer", "LANPR_LineLayer");
+  srna = RNA_def_struct(brna, "LineartLineLayer", NULL);
+  RNA_def_struct_sdna(srna, "LineartLineLayer");
+  RNA_def_struct_ui_text(srna, "Line Layer", "LineartLineLayer");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "Name of this layer");
 
   prop = RNA_def_property(srna, "normal_enabled", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_NORMAL_ENABLED);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_NORMAL_ENABLED);
   RNA_def_property_ui_text(prop, "Enabled", "Enable normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_mode", PROP_ENUM, PROP_NONE);
@@ -77,7 +77,7 @@ static void rna_def_lineart_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Normal", "Normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_effect_inverse", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_NORMAL_INVERSE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_NORMAL_INVERSE);
   RNA_def_property_ui_text(prop, "Inverse", "Inverse normal effect");
 
   prop = RNA_def_property(
@@ -108,34 +108,34 @@ static void rna_def_lineart_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Object", "Normal style control object");
 
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_SAME_STYLE);
   RNA_def_property_boolean_default(prop, true);
   RNA_def_property_ui_text(prop, "Same Style", "Use same styles for multiple line types");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_MULTIPLE_LEVELS);
   RNA_def_property_ui_text(
       prop, "Use Multiple Levels", "Select lines from multiple occlusion levels");
 
   /* types */
   prop = RNA_def_property(srna, "contour", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "LANPR_LineType");
+  RNA_def_property_struct_type(prop, "LineartLineType");
   RNA_def_property_ui_text(prop, "Contour", "Contour line type");
 
   prop = RNA_def_property(srna, "crease", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "LANPR_LineType");
+  RNA_def_property_struct_type(prop, "LineartLineType");
   RNA_def_property_ui_text(prop, "Crease", "Creaseline type");
 
   prop = RNA_def_property(srna, "edge_mark", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "LANPR_LineType");
+  RNA_def_property_struct_type(prop, "LineartLineType");
   RNA_def_property_ui_text(prop, "Edge Mark", "Edge mark line type");
 
   prop = RNA_def_property(srna, "material_separate", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "LANPR_LineType");
+  RNA_def_property_struct_type(prop, "LineartLineType");
   RNA_def_property_ui_text(prop, "Material Separate", "Material separate line type");
 
   prop = RNA_def_property(srna, "intersection", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "LANPR_LineType");
+  RNA_def_property_struct_type(prop, "LineartLineType");
   RNA_def_property_ui_text(prop, "Intersection", "Intersection line type");
 
   prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
@@ -165,9 +165,9 @@ static void rna_def_lineart_line_type(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "LANPR_LineType", NULL);
-  RNA_def_struct_sdna(srna, "LANPR_LineType");
-  RNA_def_struct_ui_text(srna, "Line Type", "LANPR_LineType");
+  srna = RNA_def_struct(brna, "LineartLineType", NULL);
+  RNA_def_struct_sdna(srna, "LineartLineType");
+  RNA_def_struct_ui_text(srna, "Line Type", "LineartLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Use", "This line type is enabled");

@@ -88,11 +88,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      ICON_MOD_SUBSURF,
      "Subdivide",
      "Subdivide stroke adding more control points"},
-    {eGpencilModifierType_LANPR,
-     "GP_LANPR",
+    {eGpencilModifierType_LRT,
+     "GP_LRT",
      ICON_MOD_EDGESPLIT,
-     "LANPR",
-     "Generate LANPR strokes from selected source"},
+     "LRT",
+     "Generate LRT strokes from selected source"},
     {0, "", 0, N_("Deform"), ""},
     {eGpencilModifierType_Armature,
      "GP_ARMATURE",
@@ -246,8 +246,8 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_MultiplyGpencilModifier;
     case eGpencilModifierType_Texture:
       return &RNA_TextureGpencilModifier;
-    case eGpencilModifierType_LANPR:
-      return &RNA_LANPRGpencilModifier;
+    case eGpencilModifierType_LRT:
+      return &RNA_LineartGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
     case NUM_GREASEPENCIL_MODIFIER_TYPES:
@@ -2321,9 +2321,9 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "LANPRGpencilModifier", "GpencilModifier");
-  RNA_def_struct_ui_text(srna, "LANPR Modifier", "Genreate LANPR strokes from selected source");
-  RNA_def_struct_sdna(srna, "LANPRGpencilModifierData");
+  srna = RNA_def_struct(brna, "LineartGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "LRT Modifier", "Genreate LRT strokes from selected source");
+  RNA_def_struct_sdna(srna, "LineartGpencilModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_EDGESPLIT);
 }
 

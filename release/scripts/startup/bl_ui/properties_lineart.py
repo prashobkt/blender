@@ -31,7 +31,7 @@ def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from)
         col.prop_search(line_type, "material",  search_from, "materials", icon='SHADING_TEXTURE')
 
 class OBJECT_PT_lineart_settings(LanprButtonsPanel, Panel):
-    bl_label = "LANPR settings"
+    bl_label = "LRT settings"
 
     @classmethod
     def poll(cls, context):

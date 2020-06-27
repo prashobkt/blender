@@ -61,13 +61,13 @@
 
 static void initData(GpencilModifierData *md)
 {
-  LANPRGpencilModifierData *lmd = (LANPRGpencilModifierData *)md;
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
-  LANPRGpencilModifierData *lmd = (LANPRGpencilModifierData *)md;
-  LANPRGpencilModifierData *tgmd = (LANPRGpencilModifierData *)target;
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  LineartGpencilModifierData *tgmd = (LineartGpencilModifierData *)target;
 
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
@@ -80,7 +80,7 @@ static void deformStroke(GpencilModifierData *md,
                          bGPDframe *UNUSED(gpf),
                          bGPDstroke *gps)
 {
-  LANPRGpencilModifierData *lmd = (LANPRGpencilModifierData *)md;
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
@@ -101,12 +101,12 @@ static void bakeModifier(Main *UNUSED(bmain),
 
 static void freeData(GpencilModifierData *md)
 {
-  LANPRGpencilModifierData *lmd = (LANPRGpencilModifierData *)md;
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 }
 
 static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
 {
-  LANPRGpencilModifierData *lmd = (LANPRGpencilModifierData *)md;
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   // walk(userData, ob, (ID **)&lmd->material, IDWALK_CB_USER);
 }
@@ -147,10 +147,10 @@ static void panelRegister(ARegionType *region_type)
                                      mask_panel_type);
 }
 
-GpencilModifierTypeInfo modifierType_Gpencil_LANPR = {
+GpencilModifierTypeInfo modifierType_Gpencil_LRT = {
     /* name */ "Hue/Saturation",
-    /* structName */ "LANPRGpencilModifierData",
-    /* structSize */ sizeof(LANPRGpencilModifierData),
+    /* structName */ "LineartGpencilModifierData",
+    /* structSize */ sizeof(LineartGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
     /* flags */ eGpencilModifierTypeFlag_SupportsEditmode,
 

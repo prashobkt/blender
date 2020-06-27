@@ -5108,7 +5108,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
           scene->lineart.crease_threshold = 0.7;
 
-          scene->lineart.flags |= (LANPR_USE_INTERSECTIONS);
+          scene->lineart.flags |= (LRT_USE_INTERSECTIONS);
 
           zero_v4(scene->lineart.line_color);
 

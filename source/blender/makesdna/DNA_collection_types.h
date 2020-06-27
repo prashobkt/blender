@@ -60,7 +60,7 @@ typedef struct CollectionLineartLineType {
 typedef struct CollectionLineart {
   int usage;
 
-  /* Separate flags for LANPR shared flag values. */
+  /* Separate flags for Line Art shared flag values. */
   int flags;
 
   struct Object *target;
@@ -95,7 +95,7 @@ typedef struct Collection {
   short tag;
   char _pad[4];
 
-  /** LANPR engine specific */
+  /** Line Art engine specific */
   CollectionLineart *lineart;
 
   /* Runtime. Cache of objects in this collection and all its
@@ -115,13 +115,13 @@ typedef struct Collection {
 
 /* Collection->flag */
 enum {
-  COLLECTION_RESTRICT_VIEWPORT = (1 << 0),    /* Disable in viewports. */
-  COLLECTION_RESTRICT_SELECT = (1 << 1),      /* Not selectable in viewport. */
-  COLLECTION_DISABLED_DEPRECATED = (1 << 2),  /* Not used anymore */
-  COLLECTION_RESTRICT_RENDER = (1 << 3),      /* Disable in renders. */
-  COLLECTION_HAS_OBJECT_CACHE = (1 << 4),     /* Runtime: object_cache is populated. */
-  COLLECTION_IS_MASTER = (1 << 5),            /* Is master collection embedded in the scene. */
-  COLLECTION_CONFIGURED_FOR_LANPR = (1 << 6), /* Configurations saved to collection->lineart. */
+  COLLECTION_RESTRICT_VIEWPORT = (1 << 0),   /* Disable in viewports. */
+  COLLECTION_RESTRICT_SELECT = (1 << 1),     /* Not selectable in viewport. */
+  COLLECTION_DISABLED_DEPRECATED = (1 << 2), /* Not used anymore */
+  COLLECTION_RESTRICT_RENDER = (1 << 3),     /* Disable in renders. */
+  COLLECTION_HAS_OBJECT_CACHE = (1 << 4),    /* Runtime: object_cache is populated. */
+  COLLECTION_IS_MASTER = (1 << 5),           /* Is master collection embedded in the scene. */
+  COLLECTION_CONFIGURED_FOR_LRT = (1 << 6),  /* Configurations saved to collection->lineart. */
 };
 
 /* Collection->tag */

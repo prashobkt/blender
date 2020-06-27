@@ -2594,7 +2594,7 @@ void rna_lineart_active_line_layer_index_range(
 int rna_lineart_active_line_layer_index_get(PointerRNA *ptr)
 {
   SceneLineart *lineart = (SceneLineart *)ptr->data;
-  LANPR_LineLayer *ls;
+  LineartLineLayer *ls;
   int i = 0;
   for (ls = lineart->line_layers.first; ls; ls = ls->next) {
     if (ls == lineart->active_layer)
@@ -2607,7 +2607,7 @@ int rna_lineart_active_line_layer_index_get(PointerRNA *ptr)
 void rna_lineart_active_line_layer_index_set(PointerRNA *ptr, int value)
 {
   SceneLineart *lineart = (SceneLineart *)ptr->data;
-  LANPR_LineLayer *ls;
+  LineartLineLayer *ls;
   int i = 0;
   for (ls = lineart->line_layers.first; ls; ls = ls->next) {
     if (i == value) {
@@ -2622,8 +2622,8 @@ void rna_lineart_active_line_layer_index_set(PointerRNA *ptr, int value)
 PointerRNA rna_lineart_active_line_layer_get(PointerRNA *ptr)
 {
   SceneLineart *lineart = (SceneLineart *)ptr->data;
-  LANPR_LineLayer *ls = lineart->active_layer;
-  return rna_pointer_inherit_refine(ptr, &RNA_LANPR_LineLayer, ls);
+  LineartLineLayer *ls = lineart->active_layer;
+  return rna_pointer_inherit_refine(ptr, &RNA_LineartLineLayer, ls);
 }
 
 void rna_lineart_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
@@ -2637,11 +2637,11 @@ static void rna_lineart_enable_set(PointerRNA *ptr, bool value)
   SceneLineart *lineart = (SceneLineart *)ptr->data;
 
   if (value) {
-    lineart->flags |= LANPR_ENABLED;
+    lineart->flags |= LRT_ENABLED;
     ED_lineart_init_locks();
   }
   else {
-    lineart->flags &= ~LANPR_ENABLED;
+    lineart->flags &= ~LRT_ENABLED;
   }
 }
 
@@ -7335,33 +7335,33 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem rna_enum_lineart_gpu_cache_size[] = {
-      {LANPR_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
-      {LANPR_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
-      {LANPR_GPU_CACHE_SIZE_2K, "S2K", 0, "2K", "2K px texture as cache"},
-      {LANPR_GPU_CACHE_SIZE_4K, "S4K", 0, "4K", "4K px texture as cache"},
-      {LANPR_GPU_CACHE_SIZE_8K, "S8K", 0, "8K", "8K px texture as cache"},
-      {LANPR_GPU_CACHE_SIZE_16K, "S16K", 0, "16K", "16K px texture as cache"},
+      {LRT_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
+      {LRT_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
+      {LRT_GPU_CACHE_SIZE_2K, "S2K", 0, "2K", "2K px texture as cache"},
+      {LRT_GPU_CACHE_SIZE_4K, "S4K", 0, "4K", "4K px texture as cache"},
+      {LRT_GPU_CACHE_SIZE_8K, "S8K", 0, "8K", "8K px texture as cache"},
+      {LRT_GPU_CACHE_SIZE_16K, "S16K", 0, "16K", "16K px texture as cache"},
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "SceneLineart", NULL);
   RNA_def_struct_sdna(srna, "SceneLineart");
-  RNA_def_struct_ui_text(srna, "Scene LANPR Config", "LANPR global config");
+  RNA_def_struct_ui_text(srna, "Scene Line Art Config", "Line Art global config");
 
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_ENABLED);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_ENABLED);
   RNA_def_property_boolean_funcs(prop, NULL, "rna_lineart_enable_set");
-  RNA_def_property_ui_text(prop, "Enabled", "Is LANPR enabled");
+  RNA_def_property_ui_text(prop, "Enabled", "Is Line Art enabled");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_AUTO_UPDATE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_AUTO_UPDATE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
-      prop, "Auto Update", "Automatically update LANPR cache when frame changes");
+      prop, "Auto Update", "Automatically update Line Art cache when frame changes");
 
   prop = RNA_def_property(srna, "gpencil_overwrite", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_GPENCIL_OVERWRITE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_GPENCIL_OVERWRITE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(prop,
                            "GPencil Overwrite",
@@ -7418,7 +7418,7 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "use_intersections", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_USE_INTERSECTIONS);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_USE_INTERSECTIONS);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
   RNA_def_property_update(prop, NC_SCENE, NULL);
@@ -7447,19 +7447,19 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "line_layers", NULL);
-  RNA_def_property_struct_type(prop, "LANPR_LineLayer");
-  RNA_def_property_ui_text(prop, "Line Layers", "LANPR Line Layers");
+  RNA_def_property_struct_type(prop, "LineartLineLayer");
+  RNA_def_property_ui_text(prop, "Line Layers", "Line Art Line Layers");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   /* this part I refered to gpencil's and freestyle's and it seems that there's no difference */
   RNA_def_property_srna(prop, "LineLayers");
   srna = RNA_def_struct(brna, "LineLayers", NULL);
   RNA_def_struct_sdna(srna, "SceneLineart");
-  RNA_def_struct_ui_text(srna, "LANPR Line Layers", "");
+  RNA_def_struct_ui_text(srna, "Line Art Line Layers", "");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "active_layer", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "LANPR_LineLayer");
+  RNA_def_property_struct_type(prop, "LineartLineLayer");
   RNA_def_property_pointer_funcs(
       prop, "rna_lineart_active_line_layer_get", "rna_lineart_active_line_layer_set", NULL, NULL);
   RNA_def_property_ui_text(prop, "Active Line Layer", "Active line layer being displayed");
@@ -7947,10 +7947,10 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "SceneEEVEE");
   RNA_def_property_ui_text(prop, "EEVEE", "EEVEE settings for the scene");
 
-  /* LANPR */
+  /* Line Art */
   prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "SceneLineart");
-  RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the scene");
+  RNA_def_property_ui_text(prop, "Line Art", "Line Art settings for the scene");
 
   /* Grease Pencil */
   prop = RNA_def_property(srna, "grease_pencil_settings", PROP_POINTER, PROP_NONE);

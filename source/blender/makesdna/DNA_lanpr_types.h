@@ -25,8 +25,8 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-#ifndef __DNA_LANPR_TYPES_H__
-#define __DNA_LANPR_TYPES_H__
+#ifndef __DNA_LRT_TYPES_H__
+#define __DNA_LRT_TYPES_H__
 
 /** \file DNA_lanpr_types.h
  *  \ingroup DNA
@@ -40,54 +40,54 @@ struct Object;
 struct Material;
 struct Collection;
 
-typedef enum LANPR_TaperSettings {
-  LANPR_USE_DIFFERENT_TAPER = 0,
-  LANPR_USE_SAME_TAPER = 1,
-} LANPR_TaperSettings;
+typedef enum eLineartTaperSettings {
+  LRT_USE_DIFFERENT_TAPER = 0,
+  LRT_USE_SAME_TAPER = 1,
+} eLineartTaperSettings;
 
-typedef enum LANPR_NomalEffect {
+typedef enum eLineartNomalEffect {
   /* Shouldn't have access to zero value. */
   /* Enable/disable is another flag. */
-  LANPR_NORMAL_DIRECTIONAL = 1,
-  LANPR_NORMAL_POINT = 2,
-} LANPR_NomalEffect;
+  LRT_NORMAL_DIRECTIONAL = 1,
+  LRT_NORMAL_POINT = 2,
+} eLineartNomalEffect;
 
-typedef enum LANPR_ComponentMode {
-  LANPR_COMPONENT_MODE_ALL = 0,
-  LANPR_COMPONENT_MODE_OBJECT = 1,
-  LANPR_COMPONENT_MODE_MATERIAL = 2,
-  LANPR_COMPONENT_MODE_COLLECTION = 3,
-} LANPR_ComponentMode;
+typedef enum eLineartComponentMode {
+  LRT_COMPONENT_MODE_ALL = 0,
+  LRT_COMPONENT_MODE_OBJECT = 1,
+  LRT_COMPONENT_MODE_MATERIAL = 2,
+  LRT_COMPONENT_MODE_COLLECTION = 3,
+} eLineartComponentMode;
 
-typedef enum LANPR_ComponentUsage {
-  LANPR_COMPONENT_INCLUSIVE = 0,
-  LANPR_COMPONENT_EXCLUSIVE = 1,
-} LANPR_ComponentUsage;
+typedef enum eLineartComponentUsage {
+  LRT_COMPONENT_INCLUSIVE = 0,
+  LRT_COMPONENT_EXCLUSIVE = 1,
+} eLineartComponentUsage;
 
-typedef enum LANPR_ComponentLogic {
-  LANPR_COMPONENT_LOGIG_OR = 0,
-  LANPR_COMPONENT_LOGIC_AND = 1,
-} LANPR_ComponentLogic;
+typedef enum eLineartComponentLogic {
+  LRT_COMPONENT_LOGIG_OR = 0,
+  LRT_COMPONENT_LOGIC_AND = 1,
+} eLineartComponentLogic;
 
 struct DRWShadingGroup;
 
-typedef struct LANPR_LineType {
+typedef struct LineartLineType {
   int use;
   float thickness;
   float color[4];
-} LANPR_LineType;
+} LineartLineType;
 
-typedef enum LANPR_LineLayerFlags {
-  LANPR_LINE_LAYER_USE_SAME_STYLE = (1 << 0),      /* Share with object lineart flags */
-  LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS = (1 << 1), /* Share with object lineart flags */
-  LANPR_LINE_LAYER_NORMAL_ENABLED = (1 << 2),
-  LANPR_LINE_LAYER_NORMAL_INVERSE = (1 << 3),
-  LANPR_LINE_LAYER_REPLACE_STROKES = (1 << 4),
-  LANPR_LINE_LAYER_COLLECTION_FORCE = (1 << 5),
-} LANPR_LineLayerFlags;
+typedef enum eLineartLineLayerFlags {
+  LRT_LINE_LAYER_USE_SAME_STYLE = (1 << 0),      /* Share with object lineart flags */
+  LRT_LINE_LAYER_USE_MULTIPLE_LEVELS = (1 << 1), /* Share with object lineart flags */
+  LRT_LINE_LAYER_NORMAL_ENABLED = (1 << 2),
+  LRT_LINE_LAYER_NORMAL_INVERSE = (1 << 3),
+  LRT_LINE_LAYER_REPLACE_STROKES = (1 << 4),
+  LRT_LINE_LAYER_COLLECTION_FORCE = (1 << 5),
+} eLineartLineLayerFlags;
 
-typedef struct LANPR_LineLayer {
-  struct LANPR_LineLayer *next, *prev;
+typedef struct LineartLineLayer {
+  struct LineartLineLayer *next, *prev;
 
   int flags;
   int _pad1;
@@ -97,11 +97,11 @@ typedef struct LANPR_LineLayer {
   /** To be displayed on the list */
   char name[64];
 
-  LANPR_LineType contour;
-  LANPR_LineType crease;
-  LANPR_LineType edge_mark;
-  LANPR_LineType material_separate;
-  LANPR_LineType intersection;
+  LineartLineType contour;
+  LineartLineType crease;
+  LineartLineType edge_mark;
+  LineartLineType material_separate;
+  LineartLineType intersection;
 
   float thickness;
 
@@ -121,6 +121,6 @@ typedef struct LANPR_LineLayer {
   struct DRWShadingGroup *shgrp;
   struct GPUBatch *batch;
 
-} LANPR_LineLayer;
+} LineartLineLayer;
 
 #endif

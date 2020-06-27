@@ -100,7 +100,7 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, int update
   }
 
 #ifdef WITH_LINEART
-  /* Temporary solution for updating LANPR GPencil targets. */
+  /* Temporary solution for updating Line Art GPencil targets. */
   if (updated) {
     ED_lineart_post_frame_update_external(scene, update_ctx->depsgraph);
   }

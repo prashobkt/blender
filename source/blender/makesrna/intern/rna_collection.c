@@ -330,12 +330,12 @@ static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *pt
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
 }
 
-/* LANPR */
+/* Line Art */
 
 static bool rna_Collection_lineart_configure_get(PointerRNA *ptr)
 {
   Collection *c = (Collection *)ptr->owner_id;
-  return (c->flag & COLLECTION_CONFIGURED_FOR_LANPR);
+  return (c->flag & COLLECTION_CONFIGURED_FOR_LRT);
 }
 static void rna_Collection_lineart_configure_set(PointerRNA *ptr, const bool value)
 {
@@ -343,14 +343,14 @@ static void rna_Collection_lineart_configure_set(PointerRNA *ptr, const bool val
   CollectionLineart *lineart = c->lineart;
 
   if (value) {
-    c->flag |= COLLECTION_CONFIGURED_FOR_LANPR;
+    c->flag |= COLLECTION_CONFIGURED_FOR_LRT;
     if (!lineart) {
       lineart = MEM_callocN(sizeof(CollectionLineart), "CollectionLineart");
       c->lineart = lineart;
     }
   }
   else { /* !value */
-    c->flag &= ~COLLECTION_CONFIGURED_FOR_LANPR;
+    c->flag &= ~COLLECTION_CONFIGURED_FOR_LRT;
     /* CollectionLineart will be deleted when collection is deleted. */
   }
 }
@@ -417,7 +417,7 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
   StructRNA *srna;
 
   srna = RNA_def_struct(brna, "CollectionLineartLineType", NULL);
-  RNA_def_struct_ui_text(srna, "Collection LANPR Line Type", "Collection lineart line type");
+  RNA_def_struct_ui_text(srna, "Collection LRT Line Type", "Collection lineart line type");
   RNA_def_struct_sdna(srna, "CollectionLineartLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
@@ -449,23 +449,23 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
        "EXCLUDE",
        0,
        "Exclude",
-       "Don't use this collection in LANPR"},
+       "Don't use this collection in LRT"},
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "CollectionLineart", NULL);
   RNA_def_struct_sdna(srna, "CollectionLineart");
-  RNA_def_struct_ui_text(srna, "Collection LANPR Usage", "LANPR usage for this collection");
+  RNA_def_struct_ui_text(srna, "Collection LRT Usage", "LRT usage for this collection");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_collection_lineart_usage);
-  RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LANPR");
+  RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LRT");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "force", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_COLLECTION_FORCE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_COLLECTION_FORCE);
   RNA_def_property_ui_text(
-      prop, "Force", "Force object that has LANPR modifiers to follow collection usage flag");
+      prop, "Force", "Force object that has LRT modifiers to follow collection usage flag");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
@@ -476,7 +476,7 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_REPLACE_STROKES);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_REPLACE_STROKES);
   RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -489,7 +489,7 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
       prop, "Material", "Grease Pencil material to use to generate the results");
 
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_SAME_STYLE);
   RNA_def_property_ui_text(prop, "Same Style", "Use same style for different types");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -519,7 +519,7 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_MULTIPLE_LEVELS);
   RNA_def_property_ui_text(prop, "Multiple Levels", "Use multiple occlusion levels");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -631,14 +631,14 @@ void RNA_def_collections(BlenderRNA *brna)
   prop = RNA_def_property(srna, "configure_lineart", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
       prop, "rna_Collection_lineart_configure_get", "rna_Collection_lineart_configure_set");
-  RNA_def_property_ui_text(prop, "Configure", "Configure this collection for LANPR");
+  RNA_def_property_ui_text(prop, "Configure", "Configure this collection for LRT");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   rna_def_collection_lineart(brna);
 
   prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CollectionLineart");
-  RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the collection");
+  RNA_def_property_ui_text(prop, "LRT", "LRT settings for the collection");
 
   RNA_define_lib_overridable(false);
 }

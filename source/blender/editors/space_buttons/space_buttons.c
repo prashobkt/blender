@@ -171,7 +171,7 @@ static void buttons_main_region_layout_properties(const bContext *C,
       BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
 #endif
       break;
-    case BCONTEXT_LANPR:
+    case BCONTEXT_LRT:
 #ifdef WITH_LINEART
       contexts[0] = "lineart";
 #else

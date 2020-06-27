@@ -2555,7 +2555,7 @@ static void rna_def_object_lineart(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "ObjectLineartLineType", NULL);
-  RNA_def_struct_ui_text(srna, "Object LANPR Line Type", "Object lineart line type");
+  RNA_def_struct_ui_text(srna, "Object LRT Line Type", "Object lineart line type");
   RNA_def_struct_sdna(srna, "ObjectLineartLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
@@ -2580,7 +2580,7 @@ static void rna_def_object_lineart(BlenderRNA *brna)
        "INCLUDE",
        0,
        "Include",
-       "Include this object into LANPR calculation"},
+       "Include this object into LRT calculation"},
       {OBJECT_FEATURE_LINE_OCCLUSION_ONLY,
        "OCCLUSION_ONLY",
        0,
@@ -2590,12 +2590,12 @@ static void rna_def_object_lineart(BlenderRNA *brna)
        "EXCLUDE",
        0,
        "Exclude",
-       "Don't use this object for LANPR rendering"},
+       "Don't use this object for LRT rendering"},
       {0, NULL, 0, NULL, NULL},
   };
 
   srna = RNA_def_struct(brna, "ObjectLineart", NULL);
-  RNA_def_struct_ui_text(srna, "Object LANPR", "Object lineart settings");
+  RNA_def_struct_ui_text(srna, "Object LRT", "Object lineart settings");
   RNA_def_struct_sdna(srna, "ObjectLineart");
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
@@ -2609,7 +2609,7 @@ static void rna_def_object_lineart(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
 
   prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_REPLACE_STROKES);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_REPLACE_STROKES);
   RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
 
   prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
@@ -2620,7 +2620,7 @@ static void rna_def_object_lineart(BlenderRNA *brna)
       prop, "Material", "Grease Pencil material to use to generate the results");
 
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_SAME_STYLE);
   RNA_def_property_ui_text(prop, "Same Style", "Use same style for different line types");
 
   prop = RNA_def_property(srna, "contour", PROP_POINTER, PROP_NONE);
@@ -2640,7 +2640,7 @@ static void rna_def_object_lineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Material", "Material separate line type");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_MULTIPLE_LEVELS);
   RNA_def_property_ui_text(prop, "Multiple Levels", "Use multiple occlusion levels");
 
   prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
@@ -3412,10 +3412,10 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop, "rna_Object_display_get", NULL, NULL, NULL);
   RNA_def_property_ui_text(prop, "Object Display", "Object display settings for 3d viewport");
 
-  /* LANPR */
+  /* Line Art */
   prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ObjectLineart");
-  RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the object");
+  RNA_def_property_ui_text(prop, "LRT", "LRT settings for the object");
 
   RNA_api_object(srna);
 }

@@ -616,23 +616,23 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
     case BCONTEXT_WORLD:
       found = buttons_context_path_world(path);
       break;
-    case BCONTEXT_COLLECTION: /* This is for LANPR collection flags */
+    case BCONTEXT_COLLECTION: /* This is for Line Art collection flags */
 #ifdef WITH_LINEART
       found = buttons_context_path_collection(path, window);
 #else
       BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
 #endif
       break;
-    case BCONTEXT_LANPR: /* This is for LANPR object flags */
+    case BCONTEXT_LRT: /* This is for Line Art object flags */
 #ifdef WITH_LINEART
-      if (scene && ((scene->lineart.flags & LANPR_ENABLED))) {
+      if (scene && ((scene->lineart.flags & LRT_ENABLED))) {
         found = buttons_context_path_object(path);
       }
       else {
         found = 0;
       }
 #else
-      BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_LANPR'");
+      BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_LRT'");
 #endif
       break;
     case BCONTEXT_TOOL:

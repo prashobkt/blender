@@ -145,7 +145,7 @@ static void collection_free_data(ID *id)
 
   BKE_collection_object_cache_free(collection);
 
-  /* Remove LANPR configurations */
+  /* Remove Line Art configurations */
   MEM_SAFE_FREE(collection->lineart);
 }
 
@@ -277,7 +277,7 @@ void BKE_collection_free(Collection *collection)
 {
   collection_free_data(&collection->id);
 
-  /* Remove LANPR configurations */
+  /* Remove Line Art configurations */
   MEM_SAFE_FREE(collection->lineart);
 }
 

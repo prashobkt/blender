@@ -692,7 +692,7 @@ class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel, GreasePencilSim
     bl_options = {'DEFAULT_CLOSED'}
 
 
-class LANPR_UL_linesets(UIList):
+class LRT_UL_linesets(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         layout.prop(item,"name", text="", emboss=False)
 
@@ -735,7 +735,7 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
 
         layout.operator("scene.lineart_auto_create_line_layer", text = "Default", icon = "ADD")
         row=layout.row()
-        row.template_list("LANPR_UL_linesets", "", lineart, "layers", lineart.layers, "active_layer_index", rows=4)
+        row.template_list("LRT_UL_linesets", "", lineart, "layers", lineart.layers, "active_layer_index", rows=4)
         col=row.column(align=True)
         if active_layer:
             col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
@@ -903,7 +903,7 @@ classes = (
     RENDER_PT_lineart_gpencil,
     RENDER_PT_lineart_line_normal_effects,
     RENDER_PT_lineart_options,
-    LANPR_UL_linesets,
+    LRT_UL_linesets,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -6497,7 +6497,7 @@ static void lib_link_scene(BlendLibReader *reader, Scene *sce)
     }
   }
 
-  for (LANPR_LineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
+  for (LineartLineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
     BLO_read_id_address(reader, sce->id.lib, &ll->normal_control_object);
   }
 
@@ -6942,7 +6942,7 @@ static void direct_link_scene(BlendDataReader *reader, Scene *sce)
 
   BLO_read_data_address(reader, &sce->lineart.active_layer);
   BLO_read_list(reader, &(sce->lineart.line_layers));
-  for (LANPR_LineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
+  for (LineartLineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
     ll->batch = NULL;
     ll->shgrp = NULL;
   }
@@ -11175,7 +11175,7 @@ static void expand_scene(BlendExpander *expander, Scene *sce)
     }
   }
 
-  for (LANPR_LineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
+  for (LineartLineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
     if (ll->normal_control_object) {
       BLO_expand(expander, ll->normal_control_object);
     }

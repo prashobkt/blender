@@ -32,7 +32,7 @@
 
 /* ===================================================================[slt] */
 
-void *list_append_pointer_static(ListBase *h, eLineArtStaticMemPool *smp, void *data)
+void *list_append_pointer_static(ListBase *h, LineartStaticMemPool *smp, void *data)
 {
   LinkData *lip;
   if (h == NULL) {
@@ -44,7 +44,7 @@ void *list_append_pointer_static(ListBase *h, eLineArtStaticMemPool *smp, void *
   return lip;
 }
 void *list_append_pointer_static_sized(ListBase *h,
-                                       eLineArtStaticMemPool *smp,
+                                       LineartStaticMemPool *smp,
                                        void *data,
                                        int size)
 {
@@ -58,7 +58,7 @@ void *list_append_pointer_static_sized(ListBase *h,
   return lip;
 }
 
-void *list_append_pointer_static_pool(eLineArtStaticMemPool *mph, ListBase *h, void *data)
+void *list_append_pointer_static_pool(LineartStaticMemPool *mph, ListBase *h, void *data)
 {
   LinkData *lip;
   if (h == NULL) {
@@ -85,16 +85,16 @@ void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
   BLI_remlink(h, (void *)lip);
 }
 
-eLineArtStaticMemPoolNode *mem_new_static_pool(eLineArtStaticMemPool *smp)
+LineartStaticMemPoolNode *mem_new_static_pool(LineartStaticMemPool *smp)
 {
-  eLineArtStaticMemPoolNode *smpn = MEM_callocN(LRT_MEMORY_POOL_128MB, "mempool");
-  smpn->used_byte = sizeof(eLineArtStaticMemPoolNode);
+  LineartStaticMemPoolNode *smpn = MEM_callocN(LRT_MEMORY_POOL_128MB, "mempool");
+  smpn->used_byte = sizeof(LineartStaticMemPoolNode);
   BLI_addhead(&smp->pools, smpn);
   return smpn;
 }
-void *mem_static_aquire(eLineArtStaticMemPool *smp, int size)
+void *mem_static_aquire(LineartStaticMemPool *smp, int size)
 {
-  eLineArtStaticMemPoolNode *smpn = smp->pools.first;
+  LineartStaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
   if (!smpn || (smpn->used_byte + size) > LRT_MEMORY_POOL_128MB) {
@@ -107,9 +107,9 @@ void *mem_static_aquire(eLineArtStaticMemPool *smp, int size)
 
   return ret;
 }
-void *mem_static_aquire_thread(eLineArtStaticMemPool *smp, int size)
+void *mem_static_aquire_thread(LineartStaticMemPool *smp, int size)
 {
-  eLineArtStaticMemPoolNode *smpn = smp->pools.first;
+  LineartStaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
   BLI_spin_lock(&smp->lock_mem);
@@ -126,9 +126,9 @@ void *mem_static_aquire_thread(eLineArtStaticMemPool *smp, int size)
 
   return ret;
 }
-void *mem_static_destroy(eLineArtStaticMemPool *smp)
+void *mem_static_destroy(LineartStaticMemPool *smp)
 {
-  eLineArtStaticMemPoolNode *smpn;
+  LineartStaticMemPoolNode *smpn;
   void *ret = 0;
 
   while ((smpn = BLI_pophead(&smp->pools)) != NULL) {

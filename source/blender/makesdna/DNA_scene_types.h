@@ -997,7 +997,7 @@ typedef struct UvSculpt {
 /* grease pencil drawing brushes */
 typedef struct GpPaint {
   Paint paint;
-  int flag; /* LANPR stuff */
+  int flag; /* Line Art stuff */
   /*struct SceneLineart lineart; XXX: Why this ended up here? */
   /* Mode of paint (Materials or Vertex Color). */
   int mode;
@@ -1691,27 +1691,27 @@ typedef struct SceneEEVEE {
   float light_threshold;
 } SceneEEVEE;
 
-/* LANPR Global Config */
+/* Line Art Global Config */
 
-struct LANPR_LineLayer;
+struct LineartLineLayer;
 
-typedef enum LANPR_PostProcessingStatus {
-  LANPR_POST_PROCESSING_DISABLED = 0,
-  LANPR_POST_PROCESSING_ENABLED = 1,
-} LANPR_PostProcessingStatus;
+typedef enum eLineartPostProcessingStatus {
+  LRT_POST_PROCESSING_DISABLED = 0,
+  LRT_POST_PROCESSING_ENABLED = 1,
+} eLineartPostProcessingStatus;
 
-typedef enum LANPR_MainFlags {
-  LANPR_ENABLED = (1 << 0),
-  /* For LANPR->GP and viewport to update automatically. */
-  LANPR_AUTO_UPDATE = (1 << 1),
-  LANPR_SAME_TAPER = (1 << 2),
-  /* Edge split modifier will cause problems in LANPR. */
-  LANPR_DISABLE_EDGE_SPLITS = (1 << 3),
-  LANPR_USE_CHAINING = (1 << 4), /* Deprecated */
-  LANPR_USE_INTERSECTIONS = (1 << 5),
+typedef enum eLineartMainFlags {
+  LRT_ENABLED = (1 << 0),
+  /* For Line Art->GP and viewport to update automatically. */
+  LRT_AUTO_UPDATE = (1 << 1),
+  LRT_SAME_TAPER = (1 << 2),
+  /* Edge split modifier will cause problems in Line Art. */
+  LRT_DISABLE_EDGE_SPLITS = (1 << 3),
+  LRT_USE_CHAINING = (1 << 4), /* Deprecated */
+  LRT_USE_INTERSECTIONS = (1 << 5),
   /* Overwrite existing strokes in this frame. */
-  LANPR_GPENCIL_OVERWRITE = (1 << 6),
-} LANPR_MainFlags;
+  LRT_GPENCIL_OVERWRITE = (1 << 6),
+} eLineartMainFlags;
 
 typedef struct SceneLineart {
 
@@ -1732,18 +1732,18 @@ typedef struct SceneLineart {
 
   /* CPU mode */
   ListBase line_layers;
-  struct LANPR_LineLayer *active_layer;
+  struct LineartLineLayer *active_layer;
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 } SceneLineart;
 
 enum {
-  LANPR_GPU_CACHE_SIZE_512 = 0,
-  LANPR_GPU_CACHE_SIZE_1K = 1, /* default */
-  LANPR_GPU_CACHE_SIZE_2K = 2,
-  LANPR_GPU_CACHE_SIZE_4K = 3,
-  LANPR_GPU_CACHE_SIZE_8K = 4,
-  LANPR_GPU_CACHE_SIZE_16K = 5,
+  LRT_GPU_CACHE_SIZE_512 = 0,
+  LRT_GPU_CACHE_SIZE_1K = 1, /* default */
+  LRT_GPU_CACHE_SIZE_2K = 2,
+  LRT_GPU_CACHE_SIZE_4K = 3,
+  LRT_GPU_CACHE_SIZE_8K = 4,
+  LRT_GPU_CACHE_SIZE_16K = 5,
 };
 
 typedef struct SceneGpencil {
@@ -1885,7 +1885,7 @@ typedef struct Scene {
 
   struct SceneGpencil grease_pencil_settings;
 
-  /* LANPR stuff */
+  /* Line Art stuff */
   struct SceneLineart lineart;
 } Scene;
 

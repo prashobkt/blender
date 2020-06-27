@@ -335,8 +335,8 @@ typedef enum eGPDframe_Flag {
   GP_FRAME_PAINT = (1 << 0),
   /* for editing in Action Editor */
   GP_FRAME_SELECT = (1 << 1),
-  /* LANPR generation */
-  GP_FRAME_LANPR_CLEARED = (1 << 2),
+  /* Line Art generation */
+  GP_FRAME_LRT_CLEARED = (1 << 2),
 } eGPDframe_Flag;
 
 /* ***************************************** */
