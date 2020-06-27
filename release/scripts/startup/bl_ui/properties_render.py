@@ -698,7 +698,7 @@ class LANPR_UL_linesets(UIList):
 
 class RENDER_PT_lineart(RenderButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-    bl_label = "LANPR"
+    bl_label = "Line Art"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, context):
@@ -867,38 +867,6 @@ class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
 
         layout.prop(lineart,"use_intersections")
 
-
-class RENDER_PT_lineart_software_chain_styles(RenderButtonsPanel, Panel):
-    bl_label = "Chaining"
-    bl_parent_id = "RENDER_PT_lineart"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    def draw(self, context):
-        scene = context.scene
-        lineart = scene.lineart
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        if scene.render.engine=="BLENDER_LANPR":
-            layout.prop(lineart, "use_same_taper", text="Taper Tips")
-            if lineart.use_same_taper == "DISABLED":
-                col = layout.column(align = True)
-                col.prop(lineart,"taper_left_distance")
-                col.prop(lineart,"taper_left_strength", text="Strength")
-                col = layout.column(align = True)
-                col.prop(lineart,"taper_right_distance")
-                col.prop(lineart,"taper_right_strength", text="Strength")
-            else:
-                col = layout.column(align = True)
-                col.prop(lineart,"taper_left_distance", text="Distance")
-                col.prop(lineart,"taper_left_strength", text="Strength")
-        else:
-            layout.prop(lineart, "chaining_geometry_threshold")
-            layout.prop(lineart, "chaining_image_threshold")
-
 classes = (
     RENDER_PT_context,
     RENDER_PT_eevee_sampling,
@@ -935,7 +903,6 @@ classes = (
     RENDER_PT_lineart_gpencil,
     RENDER_PT_lineart_line_normal_effects,
     RENDER_PT_lineart_options,
-    RENDER_PT_lineart_software_chain_styles,
     LANPR_UL_linesets,
 )
 

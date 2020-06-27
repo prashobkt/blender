@@ -998,7 +998,7 @@ typedef struct UvSculpt {
 typedef struct GpPaint {
   Paint paint;
   int flag; /* LANPR stuff */
-  /*struct SceneLANPR lineart; XXX: Why this ended up here? */
+  /*struct SceneLineart lineart; XXX: Why this ended up here? */
   /* Mode of paint (Materials or Vertex Color). */
   int mode;
 } GpPaint;
@@ -1713,7 +1713,7 @@ typedef enum LANPR_MainFlags {
   LANPR_GPENCIL_OVERWRITE = (1 << 6),
 } LANPR_MainFlags;
 
-typedef struct SceneLANPR {
+typedef struct SceneLineart {
 
   int flags;
 
@@ -1735,7 +1735,7 @@ typedef struct SceneLANPR {
   struct LANPR_LineLayer *active_layer;
   float chaining_geometry_threshold;
   float chaining_image_threshold;
-} SceneLANPR;
+} SceneLineart;
 
 enum {
   LANPR_GPU_CACHE_SIZE_512 = 0,
@@ -1886,7 +1886,7 @@ typedef struct Scene {
   struct SceneGpencil grease_pencil_settings;
 
   /* LANPR stuff */
-  struct SceneLANPR lineart;
+  struct SceneLineart lineart;
 } Scene;
 
 /* **************** RENDERDATA ********************* */

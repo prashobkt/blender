@@ -2394,7 +2394,7 @@ static void write_collection_nolib(BlendWriter *writer, Collection *collection)
   }
 
   if (collection->lineart != NULL) {
-    writestruct(writer->wd, DATA, CollectionLANPR, 1, collection->lineart);
+    writestruct(writer->wd, DATA, CollectionLineart, 1, collection->lineart);
   }
 }
 

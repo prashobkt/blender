@@ -23,7 +23,7 @@ class CollectionButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "collection"
-    COMPAT_ENGINES = { 'BLENDER_LANPR' }
+    COMPAT_ENGINES = { 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES' }
 
     @classmethod
     def poll(cls, context):
@@ -38,7 +38,7 @@ def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from)
 
 class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
     bl_label = "Collection Flags"
-    COMPAT_ENGINES = { 'BLENDER_LANPR', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES' }
+    COMPAT_ENGINES = { 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES' }
 
     def draw(self, context):
         layout=self.layout
@@ -63,11 +63,11 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
 
 class COLLECTION_PT_lineart_collection(CollectionButtonsPanel, Panel):
     bl_label = "Collection LANPR"
-    COMPAT_ENGINES = { 'BLENDER_LANPR' }
+    COMPAT_ENGINES =  { 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES' }
 
     @classmethod
     def poll(cls, context):
-        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lineart.enabled
+        return context.scene.lineart.enabled
 
     def draw_header(self, context):
         layout = self.layout

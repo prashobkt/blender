@@ -2586,14 +2586,14 @@ static char *rna_UnitSettings_path(PointerRNA *UNUSED(ptr))
 void rna_lineart_active_line_layer_index_range(
     PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
 {
-  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  SceneLineart *lineart = (SceneLineart *)ptr->data;
   *min = 0;
   *max = max_ii(0, BLI_listbase_count(&lineart->line_layers) - 1);
 }
 
 int rna_lineart_active_line_layer_index_get(PointerRNA *ptr)
 {
-  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  SceneLineart *lineart = (SceneLineart *)ptr->data;
   LANPR_LineLayer *ls;
   int i = 0;
   for (ls = lineart->line_layers.first; ls; ls = ls->next) {
@@ -2606,7 +2606,7 @@ int rna_lineart_active_line_layer_index_get(PointerRNA *ptr)
 
 void rna_lineart_active_line_layer_index_set(PointerRNA *ptr, int value)
 {
-  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  SceneLineart *lineart = (SceneLineart *)ptr->data;
   LANPR_LineLayer *ls;
   int i = 0;
   for (ls = lineart->line_layers.first; ls; ls = ls->next) {
@@ -2621,20 +2621,20 @@ void rna_lineart_active_line_layer_index_set(PointerRNA *ptr, int value)
 
 PointerRNA rna_lineart_active_line_layer_get(PointerRNA *ptr)
 {
-  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  SceneLineart *lineart = (SceneLineart *)ptr->data;
   LANPR_LineLayer *ls = lineart->active_layer;
   return rna_pointer_inherit_refine(ptr, &RNA_LANPR_LineLayer, ls);
 }
 
 void rna_lineart_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
 {
-  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  SceneLineart *lineart = (SceneLineart *)ptr->data;
   lineart->active_layer = value.data;
 }
 
 static void rna_lineart_enable_set(PointerRNA *ptr, bool value)
 {
-  SceneLANPR *lineart = (SceneLANPR *)ptr->data;
+  SceneLineart *lineart = (SceneLineart *)ptr->data;
 
   if (value) {
     lineart->flags |= LANPR_ENABLED;
@@ -7343,8 +7343,8 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
       {LANPR_GPU_CACHE_SIZE_16K, "S16K", 0, "16K", "16K px texture as cache"},
       {0, NULL, 0, NULL, NULL}};
 
-  srna = RNA_def_struct(brna, "SceneLANPR", NULL);
-  RNA_def_struct_sdna(srna, "SceneLANPR");
+  srna = RNA_def_struct(brna, "SceneLineart", NULL);
+  RNA_def_struct_sdna(srna, "SceneLineart");
   RNA_def_struct_ui_text(srna, "Scene LANPR Config", "LANPR global config");
 
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
@@ -7454,7 +7454,7 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   /* this part I refered to gpencil's and freestyle's and it seems that there's no difference */
   RNA_def_property_srna(prop, "LineLayers");
   srna = RNA_def_struct(brna, "LineLayers", NULL);
-  RNA_def_struct_sdna(srna, "SceneLANPR");
+  RNA_def_struct_sdna(srna, "SceneLineart");
   RNA_def_struct_ui_text(srna, "LANPR Line Layers", "");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -7949,7 +7949,7 @@ void RNA_def_scene(BlenderRNA *brna)
 
   /* LANPR */
   prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "SceneLANPR");
+  RNA_def_property_struct_type(prop, "SceneLineart");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the scene");
 
   /* Grease Pencil */

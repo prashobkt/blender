@@ -340,18 +340,18 @@ static bool rna_Collection_lineart_configure_get(PointerRNA *ptr)
 static void rna_Collection_lineart_configure_set(PointerRNA *ptr, const bool value)
 {
   Collection *c = (Collection *)ptr->owner_id;
-  CollectionLANPR *lineart = c->lineart;
+  CollectionLineart *lineart = c->lineart;
 
   if (value) {
     c->flag |= COLLECTION_CONFIGURED_FOR_LANPR;
     if (!lineart) {
-      lineart = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
+      lineart = MEM_callocN(sizeof(CollectionLineart), "CollectionLineart");
       c->lineart = lineart;
     }
   }
   else { /* !value */
     c->flag &= ~COLLECTION_CONFIGURED_FOR_LANPR;
-    /* CollectionLANPR will be deleted when collection is deleted. */
+    /* CollectionLineart will be deleted when collection is deleted. */
   }
 }
 
@@ -416,9 +416,9 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
   PropertyRNA *prop;
   StructRNA *srna;
 
-  srna = RNA_def_struct(brna, "CollectionLANPRLineType", NULL);
+  srna = RNA_def_struct(brna, "CollectionLineartLineType", NULL);
   RNA_def_struct_ui_text(srna, "Collection LANPR Line Type", "Collection lineart line type");
-  RNA_def_struct_sdna(srna, "CollectionLANPRLineType");
+  RNA_def_struct_sdna(srna, "CollectionLineartLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Use", "Use this line type");
@@ -452,8 +452,8 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
        "Don't use this collection in LANPR"},
       {0, NULL, 0, NULL, NULL}};
 
-  srna = RNA_def_struct(brna, "CollectionLANPR", NULL);
-  RNA_def_struct_sdna(srna, "CollectionLANPR");
+  srna = RNA_def_struct(brna, "CollectionLineart", NULL);
+  RNA_def_struct_sdna(srna, "CollectionLineart");
   RNA_def_struct_ui_text(srna, "Collection LANPR Usage", "LANPR usage for this collection");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -494,27 +494,27 @@ static void rna_def_collection_lineart(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "contour", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
   RNA_def_property_ui_text(prop, "Contour", "Contour line type");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "crease", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
   RNA_def_property_ui_text(prop, "Crease", "Creaseline type");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "edge_mark", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
   RNA_def_property_ui_text(prop, "Edge Mark", "Edge mark line type");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
   RNA_def_property_ui_text(prop, "Material", "Material separate line type");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "intersection", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLANPRLineType");
+  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
   RNA_def_property_ui_text(prop, "Intersection", "Intersection line type");
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -637,7 +637,7 @@ void RNA_def_collections(BlenderRNA *brna)
   rna_def_collection_lineart(brna);
 
   prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLANPR");
+  RNA_def_property_struct_type(prop, "CollectionLineart");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the collection");
 
   RNA_define_lib_overridable(false);

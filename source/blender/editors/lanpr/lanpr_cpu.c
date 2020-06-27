@@ -115,7 +115,7 @@ static void lineart_line_layer_unique_name(ListBase *list,
   BLI_uniquename(list, ll, defname, '.', offsetof(LANPR_LineLayer, name), sizeof(ll->name));
 }
 
-int ED_lineart_max_occlusion_in_line_layers(SceneLANPR *lineart)
+int ED_lineart_max_occlusion_in_line_layers(SceneLineart *lineart)
 {
   LANPR_LineLayer *lli;
   int max_occ = -1, max;
@@ -130,7 +130,7 @@ int ED_lineart_max_occlusion_in_line_layers(SceneLANPR *lineart)
   }
   return max_occ;
 }
-LANPR_LineLayer *ED_lineart_new_line_layer(SceneLANPR *lineart)
+LANPR_LineLayer *ED_lineart_new_line_layer(SceneLineart *lineart)
 {
   LANPR_LineLayer *ll = MEM_callocN(sizeof(LANPR_LineLayer), "Line Layer");
 
@@ -164,7 +164,7 @@ LANPR_LineLayer *ED_lineart_new_line_layer(SceneLANPR *lineart)
 static int lineart_add_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lineart = &scene->lineart;
+  SceneLineart *lineart = &scene->lineart;
 
   ED_lineart_new_line_layer(lineart);
 
@@ -177,7 +177,7 @@ static int lineart_add_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
 static int lineart_delete_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lineart = &scene->lineart;
+  SceneLineart *lineart = &scene->lineart;
 
   LANPR_LineLayer *ll = lineart->active_layer;
 
@@ -208,7 +208,7 @@ static int lineart_delete_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
 static int lineart_move_line_layer_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lineart = &scene->lineart;
+  SceneLineart *lineart = &scene->lineart;
 
   LANPR_LineLayer *ll = lineart->active_layer;
 
@@ -235,7 +235,7 @@ static int lineart_move_line_layer_exec(bContext *C, wmOperator *op)
 static int lineart_enable_all_line_types_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lineart = &scene->lineart;
+  SceneLineart *lineart = &scene->lineart;
   LANPR_LineLayer *ll;
 
   if (!(ll = lineart->active_layer)) {
@@ -265,7 +265,7 @@ static int lineart_enable_all_line_types_exec(bContext *C, wmOperator *UNUSED(op
 static int lineart_auto_create_line_layer_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lineart = &scene->lineart;
+  SceneLineart *lineart = &scene->lineart;
 
   LANPR_LineLayer *ll;
 
@@ -2689,7 +2689,7 @@ static int lineart_max_occlusion_in_targets(Depsgraph *depsgraph)
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
 
-    ObjectLANPR *obl = &o->lineart;
+    ObjectLineart *obl = &o->lineart;
     if (obl->target) {
       if (obl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) {
         max = MAX2(obl->level_start, obl->level_end);
@@ -3734,7 +3734,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
 {
   eLineArtRenderBuffer *rb;
   Scene *s = DEG_get_evaluated_scene(depsgraph);
-  SceneLANPR *lineart = &s->lineart;
+  SceneLineart *lineart = &s->lineart;
 
   if ((lineart->flags & LANPR_ENABLED) == 0) {
     /* Release lock when early return. */
@@ -3878,7 +3878,7 @@ static bool lineart_camera_exists(bContext *c)
 static int lineart_compute_feature_lines_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lineart = &scene->lineart;
+  SceneLineart *lineart = &scene->lineart;
   int result;
 
   if ((lineart->flags & LANPR_ENABLED) == 0) {
@@ -3929,7 +3929,7 @@ void SCENE_OT_lineart_calculate_feature_lines(wmOperatorType *ot)
 /* returns flags from eLineArtEdgeFlag */
 static int lineart_object_line_types(Object *ob)
 {
-  ObjectLANPR *obl = &ob->lineart;
+  ObjectLineart *obl = &ob->lineart;
   int result = 0;
   if (obl->contour.use) {
     result |= LRT_EDGE_FLAG_CONTOUR;
@@ -4090,7 +4090,7 @@ static void lineart_update_gp_strokes_recursive(
   for (co = col->gobject.first; co || source_only; co = co->next) {
     ob = source_only ? source_only : co->ob;
 
-    ObjectLANPR *obl = &ob->lineart;
+    ObjectLineart *obl = &ob->lineart;
     if (obl->target && obl->target->type == OB_GPENCIL) {
       gpobj = obl->target;
       gpd = gpobj->data;
@@ -4179,7 +4179,7 @@ static void lineart_update_gp_strokes_recursive(
 }
 static int lineart_collection_types(Collection *c)
 {
-  CollectionLANPR *cl = c->lineart;
+  CollectionLineart *cl = c->lineart;
   int result = 0;
   if (cl->contour.use) {
     result |= LRT_EDGE_FLAG_CONTOUR;
@@ -4220,7 +4220,7 @@ static void lineart_update_gp_strokes_collection(
     if (target_only && target_only != gpobj) {
       return;
     }
-    CollectionLANPR *cl = col->lineart;
+    CollectionLineart *cl = col->lineart;
     int level_start = cl->level_start;
     int level_end = (cl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? cl->level_end :
                                                                          cl->level_start;

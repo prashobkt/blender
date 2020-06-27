@@ -50,14 +50,14 @@ enum CollectionFeatureLine_Usage {
   COLLECTION_FEATURE_LINE_EXCLUDE = (1 << 1),
 };
 
-typedef struct CollectionLANPRLineType {
+typedef struct CollectionLineartLineType {
   int use;
   char _pad[4];
   char target_layer[128];
   char target_material[128];
-} CollectionLANPRLineType;
+} CollectionLineartLineType;
 
-typedef struct CollectionLANPR {
+typedef struct CollectionLineart {
   int usage;
 
   /* Separate flags for LANPR shared flag values. */
@@ -67,15 +67,15 @@ typedef struct CollectionLANPR {
   char target_layer[128];
   char target_material[128];
 
-  struct CollectionLANPRLineType contour;
-  struct CollectionLANPRLineType crease;
-  struct CollectionLANPRLineType material;
-  struct CollectionLANPRLineType edge_mark;
-  struct CollectionLANPRLineType intersection;
+  struct CollectionLineartLineType contour;
+  struct CollectionLineartLineType crease;
+  struct CollectionLineartLineType material;
+  struct CollectionLineartLineType edge_mark;
+  struct CollectionLineartLineType intersection;
 
   int level_start;
   int level_end;
-} CollectionLANPR;
+} CollectionLineart;
 
 typedef struct Collection {
   ID id;
@@ -96,7 +96,7 @@ typedef struct Collection {
   char _pad[4];
 
   /** LANPR engine specific */
-  CollectionLANPR *lineart;
+  CollectionLineart *lineart;
 
   /* Runtime. Cache of objects in this collection and all its
    * children. This is created on demand when e.g. some physics

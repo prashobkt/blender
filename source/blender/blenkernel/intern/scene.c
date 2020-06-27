@@ -223,7 +223,7 @@ static void scene_init_data(ID *id)
 
 static void BKE_lineart_free_everything(Scene *s)
 {
-  SceneLANPR *lineart = &s->lineart;
+  SceneLineart *lineart = &s->lineart;
   LANPR_LineLayer *ll;
 
   while ((ll = BLI_pophead(&lineart->line_layers)) != NULL) {
@@ -233,7 +233,7 @@ static void BKE_lineart_free_everything(Scene *s)
 
 static void BKE_lineart_copy_data(const Scene *from, Scene *to)
 {
-  const SceneLANPR *lineart = &from->lineart;
+  const SceneLineart *lineart = &from->lineart;
   LANPR_LineLayer *ll, *new_ll;
 
   to->lineart.line_layers.first = to->lineart.line_layers.last = NULL;

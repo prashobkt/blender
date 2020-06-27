@@ -472,7 +472,7 @@ BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l)
 int ED_lineart_point_inside_triangled(double v[2], double v0[2], double v1[2], double v2[2]);
 
 struct Depsgraph;
-struct SceneLANPR;
+struct SceneLineart;
 struct Scene;
 struct eLineArtRenderBuffer;
 
@@ -511,8 +511,8 @@ void ED_lineart_compute_feature_lines_background(struct Depsgraph *dg,
 
 struct Scene;
 
-int ED_lineart_max_occlusion_in_line_layers(struct SceneLANPR *lineart);
-LANPR_LineLayer *ED_lineart_new_line_layer(struct SceneLANPR *lineart);
+int ED_lineart_max_occlusion_in_line_layers(struct SceneLineart *lineart);
+LANPR_LineLayer *ED_lineart_new_line_layer(struct SceneLineart *lineart);
 
 eLineArtBoundingArea *ED_lineart_get_point_bounding_area(eLineArtRenderBuffer *rb,
                                                          double x,
@@ -523,7 +523,7 @@ eLineArtBoundingArea *ED_lineart_get_point_bounding_area_deep(eLineArtRenderBuff
 
 void ED_lineart_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
-struct SceneLANPR;
+struct SceneLineart;
 
 void ED_lineart_update_render_progress(const char *text);
 

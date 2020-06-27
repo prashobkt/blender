@@ -1060,7 +1060,7 @@ static void view3d_main_region_message_subscribe(const struct bContext *C,
   WM_msg_subscribe_rna_anon_type(mbus, SceneEEVEE, &msg_sub_value_region_tag_redraw);
 
 #ifdef WITH_LINEART
-  WM_msg_subscribe_rna_anon_type(mbus, SceneLANPR, &msg_sub_value_region_tag_redraw);
+  WM_msg_subscribe_rna_anon_type(mbus, SceneLineart, &msg_sub_value_region_tag_redraw);
 #endif
 
   WM_msg_subscribe_rna_anon_type(mbus, SceneDisplay, &msg_sub_value_region_tag_redraw);

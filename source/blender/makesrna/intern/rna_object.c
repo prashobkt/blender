@@ -2554,9 +2554,9 @@ static void rna_def_object_lineart(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "ObjectLANPRLineType", NULL);
+  srna = RNA_def_struct(brna, "ObjectLineartLineType", NULL);
   RNA_def_struct_ui_text(srna, "Object LANPR Line Type", "Object lineart line type");
-  RNA_def_struct_sdna(srna, "ObjectLANPRLineType");
+  RNA_def_struct_sdna(srna, "ObjectLineartLineType");
 
   prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Use", "Use this line type");
@@ -2594,9 +2594,9 @@ static void rna_def_object_lineart(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  srna = RNA_def_struct(brna, "ObjectLANPR", NULL);
+  srna = RNA_def_struct(brna, "ObjectLineart", NULL);
   RNA_def_struct_ui_text(srna, "Object LANPR", "Object lineart settings");
-  RNA_def_struct_sdna(srna, "ObjectLANPR");
+  RNA_def_struct_sdna(srna, "ObjectLineart");
 
   prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_feature_line_usage_items);
@@ -2624,19 +2624,19 @@ static void rna_def_object_lineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Same Style", "Use same style for different line types");
 
   prop = RNA_def_property(srna, "contour", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
+  RNA_def_property_struct_type(prop, "ObjectLineartLineType");
   RNA_def_property_ui_text(prop, "Contour", "Contour line type");
 
   prop = RNA_def_property(srna, "crease", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
+  RNA_def_property_struct_type(prop, "ObjectLineartLineType");
   RNA_def_property_ui_text(prop, "Crease", "Creaseline type");
 
   prop = RNA_def_property(srna, "edge_mark", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
+  RNA_def_property_struct_type(prop, "ObjectLineartLineType");
   RNA_def_property_ui_text(prop, "Edge Mark", "Edge mark line type");
 
   prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPRLineType");
+  RNA_def_property_struct_type(prop, "ObjectLineartLineType");
   RNA_def_property_ui_text(prop, "Material", "Material separate line type");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
@@ -3414,7 +3414,7 @@ static void rna_def_object(BlenderRNA *brna)
 
   /* LANPR */
   prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPR");
+  RNA_def_property_struct_type(prop, "ObjectLineart");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the object");
 
   RNA_api_object(srna);

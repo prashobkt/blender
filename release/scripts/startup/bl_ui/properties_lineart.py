@@ -23,7 +23,6 @@ class LanprButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "lineart"
-    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
 def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from):
     col.prop(line_type, "use", text=text_disp)
@@ -33,13 +32,12 @@ def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from)
 
 class OBJECT_PT_lineart_settings(LanprButtonsPanel, Panel):
     bl_label = "LANPR settings"
-    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):
         ob = context.object
         obl = ob.lineart
-        return (context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lineart.enabled) and\
+        return context.scene.lineart.enabled and\
             obl.usage == 'INCLUDE' and obl.target
 
     def draw(self,context):
@@ -74,11 +72,10 @@ class OBJECT_PT_lineart_settings(LanprButtonsPanel, Panel):
 
 class OBJECT_PT_lineart(LanprButtonsPanel, Panel):
     bl_label = "Usage"
-    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):
-        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lineart.enabled
+        return context.scene.lineart.enabled
 
     def draw(self, context):
         layout=self.layout

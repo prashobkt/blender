@@ -5103,7 +5103,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-      if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
+      if (!DNA_struct_find(fd->filesdna, "SceneLineart")) {
         for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 
           scene->lineart.crease_threshold = 0.7;

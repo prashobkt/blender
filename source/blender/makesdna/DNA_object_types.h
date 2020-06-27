@@ -196,14 +196,14 @@ typedef struct Object_Runtime {
   short _pad2[3];
 } Object_Runtime;
 
-typedef struct ObjectLANPRLineType {
+typedef struct ObjectLineartLineType {
   int use;
   char _pad[4];
   char target_layer[128];
   char target_material[128];
-} ObjectLANPRLineType;
+} ObjectLineartLineType;
 
-typedef struct ObjectLANPR {
+typedef struct ObjectLineart {
   int usage;
 
   /* Separate flags for LANPR shared flag values. */
@@ -213,15 +213,15 @@ typedef struct ObjectLANPR {
   char target_layer[128];
   char target_material[128];
 
-  ObjectLANPRLineType crease;
-  ObjectLANPRLineType contour;
-  ObjectLANPRLineType material;
-  ObjectLANPRLineType edge_mark;
+  ObjectLineartLineType crease;
+  ObjectLineartLineType contour;
+  ObjectLineartLineType material;
+  ObjectLineartLineType edge_mark;
   /* Intersection not implemented as per-object */
 
   int level_start;
   int level_end;
-} ObjectLANPR;
+} ObjectLineart;
 
 enum ObjectFeatureLine_Usage {
   OBJECT_FEATURE_LINE_INHERENT = 0,
@@ -439,7 +439,7 @@ typedef struct Object {
 
   struct PreviewImage *preview;
 
-  ObjectLANPR lineart;
+  ObjectLineart lineart;
 
   /** Runtime evaluation data (keep last). */
   Object_Runtime runtime;

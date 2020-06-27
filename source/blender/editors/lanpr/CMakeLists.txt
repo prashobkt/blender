@@ -43,4 +43,4 @@ set(SRC
 set(LIB
 )
 
-blender_add_lib(bf_editor_lanpr "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+blender_add_lib(bf_editor_lineart "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

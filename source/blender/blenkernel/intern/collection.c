@@ -84,9 +84,9 @@ static bool collection_find_child_recursive(Collection *parent, Collection *coll
 static void collection_lineart_copy(const Collection *src, Collection *dst)
 {
   if (src->lineart) {
-    CollectionLANPR *lineart = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
+    CollectionLineart *lineart = MEM_callocN(sizeof(CollectionLineart), "CollectionLineart");
     dst->lineart = lineart;
-    memcpy(dst->lineart, src->lineart, sizeof(CollectionLANPR));
+    memcpy(dst->lineart, src->lineart, sizeof(CollectionLineart));
   }
 }
 

@@ -44,7 +44,7 @@
 
 #include <math.h>
 
-#define LANPR_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
+#define LRT_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
 
 static eLineArtRenderLine *lineart_get_connected_render_line(eLineArtBoundingArea *ba,
                                                              eLineArtRenderVert *rv,
@@ -72,12 +72,12 @@ static eLineArtRenderLine *lineart_get_connected_render_line(eLineArtBoundingAre
     if (rv != nrl->l && rv != nrl->r) {
       if (nrl->flags & LRT_EDGE_FLAG_INTERSECTION) {
         if (rv->fbcoord[0] == nrl->l->fbcoord[0] && rv->fbcoord[1] == nrl->l->fbcoord[1]) {
-          *new_rv = LANPR_OTHER_RV(nrl, nrl->l);
+          *new_rv = LRT_OTHER_RV(nrl, nrl->l);
           return nrl;
         }
         else {
           if (rv->fbcoord[0] == nrl->r->fbcoord[0] && rv->fbcoord[1] == nrl->r->fbcoord[1]) {
-            *new_rv = LANPR_OTHER_RV(nrl, nrl->r);
+            *new_rv = LRT_OTHER_RV(nrl, nrl->r);
             return nrl;
           }
         }
@@ -85,7 +85,7 @@ static eLineArtRenderLine *lineart_get_connected_render_line(eLineArtBoundingAre
       continue;
     }
 
-    *new_rv = LANPR_OTHER_RV(nrl, rv);
+    *new_rv = LRT_OTHER_RV(nrl, rv);
     return nrl;
   }
 
