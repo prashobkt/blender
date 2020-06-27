@@ -6190,9 +6190,8 @@ static void lib_link_collection_data(BlendLibReader *reader, Library *lib, Colle
   }
 
   if (collection->lanpr) {
-    collection->lanpr->target = newlibadr(fd, lib, collection->lanpr->target);
+    collection->lanpr->target = newlibadr(reader->fd, lib, collection->lanpr->target);
   }
-
 }
 
 static void lib_link_collection(BlendLibReader *reader, Collection *collection)
@@ -6473,13 +6472,13 @@ static void lib_link_scene(BlendLibReader *reader, Scene *sce)
   if (sce->rigidbody_world) {
     RigidBodyWorld *rbw = sce->rigidbody_world;
     if (rbw->group) {
-      rbw->group = newlibadr(fd, sce->id.lib, rbw->group);
+      BLO_read_id_address(reader, sce->id.lib, &rbw->group);
     }
     if (rbw->constraints) {
-      rbw->constraints = newlibadr(fd, sce->id.lib, rbw->constraints);
+      BLO_read_id_address(reader, sce->id.lib, &rbw->constraints);
     }
     if (rbw->effector_weights) {
-      rbw->effector_weights->group = newlibadr(fd, sce->id.lib, rbw->effector_weights->group);
+      BLO_read_id_address(reader, sce->id.lib, &rbw->effector_weights->group);
     }
   }
 
@@ -6488,22 +6487,22 @@ static void lib_link_scene(BlendLibReader *reader, Scene *sce)
   }
 
   for (SceneRenderLayer *srl = sce->r.layers.first; srl; srl = srl->next) {
-    srl->mat_override = newlibadr(fd, sce->id.lib, srl->mat_override);
+    BLO_read_id_address(reader, sce->id.lib, &srl->mat_override);
     for (FreestyleModuleConfig *fmc = srl->freestyleConfig.modules.first; fmc; fmc = fmc->next) {
-      fmc->script = newlibadr(fd, sce->id.lib, fmc->script);
+      BLO_read_id_address(reader, sce->id.lib, &fmc->script);
     }
     for (FreestyleLineSet *fls = srl->freestyleConfig.linesets.first; fls; fls = fls->next) {
-      fls->linestyle = newlibadr(fd, sce->id.lib, fls->linestyle);
-      fls->group = newlibadr(fd, sce->id.lib, fls->group);
+      BLO_read_id_address(reader, sce->id.lib, &fls->linestyle);
+      BLO_read_id_address(reader, sce->id.lib, &fls->group);
     }
   }
 
   for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
-    ll->normal_control_object = newlibadr(fd, sce->id.lib, ll->normal_control_object);
+    BLO_read_id_address(reader, sce->id.lib, &ll->normal_control_object);
   }
 
   /* Motion Tracking */
-  sce->clip = newlibadr(fd, sce->id.lib, sce->clip);
+  BLO_read_id_address(reader, sce->id.lib, &sce->clip);
   if (sce->nodetree) {
     composite_patch(sce->nodetree, sce);
   }
@@ -10793,7 +10792,7 @@ static void expand_collection(BlendExpander *expander, Collection *collection)
     BLO_expand(expander, child->collection);
   }
 
-  expand_doit(fd, mainvar, collection->lanpr->target);
+  BLO_expand(expander, collection->lanpr->target);
 
 #ifdef USE_COLLECTION_COMPAT_28
   if (collection->collection != NULL) {
@@ -11178,7 +11177,7 @@ static void expand_scene(BlendExpander *expander, Scene *sce)
 
   for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
     if (ll->normal_control_object) {
-      expand_doit(fd, mainvar, ll->normal_control_object);
+      BLO_expand(expander, ll->normal_control_object);
     }
   }
 
