@@ -38,22 +38,22 @@
 #include <math.h>
 #include <string.h>
 
-typedef struct LANPR_StaticMemPoolNode {
+typedef struct eLineArtStaticMemPoolNode {
   Link item;
   int used_byte;
   /* User memory starts here */
-} LANPR_StaticMemPoolNode;
+} eLineArtStaticMemPoolNode;
 
-typedef struct LANPR_StaticMemPool {
+typedef struct eLineArtStaticMemPool {
   int each_size;
   ListBase pools;
   SpinLock lock_mem;
-} LANPR_StaticMemPool;
+} eLineArtStaticMemPool;
 
-typedef struct LANPR_RenderTriangle {
-  struct LANPR_RenderTriangle *next, *prev;
-  struct LANPR_RenderVert *v[3];
-  struct LANPR_RenderLine *rl[3];
+typedef struct eLineArtRenderTriangle {
+  struct eLineArtRenderTriangle *next, *prev;
+  struct eLineArtRenderVert *v[3];
+  struct eLineArtRenderLine *rl[3];
   double gn[3];
   double gc[3];
   /*  struct BMFace *F; */
@@ -61,64 +61,64 @@ typedef struct LANPR_RenderTriangle {
   ListBase intersecting_verts;
   char cull_status;
   /**  Should be testing** , Use testing[NumOfThreads] to access. */
-  struct LANPR_RenderTriangle *testing;
-} LANPR_RenderTriangle;
+  struct eLineArtRenderTriangle *testing;
+} eLineArtRenderTriangle;
 
-typedef struct LANPR_RenderTriangleThread {
-  struct LANPR_RenderTriangle base;
-  struct LANPR_RenderLine *testing[127];
-} LANPR_RenderTriangleThread;
+typedef struct eLineArtRenderTriangleThread {
+  struct eLineArtRenderTriangle base;
+  struct eLineArtRenderLine *testing[127];
+} eLineArtRenderTriangleThread;
 
-typedef struct LANPR_RenderElementLinkNode {
-  struct LANPR_RenderElementLinkNode *next, *prev;
+typedef struct eLineArtRenderElementLinkNode {
+  struct eLineArtRenderElementLinkNode *next, *prev;
   void *pointer;
   int element_count;
   void *object_ref;
   char additional;
-} LANPR_RenderElementLinkNode;
+} eLineArtRenderElementLinkNode;
 
-typedef struct LANPR_RenderLineSegment {
-  struct LANPR_RenderLineSegment *next, *prev;
+typedef struct eLineArtRenderLineSegment {
+  struct eLineArtRenderLineSegment *next, *prev;
   /** at==0: left  at==1: right  (this is in 2D projected space) */
   double at;
   /** Occlusion level after "at" point */
   unsigned char occlusion;
   /** For determining lines beind a glass window material. (TODO: implement this) */
   short material_mask_mark;
-} LANPR_RenderLineSegment;
+} eLineArtRenderLineSegment;
 
-typedef struct LANPR_RenderVert {
-  struct LANPR_RenderVert *next, *prev;
+typedef struct eLineArtRenderVert {
+  struct eLineArtRenderVert *next, *prev;
   double gloc[4];
   double fbcoord[4];
   int fbcoordi[2];
   /**  Used as "r" when intersecting */
   struct BMVert *v;
-  struct LANPR_RenderLine *intersecting_line;
-  struct LANPR_RenderLine *intersecting_line2;
-  struct LANPR_RenderTriangle *intersecting_with;
+  struct eLineArtRenderLine *intersecting_line;
+  struct eLineArtRenderLine *intersecting_line2;
+  struct eLineArtRenderTriangle *intersecting_with;
 
   /** This will used in future acceleration for intersection processing. */
   char edge_used;
-} LANPR_RenderVert;
+} eLineArtRenderVert;
 
-typedef enum LANPR_EdgeFlag {
-  LANPR_EDGE_FLAG_EDGE_MARK = (1 << 0),
-  LANPR_EDGE_FLAG_CONTOUR = (1 << 1),
-  LANPR_EDGE_FLAG_CREASE = (1 << 2),
-  LANPR_EDGE_FLAG_MATERIAL = (1 << 3),
-  LANPR_EDGE_FLAG_INTERSECTION = (1 << 4),
+typedef enum eLineArtEdgeFlag {
+  LRT_EDGE_FLAG_EDGE_MARK = (1 << 0),
+  LRT_EDGE_FLAG_CONTOUR = (1 << 1),
+  LRT_EDGE_FLAG_CREASE = (1 << 2),
+  LRT_EDGE_FLAG_MATERIAL = (1 << 3),
+  LRT_EDGE_FLAG_INTERSECTION = (1 << 4),
   /**  floating edge, unimplemented yet */
-  LANPR_EDGE_FLAG_FLOATING = (1 << 5),
-  LANPR_EDGE_FLAG_CHAIN_PICKED = (1 << 6),
-} LANPR_EdgeFlag;
+  LRT_EDGE_FLAG_FLOATING = (1 << 5),
+  LRT_EDGE_FLAG_CHAIN_PICKED = (1 << 6),
+} eLineArtEdgeFlag;
 
-#define LANPR_EDGE_FLAG_ALL_TYPE 0x3f
+#define LRT_EDGE_FLAG_ALL_TYPE 0x3f
 
-typedef struct LANPR_RenderLine {
-  struct LANPR_RenderLine *next, *prev;
-  struct LANPR_RenderVert *l, *r;
-  struct LANPR_RenderTriangle *tl, *tr;
+typedef struct eLineArtRenderLine {
+  struct eLineArtRenderLine *next, *prev;
+  struct eLineArtRenderVert *l, *r;
+  struct eLineArtRenderTriangle *tl, *tr;
   ListBase segments;
   char min_occ;
 
@@ -130,10 +130,10 @@ typedef struct LANPR_RenderLine {
 
   /**  For gpencil stroke modifier */
   int edge_idx;
-} LANPR_RenderLine;
+} eLineArtRenderLine;
 
-typedef struct LANPR_RenderLineChain {
-  struct LANPR_RenderLineChain *next, *prev;
+typedef struct eLineArtRenderLineChain {
+  struct eLineArtRenderLineChain *next, *prev;
   ListBase chain;
 
   /**  Calculated before draw cmd. */
@@ -146,10 +146,10 @@ typedef struct LANPR_RenderLineChain {
   /** Chain now only contains one type of segments */
   int type;
   struct Object *object_ref;
-} LANPR_RenderLineChain;
+} eLineArtRenderLineChain;
 
-typedef struct LANPR_RenderLineChainItem {
-  struct LANPR_RenderLineChainItem *next, *prev;
+typedef struct eLineArtRenderLineChainItem {
+  struct eLineArtRenderLineChainItem *next, *prev;
   /** Need z value for fading */
   float pos[3];
   /** For restoring position to 3d space */
@@ -157,21 +157,21 @@ typedef struct LANPR_RenderLineChainItem {
   float normal[3];
   char line_type;
   char occlusion;
-} LANPR_RenderLineChainItem;
+} eLineArtRenderLineChainItem;
 
-typedef struct LANPR_ChainRegisterEntry {
-  struct LANPR_ChainRegisterEntry *next, *prev;
-  LANPR_RenderLineChain *rlc;
-  LANPR_RenderLineChainItem *rlci;
+typedef struct eLineArtChainRegisterEntry {
+  struct eLineArtChainRegisterEntry *next, *prev;
+  eLineArtRenderLineChain *rlc;
+  eLineArtRenderLineChainItem *rlci;
   char picked;
 
   /** left/right mark.
    * Because we revert list in chaining so we need the flag. */
   char is_left;
-} LANPR_ChainRegisterEntry;
+} eLineArtChainRegisterEntry;
 
-typedef struct LANPR_RenderBuffer {
-  struct LANPR_RenderBuffer *prev, *next;
+typedef struct eLineArtRenderBuffer {
+  struct eLineArtRenderBuffer *prev, *next;
 
   /** For render. */
   int is_copied;
@@ -185,7 +185,7 @@ typedef struct LANPR_RenderBuffer {
   int output_mode;
   int output_aa_level;
 
-  struct LANPR_BoundingArea *initial_bounding_areas;
+  struct eLineArtBoundingArea *initial_bounding_areas;
   unsigned int bounding_area_count;
 
   ListBase vertex_buffer_pointers;
@@ -195,7 +195,7 @@ typedef struct LANPR_RenderBuffer {
 
   ListBase intersecting_vertex_buffer;
   /** Use the one comes with LANPR. */
-  LANPR_StaticMemPool render_data_pool;
+  eLineArtStaticMemPool render_data_pool;
 
   struct Material *material_pointers[2048];
 
@@ -260,24 +260,24 @@ typedef struct LANPR_RenderBuffer {
   double shift_x, shift_y;
   double chaining_image_threshold;
   double chaining_geometry_threshold;
-} LANPR_RenderBuffer;
+} eLineArtRenderBuffer;
 
-typedef enum LANPR_RenderStatus {
-  LANPR_RENDER_IDLE = 0,
-  LANPR_RENDER_RUNNING = 1,
-  LANPR_RENDER_INCOMPELTE = 2,
-  LANPR_RENDER_FINISHED = 3,
-} LANPR_RenderStatus;
+typedef enum eLineArtRenderStatus {
+  LRT_RENDER_IDLE = 0,
+  LRT_RENDER_RUNNING = 1,
+  LRT_RENDER_INCOMPELTE = 2,
+  LRT_RENDER_FINISHED = 3,
+} eLineArtRenderStatus;
 
-typedef enum LANPR_INIT_STATUS {
-  LANPR_INIT_ENGINE = (1 << 0),
-  LANPR_INIT_LOCKS = (1 << 1),
-} LANPR_INIT_STATUS;
+typedef enum eLineArtInitStatus {
+  LRT_INIT_ENGINE = (1 << 0),
+  LRT_INIT_LOCKS = (1 << 1),
+} eLineArtInitStatus;
 
-typedef struct LANPR_SharedResource {
+typedef struct eLineArtSharedResource {
 
   /* We only allocate once for all */
-  LANPR_RenderBuffer *render_buffer_shared;
+  eLineArtRenderBuffer *render_buffer_shared;
 
   /* cache */
   struct BLI_mempool *mp_sample;
@@ -287,19 +287,19 @@ typedef struct LANPR_SharedResource {
 
   struct TaskPool *background_render_task;
 
-  LANPR_INIT_STATUS init_complete;
+  eLineArtInitStatus init_complete;
 
   /** To bypass or cancel rendering.
-   * This status flag should be kept in lanpr_share not render_buffer,
+   * This status flag should be kept in lineart_share not render_buffer,
    * because render_buffer will get re-initialized every frame.
    */
   SpinLock lock_render_status;
-  LANPR_RenderStatus flag_render_status;
+  eLineArtRenderStatus flag_render_status;
 
   /** Geometry loading is done in the worker thread,
    * Lock the render thread until loading is done, so that
    * we can avoid depsgrapgh deleting the scene before
-   * LANPR finishes loading. Also keep this in lanpr_share.
+   * LANPR finishes loading. Also keep this in lineart_share.
    */
   SpinLock lock_loader;
 
@@ -312,28 +312,28 @@ typedef struct LANPR_SharedResource {
   float viewinv[4][4];
   float persp[4][4];
   float viewquat[4];
-} LANPR_SharedResource;
+} eLineArtSharedResource;
 
 #define DBL_TRIANGLE_LIM 1e-8
 #define DBL_EDGE_LIM 1e-9
 
-#define LANPR_MEMORY_POOL_1MB 1048576
-#define LANPR_MEMORY_POOL_128MB 134217728
-#define LANPR_MEMORY_POOL_256MB 268435456
-#define LANPR_MEMORY_POOL_512MB 536870912
+#define LRT_MEMORY_POOL_1MB 1048576
+#define LRT_MEMORY_POOL_128MB 134217728
+#define LRT_MEMORY_POOL_256MB 268435456
+#define LRT_MEMORY_POOL_512MB 536870912
 
-typedef enum LANPR_CullState {
-  LANPR_CULL_DONT_CARE = 0,
-  LANPR_CULL_USED = 1,
-  LANPR_CULL_DISCARD = 2,
-} LANPR_CullState;
+typedef enum eLineArtCullState {
+  LRT_CULL_DONT_CARE = 0,
+  LRT_CULL_USED = 1,
+  LRT_CULL_DISCARD = 2,
+} eLineArtCullState;
 
 /** Controls how many lines a worker thread is processing at one request.
  * There's no significant performance impact on choosing different values.
  * Don't make it too small so that the worker thread won't request too many times. */
-#define TNS_THREAD_LINE_COUNT 10000
+#define LRT_THREAD_LINE_COUNT 10000
 
-typedef struct LANPR_RenderTaskInfo {
+typedef struct eLineArtRenderTaskInfo {
   int thread_id;
 
   LinkData *contour;
@@ -351,7 +351,7 @@ typedef struct LANPR_RenderTaskInfo {
   LinkData *edge_mark;
   ListBase edge_mark_pointers;
 
-} LANPR_RenderTaskInfo;
+} eLineArtRenderTaskInfo;
 
 /** Bounding area diagram:
  *
@@ -372,12 +372,12 @@ typedef struct LANPR_RenderTaskInfo {
  * lp/rp/up/bp is the list for
  * storing pointers to adjacent bounding areas.
  */
-typedef struct LANPR_BoundingArea {
+typedef struct eLineArtBoundingArea {
   double l, r, u, b;
   double cx, cy;
 
   /** 1,2,3,4 quadrant */
-  struct LANPR_BoundingArea *child;
+  struct eLineArtBoundingArea *child;
 
   ListBase lp;
   ListBase rp;
@@ -390,20 +390,7 @@ typedef struct LANPR_BoundingArea {
 
   /** Reserved for image space reduction && multithread chainning */
   ListBase linked_chains;
-} LANPR_BoundingArea;
-
-#define TNS_COMMAND_LINE 0
-#define TNS_COMMAND_MATERIAL 1
-#define TNS_COMMAND_EDGE 2
-
-#define TNS_TRANSPARENCY_DRAW_SIMPLE 0
-#define TNS_TRANSPARENCY_DRAW_LAYERED 1
-
-#define TNS_OVERRIDE_ONLY 0
-#define TNS_OVERRIDE_EXCLUDE 1
-/* #define TNS_OVERRIDE_ALL_OTHERS_OUTSIDE_GROUP 2 */
-/* #define TNS_OVERRIDE_ALL_OTHERS_IN_GROUP      3 */
-/* #define TNS_OVERRIDE_ALL_OTHERS               4 */
+} eLineArtBoundingArea;
 
 #define TNS_TILE(tile, r, c, CCount) tile[r * CCount + c]
 
@@ -421,40 +408,8 @@ typedef struct LANPR_BoundingArea {
 
 #define TNS_DOUBLE_CLOSE_ENOUGH(a, b) (((a) + DBL_EDGE_LIM) >= (b) && ((a)-DBL_EDGE_LIM) <= (b))
 
-/* #define TNS_DOUBLE_CLOSE_ENOUGH(a,b)\ */
-/*  //(((a)+0.00000000001)>=(b) && ((a)-0.0000000001)<=(b)) */
-
-#define TNS_FLOAT_CLOSE_ENOUGH_WIDER(a, b) (((a) + 0.0000001) >= (b) && ((a)-0.0000001) <= (b))
-
-#define TNS_IN_TILE_X(RenderTile, Fx) (RenderTile->FX <= Fx && RenderTile->FXLim >= Fx)
-
-#define TNS_IN_TILE_Y(RenderTile, Fy) (RenderTile->FY <= Fy && RenderTile->FYLim >= Fy)
-
-#define TNS_IN_TILE(RenderTile, Fx, Fy) \
-  (TNS_IN_TILE_X(RenderTile, Fx) && TNS_IN_TILE_Y(RenderTile, Fy))
-
-BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl)
-{
-  if (MAX3(rt->v[0]->fbcoord[2], rt->v[1]->fbcoord[2], rt->v[2]->fbcoord[2]) >
-      MIN2(rl->l->fbcoord[2], rl->r->fbcoord[2]))
-    return 0;
-  if (MAX3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]) <
-      MIN2(rl->l->fbcoord[0], rl->r->fbcoord[0]))
-    return 0;
-  if (MIN3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]) >
-      MAX2(rl->l->fbcoord[0], rl->r->fbcoord[0]))
-    return 0;
-  if (MAX3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]) <
-      MIN2(rl->l->fbcoord[1], rl->r->fbcoord[1]))
-    return 0;
-  if (MIN3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]) >
-      MAX2(rl->l->fbcoord[1], rl->r->fbcoord[1]))
-    return 0;
-  return 1;
-}
-
 BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l);
-BLI_INLINE int lanpr_LineIntersectTest2d(
+BLI_INLINE int lineart_LineIntersectTest2d(
     const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio)
 {
   double k1, k2;
@@ -514,79 +469,83 @@ BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l)
   return ra;
 }
 
-int ED_lanpr_point_inside_triangled(double v[2], double v0[2], double v1[2], double v2[2]);
+int ED_lineart_point_inside_triangled(double v[2], double v0[2], double v1[2], double v2[2]);
 
 struct Depsgraph;
 struct SceneLANPR;
 struct Scene;
-struct LANPR_RenderBuffer;
+struct eLineArtRenderBuffer;
 
-void ED_lanpr_init_locks(void);
-struct LANPR_RenderBuffer *ED_lanpr_create_render_buffer(struct Scene *s);
-void ED_lanpr_destroy_render_data(void);
-void ED_lanpr_destroy_render_data_external(void);
+void ED_lineart_init_locks(void);
+struct eLineArtRenderBuffer *ED_lineart_create_render_buffer(struct Scene *s);
+void ED_lineart_destroy_render_data(void);
+void ED_lineart_destroy_render_data_external(void);
 
-int ED_lanpr_object_collection_usage_check(struct Collection *c, struct Object *o);
+int ED_lineart_object_collection_usage_check(struct Collection *c, struct Object *o);
 
-void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
-void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
-void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space);
-void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, const float threshold);
-int ED_lanpr_count_chain(const LANPR_RenderLineChain *rlc);
-void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
+void ED_lineart_NO_THREAD_chain_feature_lines(eLineArtRenderBuffer *rb);
+void ED_lineart_split_chains_for_fixed_occlusion(eLineArtRenderBuffer *rb);
+void ED_lineart_connect_chains(eLineArtRenderBuffer *rb, const int do_geometry_space);
+void ED_lineart_discard_short_chains(eLineArtRenderBuffer *rb, const float threshold);
+int ED_lineart_count_chain(const eLineArtRenderLineChain *rlc);
+void ED_lineart_chain_clear_picked_flag(struct eLineArtRenderBuffer *rb);
 
-int ED_lanpr_count_leveled_edge_segment_count(const ListBase *line_list,
-                                              const struct LANPR_LineLayer *ll);
-void *ED_lanpr_make_leveled_edge_vertex_array(struct LANPR_RenderBuffer *rb,
-                                              const ListBase *line_list,
-                                              float *vertex_array,
-                                              float *normal_array,
-                                              float **next_normal,
-                                              const LANPR_LineLayer *ll,
-                                              const float componet_id);
+int ED_lineart_count_leveled_edge_segment_count(const ListBase *line_list,
+                                                const struct LANPR_LineLayer *ll);
+void *ED_lineart_make_leveled_edge_vertex_array(struct eLineArtRenderBuffer *rb,
+                                                const ListBase *line_list,
+                                                float *vertex_array,
+                                                float *normal_array,
+                                                float **next_normal,
+                                                const LANPR_LineLayer *ll,
+                                                const float componet_id);
 
-void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
-bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);
+void ED_lineart_calculation_set_flag(eLineArtRenderStatus flag);
+bool ED_lineart_calculation_flag_check(eLineArtRenderStatus flag);
 
-int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph,
-                                            const int instersections_only);
+int ED_lineart_compute_feature_lines_internal(struct Depsgraph *depsgraph,
+                                              const int instersections_only);
 
-void ED_lanpr_compute_feature_lines_background(struct Depsgraph *dg, const int intersection_only);
+void ED_lineart_compute_feature_lines_background(struct Depsgraph *dg,
+                                                 const int intersection_only);
 
 struct Scene;
 
-int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
-LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
+int ED_lineart_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
+LANPR_LineLayer *ED_lineart_new_line_layer(struct SceneLANPR *lanpr);
 
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, double x, double y);
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb,
-                                                          double x,
-                                                          double y);
+eLineArtBoundingArea *ED_lineart_get_point_bounding_area(eLineArtRenderBuffer *rb,
+                                                         double x,
+                                                         double y);
+eLineArtBoundingArea *ED_lineart_get_point_bounding_area_deep(eLineArtRenderBuffer *rb,
+                                                              double x,
+                                                              double y);
 
-void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
+void ED_lineart_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
 struct SceneLANPR;
 
-void ED_lanpr_update_render_progress(const char *text);
+void ED_lineart_update_render_progress(const char *text);
 
-void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
+void ED_lineart_calculate_normal_object_vector(LANPR_LineLayer *ll,
+                                               float *normal_object_direction);
 
-float ED_lanpr_compute_chain_length(LANPR_RenderLineChain *rlc);
+float ED_lineart_compute_chain_length(eLineArtRenderLineChain *rlc);
 
 struct wmOperatorType;
 
 /* Operator types */
-void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_delete_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot);
+void SCENE_OT_lineart_calculate_feature_lines(struct wmOperatorType *ot);
+void SCENE_OT_lineart_add_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lineart_delete_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lineart_auto_create_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lineart_move_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lineart_enable_all_line_types(struct wmOperatorType *ot);
+void SCENE_OT_lineart_update_gp_strokes(struct wmOperatorType *ot);
+void SCENE_OT_lineart_bake_gp_strokes(struct wmOperatorType *ot);
 
-void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot);
-void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot);
+void OBJECT_OT_lineart_update_gp_target(struct wmOperatorType *ot);
+void OBJECT_OT_lineart_update_gp_source(struct wmOperatorType *ot);
 
 void ED_operatortypes_lanpr(void);
 
