@@ -51,6 +51,8 @@ def module_filesystem_remove(path_base, module_name):
 
 # This duplicates shutil.copytree from Python 3.8, with the new dirs_exist_ok
 # argument that we need. Once we upgrade to 3.8 we can remove this.
+
+
 def _preferences_copytree(entries, src, dst):
     import os
     import shutil
@@ -85,10 +87,12 @@ def _preferences_copytree(entries, src, dst):
         raise Error(errors)
     return dst
 
+
 def preferences_copytree(src, dst):
     import os
     with os.scandir(src) as entries:
         return _preferences_copytree(entries=entries, src=src, dst=dst)
+
 
 class PREFERENCES_OT_keyconfig_activate(Operator):
     bl_idname = "preferences.keyconfig_activate"
@@ -238,7 +242,8 @@ class PREFERENCES_OT_keyconfig_import(Operator):
 
         config_name = basename(self.filepath)
 
-        path = bpy.utils.user_resource('SCRIPTS', os.path.join("presets", "keyconfig"), create=True)
+        path = bpy.utils.user_resource(
+            'SCRIPTS', os.path.join("presets", "keyconfig"), create=True)
         path = os.path.join(path, config_name)
 
         try:
@@ -457,7 +462,8 @@ class PREFERENCES_OT_addon_enable(Operator):
             err_str = traceback.format_exc()
             print(err_str)
 
-        mod = addon_utils.enable(self.module, default_set=True, handle_error=err_cb)
+        mod = addon_utils.enable(
+            self.module, default_set=True, handle_error=err_cb)
 
         if mod:
             info = addon_utils.module_bl_info(mod)
@@ -541,7 +547,8 @@ class PREFERENCES_OT_theme_install(Operator):
 
         xmlfile = self.filepath
 
-        path_themes = bpy.utils.user_resource('SCRIPTS', "presets/interface_theme", create=True)
+        path_themes = bpy.utils.user_resource(
+            'SCRIPTS', "presets/interface_theme", create=True)
 
         if not path_themes:
             self.report({'ERROR'}, "Failed to get themes path")
@@ -551,7 +558,8 @@ class PREFERENCES_OT_theme_install(Operator):
 
         if not self.overwrite:
             if os.path.exists(path_dest):
-                self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
+                self.report(
+                    {'WARNING'}, "File already installed to %r\n" % path_dest)
                 return {'CANCELLED'}
 
         try:
@@ -635,7 +643,8 @@ class PREFERENCES_OT_addon_install(Operator):
 
         if self.target == 'DEFAULT':
             # don't use bpy.utils.script_paths("addons") because we may not be able to write to it.
-            path_addons = bpy.utils.user_resource('SCRIPTS', "addons", create=True)
+            path_addons = bpy.utils.user_resource(
+                'SCRIPTS', "addons", create=True)
         else:
             path_addons = context.preferences.filepaths.script_directory
             if path_addons:
@@ -658,7 +667,8 @@ class PREFERENCES_OT_addon_install(Operator):
         pyfile_dir = os.path.dirname(pyfile)
         for addon_path in addon_utils.paths():
             if os.path.samefile(pyfile_dir, addon_path):
-                self.report({'ERROR'}, "Source file is in the add-on search path: %r" % addon_path)
+                self.report(
+                    {'ERROR'}, "Source file is in the add-on search path: %r" % addon_path)
                 return {'CANCELLED'}
         del addon_path
         del pyfile_dir
@@ -681,7 +691,8 @@ class PREFERENCES_OT_addon_install(Operator):
                 for f in file_to_extract.namelist():
                     path_dest = os.path.join(path_addons, os.path.basename(f))
                     if os.path.exists(path_dest):
-                        self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
+                        self.report(
+                            {'WARNING'}, "File already installed to %r\n" % path_dest)
                         return {'CANCELLED'}
 
             try:  # extract the file to "addons"
@@ -696,7 +707,8 @@ class PREFERENCES_OT_addon_install(Operator):
             if self.overwrite:
                 module_filesystem_remove(path_addons, os.path.basename(pyfile))
             elif os.path.exists(path_dest):
-                self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
+                self.report(
+                    {'WARNING'}, "File already installed to %r\n" % path_dest)
                 return {'CANCELLED'}
 
             # if not compressed file just copy into the addon path
@@ -706,7 +718,8 @@ class PREFERENCES_OT_addon_install(Operator):
                 traceback.print_exc()
                 return {'CANCELLED'}
 
-        addons_new = {mod.__name__ for mod in addon_utils.modules()} - addons_old
+        addons_new = {mod.__name__ for mod in addon_utils.modules()} - \
+            addons_old
         addons_new.discard("modules")
 
         # disable any addons we may have enabled previously and removed.
@@ -776,7 +789,8 @@ class PREFERENCES_OT_addon_remove(Operator):
 
         path, isdir = PREFERENCES_OT_addon_remove.path_from_addon(self.module)
         if path is None:
-            self.report({'WARNING'}, "Add-on path %r could not be found" % path)
+            self.report(
+                {'WARNING'}, "Add-on path %r could not be found" % path)
             return {'CANCELLED'}
 
         # in case its enabled
@@ -922,9 +936,11 @@ class PREFERENCES_OT_app_template_install(Operator):
                     module_filesystem_remove(path_app_templates, f)
             else:
                 for f in file_to_extract.namelist():
-                    path_dest = os.path.join(path_app_templates, os.path.basename(f))
+                    path_dest = os.path.join(
+                        path_app_templates, os.path.basename(f))
                     if os.path.exists(path_dest):
-                        self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
+                        self.report(
+                            {'WARNING'}, "File already installed to %r\n" % path_dest)
                         return {'CANCELLED'}
 
             try:  # extract the file to "bl_app_templates_user"
@@ -938,7 +954,8 @@ class PREFERENCES_OT_app_template_install(Operator):
             self.report({'WARNING'}, "Expected a zip-file %r\n" % filepath)
             return {'CANCELLED'}
 
-        app_templates_new = set(os.listdir(path_app_templates)) - app_templates_old
+        app_templates_new = set(os.listdir(
+            path_app_templates)) - app_templates_old
 
         # in case a new module path was created to install this addon.
         bpy.utils.refresh_script_paths()
@@ -998,14 +1015,17 @@ class PREFERENCES_OT_studiolight_install(Operator):
         prefs = context.preferences
 
         path_studiolights = os.path.join("studiolights", self.type.lower())
-        path_studiolights = bpy.utils.user_resource('DATAFILES', path_studiolights, create=True)
+        path_studiolights = bpy.utils.user_resource(
+            'DATAFILES', path_studiolights, create=True)
         if not path_studiolights:
             self.report({'ERROR'}, "Failed to create Studio Light path")
             return {'CANCELLED'}
 
         for e in self.files:
-            shutil.copy(os.path.join(self.directory, e.name), path_studiolights)
-            prefs.studio_lights.load(os.path.join(path_studiolights, e.name), self.type)
+            shutil.copy(os.path.join(self.directory, e.name),
+                        path_studiolights)
+            prefs.studio_lights.load(os.path.join(
+                path_studiolights, e.name), self.type)
 
         # print message
         msg = (
@@ -1044,7 +1064,8 @@ class PREFERENCES_OT_studiolight_new(Operator):
         wm = context.window_manager
         filename = bpy.path.ensure_ext(self.filename, ".sl")
 
-        path_studiolights = bpy.utils.user_resource('DATAFILES', os.path.join("studiolights", "studio"), create=True)
+        path_studiolights = bpy.utils.user_resource(
+            'DATAFILES', os.path.join("studiolights", "studio"), create=True)
         if not path_studiolights:
             self.report({'ERROR'}, "Failed to get Studio Light path")
             return {'CANCELLED'}
@@ -1057,7 +1078,8 @@ class PREFERENCES_OT_studiolight_new(Operator):
             else:
                 for studio_light in prefs.studio_lights:
                     if studio_light.name == filename:
-                        bpy.ops.preferences.studiolight_uninstall(index=studio_light.index)
+                        bpy.ops.preferences.studiolight_uninstall(
+                            index=studio_light.index)
 
         prefs.studio_lights.new(path=filepath_final)
 
@@ -1073,7 +1095,8 @@ class PREFERENCES_OT_studiolight_new(Operator):
     def draw(self, _context):
         layout = self.layout
         if self.ask_overide:
-            layout.label(text="Warning, file already exists. Overwrite existing file?")
+            layout.label(
+                text="Warning, file already exists. Overwrite existing file?")
         else:
             layout.prop(self, "filename")
 
@@ -1141,6 +1164,7 @@ class PREFERENCES_OT_studiolight_show(Operator):
 # -----------------------------------------------------------------------------
 # User Menus Operators
 
+
 class PREFERENCES_OT_usermenus_select(Operator):
     bl_idname = "preferences.usermenus_select"
     bl_label = "select user menu to edit"
@@ -1155,6 +1179,7 @@ class PREFERENCES_OT_usermenus_select(Operator):
         else:
             return {'CANCELLED'}
 
+
 class PREFERENCES_OT_menuitem_add(Operator):
     """Add user menu item"""
     bl_idname = "preferences.menuitem_add"
@@ -1164,7 +1189,6 @@ class PREFERENCES_OT_menuitem_add(Operator):
         prefs = context.preferences
         um = prefs.user_menus
 
-        
         um.item_add()
         context.preferences.is_dirty = True
         return {'FINISHED'}
@@ -1194,6 +1218,7 @@ class PREFERENCES_OT_menuitem_remove(Operator):
         context.preferences.is_dirty = True
         return {'FINISHED'}
 
+
 class PREFERENCES_OT_menuitem_up(Operator):
     """move up an user menu item"""
     bl_idname = "preferences.menuitem_up"
@@ -1212,7 +1237,7 @@ class PREFERENCES_OT_menuitem_up(Operator):
         if not current:
             return False
         prev_item = current.prev
-        if prev_item:
+        if prev_item or current.parent:
             return True
         return False
 
@@ -1222,6 +1247,7 @@ class PREFERENCES_OT_menuitem_up(Operator):
         um.item_move(up=True)
         context.preferences.is_dirty = True
         return {'FINISHED'}
+
 
 class PREFERENCES_OT_menuitem_down(Operator):
     """move up an user menu item"""
@@ -1241,7 +1267,7 @@ class PREFERENCES_OT_menuitem_down(Operator):
         if not current:
             return False
         next_item = current.next
-        if next_item:
+        if next_item or current.parent:
             return True
         return False
 
@@ -1251,6 +1277,7 @@ class PREFERENCES_OT_menuitem_down(Operator):
         um.item_move(up=False)
         context.preferences.is_dirty = True
         return {'FINISHED'}
+
 
 classes = (
     PREFERENCES_OT_addon_disable,

@@ -26,6 +26,7 @@ import bpy
 from bpy.app.translations import pgettext_iface as iface_
 from bpy.app.translations import contexts as i18n_contexts
 
+
 def draw_item(context, box, but_list):
     prefs = context.preferences
     um = prefs.user_menus
@@ -35,9 +36,11 @@ def draw_item(context, box, but_list):
         if items.item.type == "SEPARATOR":
             name = "___________"
         box.prop(items, "pressed", text=name, toggle=1)
-        if items.item.type == "MENU":
+        if items.item.type == "SUBMENU":
             sub_box = box.box()
+            sub_box = sub_box.column(align=True)
             draw_item(context, sub_box, items.subbut)
+
 
 def draw_item_box(context, row):
     prefs = context.preferences
@@ -47,18 +50,11 @@ def draw_item_box(context, row):
     box_col = box_line.column(align=True)
 
     has_item = um.has_item()
-    if not has_item :
+    if not has_item:
         box_col.label(text="none")
-    #box_col.prop(um, "item_selected", expand=True)
     um.buttons_refresh()
-    for items in um.buttons:
-        name = items.item.name
-        if items.item.type == "SEPARATOR":
-            name = "___________"
-        box_col.prop(items, "pressed", text=name, toggle=1)
-        if items.item.type == "MENU":
-            sub_box = box_col.box()
-    
+    draw_item(context, box_col, um.buttons)
+
     row = row.split(factor=0.9, align=True)
     col = row.column(align=True)
 
@@ -68,6 +64,7 @@ def draw_item_box(context, row):
     col.operator("preferences.menuitem_down", text="", icon='TRIA_DOWN')
     row.separator()
 
+
 def draw_item_editor(context, row):
     prefs = context.preferences
     um = prefs.user_menus
@@ -76,7 +73,7 @@ def draw_item_editor(context, row):
 
     has_item = um.has_item()
     current = um.active_item
-    if not has_item :
+    if not has_item:
         col.label(text="No item in this list.")
         col.label(text="Add one or choose another list to get started")
     elif current:
@@ -86,7 +83,10 @@ def draw_item_editor(context, row):
         if (current.type == "OPERATOR"):
             umi_op = current.get_operator()
             col.prop(umi_op, "operator")
-    else :
+        if (current.type == "MENU"):
+            umi_pm = current.get_menu()
+            col.prop(umi_pm, "id_name", text="ID name")
+    else:
         col.label(text="No item selected.")
 
 
@@ -106,7 +106,8 @@ def draw_user_menus(context, layout):
     rowsub = row.row(align=True)
     rowsub.menu("USERPREF_MT_menu_select", text=menu_name_active)
     rowsub.operator("wm.keyconfig_preset_add", text="", icon='ADD')
-    rowsub.operator("wm.keyconfig_preset_add", text="", icon='REMOVE').remove_active = True
+    rowsub.operator("wm.keyconfig_preset_add", text="",
+                    icon='REMOVE').remove_active = True
 
     rowsub = split.row(align=True)
     rowsub.prop(um, "space_selected", text="")

@@ -537,6 +537,7 @@ typedef struct bUserMenu {
 /** May be part of #bUserMenu or other list. */
 typedef struct bUserMenuItem {
   struct bUserMenuItem *next, *prev;
+  struct bUserMenuItem_SubMenu *parent;
   char ui_name[64];
   char type;
   char _pad0[7];
@@ -554,6 +555,12 @@ typedef struct bUserMenuItem_Menu {
   bUserMenuItem item;
   char mt_idname[64];
 } bUserMenuItem_Menu;
+
+typedef struct bUserMenuItem_SubMenu {
+  bUserMenuItem item;
+  ListBase items;
+  char name[64];
+} bUserMenuItem_SubMenu;
 
 typedef struct bUserMenuItem_Prop {
   bUserMenuItem item;
@@ -577,6 +584,7 @@ enum {
   USER_MENU_TYPE_OPERATOR = 2,
   USER_MENU_TYPE_MENU = 3,
   USER_MENU_TYPE_PROP = 4,
+  USER_MENU_TYPE_SUBMENU = 5,
 };
 
 typedef struct SolidLight {

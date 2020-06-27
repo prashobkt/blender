@@ -197,7 +197,8 @@ void ED_screen_user_menu_item_add_prop(bContext *C,
   umi_pr->prop_index = prop_index;
 
   /* Copy current context name into ui_name if null */
-  if (ui_name && ui_name[0] != '\0') return;
+  if (ui_name && ui_name[0] != '\0')
+    return;
   char *data_path = strchr(umi_pr->context_data_path, '.');
   if (data_path) {
     *data_path = '\0';
@@ -213,22 +214,19 @@ void ED_screen_user_menu_item_add_prop(bContext *C,
   }
   if (data_path) {
     *data_path = '.';
-     data_path += 1;
+    data_path += 1;
   }
 
   if (ptr.type != NULL) {
     PropertyRNA *prop = NULL;
     PointerRNA prop_ptr = ptr;
-     if ((data_path == NULL) ||
-         RNA_path_resolve_full(&ptr, data_path, &prop_ptr, NULL, NULL)) {
+    if ((data_path == NULL) || RNA_path_resolve_full(&ptr, data_path, &prop_ptr, NULL, NULL)) {
       prop = RNA_struct_find_property(&prop_ptr, umi_pr->prop_id);
-
-     }
-     if (prop) {
+    }
+    if (prop) {
       const char *name = RNA_property_ui_name(prop);
       BLI_strncpy(umi_pr->item.ui_name, name, FILE_MAX);
     }
-
   }
 }
 
@@ -243,13 +241,110 @@ void ED_screen_user_menu_item_remove(ListBase *lb, bUserMenuItem *umi)
 /* -------------------------------------------------------------------- */
 /** \name Menu Definition
  * \{ */
+static bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase *lb);
+
+static void screen_user_menu_draw_submenu(bContext *C, uiLayout *layout, void *arg)
+{
+  ListBase *lb = (ListBase *)arg;
+
+  screen_user_menu_draw_items(C, layout, lb);
+}
+
+static bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase *lb)
+{
+  /* Enable when we have the ability to edit menus. */
+  char label[512];
+  const bool show_missing = true;
+
+  bool is_empty = true;
+
+  LISTBASE_FOREACH (bUserMenuItem *, umi, lb) {
+    const char *ui_name = umi->ui_name[0] ? umi->ui_name : NULL;
+    if (umi->type == USER_MENU_TYPE_OPERATOR) {
+      bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
+      wmOperatorType *ot = WM_operatortype_find(umi_op->op_idname, false);
+      if (ot != NULL) {
+        IDProperty *prop = umi_op->prop ? IDP_CopyProperty(umi_op->prop) : NULL;
+        uiItemFullO_ptr(layout, ot, ui_name, ICON_NONE, prop, umi_op->opcontext, 0, NULL);
+        is_empty = false;
+      }
+      else {
+        if (show_missing) {
+          SNPRINTF(label, "Missing: %s", umi_op->op_idname);
+          uiItemL(layout, label, ICON_NONE);
+        }
+      }
+    }
+    else if (umi->type == USER_MENU_TYPE_MENU) {
+      bUserMenuItem_Menu *umi_mt = (bUserMenuItem_Menu *)umi;
+      MenuType *mt = WM_menutype_find(umi_mt->mt_idname, false);
+      if (mt != NULL) {
+        uiItemM_ptr(layout, mt, ui_name, ICON_NONE);
+        is_empty = false;
+      }
+      else {
+        if (show_missing) {
+          SNPRINTF(label, "Missing: %s", umi_mt->mt_idname);
+          uiItemL(layout, label, ICON_NONE);
+        }
+      }
+    }
+    else if (umi->type == USER_MENU_TYPE_SUBMENU) {
+      bUserMenuItem_SubMenu *umi_mt = (bUserMenuItem_SubMenu *)umi;
+
+      uiItemMenuF(
+          layout, ui_name, ICON_NONE, &screen_user_menu_draw_submenu, (void *)&umi_mt->items);
+      is_empty = false;
+    }
+    else if (umi->type == USER_MENU_TYPE_PROP) {
+      bUserMenuItem_Prop *umi_pr = (bUserMenuItem_Prop *)umi;
+
+      char *data_path = strchr(umi_pr->context_data_path, '.');
+      if (data_path) {
+        *data_path = '\0';
+      }
+      PointerRNA ptr = CTX_data_pointer_get(C, umi_pr->context_data_path);
+      if (ptr.type == NULL) {
+        PointerRNA ctx_ptr;
+        RNA_pointer_create(NULL, &RNA_Context, (void *)C, &ctx_ptr);
+        if (!RNA_path_resolve_full(&ctx_ptr, umi_pr->context_data_path, &ptr, NULL, NULL)) {
+          ptr.type = NULL;
+        }
+      }
+      if (data_path) {
+        *data_path = '.';
+        data_path += 1;
+      }
+
+      bool ok = false;
+      if (ptr.type != NULL) {
+        PropertyRNA *prop = NULL;
+        PointerRNA prop_ptr = ptr;
+        if ((data_path == NULL) || RNA_path_resolve_full(&ptr, data_path, &prop_ptr, NULL, NULL)) {
+          prop = RNA_struct_find_property(&prop_ptr, umi_pr->prop_id);
+          if (prop) {
+            ok = true;
+            uiItemFullR(layout, &prop_ptr, prop, umi_pr->prop_index, 0, 0, ui_name, ICON_NONE);
+            is_empty = false;
+          }
+        }
+      }
+      if (!ok) {
+        if (show_missing) {
+          SNPRINTF(label, "Missing: %s.%s", umi_pr->context_data_path, umi_pr->prop_id);
+          uiItemL(layout, label, ICON_NONE);
+        }
+      }
+    }
+    else if (umi->type == USER_MENU_TYPE_SEP) {
+      uiItemS(layout);
+    }
+  }
+  return is_empty;
+}
 
 static void screen_user_menu_draw(const bContext *C, Menu *menu)
 {
-  /* Enable when we have the ability to edit menus. */
-  const bool show_missing = false;
-  char label[512];
-
   uint um_array_len;
   bUserMenu **um_array = ED_screen_user_menus_find(C, &um_array_len);
   bool is_empty = true;
@@ -258,83 +353,7 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
     if (um == NULL) {
       continue;
     }
-    LISTBASE_FOREACH (bUserMenuItem *, umi, &um->items) {
-      const char *ui_name = umi->ui_name[0] ? umi->ui_name : NULL;
-      if (umi->type == USER_MENU_TYPE_OPERATOR) {
-        bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
-        wmOperatorType *ot = WM_operatortype_find(umi_op->op_idname, false);
-        if (ot != NULL) {
-          IDProperty *prop = umi_op->prop ? IDP_CopyProperty(umi_op->prop) : NULL;
-          uiItemFullO_ptr(menu->layout, ot, ui_name, ICON_NONE, prop, umi_op->opcontext, 0, NULL);
-          is_empty = false;
-        }
-        else {
-          if (show_missing) {
-            SNPRINTF(label, "Missing: %s", umi_op->op_idname);
-            uiItemL(menu->layout, label, ICON_NONE);
-          }
-        }
-      }
-      else if (umi->type == USER_MENU_TYPE_MENU) {
-        bUserMenuItem_Menu *umi_mt = (bUserMenuItem_Menu *)umi;
-        MenuType *mt = WM_menutype_find(umi_mt->mt_idname, false);
-        if (mt != NULL) {
-          uiItemM_ptr(menu->layout, mt, ui_name, ICON_NONE);
-          is_empty = false;
-        }
-        else {
-          if (show_missing) {
-            SNPRINTF(label, "Missing: %s", umi_mt->mt_idname);
-            uiItemL(menu->layout, label, ICON_NONE);
-          }
-        }
-      }
-      else if (umi->type == USER_MENU_TYPE_PROP) {
-        bUserMenuItem_Prop *umi_pr = (bUserMenuItem_Prop *)umi;
-
-        char *data_path = strchr(umi_pr->context_data_path, '.');
-        if (data_path) {
-          *data_path = '\0';
-        }
-        PointerRNA ptr = CTX_data_pointer_get(C, umi_pr->context_data_path);
-        if (ptr.type == NULL) {
-          PointerRNA ctx_ptr;
-          RNA_pointer_create(NULL, &RNA_Context, (void *)C, &ctx_ptr);
-          if (!RNA_path_resolve_full(&ctx_ptr, umi_pr->context_data_path, &ptr, NULL, NULL)) {
-            ptr.type = NULL;
-          }
-        }
-        if (data_path) {
-          *data_path = '.';
-          data_path += 1;
-        }
-
-        bool ok = false;
-        if (ptr.type != NULL) {
-          PropertyRNA *prop = NULL;
-          PointerRNA prop_ptr = ptr;
-          if ((data_path == NULL) ||
-              RNA_path_resolve_full(&ptr, data_path, &prop_ptr, NULL, NULL)) {
-            prop = RNA_struct_find_property(&prop_ptr, umi_pr->prop_id);
-            if (prop) {
-              ok = true;
-              uiItemFullR(
-                  menu->layout, &prop_ptr, prop, umi_pr->prop_index, 0, 0, ui_name, ICON_NONE);
-              is_empty = false;
-            }
-          }
-        }
-        if (!ok) {
-          if (show_missing) {
-            SNPRINTF(label, "Missing: %s.%s", umi_pr->context_data_path, umi_pr->prop_id);
-            uiItemL(menu->layout, label, ICON_NONE);
-          }
-        }
-      }
-      else if (umi->type == USER_MENU_TYPE_SEP) {
-        uiItemS(menu->layout);
-      }
-    }
+    is_empty = screen_user_menu_draw_items(C, menu->layout, &um->items);
   }
   if (um_array) {
     MEM_freeN(um_array);

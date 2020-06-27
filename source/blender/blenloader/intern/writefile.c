@@ -1232,6 +1232,35 @@ static void write_keymapitem(WriteData *wd, const wmKeyMapItem *kmi)
   }
 }
 
+static void write_usermenuitems(WriteData *wd, ListBase *lb)
+{
+  LISTBASE_FOREACH (const bUserMenuItem *, umi, lb) {
+    if (umi->type == USER_MENU_TYPE_OPERATOR) {
+      const bUserMenuItem_Op *umi_op = (const bUserMenuItem_Op *)umi;
+      writestruct(wd, DATA, bUserMenuItem_Op, 1, umi_op);
+      if (umi_op->prop) {
+        IDP_WriteProperty(umi_op->prop, wd);
+      }
+    }
+    else if (umi->type == USER_MENU_TYPE_MENU) {
+      const bUserMenuItem_Menu *umi_mt = (const bUserMenuItem_Menu *)umi;
+      writestruct(wd, DATA, bUserMenuItem_Menu, 1, umi_mt);
+    }
+    else if (umi->type == USER_MENU_TYPE_PROP) {
+      const bUserMenuItem_Prop *umi_pr = (const bUserMenuItem_Prop *)umi;
+      writestruct(wd, DATA, bUserMenuItem_Prop, 1, umi_pr);
+    }
+    else if (umi->type == USER_MENU_TYPE_SUBMENU) {
+      const bUserMenuItem_SubMenu *umi_sm = (const bUserMenuItem_SubMenu *)umi;
+      writestruct(wd, DATA, bUserMenuItem_SubMenu, 1, umi_sm);
+      write_usermenuitems(wd, &umi_sm->items);
+    }
+    else {
+      writestruct(wd, DATA, bUserMenuItem, 1, umi);
+    }
+  }
+}
+
 static void write_userdef(WriteData *wd, const UserDef *userdef)
 {
   writestruct(wd, USER, UserDef, 1, userdef);
@@ -1267,26 +1296,7 @@ static void write_userdef(WriteData *wd, const UserDef *userdef)
 
   LISTBASE_FOREACH (const bUserMenu *, um, &userdef->user_menus) {
     writestruct(wd, DATA, bUserMenu, 1, um);
-    LISTBASE_FOREACH (const bUserMenuItem *, umi, &um->items) {
-      if (umi->type == USER_MENU_TYPE_OPERATOR) {
-        const bUserMenuItem_Op *umi_op = (const bUserMenuItem_Op *)umi;
-        writestruct(wd, DATA, bUserMenuItem_Op, 1, umi_op);
-        if (umi_op->prop) {
-          IDP_WriteProperty(umi_op->prop, wd);
-        }
-      }
-      else if (umi->type == USER_MENU_TYPE_MENU) {
-        const bUserMenuItem_Menu *umi_mt = (const bUserMenuItem_Menu *)umi;
-        writestruct(wd, DATA, bUserMenuItem_Menu, 1, umi_mt);
-      }
-      else if (umi->type == USER_MENU_TYPE_PROP) {
-        const bUserMenuItem_Prop *umi_pr = (const bUserMenuItem_Prop *)umi;
-        writestruct(wd, DATA, bUserMenuItem_Prop, 1, umi_pr);
-      }
-      else {
-        writestruct(wd, DATA, bUserMenuItem, 1, umi);
-      }
-    }
+    write_usermenuitems(wd, &um->items);
   }
 
   LISTBASE_FOREACH (const bAddon *, bext, &userdef->addons) {

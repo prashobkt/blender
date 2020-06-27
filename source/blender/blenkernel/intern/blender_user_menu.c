@@ -81,6 +81,9 @@ bUserMenuItem *BKE_blender_user_menu_item_add(ListBase *lb, int type)
   else if (type == USER_MENU_TYPE_PROP) {
     size = sizeof(bUserMenuItem_Prop);
   }
+  else if (type == USER_MENU_TYPE_SUBMENU) {
+    size = sizeof(bUserMenuItem_SubMenu);
+  }
   else {
     size = sizeof(bUserMenuItem);
     BLI_assert(0);
@@ -100,6 +103,10 @@ void BKE_blender_user_menu_item_free(bUserMenuItem *umi)
     if (umi_op->prop) {
       IDP_FreeProperty(umi_op->prop);
     }
+  }
+  if (umi->type == USER_MENU_TYPE_SUBMENU) {
+    bUserMenuItem_SubMenu *umi_sm = (bUserMenuItem_SubMenu *)umi;
+    BKE_blender_user_menu_item_free_list(&umi_sm->items);
   }
   MEM_freeN(umi);
 }

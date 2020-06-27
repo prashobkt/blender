@@ -10249,6 +10249,23 @@ static void direct_link_keymapitem(FileData *fd, wmKeyMapItem *kmi)
   kmi->flag &= ~KMI_UPDATE;
 }
 
+static void read_usermenuitems(FileData *fd, ListBase *lb, bUserMenuItem_SubMenu *parent)
+{
+  LISTBASE_FOREACH (bUserMenuItem *, umi, lb) {
+    umi->parent = parent;
+    if (umi->type == USER_MENU_TYPE_OPERATOR) {
+      bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
+      umi_op->prop = newdataadr(fd, umi_op->prop);
+      IDP_DirectLinkGroup_OrFree(&umi_op->prop, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
+    }
+    if (umi->type == USER_MENU_TYPE_SUBMENU) {
+      bUserMenuItem_SubMenu *umi_sm = (bUserMenuItem_SubMenu *)umi;
+      link_list(fd, &umi_sm->items);
+      read_usermenuitems(fd, &umi_sm->items, umi_sm);
+    }
+  }
+}
+
 static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
 {
   UserDef *user;
@@ -10305,13 +10322,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
 
   LISTBASE_FOREACH (bUserMenu *, um, &user->user_menus) {
     link_list(fd, &um->items);
-    LISTBASE_FOREACH (bUserMenuItem *, umi, &um->items) {
-      if (umi->type == USER_MENU_TYPE_OPERATOR) {
-        bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
-        umi_op->prop = newdataadr(fd, umi_op->prop);
-        IDP_DirectLinkGroup_OrFree(&umi_op->prop, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
-      }
-    }
+    read_usermenuitems(fd, &um->items, NULL);
   }
 
   for (addon = user->addons.first; addon; addon = addon->next) {
