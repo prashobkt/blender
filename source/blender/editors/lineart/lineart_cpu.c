@@ -35,6 +35,7 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_gpencil.h"
+#include "BKE_gpencil_geom.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
@@ -4058,23 +4059,24 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
 
     for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
-      float opatity = 1.0f; /* rlci->occlusion ? 0.0f : 1.0f; */
+      float opacity = 1.0f; /* rlci->occlusion ? 0.0f : 1.0f; */
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
       stroke_data[array_idx + 2] = rlci->gpos[2];
       stroke_data[array_idx + 3] = 1;       /*  thickness */
-      stroke_data[array_idx + 4] = opatity; /*  hardness? */
+      stroke_data[array_idx + 4] = opacity; /*  hardness? */
       array_idx += 5;
     }
 
     BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
     gps->mat_nr = material_nr;
+    BKE_gpencil_stroke_geometry_update(gps);
   }
 
   /* release render lock so cache is free to be manipulated. */
   BLI_spin_unlock(&lineart_share.lock_render_status);
 }
-static void lineart_clear_gp_lineart_flags(Depsgraph *dg, int frame)
+static void lineart_clear_gp_flags(Depsgraph *dg, int frame)
 {
   DEG_OBJECT_ITER_BEGIN (dg,
                          o,
@@ -4373,7 +4375,7 @@ static void lineart_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 
   lineart_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, NULL);
 
-  lineart_clear_gp_lineart_flags(dg, frame);
+  lineart_clear_gp_flags(dg, frame);
 }
 static int lineart_update_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
@@ -4436,7 +4438,7 @@ static int lineart_update_gp_target_exec(bContext *C, wmOperator *UNUSED(op))
 
   lineart_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, gpo);
 
-  lineart_clear_gp_lineart_flags(dg, frame);
+  lineart_clear_gp_flags(dg, frame);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
@@ -4460,7 +4462,7 @@ static int lineart_update_gp_source_exec(bContext *C, wmOperator *UNUSED(op))
 
   lineart_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, NULL);
 
-  lineart_clear_gp_lineart_flags(dg, frame);
+  lineart_clear_gp_flags(dg, frame);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
