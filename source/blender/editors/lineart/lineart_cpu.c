@@ -4043,7 +4043,11 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
       continue;
     }
     if (col && rlc->object_ref) {
-      if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref)) {
+      if (col->id.orig_id) {
+        col = col->id.orig_id;
+        /* Need this for using the same code for modifier preview and applying. */
+      }
+      if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref->id.orig_id)) {
         continue;
       }
     }

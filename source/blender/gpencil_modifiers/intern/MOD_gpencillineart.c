@@ -82,20 +82,6 @@ static void generate_strokes_actual(
     return;
   }
 
-  if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
-    /* Update triggered when nothing's happening, means DG update, so we request a refresh on line
-     * art cache, meanwhile waiting for result. Update will trigger agian */
-    ED_lineart_modifier_sync_set_flag(LRT_SYNC_WAITING, true);
-    return;
-  }
-  else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
-    /* Calculation in process */
-    return;
-  }
-
-  /* If we reach here, means calculation is finished (LRT_SYNC_FRESH), we grab cache. flag reset is
-   * done by calculation function.*/
-
   if (lmd->source_type == LRT_SOURCE_OBJECT) {
     Object *source_object = lmd->source_object;
     if (!source_object) {
@@ -143,6 +129,21 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   bGPdata *gpd = ob->data;
+
+  if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
+    /* Update triggered when nothing's happening, means DG update, so we request a refresh on line
+     * art cache, meanwhile waiting for result. Update will trigger agian */
+    ED_lineart_modifier_sync_set_flag(LRT_SYNC_WAITING, true);
+    return;
+  }
+  else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
+    /* Calculation in process */
+    return;
+  }
+
+  /* If we reach here, means calculation is finished (LRT_SYNC_FRESH), we grab cache. flag reset is
+   * done by calculation function.*/
+
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_gp_layer, 1);
@@ -156,13 +157,19 @@ static void bakeModifier(Main *UNUSED(bmain),
                          GpencilModifierData *md,
                          Object *ob)
 {
-  bGPdata *gpd = ob->data;
 
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
-    }
+  bGPdata *gpd = ob->data;
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+
+  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_gp_layer, 1);
+  bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
+
+  while (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
+    ; /* TODO: Should use a "poll" callback to stop it from applying.
+       *For now just wait for it's done. */
   }
+  generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 }
 
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
