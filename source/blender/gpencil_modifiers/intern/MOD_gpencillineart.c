@@ -94,9 +94,7 @@ static void generate_strokes_actual(
         gpf,
         lmd->level_start,
         lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
-        lmd->target_gp_material ?
-            BKE_gpencil_object_material_index_get(ob, lmd->target_gp_material) :
-            0,
+        lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
         NULL,
         lmd->line_types & (~LRT_EDGE_FLAG_INTERSECTION));
     /* Note that intersection lines will only be in collection */
@@ -113,9 +111,7 @@ static void generate_strokes_actual(
         gpf,
         lmd->level_start,
         lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
-        lmd->target_gp_material ?
-            BKE_gpencil_object_material_index_get(ob, lmd->target_gp_material) :
-            0,
+        lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
         source_collection,
         lmd->line_types);
   }
@@ -146,7 +142,7 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
-  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_gp_layer, 1);
+  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
   bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
 
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
@@ -162,7 +158,7 @@ static void bakeModifier(Main *UNUSED(bmain),
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
-  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_gp_layer, 1);
+  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
   bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
 
   while (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
@@ -208,7 +204,7 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
-  walk(userData, ob, (ID **)&lmd->target_gp_material, IDWALK_CB_USER);
+  walk(userData, ob, (ID **)&lmd->target_material, IDWALK_CB_USER);
   walk(userData, ob, (ID **)&lmd->source_collection, IDWALK_CB_NOP);
 
   foreachObjectLink(md, ob, (ObjectWalkFunc)walk, userData);
@@ -242,10 +238,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "use_edge_mark", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_intersection", 0, NULL, ICON_NONE);
 
+  uiItemPointerR(layout, &ptr, "target_layer", &obj_data_ptr, "layers", NULL, ICON_GREASEPENCIL);
   uiItemPointerR(
-      layout, &ptr, "target_gp_layer", &obj_data_ptr, "layers", NULL, ICON_GREASEPENCIL);
-  uiItemPointerR(
-      layout, &ptr, "target_gp_material", &obj_data_ptr, "materials", NULL, ICON_SHADING_TEXTURE);
+      layout, &ptr, "target_material", &obj_data_ptr, "materials", NULL, ICON_SHADING_TEXTURE);
 
   gpencil_modifier_panel_end(layout, &ptr);
 }

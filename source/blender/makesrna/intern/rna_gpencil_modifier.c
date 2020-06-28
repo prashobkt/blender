@@ -2391,13 +2391,13 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Level End", "Occlusion level end");
   RNA_def_property_range(prop, 0, 128);
 
-  prop = RNA_def_property(srna, "target_gp_material", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "target_material", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Target Material", "Target material that generated strokes use");
 
-  prop = RNA_def_property(srna, "target_gp_layer", PROP_STRING, PROP_NONE);
+  prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Target Layer", "Grease pencil layer that strokes goes into.");
 }
 

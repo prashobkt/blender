@@ -45,37 +45,10 @@ typedef struct CollectionChild {
 } CollectionChild;
 
 enum CollectionFeatureLine_Usage {
-  COLLECTION_FEATURE_LINE_INCLUDE = 0,
-  COLLECTION_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
-  COLLECTION_FEATURE_LINE_EXCLUDE = (1 << 1),
+  COLLECTION_LRT_INCLUDE = 0,
+  COLLECTION_LRT_OCCLUSION_ONLY = (1 << 0),
+  COLLECTION_LRT_EXCLUDE = (1 << 1),
 };
-
-typedef struct CollectionLineartLineType {
-  int use;
-  char _pad[4];
-  char target_layer[128];
-  char target_material[128];
-} CollectionLineartLineType;
-
-typedef struct CollectionLineart {
-  int usage;
-
-  /* Separate flags for Line Art shared flag values. */
-  int flags;
-
-  struct Object *target;
-  char target_layer[128];
-  char target_material[128];
-
-  struct CollectionLineartLineType contour;
-  struct CollectionLineartLineType crease;
-  struct CollectionLineartLineType material;
-  struct CollectionLineartLineType edge_mark;
-  struct CollectionLineartLineType intersection;
-
-  int level_start;
-  int level_end;
-} CollectionLineart;
 
 typedef struct Collection {
   ID id;
@@ -93,10 +66,11 @@ typedef struct Collection {
   short flag;
   /* Runtime-only, always cleared on file load. */
   short tag;
-  char _pad[4];
 
   /** Line Art engine specific */
-  CollectionLineart *lineart;
+  short lineart_usage;
+
+  char _pad[2];
 
   /* Runtime. Cache of objects in this collection and all its
    * children. This is created on demand when e.g. some physics
@@ -121,7 +95,6 @@ enum {
   COLLECTION_RESTRICT_RENDER = (1 << 3),     /* Disable in renders. */
   COLLECTION_HAS_OBJECT_CACHE = (1 << 4),    /* Runtime: object_cache is populated. */
   COLLECTION_IS_MASTER = (1 << 5),           /* Is master collection embedded in the scene. */
-  COLLECTION_CONFIGURED_FOR_LRT = (1 << 6),  /* Configurations saved to collection->lineart. */
 };
 
 /* Collection->tag */

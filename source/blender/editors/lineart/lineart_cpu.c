@@ -1707,14 +1707,12 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
   int object_is_used = (o->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE ||
                         o->lineart.usage == OBJECT_FEATURE_LINE_INHERENT);
 
-  if (object_is_used && (c->flag & COLLECTION_CONFIGURED_FOR_LRT) &&
-      (c->lineart->flags & LRT_LINE_LAYER_COLLECTION_FORCE) &&
-      (c->lineart->usage != COLLECTION_FEATURE_LINE_INCLUDE)) {
+  if (object_is_used && (c->lineart_usage != COLLECTION_LRT_INCLUDE)) {
     if (BKE_collection_has_object_recursive(c, o)) {
-      if (c->lineart->usage == COLLECTION_FEATURE_LINE_EXCLUDE) {
+      if (c->lineart_usage == COLLECTION_LRT_EXCLUDE) {
         return OBJECT_FEATURE_LINE_EXCLUDE;
       }
-      else if (c->lineart->usage == COLLECTION_FEATURE_LINE_OCCLUSION_ONLY) {
+      else if (c->lineart_usage == COLLECTION_LRT_OCCLUSION_ONLY) {
         return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
       }
     }
@@ -1723,12 +1721,10 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
   if (c->children.first == NULL) {
     if (BKE_collection_has_object(c, o)) {
       if (o->lineart.usage == OBJECT_FEATURE_LINE_INHERENT) {
-        if ((c->flag & COLLECTION_CONFIGURED_FOR_LRT) &&
-            (c->lineart->usage == COLLECTION_FEATURE_LINE_OCCLUSION_ONLY)) {
+        if ((c->lineart_usage == COLLECTION_LRT_OCCLUSION_ONLY)) {
           return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
         }
-        else if ((c->flag & COLLECTION_CONFIGURED_FOR_LRT) &&
-                 (c->lineart->usage == COLLECTION_FEATURE_LINE_EXCLUDE)) {
+        else if ((c->lineart_usage == COLLECTION_LRT_EXCLUDE)) {
           return OBJECT_FEATURE_LINE_EXCLUDE;
         }
         else {
@@ -2671,66 +2667,29 @@ bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag)
   return match;
 }
 
-static int lineart_max_occlusion_in_collections(Collection *c)
+static int lineart_get_max_occlusion_level(Depsgraph *dg)
 {
-  CollectionChild *cc;
+  LineartGpencilModifierData *lmd;
+  GpencilModifierData *md;
+  Object *o;
   int max_occ = 0;
   int max;
 
-  for (cc = c->children.first; cc; cc = cc->next) {
-    max = lineart_max_occlusion_in_collections(cc->collection);
-    max_occ = MAX2(max, max_occ);
-  }
-
-  if (!(c->flag & COLLECTION_CONFIGURED_FOR_LRT)) {
-    return max_occ;
-  }
-
-  if (c->lineart->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS) {
-    max = MAX2(c->lineart->level_start, c->lineart->level_end);
-  }
-  else {
-    max = c->lineart->level_start;
-  }
-  max_occ = MAX2(max, max_occ);
-
-  return max_occ;
-}
-static int lineart_max_occlusion_in_targets(Depsgraph *depsgraph)
-{
-  int max_occ = 0;
-  int max;
-  Scene *s = DEG_get_evaluated_scene(depsgraph);
-
-  /* Objects */
-  DEG_OBJECT_ITER_BEGIN (depsgraph,
+  DEG_OBJECT_ITER_BEGIN (dg,
                          o,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-
-    ObjectLineart *obl = &o->lineart;
-    if (obl->target) {
-      if (obl->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS) {
-        max = MAX2(obl->level_start, obl->level_end);
+    if (o->type == OB_GPENCIL) {
+      for (md = o->greasepencil_modifiers.first; md; md = md->next) {
+        lmd = md;
+        max = MAX2(lmd->level_start, lmd->level_end);
+        max_occ = MAX2(max, max_occ);
       }
-      else {
-        max = obl->level_start;
-      }
-      max_occ = MAX2(max, max_occ);
     }
   }
   DEG_OBJECT_ITER_END;
 
-  /* Collections */
-  max = lineart_max_occlusion_in_collections(s->master_collection);
-
-  max_occ = MAX2(max, max_occ);
-
   return max_occ;
-}
-static int lineart_get_max_occlusion_level(Depsgraph *dg)
-{
-  return lineart_max_occlusion_in_targets(dg);
 }
 
 static int lineart_get_render_triangle_size(LineartRenderBuffer *rb, const Scene *s)
@@ -3856,7 +3815,7 @@ static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(poo
   ED_lineart_modifier_sync_set_flag(LRT_SYNC_FRESH, false);
 
   lineart_notify_gpencil_targets(worker_data->dg);
-  // lineart_update_gp_strokes_actual(DEG_get_evaluated_scene(worker_data->dg), worker_data->dg);
+
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 }
 
@@ -4044,7 +4003,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     }
     if (col && rlc->object_ref) {
       if (col->id.orig_id) {
-        col = col->id.orig_id;
+        col = (Collection *)col->id.orig_id;
         /* Need this for using the same code for modifier preview and applying. */
       }
       if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref->id.orig_id)) {
@@ -4240,147 +4199,7 @@ static void lineart_update_gp_strokes_recursive(
     lineart_update_gp_strokes_recursive(dg, cc->collection, frame, source_only, target_only);
   }
 }
-static int lineart_collection_types(Collection *c)
-{
-  CollectionLineart *cl = c->lineart;
-  int result = 0;
-  if (cl->contour.use) {
-    result |= LRT_EDGE_FLAG_CONTOUR;
-  }
-  if (cl->crease.use) {
-    result |= LRT_EDGE_FLAG_CREASE;
-  }
-  if (cl->material.use) {
-    result |= LRT_EDGE_FLAG_MATERIAL;
-  }
-  if (cl->edge_mark.use) {
-    result |= LRT_EDGE_FLAG_EDGE_MARK;
-  }
-  if (cl->intersection.use) {
-    result |= LRT_EDGE_FLAG_INTERSECTION;
-  }
-  return result;
-}
-static void lineart_update_gp_strokes_collection(
-    Depsgraph *dg, struct Collection *col, int frame, int this_only, Object *target_only)
-{
-  Object *gpobj;
-  bGPdata *gpd = NULL;
-  CollectionChild *cc;
 
-  /* depth first */
-  if (!this_only) {
-    for (cc = col->children.first; cc; cc = cc->next) {
-      lineart_update_gp_strokes_collection(dg, cc->collection, frame, this_only, target_only);
-    }
-  }
-
-  if (col->flag & COLLECTION_CONFIGURED_FOR_LRT) {
-    if (col->lineart->usage != COLLECTION_FEATURE_LINE_INCLUDE || !col->lineart->target) {
-      return;
-    }
-    gpobj = col->lineart->target;
-    if (target_only && target_only != gpobj) {
-      return;
-    }
-    CollectionLineart *cl = col->lineart;
-    int level_start = cl->level_start;
-    int level_end = (cl->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS) ? cl->level_end :
-                                                                       cl->level_start;
-
-    if (cl->flags & LRT_LINE_LAYER_USE_SAME_STYLE) {
-      lineart_update_gp_strokes_single(dg,
-                                       gpobj,
-                                       NULL,
-                                       frame,
-                                       level_start,
-                                       level_end,
-                                       cl->target_layer,
-                                       cl->target_material,
-                                       col,
-                                       lineart_collection_types(col));
-    }
-    else {
-      if (cl->contour.use) {
-        lineart_update_gp_strokes_single(dg,
-                                         gpobj,
-                                         NULL,
-                                         frame,
-                                         level_start,
-                                         level_end,
-                                         cl->contour.target_layer,
-                                         cl->contour.target_material,
-                                         col,
-                                         LRT_EDGE_FLAG_CONTOUR);
-      }
-      if (cl->crease.use) {
-        lineart_update_gp_strokes_single(dg,
-                                         gpobj,
-                                         NULL,
-                                         frame,
-                                         level_start,
-                                         level_end,
-                                         cl->crease.target_layer,
-                                         cl->crease.target_material,
-                                         col,
-                                         LRT_EDGE_FLAG_CREASE);
-      }
-      if (cl->material.use) {
-        lineart_update_gp_strokes_single(dg,
-                                         gpobj,
-                                         NULL,
-                                         frame,
-                                         level_start,
-                                         level_end,
-                                         cl->material.target_layer,
-                                         cl->material.target_material,
-                                         col,
-                                         LRT_EDGE_FLAG_MATERIAL);
-      }
-      if (cl->edge_mark.use) {
-        lineart_update_gp_strokes_single(dg,
-                                         gpobj,
-                                         NULL,
-                                         frame,
-                                         level_start,
-                                         level_end,
-                                         cl->edge_mark.target_layer,
-                                         cl->edge_mark.target_material,
-                                         col,
-                                         LRT_EDGE_FLAG_EDGE_MARK);
-      }
-      if (cl->intersection.use) {
-        lineart_update_gp_strokes_single(dg,
-                                         gpobj,
-                                         NULL,
-                                         frame,
-                                         level_start,
-                                         level_end,
-                                         cl->intersection.target_layer,
-                                         cl->intersection.target_material,
-                                         col,
-                                         LRT_EDGE_FLAG_INTERSECTION);
-      }
-    }
-
-    if (gpd) {
-      DEG_id_tag_update(&gpd->id,
-                        ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-    }
-  }
-}
-static void lineart_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
-{
-  int frame = scene->r.cfra;
-
-  ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
-
-  lineart_update_gp_strokes_recursive(dg, scene->master_collection, frame, NULL, NULL);
-
-  lineart_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, NULL);
-
-  lineart_clear_gp_flags(dg, frame);
-}
 static int lineart_update_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
@@ -4388,7 +4207,6 @@ static int lineart_update_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 
   BLI_spin_lock(&lineart_share.lock_loader);
   ED_lineart_compute_feature_lines_internal(dg, 0);
-  lineart_update_gp_strokes_actual(scene, dg);
 
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 
@@ -4412,10 +4230,6 @@ static int lineart_bake_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
     ED_lineart_compute_feature_lines_internal(dg, 0);
 
     ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
-
-    lineart_update_gp_strokes_recursive(dg, scene->master_collection, frame, NULL, NULL);
-
-    lineart_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, NULL);
   }
 
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
@@ -4440,8 +4254,6 @@ static int lineart_update_gp_target_exec(bContext *C, wmOperator *UNUSED(op))
 
   lineart_update_gp_strokes_recursive(dg, scene->master_collection, frame, NULL, gpo);
 
-  lineart_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, gpo);
-
   lineart_clear_gp_flags(dg, frame);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
@@ -4463,8 +4275,6 @@ static int lineart_update_gp_source_exec(bContext *C, wmOperator *UNUSED(op))
   ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
 
   lineart_update_gp_strokes_recursive(dg, scene->master_collection, frame, source_obj, NULL);
-
-  lineart_update_gp_strokes_collection(dg, scene->master_collection, frame, 0, NULL);
 
   lineart_clear_gp_flags(dg, frame);
 

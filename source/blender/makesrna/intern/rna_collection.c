@@ -330,31 +330,6 @@ static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *pt
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
 }
 
-/* Line Art */
-
-static bool rna_Collection_lineart_configure_get(PointerRNA *ptr)
-{
-  Collection *c = (Collection *)ptr->owner_id;
-  return (c->flag & COLLECTION_CONFIGURED_FOR_LRT);
-}
-static void rna_Collection_lineart_configure_set(PointerRNA *ptr, const bool value)
-{
-  Collection *c = (Collection *)ptr->owner_id;
-  CollectionLineart *lineart = c->lineart;
-
-  if (value) {
-    c->flag |= COLLECTION_CONFIGURED_FOR_LRT;
-    if (!lineart) {
-      lineart = MEM_callocN(sizeof(CollectionLineart), "CollectionLineart");
-      c->lineart = lineart;
-    }
-  }
-  else { /* !value */
-    c->flag &= ~COLLECTION_CONFIGURED_FOR_LRT;
-    /* CollectionLineart will be deleted when collection is deleted. */
-  }
-}
-
 #else
 
 /* collection.objects */
@@ -409,131 +384,6 @@ static void rna_def_collection_children(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_MAIN);
   parm = RNA_def_pointer(func, "child", "Collection", "", "Collection to remove");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-}
-
-static void rna_def_collection_lineart(BlenderRNA *brna)
-{
-  PropertyRNA *prop;
-  StructRNA *srna;
-
-  srna = RNA_def_struct(brna, "CollectionLineartLineType", NULL);
-  RNA_def_struct_ui_text(srna, "Collection Line Art Line Type", "Collection lineart line type");
-  RNA_def_struct_sdna(srna, "CollectionLineartLineType");
-
-  prop = RNA_def_property(srna, "use", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Use", "Use this line type");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "layer", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "target_layer");
-  RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "material", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "target_material");
-  RNA_def_property_ui_text(
-      prop, "Material", "Grease Pencil material to use to generate the results");
-
-  static const EnumPropertyItem rna_collection_lineart_usage[] = {
-      {COLLECTION_FEATURE_LINE_INCLUDE,
-       "INCLUDE",
-       0,
-       "Include",
-       "Collection will produce feature lines"},
-      {COLLECTION_FEATURE_LINE_OCCLUSION_ONLY,
-       "OCCLUSION_ONLY",
-       0,
-       "Occlusion Only",
-       "Only use the collection to produce occlusion"},
-      {COLLECTION_FEATURE_LINE_EXCLUDE,
-       "EXCLUDE",
-       0,
-       "Exclude",
-       "Don't use this collection in LRT"},
-      {0, NULL, 0, NULL, NULL}};
-
-  srna = RNA_def_struct(brna, "CollectionLineart", NULL);
-  RNA_def_struct_sdna(srna, "CollectionLineart");
-  RNA_def_struct_ui_text(srna, "Collection Line Art Usage", "LRT usage for this collection");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_collection_lineart_usage);
-  RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LRT");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "force", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_COLLECTION_FORCE);
-  RNA_def_property_ui_text(
-      prop, "Force", "Force object that has LRT modifiers to follow collection usage flag");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "target");
-  RNA_def_property_ui_text(prop, "Target", "Grease Pencil object to put the stroke result");
-  RNA_def_property_pointer_funcs(prop, NULL, NULL, NULL, "rna_GPencil_object_poll");
-  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "replace", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_REPLACE_STROKES);
-  RNA_def_property_ui_text(prop, "Replace", "Replace existing GP frames");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "target_material", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop, "Material", "Grease Pencil material to use to generate the results");
-
-  prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_SAME_STYLE);
-  RNA_def_property_ui_text(prop, "Same Style", "Use same style for different types");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "contour", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
-  RNA_def_property_ui_text(prop, "Contour", "Contour line type");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "crease", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
-  RNA_def_property_ui_text(prop, "Crease", "Creaseline type");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "edge_mark", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
-  RNA_def_property_ui_text(prop, "Edge Mark", "Edge mark line type");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
-  RNA_def_property_ui_text(prop, "Material", "Material separate line type");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "intersection", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLineartLineType");
-  RNA_def_property_ui_text(prop, "Intersection", "Intersection line type");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_LINE_LAYER_USE_MULTIPLE_LEVELS);
-  RNA_def_property_ui_text(prop, "Multiple Levels", "Use multiple occlusion levels");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 255);
-  RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "Level Start", "Occlusion level start");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 255);
-  RNA_def_property_ui_range(prop, 0, 255, 1, -1);
-  RNA_def_property_ui_text(prop, "Level End", "Occlusion level end");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
 }
 
 void RNA_def_collections(BlenderRNA *brna)
@@ -628,17 +478,20 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
-  prop = RNA_def_property(srna, "configure_lineart", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_funcs(
-      prop, "rna_Collection_lineart_configure_get", "rna_Collection_lineart_configure_set");
-  RNA_def_property_ui_text(prop, "Configure", "Configure this collection for LRT");
+  static const EnumPropertyItem rna_collection_lineart_usage[] = {
+      {COLLECTION_LRT_INCLUDE, "INCLUDE", 0, "Include", "Collection will produce feature lines"},
+      {COLLECTION_LRT_OCCLUSION_ONLY,
+       "OCCLUSION_ONLY",
+       0,
+       "Occlusion Only",
+       "Only use the collection to produce occlusion"},
+      {COLLECTION_LRT_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't use this collection in LRT"},
+      {0, NULL, 0, NULL, NULL}};
+
+  prop = RNA_def_property(srna, "lineart_usage", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_collection_lineart_usage);
+  RNA_def_property_ui_text(prop, "Usage", "How to use this collection in LRT");
   RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  rna_def_collection_lineart(brna);
-
-  prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "CollectionLineart");
-  RNA_def_property_ui_text(prop, "LRT", "LRT settings for the collection");
 
   RNA_define_lib_overridable(false);
 }

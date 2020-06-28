@@ -81,15 +81,6 @@ static bool collection_find_child_recursive(Collection *parent, Collection *coll
 /** \name Collection Data-Block
  * \{ */
 
-static void collection_lineart_copy(const Collection *src, Collection *dst)
-{
-  if (src->lineart) {
-    CollectionLineart *lineart = MEM_callocN(sizeof(CollectionLineart), "CollectionLineart");
-    dst->lineart = lineart;
-    memcpy(dst->lineart, src->lineart, sizeof(CollectionLineart));
-  }
-}
-
 /**
  * Only copy internal data of Collection ID from source
  * to already allocated/initialized destination.
@@ -129,7 +120,6 @@ static void collection_copy_data(Main *bmain, ID *id_dst, const ID *id_src, cons
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, flag, false);
   }
-  collection_lineart_copy(collection_src, collection_dst);
 }
 
 static void collection_free_data(ID *id)
@@ -144,18 +134,11 @@ static void collection_free_data(ID *id)
   BLI_freelistN(&collection->parents);
 
   BKE_collection_object_cache_free(collection);
-
-  /* Remove Line Art configurations */
-  MEM_SAFE_FREE(collection->lineart);
 }
 
 static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   Collection *collection = (Collection *)id;
-
-  if (collection->lineart) {
-    BKE_LIB_FOREACHID_PROCESS(data, collection->lineart->target, IDWALK_CB_NOP);
-  }
 
   LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     BKE_LIB_FOREACHID_PROCESS(data, cob->ob, IDWALK_CB_USER);
@@ -276,9 +259,6 @@ void BKE_collection_add_from_object(Main *bmain,
 void BKE_collection_free(Collection *collection)
 {
   collection_free_data(&collection->id);
-
-  /* Remove Line Art configurations */
-  MEM_SAFE_FREE(collection->lineart);
 }
 
 /**
@@ -431,8 +411,6 @@ static Collection *collection_duplicate_recursive(Main *bmain,
         bmain, collection_new, child_collection_old, duplicate_flags, duplicate_options);
     collection_child_remove(collection_new, child_collection_old);
   }
-
-  collection_lineart_copy(collection_old, collection_new);
 
   return collection_new;
 }

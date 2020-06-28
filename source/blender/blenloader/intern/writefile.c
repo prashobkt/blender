@@ -2392,10 +2392,6 @@ static void write_collection_nolib(BlendWriter *writer, Collection *collection)
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     BLO_write_struct(writer, CollectionChild, child);
   }
-
-  if (collection->lineart != NULL) {
-    writestruct(writer->wd, DATA, CollectionLineart, 1, collection->lineart);
-  }
 }
 
 static void write_collection(BlendWriter *writer, Collection *collection, const void *id_address)

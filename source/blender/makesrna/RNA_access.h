@@ -106,7 +106,6 @@ extern StructRNA RNA_ClothSettings;
 extern StructRNA RNA_CloudsTexture;
 extern StructRNA RNA_Collection;
 extern StructRNA RNA_CollectionProperty;
-extern StructRNA RNA_CollectionLineart;
 extern StructRNA RNA_CollisionModifier;
 extern StructRNA RNA_CollisionSettings;
 extern StructRNA RNA_ColorGpencilModifier;

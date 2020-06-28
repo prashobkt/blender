@@ -6170,8 +6170,6 @@ static void direct_link_collection(BlendDataReader *reader, Collection *collecti
     direct_link_view_layer(reader, collection->view_layer);
   }
 #endif
-
-  BLO_read_data_address(reader, &collection->lineart);
 }
 
 static void lib_link_collection_data(BlendLibReader *reader, Library *lib, Collection *collection)
@@ -6187,10 +6185,6 @@ static void lib_link_collection_data(BlendLibReader *reader, Library *lib, Colle
 
   for (CollectionChild *child = collection->children.first; child != NULL; child = child->next) {
     BLO_read_id_address(reader, lib, &child->collection);
-  }
-
-  if (collection->lineart) {
-    collection->lineart->target = newlibadr(reader->fd, lib, collection->lineart->target);
   }
 }
 
