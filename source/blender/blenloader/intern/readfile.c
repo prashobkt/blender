@@ -10792,8 +10792,6 @@ static void expand_collection(BlendExpander *expander, Collection *collection)
     BLO_expand(expander, child->collection);
   }
 
-  BLO_expand(expander, collection->lineart->target);
-
 #ifdef USE_COLLECTION_COMPAT_28
   if (collection->collection != NULL) {
     expand_scene_collection(expander, collection->collection);
