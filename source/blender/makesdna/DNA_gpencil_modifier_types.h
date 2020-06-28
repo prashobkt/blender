@@ -821,8 +821,8 @@ typedef struct LineartGpencilModifierData {
   struct Object *source_object;
   struct Collection *source_collection;
 
-  struct Material *target_gp_material;
-  char target_gp_layer[64];
+  struct Material *target_material;
+  char target_layer[64];
 
 } LineartGpencilModifierData;
 
