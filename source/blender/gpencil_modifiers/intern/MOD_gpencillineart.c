@@ -65,6 +65,7 @@
 static void initData(GpencilModifierData *md)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  lmd->line_types = LRT_EDGE_FLAG_ALL_TYPE;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -84,6 +85,23 @@ static void generate_strokes_actual(
   if (!gpl) {
     return;
   }
+
+  if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
+    /* Update triggered when nothing's happening, means DG update, so we request a refresh on line
+     * art cache, meanwhile waiting for result. Update will trigger agian */
+    ED_lineart_modifier_sync_set_flag(LRT_SYNC_WAITING, true);
+    printf("Set waiting.\n");
+    return;
+  }
+  else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
+    printf("Still waiting.\n");
+    /* Calculation in process */
+    return;
+  }
+
+  printf("Using data.\n");
+  /* If we reach here, means calculation is finished (LRT_SYNC_FRESH), we grab cache. flag reset is
+   * done by calculation function.*/
 
   if (lmd->source_type == LRT_SOURCE_OBJECT) {
     Object *source_object = lmd->source_object;
@@ -156,9 +174,30 @@ static void bakeModifier(Main *UNUSED(bmain),
   }
 }
 
+static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+{
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  if (lmd->source_type == LRT_SOURCE_OBJECT) {
+    DEG_add_object_relation(
+        ctx->node, lmd->source_object, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
+    DEG_add_object_relation(
+        ctx->node, lmd->source_object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
+  }
+}
+
 static void freeData(GpencilModifierData *md)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+}
+
+static void foreachObjectLink(GpencilModifierData *md,
+                              Object *ob,
+                              ObjectWalkFunc walk,
+                              void *userData)
+{
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+
+  walk(userData, ob, &lmd->source_object, IDWALK_CB_NOP);
 }
 
 static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
@@ -166,8 +205,10 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   walk(userData, ob, (ID **)&lmd->target_gp_material, IDWALK_CB_USER);
-  walk(userData, ob, (ID **)&lmd->source_object, IDWALK_CB_USER);
+  // walk(userData, ob, (ID **)&lmd->source_object, IDWALK_CB_USER);
   walk(userData, ob, (ID **)&lmd->source_collection, IDWALK_CB_USER);
+
+  foreachObjectLink(md, ob, (ObjectWalkFunc)walk, userData);
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
@@ -253,9 +294,9 @@ GpencilModifierTypeInfo modifierType_Gpencil_Lineart = {
     /* initData */ initData,
     /* freeData */ freeData,
     /* isDisabled */ NULL,
-    /* updateDepsgraph */ NULL,
+    /* updateDepsgraph */ updateDepsgraph,
     /* dependsOnTime */ NULL,
-    /* foreachObjectLink */ NULL,
+    /* foreachObjectLink */ foreachObjectLink,
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ NULL,
     /* panelRegister */ panelRegister,

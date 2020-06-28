@@ -35,6 +35,7 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_gpencil.h"
+#include "BKE_gpencil_modifier.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -2651,6 +2652,24 @@ bool ED_lineart_calculation_flag_check(eLineartRenderStatus flag)
   return match;
 }
 
+void ED_lineart_modifier_sync_set_flag(eLineartModifierSyncStatus flag, bool is_from_modifier)
+{
+  BLI_spin_lock(&lineart_share.lock_render_status);
+
+  lineart_share.fflag_sync_staus = flag;
+
+  BLI_spin_unlock(&lineart_share.lock_render_status);
+}
+
+bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag)
+{
+  bool match;
+  BLI_spin_lock(&lineart_share.lock_render_status);
+  match = (lineart_share.fflag_sync_staus == flag);
+  BLI_spin_unlock(&lineart_share.lock_render_status);
+  return match;
+}
+
 static int lineart_max_occlusion_in_collections(Collection *c)
 {
   CollectionChild *cc;
@@ -3824,11 +3843,17 @@ typedef struct LRT_FeatureLineWorker {
 } LRT_FeatureLineWorker;
 
 static void lineart_update_gp_strokes_actual(Scene *scene, Depsgraph *dg);
+static void lineart_notify_gpencil_targets(Depsgraph *dg);
 
 static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
                                                  LRT_FeatureLineWorker *worker_data)
 {
   ED_lineart_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
+
+  /* Calculation is done, give fresh data. */
+  ED_lineart_modifier_sync_set_flag(LRT_SYNC_FRESH, false);
+
+  lineart_notify_gpencil_targets(worker_data->dg);
   // lineart_update_gp_strokes_actual(DEG_get_evaluated_scene(worker_data->dg), worker_data->dg);
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 }
@@ -3842,7 +3867,7 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int inters
 
   /* If the calculation is already started then bypass it. */
   if (ED_lineart_calculation_flag_check(LRT_RENDER_RUNNING)) {
-    /* Release lock when early return. */
+    /* Release lock when early return. TODO: Canceling */
     BLI_spin_unlock(&lineart_share.lock_loader);
     return;
   }
@@ -3922,6 +3947,22 @@ void SCENE_OT_lineart_calculate_feature_lines(wmOperatorType *ot)
 
 /* Grease Pencil bindings */
 
+static void lineart_notify_gpencil_targets(Depsgraph *dg)
+{
+  DEG_OBJECT_ITER_BEGIN (dg,
+                         o,
+                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                             DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
+    if (o->type == OB_GPENCIL) {
+      if (BKE_gpencil_modifiers_findby_type(o, eGpencilModifierType_Lineart)) {
+        bGPdata *gpd = ((Object *)o->id.orig_id)->data;
+        DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+      }
+    }
+  }
+  DEG_OBJECT_ITER_END;
+}
+
 /* returns flags from LineartEdgeFlag */
 static int lineart_object_line_types(Object *ob)
 {
@@ -3961,13 +4002,15 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
   if ((!lineart_share.init_complete) || !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
     /* cache not ready */
+    printf("Line art cache not ready.\n");
     return;
   }
   else {
     /* lock the cache, prevent rendering job from starting */
     BLI_spin_lock(&lineart_share.lock_render_status);
   }
-
+  static int tempnum = 0;
+  tempnum++;
   int color_idx = 0;
   short thickness = 100;
 
@@ -3991,7 +4034,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (rlc->level > level_end || rlc->level < level_start) {
       continue;
     }
-    if (ob && &ob->id != rlc->object_ref) {
+    if (ob && ob->id.orig_id != rlc->object_ref->id.orig_id) {
       /* Note: not object_ref and ob are both (same?) copy on write data, if legacy mode, use
        * object_ref->id.orig_id. Same below.
        * TODO? Should we always use orig_id in the future? */
@@ -4485,12 +4528,19 @@ void ED_lineart_post_frame_update_external(Scene *s, Depsgraph *dg)
   if ((s->lineart.flags & LRT_ENABLED) == 0 || !(s->lineart.flags & LRT_AUTO_UPDATE)) {
     return;
   }
-  if (s->lineart.flags & LRT_AUTO_UPDATE) {
-    ED_lineart_compute_feature_lines_background(dg, 0);
+  if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
+    /* Modifier is waiting for data, trigger update (will wait/cancel if already running) */
+    if (s->lineart.flags & LRT_AUTO_UPDATE) {
+      ED_lineart_compute_feature_lines_background(dg, 0);
 
-    /* Wait for loading finish */
-    BLI_spin_lock(&lineart_share.lock_loader);
-    BLI_spin_unlock(&lineart_share.lock_loader);
+      /* Wait for loading finish */
+      BLI_spin_lock(&lineart_share.lock_loader);
+      BLI_spin_unlock(&lineart_share.lock_loader);
+    }
+  }
+  else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH)) {
+    /* At this stage GP should have all the data. We clear the flag */
+    ED_lineart_modifier_sync_set_flag(LRT_SYNC_IDLE, false);
   }
 }
 

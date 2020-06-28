@@ -261,6 +261,12 @@ typedef enum eLineartInitStatus {
   LRT_INIT_LOCKS = (1 << 1),
 } eLineartInitStatus;
 
+typedef enum eLineartModifierSyncStatus {
+  LRT_SYNC_IDLE = 0,
+  LRT_SYNC_WAITING = 1,
+  LRT_SYNC_FRESH = 2,
+} eLineartModifierSyncStatus;
+
 typedef struct LineartSharedResource {
 
   /* We only allocate once for all */
@@ -282,6 +288,7 @@ typedef struct LineartSharedResource {
    */
   SpinLock lock_render_status;
   eLineartRenderStatus flag_render_status;
+  eLineartModifierSyncStatus fflag_sync_staus;
 
   /** Geometry loading is done in the worker thread,
    * Lock the render thread until loading is done, so that
@@ -489,6 +496,9 @@ void *ED_lineart_make_leveled_edge_vertex_array(struct LineartRenderBuffer *rb,
 
 void ED_lineart_calculation_set_flag(eLineartRenderStatus flag);
 bool ED_lineart_calculation_flag_check(eLineartRenderStatus flag);
+
+void ED_lineart_modifier_sync_set_flag(eLineartModifierSyncStatus flag, bool is_from_modifier);
+bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag);
 
 int ED_lineart_compute_feature_lines_internal(struct Depsgraph *depsgraph,
                                               const int instersections_only);
