@@ -3991,16 +3991,21 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (rlc->level > level_end || rlc->level < level_start) {
       continue;
     }
-    if (ob && &ob->id != rlc->object_ref->id.orig_id) {
+    if (ob && &ob->id != rlc->object_ref) {
+      /* Note: not object_ref and ob are both (same?) copy on write data, if legacy mode, use
+       * object_ref->id.orig_id. Same below.
+       * TODO? Should we always use orig_id in the future? */
       continue;
     }
     if (col && rlc->object_ref) {
-      if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref->id.orig_id)) {
+      if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref)) {
         continue;
       }
     }
 
-    rlc->picked = 1;
+    /* Modifier for different GP objects are not evaluated in order, thus picked flag doesn't quite
+     * make sense. Should have a batter solution if we don't want to pick the same stroke twice. */
+    /* rlc->picked = 1; */
 
     int array_idx = 0;
     int count = ED_lineart_count_chain(rlc);
