@@ -183,6 +183,12 @@ static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgra
     DEG_add_object_relation(
         ctx->node, lmd->source_object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
   }
+  else {
+    DEG_add_scene_relation(ctx->node, ctx->scene, DEG_SCENE_COMP_PARAMETERS, "Line Art Modifier");
+    DEG_add_scene_relation(ctx->node, ctx->scene, DEG_SCENE_COMP_ANIMATION, "Line Art Modifier");
+  }
+  DEG_add_object_relation(
+      ctx->node, ctx->scene->camera, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
 }
 
 static void freeData(GpencilModifierData *md)
@@ -198,6 +204,7 @@ static void foreachObjectLink(GpencilModifierData *md,
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   walk(userData, ob, &lmd->source_object, IDWALK_CB_NOP);
+  walk(userData, ob, (ID **)&lmd->source_collection, IDWALK_CB_NOP);
 }
 
 static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
@@ -205,8 +212,6 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   walk(userData, ob, (ID **)&lmd->target_gp_material, IDWALK_CB_USER);
-  // walk(userData, ob, (ID **)&lmd->source_object, IDWALK_CB_USER);
-  walk(userData, ob, (ID **)&lmd->source_collection, IDWALK_CB_USER);
 
   foreachObjectLink(md, ob, (ObjectWalkFunc)walk, userData);
 }
