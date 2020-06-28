@@ -54,6 +54,7 @@
 #include "RNA_access.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_ui_common.h"
@@ -74,14 +75,69 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
-static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
-                         Object *ob,
-                         bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
-                         bGPDstroke *gps)
+static void generate_strokes_actual(
+    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  if (!gpl) {
+    return;
+  }
+
+  if (lmd->source_type == LRT_SOURCE_OBJECT) {
+    Object *source_object = lmd->source_object;
+    if (!source_object) {
+      return;
+    }
+    ED_lineart_generate_gpencil_from_chain(
+        depsgraph,
+        source_object,
+        gpl,
+        gpf,
+        lmd->level_start,
+        lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
+        lmd->target_gp_material ?
+            BKE_gpencil_object_material_index_get(ob, lmd->target_gp_material) :
+            0,
+        NULL,
+        lmd->line_types & (~LRT_EDGE_FLAG_INTERSECTION));
+    /* Note that intersection lines will only be in collection */
+  }
+  else if (lmd->source_type == LRT_SOURCE_COLLECTION) {
+    Collection *source_collection = lmd->source_collection;
+    if (!source_collection) {
+      return;
+    }
+    ED_lineart_generate_gpencil_from_chain(
+        depsgraph,
+        NULL,
+        gpl,
+        gpf,
+        lmd->level_start,
+        lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
+        lmd->target_gp_material ?
+            BKE_gpencil_object_material_index_get(ob, lmd->target_gp_material) :
+            0,
+        source_collection,
+        lmd->line_types);
+  }
+  else {
+    /* no other type selection for now. */
+    return;
+  }
+}
+
+static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
+{
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  bGPdata *gpd = ob->data;
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+
+  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_gp_layer, 1);
+  bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
+
+  generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
@@ -90,12 +146,12 @@ static void bakeModifier(Main *UNUSED(bmain),
                          Object *ob)
 {
   bGPdata *gpd = ob->data;
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-        deformStroke(md, depsgraph, ob, gpl, gpf, gps);
-      }
+      bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_gp_layer, 1);
+      generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
     }
   }
 }
@@ -189,8 +245,8 @@ GpencilModifierTypeInfo modifierType_Gpencil_Lineart = {
 
     /* copyData */ copyData,
 
-    /* deformStroke */ deformStroke,
-    /* generateStrokes */ NULL,
+    /* deformStroke */ NULL,
+    /* generateStrokes */ generateStrokes,
     /* bakeModifier */ bakeModifier,
     /* remapTime */ NULL,
 

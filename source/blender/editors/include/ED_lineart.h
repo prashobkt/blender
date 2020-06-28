@@ -508,6 +508,19 @@ LineartBoundingArea *ED_lineart_get_point_bounding_area_deep(LineartRenderBuffer
                                                              double x,
                                                              double y);
 
+struct bGPDlayer;
+struct bGPDframe;
+
+void ED_lineart_generate_gpencil_from_chain(struct Depsgraph *depsgraph,
+                                            struct Object *ob,
+                                            struct bGPDlayer *UNUSED(gpl),
+                                            struct bGPDframe *gpf,
+                                            int level_start,
+                                            int level_end,
+                                            int material_nr,
+                                            struct Collection *col,
+                                            int types);
+
 void ED_lineart_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
 struct SceneLineart;

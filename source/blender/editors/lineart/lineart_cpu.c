@@ -3829,7 +3829,7 @@ static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(poo
                                                  LRT_FeatureLineWorker *worker_data)
 {
   ED_lineart_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
-  lineart_update_gp_strokes_actual(DEG_get_evaluated_scene(worker_data->dg), worker_data->dg);
+  // lineart_update_gp_strokes_actual(DEG_get_evaluated_scene(worker_data->dg), worker_data->dg);
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 }
 
@@ -3942,21 +3942,30 @@ static int lineart_object_line_types(Object *ob)
   return result;
 }
 
-static void lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
-                                                Object *ob,
-                                                bGPDlayer *UNUSED(gpl),
-                                                bGPDframe *gpf,
-                                                int level_start,
-                                                int level_end,
-                                                int material_nr,
-                                                Collection *col,
-                                                int types)
+void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
+                                            Object *ob,
+                                            bGPDlayer *UNUSED(gpl),
+                                            bGPDframe *gpf,
+                                            int level_start,
+                                            int level_end,
+                                            int material_nr,
+                                            Collection *col,
+                                            int types)
 {
   LineartRenderBuffer *rb = lineart_share.render_buffer_shared;
 
   if (rb == NULL) {
-    printf("NULL LRT rb!\n");
+    printf("NULL Lineart rb!\n");
     return;
+  }
+
+  if ((!lineart_share.init_complete) || !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
+    /* cache not ready */
+    return;
+  }
+  else {
+    /* lock the cache, prevent rendering job from starting */
+    BLI_spin_lock(&lineart_share.lock_render_status);
   }
 
   int color_idx = 0;
@@ -4012,6 +4021,9 @@ static void lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
     gps->mat_nr = material_nr;
   }
+
+  /* release render lock so cache is free to be manipulated. */
+  BLI_spin_unlock(&lineart_share.lock_render_status);
 }
 static void lineart_clear_gp_lineart_flags(Depsgraph *dg, int frame)
 {
@@ -4069,7 +4081,7 @@ static void lineart_update_gp_strokes_single(Depsgraph *dg,
     use_material = 0;
   }
 
-  lineart_generate_gpencil_from_chain(
+  ED_lineart_generate_gpencil_from_chain(
       dg, ob, gpl, gpf, level_start, level_end, use_material, col, type);
 
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
