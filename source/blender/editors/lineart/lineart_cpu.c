@@ -2680,10 +2680,12 @@ static int lineart_get_max_occlusion_level(Depsgraph *dg)
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
     if (o->type == OB_GPENCIL) {
-      for (md = o->greasepencil_modifiers.first; md; md = md->next) {
-        lmd = md;
-        max = MAX2(lmd->level_start, lmd->level_end);
-        max_occ = MAX2(max, max_occ);
+      LISTBASE_FOREACH (GpencilModifierData *, md, &o->greasepencil_modifiers) {
+        if (md->type == eGpencilModifierType_Lineart) {
+          lmd = (LineartGpencilModifierData *)md;
+          max = MAX2(lmd->level_start, lmd->level_end);
+          max_occ = MAX2(max, max_occ);
+        }
       }
     }
   }
