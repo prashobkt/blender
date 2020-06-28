@@ -241,8 +241,8 @@ def main():
 
         # Hook modifier requires moving the hook object to get a mesh change
         # so can't test it with the current framework
-        ["MonkeyHook", "testMonkeyHook", "expectedMonkeyHook",
-         [ModifierSpec('hook', 'HOOK', {'object': bpy.data.objects["EmptyHook"], 'vertex_group': "HookVertexGroup"})]],
+        # ["MonkeyHook", "testMonkeyHook", "expectedMonkeyHook",
+        #  [ModifierSpec('hook', 'HOOK', {'object': bpy.data.objects["EmptyHook"], 'vertex_group': "HookVertexGroup"})]],
 
         # 43
         # ModifierSpec('laplacian_deform', 'LAPLACIANDEFORM', {}) Laplacian requires a more complex mesh

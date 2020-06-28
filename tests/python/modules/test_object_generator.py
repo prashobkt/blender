@@ -29,28 +29,28 @@ offset_x = 5
 fail = 0
 
 
-def vertex_selection(object, vert_set: set, randomize: bool):
+def vertex_selection(obj, vert_set: set, randomize: bool):
     """
     Selecting vertices which will be later assigned to vertex groups
-    :param: object: the selected object for vertex group
-    :param: object: vert_set: set of indices e.g.{0,2,3)
-    :parm: randomize: bool: select vertices randomly"""
+    :param: obj: the selected object for vertex group
+    :param: vert_set: set of indices e.g.{0,2,3)
+    :param: randomize: bool: select vertices randomly"""
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode='OBJECT')
 
     if not randomize:
         for index in vert_set:
-            object.data.vertices[index].select = True
+            obj.data.vertices[index].select = True
 
     else:
-        max_vert = len(object.data.vertices)
+        max_vert = len(obj.data.vertices)
         random_size = random.randint(1, max_vert)
         print(random_size)
         for index in range(random_size):
             random_index = random.randint(0, random_size)
             print(random_index)
-            object.data.vertices[random_index].select = True
+            obj.data.vertices[random_index].select = True
 
 
 def create_vertex_group(obj_name, vg_name, vg_vert_set, randomize):
@@ -70,19 +70,19 @@ def create_vertex_group(obj_name, vg_name, vg_vert_set, randomize):
     if obj_name not in bpy.data.objects.keys():
         fail = 1
         raise Exception('Object {} not Found!'.format(obj_name))
-    object = bpy.data.objects[obj_name]
+    obj = bpy.data.objects[obj_name]
     bpy.ops.object.select_all(action='DESELECT')
-    object.select_set(True)
-    bpy.context.view_layer.objects.active = object
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
 
-    max_vert = len(object.data.vertices)
+    max_vert = len(obj.data.vertices)
     for i in vg_vert_set:
         if not isinstance(i, int) or i < 0 or i > max_vert - 1:
             fail = 1
             raise Exception("Please enter a valid index(integer).")
 
-    object.vertex_groups.new(name=vg_name)
-    vertex_selection(object, vg_vert_set, randomize)
+    obj.vertex_groups.new(name=vg_name)
+    vertex_selection(obj, vg_vert_set, randomize)
 
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.object.vertex_group_assign()
@@ -104,13 +104,15 @@ def get_last_location():
     return farthest
 
 
-def create_test_objects(obj_dict):
+def create_test_objects(collection_name, obj_dict):
     """
     Creates test and expected objects
+    :param collection_name: str - name of the collection for test and expected objects
     :param obj_dict: dict (key:value) - dictionary contains test object names and types, e.g. {'myTestCube':'Cube'}
+    :param helper: bool - object is a helper object or a test object.
      """
     offset_y = get_last_location() + 5
-    test_obj_list = []
+    obj_list = []
 
     for obj_name, obj_type in obj_dict.items():
 
@@ -151,25 +153,43 @@ def create_test_objects(obj_dict):
                 fail = 1
                 raise Exception("'{}' object type not yet supported.".format(obj_type))
 
-            test_obj_list.append(test_obj_name)
+
             bpy.context.active_object.name = test_obj_name
             bpy.ops.object.duplicate_move(TRANSFORM_OT_translate={"value": (offset_x, 0, 0)})
-            bpy.context.active_object.name = "expObj" + obj_name
+            exp_obj_name = "expObj" + obj_name
+            bpy.context.active_object.name = exp_obj_name
+            test_obj = bpy.data.objects[test_obj_name]
+            obj_list.append(test_obj)
+            exp_obj = bpy.data.objects[exp_obj_name]
+            obj_list.append(exp_obj)
+
+            collection = bpy.data.collections.new(name=collection_name)
+            collection.name = collection_name
+            bpy.context.scene.collection.children.link(collection)
+            collection.objects.link(test_obj)
+            collection.objects.link(exp_obj)
 
             offset_y += 5
         else:
             print("Object already present.")
 
     if not fail:
-        print("{} were successfully created!".format(test_obj_list))
+        for ob in obj_list:
+            print("{} were successfully created!".format(ob.name))
+    scene_name = bpy.context.scene.name
+    for obj in obj_list:
+        try:
+            bpy.data.scenes[scene_name].collection.objects.unlink(obj)
+        except:
+            pass
+            bpy.data.collections["Collection"].objects.unlink(obj)
 
 
 argv = sys.argv
 argv = argv[argv.index("--") + 1:]
 
 # Converting the path to be platform independent and then into string
-actual_path = Path(argv[0])
-path_to_file = str(actual_path)
+path_to_file = str(Path(argv[0]))
 new_file = 0
 print(path_to_file)
 if os.path.exists(path_to_file):
@@ -187,8 +207,22 @@ else:
 
 # Function calls
 try:
-    create_test_objects({'Cube1': 'Cube', 'Cy455': "Cylinder"})
-    create_vertex_group('expObjCube', "vg_solidify", {0, 1, 2, 3}, False)
+    # create_test_objects("Skin", {'PlaneSkin': 'Plane'})
+    # create_test_objects("SurfaceDeform", {'MonkeySurfaceDeform': 'Monkey'})
+    create_test_objects("MeshDeform", {'MonkeyMeshDeform': 'Monkey'})
+
+    #
+    # create_test_objects("WavePlane", {'PlaneWave': 'Plane'})
+    # create_test_objects("PlaneOcean4", {'PlaneOcean4': 'Plane'})
+    # create_test_objects("PlaneOcean4", {'PlaneOcean4': 'Plane'})
+    # create_test_objects("OperatorTest", {'Cube': 'Cube'})
+
+
+
+
+    # create_test_objects("CylinderTests", {'Cy5555': "Cylinder"})
+
+    # create_vertex_group('expObjCube3', "vg_solidify", {0, 1, 2, 3}, False)
 finally:
     if fail and new_file:
         os.remove(path_to_file)
