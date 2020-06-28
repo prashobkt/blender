@@ -3849,6 +3849,7 @@ static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(poo
                                                  LRT_FeatureLineWorker *worker_data)
 {
   ED_lineart_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
+  ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
 
   /* Calculation is done, give fresh data. */
   ED_lineart_modifier_sync_set_flag(LRT_SYNC_FRESH, false);
