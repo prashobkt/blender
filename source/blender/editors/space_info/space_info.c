@@ -21,6 +21,7 @@
  * \ingroup spinfo
  */
 
+#include <BKE_report.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -60,7 +61,6 @@ static SpaceLink *info_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
 
   sinfo = MEM_callocN(sizeof(SpaceInfo), "initinfo");
   sinfo->spacetype = SPACE_INFO;
-
   sinfo->rpt_mask = INFO_RPT_OP;
 
   /* header */
@@ -91,23 +91,33 @@ static SpaceLink *info_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
 }
 
 /* not spacelink itself */
-static void info_free(SpaceLink *UNUSED(sl))
+static void info_free(SpaceLink *sl)
 {
-  //  SpaceInfo *sinfo = (SpaceInfo *) sl;
+  SpaceInfo *sinfo = (SpaceInfo *)sl;
+  if (sinfo->view == INFO_VIEW_G_CLOG) {
+    BKE_reports_clear(sinfo->active_reports);
+    MEM_freeN(sinfo->active_reports);
+  }
 }
 
 /* spacetype; init callback */
-static void info_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
+static void info_init(struct wmWindowManager *wm, ScrArea *area)
 {
+  BLI_assert(area->spacetype == SPACE_INFO);
+  SpaceInfo *sinfo = area->spacedata.first;
+  sinfo->active_reports = &wm->reports;
 }
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
 {
-  SpaceInfo *sinfon = MEM_dupallocN(sl);
+  SpaceInfo *sinfo = MEM_dupallocN(sl);
+  if (sinfo->view == INFO_VIEW_G_CLOG) {
+    // todo duplicate memory?
+  }
 
   /* clear or remove stuff from old */
 
-  return (SpaceLink *)sinfon;
+  return (SpaceLink *)sinfo;
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
@@ -131,7 +141,7 @@ static void info_textview_update_rect(const bContext *C, ARegion *region)
   View2D *v2d = &region->v2d;
 
   UI_view2d_totRect_set(
-      v2d, region->winx - 1, info_textview_height(sinfo, region, CTX_wm_reports(C)));
+      v2d, region->winx - 1, info_textview_height(sinfo, region, sinfo->active_reports));
 }
 
 static void info_main_region_draw(const bContext *C, ARegion *region)
@@ -154,7 +164,7 @@ static void info_main_region_draw(const bContext *C, ARegion *region)
   /* worlks best with no view2d matrix set */
   UI_view2d_view_ortho(v2d);
 
-  info_textview_main(sinfo, region, CTX_wm_reports(C));
+  info_textview_main(sinfo, region, sinfo->active_reports);
 
   /* reset view matrix */
   UI_view2d_view_restore(C);

@@ -42,14 +42,13 @@
 #  include <windows.h>
 #endif
 
-/* For printing timestamp. */
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
-
 /* Only other dependency (could use regular malloc too). */
 #include "MEM_guardedalloc.h"
 
 /* own include. */
+#include "../../source/blender/blenkernel/BKE_report.h"
+#include "../../source/blender/blenlib/BLI_blenlib.h"
+#include "../../source/blender/makesdna/DNA_listBase.h"
 #include "CLG_log.h"
 
 /* Local utility defines */
@@ -61,49 +60,6 @@
 #else
 #  define PATHSEP_CHAR '/'
 #endif
-
-/* -------------------------------------------------------------------- */
-/** \name Internal Types
- * \{ */
-
-typedef struct CLG_IDFilter {
-  struct CLG_IDFilter *next;
-  /** Over alloc. */
-  char match[0];
-} CLG_IDFilter;
-
-typedef struct CLogContext {
-  /** Single linked list of types.  */
-  CLG_LogType *types;
-#ifdef WITH_CLOG_PTHREADS
-  pthread_mutex_t types_lock;
-#endif
-
-  /* exclude, include filters.  */
-  CLG_IDFilter *filters[2];
-  bool use_color;
-  bool use_basename;
-  bool use_timestamp;
-
-  /** Borrowed, not owned. */
-  int output;
-  FILE *output_file;
-
-  /** For timer (use_timestamp). */
-  uint64_t timestamp_tick_start;
-
-  /** For new types. */
-  struct {
-    int level;
-  } default_type;
-
-  struct {
-    void (*fatal_fn)(void *file_handle);
-    void (*backtrace_fn)(void *file_handle);
-  } callbacks;
-} CLogContext;
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Mini Buffer Functionality
@@ -376,6 +332,42 @@ static uint64_t clg_timestamp_ticks_get(void)
   return tick;
 }
 
+CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
+                                    enum CLG_Severity severity,
+                                    const char *file,
+                                    const char *line,
+                                    const char *function,
+                                    const char *message)
+{
+  CLG_LogRecord *log_record = MEM_callocN(sizeof(CLG_LogRecord), "ClogRecord");  // MEM_mallocN
+  log_record->next = NULL;
+  log_record->prev = NULL;
+  log_record->type = type;
+  log_record->severity = severity;
+  log_record->timestamp = clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
+  log_record->file = file;
+  log_record->line = line;
+  log_record->function = function;
+  log_record->message = message;
+  return log_record;
+}
+
+void clog_log_record_free(CLG_LogRecord *log_record)
+{
+  MEM_freeN(log_record);
+}
+
+void clog_timestamp_to_char()
+{
+  const uint64_t timestamp = 0;  // clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
+  char timestamp_str[64];
+  const uint timestamp_len = snprintf(timestamp_str,
+                                      sizeof(timestamp_str),
+                                      "%" PRIu64 ".%03u ",
+                                      timestamp / 1000,
+                                      (uint)(timestamp % 1000));
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -484,6 +476,19 @@ void CLG_logf(CLG_LogType *lg,
               const char *fmt,
               ...)
 {
+  CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, file_line, fn, fmt);
+
+  BLI_addtail(&(lg->ctx->log_records), log_record);
+
+  //  CLG_LogRecord *log = NULL, *log_iter = NULL;
+  //  printf("Dump all log records:\n");
+  //  log = lg->ctx->log_records.first;
+  //  while (log) {
+  //    log_iter = log->next;
+  //    printf("  id: %s, %s\n", log->type->identifier, log->message);
+  //    log = log_iter;
+  //  }
+
   CLogStringBuf cstr;
   char cstr_stack_buf[CLOG_BUF_LEN_INIT];
   clg_str_init(&cstr, cstr_stack_buf, sizeof(cstr_stack_buf));
@@ -597,12 +602,14 @@ static void CLG_ctx_level_set(CLogContext *ctx, int level)
 
 static CLogContext *CLG_ctx_init(void)
 {
-  CLogContext *ctx = MEM_callocN(sizeof(*ctx), __func__);
+  CLogContext *ctx = MEM_callocN(sizeof(CLogContext), __func__);
 #ifdef WITH_CLOG_PTHREADS
   pthread_mutex_init(&ctx->types_lock, NULL);
 #endif
   ctx->use_color = true;
   ctx->default_type.level = 1;
+  ctx->log_records.first = NULL;
+  ctx->log_records.last = NULL;
   CLG_ctx_output_set(ctx, stdout);
 
   return ctx;
@@ -610,6 +617,13 @@ static CLogContext *CLG_ctx_init(void)
 
 static void CLG_ctx_free(CLogContext *ctx)
 {
+  CLG_LogRecord *log = ctx->log_records.first, *log_next=NULL;
+  while (log) {
+    log_next = log->next;
+    clog_log_record_free(log);
+    log = log_next;
+  }
+
   while (ctx->types != NULL) {
     CLG_LogType *item = ctx->types;
     ctx->types = item->next;
@@ -638,7 +652,7 @@ static void CLG_ctx_free(CLogContext *ctx)
  * \{ */
 
 /* We could support multiple at once, for now this seems not needed. */
-static struct CLogContext *g_ctx = NULL;
+struct CLogContext *g_ctx = NULL;
 
 void CLG_init(void)
 {

@@ -85,11 +85,21 @@ extern "C" {
 #  define _CLOG_ATTR_PRINTF_FORMAT(format_param, dots_param)
 #endif
 
+
+/* For printing timestamp. */
+#define __STDC_FORMAT_MACROS
+#include <DNA_windowmanager_types.h>
+#include <inttypes.h>
+
+#include "BLI_blenlib.h"
+#include "DNA_listBase.h"
+
 #define STRINGIFY_ARG(x) "" #x
 #define STRINGIFY_APPEND(a, b) "" a #b
 #define STRINGIFY(x) STRINGIFY_APPEND("", x)
 
 struct CLogContext;
+extern struct CLogContext *g_ctx;
 
 /* Don't typedef enums. */
 enum CLG_LogFlag {
@@ -120,6 +130,65 @@ typedef struct CLG_LogRef {
   CLG_LogType *type;
 } CLG_LogRef;
 
+/* -------------------------------------------------------------------- */
+/** \name Internal Types
+ * \{ */
+
+typedef struct CLG_IDFilter {
+  struct CLG_IDFilter *next;
+  /** Over alloc. */
+  char match[0];
+} CLG_IDFilter;
+
+typedef struct CLG_LogRecord {
+  /** Link for ListBase */
+  struct CLG_LogRecord *next, *prev;
+  /** track where does the log comes from */
+  CLG_LogType *type;
+  enum CLG_Severity severity;
+  uint64_t timestamp;
+  const char *file;
+  const char *line;
+  const char *function;
+  const char *message;
+} CLG_LogRecord;
+
+typedef struct CLogContext {
+  /** Single linked list of types.  */
+  CLG_LogType *types;
+  ListBase log_records;
+
+#ifdef WITH_CLOG_PTHREADS
+  pthread_mutex_t types_lock;
+#endif
+
+  /* exclude, include filters.  */
+  CLG_IDFilter *filters[2];
+  bool use_color;
+  bool use_basename;
+  bool use_timestamp;
+
+  /** Borrowed, not owned. */
+  int output;
+  FILE *output_file;
+
+  /** For timer (use_timestamp). */
+  uint64_t timestamp_tick_start;
+
+  /** For new types. */
+  struct {
+    int level;
+  } default_type;
+
+  struct {
+    void (*fatal_fn)(void *file_handle);
+    void (*backtrace_fn)(void *file_handle);
+  } callbacks;
+
+} CLogContext;
+
+/** \} */
+
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
                  const char *file_line,
@@ -131,6 +200,14 @@ void CLG_logf(CLG_LogType *lg,
               const char *fn,
               const char *format,
               ...) _CLOG_ATTR_NONNULL(1, 3, 4, 5) _CLOG_ATTR_PRINTF_FORMAT(5, 6);
+
+CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
+                                    enum CLG_Severity severity,
+                                    const char *file,
+                                    const char *line,
+                                    const char *function,
+                                    const char *message);
+void clog_log_record_free(CLG_LogRecord *log_record);
 
 /* Main initializer and distructor (per session, not logger). */
 void CLG_init(void);

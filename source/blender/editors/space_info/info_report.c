@@ -18,6 +18,8 @@
  * \ingroup spinfo
  */
 
+#include <BKE_report.h>
+#include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +41,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
+#include "../../../../intern/clog/CLG_log.h"
 #include "info_intern.h"
 
 static void reports_select_all(ReportList *reports, int report_mask, int action)
@@ -104,7 +107,7 @@ int info_report_mask(const SpaceInfo *UNUSED(sinfo))
 static int report_replay_exec(bContext *C, wmOperator *UNUSED(op))
 {
   //  SpaceInfo *sc = CTX_wm_space_info(C);
-  //  ReportList *reports = CTX_wm_reports(C);
+  //  ReportList *reports = sinfo->active_reports;
   //  int report_mask = info_report_mask(sc);
   //  Report *report;
 
@@ -149,11 +152,11 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
 {
   int report_index = RNA_int_get(op->ptr, "report_index");
   bool extend = RNA_boolean_get(op->ptr, "extend");
-
-  Report *report = BLI_findlink(&CTX_wm_reports(C)->list, report_index);
-
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+
+  Report *report = BLI_findlink(&sinfo->active_reports->list, report_index);
+
+  ReportList *reports = sinfo->active_reports;
   const int report_mask = info_report_mask(sinfo);
   if (!report) {
     return OPERATOR_CANCELLED;
@@ -173,7 +176,7 @@ static int select_report_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   Report *report;
 
   report = info_text_pick(sinfo, region, reports, event->mval[1]);
@@ -209,7 +212,7 @@ void INFO_OT_select_pick(wmOperatorType *ot)
 static int report_select_all_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   const int report_mask = info_report_mask(sinfo);
 
   int action = RNA_enum_get(op->ptr, "action");
@@ -240,7 +243,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   int report_mask = info_report_mask(sinfo);
   Report *report_min, *report_max;
   rcti rect;
@@ -325,7 +328,7 @@ void INFO_OT_select_box(wmOperatorType *ot)
 static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   int report_mask = info_report_mask(sinfo);
 
   Report *report, *report_next;
@@ -368,7 +371,7 @@ void INFO_OT_report_delete(wmOperatorType *ot)
 static int report_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   int report_mask = info_report_mask(sinfo);
 
   Report *report;
@@ -407,4 +410,19 @@ void INFO_OT_report_copy(wmOperatorType *ot)
   /*ot->flag = OPTYPE_REGISTER;*/
 
   /* properties */
+}
+
+ReportList *clog_to_report_list()
+{
+  ReportList *reports = MEM_mallocN(sizeof(ReportList), "ClogConvertedToReportList");
+  BKE_reports_init(reports, RPT_STORE);
+
+  CLG_LogRecord *log = g_ctx->log_records.first, *log_iter = NULL;
+  while (log) {
+    BKE_report(reports, RPT_INFO, log->message);
+//    printf("  id: %s, %s\n", log->type->identifier, log->message);
+    log_iter = log->next;
+    log = log_iter;
+  }
+  return reports;
 }
