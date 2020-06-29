@@ -725,7 +725,6 @@ Panel *UI_panel_begin(ScrArea *area,
 
     BLI_addtail(lb, panel);
   }
-  panel->runtime.block = block;
 
   /* Do not allow closed panels without headers! Else user could get "disappeared" UI! */
   if ((pt->flag & PNL_NO_HEADER) && (panel->flag & PNL_CLOSED)) {
