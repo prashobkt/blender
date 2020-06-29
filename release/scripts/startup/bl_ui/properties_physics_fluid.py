@@ -1260,10 +1260,7 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
 
         if (not (domain.use_color_ramp and domain.coba_field == "FLAGS")):
             col.prop(domain, "display_interpolation")
-        
-        col.separator()
 
-        col = flow.column()
         col.prop(domain, "axis_slice_method")
 
         if not do_full_slicing:
