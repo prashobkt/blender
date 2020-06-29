@@ -138,7 +138,7 @@ vec4 sample_raw(sampler3D ima, vec3 co)
 void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 {
   vec3 co = ls_pos * 0.5 + 0.5;
-#ifdef VOLUME_SLICE
+#if defined(VOLUME_SLICE) && (!(defined(USE_TRILINEAR) || defined(USE_TRICUBIC)) || showFlags)
   bool gridline = (showFlags) ? on_gridline(flagTexture, co) : on_gridline(densityTexture, co);
   if (gridline) {
     scattering = vec3(0.0, 0.0, 0.0);
@@ -184,7 +184,7 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
     if (tval.rgb == vec3(0.0)) {
       tval.rgb += vec3(0.5, 0.0, 0.0); /* medium red */
     }
-  } 
+  }
   else {
     float val = sample_volume_texture(densityTexture, co).r * gridScale;
     tval = texture(transferTexture, val);
