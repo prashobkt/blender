@@ -54,12 +54,12 @@ float line_unit_box_intersect_dist(vec3 lineorigin, vec3 linedirection)
   return max_v3(furthestplane);
 }
 
-bool on_gridline(sampler3D ima, vec3 co)
+bool on_gridline(vec3 texture_size, vec3 co)
 {
   if (!showGridlines) {
     return false;
   }
-  vec3 texel_size = 1.0 / vec3(textureSize(ima, 0).xyz);
+  vec3 texel_size = 1.0 / texture_size;
   vec3 offset = mod(co, texel_size);
   offset = min(offset, texel_size - offset);
   vec3 gridline_thickness = 0.05 * texel_size;
@@ -139,8 +139,8 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 {
   vec3 co = ls_pos * 0.5 + 0.5;
 #if defined(VOLUME_SLICE) && (!(defined(USE_TRILINEAR) || defined(USE_TRICUBIC)) || showFlags)
-  bool gridline = (showFlags) ? on_gridline(flagTexture, co) : on_gridline(densityTexture, co);
-  if (gridline) {
+  vec3 texture_size = (showFlags) ? vec3(textureSize(flagTexture, 0).xyz) : vec3(textureSize(densityTexture, 0).xyz);
+  if (on_gridline(texture_size, co)) {
     scattering = vec3(0.0, 0.0, 0.0);
     extinction = 50.0;
     return;
