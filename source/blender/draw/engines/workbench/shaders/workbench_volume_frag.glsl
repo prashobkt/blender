@@ -24,9 +24,9 @@ uniform vec3 activeColor;
 uniform float slicePosition;
 uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
 
-uniform bool showPhi;
-uniform bool showFlags;
-uniform bool showGridlines;
+uniform bool showPhi = false;
+uniform bool showFlags = false;
+uniform bool showGridlines = false;
 
 #ifdef VOLUME_SLICE
 in vec3 localPos;
