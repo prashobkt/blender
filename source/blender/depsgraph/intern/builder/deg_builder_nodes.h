@@ -200,7 +200,7 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
   virtual void build_ik_pose(Object *object, bPoseChannel *pchan, bConstraint *con);
   virtual void build_splineik_pose(Object *object, bPoseChannel *pchan, bConstraint *con);
   virtual void build_rig(Object *object, bool is_object_visible);
-  virtual void build_proxy_rig(Object *object);
+  virtual void build_proxy_rig(Object *object, bool is_object_visible);
   virtual void build_armature(bArmature *armature);
   virtual void build_armature_bones(ListBase *bones);
   virtual void build_shapekeys(Key *key);
@@ -251,7 +251,7 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
     string name;
     int name_tag;
   };
-  vector<SavedEntryTag> saved_entry_tags_;
+  Vector<SavedEntryTag> saved_entry_tags_;
 
   struct BuilderWalkUserData {
     DepsgraphNodeBuilder *builder;

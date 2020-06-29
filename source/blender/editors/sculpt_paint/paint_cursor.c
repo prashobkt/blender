@@ -1441,7 +1441,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
              * cursor won't be tagged to update, so always initialize the preview chain if it is
              * null before drawing it. */
             if (update_previews || !ss->pose_ik_chain_preview) {
-              BKE_sculpt_update_object_for_edit(depsgraph, vc.obact, true, false);
+              BKE_sculpt_update_object_for_edit(depsgraph, vc.obact, true, false, false);
 
               /* Free the previous pose brush preview. */
               if (ss->pose_ik_chain_preview) {
@@ -1674,23 +1674,13 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
 /* Public API */
 
-void paint_cursor_start(bContext *C, bool (*poll)(bContext *C))
+void paint_cursor_start(Paint *p, bool (*poll)(bContext *C))
 {
-  Paint *p = BKE_paint_get_active_from_context(C);
-
   if (p && !p->paint_cursor) {
     p->paint_cursor = WM_paint_cursor_activate(
-        CTX_wm_manager(C), SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
+        SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
   }
 
   /* Invalidate the paint cursors. */
   BKE_paint_invalidate_overlay_all();
-}
-
-void paint_cursor_start_explicit(Paint *p, wmWindowManager *wm, bool (*poll)(bContext *C))
-{
-  if (p && !p->paint_cursor) {
-    p->paint_cursor = WM_paint_cursor_activate(
-        wm, SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, NULL);
-  }
 }

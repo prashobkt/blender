@@ -96,22 +96,26 @@ typedef struct EdgeSlideParams {
 } EdgeSlideParams;
 
 /**
- * Get the first valid EdgeSlideData.
+ * Get the first valid TransDataContainer *.
  *
  * Note we cannot trust TRANS_DATA_CONTAINER_FIRST_OK because of multi-object that
  * may leave items with invalid custom data in the transform data container.
  */
-static EdgeSlideData *edgeSlideFirstGet(TransInfo *t)
+static TransDataContainer *edge_slide_container_first_ok(TransInfo *t)
 {
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    EdgeSlideData *sld = tc->custom.mode.data;
-    if (sld == NULL) {
-      continue;
+    if (tc->custom.mode.data) {
+      return tc;
     }
-    return sld;
   }
   BLI_assert(!"Should never happen, at least one EdgeSlideData should be valid");
   return NULL;
+}
+
+static EdgeSlideData *edgeSlideFirstGet(TransInfo *t)
+{
+  TransDataContainer *tc = edge_slide_container_first_ok(t);
+  return tc->custom.mode.data;
 }
 
 static void calcEdgeSlideCustomPoints(struct TransInfo *t)
@@ -519,7 +523,7 @@ static void calcEdgeSlide_even(TransInfo *t,
   }
 }
 
-static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *tc)
+static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *tc)
 {
   BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
   BMesh *bm = em->bm;
@@ -554,8 +558,9 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *t
       }
 
       if (numsel == 0 || numsel > 2) {
+        /* Invalid edge selection. */
         MEM_freeN(sld);
-        return false; /* invalid edge selection */
+        return NULL;
       }
     }
   }
@@ -566,7 +571,7 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *t
       if (!BM_edge_is_manifold(e) && !BM_edge_is_boundary(e)) {
         /* can edges with at least once face user */
         MEM_freeN(sld);
-        return false;
+        return NULL;
       }
     }
   }
@@ -595,7 +600,7 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *t
     if (!j) {
       MEM_freeN(sld);
       MEM_freeN(sv_table);
-      return false;
+      return NULL;
     }
     sv_tot = j;
   }
@@ -851,7 +856,7 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *t
 
   /* EDBM_flag_disable_all(em, BM_ELEM_SELECT); */
 
-  BLI_assert(STACK_SIZE(sv_array) == sv_tot);
+  BLI_assert(STACK_SIZE(sv_array) == (uint)sv_tot);
 
   sld->sv = sv_array;
   sld->totsv = sv_tot;
@@ -870,18 +875,16 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *t
     calcEdgeSlide_even(t, tc, sld, mval);
   }
 
-  tc->custom.mode.data = sld;
-
   MEM_freeN(sv_table);
 
-  return true;
+  return sld;
 }
 
 /**
  * A simple version of #createEdgeSlideVerts_double_side
  * Which assumes the longest unselected.
  */
-static bool createEdgeSlideVerts_single_side(TransInfo *t, TransDataContainer *tc)
+static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataContainer *tc)
 {
   BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
   BMesh *bm = em->bm;
@@ -933,7 +936,7 @@ static bool createEdgeSlideVerts_single_side(TransInfo *t, TransDataContainer *t
 
     if (!j) {
       MEM_freeN(sld);
-      return false;
+      return NULL;
     }
 
     sv_tot = j;
@@ -1055,24 +1058,9 @@ static bool createEdgeSlideVerts_single_side(TransInfo *t, TransDataContainer *t
     calcEdgeSlide_even(t, tc, sld, mval);
   }
 
-  tc->custom.mode.data = sld;
-
   MEM_freeN(sv_table);
 
-  return true;
-}
-
-void projectEdgeSlideData(TransInfo *t, bool is_final)
-{
-  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    EdgeSlideData *sld = tc->custom.mode.data;
-
-    if (sld == NULL) {
-      continue;
-    }
-
-    trans_mesh_customdata_correction_apply(tc, is_final);
-  }
+  return sld;
 }
 
 static void freeEdgeSlideVerts(TransInfo *UNUSED(t),
@@ -1270,6 +1258,71 @@ void drawEdgeSlide(TransInfo *t)
   }
 }
 
+static void edge_slide_snap_apply(TransInfo *t, float *value)
+{
+  TransDataContainer *tc = edge_slide_container_first_ok(t);
+  EdgeSlideParams *slp = t->custom.mode.data;
+  EdgeSlideData *sld_active = tc->custom.mode.data;
+  TransDataEdgeSlideVert *sv = &sld_active->sv[sld_active->curr_sv_index];
+  float snap_point[3], co_orig[3], co_dest[2][3], dvec[3];
+
+  copy_v3_v3(co_orig, sv->v_co_orig);
+  add_v3_v3v3(co_dest[0], co_orig, sv->dir_side[0]);
+  add_v3_v3v3(co_dest[1], co_orig, sv->dir_side[1]);
+  if (tc->use_local_mat) {
+    mul_m4_v3(tc->mat, co_orig);
+    mul_m4_v3(tc->mat, co_dest[0]);
+    mul_m4_v3(tc->mat, co_dest[1]);
+  }
+
+  getSnapPoint(t, dvec);
+  sub_v3_v3(dvec, t->tsnap.snapTarget);
+  add_v3_v3v3(snap_point, co_orig, dvec);
+
+  float perc = *value;
+  int side_index;
+  if (slp->use_even == false) {
+    const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
+    if (is_clamp) {
+      side_index = perc < 0.0f;
+    }
+    else {
+      side_index = sld_active->curr_side_unclamp;
+    }
+    perc = line_point_factor_v3(snap_point, co_orig, co_dest[side_index]);
+    if (side_index) {
+      perc *= -1;
+    }
+  }
+  else {
+    /* Could be pre-calculated. */
+    float t_mid = line_point_factor_v3(
+        (float[3]){0.0f, 0.0f, 0.0f}, sv->dir_side[0], sv->dir_side[1]);
+
+    float t_snap = line_point_factor_v3(snap_point, co_dest[0], co_dest[1]);
+    side_index = t_snap >= t_mid;
+    perc = line_point_factor_v3(snap_point, co_orig, co_dest[side_index]);
+    if (!side_index) {
+      perc = (1.0f - perc) * t_mid;
+    }
+    else {
+      perc = perc * (1.0f - t_mid) + t_mid;
+    }
+
+    if (slp->flipped) {
+      perc = 1.0f - perc;
+    }
+
+    perc = (2 * perc) - 1.0f;
+
+    if (!slp->flipped) {
+      perc *= -1;
+    }
+  }
+
+  *value = perc;
+}
+
 void doEdgeSlide(TransInfo *t, float perc)
 {
   EdgeSlideParams *slp = t->custom.mode.data;
@@ -1381,6 +1434,7 @@ static void applyEdgeSlide(TransInfo *t, const int UNUSED(mval[2]))
 
   final = t->values[0];
 
+  applySnapping(t, &final);
   snapGridIncrement(t, &final);
 
   /* only do this so out of range values are not displayed */
@@ -1429,6 +1483,8 @@ void initEdgeSlide_ex(
   t->mode = TFM_EDGE_SLIDE;
   t->transform = applyEdgeSlide;
   t->handleEvent = handleEventEdgeSlide;
+  t->tsnap.applySnap = edge_slide_snap_apply;
+  t->tsnap.distance = transform_snap_distance_len_squared_fn;
 
   {
     EdgeSlideParams *slp = MEM_callocN(sizeof(*slp), __func__);
@@ -1448,14 +1504,14 @@ void initEdgeSlide_ex(
     t->custom.mode.use_free = true;
   }
 
-  if (use_double_side) {
-    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-      ok |= createEdgeSlideVerts_double_side(t, tc);
-    }
-  }
-  else {
-    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-      ok |= createEdgeSlideVerts_single_side(t, tc);
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    sld = use_double_side ? createEdgeSlideVerts_double_side(t, tc) :
+                            createEdgeSlideVerts_single_side(t, tc);
+    if (sld) {
+      tc->custom.mode.data = sld;
+      tc->custom.mode.free_cb = freeEdgeSlideVerts;
+      trans_mesh_customdata_correction_init(t, tc);
+      ok = true;
     }
   }
 
@@ -1463,16 +1519,6 @@ void initEdgeSlide_ex(
     t->state = TRANS_CANCEL;
     return;
   }
-
-  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    sld = tc->custom.mode.data;
-    if (!sld) {
-      continue;
-    }
-    tc->custom.mode.free_cb = freeEdgeSlideVerts;
-  }
-
-  trans_mesh_customdata_correction_init(t);
 
   /* set custom point first if you want value to be initialized by init */
   calcEdgeSlideCustomPoints(t);

@@ -141,10 +141,10 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
     struct GPUBatch *geom = DRW_cache_mesh_surface_texpaint_single_get(ob);
     if (geom) {
       Image *ima = imapaint->canvas;
-      int interp = (imapaint->interp == IMAGEPAINT_INTERP_LINEAR) ? SHD_INTERP_LINEAR :
-                                                                    SHD_INTERP_CLOSEST;
+      eGPUSamplerState state = GPU_SAMPLER_REPEAT;
+      SET_FLAG_FROM_TEST(state, imapaint->interp == IMAGEPAINT_INTERP_LINEAR, GPU_SAMPLER_FILTER);
 
-      DRWShadingGroup *grp = workbench_image_setup(wpd, ob, 0, ima, NULL, interp);
+      DRWShadingGroup *grp = workbench_image_setup(wpd, ob, 0, ima, NULL, state);
       DRW_shgroup_call(grp, geom, ob);
     }
   }
@@ -174,8 +174,19 @@ static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd,
       color_type, V3D_SHADING_MATERIAL_COLOR, V3D_SHADING_TEXTURE_COLOR);
 
   if (use_single_drawcall) {
-    struct GPUBatch *geom = (use_vcol) ? DRW_cache_mesh_surface_vertpaint_get(ob) :
-                                         DRW_cache_object_surface_get(ob);
+    struct GPUBatch *geom;
+    if (use_vcol) {
+      if (ob->mode & OB_MODE_VERTEX_PAINT) {
+        geom = DRW_cache_mesh_surface_vertpaint_get(ob);
+      }
+      else {
+        geom = DRW_cache_mesh_surface_sculptcolors_get(ob);
+      }
+    }
+    else {
+      geom = DRW_cache_object_surface_get(ob);
+    }
+
     if (geom) {
       DRWShadingGroup *grp = workbench_material_setup(wpd, ob, 0, color_type, r_transp);
       DRW_shgroup_call(grp, geom, ob);
@@ -210,10 +221,10 @@ static void workbench_cache_hair_populate(WORKBENCH_PrivateData *wpd,
 
   const ImagePaintSettings *imapaint = use_texpaint_mode ? &scene->toolsettings->imapaint : NULL;
   Image *ima = (imapaint && imapaint->mode == IMAGEPAINT_MODE_IMAGE) ? imapaint->canvas : NULL;
-  int interp = (imapaint && imapaint->interp == IMAGEPAINT_INTERP_LINEAR) ? SHD_INTERP_LINEAR :
-                                                                            SHD_INTERP_CLOSEST;
+  eGPUSamplerState state = 0;
+  state |= (imapaint && imapaint->interp == IMAGEPAINT_INTERP_LINEAR) ? GPU_SAMPLER_FILTER : 0;
   DRWShadingGroup *grp = (use_texpaint_mode) ?
-                             workbench_image_hair_setup(wpd, ob, matnr, ima, NULL, interp) :
+                             workbench_image_hair_setup(wpd, ob, matnr, ima, NULL, state) :
                              workbench_material_hair_setup(wpd, ob, matnr, color_type);
 
   DRW_shgroup_hair_create_sub(ob, psys, md, grp);
@@ -247,8 +258,13 @@ static eV3DShadingColorType workbench_color_type_get(WORKBENCH_PrivateData *wpd,
   if ((color_type == V3D_SHADING_TEXTURE_COLOR) && (me == NULL || me->mloopuv == NULL)) {
     color_type = V3D_SHADING_MATERIAL_COLOR;
   }
-  if ((color_type == V3D_SHADING_VERTEX_COLOR) && (me == NULL || me->mloopcol == NULL)) {
-    color_type = V3D_SHADING_OBJECT_COLOR;
+  if (color_type == V3D_SHADING_VERTEX_COLOR) {
+    if (me == NULL) {
+      color_type = V3D_SHADING_OBJECT_COLOR;
+    }
+    if (!CustomData_has_layer(&me->vdata, CD_PROP_COLOR)) {
+      color_type = V3D_SHADING_OBJECT_COLOR;
+    }
   }
 
   if (r_sculpt_pbvh) {

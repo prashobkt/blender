@@ -64,6 +64,22 @@ struct bAnimContext;
 struct wmKeyConfig;
 struct wmOperator;
 
+/* Reproject stroke modes. */
+typedef enum eGP_ReprojectModes {
+  /* Axis */
+  GP_REPROJECT_FRONT = 0,
+  GP_REPROJECT_SIDE,
+  GP_REPROJECT_TOP,
+  /* On same plane, parallel to view-plane. */
+  GP_REPROJECT_VIEW,
+  /* Reprojected on to the scene geometry */
+  GP_REPROJECT_SURFACE,
+  /* Reprojected on 3D cursor orientation */
+  GP_REPROJECT_CURSOR,
+  /* Keep equals (used in some operators) */
+  GP_REPROJECT_KEEP,
+} eGP_ReprojectModes;
+
 /* ------------- Grease-Pencil Runtime Data ---------------- */
 
 /* Temporary 'Stroke Point' data (2D / screen-space)
@@ -71,15 +87,24 @@ struct wmOperator;
  * Used as part of the 'stroke cache' used during drawing of new strokes
  */
 typedef struct tGPspoint {
-  float x, y;          /* x and y coordinates of cursor (in relative to area) */
-  float pressure;      /* pressure of tablet at this point */
-  float strength;      /* pressure of tablet at this point for alpha factor */
-  float time;          /* Time relative to stroke start (used when converting to path) */
-  float uv_fac;        /* factor of uv along the stroke */
-  float uv_rot;        /* uv rotation for dor mode */
-  float rnd[3];        /* rnd value */
-  bool rnd_dirty;      /* rnd flag */
-  float vert_color[4]; /* Point vertex color. */
+  /** Coordinates x and y of cursor (in relative to area). */
+  float x, y;
+  /** Pressure of tablet at this point. */
+  float pressure;
+  /** Pressure of tablet at this point for alpha factor. */
+  float strength;
+  /** Time relative to stroke start (used when converting to path). */
+  float time;
+  /** Factor of uv along the stroke. */
+  float uv_fac;
+  /** UV rotation for dot mode. */
+  float uv_rot;
+  /** Random value. */
+  float rnd[3];
+  /** Random flag. */
+  bool rnd_dirty;
+  /** Point vertex color. */
+  float vert_color[4];
 } tGPspoint;
 
 /* ----------- Grease Pencil Tools/Context ------------- */
@@ -246,6 +271,15 @@ void ED_gpencil_project_stroke_to_view(struct bContext *C,
                                        struct bGPDlayer *gpl,
                                        struct bGPDstroke *gps);
 
+void ED_gpencil_stroke_reproject(struct Depsgraph *depsgraph,
+                                 const struct GP_SpaceConversion *gsc,
+                                 struct SnapObjectContext *sctx,
+                                 struct bGPDlayer *gpl,
+                                 struct bGPDframe *gpf,
+                                 struct bGPDstroke *gps,
+                                 const eGP_ReprojectModes mode,
+                                 const bool keep_original);
+
 /* set sculpt cursor */
 void ED_gpencil_toggle_brush_cursor(struct bContext *C, bool enable, void *customdata);
 
@@ -316,6 +350,10 @@ bool ED_gpencil_stroke_check_collision(struct GP_SpaceConversion *gsc,
                                        struct bGPDstroke *gps,
                                        float mouse[2],
                                        const int radius,
+                                       const float diff_mat[4][4]);
+bool ED_gpencil_stroke_point_is_inside(struct bGPDstroke *gps,
+                                       struct GP_SpaceConversion *gsc,
+                                       int mouse[2],
                                        const float diff_mat[4][4]);
 
 #ifdef __cplusplus
