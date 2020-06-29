@@ -61,7 +61,7 @@
 #include "potracelib.h"
 
 /* Trace Image to Grease Pencil. */
-static bool gp_trace_image_poll(bContext *C)
+static bool gpencil_trace_image_poll(bContext *C)
 {
   SpaceLink *sl = CTX_wm_space_data(C);
   if ((sl != NULL) && (sl->spacetype == SPACE_IMAGE)) {
@@ -72,7 +72,7 @@ static bool gp_trace_image_poll(bContext *C)
   return false;
 }
 
-static int gp_trace_image_exec(bContext *C, wmOperator *op)
+static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -234,8 +234,8 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
   ot->description = "Extract Grease Pencil strokes from Black and White image";
 
   /* callbacks */
-  ot->exec = gp_trace_image_exec;
-  ot->poll = gp_trace_image_poll;
+  ot->exec = gpencil_trace_image_exec;
+  ot->poll = gpencil_trace_image_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
