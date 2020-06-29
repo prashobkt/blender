@@ -393,6 +393,7 @@ void OUTLINER_OT_parent_drop(struct wmOperatorType *ot);
 void OUTLINER_OT_parent_clear(struct wmOperatorType *ot);
 void OUTLINER_OT_scene_drop(struct wmOperatorType *ot);
 void OUTLINER_OT_material_drop(struct wmOperatorType *ot);
+void OUTLINER_OT_modifier_drop(struct wmOperatorType *ot);
 void OUTLINER_OT_collection_drop(struct wmOperatorType *ot);
 
 /* ...................................................... */

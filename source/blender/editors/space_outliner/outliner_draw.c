@@ -2156,6 +2156,8 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         break;
       case TSE_MODIFIER: {
         Object *ob = (Object *)tselem->id;
+        data.drag_id = tselem->id;
+
         if (ob->type != OB_GPENCIL) {
           ModifierData *md = BLI_findlink(&ob->modifiers, tselem->nr);
           switch ((ModifierType)md->type) {

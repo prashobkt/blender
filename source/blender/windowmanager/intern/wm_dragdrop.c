@@ -285,6 +285,17 @@ void wm_drags_check_ops(bContext *C, const wmEvent *event)
   }
 }
 
+void *WM_drag_data_from_event(const struct wmEvent *event)
+{
+  if (event->custom != EVT_DATA_DRAGDROP) {
+    return NULL;
+  }
+
+  ListBase *lb = event->customdata;
+  wmDrag *drag = lb->first;
+  return drag->poin;
+}
+
 /* ************** IDs ***************** */
 
 void WM_drag_add_ID(wmDrag *drag, ID *id, ID *from_parent)

@@ -27,6 +27,7 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_material_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_space_types.h"
 
@@ -616,6 +617,106 @@ void OUTLINER_OT_material_drop(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 }
 
+/* ******************** Modifier Drop Operator *********************** */
+
+typedef struct ModifierDrop {
+  ModifierData *from;
+  ModifierData *to;
+} ModiferDrop;
+
+static bool outliner_is_modifier_element(TreeElement *te)
+{
+  TreeStoreElem *tselem = TREESTORE(te);
+
+  return tselem->type == TSE_MODIFIER;
+}
+
+static bool modifier_drop_poll(bContext *C,
+                               wmDrag *drag,
+                               const wmEvent *event,
+                               const char **r_tooltip)
+{
+  TreeStoreElem *tselem = drag->poin;
+  if (!tselem) {
+    return false;
+  }
+
+  TreeElementInsertType insert_type;
+  TreeElement *te_target = outliner_drop_insert_find(C, event, &insert_type);
+  if (!te_target) {
+    return false;
+  }
+  TreeStoreElem *tselem_target = TREESTORE(te_target);
+
+  if (outliner_ID_drop_find(C, event, ID_OB)) {
+    *r_tooltip = TIP_("Copy modifier to object");
+    return true;
+  }
+  else if (tselem_target->type == TSE_MODIFIER) {
+    switch (insert_type) {
+      case TE_INSERT_BEFORE:
+        tselem_target->flag |= TSE_DRAG_BEFORE;
+        if (te_target->prev && outliner_is_modifier_element(te_target->prev)) {
+          *r_tooltip = TIP_("Move between modifiers");
+        }
+        else {
+          *r_tooltip = TIP_("Move before modifier");
+        }
+        break;
+      case TE_INSERT_AFTER:
+        tselem_target->flag |= TSE_DRAG_AFTER;
+        if (te_target->next && outliner_is_modifier_element(te_target->next)) {
+          *r_tooltip = TIP_("Move between modifiers");
+        }
+        else {
+          *r_tooltip = TIP_("Move after modifier");
+        }
+        break;
+      default:
+        return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+static int modifier_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  TreeStoreElem *tselem = WM_drag_data_from_event(event);
+
+  TreeElementInsertType insert_type;
+  TreeElement *te = outliner_drop_insert_find(C, event, &insert_type);
+
+  Object *ob = (Object *)tselem->id;
+  TreeElement *te_md = outliner_find_tree_element(&soops->tree, tselem);
+  ModifierData *md = te_md->directdata;
+
+  ED_object_modifier_move_to_index(op->reports, ob, md, te->index);
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+
+  return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_modifier_drop(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Move Modifier";
+  ot->description = "Drag modifier to object in Outliner";
+  ot->idname = "OUTLINER_OT_modifier_drop";
+
+  /* api callbacks */
+  ot->invoke = modifier_drop_invoke;
+
+  ot->poll = ED_operator_outliner_active;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+}
+
 /* ******************** Collection Drop Operator *********************** */
 
 typedef struct CollectionDrop {
@@ -880,7 +981,8 @@ static int outliner_item_drag_drop_invoke(bContext *C,
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
 
-  TreeElementIcon data = tree_element_get_icon(TREESTORE(te), te);
+  TreeStoreElem *tselem = TREESTORE(te);
+  TreeElementIcon data = tree_element_get_icon(tselem, te);
   if (!data.drag_id) {
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
@@ -897,13 +999,16 @@ static int outliner_item_drag_drop_invoke(bContext *C,
 
   wmDrag *drag = WM_event_start_drag(C, data.icon, WM_DRAG_ID, NULL, 0.0, WM_DRAG_NOP);
 
-  if (ELEM(GS(data.drag_id->name), ID_OB, ID_GR)) {
+  if (tselem->type == TSE_MODIFIER) {
+    drag->poin = tselem;
+  }
+  else if (ELEM(GS(data.drag_id->name), ID_OB, ID_GR)) {
     /* For collections and objects we cheat and drag all selected. */
 
     /* Only drag element under mouse if it was not selected before. */
-    if ((TREESTORE(te)->flag & TSE_SELECTED) == 0) {
+    if ((tselem->flag & TSE_SELECTED) == 0) {
       outliner_flag_set(&soops->tree, TSE_SELECTED, 0);
-      TREESTORE(te)->flag |= TSE_SELECTED;
+      tselem->flag |= TSE_SELECTED;
     }
 
     /* Gather all selected elements. */
@@ -1004,5 +1109,6 @@ void outliner_dropboxes(void)
   WM_dropbox_add(lb, "OUTLINER_OT_parent_clear", parent_clear_poll, NULL);
   WM_dropbox_add(lb, "OUTLINER_OT_scene_drop", scene_drop_poll, NULL);
   WM_dropbox_add(lb, "OUTLINER_OT_material_drop", material_drop_poll, NULL);
+  WM_dropbox_add(lb, "OUTLINER_OT_modifier_drop", modifier_drop_poll, NULL);
   WM_dropbox_add(lb, "OUTLINER_OT_collection_drop", collection_drop_poll, NULL);
 }
