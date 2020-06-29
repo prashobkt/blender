@@ -361,10 +361,15 @@ static bool id_search_add(const bContext *C,
        * followed by ID_NAME-2 characters from id->name
        */
       char name_ui[MAX_ID_FULL_NAME_UI];
-      BKE_id_full_name_ui_prefix_get(name_ui, id, UI_SEP_CHAR);
-
       int iconid = ui_id_icon_get(C, id, template_ui->preview);
       bool has_sep_char = (id->lib != NULL);
+
+      /* When using previews, the library hint (linked, overriden, missing) is added with a
+       * character prefix, otherwise we can use a icon. */
+      BKE_id_full_name_ui_prefix_get(name_ui, id, template_ui->preview, UI_SEP_CHAR);
+      if (!template_ui->preview) {
+        iconid = UI_library_icon_get(id);
+      }
 
       if (!UI_search_item_add(
               items, name_ui, id, iconid, has_sep_char ? UI_BUT_HAS_SEP_CHAR : 0)) {
@@ -511,6 +516,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
   PointerRNA idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
   ID *id = idptr.data;
   int event = POINTER_AS_INT(arg_event);
+  const char *undo_push_label = NULL;
 
   switch (event) {
     case UI_ID_BROWSE:
@@ -531,6 +537,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         id_us_clear_real(id);
         id_fake_user_clear(id);
         id->us = 0;
+        undo_push_label = "Delete Data-Block";
       }
 
       break;
@@ -542,6 +549,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         else {
           id_us_min(id);
         }
+        undo_push_label = "Fake User";
       }
       else {
         return;
@@ -572,6 +580,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         }
         RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, NULL);
         RNA_property_update(C, &template_ui->ptr, template_ui->prop);
+        undo_push_label = "Make Local";
       }
       break;
     case UI_ID_OVERRIDE:
@@ -581,6 +590,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
         RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, NULL);
         RNA_property_update(C, &template_ui->ptr, template_ui->prop);
+        undo_push_label = "Override Data-Block";
       }
       break;
     case UI_ID_ALONE:
@@ -601,12 +611,17 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
           id_single_user(C, id, &template_ui->ptr, template_ui->prop);
           DEG_relations_tag_update(bmain);
         }
+        undo_push_label = "Make Single User";
       }
       break;
 #if 0
     case UI_ID_AUTO_NAME:
       break;
 #endif
+  }
+
+  if (undo_push_label != NULL) {
+    ED_undo_push(C, undo_push_label);
   }
 }
 
@@ -1858,14 +1873,22 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
     ModifierData *md = modifiers->first;
     for (int i = 0; md; i++, md = md->next) {
       const ModifierTypeInfo *mti = BKE_modifier_get_info(md->type);
-      if (mti->panelRegister) {
-        char panel_idname[MAX_NAME];
-        modifier_panel_id(md, panel_idname);
+      if (mti->panelRegister == NULL) {
+        continue;
+      }
 
-        Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
-        if (new_panel != NULL) {
-          UI_panel_set_expand_from_list_data(C, new_panel);
-        }
+      char panel_idname[MAX_NAME];
+      modifier_panel_id(md, panel_idname);
+
+      /* Create custom data RNA pointer. */
+      PointerRNA *md_ptr = MEM_mallocN(sizeof(PointerRNA), "panel customdata");
+      RNA_pointer_create(&ob->id, &RNA_Modifier, md, md_ptr);
+
+      Panel *new_panel = UI_panel_add_instanced(
+          sa, region, &region->panels, panel_idname, i, md_ptr);
+
+      if (new_panel != NULL) {
+        UI_panel_set_expand_from_list_data(C, new_panel);
       }
     }
   }
@@ -1874,6 +1897,27 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
     LISTBASE_FOREACH (Panel *, panel, &region->panels) {
       if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED))
         UI_panel_set_expand_from_list_data(C, panel);
+    }
+
+    /* Assuming there's only one group of instanced panels, update the custom data pointers. */
+    Panel *panel = region->panels.first;
+    LISTBASE_FOREACH (ModifierData *, md, modifiers) {
+      const ModifierTypeInfo *mti = BKE_modifier_get_info(md->type);
+      if (mti->panelRegister == NULL) {
+        continue;
+      }
+
+      /* Move to the next instanced panel corresponding to the next modifier. */
+      while ((panel->type == NULL) || !(panel->type->flag & PNL_INSTANCED)) {
+        panel = panel->next;
+        BLI_assert(panel != NULL); /* There shouldn't be fewer panels than modifiers with UIs. */
+      }
+
+      PointerRNA *md_ptr = MEM_mallocN(sizeof(PointerRNA), "panel customdata");
+      RNA_pointer_create(&ob->id, &RNA_Modifier, md, md_ptr);
+      UI_panel_custom_data_set(panel, md_ptr);
+
+      panel = panel->next;
     }
   }
 }
@@ -1953,7 +1997,7 @@ static short get_constraint_expand_flag(const bContext *C, Panel *panel)
 }
 
 /**
- * Save the expand flag for the panel and subpanels to the constraint.
+ * Save the expand flag for the panel and sub-panels to the constraint.
  */
 static void set_constraint_expand_flag(const bContext *C, Panel *panel, short expand_flag)
 {
@@ -2011,9 +2055,11 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C, bool use_bone_
       char panel_idname[MAX_NAME];
       panel_id_func(con, panel_idname);
 
-      Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+      Panel *new_panel = UI_panel_add_instanced(
+          sa, region, &region->panels, panel_idname, i, NULL);
       if (new_panel) {
-        /* Set the list panel functionality function pointers since we don't do it with python. */
+        /* Set the list panel functionality function pointers since we don't do it with
+         * python. */
         new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
         new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
         new_panel->type->reorder = constraint_reorder;
@@ -2067,7 +2113,8 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
         char panel_idname[MAX_NAME];
         gpencil_modifier_panel_id(md, panel_idname);
 
-        Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+        Panel *new_panel = UI_panel_add_instanced(
+            sa, region, &region->panels, panel_idname, i, NULL);
         if (new_panel != NULL) {
           UI_panel_set_expand_from_list_data(C, new_panel);
         }
@@ -2092,7 +2139,8 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
 /* -------------------------------------------------------------------- */
 /** \name ShaderFx Template
  *
- *  Template for building the panel layout for the active object's grease pencil shader effects.
+ *  Template for building the panel layout for the active object's grease pencil shader
+ * effects.
  * \{ */
 
 /**
@@ -2123,7 +2171,8 @@ void uiTemplateShaderFx(uiLayout *UNUSED(layout), bContext *C)
       char panel_idname[MAX_NAME];
       shaderfx_panel_id(fx, panel_idname);
 
-      Panel *new_panel = UI_panel_add_instanced(sa, region, &region->panels, panel_idname, i);
+      Panel *new_panel = UI_panel_add_instanced(
+          sa, region, &region->panels, panel_idname, i, NULL);
       if (new_panel != NULL) {
         UI_panel_set_expand_from_list_data(C, new_panel);
       }
@@ -4453,7 +4502,7 @@ static void CurveProfile_presets_dofunc(bContext *C, void *profile_v, int event)
 
   profile->preset = event;
   BKE_curveprofile_reset(profile);
-  BKE_curveprofile_update(profile, false);
+  BKE_curveprofile_update(profile, PROF_UPDATE_NONE);
 
   ED_undo_push(C, "CurveProfile tools");
   ED_region_tag_redraw(CTX_wm_region(C));
@@ -4569,7 +4618,7 @@ static void CurveProfile_tools_dofunc(bContext *C, void *profile_v, int event)
   switch (event) {
     case UIPROFILE_FUNC_RESET: /* reset */
       BKE_curveprofile_reset(profile);
-      BKE_curveprofile_update(profile, false);
+      BKE_curveprofile_update(profile, PROF_UPDATE_NONE);
       break;
     case UIPROFILE_FUNC_RESET_VIEW: /* reset view to clipping rect */
       profile->view_rect = profile->clip_rect;
@@ -4635,7 +4684,7 @@ static void CurveProfile_buttons_zoom_in(bContext *C, void *profile_v, void *UNU
   CurveProfile *profile = profile_v;
   float d;
 
-  /* we allow 20 times zoom */
+  /* Allow a 20x zoom. */
   if (BLI_rctf_size_x(&profile->view_rect) > 0.04f * BLI_rctf_size_x(&profile->clip_rect)) {
     d = 0.1154f * BLI_rctf_size_x(&profile->view_rect);
     profile->view_rect.xmin += d;
@@ -4699,7 +4748,7 @@ static void CurveProfile_clipping_toggle(bContext *C, void *cb_v, void *profile_
 
   profile->flag ^= PROF_USE_CLIP;
 
-  BKE_curveprofile_update(profile, false);
+  BKE_curveprofile_update(profile, PROF_UPDATE_NONE);
   rna_update_cb(C, cb_v, NULL);
 }
 
@@ -4708,7 +4757,7 @@ static void CurveProfile_buttons_reverse(bContext *C, void *cb_v, void *profile_
   CurveProfile *profile = profile_v;
 
   BKE_curveprofile_reverse(profile);
-  BKE_curveprofile_update(profile, false);
+  BKE_curveprofile_update(profile, PROF_UPDATE_NONE);
   rna_update_cb(C, cb_v, NULL);
 }
 
@@ -4717,27 +4766,7 @@ static void CurveProfile_buttons_delete(bContext *C, void *cb_v, void *profile_v
   CurveProfile *profile = profile_v;
 
   BKE_curveprofile_remove_by_flag(profile, SELECT);
-  BKE_curveprofile_update(profile, false);
-
-  rna_update_cb(C, cb_v, NULL);
-}
-
-static void CurveProfile_buttons_setsharp(bContext *C, void *cb_v, void *profile_v)
-{
-  CurveProfile *profile = profile_v;
-
-  BKE_curveprofile_selected_handle_set(profile, HD_VECT, HD_VECT);
-  BKE_curveprofile_update(profile, false);
-
-  rna_update_cb(C, cb_v, NULL);
-}
-
-static void CurveProfile_buttons_setcurved(bContext *C, void *cb_v, void *profile_v)
-{
-  CurveProfile *profile = profile_v;
-
-  BKE_curveprofile_selected_handle_set(profile, HD_AUTO, HD_AUTO);
-  BKE_curveprofile_update(profile, false);
+  BKE_curveprofile_update(profile, PROF_UPDATE_NONE);
 
   rna_update_cb(C, cb_v, NULL);
 }
@@ -4745,7 +4774,15 @@ static void CurveProfile_buttons_setcurved(bContext *C, void *cb_v, void *profil
 static void CurveProfile_buttons_update(bContext *C, void *arg1_v, void *profile_v)
 {
   CurveProfile *profile = profile_v;
-  BKE_curveprofile_update(profile, true);
+  BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
+  rna_update_cb(C, arg1_v, NULL);
+}
+
+static void CurveProfile_buttons_reset(bContext *C, void *arg1_v, void *profile_v)
+{
+  CurveProfile *profile = profile_v;
+  BKE_curveprofile_reset(profile);
+  BKE_curveprofile_update(profile, PROF_UPDATE_NONE);
   rna_update_cb(C, arg1_v, NULL);
 }
 
@@ -4764,7 +4801,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
 
   UI_block_emboss_set(block, UI_EMBOSS);
 
-  uiLayoutRow(layout, false);
+  uiLayoutSetPropSep(layout, false);
 
   /* Preset selector */
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
@@ -4772,6 +4809,29 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   bt = uiDefBlockBut(
       block, CurveProfile_buttons_presets, profile, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
+
+  /* Show a "re-apply" preset button when it has been changed from the preset. */
+  if (profile->flag & PROF_DIRTY_PRESET) {
+    /* Only for dynamic presets. */
+    if (ELEM(profile->preset, PROF_PRESET_STEPS, PROF_PRESET_SUPPORTS)) {
+      bt = uiDefIconTextBut(block,
+                            UI_BTYPE_BUT,
+                            0,
+                            ICON_NONE,
+                            "Apply Preset",
+                            0,
+                            0,
+                            UI_UNIT_X,
+                            UI_UNIT_X,
+                            NULL,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            "Reapply and update the preset, removing changes");
+      UI_but_funcN_set(bt, CurveProfile_buttons_reset, MEM_dupallocN(cb), profile);
+    }
+  }
 
   row = uiLayoutRow(layout, false);
 
@@ -4880,10 +4940,23 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
            "");
 
   /* Position sliders for (first) selected point */
+  float *selection_x, *selection_y;
   for (i = 0; i < profile->path_len; i++) {
     if (profile->path[i].flag & PROF_SELECT) {
       point = &profile->path[i];
+      selection_x = &point->x;
+      selection_y = &point->y;
       break;
+    }
+    else if (profile->path[i].flag & PROF_H1_SELECT) {
+      point = &profile->path[i];
+      selection_x = &point->h1_loc[0];
+      selection_y = &point->h1_loc[1];
+    }
+    else if (profile->path[i].flag & PROF_H2_SELECT) {
+      point = &profile->path[i];
+      selection_x = &point->h2_loc[0];
+      selection_y = &point->h2_loc[1];
     }
   }
   if (i == 0 || i == profile->path_len - 1) {
@@ -4900,46 +4973,19 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
       bounds.xmax = bounds.ymax = 1000.0;
     }
 
-    uiLayoutRow(layout, true);
-    UI_block_funcN_set(block, CurveProfile_buttons_update, MEM_dupallocN(cb), profile);
+    row = uiLayoutRow(layout, true);
 
-    /* Sharp / Smooth */
-    bt = uiDefIconBut(block,
-                      UI_BTYPE_BUT,
-                      0,
-                      ICON_LINCURVE,
-                      0,
-                      0,
-                      UI_UNIT_X,
-                      UI_UNIT_X,
-                      NULL,
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0,
-                      TIP_("Set the point's handle type to sharp"));
-    if (point_last_or_first) {
-      UI_but_flag_enable(bt, UI_BUT_DISABLED);
-    }
-    UI_but_funcN_set(bt, CurveProfile_buttons_setsharp, MEM_dupallocN(cb), profile);
-    bt = uiDefIconBut(block,
-                      UI_BTYPE_BUT,
-                      0,
-                      ICON_SMOOTHCURVE,
-                      0,
-                      0,
-                      UI_UNIT_X,
-                      UI_UNIT_X,
-                      NULL,
-                      0.0,
-                      0.0,
-                      0.0,
-                      0.0,
-                      TIP_("Set the point's handle type to smooth"));
-    UI_but_funcN_set(bt, CurveProfile_buttons_setcurved, MEM_dupallocN(cb), profile);
-    if (point_last_or_first) {
-      UI_but_flag_enable(bt, UI_BUT_DISABLED);
-    }
+    PointerRNA point_ptr;
+    RNA_pointer_create(ptr->owner_id, &RNA_CurveProfilePoint, point, &point_ptr);
+    PropertyRNA *prop_handle_type = RNA_struct_find_property(&point_ptr, "handle_type_1");
+    uiItemFullR(row,
+                &point_ptr,
+                prop_handle_type,
+                RNA_NO_INDEX,
+                0,
+                UI_ITEM_R_EXPAND | UI_ITEM_R_ICON_ONLY,
+                "",
+                ICON_NONE);
 
     /* Position */
     bt = uiDefButF(block,
@@ -4950,16 +4996,16 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &point->x,
+                   selection_x,
                    bounds.xmin,
                    bounds.xmax,
                    1,
                    5,
                    "");
+    UI_but_funcN_set(bt, CurveProfile_buttons_update, MEM_dupallocN(cb), profile);
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
-
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4968,12 +5014,13 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &point->y,
+                   selection_y,
                    bounds.ymin,
                    bounds.ymax,
                    1,
                    5,
                    "");
+    UI_but_funcN_set(bt, CurveProfile_buttons_update, MEM_dupallocN(cb), profile);
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
@@ -7199,37 +7246,35 @@ void uiTemplateCacheFile(uiLayout *layout,
 
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
 
-  uiLayout *row = uiLayoutRow(layout, false);
-  uiBlock *block = uiLayoutGetBlock(row);
-  uiDefBut(block, UI_BTYPE_LABEL, 0, IFACE_("File Path:"), 0, 19, 145, 19, NULL, 0, 0, 0, 0, "");
+  uiLayout *row, *sub, *subsub;
+
+  uiLayoutSetPropSep(layout, true);
+
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &fileptr, "filepath", 0, NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiItemO(sub, "", ICON_FILE_REFRESH, "cachefile.reload");
 
   row = uiLayoutRow(layout, false);
-  uiLayout *split = uiLayoutSplit(row, 0.0f, false);
-  row = uiLayoutRow(split, true);
+  uiItemR(row, &fileptr, "is_sequence", 0, NULL, ICON_NONE);
 
-  uiItemR(row, &fileptr, "filepath", 0, "", ICON_NONE);
-  uiItemO(row, "", ICON_FILE_REFRESH, "cachefile.reload");
-
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &fileptr, "is_sequence", 0, "Is Sequence", ICON_NONE);
-
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, &fileptr, "override_frame", 0, "Override Frame", ICON_NONE);
-
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, RNA_boolean_get(&fileptr, "override_frame"));
-  uiItemR(row, &fileptr, "frame", 0, "Frame", ICON_NONE);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Override Frame"));
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetPropDecorate(sub, false);
+  uiItemR(sub, &fileptr, "override_frame", 0, "", ICON_NONE);
+  subsub = uiLayoutRow(sub, true);
+  uiLayoutSetActive(subsub, RNA_boolean_get(&fileptr, "override_frame"));
+  uiItemR(subsub, &fileptr, "frame", 0, "", ICON_NONE);
+  uiItemDecoratorR(row, &fileptr, "frame", 0);
 
   row = uiLayoutRow(layout, false);
-  uiItemR(row, &fileptr, "frame_offset", 0, "Frame Offset", ICON_NONE);
+  uiItemR(row, &fileptr, "frame_offset", 0, NULL, ICON_NONE);
   uiLayoutSetActive(row, !RNA_boolean_get(&fileptr, "is_sequence"));
 
-  row = uiLayoutRow(layout, false);
-  uiItemL(row, IFACE_("Manual Transform:"), ICON_NONE);
-
-  row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, (sbuts->mainb == BCONTEXT_CONSTRAINT));
-  uiItemR(row, &fileptr, "scale", 0, "Scale", ICON_NONE);
+  if (sbuts->mainb == BCONTEXT_CONSTRAINT) {
+    row = uiLayoutRow(layout, false);
+    uiItemR(row, &fileptr, "scale", 0, IFACE_("Manual Scale"), ICON_NONE);
+  }
 
   /* TODO: unused for now, so no need to expose. */
 #if 0

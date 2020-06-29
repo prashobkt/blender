@@ -1662,7 +1662,7 @@ static void rna_RenderSettings_engine_update(Main *bmain,
                                              Scene *UNUSED(unused),
                                              PointerRNA *UNUSED(ptr))
 {
-  ED_render_engine_changed(bmain);
+  ED_render_engine_changed(bmain, true);
 }
 
 static bool rna_RenderSettings_multiple_engines_get(PointerRNA *UNUSED(ptr))
@@ -7169,8 +7169,18 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "motion_blur_max", PROP_INT, PROP_PIXEL);
   RNA_def_property_ui_text(prop, "Max Blur", "Maximum blur distance a pixel can spread over");
-  RNA_def_property_range(prop, 1, 2048);
-  RNA_def_property_ui_range(prop, 1, 512, 1, -1);
+  RNA_def_property_range(prop, 0, 2048);
+  RNA_def_property_ui_range(prop, 0, 512, 1, -1);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+  prop = RNA_def_property(srna, "motion_blur_steps", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Motion steps",
+                           "Controls accuracy of motion blur, "
+                           "more steps means longer render time");
+  RNA_def_property_range(prop, 1, INT_MAX);
+  RNA_def_property_ui_range(prop, 1, 64, 1, -1);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
@@ -7480,6 +7490,7 @@ void RNA_def_scene(BlenderRNA *brna)
   /* Nodes (Compositing) */
   prop = RNA_def_property(srna, "node_tree", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "nodetree");
+  RNA_def_property_clear_flag(prop, PROP_PTR_NO_OWNERSHIP);
   RNA_def_property_ui_text(prop, "Node Tree", "Compositing node tree");
 
   prop = RNA_def_property(srna, "use_nodes", PROP_BOOLEAN, PROP_NONE);
@@ -7710,6 +7721,7 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_pointer_sdna(prop, NULL, "master_collection");
   RNA_def_property_struct_type(prop, "Collection");
+  RNA_def_property_clear_flag(prop, PROP_PTR_NO_OWNERSHIP);
   RNA_def_property_ui_text(
       prop,
       "Collection",

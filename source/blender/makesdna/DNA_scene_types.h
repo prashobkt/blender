@@ -1590,7 +1590,6 @@ typedef struct SceneEEVEE {
   float gi_irradiance_smoothing;
   float gi_glossy_clamp;
   float gi_filter_quality;
-  char _pad[4];
 
   float gi_cubemap_draw_size;
   float gi_irradiance_draw_size;
@@ -1630,6 +1629,7 @@ typedef struct SceneEEVEE {
 
   int motion_blur_samples DNA_DEPRECATED;
   int motion_blur_max;
+  int motion_blur_steps;
   float motion_blur_shutter;
   float motion_blur_depth_scale;
 
@@ -2174,7 +2174,7 @@ typedef enum eSculptFlags {
 
   SCULPT_FLAG_UNUSED_6 = (1 << 6), /* cleared */
 
-  SCULPT_USE_OPENMP = (1 << 7),
+  SCULPT_FLAG_UNUSED_7 = (1 << 7), /* cleared */
   SCULPT_ONLY_DEFORM = (1 << 8),
   // SCULPT_SHOW_DIFFUSE = (1 << 9), // deprecated
 
