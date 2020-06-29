@@ -6625,6 +6625,10 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "context selected", "the context selected");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "is_pie", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "runtime.um_is_pie", USER_FILTERFILEEXTS);
+  RNA_def_property_ui_text(prop, "menu type", "change menu type between list and pie");
+
   prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "runtime.um_item_select");
   RNA_def_property_struct_type(prop, "UserMenuItem");

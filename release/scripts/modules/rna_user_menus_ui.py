@@ -125,6 +125,10 @@ def draw_user_menus(context, layout):
 
     layout.separator()
     # TODO : set menu parameters in a submenu here
+    pie_text = "List"
+    if um.is_pie:
+        pie_text = "Pie"
+    rowsub.prop(um, "is_pie", text=pie_text, toggle=True)
 
     col = layout.column()
     row = layout.row()
@@ -133,3 +137,14 @@ def draw_user_menus(context, layout):
     draw_item_editor(context=context, row=row)
 
     layout.separator()
+
+    km = bpy.context.window_manager.keyconfigs.user.keymaps['Window']
+    for kmi in km.keymap_items:
+        if kmi.idname == "wm.call_menu":
+            if um.is_pie and kmi.properties.name == "SCREEN_MT_user_menu":
+                kmi.idname = "wm.call_menu_pie"
+                kmi.properties.name = "PIE_MT_user_menu"
+        if kmi.idname == "wm.call_menu_pie":
+            if kmi.properties.name == "PIE_MT_user_menu" and not um.is_pie:
+                kmi.idname = "wm.call_menu"
+                kmi.properties.name = "SCREEN_MT_user_menu"
