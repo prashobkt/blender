@@ -100,7 +100,8 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
                          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
                          mds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE);
   const bool show_flags = (mds->coba_field == FLUID_DOMAIN_FIELD_FLAGS);
-  GPUShader *sh = workbench_shader_volume_get(use_slice, mds->use_coba, cubic_interp, true);
+  GPUShader *sh = workbench_shader_volume_get(
+      use_slice, mds->use_coba, cubic_interp, true, show_flags);
 
   if (use_slice) {
     float invviewmat[4][4];
@@ -216,7 +217,7 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
   wpd->volumes_do = true;
 
   /* Create shader. */
-  GPUShader *sh = workbench_shader_volume_get(false, false, false, false);
+  GPUShader *sh = workbench_shader_volume_get(false, false, false, false, false);
 
   /* Compute color. */
   float color[3];

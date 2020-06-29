@@ -131,14 +131,14 @@ vec4 sample_raw(sampler3D ima, vec3 co)
 #  define sample_volume_texture sample_tricubic
 #elif defined(USE_TRILINEAR)
 #  define sample_volume_texture sample_trilinear
-#else
+#elif defined(USE_RAW)
 #  define sample_volume_texture sample_raw
 #endif
 
 void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 {
   vec3 co = ls_pos * 0.5 + 0.5;
-#if defined(VOLUME_SLICE) && (!(defined(USE_TRILINEAR) || defined(USE_TRICUBIC)) || showFlags)
+#if defined(VOLUME_SLICE) && (defined(USE_RAW) || defined(SHOW_FLAGS))
   vec3 texture_size = (showFlags) ? vec3(textureSize(flagTexture, 0).xyz) : vec3(textureSize(densityTexture, 0).xyz);
   if (on_gridline(texture_size, co)) {
     scattering = vec3(0.0, 0.0, 0.0);
