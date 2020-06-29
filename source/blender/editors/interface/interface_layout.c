@@ -6018,6 +6018,7 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
   panel->layout = layout;
   pt->draw(C, panel);
   panel->layout = NULL;
+  BLI_assert(panel->runtime.custom_data_ptr = NULL);
 
   MEM_freeN(panel);
 

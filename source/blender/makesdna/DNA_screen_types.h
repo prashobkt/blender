@@ -41,6 +41,7 @@ struct uiLayout;
 struct wmDrawBuffer;
 struct wmTimer;
 struct wmTooltipState;
+struct PointerRNA;
 
 /* TODO Doing this is quite ugly :)
  * Once the top-bar is merged bScreen should be refactored to use ScrAreaMap. */
@@ -136,9 +137,14 @@ typedef struct Panel_Runtime {
   /* For instanced panels: Index of the list item the panel corresponds to. */
   int list_index;
 
-  /* Runtime reference to the panel's #uiBlock. Only filled if the panel is currently being drawn.
-   * Used to quickly find the #uiBlocks for the panel's children. */
-  struct uiBlock *block;
+  /**
+   * Pointer for storing which data the panel corresponds to.
+   * Useful when there can be multiple instances of the same panel type.
+   *
+   * \note A panel and its subpanels share the same custom data pointer.
+   * This avoids freeing the same pointer twice when panels are removed.
+   */
+  struct PointerRNA *custom_data_ptr;
 } Panel_Runtime;
 
 /** The part from uiBlock that needs saved in file. */
