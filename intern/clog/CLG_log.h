@@ -133,10 +133,9 @@ typedef struct CLG_LogRecord {
   CLG_LogType *type;
   enum CLG_Severity severity;
   uint64_t timestamp;
-  const char *file;
-  const char *line;
+  const char *file_line;
   const char *function;
-  const char *message;
+  char *message;
 } CLG_LogRecord;
 
 void CLG_log_str(CLG_LogType *lg,
@@ -151,12 +150,12 @@ void CLG_logf(CLG_LogType *lg,
               const char *format,
               ...) _CLOG_ATTR_NONNULL(1, 3, 4, 5) _CLOG_ATTR_PRINTF_FORMAT(5, 6);
 
+const char *clg_severity_as_text(enum CLG_Severity severity);
 CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
                                     enum CLG_Severity severity,
-                                    const char *file,
-                                    const char *line,
+                                    const char *file_line,
                                     const char *function,
-                                    const char *message);
+                                    char *message);
 void clog_log_record_free(CLG_LogRecord *log_record);
 
 /* Main initializer and distructor (per session, not logger). */

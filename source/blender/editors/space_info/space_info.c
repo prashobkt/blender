@@ -21,6 +21,7 @@
  * \ingroup spinfo
  */
 
+#include <BKE_global.h>
 #include <BKE_report.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,9 +104,20 @@ static void info_free(SpaceLink *sl)
 /* spacetype; init callback */
 static void info_init(struct wmWindowManager *wm, ScrArea *area)
 {
-  BLI_assert(area->spacetype == SPACE_INFO);
   SpaceInfo *sinfo = area->spacedata.first;
-  sinfo->active_reports = &wm->reports;
+  switch (sinfo->view) {
+    case INFO_VIEW_REPORTS: {
+      BLI_assert(sinfo->active_reports == NULL || sinfo->active_reports == &wm->reports);
+      sinfo->active_reports = &wm->reports;
+      break;
+    }
+    case INFO_VIEW_CLOG: {
+      if (sinfo->active_reports == &wm->reports) {
+        sinfo->active_reports = clog_to_report_list();
+      }
+      break;
+    }
+  }
 }
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
@@ -113,8 +125,7 @@ static SpaceLink *info_duplicate(SpaceLink *sl)
   SpaceInfo *sinfo_old = (SpaceInfo *)sl;
   SpaceInfo *sinfo_new = MEM_dupallocN(sl);
   if (sinfo_new->view == INFO_VIEW_CLOG) {
-    sinfo_new = MEM_dupallocN(sinfo_old->active_reports);
-    BLI_duplicatelist(&sinfo_new->active_reports->list, &sinfo_old->active_reports->list);
+    sinfo_old->active_reports = BKE_reports_duplicate(sinfo_new->active_reports);
   }
 
   return (SpaceLink *)sinfo_new;
@@ -215,19 +226,46 @@ static void info_header_region_draw(const bContext *C, ARegion *region)
   ED_region_header(C, region);
 }
 
+#include <BKE_main.h>
+
+static void info_report_source_update(wmWindowManager *wm, SpaceInfo *sinfo)
+{
+  switch (sinfo->view) {
+    case INFO_VIEW_REPORTS: {
+      if (sinfo->active_reports != &wm->reports) {
+        /* reports come from log, deinit them*/
+        BKE_reports_clear(sinfo->active_reports);
+        MEM_freeN(sinfo->active_reports);
+      }
+      sinfo->active_reports = &wm->reports;
+      break;
+    }
+    case INFO_VIEW_CLOG: {
+      if (sinfo->active_reports == &wm->reports) {
+        sinfo->active_reports = clog_to_report_list();
+      }
+      break;
+    }
+  }
+}
+
 static void info_main_region_listener(wmWindow *UNUSED(win),
-                                      ScrArea *UNUSED(area),
+                                      ScrArea *area,
                                       ARegion *region,
                                       wmNotifier *wmn,
                                       const Scene *UNUSED(scene))
 {
-  // SpaceInfo *sinfo = area->spacedata.first;
+   SpaceInfo *sinfo = area->spacedata.first;
 
   /* context changes */
   switch (wmn->category) {
     case NC_SPACE:
       if (wmn->data == ND_SPACE_INFO_REPORT) {
         /* redraw also but only for report view, could do less redraws by checking the type */
+        // todo this is very bad
+        Main *bmain = G_MAIN;
+        wmWindowManager *wm = bmain->wm.first;
+        info_report_source_update(wm, sinfo);
         ED_region_tag_redraw(region);
       }
       break;

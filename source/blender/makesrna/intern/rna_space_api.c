@@ -25,30 +25,9 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "../../editors/space_info/info_intern.h"
 #  include "BKE_global.h"
-#  include "CLG_log.h"
 #  include "ED_screen.h"
 #  include "ED_text.h"
-#  include <BKE_context.h>
-#  include <BKE_report.h>
-
-void rna_InfoEditorView_update(struct bContext *C, struct PointerRNA *ptr)
-{
-  SpaceInfo *sinfo = (SpaceInfo *)ptr->data;
-  switch (sinfo->view) {
-    case INFO_VIEW_REPORTS: {
-      BKE_reports_clear(sinfo->active_reports);
-      MEM_freeN(sinfo->active_reports);
-      sinfo->active_reports = CTX_wm_reports(C);
-      break;
-    }
-    case INFO_VIEW_CLOG: {
-      sinfo->active_reports = clog_to_report_list();
-      break;
-    }
-  }
-}
 
 static void rna_RegionView3D_update(ID *id, RegionView3D *rv3d, bContext *C)
 {

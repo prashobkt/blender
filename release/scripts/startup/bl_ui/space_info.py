@@ -40,9 +40,8 @@ class INFO_MT_editor_menus(Menu):
         layout.menu("INFO_MT_info")
 
         sinfo = context.space_data
-        row = layout.row(align=True)
+        row = layout.row()
         row.prop(sinfo, "view", expand=True)
-        # row.prop(sinfo, "view")
 
 
 class INFO_MT_view(Menu):

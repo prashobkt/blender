@@ -251,7 +251,7 @@ static const char *clg_severity_str[CLG_SEVERITY_LEN] = {
     [CLG_SEVERITY_FATAL] = "FATAL",
 };
 
-static const char *clg_severity_as_text(enum CLG_Severity severity)
+const char *clg_severity_as_text(enum CLG_Severity severity)
 {
   bool ok = (unsigned int)severity < CLG_SEVERITY_LEN;
   assert(ok);
@@ -383,17 +383,15 @@ static uint64_t clg_timestamp_ticks_get(void)
 
 CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
                                     enum CLG_Severity severity,
-                                    const char *file,
-                                    const char *line,
+                                    const char *file_line,
                                     const char *function,
-                                    const char *message)
+                                    char *message)
 {
   CLG_LogRecord *log_record = MEM_callocN(sizeof(*log_record), "ClogRecord");
   log_record->type = type;
   log_record->severity = severity;
   log_record->timestamp = clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
-  log_record->file = file;
-  log_record->line = line;
+  log_record->file_line = file_line;
   log_record->function = function;
   log_record->message = message;
   return log_record;
@@ -401,18 +399,8 @@ CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
 
 void clog_log_record_free(CLG_LogRecord *log_record)
 {
+  MEM_freeN(log_record->message);
   MEM_freeN(log_record);
-}
-
-void clog_timestamp_to_char()
-{
-  const uint64_t timestamp = 0;  // clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
-  char timestamp_str[64];
-  const uint timestamp_len = snprintf(timestamp_str,
-                                      sizeof(timestamp_str),
-                                      "%" PRIu64 ".%03u ",
-                                      timestamp / 1000,
-                                      (uint)(timestamp % 1000));
 }
 
 /** \} */
@@ -523,19 +511,6 @@ void CLG_logf(CLG_LogType *lg,
               const char *fmt,
               ...)
 {
-  CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, file_line, fn, fmt);
-
-  BLI_addtail(&(lg->ctx->log_records), log_record);
-
-  //  CLG_LogRecord *log = NULL, *log_iter = NULL;
-  //  printf("Dump all log records:\n");
-  //  log = lg->ctx->log_records.first;
-  //  while (log) {
-  //    log_iter = log->next;
-  //    printf("  id: %s, %s\n", log->type->identifier, log->message);
-  //    log = log_iter;
-  //  }
-
   CLogStringBuf cstr;
   char cstr_stack_buf[CLOG_BUF_LEN_INIT];
   clg_str_init(&cstr, cstr_stack_buf, sizeof(cstr_stack_buf));
@@ -547,14 +522,21 @@ void CLG_logf(CLG_LogType *lg,
   write_severity(&cstr, severity, lg->ctx->use_color);
   write_type(&cstr, lg);
 
-  {
-    write_file_line_fn(&cstr, file_line, fn, lg->ctx->use_basename);
+  write_file_line_fn(&cstr, file_line, fn, lg->ctx->use_basename);
 
+  int csr_size_before_va = cstr.len;
+  {
     va_list ap;
     va_start(ap, fmt);
     clg_str_vappendf(&cstr, fmt, ap);
     va_end(ap);
   }
+
+  char *message = MEM_callocN(cstr.len - csr_size_before_va + 1, "LogMessage");
+  memcpy(message, cstr.data + csr_size_before_va, cstr.len - csr_size_before_va);
+  CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, fn, message);
+  BLI_addtail(&(lg->ctx->log_records), log_record);
+
   clg_str_append(&cstr, "\n");
 
   /* could be optional */
@@ -667,7 +649,7 @@ static CLogContext *CLG_ctx_init(void)
 
 static void CLG_ctx_free(CLogContext *ctx)
 {
-  CLG_LogRecord *log = ctx->log_records.first, *log_next=NULL;
+  CLG_LogRecord *log = ctx->log_records.first, *log_next = NULL;
   while (log) {
     log_next = log->next;
     clog_log_record_free(log);
@@ -703,7 +685,7 @@ static void CLG_ctx_free(CLogContext *ctx)
  * \{ */
 
 /* We could support multiple at once, for now this seems not needed. */
-struct CLogContext *g_ctx = NULL;
+static struct CLogContext *g_ctx = NULL;
 
 void CLG_init(void)
 {

@@ -412,17 +412,58 @@ void INFO_OT_report_copy(wmOperatorType *ot)
   /* properties */
 }
 
+/** Return newly allocated ReportList created from log records */
 ReportList *clog_to_report_list()
 {
-  ReportList *reports = MEM_mallocN(sizeof(ReportList), "ClogConvertedToReportList");
+  ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
   BKE_reports_init(reports, RPT_STORE);
 
+  // todo there might be no logs in log records
   CLG_LogRecord *log = CLG_log_record_get()->first, *log_iter = NULL;
+
   while (log) {
-    BKE_report(reports, RPT_INFO, log->message);
-//    printf("  id: %s, %s\n", log->type->identifier, log->message);
+    DynStr *dynStr = BLI_dynstr_new();
+    // todo implement formatting filters
+    BLI_dynstr_append(dynStr, clg_severity_as_text(log->severity));
+    BLI_dynstr_append(dynStr, " (");
+    BLI_dynstr_append(dynStr, log->type->identifier);
+    BLI_dynstr_append(dynStr, "): ");
+    BLI_dynstr_append(dynStr, log->file_line);
+    BLI_dynstr_append(dynStr, " ");
+    BLI_dynstr_append(dynStr, log->function);
+    BLI_dynstr_append(dynStr, ":\n");
+    BLI_dynstr_append(dynStr, log->message);
+    char *cstr = BLI_dynstr_get_cstring(dynStr);
+    switch (log->severity) {
+      case CLG_SEVERITY_INFO:
+        BKE_report(reports, RPT_INFO, cstr);
+        break;
+      case CLG_SEVERITY_WARN:
+        BKE_report(reports, RPT_WARNING, cstr);
+        break;
+      case CLG_SEVERITY_ERROR:
+      case CLG_SEVERITY_FATAL:
+        BKE_report(reports, RPT_ERROR, cstr);
+        break;
+      default:
+        BKE_report(reports, RPT_INFO, cstr);
+        break;
+    }
+    MEM_freeN(cstr);
+    BLI_dynstr_free(dynStr);
     log_iter = log->next;
     log = log_iter;
   }
   return reports;
+}
+
+static void clog_timestamp_to_char()
+{
+  const uint64_t timestamp = 0;  // clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
+  char timestamp_str[64];
+  const uint timestamp_len = snprintf(timestamp_str,
+                                      sizeof(timestamp_str),
+                                      "%" PRIu64 ".%03u ",
+                                      timestamp / 1000,
+                                      (uint)(timestamp % 1000));
 }
