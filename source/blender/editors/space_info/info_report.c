@@ -154,9 +154,9 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   bool extend = RNA_boolean_get(op->ptr, "extend");
   SpaceInfo *sinfo = CTX_wm_space_info(C);
 
-  Report *report = BLI_findlink(&sinfo->active_reports->list, report_index);
-
   ReportList *reports = sinfo->active_reports;
+  Report *report = BLI_findlink(&reports->list, report_index);
+
   const int report_mask = info_report_mask(sinfo);
   if (!report) {
     return OPERATOR_CANCELLED;
@@ -417,7 +417,7 @@ ReportList *clog_to_report_list()
   ReportList *reports = MEM_mallocN(sizeof(ReportList), "ClogConvertedToReportList");
   BKE_reports_init(reports, RPT_STORE);
 
-  CLG_LogRecord *log = g_ctx->log_records.first, *log_iter = NULL;
+  CLG_LogRecord *log = CLG_log_record_get()->first, *log_iter = NULL;
   while (log) {
     BKE_report(reports, RPT_INFO, log->message);
 //    printf("  id: %s, %s\n", log->type->identifier, log->message);

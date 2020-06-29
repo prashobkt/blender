@@ -123,7 +123,7 @@ typedef struct SpaceInfo {
 
 typedef enum eSpaceInfo_View {
   INFO_VIEW_REPORTS,
-  INFO_VIEW_G_CLOG,
+  INFO_VIEW_CLOG,
 } eSpaceInfo_View;
 
 /* SpaceInfo.clog_show */

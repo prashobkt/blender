@@ -6091,7 +6091,7 @@ static void rna_def_space_info(BlenderRNA *brna)
 
   static const EnumPropertyItem view_type_items[] = {
       {INFO_VIEW_REPORTS, "REPORTS", 0, "Reports", ""},
-      {INFO_VIEW_G_CLOG, "CLOGS", 0, "Logs", ""},
+      {INFO_VIEW_CLOG, "CLOGS", 0, "Logs", ""},
       {0, NULL, 0, NULL, NULL},
   };
   prop = RNA_def_property(srna, "view", PROP_ENUM, PROP_NONE);

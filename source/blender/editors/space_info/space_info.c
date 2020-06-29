@@ -94,7 +94,7 @@ static SpaceLink *info_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
 static void info_free(SpaceLink *sl)
 {
   SpaceInfo *sinfo = (SpaceInfo *)sl;
-  if (sinfo->view == INFO_VIEW_G_CLOG) {
+  if (sinfo->view == INFO_VIEW_CLOG) {
     BKE_reports_clear(sinfo->active_reports);
     MEM_freeN(sinfo->active_reports);
   }
@@ -110,14 +110,14 @@ static void info_init(struct wmWindowManager *wm, ScrArea *area)
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
 {
-  SpaceInfo *sinfo = MEM_dupallocN(sl);
-  if (sinfo->view == INFO_VIEW_G_CLOG) {
-    // todo duplicate memory?
+  SpaceInfo *sinfo_old = (SpaceInfo *)sl;
+  SpaceInfo *sinfo_new = MEM_dupallocN(sl);
+  if (sinfo_new->view == INFO_VIEW_CLOG) {
+    sinfo_new = MEM_dupallocN(sinfo_old->active_reports);
+    BLI_duplicatelist(&sinfo_new->active_reports->list, &sinfo_old->active_reports->list);
   }
 
-  /* clear or remove stuff from old */
-
-  return (SpaceLink *)sinfo;
+  return (SpaceLink *)sinfo_new;
 }
 
 /* add handlers, stuff you only do once or on area/region changes */

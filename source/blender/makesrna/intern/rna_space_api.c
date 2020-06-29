@@ -43,7 +43,7 @@ void rna_InfoEditorView_update(struct bContext *C, struct PointerRNA *ptr)
       sinfo->active_reports = CTX_wm_reports(C);
       break;
     }
-    case INFO_VIEW_G_CLOG: {
+    case INFO_VIEW_CLOG: {
       sinfo->active_reports = clog_to_report_list();
       break;
     }

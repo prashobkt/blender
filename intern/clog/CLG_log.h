@@ -85,21 +85,16 @@ extern "C" {
 #  define _CLOG_ATTR_PRINTF_FORMAT(format_param, dots_param)
 #endif
 
-
 /* For printing timestamp. */
 #define __STDC_FORMAT_MACROS
 #include <DNA_windowmanager_types.h>
 #include <inttypes.h>
-
-#include "BLI_blenlib.h"
-#include "DNA_listBase.h"
 
 #define STRINGIFY_ARG(x) "" #x
 #define STRINGIFY_APPEND(a, b) "" a #b
 #define STRINGIFY(x) STRINGIFY_APPEND("", x)
 
 struct CLogContext;
-extern struct CLogContext *g_ctx;
 
 /* Don't typedef enums. */
 enum CLG_LogFlag {
@@ -130,15 +125,6 @@ typedef struct CLG_LogRef {
   CLG_LogType *type;
 } CLG_LogRef;
 
-/* -------------------------------------------------------------------- */
-/** \name Internal Types
- * \{ */
-
-typedef struct CLG_IDFilter {
-  struct CLG_IDFilter *next;
-  /** Over alloc. */
-  char match[0];
-} CLG_IDFilter;
 
 typedef struct CLG_LogRecord {
   /** Link for ListBase */
@@ -152,42 +138,6 @@ typedef struct CLG_LogRecord {
   const char *function;
   const char *message;
 } CLG_LogRecord;
-
-typedef struct CLogContext {
-  /** Single linked list of types.  */
-  CLG_LogType *types;
-  ListBase log_records;
-
-#ifdef WITH_CLOG_PTHREADS
-  pthread_mutex_t types_lock;
-#endif
-
-  /* exclude, include filters.  */
-  CLG_IDFilter *filters[2];
-  bool use_color;
-  bool use_basename;
-  bool use_timestamp;
-
-  /** Borrowed, not owned. */
-  int output;
-  FILE *output_file;
-
-  /** For timer (use_timestamp). */
-  uint64_t timestamp_tick_start;
-
-  /** For new types. */
-  struct {
-    int level;
-  } default_type;
-
-  struct {
-    void (*fatal_fn)(void *file_handle);
-    void (*backtrace_fn)(void *file_handle);
-  } callbacks;
-
-} CLogContext;
-
-/** \} */
 
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
@@ -223,6 +173,7 @@ void CLG_type_filter_include(const char *type_filter, int type_filter_len);
 void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
 void CLG_level_set(int level);
+struct ListBase *CLG_log_record_get(void );
 
 void CLG_logref_init(CLG_LogRef *clg_ref);
 
