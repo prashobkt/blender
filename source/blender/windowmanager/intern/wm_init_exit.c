@@ -657,7 +657,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
   CLG_exit();
 
   BKE_blender_atexit();
-  MEM_mallocN(100, "This is leak");
+
   if (MEM_get_memory_blocks_in_use() != 0) {
     size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
     CLOG_WARN(WM_LOG_SESSION,
