@@ -613,8 +613,7 @@ typedef struct UserDef_Runtime {
   /* User menu editor runtime datas */
   char um_space_select;
   char um_context_select;
-  char um_is_pie;
-  char _pad0[4];
+  char _pad0[5];
   struct bUserMenuItem *um_item_select;
   /** #bUserMenuItem_But. */
   struct ListBase um_buttons;
