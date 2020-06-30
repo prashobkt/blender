@@ -176,17 +176,6 @@ class SEQUENCER_MT_editor_menus(Menu):
             layout.menu("SEQUENCER_MT_strip")
 
 
-class SEQUENCER_MT_view_toggle(Menu):
-    bl_label = "View Type"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("sequencer.view_toggle").type = 'SEQUENCER'
-        layout.operator("sequencer.view_toggle").type = 'PREVIEW'
-        layout.operator("sequencer.view_toggle").type = 'SEQUENCER_PREVIEW'
-
-
 class SEQUENCER_MT_view_cache(Menu):
     bl_label = "Cache"
 
@@ -354,6 +343,20 @@ class SEQUENCER_MT_view(Menu):
 
         layout.separator()
         layout.operator("sequencer.export_subtitles", text="Export Subtitles", icon='EXPORT')
+
+        layout.separator()
+
+        # Note that the context is needed for the shortcut to display properly.
+        layout.operator_context = 'INVOKE_REGION_PREVIEW' if is_preview else 'INVOKE_REGION_WIN'
+        props = layout.operator(
+            "wm.context_toggle_enum",
+            text="Toggle Sequencer/Preview",
+            icon='SEQ_SEQUENCER' if is_preview else 'SEQ_PREVIEW',
+        )
+        props.data_path = "space_data.view_type"
+        props.value_1 = 'SEQUENCER'
+        props.value_2 = 'PREVIEW'
+        layout.operator_context = 'INVOKE_DEFAULT'
 
         layout.separator()
 
@@ -728,7 +731,7 @@ class SEQUENCER_MT_strip(Menu):
         layout.operator("sequencer.copy", text="Copy")
         layout.operator("sequencer.paste", text="Paste")
         layout.operator("sequencer.duplicate_move")
-        layout.operator("sequencer.delete", text="Delete...")
+        layout.operator("sequencer.delete", text="Delete")
 
         strip = act_strip(context)
 
@@ -1525,7 +1528,7 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.alignment = 'RIGHT'
         split.label(text="End")
         split = split.split(factor=0.8 + max_factor, align=True)
-        split.label(text="{:>14}".format(smpte_from_frame(frame_final_end)))
+        split.label(text="%14s" % smpte_from_frame(frame_final_end))
         split.alignment = 'RIGHT'
         split.label(text=str(frame_final_end) + " ")
 
@@ -1569,7 +1572,7 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.label(text="Playhead")
         split = split.split(factor=0.8 + max_factor, align=True)
         frame_display = frame_current - frame_final_start
-        split.label(text="{:>14}".format(smpte_from_frame(frame_display)))
+        split.label(text="%14s" % smpte_from_frame(frame_display))
         split.alignment = 'RIGHT'
         split.label(text=str(frame_display) + " ")
 
@@ -2201,7 +2204,6 @@ classes = (
     SEQUENCER_MT_range,
     SEQUENCER_MT_view,
     SEQUENCER_MT_view_cache,
-    SEQUENCER_MT_view_toggle,
     SEQUENCER_MT_preview_zoom,
     SEQUENCER_MT_proxy,
     SEQUENCER_MT_select_handle,

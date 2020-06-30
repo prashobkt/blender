@@ -1772,8 +1772,13 @@ void GPU_texture_unbind(GPUTexture *tex)
 void GPU_texture_unbind_all(void)
 {
   if (GLEW_ARB_multi_bind) {
-    glBindTextures(0, GPU_max_textures(), NULL);
-    glBindSamplers(0, GPU_max_textures(), NULL);
+    /* Some drivers crash because of the NULL array even if that's explicitly
+     * allowed by the spec... *sigh* (see T77549). */
+    GLuint texs[32] = {0};
+    int count = min_ii(32, GPU_max_textures());
+
+    glBindTextures(0, count, texs);
+    glBindSamplers(0, count, texs);
     return;
   }
 
@@ -1870,7 +1875,7 @@ void GPU_texture_copy(GPUTexture *dst, GPUTexture *src)
   BLI_assert(dst->d == 0);
   BLI_assert(dst->format == src->format);
 
-  if (GLEW_ARB_copy_image) {
+  if (GLEW_ARB_copy_image && !GPU_texture_copy_workaround()) {
     /* Opengl 4.3 */
     glCopyImageSubData(src->bindcode,
                        src->target,

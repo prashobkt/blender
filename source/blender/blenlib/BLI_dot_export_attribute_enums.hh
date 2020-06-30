@@ -19,8 +19,8 @@
 
 #include "BLI_string_ref.hh"
 
-namespace BLI {
-namespace DotExport {
+namespace blender {
+namespace dot {
 
 enum class Attr_rankdir {
   LeftToRight,
@@ -119,7 +119,7 @@ inline StringRef dirType_to_string(Attr_dirType value)
   return "";
 }
 
-}  // namespace DotExport
-}  // namespace BLI
+}  // namespace dot
+}  // namespace blender
 
 #endif /* __BLI_DOT_EXPORT_ATTRIBUTE_ENUMS_HH__ */

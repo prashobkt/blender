@@ -203,7 +203,7 @@ void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, in
   };
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, (sd->flags & SCULPT_USE_OPENMP), totnode);
+  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
   if (ss->cache->alt_smooth) {
     for (int i = 0; i < 4; i++) {
       BLI_task_parallel_range(0, totnode, &data, do_relax_face_sets_brush_task_cb_ex, &settings);
@@ -269,7 +269,7 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, mode == SCULPT_FACE_SET_MASKED);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, mode == SCULPT_FACE_SET_MASKED, false);
 
   const int tot_vert = SCULPT_vertex_count_get(ss);
   float threshold = 0.5f;
@@ -630,7 +630,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, false);
 
   PBVH *pbvh = ob->sculpt->pbvh;
   PBVHNode **nodes;
@@ -787,7 +787,7 @@ static int sculpt_face_sets_change_visibility_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
 
   const int tot_vert = SCULPT_vertex_count_get(ss);
   const int mode = RNA_enum_get(op->ptr, "mode");
@@ -977,4 +977,171 @@ void SCULPT_OT_face_sets_randomize_colors(wmOperatorType *ot)
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+typedef enum eSculptFaceSetEditMode {
+  SCULPT_FACE_SET_EDIT_GROW = 0,
+  SCULPT_FACE_SET_EDIT_SHRINK = 1,
+} eSculptFaceSetEditMode;
+
+static EnumPropertyItem prop_sculpt_face_sets_edit_types[] = {
+    {
+        SCULPT_FACE_SET_EDIT_GROW,
+        "GROW",
+        0,
+        "Grow Face Set",
+        "Grows the Face Sets boundary by one face based on mesh topology",
+    },
+    {
+        SCULPT_FACE_SET_EDIT_SHRINK,
+        "SHRINK",
+        0,
+        "Shrink Face Set",
+        "Shrinks the Face Sets boundary by one face based on mesh topology",
+    },
+    {0, NULL, 0, NULL, NULL},
+};
+
+static void sculpt_face_set_grow(Object *ob,
+                                 SculptSession *ss,
+                                 int *prev_face_sets,
+                                 const int active_face_set_id)
+{
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  for (int p = 0; p < mesh->totpoly; p++) {
+    const MPoly *c_poly = &mesh->mpoly[p];
+    for (int l = 0; l < c_poly->totloop; l++) {
+      const MLoop *c_loop = &mesh->mloop[c_poly->loopstart + l];
+      const MeshElemMap *vert_map = &ss->pmap[c_loop->v];
+      for (int i = 0; i < vert_map->count; i++) {
+        const int neighbor_face_index = vert_map->indices[i];
+        if (neighbor_face_index != p) {
+
+          if (abs(prev_face_sets[neighbor_face_index]) == active_face_set_id) {
+            ss->face_sets[p] = active_face_set_id;
+          }
+        }
+      }
+    }
+  }
+}
+
+static void sculpt_face_set_shrink(Object *ob,
+                                   SculptSession *ss,
+                                   int *prev_face_sets,
+                                   const int active_face_set_id)
+{
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  for (int p = 0; p < mesh->totpoly; p++) {
+    if (abs(prev_face_sets[p]) == active_face_set_id) {
+      const MPoly *c_poly = &mesh->mpoly[p];
+      for (int l = 0; l < c_poly->totloop; l++) {
+        const MLoop *c_loop = &mesh->mloop[c_poly->loopstart + l];
+        const MeshElemMap *vert_map = &ss->pmap[c_loop->v];
+        for (int i = 0; i < vert_map->count; i++) {
+          const int neighbor_face_index = vert_map->indices[i];
+          if (neighbor_face_index != p) {
+            if (abs(prev_face_sets[neighbor_face_index]) != active_face_set_id) {
+              ss->face_sets[p] = prev_face_sets[neighbor_face_index];
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+static void sculpt_face_set_apply_edit(Object *ob, const int active_face_set_id, const int mode)
+{
+  SculptSession *ss = ob->sculpt;
+
+  int *prev_face_sets = MEM_dupallocN(ss->face_sets);
+
+  switch (mode) {
+    case SCULPT_FACE_SET_EDIT_GROW:
+      sculpt_face_set_grow(ob, ss, prev_face_sets, active_face_set_id);
+      break;
+    case SCULPT_FACE_SET_EDIT_SHRINK:
+      sculpt_face_set_shrink(ob, ss, prev_face_sets, active_face_set_id);
+      break;
+  }
+
+  MEM_SAFE_FREE(prev_face_sets);
+}
+
+static int sculpt_face_set_edit_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  ARegion *region = CTX_wm_region(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+
+  const int mode = RNA_enum_get(op->ptr, "mode");
+
+  /* Dyntopo not supported. */
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+    return OPERATOR_CANCELLED;
+  }
+
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, false);
+
+  PBVH *pbvh = ob->sculpt->pbvh;
+  PBVHNode **nodes;
+  int totnode;
+  BKE_pbvh_search_gather(pbvh, NULL, NULL, &nodes, &totnode);
+
+  if (!nodes) {
+    return OPERATOR_CANCELLED;
+  }
+
+  SCULPT_undo_push_begin("face set edit");
+  SCULPT_undo_push_node(ob, nodes[0], SCULPT_UNDO_FACE_SETS);
+
+  const int active_face_set = SCULPT_active_face_set_get(ss);
+
+  sculpt_face_set_apply_edit(ob, abs(active_face_set), mode);
+
+  SCULPT_undo_push_end();
+
+  /* Sync face sets visibility and vertex visibility as now all Face Sets are visible. */
+  SCULPT_visibility_sync_all_face_sets_to_vertices(ss);
+
+  for (int i = 0; i < totnode; i++) {
+    BKE_pbvh_node_mark_update_visibility(nodes[i]);
+  }
+
+  BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
+
+  MEM_SAFE_FREE(nodes);
+
+  if (BKE_pbvh_type(pbvh) == PBVH_FACES) {
+    BKE_mesh_flush_hidden_from_verts(ob->data);
+  }
+
+  ED_region_tag_redraw(region);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
+
+  View3D *v3d = CTX_wm_view3d(C);
+  if (!BKE_sculptsession_use_pbvh_draw(ob, v3d)) {
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void SCULPT_OT_face_sets_edit(struct wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Edit Face Set";
+  ot->idname = "SCULPT_OT_face_set_edit";
+  ot->description = "Edits the current active Face Set";
+
+  /* Api callbacks. */
+  ot->invoke = sculpt_face_set_edit_invoke;
+  ot->poll = SCULPT_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_enum(
+      ot->srna, "mode", prop_sculpt_face_sets_edit_types, SCULPT_FACE_SET_EDIT_GROW, "Mode", "");
 }

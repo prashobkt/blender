@@ -39,6 +39,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_texture.h"
@@ -387,7 +388,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  row = uiLayoutRowWithHeading(layout, true, "Motion");
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Motion"));
   uiItemR(row, &ptr, "use_x", UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE, NULL, ICON_NONE);
   uiItemR(row, &ptr, "use_y", UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE, NULL, ICON_NONE);
 
@@ -425,7 +426,7 @@ static void position_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "start_position_object", 0, IFACE_("Object"), ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, &ptr, "start_position_x", 0, "Start position X", ICON_NONE);
+  uiItemR(col, &ptr, "start_position_x", 0, "Start Position X", ICON_NONE);
   uiItemR(col, &ptr, "start_position_y", 0, "Y", ICON_NONE);
 }
 
@@ -523,4 +524,6 @@ ModifierTypeInfo modifierType_Wave = {
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ NULL,
+    /* blendRead */ NULL,
 };

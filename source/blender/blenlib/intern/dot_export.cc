@@ -18,8 +18,8 @@
 
 #include "BLI_dot_export.hh"
 
-namespace BLI {
-namespace DotExport {
+namespace blender {
+namespace dot {
 
 /* Graph Building
  ************************************************/
@@ -237,7 +237,7 @@ void NodePort::to_dot_string(std::stringstream &ss) const
 {
   m_node->export__as_id(ss);
   if (m_port_name.has_value()) {
-    ss << ":" << m_port_name.value();
+    ss << ":" << *m_port_name;
   }
 }
 
@@ -250,8 +250,8 @@ std::string color_attr_from_hsv(float h, float s, float v)
 
 NodeWithSocketsRef::NodeWithSocketsRef(Node &node,
                                        StringRef name,
-                                       ArrayRef<std::string> input_names,
-                                       ArrayRef<std::string> output_names)
+                                       Span<std::string> input_names,
+                                       Span<std::string> output_names)
     : m_node(&node)
 {
   std::stringstream ss;
@@ -301,5 +301,5 @@ NodeWithSocketsRef::NodeWithSocketsRef(Node &node,
   m_node->set_shape(Attr_shape::Rectangle);
 }
 
-}  // namespace DotExport
-}  // namespace BLI
+}  // namespace dot
+}  // namespace blender

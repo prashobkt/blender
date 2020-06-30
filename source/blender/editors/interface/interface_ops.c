@@ -513,7 +513,7 @@ static bool override_type_set_button_poll(bContext *C)
 
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
-  const int override_status = RNA_property_override_library_status(&ptr, prop, index);
+  const uint override_status = RNA_property_override_library_status(&ptr, prop, index);
 
   return (ptr.data && prop && (override_status & RNA_OVERRIDE_STATUS_OVERRIDABLE));
 }
@@ -613,7 +613,7 @@ static bool override_remove_button_poll(bContext *C)
 
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
-  const int override_status = RNA_property_override_library_status(&ptr, prop, index);
+  const uint override_status = RNA_property_override_library_status(&ptr, prop, index);
 
   return (ptr.data && ptr.owner_id && prop && (override_status & RNA_OVERRIDE_STATUS_OVERRIDDEN));
 }
@@ -630,11 +630,11 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
   ID *id = ptr.owner_id;
-  IDOverrideLibraryProperty *oprop = RNA_property_override_property_find(&ptr, prop);
+  IDOverrideLibraryProperty *oprop = RNA_property_override_property_find(&ptr, prop, &id);
   BLI_assert(oprop != NULL);
   BLI_assert(id != NULL && id->override_library != NULL);
 
-  const bool is_template = (id->override_library->reference == NULL);
+  const bool is_template = ID_IS_OVERRIDE_LIBRARY_TEMPLATE(id);
 
   /* We need source (i.e. linked data) to restore values of deleted overrides...
    * If this is an override template, we obviously do not need to restore anything. */
@@ -737,6 +737,8 @@ bool UI_context_copy_to_selected_list(bContext *C,
   *r_path = NULL;
   /* special case for bone constraints */
   char *path_from_bone = NULL;
+  /* Remove links from the collection list which don't contain 'prop'. */
+  bool ensure_list_items_contain_prop = false;
 
   /* PropertyGroup objects don't have a reference to the struct that actually owns
    * them, so it is normally necessary to do a brute force search to find it. This
@@ -803,6 +805,8 @@ bool UI_context_copy_to_selected_list(bContext *C,
     else {
       *r_lb = CTX_data_collection_get(C, "selected_editable_sequences");
     }
+    /* Account for properties only being available for some sequence types. */
+    ensure_list_items_contain_prop = true;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_FCurve)) {
     *r_lb = CTX_data_collection_get(C, "selected_editable_fcurves");
@@ -921,12 +925,25 @@ bool UI_context_copy_to_selected_list(bContext *C,
         else {
           *r_lb = CTX_data_collection_get(C, "selected_editable_sequences");
         }
+        /* Account for properties only being available for some sequence types. */
+        ensure_list_items_contain_prop = true;
       }
     }
     return (*r_path != NULL);
   }
   else {
     return false;
+  }
+
+  if (ensure_list_items_contain_prop) {
+    const char *prop_id = RNA_property_identifier(prop);
+    LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, r_lb) {
+      if ((ptr->type != link->ptr.type) &&
+          (RNA_struct_type_find_property(link->ptr.type, prop_id) != prop)) {
+        BLI_remlink(r_lb, link);
+        MEM_freeN(link);
+      }
+    }
   }
 
   return true;
@@ -1292,7 +1309,7 @@ static int editsource_text_edit(bContext *C,
   printf("%s:%d\n", filepath, line);
 
   for (text = bmain->texts.first; text; text = text->id.next) {
-    if (text->name && BLI_path_cmp(text->name, filepath) == 0) {
+    if (text->filepath && BLI_path_cmp(text->filepath, filepath) == 0) {
       break;
     }
   }

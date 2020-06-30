@@ -38,6 +38,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
@@ -564,7 +565,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
   if (!RNA_pointer_is_null(&cast_object_ptr)) {
-    uiItemR(layout, &ptr, "use_radius_as_size", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "use_transform", 0, NULL, ICON_NONE);
   }
 
   modifier_panel_end(layout, &ptr);
@@ -606,4 +607,6 @@ ModifierTypeInfo modifierType_Cast = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ NULL,
+    /* blendRead */ NULL,
 };

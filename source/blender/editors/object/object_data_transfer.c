@@ -76,7 +76,7 @@ static const EnumPropertyItem DT_layer_items[] = {
     {0, "", 0, "Edge Data", ""},
     {DT_TYPE_SHARP_EDGE, "SHARP_EDGE", 0, "Sharp", "Transfer sharp mark"},
     {DT_TYPE_SEAM, "SEAM", 0, "UV Seam", "Transfer UV seam mark"},
-    {DT_TYPE_CREASE, "CREASE", 0, "Subsurf Crease", "Transfer crease values"},
+    {DT_TYPE_CREASE, "CREASE", 0, "Subdivision Crease", "Transfer crease values"},
     {DT_TYPE_BWEIGHT_EDGE, "BEVEL_WEIGHT_EDGE", 0, "Bevel Weight", "Transfer bevel weights"},
     {DT_TYPE_FREESTYLE_EDGE,
      "FREESTYLE_EDGE",
@@ -854,7 +854,7 @@ static int datalayout_transfer_exec(bContext *C, wmOperator *op)
 
 static int datalayout_transfer_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  if (edit_modifier_invoke_properties(C, op)) {
+  if (edit_modifier_invoke_properties(C, op, NULL, NULL)) {
     return datalayout_transfer_exec(C, op);
   }
   else {

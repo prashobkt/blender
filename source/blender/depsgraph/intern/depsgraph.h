@@ -47,7 +47,8 @@ struct ID;
 struct Scene;
 struct ViewLayer;
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 struct IDNode;
 struct Node;
@@ -57,9 +58,8 @@ struct TimeSourceNode;
 
 /* Dependency Graph object */
 struct Depsgraph {
-  // TODO(sergey): Go away from C++ container and use some native BLI.
-  typedef vector<OperationNode *> OperationNodes;
-  typedef vector<IDNode *> IDDepsNodes;
+  typedef Vector<OperationNode *> OperationNodes;
+  typedef Vector<IDNode *> IDDepsNodes;
 
   Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluationMode mode);
   ~Depsgraph();
@@ -170,4 +170,5 @@ struct Depsgraph {
   Map<const ID *, ListBase *> *physics_relations[DEG_PHYSICS_RELATIONS_NUM];
 };
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender

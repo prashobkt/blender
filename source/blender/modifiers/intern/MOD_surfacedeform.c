@@ -38,12 +38,16 @@
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
+#include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
+
+#include "BLO_read_write.h"
 
 #include "RNA_access.h"
 
@@ -1247,8 +1251,8 @@ static void surfacedeformModifier_do(ModifierData *md,
     return;
   }
 
-  tnumverts = target->totvert;
-  tnumpoly = target->totpoly;
+  tnumverts = BKE_mesh_wrapper_vert_len(target);
+  tnumpoly = BKE_mesh_wrapper_poly_len(target);
 
   /* If not bound, execute bind. */
   if (smd->verts == NULL) {
@@ -1263,6 +1267,9 @@ static void surfacedeformModifier_do(ModifierData *md,
 
     invert_m4_m4(tmp_mat, ob->obmat);
     mul_m4_m4m4(smd_orig->mat, tmp_mat, ob_target->obmat);
+
+    /* Avoid converting edit-mesh data, binding is an exception. */
+    BKE_mesh_wrapper_ensure_mdata(target);
 
     if (!surfacedeformBind(smd_orig, smd, vertexCos, numverts, tnumpoly, tnumverts, target)) {
       smd->flags &= ~MOD_SDEF_BIND;
@@ -1322,11 +1329,7 @@ static void surfacedeformModifier_do(ModifierData *md,
   };
 
   if (data.targetCos != NULL) {
-    const MVert *const mvert = target->mvert;
-
-    for (int i = 0; i < tnumverts; i++) {
-      mul_v3_m4v3(data.targetCos[i], smd->mat, mvert[i].co);
-    }
+    BKE_mesh_wrapper_vert_coords_copy_with_mat4(target, data.targetCos, tnumverts, smd->mat);
 
     TaskParallelSettings settings;
     BLI_parallel_range_settings_defaults(&settings);
@@ -1437,6 +1440,64 @@ static void panelRegister(ARegionType *region_type)
   modifier_panel_register(region_type, eModifierType_SurfaceDeform, panel_draw);
 }
 
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  const SurfaceDeformModifierData *smd = (const SurfaceDeformModifierData *)md;
+
+  BLO_write_struct_array(writer, SDefVert, smd->numverts, smd->verts);
+
+  if (smd->verts) {
+    for (int i = 0; i < smd->numverts; i++) {
+      BLO_write_struct_array(writer, SDefBind, smd->verts[i].numbinds, smd->verts[i].binds);
+
+      if (smd->verts[i].binds) {
+        for (int j = 0; j < smd->verts[i].numbinds; j++) {
+          BLO_write_uint32_array(
+              writer, smd->verts[i].binds[j].numverts, smd->verts[i].binds[j].vert_inds);
+
+          if (smd->verts[i].binds[j].mode == MOD_SDEF_MODE_CENTROID ||
+              smd->verts[i].binds[j].mode == MOD_SDEF_MODE_LOOPTRI) {
+            BLO_write_float3_array(writer, 1, smd->verts[i].binds[j].vert_weights);
+          }
+          else {
+            BLO_write_float_array(
+                writer, smd->verts[i].binds[j].numverts, smd->verts[i].binds[j].vert_weights);
+          }
+        }
+      }
+    }
+  }
+}
+
+static void blendRead(BlendDataReader *reader, ModifierData *md)
+{
+  SurfaceDeformModifierData *smd = (SurfaceDeformModifierData *)md;
+
+  BLO_read_data_address(reader, &smd->verts);
+
+  if (smd->verts) {
+    for (int i = 0; i < smd->numverts; i++) {
+      BLO_read_data_address(reader, &smd->verts[i].binds);
+
+      if (smd->verts[i].binds) {
+        for (int j = 0; j < smd->verts[i].numbinds; j++) {
+          BLO_read_uint32_array(
+              reader, smd->verts[i].binds[j].numverts, &smd->verts[i].binds[j].vert_inds);
+
+          if (smd->verts[i].binds[j].mode == MOD_SDEF_MODE_CENTROID ||
+              smd->verts[i].binds[j].mode == MOD_SDEF_MODE_LOOPTRI) {
+            BLO_read_float3_array(reader, 1, &smd->verts[i].binds[j].vert_weights);
+          }
+          else {
+            BLO_read_float_array(
+                reader, smd->verts[i].binds[j].numverts, &smd->verts[i].binds[j].vert_weights);
+          }
+        }
+      }
+    }
+  }
+}
+
 ModifierTypeInfo modifierType_SurfaceDeform = {
     /* name */ "SurfaceDeform",
     /* structName */ "SurfaceDeformModifierData",
@@ -1467,4 +1528,6 @@ ModifierTypeInfo modifierType_SurfaceDeform = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ blendWrite,
+    /* blendRead */ blendRead,
 };

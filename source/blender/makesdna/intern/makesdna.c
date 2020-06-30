@@ -137,6 +137,7 @@ static const char *includefiles[] = {
     "DNA_pointcloud_types.h",
     "DNA_volume_types.h",
     "DNA_simulation_types.h",
+    "DNA_pointcache_types.h",
 
     /* see comment above before editing! */
 
@@ -216,7 +217,7 @@ void BLI_system_backtrace(FILE *fp)
 /**
  * Ensure type \c str to is in the #types array.
  * \param str: Struct name without any qualifiers.
- * \param len: The struct size in bytes.
+ * \param size: The struct size in bytes.
  * \return Index in the #types array.
  */
 static int add_type(const char *str, int size);
@@ -1584,6 +1585,7 @@ int main(int argc, char **argv)
 #include "DNA_outliner_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
+#include "DNA_pointcache_types.h"
 #include "DNA_pointcloud_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"

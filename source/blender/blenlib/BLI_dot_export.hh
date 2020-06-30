@@ -25,18 +25,17 @@
  */
 
 #include "BLI_map.hh"
-#include "BLI_optional.hh"
 #include "BLI_set.hh"
-#include "BLI_string_map.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
 #include "BLI_dot_export_attribute_enums.hh"
 
+#include <optional>
 #include <sstream>
 
-namespace BLI {
-namespace DotExport {
+namespace blender {
+namespace dot {
 
 class Graph;
 class DirectedGraph;
@@ -57,7 +56,7 @@ class AttributeList {
 
   void set(StringRef key, StringRef value)
   {
-    m_attributes.add_override(key, value);
+    m_attributes.add_overwrite(key, value);
   }
 };
 
@@ -198,10 +197,10 @@ class DirectedGraph final : public Graph {
 class NodePort {
  private:
   Node *m_node;
-  Optional<std::string> m_port_name;
+  std::optional<std::string> m_port_name;
 
  public:
-  NodePort(Node &node, Optional<std::string> port_name = {})
+  NodePort(Node &node, std::optional<std::string> port_name = {})
       : m_node(&node), m_port_name(std::move(port_name))
   {
   }
@@ -209,7 +208,7 @@ class NodePort {
   void to_dot_string(std::stringstream &ss) const;
 };
 
-class Edge : BLI::NonCopyable, BLI::NonMovable {
+class Edge : blender::NonCopyable, blender::NonMovable {
  protected:
   AttributeList m_attributes;
   NodePort m_a;
@@ -268,8 +267,8 @@ class NodeWithSocketsRef {
  public:
   NodeWithSocketsRef(Node &node,
                      StringRef name,
-                     ArrayRef<std::string> input_names,
-                     ArrayRef<std::string> output_names);
+                     Span<std::string> input_names,
+                     Span<std::string> output_names);
 
   NodePort input(uint index) const
   {
@@ -284,7 +283,7 @@ class NodeWithSocketsRef {
   }
 };
 
-}  // namespace DotExport
-}  // namespace BLI
+}  // namespace dot
+}  // namespace blender
 
 #endif /* __BLI_DOT_EXPORT_HH__ */

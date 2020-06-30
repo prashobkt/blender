@@ -26,6 +26,8 @@
 #include <cstring> /* required for STREQ later on. */
 #include <stdio.h>
 
+#include "BLI_ghash.h"
+#include "BLI_hash.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_object_types.h"
@@ -36,7 +38,8 @@
 #include "intern/node/deg_node_id.h"
 #include "intern/node/deg_node_operation.h"
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 /* *********** */
 /* Outer Nodes */
@@ -67,6 +70,15 @@ string ComponentNode::OperationIDKey::identifier() const
 bool ComponentNode::OperationIDKey::operator==(const OperationIDKey &other) const
 {
   return (opcode == other.opcode) && (STREQ(name, other.name)) && (name_tag == other.name_tag);
+}
+
+uint32_t ComponentNode::OperationIDKey::hash() const
+{
+  const int opcode_as_int = static_cast<int>(opcode);
+  return BLI_ghashutil_combine_hash(
+      name_tag,
+      BLI_ghashutil_combine_hash(BLI_ghashutil_uinthash(opcode_as_int),
+                                 BLI_ghashutil_strhash_p(name)));
 }
 
 ComponentNode::ComponentNode()
@@ -282,7 +294,7 @@ void ComponentNode::finalize_build(Depsgraph * /*graph*/)
 {
   operations.reserve(operations_map->size());
   for (OperationNode *op_node : operations_map->values()) {
-    operations.push_back(op_node);
+    operations.append(op_node);
   }
   delete operations_map;
   operations_map = nullptr;
@@ -366,4 +378,5 @@ void deg_register_component_depsnodes()
   register_node_typeinfo(&DNTI_SIMULATION);
 }
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender

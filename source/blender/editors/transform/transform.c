@@ -45,7 +45,6 @@
 #include "ED_keyframing.h"
 #include "ED_node.h"
 #include "ED_screen.h"
-#include "ED_sculpt.h"
 #include "ED_space_api.h"
 
 #include "WM_api.h"
@@ -1592,17 +1591,24 @@ static void drawTransformPixel(const struct bContext *C, ARegion *region, void *
 void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
-  int proportional = 0;
   PropertyRNA *prop;
 
   if (!(t->con.mode & CON_APPLY) && (t->flag & T_MODAL) &&
       ELEM(t->mode, TFM_TRANSLATION, TFM_RESIZE)) {
     /* When redoing these modes the first time, it's more convenient to save
-     * the Global orientation. */
-    mul_m3_v3(t->spacemtx, t->values_final);
-    unit_m3(t->spacemtx);
+     * in the Global orientation. */
+    if (t->mode == TFM_TRANSLATION) {
+      mul_m3_v3(t->spacemtx, t->values_final);
+    }
+    else {
+      float tmat[3][3], sizemat[3][3];
+      size_to_mat3(sizemat, t->values_final);
+      mul_m3_m3m3(tmat, t->spacemtx, sizemat);
+      mat3_to_size(t->values_final, tmat);
+    }
 
     BLI_assert(t->orient_curr == 0);
+    unit_m3(t->spacemtx);
     t->orient[0].type = V3D_ORIENT_GLOBAL;
   }
 
@@ -1620,15 +1626,17 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     }
   }
 
+  bool use_prop_edit = false;
+  int prop_edit_flag = 0;
   if (t->flag & T_PROP_EDIT_ALL) {
     if (t->flag & T_PROP_EDIT) {
-      proportional |= PROP_EDIT_USE;
+      use_prop_edit = true;
     }
     if (t->flag & T_PROP_CONNECTED) {
-      proportional |= PROP_EDIT_CONNECTED;
+      prop_edit_flag |= PROP_EDIT_CONNECTED;
     }
     if (t->flag & T_PROP_PROJECTED) {
-      proportional |= PROP_EDIT_PROJECTED;
+      prop_edit_flag |= PROP_EDIT_PROJECTED;
     }
   }
 
@@ -1640,20 +1648,27 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     if (!(t->options & CTX_NO_PET)) {
       if ((prop = RNA_struct_find_property(op->ptr, "use_proportional_edit")) &&
           !RNA_property_is_set(op->ptr, prop)) {
+        const Object *obact = OBACT(t->view_layer);
+
         if (t->spacetype == SPACE_GRAPH) {
-          ts->proportional_fcurve = proportional;
+          ts->proportional_fcurve = use_prop_edit;
         }
         else if (t->spacetype == SPACE_ACTION) {
-          ts->proportional_action = proportional;
-        }
-        else if (t->obedit_type != -1) {
-          ts->proportional_edit = proportional;
+          ts->proportional_action = use_prop_edit;
         }
         else if (t->options & CTX_MASK) {
-          ts->proportional_mask = proportional != 0;
+          ts->proportional_mask = use_prop_edit;
         }
-        else if ((t->options & CTX_CURSOR) == 0) {
-          ts->proportional_objects = proportional != 0;
+        else if (obact && obact->mode == OB_MODE_OBJECT) {
+          ts->proportional_objects = use_prop_edit;
+        }
+        else {
+          if (use_prop_edit) {
+            ts->proportional_edit |= PROP_EDIT_USE;
+          }
+          else {
+            ts->proportional_edit &= ~PROP_EDIT_USE;
+          }
         }
       }
 
@@ -1686,9 +1701,9 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
   }
 
   if ((prop = RNA_struct_find_property(op->ptr, "use_proportional_edit"))) {
-    RNA_property_boolean_set(op->ptr, prop, proportional & PROP_EDIT_USE);
-    RNA_boolean_set(op->ptr, "use_proportional_connected", proportional & PROP_EDIT_CONNECTED);
-    RNA_boolean_set(op->ptr, "use_proportional_projected", proportional & PROP_EDIT_PROJECTED);
+    RNA_property_boolean_set(op->ptr, prop, use_prop_edit);
+    RNA_boolean_set(op->ptr, "use_proportional_connected", prop_edit_flag & PROP_EDIT_CONNECTED);
+    RNA_boolean_set(op->ptr, "use_proportional_projected", prop_edit_flag & PROP_EDIT_PROJECTED);
     RNA_enum_set(op->ptr, "proportional_edit_falloff", t->prop_mode);
     RNA_float_set(op->ptr, "proportional_size", t->prop_size);
   }
@@ -1767,10 +1782,6 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     }
   }
 
-  if ((t->options & CTX_SCULPT) && !(t->options & CTX_PAINT_CURVE)) {
-    ED_sculpt_end_transform(C);
-  }
-
   if ((prop = RNA_struct_find_property(op->ptr, "correct_uv"))) {
     RNA_property_boolean_set(
         op->ptr, prop, (t->settings->uvcalc_flag & UVCALC_TRANSFORM_CORRECT) != 0);
@@ -1824,6 +1835,8 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   int options = 0;
   PropertyRNA *prop;
 
+  mode = transform_mode_really_used(C, mode);
+
   t->context = C;
 
   /* added initialize, for external calls to set stuff in TransInfo, like undo string */
@@ -1848,13 +1861,6 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
       RNA_property_is_set(op->ptr, prop)) {
     if (RNA_property_boolean_get(op->ptr, prop)) {
       options |= CTX_GPENCIL_STROKES;
-    }
-  }
-
-  if (CTX_wm_view3d(C) != NULL) {
-    Object *ob = CTX_data_active_object(C);
-    if (ob && ob->mode == OB_MODE_SCULPT && ob->sculpt) {
-      options |= CTX_SCULPT;
     }
   }
 
@@ -1924,13 +1930,30 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   createTransData(C, t);  // make TransData structs from selection
 
-  if ((t->options & CTX_SCULPT) && !(t->options & CTX_PAINT_CURVE)) {
-    ED_sculpt_init_transform(C);
-  }
-
   if (t->data_len_all == 0) {
     postTrans(C, t);
     return 0;
+  }
+
+  /* When proportional editing is enabled, data_len_all can be non zero when
+   * nothing is selected, if this is the case we can end the transform early.
+   *
+   * By definition transform-data has selected items in beginning,
+   * so only the first item in each container needs to be checked
+   * when looking  for the presence of selected data. */
+  if (t->flag & T_PROP_EDIT) {
+    bool has_selected_any = false;
+    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+      if (tc->data->flag & TD_SELECTED) {
+        has_selected_any = true;
+        break;
+      }
+    }
+
+    if (!has_selected_any) {
+      postTrans(C, t);
+      return 0;
+    }
   }
 
   if (event) {
@@ -2104,14 +2127,6 @@ int transformEnd(bContext *C, TransInfo *t)
   if (t->state != TRANS_STARTING && t->state != TRANS_RUNNING) {
     /* handle restoring objects */
     if (t->state == TRANS_CANCEL) {
-      /* exception, edge slide transformed UVs too */
-      if (t->mode == TFM_EDGE_SLIDE) {
-        doEdgeSlide(t, 0.0f);
-      }
-      else if (t->mode == TFM_VERT_SLIDE) {
-        doVertSlide(t, 0.0f);
-      }
-
       exit_code = OPERATOR_CANCELLED;
       restoreTransObjects(t);  // calls recalcData()
     }

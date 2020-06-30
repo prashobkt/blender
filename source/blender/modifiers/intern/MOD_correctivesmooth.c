@@ -42,6 +42,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_screen.h"
 
 #include "UI_interface.h"
@@ -52,6 +53,8 @@
 #include "MOD_modifiertypes.h"
 #include "MOD_ui_common.h"
 #include "MOD_util.h"
+
+#include "BLO_read_write.h"
 
 #include "BLI_strict_flags.h"
 
@@ -816,6 +819,28 @@ static void panelRegister(ARegionType *region_type)
   modifier_panel_register(region_type, eModifierType_CorrectiveSmooth, panel_draw);
 }
 
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  const CorrectiveSmoothModifierData *csmd = (const CorrectiveSmoothModifierData *)md;
+
+  if (csmd->bind_coords) {
+    BLO_write_float3_array(writer, (int)csmd->bind_coords_num, (float *)csmd->bind_coords);
+  }
+}
+
+static void blendRead(BlendDataReader *reader, ModifierData *md)
+{
+  CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
+
+  if (csmd->bind_coords) {
+    BLO_read_float3_array(reader, (int)csmd->bind_coords_num, (float **)&csmd->bind_coords);
+  }
+
+  /* runtime only */
+  csmd->delta_cache.deltas = NULL;
+  csmd->delta_cache.totverts = 0;
+}
+
 ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* name */ "CorrectiveSmooth",
     /* structName */ "CorrectiveSmoothModifierData",
@@ -846,4 +871,6 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ blendWrite,
+    /* blendRead */ blendRead,
 };

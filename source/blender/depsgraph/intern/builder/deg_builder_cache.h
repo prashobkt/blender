@@ -31,7 +31,8 @@ struct ID;
 struct PointerRNA;
 struct PropertyRNA;
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 class DepsgraphBuilderCache;
 
@@ -44,7 +45,8 @@ class AnimatedPropertyID {
   AnimatedPropertyID(ID *id, StructRNA *type, const char *property_name);
   AnimatedPropertyID(ID *id, StructRNA *type, void *data, const char *property_name);
 
-  bool operator<(const AnimatedPropertyID &other) const;
+  uint32_t hash() const;
+  friend bool operator==(const AnimatedPropertyID &a, const AnimatedPropertyID &b);
 
   /* Corresponds to PointerRNA.data. */
   void *data;
@@ -67,10 +69,8 @@ class AnimatedPropertyStorage {
   bool is_fully_initialized;
 
   /* indexed by PointerRNA.data. */
-  set<AnimatedPropertyID> animated_properties_set;
+  Set<AnimatedPropertyID> animated_properties_set;
 };
-
-typedef map<ID *, AnimatedPropertyStorage *> AnimatedPropertyStorageMap;
 
 /* Cached data which can be re-used by multiple builders. */
 class DepsgraphBuilderCache {
@@ -97,7 +97,8 @@ class DepsgraphBuilderCache {
     return animated_property_storage->isPropertyAnimated(args...);
   }
 
-  AnimatedPropertyStorageMap animated_property_storage_map_;
+  Map<ID *, AnimatedPropertyStorage *> animated_property_storage_map_;
 };
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender
