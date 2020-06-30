@@ -121,6 +121,20 @@ mpq2::isect_result mpq2::isect_seg_seg(const mpq2 &v1,
   return ans;
 }
 
+mpq3 mpq3::cross_poly(const mpq3 *poly, int nv)
+{
+  /* Newell's Method. */
+  const mpq3 *v_prev = &poly[nv - 1];
+  const mpq3 *v_curr = &poly[0];
+  mpq3 n(0);
+  for (int i = 0; i < nv; v_prev = v_curr, v_curr = &poly[++i]) {
+    n[0] = n[0] + ((*v_prev)[1] - (*v_curr)[1]) * ((*v_prev)[2] + (*v_curr)[2]);
+    n[1] = n[1] + ((*v_prev)[2] - (*v_curr)[2]) * ((*v_prev)[0] + (*v_curr)[0]);
+    n[2] = n[2] + ((*v_prev)[0] - (*v_curr)[0]) * ((*v_prev)[1] + (*v_curr)[1]);
+  }
+  return n;
+}
+
 uint32_t hash_mpq_class(const mpq_class &value)
 {
   /* TODO: better/faster implementation of this. */

@@ -1264,6 +1264,54 @@ static TriMesh binary_boolean(const TriMesh &tm_in_a, const TriMesh &tm_in_b, in
   return nary_boolean(tm_in, bool_optype, 2, shape_fn);
 }
 
+static Array<IndexedTriangle> triangulate_poly(int orig_face,
+                                               const Array<int> &face,
+                                               const Array<mpq3> &vert)
+{
+  int flen = static_cast<int>(face.size());
+  CDT_input<mpq_class> cdt_in;
+  cdt_in.vert = Array<mpq2>(flen);
+  cdt_in.face = Array<Vector<int>>(1);
+  cdt_in.face[0].reserve(flen);
+  Array<mpq3> face_verts(flen);
+  for (int i = 0; i < flen; ++i) {
+    cdt_in.face[0].append(i);
+    face_verts[i] = vert[face[i]];
+  }
+  /* Project poly along dominant axis of normal to get 2d coords. */
+  mpq3 poly_normal = mpq3::cross_poly(face_verts.begin(), flen);
+  int axis = mpq3::dominant_axis(poly_normal);
+  /* If project down y axis as opposed to x or z, the orientation
+   * of the polygon will be reversed.
+   */
+  bool rev = (axis == 1);
+  for (int i = 0; i < flen; ++i) {
+    int ii = rev ? flen - i - 1 : i;
+    mpq2 &p2d = cdt_in.vert[ii];
+    int k = 0;
+    for (int j = 0; j < 3; ++j) {
+      if (j != axis) {
+        p2d[k++] = face_verts[ii][j];
+      }
+    }
+  }
+  CDT_result<mpq_class> cdt_out = delaunay_2d_calc(cdt_in, CDT_INSIDE);
+  int n_tris = static_cast<int>(cdt_out.face.size());
+  Array<IndexedTriangle> ans(n_tris);
+  for (int t = 0; t < n_tris; ++t) {
+    /* Assume no input verts to CDT were merged. Not necessarily true. FIXME. */
+    BLI_assert(cdt_out.vert.size() == cdt_in.vert.size());
+    int v0_out = cdt_out.face[t][0];
+    int v1_out = cdt_out.face[t][1];
+    int v2_out = cdt_out.face[t][2];
+    int v0 = face[v0_out];
+    int v1 = face[v1_out];
+    int v2 = face[v2_out];
+    ans[t] = IndexedTriangle(v0, v1, v2, orig_face);
+  }
+  return ans;
+}
+
 static void triangulate_polymesh(PolyMesh &pm)
 {
   int face_tot = static_cast<int>(pm.face.size());
@@ -1281,9 +1329,7 @@ static void triangulate_polymesh(PolyMesh &pm)
           IndexedTriangle(pm.face[f][0], pm.face[f][2], pm.face[f][3], f)};
     }
     else {
-      /* TODO: use CDT to do this. cf do_cdt in mesh_intersect.cc */
-      std::cout << "IMPLEMENT ME - TESSELATE FACES OF SIZE > 4\n";
-      BLI_assert(false);
+      face_tris[f] = triangulate_poly(f, pm.face[f], pm.vert);
     }
   }
   pm.triangulation.set(face_tris);
@@ -1314,9 +1360,9 @@ static TriMesh trimesh_from_polymesh(PolyMesh &pm)
 }
 
 /* For Debugging. */
-static void write_obj_polymesh(const Array<mpq3> &vert,
-                               const Array<Array<int>> &face,
-                               const std::string &objname)
+void write_obj_polymesh(const Array<mpq3> &vert,
+                        const Array<Array<int>> &face,
+                        const std::string &objname)
 {
   constexpr const char *objdir = "/tmp/";
   if (face.size() == 0) {
@@ -1540,12 +1586,42 @@ static void init_face_merge_state(FaceMergeState *fms,
  * (which will happen if there's another edge sharing the same two faces);
  * or (b) it would create a face with a repeated vertex.
  */
-static bool dissolve_leaves_valid_bmesh(FaceMergeState *UNUSED(fms),
-                                        const MergeEdge &UNUSED(me),
-                                        const MergeFace &UNUSED(mf_left),
-                                        const MergeFace &UNUSED(mf_right))
+static bool dissolve_leaves_valid_bmesh(FaceMergeState *fms,
+                                        const MergeEdge &me,
+                                        int me_index,
+                                        const MergeFace &mf_left,
+                                        const MergeFace &mf_right)
 {
-  return true; /* TODO: IMPLEMENT ME! */
+  int a_edge_start = mf_left.edge.first_index_of_try(me_index);
+  int b_edge_start = mf_right.edge.first_index_of_try(me_index);
+  BLI_assert(a_edge_start != -1 && b_edge_start != -1);
+  int alen = static_cast<int>(mf_left.vert.size());
+  int blen = static_cast<int>(mf_right.vert.size());
+  int b_left_face = me.right_face;
+  bool ok = true;
+  /* Is there another edge, not me, in A's face, whose right face is B's left? */
+  for (int a_e_index = (a_edge_start + 1) % alen; ok && a_e_index != a_edge_start;
+       a_e_index = (a_e_index + 1) % alen) {
+    const MergeEdge &a_me_cur = fms->edge[mf_left.edge[a_e_index]];
+    if (a_me_cur.right_face == b_left_face) {
+      ok = false;
+    }
+  }
+  /* Is there a vert in A, not me.v1 or me.v2, that is also in B?
+   * One could avoid this O(n^2) algorithm if had a structure saying which faces a vertex touches.
+   */
+  for (int a_v_index = 0; ok && a_v_index < alen; ++a_v_index) {
+    int a_v = mf_left.vert[a_v_index];
+    if (a_v != me.v1 && a_v != me.v2) {
+      for (int b_v_index = 0; b_v_index < blen; ++b_v_index) {
+        int b_v = mf_right.vert[b_v_index];
+        if (a_v == b_v) {
+          ok = false;
+        }
+      }
+    }
+  }
+  return ok;
 }
 
 /* mf_left and mf_right should share a MergeEdge me, having index me_index.
@@ -1603,6 +1679,12 @@ static void splice_faces(
   me.right_face = -1;
 }
 
+/* Given that fms has been properly initialized to contain a set of faces that
+ * together form a face or part of a face of the original PolyMesh, and that
+ * it has properly recorded with faces are dissolvable, dissolve as many edges as possible.
+ * We try to dissolve in decreasing order of edge length, so that it is more likely
+ * that the final output doesn't have awkward looking long edges with extreme angles.
+ */
 static void do_dissolve(FaceMergeState *fms)
 {
   const int dbg_level = 0;
@@ -1618,9 +1700,10 @@ static void do_dissolve(FaceMergeState *fms)
   if (dissolve_edges.size() == 0) {
     return;
   }
+  /* Things look nicer if we dissolve the longer edges first. */
   std::sort(
       dissolve_edges.begin(), dissolve_edges.end(), [fms](const int &a, const int &b) -> bool {
-        return (fms->edge[a].len_squared < fms->edge[b].len_squared);
+        return (fms->edge[a].len_squared > fms->edge[b].len_squared);
       });
   if (dbg_level > 0) {
     std::cout << "Sorted dissolvable edges: " << dissolve_edges << "\n";
@@ -1632,7 +1715,7 @@ static void do_dissolve(FaceMergeState *fms)
     }
     MergeFace &mf_left = fms->face[me.left_face];
     MergeFace &mf_right = fms->face[me.right_face];
-    if (!dissolve_leaves_valid_bmesh(fms, me, mf_left, mf_right)) {
+    if (!dissolve_leaves_valid_bmesh(fms, me, me_index, mf_left, mf_right)) {
       continue;
     }
     if (dbg_level > 0) {
@@ -1646,6 +1729,11 @@ static void do_dissolve(FaceMergeState *fms)
   }
 }
 
+/* Given that tris form a triangulation of a face or part of a face that was in pm_in,
+ * merge as many of the triangles together as possible, by dissolving the edges between them.
+ * We can only dissolve triangulation edges that don't overlap real input edges, and we
+ * can only dissolve them if doing so leaves the remaining faces able to create valid BMesh.
+ */
 static Vector<Vector<int>> merge_tris_for_face(Vector<int> tris,
                                                const TriMesh &tm,
                                                const PolyMesh &pm_in)
@@ -1654,7 +1742,10 @@ static Vector<Vector<int>> merge_tris_for_face(Vector<int> tris,
   Vector<Vector<int>> ans;
   if (tris.size() == 2) {
     /* Is this a case where quad with one diagonal remained unchanged? */
-    /* TODO: could be diagonal is not dissolvable if this isn't whole original face. FIXME. */
+    /* TODO: could be diagonal is not dissolvable if this isn't whole original face. FIXME.
+     * We could just use the code below for this case too, but this seems likely to be
+     * such a common case that it is worth trying to handle specially, with less work.
+     */
     const IndexedTriangle &tri1 = tm.tri[tris[0]];
     const IndexedTriangle &tri2 = tm.tri[tris[1]];
     std::pair<int, int> estarts = find_tris_common_edge(tri1, tri2);
@@ -1681,18 +1772,151 @@ static Vector<Vector<int>> merge_tris_for_face(Vector<int> tris,
       ans[ans.size() - 1] = mf.vert;
     }
   }
-#if 0
-  for (uint i = 0; i < tris.size(); ++i) {
-    ans.append(Vector<int>());
-    const IndexedTriangle &tri = tm.tri[tris[i]];
-    ans[i].append(tri.v0());
-    ans[i].append(tri.v1());
-    ans[i].append(tri.v2());
-  }
-#endif
   return ans;
 }
 
+/* Return an array, paralleling pm_out.vert, saying which vertices can be dissolved.
+ * A vertex v can be dissolved if (a) it is not an input vertex; (b) it has valence 2;
+ * and (c) if v's two neighboring vertices are u and w, then (u,v,w) forms a straight line.
+ * Return the number of dissolvable vertices in r_count_dissolve.
+ */
+static Array<bool> find_dissolve_verts(const PolyMesh &pm_out,
+                                       const PolyMesh &pm_in,
+                                       int *r_count_dissolve)
+{
+  /* Start assuming all can be dissolved, and disprove that for all the cases where it is false. */
+  Array<bool> dissolve(pm_out.vert.size(), true);
+  /* To test "is not an input vertex", make a set of all input vertices. */
+  Set<mpq3> input_verts;
+  input_verts.reserve(pm_in.vert.size());
+  for (uint v_in = 0; v_in < pm_in.vert.size(); ++v_in) {
+    input_verts.add(pm_in.vert[v_in]);
+  }
+  for (uint v_out = 0; v_out < pm_out.vert.size(); ++v_out) {
+    if (input_verts.contains(pm_out.vert[v_out])) {
+      dissolve[v_out] = false;
+    }
+  }
+  Array<std::pair<int, int>> neighbors(pm_out.vert.size(), std::pair<int, int>(-1, -1));
+  for (uint f = 0; f < pm_out.face.size(); ++f) {
+    const Array<int> &face = pm_out.face[f];
+    int flen = static_cast<int>(face.size());
+    for (int i = 0; i < flen; ++i) {
+      int fv = face[i];
+      if (dissolve[fv]) {
+        int n1 = face[(i + flen - 1) % flen];
+        int n2 = face[(i + 1) % flen];
+        int f_n1 = neighbors[fv].first;
+        int f_n2 = neighbors[fv].second;
+        if (f_n1 != -1) {
+          /* Already has a neighbor in another face; can't dissolve unless they are the same. */
+          if (!((n1 == f_n2 && n2 == f_n1) || (n1 == f_n1 && n2 == f_n2))) {
+            /* Different neighbors, so can't dissolve. */
+            dissolve[fv] = false;
+          }
+        }
+        else {
+          /* These are the first-seen neighbors. */
+          neighbors[fv] = std::pair<int, int>(n1, n2);
+        }
+      }
+    }
+  }
+  int count = 0;
+  for (uint v_out = 0; v_out < pm_out.vert.size(); ++v_out) {
+    if (dissolve[v_out]) {
+      dissolve[v_out] = false; /* Will set back to true if final condition is satisfied. */
+      const std::pair<int, int> &nbrs = neighbors[v_out];
+      if (nbrs.first != -1) {
+        BLI_assert(nbrs.second != -1);
+        const mpq3 &co1 = pm_out.vert[nbrs.first];
+        const mpq3 &co2 = pm_out.vert[nbrs.second];
+        const mpq3 &co = pm_out.vert[v_out];
+        mpq3 dir1 = co - co1;
+        mpq3 dir2 = co2 - co;
+        mpq3 cross = mpq3::cross(dir1, dir2);
+        if (cross[0] == 0 && cross[1] == 0 && cross[2] == 0) {
+          dissolve[v_out] = true;
+          ++count;
+        }
+      }
+    }
+  }
+  if (r_count_dissolve) {
+    *r_count_dissolve = count;
+  }
+  return dissolve;
+}
+
+/* The dissolve array parallels the pm.vert array. Wherever it is true,
+ * remove the corresponding vertex from pm.vert, and the vertices in
+ * pm.faces to account for the close-up of the gaps in pm.vert.
+ */
+static void dissolve_verts(PolyMesh *pm, const Array<bool> dissolve)
+{
+  int tot_v_orig = static_cast<int>(pm->vert.size());
+  Array<int> vmap(tot_v_orig);
+  int v_mapped = 0;
+  for (int v_orig = 0; v_orig < tot_v_orig; ++v_orig) {
+    if (!dissolve[v_orig]) {
+      vmap[v_orig] = v_mapped++;
+    }
+    else {
+      vmap[v_orig] = -1;
+    }
+  }
+  int tot_v_final = v_mapped;
+  if (tot_v_final == tot_v_orig) {
+    return;
+  }
+  Array<mpq3> vert_final(tot_v_final);
+  for (int v_orig = 0; v_orig < tot_v_orig; ++v_orig) {
+    int v_final = vmap[v_orig];
+    if (v_final != -1) {
+      vert_final[v_final] = pm->vert[v_orig];
+    }
+  }
+  for (uint f = 0; f < pm->face.size(); ++f) {
+    const Array<int> &face = pm->face[f];
+    bool any_change = false;
+    int flen = static_cast<int>(face.size());
+    int ndeleted = 0;
+    for (int i = 0; i < flen; ++i) {
+      int v_mapped = vmap[face[i]];
+      if (v_mapped == -1) {
+        any_change = true;
+        ++ndeleted;
+      }
+      if (v_mapped != face[i]) {
+        any_change = true;
+      }
+    }
+    if (any_change) {
+      BLI_assert(flen - ndeleted >= 3);
+      Array<int> new_face(flen - ndeleted);
+      int new_face_i = 0;
+      for (int i = 0; i < flen; ++i) {
+        int v_mapped = vmap[face[i]];
+        if (v_mapped != -1) {
+          new_face[new_face_i++] = v_mapped;
+        }
+      }
+      pm->face[f] = new_face;
+    }
+  }
+  pm->vert = vert_final;
+}
+
+/* The main boolean function operates on TriMesh's and produces TriMesh's as output.
+ * This function converts back into a PolyMesh, knowing that pm_in was the original PolyMesh input
+ * that was converted into a TriMesh and then had the boolean operation done on it.
+ * Most of the work here is to get rid of the triangulation edges and any added vertices
+ * that were only added to attach now-removed triangulation edges.
+ * Not all triangulation edges can be removed: if they ended up non-trivially overlapping a real
+ * input edge, then we need to keep it. Also, some are necessary to make the output satisfy
+ * the "valid BMesh" property: we can't produce output faces that have repeated vertices in them,
+ * or have several disconnected boundaries (e.g., faces with holes).
+ */
 static PolyMesh polymesh_from_trimesh_with_dissolve(const TriMesh &tm_out, const PolyMesh &pm_in)
 {
   const int dbg_level = 0;
@@ -1748,13 +1972,29 @@ static PolyMesh polymesh_from_trimesh_with_dissolve(const TriMesh &tm_out, const
       ++out_f;
     }
   }
+  /* Dissolve vertices that were (a) not original; and (b) now have valence 2 and
+   * are between two other vertices that are exactly in line with them.
+   * These were created because of triangulation edges that have been dissolved.
+   */
+  int count_dissolve;
+  Array<bool> v_dissolve = find_dissolve_verts(pm_out, pm_in, &count_dissolve);
+  if (count_dissolve > 0) {
+    dissolve_verts(&pm_out, v_dissolve);
+  }
   if (dbg_level > 1) {
     write_obj_polymesh(pm_out.vert, pm_out.face, "boolean_post_dissolve");
   }
   return pm_out;
 }
 
-/* pm arg isn't const because will add triangulation if it is not there. */
+/* Do the boolean operation bool_optype on the polygon mesh pm_in.
+ * The boolean operation has nshapes input shapes. Each is a disjoint subset of the input polymesh.
+ * The shape_fn argument, when applied to an input face argument, says which shape it is in
+ * (should be a value from -1 to nshapes - 1: if -1, it is not part of any shape).
+ * Sometimes the caller has already done a triangulation of the faces, so pm_in contains an
+ * optional triangulation: parallel to each face, it gives a set of IndexedTriangles that
+ * triangulate that face.
+ * pm arg isn't const because we will add triangulation if it is not there. */
 PolyMesh boolean(PolyMesh &pm_in, int bool_optype, int nshapes, std::function<int(int)> shape_fn)
 {
   TriMesh tm_in = trimesh_from_polymesh(pm_in);
@@ -1765,6 +2005,10 @@ PolyMesh boolean(PolyMesh &pm_in, int bool_optype, int nshapes, std::function<in
 }  // namespace meshintersect
 }  // namespace blender
 
+/*
+ * Convert the C-style Boolean_trimesh_input into our internal C++ class for triangle meshes,
+ * TriMesh.
+ */
 static blender::meshintersect::TriMesh trimesh_from_input(const Boolean_trimesh_input *in,
                                                           int side)
 {
@@ -1800,6 +2044,12 @@ static blender::meshintersect::TriMesh trimesh_from_input(const Boolean_trimesh_
   return tm_in;
 }
 
+/* Do a boolean operation between one or two triangle meshes, and return the answer as another
+ * triangle mesh. The in_b argument may be NULL, meaning that the caller wants a unary boolean
+ * operation. If the bool_optype is BOOLEAN_NONE, this function just does the self intersection of
+ * the one or two meshes. This is a C interface. The caller must call BLI_boolean_trimesh_free() on
+ * the returned value when done with it.
+ */
 extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_input *in_a,
                                                        const Boolean_trimesh_input *in_b,
                                                        int bool_optype)
@@ -1846,6 +2096,7 @@ extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_inp
   return output;
 }
 
+/* Free the memory used in the return value of BLI_boolean_trimesh. */
 extern "C" void BLI_boolean_trimesh_free(Boolean_trimesh_output *output)
 {
   MEM_freeN(output->vert_coord);

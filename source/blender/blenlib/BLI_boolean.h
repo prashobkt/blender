@@ -80,6 +80,10 @@ struct PolyMesh {
 
 PolyMesh boolean(PolyMesh &pm, int bool_optype, int nshapes, std::function<int(int)> shape_fn);
 
+void write_obj_polymesh(const Array<mpq3> &vert,
+                        const Array<Array<int>> &face,
+                        const std::string &objname);
+
 }  // namespace meshintersect
 }  // namespace blender
 

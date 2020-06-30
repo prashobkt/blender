@@ -249,6 +249,8 @@ struct mpq3 {
     return ((x > y) ? ((x > z) ? 0 : 2) : ((y > z) ? 1 : 2));
   }
 
+  static mpq3 cross_poly(const mpq3 *poly, int n);
+
   static int orient3d(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &d);
 
   /* There is a sensible use for hashing on exact arithmetic types. */

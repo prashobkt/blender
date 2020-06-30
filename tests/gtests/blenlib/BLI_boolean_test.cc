@@ -165,7 +165,6 @@ static void write_obj(const Boolean_trimesh_output *out, const std::string objna
 
 constexpr bool DO_OBJ = true;
 
-#if 0
 TEST(eboolean, Empty)
 {
   Boolean_trimesh_input in;
@@ -324,7 +323,6 @@ TEST(eboolean, BinaryTetTet)
   }
   BLI_boolean_trimesh_free(out);
 }
-#endif
 
 TEST(eboolean, PolyCubeCube)
 {
@@ -360,9 +358,53 @@ TEST(eboolean, PolyCubeCube)
   )";
 
   BP_input bpi(spec);
-  std::cout << "bpi " << bpi.polymesh.vert.size() << " " << bpi.polymesh.face.size() << "\n";
   blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
       bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
   EXPECT_EQ(out.vert.size(), 20);
   EXPECT_EQ(out.face.size(), 12);
+  if (DO_OBJ) {
+    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "polycubecube");
+  }
+}
+
+TEST(eboolean, PolyCubeCone)
+{
+  const char *spec = R"(14 12
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  0 1/2 3/4
+  119/250 31/200 3/4
+  147/500 -81/200 3/4
+  0 0 7/4
+  -147/500 -81/200 3/4
+  -119/250 31/200 3/4
+  0 1 3 2
+  2 3 7 6
+  6 7 5 4
+  4 5 1 0
+  2 6 4 0
+  7 3 1 5
+  8 11 9
+  9 11 10
+  10 11 12
+  12 11 13
+  13 11 8
+  8 9 10 12 13)";
+
+  BP_input bpi(spec);
+  blender::meshintersect::write_obj_polymesh(
+      bpi.polymesh.vert, bpi.polymesh.face, "polycubecone_in");
+  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
+      bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
+  EXPECT_EQ(out.vert.size(), 14);
+  EXPECT_EQ(out.face.size(), 12);
+  if (DO_OBJ) {
+    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "polycubeccone");
+  }
 }
