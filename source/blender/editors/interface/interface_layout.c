@@ -5175,9 +5175,6 @@ static void debug_print_button_item(uiButtonItem *button_item)
   else if (!RNA_pointer_is_null(&but->rnapoin)) {
     printf(RNA_property_ui_name(but->rnaprop));
   }
-  else {
-    printf("NOSTR");
-  }
 }
 
 static void debug_print_layout(uiItem *item, int depth, bool child_items_layout)
@@ -5271,12 +5268,26 @@ static void ui_block_search_filter_tag_buttons(uiBlock *block)
 
     but->flag |= UI_FILTERED;
   }
+
+  /* Remove filter from labels and decorators that correspond to un-filtered buttons. */
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    if ((but->flag & UI_FILTERED) == 0) {
+      uiBut *label_but = but->label_but;
+      uiBut *decorator_but = but->decorator_but;
+      if (label_but != NULL) {
+        label_but->flag &= ~UI_FILTERED;
+      }
+      if (decorator_but != NULL) {
+        decorator_but->flag &= ~UI_FILTERED;
+      }
+    }
+  }
 }
 
 /**
  * Recursive implementation for #ui_block_search_filter_clean.
  */
-static bool ui_layout_search_filter_clean_recursive(uiLayout *layout)
+static bool ui_layout_search_clean_recursive(uiLayout *layout)
 {
   /* Remove all search filtered button items. */
   bool layout_emptied = uiLayoutGetPropSearch(layout);
@@ -5284,8 +5295,9 @@ static bool ui_layout_search_filter_clean_recursive(uiLayout *layout)
     LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
       if (item->type == ITEM_BUTTON) {
         uiButtonItem *button_item = (uiButtonItem *)item;
-        if (button_item->but->flag & UI_FILTERED) {
-          button_item->but->flag |= UI_HIDDEN;
+        uiBut *but = button_item->but;
+        if (but->flag & UI_FILTERED) {
+          but->flag |= UI_HIDDEN;
           BLI_remlink(&layout->items, item);
           MEM_freeN(item);
         }
@@ -5304,7 +5316,7 @@ static bool ui_layout_search_filter_clean_recursive(uiLayout *layout)
       continue;
     }
 
-    bool empty = ui_layout_search_filter_clean_recursive((uiLayout *)item);
+    bool empty = ui_layout_search_clean_recursive((uiLayout *)item);
     all_children_empty &= empty;
 
     if (empty) {
@@ -5321,13 +5333,8 @@ static bool ui_layout_search_filter_clean_recursive(uiLayout *layout)
  * Remove buttons on layouts with property search set to true,
  * and remove layouts with no buttons and empty child layouts.
  */
-static bool ui_block_search_filter_clean(uiBlock *block)
+static bool ui_block_layout_search_clean(uiBlock *block)
 {
-
-  if (block->panel && STREQ(block->panel->panelname, "VIEWLAYER_PT_eevee_layer_passes")) {
-    printf(" ");
-  }
-
   bool all_roots_empty = true;
   LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
     /* Find exceptions to search layout. */
@@ -5335,7 +5342,7 @@ static bool ui_block_search_filter_clean(uiBlock *block)
       continue;
     }
 
-    bool empty = ui_layout_search_filter_clean_recursive(root->layout);
+    bool empty = ui_layout_search_clean_recursive(root->layout);
     all_roots_empty &= empty;
 
     /* Empty roots should have all sublayouts freed, but they needs to be freed too. */
@@ -5349,78 +5356,49 @@ static bool ui_block_search_filter_clean(uiBlock *block)
   return all_roots_empty;
 }
 
-static void ui_layout_search_build_recursive(uiLayout *layout,
-                                             int depth,
-                                             bool has_had_horizontal_vertical_switch)
+static void ui_layout_search_replace_labels(uiLayout *layout)
 {
-  BLI_assert(uiLayoutGetPropSearch(layout) || !BLI_listbase_is_empty(&layout->items));
-
-  bool is_horizontal = uiLayoutGetLocalDir(layout) == UI_LAYOUT_HORIZONTAL &&
-                       (layout->item.type != ITEM_LAYOUT_ROOT);
-  // bool is_horizontal = uiLayoutGetLocalDir(layout) == UI_LAYOUT_HORIZONTAL;
-  bool build_horizontal = is_horizontal && !has_had_horizontal_vertical_switch;
-
-  layout->item.type = build_horizontal ? ITEM_LAYOUT_ROW : ITEM_LAYOUT_COLUMN;
-
   LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
     if (item->type == ITEM_BUTTON) {
       uiButtonItem *button_item = (uiButtonItem *)item;
+      uiBut *but = button_item->but;
       char name[MAX_NAME];
-      if (button_item->but->rnaprop) {
-        strcpy(name, RNA_property_ui_name(button_item->but->rnaprop));
+      if (but->rnaprop) {
+        strcpy(name, RNA_property_ui_name(but->rnaprop));
 
         /* Toggle buttons have no outside label and so their text is changed to the RNA name. */
-        if (ELEM(button_item->but->type,
+        if (ELEM(but->type,
                  UI_BTYPE_CHECKBOX,
                  UI_BTYPE_TOGGLE_N,
                  UI_BTYPE_ICON_TOGGLE_N,
                  UI_BTYPE_CHECKBOX_N,
                  UI_BTYPE_LABEL)) {
-          strcpy(button_item->but->str, name);
+          strcpy(but->str, name);
         }
         else {
-          // uiLayout *row = uiLayoutRowWithHeading(layout, true, name);
-          // BLI_remlink(&layout->items, item);
-          // BLI_addtail(&row->items, item);
+          /* Search for the label or heading associated with this button and
+           * change it to the RNA name. */
+          uiBut *label_but = but->label_but;
+          if (label_but != NULL) {
+            strcpy(but->str, name);
+          }
         }
       }
     }
     else {
-      if (depth > 2) {
-        bool parent_is_horizontal = (layout->parent != NULL) &&
-                                    (uiLayoutGetLocalDir(layout->parent) == UI_LAYOUT_HORIZONTAL);
-        has_had_horizontal_vertical_switch |= (!parent_is_horizontal && is_horizontal);
-      }
-      ui_layout_search_build_recursive(
-          (uiLayout *)item, depth + 1, has_had_horizontal_vertical_switch);
+      ui_layout_search_replace_labels((uiLayout *)item);
     }
   }
 }
 
-static void ui_block_build_search_layout(uiBlock *block)
+static void ui_block_replace_labels(uiBlock *block)
 {
   LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
-    uiLayout *root_layout = root->layout;
-
+    /* Don't rebuild header layouts. */
     if (root->type == UI_LAYOUT_HEADER) {
       continue;
     }
-
-    ui_layout_search_build_recursive(root_layout, 0, false);
-
-    ListBase properties_items = root_layout->items;
-
-    root_layout->items.first = root_layout->items.last = NULL;
-
-    uiLayout *split = uiLayoutSplit(root_layout, UI_ITEM_PROP_SEP_DIVIDE, false);
-    split->property_search_layout_temp_debug = true;
-    uiLayout *labels = uiLayoutColumn(split, false);
-    labels->property_search_layout_temp_debug = true;
-    uiLayoutSetAlignment(labels, UI_LAYOUT_ALIGN_RIGHT);
-    uiLayout *properties = uiLayoutColumn(split, false);
-    properties->property_search_layout_temp_debug = true;
-
-    properties->items = properties_items;
+    ui_layout_search_replace_labels(root->layout);
   }
 }
 
@@ -5445,11 +5423,11 @@ static bool ui_block_search_layout(uiBlock *block)
 
   /* Also search based on panel labels. */
   bool panel_label_matches = false;
-  if ((block->panel != NULL) && (block->panel->type != NULL)) {
-    if (BLI_strcasestr(block->panel->type->label, block->search_filter)) {
-      panel_label_matches = true;
-    }
-  }
+  // if ((block->panel != NULL) && (block->panel->type != NULL)) {
+  //   if (BLI_strcasestr(block->panel->type->label, block->search_filter)) {
+  //     panel_label_matches = true;
+  //   }
+  // }
 
   /* Apply search filter. */
   if (!panel_label_matches) {
@@ -5457,7 +5435,7 @@ static bool ui_block_search_layout(uiBlock *block)
   }
 
   /* Remove filtered buttons and now-empty layouts. */
-  bool all_roots_empty = ui_block_search_filter_clean(block);
+  bool all_roots_empty = ui_block_layout_search_clean(block);
 
   /* Remove search only layout roots before the next step. */
   LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
@@ -5470,7 +5448,7 @@ static bool ui_block_search_layout(uiBlock *block)
 
   /* Change layouts to the single column search layout. */
   if (!all_roots_empty && !block->search_only) {
-    ui_block_build_search_layout(block);
+    ui_block_replace_labels(block);
   }
 
   /* Set empty flags. */

@@ -291,6 +291,14 @@ struct uiBut {
   uiButPushedStateFunc pushed_state_func;
   void *pushed_state_arg;
 
+  /**
+   * Used for property search, so that a button's label and decorator can be filtered and
+   * unfiltered along with it. Due to the sometimes arbitrary nature of these values,
+   * they aren't always filled.
+   */
+  uiBut *label_but;
+  uiBut *decorator_but;
+
   /* pointer back */
   uiBlock *block;
 };
