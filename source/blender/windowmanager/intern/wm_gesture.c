@@ -27,6 +27,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_windowmanager_types.h"
+#include <CLG_log.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -167,28 +168,28 @@ int wm_gesture_evaluate(wmGesture *gesture, const wmEvent *event)
 #if 0
       /* debug */
       if (val == 1) {
-        printf("tweak north\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak north");
       }
       if (val == 2) {
-        printf("tweak north-east\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak north-east");
       }
       if (val == 3) {
-        printf("tweak east\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak east");
       }
       if (val == 4) {
-        printf("tweak south-east\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak south-east");
       }
       if (val == 5) {
-        printf("tweak south\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak south");
       }
       if (val == 6) {
-        printf("tweak south-west\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak south-west");
       }
       if (val == 7) {
-        printf("tweak west\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak west");
       }
       if (val == 8) {
-        printf("tweak north-west\n");
+        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak north-west");
       }
 #endif
       return val;

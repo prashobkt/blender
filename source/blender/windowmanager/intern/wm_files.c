@@ -1030,8 +1030,10 @@ void wm_homefile_read(bContext *C,
     }
     if (BLI_listbase_is_empty(&U.themes)) {
       if (G.debug & G_DEBUG) {
-        printf("\nNote: No (valid) '%s' found, fall back to built-in default.\n\n",
-               filepath_startup);
+        CLOG_INFO(WM_LOG_SESSION,
+                  0,
+                  "Note: No (valid) '%s' found, fall back to built-in default",
+                  filepath_startup);
       }
       success = false;
     }
@@ -1409,11 +1411,11 @@ bool write_crash_blend(void)
   BLI_strncpy(path, BKE_main_blendfile_path_from_global(), sizeof(path));
   BLI_path_extension_replace(path, sizeof(path), "_crash.blend");
   if (BLO_write_file(G_MAIN, path, G.fileflags, &(const struct BlendFileWriteParams){0}, NULL)) {
-    printf("written: %s\n", path);
+    CLOG_INFO(WM_LOG_SESSION, 0, "Saving file ok: %s", path);
     return 1;
   }
   else {
-    printf("failed: %s\n", path);
+    CLOG_ERROR(WM_LOG_SESSION, "Saving file failed: %s", path);
     return 0;
   }
 }
@@ -1620,7 +1622,8 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer *UNUSED(wt))
         if (handler->op) {
           wm->autosavetimer = WM_event_add_timer(wm, NULL, TIMERAUTOSAVE, 10.0);
           if (G.debug) {
-            printf("Skipping auto-save, modal operator running, retrying in ten seconds...\n");
+            CLOG_WARN(WM_LOG_SESSION,
+                      "Skipping auto-save, modal operator running, retrying in 10 seconds...");
           }
           return;
         }
@@ -1757,8 +1760,6 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
 
   BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_STARTUP_FILE, NULL);
 
-  printf("Writing homefile: '%s' ", filepath);
-
   ED_editors_flush_edits(bmain);
 
   /* Force save as regular blend file. */
@@ -1771,11 +1772,11 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
                          .remap_mode = BLO_WRITE_PATH_REMAP_RELATIVE,
                      },
                      op->reports) == 0) {
-    printf("fail\n");
+    CLOG_ERROR(WM_LOG_SESSION, "Writing homefile failed: '%s'", filepath);
     return OPERATOR_CANCELLED;
   }
 
-  printf("ok\n");
+  CLOG_INFO(WM_LOG_SESSION, 0, "Writing homefile ok: '%s'", filepath);
 
   G.save_over = 0;
 

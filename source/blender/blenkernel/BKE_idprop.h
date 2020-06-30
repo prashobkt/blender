@@ -196,6 +196,7 @@ void IDP_repr_fn(const IDProperty *prop,
                  void (*str_append_fn)(void *user_data, const char *str, uint str_len),
                  void *user_data);
 void IDP_print(const struct IDProperty *prop);
+char *IDP_print_str(const IDProperty *prop);
 
 #ifdef __cplusplus
 }

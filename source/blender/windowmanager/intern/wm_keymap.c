@@ -1343,10 +1343,9 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
 #if 0
         if (kmi->ptr) {
           if (STREQ("MESH_OT_rip_move", opname)) {
-            printf("OPERATOR\n");
-            IDP_print(properties);
-            printf("KEYMAP\n");
-            IDP_print(kmi->ptr->data);
+            // todo does IDP_print_str leak memory in this usagenk?
+            CLOG_INFO(WM_LOG_KEYMAPS, 0, "OPERATOR: %s", IDP_print_str(properties));
+            CLOG_INFO(WM_LOG_KEYMAPS, 0, "KEYMAP: %s", IDP_print_str(kmi->ptr->data));
           }
         }
 #endif
@@ -1370,20 +1369,19 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
                 char kmi_str[128];
                 WM_keymap_item_to_string(kmi, false, kmi_str, sizeof(kmi_str));
                 /* Note gievn properties could come from other things than menu entry... */
-                printf(
-                    "%s: Some set values in menu entry match default op values, "
-                    "this might not be desired!\n",
-                    opname);
-                printf("\tkm: '%s', kmi: '%s'\n", keymap->idname, kmi_str);
+                CLOG_INFO(WM_LOG_KEYMAPS,
+                          0,
+                          "%s: Some set values in menu entry match default op values, "
+                          "this might not be desired!\nkm: '%s', kmi: '%s'",
+                          opname,
+                          keymap->idname,
+                          kmi_str);
 #ifndef NDEBUG
 #  ifdef WITH_PYTHON
-                printf("OPERATOR\n");
-                IDP_print(properties);
-                printf("KEYMAP\n");
-                IDP_print(kmi->ptr->data);
+                CLOG_INFO(WM_LOG_KEYMAPS, 0, "OPERATOR: %s", IDP_print_str(properties));
+                CLOG_INFO(WM_LOG_KEYMAPS, 0, "KEYMAP: %s", IDP_print_str(kmi->ptr->data));
 #  endif
 #endif
-                printf("\n");
               }
 
               IDP_FreeProperty(properties_default);
@@ -1581,20 +1579,19 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
         if (kmi) {
           char kmi_str[128];
           WM_keymap_item_to_string(kmi, false, kmi_str, sizeof(kmi_str));
-          printf(
-              "%s: Some set values in keymap entry match default op values, "
-              "this might not be desired!\n",
-              opname);
-          printf("\tkm: '%s', kmi: '%s'\n", km->idname, kmi_str);
+          CLOG_INFO(WM_LOG_KEYMAPS,
+                    0,
+                    "%s: Some set values in keymap entry match default op values, "
+                    "this might not be desired!\nkm: '%s', kmi: '%s'",
+                    opname,
+                    km->idname,
+                    kmi_str);
 #ifndef NDEBUG
 #  ifdef WITH_PYTHON
-          printf("OPERATOR\n");
-          IDP_print(properties);
-          printf("KEYMAP\n");
-          IDP_print(kmi->ptr->data);
+          CLOG_INFO(WM_LOG_KEYMAPS, 0, "OPERATOR: %s", IDP_print_str(properties));
+          CLOG_INFO(WM_LOG_KEYMAPS, 0, "KEYMAP: %s", IDP_print_str(kmi->ptr->data));
 #  endif
 #endif
-          printf("\n");
         }
 
         IDP_FreeProperty(properties_default);

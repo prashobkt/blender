@@ -23,6 +23,7 @@
  * Our own drag-and-drop, drag state and drop boxes.
  */
 
+#include <CLG_log.h>
 #include <string.h>
 
 #include "DNA_screen_types.h"
@@ -108,7 +109,7 @@ wmDropBox *WM_dropbox_add(ListBase *lb,
 
   if (drop->ot == NULL) {
     MEM_freeN(drop);
-    printf("Error: dropbox with unknown operator: %s\n", idname);
+    CLOG_ERROR(WM_LOG_OPERATORS, "Dropbox with unknown operator: %s", idname);
     return NULL;
   }
   WM_operator_properties_alloc(&(drop->ptr), &(drop->properties), idname);

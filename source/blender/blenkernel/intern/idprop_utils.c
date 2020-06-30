@@ -18,6 +18,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -239,5 +240,17 @@ void IDP_print(const IDProperty *prop)
   puts(repr);
   MEM_freeN(repr);
 }
+
+char *IDP_print_str(const IDProperty *prop)
+{
+  DynStr *ds = BLI_dynstr_new();
+  char *repr = IDP_reprN(prop, NULL);
+  BLI_dynstr_appendf(ds, "IDProperty(%p): %s", prop, repr);
+  MEM_freeN(repr);
+  char *cstring = BLI_dynstr_get_cstring(ds);
+  BLI_dynstr_free(ds);
+  return cstring;
+}
+
 
 /** \} */
