@@ -1684,6 +1684,38 @@ class USERPREF_MT_menu_select(Menu):
     def draw(self, context):
         Menu.draw_preset(self, context)
 
+class PIE_MT_user_menu(Menu):
+    bl_idname = "PIE_MT_user_menu"
+    bl_label = "Quick Favorites"
+
+    def draw(self, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+        menu = um.get_current_menu()
+
+        layout = self.layout
+        pie = layout.menu_pie()
+        pie.scale_y = 1.2
+        index = 0
+        for item in menu.menu_items:
+            if index > 8:
+                break
+            if item.type == "OPERATOR":
+                op = item.get_operator()
+                pie.operator(op.operator, text=item.name)
+            if item.type == "MENU":
+                pm = item.get_menu()
+                pie.menu(pm.id_name, text=item.name)
+            if item.type == "SUBMENU":
+                sm = item.get_submenu()
+                index = index - 1
+            if item.type == "PROPERTY":
+                sm = item.get_property()
+                index = index - 1
+            if item.type == "SEPARATOR":
+                index = index - 1
+            index = index + 1
+
 class USERPREF_PT_user_menus(UserMenusPanel, Panel):
     bl_label = "user_menus"
     bl_options = {'HIDE_HEADER'}
@@ -2249,6 +2281,7 @@ classes = (
 
     USERPREF_PT_keymap,
     USERPREF_MT_menu_select,
+    PIE_MT_user_menu,
     USERPREF_PT_user_menus,
     USERPREF_PT_addons,
 
