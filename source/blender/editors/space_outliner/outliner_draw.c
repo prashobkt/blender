@@ -1954,7 +1954,7 @@ static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void *UNUSED
 }
 
 /* Draw icons for setting activation when in object mode */
-static void outliner_draw_left_column_activation(const bContext *C,
+static void outliner_draw_mode_column_activation(const bContext *C,
                                                  uiBlock *block,
                                                  TreeViewContext *UNUSED(tvc),
                                                  TreeElement *te,
@@ -2072,11 +2072,11 @@ static int outliner_get_mode_icon(const int mode)
 }
 
 /* Draw icons for adding and removing objects from the current interation mode */
-static void outliner_draw_left_column_mode_toggle(uiBlock *block,
-                                                  TreeViewContext *tvc,
-                                                  TreeElement *te,
-                                                  TreeStoreElem *tselem,
-                                                  const bool lock_object_modes)
+static void outliner_draw_mode_column_toggle(uiBlock *block,
+                                             TreeViewContext *tvc,
+                                             TreeElement *te,
+                                             TreeStoreElem *tselem,
+                                             const bool lock_object_modes)
 {
   uiBut *but;
   const int active_mode = tvc->obact->mode;
@@ -2136,7 +2136,7 @@ static void outliner_draw_left_column_mode_toggle(uiBlock *block,
   }
 }
 
-static void outliner_draw_left_column(
+static void outliner_draw_mode_column(
     const bContext *C, uiBlock *block, TreeViewContext *tvc, SpaceOutliner *soops, ListBase *tree)
 {
   TreeStoreElem *tselem;
@@ -2146,15 +2146,15 @@ static void outliner_draw_left_column(
     tselem = TREESTORE(te);
 
     if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
-      outliner_draw_left_column_mode_toggle(block, tvc, te, tselem, lock_object_modes);
+      outliner_draw_mode_column_toggle(block, tvc, te, tselem, lock_object_modes);
     }
     /* TODO (Nathan): Should the active icons always draw, or be hidden in non-object modes? */
     else {
-      outliner_draw_left_column_activation(C, block, tvc, te, tselem);
+      outliner_draw_mode_column_activation(C, block, tvc, te, tselem);
     }
 
     if (TSELEM_OPEN(tselem, soops)) {
-      outliner_draw_left_column(C, block, tvc, soops, &te->subtree);
+      outliner_draw_mode_column(C, block, tvc, soops, &te->subtree);
     }
   }
 }
@@ -3793,16 +3793,16 @@ static void outliner_draw_tree(bContext *C,
                                ARegion *region,
                                SpaceOutliner *soops,
                                const float restrict_column_width,
-                               const bool use_left_column,
+                               const bool use_mode_column,
                                TreeElement **te_edit)
 {
   const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   int starty, startx;
 
   /* Move the tree a unit left in view layer mode */
-  short left_column_offset = use_left_column ? UI_UNIT_X : 0;
+  short mode_column_offset = use_mode_column ? UI_UNIT_X : 0;
   if (soops->outlinevis == SO_VIEW_LAYER) {
-    left_column_offset -= UI_UNIT_X;
+    mode_column_offset -= UI_UNIT_X;
   }
 
   GPU_blend_set_func_separate(
@@ -3832,12 +3832,12 @@ static void outliner_draw_tree(bContext *C,
   // gray hierarchy lines
 
   starty = (int)region->v2d.tot.ymax - UI_UNIT_Y / 2 - OL_Y_OFFSET;
-  startx = left_column_offset + UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
+  startx = mode_column_offset + UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
   outliner_draw_hierarchy_lines(soops, &soops->tree, startx, &starty);
 
   // items themselves
   starty = (int)region->v2d.tot.ymax - UI_UNIT_Y - OL_Y_OFFSET;
-  startx = left_column_offset;
+  startx = mode_column_offset;
   LISTBASE_FOREACH (TreeElement *, te, &soops->tree) {
     outliner_draw_tree_element(C,
                                block,
@@ -3961,7 +3961,7 @@ void draw_outliner(const bContext *C)
   UI_view2d_view_ortho(v2d);
 
   /* Only show mode toggle and activation column in View Layers and Scenes view */
-  const bool use_left_column = (soops->flag & SO_LEFT_COLUMN) &&
+  const bool use_mode_column = (soops->flag & SO_MODE_COLUMN) &&
                                (ELEM(soops->outlinevis, SO_VIEW_LAYER, SO_SCENES));
 
   /* draw outliner stuff (background, hierarchy lines and names) */
@@ -3969,7 +3969,7 @@ void draw_outliner(const bContext *C)
   outliner_back(region);
   block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   outliner_draw_tree(
-      (bContext *)C, block, &tvc, region, soops, restrict_column_width, use_left_column, &te_edit);
+      (bContext *)C, block, &tvc, region, soops, restrict_column_width, use_mode_column, &te_edit);
 
   /* Compute outliner dimensions after it has been drawn. */
   int tree_width, tree_height;
@@ -4000,8 +4000,8 @@ void draw_outliner(const bContext *C)
   }
 
   /* Draw mode toggle and activation icons */
-  if (use_left_column) {
-    outliner_draw_left_column(C, block, &tvc, soops, &soops->tree);
+  if (use_mode_column) {
+    outliner_draw_mode_column(C, block, &tvc, soops, &soops->tree);
   }
 
   UI_block_emboss_set(block, UI_EMBOSS);

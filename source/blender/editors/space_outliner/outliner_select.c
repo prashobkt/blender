@@ -1329,7 +1329,6 @@ void outliner_set_active_data(bContext *C,
 
 /* ================================================ */
 
-
 /**
  * Action when clicking to activate an item (typically under the mouse cursor),
  * but don't do any cursor intersection checks.
@@ -1557,7 +1556,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   if (outliner_is_co_within_restrict_columns(soops, region, view_mval[0])) {
     return OPERATOR_CANCELLED;
   }
-  else if (soops->flag & SO_LEFT_COLUMN && view_mval[0] < UI_UNIT_X) {
+  else if (soops->flag & SO_MODE_COLUMN && view_mval[0] < UI_UNIT_X) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1822,9 +1821,7 @@ static TreeElement *outliner_find_next_element(SpaceOutliner *soops, TreeElement
   return te;
 }
 
-static TreeElement *outliner_walk_left(SpaceOutliner *soops,
-                                       TreeElement *te,
-                                       bool toggle_all)
+static TreeElement *outliner_walk_left(SpaceOutliner *soops, TreeElement *te, bool toggle_all)
 {
   TreeStoreElem *tselem = TREESTORE(te);
 
@@ -1839,9 +1836,7 @@ static TreeElement *outliner_walk_left(SpaceOutliner *soops,
   return te;
 }
 
-static TreeElement *outliner_walk_right(SpaceOutliner *soops,
-                                        TreeElement *te,
-                                        bool toggle_all)
+static TreeElement *outliner_walk_right(SpaceOutliner *soops, TreeElement *te, bool toggle_all)
 {
   TreeStoreElem *tselem = TREESTORE(te);
 

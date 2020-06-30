@@ -368,7 +368,7 @@ class OUTLINER_PT_filter(Panel):
         layout.separator()
 
         row = layout.row(align=True)
-        row.prop(space, "show_left_column", text="Show Left Column")
+        row.prop(space, "show_mode_column", text="Show Mode Column")
         layout.separator()
 
         col = layout.column(align=True)
