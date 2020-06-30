@@ -76,6 +76,7 @@
 #define PNL_NEW_ADDED 16
 #define PNL_FIRST 32
 #define PNL_SEARCH_FILTERED 64
+#define PNL_WAS_SEARCH_FILTERED 4
 
 /* only show pin header button for pinned panels */
 #define USE_PIN_HIDDEN
@@ -167,7 +168,6 @@ static int panel_aligned(const ScrArea *area, const ARegion *region)
     return BUT_VERTICAL;
   }
 
-  printf("REGION IS ALIGNED HORIZONTAL\n");
   return 0;
 }
 
@@ -182,6 +182,18 @@ static bool panel_active_animation_changed(ListBase *lb, Panel **pa_animation, b
       if (!(panel->runtime_flag & PNL_WAS_ACTIVE) && (panel->runtime_flag & PNL_ACTIVE)) {
         return true;
       }
+    }
+
+    /* Detect search filter flag changes */
+    if ((panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
+        !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
+      *pa_animation = panel;
+      return false;
+    }
+    if (!(panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
+        (panel->runtime_flag & PNL_SEARCH_FILTERED)) {
+      *pa_animation = panel;
+      return false;
     }
 
     if ((panel->runtime_flag & PNL_ACTIVE) && !(panel->flag & PNL_CLOSED)) {
@@ -231,7 +243,6 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
   Panel *panel_animation = NULL;
   bool no_animation = false;
   if (panel_active_animation_changed(&region->panels, &panel_animation, &no_animation)) {
-    // printf("no_animation %d:\n panel_animation: %p\n", no_animation, panel_animation);
     return true;
   }
 
@@ -866,6 +877,13 @@ void ui_panel_set_search_filtered(struct Panel *panel, const bool value)
   SET_FLAG_FROM_TEST(panel->runtime_flag, value, PNL_SEARCH_FILTERED);
 }
 
+/**
+ * Find whether a panel and all of its subpanels have been filtered by property search.
+ *
+ * \note We maintain a separate flag for active and search filtered. This prevents the
+ * search filtering from being too invasive to other code and makes animation of search
+ * filtered panels possible.
+ */
 static bool panel_is_search_filtered_recursive(const Panel *panel)
 {
   bool is_search_filtered = panel->runtime_flag & PNL_SEARCH_FILTERED;
@@ -1407,18 +1425,6 @@ static int find_highest_panel(const void *a1, const void *a2)
 {
   const PanelSort *ps1 = a1, *ps2 = a2;
 
-  // /* Sort search-filtered panels to the bottom */
-  // if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED &&
-  //     ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
-  //   /* Skip and check for offset and sort order below. */
-  // }
-  // else if (ps2->panel->runtime_flag & PNL_SEARCH_FILTERED) {
-  //   return -1;
-  // }
-  // else if (ps1->panel->runtime_flag & PNL_SEARCH_FILTERED) {
-  //   return 1;
-  // }
-
   /* stick uppermost header-less panels to the top of the region -
    * prevent them from being sorted (multiple header-less panels have to be sorted though) */
   if (ps1->panel->type->flag & PNL_NO_HEADER && ps2->panel->type->flag & PNL_NO_HEADER) {
@@ -1548,8 +1554,8 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
 
+  /* Keep track of the last visible panel separately so we don't add space for filtered panels. */
   PanelSort *ps_last_visible = ps;
-
   for (a = 0; a < tot - 1; a++, ps++) {
     psnext = ps + 1;
 
@@ -1684,13 +1690,21 @@ static void ui_do_animate(bContext *C, Panel *panel)
   }
 }
 
+/**
+ * Set all panels as inactive, so that at the end of the panel layout building process
+ * we know which ones are currently used. Also keep track of whether the panel was filtered
+ * by property search so we can activate animation later if that changes.
+ */
 static void panel_list_clear_active(ListBase *lb)
 {
-  /* set all panels as inactive, so that at the end we know
-   * which ones were used */
   LISTBASE_FOREACH (Panel *, panel, lb) {
     if (panel->runtime_flag & PNL_ACTIVE) {
+      bool was_search_filtered = panel->runtime_flag & PNL_SEARCH_FILTERED;
       panel->runtime_flag = PNL_WAS_ACTIVE;
+
+      if (was_search_filtered) {
+        panel->runtime_flag |= PNL_WAS_SEARCH_FILTERED;
+      }
     }
     else {
       panel->runtime_flag = 0;
@@ -1746,25 +1760,27 @@ void UI_panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y)
   ui_panels_size(area, region, r_x, r_y);
 }
 
+/**
+ * Draw panels, selected on top. Don't draw search filtered panels though.
+ */
 void UI_panels_draw(const bContext *C, ARegion *region)
 {
   if (region->alignment != RGN_ALIGN_FLOAT) {
     UI_ThemeClearColor(TH_BACK);
   }
 
-  /* Draw panels, selected on top. Also in reverse order, because
-   * UI blocks are added in reverse order and we need child panels
-   * to draw on top. */
+  /* Draw in reverse order, because UI blocks are added in reverse order
+   * and we need child panels to draw on top. */
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
-    if (block->active && !block->search_only && block->panel &&
-        !(block->panel->flag & PNL_SELECT) && !UI_panel_is_search_filtered(block->panel)) {
+    if (block->active && block->panel && !(block->panel->flag & PNL_SELECT) &&
+        !block->search_only && !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }
 
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
-    if (block->active && !block->search_only && block->panel &&
-        (block->panel->flag & PNL_SELECT) && !UI_panel_is_search_filtered(block->panel)) {
+    if (block->active && block->panel && (block->panel->flag & PNL_SELECT) &&
+        !block->search_only && !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }
