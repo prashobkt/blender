@@ -24,6 +24,7 @@
  * For popups/popovers only, regions handle panel types by including them in local lists.
  */
 
+#include <CLG_log.h>
 #include <stdio.h>
 
 #include "BLI_sys_types.h"
@@ -36,6 +37,7 @@
 #include "BKE_screen.h"
 
 #include "WM_api.h"
+#include "WM_types.h"
 
 static GHash *g_paneltypes_hash = NULL;
 
@@ -51,7 +53,7 @@ PanelType *WM_paneltype_find(const char *idname, bool quiet)
   }
 
   if (!quiet) {
-    printf("search for unknown paneltype %s\n", idname);
+    CLOG_INFO(WM_LOG_TOOLS, 0, "search for unknown paneltype %s", idname);
   }
 
   return NULL;

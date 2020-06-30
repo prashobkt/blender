@@ -27,6 +27,7 @@
 /* placed up here because of crappy
  * winsock stuff.
  */
+#include <CLG_log.h>
 #include <errno.h>
 #include <stddef.h>
 #include <string.h>
@@ -972,7 +973,7 @@ void wm_homefile_read(bContext *C,
         userdef = NULL;
 
         skip_flags |= BLO_READ_SKIP_USERDEF;
-        printf("Read prefs: %s\n", filepath_userdef);
+        CLOG_INFO(WM_LOG_SESSION, 0, "Read prefs: %s", filepath_userdef);
       }
     }
   }

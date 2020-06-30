@@ -430,7 +430,7 @@ void wm_event_do_notifiers(bContext *C)
 
             WM_window_set_active_workspace(C, win, ref_ws);
             if (G.debug & G_DEBUG_EVENTS) {
-              printf("%s: Workspace set %p\n", __func__, note->reference);
+              CLOG_INFO(WM_LOG_EVENTS, 0, "Workspace set %p", note->reference);
             }
           }
           else if (note->data == ND_WORKSPACE_DELETE) {
@@ -438,7 +438,7 @@ void wm_event_do_notifiers(bContext *C)
 
             ED_workspace_delete(workspace, CTX_data_main(C), C, wm);  // XXX hrms, think this over!
             if (G.debug & G_DEBUG_EVENTS) {
-              printf("%s: Workspace delete %p\n", __func__, workspace);
+              CLOG_INFO(WM_LOG_EVENTS, 0, "Workspace delete %p", workspace);
             }
           }
           else if (note->data == ND_LAYOUTBROWSE) {
@@ -449,7 +449,7 @@ void wm_event_do_notifiers(bContext *C)
 
             ED_screen_change(C, ref_screen); /* XXX hrms, think this over! */
             if (G.debug & G_DEBUG_EVENTS) {
-              printf("%s: screen set %p\n", __func__, note->reference);
+              CLOG_INFO(WM_LOG_EVENTS, 0, "screen set %p", note->reference);
             }
           }
           else if (note->data == ND_LAYOUTDELETE) {
@@ -458,7 +458,7 @@ void wm_event_do_notifiers(bContext *C)
 
             ED_workspace_layout_delete(workspace, layout, C);  // XXX hrms, think this over!
             if (G.debug & G_DEBUG_EVENTS) {
-              printf("%s: screen delete %p\n", __func__, note->reference);
+              CLOG_INFO(WM_LOG_EVENTS, 0, "screen delete %p", note->reference);
             }
           }
         }
@@ -512,12 +512,6 @@ void wm_event_do_notifiers(bContext *C)
         /* XXX context in notifiers? */
         CTX_wm_window_set(C, win);
 
-#  if 0
-        printf("notifier win %d screen %s cat %x\n",
-               win->winid,
-               win->screen->id.name + 2,
-               note->category);
-#  endif
         ED_screen_do_listen(C, note);
 
         for (region = screen->regionbase.first; region; region = region->next) {
@@ -2390,9 +2384,9 @@ static int wm_action_not_handled(int action)
   return action == WM_HANDLER_CONTINUE || action == (WM_HANDLER_BREAK | WM_HANDLER_MODAL);
 }
 
-#define PRINT \
+#define PRINT(...) \
   if (do_debug_handler) \
-  printf
+  CLOG_INFO(WM_LOG_HANDLERS, 1, __VA_ARGS__)
 
 static int wm_handlers_do_keymap_with_keymap_handler(
     /* From 'wm_handlers_do_intern' */
@@ -2411,24 +2405,23 @@ static int wm_handlers_do_keymap_with_keymap_handler(
     BLI_assert(handler->dynamic.keymap_fn);
   }
   else {
-    PRINT("%s:   checking '%s' ...", __func__, keymap->idname);
 
     if (WM_keymap_poll(C, keymap)) {
 
-      PRINT("pass\n");
+      PRINT("checking '%s': pass", keymap->idname);
 
       LISTBASE_FOREACH (wmKeyMapItem *, kmi, &keymap->items) {
         if (wm_eventmatch(event, kmi)) {
           struct wmEventHandler_KeymapPost keymap_post = handler->post;
 
-          PRINT("%s:     item matched '%s'\n", __func__, kmi->idname);
+          PRINT("    item matched '%s'", kmi->idname);
 
           action |= wm_handler_operator_call(
               C, handlers, &handler->head, event, kmi->ptr, kmi->idname);
 
           if (action & WM_HANDLER_BREAK) {
             /* not always_pass here, it denotes removed handler_base */
-            CLOG_INFO(WM_LOG_HANDLERS, 2, "handled! '%s'", kmi->idname);
+            CLOG_INFO(WM_LOG_HANDLERS, 2, "    handled! '%s'", kmi->idname);
             if (keymap_post.post_fn != NULL) {
               keymap_post.post_fn(keymap, kmi, keymap_post.user_data);
             }
@@ -2436,17 +2429,17 @@ static int wm_handlers_do_keymap_with_keymap_handler(
           }
           else {
             if (action & WM_HANDLER_HANDLED) {
-              CLOG_INFO(WM_LOG_HANDLERS, 2, "handled - and pass on! '%s'", kmi->idname);
+              CLOG_INFO(WM_LOG_HANDLERS, 2, "    handled - and pass on! '%s'", kmi->idname);
             }
             else {
-              CLOG_INFO(WM_LOG_HANDLERS, 2, "un-handled '%s'", kmi->idname);
+              CLOG_INFO(WM_LOG_HANDLERS, 2, "    un-handled '%s'", kmi->idname);
             }
           }
         }
       }
     }
     else {
-      PRINT("fail\n");
+      PRINT("checking '%s': fail", keymap->idname);
     }
   }
 
@@ -2469,14 +2462,12 @@ static int wm_handlers_do_keymap_with_gizmo_handler(
   bool keymap_poll = false;
   wmKeyMapItem *kmi;
 
-  PRINT("%s:   checking '%s' ...", __func__, keymap->idname);
-
   if (WM_keymap_poll(C, keymap)) {
     keymap_poll = true;
-    PRINT("pass\n");
+    PRINT("checking '%s': pass", keymap->idname);
     for (kmi = keymap->items.first; kmi; kmi = kmi->next) {
       if (wm_eventmatch(event, kmi)) {
-        PRINT("%s:     item matched '%s'\n", __func__, kmi->idname);
+        PRINT("    item matched '%s'", kmi->idname);
 
         CTX_wm_gizmo_group_set(C, gzgroup);
 
@@ -2488,25 +2479,25 @@ static int wm_handlers_do_keymap_with_gizmo_handler(
 
         if (action & WM_HANDLER_BREAK) {
           if (G.debug & (G_DEBUG_EVENTS | G_DEBUG_HANDLERS)) {
-            printf("%s:       handled - and pass on! '%s'\n", __func__, kmi->idname);
+            CLOG_INFO(WM_LOG_HANDLERS, 1, "    handled - and pass on! '%s'", kmi->idname);
           }
           break;
         }
         else {
           if (action & WM_HANDLER_HANDLED) {
             if (G.debug & (G_DEBUG_EVENTS | G_DEBUG_HANDLERS)) {
-              printf("%s:       handled - and pass on! '%s'\n", __func__, kmi->idname);
+              CLOG_INFO(WM_LOG_HANDLERS, 1, "    handled - and pass on! '%s'", kmi->idname);
             }
           }
           else {
-            PRINT("%s:       un-handled '%s'\n", __func__, kmi->idname);
+            PRINT("    un-handled '%s'", kmi->idname);
           }
         }
       }
     }
   }
   else {
-    PRINT("fail\n");
+    PRINT("checking '%s': fail", keymap->idname);
   }
 
   if (r_keymap_poll) {
@@ -3244,14 +3235,14 @@ void wm_event_do_handlers(bContext *C)
 
       if (G.debug & (G_DEBUG_HANDLERS | G_DEBUG_EVENTS) &&
           !ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-        printf("\n%s: Handling event\n", __func__);
-        WM_event_print(event);
+        CLOG_INFO(WM_LOG_HANDLERS, 1, "Handling event");
+        WM_event_log(event);
       }
 
       /* take care of pie event filter */
       if (wm_event_pie_filter(win, event)) {
         if (!ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-          CLOG_INFO(WM_LOG_HANDLERS, 1, "event filtered due to pie button pressed");
+          CLOG_INFO(WM_LOG_HANDLERS, 1, "Event filtered due to pie button pressed");
         }
         BLI_remlink(&win->queue, event);
         wm_event_free(event);
@@ -3418,7 +3409,7 @@ void wm_event_do_handlers(bContext *C)
     /* only add mousemove when queue was read entirely */
     if (win->addmousemove && win->eventstate) {
       wmEvent tevent = *(win->eventstate);
-      // printf("adding MOUSEMOVE %d %d\n", tevent.x, tevent.y);
+      // CLOG_INFO(WM_LOG_EVENTS, 2, "adding MOUSEMOVE %d %d\n", tevent.x, tevent.y);
       tevent.type = MOUSEMOVE;
       tevent.prevx = tevent.x;
       tevent.prevy = tevent.y;
@@ -3693,8 +3684,11 @@ wmKeyMap *WM_event_get_keymap_from_toolsystem_fallback(wmWindowManager *wm,
         return km;
       }
       else {
-        printf(
-            "Keymap: '%s' not found for tool '%s'\n", tref_rt->keymap, area->runtime.tool->idname);
+        CLOG_INFO(WM_LOG_EVENTS,
+                  1,
+                  "Keymap: '%s' not found for tool '%s'",
+                  tref_rt->keymap,
+                  area->runtime.tool->idname);
       }
     }
   }
@@ -3717,8 +3711,11 @@ wmKeyMap *WM_event_get_keymap_from_toolsystem(wmWindowManager *wm, wmEventHandle
         return km;
       }
       else {
-        printf(
-            "Keymap: '%s' not found for tool '%s'\n", tref_rt->keymap, area->runtime.tool->idname);
+        CLOG_INFO(WM_LOG_EVENTS,
+                  1,
+                  "Keymap: '%s' not found for tool '%s'",
+                  tref_rt->keymap,
+                  area->runtime.tool->idname);
       }
     }
   }
@@ -4214,11 +4211,11 @@ void wm_tablet_data_from_ghost(const GHOST_TabletData *tablet_data, wmTabletData
     wmtab->y_tilt = tablet_data->Ytilt;
     /* We could have a preference to support relative tablet motion (we can't detect that). */
     wmtab->is_motion_absolute = true;
-    // printf("%s: using tablet %.5f\n", __func__, wmtab->pressure);
+//    CLOG_INFO(WM_LOG_EVENTS, 2, "using tablet %.5f", wmtab->pressure);
   }
   else {
     *wmtab = wm_event_tablet_data_default;
-    // printf("%s: not using tablet\n", __func__);
+//    CLOG_INFO(WM_LOG_EVENTS, 2, "not using tablet");
   }
 }
 

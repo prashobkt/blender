@@ -21,6 +21,7 @@
  */
 
 #include "BLI_sys_types.h"
+#include <CLG_log.h>
 
 #include "DNA_windowmanager_types.h"
 
@@ -48,7 +49,7 @@ uiListType *WM_uilisttype_find(const char *idname, bool quiet)
   }
 
   if (!quiet) {
-    printf("search for unknown uilisttype %s\n", idname);
+    CLOG_INFO(WM_LOG_TOOLS, 0, "search for unknown uilisttype %s", idname);
   }
 
   return NULL;

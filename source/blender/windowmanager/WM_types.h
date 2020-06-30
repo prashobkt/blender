@@ -923,6 +923,8 @@ extern struct CLG_LogRef *WM_LOG_KEYMAPS;
 extern struct CLG_LogRef *WM_LOG_TOOLS;
 extern struct CLG_LogRef *WM_LOG_MSGBUS_PUB;
 extern struct CLG_LogRef *WM_LOG_MSGBUS_SUB;
+extern struct CLG_LogRef *WM_LOG_SESSION;
+extern struct CLG_LogRef *WM_LOG_JOB;
 
 #ifdef __cplusplus
 }

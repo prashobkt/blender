@@ -141,6 +141,8 @@ CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_KEYMAPS, "wm.keymap");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_TOOLS, "wm.tool");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_PUB, "wm.msgbus.pub");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_SUB, "wm.msgbus.sub");
+CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_SESSION, "wm.session");
+CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_JOB, "wm.job");
 
 static void wm_init_reports(bContext *C)
 {
@@ -504,7 +506,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
              BLO_write_file(
                  bmain, filename, fileflags, &(const struct BlendFileWriteParams){0}, NULL)) ||
             (undo_memfile && BLO_memfile_write_file(undo_memfile, filename))) {
-          printf("Saved session recovery to '%s'\n", filename);
+          CLOG_INFO(WM_LOG_SESSION, 0, "Saved session recovery to '%s'\n", filename);
         }
       }
     }
@@ -655,12 +657,13 @@ void WM_exit_ex(bContext *C, const bool do_python)
   CLG_exit();
 
   BKE_blender_atexit();
-
+  MEM_mallocN(100, "This is leak");
   if (MEM_get_memory_blocks_in_use() != 0) {
     size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
-    printf("Error: Not freed memory blocks: %u, total unfreed memory %f MB\n",
-           MEM_get_memory_blocks_in_use(),
-           (double)mem_in_use / 1024 / 1024);
+    CLOG_WARN(WM_LOG_SESSION,
+              "Error: Not freed memory blocks: %u, total unfreed memory %f MB\n",
+              MEM_get_memory_blocks_in_use(),
+              (double)mem_in_use / 1024 / 1024);
     MEM_printmemlist();
   }
   wm_autosave_delete();
@@ -675,9 +678,11 @@ void WM_exit_ex(bContext *C, const bool do_python)
  */
 void WM_exit(bContext *C)
 {
+  // logger is about to be freed
+  CLOG_INFO(WM_LOG_SESSION, 0, "Blender quit");
+
   WM_exit_ex(C, true);
 
-  printf("\nBlender quit\n");
 
 #ifdef WIN32
   /* ask user to press a key when in debug mode */

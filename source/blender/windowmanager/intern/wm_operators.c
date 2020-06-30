@@ -3543,12 +3543,14 @@ static int previews_clear_exec(bContext *C, wmOperator *op)
     }
 
 #if 0
-    printf("%s: %d, %d, %d -> %d\n",
-           id->name,
-           GS(id->name),
-           BKE_idtype_idcode_to_idfilter(GS(id->name)),
-           id_filters,
-           BKE_idtype_idcode_to_idfilter(GS(id->name)) & id_filters);
+    CLOG_INFO(WM_LOG_OPERATORS,
+              2,
+              "%s: %d, %d, %d -> %d",
+              id->name,
+              GS(id->name),
+              BKE_idtype_idcode_to_idfilter(GS(id->name)),
+              id_filters,
+              BKE_idtype_idcode_to_idfilter(GS(id->name)) & id_filters);
 #endif
 
     if (!(BKE_idtype_idcode_to_idfilter(GS(id->name)) & id_filters)) {
