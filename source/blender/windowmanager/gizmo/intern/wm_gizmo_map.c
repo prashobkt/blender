@@ -21,6 +21,7 @@
  * \ingroup wm
  */
 
+#include <CLG_log.h>
 #include <string.h>
 
 #include "BLI_buffer.h"
@@ -975,7 +976,7 @@ void wm_gizmomap_handler_context_op(bContext *C, wmEventHandler_Op *handler)
     if (area == NULL) {
       /* when changing screen layouts with running modal handlers (like render display), this
        * is not an error to print */
-      printf("internal error: modal gizmo-map handler has invalid area\n");
+      CLOG_ERROR(WM_LOG_GIZMO, "internal error: modal gizmo-map handler has invalid area");
     }
     else {
       ARegion *region;

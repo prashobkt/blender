@@ -143,6 +143,7 @@ CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_PUB, "wm.msgbus.pub");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_MSGBUS_SUB, "wm.msgbus.sub");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_SESSION, "wm.session");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_JOB, "wm.job");
+CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_GIZMO, "wm.gizmo");
 
 static void wm_init_reports(bContext *C)
 {

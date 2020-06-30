@@ -20,6 +20,7 @@
 
 #include "BLI_ghash.h"
 #include "BLI_utildefines.h"
+#include <CLG_log.h>
 
 #include "BKE_context.h"
 
@@ -56,12 +57,12 @@ wmGizmoGroupType *WM_gizmogrouptype_find(const char *idname, bool quiet)
     }
 
     if (!quiet) {
-      printf("search for unknown gizmo group '%s'\n", idname);
+      CLOG_INFO(WM_LOG_GIZMO, 0, "search for unknown gizmo group '%s'", idname);
     }
   }
   else {
     if (!quiet) {
-      printf("search for empty gizmo group\n");
+      CLOG_INFO(WM_LOG_GIZMO, 0, "search for empty gizmo group");
     }
   }
 

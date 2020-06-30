@@ -21,6 +21,7 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
+#include <CLG_log.h>
 
 #include "BKE_context.h"
 #include "BKE_main.h"
@@ -63,12 +64,12 @@ const wmGizmoType *WM_gizmotype_find(const char *idname, bool quiet)
     }
 
     if (!quiet) {
-      printf("search for unknown gizmo '%s'\n", idname);
+      CLOG_INFO(WM_LOG_GIZMO, 0, "search for unknown gizmo '%s'", idname);
     }
   }
   else {
     if (!quiet) {
-      printf("search for empty gizmo\n");
+      CLOG_INFO(WM_LOG_GIZMO, 0, "search for empty gizmo");
     }
   }
 
