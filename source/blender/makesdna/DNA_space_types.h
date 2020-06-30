@@ -34,6 +34,7 @@
 #include "DNA_outliner_types.h"  /* for TreeStoreElem */
 #include "DNA_sequence_types.h"  /* SequencerScopes */
 #include "DNA_vec_types.h"
+#include "DNA_windowmanager_types.h"
 /* Hum ... Not really nice... but needed for spacebuts. */
 #include "DNA_view2d_types.h"
 
@@ -115,7 +116,23 @@ typedef struct SpaceInfo {
   char _pad[3];
   int active_report_index;
   char search_string[64];
+  char view;
+  char _pad1[7];
+  /* reports that were converted from CLOG */
+  ReportList *active_reports;
+  // int clog_show;
 } SpaceInfo;
+
+typedef enum eSpaceInfo_View {
+  INFO_VIEW_REPORTS,
+  INFO_VIEW_CLOG,
+} eSpaceInfo_View;
+
+/* SpaceInfo.clog_show */
+typedef enum eSpaceInfo_ClogShow {
+  INFO_CLOG_SHOW_TIMESTAMP = (1 << 0),
+  // ...
+} eSpaceInfo_ClogShow;
 
 /* SpaceInfo.report_mask_exclude */
 typedef enum eSpaceInfo_RptMask {

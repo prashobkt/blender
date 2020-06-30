@@ -101,6 +101,27 @@ void BKE_reports_clear(ReportList *reports)
   BLI_listbase_clear(&reports->list);
 }
 
+/** deep copy of reports */
+ReportList *BKE_reports_duplicate(ReportList *reports)
+{
+  Report *report = reports->list.first, *report_next, *report_dup;
+  ReportList *reports_new = MEM_dupallocN(reports);
+  BLI_listbase_clear(&reports_new->list);
+
+  while (report) {
+    report_next = report->next;
+    report_dup = MEM_dupallocN(report);
+    report_dup->message = MEM_dupallocN(report->message);
+    BLI_addtail(&reports_new->list, report_dup);
+    report = report_next;
+  }
+
+  // todo learn how to duplicate timer
+  // reports_new->reporttimer
+
+  return reports_new;
+}
+
 void BKE_report(ReportList *reports, ReportType type, const char *_message)
 {
   Report *report;

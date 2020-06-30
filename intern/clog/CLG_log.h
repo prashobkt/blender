@@ -85,6 +85,11 @@ extern "C" {
 #  define _CLOG_ATTR_PRINTF_FORMAT(format_param, dots_param)
 #endif
 
+/* For printing timestamp. */
+#define __STDC_FORMAT_MACROS
+#include <DNA_windowmanager_types.h>
+#include <inttypes.h>
+
 #define STRINGIFY_ARG(x) "" #x
 #define STRINGIFY_APPEND(a, b) "" a #b
 #define STRINGIFY(x) STRINGIFY_APPEND("", x)
@@ -120,6 +125,19 @@ typedef struct CLG_LogRef {
   CLG_LogType *type;
 } CLG_LogRef;
 
+
+typedef struct CLG_LogRecord {
+  /** Link for ListBase */
+  struct CLG_LogRecord *next, *prev;
+  /** track where does the log comes from */
+  CLG_LogType *type;
+  enum CLG_Severity severity;
+  uint64_t timestamp;
+  const char *file_line;
+  const char *function;
+  char *message;
+} CLG_LogRecord;
+
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
                  const char *file_line,
@@ -131,6 +149,14 @@ void CLG_logf(CLG_LogType *lg,
               const char *fn,
               const char *format,
               ...) _CLOG_ATTR_NONNULL(1, 3, 4, 5) _CLOG_ATTR_PRINTF_FORMAT(5, 6);
+
+const char *clg_severity_as_text(enum CLG_Severity severity);
+CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
+                                    enum CLG_Severity severity,
+                                    const char *file_line,
+                                    const char *function,
+                                    char *message);
+void clog_log_record_free(CLG_LogRecord *log_record);
 
 /* Main initializer and distructor (per session, not logger). */
 void CLG_init(void);
@@ -146,6 +172,7 @@ void CLG_type_filter_include(const char *type_filter, int type_filter_len);
 void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
 void CLG_level_set(int level);
+struct ListBase *CLG_log_record_get(void );
 
 void CLG_logref_init(CLG_LogRef *clg_ref);
 

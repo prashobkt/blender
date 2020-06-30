@@ -21,6 +21,9 @@
  * \ingroup spinfo
  */
 
+#include <BKE_global.h>
+#include <BKE_main.h>
+#include <BKE_report.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -91,23 +94,60 @@ static SpaceLink *info_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
 }
 
 /* not spacelink itself */
-static void info_free(SpaceLink *UNUSED(sl))
+static void info_free(SpaceLink *sl)
 {
-  //  SpaceInfo *sinfo = (SpaceInfo *) sl;
+  SpaceInfo *sinfo = (SpaceInfo *)sl;
+  if (sinfo->view == INFO_VIEW_CLOG) {
+    BKE_reports_clear(sinfo->active_reports);
+    MEM_freeN(sinfo->active_reports);
+  }
+}
+
+static void info_report_source_update(wmWindowManager *wm, SpaceInfo *sinfo)
+{
+  switch (sinfo->view) {
+    case INFO_VIEW_REPORTS: {
+      if (sinfo->active_reports != &wm->reports) {
+        /* reports come from log, deinit them*/
+        BKE_reports_clear(sinfo->active_reports);
+        MEM_freeN(sinfo->active_reports);
+      }
+      sinfo->active_reports = &wm->reports;
+      break;
+    }
+    case INFO_VIEW_CLOG: {
+      if (sinfo->active_reports == &wm->reports) {
+        sinfo->active_reports = clog_to_report_list();
+      }
+      break;
+    }
+  }
 }
 
 /* spacetype; init callback */
-static void info_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
+static void info_init(struct wmWindowManager *wm, ScrArea *area)
 {
+  SpaceInfo *sinfo = area->spacedata.first;
+  if (sinfo->active_reports == NULL) {
+    switch (sinfo->view) {
+      case INFO_VIEW_REPORTS: {
+        sinfo->active_reports = &wm->reports;
+        break;
+      }
+      case INFO_VIEW_CLOG: {
+        sinfo->active_reports = clog_to_report_list();
+        break;
+      }
+    }
+  }
 }
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
 {
-  SpaceInfo *sinfon = MEM_dupallocN(sl);
+  SpaceInfo *sinfo_new = MEM_dupallocN(sl);
+  sinfo_new->active_reports = NULL;  // will be reinitialized in info_init
 
-  /* clear or remove stuff from old */
-
-  return (SpaceLink *)sinfon;
+  return (SpaceLink *)sinfo_new;
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
@@ -131,7 +171,7 @@ static void info_textview_update_rect(const bContext *C, ARegion *region)
   View2D *v2d = &region->v2d;
 
   UI_view2d_totRect_set(
-      v2d, region->winx - 1, info_textview_height(sinfo, region, CTX_wm_reports(C)));
+      v2d, region->winx - 1, info_textview_height(sinfo, region, sinfo->active_reports));
 }
 
 static void info_main_region_draw(const bContext *C, ARegion *region)
@@ -154,7 +194,7 @@ static void info_main_region_draw(const bContext *C, ARegion *region)
   /* worlks best with no view2d matrix set */
   UI_view2d_view_ortho(v2d);
 
-  info_textview_main(sinfo, region, CTX_wm_reports(C));
+  info_textview_main(sinfo, region, sinfo->active_reports);
 
   /* reset view matrix */
   UI_view2d_view_restore(C);
@@ -206,18 +246,25 @@ static void info_header_region_draw(const bContext *C, ARegion *region)
 }
 
 static void info_main_region_listener(wmWindow *UNUSED(win),
-                                      ScrArea *UNUSED(area),
+                                      ScrArea *area,
                                       ARegion *region,
                                       wmNotifier *wmn,
                                       const Scene *UNUSED(scene))
 {
-  // SpaceInfo *sinfo = area->spacedata.first;
+  SpaceInfo *sinfo = area->spacedata.first;
 
   /* context changes */
   switch (wmn->category) {
     case NC_SPACE:
       if (wmn->data == ND_SPACE_INFO_REPORT) {
         /* redraw also but only for report view, could do less redraws by checking the type */
+        ED_region_tag_redraw(region);
+      }
+      else if (wmn->data == ND_SPACE_INFO_CHANGE_REPORT_SOURCE) {
+        // todo this is very bad
+        Main *bmain = G_MAIN;
+        wmWindowManager *wm = bmain->wm.first;
+        info_report_source_update(wm, sinfo);
         ED_region_tag_redraw(region);
       }
       break;

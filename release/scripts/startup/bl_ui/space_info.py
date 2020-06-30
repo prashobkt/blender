@@ -43,10 +43,14 @@ class INFO_MT_editor_menus(Menu):
     bl_idname = "INFO_MT_editor_menus"
     bl_label = ""
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         layout.menu("INFO_MT_view")
         layout.menu("INFO_MT_info")
+
+        sinfo = context.space_data
+        row = layout.row()
+        row.prop(sinfo, "view", expand=True)
 
 
 class INFO_MT_view(Menu):

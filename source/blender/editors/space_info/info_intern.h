@@ -24,6 +24,8 @@
 #ifndef __INFO_INTERN_H__
 #define __INFO_INTERN_H__
 
+#include "DNA_windowmanager_types.h"
+
 /* internal exports only */
 
 struct ReportList;
@@ -57,6 +59,7 @@ void info_textview_main(const struct SpaceInfo *sinfo,
                         const struct ReportList *reports);
 
 /* info_report.c */
+ReportList *clog_to_report_list(void);
 int info_report_mask(const struct SpaceInfo *sinfo);
 bool info_filter_text(const Report *report, const char *search_string);
 void INFO_OT_select_pick(struct wmOperatorType *ot); /* report selection */

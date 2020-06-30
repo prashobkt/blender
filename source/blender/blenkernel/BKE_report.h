@@ -40,6 +40,7 @@ extern "C" {
 
 void BKE_reports_init(ReportList *reports, int flag);
 void BKE_reports_clear(ReportList *reports);
+ReportList *BKE_reports_duplicate(ReportList *reports);
 
 void BKE_report(ReportList *reports, ReportType type, const char *message);
 void BKE_reportf(ReportList *reports, ReportType type, const char *format, ...)

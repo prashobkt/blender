@@ -6106,6 +6106,18 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_TEXTEDIT_UPDATE);
   RNA_def_property_ui_icon(prop, ICON_VIEWZOOM, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  static const EnumPropertyItem view_type_items[] = {
+      {INFO_VIEW_REPORTS, "REPORTS", 0, "Reports", ""},
+      {INFO_VIEW_CLOG, "CLOGS", 0, "Logs", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+  prop = RNA_def_property(srna, "view", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "view");
+  RNA_def_property_enum_items(prop, view_type_items);
+  RNA_def_property_ui_text(prop, "View reports or logs", "");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_CHANGE_REPORT_SOURCE, NULL);
 }
 
 static void rna_def_space_userpref(BlenderRNA *brna)

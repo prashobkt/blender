@@ -44,13 +44,14 @@
 
 /* For printing timestamp. */
 #define __STDC_FORMAT_MACROS
+#include <DNA_windowmanager_types.h>
 #include <inttypes.h>
 
 /* Only other dependency (could use regular malloc too). */
 #include "MEM_guardedalloc.h"
 
 /* own include. */
-#include "../../source/blender/makesdna/DNA_listBase.h"
+#include "../../source/blender/blenlib/BLI_blenlib.h"
 #include "CLG_log.h"
 
 /* Local utility defines */
@@ -87,6 +88,8 @@ typedef struct LogRecord {
 typedef struct CLogContext {
   /** Single linked list of types.  */
   CLG_LogType *types;
+  ListBase log_records;
+
 #ifdef WITH_CLOG_PTHREADS
   pthread_mutex_t types_lock;
 #endif
@@ -113,8 +116,6 @@ typedef struct CLogContext {
     void (*fatal_fn)(void *file_handle);
     void (*backtrace_fn)(void *file_handle);
   } callbacks;
-
-  ListBase log_records;
 
 } CLogContext;
 
@@ -261,7 +262,7 @@ static const char *clg_severity_str[CLG_SEVERITY_LEN] = {
     [CLG_SEVERITY_FATAL] = "FATAL",
 };
 
-static const char *clg_severity_as_text(enum CLG_Severity severity)
+const char *clg_severity_as_text(enum CLG_Severity severity)
 {
   bool ok = (unsigned int)severity < CLG_SEVERITY_LEN;
   assert(ok);
@@ -391,13 +392,33 @@ static uint64_t clg_timestamp_ticks_get(void)
   return tick;
 }
 
+CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
+                                    enum CLG_Severity severity,
+                                    const char *file_line,
+                                    const char *function,
+                                    char *message)
+{
+  CLG_LogRecord *log_record = MEM_callocN(sizeof(*log_record), "ClogRecord");
+  log_record->type = type;
+  log_record->severity = severity;
+  log_record->timestamp = clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
+  log_record->file_line = file_line;
+  log_record->function = function;
+  log_record->message = message;
+  return log_record;
+}
+
+void clog_log_record_free(CLG_LogRecord *log_record)
+{
+  MEM_freeN(log_record->message);
+  MEM_freeN(log_record);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Logging API
  * \{ */
-
-
 
 static void write_timestamp(CLogStringBuf *cstr, const uint64_t timestamp_tick_start)
 {
@@ -512,21 +533,26 @@ void CLG_logf(CLG_LogType *lg,
   write_severity(&cstr, severity, lg->ctx->use_color);
   write_type(&cstr, lg);
 
-  {
-    write_file_line_fn(&cstr, file_line, fn, lg->ctx->use_basename);
+  write_file_line_fn(&cstr, file_line, fn, lg->ctx->use_basename);
 
+  int csr_size_before_va = cstr.len;
+  {
     va_list ap;
     va_start(ap, fmt);
     clg_str_vappendf(&cstr, fmt, ap);
     va_end(ap);
   }
+
+  char *message = MEM_callocN(cstr.len - csr_size_before_va + 1, "LogMessage");
+  memcpy(message, cstr.data + csr_size_before_va, cstr.len - csr_size_before_va);
+  CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, fn, message);
+  BLI_addtail(&(lg->ctx->log_records), log_record);
+
   clg_str_append(&cstr, "\n");
 
   /* could be optional */
   int bytes_written = write(lg->ctx->output, cstr.data, cstr.len);
   (void)bytes_written;
-
-  //  BKE_reportf(reports, RPT_WARNING, "reported from logs");
 
   clg_str_free(&cstr);
 
@@ -614,6 +640,11 @@ static void CLG_ctx_level_set(CLogContext *ctx, int level)
   }
 }
 
+static ListBase *CLG_ctx_log_record_get(CLogContext *ctx)
+{
+  return &ctx->log_records;
+}
+
 static CLogContext *CLG_ctx_init(void)
 {
   CLogContext *ctx = MEM_callocN(sizeof(*ctx), __func__);
@@ -629,6 +660,14 @@ static CLogContext *CLG_ctx_init(void)
 
 static void CLG_ctx_free(CLogContext *ctx)
 {
+  CLG_LogRecord *log = ctx->log_records.first, *log_next = NULL;
+  while (log) {
+    log_next = log->next;
+    clog_log_record_free(log);
+    log = log_next;
+  }
+  BLI_listbase_clear(&ctx->log_records);
+
   while (ctx->types != NULL) {
     CLG_LogType *item = ctx->types;
     ctx->types = item->next;
@@ -709,6 +748,11 @@ void CLG_type_filter_include(const char *type_match, int type_match_len)
 void CLG_level_set(int level)
 {
   CLG_ctx_level_set(g_ctx, level);
+}
+
+ListBase *CLG_log_record_get()
+{
+  return CLG_ctx_log_record_get(g_ctx);
 }
 
 /** \} */

@@ -18,6 +18,8 @@
  * \ingroup spinfo
  */
 
+#include <BKE_report.h>
+#include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +41,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
+#include "../../../../intern/clog/CLG_log.h"
 #include "info_intern.h"
 
 #define REPORT_INDEX_INVALID -1
@@ -110,7 +113,7 @@ int info_report_mask(const SpaceInfo *sinfo)
 static int report_replay_exec(bContext *C, wmOperator *UNUSED(op))
 {
   //  SpaceInfo *sc = CTX_wm_space_info(C);
-  //  ReportList *reports = CTX_wm_reports(C);
+  //  ReportList *reports = sinfo->active_reports;
   //  int report_mask = info_report_mask(sc);
   //  Report *report;
 
@@ -159,7 +162,10 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
 
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+
+  ReportList *reports = sinfo->active_reports;
+  Report *report = BLI_findlink(&reports->list, report_index);
+
   const int report_mask = info_report_mask(sinfo);
 
   if (report_index == REPORT_INDEX_INVALID) {  // click in empty area
@@ -168,11 +174,9 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  Report *report = BLI_findlink((const struct ListBase *)reports, report_index);
   if (!report) {
     return OPERATOR_CANCELLED;
   }
-
 
   const Report *active_report = BLI_findlink((const struct ListBase *)reports,
                                              sinfo->active_report_index);
@@ -233,7 +237,7 @@ static int select_report_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   Report *report;
 
   report = info_text_pick(sinfo, region, reports, event->mval[1]);
@@ -290,7 +294,7 @@ void INFO_OT_select_pick(wmOperatorType *ot)
 static int report_select_all_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   const int report_mask = info_report_mask(sinfo);
 
   int action = RNA_enum_get(op->ptr, "action");
@@ -321,7 +325,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   int report_mask = info_report_mask(sinfo);
   Report *report_min, *report_max;
   rcti rect;
@@ -411,7 +415,7 @@ void INFO_OT_select_box(wmOperatorType *ot)
 static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   int report_mask = info_report_mask(sinfo);
 
   Report *report, *report_next;
@@ -454,7 +458,7 @@ void INFO_OT_report_delete(wmOperatorType *ot)
 static int report_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = sinfo->active_reports;
   int report_mask = info_report_mask(sinfo);
 
   Report *report;
@@ -493,4 +497,65 @@ void INFO_OT_report_copy(wmOperatorType *ot)
   /*ot->flag = OPTYPE_REGISTER;*/
 
   /* properties */
+}
+
+/** Return newly allocated ReportList created from log records */
+ReportList *clog_to_report_list()
+{
+  ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
+  BKE_reports_init(reports, RPT_STORE);
+  ListBase *records = CLG_log_record_get();
+
+  if (BLI_listbase_is_empty(records)) {
+    return reports;
+  }
+
+  CLG_LogRecord *log = records->first;
+
+  while (log) {
+    DynStr *dynStr = BLI_dynstr_new();
+    // todo implement formatting filters
+    BLI_dynstr_append(dynStr, clg_severity_as_text(log->severity));
+    BLI_dynstr_append(dynStr, " (");
+    BLI_dynstr_append(dynStr, log->type->identifier);
+    BLI_dynstr_append(dynStr, "): ");
+    BLI_dynstr_append(dynStr, log->file_line);
+    BLI_dynstr_append(dynStr, " ");
+    BLI_dynstr_append(dynStr, log->function);
+    BLI_dynstr_append(dynStr, ":\n");
+    BLI_dynstr_append(dynStr, log->message);
+    char *cstr = BLI_dynstr_get_cstring(dynStr);
+    switch (log->severity) {
+      case CLG_SEVERITY_INFO:
+        BKE_report(reports, RPT_INFO, cstr);
+        break;
+      case CLG_SEVERITY_WARN:
+        BKE_report(reports, RPT_WARNING, cstr);
+        break;
+      case CLG_SEVERITY_ERROR:
+      case CLG_SEVERITY_FATAL:
+        BKE_report(reports, RPT_ERROR, cstr);
+        break;
+      default:
+        BKE_report(reports, RPT_INFO, cstr);
+        break;
+    }
+    MEM_freeN(cstr);
+    BLI_dynstr_free(dynStr);
+//    log_iter = log->next;
+//    log = log_iter;
+    log = log->next;
+  }
+  return reports;
+}
+
+static void clog_timestamp_to_char()
+{
+  const uint64_t timestamp = 0;  // clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
+  char timestamp_str[64];
+  const uint timestamp_len = snprintf(timestamp_str,
+                                      sizeof(timestamp_str),
+                                      "%" PRIu64 ".%03u ",
+                                      timestamp / 1000,
+                                      (uint)(timestamp % 1000));
 }
