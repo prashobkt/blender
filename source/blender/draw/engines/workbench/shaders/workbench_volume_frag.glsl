@@ -139,7 +139,8 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 {
   vec3 co = ls_pos * 0.5 + 0.5;
 #if defined(VOLUME_SLICE) && (defined(USE_RAW) || defined(SHOW_FLAGS))
-  vec3 texture_size = (showFlags) ? vec3(textureSize(flagTexture, 0).xyz) : vec3(textureSize(densityTexture, 0).xyz);
+  vec3 texture_size = (showFlags) ? vec3(textureSize(flagTexture, 0).xyz) :
+                                    vec3(textureSize(densityTexture, 0).xyz);
   if (on_gridline(texture_size, co)) {
     scattering = vec3(0.0, 0.0, 0.0);
     extinction = 50.0;
@@ -148,10 +149,10 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 #endif
 #ifdef USE_COBA
   vec4 tval;
-  if(showPhi) {
+  if (showPhi) {
     /* Color mapping for level-set representation */
     float val = sample_volume_texture(densityTexture, co).r * gridScale;
-    
+
     val = max(min(val * 0.2, 1.0), -1.0);
 
     if (val >= 0.0) {
@@ -161,7 +162,7 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
       tval = vec4(0.5, 1.0 + val, 0.0, 0.06);
     }
   }
-  else if(showFlags) {
+  else if (showFlags) {
     /* Color mapping for flags */
     uint flag = texture(flagTexture, co).r;
     tval = vec4(0.0, 0.0, 0.0, 0.06);
