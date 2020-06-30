@@ -163,7 +163,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   const int report_mask = info_report_mask(sinfo);
 
   if (report_index == REPORT_INDEX_INVALID) {  // click in empty area
-    reports_select_all(reports, report_mask, SEL_DESELECT);
+    reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
     ED_area_tag_redraw(CTX_wm_area(C));
     return OPERATOR_FINISHED;
   }
@@ -179,7 +179,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   const bool is_active_report_selected = active_report->flag & SELECT;
 
   if (deselect_all) {
-    reports_select_all(reports, report_mask, SEL_DESELECT);
+    reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
   }
 
   if (active_report == NULL) {
@@ -208,7 +208,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
       return OPERATOR_FINISHED;
     }
     else {
-      reports_select_all(reports, report_mask, SEL_DESELECT);
+      reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
       report->flag = SELECT;
       sinfo->active_report_index = report_index;
 
@@ -343,7 +343,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
   report_max = info_text_pick(sinfo, region, reports, rect.ymin);
 
   if (report_min == NULL && report_max == NULL) {
-    reports_select_all(reports, report_mask, SEL_DESELECT);
+    reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
   }
   else {
     /* get the first report if none found */
