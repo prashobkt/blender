@@ -59,7 +59,6 @@ void BLI_boolean_trimesh_free(Boolean_trimesh_output *output);
 #  include "BLI_array.hh"
 #  include "BLI_mesh_intersect.hh"
 #  include "BLI_mpq3.hh"
-#  include "BLI_optional.hh"
 #  include "gmpxx.h"
 
 namespace blender {
@@ -74,8 +73,10 @@ struct PolyMeshOrig {
 struct PolyMesh {
   Array<mpq3> vert;
   Array<Array<int>> face;
-  Optional<Array<Array<IndexedTriangle>>> triangulation;
-  Optional<PolyMeshOrig> orig;
+  /* triangulation can have zero length: then boolean will do it.  */
+  Array<Array<IndexedTriangle>> triangulation;
+  /* orig can be dummy for boolean input, but has useful information for its output. */
+  PolyMeshOrig orig;
 };
 
 PolyMesh boolean(PolyMesh &pm, int bool_optype, int nshapes, std::function<int(int)> shape_fn);

@@ -28,7 +28,6 @@
 #include "BLI_math.h"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_mpq3.hh"
-#include "BLI_optional.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
@@ -1332,7 +1331,7 @@ static void triangulate_polymesh(PolyMesh &pm)
       face_tris[f] = triangulate_poly(f, pm.face[f], pm.vert);
     }
   }
-  pm.triangulation.set(face_tris);
+  pm.triangulation = face_tris;
 }
 
 /* Will add triangulation if it isn't already there. */
@@ -1340,10 +1339,10 @@ static TriMesh trimesh_from_polymesh(PolyMesh &pm)
 {
   TriMesh ans;
   ans.vert = pm.vert;
-  if (!pm.triangulation.has_value()) {
+  if (pm.triangulation.size() == 0) {
     triangulate_polymesh(pm);
   }
-  const Array<Array<IndexedTriangle>> &tri_arrays = pm.triangulation.value();
+  const Array<Array<IndexedTriangle>> &tri_arrays = pm.triangulation;
   int tot_tri = 0;
   for (const Array<IndexedTriangle> &a : tri_arrays) {
     tot_tri += static_cast<int>(a.size());
