@@ -417,9 +417,13 @@ ReportList *clog_to_report_list()
 {
   ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
   BKE_reports_init(reports, RPT_STORE);
+  ListBase *records = CLG_log_record_get();
 
-  // todo there might be no logs in log records
-  CLG_LogRecord *log = CLG_log_record_get()->first, *log_iter = NULL;
+  if (BLI_listbase_is_empty(records)) {
+    return reports;
+  }
+
+  CLG_LogRecord *log = records->first;
 
   while (log) {
     DynStr *dynStr = BLI_dynstr_new();
@@ -451,8 +455,9 @@ ReportList *clog_to_report_list()
     }
     MEM_freeN(cstr);
     BLI_dynstr_free(dynStr);
-    log_iter = log->next;
-    log = log_iter;
+//    log_iter = log->next;
+//    log = log_iter;
+    log = log->next;
   }
   return reports;
 }
