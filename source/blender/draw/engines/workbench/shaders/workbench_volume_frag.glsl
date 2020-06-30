@@ -62,7 +62,7 @@ bool on_gridline(vec3 texture_size, vec3 co)
   vec3 texel_size = 1.0 / texture_size;
   vec3 offset = mod(co, texel_size);
   offset = min(offset, texel_size - offset);
-  vec3 gridline_thickness = 0.05 * texel_size;
+  vec3 gridline_thickness = 0.025 * texel_size;
   if (((sliceAxis == 0) && (offset.y < gridline_thickness.y || offset.z < gridline_thickness.z)) ||
       ((sliceAxis == 1) && (offset.x < gridline_thickness.x || offset.z < gridline_thickness.z)) ||
       ((sliceAxis == 2) && (offset.x < gridline_thickness.x || offset.y < gridline_thickness.y))) {
