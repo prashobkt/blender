@@ -127,6 +127,7 @@ static void info_report_source_update(wmWindowManager *wm, SpaceInfo *sinfo)
 static void info_init(struct wmWindowManager *wm, ScrArea *area)
 {
   SpaceInfo *sinfo = area->spacedata.first;
+  // todo startup file with log view on will case active_reports to be not NULL on restart (?)
   if (sinfo->active_reports == NULL) {
     switch (sinfo->view) {
       case INFO_VIEW_REPORTS: {
