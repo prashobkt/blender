@@ -114,6 +114,7 @@ typedef struct SpaceInfo {
   char report_mask_exclude;
   char _pad[3];
   int active_report_index;
+  char search_string[64];
 } SpaceInfo;
 
 /* SpaceInfo.report_mask_exclude */

@@ -58,6 +58,7 @@ void info_textview_main(const struct SpaceInfo *sinfo,
 
 /* info_report.c */
 int info_report_mask(const struct SpaceInfo *sinfo);
+bool info_filter_text(const Report *report, const char *search_string);
 void INFO_OT_select_pick(struct wmOperatorType *ot); /* report selection */
 void INFO_OT_select_all(struct wmOperatorType *ot);
 void INFO_OT_select_box(struct wmOperatorType *ot);
@@ -65,5 +66,8 @@ void INFO_OT_select_box(struct wmOperatorType *ot);
 void INFO_OT_report_replay(struct wmOperatorType *ot);
 void INFO_OT_report_delete(struct wmOperatorType *ot);
 void INFO_OT_report_copy(struct wmOperatorType *ot);
+
+#define IS_REPORT_VISIBLE(report, report_mask, search_string) \
+  (info_filter_text(report, search_string) && ((report)->type & report_mask))
 
 #endif /* __INFO_INTERN_H__ */

@@ -43,12 +43,18 @@
 
 #define REPORT_INDEX_INVALID -1
 
-static void reports_select_all(ReportList *reports, int report_mask, int action)
+/* return true if substring is found */
+bool info_filter_text(const Report *report, const char *search_string)
+{
+  return strstr(report->message, search_string) != NULL;
+}
+
+static void reports_select_all(ReportList *reports, int report_mask, const char *search_string, int action)
 {
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
     for (Report *report = reports->list.last; report; report = report->prev) {
-      if ((report->type & report_mask) && (report->flag & SELECT)) {
+      if (IS_REPORT_VISIBLE(report, report_mask, search_string) && (report->flag & SELECT)) {
         action = SEL_DESELECT;
         break;
       }
@@ -56,7 +62,7 @@ static void reports_select_all(ReportList *reports, int report_mask, int action)
   }
 
   for (Report *report = reports->list.last; report; report = report->prev) {
-    if (report->type & report_mask) {
+    if (IS_REPORT_VISIBLE(report, report_mask, search_string)) {
       switch (action) {
         case SEL_SELECT:
           report->flag = SELECT;
@@ -288,7 +294,7 @@ static int report_select_all_exec(bContext *C, wmOperator *op)
   const int report_mask = info_report_mask(sinfo);
 
   int action = RNA_enum_get(op->ptr, "action");
-  reports_select_all(reports, report_mask, action);
+  reports_select_all(reports, report_mask, sinfo->search_string, action);
 
   ED_area_tag_redraw(CTX_wm_area(C));
 

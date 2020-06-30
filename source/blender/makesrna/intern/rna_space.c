@@ -6099,6 +6099,13 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Property", "Display property change");
   RNA_def_property_ui_icon(prop, ICON_PROPERTIES, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "filter_text", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "search_string");
+  RNA_def_property_ui_text(prop, "Log Filter", "Live filtering string");
+  RNA_def_property_flag(prop, PROP_TEXTEDIT_UPDATE);
+  RNA_def_property_ui_icon(prop, ICON_VIEWZOOM, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
 }
 
 static void rna_def_space_userpref(BlenderRNA *brna)

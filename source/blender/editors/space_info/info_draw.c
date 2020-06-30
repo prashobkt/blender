@@ -146,7 +146,8 @@ static int report_textview_skip__internal(TextViewContext *tvc)
 {
   const SpaceInfo *sinfo = tvc->arg1;
   const int report_mask = info_report_mask(sinfo);
-  while (tvc->iter && (((const Report *)tvc->iter)->type & report_mask) == 0) {
+  while (tvc->iter &&
+         !IS_REPORT_VISIBLE((const Report *)tvc->iter, report_mask, sinfo->search_string)) {
     tvc->iter = (void *)((Link *)tvc->iter)->prev;
   }
   return (tvc->iter != NULL);
