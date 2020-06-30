@@ -5446,7 +5446,7 @@ static bool ui_block_search_layout(uiBlock *block)
   /* Also search based on panel labels. */
   bool panel_label_matches = false;
   if ((block->panel != NULL) && (block->panel->type != NULL)) {
-    if (strstr(block->panel->type->label, block->search_filter)) {
+    if (BLI_strcasestr(block->panel->type->label, block->search_filter)) {
       panel_label_matches = true;
     }
   }
