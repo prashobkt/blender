@@ -109,7 +109,7 @@ void WM_msgbus_clear_by_owner(struct wmMsgBus *mbus, void *owner)
   }
 }
 
-char *WM_msg_log_str(struct wmMsgBus *mbus)
+char *WM_msg_sprintN(struct wmMsgBus *mbus)
 {
   DynStr *message = BLI_dynstr_new();
   LISTBASE_FOREACH (wmMsgSubscribeKey *, key, &mbus->messages) {
@@ -133,7 +133,7 @@ void WM_msgbus_handle(struct wmMsgBus *mbus, struct bContext *C)
     return;
   }
 
-  CLOG_STR_INFO_N(&WM_LOG_MSGBUS_HANDLE, 4, WM_msg_log_str(mbus));
+  CLOG_STR_INFO_N(&WM_LOG_MSGBUS_HANDLE, 4, WM_msg_sprintN(mbus));
 
   // uint a = 0, b = 0;
   LISTBASE_FOREACH (wmMsgSubscribeKey *, key, &mbus->messages) {

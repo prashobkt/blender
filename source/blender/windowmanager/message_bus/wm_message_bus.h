@@ -117,7 +117,7 @@ void WM_msgbus_destroy(struct wmMsgBus *mbus);
 
 void WM_msgbus_clear_by_owner(struct wmMsgBus *mbus, void *owner);
 
-char *WM_msg_log_str(struct wmMsgBus *mbus);
+char *WM_msg_sprintN(struct wmMsgBus *mbus);
 void WM_msgbus_handle(struct wmMsgBus *mbus, struct bContext *C);
 
 void WM_msg_publish_with_key(struct wmMsgBus *mbus, wmMsgSubscribeKey *msg_key);
