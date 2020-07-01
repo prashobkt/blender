@@ -475,7 +475,7 @@ typedef struct Brush {
   /** Source for fill tool color gradient application. */
   char gradient_fill_mode;
 
-  char _pad0[5];
+  char _pad0[1];
 
   /** Projection shape (sphere, circle). */
   char falloff_shape;
@@ -519,6 +519,9 @@ typedef struct Brush {
   float texture_sample_bias;
 
   int curve_preset;
+
+  /* Maximun distance to search fake neighbors from a vertex. */
+  float disconnected_distance_max;
 
   /* automasking */
   int automasking_flags;
@@ -681,6 +684,7 @@ typedef enum eBrushFlags2 {
   BRUSH_MULTIPLANE_SCRAPE_DYNAMIC = (1 << 0),
   BRUSH_MULTIPLANE_SCRAPE_PLANES_PREVIEW = (1 << 1),
   BRUSH_POSE_IK_ANCHORED = (1 << 2),
+  BRUSH_USE_CONNECTED_ONLY = (1 << 3),
 } eBrushFlags2;
 
 typedef enum {
