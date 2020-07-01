@@ -18,6 +18,7 @@
  * \ingroup wm
  */
 
+#include <BLI_dynstr.h>
 #include <stdio.h>
 
 #include "CLG_log.h"
@@ -59,16 +60,20 @@ static void wm_msg_static_gset_key_free(void *key_p)
   MEM_freeN(key);
 }
 
-static void wm_msg_static_repr(FILE *stream, const wmMsgSubscribeKey *msg_key)
+static char *wm_msg_static_repr(const wmMsgSubscribeKey *msg_key)
 {
+  DynStr *repr = BLI_dynstr_new();
   const wmMsgSubscribeKey_Static *m = (wmMsgSubscribeKey_Static *)msg_key;
-  fprintf(stream,
-          "<wmMsg_Static %p, "
-          "id='%s', "
-          "values_len=%d\n",
-          m,
-          m->msg.head.id,
-          BLI_listbase_count(&m->head.values));
+  BLI_dynstr_appendf(repr,
+                     "<wmMsg_Static %p, "
+                     "id='%s', "
+                     "values_len=%d\n",
+                     m,
+                     m->msg.head.id,
+                     BLI_listbase_count(&m->head.values));
+  char *cstring = BLI_dynstr_get_cstring(repr);
+  BLI_dynstr_free(repr);
+  return cstring;
 }
 
 void WM_msgtypeinfo_init_static(wmMsgTypeInfo *msgtype_info)

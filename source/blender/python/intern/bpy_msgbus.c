@@ -306,7 +306,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args
   WM_msg_subscribe_rna_params(mbus, &msg_key_params, &msg_val_params, __func__);
 
   if (0) { /* For debugging. */
-    WM_msg_dump(mbus, __func__);
+    WM_msg_log_str(mbus);
   }
 
   Py_RETURN_NONE;

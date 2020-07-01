@@ -18,6 +18,7 @@
  * \ingroup wm
  */
 
+#include <BLI_dynstr.h>
 #include <stdio.h>
 
 #include "CLG_log.h"
@@ -47,7 +48,8 @@ static uint wm_msg_rna_gset_hash(const void *key_p)
 {
   const wmMsgSubscribeKey_RNA *key = key_p;
   const wmMsgParams_RNA *params = &key->msg.params;
-  //  printf("%s\n", RNA_struct_identifier(params->ptr.type));
+  //  CLOG_INFO(WM_LOG_MSGBUS_HANDLE, 4, "RNA struct identifier=%s",
+  //  RNA_struct_identifier(params->ptr.type));
   uint k = void_hash_uint(params->ptr.type);
   k ^= void_hash_uint(params->ptr.data);
   k ^= void_hash_uint(params->ptr.owner_id);
@@ -77,19 +79,24 @@ static void wm_msg_rna_gset_key_free(void *key_p)
   MEM_freeN(key);
 }
 
-static void wm_msg_rna_repr(FILE *stream, const wmMsgSubscribeKey *msg_key)
+static char *wm_msg_rna_repr(const wmMsgSubscribeKey *msg_key)
 {
+  DynStr *repr = BLI_dynstr_new();
   const wmMsgSubscribeKey_RNA *m = (wmMsgSubscribeKey_RNA *)msg_key;
   const char *none = "<none>";
-  fprintf(stream,
-          "<wmMsg_RNA %p, "
-          "id='%s', "
-          "%s.%s values_len=%d\n",
-          m,
-          m->msg.head.id,
-          m->msg.params.ptr.type ? RNA_struct_identifier(m->msg.params.ptr.type) : none,
-          m->msg.params.prop ? RNA_property_identifier((PropertyRNA *)m->msg.params.prop) : none,
-          BLI_listbase_count(&m->head.values));
+  BLI_dynstr_appendf(
+      repr,
+      "<wmMsg_RNA %p, "
+      "id='%s', "
+      "%s.%s values_len=%d\n",
+      m,
+      m->msg.head.id,
+      m->msg.params.ptr.type ? RNA_struct_identifier(m->msg.params.ptr.type) : none,
+      m->msg.params.prop ? RNA_property_identifier((PropertyRNA *)m->msg.params.prop) : none,
+      BLI_listbase_count(&m->head.values));
+  char *cstring = BLI_dynstr_get_cstring(repr);
+  BLI_dynstr_free(repr);
+  return cstring;
 }
 
 static void wm_msg_rna_update_by_id(struct wmMsgBus *mbus, ID *id_src, ID *id_dst)

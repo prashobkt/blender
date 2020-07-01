@@ -61,7 +61,7 @@ typedef struct wmMsgTypeInfo {
 
   void (*update_by_id)(struct wmMsgBus *mbus, struct ID *id_src, struct ID *id_dst);
   void (*remove_by_id)(struct wmMsgBus *mbus, const struct ID *id);
-  void (*repr)(FILE *stream, const struct wmMsgSubscribeKey *msg_key);
+  char *(*repr)(const struct wmMsgSubscribeKey *msg_key);
 
   /* sizeof(wmMsgSubscribeKey_*) */
   uint msg_key_size;
@@ -117,7 +117,7 @@ void WM_msgbus_destroy(struct wmMsgBus *mbus);
 
 void WM_msgbus_clear_by_owner(struct wmMsgBus *mbus, void *owner);
 
-void WM_msg_dump(struct wmMsgBus *mbus, const char *info);
+char *WM_msg_log_str(struct wmMsgBus *mbus);
 void WM_msgbus_handle(struct wmMsgBus *mbus, struct bContext *C);
 
 void WM_msg_publish_with_key(struct wmMsgBus *mbus, wmMsgSubscribeKey *msg_key);

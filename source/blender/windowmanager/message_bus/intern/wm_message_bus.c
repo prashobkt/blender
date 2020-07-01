@@ -18,6 +18,7 @@
  * \ingroup wm
  */
 
+#include <BLI_dynstr.h>
 #include <string.h>
 
 #include "CLG_log.h"
@@ -108,27 +109,31 @@ void WM_msgbus_clear_by_owner(struct wmMsgBus *mbus, void *owner)
   }
 }
 
-void WM_msg_dump(struct wmMsgBus *mbus, const char *info_str)
+char *WM_msg_log_str(struct wmMsgBus *mbus)
 {
-  printf(">>>> %s\n", info_str);
+  DynStr *message = BLI_dynstr_new();
   LISTBASE_FOREACH (wmMsgSubscribeKey *, key, &mbus->messages) {
     const wmMsg *msg = wm_msg_subscribe_value_msg_cast(key);
     const wmMsgTypeInfo *info = &wm_msg_types[msg->type];
-    info->repr(stdout, key);
+    char *info_repr = info->repr(key);
+    BLI_dynstr_appendf(message, "%s", info_repr);
+    MEM_freeN(info_repr);
   }
-  printf("<<<< %s\n", info_str);
+  char *cstring = BLI_dynstr_get_cstring(message);
+  BLI_dynstr_free(message);
+  return cstring;
 }
+
+static CLG_LogRef WM_LOG_MSGBUS_HANDLE = {"wm.msgbus.handle"};
 
 void WM_msgbus_handle(struct wmMsgBus *mbus, struct bContext *C)
 {
   if (mbus->messages_tag_count == 0) {
-    // printf("msgbus: skipping\n");
+    CLOG_INFO(&WM_LOG_MSGBUS_HANDLE, 4, "skipping msbus=%p", mbus);
     return;
   }
 
-  if (false) {
-    WM_msg_dump(mbus, __func__);
-  }
+  CLOG_STR_INFO_N(&WM_LOG_MSGBUS_HANDLE, 4, WM_msg_log_str(mbus));
 
   // uint a = 0, b = 0;
   LISTBASE_FOREACH (wmMsgSubscribeKey *, key, &mbus->messages) {
@@ -144,7 +149,7 @@ void WM_msgbus_handle(struct wmMsgBus *mbus, struct bContext *C)
   }
   BLI_assert(mbus->messages_tag_count == 0);
   mbus->messages_tag_count = 0;
-  // printf("msgbus: keys=%u values=%u\n", a, b);
+  //  CLOG_STR_INFO(&WM_LOG_MSGBUS_HANDLE, 4, "msgbus: keys=%u values=%u", a, b);
 }
 
 /**
