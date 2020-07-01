@@ -89,8 +89,10 @@ void main()
   fragColor *= stroke_round_cap_mask(
       strokePt1, strokePt2, strokeAspect, strokeThickness, strokeHardeness);
 
-  /* If material masking. */
-  if (GP_FLAG_TEST(matFlag, GP_STROKE_MASK)) {
+  /* If material masking. Use a hack to determine if the pixel is fill or not
+   * using the thickness. */
+  if (((GP_FLAG_TEST(matFlag, GP_STROKE_MASK)) && (strokeThickness != 1e18)) ||
+      (GP_FLAG_TEST(matFlag, GP_FILL_MASK) && (strokeThickness == 1e18))) {
     fragColor = vec4(0.0, 0.0, 0.0, 1.0);
     revealColor = vec4(1.0, 1.0, 1.0, 0.0);
   }

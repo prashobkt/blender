@@ -564,8 +564,13 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
       prop, "Self Overlap", "Disable stencil and overlap self intersections with alpha materials");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
-  prop = RNA_def_property(srna, "use_masking", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_IS_MASK);
+  prop = RNA_def_property(srna, "use_stroke_masking", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_IS_STROKE_MASK);
+  RNA_def_property_ui_text(prop, "Mask", "Use the material as a transparent mask");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
+
+  prop = RNA_def_property(srna, "use_fill_masking", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_MATERIAL_IS_FILL_MASK);
   RNA_def_property_ui_text(prop, "Mask", "Use the material as a transparent mask");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 

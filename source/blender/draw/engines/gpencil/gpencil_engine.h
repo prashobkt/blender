@@ -76,6 +76,7 @@ typedef struct gpMaterial {
 #define GP_STROKE_TEXTURE_PREMUL (1 << 5)
 #define GP_STROKE_DOTS (1 << 6)
 #define GP_STROKE_MASK (1 << 7)
+#define GP_FILL_MASK (1 << 8)
 #define GP_FILL_TEXTURE_USE (1 << 10)
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)

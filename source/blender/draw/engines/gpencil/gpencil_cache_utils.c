@@ -62,7 +62,8 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   tgp_ob->do_mat_masking = false;
   for (int i = 0; i < ob->totcol; i++) {
     MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
-    if (gp_style->flag & GP_MATERIAL_IS_MASK) {
+    if ((gp_style->flag & GP_MATERIAL_IS_STROKE_MASK) ||
+        ((gp_style->flag & GP_MATERIAL_IS_FILL_MASK))) {
       tgp_ob->do_mat_masking = true;
       break;
     }

@@ -70,8 +70,6 @@ class GPENCIL_UL_matslots(UIList):
                 row.prop(ma, "name", text="", emboss=False, icon_value=icon)
 
                 row = layout.row(align=True)
-                icon_mask = 'MOD_MASK' if gpcolor.use_masking else 'LAYER_ACTIVE'
-                row.prop(gpcolor, "use_masking", text="", icon=icon_mask, emboss=False)
 
                 if gpcolor.ghost is True:
                     icon = 'ONIONSKIN_OFF'
@@ -171,6 +169,8 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
             if gpcolor.mode == 'LINE':
                 col.prop(gpcolor, "use_overlap_strokes")
 
+            col.prop(gpcolor, "use_stroke_masking", text="Masking")
+
 
 class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
     bl_label = "Fill"
@@ -224,6 +224,8 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
             col.prop(gpcolor, "texture_angle", text="Rotation")
             col.prop(gpcolor, "texture_scale", text="Scale")
             col.prop(gpcolor, "texture_clamp", text="Clip Image")
+
+        col.prop(gpcolor, "use_fill_masking", text="Masking")
 
 
 class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
