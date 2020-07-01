@@ -12,7 +12,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
  */
 
 #include "testing/testing.h"
@@ -20,7 +19,7 @@
 #include "FN_cpp_type.hh"
 
 namespace blender {
-namespace FN {
+namespace fn {
 
 static const int default_constructed_value = 1;
 static const int copy_constructed_value = 2;
@@ -83,6 +82,12 @@ TEST(cpp_type, Size)
 TEST(cpp_type, Alignment)
 {
   EXPECT_EQ(CPPType_TestType.alignment(), alignof(TestType));
+}
+
+TEST(cpp_type, Is)
+{
+  EXPECT_TRUE(CPPType_TestType.is<TestType>());
+  EXPECT_FALSE(CPPType_TestType.is<int>());
 }
 
 TEST(cpp_type, DefaultConstruction)
@@ -301,5 +306,5 @@ TEST(cpp_type, FillUninitialized)
   EXPECT_EQ(buffer2[9], 0);
 }
 
-}  // namespace FN
+}  // namespace fn
 }  // namespace blender

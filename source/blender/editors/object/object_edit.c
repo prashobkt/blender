@@ -600,7 +600,8 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
 {
   bool ok = false;
 
-  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob)) {
+  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob) || ID_IS_OVERRIDE_LIBRARY(ob) ||
+      ID_IS_OVERRIDE_LIBRARY(ob->data)) {
     return false;
   }
 
@@ -695,14 +696,10 @@ bool ED_object_editmode_enter(bContext *C, int flag)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Object *ob;
 
   /* Active layer checked here for view3d,
    * callers that don't want view context can call the extended version. */
-  ob = CTX_data_active_object(C);
-  if ((ob == NULL) || ID_IS_LINKED(ob)) {
-    return false;
-  }
+  Object *ob = CTX_data_active_object(C);
   return ED_object_editmode_enter_ex(bmain, scene, ob, flag);
 }
 
@@ -760,7 +757,8 @@ static bool editmode_toggle_poll(bContext *C)
   Object *ob = CTX_data_active_object(C);
 
   /* covers proxies too */
-  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob->data)) {
+  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob) ||
+      ID_IS_OVERRIDE_LIBRARY(ob->data)) {
     return 0;
   }
 
@@ -1368,7 +1366,8 @@ static bool shade_poll(bContext *C)
   Object *obact = OBACT(view_layer);
   if (obact != NULL) {
     /* Doesn't handle edit-data, sculpt dynamic-topology, or their undo systems. */
-    if (obact->mode & (OB_MODE_EDIT | OB_MODE_SCULPT)) {
+    if (obact->mode & (OB_MODE_EDIT | OB_MODE_SCULPT) || obact->data == NULL ||
+        ID_IS_OVERRIDE_LIBRARY(obact) || ID_IS_OVERRIDE_LIBRARY(obact->data)) {
       return false;
     }
   }
@@ -1771,15 +1770,6 @@ static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout
   const char *name = BKE_collection_ui_name_get(menu->collection);
 
   UI_block_flag_enable(uiLayoutGetBlock(layout), UI_BLOCK_IS_FLIP);
-  uiItemIntO(layout, name, ICON_NONE, menu->ot->idname, "collection_index", menu->index);
-  uiItemS(layout);
-
-  for (MoveToCollectionData *submenu = menu->submenus.first; submenu != NULL;
-       submenu = submenu->next) {
-    move_to_collection_menus_items(layout, submenu);
-  }
-
-  uiItemS(layout);
 
   WM_operator_properties_create_ptr(&menu->ptr, menu->ot);
   RNA_int_set(&menu->ptr, "collection_index", menu->index);
@@ -1787,6 +1777,15 @@ static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout
 
   uiItemFullO_ptr(
       layout, menu->ot, "New Collection", ICON_ADD, menu->ptr.data, WM_OP_INVOKE_DEFAULT, 0, NULL);
+
+  uiItemS(layout);
+
+  uiItemIntO(layout, name, ICON_SCENE_DATA, menu->ot->idname, "collection_index", menu->index);
+
+  for (MoveToCollectionData *submenu = menu->submenus.first; submenu != NULL;
+       submenu = submenu->next) {
+    move_to_collection_menus_items(layout, submenu);
+  }
 }
 
 static void move_to_collection_menus_items(uiLayout *layout, MoveToCollectionData *menu)

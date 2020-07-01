@@ -137,6 +137,35 @@ static float cloth_calc_volume(ClothModifierData *clmd)
   return vol;
 }
 
+static float cloth_calc_rest_volume(ClothModifierData *clmd)
+{
+  /* Calculate the (closed) cloth volume. */
+  Cloth *cloth = clmd->clothObject;
+  const MVertTri *tri = cloth->tri;
+  const ClothVertex *v = cloth->verts;
+  float weights[3] = {1.0f, 1.0f, 1.0f};
+  float vol = 0;
+
+  /* Early exit for hair, as it never has volume. */
+  if (clmd->hairdata) {
+    return 0.0f;
+  }
+
+  for (unsigned int i = 0; i < cloth->primitive_num; i++) {
+    const MVertTri *vt = &tri[i];
+
+    if (cloth_get_pressure_weights(clmd, vt, weights)) {
+      vol += volume_tri_tetrahedron_signed_v3_6x(
+          v[vt->tri[0]].xrest, v[vt->tri[1]].xrest, v[vt->tri[2]].xrest);
+    }
+  }
+
+  /* We need to divide by 6 to get the actual volume. */
+  vol = vol / 6.0f;
+
+  return vol;
+}
+
 static float cloth_calc_average_pressure(ClothModifierData *clmd, const float *vertex_pressure)
 {
   Cloth *cloth = clmd->clothObject;
@@ -219,7 +248,7 @@ void BKE_cloth_solver_set_volume(ClothModifierData *clmd)
 {
   Cloth *cloth = clmd->clothObject;
 
-  cloth->initial_mesh_volume = cloth_calc_volume(clmd);
+  cloth->initial_mesh_volume = cloth_calc_rest_volume(clmd);
 }
 
 /* Init constraint matrix
@@ -683,23 +712,42 @@ static void cloth_calc_force(
 
   /* handle external forces like wind */
   if (effectors) {
+    bool is_not_hair = (clmd->hairdata == NULL) && (cloth->primitive_num > 0);
+    bool has_wind = false, has_force = false;
+
     /* cache per-vertex forces to avoid redundant calculation */
-    float(*winvec)[3] = (float(*)[3])MEM_callocN(sizeof(float[3]) * mvert_num, "effector forces");
+    float(*winvec)[3] = (float(*)[3])MEM_callocN(sizeof(float[3]) * mvert_num * 2,
+                                                 "effector forces");
+    float(*forcevec)[3] = is_not_hair ? winvec + mvert_num : winvec;
+
     for (i = 0; i < cloth->mvert_num; i++) {
       float x[3], v[3];
       EffectedPoint epoint;
 
       BPH_mass_spring_get_motion_state(data, i, x, v);
       pd_point_from_loc(scene, x, v, i, &epoint);
-      BKE_effectors_apply(
-          effectors, NULL, clmd->sim_parms->effector_weights, &epoint, winvec[i], NULL);
+      BKE_effectors_apply(effectors,
+                          NULL,
+                          clmd->sim_parms->effector_weights,
+                          &epoint,
+                          forcevec[i],
+                          winvec[i],
+                          NULL);
+
+      has_wind = has_wind || !is_zero_v3(winvec[i]);
+      has_force = has_force || !is_zero_v3(forcevec[i]);
     }
 
     /* Hair has only edges. */
-    if ((clmd->hairdata == NULL) && (cloth->primitive_num > 0)) {
+    if (is_not_hair) {
       for (i = 0; i < cloth->primitive_num; i++) {
         const MVertTri *vt = &tri[i];
-        BPH_mass_spring_force_face_wind(data, vt->tri[0], vt->tri[1], vt->tri[2], winvec);
+        if (has_wind) {
+          BPH_mass_spring_force_face_wind(data, vt->tri[0], vt->tri[1], vt->tri[2], winvec);
+        }
+        if (has_force) {
+          BPH_mass_spring_force_face_extern(data, vt->tri[0], vt->tri[1], vt->tri[2], forcevec);
+        }
       }
     }
     else {
