@@ -24,6 +24,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
@@ -919,10 +920,10 @@ void BKE_pose_eval_proxy_copy_bone(struct Depsgraph *depsgraph, Object *object, 
   bPoseChannel *pchan_from = BKE_pose_channel_find_name(object->proxy_from->pose, pchan->name);
 #endif
   if (pchan_from == NULL) {
-    printf(
-        "WARNING: Could not find bone %s in linked ID anymore... "
-        "You should delete and re-generate your proxy.\n",
-        pchan->name);
+    CLOG_WARN(BKE_LOG_ARMATURE,
+              "Could not find bone %s in linked ID anymore... "
+              "You should delete and re-generate your proxy",
+              pchan->name);
     return;
   }
   BKE_pose_copy_pchan_result(pchan, pchan_from);

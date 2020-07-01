@@ -64,7 +64,7 @@
 
 #include "CLG_log.h"
 
-static CLG_LogRef LOG = {"bke.armature"};
+CLG_LOGREF_DECLARE_GLOBAL(BKE_LOG_ARMATURE, "bke.armature");
 
 /* -------------------------------------------------------------------- */
 /** \name Prototypes
@@ -2155,7 +2155,7 @@ static void pose_proxy_sync(Object *ob, Object *from, int layer_protected)
   for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
     if (pchan->bone->layer & layer_protected) {
       if (BKE_pose_channel_find_name(frompose, pchan->name) == NULL) {
-        CLOG_ERROR(&LOG,
+        CLOG_ERROR(BKE_LOG_ARMATURE,
                    "failed to sync proxy armature because '%s' is missing pose channel '%s'",
                    from->id.name,
                    pchan->name);

@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+extern struct CLG_LogRef *BKE_LOG_ARMATURE;
+
 struct BMEditMesh;
 struct Bone;
 struct Depsgraph;

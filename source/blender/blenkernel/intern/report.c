@@ -382,10 +382,10 @@ bool BKE_report_write_file(const char *filepath, ReportList *reports, const char
   errno = 0;
   fp = BLI_fopen(filepath, "wb");
   if (fp == NULL) {
-    fprintf(stderr,
-            "Unable to save '%s': %s\n",
-            filepath,
-            errno ? strerror(errno) : "Unknown error opening file");
+    CLOG_ERROR(&LOG,
+               "Unable to save '%s': %s",
+               filepath,
+               errno ? strerror(errno) : "Unknown error opening file");
     return false;
   }
 
