@@ -21,6 +21,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -36,6 +37,8 @@
 
 #include "BKE_global.h" /* G.background only */
 #include "BKE_report.h"
+
+static CLG_LogRef LOG = {"bke.report"};
 
 const char *BKE_report_type_str(ReportType type)
 {
@@ -128,11 +131,19 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
   int len;
   const char *message = TIP_(_message);
 
-  /* in background mode always print otherwise there are cases the errors wont be displayed,
+  /* in background mode always log otherwise there are cases the errors wont be displayed,
    * but still add to the report list since this is used for python exception handling */
   if (G.background || !reports || ((reports->flag & RPT_PRINT) && (type >= reports->printlevel))) {
-    printf("%s: %s\n", BKE_report_type_str(type), message);
-    fflush(stdout); /* this ensures the message is printed before a crash */
+    // todo enable bke.report logger by default ?
+    if (type & RPT_ERROR_ALL) {
+      CLOG_ERROR(&LOG, "%s: %s", BKE_report_type_str(type), message);
+    }
+    else if (type & RPT_WARNING_ALL) {
+      CLOG_WARN(&LOG, "%s: %s", BKE_report_type_str(type), message);
+    }
+    else {
+      CLOG_INFO(&LOG, 0, "%s: %s", BKE_report_type_str(type), message);
+    }
   }
 
   if (reports && (reports->flag & RPT_STORE) && (type >= reports->storelevel)) {
@@ -158,12 +169,22 @@ void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
   const char *format = TIP_(_format);
 
   if (G.background || !reports || ((reports->flag & RPT_PRINT) && (type >= reports->printlevel))) {
-    printf("%s: ", BKE_report_type_str(type));
+    DynStr *message = BLI_dynstr_new();
     va_start(args, _format);
-    vprintf(format, args);
+    BLI_dynstr_vappendf(message, format, args);
     va_end(args);
-    fprintf(stdout, "\n"); /* otherwise each report needs to include a \n */
-    fflush(stdout);        /* this ensures the message is printed before a crash */
+    char *message_cstring = BLI_dynstr_get_cstring(message);
+    if (type & RPT_ERROR_ALL) {
+      CLOG_ERROR(&LOG, "%s: %s", BKE_report_type_str(type), message_cstring);
+    }
+    else if (type & RPT_WARNING_ALL) {
+      CLOG_WARN(&LOG, "%s: %s", BKE_report_type_str(type), message_cstring);
+    }
+    else {
+      CLOG_INFO(&LOG, 0, "%s: %s", BKE_report_type_str(type), message_cstring);
+    }
+    MEM_freeN(message_cstring);
+    BLI_dynstr_free(message);
   }
 
   if (reports && (reports->flag & RPT_STORE) && (type >= reports->storelevel)) {
