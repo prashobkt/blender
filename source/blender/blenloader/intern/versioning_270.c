@@ -82,6 +82,7 @@
 #include "readfile.h"
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 /* Make preferences read-only, use versioning_userdef.c. */
 #define U (*((const UserDef *)&U))
@@ -843,11 +844,11 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
       ModifierData *md;
       for (md = ob->modifiers.last; md != NULL; md = md->prev) {
         if (BKE_modifier_unique_name(&ob->modifiers, md)) {
-          printf(
-              "Warning: Object '%s' had several modifiers with the "
-              "same name, renamed one of them to '%s'.\n",
-              ob->id.name + 2,
-              md->name);
+          CLOG_WARN(BLENLOADER_LOG_VERSIONING,
+                    "Object '%s' had several modifiers with the "
+                    "same name, renamed one of them to '%s'",
+                    ob->id.name + 2,
+                    md->name);
         }
       }
     }

@@ -87,6 +87,7 @@
 
 #include "PIL_time.h"
 
+#include <CLG_log.h>
 #include <errno.h>
 
 /* Make preferences read-only, use versioning_userdef.c. */
@@ -260,7 +261,7 @@ static void idproperties_fix_groups_lengths_recurse(IDProperty *prop)
   }
 
   if (prop->len != i) {
-    printf("Found and fixed bad id property group length.\n");
+    CLOG_INFO(BLENLOADER_LOG_VERSIONING, 1, "Found and fixed bad id property group length");
     prop->len = i;
   }
 }
@@ -1270,7 +1271,9 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       if (cam->ortho_scale == 0.0f) {
         cam->ortho_scale = 256.0f / cam->lens;
         if (cam->type == CAM_ORTHO) {
-          printf("NOTE: ortho render has changed, tweak new Camera 'scale' value.\n");
+          CLOG_INFO(BLENLOADER_LOG_VERSIONING,
+                    0,
+                    "NOTE: ortho render has changed, tweak new Camera 'scale' value");
         }
       }
       cam = cam->id.next;
@@ -2053,7 +2056,9 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         if (psys->pointcache) {
           if (psys->pointcache->flag & PTCACHE_BAKED &&
               (psys->pointcache->flag & PTCACHE_DISK_CACHE) == 0) {
-            printf("Old memory cache isn't supported for particles, so re-bake the simulation!\n");
+            CLOG_WARN(
+                BLENLOADER_LOG_VERSIONING,
+                "Old memory cache isn't supported for particles, so re-bake the simulation!");
             psys->pointcache->flag &= ~PTCACHE_BAKED;
           }
         }
@@ -2368,7 +2373,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
         do_version_free_effects_245(&ob->effect);
 
-        printf("Old particle system converted to new system.\n");
+        CLOG_INFO(BLENLOADER_LOG_VERSIONING, 0, "Old particle system converted to new system");
       }
     }
 

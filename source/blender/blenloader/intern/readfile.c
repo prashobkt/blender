@@ -243,6 +243,7 @@
 /* Use GHash for restoring pointers by name */
 #define USE_GHASH_RESTORE_POINTER
 
+CLG_LOGREF_DECLARE_GLOBAL(BLENLOADER_LOG_VERSIONING, "blenloader.versioning");
 static CLG_LogRef BLENLOADER_LOG_READFILE = {"blenloader.readfile"};
 static CLG_LogRef BLENLOADER_LOG_UNDO = {"blenloader.undo"};
 

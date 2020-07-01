@@ -30,6 +30,8 @@
 #include "DNA_windowmanager_types.h" /* for ReportType */
 #include "zlib.h"
 
+extern struct CLG_LogRef *BLENLOADER_LOG_VERSIONING;
+
 struct GSet;
 struct IDNameLib_Map;
 struct Key;
