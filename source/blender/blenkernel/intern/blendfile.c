@@ -436,11 +436,6 @@ int BKE_blendfile_read(bContext *C,
   BlendFileData *bfd;
   bool success = false;
 
-  /* Don't print startup file loading. */
-  if (params->is_startup == false) {
-    printf("Read blend: %s\n", filepath);
-  }
-
   bfd = BLO_read_from_file(filepath, params->skip_flags, reports);
   if (bfd) {
     if (0 == handle_subversion_warning(bfd->main, reports)) {
