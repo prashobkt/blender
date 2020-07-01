@@ -2370,7 +2370,10 @@ uiPropertySplitWrapper uiItemPropertySplitWrapperCreate(uiLayout *parent_layout)
 void uiItemL(uiLayout *layout, const char *name, int icon); /* label */
 void uiItemL_ex(
     uiLayout *layout, const char *name, int icon, const bool highlight, const bool redalert);
-uiLayout *uiItemL_respect_property_split(uiLayout *layout, const char *text, int icon);
+uiBut *uiItemL_respect_property_split(uiLayout *layout,
+                                      const char *text,
+                                      int icon,
+                                      uiLayout **r_layout);
 /* label icon for dragging */
 void uiItemLDrag(uiLayout *layout, struct PointerRNA *ptr, const char *name, int icon);
 /* menu */

@@ -850,7 +850,7 @@ static void template_ID(const bContext *C,
 
   if (text) {
     /* Add label resepecting the separated layout property split state. */
-    uiItemL_respect_property_split(layout, text, ICON_NONE);
+    uiItemL_respect_property_split(layout, text, ICON_NONE, NULL);
   }
 
   if (flag & UI_ID_BROWSE) {

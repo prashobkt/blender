@@ -423,7 +423,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
     col = uiLayoutColumn(layout, true);
     /* keyframe itself */
     {
-      uiItemL_respect_property_split(col, IFACE_("Key Frame"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Key Frame"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_NUM,
                       B_REDR,
@@ -441,7 +441,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       -1,
                       NULL);
 
-      uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_NUM,
                       B_REDR,
@@ -468,7 +468,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
     if ((prevbezt) && (prevbezt->ipo == BEZT_IPO_BEZ)) {
 
       col = uiLayoutColumn(layout, true);
-      uiItemL_respect_property_split(col, IFACE_("Left Handle Type"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Left Handle Type"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_MENU,
                       B_REDR,
@@ -487,7 +487,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       "Type of left handle");
       UI_but_func_set(but, graphedit_activekey_handles_cb, fcu, bezt);
 
-      uiItemL_respect_property_split(col, IFACE_("Frame"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Frame"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_NUM,
                       B_REDR,
@@ -506,7 +506,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       NULL);
       UI_but_func_set(but, graphedit_activekey_left_handle_coord_cb, fcu, bezt);
 
-      uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_NUM,
                       B_REDR,
@@ -532,7 +532,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
       /* NOTE: special update callbacks are needed on the coords here due to T39911 */
 
       col = uiLayoutColumn(layout, true);
-      uiItemL_respect_property_split(col, IFACE_("Right Handle Type"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Right Handle Type"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_MENU,
                       B_REDR,
@@ -551,7 +551,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       "Type of right handle");
       UI_but_func_set(but, graphedit_activekey_handles_cb, fcu, bezt);
 
-      uiItemL_respect_property_split(col, IFACE_("Frame"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Frame"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_NUM,
                       B_REDR,
@@ -570,7 +570,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       NULL);
       UI_but_func_set(but, graphedit_activekey_right_handle_coord_cb, fcu, bezt);
 
-      uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE);
+      uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE, NULL);
       but = uiDefButR(block,
                       UI_BTYPE_NUM,
                       B_REDR,
