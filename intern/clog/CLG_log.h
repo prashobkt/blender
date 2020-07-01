@@ -87,7 +87,6 @@ extern "C" {
 
 /* For printing timestamp. */
 #define __STDC_FORMAT_MACROS
-#include <DNA_windowmanager_types.h>
 #include <inttypes.h>
 
 #define STRINGIFY_ARG(x) "" #x
@@ -125,9 +124,8 @@ typedef struct CLG_LogRef {
   CLG_LogType *type;
 } CLG_LogRef;
 
-
 typedef struct CLG_LogRecord {
-  /** Link for ListBase */
+  /** Link for clog version of ListBase */
   struct CLG_LogRecord *next, *prev;
   /** track where does the log comes from */
   CLG_LogType *type;
@@ -137,6 +135,11 @@ typedef struct CLG_LogRecord {
   const char *function;
   char *message;
 } CLG_LogRecord;
+
+/** clog version of ListBase */
+typedef struct LogRecordList {
+  struct CLG_LogRecord *first, *last;
+} LogRecordList;
 
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
@@ -172,7 +175,7 @@ void CLG_type_filter_include(const char *type_filter, int type_filter_len);
 void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
 void CLG_level_set(int level);
-struct ListBase *CLG_log_record_get(void );
+struct LogRecordList *CLG_log_record_get(void);
 
 void CLG_logref_init(CLG_LogRef *clg_ref);
 

@@ -44,14 +44,12 @@
 
 /* For printing timestamp. */
 #define __STDC_FORMAT_MACROS
-#include <DNA_windowmanager_types.h>
 #include <inttypes.h>
 
 /* Only other dependency (could use regular malloc too). */
 #include "MEM_guardedalloc.h"
 
 /* own include. */
-#include "../../source/blender/blenlib/BLI_blenlib.h"
 #include "CLG_log.h"
 
 /* Local utility defines */
@@ -74,21 +72,10 @@ typedef struct CLG_IDFilter {
   char match[0];
 } CLG_IDFilter;
 
-typedef struct LogRecord {
-  /** track where does the log comes from */
-  CLG_LogType *type;
-  enum CLG_Severity severity;
-  uint64_t timestamp;
-  const char *file;
-  const char *line;
-  const char *function;
-  char *message;
-} LogRecord;
-
 typedef struct CLogContext {
   /** Single linked list of types.  */
   CLG_LogType *types;
-  ListBase log_records;
+  LogRecordList log_records;
 
 #ifdef WITH_CLOG_PTHREADS
   pthread_mutex_t types_lock;
@@ -515,6 +502,26 @@ void CLG_log_str(CLG_LogType *lg,
   }
 }
 
+/** Clog version of BLI_addtail (to avoid making dependency) */
+static void CLG_report_append(LogRecordList *listbase, CLG_LogRecord *link)
+{
+
+  if (link == NULL) {
+    return;
+  }
+
+  link->next = NULL;
+  link->prev = listbase->last;
+
+  if (listbase->last) {
+    listbase->last->next = link;
+  }
+  if (listbase->first == NULL) {
+    listbase->first = link;
+  }
+  listbase->last = link;
+}
+
 void CLG_logf(CLG_LogType *lg,
               enum CLG_Severity severity,
               const char *file_line,
@@ -546,7 +553,7 @@ void CLG_logf(CLG_LogType *lg,
   char *message = MEM_callocN(cstr.len - csr_size_before_va + 1, "LogMessage");
   memcpy(message, cstr.data + csr_size_before_va, cstr.len - csr_size_before_va);
   CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, fn, message);
-  BLI_addtail(&(lg->ctx->log_records), log_record);
+  CLG_report_append(&(lg->ctx->log_records), log_record);
 
   clg_str_append(&cstr, "\n");
 
@@ -640,7 +647,7 @@ static void CLG_ctx_level_set(CLogContext *ctx, int level)
   }
 }
 
-static ListBase *CLG_ctx_log_record_get(CLogContext *ctx)
+static LogRecordList *CLG_ctx_log_record_get(CLogContext *ctx)
 {
   return &ctx->log_records;
 }
@@ -666,7 +673,8 @@ static void CLG_ctx_free(CLogContext *ctx)
     clog_log_record_free(log);
     log = log_next;
   }
-  BLI_listbase_clear(&ctx->log_records);
+  ctx->log_records.first= NULL;
+  ctx->log_records.last= NULL;
 
   while (ctx->types != NULL) {
     CLG_LogType *item = ctx->types;
@@ -750,7 +758,7 @@ void CLG_level_set(int level)
   CLG_ctx_level_set(g_ctx, level);
 }
 
-ListBase *CLG_log_record_get()
+LogRecordList *CLG_log_record_get()
 {
   return CLG_ctx_log_record_get(g_ctx);
 }
