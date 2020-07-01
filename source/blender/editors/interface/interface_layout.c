@@ -5488,7 +5488,17 @@ static bool ui_block_search_layout(uiBlock *block)
   }
 
   /* Set empty flags. */
-  SET_FLAG_FROM_TEST(block->flag, all_roots_empty || block->search_only, UI_BLOCK_FILTERED_EMPTY);
+  if (all_roots_empty || block->search_only) {
+    /* Make sure all of the block's buttons are hidden. They might not have
+     * been hidden if a layout wasn't searched. */
+    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+      but->flag |= UI_HIDDEN;
+    }
+    block->flag |= UI_BLOCK_FILTERED_EMPTY;
+  }
+  else {
+    block->flag &= ~UI_BLOCK_FILTERED_EMPTY;
+  }
   if (block->panel != NULL) {
     ui_panel_set_search_filtered(block->panel, all_roots_empty);
   }
