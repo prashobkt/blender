@@ -786,7 +786,7 @@ static void lib_relocate_do(Main *bmain,
     }
     if (new_id) {
       CLOG_INFO(WM_LOG_OPERATORS,
-                1,
+                3,
                 "before remap of %s, old_id users: %d, new_id users: %d",
                 old_id->name,
                 old_id->us,
@@ -799,7 +799,7 @@ static void lib_relocate_do(Main *bmain,
       }
 
       CLOG_INFO(WM_LOG_OPERATORS,
-                1,
+                3,
                 "after remap of %s, old_id users: %d, new_id users: %d",
                 old_id->name,
                 old_id->us,
@@ -993,8 +993,8 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
 
     if (BLI_path_cmp(lib->filepath_abs, path) == 0) {
       CLOG_INFO(WM_LOG_OPERATORS,
-                0,
-                "We are supposed to reload '%s' lib (%d)...\n",
+                2,
+                "We are supposed to reload '%s' lib (%d)...",
                 lib->filepath,
                 lib->id.us);
 
@@ -1037,14 +1037,13 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
           }
 
           CLOG_INFO(
-              WM_LOG_OPERATORS, 1, "\t candidate new lib to reload datablocks from: %s\n", path);
+              WM_LOG_OPERATORS, 3, "\t candidate new lib to reload datablocks from: %s", path);
           wm_link_append_data_library_add(lapp_data, path);
         }
         RNA_END;
       }
       else {
-        CLOG_INFO(
-            WM_LOG_OPERATORS, 1, "\t candidate new lib to reload datablocks from: %s\n", path);
+        CLOG_INFO(WM_LOG_OPERATORS, 3, "\t candidate new lib to reload datablocks from: %s", path);
         wm_link_append_data_library_add(lapp_data, path);
       }
     }

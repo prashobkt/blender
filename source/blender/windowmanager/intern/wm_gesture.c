@@ -165,33 +165,31 @@ int wm_gesture_evaluate(wmGesture *gesture, const wmEvent *event)
         val = EVT_GESTURE_SW;
       }
 
-#if 0
       /* debug */
       if (val == 1) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak north");
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak north");
       }
-      if (val == 2) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak north-east");
+      else if (val == 2) {
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak north-east");
       }
-      if (val == 3) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak east");
+      else if (val == 3) {
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak east");
       }
-      if (val == 4) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak south-east");
+      else if (val == 4) {
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak south-east");
       }
-      if (val == 5) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak south");
+      else if (val == 5) {
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak south");
       }
-      if (val == 6) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak south-west");
+      else if (val == 6) {
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak south-west");
       }
-      if (val == 7) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak west");
+      else if (val == 7) {
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak west");
       }
-      if (val == 8) {
-        CLOG_INFO(WM_LOG_EVENTS, 2, "tweak north-west");
+      else if (val == 8) {
+        CLOG_INFO(WM_LOG_EVENTS, 5, "tweak north-west");
       }
-#endif
       return val;
     }
   }

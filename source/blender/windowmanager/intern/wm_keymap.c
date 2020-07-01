@@ -1339,16 +1339,6 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
 
     if (STREQ(kmi->idname, opname)) {
       if (properties) {
-        /* example of debugging keymaps */
-#if 0
-        if (kmi->ptr) {
-          if (STREQ("MESH_OT_rip_move", opname)) {
-            // todo does IDP_print_str leak memory in this usagenk?
-            CLOG_INFO(WM_LOG_KEYMAPS, 0, "OPERATOR: %s", IDP_print_str(properties));
-            CLOG_INFO(WM_LOG_KEYMAPS, 0, "KEYMAP: %s", IDP_print_str(kmi->ptr->data));
-          }
-        }
-#endif
 
         if (kmi->ptr && IDP_EqualsProperties_ex(properties, kmi->ptr->data, is_strict)) {
           kmi_match = true;
@@ -1376,11 +1366,13 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
                           opname,
                           keymap->idname,
                           kmi_str);
-#ifndef NDEBUG
-#  ifdef WITH_PYTHON
-                CLOG_INFO(WM_LOG_KEYMAPS, 0, "OPERATOR: %s", IDP_print_str(properties));
-                CLOG_INFO(WM_LOG_KEYMAPS, 0, "KEYMAP: %s", IDP_print_str(kmi->ptr->data));
-#  endif
+#ifdef WITH_PYTHON
+                char *operator_str = IDP_sprintN(properties);
+                CLOG_INFO(WM_LOG_KEYMAPS, 4, "OPERATOR: %s", operator_str);
+                MEM_freeN(operator_str);
+                char *keymap_str = IDP_sprintN(kmi->ptr->data);
+                CLOG_INFO(WM_LOG_KEYMAPS, 4, "KEYMAP: %s", keymap_str);
+                MEM_freeN(keymap_str);
 #endif
               }
 
@@ -1586,11 +1578,13 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
                     opname,
                     km->idname,
                     kmi_str);
-#ifndef NDEBUG
-#  ifdef WITH_PYTHON
-          CLOG_INFO(WM_LOG_KEYMAPS, 0, "OPERATOR: %s", IDP_print_str(properties));
-          CLOG_INFO(WM_LOG_KEYMAPS, 0, "KEYMAP: %s", IDP_print_str(kmi->ptr->data));
-#  endif
+#ifdef WITH_PYTHON
+          char *operator_str = IDP_sprintN(properties);
+          CLOG_INFO(WM_LOG_KEYMAPS, 4, "OPERATOR: %s", operator_str);
+          MEM_freeN(operator_str);
+          char *keymap_str = IDP_sprintN(kmi->ptr->data);
+          CLOG_INFO(WM_LOG_KEYMAPS, 4, "KEYMAP: %s", keymap_str);
+          MEM_freeN(keymap_str);
 #endif
         }
 
