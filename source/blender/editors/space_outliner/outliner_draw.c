@@ -2842,39 +2842,20 @@ static void tselem_draw_icon(uiBlock *block,
     }
   }
   else {
-    if (outliner_is_collection_tree_element(te)) {
-      uchar color[4];
-      float col[4];
-      float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
-      x += 2.0f * aspect;
-      y += 2.0f * aspect;
-      Collection *collection = outliner_collection_from_tree_element(te);
-      if (collection->color != COLLECTION_COLOR_NONE) {
-        outliner_get_collection_color(col, collection->color);
-        rgba_float_to_uchar(color, col);
-        UI_icon_draw_ex(x, y, data.icon, U.inv_dpi_fac, alpha, 0.0f, color, true);
-      }
-      else {
-        UI_icon_draw_ex(x, y, data.icon, U.inv_dpi_fac, alpha, 0.0f, NULL, false);
-      }
-    }
-    else {
-      uiDefIconBut(block,
-                   UI_BTYPE_LABEL,
-                   0,
-                   data.icon,
-                   x,
-                   y,
-                   UI_UNIT_X,
-                   UI_UNIT_Y,
-                   NULL,
-                   0.0,
-                   0.0,
-                   1.0,
-                   alpha,
-                   (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath :
-                                                                  "");
-    }
+    uiDefIconBut(block,
+                 UI_BTYPE_LABEL,
+                 0,
+                 data.icon,
+                 x,
+                 y,
+                 UI_UNIT_X,
+                 UI_UNIT_Y,
+                 NULL,
+                 0.0,
+                 0.0,
+                 1.0,
+                 alpha,
+                 (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath : "");
   }
 }
 
@@ -3266,6 +3247,26 @@ static void outliner_draw_tree_element(bContext *C,
       te->flag |= TE_ACTIVE;  // for lookup in display hierarchies
     }
 
+    /* collection colors */
+    if (outliner_is_collection_tree_element(te)) {
+      Collection *collection = outliner_collection_from_tree_element(te);
+
+      if (collection->color != COLLECTION_COLOR_NONE) {
+        float color[4];
+        outliner_get_collection_color(color, collection->color);
+
+        UI_draw_roundbox_corner_set(UI_CNR_ALL);
+        UI_draw_roundbox_aa(true,
+                            (float)startx + offsx + UI_UNIT_X,
+                            (float)*starty + ufac,
+                            (float)startx + offsx + 2.0f * UI_UNIT_X,
+                            (float)*starty + UI_UNIT_Y - ufac,
+                            UI_UNIT_Y / 4.0f,
+                            color);
+        GPU_blend(true);
+      }
+    }
+
     if (tselem->type == TSE_VIEW_COLLECTION_BASE) {
       /* Scene collection in view layer can't expand/collapse. */
     }
@@ -3617,19 +3618,6 @@ static void outliner_draw_highlights_recursive(uint pos,
           immUniformColor4fv(col_highlight);
           immRecti(pos, 0, start_y, end_x, start_y + UI_UNIT_Y);
         }
-      }
-    }
-
-    /* collection color */
-    if (outliner_is_collection_tree_element(te)) {
-      Collection *collection = outliner_collection_from_tree_element(te);
-
-      if (collection->color != COLLECTION_COLOR_NONE) {
-        float col[4];
-
-        outliner_get_collection_color(col, collection->color);
-        immUniformColor4fv(col);
-        immRecti(pos, 0, start_y, U.pixelsize * 3, start_y + UI_UNIT_Y);
       }
     }
 
