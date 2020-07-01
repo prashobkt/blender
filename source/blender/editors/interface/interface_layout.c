@@ -1920,28 +1920,34 @@ static uiLayout *ui_layout_heading_find(uiLayout *cur_layout)
   return NULL;
 }
 
-static void ui_layout_heading_label_add(uiLayout *layout,
-                                        uiLayout *heading_layout,
-                                        bool right_align,
-                                        bool respect_prop_split)
+/**
+ * \return The label button added.
+ */
+static uiBut *ui_layout_heading_label_add(uiLayout *layout,
+                                          uiLayout *heading_layout,
+                                          bool right_align,
+                                          bool respect_prop_split)
 {
   const int prev_alignment = layout->alignment;
+  uiBut *label_but = NULL;
 
   if (right_align) {
     uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_RIGHT);
   }
 
   if (respect_prop_split) {
-    uiItemL_respect_property_split(layout, heading_layout->heading, ICON_NONE, NULL);
+    label_but = uiItemL_respect_property_split(layout, heading_layout->heading, ICON_NONE, NULL);
   }
   else {
-    uiItemL(layout, heading_layout->heading, ICON_NONE);
+    label_but = uiItemL_(layout, heading_layout->heading, ICON_NONE);
   }
   /* After adding the heading label, we have to mark it somehow as added, so it's not added again
    * for other items in this layout. For now just clear it. */
   heading_layout->heading[0] = '\0';
 
   layout->alignment = prev_alignment;
+
+  return label_but;
 }
 
 /**
@@ -2146,7 +2152,7 @@ void uiItemFullR(uiLayout *layout,
       layout = uiLayoutColumn(layout_row ? layout_row : layout, true);
       layout->space = 0;
       if (heading_layout) {
-        ui_layout_heading_label_add(layout, heading_layout, false, false);
+        label_but = ui_layout_heading_label_add(layout, heading_layout, false, false);
       }
     }
     else {
@@ -2205,7 +2211,7 @@ void uiItemFullR(uiLayout *layout,
       }
 
       if (!label_added && heading_layout) {
-        ui_layout_heading_label_add(layout_sub, heading_layout, true, false);
+        label_but = ui_layout_heading_label_add(layout_sub, heading_layout, true, false);
         label_added = true;
       }
 
@@ -2254,7 +2260,7 @@ void uiItemFullR(uiLayout *layout,
   else if (heading_layout) {
     /* Could not add heading to split layout, fallback to inserting it to the layout with the
      * heading itself. */
-    ui_layout_heading_label_add(heading_layout, heading_layout, false, false);
+    label_but = ui_layout_heading_label_add(heading_layout, heading_layout, false, false);
   }
 
   /* array property */

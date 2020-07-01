@@ -185,15 +185,17 @@ static bool panel_active_animation_changed(ListBase *lb, Panel **pa_animation, b
     }
 
     /* Detect search filter flag changes */
-    if ((panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
-        !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
-      *pa_animation = panel;
-      return false;
-    }
-    if (!(panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
-        (panel->runtime_flag & PNL_SEARCH_FILTERED)) {
-      *pa_animation = panel;
-      return false;
+    if (!(panel->flag & PNL_NEW_ADDED)) {
+      if ((panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
+          !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
+        *pa_animation = panel;
+        return false;
+      }
+      if (!(panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
+          (panel->runtime_flag & PNL_SEARCH_FILTERED)) {
+        *pa_animation = panel;
+        return false;
+      }
     }
 
     if ((panel->runtime_flag & PNL_ACTIVE) && !(panel->flag & PNL_CLOSED)) {
@@ -272,6 +274,7 @@ static Panel *UI_panel_add_instanced_ex(ScrArea *area,
 
   panel->runtime.list_index = list_index;
   panel->runtime.custom_data_ptr = custom_data;
+  panel->runtime_flag |= PNL_NEW_ADDED;
 
   /* Add the panel's children too. Although they aren't instanced panels, we can still use this
    * function to create them, as UI_panel_begin does other things we don't need to do. */
