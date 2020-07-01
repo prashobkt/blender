@@ -951,13 +951,9 @@ char *BKE_animsys_fix_rna_path_rename(ID *owner_id,
   }
 
   /* fix given path */
-  if (G.debug & G_DEBUG) {
-    printf("%s | %s  | oldpath = %p ", oldN, newN, old_path);
-  }
+  CLOG_INFO(&LOG, 3, "%s | %s  | oldpath = %p ", oldN, newN, old_path);
   result = rna_path_rename_fix(owner_id, prefix, oldN, newN, old_path, verify_paths);
-  if (G.debug & G_DEBUG) {
-    printf("path rename result = %p\n", result);
-  }
+  CLOG_INFO(&LOG, 3, "path rename result = %p\n", result);
 
   /* free the temp names */
   MEM_freeN(oldN);

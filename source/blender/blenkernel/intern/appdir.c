@@ -108,8 +108,6 @@ const char *BKE_appdir_folder_default(void)
 #endif /* WIN32 */
 }
 
-// #define PATH_DEBUG
-
 /* returns a formatted representation of the specified version number. Non-re-entrant! */
 static char *blender_version_decimal(const int ver)
 {
@@ -149,15 +147,11 @@ static bool test_path(char *targetpath,
    * if folder_name is specified but not otherwise? */
 
   if (BLI_is_dir(targetpath)) {
-#ifdef PATH_DEBUG
-    printf("\t%s found: %s\n", __func__, targetpath);
-#endif
+    CLOG_INFO(&LOG, 1, "\tfound: %s", targetpath);
     return true;
   }
   else {
-#ifdef PATH_DEBUG
-    printf("\t%s missing: %s\n", __func__, targetpath);
-#endif
+    CLOG_INFO(&LOG, 1, "\tmissing: %s", targetpath);
     // targetpath[0] = '\0';
     return false;
   }
@@ -176,16 +170,12 @@ static bool test_env_path(char *path, const char *envvar)
 
   if (BLI_is_dir(env)) {
     BLI_strncpy(path, env, FILE_MAX);
-#ifdef PATH_DEBUG
-    printf("\t%s env %s found: %s\n", __func__, envvar, env);
-#endif
+    CLOG_INFO(&LOG, 1, "\tenv %s found: %s", envvar, env);
     return true;
   }
   else {
     path[0] = '\0';
-#ifdef PATH_DEBUG
-    printf("\t%s env %s missing: %s\n", __func__, envvar, env);
-#endif
+    CLOG_INFO(&LOG, 1, "\tenv %s missing: %s", envvar, env);
     return false;
   }
 }
@@ -207,10 +197,6 @@ static bool get_path_local(char *targetpath,
                            const int ver)
 {
   char relfolder[FILE_MAX];
-
-#ifdef PATH_DEBUG
-  printf("%s...\n", __func__);
-#endif
 
   if (folder_name) {
     if (subfolder_name) {
@@ -340,9 +326,7 @@ static bool get_path_user(char *targetpath,
     return false;
   }
 
-#ifdef PATH_DEBUG
-  printf("%s: %s\n", __func__, user_path);
-#endif
+  CLOG_INFO(&LOG, 4, "user_path: %s", user_path);
 
   if (subfolder_name) {
     return test_path(targetpath, targetpath_len, user_path, folder_name, subfolder_name);
@@ -393,9 +377,7 @@ static bool get_path_system(char *targetpath,
     return false;
   }
 
-#ifdef PATH_DEBUG
-  printf("%s: %s\n", __func__, system_path);
-#endif
+  CLOG_INFO(&LOG, 3, "%s", system_path);
 
   if (subfolder_name) {
     /* try $BLENDERPATH/folder_name/subfolder_name */
@@ -630,10 +612,6 @@ const char *BKE_appdir_folder_id_version(const int folder_id, const int ver, con
   return path;
 }
 
-#ifdef PATH_DEBUG
-#  undef PATH_DEBUG
-#endif
-
 /* -------------------------------------------------------------------- */
 /* Preset paths */
 
@@ -705,11 +683,9 @@ static void where_am_i(char *fullname, const size_t maxlen, const char *name)
     /* Remove "/./" and "/../" so string comparisons can be used on the path. */
     BLI_path_normalize(NULL, fullname);
 
-#if defined(DEBUG)
     if (!STREQ(name, fullname)) {
       CLOG_INFO(&LOG, 2, "guessing '%s' == '%s'", name, fullname);
     }
-#endif
   }
 }
 

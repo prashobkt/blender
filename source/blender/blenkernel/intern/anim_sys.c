@@ -633,15 +633,12 @@ static void action_idcode_patch_check(ID *id, bAction *act)
     act->idroot = idcode;
   }
   else if (act->idroot != idcode) {
-    /* only report this error if debug mode is enabled (to save performance everywhere else) */
-    if (G.debug & G_DEBUG) {
-      printf(
-          "AnimSys Safety Check Failed: Action '%s' is not meant to be used from ID-Blocks of "
-          "type %d such as '%s'\n",
-          act->id.name + 2,
-          idcode,
-          id->name);
-    }
+    CLOG_WARN(&LOG,
+              "AnimSys Safety Check Failed: Action '%s' is not meant to be used from ID-Blocks of "
+              "type %d such as '%s'",
+              act->id.name + 2,
+              idcode,
+              id->name);
   }
 }
 
@@ -1294,12 +1291,10 @@ static NlaEvalChannel *nlaevalchan_verify(PointerRNA *ptr, NlaEvalData *nlaeval,
 
   if (!RNA_path_resolve_property(ptr, path, &key.ptr, &key.prop)) {
     /* Report failure to resolve the path. */
-    if (G.debug & G_DEBUG) {
-      CLOG_WARN(&LOG,
-                "Animato: Invalid path. ID = '%s',  '%s'",
-                (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
-                path);
-    }
+    CLOG_WARN(&LOG,
+              "Animato: Invalid path. ID = '%s',  '%s'",
+              (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
+              path);
 
     return NULL;
   }
@@ -1537,15 +1532,13 @@ static bool nlaeval_blend_value(NlaBlendData *blend,
   int index = nlaevalchan_validate_index(nec, array_index);
 
   if (index < 0) {
-    if (G.debug & G_DEBUG) {
-      ID *id = nec->key.ptr.owner_id;
-      CLOG_WARN(&LOG,
-                "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
-                id ? (id->name + 2) : "<No ID>",
-                nec->rna_path,
-                array_index,
-                nec->base_snapshot.length);
-    }
+    ID *id = nec->key.ptr.owner_id;
+    CLOG_WARN(&LOG,
+              "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
+              id ? (id->name + 2) : "<No ID>",
+              nec->rna_path,
+              array_index,
+              nec->base_snapshot.length);
 
     return false;
   }
@@ -2260,9 +2253,7 @@ static void animsys_calculate_nla(PointerRNA *ptr,
   else {
     /* special case - evaluate as if there isn't any NLA data */
     /* TODO: this is really just a stop-gap measure... */
-    if (G.debug & G_DEBUG) {
-      CLOG_WARN(&LOG, "NLA Eval: Stopgap for active action on NLA Stack - no strips case");
-    }
+    CLOG_WARN(&LOG, "NLA Eval: Stopgap for active action on NLA Stack - no strips case");
 
     animsys_evaluate_action(ptr, adt->action, ctime, flush_to_original);
   }
@@ -2560,9 +2551,7 @@ void BKE_animsys_evaluate_all_animation(Main *main, Depsgraph *depsgraph, float 
 {
   ID *id;
 
-  if (G.debug & G_DEBUG) {
-    printf("Evaluate all animation - %f\n", ctime);
-  }
+  CLOG_INFO(&LOG, 3, "Evaluate all animation - %f", ctime);
 
   const bool flush_to_original = DEG_is_active(depsgraph);
 
@@ -2610,9 +2599,7 @@ void BKE_animsys_evaluate_all_animation(Main *main, Depsgraph *depsgraph, float 
    * set correctly, so this optimization must be skipped in that case...
    */
   if (BLI_listbase_is_empty(&main->actions) && BLI_listbase_is_empty(&main->curves)) {
-    if (G.debug & G_DEBUG) {
-      printf("\tNo Actions, so no animation needs to be evaluated...\n");
-    }
+    CLOG_INFO(&LOG, 3, "\tNo Actions, so no animation needs to be evaluated...");
 
     return;
   }
