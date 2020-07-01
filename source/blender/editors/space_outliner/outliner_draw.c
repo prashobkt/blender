@@ -1923,21 +1923,6 @@ static void outliner_buttons(const bContext *C,
   }
 }
 
-static void outliner_data_activate_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
-{
-  SpaceOutliner *soops = CTX_wm_space_outliner(C);
-  TreeStoreElem *tselem = (TreeStoreElem *)tselem_poin;
-  TreeViewContext tvc;
-  outliner_viewcontext_init(C, &tvc);
-
-  TreeElement *te = outliner_find_tree_element(&soops->tree, tselem);
-  if (!te) {
-    return;
-  }
-
-  outliner_set_active_data(C, &tvc, te, tselem);
-}
-
 static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void *UNUSED(arg2))
 {
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
@@ -1951,92 +1936,6 @@ static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void *UNUSED
   }
 
   outliner_item_mode_toggle(C, &tvc, te, true);
-}
-
-/* Draw icons for setting activation when in object mode */
-static void outliner_draw_mode_column_activation(const bContext *C,
-                                                 uiBlock *block,
-                                                 TreeViewContext *UNUSED(tvc),
-                                                 TreeElement *te,
-                                                 TreeStoreElem *tselem)
-{
-  uiBut *but;
-#ifdef OL_SCENE_CAMERA_TOGGLE
-  if (tselem->type == 0 && te->idcode == ID_OB) {
-    Object *ob = (Object *)tselem->id;
-
-    if (ob->type == OB_CAMERA) {
-      const bool is_active_camera = tvc->scene->camera == ob;
-
-      but = uiDefIconBut(block,
-                         UI_BTYPE_ICON_TOGGLE,
-                         0,
-                         (is_active_camera ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF),
-                         0,
-                         te->ys,
-                         UI_UNIT_X,
-                         UI_UNIT_Y,
-                         NULL,
-                         0.0,
-                         0.0,
-                         0.0,
-                         0.0,
-                         (is_active_camera ? "" : TIP_("Set active camera")));
-
-      if (!is_active_camera) {
-        UI_but_func_set(but, outliner_data_activate_fn, tselem, NULL);
-      }
-    }
-  }
-  else if (tselem->type == 0 && te->idcode == ID_SCE) {
-    Scene *scene = (Scene *)tselem->id;
-    const bool is_active_scene = tvc->scene == scene;
-
-    but = uiDefIconBut(block,
-                       UI_BTYPE_ICON_TOGGLE,
-                       0,
-                       (is_active_scene ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF),
-                       0,
-                       te->ys,
-                       UI_UNIT_X,
-                       UI_UNIT_Y,
-                       NULL,
-                       0.0,
-                       0.0,
-                       0.0,
-                       0.0,
-                       (is_active_scene ? "" : TIP_("Set active scene")));
-
-    if (!is_active_scene) {
-      UI_but_func_set(but, outliner_data_activate_fn, tselem, NULL);
-    }
-  }
-#endif
-  if (outliner_is_collection_tree_element(te)) {
-    Collection *active_collection = CTX_data_layer_collection(C)->collection;
-
-    const bool is_active_collection = active_collection ==
-                                      outliner_collection_from_tree_element(te);
-
-    but = uiDefIconBut(block,
-                       UI_BTYPE_ICON_TOGGLE,
-                       0,
-                       (is_active_collection ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF),
-                       0,
-                       te->ys,
-                       UI_UNIT_X,
-                       UI_UNIT_Y,
-                       NULL,
-                       0.0,
-                       0.0,
-                       0.0,
-                       0.0,
-                       (is_active_collection ? "" : TIP_("Set active collection")));
-
-    if (!is_active_collection) {
-      UI_but_func_set(but, outliner_data_activate_fn, tselem, NULL);
-    }
-  }
 }
 
 /* Return the icon for a given interaction mode
@@ -2147,10 +2046,6 @@ static void outliner_draw_mode_column(
 
     if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
       outliner_draw_mode_column_toggle(block, tvc, te, tselem, lock_object_modes);
-    }
-    /* TODO (Nathan): Should the active icons always draw, or be hidden in non-object modes? */
-    else {
-      outliner_draw_mode_column_activation(C, block, tvc, te, tselem);
     }
 
     if (TSELEM_OPEN(tselem, soops)) {
@@ -3961,7 +3856,7 @@ void draw_outliner(const bContext *C)
   /* set matrix for 2d-view controls */
   UI_view2d_view_ortho(v2d);
 
-  /* Only show mode toggle and activation column in View Layers and Scenes view */
+  /* Only show mode column in View Layers and Scenes view */
   const bool use_mode_column = (soops->flag & SO_MODE_COLUMN) &&
                                (ELEM(soops->outlinevis, SO_VIEW_LAYER, SO_SCENES));
 
@@ -4000,7 +3895,7 @@ void draw_outliner(const bContext *C)
         block, tvc.scene, tvc.view_layer, region, soops, &soops->tree, props_active);
   }
 
-  /* Draw mode toggle and activation icons */
+  /* Draw mode icons */
   if (use_mode_column) {
     outliner_draw_mode_column(C, block, &tvc, soops, &soops->tree);
   }

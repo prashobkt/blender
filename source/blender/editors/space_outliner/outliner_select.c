@@ -1295,6 +1295,7 @@ static void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem 
   WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
 }
 
+/* TODO (Nathan): Remove */
 void outliner_set_active_data(bContext *C,
                               TreeViewContext *tvc,
                               TreeElement *te,
