@@ -34,6 +34,8 @@ extern "C" {
 /* enable this only if needed (unused circa 2016) */
 #define BLF_BLUR_ENABLE 0
 
+extern struct CLG_LogRef *BLENFONT_LOG;
+
 struct ColorManagedDisplay;
 struct ResultBLF;
 struct rctf;
@@ -263,9 +265,7 @@ void BLF_thumb_preview(const char *filename,
 int BLF_load_default(const bool unique);
 int BLF_load_mono_default(const bool unique);
 
-#ifdef DEBUG
-void BLF_state_print(int fontid);
-#endif
+char *BLF_state_sprintN(int fontid);
 
 /* font->flags. */
 #define BLF_ROTATION (1 << 0)

@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <BLI_dynstr.h>
+#include <CLG_log.h>
 #include <ft2build.h>
 
 #include FT_FREETYPE_H
@@ -69,6 +71,8 @@
     memset(r_info, 0, sizeof(*(r_info))); \
   } \
   ((void)0)
+
+CLG_LOGREF_DECLARE_GLOBAL(BLENFONT_LOG, "blenfont");
 
 /* Font array. */
 static FontBLF *global_font[BLF_MAX_FONT] = {NULL};
@@ -222,13 +226,13 @@ int BLF_load_unique(const char *name)
    */
   i = blf_search_available();
   if (i == -1) {
-    printf("Too many fonts!!!\n");
+    CLOG_ERROR(BLENFONT_LOG, "Too many fonts (max %d)!!!", BLF_MAX_FONT);
     return -1;
   }
 
   filename = blf_dir_search(name);
   if (!filename) {
-    printf("Can't find font: %s\n", name);
+    CLOG_ERROR(BLENFONT_LOG, "Can't find font: %s", name);
     return -1;
   }
 
@@ -236,7 +240,7 @@ int BLF_load_unique(const char *name)
   MEM_freeN(filename);
 
   if (!font) {
-    printf("Can't load font: %s\n", name);
+    CLOG_ERROR(BLENFONT_LOG, "Can't load font: %s", name);
     return -1;
   }
 
@@ -277,18 +281,18 @@ int BLF_load_mem_unique(const char *name, const unsigned char *mem, int mem_size
    */
   i = blf_search_available();
   if (i == -1) {
-    printf("Too many fonts!!!\n");
+    CLOG_ERROR(BLENFONT_LOG, "Too many fonts (max %d)!!!", BLF_MAX_FONT);
     return -1;
   }
 
   if (!mem_size) {
-    printf("Can't load font: %s from memory!!\n", name);
+    CLOG_ERROR(BLENFONT_LOG, "Can't load font: %s from memory!!", name);
     return -1;
   }
 
   font = blf_font_new_from_mem(name, mem, mem_size);
   if (!font) {
-    printf("Can't load font: %s from memory!!\n", name);
+    CLOG_ERROR(BLENFONT_LOG, "Can't load font: %s from memory!!", name);
     return -1;
   }
 
@@ -1000,25 +1004,38 @@ void BLF_draw_buffer(int fontid, const char *str, size_t len)
   BLF_draw_buffer_ex(fontid, str, len, NULL);
 }
 
-#ifdef DEBUG
-void BLF_state_print(int fontid)
+/* example usage: CLOG_STR_INFO_N(BLENFONT_LOG, 2, BLF_state_sprintN(font_id)); */
+char *BLF_state_sprintN(int fontid)
 {
+  DynStr *message = BLI_dynstr_new();
   FontBLF *font = blf_get(fontid);
   if (font) {
-    printf("fontid %d %p\n", fontid, (void *)font);
-    printf("  name:    '%s'\n", font->name);
-    printf("  size:     %u\n", font->size);
-    printf("  dpi:      %u\n", font->dpi);
-    printf("  pos:      %.6f %.6f %.6f\n", UNPACK3(font->pos));
-    printf("  aspect:   (%d) %.6f %.6f %.6f\n",
-           (font->flags & BLF_ROTATION) != 0,
-           UNPACK3(font->aspect));
-    printf("  angle:    (%d) %.6f\n", (font->flags & BLF_ASPECT) != 0, font->angle);
-    printf("  flag:     %d\n", font->flags);
+    BLI_dynstr_appendf(message,
+                       "fontid %d %p\n"
+                       "  name:    '%s'\n"
+                       "  size:     %u\n"
+                       "  dpi:      %u\n"
+                       "  pos:      %.6f %.6f %.6f\n"
+                       "  aspect:   (%d) %.6f %.6f %.6f\n"
+                       "  angle:    (%d) %.6f\n"
+                       "  flag:     %d",
+                       fontid,
+                       (void *)font,
+                       font->name,
+                       font->size,
+                       font->dpi,
+                       UNPACK3(font->pos),
+                       (font->flags & BLF_ROTATION) != 0,
+                       UNPACK3(font->aspect),
+                       (font->flags & BLF_ASPECT) != 0,
+                       font->angle,
+                       font->flags);
   }
   else {
-    printf("fontid %d (NULL)\n", fontid);
+    BLI_dynstr_appendf(message, "fontid %d (NULL)", fontid);
   }
-  fflush(stdout);
+
+  char *cstring = BLI_dynstr_get_cstring(message);
+  BLI_dynstr_free(message);
+  return cstring;
 }
-#endif

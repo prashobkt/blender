@@ -23,6 +23,7 @@
  * API for loading default font files.
  */
 
+#include <CLG_log.h>
 #include <stdio.h>
 
 #include "BLF_api.h"
@@ -35,10 +36,9 @@ static int blf_load_font_default(const char *filename, const bool unique)
 {
   const char *dir = BKE_appdir_folder_id(BLENDER_DATAFILES, "fonts");
   if (dir == NULL) {
-    fprintf(stderr,
-            "%s: 'fonts' data path not found for '%s', will not be able to display text\n",
-            __func__,
-            filename);
+    CLOG_ERROR(BLENFONT_LOG,
+               "'fonts' data path not found for '%s', will not be able to display text",
+               filename);
     return -1;
   }
 

@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <CLG_log.h>
 #include <ft2build.h>
 
 #include FT_FREETYPE_H
@@ -299,8 +300,9 @@ void blf_font_size(FontBLF *font, unsigned int size, unsigned int dpi)
 
   err = FT_Set_Char_Size(font->face, 0, (FT_F26Dot6)(size * 64), dpi, dpi);
   if (err) {
-    /* FIXME: here we can go through the fixed size and choice a close one */
-    printf("The current font don't support the size, %u and dpi, %u\n", size, dpi);
+    /* FIXME: here we can go through the fixed size and choose a close one */
+    CLOG_ERROR(
+        BLENFONT_LOG, "The current font doesn't support the size, %u and dpi, %u", size, dpi);
 
     blf_glyph_cache_release(font);
     return;
@@ -969,7 +971,7 @@ static void blf_font_wrap_apply(FontBLF *font,
     size_t start, last[2];
   } wrap = {font->wrap_width != -1 ? font->wrap_width : INT_MAX, 0, {0, 0}};
 
-  // printf("%s wrapping (%d, %d) `%s`:\n", __func__, len, strlen(str), str);
+  CLOG_INFO(BLENFONT_LOG, 2, "wrapping (%d, %d) `%s`:", len, strlen(str), str);
   while ((i < len) && str[i]) {
 
     /* wrap vars */
@@ -1017,8 +1019,13 @@ static void blf_font_wrap_apply(FontBLF *font,
     }
 
     if (UNLIKELY(do_draw)) {
-      // printf("(%03d..%03d)  `%.*s`\n",
-      //        wrap.start, wrap.last[0], (wrap.last[0] - wrap.start) - 1, &str[wrap.start]);
+      CLOG_INFO(BLENFONT_LOG,
+                2,
+                "(%03d..%03d)  `%.*s`",
+                wrap.start,
+                wrap.last[0],
+                (wrap.last[0] - wrap.start) - 1,
+                &str[wrap.start]);
 
       callback(font, gc, &str[wrap.start], (wrap.last[0] - wrap.start) - 1, pen_y, userdata);
       wrap.start = wrap.last[0];
@@ -1034,7 +1041,7 @@ static void blf_font_wrap_apply(FontBLF *font,
     g_prev = g;
   }
 
-  // printf("done! lines: %d, width, %d\n", lines, pen_x_next);
+  CLOG_INFO(BLENFONT_LOG, 2, "done! lines: %d, width, %d", lines, pen_x_next);
 
   if (r_info) {
     r_info->lines = lines;
@@ -1384,7 +1391,7 @@ FontBLF *blf_font_new(const char *name, const char *filename)
 
   err = FT_Select_Charmap(font->face, ft_encoding_unicode);
   if (err) {
-    printf("Can't set the unicode character map!\n");
+    CLOG_ERROR(BLENFONT_LOG, "Can't set the unicode character map!");
     FT_Done_Face(font->face);
     MEM_freeN(font);
     return NULL;
@@ -1394,7 +1401,8 @@ FontBLF *blf_font_new(const char *name, const char *filename)
   if (mfile) {
     err = FT_Attach_File(font->face, mfile);
     if (err) {
-      fprintf(stderr, "FT_Attach_File failed to load '%s' with error %d\n", filename, (int)err);
+      CLOG_ERROR(
+          BLENFONT_LOG, "FT_Attach_File failed to load '%s' with error %d", filename, (int)err);
     }
     MEM_freeN(mfile);
   }
@@ -1429,7 +1437,7 @@ FontBLF *blf_font_new_from_mem(const char *name, const unsigned char *mem, int m
 
   err = FT_Select_Charmap(font->face, ft_encoding_unicode);
   if (err) {
-    printf("Can't set the unicode character map!\n");
+    CLOG_ERROR(BLENFONT_LOG, "Can't set the unicode character map!");
     FT_Done_Face(font->face);
     MEM_freeN(font);
     return NULL;

@@ -30,6 +30,7 @@ set(INC
   ../makesrna
   ../../../intern/glew-mx
   ../../../intern/guardedalloc
+  ../../../intern/clog
 )
 
 set(INC_SYS

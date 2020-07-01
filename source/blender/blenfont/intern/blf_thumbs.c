@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <CLG_log.h>
 #include <ft2build.h>
 
 #include FT_FREETYPE_H
@@ -72,7 +73,7 @@ void BLF_thumb_preview(const char *filename,
   /* Create a new blender font obj and fill it with default values */
   font = blf_font_new("thumb_font", filename);
   if (!font) {
-    printf("Info: Can't load font '%s', no preview possible\n", filename);
+    CLOG_INFO(BLENFONT_LOG, 0, "Can't load font '%s', no preview possible", filename);
     return;
   }
 
