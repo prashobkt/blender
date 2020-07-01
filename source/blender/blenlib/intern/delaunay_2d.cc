@@ -19,11 +19,10 @@
 #include <iostream>
 #include <sstream>
 
-#include "gmpxx.h"
-
 #include "BLI_array.hh"
 #include "BLI_double2.hh"
 #include "BLI_linklist.h"
+#include "BLI_math_mpq.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_vector.hh"
 

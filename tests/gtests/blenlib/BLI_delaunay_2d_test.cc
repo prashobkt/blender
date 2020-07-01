@@ -2,8 +2,6 @@
 
 #include "testing/testing.h"
 
-#include "gmpxx.h"
-
 #include "MEM_guardedalloc.h"
 
 extern "C" {
@@ -23,6 +21,7 @@ extern "C" {
 
 #include "BLI_array.hh"
 #include "BLI_double2.hh"
+#include "BLI_math_mpq.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_vector.hh"
 

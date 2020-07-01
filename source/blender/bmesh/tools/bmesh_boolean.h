@@ -21,6 +21,10 @@
  * \ingroup bmesh
  */
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 bool BM_mesh_boolean(BMesh *bm,
                      struct BMLoop *(*looptris)[3],
                      const int looptris_tot,
@@ -36,5 +40,9 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                            void *user_data,
                            const bool use_self,
                            const bool use_separate_all);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __BMESH_BOOLEAN_H__ */

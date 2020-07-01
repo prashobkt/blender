@@ -57,9 +57,9 @@ void BLI_boolean_trimesh_free(Boolean_trimesh_output *output);
 }
 
 #  include "BLI_array.hh"
+#  include "BLI_math_mpq.hh"
 #  include "BLI_mesh_intersect.hh"
 #  include "BLI_mpq3.hh"
-#  include "gmpxx.h"
 
 namespace blender {
 namespace meshintersect {

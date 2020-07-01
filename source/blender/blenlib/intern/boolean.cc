@@ -18,14 +18,13 @@
 #include <fstream>
 #include <iostream>
 
-#include "gmpxx.h"
-
 #include "BLI_array.hh"
 #include "BLI_assert.h"
 #include "BLI_delaunay_2d.h"
 #include "BLI_hash.hh"
 #include "BLI_map.hh"
 #include "BLI_math.h"
+#include "BLI_math_mpq.hh"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_set.hh"

@@ -17,8 +17,6 @@
 #ifndef __BLI_MPQ2_HH__
 #define __BLI_MPQ2_HH__
 
-#include "gmpxx.h"
-
 #include "BLI_math_mpq.hh"
 #include "BLI_mpq3.hh"
 

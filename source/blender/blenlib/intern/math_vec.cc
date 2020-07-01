@@ -18,13 +18,12 @@
  * \ingroup bli
  */
 
-#include "gmpxx.h"
-
 #include "BLI_double2.hh"
 #include "BLI_double3.hh"
 #include "BLI_float2.hh"
 #include "BLI_float3.hh"
 #include "BLI_hash.hh"
+#include "BLI_math_mpq.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_utildefines.h"

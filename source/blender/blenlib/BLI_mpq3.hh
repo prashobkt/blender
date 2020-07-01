@@ -21,7 +21,6 @@
 
 #include "BLI_math.h"
 #include "BLI_math_mpq.hh"
-#include "gmpxx.h"
 
 namespace blender {
 
