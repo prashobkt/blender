@@ -1029,12 +1029,10 @@ void wm_homefile_read(bContext *C,
                                    NULL);
     }
     if (BLI_listbase_is_empty(&U.themes)) {
-      if (G.debug & G_DEBUG) {
-        CLOG_INFO(WM_LOG_SESSION,
-                  0,
-                  "Note: No (valid) '%s' found, fall back to built-in default",
-                  filepath_startup);
-      }
+      CLOG_INFO(WM_LOG_SESSION,
+                1,
+                "Note: No (valid) '%s' found, fall back to built-in default",
+                filepath_startup);
       success = false;
     }
     if (success) {
