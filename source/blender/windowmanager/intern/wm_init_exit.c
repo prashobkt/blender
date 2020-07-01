@@ -507,7 +507,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
              BLO_write_file(
                  bmain, filename, fileflags, &(const struct BlendFileWriteParams){0}, NULL)) ||
             (undo_memfile && BLO_memfile_write_file(undo_memfile, filename))) {
-          CLOG_INFO(WM_LOG_SESSION, 0, "Saved session recovery to '%s'\n", filename);
+          CLOG_INFO(WM_LOG_SESSION, 0, "Saved session recovery to '%s'", filename);
         }
       }
     }
