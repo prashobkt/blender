@@ -2344,6 +2344,8 @@ void uiItemFullR(uiLayout *layout,
     if (layout->activate_init) {
       UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
     }
+
+    but->label_but = label_but;
   }
 
   /* The resulting button may have the icon set since boolean button drawing
