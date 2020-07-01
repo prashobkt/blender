@@ -19,6 +19,8 @@
  * This file defines '_bpy_msgbus' module, exposed as 'bpy.msgbus'.
  */
 
+#include <CLG_log.h>
+#include <MEM_guardedalloc.h>
 #include <Python.h>
 
 #include "../generic/py_capi_utils.h"
@@ -305,9 +307,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args
 
   WM_msg_subscribe_rna_params(mbus, &msg_key_params, &msg_val_params, __func__);
 
-  if (0) { /* For debugging. */
-    WM_msg_log_str(mbus);
-  }
+  CLOG_STR_INFO_N(WM_LOG_MSGBUS_SUB, 4, WM_msg_sprintN(mbus));
 
   Py_RETURN_NONE;
 }
