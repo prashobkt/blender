@@ -3240,8 +3240,7 @@ static void outliner_draw_tree_element(bContext *C,
     if ((tselem->type == TSE_LAYER_COLLECTION) &&
         (soops->show_restrict_flags & SO_RESTRICT_ENABLE)) {
       tselem_draw_layer_collection_enable_icon(
-          tvc->scene, block, xmax, (float)startx + offsx + UI_UNIT_X, (float)*starty, te, 0.8f);
-      offsx += UI_UNIT_X;
+          tvc->scene, block, xmax, 0.0f, (float)*starty, te, 0.8f);
     }
 
     /* active circle */
@@ -3696,10 +3695,7 @@ static void outliner_draw_tree(bContext *C,
   int starty, startx;
 
   /* Move the tree a unit left in view layer mode */
-  short mode_column_offset = use_mode_column ? UI_UNIT_X : 0;
-  if (soops->outlinevis == SO_VIEW_LAYER) {
-    mode_column_offset -= UI_UNIT_X;
-  }
+  short mode_column_offset = (use_mode_column && (soops->outlinevis == SO_SCENES)) ? UI_UNIT_X : 0;
 
   GPU_blend_set_func_separate(
       GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);  // only once
