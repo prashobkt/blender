@@ -2009,6 +2009,7 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
                            0.0,
                            TIP_("Remove from the current mode"));
         UI_but_func_set(but, outliner_mode_toggle_fn, tselem, NULL);
+        UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
       }
       else {
         /* Not all objects have particle systems */
@@ -2030,6 +2031,7 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
                            0.0,
                            TIP_("Add to the current mode"));
         UI_but_func_set(but, outliner_mode_toggle_fn, tselem, NULL);
+        UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);
       }
     }
   }
