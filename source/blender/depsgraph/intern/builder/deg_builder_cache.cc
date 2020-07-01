@@ -31,7 +31,8 @@
 
 #include "BKE_animsys.h"
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 /* Animated property storage. */
 
@@ -155,21 +156,16 @@ DepsgraphBuilderCache::DepsgraphBuilderCache()
 
 DepsgraphBuilderCache::~DepsgraphBuilderCache()
 {
-  for (AnimatedPropertyStorageMap::value_type &iter : animated_property_storage_map_) {
-    AnimatedPropertyStorage *animated_property_storage = iter.second;
+  for (AnimatedPropertyStorage *animated_property_storage :
+       animated_property_storage_map_.values()) {
     OBJECT_GUARDED_DELETE(animated_property_storage, AnimatedPropertyStorage);
   }
 }
 
 AnimatedPropertyStorage *DepsgraphBuilderCache::ensureAnimatedPropertyStorage(ID *id)
 {
-  AnimatedPropertyStorageMap::iterator it = animated_property_storage_map_.find(id);
-  if (it != animated_property_storage_map_.end()) {
-    return it->second;
-  }
-  AnimatedPropertyStorage *animated_property_storage = OBJECT_GUARDED_NEW(AnimatedPropertyStorage);
-  animated_property_storage_map_.insert(make_pair(id, animated_property_storage));
-  return animated_property_storage;
+  return animated_property_storage_map_.lookup_or_add_cb(
+      id, []() { return OBJECT_GUARDED_NEW(AnimatedPropertyStorage); });
 }
 
 AnimatedPropertyStorage *DepsgraphBuilderCache::ensureInitializedAnimatedPropertyStorage(ID *id)
@@ -182,4 +178,5 @@ AnimatedPropertyStorage *DepsgraphBuilderCache::ensureInitializedAnimatedPropert
   return animated_property_storage;
 }
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender
