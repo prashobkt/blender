@@ -239,11 +239,6 @@ typedef struct GPENCIL_TextureList {
   /* Textures used during render. Containing underlying rendered scene. */
   struct GPUTexture *render_depth_tx;
   struct GPUTexture *render_color_tx;
-  /* Mask textures for supporting material masking. */
-  struct GPUTexture *mat_mask_depth_tx;
-  struct GPUTexture *mat_mask_color_tx;
-  struct GPUTexture *mat_mask_reveal_tx;
-
 } GPENCIL_TextureList;
 
 typedef struct GPENCIL_Data {
@@ -294,10 +289,6 @@ typedef struct GPENCIL_PrivateData {
   GPUFrameBuffer *scene_fb;
   /* Copy of txl->dummy_tx */
   GPUTexture *dummy_tx;
-  /* Pointer to material masking textures. */
-  GPUTexture *mat_mask_depth_tx;
-  GPUTexture *mat_mask_color_tx;
-  GPUTexture *mat_mask_reveal_tx;
   /* Copy of v3d->shading.single_color. */
   float v3d_single_color[3];
   /* Copy of v3d->shading.color_type or -1 to ignore. */

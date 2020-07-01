@@ -3,10 +3,6 @@ uniform sampler2D gpFillTexture;
 uniform sampler2D gpStrokeTexture;
 uniform sampler2D gpSceneDepthTexture;
 uniform sampler2D gpMaskTexture;
-/* Textures for handling material masking for holes. */
-uniform sampler2D matMaskDepthTexture;
-uniform sampler2D matMaskColorTexture;
-uniform sampler2D matMaskRevealTexture;
 uniform vec3 gpNormal;
 
 layout(location = 0) out vec4 fragColor;
@@ -93,12 +89,10 @@ void main()
   fragColor *= stroke_round_cap_mask(
       strokePt1, strokePt2, strokeAspect, strokeThickness, strokeHardeness);
 
-  /* If material masking, retry previous texture data. */
+  /* If material masking. */
   if (GP_FLAG_TEST(matFlag, GP_STROKE_MASK)) {
-    vec2 uv = vec2(gl_FragCoord.x / sizeViewport.x, gl_FragCoord.y / sizeViewport.y);
-    fragColor = texture(matMaskColorTexture, uv);
-    revealColor = texture(matMaskRevealTexture, uv);
-    gl_FragDepth = texture(matMaskDepthTexture, uv).r;
+    fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    revealColor = vec4(1.0, 1.0, 1.0, 0.0);
   }
   else {
     /* For compatibility with colored alpha buffer.

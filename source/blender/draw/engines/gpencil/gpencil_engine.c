@@ -188,53 +188,6 @@ void GPENCIL_engine_init(void *ved)
   }
 }
 
-static void GPENCIL_mat_masking_start(GPENCIL_Data *vedata)
-{
-  GPENCIL_PrivateData *pd = vedata->stl->pd;
-  GPENCIL_FramebufferList *fbl = vedata->fbl;
-  GPENCIL_TextureList *txl = vedata->txl;
-
-  const float *size = DRW_viewport_size_get();
-  DRW_texture_ensure_2d(&txl->mat_mask_depth_tx, size[0], size[1], GPU_DEPTH24_STENCIL8, 0);
-  DRW_texture_ensure_2d(&txl->mat_mask_color_tx, size[0], size[1], GPU_R11F_G11F_B10F, 0);
-  DRW_texture_ensure_2d(&txl->mat_mask_reveal_tx, size[0], size[1], GPU_R11F_G11F_B10F, 0);
-
-  GPU_framebuffer_ensure_config(&fbl->mat_mask_fb,
-                                {
-                                    GPU_ATTACHMENT_TEXTURE(txl->mat_mask_depth_tx),
-                                    GPU_ATTACHMENT_TEXTURE(txl->mat_mask_color_tx),
-                                    GPU_ATTACHMENT_TEXTURE(txl->mat_mask_reveal_tx),
-                                });
-
-  pd->mat_mask_depth_tx = txl->mat_mask_depth_tx;
-  pd->mat_mask_color_tx = txl->mat_mask_color_tx;
-  pd->mat_mask_reveal_tx = txl->mat_mask_reveal_tx;
-}
-
-static void GPENCIL_mat_masking_copy(GPENCIL_Data *vedata)
-{
-  GPENCIL_FramebufferList *fbl = vedata->fbl;
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
-
-  /* Copy actual image. */
-  if (dfbl->default_fb != NULL) {
-    GPU_framebuffer_blit(dfbl->default_fb, 0, fbl->mat_mask_fb, 0, GPU_DEPTH_BIT);
-    GPU_framebuffer_blit(fbl->gpencil_fb, 0, fbl->mat_mask_fb, 0, GPU_COLOR_BIT);
-    GPU_framebuffer_blit(fbl->gpencil_fb, 1, fbl->mat_mask_fb, 1, GPU_COLOR_BIT);
-  }
-}
-
-static void GPENCIL_mat_masking_end(GPENCIL_Data *vedata)
-{
-  GPENCIL_FramebufferList *fbl = vedata->fbl;
-  GPENCIL_TextureList *txl = vedata->txl;
-
-  GPU_FRAMEBUFFER_FREE_SAFE(fbl->mat_mask_fb);
-  DRW_TEXTURE_FREE_SAFE(txl->mat_mask_depth_tx);
-  DRW_TEXTURE_FREE_SAFE(txl->mat_mask_color_tx);
-  DRW_TEXTURE_FREE_SAFE(txl->mat_mask_reveal_tx);
-}
-
 void GPENCIL_cache_init(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
@@ -381,11 +334,6 @@ void GPENCIL_cache_init(void *ved)
     /* Disable DoF blur scalling. */
     pd->camera = NULL;
   }
-
-  /* Material masking framebuffer. */
-  if (txl->mat_mask_color_tx == NULL) {
-    GPENCIL_mat_masking_start(vedata);
-  }
 }
 
 #define DRAW_NOW 2
@@ -527,9 +475,6 @@ static void gpencil_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_texture(grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_int_copy(grp, "gpMaterialOffset", iter->mat_ofs);
-  DRW_shgroup_uniform_texture(grp, "matMaskDepthTexture", pd->mat_mask_depth_tx);
-  DRW_shgroup_uniform_texture(grp, "matMaskColorTexture", pd->mat_mask_color_tx);
-  DRW_shgroup_uniform_texture(grp, "matMaskRevealTexture", pd->mat_mask_reveal_tx);
   DRW_shgroup_uniform_float_copy(grp, "strokeIndexOffset", iter->stroke_index_offset);
 }
 
@@ -580,9 +525,6 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
       DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", tex_stroke);
       iter->tex_stroke = tex_stroke;
     }
-    DRW_shgroup_uniform_texture(iter->grp, "matMaskDepthTexture", iter->pd->mat_mask_depth_tx);
-    DRW_shgroup_uniform_texture(iter->grp, "matMaskColorTexture", iter->pd->mat_mask_color_tx);
-    DRW_shgroup_uniform_texture(iter->grp, "matMaskRevealTexture", iter->pd->mat_mask_reveal_tx);
 
     /* TODO(fclem): This is a quick workaround but
      * ideally we should have this as a permanent bind. */
@@ -999,13 +941,8 @@ void GPENCIL_draw_scene(void *ved)
   }
 
   LISTBASE_FOREACH (GPENCIL_tObject *, ob, &pd->tobjects) {
-    if (ob->do_mat_masking) {
-      GPENCIL_mat_masking_copy(vedata);
-    }
     GPENCIL_draw_object(vedata, ob);
   }
-
-  GPENCIL_mat_masking_end(vedata);
 
   if (pd->do_fast_drawing) {
     GPENCIL_fast_draw_end(vedata);
