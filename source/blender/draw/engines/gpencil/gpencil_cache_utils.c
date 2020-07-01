@@ -169,7 +169,7 @@ void gpencil_object_cache_sort(GPENCIL_PrivateData *pd)
     }
   }
 
-  /* Join both lists, adding infront. */
+  /* Join both lists, adding in front. */
   if (pd->tobjects_infront.first != NULL) {
     if (pd->tobjects.last != NULL) {
       pd->tobjects.last->next = pd->tobjects_infront.first;
