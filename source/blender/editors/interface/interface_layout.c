@@ -2152,7 +2152,7 @@ void uiItemFullR(uiLayout *layout,
     else {
       uiLayout *layout_split = uiLayoutSplit(
           layout_row ? layout_row : layout, UI_ITEM_PROP_SEP_DIVIDE, true);
-      bool label_added = false;
+      bool label_added = false; /* HANS-TODO: Replace with checking if label_but == NULL. */
       layout_split->space = 0;
       uiLayout *layout_sub = uiLayoutColumn(layout_split, true);
       layout_sub->space = 0;
@@ -2207,6 +2207,11 @@ void uiItemFullR(uiLayout *layout,
       if (!label_added && heading_layout) {
         ui_layout_heading_label_add(layout_sub, heading_layout, true, false);
         label_added = true;
+      }
+
+      /* Add an empty label button so the empty column isn't removed during property search. */
+      if (!label_added && !use_prop_sep_split_label) {
+        label_but = uiItemL_(layout_sub, "", ICON_NONE);
       }
 
       layout_split = ui_item_prop_split_layout_hack(layout_parent, layout_split);
