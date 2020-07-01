@@ -58,6 +58,7 @@ typedef struct Text {
 
   int flags;
   char _pad0[4];
+  void *_pad1;
 
   ListBase lines;
   TextLine *curl, *sell;

@@ -95,6 +95,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
+#include "DNA_asset_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_camera_types.h"
@@ -734,6 +735,10 @@ void IDP_WriteProperty(const IDProperty *prop, BlendWriter *writer)
 
 static void write_iddata(BlendWriter *writer, ID *id)
 {
+  if (id->asset_data) {
+    BLO_write_struct(writer, AssetData, id->asset_data);
+  }
+
   /* ID_WM's id->properties are considered runtime only, and never written in .blend file. */
   if (id->properties && !ELEM(GS(id->name), ID_WM)) {
     IDP_WriteProperty(id->properties, writer);

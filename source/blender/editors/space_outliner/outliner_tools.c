@@ -718,6 +718,27 @@ static void outliner_object_delete_fn(bContext *C, ReportList *reports, Scene *s
   }
 }
 
+static void id_make_asset_cb(bContext *C,
+                             ReportList *UNUSED(reports),
+                             Scene *UNUSED(scene),
+                             TreeElement *UNUSED(te),
+                             TreeStoreElem *UNUSED(tsep),
+                             TreeStoreElem *tselem,
+                             void *UNUSED(user_data))
+{
+  ID *id = tselem->id;
+  PointerRNA id_ptr;
+  PointerRNA op_ptr;
+
+  RNA_id_pointer_create(id, &id_ptr);
+
+  WM_operator_properties_create(&op_ptr, "ASSET_OT_create");
+  RNA_pointer_set(&op_ptr, "id", id_ptr);
+  WM_operator_name_call(C, "ASSET_OT_create", WM_OP_EXEC_DEFAULT, &op_ptr);
+
+  WM_operator_properties_free(&op_ptr);
+}
+
 static void id_local_cb(bContext *C,
                         ReportList *UNUSED(reports),
                         Scene *UNUSED(scene),
@@ -1505,6 +1526,7 @@ typedef enum eOutlinerIdOpTypes {
   OUTLINER_IDOP_INVALID = 0,
 
   OUTLINER_IDOP_UNLINK,
+  OUTLINER_IDOP_MAKE_ASSET,
   OUTLINER_IDOP_LOCAL,
   OUTLINER_IDOP_OVERRIDE_LIBRARY,
   OUTLINER_IDOP_SINGLE,
@@ -1524,6 +1546,7 @@ typedef enum eOutlinerIdOpTypes {
 // TODO: implement support for changing the ID-block used
 static const EnumPropertyItem prop_id_op_types[] = {
     {OUTLINER_IDOP_UNLINK, "UNLINK", 0, "Unlink", ""},
+    {OUTLINER_IDOP_MAKE_ASSET, "MAKE_ASSET", 0, "Make Asset", ""},
     {OUTLINER_IDOP_LOCAL, "LOCAL", 0, "Make Local", ""},
     {OUTLINER_IDOP_OVERRIDE_LIBRARY,
      "OVERRIDE_LIBRARY",
@@ -1667,6 +1690,14 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
           BKE_report(op->reports, RPT_WARNING, "Not yet implemented");
           break;
       }
+      break;
+    }
+    case OUTLINER_IDOP_MAKE_ASSET: {
+      outliner_do_libdata_operation(
+          C, op->reports, scene, soops, &soops->tree, id_make_asset_cb, NULL);
+      ED_undo_push(C, "Made Asset");
+      /* TODO how to handle undo here? id_make_asset_cb() calls an OP. Esp. in case of multiple
+       * data-blocks we only want a single push. */
       break;
     }
     case OUTLINER_IDOP_LOCAL: {

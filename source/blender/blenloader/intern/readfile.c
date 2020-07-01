@@ -2837,6 +2837,10 @@ static void direct_link_id_common(
     return;
   }
 
+  if (id->asset_data) {
+    BLO_read_data_address(reader, &id->asset_data);
+  }
+
   /*link direct data of ID properties*/
   if (id->properties) {
     BLO_read_data_address(reader, &id->properties);
