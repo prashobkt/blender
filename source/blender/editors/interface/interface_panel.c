@@ -1568,8 +1568,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
       psnext->panel->ofsy = get_panel_real_ofsy(ps_last_visible->panel) -
                             get_panel_size_y(psnext->panel);
 
-      /* Extra margin for box style panels. */
-      ps->panel->ofsx += (use_box) ? UI_PANEL_BOX_STYLE_MARGIN : 0.0f;
+      /* Extra Y margin for box style panels. */
       if (use_box || use_box_next) {
         psnext->panel->ofsy -= UI_PANEL_BOX_STYLE_MARGIN;
       }
@@ -1584,9 +1583,15 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
       ps_last_visible = psnext;
     }
   }
-  /* Extra margin for the last panel if it's a box-style panel. */
-  if (panelsort[tot - 1].panel->type && panelsort[tot - 1].panel->type->flag & PNL_DRAW_BOX) {
-    panelsort[tot - 1].panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
+
+  /* Extra X margin for box-style panels. */
+  if (align == BUT_VERTICAL) {
+    ps = panelsort;
+    for (a = 0; a < tot; a++, ps++) {
+      if (ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX) {
+        ps->panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
+      }
+    }
   }
 
   /* we interpolate */
