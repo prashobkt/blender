@@ -14,47 +14,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_BOOLEAN_H__
-#define __BLI_BOOLEAN_H__
+#ifndef __BLI_BOOLEAN_HH__
+#define __BLI_BOOLEAN_HH__
 
 /** \file
  * \ingroup bli
  */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef enum bool_optype {
-  BOOLEAN_NONE = -1,
-  /* Aligned with BooleanModifierOp. */
-  BOOLEAN_ISECT = 0,
-  BOOLEAN_UNION = 1,
-  BOOLEAN_DIFFERENCE = 2,
-} bool_optype;
-
-typedef struct Boolean_trimesh_input {
-  int vert_len;
-  int tri_len;
-  float (*vert_coord)[3];
-  int (*tri)[3];
-} Boolean_trimesh_input;
-
-typedef struct Boolean_trimesh_output {
-  int vert_len;
-  int tri_len;
-  float (*vert_coord)[3];
-  int (*tri)[3];
-} Boolean_trimesh_output;
-
-Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_input *in0,
-                                            const Boolean_trimesh_input *in1,
-                                            int bool_optype);
-
-void BLI_boolean_trimesh_free(Boolean_trimesh_output *output);
-
-#ifdef __cplusplus
-}
 
 #  include "BLI_array.hh"
 #  include "BLI_math_mpq.hh"
@@ -63,6 +28,15 @@ void BLI_boolean_trimesh_free(Boolean_trimesh_output *output);
 
 namespace blender {
 namespace meshintersect {
+
+/* Enum values after BOOLEAN_NONE need to match BMESH_ISECT_BOOLEAN_... values in editmesh_intersect.c. */
+enum bool_optype {
+  BOOLEAN_NONE = -1,
+  /* Aligned with BooleanModifierOp. */
+  BOOLEAN_ISECT = 0,
+  BOOLEAN_UNION = 1,
+  BOOLEAN_DIFFERENCE = 2,
+};
 
 struct PolyMeshOrig {
   Array<int> vert_orig;
@@ -79,7 +53,9 @@ struct PolyMesh {
   PolyMeshOrig orig;
 };
 
-PolyMesh boolean(PolyMesh &pm, int bool_optype, int nshapes, std::function<int(int)> shape_fn);
+PolyMesh boolean(PolyMesh &pm, bool_optype op, int nshapes, std::function<int(int)> shape_fn);
+
+TriMesh boolean_trimesh(const TriMesh &tm, bool_optype op, int nshapes, std::function<int(int)> shape_fn);
 
 void write_obj_polymesh(const Array<mpq3> &vert,
                         const Array<Array<int>> &face,
@@ -88,6 +64,4 @@ void write_obj_polymesh(const Array<mpq3> &vert,
 }  // namespace meshintersect
 }  // namespace blender
 
-#endif
-
-#endif /* __BLI_BOOLEAN_H__ */
+#endif /* __BLI_BOOLEAN_HH__ */

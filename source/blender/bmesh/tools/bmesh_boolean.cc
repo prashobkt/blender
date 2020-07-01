@@ -21,7 +21,7 @@
  */
 
 #include "BLI_array.hh"
-#include "BLI_boolean.h"
+#include "BLI_boolean.hh"
 #include "BLI_math.h"
 #include "BLI_math_mpq.hh"
 #include "BLI_mesh_intersect.hh"
@@ -169,7 +169,8 @@ static int bmesh_boolean(BMesh *bm,
       }
     };
   }
-  PolyMesh pm_out = boolean(pm_in, boolean_mode, nshapes, shape_fn);
+  bool_optype op = static_cast<bool_optype>(boolean_mode);
+  PolyMesh pm_out = boolean(pm_in, op, nshapes, shape_fn);
   apply_polymesh_output_to_bmesh(bm, pm_out);
   return pm_in.vert.size() != pm_out.vert.size() || pm_in.face.size() != pm_out.face.size();
 }
@@ -221,7 +222,7 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                            const bool use_self,
                            const bool use_separate_all)
 {
-  return blender::meshintersect::bmesh_boolean(bm, looptris, looptris_tot, test_fn, user_data, use_self, use_separate_all, BOOLEAN_NONE);
+  return blender::meshintersect::bmesh_boolean(bm, looptris, looptris_tot, test_fn, user_data, use_self, use_separate_all, blender::meshintersect::BOOLEAN_NONE);
 }
 
 } /* extern "C" */

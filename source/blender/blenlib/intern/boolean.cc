@@ -33,7 +33,7 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "BLI_boolean.h"
+#include "BLI_boolean.hh"
 
 namespace blender {
 
@@ -987,7 +987,7 @@ static int find_ambient_cell(const TriMesh &tm,
 static void propagate_windings_and_flag(PatchesInfo &pinfo,
                                         CellsInfo &cinfo,
                                         int c_ambient,
-                                        int bool_optype,
+                                        bool_optype op,
                                         int nshapes,
                                         std::function<int(int)> shape_fn)
 {
@@ -1025,7 +1025,7 @@ static void propagate_windings_and_flag(PatchesInfo &pinfo,
         if (dbg_level > 1) {
           std::cout << "    representative tri " << t << ": in shape " << shape << "\n";
         }
-        cell_neighbor.set_winding_and_flag(cell, shape, winding_delta, bool_optype);
+        cell_neighbor.set_winding_and_flag(cell, shape, winding_delta, op);
         if (dbg_level > 1) {
           std::cout << "    now cell_neighbor = " << cell_neighbor << "\n";
         }
@@ -1177,9 +1177,9 @@ static TriMesh extract_from_flag_diffs(const TriMesh &tm_subdivided,
   return tm_out;
 }
 
-static const char *bool_optype_name(int bool_optype)
+static const char *bool_optype_name(bool_optype op)
 {
-  switch (bool_optype) {
+  switch (op) {
     case BOOLEAN_NONE:
       return "none";
       break;
@@ -1194,72 +1194,6 @@ static const char *bool_optype_name(int bool_optype)
     default:
       return "<unknown>";
   }
-}
-
-/*
- * This function does a boolean operation on nshapes inputs.
- * All the shapes are combined in tm_in.
- * The shape_fn function should take a triangle index in tm_in and return
- * a number in the range 0 to nshapes-1, to say which shape that triangle is in.
- */
-static TriMesh nary_boolean(const TriMesh &tm_in,
-                            int bool_optype,
-                            int nshapes,
-                            std::function<int(int)> shape_fn)
-{
-  constexpr int dbg_level = 0;
-  if (dbg_level > 0) {
-    std::cout << "BOOLEAN of " << nshapes << " operand" << (nshapes == 1 ? "" : "s")
-              << " op=" << bool_optype_name(bool_optype) << "\n";
-  }
-  if (tm_in.vert.size() == 0 || tm_in.tri.size() == 0) {
-    return TriMesh(tm_in);
-  }
-  TriMesh tm_si = trimesh_self_intersect(tm_in);
-  /* It is possible for tm_si to be empty if all the input triangles are bogus/degenerate. */
-  if (tm_si.tri.size() == 0 || bool_optype == BOOLEAN_NONE) {
-    return tm_si;
-  }
-  auto si_shape_fn = [shape_fn, tm_si](int t) { return shape_fn(tm_si.tri[t].orig()); };
-  if (dbg_level > 1) {
-    write_obj_trimesh(tm_si.vert, tm_si.tri, "boolean_tm_input");
-    std::cout << "boolean tm input:\n";
-    for (int t = 0; t < static_cast<int>(tm_si.tri.size()); ++t) {
-      std::cout << "tri " << t << " = " << tm_si.tri[t] << " shape " << si_shape_fn(t) << "\n";
-    }
-  }
-  TriMeshTopology tm_si_topo(&tm_si);
-  PatchesInfo pinfo = find_patches(tm_si, tm_si_topo);
-  CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
-  cinfo.init_windings(nshapes);
-  int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo);
-  if (c_ambient == -1) {
-    /* TODO: find a way to propagate this error to user properly. */
-    std::cout << "Could not find an ambient cell; input not valid?\n";
-    return TriMesh(tm_si);
-  }
-  propagate_windings_and_flag(pinfo, cinfo, c_ambient, bool_optype, nshapes, si_shape_fn);
-  TriMesh tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo);
-  if (dbg_level > 1) {
-    write_obj_trimesh(tm_out.vert, tm_out.tri, "boolean_tm_output");
-  }
-  return tm_out;
-}
-
-static TriMesh self_boolean(const TriMesh &tm_in, int bool_optype)
-{
-  return nary_boolean(tm_in, bool_optype, 1, [](int UNUSED(t)) { return 0; });
-}
-
-static TriMesh binary_boolean(const TriMesh &tm_in_a, const TriMesh &tm_in_b, int bool_optype)
-{
-  /* Just combine the two pieces. We can tell by original triangle number which side it came
-   * from.
-   */
-  TriMesh tm_in = concat_trimeshes(tm_in_a, tm_in_b);
-  int b_tri_start = static_cast<int>(tm_in_a.tri.size());
-  auto shape_fn = [b_tri_start](int t) { return (t >= b_tri_start ? 1 : 0); };
-  return nary_boolean(tm_in, bool_optype, 2, shape_fn);
 }
 
 static Array<IndexedTriangle> triangulate_poly(int orig_face,
@@ -1985,7 +1919,57 @@ static PolyMesh polymesh_from_trimesh_with_dissolve(const TriMesh &tm_out, const
   return pm_out;
 }
 
-/* Do the boolean operation bool_optype on the polygon mesh pm_in.
+/*
+ * This function does a boolean operation on a TriMesh with nshapes inputs.
+ * All the shapes are combined in tm_in.
+ * The shape_fn function should take a triangle index in tm_in and return
+ * a number in the range 0 to nshapes-1, to say which shape that triangle is in.
+ */
+TriMesh boolean_trimesh(const TriMesh &tm_in,
+                            bool_optype op,
+                            int nshapes,
+                            std::function<int(int)> shape_fn)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "BOOLEAN of " << nshapes << " operand" << (nshapes == 1 ? "" : "s")
+              << " op=" << bool_optype_name(op) << "\n";
+  }
+  if (tm_in.vert.size() == 0 || tm_in.tri.size() == 0) {
+    return TriMesh(tm_in);
+  }
+  TriMesh tm_si = trimesh_self_intersect(tm_in);
+  /* It is possible for tm_si to be empty if all the input triangles are bogus/degenerate. */
+  if (tm_si.tri.size() == 0 || op == BOOLEAN_NONE) {
+    return tm_si;
+  }
+  auto si_shape_fn = [shape_fn, tm_si](int t) { return shape_fn(tm_si.tri[t].orig()); };
+  if (dbg_level > 1) {
+    write_obj_trimesh(tm_si.vert, tm_si.tri, "boolean_tm_input");
+    std::cout << "boolean tm input:\n";
+    for (int t = 0; t < static_cast<int>(tm_si.tri.size()); ++t) {
+      std::cout << "tri " << t << " = " << tm_si.tri[t] << " shape " << si_shape_fn(t) << "\n";
+    }
+  }
+  TriMeshTopology tm_si_topo(&tm_si);
+  PatchesInfo pinfo = find_patches(tm_si, tm_si_topo);
+  CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
+  cinfo.init_windings(nshapes);
+  int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo);
+  if (c_ambient == -1) {
+    /* TODO: find a way to propagate this error to user properly. */
+    std::cout << "Could not find an ambient cell; input not valid?\n";
+    return TriMesh(tm_si);
+  }
+  propagate_windings_and_flag(pinfo, cinfo, c_ambient, op, nshapes, si_shape_fn);
+  TriMesh tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo);
+  if (dbg_level > 1) {
+    write_obj_trimesh(tm_out.vert, tm_out.tri, "boolean_tm_output");
+  }
+  return tm_out;
+}
+
+/* Do the boolean operation op on the polygon mesh pm_in.
  * The boolean operation has nshapes input shapes. Each is a disjoint subset of the input polymesh.
  * The shape_fn argument, when applied to an input face argument, says which shape it is in
  * (should be a value from -1 to nshapes - 1: if -1, it is not part of any shape).
@@ -1993,111 +1977,12 @@ static PolyMesh polymesh_from_trimesh_with_dissolve(const TriMesh &tm_out, const
  * optional triangulation: parallel to each face, it gives a set of IndexedTriangles that
  * triangulate that face.
  * pm arg isn't const because we will add triangulation if it is not there. */
-PolyMesh boolean(PolyMesh &pm_in, int bool_optype, int nshapes, std::function<int(int)> shape_fn)
+PolyMesh boolean(PolyMesh &pm_in, bool_optype op, int nshapes, std::function<int(int)> shape_fn)
 {
   TriMesh tm_in = trimesh_from_polymesh(pm_in);
-  TriMesh tm_out = nary_boolean(tm_in, bool_optype, nshapes, shape_fn);
+  TriMesh tm_out = boolean_trimesh(tm_in, op, nshapes, shape_fn);
   return polymesh_from_trimesh_with_dissolve(tm_out, pm_in);
 }
 
 }  // namespace meshintersect
 }  // namespace blender
-
-/*
- * Convert the C-style Boolean_trimesh_input into our internal C++ class for triangle meshes,
- * TriMesh.
- */
-static blender::meshintersect::TriMesh trimesh_from_input(const Boolean_trimesh_input *in,
-                                                          int side)
-{
-  constexpr int dbg_level = 0;
-  BLI_assert(in != nullptr);
-  blender::meshintersect::TriMesh tm_in;
-  tm_in.vert = blender::Array<blender::mpq3>(in->vert_len);
-  for (int v = 0; v < in->vert_len; ++v) {
-    tm_in.vert[v] = blender::mpq3(
-        in->vert_coord[v][0], in->vert_coord[v][1], in->vert_coord[v][2]);
-  }
-  tm_in.tri = blender::Array<blender::meshintersect::IndexedTriangle>(in->tri_len);
-  for (int t = 0; t < in->tri_len; ++t) {
-    tm_in.tri[t] = blender::meshintersect::IndexedTriangle(
-        in->tri[t][0], in->tri[t][1], in->tri[t][2], t);
-  }
-  if (dbg_level > 0) {
-    /* Output in format that can be pasted into test spec. */
-    std::cout << "Input side " << side << "\n";
-    std::cout << tm_in.vert.size() << " " << tm_in.tri.size() << "\n";
-    for (uint v = 0; v < tm_in.vert.size(); ++v) {
-      std::cout << "  " << tm_in.vert[v][0].get_d() << " " << tm_in.vert[v][1].get_d() << " "
-                << tm_in.vert[v][2].get_d() << "\n";
-    }
-    for (uint t = 0; t < tm_in.tri.size(); ++t) {
-      std::cout << "  " << tm_in.tri[t].v0() << " " << tm_in.tri[t].v1() << " "
-                << tm_in.tri[t].v2() << "\n";
-    }
-    std::cout << "\n";
-    blender::meshintersect::write_obj_trimesh(
-        tm_in.vert, tm_in.tri, "boolean_input" + std::to_string(side));
-  }
-  return tm_in;
-}
-
-/* Do a boolean operation between one or two triangle meshes, and return the answer as another
- * triangle mesh. The in_b argument may be NULL, meaning that the caller wants a unary boolean
- * operation. If the bool_optype is BOOLEAN_NONE, this function just does the self intersection of
- * the one or two meshes. This is a C interface. The caller must call BLI_boolean_trimesh_free() on
- * the returned value when done with it.
- */
-extern "C" Boolean_trimesh_output *BLI_boolean_trimesh(const Boolean_trimesh_input *in_a,
-                                                       const Boolean_trimesh_input *in_b,
-                                                       int bool_optype)
-{
-  constexpr int dbg_level = 0;
-  bool is_binary = in_b != NULL;
-  if (dbg_level > 0) {
-    std::cout << "BLI_BOOLEAN_TRIMESH op=" << blender::meshintersect::bool_optype_name(bool_optype)
-              << (is_binary ? " binary" : " unary") << "\n";
-  }
-  blender::meshintersect::TriMesh tm_in_a = trimesh_from_input(in_a, 0);
-  blender::meshintersect::TriMesh tm_out;
-  if (is_binary) {
-    blender::meshintersect::TriMesh tm_in_b = trimesh_from_input(in_b, 1);
-    tm_out = blender::meshintersect::binary_boolean(tm_in_a, tm_in_b, bool_optype);
-  }
-  else {
-    tm_out = blender::meshintersect::self_boolean(tm_in_a, bool_optype);
-  }
-  if (dbg_level > 1) {
-    blender::meshintersect::write_html_trimesh(
-        tm_out.vert, tm_out.tri, "mesh_boolean_test.html", "after self_boolean");
-  }
-  int nv = tm_out.vert.size();
-  int nt = tm_out.tri.size();
-  Boolean_trimesh_output *output = static_cast<Boolean_trimesh_output *>(
-      MEM_mallocN(sizeof(*output), __func__));
-  output->vert_len = nv;
-  output->tri_len = nt;
-  output->vert_coord = static_cast<decltype(output->vert_coord)>(
-      MEM_malloc_arrayN(nv, sizeof(output->vert_coord[0]), __func__));
-  output->tri = static_cast<decltype(output->tri)>(
-      MEM_malloc_arrayN(nt, sizeof(output->tri[0]), __func__));
-  for (int v = 0; v < nv; ++v) {
-    output->vert_coord[v][0] = static_cast<float>(tm_out.vert[v][0].get_d());
-    output->vert_coord[v][1] = static_cast<float>(tm_out.vert[v][1].get_d());
-    output->vert_coord[v][2] = static_cast<float>(tm_out.vert[v][2].get_d());
-  }
-  for (int t = 0; t < nt; ++t) {
-    output->tri[t][0] = tm_out.tri[t].v0();
-    output->tri[t][1] = tm_out.tri[t].v1();
-    output->tri[t][2] = tm_out.tri[t].v2();
-  }
-  return output;
-}
-
-/* Free the memory used in the return value of BLI_boolean_trimesh. */
-extern "C" void BLI_boolean_trimesh_free(Boolean_trimesh_output *output)
-{
-  MEM_freeN(output->vert_coord);
-  MEM_freeN(output->tri);
-  MEM_freeN(output);
-}

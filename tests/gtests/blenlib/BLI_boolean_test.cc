@@ -9,62 +9,65 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
-#include "BLI_boolean.h"
+#include "BLI_boolean.hh"
 #include "BLI_math_mpq.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-/* Class that can make a Boolean_trimesh_input from a string spec.
+using blender::Array;
+using blender::Vector;
+using blender::mpq3;
+using blender::meshintersect::TriMesh;
+using blender::meshintersect::PolyMesh;
+using blender::meshintersect::IndexedTriangle;
+using blender::meshintersect::BOOLEAN_NONE;
+using blender::meshintersect::BOOLEAN_ISECT;
+using blender::meshintersect::BOOLEAN_UNION;
+using blender::meshintersect::BOOLEAN_DIFFERENCE;
+using blender::meshintersect::boolean;
+using blender::meshintersect::boolean_trimesh;
+using blender::meshintersect::write_obj_trimesh;
+using blender::meshintersect::write_obj_polymesh;
+
+/* Class that can make a TriMesh from a string spec.
  * The spec has #verts #tris on the first line, then all the vert coords,
  * then all the tris as vert index triples.
  */
 class BT_input {
  public:
+  TriMesh trimesh;
   BT_input(const char *spec)
   {
     std::istringstream ss(spec);
     std::string line;
     getline(ss, line);
     std::istringstream hdrss(line);
-    m_bti.vert_coord = nullptr;
-    m_bti.tri = nullptr;
-    hdrss >> m_bti.vert_len >> m_bti.tri_len;
-    if (m_bti.vert_len > 0 && m_bti.tri_len > 0) {
-      m_bti.vert_coord = new float[m_bti.vert_len][3];
-      m_bti.tri = new int[m_bti.tri_len][3];
+    int nv, nt;
+    hdrss >> nv >> nt;
+    trimesh.vert = Array<mpq3>(nv);
+    trimesh.tri = Array<IndexedTriangle>(nt);
+    if (nv > 0 && nt > 0) {
       int i = 0;
-      while (i < m_bti.vert_len && getline(ss, line)) {
+      while (i < nv && getline(ss, line)) {
         std::istringstream iss(line);
-        iss >> m_bti.vert_coord[i][0] >> m_bti.vert_coord[i][1] >> m_bti.vert_coord[i][2];
+        iss >> trimesh.vert[i][0] >> trimesh.vert[i][1] >> trimesh.vert[i][2];
         ++i;
       }
       i = 0;
-      while (i < m_bti.tri_len && getline(ss, line)) {
+      while (i < nt && getline(ss, line)) {
         std::istringstream tss(line);
-        tss >> m_bti.tri[i][0] >> m_bti.tri[i][1] >> m_bti.tri[i][2];
+        int v0, v1, v2;
+        tss >> v0 >> v1 >> v2;
+        trimesh.tri[i] = IndexedTriangle(v0, v1, v2, i);
         ++i;
       }
     }
   }
-
-  ~BT_input()
-  {
-    delete[] m_bti.vert_coord;
-    delete[] m_bti.tri;
-  }
-
-  Boolean_trimesh_input *input()
-  {
-    return &m_bti;
-  }
-
- private:
-  Boolean_trimesh_input m_bti;
 };
 
 class BP_input {
  public:
-  blender::meshintersect::PolyMesh polymesh;
+  PolyMesh polymesh;
 
   BP_input(const char *spec)
   {
@@ -74,8 +77,8 @@ class BP_input {
     std::istringstream hdrss(line);
     int nv, nf;
     hdrss >> nv >> nf;
-    polymesh.vert = blender::Array<blender::mpq3>(nv);
-    polymesh.face = blender::Array<blender::Array<int>>(nf);
+    polymesh.vert = Array<mpq3>(nv);
+    polymesh.face = Array<Array<int>>(nf);
     if (nv > 0 && nf > 0) {
       int i = 0;
       while (i < nv && getline(ss, line)) {
@@ -86,12 +89,12 @@ class BP_input {
       i = 0;
       while (i < nf && getline(ss, line)) {
         std::istringstream tss(line);
-        blender::Vector<int> f;
+        Vector<int> f;
         int v;
         while (tss >> v) {
           f.append(v);
         }
-        polymesh.face[i] = blender::Array<int>(f.size());
+        polymesh.face[i] = Array<int>(f.size());
         std::copy(f.begin(), f.end(), polymesh.face[i].begin());
         ++i;
       }
@@ -99,96 +102,28 @@ class BP_input {
   }
 };
 
-/* Some contrasting colors to use for distinguishing triangles. */
-static const char *drawcolor[] = {
-    "0.67 0.14 0.14", /* red */
-    "0.16 0.29 0.84", /* blue */
-    "0.11 0.41 0.08", /* green */
-    "0.50 0.29 0.10", /* brown */
-    "0.50 0.15 0.75", /* purple */
-    "0.62 0.62 0.62", /* light grey */
-    "0.50 0.77 0.49", /* light green */
-    "0.61 0.68 1.00", /* light blue */
-    "0.16 0.82 0.82", /* cyan */
-    "1.00 0.57 0.20", /* orange */
-    "1.00 0.93 0.20", /* yellow */
-    "0.91 0.87 0.73", /* tan */
-    "1.00 0.80 0.95", /* pink */
-    "0.34 0.34 0.34"  /* dark grey */
-};
-static constexpr int numcolors = sizeof(drawcolor) / sizeof(drawcolor[0]);
-
-static void write_obj(const Boolean_trimesh_output *out, const std::string objname)
-{
-  constexpr const char *objdir = "/tmp/";
-  if (out->tri_len == 0) {
-    return;
-  }
-
-  std::string fname = std::string(objdir) + objname + std::string(".obj");
-  std::string matfname = std::string(objdir) + std::string("dumpobj.mtl");
-  std::ofstream f;
-  f.open(fname);
-  if (!f) {
-    std::cout << "Could not open file " << fname << "\n";
-    return;
-  }
-
-  f << "mtllib dumpobj.mtl\n";
-
-  for (int v = 0; v < out->vert_len; ++v) {
-    float *co = out->vert_coord[v];
-    f << "v " << co[0] << " " << co[1] << " " << co[2] << "\n";
-  }
-
-  for (int i = 0; i < out->tri_len; ++i) {
-    int matindex = i % numcolors;
-    f << "usemtl mat" + std::to_string(matindex) + "\n";
-    /* OBJ files use 1-indexing for vertices. */
-    int *tri = out->tri[i];
-    f << "f " << tri[0] + 1 << " " << tri[1] + 1 << " " << tri[2] + 1 << "\n";
-  }
-  f.close();
-
-  /* Could check if it already exists, but why bother. */
-  std::ofstream mf;
-  mf.open(matfname);
-  if (!mf) {
-    std::cout << "Could not open file " << matfname << "\n";
-    return;
-  }
-  for (int c = 0; c < numcolors; ++c) {
-    mf << "newmtl mat" + std::to_string(c) + "\n";
-    mf << "Kd " << drawcolor[c] << "\n";
-  }
-}
 
 constexpr bool DO_OBJ = true;
 
 TEST(eboolean, Empty)
 {
-  Boolean_trimesh_input in;
-  in.vert_len = 0;
-  in.tri_len = 0;
-  in.vert_coord = NULL;
-  in.tri = NULL;
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(&in, nullptr, BOOLEAN_NONE);
-  EXPECT_EQ(out->vert_len, 0);
-  EXPECT_EQ(out->tri_len, 0);
-  BLI_boolean_trimesh_free(out);
+  TriMesh in;
+  TriMesh out = boolean_trimesh(in, BOOLEAN_NONE, 1, [](int){return 0;});
+  EXPECT_EQ(out.vert.size(), 0);
+  EXPECT_EQ(out.tri.size(), 0);
 }
 
 TEST(eboolean, TetTet)
 {
   const char *spec = R"(8 8
-  0.0 0.0 0.0
-  2.0 0.0 0.0
-  1.0 2.0 0.0
-  1.0 1.0 2.0
-  0.0 0.0 1.0
-  2.0 0.0 1.0
-  1.0 2.0 1.0
-  1.0 1.0 3.0
+  0 0 0
+  2 0 0
+  1 2 0
+  1 1 2
+  0 0 1
+  2 0 1
+  1 2 1
+  1 1 3
   0 2 1
   0 1 3
   1 2 3
@@ -198,35 +133,34 @@ TEST(eboolean, TetTet)
   5 6 7
   6 4 7
   )";
-  BT_input bti(spec);
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_NONE);
-  EXPECT_EQ(out->vert_len, 11);
-  EXPECT_EQ(out->tri_len, 20);
-  if (DO_OBJ) {
-    write_obj(out, "tettet");
-  }
-  BLI_boolean_trimesh_free(out);
 
-  Boolean_trimesh_output *out2 = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_UNION);
-  EXPECT_EQ(out2->vert_len, 10);
-  EXPECT_EQ(out2->tri_len, 16);
+  BT_input bti(spec);
+  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_NONE, 1, [](int){return 0;});
+  EXPECT_EQ(out.vert.size(), 11);
+  EXPECT_EQ(out.tri.size(), 20);
   if (DO_OBJ) {
-    write_obj(out2, "tettet_union");
+    write_obj_trimesh(out.vert, out.tri, "tettet");
   }
-  BLI_boolean_trimesh_free(out2);
+
+  TriMesh out2 =boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int){return 0;});
+  EXPECT_EQ(out2.vert.size(), 10);
+  EXPECT_EQ(out2.tri.size(), 16);
+  if (DO_OBJ) {
+    write_obj_trimesh(out2.vert, out2.tri, "tettet_union");
+  }
 }
 
 TEST(eboolean, TetTet2)
 {
   const char *spec = R"(8 8
-  0.0 1.0 -1.0
-  0.875 -0.5 -1.0
-  -0.875 -0.5 -1.0
-  0.0 0.0 1.0
-  0.0 1.0 0.0
-  0.875 -0.5 0.0
-  -0.875 -0.5 0.0
-  0.0 0.0 2.0
+  0 1 -1
+  7/8 -1/2 -1
+  -7/8 -1/2 -1
+  0 0 1
+  0 1 0
+  7/8 -1/2 0
+  -7/8 -1/2 0
+  0 0 2
   0 3 1
   0 1 2
   1 3 2
@@ -238,13 +172,12 @@ TEST(eboolean, TetTet2)
   )";
 
   BT_input bti(spec);
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_UNION);
-  EXPECT_EQ(out->vert_len, 10);
-  EXPECT_EQ(out->tri_len, 16);
+  TriMesh out =boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int){return 0;});
+  EXPECT_EQ(out.vert.size(), 10);
+  EXPECT_EQ(out.tri.size(), 16);
   if (DO_OBJ) {
-    write_obj(out, "tettet2_union");
+    write_obj_trimesh(out.vert, out.tri, "tettet2_union");
   }
-  BLI_boolean_trimesh_free(out);
 }
 
 TEST(eboolean, CubeTet)
@@ -258,10 +191,10 @@ TEST(eboolean, CubeTet)
   1 -1 1
   1 1 -1
   1 1 1
-  0 0.5 0.5
-  0.5 -0.25 0.5
-  -0.5 -0.25 0.5
-  0 0 1.5
+  0 1/2 1/2
+  1/2 -1/4 1/2
+  -1/2 -1/4 1/2
+  0 0 3/2
   0 1 3
   0 3 2
   2 3 7
@@ -281,47 +214,42 @@ TEST(eboolean, CubeTet)
   )";
 
   BT_input bti(spec);
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti.input(), nullptr, BOOLEAN_UNION);
-  EXPECT_EQ(out->vert_len, 14);
-  EXPECT_EQ(out->tri_len, 24);
+  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_UNION,  1, [](int){return 0;});
+  EXPECT_EQ(out.vert.size(), 14);
+  EXPECT_EQ(out.tri.size(), 24);
   if (DO_OBJ) {
-    write_obj(out, "cubetet_union");
+    write_obj_trimesh(out.vert, out.tri, "cubetet_union");
   }
-  BLI_boolean_trimesh_free(out);
 }
 
 TEST(eboolean, BinaryTetTet)
 {
-  const char *spec_a = R"(4 4
-  0.0 0.0 0.0
-  2.0 0.0 0.0
-  1.0 2.0 0.0
-  1.0 1.0 2.0
+  const char *spec = R"(8 8
+  0 0 0
+  2 0 0
+  1 2 0
+  1 1 2
+  0 0 1
+  2 0 1
+  1 2 1
+  1 1 3
   0 2 1
   0 1 3
   1 2 3
   2 0 3
-  )";
-  const char *spec_b = R"(4 4
-  0.0 0.0 1.0
-  2.0 0.0 1.0
-  1.0 2.0 1.0
-  1.0 1.0 3.0
-  0 2 1
-  0 1 3
-  1 2 3
-  2 0 3
+  4 6 5
+  4 5 7
+  5 6 7
+  6 4 7
   )";
 
-  BT_input bti_a(spec_a);
-  BT_input bti_b(spec_b);
-  Boolean_trimesh_output *out = BLI_boolean_trimesh(bti_a.input(), bti_b.input(), BOOLEAN_ISECT);
-  EXPECT_EQ(out->vert_len, 4);
-  EXPECT_EQ(out->tri_len, 4);
+  BT_input bti(spec);
+  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_ISECT, 2, [](int t){return t < 4 ? 0 : 1;});
+  EXPECT_EQ(out.vert.size(), 4);
+  EXPECT_EQ(out.tri.size(), 4);
   if (DO_OBJ) {
-    write_obj(out, "binary_tettet_isect");
+    write_obj_trimesh(out.vert, out.tri, "binary_tettet_isect");
   }
-  BLI_boolean_trimesh_free(out);
 }
 
 TEST(eboolean, PolyCubeCube)

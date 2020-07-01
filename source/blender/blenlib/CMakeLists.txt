@@ -157,7 +157,7 @@ set(SRC
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
   BLI_blenlib.h
-  BLI_boolean.h
+  BLI_boolean.hh
   BLI_boxpack_2d.h
   BLI_buffer.h
   BLI_color.hh
