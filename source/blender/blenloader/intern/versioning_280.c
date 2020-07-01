@@ -21,6 +21,7 @@
 /* allow readfile to use deprecated functionality */
 #define DNA_DEPRECATED_ALLOW
 
+#include <CLG_log.h>
 #include <float.h>
 #include <string.h>
 
@@ -1903,18 +1904,20 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     FOREACH_NODETREE_END;
 
     if (error & NTREE_DOVERSION_NEED_OUTPUT) {
-      BKE_report(fd->reports, RPT_ERROR, "Eevee material conversion problem. Error in console");
-      printf(
-          "You need to connect Principled and Eevee Specular shader nodes to new material "
-          "output "
-          "nodes.\n");
+      BKE_report(fd->reports,
+                 RPT_ERROR,
+                 "Eevee material conversion problem. \n"
+                 "You need to connect Principled and Eevee Specular shader nodes to new material "
+                 "output nodes");
     }
 
     if (error & NTREE_DOVERSION_TRANSPARENCY_EMISSION) {
-      BKE_report(fd->reports, RPT_ERROR, "Eevee material conversion problem. Error in console");
-      printf(
+      BKE_report(
+          fd->reports,
+          RPT_ERROR,
+          "Eevee material conversion problem. \n"
           "You need to combine transparency and emission shaders to the converted Principled "
-          "shader nodes.\n");
+          "shader nodes.");
     }
 
 #ifdef USE_COLLECTION_COMPAT_28
