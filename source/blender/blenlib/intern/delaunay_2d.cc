@@ -446,14 +446,14 @@ static bool id_range_in_list(const LinkNode *id_list, int range_start, int range
   return false;
 }
 
-void add_to_input_ids(LinkNode **dst, int input_id)
+static void add_to_input_ids(LinkNode **dst, int input_id)
 {
   if (!id_in_list(*dst, input_id)) {
     BLI_linklist_prepend(dst, POINTER_FROM_INT(input_id));
   }
 }
 
-void add_list_to_input_ids(LinkNode **dst, const LinkNode *src)
+static void add_list_to_input_ids(LinkNode **dst, const LinkNode *src)
 {
   const LinkNode *ln;
 
