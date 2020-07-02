@@ -3392,13 +3392,13 @@ static void outliner_draw_tree_element(bContext *C,
   }
 }
 
-static void outliner_draw_hierarchy_lines_recursive(uint pos,
-                                                    SpaceOutliner *soops,
-                                                    ListBase *lb,
-                                                    int startx,
-                                                    const uchar col[4],
-                                                    bool draw_grayed_out,
-                                                    int *starty)
+static void outliner_draw_hierarchy_lines_recursive_old(uint pos,
+                                                        SpaceOutliner *soops,
+                                                        ListBase *lb,
+                                                        int startx,
+                                                        const uchar col[4],
+                                                        bool draw_grayed_out,
+                                                        int *starty)
 {
   TreeElement *te, *te_vertical_line_last = NULL, *te_vertical_line_last_dashed = NULL;
   int y1, y2, y1_dashed, y2_dashed;
@@ -3462,7 +3462,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
     *starty -= UI_UNIT_Y;
 
     if (TSELEM_OPEN(tselem, soops)) {
-      outliner_draw_hierarchy_lines_recursive(
+      outliner_draw_hierarchy_lines_recursive_old(
           pos, soops, &te->subtree, startx + UI_UNIT_X, col, draw_childs_grayed_out, starty);
     }
   }
@@ -3490,6 +3490,88 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
       immRecti(pos, startx, start, startx + U.pixelsize, start - dash.step_len + dash.gap_len);
       start -= dash.step_len;
     }
+  }
+}
+
+static void outliner_draw_hierarchy_lines_recursive(uint pos,
+                                                    SpaceOutliner *soops,
+                                                    ListBase *lb,
+                                                    int startx,
+                                                    const uchar col[4],
+                                                    bool draw_grayed_out,
+                                                    int *starty)
+{
+  TreeElement *line_start = NULL, *line_end = NULL;
+  int y = *starty;
+  short color_start;
+  const short line_offset = UI_UNIT_Y / 4.0;
+
+  if (BLI_listbase_is_empty(lb)) {
+    return;
+  }
+
+  immUniformColor4ubv(col);
+
+  /* Draw vertical lines between collections */
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
+    TreeStoreElem *tselem = TREESTORE(te);
+    *starty -= UI_UNIT_Y;
+
+    if (tselem->type == TSE_LAYER_COLLECTION) {
+      if (line_end) {
+        if (color_start != COLLECTION_COLOR_NONE) {
+          float c[4];
+          outliner_get_collection_color(c, color_start);
+
+          immUniformColor4fv(c);
+        }
+        else {
+          immUniformColor4ubv(col);
+        }
+
+        immRecti(pos,
+                 startx,
+                 y - line_offset,
+                 startx + (U.pixelsize * 1),
+                 *starty + UI_UNIT_Y + line_offset);
+        line_end = NULL;
+      }
+
+      Collection *collection = outliner_collection_from_tree_element(te);
+      color_start = collection->color;
+      line_start = te;
+      y = *starty;
+    }
+
+    /* No lines under closed items */
+    if (!TSELEM_OPEN(tselem, soops)) {
+      line_start = NULL;
+      line_end = NULL;
+      continue;
+    }
+    else if (BLI_listbase_is_empty(&te->subtree)) {
+      line_start = NULL;
+      line_end = NULL;
+      continue;
+    }
+
+    outliner_draw_hierarchy_lines_recursive(
+        pos, soops, &te->subtree, startx + UI_UNIT_X, col, draw_grayed_out, starty);
+
+    line_end = te;
+  }
+
+  if (line_start) {
+    if (color_start != COLLECTION_COLOR_NONE) {
+      float c[4];
+      outliner_get_collection_color(c, color_start);
+
+      immUniformColor4fv(c);
+    }
+    else {
+      immUniformColor4ubv(col);
+    }
+    immRecti(pos, startx, y - line_offset, startx + (U.pixelsize * 1), *starty + line_offset);
   }
 }
 
@@ -3713,7 +3795,7 @@ static void outliner_draw_tree(bContext *C,
 
   // gray hierarchy lines
 
-  starty = (int)region->v2d.tot.ymax - UI_UNIT_Y / 2 - OL_Y_OFFSET;
+  starty = (int)region->v2d.tot.ymax - OL_Y_OFFSET;
   startx = mode_column_offset + UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
   outliner_draw_hierarchy_lines(soops, &soops->tree, startx, &starty);
 
