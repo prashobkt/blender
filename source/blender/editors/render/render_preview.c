@@ -331,7 +331,7 @@ static World *preview_get_localized_world(ShaderPreview *sp, World *world)
   return sp->worldcopy;
 }
 
-static ID *duplicate_ids(ID *id)
+static ID *duplicate_ids(ID *id, bool allow_failure)
 {
   if (id == NULL) {
     /* Non-ID preview render. */
@@ -352,7 +352,9 @@ static ID *duplicate_ids(ID *id)
     case ID_SCR:
       return NULL;
     default:
-      BLI_assert(!"ID type preview not supported.");
+      if (!allow_failure) {
+        BLI_assert(!"ID type preview not supported.");
+      }
       return NULL;
   }
 }
@@ -1336,7 +1338,9 @@ void ED_preview_icon_render(Main *bmain, Scene *scene, ID *id, uint *rect, int s
   ip.scene = scene;
   ip.owner = BKE_previewimg_id_ensure(id);
   ip.id = id;
-  ip.id_copy = duplicate_ids(id);
+  /* Control isn't given back to the caller until the preview is done. So we don't need to copy
+   * the ID to avoid thread races. */
+  ip.id_copy = duplicate_ids(id, true);
 
   icon_preview_add_size(&ip, rect, sizex, sizey);
 
@@ -1376,7 +1380,7 @@ void ED_preview_icon_job(
   ip->scene = CTX_data_scene(C);
   ip->owner = owner;
   ip->id = id;
-  ip->id_copy = duplicate_ids(id);
+  ip->id_copy = duplicate_ids(id, false);
 
   icon_preview_add_size(ip, rect, sizex, sizey);
 
@@ -1445,7 +1449,7 @@ void ED_preview_shader_job(const bContext *C,
   sp->sizey = sizey;
   sp->pr_method = method;
   sp->id = id;
-  sp->id_copy = duplicate_ids(id);
+  sp->id_copy = duplicate_ids(id, false);
   sp->own_id_copy = true;
   sp->parent = parent;
   sp->slot = slot;

@@ -45,6 +45,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
+#include "DNA_asset_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_camera_types.h"
@@ -2839,6 +2840,7 @@ static void direct_link_id_common(
 
   if (id->asset_data) {
     BLO_read_data_address(reader, &id->asset_data);
+    BLO_read_data_address(reader, &id->asset_data->preview);
   }
 
   /*link direct data of ID properties*/

@@ -22,7 +22,8 @@
 #define __DNA_ASSET_TYPES_H__
 
 typedef struct AssetData {
-  char _pad[8];
+  /** Thumbnail image of the data-block. Non-owning pointer, the actual data-block owns it. */
+  struct PreviewImage *preview;
 } AssetData;
 
 #endif /* __DNA_ASSET_TYPES_H__ */

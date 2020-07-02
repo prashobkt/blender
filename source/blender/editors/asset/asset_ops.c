@@ -20,6 +20,7 @@
 
 #include "BKE_asset.h"
 #include "BKE_context.h"
+#include "BKE_icons.h"
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 
@@ -29,6 +30,8 @@
 
 #include "RNA_access.h"
 #include "RNA_define.h"
+
+#include "UI_interface_icons.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -61,8 +64,10 @@ static int asset_create_exec(bContext *C, wmOperator *op)
   }
 
   asset_id->asset_data = BKE_asset_data_create();
+  UI_id_icon_render(C, NULL, asset_id, true, false);
+  /* Store reference to the preview. The actual image is owned by the ID. */
+  asset_id->asset_data->preview = BKE_previewimg_id_ensure(asset_id);
 
-  /* TODO generate preview */
   /* TODO generate default meta-data */
   /* TODO create asset in the asset DB, not in the local file. */
 
