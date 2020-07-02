@@ -52,7 +52,10 @@ bool info_filter_text(const Report *report, const char *search_string)
   return strstr(report->message, search_string) != NULL;
 }
 
-static void reports_select_all(ReportList *reports, int report_mask, const char *search_string, int action)
+static void reports_select_all(ReportList *reports,
+                               int report_mask,
+                               const char *search_string,
+                               int action)
 {
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
@@ -504,7 +507,7 @@ ReportList *clog_to_report_list()
 {
   ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
   BKE_reports_init(reports, RPT_STORE);
-  ListBase *records = CLG_log_record_get();
+  ListBase *records = (ListBase *)CLG_log_record_get();
 
   if (BLI_listbase_is_empty(records)) {
     return reports;
@@ -542,8 +545,6 @@ ReportList *clog_to_report_list()
     }
     MEM_freeN(cstr);
     BLI_dynstr_free(dynStr);
-//    log_iter = log->next;
-//    log = log_iter;
     log = log->next;
   }
   return reports;
