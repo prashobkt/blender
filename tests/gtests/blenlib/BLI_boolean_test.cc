@@ -104,7 +104,7 @@ class BP_input {
 
 constexpr bool DO_OBJ = true;
 
-#if 1
+#if 0
 TEST(boolean_trimesh, Empty)
 {
   TriMesh in;
@@ -365,4 +365,78 @@ TEST(boolean_polymesh, CubeCone)
     blender::meshintersect::write_obj_polymesh(out.vert, out.face, "cubeccone");
   }
 }
+
+TEST(boolean_polymesh, CubeCubeCoplanar)
+{
+  const char *spec = R"(16 12
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  -1/2 -1/2 1
+  -1/2 -1/2 2
+  -1/2 1/2 1
+  -1/2 1/2 2
+  1/2 -1/2 1
+  1/2 -1/2 2
+  1/2 1/2 1
+  1/2 1/2 2
+  0 1 3 2
+  2 3 7 6
+  6 7 5 4
+  4 5 1 0
+  2 6 4 0
+  7 3 1 5
+  8 9 11 10
+  10 11 15 14
+  14 15 13 12
+  12 13 9 8
+  10 14 12 8
+  15 11 9 13
+  )";
+
+  BP_input bpi(spec);
+  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
+      bpi.polymesh, BOOLEAN_UNION, 2, [](int t) { return t < 6 ? 0 : 1; });
+  EXPECT_EQ(out.vert.size(), 16);
+  EXPECT_EQ(out.face.size(), 12);
+  if (DO_OBJ) {
+    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "cubecube_coplanar");
+  }
+}
 #endif
+
+TEST(boolean_polymesh, TetTeTCoplanarDiff)
+{
+  const char *spec = R"(8 8
+  0 1 0
+  7/8 -1/2 0
+  -7/8 -1/2 0
+  0 0 1
+  0 1 0
+  7/8 -1/2 0
+  -7/8 -1/2 0
+  0 0 -1
+  0 3 1
+  0 1 2
+  1 3 2
+  2 3 0
+  4 5 7
+  4 6 5
+  5 6 7
+  6 4 7
+  )";
+
+  BP_input bpi(spec);
+  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
+      bpi.polymesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 0 : 1; });
+  EXPECT_EQ(out.vert.size(), 4);
+  EXPECT_EQ(out.face.size(), 4);
+  if (DO_OBJ) {
+    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "tettet_coplanar_diff");
+  }
+}
