@@ -62,6 +62,7 @@ set(SRC
   bpy_gizmo_wrap.c
   bpy_interface.c
   bpy_interface_atexit.c
+  bpy_interface_inoutwrapper.c
   bpy_intern_string.c
   bpy_library_load.c
   bpy_library_write.c
@@ -101,6 +102,7 @@ set(SRC
   bpy_capi_utils.h
   bpy_driver.h
   bpy_gizmo_wrap.h
+  bpy_interface_inoutwrapper.h
   bpy_intern_string.h
   bpy_library.h
   bpy_msgbus.h

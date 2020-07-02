@@ -24,6 +24,7 @@
  * be accesses from scripts.
  */
 
+#include <BKE_report.h>
 #include <Python.h>
 
 #include "MEM_guardedalloc.h"
@@ -42,6 +43,7 @@
 
 #include "bpy.h"
 #include "bpy_capi_utils.h"
+#include "bpy_interface_inoutwrapper.h"
 #include "bpy_intern_string.h"
 #include "bpy_path.h"
 #include "bpy_rna.h"
@@ -246,6 +248,7 @@ static struct _inittab bpy_internal_modules[] = {
 #endif
     {"gpu", BPyInit_gpu},
     {"idprop", BPyInit_idprop},
+    {"_inoutwrapper", PyInit_in_out_wrapper},
     {NULL, NULL},
 };
 
@@ -494,9 +497,15 @@ static bool python_script_exec(
       }
     }
 
+    char *output;
     if (text->compiled) {
+      BPY_intern_init_inoutwrapper();
       py_dict = PyC_DefaultNameSpace(fn_dummy);
       py_result = PyEval_EvalCode(text->compiled, py_dict, py_dict);
+      output = BPY_intern_get_inout_buffer();
+      BKE_report(reports, RPT_INFO, output);
+      BPY_intern_free_inoutwrapper();
+      MEM_freeN(output);
     }
   }
   else {
