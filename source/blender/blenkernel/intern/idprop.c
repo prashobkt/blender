@@ -872,15 +872,17 @@ bool IDP_EqualsProperties_ex(IDProperty *prop1, IDProperty *prop2, const bool is
       float p1 = IDP_Float(prop1);
       float p2 = IDP_Float(prop2);
       if ((p1 != p2) && ((fabsf(p1 - p2) / max_ff(p1, p2)) < 0.001f)) {
-        printf(
-            "WARNING: Comparing two float properties that have nearly the same value (%f vs. "
-            "%f)\n",
-            p1,
-            p2);
-        printf("    p1: ");
-        IDP_print(prop1);
-        printf("    p2: ");
-        IDP_print(prop2);
+        char *prop1_str = IDP_sprintN(prop1);
+        char *prop2_str = IDP_sprintN(prop2);
+        CLOG_WARN(&LOG,
+                  "Comparing two float properties that have nearly the same value: "
+                  "%s (%f) vs. %s (%f)",
+                  prop1_str,
+                  p1,
+                  prop2_str,
+                  p2);
+        MEM_freeN(prop1_str);
+        MEM_freeN(prop2_str);
       }
     }
 #endif

@@ -21,6 +21,9 @@
  * \ingroup bke
  */
 
+#include <BKE_global.h>
+#include <BLI_dynstr.h>
+#include <CLG_log.h>
 #include <float.h>
 #include <math.h>
 #include <stdlib.h>
@@ -42,6 +45,9 @@
 #include "BKE_fcurve.h"
 
 #include "BLO_read_write.h"
+
+static CLG_LogRef BKE_LOG_CURVEPROFILE_TABLE = {"bke.curveprofile.table"};
+static CLG_LogRef BKE_LOG_CURVEPROFILE_EVALUATE = {"bke.curveprofile.evaluate"};
 
 void BKE_curveprofile_free_data(CurveProfile *profile)
 {
@@ -857,23 +863,30 @@ void BKE_curveprofile_create_samples(CurveProfile *profile,
     BLI_assert(i_sample <= n_segments);
   }
 
-#ifdef DEBUG_PROFILE_TABLE
-  printf("CURVEPROFILE CREATE SAMPLES\n");
-  printf("n_segments: %d\n", n_segments);
-  printf("totedges: %d\n", totedges);
-  printf("n_common: %d\n", n_common);
-  printf("n_left: %d\n", n_left);
-  printf("n_samples: ");
-  for (i = 0; i < totedges; i++) {
-    printf("%d, ", n_samples[i]);
+  if (CLOG_CHECK(&BKE_LOG_CURVEPROFILE_TABLE, 2)) {
+    DynStr *message = BLI_dynstr_new();
+    BLI_dynstr_appendf(message,
+                       "CURVEPROFILE CREATE SAMPLES\n"
+                       "n_segments: %d\n"
+                       "totedges: %d\n"
+                       "n_common: %d\n"
+                       "n_left: %d\n"
+                       "n_samples: ",
+                       n_segments,
+                       totedges,
+                       n_common,
+                       n_left);
+    for (i = 0; i < totedges; i++) {
+      BLI_dynstr_appendf(message, "%d, ", n_samples[i]);
+    }
+    BLI_dynstr_append(message, "\ni_curved_sorted: ");
+    for (i = 0; i < totedges; i++) {
+      BLI_dynstr_appendf(
+          message, "(%d %.2f), ", curve_sorted[i].bezt_index, curve_sorted[i].bezt_curvature);
+    }
+    CLOG_STR_INFO_N(&BKE_LOG_CURVEPROFILE_TABLE, 2, BLI_dynstr_get_cstring(message));
+    BLI_dynstr_free(message);
   }
-  printf("\n");
-  printf("i_curved_sorted: ");
-  for (i = 0; i < totedges; i++) {
-    printf("(%d %.2f), ", curve_sorted[i].bezt_index, curve_sorted[i].bezt_curvature);
-  }
-  printf("\n");
-#endif
 
   MEM_freeN(bezt);
   MEM_freeN(curve_sorted);
@@ -1118,19 +1131,26 @@ void BKE_curveprofile_create_samples_even_spacing(CurveProfile *profile,
              (distance_to_previous_table_point + distance_to_next_table_point);
     r_samples[i].x = interpf(profile->table[i_table + 1].x, profile->table[i_table].x, factor);
     r_samples[i].y = interpf(profile->table[i_table + 1].y, profile->table[i_table].y, factor);
-#ifdef DEBUG_CURVEPROFILE_EVALUATE
-    BLI_assert(factor <= 1.0f && factor >= 0.0f);
-    printf("segment_left: %.3f\n", segment_left);
-    printf("i_table: %d\n", i_table);
-    printf("distance_to_previous_table_point: %.3f\n", distance_to_previous_table_point);
-    printf("distance_to_next_table_point: %.3f\n", distance_to_next_table_point);
-    printf("Interpolating with factor %.3f from (%.3f, %.3f) to (%.3f, %.3f)\n\n",
-           factor,
-           profile->table[i_table].x,
-           profile->table[i_table].y,
-           profile->table[i_table + 1].x,
-           profile->table[i_table + 1].y);
-#endif
+
+    CLOG_INFO(&BKE_LOG_CURVEPROFILE_EVALUATE,
+              3,
+              "segment_left: %.3f\n"
+              "i_table: %d\n"
+              "distance_to_previous_table_point: %.3f\n"
+              "distance_to_next_table_point: %.3f\n"
+              "Interpolating with factor %.3f from (%.3f, %.3f) to (%.3f, %.3f)",
+              segment_left,
+              i_table,
+              distance_to_previous_table_point,
+              distance_to_next_table_point,
+              factor,
+              profile->table[i_table].x,
+              profile->table[i_table].y,
+              profile->table[i_table + 1].x,
+              profile->table[i_table + 1].y);
+    if (G.debug & G_DEBUG) {
+      BLI_assert(factor <= 1.0f && factor >= 0.0f);
+    }
 
     /* We sampled in between this table point and the next, so the next travel step is smaller. */
     distance_to_next_table_point -= segment_left;
@@ -1176,16 +1196,25 @@ void BKE_curveprofile_evaluate_length_portion(const CurveProfile *profile,
   float distance_to_next_point = curveprofile_distance_to_next_table_point(profile, i);
   float lerp_factor = (requested_length - length_travelled) / distance_to_next_point;
 
-#ifdef DEBUG_CURVEPROFILE_EVALUATE
-  printf("CURVEPROFILE EVALUATE\n");
-  printf("  length portion input: %f\n", (double)length_portion);
-  printf("  requested path length: %f\n", (double)requested_length);
-  printf("  distance to next point: %f\n", (double)distance_to_next_point);
-  printf("  length travelled: %f\n", (double)length_travelled);
-  printf("  lerp-factor: %f\n", (double)lerp_factor);
-  printf("  ith point (%f, %f)\n", (double)profile->path[i].x, (double)profile->path[i].y);
-  printf("  next point(%f, %f)\n", (double)profile->path[i + 1].x, (double)profile->path[i + 1].y);
-#endif
+  CLOG_INFO(&BKE_LOG_CURVEPROFILE_EVALUATE,
+            4,
+            "CURVEPROFILE EVALUATE\n"
+            "  length portion input: %f\n"
+            "  requested path length: %f\n"
+            "  distance to next point: %f\n"
+            "  length travelled: %f\n"
+            "  lerp-factor: %f\n"
+            "  ith point (%f, %f)\n"
+            "  next point(%f, %f)",
+            (double)length_portion,
+            (double)requested_length,
+            (double)distance_to_next_point,
+            (double)length_travelled,
+            (double)lerp_factor,
+            (double)profile->path[i].x,
+            (double)profile->path[i].y,
+            (double)profile->path[i + 1].x,
+            (double)profile->path[i + 1].y);
 
   *x_out = interpf(profile->table[i].x, profile->table[i + 1].x, lerp_factor);
   *y_out = interpf(profile->table[i].y, profile->table[i + 1].y, lerp_factor);

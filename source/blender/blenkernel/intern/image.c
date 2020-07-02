@@ -31,6 +31,7 @@
 #  include <io.h>
 #endif
 
+#include <BLI_dynstr.h>
 #include <time.h>
 
 #include "CLG_log.h"
@@ -1075,24 +1076,30 @@ static uintptr_t image_mem_size(Image *image)
   return size;
 }
 
-void BKE_image_print_memlist(Main *bmain)
+char *BKE_image_sprintfN_memlist(Main *bmain)
 {
   Image *ima;
   uintptr_t size, totsize = 0;
+  DynStr *message = BLI_dynstr_new();
 
   for (ima = bmain->images.first; ima; ima = ima->id.next) {
     totsize += image_mem_size(ima);
   }
 
-  printf("\ntotal image memory len: %.3f MB\n", (double)totsize / (double)(1024 * 1024));
+  BLI_dynstr_appendf(
+      message, "\ntotal image memory len: %.3f MB\n", (double)totsize / (double)(1024 * 1024));
 
   for (ima = bmain->images.first; ima; ima = ima->id.next) {
     size = image_mem_size(ima);
 
     if (size) {
-      printf("%s len: %.3f MB\n", ima->id.name + 2, (double)size / (double)(1024 * 1024));
+      BLI_dynstr_appendf(
+          message, "%s len: %.3f MB\n", ima->id.name + 2, (double)size / (double)(1024 * 1024));
     }
   }
+  char *cstring = BLI_dynstr_get_cstring(message);
+  BLI_dynstr_free(message);
+  return cstring;
 }
 
 static bool imagecache_check_dirty(ImBuf *ibuf, void *UNUSED(userkey), void *UNUSED(userdata))
@@ -1133,8 +1140,9 @@ void BKE_image_free_all_textures(Main *bmain)
 #endif
     }
   }
+
 #ifdef CHECK_FREED_SIZE
-  printf("%s: freed total %lu MB\n", __func__, tot_freed_size / (1024 * 1024));
+  CLOG_INFO(&LOG, 1, "freed total %lu MB", tot_freed_size / (1024 * 1024));
 #endif
 }
 
@@ -2976,10 +2984,10 @@ struct anim *openanim(const char *name, int flags, int streamindex, char colorsp
   ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
   if (ibuf == NULL) {
     if (BLI_exists(name)) {
-      printf("not an anim: %s\n", name);
+      CLOG_WARN(&LOG, "not an anim: %s", name);
     }
     else {
-      printf("anim file doesn't exist: %s\n", name);
+      CLOG_WARN(&LOG, "anim file doesn't exist: %s", name);
     }
     IMB_free_anim(anim);
     return NULL;
@@ -3441,7 +3449,8 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
               imapf->packedfile = pf;
             }
             else {
-              printf("ERROR: Image \"%s\" not available. Keeping packed image\n", imapf->filepath);
+              CLOG_ERROR(
+                  &LOG, "Image \"%s\" not available. Keeping packed image", imapf->filepath);
             }
           }
         }
@@ -3992,14 +4001,12 @@ static ImBuf *load_sequence_single(
   /* read ibuf */
   ibuf = IMB_loadiffname(name, flag, ima->colorspace_settings.name);
 
-#if 0
   if (ibuf) {
-    printf(AT " loaded %s\n", name);
+    CLOG_INFO(&LOG, 2, "loaded %s", name);
   }
   else {
-    printf(AT " missed %s\n", name);
+    CLOG_INFO(&LOG, 2, "missed %s", name);
   }
-#endif
 
   if (ibuf) {
 #ifdef WITH_OPENEXR
@@ -4106,14 +4113,14 @@ static ImBuf *image_load_sequence_multilayer(Image *ima, ImageUser *iuser, int e
 
     if (ibuf) { /* actually an error */
       ima->type = IMA_TYPE_IMAGE;
-      printf("error, multi is normal image\n");
+      CLOG_ERROR(&LOG, "multi is normal image");
     }
   }
   if (ima->rr) {
     RenderPass *rpass = BKE_image_multilayer_index(ima->rr, iuser);
 
     if (rpass) {
-      // printf("load from pass %s\n", rpass->name);
+      CLOG_INFO(&LOG, 3, "load from render pass %s", rpass->name);
       /* since we free  render results, we copy the rect */
       ibuf = IMB_allocImBuf(ima->rr->rectx, ima->rr->recty, 32, 0);
       ibuf->rect_float = MEM_dupallocN(rpass->rect);
@@ -4126,7 +4133,9 @@ static ImBuf *image_load_sequence_multilayer(Image *ima, ImageUser *iuser, int e
       image_initialize_after_load(ima, iuser, ibuf);
       image_assign_ibuf(ima, ibuf, iuser ? iuser->multi_index : 0, entry);
     }
-    // else printf("pass not found\n");
+    else {
+      CLOG_INFO(&LOG, 3, "render pass not found");
+    }
   }
   else {
     tile->ok = 0;

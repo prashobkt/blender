@@ -282,7 +282,7 @@ void BKE_image_packfiles_from_mem(struct ReportList *reports,
                                   const size_t data_len);
 
 /* prints memory statistics for images */
-void BKE_image_print_memlist(struct Main *bmain);
+char *BKE_image_sprintfN_memlist(struct Main *bmain);
 
 /* empty image block, of similar type and filename */
 struct Image *BKE_image_copy(struct Main *bmain, const struct Image *ima);

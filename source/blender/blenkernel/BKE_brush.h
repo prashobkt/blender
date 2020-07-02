@@ -152,7 +152,7 @@ void BKE_brush_scale_size(int *r_brush_size,
   ((void)0)
 
 /* debugging only */
-void BKE_brush_debug_print_state(struct Brush *br);
+char *BKE_brush_debug_sprintfN_state(struct Brush *br);
 
 #ifdef __cplusplus
 }

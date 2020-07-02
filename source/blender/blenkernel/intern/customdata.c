@@ -25,6 +25,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <BLI_dynstr.h>
 
 /* Since we have versioning code here (CustomData_verify_versions()). */
 #define DNA_DEPRECATED_ALLOW
@@ -1958,44 +1959,48 @@ static const char *layerType_getName(int type)
   return LAYERTYPENAMES[type];
 }
 
-void customData_mask_layers__print(const CustomData_MeshMasks *mask)
+char *customData_mask_layers__sprintN(const CustomData_MeshMasks *mask)
 {
+  DynStr *message = BLI_dynstr_new();
   int i;
 
-  printf("verts mask=0x%lx:\n", (long unsigned int)mask->vmask);
+  BLI_dynstr_appendf(message, "verts mask=0x%lx:\n", (long unsigned int)mask->vmask);
   for (i = 0; i < CD_NUMTYPES; i++) {
     if (mask->vmask & CD_TYPE_AS_MASK(i)) {
-      printf("  %s\n", layerType_getName(i));
+      BLI_dynstr_appendf(message,"  %s\n", layerType_getName(i));
     }
   }
 
-  printf("edges mask=0x%lx:\n", (long unsigned int)mask->emask);
+  BLI_dynstr_appendf(message,"edges mask=0x%lx:\n", (long unsigned int)mask->emask);
   for (i = 0; i < CD_NUMTYPES; i++) {
     if (mask->emask & CD_TYPE_AS_MASK(i)) {
-      printf("  %s\n", layerType_getName(i));
+      BLI_dynstr_appendf(message,"  %s\n", layerType_getName(i));
     }
   }
 
-  printf("faces mask=0x%lx:\n", (long unsigned int)mask->fmask);
+  BLI_dynstr_appendf(message,"faces mask=0x%lx:\n", (long unsigned int)mask->fmask);
   for (i = 0; i < CD_NUMTYPES; i++) {
     if (mask->fmask & CD_TYPE_AS_MASK(i)) {
-      printf("  %s\n", layerType_getName(i));
+      BLI_dynstr_appendf(message,"  %s\n", layerType_getName(i));
     }
   }
 
-  printf("loops mask=0x%lx:\n", (long unsigned int)mask->lmask);
+  BLI_dynstr_appendf(message,"loops mask=0x%lx:\n", (long unsigned int)mask->lmask);
   for (i = 0; i < CD_NUMTYPES; i++) {
     if (mask->lmask & CD_TYPE_AS_MASK(i)) {
-      printf("  %s\n", layerType_getName(i));
+      BLI_dynstr_appendf(message,"  %s\n", layerType_getName(i));
     }
   }
 
-  printf("polys mask=0x%lx:\n", (long unsigned int)mask->pmask);
+  BLI_dynstr_appendf(message,"polys mask=0x%lx:\n", (long unsigned int)mask->pmask);
   for (i = 0; i < CD_NUMTYPES; i++) {
     if (mask->pmask & CD_TYPE_AS_MASK(i)) {
-      printf("  %s\n", layerType_getName(i));
+      BLI_dynstr_appendf(message,"  %s\n", layerType_getName(i));
     }
   }
+  char *cstring = BLI_dynstr_get_cstring(message);
+  BLI_dynstr_free(message);
+  return cstring;
 }
 
 /********************* CustomData functions *********************/

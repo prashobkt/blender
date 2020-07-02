@@ -2302,7 +2302,7 @@ static void dm_debug_info_layers(DynStr *dynstr,
   }
 }
 
-char *DM_debug_info(DerivedMesh *dm)
+char *DM_debug_sprintfN(DerivedMesh *dm)
 {
   DynStr *dynstr = BLI_dynstr_new();
   char *ret;
@@ -2355,20 +2355,22 @@ char *DM_debug_info(DerivedMesh *dm)
   return ret;
 }
 
+/** better use CLOG_STR_INFO_N(&LOG, 1, DM_debug_sprintfN(dm)); */
 void DM_debug_print(DerivedMesh *dm)
 {
-  char *str = DM_debug_info(dm);
+  char *str = DM_debug_sprintfN(dm);
   puts(str);
   fflush(stdout);
   MEM_freeN(str);
 }
 
-void DM_debug_print_cdlayers(CustomData *data)
+char *DM_debug_sprintfN_cdlayers(CustomData *data)
 {
   int i;
   const CustomDataLayer *layer;
 
-  printf("{\n");
+  DynStr *message = BLI_dynstr_new();
+  BLI_dynstr_append(message, "{\n");
 
   for (i = 0, layer = data->layers; i < data->totlayer; i++, layer++) {
 
@@ -2377,16 +2379,21 @@ void DM_debug_print_cdlayers(CustomData *data)
     const char *structname;
     int structnum;
     CustomData_file_write_info(layer->type, &structname, &structnum);
-    printf("        dict(name='%s', struct='%s', type=%d, ptr='%p', elem=%d, length=%d),\n",
-           name,
-           structname,
-           layer->type,
-           (const void *)layer->data,
-           size,
-           (int)(MEM_allocN_len(layer->data) / size));
+    BLI_dynstr_appendf(
+        message,
+        "        dict(name='%s', struct='%s', type=%d, ptr='%p', elem=%d, length=%d),\n",
+        name,
+        structname,
+        layer->type,
+        (const void *)layer->data,
+        size,
+        (int)(MEM_allocN_len(layer->data) / size));
   }
+  BLI_dynstr_append(message, "}");
 
-  printf("}\n");
+  char *cstring = BLI_dynstr_get_cstring(message);
+  BLI_dynstr_free(message);
+  return cstring;
 }
 
 bool DM_is_valid(DerivedMesh *dm)

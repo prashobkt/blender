@@ -21,6 +21,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,6 +51,8 @@
 #include "BKE_main.h"
 #include "BKE_node.h"
 #include "BKE_texture.h"
+
+static CLG_LogRef LOG = {"bke.linestyle"};
 
 static void linestyle_init_data(ID *id)
 {
@@ -1465,7 +1468,7 @@ char *BKE_linestyle_path_to_color_ramp(FreestyleLineStyle *linestyle, ColorBand 
       return BLI_sprintfN("color_modifiers[\"%s\"].color_ramp", name_esc);
     }
   }
-  printf("BKE_linestyle_path_to_color_ramp: No color ramps correspond to the given pointer.\n");
+  CLOG_WARN(&LOG, "No color ramps correspond to the given pointer");
   return NULL;
 }
 

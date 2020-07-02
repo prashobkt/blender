@@ -380,9 +380,9 @@ void DM_calc_loop_tangents(DerivedMesh *dm,
 
 /* debug only */
 #ifndef NDEBUG
-char *DM_debug_info(DerivedMesh *dm);
+char *DM_debug_sprintfN(DerivedMesh *dm);
 void DM_debug_print(DerivedMesh *dm);
-void DM_debug_print_cdlayers(CustomData *cdata);
+char *DM_debug_sprintfN_cdlayers(CustomData *data);
 
 bool DM_is_valid(DerivedMesh *dm);
 #endif

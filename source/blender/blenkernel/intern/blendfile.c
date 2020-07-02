@@ -21,6 +21,7 @@
  * and functions for writing *partial* files (only selected data-blocks).
  */
 
+#include <CLG_log.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -68,6 +69,8 @@
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
+
+static CLG_LogRef LOG = {"bke.blendfile"};
 
 /* -------------------------------------------------------------------- */
 /** \name High Level `.blend` file read/write.
@@ -690,7 +693,6 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
     bool ok_write;
     BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_USERPREF_FILE, NULL);
 
-    printf("Writing userprefs: '%s' ", filepath);
     if (use_template_userpref) {
       ok_write = BKE_blendfile_userdef_write_app_template(filepath, reports);
     }
@@ -699,10 +701,10 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
     }
 
     if (ok_write) {
-      printf("ok\n");
+      CLOG_INFO(&LOG, 0, "Writing userprefs ok: '%s'", filepath);
     }
     else {
-      printf("fail\n");
+      CLOG_ERROR(&LOG, "Writing userprefs fail: '%s'", filepath);
       ok = false;
     }
   }
@@ -715,12 +717,11 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
       /* Also save app-template prefs */
       BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_USERPREF_FILE, NULL);
 
-      printf("Writing userprefs app-template: '%s' ", filepath);
       if (BKE_blendfile_userdef_write(filepath, reports) != 0) {
-        printf("ok\n");
+        CLOG_INFO(&LOG, 0, "Writing userprefs app-template ok: '%s'", filepath);
       }
       else {
-        printf("fail\n");
+        CLOG_ERROR(&LOG, "Writing userprefs app-template fail: '%s'", filepath);
         ok = false;
       }
     }

@@ -233,14 +233,6 @@ char *IDP_reprN(const IDProperty *prop, uint *r_len)
   return cstring;
 }
 
-void IDP_print(const IDProperty *prop)
-{
-  char *repr = IDP_reprN(prop, NULL);
-  printf("IDProperty(%p): ", prop);
-  puts(repr);
-  MEM_freeN(repr);
-}
-
 char *IDP_sprintN(const IDProperty *prop)
 {
   char *repr = IDP_reprN(prop, NULL);

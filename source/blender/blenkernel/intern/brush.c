@@ -19,6 +19,8 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <BLI_dynstr.h>
+#include <CLG_log.h>
 
 #include "DNA_brush_types.h"
 #include "DNA_defaults.h"
@@ -1360,27 +1362,29 @@ Brush *BKE_brush_copy(Main *bmain, const Brush *brush)
   return brush_copy;
 }
 
-void BKE_brush_debug_print_state(Brush *br)
+char *BKE_brush_debug_sprintfN_state(Brush *br)
 {
   /* create a fake brush and set it to the defaults */
   Brush def = {{NULL}};
   brush_defaults(&def);
+  DynStr *message = BLI_dynstr_new();
+  BLI_dynstr_appendf(message, "Brush (%p) setting vs default value:\n", br);
 
 #define BR_TEST(field, t) \
   if (br->field != def.field) \
-  printf("br->" #field " = %" #t ";\n", br->field)
+  BLI_dynstr_appendf(message, "br->" #field " = %" #t ";\n", br->field)
 
 #define BR_TEST_FLAG(_f) \
   if ((br->flag & _f) && !(def.flag & _f)) \
-    printf("br->flag |= " #_f ";\n"); \
+    BLI_dynstr_appendf(message, "br->flag |= " #_f ";\n"); \
   else if (!(br->flag & _f) && (def.flag & _f)) \
-  printf("br->flag &= ~" #_f ";\n")
+  BLI_dynstr_appendf(message, "br->flag &= ~" #_f ";\n")
 
 #define BR_TEST_FLAG_OVERLAY(_f) \
   if ((br->overlay_flags & _f) && !(def.overlay_flags & _f)) \
-    printf("br->overlay_flags |= " #_f ";\n"); \
+    BLI_dynstr_appendf(message, "br->overlay_flags |= " #_f ";\n"); \
   else if (!(br->overlay_flags & _f) && (def.overlay_flags & _f)) \
-  printf("br->overlay_flags &= ~" #_f ";\n")
+  BLI_dynstr_appendf(message, "br->overlay_flags &= ~" #_f ";\n")
 
   /* print out any non-default brush state */
   BR_TEST(normal_weight, f);
@@ -1452,17 +1456,19 @@ void BKE_brush_debug_print_state(Brush *br)
   BR_TEST(sub_col[2], f);
   BR_TEST(sub_col[3], f);
 
-  printf("\n");
-
 #undef BR_TEST
 #undef BR_TEST_FLAG
+  char *cstring = BLI_dynstr_get_cstring(message);
+  BLI_dynstr_free(message);
+  return cstring;
 }
+
+static CLG_LogRef BKE_LOG_BRUSH_DEFAULTS = {"bke.brush.defaults"};
 
 void BKE_brush_sculpt_reset(Brush *br)
 {
-  /* enable this to see any non-default
-   * settings used by a brush: */
-  // BKE_brush_debug_print_state(br);
+  /* enable this to see any non-default settings used by a brush: */
+  CLOG_STR_INFO_N(&BKE_LOG_BRUSH_DEFAULTS, 3, BKE_brush_debug_sprintfN_state(br));
 
   brush_defaults(br);
   BKE_brush_curve_preset(br, CURVE_PRESET_SMOOTH);

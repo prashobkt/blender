@@ -77,7 +77,7 @@ typedef enum eCDAllocType {
 
 #define CD_TYPE_AS_MASK(_type) (CustomDataMask)((CustomDataMask)1 << (CustomDataMask)(_type))
 
-void customData_mask_layers__print(const struct CustomData_MeshMasks *mask);
+char *customData_mask_layers__sprintN(const struct CustomData_MeshMasks *mask);
 
 typedef void (*cd_interp)(
     const void **sources, const float *weights, const float *sub_weights, int count, void *dest);

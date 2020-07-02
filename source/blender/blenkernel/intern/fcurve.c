@@ -739,9 +739,8 @@ bool BKE_fcurve_calc_bounds(FCurve *fcu,
     }
   }
   else {
-    if (G.debug & G_DEBUG) {
-      printf("F-Curve calc bounds didn't find anything, so assuming minimum bounds of 1.0\n");
-    }
+    CLOG_INFO(
+        &LOG, 1, "F-Curve calc bounds didn't find anything, so assuming minimum bounds of 1.0");
 
     if (xmin) {
       *xmin = 0.0f;
@@ -1539,13 +1538,12 @@ static float fcurve_eval_keyframes_interpolate(FCurve *fcu, BezTriple *bezts, fl
   }
 
   if (evaltime < prevbezt->vec[1][0] || bezt->vec[1][0] < evaltime) {
-    if (G.debug & G_DEBUG) {
-      printf("   ERROR: failed eval - p=%f b=%f, t=%f (%f)\n",
-             prevbezt->vec[1][0],
-             bezt->vec[1][0],
-             evaltime,
-             fabsf(bezt->vec[1][0] - evaltime));
-    }
+    CLOG_ERROR(&LOG,
+               "   failed eval - p=%f b=%f, t=%f (%f)",
+               prevbezt->vec[1][0],
+               bezt->vec[1][0],
+               evaltime,
+               fabsf(bezt->vec[1][0] - evaltime));
     return 0.0f;
   }
 
@@ -1593,14 +1591,13 @@ static float fcurve_eval_keyframes_interpolate(FCurve *fcu, BezTriple *bezts, fl
 
       /* try to get a value for this position - if failure, try another set of points */
       if (!findzero(evaltime, v1[0], v2[0], v3[0], v4[0], opl)) {
-        if (G.debug & G_DEBUG) {
-          printf("    ERROR: findzero() failed at %f with %f %f %f %f\n",
-                 evaltime,
-                 v1[0],
-                 v2[0],
-                 v3[0],
-                 v4[0]);
-        }
+        CLOG_ERROR(&LOG,
+                   "    findzero() failed at %f with %f %f %f %f",
+                   evaltime,
+                   v1[0],
+                   v2[0],
+                   v3[0],
+                   v4[0]);
         return 0.0;
       }
 

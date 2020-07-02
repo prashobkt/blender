@@ -21,6 +21,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -40,6 +41,8 @@
 #include "BKE_mesh_runtime.h"
 
 #include "MEM_guardedalloc.h"
+
+static CLG_LogRef LOG = {"bke.bhvutils"};
 
 /* -------------------------------------------------------------------- */
 /** \name BVHCache
@@ -1563,13 +1566,12 @@ BVHTree *BKE_bvhtree_from_mesh_get(struct BVHTreeFromMesh *data,
   }
 
   if (data->tree != NULL) {
-#ifdef DEBUG
     if (BLI_bvhtree_get_tree_type(data->tree) != tree_type) {
-      printf("tree_type %d obtained instead of %d\n",
-             BLI_bvhtree_get_tree_type(data->tree),
-             tree_type);
+      CLOG_ERROR(&LOG,
+                 "tree_type %d obtained instead of %d",
+                 BLI_bvhtree_get_tree_type(data->tree),
+                 tree_type);
     }
-#endif
     BLI_assert(data->cached);
   }
   else {
@@ -1654,13 +1656,12 @@ BVHTree *BKE_bvhtree_from_editmesh_get(BVHTreeFromEditMesh *data,
   }
 
   if (data->tree != NULL) {
-#ifdef DEBUG
     if (BLI_bvhtree_get_tree_type(data->tree) != tree_type) {
-      printf("tree_type %d obtained instead of %d\n",
-             BLI_bvhtree_get_tree_type(data->tree),
-             tree_type);
+      CLOG_ERROR(&LOG,
+                 "tree_type %d obtained instead of %d",
+                 BLI_bvhtree_get_tree_type(data->tree),
+                 tree_type);
     }
-#endif
     BLI_assert(data->cached);
   }
   else {

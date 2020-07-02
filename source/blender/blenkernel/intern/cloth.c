@@ -22,6 +22,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "DNA_cloth_types.h"
 #include "DNA_mesh_types.h"
@@ -50,6 +51,8 @@
 #include "BPH_mass_spring.h"
 
 // #include "PIL_time.h"  /* timing for debug prints */
+
+static CLG_LogRef LOG = {"bke.cloth"};
 
 /* ********** cloth engine ******* */
 /* Prototypes for internal functions.
@@ -604,9 +607,6 @@ void cloth_free_modifier(ClothModifierData *clmd)
 void cloth_free_modifier_extern(ClothModifierData *clmd)
 {
   Cloth *cloth = NULL;
-  if (G.debug & G_DEBUG_SIMDATA) {
-    printf("cloth_free_modifier_extern\n");
-  }
 
   if (!clmd) {
     return;
@@ -614,11 +614,9 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
 
   cloth = clmd->clothObject;
 
-  if (cloth) {
-    if (G.debug & G_DEBUG_SIMDATA) {
-      printf("cloth_free_modifier_extern in\n");
-    }
+  CLOG_INFO(&LOG, 1, "free cloth: %p", cloth);
 
+  if (cloth) {
     BPH_cloth_solver_free(clmd);
 
     // Free the verts.
@@ -829,10 +827,8 @@ static int cloth_from_object(
 
   // If we have a clothObject, free it.
   if (clmd->clothObject != NULL) {
+    CLOG_INFO(&LOG, 1, "cloth_free_modifier: %p", clmd);
     cloth_free_modifier(clmd);
-    if (G.debug & G_DEBUG_SIMDATA) {
-      printf("cloth_free_modifier cloth_from_object\n");
-    }
   }
 
   // Allocate a new cloth object.
@@ -946,7 +942,6 @@ static void cloth_from_mesh(ClothModifierData *clmd, Mesh *mesh)
     cloth_free_modifier(clmd);
     BKE_modifier_set_error(&(clmd->modifier),
                            "Out of memory on allocating clmd->clothObject->verts");
-    printf("cloth_free_modifier clmd->clothObject->verts\n");
     return;
   }
 
@@ -963,7 +958,6 @@ static void cloth_from_mesh(ClothModifierData *clmd, Mesh *mesh)
     cloth_free_modifier(clmd);
     BKE_modifier_set_error(&(clmd->modifier),
                            "Out of memory on allocating clmd->clothObject->looptri");
-    printf("cloth_free_modifier clmd->clothObject->looptri\n");
     return;
   }
   BKE_mesh_runtime_verttri_from_looptri(clmd->clothObject->tri, mloop, looptri, looptri_num);
@@ -1981,11 +1975,7 @@ static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
 
   cloth_free_edgelist(edgelist, mvert_num);
 
-#if 0
-  if (G.debug_value > 0) {
-    printf("avg_len: %f\n", clmd->sim_parms->avg_spring_len);
-  }
-#endif
+  CLOG_INFO(&LOG, 2, "avg_len: %f", clmd->sim_parms->avg_spring_len);
 
   return 1;
 }
