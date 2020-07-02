@@ -22,6 +22,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "DNA_defaults.h"
 #include "DNA_key_types.h"
@@ -467,15 +468,13 @@ static void mesh_ensure_tessellation_customdata(Mesh *me)
          * first time from bmesh, rather then giving a warning about this we could be smarter
          * and check if there was any data to begin with, for now just print the warning with
          * some info to help troubleshoot what's going on - campbell */
-        printf(
-            "%s: warning! Tessellation uvs or vcol data got out of sync, "
-            "had to reset!\n    CD_MTFACE: %d != CD_MLOOPUV: %d || CD_MCOL: %d != CD_MLOOPCOL: "
-            "%d\n",
-            __func__,
-            tottex_tessface,
-            tottex_original,
-            totcol_tessface,
-            totcol_original);
+        CLOG_WARN(BKE_LOG_MESH,
+                  "Tessellation uvs or vcol data got out of sync, had to reset!\n"
+                  "CD_MTFACE: %d != CD_MLOOPUV: %d || CD_MCOL: %d != CD_MLOOPCOL: %d",
+                  tottex_tessface,
+                  tottex_original,
+                  totcol_tessface,
+                  totcol_original);
       }
     }
   }

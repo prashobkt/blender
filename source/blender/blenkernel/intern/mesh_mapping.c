@@ -22,6 +22,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "DNA_meshdata_types.h"
 #include "DNA_vec_types.h"
@@ -36,6 +37,9 @@
 #include "BLI_memarena.h"
 
 #include "BLI_strict_flags.h"
+
+/* for the logger */
+#include <BKE_mesh.h>
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Connectivity Mapping
@@ -780,10 +784,10 @@ static void poly_edge_loop_islands_calc(const MEdge *medge,
          *       I don't think we can reach this goal with such a simple algo,
          *       but I don't think either we'll never need all 32 groups!
          */
-        printf(
+        CLOG_WARN(
+            BKE_LOG_MESH,
             "Warning, could not find an available id for current smooth group, faces will me "
-            "marked "
-            "as out of any smooth group...\n");
+            "marked as out of any smooth group...");
 
         /* Can't use 0, will have to set them to this value later. */
         poly_group_id = poly_group_id_overflowed;

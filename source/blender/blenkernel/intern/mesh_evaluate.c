@@ -1050,13 +1050,13 @@ static void split_loop_nor_single_do(LoopSplitTaskDataCommon *common_data, LoopS
    */
   copy_v3_v3(*lnor, polynors[mp_index]);
 
-#if 0
-  printf("BASIC: handling loop %d / edge %d / vert %d / poly %d\n",
-         ml_curr_index,
-         ml_curr->e,
-         ml_curr->v,
-         mp_index);
-#endif
+  CLOG_INFO(BKE_LOG_MESH,
+            5,
+            "BASIC: handling loop %d / edge %ud / vert %ud / poly %d",
+            ml_curr_index,
+            ml_curr->e,
+            ml_curr->v,
+            mp_index);
 
   /* If needed, generate this (simple!) lnor space. */
   if (lnors_spacearr) {
@@ -1269,9 +1269,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data, LoopSpli
           clnors_avg[0] /= clnors_nbr;
           clnors_avg[1] /= clnors_nbr;
           /* Fix/update all clnors of this fan with computed average value. */
-          if (G.debug & G_DEBUG) {
-            printf("Invalid clnors in this fan!\n");
-          }
+          CLOG_INFO(BKE_LOG_MESH, 0, "Invalid clnors in this fan!");
           while ((clnor = BLI_SMALLSTACK_POP(clnors))) {
             // print_v2("org clnor", clnor);
             clnor[0] = (short)clnors_avg[0];
@@ -1480,14 +1478,14 @@ static void loop_split_generator(TaskPool *pool, LoopSplitTaskDataCommon *common
       const int *e2l_curr = edge_to_loops[ml_curr->e];
       const int *e2l_prev = edge_to_loops[ml_prev->e];
 
-#if 0
-      printf("Checking loop %d / edge %u / vert %u (sharp edge: %d, skiploop: %d)...",
-             ml_curr_index,
-             ml_curr->e,
-             ml_curr->v,
-             IS_EDGE_SHARP(e2l_curr),
-             BLI_BITMAP_TEST_BOOL(skip_loops, ml_curr_index));
-#endif
+      CLOG_INFO(BKE_LOG_MESH,
+                4,
+                "Checking loop %d / edge %u / vert %u (sharp edge: %d, skiploop: %d)...",
+                ml_curr_index,
+                ml_curr->e,
+                ml_curr->v,
+                IS_EDGE_SHARP(e2l_curr),
+                BLI_BITMAP_TEST_BOOL(skip_loops, ml_curr_index));
 
       /* A smooth edge, we have to check for cyclic smooth fan case.
        * If we find a new, never-processed cyclic smooth fan, we can do it now using that loop/edge
@@ -1841,7 +1839,7 @@ static void mesh_normals_loop_custom_set(const MVert *mverts,
          */
         BLI_BITMAP_ENABLE(done_loops, i);
         if (G.debug & G_DEBUG) {
-          printf("WARNING! Getting invalid NULL loop space for loop %d!\n", i);
+          CLOG_WARN(BKE_LOG_MESH, "Getting invalid NULL loop space for loop %d!", i);
         }
         continue;
       }
@@ -1942,7 +1940,8 @@ static void mesh_normals_loop_custom_set(const MVert *mverts,
     if (!lnors_spacearr.lspacearr[i]) {
       BLI_BITMAP_DISABLE(done_loops, i);
       if (G.debug & G_DEBUG) {
-        printf("WARNING! Still getting invalid NULL loop space in second loop for loop %d!\n", i);
+        CLOG_WARN(
+            BKE_LOG_MESH, "Still getting invalid NULL loop space in second loop for loop %d!", i);
       }
       continue;
     }

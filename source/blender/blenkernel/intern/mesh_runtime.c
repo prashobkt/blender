@@ -22,6 +22,7 @@
  */
 
 #include "atomic_ops.h"
+#include <CLG_log.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -306,7 +307,7 @@ static void mesh_runtime_debug_info_layers(DynStr *dynstr, CustomData *cd)
   }
 }
 
-char *BKE_mesh_runtime_debug_info(Mesh *me_eval)
+char *BKE_mesh_runtime_debug_sprinfN(Mesh *me_eval)
 {
   DynStr *dynstr = BLI_dynstr_new();
   char *ret;
@@ -363,19 +364,20 @@ char *BKE_mesh_runtime_debug_info(Mesh *me_eval)
 
 void BKE_mesh_runtime_debug_print(Mesh *me_eval)
 {
-  char *str = BKE_mesh_runtime_debug_info(me_eval);
+  char *str = BKE_mesh_runtime_debug_sprinfN(me_eval);
   puts(str);
   fflush(stdout);
   MEM_freeN(str);
 }
 
 /* XXX Should go in customdata file? */
-void BKE_mesh_runtime_debug_print_cdlayers(CustomData *data)
+char *BKE_mesh_runtime_debug_sprintfN_cdlayers(CustomData *data)
 {
   int i;
   const CustomDataLayer *layer;
+  DynStr *dynstr = BLI_dynstr_new();
 
-  printf("{\n");
+  BLI_dynstr_append(dynstr, "{\n");
 
   for (i = 0, layer = data->layers; i < data->totlayer; i++, layer++) {
 
@@ -384,16 +386,22 @@ void BKE_mesh_runtime_debug_print_cdlayers(CustomData *data)
     const char *structname;
     int structnum;
     CustomData_file_write_info(layer->type, &structname, &structnum);
-    printf("        dict(name='%s', struct='%s', type=%d, ptr='%p', elem=%d, length=%d),\n",
-           name,
-           structname,
-           layer->type,
-           (const void *)layer->data,
-           size,
-           (int)(MEM_allocN_len(layer->data) / size));
+    BLI_dynstr_appendf(
+        dynstr,
+        "        dict(name='%s', struct='%s', type=%d, ptr='%p', elem=%d, length=%d),\n",
+        name,
+        structname,
+        layer->type,
+        (const void *)layer->data,
+        size,
+        (int)(MEM_allocN_len(layer->data) / size));
   }
 
-  printf("}\n");
+  BLI_dynstr_append(dynstr, "}");
+
+  char *ret = BLI_dynstr_get_cstring(dynstr);
+  BLI_dynstr_free(dynstr);
+  return ret;
 }
 
 bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
@@ -404,9 +412,7 @@ bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
   bool is_valid = true;
   bool changed = true;
 
-  if (do_verbose) {
-    printf("MESH: %s\n", me_eval->id.name + 2);
-  }
+  CLOG_INFO(BKE_LOG_MESH, 2, "MESH: %s", me_eval->id.name + 2);
 
   is_valid &= BKE_mesh_validate_all_customdata(
       &me_eval->vdata,

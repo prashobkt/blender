@@ -102,9 +102,9 @@ void BKE_mesh_runtime_eval_to_meshkey(struct Mesh *me_deformed,
                                       struct KeyBlock *kb);
 
 #ifndef NDEBUG
-char *BKE_mesh_runtime_debug_info(struct Mesh *me_eval);
+char *BKE_mesh_runtime_debug_sprinfN(struct Mesh *me_eval);
 void BKE_mesh_runtime_debug_print(struct Mesh *me_eval);
-void BKE_mesh_runtime_debug_print_cdlayers(struct CustomData *data);
+char *BKE_mesh_runtime_debug_sprintfN_cdlayers(struct CustomData *data);
 bool BKE_mesh_runtime_is_valid(struct Mesh *me_eval);
 #endif /* NDEBUG */
 

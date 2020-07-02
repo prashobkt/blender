@@ -679,7 +679,7 @@ void rna_Object_me_eval_info(
   }
 
   if (me_eval) {
-    ret = BKE_mesh_runtime_debug_info(me_eval);
+    ret = BKE_mesh_runtime_debug_sprinfN(me_eval);
     if (ret) {
       strcpy(result, ret);
       MEM_freeN(ret);

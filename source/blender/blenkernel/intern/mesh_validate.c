@@ -50,8 +50,6 @@
 /* loop v/e are unsigned, so using max uint_32 value as invalid marker... */
 #define INVALID_LOOP_EDGE_MARKER 4294967295u
 
-static CLG_LogRef LOG = {"bke.mesh"};
-
 /** \name Internal functions
  * \{ */
 
@@ -199,13 +197,13 @@ static int search_polyloop_cmp(const void *v1, const void *v2)
 
 #define PRINT_MSG(...) \
   if (do_verbose) \
-  CLOG_INFO(&LOG, 1, __VA_ARGS__)
+  CLOG_INFO(BKE_LOG_MESH, 1, __VA_ARGS__)
 
 #define PRINT_ERR(...) \
   do { \
     is_valid = false; \
     if (do_verbose) { \
-      CLOG_ERROR(&LOG, __VA_ARGS__); \
+      CLOG_ERROR(BKE_LOG_MESH, __VA_ARGS__); \
     } \
   } while (0)
 
@@ -1036,7 +1034,7 @@ bool BKE_mesh_validate(Mesh *me, const bool do_verbose, const bool cddata_check_
   bool changed;
 
   if (do_verbose) {
-    CLOG_INFO(&LOG, 0, "MESH: %s", me->id.name + 2);
+    CLOG_INFO(BKE_LOG_MESH, 0, "MESH: %s", me->id.name + 2);
   }
 
   is_valid &= BKE_mesh_validate_all_customdata(&me->vdata,

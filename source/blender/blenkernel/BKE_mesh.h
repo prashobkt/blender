@@ -26,6 +26,8 @@
 /* defines BLI_INLINE */
 #include "BLI_compiler_compat.h"
 
+extern struct CLG_LogRef *BKE_LOG_MESH;
+
 struct BLI_Stack;
 struct BMEditMesh;
 struct BMesh;

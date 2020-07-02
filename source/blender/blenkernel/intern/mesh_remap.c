@@ -47,7 +47,7 @@
 
 #include "BLI_strict_flags.h"
 
-static CLG_LogRef LOG = {"bke.mesh"};
+CLG_LOGREF_DECLARE_GLOBAL(BKE_LOG_MESH, "bke.mesh");
 
 /* -------------------------------------------------------------------- */
 /** \name Some generic helpers.
@@ -166,9 +166,8 @@ float BKE_mesh_remap_calc_difference_from_mesh(const SpaceTransform *space_trans
 
   result = ((float)numverts_dst / result) - 1.0f;
 
-#if 0
-  printf("%s: Computed difference between meshes (the lower the better): %f\n", __func__, result);
-#endif
+  CLOG_INFO(
+      BKE_LOG_MESH, 3, "Computed difference between meshes (the lower the better): %f", result);
 
   return result;
 }
@@ -707,7 +706,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
       MEM_freeN(weights);
     }
     else {
-      CLOG_WARN(&LOG, "Unsupported mesh-to-mesh vertex mapping mode (%d)!", mode);
+      CLOG_WARN(BKE_LOG_MESH, "Unsupported mesh-to-mesh vertex mapping mode (%d)!", mode);
       memset(r_map->items, 0, sizeof(*r_map->items) * (size_t)numverts_dst);
     }
 
@@ -1049,7 +1048,7 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
       MEM_freeN(weights);
     }
     else {
-      CLOG_WARN(&LOG, "Unsupported mesh-to-mesh edge mapping mode (%d)!", mode);
+      CLOG_WARN(BKE_LOG_MESH, "Unsupported mesh-to-mesh edge mapping mode (%d)!", mode);
       memset(r_map->items, 0, sizeof(*r_map->items) * (size_t)numedges_dst);
     }
 
@@ -2484,7 +2483,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
       BLI_rng_free(rng);
     }
     else {
-      CLOG_WARN(&LOG, "Unsupported mesh-to-mesh poly mapping mode (%d)!", mode);
+      CLOG_WARN(BKE_LOG_MESH, "Unsupported mesh-to-mesh poly mapping mode (%d)!", mode);
       memset(r_map->items, 0, sizeof(*r_map->items) * (size_t)numpolys_dst);
     }
 
