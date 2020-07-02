@@ -971,7 +971,7 @@ static void blf_font_wrap_apply(FontBLF *font,
     size_t start, last[2];
   } wrap = {font->wrap_width != -1 ? font->wrap_width : INT_MAX, 0, {0, 0}};
 
-  CLOG_INFO(BLENFONT_LOG, 2, "wrapping (%d, %d) `%s`:", len, strlen(str), str);
+  CLOG_INFO(BLENFONT_LOG, 2, "wrapping (%zu, %zu) `%s`:", len, strlen(str), str);
   while ((i < len) && str[i]) {
 
     /* wrap vars */
@@ -1021,7 +1021,7 @@ static void blf_font_wrap_apply(FontBLF *font,
     if (UNLIKELY(do_draw)) {
       CLOG_INFO(BLENFONT_LOG,
                 2,
-                "(%03d..%03d)  `%.*s`",
+                "(%03zu..%03zu)  `%lu %s`",
                 wrap.start,
                 wrap.last[0],
                 (wrap.last[0] - wrap.start) - 1,
