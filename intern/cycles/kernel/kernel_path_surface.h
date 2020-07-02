@@ -242,8 +242,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
   BsdfEval L_light ccl_optional_struct_init;
 
   bool use_light_tree = kernel_data.integrator.use_light_tree;
-  bool use_splitting = kernel_data.integrator.splitting_threshold != 0.0f;
-  if (use_light_tree && use_splitting) {
+  if (use_light_tree) {
     Ray light_ray;
     bool is_lamp;
 
