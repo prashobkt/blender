@@ -21,15 +21,16 @@
  * \ingroup bli
  */
 
-#  include "BLI_array.hh"
-#  include "BLI_math_mpq.hh"
-#  include "BLI_mesh_intersect.hh"
-#  include "BLI_mpq3.hh"
+#include "BLI_array.hh"
+#include "BLI_math_mpq.hh"
+#include "BLI_mesh_intersect.hh"
+#include "BLI_mpq3.hh"
 
 namespace blender {
 namespace meshintersect {
 
-/* Enum values after BOOLEAN_NONE need to match BMESH_ISECT_BOOLEAN_... values in editmesh_intersect.c. */
+/* Enum values after BOOLEAN_NONE need to match BMESH_ISECT_BOOLEAN_... values in
+ * editmesh_intersect.c. */
 enum bool_optype {
   BOOLEAN_NONE = -1,
   /* Aligned with BooleanModifierOp. */
@@ -55,7 +56,10 @@ struct PolyMesh {
 
 PolyMesh boolean(PolyMesh &pm, bool_optype op, int nshapes, std::function<int(int)> shape_fn);
 
-TriMesh boolean_trimesh(const TriMesh &tm, bool_optype op, int nshapes, std::function<int(int)> shape_fn);
+TriMesh boolean_trimesh(const TriMesh &tm,
+                        bool_optype op,
+                        int nshapes,
+                        std::function<int(int)> shape_fn);
 
 void write_obj_polymesh(const Array<mpq3> &vert,
                         const Array<Array<int>> &face,

@@ -32,9 +32,7 @@
 namespace blender {
 namespace meshintersect {
 
-static PolyMesh polymesh_from_bm(BMesh *bm,
-                                 struct BMLoop *(*looptris)[3],
-                                 const int looptris_tot)
+static PolyMesh polymesh_from_bm(BMesh *bm, struct BMLoop *(*looptris)[3], const int looptris_tot)
 {
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_FACE);
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_FACE);
@@ -42,9 +40,7 @@ static PolyMesh polymesh_from_bm(BMesh *bm,
   pm.vert = Array<mpq3>(bm->totvert);
   for (int v = 0; v < bm->totvert; ++v) {
     BMVert *bmv = BM_vert_at_index(bm, v);
-    pm.vert[v] = mpq3(mpq_class(bmv->co[0]),
-                      mpq_class(bmv->co[1]),
-                      mpq_class(bmv->co[2]));
+    pm.vert[v] = mpq3(mpq_class(bmv->co[0]), mpq_class(bmv->co[1]), mpq_class(bmv->co[2]));
   }
   pm.face = Array<Array<int>>(bm->totface);
   pm.triangulation = Array<Array<IndexedTriangle>>(bm->totface);
@@ -99,7 +95,7 @@ static void apply_polymesh_output_to_bmesh(BMesh *bm, const PolyMesh &pm_out)
     Array<BMVert *> new_bmv(pm_out.vert.size());
     for (int v = 0; v < static_cast<int>(pm_out.vert.size()); ++v) {
       float co[3];
-      const mpq3 & mpq3_co = pm_out.vert[v];
+      const mpq3 &mpq3_co = pm_out.vert[v];
       for (int i = 0; i < 3; ++i) {
         co[i] = static_cast<float>(mpq3_co[i].get_d());
       }
@@ -203,7 +199,8 @@ bool BM_mesh_boolean(BMesh *bm,
                      const bool use_self,
                      const int boolean_mode)
 {
-  return blender::meshintersect::bmesh_boolean(bm, looptris, looptris_tot, test_fn, user_data, use_self, false, boolean_mode);
+  return blender::meshintersect::bmesh_boolean(
+      bm, looptris, looptris_tot, test_fn, user_data, use_self, false, boolean_mode);
 }
 
 /*
@@ -222,8 +219,14 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                            const bool use_self,
                            const bool use_separate_all)
 {
-  return blender::meshintersect::bmesh_boolean(bm, looptris, looptris_tot, test_fn, user_data, use_self, use_separate_all, blender::meshintersect::BOOLEAN_NONE);
+  return blender::meshintersect::bmesh_boolean(bm,
+                                               looptris,
+                                               looptris_tot,
+                                               test_fn,
+                                               user_data,
+                                               use_self,
+                                               use_separate_all,
+                                               blender::meshintersect::BOOLEAN_NONE);
 }
 
 } /* extern "C" */
-

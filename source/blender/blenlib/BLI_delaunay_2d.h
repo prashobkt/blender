@@ -211,8 +211,8 @@ void BLI_delaunay_2d_cdt_free(CDT_result *result);
 #  include "BLI_array.hh"
 #  include "BLI_double2.hh"
 #  include "BLI_linklist.h"
-#  include "BLI_mempool.h"
 #  include "BLI_math_mpq.hh"
+#  include "BLI_mempool.h"
 #  include "BLI_mpq2.hh"
 #  include "BLI_vector.hh"
 

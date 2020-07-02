@@ -15,19 +15,19 @@
 #include "BLI_vector.hh"
 
 using blender::Array;
-using blender::Vector;
 using blender::mpq3;
-using blender::meshintersect::TriMesh;
-using blender::meshintersect::PolyMesh;
-using blender::meshintersect::IndexedTriangle;
-using blender::meshintersect::BOOLEAN_NONE;
-using blender::meshintersect::BOOLEAN_ISECT;
-using blender::meshintersect::BOOLEAN_UNION;
-using blender::meshintersect::BOOLEAN_DIFFERENCE;
+using blender::Vector;
 using blender::meshintersect::boolean;
+using blender::meshintersect::BOOLEAN_DIFFERENCE;
+using blender::meshintersect::BOOLEAN_ISECT;
+using blender::meshintersect::BOOLEAN_NONE;
 using blender::meshintersect::boolean_trimesh;
-using blender::meshintersect::write_obj_trimesh;
+using blender::meshintersect::BOOLEAN_UNION;
+using blender::meshintersect::IndexedTriangle;
+using blender::meshintersect::PolyMesh;
+using blender::meshintersect::TriMesh;
 using blender::meshintersect::write_obj_polymesh;
+using blender::meshintersect::write_obj_trimesh;
 
 /* Class that can make a TriMesh from a string spec.
  * The spec has #verts #tris on the first line, then all the vert coords,
@@ -102,18 +102,18 @@ class BP_input {
   }
 };
 
-
 constexpr bool DO_OBJ = true;
 
-TEST(eboolean, Empty)
+#if 1
+TEST(boolean_trimesh, Empty)
 {
   TriMesh in;
-  TriMesh out = boolean_trimesh(in, BOOLEAN_NONE, 1, [](int){return 0;});
+  TriMesh out = boolean_trimesh(in, BOOLEAN_NONE, 1, [](int) { return 0; });
   EXPECT_EQ(out.vert.size(), 0);
   EXPECT_EQ(out.tri.size(), 0);
 }
 
-TEST(eboolean, TetTet)
+TEST(boolean_trimesh, TetTet)
 {
   const char *spec = R"(8 8
   0 0 0
@@ -135,14 +135,14 @@ TEST(eboolean, TetTet)
   )";
 
   BT_input bti(spec);
-  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_NONE, 1, [](int){return 0;});
+  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_NONE, 1, [](int) { return 0; });
   EXPECT_EQ(out.vert.size(), 11);
   EXPECT_EQ(out.tri.size(), 20);
   if (DO_OBJ) {
     write_obj_trimesh(out.vert, out.tri, "tettet");
   }
 
-  TriMesh out2 =boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int){return 0;});
+  TriMesh out2 = boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int) { return 0; });
   EXPECT_EQ(out2.vert.size(), 10);
   EXPECT_EQ(out2.tri.size(), 16);
   if (DO_OBJ) {
@@ -150,7 +150,7 @@ TEST(eboolean, TetTet)
   }
 }
 
-TEST(eboolean, TetTet2)
+TEST(boolean_trimesh, TetTet2)
 {
   const char *spec = R"(8 8
   0 1 -1
@@ -172,7 +172,7 @@ TEST(eboolean, TetTet2)
   )";
 
   BT_input bti(spec);
-  TriMesh out =boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int){return 0;});
+  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int) { return 0; });
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.tri.size(), 16);
   if (DO_OBJ) {
@@ -180,7 +180,7 @@ TEST(eboolean, TetTet2)
   }
 }
 
-TEST(eboolean, CubeTet)
+TEST(boolean_trimesh, CubeTet)
 {
   const char *spec = R"(12 16
   -1 -1 -1
@@ -214,7 +214,7 @@ TEST(eboolean, CubeTet)
   )";
 
   BT_input bti(spec);
-  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_UNION,  1, [](int){return 0;});
+  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int) { return 0; });
   EXPECT_EQ(out.vert.size(), 14);
   EXPECT_EQ(out.tri.size(), 24);
   if (DO_OBJ) {
@@ -222,7 +222,7 @@ TEST(eboolean, CubeTet)
   }
 }
 
-TEST(eboolean, BinaryTetTet)
+TEST(boolean_trimesh, BinaryTetTet)
 {
   const char *spec = R"(8 8
   0 0 0
@@ -244,7 +244,8 @@ TEST(eboolean, BinaryTetTet)
   )";
 
   BT_input bti(spec);
-  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_ISECT, 2, [](int t){return t < 4 ? 0 : 1;});
+  TriMesh out = boolean_trimesh(
+      bti.trimesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; });
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.tri.size(), 4);
   if (DO_OBJ) {
@@ -252,7 +253,37 @@ TEST(eboolean, BinaryTetTet)
   }
 }
 
-TEST(eboolean, PolyCubeCube)
+TEST(boolean_trimesh, TetTetCoplanar)
+{
+  const char *spec = R"(8 8
+  0 1 0
+  7/8 -1/2 0
+  -7/8 -1/2 0
+  0 0 1
+  0 1 0
+  7/8 -1/2 0
+  -7/8 -1/2 0
+  0 0 -1
+  0 3 1
+  0 1 2
+  1 3 2
+  2 3 0
+  4 5 7
+  4 6 5
+  5 6 7
+  6 4 7
+  )";
+
+  BT_input bti(spec);
+  TriMesh out = boolean_trimesh(bti.trimesh, BOOLEAN_UNION, 1, [](int) { return 0; });
+  EXPECT_EQ(out.vert.size(), 5);
+  EXPECT_EQ(out.tri.size(), 6);
+  if (DO_OBJ) {
+    write_obj_trimesh(out.vert, out.tri, "tettet_coplanar");
+  }
+}
+
+TEST(boolean_polymesh, CubeCube)
 {
   const char *spec = R"(16 12
   -1 -1 -1
@@ -291,11 +322,11 @@ TEST(eboolean, PolyCubeCube)
   EXPECT_EQ(out.vert.size(), 20);
   EXPECT_EQ(out.face.size(), 12);
   if (DO_OBJ) {
-    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "polycubecube");
+    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "cubecube");
   }
 }
 
-TEST(eboolean, PolyCubeCone)
+TEST(boolean_polymesh, CubeCone)
 {
   const char *spec = R"(14 12
   -1 -1 -1
@@ -326,13 +357,12 @@ TEST(eboolean, PolyCubeCone)
   8 9 10 12 13)";
 
   BP_input bpi(spec);
-  blender::meshintersect::write_obj_polymesh(
-      bpi.polymesh.vert, bpi.polymesh.face, "polycubecone_in");
   blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
       bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
   EXPECT_EQ(out.vert.size(), 14);
   EXPECT_EQ(out.face.size(), 12);
   if (DO_OBJ) {
-    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "polycubeccone");
+    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "cubeccone");
   }
 }
+#endif

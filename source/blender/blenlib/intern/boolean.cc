@@ -405,35 +405,6 @@ class CellsInfo {
   Vector<Cell> m_cell;
 };
 
-/* Concatenate two TriMeshes to make a new one.
- * The second one gets offset vertex indices, and offset original triangles.
- */
-static TriMesh concat_trimeshes(const TriMesh &tm_a, const TriMesh &tm_b)
-{
-  int a_tot_v = static_cast<int>(tm_a.vert.size());
-  int b_tot_v = static_cast<int>(tm_b.vert.size());
-  int a_tot_t = static_cast<int>(tm_a.tri.size());
-  int b_tot_t = static_cast<int>(tm_b.tri.size());
-  TriMesh tm;
-  tm.vert = Array<mpq3>(a_tot_v + b_tot_v);
-  tm.tri = Array<IndexedTriangle>(a_tot_t + b_tot_t);
-  for (int v = 0; v < a_tot_v; ++v) {
-    tm.vert[v] = tm_a.vert[v];
-  }
-  for (int v = 0; v < b_tot_v; ++v) {
-    tm.vert[v + a_tot_v] = tm_b.vert[v];
-  }
-  for (int t = 0; t < a_tot_t; ++t) {
-    tm.tri[t] = tm_a.tri[t];
-  }
-  for (int t = 0; t < b_tot_t; ++t) {
-    const IndexedTriangle &tri = tm_b.tri[t];
-    tm.tri[t + a_tot_t] = IndexedTriangle(
-        tri.v0() + a_tot_v, tri.v1() + a_tot_v, tri.v2() + a_tot_v, tri.orig() + a_tot_t);
-  }
-  return tm;
-}
-
 /* Partition the triangles of tm into Patches. */
 static PatchesInfo find_patches(const TriMesh &tm, const TriMeshTopology &tmtopo)
 {
@@ -586,7 +557,7 @@ static int find_flap_vert(const IndexedTriangle &tri, const Edge e, bool *r_rev)
 
 /*
  * Triangle tri and tri0 share edge e.
- * Classify tri with respet to tri0 as described in
+ * Classify tri with respect to tri0 as described in
  * sort_tris_around_edge, and return 1, 2, 3, or 4 as tri is:
  * (1) coplanar with tri0 and on same side of e
  * (2) coplanar with tri0 and on opposite side of e
@@ -623,6 +594,7 @@ static int sort_tris_class(const IndexedTriangle &tri,
   }
   BLI_assert(flapv != -1 && flapv0 != -1);
   const mpq3 flap = flapv == INT_MAX ? *extra_coord : tm.vert[flapv];
+  /* orient will be positive if flap is below oriented plane of a0,a1,a2. */
   int orient = mpq3::orient3d(a0, a1, a2, flap);
   int ans;
   if (orient > 0) {
@@ -639,6 +611,27 @@ static int sort_tris_class(const IndexedTriangle &tri,
               << " = " << orient << " ans = " << ans << "\n";
   }
   return ans;
+}
+
+/* To ensure consistent ordering of coplanar triangles if they happen to be sorted around
+ * more than one edge, sort the triangle indices in g (in place) by their index -- but also apply
+ * a sign to the index: positive if the triangle has edge e in the same orientation,
+ * otherwise negative.
+ */
+static void sort_by_signed_triangle_index(Vector<int> &g, const Edge e, const TriMesh &tm)
+{
+  Array<int> signed_g(g.size());
+  for (uint i = 0; i < g.size(); ++i) {
+    const IndexedTriangle &tri = tm.tri[g[i]];
+    bool rev;
+    find_flap_vert(tri, e, &rev);
+    signed_g[i] = rev ? -g[i] : g[i];
+  }
+  std::sort(signed_g.begin(), signed_g.end());
+
+  for (uint i = 0; i < g.size(); ++i) {
+    g[i] = abs(signed_g[i]);
+  }
 }
 
 /*
@@ -664,7 +657,7 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
                                         const IndexedTriangle *extra_tri,
                                         const mpq3 *extra_coord)
 {
-  /* Divide and conquer, quicsort-like sort.
+  /* Divide and conquer, quicksort-like sort.
    * Pick a triangle t0, then partition into groups:
    * (1) coplanar with t0 and on same side of e
    * (2) coplanar with t0 and on opposite side of e
@@ -676,18 +669,17 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
    * around in a single array.
    */
   const int dbg_level = 0;
+  const char *indent;
   if (tris.size() == 0) {
     return Array<int>();
   }
   if (dbg_level > 0) {
+    indent = t0 == tris[0] ? "" : "  ";
     if (t0 == tris[0]) {
       std::cout << "\n";
     }
-    else {
-      std::cout << "  ";
-    }
-    std::cout << "sort_tris_around_edge " << e << "\n";
-    std::cout << "tris = " << tris << "\n";
+    std::cout << indent << "sort_tris_around_edge " << e << "\n";
+    std::cout << indent << "tris = " << tris << "\n";
   }
   Vector<int> g1{tris[0]};
   Vector<int> g2;
@@ -699,37 +691,46 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
     int t = tris[i];
     BLI_assert(t < static_cast<int>(tm.tri.size()) || extra_tri != nullptr);
     const IndexedTriangle &tri = (t == INT_MAX) ? *extra_tri : tm.tri[t];
+    if (dbg_level > 2) {
+      std::cout << indent << "classifying tri " << t << " with respect to " << t0 << "\n";
+    }
     int group_num = sort_tris_class(tri, tri0, tm, e, extra_coord);
+    if (dbg_level > 2) {
+      std::cout << indent << "  classify result : " << group_num << "\n";
+    }
     groups[group_num - 1]->append(t);
   }
   if (dbg_level > 1) {
-    const char *indent = (t0 == tris[0] ? "" : "  ");
     std::cout << indent << "g1 = " << g1 << "\n";
     std::cout << indent << "g2 = " << g2 << "\n";
     std::cout << indent << "g3 = " << g3 << "\n";
     std::cout << indent << "g4 = " << g4 << "\n";
   }
-  if (g1.size() > 1 || g2.size() > 1) {
-    /* TODO: sort according to signed triangle index. */
-    std::cout << "IMPLEMENT ME\n";
-    BLI_assert(false);
+  if (g1.size() > 1) {
+    sort_by_signed_triangle_index(g1, e, tm);
+    if (dbg_level > 1) {
+      std::cout << indent << "g1 sorted: " << g1 << "\n";
+    }
+  }
+  if (g2.size() > 1) {
+    sort_by_signed_triangle_index(g2, e, tm);
+    if (dbg_level > 1) {
+      std::cout << indent << "g2 sorted: " << g2 << "\n";
+    }
   }
   if (g3.size() > 1) {
-    Array<int> g3tris(g3.size());
-    /* TODO: avoid this by changing interface? */
-    for (uint i = 0; i < g3.size(); ++i) {
-      g3tris[i] = tris[g3[i]];
-    }
-    Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3tris, t0, extra_tri, extra_coord);
+    Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3, g3[0], extra_tri, extra_coord);
     std::copy(g3sorted.begin(), g3sorted.end(), g3.begin());
+    if (dbg_level > 1) {
+      std::cout << indent << "g3 sorted: " << g3 << "\n";
+    }
   }
   if (g4.size() > 1) {
-    Array<int> g4tris(g4.size());
-    for (uint i = 0; i < g4.size(); ++i) {
-      g4tris[i] = tris[g4[i]];
-    }
-    Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4tris, t0, extra_tri, extra_coord);
+    Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4, g4[0], extra_tri, extra_coord);
     std::copy(g4sorted.begin(), g4sorted.end(), g4.begin());
+    if (dbg_level > 1) {
+      std::cout << indent << "g4 sorted: " << g4 << "\n";
+    }
   }
   uint group_tot_size = g1.size() + g2.size() + g3.size() + g4.size();
   Array<int> ans(group_tot_size);
@@ -747,7 +748,6 @@ static Array<int> sort_tris_around_edge(const TriMesh &tm,
     std::copy(g2.begin(), g2.end(), p);
   }
   if (dbg_level > 0) {
-    const char *indent = (t0 == tris[0] ? "" : "  ");
     std::cout << indent << "sorted tris = " << ans << "\n";
   }
   return ans;
@@ -830,7 +830,7 @@ static void find_cells_from_edge(const TriMesh &tm,
       *r_follow_cell = c;
       cinfo.cell(c).add_patch(r_index);
       if (dbg_level > 0) {
-        std::cout << "  p" << rnext_index << "." << (rnext_flipped ? "cell_above" : "cwll_below")
+        std::cout << "  p" << rnext_index << "." << (rnext_flipped ? "cell_above" : "cell_below")
                   << " = c" << c << "\n";
       }
     }
@@ -1926,9 +1926,9 @@ static PolyMesh polymesh_from_trimesh_with_dissolve(const TriMesh &tm_out, const
  * a number in the range 0 to nshapes-1, to say which shape that triangle is in.
  */
 TriMesh boolean_trimesh(const TriMesh &tm_in,
-                            bool_optype op,
-                            int nshapes,
-                            std::function<int(int)> shape_fn)
+                        bool_optype op,
+                        int nshapes,
+                        std::function<int(int)> shape_fn)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
@@ -1947,6 +1947,9 @@ TriMesh boolean_trimesh(const TriMesh &tm_in,
   if (dbg_level > 1) {
     write_obj_trimesh(tm_si.vert, tm_si.tri, "boolean_tm_input");
     std::cout << "boolean tm input:\n";
+    for (int v = 0; v < static_cast<int>(tm_si.vert.size()); ++v) {
+      std::cout << "vert " << v << " = " << tm_si.vert[v] << "\n";
+    }
     for (int t = 0; t < static_cast<int>(tm_si.tri.size()); ++t) {
       std::cout << "tri " << t << " = " << tm_si.tri[t] << " shape " << si_shape_fn(t) << "\n";
     }
