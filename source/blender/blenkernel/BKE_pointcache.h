@@ -28,6 +28,7 @@
 #include "DNA_boid_types.h"
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_object_force_types.h"
+#include "DNA_pointcache_types.h"
 #include <stdio.h> /* for FILE */
 
 #ifdef __cplusplus
@@ -64,6 +65,7 @@ extern "C" {
 #define PTCACHE_TYPE_SMOKE_HIGHRES 4
 #define PTCACHE_TYPE_DYNAMICPAINT 5
 #define PTCACHE_TYPE_RIGIDBODY 6
+#define PTCACHE_TYPE_SIM_PARTICLES 7
 
 /* high bits reserved for flags that need to be stored in file */
 #define PTCACHE_TYPEFLAG_COMPRESS (1 << 16)
@@ -84,10 +86,12 @@ struct ListBase;
 struct Main;
 struct Object;
 struct ParticleKey;
+struct ParticleSimulationState;
 struct ParticleSystem;
 struct PointCache;
 struct RigidBodyWorld;
 struct Scene;
+struct Simulation;
 struct SoftBody;
 struct ViewLayer;
 
@@ -128,7 +132,7 @@ typedef struct PTCacheID {
   struct PTCacheID *next, *prev;
 
   struct Scene *scene;
-  struct Object *ob;
+  struct ID *owner_id;
   void *calldata;
   unsigned int type, file_type;
   unsigned int stack_index;
@@ -287,11 +291,12 @@ void BKE_ptcache_make_particle_key(struct ParticleKey *key, int index, void **da
 void BKE_ptcache_id_from_softbody(PTCacheID *pid, struct Object *ob, struct SoftBody *sb);
 void BKE_ptcache_id_from_particles(PTCacheID *pid, struct Object *ob, struct ParticleSystem *psys);
 void BKE_ptcache_id_from_cloth(PTCacheID *pid, struct Object *ob, struct ClothModifierData *clmd);
-void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct FluidModifierData *mmd);
+void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct FluidModifierData *fmd);
 void BKE_ptcache_id_from_dynamicpaint(PTCacheID *pid,
                                       struct Object *ob,
                                       struct DynamicPaintSurface *surface);
 void BKE_ptcache_id_from_rigidbody(PTCacheID *pid, struct Object *ob, struct RigidBodyWorld *rbw);
+void BKE_ptcache_id_from_sim_particles(PTCacheID *pid, struct ParticleSimulationState *state);
 
 PTCacheID BKE_ptcache_id_find(struct Object *ob, struct Scene *scene, struct PointCache *cache);
 void BKE_ptcache_ids_from_object(struct ListBase *lb,

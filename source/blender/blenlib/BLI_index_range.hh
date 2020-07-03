@@ -20,9 +20,37 @@
 /** \file
  * \ingroup bli
  *
- * Allows passing iterators over ranges of integers without actually allocating an array or passing
- * separate values. A range always has a step of one. If other step sizes are required in some
- * cases, a separate data structure should be used.
+ * A `blender::IndexRange` wraps an interval of non-negative integers. It can be used to reference
+ * consecutive elements in an array. Furthermore, it can make for loops more convenient and less
+ * error prone, especially when using nested loops.
+ *
+ * I'd argue that the second loop is more readable and less error prone than the first one. That is
+ * not necessarily always the case, but often it is.
+ *
+ *  for (uint i = 0; i < 10; i++) {
+ *    for (uint j = 0; j < 20; j++) {
+ *       for (uint k = 0; k < 30; k++) {
+ *
+ *  for (uint i : IndexRange(10)) {
+ *    for (uint j : IndexRange(20)) {
+ *      for (uint k : IndexRange(30)) {
+ *
+ * Some containers like blender::Vector have an index_range() method. This will return the
+ * IndexRange that contains all indices that can be used to access the container. This is
+ * particularly useful when you want to iterate over the indices and the elements (much like
+ * Python's enumerate(), just worse). Again, I think the second example here is better:
+ *
+ *  for (uint i = 0; i < my_vector_with_a_long_name.size(); i++) {
+ *    do_something(i, my_vector_with_a_long_name[i]);
+ *
+ *  for (uint i : my_vector_with_a_long_name.index_range()) {
+ *    do_something(i, my_vector_with_a_long_name[i]);
+ *
+ * Ideally this could be could be even closer to Python's enumerate(). We might get that in the
+ * future with newer C++ versions.
+ *
+ * One other important feature is the as_span method. This method returns an Span<uint>
+ * that contains the interval as individual numbers.
  */
 
 #include <algorithm>
@@ -36,65 +64,65 @@ namespace tbb {
 template<typename Value> class blocked_range;
 }
 
-namespace BLI {
+namespace blender {
 
-template<typename T> class ArrayRef;
+template<typename T> class Span;
 
 class IndexRange {
  private:
-  uint m_start = 0;
-  uint m_size = 0;
+  uint start_ = 0;
+  uint size_ = 0;
 
  public:
   IndexRange() = default;
 
-  explicit IndexRange(uint size) : m_start(0), m_size(size)
+  explicit IndexRange(uint size) : start_(0), size_(size)
   {
   }
 
-  IndexRange(uint start, uint size) : m_start(start), m_size(size)
+  IndexRange(uint start, uint size) : start_(start), size_(size)
   {
   }
 
   template<typename T>
-  IndexRange(const tbb::blocked_range<T> &range) : m_start(range.begin()), m_size(range.size())
+  IndexRange(const tbb::blocked_range<T> &range) : start_(range.begin()), size_(range.size())
   {
   }
 
   class Iterator {
    private:
-    uint m_current;
+    uint current_;
 
    public:
-    Iterator(uint current) : m_current(current)
+    Iterator(uint current) : current_(current)
     {
     }
 
     Iterator &operator++()
     {
-      m_current++;
+      current_++;
       return *this;
     }
 
     bool operator!=(const Iterator &iterator) const
     {
-      return m_current != iterator.m_current;
+      return current_ != iterator.current_;
     }
 
     uint operator*() const
     {
-      return m_current;
+      return current_;
     }
   };
 
   Iterator begin() const
   {
-    return Iterator(m_start);
+    return Iterator(start_);
   }
 
   Iterator end() const
   {
-    return Iterator(m_start + m_size);
+    return Iterator(start_ + size_);
   }
 
   /**
@@ -103,7 +131,7 @@ class IndexRange {
   uint operator[](uint index) const
   {
     BLI_assert(index < this->size());
-    return m_start + index;
+    return start_ + index;
   }
 
   /**
@@ -111,7 +139,7 @@ class IndexRange {
    */
   friend bool operator==(IndexRange a, IndexRange b)
   {
-    return (a.m_size == b.m_size) && (a.m_start == b.m_start || a.m_size == 0);
+    return (a.size_ == b.size_) && (a.start_ == b.start_ || a.size_ == 0);
   }
 
   /**
@@ -119,7 +147,7 @@ class IndexRange {
    */
   uint size() const
   {
-    return m_size;
+    return size_;
   }
 
   /**
@@ -127,7 +155,7 @@ class IndexRange {
    */
   IndexRange after(uint n) const
   {
-    return IndexRange(m_start + m_size, n);
+    return IndexRange(start_ + size_, n);
   }
 
   /**
@@ -135,7 +163,7 @@ class IndexRange {
    */
   IndexRange before(uint n) const
   {
-    return IndexRange(m_start - n, n);
+    return IndexRange(start_ - n, n);
   }
 
   /**
@@ -145,7 +173,7 @@ class IndexRange {
   uint first() const
   {
     BLI_assert(this->size() > 0);
-    return m_start;
+    return start_;
   }
 
   /**
@@ -155,7 +183,7 @@ class IndexRange {
   uint last() const
   {
     BLI_assert(this->size() > 0);
-    return m_start + m_size - 1;
+    return start_ + size_ - 1;
   }
 
   /**
@@ -163,7 +191,7 @@ class IndexRange {
    */
   uint one_after_last() const
   {
-    return m_start + m_size;
+    return start_ + size_;
   }
 
   /**
@@ -171,7 +199,7 @@ class IndexRange {
    */
   uint start() const
   {
-    return m_start;
+    return start_;
   }
 
   /**
@@ -179,16 +207,18 @@ class IndexRange {
    */
   bool contains(uint value) const
   {
-    return value >= m_start && value < m_start + m_size;
+    return value >= start_ && value < start_ + size_;
   }
 
+  /**
+   * Returns a new range, that contains a sub-interval of the current one.
+   */
   IndexRange slice(uint start, uint size) const
   {
-    uint new_start = m_start + start;
-    BLI_assert(new_start + size <= m_start + m_size || size == 0);
+    uint new_start = start_ + start;
+    BLI_assert(new_start + size <= start_ + size_ || size == 0);
     return IndexRange(new_start, size);
   }
-
   IndexRange slice(IndexRange range) const
   {
     return this->slice(range.start(), range.size());
@@ -197,7 +227,7 @@ class IndexRange {
   /**
    * Get read-only access to a memory buffer that contains the range as actual numbers.
    */
-  ArrayRef<uint> as_array_ref() const;
+  Span<uint> as_span() const;
 
   friend std::ostream &operator<<(std::ostream &stream, IndexRange range)
   {
@@ -206,6 +236,6 @@ class IndexRange {
   }
 };
 
-}  // namespace BLI
+}  // namespace blender
 
 #endif /* __BLI_INDEX_RANGE_HH__ */

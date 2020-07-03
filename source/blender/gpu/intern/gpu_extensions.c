@@ -71,7 +71,7 @@ static struct GPUGlobal {
   int samples_color_texture_max;
   float line_width_range[2];
   /* workaround for different calculation of dfdy factors on GPUs. Some GPUs/drivers
-   * calculate dfdy in shader differently when drawing to an offscreen buffer. First
+   * calculate dfdy in shader differently when drawing to an off-screen buffer. First
    * number is factor on screen and second is off-screen */
   float dfdyfactors[2];
   float max_anisotropy;
@@ -84,9 +84,9 @@ static struct GPUGlobal {
    * GL_TEXTURE_MAX_LEVEL is higher than the target mip.
    * We need a workaround in this cases. */
   bool mip_render_workaround;
-  /* There is an issue with the glBlitFramebuffer on MacOS with radeon pro graphics.
-   * Blitting depth with GL_DEPTH24_STENCIL8 is buggy so the workaround is to use
-   * GPU_DEPTH32F_STENCIL8. Then Blitting depth will work but blitting stencil will
+  /* There is an issue with the #glBlitFramebuffer on MacOS with radeon pro graphics.
+   * Blitting depth with#GL_DEPTH24_STENCIL8 is buggy so the workaround is to use
+   * #GPU_DEPTH32F_STENCIL8. Then Blitting depth will work but blitting stencil will
    * still be broken. */
   bool depth_blitting_workaround;
   /* Crappy driver don't know how to map framebuffer slot to output vars...
@@ -96,6 +96,9 @@ static struct GPUGlobal {
   /* Some crappy Intel drivers don't work well with shaders created in different
    * rendering contexts. */
   bool context_local_shaders_workaround;
+  /* Intel drivers exhibit artifacts when using #glCopyImageSubData & workbench anti-aliasing.
+   * (see T76273) */
+  bool texture_copy_workaround;
 } GG = {1, 0};
 
 static void gpu_detect_mip_render_workaround(void)
@@ -224,6 +227,11 @@ bool GPU_context_local_shaders_workaround(void)
   return GG.context_local_shaders_workaround;
 }
 
+bool GPU_texture_copy_workaround(void)
+{
+  return GG.texture_copy_workaround;
+}
+
 bool GPU_crappy_amd_driver(void)
 {
   /* Currently are the same drivers with the `unused_fb_slot` problem. */
@@ -280,6 +288,19 @@ void gpu_extensions_init(void)
     }
   }
 
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OPENSOURCE) &&
+      strstr(renderer, "AMD VERDE")) {
+    /* We have issues with this specific renderer. (see T74024) */
+    GG.unused_fb_slot_workaround = true;
+    GG.broken_amd_driver = true;
+  }
+
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OPENSOURCE) &&
+      strstr(version, "Mesa 19.3.4")) {
+    /* Fix slowdown on this particular driver. (see T77641) */
+    GG.broken_amd_driver = true;
+  }
+
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_MAC, GPU_DRIVER_OFFICIAL)) {
     if (strstr(renderer, "AMD Radeon Pro") || strstr(renderer, "AMD Radeon R9") ||
         strstr(renderer, "AMD Radeon RX")) {
@@ -287,7 +308,23 @@ void gpu_extensions_init(void)
     }
   }
 
-  GG.glew_arb_base_instance_is_supported = GLEW_ARB_base_instance;
+  if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_WIN, GPU_DRIVER_OFFICIAL)) {
+    /* Limit this fix to older hardware with GL < 4.5. This means Broadwell GPUs are
+     * covered since they only support GL 4.4 on windows.
+     * This fixes some issues with workbench antialiasing on Win + Intel GPU. (see T76273) */
+    if (!GLEW_VERSION_4_5) {
+      GG.texture_copy_workaround = true;
+    }
+  }
+
+  /* Limit support for GLEW_ARB_base_instance to OpenGL 4.0 and higher. NVIDIA Quadro FX 4800
+   * (TeraScale) report that they support GLEW_ARB_base_instance, but the driver does not support
+   * GLEW_ARB_draw_indirect as it has an OpenGL3 context what also matches the minimum needed
+   * requirements.
+   *
+   * We use it as a target for glMapBuffer(Range) what is part of the OpenGL 4 API. So better
+   * disable it when we don't have an OpenGL4 context (See T77657) */
+  GG.glew_arb_base_instance_is_supported = GLEW_ARB_base_instance && GLEW_VERSION_4_0;
   GG.glew_arb_texture_cube_map_array_is_supported = GLEW_ARB_texture_cube_map_array;
   gpu_detect_mip_render_workaround();
 
@@ -301,6 +338,7 @@ void gpu_extensions_init(void)
     GG.mip_render_workaround = true;
     GG.depth_blitting_workaround = true;
     GG.unused_fb_slot_workaround = true;
+    GG.texture_copy_workaround = true;
     GG.context_local_shaders_workaround = GLEW_ARB_get_program_binary;
   }
 

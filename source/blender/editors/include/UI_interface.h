@@ -66,7 +66,6 @@ struct uiWidgetColors;
 struct wmDrag;
 struct wmDropBox;
 struct wmEvent;
-struct wmEvent;
 struct wmGizmo;
 struct wmKeyConfig;
 struct wmKeyMap;
@@ -766,6 +765,7 @@ bool UI_but_online_manual_id(const uiBut *but,
 bool UI_but_online_manual_id_from_active(const struct bContext *C,
                                          char *r_str,
                                          size_t maxlength) ATTR_WARN_UNUSED_RESULT;
+bool UI_but_is_userdef(const uiBut *but);
 
 /* Buttons
  *
@@ -1707,12 +1707,17 @@ void UI_panel_category_draw_all(struct ARegion *region, const char *category_id_
 
 struct PanelType *UI_paneltype_find(int space_id, int region_id, const char *idname);
 
+struct PointerRNA *UI_region_panel_custom_data_under_cursor(const struct bContext *C,
+                                                            const struct wmEvent *event);
+void UI_panel_custom_data_set(struct Panel *panel, struct PointerRNA *custom_data);
+
 /* Polyinstantiated panels for representing a list of data. */
 struct Panel *UI_panel_add_instanced(struct ScrArea *area,
                                      struct ARegion *region,
                                      struct ListBase *panels,
                                      char *panel_idname,
-                                     int list_index);
+                                     int list_index,
+                                     struct PointerRNA *custom_data);
 void UI_panels_free_instanced(struct bContext *C, struct ARegion *region);
 
 #define LIST_PANEL_UNIQUE_STR_LEN 4
@@ -2003,6 +2008,10 @@ void uiTemplatePathBuilder(uiLayout *layout,
                            struct PointerRNA *root_ptr,
                            const char *text);
 void uiTemplateModifiers(uiLayout *layout, struct bContext *C);
+void uiTemplateGpencilModifiers(uiLayout *layout, struct bContext *C);
+void uiTemplateShaderFx(uiLayout *layout, struct bContext *C);
+void uiTemplateConstraints(uiLayout *layout, struct bContext *C, bool use_bone_constraints);
+
 uiLayout *uiTemplateGpencilModifier(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);
 void uiTemplateGpencilColorPreview(uiLayout *layout,
                                    struct bContext *C,
@@ -2013,11 +2022,9 @@ void uiTemplateGpencilColorPreview(uiLayout *layout,
                                    float scale,
                                    int filter);
 
-uiLayout *uiTemplateShaderFx(uiLayout *layout, struct bContext *C, struct PointerRNA *ptr);
-
 void uiTemplateOperatorRedoProperties(uiLayout *layout, const struct bContext *C);
 
-uiLayout *uiTemplateConstraint(uiLayout *layout, struct PointerRNA *ptr);
+void uiTemplateConstraintHeader(uiLayout *layout, struct PointerRNA *ptr);
 void uiTemplatePreview(uiLayout *layout,
                        struct bContext *C,
                        struct ID *id,
@@ -2445,7 +2452,8 @@ void UI_context_update_anim_flag(const struct bContext *C);
 void UI_context_active_but_prop_get_filebrowser(const struct bContext *C,
                                                 struct PointerRNA *r_ptr,
                                                 struct PropertyRNA **r_prop,
-                                                bool *r_is_undo);
+                                                bool *r_is_undo,
+                                                bool *r_is_userdef);
 void UI_context_active_but_prop_get_templateID(struct bContext *C,
                                                struct PointerRNA *r_ptr,
                                                struct PropertyRNA **r_prop);

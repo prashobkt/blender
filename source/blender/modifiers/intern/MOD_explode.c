@@ -49,6 +49,8 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "BLO_read_write.h"
+
 #include "RNA_access.h"
 
 #include "DEG_depsgraph_query.h"
@@ -1115,7 +1117,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   explode->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 
   if (psmd->psys->lattice_deform_data) {
-    end_latt_deform(psmd->psys->lattice_deform_data);
+    BKE_lattice_deform_data_destroy(psmd->psys->lattice_deform_data);
     psmd->psys->lattice_deform_data = NULL;
   }
 
@@ -1187,7 +1189,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
-  uiLayout *row;
+  uiLayout *row, *col;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
@@ -1209,8 +1211,9 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "use_edge_cut", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_size", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "use_edge_cut", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "use_size", 0, NULL, ICON_NONE);
 
   modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
@@ -1226,6 +1229,13 @@ static void panel_draw(const bContext *C, Panel *panel)
 static void panelRegister(ARegionType *region_type)
 {
   modifier_panel_register(region_type, eModifierType_Explode, panel_draw);
+}
+
+static void blendRead(BlendDataReader *UNUSED(reader), ModifierData *md)
+{
+  ExplodeModifierData *psmd = (ExplodeModifierData *)md;
+
+  psmd->facepa = NULL;
 }
 
 ModifierTypeInfo modifierType_Explode = {
@@ -1257,4 +1267,6 @@ ModifierTypeInfo modifierType_Explode = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ NULL,
+    /* blendRead */ blendRead,
 };

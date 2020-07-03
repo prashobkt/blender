@@ -57,6 +57,7 @@
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_tangent.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
 #include "BKE_object.h"
@@ -1668,7 +1669,9 @@ static void editbmesh_calc_modifiers(struct Depsgraph *depsgraph,
       else {
         Mesh *me_orig = mesh_input;
         if (me_orig->id.tag & LIB_TAG_COPIED_ON_WRITE) {
-          BKE_mesh_runtime_ensure_edit_data(me_orig);
+          if (!BKE_mesh_runtime_ensure_edit_data(me_orig)) {
+            BKE_mesh_runtime_reset_edit_data(me_orig);
+          }
           me_orig->runtime.edit_data->vertexCos = MEM_dupallocN(deformed_verts);
         }
         mesh_cage = BKE_mesh_wrapper_from_editmesh_with_coords(

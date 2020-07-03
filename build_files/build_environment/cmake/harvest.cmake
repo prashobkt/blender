@@ -43,18 +43,7 @@ if(BUILD_MODE STREQUAL Release)
         # tiff
         ${CMAKE_COMMAND} -E copy ${LIBDIR}/tiff/lib/tiff.lib ${HARVEST_TARGET}/tiff/lib/libtiff.lib &&
         ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/tiff/include/ ${HARVEST_TARGET}/tiff/include/ &&
-        # hidapi
-        ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/hidapi/ ${HARVEST_TARGET}/hidapi/
     DEPENDS
-  )
-endif()
-
-if(BUILD_MODE STREQUAL Debug)
-  add_custom_target(Harvest_Debug_Results
-    COMMAND
-        # hdf5
-        ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/hdf5/lib ${HARVEST_TARGET}/hdf5/lib &&
-    DEPENDS Package_Python
   )
 endif()
 

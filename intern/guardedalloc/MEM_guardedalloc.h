@@ -187,7 +187,8 @@ extern size_t (*MEM_get_peak_memory)(void) ATTR_WARN_UNUSED_RESULT;
     do { \
       typeof(&(v)) _v = &(v); \
       if (*_v) { \
-        MEM_freeN(*_v); \
+        /* Cast so we can free constant arrays. */ \
+        MEM_freeN((void *)*_v); \
         *_v = NULL; \
       } \
     } while (0)
@@ -238,6 +239,10 @@ void MEM_use_guarded_allocator(void);
     { \
       if (mem) \
         MEM_freeN(mem); \
+    } \
+    void *operator new(size_t /*count*/, void *ptr) \
+    { \
+      return ptr; \
     }
 
 /* Needed when type includes a namespace, then the namespace should not be

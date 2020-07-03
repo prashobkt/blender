@@ -37,6 +37,7 @@ struct Brush;
 struct CurveMapping;
 struct Depsgraph;
 struct EnumPropertyItem;
+struct EdgeSet;
 struct GHash;
 struct GridPaintMask;
 struct ImagePool;
@@ -55,7 +56,6 @@ struct PaletteColor;
 struct ReportList;
 struct Scene;
 struct StrokeCache;
-struct SubdivCCG;
 struct SubdivCCG;
 struct Tex;
 struct ToolSettings;
@@ -239,7 +239,7 @@ typedef struct SculptPoseIKChainSegment {
   float initial_orig[3];
   float initial_head[3];
   float len;
-  float scale;
+  float scale[3];
   float rot[4];
   float *weights;
 
@@ -268,6 +268,7 @@ typedef struct SculptClothLengthConstraint {
 typedef struct SculptClothSimulation {
   SculptClothLengthConstraint *length_constraints;
   int tot_length_constraints;
+  struct EdgeSet *created_length_constraints;
   int capacity_length_constraints;
   float *length_constraint_tweak;
 
@@ -281,11 +282,27 @@ typedef struct SculptClothSimulation {
 
 } SculptClothSimulation;
 
-typedef struct SculptLayerPersistentBase {
+typedef struct SculptPersistentBase {
   float co[3];
   float no[3];
   float disp;
-} SculptLayerPersistentBase;
+} SculptPersistentBase;
+
+typedef struct SculptVertexInfo {
+  /* Idexed by vertex, stores and ID of its topologycally connected component. */
+  int *connected_component;
+} SculptVertexInfo;
+
+typedef struct SculptFakeNeighbors {
+  bool use_fake_neighbors;
+
+  /* Max distance used to calculate neighborhood information. */
+  float current_max_distance;
+
+  /* Idexed by vertex, stores the vertex index of its fake neighbor if available. */
+  int *fake_neighbor_index;
+
+} SculptFakeNeighbors;
 
 /* Session data (mode-specific) */
 
@@ -306,6 +323,7 @@ typedef struct SculptSession {
   int totvert, totpoly;
 
   struct KeyBlock *shapekey_active;
+  struct MPropCol *vcol;
   float *vmask;
 
   /* Mesh connectivity */
@@ -315,6 +333,8 @@ typedef struct SculptSession {
   /* Mesh Face Sets */
   /* Total number of polys of the base mesh. */
   int totfaces;
+  /* Face sets store its visibility in the sign of the integer, using the absolute value as the
+   * Face Set ID. Positive IDs are visible, negative IDs are hidden. */
   int *face_sets;
 
   /* BMesh for dynamic topology sculpting */
@@ -334,10 +354,10 @@ typedef struct SculptSession {
   bool show_face_sets;
 
   /* Painting on deformed mesh */
-  bool deform_modifiers_active; /* object is deformed with some modifiers */
-  float (*orig_cos)[3];         /* coords of undeformed mesh */
-  float (*deform_cos)[3];       /* coords of deformed mesh but without stroke displacement */
-  float (*deform_imats)[3][3];  /* crazyspace deformation matrices */
+  bool deform_modifiers_active; /* Object is deformed with some modifiers. */
+  float (*orig_cos)[3];         /* Coords of un-deformed mesh. */
+  float (*deform_cos)[3];       /* Coords of deformed mesh but without stroke displacement. */
+  float (*deform_imats)[3][3];  /* Crazy-space deformation matrices. */
 
   /* Used to cache the render of the active texture */
   unsigned int texcache_side, *texcache, texcache_actual;
@@ -361,6 +381,7 @@ typedef struct SculptSession {
   /* TODO(jbakker): Replace rv3d adn v3d with ViewContext */
   struct RegionView3D *rv3d;
   struct View3D *v3d;
+  struct Scene *scene;
 
   /* Dynamic mesh preview */
   int *preview_vert_index_list;
@@ -370,9 +391,12 @@ typedef struct SculptSession {
   float pose_origin[3];
   SculptPoseIKChain *pose_ik_chain_preview;
 
-  /* Layer brush persistence between strokes */
+  /* Mesh State Persistence */
   /* This is freed with the PBVH, so it is always in sync with the mesh. */
-  SculptLayerPersistentBase *layer_base;
+  SculptPersistentBase *persistent_base;
+
+  SculptVertexInfo vertex_info;
+  SculptFakeNeighbors fake_neighbors;
 
   /* Transform operator */
   float pivot_pos[3];
@@ -426,7 +450,8 @@ void BKE_sculptsession_bm_to_me_for_render(struct Object *object);
 void BKE_sculpt_update_object_for_edit(struct Depsgraph *depsgraph,
                                        struct Object *ob_orig,
                                        bool need_pmap,
-                                       bool need_mask);
+                                       bool need_mask,
+                                       bool need_colors);
 void BKE_sculpt_update_object_before_eval(struct Object *ob_eval);
 void BKE_sculpt_update_object_after_eval(struct Depsgraph *depsgraph, struct Object *ob_eval);
 

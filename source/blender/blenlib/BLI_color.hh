@@ -21,12 +21,16 @@
 
 #include "BLI_math_color.h"
 
-namespace BLI {
+namespace blender {
 
 struct Color4f {
   float r, g, b, a;
 
   Color4f() = default;
+
+  Color4f(const float *rgba) : r(rgba[0]), g(rgba[1]), b(rgba[2]), a(rgba[3])
+  {
+  }
 
   Color4f(float r, float g, float b, float a) : r(r), g(g), b(b), a(a)
   {
@@ -87,6 +91,6 @@ struct Color4b {
   }
 };
 
-}  // namespace BLI
+}  // namespace blender
 
 #endif /* __BLI_COLOR_HH__ */

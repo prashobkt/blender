@@ -649,7 +649,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       .mpoly = mpoly,
       .polynors = polynors,
       .poly_strength = CustomData_get_layer_named(
-          &result->pdata, CD_PROP_INT, MOD_WEIGHTEDNORMALS_FACEWEIGHT_CDLAYER_ID),
+          &result->pdata, CD_PROP_INT32, MOD_WEIGHTEDNORMALS_FACEWEIGHT_CDLAYER_ID),
 
       .dvert = dvert,
       .defgrp_index = defgrp_index,
@@ -702,7 +702,7 @@ static void requiredDataMask(Object *UNUSED(ob),
   }
 
   if (wnmd->flag & MOD_WEIGHTEDNORMAL_FACE_INFLUENCE) {
-    r_cddata_masks->pmask |= CD_MASK_PROP_INT;
+    r_cddata_masks->pmask |= CD_MASK_PROP_INT32;
   }
 }
 
@@ -713,6 +713,7 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
 
 static void panel_draw(const bContext *C, Panel *panel)
 {
+  uiLayout *col;
   uiLayout *layout = panel->layout;
 
   PointerRNA ptr;
@@ -726,8 +727,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "weight", 0, IFACE_("Weight"), ICON_NONE);
   uiItemR(layout, &ptr, "thresh", 0, IFACE_("Threshold"), ICON_NONE);
 
-  uiItemR(layout, &ptr, "keep_sharp", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "face_influence", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &ptr, "keep_sharp", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "face_influence", 0, NULL, ICON_NONE);
 
   modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
@@ -770,4 +772,6 @@ ModifierTypeInfo modifierType_WeightedNormal = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ NULL,
+    /* blendRead */ NULL,
 };

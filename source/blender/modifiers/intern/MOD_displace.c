@@ -41,6 +41,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_screen.h"
@@ -439,6 +440,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
 
+  PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
+
   PointerRNA texture_ptr = RNA_pointer_get(&ptr, "texture");
   bool has_texture = !RNA_pointer_is_null(&texture_ptr);
   int texture_coords = RNA_enum_get(&ptr, "texture_coords");
@@ -451,12 +454,12 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetActive(col, has_texture);
   uiItemR(col, &ptr, "texture_coords", 0, IFACE_("Coordinates"), ICON_NONE);
   if (texture_coords == MOD_DISP_MAP_OBJECT) {
-    uiItemR(col, &ptr, "texture_coords_object", 0, NULL, ICON_NONE);
+    uiItemR(col, &ptr, "texture_coords_object", 0, IFACE_("Object"), ICON_NONE);
     PointerRNA texture_coords_obj_ptr = RNA_pointer_get(&ptr, "texture_coords_object");
     if (!RNA_pointer_is_null(&texture_coords_obj_ptr) &&
         (RNA_enum_get(&texture_coords_obj_ptr, "type") == OB_ARMATURE)) {
       PointerRNA texture_coords_obj_data_ptr = RNA_pointer_get(&texture_coords_obj_ptr, "data");
-      uiItemPointerR(layout,
+      uiItemPointerR(col,
                      &ptr,
                      "texture_coords_bone",
                      &texture_coords_obj_data_ptr,
@@ -466,7 +469,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
   }
   else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
-    uiItemR(col, &ptr, "uv_layer", 0, NULL, ICON_NONE);
+    uiItemPointerR(col, &ptr, "uv_layer", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
   }
 
   uiItemS(layout);
@@ -527,4 +530,6 @@ ModifierTypeInfo modifierType_Displace = {
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ NULL,
+    /* blendRead */ NULL,
 };
