@@ -2358,47 +2358,57 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_contour", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_CONTOUR);
   RNA_def_property_ui_text(prop, "Use Contour", "Include contour lines in the result");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_crease", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_CREASE);
   RNA_def_property_ui_text(prop, "Use Crease", "Include crease lines in the result");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_material", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_MATERIAL);
   RNA_def_property_ui_text(
       prop, "Use Material", "Include material separation lines in the result");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_edge_mark", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_EDGE_MARK);
   RNA_def_property_ui_text(prop, "Use Edge Mark", "Include freestyle edge marks in the result");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_intersection", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_INTERSECTION);
   RNA_def_property_ui_text(prop, "Use Intersection", "Include intersection lines in the result");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);
   RNA_def_property_ui_text(
       prop, "Use Multiple Levels", "Select lines from multiple occlusion levels");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
   RNA_def_property_int_default(prop, 0);
   RNA_def_property_ui_text(prop, "Level Start", "Occlusion level start");
   RNA_def_property_range(prop, 0, 128);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "level_end", PROP_INT, PROP_NONE);
   RNA_def_property_int_default(prop, 0);
   RNA_def_property_ui_text(prop, "Level End", "Occlusion level end");
   RNA_def_property_range(prop, 0, 128);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "target_material", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Target Material", "Target material that generated strokes use");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Target Layer", "Grease pencil layer that strokes goes into.");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
 void RNA_def_greasepencil_modifier(BlenderRNA *brna)
