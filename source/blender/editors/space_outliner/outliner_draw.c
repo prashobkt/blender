@@ -3349,6 +3349,8 @@ static void outliner_draw_tree_element(bContext *C,
   }
 }
 
+#if 0
+
 static void outliner_draw_hierarchy_lines_recursive_old(uint pos,
                                                         SpaceOutliner *soops,
                                                         ListBase *lb,
@@ -3450,6 +3452,8 @@ static void outliner_draw_hierarchy_lines_recursive_old(uint pos,
   }
 }
 
+#endif /* if 0 */
+
 static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     SpaceOutliner *soops,
                                                     ListBase *lb,
@@ -3459,71 +3463,44 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     int *starty)
 {
   bTheme *btheme = UI_GetTheme();
-  TreeElement *line_start = NULL, *line_end = NULL;
   int y = *starty;
-  short color_start;
-  const short line_offset = UI_UNIT_Y / 4.0;
+  short color;
 
-  if (BLI_listbase_is_empty(lb)) {
-    return;
-  }
-
-  immUniformColor4ubv(col);
+  /* Small vertical padding */
+  const short line_padding = UI_UNIT_Y / 4.0f;
 
   /* Draw vertical lines between collections */
+  bool draw_hierarchy_line;
   LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
+    draw_hierarchy_line = false;
     *starty -= UI_UNIT_Y;
 
-    if (tselem->type == TSE_LAYER_COLLECTION) {
-      if (line_end) {
-        if (color_start != COLLECTION_COLOR_NONE) {
-          immUniformColor4ubv(btheme->collection_color[color_start - 1].color);
-        }
-        else {
-          immUniformColor4ubv(col);
-        }
+    /* Only draw hierarchy lines for open collections. */
+    if (TSELEM_OPEN(tselem, soops) && !BLI_listbase_is_empty(&te->subtree)) {
+      if (tselem->type == TSE_LAYER_COLLECTION) {
+        draw_hierarchy_line = true;
 
-        immRecti(pos,
-                 startx,
-                 y - line_offset,
-                 startx + (U.pixelsize * 1),
-                 *starty + UI_UNIT_Y + line_offset);
-        line_end = NULL;
+        Collection *collection = outliner_collection_from_tree_element(te);
+        color = collection->color;
+
+        y = *starty;
       }
 
-      Collection *collection = outliner_collection_from_tree_element(te);
-      color_start = collection->color;
-      line_start = te;
-      y = *starty;
+      outliner_draw_hierarchy_lines_recursive(
+          pos, soops, &te->subtree, startx + UI_UNIT_X, col, draw_grayed_out, starty);
     }
 
-    /* No lines under closed items */
-    if (!TSELEM_OPEN(tselem, soops)) {
-      line_start = NULL;
-      line_end = NULL;
-      continue;
-    }
-    else if (BLI_listbase_is_empty(&te->subtree)) {
-      line_start = NULL;
-      line_end = NULL;
-      continue;
-    }
+    if (draw_hierarchy_line) {
+      if (color != COLLECTION_COLOR_NONE) {
+        immUniformColor4ubv(btheme->collection_color[color - 1].color);
+      }
+      else {
+        immUniformColor4ubv(col);
+      }
 
-    outliner_draw_hierarchy_lines_recursive(
-        pos, soops, &te->subtree, startx + UI_UNIT_X, col, draw_grayed_out, starty);
-
-    line_end = te;
-  }
-
-  if (line_start) {
-    if (color_start != COLLECTION_COLOR_NONE) {
-      immUniformColor4ubv(btheme->collection_color[color_start - 1].color);
+      immRecti(pos, startx, y - line_padding, startx + (U.pixelsize * 1), *starty + line_padding);
     }
-    else {
-      immUniformColor4ubv(col);
-    }
-    immRecti(pos, startx, y - line_offset, startx + (U.pixelsize * 1), *starty + line_offset);
   }
 }
 
