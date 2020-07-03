@@ -228,18 +228,25 @@ template<typename T> using destruct_ptr = std::unique_ptr<T, DestructValueAtAddr
 template<size_t Size, size_t Alignment> class alignas(Alignment) AlignedBuffer {
  private:
   /* Don't create an empty array. This causes problems with some compilers. */
-  char m_buffer[(Size > 0) ? Size : 1];
+  char buffer_[(Size > 0) ? Size : 1];
 
  public:
   void *ptr()
   {
-    return (void *)m_buffer;
+    return (void *)buffer_;
   }
 
   const void *ptr() const
   {
-    return (const void *)m_buffer;
+    return (const void *)buffer_;
   }
+};
+
+/**
+ * This can be used by container constructors. A parameter of this type should be used to indicate
+ * that the constructor does not construct the elements.
+ */
+class NoInitialization {
 };
 
 }  // namespace blender

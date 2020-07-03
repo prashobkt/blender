@@ -236,12 +236,10 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
   uiLayoutSetUnitsX(layout, 4.0f);
 
   /* Apply. */
-  uiItemEnumO(layout,
-              "OBJECT_OT_modifier_apply",
-              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
-              ICON_CHECKMARK,
-              "apply_as",
-              MODIFIER_APPLY_DATA);
+  uiItemO(layout,
+          CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
+          ICON_CHECKMARK,
+          "OBJECT_OT_modifier_apply");
 
   /* Apply as shapekey. */
   if (BKE_modifier_is_same_topology(md) && !BKE_modifier_is_non_geometrical(md)) {
@@ -426,7 +424,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, ModifierType type, 
   panel_type->poll = modifier_ui_poll;
 
   /* Give the panel the special flag that says it was built here and corresponds to a
-   * modifer rather than a PanelType. */
+   * modifier rather than a #PanelType. */
   panel_type->flag = PNL_LAYOUT_HEADER_EXPAND | PNL_DRAW_BOX | PNL_INSTANCED;
   panel_type->reorder = modifier_reorder;
   panel_type->get_list_data_expand_flag = get_modifier_expand_flag;

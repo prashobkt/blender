@@ -34,7 +34,6 @@ extern "C" {
 struct Base;
 struct Depsgraph;
 struct EnumPropertyItem;
-struct EnumPropertyItem;
 struct ID;
 struct Main;
 struct ModifierData;
@@ -185,7 +184,7 @@ struct Base *ED_object_add_duplicate(struct Main *bmain,
                                      struct Scene *scene,
                                      struct ViewLayer *view_layer,
                                      struct Base *base,
-                                     const uint dupflag);
+                                     const eDupli_ID_Flags dupflag);
 
 void ED_object_parent(struct Object *ob,
                       struct Object *parent,

@@ -147,22 +147,22 @@ static int panel_aligned(const ScrArea *area, const ARegion *region)
   if (area->spacetype == SPACE_PROPERTIES && region->regiontype == RGN_TYPE_WINDOW) {
     return BUT_VERTICAL;
   }
-  else if (area->spacetype == SPACE_USERPREF && region->regiontype == RGN_TYPE_WINDOW) {
+  if (area->spacetype == SPACE_USERPREF && region->regiontype == RGN_TYPE_WINDOW) {
     return BUT_VERTICAL;
   }
-  else if (area->spacetype == SPACE_FILE && region->regiontype == RGN_TYPE_CHANNELS) {
+  if (area->spacetype == SPACE_FILE && region->regiontype == RGN_TYPE_CHANNELS) {
     return BUT_VERTICAL;
   }
-  else if (area->spacetype == SPACE_IMAGE && region->regiontype == RGN_TYPE_PREVIEW) {
+  if (area->spacetype == SPACE_IMAGE && region->regiontype == RGN_TYPE_PREVIEW) {
     return BUT_VERTICAL;
   }
-  else if (ELEM(region->regiontype,
-                RGN_TYPE_UI,
-                RGN_TYPE_TOOLS,
-                RGN_TYPE_TOOL_PROPS,
-                RGN_TYPE_HUD,
-                RGN_TYPE_NAV_BAR,
-                RGN_TYPE_EXECUTE)) {
+  if (ELEM(region->regiontype,
+           RGN_TYPE_UI,
+           RGN_TYPE_TOOLS,
+           RGN_TYPE_TOOL_PROPS,
+           RGN_TYPE_HUD,
+           RGN_TYPE_NAV_BAR,
+           RGN_TYPE_EXECUTE)) {
     return BUT_VERTICAL;
   }
 
@@ -245,20 +245,25 @@ static bool panels_need_realign(ScrArea *area, ARegion *region, Panel **r_panel_
 
 /********* Functions for instanced panels. ***********/
 
-static Panel *UI_panel_add_instanced_ex(
-    ScrArea *area, ARegion *region, ListBase *panels, PanelType *panel_type, int list_index)
+static Panel *UI_panel_add_instanced_ex(ScrArea *area,
+                                        ARegion *region,
+                                        ListBase *panels,
+                                        PanelType *panel_type,
+                                        int list_index,
+                                        PointerRNA *custom_data)
 {
   Panel *panel = MEM_callocN(sizeof(Panel), "instanced panel");
   panel->type = panel_type;
   BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
 
   panel->runtime.list_index = list_index;
+  panel->runtime.custom_data_ptr = custom_data;
 
   /* Add the panel's children too. Although they aren't instanced panels, we can still use this
    * function to create them, as UI_panel_begin does other things we don't need to do. */
   LISTBASE_FOREACH (LinkData *, child, &panel_type->children) {
     PanelType *child_type = child->data;
-    UI_panel_add_instanced_ex(area, region, &panel->children, child_type, list_index);
+    UI_panel_add_instanced_ex(area, region, &panel->children, child_type, list_index, custom_data);
   }
 
   /* Make sure the panel is added to the end of the display-order as well. This is needed for
@@ -283,8 +288,12 @@ static Panel *UI_panel_add_instanced_ex(
  * Called in situations where panels need to be added dynamically rather than having only one panel
  * corresponding to each PanelType.
  */
-Panel *UI_panel_add_instanced(
-    ScrArea *area, ARegion *region, ListBase *panels, char *panel_idname, int list_index)
+Panel *UI_panel_add_instanced(ScrArea *area,
+                              ARegion *region,
+                              ListBase *panels,
+                              char *panel_idname,
+                              int list_index,
+                              PointerRNA *custom_data)
 {
   ARegionType *region_type = region->type;
 
@@ -296,7 +305,7 @@ Panel *UI_panel_add_instanced(
     return NULL;
   }
 
-  return UI_panel_add_instanced_ex(area, region, panels, panel_type, list_index);
+  return UI_panel_add_instanced_ex(area, region, panels, panel_type, list_index, custom_data);
 }
 
 /**
@@ -332,7 +341,8 @@ static void panel_free_block(ARegion *region, Panel *panel)
 }
 
 /**
- * Free a panel and it's children.
+ * Free a panel and it's children. Custom data is shared by the panel and its children
+ * and is freed by #UI_panels_free_instanced.
  *
  * \note The only panels that should need to be deleted at runtime are panels with the
  * #PNL_INSTANCED flag set.
@@ -369,6 +379,13 @@ void UI_panels_free_instanced(bContext *C, ARegion *region)
       if (C != NULL && panel->activedata != NULL) {
         panel_activate_state(C, panel, PANEL_STATE_EXIT);
       }
+
+      /* Free panel's custom data. */
+      if (panel->runtime.custom_data_ptr != NULL) {
+        MEM_freeN(panel->runtime.custom_data_ptr);
+      }
+
+      /* Free the panel and its sub-panels. */
       panel_delete(region, &region->panels, panel);
     }
   }
@@ -1306,9 +1323,7 @@ static int get_panel_real_ofsy(Panel *panel)
   if (panel->flag & PNL_CLOSEDY) {
     return panel->ofsy + panel->sizey;
   }
-  else {
-    return panel->ofsy;
-  }
+  return panel->ofsy;
 }
 
 static int get_panel_real_ofsx(Panel *panel)
@@ -1316,9 +1331,7 @@ static int get_panel_real_ofsx(Panel *panel)
   if (panel->flag & PNL_CLOSEDX) {
     return panel->ofsx + get_panel_header(panel);
   }
-  else {
-    return panel->ofsx + panel->sizex;
-  }
+  return panel->ofsx + panel->sizex;
 }
 
 bool UI_panel_is_dragging(const struct Panel *panel)
@@ -1346,13 +1359,13 @@ static int find_leftmost_panel(const void *a1, const void *a2)
   if (ps1->panel->ofsx > ps2->panel->ofsx) {
     return 1;
   }
-  else if (ps1->panel->ofsx < ps2->panel->ofsx) {
+  if (ps1->panel->ofsx < ps2->panel->ofsx) {
     return -1;
   }
-  else if (ps1->panel->sortorder > ps2->panel->sortorder) {
+  if (ps1->panel->sortorder > ps2->panel->sortorder) {
     return 1;
   }
-  else if (ps1->panel->sortorder < ps2->panel->sortorder) {
+  if (ps1->panel->sortorder < ps2->panel->sortorder) {
     return -1;
   }
 
@@ -1368,23 +1381,23 @@ static int find_highest_panel(const void *a1, const void *a2)
   if (ps1->panel->type->flag & PNL_NO_HEADER && ps2->panel->type->flag & PNL_NO_HEADER) {
     /* skip and check for ofs and sortorder below */
   }
-  else if (ps1->panel->type->flag & PNL_NO_HEADER) {
+  if (ps1->panel->type->flag & PNL_NO_HEADER) {
     return -1;
   }
-  else if (ps2->panel->type->flag & PNL_NO_HEADER) {
+  if (ps2->panel->type->flag & PNL_NO_HEADER) {
     return 1;
   }
 
   if (ps1->panel->ofsy + ps1->panel->sizey < ps2->panel->ofsy + ps2->panel->sizey) {
     return 1;
   }
-  else if (ps1->panel->ofsy + ps1->panel->sizey > ps2->panel->ofsy + ps2->panel->sizey) {
+  if (ps1->panel->ofsy + ps1->panel->sizey > ps2->panel->ofsy + ps2->panel->sizey) {
     return -1;
   }
-  else if (ps1->panel->sortorder > ps2->panel->sortorder) {
+  if (ps1->panel->sortorder > ps2->panel->sortorder) {
     return 1;
   }
-  else if (ps1->panel->sortorder < ps2->panel->sortorder) {
+  if (ps1->panel->sortorder < ps2->panel->sortorder) {
     return -1;
   }
 
@@ -1398,7 +1411,7 @@ static int compare_panel(const void *a1, const void *a2)
   if (ps1->panel->sortorder > ps2->panel->sortorder) {
     return 1;
   }
-  else if (ps1->panel->sortorder < ps2->panel->sortorder) {
+  if (ps1->panel->sortorder < ps2->panel->sortorder) {
     return -1;
   }
 
@@ -2821,7 +2834,7 @@ int ui_handler_panel_region(bContext *C,
             retval = WM_UI_HANDLER_BREAK;
             break;
           }
-          else if ((mouse_state == PANEL_MOUSE_INSIDE_SCALE) && !(panel->flag & PNL_CLOSED)) {
+          if ((mouse_state == PANEL_MOUSE_INSIDE_SCALE) && !(panel->flag & PNL_CLOSED)) {
             panel_activate_state(C, panel, PANEL_STATE_DRAG_SCALE);
             retval = WM_UI_HANDLER_BREAK;
             break;
@@ -2886,6 +2899,56 @@ int ui_handler_panel_region(bContext *C,
   return retval;
 }
 
+static void ui_panel_custom_data_set_recursive(Panel *panel, PointerRNA *custom_data)
+{
+  panel->runtime.custom_data_ptr = custom_data;
+
+  LISTBASE_FOREACH (Panel *, child_panel, &panel->children) {
+    ui_panel_custom_data_set_recursive(child_panel, custom_data);
+  }
+}
+
+void UI_panel_custom_data_set(Panel *panel, PointerRNA *custom_data)
+{
+  BLI_assert(panel->type != NULL);
+
+  /* Free the old custom data, which should be shared among all of the panel's sub-panels. */
+  if (panel->runtime.custom_data_ptr != NULL) {
+    MEM_freeN(panel->runtime.custom_data_ptr);
+  }
+
+  ui_panel_custom_data_set_recursive(panel, custom_data);
+}
+
+PointerRNA *UI_region_panel_custom_data_under_cursor(const bContext *C, const wmEvent *event)
+{
+  ARegion *region = CTX_wm_region(C);
+
+  Panel *panel = NULL;
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
+    panel = block->panel;
+    if (panel == NULL) {
+      continue;
+    }
+
+    int mx = event->x;
+    int my = event->y;
+    ui_window_to_block(region, block, &mx, &my);
+    int mouse_state = ui_panel_mouse_state_get(block, panel, mx, my);
+    if (ELEM(mouse_state, PANEL_MOUSE_INSIDE_CONTENT, PANEL_MOUSE_INSIDE_HEADER)) {
+      break;
+    }
+  }
+
+  if (panel == NULL) {
+    return NULL;
+  }
+
+  PointerRNA *customdata = panel->runtime.custom_data_ptr;
+
+  return customdata;
+}
+
 /**************** window level modal panel interaction **************/
 
 /* note, this is modal handler and should not swallow events for animation */
@@ -2926,9 +2989,7 @@ static int ui_handler_panel(bContext *C, const wmEvent *event, void *userdata)
   if (data && data->state == PANEL_STATE_ANIMATION) {
     return WM_UI_HANDLER_CONTINUE;
   }
-  else {
-    return WM_UI_HANDLER_BREAK;
-  }
+  return WM_UI_HANDLER_BREAK;
 }
 
 static void ui_handler_remove_panel(bContext *C, void *userdata)

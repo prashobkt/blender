@@ -100,7 +100,12 @@ static bool object_remesh_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
 
-  if (ob == NULL) {
+  if (ob == NULL || ob->data == NULL) {
+    return false;
+  }
+
+  if (ID_IS_LINKED(ob) || ID_IS_LINKED(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob->data)) {
+    CTX_wm_operator_poll_msg_set(C, "The remesher cannot worked on linked or override data");
     return false;
   }
 
@@ -398,6 +403,7 @@ static int voxel_size_edit_modal(bContext *C, wmOperator *op, const wmEvent *eve
     mesh->remesh_voxel_size = cd->voxel_size;
     MEM_freeN(op->customdata);
     ED_region_tag_redraw(ar);
+    ED_workspace_status_text(C, NULL);
     return OPERATOR_FINISHED;
   }
 
