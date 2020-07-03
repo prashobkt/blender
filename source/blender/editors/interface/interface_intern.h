@@ -178,7 +178,6 @@ struct uiBut {
    * - UI_BTYPE_SCROLL:       Use as scroll size.
    * - UI_BTYPE_SEARCH_MENU:  Use as number or rows.
    * - UI_BTYPE_COLOR:        Use as indication of color palette.
-   * - UI_BTYPE_PROGRESS_BAR: Use to store progress (0..1).
    */
   float a1;
 
@@ -315,6 +314,13 @@ typedef struct uiButDecorator {
   struct PropertyRNA *rnaprop;
   int rnaindex;
 } uiButDecorator;
+
+typedef struct uiButProgressbar {
+  uiBut but;
+
+  /* 0..1 range */
+  float progress;
+} uiButProgressbar;
 
 /**
  * Additional, superimposed icon for a button, invoking an operator.
