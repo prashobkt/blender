@@ -39,6 +39,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
+#include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_gpencil_types.h"
@@ -458,6 +459,83 @@ DEF_ICON_VECTOR_COLORSET_DRAW_NTH(19, 18)
 DEF_ICON_VECTOR_COLORSET_DRAW_NTH(20, 19)
 
 #  undef DEF_ICON_VECTOR_COLORSET_DRAW_NTH
+
+static void get_collection_color(float col[4], short color)
+{
+  switch (color) {
+    case COLLECTION_COLOR_RED:
+      col[0] = 0.945f;
+      col[1] = 0.568f;
+      col[2] = 0.560f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_ORANGE:
+      col[0] = 0.945f;
+      col[1] = 0.580f;
+      col[2] = 0.384f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_YELLOW:
+      col[0] = 0.752f;
+      col[1] = 0.674f;
+      col[2] = 0.309f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_GREEN:
+      col[0] = 0.576f;
+      col[1] = 0.717f;
+      col[2] = 0.305f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_BLUE:
+      col[0] = 0.329f;
+      col[1] = 0.733f;
+      col[2] = 0.705f;
+      col[3] = 1.0f;
+      break;
+    case COLLECTION_COLOR_PURPLE:
+      col[0] = 0.721f;
+      col[1] = 0.619f;
+      col[2] = 0.929f;
+      col[3] = 1.0f;
+      break;
+  }
+}
+
+static void vicon_collection_color_draw(
+    short color, int x, int y, int w, int h, float UNUSED(alpha))
+{
+  bTheme *btheme = UI_GetTheme();
+  float col[4];
+  get_collection_color(col, color);
+  const int c = x + w;
+
+  uint pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+
+  /* XXX: Include alpha into this... */
+  /* normal */
+  immUniformColor3fv(col);
+  immRecti(pos, x, y, c, y + h);
+
+  immUnbindProgram();
+}
+
+#  define DEF_ICON_COLLECTION_COLOR_DRAW(name, color) \
+    static void vicon_collection_color_draw_##name(int x, int y, int w, int h, float alpha) \
+    { \
+      vicon_collection_color_draw(color, x, y, w, h, alpha); \
+    }
+
+DEF_ICON_COLLECTION_COLOR_DRAW(red, COLLECTION_COLOR_RED);
+DEF_ICON_COLLECTION_COLOR_DRAW(orange, COLLECTION_COLOR_ORANGE);
+DEF_ICON_COLLECTION_COLOR_DRAW(yellow, COLLECTION_COLOR_YELLOW);
+DEF_ICON_COLLECTION_COLOR_DRAW(green, COLLECTION_COLOR_GREEN);
+DEF_ICON_COLLECTION_COLOR_DRAW(blue, COLLECTION_COLOR_BLUE);
+DEF_ICON_COLLECTION_COLOR_DRAW(purple, COLLECTION_COLOR_PURPLE);
+
+#  undef DEF_ICON_COLLECTION_COLOR_DRAW
 
 /* Dynamically render icon instead of rendering a plain color to a texture/buffer
  * This is not strictly a "vicon", as it needs access to icon->obj to get the color info,
@@ -1010,6 +1088,13 @@ static void init_internal_icons(void)
   def_internal_vicon(ICON_COLORSET_18_VEC, vicon_colorset_draw_18);
   def_internal_vicon(ICON_COLORSET_19_VEC, vicon_colorset_draw_19);
   def_internal_vicon(ICON_COLORSET_20_VEC, vicon_colorset_draw_20);
+
+  def_internal_vicon(ICON_COLLECTION_COLOR_RED, vicon_collection_color_draw_red);
+  def_internal_vicon(ICON_COLLECTION_COLOR_ORANGE, vicon_collection_color_draw_orange);
+  def_internal_vicon(ICON_COLLECTION_COLOR_YELLOW, vicon_collection_color_draw_yellow);
+  def_internal_vicon(ICON_COLLECTION_COLOR_GREEN, vicon_collection_color_draw_green);
+  def_internal_vicon(ICON_COLLECTION_COLOR_BLUE, vicon_collection_color_draw_blue);
+  def_internal_vicon(ICON_COLLECTION_COLOR_PURPLE, vicon_collection_color_draw_purple);
 }
 #  endif /* WITH_HEADLESS */
 

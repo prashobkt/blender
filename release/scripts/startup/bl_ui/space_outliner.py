@@ -159,13 +159,13 @@ class OUTLINER_MT_collection_color_tag(Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.operator("outliner.collection_color_tag_set", text="None").color = 'NONE'
-        layout.operator("outliner.collection_color_tag_set", text="Red").color = 'RED'
-        layout.operator("outliner.collection_color_tag_set", text="Orange").color = 'ORANGE'
-        layout.operator("outliner.collection_color_tag_set", text="Yellow").color = 'YELLOW'
-        layout.operator("outliner.collection_color_tag_set", text="Green").color = 'GREEN'
-        layout.operator("outliner.collection_color_tag_set", text="Blue").color = 'BLUE'
-        layout.operator("outliner.collection_color_tag_set", text="Purple").color = 'PURPLE'
+        layout.operator("outliner.collection_color_tag_set", text="None", icon="NONE").color = 'NONE'
+        layout.operator("outliner.collection_color_tag_set", text="Red", icon="COLLECTION_COLOR_RED").color = 'RED'
+        layout.operator("outliner.collection_color_tag_set", text="Orange", icon="COLLECTION_COLOR_ORANGE").color = 'ORANGE'
+        layout.operator("outliner.collection_color_tag_set", text="Yellow", icon="COLLECTION_COLOR_YELLOW").color = 'YELLOW'
+        layout.operator("outliner.collection_color_tag_set", text="Green", icon="COLLECTION_COLOR_GREEN").color = 'GREEN'
+        layout.operator("outliner.collection_color_tag_set", text="Blue", icon="COLLECTION_COLOR_BLUE").color = 'BLUE'
+        layout.operator("outliner.collection_color_tag_set", text="Purple", icon="COLLECTION_COLOR_PURPLE").color = 'PURPLE'
 
 
 class OUTLINER_MT_collection_view_layer(Menu):
