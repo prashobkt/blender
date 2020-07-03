@@ -26,7 +26,6 @@ uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
 
 uniform bool showPhi = false;
 uniform bool showFlags = false;
-uniform bool showGridlines = false;
 
 #ifdef VOLUME_SLICE
 in vec3 localPos;
@@ -52,25 +51,6 @@ float line_unit_box_intersect_dist(vec3 lineorigin, vec3 linedirection)
   vec3 secondplane = (vec3(-1.0) - lineorigin) / linedirection;
   vec3 furthestplane = min(firstplane, secondplane);
   return max_v3(furthestplane);
-}
-
-bool on_gridline(vec3 texture_size, vec3 co)
-{
-  if (!showGridlines) {
-    return false;
-  }
-  vec3 texel_size = 1.0 / texture_size;
-  vec3 offset = mod(co, texel_size);
-  offset = min(offset, texel_size - offset);
-  vec3 gridline_thickness = 0.025 * texel_size;
-  if (((sliceAxis == 0) && (offset.y < gridline_thickness.y || offset.z < gridline_thickness.z)) ||
-      ((sliceAxis == 1) && (offset.x < gridline_thickness.x || offset.z < gridline_thickness.z)) ||
-      ((sliceAxis == 2) && (offset.x < gridline_thickness.x || offset.y < gridline_thickness.y))) {
-    return true;
-  }
-  else {
-    return false;
-  }
 }
 
 #define sample_trilinear(ima, co) texture(ima, co)
@@ -138,15 +118,6 @@ vec4 sample_raw(sampler3D ima, vec3 co)
 void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 {
   vec3 co = ls_pos * 0.5 + 0.5;
-#if defined(VOLUME_SLICE) && (defined(USE_RAW) || defined(SHOW_FLAGS))
-  vec3 texture_size = (showFlags) ? vec3(textureSize(flagTexture, 0).xyz) :
-                                    vec3(textureSize(densityTexture, 0).xyz);
-  if (on_gridline(texture_size, co)) {
-    scattering = vec3(0.0, 0.0, 0.0);
-    extinction = 50.0;
-    return;
-  }
-#endif
 #ifdef USE_COBA
   vec4 tval;
   if (showPhi) {

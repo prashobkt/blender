@@ -1365,6 +1365,12 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
   const bool draw_velocity = (mds->draw_velocity && mds->fluid &&
                               CFRA >= mds->point_cache[0]->startframe);
 
+  /* Show gridlines only for slices without interpolation */
+  const bool show_gridlines = (mds->show_gridlines &&
+                               (mds->axis_slice_method == AXIS_SLICE_SINGLE) &&
+                               (mds->interp_method == VOLUME_INTERP_RAW ||
+                                mds->coba_field == FLUID_DOMAIN_FIELD_FLAGS));
+
   /* Small cube showing voxel size. */
   {
     float min[3];
@@ -1384,20 +1390,24 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_buffer_add_entry(cb->empty_cube, color, voxel_cubemat);
   }
 
+  int slice_axis = -1;
+
+  if (mds->axis_slice_method == AXIS_SLICE_SINGLE) {
+    float viewinv[4][4];
+    DRW_view_viewmat_get(NULL, viewinv, true);
+
+    const int axis = (mds->slice_axis == SLICE_AXIS_AUTO) ? axis_dominant_v3_single(viewinv[2]) :
+                                                            mds->slice_axis - 1;
+    slice_axis = axis;
+  }
+
   if (draw_velocity) {
     const bool use_needle = (mds->vector_draw_type == VECTOR_DRAW_NEEDLE);
     int line_count = (use_needle) ? 6 : 1;
-    int slice_axis = -1;
     line_count *= mds->res[0] * mds->res[1] * mds->res[2];
 
     if (mds->axis_slice_method == AXIS_SLICE_SINGLE) {
-      float viewinv[4][4];
-      DRW_view_viewmat_get(NULL, viewinv, true);
-
-      const int axis = (mds->slice_axis == SLICE_AXIS_AUTO) ? axis_dominant_v3_single(viewinv[2]) :
-                                                              mds->slice_axis - 1;
-      slice_axis = axis;
-      line_count /= mds->res[axis];
+      line_count /= mds->res[slice_axis];
     }
 
     GPU_create_smoke_velocity(mmd);
@@ -1416,6 +1426,20 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
 
     BLI_addtail(&data->stl->pd->smoke_domains, BLI_genericNodeN(mmd));
+  }
+
+  if (show_gridlines) {
+    int line_count = 4 * mds->res[0] * mds->res[1] * mds->res[2] / mds->res[slice_axis];
+
+    GPUShader *sh = OVERLAY_shader_volume_gridlines();
+    DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
+    DRW_shgroup_uniform_ivec3_copy(grp, "volumeSize", mds->res);
+    DRW_shgroup_uniform_float_copy(grp, "slicePosition", mds->slice_depth);
+    DRW_shgroup_uniform_vec3_copy(grp, "cellSize", mds->cell_size);
+    DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", mds->p0);
+    DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", mds->res_min);
+    DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
+    DRW_shgroup_call_procedural_lines(grp, ob, line_count);
   }
 }
 
