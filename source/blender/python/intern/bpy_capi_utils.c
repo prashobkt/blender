@@ -67,9 +67,7 @@ char *BPy_enum_as_string(const EnumPropertyItem *item)
 
 short BPy_reports_to_error(ReportList *reports, PyObject *exception, const bool clear)
 {
-  char *report_str;
-
-  report_str = BKE_reports_string(reports, RPT_ERROR);
+  char *report_str = BKE_reports_sprintfN(reports, RPT_ERROR);
 
   if (clear == true) {
     BKE_reports_clear(reports);

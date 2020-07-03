@@ -52,11 +52,7 @@ void BKE_reports_prependf(ReportList *reports, const char *prepend, ...) ATTR_PR
 ReportType BKE_report_print_level(ReportList *reports);
 void BKE_report_print_level_set(ReportList *reports, ReportType level);
 
-ReportType BKE_report_store_level(ReportList *reports);
-void BKE_report_store_level_set(ReportList *reports, ReportType level);
-
-char *BKE_reports_string(ReportList *reports, ReportType level);
-void BKE_reports_print(ReportList *reports, ReportType level);
+char *BKE_reports_sprintfN(ReportList *reports, ReportType level);
 
 Report *BKE_reports_last_displayable(ReportList *reports);
 

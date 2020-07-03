@@ -188,7 +188,10 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_ENSURE(clg_ref) \
   ((clg_ref)->type ? (clg_ref)->type : (CLG_logref_init(clg_ref), (clg_ref)->type))
 
-#define CLOG_CHECK(clg_ref, verbose_level, ...) \
+#define CLOG_CHECK_IN_USE(clg_ref, ...) \
+  ((void)CLOG_ENSURE(clg_ref), ((clg_ref)->type->flag & CLG_FLAG_USE))
+
+#define CLOG_CHECK_LEVEL(clg_ref, verbose_level, ...) \
   ((void)CLOG_ENSURE(clg_ref), \
    ((clg_ref)->type->flag & CLG_FLAG_USE) && ((clg_ref)->type->level >= verbose_level))
 

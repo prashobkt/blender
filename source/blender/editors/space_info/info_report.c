@@ -90,9 +90,6 @@ int info_report_mask(const SpaceInfo *sinfo)
 {
   int report_mask = 0;
 
-  if (!(sinfo->report_mask_exclude & INFO_RPT_DEBUG)) {
-    report_mask |= RPT_DEBUG_ALL;
-  }
   if (!(sinfo->report_mask_exclude & INFO_RPT_INFO)) {
     report_mask |= RPT_INFO_ALL;
   }

@@ -21,6 +21,7 @@
  * Useful for writing out asset-libraries, defines: `bpy.data.libraries.write(...)`.
  */
 
+#include <CLG_log.h>
 #include <Python.h>
 #include <stddef.h>
 
@@ -182,7 +183,9 @@ static PyObject *bpy_lib_write(PyObject *UNUSED(self), PyObject *args, PyObject 
   BKE_blendfile_write_partial_end(bmain_src);
 
   if (retval) {
-    BKE_reports_print(&reports, RPT_ERROR_ALL);
+    char *pretty_reports = BKE_reports_sprintfN(&reports, RPT_ERROR_ALL);
+    printf("%s", pretty_reports);
+    MEM_freeN(pretty_reports);
     BKE_reports_clear(&reports);
     ret = Py_None;
     Py_INCREF(ret);

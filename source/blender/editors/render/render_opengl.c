@@ -1044,7 +1044,7 @@ static void write_result_func(TaskPool *__restrict pool, void *task_data_v)
    * safely pass to the underlying functions.
    */
   ReportList reports;
-  BKE_reports_init(&reports, oglrender->reports->flag & ~RPT_PRINT);
+  BKE_reports_init(&reports, oglrender->reports->flag);
   /* Do actual save logic here, depending on the file format.
    *
    * NOTE: We have to construct temporary scene with proper scene->r.cfra.

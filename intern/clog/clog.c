@@ -542,7 +542,7 @@ void CLG_logf(CLG_LogType *lg,
 
   write_file_line_fn(&cstr, file_line, fn, lg->ctx->use_basename);
 
-  int csr_size_before_va = cstr.len;
+  int cstr_size_before_va = cstr.len;
   {
     va_list ap;
     va_start(ap, fmt);
@@ -550,8 +550,11 @@ void CLG_logf(CLG_LogType *lg,
     va_end(ap);
   }
 
-  char *message = MEM_callocN(cstr.len - csr_size_before_va + 1, "LogMessage");
-  memcpy(message, cstr.data + csr_size_before_va, cstr.len - csr_size_before_va);
+  size_t mem_size = cstr.len - cstr_size_before_va + 1; // +1 to null terminate?
+  char *message = MEM_callocN(mem_size, "LogMessage");
+  // todo memcpy crashes when message is too big? (ex. duplicating objects)
+  memcpy(message, cstr.data + cstr_size_before_va, mem_size-1);
+
   CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, fn, message);
   CLG_report_append(&(lg->ctx->log_records), log_record);
 

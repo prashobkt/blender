@@ -864,7 +864,7 @@ static void wm_operator_reports(bContext *C, wmOperator *op, int retval, bool ca
     CLOG_STR_INFO_N(WM_LOG_OPERATORS, 1, WM_operator_pystring(C, op, false, true));
 
     if (caller_owns_reports == false) {
-      BKE_reports_print(op->reports, RPT_DEBUG); /* print out reports to console. */
+      CLOG_STR_INFO_N(WM_LOG_OPERATORS, 2, BKE_reports_sprintfN(op->reports, 0));
     }
 
     if (op->type->flag & OPTYPE_REGISTER) {
@@ -2308,7 +2308,6 @@ static int wm_handler_fileselect_do(bContext *C,
             CTX_wm_window_set(C, CTX_wm_manager(C)->windows.first);
           }
 
-          BKE_report_print_level_set(handler->op->reports, RPT_WARNING);
           UI_popup_menu_reports(C, handler->op->reports);
 
           /* XXX - copied from 'wm_operator_finished()' */

@@ -43,8 +43,6 @@ static CLG_LogRef LOG = {"bke.report"};
 const char *BKE_report_type_str(ReportType type)
 {
   switch (type) {
-    case RPT_DEBUG:
-      return TIP_("Debug");
     case RPT_INFO:
       return TIP_("Info");
     case RPT_OPERATOR:
@@ -66,6 +64,30 @@ const char *BKE_report_type_str(ReportType type)
   }
 }
 
+static int report_type_to_verbosity(ReportType type)
+{
+  switch (type) {
+    case RPT_INFO:
+      return 5;
+    case RPT_OPERATOR:
+      return 4;
+    case RPT_PROPERTY:
+      return 3;
+    case RPT_WARNING:
+      return 2;
+    case RPT_ERROR:
+      return 1;
+    case RPT_ERROR_INVALID_INPUT:
+      return 1;
+    case RPT_ERROR_INVALID_CONTEXT:
+      return 1;
+    case RPT_ERROR_OUT_OF_MEMORY:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
 void BKE_reports_init(ReportList *reports, int flag)
 {
   if (!reports) {
@@ -74,7 +96,6 @@ void BKE_reports_init(ReportList *reports, int flag)
 
   memset(reports, 0, sizeof(ReportList));
 
-  reports->storelevel = RPT_INFO;
   reports->printlevel = RPT_ERROR;
   reports->flag = flag;
 }
@@ -131,22 +152,9 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
   int len;
   const char *message = TIP_(_message);
 
-  /* in background mode always log otherwise there are cases the errors wont be displayed,
-   * but still add to the report list since this is used for python exception handling */
-  if (G.background || !reports || ((reports->flag & RPT_PRINT) && (type >= reports->printlevel))) {
-    // todo enable bke.report logger by default ?
-    if (type & RPT_ERROR_ALL) {
-      CLOG_ERROR(&LOG, "%s: %s", BKE_report_type_str(type), message);
-    }
-    else if (type & RPT_WARNING_ALL) {
-      CLOG_WARN(&LOG, "%s: %s", BKE_report_type_str(type), message);
-    }
-    else {
-      CLOG_INFO(&LOG, 0, "%s: %s", BKE_report_type_str(type), message);
-    }
-  }
+  CLOG_INFO(&LOG, report_type_to_verbosity(type), "%s: %s", BKE_report_type_str(type), message);
 
-  if (reports && (reports->flag & RPT_STORE) && (type >= reports->storelevel)) {
+  if (reports && (reports->flag & RPT_STORE)) {
     char *message_alloc;
     report = MEM_callocN(sizeof(Report), "Report");
     report->type = type;
@@ -163,47 +171,37 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
 
 void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
 {
-  DynStr *ds;
   Report *report;
   va_list args;
   const char *format = TIP_(_format);
+  DynStr *message = BLI_dynstr_new();
 
-  if (G.background || !reports || ((reports->flag & RPT_PRINT) && (type >= reports->printlevel))) {
-    DynStr *message = BLI_dynstr_new();
-    va_start(args, _format);
-    BLI_dynstr_vappendf(message, format, args);
-    va_end(args);
+  va_start(args, _format);
+  BLI_dynstr_vappendf(message, format, args);
+  va_end(args);
+
+  // check logger to avoid allocating memory if logger is off
+  if (CLOG_CHECK_IN_USE(&LOG)) {
     char *message_cstring = BLI_dynstr_get_cstring(message);
-    if (type & RPT_ERROR_ALL) {
-      CLOG_ERROR(&LOG, "%s: %s", BKE_report_type_str(type), message_cstring);
-    }
-    else if (type & RPT_WARNING_ALL) {
-      CLOG_WARN(&LOG, "%s: %s", BKE_report_type_str(type), message_cstring);
-    }
-    else {
-      CLOG_INFO(&LOG, 0, "%s: %s", BKE_report_type_str(type), message_cstring);
-    }
+    CLOG_INFO(&LOG,
+              report_type_to_verbosity(type),
+              "%s: %s",
+              BKE_report_type_str(type),
+              message_cstring);
     MEM_freeN(message_cstring);
-    BLI_dynstr_free(message);
   }
 
-  if (reports && (reports->flag & RPT_STORE) && (type >= reports->storelevel)) {
+  if (reports && (reports->flag & RPT_STORE)) {
     report = MEM_callocN(sizeof(Report), "Report");
 
-    ds = BLI_dynstr_new();
-    va_start(args, _format);
-    BLI_dynstr_vappendf(ds, format, args);
-    va_end(args);
-
-    report->message = BLI_dynstr_get_cstring(ds);
-    report->len = BLI_dynstr_get_len(ds);
-    BLI_dynstr_free(ds);
-
+    report->message = BLI_dynstr_get_cstring(message);
+    report->len = BLI_dynstr_get_len(message);
     report->type = type;
     report->typestr = BKE_report_type_str(type);
 
     BLI_addtail(&reports->list, report);
   }
+  BLI_dynstr_free(message);
 }
 
 void BKE_reports_prepend(ReportList *reports, const char *_prepend)
@@ -275,25 +273,8 @@ void BKE_report_print_level_set(ReportList *reports, ReportType level)
   reports->printlevel = level;
 }
 
-ReportType BKE_report_store_level(ReportList *reports)
-{
-  if (!reports) {
-    return RPT_ERROR;
-  }
-
-  return reports->storelevel;
-}
-
-void BKE_report_store_level_set(ReportList *reports, ReportType level)
-{
-  if (!reports) {
-    return;
-  }
-
-  reports->storelevel = level;
-}
-
-char *BKE_reports_string(ReportList *reports, ReportType level)
+/** return pretty printed reports with minimum level (level=0 - print all) or NULL */
+char *BKE_reports_sprintfN(ReportList *reports, ReportType level)
 {
   Report *report;
   DynStr *ds;
@@ -319,19 +300,6 @@ char *BKE_reports_string(ReportList *reports, ReportType level)
 
   BLI_dynstr_free(ds);
   return cstring;
-}
-
-void BKE_reports_print(ReportList *reports, ReportType level)
-{
-  char *cstring = BKE_reports_string(reports, level);
-
-  if (cstring == NULL) {
-    return;
-  }
-
-  puts(cstring);
-  fflush(stdout);
-  MEM_freeN(cstring);
 }
 
 Report *BKE_reports_last_displayable(ReportList *reports)

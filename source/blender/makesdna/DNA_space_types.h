@@ -136,7 +136,6 @@ typedef enum eSpaceInfo_ClogShow {
 
 /* SpaceInfo.report_mask_exclude */
 typedef enum eSpaceInfo_RptMask {
-  INFO_RPT_DEBUG = (1 << 0),
   INFO_RPT_INFO = (1 << 1),
   INFO_RPT_OP = (1 << 2),
   INFO_RPT_WARN = (1 << 3),
