@@ -17,9 +17,8 @@
 #ifndef __BPY_INTERFACE_INOUTWRAPPER__
 #define __BPY_INTERFACE_INOUTWRAPPER__
 
-PyMODINIT_FUNC PyInit_in_out_wrapper(void);
-void BPY_intern_init_inoutwrapper(void);
-void BPY_intern_free_inoutwrapper(void);
-char *BPY_intern_get_inout_buffer(void);
+void BPY_intern_free_io_twrapper(void);
+PyObject *BPY_intern_get_io_buffer(void);
+PyObject *BPY_intern_init_io_wrapper(void);
 
 #endif /* __BPY_INTERFACE_INOUTWRAPPER__ */

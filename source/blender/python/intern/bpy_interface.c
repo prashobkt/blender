@@ -25,6 +25,7 @@
  */
 
 #include <BKE_report.h>
+#include <BLT_translation.h>
 #include <Python.h>
 
 #include "MEM_guardedalloc.h"
@@ -248,7 +249,6 @@ static struct _inittab bpy_internal_modules[] = {
 #endif
     {"gpu", BPyInit_gpu},
     {"idprop", BPyInit_idprop},
-    {"_inoutwrapper", PyInit_in_out_wrapper},
     {NULL, NULL},
 };
 
@@ -497,15 +497,33 @@ static bool python_script_exec(
       }
     }
 
-    char *output;
     if (text->compiled) {
-      BPY_intern_init_inoutwrapper();
       py_dict = PyC_DefaultNameSpace(fn_dummy);
+
+      bool wrapper_init_ok = BPY_intern_init_io_wrapper();
+      if (!wrapper_init_ok) {
+        CLOG_WARN(BPY_LOG_RNA,
+                  "Setting python IO wrapper failed! Script output will not be visible in Info Edotr");
+      }
+
       py_result = PyEval_EvalCode(text->compiled, py_dict, py_dict);
-      output = BPY_intern_get_inout_buffer();
-      BKE_report(reports, RPT_INFO, output);
-      BPY_intern_free_inoutwrapper();
-      MEM_freeN(output);
+
+      if (wrapper_init_ok) {
+        // printing io buffer will fail if error is set
+        if (PyErr_Occurred()) {
+          PyObject *error_type, *error_value, *error_traceback;
+          PyErr_Fetch(&error_type, &error_value, &error_traceback);
+          PyErr_Clear();
+          PyObject *pystring = BPY_intern_get_io_buffer();
+          BKE_report(reports, RPT_INFO, _PyUnicode_AsString(pystring));
+          PyErr_Restore(error_type, error_value, error_traceback);
+        }
+        else {
+          PyObject *pystring = BPY_intern_get_io_buffer();
+          BKE_report(reports, RPT_INFO, _PyUnicode_AsString(pystring));
+        }
+        BPY_intern_free_io_twrapper();
+      }
     }
   }
   else {
@@ -563,6 +581,7 @@ static bool python_script_exec(
     BPy_errors_to_report(reports);
   }
   else {
+    BPy_errors_to_report(reports);
     Py_DECREF(py_result);
   }
 

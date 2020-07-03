@@ -97,6 +97,7 @@ void BPy_reports_write_stdout(const ReportList *reports, const char *header)
   }
 }
 
+/** converts error to report and clears it */
 bool BPy_errors_to_report_ex(ReportList *reports, const bool use_full, const bool use_location)
 {
   PyObject *pystring;
