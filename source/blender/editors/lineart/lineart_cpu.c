@@ -1708,7 +1708,7 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
                         o->lineart.usage == OBJECT_FEATURE_LINE_INHERENT);
 
   if (object_is_used && (c->lineart_usage != COLLECTION_LRT_INCLUDE)) {
-    if (BKE_collection_has_object_recursive(c, o)) {
+    if (BKE_collection_has_object_recursive(c, (Object *)(o->id.orig_id))) {
       if (c->lineart_usage == COLLECTION_LRT_EXCLUDE) {
         return OBJECT_FEATURE_LINE_EXCLUDE;
       }
