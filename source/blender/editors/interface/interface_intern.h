@@ -177,7 +177,6 @@ struct uiBut {
    * - UI_BTYPE_LABEL:        Use `(a1 == 1.0f)` to use a2 as a blending factor (imaginative!).
    * - UI_BTYPE_SCROLL:       Use as scroll size.
    * - UI_BTYPE_SEARCH_MENU:  Use as number or rows.
-   * - UI_BTYPE_COLOR:        Use as indication of color palette.
    */
   float a1;
 
@@ -187,7 +186,6 @@ struct uiBut {
    * - UI_BTYPE_NUM:          Use to store RNA 'precision' value, for dragging and click-step.
    * - UI_BTYPE_LABEL:        If `(a1 == 1.0f)` use a2 as a blending factor.
    * - UI_BTYPE_SEARCH_MENU:  Use as number or columns.
-   * - UI_BTYPE_COLOR:        Use as index in palette (not so good, needs refactor).
    */
   float a2;
 
@@ -279,6 +277,14 @@ struct uiBut {
   /* pointer back */
   uiBlock *block;
 };
+
+/** Derived struct for #UI_BTYPE_COLOR */
+typedef struct uiButColor {
+  uiBut but;
+
+  bool is_pallete_color;
+  int palette_color_index;
+} uiButColor;
 
 /** Derived struct for #UI_BTYPE_TAB */
 typedef struct uiButTab {

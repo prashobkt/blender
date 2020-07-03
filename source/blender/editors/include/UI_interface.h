@@ -397,8 +397,6 @@ enum {
   UI_GRAD_L_ALT = 10,
 };
 
-#define UI_PALETTE_COLOR 20
-
 /* Drawing
  *
  * Functions to draw various shapes, taking theme settings into account.
