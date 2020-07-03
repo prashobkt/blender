@@ -87,48 +87,6 @@
 /* ****************************************************** */
 /* Tree Size Functions */
 
-static void outliner_get_collection_color(float col[4], short color)
-{
-  switch (color) {
-    case COLLECTION_COLOR_RED:
-      col[0] = 0.945f;
-      col[1] = 0.568f;
-      col[2] = 0.560f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_ORANGE:
-      col[0] = 0.945f;
-      col[1] = 0.580f;
-      col[2] = 0.384f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_YELLOW:
-      col[0] = 0.752f;
-      col[1] = 0.674f;
-      col[2] = 0.309f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_GREEN:
-      col[0] = 0.576f;
-      col[1] = 0.717f;
-      col[2] = 0.305f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_BLUE:
-      col[0] = 0.329f;
-      col[1] = 0.733f;
-      col[2] = 0.705f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_PURPLE:
-      col[0] = 0.721f;
-      col[1] = 0.619f;
-      col[2] = 0.929f;
-      col[3] = 1.0f;
-      break;
-  }
-}
-
 static void outliner_tree_dimensions_impl(SpaceOutliner *soops,
                                           ListBase *lb,
                                           int *width,
@@ -3254,8 +3212,9 @@ static void outliner_draw_tree_element(bContext *C,
       Collection *collection = outliner_collection_from_tree_element(te);
 
       if (collection->color != COLLECTION_COLOR_NONE) {
+        bTheme *btheme = UI_GetTheme();
         float color[4];
-        outliner_get_collection_color(color, collection->color);
+        rgba_uchar_to_float(color, btheme->collection_color[collection->color - 1].color);
 
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
         UI_draw_roundbox_aa(true,
@@ -3501,6 +3460,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     bool draw_grayed_out,
                                                     int *starty)
 {
+  bTheme *btheme = UI_GetTheme();
   TreeElement *line_start = NULL, *line_end = NULL;
   int y = *starty;
   short color_start;
@@ -3520,10 +3480,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
     if (tselem->type == TSE_LAYER_COLLECTION) {
       if (line_end) {
         if (color_start != COLLECTION_COLOR_NONE) {
-          float c[4];
-          outliner_get_collection_color(c, color_start);
-
-          immUniformColor4fv(c);
+          immUniformColor4ubv(btheme->collection_color[color_start - 1].color);
         }
         else {
           immUniformColor4ubv(col);
@@ -3563,10 +3520,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
 
   if (line_start) {
     if (color_start != COLLECTION_COLOR_NONE) {
-      float c[4];
-      outliner_get_collection_color(c, color_start);
-
-      immUniformColor4fv(c);
+      immUniformColor4ubv(btheme->collection_color[color_start - 1].color);
     }
     else {
       immUniformColor4ubv(col);

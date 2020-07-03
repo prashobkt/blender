@@ -216,6 +216,13 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     btheme->tui.transparent_checker_size = U_theme_default.tui.transparent_checker_size;
   }
 
+  FROM_DEFAULT_V4_UCHAR(collection_color[0].color);
+  FROM_DEFAULT_V4_UCHAR(collection_color[1].color);
+  FROM_DEFAULT_V4_UCHAR(collection_color[2].color);
+  FROM_DEFAULT_V4_UCHAR(collection_color[3].color);
+  FROM_DEFAULT_V4_UCHAR(collection_color[4].color);
+  FROM_DEFAULT_V4_UCHAR(collection_color[5].color);
+
   /**
    * Versioning code until next subversion bump goes here.
    *

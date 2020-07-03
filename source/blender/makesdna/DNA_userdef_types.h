@@ -456,6 +456,10 @@ typedef enum eWireColor_Flags {
   /* TH_WIRECOLOR_TEXTCOLS = (1 << 1), */ /* UNUSED */
 } eWireColor_Flags;
 
+typedef struct ThemeCollectionColor {
+  unsigned char color[4];
+} ThemeCollectionColor;
+
 /**
  * A theme.
  *
@@ -493,6 +497,8 @@ typedef struct bTheme {
   /* 20 sets of bone colors for this theme */
   ThemeWireColor tarm[20];
   /*ThemeWireColor tobj[20];*/
+
+  ThemeCollectionColor collection_color[6];
 
   int active_theme_area;
   char _pad0[4];

@@ -460,54 +460,11 @@ DEF_ICON_VECTOR_COLORSET_DRAW_NTH(20, 19)
 
 #  undef DEF_ICON_VECTOR_COLORSET_DRAW_NTH
 
-static void get_collection_color(float col[4], short color)
-{
-  switch (color) {
-    case COLLECTION_COLOR_RED:
-      col[0] = 0.945f;
-      col[1] = 0.568f;
-      col[2] = 0.560f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_ORANGE:
-      col[0] = 0.945f;
-      col[1] = 0.580f;
-      col[2] = 0.384f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_YELLOW:
-      col[0] = 0.752f;
-      col[1] = 0.674f;
-      col[2] = 0.309f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_GREEN:
-      col[0] = 0.576f;
-      col[1] = 0.717f;
-      col[2] = 0.305f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_BLUE:
-      col[0] = 0.329f;
-      col[1] = 0.733f;
-      col[2] = 0.705f;
-      col[3] = 1.0f;
-      break;
-    case COLLECTION_COLOR_PURPLE:
-      col[0] = 0.721f;
-      col[1] = 0.619f;
-      col[2] = 0.929f;
-      col[3] = 1.0f;
-      break;
-  }
-}
-
 static void vicon_collection_color_draw(
     short color, int x, int y, int w, int h, float UNUSED(alpha))
 {
   bTheme *btheme = UI_GetTheme();
-  float col[4];
-  get_collection_color(col, color);
+  const ThemeCollectionColor *collection_color = &btheme->collection_color[color - 1];
   const int c = x + w;
 
   uint pos = GPU_vertformat_attr_add(
@@ -516,7 +473,7 @@ static void vicon_collection_color_draw(
 
   /* XXX: Include alpha into this... */
   /* normal */
-  immUniformColor3fv(col);
+  immUniformColor3ubv(collection_color->color);
   immRecti(pos, x, y, c, y + h);
 
   immUnbindProgram();

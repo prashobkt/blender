@@ -1101,6 +1101,26 @@ const bTheme U_theme_default = {
       .active = RGBA(0x000000ff),
     },
   },
+  .collection_color = {
+    {
+      .color = RGBA(0xe4312bff),
+    },
+    {
+      .color = RGBA(0xef7e42ff),
+    },
+    {
+      .color = RGBA(0xe4dd52ff),
+    },
+    {
+      .color = RGBA(0x9ac546ff),
+    },
+    {
+      .color = RGBA(0x46bcc2ff),
+    },
+    {
+      .color = RGBA(0x8b65dcff),
+    },
+  },
 };
 
 /* clang-format on */
