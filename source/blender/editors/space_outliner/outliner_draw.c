@@ -3212,7 +3212,7 @@ static void outliner_draw_tree_element(bContext *C,
       if (collection->color != COLLECTION_COLOR_NONE) {
         bTheme *btheme = UI_GetTheme();
         float color[4];
-        rgba_uchar_to_float(color, btheme->collection_color[collection->color].color);
+        rgba_uchar_to_float(color, btheme->collection_color[collection->color - 1].color);
 
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
         UI_draw_roundbox_aa(true,
@@ -3493,7 +3493,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
 
     if (draw_hierarchy_line) {
       if (color != COLLECTION_COLOR_NONE) {
-        immUniformColor4ubv(btheme->collection_color[color].color);
+        immUniformColor4ubv(btheme->collection_color[color - 1].color);
       }
       else {
         immUniformColor4ubv(col);

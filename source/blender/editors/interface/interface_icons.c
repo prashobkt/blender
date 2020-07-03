@@ -464,7 +464,7 @@ static void vicon_collection_color_draw(
     short color, int x, int y, int w, int h, float UNUSED(alpha))
 {
   bTheme *btheme = UI_GetTheme();
-  const ThemeCollectionColor *collection_color = &btheme->collection_color[color];
+  const ThemeCollectionColor *collection_color = &btheme->collection_color[color - 1];
   const int c = x + w;
 
   uint pos = GPU_vertformat_attr_add(
