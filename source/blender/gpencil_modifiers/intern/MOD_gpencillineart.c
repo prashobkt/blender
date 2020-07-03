@@ -62,6 +62,9 @@
 
 #include "ED_lineart.h"
 
+#include "WM_api.h"
+#include "WM_types.h"
+
 static void initData(GpencilModifierData *md)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
@@ -146,6 +149,8 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
 
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
+
+  WM_main_add_notifier(NA_EDITED | NC_GPENCIL, NULL);
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
