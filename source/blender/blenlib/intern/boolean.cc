@@ -35,52 +35,49 @@
 
 #include "BLI_boolean.hh"
 
-namespace blender {
-
-namespace meshintersect {
+namespace blender::meshintersect {
 
 /* Edge as two vert indices, in a canonical order (lower vert index first). */
 class Edge {
+  int v_[2]{-1, -1};
+
  public:
   Edge() = default;
   Edge(int v0, int v1)
   {
     if (v0 <= v1) {
-      m_v[0] = v0;
-      m_v[1] = v1;
+      v_[0] = v0;
+      v_[1] = v1;
     }
     else {
-      m_v[0] = v1;
-      m_v[1] = v0;
+      v_[0] = v1;
+      v_[1] = v0;
     }
   }
 
   int v0() const
   {
-    return m_v[0];
+    return v_[0];
   }
   int v1() const
   {
-    return m_v[1];
+    return v_[1];
   }
   int operator[](int i) const
   {
-    return m_v[i];
+    return v_[i];
   }
   bool operator==(Edge other) const
   {
-    return m_v[0] == other.m_v[0] && m_v[1] == other.m_v[1];
+    return v_[0] == other.v_[0] && v_[1] == other.v_[1];
   }
 
   uint32_t hash() const
   {
-    uint32_t v0hash = DefaultHash<int>{}(m_v[0]);
-    uint32_t v1hash = DefaultHash<int>{}(m_v[1]);
+    uint32_t v0hash = DefaultHash<int>{}(v_[0]);
+    uint32_t v1hash = DefaultHash<int>{}(v_[1]);
     return v0hash ^ (v1hash * 33);
   }
-
- private:
-  int m_v[2]{-1, -1};
 };
 
 static std::ostream &operator<<(std::ostream &os, const Edge &e)
@@ -113,6 +110,9 @@ static std::ostream &operator<<(std::ostream &os, const Array<int> &iarr)
 }
 
 class TriMeshTopology {
+  Map<Edge, Vector<int> *> edge_tri_; /* Triangles that contain a given Edge (either order). */
+  Array<Vector<Edge>> vert_edge_;     /* Edges incident on each vertex. */
+
  public:
   TriMeshTopology(const TriMesh *tm);
   TriMeshTopology(const TriMeshTopology &other) = delete;
@@ -122,8 +122,8 @@ class TriMeshTopology {
   /* If e is manifold, return index of the other triangle (not t) that has it. Else return -1. */
   int other_tri_if_manifold(Edge e, int t) const
   {
-    if (m_edge_tri.contains(e)) {
-      auto p = m_edge_tri.lookup(e);
+    if (edge_tri_.contains(e)) {
+      auto p = edge_tri_.lookup(e);
       if (p->size() == 2) {
         return ((*p)[0] == t) ? (*p)[1] : (*p)[0];
       }
@@ -137,16 +137,12 @@ class TriMeshTopology {
   }
   const Vector<int> *edge_tris(Edge e) const
   {
-    return m_edge_tri.lookup_default(e, nullptr);
+    return edge_tri_.lookup_default(e, nullptr);
   }
   const Vector<Edge> &vert_edges(int v) const
   {
-    return m_vert_edge[v];
+    return vert_edge_[v];
   }
-
- private:
-  Map<Edge, Vector<int> *> m_edge_tri; /* Triangles that contain a given Edge (either order). */
-  Array<Vector<Edge>> m_vert_edge;     /* Edges incident on each vertex. */
 };
 
 TriMeshTopology::TriMeshTopology(const TriMesh *tm)
@@ -157,8 +153,8 @@ TriMeshTopology::TriMeshTopology(const TriMesh *tm)
   }
   /* If everything were manifold, there would be about 3V edges (from Euler's formula). */
   const uint estimate_num_edges = 4 * tm->vert.size();
-  this->m_edge_tri.reserve(estimate_num_edges);
-  this->m_vert_edge = Array<Vector<Edge>>(tm->vert.size());
+  this->edge_tri_.reserve(estimate_num_edges);
+  this->vert_edge_ = Array<Vector<Edge>>(tm->vert.size());
   int ntri = static_cast<int>(tm->tri.size());
   for (int t = 0; t < ntri; ++t) {
     const IndexedTriangle &tri = tm->tri[t];
@@ -166,29 +162,29 @@ TriMeshTopology::TriMeshTopology(const TriMesh *tm)
       int v = tri[i];
       int vnext = tri[(i + 1) % 3];
       Edge e(v, vnext);
-      if (!m_vert_edge[v].contains(e)) {
-        m_vert_edge[v].append(e);
+      if (!vert_edge_[v].contains(e)) {
+        vert_edge_[v].append(e);
       }
-      if (!m_vert_edge[vnext].contains(e)) {
-        m_vert_edge[vnext].append(e);
+      if (!vert_edge_[vnext].contains(e)) {
+        vert_edge_[vnext].append(e);
       }
       auto createf = [t](Vector<int> **pvec) { *pvec = new Vector<int>{t}; };
       auto modifyf = [t](Vector<int> **pvec) { (*pvec)->append_non_duplicates(t); };
-      this->m_edge_tri.add_or_modify(Edge(v, vnext), createf, modifyf);
+      this->edge_tri_.add_or_modify(Edge(v, vnext), createf, modifyf);
     }
   }
   /* Debugging. */
   if (dbg_level > 0) {
     std::cout << "After TriMeshTopology construction\n";
-    for (auto item : m_edge_tri.items()) {
+    for (auto item : edge_tri_.items()) {
       std::cout << "tris for edge " << item.key << ": " << *item.value << "\n";
       if (false) {
-        m_edge_tri.print_stats();
+        edge_tri_.print_stats();
       }
     }
-    for (uint v = 0; v < m_vert_edge.size(); ++v) {
+    for (uint v = 0; v < vert_edge_.size(); ++v) {
       std::cout << "edges for vert " << v << ": ";
-      for (Edge e : m_vert_edge[v]) {
+      for (Edge e : vert_edge_[v]) {
         std::cout << e << " ";
       }
       std::cout << "\n";
@@ -199,39 +195,38 @@ TriMeshTopology::TriMeshTopology(const TriMesh *tm)
 TriMeshTopology::~TriMeshTopology()
 {
   auto deletef = [](const Edge &UNUSED(e), const Vector<int> *vec) { delete vec; };
-  m_edge_tri.foreach_item(deletef);
+  edge_tri_.foreach_item(deletef);
 }
 
 /* A Patch is a maximal set of faces that share manifold edges only. */
 class Patch {
+  Vector<int> tri_; /* Indices of triangles in the Patch. */
+
  public:
   Patch() = default;
 
   void add_tri(int t)
   {
-    m_tri.append(t);
+    tri_.append(t);
   }
 
   const Vector<int> &tri() const
   {
-    return m_tri;
+    return tri_;
   }
 
   int tot_tri() const
   {
-    return static_cast<int>(m_tri.size());
+    return static_cast<int>(tri_.size());
   }
 
   int tri(int i) const
   {
-    return m_tri[i];
+    return tri_[i];
   }
 
   int cell_above{-1};
   int cell_below{-1};
-
- private:
-  Vector<int> m_tri; /* Indices of triangles in the Patch. */
 };
 
 static std::ostream &operator<<(std::ostream &os, const Patch &patch)
@@ -244,57 +239,55 @@ static std::ostream &operator<<(std::ostream &os, const Patch &patch)
 }
 
 class PatchesInfo {
+  Vector<Patch> patch_;
+  Array<int> tri_patch_;                   /* Patch index for corresponding triangle. */
+  Map<std::pair<int, int>, Edge> pp_edge_; /* Shared edge for incident patches; (-1,-1) if none. */
+
  public:
   explicit PatchesInfo(int ntri)
   {
-    m_tri_patch = Array<int>(ntri, -1);
-    m_pp_edge.reserve(30);
+    tri_patch_ = Array<int>(ntri, -1);
+    pp_edge_.reserve(30);
   }
   int tri_patch(int t) const
   {
-    return m_tri_patch[t];
+    return tri_patch_[t];
   }
   int add_patch()
   {
-    int patch_index = static_cast<int>(m_patch.append_and_get_index(Patch()));
+    int patch_index = static_cast<int>(patch_.append_and_get_index(Patch()));
     return patch_index;
   }
   void grow_patch(int patch_index, int t)
   {
-    m_tri_patch[t] = patch_index;
-    m_patch[patch_index].add_tri(t);
+    tri_patch_[t] = patch_index;
+    patch_[patch_index].add_tri(t);
   }
   bool tri_is_assigned(int t) const
   {
-    return m_tri_patch[t] != -1;
+    return tri_patch_[t] != -1;
   }
   const Patch &patch(int patch_index) const
   {
-    return m_patch[patch_index];
+    return patch_[patch_index];
   }
   Patch &patch(int patch_index)
   {
-    return m_patch[patch_index];
+    return patch_[patch_index];
   }
   int tot_patch() const
   {
-    return static_cast<int>(m_patch.size());
+    return static_cast<int>(patch_.size());
   }
   void add_new_patch_patch_edge(int p1, int p2, Edge e)
   {
-    m_pp_edge.add_new(std::pair<int, int>(p1, p2), e);
-    m_pp_edge.add_new(std::pair<int, int>(p2, p1), e);
+    pp_edge_.add_new(std::pair<int, int>(p1, p2), e);
+    pp_edge_.add_new(std::pair<int, int>(p2, p1), e);
   }
   Edge patch_patch_edge(int p1, int p2)
   {
-    return m_pp_edge.lookup_default(std::pair<int, int>(p1, p2), Edge(-1, -1));
+    return pp_edge_.lookup_default(std::pair<int, int>(p1, p2), Edge(-1, -1));
   }
-
- private:
-  Vector<Patch> m_patch;
-  Array<int> m_tri_patch; /* Patch index for corresponding triangle. */
-  Map<std::pair<int, int>, Edge>
-      m_pp_edge; /* Shared edge for incident patches; (-1,-1) if none. */
 };
 
 static bool apply_bool_op(int bool_optype, const Array<int> &winding);
@@ -304,58 +297,57 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding);
  * One cell, the Ambient cell, contains all other cells.
  */
 class Cell {
+  Vector<int> patches_;
+  Array<int> winding_;
+  bool winding_assigned_{false};
+  bool flag_{false};
+
  public:
   Cell() = default;
 
   void add_patch(int p)
   {
-    m_patches.append(p);
+    patches_.append(p);
   }
 
   const Vector<int> &patches() const
   {
-    return m_patches;
+    return patches_;
   }
 
   const Array<int> &winding() const
   {
-    return m_winding;
+    return winding_;
   }
 
   void init_winding(int winding_len)
   {
-    m_winding = Array<int>(winding_len);
+    winding_ = Array<int>(winding_len);
   }
 
   void seed_ambient_winding()
   {
-    m_winding.fill(0);
-    m_winding_assigned = true;
+    winding_.fill(0);
+    winding_assigned_ = true;
   }
 
   void set_winding_and_flag(const Cell &from_cell, int shape, int delta, int bool_optype)
   {
-    std::copy(from_cell.winding().begin(), from_cell.winding().end(), m_winding.begin());
-    m_winding[shape] += delta;
-    m_winding_assigned = true;
-    m_flag = apply_bool_op(bool_optype, m_winding);
+    std::copy(from_cell.winding().begin(), from_cell.winding().end(), winding_.begin());
+    winding_[shape] += delta;
+    winding_assigned_ = true;
+    flag_ = apply_bool_op(bool_optype, winding_);
   }
 
   bool flag() const
   {
-    return m_flag;
+    return flag_;
   }
 
   bool winding_assigned() const
   {
-    return m_winding_assigned;
+    return winding_assigned_;
   }
-
- private:
-  Vector<int> m_patches;
-  Array<int> m_winding;
-  bool m_winding_assigned{false};
-  bool m_flag{false};
 };
 
 static std::ostream &operator<<(std::ostream &os, const Cell &cell)
@@ -370,39 +362,38 @@ static std::ostream &operator<<(std::ostream &os, const Cell &cell)
 
 /* Information about all the Cells. */
 class CellsInfo {
+  Vector<Cell> cell_;
+
  public:
   CellsInfo() = default;
 
   int add_cell()
   {
-    uint index = m_cell.append_and_get_index(Cell());
+    uint index = cell_.append_and_get_index(Cell());
     return static_cast<int>(index);
   }
 
   Cell &cell(int c)
   {
-    return m_cell[c];
+    return cell_[c];
   }
 
   const Cell &cell(int c) const
   {
-    return m_cell[c];
+    return cell_[c];
   }
 
   int tot_cell() const
   {
-    return static_cast<int>(m_cell.size());
+    return static_cast<int>(cell_.size());
   }
 
   void init_windings(int winding_len)
   {
-    for (Cell &cell : m_cell) {
+    for (Cell &cell : cell_) {
       cell.init_winding(winding_len);
     }
   }
-
- private:
-  Vector<Cell> m_cell;
 };
 
 /* Partition the triangles of tm into Patches. */
@@ -1449,9 +1440,9 @@ static void find_dissolvable_edges(FaceMergeState *fms, const TriMesh &tm, const
       int f_size = static_cast<int>(pm_f.size());
       for (int i = 0; i < f_size && me_dis; ++i) {
         int inext = (i + 1) % f_size;
-        const mpq3 &pm_v1 = pm_in.vert[pm_f[i]];
-        const mpq3 &pm_v2 = pm_in.vert[pm_f[inext]];
-        if (segs_overlap(me_v1, me_v2, pm_v1, pm_v2)) {
+        const mpq3 &pv_1 = pm_in.vert[pm_f[i]];
+        const mpq3 &pv_2 = pm_in.vert[pm_f[inext]];
+        if (segs_overlap(me_v1, me_v2, pv_1, pv_2)) {
           me_dis = false;
         }
       }
@@ -1987,5 +1978,4 @@ PolyMesh boolean(PolyMesh &pm_in, bool_optype op, int nshapes, std::function<int
   return polymesh_from_trimesh_with_dissolve(tm_out, pm_in);
 }
 
-}  // namespace meshintersect
-}  // namespace blender
+}  // namespace blender::meshintersect

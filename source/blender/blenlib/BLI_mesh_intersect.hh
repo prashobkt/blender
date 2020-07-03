@@ -30,9 +30,7 @@
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-namespace blender {
-
-namespace meshintersect {
+namespace blender::meshintersect {
 
 /* The indices are for vertices in some external space of coordinates.
  * The "orig" component is used to track how a triangle originally came
@@ -41,72 +39,54 @@ namespace meshintersect {
  * memory.
  */
 class IndexedTriangle {
+  int v_[3]{-1, -1, -1};
+  int orig_{-1};
+
  public:
   IndexedTriangle() = default;
-  IndexedTriangle(int v0, int v1, int v2, int orig) : m_v{v0, v1, v2}, m_orig{orig}
+  IndexedTriangle(int v0, int v1, int v2, int orig) : v_{v0, v1, v2}, orig_{orig}
   {
-  }
-  IndexedTriangle(const IndexedTriangle &other)
-  {
-    m_v[0] = other.m_v[0];
-    m_v[1] = other.m_v[1];
-    m_v[2] = other.m_v[2];
-    m_orig = other.m_orig;
-  }
-  IndexedTriangle &operator=(const IndexedTriangle &other)
-  {
-    if (this != &other) {
-      m_v[0] = other.m_v[0];
-      m_v[1] = other.m_v[1];
-      m_v[2] = other.m_v[2];
-      m_orig = other.m_orig;
-    }
-    return *this;
   }
 
   int v0() const
   {
-    return m_v[0];
+    return v_[0];
   }
   int v1() const
   {
-    return m_v[1];
+    return v_[1];
   }
   int v2() const
   {
-    return m_v[2];
+    return v_[2];
   }
   int orig() const
   {
-    return m_orig;
+    return orig_;
   }
   int operator[](int i) const
   {
-    return m_v[i];
+    return v_[i];
   }
   int &operator[](int i)
   {
-    return m_v[i];
+    return v_[i];
   }
   bool operator==(const IndexedTriangle &other)
   {
     /* Let equality happen with any cyclic ordering difference, but not orientation difference. */
-    return (((m_v[0] == other.m_v[0] && m_v[1] == other.m_v[1] && m_v[2] == other.m_v[2]) ||
-             (m_v[0] == other.m_v[1] && m_v[1] == other.m_v[2] && m_v[2] == other.m_v[0]) ||
-             (m_v[0] == other.m_v[2] && m_v[1] == other.m_v[0] && m_v[2] == other.m_v[1])) &&
-            m_orig == other.m_orig);
+    return (((v_[0] == other.v_[0] && v_[1] == other.v_[1] && v_[2] == other.v_[2]) ||
+             (v_[0] == other.v_[1] && v_[1] == other.v_[2] && v_[2] == other.v_[0]) ||
+             (v_[0] == other.v_[2] && v_[1] == other.v_[0] && v_[2] == other.v_[1])) &&
+            orig_ == other.orig_);
   }
 
  private:
-  int m_v[3]{-1, -1, -1};
-  int m_orig{-1};
 };
 
 struct TriMesh {
   Array<blender::mpq3> vert;
   Array<IndexedTriangle> tri;
-
-  TriMesh() = default;
 };
 
 /* The output will have dup vertices merged and degenerate triangles ignored.
@@ -132,8 +112,6 @@ void write_obj_trimesh(const Array<mpq3> &vert,
                        const Array<IndexedTriangle> &tri,
                        const std::string &objname);
 
-} /* namespace meshintersect */
-
-} /* namespace blender */
+} /* namespace blender::meshintersect */
 
 #endif /* __BLI_MESH_INTERSECT_HH__ */

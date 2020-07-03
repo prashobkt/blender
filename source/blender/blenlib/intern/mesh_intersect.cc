@@ -32,9 +32,8 @@
 
 #include "BLI_mesh_intersect.hh"
 
-namespace blender {
+namespace blender::meshintersect {
 
-namespace meshintersect {
 /* A plane whose equation is dot(n, p) + d = 0. */
 struct planeq {
   mpq3 n;
@@ -71,10 +70,22 @@ struct planeq {
  * Also optionally keeps the planeqs of the triangles, as those are needed sometimes.
  */
 class TMesh {
+  /* Invariants:
+   * verts_ contains no duplicates.
+   * Every index t in an tris_ element satisfies
+   *   0 <= t < verts_.size()
+   * No degenerate triangles.
+   * If has_planes_ is true then planes_ parallels
+   * the tris_ vector, and has the corresponding planes.
+   * (The init_planes() function will set that up.)
+   */
+  bool has_planes_ = false;
+  VectorSet<mpq3> verts_;
+  Vector<IndexedTriangle> tris_;
+  Vector<planeq> planes_;
+
  public:
-  TMesh() : m_has_planes(false)
-  {
-  }
+  TMesh() = default;
 
   /* Copies verts and triangles from tm_in, but dedups the vertices
    * and ignores degenerate and invalid triangles.
@@ -83,7 +94,7 @@ class TMesh {
   TMesh(const TriMesh &tm_in, bool want_planes)
   {
     int nvert = static_cast<int>(tm_in.vert.size());
-    this->m_verts.reserve(nvert);
+    this->verts_.reserve(nvert);
     Array<int> input_v_to_tm_v = Array<int>(nvert); /* Input vert index -> our vert index. */
     for (int v = 0; v < nvert; ++v) {
       const mpq3 &co = tm_in.vert[v];
@@ -91,7 +102,7 @@ class TMesh {
       input_v_to_tm_v[v] = tmv;
     }
     int ntri = static_cast<int>(tm_in.tri.size());
-    this->m_tris.reserve(ntri);
+    this->tris_.reserve(ntri);
     for (int t = 0; t < ntri; ++t) {
       const IndexedTriangle &tri = tm_in.tri[t];
       int v0 = tri.v0();
@@ -113,13 +124,13 @@ class TMesh {
         /* TODO: check for 3d collinearity of tmv0 tmv1 and tmv2 and skip those too. */
         continue;
       }
-      this->m_tris.append(IndexedTriangle(tmv0, tmv1, tmv2, orig));
+      this->tris_.append(IndexedTriangle(tmv0, tmv1, tmv2, orig));
     }
     if (want_planes) {
       this->init_planes();
     }
     else {
-      m_has_planes = false;
+      has_planes_ = false;
     }
   }
 
@@ -127,109 +138,91 @@ class TMesh {
   TMesh(const TMesh &source_tm, int t)
   {
     BLI_assert(t >= 0 && t < source_tm.tot_tri());
-    this->m_verts.reserve(3);
+    this->verts_.reserve(3);
     const IndexedTriangle &source_it = source_tm.tri(t);
     int tmv0 = this->add_vert(source_tm.vert(source_it.v0()));
     int tmv1 = this->add_vert(source_tm.vert(source_it.v1()));
     int tmv2 = this->add_vert(source_tm.vert(source_it.v2()));
-    this->m_tris.append(IndexedTriangle(tmv0, tmv1, tmv2, source_it.orig()));
-    if (source_tm.m_has_planes) {
-      this->m_planes.append(source_tm.m_planes[t]);
-      this->m_has_planes = true;
+    this->tris_.append(IndexedTriangle(tmv0, tmv1, tmv2, source_it.orig()));
+    if (source_tm.has_planes_) {
+      this->planes_.append(source_tm.planes_[t]);
+      this->has_planes_ = true;
     }
     else {
-      this->m_has_planes = false;
+      this->has_planes_ = false;
     }
   }
-
-  /* TODO: make sure assignment, copy, init, move init, and move assignment all work as expected.
-   */
 
   void init_planes()
   {
     int ntri = this->tot_tri();
-    m_planes.reserve(ntri);
+    planes_.reserve(ntri);
     for (int t = 0; t < ntri; ++t) {
-      const IndexedTriangle &tri = m_tris[t];
-      mpq3 tr02 = m_verts[tri[0]] - m_verts[tri[2]];
-      mpq3 tr12 = m_verts[tri[1]] - m_verts[tri[2]];
+      const IndexedTriangle &tri = tris_[t];
+      mpq3 tr02 = verts_[tri[0]] - verts_[tri[2]];
+      mpq3 tr12 = verts_[tri[1]] - verts_[tri[2]];
       mpq3 n = mpq3::cross(tr02, tr12);
-      mpq_class d = -mpq3::dot(n, m_verts[tri[0]]);
+      mpq_class d = -mpq3::dot(n, verts_[tri[0]]);
       BLI_assert(!(n.x == 0 && n.y == 0 && n.z == 0));
-      this->m_planes.append(planeq(n, d));
+      this->planes_.append(planeq(n, d));
     }
-    m_has_planes = true;
+    has_planes_ = true;
   }
 
   int tot_vert() const
   {
-    return static_cast<int>(m_verts.size());
+    return static_cast<int>(verts_.size());
   }
 
   int tot_tri() const
   {
-    return static_cast<int>(m_tris.size());
+    return static_cast<int>(tris_.size());
   }
 
   bool has_planes() const
   {
-    return m_has_planes;
+    return has_planes_;
   }
 
   const IndexedTriangle &tri(int index) const
   {
-    return m_tris[index];
+    return tris_[index];
   }
 
   const mpq3 &vert(int index) const
   {
-    return m_verts[index];
+    return verts_[index];
   }
 
   const planeq &tri_plane(int index) const
   {
-    BLI_assert(m_has_planes);
-    return m_planes[index];
+    BLI_assert(has_planes_);
+    return planes_[index];
   }
 
   int add_tri(int v0, int v1, int v2, int tri_orig)
   {
     int t = this->tot_vert();
-    this->m_tris.append(IndexedTriangle(v0, v1, v2, tri_orig));
+    this->tris_.append(IndexedTriangle(v0, v1, v2, tri_orig));
     return t;
   }
 
   int add_tri(const IndexedTriangle &itri)
   {
     int t = this->tot_vert();
-    this->m_tris.append(itri);
+    this->tris_.append(itri);
     return t;
   }
 
   int add_vert(const mpq3 &co)
   {
-    int co_index = this->m_verts.index_of_try(co);
+    int co_index = this->verts_.index_of_try(co);
     if (co_index == -1) {
-      co_index = static_cast<int>(this->m_verts.size());
-      this->m_verts.add_new(co);
+      co_index = static_cast<int>(this->verts_.size());
+      this->verts_.add_new(co);
     }
     return co_index;
   }
-
- private:
-  /* Invariants:
-   * m_verts contains no duplicates.
-   * Every index t in an m_tris element satisfies
-   *   0 <= t < m_verts.size()
-   * No degenerate triangles.
-   * If m_has_planes is true then m_planes parallels
-   * the m_tris vector, and has the corresponding planes.
-   * (The init_planes() function will set that up.)
-   */
-  bool m_has_planes;
-  VectorSet<mpq3> m_verts;
-  Vector<IndexedTriangle> m_tris;
-  Vector<planeq> m_planes;
 };
 
 static std::ostream &operator<<(std::ostream &os, const TMesh &tm);
@@ -243,6 +236,8 @@ static std::ostream &operator<<(std::ostream &os, const TMesh &tm);
  * triangle in the cluster.
  */
 class CoplanarCluster {
+  Vector<int> tris_;
+
  public:
   CoplanarCluster() = default;
   explicit CoplanarCluster(int t)
@@ -250,30 +245,28 @@ class CoplanarCluster {
     this->add_tri(t);
   }
   ~CoplanarCluster() = default;
+
   /* Assume that caller knows this will not be a duplicate. */
   void add_tri(int t)
   {
-    m_tris.append(t);
+    tris_.append(t);
   }
   int tot_tri() const
   {
-    return static_cast<int>(m_tris.size());
+    return static_cast<int>(tris_.size());
   }
   int tri(int index) const
   {
-    return m_tris[index];
+    return tris_[index];
   }
   const int *begin() const
   {
-    return m_tris.begin();
+    return tris_.begin();
   }
   const int *end() const
   {
-    return m_tris.end();
+    return tris_.end();
   }
-
- private:
-  Vector<int> m_tris;
 };
 
 /* Maintains indexed set of CoplanarCluster, with the added ability
@@ -282,39 +275,38 @@ class CoplanarCluster {
  * The tri_cluster(t) function returns -1 if t is not part of any cluster.
  */
 class CoplanarClusterInfo {
+  Vector<CoplanarCluster> clusters_;
+  Array<int> tri_cluster_;
+
  public:
   CoplanarClusterInfo() = default;
-  explicit CoplanarClusterInfo(int numtri) : m_tri_cluster(Array<int>(numtri))
+  explicit CoplanarClusterInfo(int numtri) : tri_cluster_(Array<int>(numtri))
   {
-    m_tri_cluster.fill(-1);
+    tri_cluster_.fill(-1);
   }
   const int tri_cluster(int t) const
   {
-    BLI_assert(0 <= t && t < static_cast<int>(m_tri_cluster.size()));
-    return m_tri_cluster[t];
+    BLI_assert(0 <= t && t < static_cast<int>(tri_cluster_.size()));
+    return tri_cluster_[t];
   }
   int add_cluster(const CoplanarCluster cl)
   {
-    int c_index = static_cast<int>(m_clusters.append_and_get_index(cl));
+    int c_index = static_cast<int>(clusters_.append_and_get_index(cl));
     for (const int t : cl) {
-      BLI_assert(0 <= t && t < static_cast<int>(m_tri_cluster.size()));
-      m_tri_cluster[t] = c_index;
+      BLI_assert(0 <= t && t < static_cast<int>(tri_cluster_.size()));
+      tri_cluster_[t] = c_index;
     }
     return c_index;
   }
   int tot_cluster() const
   {
-    return static_cast<int>(m_clusters.size());
+    return static_cast<int>(clusters_.size());
   }
   const CoplanarCluster &cluster(int index) const
   {
-    BLI_assert(0 <= index && index < static_cast<int>(m_clusters.size()));
-    return m_clusters[index];
+    BLI_assert(0 <= index && index < static_cast<int>(clusters_.size()));
+    return clusters_[index];
   }
-
- private:
-  Vector<CoplanarCluster> m_clusters;
-  Array<int> m_tri_cluster;
 };
 
 static std::ostream &operator<<(std::ostream &os, const CoplanarCluster &cl);
@@ -323,8 +315,7 @@ static std::ostream &operator<<(std::ostream &os, const CoplanarClusterInfo &cli
 
 enum ITT_value_kind { INONE, IPOINT, ISEGMENT, ICOPLANAR };
 
-class ITT_value {
- public:
+struct ITT_value {
   enum ITT_value_kind kind;
   mpq3 p1;      /* Only relevant for IPOINT and ISEGMENT kind. */
   mpq3 p2;      /* Only relevant for ISEGMENT kind. */
@@ -1639,6 +1630,4 @@ void write_obj_trimesh(const Array<mpq3> &vert,
   }
 }
 
-};  // namespace meshintersect
-
-}  // namespace blender
+};  // namespace blender::meshintersect

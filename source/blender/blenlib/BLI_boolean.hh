@@ -26,8 +26,7 @@
 #include "BLI_mesh_intersect.hh"
 #include "BLI_mpq3.hh"
 
-namespace blender {
-namespace meshintersect {
+namespace blender::meshintersect {
 
 /* Enum values after BOOLEAN_NONE need to match BMESH_ISECT_BOOLEAN_... values in
  * editmesh_intersect.c. */
@@ -65,7 +64,6 @@ void write_obj_polymesh(const Array<mpq3> &vert,
                         const Array<Array<int>> &face,
                         const std::string &objname);
 
-}  // namespace meshintersect
-}  // namespace blender
+}  // namespace blender::meshintersect
 
 #endif /* __BLI_BOOLEAN_HH__ */
