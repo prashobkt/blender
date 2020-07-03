@@ -126,6 +126,10 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
 
     /* compute and accumulate the total contribution of this light */
     Ray light_ray;
+    light_ray.t = 0.0f;
+#ifdef __OBJECT_MOTION__
+    light_ray.time = sd->time;
+#endif
     BsdfEval L_light;
     bool is_lamp;
     float terminate = path_state_rng_light_termination(kg, state);
@@ -246,6 +250,7 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
     Ray light_ray;
     bool is_lamp;
 
+    light_ray.t = 0.0f;
 #    ifdef __OBJECT_MOTION__
     light_ray.time = sd->time;
 #    endif
