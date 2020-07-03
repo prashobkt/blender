@@ -2487,7 +2487,7 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
       list_append_pointer_static(&rb->material_lines, &rb->render_data_pool, rl);
       material_count++;
     }
-    if (rl->flags & LRT_EDGE_FLAG_EDGE_MARK) {
+    else if (rl->flags & LRT_EDGE_FLAG_EDGE_MARK) {
       /*  no need to mark again */
       add = 4;
       list_append_pointer_static(&rb->edge_marks, &rb->render_data_pool, rl);
