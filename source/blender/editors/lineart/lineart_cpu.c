@@ -4021,7 +4021,8 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     int count = ED_lineart_count_chain(rlc);
     bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, color_idx, count, thickness, false);
 
-    float *stroke_data = BLI_array_alloca(stroke_data, count * GP_PRIM_DATABUF_SIZE);
+    float *stroke_data = MEM_callocN(sizeof(float) * count * GP_PRIM_DATABUF_SIZE,
+                                     "line art add stroke");
 
     for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
       float opacity = 1.0f; /* rlci->occlusion ? 0.0f : 1.0f; */
@@ -4036,6 +4037,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
     gps->mat_nr = material_nr;
     BKE_gpencil_stroke_geometry_update(gps);
+    MEM_freeN(stroke_data);
   }
 
   /* release render lock so cache is free to be manipulated. */
