@@ -151,9 +151,6 @@ bool BPy_errors_to_report_ex(ReportList *reports, const bool use_full, const boo
     cstring = _PyUnicode_AsString(pystring_format);
     BKE_report(reports, RPT_ERROR, cstring);
 
-    /* not exactly needed. just for testing */
-    fprintf(stderr, TIP_("%s\nlocation: %s:%d\n"), cstring, filename, lineno);
-
     Py_DECREF(pystring_format); /* workaround */
 #endif
   }
