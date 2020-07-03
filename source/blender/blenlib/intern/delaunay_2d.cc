@@ -36,12 +36,7 @@ namespace blender::meshintersect {
 
 template<typename T> T math_abs(const T v)
 {
-  if (v < 0) {
-    return -v;
-  }
-  else {
-    return v;
-  }
+  return (v < 0) ? -v : v;
 }
 
 template<> mpq_class math_abs<mpq_class>(const mpq_class v)
@@ -218,10 +213,7 @@ template<typename T> class CDT_state {
   int face_edge_offset; /* Input edge id where we start numbering the face edges. */
   T epsilon;            /* How close before coords considered equal. */
 
-  explicit CDT_state(int num_input_verts,
-                     int num_input_edges,
-                     int num_input_faces,
-                     const T epsilon);
+  explicit CDT_state(int num_input_verts, int num_input_edges, int num_input_faces, T epsilon);
   ~CDT_state()
   {
   }
@@ -252,7 +244,7 @@ template<typename T> CDTArrangement<T>::~CDTArrangement()
 #define DEBUG_CDT
 #ifdef DEBUG_CDT
 /* Some functions to aid in debugging. */
-template<typename T> const std::string vertname(const CDTVert<T> *v)
+template<typename T> std::string vertname(const CDTVert<T> *v)
 {
   std::stringstream ss;
   ss << "[" << v->index << "]";
@@ -260,14 +252,15 @@ template<typename T> const std::string vertname(const CDTVert<T> *v)
 }
 
 /* Abbreviated pointer value is easier to read in dumps. */
-static const std::string trunc_ptr(const void *p)
+static std::string trunc_ptr(const void *p)
 {
+  constexpr int TRUNC_PTR_MASK = 0xFFFF;
   std::stringstream ss;
-  ss << std::hex << (POINTER_AS_INT(p) & 0xFFFF);
+  ss << std::hex << (POINTER_AS_INT(p) & TRUNC_PTR_MASK);
   return ss.str();
 }
 
-template<typename T> const std::string sename(const SymEdge<T> *se)
+template<typename T> std::string sename(const SymEdge<T> *se)
 {
   std::stringstream ss;
   ss << "{" << trunc_ptr(se) << "}";
@@ -292,15 +285,13 @@ template<typename T> std::ostream &operator<<(std::ostream &os, const SymEdge<T>
   return os;
 }
 
-template<typename T> const std::string short_se_dump(const SymEdge<T> *se)
+template<typename T> std::string short_se_dump(const SymEdge<T> *se)
 {
   if (se == nullptr) {
     return std::string("NULL");
   }
-  else {
-    return vertname(se->vert) +
-           (se->next == nullptr ? std::string("[NULL]") : vertname(se->next->vert));
-  }
+  return vertname(se->vert) +
+         (se->next == nullptr ? std::string("[NULL]") : vertname(se->next->vert));
 }
 
 template<typename T> std::ostream &operator<<(std::ostream &os, const CDT_state<T> &cdt_state)
@@ -317,6 +308,7 @@ template<typename T> std::ostream &operator<<(std::ostream &os, const CDT_state<
     }
     const SymEdge<T> *se = v->symedge;
     int cnt = 0;
+    constexpr int print_count_limit = 25;
     if (se) {
       os << "  edges out:\n";
       do {
@@ -333,7 +325,7 @@ template<typename T> std::ostream &operator<<(std::ostream &os, const CDT_state<
            << ", se=" << trunc_ptr(se) << ")\n";
         se = se->rot;
         cnt++;
-      } while (se != v->symedge && cnt < 25);
+      } while (se != v->symedge && cnt < print_count_limit);
       os << "\n";
     }
   }
@@ -370,6 +362,7 @@ template<typename T> void cdt_draw(const std::string &label, const CDTArrangemen
   constexpr const char *drawfile = "/tmp/debug_draw.html";
   constexpr int max_draw_width = 1800;
   constexpr int max_draw_height = 1600;
+  constexpr double margin_expand = 0.05;
   constexpr int thin_line = 1;
   constexpr int thick_line = 4;
   constexpr int vert_radius = 3;
@@ -379,8 +372,8 @@ template<typename T> void cdt_draw(const std::string &label, const CDTArrangemen
   if (cdt.verts.size() == 0) {
     return;
   }
-  vec2<double> vmin(1e10, 1e10);
-  vec2<double> vmax(-1e10, -1e10);
+  vec2<double> vmin(DBL_MAX, DBL_MAX);
+  vec2<double> vmax(-DBL_MAX, -DBL_MAX);
   for (const CDTVert<T> *v : cdt.verts) {
     for (int i = 0; i < 2; ++i) {
       double dvi = math_to_double(v->co[i]);
@@ -392,7 +385,7 @@ template<typename T> void cdt_draw(const std::string &label, const CDTArrangemen
       }
     }
   }
-  double draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
+  double draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * margin_expand;
   double minx = vmin.x - draw_margin;
   double maxx = vmax.x + draw_margin;
   double miny = vmin.y - draw_margin;
@@ -446,7 +439,7 @@ template<typename T> void cdt_draw(const std::string &label, const CDTArrangemen
     f << "  <title>" << vertname(u) << vertname(v) << "</title>\n";
     f << "</line>\n";
     if (draw_edge_labels) {
-      f << "<text x=\"" << SX(0.5 * (uco[0] + vco[0])) << "\" y=\"" << SY(0.5 * (uco[1] + vco[1]))
+      f << "<text x=\"" << SX((uco[0] + vco[0]) / 2) << "\" y=\"" << SY((uco[1] + vco[1]) / 2)
         << "\" font-size=\"small\">";
       f << vertname(u) << vertname(v) << sename(&e->symedges[0]) << sename(&e->symedges[1])
         << "</text>\n";
@@ -541,15 +534,12 @@ template<typename T> void CDTArrangement<T>::reserve(int num_verts, int num_edge
 {
   /* These reserves are just guesses; OK if they aren't exactly right since vectors will resize. */
   this->verts.reserve(2 * num_verts);
-  this->edges.reserve(3 * num_verts + 2 * num_edges + 5 * num_faces);
+  this->edges.reserve(3 * num_verts + 2 * num_edges + 3 * 2 * num_faces);
   this->faces.reserve(2 * num_verts + 2 * num_edges + 2 * num_faces);
 }
 
 template<typename T>
-CDT_state<T>::CDT_state(int num_input_verts,
-                        int num_input_edges,
-                        int num_input_faces,
-                        const T epsilon)
+CDT_state<T>::CDT_state(int num_input_verts, int num_input_edges, int num_input_faces, T epsilon)
 {
   this->input_vert_tot = num_input_verts;
   this->cdt.reserve(num_input_verts, num_input_edges, num_input_faces);
@@ -562,7 +552,7 @@ static bool id_in_list(const LinkNode *id_list, int id)
 {
   const LinkNode *ln;
 
-  for (ln = id_list; ln; ln = ln->next) {
+  for (ln = id_list; ln != nullptr; ln = ln->next) {
     if (POINTER_AS_INT(ln->link) == id) {
       return true;
     }
@@ -576,7 +566,7 @@ static bool id_range_in_list(const LinkNode *id_list, int range_start, int range
   const LinkNode *ln;
   int id;
 
-  for (ln = id_list; ln; ln = ln->next) {
+  for (ln = id_list; ln != nullptr; ln = ln->next) {
     id = POINTER_AS_INT(ln->link);
     if (id >= range_start && id <= range_end) {
       return true;
@@ -596,7 +586,7 @@ static void add_list_to_input_ids(LinkNode **dst, const LinkNode *src)
 {
   const LinkNode *ln;
 
-  for (ln = src; ln; ln = ln->next) {
+  for (ln = src; ln != nullptr; ln = ln->next) {
     add_to_input_ids(dst, POINTER_AS_INT(ln->link));
   }
 }
@@ -868,18 +858,16 @@ template<typename T> bool site_lexicographic_sort(const SiteInfo<T> &a, const Si
   if (co_a[0] < co_b[0]) {
     return true;
   }
-  else if (co_a[0] > co_b[0]) {
+  if (co_a[0] > co_b[0]) {
     return false;
   }
-  else if (co_a[1] < co_b[1]) {
+  if (co_a[1] < co_b[1]) {
     return true;
   }
-  else if (co_a[1] > co_b[1]) {
+  if (co_a[1] > co_b[1]) {
     return false;
   }
-  else {
-    return a.orig_index < b.orig_index;
-  }
+  return a.orig_index < b.orig_index;
 }
 
 /* Find series of equal vertices in the sorted sites array
@@ -979,7 +967,10 @@ void dc_tri(CDTArrangement<T> *cdt,
   /* Recursive case. Do left (L) and right (R) halves seperately, then join. */
   int n2 = n / 2;
   BLI_assert(n2 >= 2 && end - (start + n2) >= 2);
-  SymEdge<T> *ldo, *ldi, *rdi, *rdo;
+  SymEdge<T> *ldo;
+  SymEdge<T> *ldi;
+  SymEdge<T> *rdi;
+  SymEdge<T> *rdo;
   dc_tri(cdt, sites, start, start + n2, &ldo, &ldi);
   dc_tri(cdt, sites, start + n2, end, &rdi, &rdo);
   if (dbg_level > 0) {
@@ -1139,7 +1130,8 @@ template<typename T> void dc_triangulate(CDTArrangement<T> *cdt, Array<SiteInfo<
   if (n == 0) {
     return;
   }
-  SymEdge<T> *le, *re;
+  SymEdge<T> *le;
+  SymEdge<T> *re;
   dc_tri(cdt, sites, 0, n, &le, &re);
 }
 
@@ -1349,7 +1341,7 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
   auto isect = vec2<T>::isect_seg_seg(va->co, vb->co, curco, v2->co);
   T &lambda = isect.lambda;
   switch (isect.kind) {
-    case vec2<T>::isect_result::LINE_LINE_CROSS:
+    case vec2<T>::isect_result::LINE_LINE_CROSS: {
       if (!std::is_same<T, mpq_class>::value) {
         T len_ab = vec2<T>::distance(va->co, vb->co);
         if (lambda * len_ab <= epsilon) {
@@ -1371,8 +1363,8 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
           cd->out = se_vcva;
         }
       }
-      break;
-    case vec2<T>::isect_result::LINE_LINE_EXACT:
+    } break;
+    case vec2<T>::isect_result::LINE_LINE_EXACT: {
       if (lambda == 0) {
         fill_crossdata_for_through_vert(va, se_vcva, cd, cd_next);
       }
@@ -1385,27 +1377,28 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
           cd->out = se_vcva;
         }
       }
-      break;
-    case vec2<T>::isect_result::LINE_LINE_NONE:
+    } break;
+    case vec2<T>::isect_result::LINE_LINE_NONE: {
       if (std::is_same<T, mpq_class>::value) {
         BLI_assert(false);
       }
       /* It should be very near one end or other of segment. */
-      if (lambda <= T(0.5)) {
+      const T middle_lambda = 0.5;
+      if (lambda <= middle_lambda) {
         fill_crossdata_for_through_vert(va, se_vcva, cd, cd_next);
       }
       else {
         fill_crossdata_for_through_vert(vb, se_vcvb, cd, cd_next);
       }
-      break;
-    case vec2<T>::isect_result::LINE_LINE_COLINEAR:
+    } break;
+    case vec2<T>::isect_result::LINE_LINE_COLINEAR: {
       if (vec2<T>::distance_squared(va->co, v2->co) <= vec2<T>::distance_squared(vb->co, v2->co)) {
         fill_crossdata_for_through_vert(va, se_vcva, cd, cd_next);
       }
       else {
         fill_crossdata_for_through_vert(vb, se_vcvb, cd, cd_next);
       }
-      break;
+    } break;
   }
 }
 
@@ -1446,7 +1439,7 @@ bool get_next_crossing_from_vert(CDT_state<T> *cdt_state,
       ok = true;
       break;
     }
-    else if (t->face != cdt_state->cdt.outer_face) {
+    if (t->face != cdt_state->cdt.outer_face) {
       int orient2 = vec2<T>::orient2d(vcur->co, vb->co, v2->co);
       /* Don't handle orient2 == 0 case here: next rotation will get it. */
       if (orient1 > 0 && orient2 < 0) {
@@ -1492,7 +1485,9 @@ void get_next_crossing_from_edge(CrossData<T> *cd,
   }
 }
 
-template<typename T> void dump_crossings(const Vector<CrossData<T>, 128> &crossings)
+constexpr int inline_crossings_size = 128;
+template<typename T>
+void dump_crossings(const Vector<CrossData<T>, inline_crossings_size> &crossings)
 {
   std::cout << "CROSSINGS\n";
   for (int i = 0; i < static_cast<int>(crossings.size()); ++i) {
@@ -1571,7 +1566,7 @@ void add_edge_constraint(
    * one hop. Saves a bunch of orient2d tests in that common case.
    */
   int visit = ++cdt_state->visit_count;
-  Vector<CrossData<T>, 128> crossings;
+  Vector<CrossData<T>, inline_crossings_size> crossings;
   crossings.append(CrossData<T>(T(0), v1, nullptr, nullptr));
   int n;
   while (!((n = static_cast<int>(crossings.size())) > 0 && crossings[n - 1].vert == v2)) {
@@ -1586,7 +1581,8 @@ void add_edge_constraint(
       get_next_crossing_from_edge(cd, cd_next, v2, cdt_state->epsilon);
       ok = true;
     }
-    if (!ok || crossings.size() == 100000) {
+    constexpr uint unreasonably_large_crossings = 100000;
+    if (!ok || crossings.size() == unreasonably_large_crossings) {
       /* Shouldn't happen but if does, just bail out. */
       BLI_assert(false);
       return;
@@ -1628,9 +1624,7 @@ void add_edge_constraint(
             (cd_prev->lambda != 0.0 && cd_prev->in->vert != v && cd_prev->in->next->vert != v)) {
           break;
         }
-        else {
-          cd_prev->lambda = -1.0; /* Mark cd_prev as 'deleted'. */
-        }
+        cd_prev->lambda = -1.0; /* Mark cd_prev as 'deleted'. */
       }
       if (j < i - 1) {
         /* Some crossings were deleted. Fix the in and out edges across gap. */

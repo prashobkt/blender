@@ -74,9 +74,10 @@ class Edge {
 
   uint32_t hash() const
   {
+    constexpr uint32_t h1 = 33;
     uint32_t v0hash = DefaultHash<int>{}(v_[0]);
     uint32_t v1hash = DefaultHash<int>{}(v_[1]);
-    return v0hash ^ (v1hash * 33);
+    return v0hash ^ (v1hash * h1);
   }
 };
 
@@ -123,17 +124,12 @@ class TriMeshTopology {
   int other_tri_if_manifold(Edge e, int t) const
   {
     if (edge_tri_.contains(e)) {
-      auto p = edge_tri_.lookup(e);
+      auto *p = edge_tri_.lookup(e);
       if (p->size() == 2) {
         return ((*p)[0] == t) ? (*p)[1] : (*p)[0];
       }
-      else {
-        return -1;
-      }
     }
-    else {
-      return -1;
-    }
+    return -1;
   }
   const Vector<int> *edge_tris(Edge e) const
   {
@@ -178,7 +174,8 @@ TriMeshTopology::TriMeshTopology(const TriMesh *tm)
     std::cout << "After TriMeshTopology construction\n";
     for (auto item : edge_tri_.items()) {
       std::cout << "tris for edge " << item.key << ": " << *item.value << "\n";
-      if (false) {
+      constexpr bool print_stats = false;
+      if (print_stats) {
         edge_tri_.print_stats();
       }
     }
@@ -246,8 +243,9 @@ class PatchesInfo {
  public:
   explicit PatchesInfo(int ntri)
   {
+    constexpr int max_expected_patch_patch_incidences = 100;
     tri_patch_ = Array<int>(ntri, -1);
-    pp_edge_.reserve(30);
+    pp_edge_.reserve(max_expected_patch_patch_incidences);
   }
   int tri_patch(int t) const
   {
@@ -445,7 +443,7 @@ static PatchesInfo find_patches(const TriMesh &tm, const TriMeshTopology &tmtopo
               std::cout << "    e non-manifold case\n";
             }
             const Vector<int> *etris = tmtopo.edge_tris(e);
-            if (etris) {
+            if (etris != nullptr) {
               for (uint i = 0; i < etris->size(); ++i) {
                 int t_other = (*etris)[i];
                 if (t_other != tcand && pinfo.tri_is_assigned(t_other)) {
@@ -574,7 +572,8 @@ static int sort_tris_class(const IndexedTriangle &tri,
   mpq3 a0 = tm.vert[tri0.v0()];
   mpq3 a1 = tm.vert[tri0.v1()];
   mpq3 a2 = tm.vert[tri0.v2()];
-  bool rev, rev0;
+  bool rev;
+  bool rev0;
   int flapv0 = find_flap_vert(tri0, e, &rev0);
   int flapv = find_flap_vert(tri, e, &rev);
   if (dbg_level > 0) {
@@ -778,7 +777,8 @@ static void find_cells_from_edge(const TriMesh &tm,
     int rnext_index = edge_patches[inext];
     Patch &r = pinfo.patch(r_index);
     Patch &rnext = pinfo.patch(rnext_index);
-    bool r_flipped, rnext_flipped;
+    bool r_flipped;
+    bool rnext_flipped;
     find_flap_vert(tm.tri[sorted_tris[i]], e, &r_flipped);
     find_flap_vert(tm.tri[sorted_tris[inext]], e, &rnext_flipped);
     int *r_follow_cell = r_flipped ? &r.cell_below : &r.cell_above;
@@ -941,7 +941,7 @@ static int find_ambient_cell(const TriMesh &tm,
   }
   int *p_sorted_dummy = std::find(sorted_tris.begin(), sorted_tris.end(), dummy_tri);
   BLI_assert(p_sorted_dummy != sorted_tris.end());
-  int dummy_index = p_sorted_dummy - sorted_tris.begin();
+  int dummy_index = static_cast<int>(p_sorted_dummy - sorted_tris.begin());
   int prev_tri = (dummy_index == 0) ? sorted_tris[sorted_tris.size() - 1] :
                                       sorted_tris[dummy_index - 1];
   int next_tri = (dummy_index == static_cast<int>(sorted_tris.size() - 1)) ?
@@ -1414,10 +1414,8 @@ static bool segs_overlap(const mpq3 av1, const mpq3 av2, const mpq3 bv1, const m
     if (r >= 1 || s <= 0) {
       return false;
     }
-    else {
-      /* We know intersection interval starts strictly before av2 and ends strictly after av1. */
-      return r != s;
-    }
+    /* We know intersection interval starts strictly before av2 and ends strictly after av1. */
+    return r != s;
   }
   return false;
 }
@@ -1765,7 +1763,7 @@ static Array<bool> find_dissolve_verts(const PolyMesh &pm_out,
       }
     }
   }
-  if (r_count_dissolve) {
+  if (r_count_dissolve != nullptr) {
     *r_count_dissolve = count;
   }
   return dissolve;

@@ -12,13 +12,7 @@
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-using blender::Array;
-using blender::mpq3;
-using blender::Vector;
-using blender::meshintersect::IndexedTriangle;
-using blender::meshintersect::TriMesh;
-using blender::meshintersect::trimesh_self_intersect;
-using blender::meshintersect::write_html_trimesh;
+namespace blender::meshintersect {
 
 constexpr bool DO_DRAW = true;
 constexpr bool DO_OBJ = true;
@@ -389,3 +383,5 @@ TEST(mesh_intersect, TetTet)
     write_obj_trimesh(out.vert, out.tri, "test_tc_3");
   }
 }
+
+}  // namespace blender::meshintersect

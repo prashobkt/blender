@@ -57,11 +57,14 @@ struct planeq {
 
   uint32_t hash() const
   {
+    constexpr uint32_t h1 = 33;
+    constexpr uint32_t h2 = 37;
+    constexpr uint32_t h3 = 39;
     uint32_t hashx = hash_mpq_class(this->n.x);
     uint32_t hashy = hash_mpq_class(this->n.y);
     uint32_t hashz = hash_mpq_class(this->n.z);
     uint32_t hashd = hash_mpq_class(this->d);
-    return hashx ^ (hashy * 33) ^ (hashz * 33 * 37) ^ (hashd * 33 * 37 * 39);
+    return hashx ^ (hashy * h1) ^ (hashz * h1 * h2) ^ (hashd * h1 * h2 * h3);
   }
 };
 
@@ -284,12 +287,12 @@ class CoplanarClusterInfo {
   {
     tri_cluster_.fill(-1);
   }
-  const int tri_cluster(int t) const
+  int tri_cluster(int t) const
   {
     BLI_assert(0 <= t && t < static_cast<int>(tri_cluster_.size()));
     return tri_cluster_[t];
   }
-  int add_cluster(const CoplanarCluster cl)
+  int add_cluster(CoplanarCluster cl)
   {
     int c_index = static_cast<int>(clusters_.append_and_get_index(cl));
     for (const int t : cl) {
@@ -486,13 +489,9 @@ static ITT_value itt_canon2(const mpq3 &p1,
     if (source == target) {
       return ITT_value(IPOINT, source);
     }
-    else {
-      return ITT_value(ISEGMENT, source, target);
-    }
+    return ITT_value(ISEGMENT, source, target);
   }
-  else {
-    return ITT_value(INONE);
-  }
+  return ITT_value(INONE);
 }
 
 /* Helper function for intersect_tri_tri. Args have been canonicalized for triangle 1. */
@@ -514,57 +513,42 @@ static ITT_value itt_canon1(const mpq3 &p1,
     if (sq2 > 0) {
       return itt_canon2(p1, r1, q1, r2, p2, q2, n1, n2);
     }
-    else if (sr2 > 0) {
+    if (sr2 > 0) {
       return itt_canon2(p1, r1, q1, q2, r2, p2, n1, n2);
     }
-    else {
-      return itt_canon2(p1, q1, r1, p2, q2, r2, n1, n2);
-    }
+    return itt_canon2(p1, q1, r1, p2, q2, r2, n1, n2);
   }
-  else if (sp2 < 0) {
+  if (sp2 < 0) {
     if (sq2 < 0) {
       return itt_canon2(p1, q1, r1, r2, p2, q2, n1, n2);
     }
-    else if (sr2 < 0) {
+    if (sr2 < 0) {
       return itt_canon2(p1, q1, r1, q2, r2, p2, n1, n2);
     }
-    else {
+    return itt_canon2(p1, r1, q1, p2, q2, r2, n1, n2);
+  }
+  if (sq2 < 0) {
+    if (sr2 >= 0) {
+      return itt_canon2(p1, r1, q1, q2, r2, p2, n1, n2);
+    }
+    return itt_canon2(p1, q1, r1, p2, q2, r2, n1, n2);
+  }
+  if (sq2 > 0) {
+    if (sr2 > 0) {
       return itt_canon2(p1, r1, q1, p2, q2, r2, n1, n2);
     }
+    return itt_canon2(p1, q1, r1, q2, r2, p2, n1, n2);
   }
-  else {
-    if (sq2 < 0) {
-      if (sr2 >= 0) {
-        return itt_canon2(p1, r1, q1, q2, r2, p2, n1, n2);
-      }
-      else {
-        return itt_canon2(p1, q1, r1, p2, q2, r2, n1, n2);
-      }
-    }
-    else if (sq2 > 0) {
-      if (sr2 > 0) {
-        return itt_canon2(p1, r1, q1, p2, q2, r2, n1, n2);
-      }
-      else {
-        return itt_canon2(p1, q1, r1, q2, r2, p2, n1, n2);
-      }
-    }
-    else {
-      if (sr2 > 0) {
-        return itt_canon2(p1, q1, r1, r2, p2, q2, n1, n2);
-      }
-      else if (sr2 < 0) {
-        return itt_canon2(p1, r1, q1, r2, p2, q2, n1, n2);
-      }
-      else {
-        if (dbg_level > 0) {
-          std::cout << "triangles are coplanar\n";
-        }
-        return ITT_value(ICOPLANAR);
-      }
-    }
+  if (sr2 > 0) {
+    return itt_canon2(p1, q1, r1, r2, p2, q2, n1, n2);
   }
-  return ITT_value(INONE);
+  if (sr2 < 0) {
+    return itt_canon2(p1, r1, q1, r2, p2, q2, n1, n2);
+  }
+  if (dbg_level > 0) {
+    std::cout << "triangles are coplanar\n";
+  }
+  return ITT_value(ICOPLANAR);
 }
 
 static ITT_value intersect_tri_tri(const TMesh &tm, int t1, int t2)
@@ -1090,12 +1074,10 @@ static planeq canon_plane(const planeq &pl)
   if (pl.n[0] != 0) {
     return planeq(mpq3(1, pl.n[1] / pl.n[0], pl.n[2] / pl.n[0]), pl.d / pl.n[0]);
   }
-  else if (pl.n[1] != 0) {
+  if (pl.n[1] != 0) {
     return planeq(mpq3(0, 1, pl.n[2] / pl.n[1]), pl.d / pl.n[1]);
   }
-  else {
-    return planeq(mpq3(0, 0, 1), pl.d / pl.n[2]);
-  }
+  return planeq(mpq3(0, 0, 1), pl.d / pl.n[2]);
 }
 
 /* Is a point in the interior of a 2d triangle or on one of its
@@ -1543,7 +1525,9 @@ void write_html_trimesh(const Array<mpq3> &vert,
   blender::Array<bool> vused(vert.size());
   int i = 0;
   for (const IndexedTriangle &t : tri) {
-    double3 dv0, dv1, dv2;
+    double3 dv0;
+    double3 dv1;
+    double3 dv2;
     for (int axis = 0; axis < 3; ++axis) {
       dv0[axis] = vert[t.v0()][axis].get_d();
       dv1[axis] = vert[t.v1()][axis].get_d();

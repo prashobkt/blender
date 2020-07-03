@@ -14,20 +14,7 @@
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-using blender::Array;
-using blender::mpq3;
-using blender::Vector;
-using blender::meshintersect::boolean;
-using blender::meshintersect::BOOLEAN_DIFFERENCE;
-using blender::meshintersect::BOOLEAN_ISECT;
-using blender::meshintersect::BOOLEAN_NONE;
-using blender::meshintersect::boolean_trimesh;
-using blender::meshintersect::BOOLEAN_UNION;
-using blender::meshintersect::IndexedTriangle;
-using blender::meshintersect::PolyMesh;
-using blender::meshintersect::TriMesh;
-using blender::meshintersect::write_obj_polymesh;
-using blender::meshintersect::write_obj_trimesh;
+namespace blender::meshintersect {
 
 /* Class that can make a TriMesh from a string spec.
  * The spec has #verts #tris on the first line, then all the vert coords,
@@ -104,7 +91,6 @@ class BP_input {
 
 constexpr bool DO_OBJ = true;
 
-#if 0
 TEST(boolean_trimesh, Empty)
 {
   TriMesh in;
@@ -317,12 +303,11 @@ TEST(boolean_polymesh, CubeCube)
   )";
 
   BP_input bpi(spec);
-  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
-      bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
+  PolyMesh out = boolean(bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
   EXPECT_EQ(out.vert.size(), 20);
   EXPECT_EQ(out.face.size(), 12);
   if (DO_OBJ) {
-    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "cubecube");
+    write_obj_polymesh(out.vert, out.face, "cubecube");
   }
 }
 
@@ -357,12 +342,11 @@ TEST(boolean_polymesh, CubeCone)
   8 9 10 12 13)";
 
   BP_input bpi(spec);
-  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
-      bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
+  PolyMesh out = boolean(bpi.polymesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; });
   EXPECT_EQ(out.vert.size(), 14);
   EXPECT_EQ(out.face.size(), 12);
   if (DO_OBJ) {
-    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "cubeccone");
+    write_obj_polymesh(out.vert, out.face, "cubeccone");
   }
 }
 
@@ -400,15 +384,13 @@ TEST(boolean_polymesh, CubeCubeCoplanar)
   )";
 
   BP_input bpi(spec);
-  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
-      bpi.polymesh, BOOLEAN_UNION, 2, [](int t) { return t < 6 ? 0 : 1; });
+  PolyMesh out = boolean(bpi.polymesh, BOOLEAN_UNION, 2, [](int t) { return t < 6 ? 0 : 1; });
   EXPECT_EQ(out.vert.size(), 16);
   EXPECT_EQ(out.face.size(), 12);
   if (DO_OBJ) {
-    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "cubecube_coplanar");
+    write_obj_polymesh(out.vert, out.face, "cubecube_coplanar");
   }
 }
-#endif
 
 TEST(boolean_polymesh, TetTeTCoplanarDiff)
 {
@@ -432,11 +414,12 @@ TEST(boolean_polymesh, TetTeTCoplanarDiff)
   )";
 
   BP_input bpi(spec);
-  blender::meshintersect::PolyMesh out = blender::meshintersect::boolean(
-      bpi.polymesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 0 : 1; });
+  PolyMesh out = boolean(bpi.polymesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 0 : 1; });
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.face.size(), 4);
   if (DO_OBJ) {
-    blender::meshintersect::write_obj_polymesh(out.vert, out.face, "tettet_coplanar_diff");
+    write_obj_polymesh(out.vert, out.face, "tettet_coplanar_diff");
   }
 }
+
+}  // namespace blender::meshintersect
