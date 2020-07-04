@@ -2670,8 +2670,6 @@ bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag)
 static int lineart_get_max_occlusion_level(Depsgraph *dg)
 {
   LineartGpencilModifierData *lmd;
-  GpencilModifierData *md;
-  Object *o;
   int max_occ = 0;
   int max;
 
@@ -3863,7 +3861,6 @@ static int lineart_compute_feature_lines_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SceneLineart *lineart = &scene->lineart;
-  int result;
 
   if ((lineart->flags & LRT_ENABLED) == 0) {
     return OPERATOR_CANCELLED;
@@ -4207,7 +4204,6 @@ static void lineart_update_gp_strokes_recursive(
 
 static int lineart_update_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
 
   BLI_spin_lock(&lineart_share.lock_loader);
