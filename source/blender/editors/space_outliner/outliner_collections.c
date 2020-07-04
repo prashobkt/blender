@@ -178,6 +178,12 @@ static bool outliner_view_layer_collections_editor_poll(bContext *C)
 /** \name New Collection
  * \{ */
 
+typedef enum NewCollectionType {
+  COLLECTION_NEW_EMPTY,
+  COLLECTION_NEW_FROM_SELECTION,
+  COLLECTION_NEW_FROM_SELECTION_LINKED,
+} NewCollectionType;
+
 struct CollectionNewData {
   bool error;
   Collection *collection;
@@ -247,13 +253,33 @@ static int collection_new_exec(bContext *C, wmOperator *op)
 
 void OUTLINER_OT_collection_new(wmOperatorType *ot)
 {
+  static EnumPropertyItem type_items[] = {
+      {COLLECTION_NEW_EMPTY,
+       "EMPTY",
+       0,
+       "Empty",
+       "Create a new collection inside the active collection"},
+      {COLLECTION_NEW_FROM_SELECTION,
+       "SELECTION",
+       0,
+       "Move Selection",
+       "Move the selected objects to a new collection"},
+      {COLLECTION_NEW_FROM_SELECTION_LINKED,
+       "SELECTION_LINKED",
+       0,
+       "Link Selection",
+       "Link the selected objects to a new collection"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   /* identifiers */
   ot->name = "New Collection";
   ot->idname = "OUTLINER_OT_collection_new";
-  ot->description = "Add a new collection inside selected collection";
+  ot->description = "Create a new collection";
 
   /* api callbacks */
   ot->exec = collection_new_exec;
+  ot->invoke = WM_menu_invoke;
   ot->poll = ED_outliner_collections_editor_poll;
 
   /* flags */
@@ -263,6 +289,8 @@ void OUTLINER_OT_collection_new(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_boolean(
       ot->srna, "nested", true, "Nested", "Add as child of selected collection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  ot->prop = RNA_def_enum(ot->srna, "type", type_items, 0, "Type", "");
 }
 
 /** \} */
