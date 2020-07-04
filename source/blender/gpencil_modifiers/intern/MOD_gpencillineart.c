@@ -39,6 +39,7 @@
 
 #include "ED_lineart.h"
 
+#include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
@@ -205,8 +206,18 @@ static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgra
         ctx->node, lmd->source_object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
   }
   else {
-    /* TODO: add relationship to objects instead of scene, then when rendering, those mesh objects
-     * will be evaluated first for their modifiers. */
+    Object *o;
+    /* TODO Antonioya: need dg evaluation mode. for the 3rd arg */
+    FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (ctx->scene->master_collection, o, 0) {
+      if (o->type == OB_MESH) {
+        if (!(o->lineart.flags & COLLECTION_LRT_EXCLUDE)) {
+          DEG_add_object_relation(ctx->node, o, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
+          DEG_add_object_relation(ctx->node, o, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
+        }
+      }
+    }
+    FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
+
     DEG_add_scene_relation(ctx->node, ctx->scene, DEG_SCENE_COMP_PARAMETERS, "Line Art Modifier");
   }
   DEG_add_object_relation(
