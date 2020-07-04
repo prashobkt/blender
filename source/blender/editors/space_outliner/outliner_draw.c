@@ -3207,7 +3207,8 @@ static void outliner_draw_tree_element(bContext *C,
       te->flag |= TE_ACTIVE; /* For lookup in display hierarchies. */
     }
 
-    /* collection colors */
+#if 0
+    /* Collection colors. */
     if (outliner_is_collection_tree_element(te)) {
       Collection *collection = outliner_collection_from_tree_element(te);
 
@@ -3227,6 +3228,7 @@ static void outliner_draw_tree_element(bContext *C,
         GPU_blend(true);
       }
     }
+#endif /* if 0 */
 
     if (tselem->type == TSE_VIEW_COLLECTION_BASE) {
       /* Scene collection in view layer can't expand/collapse. */
