@@ -198,15 +198,16 @@ static void bakeModifier(Main *UNUSED(bmain),
 static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-  if (lmd->source_type == LRT_SOURCE_OBJECT) {
+  if (lmd->source_type == LRT_SOURCE_OBJECT && lmd->source_object) {
     DEG_add_object_relation(
         ctx->node, lmd->source_object, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
     DEG_add_object_relation(
         ctx->node, lmd->source_object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
   }
   else {
+    /* TODO: add relationship to objects instead of scene, then when rendering, those mesh objects
+     * will be evaluated first for their modifiers. */
     DEG_add_scene_relation(ctx->node, ctx->scene, DEG_SCENE_COMP_PARAMETERS, "Line Art Modifier");
-    DEG_add_scene_relation(ctx->node, ctx->scene, DEG_SCENE_COMP_ANIMATION, "Line Art Modifier");
   }
   DEG_add_object_relation(
       ctx->node, ctx->scene->camera, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
