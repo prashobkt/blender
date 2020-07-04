@@ -70,159 +70,161 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
   float time = sd->time;
   int bounce = state->bounce;
 
-  /* read in first part of node of light tree */
-  int right_child_offset, distribution_id, num_emitters;
-  update_node(kg, offset, &right_child_offset, &distribution_id, &num_emitters);
+  float randu_stack[64];
+  float randv_stack[64];
+  int offset_stack[64];
+  float pdf_stack[64];
 
-  /* found a leaf */
-  if (right_child_offset == -1) {
+  randu_stack[0] = randu;
+  randv_stack[0] = randv;
+  offset_stack[0] = offset;
+  pdf_stack[0] = pdf_factor;
 
-    /* if there are several emitters in this leaf then pick one of them */
-    if (num_emitters > 1) {
+  int stack_idx = 0;
 
-      /* create and sample CDF without dynamic allocation.
-       * see comment in light_tree_sample() for this piece of code */
-      float sum = 0.0f;
-      for (int i = 0; i < num_emitters; ++i) {
-        sum += calc_light_importance(kg, P, N, offset, i);
-      }
+  while (stack_idx > -1) {
+    randu = randu_stack[stack_idx];
+    randv = randv_stack[stack_idx];
+    offset = offset_stack[stack_idx];
+    pdf_factor = pdf_stack[stack_idx];
+    /* read in first part of node of light tree */
+    int right_child_offset, distribution_id, num_emitters;
+    update_node(kg, offset, &right_child_offset, &distribution_id, &num_emitters);
 
-      if (sum == 0.0f) {
-        return;
-      }
+    /* found a leaf */
+    if (right_child_offset == -1) {
 
-      float sum_inv = 1.0f / sum;
-      float cdf_L = 0.0f;
-      float cdf_R = 0.0f;
-      float prob = 0.0f;
-      int light;
-      for (int i = 1; i < num_emitters + 1; ++i) {
-        prob = calc_light_importance(kg, P, N, offset, i - 1) * sum_inv;
-        cdf_R = cdf_L + prob;
-        if (randu < cdf_R) {
-          light = i - 1;
-          break;
+      /* if there are several emitters in this leaf then pick one of them */
+      if (num_emitters > 1) {
+
+        /* create and sample CDF without dynamic allocation.
+         * see comment in light_tree_sample() for this piece of code */
+        float sum = 0.0f;
+        for (int i = 0; i < num_emitters; ++i) {
+          sum += calc_light_importance(kg, P, N, offset, i);
         }
 
-        cdf_L = cdf_R;
+        if (sum == 0.0f) {
+          --stack_idx;
+          continue;
+        }
+
+        float sum_inv = 1.0f / sum;
+        float cdf_L = 0.0f;
+        float cdf_R = 0.0f;
+        float prob = 0.0f;
+        int light;
+        for (int i = 1; i < num_emitters + 1; ++i) {
+          prob = calc_light_importance(kg, P, N, offset, i - 1) * sum_inv;
+          cdf_R = cdf_L + prob;
+          if (randu < cdf_R) {
+            light = i - 1;
+            break;
+          }
+
+          cdf_L = cdf_R;
+        }
+        distribution_id += light;
+        pdf_factor *= prob;
+
+        /* rescale random number */
+        randu = (randu - cdf_L) / (cdf_R - cdf_L);
       }
-      distribution_id += light;
-      pdf_factor *= prob;
 
-      /* rescale random number */
-      randu = (randu - cdf_L) / (cdf_R - cdf_L);
-    }
+      /* pick a point on the chosen light(distribution_id) and calculate the
+       * probability of picking this point */
+      LightSample ls;
+      light_point_sample(kg, -1, randu, randv, time, P, bounce, distribution_id, &ls);
 
-    /* pick a point on the chosen light(distribution_id) and calculate the
-     * probability of picking this point */
-    LightSample ls;
-    light_point_sample(kg, -1, randu, randv, time, P, bounce, distribution_id, &ls);
+      /* combine pdfs */
+      ls.pdf *= pdf_factor;
 
-    /* combine pdfs */
-    ls.pdf *= pdf_factor;
+      if (ls.pdf <= 0.0f) {
+        --stack_idx;
+        continue;
+      }
 
-    if (ls.pdf <= 0.0f)
-      return;
-
-    /* compute and accumulate the total contribution of this light */
-    Ray light_ray;
-    light_ray.t = 0.0f;
+      /* compute and accumulate the total contribution of this light */
+      Ray light_ray;
+      light_ray.t = 0.0f;
 #ifdef __OBJECT_MOTION__
-    light_ray.time = sd->time;
+      light_ray.time = sd->time;
 #endif
-    BsdfEval L_light;
-    bool is_lamp;
-    float terminate = path_state_rng_light_termination(kg, state);
-    accum_light_contribution(kg,
-                             sd,
-                             emission_sd,
-                             &ls,
-                             state,
-                             &light_ray,
-                             &L_light,
-                             L,
-                             &is_lamp,
-                             terminate,
-                             throughput,
-                             scale_factor);
+      BsdfEval L_light;
+      bool is_lamp;
+      float terminate = path_state_rng_light_termination(kg, state);
+      accum_light_contribution(kg,
+                               sd,
+                               emission_sd,
+                               &ls,
+                               state,
+                               &light_ray,
+                               &L_light,
+                               L,
+                               &is_lamp,
+                               terminate,
+                               throughput,
+                               scale_factor);
 
-    return;
-  }
-  else {  // Interior node, choose which child(ren) to go down
-
-    int child_offsetL = offset + 4;
-    int child_offsetR = 4 * right_child_offset;
-
-    /* choose whether to go down both(split) or only one of the children */
-    if (can_split && split(kg, P, offset)) {
-      /* go down both child nodes */
-      accum_light_tree_contribution(kg,
-                                    randu,
-                                    randv,
-                                    child_offsetL,
-                                    pdf_factor,
-                                    true,
-                                    throughput,
-                                    scale_factor,
-                                    L,
-                                    state,
-                                    sd,
-                                    emission_sd);
-      accum_light_tree_contribution(kg,
-                                    randu,
-                                    randv,
-                                    child_offsetR,
-                                    pdf_factor,
-                                    true,
-                                    throughput,
-                                    scale_factor,
-                                    L,
-                                    state,
-                                    sd,
-                                    emission_sd);
+      --stack_idx;
+      continue;
     }
-    else {
-      /* go down one of the child nodes */
+    else {  // Interior node, choose which child(ren) to go down
 
-      /* evaluate the importance of each of the child nodes */
-      float I_L = calc_node_importance(kg, P, N, child_offsetL);
-      float I_R = calc_node_importance(kg, P, N, child_offsetR);
+      int child_offsetL = offset + 4;
+      int child_offsetR = 4 * right_child_offset;
 
-      if ((I_L == 0.0f) && (I_R == 0.0f)) {
-        return;
+      /* choose whether to go down both(split) or only one of the children */
+      if (can_split && split(kg, P, offset)) {
+        /* go down both child nodes */
+        //++stack_idx;
+        randu_stack[stack_idx] = randu;
+        randv_stack[stack_idx] = randv;
+        offset_stack[stack_idx] = child_offsetL;
+        pdf_stack[stack_idx] = pdf_factor;
+
+        ++stack_idx;
+        randu_stack[stack_idx] = randu;
+        randv_stack[stack_idx] = randv;
+        offset_stack[stack_idx] = child_offsetR;
+        pdf_stack[stack_idx] = pdf_factor;
       }
+      else {
+        /* go down one of the child nodes */
 
-      /* calculate the probability of going down the left node */
-      float P_L = I_L / (I_L + I_R);
+        /* evaluate the importance of each of the child nodes */
+        float I_L = calc_node_importance(kg, P, N, child_offsetL);
+        float I_R = calc_node_importance(kg, P, N, child_offsetR);
 
-      /* choose which node to go down */
-      if (randu <= P_L) {  // Going down left node
-        /* rescale random number */
-        randu = randu / P_L;
+        if ((I_L == 0.0f) && (I_R == 0.0f)) {
+          return;
+        }
 
-        offset = child_offsetL;
-        pdf_factor *= P_L;
+        /* calculate the probability of going down the left node */
+        float P_L = I_L / (I_L + I_R);
+
+        /* choose which node to go down */
+        if (randu <= P_L) {  // Going down left node
+          /* rescale random number */
+          randu = randu / P_L;
+
+          offset = child_offsetL;
+          pdf_factor *= P_L;
+        }
+        else {  // Going down right node
+          /* rescale random number */
+          randu = (randu * (I_L + I_R) - I_L) / I_R;
+
+          offset = child_offsetR;
+          pdf_factor *= 1.0f - P_L;
+        }
+
+        //++stack_idx;
+        randu_stack[stack_idx] = randu;
+        randv_stack[stack_idx] = randv;
+        offset_stack[stack_idx] = offset;
+        pdf_stack[stack_idx] = pdf_factor;
       }
-      else {  // Going down right node
-        /* rescale random number */
-        randu = (randu * (I_L + I_R) - I_L) / I_R;
-
-        offset = child_offsetR;
-        pdf_factor *= 1.0f - P_L;
-      }
-
-      accum_light_tree_contribution(kg,
-                                    randu,
-                                    randv,
-                                    offset,
-                                    pdf_factor,
-                                    false,
-                                    throughput,
-                                    scale_factor,
-                                    L,
-                                    state,
-                                    sd,
-                                    emission_sd);
     }
   }
 }
