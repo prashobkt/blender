@@ -24,9 +24,9 @@
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 
-#include "ED_asset.h"
-
 #include "DNA_asset_types.h"
+
+#include "ED_asset.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -62,6 +62,7 @@ static int asset_create_exec(bContext *C, wmOperator *op)
                 id->name);
     return OPERATOR_CANCELLED;
   }
+  id_fake_user_set(asset_id);
 
   asset_id->asset_data = BKE_asset_data_create();
   UI_id_icon_render(C, NULL, asset_id, true, false);
@@ -70,6 +71,8 @@ static int asset_create_exec(bContext *C, wmOperator *op)
 
   /* TODO generate default meta-data */
   /* TODO create asset in the asset DB, not in the local file. */
+
+  BKE_reportf(op->reports, RPT_INFO, "Asset '%s' created", asset_id->name + 2);
 
   WM_event_add_notifier(C, NC_ID | NA_EDITED, NULL);
 
