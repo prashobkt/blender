@@ -2147,6 +2147,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
       }
       case TSE_MODIFIER_BASE:
         data.icon = ICON_MODIFIER_DATA;
+        data.drag_id = tselem->id;
         break;
       case TSE_LINKED_OB:
         data.icon = ICON_OBJECT_DATA;

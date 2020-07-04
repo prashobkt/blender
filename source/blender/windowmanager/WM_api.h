@@ -673,8 +673,6 @@ void WM_drag_add_ID(struct wmDrag *drag, struct ID *id, struct ID *from_parent);
 struct ID *WM_drag_ID(const struct wmDrag *drag, short idcode);
 struct ID *WM_drag_ID_from_event(const struct wmEvent *event, short idcode);
 
-void *WM_drag_data_from_event(const struct wmEvent *event);
-
 /* Set OpenGL viewport and scissor */
 void wmViewport(const struct rcti *rect);
 void wmPartialViewport(rcti *drawrct, const rcti *winrct, const rcti *partialrct);

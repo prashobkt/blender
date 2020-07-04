@@ -66,6 +66,32 @@
 
 #include "outliner_intern.h"
 
+/* ******************** Drop Data Functions *********************** */
+
+typedef struct OutlinerDropData {
+  Object *ob_parent;
+  TreeStoreElem *drag_tselem;
+  void *drag_directdata;
+
+  TreeElementInsertType insert_type;
+} OutlinerDropData;
+
+/*  */
+static void outliner_drop_data_init(wmDrag *drag,
+                                    Object *ob,
+                                    TreeStoreElem *tselem,
+                                    void *directdata)
+{
+  OutlinerDropData *drop_data = MEM_callocN(sizeof(OutlinerDropData), "outliner drop data");
+
+  drop_data->ob_parent = ob;
+  drop_data->drag_tselem = tselem;
+  drop_data->drag_directdata = directdata;
+
+  drag->poin = drop_data;
+  drag->flags |= WM_DRAG_FREE_DATA;
+}
+
 /* ******************** Drop Target Find *********************** */
 
 static TreeElement *outliner_dropzone_element(TreeElement *te,
@@ -619,11 +645,6 @@ void OUTLINER_OT_material_drop(wmOperatorType *ot)
 
 /* ******************** Modifier Drop Operator *********************** */
 
-typedef struct ModifierDrop {
-  ModifierData *from;
-  ModifierData *to;
-} ModiferDrop;
-
 static bool outliner_is_modifier_element(TreeElement *te)
 {
   TreeStoreElem *tselem = TREESTORE(te);
@@ -631,29 +652,69 @@ static bool outliner_is_modifier_element(TreeElement *te)
   return tselem->type == TSE_MODIFIER;
 }
 
+static bool modifier_base_drop_poll(wmDrag *drag, const Object *ob, const char **r_tooltip)
+{
+  OutlinerDropData *drop_data = drag->poin;
+
+  if (ob->type != drop_data->ob_parent->type) {
+    return false;
+  }
+
+  *r_tooltip = TIP_("Link all modifiers to object");
+  return true;
+}
+
 static bool modifier_drop_poll(bContext *C,
                                wmDrag *drag,
                                const wmEvent *event,
                                const char **r_tooltip)
 {
-  TreeStoreElem *tselem = drag->poin;
-  if (!tselem) {
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  ARegion *region = CTX_wm_region(C);
+  OutlinerDropData *drop_data = drag->poin;
+  bool changed = outliner_flag_set(&soops->tree, TSE_HIGHLIGHTED | TSE_DRAG_ANY, false);
+
+  if (!drop_data) {
     return false;
   }
 
-  TreeElementInsertType insert_type;
-  TreeElement *te_target = outliner_drop_insert_find(C, event, &insert_type);
+  /* Drag all modifiers */
+  if (drop_data->drag_tselem->type == TSE_MODIFIER_BASE) {
+    Object *ob = (Object *)outliner_ID_drop_find(C, event, ID_OB);
+    if (!ob || ob == drop_data->ob_parent) {
+      return false;
+    }
+
+    return modifier_base_drop_poll(drag, ob, r_tooltip);
+  }
+
+  TreeElement *te_target = outliner_drop_insert_find(C, event, &drop_data->insert_type);
   if (!te_target) {
     return false;
   }
   TreeStoreElem *tselem_target = TREESTORE(te_target);
 
+  Object *ob;
+  if (tselem_target->type == 0 && te_target->idcode == ID_OB) {
+    ob = (Object *)tselem_target->id;
+  }
+  else {
+    ob = (Object *)outliner_search_back(te_target, ID_OB);
+  }
+
+  if (ob != drop_data->ob_parent) {
+    return false;
+  }
+
+  /* TODO (Nathan): Add ED_object_modifier_copy_to_object(). */
   if (outliner_ID_drop_find(C, event, ID_OB)) {
     *r_tooltip = TIP_("Copy modifier to object");
-    return true;
+    return false;
   }
-  else if (tselem_target->type == TSE_MODIFIER) {
-    switch (insert_type) {
+
+  /* Reorder modifiers. */
+  if (tselem_target->type == TSE_MODIFIER) {
+    switch (drop_data->insert_type) {
       case TE_INSERT_BEFORE:
         tselem_target->flag |= TSE_DRAG_BEFORE;
         if (te_target->prev && outliner_is_modifier_element(te_target->prev)) {
@@ -675,7 +736,14 @@ static bool modifier_drop_poll(bContext *C,
       default:
         return false;
     }
+    if (changed) {
+      ED_region_tag_redraw_no_rebuild(region);
+    }
     return true;
+  }
+
+  if (changed) {
+    ED_region_tag_redraw_no_rebuild(region);
   }
 
   return false;
@@ -683,17 +751,31 @@ static bool modifier_drop_poll(bContext *C,
 
 static int modifier_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  SpaceOutliner *soops = CTX_wm_space_outliner(C);
-  TreeStoreElem *tselem = WM_drag_data_from_event(event);
+  ARegion *region = CTX_wm_region(C);
+
+  if (event->custom != EVT_DATA_DRAGDROP) {
+    return OPERATOR_CANCELLED;
+  }
+
+  ListBase *lb = event->customdata;
+  wmDrag *drag = lb->first;
+  OutlinerDropData *drop_data = drag->poin;
 
   TreeElementInsertType insert_type;
   TreeElement *te = outliner_drop_insert_find(C, event, &insert_type);
 
-  Object *ob = (Object *)tselem->id;
-  TreeElement *te_md = outliner_find_tree_element(&soops->tree, tselem);
-  ModifierData *md = te_md->directdata;
+  if (drop_data->drag_tselem->type == TSE_MODIFIER_BASE) {
+    Object *ob = (Object *)TREESTORE(te)->id;
 
-  ED_object_modifier_move_to_index(op->reports, ob, md, te->index);
+    BKE_object_link_modifiers(ob, drop_data->ob_parent);
+    ED_region_tag_redraw(region);
+    WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+    DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+    return OPERATOR_FINISHED;
+  }
+
+  Object *ob = drop_data->ob_parent;
+  ED_object_modifier_move_to_index(op->reports, ob, drop_data->drag_directdata, te->index);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
@@ -999,8 +1081,9 @@ static int outliner_item_drag_drop_invoke(bContext *C,
 
   wmDrag *drag = WM_event_start_drag(C, data.icon, WM_DRAG_ID, NULL, 0.0, WM_DRAG_NOP);
 
-  if (tselem->type == TSE_MODIFIER) {
-    drag->poin = tselem;
+  if (ELEM(tselem->type, TSE_MODIFIER, TSE_MODIFIER_BASE)) {
+    ModifierData *md = te->directdata;
+    outliner_drop_data_init(drag, (Object *)tselem->id, tselem, md);
   }
   else if (ELEM(GS(data.drag_id->name), ID_OB, ID_GR)) {
     /* For collections and objects we cheat and drag all selected. */
