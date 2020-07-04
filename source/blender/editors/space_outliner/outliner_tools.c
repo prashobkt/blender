@@ -1526,7 +1526,7 @@ typedef enum eOutlinerIdOpTypes {
   OUTLINER_IDOP_INVALID = 0,
 
   OUTLINER_IDOP_UNLINK,
-  OUTLINER_IDOP_MAKE_ASSET,
+  OUTLINER_IDOP_CREATE_ASSET,
   OUTLINER_IDOP_LOCAL,
   OUTLINER_IDOP_OVERRIDE_LIBRARY,
   OUTLINER_IDOP_SINGLE,
@@ -1546,7 +1546,7 @@ typedef enum eOutlinerIdOpTypes {
 // TODO: implement support for changing the ID-block used
 static const EnumPropertyItem prop_id_op_types[] = {
     {OUTLINER_IDOP_UNLINK, "UNLINK", 0, "Unlink", ""},
-    {OUTLINER_IDOP_MAKE_ASSET, "MAKE_ASSET", 0, "Make Asset", ""},
+    {OUTLINER_IDOP_CREATE_ASSET, "CREATE_ASSET", 0, "Create Asset", ""},
     {OUTLINER_IDOP_LOCAL, "LOCAL", 0, "Make Local", ""},
     {OUTLINER_IDOP_OVERRIDE_LIBRARY,
      "OVERRIDE_LIBRARY",
@@ -1692,7 +1692,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
       }
       break;
     }
-    case OUTLINER_IDOP_MAKE_ASSET: {
+    case OUTLINER_IDOP_CREATE_ASSET: {
       outliner_do_libdata_operation(
           C, op->reports, scene, soops, &soops->tree, id_make_asset_cb, NULL);
       ED_undo_push(C, "Made Asset");
