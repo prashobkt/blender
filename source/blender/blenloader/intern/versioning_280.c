@@ -5114,7 +5114,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       if (!DNA_struct_find(fd->filesdna, "SceneLineart")) {
         for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 
-          scene->lineart.crease_threshold = 0.7;
+          scene->lineart.crease_threshold = 0.7f;
+          scene->lineart.master_thickness = 20;
+          scene->lineart.master_strength = 1.0f;
 
           scene->lineart.flags |= (LRT_USE_INTERSECTIONS);
 

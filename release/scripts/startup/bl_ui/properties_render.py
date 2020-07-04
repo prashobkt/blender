@@ -724,9 +724,11 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
-        col = layout.column()
-
         layout.prop(lineart, "crease_threshold", slider=True)
+
+        col = layout.column()
+        col.prop(lineart, "master_thickness", slider=True)
+        col.prop(lineart, "master_strength", slider=True)
 
         col.prop(lineart, 'auto_update', text='Auto Update')
         layout.prop(lineart, "gpencil_overwrite", text='Overwrite')

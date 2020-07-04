@@ -3975,7 +3975,9 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
   static int tempnum = 0;
   tempnum++;
   int color_idx = 0;
-  short thickness = 100;
+  Scene *s = DEG_get_evaluated_scene(depsgraph);
+  short thickness = s->lineart.master_thickness;
+  short opacity = s->lineart.master_strength;
 
   float mat[4][4];
 
@@ -4025,7 +4027,6 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                      "line art add stroke");
 
     for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
-      float opacity = 1.0f; /* rlci->occlusion ? 0.0f : 1.0f; */
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
       stroke_data[array_idx + 2] = rlci->gpos[2];
