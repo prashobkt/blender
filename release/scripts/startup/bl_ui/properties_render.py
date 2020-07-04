@@ -729,6 +729,7 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
         layout.prop(lineart, "crease_threshold", slider=True)
 
         col.prop(lineart, 'auto_update', text='Auto Update')
+        layout.prop(lineart, "gpencil_overwrite", text='Overwrite')
 
         if not scene.camera:
             has_camera = False
@@ -738,143 +739,6 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
 
         c = col.column()
         c.enabled = has_camera
-
-        if not lineart.auto_update:
-            c.operator("scene.lineart_calculate", icon='FILE_REFRESH')
-
-        layout.operator("scene.lineart_auto_create_line_layer",
-                        text="Default", icon="ADD")
-        row = layout.row()
-        row.template_list("LRT_UL_linesets", "", lineart, "layers",
-                          lineart.layers, "active_layer_index", rows=4)
-        col = row.column(align=True)
-        if active_layer:
-            col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
-            col.operator("scene.lineart_delete_line_layer",
-                         icon="REMOVE", text='')
-            col.separator()
-            col.operator("scene.lineart_move_line_layer",
-                         icon='TRIA_UP', text='').direction = "UP"
-            col.operator("scene.lineart_move_line_layer",
-                         icon='TRIA_DOWN', text='').direction = "DOWN"
-            col.separator()
-        else:
-            col.operator("scene.lineart_add_line_layer", icon="ADD", text='')
-
-
-def lineart_make_line_type(expand, layout, line_type, label):
-    layout.prop(line_type, "use", text=label)
-    if expand and line_type.use:
-        c = layout.column(align=True)
-        c.prop(line_type, "color", text="Color")
-        c.prop(line_type, "thickness", slider=True)
-
-
-class RENDER_PT_lineart_layer_settings(RenderButtonsPanel, Panel):
-    bl_label = "Layer Settings"
-    bl_parent_id = "RENDER_PT_lineart"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    def draw(self, context):
-        scene = context.scene
-        lineart = scene.lineart
-        active_layer = lineart.layers.active_layer
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        layout.prop(active_layer, "use_multiple_levels",
-                    text="Multiple Levels")
-        col = layout.column(align=True)
-        col.prop(active_layer, "level_start", text='Level Start')
-        if active_layer.use_multiple_levels:
-            col.prop(active_layer, "level_end", text='End')
-
-        layout.prop(active_layer, "use_same_style")
-
-        expand = not active_layer.use_same_style
-
-        col = layout.column(align=True)
-        if not expand:
-            col.prop(active_layer, "color")
-        col.prop(active_layer, "thickness", text="Main Thickness")
-
-        lineart_make_line_type(expand, layout, active_layer.contour, "Contour")
-        lineart_make_line_type(expand, layout, active_layer.crease, "Crease")
-        lineart_make_line_type(
-            expand, layout, active_layer.edge_mark, "EdgeMark")
-        lineart_make_line_type(
-            expand, layout, active_layer.material_separate, "Material")
-
-        if lineart.use_intersections:
-            lineart_make_line_type(
-                expand, layout, active_layer.intersection, "Intersection")
-        else:
-            layout.label(text="Intersection calculation disabled.")
-
-
-class RENDER_PT_lineart_line_normal_effects(RenderButtonsPanel, Panel):
-    bl_label = "Normal Based Line Weight"
-    bl_parent_id = "RENDER_PT_lineart"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    def draw_header(self, context):
-        active_layer = context.scene.lineart.layers.active_layer
-        self.layout.prop(active_layer, "normal_enabled", text="")
-
-    def draw(self, context):
-        scene = context.scene
-        lineart = scene.lineart
-        active_layer = lineart.layers.active_layer
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        layout.prop(active_layer, "normal_mode", text="Mode")
-        if active_layer.normal_mode != "DISABLED":
-            layout.prop(active_layer, "normal_control_object")
-            layout.prop(active_layer, "normal_effect_inverse")
-            col = layout.column(align=True)
-            col.prop(active_layer, "normal_ramp_begin")
-            col.prop(active_layer, "normal_ramp_end", text="End")
-            col = layout.column(align=True)
-            col.prop(active_layer, "normal_thickness_start", slider=True)
-            col.prop(active_layer, "normal_thickness_end",
-                     slider=True, text="End")
-
-
-class RENDER_PT_lineart_gpencil(RenderButtonsPanel, Panel):
-    bl_label = "Grease Pencil"
-    bl_parent_id = "RENDER_PT_lineart"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    def draw(self, context):
-        scene = context.scene
-        lineart = scene.lineart
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        if not scene.camera:
-            has_camera = False
-            layout.label(text="No active camera.")
-        else:
-            has_camera = True
-
-        layout.enabled = has_camera
-        layout.prop(lineart, "auto_update", text='Auto Update')
-        layout.prop(lineart, "gpencil_overwrite", text='Overwrite')
-        if not lineart.auto_update:
-            layout.operator("scene.lineart_update_gp_strokes",
-                            icon='FILE_REFRESH', text='Update Grease Pencil Targets')
-        layout.operator("scene.lineart_bake_gp_strokes",
-                        icon='RENDER_ANIMATION', text='Bake All Frames')
 
 
 class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
@@ -928,9 +792,6 @@ classes = (
     RENDER_PT_simplify_render,
     RENDER_PT_simplify_greasepencil,
     RENDER_PT_lineart,
-    RENDER_PT_lineart_layer_settings,
-    RENDER_PT_lineart_gpencil,
-    RENDER_PT_lineart_line_normal_effects,
     RENDER_PT_lineart_options,
     LRT_UL_linesets,
 )
