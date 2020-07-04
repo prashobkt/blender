@@ -1988,12 +1988,7 @@ static void ui_id_icon_render(const bContext *C, ID *id, bool use_jobs)
   }
 
   for (i = 0; i < NUM_ICON_SIZES; i++) {
-    /* check if rect needs to be created; changed
-     * only set by dynamic icons */
-    if (((pi->flag[i] & PRV_CHANGED) || !pi->rect[i])) {
-      icon_set_image(C, NULL, id, pi, i, use_jobs);
-      pi->flag[i] &= ~PRV_CHANGED;
-    }
+    ui_id_preview_image_render_size(C, NULL, id, pi, i, use_jobs);
   }
 }
 

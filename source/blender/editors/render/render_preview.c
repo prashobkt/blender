@@ -68,6 +68,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_node.h"
+#include "BKE_object.h"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
 #include "BKE_world.h"
@@ -95,11 +96,15 @@
 #include "ED_datafiles.h"
 #include "ED_render.h"
 #include "ED_screen.h"
+#include "ED_view3d.h"
+#include "ED_view3d_offscreen.h"
 
 #ifndef NDEBUG
 /* Used for database init assert(). */
 #  include "BLI_threads.h"
 #endif
+
+void icon_copy_rect(ImBuf *ibuf, uint w, uint h, uint *rect);
 
 ImBuf *get_brush_icon(Brush *brush)
 {
@@ -705,6 +710,135 @@ void ED_preview_draw(const bContext *C, void *idp, void *parentp, void *slotp, r
   }
 }
 
+/* **************************** Object preview ****************** */
+
+struct ObjectPreviewData {
+  /* The main for the preview, not of the current file. */
+  Main *main;
+  /* The original object to create the preview for. */
+  Object *object;
+  int sizex;
+  int sizey;
+};
+
+static Object *object_preview_camera_create(Main *preview_main,
+                                            Scene *scene,
+                                            ViewLayer *view_layer,
+                                            Object *preview_object,
+                                            int sizex,
+                                            int sizey)
+{
+  Object *camera = BKE_object_add(preview_main, scene, view_layer, OB_CAMERA, "Preview Camera");
+
+  float rotmat[3][3];
+  float dummyscale[3];
+  mat4_to_loc_rot_size(camera->loc, rotmat, dummyscale, preview_object->obmat);
+
+  /* Camera is Y up, so needs additional 90deg rotation around X to match object's Z up. */
+  float drotmat[3][3];
+  axis_angle_to_mat3_single(drotmat, 'X', M_PI_2);
+  mul_m3_m3_post(rotmat, drotmat);
+
+  camera->rotmode = ROT_MODE_QUAT;
+  mat3_to_quat(camera->quat, rotmat);
+
+  /* shader_preview_render() does this too. */
+  if (sizex > sizey) {
+    ((Camera *)camera->data)->lens *= (float)sizey / (float)sizex;
+  }
+
+  return camera;
+}
+
+static Scene *object_preview_scene_create(const struct ObjectPreviewData *preview_data,
+                                          Depsgraph **r_depsgraph)
+{
+  Scene *scene = BKE_scene_add(preview_data->main, "Object preview scene");
+  ViewLayer *view_layer = scene->view_layers.first;
+  Depsgraph *depsgraph = DEG_graph_new(preview_data->main, scene, view_layer, DAG_EVAL_VIEWPORT);
+
+  /* FIXME For now just create a copy of the object for the new main, until we have a better way to
+   * obtain the ID in a different Main (i.e. read from asset file). */
+  Object *preview_object_copy;
+  if (!BKE_id_copy(preview_data->main, &preview_data->object->id, (ID **)&preview_object_copy)) {
+    BLI_assert(false);
+    return NULL;
+  }
+
+  BKE_collection_object_add(preview_data->main, scene->master_collection, preview_object_copy);
+
+  Object *camera_object = object_preview_camera_create(preview_data->main,
+                                                       scene,
+                                                       view_layer,
+                                                       preview_object_copy,
+                                                       preview_data->sizex,
+                                                       preview_data->sizey);
+
+  scene->camera = camera_object;
+  scene->r.xsch = preview_data->sizex;
+  scene->r.ysch = preview_data->sizey;
+  scene->r.size = 100;
+
+  Base *preview_base = BKE_view_layer_base_find(view_layer, preview_object_copy);
+  /* For 'view selected' below. */
+  preview_base->flag |= BASE_SELECTED;
+
+  DEG_graph_build_from_view_layer(depsgraph, preview_data->main, scene, view_layer);
+  DEG_evaluate_on_refresh(preview_data->main, depsgraph);
+
+  ED_view3d_camera_to_view_selected(preview_data->main, depsgraph, scene, camera_object);
+
+  BKE_scene_graph_update_tagged(depsgraph, preview_data->main);
+
+  *r_depsgraph = depsgraph;
+  return scene;
+}
+
+static void object_preview_render(IconPreview *preview, IconPreviewSize *preview_sized)
+{
+  Main *preview_main = BKE_main_new();
+  const float pixelsize_old = U.pixelsize;
+  char err_out[256] = "unknown";
+
+  struct ObjectPreviewData preview_data = {
+      .main = preview_main,
+      .object = (Object *)preview->id,
+      .sizex = preview_sized->sizex,
+      .sizey = preview_sized->sizey,
+  };
+  Depsgraph *depsgraph;
+  Scene *scene = object_preview_scene_create(&preview_data, &depsgraph);
+
+  U.pixelsize = 2.0f;
+
+  ImBuf *ibuf = ED_view3d_draw_offscreen_imbuf_simple(
+      depsgraph,
+      DEG_get_evaluated_scene(depsgraph),
+      NULL,
+      OB_SOLID,
+      DEG_get_evaluated_object(depsgraph, scene->camera),
+      preview_sized->sizex,
+      preview_sized->sizey,
+      IB_rect,
+      V3D_OFSDRAW_NONE,
+      R_ALPHAPREMUL,
+      NULL,
+      NULL,
+      err_out);
+  /* TODO color-management? */
+
+  U.pixelsize = pixelsize_old;
+
+  if (ibuf) {
+    icon_copy_rect(ibuf, preview_sized->sizex, preview_sized->sizey, preview_sized->rect);
+
+    IMB_freeImBuf(ibuf);
+  }
+
+  DEG_graph_free(depsgraph);
+  BKE_main_free(preview_main);
+}
+
 /* **************************** new shader preview system ****************** */
 
 /* inside thread, called by renderer, sets job update value */
@@ -1016,7 +1150,7 @@ static void shader_preview_free(void *customdata)
 
 /* ************************* icon preview ********************** */
 
-static void icon_copy_rect(ImBuf *ibuf, uint w, uint h, uint *rect)
+void icon_copy_rect(ImBuf *ibuf, uint w, uint h, uint *rect)
 {
   struct ImBuf *ima;
   uint *drect, *srect;
@@ -1237,6 +1371,11 @@ static void icon_preview_startjob_all_sizes(void *customdata,
     }
 
     if (!check_engine_supports_preview(ip->scene)) {
+      continue;
+    }
+
+    if (ELEM(GS(ip->id->name), ID_OB)) {
+      object_preview_render(ip, cur_size);
       continue;
     }
 
