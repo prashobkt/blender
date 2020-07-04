@@ -129,15 +129,37 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   bGPdata *gpd = ob->data;
 
+  bool is_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
+
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
     /* Update triggered when nothing's happening, means DG update, so we request a refresh on line
      * art cache, meanwhile waiting for result. Update will trigger agian */
     ED_lineart_modifier_sync_set_flag(LRT_SYNC_WAITING, true);
-    return;
+    /* Don't have data yet, update line art. Note:  ED_lineart_post_frame_update_external will
+     * automatically return when calculation is already in progress.*/
+    if (is_render) {
+      ED_lineart_post_frame_update_external(DEG_get_evaluated_scene(depsgraph), depsgraph);
+      while (!ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH) ||
+             !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
+        /* Wait till it's done. */
+      }
+    }
+    else {
+      return;
+    }
   }
   else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
     /* Calculation in process */
-    return;
+    /* Calculation already started. TODO: Cancel and restart in render update! */
+    if (is_render) {
+      while (!ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH) ||
+             !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
+        /* Wait till it's done. */
+      }
+    }
+    else {
+      return;
+    }
   }
 
   /* If we reach here, means calculation is finished (LRT_SYNC_FRESH), we grab cache. flag reset is
