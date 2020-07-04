@@ -124,12 +124,12 @@ class _defs_view3d_generic:
                 kmi_remove = None
             return tip_(
                 "Measure distance and angles.\n"
-                "\u2022 {} anywhere for new measurement.\n"
+                "\u2022 %s anywhere for new measurement.\n"
                 "\u2022 Drag ruler segment to measure an angle.\n"
-                "\u2022 {} to remove the active ruler.\n"
+                "\u2022 %s to remove the active ruler.\n"
                 "\u2022 Ctrl while dragging to snap.\n"
                 "\u2022 Shift while dragging to measure surface thickness"
-            ).format(
+            ) % (
                 kmi_to_string_or_none(kmi_add),
                 kmi_to_string_or_none(kmi_remove),
             )
@@ -482,7 +482,7 @@ class _defs_view3d_add:
         return dict(
             idname="builtin.primitive_cone_add",
             label="Add Cone",
-            icon="ops.mesh.primitive_cube_add_gizmo",
+            icon="ops.mesh.primitive_cone_add_gizmo",
             description=(
                 "Add cone to mesh interactively"
             ),
@@ -1224,10 +1224,10 @@ class _defs_sculpt:
             layout.prop(props, "strength")
             layout.prop(props, "deform_axis")
             layout.prop(props, "use_face_sets")
-            if (props.type == "SURFACE_SMOOTH"):
+            if props.type == 'SURFACE_SMOOTH':
                 layout.prop(props, "surface_smooth_shape_preservation", expand=False)
                 layout.prop(props, "surface_smooth_current_vertex", expand=False)
-            if (props.type == "SHARPEN"):
+            elif props.type == 'SHARPEN':
                 layout.prop(props, "sharpen_smooth_ratio", expand=False)
 
         return dict(
@@ -1263,12 +1263,32 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.color_filter")
             layout.prop(props, "type", expand=False)
+            if props.type == 'FILL':
+                layout.prop(props, "fill_color", expand=False)
             layout.prop(props, "strength")
 
         return dict(
             idname="builtin.color_filter",
             label="Color Filter",
             icon="ops.sculpt.color_filter",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def mask_by_color():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("sculpt.mask_by_color")
+            layout.prop(props, "threshold")
+            layout.prop(props, "contiguous")
+            layout.prop(props, "invert")
+            layout.prop(props, "preserve_previous_mask")
+
+        return dict(
+            idname="builtin.mask_by_color",
+            label="Mask By Color",
+            icon="ops.sculpt.mask_by_color",
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
@@ -2450,6 +2470,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_sculpt.mesh_filter,
             _defs_sculpt.cloth_filter,
             _defs_sculpt.color_filter,
+            None,
+            _defs_sculpt.mask_by_color,
             None,
             _defs_transform.translate,
             _defs_transform.rotate,

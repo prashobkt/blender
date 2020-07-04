@@ -182,7 +182,7 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
 
 #  ifdef VOLUME_SMOKE
   /* 800 is arbitrary and here to mimic old viewport. TODO make it a parameter */
-  scattering += pow(emission.rgb, vec3(2.2)) * emission.a * 800.0;
+  scattering += emission.rgb * emission.a * 800.0;
 #  endif
 #endif
 }

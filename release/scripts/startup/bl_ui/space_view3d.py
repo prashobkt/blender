@@ -4022,6 +4022,8 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         layout.separator()
 
         layout.operator("transform.edge_slide")
+        props = layout.operator("mesh.loopcut_slide")
+        props.TRANSFORM_OT_edge_slide.release_confirm = False
         layout.operator("mesh.offset_edge_loops_slide")
 
         layout.separator()
@@ -5626,8 +5628,8 @@ class VIEW3D_PT_object_type_visibility(Panel):
             elif attr == "pointcloud" and not hasattr(bpy.data, "pointclouds"):
                 continue
 
-            attr_v = "show_object_viewport_" f"{attr:s}"
-            attr_s = "show_object_select_" f"{attr:s}"
+            attr_v = "show_object_viewport_" + attr
+            attr_s = "show_object_select_" + attr
 
             icon_v = 'HIDE_OFF' if getattr(view, attr_v) else 'HIDE_ON'
             icon_s = 'RESTRICT_SELECT_OFF' if getattr(view, attr_s) else 'RESTRICT_SELECT_ON'
