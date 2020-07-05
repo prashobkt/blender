@@ -305,6 +305,15 @@ Report *BKE_reports_last_displayable(ReportList *reports)
   return NULL;
 }
 
+void BKE_reports_move(ReportList *src, ReportList *dst)
+{
+  Report *report;
+  for (report = src->list.first; report; report = report->next) {
+    BLI_addtail(&dst->list, report);
+  }
+  BLI_listbase_clear(&src->list);
+}
+
 bool BKE_reports_contain(ReportList *reports, ReportType level)
 {
   Report *report;
