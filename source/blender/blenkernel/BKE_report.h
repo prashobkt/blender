@@ -56,6 +56,7 @@ char *BKE_reports_sprintfN(ReportList *reports, ReportType level);
 
 Report *BKE_reports_last_displayable(ReportList *reports);
 
+void BKE_reports_move(ReportList *src, ReportList *dst);
 bool BKE_reports_contain(ReportList *reports, ReportType level);
 
 const char *BKE_report_type_str(ReportType type);

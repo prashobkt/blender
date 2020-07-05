@@ -845,7 +845,7 @@ const char *WM_init_state_app_template_get(void)
  * Template to use instead of the template defined in user-preferences.
  * When not-null, this is written into the user preferences.
  */
-void wm_homefile_read(bContext *C,
+void wm_homefile_read(struct bContext *C,
                       ReportList *reports,
                       bool use_factory_settings,
                       bool use_empty_data,
@@ -967,7 +967,7 @@ void wm_homefile_read(bContext *C,
   /* load preferences before startup.blend */
   if (use_userdef) {
     if (!use_factory_settings && BLI_exists(filepath_userdef)) {
-      UserDef *userdef = BKE_blendfile_userdef_read(filepath_userdef, NULL);
+      UserDef *userdef = BKE_blendfile_userdef_read(filepath_userdef, reports);
       if (userdef != NULL) {
         BKE_blender_userdef_data_set_and_free(userdef);
         userdef = NULL;
@@ -1026,7 +1026,7 @@ void wm_homefile_read(bContext *C,
                                        .is_startup = true,
                                        .skip_flags = skip_flags | BLO_READ_SKIP_USERDEF,
                                    },
-                                   NULL);
+                                   reports);
     }
     if (BLI_listbase_is_empty(&U.themes)) {
       CLOG_INFO(WM_LOG_SESSION,
@@ -1067,7 +1067,7 @@ void wm_homefile_read(bContext *C,
                                                  .is_startup = true,
                                                  .skip_flags = skip_flags,
                                              },
-                                             NULL);
+                                             reports);
 
     if (use_data && BLI_listbase_is_empty(&wmbase)) {
       wm_clear_default_size(C);
@@ -1101,7 +1101,7 @@ void wm_homefile_read(bContext *C,
       UserDef *userdef_template = NULL;
       /* just avoids missing file warning */
       if (BLI_exists(temp_path)) {
-        userdef_template = BKE_blendfile_userdef_read(temp_path, NULL);
+        userdef_template = BKE_blendfile_userdef_read(temp_path, reports);
       }
       if (userdef_template == NULL) {
         /* we need to have preferences load to overwrite preferences from previous template */
@@ -1408,6 +1408,7 @@ bool write_crash_blend(void)
 
   BLI_strncpy(path, BKE_main_blendfile_path_from_global(), sizeof(path));
   BLI_path_extension_replace(path, sizeof(path), "_crash.blend");
+  // todo add reports and print them in log
   if (BLO_write_file(G_MAIN, path, G.fileflags, &(const struct BlendFileWriteParams){0}, NULL)) {
     CLOG_INFO(WM_LOG_SESSION, 0, "Saving file ok: %s", path);
     return 1;
@@ -1642,6 +1643,7 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer *UNUSED(wt))
     ED_editors_flush_edits(bmain);
 
     /* Error reporting into console. */
+    // todo add reports and log them
     BLO_write_file(bmain, filepath, fileflags, &(const struct BlendFileWriteParams){0}, NULL);
   }
   /* do timer after file write, just in case file write takes a long time */
@@ -3086,6 +3088,7 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
   wmWindow *win = CTX_wm_window(C);
   UI_popup_block_close(C, win, arg_block);
 
+  // todo add reports and log them
   int modified_images_count = ED_image_save_all_modified_info(CTX_data_main(C), NULL);
   if (modified_images_count > 0 && save_images_when_file_is_closed) {
     if (ED_image_should_save_modified(bmain)) {

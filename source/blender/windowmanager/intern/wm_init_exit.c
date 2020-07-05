@@ -279,6 +279,14 @@ void WM_init(bContext *C, int argc, const char **argv)
   /* reports cant be initialized before the wm,
    * but keep before file reading, since that may report errors */
   wm_init_reports(C);
+  /* on startup wm is not initialized, thus reports also will initialize
+   * in that case, use local copy of reports */
+  ReportList *reports = CTX_wm_reports(C);
+  bool use_context_reports = reports != NULL;
+  if (!use_context_reports) {
+    reports = MEM_mallocN(sizeof(*reports), "WMReports");
+    BKE_reports_init(reports, RPT_STORE);
+  }
 
   WM_msgbus_types_init();
 
@@ -293,8 +301,9 @@ void WM_init(bContext *C, int argc, const char **argv)
 
   BLI_assert((G.fileflags & G_FILE_NO_UI) == 0);
 
+  /* after this it is, use CTX_wm_reports */
   wm_homefile_read(C,
-                   NULL,
+                   reports,
                    G.factory_startup,
                    false,
                    use_data,
@@ -302,6 +311,11 @@ void WM_init(bContext *C, int argc, const char **argv)
                    NULL,
                    WM_init_state_app_template_get(),
                    &is_factory_startup);
+  /* now reports from context are initialized and we do not need reports */
+  if (!use_context_reports) {
+    BKE_reports_move(reports, CTX_wm_reports(C));
+    MEM_freeN(reports);
+  }
 
   /* Call again to set from userpreferences... */
   BLT_lang_set(NULL);
@@ -338,6 +352,7 @@ void WM_init(bContext *C, int argc, const char **argv)
    * Will try fix when the crash can be repeated. - campbell. */
 
 #ifdef WITH_PYTHON
+  // todo throws
   BPY_context_set(C); /* necessary evil */
   BPY_python_start(argc, argv);
 
