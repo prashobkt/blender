@@ -374,8 +374,8 @@ bool BKE_brush_delete(Main *bmain, Brush *brush)
   if (brush->id.tag & LIB_TAG_INDIRECT) {
     return false;
   }
-  else if (BKE_library_ID_is_indirectly_used(bmain, brush) && ID_REAL_USERS(brush) <= 1 &&
-           ID_EXTRA_USERS(brush) == 0) {
+  if (BKE_library_ID_is_indirectly_used(bmain, brush) && ID_REAL_USERS(brush) <= 1 &&
+      ID_EXTRA_USERS(brush) == 0) {
     return false;
   }
 
@@ -2186,10 +2186,9 @@ float BKE_brush_curve_strength(const Brush *br, float p, const float len)
   if (p >= len) {
     return 0;
   }
-  else {
-    p = p / len;
-    p = 1.0f - p;
-  }
+
+  p = p / len;
+  p = 1.0f - p;
 
   switch (br->curve_preset) {
     case BRUSH_CURVE_CUSTOM:

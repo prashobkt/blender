@@ -32,6 +32,7 @@
 
 extern struct CLG_LogRef *BLENLOADER_LOG_VERSIONING;
 
+struct BLOCacheStorage;
 struct GSet;
 struct IDNameLib_Map;
 struct Key;
@@ -123,6 +124,7 @@ typedef struct FileData {
   struct OldNewMap *soundmap;
   struct OldNewMap *volumemap;
   struct OldNewMap *packedmap;
+  struct BLOCacheStorage *cache_storage;
 
   struct BHeadSort *bheadmap;
   int tot_bheadmap;
@@ -168,6 +170,10 @@ void blo_make_packed_pointer_map(FileData *fd, struct Main *oldmain);
 void blo_end_packed_pointer_map(FileData *fd, struct Main *oldmain);
 void blo_add_library_pointer_map(ListBase *old_mainlist, FileData *fd);
 void blo_make_old_idmap_from_main(FileData *fd, struct Main *bmain);
+
+void blo_cache_storage_init(FileData *fd, struct Main *bmain);
+void blo_cache_storage_old_bmain_clear(FileData *fd, struct Main *bmain_old);
+void blo_cache_storage_end(FileData *fd);
 
 void blo_filedata_free(FileData *fd);
 

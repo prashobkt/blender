@@ -150,11 +150,10 @@ static bool test_path(char *targetpath,
     CLOG_INFO(&LOG, 1, "\tfound: %s", targetpath);
     return true;
   }
-  else {
-    CLOG_INFO(&LOG, 1, "\tmissing: %s", targetpath);
-    // targetpath[0] = '\0';
-    return false;
-  }
+
+  CLOG_INFO(&LOG, 1, "\tmissing: %s", targetpath);
+  // targetpath[0] = '\0';
+  return false;
 }
 
 /**
@@ -173,11 +172,10 @@ static bool test_env_path(char *path, const char *envvar)
     CLOG_INFO(&LOG, 1, "\tenv %s found: %s", envvar, env);
     return true;
   }
-  else {
-    path[0] = '\0';
-    CLOG_INFO(&LOG, 1, "\tenv %s missing: %s", envvar, env);
-    return false;
-  }
+
+  path[0] = '\0';
+  CLOG_INFO(&LOG, 1, "\tenv %s missing: %s", envvar, env);
+  return false;
 }
 
 /**
@@ -258,10 +256,8 @@ static bool get_path_environment(char *targetpath,
     if (subfolder_name) {
       return test_path(targetpath, targetpath_len, user_path, NULL, subfolder_name);
     }
-    else {
-      BLI_strncpy(targetpath, user_path, FILE_MAX);
-      return true;
-    }
+    BLI_strncpy(targetpath, user_path, FILE_MAX);
+    return true;
   }
   return false;
 }
@@ -286,10 +282,8 @@ static bool get_path_environment_notest(char *targetpath,
       BLI_join_dirfile(targetpath, targetpath_len, user_path, subfolder_name);
       return true;
     }
-    else {
-      BLI_strncpy(targetpath, user_path, FILE_MAX);
-      return true;
-    }
+    BLI_strncpy(targetpath, user_path, FILE_MAX);
+    return true;
   }
   return false;
 }
@@ -331,9 +325,8 @@ static bool get_path_user(char *targetpath,
   if (subfolder_name) {
     return test_path(targetpath, targetpath_len, user_path, folder_name, subfolder_name);
   }
-  else {
-    return test_path(targetpath, targetpath_len, user_path, NULL, folder_name);
-  }
+
+  return test_path(targetpath, targetpath_len, user_path, NULL, folder_name);
 }
 
 /**
@@ -383,10 +376,9 @@ static bool get_path_system(char *targetpath,
     /* try $BLENDERPATH/folder_name/subfolder_name */
     return test_path(targetpath, targetpath_len, system_path, folder_name, subfolder_name);
   }
-  else {
-    /* try $BLENDERPATH/folder_name */
-    return test_path(targetpath, targetpath_len, system_path, NULL, folder_name);
-  }
+
+  /* try $BLENDERPATH/folder_name */
+  return test_path(targetpath, targetpath_len, system_path, NULL, folder_name);
 }
 
 /**

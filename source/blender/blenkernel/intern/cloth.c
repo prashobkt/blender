@@ -457,7 +457,7 @@ void clothModifier_do(ClothModifierData *clmd,
     BKE_ptcache_invalidate(cache);
     return;
   }
-  else if (framenr > endframe) {
+  if (framenr > endframe) {
     framenr = endframe;
   }
 
@@ -496,7 +496,7 @@ void clothModifier_do(ClothModifierData *clmd,
 
     return;
   }
-  else if (cache_result == PTCACHE_READ_OLD) {
+  if (cache_result == PTCACHE_READ_OLD) {
     BKE_cloth_solver_set_positions(clmd);
   }
   else if (
@@ -1551,9 +1551,9 @@ static bool find_internal_spring_target_vertex(BVHTreeFromMesh *treedata,
     *r_tar_v_idx = vert_idx;
     return true;
   }
-  else {
+  
     return false;
-  }
+  
 }
 
 static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
