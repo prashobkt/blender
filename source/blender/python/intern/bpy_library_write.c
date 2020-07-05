@@ -175,7 +175,7 @@ static PyObject *bpy_lib_write(PyObject *UNUSED(self), PyObject *args, PyObject 
   int retval = 0;
   ReportList reports;
 
-  BKE_reports_init(&reports, RPT_STORE);
+  BKE_reports_init(&reports, 0);
   retval = BKE_blendfile_write_partial(
       bmain_src, filepath_abs, write_flags, path_remap.value_found, &reports);
 

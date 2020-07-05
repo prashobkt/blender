@@ -559,7 +559,8 @@ static void wm_file_read_post(bContext *C,
                               const bool is_factory_startup,
                               const bool use_data,
                               const bool use_userdef,
-                              const bool reset_app_template)
+                              const bool reset_app_template,
+                              ReportList *reports)
 {
   bool addons_loaded = false;
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -630,7 +631,7 @@ static void wm_file_read_post(bContext *C,
      * before evaluating the depsgraph. */
     wm_event_do_depsgraph(C, true);
 
-    ED_editors_init(C);
+    ED_editors_init(C, reports);
 
 #if 1
     WM_event_add_notifier(C, NC_WM | ND_FILEREAD, NULL);
@@ -752,7 +753,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       }
     }
 
-    wm_file_read_post(C, false, false, use_data, use_userdef, false);
+    wm_file_read_post(C, false, false, use_data, use_userdef, false, reports);
   }
 #if 0
   else if (retval == BKE_READ_EXOTIC_OK_OTHER) {
@@ -1149,7 +1150,8 @@ void wm_homefile_read(struct bContext *C,
     G.save_over = 0;
   }
 
-  wm_file_read_post(C, true, is_factory_startup, use_data, use_userdef, reset_app_template);
+  wm_file_read_post(
+      C, true, is_factory_startup, use_data, use_userdef, reset_app_template, reports);
 
   if (r_is_factory_startup) {
     *r_is_factory_startup = is_factory_startup;
@@ -3194,7 +3196,7 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C,
 
   /* Image Saving Warnings. */
   ReportList reports;
-  BKE_reports_init(&reports, RPT_STORE);
+  BKE_reports_init(&reports, 0);
   uint modified_images_count = ED_image_save_all_modified_info(bmain, &reports);
 
   LISTBASE_FOREACH (Report *, report, &reports.list) {

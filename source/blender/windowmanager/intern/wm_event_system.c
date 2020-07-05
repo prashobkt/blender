@@ -730,7 +730,7 @@ void WM_report(ReportType type, const char *message)
 {
   ReportList reports;
 
-  BKE_reports_init(&reports, RPT_STORE);
+  BKE_reports_init(&reports, 0);
   BKE_report(&reports, type, message);
 
   wm_add_reports(&reports);
@@ -1147,7 +1147,7 @@ static wmOperator *wm_operator_create(wmWindowManager *wm,
   }
   else {
     op->reports = MEM_mallocN(sizeof(ReportList), "wmOperatorReportList");
-    BKE_reports_init(op->reports, RPT_STORE | RPT_FREE);
+    BKE_reports_init(op->reports, RPT_FREE);
   }
 
   /* recursive filling of operator macro list */

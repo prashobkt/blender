@@ -201,7 +201,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     BKE_id_copy_ex(NULL, &me_mod->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
   }
 
-  BKE_reports_init(&reports, RPT_STORE);
+  BKE_reports_init(&reports, 0);
 
   /* Note: no islands precision for now here. */
   BKE_object_data_transfer_ex(ctx->depsgraph,

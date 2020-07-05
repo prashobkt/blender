@@ -344,7 +344,7 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     PropertyRNA *prop = NULL;
     const char *prop_name;
 
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
 
     /* Retrieve the property identifier from the full path, since we can't get it any other way */
     prop_name = strrchr(path_full, '.');
@@ -374,7 +374,7 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     ReportList reports;
     bool result;
 
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
 
     BLI_assert(BKE_id_is_in_global_main(id));
     result = (insert_keyframe(G_MAIN,
@@ -451,7 +451,7 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
     PropertyRNA *prop = NULL;
     const char *prop_name;
 
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
 
     /* Retrieve the property identifier from the full path, since we can't get it any other way */
     prop_name = strrchr(path_full, '.');
@@ -508,7 +508,7 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
     bool result;
     ReportList reports;
 
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
 
     result = (delete_keyframe(
                   G.main, &reports, self->ptr.owner_id, NULL, path_full, index, cfra) != 0);
@@ -554,7 +554,7 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
     ReportList reports;
     int result;
 
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
 
     result = ANIM_add_driver(&reports,
                              (ID *)self->ptr.owner_id,
@@ -636,7 +636,7 @@ PyObject *pyrna_struct_driver_remove(BPy_StructRNA *self, PyObject *args)
     short result;
     ReportList reports;
 
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
 
     result = ANIM_remove_driver(&reports, (ID *)self->ptr.owner_id, path_full, index, 0);
 

@@ -7675,7 +7675,7 @@ static void direct_link_windowmanager(BlendDataReader *reader, wmWindowManager *
   BLI_listbase_clear(&wm->operators);
   BLI_listbase_clear(&wm->paintcursors);
   BLI_listbase_clear(&wm->queue);
-  BKE_reports_init(&wm->reports, RPT_STORE);
+  BKE_reports_init(&wm->reports, 0);
 
   BLI_listbase_clear(&wm->keyconfigs);
   wm->defaultconf = NULL;

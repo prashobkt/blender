@@ -234,7 +234,7 @@ static PyObject *bpy_lib_enter(BPy_Library *self)
   PyObject *from_dict = _PyDict_NewPresized(MAX_LIBARRAY);
   ReportList reports;
 
-  BKE_reports_init(&reports, RPT_STORE);
+  BKE_reports_init(&reports, 0);
 
   self->blo_handle = BLO_blendhandle_from_file(self->abspath, &reports);
 

@@ -2075,7 +2075,7 @@ static int pyrna_py_to_prop(
             /* Data == NULL, assign to RNA. */
             if (value == Py_None || RNA_struct_is_a(param->ptr.type, ptr_type)) {
               ReportList reports;
-              BKE_reports_init(&reports, RPT_STORE);
+              BKE_reports_init(&reports, 0);
               RNA_property_pointer_set(
                   ptr, prop, value == Py_None ? PointerRNA_NULL : param->ptr, &reports);
               int err = (BPy_reports_to_error(&reports, PyExc_RuntimeError, true));
@@ -6322,7 +6322,7 @@ static PyObject *pyrna_func_call(BPy_FunctionRNA *self, PyObject *args, PyObject
     ReportList reports;
     bContext *C = BPy_GetContext();
 
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
     RNA_function_call(C, &reports, self_ptr, self_func, &parms);
 
     err = (BPy_reports_to_error(&reports, PyExc_RuntimeError, true));
@@ -8815,7 +8815,7 @@ static PyObject *pyrna_register_class(PyObject *UNUSED(self), PyObject *py_class
   C = BPy_GetContext();
 
   /* Call the register callback with reports & identifier. */
-  BKE_reports_init(&reports, RPT_STORE);
+  BKE_reports_init(&reports, 0);
 
   identifier = ((PyTypeObject *)py_class)->tp_name;
 

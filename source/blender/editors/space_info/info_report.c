@@ -503,7 +503,7 @@ void INFO_OT_report_copy(wmOperatorType *ot)
 ReportList *clog_to_report_list()
 {
   ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
-  BKE_reports_init(reports, RPT_STORE);
+  BKE_reports_init(reports, 0);
   ListBase *records = (ListBase *)CLG_log_record_get();
 
   if (BLI_listbase_is_empty(records)) {

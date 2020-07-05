@@ -151,7 +151,7 @@ static void wm_init_reports(bContext *C)
 
   BLI_assert(!reports || BLI_listbase_is_empty(&reports->list));
 
-  BKE_reports_init(reports, RPT_STORE);
+  BKE_reports_init(reports, 0);
 }
 static void wm_free_reports(wmWindowManager *wm)
 {
@@ -285,7 +285,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   bool use_context_reports = reports != NULL;
   if (!use_context_reports) {
     reports = MEM_mallocN(sizeof(*reports), "WMReports");
-    BKE_reports_init(reports, RPT_STORE);
+    BKE_reports_init(reports, 0);
   }
 
   WM_msgbus_types_init();

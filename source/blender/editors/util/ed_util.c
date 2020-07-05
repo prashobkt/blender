@@ -98,18 +98,12 @@ void ED_editors_init_for_undo(Main *bmain)
   }
 }
 
-void ED_editors_init(bContext *C)
+void ED_editors_init(bContext *C, ReportList *reports)
 {
   struct Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   wmWindowManager *wm = CTX_wm_manager(C);
-
-  /* This is called during initialization, so we don't want to store any reports */
-  ReportList *reports = CTX_wm_reports(C);
-  int reports_flag_prev = reports->flag & ~RPT_STORE;
-
-  SWAP(int, reports->flag, reports_flag_prev);
 
   /* Don't do undo pushes when calling an operator. */
   wm->op_undo_depth++;
@@ -185,7 +179,6 @@ void ED_editors_init(bContext *C)
     ED_space_image_paint_update(bmain, wm, scene);
   }
 
-  SWAP(int, reports->flag, reports_flag_prev);
   wm->op_undo_depth--;
 }
 

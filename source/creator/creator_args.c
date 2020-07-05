@@ -1592,7 +1592,7 @@ static int arg_handle_render_frame(int argc, const char **argv, void *data)
       }
 
       re = RE_NewSceneRender(scene);
-      BKE_reports_init(&reports, RPT_STORE);
+      BKE_reports_init(&reports, 0);
       RE_SetReports(re, &reports);
       for (int i = 0; i < frames_range_len; i++) {
         /* We could pass in frame ranges,
@@ -1632,7 +1632,7 @@ static int arg_handle_render_animation(int UNUSED(argc), const char **UNUSED(arg
     Main *bmain = CTX_data_main(C);
     Render *re = RE_NewSceneRender(scene);
     ReportList reports;
-    BKE_reports_init(&reports, RPT_STORE);
+    BKE_reports_init(&reports, 0);
     RE_SetReports(re, &reports);
     RE_RenderAnim(re, bmain, scene, NULL, NULL, scene->r.sfra, scene->r.efra, scene->r.frame_step);
     RE_SetReports(re, NULL);

@@ -152,9 +152,14 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
   int len;
   const char *message = TIP_(_message);
 
-  CLOG_INFO(&LOG, report_type_to_verbosity(type), "%s: %s", BKE_report_type_str(type), message);
+  CLOG_INFO(&LOG,
+            report_type_to_verbosity(type),
+            "ReportList(%p):%s: %s",
+            reports,
+            BKE_report_type_str(type),
+            message);
 
-  if (reports && (reports->flag & RPT_STORE)) {
+  if (reports) {
     char *message_alloc;
     report = MEM_callocN(sizeof(Report), "Report");
     report->type = type;
@@ -189,13 +194,14 @@ void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
     char *message_cstring = BLI_dynstr_get_cstring(message);
     CLOG_INFO(&LOG,
               report_type_to_verbosity(type),
-              "%s: %s",
+              "ReportList(%p):%s: %s",
+              reports,
               BKE_report_type_str(type),
               message_cstring);
     MEM_freeN(message_cstring);
   }
 
-  if (reports && (reports->flag & RPT_STORE)) {
+  if (reports) {
     report = MEM_callocN(sizeof(Report), "Report");
 
     report->message = BLI_dynstr_get_cstring(message);

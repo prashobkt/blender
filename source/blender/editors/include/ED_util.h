@@ -36,7 +36,7 @@ struct wmOperatorType;
 
 /* ed_util.c */
 void ED_editors_init_for_undo(struct Main *bmain);
-void ED_editors_init(struct bContext *C);
+void ED_editors_init(struct bContext *C, struct ReportList *reports);
 void ED_editors_exit(struct Main *bmain, bool do_undo_system);
 
 bool ED_editors_flush_edits_for_object_ex(struct Main *bmain,

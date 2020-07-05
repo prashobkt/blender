@@ -2296,7 +2296,7 @@ static bool image_has_valid_path(Image *ima)
 bool ED_image_should_save_modified(const Main *bmain)
 {
   ReportList reports;
-  BKE_reports_init(&reports, RPT_STORE);
+  BKE_reports_init(&reports, 0);
 
   uint modified_images_count = ED_image_save_all_modified_info(bmain, &reports);
   bool should_save = modified_images_count || !BLI_listbase_is_empty(&reports.list);
