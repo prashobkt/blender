@@ -623,7 +623,7 @@ GPUShader *OVERLAY_shader_particle_shape(void);
 GPUShader *OVERLAY_shader_pointcloud_dot(void);
 GPUShader *OVERLAY_shader_sculpt_mask(void);
 GPUShader *OVERLAY_shader_volume_velocity(bool use_needle);
-GPUShader *OVERLAY_shader_volume_gridlines(void);
+GPUShader *OVERLAY_shader_volume_gridlines(bool color_with_flags);
 GPUShader *OVERLAY_shader_wireframe(bool custom_bias);
 GPUShader *OVERLAY_shader_wireframe_select(void);
 GPUShader *OVERLAY_shader_xray_fade(void);

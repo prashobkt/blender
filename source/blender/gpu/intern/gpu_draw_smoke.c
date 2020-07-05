@@ -449,6 +449,31 @@ void GPU_create_smoke_velocity(FluidModifierData *fmd)
 #endif /* WITH_FLUID */
 }
 
+void GPU_create_fluid_flags(FluidModifierData *fmd)
+{
+#ifndef WITH_FLUID
+  UNUSED_VARS(fmd);
+#else
+  if (fmd->type & MOD_FLUID_TYPE_DOMAIN) {
+    FluidDomainSettings *fds = fmd->domain;
+    if (!fds->tex_flags) {
+      fds->tex_flags = GPU_texture_create_nD(fds->res[0],
+                                             fds->res[1],
+                                             fds->res[2],
+                                             3,
+                                             manta_smoke_get_flags(fds->fluid),
+                                             GPU_R8UI,
+                                             GPU_DATA_INT,
+                                             0,
+                                             true,
+                                             NULL);
+
+      swizzle_texture_channel_single(fds->tex_flags);
+    }
+  }
+#endif /* WITH_FLUID */
+}
+
 /* TODO Unify with the other GPU_free_smoke. */
 void GPU_free_smoke_velocity(FluidModifierData *fmd)
 {
@@ -465,9 +490,14 @@ void GPU_free_smoke_velocity(FluidModifierData *fmd)
       GPU_texture_free(fmd->domain->tex_velocity_z);
     }
 
+    if (fmd->domain->tex_flags) {
+      GPU_texture_free(fmd->domain->tex_flags);
+    }
+
     fmd->domain->tex_velocity_x = NULL;
     fmd->domain->tex_velocity_y = NULL;
     fmd->domain->tex_velocity_z = NULL;
+    fmd->domain->tex_flags = NULL;
   }
 }
 

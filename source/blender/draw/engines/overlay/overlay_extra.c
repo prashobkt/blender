@@ -1371,6 +1371,8 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
                                (fds->interp_method == VOLUME_INTERP_RAW ||
                                 fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS));
 
+  const bool color_with_flags = (fds->gridlines_color_field == FLUID_DOMAIN_FIELD_FLAGS);
+
   /* Small cube showing voxel size. */
   {
     float min[3];
@@ -1424,14 +1426,12 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
-
-    BLI_addtail(&data->stl->pd->smoke_domains, BLI_genericNodeN(fmd));
   }
 
   if (show_gridlines) {
     int line_count = 4 * fds->res[0] * fds->res[1] * fds->res[2] / fds->res[slice_axis];
 
-    GPUShader *sh = OVERLAY_shader_volume_gridlines();
+    GPUShader *sh = OVERLAY_shader_volume_gridlines(color_with_flags);
     DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
     DRW_shgroup_uniform_ivec3_copy(grp, "volumeSize", fds->res);
     DRW_shgroup_uniform_float_copy(grp, "slicePosition", fds->slice_depth);
@@ -1439,7 +1439,15 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", fds->p0);
     DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
+    if (color_with_flags) {
+      GPU_create_fluid_flags(fmd);
+      DRW_shgroup_uniform_texture(grp, "flagTexture", fds->tex_flags);
+    }
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
+  }
+
+  if (draw_velocity || show_gridlines) {
+    BLI_addtail(&data->stl->pd->smoke_domains, BLI_genericNodeN(fmd));
   }
 }
 

@@ -198,6 +198,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *volume_velocity_needle_sh;
   GPUShader *volume_velocity_sh;
   GPUShader *volume_gridlines_sh;
+  GPUShader *volume_gridlines_flags_sh;
   GPUShader *wireframe_select;
   GPUShader *wireframe[2];
   GPUShader *xray_fade;
@@ -1386,10 +1387,19 @@ struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)
   return (use_needle) ? sh_data->volume_velocity_needle_sh : sh_data->volume_velocity_sh;
 }
 
-struct GPUShader *OVERLAY_shader_volume_gridlines(void)
+struct GPUShader *OVERLAY_shader_volume_gridlines(bool color_with_flags)
 {
   OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
-  if (!sh_data->volume_gridlines_sh) {
+  if (!sh_data->volume_gridlines_flags_sh && color_with_flags) {
+    sh_data->volume_gridlines_flags_sh = DRW_shader_create_with_lib(
+        datatoc_volume_gridlines_vert_glsl,
+        NULL,
+        datatoc_gpu_shader_flat_color_frag_glsl,
+        datatoc_common_view_lib_glsl,
+        "#define blender_srgb_to_framebuffer_space(a) a\n"
+        "#define SHOW_FLAGS\n");
+  }
+  else if (!sh_data->volume_gridlines_sh) {
     sh_data->volume_gridlines_sh = DRW_shader_create_with_lib(
         datatoc_volume_gridlines_vert_glsl,
         NULL,
@@ -1397,7 +1407,7 @@ struct GPUShader *OVERLAY_shader_volume_gridlines(void)
         datatoc_common_view_lib_glsl,
         "#define blender_srgb_to_framebuffer_space(a) a\n");
   }
-  return sh_data->volume_gridlines_sh;
+  return (color_with_flags) ? sh_data->volume_gridlines_flags_sh : sh_data->volume_gridlines_sh;
 }
 
 GPUShader *OVERLAY_shader_wireframe_select(void)

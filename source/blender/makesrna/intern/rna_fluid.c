@@ -1299,6 +1299,12 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem gridlines_color_field_items[] = {
+      {0, "NONE", 0, "None", "None"},
+      {FLUID_DOMAIN_FIELD_FLAGS, "FLAGS", 0, "Flags", "Flag grid of the fluid domain"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   static const EnumPropertyItem sndparticle_boundary_items[] = {
       {SNDPARTICLE_BOUNDARY_DELETE,
        "DELETE",
@@ -2452,6 +2458,13 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       "Clipping",
       "Value under which voxels are considered empty space to optimize rendering");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+  prop = RNA_def_property(srna, "gridlines_color_field", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "gridlines_color_field");
+  RNA_def_property_enum_items(prop, gridlines_color_field_items);
+  RNA_def_property_ui_text(
+      prop, "Color Gridlines", "Simulation field to color map onto gridlines");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
   /* -- Deprecated / unsed options (below)-- */
 

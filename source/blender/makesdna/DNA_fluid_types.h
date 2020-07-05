@@ -450,6 +450,7 @@ typedef struct FluidDomainSettings {
   struct GPUTexture *tex_velocity_x;
   struct GPUTexture *tex_velocity_y;
   struct GPUTexture *tex_velocity_z;
+  struct GPUTexture *tex_flags;
   struct Object *guide_parent;
   /** Vertex velocities of simulated fluid mesh. */
   struct FluidDomainVertexVelocity *mesh_velocities;
@@ -623,7 +624,8 @@ typedef struct FluidDomainSettings {
   char use_coba;
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
-  char _pad9[3]; /* Unused. */
+  char gridlines_color_field; /* Simulation field used to color map onto gridlines. */
+  char _pad9[2];              /* Unused. */
 
   /* OpenVDB cache options. */
   int openvdb_compression;

@@ -4995,6 +4995,7 @@ void BKE_fluid_modifier_create_type_data(struct FluidModifierData *fmd)
     fmd->domain->vector_draw_grid_type = VECTOR_DRAW_GRID_FLUID_VELOCITY;
     fmd->domain->use_coba = false;
     fmd->domain->coba_field = FLUID_DOMAIN_FIELD_DENSITY;
+    fmd->domain->gridlines_color_field = 0;
 
     /* -- Deprecated / unsed options (below)-- */
 
@@ -5237,6 +5238,7 @@ void BKE_fluid_modifier_copy(const struct FluidModifierData *fmd,
     tfds->use_coba = fds->use_coba;
     tfds->coba_field = fds->coba_field;
     tfds->grid_scale = fds->grid_scale;
+    tfds->gridlines_color_field = fds->gridlines_color_field;
 
     /* -- Deprecated / unsed options (below)-- */
 

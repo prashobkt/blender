@@ -10,6 +10,10 @@ uniform vec3 domainOriginOffset;
 /* FluidDomainSettings.res_min */
 uniform ivec3 adaptiveCellOffset;
 
+#ifdef SHOW_FLAGS
+uniform usampler3D flagTexture;
+#endif
+
 flat out vec4 finalColor;
 
 const vec3 corners[4] = vec3[4](vec3(-0.5, 0.5, 0.0),
@@ -18,6 +22,32 @@ const vec3 corners[4] = vec3[4](vec3(-0.5, 0.5, 0.0),
                                 vec3(-0.5, -0.5, 0.0));
 
 const int indices[8] = int[8](0, 1, 1, 2, 2, 3, 3, 0);
+
+vec4 flag_to_color(uint flag)
+{
+  /* Color mapping for flags */
+  vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+  /* Cell types: 1 is Fluid, 2 is Obstacle, 4 is Empty, 8 is Inflow, 16 is Outflow */
+  if (bool(flag & uint(1))) {
+    color.rgb += vec3(0.0, 0.0, 0.75); /* blue */
+  }
+  if (bool(flag & uint(2))) {
+    color.rgb += vec3(0.4, 0.4, 0.4); /* gray */
+  }
+  if (bool(flag & uint(4))) {
+    color.rgb += vec3(0.25, 0.0, 0.2); /* dark purple */
+  }
+  if (bool(flag & uint(8))) {
+    color.rgb += vec3(0.0, 0.5, 0.0); /* dark green */
+  }
+  if (bool(flag & uint(16))) {
+    color.rgb += vec3(0.9, 0.3, 0.0); /* orange */
+  }
+  if (color.rgb == vec3(0.0)) {
+    color.rgb += vec3(0.5, 0.0, 0.0); /* medium red */
+  }
+  return color;
+}
 
 void main()
 {
@@ -48,17 +78,21 @@ void main()
     rot_mat[2].z = 1.0;
   }
 
-  vec3 cell_co;
-  cell_co.x = float(cell % cell_div.x);
-  cell_co.y = float((cell / cell_div.x) % cell_div.y);
-  cell_co.z = float(cell / (cell_div.x * cell_div.y));
-  cell_co += cell_offset;
-
-  vec3 pos = domainOriginOffset + cellSize * (cell_co + vec3(adaptiveCellOffset));
-  vec3 rotated_pos = rot_mat * corners[indices[gl_VertexID % 8]];
-  pos += rotated_pos * cellSize;
+  ivec3 cell_co;
+  cell_co.x = cell % cell_div.x;
+  cell_co.y = (cell / cell_div.x) % cell_div.y;
+  cell_co.z = cell / (cell_div.x * cell_div.y);
 
   finalColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+#ifdef SHOW_FLAGS
+  uint flag = texelFetch(flagTexture, cell_co + ivec3(cell_offset), 0).r; 
+  finalColor = flag_to_color(flag);
+#endif
+
+  vec3 pos = domainOriginOffset + cellSize * (vec3(cell_co + adaptiveCellOffset) + cell_offset);
+  vec3 rotated_pos = rot_mat * corners[indices[gl_VertexID % 8]];
+  pos += rotated_pos * cellSize;
 
   vec3 world_pos = point_object_to_world(pos);
   gl_Position = point_world_to_ndc(world_pos);

@@ -1343,6 +1343,23 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
             note.label(icon='INFO', text="Enable Guides first! Defaulting to Fluid Velocity.")
         col.prop(domain, "vector_scale")
 
+class PHYSICS_PT_viewport_display_advanced(PhysicButtonsPanel, Panel):
+    bl_label = "Advanced"
+    bl_parent_id = 'PHYSICS_PT_viewport_display'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (PhysicButtonsPanel.poll_fluid_domain(context) and context.fluid.domain_settings.show_gridlines)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        domain = context.fluid.domain_settings
+
+        col = layout.column()
+        col.prop(domain, "gridlines_color_field", text="Color Gridlines")
 
 classes = (
     FLUID_PT_presets,
@@ -1369,6 +1386,7 @@ classes = (
     PHYSICS_PT_viewport_display,
     PHYSICS_PT_viewport_display_color,
     PHYSICS_PT_viewport_display_debug,
+    PHYSICS_PT_viewport_display_advanced,
 )
 
 
