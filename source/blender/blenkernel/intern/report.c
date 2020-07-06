@@ -140,7 +140,7 @@ ReportList *BKE_reports_duplicate(ReportList *reports)
     report = report_next;
   }
 
-  // todo learn how to duplicate timer
+  // TODO (grzelins) learn how to duplicate timer
   // reports_new->reporttimer
 
   return reports_new;
@@ -185,10 +185,10 @@ void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
   BLI_dynstr_vappendf(message, format, args);
   va_end(args);
 
-  /* todo it is crucial to show anything when UI is not available, maybe enable this logger on
-   * warning level by default (and use appropriate severity level)?
-   * for example in versioning_280.c "Eevee material conversion problem"
-   * check logger to avoid allocating memory if logger is off
+  /* TODO (grzelins) it is crucial to show anything when UI is not available, maybe enable this
+   * logger on warning level by default (and use appropriate severity level)? for example in
+   * versioning_280.c "Eevee material conversion problem" check logger to avoid allocating memory
+   * if logger is off
    */
   if (CLOG_CHECK_IN_USE(&LOG)) {
     char *message_cstring = BLI_dynstr_get_cstring(message);
