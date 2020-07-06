@@ -1696,25 +1696,7 @@ class PIE_MT_user_menu(Menu):
         layout = self.layout
         pie = layout.menu_pie()
         pie.scale_y = 1.2
-        index = 0
-        for item in menu.menu_items:
-            if index > 8:
-                break
-            if item.type == "OPERATOR":
-                op = item.get_operator()
-                pie.operator(op.operator, text=item.name)
-            if item.type == "MENU":
-                pm = item.get_menu()
-                pie.menu(pm.id_name, text=item.name)
-            if item.type == "SUBMENU":
-                sm = item.get_submenu()
-                index = index - 1
-            if item.type == "PROPERTY":
-                sm = item.get_property()
-                index = index - 1
-            if item.type == "SEPARATOR":
-                index = index - 1
-            index = index + 1
+        menu.draw(context=context, layout=pie)
 
 class USERPREF_PT_user_menus(UserMenusPanel, Panel):
     bl_label = "user_menus"

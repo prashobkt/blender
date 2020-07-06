@@ -241,24 +241,26 @@ void ED_screen_user_menu_item_remove(ListBase *lb, bUserMenuItem *umi)
 /* -------------------------------------------------------------------- */
 /** \name Menu Definition
  * \{ */
-static bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase *lb);
 
 static void screen_user_menu_draw_submenu(bContext *C, uiLayout *layout, void *arg)
 {
   ListBase *lb = (ListBase *)arg;
 
-  screen_user_menu_draw_items(C, layout, lb);
+  screen_user_menu_draw_items(C, layout, lb, false);
 }
 
-static bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase *lb)
+bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase *lb, bool is_pie)
 {
   /* Enable when we have the ability to edit menus. */
   char label[512];
-  const bool show_missing = true;
-
+  const bool show_missing = is_pie;
   bool is_empty = true;
 
+  int i = 0;
+
   LISTBASE_FOREACH (bUserMenuItem *, umi, lb) {
+    if (is_pie && i > 7)
+      return is_empty;
     const char *ui_name = umi->ui_name[0] ? umi->ui_name : NULL;
     if (umi->type == USER_MENU_TYPE_OPERATOR) {
       bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
@@ -273,6 +275,7 @@ static bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase 
           SNPRINTF(label, "Missing: %s", umi_op->op_idname);
           uiItemL(layout, label, ICON_NONE);
         }
+        i--;
       }
     }
     else if (umi->type == USER_MENU_TYPE_MENU) {
@@ -287,6 +290,7 @@ static bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase 
           SNPRINTF(label, "Missing: %s", umi_mt->mt_idname);
           uiItemL(layout, label, ICON_NONE);
         }
+        i--;
       }
     }
     else if (umi->type == USER_MENU_TYPE_SUBMENU) {
@@ -334,11 +338,13 @@ static bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase 
           SNPRINTF(label, "Missing: %s.%s", umi_pr->context_data_path, umi_pr->prop_id);
           uiItemL(layout, label, ICON_NONE);
         }
+        i--;
       }
     }
     else if (umi->type == USER_MENU_TYPE_SEP) {
       uiItemS(layout);
     }
+    i++;
   }
   return is_empty;
 }
@@ -353,7 +359,7 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
     if (um == NULL) {
       continue;
     }
-    is_empty = screen_user_menu_draw_items(C, menu->layout, &um->items);
+    is_empty = screen_user_menu_draw_items(C, menu->layout, &um->items, true);
   }
   if (um_array) {
     MEM_freeN(um_array);

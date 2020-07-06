@@ -27,20 +27,29 @@ from bpy.app.translations import pgettext_iface as iface_
 from bpy.app.translations import contexts as i18n_contexts
 
 
-def draw_item(context, box, but_list):
+def draw_button(context, box, items):
     prefs = context.preferences
     um = prefs.user_menus
 
-    for items in but_list:
-        name = items.item.name
-        if items.item.type == "SEPARATOR":
-            name = "___________"
-        box.prop(items, "pressed", text=name, toggle=1)
-        if items.item.type == "SUBMENU":
-            sub_box = box.box()
-            sub_box = sub_box.column(align=True)
-            draw_item(context, sub_box, items.subbut)
+    name = items.item.name
+    col = box.column(align=True)
+    row = col.row(align=True)
+    if items.item.type == "SEPARATOR":
+        name = "___________"
+    row.prop(items, "pressed", text=name, toggle=1)
+    if items.item.type == "SUBMENU":
+        if um.is_pie:
+            row.operator("preferences.menuitem_add", text="", icon='ADD')
+            row.operator("preferences.menuitem_remove", text="", icon='REMOVE')
+            row.operator("preferences.menuitem_up", text="", icon='TRIA_UP')
+            row.operator("preferences.menuitem_down", text="", icon='TRIA_DOWN')
+        sub_box = col.box()
+        sub_box = sub_box.column(align=True)
+        draw_item(context, sub_box, items.subbut)
 
+def draw_item(context, box, but_list):
+    for items in but_list:
+        draw_button(context, box, items)
 
 def draw_item_box(context, row):
     prefs = context.preferences
@@ -64,6 +73,31 @@ def draw_item_box(context, row):
     col.operator("preferences.menuitem_down", text="", icon='TRIA_DOWN')
     row.separator()
 
+def draw_pie_item(context, col, items, label):
+    prefs = context.preferences
+    um = prefs.user_menus
+
+    row = col.row()
+    #subrow = row.split(factor=0.1)
+    row.label(text=label)
+    draw_button(context, row, items)
+
+def draw_pie(context, row):
+    prefs = context.preferences
+    um = prefs.user_menus
+
+    col = row.column()
+    um.buttons_refresh()
+    draw_pie_item(context, col, um.buttons[0], "Left : ")
+    draw_pie_item(context, col, um.buttons[1], "Right : ")
+    draw_pie_item(context, col, um.buttons[2], "Down : ")
+    draw_pie_item(context, col, um.buttons[3], "Up : ")
+    draw_pie_item(context, col, um.buttons[4], "Upper left : ")
+    draw_pie_item(context, col, um.buttons[5], "Upper right : ")
+    draw_pie_item(context, col, um.buttons[6], "Lower left : ")
+    draw_pie_item(context, col, um.buttons[7], "Lower right : ")
+    row.separator()
+        
 
 def draw_item_editor(context, row):
     prefs = context.preferences
@@ -133,7 +167,10 @@ def draw_user_menus(context, layout):
     col = layout.column()
     row = layout.row()
 
-    draw_item_box(context=context, row=row)
+    if um.is_pie:
+        draw_pie(context=context, row=row)
+    else:
+        draw_item_box(context=context, row=row)
     draw_item_editor(context=context, row=row)
 
     layout.separator()

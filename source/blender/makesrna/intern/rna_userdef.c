@@ -1451,6 +1451,21 @@ static int rna_UserDef_usermenus_item_type_get(PointerRNA *ptr)
   return 0;
 }
 
+static void rna_UserDef_usermenus_pie_set(PointerRNA *ptr, int value)
+{
+  UserDef *userdef = (UserDef *)ptr->data;
+
+  LISTBASE_FOREACH (bUserMenu *, um, &userdef->user_menus) {
+    ListBase *lb = &um->items;
+    BKE_blender_user_menu_item_free_list(lb);
+    if (value)
+      for (int i = 0; i < 8; i++) {
+        bUserMenuItem *new_umi = BKE_blender_user_menu_item_add(lb, USER_MENU_TYPE_SEP);
+      }
+  }
+  userdef->runtime.um_is_pie = value;
+}
+
 static void rna_UserDef_usermenus_item_op_set(PointerRNA *ptr, const char *value)
 {
   bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)ptr->data;
@@ -1469,6 +1484,11 @@ static void rna_UserDef_usermenus_item_op_set(PointerRNA *ptr, const char *value
 
   BLI_strncpy(umi_op->op_idname, value, FILE_MAX);
   free(opptr);
+}
+
+static void rna_UserDef_usermenu_draw(bUserMenu *um, bContext *C, uiLayout *layout)
+{
+  screen_user_menu_draw_items(C, layout, &um->items, true);
 }
 
 /* UserMenu.menu_items */
@@ -6369,6 +6389,11 @@ static void rna_def_userdef_usermenus_items_subtypes(BlenderRNA *brna)
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_UserDef_usermenus_item_op_set");
   RNA_def_struct_name_property(srna, prop);
 
+  prop = RNA_def_property(srna, "prop", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "prop");
+  RNA_def_property_struct_type(prop, "PropertyGroupItem");
+  RNA_def_property_ui_text(prop, "properties", "");
+
   /* menu item */
   srna = RNA_def_struct(brna, "um_item_menu", NULL);
   RNA_def_struct_sdna(srna, "bUserMenuItem_Menu");
@@ -6464,6 +6489,13 @@ static void rna_def_userdef_usermenu(BlenderRNA *brna)
                                     NULL,
                                     NULL,
                                     NULL);
+
+  func = RNA_def_function(srna, "draw", "rna_UserDef_usermenu_draw");
+  RNA_def_function_ui_description(func, "draw items of usermenu");
+  parm = RNA_def_pointer(func, "context", "Context", "", "context");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "layout", "UILayout", "", "layout");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
   /* user menu item */
   static const EnumPropertyItem um_item_type[] = {
@@ -6628,6 +6660,7 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
   prop = RNA_def_property(srna, "is_pie", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "runtime.um_is_pie", 0);
   RNA_def_property_ui_text(prop, "menu type", "change menu type between list and pie");
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_UserDef_usermenus_pie_set");
 
   prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "runtime.um_item_select");

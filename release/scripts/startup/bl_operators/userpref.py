@@ -1278,7 +1278,6 @@ class PREFERENCES_OT_menuitem_down(Operator):
         context.preferences.is_dirty = True
         return {'FINISHED'}
 
-
 classes = (
     PREFERENCES_OT_addon_disable,
     PREFERENCES_OT_addon_enable,
