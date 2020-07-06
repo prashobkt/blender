@@ -554,6 +554,7 @@ static bool python_script_exec(
 
         fclose(fp);
 
+        // TODO (grzelins) catch python evaluation logs
         py_result = PyRun_String(pystring, Py_file_input, py_dict, py_dict);
       }
 #else

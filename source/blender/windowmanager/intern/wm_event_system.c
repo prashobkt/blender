@@ -1118,6 +1118,7 @@ bool WM_operator_is_repeat(const bContext *C, const wmOperator *op)
   return (op_prev && (op->type == op_prev->type));
 }
 
+/* TODO (grzelins) investigate usages with NULL as reports */
 static wmOperator *wm_operator_create(wmWindowManager *wm,
                                       wmOperatorType *ot,
                                       PointerRNA *properties,

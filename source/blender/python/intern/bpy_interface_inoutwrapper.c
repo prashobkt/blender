@@ -36,6 +36,7 @@ PyObject *stderr_backup = NULL;
 PyObject *string_io_buf = NULL;
 PyObject *string_io_getvalue = NULL;
 
+/* TODO (grzelins) move this whole implementation to bpy_capi_utils? */
 PyObject *BPY_intern_init_io_wrapper()
 {
   PyImport_ImportModule("sys");
@@ -62,6 +63,7 @@ PyObject *BPY_intern_init_io_wrapper()
     return NULL;
   }
 
+  // TODO (grzelins) fix return warning
   return 1;
 }
 

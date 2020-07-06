@@ -59,7 +59,7 @@ struct wmTimer;
 
 /* keep in sync with 'rna_enum_wm_report_items' in rna_wm.c */
 typedef enum ReportType {
-//  RPT_DEBUG = (1 << 0), // unused
+  /* RPT_DEBUG = (1 << 0), // unused, replaced with logs */
   RPT_INFO = (1 << 1),
   RPT_OPERATOR = (1 << 2),
   RPT_PROPERTY = (1 << 3),
@@ -79,8 +79,8 @@ typedef enum ReportType {
   (RPT_ERROR | RPT_ERROR_INVALID_INPUT | RPT_ERROR_INVALID_CONTEXT | RPT_ERROR_OUT_OF_MEMORY)
 
 enum ReportListFlags {
-//  RPT_PRINT = (1 << 0), // unused
-//  RPT_STORE = (1 << 1), // usused
+  /* RPT_PRINT = (1 << 0), unused, replaced with logs */
+  /* RPT_STORE = (1 << 1), usused, replaced with logs */
   RPT_FREE = (1 << 2),
   RPT_OP_HOLD = (1 << 3), /* don't move them into the operator global list (caller will use) */
 };
@@ -103,9 +103,9 @@ typedef struct Report {
 typedef struct ReportList {
   ListBase list;
   /** ReportType. */
-  int printlevel;
+  int printlevel; /* the 'printing' means showing popup in UI */
   /** ReportType. */
-  int storelevel; // unused
+  int storelevel; /* unused, after introducing logs, this is unnecessary */
   int flag;
   char _pad[4];
   struct wmTimer *reporttimer;
