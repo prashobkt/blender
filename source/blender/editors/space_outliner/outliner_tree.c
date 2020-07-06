@@ -1723,6 +1723,23 @@ static int treesort_alpha(const void *v1, const void *v2)
   return 0;
 }
 
+static int treesort_type(const void *v1, const void *v2)
+{
+  const tTreeSort *x1 = v1;
+  const tTreeSort *x2 = v2;
+
+  if (((Object *)x1->id)->type > ((Object *)x2->id)->type) {
+    return 1;
+  }
+  else if (((Object *)x2->id)->type > ((Object *)x1->id)->type) {
+    return -1;
+  }
+  else {
+    /* Compare by name */
+    return treesort_alpha(v1, v2);
+  }
+}
+
 /* this is nice option for later? doesn't look too useful... */
 #if 0
 static int treesort_obtype_alpha(const void *v1, const void *v2)
@@ -1935,15 +1952,32 @@ static void outliner_tree_sort(SpaceOutliner *soops, ListBase *tree)
 
       /* Sort collections. */
       if (num_collections > 0) {
-        qsort(tree_sort + skip, num_collections - skip, sizeof(tTreeSort), treesort_alpha);
+        switch (soops->sort_method) {
+          case SO_SORT_ALPHA:
+            qsort(tree_sort + skip, num_collections - skip, sizeof(tTreeSort), treesort_alpha);
+            break;
+          case SO_SORT_TYPE:
+            qsort(tree_sort + skip, num_collections - skip, sizeof(tTreeSort), treesort_alpha);
+            break;
+        }
       }
 
       /* Sort objects. */
       if (num_elems - num_collections - skip > 0) {
-        qsort(tree_sort + skip + num_collections,
-              num_elems - num_collections - skip,
-              sizeof(tTreeSort),
-              treesort_alpha);
+        switch (soops->sort_method) {
+          case SO_SORT_ALPHA:
+            qsort(tree_sort + skip + num_collections,
+                  num_elems - num_collections - skip,
+                  sizeof(tTreeSort),
+                  treesort_alpha);
+            break;
+          case SO_SORT_TYPE:
+            qsort(tree_sort + skip + num_collections,
+                  num_elems - num_collections - skip,
+                  sizeof(tTreeSort),
+                  treesort_type);
+            break;
+        }
       }
 
       // /* just sort alphabetically */
