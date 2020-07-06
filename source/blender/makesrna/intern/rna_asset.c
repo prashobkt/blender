@@ -15,21 +15,35 @@
  */
 
 /** \file
- * \ingroup DNA
+ * \ingroup RNA
  */
 
-#ifndef __DNA_ASSET_TYPES_H__
-#define __DNA_ASSET_TYPES_H__
+#include <stdlib.h>
 
-#include "DNA_ID.h"
+#include "RNA_define.h"
+#include "RNA_enum_types.h"
 
-typedef struct Asset {
-  ID id;
-} Asset;
+#include "DNA_asset_types.h"
 
-typedef struct AssetData {
-  /** Thumbnail image of the data-block. Non-owning pointer, the actual data-block owns it. */
-  struct PreviewImage *preview;
-} AssetData;
+#include "rna_internal.h"
 
-#endif /* __DNA_ASSET_TYPES_H__ */
+#ifdef RNA_RUNTIME
+
+#else
+
+static void rna_def_asset(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "Asset", "ID");
+  RNA_def_struct_ui_text(srna, "Asset", "Asset data-block");
+//  RNA_def_struct_ui_icon(srna, ICON_ASSET); /* TODO: Icon doesn't exist!. */
+
+}
+
+void RNA_def_asset(BlenderRNA *brna)
+{
+  rna_def_asset(brna);
+}
+
+#endif

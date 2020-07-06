@@ -18,18 +18,22 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_ASSET_TYPES_H__
-#define __DNA_ASSET_TYPES_H__
+#ifndef __DNA_ASSET_DEFAULTS_H__
+#define __DNA_ASSET_DEFAULTS_H__
 
-#include "DNA_ID.h"
+/* Struct members on own line. */
+/* clang-format off */
 
-typedef struct Asset {
-  ID id;
-} Asset;
+/* -------------------------------------------------------------------- */
+/** \name Asset Struct
+ * \{ */
 
-typedef struct AssetData {
-  /** Thumbnail image of the data-block. Non-owning pointer, the actual data-block owns it. */
-  struct PreviewImage *preview;
-} AssetData;
+#define _DNA_DEFAULT_Asset \
+  { \
+  }
 
-#endif /* __DNA_ASSET_TYPES_H__ */
+/** \} */
+
+/* clang-format on */
+
+#endif /* __DNA_ASSET_DEFAULTS_H__ */

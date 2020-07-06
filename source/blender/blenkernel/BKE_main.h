@@ -116,6 +116,7 @@ typedef struct Main {
   struct Library *curlib;
   ListBase scenes;
   ListBase libraries;
+  ListBase assets;
   ListBase objects;
   ListBase meshes;
   ListBase curves;
@@ -228,7 +229,7 @@ const char *BKE_main_blendfile_path_from_global(void);
 
 struct ListBase *which_libbase(struct Main *mainlib, short type);
 
-#define MAX_LIBARRAY 41
+#define MAX_LIBARRAY 42
 int set_listbasepointers(struct Main *main, struct ListBase *lb[MAX_LIBARRAY]);
 
 #define MAIN_VERSION_ATLEAST(main, ver, subver) \

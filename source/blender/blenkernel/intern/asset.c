@@ -18,11 +18,49 @@
  * \ingroup bke
  */
 
-#include "BKE_asset.h"
+#include <string.h>
 
+#include "BKE_asset.h"
+#include "BKE_idtype.h"
+
+#include "BLT_translation.h"
+
+#include "DNA_ID.h"
 #include "DNA_asset_types.h"
+#include "DNA_defaults.h"
 
 #include "MEM_guardedalloc.h"
+
+static void asset_init_data(ID *id)
+{
+  Asset *asset = (Asset *)id;
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(asset, id));
+
+  MEMCPY_STRUCT_AFTER(asset, DNA_struct_default_get(Asset), id);
+}
+
+static void asset_free_data(ID *id)
+{
+  Asset *asset = (Asset *)id;
+  UNUSED_VARS(asset);
+}
+
+IDTypeInfo IDType_ID_AST = {
+    /* id_code */ ID_AST,
+    /* id_filter */ FILTER_ID_AST,
+    /* main_listbase_index */ INDEX_ID_AST,
+    /* struct_size */ sizeof(Asset),
+    /* name */ "Asset",
+    /* name_plural */ "assets",
+    /* translation_context */ BLT_I18NCONTEXT_ID_SIMULATION,
+    /* flags */ 0,
+
+    /* init_data */ asset_init_data,
+    /* copy_data */ NULL,
+    /* free_data */ asset_free_data,
+    /* make_local */ NULL,
+    /* foreach_id */ NULL,
+};
 
 AssetData *BKE_asset_data_create(void)
 {

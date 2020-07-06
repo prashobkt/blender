@@ -54,6 +54,7 @@
 
 #include "DNA_defaults.h"
 
+#include "DNA_asset_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_camera_types.h"
@@ -78,6 +79,7 @@
 #include "DNA_volume_types.h"
 #include "DNA_world_types.h"
 
+#include "DNA_asset_defaults.h"
 #include "DNA_brush_defaults.h"
 #include "DNA_cachefile_defaults.h"
 #include "DNA_camera_defaults.h"
@@ -102,6 +104,9 @@
 
 #define SDNA_DEFAULT_DECL_STRUCT(struct_name) \
   static const struct_name DNA_DEFAULT_##struct_name = _DNA_DEFAULT_##struct_name
+
+/* DNA_asset_defaults.h */
+SDNA_DEFAULT_DECL_STRUCT(Asset);
 
 /* DNA_brush_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(Brush);
@@ -196,6 +201,9 @@ extern const bTheme U_theme_default;
 
 /** Keep headers sorted. */
 const void *DNA_default_table[SDNA_TYPE_MAX] = {
+
+    /* DNA_asset_defaults.h */
+    SDNA_DEFAULT_DECL(Asset),
 
     /* DNA_brush_defaults.h */
     SDNA_DEFAULT_DECL(Brush),

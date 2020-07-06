@@ -428,6 +428,8 @@ ListBase *which_libbase(Main *bmain, short type)
       return &(bmain->scenes);
     case ID_LI:
       return &(bmain->libraries);
+    case ID_AST:
+      return &(bmain->assets);
     case ID_OB:
       return &(bmain->objects);
     case ID_ME:
@@ -523,6 +525,8 @@ int set_listbasepointers(Main *bmain, ListBase **lb)
 
   /* Libraries may be accessed from pretty much any other ID. */
   lb[INDEX_ID_LI] = &(bmain->libraries);
+
+  lb[INDEX_ID_AST] = &(bmain->assets);
 
   lb[INDEX_ID_IP] = &(bmain->ipo);
 

@@ -635,6 +635,7 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
       /* Blacklist: */
     case ID_SCE: /* Scene */
     case ID_LI:  /* Library */
+    case ID_AST: /* Asset */
     case ID_OB:  /* Object */
     case ID_IP:  /* Ipo (depreciated, replaced by FCurves) */
     case ID_WO:  /* World */

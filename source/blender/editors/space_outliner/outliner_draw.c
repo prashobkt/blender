@@ -2525,6 +2525,10 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
             data.icon = ICON_LIBRARY_DATA_DIRECT;
           }
           break;
+        case ID_AST:
+          /* TODO Asset icon */
+          // data.icon = ?;
+          break;
         case ID_LS:
           data.icon = ICON_LINE_DATA;
           break;

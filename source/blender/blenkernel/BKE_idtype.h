@@ -163,6 +163,7 @@ typedef struct IDTypeInfo {
 /* Those are defined in the respective BKE files. */
 extern IDTypeInfo IDType_ID_SCE;
 extern IDTypeInfo IDType_ID_LI;
+extern IDTypeInfo IDType_ID_AST;
 extern IDTypeInfo IDType_ID_OB;
 extern IDTypeInfo IDType_ID_ME;
 extern IDTypeInfo IDType_ID_CU;

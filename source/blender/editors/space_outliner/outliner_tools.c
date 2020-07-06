@@ -127,6 +127,7 @@ static void set_operation_types(SpaceOutliner *soops,
             *objectlevel = 1;
             break;
 
+          case ID_AST:
           case ID_ME:
           case ID_CU:
           case ID_MB:
@@ -2465,6 +2466,8 @@ static int do_outliner_operation_event(
         case ID_LI:
           return outliner_operator_menu(C, "OUTLINER_OT_lib_operation");
           break;
+        case ID_AST:
+          /* TODO needs own operations? For now use default. */
         default:
           return outliner_operator_menu(C, "OUTLINER_OT_id_operation");
           break;

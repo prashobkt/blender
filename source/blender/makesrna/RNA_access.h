@@ -67,6 +67,7 @@ extern StructRNA RNA_ArmatureGpencilModifier;
 extern StructRNA RNA_ArmatureModifier;
 extern StructRNA RNA_ArrayGpencilModifier;
 extern StructRNA RNA_ArrayModifier;
+extern StructRNA RNA_Asset;
 extern StructRNA RNA_BackgroundImage;
 extern StructRNA RNA_BevelModifier;
 extern StructRNA RNA_BezierSplinePoint;

@@ -698,6 +698,9 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Volume Data to be linked");
       case ID_SIM:
         return N_("Browse Simulation to be linked");
+        /* TODO do we want to allow asset template-IDs? */
+      case ID_AST:
+        break;
     }
   }
   return N_("Browse ID data to be linked");

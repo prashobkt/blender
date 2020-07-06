@@ -2270,6 +2270,9 @@ int UI_idcode_icon_get(const int idcode)
       return ICON_ACTION;
     case ID_AR:
       return ICON_ARMATURE_DATA;
+    case ID_AST:
+      /* TODO: icon */
+      return ICON_BLANK1;
     case ID_BR:
       return ICON_BRUSH_DATA;
     case ID_CA:

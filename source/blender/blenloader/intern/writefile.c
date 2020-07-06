@@ -3862,6 +3862,13 @@ static void write_simulation(BlendWriter *writer, Simulation *simulation, const 
   }
 }
 
+static void write_asset(BlendWriter *writer, Asset *asset, const void *id_address)
+{
+  if (asset->id.us > 0 || BLO_write_is_undo(writer)) {
+    BLO_write_id_struct(writer, Asset, id_address, &asset->id);
+    write_iddata(writer, &asset->id);
+  }
+}
 /* Keep it last of write_foodata functions. */
 static void write_libraries(WriteData *wd, Main *main)
 {
@@ -4229,6 +4236,9 @@ static bool write_file_handle(Main *mainvar,
             break;
           case ID_SIM:
             write_simulation(&writer, (Simulation *)id_buffer, id);
+            break;
+          case ID_AST:
+            write_asset(&writer, (Asset *)id_buffer, id);
             break;
           case ID_LI:
             /* Do nothing, handled below - and should never be reached. */

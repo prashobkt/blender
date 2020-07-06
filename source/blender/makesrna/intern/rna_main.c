@@ -102,6 +102,7 @@ static void rna_Main_filepath_set(PointerRNA *ptr, const char *value)
 
 RNA_MAIN_LISTBASE_FUNCS_DEF(actions)
 RNA_MAIN_LISTBASE_FUNCS_DEF(armatures)
+RNA_MAIN_LISTBASE_FUNCS_DEF(assets)
 RNA_MAIN_LISTBASE_FUNCS_DEF(brushes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(cachefiles)
 RNA_MAIN_LISTBASE_FUNCS_DEF(cameras)
@@ -232,6 +233,12 @@ void RNA_def_main(BlenderRNA *brna)
        "Libraries",
        "Library data-blocks",
        RNA_def_main_libraries},
+      {"assets",
+       "Asset",
+       "rna_Main_assets_begin",
+       "Assets",
+       "Assets data-blocks",
+       RNA_def_main_assets},
       {"screens",
        "Screen",
        "rna_Main_screens_begin",
