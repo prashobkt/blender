@@ -691,13 +691,11 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
             CLOG_INFO(WM_LOG_JOB, 0, "job finished: %s", wm_job->name);
           }
 
-          if (G.debug & G_DEBUG_JOBS) {
-            CLOG_INFO(WM_LOG_JOB,
-                      0,
-                      "Job '%s' finished in %f seconds",
-                      wm_job->name,
-                      PIL_check_seconds_timer() - wm_job->start_time);
-          }
+          CLOG_INFO(WM_LOG_JOB,
+                    1,
+                    "Job '%s' finished in %f seconds",
+                    wm_job->name,
+                    PIL_check_seconds_timer() - wm_job->start_time);
 
           wm_job->running = false;
 

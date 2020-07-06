@@ -956,7 +956,7 @@ static const char arg_handle_debug_mode_generic_set_doc_xr_time[] =
 #  endif
 static const char arg_handle_debug_mode_generic_set_doc_jobs[] =
     "\n\t"
-    "Enable time profiling for background jobs.";
+    "Currently unused.";
 static const char arg_handle_debug_mode_generic_set_doc_gpu[] =
     "\n\t"
     "Enable GPU debug context and information for OpenGL 4.3+.";
