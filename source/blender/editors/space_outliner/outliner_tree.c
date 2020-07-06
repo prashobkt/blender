@@ -2481,7 +2481,7 @@ void outliner_build_tree(
     }
   }
 
-  if ((soops->flag & SO_SKIP_SORT_ALPHA) == 0) {
+  if (soops->sort_method == SO_SORT_ALPHA) {
     outliner_sort(&soops->tree);
   }
   else if ((soops->filter & SO_FILTER_NO_CHILDREN) == 0) {

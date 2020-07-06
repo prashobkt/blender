@@ -275,6 +275,9 @@ typedef struct SpaceOutliner {
    * Pointers to treestore elements, grouped by (id, type, nr)
    * in hashtable for faster searching */
   void *treehash;
+
+  char sort_method;
+  char _pad[7];
 } SpaceOutliner;
 
 /* SpaceOutliner.flag */
@@ -283,7 +286,7 @@ typedef enum eSpaceOutliner_Flag {
   /* SO_NEWSELECTED = (1 << 1), */        /* UNUSED */
   SO_FLAG_UNUSED_1 = (1 << 2),            /* cleared */
   /* SO_HIDE_KEYINGSETINFO = (1 << 3), */ /* UNUSED */
-  SO_SKIP_SORT_ALPHA = (1 << 4),
+  /* SO_SKIP_SORT_ALPHA = (1 << 4), */    /* UNUSED */
   SO_SYNC_SELECT = (1 << 5),
   SO_MODE_COLUMN = (1 << 6),
 } eSpaceOutliner_Flag;
@@ -382,6 +385,14 @@ typedef enum eSpaceOutliner_Search_Flags {
   SO_FIND_COMPLETE = (1 << 1),
   SO_SEARCH_RECURSIVE = (1 << 2),
 } eSpaceOutliner_Search_Flags;
+
+/* SpaceOutliner.sort_method */
+typedef enum eSpaceOutliner_Sort_Types {
+  SO_SORT_FREE,
+  SO_SORT_ALPHA,
+  SO_SORT_TYPE,
+  SO_SORT_CREATION_ORDER,
+} eSpaceOutliner_Sort_Types;
 
 /** \} */
 

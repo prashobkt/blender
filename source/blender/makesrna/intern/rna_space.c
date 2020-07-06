@@ -3046,6 +3046,18 @@ static void rna_def_space_outliner(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem sort_method_items[] = {
+      {SO_SORT_FREE, "FREE", 0, "Manual", "Sort objects and collections manually"},
+      {SO_SORT_ALPHA, "ALPHA", 0, "Name", "Sort objects and collections by name alphabetically"},
+      {SO_SORT_TYPE, "TYPE", 0, "Type", "Sort objects by type"},
+      {SO_SORT_CREATION_ORDER,
+       "CREATION",
+       0,
+       "Creation Order",
+       "Sort objects and collections in the order they were created"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   static const EnumPropertyItem filter_state_items[] = {
       {SO_FILTER_OB_ALL, "ALL", 0, "All", "Show all objects in the view layer"},
       {SO_FILTER_OB_VISIBLE, "VISIBLE", 0, "Visible", "Show visible objects"},
@@ -3083,9 +3095,10 @@ static void rna_def_space_outliner(BlenderRNA *brna)
       prop, "Complete Matches Only", "Only use complete matches of search string");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
 
-  prop = RNA_def_property(srna, "use_sort_alpha", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SO_SKIP_SORT_ALPHA);
-  RNA_def_property_ui_text(prop, "Sort Alphabetically", "");
+  prop = RNA_def_property(srna, "sort_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "sort_method");
+  RNA_def_property_enum_items(prop, sort_method_items);
+  RNA_def_property_ui_text(prop, "Sort Type", "Outliner sort method");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
 
   prop = RNA_def_property(srna, "use_sync_select", PROP_BOOLEAN, PROP_NONE);

@@ -360,7 +360,8 @@ class OUTLINER_PT_filter(Panel):
 
         if display_mode != 'DATA_API':
             col = layout.column(align=True)
-            col.prop(space, "use_sort_alpha")
+            col.label(text="Sort by")
+            col.prop(space, "sort_method", expand=True)
             layout.separator()
 
         row = layout.row(align=True)
