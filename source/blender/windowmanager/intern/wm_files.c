@@ -506,16 +506,12 @@ void WM_file_autoexec_init(const char *filepath)
 
 void wm_file_read_report(bContext *C, Main *bmain)
 {
-  ReportList *reports = NULL;
+  ReportList *reports = CTX_wm_reports(C);
   Scene *sce;
 
   for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
     if (sce->r.engine[0] &&
         BLI_findstring(&R_engines, sce->r.engine, offsetof(RenderEngineType, idname)) == NULL) {
-      if (reports == NULL) {
-        reports = CTX_wm_reports(C);
-      }
-
       BKE_reportf(reports,
                   RPT_ERROR,
                   "Engine '%s' not available for scene '%s' (an add-on may need to be installed "
@@ -1410,13 +1406,19 @@ bool write_crash_blend(void)
 
   BLI_strncpy(path, BKE_main_blendfile_path_from_global(), sizeof(path));
   BLI_path_extension_replace(path, sizeof(path), "_crash.blend");
-  // todo add reports and print them in log
-  if (BLO_write_file(G_MAIN, path, G.fileflags, &(const struct BlendFileWriteParams){0}, NULL)) {
+  ReportList reports;
+  BKE_reports_init(&reports, 0);
+  if (BLO_write_file(
+          G_MAIN, path, G.fileflags, &(const struct BlendFileWriteParams){0}, &reports)) {
     CLOG_INFO(WM_LOG_SESSION, 0, "Saving file ok: %s", path);
+    BKE_reports_clear(&reports);
     return 1;
   }
   else {
-    CLOG_ERROR(WM_LOG_SESSION, "Saving file failed: %s", path);
+    char *pretty_reports = BKE_reports_sprintfN(&reports, 0);
+    CLOG_ERROR(WM_LOG_SESSION, "Saving file failed: %s, %s", path, pretty_reports);
+    MEM_freeN(pretty_reports);
+    BKE_reports_clear(&reports);
     return 0;
   }
 }
@@ -1644,9 +1646,20 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer *UNUSED(wt))
 
     ED_editors_flush_edits(bmain);
 
-    /* Error reporting into console. */
-    // todo add reports and log them
-    BLO_write_file(bmain, filepath, fileflags, &(const struct BlendFileWriteParams){0}, NULL);
+    /* reports from autosave should be logged as we do not want to spam user too much */
+    ReportList reports;
+    BKE_reports_init(&reports, 0);
+    if (BLO_write_file(
+            bmain, filepath, fileflags, &(const struct BlendFileWriteParams){0}, &reports)) {
+      CLOG_INFO(WM_LOG_SESSION, 1, "Autosave ok: %s", filepath);
+      BKE_reports_clear(&reports);
+    }
+    else {
+      char *pretty_reports = BKE_reports_sprintfN(&reports, 0);
+      CLOG_ERROR(WM_LOG_SESSION, "Autosave failed: %s, %s", filepath, pretty_reports);
+      MEM_freeN(pretty_reports);
+      BKE_reports_clear(&reports);
+    }
   }
   /* do timer after file write, just in case file write takes a long time */
   wm->autosavetimer = WM_event_add_timer(wm, NULL, TIMERAUTOSAVE, U.savetime * 60.0);
