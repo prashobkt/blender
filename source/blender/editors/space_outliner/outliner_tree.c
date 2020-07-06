@@ -1878,6 +1878,120 @@ static void outliner_collections_children_sort(ListBase *lb)
   }
 }
 
+static bool outliner_is_sort_item(TreeElement *te)
+{
+  TreeStoreElem *tselem = TREESTORE(te);
+  return (tselem->type == 0 && te->idcode == ID_OB) || outliner_is_collection_tree_element(te);
+}
+
+/* Sort collections and objects separately on each outliner subtree. */
+static void outliner_tree_sort(SpaceOutliner *soops, ListBase *tree)
+{
+  if (BLI_listbase_is_empty(tree)) {
+    return;
+  }
+
+  TreeElement *te_last = tree->last;
+  TreeStoreElem *tselem = TREESTORE(te_last);
+
+  /* Only sort collections and objects */
+  if (outliner_is_sort_item(te_last)) {
+    int num_elems = BLI_listbase_count(tree);
+
+    if (num_elems > 1) {
+      tTreeSort *tree_sort = MEM_mallocN(num_elems * sizeof(tTreeSort), "tree sort array");
+      tTreeSort *tree_sort_p = tree_sort;
+      int num_collections = 0;
+
+      for (TreeElement *te = tree->first; te; te = te->next, tree_sort_p++) {
+        tselem = TREESTORE(te);
+        tree_sort_p->te = te;
+        tree_sort_p->name = te->name;
+        tree_sort_p->idcode = te->idcode;
+
+        if (tselem->type && tselem->type != TSE_DEFGROUP) {
+          tree_sort_p->idcode = 0; /* Don't sort this. */
+        }
+        if (tselem->type == TSE_ID_BASE) {
+          tree_sort_p->idcode = 1; /* Do sort this. */
+        }
+
+        if (outliner_is_collection_tree_element(te)) {
+          num_collections++;
+        }
+
+        tree_sort_p->id = tselem->id;
+      }
+
+      /* Skip beginning of list */
+      int skip = 0;
+      if (!outliner_is_sort_item(tree_sort->te)) {
+        for (tree_sort_p = tree_sort, skip = 0; skip < num_elems; skip++, tree_sort_p++) {
+          if (outliner_is_sort_item(tree_sort_p->te)) {
+            break;
+          }
+        }
+      }
+
+      /* Sort collections. */
+      if (num_collections > 0) {
+        qsort(tree_sort + skip, num_collections - skip, sizeof(tTreeSort), treesort_alpha);
+      }
+
+      /* Sort objects. */
+      if (num_elems - num_collections - skip > 0) {
+        qsort(tree_sort + skip + num_collections,
+              num_elems - num_collections - skip,
+              sizeof(tTreeSort),
+              treesort_alpha);
+      }
+
+      // /* just sort alphabetically */
+      // if (tree_sort->idcode == 1) {
+      //   qsort(tree_sort, num_elems, sizeof(tTreeSort), treesort_alpha);
+      // }
+      // else {
+      //   /* keep beginning of list */
+
+      //   if (skip < num_elems) {
+      //     qsort(tree_sort + skip, num_elems - skip, sizeof(tTreeSort), treesort_alpha_ob);
+      //   }
+      // }
+
+      /* Copy sorted list back into tree */
+      BLI_listbase_clear(tree);
+      tree_sort_p = tree_sort;
+      while (num_elems--) {
+        BLI_addtail(tree, tree_sort_p->te);
+        tree_sort_p++;
+      }
+      MEM_freeN(tree_sort);
+    }
+  }
+
+  LISTBASE_FOREACH (TreeElement *, te, tree) {
+    outliner_tree_sort(soops, &te->subtree);
+  }
+}
+
+#if 0
+void f(SpaceOutliner *soops)
+{
+  if (soops->sort_method == SO_SORT_ALPHA) {
+    outliner_sort(tree);
+  }
+  else if (soops->sort_method == SO_SORT_TYPE) {
+  }
+  else if ((soops->filter & SO_FILTER_NO_CHILDREN) == 0) {
+    /* We group the children that are in the collection before the ones that are not.
+     * This way we can try to draw them in a different style altogether.
+     * We also have to respect the original order of the elements in case alphabetical
+     * sorting is not enabled. This keep object data and modifiers before its children. */
+    outliner_collections_children_sort(tree);
+  }
+}
+#endif
+
 /* Filtering ----------------------------------------------- */
 
 typedef struct OutlinerTreeElementFocus {
@@ -2481,15 +2595,8 @@ void outliner_build_tree(
     }
   }
 
-  if (soops->sort_method == SO_SORT_ALPHA) {
-    outliner_sort(&soops->tree);
-  }
-  else if ((soops->filter & SO_FILTER_NO_CHILDREN) == 0) {
-    /* We group the children that are in the collection before the ones that are not.
-     * This way we can try to draw them in a different style altogether.
-     * We also have to respect the original order of the elements in case alphabetical
-     * sorting is not enabled. This keep object data and modifiers before its children. */
-    outliner_collections_children_sort(&soops->tree);
+  if (soops->sort_method != SO_SORT_FREE) {
+    outliner_tree_sort(soops, &soops->tree);
   }
 
   outliner_filter_tree(soops, view_layer);
