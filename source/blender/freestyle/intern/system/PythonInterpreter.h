@@ -89,7 +89,9 @@ class PythonInterpreter : public Interpreter {
       cerr << "\nError executing Python script from PythonInterpreter::interpretFile" << endl;
       cerr << "File: " << fn << endl;
       cerr << "Errors: " << endl;
-      BKE_reports_print(reports, RPT_ERROR);
+      char *pretty_reports = BKE_reports_sprintfN(reports, RPT_ERROR);
+      cerr << pretty_reports;
+      MEM_freeN(pretty_reports);
       return 1;
     }
 
@@ -110,7 +112,9 @@ class PythonInterpreter : public Interpreter {
       cerr << "\nError executing Python script from PythonInterpreter::interpretString" << endl;
       cerr << "Name: " << name << endl;
       cerr << "Errors: " << endl;
-      BKE_reports_print(reports, RPT_ERROR);
+      char *pretty_reports = BKE_reports_sprintfN(reports, RPT_ERROR);
+      cerr << pretty_reports;
+      MEM_freeN(pretty_reports);
       return 1;
     }
 
@@ -129,7 +133,9 @@ class PythonInterpreter : public Interpreter {
       cerr << "\nError executing Python script from PythonInterpreter::interpretText" << endl;
       cerr << "Name: " << name << endl;
       cerr << "Errors: " << endl;
-      BKE_reports_print(reports, RPT_ERROR);
+      char *pretty_reports = BKE_reports_sprintfN(reports, RPT_ERROR);
+      cerr << pretty_reports;
+      MEM_freeN(pretty_reports);
       return 1;
     }
 
