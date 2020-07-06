@@ -3103,7 +3103,7 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
   wmWindow *win = CTX_wm_window(C);
   UI_popup_block_close(C, win, arg_block);
 
-  // todo add reports and log them
+  // TODO (grzelins) add reports and log them
   int modified_images_count = ED_image_save_all_modified_info(CTX_data_main(C), NULL);
   if (modified_images_count > 0 && save_images_when_file_is_closed) {
     if (ED_image_should_save_modified(bmain)) {

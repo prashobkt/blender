@@ -352,7 +352,6 @@ void WM_init(bContext *C, int argc, const char **argv)
    * Will try fix when the crash can be repeated. - campbell. */
 
 #ifdef WITH_PYTHON
-  // todo throws
   BPY_context_set(C); /* necessary evil */
   BPY_python_start(argc, argv);
 

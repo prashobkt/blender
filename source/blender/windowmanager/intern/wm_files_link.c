@@ -303,7 +303,7 @@ static bool wm_link_append_item_poll(ReportList *reports,
   short idcode;
 
   if (!group || !name) {
-    /* todo convert to report, but write why can not be linked. Right now it fails silently, not
+    /* TODO (grzelins) convert to report, but write why can not be linked. Right now it fails silently, not
      * great UX */
     CLOG_INFO(WM_LOG_OPERATORS,
               0,
