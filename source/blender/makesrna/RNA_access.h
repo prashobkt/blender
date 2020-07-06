@@ -558,6 +558,7 @@ extern StructRNA RNA_SimulationNodeTree;
 extern StructRNA RNA_SkinModifier;
 extern StructRNA RNA_SmoothGpencilModifier;
 extern StructRNA RNA_SmoothModifier;
+extern StructRNA RNA_SmoothContourModifier;
 extern StructRNA RNA_SoftBodyModifier;
 extern StructRNA RNA_SoftBodySettings;
 extern StructRNA RNA_SolidifyModifier;
