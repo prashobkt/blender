@@ -1648,6 +1648,11 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
 int ED_lineart_object_collection_usage_check(Collection *c, Object *ob)
 {
   CollectionChild *cc;
+
+  if (!c) {
+    return OBJECT_FEATURE_LINE_INHERENT;
+  }
+
   int object_is_used = (ob->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE ||
                         ob->lineart.usage == OBJECT_FEATURE_LINE_INHERENT);
 
