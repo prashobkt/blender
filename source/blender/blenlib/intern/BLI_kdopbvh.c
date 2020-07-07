@@ -94,7 +94,7 @@ typedef struct BVHNode {
 struct BVHTree {
   BVHNode **nodes;
   BVHNode *nodearray;  /* pre-alloc branch nodes */
-  BVHNode **nodechild; /* pre-alloc childs for nodes */
+  BVHNode **nodechild; /* pre-alloc children for nodes */
   float *nodebv;       /* pre-alloc bounding-volumes for nodes */
   float epsilon;       /* epslion is used for inflation of the k-dop      */
   int totleaf;         /* leafs */
@@ -168,6 +168,12 @@ typedef struct BVHNearestProjectedData {
   BVHTreeNearest nearest;
 
 } BVHNearestProjectedData;
+
+typedef struct BVHIntersectPlaneData {
+  const BVHTree *tree;
+  float plane[4];
+  struct BLI_Stack *intersect; /* Store indexes. */
+} BVHIntersectPlaneData;
 
 /** \} */
 
@@ -1388,6 +1394,71 @@ BVHTreeOverlap *BLI_bvhtree_overlap(
                                 userdata,
                                 0,
                                 BVH_OVERLAP_USE_THREADING | BVH_OVERLAP_RETURN_PAIRS);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name BLI_bvhtree_intersect_plane
+ * \{ */
+
+static bool tree_intersect_plane_test(const float *bv, const float plane[4])
+{
+  /* TODO(germano): Support other kdop geometries. */
+  const float bb_min[3] = {bv[0], bv[2], bv[4]};
+  const float bb_max[3] = {bv[1], bv[3], bv[5]};
+  float bb_near[3], bb_far[3];
+  aabb_get_near_far_from_plane(plane, bb_min, bb_max, bb_near, bb_far);
+  if ((plane_point_side_v3(plane, bb_near) > 0.0f) !=
+      (plane_point_side_v3(plane, bb_far) > 0.0f)) {
+    return true;
+  }
+
+  return false;
+}
+
+static void bvhtree_intersect_plane_dfs_recursive(BVHIntersectPlaneData *__restrict data,
+                                                  const BVHNode *node)
+{
+  if (tree_intersect_plane_test(node->bv, data->plane)) {
+    /* check if node is a leaf */
+    if (!node->totnode) {
+      int *intersect = BLI_stack_push_r(data->intersect);
+      *intersect = node->index;
+    }
+    else {
+      for (int j = 0; j < data->tree->tree_type; j++) {
+        if (node->children[j]) {
+          bvhtree_intersect_plane_dfs_recursive(data, node->children[j]);
+        }
+      }
+    }
+  }
+}
+
+int *BLI_bvhtree_intersect_plane(BVHTree *tree, float plane[4], uint *r_intersect_tot)
+{
+  int *intersect = NULL;
+  size_t total = 0;
+
+  BVHNode *root = tree->nodes[tree->totleaf];
+  if (root != NULL) {
+    BVHIntersectPlaneData data;
+    data.tree = tree;
+    copy_v4_v4(data.plane, plane);
+    data.intersect = BLI_stack_new(sizeof(int), __func__);
+
+    bvhtree_intersect_plane_dfs_recursive(&data, root);
+
+    total = BLI_stack_count(data.intersect);
+    if (total) {
+      intersect = MEM_mallocN(sizeof(int) * total, __func__);
+      BLI_stack_pop_n(data.intersect, intersect, (uint)total);
+    }
+    BLI_stack_free(data.intersect);
+  }
+  *r_intersect_tot = (uint)total;
+  return intersect;
 }
 
 /** \} */
