@@ -5291,6 +5291,29 @@ static void ui_layout_free_hide_buttons(uiLayout *layout)
   MEM_freeN(layout);
 }
 
+static bool ui_button_search_tag(uiBut *but, char *search_filter)
+{
+  if (BLI_strcasestr(but->str, search_filter)) {
+    return true;
+  }
+  if (BLI_strcasestr(RNA_property_ui_name(but->rnaprop), search_filter)) {
+    return true;
+  }
+  /* HANS-TODO: This isn't working. but->optype is always null for some reason?? */
+  // if (but->optype != NULL) {
+  //   if (BLI_strcasestr(but->optype->name, search_filter)) {
+  //     return true;
+  //   }
+  // }
+#ifdef PROPERTY_SEARCH_USE_TOOLTIPS
+  if (BLI_strcasestr(RNA_property_description(but->rnaprop), search_filter)) {
+    return true;
+  }
+#endif
+
+  return false;
+}
+
 /**
  * Tag all buttons with whether they matched the search filter or not.
  *
@@ -5312,12 +5335,7 @@ static void ui_block_search_filter_tag_buttons(uiBlock *block)
     }
 
     /* Do the shorter check first, in case the check returns true. */
-    if (BLI_strcasestr(but->str, block->search_filter) ||
-        BLI_strcasestr(RNA_property_ui_name(but->rnaprop), block->search_filter)
-#ifdef PROPERTY_SEARCH_USE_TOOLTIPS
-        || BLI_strcasestr(RNA_property_description(but->rnaprop), block->search_filter)
-#endif
-    ) {
+    if (ui_button_search_tag(but, block->search_filter)) {
       continue;
     }
 
