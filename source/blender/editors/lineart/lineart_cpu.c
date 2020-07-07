@@ -3798,8 +3798,7 @@ static void lineart_clear_gpencil_flags(Depsgraph *dg, int frame)
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
     if (ob->type == OB_GPENCIL) {
       bGPdata *gpd = ((Object *)ob->id.orig_id)->data;
-      bGPDlayer *gpl;
-      for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
         bGPDframe *gpf = BKE_gpencil_layer_frame_find(gpl, frame);
         if (gpf == NULL) {
           continue;
