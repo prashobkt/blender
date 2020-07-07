@@ -31,17 +31,5 @@
 
 void ED_operatortypes_lineart(void)
 {
-  /* lineart:  */
-  WM_operatortype_append(SCENE_OT_lineart_calculate_feature_lines);
-  WM_operatortype_append(SCENE_OT_lineart_add_line_layer);
-  WM_operatortype_append(SCENE_OT_lineart_delete_line_layer);
-  WM_operatortype_append(SCENE_OT_lineart_auto_create_line_layer);
-  WM_operatortype_append(SCENE_OT_lineart_move_line_layer);
-  WM_operatortype_append(SCENE_OT_lineart_enable_all_line_types);
   WM_operatortype_append(SCENE_OT_lineart_update_gp_strokes);
-  WM_operatortype_append(SCENE_OT_lineart_bake_gp_strokes);
-
-  WM_operatortype_append(OBJECT_OT_lineart_update_gp_target);
-  /* Not working */
-  /* WM_operatortype_append(OBJECT_OT_lineart_update_gp_source); */
 }
