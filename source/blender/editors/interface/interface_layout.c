@@ -5400,10 +5400,11 @@ static bool ui_block_layout_search_clean(uiBlock *block)
     bool empty = ui_layout_search_clean_recursive(root->layout);
     all_roots_empty &= empty;
 
-    /* Empty roots should have all sublayouts freed, but they needs to be freed too. */
+    /* If the root is empty, make sure it is freed along with all of its sublayouts. */
     if (empty) {
       BLI_assert(BLI_findindex(&block->layouts, root) != -1);
       BLI_remlink(&block->layouts, root);
+      ui_layout_free_hide_buttons(root->layout);
       MEM_freeN(root);
     }
   }
@@ -5498,7 +5499,6 @@ static bool ui_block_search_layout(uiBlock *block)
       ui_layout_free_hide_buttons(root->layout);
       BLI_remlink(&block->layouts, root);
       MEM_freeN(root);
-      MEM_freeN(root->layout);
     }
   }
 
