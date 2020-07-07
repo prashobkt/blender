@@ -169,7 +169,10 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
-  bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
+  bGPDframe *gpf = gpl->actframe;
+  if (gpf == NULL) {
+    return;
+  }
 
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 
@@ -187,7 +190,10 @@ static void bakeModifier(Main *UNUSED(bmain),
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
-  bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_ADD_NEW);
+  bGPDframe *gpf = gpl->actframe;
+  if (gpf == NULL) {
+    return;
+  }
 
   while (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
     ; /* TODO: Should use a "poll" callback to stop it from applying.
