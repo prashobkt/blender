@@ -706,8 +706,7 @@ class LRT_UL_linesets(UIList):
 
 
 class RENDER_PT_lineart(RenderButtonsPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL',
-                      'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     bl_label = "Line Art"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -747,7 +746,7 @@ class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
     bl_label = "Settings"
     bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         scene = context.scene
