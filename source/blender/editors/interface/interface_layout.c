@@ -761,7 +761,8 @@ static void ui_item_enum_expand_elem_exec(uiLayout *layout,
                                           const eButType but_type,
                                           const bool icon_only,
                                           const EnumPropertyItem *item,
-                                          const bool is_first)
+                                          const bool is_first,
+                                          uiBut *label_but)
 {
   const char *name = (!uiname || uiname[0]) ? item->name : "";
   const int icon = item->icon;
@@ -800,6 +801,10 @@ static void ui_item_enum_expand_elem_exec(uiLayout *layout,
   if (but_type == UI_BTYPE_TAB) {
     but->flag |= UI_BUT_DRAG_LOCK;
   }
+
+  if (label_but != NULL) {
+    but->label_but = label_but;
+  }
 }
 
 static void ui_item_enum_expand_exec(uiLayout *layout,
@@ -809,7 +814,8 @@ static void ui_item_enum_expand_exec(uiLayout *layout,
                                      const char *uiname,
                                      const int h,
                                      const eButType but_type,
-                                     const bool icon_only)
+                                     const bool icon_only,
+                                     uiBut *label_but)
 {
   /* XXX: The way this function currently handles uiname parameter
    * is insane and inconsistent with general UI API:
@@ -885,7 +891,7 @@ static void ui_item_enum_expand_exec(uiLayout *layout,
     }
 
     ui_item_enum_expand_elem_exec(
-        layout, block, ptr, prop, uiname, h, but_type, icon_only, item, is_first);
+        layout, block, ptr, prop, uiname, h, but_type, icon_only, item, is_first, label_but);
   }
 
   UI_block_layout_set_current(block, layout);
@@ -900,9 +906,11 @@ static void ui_item_enum_expand(uiLayout *layout,
                                 PropertyRNA *prop,
                                 const char *uiname,
                                 const int h,
-                                const bool icon_only)
+                                const bool icon_only,
+                                uiBut *label_but)
 {
-  ui_item_enum_expand_exec(layout, block, ptr, prop, uiname, h, UI_BTYPE_ROW, icon_only);
+  ui_item_enum_expand_exec(
+      layout, block, ptr, prop, uiname, h, UI_BTYPE_ROW, icon_only, label_but);
 }
 static void ui_item_enum_expand_tabs(uiLayout *layout,
                                      bContext *C,
@@ -915,7 +923,7 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
 {
   uiBut *last = block->buttons.last;
 
-  ui_item_enum_expand_exec(layout, block, ptr, prop, uiname, h, UI_BTYPE_TAB, icon_only);
+  ui_item_enum_expand_exec(layout, block, ptr, prop, uiname, h, UI_BTYPE_TAB, icon_only, NULL);
   BLI_assert(last != block->buttons.last);
   for (uiBut *tab = last ? last->next : block->buttons.first; tab; tab = tab->next) {
     UI_but_drawflag_enable(tab, ui_but_align_opposite_to_area_align_get(CTX_wm_region(C)));
@@ -2314,7 +2322,7 @@ void uiItemFullR(uiLayout *layout,
   /* expanded enum */
   else if (type == PROP_ENUM && expand) {
     /* HANS-TODO: Pass label here too. */
-    ui_item_enum_expand(layout, block, ptr, prop, name, h, icon_only);
+    ui_item_enum_expand(layout, block, ptr, prop, name, h, icon_only, label_but);
   }
   /* property with separate label */
   else if (type == PROP_ENUM || type == PROP_STRING || type == PROP_POINTER) {
