@@ -141,6 +141,9 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
    * done by calculation function.*/
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
+  if (gpl == NULL) {
+    return;
+  }
   bGPDframe *gpf = gpl->actframe;
   if (gpf == NULL) {
     return;
@@ -161,6 +164,9 @@ static void bakeModifier(Main *UNUSED(bmain),
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
+  if (gpl == NULL) {
+    return;
+  }
   bGPDframe *gpf = gpl->actframe;
   if (gpf == NULL) {
     return;
