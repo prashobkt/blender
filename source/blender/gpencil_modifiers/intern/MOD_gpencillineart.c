@@ -102,6 +102,10 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   bool is_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
 
+  if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IGNORE)) {
+    return;
+  }
+
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
     /* Update triggered when nothing's happening, means DG update, so we request a refresh on line
      * art cache, meanwhile waiting for result. Update will trigger agian */

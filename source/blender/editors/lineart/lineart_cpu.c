@@ -117,180 +117,6 @@ static void lineart_line_layer_unique_name(ListBase *list,
   BLI_uniquename(list, ll, defname, '.', offsetof(LineartLineLayer, name), sizeof(ll->name));
 }
 
-int ED_lineart_max_occlusion_in_line_layers(SceneLineart *lineart)
-{
-  LineartLineLayer *lli;
-  int max_occ = -1, max;
-  for (lli = lineart->line_layers.first; lli; lli = lli->next) {
-    if (lli->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS) {
-      max = MAX2(lli->level_start, lli->level_end);
-    }
-    else {
-      max = lli->level_start;
-    }
-    max_occ = MAX2(max, max_occ);
-  }
-  return max_occ;
-}
-LineartLineLayer *ED_lineart_new_line_layer(SceneLineart *lineart)
-{
-  LineartLineLayer *ll = MEM_callocN(sizeof(LineartLineLayer), "Line Layer");
-
-  lineart_line_layer_unique_name(&lineart->line_layers, ll, "Layer");
-
-  int max_occ = ED_lineart_max_occlusion_in_line_layers(lineart);
-
-  ll->level_start = ll->level_end = max_occ + 1;
-  ll->flags |= LRT_LINE_LAYER_USE_SAME_STYLE;
-  ll->thickness = 1.0f;
-  copy_v3_fl(ll->color, 0.8);
-  ll->color[3] = 1.0f;
-  ll->contour.use = 1;
-  ll->crease.use = 1;
-  ll->material_separate.use = 1;
-  ll->edge_mark.use = 1;
-  ll->intersection.use = 1;
-
-  ll->normal_thickness_start = 0.2f;
-  ll->normal_thickness_end = 1.5f;
-  ll->normal_ramp_begin = 0.0f;
-  ll->normal_ramp_end = 1.0f;
-
-  ll->normal_mode = LRT_NORMAL_DIRECTIONAL;
-
-  lineart->active_layer = ll;
-  BLI_addtail(&lineart->line_layers, ll);
-
-  return ll;
-}
-static int lineart_add_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLineart *lineart = &scene->lineart;
-
-  ED_lineart_new_line_layer(lineart);
-
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
-
-  return OPERATOR_FINISHED;
-}
-static int lineart_delete_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLineart *lineart = &scene->lineart;
-
-  LineartLineLayer *ll = lineart->active_layer;
-
-  if (ll == NULL) {
-    return OPERATOR_FINISHED;
-  }
-
-  if (ll->prev) {
-    lineart->active_layer = ll->prev;
-  }
-  else if (ll->next) {
-    lineart->active_layer = ll->next;
-  }
-  else {
-    lineart->active_layer = 0;
-  }
-
-  BLI_remlink(&scene->lineart.line_layers, ll);
-
-  MEM_freeN(ll);
-
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
-
-  return OPERATOR_FINISHED;
-}
-static int lineart_move_line_layer_exec(bContext *C, wmOperator *op)
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLineart *lineart = &scene->lineart;
-
-  LineartLineLayer *ll = lineart->active_layer;
-
-  if (ll == NULL) {
-    return OPERATOR_FINISHED;
-  }
-
-  int dir = RNA_enum_get(op->ptr, "direction");
-
-  if (dir == 1 && ll->prev) {
-    BLI_remlink(&lineart->line_layers, ll);
-    BLI_insertlinkbefore(&lineart->line_layers, ll->prev, ll);
-  }
-  else if (dir == -1 && ll->next) {
-    BLI_remlink(&lineart->line_layers, ll);
-    BLI_insertlinkafter(&lineart->line_layers, ll->next, ll);
-  }
-
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-
-  return OPERATOR_FINISHED;
-}
-
-static int lineart_enable_all_line_types_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLineart *lineart = &scene->lineart;
-  LineartLineLayer *ll;
-
-  if (!(ll = lineart->active_layer)) {
-    return OPERATOR_FINISHED;
-  }
-
-  ll->contour.use = 1;
-  ll->crease.use = 1;
-  ll->edge_mark.use = 1;
-  ll->material_separate.use = 1;
-  ll->intersection.use = 1;
-
-  copy_v3_v3(ll->contour.color, ll->color);
-  copy_v3_v3(ll->crease.color, ll->color);
-  copy_v3_v3(ll->edge_mark.color, ll->color);
-  copy_v3_v3(ll->material_separate.color, ll->color);
-  copy_v3_v3(ll->intersection.color, ll->color);
-
-  ll->contour.thickness = 1;
-  ll->crease.thickness = 1;
-  ll->material_separate.thickness = 1;
-  ll->edge_mark.thickness = 1;
-  ll->intersection.thickness = 1;
-
-  return OPERATOR_FINISHED;
-}
-static int lineart_auto_create_line_layer_exec(bContext *C, wmOperator *op)
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLineart *lineart = &scene->lineart;
-
-  LineartLineLayer *ll;
-
-  ll = ED_lineart_new_line_layer(lineart);
-  ll->thickness = 1.7;
-
-  lineart_enable_all_line_types_exec(C, op);
-
-  ll = ED_lineart_new_line_layer(lineart);
-  ll->thickness = 0.9;
-  copy_v3_fl(ll->color, 0.6);
-
-  lineart_enable_all_line_types_exec(C, op);
-
-  ll = ED_lineart_new_line_layer(lineart);
-  ll->thickness = 0.7;
-  copy_v3_fl(ll->color, 0.5);
-
-  lineart_enable_all_line_types_exec(C, op);
-
-  return OPERATOR_FINISHED;
-}
-
 /* Geometry */
 
 int use_smooth_contour_modifier_contour = 0; /*  debug purpose */
@@ -4051,15 +3877,17 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   lineart_share.main_window = CTX_wm_window(C);
 
   for (frame = frame_begin; frame <= frame_end; frame++) {
+
+    /* Reset flags. LRT_SYNC_IGNORE prevent any line art modifiers run calculation function when
+     * depsgraph calls for modifier evalurates. */
+    ED_lineart_modifier_sync_set_flag(LRT_SYNC_IGNORE, false);
+    ED_lineart_calculation_set_flag(LRT_RENDER_IDLE);
+
     BKE_scene_frame_set(scene, frame);
     BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
 
     ED_lineart_update_render_progress((int)((float)(frame - frame_begin) / frame_total * 100),
                                       NULL);
-
-    /* Reset flags. */
-    ED_lineart_modifier_sync_set_flag(LRT_SYNC_IDLE, false);
-    ED_lineart_calculation_set_flag(LRT_RENDER_IDLE);
 
     BLI_spin_lock(&lineart_share.lock_loader);
     ED_lineart_compute_feature_lines_background(dg, 0);
@@ -4100,6 +3928,7 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
     FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
   }
 
+  ED_lineart_modifier_sync_set_flag(LRT_SYNC_IDLE, false);
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);

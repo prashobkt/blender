@@ -266,6 +266,7 @@ typedef enum eLineartModifierSyncStatus {
   LRT_SYNC_IDLE = 0,
   LRT_SYNC_WAITING = 1,
   LRT_SYNC_FRESH = 2,
+  LRT_SYNC_IGNORE = 3,
 } eLineartModifierSyncStatus;
 
 typedef struct LineartSharedResource {
