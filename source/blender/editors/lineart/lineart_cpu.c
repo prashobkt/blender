@@ -148,6 +148,7 @@ static void lineart_cut_render_line(LineartRenderBuffer *rb,
     end = t;
   }
 
+  /* Keeping the loop in this function for clarity in iterating through the segments. */
   for (rls = rl->segments.first; rls; rls = rls->next) {
     if (TNS_DOUBLE_CLOSE_ENOUGH(rls->at, begin)) {
       begin_segment = rls;
@@ -234,7 +235,7 @@ static void lineart_cut_render_line(LineartRenderBuffer *rb,
   }
 
   char min_occ = 127;
-  for (rls = rl->segments.first; rls; rls = rls->next) {
+  LISTBASE_FOREACH (LineartRenderLineSegment *, rls, &rl->segments) {
     min_occ = MIN2(min_occ, rls->occlusion);
   }
   rl->min_occ = min_occ;
@@ -340,7 +341,7 @@ static void lineart_calculate_single_line_occlusion(LineartRenderBuffer *rb,
   LineartBoundingArea *ba = lineart_get_first_possible_bounding_area(rb, rl);
   LineartBoundingArea *nba = ba;
   LineartRenderTriangleThread *rt;
-  LinkData *lip;
+
   double l, r;
   double k = (rl->r->fbcoord[1] - rl->l->fbcoord[1]) /
              (rl->r->fbcoord[0] - rl->l->fbcoord[0] + 1e-30);
@@ -353,7 +354,7 @@ static void lineart_calculate_single_line_occlusion(LineartRenderBuffer *rb,
 
   while (nba) {
 
-    for (lip = nba->linked_triangles.first; lip; lip = lip->next) {
+    LISTBASE_FOREACH (LinkData *, lip, &nba->linked_triangles) {
       rt = lip->data;
       if (rt->testing[thread_id] == rl || rl->l->intersecting_with == (void *)rt ||
           rl->r->intersecting_with == (void *)rt) {
@@ -672,7 +673,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
   LineartRenderLine *rl;
   LineartRenderTriangle *rt, *rt1, *rt2;
   LineartRenderVert *rv;
-  LineartRenderElementLinkNode *reln, *veln, *teln;
+  LineartRenderElementLinkNode *veln, *teln;
   LineartRenderLineSegment *rls;
   double(*vp)[4] = rb->view_projection;
   int i;
@@ -696,7 +697,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
   rv = &((LineartRenderVert *)veln->pointer)[v_count];
   rt1 = (void *)(((unsigned char *)teln->pointer) + rb->triangle_size * t_count);
 
-  for (reln = rb->triangle_buffer_pointers.first; reln; reln = reln->next) {
+  LISTBASE_FOREACH (LineartRenderElementLinkNode *, reln, &rb->triangle_buffer_pointers) {
     if (reln->additional) {
       continue;
     }
@@ -1291,14 +1292,13 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
 static void lineart_perspective_division(LineartRenderBuffer *rb)
 {
   LineartRenderVert *rv;
-  LineartRenderElementLinkNode *reln;
   int i;
 
   if (!rb->cam_is_persp) {
     return;
   }
 
-  for (reln = rb->vertex_buffer_pointers.first; reln; reln = reln->next) {
+  LISTBASE_FOREACH (LineartRenderElementLinkNode *, reln, &rb->vertex_buffer_pointers) {
     rv = reln->pointer;
     for (i = 0; i < reln->element_count; i++) {
       mul_v3db_db(rv[i].fbcoord, 1 / rv[i].fbcoord[3]);
@@ -1473,7 +1473,6 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
 
 int ED_lineart_object_collection_usage_check(Collection *c, Object *ob)
 {
-  CollectionChild *cc;
 
   if (!c) {
     return OBJECT_FEATURE_LINE_INHERENT;
@@ -1515,7 +1514,7 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *ob)
     }
   }
 
-  for (cc = c->children.first; cc; cc = cc->next) {
+  LISTBASE_FOREACH (CollectionChild *, cc, &c->children) {
     int result = ED_lineart_object_collection_usage_check(cc->collection, ob);
     if (result > OBJECT_FEATURE_LINE_INHERENT) {
       return result;
@@ -1927,11 +1926,11 @@ static LineartRenderVert *lineart_triangle_line_intersection_test(LineartRenderB
   double Lv[3];
   double Rv[3];
   double dot_l, dot_r;
-  LineartRenderVert *result, *rv;
+  LineartRenderVert *result;
   double gloc[3];
   LineartRenderVert *l = rl->l, *r = rl->r;
 
-  for (rv = testing->intersecting_verts.first; rv; rv = rv->next) {
+  LISTBASE_FOREACH (LineartRenderVert *, rv, &testing->intersecting_verts) {
     if (rv->intersecting_with == rt && rv->intersecting_line == rl) {
       return rv;
     }
@@ -2196,7 +2195,6 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
   double dot_1 = 0, dot_2 = 0;
   double result;
   int add = 0;
-  LineartRenderLine *rl;
   int contour_count = 0;
   int crease_count = 0;
   int material_count = 0;
@@ -2205,7 +2203,7 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
     lineart_compute_view_vector(rb);
   }
 
-  for (rl = rb->all_render_lines.first; rl; rl = rl->next) {
+  LISTBASE_FOREACH (LineartRenderLine *, rl, &rb->all_render_lines) {
 
     add = 0;
     dot_1 = 0;
@@ -2478,14 +2476,12 @@ static int lineart_get_render_triangle_size(LineartRenderBuffer *rb, const Scene
 int ED_lineart_count_leveled_edge_segment_count(const ListBase *line_list,
                                                 const LineartLineLayer *ll)
 {
-  LinkData *lip;
   LineartRenderLine *rl;
-  LineartRenderLineSegment *rls;
   int count = 0;
-  for (lip = line_list->first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, line_list) {
     rl = lip->data;
 
-    for (rls = rl->segments.first; rls; rls = rls->next) {
+    LISTBASE_FOREACH (LineartRenderLineSegment *, rls, &rl->segments) {
 
       if (!(ll->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS)) {
         if (rls->occlusion == ll->level_start) {
@@ -2503,85 +2499,12 @@ int ED_lineart_count_leveled_edge_segment_count(const ListBase *line_list,
 }
 int lineart_count_intersection_segment_count(LineartRenderBuffer *rb)
 {
-  LineartRenderLine *rl;
   int count = 0;
-  for (rl = rb->intersection_lines.first; rl; rl = rl->next) {
+  LISTBASE_FOREACH (LineartRenderLine *, rl, &rb->intersection_lines) {
     count++;
   }
   return count;
 }
-void *ED_lineart_make_leveled_edge_vertex_array(LineartRenderBuffer *UNUSED(rb),
-                                                const ListBase *line_list,
-                                                float *vertexArray,
-                                                float *normal_array,
-                                                float **next_normal,
-                                                const LineartLineLayer *ll,
-                                                const float componet_id)
-{
-  LinkData *lip;
-  LineartRenderLine *rl;
-  LineartRenderLineSegment *rls, *irls;
-  float *v = vertexArray;
-  float *N = normal_array;
-  for (lip = line_list->first; lip; lip = lip->next) {
-    rl = lip->data;
-
-    for (rls = rl->segments.first; rls; rls = rls->next) {
-      int use = 0;
-      if (!(ll->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS)) {
-        if (rls->occlusion == ll->level_start) {
-          use = 1;
-        }
-      }
-      else {
-        if (rls->occlusion >= ll->level_start && rls->occlusion <= ll->level_end) {
-          use = 1;
-        }
-      }
-
-      if (!use)
-        continue;
-
-      if (rl->tl) {
-        N[0] += rl->tl->gn[0];
-        N[1] += rl->tl->gn[1];
-        N[2] += rl->tl->gn[2];
-      }
-      if (rl->tr) {
-        N[0] += rl->tr->gn[0];
-        N[1] += rl->tr->gn[1];
-        N[2] += rl->tr->gn[2];
-      }
-      if (rl->tl || rl->tr) {
-        normalize_v3(N);
-        copy_v3_v3(&N[3], N);
-      }
-      N += 6;
-
-      CLAMP(rls->at, 0, 1);
-      if ((irls = rls->next) != NULL) {
-        CLAMP(irls->at, 0, 1);
-      }
-
-      *v = interpf(rl->r->fbcoord[0], rl->l->fbcoord[0], rls->at);
-      v++;
-      *v = interpf(rl->r->fbcoord[1], rl->l->fbcoord[1], rls->at);
-      v++;
-      *v = componet_id;
-      v++;
-      *v = interpf(rl->r->fbcoord[0], rl->l->fbcoord[0], irls ? irls->at : 1);
-      v++;
-      *v = interpf(rl->r->fbcoord[1], rl->l->fbcoord[1], irls ? irls->at : 1);
-      v++;
-      *v = componet_id;
-      v++;
-    }
-  }
-  *next_normal = N;
-  return v;
-}
-
-void lineart_chain_generate_draw_command(LineartRenderBuffer *rb);
 
 #define TNS_BOUND_AREA_CROSSES(b1, b2) \
   ((b1)[0] < (b2)[1] && (b1)[1] > (b2)[0] && (b1)[3] < (b2)[2] && (b1)[2] > (b2)[3])
@@ -2653,7 +2576,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
 
   /** Connect 4 child bounding areas to other areas that are
    * adjacent to their original parents */
-  for (lip = root->lp.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->lp) {
 
     /** For example, we are dealing with parent'scene left side
      * tba represents each adjacent neighbor of the parent.
@@ -2672,7 +2595,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
       list_append_pointer_static_pool(mph, &tba->rp, &ba[2]);
     }
   }
-  for (lip = root->rp.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->rp) {
     tba = lip->data;
     if (ba[0].u > tba->b && ba[0].b < tba->u) {
       list_append_pointer_static_pool(mph, &ba[0].rp, tba);
@@ -2683,7 +2606,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
       list_append_pointer_static_pool(mph, &tba->lp, &ba[3]);
     }
   }
-  for (lip = root->up.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->up) {
     tba = lip->data;
     if (ba[0].r > tba->l && ba[0].l < tba->r) {
       list_append_pointer_static_pool(mph, &ba[0].up, tba);
@@ -2694,7 +2617,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
       list_append_pointer_static_pool(mph, &tba->bp, &ba[1]);
     }
   }
-  for (lip = root->bp.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->bp) {
     tba = lip->data;
     if (ba[2].r > tba->l && ba[2].l < tba->r) {
       list_append_pointer_static_pool(mph, &ba[2].bp, tba);
@@ -2708,7 +2631,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
 
   /** Then remove the parent bounding areas from
    * their original adjacent areas. */
-  for (lip = root->lp.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->lp) {
     for (lip2 = ((LineartBoundingArea *)lip->data)->rp.first; lip2; lip2 = next_lip) {
       next_lip = lip2->next;
       tba = lip2->data;
@@ -2723,7 +2646,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
       }
     }
   }
-  for (lip = root->rp.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->rp) {
     for (lip2 = ((LineartBoundingArea *)lip->data)->lp.first; lip2; lip2 = next_lip) {
       next_lip = lip2->next;
       tba = lip2->data;
@@ -2738,7 +2661,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
       }
     }
   }
-  for (lip = root->up.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->up) {
     for (lip2 = ((LineartBoundingArea *)lip->data)->bp.first; lip2; lip2 = next_lip) {
       next_lip = lip2->next;
       tba = lip2->data;
@@ -2753,7 +2676,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
       }
     }
   }
-  for (lip = root->bp.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &root->bp) {
     for (lip2 = ((LineartBoundingArea *)lip->data)->up.first; lip2; lip2 = next_lip) {
       next_lip = lip2->next;
       tba = lip2->data;
@@ -3161,13 +3084,12 @@ LineartBoundingArea *ED_lineart_get_point_bounding_area_deep(LineartRenderBuffer
 
 static void lineart_add_triangles(LineartRenderBuffer *rb)
 {
-  LineartRenderElementLinkNode *reln;
   LineartRenderTriangle *rt;
   int i, lim;
   int x1, x2, y1, y2;
   int r, co;
 
-  for (reln = rb->triangle_buffer_pointers.first; reln; reln = reln->next) {
+  LISTBASE_FOREACH (LineartRenderElementLinkNode *, reln, &rb->triangle_buffer_pointers) {
     rt = reln->pointer;
     lim = reln->element_count;
     for (i = 0; i < lim; i++) {
@@ -3203,7 +3125,6 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
   double rx, ry, ux, uy, lx, ly, bx, by;
   double r1, r2;
   LineartBoundingArea *ba;
-  LinkData *lip;
 
   /* If we are marching towards the right */
   if (positive_x > 0) {
@@ -3222,7 +3143,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
 
       /* we reached the right side before the top side */
       if (r1 <= r2) {
-        for (lip = this->rp.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->rp) {
           ba = lip->data;
           if (ba->u >= ry && ba->b < ry) {
             *next_x = rx;
@@ -3233,7 +3154,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
       }
       /* we reached the top side before the right side */
       else {
-        for (lip = this->up.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->up) {
           ba = lip->data;
           if (ba->r >= ux && ba->l < ux) {
             *next_x = ux;
@@ -3253,7 +3174,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
         return 0;
       }
       if (r1 <= r2) {
-        for (lip = this->rp.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->rp) {
           ba = lip->data;
           if (ba->u >= ry && ba->b < ry) {
             *next_x = rx;
@@ -3263,7 +3184,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
         }
       }
       else {
-        for (lip = this->bp.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->bp) {
           ba = lip->data;
           if (ba->r >= bx && ba->l < bx) {
             *next_x = bx;
@@ -3279,7 +3200,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
       if (r1 > 1) {
         return 0;
       }
-      for (lip = this->rp.first; lip; lip = lip->next) {
+      LISTBASE_FOREACH (LinkData *, lip, &this->rp) {
         ba = lip->data;
         if (ba->u >= y && ba->b < y) {
           *next_x = this->r;
@@ -3305,7 +3226,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
         return 0;
       }
       if (r1 <= r2) {
-        for (lip = this->lp.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->lp) {
           ba = lip->data;
           if (ba->u >= ly && ba->b < ly) {
             *next_x = lx;
@@ -3315,7 +3236,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
         }
       }
       else {
-        for (lip = this->up.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->up) {
           ba = lip->data;
           if (ba->r >= ux && ba->l < ux) {
             *next_x = ux;
@@ -3336,7 +3257,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
         return 0;
       }
       if (r1 <= r2) {
-        for (lip = this->lp.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->lp) {
           ba = lip->data;
           if (ba->u >= ly && ba->b < ly) {
             *next_x = lx;
@@ -3346,7 +3267,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
         }
       }
       else {
-        for (lip = this->bp.first; lip; lip = lip->next) {
+        LISTBASE_FOREACH (LinkData *, lip, &this->bp) {
           ba = lip->data;
           if (ba->r >= bx && ba->l < bx) {
             *next_x = bx;
@@ -3362,7 +3283,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
       if (r1 > 1) {
         return 0;
       }
-      for (lip = this->lp.first; lip; lip = lip->next) {
+      LISTBASE_FOREACH (LinkData *, lip, &this->lp) {
         ba = lip->data;
         if (ba->u >= y && ba->b < y) {
           *next_x = this->l;
@@ -3379,7 +3300,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
       if (r1 > 1) {
         return 0;
       }
-      for (lip = this->up.first; lip; lip = lip->next) {
+      LISTBASE_FOREACH (LinkData *, lip, &this->up) {
         ba = lip->data;
         if (ba->r > x && ba->l <= x) {
           *next_x = x;
@@ -3393,7 +3314,7 @@ static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *
       if (r1 > 1) {
         return 0;
       }
-      for (lip = this->bp.first; lip; lip = lip->next) {
+      LISTBASE_FOREACH (LinkData *, lip, &this->bp) {
         ba = lip->data;
         if (ba->r > x && ba->l <= x) {
           *next_x = x;
@@ -3729,9 +3650,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
   unit_m4(mat);
 
-  LineartRenderLineChain *rlc;
-  LineartRenderLineChainItem *rlci;
-  for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
+  LISTBASE_FOREACH (LineartRenderLineChain *, rlc, &rb->chains) {
 
     if (rlc->picked) {
       continue;
@@ -3772,7 +3691,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     float *stroke_data = MEM_callocN(sizeof(float) * count * GP_PRIM_DATABUF_SIZE,
                                      "line art add stroke");
 
-    for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
+    LISTBASE_FOREACH (LineartRenderLineChainItem *, rlci, &rlc->chain) {
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
       stroke_data[array_idx + 2] = rlci->gpos[2];
