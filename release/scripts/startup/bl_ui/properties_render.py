@@ -756,7 +756,7 @@ class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_lineart_baking(RenderButtonsPanel, Panel):
-    bl_label = "Settings"
+    bl_label = "Baking"
     bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}

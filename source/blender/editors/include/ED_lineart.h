@@ -506,10 +506,10 @@ void ED_lineart_modifier_sync_set_flag(eLineartModifierSyncStatus flag, bool is_
 bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag);
 
 int ED_lineart_compute_feature_lines_internal(struct Depsgraph *depsgraph,
-                                              const int instersections_only);
+                                              const int show_frame_progress);
 
 void ED_lineart_compute_feature_lines_background(struct Depsgraph *dg,
-                                                 const int intersection_only);
+                                                 const int show_frame_progress);
 
 struct Scene;
 

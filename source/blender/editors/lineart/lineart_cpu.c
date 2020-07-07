@@ -3650,11 +3650,12 @@ static LineartBoundingArea *lineart_get_first_possible_bounding_area(LineartRend
 /* Calculations */
 
 /** Parent thread locking should be done before this very function is called. */
-int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int intersectons_only)
+int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int show_frame_progress)
 {
   LineartRenderBuffer *rb;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   SceneLineart *lineart = &scene->lineart;
+  int intersections_only = 0; /* Not used right now, but preserve for future. */
 
   if ((lineart->flags & LRT_ENABLED) == 0) {
     /* Release lock when early return. */
@@ -3677,7 +3678,9 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
 
   rb->max_occlusion_level = lineart_get_max_occlusion_level(depsgraph);
 
-  ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
+  if (show_frame_progress) {
+    ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
+  }
 
   lineart_make_render_geometry_buffers(depsgraph, scene, scene->camera, rb);
 
@@ -3692,24 +3695,34 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
 
   lineart_make_initial_bounding_areas(rb);
 
-  if (!intersectons_only) {
+  if (show_frame_progress) {
+    ED_lineart_update_render_progress(10, "LRT: Computing contour lines.");
+  }
+
+  if (!intersections_only) {
     lineart_compute_scene_contours(rb, lineart->crease_threshold);
   }
 
-  ED_lineart_update_render_progress(25, "LRT: Computing intersections.");
+  if (show_frame_progress) {
+    ED_lineart_update_render_progress(25, "LRT: Computing intersections.");
+  }
 
   lineart_add_triangles(rb);
 
-  ED_lineart_update_render_progress(50, "LRT: Computing line occlusion.");
+  if (show_frame_progress) {
+    ED_lineart_update_render_progress(50, "LRT: Computing line occlusion.");
+  }
 
-  if (!intersectons_only) {
+  if (!intersections_only) {
     lineart_calculate_line_occlusion_begin(rb);
   }
 
-  ED_lineart_update_render_progress(75, "LRT: Chaining.");
+  if (show_frame_progress) {
+    ED_lineart_update_render_progress(75, "LRT: Chaining.");
+  }
 
   /* intersection_only is preserved for furure functions.*/
-  if (!intersectons_only) {
+  if (!intersections_only) {
     float t_image = scene->lineart.chaining_image_threshold;
     float t_geom = scene->lineart.chaining_geometry_threshold;
 
@@ -3739,7 +3752,9 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
   // Set after GP done.
   // ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 
-  ED_lineart_update_render_progress(100, "LRT: Finished.");
+  if (show_frame_progress) {
+    ED_lineart_update_render_progress(100, "LRT: Finished.");
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -3747,6 +3762,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
 typedef struct LRT_FeatureLineWorker {
   Depsgraph *dg;
   int intersection_only;
+  int show_frame_progress;
 } LRT_FeatureLineWorker;
 
 static void lineart_update_gpencil_strokes_actual(Scene *scene, Depsgraph *dg);
@@ -3756,7 +3772,7 @@ static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(poo
                                                  LRT_FeatureLineWorker *worker_data)
 {
 
-  ED_lineart_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
+  ED_lineart_compute_feature_lines_internal(worker_data->dg, worker_data->show_frame_progress);
   ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
 
   /* Calculation is done, give fresh data. */
@@ -3767,7 +3783,7 @@ static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(poo
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 }
 
-void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int intersection_only)
+void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_frame_progress)
 {
   TaskPool *tp_read;
   BLI_spin_lock(&lineart_share.lock_render_status);
@@ -3790,7 +3806,8 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int inters
   LRT_FeatureLineWorker *flw = MEM_callocN(sizeof(LRT_FeatureLineWorker), "LRT Worker");
 
   flw->dg = dg;
-  flw->intersection_only = intersection_only;
+  flw->intersection_only = 0 /* Not used for CPU */;
+  flw->show_frame_progress = show_frame_progress;
 
   TaskPool *tp = BLI_task_pool_create_background(0, TASK_PRIORITY_HIGH);
   BLI_spin_lock(&lineart_share.lock_render_status);
@@ -4021,10 +4038,23 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   int frame;
   int frame_begin = scene->r.sfra;
   int frame_end = scene->r.efra;
+  int frame_total = frame_end - frame_begin;
+  LineartGpencilModifierData *lmd;
+
+  /* Needed for progress report. */
+  lineart_share.wm = CTX_wm_manager(C);
+  lineart_share.main_window = CTX_wm_window(C);
 
   for (frame = frame_begin; frame <= frame_end; frame++) {
     BKE_scene_frame_set(scene, frame);
     BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
+
+    ED_lineart_update_render_progress((int)((float)(frame - frame_begin) / frame_total * 100),
+                                      NULL);
+
+    /* Reset flags. */
+    ED_lineart_modifier_sync_set_flag(LRT_SYNC_IDLE, false);
+    ED_lineart_calculation_set_flag(LRT_RENDER_IDLE);
 
     BLI_spin_lock(&lineart_share.lock_loader);
     ED_lineart_compute_feature_lines_background(dg, 0);
@@ -4034,11 +4064,42 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
     }
 
     ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
+
+    FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
+        scene->master_collection, ob, DAG_EVAL_RENDER) {
+      if (ob->type == OB_GPENCIL) {
+        LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
+          if (md->type == eGpencilModifierType_Lineart) {
+            lmd = (LineartGpencilModifierData *)md;
+            bGPdata *gpd = ob->data;
+            bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
+            bGPDframe *gpf = BKE_gpencil_frame_addnew(gpl, frame);
+            ED_generate_strokes_direct(
+                dg,
+                ob,
+                gpl,
+                gpf,
+                lmd->source_type,
+                lmd->source_type == LRT_SOURCE_OBJECT ? lmd->source_object :
+                                                        lmd->source_collection,
+                lmd->level_start,
+                lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
+                lmd->target_material ?
+                    BKE_gpencil_object_material_index_get(ob, lmd->target_material) :
+                    0,
+                lmd->line_types);
+          }
+        }
+      }
+    }
+    FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
   }
 
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
+
+  ED_lineart_update_render_progress(100, NULL);
 
   return OPERATOR_FINISHED;
 }
@@ -4104,7 +4165,7 @@ void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph 
        * to wait for the worker to finish. The lock will be released in the compute function.
        */
       BLI_spin_lock(&lineart_share.lock_loader);
-      ED_lineart_compute_feature_lines_background(dg, 0);
+      ED_lineart_compute_feature_lines_background(dg, 1);
 
       /* Wait for loading finish */
       BLI_spin_lock(&lineart_share.lock_loader);
@@ -4132,6 +4193,8 @@ void ED_lineart_update_render_progress(int nr, const char *info)
     }
   }
 #ifdef DEBUG
-  printf("%scene\n", info);
+  if (info) {
+    printf("%s\n", info);
+  }
 #endif
 }
