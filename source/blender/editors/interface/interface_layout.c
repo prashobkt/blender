@@ -5293,23 +5293,24 @@ static void ui_layout_free_hide_buttons(uiLayout *layout)
 
 static bool ui_button_search_tag(uiBut *but, char *search_filter)
 {
-  if (BLI_strcasestr(but->str, search_filter)) {
-    return true;
+  if (but->optype != NULL) {
+    if (BLI_strcasestr(but->optype->name, search_filter)) {
+      return true;
+    }
   }
-  if (BLI_strcasestr(RNA_property_ui_name(but->rnaprop), search_filter)) {
-    return true;
-  }
-  /* HANS-TODO: This isn't working. but->optype is always null for some reason?? */
-  // if (but->optype != NULL) {
-  //   if (BLI_strcasestr(but->optype->name, search_filter)) {
-  //     return true;
-  //   }
-  // }
+  if (but->rnaprop != NULL) {
+    if (BLI_strcasestr(but->str, search_filter)) {
+      return true;
+    }
+    if (BLI_strcasestr(RNA_property_ui_name(but->rnaprop), search_filter)) {
+      return true;
+    }
 #ifdef PROPERTY_SEARCH_USE_TOOLTIPS
-  if (BLI_strcasestr(RNA_property_description(but->rnaprop), search_filter)) {
-    return true;
-  }
+    if (BLI_strcasestr(RNA_property_description(but->rnaprop), search_filter)) {
+      return true;
+    }
 #endif
+  }
 
   return false;
 }
@@ -5323,12 +5324,6 @@ static bool ui_button_search_tag(uiBut *but, char *search_filter)
 static void ui_block_search_filter_tag_buttons(uiBlock *block)
 {
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    /* Flag all buttons with no RNA property. This is probably too strict. */
-    if (but->rnaprop == NULL) {
-      but->flag |= UI_FILTERED;
-      continue;
-    }
-
     /* Flag all label buttons, we don't want to re-display them. */
     if (but->type == UI_BTYPE_LABEL) {
       but->flag |= UI_FILTERED;
