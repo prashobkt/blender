@@ -291,62 +291,6 @@ static int lineart_auto_create_line_layer_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void SCENE_OT_lineart_add_line_layer(wmOperatorType *ot)
-{
-
-  ot->name = "Add Line Layer";
-  ot->description = "Add a new line layer";
-  ot->idname = "SCENE_OT_lineart_add_line_layer";
-
-  ot->exec = lineart_add_line_layer_exec;
-}
-void SCENE_OT_lineart_delete_line_layer(wmOperatorType *ot)
-{
-
-  ot->name = "Delete Line Layer";
-  ot->description = "Delete selected line layer";
-  ot->idname = "SCENE_OT_lineart_delete_line_layer";
-
-  ot->exec = lineart_delete_line_layer_exec;
-}
-void SCENE_OT_lineart_auto_create_line_layer(wmOperatorType *ot)
-{
-
-  ot->name = "Auto Create Line Layer";
-  ot->description = "Automatically create defalt line layer config";
-  ot->idname = "SCENE_OT_lineart_auto_create_line_layer";
-
-  ot->exec = lineart_auto_create_line_layer_exec;
-}
-void SCENE_OT_lineart_move_line_layer(wmOperatorType *ot)
-{
-  static const EnumPropertyItem line_layer_move[] = {
-      {1, "UP", 0, "Up", ""}, {-1, "DOWN", 0, "Down", ""}, {0, NULL, 0, NULL, NULL}};
-
-  ot->name = "Move Line Layer";
-  ot->description = "Move LRT line layer up and down";
-  ot->idname = "SCENE_OT_lineart_move_line_layer";
-
-  /*  this need property to assign up/down direction */
-
-  ot->exec = lineart_move_line_layer_exec;
-
-  RNA_def_enum(ot->srna,
-               "direction",
-               line_layer_move,
-               0,
-               "Direction",
-               "Direction to move the active line layer towards");
-}
-void SCENE_OT_lineart_enable_all_line_types(wmOperatorType *ot)
-{
-  ot->name = "Enable All Line Types";
-  ot->description = "Enable All Line Types In This Line Layer";
-  ot->idname = "SCENE_OT_lineart_enable_all_line_types";
-
-  ot->exec = lineart_enable_all_line_types_exec;
-}
-
 /* Geometry */
 
 int use_smooth_contour_modifier_contour = 0; /*  debug purpose */
@@ -3805,7 +3749,7 @@ typedef struct LRT_FeatureLineWorker {
   int intersection_only;
 } LRT_FeatureLineWorker;
 
-static void lineart_update_gp_strokes_actual(Scene *scene, Depsgraph *dg);
+static void lineart_update_gpencil_strokes_actual(Scene *scene, Depsgraph *dg);
 static void lineart_notify_gpencil_targets(Depsgraph *dg);
 
 static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
@@ -3860,53 +3804,6 @@ static bool lineart_camera_exists(bContext *c)
 {
   Scene *scene = CTX_data_scene(c);
   return scene->camera ? true : false;
-}
-static int lineart_compute_feature_lines_exec(bContext *C, wmOperator *op)
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLineart *lineart = &scene->lineart;
-
-  if ((lineart->flags & LRT_ENABLED) == 0) {
-    return OPERATOR_CANCELLED;
-  }
-
-  if (scene->camera == NULL) {
-    BKE_report(op->reports, RPT_ERROR, "There is no active camera in this scene!");
-    printf("LRT Warning: There is no active camera in this scene!\n");
-    return OPERATOR_FINISHED;
-  }
-
-  // int intersections_only = (lineart->master_mode != LRT_MASTER_MODE_SOFTWARE);
-
-  /** Lock caller thread before calling feature line computation.
-   * This worker is not a background task, so we don't need to try another lock
-   * to wait for the worker to finish. The lock will be released in the compute function.
-   */
-  BLI_spin_lock(&lineart_share.lock_loader);
-
-  ED_lineart_compute_feature_lines_background(CTX_data_depsgraph_pointer(C),
-                                              0);  // intersections_only);
-
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
-
-  return OPERATOR_FINISHED;
-}
-static void lineart_compute_feature_lines_cancel(bContext *UNUSED(C), wmOperator *UNUSED(op))
-{
-  return;
-}
-
-void SCENE_OT_lineart_calculate_feature_lines(wmOperatorType *ot)
-{
-
-  /* identifiers */
-  ot->name = "Calculate Feature Lines";
-  ot->description = "LRT calculates feature line in current scene";
-  ot->idname = "SCENE_OT_lineart_calculate";
-
-  ot->poll = lineart_camera_exists;
-  ot->cancel = lineart_compute_feature_lines_cancel;
-  ot->exec = lineart_compute_feature_lines_exec;
 }
 
 /* Grease Pencil bindings */
@@ -4045,7 +3942,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
   /* release render lock so cache is free to be manipulated. */
   BLI_spin_unlock(&lineart_share.lock_render_status);
 }
-static void lineart_clear_gp_flags(Depsgraph *dg, int frame)
+static void lineart_clear_gpencil_flags(Depsgraph *dg, int frame)
 {
   DEG_OBJECT_ITER_BEGIN (dg,
                          ob,
@@ -4065,161 +3962,59 @@ static void lineart_clear_gp_flags(Depsgraph *dg, int frame)
   }
   DEG_OBJECT_ITER_END;
 }
-static void lineart_update_gp_strokes_single(Depsgraph *dg,
-                                             Object *gpobj,
-                                             Object *ob,
-                                             int frame,
-                                             int level_start,
-                                             int level_end,
-                                             char *target_layer,
-                                             char *target_material,
-                                             Collection *col,
-                                             int type)
-{
-  bGPdata *gpd;
-  bGPDlayer *gpl;
-  bGPDframe *gpf;
-  gpd = gpobj->data;
-  gpl = BKE_gpencil_layer_get_by_name(gpd, target_layer, 1);
-  if (gpl == NULL) {
-    gpl = BKE_gpencil_layer_addnew(gpd, "lineart_layer", true);
-  }
-  gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
 
-  if (gpf->strokes.first &&
-      !(DEG_get_evaluated_scene(dg)->lineart.flags & LRT_GPENCIL_OVERWRITE)) {
+void ED_generate_strokes_direct(Depsgraph *depsgraph,
+                                Object *ob,
+                                bGPDlayer *gpl,
+                                bGPDframe *gpf,
+                                char source_type,
+                                void *source_reference,
+                                int level_start,
+                                int level_end,
+                                int mat_nr,
+                                short line_types)
+{
+
+  if (!gpl || !gpf || !source_reference || !ob) {
     return;
   }
 
-  if (!(gpf->flag & GP_FRAME_LRT_CLEARED)) {
-    BKE_gpencil_free_strokes(gpf);
-    gpf->flag |= GP_FRAME_LRT_CLEARED;
+  Object *source_object = NULL;
+  Collection *source_collection = NULL;
+  short use_types = 0;
+  if (source_type == LRT_SOURCE_OBJECT) {
+    source_object = (Object *)source_reference;
+    /* Note that intersection lines will only be in collection */
+    use_types = line_types & (~LRT_EDGE_FLAG_INTERSECTION);
   }
-
-  int use_material = BKE_gpencil_object_material_get_index_name(gpobj, target_material);
-  if (use_material < 0) {
-    use_material = 0;
+  else {
+    source_collection = (Collection *)source_reference;
+    use_types = line_types;
   }
-
-  ED_lineart_generate_gpencil_from_chain(
-      dg, ob, gpl, gpf, level_start, level_end, use_material, col, type);
-
-  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
-}
-static void lineart_update_gp_strokes_recursive(
-    Depsgraph *dg, struct Collection *col, int frame, Object *source_only, Object *target_only)
-{
-  Object *ob;
-  Object *gpobj;
-  bGPdata *gpd;
-  CollectionObject *co;
-  CollectionChild *cc;
-
-  for (co = col->gobject.first; co || source_only; co = co->next) {
-    ob = source_only ? source_only : co->ob;
-
-    ObjectLineart *obl = &ob->lineart;
-    if (obl->target && obl->target->type == OB_GPENCIL) {
-      gpobj = obl->target;
-      gpd = gpobj->data;
-
-      if (target_only && target_only != gpobj) {
-        continue;
-      }
-
-      int level_start = obl->level_start;
-      int level_end = (obl->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS) ? obl->level_end :
-                                                                          obl->level_start;
-
-      if (obl->flags & LRT_LINE_LAYER_USE_SAME_STYLE) {
-        lineart_update_gp_strokes_single(dg,
-                                         gpobj,
-                                         ob,
-                                         frame,
+  ED_lineart_generate_gpencil_from_chain(depsgraph,
+                                         source_object,
+                                         gpl,
+                                         gpf,
                                          level_start,
                                          level_end,
-                                         obl->target_layer,
-                                         obl->target_material,
-                                         NULL,
-                                         lineart_object_line_types(ob));
-      }
-      else {
-        if (obl->contour.use) {
-          lineart_update_gp_strokes_single(dg,
-                                           gpobj,
-                                           ob,
-                                           frame,
-                                           level_start,
-                                           level_end,
-                                           obl->contour.target_layer,
-                                           obl->contour.target_material,
-                                           NULL,
-                                           LRT_EDGE_FLAG_CONTOUR);
-        }
-        if (obl->crease.use) {
-          lineart_update_gp_strokes_single(dg,
-                                           gpobj,
-                                           ob,
-                                           frame,
-                                           level_start,
-                                           level_end,
-                                           obl->crease.target_layer,
-                                           obl->crease.target_material,
-                                           NULL,
-                                           LRT_EDGE_FLAG_CREASE);
-        }
-        if (obl->material.use) {
-          lineart_update_gp_strokes_single(dg,
-                                           gpobj,
-                                           ob,
-                                           frame,
-                                           level_start,
-                                           level_end,
-                                           obl->material.target_layer,
-                                           obl->material.target_material,
-                                           NULL,
-                                           LRT_EDGE_FLAG_MATERIAL);
-        }
-        if (obl->edge_mark.use) {
-          lineart_update_gp_strokes_single(dg,
-                                           gpobj,
-                                           ob,
-                                           frame,
-                                           level_start,
-                                           level_end,
-                                           obl->edge_mark.target_layer,
-                                           obl->edge_mark.target_material,
-                                           NULL,
-                                           LRT_EDGE_FLAG_EDGE_MARK);
-        }
-      }
-
-      DEG_id_tag_update(&gpd->id,
-                        ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-    }
-    if (source_only) {
-      return;
-    }
-  }
-  for (cc = col->children.first; cc; cc = cc->next) {
-    lineart_update_gp_strokes_recursive(dg, cc->collection, frame, source_only, target_only);
-  }
+                                         mat_nr,
+                                         source_collection,
+                                         use_types);
 }
 
-static int lineart_update_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
+static int lineart_update_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
 
   BLI_spin_lock(&lineart_share.lock_loader);
-  ED_lineart_compute_feature_lines_internal(dg, 0);
 
-  ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
+  ED_lineart_compute_feature_lines_background(dg, 0);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
   return OPERATOR_FINISHED;
 }
-static int lineart_bake_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
+static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4232,56 +4027,16 @@ static int lineart_bake_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
     BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
 
     BLI_spin_lock(&lineart_share.lock_loader);
-    ED_lineart_compute_feature_lines_internal(dg, 0);
+    ED_lineart_compute_feature_lines_background(dg, 0);
+    while (!ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH) ||
+           !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
+      /* Wait till it's done. */
+    }
 
     ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
   }
 
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
-
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
-
-  return OPERATOR_FINISHED;
-}
-static int lineart_update_gp_target_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-  Depsgraph *dg = CTX_data_depsgraph_pointer(C);
-  Object *gpo = CTX_data_active_object(C);
-
-  int frame = scene->r.cfra;
-
-  if (scene->lineart.flags & LRT_AUTO_UPDATE) {
-    ED_lineart_compute_feature_lines_internal(dg, 0);
-  }
-
-  ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
-
-  lineart_update_gp_strokes_recursive(dg, scene->master_collection, frame, NULL, gpo);
-
-  lineart_clear_gp_flags(dg, frame);
-
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
-
-  return OPERATOR_FINISHED;
-}
-static int lineart_update_gp_source_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-  Depsgraph *dg = CTX_data_depsgraph_pointer(C);
-  Object *source_obj = CTX_data_active_object(C);
-
-  int frame = scene->r.cfra;
-
-  if (scene->lineart.flags & LRT_AUTO_UPDATE) {
-    ED_lineart_compute_feature_lines_internal(dg, 0);
-  }
-
-  ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
-
-  lineart_update_gp_strokes_recursive(dg, scene->master_collection, frame, source_obj, NULL);
-
-  lineart_clear_gp_flags(dg, frame);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
@@ -4307,22 +4062,24 @@ static bool lineart_active_is_source_object(bContext *C)
   return false;
 }
 
-/* Tag for 1 frame update, called from  */
-void SCENE_OT_lineart_update_gp_strokes(wmOperatorType *ot)
+/* Blocking 1 frame update */
+void SCENE_OT_lineart_update_strokes(wmOperatorType *ot)
 {
-  ot->name = "Update LRT Strokes";
+  ot->name = "Update Line Art Strokes";
   ot->description = "Update strokes for LRT grease pencil targets";
-  ot->idname = "SCENE_OT_lineart_update_gp_strokes";
+  ot->idname = "SCENE_OT_lineart_update_strokes";
 
-  ot->exec = lineart_update_gp_strokes_exec;
+  ot->exec = lineart_update_gpencil_strokes_exec;
 }
-void SCENE_OT_lineart_bake_gp_strokes(wmOperatorType *ot)
-{
-  ot->name = "Bake LRT Strokes";
-  ot->description = "Bake strokes for LRT grease pencil targets in all frames";
-  ot->idname = "SCENE_OT_lineart_bake_gp_strokes";
 
-  ot->exec = lineart_bake_gp_strokes_exec;
+/* All frames in range */
+void SCENE_OT_lineart_bake_strokes(wmOperatorType *ot)
+{
+  ot->name = "Bake Line Art Strokes";
+  ot->description = "Bake strokes for LRT grease pencil targets in all frames";
+  ot->idname = "SCENE_OT_lineart_bake_strokes";
+
+  ot->exec = lineart_bake_gpencil_strokes_exec;
 }
 
 void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph *dg)
@@ -4342,6 +4099,11 @@ void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph 
         lineart_share.main_window = NULL;
       }
 
+      /** Lock caller thread before calling feature line computation.
+       * This worker is not a background task, so we don't need to try another lock
+       * to wait for the worker to finish. The lock will be released in the compute function.
+       */
+      BLI_spin_lock(&lineart_share.lock_loader);
       ED_lineart_compute_feature_lines_background(dg, 0);
 
       /* Wait for loading finish */

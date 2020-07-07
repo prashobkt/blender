@@ -525,6 +525,7 @@ LineartBoundingArea *ED_lineart_get_point_bounding_area_deep(LineartRenderBuffer
 
 struct bGPDlayer;
 struct bGPDframe;
+struct GpencilModifierData;
 
 void ED_lineart_generate_gpencil_from_chain(struct Depsgraph *depsgraph,
                                             struct Object *ob,
@@ -535,6 +536,17 @@ void ED_lineart_generate_gpencil_from_chain(struct Depsgraph *depsgraph,
                                             int material_nr,
                                             struct Collection *col,
                                             int types);
+void ED_generate_strokes_direct(struct Depsgraph *depsgraph,
+                                struct Object *ob,
+                                struct bGPDlayer *gpl,
+                                struct bGPDframe *gpf,
+                                char source_type,
+                                void *source_reference,
+                                int level_start,
+                                int level_end,
+                                int mat_nr,
+                                short line_types);
+
 struct bContext;
 
 void ED_lineart_post_frame_update_external(struct bContext *C,
@@ -553,17 +565,8 @@ float ED_lineart_compute_chain_length(LineartRenderLineChain *rlc);
 struct wmOperatorType;
 
 /* Operator types */
-void SCENE_OT_lineart_calculate_feature_lines(struct wmOperatorType *ot);
-void SCENE_OT_lineart_add_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lineart_delete_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lineart_auto_create_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lineart_move_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lineart_enable_all_line_types(struct wmOperatorType *ot);
-void SCENE_OT_lineart_update_gp_strokes(struct wmOperatorType *ot);
-void SCENE_OT_lineart_bake_gp_strokes(struct wmOperatorType *ot);
-
-void OBJECT_OT_lineart_update_gp_target(struct wmOperatorType *ot);
-void OBJECT_OT_lineart_update_gp_source(struct wmOperatorType *ot);
+void SCENE_OT_lineart_update_strokes(struct wmOperatorType *ot);
+void SCENE_OT_lineart_bake_strokes(struct wmOperatorType *ot);
 
 void ED_operatortypes_lineart(void);
 

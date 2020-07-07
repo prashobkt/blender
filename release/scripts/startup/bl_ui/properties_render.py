@@ -700,11 +700,6 @@ class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel, GreasePencilSim
     bl_options = {'DEFAULT_CLOSED'}
 
 
-class LRT_UL_linesets(UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        layout.prop(item, "name", text="", emboss=False)
-
-
 class RENDER_PT_lineart(RenderButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     bl_label = "Line Art"
@@ -730,7 +725,6 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
         col.prop(lineart, "master_strength", slider=True)
 
         col.prop(lineart, 'auto_update', text='Auto Update')
-        layout.prop(lineart, "gpencil_overwrite", text='Overwrite')
 
         if not scene.camera:
             has_camera = False
@@ -759,6 +753,24 @@ class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
         layout.prop(lineart, "use_intersections")
         layout.prop(lineart, "chaining_image_threshold")
         layout.prop(lineart, "chaining_geometry_threshold")
+
+
+class RENDER_PT_lineart_baking(RenderButtonsPanel, Panel):
+    bl_label = "Settings"
+    bl_parent_id = "RENDER_PT_lineart"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    def draw(self, context):
+        scene = context.scene
+        lineart = scene.lineart
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        layout.prop(lineart, "gpencil_overwrite", text='Overwrite')
+        layout.operator('scene.lineart_bake_strokes')
 
 
 classes = (
@@ -794,7 +806,7 @@ classes = (
     RENDER_PT_simplify_greasepencil,
     RENDER_PT_lineart,
     RENDER_PT_lineart_options,
-    LRT_UL_linesets,
+    RENDER_PT_lineart_baking,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -81,48 +81,17 @@ static void generate_strokes_actual(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-
-  if (!gpl) {
-    return;
-  }
-
-  if (lmd->source_type == LRT_SOURCE_OBJECT) {
-    Object *source_object = lmd->source_object;
-    if (!source_object) {
-      return;
-    }
-    ED_lineart_generate_gpencil_from_chain(
-        depsgraph,
-        source_object,
-        gpl,
-        gpf,
-        lmd->level_start,
-        lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
-        lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
-        NULL,
-        lmd->line_types & (~LRT_EDGE_FLAG_INTERSECTION));
-    /* Note that intersection lines will only be in collection */
-  }
-  else if (lmd->source_type == LRT_SOURCE_COLLECTION) {
-    Collection *source_collection = lmd->source_collection;
-    if (!source_collection) {
-      return;
-    }
-    ED_lineart_generate_gpencil_from_chain(
-        depsgraph,
-        NULL,
-        gpl,
-        gpf,
-        lmd->level_start,
-        lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
-        lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
-        source_collection,
-        lmd->line_types);
-  }
-  else {
-    /* no other type selection for now. */
-    return;
-  }
+  ED_generate_strokes_direct(
+      depsgraph,
+      ob,
+      gpl,
+      gpf,
+      lmd->source_type,
+      lmd->source_type == LRT_SOURCE_OBJECT ? lmd->source_object : lmd->source_collection,
+      lmd->level_start,
+      lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
+      lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
+      lmd->line_types);
 }
 
 static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
