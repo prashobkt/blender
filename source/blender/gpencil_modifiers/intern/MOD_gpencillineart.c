@@ -202,7 +202,9 @@ static void bakeModifier(Main *UNUSED(bmain),
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 }
 
-static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+static void updateDepsgraph(GpencilModifierData *md,
+                            const ModifierUpdateDepsgraphContext *ctx,
+                            const int mode)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   if (lmd->source_type == LRT_SOURCE_OBJECT && lmd->source_object) {
@@ -212,13 +214,12 @@ static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgra
         ctx->node, lmd->source_object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
   }
   else {
-    Object *o;
-    /* TODO Antonioya: need dg evaluation mode. for the 3rd arg */
-    FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (ctx->scene->master_collection, o, 0) {
-      if (o->type == OB_MESH) {
-        if (!(o->lineart.flags & COLLECTION_LRT_EXCLUDE)) {
-          DEG_add_object_relation(ctx->node, o, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
-          DEG_add_object_relation(ctx->node, o, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
+    Object *ob;
+    FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (ctx->scene->master_collection, ob, mode) {
+      if (ob->type == OB_MESH) {
+        if (!(ob->lineart.flags & COLLECTION_LRT_EXCLUDE)) {
+          DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
+          DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
         }
       }
     }
