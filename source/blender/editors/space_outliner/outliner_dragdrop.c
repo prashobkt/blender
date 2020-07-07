@@ -239,6 +239,11 @@ static TreeElement *outliner_drop_insert_collection_find(bContext *C,
     return NULL;
   }
 
+  SpaceOutliner *soutliner = CTX_wm_space_outliner(C);
+  if (soutliner->sort_method != SO_SORT_FREE) {
+    *r_insert_type = TE_INSERT_INTO;
+  }
+
   if (collection_te != te) {
     *r_insert_type = TE_INSERT_INTO;
   }
