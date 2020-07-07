@@ -1,4 +1,6 @@
 
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+
 out vec4 vPos;
 
 void main()

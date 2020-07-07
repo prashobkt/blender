@@ -1,32 +1,16 @@
 
+#pragma BLENDER_REQUIRE(common_hair_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(surface_lib.glsl)
+
 #ifndef HAIR_SHADER
 in vec3 pos;
 in vec3 nor;
 #endif
 
-#ifdef MESH_SHADER
-out vec3 worldPosition;
-out vec3 viewPosition;
-out vec3 worldNormal;
-out vec3 viewNormal;
-#endif
-
-#ifdef HAIR_SHADER
-out vec3 hairTangent;
-out float hairThickTime;
-out float hairThickness;
-out float hairTime;
-flat out int hairStrandID;
-#endif
-
 void main()
 {
-#ifdef GPU_INTEL
-  /* Due to some shader compiler bug, we somewhat
-   * need to access gl_VertexID to make it work. even
-   * if it's actually dead code. */
-  gl_Position.x = float(gl_VertexID);
-#endif
+  GPU_INTEL_VERTEX_SHADER_WORKAROUND
 
 #ifdef HAIR_SHADER
   hairStrandID = hair_get_strand_id();

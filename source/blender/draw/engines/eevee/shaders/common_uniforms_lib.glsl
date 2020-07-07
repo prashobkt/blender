@@ -70,3 +70,9 @@ layout(std140) uniform common_block
 #define ssrQuality ssrParameters.x
 #define ssrThickness ssrParameters.y
 #define ssrPixelSize ssrParameters.zw
+
+vec2 mip_ratio_interp(float mip)
+{
+  float low_mip = floor(mip);
+  return mix(mipRatio[int(low_mip)], mipRatio[int(low_mip + 1.0)], mip - low_mip);
+}

@@ -1,4 +1,13 @@
 
+/* Required by some nodes. */
+#pragma BLENDER_REQUIRE(common_hair_lib.glsl)
+#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
+
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_uniforms_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_lib.glsl)
+#pragma BLENDER_REQUIRE(surface_lib.glsl)
+
 #ifdef USE_ALPHA_HASH
 
 /* From the paper "Hashed Alpha Testing" by Chris Wyman and Morgan McGuire */
@@ -55,8 +64,6 @@ float hashed_alpha_threshold(vec3 co)
 }
 
 #endif
-
-#define NODETREE_EXEC
 
 void main()
 {

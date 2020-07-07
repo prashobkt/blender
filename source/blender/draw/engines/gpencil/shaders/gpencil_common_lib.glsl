@@ -137,12 +137,6 @@ void blend_mode_output(
   }
 }
 
-#ifdef GPU_VERTEX_SHADER
-#  define IN_OUT out
-#else
-#  define IN_OUT in
-#endif
-
 /* Shader interface. */
 IN_OUT vec4 finalColorMul;
 IN_OUT vec4 finalColorAdd;

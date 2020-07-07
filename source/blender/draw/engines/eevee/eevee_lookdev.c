@@ -204,6 +204,9 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
         DRW_shgroup_uniform_texture(grp, "image", sl->equirect_radiance_gputexture);
         /* Do not fadeout when doing probe rendering, only when drawing the background */
         DRW_shgroup_uniform_float_copy(grp, "backgroundAlpha", 1.0f);
+        DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
+        DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
+        DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
       }
       else {
         float background_alpha = g_data->background_alpha * shading->studiolight_background;

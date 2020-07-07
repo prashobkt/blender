@@ -95,7 +95,7 @@ void hair_get_interp_attrs(
  * For final drawing, the vertex index and the number of vertex per segment
  */
 
-#ifndef HAIR_PHASE_SUBDIV
+#if !defined(HAIR_PHASE_SUBDIV) && defined(GPU_VERTEX_SHADER)
 int hair_get_strand_id(void)
 {
   return gl_VertexID / (hairStrandsRes * hairThicknessRes);

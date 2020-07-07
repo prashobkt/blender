@@ -56,14 +56,10 @@ void EEVEE_mist_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   float clear[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
   if (e_data.mist_sh == NULL) {
-    char *frag_str = BLI_string_joinN(datatoc_common_view_lib_glsl,
-                                      datatoc_common_uniforms_lib_glsl,
-                                      datatoc_bsdf_common_lib_glsl,
-                                      datatoc_effect_mist_frag_glsl);
+    DRWShaderLibrary *lib = EEVEE_shader_lib_get();
 
-    e_data.mist_sh = DRW_shader_create_fullscreen(frag_str, "#define FIRST_PASS\n");
-
-    MEM_freeN(frag_str);
+    e_data.mist_sh = DRW_shader_create_fullscreen_with_shaderlib(
+        datatoc_effect_mist_frag_glsl, lib, "#define FIRST_PASS\n");
   }
 
   /* Create FrameBuffer. */

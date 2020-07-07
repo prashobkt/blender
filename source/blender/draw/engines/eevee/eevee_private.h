@@ -1057,6 +1057,7 @@ void EEVEE_random_rotation_m4(int sample_ofs, float scale, float r_mat[4][4]);
 /* eevee_shaders.c */
 void EEVEE_shaders_lightprobe_shaders_init(void);
 void EEVEE_shaders_material_shaders_init(void);
+struct DRWShaderLibrary *EEVEE_shader_lib_get(void);
 struct GPUShader *EEVEE_shaders_probe_filter_glossy_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_default_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_filter_diffuse_sh_get(void);

@@ -1,4 +1,6 @@
 
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+
 #ifdef MESH_SHADER
 /* TODO tight slices */
 layout(triangles) in;

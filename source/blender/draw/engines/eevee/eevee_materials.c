@@ -56,37 +56,6 @@ static struct {
   float noise_offsets[3];
 } e_data = {NULL}; /* Engine data */
 
-extern char datatoc_lights_lib_glsl[];
-extern char datatoc_lightprobe_lib_glsl[];
-extern char datatoc_ambient_occlusion_lib_glsl[];
-extern char datatoc_prepass_frag_glsl[];
-extern char datatoc_prepass_vert_glsl[];
-extern char datatoc_default_frag_glsl[];
-extern char datatoc_default_world_frag_glsl[];
-extern char datatoc_ltc_lib_glsl[];
-extern char datatoc_bsdf_common_lib_glsl[];
-extern char datatoc_bsdf_sampling_lib_glsl[];
-extern char datatoc_common_uniforms_lib_glsl[];
-extern char datatoc_common_hair_lib_glsl[];
-extern char datatoc_common_view_lib_glsl[];
-extern char datatoc_irradiance_lib_glsl[];
-extern char datatoc_octahedron_lib_glsl[];
-extern char datatoc_cubemap_lib_glsl[];
-extern char datatoc_lit_surface_frag_glsl[];
-extern char datatoc_lit_surface_vert_glsl[];
-extern char datatoc_raytrace_lib_glsl[];
-extern char datatoc_ssr_lib_glsl[];
-extern char datatoc_shadow_vert_glsl[];
-extern char datatoc_lightprobe_geom_glsl[];
-extern char datatoc_lightprobe_vert_glsl[];
-extern char datatoc_background_vert_glsl[];
-extern char datatoc_update_noise_frag_glsl[];
-extern char datatoc_volumetric_vert_glsl[];
-extern char datatoc_volumetric_geom_glsl[];
-extern char datatoc_volumetric_frag_glsl[];
-extern char datatoc_volumetric_lib_glsl[];
-extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
-
 typedef struct EeveeMaterialCache {
   struct DRWShadingGroup *depth_grp;
   struct DRWShadingGroup *shading_grp;

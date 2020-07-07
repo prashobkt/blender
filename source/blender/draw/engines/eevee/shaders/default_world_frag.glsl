@@ -1,4 +1,9 @@
 
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(lightprobe_lib.glsl)
+#pragma BLENDER_REQUIRE(surface_lib.glsl)
+
 uniform float backgroundAlpha;
 uniform vec3 color;
 
@@ -10,11 +15,6 @@ uniform mat3 StudioLightMatrix;
 uniform sampler2D image;
 uniform float studioLightIntensity = 1.0;
 uniform float studioLightBlur = 0.0;
-in vec3 viewPosition;
-
-#  ifndef M_PI
-#    define M_PI 3.14159265358979323846
-#  endif
 
 vec3 background_transform_to_world(vec3 viewvec)
 {

@@ -1,17 +1,13 @@
 
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(surface_lib.glsl)
+
 in vec2 pos;
-
-out vec3 viewPosition;
-
-#ifndef VOLUMETRICS
-/* necessary for compilation*/
-out vec3 worldPosition;
-out vec3 worldNormal;
-out vec3 viewNormal;
-#endif
 
 void main()
 {
+  GPU_INTEL_VERTEX_SHADER_WORKAROUND
+
   gl_Position = vec4(pos, 1.0, 1.0);
   viewPosition = vec3(pos, -1.0);
 

@@ -14,9 +14,23 @@ layout(std140) uniform viewBlock
 
   vec4 clipPlanes[6];
 
+  /* View frustum corners [NDC(-1.0, -1.0, -1.0) & NDC(1.0, 1.0, 1.0)].
+   * Fourth components are near and far values. */
+  vec4 ViewVecs[2];
+
   /* TODO move it elsewhere. */
   vec4 CameraTexCoFactors;
 };
+
+#define ViewNear (ViewVecs[0].w)
+#define ViewFar (ViewVecs[1].w)
+
+#define cameraForward ViewMatrixInverse[2].xyz
+#define cameraPos ViewMatrixInverse[3].xyz
+#define cameraVec \
+  ((ProjectionMatrix[3][3] == 0.0) ? normalize(cameraPos - worldPosition) : cameraForward)
+#define viewCameraVec \
+  ((ProjectionMatrix[3][3] == 0.0) ? normalize(-viewPosition) : vec3(0.0, 0.0, 1.0))
 
 #ifdef world_clip_planes_calc_clip_distance
 #  undef world_clip_planes_calc_clip_distance
@@ -194,3 +208,68 @@ uniform mat4 ModelMatrixInverse;
 #define DRW_BASE_FROM_DUPLI (1 << 2)
 #define DRW_BASE_FROM_SET (1 << 3)
 #define DRW_BASE_ACTIVE (1 << 4)
+
+/* ---- Opengl Depth conversion ---- */
+
+float linear_depth(bool is_persp, float z, float zf, float zn)
+{
+  if (is_persp) {
+    return (zn * zf) / (z * (zn - zf) + zf);
+  }
+  else {
+    return (z * 2.0 - 1.0) * zf;
+  }
+}
+
+float buffer_depth(bool is_persp, float z, float zf, float zn)
+{
+  if (is_persp) {
+    return (zf * (zn - z)) / (z * (zn - zf));
+  }
+  else {
+    return (z / (zf * 2.0)) + 0.5;
+  }
+}
+
+float get_view_z_from_depth(float depth)
+{
+  if (ProjectionMatrix[3][3] == 0.0) {
+    float d = 2.0 * depth - 1.0;
+    return -ProjectionMatrix[3][2] / (d + ProjectionMatrix[2][2]);
+  }
+  else {
+    return ViewVecs[0].z + depth * ViewVecs[1].z;
+  }
+}
+
+float get_depth_from_view_z(float z)
+{
+  if (ProjectionMatrix[3][3] == 0.0) {
+    float d = (-ProjectionMatrix[3][2] / z) - ProjectionMatrix[2][2];
+    return d * 0.5 + 0.5;
+  }
+  else {
+    return (z - ViewVecs[0].z) / ViewVecs[1].z;
+  }
+}
+
+vec2 get_uvs_from_view(vec3 view)
+{
+  vec4 ndc = ProjectionMatrix * vec4(view, 1.0);
+  return (ndc.xy / ndc.w) * 0.5 + 0.5;
+}
+
+vec3 get_view_space_from_depth(vec2 uvcoords, float depth)
+{
+  if (ProjectionMatrix[3][3] == 0.0) {
+    return vec3(ViewVecs[0].xy + uvcoords * ViewVecs[1].xy, 1.0) * get_view_z_from_depth(depth);
+  }
+  else {
+    return ViewVecs[0].xyz + vec3(uvcoords, depth) * ViewVecs[1].xyz;
+  }
+}
+
+vec3 get_world_space_from_depth(vec2 uvcoords, float depth)
+{
+  return (ViewMatrixInverse * vec4(get_view_space_from_depth(uvcoords, depth), 1.0)).xyz;
+}

@@ -1,4 +1,5 @@
 
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_common_obinfos_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_data_lib.glsl)
@@ -31,11 +32,6 @@ out vec4 fragColor;
 float phase_function_isotropic()
 {
   return 1.0 / (4.0 * M_PI);
-}
-
-float max_v3(vec3 v)
-{
-  return max(v.x, max(v.y, v.z));
 }
 
 float line_unit_box_intersect_dist(vec3 lineorigin, vec3 linedirection)
