@@ -177,8 +177,11 @@ class MultiDevice : public Device {
         return false;
 
     if (requested_features.use_denoising) {
+      /* Only need denoising feature, everything else is unused. */
+      DeviceRequestedFeatures denoising_features;
+      denoising_features.use_denoising = true;
       foreach (SubDevice &sub, denoising_devices)
-        if (!sub.device->load_kernels(requested_features))
+        if (!sub.device->load_kernels(denoising_features))
           return false;
     }
 
@@ -396,8 +399,8 @@ class MultiDevice : public Device {
     size_t existing_size = mem.device_size;
 
     /* This is a hack to only allocate the tile buffers on denoising devices
-     * Similarily the tile buffers also need to be allocated separately on all devices so any
-     * overlap rendered for denoising does not interfer with each other */
+     * Similarly the tile buffers also need to be allocated separately on all devices so any
+     * overlap rendered for denoising does not interfere with each other */
     if (strcmp(mem.name, "RenderBuffers") == 0) {
       vector<device_ptr> device_pointers;
       device_pointers.reserve(devices.size());

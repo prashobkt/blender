@@ -300,7 +300,7 @@ static void layerInterp_mdeformvert(const void **sources,
 
   /* now we know how many unique deform weights there are, so realloc */
   if (dvert->dw && (dvert->totweight == totweight)) {
-    /* pass (fastpath if we don't need to realloc) */
+    /* pass (fast-path if we don't need to realloc). */
   }
   else {
     if (dvert->dw) {
@@ -1889,7 +1889,7 @@ const CustomData_MeshMasks CD_MASK_EDITMESH = {
 };
 const CustomData_MeshMasks CD_MASK_DERIVEDMESH = {
     .vmask = (CD_MASK_ORIGINDEX | CD_MASK_MDEFORMVERT | CD_MASK_SHAPEKEY | CD_MASK_MVERT_SKIN |
-              CD_MASK_ORCO | CD_MASK_CLOTH_ORCO | CD_MASK_GENERIC_DATA),
+              CD_MASK_ORCO | CD_MASK_CLOTH_ORCO | CD_MASK_GENERIC_DATA | CD_MASK_PROP_COLOR),
     .emask = (CD_MASK_ORIGINDEX | CD_MASK_FREESTYLE_EDGE | CD_MASK_GENERIC_DATA),
     .fmask = (CD_MASK_ORIGINDEX | CD_MASK_ORIGSPACE | CD_MASK_PREVIEW_MCOL | CD_MASK_TANGENT),
     .lmask = (CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL | CD_MASK_CUSTOMLOOPNORMAL |

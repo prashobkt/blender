@@ -662,20 +662,17 @@ static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
         if (IS_EQF(prevVal, nValue) && IS_EQF(beztVal, nValue) && IS_EQF(prevVal, beztVal)) {
           return KEYNEEDED_DONTADD;
         }
-        else {
-          float realVal;
 
-          /* get real value of curve at that point */
-          realVal = evaluate_fcurve(fcu, cFrame);
+        float realVal;
 
-          /* compare whether it's the same as proposed */
-          if (IS_EQF(realVal, nValue)) {
-            return KEYNEEDED_DONTADD;
-          }
-          else {
-            return KEYNEEDED_JUSTADD;
-          }
+        /* get real value of curve at that point */
+        realVal = evaluate_fcurve(fcu, cFrame);
+
+        /* compare whether it's the same as proposed */
+        if (IS_EQF(realVal, nValue)) {
+          return KEYNEEDED_DONTADD;
         }
+        return KEYNEEDED_JUSTADD;
       }
 
       /* new keyframe before prev beztriple? */
@@ -687,9 +684,8 @@ static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
         if (IS_EQF(prevVal, nValue) && IS_EQF(beztVal, nValue) && IS_EQF(prevVal, beztVal)) {
           return KEYNEEDED_DELNEXT;
         }
-        else {
-          return KEYNEEDED_JUSTADD;
-        }
+
+        return KEYNEEDED_JUSTADD;
       }
     }
     else {
@@ -731,9 +727,8 @@ static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
   if (IS_EQF(valA, nValue) && IS_EQF(valA, valB)) {
     return KEYNEEDED_DELPREV;
   }
-  else {
-    return KEYNEEDED_JUSTADD;
-  }
+
+  return KEYNEEDED_JUSTADD;
 }
 
 /* ------------------ RNA Data-Access Functions ------------------ */
@@ -868,7 +863,8 @@ static bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
     printf("%s failed: NULL identifier\n", __func__);
     return false;
   }
-  else if (strstr(identifier, "location")) {
+
+  if (strstr(identifier, "location")) {
     searchtype = VISUALKEY_LOC;
   }
   else if (strstr(identifier, "rotation")) {
@@ -1039,7 +1035,8 @@ static float *visualkey_get_values(
     *r_count = 3;
     return buffer;
   }
-  else if (strstr(identifier, "rotation_quaternion")) {
+
+  if (strstr(identifier, "rotation_quaternion")) {
     float mat3[3][3];
 
     copy_m3_m4(mat3, tmat);
@@ -1048,14 +1045,16 @@ static float *visualkey_get_values(
     *r_count = 4;
     return buffer;
   }
-  else if (strstr(identifier, "rotation_axis_angle")) {
+
+  if (strstr(identifier, "rotation_axis_angle")) {
     /* w = 0, x,y,z = 1,2,3 */
     mat4_to_axis_angle(buffer + 1, buffer, tmat);
 
     *r_count = 4;
     return buffer;
   }
-  else if (strstr(identifier, "scale")) {
+
+  if (strstr(identifier, "scale")) {
     mat4_to_size(buffer, tmat);
 
     *r_count = 3;
@@ -1184,10 +1183,9 @@ static bool insert_keyframe_value(ReportList *reports,
 
     return true;
   }
-  else {
-    /* just insert keyframe */
-    return insert_vert_fcurve(fcu, cfra, curval, keytype, flag) >= 0;
-  }
+
+  /* just insert keyframe */
+  return insert_vert_fcurve(fcu, cfra, curval, keytype, flag) >= 0;
 }
 
 /* Secondary Keyframing API call:
@@ -1242,10 +1240,9 @@ bool insert_keyframe_direct(ReportList *reports,
                   fcu->rna_path);
       return false;
     }
-    else {
-      /* property found, so overwrite 'ptr' to make later code easier */
-      ptr = tmp_ptr;
-    }
+
+    /* property found, so overwrite 'ptr' to make later code easier */
+    ptr = tmp_ptr;
   }
 
   /* update F-Curve flags to ensure proper behavior for property type */
@@ -1328,9 +1325,8 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
     /* insert keyframe */
     return insert_keyframe_value(reports, ptr, prop, fcu, cfra, curval, keytype, flag);
   }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
 /**
@@ -1854,7 +1850,8 @@ static int insert_key_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No suitable context info for active keying set");
     return OPERATOR_CANCELLED;
   }
-  else if (num_channels > 0) {
+
+  if (num_channels > 0) {
     /* if the appropriate properties have been set, make a note that we've inserted something */
     if (RNA_boolean_get(op->ptr, "confirm_success")) {
       BKE_reportf(op->reports,
@@ -1964,13 +1961,12 @@ static int insert_key_menu_invoke(bContext *C, wmOperator *op, const wmEvent *UN
 
     return OPERATOR_INTERFACE;
   }
-  else {
-    /* just call the exec() on the active keyingset */
-    RNA_enum_set(op->ptr, "type", 0);
-    RNA_boolean_set(op->ptr, "confirm_success", true);
 
-    return op->type->exec(C, op);
-  }
+  /* just call the exec() on the active keyingset */
+  RNA_enum_set(op->ptr, "type", 0);
+  RNA_boolean_set(op->ptr, "confirm_success", true);
+
+  return op->type->exec(C, op);
 }
 
 void ANIM_OT_keyframe_insert_menu(wmOperatorType *ot)
@@ -2070,7 +2066,8 @@ static int delete_key_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No suitable context info for active keying set");
     return OPERATOR_CANCELLED;
   }
-  else if (num_channels > 0) {
+
+  if (num_channels > 0) {
     /* if the appropriate properties have been set, make a note that we've inserted something */
     if (RNA_boolean_get(op->ptr, "confirm_success")) {
       BKE_reportf(op->reports,
@@ -2730,17 +2727,16 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
      */
     return id_frame_has_keyframe(id, cfra, ANIMFILTER_KEYS_LOCAL);
   }
-  else {
-    /* Normal Mode (or treat as being normal mode):
-     *
-     * Just in case the flags aren't set properly (i.e. only on/off is set, without a mode)
-     * let's set the "normal" flag too, so that it will all be sane everywhere...
-     */
-    scene->toolsettings->autokey_mode = AUTOKEY_MODE_NORMAL;
 
-    /* Can insert anytime we like... */
-    return true;
-  }
+  /* Normal Mode (or treat as being normal mode):
+   *
+   * Just in case the flags aren't set properly (i.e. only on/off is set, without a mode)
+   * let's set the "normal" flag too, so that it will all be sane everywhere...
+   */
+  scene->toolsettings->autokey_mode = AUTOKEY_MODE_NORMAL;
+
+  /* Can insert anytime we like... */
+  return true;
 }
 
 /* ******************************************* */
@@ -2953,9 +2949,7 @@ bool ED_autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks
 
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 bool ED_autokeyframe_pchan(
@@ -2980,14 +2974,13 @@ bool ED_autokeyframe_pchan(
 
     return true;
   }
-  else {
-    /* add unkeyed tags */
-    if (pchan->bone) {
-      pchan->bone->flag |= BONE_UNKEYED;
-    }
 
-    return false;
+  /* add unkeyed tags */
+  if (pchan->bone) {
+    pchan->bone->flag |= BONE_UNKEYED;
   }
+
+  return false;
 }
 
 /**

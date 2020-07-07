@@ -3,7 +3,7 @@
 #include "testing/testing.h"
 #include <forward_list>
 
-using namespace blender;
+namespace blender {
 
 TEST(vector, DefaultConstructor)
 {
@@ -499,7 +499,7 @@ class TypeConstructMock {
   {
   }
 
-  TypeConstructMock(TypeConstructMock &&other) : move_constructed(true)
+  TypeConstructMock(TypeConstructMock &&other) noexcept : move_constructed(true)
   {
   }
 
@@ -513,7 +513,7 @@ class TypeConstructMock {
     return *this;
   }
 
-  TypeConstructMock &operator=(TypeConstructMock &&other)
+  TypeConstructMock &operator=(TypeConstructMock &&other) noexcept
   {
     if (this == &other) {
       return *this;
@@ -636,3 +636,5 @@ TEST(vector, OveralignedValues)
     EXPECT_EQ((uintptr_t)&vec.last() % 512, 0);
   }
 }
+
+}  // namespace blender
