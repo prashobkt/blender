@@ -681,10 +681,10 @@ void BKE_gpencil_stroke_weights_duplicate(bGPDstroke *gps_src, bGPDstroke *gps_d
 }
 
 /**
- * Make a copy of a given gpencil stroke.
- * \param gps_src: Source grease pencil strokeyes
- * \param dup_points: Duplicate points data
- * \return Pointer to new stroke
+ * Make a copy of a given grease-pencil stroke.
+ * \param gps_src: Source grease pencil strokes.
+ * \param dup_points: Duplicate points data.
+ * \return Pointer to new stroke.
  */
 bGPDstroke *BKE_gpencil_stroke_duplicate(bGPDstroke *gps_src, const bool dup_points)
 {
@@ -1538,12 +1538,12 @@ int BKE_gpencil_object_material_ensure(Main *bmain, Object *ob, Material *materi
 }
 
 /**
- * Creates a new gpencil material and assigns it to object.
+ * Creates a new grease-pencil material and assigns it to object.
  * \param bmain: Main pointer
  * \param ob: Grease pencil object
  * \param name: Material name
  * \param r_index: value is set to zero based index of the new material if \a r_index is not NULL.
- * \return Materil pointer
+ * \return Material pointer.
  */
 Material *BKE_gpencil_object_material_new(Main *bmain, Object *ob, const char *name, int *r_index)
 {
@@ -1581,7 +1581,7 @@ Material *BKE_gpencil_object_material_from_brush_get(Object *ob, Brush *brush)
  * Returns the material index for a brush with respect to its pinned state.
  * \param ob: Grease pencil object
  * \param brush: Brush
- * \return Materil index
+ * \return Material index.
  */
 int BKE_gpencil_object_material_get_index_from_brush(Object *ob, Brush *brush)
 {
@@ -1597,8 +1597,7 @@ int BKE_gpencil_object_material_get_index_from_brush(Object *ob, Brush *brush)
  * Guaranteed to return a material assigned to object. Returns never NULL.
  * \param bmain: Main pointer
  * \param ob: Grease pencil object
- * \param ts: Toolsettings
- * \return Material pointer
+ * \return Material pointer.
  */
 Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettings(Main *bmain,
                                                                             Object *ob,
@@ -1616,7 +1615,7 @@ Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettings(Main
 /**
  * Guaranteed to return a material assigned to object. Returns never NULL.
  * \param bmain: Main pointer
- * \param ob: Grease pencil obejct
+ * \param ob: Grease pencil object.
  * \param brush: Brush
  * \return Material pointer
  */
@@ -2372,8 +2371,8 @@ void BKE_gpencil_visible_stroke_iter(ViewLayer *view_layer,
 
 /**
  * Update original pointers in evaluated frame.
- * \param gpf_orig: Original greas epencil frame
- * \param gpf_eval: Evaluated grease pencil frame
+ * \param gpf_orig: Original grease-pencil frame.
+ * \param gpf_eval: Evaluated grease pencil frame.
  */
 void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig,
                                                 const struct bGPDframe *gpf_eval)
