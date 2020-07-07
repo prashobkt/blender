@@ -501,7 +501,8 @@ static void ui_item_array(uiLayout *layout,
                           int toggle,
                           bool icon_only,
                           bool compact,
-                          bool show_text)
+                          bool show_text,
+                          uiBut *label_but)
 {
   const uiStyle *style = layout->root->style;
   uiBut *but;
@@ -710,6 +711,13 @@ static void ui_item_array(uiLayout *layout,
         }
         if ((a == 0) && (subtype == PROP_AXISANGLE)) {
           UI_but_unit_type_set(but, PROP_UNIT_ROTATION);
+        }
+
+        /* Set the label button for the array item. */
+        if (label_but != NULL) {
+          but->label_but = label_but;
+          label_but = label_but->next;
+          BLI_assert(label_but != NULL);
         }
       }
 
@@ -2122,7 +2130,8 @@ void uiItemFullR(uiLayout *layout,
   }
 
   uiBut *but = NULL;
-  /* Store the label to assign it to the button afterwards.
+  /* Store the label to assign it to the button afterwards. This is the first
+   * label button if the item is an array and there are a series of buttons.
    * Decorators are assigned as they are built later on. */
   uiBut *label_but = NULL;
 
@@ -2170,23 +2179,26 @@ void uiItemFullR(uiLayout *layout,
             *s++ = str[0];
             *s++ = '\0';
           }
-          label_but = uiDefBut(block,
-                               UI_BTYPE_LABEL,
-                               0,
-                               use_prefix ? name_with_suffix : str,
-                               0,
-                               0,
-                               w,
-                               UI_UNIT_Y,
-                               NULL,
-                               0.0,
-                               0.0,
-                               0,
-                               0,
-                               "");
-          label_but->drawflag |= UI_BUT_TEXT_RIGHT;
-          label_but->drawflag &= ~UI_BUT_TEXT_LEFT;
+          uiBut *new_label = uiDefBut(block,
+                                      UI_BTYPE_LABEL,
+                                      0,
+                                      use_prefix ? name_with_suffix : str,
+                                      0,
+                                      0,
+                                      w,
+                                      UI_UNIT_Y,
+                                      NULL,
+                                      0.0,
+                                      0.0,
+                                      0,
+                                      0,
+                                      "");
+          new_label->drawflag |= UI_BUT_TEXT_RIGHT;
+          new_label->drawflag &= ~UI_BUT_TEXT_LEFT;
 
+          if (a == 0) {
+            label_but = new_label;
+          }
           label_added = true;
         }
       }
@@ -2209,6 +2221,7 @@ void uiItemFullR(uiLayout *layout,
       /* Add an empty label button so the empty column isn't removed during property search. */
       if (!label_added && !use_prop_sep_split_label) {
         label_but = uiItemL_(layout_sub, "", ICON_NONE);
+        label_added = true;
       }
 
       layout_split = ui_item_prop_split_layout_hack(layout_parent, layout_split);
@@ -2278,7 +2291,8 @@ void uiItemFullR(uiLayout *layout,
                   toggle,
                   icon_only,
                   compact,
-                  !use_prop_sep_split_label);
+                  !use_prop_sep_split_label,
+                  label_but);
   }
   /* enum item */
   else if (type == PROP_ENUM && index == RNA_ENUM_VALUE) {
@@ -5487,17 +5501,14 @@ static bool ui_block_search_layout(uiBlock *block)
   }
 
   /* Set empty flags. */
-  if (all_roots_empty || block->search_only) {
+  if (block->search_only) {
     /* Make sure all of the block's buttons are hidden. They might not have
      * been hidden if a layout wasn't searched. */
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       but->flag |= UI_HIDDEN;
     }
-    block->flag |= UI_BLOCK_FILTERED_EMPTY;
   }
-  else {
-    block->flag &= ~UI_BLOCK_FILTERED_EMPTY;
-  }
+  SET_FLAG_FROM_TEST(block->flag, all_roots_empty || block->search_only, UI_BLOCK_FILTERED_EMPTY);
   if (block->panel != NULL) {
     ui_panel_set_search_filtered(block->panel, all_roots_empty);
   }
