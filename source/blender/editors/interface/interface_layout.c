@@ -5357,30 +5357,11 @@ static void ui_block_search_filter_tag_buttons(uiBlock *block)
  */
 static bool ui_layout_search_clean_recursive(uiLayout *layout)
 {
-  /* Remove all search filtered button items. */
-  bool layout_emptied = uiLayoutGetPropSearch(layout);
-  if (uiLayoutGetPropSearch(layout)) {
-    LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
-      if (item->type == ITEM_BUTTON) {
-        uiButtonItem *button_item = (uiButtonItem *)item;
-        uiBut *but = button_item->but;
-        if (but->flag & UI_FILTERED) {
-          but->flag |= UI_HIDDEN;
-          BLI_remlink(&layout->items, item);
-          MEM_freeN(item);
-        }
-        else {
-          layout_emptied = false;
-        }
-      }
-    }
-  }
-
   /* Recursively clean sub-layouts. */
   bool all_children_empty = true;
   LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
+    /* Deal with buttons after checking children. */
     if (item->type == ITEM_BUTTON) {
-      BLI_assert(!layout_emptied || !uiLayoutGetPropSearch(layout));
       continue;
     }
 
@@ -5391,6 +5372,27 @@ static bool ui_layout_search_clean_recursive(uiLayout *layout)
       BLI_assert(BLI_findindex(&layout->items, item) != -1);
       BLI_remlink(&layout->items, item);
       MEM_freeN(item);
+    }
+  }
+
+  /* Remove all search filtered button items. */
+  bool layout_emptied = uiLayoutGetPropSearch(layout);
+  if (uiLayoutGetPropSearch(layout)) {
+    LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
+      if (item->type == ITEM_BUTTON) {
+        uiButtonItem *button_item = (uiButtonItem *)item;
+        uiBut *but = button_item->but;
+        if (but->flag & UI_FILTERED) {
+          if (!((but->type == UI_BTYPE_ROUNDBOX) && !all_children_empty)) {
+            but->flag |= UI_HIDDEN;
+            BLI_remlink(&layout->items, item);
+            MEM_freeN(item);
+          }
+        }
+        else {
+          layout_emptied = false;
+        }
+      }
     }
   }
 
