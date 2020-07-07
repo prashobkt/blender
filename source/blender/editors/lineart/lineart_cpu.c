@@ -4085,8 +4085,8 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
                 gpl,
                 gpf,
                 lmd->source_type,
-                lmd->source_type == LRT_SOURCE_OBJECT ? lmd->source_object :
-                                                        lmd->source_collection,
+                lmd->source_type == LRT_SOURCE_OBJECT ? (void *)lmd->source_object :
+                                                        (void *)lmd->source_collection,
                 lmd->level_start,
                 lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
                 lmd->target_material ?

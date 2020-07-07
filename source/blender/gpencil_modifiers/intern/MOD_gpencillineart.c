@@ -87,7 +87,8 @@ static void generate_strokes_actual(
       gpl,
       gpf,
       lmd->source_type,
-      lmd->source_type == LRT_SOURCE_OBJECT ? lmd->source_object : lmd->source_collection,
+      lmd->source_type == LRT_SOURCE_OBJECT ? (void *)lmd->source_object :
+                                              (void *)lmd->source_collection,
       lmd->level_start,
       lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
       lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
@@ -135,8 +136,6 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   /* If we reach here, means calculation is finished (LRT_SYNC_FRESH), we grab cache. flag reset is
    * done by calculation function.*/
 
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
-
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
   bGPDframe *gpf = gpl->actframe;
   if (gpf == NULL) {
@@ -155,7 +154,6 @@ static void bakeModifier(Main *UNUSED(bmain),
 {
 
   bGPdata *gpd = ob->data;
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
@@ -183,7 +181,6 @@ static void updateDepsgraph(GpencilModifierData *md,
         ctx->node, lmd->source_object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
   }
   else {
-    Object *ob;
     FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (ctx->scene->master_collection, ob, mode) {
       if (ob->type == OB_MESH) {
         if (!(ob->lineart.flags & COLLECTION_LRT_EXCLUDE)) {
