@@ -1671,7 +1671,7 @@ void UI_panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y)
 }
 
 /**
- * Draw panels, selected on top. Don't draw search filtered panels though.
+ * Draw panels, selected on top, but not search filtered panels.
  */
 void UI_panels_draw(const bContext *C, ARegion *region)
 {

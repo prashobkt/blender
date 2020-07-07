@@ -2321,7 +2321,6 @@ void uiItemFullR(uiLayout *layout,
   }
   /* expanded enum */
   else if (type == PROP_ENUM && expand) {
-    /* HANS-TODO: Pass label here too. */
     ui_item_enum_expand(layout, block, ptr, prop, name, h, icon_only, label_but);
   }
   /* property with separate label */
@@ -4702,7 +4701,6 @@ static void ui_litem_init_from_parent(uiLayout *litem, uiLayout *layout, int ali
   litem->redalert = layout->redalert;
   litem->w = layout->w;
   litem->emboss = layout->emboss;
-  /* Only pass certain flags to child layouts. */
   litem->item.flag = (layout->item.flag & (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE |
                                            UI_ITEM_INSIDE_PROP_SEP | UI_ITEM_USE_SEARCH_FILTER));
 
@@ -5145,51 +5143,51 @@ static void ui_layout_free(uiLayout *layout);
 /* clang-format off */
 static const char *but_type_string(eButType type) {
   switch (type) {
-    case UI_BTYPE_BUT: return  "But";
-    case UI_BTYPE_ROW: return  "Row But";
-    case UI_BTYPE_TEXT: return  "Text";
-    case UI_BTYPE_MENU: return  "Menu";
-    case UI_BTYPE_BUT_MENU: return  "But Menu";
-    case UI_BTYPE_NUM: return  "Number";
-    case UI_BTYPE_NUM_SLIDER: return  "Number Slider";
-    case UI_BTYPE_TOGGLE: return  "Toggle";
-    case UI_BTYPE_TOGGLE_N: return  "Toggle N";
-    case UI_BTYPE_ICON_TOGGLE: return  "Icon Toggle";
-    case UI_BTYPE_ICON_TOGGLE_N: return  "Icon Toggle N";
-    case UI_BTYPE_BUT_TOGGLE: return  "But Toggle";
-    case UI_BTYPE_CHECKBOX: return  "Checkbox";
-    case UI_BTYPE_CHECKBOX_N: return  "Checkbox N";
-    case UI_BTYPE_COLOR: return  "Color";
-    case UI_BTYPE_TAB: return  "Tab";
-    case UI_BTYPE_POPOVER: return  "Popover";
-    case UI_BTYPE_SCROLL: return  "Scroll";
-    case UI_BTYPE_BLOCK: return  "Block";
-    case UI_BTYPE_LABEL: return  "Label";
-    case UI_BTYPE_KEY_EVENT: return  "Key Event";
-    case UI_BTYPE_HSVCUBE: return  "HSV Cube";
-    case UI_BTYPE_PULLDOWN: return  "Pulldown";
-    case UI_BTYPE_ROUNDBOX: return  "Roundbox";
-    case UI_BTYPE_COLORBAND: return  "Colorband";
-    case UI_BTYPE_UNITVEC: return  "Unit Vector";
-    case UI_BTYPE_CURVE: return  "Curve";
-    case UI_BTYPE_CURVEPROFILE: return  "Curve Profile";
-    case UI_BTYPE_LISTBOX: return  "Listbox";
-    case UI_BTYPE_LISTROW: return  "List Row";
-    case UI_BTYPE_HSVCIRCLE: return  "HSV Circle";
-    case UI_BTYPE_TRACK_PREVIEW: return  "Track Preview";
-    case UI_BTYPE_SEARCH_MENU: return  "Search Menu";
-    case UI_BTYPE_EXTRA: return  "Extra";
-    case UI_BTYPE_HOTKEY_EVENT: return  "Hotkey Event";
-    case UI_BTYPE_IMAGE: return  "Image";
-    case UI_BTYPE_HISTOGRAM: return  "Histogram";
-    case UI_BTYPE_WAVEFORM: return  "Waveform";
-    case UI_BTYPE_VECTORSCOPE: return  "Vectorscope";
-    case UI_BTYPE_PROGRESS_BAR: return  "Progress Bar";
-    case UI_BTYPE_NODE_SOCKET: return  "Node Socket";
-    case UI_BTYPE_SEPR: return  "Spacer";
-    case UI_BTYPE_SEPR_LINE: return  "Spacer Line";
-    case UI_BTYPE_SEPR_SPACER: return  "Dynamic Spacer";
-    case UI_BTYPE_GRIP: return  "Grip";
+    case UI_BTYPE_BUT: return "But";
+    case UI_BTYPE_ROW: return "Row But";
+    case UI_BTYPE_TEXT: return "Text";
+    case UI_BTYPE_MENU: return "Menu";
+    case UI_BTYPE_BUT_MENU: return "But Menu";
+    case UI_BTYPE_NUM: return "Number";
+    case UI_BTYPE_NUM_SLIDER: return "Number Slider";
+    case UI_BTYPE_TOGGLE: return "Toggle";
+    case UI_BTYPE_TOGGLE_N: return "Toggle N";
+    case UI_BTYPE_ICON_TOGGLE: return "Icon Toggle";
+    case UI_BTYPE_ICON_TOGGLE_N: return "Icon Toggle N";
+    case UI_BTYPE_BUT_TOGGLE: return "But Toggle";
+    case UI_BTYPE_CHECKBOX: return "Checkbox";
+    case UI_BTYPE_CHECKBOX_N: return "Checkbox N";
+    case UI_BTYPE_COLOR: return "Color";
+    case UI_BTYPE_TAB: return "Tab";
+    case UI_BTYPE_POPOVER: return "Popover";
+    case UI_BTYPE_SCROLL: return "Scroll";
+    case UI_BTYPE_BLOCK: return "Block";
+    case UI_BTYPE_LABEL: return "Label";
+    case UI_BTYPE_KEY_EVENT: return "Key Event";
+    case UI_BTYPE_HSVCUBE: return "HSV Cube";
+    case UI_BTYPE_PULLDOWN: return "Pulldown";
+    case UI_BTYPE_ROUNDBOX: return "Roundbox";
+    case UI_BTYPE_COLORBAND: return "Colorband";
+    case UI_BTYPE_UNITVEC: return "Unit Vector";
+    case UI_BTYPE_CURVE: return "Curve";
+    case UI_BTYPE_CURVEPROFILE: return "Curve Profile";
+    case UI_BTYPE_LISTBOX: return "Listbox";
+    case UI_BTYPE_LISTROW: return "List Row";
+    case UI_BTYPE_HSVCIRCLE: return "HSV Circle";
+    case UI_BTYPE_TRACK_PREVIEW: return "Track Preview";
+    case UI_BTYPE_SEARCH_MENU: return "Search Menu";
+    case UI_BTYPE_EXTRA: return "Extra";
+    case UI_BTYPE_HOTKEY_EVENT: return "Hotkey Event";
+    case UI_BTYPE_IMAGE: return "Image";
+    case UI_BTYPE_HISTOGRAM: return "Histogram";
+    case UI_BTYPE_WAVEFORM: return "Waveform";
+    case UI_BTYPE_VECTORSCOPE: return "Vectorscope";
+    case UI_BTYPE_PROGRESS_BAR: return "Progress Bar";
+    case UI_BTYPE_NODE_SOCKET: return "Node Socket";
+    case UI_BTYPE_SEPR: return "Spacer";
+    case UI_BTYPE_SEPR_LINE: return "Spacer Line";
+    case UI_BTYPE_SEPR_SPACER: return "Dynamic Spacer";
+    case UI_BTYPE_GRIP: return "Grip";
     default: return "Unkown Button Type";
   }         
 }
@@ -5500,6 +5498,7 @@ static bool ui_block_search_layout(uiBlock *block)
       ui_layout_free_hide_buttons(root->layout);
       BLI_remlink(&block->layouts, root);
       MEM_freeN(root);
+      MEM_freeN(root->layout);
     }
   }
 
@@ -5825,6 +5824,7 @@ uiLayout *UI_block_layout(uiBlock *block,
   layout = MEM_callocN(sizeof(uiLayout), "uiLayout");
   layout->item.type = (type == UI_LAYOUT_VERT_BAR) ? ITEM_LAYOUT_COLUMN : ITEM_LAYOUT_ROOT;
 
+  /* Only used when 'UI_ITEM_PROP_SEP' is set. */
   layout->item.flag = UI_ITEM_PROP_DECORATE | UI_ITEM_USE_SEARCH_FILTER;
 
   layout->x = x;
@@ -5937,6 +5937,8 @@ void uiLayoutSetFunc(uiLayout *layout, uiMenuHandleFunc handlefunc, void *argv)
  */
 void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
 {
+  uiLayoutRoot *root;
+
   BLI_assert(block->active);
 
   if (r_x) {
@@ -5950,7 +5952,7 @@ void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
 
   ui_block_search_layout(block);
 
-  LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
+  for (root = block->layouts.first; root; root = root->next) {
     ui_layout_add_padding_button(root);
 
     /* NULL in advance so we don't interfere when adding button */
