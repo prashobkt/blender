@@ -294,18 +294,6 @@ static bool parent_drop_allowed(TreeElement *te, Object *potential_child)
   return true;
 }
 
-static bool allow_parenting_without_modifier_key(SpaceOutliner *soops)
-{
-  switch (soops->outlinevis) {
-    case SO_VIEW_LAYER:
-      return soops->filter & SO_FILTER_NO_COLLECTION;
-    case SO_SCENES:
-      return true;
-    default:
-      return false;
-  }
-}
-
 static bool parent_drop_poll(bContext *C,
                              wmDrag *drag,
                              const wmEvent *event,
@@ -321,12 +309,6 @@ static bool parent_drop_poll(bContext *C,
   Object *potential_child = (Object *)WM_drag_ID(drag, ID_OB);
   if (!potential_child) {
     return false;
-  }
-
-  if (!allow_parenting_without_modifier_key(soops)) {
-    if (!event->shift) {
-      return false;
-    }
   }
 
   TreeElement *te = outliner_drop_find(C, event);
@@ -450,14 +432,6 @@ static bool parent_clear_poll(bContext *C,
                               const wmEvent *event,
                               const char **UNUSED(r_tooltip))
 {
-  SpaceOutliner *soops = CTX_wm_space_outliner(C);
-
-  if (!allow_parenting_without_modifier_key(soops)) {
-    if (!event->shift) {
-      return false;
-    }
-  }
-
   Object *ob = (Object *)WM_drag_ID(drag, ID_OB);
   if (!ob) {
     return false;
