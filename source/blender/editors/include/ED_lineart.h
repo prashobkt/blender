@@ -34,6 +34,7 @@
 #include "BLI_threads.h"
 
 #include "DNA_lineart_types.h"
+#include "DNA_windowmanager_types.h"
 
 #include <math.h>
 #include <string.h>
@@ -306,6 +307,10 @@ typedef struct LineartSharedResource {
   float viewinv[4][4];
   float persp[4][4];
   float viewquat[4];
+
+  /* Use these to set cursor and progress. */
+  wmWindowManager *wm;
+  wmWindow *main_window;
 } LineartSharedResource;
 
 #define DBL_TRIANGLE_LIM 1e-8
@@ -530,12 +535,15 @@ void ED_lineart_generate_gpencil_from_chain(struct Depsgraph *depsgraph,
                                             int material_nr,
                                             struct Collection *col,
                                             int types);
+struct bContext;
 
-void ED_lineart_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
+void ED_lineart_post_frame_update_external(struct bContext *C,
+                                           struct Scene *s,
+                                           struct Depsgraph *dg);
 
 struct SceneLineart;
 
-void ED_lineart_update_render_progress(const char *text);
+void ED_lineart_update_render_progress(int nr, const char *info);
 
 void ED_lineart_calculate_normal_object_vector(LineartLineLayer *ll,
                                                float *normal_object_direction);

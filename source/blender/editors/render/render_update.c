@@ -99,12 +99,6 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, int update
     return;
   }
 
-#ifdef WITH_LINEART
-  /* Temporary solution for updating Line Art GPencil targets. */
-  if (updated) {
-    ED_lineart_post_frame_update_external(scene, update_ctx->depsgraph);
-  }
-#endif
   recursive_check = true;
 
   C = CTX_create();
@@ -113,6 +107,13 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, int update
 
   CTX_wm_manager_set(C, bmain->wm.first);
   wm = bmain->wm.first;
+
+#ifdef WITH_LINEART
+  /* Temporary solution for updating Line Art GPencil targets. */
+  if (updated) {
+    ED_lineart_post_frame_update_external(C, scene, update_ctx->depsgraph);
+  }
+#endif
 
   for (win = wm->windows.first; win; win = win->next) {
     bScreen *screen = WM_window_get_active_screen(win);

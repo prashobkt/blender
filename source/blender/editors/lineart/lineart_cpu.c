@@ -3732,7 +3732,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
 
   rb->max_occlusion_level = lineart_get_max_occlusion_level(depsgraph);
 
-  ED_lineart_update_render_progress("LRT: Loading geometries.");
+  ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
 
   lineart_make_render_geometry_buffers(depsgraph, s, s->camera, rb);
 
@@ -3751,17 +3751,17 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
     lineart_compute_scene_contours(rb, lineart->crease_threshold);
   }
 
-  ED_lineart_update_render_progress("LRT: Computing intersections.");
+  ED_lineart_update_render_progress(25, "LRT: Computing intersections.");
 
   lineart_add_triangles(rb);
 
-  ED_lineart_update_render_progress("LRT: Computing line occlusion.");
+  ED_lineart_update_render_progress(50, "LRT: Computing line occlusion.");
 
   if (!intersectons_only) {
     lineart_calculate_line_occlusion_begin(rb);
   }
 
-  ED_lineart_update_render_progress("LRT: Chaining.");
+  ED_lineart_update_render_progress(75, "LRT: Chaining.");
 
   /* intersection_only is preserved for furure functions.*/
   if (!intersectons_only) {
@@ -3794,6 +3794,8 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
   // Set after GP done.
   // ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
 
+  ED_lineart_update_render_progress(100, "LRT: Finished.");
+
   return OPERATOR_FINISHED;
 }
 
@@ -3808,6 +3810,7 @@ static void lineart_notify_gpencil_targets(Depsgraph *dg);
 static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
                                                  LRT_FeatureLineWorker *worker_data)
 {
+
   ED_lineart_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
   ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
 
@@ -4303,6 +4306,7 @@ static bool lineart_active_is_source_object(bContext *C)
   return false;
 }
 
+/* Tag for 1 frame update, called from  */
 void SCENE_OT_lineart_update_gp_strokes(wmOperatorType *ot)
 {
   ot->name = "Update LRT Strokes";
@@ -4319,29 +4323,8 @@ void SCENE_OT_lineart_bake_gp_strokes(wmOperatorType *ot)
 
   ot->exec = lineart_bake_gp_strokes_exec;
 }
-void OBJECT_OT_lineart_update_gp_target(wmOperatorType *ot)
-{
-  ot->name = "Update Strokes";
-  ot->description = "Update LRT strokes for selected GPencil object";
-  ot->idname = "OBJECT_OT_lineart_update_gp_target";
 
-  ot->poll = lineart_active_is_gpencil_object;
-  ot->exec = lineart_update_gp_target_exec;
-}
-/* Not working due to lack of GP flags for the object */
-void OBJECT_OT_lineart_update_gp_source(wmOperatorType *ot)
-{
-  ot->name = "Update Strokes";
-  ot->description = "Update LRT strokes for selected Mesh object.";
-  ot->idname = "OBJECT_OT_lineart_update_gp_source";
-
-  ot->poll = lineart_active_is_source_object;
-  ot->exec = lineart_update_gp_source_exec;
-}
-
-/* Post-frame updater */
-
-void ED_lineart_post_frame_update_external(Scene *s, Depsgraph *dg)
+void ED_lineart_post_frame_update_external(bContext *C, Scene *s, Depsgraph *dg)
 {
   if ((s->lineart.flags & LRT_ENABLED) == 0 || !(s->lineart.flags & LRT_AUTO_UPDATE)) {
     return;
@@ -4349,6 +4332,14 @@ void ED_lineart_post_frame_update_external(Scene *s, Depsgraph *dg)
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
     /* Modifier is waiting for data, trigger update (will wait/cancel if already running) */
     if (s->lineart.flags & LRT_AUTO_UPDATE) {
+      if (C) {
+        lineart_share.wm = CTX_wm_manager(C);
+        lineart_share.main_window = lineart_share.wm->windows.first;
+      }
+      else {
+        lineart_share.wm = lineart_share.main_window = NULL;
+      }
+
       ED_lineart_compute_feature_lines_background(dg, 0);
 
       /* Wait for loading finish */
@@ -4362,7 +4353,21 @@ void ED_lineart_post_frame_update_external(Scene *s, Depsgraph *dg)
   }
 }
 
-void ED_lineart_update_render_progress(const char *text)
+void ED_lineart_update_render_progress(int nr, const char *info)
 {
-  // TODO
+  if (lineart_share.main_window) {
+    if (nr == 100) {
+      /*WM_CURSOR_DEFAULT doesn't seem to work?*/
+      WM_cursor_set(lineart_share.main_window, WM_CURSOR_NW_ARROW);
+      WM_cursor_modal_restore(lineart_share.main_window);
+      WM_progress_clear(lineart_share.main_window);
+    }
+    else {
+      WM_cursor_time(lineart_share.main_window, nr);
+      WM_progress_set(lineart_share.main_window, (float)nr / 100);
+    }
+  }
+#ifdef DEBUG
+  printf("%s\n", info);
+#endif
 }
