@@ -908,7 +908,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
   int i;
   double a;
   int v_count = 0, t_count = 0;
-  Object *o;
+  Object *ob;
 
   double view_dir[3], clip_advance[3];
   copy_v3_v3_db(view_dir, rb->view_vector);
@@ -930,7 +930,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
     if (reln->additional) {
       continue;
     }
-    o = reln->object_ref;
+    ob = reln->object_ref;
     for (i = 0; i < reln->element_count; i++) {
 
       /* These three represents points that are in the clipping range or not*/
@@ -1049,7 +1049,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             /* use tl or tr doesn't matter. */
             rl->tl = rt1;
             rt1->rl[1] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             /* new line connecting original point 0 and a new point */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
@@ -1062,7 +1062,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
             rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
             rt1->rl[0] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             /* new line connecting original point 0 and another new point */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
@@ -1075,7 +1075,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt->rl[2]->tl == rt ? rt1 : rt->rl[2]->tl;
             rl->tr = rt->rl[2]->tr == rt ? rt1 : rt->rl[2]->tr;
             rt1->rl[2] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             /* re-assign triangle point array to two new points. */
             rt1->v[0] = rt->v[0];
@@ -1120,7 +1120,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->r = &rv[1];
             rl->tl = rt1;
             rt1->rl[0] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1131,7 +1131,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
             rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
             rt1->rl[1] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1142,7 +1142,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt->rl[2]->tl == rt ? rt1 : rt->rl[2]->tl;
             rl->tr = rt->rl[2]->tr == rt ? rt1 : rt->rl[2]->tr;
             rt1->rl[2] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rt1->v[0] = &rv[0];   /*&rv[1];*/
             rt1->v[1] = &rv[1];   /*rt->v[2];*/
@@ -1186,7 +1186,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->r = &rv[0];
             rl->tl = rt1;
             rt1->rl[2] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1197,7 +1197,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
             rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
             rt1->rl[0] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1208,7 +1208,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
             rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
             rt1->rl[1] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rt1->v[0] = &rv[0];   /*rt->v[1];*/
             rt1->v[1] = rt->v[1]; /*&rv[1];*/
@@ -1282,7 +1282,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->r = &rv[0];
             rl->tl = rt1;
             rt1->rl[1] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             /** New line connects new point 0 and old point 1,
              * this is a border line.
@@ -1296,7 +1296,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt1;
             rl->tr = rt->rl[0]->tr == rt ? rt->rl[0]->tl : rt->rl[0]->tr;
             rt1->rl[2] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             /** New line connects new point 1 and old point 1,
              * this is a inner line separating newly generated triangles.
@@ -1311,7 +1311,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tr = rt2;
             rt1->rl[0] = rl;
             rt2->rl[0] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             /* We now have one triangle closed. */
             rt1->v[0] = rt->v[1];
@@ -1331,7 +1331,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tr = rt->rl[2]->tr == rt ? rt->rl[2]->tl : rt->rl[2]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[1];
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             /* Close the second triangle. */
             rt2->v[0] = &rv[1];
@@ -1376,7 +1376,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->r = &rv[0];
             rl->tl = rt1;
             rt1->rl[1] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1387,7 +1387,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt1;
             rl->tr = rt->rl[1]->tl == rt ? rt->rl[1]->tr : rt->rl[1]->tl;
             rt1->rl[2] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1399,7 +1399,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tr = rt2;
             rt1->rl[0] = rl;
             rt2->rl[0] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rt1->v[0] = rt->v[2];
             rt1->v[1] = &rv[1];
@@ -1415,7 +1415,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tr = rt->rl[0]->tr == rt ? rt->rl[0]->tl : rt->rl[0]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[2];
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[2];
@@ -1459,7 +1459,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->r = &rv[0];
             rl->tl = rt1;
             rt1->rl[1] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1470,7 +1470,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tl = rt1;
             rl->tr = rt->rl[2]->tl == rt ? rt->rl[2]->tr : rt->rl[2]->tl;
             rt1->rl[2] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1482,7 +1482,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tr = rt2;
             rt1->rl[0] = rl;
             rt2->rl[0] = rl;
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rt1->v[0] = rt->v[0];
             rt1->v[1] = &rv[1];
@@ -1498,7 +1498,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rl->tr = rt->rl[1]->tr == rt ? rt->rl[1]->tl : rt->rl[1]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[0];
-            rl->object_ref = o;
+            rl->object_ref = ob;
 
             rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[0];
@@ -1548,7 +1548,7 @@ static void lineart_transform_render_vert(
   mul_v4_m4v3_db(rv->fbcoord, mvp_mat, co);
 }
 
-static void lineart_make_render_geometry_buffers_object(Object *o,
+static void lineart_make_render_geometry_buffers_object(Object *ob,
                                                         double (*mv_mat)[4],
                                                         double (*mvp_mat)[4],
                                                         LineartRenderBuffer *rb,
@@ -1571,28 +1571,28 @@ static void lineart_make_render_geometry_buffers_object(Object *o,
   int CanFindFreestyle = 0;
   int i;
 
-  int usage = override_usage ? override_usage : o->lineart.usage;
+  int usage = override_usage ? override_usage : ob->lineart.usage;
 
   if (usage == OBJECT_FEATURE_LINE_EXCLUDE) {
     return;
   }
 
-  if (o->type == OB_MESH) {
+  if (ob->type == OB_MESH) {
 
-    mul_m4db_m4db_m4fl_uniq(new_mvp, mvp_mat, o->obmat);
-    mul_m4db_m4db_m4fl_uniq(new_mv, mv_mat, o->obmat);
+    mul_m4db_m4db_m4fl_uniq(new_mvp, mvp_mat, ob->obmat);
+    mul_m4db_m4db_m4fl_uniq(new_mv, mv_mat, ob->obmat);
 
-    invert_m4_m4(imat, o->obmat);
+    invert_m4_m4(imat, ob->obmat);
     transpose_m4(imat);
     copy_m4d_m4(normal, imat);
 
-    const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(((Mesh *)(o->data)));
+    const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(((Mesh *)(ob->data)));
     bm = BM_mesh_create(&allocsize,
                         &((struct BMeshCreateParams){
                             .use_toolflags = true,
                         }));
     BM_mesh_bm_from_me(bm,
-                       o->data,
+                       ob->data,
                        &((struct BMeshFromMeshParams){
                            .calc_face_normal = true,
                        }));
@@ -1616,21 +1616,21 @@ static void lineart_make_render_geometry_buffers_object(Object *o,
                                             orv,
                                             sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totvert;
-    reln->object_ref = o;
+    reln->object_ref = ob;
 
     reln = list_append_pointer_static_sized(&rb->line_buffer_pointers,
                                             &rb->render_data_pool,
                                             orl,
                                             sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totedge;
-    reln->object_ref = o;
+    reln->object_ref = ob;
 
     reln = list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
                                             &rb->render_data_pool,
                                             ort,
                                             sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totface;
-    reln->object_ref = o;
+    reln->object_ref = ob;
 
     for (i = 0; i < bm->totvert; i++) {
       v = BM_vert_at_index(bm, i);
@@ -1656,7 +1656,7 @@ static void lineart_make_render_geometry_buffers_object(Object *o,
       rl->l = &orv[BM_elem_index_get(e->v1)];
       rl->r = &orv[BM_elem_index_get(e->v2)];
 
-      rl->object_ref = o;
+      rl->object_ref = ob;
 
       LineartRenderLineSegment *rls = mem_static_aquire(&rb->render_data_pool,
                                                         sizeof(LineartRenderLineSegment));
@@ -1701,14 +1701,14 @@ static void lineart_make_render_geometry_buffers_object(Object *o,
   }
 }
 
-int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
+int ED_lineart_object_collection_usage_check(Collection *c, Object *ob)
 {
   CollectionChild *cc;
-  int object_is_used = (o->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE ||
-                        o->lineart.usage == OBJECT_FEATURE_LINE_INHERENT);
+  int object_is_used = (ob->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE ||
+                        ob->lineart.usage == OBJECT_FEATURE_LINE_INHERENT);
 
   if (object_is_used && (c->lineart_usage != COLLECTION_LRT_INCLUDE)) {
-    if (BKE_collection_has_object_recursive(c, (Object *)(o->id.orig_id))) {
+    if (BKE_collection_has_object_recursive(c, (Object *)(ob->id.orig_id))) {
       if (c->lineart_usage == COLLECTION_LRT_EXCLUDE) {
         return OBJECT_FEATURE_LINE_EXCLUDE;
       }
@@ -1719,8 +1719,8 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
   }
 
   if (c->children.first == NULL) {
-    if (BKE_collection_has_object(c, o)) {
-      if (o->lineart.usage == OBJECT_FEATURE_LINE_INHERENT) {
+    if (BKE_collection_has_object(c, ob)) {
+      if (ob->lineart.usage == OBJECT_FEATURE_LINE_INHERENT) {
         if ((c->lineart_usage == COLLECTION_LRT_OCCLUSION_ONLY)) {
           return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
         }
@@ -1732,7 +1732,7 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
         }
       }
       else {
-        return o->lineart.usage;
+        return ob->lineart.usage;
       }
     }
     else {
@@ -1741,7 +1741,7 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
   }
 
   for (cc = c->children.first; cc; cc = cc->next) {
-    int result = ED_lineart_object_collection_usage_check(cc->collection, o);
+    int result = ED_lineart_object_collection_usage_check(cc->collection, ob);
     if (result > OBJECT_FEATURE_LINE_INHERENT) {
       return result;
     }
@@ -1752,8 +1752,8 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *o)
 
 static void lineart_make_render_geometry_buffers(
     Depsgraph *depsgraph,
-    Scene *s,
-    Object *c /* Still use camera arg for convenience */,
+    Scene *scene,
+    Object *camera /* Still use camera arg for convenience */,
     LineartRenderBuffer *rb)
 {
   double proj[4][4], view[4][4], result[4][4];
@@ -1770,7 +1770,7 @@ static void lineart_make_render_geometry_buffers(
     copy_m4_m4_db(rb->view_projection, proj);
   }
   else {
-    Camera *cam = c->data;
+    Camera *cam = camera->data;
     float sensor = BKE_camera_sensor_size(cam->sensor_fit, cam->sensor_x, cam->sensor_y);
     double fov = focallength_to_fov(cam->lens, sensor);
 
@@ -1783,7 +1783,7 @@ static void lineart_make_render_geometry_buffers(
       double w = cam->ortho_scale / 2;
       tmat_make_ortho_matrix_44d(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
     }
-    invert_m4_m4(inv, c->obmat);
+    invert_m4_m4(inv, camera->obmat);
     mul_m4db_m4db_m4fl_uniq(result, proj, inv);
     copy_m4_m4_db(proj, result);
     copy_m4_m4_db(rb->view_projection, proj);
@@ -1796,12 +1796,12 @@ static void lineart_make_render_geometry_buffers(
   BLI_listbase_clear(&rb->vertex_buffer_pointers);
 
   DEG_OBJECT_ITER_BEGIN (depsgraph,
-                         o,
+                         ob,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    int usage = ED_lineart_object_collection_usage_check(s->master_collection, o);
+    int usage = ED_lineart_object_collection_usage_check(scene->master_collection, ob);
 
-    lineart_make_render_geometry_buffers_object(o, view, proj, rb, usage);
+    lineart_make_render_geometry_buffers_object(ob, view, proj, rb, usage);
   }
   DEG_OBJECT_ITER_END;
 }
@@ -1897,7 +1897,7 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
     return 0;
   }
 
-  /* If the the line is one of the edge in the triangle, then it's not occludded. */
+  /* If the the line is one of the edge in the triangle, then it'scene not occludded. */
   if (lineart_share_edge_direct(rt, rl)) {
     return 0;
   }
@@ -2580,7 +2580,7 @@ void ED_lineart_destroy_render_data_external(void)
   ED_lineart_destroy_render_data();
 }
 
-LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *s)
+LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
 {
   /* Re-init render_buffer_shared */
   if (lineart_share.render_buffer_shared) {
@@ -2598,9 +2598,9 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *s)
     rb->shift_x = rb->shift_y = 0.0f;
   }
   else {
-    Camera *c = s->camera->data;
-    copy_v3db_v3fl(rb->camera_pos, s->camera->obmat[3]);
-    copy_m4_m4(rb->cam_obmat, s->camera->obmat);
+    Camera *c = scene->camera->data;
+    copy_v3db_v3fl(rb->camera_pos, scene->camera->obmat[3]);
+    copy_m4_m4(rb->cam_obmat, scene->camera->obmat);
     rb->cam_is_persp = (c->type == CAM_PERSP);
     rb->near_clip = c->clip_start;
     rb->far_clip = c->clip_end;
@@ -2608,8 +2608,8 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *s)
     rb->shift_y = c->shifty;
   }
 
-  rb->chaining_image_threshold = s->lineart.chaining_image_threshold;
-  rb->chaining_geometry_threshold = s->lineart.chaining_geometry_threshold;
+  rb->chaining_image_threshold = scene->lineart.chaining_image_threshold;
+  rb->chaining_geometry_threshold = scene->lineart.chaining_geometry_threshold;
 
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);
@@ -2631,7 +2631,7 @@ void ED_lineart_calculation_set_flag(eLineartRenderStatus flag)
   BLI_spin_lock(&lineart_share.lock_render_status);
 
   if (flag == LRT_RENDER_FINISHED && lineart_share.flag_render_status == LRT_RENDER_INCOMPELTE) {
-    ; /* Don't set the finished flag when it's canceled from any one of the thread.*/
+    ; /* Don't set the finished flag when it'scene canceled from any one of the thread.*/
   }
   else {
     lineart_share.flag_render_status = flag;
@@ -2674,11 +2674,11 @@ static int lineart_get_max_occlusion_level(Depsgraph *dg)
   int max;
 
   DEG_OBJECT_ITER_BEGIN (dg,
-                         o,
+                         ob,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    if (o->type == OB_GPENCIL) {
-      LISTBASE_FOREACH (GpencilModifierData *, md, &o->greasepencil_modifiers) {
+    if (ob->type == OB_GPENCIL) {
+      LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
         if (md->type == eGpencilModifierType_Lineart) {
           lmd = (LineartGpencilModifierData *)md;
           max = MAX2(lmd->level_start, lmd->level_end);
@@ -2692,10 +2692,10 @@ static int lineart_get_max_occlusion_level(Depsgraph *dg)
   return max_occ;
 }
 
-static int lineart_get_render_triangle_size(LineartRenderBuffer *rb, const Scene *s)
+static int lineart_get_render_triangle_size(LineartRenderBuffer *rb, const Scene *scene)
 {
   if (rb->thread_count == 0) {
-    rb->thread_count = BKE_render_num_threads(&s->r);
+    rb->thread_count = BKE_render_num_threads(&scene->r);
   }
   return sizeof(LineartRenderTriangle) + (sizeof(LineartRenderLine *) * rb->thread_count);
 }
@@ -2880,7 +2880,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
    * adjacent to their original parents */
   for (lip = root->lp.first; lip; lip = lip->next) {
 
-    /** For example, we are dealing with parent's left side
+    /** For example, we are dealing with parent'scene left side
      * tba represents each adjacent neighbor of the parent.
      */
     tba = lip->data;
@@ -2994,7 +2994,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
     }
   }
 
-  /* Finally clear parent's adjacent list. */
+  /* Finally clear parent'scene adjacent list. */
   while (list_pop_pointer_no_free(&root->lp))
     ;
   while (list_pop_pointer_no_free(&root->rp))
@@ -3301,7 +3301,8 @@ static int lineart_get_line_bounding_areas(LineartRenderBuffer *rb,
   (*rowend) = rb->tile_count_y - (int)((b[2] + 1.0) / sp_h) - 1;
   (*rowbegin) = rb->tile_count_y - (int)((b[3] + 1.0) / sp_h) - 1;
 
-  /* It's possible that the line stretches too much out to the side, resulting negative value */
+  /* It'scene possible that the line stretches too much out to the side, resulting negative value
+   */
   if ((*rowend) < (*rowbegin)) {
     (*rowend) = rb->tile_count_y - 1;
   }
@@ -3708,8 +3709,8 @@ static LineartBoundingArea *lineart_get_first_possible_bounding_area(LineartRend
 int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int intersectons_only)
 {
   LineartRenderBuffer *rb;
-  Scene *s = DEG_get_evaluated_scene(depsgraph);
-  SceneLineart *lineart = &s->lineart;
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  SceneLineart *lineart = &scene->lineart;
 
   if ((lineart->flags & LRT_ENABLED) == 0) {
     /* Release lock when early return. */
@@ -3717,27 +3718,27 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
     return OPERATOR_CANCELLED;
   }
 
-  rb = ED_lineart_create_render_buffer(s);
+  rb = ED_lineart_create_render_buffer(scene);
 
   /* Has to be set after render buffer creation, to avoid locking from editor undo. */
   ED_lineart_calculation_set_flag(LRT_RENDER_RUNNING);
 
   lineart_share.render_buffer_shared = rb;
 
-  rb->w = s->r.xsch;
-  rb->h = s->r.ysch;
+  rb->w = scene->r.xsch;
+  rb->h = scene->r.ysch;
   rb->use_intersections = (lineart->flags & LRT_USE_INTERSECTIONS);
 
-  rb->triangle_size = lineart_get_render_triangle_size(rb, s);
+  rb->triangle_size = lineart_get_render_triangle_size(rb, scene);
 
   rb->max_occlusion_level = lineart_get_max_occlusion_level(depsgraph);
 
   ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
 
-  lineart_make_render_geometry_buffers(depsgraph, s, s->camera, rb);
+  lineart_make_render_geometry_buffers(depsgraph, scene, scene->camera, rb);
 
   /** We had everything we need,
-   * Unlock parent thread, it's safe to run independently from now. */
+   * Unlock parent thread, it'scene safe to run independently from now. */
   BLI_spin_unlock(&lineart_share.lock_loader);
 
   lineart_compute_view_vector(rb);
@@ -3765,8 +3766,8 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int in
 
   /* intersection_only is preserved for furure functions.*/
   if (!intersectons_only) {
-    float t_image = s->lineart.chaining_image_threshold;
-    float t_geom = s->lineart.chaining_geometry_threshold;
+    float t_image = scene->lineart.chaining_image_threshold;
+    float t_geom = scene->lineart.chaining_geometry_threshold;
 
     ED_lineart_NO_THREAD_chain_feature_lines(rb);
 
@@ -3857,8 +3858,8 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int inters
 
 static bool lineart_camera_exists(bContext *c)
 {
-  Scene *s = CTX_data_scene(c);
-  return s->camera ? true : false;
+  Scene *scene = CTX_data_scene(c);
+  return scene->camera ? true : false;
 }
 static int lineart_compute_feature_lines_exec(bContext *C, wmOperator *op)
 {
@@ -3913,12 +3914,12 @@ void SCENE_OT_lineart_calculate_feature_lines(wmOperatorType *ot)
 static void lineart_notify_gpencil_targets(Depsgraph *dg)
 {
   DEG_OBJECT_ITER_BEGIN (dg,
-                         o,
+                         ob,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    if (o->type == OB_GPENCIL) {
-      if (BKE_gpencil_modifiers_findby_type(o, eGpencilModifierType_Lineart)) {
-        bGPdata *gpd = ((Object *)o->id.orig_id)->data;
+    if (ob->type == OB_GPENCIL) {
+      if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Lineart)) {
+        bGPdata *gpd = ((Object *)ob->id.orig_id)->data;
         DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
       }
     }
@@ -3975,9 +3976,9 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
   static int tempnum = 0;
   tempnum++;
   int color_idx = 0;
-  Scene *s = DEG_get_evaluated_scene(depsgraph);
-  short thickness = s->lineart.master_thickness;
-  short opacity = s->lineart.master_strength;
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  short thickness = scene->lineart.master_thickness;
+  short opacity = scene->lineart.master_strength;
 
   float mat[4][4];
 
@@ -4047,11 +4048,11 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
 static void lineart_clear_gp_flags(Depsgraph *dg, int frame)
 {
   DEG_OBJECT_ITER_BEGIN (dg,
-                         o,
+                         ob,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    if (o->type == OB_GPENCIL) {
-      bGPdata *gpd = ((Object *)o->id.orig_id)->data;
+    if (ob->type == OB_GPENCIL) {
+      bGPdata *gpd = ((Object *)ob->id.orig_id)->data;
       bGPDlayer *gpl;
       for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
         bGPDframe *gpf = BKE_gpencil_layer_frame_find(gpl, frame);
@@ -4289,17 +4290,17 @@ static int lineart_update_gp_source_exec(bContext *C, wmOperator *UNUSED(op))
 
 static bool lineart_active_is_gpencil_object(bContext *C)
 {
-  Object *o = CTX_data_active_object(C);
-  return o->type == OB_GPENCIL;
+  Object *ob = CTX_data_active_object(C);
+  return ob->type == OB_GPENCIL;
 }
 static bool lineart_active_is_source_object(bContext *C)
 {
-  Object *o = CTX_data_active_object(C);
-  if (o->type != OB_MESH) {
+  Object *ob = CTX_data_active_object(C);
+  if (ob->type != OB_MESH) {
     return false;
   }
   else {
-    if (o->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE) {
+    if (ob->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE) {
       return true;
     }
   }
@@ -4324,20 +4325,21 @@ void SCENE_OT_lineart_bake_gp_strokes(wmOperatorType *ot)
   ot->exec = lineart_bake_gp_strokes_exec;
 }
 
-void ED_lineart_post_frame_update_external(bContext *C, Scene *s, Depsgraph *dg)
+void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph *dg)
 {
-  if ((s->lineart.flags & LRT_ENABLED) == 0 || !(s->lineart.flags & LRT_AUTO_UPDATE)) {
+  if ((scene->lineart.flags & LRT_ENABLED) == 0 || !(scene->lineart.flags & LRT_AUTO_UPDATE)) {
     return;
   }
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
     /* Modifier is waiting for data, trigger update (will wait/cancel if already running) */
-    if (s->lineart.flags & LRT_AUTO_UPDATE) {
+    if (scene->lineart.flags & LRT_AUTO_UPDATE) {
       if (C) {
         lineart_share.wm = CTX_wm_manager(C);
         lineart_share.main_window = lineart_share.wm->windows.first;
       }
       else {
-        lineart_share.wm = lineart_share.main_window = NULL;
+        lineart_share.wm = NULL;
+        lineart_share.main_window = NULL;
       }
 
       ED_lineart_compute_feature_lines_background(dg, 0);
@@ -4368,6 +4370,6 @@ void ED_lineart_update_render_progress(int nr, const char *info)
     }
   }
 #ifdef DEBUG
-  printf("%s\n", info);
+  printf("%scene\n", info);
 #endif
 }
