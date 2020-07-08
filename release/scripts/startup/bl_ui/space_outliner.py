@@ -153,21 +153,6 @@ class OUTLINER_MT_edit_datablocks(Menu):
         layout.operator("outliner.drivers_delete_selected")
 
 
-class OUTLINER_MT_collection_color_tag(Menu):
-    bl_label = "Color Tag"
-
-    def draw(self, context):
-        layout = self.layout
-
-        layout.operator("outliner.collection_color_tag_set", text="None", icon="NONE").color = 'NONE'
-        layout.operator("outliner.collection_color_tag_set", text="Red", icon="COLLECTION_COLOR_RED").color = 'RED'
-        layout.operator("outliner.collection_color_tag_set", text="Orange", icon="COLLECTION_COLOR_ORANGE").color = 'ORANGE'
-        layout.operator("outliner.collection_color_tag_set", text="Yellow", icon="COLLECTION_COLOR_YELLOW").color = 'YELLOW'
-        layout.operator("outliner.collection_color_tag_set", text="Green", icon="COLLECTION_COLOR_GREEN").color = 'GREEN'
-        layout.operator("outliner.collection_color_tag_set", text="Blue", icon="COLLECTION_COLOR_BLUE").color = 'BLUE'
-        layout.operator("outliner.collection_color_tag_set", text="Purple", icon="COLLECTION_COLOR_PURPLE").color = 'PURPLE'
-
-
 class OUTLINER_MT_collection_view_layer(Menu):
     bl_label = "View Layer"
 
@@ -251,7 +236,15 @@ class OUTLINER_MT_collection(Menu):
             layout.separator()
             layout.menu("OUTLINER_MT_collection_view_layer", icon='RENDERLAYERS')
             layout.separator()
-            layout.menu("OUTLINER_MT_collection_color_tag")
+
+            layout.label(text="Color Tag")
+            layout.operator("outliner.collection_color_tag_set", text="None", icon="X").color = 'NONE'
+            layout.operator("outliner.collection_color_tag_set", text="Red", icon="COLLECTION_COLOR_RED").color = 'RED'
+            layout.operator("outliner.collection_color_tag_set", text="Orange", icon="COLLECTION_COLOR_ORANGE").color = 'ORANGE'
+            layout.operator("outliner.collection_color_tag_set", text="Yellow", icon="COLLECTION_COLOR_YELLOW").color = 'YELLOW'
+            layout.operator("outliner.collection_color_tag_set", text="Green", icon="COLLECTION_COLOR_GREEN").color = 'GREEN'
+            layout.operator("outliner.collection_color_tag_set", text="Blue", icon="COLLECTION_COLOR_BLUE").color = 'BLUE'
+            layout.operator("outliner.collection_color_tag_set", text="Purple", icon="COLLECTION_COLOR_PURPLE").color = 'PURPLE'
 
         layout.separator()
 
@@ -448,7 +441,6 @@ classes = (
     OUTLINER_MT_collection_new,
     OUTLINER_MT_collection_visibility,
     OUTLINER_MT_collection_view_layer,
-    OUTLINER_MT_collection_color_tag,
     OUTLINER_MT_object,
     OUTLINER_MT_context_menu,
     OUTLINER_MT_context_menu_view,
