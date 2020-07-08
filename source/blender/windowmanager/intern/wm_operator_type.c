@@ -76,12 +76,12 @@ wmOperatorType *WM_operatortype_find(const char *idname, bool quiet)
     }
 
     if (!quiet) {
-      CLOG_INFO(WM_LOG_OPERATORS, "search for unknown operator '%s', '%s'", idname_bl, idname);
+      CLOG_VERBOSE(WM_LOG_OPERATORS, 2, "search for unknown operator '%s', '%s'", idname_bl, idname);
     }
   }
   else {
     if (!quiet) {
-      CLOG_INFO(WM_LOG_OPERATORS, "search for empty operator");
+      CLOG_VERBOSE(WM_LOG_OPERATORS, 2, "search for empty operator");
     }
   }
 

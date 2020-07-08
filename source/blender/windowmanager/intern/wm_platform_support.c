@@ -204,7 +204,7 @@ bool WM_platform_support_perform_checks()
       support_level, GPU_SUPPORT_LEVEL_LIMITED, GPU_SUPPORT_LEVEL_UNSUPPORTED);
 
   /* We are running in the background print the message in the console. */
-  if ((G.background || G.debug & G_DEBUG) && show_message) {
+  if (show_message) {
     CLOG_INFO(WM_LOG_SESSION, "%s\n\n%s\n%s\n", title, message, link);
   }
   if (G.background) {

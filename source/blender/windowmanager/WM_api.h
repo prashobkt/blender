@@ -814,7 +814,7 @@ bool WM_window_modal_keymap_status_draw(struct bContext *C,
                                         struct uiLayout *layout);
 
 /* wm_event_query.c */
-void WM_event_log(const struct wmEvent *event);
+char *WM_event_sprinfN(const struct wmEvent *event);
 
 int WM_event_modifier_flag(const struct wmEvent *event);
 

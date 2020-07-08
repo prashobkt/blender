@@ -429,17 +429,13 @@ void wm_event_do_notifiers(bContext *C)
             UI_popup_handlers_remove_all(C, &win->modalhandlers);
 
             WM_window_set_active_workspace(C, win, ref_ws);
-            if (G.debug & G_DEBUG_EVENTS) {
-              CLOG_INFO(WM_LOG_EVENTS, "Workspace set %p", note->reference);
-            }
+            CLOG_INFO(WM_LOG_EVENTS, "Workspace set %p", note->reference);
           }
           else if (note->data == ND_WORKSPACE_DELETE) {
             WorkSpace *workspace = note->reference;
 
             ED_workspace_delete(workspace, CTX_data_main(C), C, wm);  // XXX hrms, think this over!
-            if (G.debug & G_DEBUG_EVENTS) {
-              CLOG_INFO(WM_LOG_EVENTS, "Workspace delete %p", workspace);
-            }
+            CLOG_INFO(WM_LOG_EVENTS, "Workspace delete %p", workspace);
           }
           else if (note->data == ND_LAYOUTBROWSE) {
             bScreen *ref_screen = BKE_workspace_layout_screen_get(note->reference);
@@ -448,18 +444,14 @@ void wm_event_do_notifiers(bContext *C)
             UI_popup_handlers_remove_all(C, &win->modalhandlers);
 
             ED_screen_change(C, ref_screen); /* XXX hrms, think this over! */
-            if (G.debug & G_DEBUG_EVENTS) {
-              CLOG_INFO(WM_LOG_EVENTS, "screen set %p", note->reference);
-            }
+            CLOG_INFO(WM_LOG_EVENTS, "screen set %p", note->reference);
           }
           else if (note->data == ND_LAYOUTDELETE) {
             WorkSpace *workspace = WM_window_get_active_workspace(win);
             WorkSpaceLayout *layout = note->reference;
 
             ED_workspace_layout_delete(workspace, layout, C);  // XXX hrms, think this over!
-            if (G.debug & G_DEBUG_EVENTS) {
-              CLOG_INFO(WM_LOG_EVENTS, "screen delete %p", note->reference);
-            }
+            CLOG_INFO(WM_LOG_EVENTS, "screen delete %p", note->reference);
           }
         }
       }
@@ -930,11 +922,7 @@ static void wm_operator_finished(bContext *C, wmOperator *op, const bool repeat,
   }
 
   if (repeat == 0) {
-    if (G.debug & G_DEBUG_WM) {
-      char *buf = WM_operator_pystring(C, op, false, true);
-      BKE_report(CTX_wm_reports(C), RPT_OPERATOR, buf);
-      MEM_freeN(buf);
-    }
+    CLOG_STR_INFO_N(WM_LOG_OPERATORS, WM_operator_pystring(C, op, false, true));
 
     if (wm_operator_register_check(wm, op->type)) {
       /* take ownership of reports (in case python provided own) */
@@ -2384,10 +2372,6 @@ static int wm_action_not_handled(int action)
   return action == WM_HANDLER_CONTINUE || action == (WM_HANDLER_BREAK | WM_HANDLER_MODAL);
 }
 
-#define PRINT(...) \
-  if (do_debug_handler) \
-  CLOG_VERBOSE(WM_LOG_HANDLERS, 1, __VA_ARGS__)
-
 static int wm_handlers_do_keymap_with_keymap_handler(
     /* From 'wm_handlers_do_intern' */
     bContext *C,
@@ -2395,8 +2379,7 @@ static int wm_handlers_do_keymap_with_keymap_handler(
     ListBase *handlers,
     wmEventHandler_Keymap *handler,
     /* Additional. */
-    wmKeyMap *keymap,
-    const bool do_debug_handler)
+    wmKeyMap *keymap)
 {
   int action = WM_HANDLER_CONTINUE;
 
@@ -2408,13 +2391,13 @@ static int wm_handlers_do_keymap_with_keymap_handler(
 
     if (WM_keymap_poll(C, keymap)) {
 
-      PRINT("checking '%s': pass", keymap->idname);
+      CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "checking '%s': pass", keymap->idname);
 
       LISTBASE_FOREACH (wmKeyMapItem *, kmi, &keymap->items) {
         if (wm_eventmatch(event, kmi)) {
           struct wmEventHandler_KeymapPost keymap_post = handler->post;
 
-          PRINT("    item matched '%s'", kmi->idname);
+          CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    item matched '%s'", kmi->idname);
 
           action |= wm_handler_operator_call(
               C, handlers, &handler->head, event, kmi->ptr, kmi->idname);
@@ -2439,7 +2422,7 @@ static int wm_handlers_do_keymap_with_keymap_handler(
       }
     }
     else {
-      PRINT("checking '%s': fail", keymap->idname);
+      CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "checking '%s': fail", keymap->idname);
     }
   }
 
@@ -2455,7 +2438,6 @@ static int wm_handlers_do_keymap_with_gizmo_handler(
     /* Additional. */
     wmGizmoGroup *gzgroup,
     wmKeyMap *keymap,
-    const bool do_debug_handler,
     bool *r_keymap_poll)
 {
   int action = WM_HANDLER_CONTINUE;
@@ -2464,10 +2446,10 @@ static int wm_handlers_do_keymap_with_gizmo_handler(
 
   if (WM_keymap_poll(C, keymap)) {
     keymap_poll = true;
-    PRINT("checking '%s': pass", keymap->idname);
+    CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "checking '%s': pass", keymap->idname);
     for (kmi = keymap->items.first; kmi; kmi = kmi->next) {
       if (wm_eventmatch(event, kmi)) {
-        PRINT("    item matched '%s'", kmi->idname);
+        CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    item matched '%s'", kmi->idname);
 
         CTX_wm_gizmo_group_set(C, gzgroup);
 
@@ -2478,26 +2460,22 @@ static int wm_handlers_do_keymap_with_gizmo_handler(
         CTX_wm_gizmo_group_set(C, NULL);
 
         if (action & WM_HANDLER_BREAK) {
-          if (G.debug & (G_DEBUG_EVENTS | G_DEBUG_HANDLERS)) {
-            CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "    handled - and pass on! '%s'", kmi->idname);
-          }
+          CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    handled - and pass on! '%s'", kmi->idname);
           break;
         }
         else {
           if (action & WM_HANDLER_HANDLED) {
-            if (G.debug & (G_DEBUG_EVENTS | G_DEBUG_HANDLERS)) {
-              CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "    handled - and pass on! '%s'", kmi->idname);
-            }
+            CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    handled - and pass on! '%s'", kmi->idname);
           }
           else {
-            PRINT("    un-handled '%s'", kmi->idname);
+            CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    un-handled '%s'", kmi->idname);
           }
         }
       }
     }
   }
   else {
-    PRINT("checking '%s': fail", keymap->idname);
+    CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "checking '%s': fail", keymap->idname);
   }
 
   if (r_keymap_poll) {
@@ -2511,8 +2489,7 @@ static int wm_handlers_do_gizmo_handler(bContext *C,
                                         wmWindowManager *wm,
                                         wmEventHandler_Gizmo *handler,
                                         wmEvent *event,
-                                        ListBase *handlers,
-                                        const bool do_debug_handler)
+                                        ListBase *handlers)
 {
   int action = WM_HANDLER_CONTINUE;
   ScrArea *area = CTX_wm_area(C);
@@ -2598,7 +2575,7 @@ static int wm_handlers_do_gizmo_handler(bContext *C,
       wmGizmoGroup *gzgroup = gz->parent_gzgroup;
       wmKeyMap *keymap = WM_keymap_active(wm, gz->keymap ? gz->keymap : gzgroup->type->keymap);
       action |= wm_handlers_do_keymap_with_gizmo_handler(
-          C, event, handlers, handler, gzgroup, keymap, do_debug_handler, &keymap_poll);
+          C, event, handlers, handler, gzgroup, keymap, &keymap_poll);
 
 #ifdef USE_GIZMO_MOUSE_PRIORITY_HACK
       if (((action & WM_HANDLER_BREAK) == 0) && !is_event_handle_all && keymap_poll) {
@@ -2643,7 +2620,7 @@ static int wm_handlers_do_gizmo_handler(bContext *C,
           if (wm_gizmogroup_is_any_selected(gzgroup)) {
             wmKeyMap *keymap = WM_keymap_active(wm, gzgroup->type->keymap);
             action |= wm_handlers_do_keymap_with_gizmo_handler(
-                C, event, handlers, handler, gzgroup, keymap, do_debug_handler, NULL);
+                C, event, handlers, handler, gzgroup, keymap, NULL);
             if (action & WM_HANDLER_BREAK) {
               break;
             }
@@ -2674,11 +2651,6 @@ static int wm_handlers_do_gizmo_handler(bContext *C,
 
 static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers)
 {
-  const bool do_debug_handler =
-      (G.debug & G_DEBUG_HANDLERS) &&
-      /* comment this out to flood the console! (if you really want to test) */
-      !ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE);
-
   wmWindowManager *wm = CTX_wm_manager(C);
   int action = WM_HANDLER_CONTINUE;
   int always_pass;
@@ -2715,8 +2687,7 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
       if (handler_base->type == WM_HANDLER_TYPE_KEYMAP) {
         wmEventHandler_Keymap *handler = (wmEventHandler_Keymap *)handler_base;
         wmKeyMap *keymap = WM_event_get_keymap_from_handler(wm, handler);
-        action |= wm_handlers_do_keymap_with_keymap_handler(
-            C, event, handlers, handler, keymap, do_debug_handler);
+        action |= wm_handlers_do_keymap_with_keymap_handler(C, event, handlers, handler, keymap);
 
         /* Clear the tool-tip whenever a key binding is handled, without this tool-tips
          * are kept when a modal operators starts (annoying but otherwise harmless). */
@@ -2783,7 +2754,7 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
       }
       else if (handler_base->type == WM_HANDLER_TYPE_GIZMO) {
         wmEventHandler_Gizmo *handler = (wmEventHandler_Gizmo *)handler_base;
-        action |= wm_handlers_do_gizmo_handler(C, wm, handler, event, handlers, do_debug_handler);
+        action |= wm_handlers_do_gizmo_handler(C, wm, handler, event, handlers);
       }
       else if (handler_base->type == WM_HANDLER_TYPE_OP) {
         wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
@@ -2836,8 +2807,6 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
 
   return action;
 }
-
-#undef PRINT
 
 /* this calls handlers twice - to solve (double-)click events */
 static int wm_handlers_do(bContext *C, wmEvent *event, ListBase *handlers)
@@ -3233,16 +3202,16 @@ void wm_event_do_handlers(bContext *C)
       /* active screen might change during handlers, update pointer */
       screen = WM_window_get_active_screen(win);
 
-      if (G.debug & (G_DEBUG_HANDLERS | G_DEBUG_EVENTS) &&
-          !ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-        CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "Handling event");
-        WM_event_log(event);
+      if (!ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
+        char *event_str = WM_event_sprinfN(event);
+        CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "Handling event: %s", event_str);
+        MEM_freeN(event_str);
       }
 
       /* take care of pie event filter */
       if (wm_event_pie_filter(win, event)) {
         if (!ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-          CLOG_VERBOSE(WM_LOG_HANDLERS, 1, "Event filtered due to pie button pressed");
+          CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "Event filtered due to pie button pressed");
         }
         BLI_remlink(&win->queue, event);
         wm_event_free(event);
