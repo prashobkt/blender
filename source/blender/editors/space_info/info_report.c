@@ -514,7 +514,7 @@ ReportList *clog_to_report_list()
 
   while (log) {
     DynStr *dynStr = BLI_dynstr_new();
-    // todo implement formatting filters
+    /* TODO (grzelins) implement formatting filters */
     BLI_dynstr_append(dynStr, clg_severity_as_text(log->severity));
     BLI_dynstr_append(dynStr, " (");
     BLI_dynstr_append(dynStr, log->type->identifier);
@@ -525,6 +525,8 @@ ReportList *clog_to_report_list()
     BLI_dynstr_append(dynStr, ":\n");
     BLI_dynstr_append(dynStr, log->message);
     char *cstr = BLI_dynstr_get_cstring(dynStr);
+    /* TODO (grzelins) using BKE_report will log messages in bke.report! it will crash because
+     * message is too long!! */
     switch (log->severity) {
       case CLG_SEVERITY_INFO:
         BKE_report(reports, RPT_INFO, cstr);
@@ -546,7 +548,7 @@ ReportList *clog_to_report_list()
   }
   return reports;
 }
-
+/* TODO (grzelins) add formatting options for log
 static void clog_timestamp_to_char()
 {
   const uint64_t timestamp = 0;  // clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
@@ -557,3 +559,4 @@ static void clog_timestamp_to_char()
                                       timestamp / 1000,
                                       (uint)(timestamp % 1000));
 }
+*/

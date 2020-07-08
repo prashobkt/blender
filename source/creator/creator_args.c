@@ -765,23 +765,50 @@ static int arg_handle_background_mode_set(int UNUSED(argc),
   return 0;
 }
 
-static const char arg_handle_log_level_set_doc[] =
+static const char arg_handle_log_severity_set_doc[] =
     "<level>\n"
-    "\tSet the logging verbosity level (higher for more details) defaults to 1,\n"
-    "\tuse -1 to log all levels.";
-static int arg_handle_log_level_set(int argc, const char **argv, void *UNUSED(data))
+    "\tSet the logging severity level defaults to 1 (INFO),\n"
+    "\tAvailable: 0 (VERBOSE), 1 (INFO), 2 (WARN), 3 (ERROR), 4 (FATAL)";
+static int arg_handle_log_severity_set(int argc, const char **argv, void *UNUSED(data))
 {
-  const char *arg_id = "--log-level";
+  const char *arg_id = "--log-severity";
   if (argc > 1) {
     const char *err_msg = NULL;
-    if (!parse_int_clamp(argv[1], NULL, -1, INT_MAX, &G.log.level, &err_msg)) {
+    int severity_level = CLG_SEVERITY_INFO;
+    if (!parse_int_clamp(argv[1], NULL, 0, 4, &severity_level, &err_msg)) {
       printf("\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
     }
     else {
-      if (G.log.level == -1) {
-        G.log.level = INT_MAX;
+      CLG_severity_level_set(severity_level);
+    }
+    return 1;
+  }
+  else {
+    printf("\nError: '%s' no args given.\n", arg_id);
+    return 0;
+  }
+}
+
+static const char arg_handle_log_verbosity_set_doc[] =
+    "<log verbosity>\n"
+    "\tSet the logging verbosity level (higher for more details) defaults to 0,\n"
+    "\tuse -1 to max verbosity.";
+static int arg_handle_log_verbosity_set(int argc, const char **argv, void *UNUSED(data))
+{
+  const char *arg_id = "--log-verbosity";
+  if (argc > 1) {
+    const char *err_msg = NULL;
+    int verbosity_level = 0;
+    if (!parse_int_clamp(argv[1], NULL, -1, USHRT_MAX, &verbosity_level, &err_msg)) {
+      printf("\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
+    }
+    else {
+      if (verbosity_level == -1) {
+        CLG_verbosity_level_set(USHRT_MAX);
       }
-      CLG_level_set(G.log.level);
+      else {
+        CLG_verbosity_level_set(verbosity_level);
+      }
     }
     return 1;
   }
@@ -2072,7 +2099,8 @@ void main_args_setup(bContext *C, bArgs *ba)
   BLI_argsAdd(ba, 1, "-a", NULL, CB(arg_handle_playback_mode), NULL);
 
   BLI_argsAdd(ba, 1, NULL, "--log", CB(arg_handle_log_set), ba);
-  BLI_argsAdd(ba, 1, NULL, "--log-level", CB(arg_handle_log_level_set), ba);
+  BLI_argsAdd(ba, 1, NULL, "--log-severity", CB(arg_handle_log_severity_set), ba);
+  BLI_argsAdd(ba, 1, NULL, "--log-verbosity", CB(arg_handle_log_verbosity_set), ba);
   BLI_argsAdd(ba, 1, NULL, "--log-show-basename", CB(arg_handle_log_show_basename_set), ba);
   BLI_argsAdd(ba, 1, NULL, "--log-show-backtrace", CB(arg_handle_log_show_backtrace_set), ba);
   BLI_argsAdd(ba, 1, NULL, "--log-show-timestamp", CB(arg_handle_log_show_timestamp_set), ba);

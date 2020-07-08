@@ -115,8 +115,8 @@ typedef struct CLG_LogType {
   char identifier[64];
   /** FILE output. */
   struct CLogContext *ctx;
-  /** Control behavior. */
-  int level;
+  unsigned short verbosity_level;
+  unsigned short severity_level;
   enum CLG_LogFlag flag;
 } CLG_LogType;
 
@@ -131,6 +131,7 @@ typedef struct CLG_LogRecord {
   /** track where does the log comes from */
   CLG_LogType *type;
   enum CLG_Severity severity;
+  unsigned short verbosity;
   uint64_t timestamp;
   const char *file_line;
   const char *function;
@@ -144,19 +145,22 @@ typedef struct LogRecordList {
 
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
+                 unsigned short verbosity,
                  const char *file_line,
                  const char *fn,
-                 const char *message) _CLOG_ATTR_NONNULL(1, 3, 4, 5);
+                 const char *message) _CLOG_ATTR_NONNULL(1, 4, 5, 6);
 void CLG_logf(CLG_LogType *lg,
               enum CLG_Severity severity,
+              unsigned short verbosity,
               const char *file_line,
               const char *fn,
               const char *format,
-              ...) _CLOG_ATTR_NONNULL(1, 3, 4, 5) _CLOG_ATTR_PRINTF_FORMAT(5, 6);
+              ...) _CLOG_ATTR_NONNULL(1, 4, 5, 6) _CLOG_ATTR_PRINTF_FORMAT(6, 7);
 
 const char *clg_severity_as_text(enum CLG_Severity severity);
 CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
                                     enum CLG_Severity severity,
+                                    unsigned short verbosity,
                                     const char *file_line,
                                     const char *function,
                                     char *message);
@@ -175,7 +179,8 @@ void CLG_backtrace_fn_set(void (*fatal_fn)(void *file_handle));
 void CLG_type_filter_include(const char *type_filter, int type_filter_len);
 void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
-void CLG_level_set(int level);
+void CLG_severity_level_set(enum CLG_Severity level);
+void CLG_verbosity_level_set(unsigned short level);
 struct LogRecordList *CLG_log_record_get(void);
 
 void CLG_logref_init(CLG_LogRef *clg_ref);
@@ -194,14 +199,19 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 
 #define CLOG_CHECK_VERBOSITY(clg_ref, verbose_level, ...) \
   ((void)CLOG_ENSURE(clg_ref), \
-   ((clg_ref)->type->flag & CLG_FLAG_USE) && ((clg_ref)->type->level >= verbose_level))
+   ((clg_ref)->type->flag & CLG_FLAG_USE) && ((clg_ref)->type->verbosity_level >= verbose_level))
 
 #define CLOG_AT_SEVERITY(clg_ref, severity, verbose_level, ...) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if (((_lg_ty->flag & CLG_FLAG_USE) && (_lg_ty->level >= verbose_level)) || \
+    if (((_lg_ty->flag & CLG_FLAG_USE) && (_lg_ty->verbosity_level >= verbose_level)) || \
         (severity >= CLG_SEVERITY_WARN)) { \
-      CLG_logf(_lg_ty, severity, __FILE__ ":" STRINGIFY(__LINE__), __func__, __VA_ARGS__); \
+      CLG_logf(_lg_ty, \
+               severity, \
+               verbose_level, \
+               __FILE__ ":" STRINGIFY(__LINE__), \
+               __func__, \
+               __VA_ARGS__); \
     } \
   } \
   ((void)0)
@@ -209,9 +219,10 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_STR_AT_SEVERITY(clg_ref, severity, verbose_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if (((_lg_ty->flag & CLG_FLAG_USE) && (_lg_ty->level >= verbose_level)) || \
+    if (((_lg_ty->flag & CLG_FLAG_USE) && (_lg_ty->verbosity_level >= verbose_level)) || \
         (severity >= CLG_SEVERITY_WARN)) { \
-      CLG_log_str(_lg_ty, severity, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
+      CLG_log_str( \
+          _lg_ty, severity, verbose_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
     } \
   } \
   ((void)0)
@@ -219,10 +230,11 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_STR_AT_SEVERITY_N(clg_ref, severity, verbose_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if (((_lg_ty->flag & CLG_FLAG_USE) && (_lg_ty->level >= verbose_level)) || \
+    if (((_lg_ty->flag & CLG_FLAG_USE) && (_lg_ty->verbosity_level >= verbose_level)) || \
         (severity >= CLG_SEVERITY_WARN)) { \
       const char *_str = str; \
-      CLG_log_str(_lg_ty, severity, __FILE__ ":" STRINGIFY(__LINE__), __func__, _str); \
+      CLG_log_str( \
+          _lg_ty, severity, verbose_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, _str); \
       MEM_freeN((void *)_str); \
     } \
   } \

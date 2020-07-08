@@ -89,7 +89,7 @@ typedef struct Global {
 
   struct {
     /** Logging vars (different loggers may use). */
-    int level;
+    int level; /* currently unused */
     /** FILE handle or use stderr (we own this so close when done). */
     void *file;
   } log;

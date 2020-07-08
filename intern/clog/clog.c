@@ -96,7 +96,8 @@ typedef struct CLogContext {
 
   /** For new types. */
   struct {
-    int level;
+    short verbosity_level;
+    short severity_level;
   } default_type;
 
   struct {
@@ -345,7 +346,8 @@ static CLG_LogType *clg_ctx_type_register(CLogContext *ctx, const char *identifi
   ctx->types = ty;
   strncpy(ty->identifier, identifier, sizeof(ty->identifier) - 1);
   ty->ctx = ctx;
-  ty->level = ctx->default_type.level;
+  ty->verbosity_level = ctx->default_type.verbosity_level;
+  ty->severity_level = ctx->default_type.severity_level;
 
   if (clg_ctx_filter_check(ctx, ty->identifier)) {
     ty->flag |= CLG_FLAG_USE;
@@ -386,6 +388,7 @@ static uint64_t clg_timestamp_ticks_get(void)
 
 CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
                                     enum CLG_Severity severity,
+                                    unsigned short verbosity,
                                     const char *file_line,
                                     const char *function,
                                     char *message)
@@ -393,6 +396,8 @@ CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
   CLG_LogRecord *log_record = MEM_callocN(sizeof(*log_record), "ClogRecord");
   log_record->type = type;
   log_record->severity = severity;
+  log_record->severity = severity;
+  log_record->verbosity = verbosity;
   log_record->timestamp = clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
   log_record->file_line = file_line;
   log_record->function = function;
@@ -471,6 +476,7 @@ static void write_file_line_fn(CLogStringBuf *cstr,
 
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
+                 unsigned short verbosity,
                  const char *file_line,
                  const char *fn,
                  const char *message)
@@ -484,6 +490,11 @@ void CLG_log_str(CLG_LogType *lg,
   }
 
   write_severity(&cstr, severity, lg->ctx->use_color);
+  if (severity == CLG_SEVERITY_VERBOSE) {
+    char verbosity_str[8];
+    sprintf(verbosity_str, ":%u", verbosity);
+    clg_str_append(&cstr, verbosity_str);
+  }
   write_type(&cstr, lg);
 
   {
@@ -530,6 +541,7 @@ static void CLG_report_append(LogRecordList *listbase, CLG_LogRecord *link)
 /* TODO (grzelins) there is problem with handling big messages (example is report from duplicating object) */
 void CLG_logf(CLG_LogType *lg,
               enum CLG_Severity severity,
+              unsigned short verbosity,
               const char *file_line,
               const char *fn,
               const char *fmt,
@@ -544,6 +556,11 @@ void CLG_logf(CLG_LogType *lg,
   }
 
   write_severity(&cstr, severity, lg->ctx->use_color);
+  if (severity == CLG_SEVERITY_VERBOSE) {
+    char verbosity_str[8];
+    sprintf(verbosity_str, ":%u", verbosity);
+    clg_str_append(&cstr, verbosity_str);
+  }
   write_type(&cstr, lg);
 
   write_file_line_fn(&cstr, file_line, fn, lg->ctx->use_basename);
@@ -560,7 +577,8 @@ void CLG_logf(CLG_LogType *lg,
   char *message = MEM_callocN(mem_size, "LogMessage");
   strcpy(message, cstr.data + cstr_size_before_va);
 
-  CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, fn, message);
+  CLG_LogRecord *log_record = clog_log_record_init(
+      lg, severity, verbosity, file_line, fn, message);
   CLG_report_append(&(lg->ctx->log_records), log_record);
 
   clg_str_append(&cstr, "\n");
@@ -647,11 +665,19 @@ static void CLG_ctx_type_filter_include(CLogContext *ctx,
   clg_ctx_type_filter_append(&ctx->filters[1], type_match, type_match_len);
 }
 
-static void CLG_ctx_level_set(CLogContext *ctx, int level)
+static void CLG_ctx_severity_level_set(CLogContext *ctx, enum CLG_Severity level)
 {
-  ctx->default_type.level = level;
+  ctx->default_type.severity_level = level;
   for (CLG_LogType *ty = ctx->types; ty; ty = ty->next) {
-    ty->level = level;
+    ty->severity_level = level;
+  }
+}
+
+static void CLG_ctx_verbosity_level_set(CLogContext *ctx, unsigned short level)
+{
+  ctx->default_type.verbosity_level = level;
+  for (CLG_LogType *ty = ctx->types; ty; ty = ty->next) {
+    ty->verbosity_level = level;
   }
 }
 
@@ -667,7 +693,8 @@ static CLogContext *CLG_ctx_init(void)
   pthread_mutex_init(&ctx->types_lock, NULL);
 #endif
   ctx->use_color = true;
-  ctx->default_type.level = 1;
+  ctx->default_type.severity_level = CLG_SEVERITY_INFO;
+  ctx->default_type.verbosity_level = 0;
   CLG_ctx_output_set(ctx, stdout);
 
   return ctx;
@@ -681,8 +708,8 @@ static void CLG_ctx_free(CLogContext *ctx)
     clog_log_record_free(log);
     log = log_next;
   }
-  ctx->log_records.first= NULL;
-  ctx->log_records.last= NULL;
+  ctx->log_records.first = NULL;
+  ctx->log_records.last = NULL;
 
   while (ctx->types != NULL) {
     CLG_LogType *item = ctx->types;
@@ -761,9 +788,14 @@ void CLG_type_filter_include(const char *type_match, int type_match_len)
   CLG_ctx_type_filter_include(g_ctx, type_match, type_match_len);
 }
 
-void CLG_level_set(int level)
+void CLG_severity_level_set(enum CLG_Severity level)
 {
-  CLG_ctx_level_set(g_ctx, level);
+  CLG_ctx_severity_level_set(g_ctx, level);
+}
+
+void CLG_verbosity_level_set(unsigned short level)
+{
+  CLG_ctx_verbosity_level_set(g_ctx, level);
 }
 
 LogRecordList *CLG_log_record_get()
