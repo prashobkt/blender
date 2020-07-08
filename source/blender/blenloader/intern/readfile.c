@@ -8078,6 +8078,7 @@ static void direct_link_asset(BlendDataReader *reader, Asset *asset)
   id_fake_user_set(&asset->id);
 
   asset->preview = direct_link_preview_image(reader, asset->preview);
+  BLO_read_data_address(reader, &asset->description);
 }
 
 static void lib_link_asset(BlendLibReader *reader, Asset *asset)

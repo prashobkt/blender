@@ -28,7 +28,10 @@ typedef struct Asset {
 
   /** Thumbnail image of the data-block. Duplicate of the referenced ID preview. */
   struct PreviewImage *preview;
+  /** Optional description of this asset for display in the UI. Dynamic length. */
+  char *description;
 
+  /** The ID this asset was created for. */
   ID *referenced_id;
 } Asset;
 

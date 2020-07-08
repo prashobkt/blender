@@ -3869,6 +3869,9 @@ static void write_asset(BlendWriter *writer, Asset *asset, const void *id_addres
     write_iddata(writer, &asset->id);
 
     write_previews(writer, asset->preview);
+    if (asset->description) {
+      BLO_write_string(writer, asset->description);
+    }
   }
 }
 /* Keep it last of write_foodata functions. */

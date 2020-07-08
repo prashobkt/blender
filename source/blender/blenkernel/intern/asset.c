@@ -49,6 +49,8 @@ static void asset_free_data(ID *id)
 
   BKE_icon_id_delete((ID *)asset);
   BKE_previewimg_free(&asset->preview);
+
+  MEM_SAFE_FREE(asset->description);
 }
 
 static void asset_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -69,7 +71,7 @@ IDTypeInfo IDType_ID_AST = {
     /* flags */ 0,
 
     /* init_data */ asset_init_data,
-    /* copy_data */ NULL,
+    /* copy_data */ NULL, /* TODO */
     /* free_data */ asset_free_data,
     /* make_local */ NULL,
     /* foreach_id */ asset_foreach_id,
