@@ -2350,7 +2350,7 @@ char *DM_debug_sprintfN(DerivedMesh *dm)
   return ret;
 }
 
-/** better use CLOG_STR_INFO_N(&LOG, 1, DM_debug_sprintfN(dm)); */
+/** better use CLOG */
 void DM_debug_print(DerivedMesh *dm)
 {
   char *str = DM_debug_sprintfN(dm);

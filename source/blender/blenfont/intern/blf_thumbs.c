@@ -73,7 +73,7 @@ void BLF_thumb_preview(const char *filename,
   /* Create a new blender font obj and fill it with default values */
   font = blf_font_new("thumb_font", filename);
   if (!font) {
-    CLOG_INFO(BLENFONT_LOG, 0, "Can't load font '%s', no preview possible", filename);
+    CLOG_INFO(BLENFONT_LOG, "Can't load font '%s', no preview possible", filename);
     return;
   }
 

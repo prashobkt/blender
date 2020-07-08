@@ -701,7 +701,7 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
     }
 
     if (ok_write) {
-      CLOG_INFO(&LOG, 0, "Writing userprefs ok: '%s'", filepath);
+      CLOG_INFO(&LOG, "Writing userprefs ok: '%s'", filepath);
     }
     else {
       CLOG_ERROR(&LOG, "Writing userprefs fail: '%s'", filepath);
@@ -718,7 +718,7 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
       BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_USERPREF_FILE, NULL);
 
       if (BKE_blendfile_userdef_write(filepath, reports) != 0) {
-        CLOG_INFO(&LOG, 0, "Writing userprefs app-template ok: '%s'", filepath);
+        CLOG_INFO(&LOG, "Writing userprefs app-template ok: '%s'", filepath);
       }
       else {
         CLOG_ERROR(&LOG, "Writing userprefs app-template fail: '%s'", filepath);

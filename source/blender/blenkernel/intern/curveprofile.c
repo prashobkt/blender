@@ -884,7 +884,7 @@ void BKE_curveprofile_create_samples(CurveProfile *profile,
       BLI_dynstr_appendf(
           message, "(%d %.2f), ", curve_sorted[i].bezt_index, curve_sorted[i].bezt_curvature);
     }
-    CLOG_STR_INFO_N(&BKE_LOG_CURVEPROFILE_TABLE, 2, BLI_dynstr_get_cstring(message));
+    CLOG_STR_VERBOSE_N(&BKE_LOG_CURVEPROFILE_TABLE, 2, BLI_dynstr_get_cstring(message));
     BLI_dynstr_free(message);
   }
 
@@ -1132,22 +1132,22 @@ void BKE_curveprofile_create_samples_even_spacing(CurveProfile *profile,
     r_samples[i].x = interpf(profile->table[i_table + 1].x, profile->table[i_table].x, factor);
     r_samples[i].y = interpf(profile->table[i_table + 1].y, profile->table[i_table].y, factor);
 
-    CLOG_INFO(&BKE_LOG_CURVEPROFILE_EVALUATE,
-              3,
-              "segment_left: %.3f\n"
-              "i_table: %d\n"
-              "distance_to_previous_table_point: %.3f\n"
-              "distance_to_next_table_point: %.3f\n"
-              "Interpolating with factor %.3f from (%.3f, %.3f) to (%.3f, %.3f)",
-              segment_left,
-              i_table,
-              distance_to_previous_table_point,
-              distance_to_next_table_point,
-              factor,
-              profile->table[i_table].x,
-              profile->table[i_table].y,
-              profile->table[i_table + 1].x,
-              profile->table[i_table + 1].y);
+    CLOG_VERBOSE(&BKE_LOG_CURVEPROFILE_EVALUATE,
+                 3,
+                 "segment_left: %.3f\n"
+                 "i_table: %d\n"
+                 "distance_to_previous_table_point: %.3f\n"
+                 "distance_to_next_table_point: %.3f\n"
+                 "Interpolating with factor %.3f from (%.3f, %.3f) to (%.3f, %.3f)",
+                 segment_left,
+                 i_table,
+                 distance_to_previous_table_point,
+                 distance_to_next_table_point,
+                 factor,
+                 profile->table[i_table].x,
+                 profile->table[i_table].y,
+                 profile->table[i_table + 1].x,
+                 profile->table[i_table + 1].y);
     if (G.debug & G_DEBUG) {
       BLI_assert(factor <= 1.0f && factor >= 0.0f);
     }
@@ -1196,25 +1196,25 @@ void BKE_curveprofile_evaluate_length_portion(const CurveProfile *profile,
   float distance_to_next_point = curveprofile_distance_to_next_table_point(profile, i);
   float lerp_factor = (requested_length - length_travelled) / distance_to_next_point;
 
-  CLOG_INFO(&BKE_LOG_CURVEPROFILE_EVALUATE,
-            4,
-            "CURVEPROFILE EVALUATE\n"
-            "  length portion input: %f\n"
-            "  requested path length: %f\n"
-            "  distance to next point: %f\n"
-            "  length travelled: %f\n"
-            "  lerp-factor: %f\n"
-            "  ith point (%f, %f)\n"
-            "  next point(%f, %f)",
-            (double)length_portion,
-            (double)requested_length,
-            (double)distance_to_next_point,
-            (double)length_travelled,
-            (double)lerp_factor,
-            (double)profile->path[i].x,
-            (double)profile->path[i].y,
-            (double)profile->path[i + 1].x,
-            (double)profile->path[i + 1].y);
+  CLOG_VERBOSE(&BKE_LOG_CURVEPROFILE_EVALUATE,
+               4,
+               "CURVEPROFILE EVALUATE\n"
+               "  length portion input: %f\n"
+               "  requested path length: %f\n"
+               "  distance to next point: %f\n"
+               "  length travelled: %f\n"
+               "  lerp-factor: %f\n"
+               "  ith point (%f, %f)\n"
+               "  next point(%f, %f)",
+               (double)length_portion,
+               (double)requested_length,
+               (double)distance_to_next_point,
+               (double)length_travelled,
+               (double)lerp_factor,
+               (double)profile->path[i].x,
+               (double)profile->path[i].y,
+               (double)profile->path[i + 1].x,
+               (double)profile->path[i + 1].y);
 
   *x_out = interpf(profile->table[i].x, profile->table[i + 1].x, lerp_factor);
   *y_out = interpf(profile->table[i].y, profile->table[i + 1].y, lerp_factor);

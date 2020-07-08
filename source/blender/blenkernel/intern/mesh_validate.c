@@ -197,7 +197,7 @@ static int search_polyloop_cmp(const void *v1, const void *v2)
 
 #define PRINT_MSG(...) \
   if (do_verbose) \
-  CLOG_INFO(BKE_LOG_MESH, 1, __VA_ARGS__)
+  CLOG_VERBOSE(BKE_LOG_MESH, 1, __VA_ARGS__)
 
 #define PRINT_ERR(...) \
   do { \
@@ -1034,7 +1034,7 @@ bool BKE_mesh_validate(Mesh *me, const bool do_verbose, const bool cddata_check_
   bool changed;
 
   if (do_verbose) {
-    CLOG_INFO(BKE_LOG_MESH, 0, "MESH: %s", me->id.name + 2);
+    CLOG_INFO(BKE_LOG_MESH, "MESH: %s", me->id.name + 2);
   }
 
   is_valid &= BKE_mesh_validate_all_customdata(&me->vdata,

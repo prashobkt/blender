@@ -243,6 +243,7 @@ static void clg_color_table_init(bool use_color)
 }
 
 static const char *clg_severity_str[CLG_SEVERITY_LEN] = {
+    [CLG_SEVERITY_VERBOSE] = "VERBOSE",
     [CLG_SEVERITY_INFO] = "INFO",
     [CLG_SEVERITY_WARN] = "WARN",
     [CLG_SEVERITY_ERROR] = "ERROR",
@@ -266,6 +267,9 @@ static enum eCLogColor clg_severity_to_color(enum CLG_Severity severity)
   assert((unsigned int)severity < CLG_SEVERITY_LEN);
   enum eCLogColor color = COLOR_DEFAULT;
   switch (severity) {
+    case CLG_SEVERITY_VERBOSE:
+      color = COLOR_DEFAULT;
+      break;
     case CLG_SEVERITY_INFO:
       color = COLOR_DEFAULT;
       break;

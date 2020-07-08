@@ -57,7 +57,7 @@
 
 /* for debugging only, getting inspecting events manually is tedious
  * will be printed with wm.event on log level 2
-*/
+ */
 void WM_event_log(const wmEvent *event)
 {
   if (event) {
@@ -73,44 +73,45 @@ void WM_event_log(const wmEvent *event)
     RNA_enum_identifier(rna_enum_event_type_items, event->prevtype, &prev_type_id);
     RNA_enum_identifier(rna_enum_event_value_items, event->prevval, &prev_val_id);
 
-    CLOG_INFO(WM_LOG_EVENTS,
-              2,
-              "wmEvent  type:%d / %s, val:%d / %s,\n"
-              "         prev_type:%d / %s, prev_val:%d / %s,\n"
-              "         shift:%d, ctrl:%d, alt:%d, oskey:%d, keymodifier:%d, is_repeat:%d,\n"
-              "         mouse:(%d,%d), ascii:'%c', utf8:'%.*s', pointer:%p",
-              event->type,
-              type_id,
-              event->val,
-              val_id,
-              event->prevtype,
-              prev_type_id,
-              event->prevval,
-              prev_val_id,
-              event->shift,
-              event->ctrl,
-              event->alt,
-              event->oskey,
-              event->keymodifier,
-              event->is_repeat,
-              event->x,
-              event->y,
-              event->ascii,
-              BLI_str_utf8_size(event->utf8_buf),
-              event->utf8_buf,
-              (const void *)event);
+    CLOG_VERBOSE(WM_LOG_EVENTS,
+                 2,
+                 "wmEvent  type:%d / %s, val:%d / %s,\n"
+                 "         prev_type:%d / %s, prev_val:%d / %s,\n"
+                 "         shift:%d, ctrl:%d, alt:%d, oskey:%d, keymodifier:%d, is_repeat:%d,\n"
+                 "         mouse:(%d,%d), ascii:'%c', utf8:'%.*s', pointer:%p",
+                 event->type,
+                 type_id,
+                 event->val,
+                 val_id,
+                 event->prevtype,
+                 prev_type_id,
+                 event->prevval,
+                 prev_val_id,
+                 event->shift,
+                 event->ctrl,
+                 event->alt,
+                 event->oskey,
+                 event->keymodifier,
+                 event->is_repeat,
+                 event->x,
+                 event->y,
+                 event->ascii,
+                 BLI_str_utf8_size(event->utf8_buf),
+                 event->utf8_buf,
+                 (const void *)event);
 
 #ifdef WITH_INPUT_NDOF
     if (ISNDOF(event->type)) {
       const wmNDOFMotionData *ndof = event->customdata;
       if (event->type == NDOF_MOTION) {
-        CLOG_INFO(WM_LOG_EVENTS,
-                  2,
-                  "   ndof: rot: (%.4f %.4f %.4f), tx: (%.4f %.4f %.4f), dt: %.4f, progress: %u",
-                  UNPACK3(ndof->rvec),
-                  UNPACK3(ndof->tvec),
-                  ndof->dt,
-                  ndof->progress);
+        CLOG_VERBOSE(
+            WM_LOG_EVENTS,
+            2,
+            "   ndof: rot: (%.4f %.4f %.4f), tx: (%.4f %.4f %.4f), dt: %.4f, progress: %u",
+            UNPACK3(ndof->rvec),
+            UNPACK3(ndof->tvec),
+            ndof->dt,
+            ndof->progress);
       }
       else {
         /* ndof buttons printed already */
@@ -120,17 +121,17 @@ void WM_event_log(const wmEvent *event)
 
     if (event->tablet.active != EVT_TABLET_NONE) {
       const wmTabletData *wmtab = &event->tablet;
-      CLOG_INFO(WM_LOG_EVENTS,
-                2,
-                " tablet: active: %d, pressure %.4f, tilt: (%.4f %.4f)",
-                wmtab->active,
-                wmtab->pressure,
-                wmtab->x_tilt,
-                wmtab->y_tilt);
+      CLOG_VERBOSE(WM_LOG_EVENTS,
+                   2,
+                   " tablet: active: %d, pressure %.4f, tilt: (%.4f %.4f)",
+                   wmtab->active,
+                   wmtab->pressure,
+                   wmtab->x_tilt,
+                   wmtab->y_tilt);
     }
   }
   else {
-    CLOG_INFO(WM_LOG_EVENTS, 2, "wmEvent - NULL");
+    CLOG_VERBOSE(WM_LOG_EVENTS, 2, "wmEvent - NULL");
   }
 }
 

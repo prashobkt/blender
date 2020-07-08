@@ -1360,7 +1360,6 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
                 WM_keymap_item_to_string(kmi, false, kmi_str, sizeof(kmi_str));
                 /* Note gievn properties could come from other things than menu entry... */
                 CLOG_INFO(WM_LOG_KEYMAPS,
-                          0,
                           "%s: Some set values in menu entry match default op values, "
                           "this might not be desired!\nkm: '%s', kmi: '%s'",
                           opname,
@@ -1368,10 +1367,10 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
                           kmi_str);
 #ifdef WITH_PYTHON
                 char *operator_str = IDP_sprintN(properties);
-                CLOG_INFO(WM_LOG_KEYMAPS, 4, "OPERATOR: %s", operator_str);
+                CLOG_VERBOSE(WM_LOG_KEYMAPS, 4, "OPERATOR: %s", operator_str);
                 MEM_freeN(operator_str);
                 char *keymap_str = IDP_sprintN(kmi->ptr->data);
-                CLOG_INFO(WM_LOG_KEYMAPS, 4, "KEYMAP: %s", keymap_str);
+                CLOG_VERBOSE(WM_LOG_KEYMAPS, 4, "KEYMAP: %s", keymap_str);
                 MEM_freeN(keymap_str);
 #endif
               }
@@ -1572,7 +1571,6 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
           char kmi_str[128];
           WM_keymap_item_to_string(kmi, false, kmi_str, sizeof(kmi_str));
           CLOG_INFO(WM_LOG_KEYMAPS,
-                    0,
                     "%s: Some set values in keymap entry match default op values, "
                     "this might not be desired!\nkm: '%s', kmi: '%s'",
                     opname,
@@ -1580,10 +1578,10 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
                     kmi_str);
 #ifdef WITH_PYTHON
           char *operator_str = IDP_sprintN(properties);
-          CLOG_INFO(WM_LOG_KEYMAPS, 4, "OPERATOR: %s", operator_str);
+          CLOG_VERBOSE(WM_LOG_KEYMAPS, 4, "OPERATOR: %s", operator_str);
           MEM_freeN(operator_str);
           char *keymap_str = IDP_sprintN(kmi->ptr->data);
-          CLOG_INFO(WM_LOG_KEYMAPS, 4, "KEYMAP: %s", keymap_str);
+          CLOG_VERBOSE(WM_LOG_KEYMAPS, 4, "KEYMAP: %s", keymap_str);
           MEM_freeN(keymap_str);
 #endif
         }

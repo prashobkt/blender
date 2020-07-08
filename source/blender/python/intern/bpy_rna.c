@@ -7298,7 +7298,7 @@ static PyObject *pyrna_srna_ExternalType(StructRNA *srna)
         newclass = NULL;
       }
       else {
-        CLOG_INFO(BPY_LOG_RNA, 2, "SRNA sub-classed: '%s'", idname);
+        CLOG_VERBOSE(BPY_LOG_RNA, 2, "SRNA sub-classed: '%s'", idname);
       }
     }
   }

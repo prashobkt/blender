@@ -307,7 +307,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args
 
   WM_msg_subscribe_rna_params(mbus, &msg_key_params, &msg_val_params, __func__);
 
-  CLOG_STR_INFO_N(WM_LOG_MSGBUS_SUB, 4, WM_msg_sprintN(mbus));
+  CLOG_STR_VERBOSE_N(WM_LOG_MSGBUS_SUB, 4, WM_msg_sprintN(mbus));
 
   Py_RETURN_NONE;
 }

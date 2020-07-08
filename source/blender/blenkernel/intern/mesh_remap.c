@@ -166,7 +166,7 @@ float BKE_mesh_remap_calc_difference_from_mesh(const SpaceTransform *space_trans
 
   result = ((float)numverts_dst / result) - 1.0f;
 
-  CLOG_INFO(
+  CLOG_VERBOSE(
       BKE_LOG_MESH, 3, "Computed difference between meshes (the lower the better): %f", result);
 
   return result;

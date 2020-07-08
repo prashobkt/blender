@@ -53,7 +53,7 @@ ABCCurveWriter::ABCCurveWriter(const ABCWriterConstructorArgs &args) : ABCAbstra
 
 void ABCCurveWriter::create_alembic_objects(const HierarchyContext *context)
 {
-  CLOG_INFO(&LOG, 2, "exporting %s", args_.abc_path.c_str());
+  CLOG_VERBOSE(&LOG, 2, "exporting %s", args_.abc_path.c_str());
   abc_curve_ = OCurves(args_.abc_parent, args_.abc_name, timesample_index_);
   abc_curve_schema_ = abc_curve_.getSchema();
 

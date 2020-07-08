@@ -736,7 +736,7 @@ static bool operator_last_properties_init_impl(wmOperator *op, IDProperty *last_
   IDProperty *replaceprops = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
   PropertyRNA *iterprop;
 
-  CLOG_INFO(WM_LOG_OPERATORS, 1, "loading previous properties for '%s'", op->type->idname);
+  CLOG_VERBOSE(WM_LOG_OPERATORS, 1, "loading previous properties for '%s'", op->type->idname);
 
   iterprop = RNA_struct_iterator_property(op->type->srna);
 
@@ -791,7 +791,7 @@ bool WM_operator_last_properties_store(wmOperator *op)
   }
 
   if (op->properties) {
-    CLOG_INFO(WM_LOG_OPERATORS, 1, "storing properties for '%s'", op->type->idname);
+    CLOG_VERBOSE(WM_LOG_OPERATORS, 1, "storing properties for '%s'", op->type->idname);
     op->type->last_properties = IDP_CopyProperty(op->properties);
   }
 
@@ -3543,8 +3543,8 @@ static int previews_clear_exec(bContext *C, wmOperator *op)
     }
 
 #if 0
-    CLOG_INFO(WM_LOG_OPERATORS,
-              2,
+    CLOG_VERBOSE(WM_LOG_OPERATORS,
+2,
               "%s: %d, %d, %d -> %d",
               id->name,
               GS(id->name),

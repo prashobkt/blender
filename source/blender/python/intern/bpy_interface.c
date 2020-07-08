@@ -502,8 +502,9 @@ static bool python_script_exec(
 
       bool wrapper_init_ok = BPY_intern_init_io_wrapper();
       if (!wrapper_init_ok) {
-        CLOG_WARN(BPY_LOG_RNA,
-                  "Setting python IO wrapper failed! Script output will not be visible in Info Edotr");
+        CLOG_WARN(
+            BPY_LOG_RNA,
+            "Setting python IO wrapper failed! Script output will not be visible in Info Edotr");
       }
 
       py_result = PyEval_EvalCode(text->compiled, py_dict, py_dict);
@@ -901,11 +902,11 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
           CTX_data_list_add(result, ptr->owner_id, ptr->type, ptr->data);
         }
         else {
-          CLOG_INFO(BPY_LOG_CONTEXT,
-                    1,
-                    "'%s' list item not a valid type in sequence type '%s'",
-                    member,
-                    Py_TYPE(item)->tp_name);
+          CLOG_VERBOSE(BPY_LOG_CONTEXT,
+                       1,
+                       "'%s' list item not a valid type in sequence type '%s'",
+                       member,
+                       Py_TYPE(item)->tp_name);
         }
       }
       Py_DECREF(seq_fast);
@@ -916,14 +917,14 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
 
   if (done == false) {
     if (item) {
-      CLOG_INFO(BPY_LOG_CONTEXT, 1, "'%s' not a valid type", member);
+      CLOG_VERBOSE(BPY_LOG_CONTEXT, 1, "'%s' not a valid type", member);
     }
     else {
-      CLOG_INFO(BPY_LOG_CONTEXT, 1, "'%s' not found", member);
+      CLOG_VERBOSE(BPY_LOG_CONTEXT, 1, "'%s' not found", member);
     }
   }
   else {
-    CLOG_INFO(BPY_LOG_CONTEXT, 2, "'%s' found", member);
+    CLOG_VERBOSE(BPY_LOG_CONTEXT, 2, "'%s' found", member);
   }
 
   if (use_gil) {

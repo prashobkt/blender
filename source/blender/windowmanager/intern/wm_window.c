@@ -1135,7 +1135,7 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
     wm_window_clear_drawable(wm);
 
     if (G.debug & G_DEBUG_EVENTS) {
-      CLOG_INFO(WM_LOG_EVENTS, 0, "Set drawable %d", win->winid);
+      CLOG_INFO(WM_LOG_EVENTS, "Set drawable %d", win->winid);
     }
 
     wm_window_set_drawable(wm, win, true);
@@ -1355,7 +1355,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
       }
       case GHOST_kEventWindowUpdate: {
         if (G.debug & G_DEBUG_EVENTS) {
-          CLOG_INFO(WM_LOG_EVENTS, 1, "ghost redraw %d", win->winid);
+          CLOG_VERBOSE(WM_LOG_EVENTS, 1, "ghost redraw %d", win->winid);
         }
 
         wm_window_make_drawable(wm, win);
@@ -1405,16 +1405,16 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
                 state_str = "<unknown>";
               }
 
-              CLOG_INFO(WM_LOG_EVENTS, 1, "window %d state = %s", win->winid, state_str);
+              CLOG_VERBOSE(WM_LOG_EVENTS, 1, "window %d state = %s", win->winid, state_str);
 
               if (type != GHOST_kEventWindowSize) {
-                CLOG_INFO(WM_LOG_EVENTS,
-                          1,
-                          "win move event pos %d %d size %d %d",
-                          win->posx,
-                          win->posy,
-                          win->sizex,
-                          win->sizey);
+                CLOG_VERBOSE(WM_LOG_EVENTS,
+                             1,
+                             "win move event pos %d %d size %d %d",
+                             win->posx,
+                             win->posy,
+                             win->sizex,
+                             win->sizey);
               }
             }
 
@@ -1495,7 +1495,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 
         wm_event_add(win, &event);
 
-        /* CLOG_INFO(WM_LOG_EVENTS, 0, "Drop detected"); */
+        /* CLOG_INFO(WM_LOG_EVENTS, "Drop detected"); */
 
         /* add drag data to wm for paths: */
 
@@ -1504,7 +1504,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
           int a, icon;
 
           for (a = 0; a < stra->count; a++) {
-            CLOG_INFO(WM_LOG_EVENTS, 0, "drop file %s", stra->strings[a]);
+            CLOG_INFO(WM_LOG_EVENTS, "drop file %s", stra->strings[a]);
             /* try to get icon type from extension */
             icon = ED_file_extension_icon((char *)stra->strings[a]);
 

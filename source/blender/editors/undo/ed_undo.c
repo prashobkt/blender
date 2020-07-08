@@ -78,7 +78,7 @@ static CLG_LogRef LOG = {"ed.undo"};
 
 void ED_undo_push(bContext *C, const char *str)
 {
-  CLOG_INFO(&LOG, 1, "name='%s'", str);
+  CLOG_VERBOSE(&LOG, 1, "name='%s'", str);
   WM_file_tag_modified();
 
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -125,7 +125,7 @@ static int ed_undo_step_impl(
   /* Mutually exclusives, ensure correct input. */
   BLI_assert(((undoname || undo_index != -1) && !step) ||
              (!(undoname || undo_index != -1) && step));
-  CLOG_INFO(&LOG, 1, "name='%s', step=%d", undoname, step);
+  CLOG_VERBOSE(&LOG, 1, "name='%s', step=%d", undoname, step);
   wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
   ScrArea *area = CTX_wm_area(C);
@@ -357,14 +357,14 @@ bool ED_undo_is_legacy_compatible_for_property(struct bContext *C, ID *id)
       if (obact->mode & OB_MODE_ALL_PAINT) {
         /* Don't store property changes when painting
          * (only do undo pushes on brush strokes which each paint operator handles on it's own). */
-        CLOG_INFO(&LOG, 1, "skipping undo for paint-mode");
+        CLOG_VERBOSE(&LOG, 1, "skipping undo for paint-mode");
         return false;
       }
       if (obact->mode & OB_MODE_EDIT) {
         if ((id == NULL) || (obact->data == NULL) ||
             (GS(id->name) != GS(((ID *)obact->data)->name))) {
           /* No undo push on id type mismatch in edit-mode. */
-          CLOG_INFO(&LOG, 1, "skipping undo for edit-mode");
+          CLOG_VERBOSE(&LOG, 1, "skipping undo for edit-mode");
           return false;
         }
       }
@@ -562,7 +562,7 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
   int ret = 0;
 
   if (op) {
-    CLOG_INFO(&LOG, 1, "idname='%s'", op->type->idname);
+    CLOG_VERBOSE(&LOG, 1, "idname='%s'", op->type->idname);
     wmWindowManager *wm = CTX_wm_manager(C);
     struct Scene *scene = CTX_data_scene(C);
 
@@ -584,7 +584,7 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
       int retval;
 
       if (G.debug & G_DEBUG) {
-        CLOG_INFO(&LOG, 1, "redo_cb: operator redo %s\n", op->type->name);
+        CLOG_VERBOSE(&LOG, 1, "redo_cb: operator redo %s\n", op->type->name);
       }
 
       WM_operator_free_all_after(wm, op);
@@ -604,7 +604,7 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
       retval = WM_operator_repeat(C, op);
       if ((retval & OPERATOR_FINISHED) == 0) {
         if (G.debug & G_DEBUG) {
-          CLOG_INFO(
+          CLOG_VERBOSE(
               &LOG, 1, "redo_cb: operator redo failed: %s, return %d\n", op->type->name, retval);
         }
         ED_undo_redo(C);
@@ -615,7 +615,7 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
     }
     else {
       if (G.debug & G_DEBUG) {
-        CLOG_INFO(
+        CLOG_VERBOSE(
             &LOG, 1, "redo_cb: WM_operator_repeat_check returned false %s\n", op->type->name);
       }
     }

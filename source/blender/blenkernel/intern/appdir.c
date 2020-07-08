@@ -147,11 +147,11 @@ static bool test_path(char *targetpath,
    * if folder_name is specified but not otherwise? */
 
   if (BLI_is_dir(targetpath)) {
-    CLOG_INFO(&LOG, 1, "\tfound: %s", targetpath);
+    CLOG_VERBOSE(&LOG, 1, "\tfound: %s", targetpath);
     return true;
   }
 
-  CLOG_INFO(&LOG, 1, "\tmissing: %s", targetpath);
+  CLOG_VERBOSE(&LOG, 1, "\tmissing: %s", targetpath);
   // targetpath[0] = '\0';
   return false;
 }
@@ -169,12 +169,12 @@ static bool test_env_path(char *path, const char *envvar)
 
   if (BLI_is_dir(env)) {
     BLI_strncpy(path, env, FILE_MAX);
-    CLOG_INFO(&LOG, 1, "\tenv %s found: %s", envvar, env);
+    CLOG_VERBOSE(&LOG, 1, "\tenv %s found: %s", envvar, env);
     return true;
   }
 
   path[0] = '\0';
-  CLOG_INFO(&LOG, 1, "\tenv %s missing: %s", envvar, env);
+  CLOG_VERBOSE(&LOG, 1, "\tenv %s missing: %s", envvar, env);
   return false;
 }
 
@@ -320,7 +320,7 @@ static bool get_path_user(char *targetpath,
     return false;
   }
 
-  CLOG_INFO(&LOG, 4, "user_path: %s", user_path);
+  CLOG_VERBOSE(&LOG, 4, "user_path: %s", user_path);
 
   if (subfolder_name) {
     return test_path(targetpath, targetpath_len, user_path, folder_name, subfolder_name);
@@ -370,7 +370,7 @@ static bool get_path_system(char *targetpath,
     return false;
   }
 
-  CLOG_INFO(&LOG, 3, "%s", system_path);
+  CLOG_VERBOSE(&LOG, 3, "%s", system_path);
 
   if (subfolder_name) {
     /* try $BLENDERPATH/folder_name/subfolder_name */
@@ -676,7 +676,7 @@ static void where_am_i(char *fullname, const size_t maxlen, const char *name)
     BLI_path_normalize(NULL, fullname);
 
     if (!STREQ(name, fullname)) {
-      CLOG_INFO(&LOG, 2, "guessing '%s' == '%s'", name, fullname);
+      CLOG_VERBOSE(&LOG, 2, "guessing '%s' == '%s'", name, fullname);
     }
   }
 }

@@ -1468,7 +1468,7 @@ static CLG_LogRef BKE_LOG_BRUSH_DEFAULTS = {"bke.brush.defaults"};
 void BKE_brush_sculpt_reset(Brush *br)
 {
   /* enable this to see any non-default settings used by a brush: */
-  CLOG_STR_INFO_N(&BKE_LOG_BRUSH_DEFAULTS, 3, BKE_brush_debug_sprintfN_state(br));
+  CLOG_STR_VERBOSE_N(&BKE_LOG_BRUSH_DEFAULTS, 3, BKE_brush_debug_sprintfN_state(br));
 
   brush_defaults(br);
   BKE_brush_curve_preset(br, CURVE_PRESET_SMOOTH);

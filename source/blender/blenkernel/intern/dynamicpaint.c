@@ -2888,7 +2888,7 @@ int dynamicPaint_createUVSurface(Scene *scene,
   /*
    * Start generating the surface
    */
-  CLOG_INFO(&LOG, 1, "Preparing UV surface of %ix%i pixels and %i tris.", w, h, tottri);
+  CLOG_VERBOSE(&LOG, 1, "Preparing UV surface of %ix%i pixels and %i tris.", w, h, tottri);
 
   /* Init data struct */
   if (surface->data) {

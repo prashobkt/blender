@@ -303,13 +303,10 @@ static bool wm_link_append_item_poll(ReportList *reports,
   short idcode;
 
   if (!group || !name) {
-    /* TODO (grzelins) convert to report, but write why can not be linked. Right now it fails silently, not
-     * great UX */
-    CLOG_INFO(WM_LOG_OPERATORS,
-              0,
-              "Can not be %s, skipping %s",
-              do_append ? "appended" : "linked",
-              path);
+    /* TODO (grzelins) convert to report, but write why can not be linked. Right now it fails
+     * silently, not great UX */
+    CLOG_INFO(
+        WM_LOG_OPERATORS, "Can not be %s, skipping %s", do_append ? "appended" : "linked", path);
     return false;
   }
 
@@ -735,7 +732,7 @@ static void lib_relocate_do(Main *bmain,
         item = wm_link_append_data_item_add(lapp_data, id->name + 2, idcode, id);
         BLI_bitmap_set_all(item->libraries, true, lapp_data->num_libraries);
 
-        CLOG_INFO(WM_LOG_OPERATORS, 2, "\tdatablock to seek for: %s", id->name);
+        CLOG_VERBOSE(WM_LOG_OPERATORS, 2, "\tdatablock to seek for: %s", id->name);
       }
     }
   }
@@ -785,12 +782,12 @@ static void lib_relocate_do(Main *bmain,
       BLI_assert(new_id);
     }
     if (new_id) {
-      CLOG_INFO(WM_LOG_OPERATORS,
-                3,
-                "before remap of %s, old_id users: %d, new_id users: %d",
-                old_id->name,
-                old_id->us,
-                new_id->us);
+      CLOG_VERBOSE(WM_LOG_OPERATORS,
+                   3,
+                   "before remap of %s, old_id users: %d, new_id users: %d",
+                   old_id->name,
+                   old_id->us,
+                   new_id->us);
       BKE_libblock_remap_locked(bmain, old_id, new_id, remap_flags);
 
       if (old_id->flag & LIB_FAKEUSER) {
@@ -798,12 +795,12 @@ static void lib_relocate_do(Main *bmain,
         id_fake_user_set(new_id);
       }
 
-      CLOG_INFO(WM_LOG_OPERATORS,
-                3,
-                "after remap of %s, old_id users: %d, new_id users: %d",
-                old_id->name,
-                old_id->us,
-                new_id->us);
+      CLOG_VERBOSE(WM_LOG_OPERATORS,
+                   3,
+                   "after remap of %s, old_id users: %d, new_id users: %d",
+                   old_id->name,
+                   old_id->us,
+                   new_id->us);
 
       /* In some cases, new_id might become direct link, remove parent of library in this case. */
       if (new_id->lib->parent && (new_id->tag & LIB_TAG_INDIRECT) == 0) {
@@ -992,11 +989,11 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
     }
 
     if (BLI_path_cmp(lib->filepath_abs, path) == 0) {
-      CLOG_INFO(WM_LOG_OPERATORS,
-                2,
-                "We are supposed to reload '%s' lib (%d)...",
-                lib->filepath,
-                lib->id.us);
+      CLOG_VERBOSE(WM_LOG_OPERATORS,
+                   2,
+                   "We are supposed to reload '%s' lib (%d)...",
+                   lib->filepath,
+                   lib->id.us);
 
       do_reload = true;
 
@@ -1007,7 +1004,6 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
       int totfiles = 0;
 
       CLOG_INFO(WM_LOG_OPERATORS,
-                0,
                 "We are supposed to relocate '%s' lib to new '%s' one...\n",
                 lib->filepath,
                 libname);
@@ -1036,14 +1032,15 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
             continue;
           }
 
-          CLOG_INFO(
+          CLOG_VERBOSE(
               WM_LOG_OPERATORS, 3, "\t candidate new lib to reload datablocks from: %s", path);
           wm_link_append_data_library_add(lapp_data, path);
         }
         RNA_END;
       }
       else {
-        CLOG_INFO(WM_LOG_OPERATORS, 3, "\t candidate new lib to reload datablocks from: %s", path);
+        CLOG_VERBOSE(
+            WM_LOG_OPERATORS, 3, "\t candidate new lib to reload datablocks from: %s", path);
         wm_link_append_data_library_add(lapp_data, path);
       }
     }

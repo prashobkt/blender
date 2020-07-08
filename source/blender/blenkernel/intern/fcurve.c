@@ -739,7 +739,7 @@ bool BKE_fcurve_calc_bounds(FCurve *fcu,
     }
   }
   else {
-    CLOG_INFO(
+    CLOG_VERBOSE(
         &LOG, 1, "F-Curve calc bounds didn't find anything, so assuming minimum bounds of 1.0");
 
     if (xmin) {

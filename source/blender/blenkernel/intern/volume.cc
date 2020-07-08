@@ -284,7 +284,7 @@ struct VolumeGrid {
     }
 
     /* Load grid from file. */
-    CLOG_INFO(&LOG, 1, "Volume %s: load grid '%s'", volume_name, name());
+    CLOG_VERBOSE(&LOG, 1, "Volume %s: load grid '%s'", volume_name, name());
 
     openvdb::io::File file(filepath);
 
@@ -316,7 +316,7 @@ struct VolumeGrid {
       return;
     }
 
-    CLOG_INFO(&LOG, 1, "Volume %s: unload grid '%s'", volume_name, name());
+    CLOG_VERBOSE(&LOG, 1, "Volume %s: unload grid '%s'", volume_name, name());
 
     /* Change tree user to metadata user. */
     GLOBAL_CACHE.change_to_metadata_user(*entry);
@@ -665,14 +665,14 @@ bool BKE_volume_load(Volume *volume, Main *bmain)
   const char *volume_name = volume->id.name + 2;
   volume_filepath_get(bmain, volume, grids.filepath);
 
-  CLOG_INFO(&LOG, 1, "Volume %s: load %s", volume_name, grids.filepath);
+  CLOG_VERBOSE(&LOG, 1, "Volume %s: load %s", volume_name, grids.filepath);
 
   /* Test if file exists. */
   if (!BLI_exists(grids.filepath)) {
     char filename[FILE_MAX];
     BLI_split_file_part(grids.filepath, filename, sizeof(filename));
     grids.error_msg = filename + std::string(" not found");
-    CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
+    CLOG_VERBOSE(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
     return false;
   }
 
@@ -681,7 +681,7 @@ bool BKE_volume_load(Volume *volume, Main *bmain)
     char filename[FILE_MAX];
     BLI_split_file_part(grids.filepath, filename, sizeof(filename));
     grids.error_msg = filename + std::string(" not found");
-    CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
+    CLOG_VERBOSE(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
     return false;
   }
 
@@ -697,7 +697,7 @@ bool BKE_volume_load(Volume *volume, Main *bmain)
   }
   catch (const openvdb::IoError &e) {
     grids.error_msg = e.what();
-    CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
+    CLOG_VERBOSE(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
   }
 
   /* Add grids read from file to own vector, filtering out any NULL pointers. */
@@ -721,7 +721,7 @@ void BKE_volume_unload(Volume *volume)
   VolumeGridVector &grids = *volume->runtime.grids;
   if (grids.filepath[0] != '\0') {
     const char *volume_name = volume->id.name + 2;
-    CLOG_INFO(&LOG, 1, "Volume %s: unload", volume_name);
+    CLOG_VERBOSE(&LOG, 1, "Volume %s: unload", volume_name);
     grids.clear_all();
   }
 #else

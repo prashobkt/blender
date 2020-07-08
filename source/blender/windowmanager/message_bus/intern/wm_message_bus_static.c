@@ -98,7 +98,7 @@ wmMsgSubscribeKey_Static *WM_msg_lookup_static(struct wmMsgBus *mbus,
 
 void WM_msg_publish_static_params(struct wmMsgBus *mbus, const wmMsgParams_Static *msg_key_params)
 {
-  CLOG_INFO(WM_LOG_MSGBUS_PUB, 2, "static(event=%d)", msg_key_params->event);
+  CLOG_VERBOSE(WM_LOG_MSGBUS_PUB, 2, "static(event=%d)", msg_key_params->event);
 
   wmMsgSubscribeKey_Static *key = WM_msg_lookup_static(mbus, msg_key_params);
   if (key) {

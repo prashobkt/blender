@@ -103,7 +103,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   ABCHierarchyIterator iter(data->depsgraph, &abc_archive, data->params);
 
   if (export_animation) {
-    CLOG_INFO(&LOG, 2, "Exporting animation");
+    CLOG_VERBOSE(&LOG, 2, "Exporting animation");
 
     // Writing the animated frames is not 100% of the work, but it's our best guess.
     const float progress_per_frame = 1.0f / std::max(size_t(1), abc_archive.total_frame_count());
@@ -122,7 +122,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
       scene->r.subframe = frame - scene->r.cfra;
       BKE_scene_graph_update_for_newframe(data->depsgraph, data->bmain);
 
-      CLOG_INFO(&LOG, 2, "Exporting frame %.2f", frame);
+      CLOG_VERBOSE(&LOG, 2, "Exporting frame %.2f", frame);
       ExportSubset export_subset = abc_archive.export_subset_for_frame(frame);
       iter.set_export_subset(export_subset);
       iter.iterate_and_write();

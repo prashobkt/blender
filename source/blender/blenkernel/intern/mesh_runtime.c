@@ -412,7 +412,7 @@ bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
   bool is_valid = true;
   bool changed = true;
 
-  CLOG_INFO(BKE_LOG_MESH, 2, "MESH: %s", me_eval->id.name + 2);
+  CLOG_VERBOSE(BKE_LOG_MESH, 2, "MESH: %s", me_eval->id.name + 2);
 
   is_valid &= BKE_mesh_validate_all_customdata(
       &me_eval->vdata,

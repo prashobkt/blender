@@ -450,7 +450,7 @@ static void versions_gpencil_add_main(ListBase *lb, ID *id, const char *name)
 
   BKE_lib_libblock_session_uuid_ensure(id);
 
-  CLOG_INFO(BLENLOADER_LOG_VERSIONING, 1, "Converted GPencil to ID: %s", id->name + 2);
+  CLOG_VERBOSE(BLENLOADER_LOG_VERSIONING, 1, "Converted GPencil to ID: %s", id->name + 2);
 }
 
 static void do_versions_gpencil_2_50(Main *main, bScreen *screen)

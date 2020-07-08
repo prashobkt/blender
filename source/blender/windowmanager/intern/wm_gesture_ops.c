@@ -760,7 +760,7 @@ static int gesture_lasso_exec(bContext *C, wmOperator *op)
     float loc[2];
 
     RNA_float_get_array(&itemptr, "loc", loc);
-    CLOG_INFO(WM_LOG_OPERATORS, 0, "Location: %f %f", loc[0], loc[1]);
+    CLOG_INFO(WM_LOG_OPERATORS, "Location: %f %f", loc[0], loc[1]);
   }
   RNA_END;
 

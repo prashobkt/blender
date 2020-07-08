@@ -2544,7 +2544,7 @@ void BKE_animsys_evaluate_all_animation(Main *main, Depsgraph *depsgraph, float 
 {
   ID *id;
 
-  CLOG_INFO(&LOG, 3, "Evaluate all animation - %f", ctime);
+  CLOG_VERBOSE(&LOG, 3, "Evaluate all animation - %f", ctime);
 
   const bool flush_to_original = DEG_is_active(depsgraph);
 
@@ -2592,7 +2592,7 @@ void BKE_animsys_evaluate_all_animation(Main *main, Depsgraph *depsgraph, float 
    * set correctly, so this optimization must be skipped in that case...
    */
   if (BLI_listbase_is_empty(&main->actions) && BLI_listbase_is_empty(&main->curves)) {
-    CLOG_INFO(&LOG, 3, "\tNo Actions, so no animation needs to be evaluated...");
+    CLOG_VERBOSE(&LOG, 3, "\tNo Actions, so no animation needs to be evaluated...");
 
     return;
   }

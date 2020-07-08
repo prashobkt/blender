@@ -2680,12 +2680,12 @@ static void actcon_get_tarmat(struct Depsgraph *UNUSED(depsgraph),
     CLAMP(s, 0, 1);
     t = (s * (data->end - data->start)) + data->start;
 
-    CLOG_INFO(&LOG,
-              1,
-              "do Action Constraint %s - Ob %s Pchan %s",
-              con->name,
-              cob->ob->id.name + 2,
-              (cob->pchan) ? cob->pchan->name : NULL);
+    CLOG_VERBOSE(&LOG,
+                 1,
+                 "do Action Constraint %s - Ob %s Pchan %s",
+                 con->name,
+                 cob->ob->id.name + 2,
+                 (cob->pchan) ? cob->pchan->name : NULL);
 
     /* Get the appropriate information from the action */
     if (cob->type == CONSTRAINT_OBTYPE_OBJECT || (data->flag & ACTCON_BONE_USE_OBJECT_ACTION)) {

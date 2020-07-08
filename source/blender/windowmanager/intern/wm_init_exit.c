@@ -521,7 +521,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
              BLO_write_file(
                  bmain, filename, fileflags, &(const struct BlendFileWriteParams){0}, NULL)) ||
             (undo_memfile && BLO_memfile_write_file(undo_memfile, filename))) {
-          CLOG_INFO(WM_LOG_SESSION, 0, "Saved session recovery to '%s'", filename);
+          CLOG_INFO(WM_LOG_SESSION, "Saved session recovery to '%s'", filename);
         }
       }
     }
@@ -694,10 +694,9 @@ void WM_exit_ex(bContext *C, const bool do_python)
 void WM_exit(bContext *C)
 {
   // logger is about to be freed
-  CLOG_INFO(WM_LOG_SESSION, 0, "Blender quit");
+  CLOG_INFO(WM_LOG_SESSION, "Blender quit");
 
   WM_exit_ex(C, true);
-
 
 #ifdef WIN32
   /* ask user to press a key when in debug mode */

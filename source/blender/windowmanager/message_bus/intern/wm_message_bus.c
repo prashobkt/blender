@@ -129,11 +129,11 @@ static CLG_LogRef WM_LOG_MSGBUS_HANDLE = {"wm.msgbus.handle"};
 void WM_msgbus_handle(struct wmMsgBus *mbus, struct bContext *C)
 {
   if (mbus->messages_tag_count == 0) {
-    CLOG_INFO(&WM_LOG_MSGBUS_HANDLE, 4, "skipping msbus=%p", mbus);
+    CLOG_VERBOSE(&WM_LOG_MSGBUS_HANDLE, 4, "skipping msbus=%p", mbus);
     return;
   }
 
-  CLOG_STR_INFO_N(&WM_LOG_MSGBUS_HANDLE, 4, WM_msg_sprintN(mbus));
+  CLOG_STR_VERBOSE_N(&WM_LOG_MSGBUS_HANDLE, 4, WM_msg_sprintN(mbus));
 
   // uint a = 0, b = 0;
   LISTBASE_FOREACH (wmMsgSubscribeKey *, key, &mbus->messages) {
@@ -197,11 +197,11 @@ wmMsgSubscribeKey *WM_msg_subscribe_with_key(struct wmMsgBus *mbus,
 
 void WM_msg_publish_with_key(struct wmMsgBus *mbus, wmMsgSubscribeKey *msg_key)
 {
-  CLOG_INFO(WM_LOG_MSGBUS_SUB,
-            2,
-            "tagging subscribers: (ptr=%p, len=%d)",
-            msg_key,
-            BLI_listbase_count(&msg_key->values));
+  CLOG_VERBOSE(WM_LOG_MSGBUS_SUB,
+               2,
+               "tagging subscribers: (ptr=%p, len=%d)",
+               msg_key,
+               BLI_listbase_count(&msg_key->values));
 
   LISTBASE_FOREACH (wmMsgSubscribeValueLink *, msg_lnk, &msg_key->values) {
     if (false) { /* make an option? */

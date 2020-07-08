@@ -458,12 +458,12 @@ void animviz_calc_motionpaths(Depsgraph *depsgraph,
   }
 
   /* calculate path over requested range */
-  CLOG_INFO(&LOG,
-            1,
-            "Calculating MotionPaths between frames %d - %d (%d frames)",
-            sfra,
-            efra,
-            efra - sfra + 1);
+  CLOG_VERBOSE(&LOG,
+               1,
+               "Calculating MotionPaths between frames %d - %d (%d frames)",
+               sfra,
+               efra,
+               efra - sfra + 1);
   for (CFRA = sfra; CFRA <= efra; CFRA++) {
     if (range == ANIMVIZ_CALC_RANGE_CURRENT_FRAME) {
       /* For current frame, only update tagged. */

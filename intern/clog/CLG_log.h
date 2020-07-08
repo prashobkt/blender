@@ -101,7 +101,8 @@ enum CLG_LogFlag {
 };
 
 enum CLG_Severity {
-  CLG_SEVERITY_INFO = 0,
+  CLG_SEVERITY_VERBOSE = 0,
+  CLG_SEVERITY_INFO,
   CLG_SEVERITY_WARN,
   CLG_SEVERITY_ERROR,
   CLG_SEVERITY_FATAL,
@@ -227,21 +228,25 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
   } \
   ((void)0)
 
-#define CLOG_INFO(clg_ref, level, ...) \
-  CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_INFO, level, __VA_ARGS__)
+/* if needed INFO_DEBUG can be added, which should by available only in debug build */
+#define CLOG_VERBOSE(clg_ref, level, ...) \
+  CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, level, __VA_ARGS__)
+#define CLOG_INFO(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_INFO, 0, __VA_ARGS__)
 #define CLOG_WARN(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_WARN, 0, __VA_ARGS__)
 #define CLOG_ERROR(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_ERROR, 0, __VA_ARGS__)
 #define CLOG_FATAL(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_FATAL, 0, __VA_ARGS__)
 
-#define CLOG_STR_INFO(clg_ref, level, str) \
-  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_INFO, level, str)
+#define CLOG_STR_VERBOSE(clg_ref, level, str) \
+  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, level, str)
+#define CLOG_STR_INFO(clg_ref, str) CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_INFO, 0, str)
 #define CLOG_STR_WARN(clg_ref, str) CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_WARN, 0, str)
 #define CLOG_STR_ERROR(clg_ref, str) CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_ERROR, 0, str)
 #define CLOG_STR_FATAL(clg_ref, str) CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_FATAL, 0, str)
 
 /* Allocated string which is immediately freed. */
-#define CLOG_STR_INFO_N(clg_ref, level, str) \
-  CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_INFO, level, str)
+#define CLOG_STR_VERBOSE_N(clg_ref, level, str) \
+  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, level, str)
+#define CLOG_STR_INFO_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_INFO, 0, str)
 #define CLOG_STR_WARN_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_WARN, 0, str)
 #define CLOG_STR_ERROR_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_ERROR, 0, str)
 #define CLOG_STR_FATAL_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_FATAL, 0, str)

@@ -302,7 +302,7 @@ void blo_reportf_wrap(ReportList *reports, ReportType type, const char *format, 
   BKE_report(reports, type, fixed_buf);
 
   if (G.background == 0) {
-    CLOG_INFO(&BLENLOADER_LOG_READFILE, 1, "%s: %s", BKE_report_type_str(type), fixed_buf);
+    CLOG_VERBOSE(&BLENLOADER_LOG_READFILE, 1, "%s: %s", BKE_report_type_str(type), fixed_buf);
   }
 }
 
@@ -668,7 +668,6 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
   BLI_path_normalize(relabase, name1);
 
   CLOG_INFO(&BLENLOADER_LOG_READFILE,
-            0,
             "relabase: %s, original in: %s, converted to %s",
             relabase,
             filepath,
@@ -678,7 +677,7 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
     const char *libname = (m->curlib) ? m->curlib->filepath_abs : m->name;
 
     if (BLI_path_cmp(name1, libname) == 0) {
-      CLOG_INFO(&BLENLOADER_LOG_READFILE, 0, "found library %s", libname);
+      CLOG_INFO(&BLENLOADER_LOG_READFILE, "found library %s", libname);
       return m;
     }
   }
@@ -703,7 +702,7 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
 
   read_file_version(fd, m);
 
-  CLOG_INFO(&BLENLOADER_LOG_READFILE, 0, "added new lib %s", filepath);
+  CLOG_INFO(&BLENLOADER_LOG_READFILE, "added new lib %s", filepath);
   return m;
 }
 
@@ -2850,7 +2849,7 @@ static PackedFile *direct_link_packedfile(BlendDataReader *reader, PackedFile *o
     if (pf->data == NULL) {
       /* We cannot allow a PackedFile with a NULL data field,
        * the whole code assumes this is not possible. See T70315. */
-      CLOG_INFO(&BLENLOADER_LOG_READFILE, 0, "NULL packedfile data, cleaning up...");
+      CLOG_INFO(&BLENLOADER_LOG_READFILE, "NULL packedfile data, cleaning up...");
       MEM_SAFE_FREE(pf);
     }
   }
@@ -4980,14 +4979,13 @@ static void lib_link_object(BlendLibReader *reader, Object *ob)
 
       if (ob->id.lib) {
         CLOG_INFO(&BLENLOADER_LOG_READFILE,
-                  0,
                   "Proxy lost from object %s lib %s",
                   ob->id.name + 2,
                   ob->id.lib->filepath);
       }
       else {
         CLOG_INFO(
-            &BLENLOADER_LOG_READFILE, 0, "Proxy lost from object %s lib <NONE>", ob->id.name + 2);
+            &BLENLOADER_LOG_READFILE, "Proxy lost from object %s lib <NONE>", ob->id.name + 2);
       }
     }
     else {
@@ -5003,13 +5001,12 @@ static void lib_link_object(BlendLibReader *reader, Object *ob)
   if (ob->data == NULL && poin != NULL) {
     if (ob->id.lib) {
       CLOG_INFO(&BLENLOADER_LOG_READFILE,
-                0,
                 "Can't find obdata of %s lib %s",
                 ob->id.name + 2,
                 ob->id.lib->filepath);
     }
     else {
-      CLOG_INFO(&BLENLOADER_LOG_READFILE, 0, "Object %s lost data", ob->id.name + 2);
+      CLOG_INFO(&BLENLOADER_LOG_READFILE, "Object %s lost data", ob->id.name + 2);
     }
 
     ob->type = OB_EMPTY;
@@ -5040,7 +5037,7 @@ static void lib_link_object(BlendLibReader *reader, Object *ob)
     const short *totcol_data = BKE_object_material_len_p(ob);
     /* Only expand so as not to loose any object materials that might be set. */
     if (totcol_data && (*totcol_data > ob->totcol)) {
-      CLOG_INFO(
+      CLOG_VERBOSE(
           &BLENLOADER_LOG_READFILE, 2, "'%s' %d -> %d", ob->id.name, ob->totcol, *totcol_data);
       BKE_object_material_resize(reader->main, ob, *totcol_data, false);
     }
@@ -5422,7 +5419,6 @@ static void direct_link_modifiers(BlendDataReader *reader, ListBase *lb, Object 
             else {
               CLOG_INFO(
                   &BLENLOADER_LOG_READFILE,
-                  0,
                   "High resolution manta cache not available due to pointcache update. Please "
                   "reset the simulation");
             }
@@ -6302,7 +6298,6 @@ static void lib_link_scenes_check_set(Main *bmain)
       sce->flag &= ~SCE_READFILE_LIBLINK_NEED_SETSCENE_CHECK;
       if (!scene_validate_setscene__liblink(sce, totscene)) {
         CLOG_INFO(&BLENLOADER_LOG_READFILE,
-                  0,
                   "Found cyclic background scene when linking %s",
                   sce->id.name + 2);
       }
@@ -8035,11 +8030,11 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
   BLI_strncpy(lib->filepath_abs, lib->filepath, sizeof(lib->filepath));
   BLI_path_normalize(fd->relabase, lib->filepath_abs);
 
-  CLOG_INFO(&BLENLOADER_LOG_READFILE,
-            1,
-            "filepath %s, filepath_abs: %s",
-            lib->filepath,
-            lib->filepath_abs);
+  CLOG_VERBOSE(&BLENLOADER_LOG_READFILE,
+               1,
+               "filepath %s, filepath_abs: %s",
+               lib->filepath,
+               lib->filepath_abs);
 
   BlendDataReader reader = {fd};
   lib->packedfile = direct_link_packedfile(&reader, lib->packedfile);
@@ -9063,17 +9058,17 @@ static bool read_libblock_undo_restore_library(FileData *fd, Main *main, const I
    * That means we have to carefully check whether current lib or
    * libdata already exits in old main, if it does we merely copy it over into new main area,
    * otherwise we have to do a full read of that bhead... */
-  CLOG_INFO(&BLENLOADER_LOG_UNDO, 0, "restore library %s", id->name);
+  CLOG_INFO(&BLENLOADER_LOG_UNDO, "restore library %s", id->name);
 
   Main *libmain = fd->old_mainlist->first;
   /* Skip oldmain itself... */
   for (libmain = libmain->next; libmain; libmain = libmain->next) {
     if (libmain->curlib && STREQ(id->name, libmain->curlib->id.name)) {
       Main *oldmain = fd->old_mainlist->first;
-      CLOG_INFO(&BLENLOADER_LOG_UNDO,
-                1,
-                "  compare with %s -> match!",
-                libmain->curlib ? libmain->curlib->id.name : "<NULL>");
+      CLOG_VERBOSE(&BLENLOADER_LOG_UNDO,
+                   1,
+                   "  compare with %s -> match!",
+                   libmain->curlib ? libmain->curlib->id.name : "<NULL>");
       /* In case of a library, we need to re-add its main to fd->mainlist,
        * because if we have later a missing ID_LINK_PLACEHOLDER,
        * we need to get the correct lib it is linked to!
@@ -9085,10 +9080,10 @@ static bool read_libblock_undo_restore_library(FileData *fd, Main *main, const I
       BLI_addtail(&main->libraries, libmain->curlib);
       return true;
     }
-    CLOG_INFO(&BLENLOADER_LOG_UNDO,
-              1,
-              "  compare with %s -> no match!",
-              libmain->curlib ? libmain->curlib->id.name : "<NULL>");
+    CLOG_VERBOSE(&BLENLOADER_LOG_UNDO,
+                 1,
+                 "  compare with %s -> no match!",
+                 libmain->curlib ? libmain->curlib->id.name : "<NULL>");
   }
 
   return false;
@@ -9101,7 +9096,6 @@ static bool read_libblock_undo_restore_linked(FileData *fd, Main *main, const ID
   ID *id_old = BKE_libblock_find_name(main, GS(id->name), id->name + 2);
   if (id_old != NULL) {
     CLOG_INFO(&BLENLOADER_LOG_UNDO,
-              0,
               "restore linked datablock %s from %s (%s): found",
               id->name,
               main->curlib ? main->curlib->id.name : "<NULL>",
@@ -9118,7 +9112,6 @@ static bool read_libblock_undo_restore_linked(FileData *fd, Main *main, const ID
   }
 
   CLOG_INFO(&BLENLOADER_LOG_UNDO,
-            0,
             "restore linked datablock %s from %s (%s): not found",
             id->name,
             main->curlib ? main->curlib->id.name : "<NULL>",
@@ -9249,7 +9242,6 @@ static bool read_libblock_undo_restore(
   if (id_old != NULL && read_libblock_is_identical(fd, bhead)) {
     /* Local datablock was unchanged, restore from the old main. */
     CLOG_INFO(&BLENLOADER_LOG_UNDO,
-              0,
               "read %s (uuid %u) -> keep identical datablock",
               id->name,
               id->session_uuid);
@@ -9273,7 +9265,6 @@ static bool read_libblock_undo_restore(
   else if (id_old != NULL) {
     /* Local datablock was changed. Restore at the address of the old datablock. */
     CLOG_INFO(&BLENLOADER_LOG_UNDO,
-              0,
               "read %s (uuid %u) -> read to old existing address",
               id->name,
               id->session_uuid);
@@ -9283,7 +9274,6 @@ static bool read_libblock_undo_restore(
   else {
     /* Local datablock does not exist in the undo step, so read from scratch. */
     CLOG_INFO(&BLENLOADER_LOG_UNDO,
-              0,
               "read %s (uuid %u) -> read at new address",
               id->name,
               id->session_uuid);
@@ -9530,7 +9520,6 @@ static void do_versions(FileData *fd, Library *lib, Main *main)
     }
 
     CLOG_INFO(&BLENLOADER_LOG_READFILE,
-              0,
               "read file \"%s\" Version %d sub %d date %s hash %s",
               fd->relabase,
               main->versionfile,
@@ -9879,7 +9868,7 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
   ListBase mainlist = {NULL, NULL};
 
   if (fd->memfile != NULL) {
-    CLOG_INFO(&BLENLOADER_LOG_UNDO, 0, "read step");
+    CLOG_INFO(&BLENLOADER_LOG_UNDO, "read step");
   }
 
   bfd = MEM_callocN(sizeof(BlendFileData), "blendfiledata");
@@ -10227,7 +10216,7 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
        * library it belongs to, so that it will be read later. */
       read_libblock(fd, libmain, bhead, LIB_TAG_INDIRECT, false, NULL);
 
-      CLOG_INFO(&BLENLOADER_LOG_READFILE, 4, "other lib %s", lib->filepath);
+      CLOG_VERBOSE(&BLENLOADER_LOG_READFILE, 4, "other lib %s", lib->filepath);
 
       /* for outliner dependency only */
       libmain->curlib->parent = mainvar->curlib;
@@ -10261,7 +10250,7 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
        * read yet at that point. */
       change_link_placeholder_to_real_ID_pointer_fd(fd, bhead->old, id);
 
-      CLOG_INFO(
+      CLOG_VERBOSE(
           &BLENLOADER_LOG_READFILE, 4, "already linked: %s lib: %s", id->name, lib->filepath);
     }
 
@@ -10290,7 +10279,7 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
        * in that case the lookup table needs this entry */
       oldnewmap_insert(fd->libmap, bhead->old, id, bhead->code);
 
-      CLOG_INFO(&BLENLOADER_LOG_READFILE, 4, "already read %s", id->name);
+      CLOG_VERBOSE(&BLENLOADER_LOG_READFILE, 4, "already read %s", id->name);
     }
   }
 }
@@ -11514,7 +11503,7 @@ static ID *link_named_part(
     }
     else {
       /* already linked */
-      CLOG_INFO(&BLENLOADER_LOG_READFILE, 0, "append: already linked");
+      CLOG_INFO(&BLENLOADER_LOG_READFILE, "append: already linked");
       oldnewmap_insert(fd->libmap, bhead->old, id, bhead->code);
       if (!force_indirect && (id->tag & LIB_TAG_INDIRECT)) {
         id->tag &= ~LIB_TAG_INDIRECT;
@@ -11795,7 +11784,7 @@ static void library_link_end(Main *mainl,
     add_loose_objects_to_scene(mainvar, bmain, scene, view_layer, v3d, curlib, flag);
   }
   else {
-    CLOG_INFO(&BLENLOADER_LOG_READFILE, 0, "scene is NULL (objects wont get bases)");
+    CLOG_INFO(&BLENLOADER_LOG_READFILE, "scene is NULL (objects wont get bases)");
   }
 
   /* Clear objects and collections instantiating tag. */
@@ -11892,7 +11881,7 @@ static void read_library_linked_id(
 
   if (bhead) {
     id->tag |= LIB_TAG_NEED_EXPAND;
-    CLOG_INFO(&BLENLOADER_LOG_READFILE, 3, "read lib block %s", id->name);
+    CLOG_VERBOSE(&BLENLOADER_LOG_READFILE, 3, "read lib block %s", id->name);
     read_libblock(fd, mainvar, bhead, id->tag, false, r_id);
   }
   else {
@@ -11976,7 +11965,7 @@ static void read_library_clear_weak_links(FileData *basefd, ListBase *mainlist, 
     while (id) {
       ID *id_next = id->next;
       if ((id->tag & LIB_TAG_ID_LINK_PLACEHOLDER) && (id->flag & LIB_INDIRECT_WEAK_LINK)) {
-        CLOG_INFO(&BLENLOADER_LOG_READFILE, 0, "Dropping weak link to %s", id->name);
+        CLOG_INFO(&BLENLOADER_LOG_READFILE, "Dropping weak link to %s", id->name);
         change_link_placeholder_to_real_ID_pointer(mainlist, basefd, id, NULL);
         BLI_freelinkN(lbarray[a], id);
       }
@@ -12085,11 +12074,11 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
     for (Main *mainptr = mainl->next; mainptr; mainptr = mainptr->next) {
       /* Does this library have any more linked data-blocks we need to read? */
       if (has_linked_ids_to_read(mainptr)) {
-        CLOG_INFO(&BLENLOADER_LOG_READFILE,
-                  1,
-                  "Reading linked data-blocks from %s (%s)",
-                  mainptr->curlib->id.name,
-                  mainptr->curlib->filepath);
+        CLOG_VERBOSE(&BLENLOADER_LOG_READFILE,
+                     1,
+                     "Reading linked data-blocks from %s (%s)",
+                     mainptr->curlib->id.name,
+                     mainptr->curlib->filepath);
 
         /* Open file if it has not been done yet. */
         FileData *fd = read_library_file_data(basefd, mainlist, mainl, mainptr);

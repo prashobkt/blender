@@ -57,12 +57,12 @@ wmGizmoGroupType *WM_gizmogrouptype_find(const char *idname, bool quiet)
     }
 
     if (!quiet) {
-      CLOG_INFO(WM_LOG_GIZMO, 0, "search for unknown gizmo group '%s'", idname);
+      CLOG_INFO(WM_LOG_GIZMO, "search for unknown gizmo group '%s'", idname);
     }
   }
   else {
     if (!quiet) {
-      CLOG_INFO(WM_LOG_GIZMO, 0, "search for empty gizmo group");
+      CLOG_INFO(WM_LOG_GIZMO, "search for empty gizmo group");
     }
   }
 

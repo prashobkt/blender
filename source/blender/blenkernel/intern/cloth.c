@@ -614,7 +614,7 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
 
   cloth = clmd->clothObject;
 
-  CLOG_INFO(&LOG, 1, "free cloth: %p", cloth);
+  CLOG_VERBOSE(&LOG, 1, "free cloth: %p", cloth);
 
   if (cloth) {
     BPH_cloth_solver_free(clmd);
@@ -827,7 +827,7 @@ static int cloth_from_object(
 
   // If we have a clothObject, free it.
   if (clmd->clothObject != NULL) {
-    CLOG_INFO(&LOG, 1, "cloth_free_modifier: %p", clmd);
+    CLOG_VERBOSE(&LOG, 1, "cloth_free_modifier: %p", clmd);
     cloth_free_modifier(clmd);
   }
 
@@ -1991,7 +1991,7 @@ static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
 
   cloth_free_edgelist(edgelist, mvert_num);
 
-  CLOG_INFO(&LOG, 2, "avg_len: %f", clmd->sim_parms->avg_spring_len);
+  CLOG_VERBOSE(&LOG, 2, "avg_len: %f", clmd->sim_parms->avg_spring_len);
 
   return 1;
 }

@@ -64,12 +64,12 @@ const wmGizmoType *WM_gizmotype_find(const char *idname, bool quiet)
     }
 
     if (!quiet) {
-      CLOG_INFO(WM_LOG_GIZMO, 0, "search for unknown gizmo '%s'", idname);
+      CLOG_INFO(WM_LOG_GIZMO, "search for unknown gizmo '%s'", idname);
     }
   }
   else {
     if (!quiet) {
-      CLOG_INFO(WM_LOG_GIZMO, 0, "search for empty gizmo");
+      CLOG_INFO(WM_LOG_GIZMO, "search for empty gizmo");
     }
   }
 

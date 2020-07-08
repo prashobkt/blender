@@ -261,7 +261,7 @@ static void idproperties_fix_groups_lengths_recurse(IDProperty *prop)
   }
 
   if (prop->len != i) {
-    CLOG_INFO(BLENLOADER_LOG_VERSIONING, 1, "Found and fixed bad id property group length");
+    CLOG_VERBOSE(BLENLOADER_LOG_VERSIONING, 1, "Found and fixed bad id property group length");
     prop->len = i;
   }
 }
@@ -1272,7 +1272,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         cam->ortho_scale = 256.0f / cam->lens;
         if (cam->type == CAM_ORTHO) {
           CLOG_INFO(BLENLOADER_LOG_VERSIONING,
-                    0,
                     "NOTE: ortho render has changed, tweak new Camera 'scale' value");
         }
       }
@@ -2373,7 +2372,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
         do_version_free_effects_245(&ob->effect);
 
-        CLOG_INFO(BLENLOADER_LOG_VERSIONING, 0, "Old particle system converted to new system");
+        CLOG_INFO(BLENLOADER_LOG_VERSIONING, "Old particle system converted to new system");
       }
     }
 

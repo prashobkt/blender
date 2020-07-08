@@ -1168,7 +1168,7 @@ void BKE_image_free_all_textures(Main *bmain)
   }
 
 #ifdef CHECK_FREED_SIZE
-  CLOG_INFO(&LOG, 1, "freed total %lu MB", tot_freed_size / (1024 * 1024));
+  CLOG_VERBOSE(&LOG, 1, "freed total %lu MB", tot_freed_size / (1024 * 1024));
 #endif
 }
 
@@ -4028,10 +4028,10 @@ static ImBuf *load_sequence_single(
   ibuf = IMB_loadiffname(name, flag, ima->colorspace_settings.name);
 
   if (ibuf) {
-    CLOG_INFO(&LOG, 2, "loaded %s", name);
+    CLOG_VERBOSE(&LOG, 2, "loaded %s", name);
   }
   else {
-    CLOG_INFO(&LOG, 2, "missed %s", name);
+    CLOG_VERBOSE(&LOG, 2, "missed %s", name);
   }
 
   if (ibuf) {
@@ -4146,7 +4146,7 @@ static ImBuf *image_load_sequence_multilayer(Image *ima, ImageUser *iuser, int e
     RenderPass *rpass = BKE_image_multilayer_index(ima->rr, iuser);
 
     if (rpass) {
-      CLOG_INFO(&LOG, 3, "load from render pass %s", rpass->name);
+      CLOG_VERBOSE(&LOG, 3, "load from render pass %s", rpass->name);
       /* since we free  render results, we copy the rect */
       ibuf = IMB_allocImBuf(ima->rr->rectx, ima->rr->recty, 32, 0);
       ibuf->rect_float = MEM_dupallocN(rpass->rect);
@@ -4160,7 +4160,7 @@ static ImBuf *image_load_sequence_multilayer(Image *ima, ImageUser *iuser, int e
       image_assign_ibuf(ima, ibuf, iuser ? iuser->multi_index : 0, entry);
     }
     else {
-      CLOG_INFO(&LOG, 3, "render pass not found");
+      CLOG_VERBOSE(&LOG, 3, "render pass not found");
     }
   }
   else {

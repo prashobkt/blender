@@ -439,7 +439,7 @@ static void wm_jobs_test_suspend_stop(wmWindowManager *wm, wmJob *test)
       /* if this job has higher priority, stop others */
       if (test->flag & WM_JOB_PRIORITY) {
         wm_job->stop = true;
-        CLOG_INFO(WM_LOG_JOB, 0, "job stopped: %s\n", wm_job->name);
+        CLOG_INFO(WM_LOG_JOB, "job stopped: %s\n", wm_job->name);
       }
     }
   }
@@ -447,7 +447,7 @@ static void wm_jobs_test_suspend_stop(wmWindowManager *wm, wmJob *test)
   /* Possible suspend ourselves, waiting for other jobs, or de-suspend. */
   test->suspended = suspend;
   if (suspend) {
-    CLOG_INFO(WM_LOG_JOB, 0, "job suspended: %s\n", test->name);
+    CLOG_INFO(WM_LOG_JOB, "job suspended: %s\n", test->name);
   }
 }
 
@@ -460,7 +460,7 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
   if (wm_job->running) {
     /* signal job to end and restart */
     wm_job->stop = true;
-    CLOG_INFO(WM_LOG_JOB, 0, "job started a running job, ending... %s", wm_job->name);
+    CLOG_INFO(WM_LOG_JOB, "job started a running job, ending... %s", wm_job->name);
   }
   else {
 
@@ -486,7 +486,7 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
         wm_job->ready = false;
         wm_job->progress = 0.0;
 
-        CLOG_INFO(WM_LOG_JOB, 0, "job started: %s", wm_job->name);
+        CLOG_INFO(WM_LOG_JOB, "job started: %s", wm_job->name);
 
         BLI_threadpool_init(&wm_job->threads, do_job_thread, 1);
         BLI_threadpool_insert(&wm_job->threads, wm_job);
@@ -685,17 +685,17 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
           wm_job->run_free = NULL;
 
           if (wm_job->stop) {
-            CLOG_INFO(WM_LOG_JOB, 0, "job ready but stopped: %s", wm_job->name);
+            CLOG_INFO(WM_LOG_JOB, "job ready but stopped: %s", wm_job->name);
           }
           else {
-            CLOG_INFO(WM_LOG_JOB, 0, "job finished: %s", wm_job->name);
+            CLOG_INFO(WM_LOG_JOB, "job finished: %s", wm_job->name);
           }
 
-          CLOG_INFO(WM_LOG_JOB,
-                    1,
-                    "Job '%s' finished in %f seconds",
-                    wm_job->name,
-                    PIL_check_seconds_timer() - wm_job->start_time);
+          CLOG_VERBOSE(WM_LOG_JOB,
+                       1,
+                       "Job '%s' finished in %f seconds",
+                       wm_job->name,
+                       PIL_check_seconds_timer() - wm_job->start_time);
 
           wm_job->running = false;
 
@@ -711,7 +711,7 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
 
           /* new job added for wm_job? */
           if (wm_job->customdata) {
-            CLOG_INFO(WM_LOG_JOB, 0, "job restarted with new data %s", wm_job->name);
+            CLOG_INFO(WM_LOG_JOB, "job restarted with new data %s", wm_job->name);
             WM_jobs_start(wm, wm_job);
           }
           else {

@@ -52,7 +52,7 @@ MenuType *WM_menutype_find(const char *idname, bool quiet)
   }
 
   if (!quiet) {
-    CLOG_INFO(WM_LOG_TOOLS, 0, "search for unknown menutype %s", idname);
+    CLOG_INFO(WM_LOG_TOOLS, "search for unknown menutype %s", idname);
   }
 
   return NULL;

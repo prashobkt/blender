@@ -205,7 +205,7 @@ bool WM_platform_support_perform_checks()
 
   /* We are running in the background print the message in the console. */
   if ((G.background || G.debug & G_DEBUG) && show_message) {
-    CLOG_INFO(WM_LOG_SESSION, 0, "%s\n\n%s\n%s\n", title, message, link);
+    CLOG_INFO(WM_LOG_SESSION, "%s\n\n%s\n%s\n", title, message, link);
   }
   if (G.background) {
     /* Don't show the message-box when running in background mode.

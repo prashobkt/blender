@@ -53,7 +53,7 @@ PanelType *WM_paneltype_find(const char *idname, bool quiet)
   }
 
   if (!quiet) {
-    CLOG_INFO(WM_LOG_TOOLS, 0, "search for unknown paneltype %s", idname);
+    CLOG_INFO(WM_LOG_TOOLS, "search for unknown paneltype %s", idname);
   }
 
   return NULL;

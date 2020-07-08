@@ -1004,7 +1004,6 @@ void BLF_draw_buffer(int fontid, const char *str, size_t len)
   BLF_draw_buffer_ex(fontid, str, len, NULL);
 }
 
-/* example usage: CLOG_STR_INFO_N(BLENFONT_LOG, 2, BLF_state_sprintN(font_id)); */
 char *BLF_state_sprintN(int fontid)
 {
   DynStr *message = BLI_dynstr_new();

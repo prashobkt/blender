@@ -971,7 +971,7 @@ static void blf_font_wrap_apply(FontBLF *font,
     size_t start, last[2];
   } wrap = {font->wrap_width != -1 ? font->wrap_width : INT_MAX, 0, {0, 0}};
 
-  CLOG_INFO(BLENFONT_LOG, 2, "wrapping (%zu, %zu) `%s`:", len, strlen(str), str);
+  CLOG_VERBOSE(BLENFONT_LOG, 2, "wrapping (%zu, %zu) `%s`:", len, strlen(str), str);
   while ((i < len) && str[i]) {
 
     /* wrap vars */
@@ -1019,13 +1019,13 @@ static void blf_font_wrap_apply(FontBLF *font,
     }
 
     if (UNLIKELY(do_draw)) {
-      CLOG_INFO(BLENFONT_LOG,
-                2,
-                "(%03zu..%03zu)  `%lu %s`",
-                wrap.start,
-                wrap.last[0],
-                (wrap.last[0] - wrap.start) - 1,
-                &str[wrap.start]);
+      CLOG_VERBOSE(BLENFONT_LOG,
+                   2,
+                   "(%03zu..%03zu)  `%lu %s`",
+                   wrap.start,
+                   wrap.last[0],
+                   (wrap.last[0] - wrap.start) - 1,
+                   &str[wrap.start]);
 
       callback(font, gc, &str[wrap.start], (wrap.last[0] - wrap.start) - 1, pen_y, userdata);
       wrap.start = wrap.last[0];
@@ -1041,7 +1041,7 @@ static void blf_font_wrap_apply(FontBLF *font,
     g_prev = g;
   }
 
-  CLOG_INFO(BLENFONT_LOG, 2, "done! lines: %d, width, %d", lines, pen_x_next);
+  CLOG_VERBOSE(BLENFONT_LOG, 2, "done! lines: %d, width, %d", lines, pen_x_next);
 
   if (r_info) {
     r_info->lines = lines;

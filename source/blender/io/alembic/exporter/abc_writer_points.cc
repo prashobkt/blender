@@ -50,7 +50,7 @@ ABCPointsWriter::ABCPointsWriter(const ABCWriterConstructorArgs &args) : ABCAbst
 
 void ABCPointsWriter::create_alembic_objects(const HierarchyContext * /*context*/)
 {
-  CLOG_INFO(&LOG, 2, "exporting OPoints %s", args_.abc_path.c_str());
+  CLOG_VERBOSE(&LOG, 2, "exporting OPoints %s", args_.abc_path.c_str());
   abc_points_ = OPoints(args_.abc_parent, args_.abc_name, timesample_index_);
   abc_points_schema_ = abc_points_.getSchema();
 }

@@ -970,7 +970,7 @@ void wm_homefile_read(struct bContext *C,
         userdef = NULL;
 
         skip_flags |= BLO_READ_SKIP_USERDEF;
-        CLOG_INFO(WM_LOG_SESSION, 0, "Read prefs: %s", filepath_userdef);
+        CLOG_INFO(WM_LOG_SESSION, "Read prefs: %s", filepath_userdef);
       }
     }
   }
@@ -1026,10 +1026,10 @@ void wm_homefile_read(struct bContext *C,
                                    reports);
     }
     if (BLI_listbase_is_empty(&U.themes)) {
-      CLOG_INFO(WM_LOG_SESSION,
-                1,
-                "Note: No (valid) '%s' found, fall back to built-in default",
-                filepath_startup);
+      CLOG_VERBOSE(WM_LOG_SESSION,
+                   1,
+                   "Note: No (valid) '%s' found, fall back to built-in default",
+                   filepath_startup);
       success = false;
     }
     if (success) {
@@ -1410,7 +1410,7 @@ bool write_crash_blend(void)
   BKE_reports_init(&reports, 0);
   if (BLO_write_file(
           G_MAIN, path, G.fileflags, &(const struct BlendFileWriteParams){0}, &reports)) {
-    CLOG_INFO(WM_LOG_SESSION, 0, "Saving file ok: %s", path);
+    CLOG_INFO(WM_LOG_SESSION, "Saving file ok: %s", path);
     BKE_reports_clear(&reports);
     return 1;
   }
@@ -1651,7 +1651,7 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer *UNUSED(wt))
     BKE_reports_init(&reports, 0);
     if (BLO_write_file(
             bmain, filepath, fileflags, &(const struct BlendFileWriteParams){0}, &reports)) {
-      CLOG_INFO(WM_LOG_SESSION, 1, "Autosave ok: %s", filepath);
+      CLOG_VERBOSE(WM_LOG_SESSION, 1, "Autosave ok: %s", filepath);
       BKE_reports_clear(&reports);
     }
     else {
@@ -1788,7 +1788,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  CLOG_INFO(WM_LOG_SESSION, 0, "Writing homefile ok: '%s'", filepath);
+  CLOG_INFO(WM_LOG_SESSION, "Writing homefile ok: '%s'", filepath);
 
   G.save_over = 0;
 
