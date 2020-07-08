@@ -229,8 +229,9 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                               &reports);
 
   if (BKE_reports_contain(&reports, RPT_ERROR)) {
-    // todo is it mem leak?
-    BKE_modifier_set_error(md, "%s", BKE_reports_sprintfN(&reports, RPT_ERROR));
+    char *pretty_reports = BKE_reports_sprintfN(&reports, RPT_ERROR);
+    BKE_modifier_set_error(md, "%s", pretty_reports);
+    MEM_freeN(pretty_reports);
   }
   else if ((dtmd->data_types & DT_TYPE_LNOR) && !(me->flag & ME_AUTOSMOOTH)) {
     BKE_modifier_set_error((ModifierData *)dtmd, "Enable 'Auto Smooth' in Object Data Properties");

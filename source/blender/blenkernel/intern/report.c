@@ -152,12 +152,12 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
   int len;
   const char *message = TIP_(_message);
 
-  CLOG_INFO(&LOG,
-            report_type_to_verbosity(type),
-            "ReportList(%p):%s: %s",
-            reports,
-            BKE_report_type_str(type),
-            message);
+  CLOG_VERBOSE(&LOG,
+               report_type_to_verbosity(type),
+               "ReportList(%p):%s: %s",
+               reports,
+               BKE_report_type_str(type),
+               message);
 
   if (reports) {
     char *message_alloc;
@@ -192,12 +192,12 @@ void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
    */
   if (CLOG_CHECK_IN_USE(&LOG)) {
     char *message_cstring = BLI_dynstr_get_cstring(message);
-    CLOG_INFO(&LOG,
-              report_type_to_verbosity(type),
-              "ReportList(%p):%s: %s",
-              reports,
-              BKE_report_type_str(type),
-              message_cstring);
+    CLOG_VERBOSE(&LOG,
+                 report_type_to_verbosity(type),
+                 "ReportList(%p):%s: %s",
+                 reports,
+                 BKE_report_type_str(type),
+                 message_cstring);
     MEM_freeN(message_cstring);
   }
 
@@ -283,31 +283,37 @@ void BKE_report_print_level_set(ReportList *reports, ReportType level)
   reports->printlevel = level;
 }
 
-/** return pretty printed reports with minimum level (level=0 - print all) or NULL */
+/** return pretty printed reports with minimum level (level=0 - print all) */
 char *BKE_reports_sprintfN(ReportList *reports, ReportType level)
 {
   Report *report;
   DynStr *ds;
   char *cstring;
 
-  if (!reports || !reports->list.first) {
-    return NULL;
+  ds = BLI_dynstr_new();
+
+  if (reports == NULL) {
+    BLI_dynstr_append(ds, "ReportList(<NULL>):");
+    cstring = BLI_dynstr_get_cstring(ds);
+    BLI_dynstr_free(ds);
+    return cstring;
+  }
+  else {
+    BLI_dynstr_appendf(ds, "ReportList(%p):", reports);
   }
 
-  ds = BLI_dynstr_new();
-  for (report = reports->list.first; report; report = report->next) {
-    if (report->type >= level) {
-      BLI_dynstr_appendf(ds, "%s: %s\n", report->typestr, report->message);
+  if (BLI_listbase_is_empty(&reports->list)) {
+    BLI_dynstr_append(ds, " Empty list");
+  }
+  else {
+    for (report = reports->list.first; report; report = report->next) {
+      if (report->type >= level) {
+        BLI_dynstr_appendf(ds, "%s: %s\n", report->typestr, report->message);
+      }
     }
   }
 
-  if (BLI_dynstr_get_len(ds)) {
-    cstring = BLI_dynstr_get_cstring(ds);
-  }
-  else {
-    cstring = NULL;
-  }
-
+  cstring = BLI_dynstr_get_cstring(ds);
   BLI_dynstr_free(ds);
   return cstring;
 }
