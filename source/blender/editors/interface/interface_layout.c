@@ -54,6 +54,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "CLG_log.h"
 #include "interface_intern.h"
 
 /* Show an icon button after each RNA button to use to quickly set keyframes,
@@ -62,6 +63,8 @@
 /* Alternate draw mode where some buttons can use single icon width,
  * giving more room for the text at the expense of nicely aligned text. */
 #define UI_PROP_SEP_ICON_WIDTH_EXCEPTION
+
+static CLG_LogRef LOG = {"interface"};
 
 /* -------------------------------------------------------------------- */
 /** \name Structs and Defines
@@ -5522,9 +5525,7 @@ void UI_menutype_draw(bContext *C, MenuType *mt, struct uiLayout *layout)
       .type = mt,
   };
 
-  if (G.debug & G_DEBUG_WM) {
-    printf("%s: opening menu \"%s\"\n", __func__, mt->idname);
-  }
+  CLOG_VERBOSE(&LOG, 1, "opening menu \"%s\"", mt->idname);
 
   if (layout->context) {
     CTX_store_set(C, layout->context);

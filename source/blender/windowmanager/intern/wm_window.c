@@ -1352,9 +1352,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
         break;
       }
       case GHOST_kEventWindowUpdate: {
-        if (G.debug & G_DEBUG_EVENTS) {
-          CLOG_VERBOSE(WM_LOG_EVENTS, 1, "ghost redraw %d", win->winid);
-        }
+        CLOG_VERBOSE(WM_LOG_EVENTS, 3, "ghost redraw %d", win->winid);
 
         wm_window_make_drawable(wm, win);
         WM_event_add_notifier(C, NC_WINDOW, NULL);
@@ -1383,7 +1381,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
             const bScreen *screen = WM_window_get_active_screen(win);
 
             /* debug prints */
-            if (G.debug & G_DEBUG_EVENTS) {
+            if (CLOG_CHECK_VERBOSITY(WM_LOG_EVENTS, 1)) {
               const char *state_str;
               state = GHOST_GetWindowState(win->ghostwin);
 

@@ -583,9 +583,7 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
         (WM_jobs_test(wm, scene, WM_JOB_TYPE_ANY) == 0)) {
       int retval;
 
-      if (G.debug & G_DEBUG) {
-        CLOG_VERBOSE(&LOG, 1, "redo_cb: operator redo %s\n", op->type->name);
-      }
+      CLOG_VERBOSE(&LOG, 1, "redo_cb: operator redo %s", op->type->name);
 
       WM_operator_free_all_after(wm, op);
 
@@ -603,10 +601,8 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
 
       retval = WM_operator_repeat(C, op);
       if ((retval & OPERATOR_FINISHED) == 0) {
-        if (G.debug & G_DEBUG) {
-          CLOG_VERBOSE(
-              &LOG, 1, "redo_cb: operator redo failed: %s, return %d\n", op->type->name, retval);
-        }
+        CLOG_VERBOSE(
+            &LOG, 1, "redo_cb: operator redo failed: %s, return %d", op->type->name, retval);
         ED_undo_redo(C);
       }
       else {
@@ -614,10 +610,7 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
       }
     }
     else {
-      if (G.debug & G_DEBUG) {
-        CLOG_VERBOSE(
-            &LOG, 1, "redo_cb: WM_operator_repeat_check returned false %s\n", op->type->name);
-      }
+      CLOG_VERBOSE(&LOG, 1, "redo_cb: WM_operator_repeat_check returned false %s", op->type->name);
     }
 
     /* set region back */

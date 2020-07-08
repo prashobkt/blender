@@ -115,9 +115,7 @@ static float dtar_get_prop_val(ChannelDriver *driver, DriverTarget *dtar)
 
   /* error check for missing pointer... */
   if (id == NULL) {
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG, "driver has an invalid target to use (path = %s)", dtar->rna_path);
-    }
+    CLOG_ERROR(&LOG, "driver has an invalid target to use (path = %s)", dtar->rna_path);
 
     driver->flag |= DRIVER_FLAG_INVALID;
     dtar->flag |= DTAR_FLAG_INVALID;
@@ -130,12 +128,10 @@ static float dtar_get_prop_val(ChannelDriver *driver, DriverTarget *dtar)
   /* get property to read from, and get value as appropriate */
   if (!RNA_path_resolve_property_full(&id_ptr, dtar->rna_path, &ptr, &prop, &index)) {
     /* path couldn't be resolved */
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG,
-                 "Driver Evaluation Error: cannot resolve target for %s -> %s",
-                 id->name,
-                 dtar->rna_path);
-    }
+    CLOG_ERROR(&LOG,
+               "Driver Evaluation Error: cannot resolve target for %s -> %s",
+               id->name,
+               dtar->rna_path);
 
     driver->flag |= DRIVER_FLAG_INVALID;
     dtar->flag |= DTAR_FLAG_INVALID;
@@ -146,13 +142,11 @@ static float dtar_get_prop_val(ChannelDriver *driver, DriverTarget *dtar)
     /* array */
     if (index < 0 || index >= RNA_property_array_length(&ptr, prop)) {
       /* out of bounds */
-      if (G.debug & G_DEBUG) {
-        CLOG_ERROR(&LOG,
-                   "Driver Evaluation Error: array index is out of bounds for %s -> %s (%d)",
-                   id->name,
-                   dtar->rna_path,
-                   index);
-      }
+      CLOG_ERROR(&LOG,
+                 "Driver Evaluation Error: array index is out of bounds for %s -> %s (%d)",
+                 id->name,
+                 dtar->rna_path,
+                 index);
 
       driver->flag |= DRIVER_FLAG_INVALID;
       dtar->flag |= DTAR_FLAG_INVALID;
@@ -222,9 +216,7 @@ bool driver_get_variable_property(ChannelDriver *driver,
 
   /* error check for missing pointer... */
   if (id == NULL) {
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG, "driver has an invalid target to use (path = %s)", dtar->rna_path);
-    }
+    CLOG_ERROR(&LOG, "driver has an invalid target to use (path = %s)", dtar->rna_path);
 
     driver->flag |= DRIVER_FLAG_INVALID;
     dtar->flag |= DTAR_FLAG_INVALID;
@@ -244,12 +236,10 @@ bool driver_get_variable_property(ChannelDriver *driver,
   }
   else {
     /* path couldn't be resolved */
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG,
-                 "Driver Evaluation Error: cannot resolve target for %s -> %s",
-                 id->name,
-                 dtar->rna_path);
-    }
+    CLOG_ERROR(&LOG,
+               "Driver Evaluation Error: cannot resolve target for %s -> %s",
+               id->name,
+               dtar->rna_path);
 
     ptr = PointerRNA_NULL;
     *r_prop = NULL;
@@ -309,13 +299,11 @@ static float dvar_eval_rotDiff(ChannelDriver *driver, DriverVar *dvar)
 
   /* make sure we have enough valid targets to use - all or nothing for now... */
   if (driver_check_valid_targets(driver, dvar) != 2) {
-    if (G.debug & G_DEBUG) {
-      CLOG_WARN(&LOG,
-                "RotDiff DVar: not enough valid targets (n = %d) (a = %p, b = %p)",
-                valid_targets,
-                dvar->targets[0].id,
-                dvar->targets[1].id);
-    }
+    CLOG_WARN(&LOG,
+              "RotDiff DVar: not enough valid targets (n = %d) (a = %p, b = %p)",
+              valid_targets,
+              dvar->targets[0].id,
+              dvar->targets[1].id);
     return 0.0f;
   }
 
@@ -369,13 +357,11 @@ static float dvar_eval_locDiff(ChannelDriver *driver, DriverVar *dvar)
 
   /* make sure we have enough valid targets to use - all or nothing for now... */
   if (valid_targets < dvar->num_targets) {
-    if (G.debug & G_DEBUG) {
-      CLOG_WARN(&LOG,
-                "LocDiff DVar: not enough valid targets (n = %d) (a = %p, b = %p)",
-                valid_targets,
-                dvar->targets[0].id,
-                dvar->targets[1].id);
-    }
+    CLOG_WARN(&LOG,
+              "LocDiff DVar: not enough valid targets (n = %d) (a = %p, b = %p)",
+              valid_targets,
+              dvar->targets[0].id,
+              dvar->targets[1].id);
     return 0.0f;
   }
 

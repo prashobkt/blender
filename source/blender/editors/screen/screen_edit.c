@@ -60,7 +60,10 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "../../../../intern/clog/CLG_log.h"
 #include "screen_intern.h" /* own module include */
+
+static CLG_LogRef LOG = {"screen"};
 
 /* adds no space data */
 static ScrArea *screen_addarea_ex(ScrAreaMap *area_map,
@@ -525,9 +528,9 @@ void ED_screen_refresh(wmWindowManager *wm, wmWindow *win)
     }
   }
 
-  if (G.debug & G_DEBUG_EVENTS) {
-    printf("%s: set screen\n", __func__);
-  }
+  /* we can print more information, add as needed */
+  CLOG_VERBOSE(&LOG, 0, "set screen (%p)", screen);
+
   screen->do_refresh = false;
   /* prevent multiwin errors */
   screen->winid = win->winid;
@@ -1307,9 +1310,7 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
     area->full = NULL;
 
     if (fullsa == NULL) {
-      if (G.debug & G_DEBUG) {
-        printf("%s: something wrong in areafullscreen\n", __func__);
-      }
+      CLOG_WARN(&LOG, "something wrong in areafullscreen");
       return NULL;
     }
 

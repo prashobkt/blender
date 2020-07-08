@@ -1838,9 +1838,7 @@ static void mesh_normals_loop_custom_set(const MVert *mverts,
          * Maybe we should set those loops' edges as sharp?
          */
         BLI_BITMAP_ENABLE(done_loops, i);
-        if (G.debug & G_DEBUG) {
-          CLOG_WARN(BKE_LOG_MESH, "Getting invalid NULL loop space for loop %d!", i);
-        }
+        CLOG_WARN(BKE_LOG_MESH, "Getting invalid NULL loop space for loop %d!", i);
         continue;
       }
 
@@ -1939,10 +1937,8 @@ static void mesh_normals_loop_custom_set(const MVert *mverts,
   for (i = 0; i < numLoops; i++) {
     if (!lnors_spacearr.lspacearr[i]) {
       BLI_BITMAP_DISABLE(done_loops, i);
-      if (G.debug & G_DEBUG) {
-        CLOG_WARN(
-            BKE_LOG_MESH, "Still getting invalid NULL loop space in second loop for loop %d!", i);
-      }
+      CLOG_WARN(
+          BKE_LOG_MESH, "Still getting invalid NULL loop space in second loop for loop %d!", i);
       continue;
     }
 

@@ -500,13 +500,11 @@ void action_move_fcurves_by_basepath(bAction *srcAct, bAction *dstAct, const cha
 
   /* sanity checks */
   if (ELEM(NULL, srcAct, dstAct, basepath)) {
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG,
-                 "srcAct: %p, dstAct: %p, basepath: %p has insufficient info to work with",
-                 (void *)srcAct,
-                 (void *)dstAct,
-                 (void *)basepath);
-    }
+    CLOG_ERROR(&LOG,
+               "srcAct: %p, dstAct: %p, basepath: %p has insufficient info to work with",
+               (void *)srcAct,
+               (void *)dstAct,
+               (void *)basepath);
     return;
   }
 
@@ -588,9 +586,7 @@ void BKE_animdata_separate_by_basepath(Main *bmain, ID *srcID, ID *dstID, ListBa
 
   /* sanity checks */
   if (ELEM(NULL, srcID, dstID)) {
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG, "no source or destination ID to separate AnimData with");
-    }
+    CLOG_ERROR(&LOG, "no source or destination ID to separate AnimData with");
     return;
   }
 
@@ -599,9 +595,7 @@ void BKE_animdata_separate_by_basepath(Main *bmain, ID *srcID, ID *dstID, ListBa
   dstAdt = BKE_animdata_add_id(dstID);
 
   if (ELEM(NULL, srcAdt, dstAdt)) {
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG, "no AnimData for this pair of ID's");
-    }
+    CLOG_ERROR(&LOG, "no AnimData for this pair of ID's");
     return;
   }
 
@@ -921,9 +915,7 @@ char *BKE_animsys_fix_rna_path_rename(ID *owner_id,
 
   /* if no action, no need to proceed */
   if (ELEM(NULL, owner_id, old_path)) {
-    if (G.debug & G_DEBUG) {
-      CLOG_WARN(&LOG, "early abort");
-    }
+    CLOG_WARN(&LOG, "early abort");
     return old_path;
   }
 

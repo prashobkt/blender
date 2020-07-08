@@ -1344,7 +1344,7 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
           kmi_match = true;
         }
         /* Debug only, helps spotting mismatches between menu entries and shortcuts! */
-        else if (G.debug & G_DEBUG_WM) {
+        else if (CLOG_CHECK_IN_USE(WM_LOG_KEYMAPS)) {
           if (is_strict && kmi->ptr) {
             wmOperatorType *ot = WM_operatortype_find(opname, true);
             if (ot) {
@@ -1359,12 +1359,13 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
                 char kmi_str[128];
                 WM_keymap_item_to_string(kmi, false, kmi_str, sizeof(kmi_str));
                 /* Note gievn properties could come from other things than menu entry... */
-                CLOG_INFO(WM_LOG_KEYMAPS,
-                          "%s: Some set values in menu entry match default op values, "
-                          "this might not be desired!\nkm: '%s', kmi: '%s'",
-                          opname,
-                          keymap->idname,
-                          kmi_str);
+                CLOG_VERBOSE(WM_LOG_KEYMAPS,
+                             2,
+                             "%s: Some set values in menu entry match default op values, "
+                             "this might not be desired!\nkm: '%s', kmi: '%s'",
+                             opname,
+                             keymap->idname,
+                             kmi_str);
 #ifdef WITH_PYTHON
                 char *operator_str = IDP_sprintN(properties);
                 CLOG_VERBOSE(WM_LOG_KEYMAPS, 4, "OPERATOR: %s", operator_str);
@@ -1553,7 +1554,7 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
   }
 
   /* Debug only, helps spotting mismatches between menu entries and shortcuts! */
-  if (G.debug & G_DEBUG_WM) {
+  if (CLOG_CHECK_IN_USE(WM_LOG_KEYMAPS)) {
     if (!found && is_strict && properties) {
       wmKeyMap *km;
       wmKeyMapItem *kmi;

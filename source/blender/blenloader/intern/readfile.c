@@ -9508,7 +9508,7 @@ static void do_versions(FileData *fd, Library *lib, Main *main)
   /* Don't allow versioning to create new data-blocks. */
   main->is_locked_for_linking = true;
 
-  if (G.debug & G_DEBUG) {
+  if (CLOG_CHECK_IN_USE(&BLENLOADER_LOG_READFILE)) {
     char build_commit_datetime[32];
     time_t temp_time = main->build_commit_timestamp;
     struct tm *tm = (temp_time) ? gmtime(&temp_time) : NULL;

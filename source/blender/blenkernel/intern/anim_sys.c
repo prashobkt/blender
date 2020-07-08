@@ -196,9 +196,7 @@ KS_Path *BKE_keyingset_add_path(KeyingSet *ks,
 
   /* don't add if there is already a matching KS_Path in the KeyingSet */
   if (BKE_keyingset_find_path(ks, id, group_name, rna_path, array_index, groupmode)) {
-    if (G.debug & G_DEBUG) {
-      CLOG_ERROR(&LOG, "destination already exists in Keying Set");
-    }
+    CLOG_ERROR(&LOG, "destination already exists in Keying Set");
     return NULL;
   }
 
@@ -328,14 +326,12 @@ bool BKE_animsys_store_rna_setting(PointerRNA *ptr,
         int array_len = RNA_property_array_length(&r_result->ptr, r_result->prop);
 
         if (array_len && array_index >= array_len) {
-          if (G.debug & G_DEBUG) {
-            CLOG_WARN(&LOG,
-                      "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
-                      (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
-                      path,
-                      array_index,
-                      array_len - 1);
-          }
+          CLOG_WARN(&LOG,
+                    "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
+                    (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
+                    path,
+                    array_index,
+                    array_len - 1);
         }
         else {
           r_result->prop_index = array_len ? array_index : -1;
@@ -347,13 +343,11 @@ bool BKE_animsys_store_rna_setting(PointerRNA *ptr,
       /* failed to get path */
       /* XXX don't tag as failed yet though, as there are some legit situations (Action Constraint)
        * where some channels will not exist, but shouldn't lock up Action */
-      if (G.debug & G_DEBUG) {
-        CLOG_WARN(&LOG,
-                  "Animato: Invalid path. ID = '%s',  '%s[%d]'",
-                  (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
-                  path,
-                  array_index);
-      }
+      CLOG_WARN(&LOG,
+                "Animato: Invalid path. ID = '%s',  '%s[%d]'",
+                (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
+                path,
+                array_index);
     }
   }
 
