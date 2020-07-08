@@ -74,7 +74,7 @@ class Array {
   Allocator allocator_;
 
   /** A placeholder buffer that will remain uninitialized until it is used. */
-  AlignedBuffer<sizeof(T) * InlineBufferCapacity, alignof(T)> inline_buffer_;
+  TypedBuffer<T, InlineBufferCapacity> inline_buffer_;
 
  public:
   /**
@@ -82,14 +82,14 @@ class Array {
    */
   Array()
   {
-    data_ = this->inline_buffer();
+    data_ = inline_buffer_;
     size_ = 0;
   }
 
   /**
    * Create a new array that contains copies of all values.
    */
-  Array(Span<T> values)
+  Array(Span<T> values, Allocator allocator = {}) : allocator_(allocator)
   {
     size_ = values.size();
     data_ = this->get_buffer_for_size(values.size());
@@ -147,12 +147,8 @@ class Array {
     data_ = this->get_buffer_for_size(size);
   }
 
-  Array(const Array &other) : allocator_(other.allocator_)
+  Array(const Array &other) : Array(other.as_span(), other.allocator_)
   {
-    size_ = other.size();
-
-    data_ = this->get_buffer_for_size(other.size());
-    uninitialized_copy_n(other.data(), size_, data_);
   }
 
   Array(Array &&other) noexcept : allocator_(other.allocator_)
@@ -167,7 +163,7 @@ class Array {
       uninitialized_relocate_n(other.data_, size_, data_);
     }
 
-    other.data_ = other.inline_buffer();
+    other.data_ = other.inline_buffer_;
     other.size_ = 0;
   }
 
@@ -335,16 +331,11 @@ class Array {
   T *get_buffer_for_size(uint size)
   {
     if (size <= InlineBufferCapacity) {
-      return this->inline_buffer();
+      return inline_buffer_;
     }
     else {
       return this->allocate(size);
     }
-  }
-
-  T *inline_buffer() const
-  {
-    return (T *)inline_buffer_.ptr();
   }
 
   T *allocate(uint size)
@@ -354,7 +345,7 @@ class Array {
 
   bool uses_inline_buffer() const
   {
-    return data_ == this->inline_buffer();
+    return data_ == inline_buffer_;
   }
 };
 
