@@ -861,10 +861,10 @@ static void wm_operator_reports(bContext *C, wmOperator *op, int retval, bool ca
   }
 
   if (retval & OPERATOR_FINISHED) {
-    CLOG_STR_VERBOSE_N(WM_LOG_OPERATORS, 1, WM_operator_pystring(C, op, false, true));
+    CLOG_STR_INFO_N(WM_LOG_OPERATORS, WM_operator_pystring(C, op, false, true));
 
     if (caller_owns_reports == false) {
-      CLOG_STR_VERBOSE_N(WM_LOG_OPERATORS, 2, BKE_reports_sprintfN(op->reports, 0));
+      CLOG_STR_VERBOSE_N(WM_LOG_OPERATORS, 1, BKE_reports_sprintfN(op->reports, 0));
     }
 
     if (op->type->flag & OPTYPE_REGISTER) {

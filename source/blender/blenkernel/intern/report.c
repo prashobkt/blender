@@ -64,27 +64,27 @@ const char *BKE_report_type_str(ReportType type)
   }
 }
 
-static int report_type_to_verbosity(ReportType type)
+static enum CLG_Severity report_type_to_severity(ReportType type)
 {
   switch (type) {
     case RPT_INFO:
-      return 5;
+      return CLG_SEVERITY_INFO;
     case RPT_OPERATOR:
-      return 4;
+      return CLG_SEVERITY_INFO;
     case RPT_PROPERTY:
-      return 3;
+      return CLG_SEVERITY_VERBOSE;
     case RPT_WARNING:
-      return 2;
+      return CLG_SEVERITY_INFO;
     case RPT_ERROR:
-      return 1;
+      return CLG_SEVERITY_ERROR;
     case RPT_ERROR_INVALID_INPUT:
-      return 1;
+      return CLG_SEVERITY_ERROR;
     case RPT_ERROR_INVALID_CONTEXT:
-      return 1;
+      return CLG_SEVERITY_ERROR;
     case RPT_ERROR_OUT_OF_MEMORY:
-      return 1;
+      return CLG_SEVERITY_ERROR;
     default:
-      return 0;
+      return CLG_SEVERITY_INFO;
   }
 }
 
@@ -152,12 +152,13 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
   int len;
   const char *message = TIP_(_message);
 
-  CLOG_VERBOSE(&LOG,
-               report_type_to_verbosity(type),
-               "ReportList(%p):%s: %s",
-               reports,
-               BKE_report_type_str(type),
-               message);
+  CLOG_AT_SEVERITY(&LOG,
+                   report_type_to_severity(type),
+                   0,
+                   "ReportList(%p):%s: %s",
+                   reports,
+                   BKE_report_type_str(type),
+                   message);
 
   if (reports) {
     char *message_alloc;
@@ -192,12 +193,13 @@ void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
    */
   if (CLOG_CHECK_IN_USE(&LOG)) {
     char *message_cstring = BLI_dynstr_get_cstring(message);
-    CLOG_VERBOSE(&LOG,
-                 report_type_to_verbosity(type),
-                 "ReportList(%p):%s: %s",
-                 reports,
-                 BKE_report_type_str(type),
-                 message_cstring);
+    CLOG_AT_SEVERITY(&LOG,
+                     report_type_to_severity(type),
+                     0,
+                     "ReportList(%p):%s: %s",
+                     reports,
+                     BKE_report_type_str(type),
+                     message_cstring);
     MEM_freeN(message_cstring);
   }
 
