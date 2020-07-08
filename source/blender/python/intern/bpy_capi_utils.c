@@ -67,18 +67,19 @@ char *BPy_enum_as_string(const EnumPropertyItem *item)
 
 short BPy_reports_to_error(ReportList *reports, PyObject *exception, const bool clear)
 {
-  char *report_str = BKE_reports_sprintfN(reports, RPT_ERROR);
+  const bool are_reports_empty = BLI_listbase_is_empty(&reports->list);
 
-  if (clear == true) {
-    BKE_reports_clear(reports);
-  }
-
-  if (report_str) {
+  if (!are_reports_empty) {
+    char *report_str = BKE_reports_sprintfN(reports, RPT_ERROR);
     PyErr_SetString(exception, report_str);
     MEM_freeN(report_str);
   }
 
-  return (report_str == NULL) ? 0 : -1;
+  if (clear) {
+    BKE_reports_clear(reports);
+  }
+
+  return are_reports_empty ? 0 : -1;
 }
 
 /**
