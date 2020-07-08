@@ -45,6 +45,15 @@ static int asset_create_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  if (GS(id->name) == ID_AST) {
+    BKE_reportf(op->reports,
+                RPT_ERROR,
+                "The selected data-block '%s' is itself of the type asset. Creating an asset for "
+                "this is not supported.",
+                id->name + 2);
+    return OPERATOR_CANCELLED;
+  }
+
   if (id->asset_data) {
     BKE_reportf(op->reports, RPT_ERROR, "Data-block '%s' already is an asset", id->name + 2);
     return OPERATOR_CANCELLED;
@@ -70,11 +79,11 @@ static int asset_create_exec(bContext *C, wmOperator *op)
   copied_id->asset_data = BKE_asset_data_create();
 
   UI_id_icon_render(C, NULL, copied_id, true, false);
-  /* Store reference to the preview. The actual image is owned by the ID. */
-  asset->preview = BKE_previewimg_id_ensure(copied_id);
+  /* Store copy of the preview for the asset. */
+  BKE_previewimg_id_copy(&asset->id, copied_id);
   asset->referenced_id = copied_id;
 
-  /* TODO generate default meta-data */
+  /* TODO generate more default meta-data */
   /* TODO create asset in the asset DB, not in the local file. */
 
   BKE_reportf(op->reports, RPT_INFO, "Asset '%s' created", copied_id->name + 2);

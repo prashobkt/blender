@@ -20,7 +20,10 @@
 
 #include <string.h>
 
+#include "BLI_utildefines.h"
+
 #include "BKE_asset.h"
+#include "BKE_icons.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_query.h"
 
@@ -43,7 +46,9 @@ static void asset_init_data(ID *id)
 static void asset_free_data(ID *id)
 {
   Asset *asset = (Asset *)id;
-  UNUSED_VARS(asset);
+
+  BKE_icon_id_delete((ID *)asset);
+  BKE_previewimg_free(&asset->preview);
 }
 
 static void asset_foreach_id(ID *id, LibraryForeachIDData *data)

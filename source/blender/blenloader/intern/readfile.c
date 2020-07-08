@@ -8073,9 +8073,11 @@ static void fix_relpaths_library(const char *basepath, Main *main)
 /** \name Read ID: Asset
  * \{ */
 
-static void direct_link_asset(FileData *UNUSED(fd), Asset *asset, Main *UNUSED(main))
+static void direct_link_asset(BlendDataReader *reader, Asset *asset)
 {
   id_fake_user_set(&asset->id);
+
+  asset->preview = direct_link_preview_image(reader, asset->preview);
 }
 
 static void lib_link_asset(BlendLibReader *reader, Asset *asset)
@@ -8922,7 +8924,7 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
       direct_link_library(fd, (Library *)id, main);
       break;
     case ID_AST:
-      direct_link_asset(fd, (Asset *)id, main);
+      direct_link_asset(&reader, (Asset *)id);
       break;
     case ID_CA:
       direct_link_camera(&reader, (Camera *)id);

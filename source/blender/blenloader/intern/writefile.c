@@ -3867,6 +3867,8 @@ static void write_asset(BlendWriter *writer, Asset *asset, const void *id_addres
   if (asset->id.us > 0 || BLO_write_is_undo(writer)) {
     BLO_write_id_struct(writer, Asset, id_address, &asset->id);
     write_iddata(writer, &asset->id);
+
+    write_previews(writer, asset->preview);
   }
 }
 /* Keep it last of write_foodata functions. */

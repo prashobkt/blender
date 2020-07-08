@@ -26,7 +26,7 @@
 typedef struct Asset {
   ID id;
 
-  /** Thumbnail image of the data-block. Non-owning pointer, the actual data-block owns it. */
+  /** Thumbnail image of the data-block. Duplicate of the referenced ID preview. */
   struct PreviewImage *preview;
 
   ID *referenced_id;
