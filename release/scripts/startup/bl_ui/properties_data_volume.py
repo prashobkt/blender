@@ -149,7 +149,12 @@ class DATA_PT_volume_viewport_display(DataButtonsPanel, Panel):
         sub.active = display.wireframe_type in {'BOXES', 'POINTS'}
         sub.prop(display, "wireframe_detail", text="Detail")
 
-        layout.prop(display, "density")
+        col = layout.column(align=True)
+        col.prop(display, "density")
+        col.prop(display, "interpolation_method")
+        col.prop(display, "axis_slice_method")
+        col.prop(display, "slice_axis")
+        col.prop(display, "slice_depth")
 
 
 class DATA_PT_custom_props_volume(DataButtonsPanel, PropertyPanel, Panel):

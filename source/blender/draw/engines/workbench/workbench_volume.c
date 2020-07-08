@@ -211,11 +211,14 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
   WORKBENCH_PrivateData *wpd = vedata->stl->wpd;
   WORKBENCH_TextureList *txl = vedata->txl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+  DRWShadingGroup *grp = NULL;
 
   wpd->volumes_do = true;
+  const bool use_slice = (volume->display.axis_slice_method == AXIS_SLICE_SINGLE);
+  const InterpType interpolation_method = (InterpType)volume->display.interpolation_method;
 
   /* Create shader. */
-  GPUShader *sh = workbench_shader_volume_get(false, false, false, false);
+  GPUShader *sh = workbench_shader_volume_get(use_slice, false, interpolation_method, false);
 
   /* Compute color. */
   float color[3];
@@ -225,35 +228,58 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
   float texture_to_world[4][4];
   mul_m4_m4m4(texture_to_world, ob->obmat, grid->texture_to_object);
 
-  /* Compute world space dimensions for step size. */
-  float world_size[3];
-  mat4_to_size(world_size, texture_to_world);
-  abs_v3(world_size);
+  if (use_slice) {
+    float invviewmat[4][4];
+    DRW_view_viewmat_get(NULL, invviewmat, true);
 
-  /* Compute step parameters. */
-  double noise_ofs;
-  BLI_halton_1d(3, 0.0, wpd->taa_sample, &noise_ofs);
-  float step_length, max_slice;
-  int resolution[3];
-  GPU_texture_get_mipmap_size(grid->texture, 0, resolution);
-  float slice_ct[3] = {resolution[0], resolution[1], resolution[2]};
-  mul_v3_fl(slice_ct, max_ff(0.001f, 5.0f));
-  max_slice = max_fff(slice_ct[0], slice_ct[1], slice_ct[2]);
-  invert_v3(slice_ct);
-  mul_v3_v3(slice_ct, world_size);
-  step_length = len_v3(slice_ct);
+    const int axis = (volume->display.slice_axis == SLICE_AXIS_AUTO) ?
+                         axis_dominant_v3_single(invviewmat[2]) :
+                         volume->display.slice_axis - 1;
+
+    float dim[3];
+    BKE_object_dimensions_get(ob, dim);
+    /* 0.05f to achieve somewhat the same opacity as the full view.  */
+    float step_length = max_ff(1e-16f, dim[axis] * 0.05f);
+
+    const float slice_position = volume->display.slice_depth;
+
+    grp = DRW_shgroup_create(sh, vedata->psl->volume_ps);
+    DRW_shgroup_uniform_float_copy(grp, "slicePosition", slice_position);
+    DRW_shgroup_uniform_int_copy(grp, "sliceAxis", axis);
+    DRW_shgroup_uniform_float_copy(grp, "stepLength", step_length);
+    DRW_shgroup_state_disable(grp, DRW_STATE_CULL_FRONT);
+  }
+  else {
+    /* Compute world space dimensions for step size. */
+    float world_size[3];
+    mat4_to_size(world_size, texture_to_world);
+    abs_v3(world_size);
+
+    /* Compute step parameters. */
+    double noise_ofs;
+    BLI_halton_1d(3, 0.0, wpd->taa_sample, &noise_ofs);
+    float step_length, max_slice;
+    int resolution[3];
+    GPU_texture_get_mipmap_size(grid->texture, 0, resolution);
+    float slice_ct[3] = {resolution[0], resolution[1], resolution[2]};
+    mul_v3_fl(slice_ct, max_ff(0.001f, 5.0f));
+    max_slice = max_fff(slice_ct[0], slice_ct[1], slice_ct[2]);
+    invert_v3(slice_ct);
+    mul_v3_v3(slice_ct, world_size);
+    step_length = len_v3(slice_ct);
+
+    /* Set uniforms. */
+    grp = DRW_shgroup_create(sh, vedata->psl->volume_ps);
+    DRW_shgroup_uniform_block(grp, "world_block", wpd->world_ubo);
+    DRW_shgroup_uniform_int_copy(grp, "samplesLen", max_slice);
+    DRW_shgroup_uniform_float_copy(grp, "stepLength", step_length);
+    DRW_shgroup_uniform_float_copy(grp, "noiseOfs", noise_ofs);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CULL_FRONT);
+  }
 
   /* Compute density scale. */
   const float density_scale = volume->display.density *
                               BKE_volume_density_scale(volume, ob->obmat);
-
-  /* Set uniforms. */
-  DRWShadingGroup *grp = DRW_shgroup_create(sh, vedata->psl->volume_ps);
-  DRW_shgroup_uniform_block(grp, "world_block", wpd->world_ubo);
-  DRW_shgroup_uniform_int_copy(grp, "samplesLen", max_slice);
-  DRW_shgroup_uniform_float_copy(grp, "stepLength", step_length);
-  DRW_shgroup_uniform_float_copy(grp, "noiseOfs", noise_ofs);
-  DRW_shgroup_state_enable(grp, DRW_STATE_CULL_FRONT);
 
   DRW_shgroup_uniform_texture(grp, "densityTexture", grid->texture);
   /* TODO: implement shadow texture, see manta_smoke_calc_transparency. */
