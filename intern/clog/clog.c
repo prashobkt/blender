@@ -114,7 +114,8 @@ typedef struct CLogContext {
  * Use so we can do a single call to write.
  * \{ */
 
-#define CLOG_BUF_LEN_INIT 512
+/* TODO (grzelins) temporary fix for handling big log messages */
+#define CLOG_BUF_LEN_INIT 4096
 
 typedef struct CLogStringBuf {
   char *data;
@@ -526,6 +527,7 @@ static void CLG_report_append(LogRecordList *listbase, CLG_LogRecord *link)
   listbase->last = link;
 }
 
+/* TODO (grzelins) there is problem with handling big messages (example is report from duplicating object) */
 void CLG_logf(CLG_LogType *lg,
               enum CLG_Severity severity,
               const char *file_line,
@@ -554,10 +556,9 @@ void CLG_logf(CLG_LogType *lg,
     va_end(ap);
   }
 
-  size_t mem_size = cstr.len - cstr_size_before_va + 1; // +1 to null terminate?
+  size_t mem_size = cstr.len - cstr_size_before_va + 1;  // +1 to null terminate?
   char *message = MEM_callocN(mem_size, "LogMessage");
-  // todo memcpy crashes when message is too big? (ex. duplicating objects)
-  memcpy(message, cstr.data + cstr_size_before_va, mem_size-1);
+  strcpy(message, cstr.data + cstr_size_before_va);
 
   CLG_LogRecord *log_record = clog_log_record_init(lg, severity, file_line, fn, message);
   CLG_report_append(&(lg->ctx->log_records), log_record);
