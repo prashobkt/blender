@@ -51,28 +51,33 @@ static int asset_create_exec(bContext *C, wmOperator *op)
   }
 
   struct Main *bmain = CTX_data_main(C);
-  ID *asset_id = NULL;
+  Asset *asset = BKE_id_new(bmain, ID_AST, id->name + 2);
+  ID *copied_id = NULL;
 
   /* TODO this should probably be somewhere in BKE. */
   /* TODO this is not a deep copy... */
-  if (!BKE_id_copy(bmain, id, &asset_id)) {
+  if (!BKE_id_copy(bmain, id, &copied_id)) {
     BKE_reportf(op->reports,
                 RPT_ERROR,
                 "Data-block '%s' could not be copied into an asset data-block",
                 id->name);
     return OPERATOR_CANCELLED;
   }
-  id_fake_user_set(asset_id);
+  id_fake_user_set(copied_id);
+  id_fake_user_set(&asset->id);
 
-  asset_id->asset_data = BKE_asset_data_create();
-  UI_id_icon_render(C, NULL, asset_id, true, false);
+  /* Asset data is a dummy right now. Keeping it in case it's useful later. */
+  copied_id->asset_data = BKE_asset_data_create();
+
+  UI_id_icon_render(C, NULL, copied_id, true, false);
   /* Store reference to the preview. The actual image is owned by the ID. */
-  asset_id->asset_data->preview = BKE_previewimg_id_ensure(asset_id);
+  asset->preview = BKE_previewimg_id_ensure(copied_id);
+  asset->referenced_id = copied_id;
 
   /* TODO generate default meta-data */
   /* TODO create asset in the asset DB, not in the local file. */
 
-  BKE_reportf(op->reports, RPT_INFO, "Asset '%s' created", asset_id->name + 2);
+  BKE_reportf(op->reports, RPT_INFO, "Asset '%s' created", copied_id->name + 2);
 
   WM_event_add_notifier(C, NC_ID | NA_EDITED, NULL);
 

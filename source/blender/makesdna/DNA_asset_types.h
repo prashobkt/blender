@@ -25,11 +25,16 @@
 
 typedef struct Asset {
   ID id;
-} Asset;
 
-typedef struct AssetData {
   /** Thumbnail image of the data-block. Non-owning pointer, the actual data-block owns it. */
   struct PreviewImage *preview;
+
+  ID *referenced_id;
+} Asset;
+
+/* TODO unused, keeping in case it's useful later. */
+typedef struct AssetData {
+  int dummy;
 } AssetData;
 
 #endif /* __DNA_ASSET_TYPES_H__ */

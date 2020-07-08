@@ -2666,7 +2666,6 @@ static void direct_link_id_common(
 
   if (id->asset_data) {
     BLO_read_data_address(reader, &id->asset_data);
-    BLO_read_data_address(reader, &id->asset_data->preview);
   }
 
   /*link direct data of ID properties*/
@@ -8079,8 +8078,9 @@ static void direct_link_asset(FileData *UNUSED(fd), Asset *asset, Main *UNUSED(m
   id_fake_user_set(&asset->id);
 }
 
-static void lib_link_asset(BlendLibReader *UNUSED(reader), Asset *UNUSED(asset))
+static void lib_link_asset(BlendLibReader *reader, Asset *asset)
 {
+  BLO_read_id_address(reader, asset->id.lib, &asset->referenced_id);
 }
 
 /** \} */

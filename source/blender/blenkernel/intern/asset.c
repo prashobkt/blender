@@ -22,6 +22,7 @@
 
 #include "BKE_asset.h"
 #include "BKE_idtype.h"
+#include "BKE_lib_query.h"
 
 #include "BLT_translation.h"
 
@@ -45,6 +46,13 @@ static void asset_free_data(ID *id)
   UNUSED_VARS(asset);
 }
 
+static void asset_foreach_id(ID *id, LibraryForeachIDData *data)
+{
+  Asset *asset = (Asset *)id;
+
+  BKE_LIB_FOREACHID_PROCESS_ID(data, asset->referenced_id, IDWALK_CB_USER);
+}
+
 IDTypeInfo IDType_ID_AST = {
     /* id_code */ ID_AST,
     /* id_filter */ FILTER_ID_AST,
@@ -52,14 +60,14 @@ IDTypeInfo IDType_ID_AST = {
     /* struct_size */ sizeof(Asset),
     /* name */ "Asset",
     /* name_plural */ "assets",
-    /* translation_context */ BLT_I18NCONTEXT_ID_SIMULATION,
+    /* translation_context */ BLT_I18NCONTEXT_ID_ASSET,
     /* flags */ 0,
 
     /* init_data */ asset_init_data,
     /* copy_data */ NULL,
     /* free_data */ asset_free_data,
     /* make_local */ NULL,
-    /* foreach_id */ NULL,
+    /* foreach_id */ asset_foreach_id,
 };
 
 AssetData *BKE_asset_data_create(void)
