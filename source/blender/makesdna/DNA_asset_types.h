@@ -30,10 +30,24 @@ typedef struct Asset {
   struct PreviewImage *preview;
   /** Optional description of this asset for display in the UI. Dynamic length. */
   char *description;
+  /** User defined tags for this asset. The asset manager uses these for filtering, but how they
+   * function exactly (e.g. how they are registered to provide a list of searchable available tags)
+   * is up to the asset-engine. */
+  ListBase tags; /* CustomTag */
 
   /** The ID this asset was created for. */
   ID *referenced_id;
 } Asset;
+
+/**
+ * \brief User defined tag.
+ * Currently only used by assets, could be used more often at some point.
+ * Maybe add a custom icon and color to these in future?
+ */
+typedef struct CustomTag {
+  struct CustomTag *next, *prev;
+  char name[64]; /* MAX_NAME */
+} CustomTag;
 
 /* TODO unused, keeping in case it's useful later. */
 typedef struct AssetData {

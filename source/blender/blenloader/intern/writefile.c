@@ -3868,12 +3868,17 @@ static void write_asset(BlendWriter *writer, Asset *asset, const void *id_addres
     BLO_write_id_struct(writer, Asset, id_address, &asset->id);
     write_iddata(writer, &asset->id);
 
+    /* Meta-data */
     write_previews(writer, asset->preview);
     if (asset->description) {
       BLO_write_string(writer, asset->description);
     }
+    LISTBASE_FOREACH (CustomTag *, tag, &asset->tags) {
+      BLO_write_struct(writer, CustomTag, tag);
+    }
   }
 }
+
 /* Keep it last of write_foodata functions. */
 static void write_libraries(WriteData *wd, Main *main)
 {

@@ -20,6 +20,8 @@
 
 #include <string.h>
 
+#include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_asset.h"
@@ -51,6 +53,7 @@ static void asset_free_data(ID *id)
   BKE_previewimg_free(&asset->preview);
 
   MEM_SAFE_FREE(asset->description);
+  BLI_freelistN(&asset->tags);
 }
 
 static void asset_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -76,6 +79,36 @@ IDTypeInfo IDType_ID_AST = {
     /* make_local */ NULL,
     /* foreach_id */ asset_foreach_id,
 };
+
+struct CustomTagEnsureResult BKE_asset_tag_ensure(Asset *asset, const char *name)
+{
+  struct CustomTagEnsureResult result = {.tag = NULL};
+  if (!name[0]) {
+    return result;
+  }
+
+  CustomTag *tag = BLI_findstring(&asset->tags, name, offsetof(CustomTag, name));
+
+  if (tag) {
+    result.tag = tag;
+    result.is_new = false;
+    return result;
+  }
+
+  tag = MEM_mallocN(sizeof(*tag), __func__);
+  BLI_strncpy(tag->name, name, sizeof(tag->name));
+
+  BLI_addtail(&asset->tags, tag);
+
+  result.tag = tag;
+  result.is_new = true;
+  return result;
+}
+
+void BKE_asset_tag_remove(Asset *asset, CustomTag *tag)
+{
+  BLI_freelinkN(&asset->tags, tag);
+}
 
 AssetData *BKE_asset_data_create(void)
 {

@@ -206,6 +206,7 @@ extern StructRNA RNA_CurveModifier;
 extern StructRNA RNA_CurvePoint;
 extern StructRNA RNA_CurveProfile;
 extern StructRNA RNA_CurveProfilePoint;
+extern StructRNA RNA_CustomTag;
 extern StructRNA RNA_DampedTrackConstraint;
 extern StructRNA RNA_DataTransferModifier;
 extern StructRNA RNA_DecimateModifier;

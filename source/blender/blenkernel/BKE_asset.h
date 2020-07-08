@@ -21,9 +21,23 @@
  * \ingroup bke
  */
 
+#include "BLI_utildefines.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct Asset;
+struct CustomTag;
+
+struct CustomTagEnsureResult {
+  struct CustomTag *tag;
+  /* Set to false if a tag of this name was already present. */
+  bool is_new;
+};
+
+struct CustomTagEnsureResult BKE_asset_tag_ensure(struct Asset *asset, const char *name);
+void BKE_asset_tag_remove(struct Asset *asset, struct CustomTag *tag);
 
 struct AssetData *BKE_asset_data_create(void);
 void BKE_asset_data_free(struct AssetData *asset_data);
