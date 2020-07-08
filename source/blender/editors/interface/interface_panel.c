@@ -69,14 +69,14 @@
 #define ANIMATION_TIME 0.30
 #define ANIMATION_INTERVAL 0.02
 
-#define PNL_LAST_ADDED 1
-#define PNL_ACTIVE 2
-#define PNL_WAS_ACTIVE 4
-#define PNL_ANIM_ALIGN 8
-#define PNL_NEW_ADDED 16
-#define PNL_FIRST 32
-#define PNL_SEARCH_FILTERED 64
-#define PNL_WAS_SEARCH_FILTERED 4
+#define PNL_LAST_ADDED (1 << 0)
+#define PNL_ACTIVE (1 << 1)
+#define PNL_WAS_ACTIVE (1 << 2)
+#define PNL_ANIM_ALIGN (1 << 3)
+#define PNL_NEW_ADDED (1 << 4)
+#define PNL_FIRST (1 << 5)
+#define PNL_SEARCH_FILTERED (1 << 6)
+#define PNL_WAS_SEARCH_FILTERED (1 << 7)
 
 /* only show pin header button for pinned panels */
 #define USE_PIN_HIDDEN
@@ -185,17 +185,15 @@ static bool panel_active_animation_changed(ListBase *lb, Panel **pa_animation, b
     }
 
     /* Detect search filter flag changes */
-    if (!(panel->flag & PNL_NEW_ADDED)) {
-      if ((panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
-          !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
-        *pa_animation = panel;
-        return false;
-      }
-      if (!(panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
-          (panel->runtime_flag & PNL_SEARCH_FILTERED)) {
-        *pa_animation = panel;
-        return false;
-      }
+    if ((panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
+        !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
+      *pa_animation = panel;
+      return false;
+    }
+    if (!(panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
+        (panel->runtime_flag & PNL_SEARCH_FILTERED)) {
+      *pa_animation = panel;
+      return false;
     }
 
     if ((panel->runtime_flag & PNL_ACTIVE) && !(panel->flag & PNL_CLOSED)) {
@@ -880,13 +878,6 @@ void ui_panel_set_search_filtered(struct Panel *panel, const bool value)
   SET_FLAG_FROM_TEST(panel->runtime_flag, value, PNL_SEARCH_FILTERED);
 }
 
-/**
- * Find whether a panel and all of its subpanels have been filtered by property search.
- *
- * \note We maintain a separate flag for active and search filtered. This prevents the
- * search filtering from being too invasive to other code and makes animation of search
- * filtered panels possible.
- */
 static bool panel_is_search_filtered_recursive(const Panel *panel)
 {
   bool is_search_filtered = panel->runtime_flag & PNL_SEARCH_FILTERED;
@@ -901,6 +892,13 @@ static bool panel_is_search_filtered_recursive(const Panel *panel)
   return is_search_filtered;
 }
 
+/**
+ * Find whether a panel and all of its subpanels have been filtered by property search.
+ *
+ * \note We maintain a separate flag for active and search filtered. This prevents the
+ * search filtering from being too invasive to other code and makes animation of search
+ * filtered panels possible.
+ */
 bool UI_panel_is_search_filtered(const Panel *panel)
 {
   return panel_is_search_filtered_recursive(panel);
