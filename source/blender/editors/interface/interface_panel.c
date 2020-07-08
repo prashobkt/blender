@@ -816,7 +816,7 @@ void UI_panel_end(
 
   /* Compute total panel size including children. */
   LISTBASE_FOREACH (Panel *, pachild, &panel->children) {
-    if (pachild->runtime_flag & PNL_ACTIVE && !(pachild->runtime_flag & PNL_SEARCH_FILTERED)) {
+    if (pachild->runtime_flag & PNL_ACTIVE && !UI_panel_is_search_filtered(pachild)) {
       width = max_ii(width, pachild->sizex);
       height += get_panel_real_size_y(pachild);
     }
@@ -878,18 +878,16 @@ void ui_panel_set_search_filtered(struct Panel *panel, const bool value)
   SET_FLAG_FROM_TEST(panel->runtime_flag, value, PNL_SEARCH_FILTERED);
 }
 
-static bool panel_is_search_filtered_recursive(const Panel *panel)
+static void panel_is_search_filtered_recursive(const Panel *panel, bool *is_search_filtered)
 {
-  bool is_search_filtered = panel->runtime_flag & PNL_SEARCH_FILTERED;
+  *is_search_filtered = *is_search_filtered && (panel->runtime_flag & PNL_SEARCH_FILTERED);
 
   /* If the panel is filtered (removed) we need to check that its children are too. */
-  if (is_search_filtered) {
+  if (*is_search_filtered) {
     LISTBASE_FOREACH (const Panel *, child_panel, &panel->children) {
-      is_search_filtered &= panel_is_search_filtered_recursive(child_panel);
+      panel_is_search_filtered_recursive(child_panel, is_search_filtered);
     }
   }
-
-  return is_search_filtered;
 }
 
 /**
@@ -901,7 +899,9 @@ static bool panel_is_search_filtered_recursive(const Panel *panel)
  */
 bool UI_panel_is_search_filtered(const Panel *panel)
 {
-  return panel_is_search_filtered_recursive(panel);
+  bool is_search_filtered = true;
+  panel_is_search_filtered_recursive(panel, &is_search_filtered);
+  return is_search_filtered;
 }
 
 /**************************** drawing *******************************/
