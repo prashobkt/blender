@@ -31,7 +31,6 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_edgehash.h"
-#include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_rand.h"
@@ -590,7 +589,7 @@ void cloth_free_modifier(ClothModifierData *clmd)
     }
 
     if (cloth->sew_edge_graph) {
-      BLI_ghash_free(cloth->sew_edge_graph, MEM_freeN, NULL);
+      BLI_edgeset_free(cloth->sew_edge_graph);
       cloth->sew_edge_graph = NULL;
     }
 
@@ -667,7 +666,7 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
     }
 
     if (cloth->sew_edge_graph) {
-      BLI_ghash_free(cloth->sew_edge_graph, MEM_freeN, NULL);
+      BLI_edgeset_free(cloth->sew_edge_graph);
       cloth->sew_edge_graph = NULL;
     }
 
@@ -1551,9 +1550,8 @@ static bool find_internal_spring_target_vertex(BVHTreeFromMesh *treedata,
     *r_tar_v_idx = vert_idx;
     return true;
   }
-  
-    return false;
-  
+
+  return false;
 }
 
 static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
@@ -1687,8 +1685,7 @@ static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
   if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW) {
     /* cloth->sew_edge_graph should not exist before this */
     BLI_assert(cloth->sew_edge_graph == NULL);
-    cloth->sew_edge_graph = BLI_ghash_new(
-        BLI_ghashutil_inthash_v2_p, BLI_ghashutil_inthash_v2_cmp, "cloth_sewing_edges_graph");
+    cloth->sew_edge_graph = BLI_edgeset_new("cloth_sewing_edges_graph");
   }
 
   /* Structural springs. */
@@ -1703,18 +1700,7 @@ static int cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
         spring->lin_stiffness = 1.0f;
         spring->type = CLOTH_SPRING_TYPE_SEWING;
 
-        /* set indices of verts of the sewing edge symmetrically in sew_edge_graph */
-        unsigned int *vertex_index_pair = MEM_mallocN(sizeof(unsigned int) * 2,
-                                                      "sewing_edge_index_pair_01");
-        if (medge[i].v1 < medge[i].v2) {
-          vertex_index_pair[0] = medge[i].v1;
-          vertex_index_pair[1] = medge[i].v2;
-        }
-        else {
-          vertex_index_pair[0] = medge[i].v2;
-          vertex_index_pair[1] = medge[i].v1;
-        }
-        BLI_ghash_insert(cloth->sew_edge_graph, vertex_index_pair, NULL);
+        BLI_edgeset_insert(cloth->sew_edge_graph, medge[i].v1, medge[i].v2);
       }
       else {
         shrink_factor = cloth_shrink_factor(clmd, cloth->verts, spring->ij, spring->kl);
