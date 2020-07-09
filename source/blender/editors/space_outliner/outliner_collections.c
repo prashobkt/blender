@@ -184,56 +184,35 @@ typedef enum NewCollectionType {
   COLLECTION_NEW_FROM_SELECTION_LINKED,
 } NewCollectionType;
 
-struct CollectionNewData {
-  bool error;
-  Collection *collection;
-};
-
-static TreeTraversalAction collection_find_selected_to_add(TreeElement *te, void *customdata)
+static Collection *find_parent_collection(TreeElement *te)
 {
-  struct CollectionNewData *data = customdata;
-  Collection *collection = outliner_collection_from_tree_element(te);
-
-  if (!collection) {
-    return TRAVERSE_SKIP_CHILDS;
+  while (te) {
+    te = te->parent;
+    if (outliner_is_collection_tree_element(te)) {
+      return outliner_collection_from_tree_element(te);
+    }
   }
-
-  if (data->collection != NULL) {
-    data->error = true;
-    return TRAVERSE_BREAK;
-  }
-
-  data->collection = collection;
-  return TRAVERSE_CONTINUE;
+  return NULL;
 }
 
 static int collection_new_exec(bContext *C, wmOperator *op)
 {
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
-  ARegion *region = CTX_wm_region(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  struct CollectionNewData data = {
-      .error = false,
-      .collection = NULL,
-  };
+  Collection *collection;
 
   if (RNA_boolean_get(op->ptr, "nested")) {
-    outliner_build_tree(bmain, scene, view_layer, soops, region);
-
-    outliner_tree_traverse(
-        soops, &soops->tree, 0, TSE_SELECTED, collection_find_selected_to_add, &data);
-
-    if (data.error) {
-      BKE_report(op->reports, RPT_ERROR, "More than one collection is selected");
-      return OPERATOR_CANCELLED;
-    }
+    /* Make new collection a child of the active collection */
+    collection = CTX_data_layer_collection(C)->collection;
+  }
+  else {
+    collection = scene->master_collection;
   }
 
-  if (data.collection == NULL || ID_IS_LINKED(data.collection)) {
-    data.collection = scene->master_collection;
+  if (ID_IS_LINKED(collection)) {
+    collection = scene->master_collection;
   }
 
   if (ID_IS_LINKED(scene)) {
@@ -241,9 +220,24 @@ static int collection_new_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_collection_add(bmain, data.collection, NULL);
+  Collection *collection_new = BKE_collection_add(bmain, collection, NULL);
 
-  DEG_id_tag_update(&data.collection->id, ID_RECALC_COPY_ON_WRITE);
+  /* Move selected objects into new collection */
+  struct IDsSelectedData data = {{NULL}};
+  outliner_tree_traverse(
+      soops, &soops->tree, 0, TSE_SELECTED, outliner_find_selected_objects, &data);
+
+  LISTBASE_FOREACH (LinkData *, link, &data.selected_array) {
+    TreeElement *te = (TreeElement *)link->data;
+    TreeStoreElem *tselem = TREESTORE(te);
+    Collection *parent = find_parent_collection(te);
+    Object *ob = (Object *)tselem->id;
+
+    BKE_collection_object_move(bmain, scene, collection_new, parent, ob);
+  }
+  BLI_freelistN(&data.selected_array);
+
+  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
   DEG_relations_tag_update(bmain);
 
   outliner_cleanup_tree(soops);
@@ -279,7 +273,6 @@ void OUTLINER_OT_collection_new(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = collection_new_exec;
-  ot->invoke = WM_menu_invoke;
   ot->poll = ED_outliner_collections_editor_poll;
 
   /* flags */
