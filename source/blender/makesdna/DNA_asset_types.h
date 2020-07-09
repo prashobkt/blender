@@ -21,23 +21,7 @@
 #ifndef __DNA_ASSET_TYPES_H__
 #define __DNA_ASSET_TYPES_H__
 
-#include "DNA_ID.h"
-
-typedef struct Asset {
-  ID id;
-
-  /** Thumbnail image of the data-block. Duplicate of the referenced ID preview. */
-  struct PreviewImage *preview;
-  /** Optional description of this asset for display in the UI. Dynamic length. */
-  char *description;
-  /** User defined tags for this asset. The asset manager uses these for filtering, but how they
-   * function exactly (e.g. how they are registered to provide a list of searchable available tags)
-   * is up to the asset-engine. */
-  ListBase tags; /* CustomTag */
-
-  /** The ID this asset was created for. */
-  ID *referenced_id;
-} Asset;
+#include "DNA_listBase.h"
 
 /**
  * \brief User defined tag.
@@ -49,9 +33,15 @@ typedef struct CustomTag {
   char name[64]; /* MAX_NAME */
 } CustomTag;
 
-/* TODO unused, keeping in case it's useful later. */
 typedef struct AssetData {
-  int dummy;
+  /** Thumbnail image of the data-block. Duplicate of the referenced ID preview. */
+  struct PreviewImage *preview;
+  /** Optional description of this asset for display in the UI. Dynamic length. */
+  char *description;
+  /** User defined tags for this asset. The asset manager uses these for filtering, but how they
+   * function exactly (e.g. how they are registered to provide a list of searchable available tags)
+   * is up to the asset-engine. */
+  ListBase tags; /* CustomTag */
 } AssetData;
 
 #endif /* __DNA_ASSET_TYPES_H__ */

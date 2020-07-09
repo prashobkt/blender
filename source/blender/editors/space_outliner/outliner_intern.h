@@ -121,8 +121,7 @@ typedef struct TreeElementIcon {
         ID_MC, \
         ID_WS, \
         ID_MSK, \
-        ID_PC, \
-        ID_AST))
+        ID_PC))
 
 /* TreeElement->flag */
 enum {

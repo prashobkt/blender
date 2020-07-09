@@ -27,8 +27,8 @@
 extern "C" {
 #endif
 
-struct Asset;
-struct CustomTag;
+struct AssetData *BKE_asset_data_create(void);
+void BKE_asset_data_free(struct AssetData *asset_data);
 
 struct CustomTagEnsureResult {
   struct CustomTag *tag;
@@ -36,11 +36,9 @@ struct CustomTagEnsureResult {
   bool is_new;
 };
 
-struct CustomTagEnsureResult BKE_asset_tag_ensure(struct Asset *asset, const char *name);
-void BKE_asset_tag_remove(struct Asset *asset, struct CustomTag *tag);
-
-struct AssetData *BKE_asset_data_create(void);
-void BKE_asset_data_free(struct AssetData *asset_data);
+struct CustomTagEnsureResult BKE_assetdata_tag_ensure(struct AssetData *asset_data,
+                                                      const char *name);
+void BKE_assetdata_tag_remove(struct AssetData *asset_data, struct CustomTag *tag);
 
 #ifdef __cplusplus
 }

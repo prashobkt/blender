@@ -24,6 +24,7 @@
 #include "RNA_enum_types.h"
 
 #include "DNA_asset_types.h"
+#include "DNA_defs.h"
 
 #include "rna_internal.h"
 
@@ -33,66 +34,66 @@
 
 #  include "RNA_access.h"
 
-static CustomTag *rna_Asset_tag_new(Asset *asset, ReportList *reports, const char *name)
+static CustomTag *rna_AssetData_tag_new(AssetData *asset_data,
+                                        ReportList *reports,
+                                        const char *name)
 {
-  struct CustomTagEnsureResult result = BKE_asset_tag_ensure(asset, name);
+  struct CustomTagEnsureResult result = BKE_assetdata_tag_ensure(asset_data, name);
 
   if (!result.is_new) {
-    BKE_reportf(reports,
-                RPT_WARNING,
-                "Tag '%s' already present in asset '%s'",
-                result.tag->name,
-                asset->id.name + 2);
+    BKE_reportf(
+        reports, RPT_WARNING, "Tag '%s' already present for given asset", result.tag->name);
     /* Report, but still return valid item. */
   }
 
   return result.tag;
 }
 
-static void rna_Asset_tag_remove(Asset *asset, ReportList *reports, PointerRNA *tag_ptr)
+static void rna_AssetData_tag_remove(AssetData *asset_data,
+                                     ReportList *reports,
+                                     PointerRNA *tag_ptr)
 {
   CustomTag *tag = tag_ptr->data;
-  if (BLI_findindex(&asset->tags, tag) == -1) {
-    BKE_reportf(
-        reports, RPT_ERROR, "Tag '%s' not found in asset '%s'", tag->name, asset->id.name + 2);
+  if (BLI_findindex(&asset_data->tags, tag) == -1) {
+    BKE_reportf(reports, RPT_ERROR, "Tag '%s' not found in given asset", tag->name);
     return;
   }
 
-  BKE_asset_tag_remove(asset, tag);
+  BKE_assetdata_tag_remove(asset_data, tag);
   RNA_POINTER_INVALIDATE(tag_ptr);
 }
 
-static void rna_Asset_description_get(PointerRNA *ptr, char *value)
+static void rna_AssetData_description_get(PointerRNA *ptr, char *value)
 {
-  Asset *asset = ptr->data;
+  AssetData *asset_data = ptr->data;
 
-  if (asset->description) {
-    strcpy(value, asset->description);
+  if (asset_data->description) {
+    strcpy(value, asset_data->description);
   }
   else {
     value[0] = '\0';
   }
 }
 
-static int rna_Asset_description_length(PointerRNA *ptr)
+static int rna_AssetData_description_length(PointerRNA *ptr)
 {
-  Asset *asset = ptr->data;
-  return asset->description ? strlen(asset->description) : 0;
+  AssetData *asset_data = ptr->data;
+  return asset_data->description ? strlen(asset_data->description) : 0;
 }
 
-static void rna_Asset_description_set(PointerRNA *ptr, const char *value)
+static void rna_AssetData_description_set(PointerRNA *ptr, const char *value)
 {
-  Asset *asset = ptr->data;
+  AssetData *asset_data = ptr->data;
 
-  if (asset->description) {
-    MEM_freeN(asset->description);
+  if (asset_data->description) {
+    MEM_freeN(asset_data->description);
   }
 
   if (value[0]) {
-    asset->description = BLI_strdup(value);
+    asset_data->description = BLI_strdup(value);
   }
   else {
-    asset->description = NULL;
+    asset_data->description = NULL;
   }
 }
 
@@ -121,11 +122,11 @@ static void rna_def_asset_custom_tags_api(BlenderRNA *brna, PropertyRNA *cprop)
 
   RNA_def_property_srna(cprop, "CustomTags");
   srna = RNA_def_struct(brna, "CustomTags", NULL);
-  RNA_def_struct_sdna(srna, "Asset");
+  RNA_def_struct_sdna(srna, "AssetData");
   RNA_def_struct_ui_text(srna, "Asset Tags", "Collection of custom asset tags");
 
   /* Tag collection */
-  func = RNA_def_function(srna, "new", "rna_Asset_tag_new");
+  func = RNA_def_function(srna, "new", "rna_AssetData_tag_new");
   RNA_def_function_ui_description(func, "Add a new tag to this asset");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
@@ -134,7 +135,7 @@ static void rna_def_asset_custom_tags_api(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_pointer(func, "tag", "CustomTag", "", "New tag");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_Asset_tag_remove");
+  func = RNA_def_function(srna, "remove", "rna_AssetData_tag_remove");
   RNA_def_function_ui_description(func, "Remove an existing tag from this asset");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   /* tag to remove */
@@ -143,20 +144,20 @@ static void rna_def_asset_custom_tags_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
-static void rna_def_asset(BlenderRNA *brna)
+static void rna_def_asset_data(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "Asset", "ID");
-  RNA_def_struct_ui_text(srna, "Asset", "Asset data-block");
+  srna = RNA_def_struct(brna, "AssetData", NULL);
+  RNA_def_struct_ui_text(srna, "Asset Data", "Additional data stored for an asset data-block");
   //  RNA_def_struct_ui_icon(srna, ICON_ASSET); /* TODO: Icon doesn't exist!. */
 
   prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop,
-                                "rna_Asset_description_get",
-                                "rna_Asset_description_length",
-                                "rna_Asset_description_set");
+                                "rna_AssetData_description_get",
+                                "rna_AssetData_description_length",
+                                "rna_AssetData_description_set");
   RNA_def_property_ui_text(
       prop, "Description", "A description of the asset to be displayed for the user");
 
@@ -175,7 +176,7 @@ void RNA_def_asset(BlenderRNA *brna)
   RNA_define_animate_sdna(false);
 
   rna_def_custom_tag(brna);
-  rna_def_asset(brna);
+  rna_def_asset_data(brna);
 
   RNA_define_animate_sdna(true);
 }

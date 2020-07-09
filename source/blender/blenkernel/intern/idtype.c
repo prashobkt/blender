@@ -75,7 +75,6 @@ static void id_type_init(void)
 
   INIT_TYPE(ID_SCE);
   INIT_TYPE(ID_LI);
-  INIT_TYPE(ID_AST);
   INIT_TYPE(ID_OB);
   INIT_TYPE(ID_ME);
   INIT_TYPE(ID_CU);
@@ -246,10 +245,9 @@ uint64_t BKE_idtype_idcode_to_idfilter(const short idcode)
   case ID_##_id: \
     return FILTER_ID_##_id
 
-  switch ((ID_Type)idcode) {
+  switch (idcode) {
     CASE_IDFILTER(AC);
     CASE_IDFILTER(AR);
-    CASE_IDFILTER(AST);
     CASE_IDFILTER(BR);
     CASE_IDFILTER(CA);
     CASE_IDFILTER(CF);
@@ -302,7 +300,6 @@ short BKE_idtype_idcode_from_idfilter(const uint64_t idfilter)
   switch (idfilter) {
     CASE_IDFILTER(AC);
     CASE_IDFILTER(AR);
-    CASE_IDFILTER(AST);
     CASE_IDFILTER(BR);
     CASE_IDFILTER(CA);
     CASE_IDFILTER(CF);
@@ -354,7 +351,6 @@ int BKE_idtype_idcode_to_index(const short idcode)
   switch ((ID_Type)idcode) {
     CASE_IDINDEX(AC);
     CASE_IDINDEX(AR);
-    CASE_IDINDEX(AST);
     CASE_IDINDEX(BR);
     CASE_IDINDEX(CA);
     CASE_IDINDEX(CF);
@@ -417,7 +413,6 @@ short BKE_idtype_idcode_from_index(const int index)
   switch (index) {
     CASE_IDCODE(AC);
     CASE_IDCODE(AR);
-    CASE_IDCODE(AST);
     CASE_IDCODE(BR);
     CASE_IDCODE(CA);
     CASE_IDCODE(CF);

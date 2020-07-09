@@ -763,7 +763,6 @@ RNA_MAIN_ID_TAG_FUNCS_DEF(node_groups, nodetrees, ID_NT)
 RNA_MAIN_ID_TAG_FUNCS_DEF(meshes, meshes, ID_ME)
 RNA_MAIN_ID_TAG_FUNCS_DEF(lights, lights, ID_LA)
 RNA_MAIN_ID_TAG_FUNCS_DEF(libraries, libraries, ID_LI)
-RNA_MAIN_ID_TAG_FUNCS_DEF(assets, assets, ID_AST)
 RNA_MAIN_ID_TAG_FUNCS_DEF(screens, screens, ID_SCR)
 RNA_MAIN_ID_TAG_FUNCS_DEF(window_managers, wm, ID_WM)
 RNA_MAIN_ID_TAG_FUNCS_DEF(images, images, ID_IM)
@@ -1183,22 +1182,6 @@ void RNA_def_main_libraries(BlenderRNA *brna, PropertyRNA *cprop)
                   "Decrement user counter of all datablocks used by this object");
   RNA_def_boolean(
       func, "do_ui_user", true, "", "Make sure interface does not reference this object");
-}
-
-void RNA_def_main_assets(BlenderRNA *brna, PropertyRNA *cprop)
-{
-  StructRNA *srna;
-  FunctionRNA *func;
-  PropertyRNA *parm;
-
-  RNA_def_property_srna(cprop, "BlendDataAssets");
-  srna = RNA_def_struct(brna, "BlendDataAssets", NULL);
-  RNA_def_struct_sdna(srna, "Main");
-  RNA_def_struct_ui_text(srna, "Main Assets", "Collection of assets");
-
-  func = RNA_def_function(srna, "tag", "rna_Main_assets_tag");
-  parm = RNA_def_boolean(func, "value", 0, "Value", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 }
 
 void RNA_def_main_screens(BlenderRNA *brna, PropertyRNA *cprop)

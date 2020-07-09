@@ -429,7 +429,6 @@ void RNA_def_main_node_groups(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_meshes(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_lights(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_libraries(BlenderRNA *brna, PropertyRNA *cprop);
-void RNA_def_main_assets(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_screens(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_window_managers(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_images(BlenderRNA *brna, PropertyRNA *cprop);

@@ -733,10 +733,22 @@ void IDP_WriteProperty(const IDProperty *prop, BlendWriter *writer)
   IDP_WriteProperty_OnlyData(prop, writer);
 }
 
+static void write_assetdata(BlendWriter *writer, AssetData *asset_data)
+{
+  BLO_write_struct(writer, AssetData, asset_data);
+
+  if (asset_data->description) {
+    BLO_write_string(writer, asset_data->description);
+  }
+  LISTBASE_FOREACH (CustomTag *, tag, &asset_data->tags) {
+    BLO_write_struct(writer, CustomTag, tag);
+  }
+}
+
 static void write_iddata(BlendWriter *writer, ID *id)
 {
   if (id->asset_data) {
-    BLO_write_struct(writer, AssetData, id->asset_data);
+    write_assetdata(writer, id->asset_data);
   }
 
   /* ID_WM's id->properties are considered runtime only, and never written in .blend file. */
@@ -3862,23 +3874,6 @@ static void write_simulation(BlendWriter *writer, Simulation *simulation, const 
   }
 }
 
-static void write_asset(BlendWriter *writer, Asset *asset, const void *id_address)
-{
-  if (asset->id.us > 0 || BLO_write_is_undo(writer)) {
-    BLO_write_id_struct(writer, Asset, id_address, &asset->id);
-    write_iddata(writer, &asset->id);
-
-    /* Meta-data */
-    write_previews(writer, asset->preview);
-    if (asset->description) {
-      BLO_write_string(writer, asset->description);
-    }
-    LISTBASE_FOREACH (CustomTag *, tag, &asset->tags) {
-      BLO_write_struct(writer, CustomTag, tag);
-    }
-  }
-}
-
 /* Keep it last of write_foodata functions. */
 static void write_libraries(WriteData *wd, Main *main)
 {
@@ -4246,9 +4241,6 @@ static bool write_file_handle(Main *mainvar,
             break;
           case ID_SIM:
             write_simulation(&writer, (Simulation *)id_buffer, id);
-            break;
-          case ID_AST:
-            write_asset(&writer, (Asset *)id_buffer, id);
             break;
           case ID_LI:
             /* Do nothing, handled below - and should never be reached. */

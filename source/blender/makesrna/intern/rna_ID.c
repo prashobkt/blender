@@ -57,8 +57,6 @@ const EnumPropertyItem rna_enum_id_type_items[] = {
     {ID_KE, "KEY", ICON_SHAPEKEY_DATA, "Key", ""},
     {ID_LA, "LIGHT", ICON_LIGHT_DATA, "Light", ""},
     {ID_LI, "LIBRARY", ICON_LIBRARY_DATA_DIRECT, "Library", ""},
-    /* TODO: icon */
-    {ID_AST, "ASSET", ICON_BLANK1, "Asset", ""},
     {ID_LS, "LINESTYLE", ICON_LINE_DATA, "Line Style", ""},
     {ID_LT, "LATTICE", ICON_LATTICE_DATA, "Lattice", ""},
     {ID_MSK, "MASK", ICON_MOD_MASK, "Mask", ""},
@@ -219,9 +217,6 @@ short RNA_type_to_ID_code(const StructRNA *type)
   if (base_type == &RNA_Armature) {
     return ID_AR;
   }
-  if (base_type == &RNA_Asset) {
-    return ID_AST;
-  }
   if (base_type == &RNA_Brush) {
     return ID_BR;
   }
@@ -346,8 +341,6 @@ StructRNA *ID_code_to_RNA_type(short idcode)
       return &RNA_Action;
     case ID_AR:
       return &RNA_Armature;
-    case ID_AST:
-      return &RNA_Asset;
     case ID_BR:
       return &RNA_Brush;
     case ID_CA:

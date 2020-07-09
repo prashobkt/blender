@@ -29,7 +29,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_asset_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_types.h"
@@ -340,14 +339,18 @@ PreviewImage **BKE_previewimg_id_get_p(const ID *id)
     ID_PRV_CASE(ID_GR, Collection);
     ID_PRV_CASE(ID_SCE, Scene);
     ID_PRV_CASE(ID_SCR, bScreen);
-    ID_PRV_CASE(ID_AST, Asset);
-
 #undef ID_PRV_CASE
     default:
       break;
   }
 
   return NULL;
+}
+
+PreviewImage *BKE_previewimg_id_get(const ID *id)
+{
+  PreviewImage **prv_p = BKE_previewimg_id_get_p(id);
+  return prv_p ? *prv_p : NULL;
 }
 
 void BKE_previewimg_id_free(ID *id)

@@ -110,7 +110,6 @@ bool BLT_lang_is_ime_supported(void);
 /* WARNING! Keep it in sync with idtypes in blenkernel/intern/idcode.c */
 #define BLT_I18NCONTEXT_ID_ACTION "Action"
 #define BLT_I18NCONTEXT_ID_ARMATURE "Armature"
-#define BLT_I18NCONTEXT_ID_ASSET "Asset"
 #define BLT_I18NCONTEXT_ID_BRUSH "Brush"
 #define BLT_I18NCONTEXT_ID_CAMERA "Camera"
 #define BLT_I18NCONTEXT_ID_CACHEFILE "CacheFile"
@@ -173,7 +172,6 @@ typedef struct {
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_PLURAL, "plural"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_ACTION, "id_action"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_ARMATURE, "id_armature"), \
-        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_ASSET, "id_asset"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_BRUSH, "id_brush"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_CAMERA, "id_camera"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_CACHEFILE, "id_cachefile"), \

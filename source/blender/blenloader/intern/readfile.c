@@ -2637,6 +2637,12 @@ static int direct_link_id_restore_recalc(const FileData *fd,
   return recalc;
 }
 
+static void direct_link_assetdata(BlendDataReader *reader, AssetData *asset_data)
+{
+  BLO_read_data_address(reader, &asset_data->description);
+  BLO_read_list(reader, &asset_data->tags);
+}
+
 static void direct_link_id_common(
     BlendDataReader *reader, Library *current_library, ID *id, ID *id_old, const int tag)
 {
@@ -2666,6 +2672,7 @@ static void direct_link_id_common(
 
   if (id->asset_data) {
     BLO_read_data_address(reader, &id->asset_data);
+    direct_link_assetdata(reader, id->asset_data);
   }
 
   /*link direct data of ID properties*/
@@ -8070,27 +8077,6 @@ static void fix_relpaths_library(const char *basepath, Main *main)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Read ID: Asset
- * \{ */
-
-static void direct_link_asset(BlendDataReader *reader, Asset *asset)
-{
-  id_fake_user_set(&asset->id);
-
-  /* Meta-data */
-  asset->preview = direct_link_preview_image(reader, asset->preview);
-  BLO_read_data_address(reader, &asset->description);
-  BLO_read_list(reader, &asset->tags);
-}
-
-static void lib_link_asset(BlendLibReader *reader, Asset *asset)
-{
-  BLO_read_id_address(reader, asset->id.lib, &asset->referenced_id);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Read ID: Light Probe
  * \{ */
 
@@ -8788,8 +8774,6 @@ static const char *dataname(short id_code)
       return "Data from AC";
     case ID_LI:
       return "Data from LI";
-    case ID_AST:
-      return "Data from AST";
     case ID_MB:
       return "Data from MB";
     case ID_IM:
@@ -8925,9 +8909,6 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
       break;
     case ID_LI:
       direct_link_library(fd, (Library *)id, main);
-      break;
-    case ID_AST:
-      direct_link_asset(&reader, (Asset *)id);
       break;
     case ID_CA:
       direct_link_camera(&reader, (Camera *)id);
@@ -9715,9 +9696,6 @@ static void lib_link_all(FileData *fd, Main *bmain)
         break;
       case ID_LI:
         lib_link_library(&reader, (Library *)id); /* Only init users. */
-        break;
-      case ID_AST:
-        lib_link_asset(&reader, (Asset *)id);
         break;
     }
 

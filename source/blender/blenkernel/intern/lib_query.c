@@ -339,8 +339,6 @@ bool BKE_library_id_can_use_idtype(ID *id_owner, const short id_type_used)
   switch ((ID_Type)id_type_owner) {
     case ID_LI:
       return ELEM(id_type_used, ID_LI);
-    case ID_AST:
-      return true;
     case ID_SCE:
       return (ELEM(id_type_used,
                    ID_OB,
