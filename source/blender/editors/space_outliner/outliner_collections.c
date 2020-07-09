@@ -200,17 +200,11 @@ static int collection_new_exec(bContext *C, wmOperator *op)
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-
   Collection *collection;
+  const short type = RNA_enum_get(op->ptr, "type");
 
-  if (RNA_boolean_get(op->ptr, "nested")) {
-    /* Make new collection a child of the active collection */
-    collection = CTX_data_layer_collection(C)->collection;
-  }
-  else {
-    collection = scene->master_collection;
-  }
-
+  /* Make new collection a child of the active collection */
+  collection = CTX_data_layer_collection(C)->collection;
   if (ID_IS_LINKED(collection)) {
     collection = scene->master_collection;
   }
@@ -222,20 +216,27 @@ static int collection_new_exec(bContext *C, wmOperator *op)
 
   Collection *collection_new = BKE_collection_add(bmain, collection, NULL);
 
-  /* Move selected objects into new collection */
-  struct IDsSelectedData data = {{NULL}};
-  outliner_tree_traverse(
-      soops, &soops->tree, 0, TSE_SELECTED, outliner_find_selected_objects, &data);
+  if (type != COLLECTION_NEW_EMPTY) {
+    /* Move selected objects into new collection */
+    struct IDsSelectedData data = {{NULL}};
+    outliner_tree_traverse(
+        soops, &soops->tree, 0, TSE_SELECTED, outliner_find_selected_objects, &data);
 
-  LISTBASE_FOREACH (LinkData *, link, &data.selected_array) {
-    TreeElement *te = (TreeElement *)link->data;
-    TreeStoreElem *tselem = TREESTORE(te);
-    Collection *parent = find_parent_collection(te);
-    Object *ob = (Object *)tselem->id;
+    LISTBASE_FOREACH (LinkData *, link, &data.selected_array) {
+      TreeElement *te = (TreeElement *)link->data;
+      TreeStoreElem *tselem = TREESTORE(te);
+      Collection *parent = find_parent_collection(te);
+      Object *ob = (Object *)tselem->id;
 
-    BKE_collection_object_move(bmain, scene, collection_new, parent, ob);
+      if (type == COLLECTION_NEW_FROM_SELECTION) {
+        BKE_collection_object_move(bmain, scene, collection_new, parent, ob);
+      }
+      else {
+        BKE_collection_object_add(bmain, collection_new, ob);
+      }
+    }
+    BLI_freelistN(&data.selected_array);
   }
-  BLI_freelistN(&data.selected_array);
 
   DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
   DEG_relations_tag_update(bmain);
@@ -256,12 +257,12 @@ void OUTLINER_OT_collection_new(wmOperatorType *ot)
       {COLLECTION_NEW_FROM_SELECTION,
        "SELECTION",
        0,
-       "Move Selection",
+       "Move Objects",
        "Move the selected objects to a new collection"},
       {COLLECTION_NEW_FROM_SELECTION_LINKED,
        "SELECTION_LINKED",
        0,
-       "Link Selection",
+       "Link Objects",
        "Link the selected objects to a new collection"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -279,11 +280,7 @@ void OUTLINER_OT_collection_new(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  PropertyRNA *prop = RNA_def_boolean(
-      ot->srna, "nested", true, "Nested", "Add as child of selected collection");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-  ot->prop = RNA_def_enum(ot->srna, "type", type_items, 0, "Type", "");
+  ot->prop = RNA_def_enum(ot->srna, "type", type_items, COLLECTION_NEW_FROM_SELECTION, "Type", "");
 }
 
 /** \} */

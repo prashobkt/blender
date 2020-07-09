@@ -68,7 +68,7 @@ class OUTLINER_HT_header(Header):
             sub.prop(space, "filter_id_type", text="", icon_only=True)
 
         if display_mode == 'VIEW_LAYER':
-            layout.operator("outliner.collection_new", text="", icon='COLLECTION_NEW').nested = True
+            layout.operator("outliner.collection_new", text="", icon='COLLECTION_NEW')
 
         elif display_mode == 'ORPHAN_DATA':
             layout.operator("outliner.orphans_purge", text="Purge")
@@ -204,7 +204,7 @@ class OUTLINER_MT_collection(Menu):
 
         space = context.space_data
 
-        layout.operator("outliner.collection_new", text="New").nested = True
+        layout.operator("outliner.collection_new", text="New")
         layout.operator("outliner.collection_duplicate", text="Duplicate Collection")
         layout.operator("outliner.collection_duplicate_linked", text="Duplicate Linked")
         layout.operator("outliner.id_copy", text="Copy", icon='COPYDOWN')
@@ -260,7 +260,7 @@ class OUTLINER_MT_collection_new(Menu):
 
     @staticmethod
     def draw_without_context_menu(context, layout):
-        layout.operator("outliner.collection_new", text="New Collection").nested = False
+        layout.operator_menu_enum("outliner.collection_new", "type", text="New Collection")
         layout.operator("outliner.id_paste", text="Paste Data-Blocks", icon='PASTEDOWN')
 
     def draw(self, context):
