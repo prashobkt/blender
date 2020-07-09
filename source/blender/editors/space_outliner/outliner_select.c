@@ -1007,6 +1007,12 @@ static eOLDrawState tree_element_active_master_collection(bContext *C,
       return OL_DRAWSEL_NORMAL;
     }
   }
+  else {
+    ViewLayer *view_layer = CTX_data_view_layer(C);
+    LayerCollection *layer_collection = view_layer->layer_collections.first;
+    BKE_layer_collection_activate(view_layer, layer_collection);
+    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
+  }
 
   return OL_DRAWSEL_NONE;
 }
@@ -1021,6 +1027,13 @@ static eOLDrawState tree_element_active_layer_collection(bContext *C,
     if (active == te->directdata) {
       return OL_DRAWSEL_NORMAL;
     }
+  }
+  else {
+    Scene *scene = CTX_data_scene(C);
+    LayerCollection *layer_collection = te->directdata;
+    ViewLayer *view_layer = BKE_view_layer_find_from_collection(scene, layer_collection);
+    BKE_layer_collection_activate(view_layer, layer_collection);
+    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
   }
 
   return OL_DRAWSEL_NONE;
