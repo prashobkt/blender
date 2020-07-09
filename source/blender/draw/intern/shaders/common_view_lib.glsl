@@ -273,3 +273,13 @@ vec3 get_world_space_from_depth(vec2 uvcoords, float depth)
 {
   return (ViewMatrixInverse * vec4(get_view_space_from_depth(uvcoords, depth), 1.0)).xyz;
 }
+
+vec3 get_view_vector_from_screen_uv(vec2 uv)
+{
+  if (ProjectionMatrix[3][3] == 0.0) {
+    return normalize(ViewVecs[0].xyz + vec3(uv, 0.0) * ViewVecs[1].xyz);
+  }
+  else {
+    return vec3(0.0, 0.0, 1.0);
+  }
+}
