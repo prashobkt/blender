@@ -148,9 +148,10 @@ typedef struct SpaceProperties {
 
   /** Context tabs. */
   short mainb, mainbo, mainbuser;
+  int context_search_filter_active;
   /** Preview is signal to refresh. */
   short preview;
-  char _pad[5];
+  char _pad[1];
   char flag;
 
   /** Runtime. */

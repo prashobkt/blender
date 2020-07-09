@@ -1769,6 +1769,98 @@ static void rna_SpaceProperties_context_set(PointerRNA *ptr, int value)
   sbuts->mainbuser = value;
 }
 
+/**
+ * Fills an array with the context items for the properties editor. -1 signals a separator.
+ *
+ * \return The total number of items in the array returned.
+ */
+static int rna_SpaceProperties_context_tabs(SpaceProperties *sbuts, int *context_tabs_array)
+{
+  int length = 0;
+  if (sbuts->pathflag & (1 << BCONTEXT_TOOL)) {
+    context_tabs_array[length] = BCONTEXT_TOOL;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_RENDER)) {
+    context_tabs_array[length] = BCONTEXT_RENDER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_OUTPUT)) {
+    context_tabs_array[length] = BCONTEXT_OUTPUT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_VIEW_LAYER)) {
+    context_tabs_array[length] = BCONTEXT_VIEW_LAYER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_SCENE)) {
+    context_tabs_array[length] = BCONTEXT_SCENE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_WORLD)) {
+    context_tabs_array[length] = BCONTEXT_WORLD;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_OBJECT)) {
+    context_tabs_array[length] = BCONTEXT_OBJECT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_MODIFIER)) {
+    context_tabs_array[length] = BCONTEXT_MODIFIER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_SHADERFX)) {
+    context_tabs_array[length] = BCONTEXT_SHADERFX;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_PARTICLE)) {
+    context_tabs_array[length] = BCONTEXT_PARTICLE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_PHYSICS)) {
+    context_tabs_array[length] = BCONTEXT_PHYSICS;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_CONSTRAINT)) {
+    context_tabs_array[length] = BCONTEXT_CONSTRAINT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_DATA)) {
+    context_tabs_array[length] = BCONTEXT_DATA;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_BONE)) {
+    context_tabs_array[length] = BCONTEXT_BONE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_BONE_CONSTRAINT)) {
+    context_tabs_array[length] = BCONTEXT_BONE_CONSTRAINT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_MATERIAL)) {
+    context_tabs_array[length] = BCONTEXT_MATERIAL;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_TEXTURE)) {
+    context_tabs_array[length] = BCONTEXT_TEXTURE;
+    length++;
+  }
+
+  return length;
+}
+
 static const EnumPropertyItem *rna_SpaceProperties_context_itemf(bContext *UNUSED(C),
                                                                  PointerRNA *ptr,
                                                                  PropertyRNA *UNUSED(prop),
@@ -1776,93 +1868,50 @@ static const EnumPropertyItem *rna_SpaceProperties_context_itemf(bContext *UNUSE
 {
   SpaceProperties *sbuts = (SpaceProperties *)(ptr->data);
   EnumPropertyItem *item = NULL;
-  int totitem = 0;
 
-  if (sbuts->pathflag & (1 << BCONTEXT_TOOL)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_TOOL);
-  }
+  int context_tabs_array[32];
+  int totitem = rna_SpaceProperties_context_tabs(sbuts, context_tabs_array);
+  int totitem_added = 0;
+  for (int i = 0; i < totitem; i++) {
+    if (context_tabs_array[i] == -1) {
+      RNA_enum_item_add_separator(&item, &totitem_added);
+    }
+    else {
+      RNA_enum_items_add_value(
+          &item, &totitem_added, buttons_context_items, context_tabs_array[i]);
 
-  if (totitem) {
-    RNA_enum_item_add_separator(&item, &totitem);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_RENDER)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_RENDER);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_OUTPUT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_OUTPUT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_VIEW_LAYER)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_VIEW_LAYER);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_SCENE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_SCENE);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_WORLD)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_WORLD);
-  }
-
-  if (totitem) {
-    RNA_enum_item_add_separator(&item, &totitem);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_OBJECT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_OBJECT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_MODIFIER)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_MODIFIER);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_SHADERFX)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_SHADERFX);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_PARTICLE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_PARTICLE);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_PHYSICS)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_PHYSICS);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_CONSTRAINT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_CONSTRAINT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_DATA)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_DATA);
-    (item + totitem - 1)->icon = sbuts->dataicon;
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_BONE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_BONE);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_BONE_CONSTRAINT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_BONE_CONSTRAINT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_MATERIAL)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_MATERIAL);
-  }
-
-  if (totitem) {
-    RNA_enum_item_add_separator(&item, &totitem);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_TEXTURE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_TEXTURE);
+      /* Add the object data icon dynamically for the data tab. */
+      if (context_tabs_array[i] == BCONTEXT_DATA) {
+        (item + totitem_added - 1)->icon = sbuts->dataicon;
+      }
+    }
   }
 
   RNA_enum_item_end(&item, &totitem);
   *r_free = true;
 
   return item;
+}
+
+static const int rna_SpaceProperties_context_search_filter_active_get(PointerRNA *ptr)
+{
+  SpaceProperties *sbuts = (SpaceProperties *)(ptr->data);
+
+  int context_tabs_array[32];
+  int totitem = rna_SpaceProperties_context_tabs(sbuts, context_tabs_array);
+
+  int retval = 0;
+  for (int i = 0; i < totitem; i++) {
+    if (context_tabs_array[i] == -1) {
+      continue;
+    }
+    int tab_context = context_tabs_array[i];
+    if (sbuts->context_search_filter_active & (1 << tab_context)) {
+      retval |= (1 << i);
+    }
+  }
+
+  return retval;
 }
 
 static void rna_SpaceProperties_context_update(Main *UNUSED(bmain),
@@ -4511,6 +4560,17 @@ static void rna_def_space_properties(BlenderRNA *brna)
   RNA_def_property_enum_funcs(
       prop, NULL, "rna_SpaceProperties_context_set", "rna_SpaceProperties_context_itemf");
   RNA_def_property_ui_text(prop, "", "");
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_PROPERTIES, "rna_SpaceProperties_context_update");
+
+  prop = RNA_def_property(srna, "context_search_filter_active", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, buttons_context_items);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_enum_funcs(prop,
+                              "rna_SpaceProperties_context_search_filter_active_get",
+                              NULL,
+                              "rna_SpaceProperties_context_itemf");
   RNA_def_property_update(
       prop, NC_SPACE | ND_SPACE_PROPERTIES, "rna_SpaceProperties_context_update");
 
