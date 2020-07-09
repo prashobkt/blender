@@ -260,8 +260,22 @@ static TreeElement *outliner_drop_insert_collection_find(bContext *C,
 
 /* ******************** Parent Drop Operator *********************** */
 
-static bool parent_drop_allowed(TreeElement *te, Object *potential_child)
+static bool parent_drop_allowed(bContext *C,
+                                const wmEvent *event,
+                                TreeElement *te,
+                                Object *potential_child)
 {
+  ARegion *region = CTX_wm_region(C);
+  float view_mval[2];
+
+  UI_view2d_region_to_view(
+      &region->v2d, event->mval[0], event->mval[1], &view_mval[0], &view_mval[1]);
+
+  /* Check if over name. */
+  if ((view_mval[0] < te->xs + UI_UNIT_X) || (view_mval[0] > te->xend)) {
+    return false;
+  }
+
   TreeStoreElem *tselem = TREESTORE(te);
   if (te->idcode != ID_OB || tselem->type != 0) {
     return false;
@@ -324,7 +338,7 @@ static bool parent_drop_poll(bContext *C,
     insert_type = TE_INSERT_INTO;
   }
 
-  if (!parent_drop_allowed(te, potential_child)) {
+  if (!parent_drop_allowed(C, event, te, potential_child)) {
     return false;
   }
 
