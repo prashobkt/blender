@@ -97,6 +97,9 @@ void BKE_collection_object_move(struct Main *bmain,
                                 struct Collection *collection_dst,
                                 struct Collection *collection_src,
                                 struct Object *ob);
+void BKE_collection_object_move_after(struct Collection *collection,
+                                      struct Object *ob_relative,
+                                      struct Object *ob);
 
 bool BKE_scene_collections_object_remove(struct Main *bmain,
                                          struct Scene *scene,

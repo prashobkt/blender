@@ -1084,6 +1084,33 @@ void BKE_collection_object_move(
   }
 }
 
+/**
+ * Move object within a collection after specified object.
+ *
+ * For outliner drag & drop.
+ */
+void BKE_collection_object_move_after(Collection *collection, Object *ob_relative, Object *ob)
+{
+  if (ELEM(NULL, collection, ob_relative, ob)) {
+    return;
+  }
+
+  CollectionObject *relative = BLI_findptr(
+      &collection->gobject, ob_relative, offsetof(CollectionObject, ob));
+  if (!relative) {
+    return;
+  }
+  int index_to = BLI_findindex(&collection->gobject, relative);
+
+  CollectionObject *object = BLI_findptr(&collection->gobject, ob, offsetof(CollectionObject, ob));
+  if (!object) {
+    return;
+  }
+  int index_from = BLI_findindex(&collection->gobject, object);
+
+  BLI_listbase_move_index(&collection->gobject, index_from, index_to);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
