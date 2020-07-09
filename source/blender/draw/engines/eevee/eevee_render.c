@@ -540,8 +540,7 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
       EEVEE_temporal_sampling_reset(vedata);
       stl->effects->ssr_was_valid_double_buffer = stl->g_data->valid_double_buffer;
     }
-    /* Don't print every samples as it can lead to bad performance. (see T59649) */
-    else if ((render_samples % 25) == 0 || (render_samples + 1) == tot_sample) {
+    else {
       char info[42];
       BLI_snprintf(
           info, sizeof(info), "Rendering %u / %u samples", render_samples + 1, tot_sample);

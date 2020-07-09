@@ -37,6 +37,9 @@
 
 #include "RE_pipeline.h"
 
+extern struct CLG_LogRef *RENDER_LOG_BAKE;
+extern struct CLG_LogRef *RENDER_LOG;
+
 struct GHash;
 struct Main;
 struct Object;

@@ -35,6 +35,7 @@ set(INC
   ../physics
   ../../../intern/atomic
   ../../../intern/guardedalloc
+  ../../../intern/clog
   ../../../intern/mikktspace
   ../../../intern/mantaflow/extern
 )

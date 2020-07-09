@@ -263,6 +263,29 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_STR_ERROR_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_ERROR, 0, str)
 #define CLOG_STR_FATAL_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_FATAL, 0, str)
 
+#define LOG_EVERY_N_VARNAME(base, line) base##line
+#define LOG_OCCURRENCES LOG_EVERY_N_VARNAME(occurrences_, __LINE__)
+#define LOG_OCCURRENCES_MOD_N LOG_EVERY_N_VARNAME(occurrences_mod_n_, __LINE__)
+
+/* every n times do something */
+#define EVERY_N(n, what_to_do) \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
+  ++LOG_OCCURRENCES; \
+  if (++LOG_OCCURRENCES_MOD_N > n) \
+    LOG_OCCURRENCES_MOD_N -= n; \
+  if (LOG_OCCURRENCES_MOD_N == 1) \
+  what_to_do
+
+/* same as CLOG_VERBOSE, but every n times */
+#define CLOG_VERBOSE_EVERY_N(clg_ref, verbosity_level, n, ...) \
+  EVERY_N(n, CLOG_VERBOSE(clg_ref, verbosity_level, __VA_ARGS__))
+/* same as CLOG_STR_VERBOSE, but every n times */
+#define CLOG_STR_VERBOSE_EVERY_N(clg_ref, verbosity_level, n, str) \
+  EVERY_N(n, CLOG_STR_VERBOSE(clg_ref, verbosity_level, str))
+/* same as CLOG_STR_VERBOSE_N, but every n times */
+#define CLOG_STR_VERBOSE_N_EVERY_N(clg_ref, verbosity_level, n, str) \
+  EVERY_N(n, CLOG_STR_VERBOSE_N(clg_ref, verbosity_level, str))
+
 #ifdef __cplusplus
 }
 #endif

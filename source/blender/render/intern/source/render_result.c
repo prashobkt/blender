@@ -21,6 +21,7 @@
  * \ingroup render
  */
 
+#include <CLG_log.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +56,8 @@
 
 #include "render_result.h"
 #include "render_types.h"
+
+static CLG_LogRef LOG = {"render.results"};
 
 /********************************** Free *************************************/
 
@@ -1074,7 +1077,7 @@ void render_result_single_layer_end(Render *re)
   int nr;
 
   if (re->result == NULL) {
-    printf("pop render result error; no current result!\n");
+    CLOG_ERROR(&LOG, "pop render result error; no current result!");
     return;
   }
 
@@ -1254,7 +1257,7 @@ void render_result_exr_file_begin(Render *re, RenderEngine *engine)
 
       /* Open EXR file for writing. */
       render_result_exr_file_path(re->scene, rl->name, rr->sample_nr, str);
-      printf("write exr tmp file, %dx%d, %s\n", rr->rectx, rr->recty, str);
+      CLOG_INFO(&LOG, "write exr tmp file, %dx%d, %s", rr->rectx, rr->recty, str);
       IMB_exrtile_begin_write(rl->exrhandle, str, 0, rr->rectx, rr->recty, re->partx, re->party);
     }
   }
@@ -1296,10 +1299,10 @@ void render_result_exr_file_end(Render *re, RenderEngine *engine)
     /* Render passes contents from file. */
     char str[FILE_MAXFILE + MAX_ID_NAME + MAX_ID_NAME + 100] = "";
     render_result_exr_file_path(re->scene, rl->name, 0, str);
-    printf("read exr tmp file: %s\n", str);
+    CLOG_INFO(&LOG, "read exr tmp file: %s", str);
 
     if (!render_result_exr_file_read_path(re->result, rl, str)) {
-      printf("cannot read: %s\n", str);
+      CLOG_ERROR(&LOG, "cannot read: %s", str);
     }
     BLI_rw_mutex_unlock(&re->resultmutex);
   }
@@ -1343,17 +1346,17 @@ int render_result_exr_file_read_path(RenderResult *rr,
   int rectx, recty;
 
   if (IMB_exr_begin_read(exrhandle, filepath, &rectx, &recty) == 0) {
-    printf("failed being read %s\n", filepath);
+    CLOG_ERROR(&LOG, "failed being read %s", filepath);
     IMB_exr_close(exrhandle);
     return 0;
   }
 
   if (rr == NULL || rectx != rr->rectx || recty != rr->recty) {
     if (rr) {
-      printf("error in reading render result: dimensions don't match\n");
+      CLOG_STR_ERROR(&LOG, "error in reading render result: dimensions don't match");
     }
     else {
-      printf("error in reading render result: NULL result pointer\n");
+      CLOG_STR_ERROR(&LOG, "error in reading render result: NULL result pointer");
     }
     IMB_exr_close(exrhandle);
     return 0;
@@ -1426,7 +1429,7 @@ void render_result_exr_file_cache_write(Render *re)
   char *root = U.render_cachedir;
 
   render_result_exr_file_cache_path(re->scene, root, str);
-  printf("Caching exr file, %dx%d, %s\n", rr->rectx, rr->recty, str);
+  CLOG_INFO(&LOG, "Caching exr file, %dx%d, %s", rr->rectx, rr->recty, str);
 
   RE_WriteRenderResult(NULL, rr, str, NULL, NULL, -1);
 }
@@ -1443,9 +1446,9 @@ bool render_result_exr_file_cache_read(Render *re)
   /* First try cache. */
   render_result_exr_file_cache_path(re->scene, root, str);
 
-  printf("read exr cache file: %s\n", str);
+  CLOG_INFO(&LOG, "read exr cache file: %s", str);
   if (!render_result_exr_file_read_path(re->result, NULL, str)) {
-    printf("cannot read: %s\n", str);
+    CLOG_ERROR(&LOG, "cannot read: %s", str);
     return false;
   }
   return true;

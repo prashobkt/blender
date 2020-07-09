@@ -21,6 +21,11 @@
  * \ingroup render
  */
 
+#include <BKE_callbacks.h>
+#include <BLI_dynstr.h>
+#include <BLI_timecode.h>
+#include <CLG_log.h>
+#include <PIL_time.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,6 +72,9 @@
 #include "render_types.h"
 #include "renderpipeline.h"
 
+static struct CLG_LogRef RENDER_LOG_ENGINE = {"render.engine"};
+static struct CLG_LogRef RENDER_LOG_STATS = {"render.stats"};
+
 /* Render Engine Types */
 
 ListBase R_engines = {NULL, NULL};
@@ -103,6 +111,7 @@ void RE_engines_register(RenderEngineType *render_type)
     DRW_engine_register(render_type->draw_engine);
   }
   BLI_addtail(&R_engines, render_type);
+  CLOG_VERBOSE(&RENDER_LOG_ENGINE, 0, "Renderer registered: %s", render_type->idname);
 }
 
 RenderEngineType *RE_engines_find(const char *idname)
@@ -368,7 +377,7 @@ void RE_engine_end_result(
     else if (re->result->do_exr_tile) {
       /* if written result does not match any tile and we are using save
        * buffers, we are going to get openexr save errors */
-      fprintf(stderr, "RenderEngine.end_result: dimensions do not match any OpenEXR tile.\n");
+      CLOG_ERROR(&RENDER_LOG_ENGINE, "Dimensions do not match any OpenEXR tile");
     }
   }
 
@@ -415,6 +424,50 @@ bool RE_engine_test_break(RenderEngine *engine)
 
 /* Statistics */
 
+static char *render_stats_sprinfN(RenderStats *rs)
+{
+  uintptr_t mem_in_use, peak_memory;
+  float megs_used_memory, megs_peak_memory;
+  char info_time_str[32];
+
+  mem_in_use = MEM_get_memory_in_use();
+  peak_memory = MEM_get_peak_memory();
+
+  megs_used_memory = (mem_in_use) / (1024.0 * 1024.0);
+  megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
+  DynStr *message = BLI_dynstr_new();
+
+  BLI_dynstr_appendf(message,
+                     TIP_("Fra:%d Mem:%.2fM (Peak %.2fM) "),
+                     rs->cfra,
+                     megs_used_memory,
+                     megs_peak_memory);
+
+  BLI_timecode_string_from_time_simple(
+      info_time_str, sizeof(info_time_str), PIL_check_seconds_timer() - rs->starttime);
+  BLI_dynstr_appendf(message, TIP_("| Time:%s | "), info_time_str);
+
+  if (rs->infostr && strcmp(rs->infostr, "") != 0) {
+    BLI_dynstr_appendf(message, "%s | ", rs->infostr);
+  }
+  if (rs->statstr && strcmp(rs->statstr, "") != 0) {
+    BLI_dynstr_appendf(message, "%s | ", rs->statstr);
+  }
+  BLI_dynstr_appendf(message,
+                     TIP_("Sce: \"%s\" Ve:%d Fa:%d La:%d"),
+                     rs->scene_name,
+                     rs->totvert,
+                     rs->totface,
+                     rs->totlamp);
+  char *cstring = BLI_dynstr_get_cstring(message);
+  /* Flush stdout to be sure python callbacks are printing stuff after blender. */
+  /* TODO (grzelins) is it possible/necessary to flush logs? */
+  fflush(stdout);
+
+  BLI_dynstr_free(message);
+  return cstring;
+}
+
 void RE_engine_update_stats(RenderEngine *engine, const char *stats, const char *info)
 {
   Render *re = engine->re;
@@ -424,9 +477,21 @@ void RE_engine_update_stats(RenderEngine *engine, const char *stats, const char 
     re->i.statstr = stats;
     re->i.infostr = info;
     re->stats_draw(re->sdh, &re->i);
+    /* (grzelins) I would rather have separate log callback, but this is good enough
+     * render engine chooses when to call update: in eevee per sample, in cycles every second...
+     * note: it is possible that no logs will be printed (for short renders), messages like
+     * "cancel" can be missed */
+    if (CLOG_CHECK_IN_USE(&RENDER_LOG_STATS)) {
+      /* this is special use of log to allow user to control how much is printed with verbosity */
+      CLOG_STR_VERBOSE_N_EVERY_N(&RENDER_LOG_STATS, 2, 30, render_stats_sprinfN(&re->i));
+    }
     re->i.infostr = NULL;
     re->i.statstr = NULL;
   }
+
+  /* NOTE: using G_MAIN seems valid here???
+   * Not sure it's actually even used anyway, we could as well pass NULL? */
+  BKE_callback_exec_null(G_MAIN, BKE_CB_EVT_RENDER_STATS);
 
   /* set engine text */
   engine->text[0] = '\0';

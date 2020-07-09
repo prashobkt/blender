@@ -21,6 +21,7 @@
  * \ingroup render
  */
 
+#include <CLG_log.h>
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
@@ -130,6 +131,8 @@
 
 /* ********* globals ******** */
 
+CLG_LOGREF_DECLARE_GLOBAL(RENDER_LOG, "render");
+
 /* here we store all renders */
 static struct {
   ListBase renderlist;
@@ -185,56 +188,11 @@ static int default_break(void *UNUSED(arg))
   return G.is_break == true;
 }
 
-static void stats_background(void *UNUSED(arg), RenderStats *rs)
-{
-  uintptr_t mem_in_use, peak_memory;
-  float megs_used_memory, megs_peak_memory;
-  char info_time_str[32];
-
-  mem_in_use = MEM_get_memory_in_use();
-  peak_memory = MEM_get_peak_memory();
-
-  megs_used_memory = (mem_in_use) / (1024.0 * 1024.0);
-  megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
-
-  fprintf(stdout,
-          TIP_("Fra:%d Mem:%.2fM (Peak %.2fM) "),
-          rs->cfra,
-          megs_used_memory,
-          megs_peak_memory);
-
-  BLI_timecode_string_from_time_simple(
-      info_time_str, sizeof(info_time_str), PIL_check_seconds_timer() - rs->starttime);
-  fprintf(stdout, TIP_("| Time:%s | "), info_time_str);
-
-  if (rs->infostr) {
-    fprintf(stdout, "%s", rs->infostr);
-  }
-  else {
-    fprintf(stdout,
-            TIP_("Sce: %s Ve:%d Fa:%d La:%d"),
-            rs->scene_name,
-            rs->totvert,
-            rs->totface,
-            rs->totlamp);
-  }
-
-  /* Flush stdout to be sure python callbacks are printing stuff after blender. */
-  fflush(stdout);
-
-  /* NOTE: using G_MAIN seems valid here???
-   * Not sure it's actually even used anyway, we could as well pass NULL? */
-  BKE_callback_exec_null(G_MAIN, BKE_CB_EVT_RENDER_STATS);
-
-  fputc('\n', stdout);
-  fflush(stdout);
-}
-
 static void render_print_save_message(ReportList *reports, const char *name, int ok, int err)
 {
   if (ok) {
     /* no need to report, just some helpful console info */
-    printf("Saved: '%s'\n", name);
+    CLOG_INFO(RENDER_LOG, "Saved: '%s'", name);
   }
   else {
     /* report on error since users will want to know what failed */
@@ -617,12 +575,7 @@ void RE_InitRenderCB(Render *re)
   re->current_scene_update = current_scene_nothing;
   re->progress = float_nothing;
   re->test_break = default_break;
-  if (G.background) {
-    re->stats_draw = stats_background;
-  }
-  else {
-    re->stats_draw = stats_nothing;
-  }
+  re->stats_draw = stats_nothing;
   /* clear callback handles */
   re->dih = re->dch = re->duh = re->sdh = re->prh = re->tbh = NULL;
 }
@@ -2018,7 +1971,7 @@ void RE_RenderFrame(Render *re,
     if (write_still && !G.is_break) {
       if (BKE_imtype_is_movie(rd.im_format.imtype)) {
         /* operator checks this but in case its called from elsewhere */
-        printf("Error: cant write single images with a movie format!\n");
+        CLOG_ERROR(RENDER_LOG, "Can not write single images with a movie format!");
       }
       else {
         char name[FILE_MAX];
@@ -2168,7 +2121,8 @@ bool RE_WriteRenderViewsImage(
     BLI_assert(scene->r.im_format.views_format == R_IMF_VIEWS_STEREO_3D);
 
     if (rd->im_format.imtype == R_IMF_IMTYPE_MULTILAYER) {
-      printf("Stereo 3D not supported for MultiLayer image: %s\n", name);
+      /* TODO (grzelins) sounds like report, not log */
+      CLOG_ERROR(RENDER_LOG, "Stereo 3D not supported for MultiLayer image: %s", name);
     }
     else {
       ImBuf *ibuf_arr[3] = {NULL};
@@ -2258,7 +2212,7 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
       /* imbuf knows which rects are not part of ibuf */
       IMB_freeImBuf(ibuf);
     }
-    printf("Append frame %d\n", scene->r.cfra);
+    CLOG_VERBOSE(RENDER_LOG, 1, "Append frame %d", scene->r.cfra);
   }
   else { /* R_IMF_VIEWS_STEREO_3D */
     const char *names[2] = {STEREO_LEFT_NAME, STEREO_RIGHT_NAME};
@@ -2309,10 +2263,19 @@ static int do_write_image_or_movie(Render *re,
 {
   char name[FILE_MAX];
   RenderResult rres;
-  double render_time;
   bool ok = true;
 
   RE_AcquireResultImageViews(re, &rres);
+
+  re->i.lastframetime = PIL_check_seconds_timer() - re->i.starttime;
+
+  if (CLOG_CHECK_IN_USE(RENDER_LOG)) {
+    BLI_timecode_string_from_time_simple(name, sizeof(name), re->i.lastframetime);
+    CLOG_INFO(RENDER_LOG, "Render time: %s", name);
+
+    /* Flush stdout to be sure python callbacks are printing stuff after blender. */
+    fflush(stdout);
+  }
 
   /* write movie or image */
   if (BKE_imtype_is_movie(scene->r.im_format.imtype)) {
@@ -2340,24 +2303,23 @@ static int do_write_image_or_movie(Render *re,
 
   RE_ReleaseResultImageViews(re, &rres);
 
-  render_time = re->i.lastframetime;
-  re->i.lastframetime = PIL_check_seconds_timer() - re->i.starttime;
-
-  BLI_timecode_string_from_time_simple(name, sizeof(name), re->i.lastframetime);
-  printf(" Time: %s", name);
-
-  /* Flush stdout to be sure python callbacks are printing stuff after blender. */
-  fflush(stdout);
-
   /* NOTE: using G_MAIN seems valid here???
    * Not sure it's actually even used anyway, we could as well pass NULL? */
   render_callback_exec_null(re, G_MAIN, BKE_CB_EVT_RENDER_STATS);
 
-  BLI_timecode_string_from_time_simple(name, sizeof(name), re->i.lastframetime - render_time);
-  printf(" (Saving: %s)\n", name);
+  if (CLOG_CHECK_IN_USE(RENDER_LOG)) {
+    BLI_timecode_string_from_time_simple(
+        name, sizeof(name), PIL_check_seconds_timer() - re->i.starttime - re->i.lastframetime);
+    if (ok) {
+      CLOG_INFO(RENDER_LOG, "Saving time: %s", name);
+    }
+    else {
+      CLOG_STR_ERROR(RENDER_LOG, "Saving failed");
+    }
 
-  fputc('\n', stdout);
-  fflush(stdout); /* needed for renderd !! (not anymore... (ton)) */
+    /* TODO (grzelins) needed or not needed? say hello to CLOG */
+    fflush(stdout); /* needed for renderd !! (not anymore... (ton)) */
+  }
 
   return ok;
 }
@@ -2525,7 +2487,7 @@ void RE_RenderAnim(Render *re,
         if (rd.mode & R_NO_OVERWRITE) {
           if (!is_multiview_name) {
             if (BLI_exists(name)) {
-              printf("skipping existing frame \"%s\"\n", name);
+              CLOG_INFO(RENDER_LOG, "skipping existing frame \"%s\"", name);
               totskipped++;
               continue;
             }
@@ -2544,7 +2506,10 @@ void RE_RenderAnim(Render *re,
 
               if (BLI_exists(filepath)) {
                 is_skip = true;
-                printf("skipping existing frame \"%s\" for view \"%s\"\n", filepath, srv->name);
+                CLOG_INFO(RENDER_LOG,
+                          "skipping existing frame \"%s\" for view \"%s\"",
+                          filepath,
+                          srv->name);
               }
             }
 
@@ -2768,6 +2733,7 @@ void RE_layer_load_from_file(
   }
 
   if (rpass == NULL) {
+    /* TODO (grzelins) this looks like log wrapped in report. Convert to log? similar issues below */
     BKE_reportf(reports,
                 RPT_ERROR,
                 "%s: no Combined pass found in the render layer '%s'",

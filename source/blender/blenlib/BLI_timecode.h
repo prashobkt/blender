@@ -25,6 +25,7 @@
  */
 
 #include "BLI_compiler_attrs.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

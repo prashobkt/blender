@@ -61,6 +61,7 @@
  * For a complete implementation example look at the Cycles Bake commit.
  */
 
+#include <CLG_log.h>
 #include <limits.h>
 
 #include "MEM_guardedalloc.h"
@@ -87,6 +88,8 @@
 /* local include */
 #include "render_types.h"
 #include "zbuf.h"
+
+CLG_LOGREF_DECLARE_GLOBAL(RENDER_LOG_BAKE, "render.bake");
 
 typedef struct BakeDataZSpan {
   BakePixel *pixel_array;
@@ -578,8 +581,9 @@ bool RE_bake_pixels_populate_from_objects(struct Mesh *me_low,
       BKE_bvhtree_from_mesh_get(&treeData[i], me_highpoly[i], BVHTREE_FROM_LOOPTRI, 2);
 
       if (treeData[i].tree == NULL) {
-        printf("Baking: out of memory while creating BHVTree for object \"%s\"\n",
-               highpoly[i].ob->id.name + 2);
+        CLOG_ERROR(RENDER_LOG_BAKE,
+                   "Baking: out of memory while creating BHVTree for object \"%s\"",
+                   highpoly[i].ob->id.name + 2);
         result = false;
         goto cleanup;
       }
