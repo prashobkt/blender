@@ -697,7 +697,8 @@ static void draw_seq_text(View2D *v2d,
       str_len = 0;
     }
     else if (seq->sound) {
-      str_len = BLI_snprintf(str, sizeof(str), "%s: %s | %d", name, seq->sound->name, seq->len);
+      str_len = BLI_snprintf(
+          str, sizeof(str), "%s: %s | %d", name, seq->sound->filepath, seq->len);
     }
     else {
       str_len = BLI_snprintf(str, sizeof(str), "%s | %d", name, seq->len);
@@ -1897,19 +1898,19 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *region)
       if ((seq->flag & SELECT) != sel) {
         continue;
       }
-      else if (seq == last_seq && (last_seq->flag & SELECT)) {
+      if (seq == last_seq && (last_seq->flag & SELECT)) {
         continue;
       }
-      else if (min_ii(seq->startdisp, seq->start) > v2d->cur.xmax) {
+      if (min_ii(seq->startdisp, seq->start) > v2d->cur.xmax) {
         continue;
       }
-      else if (max_ii(seq->enddisp, seq->start + seq->len) < v2d->cur.xmin) {
+      if (max_ii(seq->enddisp, seq->start + seq->len) < v2d->cur.xmin) {
         continue;
       }
-      else if (seq->machine + 1.0f < v2d->cur.ymin) {
+      if (seq->machine + 1.0f < v2d->cur.ymin) {
         continue;
       }
-      else if (seq->machine > v2d->cur.ymax) {
+      if (seq->machine > v2d->cur.ymax) {
         continue;
       }
 
@@ -2257,7 +2258,6 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
   Editing *ed = BKE_sequencer_editing_get(scene, false);
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   View2D *v2d = &region->v2d;
-  View2DScrollers *scrollers;
   short cfra_flag = 0;
   float col[3];
 
@@ -2299,10 +2299,7 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
     cfra_flag |= DRAWCFRA_UNIT_SECONDS;
   }
 
-  /* Draw playhead. */
-  ANIM_draw_cfra(C, v2d, cfra_flag);
-
-  /* Draw overlap playhead. */
+  /* Draw overlap frame frame indicator. */
   if (scene->ed && scene->ed->over_flag & SEQ_EDIT_OVERLAY_SHOW) {
     int cfra_over = (scene->ed->over_flag & SEQ_EDIT_OVERLAY_ABS) ?
                         scene->ed->over_cfra :
@@ -2345,9 +2342,6 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
   ED_region_draw_cb_draw(C, region, REGION_DRAW_POST_VIEW);
   UI_view2d_view_restore(C);
   ED_time_scrub_draw(region, scene, !(sseq->flag & SEQ_DRAWFRAMES), true);
-  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
-  UI_view2d_scrollers_draw(v2d, scrollers);
-  UI_view2d_scrollers_free(scrollers);
 
   /* Draw channel numbers. */
   {
@@ -2356,4 +2350,14 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
         &rect, 0, 15 * UI_DPI_FAC, 15 * UI_DPI_FAC, region->winy - UI_TIME_SCRUB_MARGIN_Y);
     UI_view2d_draw_scale_y__block(region, v2d, &rect, TH_SCROLL_TEXT);
   }
+}
+
+void draw_timeline_seq_display(const bContext *C, ARegion *region)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const SpaceSeq *sseq = CTX_wm_space_seq(C);
+  View2D *v2d = &region->v2d;
+
+  ED_time_scrub_draw_current_frame(region, scene, !(sseq->flag & SEQ_DRAWFRAMES), true);
+  UI_view2d_scrollers_draw(v2d, NULL);
 }

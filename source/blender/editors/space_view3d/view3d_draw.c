@@ -1619,9 +1619,7 @@ RenderEngineType *ED_view3d_engine_type(const Scene *scene, int drawtype)
   if (drawtype == OB_MATERIAL && (type->flag & RE_USE_EEVEE_VIEWPORT)) {
     return RE_engines_find(RE_engine_id_BLENDER_EEVEE);
   }
-  else {
-    return type;
-  }
+  return type;
 }
 
 void view3d_main_region_draw(const bContext *C, ARegion *region)
@@ -1888,7 +1886,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
 
   if (own_ofs) {
     /* bind */
-    ofs = GPU_offscreen_create(sizex, sizey, 0, true, false, err_out);
+    ofs = GPU_offscreen_create(sizex, sizey, true, false, err_out);
     if (ofs == NULL) {
       DRW_opengl_context_disable();
       return NULL;
@@ -2376,7 +2374,7 @@ void ED_view3d_datamask(const bContext *C,
 {
   if (ELEM(v3d->shading.type, OB_TEXTURE, OB_MATERIAL, OB_RENDER)) {
     r_cddata_masks->lmask |= CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL;
-    r_cddata_masks->vmask |= CD_MASK_ORCO;
+    r_cddata_masks->vmask |= CD_MASK_ORCO | CD_MASK_PROP_COLOR;
   }
   else if (v3d->shading.type == OB_SOLID) {
     if (v3d->shading.color_type == V3D_SHADING_TEXTURE_COLOR) {
@@ -2384,6 +2382,7 @@ void ED_view3d_datamask(const bContext *C,
     }
     if (v3d->shading.color_type == V3D_SHADING_VERTEX_COLOR) {
       r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
+      r_cddata_masks->vmask |= CD_MASK_ORCO | CD_MASK_PROP_COLOR;
     }
   }
 

@@ -833,9 +833,10 @@ typedef enum eFileSel_Params_RenameFlag {
   FILE_PARAMS_RENAME_POSTSCROLL_ACTIVE = 1 << 3,
 } eFileSel_Params_RenameFlag;
 
-/* files in filesel list: file types
- * Note we could use mere values (instead of bitflags) for file types themselves,
- * but since we do not lack of bytes currently...
+/**
+ * Files in the file selector list: file types
+ * Note we could use mere values (instead of bit-flags) for file types themselves,
+ * but since we do not lack of bytes currently.
  */
 typedef enum eFileSel_File_Types {
   FILE_TYPE_BLENDER = (1 << 2),
@@ -1147,8 +1148,9 @@ typedef enum eSpaceImage_Flag {
   SI_FLAG_UNUSED_17 = (1 << 17), /* cleared */
   SI_FLAG_UNUSED_18 = (1 << 18), /* cleared */
 
-  /* this means that the image is drawn until it reaches the view edge,
-   * in the image view, it's unrelated to the 'tile' mode for texface
+  /**
+   * This means that the image is drawn until it reaches the view edge,
+   * in the image view, it's unrelated to UDIM tiles.
    */
   SI_DRAW_TILE = (1 << 19),
   SI_SMOOTH_UV = (1 << 20),
@@ -1219,7 +1221,11 @@ typedef struct SpaceText {
 
   struct Text *text;
 
-  int top, left;
+  /** Determines at what line the top of the text is displayed. */
+  int top;
+
+  /** Determines the horizontal scroll (in columns). */
+  int left;
   char _pad1[4];
 
   short flags;

@@ -17,7 +17,7 @@
 # ***** END GPL LICENSE BLOCK *****
 
 if(WIN32)
-  option(ENABLE_MINGW64 "Enable building of ffmpeg/iconv/libsndfile/lapack/fftw3 by installing mingw64" ON)
+  option(ENABLE_MINGW64 "Enable building of ffmpeg/iconv/libsndfile/fftw3 by installing mingw64" ON)
 endif()
 option(WITH_WEBP "Enable building of oiio with webp support" OFF)
 set(MAKE_THREADS 1 CACHE STRING "Number of threads to run make with")
@@ -45,11 +45,7 @@ message("PATCH_DIR = ${PATCH_DIR}")
 message("BUILD_DIR = ${BUILD_DIR}")
 
 if(WIN32)
-  if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-    set(PATCH_CMD ${DOWNLOAD_DIR}/mingw/mingw64/msys/1.0/bin/patch.exe)
-  else()
-    set(PATCH_CMD ${DOWNLOAD_DIR}/mingw/mingw32/msys/1.0/bin/patch.exe)
-  endif()
+  set(PATCH_CMD ${DOWNLOAD_DIR}/mingw/mingw64/msys/1.0/bin/patch.exe)
   set(LIBEXT ".lib")
   set(LIBPREFIX "")
 
@@ -82,17 +78,10 @@ if(WIN32)
   set(PLATFORM_CXX_FLAGS)
   set(PLATFORM_CMAKE_FLAGS)
 
-  if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-    set(MINGW_PATH ${DOWNLOAD_DIR}/mingw/mingw64)
-    set(MINGW_SHELL ming64sh.cmd)
-    set(PERL_SHELL ${DOWNLOAD_DIR}/perl/portableshell.bat)
-    set(MINGW_HOST x86_64-w64-mingw32)
-  else()
-    set(MINGW_PATH ${DOWNLOAD_DIR}/mingw/mingw32)
-    set(MINGW_SHELL ming32sh.cmd)
-    set(PERL_SHELL ${DOWNLOAD_DIR}/perl32/portableshell.bat)
-    set(MINGW_HOST i686-w64-mingw32)
-  endif()
+  set(MINGW_PATH ${DOWNLOAD_DIR}/mingw/mingw64)
+  set(MINGW_SHELL ming64sh.cmd)
+  set(PERL_SHELL ${DOWNLOAD_DIR}/perl/portableshell.bat)
+  set(MINGW_HOST x86_64-w64-mingw32)
 
   set(CONFIGURE_ENV
     cd ${MINGW_PATH} &&
@@ -124,14 +113,18 @@ else()
       COMMAND xcode-select --print-path
       OUTPUT_VARIABLE XCODE_DEV_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    execute_process(
+      COMMAND xcodebuild -version -sdk macosx SDKVersion
+      OUTPUT_VARIABLE MACOSX_SDK_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+
     set(OSX_ARCHITECTURES x86_64)
-    set(OSX_DEPLOYMENT_TARGET 10.11)
+    set(OSX_DEPLOYMENT_TARGET 10.13)
     set(OSX_SYSROOT ${XCODE_DEV_PATH}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk)
 
     set(PLATFORM_CFLAGS "-isysroot ${OSX_SYSROOT} -mmacosx-version-min=${OSX_DEPLOYMENT_TARGET}")
     set(PLATFORM_CXXFLAGS "-isysroot ${OSX_SYSROOT} -mmacosx-version-min=${OSX_DEPLOYMENT_TARGET} -std=c++11 -stdlib=libc++")
     set(PLATFORM_LDFLAGS "-isysroot ${OSX_SYSROOT} -mmacosx-version-min=${OSX_DEPLOYMENT_TARGET}")
-    set(PLATFORM_BUILD_TARGET --build=x86_64-apple-darwin15.0.0) # OS X 10.11
+    set(PLATFORM_BUILD_TARGET --build=x86_64-apple-darwin17.0.0) # OS X 10.13
     set(PLATFORM_CMAKE_FLAGS
       -DCMAKE_OSX_ARCHITECTURES:STRING=${OSX_ARCHITECTURES}
       -DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${OSX_DEPLOYMENT_TARGET}
@@ -166,6 +159,7 @@ else()
 
   set(CONFIGURE_ENV
     export MACOSX_DEPLOYMENT_TARGET=${OSX_DEPLOYMENT_TARGET} &&
+    export MACOSX_SDK_VERSION=${OSX_DEPLOYMENT_TARGET} &&
     export CFLAGS=${PLATFORM_CFLAGS} &&
     export CXXFLAGS=${PLATFORM_CXXFLAGS} &&
     export LDFLAGS=${PLATFORM_LDFLAGS}

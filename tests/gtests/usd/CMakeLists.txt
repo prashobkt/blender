@@ -35,6 +35,7 @@ set(INC
   ..
   ../../../source/blender/blenlib
   ../../../source/blender/blenkernel
+  ../../../source/blender/io/common
   ../../../source/blender/io/usd
   ../../../source/blender/makesdna
   ../../../source/blender/depsgraph
@@ -52,6 +53,7 @@ set(LIB
   bf_gpu
 
   bf_usd
+  bf_io_common
 
   ${BOOST_LIBRARIES}
   ${TBB_LIBRARIES}
@@ -65,6 +67,7 @@ get_property(BLENDER_SORTED_LIBS GLOBAL PROPERTY BLENDER_SORTED_LIBS_PROP)
 set(SRC
   abstract_hierarchy_iterator_test.cc
   hierarchy_context_order_test.cc
+  object_identifier_test.cc
 )
 
 # TODO(Sybren): re-enable this unit test.

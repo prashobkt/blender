@@ -78,11 +78,14 @@ static void OVERLAY_engine_init(void *vedata)
   if (v3d->shading.type == OB_WIRE) {
     pd->overlay.flag |= V3D_OVERLAY_WIREFRAMES;
   }
-  if (ts->sculpt->flags & SCULPT_HIDE_FACE_SETS) {
-    pd->overlay.sculpt_mode_face_sets_opacity = 0.0f;
-  }
-  if (ts->sculpt->flags & SCULPT_HIDE_MASK) {
-    pd->overlay.sculpt_mode_mask_opacity = 0.0f;
+
+  if (ts->sculpt) {
+    if (ts->sculpt->flags & SCULPT_HIDE_FACE_SETS) {
+      pd->overlay.sculpt_mode_face_sets_opacity = 0.0f;
+    }
+    if (ts->sculpt->flags & SCULPT_HIDE_MASK) {
+      pd->overlay.sculpt_mode_mask_opacity = 0.0f;
+    }
   }
 
   pd->use_in_front = (v3d->shading.type <= OB_SOLID) ||
@@ -420,7 +423,7 @@ static void OVERLAY_cache_finish(void *vedata)
 {
   /* TODO(fclem) Only do this when really needed. */
   {
-    /* HACK we allocate the infront depth here to avoid the overhead when if is not needed. */
+    /* HACK we allocate the in front depth here to avoid the overhead when if is not needed. */
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
     DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 

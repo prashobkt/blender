@@ -131,7 +131,7 @@ class VIEW3D_HT_tool_header(Header):
             if is_valid_context:
                 brush = context.tool_settings.gpencil_sculpt_paint.brush
                 tool = brush.gpencil_tool
-                if tool in ('SMOOTH', 'RANDOMIZE'):
+                if tool in {'SMOOTH', 'RANDOMIZE'}:
                     layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_options")
                 layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
         elif tool_mode == 'WEIGHT_GPENCIL':
@@ -294,6 +294,11 @@ class _draw_tool_settings_context_mode:
         # direction
         if not capabilities.has_direction:
             layout.row().prop(brush, "direction", expand=True, text="")
+
+        if capabilities.has_color:
+            UnifiedPaintPanel.prop_unified_color(layout, context, brush, "color", text = "")
+            layout.prop(brush, "blend", text="", expand = False)
+
 
         return True
 
@@ -736,7 +741,12 @@ class VIEW3D_HT_header(Header):
                 row.prop(tool_settings, "use_gpencil_vertex_select_mask_stroke", text="")
                 row.prop(tool_settings, "use_gpencil_vertex_select_mask_segment", text="")
 
-            if gpd.use_stroke_edit_mode or gpd.is_stroke_sculpt_mode or gpd.is_stroke_weight_mode or gpd.is_stroke_vertex_mode:
+            if (
+                    gpd.use_stroke_edit_mode or
+                    gpd.is_stroke_sculpt_mode or
+                    gpd.is_stroke_weight_mode or
+                    gpd.is_stroke_vertex_mode
+            ):
                 row = layout.row(align=True)
                 row.prop(gpd, "use_multiedit", text="", icon='GP_MULTIFRAME_EDITING')
 
@@ -1219,6 +1229,7 @@ class VIEW3D_MT_view_cameras(Menu):
 
         layout.operator("view3d.object_as_camera")
         layout.operator("view3d.view_camera", text="Active Camera")
+        layout.operator("view3d.view_center_camera")
 
 
 class VIEW3D_MT_view_viewpoint(Menu):
@@ -2165,9 +2176,9 @@ class VIEW3D_MT_add(Menu):
         layout.menu("VIEW3D_MT_surface_add", icon='OUTLINER_OB_SURFACE')
         layout.menu("VIEW3D_MT_metaball_add", text="Metaball", icon='OUTLINER_OB_META')
         layout.operator("object.text_add", text="Text", icon='OUTLINER_OB_FONT')
-        if hasattr(bpy.data, "hairs"):
+        if context.preferences.experimental.use_new_hair_type:
             layout.operator("object.hair_add", text="Hair", icon='OUTLINER_OB_HAIR')
-        if hasattr(bpy.data, "pointclouds"):
+        if context.preferences.experimental.use_new_particle_system:
             layout.operator("object.pointcloud_add", text="Point Cloud", icon='OUTLINER_OB_POINTCLOUD')
         layout.menu("VIEW3D_MT_volume_add", text="Volume", icon='OUTLINER_OB_VOLUME')
         layout.operator_menu_enum("object.gpencil_add", "type", text="Grease Pencil", icon='OUTLINER_OB_GREASEPENCIL')
@@ -2342,6 +2353,7 @@ class VIEW3D_MT_object_animation(Menu):
         layout.separator()
 
         layout.operator("nla.bake", text="Bake Action...")
+        layout.operator("gpencil.mesh_bake", text="Bake Mesh to Grease Pencil...")
 
 
 class VIEW3D_MT_object_rigid_body(Menu):
@@ -3117,6 +3129,14 @@ class VIEW3D_MT_face_sets(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_face_sets_init", text="Init Face Sets")
+
+        layout.separator()
+
+        op = layout.operator("sculpt.face_set_edit", text='Grow Face Set')
+        op.mode = 'GROW'
+
+        op = layout.operator("sculpt.face_set_edit", text='Shrink Face Set')
+        op.mode = 'SHRINK'
 
         layout.separator()
 
@@ -4002,6 +4022,8 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         layout.separator()
 
         layout.operator("transform.edge_slide")
+        props = layout.operator("mesh.loopcut_slide")
+        props.TRANSFORM_OT_edge_slide.release_confirm = False
         layout.operator("mesh.offset_edge_loops_slide")
 
         layout.separator()
@@ -5606,8 +5628,8 @@ class VIEW3D_PT_object_type_visibility(Panel):
             elif attr == "pointcloud" and not hasattr(bpy.data, "pointclouds"):
                 continue
 
-            attr_v = "show_object_viewport_" f"{attr:s}"
-            attr_s = "show_object_select_" f"{attr:s}"
+            attr_v = "show_object_viewport_" + attr
+            attr_s = "show_object_select_" + attr
 
             icon_v = 'HIDE_OFF' if getattr(view, attr_v) else 'HIDE_ON'
             icon_s = 'RESTRICT_SELECT_OFF' if getattr(view, attr_s) else 'RESTRICT_SELECT_ON'
@@ -6772,7 +6794,10 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
 
         if context.object.mode in {'PAINT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.label(text="Vertex Paint")
-            layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
+            row = layout.row()
+            shading = VIEW3D_PT_shading.get_shading(context)
+            row.enabled = shading.type not in {'WIREFRAME', 'RENDERED'}
+            row.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
 
 
 class VIEW3D_PT_quad_view(Panel):
@@ -7314,6 +7339,12 @@ class VIEW3D_PT_sculpt_context_menu(Panel):
 
         brush = context.tool_settings.sculpt.brush
         capabilities = brush.sculpt_capabilities
+
+        if capabilities.has_color:
+            split = layout.split(factor=0.1)
+            UnifiedPaintPanel.prop_unified_color(split, context, brush, "color", text="")
+            UnifiedPaintPanel.prop_unified_color_picker(split, context, brush, "color", value_slider=True)
+            layout.prop(brush, "blend", text="")
 
         UnifiedPaintPanel.prop_unified(
             layout,

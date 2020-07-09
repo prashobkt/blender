@@ -91,6 +91,7 @@ void GPENCIL_engine_init(void *ved)
   stl->pd->gp_object_pool = vldata->gp_object_pool;
   stl->pd->gp_layer_pool = vldata->gp_layer_pool;
   stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
+  stl->pd->view_layer = ctx->view_layer;
   stl->pd->scene = ctx->scene;
   stl->pd->v3d = ctx->v3d;
   stl->pd->last_light_pool = NULL;
@@ -223,6 +224,7 @@ void GPENCIL_cache_init(void *ved)
     const bool is_fade_layer = ((!hide_overlay) && (!pd->is_render) &&
                                 (draw_ctx->v3d->gp_flag & V3D_GP_FADE_NOACTIVE_LAYERS));
     pd->fade_layer_opacity = (is_fade_layer) ? draw_ctx->v3d->overlay.gpencil_fade_layer : -1.0f;
+    pd->vertex_paint_opacity = draw_ctx->v3d->overlay.gpencil_vertex_paint_opacity;
     /* Fade GPencil Objects. */
     const bool is_fade_object = ((!hide_overlay) && (!pd->is_render) &&
                                  (draw_ctx->v3d->gp_flag & V3D_GP_FADE_OBJECTS) &&
@@ -292,7 +294,7 @@ void GPENCIL_cache_init(void *ved)
     grp = DRW_shgroup_create(sh, psl->merge_depth_ps);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuf", &pd->depth_tx);
     DRW_shgroup_uniform_bool(grp, "strokeOrder3d", &pd->is_stroke_order_3d, 1);
-    DRW_shgroup_uniform_vec4(grp, "gpModelMatrix[0]", pd->object_bound_mat[0], 4);
+    DRW_shgroup_uniform_vec4(grp, "gpModelMatrix", pd->object_bound_mat[0], 4);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
   {
@@ -382,7 +384,7 @@ static void gpencil_drawcall_flush(gpIterPopulateData *iter)
 }
 
 /* Group drawcalls that are consecutive and with the same type. Reduces GPU driver overhead. */
-static void gp_drawcall_add(
+static void gpencil_drawcall_add(
     gpIterPopulateData *iter, struct GPUBatch *geom, bool instancing, int v_first, int v_count)
 {
 #if DISABLE_BATCHING
@@ -412,7 +414,7 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
                                           bGPDstroke *gps,
                                           void *thunk);
 
-static void gp_sbuffer_cache_populate(gpIterPopulateData *iter)
+static void gpencil_sbuffer_cache_populate(gpIterPopulateData *iter)
 {
   iter->do_sbuffer_call = DRAW_NOW;
   /* In order to draw the sbuffer stroke correctly mixed with other strokes,
@@ -449,7 +451,7 @@ static void gpencil_layer_cache_populate(bGPDlayer *gpl,
   gpencil_drawcall_flush(iter);
 
   if (iter->do_sbuffer_call) {
-    gp_sbuffer_cache_populate(iter);
+    gpencil_sbuffer_cache_populate(iter);
   }
   else {
     iter->do_sbuffer_call = !pd->do_fast_drawing && (gpd == pd->sbuffer_gpd) &&
@@ -468,7 +470,7 @@ static void gpencil_layer_cache_populate(bGPDlayer *gpl,
 
   /* Iterator dependent uniforms. */
   DRWShadingGroup *grp = iter->grp = tgp_layer->base_shgrp;
-  DRW_shgroup_uniform_block_persistent(grp, "gpLightBlock", iter->ubo_lights);
+  DRW_shgroup_uniform_block(grp, "gpLightBlock", iter->ubo_lights);
   DRW_shgroup_uniform_block(grp, "gpMaterialBlock", iter->ubo_mat);
   DRW_shgroup_uniform_texture(grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(grp, "gpStrokeTexture", iter->tex_stroke);
@@ -491,8 +493,10 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
                    (!iter->pd->simplify_fill) && ((gps->flag & GP_STROKE_NOFILL) == 0);
 
   bool only_lines = gpl && gpf && gpl->actframe != gpf && iter->pd->use_multiedit_lines_only;
+  bool hide_onion = gpl && gpf && gpf->runtime.onion_id != 0 &&
+                    ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0);
 
-  if (hide_material || (!show_stroke && !show_fill) || only_lines) {
+  if (hide_material || (!show_stroke && !show_fill) || only_lines || hide_onion) {
     return;
   }
 
@@ -536,7 +540,7 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
                                   DRW_cache_gpencil_fills_get(iter->ob, iter->pd->cfra);
     int vfirst = gps->runtime.fill_start * 3;
     int vcount = gps->tot_triangles * 3;
-    gp_drawcall_add(iter, geom, false, vfirst, vcount);
+    gpencil_drawcall_add(iter, geom, false, vfirst, vcount);
   }
 
   if (show_stroke) {
@@ -546,13 +550,13 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
     int vfirst = gps->runtime.stroke_start - 1;
     /* Include "potential" cyclic vertex and start adj vertex (see shader). */
     int vcount = gps->totpoints + 1 + 1;
-    gp_drawcall_add(iter, geom, true, vfirst, vcount);
+    gpencil_drawcall_add(iter, geom, true, vfirst, vcount);
   }
 
   iter->stroke_index_last = gps->runtime.stroke_start + gps->totpoints + 1;
 }
 
-static void gp_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateData *iter)
+static void gpencil_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopulateData *iter)
 {
   bGPdata *gpd = (bGPdata *)iter->ob->data;
   if (gpd != iter->pd->sbuffer_gpd) {
@@ -598,6 +602,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_TextureList *txl = vedata->txl;
+  const bool is_final_render = DRW_state_is_image_render();
 
   /* object must be visible */
   if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
@@ -617,7 +622,8 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     bGPdata *gpd = (bGPdata *)ob->data;
     bool do_onion = (!pd->is_render) ? pd->do_onion : (gpd->onion_flag & GP_ONION_GHOST_ALWAYS);
 
-    BKE_gpencil_visible_stroke_iter(ob,
+    BKE_gpencil_visible_stroke_iter(is_final_render ? pd->view_layer : NULL,
+                                    ob,
                                     gpencil_layer_cache_populate,
                                     gpencil_stroke_cache_populate,
                                     &iter,
@@ -627,13 +633,13 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     gpencil_drawcall_flush(&iter);
 
     if (iter.do_sbuffer_call) {
-      gp_sbuffer_cache_populate(&iter);
+      gpencil_sbuffer_cache_populate(&iter);
     }
 
     gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
 
     if (pd->do_fast_drawing) {
-      gp_sbuffer_cache_populate_fast(vedata, &iter);
+      gpencil_sbuffer_cache_populate_fast(vedata, &iter);
     }
   }
 

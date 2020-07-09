@@ -220,12 +220,10 @@ static void image_buffer_rect_update(RenderJob *rj,
         ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
         return;
       }
-      else {
-        if (rr->renlay == NULL) {
-          return;
-        }
-        rectf = RE_RenderLayerGetPass(rr->renlay, RE_PASSNAME_COMBINED, viewname);
+      if (rr->renlay == NULL) {
+        return;
       }
+      rectf = RE_RenderLayerGetPass(rr->renlay, RE_PASSNAME_COMBINED, viewname);
     }
     if (rectf == NULL) {
       return;
@@ -437,7 +435,7 @@ static void make_renderinfo_string(const RenderStats *rs,
     }
   }
   else {
-    if (rs->totvert || rs->totface || rs->tothalo || rs->totstrand || rs->totlamp) {
+    if (rs->totvert || rs->totface || rs->totlamp) {
       spos += sprintf(spos, "| ");
     }
 
@@ -446,12 +444,6 @@ static void make_renderinfo_string(const RenderStats *rs,
     }
     if (rs->totface) {
       spos += sprintf(spos, TIP_("Fa:%d "), rs->totface);
-    }
-    if (rs->tothalo) {
-      spos += sprintf(spos, TIP_("Ha:%d "), rs->tothalo);
-    }
-    if (rs->totstrand) {
-      spos += sprintf(spos, TIP_("St:%d "), rs->totstrand);
     }
     if (rs->totlamp) {
       spos += sprintf(spos, TIP_("Li:%d "), rs->totlamp);
@@ -463,18 +455,6 @@ static void make_renderinfo_string(const RenderStats *rs,
     else {
       spos += sprintf(spos, TIP_("| Mem:%.2fM, Peak: %.2fM "), rs->mem_used, rs->mem_peak);
     }
-
-    if (rs->curfield) {
-      spos += sprintf(spos, TIP_("Field %d "), rs->curfield);
-    }
-    if (rs->curblur) {
-      spos += sprintf(spos, TIP_("Blur %d "), rs->curblur);
-    }
-  }
-
-  /* full sample */
-  if (rs->curfsa) {
-    spos += sprintf(spos, TIP_("| Full Sample %d "), rs->curfsa);
   }
 
   /* extra info */
@@ -597,7 +577,7 @@ static void image_rect_update(void *rjv, RenderResult *rr, volatile rcti *renrec
     rj->image_outdated = true;
     return;
   }
-  else if (rj->image_outdated) {
+  if (rj->image_outdated) {
     /* update entire render */
     rj->image_outdated = false;
     BKE_image_signal(rj->main, ima, NULL, IMA_SIGNAL_COLORMANAGE);

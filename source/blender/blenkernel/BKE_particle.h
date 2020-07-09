@@ -48,7 +48,6 @@ struct BVHTreeRay;
 struct BVHTreeRayHit;
 struct CustomData_MeshMasks;
 struct Depsgraph;
-struct Depsgraph;
 struct EdgeHash;
 struct KDTree_3d;
 struct LatticeDeformData;
@@ -366,6 +365,10 @@ struct ModifierData *object_add_particle_system(struct Main *bmain,
                                                 struct Scene *scene,
                                                 struct Object *ob,
                                                 const char *name);
+struct ModifierData *object_copy_particle_system(struct Main *bmain,
+                                                 struct Scene *scene,
+                                                 struct Object *ob,
+                                                 const struct ParticleSystem *psys_orig);
 void object_remove_particle_system(struct Main *bmain, struct Scene *scene, struct Object *ob);
 struct ParticleSettings *BKE_particlesettings_add(struct Main *bmain, const char *name);
 struct ParticleSettings *BKE_particlesettings_copy(struct Main *bmain,
@@ -430,7 +433,7 @@ void psys_apply_child_modifiers(struct ParticleThreadContext *ctx,
                                 const float parent_orco[3]);
 
 void psys_sph_init(struct ParticleSimulationData *sim, struct SPHData *sphdata);
-void psys_sph_finalise(struct SPHData *sphdata);
+void psys_sph_finalize(struct SPHData *sphdata);
 void psys_sph_density(struct BVHTree *tree, struct SPHData *data, float co[3], float vars[2]);
 
 /* for anim.c */

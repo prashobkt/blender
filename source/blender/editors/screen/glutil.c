@@ -83,7 +83,7 @@ static void immDrawPixelsTexSetupAttributes(IMMDrawPixelsTexState *state)
 /* To be used before calling immDrawPixelsTex
  * Default shader is GPU_SHADER_2D_IMAGE_COLOR
  * You can still set uniforms with :
- * GPU_shader_uniform_int(shader, GPU_shader_get_uniform_ensure(shader, "name"), 0);
+ * GPU_shader_uniform_int(shader, GPU_shader_get_uniform(shader, "name"), 0);
  * */
 IMMDrawPixelsTexState immDrawPixelsTexSetup(int builtin)
 {
@@ -147,6 +147,7 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
   glPixelStorei(GL_UNPACK_ROW_LENGTH, img_w);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, texid);
+  glBindSampler(0, 0);
 
   /* don't want nasty border artifacts */
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -191,7 +192,7 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
   /* NOTE: Shader could be null for GLSL OCIO drawing, it is fine, since
    * it does not need color.
    */
-  if (state->shader != NULL && GPU_shader_get_uniform_ensure(state->shader, "color") != -1) {
+  if (state->shader != NULL && GPU_shader_get_uniform(state->shader, "color") != -1) {
     immUniformColor4fv((color) ? color : white);
   }
 
@@ -494,16 +495,15 @@ float bglPolygonOffsetCalc(const float winmat[16], float viewdist, float dist)
     UNUSED_VARS(viewdist);
 #endif
   }
-  else {
-    /* This adjustment effectively results in reducing the Z value by 0.25%.
-     *
-     * winmat[14] actually evaluates to `-2 * far * near / (far - near)`,
-     * is very close to -0.2 with default clip range,
-     * and is used as the coefficient multiplied by `w / z`,
-     * thus controlling the z dependent part of the depth value.
-     */
-    return winmat[14] * -0.0025f * dist;
-  }
+
+  /* This adjustment effectively results in reducing the Z value by 0.25%.
+   *
+   * winmat[14] actually evaluates to `-2 * far * near / (far - near)`,
+   * is very close to -0.2 with default clip range,
+   * and is used as the coefficient multiplied by `w / z`,
+   * thus controlling the z dependent part of the depth value.
+   */
+  return winmat[14] * -0.0025f * dist;
 }
 
 /**
@@ -751,9 +751,7 @@ int ED_draw_imbuf_method(ImBuf *ibuf)
 
     return (size > threshold) ? IMAGE_DRAW_METHOD_2DTEXTURE : IMAGE_DRAW_METHOD_GLSL;
   }
-  else {
-    return U.image_draw_method;
-  }
+  return U.image_draw_method;
 }
 
 /* don't move to GPU_immediate_util.h because this uses user-prefs

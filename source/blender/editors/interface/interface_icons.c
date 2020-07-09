@@ -593,10 +593,10 @@ int UI_icon_from_event_type(short event_type, short event_value)
   if (event_type == LEFTMOUSE) {
     return ELEM(event_value, KM_CLICK, KM_PRESS) ? ICON_MOUSE_LMB : ICON_MOUSE_LMB_DRAG;
   }
-  else if (event_type == MIDDLEMOUSE) {
+  if (event_type == MIDDLEMOUSE) {
     return ELEM(event_value, KM_CLICK, KM_PRESS) ? ICON_MOUSE_MMB : ICON_MOUSE_MMB_DRAG;
   }
-  else if (event_type == RIGHTMOUSE) {
+  if (event_type == RIGHTMOUSE) {
     return ELEM(event_value, KM_CLICK, KM_PRESS) ? ICON_MOUSE_RMB : ICON_MOUSE_RMB_DRAG;
   }
 
@@ -1603,8 +1603,8 @@ static void icon_draw_cache_texture_flush_ex(GLuint texture,
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_MULTI_RECT_COLOR);
   GPU_shader_bind(shader);
 
-  int img_loc = GPU_shader_get_uniform_ensure(shader, "image");
-  int data_loc = GPU_shader_get_uniform_ensure(shader, "calls_data[0]");
+  int img_loc = GPU_shader_get_uniform(shader, "image");
+  int data_loc = GPU_shader_get_uniform(shader, "calls_data");
 
   glUniform1i(img_loc, 0);
   glUniform4fv(data_loc, ICON_DRAW_CACHE_SIZE * 3, (float *)texture_draw_calls->drawcall_cache);
@@ -1750,9 +1750,9 @@ static void icon_draw_texture(float x,
         GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_COLOR), alpha, alpha, alpha, alpha);
   }
 
-  glUniform1i(GPU_shader_get_uniform_ensure(shader, "image"), 0);
-  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_icon"), x1, y1, x2, y2);
-  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_geom"), x, y, x + w, y + h);
+  glUniform1i(GPU_shader_get_uniform(shader, "image"), 0);
+  glUniform4f(GPU_shader_get_uniform(shader, "rect_icon"), x1, y1, x2, y2);
+  glUniform4f(GPU_shader_get_uniform(shader, "rect_geom"), x, y, x + w, y + h);
 
   GPU_draw_primitive(GPU_PRIM_TRI_STRIP, 4);
 
@@ -2139,7 +2139,8 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
       }
       return id->icon_id;
     }
-    else if (paint_mode != PAINT_MODE_INVALID) {
+
+    if (paint_mode != PAINT_MODE_INVALID) {
       items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
       const uint tool_offset = BKE_paint_get_brush_tool_offset_from_paintmode(paint_mode);
       const int tool_type = *(char *)POINTER_OFFSET(br, tool_offset);
@@ -2192,6 +2193,24 @@ int ui_id_icon_get(const bContext *C, ID *id, const bool big)
   return iconid;
 }
 
+int UI_library_icon_get(const ID *id)
+{
+  if (ID_IS_LINKED(id)) {
+    if (id->tag & LIB_TAG_MISSING) {
+      return ICON_LIBRARY_DATA_BROKEN;
+    }
+    if (id->tag & LIB_TAG_INDIRECT) {
+      return ICON_LIBRARY_DATA_INDIRECT;
+    }
+    return ICON_LIBRARY_DATA_DIRECT;
+  }
+  if (ID_IS_OVERRIDE_LIBRARY(id)) {
+    return ICON_LIBRARY_DATA_OVERRIDE;
+  }
+
+  return ICON_NONE;
+}
+
 int UI_rnaptr_icon_get(bContext *C, PointerRNA *ptr, int rnaicon, const bool big)
 {
   ID *id = NULL;
@@ -2219,10 +2238,10 @@ int UI_rnaptr_icon_get(bContext *C, PointerRNA *ptr, int rnaicon, const bool big
     if (surface->format == MOD_DPAINT_SURFACE_F_PTEX) {
       return ICON_SHADING_TEXTURE;
     }
-    else if (surface->format == MOD_DPAINT_SURFACE_F_VERTEX) {
+    if (surface->format == MOD_DPAINT_SURFACE_F_VERTEX) {
       return ICON_OUTLINER_DATA_MESH;
     }
-    else if (surface->format == MOD_DPAINT_SURFACE_F_IMAGESEQ) {
+    if (surface->format == MOD_DPAINT_SURFACE_F_IMAGESEQ) {
       return ICON_FILE_IMAGE;
     }
   }

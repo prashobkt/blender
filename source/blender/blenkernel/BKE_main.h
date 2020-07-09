@@ -87,7 +87,7 @@ enum {
 typedef struct Main {
   struct Main *next, *prev;
   char name[1024];                   /* 1024 = FILE_MAX */
-  short versionfile, subversionfile; /* see BLENDER_VERSION, BLENDER_SUBVERSION */
+  short versionfile, subversionfile; /* see BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION */
   short minversionfile, minsubversionfile;
   uint64_t build_commit_timestamp; /* commit's timestamp from buildinfo */
   char build_hash[16];             /* hash from buildinfo */
@@ -173,6 +173,7 @@ void BKE_main_unlock(struct Main *bmain);
 
 void BKE_main_relations_create(struct Main *bmain, const short flag);
 void BKE_main_relations_free(struct Main *bmain);
+void BKE_main_relations_ID_remove(struct Main *bmain, struct ID *id);
 
 struct GSet *BKE_main_gset_create(struct Main *bmain, struct GSet *gset);
 

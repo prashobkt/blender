@@ -126,14 +126,14 @@ static ListBase selected_objects_get(bContext *C);
 /** \name Internal Utilities
  * \{ */
 
-Object *ED_object_context(bContext *C)
+Object *ED_object_context(const bContext *C)
 {
   return CTX_data_pointer_get_type(C, "object", &RNA_Object).data;
 }
 
 /* find the correct active object per context
  * note: context can be NULL when called from a enum with PROP_ENUM_NO_CONTEXT */
-Object *ED_object_active_context(bContext *C)
+Object *ED_object_active_context(const bContext *C)
 {
   Object *ob = NULL;
   if (C) {
@@ -156,9 +156,7 @@ static bool object_hide_poll(bContext *C)
   if (CTX_wm_space_outliner(C) != NULL) {
     return ED_outliner_collections_editor_poll(C);
   }
-  else {
-    return ED_operator_view3d_active(C);
-  }
+  return ED_operator_view3d_active(C);
 }
 
 static int object_hide_view_clear_exec(bContext *C, wmOperator *op)
@@ -600,7 +598,8 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
 {
   bool ok = false;
 
-  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob)) {
+  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob) || ID_IS_OVERRIDE_LIBRARY(ob) ||
+      ID_IS_OVERRIDE_LIBRARY(ob->data)) {
     return false;
   }
 
@@ -695,14 +694,10 @@ bool ED_object_editmode_enter(bContext *C, int flag)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Object *ob;
 
   /* Active layer checked here for view3d,
    * callers that don't want view context can call the extended version. */
-  ob = CTX_data_active_object(C);
-  if ((ob == NULL) || ID_IS_LINKED(ob)) {
-    return false;
-  }
+  Object *ob = CTX_data_active_object(C);
   return ED_object_editmode_enter_ex(bmain, scene, ob, flag);
 }
 
@@ -760,7 +755,8 @@ static bool editmode_toggle_poll(bContext *C)
   Object *ob = CTX_data_active_object(C);
 
   /* covers proxies too */
-  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob->data)) {
+  if (ELEM(NULL, ob, ob->data) || ID_IS_LINKED(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob) ||
+      ID_IS_OVERRIDE_LIBRARY(ob->data)) {
     return 0;
   }
 
@@ -899,7 +895,7 @@ void ED_object_check_force_modifiers(Main *bmain, Scene *scene, Object *object)
   else {
     if (!pd || (pd->shape != PFIELD_SHAPE_SURFACE) ||
         ELEM(pd->forcefield, 0, PFIELD_GUIDE, PFIELD_TEXTURE)) {
-      ED_object_modifier_remove(NULL, bmain, object, md);
+      ED_object_modifier_remove(NULL, bmain, scene, object, md);
     }
   }
 }
@@ -1368,7 +1364,8 @@ static bool shade_poll(bContext *C)
   Object *obact = OBACT(view_layer);
   if (obact != NULL) {
     /* Doesn't handle edit-data, sculpt dynamic-topology, or their undo systems. */
-    if (obact->mode & (OB_MODE_EDIT | OB_MODE_SCULPT)) {
+    if (obact->mode & (OB_MODE_EDIT | OB_MODE_SCULPT) || obact->data == NULL ||
+        ID_IS_OVERRIDE_LIBRARY(obact) || ID_IS_OVERRIDE_LIBRARY(obact->data)) {
       return false;
     }
   }
@@ -1475,10 +1472,9 @@ static bool object_mode_set_poll(bContext *C)
 
 static int object_mode_set_exec(bContext *C, wmOperator *op)
 {
-  bool use_submode = STREQ(op->idname, "OBJECT_OT_mode_set_with_submode");
+  const bool use_submode = STREQ(op->idname, "OBJECT_OT_mode_set_with_submode");
   Object *ob = CTX_data_active_object(C);
   eObjectMode mode = RNA_enum_get(op->ptr, "mode");
-  eObjectMode restore_mode = ob->mode;
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
 
   /* by default the operator assume is a mesh, but if gp object change mode */
@@ -1490,43 +1486,63 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
     return OPERATOR_PASS_THROUGH;
   }
 
+  /**
+   * Mode Switching Logic (internal details).
+   *
+   * Notes:
+   * - Code below avoids calling mode switching functions more than once,
+   *   as this causes unnecessary calculations and undo steps to be added.
+   * - The previous mode (#Object.restore_mode) is object mode by default.
+   *
+   * Supported Cases:
+   * - Setting the mode (when the 'toggle' setting is off).
+   * - Toggle the mode:
+   *   - Toggle between object mode and non-object mode property.
+   *   - Toggle between the previous mode (#Object.restore_mode) and the mode property.
+   *   - Toggle object mode.
+   *     While this is similar to regular toggle,
+   *     this operator depends on there being a previous mode set
+   *     (this isn't bound to a key with the default key-map).
+   */
   if (toggle == false) {
     if (ob->mode != mode) {
-      if (mode != OB_MODE_OBJECT) {
-        /* Enter new mode. */
-        ED_object_mode_toggle(C, mode);
-      }
-      else {
-        ED_object_mode_compat_set(C, ob, mode, op->reports);
-      }
+      ED_object_mode_set_ex(C, mode, true, op->reports);
     }
   }
   else {
-    /* Exit current mode if it's not the mode we're setting */
-    if (mode != OB_MODE_OBJECT) {
-      /* Enter new mode. */
-      ED_object_mode_toggle(C, mode);
+    const eObjectMode mode_prev = ob->mode;
+    /* When toggling object mode, we always use the restore mode,
+     * otherwise there is nothing to do. */
+    if (mode == OB_MODE_OBJECT) {
+      if (ob->mode != OB_MODE_OBJECT) {
+        if (ED_object_mode_set_ex(C, OB_MODE_OBJECT, true, op->reports)) {
+          /* Store old mode so we know what to go back to. */
+          ob->restore_mode = mode_prev;
+        }
+      }
+      else {
+        if (ob->restore_mode != OB_MODE_OBJECT) {
+          ED_object_mode_set_ex(C, ob->restore_mode, true, op->reports);
+        }
+      }
     }
-
-    /* Special case for Object mode! */
-    if ((mode == OB_MODE_OBJECT) && (restore_mode == OB_MODE_OBJECT) &&
-        (ob->restore_mode != OB_MODE_OBJECT)) {
-      ED_object_mode_toggle(C, ob->restore_mode);
-    }
-    else if (ob->mode == mode) {
-      /* For toggling, store old mode so we know what to go back to */
-      ob->restore_mode = restore_mode;
-    }
-    else if ((ob->restore_mode != OB_MODE_OBJECT) && (ob->restore_mode != mode)) {
-      ED_object_mode_toggle(C, ob->restore_mode);
-    }
-  }
-
-  /* if type is OB_GPENCIL, set cursor mode */
-  if (ob->type == OB_GPENCIL) {
-    if (ob->data) {
-      bGPdata *gpd = (bGPdata *)ob->data;
-      ED_gpencil_setup_modes(C, gpd, ob->mode);
+    else {
+      /* Non-object modes, enter the 'mode' unless it's already set,
+       * in that case use restore mode. */
+      if (ob->mode != mode) {
+        if (ED_object_mode_set_ex(C, mode, true, op->reports)) {
+          /* Store old mode so we know what to go back to. */
+          ob->restore_mode = mode_prev;
+        }
+      }
+      else {
+        if (ob->restore_mode != OB_MODE_OBJECT) {
+          ED_object_mode_set_ex(C, ob->restore_mode, true, op->reports);
+        }
+        else {
+          ED_object_mode_set_ex(C, OB_MODE_OBJECT, true, op->reports);
+        }
+      }
     }
   }
 
@@ -1616,15 +1632,14 @@ static bool move_to_collection_poll(bContext *C)
   if (CTX_wm_space_outliner(C) != NULL) {
     return ED_outliner_collections_editor_poll(C);
   }
-  else {
-    View3D *v3d = CTX_wm_view3d(C);
 
-    if (v3d && v3d->localvd) {
-      return false;
-    }
+  View3D *v3d = CTX_wm_view3d(C);
 
-    return ED_operator_objectmode(C);
+  if (v3d && v3d->localvd) {
+    return false;
   }
+
+  return ED_operator_objectmode(C);
 }
 
 static int move_to_collection_exec(bContext *C, wmOperator *op)
@@ -1752,15 +1767,6 @@ static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout
   const char *name = BKE_collection_ui_name_get(menu->collection);
 
   UI_block_flag_enable(uiLayoutGetBlock(layout), UI_BLOCK_IS_FLIP);
-  uiItemIntO(layout, name, ICON_NONE, menu->ot->idname, "collection_index", menu->index);
-  uiItemS(layout);
-
-  for (MoveToCollectionData *submenu = menu->submenus.first; submenu != NULL;
-       submenu = submenu->next) {
-    move_to_collection_menus_items(layout, submenu);
-  }
-
-  uiItemS(layout);
 
   WM_operator_properties_create_ptr(&menu->ptr, menu->ot);
   RNA_int_set(&menu->ptr, "collection_index", menu->index);
@@ -1768,6 +1774,15 @@ static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout
 
   uiItemFullO_ptr(
       layout, menu->ot, "New Collection", ICON_ADD, menu->ptr.data, WM_OP_INVOKE_DEFAULT, 0, NULL);
+
+  uiItemS(layout);
+
+  uiItemIntO(layout, name, ICON_SCENE_DATA, menu->ot->idname, "collection_index", menu->index);
+
+  for (MoveToCollectionData *submenu = menu->submenus.first; submenu != NULL;
+       submenu = submenu->next) {
+    move_to_collection_menus_items(layout, submenu);
+  }
 }
 
 static void move_to_collection_menus_items(uiLayout *layout, MoveToCollectionData *menu)

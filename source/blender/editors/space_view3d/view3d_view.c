@@ -568,9 +568,7 @@ static int view3d_camera_to_view_selected_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, camera_ob);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void VIEW3D_OT_camera_to_view_selected(wmOperatorType *ot)
@@ -1192,6 +1190,24 @@ finally:
   return hits;
 }
 
+int view3d_opengl_select_with_id_filter(ViewContext *vc,
+                                        uint *buffer,
+                                        uint bufsize,
+                                        const rcti *input,
+                                        eV3DSelectMode select_mode,
+                                        eV3DSelectObjectFilter select_filter,
+                                        uint select_id)
+{
+  int hits = view3d_opengl_select(vc, buffer, bufsize, input, select_mode, select_filter);
+
+  /* Selection sometimes uses -1 for an invalid selection ID, remove these as they
+   * interfere with detection of actual number of hits in the selection. */
+  if (hits > 0) {
+    hits = GPU_select_buffer_remove_by_id(buffer, hits, select_id);
+  }
+  return hits;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1468,9 +1484,7 @@ static int localview_exec(bContext *C, wmOperator *op)
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void VIEW3D_OT_localview(wmOperatorType *ot)
@@ -1520,10 +1534,9 @@ static int localview_remove_from_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
     return OPERATOR_FINISHED;
   }
-  else {
-    BKE_report(op->reports, RPT_ERROR, "No object selected");
-    return OPERATOR_CANCELLED;
-  }
+
+  BKE_report(op->reports, RPT_ERROR, "No object selected");
+  return OPERATOR_CANCELLED;
 }
 
 static bool localview_remove_from_poll(bContext *C)

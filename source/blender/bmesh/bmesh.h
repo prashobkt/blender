@@ -215,7 +215,7 @@ extern "C" {
 #include "intern/bmesh_log.h"
 #include "intern/bmesh_marking.h"
 #include "intern/bmesh_mesh.h"
-#include "intern/bmesh_mesh_conv.h"
+#include "intern/bmesh_mesh_convert.h"
 #include "intern/bmesh_mesh_duplicate.h"
 #include "intern/bmesh_mesh_validate.h"
 #include "intern/bmesh_mods.h"
@@ -223,6 +223,7 @@ extern "C" {
 #include "intern/bmesh_polygon.h"
 #include "intern/bmesh_polygon_edgenet.h"
 #include "intern/bmesh_query.h"
+#include "intern/bmesh_query_uv.h"
 #include "intern/bmesh_walkers.h"
 
 #include "intern/bmesh_inline.h"

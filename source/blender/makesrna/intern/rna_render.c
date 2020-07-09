@@ -131,7 +131,7 @@ static void engine_bind_display_space_shader(RenderEngine *UNUSED(engine), Scene
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE);
   GPU_shader_bind(shader);
 
-  int img_loc = GPU_shader_get_uniform_ensure(shader, "image");
+  int img_loc = GPU_shader_get_uniform(shader, "image");
 
   GPU_shader_uniform_int(shader, img_loc, 0);
 }
@@ -299,7 +299,7 @@ static void rna_RenderEngine_unregister(Main *bmain, StructRNA *type)
   BLI_freelinkN(&R_engines, et);
 
   /* Stop all renders in case we were using this one. */
-  ED_render_engine_changed(bmain);
+  ED_render_engine_changed(bmain, false);
 }
 
 static StructRNA *rna_RenderEngine_register(Main *bmain,

@@ -708,7 +708,6 @@ static bGPdata *rna_Main_gpencils_new(Main *bmain, const char *name)
   return gpd;
 }
 
-#  ifdef WITH_NEW_OBJECT_TYPES
 static Hair *rna_Main_hairs_new(Main *bmain, const char *name)
 {
   char safe_name[MAX_ID_NAME - 2];
@@ -728,7 +727,6 @@ static PointCloud *rna_Main_pointclouds_new(Main *bmain, const char *name)
   id_us_min(&pointcloud->id);
   return pointcloud;
 }
-#  endif
 
 static Volume *rna_Main_volumes_new(Main *bmain, const char *name)
 {
@@ -740,7 +738,6 @@ static Volume *rna_Main_volumes_new(Main *bmain, const char *name)
   return volume;
 }
 
-#  ifdef WITH_NEW_SIMULATION_TYPE
 static Simulation *rna_Main_simulations_new(Main *bmain, const char *name)
 {
   char safe_name[MAX_ID_NAME - 2];
@@ -750,7 +747,6 @@ static Simulation *rna_Main_simulations_new(Main *bmain, const char *name)
   id_us_min(&simulation->id);
   return simulation;
 }
-#  endif
 
 /* tag functions, all the same */
 #  define RNA_MAIN_ID_TAG_FUNCS_DEF(_func_name, _listbase_name, _id_type) \
@@ -794,14 +790,10 @@ RNA_MAIN_ID_TAG_FUNCS_DEF(cachefiles, cachefiles, ID_CF)
 RNA_MAIN_ID_TAG_FUNCS_DEF(paintcurves, paintcurves, ID_PC)
 RNA_MAIN_ID_TAG_FUNCS_DEF(workspaces, workspaces, ID_WS)
 RNA_MAIN_ID_TAG_FUNCS_DEF(lightprobes, lightprobes, ID_LP)
-#  ifdef WITH_NEW_OBJECT_TYPES
 RNA_MAIN_ID_TAG_FUNCS_DEF(hairs, hairs, ID_HA)
 RNA_MAIN_ID_TAG_FUNCS_DEF(pointclouds, pointclouds, ID_PT)
-#  endif
 RNA_MAIN_ID_TAG_FUNCS_DEF(volumes, volumes, ID_VO)
-#  ifdef WITH_NEW_SIMULATION_TYPE
 RNA_MAIN_ID_TAG_FUNCS_DEF(simulations, simulations, ID_SIM)
-#  endif
 
 #  undef RNA_MAIN_ID_TAG_FUNCS_DEF
 
@@ -1174,6 +1166,22 @@ void RNA_def_main_libraries(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "tag", "rna_Main_libraries_tag");
   parm = RNA_def_boolean(func, "value", 0, "Value", "");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "remove", "rna_Main_ID_remove");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove a camera from the current blendfile");
+  parm = RNA_def_pointer(func, "library", "Library", "", "Library to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_boolean(
+      func, "do_unlink", true, "", "Unlink all usages of this library before deleting it");
+  RNA_def_boolean(func,
+                  "do_id_user",
+                  true,
+                  "",
+                  "Decrement user counter of all datablocks used by this object");
+  RNA_def_boolean(
+      func, "do_ui_user", true, "", "Make sure interface does not reference this object");
 }
 
 void RNA_def_main_screens(BlenderRNA *brna, PropertyRNA *cprop)

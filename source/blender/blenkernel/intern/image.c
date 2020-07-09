@@ -185,6 +185,37 @@ static void image_free_data(ID *id)
   BLI_freelistN(&image->tiles);
 }
 
+static void image_foreach_cache(ID *id,
+                                IDTypeForeachCacheFunctionCallback function_callback,
+                                void *user_data)
+{
+  Image *image = (Image *)id;
+  IDCacheKey key = {
+      .id_session_uuid = id->session_uuid,
+      .offset_in_ID = offsetof(Image, cache),
+      .cache_v = image->cache,
+  };
+  function_callback(id, &key, (void **)&image->cache, 0, user_data);
+
+  for (int eye = 0; eye < 2; eye++) {
+    for (int a = 0; a < TEXTARGET_COUNT; a++) {
+      key.offset_in_ID = offsetof(Image, gputexture[a][eye]);
+      key.cache_v = image->gputexture[a][eye];
+      function_callback(id, &key, (void **)&image->gputexture[a][eye], 0, user_data);
+    }
+  }
+
+  key.offset_in_ID = offsetof(Image, rr);
+  key.cache_v = image->rr;
+  function_callback(id, &key, (void **)&image->rr, 0, user_data);
+
+  LISTBASE_FOREACH (RenderSlot *, slot, &image->renderslots) {
+    key.offset_in_ID = (size_t)BLI_ghashutil_strhash_p(slot->name);
+    key.cache_v = slot->render;
+    function_callback(id, &key, (void **)&slot->render, 0, user_data);
+  }
+}
+
 IDTypeInfo IDType_ID_IM = {
     .id_code = ID_IM,
     .id_filter = FILTER_ID_IM,
@@ -200,6 +231,7 @@ IDTypeInfo IDType_ID_IM = {
     .free_data = image_free_data,
     .make_local = NULL,
     .foreach_id = NULL,
+    .foreach_cache = image_foreach_cache,
 };
 
 /* prototypes */
@@ -360,13 +392,7 @@ void BKE_image_free_buffers_ex(Image *ima, bool do_lock)
     ima->rr = NULL;
   }
 
-  if (!G.background) {
-    /* Background mode doesn't use OpenGL,
-     * so we can avoid freeing GPU images and save some
-     * time by skipping mutex lock.
-     */
-    GPU_free_image(ima);
-  }
+  GPU_free_image(ima);
 
   LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
     tile->ok = IMA_OK;
@@ -648,7 +674,7 @@ char BKE_image_alpha_mode_from_extension_ex(const char *filepath)
 
 void BKE_image_alpha_mode_from_extension(Image *image)
 {
-  image->alpha_mode = BKE_image_alpha_mode_from_extension_ex(image->name);
+  image->alpha_mode = BKE_image_alpha_mode_from_extension_ex(image->filepath);
 }
 
 Image *BKE_image_load(Main *bmain, const char *filepath)
@@ -668,7 +694,7 @@ Image *BKE_image_load(Main *bmain, const char *filepath)
   close(file);
 
   ima = image_alloc(bmain, BLI_path_basename(filepath), IMA_SRC_FILE, IMA_TYPE_IMAGE);
-  STRNCPY(ima->name, filepath);
+  STRNCPY(ima->filepath, filepath);
 
   if (BLI_path_extension_check_array(filepath, imb_ext_movie)) {
     ima->source = IMA_SRC_MOVIE;
@@ -694,7 +720,7 @@ Image *BKE_image_load_exists_ex(Main *bmain, const char *filepath, bool *r_exist
   /* first search an identical filepath */
   for (ima = bmain->images.first; ima; ima = ima->id.next) {
     if (ima->source != IMA_SRC_VIEWER && ima->source != IMA_SRC_GENERATED) {
-      STRNCPY(strtest, ima->name);
+      STRNCPY(strtest, ima->filepath);
       BLI_path_abs(strtest, ID_BLEND_PATH(bmain, &ima->id));
 
       if (BLI_path_cmp(strtest, str) == 0) {
@@ -830,7 +856,7 @@ Image *BKE_image_add_generated(Main *bmain,
   int view_id;
   const char *names[2] = {STEREO_LEFT_NAME, STEREO_RIGHT_NAME};
 
-  /* STRNCPY(ima->name, name); */ /* don't do this, this writes in ain invalid filepath! */
+  /* STRNCPY(ima->filepath, name); */ /* don't do this, this writes in ain invalid filepath! */
   ima->gen_x = width;
   ima->gen_y = height;
   ima->gen_type = gen_type;
@@ -846,7 +872,7 @@ Image *BKE_image_add_generated(Main *bmain,
   for (view_id = 0; view_id < 2; view_id++) {
     ImBuf *ibuf;
     ibuf = add_ibuf_size(
-        width, height, ima->name, depth, floatbuf, gen_type, color, &ima->colorspace_settings);
+        width, height, ima->filepath, depth, floatbuf, gen_type, color, &ima->colorspace_settings);
     int index = tiled ? 0 : IMA_NO_INDEX;
     int entry = tiled ? 1001 : 0;
     image_assign_ibuf(ima, ibuf, stereo3d ? view_id : index, entry);
@@ -881,7 +907,7 @@ Image *BKE_image_add_from_imbuf(Main *bmain, ImBuf *ibuf, const char *name)
   ima = image_alloc(bmain, name, IMA_SRC_FILE, IMA_TYPE_IMAGE);
 
   if (ima) {
-    STRNCPY(ima->name, ibuf->name);
+    STRNCPY(ima->filepath, ibuf->name);
     image_assign_ibuf(ima, ibuf, IMA_NO_INDEX, 0);
     ImageTile *tile = BKE_image_get_tile(ima, 0);
     tile->ok = IMA_OK_LOADED;
@@ -981,9 +1007,9 @@ void BKE_image_packfiles(ReportList *reports, Image *ima, const char *basepath)
   if (totfiles == 1) {
     ImagePackedFile *imapf = MEM_mallocN(sizeof(ImagePackedFile), "Image packed file");
     BLI_addtail(&ima->packedfiles, imapf);
-    imapf->packedfile = BKE_packedfile_new(reports, ima->name, basepath);
+    imapf->packedfile = BKE_packedfile_new(reports, ima->filepath, basepath);
     if (imapf->packedfile) {
-      STRNCPY(imapf->filepath, ima->name);
+      STRNCPY(imapf->filepath, ima->filepath);
     }
     else {
       BLI_freelinkN(&ima->packedfiles, imapf);
@@ -1020,7 +1046,7 @@ void BKE_image_packfiles_from_mem(ReportList *reports,
     ImagePackedFile *imapf = MEM_mallocN(sizeof(ImagePackedFile), __func__);
     BLI_addtail(&ima->packedfiles, imapf);
     imapf->packedfile = BKE_packedfile_new_from_memory(data, data_len);
-    STRNCPY(imapf->filepath, ima->name);
+    STRNCPY(imapf->filepath, ima->filepath);
   }
 }
 
@@ -3385,7 +3411,7 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
          * Here we ensure original image path wouldn't be used when saving
          * generated image.
          */
-        ima->name[0] = '\0';
+        ima->filepath[0] = '\0';
       }
 
       if (ima->source != IMA_SRC_TILED) {
@@ -3580,7 +3606,7 @@ ImageTile *BKE_image_add_tile(struct Image *ima, int tile_number, const char *la
   }
 
   ImageTile *tile = MEM_callocN(sizeof(ImageTile), "image new tile");
-  tile->ok = 1;
+  tile->ok = IMA_OK;
   tile->tile_number = tile_number;
 
   if (next_tile) {
@@ -3643,12 +3669,12 @@ bool BKE_image_fill_tile(struct Image *ima,
   image_free_tile(ima, tile);
 
   ImBuf *tile_ibuf = add_ibuf_size(
-      width, height, ima->name, planes, is_float, gen_type, color, &ima->colorspace_settings);
+      width, height, ima->filepath, planes, is_float, gen_type, color, &ima->colorspace_settings);
 
   if (tile_ibuf != NULL) {
     image_assign_ibuf(ima, tile_ibuf, 0, tile->tile_number);
     BKE_image_release_ibuf(ima, tile_ibuf, NULL);
-    tile->ok = 1;
+    tile->ok = IMA_OK;
     return true;
   }
   return false;
@@ -3807,7 +3833,7 @@ bool BKE_image_is_openexr(struct Image *ima)
 {
 #ifdef WITH_OPENEXR
   if (ELEM(ima->source, IMA_SRC_FILE, IMA_SRC_SEQUENCE, IMA_SRC_TILED)) {
-    return BLI_path_extension_check(ima->name, ".exr");
+    return BLI_path_extension_check(ima->filepath, ".exr");
   }
 #else
   UNUSED_VARS(ima);
@@ -4893,7 +4919,7 @@ static ImBuf *image_acquire_ibuf(Image *ima, ImageUser *iuser, void **r_lock)
       }
       ibuf = add_ibuf_size(ima->gen_x,
                            ima->gen_y,
-                           ima->name,
+                           ima->filepath,
                            ima->gen_depth,
                            (ima->gen_flag & IMA_GEN_FLOAT) != 0,
                            ima->gen_type,
@@ -5300,11 +5326,11 @@ void BKE_image_user_file_path(ImageUser *iuser, Image *ima, char *filepath)
       BLI_strncpy(filepath, iv->filepath, FILE_MAX);
     }
     else {
-      BLI_strncpy(filepath, ima->name, FILE_MAX);
+      BLI_strncpy(filepath, ima->filepath, FILE_MAX);
     }
   }
   else {
-    BLI_strncpy(filepath, ima->name, FILE_MAX);
+    BLI_strncpy(filepath, ima->filepath, FILE_MAX);
   }
 
   if (ELEM(ima->source, IMA_SRC_SEQUENCE, IMA_SRC_TILED)) {
@@ -5461,7 +5487,7 @@ float *BKE_image_get_float_pixels_for_frame(struct Image *image, int frame, int 
 
 int BKE_image_sequence_guess_offset(Image *image)
 {
-  return BLI_path_sequence_decode(image->name, NULL, NULL, NULL);
+  return BLI_path_sequence_decode(image->filepath, NULL, NULL, NULL);
 }
 
 bool BKE_image_has_anim(Image *ima)
@@ -5478,7 +5504,7 @@ bool BKE_image_has_filepath(Image *ima)
 {
   /* This could be improved to detect cases like //../../, currently path
    * remapping empty file paths empty. */
-  return ima->name[0] != '\0';
+  return ima->filepath[0] != '\0';
 }
 
 /* Checks the image buffer changes with time (not keyframed values). */
@@ -5653,14 +5679,14 @@ static void image_update_views_format(Image *ima, ImageUser *iuser)
     const char *names[2] = {STEREO_LEFT_NAME, STEREO_RIGHT_NAME};
 
     for (i = 0; i < 2; i++) {
-      image_add_view(ima, names[i], ima->name);
+      image_add_view(ima, names[i], ima->filepath);
     }
     return;
   }
   else {
     /* R_IMF_VIEWS_INDIVIDUAL */
     char prefix[FILE_MAX] = {'\0'};
-    char *name = ima->name;
+    char *name = ima->filepath;
     const char *ext = NULL;
 
     BKE_scene_multiview_view_prefix_get(scene, name, prefix, &ext);

@@ -61,8 +61,10 @@ Session::Session(const SessionParams &params_)
 
   TaskScheduler::init(params.threads);
 
+  /* Create CPU/GPU devices. */
   device = Device::create(params.device, stats, profiler, params.background);
 
+  /* Create buffers for interactive rendering. */
   if (params.background && !params.write_render_cb) {
     buffers = NULL;
     display = NULL;
@@ -71,6 +73,9 @@ Session::Session(const SessionParams &params_)
     buffers = new RenderBuffers(device);
     display = new DisplayBuffer(device, params.display_buffer_linear);
   }
+
+  /* Validate denoising parameters. */
+  set_denoising(params.denoising);
 
   session_thread = NULL;
   scene = NULL;
@@ -436,6 +441,12 @@ bool Session::acquire_tile(RenderTile &rtile, Device *tile_device, uint tile_typ
     /* Reset copy state, since buffer contents change after the tile was acquired */
     buffers->map_neighbor_copied = false;
 
+    /* This hack ensures that the copy in 'MultiDevice::map_neighbor_tiles' accounts
+     * for the buffer resolution divider. */
+    buffers->buffer.data_width = (buffers->params.width * buffers->params.get_passes_size()) /
+                                 tile_manager.state.resolution_divider;
+    buffers->buffer.data_height = buffers->params.height / tile_manager.state.resolution_divider;
+
     return true;
   }
 
@@ -767,6 +778,7 @@ DeviceRequestedFeatures Session::get_requested_device_features()
    */
   bool use_motion = scene->need_motion() == Scene::MotionType::MOTION_BLUR;
   requested_features.use_hair = false;
+  requested_features.use_hair_thick = (scene->params.hair_shape == CURVE_THICK);
   requested_features.use_object_motion = false;
   requested_features.use_camera_motion = use_motion && scene->camera->use_motion();
   foreach (Object *object, scene->objects) {
@@ -798,7 +810,7 @@ DeviceRequestedFeatures Session::get_requested_device_features()
   requested_features.use_baking = bake_manager->get_baking();
   requested_features.use_integrator_branched = (scene->integrator->method ==
                                                 Integrator::BRANCHED_PATH);
-  if (params.run_denoising) {
+  if (params.denoising.use || params.denoising.store_passes) {
     requested_features.use_denoising = true;
     requested_features.use_shadow_tricks = true;
   }
@@ -827,7 +839,7 @@ bool Session::load_kernels(bool lock_scene)
         message = "Failed loading render kernel, see console for errors";
 
       progress.set_error(message);
-      progress.set_status("Error", message);
+      progress.set_status(message);
       progress.set_update();
       return false;
     }
@@ -866,7 +878,7 @@ void Session::run()
 
   /* progress update */
   if (progress.get_cancel())
-    progress.set_status("Cancel", progress.get_cancel_message());
+    progress.set_status(progress.get_cancel_message());
   else
     progress.set_update();
 }
@@ -935,24 +947,35 @@ void Session::set_pause(bool pause_)
     pause_cond.notify_all();
 }
 
-void Session::set_denoising(bool denoising, bool optix_denoising)
+void Session::set_denoising(const DenoiseParams &denoising)
 {
+  bool need_denoise = denoising.need_denoising_task();
+
   /* Lock buffers so no denoising operation is triggered while the settings are changed here. */
   thread_scoped_lock buffers_lock(buffers_mutex);
+  params.denoising = denoising;
 
-  params.run_denoising = denoising;
-  params.full_denoising = !optix_denoising;
-  params.optix_denoising = optix_denoising;
+  if (!(params.device.denoisers & denoising.type)) {
+    if (need_denoise) {
+      progress.set_error("Denoiser type not supported by compute device");
+    }
+
+    params.denoising.use = false;
+    need_denoise = false;
+  }
 
   // TODO(pmours): Query the required overlap value for denoising from the device?
-  tile_manager.slice_overlap = denoising && !params.background ? 64 : 0;
-  tile_manager.schedule_denoising = denoising && !buffers;
+  tile_manager.slice_overlap = need_denoise && !params.background ? 64 : 0;
+
+  /* Schedule per tile denoising for final renders if we are either denoising or
+   * need prefiltered passes for the native denoiser. */
+  tile_manager.schedule_denoising = need_denoise && !buffers;
 }
 
 void Session::set_denoising_start_sample(int sample)
 {
-  if (sample != params.denoising_start_sample) {
-    params.denoising_start_sample = sample;
+  if (sample != params.denoising.start_sample) {
+    params.denoising.start_sample = sample;
 
     pause_cond.notify_all();
   }
@@ -980,7 +1003,7 @@ bool Session::update_scene()
   int height = tile_manager.state.buffer.full_height;
   int resolution = tile_manager.state.resolution_divider;
 
-  if (width != cam->width || height != cam->height) {
+  if (width != cam->width || height != cam->height || resolution != cam->resolution) {
     cam->width = width;
     cam->height = height;
     cam->resolution = resolution;
@@ -1072,10 +1095,10 @@ void Session::update_status_time(bool show_pause, bool show_done)
        */
       substatus += string_printf(", Sample %d/%d", progress.get_current_sample(), num_samples);
     }
-    if (params.full_denoising || params.optix_denoising) {
+    if (params.denoising.use && params.denoising.type != DENOISER_OPENIMAGEDENOISE) {
       substatus += string_printf(", Denoised %d tiles", progress.get_denoised_tiles());
     }
-    else if (params.run_denoising) {
+    else if (params.denoising.store_passes && params.denoising.type == DENOISER_NLM) {
       substatus += string_printf(", Prefiltered %d tiles", progress.get_denoised_tiles());
     }
   }
@@ -1104,7 +1127,7 @@ bool Session::render_need_denoise(bool &delayed)
   delayed = false;
 
   /* Denoising enabled? */
-  if (!params.run_denoising) {
+  if (!params.denoising.need_denoising_task()) {
     return false;
   }
 
@@ -1121,14 +1144,7 @@ bool Session::render_need_denoise(bool &delayed)
   }
 
   /* Do not denoise until the sample at which denoising should start is reached. */
-  if (tile_manager.state.sample < params.denoising_start_sample) {
-    return false;
-  }
-
-  /* Cannot denoise with resolution divider and separate denoising devices.
-   * It breaks the copy in 'MultiDevice::map_neighbor_tiles' (which operates on
-   * the full buffer dimensions and not the scaled ones). */
-  if (!params.device.denoising_devices.empty() && tile_manager.state.resolution_divider > 1) {
+  if (tile_manager.state.sample < min(params.denoising.start_sample, params.samples - 1)) {
     return false;
   }
 
@@ -1179,9 +1195,6 @@ void Session::render(bool need_denoise)
     task.pass_denoising_clean = scene->film->denoising_clean_offset;
 
     task.denoising_from_render = true;
-    task.denoising_do_filter = params.full_denoising;
-    task.denoising_use_optix = params.optix_denoising;
-    task.denoising_write_passes = params.write_denoising_passes;
 
     if (tile_manager.schedule_denoising) {
       /* Acquire denoising tiles during rendering. */

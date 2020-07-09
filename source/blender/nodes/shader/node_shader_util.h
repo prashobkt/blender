@@ -69,6 +69,16 @@
 #include "GPU_texture.h"
 #include "GPU_uniformbuffer.h"
 
+#ifdef __cplusplus
+#  include "FN_multi_function_builder.hh"
+
+#  include "BKE_node_tree_multi_function.hh"
+
+#  include "BLI_float3.hh"
+
+extern "C" {
+#endif
+
 bool sh_node_poll_default(struct bNodeType *ntype, struct bNodeTree *ntree);
 void sh_node_type_base(
     struct bNodeType *ntype, int type, const char *name, short nclass, short flag);
@@ -100,5 +110,9 @@ void node_shader_gpu_tex_mapping(struct GPUMaterial *mat,
 void ntreeExecGPUNodes(struct bNodeTreeExec *exec,
                        struct GPUMaterial *mat,
                        struct bNode *output_node);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

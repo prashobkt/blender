@@ -481,7 +481,6 @@ static void ccd_mesh_update(Object *ob, ccd_Mesh *pccd_M)
     mima->maxy = max_ff(mima->maxy, v[1] + hull);
     mima->maxz = max_ff(mima->maxz, v[2] + hull);
   }
-  return;
 }
 
 static void ccd_mesh_free(ccd_Mesh *ccdm)
@@ -1479,7 +1478,8 @@ static void _scan_for_ext_spring_forces(
             mid_v3_v3v3(pos, sb->bpoint[bs->v1].pos, sb->bpoint[bs->v2].pos);
             mid_v3_v3v3(vel, sb->bpoint[bs->v1].vec, sb->bpoint[bs->v2].vec);
             pd_point_from_soft(scene, pos, vel, -1, &epoint);
-            BKE_effectors_apply(effectors, NULL, sb->effector_weights, &epoint, force, speed);
+            BKE_effectors_apply(
+                effectors, NULL, sb->effector_weights, &epoint, force, NULL, speed);
 
             mul_v3_fl(speed, windfactor);
             add_v3_v3(vel, speed);
@@ -2107,7 +2107,7 @@ static int _softbody_calc_forces_slice_in_a_thread(Scene *scene,
         float eval_sb_fric_force_scale = sb_fric_force_scale(ob);
 
         pd_point_from_soft(scene, bp->pos, bp->vec, sb->bpoint - bp, &epoint);
-        BKE_effectors_apply(effectors, NULL, sb->effector_weights, &epoint, force, speed);
+        BKE_effectors_apply(effectors, NULL, sb->effector_weights, &epoint, force, NULL, speed);
 
         /* apply forcefield*/
         mul_v3_fl(force, fieldfactor * eval_sb_fric_force_scale);

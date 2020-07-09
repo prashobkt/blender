@@ -94,9 +94,8 @@ struct LaplacianSystem {
     float (*verts)[3]; /* vertex coordinates */
     float (*vnors)[3]; /* vertex normals */
 
-    float (*root)[3];   /* bone root */
-    float (*tip)[3];    /* bone tip */
-    float (*source)[3]; /* vertex source */
+    float (*root)[3]; /* bone root */
+    float (*tip)[3];  /* bone tip */
     int numsource;
 
     float *H;       /* diagonal H matrix */
@@ -641,13 +640,11 @@ static float heat_limit_weight(float weight)
   if (weight < WEIGHT_LIMIT_END) {
     return 0.0f;
   }
-  else if (weight < WEIGHT_LIMIT_START) {
+  if (weight < WEIGHT_LIMIT_START) {
     t = (weight - WEIGHT_LIMIT_END) / (WEIGHT_LIMIT_START - WEIGHT_LIMIT_END);
     return t * WEIGHT_LIMIT_START;
   }
-  else {
-    return weight;
-  }
+  return weight;
 }
 
 void heat_bone_weighting(Object *ob,

@@ -29,34 +29,34 @@
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
-namespace BLI {
+namespace blender {
 
 template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopyable, NonMovable {
  private:
-  Allocator m_allocator;
-  Vector<void *> m_owned_buffers;
-  Vector<ArrayRef<char>> m_unused_borrowed_buffers;
+  Allocator allocator_;
+  Vector<void *> owned_buffers_;
+  Vector<Span<char>> unused_borrowed_buffers_;
 
-  uintptr_t m_current_begin;
-  uintptr_t m_current_end;
-  uint m_next_min_alloc_size;
+  uintptr_t current_begin_;
+  uintptr_t current_end_;
+  uint next_min_alloc_size_;
 
 #ifdef DEBUG
-  uint m_debug_allocated_amount = 0;
+  uint debug_allocated_amount_ = 0;
 #endif
 
  public:
   LinearAllocator()
   {
-    m_current_begin = 0;
-    m_current_end = 0;
-    m_next_min_alloc_size = 64;
+    current_begin_ = 0;
+    current_end_ = 0;
+    next_min_alloc_size_ = 64;
   }
 
   ~LinearAllocator()
   {
-    for (void *ptr : m_owned_buffers) {
-      m_allocator.deallocate(ptr);
+    for (void *ptr : owned_buffers_) {
+      allocator_.deallocate(ptr);
     }
   }
 
@@ -66,21 +66,22 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
    *
    * The alignment has to be a power of 2.
    */
-  void *allocate(uint size, uint alignment)
+  void *allocate(const uint size, const uint alignment)
   {
     BLI_assert(alignment >= 1);
     BLI_assert(is_power_of_2_i(alignment));
 
 #ifdef DEBUG
-    m_debug_allocated_amount += size;
+    debug_allocated_amount_ += size;
 #endif
 
-    uintptr_t alignment_mask = alignment - 1;
-    uintptr_t potential_allocation_begin = (m_current_begin + alignment_mask) & ~alignment_mask;
-    uintptr_t potential_allocation_end = potential_allocation_begin + size;
+    const uintptr_t alignment_mask = alignment - 1;
+    const uintptr_t potential_allocation_begin = (current_begin_ + alignment_mask) &
+                                                 ~alignment_mask;
+    const uintptr_t potential_allocation_end = potential_allocation_begin + size;
 
-    if (potential_allocation_end <= m_current_end) {
-      m_current_begin = potential_allocation_end;
+    if (potential_allocation_end <= current_end_) {
+      current_begin_ = potential_allocation_end;
       return (void *)potential_allocation_begin;
     }
     else {
@@ -104,9 +105,9 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
    *
    * This method only allocates memory and does not construct the instance.
    */
-  template<typename T> MutableArrayRef<T> allocate_array(uint size)
+  template<typename T> MutableSpan<T> allocate_array(uint size)
   {
-    return MutableArrayRef<T>((T *)this->allocate(sizeof(T) * size, alignof(T)), size);
+    return MutableSpan<T>((T *)this->allocate(sizeof(T) * size, alignof(T)), size);
   }
 
   /**
@@ -127,10 +128,10 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
   /**
    * Copy the given array into a memory buffer provided by this allocator.
    */
-  template<typename T> MutableArrayRef<T> construct_array_copy(ArrayRef<T> src)
+  template<typename T> MutableSpan<T> construct_array_copy(Span<T> src)
   {
-    MutableArrayRef<T> dst = this->allocate_array<T>(src.size());
-    uninitialized_copy_n(src.begin(), src.size(), dst.begin());
+    MutableSpan<T> dst = this->allocate_array<T>(src.size());
+    uninitialized_copy_n(src.data(), src.size(), dst.data());
     return dst;
   }
 
@@ -140,20 +141,20 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
    */
   StringRefNull copy_string(StringRef str)
   {
-    uint alloc_size = str.size() + 1;
+    const uint alloc_size = str.size() + 1;
     char *buffer = (char *)this->allocate(alloc_size, 1);
     str.copy(buffer, alloc_size);
     return StringRefNull((const char *)buffer);
   }
 
-  MutableArrayRef<void *> allocate_elements_and_pointer_array(uint element_amount,
-                                                              uint element_size,
-                                                              uint element_alignment)
+  MutableSpan<void *> allocate_elements_and_pointer_array(uint element_amount,
+                                                          uint element_size,
+                                                          uint element_alignment)
   {
     void *pointer_buffer = this->allocate(element_amount * sizeof(void *), alignof(void *));
     void *elements_buffer = this->allocate(element_amount * element_size, element_alignment);
 
-    MutableArrayRef<void *> pointers((void **)pointer_buffer, element_amount);
+    MutableSpan<void *> pointers((void **)pointer_buffer, element_amount);
     void *next_element_buffer = elements_buffer;
     for (uint i : IndexRange(element_amount)) {
       pointers[i] = next_element_buffer;
@@ -164,14 +165,14 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
   }
 
   template<typename T, typename... Args>
-  ArrayRef<T *> construct_elements_and_pointer_array(uint n, Args &&... args)
+  Span<T *> construct_elements_and_pointer_array(uint n, Args &&... args)
   {
-    MutableArrayRef<void *> void_pointers = this->allocate_elements_and_pointer_array(
+    MutableSpan<void *> void_pointers = this->allocate_elements_and_pointer_array(
         n, sizeof(T), alignof(T));
-    MutableArrayRef<T *> pointers = void_pointers.cast<T *>();
+    MutableSpan<T *> pointers = void_pointers.cast<T *>();
 
     for (uint i : IndexRange(n)) {
-      new (pointers[i]) T(std::forward<Args>(args)...);
+      new ((void *)pointers[i]) T(std::forward<Args>(args)...);
     }
 
     return pointers;
@@ -183,10 +184,10 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
    */
   void provide_buffer(void *buffer, uint size)
   {
-    m_unused_borrowed_buffers.append(ArrayRef<char>((char *)buffer, size));
+    unused_borrowed_buffers_.append(Span<char>((char *)buffer, size));
   }
 
-  template<uint Size, uint Alignment>
+  template<size_t Size, size_t Alignment>
   void provide_buffer(AlignedBuffer<Size, Alignment> &aligned_buffer)
   {
     this->provide_buffer(aligned_buffer.ptr(), Size);
@@ -195,26 +196,27 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
  private:
   void allocate_new_buffer(uint min_allocation_size)
   {
-    for (uint i : m_unused_borrowed_buffers.index_range()) {
-      ArrayRef<char> buffer = m_unused_borrowed_buffers[i];
+    for (uint i : unused_borrowed_buffers_.index_range()) {
+      Span<char> buffer = unused_borrowed_buffers_[i];
       if (buffer.size() >= min_allocation_size) {
-        m_unused_borrowed_buffers.remove_and_reorder(i);
-        m_current_begin = (uintptr_t)buffer.begin();
-        m_current_end = (uintptr_t)buffer.end();
+        unused_borrowed_buffers_.remove_and_reorder(i);
+        current_begin_ = (uintptr_t)buffer.begin();
+        current_end_ = (uintptr_t)buffer.end();
         return;
       }
     }
 
-    uint size_in_bytes = power_of_2_min_u(std::max(min_allocation_size, m_next_min_alloc_size));
-    m_next_min_alloc_size = size_in_bytes * 2;
+    const uint size_in_bytes = power_of_2_min_u(
+        std::max(min_allocation_size, next_min_alloc_size_));
+    next_min_alloc_size_ = size_in_bytes * 2;
 
-    void *buffer = m_allocator.allocate(size_in_bytes, __func__);
-    m_owned_buffers.append(buffer);
-    m_current_begin = (uintptr_t)buffer;
-    m_current_end = m_current_begin + size_in_bytes;
+    void *buffer = allocator_.allocate(size_in_bytes, 8, AT);
+    owned_buffers_.append(buffer);
+    current_begin_ = (uintptr_t)buffer;
+    current_end_ = current_begin_ + size_in_bytes;
   }
 };
 
-}  // namespace BLI
+}  // namespace blender
 
 #endif /* __BLI_LINEAR_ALLOCATOR_HH__ */

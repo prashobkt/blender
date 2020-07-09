@@ -135,6 +135,7 @@ void ED_spacetypes_init(void)
   ED_gizmotypes_blank_3d();
   ED_gizmotypes_cage_2d();
   ED_gizmotypes_cage_3d();
+  ED_gizmotypes_snap_3d();
 
   /* register types for operators and gizmos */
   spacetypes = BKE_spacetypes_list();
@@ -158,6 +159,7 @@ void ED_spacemacros_init(void)
    * We need to have them go after python operators too */
   ED_operatormacros_armature();
   ED_operatormacros_mesh();
+  ED_operatormacros_uvedit();
   ED_operatormacros_metaball();
   ED_operatormacros_node();
   ED_operatormacros_object();

@@ -187,20 +187,19 @@ bool EDBM_op_finish(BMEditMesh *em, BMOperator *bmop, wmOperator *op, const bool
 
     return false;
   }
-  else {
-    em->emcopyusers--;
-    if (em->emcopyusers < 0) {
-      printf("warning: em->emcopyusers was less than zero.\n");
-    }
 
-    if (em->emcopyusers <= 0) {
-      BKE_editmesh_free(em->emcopy);
-      MEM_freeN(em->emcopy);
-      em->emcopy = NULL;
-    }
-
-    return true;
+  em->emcopyusers--;
+  if (em->emcopyusers < 0) {
+    printf("warning: em->emcopyusers was less than zero.\n");
   }
+
+  if (em->emcopyusers <= 0) {
+    BKE_editmesh_free(em->emcopy);
+    MEM_freeN(em->emcopy);
+    em->emcopy = NULL;
+  }
+
+  return true;
 }
 
 bool EDBM_op_callf(BMEditMesh *em, wmOperator *op, const char *fmt, ...)
@@ -1089,16 +1088,16 @@ void EDBM_verts_mirror_cache_begin_ex(BMEditMesh *em,
 
   if (r_index == NULL) {
     const char *layer_id = BM_CD_LAYER_ID;
-    em->mirror_cdlayer = CustomData_get_named_layer_index(&bm->vdata, CD_PROP_INT, layer_id);
+    em->mirror_cdlayer = CustomData_get_named_layer_index(&bm->vdata, CD_PROP_INT32, layer_id);
     if (em->mirror_cdlayer == -1) {
-      BM_data_layer_add_named(bm, &bm->vdata, CD_PROP_INT, layer_id);
-      em->mirror_cdlayer = CustomData_get_named_layer_index(&bm->vdata, CD_PROP_INT, layer_id);
+      BM_data_layer_add_named(bm, &bm->vdata, CD_PROP_INT32, layer_id);
+      em->mirror_cdlayer = CustomData_get_named_layer_index(&bm->vdata, CD_PROP_INT32, layer_id);
     }
 
     cd_vmirr_offset = CustomData_get_n_offset(
         &bm->vdata,
-        CD_PROP_INT,
-        em->mirror_cdlayer - CustomData_get_layer_index(&bm->vdata, CD_PROP_INT));
+        CD_PROP_INT32,
+        em->mirror_cdlayer - CustomData_get_layer_index(&bm->vdata, CD_PROP_INT32));
 
     bm->vdata.layers[em->mirror_cdlayer].flag |= CD_FLAG_TEMPORARY;
   }
@@ -1628,10 +1627,10 @@ bool BMBVH_EdgeVisible(struct BMBVHTree *tree,
   if (f && !edge_ray_cast(tree, co2, dir2, NULL, e)) {
     return true;
   }
-  else if (f && !edge_ray_cast(tree, co3, dir3, NULL, e)) {
+  if (f && !edge_ray_cast(tree, co3, dir3, NULL, e)) {
     return true;
   }
-  else if (!f) {
+  if (!f) {
     return true;
   }
 
@@ -1647,14 +1646,13 @@ bool BMBVH_EdgeVisible(struct BMBVHTree *tree,
 void EDBM_project_snap_verts(
     bContext *C, Depsgraph *depsgraph, ARegion *region, Object *obedit, BMEditMesh *em)
 {
-  Main *bmain = CTX_data_main(C);
   BMIter iter;
   BMVert *eve;
 
   ED_view3d_init_mats_rv3d(obedit, region->regiondata);
 
   struct SnapObjectContext *snap_context = ED_transform_snap_object_context_create_view3d(
-      bmain, CTX_data_scene(C), 0, region, CTX_wm_view3d(C));
+      CTX_data_scene(C), 0, region, CTX_wm_view3d(C));
 
   BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
     if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {

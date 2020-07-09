@@ -184,7 +184,7 @@ FCurve *ED_action_fcurve_find(struct bAction *act, const char rna_path[], const 
   if (ELEM(NULL, act, rna_path)) {
     return NULL;
   }
-  return list_find_fcurve(&act->curves, rna_path, array_index);
+  return BKE_fcurve_find(&act->curves, rna_path, array_index);
 }
 
 /**
@@ -210,11 +210,11 @@ FCurve *ED_action_fcurve_ensure(struct Main *bmain,
    * - add if not found and allowed to add one
    *   TODO: add auto-grouping support? how this works will need to be resolved
    */
-  fcu = list_find_fcurve(&act->curves, rna_path, array_index);
+  fcu = BKE_fcurve_find(&act->curves, rna_path, array_index);
 
   if (fcu == NULL) {
     /* use default settings to make a F-Curve */
-    fcu = MEM_callocN(sizeof(FCurve), "FCurve");
+    fcu = BKE_fcurve_create();
 
     fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
     fcu->auto_smoothing = U.auto_smoothing_new;
@@ -659,20 +659,17 @@ static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
         if (IS_EQF(prevVal, nValue) && IS_EQF(beztVal, nValue) && IS_EQF(prevVal, beztVal)) {
           return KEYNEEDED_DONTADD;
         }
-        else {
-          float realVal;
 
-          /* get real value of curve at that point */
-          realVal = evaluate_fcurve(fcu, cFrame);
+        float realVal;
 
-          /* compare whether it's the same as proposed */
-          if (IS_EQF(realVal, nValue)) {
-            return KEYNEEDED_DONTADD;
-          }
-          else {
-            return KEYNEEDED_JUSTADD;
-          }
+        /* get real value of curve at that point */
+        realVal = evaluate_fcurve(fcu, cFrame);
+
+        /* compare whether it's the same as proposed */
+        if (IS_EQF(realVal, nValue)) {
+          return KEYNEEDED_DONTADD;
         }
+        return KEYNEEDED_JUSTADD;
       }
 
       /* new keyframe before prev beztriple? */
@@ -684,9 +681,8 @@ static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
         if (IS_EQF(prevVal, nValue) && IS_EQF(beztVal, nValue) && IS_EQF(prevVal, beztVal)) {
           return KEYNEEDED_DELNEXT;
         }
-        else {
-          return KEYNEEDED_JUSTADD;
-        }
+
+        return KEYNEEDED_JUSTADD;
       }
     }
     else {
@@ -728,9 +724,8 @@ static short new_key_needed(FCurve *fcu, float cFrame, float nValue)
   if (IS_EQF(valA, nValue) && IS_EQF(valA, valB)) {
     return KEYNEEDED_DELPREV;
   }
-  else {
-    return KEYNEEDED_JUSTADD;
-  }
+
+  return KEYNEEDED_JUSTADD;
 }
 
 /* ------------------ RNA Data-Access Functions ------------------ */
@@ -865,7 +860,8 @@ static bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
     printf("%s failed: NULL identifier\n", __func__);
     return false;
   }
-  else if (strstr(identifier, "location")) {
+
+  if (strstr(identifier, "location")) {
     searchtype = VISUALKEY_LOC;
   }
   else if (strstr(identifier, "rotation")) {
@@ -1036,7 +1032,8 @@ static float *visualkey_get_values(
     *r_count = 3;
     return buffer;
   }
-  else if (strstr(identifier, "rotation_quaternion")) {
+
+  if (strstr(identifier, "rotation_quaternion")) {
     float mat3[3][3];
 
     copy_m3_m4(mat3, tmat);
@@ -1045,14 +1042,16 @@ static float *visualkey_get_values(
     *r_count = 4;
     return buffer;
   }
-  else if (strstr(identifier, "rotation_axis_angle")) {
+
+  if (strstr(identifier, "rotation_axis_angle")) {
     /* w = 0, x,y,z = 1,2,3 */
     mat4_to_axis_angle(buffer + 1, buffer, tmat);
 
     *r_count = 4;
     return buffer;
   }
-  else if (strstr(identifier, "scale")) {
+
+  if (strstr(identifier, "scale")) {
     mat4_to_size(buffer, tmat);
 
     *r_count = 3;
@@ -1120,7 +1119,7 @@ static bool insert_keyframe_value(ReportList *reports,
                                   eInsertKeyFlags flag)
 {
   /* F-Curve not editable? */
-  if (fcurve_is_keyframable(fcu) == 0) {
+  if (BKE_fcurve_is_keyframable(fcu) == 0) {
     BKE_reportf(
         reports,
         RPT_ERROR,
@@ -1181,10 +1180,9 @@ static bool insert_keyframe_value(ReportList *reports,
 
     return true;
   }
-  else {
-    /* just insert keyframe */
-    return insert_vert_fcurve(fcu, cfra, curval, keytype, flag) >= 0;
-  }
+
+  /* just insert keyframe */
+  return insert_vert_fcurve(fcu, cfra, curval, keytype, flag) >= 0;
 }
 
 /* Secondary Keyframing API call:
@@ -1239,10 +1237,9 @@ bool insert_keyframe_direct(ReportList *reports,
                   fcu->rna_path);
       return false;
     }
-    else {
-      /* property found, so overwrite 'ptr' to make later code easier */
-      ptr = tmp_ptr;
-    }
+
+    /* property found, so overwrite 'ptr' to make later code easier */
+    ptr = tmp_ptr;
   }
 
   /* update F-Curve flags to ensure proper behavior for property type */
@@ -1325,9 +1322,8 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
     /* insert keyframe */
     return insert_keyframe_value(reports, ptr, prop, fcu, cfra, curval, keytype, flag);
   }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
 /**
@@ -1827,7 +1823,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
    * updated since the last switching to the edit mode will be keyframed correctly
    */
   if (obedit && ANIM_keyingset_find_id(ks, (ID *)obedit->data)) {
-    ED_object_mode_toggle(C, OB_MODE_EDIT);
+    ED_object_mode_set(C, OB_MODE_OBJECT);
     ob_edit_mode = true;
   }
 
@@ -1843,7 +1839,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
 
   /* restore the edit mode if necessary */
   if (ob_edit_mode) {
-    ED_object_mode_toggle(C, OB_MODE_EDIT);
+    ED_object_mode_set(C, OB_MODE_EDIT);
   }
 
   /* report failure or do updates? */
@@ -1851,7 +1847,8 @@ static int insert_key_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No suitable context info for active keying set");
     return OPERATOR_CANCELLED;
   }
-  else if (num_channels > 0) {
+
+  if (num_channels > 0) {
     /* if the appropriate properties have been set, make a note that we've inserted something */
     if (RNA_boolean_get(op->ptr, "confirm_success")) {
       BKE_reportf(op->reports,
@@ -1961,13 +1958,12 @@ static int insert_key_menu_invoke(bContext *C, wmOperator *op, const wmEvent *UN
 
     return OPERATOR_INTERFACE;
   }
-  else {
-    /* just call the exec() on the active keyingset */
-    RNA_enum_set(op->ptr, "type", 0);
-    RNA_boolean_set(op->ptr, "confirm_success", true);
 
-    return op->type->exec(C, op);
-  }
+  /* just call the exec() on the active keyingset */
+  RNA_enum_set(op->ptr, "type", 0);
+  RNA_boolean_set(op->ptr, "confirm_success", true);
+
+  return op->type->exec(C, op);
 }
 
 void ANIM_OT_keyframe_insert_menu(wmOperatorType *ot)
@@ -2067,7 +2063,8 @@ static int delete_key_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No suitable context info for active keying set");
     return OPERATOR_CANCELLED;
   }
-  else if (num_channels > 0) {
+
+  if (num_channels > 0) {
     /* if the appropriate properties have been set, make a note that we've inserted something */
     if (RNA_boolean_get(op->ptr, "confirm_success")) {
       BKE_reportf(op->reports,
@@ -2400,7 +2397,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
        * not have any effect.
        */
       NlaStrip *strip = ptr.data;
-      FCurve *fcu = list_find_fcurve(&strip->fcurves, RNA_property_identifier(prop), index);
+      FCurve *fcu = BKE_fcurve_find(&strip->fcurves, RNA_property_identifier(prop), index);
 
       if (fcu) {
         changed = insert_keyframe_direct(
@@ -2417,7 +2414,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       FCurve *fcu;
       bool driven, special;
 
-      fcu = rna_get_fcurve_context_ui(C, &ptr, prop, index, NULL, NULL, &driven, &special);
+      fcu = BKE_fcurve_find_by_rna_context_ui(C, &ptr, prop, index, NULL, NULL, &driven, &special);
 
       if (fcu && driven) {
         changed = insert_keyframe_direct(
@@ -2560,7 +2557,7 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
        */
       ID *id = ptr.owner_id;
       NlaStrip *strip = ptr.data;
-      FCurve *fcu = list_find_fcurve(&strip->fcurves, RNA_property_identifier(prop), 0);
+      FCurve *fcu = BKE_fcurve_find(&strip->fcurves, RNA_property_identifier(prop), 0);
 
       if (fcu) {
         if (BKE_fcurve_is_protected(fcu)) {
@@ -2727,17 +2724,16 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
      */
     return id_frame_has_keyframe(id, cfra, ANIMFILTER_KEYS_LOCAL);
   }
-  else {
-    /* Normal Mode (or treat as being normal mode):
-     *
-     * Just in case the flags aren't set properly (i.e. only on/off is set, without a mode)
-     * let's set the "normal" flag too, so that it will all be sane everywhere...
-     */
-    scene->toolsettings->autokey_mode = AUTOKEY_MODE_NORMAL;
 
-    /* Can insert anytime we like... */
-    return true;
-  }
+  /* Normal Mode (or treat as being normal mode):
+   *
+   * Just in case the flags aren't set properly (i.e. only on/off is set, without a mode)
+   * let's set the "normal" flag too, so that it will all be sane everywhere...
+   */
+  scene->toolsettings->autokey_mode = AUTOKEY_MODE_NORMAL;
+
+  /* Can insert anytime we like... */
+  return true;
 }
 
 /* ******************************************* */
@@ -2950,9 +2946,7 @@ bool ED_autokeyframe_object(bContext *C, Scene *scene, Object *ob, KeyingSet *ks
 
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 bool ED_autokeyframe_pchan(
@@ -2977,14 +2971,13 @@ bool ED_autokeyframe_pchan(
 
     return true;
   }
-  else {
-    /* add unkeyed tags */
-    if (pchan->bone) {
-      pchan->bone->flag |= BONE_UNKEYED;
-    }
 
-    return false;
+  /* add unkeyed tags */
+  if (pchan->bone) {
+    pchan->bone->flag |= BONE_UNKEYED;
   }
+
+  return false;
 }
 
 /**
@@ -3001,7 +2994,8 @@ bool ED_autokeyframe_property(
   bool special;
   bool changed = false;
 
-  fcu = rna_get_fcurve_context_ui(C, ptr, prop, rnaindex, NULL, &action, &driven, &special);
+  fcu = BKE_fcurve_find_by_rna_context_ui(
+      C, ptr, prop, rnaindex, NULL, &action, &driven, &special);
 
   if (fcu == NULL) {
     return changed;

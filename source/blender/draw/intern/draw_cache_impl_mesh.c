@@ -33,6 +33,7 @@
 #include "BLI_math_bits.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
+#include "BLI_task.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_mesh_types.h"
@@ -111,6 +112,21 @@ BLI_INLINE const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *me)
   return &me->ldata;
 }
 
+BLI_INLINE const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *me)
+{
+  switch ((eMeshWrapperType)me->runtime.wrapper_type) {
+    case ME_WRAPPER_TYPE_MDATA:
+      return &me->vdata;
+      break;
+    case ME_WRAPPER_TYPE_BMESH:
+      return &me->edit_mesh->bm->vdata;
+      break;
+  }
+
+  BLI_assert(0);
+  return &me->vdata;
+}
+
 static void mesh_cd_calc_active_uv_layer(const Mesh *me, DRW_MeshCDMask *cd_used)
 {
   const Mesh *me_final = (me->edit_mesh) ? me->edit_mesh->mesh_eval_final : me;
@@ -134,7 +150,19 @@ static void mesh_cd_calc_active_mask_uv_layer(const Mesh *me, DRW_MeshCDMask *cd
 static void mesh_cd_calc_active_vcol_layer(const Mesh *me, DRW_MeshCDMask *cd_used)
 {
   const Mesh *me_final = (me->edit_mesh) ? me->edit_mesh->mesh_eval_final : me;
-  const CustomData *cd_ldata = mesh_cd_ldata_get_from_mesh(me_final);
+  const CustomData *cd_vdata = mesh_cd_vdata_get_from_mesh(me_final);
+
+  int layer = CustomData_get_active_layer(cd_vdata, CD_PROP_COLOR);
+  if (layer != -1) {
+    cd_used->sculpt_vcol |= (1 << layer);
+  }
+}
+
+static void mesh_cd_calc_active_mloopcol_layer(const Mesh *me, DRW_MeshCDMask *cd_used)
+{
+  const Mesh *me_final = (me->edit_mesh) ? me->edit_mesh->mesh_eval_final : me;
+  const CustomData *cd_ldata = &me_final->ldata;
+
   int layer = CustomData_get_active_layer(cd_ldata, CD_MLOOPCOL);
   if (layer != -1) {
     cd_used->vcol |= (1 << layer);
@@ -147,6 +175,7 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Mesh *me,
 {
   const Mesh *me_final = (me->edit_mesh) ? me->edit_mesh->mesh_eval_final : me;
   const CustomData *cd_ldata = mesh_cd_ldata_get_from_mesh(me_final);
+  const CustomData *cd_vdata = mesh_cd_vdata_get_from_mesh(me_final);
 
   /* See: DM_vertex_attributes_from_gpu for similar logic */
   DRW_MeshCDMask cd_used;
@@ -173,6 +202,13 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Mesh *me,
             if (layer == -1) {
               layer = CustomData_get_named_layer(cd_ldata, CD_MLOOPCOL, name);
               type = CD_MCOL;
+            }
+
+            if (layer == -1) {
+              if (U.experimental.use_sculpt_vertex_colors) {
+                layer = CustomData_get_named_layer(cd_vdata, CD_PROP_COLOR, name);
+                type = CD_PROP_COLOR;
+              }
             }
 #if 0 /* Tangents are always from UV's - this will never happen. */
             if (layer == -1) {
@@ -221,7 +257,20 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Mesh *me,
             }
             break;
           }
+          case CD_PROP_COLOR: {
+            /* Sculpt Vertex Colors */
+            if (layer == -1) {
+              layer = (name[0] != '\0') ?
+                          CustomData_get_named_layer(cd_vdata, CD_PROP_COLOR, name) :
+                          CustomData_get_render_layer(cd_vdata, CD_PROP_COLOR);
+            }
+            if (layer != -1) {
+              cd_used.sculpt_vcol |= (1 << layer);
+            }
+            break;
+          }
           case CD_MCOL: {
+            /* Vertex Color Data */
             if (layer == -1) {
               layer = (name[0] != '\0') ? CustomData_get_named_layer(cd_ldata, CD_MLOOPCOL, name) :
                                           CustomData_get_render_layer(cd_ldata, CD_MLOOPCOL);
@@ -229,6 +278,7 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Mesh *me,
             if (layer != -1) {
               cd_used.vcol |= (1 << layer);
             }
+
             break;
           }
           case CD_ORCO: {
@@ -314,7 +364,7 @@ static void drw_mesh_weight_state_extract(Object *ob,
   wstate->alert_mode = ts->weightuser;
 
   if (paint_mode && ts->multipaint) {
-    /* Multipaint needs to know all selected bones, not just the active group.
+    /* Multi-paint needs to know all selected bones, not just the active group.
      * This is actually a relatively expensive operation, but caching would be difficult. */
     wstate->defgroup_sel = BKE_object_defgroup_selected_get(
         ob, wstate->defgroup_len, &wstate->defgroup_sel_count);
@@ -678,10 +728,22 @@ static void texpaint_request_active_vcol(MeshBatchCache *cache, Mesh *me)
 {
   DRW_MeshCDMask cd_needed;
   mesh_cd_layers_type_clear(&cd_needed);
-  mesh_cd_calc_active_vcol_layer(me, &cd_needed);
+  mesh_cd_calc_active_mloopcol_layer(me, &cd_needed);
 
   BLI_assert(cd_needed.vcol != 0 &&
-             "No vcol layer available in vertpaint, but batches requested anyway!");
+             "No MLOOPCOL layer available in vertpaint, but batches requested anyway!");
+
+  mesh_cd_layers_type_merge(&cache->cd_needed, cd_needed);
+}
+
+static void sculpt_request_active_vcol(MeshBatchCache *cache, Mesh *me)
+{
+  DRW_MeshCDMask cd_needed;
+  mesh_cd_layers_type_clear(&cd_needed);
+  mesh_cd_calc_active_vcol_layer(me, &cd_needed);
+
+  BLI_assert(cd_needed.sculpt_vcol != 0 &&
+             "No MPropCol layer available in Sculpt, but batches requested anyway!");
 
   mesh_cd_layers_type_merge(&cache->cd_needed, cd_needed);
 }
@@ -798,9 +860,34 @@ GPUBatch *DRW_mesh_batch_cache_get_surface_vertpaint(Mesh *me)
   return DRW_batch_request(&cache->batch.surface);
 }
 
+GPUBatch *DRW_mesh_batch_cache_get_surface_sculpt(Mesh *me)
+{
+  MeshBatchCache *cache = mesh_batch_cache_get(me);
+  sculpt_request_active_vcol(cache, me);
+  mesh_batch_cache_add_request(cache, MBC_SURFACE);
+  return DRW_batch_request(&cache->batch.surface);
+}
+
 int DRW_mesh_material_count_get(Mesh *me)
 {
   return mesh_render_mat_len_get(me);
+}
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Edit Mode API
+ * \{ */
+
+GPUVertBuf *DRW_mesh_batch_cache_pos_vertbuf_get(Mesh *me)
+{
+  MeshBatchCache *cache = mesh_batch_cache_get(me);
+  /* Request surface to trigger the vbo filling. Otherwise it may do nothing. */
+  mesh_batch_cache_add_request(cache, MBC_SURFACE);
+  DRW_batch_request(&cache->batch.surface);
+
+  DRW_vbo_request(NULL, &cache->final.vbo.pos_nor);
+  return cache->final.vbo.pos_nor;
 }
 
 /** \} */
@@ -1019,9 +1106,14 @@ void DRW_mesh_batch_cache_free_old(Mesh *me, int ctime)
 }
 
 /* Can be called for any surface type. Mesh *me is the final mesh. */
-void DRW_mesh_batch_cache_create_requested(
-    Object *ob, Mesh *me, const Scene *scene, const bool is_paint_mode, const bool use_hide)
+void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
+                                           Object *ob,
+                                           Mesh *me,
+                                           const Scene *scene,
+                                           const bool is_paint_mode,
+                                           const bool use_hide)
 {
+  BLI_assert(task_graph);
   GPUIndexBuf **saved_elem_ranges = NULL;
   const ToolSettings *ts = NULL;
   if (scene) {
@@ -1114,7 +1206,9 @@ void DRW_mesh_batch_cache_create_requested(
         if (cache->cd_used.orco != cache->cd_needed.orco) {
           GPU_VERTBUF_DISCARD_SAFE(mbuffercache->vbo.orco);
         }
-        if ((cache->cd_used.vcol & cache->cd_needed.vcol) != cache->cd_needed.vcol) {
+        if (((cache->cd_used.vcol & cache->cd_needed.vcol) != cache->cd_needed.vcol) ||
+            ((cache->cd_used.sculpt_vcol & cache->cd_needed.sculpt_vcol) !=
+             cache->cd_needed.sculpt_vcol)) {
           GPU_VERTBUF_DISCARD_SAFE(mbuffercache->vbo.vcol);
         }
       }
@@ -1195,7 +1289,7 @@ void DRW_mesh_batch_cache_create_requested(
     if (cache->cd_used.uv != 0) {
       DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.uv);
     }
-    if (cache->cd_used.vcol != 0) {
+    if (cache->cd_used.vcol != 0 || cache->cd_used.sculpt_vcol != 0) {
       DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.vcol);
     }
   }
@@ -1263,7 +1357,7 @@ void DRW_mesh_batch_cache_create_requested(
       if ((cache->cd_used.tan != 0) || (cache->cd_used.tan_orco != 0)) {
         DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.tan);
       }
-      if (cache->cd_used.vcol != 0) {
+      if (cache->cd_used.vcol != 0 || cache->cd_used.sculpt_vcol != 0) {
         DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.vcol);
       }
       if (cache->cd_used.orco != 0) {
@@ -1378,7 +1472,8 @@ void DRW_mesh_batch_cache_create_requested(
                                          false;
 
   if (do_uvcage) {
-    mesh_buffer_cache_create_requested(cache,
+    mesh_buffer_cache_create_requested(task_graph,
+                                       cache,
                                        cache->uv_cage,
                                        me,
                                        is_editmode,
@@ -1394,7 +1489,8 @@ void DRW_mesh_batch_cache_create_requested(
   }
 
   if (do_cage) {
-    mesh_buffer_cache_create_requested(cache,
+    mesh_buffer_cache_create_requested(task_graph,
+                                       cache,
                                        cache->cage,
                                        me,
                                        is_editmode,
@@ -1409,7 +1505,8 @@ void DRW_mesh_batch_cache_create_requested(
                                        true);
   }
 
-  mesh_buffer_cache_create_requested(cache,
+  mesh_buffer_cache_create_requested(task_graph,
+                                     cache,
                                      cache->final,
                                      me,
                                      is_editmode,
@@ -1422,10 +1519,12 @@ void DRW_mesh_batch_cache_create_requested(
                                      scene,
                                      ts,
                                      use_hide);
-
 #ifdef DEBUG
 check:
   /* Make sure all requested batches have been setup. */
+  /* TODO(jbakker): we should move this to the draw_manager but that needs refactoring and
+   * additional looping.*/
+  BLI_task_graph_work_and_wait(task_graph);
   for (int i = 0; i < sizeof(cache->batch) / sizeof(void *); i++) {
     BLI_assert(!DRW_batch_requested(((GPUBatch **)&cache->batch)[i], 0));
   }

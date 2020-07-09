@@ -63,6 +63,7 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"
 
 #include "DRW_engine.h"
@@ -99,7 +100,8 @@
 #include "intern/node/deg_node.h"
 #include "intern/node/deg_node_id.h"
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 #define DEBUG_PRINT \
   if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) \
@@ -494,7 +496,7 @@ void update_scene_orig_pointers(const Scene *scene_orig, Scene *scene_cow)
 }
 
 /* Check whether given ID is expanded or still a shallow copy. */
-BLI_INLINE bool check_datablock_expanded(const ID *id_cow)
+inline bool check_datablock_expanded(const ID *id_cow)
 {
   return (id_cow->name[0] != '\0');
 }
@@ -931,7 +933,7 @@ ID *deg_expand_copy_on_write_datablock(const Depsgraph *depsgraph,
                                        DepsgraphNodeBuilder *node_builder,
                                        bool create_placeholders)
 {
-  DEG::IDNode *id_node = depsgraph->find_id_node(id_orig);
+  IDNode *id_node = depsgraph->find_id_node(id_orig);
   BLI_assert(id_node != nullptr);
   return deg_expand_copy_on_write_datablock(depsgraph, id_node, node_builder, create_placeholders);
 }
@@ -955,7 +957,7 @@ ID *deg_update_copy_on_write_datablock(const Depsgraph *depsgraph, const IDNode 
 /* NOTE: Depsgraph is supposed to have ID node already. */
 ID *deg_update_copy_on_write_datablock(const Depsgraph *depsgraph, ID *id_orig)
 {
-  DEG::IDNode *id_node = depsgraph->find_id_node(id_orig);
+  IDNode *id_node = depsgraph->find_id_node(id_orig);
   BLI_assert(id_node != nullptr);
   return deg_update_copy_on_write_datablock(depsgraph, id_node);
 }
@@ -1075,7 +1077,7 @@ void deg_free_copy_on_write_datablock(ID *id_cow)
 
 void deg_evaluate_copy_on_write(struct ::Depsgraph *graph, const IDNode *id_node)
 {
-  const DEG::Depsgraph *depsgraph = reinterpret_cast<const DEG::Depsgraph *>(graph);
+  const Depsgraph *depsgraph = reinterpret_cast<const Depsgraph *>(graph);
   DEG_debug_print_eval(graph, __func__, id_node->id_orig->name, id_node->id_cow);
   if (id_node->id_orig == &depsgraph->scene->id) {
     /* NOTE: This is handled by eval_ctx setup routines, which
@@ -1123,4 +1125,5 @@ bool deg_copy_on_write_is_needed(const ID_Type id_type)
   return ID_TYPE_IS_COW(id_type);
 }
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender
