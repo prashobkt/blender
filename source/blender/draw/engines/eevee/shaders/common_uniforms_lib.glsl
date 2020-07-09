@@ -2,7 +2,6 @@
 layout(std140) uniform common_block
 {
   mat4 pastViewProjectionMatrix;
-  vec4 viewVecs[2];
   vec2 mipRatio[10]; /* To correct mip level texel misalignment */
   /* Ambient Occlusion */
   vec4 aoParameters[2];

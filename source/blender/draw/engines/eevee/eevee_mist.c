@@ -94,11 +94,11 @@ void EEVEE_mist_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     }
   }
   else {
-    float near = -sldata->common_data.view_vecs[0][2];
-    float range = sldata->common_data.view_vecs[1][2];
+    float near = DRW_view_near_distance_get(NULL);
+    float far = DRW_view_far_distance_get(NULL);
     /* Fallback */
     g_data->mist_start = near;
-    g_data->mist_inv_dist = 1.0f / fabsf(range);
+    g_data->mist_inv_dist = 1.0f / fabsf(far - near);
     g_data->mist_falloff = 1.0f;
   }
 

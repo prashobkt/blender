@@ -247,17 +247,11 @@ void EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     common_data->vol_shadow_steps = 0;
   }
 
-  /* Update view_vecs */
-  float invproj[4][4], winmat[4][4];
-  DRW_view_winmat_get(NULL, winmat, false);
-  DRW_view_winmat_get(NULL, invproj, true);
-  EEVEE_update_viewvecs(invproj, winmat, sldata->common_data.view_vecs);
-
   if (DRW_view_is_persp_get(NULL)) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
     sample_distribution = 4.0f * (max_ff(1.0f - sample_distribution, 1e-2f));
 
-    const float clip_start = common_data->view_vecs[0][2];
+    const float clip_start = DRW_view_near_distance_get(NULL);
     /* Negate */
     float near = integration_start = min_ff(-integration_start, clip_start - 1e-4f);
     float far = integration_end = min_ff(-integration_end, near - 1e-4f);
@@ -268,8 +262,8 @@ void EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     common_data->vol_depth_param[2] = sample_distribution;
   }
   else {
-    const float clip_start = common_data->view_vecs[0][2];
-    const float clip_end = clip_start + common_data->view_vecs[1][2];
+    const float clip_start = DRW_view_near_distance_get(NULL);
+    const float clip_end = DRW_view_far_distance_get(NULL);
     integration_start = min_ff(integration_end, clip_start);
     integration_end = max_ff(-integration_end, clip_end);
 

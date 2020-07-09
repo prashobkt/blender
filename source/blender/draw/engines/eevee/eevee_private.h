@@ -747,7 +747,6 @@ typedef struct EEVEE_EffectsInfo {
  * - sizeof(bool) == sizeof(int) in GLSL so use int in C */
 typedef struct EEVEE_CommonUniformBuffer {
   float prev_persmat[4][4]; /* mat4 */
-  float view_vecs[2][4];    /* vec4[2] */
   float mip_ratio[10][4];   /* vec2[10] */
   /* Ambient Occlusion */
   /* -- 16 byte aligned -- */
@@ -1001,7 +1000,6 @@ void EEVEE_object_hair_cache_populate(EEVEE_Data *vedata,
 void EEVEE_materials_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
 void EEVEE_materials_free(void);
 void EEVEE_update_noise(EEVEE_PassList *psl, EEVEE_FramebufferList *fbl, const double offsets[3]);
-void EEVEE_update_viewvecs(float invproj[4][4], float winmat[4][4], float (*r_viewvecs)[4]);
 void EEVEE_material_renderpasses_init(EEVEE_Data *vedata);
 void EEVEE_material_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, uint tot_samples);
 void EEVEE_material_output_accumulate(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
