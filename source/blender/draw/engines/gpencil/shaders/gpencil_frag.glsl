@@ -89,12 +89,20 @@ void main()
   fragColor *= stroke_round_cap_mask(
       strokePt1, strokePt2, strokeAspect, strokeThickness, strokeHardeness);
 
-  /* For compatibility with colored alpha buffer.
-   * Note that we are limited to mono-chromatic alpha blending here
-   * because of the blend equation and the limit of 1 color target
-   * when using custom color blending. */
-  revealColor = vec4(0.0, 0.0, 0.0, fragColor.a);
-
+  /* If material masking. Use a hack to determine if the pixel is fill or not
+   * using the thickness. */
+  if (((GP_FLAG_TEST(matFlag, GP_STROKE_MASK)) && (strokeThickness != 1e18)) ||
+      (GP_FLAG_TEST(matFlag, GP_FILL_MASK) && (strokeThickness == 1e18))) {
+    fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    revealColor = vec4(1.0, 1.0, 1.0, 0.0);
+  }
+  else {
+    /* For compatibility with colored alpha buffer.
+     * Note that we are limited to mono-chromatic alpha blending here
+     * because of the blend equation and the limit of 1 color target
+     * when using custom color blending. */
+    revealColor = vec4(0.0, 0.0, 0.0, fragColor.a);
+  }
   if (fragColor.a < 0.001) {
     discard;
   }

@@ -75,6 +75,8 @@ typedef struct gpMaterial {
 #define GP_STROKE_TEXTURE_STENCIL (1 << 4)
 #define GP_STROKE_TEXTURE_PREMUL (1 << 5)
 #define GP_STROKE_DOTS (1 << 6)
+#define GP_STROKE_MASK (1 << 7)
+#define GP_FILL_MASK (1 << 8)
 #define GP_FILL_TEXTURE_USE (1 << 10)
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)
@@ -189,6 +191,10 @@ typedef struct GPENCIL_tObject {
   float plane_mat[4][4];
 
   bool is_drawmode3d;
+
+  /* Use Material Masking. */
+  bool do_mat_masking;
+
 } GPENCIL_tObject;
 
 /* *********** LISTS *********** */
@@ -218,6 +224,7 @@ typedef struct GPENCIL_FramebufferList {
   struct GPUFrameBuffer *mask_fb;
   struct GPUFrameBuffer *smaa_edge_fb;
   struct GPUFrameBuffer *smaa_weight_fb;
+  struct GPUFrameBuffer *mat_mask_fb;
 } GPENCIL_FramebufferList;
 
 typedef struct GPENCIL_TextureList {

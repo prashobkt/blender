@@ -24,6 +24,8 @@ struct gpMaterial {
 #define GP_STROKE_TEXTURE_STENCIL (1 << 4)
 #define GP_STROKE_TEXTURE_PREMUL (1 << 5)
 #define GP_STROKE_DOTS (1 << 6)
+#define GP_STROKE_MASK (1 << 7)
+#define GP_FILL_MASK (1 << 8)
 #define GP_FILL_TEXTURE_USE (1 << 10)
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)
@@ -573,6 +575,14 @@ void fill_vertex()
   color_output(fill_col, fcol_decode, 1.0, mix_tex);
 
   matFlag = MATERIAL(m).flag & GP_FILL_FLAGS;
+
+  if (GP_FLAG_TEST(MATERIAL(m).flag, GP_STROKE_MASK)) {
+    matFlag |= GP_STROKE_MASK;
+  }
+  if (GP_FLAG_TEST(MATERIAL(m).flag, GP_FILL_MASK)) {
+    matFlag |= GP_FILL_MASK;
+  }
+
   matFlag |= m << GP_MATID_SHIFT;
 
   vec2 loc = MATERIAL(m).fill_uv_offset.xy;
