@@ -35,6 +35,7 @@
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
+#include "ED_buttons.h"
 #include "ED_screen.h"
 #include "ED_space_api.h"
 #include "ED_view3d.h" /* To draw toolbar UI. */
@@ -141,6 +142,98 @@ static void buttons_main_region_init(wmWindowManager *wm, ARegion *region)
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
+/**
+ * Fills an array with the tab context values for the properties editor. -1 signals a separator.
+ *
+ * \return The total number of items in the array returned.
+ */
+int ED_buttons_tabs_list(SpaceProperties *sbuts, int *context_tabs_array)
+{
+  int length = 0;
+  if (sbuts->pathflag & (1 << BCONTEXT_TOOL)) {
+    context_tabs_array[length] = BCONTEXT_TOOL;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_RENDER)) {
+    context_tabs_array[length] = BCONTEXT_RENDER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_OUTPUT)) {
+    context_tabs_array[length] = BCONTEXT_OUTPUT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_VIEW_LAYER)) {
+    context_tabs_array[length] = BCONTEXT_VIEW_LAYER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_SCENE)) {
+    context_tabs_array[length] = BCONTEXT_SCENE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_WORLD)) {
+    context_tabs_array[length] = BCONTEXT_WORLD;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_OBJECT)) {
+    context_tabs_array[length] = BCONTEXT_OBJECT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_MODIFIER)) {
+    context_tabs_array[length] = BCONTEXT_MODIFIER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_SHADERFX)) {
+    context_tabs_array[length] = BCONTEXT_SHADERFX;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_PARTICLE)) {
+    context_tabs_array[length] = BCONTEXT_PARTICLE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_PHYSICS)) {
+    context_tabs_array[length] = BCONTEXT_PHYSICS;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_CONSTRAINT)) {
+    context_tabs_array[length] = BCONTEXT_CONSTRAINT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_DATA)) {
+    context_tabs_array[length] = BCONTEXT_DATA;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_BONE)) {
+    context_tabs_array[length] = BCONTEXT_BONE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_BONE_CONSTRAINT)) {
+    context_tabs_array[length] = BCONTEXT_BONE_CONSTRAINT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_MATERIAL)) {
+    context_tabs_array[length] = BCONTEXT_MATERIAL;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_TEXTURE)) {
+    context_tabs_array[length] = BCONTEXT_TEXTURE;
+    length++;
+  }
+
+  return length;
+}
+
 static void buttons_main_region_layout_properties(const bContext *C,
                                                   SpaceProperties *sbuts,
                                                   ARegion *region)
@@ -208,10 +301,69 @@ static void buttons_main_region_layout_properties(const bContext *C,
       C, region, &region->type->paneltypes, contexts, sbuts->mainb, vertical, NULL);
 }
 
+static void property_search_other_tabs(const bContext *C,
+                                       SpaceProperties *sbuts,
+                                       ARegion *main_region)
+{
+  sbuts->context_search_filter_active = 0;
+
+  /* Duplicate space and region so we don't change any data for this space. */
+  ScrArea *area_copy = MEM_dupallocN(CTX_wm_area(C));
+  ARegion *region_copy = BKE_area_region_copy(CTX_wm_area(C)->type, main_region);
+  bContext *C_copy = CTX_copy(C);
+  CTX_wm_area_set(C_copy, area_copy);
+  CTX_wm_region_set(C_copy, region_copy);
+  SpaceProperties *sbuts_copy = MEM_dupallocN(sbuts);
+
+  int context_tabs_array[32];
+  int tabs_tot = ED_buttons_tabs_list(sbuts, context_tabs_array);
+
+  /* Loop through the tabs added to the properties editor. */
+  for (int i = 0; i < tabs_tot; i++) {
+    if (context_tabs_array[i] == -1) {
+      continue;
+    }
+
+    /* Run the layout with this tab set active. */
+    sbuts_copy->mainb = sbuts->mainbo = sbuts_copy->mainbuser = context_tabs_array[i];
+    buttons_main_region_layout_properties(C_copy, sbuts_copy, region_copy);
+
+    /* Store whether this tab has any unfiltered panels left. */
+    bool has_unfiltered_panel = false;
+    LISTBASE_FOREACH (Panel *, panel, &region_copy->panels) {
+      has_unfiltered_panel |= !UI_panel_is_search_filtered(panel);
+    }
+    if (has_unfiltered_panel) {
+      sbuts->context_search_filter_active |= (1 << i);
+    }
+
+    /* Free data created during the layout process. */
+    UI_region_panels_remove_handlers(C_copy, region_copy);
+    BKE_area_region_panels_free(&region_copy->panels);
+    UI_blocklist_free(C_copy, &region_copy->uiblocks);
+  }
+
+  for (int i = 0; i < tabs_tot; i++) {
+    printf("tab value: %d, unfiltered: %s\n",
+           context_tabs_array[i],
+           (sbuts->context_search_filter_active & (1 << i)) ? "true" : "else");
+  }
+
+  BKE_area_region_free(CTX_wm_area(C_copy)->type, region_copy);
+  MEM_freeN(region_copy);
+  MEM_freeN(sbuts_copy);
+  MEM_freeN(area_copy);
+  MEM_freeN(C_copy);
+}
+
 static void buttons_main_region_layout(const bContext *C, ARegion *region)
 {
   /* draw entirely, view changes should be handled here */
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
+
+  if (sbuts->search_string != NULL && sbuts->search_string[0] != '\0') {
+    property_search_other_tabs(C, sbuts, region);
+  }
 
   if (sbuts->mainb == BCONTEXT_TOOL) {
     ED_view3d_buttons_region_layout_ex(C, region, "Tool");

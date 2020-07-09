@@ -1708,6 +1708,8 @@ struct PointerRNA *UI_region_panel_custom_data_under_cursor(const struct bContex
                                                             const struct wmEvent *event);
 void UI_panel_custom_data_set(struct Panel *panel, struct PointerRNA *custom_data);
 
+void UI_region_panels_remove_handlers(const struct bContext *C, struct ARegion *region);
+
 /* Polyinstantiated panels for representing a list of data. */
 struct Panel *UI_panel_add_instanced(struct ScrArea *area,
                                      struct ARegion *region,

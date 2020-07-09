@@ -2873,6 +2873,13 @@ static void ui_handler_remove_panel(bContext *C, void *userdata)
   panel_activate_state(C, panel, PANEL_STATE_EXIT);
 }
 
+void UI_region_panels_remove_handlers(const bContext *C, ARegion *region)
+{
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+    panel_activate_state(C, panel, PANEL_STATE_EXIT);
+  }
+}
+
 static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelState state)
 {
   uiHandlePanelData *data = panel->activedata;
@@ -2900,7 +2907,7 @@ static void panel_activate_state(const bContext *C, Panel *panel, uiHandlePanelS
   }
 
   if (state == PANEL_STATE_EXIT) {
-    MEM_freeN(data);
+    MEM_SAFE_FREE(data);
     panel->activedata = NULL;
 
     WM_event_remove_ui_handler(
