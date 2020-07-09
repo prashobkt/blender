@@ -36,7 +36,7 @@ struct gpMaterial {
 
 /* Multiline defines can crash blender with certain GPU drivers. */
 /* clang-format off */
-#define GP_FILL_FLAGS (GP_FILL_TEXTURE_USE | GP_FILL_TEXTURE_PREMUL | GP_FILL_TEXTURE_CLIP | GP_FILL_GRADIENT_USE | GP_FILL_GRADIENT_RADIAL)
+#define GP_FILL_FLAGS (GP_FILL_TEXTURE_USE | GP_FILL_TEXTURE_PREMUL | GP_FILL_TEXTURE_CLIP | GP_FILL_GRADIENT_USE | GP_FILL_GRADIENT_RADIAL | GP_FILL_MASK)
 /* clang-format on */
 
 #define GP_FLAG_TEST(flag, val) (((flag) & (val)) != 0)
@@ -575,13 +575,6 @@ void fill_vertex()
   color_output(fill_col, fcol_decode, 1.0, mix_tex);
 
   matFlag = MATERIAL(m).flag & GP_FILL_FLAGS;
-
-  if (GP_FLAG_TEST(MATERIAL(m).flag, GP_STROKE_MASK)) {
-    matFlag |= GP_STROKE_MASK;
-  }
-  if (GP_FLAG_TEST(MATERIAL(m).flag, GP_FILL_MASK)) {
-    matFlag |= GP_FILL_MASK;
-  }
 
   matFlag |= m << GP_MATID_SHIFT;
 
