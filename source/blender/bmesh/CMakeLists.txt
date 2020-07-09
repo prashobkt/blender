@@ -27,6 +27,7 @@ set(INC
   ../../../intern/atomic
   ../../../intern/eigen
   ../../../intern/guardedalloc
+  ../../../intern/clog
   ../../../extern/rangetree
 )
 

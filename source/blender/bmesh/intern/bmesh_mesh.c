@@ -20,6 +20,7 @@
  * BM mesh level functions.
  */
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_listBase.h"
@@ -41,6 +42,8 @@
 #include "atomic_ops.h"
 
 #include "intern/bmesh_private.h"
+
+CLG_LOGREF_DECLARE_GLOBAL(BMESH_LOG, "bmesh.mesh");
 
 /* used as an extern, defined in bmesh.h */
 const BMAllocTemplate bm_mesh_allocsize_default = {512, 1024, 2048, 512};
@@ -1027,9 +1030,7 @@ static bool bm_mesh_loops_split_lnor_fans(BMesh *bm,
        * Maybe we should set those loops' edges as sharp?
        */
       BLI_BITMAP_ENABLE(done_loops, i);
-      if (G.debug & G_DEBUG) {
-        printf("WARNING! Getting invalid NULL loop space for loop %d!\n", i);
-      }
+      CLOG_WARN(BMESH_LOG, "Getting invalid NULL loop space for loop %d!", i);
       continue;
     }
 

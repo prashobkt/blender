@@ -28,6 +28,8 @@
  * parts of the bmesh internals.
  */
 
+extern struct CLG_LogRef *BMESH_LOG;
+
 /* returns positive nonzero on error */
 
 #ifdef NDEBUG

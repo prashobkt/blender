@@ -2844,8 +2844,8 @@ static PTCacheMem *ptcache_disk_frame_to_mem(PTCacheID *pid, int cfra)
 
   ptcache_file_close(pf);
 
-  if (error && G.debug & G_DEBUG) {
-    printf("Error reading from disk cache\n");
+  if (error) {
+    CLOG_ERROR(&LOG, "Error reading from disk cache");
   }
 
   return pm;
@@ -2860,9 +2860,7 @@ static int ptcache_mem_frame_to_disk(PTCacheID *pid, PTCacheMem *pm)
   pf = ptcache_file_open(pid, PTCACHE_FILE_WRITE, pm->frame);
 
   if (pf == NULL) {
-    if (G.debug & G_DEBUG) {
-      printf("Error opening disk cache file for writing\n");
-    }
+    CLOG_ERROR(&LOG, "Error opening disk cache file for writing");
     return 0;
   }
 
@@ -2938,8 +2936,8 @@ static int ptcache_mem_frame_to_disk(PTCacheID *pid, PTCacheMem *pm)
 
   ptcache_file_close(pf);
 
-  if (error && G.debug & G_DEBUG) {
-    printf("Error writing to disk cache\n");
+  if (error) {
+    CLOG_ERROR(&LOG, "Error writing to disk cache");
   }
 
   return error == 0;
@@ -2955,9 +2953,7 @@ static int ptcache_read_stream(PTCacheID *pid, int cfra)
   }
 
   if (pf == NULL) {
-    if (G.debug & G_DEBUG) {
-      printf("Error opening disk cache file for reading\n");
-    }
+    CLOG_ERROR(&LOG, "Error opening disk cache file for reading");
     return 0;
   }
 
@@ -3252,9 +3248,7 @@ static int ptcache_write_stream(PTCacheID *pid, int cfra, int totpoint)
   pf = ptcache_file_open(pid, PTCACHE_FILE_WRITE, cfra);
 
   if (pf == NULL) {
-    if (G.debug & G_DEBUG) {
-      printf("Error opening disk cache file for writing\n");
-    }
+    CLOG_ERROR(&LOG, "Error opening disk cache file for writing");
     return 0;
   }
 
@@ -3273,8 +3267,8 @@ static int ptcache_write_stream(PTCacheID *pid, int cfra, int totpoint)
 
   ptcache_file_close(pf);
 
-  if (error && G.debug & G_DEBUG) {
-    printf("Error writing to disk cache\n");
+  if (error) {
+    CLOG_ERROR(&LOG, "Error writing to disk cache");
   }
 
   return error == 0;
@@ -4231,10 +4225,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       baker->update_progress(baker->bake_job, progress, &cancel);
     }
 
-    if (G.background) {
-      printf("bake: frame %d :: %d\n", CFRA, endframe);
-    }
-    else {
+    if (CLOG_CHECK_VERBOSITY(&LOG, 2)) {
       ctime = PIL_check_seconds_timer();
 
       fetd = (ctime - ptime) * (endframe - CFRA) / baker->quick_step;
@@ -4246,12 +4237,15 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
         ptcache_dt_to_str(run, ctime - stime);
         ptcache_dt_to_str(etd, fetd);
 
-        printf("Baked for %s, current frame: %i/%i (%.3fs), ETC: %s\r",
-               run,
-               CFRA - startframe + 1,
-               endframe - startframe + 1,
-               ctime - ptime,
-               etd);
+        CLOG_VERBOSE_EVERY_N(&LOG,
+                             2,
+                             10,
+                             "Baked for %s, current frame: %i/%i (%.3fs), ETC: %s",
+                             run,
+                             CFRA - startframe + 1,
+                             endframe - startframe + 1,
+                             ctime - ptime,
+                             etd);
       }
 
       ptime = ctime;
@@ -4266,12 +4260,12 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
   }
 
   if (use_timer) {
-    /* start with newline because of \r above */
     ptcache_dt_to_str(run, PIL_check_seconds_timer() - stime);
-    printf("\nBake %s %s (%i frames simulated).\n",
-           (cancel ? "canceled after" : "finished in"),
-           run,
-           CFRA - startframe);
+    CLOG_INFO(&LOG,
+              "Bake %s %s (%i frames simulated)",
+              (cancel ? "canceled after" : "finished in"),
+              run,
+              CFRA - startframe);
   }
 
   /* clear baking flag */
@@ -4387,9 +4381,7 @@ void BKE_ptcache_toggle_disk_cache(PTCacheID *pid)
 
   if (!G.relbase_valid) {
     cache->flag &= ~PTCACHE_DISK_CACHE;
-    if (G.debug & G_DEBUG) {
-      printf("File must be saved before using disk cache!\n");
-    }
+    CLOG_WARN(&LOG, "File must be saved before using disk cache!");
     return;
   }
 
