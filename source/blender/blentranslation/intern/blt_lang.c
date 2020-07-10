@@ -47,6 +47,9 @@
 #include "DNA_userdef_types.h"
 
 #include "MEM_guardedalloc.h"
+#include "CLG_log.h"
+
+static CLG_LogRef LOG = {"blt"};
 
 /* Cached IME support flags */
 static bool ime_is_lang_supported = false;
@@ -225,7 +228,7 @@ void BLT_lang_init(void)
     old_locale = BLI_strdup(old_locale);
     if (setlocale(LC_ALL, lang) == NULL) {
       setenv("LANG", "C", 1);
-      printf("Warning: Falling back to the standard locale (\"C\")\n");
+      CLOG_WARN(&LOG, "Falling back to the standard locale (\"C\")");
     }
     setlocale(LC_ALL, old_locale);
     MEM_freeN(old_locale);
@@ -238,7 +241,7 @@ void BLT_lang_init(void)
     fill_locales();
   }
   else {
-    printf("%s: 'locale' data path for translations not found, continuing\n", __func__);
+    CLOG_STR_WARN(&LOG, "'locale' data path for translations not found, continuing");
   }
 #else
 #endif
