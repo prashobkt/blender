@@ -148,6 +148,7 @@ class MFSocket : NonCopyable, NonMovable {
   StringRefNull name() const;
 
   uint id() const;
+  uint index() const;
 
   const MFDataType &data_type() const;
 
@@ -224,6 +225,13 @@ class MFNetwork : NonCopyable, NonMovable {
 
   MFNode *node_or_null_by_id(uint id);
   const MFNode *node_or_null_by_id(uint id) const;
+
+  MFSocket *socket_or_null_by_id(uint id);
+  const MFSocket *socket_or_null_by_id(uint id) const;
+
+  void find_dependencies(Span<const MFInputSocket *> sockets,
+                         VectorSet<const MFOutputSocket *> &r_dummy_sockets,
+                         VectorSet<const MFInputSocket *> &r_unlinked_inputs) const;
 
   std::string to_dot(Span<const MFNode *> marked_nodes = {}) const;
 };
@@ -398,6 +406,11 @@ inline uint MFSocket::id() const
   return id_;
 }
 
+inline uint MFSocket::index() const
+{
+  return index_;
+}
+
 inline const MFDataType &MFSocket::data_type() const
 {
   return data_type_;
@@ -472,7 +485,7 @@ inline Span<MFInputSocket *> MFOutputSocket::targets()
 
 inline Span<const MFInputSocket *> MFOutputSocket::targets() const
 {
-  return targets_.as_span();
+  return targets_;
 }
 
 /* --------------------------------------------------------------------
@@ -497,6 +510,16 @@ inline MFNode *MFNetwork::node_or_null_by_id(uint id)
 inline const MFNode *MFNetwork::node_or_null_by_id(uint id) const
 {
   return node_or_null_by_id_[id];
+}
+
+inline MFSocket *MFNetwork::socket_or_null_by_id(uint id)
+{
+  return socket_or_null_by_id_[id];
+}
+
+inline const MFSocket *MFNetwork::socket_or_null_by_id(uint id) const
+{
+  return socket_or_null_by_id_[id];
 }
 
 inline uint MFNetwork::socket_id_amount() const

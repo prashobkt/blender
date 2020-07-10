@@ -16,6 +16,8 @@
 
 #include "FN_multi_function_builder.hh"
 
+#include "BLI_hash.hh"
+
 namespace blender::fn {
 
 CustomMF_GenericConstant::CustomMF_GenericConstant(const CPPType &type, const void *value)
@@ -33,6 +35,23 @@ void CustomMF_GenericConstant::call(IndexMask mask,
 {
   GMutableSpan output = params.uninitialized_single_output(0);
   type_.fill_uninitialized_indices(value_, output.buffer(), mask);
+}
+
+uint CustomMF_GenericConstant::hash() const
+{
+  return type_.hash(value_);
+}
+
+bool CustomMF_GenericConstant::equals(const MultiFunction &other) const
+{
+  const CustomMF_GenericConstant *_other = dynamic_cast<const CustomMF_GenericConstant *>(&other);
+  if (_other == nullptr) {
+    return false;
+  }
+  if (type_ != _other->type_) {
+    return false;
+  }
+  return type_.is_equal(value_, _other->value_);
 }
 
 static std::string gspan_to_string(GSpan array)
