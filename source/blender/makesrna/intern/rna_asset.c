@@ -161,6 +161,10 @@ static void rna_def_asset_data(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Description", "A description of the asset to be displayed for the user");
 
+  prop = RNA_def_property(srna, "author", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_maxlength(prop, MAX_NAME);
+  RNA_def_property_ui_text(prop, "Author", "Name of the person responsible for the asset");
+
   prop = RNA_def_property(srna, "tags", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "CustomTag");
   RNA_def_property_flag(prop, PROP_EDITABLE);

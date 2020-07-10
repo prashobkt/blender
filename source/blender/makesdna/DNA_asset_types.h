@@ -36,8 +36,11 @@ typedef struct CustomTag {
 typedef struct AssetData {
   /** Thumbnail image of the data-block. Duplicate of the referenced ID preview. */
   struct PreviewImage *preview;
+
   /** Optional description of this asset for display in the UI. Dynamic length. */
   char *description;
+  /** Optional name of the person that created this asset. */
+  char author[64]; /* MAX_NAME */
   /** User defined tags for this asset. The asset manager uses these for filtering, but how they
    * function exactly (e.g. how they are registered to provide a list of searchable available tags)
    * is up to the asset-engine. */
