@@ -45,7 +45,7 @@
 #define ADDEND 0xB
 #define LOWSEED 0x330E
 
-extern unsigned char BLI_noise_hash_uchar_512[512]; /* noise.c */
+extern "C" unsigned char BLI_noise_hash_uchar_512[512]; /* noise.c */
 #define hash BLI_noise_hash_uchar_512
 
 /**
@@ -427,7 +427,7 @@ BLI_INLINE double radical_inverse(unsigned int n)
 {
   double u = 0;
 
-  /* This reverse the bitwise representation
+  /* This reverse the bit-wise representation
    * around the decimal point. */
   for (double p = 0.5; n; p *= 0.5, n >>= 1) {
     if (n & 1) {
