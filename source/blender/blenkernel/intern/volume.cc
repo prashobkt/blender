@@ -494,8 +494,7 @@ static void volume_foreach_cache(ID *id,
       /* cache_v */ volume->runtime.grids,
   };
 
-  function_callback(
-      id, &key, (void **)&volume->runtime.grids, (eIDTypeInfoCacheCallbackFlags)0, user_data);
+  function_callback(id, &key, (void **)&volume->runtime.grids, 0, user_data);
 }
 
 IDTypeInfo IDType_ID_VO = {
