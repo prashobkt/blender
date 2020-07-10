@@ -1371,7 +1371,10 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
                                (fds->interp_method == VOLUME_INTERP_RAW ||
                                 fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS));
 
-  const bool color_with_flags = (fds->gridlines_color_field == FLUID_DOMAIN_FIELD_FLAGS);
+  const bool color_with_flags = (fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_FLAGS);
+
+  const bool color_range = (fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_RANGE &&
+                            fds->use_coba && fds->coba_field != FLUID_DOMAIN_FIELD_FLAGS);
 
   /* Small cube showing voxel size. */
   {
@@ -1431,7 +1434,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
   if (show_gridlines) {
     int line_count = 4 * fds->res[0] * fds->res[1] * fds->res[2] / fds->res[slice_axis];
 
-    GPUShader *sh = OVERLAY_shader_volume_gridlines(color_with_flags);
+    GPUShader *sh = OVERLAY_shader_volume_gridlines(color_with_flags, color_range);
     DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
     DRW_shgroup_uniform_ivec3_copy(grp, "volumeSize", fds->res);
     DRW_shgroup_uniform_float_copy(grp, "slicePosition", fds->slice_depth);
@@ -1439,10 +1442,20 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", fds->p0);
     DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
+
     if (color_with_flags) {
       GPU_create_fluid_flags(fmd);
       DRW_shgroup_uniform_texture(grp, "flagTexture", fds->tex_flags);
     }
+
+    if (color_range) {
+      GPU_create_fluid_range_field(fmd);
+      DRW_shgroup_uniform_texture(grp, "fieldTexture", fds->tex_range_field);
+      DRW_shgroup_uniform_float_copy(grp, "lowerBound", fds->gridlines_lower_bound);
+      DRW_shgroup_uniform_float_copy(grp, "upperBound", fds->gridlines_upper_bound);
+      DRW_shgroup_uniform_vec4_copy(grp, "rangeColor", fds->gridlines_range_color);
+    }
+
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
   }
 

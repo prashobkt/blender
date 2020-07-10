@@ -133,6 +133,12 @@ enum {
   FLUID_DOMAIN_FIELD_FLAGS = 18,
 };
 
+/* Fluid gridline display color field types. */
+enum {
+  FLUID_GRIDLINE_COLOR_TYPE_FLAGS = 1,
+  FLUID_GRIDLINE_COLOR_TYPE_RANGE = 2,
+};
+
 /* Fluid domain types. */
 enum {
   FLUID_DOMAIN_TYPE_GAS = 0,
@@ -451,6 +457,7 @@ typedef struct FluidDomainSettings {
   struct GPUTexture *tex_velocity_y;
   struct GPUTexture *tex_velocity_z;
   struct GPUTexture *tex_flags;
+  struct GPUTexture *tex_range_field;
   struct Object *guide_parent;
   /** Vertex velocities of simulated fluid mesh. */
   struct FluidDomainVertexVelocity *mesh_velocities;
@@ -615,6 +622,9 @@ typedef struct FluidDomainSettings {
   float grid_scale;
   struct ColorBand *coba;
   float vector_scale;
+  float gridlines_lower_bound;
+  float gridlines_upper_bound;
+  float gridlines_range_color[4];
   char axis_slice_method;
   char slice_axis;
   char show_gridlines;

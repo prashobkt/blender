@@ -14,6 +14,13 @@ uniform ivec3 adaptiveCellOffset;
 uniform usampler3D flagTexture;
 #endif
 
+#ifdef SHOW_RANGE
+uniform sampler3D fieldTexture;
+uniform float lowerBound = 0.0;
+uniform float upperBound = 0.0;
+uniform vec4 rangeColor;
+#endif
+
 flat out vec4 finalColor;
 
 const vec3 corners[4] = vec3[4](vec3(-0.5, 0.5, 0.0),
@@ -88,6 +95,13 @@ void main()
 #ifdef SHOW_FLAGS
   uint flag = texelFetch(flagTexture, cell_co + ivec3(cell_offset), 0).r; 
   finalColor = flag_to_color(flag);
+#endif
+
+#ifdef SHOW_RANGE
+  float value = texelFetch(fieldTexture, cell_co + ivec3(cell_offset), 0).r;
+  if (value >= lowerBound && value <= upperBound) {
+    finalColor = rangeColor;
+  }
 #endif
 
   vec3 pos = domainOriginOffset + cellSize * (vec3(cell_co + adaptiveCellOffset) + cell_offset);

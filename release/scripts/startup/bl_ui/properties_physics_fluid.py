@@ -1361,6 +1361,18 @@ class PHYSICS_PT_viewport_display_advanced(PhysicButtonsPanel, Panel):
         col = layout.column()
         col.prop(domain, "gridlines_color_field", text="Color Gridlines")
 
+        if (domain.gridlines_color_field == 'RANGE'):
+            if (domain.use_color_ramp and domain.coba_field != "FLAGS"):
+                col.prop(domain, "gridlines_lower_bound")
+                col.prop(domain, "gridlines_upper_bound")
+                col.prop(domain, "gridlines_range_color")
+            else:
+                note = layout.split()
+                if (not domain.use_color_ramp):
+                    note.label(icon='INFO', text="Enable Color Mapping to use range highlighting!")
+                else:
+                    note.label(icon='INFO', text="Range highlighting for flags is not available!")
+
 classes = (
     FLUID_PT_presets,
     PHYSICS_PT_fluid,

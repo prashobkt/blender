@@ -132,11 +132,15 @@ static void swizzle_texture_channel_single(GPUTexture *tex)
   GPU_texture_unbind(tex);
 }
 
-static GPUTexture *create_field_texture(FluidDomainSettings *fds)
+static GPUTexture *create_field_texture(FluidDomainSettings *fds, bool singlePrecision)
 {
   void *field = NULL;
   eGPUDataFormat data_format = GPU_DATA_FLOAT;
   eGPUTextureFormat texture_format = GPU_R8;
+
+  if (singlePrecision) {
+    texture_format = GPU_R32F;
+  }
 
   switch (fds->coba_field) {
     case FLUID_DOMAIN_FIELD_DENSITY:
@@ -348,7 +352,7 @@ void GPU_create_smoke_coba_field(FluidModifierData *fmd)
     FluidDomainSettings *fds = fmd->domain;
 
     if (!fds->tex_field) {
-      fds->tex_field = create_field_texture(fds);
+      fds->tex_field = create_field_texture(fds, false);
     }
     if (!fds->tex_coba && !(fds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
                             fds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
@@ -474,6 +478,21 @@ void GPU_create_fluid_flags(FluidModifierData *fmd)
 #endif /* WITH_FLUID */
 }
 
+void GPU_create_fluid_range_field(FluidModifierData *fmd)
+{
+#ifndef WITH_FLUID
+  UNUSED_VARS(fmd);
+#else
+  if (fmd->type & MOD_FLUID_TYPE_DOMAIN) {
+    FluidDomainSettings *fds = fmd->domain;
+
+    if (!fds->tex_range_field) {
+      fds->tex_range_field = create_field_texture(fds, true);
+    }
+  }
+#endif /* WITH_FLUID */
+}
+
 /* TODO Unify with the other GPU_free_smoke. */
 void GPU_free_smoke_velocity(FluidModifierData *fmd)
 {
@@ -494,10 +513,15 @@ void GPU_free_smoke_velocity(FluidModifierData *fmd)
       GPU_texture_free(fmd->domain->tex_flags);
     }
 
+    if (fmd->domain->tex_range_field) {
+      GPU_texture_free(fmd->domain->tex_range_field);
+    }
+
     fmd->domain->tex_velocity_x = NULL;
     fmd->domain->tex_velocity_y = NULL;
     fmd->domain->tex_velocity_z = NULL;
     fmd->domain->tex_flags = NULL;
+    fmd->domain->tex_range_field = NULL;
   }
 }
 

@@ -1301,7 +1301,12 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
 
   static const EnumPropertyItem gridlines_color_field_items[] = {
       {0, "NONE", 0, "None", "None"},
-      {FLUID_DOMAIN_FIELD_FLAGS, "FLAGS", 0, "Flags", "Flag grid of the fluid domain"},
+      {FLUID_GRIDLINE_COLOR_TYPE_FLAGS, "FLAGS", 0, "Flags", "Flag grid of the fluid domain"},
+      {FLUID_GRIDLINE_COLOR_TYPE_RANGE,
+       "RANGE",
+       0,
+       "Highlight Range",
+       "Highlight the voxels with values of the color mapped field within the range"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -2465,6 +2470,26 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Color Gridlines", "Simulation field to color map onto gridlines");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+  prop = RNA_def_property(srna, "gridlines_lower_bound", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "gridlines_lower_bound");
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Lower Bound", "Lower bound of the highlighting range");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+  prop = RNA_def_property(srna, "gridlines_upper_bound", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "gridlines_upper_bound");
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Upper Bound", "Upper bound of the highlighting range");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+  prop = RNA_def_property(srna, "gridlines_range_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, NULL, "gridlines_range_color");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Color", "Color used to highlight the range");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
   /* -- Deprecated / unsed options (below)-- */
 

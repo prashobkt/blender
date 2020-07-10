@@ -85,6 +85,7 @@ void GPU_create_smoke(struct FluidModifierData *fmd, int highres);
 void GPU_create_smoke_coba_field(struct FluidModifierData *fmd);
 void GPU_create_smoke_velocity(struct FluidModifierData *fmd);
 void GPU_create_fluid_flags(struct FluidModifierData *fmd);
+void GPU_create_fluid_range_field(struct FluidModifierData *fmd);
 
 /* Delayed free of OpenGL buffers by main thread */
 void GPU_free_unused_buffers(void);
