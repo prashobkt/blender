@@ -84,7 +84,7 @@ typedef enum eIDTypeInfoCacheCallbackFlags {
 typedef void (*IDTypeForeachCacheFunctionCallback)(struct ID *id,
                                                    const struct IDCacheKey *cache_key,
                                                    void **cache_p,
-                                                   uint flags,
+                                                   eIDTypeInfoCacheCallbackFlags flags,
                                                    void *user_data);
 typedef void (*IDTypeForeachCacheFunction)(struct ID *id,
                                            IDTypeForeachCacheFunctionCallback function_callback,
