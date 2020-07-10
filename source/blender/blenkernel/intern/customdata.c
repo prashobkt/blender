@@ -47,6 +47,7 @@
 
 #include "BKE_customdata.h"
 #include "BKE_customdata_file.h"
+#include "BKE_deform.h"
 #include "BKE_main.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_remap.h"
@@ -320,6 +321,7 @@ static void layerInterp_mdeformvert(const void **sources,
       }
       dvert->dw[i] = node->dw;
     }
+    BKE_defvert_array_sort_weights(dvert, totweight);
   }
   else {
     memset(dvert, 0, sizeof(*dvert));
@@ -1772,7 +1774,7 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
     /* 42: CD_SCULPT_FACE_SETS */
     {sizeof(int), "", 0, NULL, NULL, NULL, NULL, NULL, NULL},
     /* 43: CD_LOCATION */
-    {sizeof(float[3]), "vec3f", 1, NULL, NULL, NULL, NULL, NULL, NULL},
+    {sizeof(float[3]), "vec3f", 1, "Location", NULL, NULL, NULL, NULL, NULL},
     /* 44: CD_RADIUS */
     {sizeof(float), "MFloatProperty", 1, NULL, NULL, NULL, NULL, NULL, NULL},
     /* 45: CD_HAIRCURVE */
