@@ -51,7 +51,6 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
-/* Prototype for #draw_fcurve. */
 static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu);
 
 /* *************************** */
