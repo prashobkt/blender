@@ -64,6 +64,7 @@ void filelist_setfilter_options(struct FileList *filelist,
                                 const bool hide_parent,
                                 const uint64_t filter,
                                 const uint64_t filter_id,
+                                const bool filter_assets_only,
                                 const char *filter_glob,
                                 const char *filter_search);
 void filelist_filter(struct FileList *filelist);

@@ -290,6 +290,7 @@ static void file_refresh(const bContext *C, ScrArea *area)
       true, /* Just always hide parent, prefer to not add an extra user option for this. */
       params->filter,
       params->filter_id,
+      (params->flag & FILE_ASSETS_ONLY) != 0,
       params->filter_glob,
       params->filter_search);
 

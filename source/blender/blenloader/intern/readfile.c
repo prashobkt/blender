@@ -1036,6 +1036,14 @@ const char *blo_bhead_id_name(const FileData *fd, const BHead *bhead)
   return (const char *)POINTER_OFFSET(bhead, sizeof(*bhead) + fd->id_name_offs);
 }
 
+/* Warning! Caller's responsibility to ensure given bhead **is** and ID one! */
+AssetData *blo_bhead_id_asset_data(const FileData *fd, const BHead *bhead)
+{
+  return (fd->id_asset_data_offs > 0) ?
+             *(AssetData **)POINTER_OFFSET(bhead, sizeof(*bhead) + fd->id_asset_data_offs) :
+             NULL;
+}
+
 static void decode_blender_header(FileData *fd)
 {
   char header[SIZEOFBLENDERHEADER], num[4];
@@ -1110,6 +1118,7 @@ static bool read_file_dna(FileData *fd, const char **r_error_message)
         fd->compflags = DNA_struct_get_compareflags(fd->filesdna, fd->memsdna);
         /* used to retrieve ID names from (bhead+1) */
         fd->id_name_offs = DNA_elem_offset(fd->filesdna, "ID", "char", "name[]");
+        fd->id_asset_data_offs = DNA_elem_offset(fd->filesdna, "ID", "AssetData", "*asset_data");
 
         return true;
       }

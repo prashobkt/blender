@@ -154,6 +154,9 @@ class FILEBROWSER_PT_filter(Panel):
                 row.label(icon='BLANK1')  # Indentation
 
                 sub = row.column(align=True)
+
+                sub.prop(params, "use_filter_asset_only")
+
                 filter_id = params.filter_id
                 for identifier in dir(filter_id):
                     if identifier.startswith("category_"):
@@ -324,6 +327,9 @@ class FILEBROWSER_PT_advanced_filter(Panel):
             if params.use_filter_blendid:
                 layout.separator()
                 col = layout.column(align=True)
+
+                col.prop(params, "use_filter_asset_only")
+
                 filter_id = params.filter_id
                 for identifier in dir(filter_id):
                     if identifier.startswith("filter_"):

@@ -161,6 +161,42 @@ LinkNode *BLO_blendhandle_get_datablock_names(BlendHandle *bh, int ofblocktype, 
 }
 
 /**
+ * Gets the names of all the data-blocks in a file of a certain type
+ * (e.g. all the scene names in a file).
+ *
+ * \param bh: The blendhandle to access.
+ * \param ofblocktype: The type of names to get.
+ * \param tot_names: The length of the returned list.
+ * \return A BLI_linklist of BLODataBlockInfo *. The links should be freed with MEM_freeN.
+ */
+LinkNode *BLO_blendhandle_get_datablock_info(BlendHandle *bh, int ofblocktype, int *tot_names)
+{
+  FileData *fd = (FileData *)bh;
+  LinkNode *infos = NULL;
+  BHead *bhead;
+  int tot = 0;
+
+  for (bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
+    if (bhead->code == ofblocktype) {
+      struct BLODataBlockInfo *info = MEM_mallocN(sizeof(*info), __func__);
+      const char *name = blo_bhead_id_name(fd, bhead) + 2;
+
+      STRNCPY(info->name, name);
+      info->is_asset = blo_bhead_id_asset_data(fd, bhead) != NULL;
+
+      BLI_linklist_prepend(&infos, info);
+      tot++;
+    }
+    else if (bhead->code == ENDB) {
+      break;
+    }
+  }
+
+  *tot_names = tot;
+  return infos;
+}
+
+/**
  * Gets the previews of all the data-blocks in a file of a certain type
  * (e.g. all the scene previews in a file).
  *
@@ -255,7 +291,7 @@ LinkNode *BLO_blendhandle_get_previews(BlendHandle *bh, int ofblocktype, int *to
  * (e.g. "Scene", "Mesh", "Light", etc.).
  *
  * \param bh: The blendhandle to access.
- * \return A BLI_linklist of strings. The string links should be freed with malloc.
+ * \return A BLI_linklist of strings. The string links should be freed with #MEM_freeN().
  */
 LinkNode *BLO_blendhandle_get_linkable_groups(BlendHandle *bh)
 {
@@ -273,7 +309,7 @@ LinkNode *BLO_blendhandle_get_linkable_groups(BlendHandle *bh)
         const char *str = BKE_idtype_idcode_to_name(bhead->code);
 
         if (BLI_gset_add(gathered, (void *)str)) {
-          BLI_linklist_prepend(&names, strdup(str));
+          BLI_linklist_prepend(&names, BLI_strdup(str));
         }
       }
     }

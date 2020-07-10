@@ -5823,6 +5823,11 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_BLENDER, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
 
+  prop = RNA_def_property(srna, "use_filter_asset_only", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", FILE_ASSETS_ONLY);
+  RNA_def_property_ui_text(prop, "Only Assets", "Hide .blend files items that are not assets");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
+
   prop = RNA_def_property(srna, "filter_id", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_struct_type(prop, "FileSelectIDFilter");

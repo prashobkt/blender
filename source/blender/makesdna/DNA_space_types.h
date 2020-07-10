@@ -818,6 +818,7 @@ typedef enum eFileSel_Params_Flag {
   FILE_SORT_INVERT = (1 << 11),
   FILE_HIDE_TOOL_PROPS = (1 << 12),
   FILE_CHECK_EXISTING = (1 << 13),
+  FILE_ASSETS_ONLY = (1 << 14),
 } eFileSel_Params_Flag;
 
 /* sfile->params->rename_flag */

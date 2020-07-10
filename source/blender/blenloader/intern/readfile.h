@@ -107,6 +107,9 @@ typedef struct FileData {
   int fileversion;
   /** Used to retrieve ID names from (bhead+1). */
   int id_name_offs;
+  /** Used to retrieve asset data from (bhead+1). NOTE: This may not be available in old files,
+   * will be 0 then! */
+  int id_asset_data_offs;
   /** For do_versions patching. */
   int globalf, fileflags;
 
@@ -165,6 +168,7 @@ BHead *blo_bhead_next(FileData *fd, BHead *thisblock);
 BHead *blo_bhead_prev(FileData *fd, BHead *thisblock);
 
 const char *blo_bhead_id_name(const FileData *fd, const BHead *bhead);
+struct AssetData *blo_bhead_id_asset_data(const FileData *fd, const BHead *bhead);
 
 /* do versions stuff */
 

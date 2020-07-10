@@ -208,6 +208,8 @@ typedef struct FileListInternEntry {
   int typeflag;
   /** ID type, in case typeflag has FILE_TYPE_BLENDERLIB set. */
   int blentype;
+  /** Tag for assets, in case typeflag has FILE_TYPE_BLENDERLIB set. */
+  bool is_asset;
 
   char *relpath;
   /** Optional argument for shortcuts, aliases etc. */
@@ -289,6 +291,7 @@ enum {
   FLF_HIDE_DOT = 1 << 1,
   FLF_HIDE_PARENT = 1 << 2,
   FLF_HIDE_LIB_DIR = 1 << 3,
+  FLF_ASSETS_ONLY = 1 << 4,
 };
 
 typedef struct FileList {
@@ -696,6 +699,9 @@ static bool is_filtered_hidden(const char *filename,
     return true;
   }
 #endif
+  if ((filter->flags & FLF_ASSETS_ONLY) && !file->is_asset) {
+    return true;
+  }
 
   return false;
 }
@@ -860,6 +866,7 @@ void filelist_setfilter_options(FileList *filelist,
                                 const bool hide_parent,
                                 const uint64_t filter,
                                 const uint64_t filter_id,
+                                const bool filter_assets_only,
                                 const char *filter_glob,
                                 const char *filter_search)
 {
@@ -875,6 +882,10 @@ void filelist_setfilter_options(FileList *filelist,
   }
   if (((filelist->filter_data.flags & FLF_HIDE_PARENT) != 0) != (hide_parent != 0)) {
     filelist->filter_data.flags ^= FLF_HIDE_PARENT;
+    update = true;
+  }
+  if (((filelist->filter_data.flags & FLF_ASSETS_ONLY) != 0) != (filter_assets_only != 0)) {
+    filelist->filter_data.flags ^= FLF_ASSETS_ONLY;
     update = true;
   }
   if (filelist->filter_data.filter != filter) {
@@ -2569,8 +2580,8 @@ static int filelist_readjob_list_dir(const char *root,
 static int filelist_readjob_list_lib(const char *root, ListBase *entries, const bool skip_currpar)
 {
   FileListInternEntry *entry;
-  LinkNode *ln, *names;
-  int i, nnames, idcode = 0, nbr_entries = 0;
+  LinkNode *ln, *names, *datablock_infos = NULL;
+  int i, nitems, idcode = 0, nbr_entries = 0;
   char dir[FILE_MAX_LIBEXTRA], *group;
   bool ok;
 
@@ -2592,11 +2603,11 @@ static int filelist_readjob_list_lib(const char *root, ListBase *entries, const 
    * and freed in filelist_entry_free. */
   if (group) {
     idcode = groupname_to_code(group);
-    names = BLO_blendhandle_get_datablock_names(libfiledata, idcode, &nnames);
+    datablock_infos = BLO_blendhandle_get_datablock_info(libfiledata, idcode, &nitems);
   }
   else {
     names = BLO_blendhandle_get_linkable_groups(libfiledata);
-    nnames = BLI_linklist_count(names);
+    nitems = BLI_linklist_count(names);
   }
 
   BLO_blendhandle_close(libfiledata);
@@ -2609,12 +2620,14 @@ static int filelist_readjob_list_lib(const char *root, ListBase *entries, const 
     nbr_entries++;
   }
 
-  for (i = 0, ln = names; i < nnames; i++, ln = ln->next) {
-    const char *blockname = ln->link;
+  for (i = 0, ln = (datablock_infos ? datablock_infos : names); i < nitems; i++, ln = ln->next) {
+    struct BLODataBlockInfo *info = datablock_infos ? ln->link : NULL;
+    const char *blockname = info ? info->name : ln->link;
 
     entry = MEM_callocN(sizeof(*entry), __func__);
     entry->relpath = BLI_strdup(blockname);
     entry->typeflag |= FILE_TYPE_BLENDERLIB;
+    entry->is_asset = info && info->is_asset;
     if (!(group && idcode)) {
       entry->typeflag |= FILE_TYPE_DIR;
       entry->blentype = groupname_to_code(blockname);
@@ -2626,7 +2639,7 @@ static int filelist_readjob_list_lib(const char *root, ListBase *entries, const 
     nbr_entries++;
   }
 
-  BLI_linklist_free(names, free);
+  BLI_linklist_free(datablock_infos ? datablock_infos : names, MEM_freeN);
 
   return nbr_entries;
 }
