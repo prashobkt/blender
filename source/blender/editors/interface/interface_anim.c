@@ -18,6 +18,7 @@
  * \ingroup edinterface
  */
 
+#include <CLG_log.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,6 +54,8 @@
 #include "WM_types.h"
 
 #include "interface_intern.h"
+
+static CLG_LogRef LOG = {"interface.anim"};
 
 static FCurve *ui_but_get_fcurve(
     uiBut *but, AnimData **adt, bAction **action, bool *r_driven, bool *r_special)
@@ -142,9 +145,10 @@ void ui_but_anim_decorate_update_from_flag(uiBut *but)
   const uiBut *but_anim = ui_but_anim_decorate_find_attached_button(but);
 
   if (!but_anim) {
-    printf("Could not find button with matching property to decorate (%s.%s)\n",
-           RNA_struct_identifier(but->rnasearchpoin.type),
-           RNA_property_identifier(but->rnasearchprop));
+    CLOG_ERROR(&LOG,
+               "Could not find button with matching property to decorate (%s.%s)",
+               RNA_struct_identifier(but->rnasearchpoin.type),
+               RNA_property_identifier(but->rnasearchprop));
     return;
   }
 
@@ -242,17 +246,13 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
 
   /* button must have RNA-pointer to a numeric-capable property */
   if (ELEM(NULL, but->rnapoin.data, but->rnaprop)) {
-    if (G.debug & G_DEBUG) {
-      printf("ERROR: create expression failed - button has no RNA info attached\n");
-    }
+    CLOG_ERROR(&LOG, "create expression failed - button has no RNA info attached");
     return false;
   }
 
   if (RNA_property_array_check(but->rnaprop) != 0) {
     if (but->rnaindex == -1) {
-      if (G.debug & G_DEBUG) {
-        printf("ERROR: create expression failed - can't create expression for entire array\n");
-      }
+      CLOG_ERROR(&LOG, "create expression failed - can't create expression for entire array");
       return false;
     }
   }
@@ -262,9 +262,7 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
    * don't allow drivers to be created for them */
   id = but->rnapoin.owner_id;
   if ((id == NULL) || (GS(id->name) == ID_MA) || (GS(id->name) == ID_TE)) {
-    if (G.debug & G_DEBUG) {
-      printf("ERROR: create expression failed - invalid data-block for adding drivers (%p)\n", id);
-    }
+    CLOG_ERROR(&LOG, "create expression failed - invalid data-block for adding drivers (%p)", id);
     return false;
   }
 

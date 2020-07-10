@@ -24,6 +24,7 @@
 /* a full doc with API notes can be found in
  * bf-blender/trunk/blender/doc/guides/interface_API.txt */
 
+#include <CLG_log.h>
 #include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
@@ -78,6 +79,8 @@
 
 /* only show pin header button for pinned panels */
 #define USE_PIN_HIDDEN
+
+static CLG_LogRef LOG = {"interface.panel"};
 
 /* the state of the mouse position relative to the panel */
 typedef enum uiPanelMouseState {
@@ -301,7 +304,7 @@ Panel *UI_panel_add_instanced(ScrArea *area,
       &region_type->paneltypes, panel_idname, offsetof(PanelType, idname));
 
   if (panel_type == NULL) {
-    printf("Panel type '%s' not found.\n", panel_idname);
+    CLOG_ERROR(&LOG, "Panel type '%s' not found", panel_idname);
     return NULL;
   }
 

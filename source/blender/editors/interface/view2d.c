@@ -21,6 +21,7 @@
  * \ingroup edinterface
  */
 
+#include <CLG_log.h>
 #include <float.h>
 #include <limits.h>
 #include <math.h>
@@ -59,6 +60,8 @@
 #include "UI_view2d.h"
 
 #include "interface_intern.h"
+
+static CLG_LogRef LOG = {"interface.view2d"};
 
 static void ui_view2d_curRect_validate_resize(View2D *v2d, bool resize);
 
@@ -981,12 +984,8 @@ void UI_view2d_totRect_set_resize(View2D *v2d, int width, int height, bool resiz
   height = abs(height);
 
   if (ELEM(0, width, height)) {
-    if (G.debug & G_DEBUG) {
-      printf("Error: View2D totRect set exiting: v2d=%p width=%d height=%d\n",
-             (void *)v2d,
-             width,
-             height);  // XXX temp debug info
-    }
+    CLOG_ERROR(
+        &LOG, "View2D totRect set exiting: v2d=%p width=%d height=%d", (void *)v2d, width, height);
     return;
   }
 

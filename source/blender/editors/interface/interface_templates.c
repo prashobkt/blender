@@ -18,6 +18,7 @@
  * \ingroup edinterface
  */
 
+#include <CLG_log.h>
 #include <ctype.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -101,6 +102,8 @@
 /* defines for templateID/TemplateSearch */
 #define TEMPLATE_SEARCH_TEXTBUT_WIDTH (UI_UNIT_X * 6)
 #define TEMPLATE_SEARCH_TEXTBUT_HEIGHT UI_UNIT_Y
+
+static CLG_LogRef LOG = {"interface.templates"};
 
 void UI_template_fix_linking(void)
 {
@@ -5787,7 +5790,7 @@ static void uilist_filter_items_default(struct uiList *ui_list,
             dyn_data->items_shown++;
             do_order = order_by_name;
           }
-          // printf("%s: '%s' matches '%s'\n", __func__, name, filter);
+          CLOG_VERBOSE(&LOG, 2, "'%s' matches '%s'", name, filter);
         }
         else if (filter_exclude) {
           dyn_data->items_shown++;
@@ -6111,16 +6114,16 @@ void uiTemplateList(uiLayout *layout,
       dyn_data->items_len = dyn_data->items_shown = RNA_property_collection_length(dataptr, prop);
     }
     else {
-      // printf("%s: filtering...\n", __func__);
+      CLOG_VERBOSE(&LOG, 1, "filtering...");
       filter_items(ui_list, C, dataptr, propname);
-      // printf("%s: filtering done.\n", __func__);
+      CLOG_VERBOSE(&LOG, 1, "filtering done");
     }
 
     items_shown = dyn_data->items_shown;
     if (items_shown >= 0) {
       bool activei_mapping_pending = true;
       items_ptr = MEM_mallocN(sizeof(_uilist_item) * items_shown, __func__);
-      // printf("%s: items shown: %d.\n", __func__, items_shown);
+      CLOG_INFO(&LOG, "items shown: %d", items_shown);
       RNA_PROP_BEGIN (dataptr, itemptr, prop) {
         if (!dyn_data->items_filter_flags ||
             ((dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude)) {
@@ -6132,7 +6135,7 @@ void uiTemplateList(uiLayout *layout,
           else {
             ii = order_reverse ? items_shown - ++idx : idx++;
           }
-          // printf("%s: ii: %d\n", __func__, ii);
+          CLOG_VERBOSE(&LOG, 3, "ii: %d", ii);
           items_ptr[ii].item = itemptr;
           items_ptr[ii].org_idx = i;
           items_ptr[ii].flt_flag = dyn_data->items_filter_flags ? dyn_data->items_filter_flags[i] :
@@ -7099,8 +7102,7 @@ void uiTemplateColorspaceSettings(uiLayout *layout, PointerRNA *ptr, const char 
   prop = RNA_struct_find_property(ptr, propname);
 
   if (!prop) {
-    printf(
-        "%s: property not found: %s.%s\n", __func__, RNA_struct_identifier(ptr->type), propname);
+    CLOG_ERROR(&LOG, "property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
     return;
   }
 
@@ -7122,8 +7124,7 @@ void uiTemplateColormanagedViewSettings(uiLayout *layout,
   prop = RNA_struct_find_property(ptr, propname);
 
   if (!prop) {
-    printf(
-        "%s: property not found: %s.%s\n", __func__, RNA_struct_identifier(ptr->type), propname);
+    CLOG_ERROR(&LOG, "property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
     return;
   }
 
@@ -7254,16 +7255,13 @@ void uiTemplateCacheFile(uiLayout *layout,
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
 
   if (!prop) {
-    printf(
-        "%s: property not found: %s.%s\n", __func__, RNA_struct_identifier(ptr->type), propname);
+    CLOG_ERROR(&LOG, "property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
     return;
   }
 
   if (RNA_property_type(prop) != PROP_POINTER) {
-    printf("%s: expected pointer property for %s.%s\n",
-           __func__,
-           RNA_struct_identifier(ptr->type),
-           propname);
+    CLOG_ERROR(
+        &LOG, "expected pointer property for %s.%s", RNA_struct_identifier(ptr->type), propname);
     return;
   }
 

@@ -23,6 +23,7 @@
  * PopUp Menu Region
  */
 
+#include <CLG_log.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -58,6 +59,8 @@
 #include "interface_intern.h"
 #include "interface_regions_intern.h"
 
+static CLG_LogRef LOG = {"interface.menu_popup"};
+
 /* -------------------------------------------------------------------- */
 /** \name Utility Functions
  * \{ */
@@ -83,7 +86,7 @@ int ui_but_menu_step(uiBut *but, int direction)
         but->block->evil_C, &but->rnapoin, but->rnaprop, curval, direction);
   }
 
-  printf("%s: cannot cycle button '%s'\n", __func__, but->str);
+  CLOG_WARN(&LOG, "cannot cycle button '%s'", but->str);
   return 0;
 }
 

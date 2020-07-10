@@ -21,6 +21,7 @@
  * \ingroup edinterface
  */
 
+#include <CLG_log.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
@@ -72,6 +73,8 @@
 #include "BKE_main.h"
 #include "BLI_ghash.h"
 #include "ED_screen.h"
+
+static CLG_LogRef LOG = {"interface.ops"};
 
 /* -------------------------------------------------------------------- */
 /** \name Copy Data Path Operator
@@ -1247,9 +1250,7 @@ static void ui_editsource_active_but_clear(void)
 
 static bool ui_editsource_uibut_match(uiBut *but_a, uiBut *but_b)
 {
-#  if 0
-  printf("matching buttons: '%s' == '%s'\n", but_a->drawstr, but_b->drawstr);
-#  endif
+  CLOG_VERBOSE(&LOG, 1, "matching buttons: '%s' == '%s'", but_a->drawstr, but_b->drawstr);
 
   /* this just needs to be a 'good-enough' comparison so we can know beyond
    * reasonable doubt that these buttons are the same between redraws.
@@ -1272,9 +1273,11 @@ void UI_editsource_active_but_test(uiBut *but)
   const char *fn;
   int lineno = -1;
 
-#  if 0
-  printf("comparing buttons: '%s' == '%s'\n", but->drawstr, ui_editsource_info->but_orig.drawstr);
-#  endif
+  CLOG_VERBOSE(&LOG,
+               2,
+               "comparing buttons: '%s' == '%s'",
+               but->drawstr,
+               ui_editsource_info->but_orig.drawstr);
 
   PyC_FileAndNum_Safe(&fn, &lineno);
 
@@ -1299,7 +1302,7 @@ static int editsource_text_edit(bContext *C,
   Text *text;
 
   /* Developers may wish to copy-paste to an external editor. */
-  printf("%s:%d\n", filepath, line);
+  CLOG_INFO(&LOG, "%s:%d", filepath, line);
 
   for (text = bmain->texts.first; text; text = text->id.next) {
     if (text->filepath && BLI_path_cmp(text->filepath, filepath) == 0) {
@@ -1348,8 +1351,6 @@ static int editsource_exec(bContext *C, wmOperator *op)
     /* needed else the active button does not get tested */
     UI_screen_free_active_but(C, CTX_wm_screen(C));
 
-    // printf("%s: begin\n", __func__);
-
     /* take care not to return before calling ui_editsource_active_but_clear */
     ui_editsource_active_but_set(but);
 
@@ -1384,8 +1385,6 @@ static int editsource_exec(bContext *C, wmOperator *op)
     }
 
     ui_editsource_active_but_clear();
-
-    // printf("%s: end\n", __func__);
 
     return ret;
   }
@@ -1506,7 +1505,7 @@ static int edittranslation_exec(bContext *C, wmOperator *op)
     }
     /* Try to find a valid po file for current language... */
     edittranslation_find_po_file(root, uilng, popath, FILE_MAX);
-    /* printf("po path: %s\n", popath); */
+    CLOG_VERBOSE(&LOG, 2, "po path: %s", popath);
     if (popath[0] == '\0') {
       BKE_reportf(
           op->reports, RPT_ERROR, "No valid po found for language '%s' under %s", uilng, root);

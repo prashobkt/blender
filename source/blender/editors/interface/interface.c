@@ -21,6 +21,7 @@
  * \ingroup edinterface
  */
 
+#include <CLG_log.h>
 #include <ctype.h>
 #include <float.h>
 #include <limits.h>
@@ -79,6 +80,8 @@
 #include "DEG_depsgraph_query.h"
 
 #include "interface_intern.h"
+
+static CLG_LogRef LOG = {"interface"};
 
 /* prototypes. */
 static void ui_but_to_pixelrect(struct rcti *rect,
@@ -1327,20 +1330,14 @@ static bool ui_but_event_property_operator_string(const bContext *C,
             data_path = BLI_sprintfN("scene.%s", path);
             MEM_freeN(path);
           }
-#if 0
           else {
-            printf("ERROR in %s(): Couldn't get path for scene property - %s\n",
-                   __func__,
-                   RNA_property_identifier(prop));
+            CLOG_ERROR(
+                &LOG, "Couldn't get path for scene property - %s", RNA_property_identifier(prop));
           }
-#endif
         }
       }
-      else {
-        // puts("other id");
-      }
 
-      // printf("prop shortcut: '%s' (%s)\n", RNA_property_identifier(prop), data_path);
+      CLOG_VERBOSE(&LOG, 4, "prop shortcut: '%s' (%s)", RNA_property_identifier(prop), data_path);
     }
 
     /* we have a datapath! */
@@ -2153,7 +2150,7 @@ void ui_but_v3_get(uiBut *but, float vec[3])
   }
   else {
     if (but->editvec == NULL) {
-      fprintf(stderr, "%s: can't get color, should never happen\n", __func__);
+      CLOG_ERROR(&LOG, "can not get color, should never happen");
       zero_v3(vec);
     }
   }
@@ -2303,7 +2300,7 @@ bool ui_but_is_rna_valid(uiBut *but)
   if (but->rnaprop == NULL || RNA_struct_contains_property(&but->rnapoin, but->rnaprop)) {
     return true;
   }
-  printf("property removed %s: %p\n", but->drawstr, but->rnaprop);
+  CLOG_INFO(&LOG, "property removed %s: %p", but->drawstr, but->rnaprop);
   return false;
 }
 
@@ -6357,13 +6354,10 @@ void UI_but_func_search_set(uiBut *but,
   search->arg_free_fn = search_arg_free_fn;
 
   if (search_exec_fn) {
-#ifdef DEBUG
     if (but->func) {
       /* watch this, can be cause of much confusion, see: T47691 */
-      printf("%s: warning, overwriting button callback with search function callback!\n",
-             __func__);
+      CLOG_STR_WARN(&LOG, "overwriting button callback with search function callback!");
     }
-#endif
     UI_but_func_set(but, search_exec_fn, search->arg, active);
   }
 
@@ -6408,13 +6402,11 @@ static void operator_enum_search_update_fn(const struct bContext *C,
   PropertyRNA *prop = ot->prop;
 
   if (prop == NULL) {
-    printf("%s: %s has no enum property set\n", __func__, ot->idname);
+    CLOG_ERROR(&LOG, "%s has no enum property set", ot->idname);
   }
   else if (RNA_property_type(prop) != PROP_ENUM) {
-    printf("%s: %s \"%s\" is not an enum property\n",
-           __func__,
-           ot->idname,
-           RNA_property_identifier(prop));
+    CLOG_ERROR(
+        &LOG, "%s \"%s\" is not an enum property", ot->idname, RNA_property_identifier(prop));
   }
   else {
     PointerRNA *ptr = UI_but_operator_ptr_get(but); /* Will create it if needed! */
@@ -6453,7 +6445,7 @@ static void operator_enum_search_exec_fn(struct bContext *UNUSED(C), void *but, 
        * because one of its parameters is the button itself! */
     }
     else {
-      printf("%s: op->prop for '%s' is NULL\n", __func__, ot->idname);
+      CLOG_INFO(&LOG, "op->prop for '%s' is NULL", ot->idname);
     }
   }
 }

@@ -21,6 +21,7 @@
  * \ingroup edinterface
  */
 
+#include <CLG_log.h>
 #include <assert.h>
 #include <ctype.h>
 #include <float.h>
@@ -115,6 +116,8 @@
  * See: T68130
  */
 #define UI_DRAG_MAP_SOFT_RANGE_PIXEL_MAX 1000
+
+static CLG_LogRef LOG = {"interface.handlers"};
 
 /* proto */
 static int ui_do_but_EXIT(bContext *C,
@@ -1360,7 +1363,12 @@ static void ui_multibut_states_apply(bContext *C, uiHandleButtonData *data, uiBl
       }
       else {
         /* highly unlikely */
-        printf("%s: cant find button\n", __func__);
+        CLOG_ERROR(&LOG,
+                   "can not find button (%p), type: %u, str: %s, tip: %s",
+                   but,
+                   but->type,
+                   but->str,
+                   but->tip);
       }
       /* end */
     }
@@ -3022,9 +3030,7 @@ static bool ui_textedit_insert_ascii(uiBut *but, uiHandleButtonData *data, char 
   char buf[2] = {ascii, '\0'};
 
   if (UI_but_is_utf8(but) && (BLI_str_utf8_size(buf) == -1)) {
-    printf(
-        "%s: entering invalid ascii char into an ascii key (%d)\n", __func__, (int)(uchar)ascii);
-
+    CLOG_ERROR(&LOG, "entering invalid ascii char into an ascii key (%d)", (int)(uchar)ascii);
     return false;
   }
 
@@ -3345,7 +3351,7 @@ static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
       /* not a file?, strip non utf-8 chars */
       if (strip) {
         /* wont happen often so isn't that annoying to keep it here for a while */
-        printf("%s: invalid utf8 - stripped chars %d\n", __func__, strip);
+        CLOG_ERROR(&LOG, "invalid utf8 - stripped chars %d", strip);
       }
     }
 
@@ -8598,9 +8604,7 @@ static bool ui_handle_button_activate_by_type(bContext *C, ARegion *region, uiBu
     ui_handle_button_activate(C, region, but, BUTTON_ACTIVATE);
   }
   else {
-#ifdef DEBUG
-    printf("%s: error, unhandled type: %u\n", __func__, but->type);
-#endif
+    CLOG_ERROR(&LOG, "unhandled type: %u", but->type);
     return false;
   }
   return true;

@@ -23,6 +23,7 @@
  * Pie Menu Region
  */
 
+#include <CLG_log.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -53,6 +54,8 @@
 
 #include "interface_intern.h"
 #include "interface_regions_intern.h"
+
+static CLG_LogRef LOG = {"interface.menu_pie"};
 
 /* -------------------------------------------------------------------- */
 /** \name Pie Menu
@@ -229,7 +232,7 @@ int UI_pie_menu_invoke(struct bContext *C, const char *idname, const wmEvent *ev
   MenuType *mt = WM_menutype_find(idname, true);
 
   if (mt == NULL) {
-    printf("%s: named menu \"%s\" not found\n", __func__, idname);
+    CLOG_ERROR(&LOG, "named menu \"%s\" not found", idname);
     return OPERATOR_CANCELLED;
   }
 

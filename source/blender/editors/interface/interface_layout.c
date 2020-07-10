@@ -64,7 +64,7 @@
  * giving more room for the text at the expense of nicely aligned text. */
 #define UI_PROP_SEP_ICON_WIDTH_EXCEPTION
 
-static CLG_LogRef LOG = {"interface"};
+static CLG_LogRef LOG = {"interface.layout"};
 
 /* -------------------------------------------------------------------- */
 /** \name Structs and Defines
@@ -3300,12 +3300,12 @@ void uiItemSpacer(uiLayout *layout)
   const bool is_popup = ui_block_is_popup_any(block);
 
   if (is_popup) {
-    printf("Error: separator_spacer() not supported in popups.\n");
+    CLOG_STR_ERROR(&LOG, "separator_spacer() not supported in popups");
     return;
   }
 
   if (block->direction & UI_DIR_RIGHT) {
-    printf("Error: separator_spacer() only supported in horizontal blocks.\n");
+    CLOG_STR_ERROR(&LOG, "separator_spacer() only supported in horizontal blocks");
     return;
   }
 
@@ -3747,8 +3747,9 @@ static RadialDirection ui_get_radialbut_vec(float vec[2], short itemnum)
 
   if (itemnum >= PIE_MAX_ITEMS) {
     itemnum %= PIE_MAX_ITEMS;
-    printf("Warning: Pie menus with more than %i items are currently unsupported\n",
-           PIE_MAX_ITEMS);
+    CLOG_WARN(&LOG,
+              "Warning: Pie menus with more than %i items are currently unsupported",
+              PIE_MAX_ITEMS);
   }
 
   dir = ui_radial_dir_order[itemnum];
@@ -5525,7 +5526,7 @@ void UI_menutype_draw(bContext *C, MenuType *mt, struct uiLayout *layout)
       .type = mt,
   };
 
-  CLOG_VERBOSE(&LOG, 1, "opening menu \"%s\"", mt->idname);
+  CLOG_VERBOSE(&LOG, 3, "opening menu \"%s\"", mt->idname);
 
   if (layout->context) {
     CTX_store_set(C, layout->context);

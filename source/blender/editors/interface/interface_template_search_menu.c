@@ -21,6 +21,7 @@
  * Accessed via the #WM_OT_search_menu operator.
  */
 
+#include <CLG_log.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
@@ -69,6 +70,8 @@
 
 /* Unicode arrow. */
 #define MENU_SEP "\xe2\x96\xb6"
+
+static CLG_LogRef LOG = {"interface.menu_search"};
 
 /**
  * Use when #menu_items_from_ui_create is called with `include_all_areas`.
@@ -224,7 +227,7 @@ static bool menu_items_from_ui_create_item_from_button(struct MenuSearch_Data *d
     if (!ELEM(prop_type, PROP_BOOLEAN, PROP_ENUM)) {
       /* Note that these buttons are not prevented,
        * but aren't typically used in menus. */
-      printf("Button '%s' in menu '%s' is a menu item with unsupported RNA type %d\n",
+      CLOG_WARN(&LOG, "Button '%s' in menu '%s' is a menu item with unsupported RNA type %d",
              but->drawstr,
              mt->idname,
              prop_type);
@@ -745,7 +748,7 @@ static struct MenuSearch_Data *menu_items_from_ui_create(
             BLI_ghash_insert(menu_parent_map, mt_from_but, menu_parent);
 
             if (drawstr_is_empty) {
-              printf("Warning: '%s' menu has empty 'bl_label'.\n", mt_from_but->idname);
+              CLOG_WARN(&LOG, "'%s' menu has empty 'bl_label'", mt_from_but->idname);
             }
           }
         }

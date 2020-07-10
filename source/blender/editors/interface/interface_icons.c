@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "GPU_batch.h"
@@ -82,6 +83,8 @@
 #  define ICON_GRID_W 32
 #  define ICON_GRID_H 32
 #endif /* WITH_HEADLESS */
+
+static CLG_LogRef LOG = {"interface.icons"};
 
 typedef struct IconImage {
   int w;
@@ -942,17 +945,17 @@ static void init_internal_icons(void)
       bbuf = IMB_loadiffname(iconfilestr, IB_rect, NULL);
 
       if (bbuf && (bbuf->x < ICON_IMAGE_W || bbuf->y < ICON_IMAGE_H)) {
-        printf(
+        CLOG_WARN(&LOG,
             "\n***WARNING***\n"
             "Icons file '%s' too small.\n"
-            "Using built-in Icons instead\n",
+            "Using built-in Icons instead",
             iconfilestr);
         IMB_freeImBuf(bbuf);
         bbuf = NULL;
       }
     }
     else {
-      printf("%s: 'icons' data path not found, continuing\n", __func__);
+      CLOG_STR_WARN("'icons' data path not found, continuing");
     }
   }
 #    endif
@@ -1057,7 +1060,7 @@ static void init_iconfile_list(struct ListBase *list)
 
         /* bad size or failed to load */
         if ((ifilex != ICON_IMAGE_W) || (ifiley != ICON_IMAGE_H)) {
-          printf("icon '%s' is wrong size %dx%d\n", iconfilestr, ifilex, ifiley);
+          CLOG_WARN(&LOG, "icon '%s' is wrong size %dx%d", iconfilestr, ifilex, ifiley);
           continue;
         }
 #  endif /* removed */
@@ -1199,9 +1202,7 @@ int UI_icon_get_width(int icon_id)
   icon = BKE_icon_get(icon_id);
 
   if (icon == NULL) {
-    if (G.debug & G_DEBUG) {
-      printf("%s: Internal error, no icon for icon ID: %d\n", __func__, icon_id);
-    }
+    CLOG_ERROR(&LOG, "Internal error, no icon for icon ID: %d", icon_id);
     return 0;
   }
 
@@ -1217,9 +1218,7 @@ int UI_icon_get_height(int icon_id)
 {
   Icon *icon = BKE_icon_get(icon_id);
   if (icon == NULL) {
-    if (G.debug & G_DEBUG) {
-      printf("%s: Internal error, no icon for icon ID: %d\n", __func__, icon_id);
-    }
+    CLOG_ERROR(&LOG, "Internal error, no icon for icon ID: %d", icon_id);
     return 0;
   }
 
@@ -1274,9 +1273,7 @@ static void icon_create_rect(struct PreviewImage *prv_img, enum eIconSizes size)
   uint render_size = UI_preview_render_size(size);
 
   if (!prv_img) {
-    if (G.debug & G_DEBUG) {
-      printf("%s, error: requested preview image does not exist", __func__);
-    }
+    CLOG_STR_ERROR(&LOG, "Requested preview image does not exist");
   }
   else if (!prv_img->rect[size]) {
     prv_img->w[size] = render_size;
@@ -1409,9 +1406,7 @@ static void icon_set_image(const bContext *C,
                            const bool use_job)
 {
   if (!prv_img) {
-    if (G.debug & G_DEBUG) {
-      printf("%s: no preview image for this ID: %s\n", __func__, id->name);
-    }
+    CLOG_ERROR(&LOG, "No preview image for this ID: %s", id->name);
     return;
   }
 
@@ -1499,7 +1494,7 @@ static void icon_draw_rect(float x,
 
   /* sanity check */
   if (w <= 0 || h <= 0 || w > 2000 || h > 2000) {
-    printf("%s: icons are %i x %i pixels?\n", __func__, w, h);
+    CLOG_FATAL(&LOG, "icons are %i x %i pixels?", w, h);
     BLI_assert(!"invalid icon size");
     return;
   }
@@ -1796,9 +1791,7 @@ static void icon_draw_size(float x,
   alpha *= btheme->tui.icon_alpha;
 
   if (icon == NULL) {
-    if (G.debug & G_DEBUG) {
-      printf("%s: Internal error, no icon for icon ID: %d\n", __func__, icon_id);
-    }
+    CLOG_ERROR(&LOG, "Internal error, no icon for icon ID: %d", icon_id);
     return;
   }
 

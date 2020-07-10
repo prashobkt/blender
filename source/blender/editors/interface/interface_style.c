@@ -21,6 +21,7 @@
  * \ingroup edinterface
  */
 
+#include <CLG_log.h>
 #include <limits.h>
 #include <math.h>
 #include <stdlib.h>
@@ -68,6 +69,8 @@
  * - default minimum widths for buttons/labels (in amount of characters)
  * - font types, styles and relative sizes for Panel titles, labels, etc.
  */
+
+static CLG_LogRef LOG = {"interface.style"};
 
 /* ********************************************** */
 
@@ -482,9 +485,7 @@ void uiStyleInit(void)
     BLF_default_set(font->blf_id);
 
     if (font->blf_id == -1) {
-      if (G.debug & G_DEBUG) {
-        printf("%s: error, no fonts available\n", __func__);
-      }
+      CLOG_STR_ERROR(&LOG, "no fonts available");
     }
     else {
       /* ? just for speed to initialize?
