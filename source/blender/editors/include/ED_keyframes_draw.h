@@ -78,8 +78,6 @@ typedef struct ActKeyColumn {
   char extreme_type;
   short sel;
   float cfra;
-  /* Active keyframe in active FCurve. */
-  bool active;
 
   /* key-block info */
   ActKeyBlockInfo block;
