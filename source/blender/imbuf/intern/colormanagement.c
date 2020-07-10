@@ -24,8 +24,8 @@
 #include "IMB_colormanagement.h"
 #include "IMB_colormanagement_intern.h"
 
-#include <string.h>
 #include <math.h>
+#include <string.h>
 
 #include "DNA_color_types.h"
 #include "DNA_image_types.h"
@@ -33,21 +33,21 @@
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
 #include "IMB_filetype.h"
 #include "IMB_filter.h"
-#include "IMB_moviecache.h"
+#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
+#include "IMB_moviecache.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_math_color.h"
+#include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
-#include "BLI_rect.h"
 
 #include "BKE_appdir.h"
 #include "BKE_colortools.h"
@@ -789,18 +789,18 @@ void colormanage_cache_free(ImBuf *ibuf)
 
 void IMB_colormanagement_display_settings_from_ctx(
     const bContext *C,
-    ColorManagedViewSettings **view_settings_r,
-    ColorManagedDisplaySettings **display_settings_r)
+    ColorManagedViewSettings **r_view_settings,
+    ColorManagedDisplaySettings **r_display_settings)
 {
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
 
-  *view_settings_r = &scene->view_settings;
-  *display_settings_r = &scene->display_settings;
+  *r_view_settings = &scene->view_settings;
+  *r_display_settings = &scene->display_settings;
 
   if (sima && sima->image) {
     if ((sima->image->flag & IMA_VIEW_AS_RENDER) == 0) {
-      *view_settings_r = NULL;
+      *r_view_settings = NULL;
     }
   }
 }
@@ -1349,6 +1349,23 @@ void IMB_colormanagement_check_is_data(ImBuf *ibuf, const char *name)
   }
 }
 
+void IMB_colormanagegent_copy_settings(ImBuf *ibuf_src, ImBuf *ibuf_dst)
+{
+  IMB_colormanagement_assign_rect_colorspace(ibuf_dst,
+                                             IMB_colormanagement_get_rect_colorspace(ibuf_src));
+  IMB_colormanagement_assign_float_colorspace(ibuf_dst,
+                                              IMB_colormanagement_get_float_colorspace(ibuf_src));
+  if (ibuf_src->flags & IB_alphamode_premul) {
+    ibuf_dst->flags |= IB_alphamode_premul;
+  }
+  else if (ibuf_src->flags & IB_alphamode_channel_packed) {
+    ibuf_dst->flags |= IB_alphamode_channel_packed;
+  }
+  else if (ibuf_src->flags & IB_alphamode_ignore) {
+    ibuf_dst->flags |= IB_alphamode_ignore;
+  }
+}
+
 void IMB_colormanagement_assign_float_colorspace(ImBuf *ibuf, const char *name)
 {
   ColorSpace *colorspace = colormanage_colorspace_get_named(name);
@@ -1437,6 +1454,11 @@ bool IMB_colormanagement_space_name_is_data(const char *name)
 {
   ColorSpace *colorspace = colormanage_colorspace_get_named(name);
   return (colorspace && colorspace->is_data);
+}
+
+const float *IMB_colormangement_get_xyz_to_rgb()
+{
+  return &imbuf_xyz_to_rgb[0][0];
 }
 
 /*********************** Threaded display buffer transform routines *************************/
@@ -2293,7 +2315,7 @@ void IMB_colormanagement_imbuf_to_float_texture(float *out_buffer,
   for (int y = 0; y < height; y++) {
     const size_t in_offset = (offset_y + y) * ibuf->x + offset_x;
     const size_t out_offset = y * width;
-    const float *in = in_buffer + in_offset * 4;
+    const float *in = in_buffer + in_offset * in_channels;
     float *out = out_buffer + out_offset * 4;
 
     if (in_channels == 1) {

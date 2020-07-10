@@ -18,12 +18,12 @@
  * \ingroup bke
  */
 
-#include "MEM_guardedalloc.h"
 #include "BLI_sys_types.h"  // for intptr_t support
+#include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h" /* for BLI_assert */
 #include "BLI_math.h"
 #include "BLI_task.h"
+#include "BLI_utildefines.h" /* for BLI_assert */
 
 #include "CCGSubSurf.h"
 #include "CCGSubSurf_intern.h"
@@ -38,9 +38,7 @@ static void *_edge_getCoVert(CCGEdge *e, CCGVert *v, int lvl, int x, int dataSiz
   if (v == e->v0) {
     return &EDGE_getLevelData(e)[dataSize * (levelBase + x)];
   }
-  else {
-    return &EDGE_getLevelData(e)[dataSize * (levelBase + (1 << lvl) - x)];
-  }
+  return &EDGE_getLevelData(e)[dataSize * (levelBase + (1 << lvl) - x)];
 }
 /* *************************************************** */
 
@@ -65,9 +63,8 @@ static CCGVert *_edge_getOtherVert(CCGEdge *e, CCGVert *vQ)
   if (vQ == e->v0) {
     return e->v1;
   }
-  else {
-    return e->v0;
-  }
+
+  return e->v0;
 }
 
 static float *_face_getIFNoEdge(CCGFace *f,
@@ -111,15 +108,13 @@ static float EDGE_getSharpness(CCGEdge *e, int lvl)
   if (!lvl) {
     return e->crease;
   }
-  else if (!e->crease) {
+  if (!e->crease) {
     return 0.0f;
   }
-  else if (e->crease - lvl < 0.0f) {
+  if (e->crease - lvl < 0.0f) {
     return 0.0f;
   }
-  else {
-    return e->crease - lvl;
-  }
+  return e->crease - lvl;
 }
 
 typedef struct CCGSubSurfCalcSubdivData {

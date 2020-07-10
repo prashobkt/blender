@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "render/curves.h"
 #include "render/hair.h"
+#include "render/curves.h"
 #include "render/scene.h"
 
 CCL_NAMESPACE_BEGIN
@@ -294,6 +294,7 @@ NODE_DEFINE(Hair)
 Hair::Hair() : Geometry(node_type, Geometry::HAIR)
 {
   curvekey_offset = 0;
+  curve_shape = CURVE_RIBBON;
 }
 
 Hair::~Hair()

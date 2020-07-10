@@ -33,11 +33,11 @@
  * - `BKE_lib_remap_callback_` should be used for functions managing remapping callbacks.
  */
 
+#include "BLI_compiler_attrs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "BLI_compiler_attrs.h"
 
 struct wmWindowManager;
 
@@ -103,11 +103,9 @@ void BKE_libblock_relink_ex(struct Main *bmain,
 
 void BKE_libblock_relink_to_newid(struct ID *id) ATTR_NONNULL();
 
-typedef void (*BKE_library_free_window_manager_cb)(struct bContext *, struct wmWindowManager *);
 typedef void (*BKE_library_free_notifier_reference_cb)(const void *);
 typedef void (*BKE_library_remap_editor_id_reference_cb)(struct ID *, struct ID *);
 
-void BKE_library_callback_free_window_manager_set(BKE_library_free_window_manager_cb func);
 void BKE_library_callback_free_notifier_reference_set(BKE_library_free_notifier_reference_cb func);
 void BKE_library_callback_remap_editor_id_reference_set(
     BKE_library_remap_editor_id_reference_cb func);

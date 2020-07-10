@@ -21,9 +21,9 @@
  * \ingroup spnla
  */
 
-#include <string.h>
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
@@ -269,9 +269,7 @@ static int nlaedit_disable_tweakmode_exec(bContext *C, wmOperator *op)
   if (ok) {
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void NLA_OT_tweakmode_exit(wmOperatorType *ot)
@@ -373,9 +371,8 @@ static int nlaedit_previewrange_exec(bContext *C, wmOperator *UNUSED(op))
   if (ac.scene == NULL) {
     return OPERATOR_CANCELLED;
   }
-  else {
-    scene = ac.scene;
-  }
+
+  scene = ac.scene;
 
   /* set the range directly */
   get_nlastrip_extents(&ac, &min, &max, true);
@@ -410,8 +407,8 @@ void NLA_OT_previewrange_set(wmOperatorType *ot)
 /**
  * Find the extents of the active channel
  *
- * \param[out] min Bottom y-extent of channel
- * \param[out] max Top y-extent of channel
+ * \param[out] min: Bottom y-extent of channel.
+ * \param[out] max: Top y-extent of channel.
  * \return Success of finding a selected channel
  */
 static bool nla_channels_get_selected_extents(bAnimContext *ac, float *min, float *max)
@@ -469,7 +466,7 @@ static int nlaedit_viewall(bContext *C, const bool only_sel)
   if (ANIM_animdata_get_context(C, &ac) == 0) {
     return OPERATOR_CANCELLED;
   }
-  v2d = &ac.ar->v2d;
+  v2d = &ac.region->v2d;
 
   /* set the horizontal range, with an extra offset so that the extreme keys will be in view */
   get_nlastrip_extents(&ac, &v2d->cur.xmin, &v2d->cur.xmax, only_sel);
@@ -526,7 +523,7 @@ static int nlaedit_viewsel_exec(bContext *C, wmOperator *UNUSED(op))
 void NLA_OT_view_all(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "View All";
+  ot->name = "Frame All";
   ot->idname = "NLA_OT_view_all";
   ot->description = "Reset viewable area to show full strips range";
 
@@ -541,7 +538,7 @@ void NLA_OT_view_all(wmOperatorType *ot)
 void NLA_OT_view_selected(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "View Selected";
+  ot->name = "Frame Selected";
   ot->idname = "NLA_OT_view_selected";
   ot->description = "Reset viewable area to show selected strips range";
 
@@ -567,7 +564,7 @@ void NLA_OT_view_frame(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Go to Current Frame";
   ot->idname = "NLA_OT_view_frame";
-  ot->description = "Move the view to the playhead";
+  ot->description = "Move the view to the current frame";
 
   /* api callbacks */
   ot->exec = nlaedit_viewframe_exec;
@@ -587,6 +584,7 @@ void NLA_OT_view_frame(wmOperatorType *ot)
 /* add the specified action as new strip */
 static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   bAnimContext ac;
   Scene *scene;
 
@@ -608,14 +606,14 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
   cfra = (float)CFRA;
 
   /* get action to use */
-  act = BLI_findlink(&CTX_data_main(C)->actions, RNA_enum_get(op->ptr, "action"));
+  act = BLI_findlink(&bmain->actions, RNA_enum_get(op->ptr, "action"));
 
   if (act == NULL) {
     BKE_report(op->reports, RPT_ERROR, "No valid action to add");
     // printf("Add strip - actname = '%s'\n", actname);
     return OPERATOR_CANCELLED;
   }
-  else if (act->idroot == 0) {
+  if (act->idroot == 0) {
     /* hopefully in this case (i.e. library of userless actions),
      * the user knows what they're doing... */
     BKE_reportf(op->reports,
@@ -829,12 +827,11 @@ static int nlaedit_add_transition_exec(bContext *C, wmOperator *op)
     /* done */
     return OPERATOR_FINISHED;
   }
-  else {
-    BKE_report(op->reports,
-               RPT_ERROR,
-               "Needs at least a pair of adjacent selected strips with a gap between them");
-    return OPERATOR_CANCELLED;
-  }
+
+  BKE_report(op->reports,
+             RPT_ERROR,
+             "Needs at least a pair of adjacent selected strips with a gap between them");
+  return OPERATOR_CANCELLED;
 }
 
 void NLA_OT_transition_add(wmOperatorType *ot)
@@ -1145,9 +1142,8 @@ static int nlaedit_duplicate_exec(bContext *C, wmOperator *op)
     /* done */
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+
+  return OPERATOR_CANCELLED;
 }
 
 static int nlaedit_duplicate_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -1292,9 +1288,8 @@ static void nlaedit_split_strip_actclip(
     if (IS_EQF(len, 0.0f)) {
       return;
     }
-    else {
-      splitframe = strip->start + (len / 2.0f);
-    }
+
+    splitframe = strip->start + (len / 2.0f);
 
     /* action range */
     len = strip->actend - strip->actstart;
@@ -1505,7 +1500,7 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
     NlaTrack *nlt = (NlaTrack *)ale->data;
 
     NlaStrip *strip, *stripN = NULL;
-    NlaStrip *sa = NULL, *sb = NULL;
+    NlaStrip *area = NULL, *sb = NULL;
 
     /* make temporary metastrips so that entire islands of selections can be moved around */
     BKE_nlastrips_make_metas(&nlt->strips, 1);
@@ -1532,9 +1527,9 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
 
       if (strip->flag & NLASTRIP_FLAG_SELECT) {
         /* first or second strip? */
-        if (sa == NULL) {
+        if (area == NULL) {
           /* store as first */
-          sa = strip;
+          area = strip;
         }
         else if (sb == NULL) {
           /* store as second */
@@ -1555,7 +1550,7 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
           "Too many clusters of strips selected in NLA Track (%s): needs exactly 2 to be selected",
           nlt->name);
     }
-    else if (sa == NULL) {
+    else if (area == NULL) {
       /* no warning as this is just a common case,
        * and it may get annoying when doing multiple tracks */
     }
@@ -1572,24 +1567,24 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
 
       /* remove these strips from the track,
        * so that we can test if they can fit in the proposed places */
-      BLI_remlink(&nlt->strips, sa);
+      BLI_remlink(&nlt->strips, area);
       BLI_remlink(&nlt->strips, sb);
 
       /* calculate new extents for strips */
       /* a --> b */
       nsa[0] = sb->start;
-      nsa[1] = sb->start + (sa->end - sa->start);
+      nsa[1] = sb->start + (area->end - area->start);
       /* b --> a */
-      nsb[0] = sa->start;
-      nsb[1] = sa->start + (sb->end - sb->start);
+      nsb[0] = area->start;
+      nsb[1] = area->start + (sb->end - sb->start);
 
       /* check if the track has room for the strips to be swapped */
       if (BKE_nlastrips_has_space(&nlt->strips, nsa[0], nsa[1]) &&
           BKE_nlastrips_has_space(&nlt->strips, nsb[0], nsb[1])) {
         /* set new extents for strips then */
-        sa->start = nsa[0];
-        sa->end = nsa[1];
-        BKE_nlameta_flush_transforms(sa);
+        area->start = nsa[0];
+        area->end = nsa[1];
+        BKE_nlameta_flush_transforms(area);
 
         sb->start = nsb[0];
         sb->end = nsb[1];
@@ -1597,7 +1592,7 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
       }
       else {
         /* not enough room to swap, so show message */
-        if ((sa->flag & NLASTRIP_FLAG_TEMP_META) || (sb->flag & NLASTRIP_FLAG_TEMP_META)) {
+        if ((area->flag & NLASTRIP_FLAG_TEMP_META) || (sb->flag & NLASTRIP_FLAG_TEMP_META)) {
           BKE_report(
               op->reports,
               RPT_WARNING,
@@ -1608,13 +1603,13 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
                       RPT_WARNING,
                       "Cannot swap '%s' and '%s' as one or both will not be able to fit in their "
                       "new places",
-                      sa->name,
+                      area->name,
                       sb->name);
         }
       }
 
       /* add strips back to track now */
-      BKE_nlatrack_add_strip(nlt, sa);
+      BKE_nlatrack_add_strip(nlt, area);
       BKE_nlatrack_add_strip(nlt, sb);
     }
 
@@ -2503,10 +2498,9 @@ static int nla_fmodifier_copy_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No F-Modifiers available to be copied");
     return OPERATOR_CANCELLED;
   }
-  else {
-    /* no updates needed - copy is non-destructive operation */
-    return OPERATOR_FINISHED;
-  }
+
+  /* no updates needed - copy is non-destructive operation */
+  return OPERATOR_FINISHED;
 }
 
 void NLA_OT_fmodifier_copy(wmOperatorType *ot)
@@ -2590,10 +2584,9 @@ static int nla_fmodifier_paste_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
     return OPERATOR_FINISHED;
   }
-  else {
-    BKE_report(op->reports, RPT_ERROR, "No F-Modifiers to paste");
-    return OPERATOR_CANCELLED;
-  }
+
+  BKE_report(op->reports, RPT_ERROR, "No F-Modifiers to paste");
+  return OPERATOR_CANCELLED;
 }
 
 void NLA_OT_fmodifier_paste(wmOperatorType *ot)

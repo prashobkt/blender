@@ -21,8 +21,8 @@
 #include "BPy_UnaryFunction1DDouble.h"
 
 #include "../BPy_Convert.h"
-#include "../BPy_Interface1D.h"
 #include "../BPy_IntegrationType.h"
+#include "../BPy_Interface1D.h"
 
 #include "UnaryFunction1D_double/BPy_Curvature2DAngleF1D.h"
 #include "UnaryFunction1D_double/BPy_DensityF1D.h"
@@ -197,9 +197,7 @@ static int UnaryFunction1DDouble___init__(BPy_UnaryFunction1DDouble *self,
 
 static void UnaryFunction1DDouble___dealloc__(BPy_UnaryFunction1DDouble *self)
 {
-  if (self->uf1D_double) {
-    delete self->uf1D_double;
-  }
+  delete self->uf1D_double;
   UnaryFunction1D_Type.tp_dealloc((PyObject *)self);
 }
 

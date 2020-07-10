@@ -36,16 +36,16 @@
 #  include "DNA_object_types.h"
 #  include "DNA_scene_types.h"
 
-#  include "BLI_string.h"
+#  include "BKE_deform.h"
 #  include "BKE_lattice.h"
 #  include "BKE_main.h"
-#  include "BKE_deform.h"
+#  include "BLI_string.h"
 
 #  include "DEG_depsgraph.h"
 
+#  include "ED_lattice.h"
 #  include "WM_api.h"
 #  include "WM_types.h"
-#  include "ED_lattice.h"
 
 static void rna_LatticePoint_co_get(PointerRNA *ptr, float *values)
 {
@@ -382,6 +382,8 @@ static void rna_def_lattice(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "shape_keys", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "key");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_clear_flag(prop, PROP_PTR_NO_OWNERSHIP);
   RNA_def_property_ui_text(prop, "Shape Keys", "");
 
   prop = RNA_def_property(srna, "points", PROP_COLLECTION, PROP_NONE);

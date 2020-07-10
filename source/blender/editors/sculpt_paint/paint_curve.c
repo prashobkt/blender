@@ -18,8 +18,8 @@
  * \ingroup edsculpt
  */
 
-#include <string.h>
 #include <limits.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -35,8 +35,8 @@
 #include "BKE_main.h"
 #include "BKE_paint.h"
 
-#include "ED_view3d.h"
 #include "ED_paint.h"
+#include "ED_view3d.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -142,19 +142,15 @@ static char paintcurve_point_side_index(const BezTriple *bezt,
     if ((bezt->f1 & SELECT) == (bezt->f3 & SELECT)) {
       return is_first ? SEL_F1 : SEL_F3;
     }
-    else if (bezt->f1 & SELECT) {
+    if (bezt->f1 & SELECT) {
       return SEL_F1;
     }
-    else if (bezt->f3 & SELECT) {
+    if (bezt->f3 & SELECT) {
       return SEL_F3;
     }
-    else {
-      return fallback;
-    }
+    return fallback;
   }
-  else {
-    return 0;
-  }
+  return 0;
 }
 
 /******************* Operators *********************************/
@@ -196,7 +192,7 @@ static void paintcurve_point_add(bContext *C, wmOperator *op, const int loc[2])
   PaintCurve *pc;
   PaintCurvePoint *pcp;
   wmWindow *window = CTX_wm_window(C);
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   float vec[3] = {loc[0], loc[1], 0.0};
   int add_index;
   int i;
@@ -250,7 +246,7 @@ static void paintcurve_point_add(bContext *C, wmOperator *op, const int loc[2])
 
   ED_paintcurve_undo_push_end();
 
-  WM_paint_cursor_tag_redraw(window, ar);
+  WM_paint_cursor_tag_redraw(window, region);
 }
 
 static int paintcurve_add_point_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -309,7 +305,7 @@ static int paintcurve_delete_point_exec(bContext *C, wmOperator *op)
   PaintCurve *pc;
   PaintCurvePoint *pcp;
   wmWindow *window = CTX_wm_window(C);
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   int i;
   int tot_del = 0;
   pc = br->paint_curve;
@@ -361,7 +357,7 @@ static int paintcurve_delete_point_exec(bContext *C, wmOperator *op)
 
   ED_paintcurve_undo_push_end();
 
-  WM_paint_cursor_tag_redraw(window, ar);
+  WM_paint_cursor_tag_redraw(window, region);
 
   return OPERATOR_FINISHED;
 }
@@ -385,7 +381,7 @@ static bool paintcurve_point_select(
     bContext *C, wmOperator *op, const int loc[2], bool toggle, bool extend)
 {
   wmWindow *window = CTX_wm_window(C);
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   Paint *p = BKE_paint_get_active_from_context(C);
   Brush *br = p->brush;
   PaintCurve *pc;
@@ -477,7 +473,7 @@ static bool paintcurve_point_select(
 
   ED_paintcurve_undo_push_end();
 
-  WM_paint_cursor_tag_redraw(window, ar);
+  WM_paint_cursor_tag_redraw(window, region);
 
   return true;
 }
@@ -491,9 +487,7 @@ static int paintcurve_select_point_invoke(bContext *C, wmOperator *op, const wmE
     RNA_int_set_array(op->ptr, "location", loc);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 static int paintcurve_select_point_exec(bContext *C, wmOperator *op)
@@ -586,7 +580,7 @@ static int paintcurve_slide_invoke(bContext *C, wmOperator *op, const wmEvent *e
   }
 
   if (pcp) {
-    ARegion *ar = CTX_wm_region(C);
+    ARegion *region = CTX_wm_region(C);
     wmWindow *window = CTX_wm_window(C);
     PointSlideData *psd = MEM_mallocN(sizeof(PointSlideData), "PointSlideData");
     copy_v2_v2_int(psd->initial_loc, event->mval);
@@ -609,7 +603,7 @@ static int paintcurve_slide_invoke(bContext *C, wmOperator *op, const wmEvent *e
     BKE_paint_curve_clamp_endpoint_add_index(pc, pcp - pc->points);
 
     WM_event_add_modal_handler(C, op);
-    WM_paint_cursor_tag_redraw(window, ar);
+    WM_paint_cursor_tag_redraw(window, region);
     return OPERATOR_RUNNING_MODAL;
   }
 
@@ -629,7 +623,7 @@ static int paintcurve_slide_modal(bContext *C, wmOperator *op, const wmEvent *ev
 
   switch (event->type) {
     case MOUSEMOVE: {
-      ARegion *ar = CTX_wm_region(C);
+      ARegion *region = CTX_wm_region(C);
       wmWindow *window = CTX_wm_window(C);
       float diff[2] = {event->mval[0] - psd->initial_loc[0], event->mval[1] - psd->initial_loc[1]};
       if (psd->select == 1) {
@@ -648,7 +642,7 @@ static int paintcurve_slide_modal(bContext *C, wmOperator *op, const wmEvent *ev
           add_v2_v2v2(psd->pcp->bez.vec[opposite], psd->pcp->bez.vec[1], diff);
         }
       }
-      WM_paint_cursor_tag_redraw(window, ar);
+      WM_paint_cursor_tag_redraw(window, region);
       break;
     }
     default:
@@ -727,7 +721,7 @@ static int paintcurve_cursor_invoke(bContext *C, wmOperator *UNUSED(op), const w
 
   switch (mode) {
     case PAINT_MODE_TEXTURE_2D: {
-      ARegion *ar = CTX_wm_region(C);
+      ARegion *region = CTX_wm_region(C);
       SpaceImage *sima = CTX_wm_space_image(C);
       float location[2];
 
@@ -736,7 +730,7 @@ static int paintcurve_cursor_invoke(bContext *C, wmOperator *UNUSED(op), const w
       }
 
       UI_view2d_region_to_view(
-          &ar->v2d, event->mval[0], event->mval[1], &location[0], &location[1]);
+          &region->v2d, event->mval[0], event->mval[1], &location[0], &location[1]);
       copy_v2_v2(sima->cursor, location);
       WM_event_add_notifier(C, NC_SPACE | ND_SPACE_IMAGE, NULL);
       break;

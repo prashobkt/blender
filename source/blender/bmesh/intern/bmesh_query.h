@@ -48,6 +48,8 @@ BMLoop *BM_face_other_edge_loop(BMFace *f, BMEdge *e, BMVert *v) ATTR_WARN_UNUSE
 BMLoop *BM_loop_other_edge_loop(BMLoop *l, BMVert *v) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 BMLoop *BM_face_other_vert_loop(BMFace *f, BMVert *v_prev, BMVert *v) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();
+BMLoop *BM_loop_other_vert_loop_by_edge(BMLoop *l, BMEdge *e) ATTR_WARN_UNUSED_RESULT
+    ATTR_NONNULL();
 BMLoop *BM_loop_other_vert_loop(BMLoop *l, BMVert *v) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 BMLoop *BM_vert_step_fan_loop(BMLoop *l, BMEdge **e_step) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 
@@ -142,6 +144,16 @@ float BM_loop_calc_face_normal(const BMLoop *l, float r_normal[3]) ATTR_NONNULL(
 float BM_loop_calc_face_normal_safe(const BMLoop *l, float r_normal[3]) ATTR_NONNULL();
 float BM_loop_calc_face_normal_safe_ex(const BMLoop *l, const float epsilon, float r_normal[3])
     ATTR_NONNULL();
+float BM_loop_calc_face_normal_safe_vcos_ex(const BMLoop *l,
+                                            const float normal_fallback[3],
+                                            float const (*vertexCos)[3],
+                                            const float epsilon_sq,
+                                            float r_normal[3]) ATTR_NONNULL();
+float BM_loop_calc_face_normal_safe_vcos(const BMLoop *l,
+                                         const float normal_fallback[3],
+                                         float const (*vertexCos)[3],
+                                         float r_normal[3]) ATTR_NONNULL();
+
 void BM_loop_calc_face_direction(const BMLoop *l, float r_normal[3]);
 void BM_loop_calc_face_tangent(const BMLoop *l, float r_tangent[3]);
 
@@ -161,7 +173,6 @@ float BM_edge_calc_face_angle_with_imat3(const BMEdge *e,
 float BM_edge_calc_face_angle_signed(const BMEdge *e) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 void BM_edge_calc_face_tangent(const BMEdge *e, const BMLoop *e_loop, float r_tangent[3])
     ATTR_NONNULL();
-
 float BM_vert_calc_edge_angle(const BMVert *v) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 float BM_vert_calc_edge_angle_ex(const BMVert *v, const float fallback) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();
@@ -225,6 +236,8 @@ bool BM_edge_is_all_face_flag_test(const BMEdge *e,
                                    const bool respect_hide) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 
 bool BM_edge_is_any_vert_flag_test(const BMEdge *e, const char hflag) ATTR_WARN_UNUSED_RESULT
+    ATTR_NONNULL();
+bool BM_edge_is_any_face_flag_test(const BMEdge *e, const char hflag) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();
 bool BM_face_is_any_vert_flag_test(const BMFace *f, const char hflag) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();

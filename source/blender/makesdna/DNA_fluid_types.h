@@ -24,6 +24,8 @@
 #ifndef __DNA_FLUID_TYPES_H__
 #define __DNA_FLUID_TYPES_H__
 
+#include "DNA_listBase.h"
+
 /* Domain flags. */
 enum {
   FLUID_DOMAIN_USE_NOISE = (1 << 1),        /* Use noise. */
@@ -41,6 +43,9 @@ enum {
   FLUID_DOMAIN_USE_SPEED_VECTORS = (1 << 11),   /* Generate mesh speed vectors. */
   FLUID_DOMAIN_EXPORT_MANTA_SCRIPT = (1 << 12), /* Export mantaflow script during bake. */
   FLUID_DOMAIN_USE_FRACTIONS = (1 << 13),       /* Use second order obstacles. */
+  FLUID_DOMAIN_DELETE_IN_OBSTACLE = (1 << 14),  /* Delete fluid inside obstacles. */
+  FLUID_DOMAIN_USE_DIFFUSION = (1 << 15), /* Use diffusion (e.g. viscosity, surface tension). */
+  FLUID_DOMAIN_USE_RESUMABLE_CACHE = (1 << 16), /* Determine if cache should be resumable. */
 };
 
 /* Border collisions. */
@@ -210,11 +215,194 @@ enum {
 #define FLUID_DOMAIN_DIR_SCRIPT "script"
 #define FLUID_DOMAIN_SMOKE_SCRIPT "smoke_script.py"
 #define FLUID_DOMAIN_LIQUID_SCRIPT "liquid_script.py"
+#define FLUID_CACHE_VERSION "C01"
+
+/* Cache file names. */
+#define FLUID_NAME_CONFIG "config"
+#define FLUID_NAME_DATA "fluid_data"
+#define FLUID_NAME_NOISE "fluid_noise"
+#define FLUID_NAME_MESH "fluid_mesh"
+#define FLUID_NAME_PARTICLES "fluid_particles"
+#define FLUID_NAME_GUIDING "fluid_guiding"
+
+/* Fluid object names.*/
+#define FLUID_NAME_FLAGS "flags"                   /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_VELOCITY "velocity"             /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_VELOCITYTMP "velocity_previous" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_VELOCITYX "x_vel"
+#define FLUID_NAME_VELOCITYY "y_vel"
+#define FLUID_NAME_VELOCITYZ "z_vel"
+#define FLUID_NAME_PRESSURE "pressure"
+#define FLUID_NAME_PHIOBS "phi_obstacle" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PHISIN "phiSIn"
+#define FLUID_NAME_PHIIN "phi_inflow" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PHIOUT "phi_out"   /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_FORCES "forces"
+#define FLUID_NAME_FORCE_X "x_force"
+#define FLUID_NAME_FORCE_Y "y_force"
+#define FLUID_NAME_FORCE_Z "z_force"
+#define FLUID_NAME_NUMOBS "numObs"
+#define FLUID_NAME_PHIOBSSIN "phiObsSIn"
+#define FLUID_NAME_PHIOBSIN "phi_obstacle_inflow"
+#define FLUID_NAME_OBVEL "obvel"
+#define FLUID_NAME_OBVELC "obvelC"
+#define FLUID_NAME_OBVEL_X "x_obvel"
+#define FLUID_NAME_OBVEL_Y "y_obvel"
+#define FLUID_NAME_OBVEL_Z "z_obvel"
+#define FLUID_NAME_FRACTIONS "fractions"
+#define FLUID_NAME_INVELC "invelC"
+#define FLUID_NAME_INVEL "invel"
+#define FLUID_NAME_INVEL_X "x_invel"
+#define FLUID_NAME_INVEL_Y "y_invel"
+#define FLUID_NAME_INVEL_Z "z_invel"
+#define FLUID_NAME_PHIOUTSIN "phiOutSIn"
+#define FLUID_NAME_PHIOUTIN "phi_out_inflow"
+
+/* Smoke object names. */
+#define FLUID_NAME_SHADOW "shadow"     /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_EMISSION "emission" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_EMISSIONIN "emissionIn"
+#define FLUID_NAME_DENSITY "density"          /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_DENSITYIN "density_inflow" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_HEAT "heat"
+#define FLUID_NAME_HEATIN "heatIn"
+#define FLUID_NAME_TEMPERATURE "temperature"          /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_TEMPERATUREIN "temperature_inflow" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORR "color_r"                   /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORG "color_g"                   /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORB "color_b"                   /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORRIN "color_r_inflow"          /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORGIN "color_g_inflow"          /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORBIN "color_b_inflow"          /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_FLAME "flame"                      /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_FUEL "fuel"                        /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_REACT "react"                      /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_FUELIN "fuel_inflow"               /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_REACTIN "react_inflow"             /* == OpenVDB grid attribute name. */
+
+/* Liquid object names. */
+#define FLUID_NAME_PHIPARTS "phi_particles" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PHI "phi"                /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PHITMP "phi_previous"    /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_VELOCITYOLD "velOld"
+#define FLUID_NAME_VELOCITYPARTS "velParts"
+#define FLUID_NAME_MAPWEIGHTS "mapWeights"
+#define FLUID_NAME_PP "pp"
+#define FLUID_NAME_PVEL "pVel"
+#define FLUID_NAME_PARTS "particles"                  /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PARTSVELOCITY "particles_velocity" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PINDEX "pindex"
+#define FLUID_NAME_GPI "gpi"
+#define FLUID_NAME_CURVATURE "gpi"
+
+/* Noise object names. */
+#define FLUID_NAME_VELOCITY_NOISE "velocity_noise"
+#define FLUID_NAME_DENSITY_NOISE "density_noise" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PHIIN_NOISE "phiIn_noise"
+#define FLUID_NAME_PHIOUT_NOISE "phiOut_noise"
+#define FLUID_NAME_PHIOBS_NOISE "phiObs_noise"
+#define FLUID_NAME_FLAGS_NOISE "flags_noise"
+#define FLUID_NAME_TMPIN_NOISE "tmpIn_noise"
+#define FLUID_NAME_EMISSIONIN_NOISE "emissionIn_noise"
+#define FLUID_NAME_ENERGY "energy"
+#define FLUID_NAME_TMPFLAGS "tmpFlags"
+#define FLUID_NAME_TEXTURE_U "textureU"
+#define FLUID_NAME_TEXTURE_V "textureV"
+#define FLUID_NAME_TEXTURE_W "textureW"
+#define FLUID_NAME_TEXTURE_U2 "textureU2"
+#define FLUID_NAME_TEXTURE_V2 "textureV2"
+#define FLUID_NAME_TEXTURE_W2 "textureW2"
+#define FLUID_NAME_UV0 "uv_grid_0"              /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_UV1 "uv_grid_1"              /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORR_NOISE "color_r_noise" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORG_NOISE "color_g_noise" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_COLORB_NOISE "color_b_noise" /* == OpenVDB grid attribute name. */
+#define FLUID_NAME_FLAME_NOISE "flame_noise"
+#define FLUID_NAME_FUEL_NOISE "fuel_noise"
+#define FLUID_NAME_REACT_NOISE "react_noise"
+
+/* Mesh object names. */
+#define FLUID_NAME_PHIPARTS_MESH "phiParts_mesh"
+#define FLUID_NAME_PHI_MESH "phi_mesh"
+#define FLUID_NAME_PP_MESH "pp_mesh"
+#define FLUID_NAME_FLAGS_MESH "flags_mesh"
+#define FLUID_NAME_LMESH "lMesh"
+/* == OpenVDB grid attribute name. */
+#define FLUID_NAME_VELOCITYVEC_MESH "vertex_velocities_mesh"
+#define FLUID_NAME_VELOCITY_MESH "velocity_mesh"
+#define FLUID_NAME_PINDEX_MESH "pindex_mesh"
+#define FLUID_NAME_GPI_MESH "gpi_mesh"
+
+/* Particles object names. */
+#define FLUID_NAME_PP_PARTICLES "ppSnd"
+#define FLUID_NAME_PVEL_PARTICLES "pVelSnd"
+#define FLUID_NAME_PLIFE_PARTICLES "pLifeSnd"
+#define FLUID_NAME_PFORCE_PARTICLES "pForceSnd"
+/* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PARTS_PARTICLES "particles_secondary"
+/* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PARTSVEL_PARTICLES "particles_velocity_secondary"
+/* == OpenVDB grid attribute name. */
+#define FLUID_NAME_PARTSLIFE_PARTICLES "particles_life_secondary"
+#define FLUID_NAME_PARTSFORCE_PARTICLES "particles_force_secondary"
+#define FLUID_NAME_VELOCITY_PARTICLES "velocity_secondary"
+#define FLUID_NAME_FLAGS_PARTICLES "flags_secondary"
+#define FLUID_NAME_PHI_PARTICLES "phi_secondary"
+#define FLUID_NAME_PHIOBS_PARTICLES "phiObs_secondary"
+#define FLUID_NAME_PHIOUT_PARTICLES "phiOut_secondary"
+#define FLUID_NAME_NORMAL_PARTICLES "normal_secondary"
+#define FLUID_NAME_NEIGHBORRATIO_PARTICLES "neighbor_ratio_secondary"
+/* == OpenVDB grid attribute name. */
+#define FLUID_NAME_TRAPPEDAIR_PARTICLES "trapped_air_secondary"
+/* == OpenVDB grid attribute name. */
+#define FLUID_NAME_WAVECREST_PARTICLES "wave_crest_secondary"
+/* == OpenVDB grid attribute name. */
+#define FLUID_NAME_KINETICENERGY_PARTICLES "kinetic_energy_secondary"
+
+/* Guiding object names. */
+#define FLUID_NAME_VELT "velT"
+#define FLUID_NAME_WEIGHTGUIDE "weightGuide"
+#define FLUID_NAME_NUMGUIDES "numGuides"
+#define FLUID_NAME_PHIGUIDEIN "phiGuideIn"
+#define FLUID_NAME_GUIDEVELC "guidevelC"
+#define FLUID_NAME_GUIDEVEL_X "x_guidevel"
+#define FLUID_NAME_GUIDEVEL_Y "y_guidevel"
+#define FLUID_NAME_GUIDEVEL_Z "z_guidevel"
+#define FLUID_NAME_GUIDEVEL "velocity_guide"
+
+/* Cache file extensions. */
+#define FLUID_DOMAIN_EXTENSION_UNI ".uni"
+#define FLUID_DOMAIN_EXTENSION_OPENVDB ".vdb"
+#define FLUID_DOMAIN_EXTENSION_RAW ".raw"
+#define FLUID_DOMAIN_EXTENSION_OBJ ".obj"
+#define FLUID_DOMAIN_EXTENSION_BINOBJ ".bobj.gz"
+
+enum {
+  FLUID_DOMAIN_GRID_FLOAT = 0,
+  FLUID_DOMAIN_GRID_INT = 1,
+  FLUID_DOMAIN_GRID_VEC3F = 2,
+};
+
+enum {
+  FLUID_DOMAIN_CACHE_FILES_SINGLE = 0,
+  FLUID_DOMAIN_CACHE_FILES_COMBINED = 1,
+};
 
 enum {
   FLUID_DOMAIN_CACHE_REPLAY = 0,
   FLUID_DOMAIN_CACHE_MODULAR = 1,
-  FLUID_DOMAIN_CACHE_FINAL = 2,
+  FLUID_DOMAIN_CACHE_ALL = 2,
+};
+
+enum {
+  VDB_COMPRESSION_BLOSC = 0,
+  VDB_COMPRESSION_ZIP = 1,
+  VDB_COMPRESSION_NONE = 2,
+};
+
+enum {
+  VDB_PRECISION_HALF_FLOAT = 0,
+  VDB_PRECISION_FULL_FLOAT = 1,
 };
 
 /* Deprecated values (i.e. all defines and enums below this line up until typedefs). */
@@ -231,12 +419,6 @@ enum {
   SM_HRES_FULLSAMPLE = 2,
 };
 
-enum {
-  VDB_COMPRESSION_BLOSC = 0,
-  VDB_COMPRESSION_ZIP = 1,
-  VDB_COMPRESSION_NONE = 2,
-};
-
 typedef struct FluidDomainVertexVelocity {
   float vel[3];
 } FluidDomainVertexVelocity;
@@ -245,14 +427,15 @@ typedef struct FluidDomainSettings {
 
   /* -- Runtime-only fields (from here on). -- */
 
-  struct FluidModifierData *mmd; /* For fast RNA access. */
+  struct FluidModifierData *fmd; /* For fast RNA access. */
   struct MANTA *fluid;
   struct MANTA *fluid_old; /* Adaptive domain needs access to old fluid state. */
   void *fluid_mutex;
   struct Collection *fluid_group;
   struct Collection *force_group;    /* UNUSED */
   struct Collection *effector_group; /* Effector objects group. */
-  struct GPUTexture *tex;
+  struct GPUTexture *tex_density;
+  struct GPUTexture *tex_color;
   struct GPUTexture *tex_wt;
   struct GPUTexture *tex_shadow;
   struct GPUTexture *tex_flame;
@@ -348,7 +531,6 @@ typedef struct FluidDomainSettings {
   float surface_tension;
   float viscosity_base;
   int viscosity_exponent;
-  float domain_size;
 
   /* Mesh options. */
   float mesh_concave_upper;
@@ -359,7 +541,7 @@ typedef struct FluidDomainSettings {
   int mesh_scale;
   int totvert;
   short mesh_generator;
-  char _pad5[2]; /* Unused. */
+  char _pad5[6]; /* Unused. */
 
   /* Secondary particle options. */
   int particle_type;
@@ -398,6 +580,7 @@ typedef struct FluidDomainSettings {
   int cache_frame_pause_mesh;
   int cache_frame_pause_particles;
   int cache_frame_pause_guide;
+  int cache_frame_offset;
   int cache_flag;
   char cache_mesh_format;
   char cache_data_format;
@@ -406,7 +589,8 @@ typedef struct FluidDomainSettings {
   char cache_directory[1024];
   char error[64]; /* Bake error description. */
   short cache_type;
-  char _pad8[2]; /* Unused. */
+  char cache_id[4]; /* Run-time only */
+  char _pad8[2];
 
   /* Time options. */
   float dt;
@@ -431,17 +615,17 @@ typedef struct FluidDomainSettings {
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
 
+  /* OpenVDB cache options. */
+  int openvdb_compression;
+  float clipping;
+  char openvdb_data_depth;
+  char _pad9[7]; /* Unused. */
+
   /* -- Deprecated / unsed options (below). -- */
 
   /* View options. */
   int viewsettings;
-  char _pad9[4]; /* Unused. */
-
-  /* OpenVDB cache options. */
-  int openvdb_comp;
-  float clipping;
-  char data_depth;
-  char _pad10[7]; /* Unused. */
+  char _pad10[4]; /* Unused. */
 
   /* Pointcache options. */
   /* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading
@@ -494,8 +678,10 @@ enum {
   FLUID_FLOW_USE_PART_SIZE = (1 << 4),
   /* Control when to apply inflow. */
   FLUID_FLOW_USE_INFLOW = (1 << 5),
-  /* Control when to apply inflow. */
+  /* Control how to initialize flow objects. */
   FLUID_FLOW_USE_PLANE_INIT = (1 << 6),
+  /* Notify domain objects about state change (invalidate cache). */
+  FLUID_FLOW_NEEDS_UPDATE = (1 << 7),
 };
 
 typedef struct FluidFlowSettings {
@@ -503,7 +689,7 @@ typedef struct FluidFlowSettings {
   /* -- Runtime-only fields (from here on). -- */
 
   /* For fast RNA access. */
-  struct FluidModifierData *mmd;
+  struct FluidModifierData *fmd;
   struct Mesh *mesh;
   struct ParticleSystem *psys;
   struct Tex *noise_texture;
@@ -563,13 +749,23 @@ enum {
   FLUID_EFFECTOR_GUIDE_AVERAGED = 3,
 };
 
+/* Effector flags. */
+enum {
+  /* Control when to apply inflow. */
+  FLUID_EFFECTOR_USE_EFFEC = (1 << 1),
+  /* Control how to initialize flow objects. */
+  FLUID_EFFECTOR_USE_PLANE_INIT = (1 << 2),
+  /* Notify domain objects about state change (invalidate cache). */
+  FLUID_EFFECTOR_NEEDS_UPDATE = (1 << 3),
+};
+
 /* Collision objects (filled with smoke). */
 typedef struct FluidEffectorSettings {
 
   /* -- Runtime-only fields (from here on). -- */
 
   /* For fast RNA access. */
-  struct FluidModifierData *mmd;
+  struct FluidModifierData *fmd;
   struct Mesh *mesh;
   float *verts_old;
   int numverts;
@@ -578,8 +774,9 @@ typedef struct FluidEffectorSettings {
 
   float surface_distance; /* Thickness of mesh surface, used in obstacle sdf. */
   int flags;
+  int subframes;
   short type;
-  char _pad1[2];
+  char _pad1[6];
 
   /* Guiding options. */
   float vel_multi; /* Multiplier for object velocity. */

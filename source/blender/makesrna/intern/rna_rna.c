@@ -123,9 +123,9 @@ const EnumPropertyItem rna_enum_property_unit_items[] = {
 /** \} */
 
 #ifdef RNA_RUNTIME
-#  include "MEM_guardedalloc.h"
 #  include "BLI_ghash.h"
 #  include "BLI_string.h"
+#  include "MEM_guardedalloc.h"
 
 #  include "BKE_lib_override.h"
 
@@ -1133,6 +1133,7 @@ static int rna_BlenderRNA_structs_lookup_string(PointerRNA *ptr,
  * (if they are IDs, or have different names or RNA type, then this would be meaningless). */
 static bool rna_property_override_diff_propptr_validate_diffing(PointerRNA *propptr_a,
                                                                 PointerRNA *propptr_b,
+                                                                const bool no_ownership,
                                                                 const bool no_prop_name,
                                                                 bool *r_is_id,
                                                                 bool *r_is_null,
@@ -1172,7 +1173,7 @@ static bool rna_property_override_diff_propptr_validate_diffing(PointerRNA *prop
     *r_is_id = RNA_struct_is_ID(propptr_a->type);
     *r_is_null = (ELEM(NULL, propptr_b, propptr_b->type, propptr_b->data));
     *r_is_type_diff = (propptr_b == NULL || propptr_b->type != propptr_a->type);
-    is_valid_for_diffing = !(*r_is_id || *r_is_null);
+    is_valid_for_diffing = !((*r_is_id && no_ownership) || *r_is_null);
   }
 
   if (propptr_b == NULL || propptr_a->type != propptr_b->type) {
@@ -1248,6 +1249,7 @@ static int rna_property_override_diff_propptr(Main *bmain,
                                               const bool no_prop_name,
                                               IDOverrideLibrary *override,
                                               const char *rna_path,
+                                              size_t rna_path_len,
                                               const char *rna_itemname_a,
                                               const char *rna_itemname_b,
                                               const int rna_itemindex_a,
@@ -1265,6 +1267,7 @@ static int rna_property_override_diff_propptr(Main *bmain,
    * so no point in going inside of it at all! */
   bool is_valid_for_diffing = rna_property_override_diff_propptr_validate_diffing(propptr_a,
                                                                                   propptr_b,
+                                                                                  no_ownership,
                                                                                   no_prop_name,
                                                                                   &is_id,
                                                                                   &is_null,
@@ -1278,7 +1281,7 @@ static int rna_property_override_diff_propptr(Main *bmain,
 
   if (is_id) {
     /* For now, once we deal with nodetrees we'll want to get rid of that one. */
-    BLI_assert(no_ownership);
+    //    BLI_assert(no_ownership);
   }
 
   if (override) {
@@ -1294,19 +1297,23 @@ static int rna_property_override_diff_propptr(Main *bmain,
             override, rna_path, &created);
 
         /* If not yet overridden, or if we are handling sub-items (inside a collection)... */
-        if (op != NULL && (created || rna_itemname_a != NULL || rna_itemname_b != NULL ||
-                           rna_itemindex_a != -1 || rna_itemindex_b != -1)) {
-          BKE_lib_override_library_property_operation_get(op,
-                                                          IDOVERRIDE_LIBRARY_OP_REPLACE,
-                                                          rna_itemname_b,
-                                                          rna_itemname_a,
-                                                          rna_itemindex_b,
-                                                          rna_itemindex_a,
-                                                          true,
-                                                          NULL,
-                                                          &created);
-          if (r_override_changed) {
-            *r_override_changed = created;
+        if (op != NULL) {
+          BKE_lib_override_library_operations_tag(op, IDOVERRIDE_LIBRARY_TAG_UNUSED, false);
+
+          if (created || rna_itemname_a != NULL || rna_itemname_b != NULL ||
+              rna_itemindex_a != -1 || rna_itemindex_b != -1) {
+            BKE_lib_override_library_property_operation_get(op,
+                                                            IDOVERRIDE_LIBRARY_OP_REPLACE,
+                                                            rna_itemname_b,
+                                                            rna_itemname_a,
+                                                            rna_itemindex_b,
+                                                            rna_itemindex_a,
+                                                            true,
+                                                            NULL,
+                                                            &created);
+            if (r_override_changed) {
+              *r_override_changed = created;
+            }
           }
         }
       }
@@ -1320,16 +1327,7 @@ static int rna_property_override_diff_propptr(Main *bmain,
 
       char extended_rna_path_buffer[RNA_PATH_BUFFSIZE];
       char *extended_rna_path = extended_rna_path_buffer;
-
-#  define RNA_PATH_PRINTF(_str, ...) \
-    if (BLI_snprintf(extended_rna_path_buffer, RNA_PATH_BUFFSIZE, (_str), __VA_ARGS__) >= \
-        RNA_PATH_BUFFSIZE - 1) { \
-      extended_rna_path = BLI_sprintfN((_str), __VA_ARGS__); \
-    } \
-    (void)0
-#  define RNA_PATH_FREE() \
-    if (extended_rna_path != extended_rna_path_buffer && extended_rna_path != rna_path) \
-    MEM_freeN(extended_rna_path)
+      size_t extended_rna_path_len = 0;
 
       /* There may be a propname defined in some cases, while no actual name set
        * (e.g. happens with point cache), in that case too we want to fall back to index.
@@ -1338,31 +1336,82 @@ static int rna_property_override_diff_propptr(Main *bmain,
         if ((rna_itemname_a != NULL && rna_itemname_a[0] != '\0') &&
             (rna_itemname_b != NULL && rna_itemname_b[0] != '\0')) {
           BLI_assert(STREQ(rna_itemname_a, rna_itemname_b));
+
           char esc_item_name[RNA_PATH_BUFFSIZE];
-          BLI_strescape(esc_item_name, rna_itemname_a, RNA_PATH_BUFFSIZE);
-          RNA_PATH_PRINTF("%s[\"%s\"]", rna_path, esc_item_name);
+          const size_t esc_item_name_len = BLI_strescape(
+              esc_item_name, rna_itemname_a, RNA_PATH_BUFFSIZE);
+          extended_rna_path_len = rna_path_len + 2 + esc_item_name_len + 2;
+          if (extended_rna_path_len >= RNA_PATH_BUFFSIZE) {
+            extended_rna_path = MEM_mallocN(extended_rna_path_len + 1, __func__);
+          }
+
+          memcpy(extended_rna_path, rna_path, rna_path_len);
+          extended_rna_path[rna_path_len] = '[';
+          extended_rna_path[rna_path_len + 1] = '"';
+          memcpy(extended_rna_path + rna_path_len + 2, esc_item_name, esc_item_name_len);
+          extended_rna_path[rna_path_len + 2 + esc_item_name_len] = '"';
+          extended_rna_path[rna_path_len + 2 + esc_item_name_len + 1] = ']';
+          extended_rna_path[extended_rna_path_len] = '\0';
         }
         else if (rna_itemindex_a != -1) { /* Based on index... */
           BLI_assert(rna_itemindex_a == rna_itemindex_b);
-          RNA_PATH_PRINTF("%s[%d]", rna_path, rna_itemindex_a);
+
+          /* low-level specific highly-efficient conversion of positive integer to string. */
+          char item_index_buff[32];
+          size_t item_index_buff_len = 0;
+          if (rna_itemindex_a == 0) {
+            item_index_buff[0] = '0';
+            item_index_buff_len = 1;
+          }
+          else {
+            uint index;
+            for (index = rna_itemindex_a;
+                 index > 0 && item_index_buff_len < sizeof(item_index_buff);
+                 index /= 10) {
+              item_index_buff[item_index_buff_len++] = '0' + (char)(index % 10);
+            }
+            BLI_assert(index == 0);
+          }
+
+          extended_rna_path_len = rna_path_len + item_index_buff_len + 2;
+          if (extended_rna_path_len >= RNA_PATH_BUFFSIZE) {
+            extended_rna_path = MEM_mallocN(extended_rna_path_len + 1, __func__);
+          }
+
+          memcpy(extended_rna_path, rna_path, rna_path_len);
+          extended_rna_path[rna_path_len] = '[';
+          for (size_t i = 1; i <= item_index_buff_len; i++) {
+            /* The first loop above generated inverted string representation of our index number.
+             */
+            extended_rna_path[rna_path_len + i] = item_index_buff[item_index_buff_len - i];
+          }
+          extended_rna_path[rna_path_len + 1 + item_index_buff_len] = ']';
+          extended_rna_path[extended_rna_path_len] = '\0';
         }
         else {
           extended_rna_path = (char *)rna_path;
+          extended_rna_path_len = rna_path_len;
         }
       }
 
       eRNAOverrideMatchResult report_flags = 0;
-      const bool match = RNA_struct_override_matches(
-          bmain, propptr_a, propptr_b, extended_rna_path, override, flags, &report_flags);
+      const bool match = RNA_struct_override_matches(bmain,
+                                                     propptr_a,
+                                                     propptr_b,
+                                                     extended_rna_path,
+                                                     extended_rna_path_len,
+                                                     override,
+                                                     flags,
+                                                     &report_flags);
       if (r_override_changed && (report_flags & RNA_OVERRIDE_MATCH_RESULT_CREATED) != 0) {
         *r_override_changed = true;
       }
 
-      RNA_PATH_FREE();
+      if (extended_rna_path != extended_rna_path_buffer && extended_rna_path != rna_path) {
+        MEM_freeN(extended_rna_path);
+      }
 
 #  undef RNA_PATH_BUFFSIZE
-#  undef RNA_PATH_PRINTF
-#  undef RNA_PATH_FREE
 
       return !match;
     }
@@ -1391,6 +1440,7 @@ int rna_property_override_diff_default(Main *bmain,
                                        const int mode,
                                        IDOverrideLibrary *override,
                                        const char *rna_path,
+                                       const size_t rna_path_len,
                                        const int flags,
                                        bool *r_override_changed)
 {
@@ -1680,6 +1730,7 @@ int rna_property_override_diff_default(Main *bmain,
                                                   no_prop_name,
                                                   override,
                                                   rna_path,
+                                                  rna_path_len,
                                                   NULL,
                                                   NULL,
                                                   -1,
@@ -1696,6 +1747,7 @@ int rna_property_override_diff_default(Main *bmain,
       const bool use_insertion = (RNA_property_override_flag(prop_a) &
                                   PROPOVERRIDE_LIBRARY_INSERTION) &&
                                  do_create;
+      const bool no_ownership = (RNA_property_flag(prop_a) & PROP_PTR_NO_OWNERSHIP) != 0;
       const bool no_prop_name = (RNA_property_override_flag(prop_a) & PROPOVERRIDE_NO_PROP_NAME) !=
                                 0;
       bool equals = true;
@@ -1729,6 +1781,7 @@ int rna_property_override_diff_default(Main *bmain,
             is_valid_for_diffing = rna_property_override_diff_propptr_validate_diffing(
                 &iter_a.ptr,
                 &iter_b.ptr,
+                no_ownership,
                 no_prop_name,
                 &is_id,
                 &is_null,
@@ -1746,6 +1799,7 @@ int rna_property_override_diff_default(Main *bmain,
               /* We still need propname from 'a' item... */
               rna_property_override_diff_propptr_validate_diffing(&iter_a.ptr,
                                                                   NULL,
+                                                                  no_ownership,
                                                                   no_prop_name,
                                                                   &is_id,
                                                                   &is_null,
@@ -1831,7 +1885,6 @@ int rna_property_override_diff_default(Main *bmain,
           }
           else if (is_id || is_valid_for_diffing) {
             if (equals || do_create) {
-              const bool no_ownership = (RNA_property_flag(prop_a) & PROP_PTR_NO_OWNERSHIP) != 0;
               const int eq = rna_property_override_diff_propptr(bmain,
                                                                 &iter_a.ptr,
                                                                 &iter_b.ptr,
@@ -1840,6 +1893,7 @@ int rna_property_override_diff_default(Main *bmain,
                                                                 no_prop_name,
                                                                 override,
                                                                 rna_path,
+                                                                rna_path_len,
                                                                 propname_a,
                                                                 propname_b,
                                                                 idx_a,

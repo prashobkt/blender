@@ -76,6 +76,7 @@ struct BMElem *EDBM_elem_from_selectmode(struct BMEditMesh *em,
                                          struct BMVert *eve,
                                          struct BMEdge *eed,
                                          struct BMFace *efa);
+
 int EDBM_elem_to_index_any(struct BMEditMesh *em, struct BMElem *ele);
 struct BMElem *EDBM_elem_from_index_any(struct BMEditMesh *em, int index);
 
@@ -248,7 +249,7 @@ void MESH_OT_split_normals(struct wmOperatorType *ot);
 void MESH_OT_normals_tools(struct wmOperatorType *ot);
 void MESH_OT_set_normals_from_faces(struct wmOperatorType *ot);
 void MESH_OT_average_normals(struct wmOperatorType *ot);
-void MESH_OT_smoothen_normals(struct wmOperatorType *ot);
+void MESH_OT_smooth_normals(struct wmOperatorType *ot);
 void MESH_OT_mod_weighted_strength(struct wmOperatorType *ot);
 
 /* *** editmesh_mask_extract.c *** */
@@ -267,6 +268,8 @@ void MESH_OT_uv_texture_add(struct wmOperatorType *ot);
 void MESH_OT_uv_texture_remove(struct wmOperatorType *ot);
 void MESH_OT_vertex_color_add(struct wmOperatorType *ot);
 void MESH_OT_vertex_color_remove(struct wmOperatorType *ot);
+void MESH_OT_sculpt_vertex_color_add(struct wmOperatorType *ot);
+void MESH_OT_sculpt_vertex_color_remove(struct wmOperatorType *ot);
 /* no create_mask yet */
 void MESH_OT_customdata_mask_clear(struct wmOperatorType *ot);
 void MESH_OT_customdata_skin_add(struct wmOperatorType *ot);

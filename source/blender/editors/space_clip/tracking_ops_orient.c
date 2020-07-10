@@ -28,15 +28,15 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 
-#include "BKE_context.h"
 #include "BKE_constraint.h"
-#include "BKE_tracking.h"
+#include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
+#include "BKE_tracking.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -110,9 +110,7 @@ static bool set_orientation_poll(bContext *C)
       if (tracking_object->flag & TRACKING_OBJECT_CAMERA) {
         return true;
       }
-      else {
-        return OBACT(view_layer) != NULL;
-      }
+      return OBACT(view_layer) != NULL;
     }
   }
   return false;

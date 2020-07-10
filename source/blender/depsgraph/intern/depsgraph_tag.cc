@@ -25,15 +25,14 @@
 
 #include "intern/depsgraph_tag.h"
 
-#include <stdio.h>
 #include <cstring> /* required for memset */
 #include <queue>
+#include <stdio.h>
 
-#include "BLI_utildefines.h"
 #include "BLI_math_bits.h"
 #include "BLI_task.h"
+#include "BLI_utildefines.h"
 
-extern "C" {
 #include "DNA_anim_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_key_types.h"
@@ -44,9 +43,9 @@ extern "C" {
 #include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_animsys.h"
+#include "BKE_anim_data.h"
 #include "BKE_global.h"
-#include "BKE_idcode.h"
+#include "BKE_idtype.h"
 #include "BKE_node.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
@@ -54,7 +53,6 @@ extern "C" {
 #define new new_
 #include "BKE_screen.h"
 #undef new
-} /* extern "C" */
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_debug.h"
@@ -62,8 +60,8 @@ extern "C" {
 
 #include "intern/builder/deg_builder.h"
 #include "intern/depsgraph.h"
-#include "intern/depsgraph_update.h"
 #include "intern/depsgraph_registry.h"
+#include "intern/depsgraph_update.h"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_flush.h"
 #include "intern/node/deg_node.h"
@@ -72,10 +70,13 @@ extern "C" {
 #include "intern/node/deg_node_id.h"
 #include "intern/node/deg_node_operation.h"
 
+namespace deg = blender::deg;
+
 /* *********************** */
 /* Update Tagging/Flushing */
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 namespace {
 
@@ -89,7 +90,7 @@ void depsgraph_geometry_tag_to_component(const ID *id, NodeType *component_type)
 
 bool is_selectable_data_id_type(const ID_Type id_type)
 {
-  return ELEM(id_type, ID_ME, ID_CU, ID_MB, ID_LT, ID_GD);
+  return ELEM(id_type, ID_ME, ID_CU, ID_MB, ID_LT, ID_GD, ID_HA, ID_PT, ID_VO);
 }
 
 void depsgraph_select_tag_to_component_opcode(const ID *id,
@@ -111,7 +112,7 @@ void depsgraph_select_tag_to_component_opcode(const ID *id,
   }
   else if (id_type == ID_OB) {
     *component_type = NodeType::OBJECT_FROM_LAYER;
-    *operation_code = OperationCode::OBJECT_BASE_FLAGS;
+    *operation_code = OperationCode::OBJECT_FROM_LAYER_ENTRY;
   }
   else if (id_type == ID_MC) {
     *component_type = NodeType::BATCH_CACHE;
@@ -239,6 +240,8 @@ void depsgraph_tag_to_component_opcode(const ID *id,
     case ID_RECALC_PSYS_ALL:
       BLI_assert(!"Should not happen");
       break;
+    case ID_RECALC_TAG_FOR_UNDO:
+      break; /* Must be ignored by depsgraph. */
   }
 }
 
@@ -359,12 +362,12 @@ void deg_graph_id_tag_legacy_compat(
   }
 }
 
-static void graph_id_tag_update_single_flag(Main *bmain,
-                                            Depsgraph *graph,
-                                            ID *id,
-                                            IDNode *id_node,
-                                            IDRecalcFlag tag,
-                                            eUpdateSource update_source)
+void graph_id_tag_update_single_flag(Main *bmain,
+                                     Depsgraph *graph,
+                                     ID *id,
+                                     IDNode *id_node,
+                                     IDRecalcFlag tag,
+                                     eUpdateSource update_source)
 {
   if (tag == ID_RECALC_EDITORS) {
     if (graph != nullptr && graph->is_active) {
@@ -495,13 +498,13 @@ void deg_graph_node_tag_zero(Main *bmain,
   ID *id = id_node->id_orig;
   /* TODO(sergey): Which recalc flags to set here? */
   id_node->id_cow->recalc |= deg_recalc_flags_for_legacy_zero();
-  GHASH_FOREACH_BEGIN (ComponentNode *, comp_node, id_node->components) {
+
+  for (ComponentNode *comp_node : id_node->components.values()) {
     if (comp_node->type == NodeType::ANIMATION) {
       continue;
     }
     comp_node->tag_update(graph, update_source);
   }
-  GHASH_FOREACH_END();
   deg_graph_id_tag_legacy_compat(bmain, graph, id, (IDRecalcFlag)0, update_source);
 }
 
@@ -510,7 +513,7 @@ void deg_graph_on_visible_update(Main *bmain, Depsgraph *graph, const bool do_ti
   /* NOTE: It is possible to have this function called with `do_time=false` first and later (prior
    * to evaluation though) with `do_time=true`. This means early output checks should be aware of
    * this. */
-  for (DEG::IDNode *id_node : graph->id_nodes) {
+  for (deg::IDNode *id_node : graph->id_nodes) {
     const ID_Type id_type = GS(id_node->id_orig->name);
     if (id_type == ID_OB) {
       Object *object_orig = reinterpret_cast<Object *>(id_node->id_orig);
@@ -525,7 +528,7 @@ void deg_graph_on_visible_update(Main *bmain, Depsgraph *graph, const bool do_ti
       continue;
     }
     int flag = 0;
-    if (!DEG::deg_copy_on_write_is_expanded(id_node->id_cow)) {
+    if (!deg::deg_copy_on_write_is_expanded(id_node->id_cow)) {
       flag |= ID_RECALC_COPY_ON_WRITE;
       if (do_time) {
         if (BKE_animdata_from_id(id_node->id_orig) != nullptr) {
@@ -582,6 +585,9 @@ NodeType geometry_tag_to_component(const ID *id)
         case OB_LATTICE:
         case OB_MBALL:
         case OB_GPENCIL:
+        case OB_HAIR:
+        case OB_POINTCLOUD:
+        case OB_VOLUME:
           return NodeType::GEOMETRY;
         case OB_ARMATURE:
           return NodeType::EVAL_POSE;
@@ -593,6 +599,9 @@ NodeType geometry_tag_to_component(const ID *id)
     case ID_CU:
     case ID_LT:
     case ID_MB:
+    case ID_HA:
+    case ID_PT:
+    case ID_VO:
       return NodeType::GEOMETRY;
     case ID_PA: /* Particles */
       return NodeType::UNDEFINED;
@@ -613,9 +622,13 @@ NodeType geometry_tag_to_component(const ID *id)
 void id_tag_update(Main *bmain, ID *id, int flag, eUpdateSource update_source)
 {
   graph_id_tag_update(bmain, nullptr, id, flag, update_source);
-  for (DEG::Depsgraph *depsgraph : DEG::get_all_registered_graphs(bmain)) {
+  for (deg::Depsgraph *depsgraph : deg::get_all_registered_graphs(bmain)) {
     graph_id_tag_update(bmain, depsgraph, id, flag, update_source);
   }
+
+  /* Accumulate all tags for an ID between two undo steps, so they can be
+   * replayed for undo. */
+  id->recalc_after_undo_push |= deg_recalc_flags_effective(NULL, flag);
 }
 
 void graph_id_tag_update(
@@ -674,7 +687,8 @@ void graph_id_tag_update(
   }
 }
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender
 
 const char *DEG_update_tag_as_string(IDRecalcFlag flag)
 {
@@ -729,6 +743,8 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
       return "SOURCE";
     case ID_RECALC_ALL:
       return "ALL";
+    case ID_RECALC_TAG_FOR_UNDO:
+      return "TAG_FOR_UNDO";
   }
   return nullptr;
 }
@@ -747,7 +763,7 @@ void DEG_id_tag_update_ex(Main *bmain, ID *id, int flag)
     /* Ideally should not happen, but old depsgraph allowed this. */
     return;
   }
-  DEG::id_tag_update(bmain, id, flag, DEG::DEG_UPDATE_SOURCE_USER_EDIT);
+  deg::id_tag_update(bmain, id, flag, deg::DEG_UPDATE_SOURCE_USER_EDIT);
 }
 
 void DEG_graph_id_tag_update(struct Main *bmain,
@@ -755,8 +771,8 @@ void DEG_graph_id_tag_update(struct Main *bmain,
                              struct ID *id,
                              int flag)
 {
-  DEG::Depsgraph *graph = (DEG::Depsgraph *)depsgraph;
-  DEG::graph_id_tag_update(bmain, graph, id, flag, DEG::DEG_UPDATE_SOURCE_USER_EDIT);
+  deg::Depsgraph *graph = (deg::Depsgraph *)depsgraph;
+  deg::graph_id_tag_update(bmain, graph, id, flag, deg::DEG_UPDATE_SOURCE_USER_EDIT);
 }
 
 /* Mark a particular datablock type as having changing. */
@@ -771,14 +787,14 @@ void DEG_graph_id_type_tag(Depsgraph *depsgraph, short id_type)
     DEG_graph_id_type_tag(depsgraph, ID_WO);
     DEG_graph_id_type_tag(depsgraph, ID_SCE);
   }
-  const int id_type_index = BKE_idcode_to_index(id_type);
-  DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(depsgraph);
+  const int id_type_index = BKE_idtype_idcode_to_index(id_type);
+  deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
   deg_graph->id_type_updated[id_type_index] = 1;
 }
 
 void DEG_id_type_tag(Main *bmain, short id_type)
 {
-  for (DEG::Depsgraph *depsgraph : DEG::get_all_registered_graphs(bmain)) {
+  for (deg::Depsgraph *depsgraph : deg::get_all_registered_graphs(bmain)) {
     DEG_graph_id_type_tag(reinterpret_cast<::Depsgraph *>(depsgraph), id_type);
   }
 }
@@ -786,13 +802,13 @@ void DEG_id_type_tag(Main *bmain, short id_type)
 /* Update dependency graph when visible scenes/layers changes. */
 void DEG_graph_on_visible_update(Main *bmain, Depsgraph *depsgraph, const bool do_time)
 {
-  DEG::Depsgraph *graph = (DEG::Depsgraph *)depsgraph;
-  DEG::deg_graph_on_visible_update(bmain, graph, do_time);
+  deg::Depsgraph *graph = (deg::Depsgraph *)depsgraph;
+  deg::deg_graph_on_visible_update(bmain, graph, do_time);
 }
 
 void DEG_on_visible_update(Main *bmain, const bool do_time)
 {
-  for (DEG::Depsgraph *depsgraph : DEG::get_all_registered_graphs(bmain)) {
+  for (deg::Depsgraph *depsgraph : deg::get_all_registered_graphs(bmain)) {
     DEG_graph_on_visible_update(bmain, reinterpret_cast<::Depsgraph *>(depsgraph), do_time);
   }
 }
@@ -809,7 +825,7 @@ void DEG_ids_check_recalc(
   update_ctx.depsgraph = depsgraph;
   update_ctx.scene = scene;
   update_ctx.view_layer = view_layer;
-  DEG::deg_editors_scene_update(&update_ctx, updated);
+  deg::deg_editors_scene_update(&update_ctx, updated);
 }
 
 static void deg_graph_clear_id_recalc_flags(ID *id)
@@ -820,18 +836,19 @@ static void deg_graph_clear_id_recalc_flags(ID *id)
   if (ntree) {
     ntree->id.recalc &= ~ID_RECALC_ALL;
   }
+  /* XXX And what about scene's master collection here? */
 }
 
 void DEG_ids_clear_recalc(Main *UNUSED(bmain), Depsgraph *depsgraph)
 {
-  DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(depsgraph);
+  deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
   /* TODO(sergey): Re-implement POST_UPDATE_HANDLER_WORKAROUND using entry_tags
    * and id_tags storage from the new dependency graph. */
   if (!DEG_id_type_any_updated(depsgraph)) {
     return;
   }
   /* Go over all ID nodes nodes, clearing tags. */
-  for (DEG::IDNode *id_node : deg_graph->id_nodes) {
+  for (deg::IDNode *id_node : deg_graph->id_nodes) {
     /* TODO: we clear original ID recalc flags here, but this may not work
      * correctly when there are multiple depsgraph with others still using
      * the recalc flag. */

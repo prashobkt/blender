@@ -20,8 +20,8 @@
 
 #include <stdlib.h>
 
-#include "BLI_utildefines.h"
 #include "BLI_path_util.h"
+#include "BLI_utildefines.h"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -43,7 +43,7 @@
 #  include "BLI_iterator.h"
 #  include "BLI_math.h"
 
-#  include "BKE_anim.h"
+#  include "BKE_duplilist.h"
 #  include "BKE_object.h"
 #  include "BKE_scene.h"
 
@@ -201,6 +201,12 @@ static bool rna_DepsgraphUpdate_is_updated_transform_get(PointerRNA *ptr)
 {
   ID *id = ptr->data;
   return ((id->recalc & ID_RECALC_TRANSFORM) != 0);
+}
+
+static bool rna_DepsgraphUpdate_is_updated_shading_get(PointerRNA *ptr)
+{
+  ID *id = ptr->data;
+  return ((id->recalc & ID_RECALC_SHADING) != 0);
 }
 
 static bool rna_DepsgraphUpdate_is_updated_geometry_get(PointerRNA *ptr)
@@ -545,7 +551,7 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
       prop,
       "Persistent ID",
       "Persistent identifier for inter-frame matching of objects with motion blur");
-  RNA_def_property_array(prop, 2 * MAX_DUPLI_RECUR);
+  RNA_def_property_array(prop, MAX_DUPLI_RECUR);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_int_funcs(prop, "rna_DepsgraphObjectInstance_persistent_id_get", NULL, NULL);
 
@@ -601,6 +607,11 @@ static void rna_def_depsgraph_update(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Geometry", "Object geometry is updated");
   RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_geometry_get", NULL);
+
+  prop = RNA_def_property(srna, "is_updated_shading", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Shading", "Object shading is updated");
+  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_shading_get", NULL);
 }
 
 static void rna_def_depsgraph(BlenderRNA *brna)

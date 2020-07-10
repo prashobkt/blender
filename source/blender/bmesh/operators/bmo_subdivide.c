@@ -22,17 +22,17 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-#include "BLI_rand.h"
 #include "BLI_array.h"
+#include "BLI_math.h"
 #include "BLI_noise.h"
+#include "BLI_rand.h"
 #include "BLI_stack.h"
 
 #include "BKE_customdata.h"
 
 #include "bmesh.h"
-#include "intern/bmesh_private.h"
 #include "intern/bmesh_operators_private.h"
+#include "intern/bmesh_private.h"
 
 typedef struct SubDParams {
   int numcuts;
@@ -1276,7 +1276,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 
       continue;
     }
-    else if (!pat) {
+    if (!pat) {
       continue;
     }
 

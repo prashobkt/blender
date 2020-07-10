@@ -23,16 +23,17 @@
 
 #include "intern/debug/deg_debug.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_console.h"
 #include "BLI_hash.h"
 #include "BLI_string.h"
+#include "BLI_utildefines.h"
 
 #include "PIL_time_utildefines.h"
 
 #include "BKE_global.h"
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 DepsgraphDebug::DepsgraphDebug()
     : flags(G.debug), is_ever_evaluated(false), graph_evaluation_start_time_(0)
@@ -97,4 +98,5 @@ string color_end(void)
   return string(TRUECOLOR_ANSI_COLOR_FINISH);
 }
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender

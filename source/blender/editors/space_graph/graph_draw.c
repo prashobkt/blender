@@ -20,10 +20,10 @@
  * \ingroup spgraph
  */
 
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
 #include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -32,8 +32,8 @@
 #include "DNA_anim_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
-#include "DNA_windowmanager_types.h"
 #include "DNA_userdef_types.h"
+#include "DNA_windowmanager_types.h"
 
 #include "BKE_context.h"
 #include "BKE_curve.h"
@@ -274,9 +274,12 @@ static void draw_fcurve_handle_vertices(FCurve *fcu, View2D *v2d, bool sel_handl
   immUnbindProgram();
 }
 
-static void draw_fcurve_vertices(ARegion *ar, FCurve *fcu, bool do_handles, bool sel_handle_only)
+static void draw_fcurve_vertices(ARegion *region,
+                                 FCurve *fcu,
+                                 bool do_handles,
+                                 bool sel_handle_only)
 {
-  View2D *v2d = &ar->v2d;
+  View2D *v2d = &region->v2d;
 
   /* only draw points if curve is visible
    * - Draw unselected points before selected points as separate passes
@@ -324,9 +327,7 @@ static bool draw_fcurve_handles_check(SpaceGraph *sipo, FCurve *fcu)
       (fcu->totvert <= 1)) {
     return false;
   }
-  else {
-    return true;
-  }
+  return true;
 }
 
 /* draw lines for F-Curve handles only (this is only done in EditMode)
@@ -340,6 +341,10 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
   uint color = GPU_vertformat_attr_add(
       format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
   immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
+  if ((sipo->flag & SIPO_BEAUTYDRAW_OFF) == 0) {
+    GPU_line_smooth(true);
+  }
+  GPU_blend(true);
 
   immBeginAtMost(GPU_PRIM_LINES, 4 * 2 * fcu->totvert);
 
@@ -416,6 +421,10 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
 
   immEnd();
   immUnbindProgram();
+  GPU_blend(false);
+  if ((sipo->flag & SIPO_BEAUTYDRAW_OFF) == 0) {
+    GPU_line_smooth(false);
+  }
 }
 
 /* Samples ---------------- */
@@ -446,14 +455,14 @@ static void draw_fcurve_sample_control(
 }
 
 /* helper func - draw keyframe vertices only for an F-Curve */
-static void draw_fcurve_samples(SpaceGraph *sipo, ARegion *ar, FCurve *fcu)
+static void draw_fcurve_samples(SpaceGraph *sipo, ARegion *region, FCurve *fcu)
 {
   FPoint *first, *last;
   float hsize, xscale, yscale;
 
   /* get view settings */
   hsize = UI_GetThemeValuef(TH_VERTEX_SIZE);
-  UI_view2d_scale_get(&ar->v2d, &xscale, &yscale);
+  UI_view2d_scale_get(&region->v2d, &xscale, &yscale);
 
   /* get verts */
   first = fcu->fpt;
@@ -869,7 +878,7 @@ static void draw_fcurve_curve_bezts(bAnimContext *ac, ID *id, FCurve *fcu, View2
 static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
 {
   ChannelDriver *driver = fcu->driver;
-  View2D *v2d = &ac->ar->v2d;
+  View2D *v2d = &ac->region->v2d;
   short mapping_flag = ANIM_get_normalization_flags(ac);
   float offset;
   float unitfac = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
@@ -982,7 +991,7 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
 /* Draw the 'ghost' F-Curves (i.e. snapshots of the curve)
  * NOTE: unit mapping has already been applied to the values, so do not try and apply again
  */
-void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar)
+void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region)
 {
   FCurve *fcu;
 
@@ -1017,7 +1026,7 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar)
     immUniformColor3fvAlpha(fcu->color, 0.5f);
 
     /* simply draw the stored samples */
-    draw_fcurve_curve_samples(ac, NULL, fcu, &ar->v2d, shdr_pos);
+    draw_fcurve_curve_samples(ac, NULL, fcu, &region->v2d, shdr_pos);
   }
 
   immUnbindProgram();
@@ -1031,7 +1040,7 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar)
 /* This is called twice from space_graph.c -> graph_main_region_draw()
  * Unselected then selected F-Curves are drawn so that they do not occlude each other.
  */
-void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar, short sel)
+void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, short sel)
 {
   ListBase anim_data = {NULL, NULL};
   bAnimListElem *ale;
@@ -1118,20 +1127,20 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar, short se
         /* draw a curve affected by modifiers or only allowed to have integer values
          * by sampling it at various small-intervals over the visible region
          */
-        draw_fcurve_curve(ac, ale->id, fcu, &ar->v2d, shdr_pos);
+        draw_fcurve_curve(ac, ale->id, fcu, &region->v2d, shdr_pos);
       }
       else if (((fcu->bezt) || (fcu->fpt)) && (fcu->totvert)) {
         /* just draw curve based on defined data (i.e. no modifiers) */
         if (fcu->bezt) {
           if (fcurve_can_use_simple_bezt_drawing(fcu)) {
-            draw_fcurve_curve_bezts(ac, ale->id, fcu, &ar->v2d, shdr_pos);
+            draw_fcurve_curve_bezts(ac, ale->id, fcu, &region->v2d, shdr_pos);
           }
           else {
-            draw_fcurve_curve(ac, ale->id, fcu, &ar->v2d, shdr_pos);
+            draw_fcurve_curve(ac, ale->id, fcu, &region->v2d, shdr_pos);
           }
         }
         else if (fcu->fpt) {
-          draw_fcurve_curve_samples(ac, ale->id, fcu, &ar->v2d, shdr_pos);
+          draw_fcurve_curve_samples(ac, ale->id, fcu, &region->v2d, shdr_pos);
         }
       }
 
@@ -1148,12 +1157,12 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar, short se
      *   we must obey this.
      */
     if (!(sipo->flag & SIPO_SELCUVERTSONLY) || (fcu->flag & FCURVE_SELECTED)) {
-      if (!fcurve_are_keyframes_usable(fcu) && !(fcu->fpt && fcu->totvert)) {
+      if (!BKE_fcurve_are_keyframes_usable(fcu) && !(fcu->fpt && fcu->totvert)) {
         /* only draw controls if this is the active modifier */
         if ((fcu->flag & FCURVE_ACTIVE) && (fcm)) {
           switch (fcm->type) {
             case FMODIFIER_TYPE_ENVELOPE: /* envelope */
-              draw_fcurve_modifier_controls_envelope(fcm, &ar->v2d);
+              draw_fcurve_modifier_controls_envelope(fcm, &region->v2d);
               break;
           }
         }
@@ -1178,16 +1187,14 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar, short se
 
           if (do_handles) {
             /* only draw handles/vertices on keyframes */
-            GPU_blend(true);
             draw_fcurve_handles(sipo, fcu);
-            GPU_blend(false);
           }
 
-          draw_fcurve_vertices(ar, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY));
+          draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY));
         }
         else {
           /* samples: only draw two indicators at either end as indicators */
-          draw_fcurve_samples(sipo, ar, fcu);
+          draw_fcurve_samples(sipo, region, fcu);
         }
 
         GPU_matrix_pop();
@@ -1213,13 +1220,13 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *ar, short se
 /* Channel List */
 
 /* left hand part */
-void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *ar)
+void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 {
   ListBase anim_data = {NULL, NULL};
   bAnimListElem *ale;
   int filter;
 
-  View2D *v2d = &ar->v2d;
+  View2D *v2d = &region->v2d;
   float height;
   size_t items;
 
@@ -1250,7 +1257,7 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *ar)
     }
   }
   { /* second pass: widgets */
-    uiBlock *block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
+    uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
     size_t channel_index = 0;
     float ymax = ACHANNEL_FIRST_TOP(ac);
 

@@ -27,14 +27,14 @@
 #include <string.h>
 
 #include "DNA_listBase.h"
-#include "DNA_screen_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_windowmanager_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
+#include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_utildefines.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 
@@ -61,23 +61,34 @@ void WM_event_print(const wmEvent *event)
     const char *unknown = "UNKNOWN";
     const char *type_id = unknown;
     const char *val_id = unknown;
+    const char *prev_type_id = unknown;
+    const char *prev_val_id = unknown;
 
     RNA_enum_identifier(rna_enum_event_type_items, event->type, &type_id);
     RNA_enum_identifier(rna_enum_event_value_items, event->val, &val_id);
 
+    RNA_enum_identifier(rna_enum_event_type_items, event->prevtype, &prev_type_id);
+    RNA_enum_identifier(rna_enum_event_value_items, event->prevval, &prev_val_id);
+
     printf(
         "wmEvent  type:%d / %s, val:%d / %s,\n"
-        "         shift:%d, ctrl:%d, alt:%d, oskey:%d, keymodifier:%d,\n"
+        "         prev_type:%d / %s, prev_val:%d / %s,\n"
+        "         shift:%d, ctrl:%d, alt:%d, oskey:%d, keymodifier:%d, is_repeat:%d,\n"
         "         mouse:(%d,%d), ascii:'%c', utf8:'%.*s', pointer:%p\n",
         event->type,
         type_id,
         event->val,
         val_id,
+        event->prevtype,
+        prev_type_id,
+        event->prevval,
+        prev_val_id,
         event->shift,
         event->ctrl,
         event->alt,
         event->oskey,
         event->keymodifier,
+        event->is_repeat,
         event->x,
         event->y,
         event->ascii,
@@ -419,7 +430,7 @@ bool WM_event_is_tablet(const struct wmEvent *event)
 /* most os using ctrl/oskey + space to switch ime, avoid added space */
 bool WM_event_is_ime_switch(const struct wmEvent *event)
 {
-  return event->val == KM_PRESS && event->type == SPACEKEY &&
+  return event->val == KM_PRESS && event->type == EVT_SPACEKEY &&
          (event->ctrl || event->oskey || event->shift || event->alt);
 }
 #endif

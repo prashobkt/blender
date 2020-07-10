@@ -35,14 +35,6 @@ bool peelObjectsTransform(struct TransInfo *t,
                           float r_loc[3],
                           float r_no[3],
                           float *r_thickness);
-bool peelObjectsSnapContext(struct SnapObjectContext *sctx,
-                            const float mval[2],
-                            const struct SnapObjectParams *params,
-                            const bool use_peel_object,
-                            /* return args */
-                            float r_loc[3],
-                            float r_no[3],
-                            float *r_thickness);
 
 short snapObjectsTransform(struct TransInfo *t,
                            const float mval[2],
@@ -94,5 +86,7 @@ void getSnapPoint(const TransInfo *t, float vec[3]);
 void addSnapPoint(TransInfo *t);
 eRedrawFlag updateSelectedSnapPoint(TransInfo *t);
 void removeSnapPoint(TransInfo *t);
+
+float transform_snap_distance_len_squared_fn(TransInfo *t, const float p1[3], const float p2[3]);
 
 #endif /* __TRANSFORM_SNAP_H__ */

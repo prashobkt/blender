@@ -23,8 +23,8 @@
  * \ingroup bli
  */
 
-#include <assert.h>
 #include "BLI_math.h"
+#include <assert.h>
 
 #include "BLI_strict_flags.h"
 
@@ -543,8 +543,8 @@ void rotation_between_quats_to_quat(float q[4], const float q1[4], const float q
  *
  * \param q: input quaternion.
  * \param axis: twist axis in [0,1,2]
- * \param r_swing[out]: if not NULL, receives the swing quaternion.
- * \param r_twist[out]: if not NULL, receives the twist quaternion.
+ * \param r_swing: if not NULL, receives the swing quaternion.
+ * \param r_twist: if not NULL, receives the twist quaternion.
  * \returns twist angle.
  */
 float quat_split_swing_and_twist(const float q[4], int axis, float r_swing[4], float r_twist[4])
@@ -1953,7 +1953,7 @@ void mat4_to_dquat(DualQuat *dq, const float basemat[4][4], const float mat[4][4
   copy_m3_m4(mat3, mat);
 
   if (!is_orthonormal_m3(mat3) || (determinant_m4(mat) < 0.0f) ||
-      len_squared_v3(dscale) > SQUARE(1e-4f)) {
+      len_squared_v3(dscale) > square_f(1e-4f)) {
     /* extract R and S  */
     float tmp[4][4];
 
@@ -2127,7 +2127,7 @@ void mul_v3m3_dq(float co[3], float mat[3][3], DualQuat *dq)
   co[1] = (co[1] + t[1]) * len2;
   co[2] = (co[2] + t[2]) * len2;
 
-  /* compute crazyspace correction mat */
+  /* Compute crazy-space correction matrix. */
   if (mat) {
     if (dq->scale_weight) {
       copy_m3_m4(scalemat, dq->scale);

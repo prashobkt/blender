@@ -30,10 +30,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_linklist.h"
 #include "BLI_memarena.h"
 #include "BLI_mempool.h"
+#include "BLI_utildefines.h"
 
 #include "BLI_strict_flags.h"
 
@@ -72,6 +72,16 @@ LinkNode *BLI_linklist_find(LinkNode *list, int index)
   }
 
   return NULL;
+}
+
+LinkNode *BLI_linklist_find_last(LinkNode *list)
+{
+  if (list) {
+    while (list->next) {
+      list = list->next;
+    }
+  }
+  return list;
 }
 
 void BLI_linklist_reverse(LinkNode **listp)

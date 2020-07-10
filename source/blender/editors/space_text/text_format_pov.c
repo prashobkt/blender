@@ -21,8 +21,8 @@
 
 #include "BLI_blenlib.h"
 
-#include "DNA_text_types.h"
 #include "DNA_space_types.h"
+#include "DNA_text_types.h"
 
 #include "BKE_text.h"
 
@@ -825,7 +825,7 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
       continue;
     }
     /* Handle continuations */
-    else if (cont) {
+    if (cont) {
       /* C-Style comments */
       if (cont & FMT_CONT_COMMENT_C) {
         if (*str == '*' && *(str + 1) == '/') {

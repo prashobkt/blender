@@ -21,8 +21,8 @@
 #include "BPy_UnaryFunction1DUnsigned.h"
 
 #include "../BPy_Convert.h"
-#include "../BPy_Interface1D.h"
 #include "../BPy_IntegrationType.h"
+#include "../BPy_Interface1D.h"
 
 #include "UnaryFunction1D_unsigned_int/BPy_QuantitativeInvisibilityF1D.h"
 
@@ -103,9 +103,7 @@ static int UnaryFunction1DUnsigned___init__(BPy_UnaryFunction1DUnsigned *self,
 
 static void UnaryFunction1DUnsigned___dealloc__(BPy_UnaryFunction1DUnsigned *self)
 {
-  if (self->uf1D_unsigned) {
-    delete self->uf1D_unsigned;
-  }
+  delete self->uf1D_unsigned;
   UnaryFunction1D_Type.tp_dealloc((PyObject *)self);
 }
 

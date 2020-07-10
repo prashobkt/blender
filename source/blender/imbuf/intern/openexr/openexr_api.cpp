@@ -21,41 +21,41 @@
  * \ingroup openexr
  */
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <algorithm>
+#include <errno.h>
+#include <fstream>
+#include <iostream>
+#include <set>
 #include <stddef.h>
 #include <stdexcept>
-#include <fstream>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
-#include <set>
-#include <errno.h>
-#include <algorithm>
-#include <iostream>
 
-#include <half.h>
 #include <Iex.h>
-#include <ImfVersion.h>
 #include <ImathBox.h>
 #include <ImfArray.h>
-#include <ImfIO.h>
 #include <ImfChannelList.h>
-#include <ImfPixelType.h>
-#include <ImfInputFile.h>
-#include <ImfOutputFile.h>
 #include <ImfCompression.h>
 #include <ImfCompressionAttribute.h>
-#include <ImfStringAttribute.h>
+#include <ImfIO.h>
+#include <ImfInputFile.h>
+#include <ImfOutputFile.h>
+#include <ImfPixelType.h>
 #include <ImfStandardAttributes.h>
+#include <ImfStringAttribute.h>
+#include <ImfVersion.h>
+#include <half.h>
 
 /* multiview/multipart */
-#include <ImfMultiView.h>
-#include <ImfMultiPartInputFile.h>
 #include <ImfInputPart.h>
-#include <ImfOutputPart.h>
+#include <ImfMultiPartInputFile.h>
 #include <ImfMultiPartOutputFile.h>
-#include <ImfTiledOutputPart.h>
-#include <ImfPartType.h>
+#include <ImfMultiView.h>
+#include <ImfOutputPart.h>
 #include <ImfPartHelper.h>
+#include <ImfPartType.h>
+#include <ImfTiledOutputPart.h>
 
 #include "DNA_scene_types.h" /* For OpenEXR compression constants */
 
@@ -75,7 +75,7 @@ _CRTIMP void __cdecl _invalid_parameter_noinfo(void)
 {
 }
 #endif
-
+}
 #include "BLI_blenlib.h"
 #include "BLI_math_color.h"
 #include "BLI_threads.h"
@@ -83,18 +83,14 @@ _CRTIMP void __cdecl _invalid_parameter_noinfo(void)
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 
-#include "IMB_imbuf_types.h"
-#include "IMB_imbuf.h"
 #include "IMB_allocimbuf.h"
+#include "IMB_colormanagement.h"
+#include "IMB_colormanagement_intern.h"
+#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
 #include "openexr_multi.h"
-}
-
-extern "C" {
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
-}
 
 using namespace Imf;
 using namespace Imath;
@@ -394,7 +390,8 @@ static void openexr_header_metadata(Header *header, struct ImBuf *ibuf)
   }
 
   if (ibuf->ppm[0] > 0.0) {
-    addXDensity(*header, ibuf->ppm[0] / 39.3700787); /* 1 meter = 39.3700787 inches */
+    /* Convert meters to inches. */
+    addXDensity(*header, ibuf->ppm[0] * 0.0254);
   }
 }
 
@@ -819,7 +816,7 @@ void IMB_exr_add_channel(void *handle,
   if (layname && layname[0] != '\0') {
     imb_exr_insert_view_name(echan->name, echan->m->name.c_str(), echan->m->view.c_str());
   }
-  else if (data->multiView->size() >= 1) {
+  else if (!data->multiView->empty()) {
     std::string raw_name = insertViewName(echan->m->name, *data->multiView, echan->view_id);
     BLI_strncpy(echan->name, raw_name.c_str(), sizeof(echan->name));
   }
@@ -1069,7 +1066,7 @@ float *IMB_exr_channel_rect(void *handle,
     imb_exr_insert_view_name(temp_buf, name, viewname);
     BLI_strncpy(name, temp_buf, sizeof(name));
   }
-  else if (data->multiView->size() >= 1) {
+  else if (!data->multiView->empty()) {
     const int view_id = std::max(0, imb_exr_get_multiView_id(*data->multiView, viewname));
     std::string raw_name = insertViewName(name, *data->multiView, view_id);
     BLI_strncpy(name, raw_name.c_str(), sizeof(name));
@@ -1303,7 +1300,7 @@ void IMB_exr_multilayer_convert(void *handle,
   ExrPass *pass;
 
   /* RenderResult needs at least one RenderView */
-  if (data->multiView->size() == 0) {
+  if (data->multiView->empty()) {
     addview(base, "");
   }
   else {
@@ -1602,8 +1599,8 @@ static ExrHandle *imb_exr_begin_read_mem(IStream &file_stream,
   for (lay = (ExrLayer *)data->layers.first; lay; lay = lay->next) {
     for (pass = (ExrPass *)lay->passes.first; pass; pass = pass->next) {
       if (pass->totchan) {
-        pass->rect = (float *)MEM_mapallocN(width * height * pass->totchan * sizeof(float),
-                                            "pass rect");
+        pass->rect = (float *)MEM_callocN(width * height * pass->totchan * sizeof(float),
+                                          "pass rect");
         if (pass->totchan == 1) {
           echan = pass->chan[0];
           echan->rect = pass->rect;
@@ -1757,6 +1754,18 @@ static bool exr_has_alpha(MultiPartInputFile &file)
   return !(file.header(0).channels().findChannel("A") == NULL);
 }
 
+static bool exr_is_half_float(MultiPartInputFile &file)
+{
+  const ChannelList &channels = file.header(0).channels();
+  for (ChannelList::ConstIterator i = channels.begin(); i != channels.end(); ++i) {
+    const Channel &channel = i.channel();
+    if (channel.type != HALF) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool imb_exr_is_multilayer_file(MultiPartInputFile &file)
 {
   const ChannelList &channels = file.header(0).channels();
@@ -1766,7 +1775,7 @@ static bool imb_exr_is_multilayer_file(MultiPartInputFile &file)
    * channels without a layer name will be single layer. */
   channels.layers(layerNames);
 
-  return (layerNames.size() > 0);
+  return (!layerNames.empty());
 }
 
 static void imb_exr_type_by_channels(ChannelList &channels,
@@ -1783,7 +1792,7 @@ static void imb_exr_type_by_channels(ChannelList &channels,
   /* will not include empty layer names */
   channels.layers(layerNames);
 
-  if (views.size() && views[0] != "") {
+  if (!views.empty() && !views[0].empty()) {
     *r_multiview = true;
   }
   else {
@@ -1793,7 +1802,7 @@ static void imb_exr_type_by_channels(ChannelList &channels,
     return;
   }
 
-  if (layerNames.size()) {
+  if (!layerNames.empty()) {
     /* if layerNames is not empty, it means at least one layer is non-empty,
      * but it also could be layers without names in the file and such case
      * shall be considered a multilayer exr
@@ -1909,9 +1918,11 @@ struct ImBuf *imb_load_openexr(const unsigned char *mem,
       const int is_alpha = exr_has_alpha(*file);
 
       ibuf = IMB_allocImBuf(width, height, is_alpha ? 32 : 24, 0);
+      ibuf->flags |= exr_is_half_float(*file) ? IB_halffloat : 0;
 
       if (hasXDensity(file->header(0))) {
-        ibuf->ppm[0] = xDensity(file->header(0)) * 39.3700787f;
+        /* Convert inches to meters. */
+        ibuf->ppm[0] = (double)xDensity(file->header(0)) / 0.0254;
         ibuf->ppm[1] = ibuf->ppm[0] * (double)file->header(0).pixelAspectRatio();
       }
 
@@ -1925,12 +1936,12 @@ struct ImBuf *imb_load_openexr(const unsigned char *mem,
 
           IMB_metadata_ensure(&ibuf->metadata);
           for (iter = header.begin(); iter != header.end(); iter++) {
-            const StringAttribute *attrib = file->header(0).findTypedAttribute<StringAttribute>(
+            const StringAttribute *attr = file->header(0).findTypedAttribute<StringAttribute>(
                 iter.name());
 
             /* not all attributes are string attributes so we might get some NULLs here */
-            if (attrib) {
-              IMB_metadata_set_field(ibuf->metadata, iter.name(), attrib->value().c_str());
+            if (attr) {
+              IMB_metadata_set_field(ibuf->metadata, iter.name(), attr->value().c_str());
               ibuf->flags |= IB_metadata;
             }
           }

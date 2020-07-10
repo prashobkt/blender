@@ -21,8 +21,8 @@
 #include "BPy_UnaryFunction1DVec3f.h"
 
 #include "../BPy_Convert.h"
-#include "../BPy_Interface1D.h"
 #include "../BPy_IntegrationType.h"
+#include "../BPy_Interface1D.h"
 
 #include "UnaryFunction1D_Vec3f/BPy_Orientation3DF1D.h"
 
@@ -101,9 +101,7 @@ static int UnaryFunction1DVec3f___init__(BPy_UnaryFunction1DVec3f *self,
 
 static void UnaryFunction1DVec3f___dealloc__(BPy_UnaryFunction1DVec3f *self)
 {
-  if (self->uf1D_vec3f) {
-    delete self->uf1D_vec3f;
-  }
+  delete self->uf1D_vec3f;
   UnaryFunction1D_Type.tp_dealloc((PyObject *)self);
 }
 

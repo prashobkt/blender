@@ -26,11 +26,8 @@
 #include <cstdarg>
 
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 
-extern "C" {
 #include "DNA_listBase.h"
-} /* extern "C" */
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_debug.h"
@@ -43,10 +40,13 @@ extern "C" {
 #include "intern/node/deg_node_operation.h"
 #include "intern/node/deg_node_time.h"
 
+namespace deg = blender::deg;
+
 /* ****************** */
 /* Graphviz Debugging */
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 #define NL "\r\n"
 
@@ -125,6 +125,9 @@ static int deg_debug_node_color_index(const Node *node)
     case NodeType::OPERATION: {
       OperationNode *op_node = (OperationNode *)node;
       if (op_node->is_noop()) {
+        if (op_node->flag & OperationFlag::DEPSOP_FLAG_PINNED) {
+          return 7;
+        }
         return 8;
       }
       break;
@@ -195,6 +198,7 @@ static void deg_debug_graphviz_legend(const DebugContext &ctx)
   deg_debug_graphviz_legend_color(ctx, "Component", colors[1]);
   deg_debug_graphviz_legend_color(ctx, "ID Node", colors[5]);
   deg_debug_graphviz_legend_color(ctx, "NOOP", colors[8]);
+  deg_debug_graphviz_legend_color(ctx, "Pinned OP", colors[7]);
 #endif
 
 #ifdef COLOR_SCHEME_NODE_TYPE
@@ -403,15 +407,14 @@ static void deg_debug_graphviz_node(const DebugContext &ctx, const Node *node)
   switch (node->type) {
     case NodeType::ID_REF: {
       const IDNode *id_node = (const IDNode *)node;
-      if (BLI_ghash_len(id_node->components) == 0) {
+      if (id_node->components.is_empty()) {
         deg_debug_graphviz_node_single(ctx, node);
       }
       else {
         deg_debug_graphviz_node_cluster_begin(ctx, node);
-        GHASH_FOREACH_BEGIN (const ComponentNode *, comp, id_node->components) {
+        for (const ComponentNode *comp : id_node->components.values()) {
           deg_debug_graphviz_node(ctx, comp);
         }
-        GHASH_FOREACH_END();
         deg_debug_graphviz_node_cluster_end(ctx);
       }
       break;
@@ -428,6 +431,7 @@ static void deg_debug_graphviz_node(const DebugContext &ctx, const Node *node)
     case NodeType::SHADING_PARAMETERS:
     case NodeType::CACHE:
     case NodeType::POINT_CACHE:
+    case NodeType::IMAGE_ANIMATION:
     case NodeType::LAYER_COLLECTIONS:
     case NodeType::PARTICLE_SYSTEM:
     case NodeType::PARTICLE_SETTINGS:
@@ -438,9 +442,10 @@ static void deg_debug_graphviz_node(const DebugContext &ctx, const Node *node)
     case NodeType::SYNCHRONIZATION:
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
-    case NodeType::GENERIC_DATABLOCK: {
+    case NodeType::GENERIC_DATABLOCK:
+    case NodeType::SIMULATION: {
       ComponentNode *comp_node = (ComponentNode *)node;
-      if (!comp_node->operations.empty()) {
+      if (!comp_node->operations.is_empty()) {
         deg_debug_graphviz_node_cluster_begin(ctx, node);
         for (Node *op_node : comp_node->operations) {
           deg_debug_graphviz_node(ctx, op_node);
@@ -467,7 +472,7 @@ static bool deg_debug_graphviz_is_cluster(const Node *node)
   switch (node->type) {
     case NodeType::ID_REF: {
       const IDNode *id_node = (const IDNode *)node;
-      return BLI_ghash_len(id_node->components) > 0;
+      return !id_node->components.is_empty();
     }
     case NodeType::PARAMETERS:
     case NodeType::ANIMATION:
@@ -478,7 +483,7 @@ static bool deg_debug_graphviz_is_cluster(const Node *node)
     case NodeType::EVAL_POSE:
     case NodeType::BONE: {
       ComponentNode *comp_node = (ComponentNode *)node;
-      return !comp_node->operations.empty();
+      return !comp_node->operations.is_empty();
     }
     default:
       return false;
@@ -563,12 +568,11 @@ static void deg_debug_graphviz_graph_nodes(const DebugContext &ctx, const Depsgr
 static void deg_debug_graphviz_graph_relations(const DebugContext &ctx, const Depsgraph *graph)
 {
   for (IDNode *id_node : graph->id_nodes) {
-    GHASH_FOREACH_BEGIN (ComponentNode *, comp_node, id_node->components) {
+    for (ComponentNode *comp_node : id_node->components.values()) {
       for (OperationNode *op_node : comp_node->operations) {
         deg_debug_graphviz_node_relations(ctx, op_node);
       }
     }
-    GHASH_FOREACH_END();
   }
 
   TimeSourceNode *time_source = graph->find_time_source();
@@ -577,7 +581,8 @@ static void deg_debug_graphviz_graph_relations(const DebugContext &ctx, const De
   }
 }
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender
 
 void DEG_debug_relations_graphviz(const Depsgraph *graph, FILE *f, const char *label)
 {
@@ -585,29 +590,29 @@ void DEG_debug_relations_graphviz(const Depsgraph *graph, FILE *f, const char *l
     return;
   }
 
-  const DEG::Depsgraph *deg_graph = reinterpret_cast<const DEG::Depsgraph *>(graph);
+  const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);
 
-  DEG::DebugContext ctx;
+  deg::DebugContext ctx;
   ctx.file = f;
 
-  DEG::deg_debug_fprintf(ctx, "digraph depgraph {" NL);
-  DEG::deg_debug_fprintf(ctx, "rankdir=LR;" NL);
-  DEG::deg_debug_fprintf(ctx, "graph [");
-  DEG::deg_debug_fprintf(ctx, "compound=true");
-  DEG::deg_debug_fprintf(ctx, ",labelloc=\"t\"");
-  DEG::deg_debug_fprintf(ctx, ",fontsize=%f", DEG::deg_debug_graphviz_graph_label_size);
-  DEG::deg_debug_fprintf(ctx, ",fontname=\"%s\"", DEG::deg_debug_graphviz_fontname);
-  DEG::deg_debug_fprintf(ctx, ",label=\"%s\"", label);
-  DEG::deg_debug_fprintf(ctx, ",splines=ortho");
-  DEG::deg_debug_fprintf(ctx, ",overlap=scalexy");  // XXX: only when using neato
-  DEG::deg_debug_fprintf(ctx, "];" NL);
+  deg::deg_debug_fprintf(ctx, "digraph depgraph {" NL);
+  deg::deg_debug_fprintf(ctx, "rankdir=LR;" NL);
+  deg::deg_debug_fprintf(ctx, "graph [");
+  deg::deg_debug_fprintf(ctx, "compound=true");
+  deg::deg_debug_fprintf(ctx, ",labelloc=\"t\"");
+  deg::deg_debug_fprintf(ctx, ",fontsize=%f", deg::deg_debug_graphviz_graph_label_size);
+  deg::deg_debug_fprintf(ctx, ",fontname=\"%s\"", deg::deg_debug_graphviz_fontname);
+  deg::deg_debug_fprintf(ctx, ",label=\"%s\"", label);
+  deg::deg_debug_fprintf(ctx, ",splines=ortho");
+  deg::deg_debug_fprintf(ctx, ",overlap=scalexy");  // XXX: only when using neato
+  deg::deg_debug_fprintf(ctx, "];" NL);
 
-  DEG::deg_debug_graphviz_graph_nodes(ctx, deg_graph);
-  DEG::deg_debug_graphviz_graph_relations(ctx, deg_graph);
+  deg::deg_debug_graphviz_graph_nodes(ctx, deg_graph);
+  deg::deg_debug_graphviz_graph_relations(ctx, deg_graph);
 
-  DEG::deg_debug_graphviz_legend(ctx);
+  deg::deg_debug_graphviz_legend(ctx);
 
-  DEG::deg_debug_fprintf(ctx, "}" NL);
+  deg::deg_debug_fprintf(ctx, "}" NL);
 }
 
 #undef NL

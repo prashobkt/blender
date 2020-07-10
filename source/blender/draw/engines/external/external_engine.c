@@ -25,10 +25,12 @@
 
 #include "DRW_render.h"
 
+#include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
 #include "BKE_object.h"
+#include "BKE_particle.h"
 
 #include "ED_screen.h"
 
@@ -41,6 +43,11 @@
 /* Shaders */
 
 #define EXTERNAL_ENGINE "BLENDER_EXTERNAL"
+
+extern char datatoc_depth_frag_glsl[];
+extern char datatoc_depth_vert_glsl[];
+
+extern char datatoc_common_view_lib_glsl[];
 
 /* *********** LISTS *********** */
 
@@ -90,8 +97,6 @@ typedef struct EXTERNAL_PrivateData {
   /* Do we need to update the depth or can we reuse the last calculated texture. */
   bool need_depth;
   bool update_depth;
-
-  float last_persmat[4][4];
 } EXTERNAL_PrivateData; /* Transient data */
 
 /* Functions */
@@ -100,11 +105,20 @@ static void external_engine_init(void *vedata)
 {
   EXTERNAL_StorageList *stl = ((EXTERNAL_Data *)vedata)->stl;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  ARegion *ar = draw_ctx->ar;
+  ARegion *region = draw_ctx->region;
 
   /* Depth prepass */
   if (!e_data.depth_sh) {
-    e_data.depth_sh = DRW_shader_create_3d_depth_only(GPU_SHADER_CFG_DEFAULT);
+    const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[GPU_SHADER_CFG_DEFAULT];
+
+    e_data.depth_sh = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_depth_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_depth_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
   }
 
   if (!stl->g_data) {
@@ -117,7 +131,7 @@ static void external_engine_init(void *vedata)
 
   /* Progressive render samples are tagged with no rebuild, in that case we
    * can skip updating the depth buffer */
-  if (ar && (ar->do_draw & RGN_DRAW_NO_REBUILD)) {
+  if (region && (region->do_draw & RGN_DRAW_NO_REBUILD)) {
     stl->g_data->update_depth = false;
   }
 }
@@ -166,6 +180,24 @@ static void external_cache_populate(void *vedata, Object *ob)
     return;
   }
 
+  if (ob->type == OB_MESH && ob->modifiers.first != NULL) {
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type != eModifierType_ParticleSystem) {
+        continue;
+      }
+      ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
+      if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
+        continue;
+      }
+      ParticleSettings *part = psys->part;
+      const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
+
+      if (draw_as == PART_DRAW_PATH) {
+        struct GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, NULL);
+        DRW_shgroup_call(stl->g_data->depth_shgrp, hairs, NULL);
+      }
+    }
+  }
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
     /* Depth Prepass */
@@ -182,8 +214,8 @@ static void external_draw_scene_do(void *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
   RegionView3D *rv3d = draw_ctx->rv3d;
-  ARegion *ar = draw_ctx->ar;
-  RenderEngineType *type;
+  ARegion *region = draw_ctx->region;
+  const RenderEngineType *type;
 
   DRW_state_reset_ex(DRW_STATE_DEFAULT & ~DRW_STATE_DEPTH_LESS_EQUAL);
 
@@ -195,7 +227,7 @@ static void external_draw_scene_do(void *vedata)
       return;
     }
 
-    RenderEngine *engine = RE_engine_create_ex(engine_type, true);
+    RenderEngine *engine = RE_engine_create(engine_type);
     engine->tile_x = scene->r.tilex;
     engine->tile_y = scene->r.tiley;
     engine_type->view_update(engine, draw_ctx->evil_C, draw_ctx->depsgraph);
@@ -205,7 +237,7 @@ static void external_draw_scene_do(void *vedata)
   /* Rendered draw. */
   GPU_matrix_push_projection();
   GPU_matrix_push();
-  ED_region_pixelspace(ar);
+  ED_region_pixelspace(region);
 
   /* Render result draw. */
   type = rv3d->render_engine->type;
@@ -257,7 +289,7 @@ static void external_draw_scene(void *vedata)
 
 static void external_engine_free(void)
 {
-  /* All shaders are builtin. */
+  DRW_SHADER_FREE_SAFE(e_data.depth_sh);
 }
 
 static const DrawEngineDataSize external_data_size = DRW_VIEWPORT_DATA_SIZE(EXTERNAL_Data);
@@ -286,7 +318,7 @@ RenderEngineType DRW_engine_viewport_external_type = {
     NULL,
     EXTERNAL_ENGINE,
     N_("External"),
-    RE_INTERNAL,
+    RE_INTERNAL | RE_USE_STEREO_VIEWPORT,
     NULL,
     NULL,
     NULL,

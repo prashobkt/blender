@@ -80,7 +80,8 @@ class AddPresetBase:
         name = name.lower().strip()
         name = bpy.path.display_name_to_filepath(name)
         trans = maketrans_init()
-        return name.translate(trans)
+        # Strip surrounding "_" as they are displayed as spaces.
+        return name.translate(trans).strip("_")
 
     def execute(self, context):
         import os
@@ -92,15 +93,16 @@ class AddPresetBase:
         preset_menu_class = getattr(bpy.types, self.preset_menu)
 
         is_xml = getattr(preset_menu_class, "preset_type", None) == 'XML'
+        is_preset_add = not (self.remove_name or self.remove_active)
 
         if is_xml:
             ext = ".xml"
         else:
             ext = ".py"
 
-        name = self.name.strip()
-        if not (self.remove_name or self.remove_active):
+        name = self.name.strip() if is_preset_add else self.name
 
+        if is_preset_add:
             if not name:
                 return {'FINISHED'}
 
@@ -390,7 +392,7 @@ class AddPresetFluid(AddPresetBase, Operator):
 
     preset_values = [
         "fluid.domain_settings.viscosity_base",
-        "fluidanta.domain_settings.viscosity_exponent",
+        "fluid.domain_settings.viscosity_exponent",
         ]
 
     preset_subdir = "fluid"
@@ -642,10 +644,7 @@ class AddPresetGpencilBrush(AddPresetBase, Operator):
         "brush.smooth_stroke_factor",
         "settings.pen_smooth_factor",
         "settings.pen_smooth_steps",
-        "settings.pen_thick_smooth_factor",
-        "settings.pen_thick_smooth_steps",
         "settings.pen_subdivision_steps",
-        "settings.random_subdiv",
         "settings.use_settings_random",
         "settings.random_pressure",
         "settings.random_strength",
@@ -675,8 +674,6 @@ class AddPresetGpencilMaterial(AddPresetBase, Operator):
         "gpcolor.color",
         "gpcolor.stroke_image",
         "gpcolor.pixel_size",
-        "gpcolor.use_stroke_pattern",
-        "gpcolor.use_stroke_texture_mix",
         "gpcolor.mix_stroke_factor",
         "gpcolor.alignment_mode",
         "gpcolor.fill_style",
@@ -686,18 +683,11 @@ class AddPresetGpencilMaterial(AddPresetBase, Operator):
         "gpcolor.mix_color",
         "gpcolor.mix_factor",
         "gpcolor.flip",
-        "gpcolor.pattern_shift",
-        "gpcolor.pattern_scale",
-        "gpcolor.pattern_radius",
-        "gpcolor.pattern_angle",
-        "gpcolor.pattern_gridsize",
-        "gpcolor.use_fill_pattern",
         "gpcolor.texture_offset",
         "gpcolor.texture_scale",
         "gpcolor.texture_angle",
         "gpcolor.texture_opacity",
         "gpcolor.texture_clamp",
-        "gpcolor.use_fill_texture_mix",
         "gpcolor.mix_factor",
         "gpcolor.show_stroke",
         "gpcolor.show_fill",

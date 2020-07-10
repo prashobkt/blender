@@ -48,7 +48,14 @@ SET(_openimagedenoise_FIND_COMPONENTS
 # These are needed when building statically
 SET(_openimagedenoise_FIND_STATIC_COMPONENTS
   common
+
+  # These additional library names change between versions, we list all of them
+  # so builds work with multiple versions. Missing libraries are skipped.
+  dnnl_cpu
+  dnnl_common
+  dnnl_cpu # Second time because of circular dependency
   mkldnn
+  dnnl
 )
 
 SET(_openimagedenoise_LIBRARIES)
@@ -95,7 +102,7 @@ FIND_LIBRARY(OPENIMAGEDENOISE_LIBRARY
 # handle the QUIETLY and REQUIRED arguments and set OPENIMAGEDENOISE_FOUND to TRUE if
 # all listed variables are TRUE
 INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(OPENIMAGEDENOISE DEFAULT_MSG
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(OpenImageDenoise DEFAULT_MSG
     OPENIMAGEDENOISE_LIBRARY OPENIMAGEDENOISE_INCLUDE_DIR)
 
 IF(OPENIMAGEDENOISE_FOUND)

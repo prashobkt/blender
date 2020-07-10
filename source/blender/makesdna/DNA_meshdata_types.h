@@ -331,7 +331,7 @@ typedef struct MLoopUV {
 
 /** #MLoopUV.flag */
 enum {
-  MLOOPUV_EDGESEL = (1 << 0),
+  /* MLOOPUV_DEPRECATED = (1 << 0), MLOOPUV_EDGESEL removed */
   MLOOPUV_VERTSEL = (1 << 1),
   MLOOPUV_PINNED = (1 << 2),
 };
@@ -343,6 +343,10 @@ enum {
 typedef struct MLoopCol {
   unsigned char r, g, b, a;
 } MLoopCol;
+
+typedef struct MPropCol {
+  float color[4];
+} MPropCol;
 
 /** Multi-Resolution loop data. */
 typedef struct MDisps {

@@ -55,8 +55,8 @@
 
 #include "BLI_sys_types.h"  // for intptr_t support
 
-#include "ED_object.h"
 #include "ED_mesh.h"
+#include "ED_object.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -126,7 +126,7 @@ static bool object_shape_key_mirror(
       float *fp1, *fp2;
       float tvec[3];
 
-      ED_mesh_mirror_spatial_table(ob, NULL, NULL, NULL, 's');
+      ED_mesh_mirror_spatial_table_begin(ob, NULL, NULL);
 
       for (i1 = 0, mv = me->mvert; i1 < me->totvert; i1++, mv++) {
         i2 = mesh_get_x_mirror_vert(ob, NULL, i1, use_topology);
@@ -157,7 +157,7 @@ static bool object_shape_key_mirror(
         }
       }
 
-      ED_mesh_mirror_spatial_table(ob, NULL, NULL, NULL, 'e');
+      ED_mesh_mirror_spatial_table_end(ob);
     }
     else if (ob->type == OB_LATTICE) {
       Lattice *lt = ob->data;
@@ -216,40 +216,38 @@ static bool object_shape_key_mirror(
 
 /********************** shape key operators *********************/
 
-static bool shape_key_mode_poll(bContext *C)
+static bool shape_key_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
   ID *data = (ob) ? ob->data : NULL;
-  return (ob && !ID_IS_LINKED(ob) && data && !ID_IS_LINKED(data) && ob->mode != OB_MODE_EDIT);
+
+  return (ob != NULL && !ID_IS_LINKED(ob) && !ID_IS_OVERRIDE_LIBRARY(ob) && data != NULL &&
+          !ID_IS_LINKED(data) && !ID_IS_OVERRIDE_LIBRARY(data));
+}
+
+static bool shape_key_mode_poll(bContext *C)
+{
+  Object *ob = ED_object_context(C);
+
+  return (shape_key_poll(C) && ob->mode != OB_MODE_EDIT);
 }
 
 static bool shape_key_mode_exists_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
-  ID *data = (ob) ? ob->data : NULL;
 
-  /* same as shape_key_mode_poll */
-  return (ob && !ID_IS_LINKED(ob) && data && !ID_IS_LINKED(data) && ob->mode != OB_MODE_EDIT) &&
-         /* check a keyblock exists */
-         (BKE_keyblock_from_object(ob) != NULL);
+  return (shape_key_mode_poll(C) &&
+          /* check a keyblock exists */
+          (BKE_keyblock_from_object(ob) != NULL));
 }
 
 static bool shape_key_move_poll(bContext *C)
 {
   /* Same as shape_key_mode_exists_poll above, but ensure we have at least two shapes! */
   Object *ob = ED_object_context(C);
-  ID *data = (ob) ? ob->data : NULL;
   Key *key = BKE_key_from_object(ob);
 
-  return (ob && !ID_IS_LINKED(ob) && data && !ID_IS_LINKED(data) && ob->mode != OB_MODE_EDIT &&
-          key && key->totkey > 1);
-}
-
-static bool shape_key_poll(bContext *C)
-{
-  Object *ob = ED_object_context(C);
-  ID *data = (ob) ? ob->data : NULL;
-  return (ob && !ID_IS_LINKED(ob) && data && !ID_IS_LINKED(data));
+  return (shape_key_mode_poll(C) && key != NULL && key->totkey > 1);
 }
 
 static int shape_key_add_exec(bContext *C, wmOperator *op)
@@ -307,9 +305,7 @@ static int shape_key_remove_exec(bContext *C, wmOperator *op)
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void OBJECT_OT_shape_key_remove(wmOperatorType *ot)

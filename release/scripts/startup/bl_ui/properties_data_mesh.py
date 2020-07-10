@@ -55,9 +55,12 @@ class MESH_MT_vertex_group_context_menu(Menu):
         layout.operator("object.vertex_group_remove", text="Delete All Unlocked Groups").all_unlocked = True
         layout.operator("object.vertex_group_remove", text="Delete All Groups").all = True
         layout.separator()
-        layout.operator("object.vertex_group_lock", icon='LOCKED', text="Lock All").action = 'LOCK'
-        layout.operator("object.vertex_group_lock", icon='UNLOCKED', text="UnLock All").action = 'UNLOCK'
-        layout.operator("object.vertex_group_lock", text="Lock Invert All").action = 'INVERT'
+        props = layout.operator("object.vertex_group_lock", icon='LOCKED', text="Lock All")
+        props.action, props.mask = 'LOCK', 'ALL'
+        props = layout.operator("object.vertex_group_lock", icon='UNLOCKED', text="UnLock All")
+        props.action, props.mask = 'UNLOCK', 'ALL'
+        props = layout.operator("object.vertex_group_lock", text="Lock Invert All")
+        props.action, props.mask = 'INVERT', 'ALL'
 
 
 class MESH_MT_shape_key_context_menu(Menu):
@@ -187,27 +190,20 @@ class DATA_PT_normals(MeshButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
-        pass
-
-
-class DATA_PT_normals_auto_smooth(MeshButtonsPanel, Panel):
-    bl_label = "Auto Smooth"
-    bl_parent_id = "DATA_PT_normals"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
-
-    def draw_header(self, context):
-        mesh = context.mesh
-
-        self.layout.prop(mesh, "use_auto_smooth", text="")
-
-    def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
 
         mesh = context.mesh
 
-        layout.active = mesh.use_auto_smooth and not mesh.has_custom_normals
-        layout.prop(mesh, "auto_smooth_angle", text="Angle")
+        col = layout.column(align=False, heading="Auto Smooth")
+        col.use_property_decorate = False
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(mesh, "use_auto_smooth", text="")
+        sub = sub.row(align=True)
+        sub.active = mesh.use_auto_smooth and not mesh.has_custom_normals
+        sub.prop(mesh, "auto_smooth_angle", text="")
+        row.prop_decorator(mesh, "auto_smooth_angle")
 
 
 class DATA_PT_texture_space(MeshButtonsPanel, Panel):
@@ -463,6 +459,35 @@ class DATA_PT_vertex_colors(MeshButtonsPanel, Panel):
         col.operator("mesh.vertex_color_remove", icon='REMOVE', text="")
 
 
+class DATA_PT_sculpt_vertex_colors(MeshButtonsPanel, Panel):
+    bl_label = "Sculpt Vertex Colors"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.preferences.experimental.use_sculpt_vertex_colors
+
+    def draw(self, context):
+        layout = self.layout
+
+        me = context.mesh
+
+        row = layout.row()
+        col = row.column()
+
+        col.template_list("MESH_UL_vcols", "svcols", me, "sculpt_vertex_colors", me.sculpt_vertex_colors, "active_index", rows=2)
+
+        col = row.column(align=True)
+        col.operator("mesh.sculpt_vertex_color_add", icon='ADD', text="")
+        col.operator("mesh.sculpt_vertex_color_remove", icon='REMOVE', text="")
+
+        row = layout.row()
+        col = row.column()
+        col.operator("sculpt.vertex_to_loop_colors", text="Store Sculpt Vertex Color")
+        col.operator("sculpt.loop_to_vertex_colors", text="Load Sculpt Vertex Color")
+
+
 class DATA_PT_remesh(MeshButtonsPanel, Panel):
     bl_label = "Remesh"
     bl_options = {'DEFAULT_CLOSED'}
@@ -482,8 +507,14 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
             col.prop(mesh, "remesh_voxel_adaptivity")
             col.prop(mesh, "use_remesh_fix_poles")
             col.prop(mesh, "use_remesh_smooth_normals")
-            col.prop(mesh, "use_remesh_preserve_volume")
-            col.prop(mesh, "use_remesh_preserve_paint_mask")
+
+            col = layout.column(heading="Preserve")
+            col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
+            col.prop(mesh, "use_remesh_preserve_paint_mask", text="Paint Mask")
+            col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text="Face Sets")
+            if context.preferences.experimental.use_sculpt_vertex_colors:
+                col.prop(mesh, "use_remesh_preserve_vertex_colors", text="Vertex Colors")
+
             col.operator("object.voxel_remesh", text="Voxel Remesh")
         else:
             col.operator("object.quadriflow_remesh", text="QuadriFlow Remesh")
@@ -511,12 +542,12 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
         else:
             col.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
 
-        col = layout.column()
+        col = layout.column(heading="Store")
 
         col.enabled = obj is not None and obj.mode != 'EDIT'
-        col.prop(me, "use_customdata_vertex_bevel")
-        col.prop(me, "use_customdata_edge_bevel")
-        col.prop(me, "use_customdata_edge_crease")
+        col.prop(me, "use_customdata_vertex_bevel", text="Vertex Bevel Weight")
+        col.prop(me, "use_customdata_edge_bevel", text="Edge Bevel Weight")
+        col.prop(me, "use_customdata_edge_crease", text="Edge Crease")
 
 
 class DATA_PT_custom_props_mesh(MeshButtonsPanel, PropertyPanel, Panel):
@@ -538,9 +569,9 @@ classes = (
     DATA_PT_shape_keys,
     DATA_PT_uv_texture,
     DATA_PT_vertex_colors,
+    DATA_PT_sculpt_vertex_colors,
     DATA_PT_face_maps,
     DATA_PT_normals,
-    DATA_PT_normals_auto_smooth,
     DATA_PT_texture_space,
     DATA_PT_remesh,
     DATA_PT_customdata,

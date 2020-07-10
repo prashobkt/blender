@@ -47,8 +47,6 @@ struct ReportList;
 struct Scene;
 struct UndoType;
 struct UvMapVert;
-struct UvMapVert;
-struct UvVertMap;
 struct UvVertMap;
 struct View3D;
 struct ViewContext;
@@ -135,9 +133,15 @@ void EDBM_flag_disable_all(struct BMEditMesh *em, const char hflag);
 bool BMBVH_EdgeVisible(struct BMBVHTree *tree,
                        struct BMEdge *e,
                        struct Depsgraph *depsgraph,
-                       struct ARegion *ar,
+                       struct ARegion *region,
                        struct View3D *v3d,
                        struct Object *obedit);
+
+void EDBM_project_snap_verts(struct bContext *C,
+                             struct Depsgraph *depsgraph,
+                             struct ARegion *region,
+                             struct Object *obedit,
+                             struct BMEditMesh *em);
 
 /* editmesh_automerge.c */
 void EDBM_automerge(struct Object *ob, bool update, const char hflag, const float dist);
@@ -293,13 +297,6 @@ void ED_operatortypes_mesh(void);
 void ED_operatormacros_mesh(void);
 void ED_keymap_mesh(struct wmKeyConfig *keyconf);
 
-/* editmesh_tools.c (could be moved) */
-void EDBM_project_snap_verts(struct bContext *C,
-                             struct Depsgraph *depsgraph,
-                             struct ARegion *ar,
-                             struct Object *obedit,
-                             struct BMEditMesh *em);
-
 /* editface.c */
 void paintface_flush_flags(struct bContext *C, struct Object *ob, short flag);
 bool paintface_mouse_select(struct bContext *C,
@@ -427,6 +424,15 @@ bool ED_mesh_color_remove_index(struct Mesh *me, const int n);
 bool ED_mesh_color_remove_active(struct Mesh *me);
 bool ED_mesh_color_remove_named(struct Mesh *me, const char *name);
 
+bool ED_mesh_sculpt_color_ensure(struct Mesh *me, const char *name);
+int ED_mesh_sculpt_color_add(struct Mesh *me,
+                             const char *name,
+                             const bool active_set,
+                             const bool do_init);
+bool ED_mesh_sculpt_color_remove_index(struct Mesh *me, const int n);
+bool ED_mesh_sculpt_color_remove_active(struct Mesh *me);
+bool ED_mesh_sculpt_color_remove_named(struct Mesh *me, const char *name);
+
 void ED_mesh_report_mirror(struct wmOperator *op, int totmirr, int totfail);
 void ED_mesh_report_mirror_ex(struct wmOperator *op, int totmirr, int totfail, char selectmode);
 
@@ -446,13 +452,23 @@ void EDBM_redo_state_restore(struct BMBackup, struct BMEditMesh *em, int recalct
 void EDBM_redo_state_free(struct BMBackup *, struct BMEditMesh *em, int recalctess);
 
 /* *** meshtools.c *** */
-int join_mesh_exec(struct bContext *C, struct wmOperator *op);
-int join_mesh_shapes_exec(struct bContext *C, struct wmOperator *op);
+int ED_mesh_join_objects_exec(struct bContext *C, struct wmOperator *op);
+int ED_mesh_shapes_join_objects_exec(struct bContext *C, struct wmOperator *op);
 
 /* mirror lookup api */
-int ED_mesh_mirror_spatial_table(
-    struct Object *ob, struct BMEditMesh *em, struct Mesh *me_eval, const float co[3], char mode);
-int ED_mesh_mirror_topo_table(struct Object *ob, struct Mesh *me_eval, char mode);
+/* Spatial Mirror */
+void ED_mesh_mirror_spatial_table_begin(struct Object *ob,
+                                        struct BMEditMesh *em,
+                                        struct Mesh *me_eval);
+void ED_mesh_mirror_spatial_table_end(struct Object *ob);
+int ED_mesh_mirror_spatial_table_lookup(struct Object *ob,
+                                        struct BMEditMesh *em,
+                                        struct Mesh *me_eval,
+                                        const float co[3]);
+
+/* Topology Mirror */
+void ED_mesh_mirror_topo_table_begin(struct Object *ob, struct Mesh *me_eval);
+void ED_mesh_mirror_topo_table_end(struct Object *ob);
 
 /* retrieves mirrored cache vert, or NULL if there isn't one.
  * note: calling this without ensuring the mirror cache state

@@ -33,11 +33,11 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_alloca.h"
+#include "BLI_listbase.h"
+#include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_utildefines_stack.h"
-#include "BLI_alloca.h"
-#include "BLI_math.h"
-#include "BLI_listbase.h"
 
 #include "BKE_curve.h"
 
@@ -907,9 +907,7 @@ static void bm_edgering_pair_order(BMesh *bm,
         if (BM_elem_flag_test(v_other, BM_ELEM_TAG)) {
           break;
         }
-        else {
-          v_other = NULL;
-        }
+        v_other = NULL;
       }
     }
     BLI_assert(v_other != NULL);

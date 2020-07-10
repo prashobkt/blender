@@ -21,8 +21,8 @@
 #include "BPy_UnaryFunction1DVectorViewShape.h"
 
 #include "../BPy_Convert.h"
-#include "../BPy_Interface1D.h"
 #include "../BPy_IntegrationType.h"
+#include "../BPy_Interface1D.h"
 
 #include "UnaryFunction1D_vector_ViewShape/BPy_GetOccludeeF1D.h"
 #include "UnaryFunction1D_vector_ViewShape/BPy_GetOccludersF1D.h"
@@ -118,9 +118,7 @@ static int UnaryFunction1DVectorViewShape___init__(BPy_UnaryFunction1DVectorView
 
 static void UnaryFunction1DVectorViewShape___dealloc__(BPy_UnaryFunction1DVectorViewShape *self)
 {
-  if (self->uf1D_vectorviewshape) {
-    delete self->uf1D_vectorviewshape;
-  }
+  delete self->uf1D_vectorviewshape;
   UnaryFunction1D_Type.tp_dealloc((PyObject *)self);
 }
 

@@ -24,12 +24,15 @@ set(INC
   intern
   ../blenfont
   ../blenkernel
+  ../blentranslation
   ../blenlib
   ../bmesh
   ../depsgraph
+  ../editors/include
   ../makesdna
   ../makesrna
   ../render/extern/include
+  ../windowmanager
   ../../../intern/eigen
   ../../../intern/guardedalloc
 )
@@ -40,12 +43,12 @@ set(INC_SYS
 
 set(SRC
   intern/FX_shader_util.h
+  intern/FX_ui_common.c
 
   intern/FX_shader_blur.c
   intern/FX_shader_colorize.c
   intern/FX_shader_flip.c
   intern/FX_shader_glow.c
-  intern/FX_shader_light.c
   intern/FX_shader_pixel.c
   intern/FX_shader_rim.c
   intern/FX_shader_shadow.c
@@ -53,6 +56,7 @@ set(SRC
   intern/FX_shader_util.c
   intern/FX_shader_wave.c
 
+  intern/FX_ui_common.h
   FX_shader_types.h
 )
 

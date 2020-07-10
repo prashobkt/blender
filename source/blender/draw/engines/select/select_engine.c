@@ -32,8 +32,8 @@
 #include "draw_cache_impl.h"
 #include "draw_manager.h"
 
-#include "select_private.h"
 #include "select_engine.h"
+#include "select_private.h"
 
 #define SELECT_ENGINE "SELECT_ENGINE"
 
@@ -136,7 +136,7 @@ static void select_engine_init(void *vedata)
     DRW_view_viewmat_get(view_default, viewmat, false);
     DRW_view_winmat_get(view_default, winmat, false);
     projmat_from_subregion(winmat,
-                           (int[2]){draw_ctx->ar->winx, draw_ctx->ar->winy},
+                           (int[2]){draw_ctx->region->winx, draw_ctx->region->winy},
                            e_data.context.last_rect.xmin,
                            e_data.context.last_rect.xmax,
                            e_data.context.last_rect.ymin,
@@ -307,9 +307,6 @@ static void select_draw_scene(void *vedata)
     return;
   }
 
-  /* dithering and AA break color coding, so disable */
-  glDisable(GL_DITHER);
-
   DRW_view_set_active(stl->g_data->view_faces);
 
   if (!DRW_pass_is_empty(psl->depth_only_pass)) {
@@ -381,7 +378,7 @@ RenderEngineType DRW_engine_viewport_select_type = {
     NULL,
     SELECT_ENGINE,
     N_("Select ID"),
-    RE_INTERNAL,
+    RE_INTERNAL | RE_USE_STEREO_VIEWPORT,
     NULL,
     NULL,
     NULL,

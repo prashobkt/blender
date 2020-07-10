@@ -26,9 +26,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_armature_types.h"
+#include "DNA_object_types.h" /* for OB_DATA_SUPPORT_ID */
 #include "DNA_screen_types.h"
 #include "DNA_text_types.h"
-#include "DNA_object_types.h" /* for OB_DATA_SUPPORT_ID */
 
 #include "BLI_blenlib.h"
 #include "BLI_math_color.h"
@@ -69,9 +69,9 @@
 #include "ED_keyframing.h"
 
 /* only for UI_OT_editsource */
-#include "ED_screen.h"
 #include "BKE_main.h"
 #include "BLI_ghash.h"
+#include "ED_screen.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Copy Data Path Operator
@@ -209,10 +209,9 @@ static int copy_as_driver_button_exec(bContext *C, wmOperator *op)
       MEM_freeN(path);
       return OPERATOR_FINISHED;
     }
-    else {
-      BKE_reportf(op->reports, RPT_ERROR, "Could not compute a valid data path");
-      return OPERATOR_CANCELLED;
-    }
+
+    BKE_reportf(op->reports, RPT_ERROR, "Could not compute a valid data path");
+    return OPERATOR_CANCELLED;
   }
 
   return OPERATOR_CANCELLED;
@@ -312,9 +311,7 @@ static int operator_button_property_finish(bContext *C, PointerRNA *ptr, Propert
     /* do nothing, go ahead with undo */
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 static bool reset_default_button_poll(bContext *C)
@@ -513,7 +510,7 @@ static bool override_type_set_button_poll(bContext *C)
 
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
-  const int override_status = RNA_property_override_library_status(&ptr, prop, index);
+  const uint override_status = RNA_property_override_library_status(&ptr, prop, index);
 
   return (ptr.data && prop && (override_status & RNA_OVERRIDE_STATUS_OVERRIDABLE));
 }
@@ -613,7 +610,7 @@ static bool override_remove_button_poll(bContext *C)
 
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
-  const int override_status = RNA_property_override_library_status(&ptr, prop, index);
+  const uint override_status = RNA_property_override_library_status(&ptr, prop, index);
 
   return (ptr.data && ptr.owner_id && prop && (override_status & RNA_OVERRIDE_STATUS_OVERRIDDEN));
 }
@@ -630,11 +627,11 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
   ID *id = ptr.owner_id;
-  IDOverrideLibraryProperty *oprop = RNA_property_override_property_find(&ptr, prop);
+  IDOverrideLibraryProperty *oprop = RNA_property_override_property_find(&ptr, prop, &id);
   BLI_assert(oprop != NULL);
   BLI_assert(id != NULL && id->override_library != NULL);
 
-  const bool is_template = (id->override_library->reference == NULL);
+  const bool is_template = ID_IS_OVERRIDE_LIBRARY_TEMPLATE(id);
 
   /* We need source (i.e. linked data) to restore values of deleted overrides...
    * If this is an override template, we obviously do not need to restore anything. */
@@ -735,6 +732,10 @@ bool UI_context_copy_to_selected_list(bContext *C,
 {
   *r_use_path_from_id = false;
   *r_path = NULL;
+  /* special case for bone constraints */
+  char *path_from_bone = NULL;
+  /* Remove links from the collection list which don't contain 'prop'. */
+  bool ensure_list_items_contain_prop = false;
 
   /* PropertyGroup objects don't have a reference to the struct that actually owns
    * them, so it is normally necessary to do a brute force search to find it. This
@@ -792,10 +793,29 @@ bool UI_context_copy_to_selected_list(bContext *C,
     ui_context_selected_bones_via_pose(C, r_lb);
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Sequence)) {
-    *r_lb = CTX_data_collection_get(C, "selected_editable_sequences");
+    /* Special case when we do this for 'Sequence.lock'.
+     * (if the sequence is locked, it wont be in "selected_editable_sequences"). */
+    const char *prop_id = RNA_property_identifier(prop);
+    if (STREQ(prop_id, "lock")) {
+      *r_lb = CTX_data_collection_get(C, "selected_sequences");
+    }
+    else {
+      *r_lb = CTX_data_collection_get(C, "selected_editable_sequences");
+    }
+    /* Account for properties only being available for some sequence types. */
+    ensure_list_items_contain_prop = true;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_FCurve)) {
     *r_lb = CTX_data_collection_get(C, "selected_editable_fcurves");
+  }
+  else if (RNA_struct_is_a(ptr->type, &RNA_NlaStrip)) {
+    *r_lb = CTX_data_collection_get(C, "selected_nla_strips");
+  }
+  else if (RNA_struct_is_a(ptr->type, &RNA_Constraint) &&
+           (path_from_bone = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_PoseBone)) !=
+               NULL) {
+    *r_lb = CTX_data_collection_get(C, "selected_pose_bones");
+    *r_path = path_from_bone;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Node) || RNA_struct_is_a(ptr->type, &RNA_NodeSocket)) {
     ListBase lb = {NULL, NULL};
@@ -893,13 +913,34 @@ bool UI_context_copy_to_selected_list(bContext *C,
       /* Try to recursively find an RNA_Sequence ancestor,
        * to handle situations like T41062... */
       if ((*r_path = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_Sequence)) != NULL) {
-        *r_lb = CTX_data_collection_get(C, "selected_editable_sequences");
+        /* Special case when we do this for 'Sequence.lock'.
+         * (if the sequence is locked, it wont be in "selected_editable_sequences"). */
+        const char *prop_id = RNA_property_identifier(prop);
+        if (STREQ(prop_id, "lock")) {
+          *r_lb = CTX_data_collection_get(C, "selected_sequences");
+        }
+        else {
+          *r_lb = CTX_data_collection_get(C, "selected_editable_sequences");
+        }
+        /* Account for properties only being available for some sequence types. */
+        ensure_list_items_contain_prop = true;
       }
     }
     return (*r_path != NULL);
   }
   else {
     return false;
+  }
+
+  if (ensure_list_items_contain_prop) {
+    const char *prop_id = RNA_property_identifier(prop);
+    LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, r_lb) {
+      if ((ptr->type != link->ptr.type) &&
+          (RNA_struct_type_find_property(link->ptr.type, prop_id) != prop)) {
+        BLI_remlink(r_lb, link);
+        MEM_freeN(link);
+      }
+    }
   }
 
   return true;
@@ -961,11 +1002,9 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
                 success = true;
                 break;
               }
-              else {
-                if (RNA_property_copy(bmain, &lptr, &ptr, prop, (all) ? -1 : index)) {
-                  RNA_property_update(C, &lptr, prop);
-                  success = true;
-                }
+              if (RNA_property_copy(bmain, &lptr, &ptr, prop, (all) ? -1 : index)) {
+                RNA_property_update(C, &lptr, prop);
+                success = true;
               }
             }
           }
@@ -1105,11 +1144,12 @@ static bool jump_to_target_button(bContext *C, bool poll)
       return jump_to_target_ptr(C, target_ptr, poll);
     }
     /* For string properties with prop_search, look up the search collection item. */
-    else if (type == PROP_STRING) {
+    if (type == PROP_STRING) {
       const uiBut *but = UI_context_active_but_get(C);
 
-      if (but->type == UI_BTYPE_SEARCH_MENU && but->search_func == ui_rna_collection_search_cb) {
-        uiRNACollectionSearch *coll_search = but->search_arg;
+      if (but->type == UI_BTYPE_SEARCH_MENU && but->search &&
+          but->search->update_fn == ui_rna_collection_search_update_fn) {
+        uiRNACollectionSearch *coll_search = but->search->arg;
 
         char str_buf[MAXBONENAME];
         char *str_ptr = RNA_property_string_get_alloc(&ptr, prop, str_buf, sizeof(str_buf), NULL);
@@ -1220,14 +1260,12 @@ static bool ui_editsource_uibut_match(uiBut *but_a, uiBut *but_b)
       STREQLEN(but_a->drawstr, but_b->drawstr, UI_MAX_DRAW_STR)) {
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 void UI_editsource_active_but_test(uiBut *but)
 {
-  extern void PyC_FileAndNum_Safe(const char **filename, int *lineno);
+  extern void PyC_FileAndNum_Safe(const char **r_filename, int *r_lineno);
 
   struct uiEditSourceButStore *but_store = MEM_callocN(sizeof(uiEditSourceButStore), __func__);
 
@@ -1264,7 +1302,7 @@ static int editsource_text_edit(bContext *C,
   printf("%s:%d\n", filepath, line);
 
   for (text = bmain->texts.first; text; text = text->id.next) {
-    if (text->name && BLI_path_cmp(text->name, filepath) == 0) {
+    if (text->filepath && BLI_path_cmp(text->filepath, filepath) == 0) {
       break;
     }
   }
@@ -1278,21 +1316,20 @@ static int editsource_text_edit(bContext *C,
     BKE_reportf(op->reports, RPT_WARNING, "File '%s' cannot be opened", filepath);
     return OPERATOR_CANCELLED;
   }
-  else {
-    /* naughty!, find text area to set, not good behavior
-     * but since this is a dev tool lets allow it - campbell */
-    ScrArea *sa = BKE_screen_find_big_area(CTX_wm_screen(C), SPACE_TEXT, 0);
-    if (sa) {
-      SpaceText *st = sa->spacedata.first;
-      st->text = text;
-    }
-    else {
-      BKE_reportf(op->reports, RPT_INFO, "See '%s' in the text editor", text->id.name + 2);
-    }
 
-    txt_move_toline(text, line - 1, false);
-    WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
+  /* naughty!, find text area to set, not good behavior
+   * but since this is a dev tool lets allow it - campbell */
+  ScrArea *area = BKE_screen_find_big_area(CTX_wm_screen(C), SPACE_TEXT, 0);
+  if (area) {
+    SpaceText *st = area->spacedata.first;
+    st->text = text;
   }
+  else {
+    BKE_reportf(op->reports, RPT_INFO, "See '%s' in the text editor", text->id.name + 2);
+  }
+
+  txt_move_toline(text, line - 1, false);
+  WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
 
   return OPERATOR_FINISHED;
 }
@@ -1305,7 +1342,7 @@ static int editsource_exec(bContext *C, wmOperator *op)
     GHashIterator ghi;
     struct uiEditSourceButStore *but_store = NULL;
 
-    ARegion *ar = CTX_wm_region(C);
+    ARegion *region = CTX_wm_region(C);
     int ret;
 
     /* needed else the active button does not get tested */
@@ -1317,9 +1354,9 @@ static int editsource_exec(bContext *C, wmOperator *op)
     ui_editsource_active_but_set(but);
 
     /* redraw and get active button python info */
-    ED_region_do_layout(C, ar);
-    ED_region_do_draw(C, ar);
-    ar->do_draw = false;
+    ED_region_do_layout(C, region);
+    ED_region_do_draw(C, region);
+    region->do_draw = false;
 
     for (BLI_ghashIterator_init(&ghi, ui_editsource_info->hash);
          BLI_ghashIterator_done(&ghi) == false;
@@ -1352,10 +1389,9 @@ static int editsource_exec(bContext *C, wmOperator *op)
 
     return ret;
   }
-  else {
-    BKE_report(op->reports, RPT_ERROR, "Active button not found");
-    return OPERATOR_CANCELLED;
-  }
+
+  BKE_report(op->reports, RPT_ERROR, "Active button not found");
+  return OPERATOR_CANCELLED;
 }
 
 static void UI_OT_editsource(wmOperatorType *ot)
@@ -1540,10 +1576,9 @@ static int edittranslation_exec(bContext *C, wmOperator *op)
 
     return ret;
   }
-  else {
-    BKE_report(op->reports, RPT_ERROR, "Active button not found");
-    return OPERATOR_CANCELLED;
-  }
+
+  BKE_report(op->reports, RPT_ERROR, "Active button not found");
+  return OPERATOR_CANCELLED;
 }
 
 static void UI_OT_edittranslation_init(wmOperatorType *ot)
@@ -1593,22 +1628,23 @@ static void UI_OT_reloadtranslation(wmOperatorType *ot)
 
 static int ui_button_press_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  bScreen *sc = CTX_wm_screen(C);
+  bScreen *screen = CTX_wm_screen(C);
   const bool skip_depressed = RNA_boolean_get(op->ptr, "skip_depressed");
-  ARegion *ar_prev = CTX_wm_region(C);
-  ARegion *ar = sc ? BKE_screen_find_region_xy(sc, RGN_TYPE_ANY, event->x, event->y) : NULL;
+  ARegion *region_prev = CTX_wm_region(C);
+  ARegion *region = screen ? BKE_screen_find_region_xy(screen, RGN_TYPE_ANY, event->x, event->y) :
+                             NULL;
 
-  if (ar == NULL) {
-    ar = ar_prev;
+  if (region == NULL) {
+    region = region_prev;
   }
 
-  if (ar == NULL) {
+  if (region == NULL) {
     return OPERATOR_PASS_THROUGH;
   }
 
-  CTX_wm_region_set(C, ar);
+  CTX_wm_region_set(C, region);
   uiBut *but = UI_context_active_but_get(C);
-  CTX_wm_region_set(C, ar_prev);
+  CTX_wm_region_set(C, region_prev);
 
   if (but == NULL) {
     return OPERATOR_PASS_THROUGH;
@@ -1621,11 +1657,11 @@ static int ui_button_press_invoke(bContext *C, wmOperator *op, const wmEvent *ev
    * having this avoids a minor drawing glitch. */
   void *but_optype = but->optype;
 
-  UI_but_execute(C, ar, but);
+  UI_but_execute(C, region, but);
 
   but->optype = but_optype;
 
-  WM_event_add_mousemove(C);
+  WM_event_add_mousemove(CTX_wm_window(C));
 
   return OPERATOR_FINISHED;
 }
@@ -1650,7 +1686,7 @@ static void UI_OT_button_execute(wmOperatorType *ot)
 
 static int button_string_clear_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  uiBut *but = UI_context_active_but_get(C);
+  uiBut *but = UI_context_active_but_get_respect_menu(C);
 
   if (but) {
     ui_but_active_string_clear_and_exit(C, but);
@@ -1679,20 +1715,20 @@ static void UI_OT_button_string_clear(wmOperatorType *ot)
 bool UI_drop_color_poll(struct bContext *C,
                         wmDrag *drag,
                         const wmEvent *UNUSED(event),
-                        const char **UNUSED(tooltip))
+                        const char **UNUSED(r_tooltip))
 {
   /* should only return true for regions that include buttons, for now
    * return true always */
   if (drag->type == WM_DRAG_COLOR) {
     SpaceImage *sima = CTX_wm_space_image(C);
-    ARegion *ar = CTX_wm_region(C);
+    ARegion *region = CTX_wm_region(C);
 
     if (UI_but_active_drop_color(C)) {
       return 1;
     }
 
     if (sima && (sima->mode == SI_MODE_PAINT) && sima->image &&
-        (ar && ar->regiontype == RGN_TYPE_WINDOW)) {
+        (region && region->regiontype == RGN_TYPE_WINDOW)) {
       return 1;
     }
   }
@@ -1710,7 +1746,7 @@ void UI_drop_color_copy(wmDrag *drag, wmDropBox *drop)
 
 static int drop_color_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   uiBut *but = NULL;
   float color[4];
   bool gamma;
@@ -1720,7 +1756,7 @@ static int drop_color_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   /* find button under mouse, check if it has RNA color property and
    * if it does copy the data */
-  but = ui_region_find_active_but(ar);
+  but = ui_region_find_active_but(region);
 
   if (but && but->type == UI_BTYPE_COLOR && but->rnaprop) {
     const int color_len = RNA_property_array_length(&but->rnapoin, but->rnaprop);
@@ -1754,7 +1790,7 @@ static int drop_color_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     ED_imapaint_bucket_fill(C, color, op, event->mval);
   }
 
-  ED_region_tag_redraw(ar);
+  ED_region_tag_redraw(region);
 
   return OPERATOR_FINISHED;
 }

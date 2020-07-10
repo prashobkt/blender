@@ -20,8 +20,8 @@
  */
 
 #include "Stroke.h"
-#include "StrokeIterators.h"
 #include "StrokeAdvancedIterators.h"
+#include "StrokeIterators.h"
 #include "StrokeRenderer.h"
 
 #include "BKE_global.h"
@@ -484,9 +484,7 @@ Stroke &Stroke::operator=(const Stroke &iBrother)
   _id = iBrother._id;
   _ViewEdges = iBrother._ViewEdges;
   _sampling = iBrother._sampling;
-  if (_rep) {
-    delete _rep;
-  }
+  delete _rep;
   if (iBrother._rep) {
     _rep = new StrokeRep(*(iBrother._rep));
   }

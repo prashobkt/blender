@@ -20,8 +20,8 @@
 
 #include "BPy_ViewMap.h"
 
-#include "BPy_Convert.h"
 #include "BPy_BBox.h"
+#include "BPy_Convert.h"
 #include "Interface1D/BPy_FEdge.h"
 #include "Interface1D/BPy_ViewEdge.h"
 
@@ -69,9 +69,7 @@ static int ViewMap_init(BPy_ViewMap *self, PyObject *args, PyObject *kwds)
 
 static void ViewMap_dealloc(BPy_ViewMap *self)
 {
-  if (self->vm) {
-    delete self->vm;
-  }
+  delete self->vm;
   Py_TYPE(self)->tp_free((PyObject *)self);
 }
 

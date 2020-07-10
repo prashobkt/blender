@@ -31,8 +31,8 @@
 
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
 #include "BLI_listbase.h"
+#include "BLI_math.h"
 
 #include "bmesh.h"
 #include "bmesh_structure.h"
@@ -743,7 +743,7 @@ BMFace *BM_mesh_active_face_get(BMesh *bm, const bool is_sloppy, const bool is_s
   if (bm->act_face && (!is_selected || BM_elem_flag_test(bm->act_face, BM_ELEM_SELECT))) {
     return bm->act_face;
   }
-  else if (is_sloppy) {
+  if (is_sloppy) {
     BMIter iter;
     BMFace *f = NULL;
     BMEditSelection *ese;
@@ -953,9 +953,7 @@ bool _bm_select_history_remove(BMesh *bm, BMHeader *ele)
     BLI_freelinkN(&bm->selected, ese);
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 void _bm_select_history_store_notest(BMesh *bm, BMHeader *ele)
@@ -1021,7 +1019,7 @@ void BM_select_history_validate(BMesh *bm)
 bool BM_select_history_active_get(BMesh *bm, BMEditSelection *ese)
 {
   BMEditSelection *ese_last = bm->selected.last;
-  BMFace *efa = BM_mesh_active_face_get(bm, false, false);
+  BMFace *efa = BM_mesh_active_face_get(bm, false, true);
 
   ese->next = ese->prev = NULL;
 
@@ -1083,12 +1081,12 @@ void BM_select_history_merge_from_targetmap(
 {
 
 #ifdef DEBUG
-  for (BMEditSelection *ese = bm->selected.first; ese; ese = ese->next) {
+  LISTBASE_FOREACH (BMEditSelection *, ese, &bm->selected) {
     BLI_assert(BM_ELEM_API_FLAG_TEST(ese->ele, _FLAG_OVERLAP) == 0);
   }
 #endif
 
-  for (BMEditSelection *ese = bm->selected.first; ese; ese = ese->next) {
+  LISTBASE_FOREACH (BMEditSelection *, ese, &bm->selected) {
     BM_ELEM_API_FLAG_ENABLE(ese->ele, _FLAG_OVERLAP);
 
     /* Only loop when (use_chain == true). */

@@ -22,15 +22,15 @@
 
 #include "CLG_log.h"
 
+#include "DNA_anim_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_anim_types.h"
 
+#include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_array_utils.h"
 
-#include "BKE_animsys.h"
+#include "BKE_anim_data.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
@@ -40,11 +40,11 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_undo.h"
 #include "ED_curve.h"
+#include "ED_undo.h"
 
-#include "WM_types.h"
 #include "WM_api.h"
+#include "WM_types.h"
 
 #include "curve_intern.h"
 
@@ -88,12 +88,12 @@ static void undocurve_to_editcurve(Main *bmain, UndoCurve *ucu, Curve *cu, short
 
   if (ad) {
     if (ad->action) {
-      free_fcurves(&ad->action->curves);
-      copy_fcurves(&ad->action->curves, &ucu->fcurves);
+      BKE_fcurves_free(&ad->action->curves);
+      BKE_fcurves_copy(&ad->action->curves, &ucu->fcurves);
     }
 
-    free_fcurves(&ad->drivers);
-    copy_fcurves(&ad->drivers, &ucu->drivers);
+    BKE_fcurves_free(&ad->drivers);
+    BKE_fcurves_copy(&ad->drivers, &ucu->drivers);
   }
 
   /* copy  */
@@ -132,10 +132,10 @@ static void undocurve_from_editcurve(UndoCurve *ucu, Curve *cu, const short shap
 
   if (ad) {
     if (ad->action) {
-      copy_fcurves(&ucu->fcurves, &ad->action->curves);
+      BKE_fcurves_copy(&ucu->fcurves, &ad->action->curves);
     }
 
-    copy_fcurves(&ucu->drivers, &ad->drivers);
+    BKE_fcurves_copy(&ucu->drivers, &ad->drivers);
   }
 
   /* copy  */
@@ -167,8 +167,8 @@ static void undocurve_free_data(UndoCurve *uc)
 
   BKE_curve_editNurb_keyIndex_free(&uc->undoIndex);
 
-  free_fcurves(&uc->fcurves);
-  free_fcurves(&uc->drivers);
+  BKE_fcurves_free(&uc->fcurves);
+  BKE_fcurves_free(&uc->drivers);
 }
 
 static Object *editcurve_object_from_context(bContext *C)

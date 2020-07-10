@@ -14,23 +14,25 @@
  * limitations under the License.
  */
 
-#include "render/camera.h"
+#include "render/object.h"
 #include "device/device.h"
+#include "render/camera.h"
+#include "render/curves.h"
 #include "render/hair.h"
+#include "render/integrator.h"
 #include "render/light.h"
 #include "render/mesh.h"
-#include "render/curves.h"
-#include "render/object.h"
 #include "render/particles.h"
 #include "render/scene.h"
 
 #include "util/util_foreach.h"
 #include "util/util_logging.h"
 #include "util/util_map.h"
+#include "util/util_murmurhash.h"
 #include "util/util_progress.h"
 #include "util/util_set.h"
+#include "util/util_task.h"
 #include "util/util_vector.h"
-#include "util/util_murmurhash.h"
 
 #include "subd/subd_patch_table.h"
 
@@ -65,6 +67,7 @@ struct UpdateObjectTransformState {
   KernelObject *objects;
   Transform *object_motion_pass;
   DecomposedTransform *object_motion;
+  float *object_volume_step;
 
   /* Flags which will be synchronized to Integrator. */
   bool have_motion;
@@ -75,7 +78,6 @@ struct UpdateObjectTransformState {
   Scene *scene;
 
   /* Some locks to keep everything thread-safe. */
-  thread_spin_lock queue_lock;
   thread_spin_lock surface_area_lock;
 
   /* First unused object index in the queue. */
@@ -99,6 +101,7 @@ NODE_DEFINE(Object)
   SOCKET_POINT(dupli_generated, "Dupli Generated", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_POINT2(dupli_uv, "Dupli UV", make_float2(0.0f, 0.0f));
   SOCKET_TRANSFORM_ARRAY(motion, "Motion", array<Transform>());
+  SOCKET_FLOAT(shadow_terminator_offset, "Terminator Offset", 0.0f);
 
   SOCKET_BOOLEAN(is_shadow_catcher, "Shadow Catcher", false);
 
@@ -216,7 +219,6 @@ void Object::tag_update(Scene *scene)
   }
 
   scene->camera->need_flags_update = true;
-  scene->curve_system_manager->need_update = true;
   scene->geometry_manager->need_update = true;
   scene->object_manager->need_update = true;
 }
@@ -266,6 +268,82 @@ uint Object::visibility_for_tracing() const
   return trace_visibility;
 }
 
+float Object::compute_volume_step_size() const
+{
+  if (geometry->type != Geometry::MESH) {
+    return FLT_MAX;
+  }
+
+  Mesh *mesh = static_cast<Mesh *>(geometry);
+
+  if (!mesh->has_volume) {
+    return FLT_MAX;
+  }
+
+  /* Compute step rate from shaders. */
+  float step_rate = FLT_MAX;
+
+  foreach (Shader *shader, mesh->used_shaders) {
+    if (shader->has_volume) {
+      if ((shader->heterogeneous_volume && shader->has_volume_spatial_varying) ||
+          (shader->has_volume_attribute_dependency)) {
+        step_rate = fminf(shader->volume_step_rate, step_rate);
+      }
+    }
+  }
+
+  if (step_rate == FLT_MAX) {
+    return FLT_MAX;
+  }
+
+  /* Compute step size from voxel grids. */
+  float step_size = FLT_MAX;
+
+  foreach (Attribute &attr, mesh->attributes.attributes) {
+    if (attr.element == ATTR_ELEMENT_VOXEL) {
+      ImageHandle &handle = attr.data_voxel();
+      const ImageMetaData &metadata = handle.metadata();
+      if (metadata.width == 0 || metadata.height == 0 || metadata.depth == 0) {
+        continue;
+      }
+
+      /* User specified step size. */
+      float voxel_step_size = mesh->volume_step_size;
+
+      if (voxel_step_size == 0.0f) {
+        /* Auto detect step size. */
+        float3 size = make_float3(
+            1.0f / metadata.width, 1.0f / metadata.height, 1.0f / metadata.depth);
+
+        /* Step size is transformed from voxel to world space. */
+        Transform voxel_tfm = tfm;
+        if (metadata.use_transform_3d) {
+          voxel_tfm = tfm * transform_inverse(metadata.transform_3d);
+        }
+        voxel_step_size = min3(fabs(transform_direction(&voxel_tfm, size)));
+      }
+      else if (mesh->volume_object_space) {
+        /* User specified step size in object space. */
+        float3 size = make_float3(voxel_step_size, voxel_step_size, voxel_step_size);
+        voxel_step_size = min3(fabs(transform_direction(&tfm, size)));
+      }
+
+      if (voxel_step_size > 0.0f) {
+        step_size = fminf(voxel_step_size, step_size);
+      }
+    }
+  }
+
+  if (step_size == FLT_MAX) {
+    /* Fall back to 1/10th of bounds for procedural volumes. */
+    step_size = 0.1f * average(bounds.size());
+  }
+
+  step_size *= step_rate;
+
+  return step_size;
+}
+
 int Object::get_device_index() const
 {
   return index;
@@ -291,12 +369,23 @@ static float object_surface_area(UpdateObjectTransformState *state,
     return 0.0f;
   }
 
+  Mesh *mesh = static_cast<Mesh *>(geom);
+  if (mesh->has_volume) {
+    /* Volume density automatically adjust to object scale. */
+    if (mesh->volume_object_space) {
+      const float3 unit = normalize(make_float3(1.0f, 1.0f, 1.0f));
+      return 1.0f / len(transform_direction(&tfm, unit));
+    }
+    else {
+      return 1.0f;
+    }
+  }
+
   /* Compute surface area. for uniform scale we can do avoid the many
    * transform calls and share computation for instances.
    *
    * TODO(brecht): Correct for displacement, and move to a better place.
    */
-  Mesh *mesh = static_cast<Mesh *>(geom);
   float surface_area = 0.0f;
   float uniform_scale;
   if (transform_uniform_scale(tfm, uniform_scale)) {
@@ -445,51 +534,18 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   uint32_t hash_asset = util_murmur_hash3(ob->asset_name.c_str(), ob->asset_name.length(), 0);
   kobject.cryptomatte_object = util_hash_to_float(hash_name);
   kobject.cryptomatte_asset = util_hash_to_float(hash_asset);
+  kobject.shadow_terminator_offset = 1.0f / (1.0f - 0.5f * ob->shadow_terminator_offset);
 
   /* Object flag. */
   if (ob->use_holdout) {
     flag |= SD_OBJECT_HOLDOUT_MASK;
   }
   state->object_flag[ob->index] = flag;
+  state->object_volume_step[ob->index] = FLT_MAX;
 
   /* Have curves. */
   if (geom->type == Geometry::HAIR) {
     state->have_curves = true;
-  }
-}
-
-bool ObjectManager::device_update_object_transform_pop_work(UpdateObjectTransformState *state,
-                                                            int *start_index,
-                                                            int *num_objects)
-{
-  /* Tweakable parameter, number of objects per chunk.
-   * Too small value will cause some extra overhead due to spin lock,
-   * too big value might not use all threads nicely.
-   */
-  static const int OBJECTS_PER_TASK = 32;
-  bool have_work = false;
-  state->queue_lock.lock();
-  int num_scene_objects = state->scene->objects.size();
-  if (state->queue_start_object < num_scene_objects) {
-    int count = min(OBJECTS_PER_TASK, num_scene_objects - state->queue_start_object);
-    *start_index = state->queue_start_object;
-    *num_objects = count;
-    state->queue_start_object += count;
-    have_work = true;
-  }
-  state->queue_lock.unlock();
-  return have_work;
-}
-
-void ObjectManager::device_update_object_transform_task(UpdateObjectTransformState *state)
-{
-  int start_index, num_objects;
-  while (device_update_object_transform_pop_work(state, &start_index, &num_objects)) {
-    for (int i = 0; i < num_objects; ++i) {
-      const int object_index = start_index + i;
-      Object *ob = state->scene->objects[object_index];
-      device_update_object_transform(state, ob);
-    }
   }
 }
 
@@ -504,6 +560,7 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
 
   state.objects = dscene->objects.alloc(scene->objects.size());
   state.object_flag = dscene->object_flag.alloc(scene->objects.size());
+  state.object_volume_step = dscene->object_volume_step.alloc(scene->objects.size());
   state.object_motion = NULL;
   state.object_motion_pass = NULL;
 
@@ -537,28 +594,19 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
     numparticles += psys->particles.size();
   }
 
-  /* NOTE: If it's just a handful of objects we deal with them in a single
-   * thread to avoid threading overhead. However, this threshold is might
-   * need some tweaks to make mid-complex scenes optimal.
-   */
-  if (scene->objects.size() < 64) {
-    foreach (Object *ob, scene->objects) {
-      device_update_object_transform(&state, ob);
-      if (progress.get_cancel()) {
-        return;
-      }
-    }
-  }
-  else {
-    const int num_threads = TaskScheduler::num_threads();
-    TaskPool pool;
-    for (int i = 0; i < num_threads; ++i) {
-      pool.push(function_bind(&ObjectManager::device_update_object_transform_task, this, &state));
-    }
-    pool.wait_work();
-    if (progress.get_cancel()) {
-      return;
-    }
+  /* Parallel object update, with grain size to avoid too much threading overhead
+   * for individual objects. */
+  static const int OBJECTS_PER_TASK = 32;
+  parallel_for(blocked_range<size_t>(0, scene->objects.size(), OBJECTS_PER_TASK),
+               [&](const blocked_range<size_t> &r) {
+                 for (size_t i = r.begin(); i != r.end(); i++) {
+                   Object *ob = state.scene->objects[i];
+                   device_update_object_transform(&state, ob);
+                 }
+               });
+
+  if (progress.get_cancel()) {
+    return;
   }
 
   dscene->objects.copy_to_device();
@@ -571,7 +619,6 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
 
   dscene->data.bvh.have_motion = state.have_motion;
   dscene->data.bvh.have_curves = state.have_curves;
-  dscene->data.bvh.have_instancing = true;
 }
 
 void ObjectManager::device_update(Device *device,
@@ -624,6 +671,7 @@ void ObjectManager::device_update_flags(
 
   /* Object info flag. */
   uint *object_flag = dscene->object_flag.data();
+  float *object_volume_step = dscene->object_volume_step.data();
 
   /* Object volume intersection. */
   vector<Object *> volume_objects;
@@ -634,6 +682,10 @@ void ObjectManager::device_update_flags(
         volume_objects.push_back(object);
       }
       has_volume_objects = true;
+      object_volume_step[object->index] = object->compute_volume_step_size();
+    }
+    else {
+      object_volume_step[object->index] = FLT_MAX;
     }
   }
 
@@ -651,6 +703,7 @@ void ObjectManager::device_update_flags(
     else {
       object_flag[object->index] &= ~(SD_OBJECT_HAS_VOLUME | SD_OBJECT_HAS_VOLUME_ATTRIBUTES);
     }
+
     if (object->is_shadow_catcher) {
       object_flag[object->index] |= SD_OBJECT_SHADOW_CATCHER;
     }
@@ -679,6 +732,7 @@ void ObjectManager::device_update_flags(
 
   /* Copy object flag. */
   dscene->object_flag.copy_to_device();
+  dscene->object_volume_step.copy_to_device();
 }
 
 void ObjectManager::device_update_mesh_offsets(Device *, DeviceScene *dscene, Scene *scene)
@@ -725,6 +779,7 @@ void ObjectManager::device_free(Device *, DeviceScene *dscene)
   dscene->object_motion_pass.free();
   dscene->object_motion.free();
   dscene->object_flag.free();
+  dscene->object_volume_step.free();
 }
 
 void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, Progress &progress)
@@ -738,7 +793,6 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, P
   bool motion_blur = need_motion == Scene::MOTION_BLUR;
   bool apply_to_motion = need_motion != Scene::MOTION_PASS;
   int i = 0;
-  bool have_instancing = false;
 
   foreach (Object *object, scene->objects) {
     map<Geometry *, int>::iterator it = geometry_users.find(object->geometry);
@@ -769,6 +823,12 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, P
       Mesh *mesh = static_cast<Mesh *>(geom);
       apply = apply && mesh->subdivision_type == Mesh::SUBDIVISION_NONE;
     }
+    else if (geom->type == Geometry::HAIR) {
+      /* Can't apply non-uniform scale to curves, this can't be represented by
+       * control points and radius alone. */
+      float scale;
+      apply = apply && transform_uniform_scale(object->tfm, scale);
+    }
 
     if (apply) {
       if (!(motion_blur && object->use_motion())) {
@@ -784,22 +844,15 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, P
         if (geom->transform_negative_scaled)
           object_flag[i] |= SD_OBJECT_NEGATIVE_SCALE_APPLIED;
       }
-      else
-        have_instancing = true;
     }
-    else
-      have_instancing = true;
 
     i++;
   }
-
-  dscene->data.bvh.have_instancing = have_instancing;
 }
 
 void ObjectManager::tag_update(Scene *scene)
 {
   need_update = true;
-  scene->curve_system_manager->need_update = true;
   scene->geometry_manager->need_update = true;
   scene->light_manager->need_update = true;
 }

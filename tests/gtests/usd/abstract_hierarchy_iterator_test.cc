@@ -16,8 +16,8 @@
  * The Original Code is Copyright (C) 2019 Blender Foundation.
  * All rights reserved.
  */
+#include "IO_abstract_hierarchy_iterator.h"
 #include "blenloader/blendfile_loading_base_test.h"
-#include "intern/abstract_hierarchy_iterator.h"
 
 extern "C" {
 #include "BLI_math.h"
@@ -29,30 +29,35 @@ extern "C" {
 #include <set>
 
 /* Mapping from ID.name to set of export hierarchy path. Duplicated objects can be exported
- * multiple times, hence the set. */
-typedef std::map<std::string, std::set<std::string>> created_writers;
+ * multiple times with different export paths, hence the set. */
+typedef std::map<std::string, std::set<std::string>> used_writers;
 
-using namespace USD;
+using namespace blender::io;
 
 class TestHierarchyWriter : public AbstractHierarchyWriter {
  public:
-  created_writers &writers_map;
+  std::string writer_type;
+  used_writers &writers_map;
 
-  TestHierarchyWriter(created_writers &writers_map) : writers_map(writers_map)
+  TestHierarchyWriter(const std::string &writer_type, used_writers &writers_map)
+      : writer_type(writer_type), writers_map(writers_map)
   {
   }
 
   void write(HierarchyContext &context) override
   {
     const char *id_name = context.object->id.name;
-    created_writers::mapped_type &writers = writers_map[id_name];
+    used_writers::mapped_type &writers = writers_map[id_name];
 
-    BLI_assert(writers.find(context.export_path) == writers.end());
+    if (writers.find(context.export_path) != writers.end()) {
+      ADD_FAILURE() << "Unexpectedly found another " << writer_type << " writer for " << id_name
+                    << " to export to " << context.export_path;
+    }
     writers.insert(context.export_path);
   }
 };
 
-void debug_print_writers(const char *label, const created_writers &writers_map)
+void debug_print_writers(const char *label, const used_writers &writers_map)
 {
   printf("%s:\n", label);
   for (auto idname_writers : writers_map) {
@@ -65,10 +70,10 @@ void debug_print_writers(const char *label, const created_writers &writers_map)
 
 class TestingHierarchyIterator : public AbstractHierarchyIterator {
  public: /* Public so that the test cases can directly inspect the created writers. */
-  created_writers transform_writers;
-  created_writers data_writers;
-  created_writers hair_writers;
-  created_writers particle_writers;
+  used_writers transform_writers;
+  used_writers data_writers;
+  used_writers hair_writers;
+  used_writers particle_writers;
 
  public:
   explicit TestingHierarchyIterator(Depsgraph *depsgraph) : AbstractHierarchyIterator(depsgraph)
@@ -81,19 +86,19 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
  protected:
   AbstractHierarchyWriter *create_transform_writer(const HierarchyContext *context) override
   {
-    return new TestHierarchyWriter(transform_writers);
+    return new TestHierarchyWriter("transform", transform_writers);
   }
   AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) override
   {
-    return new TestHierarchyWriter(data_writers);
+    return new TestHierarchyWriter("data", data_writers);
   }
   AbstractHierarchyWriter *create_hair_writer(const HierarchyContext *context) override
   {
-    return new TestHierarchyWriter(hair_writers);
+    return new TestHierarchyWriter("hair", hair_writers);
   }
   AbstractHierarchyWriter *create_particle_writer(const HierarchyContext *context) override
   {
-    return new TestHierarchyWriter(particle_writers);
+    return new TestHierarchyWriter("particle", particle_writers);
   }
 
   void delete_object_writer(AbstractHierarchyWriter *writer) override
@@ -146,7 +151,7 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
   iterator->iterate_and_write();
 
   // Mapping from object name to set of export paths.
-  created_writers expected_transforms = {
+  used_writers expected_transforms = {
       {"OBCamera", {"/Camera"}},
       {"OBDupli1", {"/Dupli1"}},
       {"OBDupli2", {"/ParentOfDupli2/Dupli2"}},
@@ -172,7 +177,7 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
       {"OBParentOfDupli2", {"/ParentOfDupli2"}}};
   EXPECT_EQ(expected_transforms, iterator->transform_writers);
 
-  created_writers expected_data = {
+  used_writers expected_data = {
       {"OBCamera", {"/Camera/Camera"}},
       {"OBGEO_Ear_L",
        {"/Dupli1/GEO_Head-0/GEO_Ear_L-1/Ear",
@@ -199,4 +204,124 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
   // The scene has no hair or particle systems.
   EXPECT_EQ(0, iterator->hair_writers.size());
   EXPECT_EQ(0, iterator->particle_writers.size());
+
+  // On the second iteration, everything should be written as well.
+  // This tests the default value of iterator->export_subset_.
+  iterator->transform_writers.clear();
+  iterator->data_writers.clear();
+  iterator->iterate_and_write();
+  EXPECT_EQ(expected_transforms, iterator->transform_writers);
+  EXPECT_EQ(expected_data, iterator->data_writers);
+}
+
+TEST_F(USDHierarchyIteratorTest, ExportSubsetTest)
+{
+  // The scene has no hair or particle systems, and this is already covered by ExportHierarchyTest,
+  // so not included here. Update this test when hair & particle systems are included.
+
+  /* Load the test blend file. */
+  if (!blendfile_load("usd/usd_hierarchy_export_test.blend")) {
+    return;
+  }
+  depsgraph_create(DAG_EVAL_RENDER);
+  iterator_create();
+
+  // Mapping from object name to set of export paths.
+  used_writers expected_transforms = {
+      {"OBCamera", {"/Camera"}},
+      {"OBDupli1", {"/Dupli1"}},
+      {"OBDupli2", {"/ParentOfDupli2/Dupli2"}},
+      {"OBGEO_Ear_L",
+       {"/Dupli1/GEO_Head-0/GEO_Ear_L-1",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head/GEO_Ear_L",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0/GEO_Ear_L-1"}},
+      {"OBGEO_Ear_R",
+       {"/Dupli1/GEO_Head-0/GEO_Ear_R-2",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head/GEO_Ear_R",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0/GEO_Ear_R-2"}},
+      {"OBGEO_Head",
+       {"/Dupli1/GEO_Head-0",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0"}},
+      {"OBGEO_Nose",
+       {"/Dupli1/GEO_Head-0/GEO_Nose-3",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head/GEO_Nose",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0/GEO_Nose-3"}},
+      {"OBGround plane", {"/Ground plane"}},
+      {"OBOutsideDupliGrandParent", {"/Ground plane/OutsideDupliGrandParent"}},
+      {"OBOutsideDupliParent", {"/Ground plane/OutsideDupliGrandParent/OutsideDupliParent"}},
+      {"OBParentOfDupli2", {"/ParentOfDupli2"}}};
+
+  used_writers expected_data = {
+      {"OBCamera", {"/Camera/Camera"}},
+      {"OBGEO_Ear_L",
+       {"/Dupli1/GEO_Head-0/GEO_Ear_L-1/Ear",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head/GEO_Ear_L/Ear",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0/GEO_Ear_L-1/Ear"}},
+      {"OBGEO_Ear_R",
+       {"/Dupli1/GEO_Head-0/GEO_Ear_R-2/Ear",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head/GEO_Ear_R/Ear",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0/GEO_Ear_R-2/Ear"}},
+      {"OBGEO_Head",
+       {"/Dupli1/GEO_Head-0/Face",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head/Face",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0/Face"}},
+      {"OBGEO_Nose",
+       {"/Dupli1/GEO_Head-0/GEO_Nose-3/Nose",
+        "/Ground plane/OutsideDupliGrandParent/OutsideDupliParent/GEO_Head/GEO_Nose/Nose",
+        "/ParentOfDupli2/Dupli2/GEO_Head-0/GEO_Nose-3/Nose"}},
+      {"OBGround plane", {"/Ground plane/Plane"}},
+      {"OBParentOfDupli2", {"/ParentOfDupli2/Icosphere"}},
+  };
+
+  // Even when only asking an export of transforms, on the first frame everything should be
+  // exported.
+  {
+    ExportSubset export_subset = {0};
+    export_subset.transforms = true;
+    export_subset.shapes = false;
+    iterator->set_export_subset(export_subset);
+  }
+  iterator->iterate_and_write();
+  EXPECT_EQ(expected_transforms, iterator->transform_writers);
+  EXPECT_EQ(expected_data, iterator->data_writers);
+
+  // Clear data to prepare for the next iteration.
+  iterator->transform_writers.clear();
+  iterator->data_writers.clear();
+
+  // Second iteration, should only write transforms now.
+  iterator->iterate_and_write();
+  EXPECT_EQ(expected_transforms, iterator->transform_writers);
+  EXPECT_EQ(0, iterator->data_writers.size());
+
+  // Clear data to prepare for the next iteration.
+  iterator->transform_writers.clear();
+  iterator->data_writers.clear();
+
+  // Third iteration, should only write data now.
+  {
+    ExportSubset export_subset = {0};
+    export_subset.transforms = false;
+    export_subset.shapes = true;
+    iterator->set_export_subset(export_subset);
+  }
+  iterator->iterate_and_write();
+  EXPECT_EQ(0, iterator->transform_writers.size());
+  EXPECT_EQ(expected_data, iterator->data_writers);
+
+  // Clear data to prepare for the next iteration.
+  iterator->transform_writers.clear();
+  iterator->data_writers.clear();
+
+  // Fourth iteration, should export everything now.
+  {
+    ExportSubset export_subset = {0};
+    export_subset.transforms = true;
+    export_subset.shapes = true;
+    iterator->set_export_subset(export_subset);
+  }
+  iterator->iterate_and_write();
+  EXPECT_EQ(expected_transforms, iterator->transform_writers);
+  EXPECT_EQ(expected_data, iterator->data_writers);
 }

@@ -36,14 +36,16 @@
 #include "BKE_lib_id.h"
 #include "BKE_scene.h"
 
-#include "DNA_screen_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
+#include "GPU_context.h"
 #include "GPU_framebuffer.h"
 #include "GPU_texture.h"
 
-#include "../editors/include/ED_view3d.h"
+#include "ED_view3d.h"
+#include "ED_view3d_offscreen.h"
 
 #include "../mathutils/mathutils.h"
 
@@ -83,17 +85,22 @@ static PyObject *bpygpu_offscreen_new(PyTypeObject *UNUSED(self), PyObject *args
 {
   BPYGPU_IS_INIT_OR_ERROR_OBJ;
 
-  GPUOffScreen *ofs;
-  int width, height, samples = 0;
+  GPUOffScreen *ofs = NULL;
+  int width, height;
   char err_out[256];
 
-  static const char *_keywords[] = {"width", "height", "samples", NULL};
+  static const char *_keywords[] = {"width", "height", NULL};
   static _PyArg_Parser _parser = {"ii|i:GPUOffScreen.__new__", _keywords, 0};
-  if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, &width, &height, &samples)) {
+  if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, &width, &height)) {
     return NULL;
   }
 
-  ofs = GPU_offscreen_create(width, height, samples, true, false, err_out);
+  if (GPU_context_active_get()) {
+    ofs = GPU_offscreen_create(width, height, true, false, err_out);
+  }
+  else {
+    strncpy(err_out, "No active GPU context found", 256);
+  }
 
   if (ofs == NULL) {
     PyErr_Format(PyExc_RuntimeError,
@@ -210,7 +217,7 @@ static PyObject *bpygpu_offscreen_draw_view3d(BPyGPUOffScreen *self,
   struct Scene *scene;
   struct ViewLayer *view_layer;
   View3D *v3d;
-  ARegion *ar;
+  ARegion *region;
   struct RV3DMatrixStore *rv3d_mats;
 
   BPY_GPU_OFFSCREEN_CHECK_OBJ(self);
@@ -233,7 +240,7 @@ static PyObject *bpygpu_offscreen_draw_view3d(BPyGPUOffScreen *self,
       (!(scene = PyC_RNA_AsPointer(py_scene, "Scene")) ||
        !(view_layer = PyC_RNA_AsPointer(py_view_layer, "ViewLayer")) ||
        !(v3d = PyC_RNA_AsPointer(py_view3d, "SpaceView3D")) ||
-       !(ar = PyC_RNA_AsPointer(py_region, "Region")))) {
+       !(region = PyC_RNA_AsPointer(py_region, "Region")))) {
     return NULL;
   }
 
@@ -241,7 +248,7 @@ static PyObject *bpygpu_offscreen_draw_view3d(BPyGPUOffScreen *self,
 
   depsgraph = BKE_scene_get_depsgraph(G_MAIN, scene, view_layer, true);
 
-  rv3d_mats = ED_view3d_mats_rv3d_backup(ar->regiondata);
+  rv3d_mats = ED_view3d_mats_rv3d_backup(region->regiondata);
 
   GPU_offscreen_bind(self->ofs, true);
 
@@ -249,21 +256,22 @@ static PyObject *bpygpu_offscreen_draw_view3d(BPyGPUOffScreen *self,
                            scene,
                            v3d->shading.type,
                            v3d,
-                           ar,
+                           region,
                            GPU_offscreen_width(self->ofs),
                            GPU_offscreen_height(self->ofs),
                            (float(*)[4])py_mat_view->matrix,
                            (float(*)[4])py_mat_projection->matrix,
                            true,
                            true,
-                           "",
                            true,
+                           "",
+                           false,
                            self->ofs,
                            NULL);
 
   GPU_offscreen_unbind(self->ofs, true);
 
-  ED_view3d_mats_rv3d_restore(ar->regiondata, rv3d_mats);
+  ED_view3d_mats_rv3d_restore(region->regiondata, rv3d_mats);
   MEM_freeN(rv3d_mats);
 
   Py_RETURN_NONE;
@@ -337,16 +345,14 @@ static struct PyMethodDef bpygpu_offscreen_methods[] = {
 };
 
 PyDoc_STRVAR(bpygpu_offscreen_doc,
-             ".. class:: GPUOffScreen(width, height, samples=0)\n"
+             ".. class:: GPUOffScreen(width, height)\n"
              "\n"
              "   This object gives access to off screen buffers.\n"
              "\n"
              "   :arg width: Horizontal dimension of the buffer.\n"
              "   :type width: `int`\n"
              "   :arg height: Vertical dimension of the buffer.\n"
-             "   :type height: `int`\n"
-             "   :arg samples: OpenGL samples to use for MSAA or zero to disable.\n"
-             "   :type samples: `int`\n");
+             "   :type height: `int`\n");
 PyTypeObject BPyGPUOffScreen_Type = {
     PyVarObject_HEAD_INIT(NULL, 0).tp_name = "GPUOffScreen",
     .tp_basicsize = sizeof(BPyGPUOffScreen),

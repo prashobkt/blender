@@ -23,6 +23,8 @@
 #include "blender/blender_sync.h"
 #include "blender/blender_util.h"
 
+#include "util/util_foreach.h"
+
 CCL_NAMESPACE_BEGIN
 
 Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
@@ -36,9 +38,9 @@ Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
   BL::ID b_key_id = (BKE_object_is_modified(b_ob)) ? b_ob_instance : b_ob_data;
   GeometryKey key(b_key_id.ptr.data, use_particle_hair);
   BL::Material material_override = view_layer.material_override;
-  Shader *default_shader = scene->default_surface;
-  Geometry::Type geom_type = (use_particle_hair &&
-                              (scene->curve_system_manager->primitive != CURVE_TRIANGLES)) ?
+  Shader *default_shader = (b_ob.type() == BL::Object::type_VOLUME) ? scene->default_volume :
+                                                                      scene->default_surface;
+  Geometry::Type geom_type = (b_ob.type() == BL::Object::type_HAIR || use_particle_hair) ?
                                  Geometry::HAIR :
                                  Geometry::MESH;
 
@@ -117,20 +119,19 @@ Geometry *BlenderSync::sync_geometry(BL::Depsgraph &b_depsgraph,
 
   geometry_synced.insert(geom);
 
-  geom->clear();
-  geom->used_shaders = used_shaders;
   geom->name = ustring(b_ob_data.name().c_str());
 
-  if (use_particle_hair) {
-    sync_hair(b_depsgraph, b_ob, geom);
+  if (b_ob.type() == BL::Object::type_HAIR || use_particle_hair) {
+    Hair *hair = static_cast<Hair *>(geom);
+    sync_hair(b_depsgraph, b_ob, hair, used_shaders);
   }
-  else if (object_fluid_gas_domain_find(b_ob)) {
+  else if (b_ob.type() == BL::Object::type_VOLUME || object_fluid_gas_domain_find(b_ob)) {
     Mesh *mesh = static_cast<Mesh *>(geom);
-    sync_volume(b_ob, mesh);
+    sync_volume(b_ob, mesh, used_shaders);
   }
   else {
     Mesh *mesh = static_cast<Mesh *>(geom);
-    sync_mesh(b_depsgraph, b_ob, mesh);
+    sync_mesh(b_depsgraph, b_ob, mesh, used_shaders);
   }
 
   return geom;
@@ -161,10 +162,11 @@ void BlenderSync::sync_geometry_motion(BL::Depsgraph &b_depsgraph,
     return;
   }
 
-  if (use_particle_hair) {
-    sync_hair_motion(b_depsgraph, b_ob, geom, motion_step);
+  if (b_ob.type() == BL::Object::type_HAIR || use_particle_hair) {
+    Hair *hair = static_cast<Hair *>(geom);
+    sync_hair_motion(b_depsgraph, b_ob, hair, motion_step);
   }
-  else if (object_fluid_gas_domain_find(b_ob)) {
+  else if (b_ob.type() == BL::Object::type_VOLUME || object_fluid_gas_domain_find(b_ob)) {
     /* No volume motion blur support yet. */
   }
   else {

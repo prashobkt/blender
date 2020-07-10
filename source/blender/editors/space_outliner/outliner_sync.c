@@ -32,6 +32,7 @@
 
 #include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
+#include "BLI_listbase.h"
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
@@ -95,8 +96,8 @@ void ED_outliner_select_sync_flag_outliners(const bContext *C)
   wmWindowManager *wm = CTX_wm_manager(C);
 
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
         if (sl->spacetype == SPACE_OUTLINER) {
           SpaceOutliner *soutliner = (SpaceOutliner *)sl;
 
@@ -318,7 +319,7 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
                                                   SelectedItems *selected_items)
 {
 
-  for (TreeElement *te = tree->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, tree) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     if (tselem->type == 0 && te->idcode == ID_OB) {
@@ -350,8 +351,9 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
 /* Set clean outliner and mark other outliners for syncing */
 void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
 {
-  /* Don't sync in certain outliner display modes */
-  if (ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS)) {
+  /* Don't sync if not checked or in certain outliner display modes */
+  if (!(soops->flag & SO_SYNC_SELECT) ||
+      ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS)) {
     return;
   }
 
@@ -390,7 +392,6 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
 }
 
 static void outliner_select_sync_from_object(ViewLayer *view_layer,
-                                             SpaceOutliner *soops,
                                              Object *obact,
                                              TreeElement *te,
                                              TreeStoreElem *tselem)
@@ -401,7 +402,7 @@ static void outliner_select_sync_from_object(ViewLayer *view_layer,
   const bool is_selected = (base != NULL) && ((base->flag & BASE_SELECTED) != 0);
 
   if (base && (ob == obact)) {
-    outliner_element_activate(soops, tselem);
+    tselem->flag |= TSE_ACTIVE;
   }
   else {
     tselem->flag &= ~TSE_ACTIVE;
@@ -415,15 +416,14 @@ static void outliner_select_sync_from_object(ViewLayer *view_layer,
   }
 }
 
-static void outliner_select_sync_from_edit_bone(SpaceOutliner *soops,
-                                                EditBone *ebone_active,
+static void outliner_select_sync_from_edit_bone(EditBone *ebone_active,
                                                 TreeElement *te,
                                                 TreeStoreElem *tselem)
 {
   EditBone *ebone = (EditBone *)te->directdata;
 
   if (ebone == ebone_active) {
-    outliner_element_activate(soops, tselem);
+    tselem->flag |= TSE_ACTIVE;
   }
   else {
     tselem->flag &= ~TSE_ACTIVE;
@@ -437,8 +437,7 @@ static void outliner_select_sync_from_edit_bone(SpaceOutliner *soops,
   }
 }
 
-static void outliner_select_sync_from_pose_bone(SpaceOutliner *soops,
-                                                bPoseChannel *pchan_active,
+static void outliner_select_sync_from_pose_bone(bPoseChannel *pchan_active,
                                                 TreeElement *te,
                                                 TreeStoreElem *tselem)
 {
@@ -446,7 +445,7 @@ static void outliner_select_sync_from_pose_bone(SpaceOutliner *soops,
   Bone *bone = pchan->bone;
 
   if (pchan == pchan_active) {
-    outliner_element_activate(soops, tselem);
+    tselem->flag |= TSE_ACTIVE;
   }
   else {
     tselem->flag &= ~TSE_ACTIVE;
@@ -460,14 +459,12 @@ static void outliner_select_sync_from_pose_bone(SpaceOutliner *soops,
   }
 }
 
-static void outliner_select_sync_from_sequence(SpaceOutliner *soops,
-                                               Sequence *sequence_active,
-                                               TreeStoreElem *tselem)
+static void outliner_select_sync_from_sequence(Sequence *sequence_active, TreeStoreElem *tselem)
 {
   Sequence *seq = (Sequence *)tselem->id;
 
   if (seq == sequence_active) {
-    outliner_element_activate(soops, tselem);
+    tselem->flag |= TSE_ACTIVE;
   }
   else {
     tselem->flag &= ~TSE_ACTIVE;
@@ -499,31 +496,31 @@ static void outliner_sync_selection_to_outliner(ViewLayer *view_layer,
                                                 SyncSelectActiveData *active_data,
                                                 const SyncSelectTypes *sync_types)
 {
-  for (TreeElement *te = tree->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, tree) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     if (tselem->type == 0 && te->idcode == ID_OB) {
       if (sync_types->object) {
-        outliner_select_sync_from_object(view_layer, soops, active_data->object, te, tselem);
+        outliner_select_sync_from_object(view_layer, active_data->object, te, tselem);
       }
     }
     else if (tselem->type == TSE_EBONE) {
       if (sync_types->edit_bone) {
-        outliner_select_sync_from_edit_bone(soops, active_data->edit_bone, te, tselem);
+        outliner_select_sync_from_edit_bone(active_data->edit_bone, te, tselem);
       }
     }
     else if (tselem->type == TSE_POSE_CHANNEL) {
       if (sync_types->pose_bone) {
-        outliner_select_sync_from_pose_bone(soops, active_data->pose_channel, te, tselem);
+        outliner_select_sync_from_pose_bone(active_data->pose_channel, te, tselem);
       }
     }
     else if (tselem->type == TSE_SEQUENCE) {
       if (sync_types->sequence) {
-        outliner_select_sync_from_sequence(soops, active_data->sequence, tselem);
+        outliner_select_sync_from_sequence(active_data->sequence, tselem);
       }
     }
     else {
-      tselem->flag &= ~TSE_SELECTED;
+      tselem->flag &= ~(TSE_SELECTED | TSE_ACTIVE);
     }
 
     /* Sync subtree elements */

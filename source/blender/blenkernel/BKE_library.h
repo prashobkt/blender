@@ -25,16 +25,14 @@
  * API to manage `Library` data-blocks.
  */
 
+#include "BLI_compiler_attrs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "BLI_compiler_attrs.h"
-
 struct Library;
 struct Main;
-
-void BKE_library_free(struct Library *lib);
 
 void BKE_library_filepath_set(struct Main *bmain, struct Library *lib, const char *filepath);
 

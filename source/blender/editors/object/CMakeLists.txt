@@ -17,6 +17,7 @@
 
 set(INC
   ../include
+  ../../blenfont
   ../../blenkernel
   ../../blenlib
   ../../blentranslation
@@ -33,6 +34,7 @@ set(INC
   ../../shader_fx
   ../../render/extern/include
   ../../windowmanager
+  ../../../../intern/clog
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
 )
@@ -65,6 +67,7 @@ set(SRC
   object_transform.c
   object_utils.c
   object_vgroup.c
+  object_volume.c
   object_warp.c
 
   object_intern.h

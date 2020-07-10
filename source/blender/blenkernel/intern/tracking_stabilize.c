@@ -25,26 +25,27 @@
 
 #include <limits.h>
 
+#include "DNA_anim_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_anim_types.h"
 #include "RNA_access.h"
 
-#include "BLI_utildefines.h"
-#include "BLI_sort_utils.h"
 #include "BLI_ghash.h"
-#include "BLI_math_vector.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_math_vector.h"
+#include "BLI_sort_utils.h"
 #include "BLI_task.h"
+#include "BLI_utildefines.h"
 
-#include "BKE_tracking.h"
-#include "BKE_movieclip.h"
 #include "BKE_fcurve.h"
+#include "BKE_movieclip.h"
+#include "BKE_tracking.h"
 
-#include "MEM_guardedalloc.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
+#include "MEM_guardedalloc.h"
 
 /* == Parameterization constants == */
 
@@ -384,7 +385,7 @@ static MovieTrackingMarker *get_tracking_data_point(StabContext *ctx,
 }
 
 /* Define the reference point for rotation/scale measurement and compensation.
- * The stabilizator works by assuming the image was distorted by a affine linear
+ * The stabilizer works by assuming the image was distorted by a affine linear
  * transform, i.e. it was rotated and stretched around this reference point
  * (pivot point) and then shifted laterally. Any scale and orientation changes
  * will be picked up relative to this point. And later the image will be
@@ -476,7 +477,7 @@ static float rotation_contribution(TrackStabilizationBase *track_ref,
   sub_v2_v2v2(pos, marker->pos, pivot);
 
   pos[0] *= aspect;
-  mul_m2v2(track_ref->stabilization_rotation_base, pos);
+  mul_m2_v2(track_ref->stabilization_rotation_base, pos);
 
   *result_angle = atan2f(pos[1], pos[0]);
 
@@ -516,7 +517,7 @@ static void compensate_rotation_center(const int size,
   copy_v2_v2(rotated_pivot, pivot);
   angle_to_mat2(rotation_mat, +angle);
   sub_v2_v2(rotated_pivot, origin);
-  mul_m2v2(rotation_mat, rotated_pivot);
+  mul_m2_v2(rotation_mat, rotated_pivot);
   mul_v2_fl(rotated_pivot, scale);
   add_v2_v2(rotated_pivot, origin);
   add_v2_v2(result_translation, intended_pivot);
@@ -1399,7 +1400,7 @@ ImBuf *BKE_tracking_stabilize_frame(
     return ibuf;
   }
 
-  /* Allocate frame for stabilization result. */
+  /* Allocate frame for stabilization result, copy alpha mode and colorspace.  */
   ibuf_flags = 0;
   if (ibuf->rect) {
     ibuf_flags |= IB_rect;
@@ -1409,6 +1410,7 @@ ImBuf *BKE_tracking_stabilize_frame(
   }
 
   tmpibuf = IMB_allocImBuf(ibuf->x, ibuf->y, ibuf->planes, ibuf_flags);
+  IMB_colormanagegent_copy_settings(ibuf, tmpibuf);
 
   /* Calculate stabilization matrix. */
   BKE_tracking_stabilization_data_get(clip, framenr, width, height, tloc, &tscale, &tangle);

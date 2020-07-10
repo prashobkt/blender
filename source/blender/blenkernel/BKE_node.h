@@ -34,6 +34,10 @@
 
 #include "RNA_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* not very important, but the stack solver likes to know a maximum */
 #define MAX_SOCKET 512
 
@@ -85,7 +89,7 @@ struct uiLayout;
  * in RNA types automatically.
  */
 typedef struct bNodeSocketTemplate {
-  int type, limit;
+  int type;
   char name[64];                /* MAX_NAME */
   float val1, val2, val3, val4; /* default alloc value for inputs */
   float min, max;
@@ -96,6 +100,30 @@ typedef struct bNodeSocketTemplate {
   struct bNodeSocket *sock; /* used to hold verified socket */
   char identifier[64];      /* generated from name */
 } bNodeSocketTemplate;
+
+/* Use `void *` for callbacks that require C++. This is rather ugly, but works well for now. This
+ * would not be necessary if we would use bNodeSocketType and bNodeType only in C++ code.
+ * However, achieving this requires quite a few changes currently. */
+#ifdef __cplusplus
+namespace blender {
+namespace bke {
+class SocketMFNetworkBuilder;
+class NodeMFNetworkBuilder;
+}  // namespace bke
+namespace fn {
+class MFDataType;
+}
+}  // namespace blender
+
+using NodeExpandInMFNetworkFunction = void (*)(blender::bke::NodeMFNetworkBuilder &builder);
+using SocketGetMFDataTypeFunction = blender::fn::MFDataType (*)();
+using SocketExpandInMFNetworkFunction = void (*)(blender::bke::SocketMFNetworkBuilder &builder);
+
+#else
+typedef void *NodeExpandInMFNetworkFunction;
+typedef void *SocketGetMFDataTypeFunction;
+typedef void *SocketExpandInMFNetworkFunction;
+#endif
 
 /**
  * \brief Defines a socket type.
@@ -141,6 +169,19 @@ typedef struct bNodeSocketType {
 
   /* for standard socket types in C */
   int type, subtype;
+
+  /* When set, bNodeSocket->limit does not have any effect anymore. */
+  bool use_link_limits_of_type;
+  int input_link_limit;
+  int output_link_limit;
+
+  /* Callback to free the socket type. */
+  void (*free_self)(struct bNodeSocketType *stype);
+
+  /* Returns the multi-function data type of this socket type. */
+  SocketGetMFDataTypeFunction get_mf_data_type;
+  /* Expands the socket into a multi-function node that outputs the socket value. */
+  SocketExpandInMFNetworkFunction expand_in_mf_network;
 } bNodeSocketType;
 
 typedef void *(*NodeInitExecFunction)(struct bNodeExecContext *context,
@@ -167,7 +208,6 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
  */
 typedef struct bNodeType {
   void *next, *prev;
-  short needs_free; /* set for allocated types that need to be freed */
 
   char idname[64]; /* identifier name */
   int type;
@@ -187,7 +227,7 @@ typedef struct bNodeType {
 
   /* Main draw function for the node */
   void (*draw_nodetype)(const struct bContext *C,
-                        struct ARegion *ar,
+                        struct ARegion *region,
                         struct SpaceNode *snode,
                         struct bNodeTree *ntree,
                         struct bNode *node,
@@ -247,6 +287,8 @@ typedef struct bNodeType {
   /* Update the internal links list, for muting and disconnect operators. */
   void (*update_internal_links)(struct bNodeTree *, struct bNode *node);
 
+  void (*free_self)(struct bNodeType *ntype);
+
   /* **** execution callbacks **** */
   NodeInitExecFunction initexecfunc;
   NodeFreeExecFunction freeexecfunc;
@@ -254,8 +296,11 @@ typedef struct bNodeType {
   /* gpu */
   NodeGPUExecFunction gpufunc;
 
+  /* Expands the bNode into nodes in a multi-function network, which will be evaluated later on. */
+  NodeExpandInMFNetworkFunction expand_in_mf_network;
+
   /* RNA integration */
-  ExtensionRNA ext;
+  ExtensionRNA rna_ext;
 } bNodeType;
 
 /* nodetype->nclass, for add-menu and themes */
@@ -337,7 +382,7 @@ typedef struct bNodeTreeType {
   void (*node_add_init)(struct bNodeTree *ntree, struct bNode *bnode);
 
   /* RNA integration */
-  ExtensionRNA ext;
+  ExtensionRNA rna_ext;
 } bNodeTreeType;
 
 /** \} */
@@ -368,33 +413,21 @@ struct GHashIterator *ntreeTypeGetIterator(void);
 
 void ntreeSetTypes(const struct bContext *C, struct bNodeTree *ntree);
 
-void ntreeInitDefault(struct bNodeTree *ntree);
 struct bNodeTree *ntreeAddTree(struct Main *bmain, const char *name, const char *idname);
 
 /* copy/free funcs, need to manage ID users */
 void ntreeFreeTree(struct bNodeTree *ntree);
-/* Free tree which is owned byt another datablock. */
-void ntreeFreeNestedTree(struct bNodeTree *ntree);
-void BKE_node_tree_copy_data(struct Main *bmain,
-                             struct bNodeTree *ntree_dst,
-                             const struct bNodeTree *ntree_src,
-                             const int flag);
+/* Free tree which is embedded into another datablock. */
+void ntreeFreeEmbeddedTree(struct bNodeTree *ntree);
 struct bNodeTree *ntreeCopyTree_ex(const struct bNodeTree *ntree,
                                    struct Main *bmain,
                                    const bool do_id_user);
 struct bNodeTree *ntreeCopyTree(struct Main *bmain, const struct bNodeTree *ntree);
-/* node->id user count */
-void ntreeUserIncrefID(struct bNodeTree *ntree);
-void ntreeUserDecrefID(struct bNodeTree *ntree);
 
 struct bNodeTree **BKE_ntree_ptr_from_id(struct ID *id);
 struct bNodeTree *ntreeFromID(struct ID *id);
 struct ID *BKE_node_tree_find_owner_ID(struct Main *bmain, struct bNodeTree *ntree);
 
-void ntreeMakeLocal(struct Main *bmain,
-                    struct bNodeTree *ntree,
-                    bool id_in_mainlist,
-                    const bool lib_local);
 void ntreeFreeLocalNode(struct bNodeTree *ntree, struct bNode *node);
 void ntreeFreeLocalTree(struct bNodeTree *ntree);
 struct bNode *ntreeFindType(const struct bNodeTree *ntree, int type);
@@ -499,7 +532,7 @@ const char *nodeStaticSocketInterfaceType(int type, int subtype);
   } \
   ((void)0)
 
-struct bNodeSocket *nodeFindSocket(struct bNode *node, int in_out, const char *identifier);
+struct bNodeSocket *nodeFindSocket(const struct bNode *node, int in_out, const char *identifier);
 struct bNodeSocket *nodeAddSocket(struct bNodeTree *ntree,
                                   struct bNode *node,
                                   int in_out,
@@ -628,6 +661,8 @@ int nodeSocketIsHidden(struct bNodeSocket *sock);
 void ntreeTagUsedSockets(struct bNodeTree *ntree);
 void nodeSetSocketAvailability(struct bNodeSocket *sock, bool is_available);
 
+int nodeSocketLinkLimit(struct bNodeSocket *sock);
+
 /* Node Clipboard */
 void BKE_node_clipboard_init(struct bNodeTree *ntree);
 void BKE_node_clipboard_clear(void);
@@ -740,6 +775,7 @@ void BKE_node_preview_set_pixel(
  * \{ */
 
 void nodeLabel(struct bNodeTree *ntree, struct bNode *node, char *label, int maxlen);
+const char *nodeSocketLabel(const struct bNodeSocket *sock);
 
 int nodeGroupPoll(struct bNodeTree *nodetree, struct bNodeTree *grouptree);
 
@@ -848,6 +884,7 @@ struct NodeTreeIterStore {
   struct Light *light;
   struct World *world;
   struct FreestyleLineStyle *linestyle;
+  struct Simulation *simulation;
 };
 
 void BKE_node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
@@ -943,7 +980,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree,
 #define SH_NODE_TEX_COORD 155
 #define SH_NODE_ADD_SHADER 156
 #define SH_NODE_TEX_ENVIRONMENT 157
-#define SH_NODE_OUTPUT_TEXTURE 158
+// #define SH_NODE_OUTPUT_TEXTURE 158
 #define SH_NODE_HOLDOUT 159
 #define SH_NODE_LAYER_WEIGHT 160
 #define SH_NODE_VOLUME_ABSORPTION 161
@@ -971,7 +1008,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree,
 #define SH_NODE_SEPHSV 183
 #define SH_NODE_COMBHSV 184
 #define SH_NODE_BSDF_HAIR 185
-#define SH_NODE_LAMP 186
+// #define SH_NODE_LAMP 186
 #define SH_NODE_UVMAP 187
 #define SH_NODE_SEPXYZ 188
 #define SH_NODE_COMBXYZ 189
@@ -993,11 +1030,12 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree,
 #define SH_NODE_VOLUME_INFO 705
 #define SH_NODE_VERTEX_COLOR 706
 #define SH_NODE_OUTPUT_AOV 707
+#define SH_NODE_VECTOR_ROTATE 708
 
 /* custom defines options for Material node */
-#define SH_NODE_MAT_DIFF 1
-#define SH_NODE_MAT_SPEC 2
-#define SH_NODE_MAT_NEG 4
+// #define SH_NODE_MAT_DIFF 1
+// #define SH_NODE_MAT_SPEC 2
+// #define SH_NODE_MAT_NEG 4
 
 /* API */
 
@@ -1020,36 +1058,36 @@ void ntreeGPUMaterialNodes(struct bNodeTree *localtree,
 /* output socket defines */
 #define RRES_OUT_IMAGE 0
 #define RRES_OUT_ALPHA 1
-#define RRES_OUT_Z 2
-#define RRES_OUT_NORMAL 3
-#define RRES_OUT_UV 4
-#define RRES_OUT_VEC 5
-#define RRES_OUT_RGBA 6
+// #define RRES_OUT_Z 2
+// #define RRES_OUT_NORMAL 3
+// #define RRES_OUT_UV 4
+// #define RRES_OUT_VEC 5
+// #define RRES_OUT_RGBA 6
 #define RRES_OUT_DIFF 7
-#define RRES_OUT_SPEC 8
-#define RRES_OUT_SHADOW 9
-#define RRES_OUT_AO 10
-#define RRES_OUT_REFLECT 11
-#define RRES_OUT_REFRACT 12
-#define RRES_OUT_INDIRECT 13
-#define RRES_OUT_INDEXOB 14
-#define RRES_OUT_INDEXMA 15
-#define RRES_OUT_MIST 16
-#define RRES_OUT_EMIT 17
-#define RRES_OUT_ENV 18
-#define RRES_OUT_DIFF_DIRECT 19
-#define RRES_OUT_DIFF_INDIRECT 20
-#define RRES_OUT_DIFF_COLOR 21
-#define RRES_OUT_GLOSSY_DIRECT 22
-#define RRES_OUT_GLOSSY_INDIRECT 23
-#define RRES_OUT_GLOSSY_COLOR 24
-#define RRES_OUT_TRANSM_DIRECT 25
-#define RRES_OUT_TRANSM_INDIRECT 26
-#define RRES_OUT_TRANSM_COLOR 27
-#define RRES_OUT_SUBSURFACE_DIRECT 28
-#define RRES_OUT_SUBSURFACE_INDIRECT 29
-#define RRES_OUT_SUBSURFACE_COLOR 30
-#define RRES_OUT_DEBUG 31
+// #define RRES_OUT_SPEC 8
+// #define RRES_OUT_SHADOW 9
+// #define RRES_OUT_AO 10
+// #define RRES_OUT_REFLECT 11
+// #define RRES_OUT_REFRACT 12
+// #define RRES_OUT_INDIRECT 13
+// #define RRES_OUT_INDEXOB 14
+// #define RRES_OUT_INDEXMA 15
+// #define RRES_OUT_MIST 16
+// #define RRES_OUT_EMIT 17
+// #define RRES_OUT_ENV 18
+// #define RRES_OUT_DIFF_DIRECT 19
+// #define RRES_OUT_DIFF_INDIRECT 20
+// #define RRES_OUT_DIFF_COLOR 21
+// #define RRES_OUT_GLOSSY_DIRECT 22
+// #define RRES_OUT_GLOSSY_INDIRECT 23
+// #define RRES_OUT_GLOSSY_COLOR 24
+// #define RRES_OUT_TRANSM_DIRECT 25
+// #define RRES_OUT_TRANSM_INDIRECT 26
+// #define RRES_OUT_TRANSM_COLOR 27
+// #define RRES_OUT_SUBSURFACE_DIRECT 28
+// #define RRES_OUT_SUBSURFACE_INDIRECT 29
+// #define RRES_OUT_SUBSURFACE_COLOR 30
+// #define RRES_OUT_DEBUG 31
 
 /* note: types are needed to restore callbacks, don't change values */
 #define CMP_NODE_VIEWER 201
@@ -1190,7 +1228,7 @@ void ntreeCompositRegisterPass(struct bNodeTree *ntree,
                                struct Scene *scene,
                                struct ViewLayer *view_layer,
                                const char *name,
-                               int type);
+                               eNodeSocketDatatype type);
 void ntreeCompositClearTags(struct bNodeTree *ntree);
 
 struct bNodeSocket *ntreeCompositOutputFileAddSocket(struct bNodeTree *ntree,
@@ -1270,11 +1308,42 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
                      float dyt[3],
                      int osatex,
                      const short thread,
-                     struct Tex *tex,
+                     const struct Tex *tex,
                      short which_output,
                      int cfra,
                      int preview,
                      struct MTex *mtex);
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Simulation Nodes
+ * \{ */
+
+#define SIM_NODE_PARTICLE_SIMULATION 1000
+#define SIM_NODE_FORCE 1001
+#define SIM_NODE_SET_PARTICLE_ATTRIBUTE 1002
+#define SIM_NODE_PARTICLE_BIRTH_EVENT 1003
+#define SIM_NODE_PARTICLE_TIME_STEP_EVENT 1004
+#define SIM_NODE_EXECUTE_CONDITION 1005
+#define SIM_NODE_MULTI_EXECUTE 1006
+#define SIM_NODE_PARTICLE_MESH_EMITTER 1007
+#define SIM_NODE_PARTICLE_MESH_COLLISION_EVENT 1008
+#define SIM_NODE_EMIT_PARTICLES 1009
+#define SIM_NODE_TIME 1010
+#define SIM_NODE_PARTICLE_ATTRIBUTE 1011
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Function Nodes
+ * \{ */
+
+#define FN_NODE_BOOLEAN_MATH 1200
+#define FN_NODE_SWITCH 1201
+#define FN_NODE_FLOAT_COMPARE 1202
+#define FN_NODE_GROUP_INSTANCE_ID 1203
+#define FN_NODE_COMBINE_STRINGS 1204
+
 /** \} */
 
 void init_nodesystem(void);
@@ -1291,5 +1360,9 @@ void BKE_nodetree_shading_params_eval(struct Depsgraph *depsgraph,
 
 extern struct bNodeType NodeTypeUndefined;
 extern struct bNodeSocketType NodeSocketTypeUndefined;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __BKE_NODE_H__ */

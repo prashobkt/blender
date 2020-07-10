@@ -173,6 +173,8 @@ void GPU_framebuffer_clear(GPUFrameBuffer *fb,
 #define GPU_framebuffer_clear_color_depth_stencil(fb, col, depth, stencil) \
   GPU_framebuffer_clear(fb, GPU_COLOR_BIT | GPU_DEPTH_BIT | GPU_STENCIL_BIT, col, depth, stencil)
 
+void GPU_framebuffer_multi_clear(GPUFrameBuffer *fb, const float (*clear_cols)[4]);
+
 void GPU_framebuffer_read_depth(GPUFrameBuffer *fb, int x, int y, int w, int h, float *data);
 void GPU_framebuffer_read_color(
     GPUFrameBuffer *fb, int x, int y, int w, int h, int channels, int slot, float *data);
@@ -193,7 +195,7 @@ void GPU_framebuffer_recursive_downsample(GPUFrameBuffer *fb,
  */
 
 GPUOffScreen *GPU_offscreen_create(
-    int width, int height, int samples, bool depth, bool high_bitdepth, char err_out[256]);
+    int width, int height, bool depth, bool high_bitdepth, char err_out[256]);
 void GPU_offscreen_free(GPUOffScreen *ofs);
 void GPU_offscreen_bind(GPUOffScreen *ofs, bool save);
 void GPU_offscreen_unbind(GPUOffScreen *ofs, bool restore);

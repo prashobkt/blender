@@ -138,11 +138,6 @@ get_blender_version()
 #-----------------------------------------------------------------------------
 # Options
 
-# First platform specific non-cached vars
-if(UNIX AND NOT (APPLE OR HAIKU))
-  set(WITH_X11 ON)
-endif()
-
 # Blender internal features
 option(WITH_BLENDER "Build blender (disable to build only the blender player)" ON)
 mark_as_advanced(WITH_BLENDER)
@@ -180,6 +175,14 @@ option(WITH_BULLET        "Enable Bullet (Physics Engine)" ON)
 option(WITH_SYSTEM_BULLET "Use the systems bullet library (currently unsupported due to missing features in upstream!)" )
 mark_as_advanced(WITH_SYSTEM_BULLET)
 option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ON)
+if(APPLE)
+  # There's no OpenXR runtime in sight for macOS, neither is code well
+  # tested there -> disable it by default.
+  option(WITH_XR_OPENXR   "Enable VR features through the OpenXR specification" OFF)
+  mark_as_advanced(WITH_XR_OPENXR)
+else()
+  option(WITH_XR_OPENXR   "Enable VR features through the OpenXR specification" ON)
+endif()
 
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)
@@ -199,7 +202,15 @@ mark_as_advanced(WITH_GHOST_DEBUG)
 option(WITH_GHOST_SDL    "Enable building Blender against SDL for windowing rather than the native APIs" OFF)
 mark_as_advanced(WITH_GHOST_SDL)
 
-if(WITH_X11)
+if(UNIX AND NOT (APPLE OR HAIKU))
+  option(WITH_GHOST_X11 "Enable building Blender against X11 for windowing" ON)
+  mark_as_advanced(WITH_GHOST_X11)
+
+  option(WITH_GHOST_WAYLAND "Enable building Blender against Wayland for windowing (under development)" OFF)
+  mark_as_advanced(WITH_GHOST_WAYLAND)
+endif()
+
+if(WITH_GHOST_X11)
   option(WITH_GHOST_XDND    "Enable drag'n'drop support on X11 using XDND protocol" ON)
 endif()
 
@@ -224,7 +235,7 @@ if(UNIX AND NOT APPLE)
   mark_as_advanced(WITH_OPENMP_STATIC)
 endif()
 
-if(WITH_X11)
+if(WITH_GHOST_X11)
   option(WITH_X11_XINPUT    "Enable X11 Xinput (tablet support and unicode input)"  ON)
   option(WITH_X11_XF86VMODE "Enable X11 video mode switching"                       ON)
   option(WITH_X11_XFIXES    "Enable X11 XWayland cursor warping workaround"         ON)
@@ -267,10 +278,9 @@ option(WITH_CODEC_SNDFILE       "Enable libsndfile Support (http://www.mega-nerd
 
 # Alembic support
 option(WITH_ALEMBIC             "Enable Alembic Support" ON)
-option(WITH_ALEMBIC_HDF5        "Enable Legacy Alembic Support (not officially supported)" OFF)
 
 # Universal Scene Description support
-option(WITH_USD                 "Enable Universal Scene Description (USD) Support" OFF)
+option(WITH_USD                 "Enable Universal Scene Description (USD) Support" ON)
 
 # 3D format support
 # Disable opencollada when we don't have precompiled libs
@@ -352,7 +362,7 @@ option(WITH_CYCLES                  "Enable Cycles Render Engine" ON)
 option(WITH_CYCLES_STANDALONE       "Build Cycles standalone application" OFF)
 option(WITH_CYCLES_STANDALONE_GUI   "Build Cycles standalone with GUI" OFF)
 option(WITH_CYCLES_OSL              "Build Cycles with OSL support" ON)
-option(WITH_CYCLES_EMBREE           "Build Cycles with Embree support" OFF)
+option(WITH_CYCLES_EMBREE           "Build Cycles with Embree support" ON)
 option(WITH_CYCLES_CUDA_BINARIES    "Build Cycles CUDA binaries" OFF)
 option(WITH_CYCLES_CUBIN_COMPILER   "Build cubins with nvrtc based compiler instead of nvcc" OFF)
 option(WITH_CYCLES_CUDA_BUILD_SERIAL "Build cubins one after another (useful on machines with limited RAM)" OFF)
@@ -405,6 +415,11 @@ mark_as_advanced(WITH_CXX_GUARDEDALLOC)
 option(WITH_ASSERT_ABORT "Call abort() when raising an assertion through BLI_assert()" ON)
 mark_as_advanced(WITH_ASSERT_ABORT)
 
+if(UNIX AND NOT APPLE)
+  option(WITH_CLANG_TIDY "Use Clang Tidy to analyze the source code (only enable for development on Limux using Clang)" OFF)
+  mark_as_advanced(WITH_CLANG_TIDY)
+endif()
+
 option(WITH_BOOST "Enable features depending on boost" ON)
 option(WITH_TBB   "Enable features depending on TBB (OpenVDB, OpenImageDenoise, sculpt multithreading)" ON)
 
@@ -417,6 +432,8 @@ endif()
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
 option(WITH_OPENGL_RENDER_TESTS "Enable OpenGL render related unit testing (Experimental)" OFF)
 option(WITH_OPENGL_DRAW_TESTS "Enable OpenGL UI drawing related unit testing (Experimental)" OFF)
+set(TEST_PYTHON_EXE "" CACHE PATH "Python executable to run unit tests")
+mark_as_advanced(TEST_PYTHON_EXE)
 
 # Documentation
 if(UNIX AND NOT APPLE)
@@ -457,6 +474,8 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCC)
   option(WITH_LINKER_GOLD "Use ld.gold linker which is usually faster than ld.bfd" ON)
   mark_as_advanced(WITH_LINKER_GOLD)
+  option(WITH_LINKER_LLD "Use ld.lld linker which is usually faster than ld.gold" OFF)
+  mark_as_advanced(WITH_LINKER_LLD)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -492,7 +511,8 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     if(NOT MSVC)
       find_library(COMPILER_ASAN_LIBRARY asan ${CMAKE_C_IMPLICIT_LINK_DIRECTORIES})
     else()
-      find_library( COMPILER_ASAN_LIBRARY NAMES clang_rt.asan-x86_64
+      find_library(
+        COMPILER_ASAN_LIBRARY NAMES clang_rt.asan-x86_64
         PATHS
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/7.0.0/lib/windows
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/6.0.0/lib/windows
@@ -518,6 +538,15 @@ if(WIN32)
 
   option(WITH_WINDOWS_BUNDLE_CRT "Bundle the C runtime for install free distribution." ON)
   mark_as_advanced(WITH_WINDOWS_BUNDLE_CRT)
+
+  option(WITH_WINDOWS_SCCACHE "Use sccache to speed up builds (Ninja builder only)" OFF)
+  mark_as_advanced(WITH_WINDOWS_SCCACHE)
+
+  option(WITH_WINDOWS_PDB "Generate a pdb file for client side stacktraces" ON)
+  mark_as_advanced(WITH_WINDOWS_PDB)
+
+  option(WITH_WINDOWS_STRIPPED_PDB "Use a stripped PDB file" On)
+  mark_as_advanced(WITH_WINDOWS_STRIPPED_PDB)
 
 endif()
 
@@ -595,12 +624,6 @@ if(WITH_PYTHON_MODULE AND WITH_PYTHON_INSTALL)
   message(FATAL_ERROR "WITH_PYTHON_MODULE requires WITH_PYTHON_INSTALL to be OFF")
 endif()
 
-
-# may as well build python module without a UI
-if(WITH_PYTHON_MODULE)
-  set(WITH_HEADLESS ON)
-endif()
-
 if(NOT WITH_PYTHON)
   set(WITH_CYCLES OFF)
   set(WITH_DRACO OFF)
@@ -620,17 +643,22 @@ set_and_warn_dependency(WITH_BOOST WITH_OPENVDB        OFF)
 set_and_warn_dependency(WITH_BOOST WITH_OPENCOLORIO    OFF)
 set_and_warn_dependency(WITH_BOOST WITH_QUADRIFLOW     OFF)
 set_and_warn_dependency(WITH_BOOST WITH_USD            OFF)
+set_and_warn_dependency(WITH_BOOST WITH_ALEMBIC        OFF)
 
 if(WITH_BOOST AND NOT (WITH_CYCLES OR WITH_OPENIMAGEIO OR WITH_INTERNATIONAL OR
-   WITH_OPENVDB OR WITH_OPENCOLORIO OR WITH_USD))
+   WITH_OPENVDB OR WITH_OPENCOLORIO OR WITH_USD OR WITH_ALEMBIC))
   message(STATUS "No dependencies need 'WITH_BOOST' forcing WITH_BOOST=OFF")
   set(WITH_BOOST OFF)
 endif()
 
+set_and_warn_dependency(WITH_TBB WITH_CYCLES            OFF)
 set_and_warn_dependency(WITH_TBB WITH_USD               OFF)
 set_and_warn_dependency(WITH_TBB WITH_OPENIMAGEDENOISE  OFF)
 set_and_warn_dependency(WITH_TBB WITH_OPENVDB           OFF)
 set_and_warn_dependency(WITH_TBB WITH_MOD_FLUID         OFF)
+
+# OpenVDB uses 'half' type from OpenEXR & fails to link without OpenEXR enabled.
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
 
 # auto enable openimageio for cycles
 if(WITH_CYCLES)
@@ -661,13 +689,15 @@ if(WITH_INSTALL_PORTABLE)
 endif()
 
 if(WITH_GHOST_SDL OR WITH_HEADLESS)
-  set(WITH_X11           OFF)
+  set(WITH_GHOST_WAYLAND OFF)
+  set(WITH_GHOST_X11     OFF)
   set(WITH_X11_XINPUT    OFF)
   set(WITH_X11_XF86VMODE OFF)
   set(WITH_X11_XFIXES    OFF)
   set(WITH_X11_ALPHA     OFF)
   set(WITH_GHOST_XDND    OFF)
   set(WITH_INPUT_IME     OFF)
+  set(WITH_XR_OPENXR     OFF)
 endif()
 
 if(WITH_CPU_SSE)
@@ -896,6 +926,28 @@ endif()
 
 if(NOT WITH_SYSTEM_EIGEN3)
   set(EIGEN3_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/Eigen3)
+endif()
+
+if(WITH_OPENVDB)
+  list(APPEND OPENVDB_DEFINITIONS -DWITH_OPENVDB)
+
+  if(WITH_OPENVDB_3_ABI_COMPATIBLE)
+    list(APPEND OPENVDB_DEFINITIONS -DOPENVDB_3_ABI_COMPATIBLE)
+  endif()
+
+  list(APPEND OPENVDB_INCLUDE_DIRS
+    ${BOOST_INCLUDE_DIR}
+    ${TBB_INCLUDE_DIRS}
+    ${OPENEXR_INCLUDE_DIRS})
+
+  list(APPEND OPENVDB_LIBRARIES ${OPENEXR_LIBRARIES} ${ZLIB_LIBRARIES})
+
+  if(WITH_OPENVDB_BLOSC)
+    list(APPEND OPENVDB_DEFINITIONS -DWITH_OPENVDB_BLOSC)
+    list(APPEND OPENVDB_LIBRARIES ${BLOSC_LIBRARIES} ${ZLIB_LIBRARIES})
+  endif()
+
+  list(APPEND OPENVDB_LIBRARIES ${BOOST_LIBRARIES} ${TBB_LIBRARIES})
 endif()
 
 #-----------------------------------------------------------------------------
@@ -1191,7 +1243,7 @@ endif()
 
 if(WITH_LIBMV)
   # We always have C++11 which includes unordered_map.
-  set(CERES_DEFINES -DCERES_STD_UNORDERED_MAP)
+  set(CERES_DEFINES "-DCERES_STD_UNORDERED_MAP;-DCERES_USE_CXX_THREADS")
 endif()
 
 #-----------------------------------------------------------------------------
@@ -1401,6 +1453,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 
   # flags to undo strict flags
   ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_PARAMETER -Wno-unused-parameter)
+  ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_VARIABLE  -Wno-unused-variable)
   ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_MACROS    -Wno-unused-macros)
 
   ADD_CHECK_C_COMPILER_FLAG(C_REMOVE_STRICT_FLAGS C_WARN_NO_MISSING_VARIABLE_DECLARATIONS -Wno-missing-variable-declarations)
@@ -1419,6 +1472,8 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_REORDER -Wno-reorder)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_COMMENT -Wno-comment)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNUSED_TYPEDEFS -Wno-unused-local-typedefs)
+  ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNDEFINED_VAR_TEMPLATE -Wno-undefined-var-template)
+  ADD_CHECK_CXX_COMPILER_FLAG(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_INSTANTIATION_AFTER_SPECIALIZATION -Wno-instantiation-after-specialization)
 
 elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
 
@@ -1504,20 +1559,15 @@ if(WITH_PYTHON)
 endif()
 
 if(MSVC)
-  # MSVC needs to be tested first, since clang on windows will
-  # match the compiler test below but clang-cl does not accept -std=c++11
-  # since it is on by default and cannot be turned off.
-  #
-  # Nothing special is needed, C++11 features are available by default.
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
 elseif(
   CMAKE_COMPILER_IS_GNUCC OR
   CMAKE_C_COMPILER_ID MATCHES "Clang" OR
   CMAKE_C_COMPILER_ID MATCHES "Intel"
 )
-  # TODO(sergey): Do we want c++11 or gnu-c++11 here?
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 else()
-  message(FATAL_ERROR "Unknown compiler ${CMAKE_C_COMPILER_ID}, can't enable C++11 build")
+  message(FATAL_ERROR "Unknown compiler ${CMAKE_C_COMPILER_ID}, can't enable C++17 build")
 endif()
 
 # Visual Studio has all standards it supports available by default
@@ -1669,11 +1719,13 @@ if(FIRST_RUN)
   info_cfg_option(WITH_CYCLES)
   info_cfg_option(WITH_FREESTYLE)
   info_cfg_option(WITH_OPENCOLORIO)
+  info_cfg_option(WITH_XR_OPENXR)
   info_cfg_option(WITH_OPENIMAGEDENOISE)
   info_cfg_option(WITH_OPENVDB)
   info_cfg_option(WITH_ALEMBIC)
   info_cfg_option(WITH_QUADRIFLOW)
   info_cfg_option(WITH_USD)
+  info_cfg_option(WITH_TBB)
 
   info_cfg_text("Compiler Options:")
   info_cfg_option(WITH_BUILDINFO)

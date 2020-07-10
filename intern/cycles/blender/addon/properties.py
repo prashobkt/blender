@@ -55,8 +55,7 @@ enum_displacement_methods = (
 
 enum_bvh_layouts = (
     ('BVH2', "BVH2", "", 1),
-    ('BVH4', "BVH4", "", 2),
-    ('BVH8', "BVH8", "", 4),
+    ('EMBREE', "Embree", "", 4),
 )
 
 enum_bvh_types = (
@@ -78,20 +77,9 @@ enum_panorama_types = (
     ('MIRRORBALL', "Mirror Ball", "Uses the mirror ball mapping"),
 )
 
-enum_curve_primitives = (
-    ('TRIANGLES', "Triangles", "Create triangle geometry around strands"),
-    ('LINE_SEGMENTS', "Line Segments", "Use line segment primitives"),
-    ('CURVE_SEGMENTS', "Curve Segments", "Use segmented cardinal curve primitives"),
-)
-
-enum_triangle_curves = (
-    ('CAMERA_TRIANGLES', "Planes", "Create individual triangles forming planes that face camera"),
-    ('TESSELLATED_TRIANGLES', "Tessellated", "Create mesh surrounding each strand"),
-)
-
 enum_curve_shape = (
-    ('RIBBONS', "Ribbons", "Ignore thickness of each strand"),
-    ('THICK', "Thick", "Use thickness of strand when rendering"),
+    ('RIBBONS', "Rounded Ribbons", "Render hair as flat ribbon with rounded normals, for fast rendering"),
+    ('THICK', "3D Curves", "Render hair as 3D curve, for accurate results when viewing hair close up"),
 )
 
 enum_tile_order = (
@@ -112,6 +100,7 @@ enum_use_layer_samples = (
 enum_sampling_pattern = (
     ('SOBOL', "Sobol", "Use Sobol random sampling pattern"),
     ('CORRELATED_MUTI_JITTER', "Correlated Multi-Jitter", "Use Correlated Multi-Jitter random sampling pattern"),
+    ('PROGRESSIVE_MUTI_JITTER', "Progressive Multi-Jitter", "Use Progressive Multi-Jitter random sampling pattern"),
 )
 
 enum_integrator = (
@@ -178,10 +167,6 @@ enum_view3d_shading_render_pass= (
     ('TRANSMISSION_INDIRECT', "Transmission Indirect", "Show the Transmission Indirect render pass", 45),
     ('TRANSMISSION_COLOR', "Transmission Color", "Show the Transmission Color render pass", 46),
 
-    ('SUBSURFACE_DIRECT', "Subsurface Direct", "Show the Subsurface Direct render pass", 47),
-    ('SUBSURFACE_INDIRECT', "Subsurface Indirect", "Show the Subsurface Indirect render pass", 48),
-    ('SUBSURFACE_COLOR', "Subsurface Color", "Show the Subsurface Color render pass", 49),
-
     ('VOLUME_DIRECT', "Volume Direct", "Show the Volume Direct render pass", 50),
     ('VOLUME_INDIRECT', "Volume Indirect", "Show the Volume Indirect render pass", 51),
 
@@ -197,11 +182,48 @@ enum_aov_types = (
     ('COLOR', "Color", "Write a Color pass", 1),
 )
 
-enum_denoising_optix_input_passes= (
+
+def enum_openimagedenoise_denoiser(self, context):
+    if _cycles.with_openimagedenoise:
+        return [('OPENIMAGEDENOISE', "OpenImageDenoise", "Use Intel OpenImageDenoise AI denoiser running on the CPU", 4)]
+    return []
+
+def enum_optix_denoiser(self, context):
+    if not context or bool(context.preferences.addons[__package__].preferences.get_devices_for_type('OPTIX')):
+        return [('OPTIX', "OptiX", "Use the OptiX AI denoiser with GPU acceleration, only available on NVIDIA GPUs", 2)]
+    return []
+
+def enum_preview_denoiser(self, context):
+    optix_items = enum_optix_denoiser(self, context)
+    oidn_items = enum_openimagedenoise_denoiser(self, context)
+
+    if len(optix_items) or len(oidn_items):
+        items = [('AUTO', "Automatic", "Use the fastest available denoiser for viewport rendering (OptiX if available, OpenImageDenoise otherwise)", 0)]
+    else:
+        items = [('AUTO', "None", "Blender was compiled without a viewport denoiser", 0)]
+
+    items += optix_items
+    items += oidn_items
+    return items
+
+def enum_denoiser(self, context):
+    items = [('NLM', "NLM", "Cycles native non-local means denoiser, running on any compute device", 1)]
+    items += enum_optix_denoiser(self, context)
+    return items
+
+enum_denoising_optix_input_passes = (
     ('RGB', "Color", "Use only color as input", 1),
     ('RGB_ALBEDO', "Color + Albedo", "Use color and albedo data as input", 2),
     ('RGB_ALBEDO_NORMAL', "Color + Albedo + Normal", "Use color, albedo and normal data as input", 3),
 )
+
+
+def update_render_passes(self, context):
+    scene = context.scene
+    view_layer = context.view_layer
+    view_layer.update_render_passes()
+    engine.detect_conflicting_passes(scene, view_layer)
+
 
 class CyclesRenderSettings(bpy.types.PropertyGroup):
 
@@ -229,6 +251,39 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default='PATH',
     )
 
+    preview_pause: BoolProperty(
+        name="Pause Preview",
+        description="Pause all viewport preview renders",
+        default=False,
+    )
+
+    use_denoising: BoolProperty(
+        name="Use Denoising",
+        description="Denoise the rendered image",
+        default=False,
+    )
+    use_preview_denoising: BoolProperty(
+        name="Use Viewport Denoising",
+        description="Denoise the image in the 3D viewport",
+        default=False,
+    )
+
+    denoiser: EnumProperty(
+        name="Denoiser",
+        description="Denoise the image with the selected denoiser. "
+        "For denoising the image after rendering, denoising data render passes "
+        "also adapt to the selected denoiser",
+        items=enum_denoiser,
+        default=1,
+        update=update_render_passes,
+    )
+    preview_denoiser: EnumProperty(
+        name="Viewport Denoiser",
+        description="Denoise the image after each preview update with the selected denoiser",
+        items=enum_preview_denoiser,
+        default=0,
+    )
+
     use_square_samples: BoolProperty(
         name="Square Samples",
         description="Square sampling values for easier artist control",
@@ -242,15 +297,10 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=128,
     )
     preview_samples: IntProperty(
-        name="Preview Samples",
+        name="Viewport Samples",
         description="Number of samples to render in the viewport, unlimited if 0",
         min=0, max=(1 << 24),
         default=32,
-    )
-    preview_pause: BoolProperty(
-        name="Pause Preview",
-        description="Pause all viewport preview renders",
-        default=False,
     )
     aa_samples: IntProperty(
         name="AA Samples",
@@ -264,6 +314,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         min=0, max=2097151,
         default=32,
     )
+
     diffuse_samples: IntProperty(
         name="Diffuse Samples",
         description="Number of diffuse bounce samples to render for each AA sample",
@@ -294,14 +345,12 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         min=1, max=1024,
         default=1,
     )
-
     subsurface_samples: IntProperty(
         name="Subsurface Samples",
         description="Number of subsurface scattering samples to render for each AA sample",
         min=1, max=1024,
         default=1,
     )
-
     volume_samples: IntProperty(
         name="Volume Samples",
         description="Number of volume scattering samples to render for each AA sample",
@@ -340,6 +389,26 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         "Zero disables the test and never ignores lights",
         min=0.0, max=1.0,
         default=0.01,
+    )
+
+    use_adaptive_sampling: BoolProperty(
+        name="Use Adaptive Sampling",
+        description="Automatically reduce the number of samples per pixel based on estimated noise level",
+        default=False,
+    )
+
+    adaptive_threshold: FloatProperty(
+        name="Adaptive Sampling Threshold",
+        description="Noise level step to stop sampling at, lower values reduce noise the cost of render time. Zero for automatic setting based on number of AA samples",
+        min=0.0, max=1.0,
+        default=0.0,
+        precision=4,
+    )
+    adaptive_min_samples: IntProperty(
+        name="Adaptive Min Samples",
+        description="Minimum AA samples for adaptive sampling, to discover noisy features before stopping sampling. Zero for automatic setting based on number of AA samples",
+        min=0, max=4096,
+        default=0,
     )
 
     min_light_bounces: IntProperty(
@@ -416,13 +485,20 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=8,
     )
 
-    volume_step_size: FloatProperty(
-        name="Step Size",
-        description="Distance between volume shader samples when rendering the volume "
-        "(lower values give more accurate and detailed results, but also increased render time)",
-        default=0.1,
-        min=0.0000001, max=100000.0, soft_min=0.01, soft_max=1.0, precision=4,
-        unit='LENGTH'
+    volume_step_rate: FloatProperty(
+        name="Step Rate",
+        description="Globally adjust detail for volume rendering, on top of automatically estimated step size. "
+                    "Higher values reduce render time, lower values render with more detail",
+        default=1.0,
+        min=0.01, max=100.0, soft_min=0.1, soft_max=10.0, precision=2
+    )
+
+    volume_preview_step_rate: FloatProperty(
+        name="Step Rate",
+        description="Globally adjust detail for volume rendering, on top of automatically estimated step size. "
+                    "Higher values reduce render time, lower values render with more detail",
+        default=1.0,
+        min=0.01, max=100.0, soft_min=0.1, soft_max=10.0, precision=2
     )
 
     volume_max_steps: IntProperty(
@@ -441,7 +517,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         subtype='PIXEL'
     )
     preview_dicing_rate: FloatProperty(
-        name="Preview Dicing Rate",
+        name="Viewport Dicing Rate",
         description="Size of a micropolygon in pixels during preview render",
         min=0.1, max=1000.0, soft_min=0.5,
         default=8.0,
@@ -562,6 +638,12 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=64,
         subtype='PIXEL'
     )
+    preview_denoising_start_sample: IntProperty(
+        name="Start Denoising",
+        description="Sample to start denoising the preview at",
+        min=0, max=(1 << 24),
+        default=1,
+    )
 
     debug_reset_timeout: FloatProperty(
         name="Reset timeout",
@@ -587,11 +669,6 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Choose between faster updates, or faster render",
         items=enum_bvh_types,
         default='DYNAMIC_BVH',
-    )
-    use_bvh_embree: BoolProperty(
-        name="Use Embree",
-        description="Use Embree as ray accelerator",
-        default=False,
     )
     debug_use_spatial_splits: BoolProperty(
         name="Use Spatial Splits",
@@ -641,7 +718,6 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
             ('DIFFUSE', "Diffuse", ""),
             ('GLOSSY', "Glossy", ""),
             ('TRANSMISSION', "Transmission", ""),
-            ('SUBSURFACE', "Subsurface", ""),
         ),
     )
 
@@ -746,7 +822,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     debug_bvh_layout: EnumProperty(
         name="BVH Layout",
         items=enum_bvh_layouts,
-        default='BVH8',
+        default='EMBREE',
     )
     debug_use_cpu_split_kernel: BoolProperty(name="Split Kernel", default=False)
 
@@ -754,6 +830,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     debug_use_cuda_split_kernel: BoolProperty(name="Split Kernel", default=False)
 
     debug_optix_cuda_streams: IntProperty(name="CUDA Streams", default=1, min=1)
+    debug_optix_curves_api: BoolProperty(name="Native OptiX Curve Primitive", default=False)
 
     debug_opencl_kernel_type: EnumProperty(
         name="OpenCL Kernel Type",
@@ -901,6 +978,14 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         default='LINEAR',
     )
 
+    volume_step_rate: FloatProperty(
+        name="Step Rate",
+        description="Scale the distance between volume shader samples when rendering the volume "
+                    "(lower values give more accurate and detailed results, but also increased render time)",
+        default=1.0,
+        min=0.001, max=1000.0, soft_min=0.1, soft_max=10.0, precision=4
+    )
+
     displacement_method: EnumProperty(
         name="Displacement Method",
         description="Method to use for the displacement",
@@ -1010,6 +1095,13 @@ class CyclesWorldSettings(bpy.types.PropertyGroup):
         description="Interpolation method to use for volumes",
         items=enum_volume_interpolation,
         default='LINEAR',
+    )
+    volume_step_size: FloatProperty(
+        name="Step Size",
+        description="Distance between volume shader samples when rendering the volume "
+                    "(lower values give more accurate and detailed results, but also increased render time)",
+        default=1.0,
+        min=0.0000001, max=100000.0, soft_min=0.1, soft_max=100.0, precision=4
     )
 
     @classmethod
@@ -1121,7 +1213,7 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
     motion_steps: IntProperty(
         name="Motion Steps",
         description="Control accuracy of motion blur, more steps gives more memory usage (actual number of steps is 2^(steps - 1))",
-        min=1, soft_max=8,
+        min=1, max=7,
         default=1,
     )
 
@@ -1148,6 +1240,13 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
         description="Multiplier for scene dicing rate (located in the Subdivision panel)",
         min=0.1, max=1000.0, soft_min=0.5,
         default=1.0,
+    )
+
+    shadow_terminator_offset: FloatProperty(
+        name="Shadow Terminator Offset",
+        description="Push the shadow terminator towards the light to hide artifacts on low poly geometry",
+        min=0.0, max=1.0,
+        default=0.0,
     )
 
     is_shadow_catcher: BoolProperty(
@@ -1179,39 +1278,17 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
 
 class CyclesCurveRenderSettings(bpy.types.PropertyGroup):
 
-    primitive: EnumProperty(
-        name="Primitive",
-        description="Type of primitive used for hair rendering",
-        items=enum_curve_primitives,
-        default='LINE_SEGMENTS',
-    )
     shape: EnumProperty(
         name="Shape",
         description="Form of hair",
         items=enum_curve_shape,
-        default='THICK',
-    )
-    cull_backfacing: BoolProperty(
-        name="Cull Back-faces",
-        description="Do not test the back-face of each strand",
-        default=True,
-    )
-    use_curves: BoolProperty(
-        name="Use Cycles Hair Rendering",
-        description="Activate Cycles hair rendering for particle system",
-        default=True,
-    )
-    resolution: IntProperty(
-        name="Resolution",
-        description="Resolution of generated mesh",
-        min=3, max=64,
-        default=3,
+        default='RIBBONS',
     )
     subdivisions: IntProperty(
         name="Subdivisions",
         description="Number of subdivisions used in Cardinal curve intersection (power of 2)",
         min=0, max=24,
-        default=4,
+        default=2,
     )
 
     @classmethod
@@ -1225,12 +1302,6 @@ class CyclesCurveRenderSettings(bpy.types.PropertyGroup):
     @classmethod
     def unregister(cls):
         del bpy.types.Scene.cycles_curves
-
-
-def update_render_passes(self, context):
-    view_layer = context.view_layer
-    view_layer.update_render_passes()
-    engine.detect_conflicting_passes(view_layer)
 
 
 class CyclesAOVPass(bpy.types.PropertyGroup):
@@ -1285,7 +1356,12 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         default=False,
         update=update_render_passes,
     )
-
+    pass_debug_sample_count: BoolProperty(
+        name="Debug Sample Count",
+        description="Number of samples/camera rays per pixel",
+        default=False,
+        update=update_render_passes,
+    )
     use_pass_volume_direct: BoolProperty(
         name="Volume Direct",
         description="Deliver direct volumetric scattering pass",
@@ -1302,13 +1378,7 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
     use_denoising: BoolProperty(
         name="Use Denoising",
         description="Denoise the rendered image",
-        default=False,
-        update=update_render_passes,
-    )
-    use_optix_denoising: BoolProperty(
-        name="Use OptiX AI Denoising",
-        description="Denoise the rendered image with the OptiX AI denoiser",
-        default=False,
+        default=True,
         update=update_render_passes,
     )
     denoising_diffuse_direct: BoolProperty(
@@ -1341,16 +1411,6 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         description="Denoise the indirect transmission lighting",
         default=True,
     )
-    denoising_subsurface_direct: BoolProperty(
-        name="Subsurface Direct",
-        description="Denoise the direct subsurface lighting",
-        default=True,
-    )
-    denoising_subsurface_indirect: BoolProperty(
-        name="Subsurface Indirect",
-        description="Denoise the indirect subsurface lighting",
-        default=True,
-    )
     denoising_strength: FloatProperty(
         name="Denoising Strength",
         description="Controls neighbor pixel weighting for the denoising filter (lower values preserve more detail, but aren't as smooth)",
@@ -1377,7 +1437,7 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
     )
     denoising_store_passes: BoolProperty(
         name="Store Denoising Passes",
-        description="Store the denoising feature passes and the noisy image",
+        description="Store the denoising feature passes and the noisy image. The passes adapt to the denoiser selected for rendering",
         default=False,
         update=update_render_passes,
     )
@@ -1387,11 +1447,12 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
         min=0, max=7,
         default=0,
     )
+
     denoising_optix_input_passes: EnumProperty(
         name="Input Passes",
-        description="Controls which passes the OptiX AI denoiser should use as input, which can have different effects on the denoised image",
+        description="Passes handed over to the OptiX denoiser (this can have different effects on the denoised image)",
         items=enum_denoising_optix_input_passes,
-        default='RGB',
+        default='RGB_ALBEDO',
     )
 
     use_pass_crypto_object: BoolProperty(
@@ -1476,6 +1537,12 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     )
 
     devices: bpy.props.CollectionProperty(type=CyclesDeviceSettings)
+
+    peer_memory: BoolProperty(
+        name="Distribute memory across devices",
+        description="Make more room for large scenes to fit by distributing memory across interconnected devices (e.g. via NVLink) rather than duplicating it",
+        default=False,
+    )
 
     def find_existing_device_entry(self, device):
         for device_entry in self.devices:
@@ -1574,14 +1641,21 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         row = layout.row()
         row.prop(self, "compute_device_type", expand=True)
 
-        devices = self.get_devices_for_type(self.compute_device_type)
+        if self.compute_device_type == 'NONE':
+            return
         row = layout.row()
-        if self.compute_device_type == 'CUDA':
-            self._draw_devices(row, 'CUDA', devices)
-        elif self.compute_device_type == 'OPTIX':
-            self._draw_devices(row, 'OPTIX', devices)
-        elif self.compute_device_type == 'OPENCL':
-            self._draw_devices(row, 'OPENCL', devices)
+        devices = self.get_devices_for_type(self.compute_device_type)
+        self._draw_devices(row, self.compute_device_type, devices)
+
+        import _cycles
+        has_peer_memory = 0
+        for device in _cycles.available_devices(self.compute_device_type):
+            if device[3] and self.find_existing_device_entry(device).use:
+                has_peer_memory += 1
+        if has_peer_memory > 1:
+            row = layout.row()
+            row.use_property_split = True
+            row.prop(self, "peer_memory")
 
     def draw(self, context):
         self.draw_impl(self.layout, context)

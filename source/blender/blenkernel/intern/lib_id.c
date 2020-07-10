@@ -24,50 +24,28 @@
  * allocate and free of all library data
  */
 
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stddef.h>
 #include <assert.h>
+#include <ctype.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
 /* all types are needed here, in order to do memory operations */
+#include "DNA_ID.h"
 #include "DNA_anim_types.h"
-#include "DNA_armature_types.h"
-#include "DNA_brush_types.h"
-#include "DNA_cachefile_types.h"
-#include "DNA_camera_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_gpencil_types.h"
-#include "DNA_ipo_types.h"
 #include "DNA_key_types.h"
-#include "DNA_light_types.h"
-#include "DNA_lattice_types.h"
-#include "DNA_linestyle_types.h"
-#include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meta_types.h"
-#include "DNA_movieclip_types.h"
-#include "DNA_mask_types.h"
 #include "DNA_node_types.h"
-#include "DNA_object_types.h"
-#include "DNA_lightprobe_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_screen_types.h"
-#include "DNA_speaker_types.h"
-#include "DNA_sound_types.h"
-#include "DNA_text_types.h"
-#include "DNA_vfont_types.h"
-#include "DNA_windowmanager_types.h"
-#include "DNA_world_types.h"
 #include "DNA_workspace_types.h"
 
 #include "BLI_utildefines.h"
 
+#include "BLI_alloca.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
@@ -76,47 +54,22 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_action.h"
-#include "BKE_animsys.h"
+#include "BKE_anim_data.h"
 #include "BKE_armature.h"
 #include "BKE_bpath.h"
-#include "BKE_brush.h"
-#include "BKE_camera.h"
-#include "BKE_cachefile.h"
-#include "BKE_collection.h"
 #include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_font.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
-#include "BKE_idcode.h"
 #include "BKE_idprop.h"
-#include "BKE_image.h"
+#include "BKE_idtype.h"
 #include "BKE_key.h"
-#include "BKE_light.h"
-#include "BKE_lattice.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_override.h"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
-#include "BKE_linestyle.h"
-#include "BKE_mesh.h"
-#include "BKE_material.h"
 #include "BKE_main.h"
-#include "BKE_mball.h"
-#include "BKE_mask.h"
-#include "BKE_movieclip.h"
 #include "BKE_node.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
-#include "BKE_particle.h"
-#include "BKE_lightprobe.h"
 #include "BKE_rigidbody.h"
-#include "BKE_sound.h"
-#include "BKE_speaker.h"
-#include "BKE_scene.h"
-#include "BKE_text.h"
-#include "BKE_texture.h"
-#include "BKE_world.h"
 
 #include "DEG_depsgraph.h"
 
@@ -132,19 +85,36 @@
 
 static CLG_LogRef LOG = {.identifier = "bke.lib_id"};
 
+/* Empty shell mostly, but needed for read code. */
+IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
+    .id_code = ID_LINK_PLACEHOLDER,
+    .id_filter = 0,
+    .main_listbase_index = INDEX_ID_NULL,
+    .struct_size = sizeof(ID),
+    .name = "LinkPlaceholder",
+    .name_plural = "link_placeholders",
+    .translation_context = BLT_I18NCONTEXT_ID_ID,
+    .flags = IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_MAKELOCAL,
+
+    .init_data = NULL,
+    .copy_data = NULL,
+    .free_data = NULL,
+    .make_local = NULL,
+};
+
 /* GS reads the memory pointed at in a specific ordering.
  * only use this definition, makes little and big endian systems
  * work fine, in conjunction with MAKE_ID */
 
 /* ************* general ************************ */
 
-/* this has to be called from each make_local_* func, we could call
- * from id_make_local() but then the make local functions would not be self
- * contained.
- * also note that the id _must_ have a library - campbell */
-void BKE_id_lib_local_paths(Main *bmain, Library *lib, ID *id)
+/**
+ * This has to be called from each make_local_* func, we could call from BKE_lib_id_make_local()
+ * but then the make local functions would not be self contained.
+ * Also note that the id _must_ have a library - campbell */
+static void lib_id_library_local_paths(Main *bmain, Library *lib, ID *id)
 {
-  const char *bpath_user_data[2] = {BKE_main_blendfile_path(bmain), lib->filepath};
+  const char *bpath_user_data[2] = {BKE_main_blendfile_path(bmain), lib->filepath_abs};
 
   BKE_bpath_traverse_id(bmain,
                         id,
@@ -153,10 +123,71 @@ void BKE_id_lib_local_paths(Main *bmain, Library *lib, ID *id)
                         (void *)bpath_user_data);
 }
 
+static int lib_id_clear_library_data_users_update_cb(LibraryIDLinkCallbackData *cb_data)
+{
+  ID *id = cb_data->user_data;
+  if (*cb_data->id_pointer == id) {
+    DEG_id_tag_update_ex(cb_data->bmain, cb_data->id_owner, ID_RECALC_TAG_FOR_UNDO);
+    return IDWALK_RET_STOP_ITER;
+  }
+  return IDWALK_RET_NOP;
+}
+
+/**
+ * Pull an ID out of a library (make it local). Only call this for IDs that
+ * don't have other library users.
+ */
+static void lib_id_clear_library_data_ex(Main *bmain, ID *id)
+{
+  const bool id_in_mainlist = (id->tag & LIB_TAG_NO_MAIN) == 0 &&
+                              (id->flag & LIB_EMBEDDED_DATA) == 0;
+
+  lib_id_library_local_paths(bmain, id->lib, id);
+
+  id_fake_user_clear(id);
+
+  id->lib = NULL;
+  id->tag &= ~(LIB_TAG_INDIRECT | LIB_TAG_EXTERN);
+  id->flag &= ~LIB_INDIRECT_WEAK_LINK;
+  if (id_in_mainlist) {
+    if (BKE_id_new_name_validate(which_libbase(bmain, GS(id->name)), id, NULL)) {
+      bmain->is_memfile_undo_written = false;
+    }
+  }
+
+  /* Conceptually, an ID made local is not the same as the linked one anymore. Reflect that by
+   * regenerating its session UUID. */
+  BKE_lib_libblock_session_uuid_renew(id);
+
+  /* We need to tag this IDs and all of its users, conceptually new local ID and original linked
+   * ones are two completely different data-blocks that were virtually remapped, even though in
+   * reality they remain the same data. For undo this info is critical now. */
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_COPY_ON_WRITE);
+  ID *id_iter;
+  FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
+    BKE_library_foreach_ID_link(
+        bmain, id_iter, lib_id_clear_library_data_users_update_cb, id, IDWALK_READONLY);
+  }
+  FOREACH_MAIN_ID_END;
+
+  /* Internal shape key blocks inside data-blocks also stores id->lib,
+   * make sure this stays in sync (note that we do not need any explicit handling for real EMBEDDED
+   * IDs here, this is down automatically in `lib_id_expand_local_cb()`. */
+  Key *key = BKE_key_from_id(id);
+  if (key != NULL) {
+    lib_id_clear_library_data_ex(bmain, &key->id);
+  }
+}
+
+void BKE_lib_id_clear_library_data(Main *bmain, ID *id)
+{
+  lib_id_clear_library_data_ex(bmain, id);
+}
+
 void id_lib_extern(ID *id)
 {
   if (id && ID_IS_LINKED(id)) {
-    BLI_assert(BKE_idcode_is_linkable(GS(id->name)));
+    BLI_assert(BKE_idtype_idcode_is_linkable(GS(id->name)));
     if (id->tag & LIB_TAG_INDIRECT) {
       id->tag &= ~LIB_TAG_INDIRECT;
       id->flag &= ~LIB_INDIRECT_WEAK_LINK;
@@ -169,7 +200,7 @@ void id_lib_extern(ID *id)
 void id_lib_indirect_weak_link(ID *id)
 {
   if (id && ID_IS_LINKED(id)) {
-    BLI_assert(BKE_idcode_is_linkable(GS(id->name)));
+    BLI_assert(BKE_idtype_idcode_is_linkable(GS(id->name)));
     if (id->tag & LIB_TAG_INDIRECT) {
       id->flag |= LIB_INDIRECT_WEAK_LINK;
     }
@@ -194,7 +225,7 @@ void id_us_ensure_real(ID *id)
         CLOG_ERROR(&LOG,
                    "ID user count error: %s (from '%s')",
                    id->name,
-                   id->lib ? id->lib->filepath : "[Main]");
+                   id->lib ? id->lib->filepath_abs : "[Main]");
         BLI_assert(0);
       }
       id->us = limit + 1;
@@ -252,10 +283,14 @@ void id_us_min(ID *id)
       CLOG_ERROR(&LOG,
                  "ID user decrement error: %s (from '%s'): %d <= %d",
                  id->name,
-                 id->lib ? id->lib->filepath : "[Main]",
+                 id->lib ? id->lib->filepath_abs : "[Main]",
                  id->us,
                  limit);
-      BLI_assert(0);
+      if (GS(id->name) != ID_IP) {
+        /* Do not assert on deprecated ID types, we cannot really ensure that their ID refcounting
+         * is valid... */
+        BLI_assert(0);
+      }
       id->us = limit;
     }
     else {
@@ -294,12 +329,25 @@ void BKE_id_clear_newpoin(ID *id)
   id->newid = NULL;
 }
 
-static int id_expand_local_callback(void *UNUSED(user_data),
-                                    struct ID *id_self,
-                                    struct ID **id_pointer,
-                                    int cb_flag)
+static int lib_id_expand_local_cb(LibraryIDLinkCallbackData *cb_data)
 {
-  if (cb_flag & IDWALK_CB_PRIVATE) {
+  Main *bmain = cb_data->bmain;
+  ID *id_self = cb_data->id_self;
+  ID **id_pointer = cb_data->id_pointer;
+  int const cb_flag = cb_data->cb_flag;
+
+  if (cb_flag & IDWALK_CB_LOOPBACK) {
+    /* We should never have anything to do with loopback pointers here. */
+    return IDWALK_RET_NOP;
+  }
+
+  if (cb_flag & IDWALK_CB_EMBEDDED) {
+    /* Embedded data-blocks need to be made fully local as well. */
+    if (*id_pointer != NULL) {
+      BLI_assert(*id_pointer != id_self);
+
+      lib_id_clear_library_data_ex(bmain, *id_pointer);
+    }
     return IDWALK_RET_NOP;
   }
 
@@ -307,7 +355,8 @@ static int id_expand_local_callback(void *UNUSED(user_data),
    * (through drivers)...
    * Just skip it, shape key can only be either indirectly linked, or fully local, period.
    * And let's curse one more time that stupid useless shapekey ID type! */
-  if (*id_pointer && *id_pointer != id_self && BKE_idcode_is_linkable(GS((*id_pointer)->name))) {
+  if (*id_pointer && *id_pointer != id_self &&
+      BKE_idtype_idcode_is_linkable(GS((*id_pointer)->name))) {
     id_lib_extern(*id_pointer);
   }
 
@@ -318,30 +367,28 @@ static int id_expand_local_callback(void *UNUSED(user_data),
  * Expand ID usages of given id as 'extern' (and no more indirect) linked data.
  * Used by ID copy/make_local functions.
  */
-void BKE_id_expand_local(Main *bmain, ID *id)
+void BKE_lib_id_expand_local(Main *bmain, ID *id)
 {
-  BKE_library_foreach_ID_link(bmain, id, id_expand_local_callback, NULL, IDWALK_READONLY);
+  BKE_library_foreach_ID_link(bmain, id, lib_id_expand_local_cb, bmain, IDWALK_READONLY);
 }
 
 /**
  * Ensure new (copied) ID is fully made local.
  */
-void BKE_id_copy_ensure_local(Main *bmain, const ID *old_id, ID *new_id)
+static void lib_id_copy_ensure_local(Main *bmain, const ID *old_id, ID *new_id)
 {
   if (ID_IS_LINKED(old_id)) {
-    BKE_id_expand_local(bmain, new_id);
-    BKE_id_lib_local_paths(bmain, old_id->lib, new_id);
+    BKE_lib_id_expand_local(bmain, new_id);
+    lib_id_library_local_paths(bmain, old_id->lib, new_id);
   }
 }
 
 /**
  * Generic 'make local' function, works for most of data-block types...
  */
-void BKE_id_make_local_generic(Main *bmain,
-                               ID *id,
-                               const bool id_in_mainlist,
-                               const bool lib_local)
+void BKE_lib_id_make_local_generic(Main *bmain, ID *id, const int flags)
 {
+  const bool lib_local = (flags & LIB_ID_MAKELOCAL_FULL_LIBRARY) != 0;
   bool is_local = false, is_lib = false;
 
   /* - only lib users: do nothing (unless force_local is set)
@@ -359,8 +406,8 @@ void BKE_id_make_local_generic(Main *bmain,
 
   if (lib_local || is_local) {
     if (!is_lib) {
-      id_clear_lib_data_ex(bmain, id, id_in_mainlist);
-      BKE_id_expand_local(bmain, id);
+      lib_id_clear_library_data_ex(bmain, id);
+      BKE_lib_id_expand_local(bmain, id);
     }
     else {
       ID *id_new;
@@ -380,6 +427,13 @@ void BKE_id_make_local_generic(Main *bmain,
         if (ntree && ntree_new) {
           ID_NEW_SET(ntree, ntree_new);
         }
+        if (GS(id->name) == ID_SCE) {
+          Collection *master_collection = ((Scene *)id)->master_collection,
+                     *master_collection_new = ((Scene *)id_new)->master_collection;
+          if (master_collection && master_collection_new) {
+            ID_NEW_SET(master_collection, master_collection_new);
+          }
+        }
 
         if (!lib_local) {
           BKE_libblock_remap(bmain, id, id_new, ID_REMAP_SKIP_INDIRECT_USAGE);
@@ -392,185 +446,41 @@ void BKE_id_make_local_generic(Main *bmain,
 /**
  * Calls the appropriate make_local method for the block, unless test is set.
  *
- * \note Always set ID->newid pointer in case it gets duplicated...
+ * \note Always set #ID.newid pointer in case it gets duplicated.
  *
- * \param lib_local: Special flag used when making a whole library's content local,
+ * \param flags: Special flag used when making a whole library's content local,
  * it needs specific handling.
  *
  * \return true if the block can be made local.
  */
-bool id_make_local(Main *bmain, ID *id, const bool test, const bool lib_local)
+bool BKE_lib_id_make_local(Main *bmain, ID *id, const bool test, const int flags)
 {
+  const bool lib_local = (flags & LIB_ID_MAKELOCAL_FULL_LIBRARY) != 0;
+
   /* We don't care whether ID is directly or indirectly linked
    * in case we are making a whole lib local... */
   if (!lib_local && (id->tag & LIB_TAG_INDIRECT)) {
     return false;
   }
 
-  switch ((ID_Type)GS(id->name)) {
-    case ID_SCE:
+  const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_id(id);
+
+  if (idtype_info != NULL) {
+    if ((idtype_info->flags & IDTYPE_FLAGS_NO_MAKELOCAL) == 0) {
       if (!test) {
-        BKE_scene_make_local(bmain, (Scene *)id, lib_local);
+        if (idtype_info->make_local != NULL) {
+          idtype_info->make_local(bmain, id, flags);
+        }
+        else {
+          BKE_lib_id_make_local_generic(bmain, id, flags);
+        }
       }
       return true;
-    case ID_OB:
-      if (!test) {
-        BKE_object_make_local(bmain, (Object *)id, lib_local);
-      }
-      return true;
-    case ID_ME:
-      if (!test) {
-        BKE_mesh_make_local(bmain, (Mesh *)id, lib_local);
-      }
-      return true;
-    case ID_CU:
-      if (!test) {
-        BKE_curve_make_local(bmain, (Curve *)id, lib_local);
-      }
-      return true;
-    case ID_MB:
-      if (!test) {
-        BKE_mball_make_local(bmain, (MetaBall *)id, lib_local);
-      }
-      return true;
-    case ID_MA:
-      if (!test) {
-        BKE_material_make_local(bmain, (Material *)id, lib_local);
-      }
-      return true;
-    case ID_TE:
-      if (!test) {
-        BKE_texture_make_local(bmain, (Tex *)id, lib_local);
-      }
-      return true;
-    case ID_IM:
-      if (!test) {
-        BKE_image_make_local(bmain, (Image *)id, lib_local);
-      }
-      return true;
-    case ID_LT:
-      if (!test) {
-        BKE_lattice_make_local(bmain, (Lattice *)id, lib_local);
-      }
-      return true;
-    case ID_LA:
-      if (!test) {
-        BKE_light_make_local(bmain, (Light *)id, lib_local);
-      }
-      return true;
-    case ID_CA:
-      if (!test) {
-        BKE_camera_make_local(bmain, (Camera *)id, lib_local);
-      }
-      return true;
-    case ID_SPK:
-      if (!test) {
-        BKE_speaker_make_local(bmain, (Speaker *)id, lib_local);
-      }
-      return true;
-    case ID_LP:
-      if (!test) {
-        BKE_lightprobe_make_local(bmain, (LightProbe *)id, lib_local);
-      }
-      return true;
-    case ID_WO:
-      if (!test) {
-        BKE_world_make_local(bmain, (World *)id, lib_local);
-      }
-      return true;
-    case ID_VF:
-      if (!test) {
-        BKE_vfont_make_local(bmain, (VFont *)id, lib_local);
-      }
-      return true;
-    case ID_TXT:
-      if (!test) {
-        BKE_text_make_local(bmain, (Text *)id, lib_local);
-      }
-      return true;
-    case ID_SO:
-      if (!test) {
-        BKE_sound_make_local(bmain, (bSound *)id, lib_local);
-      }
-      return true;
-    case ID_GR:
-      if (!test) {
-        BKE_collection_make_local(bmain, (Collection *)id, lib_local);
-      }
-      return true;
-    case ID_AR:
-      if (!test) {
-        BKE_armature_make_local(bmain, (bArmature *)id, lib_local);
-      }
-      return true;
-    case ID_AC:
-      if (!test) {
-        BKE_action_make_local(bmain, (bAction *)id, lib_local);
-      }
-      return true;
-    case ID_NT:
-      if (!test) {
-        ntreeMakeLocal(bmain, (bNodeTree *)id, true, lib_local);
-      }
-      return true;
-    case ID_BR:
-      if (!test) {
-        BKE_brush_make_local(bmain, (Brush *)id, lib_local);
-      }
-      return true;
-    case ID_PA:
-      if (!test) {
-        BKE_particlesettings_make_local(bmain, (ParticleSettings *)id, lib_local);
-      }
-      return true;
-    case ID_GD:
-      if (!test) {
-        BKE_gpencil_make_local(bmain, (bGPdata *)id, lib_local);
-      }
-      return true;
-    case ID_MC:
-      if (!test) {
-        BKE_movieclip_make_local(bmain, (MovieClip *)id, lib_local);
-      }
-      return true;
-    case ID_MSK:
-      if (!test) {
-        BKE_mask_make_local(bmain, (Mask *)id, lib_local);
-      }
-      return true;
-    case ID_LS:
-      if (!test) {
-        BKE_linestyle_make_local(bmain, (FreestyleLineStyle *)id, lib_local);
-      }
-      return true;
-    case ID_PAL:
-      if (!test) {
-        BKE_palette_make_local(bmain, (Palette *)id, lib_local);
-      }
-      return true;
-    case ID_PC:
-      if (!test) {
-        BKE_paint_curve_make_local(bmain, (PaintCurve *)id, lib_local);
-      }
-      return true;
-    case ID_CF:
-      if (!test) {
-        BKE_cachefile_make_local(bmain, (CacheFile *)id, lib_local);
-      }
-      return true;
-    case ID_WS:
-    case ID_SCR:
-      /* A bit special: can be appended but not linked. Return false
-       * since supporting make-local doesn't make much sense. */
-      return false;
-    case ID_LI:
-    case ID_KE:
-    case ID_WM:
-      return false; /* can't be linked */
-    case ID_IP:
-      return false; /* deprecated */
+    }
+    return false;
   }
 
+  BLI_assert(!"IDType Missing IDTypeInfo");
   return false;
 }
 
@@ -581,13 +491,12 @@ struct IDCopyLibManagementData {
 };
 
 /* Increases usercount as required, and remap self ID pointers. */
-static int id_copy_libmanagement_cb(void *user_data,
-                                    ID *UNUSED(id_self),
-                                    ID **id_pointer,
-                                    int cb_flag)
+static int id_copy_libmanagement_cb(LibraryIDLinkCallbackData *cb_data)
 {
-  struct IDCopyLibManagementData *data = user_data;
+  ID **id_pointer = cb_data->id_pointer;
   ID *id = *id_pointer;
+  const int cb_flag = cb_data->cb_flag;
+  struct IDCopyLibManagementData *data = cb_data->user_data;
 
   /* Remap self-references to new copied ID. */
   if (id == data->id_src) {
@@ -650,115 +559,22 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
   if (id == NULL) {
     return false;
   }
-  if (!BKE_id_copy_is_allowed(id)) {
-    return false;
+
+  const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_id(id);
+
+  if (idtype_info != NULL) {
+    if ((idtype_info->flags & IDTYPE_FLAGS_NO_COPY) != 0) {
+      return false;
+    }
+
+    BKE_libblock_copy_ex(bmain, id, r_newid, flag);
+
+    if (idtype_info->copy_data != NULL) {
+      idtype_info->copy_data(bmain, *r_newid, id, flag);
+    }
   }
-
-  BKE_libblock_copy_ex(bmain, id, r_newid, flag);
-
-  switch ((ID_Type)GS(id->name)) {
-    case ID_SCE:
-      BKE_scene_copy_data(bmain, (Scene *)*r_newid, (Scene *)id, flag);
-      break;
-    case ID_OB:
-      BKE_object_copy_data(bmain, (Object *)*r_newid, (Object *)id, flag);
-      break;
-    case ID_ME:
-      BKE_mesh_copy_data(bmain, (Mesh *)*r_newid, (Mesh *)id, flag);
-      break;
-    case ID_CU:
-      BKE_curve_copy_data(bmain, (Curve *)*r_newid, (Curve *)id, flag);
-      break;
-    case ID_MB:
-      BKE_mball_copy_data(bmain, (MetaBall *)*r_newid, (MetaBall *)id, flag);
-      break;
-    case ID_MA:
-      BKE_material_copy_data(bmain, (Material *)*r_newid, (Material *)id, flag);
-      break;
-    case ID_TE:
-      BKE_texture_copy_data(bmain, (Tex *)*r_newid, (Tex *)id, flag);
-      break;
-    case ID_IM:
-      BKE_image_copy_data(bmain, (Image *)*r_newid, (Image *)id, flag);
-      break;
-    case ID_LT:
-      BKE_lattice_copy_data(bmain, (Lattice *)*r_newid, (Lattice *)id, flag);
-      break;
-    case ID_LA:
-      BKE_light_copy_data(bmain, (Light *)*r_newid, (Light *)id, flag);
-      break;
-    case ID_SPK:
-      BKE_speaker_copy_data(bmain, (Speaker *)*r_newid, (Speaker *)id, flag);
-      break;
-    case ID_LP:
-      BKE_lightprobe_copy_data(bmain, (LightProbe *)*r_newid, (LightProbe *)id, flag);
-      break;
-    case ID_CA:
-      BKE_camera_copy_data(bmain, (Camera *)*r_newid, (Camera *)id, flag);
-      break;
-    case ID_KE:
-      BKE_key_copy_data(bmain, (Key *)*r_newid, (Key *)id, flag);
-      break;
-    case ID_WO:
-      BKE_world_copy_data(bmain, (World *)*r_newid, (World *)id, flag);
-      break;
-    case ID_TXT:
-      BKE_text_copy_data(bmain, (Text *)*r_newid, (Text *)id, flag);
-      break;
-    case ID_GR:
-      BKE_collection_copy_data(bmain, (Collection *)*r_newid, (Collection *)id, flag);
-      break;
-    case ID_AR:
-      BKE_armature_copy_data(bmain, (bArmature *)*r_newid, (bArmature *)id, flag);
-      break;
-    case ID_AC:
-      BKE_action_copy_data(bmain, (bAction *)*r_newid, (bAction *)id, flag);
-      break;
-    case ID_NT:
-      BKE_node_tree_copy_data(bmain, (bNodeTree *)*r_newid, (bNodeTree *)id, flag);
-      break;
-    case ID_BR:
-      BKE_brush_copy_data(bmain, (Brush *)*r_newid, (Brush *)id, flag);
-      break;
-    case ID_PA:
-      BKE_particlesettings_copy_data(
-          bmain, (ParticleSettings *)*r_newid, (ParticleSettings *)id, flag);
-      break;
-    case ID_GD:
-      BKE_gpencil_copy_data((bGPdata *)*r_newid, (bGPdata *)id, flag);
-      break;
-    case ID_MC:
-      BKE_movieclip_copy_data(bmain, (MovieClip *)*r_newid, (MovieClip *)id, flag);
-      break;
-    case ID_MSK:
-      BKE_mask_copy_data(bmain, (Mask *)*r_newid, (Mask *)id, flag);
-      break;
-    case ID_LS:
-      BKE_linestyle_copy_data(
-          bmain, (FreestyleLineStyle *)*r_newid, (FreestyleLineStyle *)id, flag);
-      break;
-    case ID_PAL:
-      BKE_palette_copy_data(bmain, (Palette *)*r_newid, (Palette *)id, flag);
-      break;
-    case ID_PC:
-      BKE_paint_curve_copy_data(bmain, (PaintCurve *)*r_newid, (PaintCurve *)id, flag);
-      break;
-    case ID_CF:
-      BKE_cachefile_copy_data(bmain, (CacheFile *)*r_newid, (CacheFile *)id, flag);
-      break;
-    case ID_SO:
-      BKE_sound_copy_data(bmain, (bSound *)*r_newid, (bSound *)id, flag);
-      break;
-    case ID_VF:
-      BKE_vfont_copy_data(bmain, (VFont *)*r_newid, (VFont *)id, flag);
-      break;
-    case ID_LI:
-    case ID_SCR:
-    case ID_WM:
-    case ID_WS:
-    case ID_IP:
-      BLI_assert(0); /* Should have been rejected at start of function! */
-      break;
+  else {
+    BLI_assert(!"IDType Missing IDTypeInfo");
   }
 
   /* Update ID refcount, remap pointers to self in new ID. */
@@ -773,7 +589,7 @@ bool BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
    * XXX TODO: is this behavior OK, or should we need own flag to control that? */
   if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
     BLI_assert((flag & LIB_ID_COPY_KEEP_LIB) == 0);
-    BKE_id_copy_ensure_local(bmain, id, *r_newid);
+    lib_id_copy_ensure_local(bmain, id, *r_newid);
   }
   else {
     (*r_newid)->lib = id->lib;
@@ -792,74 +608,109 @@ bool BKE_id_copy(Main *bmain, const ID *id, ID **newid)
 }
 
 /**
+ * Invokes the appropriate copy method for the block and returns the result in
+ * newid, unless test. Returns true if the block can be copied.
+ */
+ID *BKE_id_copy_for_duplicate(Main *bmain, ID *id, const eDupli_ID_Flags duplicate_flags)
+{
+  if (id == NULL) {
+    return id;
+  }
+  if (id->newid == NULL) {
+    const bool do_linked_id = (duplicate_flags & USER_DUP_LINKED_ID) != 0;
+    if (!(do_linked_id || !ID_IS_LINKED(id))) {
+      return id;
+    }
+
+    ID *id_new;
+    BKE_id_copy(bmain, id, &id_new);
+    /* Copying add one user by default, need to get rid of that one. */
+    id_us_min(id_new);
+    ID_NEW_SET(id, id_new);
+
+    /* Shape keys are always copied with their owner ID, by default. */
+    ID *key_new = (ID *)BKE_key_from_id(id_new);
+    ID *key = (ID *)BKE_key_from_id(id);
+    if (key != NULL) {
+      ID_NEW_SET(key, key_new);
+    }
+
+    /* Note: embedded data (root nodetrees and master collections) should never be referenced by
+     * anything else, so we do not need to set their newid pointer and flag. */
+
+    BKE_animdata_duplicate_id_action(bmain, id_new, duplicate_flags);
+    if (key_new != NULL) {
+      BKE_animdata_duplicate_id_action(bmain, id_new, duplicate_flags);
+    }
+    /* Note that actions of embedded data (root nodetrees and master collections) are handled
+     * by `BKE_animdata_duplicate_id_action` as well. */
+  }
+  return id->newid;
+}
+
+/**
  * Does a mere memory swap over the whole IDs data (including type-specific memory).
  * \note Most internal ID data itself is not swapped (only IDProperties are).
  */
-void BKE_id_swap(Main *bmain, ID *id_a, ID *id_b)
+static void id_swap(Main *bmain, ID *id_a, ID *id_b, const bool do_full_id)
 {
   BLI_assert(GS(id_a->name) == GS(id_b->name));
+
+  const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id_a);
+  BLI_assert(id_type != NULL);
+  const size_t id_struct_size = id_type->struct_size;
 
   const ID id_a_back = *id_a;
   const ID id_b_back = *id_b;
 
-#define CASE_SWAP(_gs, _type) \
-  case _gs: \
-    SWAP(_type, *(_type *)id_a, *(_type *)id_b); \
-    break
+  char *id_swap_buff = alloca(id_struct_size);
 
-  switch ((ID_Type)GS(id_a->name)) {
-    CASE_SWAP(ID_SCE, Scene);
-    CASE_SWAP(ID_LI, Library);
-    CASE_SWAP(ID_OB, Object);
-    CASE_SWAP(ID_ME, Mesh);
-    CASE_SWAP(ID_CU, Curve);
-    CASE_SWAP(ID_MB, MetaBall);
-    CASE_SWAP(ID_MA, Material);
-    CASE_SWAP(ID_TE, Tex);
-    CASE_SWAP(ID_IM, Image);
-    CASE_SWAP(ID_LT, Lattice);
-    CASE_SWAP(ID_LA, Light);
-    CASE_SWAP(ID_LP, LightProbe);
-    CASE_SWAP(ID_CA, Camera);
-    CASE_SWAP(ID_KE, Key);
-    CASE_SWAP(ID_WO, World);
-    CASE_SWAP(ID_SCR, bScreen);
-    CASE_SWAP(ID_VF, VFont);
-    CASE_SWAP(ID_TXT, Text);
-    CASE_SWAP(ID_SPK, Speaker);
-    CASE_SWAP(ID_SO, bSound);
-    CASE_SWAP(ID_GR, Collection);
-    CASE_SWAP(ID_AR, bArmature);
-    CASE_SWAP(ID_AC, bAction);
-    CASE_SWAP(ID_NT, bNodeTree);
-    CASE_SWAP(ID_BR, Brush);
-    CASE_SWAP(ID_PA, ParticleSettings);
-    CASE_SWAP(ID_WM, wmWindowManager);
-    CASE_SWAP(ID_WS, WorkSpace);
-    CASE_SWAP(ID_GD, bGPdata);
-    CASE_SWAP(ID_MC, MovieClip);
-    CASE_SWAP(ID_MSK, Mask);
-    CASE_SWAP(ID_LS, FreestyleLineStyle);
-    CASE_SWAP(ID_PAL, Palette);
-    CASE_SWAP(ID_PC, PaintCurve);
-    CASE_SWAP(ID_CF, CacheFile);
-    case ID_IP:
-      break; /* Deprecated. */
+  memcpy(id_swap_buff, id_a, id_struct_size);
+  memcpy(id_a, id_b, id_struct_size);
+  memcpy(id_b, id_swap_buff, id_struct_size);
+
+  if (!do_full_id) {
+    /* Restore original ID's internal data. */
+    *id_a = id_a_back;
+    *id_b = id_b_back;
+
+    /* Exception: IDProperties. */
+    id_a->properties = id_b_back.properties;
+    id_b->properties = id_a_back.properties;
+    /* Exception: recalc flags. */
+    id_a->recalc = id_b_back.recalc;
+    id_b->recalc = id_a_back.recalc;
   }
 
-#undef CASE_SWAP
+  if (bmain != NULL) {
+    /* Swap will have broken internal references to itself, restore them. */
+    BKE_libblock_relink_ex(bmain, id_a, id_b, id_a, ID_REMAP_SKIP_NEVER_NULL_USAGE);
+    BKE_libblock_relink_ex(bmain, id_b, id_a, id_b, ID_REMAP_SKIP_NEVER_NULL_USAGE);
+  }
+}
 
-  /* Restore original ID's internal data. */
-  *id_a = id_a_back;
-  *id_b = id_b_back;
+/**
+ * Does a mere memory swap over the whole IDs data (including type-specific memory).
+ * \note Most internal ID data itself is not swapped (only IDProperties are).
+ *
+ * \param bmain: May be NULL, in which case there will be no remapping of internal pointers to
+ * itself.
+ */
+void BKE_lib_id_swap(Main *bmain, ID *id_a, ID *id_b)
+{
+  id_swap(bmain, id_a, id_b, false);
+}
 
-  /* Exception: IDProperties. */
-  id_a->properties = id_b_back.properties;
-  id_b->properties = id_a_back.properties;
-
-  /* Swap will have broken internal references to itself, restore them. */
-  BKE_libblock_relink_ex(bmain, id_a, id_b, id_a, ID_REMAP_SKIP_NEVER_NULL_USAGE);
-  BKE_libblock_relink_ex(bmain, id_b, id_a, id_b, ID_REMAP_SKIP_NEVER_NULL_USAGE);
+/**
+ * Does a mere memory swap over the whole IDs data (including type-specific memory).
+ * \note All internal ID data itself is also swapped.
+ *
+ * \param bmain: May be NULL, in which case there will be no remapping of internal pointers to
+ * itself.
+ */
+void BKE_lib_id_swap_full(Main *bmain, ID *id_a, ID *id_b)
+{
+  id_swap(bmain, id_a, id_b, true);
 }
 
 /** Does *not* set ID->newid pointer. */
@@ -900,11 +751,10 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
   return false;
 }
 
-static int libblock_management_us_plus(void *UNUSED(user_data),
-                                       ID *UNUSED(id_self),
-                                       ID **id_pointer,
-                                       int cb_flag)
+static int libblock_management_us_plus(LibraryIDLinkCallbackData *cb_data)
 {
+  ID **id_pointer = cb_data->id_pointer;
+  const int cb_flag = cb_data->cb_flag;
   if (cb_flag & IDWALK_CB_USER) {
     id_us_plus(*id_pointer);
   }
@@ -915,11 +765,10 @@ static int libblock_management_us_plus(void *UNUSED(user_data),
   return IDWALK_RET_NOP;
 }
 
-static int libblock_management_us_min(void *UNUSED(user_data),
-                                      ID *UNUSED(id_self),
-                                      ID **id_pointer,
-                                      int cb_flag)
+static int libblock_management_us_min(LibraryIDLinkCallbackData *cb_data)
 {
+  ID **id_pointer = cb_data->id_pointer;
+  const int cb_flag = cb_data->cb_flag;
   if (cb_flag & IDWALK_CB_USER) {
     id_us_min(*id_pointer);
   }
@@ -956,6 +805,8 @@ void BKE_libblock_management_main_add(Main *bmain, void *idv)
   id->tag &= ~(LIB_TAG_NO_MAIN | LIB_TAG_NO_USER_REFCOUNT);
   bmain->is_memfile_undo_written = false;
   BKE_main_unlock(bmain);
+
+  BKE_lib_libblock_session_uuid_ensure(id);
 }
 
 /** Remove a data-block from given main (set it to 'NO_MAIN' status). */
@@ -1084,7 +935,7 @@ void BKE_main_id_flag_all(Main *bmain, const int flag, const bool value)
 void BKE_main_id_repair_duplicate_names_listbase(ListBase *lb)
 {
   int lb_len = 0;
-  for (ID *id = lb->first; id; id = id->next) {
+  LISTBASE_FOREACH (ID *, id, lb) {
     if (id->lib == NULL) {
       lb_len += 1;
     }
@@ -1097,7 +948,7 @@ void BKE_main_id_repair_duplicate_names_listbase(ListBase *lb)
   ID **id_array = MEM_mallocN(sizeof(*id_array) * lb_len, __func__);
   GSet *gset = BLI_gset_str_new_ex(__func__, lb_len);
   int i = 0;
-  for (ID *id = lb->first; id; id = id->next) {
+  LISTBASE_FOREACH (ID *, id, lb) {
     if (id->lib == NULL) {
       id_array[i] = id;
       i++;
@@ -1141,55 +992,19 @@ void BKE_main_lib_objects_recalc_all(Main *bmain)
  */
 size_t BKE_libblock_get_alloc_info(short type, const char **name)
 {
-#define CASE_RETURN(id_code, type) \
-  case id_code: \
-    do { \
-      if (name != NULL) { \
-        *name = #type; \
-      } \
-      return sizeof(type); \
-    } while (0)
+  const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(type);
 
-  switch ((ID_Type)type) {
-    CASE_RETURN(ID_SCE, Scene);
-    CASE_RETURN(ID_LI, Library);
-    CASE_RETURN(ID_OB, Object);
-    CASE_RETURN(ID_ME, Mesh);
-    CASE_RETURN(ID_CU, Curve);
-    CASE_RETURN(ID_MB, MetaBall);
-    CASE_RETURN(ID_MA, Material);
-    CASE_RETURN(ID_TE, Tex);
-    CASE_RETURN(ID_IM, Image);
-    CASE_RETURN(ID_LT, Lattice);
-    CASE_RETURN(ID_LA, Light);
-    CASE_RETURN(ID_CA, Camera);
-    CASE_RETURN(ID_IP, Ipo);
-    CASE_RETURN(ID_KE, Key);
-    CASE_RETURN(ID_WO, World);
-    CASE_RETURN(ID_SCR, bScreen);
-    CASE_RETURN(ID_VF, VFont);
-    CASE_RETURN(ID_TXT, Text);
-    CASE_RETURN(ID_SPK, Speaker);
-    CASE_RETURN(ID_LP, LightProbe);
-    CASE_RETURN(ID_SO, bSound);
-    CASE_RETURN(ID_GR, Collection);
-    CASE_RETURN(ID_AR, bArmature);
-    CASE_RETURN(ID_AC, bAction);
-    CASE_RETURN(ID_NT, bNodeTree);
-    CASE_RETURN(ID_BR, Brush);
-    CASE_RETURN(ID_PA, ParticleSettings);
-    CASE_RETURN(ID_WM, wmWindowManager);
-    CASE_RETURN(ID_GD, bGPdata);
-    CASE_RETURN(ID_MC, MovieClip);
-    CASE_RETURN(ID_MSK, Mask);
-    CASE_RETURN(ID_LS, FreestyleLineStyle);
-    CASE_RETURN(ID_PAL, Palette);
-    CASE_RETURN(ID_PC, PaintCurve);
-    CASE_RETURN(ID_CF, CacheFile);
-    CASE_RETURN(ID_WS, WorkSpace);
+  if (id_type == NULL) {
+    if (name != NULL) {
+      *name = NULL;
+    }
+    return 0;
   }
-  return 0;
-#undef CASE_RETURN
+
+  if (name != NULL) {
+    *name = id_type->name;
+  }
+  return id_type->struct_size;
 }
 
 /**
@@ -1233,6 +1048,8 @@ void *BKE_libblock_alloc(Main *bmain, short type, const char *name, const int fl
       id->us = 1;
     }
     if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
+      /* Note that 2.8x versioning has tested not to cause conflicts. */
+      BLI_assert(bmain->is_locked_for_linking == false || ELEM(type, ID_WS, ID_GR));
       ListBase *lb = which_libbase(bmain, type);
 
       BKE_main_lock(bmain);
@@ -1241,6 +1058,8 @@ void *BKE_libblock_alloc(Main *bmain, short type, const char *name, const int fl
       bmain->is_memfile_undo_written = false;
       /* alphabetic insertion: is in new_id */
       BKE_main_unlock(bmain);
+
+      BKE_lib_libblock_session_uuid_ensure(id);
 
       /* TODO to be removed from here! */
       if ((flag & LIB_ID_CREATE_NO_DEG_TAG) == 0) {
@@ -1261,119 +1080,51 @@ void *BKE_libblock_alloc(Main *bmain, short type, const char *name, const int fl
  */
 void BKE_libblock_init_empty(ID *id)
 {
-  /* Note that only ID types that are not valid when filled of zero should have a callback here. */
-  switch ((ID_Type)GS(id->name)) {
-    case ID_SCE:
-      BKE_scene_init((Scene *)id);
-      break;
-    case ID_LI:
-      /* Nothing to do. */
-      break;
-    case ID_OB: {
-      Object *ob = (Object *)id;
-      BKE_object_init(ob, OB_EMPTY);
-      break;
+  const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_id(id);
+
+  if (idtype_info != NULL) {
+    if (idtype_info->init_data != NULL) {
+      idtype_info->init_data(id);
     }
-    case ID_ME:
-      BKE_mesh_init((Mesh *)id);
-      break;
-    case ID_CU:
-      BKE_curve_init((Curve *)id, 0);
-      break;
-    case ID_MB:
-      BKE_mball_init((MetaBall *)id);
-      break;
-    case ID_MA:
-      BKE_material_init((Material *)id);
-      break;
-    case ID_TE:
-      BKE_texture_default((Tex *)id);
-      break;
-    case ID_IM:
-      BKE_image_init((Image *)id);
-      break;
-    case ID_LT:
-      BKE_lattice_init((Lattice *)id);
-      break;
-    case ID_LA:
-      BKE_light_init((Light *)id);
-      break;
-    case ID_SPK:
-      BKE_speaker_init((Speaker *)id);
-      break;
-    case ID_LP:
-      BKE_lightprobe_init((LightProbe *)id);
-      break;
-    case ID_CA:
-      BKE_camera_init((Camera *)id);
-      break;
-    case ID_WO:
-      BKE_world_init((World *)id);
-      break;
-    case ID_SCR:
-      /* Nothing to do. */
-      break;
-    case ID_VF:
-      BKE_vfont_init((VFont *)id);
-      break;
-    case ID_TXT:
-      BKE_text_init((Text *)id);
-      break;
-    case ID_SO:
-      /* Another fuzzy case, think NULLified content is OK here... */
-      break;
-    case ID_GR:
-      /* Nothing to do. */
-      break;
-    case ID_AR:
-      /* Nothing to do. */
-      break;
-    case ID_AC:
-      /* Nothing to do. */
-      break;
-    case ID_NT:
-      ntreeInitDefault((bNodeTree *)id);
-      break;
-    case ID_BR:
-      BKE_brush_init((Brush *)id);
-      break;
-    case ID_PA:
-      /* Nothing to do. */
-      break;
-    case ID_PC:
-      /* Nothing to do. */
-      break;
-    case ID_GD:
-      /* Nothing to do. */
-      break;
-    case ID_MSK:
-      /* Nothing to do. */
-      break;
-    case ID_LS:
-      BKE_linestyle_init((FreestyleLineStyle *)id);
-      break;
-    case ID_CF:
-      BKE_cachefile_init((CacheFile *)id);
-      break;
-    case ID_KE:
-      /* Shapekeys are a complex topic too - they depend on their 'user' data type...
-       * They are not linkable, though, so it should never reach here anyway. */
-      BLI_assert(0);
-      break;
-    case ID_WM:
-      /* We should never reach this. */
-      BLI_assert(0);
-      break;
-    case ID_IP:
-      /* Should not be needed - animation from lib pre-2.5 is broken anyway. */
-      BLI_assert(0);
-      break;
-    case ID_PAL:
-      BKE_palette_init((Palette *)id);
-      break;
-    default:
-      BLI_assert(0); /* Should never reach this point... */
+    return;
   }
+
+  BLI_assert(!"IDType Missing IDTypeInfo");
+}
+
+/* ********** ID session-wise UUID management. ********** */
+static uint global_session_uuid = 0;
+
+/**
+ * Generate a session-wise uuid for the given \a id.
+ *
+ * \note "session-wise" here means while editing a given .blend file. Once a new .blend file is
+ * loaded or created, undo history is cleared/reset, and so is the uuid counter.
+ */
+void BKE_lib_libblock_session_uuid_ensure(ID *id)
+{
+  if (id->session_uuid == MAIN_ID_SESSION_UUID_UNSET) {
+    id->session_uuid = atomic_add_and_fetch_uint32(&global_session_uuid, 1);
+    /* In case overflow happens, still assign a valid ID. This way opening files many times works
+     * correctly. */
+    if (UNLIKELY(id->session_uuid == MAIN_ID_SESSION_UUID_UNSET)) {
+      id->session_uuid = atomic_add_and_fetch_uint32(&global_session_uuid, 1);
+    }
+  }
+}
+
+/**
+ * Re-generate a new session-wise uuid for the given \a id.
+ *
+ * \warning This has a few very specific use-cases, no other usage is expected currently:
+ *   - To handle UI-related data-blocks that are kept across new file reading, when we do keep
+ * existing UI.
+ *   - For IDs that are made local without needing any copying.
+ */
+void BKE_lib_libblock_session_uuid_renew(ID *id)
+{
+  id->session_uuid = MAIN_ID_SESSION_UUID_UNSET;
+  BKE_lib_libblock_session_uuid_ensure(id);
 }
 
 /**
@@ -1386,7 +1137,7 @@ void *BKE_id_new(Main *bmain, const short type, const char *name)
   BLI_assert(bmain != NULL);
 
   if (name == NULL) {
-    name = DATA_(BKE_idcode_to_name(type));
+    name = DATA_(BKE_idtype_idcode_to_name(type));
   }
 
   ID *id = BKE_libblock_alloc(bmain, type, name, 0);
@@ -1403,7 +1154,7 @@ void *BKE_id_new(Main *bmain, const short type, const char *name)
 void *BKE_id_new_nomain(const short type, const char *name)
 {
   if (name == NULL) {
-    name = DATA_(BKE_idcode_to_name(type));
+    name = DATA_(BKE_idtype_idcode_to_name(type));
   }
 
   ID *id = BKE_libblock_alloc(NULL,
@@ -1421,13 +1172,13 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int ori
   ID *new_id = *r_newid;
   int flag = orig_flag;
 
-  const bool is_private_id_data = (id->flag & LIB_PRIVATE_DATA) != 0;
+  const bool is_private_id_data = (id->flag & LIB_EMBEDDED_DATA) != 0;
 
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) != 0 || bmain != NULL);
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) != 0 || (flag & LIB_ID_CREATE_NO_ALLOCATE) == 0);
   if (!is_private_id_data) {
-    /* When we are handling private ID data, we might still want to manage usercounts, even though
-     * that ID data-block is actually outside of Main... */
+    /* When we are handling private ID data, we might still want to manage usercounts, even
+     * though that ID data-block is actually outside of Main... */
     BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) == 0 ||
                (flag & LIB_ID_CREATE_NO_USER_REFCOUNT) != 0);
   }
@@ -1440,7 +1191,7 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int ori
   }
 
   /* The id->flag bits to copy over. */
-  const int copy_idflag_mask = LIB_PRIVATE_DATA;
+  const int copy_idflag_mask = LIB_EMBEDDED_DATA;
 
   if ((flag & LIB_ID_CREATE_NO_ALLOCATE) != 0) {
     /* r_newid already contains pointer to allocated memory. */
@@ -1474,14 +1225,13 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int ori
     new_id->properties = IDP_CopyProperty_ex(id->properties, copy_data_flag);
   }
 
-  /* XXX Again... We need a way to control what we copy in a much more refined way.
-   * We cannot always copy this, some internal copying will die on it! */
-  /* For now, upper level code will have to do that itself when required. */
-#if 0
-  if (id->override != NULL) {
-    BKE_override_copy(new_id, id);
+  /* We may need our own flag to control that at some point, but for now 'no main' one should be
+   * good enough. */
+  if ((orig_flag & LIB_ID_CREATE_NO_MAIN) == 0 && ID_IS_OVERRIDE_LIBRARY(id)) {
+    /* We do not want to copy existing override rules here, as they would break the proper
+     * remapping between IDs. Proper overrides rules will be re-generated anyway. */
+    BKE_lib_override_library_copy(new_id, id, false);
   }
-#endif
 
   if (id_can_have_animdata(new_id)) {
     IdAdtTemplate *iat = (IdAdtTemplate *)new_id;
@@ -1537,7 +1287,7 @@ ID *BKE_libblock_find_name(struct Main *bmain, const short type, const char *nam
  *
  * \note All other IDs beside given one are assumed already properly sorted in the list.
  *
- * \param id_sorting_hint Ignored if NULL. Otherwise, used to check if we can insert \a id
+ * \param id_sorting_hint: Ignored if NULL. Otherwise, used to check if we can insert \a id
  * immediately before or after that pointer. It must always be into given \a lb list.
  */
 void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
@@ -1638,10 +1388,10 @@ void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
 /**
  * Helper building final ID name from given base_name and number.
  *
- * If everything goes well and we do generate a valid final ID name in given name, we return true.
- * In case the final name would overflow the allowed ID name length, or given number is bigger than
- * maximum allowed value, we truncate further the base_name (and given name, which is assumed to
- * have the same 'base_name' part), and return false.
+ * If everything goes well and we do generate a valid final ID name in given name, we return
+ * true. In case the final name would overflow the allowed ID name length, or given number is
+ * bigger than maximum allowed value, we truncate further the base_name (and given name, which is
+ * assumed to have the same 'base_name' part), and return false.
  */
 static bool id_name_final_build(char *name, char *base_name, size_t base_name_len, int number)
 {
@@ -1703,10 +1453,10 @@ static bool check_for_dupid(ListBase *lb, ID *id, char *name, ID **r_id_sorting_
   static short prev_id_type = ID_LINK_PLACEHOLDER; /* Should never exist in actual ID list. */
   static int prev_number = MIN_NUMBER - 1;
 
-  /* Initial test to check whether we can 'shortcut' the more complex loop of the main code below.
-   * Note that we do not do that for low numbers, as that would prevent using actual smallest
-   * available number in some cases, and benefits of this special case handling mostly show up with
-   * high numbers anyway. */
+  /* Initial test to check whether we can 'shortcut' the more complex loop of the main code
+   * below. Note that we do not do that for low numbers, as that would prevent using actual
+   * smallest available number in some cases, and benefits of this special case handling mostly
+   * show up with high numbers anyway. */
   if (id_type == prev_id_type && prev_number >= MAX_NUMBERS_IN_USE &&
       prev_number < MAX_NUMBER - 1 && name[0] == prev_final_base_name[0]) {
 
@@ -1719,8 +1469,8 @@ static bool check_for_dupid(ListBase *lb, ID *id, char *name, ID **r_id_sorting_
 
     if (base_name_len == prev_orig_base_name_len &&
         STREQLEN(base_name, prev_orig_base_name, prev_orig_base_name_len)) {
-      /* Once we have ensured given base_name and original previous one are the same, we can check
-       * that previously used number is actually used, and that next one is free. */
+      /* Once we have ensured given base_name and original previous one are the same, we can
+       * check that previously used number is actually used, and that next one is free. */
       /* Note that from now on, we only used previous final base name, as it might have been
        * truncated from original one due to number suffix length. */
       char final_name[MAX_ID_NAME - 2];
@@ -1796,8 +1546,8 @@ static bool check_for_dupid(ListBase *lb, ID *id, char *name, ID **r_id_sorting_
           STREQLEN(name, id_test->name + 2, base_name_len) &&
           (BLI_split_name_num(base_name_test, &number_test, id_test->name + 2, '.') ==
            base_name_len)) {
-        /* If we did not yet encounter exact same name as the given one, check the remaining parts
-         * of the strings. */
+        /* If we did not yet encounter exact same name as the given one, check the remaining
+         * parts of the strings. */
         if (!is_orig_name_used) {
           is_orig_name_used = STREQ(name + base_name_len, id_test->name + 2 + base_name_len);
         }
@@ -1814,11 +1564,13 @@ static bool check_for_dupid(ListBase *lb, ID *id, char *name, ID **r_id_sorting_
     }
 
     /* If there is no double, we are done.
-     * Note however that name might have been changed (truncated) in a previous iteration already.
+     * Note however that name might have been changed (truncated) in a previous iteration
+     * already.
      */
     if (!is_orig_name_used) {
       /* Don't bother updating prev_ static variables here, this case is not supposed to happen
-       * that often, and is not straight-forward here, so just ignore and reset them to default. */
+       * that often, and is not straight-forward here, so just ignore and reset them to default.
+       */
       prev_id_type = ID_LINK_PLACEHOLDER;
       prev_final_base_name[0] = '\0';
       prev_number = MIN_NUMBER - 1;
@@ -1829,8 +1581,8 @@ static bool check_for_dupid(ListBase *lb, ID *id, char *name, ID **r_id_sorting_
       return is_name_changed;
     }
 
-    /* Decide which value of number to use, either the smallest unused one if possible, or default
-     * to the first largest unused one we got from previous loop. */
+    /* Decide which value of number to use, either the smallest unused one if possible, or
+     * default to the first largest unused one we got from previous loop. */
     for (int i = MIN_NUMBER; i < MAX_NUMBERS_IN_USE; i++) {
       if (ids_in_use[i] == NULL) {
         number = i;
@@ -1849,8 +1601,8 @@ static bool check_for_dupid(ListBase *lb, ID *id, char *name, ID **r_id_sorting_
     /* We know for wure that name will be changed. */
     is_name_changed = true;
 
-    /* If id_name_final_build helper returns false, it had to truncate further given name, hence we
-     * have to go over the whole check again. */
+    /* If id_name_final_build helper returns false, it had to truncate further given name, hence
+     * we have to go over the whole check again. */
     if (!id_name_final_build(name, base_name, base_name_len, number)) {
       /* We have to clear our list of small used numbers before we do the whole check again. */
       memset(ids_in_use, 0, sizeof(ids_in_use));
@@ -1900,7 +1652,7 @@ bool BKE_id_new_name_validate(ListBase *lb, ID *id, const char *tname)
 
   if (name[0] == '\0') {
     /* Disallow empty names. */
-    BLI_strncpy(name, DATA_(BKE_idcode_to_name(GS(id->name))), sizeof(name));
+    BLI_strncpy(name, DATA_(BKE_idtype_idcode_to_name(GS(id->name))), sizeof(name));
   }
   else {
     /* disallow non utf8 chars,
@@ -1927,45 +1679,6 @@ bool BKE_id_new_name_validate(ListBase *lb, ID *id, const char *tname)
   return result;
 }
 
-/**
- * Pull an ID out of a library (make it local). Only call this for IDs that
- * don't have other library users.
- */
-void id_clear_lib_data_ex(Main *bmain, ID *id, const bool id_in_mainlist)
-{
-  bNodeTree *ntree = NULL;
-  Key *key = NULL;
-
-  BKE_id_lib_local_paths(bmain, id->lib, id);
-
-  id_fake_user_clear(id);
-
-  id->lib = NULL;
-  id->tag &= ~(LIB_TAG_INDIRECT | LIB_TAG_EXTERN);
-  id->flag &= ~LIB_INDIRECT_WEAK_LINK;
-  if (id_in_mainlist) {
-    if (BKE_id_new_name_validate(which_libbase(bmain, GS(id->name)), id, NULL)) {
-      bmain->is_memfile_undo_written = false;
-    }
-  }
-
-  /* Internal bNodeTree blocks inside data-blocks also stores id->lib,
-   * make sure this stays in sync. */
-  if ((ntree = ntreeFromID(id))) {
-    id_clear_lib_data_ex(bmain, &ntree->id, false); /* Datablocks' nodetree is never in Main. */
-  }
-
-  /* Same goes for shapekeys. */
-  if ((key = BKE_key_from_id(id))) {
-    id_clear_lib_data_ex(bmain, &key->id, id_in_mainlist); /* sigh, why are keys in Main? */
-  }
-}
-
-void id_clear_lib_data(Main *bmain, ID *id)
-{
-  id_clear_lib_data_ex(bmain, id, true);
-}
-
 /* next to indirect usage in read/writefile also in editobject.c scene.c */
 void BKE_main_id_clear_newpoins(Main *bmain)
 {
@@ -1978,12 +1691,11 @@ void BKE_main_id_clear_newpoins(Main *bmain)
   FOREACH_MAIN_ID_END;
 }
 
-static int id_refcount_recompute_callback(void *user_data,
-                                          struct ID *UNUSED(id_self),
-                                          struct ID **id_pointer,
-                                          int cb_flag)
+static int id_refcount_recompute_callback(LibraryIDLinkCallbackData *cb_data)
 {
-  const bool do_linked_only = (bool)POINTER_AS_INT(user_data);
+  ID **id_pointer = cb_data->id_pointer;
+  const int cb_flag = cb_data->cb_flag;
+  const bool do_linked_only = (bool)POINTER_AS_INT(cb_data->user_data);
 
   if (*id_pointer == NULL) {
     return IDWALK_RET_NOP;
@@ -2026,7 +1738,7 @@ void BKE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_onl
                                 id,
                                 id_refcount_recompute_callback,
                                 POINTER_FROM_INT((int)do_linked_only),
-                                IDWALK_READONLY);
+                                IDWALK_READONLY | IDWALK_INCLUDE_UI);
   }
   FOREACH_MAIN_ID_END;
 }
@@ -2047,21 +1759,17 @@ static void library_make_local_copying_check(ID *id,
     /* Used_to_user stores ID pointer, not pointer to ID pointer. */
     ID *par_id = (ID *)entry->id_pointer;
 
-    /* Our oh-so-beloved 'from' pointers... */
+    /* Our oh-so-beloved 'from' pointers... Those should always be ignored here, since the actual
+     * relation we want to check is in the other way around. */
     if (entry->usage_flag & IDWALK_CB_LOOPBACK) {
-      /* We totally disregard Object->proxy_from 'usage' here,
-       * this one would only generate fake positives. */
-      if (GS(par_id->name) == ID_OB) {
-        BLI_assert(((Object *)par_id)->proxy_from == (Object *)id);
-        continue;
-      }
+      continue;
+    }
 
-      /* Shapekeys are considered 'private' to their owner ID here, and never tagged
-       * (since they cannot be linked), * so we have to switch effective parent to their owner.
-       */
-      if (GS(par_id->name) == ID_KE) {
-        par_id = ((Key *)par_id)->from;
-      }
+    /* Shape-keys are considered 'private' to their owner ID here, and never tagged
+     * (since they cannot be linked), so we have to switch effective parent to their owner.
+     */
+    if (GS(par_id->name) == ID_KE) {
+      par_id = ((Key *)par_id)->from;
     }
 
     if (par_id->lib == NULL) {
@@ -2132,7 +1840,7 @@ void BKE_library_make_local(Main *bmain,
   TIMEIT_START(make_local);
 #endif
 
-  BKE_main_relations_create(bmain);
+  BKE_main_relations_create(bmain, 0);
 
 #ifdef DEBUG_TIME
   printf("Pre-compute current ID relations: Done.\n");
@@ -2145,7 +1853,7 @@ void BKE_library_make_local(Main *bmain,
 
     /* Do not explicitly make local non-linkable IDs (shapekeys, in fact),
      * they are assumed to be handled by real data-blocks responsible of them. */
-    const bool do_skip = (id && !BKE_idcode_is_linkable(GS(id->name)));
+    const bool do_skip = (id && !BKE_idtype_idcode_is_linkable(GS(id->name)));
 
     for (; id; id = id->next) {
       ID *ntree = (ID *)ntreeFromID(id);
@@ -2228,8 +1936,8 @@ void BKE_library_make_local(Main *bmain,
        * currently there are some indirect usages. So instead of making a copy that we'll likely
        * get rid of later, directly make that data block local.
        * Saves a tremendous amount of time with complex scenes... */
-      id_clear_lib_data_ex(bmain, id, true);
-      BKE_id_expand_local(bmain, id);
+      lib_id_clear_library_data_ex(bmain, id);
+      BKE_lib_id_expand_local(bmain, id);
       id->tag &= ~LIB_TAG_DOIT;
 
       if (GS(id->name) == ID_OB) {
@@ -2238,16 +1946,14 @@ void BKE_library_make_local(Main *bmain,
     }
     else {
       /* In this specific case, we do want to make ID local even if it has no local usage yet...
+       * Note that for objects, we don't want proxy pointers to be cleared yet. This will happen
+       * down the road in this function.
        */
-      if (GS(id->name) == ID_OB) {
-        /* Special case for objects because we don't want proxy pointers to be
-         * cleared yet. This will happen down the road in this function.
-         */
-        BKE_object_make_local_ex(bmain, (Object *)id, true, false);
-      }
-      else {
-        id_make_local(bmain, id, false, true);
-      }
+      BKE_lib_id_make_local(bmain,
+                            id,
+                            false,
+                            LIB_ID_MAKELOCAL_FULL_LIBRARY |
+                                LIB_ID_MAKELOCAL_OBJECT_NO_PROXY_CLEARING);
 
       if (id->newid) {
         if (GS(id->newid->name) == ID_OB) {
@@ -2350,7 +2056,7 @@ void BKE_library_make_local(Main *bmain,
       else {
         /* we can switch the proxy'ing from the linked-in to the made-local proxy.
          * BKE_object_make_proxy() shouldn't be used here, as it allocates memory that
-         * was already allocated by BKE_object_make_local_ex() (which called BKE_object_copy). */
+         * was already allocated by object_make_local() (which called BKE_object_copy). */
         ob_new->proxy = ob->proxy;
         ob_new->proxy_group = ob->proxy_group;
         ob_new->proxy_from = ob->proxy_from;
@@ -2433,9 +2139,11 @@ void BKE_libblock_rename(Main *bmain, ID *id, const char *name)
  * \note Result is unique to a given ID type in a given Main database.
  *
  * \param name: An allocated string of minimal length #MAX_ID_FULL_NAME,
- * will be filled with generated string.
+ *              will be filled with generated string.
+ * \param separator_char: Character to use for separating name and library name. Can be 0 to use
+ *                        default (' ').
  */
-void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id)
+void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separator_char)
 {
   strcpy(name, id->name + 2);
 
@@ -2443,7 +2151,7 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id)
     const size_t idname_len = strlen(id->name + 2);
     const size_t libname_len = strlen(id->lib->id.name + 2);
 
-    name[idname_len] = ' ';
+    name[idname_len] = separator_char ? separator_char : ' ';
     name[idname_len + 1] = '[';
     strcpy(name + idname_len + 2, id->lib->id.name + 2);
     name[idname_len + 2 + libname_len] = ']';
@@ -2459,15 +2167,24 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id)
  * \note Result is unique to a given ID type in a given Main database.
  *
  * \param name: An allocated string of minimal length #MAX_ID_FULL_NAME_UI,
- * will be filled with generated string.
+ *              will be filled with generated string.
+ * \param separator_char: Character to use for separating name and library name. Can be 0 to use
+ *                        default (' ').
  */
-void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI], const ID *id)
+void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
+                                    const ID *id,
+                                    const bool add_lib_hint,
+                                    char separator_char)
 {
-  name[0] = id->lib ? (ID_MISSING(id) ? 'M' : 'L') : ID_IS_OVERRIDE_LIBRARY(id) ? 'O' : ' ';
-  name[1] = (id->flag & LIB_FAKEUSER) ? 'F' : ((id->us == 0) ? '0' : ' ');
-  name[2] = ' ';
+  int i = 0;
 
-  BKE_id_full_name_get(name + 3, id);
+  if (add_lib_hint) {
+    name[i++] = id->lib ? (ID_MISSING(id) ? 'M' : 'L') : ID_IS_OVERRIDE_LIBRARY(id) ? 'O' : ' ';
+  }
+  name[i++] = (id->flag & LIB_FAKEUSER) ? 'F' : ((id->us == 0) ? '0' : ' ');
+  name[i++] = ' ';
+
+  BKE_id_full_name_get(name + i, id, separator_char);
 }
 
 /**
@@ -2551,14 +2268,14 @@ void BKE_id_ordered_list(ListBase *ordered_lb, const ListBase *lb)
 {
   BLI_listbase_clear(ordered_lb);
 
-  for (ID *id = lb->first; id; id = id->next) {
+  LISTBASE_FOREACH (ID *, id, lb) {
     BLI_addtail(ordered_lb, BLI_genericNodeN(id));
   }
 
   BLI_listbase_sort(ordered_lb, id_order_compare);
 
   int num = 0;
-  for (LinkData *link = ordered_lb->first; link; link = link->next) {
+  LISTBASE_FOREACH (LinkData *, link, ordered_lb) {
     int *order = id_order_get(link->data);
     if (order) {
       *order = num++;
@@ -2583,7 +2300,7 @@ void BKE_id_reorder(const ListBase *lb, ID *id, ID *relative, bool after)
 
   if (after) {
     /* Insert after. */
-    for (ID *other = lb->first; other; other = other->next) {
+    LISTBASE_FOREACH (ID *, other, lb) {
       int *order = id_order_get(other);
       if (*order > relative_order) {
         (*order)++;
@@ -2594,7 +2311,7 @@ void BKE_id_reorder(const ListBase *lb, ID *id, ID *relative, bool after)
   }
   else {
     /* Insert before. */
-    for (ID *other = lb->first; other; other = other->next) {
+    LISTBASE_FOREACH (ID *, other, lb) {
       int *order = id_order_get(other);
       if (*order < relative_order) {
         (*order)--;

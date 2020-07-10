@@ -24,13 +24,13 @@
 #ifndef __DNA_MOVIECLIP_TYPES_H__
 #define __DNA_MOVIECLIP_TYPES_H__
 
+#include "DNA_ID.h"
+#include "DNA_color_types.h" /* for color management */
+#include "DNA_tracking_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "DNA_ID.h"
-#include "DNA_tracking_types.h"
-#include "DNA_color_types.h" /* for color management */
 
 struct AnimData;
 struct ImBuf;
@@ -78,7 +78,7 @@ typedef struct MovieClip {
   struct AnimData *adt;
 
   /** File path, 1024 = FILE_MAX. */
-  char name[1024];
+  char filepath[1024];
 
   /** Sequence or movie. */
   int source;
@@ -177,12 +177,6 @@ enum {
 enum {
   MCLIP_SRC_SEQUENCE = 1,
   MCLIP_SRC_MOVIE = 2,
-};
-
-/* MovieClip->selection types */
-enum {
-  MCLIP_SEL_NONE = 0,
-  MCLIP_SEL_TRACK = 1,
 };
 
 /* MovieClip->flag */

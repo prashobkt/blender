@@ -26,12 +26,12 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_context.h"
-#include "BKE_tracking.h"
 #include "BKE_report.h"
+#include "BKE_tracking.h"
 
 #include "DEG_depsgraph.h"
 
@@ -61,18 +61,17 @@ static int create_plane_track_tracks_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "Need at least 4 selected point tracks to create a plane");
     return OPERATOR_CANCELLED;
   }
-  else {
-    BKE_tracking_tracks_deselect_all(tracks_base);
 
-    plane_track->flag |= SELECT;
-    clip->tracking.act_track = NULL;
-    clip->tracking.act_plane_track = plane_track;
+  BKE_tracking_tracks_deselect_all(tracks_base);
 
-    /* Compute homoraphies and apply them on marker's corner, so we've got
-     * quite nice motion from the very beginning.
-     */
-    BKE_tracking_track_plane_from_existing_motion(plane_track, framenr);
-  }
+  plane_track->flag |= SELECT;
+  clip->tracking.act_track = NULL;
+  clip->tracking.act_plane_track = plane_track;
+
+  /* Compute homoraphies and apply them on marker's corner, so we've got
+   * quite nice motion from the very beginning.
+   */
+  BKE_tracking_track_plane_from_existing_motion(plane_track, framenr);
 
   DEG_id_tag_update(&clip->id, ID_RECALC_COPY_ON_WRITE);
   WM_event_add_notifier(C, NC_MOVIECLIP | NA_EDITED, clip);
@@ -117,16 +116,16 @@ static float mouse_to_plane_slide_zone_distance_squared(const float co[2],
 {
   const float pixel_co[2] = {co[0] * width, co[1] * height},
               pixel_slide_zone[2] = {slide_zone[0] * width, slide_zone[1] * height};
-  return SQUARE(pixel_co[0] - pixel_slide_zone[0]) + SQUARE(pixel_co[1] - pixel_slide_zone[1]);
+  return square_f(pixel_co[0] - pixel_slide_zone[0]) + square_f(pixel_co[1] - pixel_slide_zone[1]);
 }
 
 static MovieTrackingPlaneTrack *tracking_plane_marker_check_slide(bContext *C,
                                                                   const wmEvent *event,
-                                                                  int *corner_r)
+                                                                  int *r_corner)
 {
   const float distance_clip_squared = 12.0f * 12.0f;
   SpaceClip *sc = CTX_wm_space_clip(C);
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   MovieClip *clip = ED_space_clip_get_clip(sc);
   MovieTracking *tracking = &clip->tracking;
   int width, height;
@@ -139,7 +138,7 @@ static MovieTrackingPlaneTrack *tracking_plane_marker_check_slide(bContext *C,
     return NULL;
   }
 
-  ED_clip_mouse_pos(sc, ar, event->mval, co);
+  ED_clip_mouse_pos(sc, region, event->mval, co);
 
   float min_distance_squared = FLT_MAX;
   int min_corner = -1;
@@ -162,8 +161,8 @@ static MovieTrackingPlaneTrack *tracking_plane_marker_check_slide(bContext *C,
   }
 
   if (min_distance_squared < distance_clip_squared / sc->zoom) {
-    if (corner_r != NULL) {
-      *corner_r = min_corner;
+    if (r_corner != NULL) {
+      *r_corner = min_corner;
     }
     return min_plane_track;
   }
@@ -174,7 +173,7 @@ static MovieTrackingPlaneTrack *tracking_plane_marker_check_slide(bContext *C,
 static void *slide_plane_marker_customdata(bContext *C, const wmEvent *event)
 {
   SpaceClip *sc = CTX_wm_space_clip(C);
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   MovieTrackingPlaneTrack *plane_track;
   int width, height;
   float co[2];
@@ -187,7 +186,7 @@ static void *slide_plane_marker_customdata(bContext *C, const wmEvent *event)
     return NULL;
   }
 
-  ED_clip_mouse_pos(sc, ar, event->mval, co);
+  ED_clip_mouse_pos(sc, region, event->mval, co);
 
   plane_track = tracking_plane_marker_check_slide(C, event, &corner);
   if (plane_track) {
@@ -270,11 +269,11 @@ static int slide_plane_marker_modal(bContext *C, wmOperator *op, const wmEvent *
   float next_edge[2], prev_edge[2], next_diag_edge[2], prev_diag_edge[2];
 
   switch (event->type) {
-    case LEFTCTRLKEY:
-    case RIGHTCTRLKEY:
-    case LEFTSHIFTKEY:
-    case RIGHTSHIFTKEY:
-      if (ELEM(event->type, LEFTSHIFTKEY, RIGHTSHIFTKEY)) {
+    case EVT_LEFTCTRLKEY:
+    case EVT_RIGHTCTRLKEY:
+    case EVT_LEFTSHIFTKEY:
+    case EVT_RIGHTSHIFTKEY:
+      if (ELEM(event->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY)) {
         data->accurate = event->val == KM_PRESS;
       }
       ATTR_FALLTHROUGH;
@@ -363,7 +362,7 @@ static int slide_plane_marker_modal(bContext *C, wmOperator *op, const wmEvent *
 
       break;
 
-    case ESCKEY:
+    case EVT_ESCKEY:
       cancel_mouse_slide_plane_marker(op->customdata);
 
       free_slide_plane_marker_data(op->customdata);

@@ -36,8 +36,8 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
-#include "BKE_subdiv_ccg.h"
 #include "BKE_shrinkwrap.h"
+#include "BKE_subdiv_ccg.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Runtime Struct Utils
@@ -53,6 +53,7 @@ void BKE_mesh_runtime_reset(Mesh *mesh)
   memset(&mesh->runtime, 0, sizeof(mesh->runtime));
   mesh->runtime.eval_mutex = MEM_mallocN(sizeof(ThreadMutex), "mesh runtime eval_mutex");
   BLI_mutex_init(mesh->runtime.eval_mutex);
+  mesh->runtime.bvh_cache = NULL;
 }
 
 /* Clear all pointers which we don't want to be shared on copying the datablock.
@@ -202,32 +203,40 @@ bool BKE_mesh_runtime_ensure_edit_data(struct Mesh *mesh)
   return true;
 }
 
+bool BKE_mesh_runtime_reset_edit_data(Mesh *mesh)
+{
+  EditMeshData *edit_data = mesh->runtime.edit_data;
+  if (edit_data == NULL) {
+    return false;
+  }
+
+  MEM_SAFE_FREE(edit_data->polyCos);
+  MEM_SAFE_FREE(edit_data->polyNos);
+  MEM_SAFE_FREE(edit_data->vertexCos);
+  MEM_SAFE_FREE(edit_data->vertexNos);
+
+  return true;
+}
+
 bool BKE_mesh_runtime_clear_edit_data(Mesh *mesh)
 {
   if (mesh->runtime.edit_data == NULL) {
     return false;
   }
+  BKE_mesh_runtime_reset_edit_data(mesh);
 
-  if (mesh->runtime.edit_data->polyCos != NULL) {
-    MEM_freeN((void *)mesh->runtime.edit_data->polyCos);
-  }
-  if (mesh->runtime.edit_data->polyNos != NULL) {
-    MEM_freeN((void *)mesh->runtime.edit_data->polyNos);
-  }
-  if (mesh->runtime.edit_data->vertexCos != NULL) {
-    MEM_freeN((void *)mesh->runtime.edit_data->vertexCos);
-  }
-  if (mesh->runtime.edit_data->vertexNos != NULL) {
-    MEM_freeN((void *)mesh->runtime.edit_data->vertexNos);
-  }
+  MEM_freeN(mesh->runtime.edit_data);
+  mesh->runtime.edit_data = NULL;
 
-  MEM_SAFE_FREE(mesh->runtime.edit_data);
   return true;
 }
 
 void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
 {
-  bvhcache_free(&mesh->runtime.bvh_cache);
+  if (mesh->runtime.bvh_cache) {
+    bvhcache_free(mesh->runtime.bvh_cache);
+    mesh->runtime.bvh_cache = NULL;
+  }
   MEM_SAFE_FREE(mesh->runtime.looptris.array);
   /* TODO(sergey): Does this really belong here? */
   if (mesh->runtime.subdiv_ccg != NULL) {

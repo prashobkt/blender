@@ -22,17 +22,17 @@
 
 #include "DNA_object_types.h"
 
+#include "BLI_buffer.h"
+#include "BLI_linklist_stack.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_stack.h"
-#include "BLI_buffer.h"
-#include "BLI_linklist_stack.h"
 
-#include "BKE_layer.h"
-#include "BKE_editmesh_bvh.h"
 #include "BKE_context.h"
-#include "BKE_report.h"
 #include "BKE_editmesh.h"
+#include "BKE_editmesh_bvh.h"
+#include "BKE_layer.h"
+#include "BKE_report.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -60,9 +60,7 @@ static int bm_face_isect_self(BMFace *f, void *UNUSED(user_data))
   if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
     return 0;
   }
-  else {
-    return -1;
-  }
+  return -1;
 }
 
 /**
@@ -73,12 +71,10 @@ static int bm_face_isect_pair(BMFace *f, void *UNUSED(user_data))
   if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
     return -1;
   }
-  else if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
+  if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
     return 1;
   }
-  else {
-    return 0;
-  }
+  return 0;
 }
 
 /**
@@ -90,12 +86,10 @@ static int bm_face_isect_pair_swap(BMFace *f, void *UNUSED(user_data))
   if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
     return -1;
   }
-  else if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
+  if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
     return 0;
   }
-  else {
-    return 1;
-  }
+  return 1;
 }
 
 /**
@@ -479,7 +473,7 @@ static bool bm_vert_in_faces_radial(BMVert *v, BMEdge *e_radial, BMFace *f_ignor
 
 struct LinkBase {
   LinkNode *list;
-  unsigned int list_len;
+  uint list_len;
 };
 
 static void ghash_insert_face_edge_link(GHash *gh,
@@ -515,12 +509,10 @@ static int bm_edge_sort_length_cb(const void *e_a_v, const void *e_b_v)
   if (val_a > val_b) {
     return 1;
   }
-  else if (val_a < val_b) {
+  if (val_a < val_b) {
     return -1;
   }
-  else {
-    return 0;
-  }
+  return 0;
 }
 
 static void bm_face_split_by_edges_island_connect(
@@ -535,7 +527,7 @@ static void bm_face_split_by_edges_island_connect(
   }
 
   {
-    unsigned int edge_arr_holes_len;
+    uint edge_arr_holes_len;
     BMEdge **edge_arr_holes;
     if (BM_face_split_edgenet_connect_islands(bm,
                                               f,
@@ -704,6 +696,8 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
   BMEdge *e;
   BMIter iter;
 
+  BLI_SMALLSTACK_DECLARE(loop_stack, BMLoop *);
+
   ViewLayer *view_layer = CTX_data_view_layer(C);
   uint objects_len = 0;
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
@@ -716,8 +710,6 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
     if ((bm->totedgesel == 0) || (bm->totfacesel == 0)) {
       continue;
     }
-
-    BLI_SMALLSTACK_DECLARE(loop_stack, BMLoop *);
 
     {
       BMVert *v;
@@ -765,7 +757,7 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
           BMIter liter;
           BMLoop *l;
 
-          unsigned int loop_stack_len;
+          uint loop_stack_len;
           BMLoop *l_best = NULL;
 
           BLI_assert(BLI_SMALLSTACK_IS_EMPTY(loop_stack));

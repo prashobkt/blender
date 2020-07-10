@@ -24,13 +24,9 @@
  * \ingroup bli
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* avoid many includes for now */
-#include "BLI_sys_types.h"
 #include "BLI_compiler_compat.h"
+#include "BLI_sys_types.h"
 #include "BLI_utildefines_variadic.h"
 
 /* We could remove in future. */
@@ -38,6 +34,10 @@ extern "C" {
 
 /* include after _VA_NARGS macro */
 #include "BLI_compiler_typecheck.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* -------------------------------------------------------------------- */
 /** \name Min/Max Macros
@@ -292,33 +292,6 @@ extern "C" {
 /* -------------------------------------------------------------------- */
 /** \name Simple Math Macros
  * \{ */
-
-/* avoid multiple access for supported compilers */
-#if defined(__GNUC__) || defined(__clang__)
-
-#  define ABS(a) \
-    ({ \
-      typeof(a) a_ = (a); \
-      ((a_) < 0 ? (-(a_)) : (a_)); \
-    })
-#  define SQUARE(a) \
-    ({ \
-      typeof(a) a_ = (a); \
-      ((a_) * (a_)); \
-    })
-#  define CUBE(a) \
-    ({ \
-      typeof(a) a_ = (a); \
-      ((a_) * (a_) * (a_)); \
-    })
-
-#else
-
-#  define ABS(a) ((a) < 0 ? (-(a)) : (a))
-#  define SQUARE(a) ((a) * (a))
-#  define CUBE(a) ((a) * (a) * (a))
-
-#endif
 
 /* Float equality checks. */
 
@@ -654,11 +627,11 @@ extern bool BLI_memory_is_zero(const void *arr, const size_t arr_size);
 /** \name String Macros
  * \{ */
 
-/* Macro to convert a value to string in the preprocessor
- * STRINGIFY_ARG: gives the argument as a string
- * STRINGIFY_APPEND: appends any argument 'b' onto the string argument 'a',
- *   used by STRINGIFY because some preprocessors warn about zero arguments
- * STRINGIFY: gives the argument's value as a string */
+/* Macro to convert a value to string in the pre-processor:
+ * - `STRINGIFY_ARG`: gives the argument as a string
+ * - `STRINGIFY_APPEND`: appends any argument 'b' onto the string argument 'a',
+ *   used by `STRINGIFY` because some preprocessors warn about zero arguments
+ * - `STRINGIFY`: gives the argument's value as a string. */
 #define STRINGIFY_ARG(x) "" #x
 #define STRINGIFY_APPEND(a, b) "" a #b
 #define STRINGIFY(x) STRINGIFY_APPEND("", x)

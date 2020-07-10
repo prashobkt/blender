@@ -23,21 +23,21 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 
-#include "BKE_main.h"
 #include "BKE_context.h"
-#include "BKE_movieclip.h"
-#include "BKE_tracking.h"
 #include "BKE_global.h"
+#include "BKE_main.h"
+#include "BKE_movieclip.h"
 #include "BKE_report.h"
+#include "BKE_tracking.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "ED_screen.h"
 #include "ED_clip.h"
+#include "ED_screen.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -86,7 +86,7 @@ static int track_count_markers(SpaceClip *sc, MovieClip *clip, int framenr)
   return tot;
 }
 
-static void track_init_markers(SpaceClip *sc, MovieClip *clip, int framenr, int *frames_limit_r)
+static void track_init_markers(SpaceClip *sc, MovieClip *clip, int framenr, int *r_frames_limit)
 {
   ListBase *tracksbase = BKE_tracking_get_active_tracks(&clip->tracking);
   int frames_limit = 0;
@@ -109,7 +109,7 @@ static void track_init_markers(SpaceClip *sc, MovieClip *clip, int framenr, int 
       }
     }
   }
-  *frames_limit_r = frames_limit;
+  *r_frames_limit = frames_limit;
 }
 
 static bool track_markers_check_direction(int backwards, int curfra, int efra)
@@ -358,14 +358,13 @@ static int track_markers(bContext *C, wmOperator *op, bool use_job)
 
     return OPERATOR_RUNNING_MODAL;
   }
-  else {
-    short stop = 0, do_update = 0;
-    float progress = 0.0f;
-    track_markers_startjob(tmj, &stop, &do_update, &progress);
-    track_markers_endjob(tmj);
-    track_markers_freejob(tmj);
-    return OPERATOR_FINISHED;
-  }
+
+  short stop = 0, do_update = 0;
+  float progress = 0.0f;
+  track_markers_startjob(tmj, &stop, &do_update, &progress);
+  track_markers_endjob(tmj);
+  track_markers_freejob(tmj);
+  return OPERATOR_FINISHED;
 }
 
 static int track_markers_exec(bContext *C, wmOperator *op)
@@ -387,7 +386,7 @@ static int track_markers_modal(bContext *C, wmOperator *UNUSED(op), const wmEven
 
   /* Running tracking. */
   switch (event->type) {
-    case ESCKEY:
+    case EVT_ESCKEY:
       return OPERATOR_RUNNING_MODAL;
   }
 

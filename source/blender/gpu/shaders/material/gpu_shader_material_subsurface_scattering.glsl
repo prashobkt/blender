@@ -19,9 +19,10 @@ void node_subsurface_scattering(vec4 color,
   /* Not perfect for texture_blur not exactly equal to 0.0 or 1.0. */
   vec3 sss_albedo = mix(color.rgb, vec3(1.0), texture_blur);
   out_diff *= mix(vec3(1.0), color.rgb, texture_blur);
+  result.radiance = render_pass_sss_mask(sss_albedo);
   closure_load_sss_data(scale, out_diff, sss_albedo, int(sss_id), result);
 }
 #else
 /* Stub subsurface scattering because it is not compatible with volumetrics. */
-#  define node_subsurface_scattering
+#  define node_subsurface_scattering(a, b, c, d, e, f, g, h) (h = CLOSURE_DEFAULT)
 #endif

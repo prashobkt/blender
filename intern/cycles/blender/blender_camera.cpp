@@ -709,6 +709,10 @@ static void blender_camera_from_view(BlenderCamera *bcam,
 
   /* 3d view transform */
   bcam->matrix = transform_inverse(get_transform(b_rv3d.view_matrix()));
+
+  /* dimensions */
+  bcam->full_width = width;
+  bcam->full_height = height;
 }
 
 static void blender_camera_view_subset(BL::RenderEngine &b_engine,
@@ -725,22 +729,26 @@ static void blender_camera_view_subset(BL::RenderEngine &b_engine,
   BoundBox2D cam, view;
   float view_aspect, cam_aspect, sensor_size;
 
-  /* get viewport viewplane */
+  /* Get viewport viewplane. */
   BlenderCamera view_bcam;
   blender_camera_init(&view_bcam, b_render);
   blender_camera_from_view(&view_bcam, b_engine, b_scene, b_v3d, b_rv3d, width, height, true);
 
   blender_camera_viewplane(&view_bcam, width, height, &view, &view_aspect, &sensor_size);
 
-  /* get camera viewplane */
+  /* Get camera viewplane. */
   BlenderCamera cam_bcam;
   blender_camera_init(&cam_bcam, b_render);
   blender_camera_from_object(&cam_bcam, b_engine, b_ob, true);
 
+  /* Camera border is affect by aspect, viewport is not. */
+  cam_bcam.pixelaspect.x = b_render.pixel_aspect_x();
+  cam_bcam.pixelaspect.y = b_render.pixel_aspect_y();
+
   blender_camera_viewplane(
       &cam_bcam, cam_bcam.full_width, cam_bcam.full_height, &cam, &cam_aspect, &sensor_size);
 
-  /* return */
+  /* Return */
   *view_box = view * (1.0f / view_aspect);
   *cam_box = cam * (1.0f / cam_aspect);
 }
@@ -868,7 +876,8 @@ BufferParams BlenderSync::get_buffer_params(BL::RenderSettings &b_render,
                                             BL::RegionView3D &b_rv3d,
                                             Camera *cam,
                                             int width,
-                                            int height)
+                                            int height,
+                                            const bool use_denoiser)
 {
   BufferParams params;
   bool use_border = false;
@@ -899,7 +908,10 @@ BufferParams BlenderSync::get_buffer_params(BL::RenderSettings &b_render,
     params.height = height;
   }
 
-  update_viewport_display_passes(b_v3d, params.passes);
+  PassType display_pass = update_viewport_display_passes(b_v3d, params.passes);
+
+  /* Can only denoise the combined image pass */
+  params.denoising_data_pass = display_pass == PASS_COMBINED && use_denoiser;
 
   return params;
 }

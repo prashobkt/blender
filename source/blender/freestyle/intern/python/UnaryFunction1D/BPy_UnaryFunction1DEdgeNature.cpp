@@ -21,8 +21,8 @@
 #include "BPy_UnaryFunction1DEdgeNature.h"
 
 #include "../BPy_Convert.h"
-#include "../BPy_Interface1D.h"
 #include "../BPy_IntegrationType.h"
+#include "../BPy_Interface1D.h"
 
 #include "UnaryFunction1D_Nature_EdgeNature/BPy_CurveNatureF1D.h"
 
@@ -103,9 +103,7 @@ static int UnaryFunction1DEdgeNature___init__(BPy_UnaryFunction1DEdgeNature *sel
 
 static void UnaryFunction1DEdgeNature___dealloc__(BPy_UnaryFunction1DEdgeNature *self)
 {
-  if (self->uf1D_edgenature) {
-    delete self->uf1D_edgenature;
-  }
+  delete self->uf1D_edgenature;
   UnaryFunction1D_Type.tp_dealloc((PyObject *)self);
 }
 

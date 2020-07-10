@@ -28,8 +28,8 @@
 
 #include "BLI_array.h"
 #include "BLI_blenlib.h"
-#include "BLI_utildefines.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
@@ -52,10 +52,10 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "ED_object.h"
-#include "ED_transverts.h"
 #include "ED_keyframing.h"
+#include "ED_object.h"
 #include "ED_screen.h"
+#include "ED_transverts.h"
 
 #include "view3d_intern.h"
 
@@ -261,7 +261,10 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *UNUSED(op))
 
       DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
     }
-    MEM_freeN(objects_eval);
+
+    if (objects_eval) {
+      MEM_freeN(objects_eval);
+    }
 
     if (use_transform_skip_children) {
       ED_object_xform_skip_child_container_update_all(xcs, bmain, depsgraph);
@@ -551,7 +554,10 @@ static int snap_selected_to_location(bContext *C,
         DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
       }
     }
-    MEM_freeN(objects);
+
+    if (objects) {
+      MEM_freeN(objects);
+    }
 
     if (use_transform_skip_children) {
       ED_object_xform_skip_child_container_update_all(xcs, bmain, depsgraph);
@@ -844,12 +850,12 @@ static bool snap_curs_to_sel_ex(bContext *C, float cursor[3])
     return false;
   }
 
-  if (scene->toolsettings->transform_pivot_point == V3D_AROUND_CENTER_MEDIAN) {
-    mul_v3_fl(centroid, 1.0f / (float)count);
-    copy_v3_v3(cursor, centroid);
+  if (scene->toolsettings->transform_pivot_point == V3D_AROUND_CENTER_BOUNDS) {
+    mid_v3_v3v3(cursor, min, max);
   }
   else {
-    mid_v3_v3v3(cursor, min, max);
+    mul_v3_fl(centroid, 1.0f / (float)count);
+    copy_v3_v3(cursor, centroid);
   }
   return true;
 }
@@ -863,9 +869,7 @@ static int snap_curs_to_sel_exec(bContext *C, wmOperator *UNUSED(op))
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void VIEW3D_OT_snap_cursor_to_selected(wmOperatorType *ot)
@@ -915,9 +919,7 @@ static int snap_curs_to_active_exec(bContext *C, wmOperator *UNUSED(op))
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void VIEW3D_OT_snap_cursor_to_active(wmOperatorType *ot)

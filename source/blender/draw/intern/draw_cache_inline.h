@@ -23,8 +23,8 @@
 #ifndef __DRAW_CACHE_INLINE_H__
 #define __DRAW_CACHE_INLINE_H__
 
-#include "MEM_guardedalloc.h"
 #include "GPU_batch.h"
+#include "MEM_guardedalloc.h"
 
 /* Common */
 // #define DRW_DEBUG_MESH_CACHE_REQUEST
@@ -90,17 +90,19 @@ BLI_INLINE void DRW_vbo_request(GPUBatch *batch, GPUVertBuf **vbo)
   if (*vbo == NULL) {
     *vbo = MEM_callocN(sizeof(GPUVertBuf), "GPUVertBuf");
   }
-  /* HACK set first vbo if not init. */
-  if (batch->verts[0] == NULL) {
-    GPU_batch_vao_cache_clear(batch);
-    batch->verts[0] = *vbo;
-  }
-  else {
-    /* HACK: bypass assert */
-    int vbo_vert_len = (*vbo)->vertex_len;
-    (*vbo)->vertex_len = batch->verts[0]->vertex_len;
-    GPU_batch_vertbuf_add(batch, *vbo);
-    (*vbo)->vertex_len = vbo_vert_len;
+  if (batch != NULL) {
+    /* HACK set first vbo if not init. */
+    if (batch->verts[0] == NULL) {
+      GPU_batch_vao_cache_clear(batch);
+      batch->verts[0] = *vbo;
+    }
+    else {
+      /* HACK: bypass assert */
+      int vbo_vert_len = (*vbo)->vertex_len;
+      (*vbo)->vertex_len = batch->verts[0]->vertex_len;
+      GPU_batch_vertbuf_add(batch, *vbo);
+      (*vbo)->vertex_len = vbo_vert_len;
+    }
   }
 }
 

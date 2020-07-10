@@ -23,10 +23,12 @@
  * Release.
  */
 
+// clang-format off
 #include "kernel/closure/alloc.h"
 #include "kernel/closure/bsdf_util.h"
 #include "kernel/closure/bsdf.h"
 #include "kernel/closure/emissive.h"
+// clang-format on
 
 #include "kernel/svm/svm.h"
 
@@ -61,10 +63,8 @@ ccl_device_noinline
 {
   PROFILING_INIT(kg, PROFILING_SHADER_SETUP);
 
-#ifdef __INSTANCING__
   sd->object = (isect->object == OBJECT_NONE) ? kernel_tex_fetch(__prim_object, isect->prim) :
                                                 isect->object;
-#endif
   sd->lamp = LAMP_NONE;
 
   sd->type = isect->type;
@@ -80,18 +80,13 @@ ccl_device_noinline
   sd->prim = kernel_tex_fetch(__prim_index, isect->prim);
   sd->ray_length = isect->t;
 
-#ifdef __UV__
   sd->u = isect->u;
   sd->v = isect->v;
-#endif
 
 #ifdef __HAIR__
   if (sd->type & PRIMITIVE_ALL_CURVE) {
     /* curve */
-    float4 curvedata = kernel_tex_fetch(__curves, sd->prim);
-
-    sd->shader = __float_as_int(curvedata.z);
-    sd->P = curve_refine(kg, sd, isect, ray);
+    curve_shader_setup(kg, sd, isect, ray);
   }
   else
 #endif
@@ -123,17 +118,15 @@ ccl_device_noinline
 
   sd->flag |= kernel_tex_fetch(__shaders, (sd->shader & SHADER_MASK)).flags;
 
-#ifdef __INSTANCING__
   if (isect->object != OBJECT_NONE) {
     /* instance transform */
     object_normal_transform_auto(kg, sd, &sd->N);
     object_normal_transform_auto(kg, sd, &sd->Ng);
-#  ifdef __DPDU__
+#ifdef __DPDU__
     object_dir_transform_auto(kg, sd, &sd->dPdu);
     object_dir_transform_auto(kg, sd, &sd->dPdv);
-#  endif
-  }
 #endif
+  }
 
   /* backfacing test */
   bool backfacing = (dot(sd->Ng, sd->I) < 0.0f);
@@ -183,10 +176,8 @@ ccl_device_inline
   sd->prim = kernel_tex_fetch(__prim_index, isect->prim);
   sd->type = isect->type;
 
-#  ifdef __UV__
   sd->u = isect->u;
   sd->v = isect->v;
-#  endif
 
   /* fetch triangle data */
   if (sd->type == PRIMITIVE_TRIANGLE) {
@@ -213,17 +204,15 @@ ccl_device_inline
 
   sd->flag |= kernel_tex_fetch(__shaders, (sd->shader & SHADER_MASK)).flags;
 
-#  ifdef __INSTANCING__
   if (isect->object != OBJECT_NONE) {
     /* instance transform */
     object_normal_transform_auto(kg, sd, &sd->N);
     object_normal_transform_auto(kg, sd, &sd->Ng);
-#    ifdef __DPDU__
+#  ifdef __DPDU__
     object_dir_transform_auto(kg, sd, &sd->dPdu);
     object_dir_transform_auto(kg, sd, &sd->dPdv);
-#    endif
-  }
 #  endif
+  }
 
   /* backfacing test */
   if (backfacing) {
@@ -282,17 +271,13 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
   else
     sd->type = PRIMITIVE_NONE;
 
-    /* primitive */
-#ifdef __INSTANCING__
+  /* primitive */
   sd->object = object;
-#endif
   sd->lamp = LAMP_NONE;
   /* currently no access to bvh prim index for strand sd->prim*/
   sd->prim = prim;
-#ifdef __UV__
   sd->u = u;
   sd->v = v;
-#endif
   sd->time = time;
   sd->ray_length = t;
 
@@ -328,23 +313,19 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals *kg,
     if (sd->shader & SHADER_SMOOTH_NORMAL) {
       sd->N = triangle_smooth_normal(kg, Ng, sd->prim, sd->u, sd->v);
 
-#ifdef __INSTANCING__
       if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
         object_normal_transform_auto(kg, sd, &sd->N);
       }
-#endif
     }
 
     /* dPdu/dPdv */
 #ifdef __DPDU__
     triangle_dPdudv(kg, sd->prim, &sd->dPdu, &sd->dPdv);
 
-#  ifdef __INSTANCING__
     if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
       object_dir_transform_auto(kg, sd, &sd->dPdu);
       object_dir_transform_auto(kg, sd, &sd->dPdv);
     }
-#  endif
 #endif
   }
   else {
@@ -430,15 +411,11 @@ ccl_device_inline void shader_setup_from_background(KernelGlobals *kg,
   sd->time = ray->time;
   sd->ray_length = 0.0f;
 
-#ifdef __INSTANCING__
   sd->object = OBJECT_NONE;
-#endif
   sd->lamp = LAMP_NONE;
   sd->prim = PRIM_NONE;
-#ifdef __UV__
   sd->u = 0.0f;
   sd->v = 0.0f;
-#endif
 
 #ifdef __DPDU__
   /* dPdu/dPdv */
@@ -479,17 +456,13 @@ ccl_device_inline void shader_setup_from_volume(KernelGlobals *kg, ShaderData *s
   sd->time = ray->time;
   sd->ray_length = 0.0f; /* todo: can we set this to some useful value? */
 
-#  ifdef __INSTANCING__
   sd->object = OBJECT_NONE; /* todo: fill this for texture coordinates */
-#  endif
   sd->lamp = LAMP_NONE;
   sd->prim = PRIM_NONE;
   sd->type = PRIMITIVE_NONE;
 
-#  ifdef __UV__
   sd->u = 0.0f;
   sd->v = 0.0f;
-#  endif
 
 #  ifdef __DPDU__
   /* dPdu/dPdv */
@@ -901,7 +874,8 @@ ccl_device float3 shader_bsdf_diffuse(KernelGlobals *kg, ShaderData *sd)
   for (int i = 0; i < sd->num_closure; i++) {
     ShaderClosure *sc = &sd->closure[i];
 
-    if (CLOSURE_IS_BSDF_DIFFUSE(sc->type))
+    if (CLOSURE_IS_BSDF_DIFFUSE(sc->type) || CLOSURE_IS_BSSRDF(sc->type) ||
+        CLOSURE_IS_BSDF_BSSRDF(sc->type))
       eval += sc->weight;
   }
 
@@ -930,20 +904,6 @@ ccl_device float3 shader_bsdf_transmission(KernelGlobals *kg, ShaderData *sd)
     ShaderClosure *sc = &sd->closure[i];
 
     if (CLOSURE_IS_BSDF_TRANSMISSION(sc->type))
-      eval += sc->weight;
-  }
-
-  return eval;
-}
-
-ccl_device float3 shader_bsdf_subsurface(KernelGlobals *kg, ShaderData *sd)
-{
-  float3 eval = make_float3(0.0f, 0.0f, 0.0f);
-
-  for (int i = 0; i < sd->num_closure; i++) {
-    ShaderClosure *sc = &sd->closure[i];
-
-    if (CLOSURE_IS_BSSRDF(sc->type) || CLOSURE_IS_BSDF_BSSRDF(sc->type))
       eval += sc->weight;
   }
 
@@ -1057,15 +1017,36 @@ ccl_device float3 shader_emissive_eval(ShaderData *sd)
 
 /* Holdout */
 
-ccl_device float3 shader_holdout_eval(KernelGlobals *kg, ShaderData *sd)
+ccl_device float3 shader_holdout_apply(KernelGlobals *kg, ShaderData *sd)
 {
   float3 weight = make_float3(0.0f, 0.0f, 0.0f);
 
-  for (int i = 0; i < sd->num_closure; i++) {
-    ShaderClosure *sc = &sd->closure[i];
+  /* For objects marked as holdout, preserve transparency and remove all other
+   * closures, replacing them with a holdout weight. */
+  if (sd->object_flag & SD_OBJECT_HOLDOUT_MASK) {
+    if ((sd->flag & SD_TRANSPARENT) && !(sd->flag & SD_HAS_ONLY_VOLUME)) {
+      weight = make_float3(1.0f, 1.0f, 1.0f) - sd->closure_transparent_extinction;
 
-    if (CLOSURE_IS_HOLDOUT(sc->type))
-      weight += sc->weight;
+      for (int i = 0; i < sd->num_closure; i++) {
+        ShaderClosure *sc = &sd->closure[i];
+        if (!CLOSURE_IS_BSDF_TRANSPARENT(sc->type)) {
+          sc->type = NBUILTIN_CLOSURES;
+        }
+      }
+
+      sd->flag &= ~(SD_CLOSURE_FLAGS - (SD_TRANSPARENT | SD_BSDF));
+    }
+    else {
+      weight = make_float3(1.0f, 1.0f, 1.0f);
+    }
+  }
+  else {
+    for (int i = 0; i < sd->num_closure; i++) {
+      ShaderClosure *sc = &sd->closure[i];
+      if (CLOSURE_IS_HOLDOUT(sc->type)) {
+        weight += sc->weight;
+      }
+    }
   }
 
   return weight;

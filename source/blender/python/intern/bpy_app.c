@@ -27,6 +27,7 @@
 #include "bpy_app.h"
 
 #include "bpy_app_alembic.h"
+#include "bpy_app_build_options.h"
 #include "bpy_app_ffmpeg.h"
 #include "bpy_app_ocio.h"
 #include "bpy_app_oiio.h"
@@ -34,7 +35,6 @@
 #include "bpy_app_openvdb.h"
 #include "bpy_app_sdl.h"
 #include "bpy_app_usd.h"
-#include "bpy_app_build_options.h"
 
 #include "bpy_app_translations.h"
 
@@ -66,7 +66,7 @@
 #ifdef BUILD_DATE
 extern char build_date[];
 extern char build_time[];
-extern unsigned long build_commit_timestamp;
+extern ulong build_commit_timestamp;
 extern char build_commit_date[];
 extern char build_commit_time[];
 extern char build_hash[];
@@ -82,10 +82,10 @@ extern char build_system[];
 static PyTypeObject BlenderAppType;
 
 static PyStructSequence_Field app_info_fields[] = {
-    {"version", "The Blender version as a tuple of 3 numbers. eg. (2, 50, 11)"},
+    {"version", "The Blender version as a tuple of 3 numbers. eg. (2, 83, 1)"},
     {"version_string", "The Blender version formatted as a string"},
-    {"version_char", "The Blender version character (for minor releases)"},
     {"version_cycle", "The release status of this build alpha/beta/rc/release"},
+    {"version_char", "Deprecated, always an empty string"},
     {"binary_path",
      "The location of Blender's executable, useful for utilities that open new instances"},
     {"background",
@@ -160,12 +160,12 @@ static PyObject *make_app_info(void)
 #define SetBytesItem(str) PyStructSequence_SET_ITEM(app_info, pos++, PyBytes_FromString(str))
 #define SetObjItem(obj) PyStructSequence_SET_ITEM(app_info, pos++, obj)
 
-  SetObjItem(PyC_Tuple_Pack_I32(BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_SUBVERSION));
-  SetObjItem(PyUnicode_FromFormat(
-      "%d.%02d (sub %d)", BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_SUBVERSION));
+  SetObjItem(
+      PyC_Tuple_Pack_I32(BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_VERSION_PATCH));
+  SetStrItem(BKE_blender_version_string());
 
-  SetStrItem(STRINGIFY(BLENDER_VERSION_CHAR));
   SetStrItem(STRINGIFY(BLENDER_VERSION_CYCLE));
+  SetStrItem("");
   SetStrItem(BKE_appdir_program_path());
   SetObjItem(PyBool_FromLong(G.background));
   SetObjItem(PyBool_FromLong(G.factory_startup));

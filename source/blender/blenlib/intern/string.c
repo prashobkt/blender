@@ -21,11 +21,12 @@
  * \ingroup bli
  */
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdarg.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <math.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -408,7 +409,7 @@ char *BLI_str_quoted_substrN(const char *__restrict str, const char *__restrict 
 
 /**
  * string with all instances of substr_old replaced with substr_new,
- * Returns a copy of the cstring \a str into a newly mallocN'd
+ * Returns a copy of the c-string \a str into a newly #MEM_mallocN'd
  * and returns it.
  *
  * \note A rather wasteful string-replacement utility, though this shall do for now...
@@ -429,53 +430,49 @@ char *BLI_str_replaceN(const char *__restrict str,
 
   BLI_assert(substr_old[0] != '\0');
 
-  /* while we can still find a match for the old substring that we're searching for,
-   * keep dicing and replacing
-   */
+  /* While we can still find a match for the old sub-string that we're searching for,
+   * keep dicing and replacing. */
   while ((match = strstr(str, substr_old))) {
     /* the assembly buffer only gets created when we actually need to rebuild the string */
     if (ds == NULL) {
       ds = BLI_dynstr_new();
     }
 
-    /* if the match position does not match the current position in the string,
-     * copy the text up to this position and advance the current position in the string
-     */
+    /* If the match position does not match the current position in the string,
+     * copy the text up to this position and advance the current position in the string. */
     if (str != match) {
-      /* add the segment of the string from str to match to the buffer,
-       * then restore the value at match */
+      /* Add the segment of the string from `str` to match to the buffer,
+       * then restore the value at match. */
       BLI_dynstr_nappend(ds, str, (match - str));
 
       /* now our current position should be set on the start of the match */
       str = match;
     }
 
-    /* add the replacement text to the accumulation buffer */
+    /* Add the replacement text to the accumulation buffer. */
     BLI_dynstr_append(ds, substr_new);
 
-    /* advance the current position of the string up to the end of the replaced segment */
+    /* Advance the current position of the string up to the end of the replaced segment. */
     str += len_old;
   }
 
-  /* finish off and return a new string that has had all occurrences of */
+  /* Finish off and return a new string that has had all occurrences of. */
   if (ds) {
     char *str_new;
 
-    /* add what's left of the string to the assembly buffer
-     * - we've been adjusting str to point at the end of the replaced segments
-     */
+    /* Add what's left of the string to the assembly buffer
+     * - we've been adjusting `str` to point at the end of the replaced segments. */
     BLI_dynstr_append(ds, str);
 
-    /* convert to new c-string (MEM_malloc'd), and free the buffer */
+    /* Convert to new c-string (MEM_malloc'd), and free the buffer. */
     str_new = BLI_dynstr_get_cstring(ds);
     BLI_dynstr_free(ds);
 
     return str_new;
   }
   else {
-    /* just create a new copy of the entire string - we avoid going through the assembly buffer
-     * for what should be a bit more efficiency...
-     */
+    /* Just create a new copy of the entire string - we avoid going through the assembly buffer
+     * for what should be a bit more efficiency. */
     return BLI_strdup(str);
   }
 }
@@ -512,8 +509,8 @@ int BLI_strcaseeq(const char *a, const char *b)
  */
 char *BLI_strcasestr(const char *s, const char *find)
 {
-  register char c, sc;
-  register size_t len;
+  char c, sc;
+  size_t len;
 
   if ((c = *find++) != 0) {
     c = tolower(c);
@@ -536,7 +533,7 @@ char *BLI_strcasestr(const char *s, const char *find)
  */
 char *BLI_strncasestr(const char *s, const char *find, size_t len)
 {
-  register char c, sc;
+  char c, sc;
 
   if ((c = *find++) != 0) {
     c = tolower(c);
@@ -567,8 +564,8 @@ char *BLI_strncasestr(const char *s, const char *find, size_t len)
 
 int BLI_strcasecmp(const char *s1, const char *s2)
 {
-  register int i;
-  register char c1, c2;
+  int i;
+  char c1, c2;
 
   for (i = 0;; i++) {
     c1 = tolower(s1[i]);
@@ -590,8 +587,8 @@ int BLI_strcasecmp(const char *s1, const char *s2)
 
 int BLI_strncasecmp(const char *s1, const char *s2, size_t len)
 {
-  register size_t i;
-  register char c1, c2;
+  size_t i;
+  char c1, c2;
 
   for (i = 0; i < len; i++) {
     c1 = tolower(s1[i]);
@@ -669,8 +666,8 @@ static int left_number_strcmp(const char *s1, const char *s2, int *tiebreaker)
  */
 int BLI_strcasecmp_natural(const char *s1, const char *s2)
 {
-  register int d1 = 0, d2 = 0;
-  register char c1, c2;
+  int d1 = 0, d2 = 0;
+  char c1, c2;
   int tiebreaker = 0;
 
   /* if both chars are numeric, to a left_number_strcmp().
@@ -818,7 +815,7 @@ void BLI_str_toupper_ascii(char *str, const size_t len)
  */
 void BLI_str_rstrip(char *str)
 {
-  for (int i = (int)strlen(str) - 1; i > 0; i--) {
+  for (int i = (int)strlen(str) - 1; i >= 0; i--) {
     if (isspace(str[i])) {
       str[i] = '\0';
     }
@@ -898,6 +895,24 @@ int BLI_str_index_in_array(const char *__restrict str, const char **__restrict s
     }
   }
   return -1;
+}
+
+/**
+ * Find if a string starts with another string.
+ *
+ * \param str: The string to search within.
+ * \param start: The string we look for at the start.
+ * \return If str starts with start.
+ */
+bool BLI_str_startswith(const char *__restrict str, const char *__restrict start)
+{
+  for (; *str && *start; str++, start++) {
+    if (*str != *start) {
+      return false;
+    }
+  }
+
+  return (*start == '\0');
 }
 
 bool BLI_strn_endswith(const char *__restrict str, const char *__restrict end, size_t slength)
@@ -1101,7 +1116,7 @@ void BLI_str_format_byte_unit(char dst[15], long long int bytes, const bool base
 
   BLI_STATIC_ASSERT(ARRAY_SIZE(units_base_2) == ARRAY_SIZE(units_base_10), "array size mismatch");
 
-  while ((ABS(bytes_converted) >= base) && ((order + 1) < tot_units)) {
+  while ((fabs(bytes_converted) >= base) && ((order + 1) < tot_units)) {
     bytes_converted /= base;
     order++;
   }

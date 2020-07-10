@@ -38,8 +38,8 @@
 #include "BKE_idprop.h"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
 #include "ED_keyframing.h"
+#include "ED_screen.h"
 
 #include "UI_interface.h"
 
@@ -104,7 +104,8 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
     *r_prop = (but->opptr && but->opptr->data) ? IDP_CopyProperty(but->opptr->data) : NULL;
     return but->optype->idname;
   }
-  else if (but->rnaprop) {
+
+  if (but->rnaprop) {
     const PropertyType rnaprop_type = RNA_property_type(but->rnaprop);
 
     if (rnaprop_type == PROP_BOOLEAN) {
@@ -115,7 +116,7 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
       }
       return "WM_OT_context_toggle";
     }
-    else if (rnaprop_type == PROP_ENUM) {
+    if (rnaprop_type == PROP_ENUM) {
       /* Enum */
       *r_prop = shortcut_property_from_rna(C, but);
       if (*r_prop == NULL) {
@@ -160,7 +161,7 @@ static void but_shortcut_name_func(bContext *C, void *arg1, int UNUSED(event))
   shortcut_free_operator_property(prop);
 }
 
-static uiBlock *menu_change_shortcut(bContext *C, ARegion *ar, void *arg)
+static uiBlock *menu_change_shortcut(bContext *C, ARegion *region, void *arg)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   uiBlock *block;
@@ -169,7 +170,7 @@ static uiBlock *menu_change_shortcut(bContext *C, ARegion *ar, void *arg)
   wmKeyMapItem *kmi;
   PointerRNA ptr;
   uiLayout *layout;
-  uiStyle *style = UI_style_get_dpi();
+  const uiStyle *style = UI_style_get_dpi();
   IDProperty *prop;
   const char *idname = shortcut_get_operator_property(C, but, &prop);
 
@@ -186,7 +187,7 @@ static uiBlock *menu_change_shortcut(bContext *C, ARegion *ar, void *arg)
 
   RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi, &ptr);
 
-  block = UI_block_begin(C, ar, "_popup", UI_EMBOSS);
+  block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_func_handle_set(block, but_shortcut_name_func, but);
   UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
   UI_block_direction_set(block, UI_DIR_CENTER_Y);
@@ -216,7 +217,7 @@ static uiBlock *menu_change_shortcut(bContext *C, ARegion *ar, void *arg)
 static int g_kmi_id_hack;
 #endif
 
-static uiBlock *menu_add_shortcut(bContext *C, ARegion *ar, void *arg)
+static uiBlock *menu_add_shortcut(bContext *C, ARegion *region, void *arg)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   uiBlock *block;
@@ -225,7 +226,7 @@ static uiBlock *menu_add_shortcut(bContext *C, ARegion *ar, void *arg)
   wmKeyMapItem *kmi;
   PointerRNA ptr;
   uiLayout *layout;
-  uiStyle *style = UI_style_get_dpi();
+  const uiStyle *style = UI_style_get_dpi();
   int kmi_id;
   IDProperty *prop;
   const char *idname = shortcut_get_operator_property(C, but, &prop);
@@ -233,7 +234,7 @@ static uiBlock *menu_add_shortcut(bContext *C, ARegion *ar, void *arg)
   /* XXX this guess_opname can potentially return a different keymap
    * than being found on adding later... */
   km = WM_keymap_guess_opname(C, idname);
-  kmi = WM_keymap_add_item(km, idname, AKEY, KM_PRESS, 0, 0);
+  kmi = WM_keymap_add_item(km, idname, EVT_AKEY, KM_PRESS, 0, 0);
   kmi_id = kmi->id;
 
   /* This takes ownership of prop, or prop can be NULL for reset. */
@@ -248,7 +249,7 @@ static uiBlock *menu_add_shortcut(bContext *C, ARegion *ar, void *arg)
 
   RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi, &ptr);
 
-  block = UI_block_begin(C, ar, "_popup", UI_EMBOSS);
+  block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_func_handle_set(block, but_shortcut_name_func, but);
   UI_block_direction_set(block, UI_DIR_CENTER_Y);
 
@@ -351,7 +352,7 @@ static bUserMenuItem *ui_but_user_menu_find(bContext *C, uiBut *but, bUserMenu *
     return (bUserMenuItem *)ED_screen_user_menu_item_find_operator(
         &um->items, but->optype, prop, but->opcontext);
   }
-  else if (but->rnaprop) {
+  if (but->rnaprop) {
     const char *member_id = WM_context_member_from_ptr(C, &but->rnapoin);
     const char *data_path = RNA_path_from_ID_to_struct(&but->rnapoin);
     const char *member_id_data_path = member_id;
@@ -369,12 +370,10 @@ static bUserMenuItem *ui_but_user_menu_find(bContext *C, uiBut *but, bUserMenu *
     }
     return umi;
   }
-  else if ((mt = UI_but_menutype_get(but))) {
+  if ((mt = UI_but_menutype_get(but))) {
     return (bUserMenuItem *)ED_screen_user_menu_item_find_menu(&um->items, mt);
   }
-  else {
-    return NULL;
-  }
+  return NULL;
 }
 
 static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
@@ -561,7 +560,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
     const bool is_array_component = (is_array && but->rnaindex != -1);
     const bool is_whole_array = (is_array && but->rnaindex == -1);
 
-    const int override_status = RNA_property_override_library_status(ptr, prop, -1);
+    const uint override_status = RNA_property_override_library_status(ptr, prop, -1);
     const bool is_overridable = (override_status & RNA_OVERRIDE_STATUS_OVERRIDABLE) != 0;
 
     /* Set the (button_pointer, button_prop)
@@ -962,7 +961,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
     const PropertyType prop_type = RNA_property_type(but->rnaprop);
     if (((prop_type == PROP_POINTER) ||
          (prop_type == PROP_STRING && but->type == UI_BTYPE_SEARCH_MENU &&
-          but->search_func == ui_rna_collection_search_cb)) &&
+          but->search->update_fn == ui_rna_collection_search_update_fn)) &&
         ui_jump_to_target_button_poll(C)) {
       uiItemO(layout,
               CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Jump to Target"),
@@ -1194,22 +1193,22 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
 
   /* Show header tools for header buttons. */
   if (ui_block_is_popup_any(but->block) == false) {
-    const ARegion *ar = CTX_wm_region(C);
+    const ARegion *region = CTX_wm_region(C);
 
-    if (!ar) {
+    if (!region) {
       /* skip */
     }
-    else if (ELEM(ar->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
+    else if (ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
       uiItemMenuF(layout, IFACE_("Header"), ICON_NONE, ED_screens_header_tools_menu_create, NULL);
     }
-    else if (ar->regiontype == RGN_TYPE_NAV_BAR) {
+    else if (region->regiontype == RGN_TYPE_NAV_BAR) {
       uiItemMenuF(layout,
                   IFACE_("Navigation Bar"),
                   ICON_NONE,
                   ED_screens_navigation_bar_tools_menu_create,
                   NULL);
     }
-    else if (ar->regiontype == RGN_TYPE_FOOTER) {
+    else if (region->regiontype == RGN_TYPE_FOOTER) {
       uiItemMenuF(layout, IFACE_("Footer"), ICON_NONE, ED_screens_footer_tools_menu_create, NULL);
     }
   }
@@ -1231,10 +1230,10 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
 /**
  * menu to show when right clicking on the panel header
  */
-void ui_popup_context_menu_for_panel(bContext *C, ARegion *ar, Panel *pa)
+void ui_popup_context_menu_for_panel(bContext *C, ARegion *region, Panel *panel)
 {
-  bScreen *sc = CTX_wm_screen(C);
-  const bool has_panel_category = UI_panel_category_is_visible(ar);
+  bScreen *screen = CTX_wm_screen(C);
+  const bool has_panel_category = UI_panel_category_is_visible(region);
   const bool any_item_visible = has_panel_category;
   PointerRNA ptr;
   uiPopupMenu *pup;
@@ -1243,11 +1242,11 @@ void ui_popup_context_menu_for_panel(bContext *C, ARegion *ar, Panel *pa)
   if (!any_item_visible) {
     return;
   }
-  if (pa->type->parent != NULL) {
+  if (panel->type->parent != NULL) {
     return;
   }
 
-  RNA_pointer_create(&sc->id, &RNA_Panel, pa, &ptr);
+  RNA_pointer_create(&screen->id, &RNA_Panel, panel, &ptr);
 
   pup = UI_popup_menu_begin(C, IFACE_("Panel"), ICON_NONE);
   layout = UI_popup_menu_layout(pup);

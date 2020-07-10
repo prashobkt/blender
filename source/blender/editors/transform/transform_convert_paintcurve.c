@@ -29,7 +29,6 @@
 
 #include "BKE_context.h"
 #include "BKE_paint.h"
-#include "BKE_report.h"
 
 #include "transform.h"
 #include "transform_convert.h"
@@ -155,13 +154,11 @@ void createTransPaintCurveVerts(bContext *C, TransInfo *t)
         total += 3;
         continue;
       }
-      else {
-        if (pcp->bez.f1 & SELECT) {
-          total++;
-        }
-        if (pcp->bez.f3 & SELECT) {
-          total++;
-        }
+      if (pcp->bez.f1 & SELECT) {
+        total++;
+      }
+      if (pcp->bez.f3 & SELECT) {
+        total++;
       }
     }
   }

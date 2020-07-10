@@ -21,8 +21,8 @@
  * \ingroup bke
  */
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -31,34 +31,119 @@
 #include "BLI_math.h"
 #include "BLI_threads.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_sequence_types.h"
 #include "DNA_packedFile_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_windowmanager_types.h"
 
 #ifdef WITH_AUDASPACE
-#  include <AUD_Sound.h>
-#  include <AUD_Sequence.h>
-#  include <AUD_Handle.h>
-#  include <AUD_Special.h>
 #  include "../../../intern/audaspace/intern/AUD_Set.h"
+#  include <AUD_Handle.h>
+#  include <AUD_Sequence.h>
+#  include <AUD_Sound.h>
+#  include <AUD_Special.h>
 #endif
 
 #include "BKE_global.h"
-#include "BKE_main.h"
-#include "BKE_sound.h"
+#include "BKE_idtype.h"
 #include "BKE_lib_id.h"
+#include "BKE_main.h"
 #include "BKE_packedFile.h"
-#include "BKE_sequencer.h"
 #include "BKE_scene.h"
+#include "BKE_sequencer.h"
+#include "BKE_sound.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+static void sound_free_audio(bSound *sound);
+
+static void sound_copy_data(Main *UNUSED(bmain),
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int UNUSED(flag))
+{
+  bSound *sound_dst = (bSound *)id_dst;
+  const bSound *sound_src = (const bSound *)id_src;
+
+  sound_dst->handle = NULL;
+  sound_dst->cache = NULL;
+  sound_dst->waveform = NULL;
+  sound_dst->playback_handle = NULL;
+  sound_dst->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
+  BLI_spin_init(sound_dst->spinlock);
+
+  /* Just to be sure, should not have any value actually after reading time. */
+  sound_dst->ipo = NULL;
+  sound_dst->newpackedfile = NULL;
+
+  if (sound_src->packedfile != NULL) {
+    sound_dst->packedfile = BKE_packedfile_duplicate(sound_src->packedfile);
+  }
+
+  BKE_sound_reset_runtime(sound_dst);
+}
+
+static void sound_free_data(ID *id)
+{
+  bSound *sound = (bSound *)id;
+
+  /* No animdata here. */
+
+  if (sound->packedfile) {
+    BKE_packedfile_free(sound->packedfile);
+    sound->packedfile = NULL;
+  }
+
+  sound_free_audio(sound);
+  BKE_sound_free_waveform(sound);
+
+  if (sound->spinlock) {
+    BLI_spin_end(sound->spinlock);
+    MEM_freeN(sound->spinlock);
+    sound->spinlock = NULL;
+  }
+}
+
+static void sound_foreach_cache(ID *id,
+                                IDTypeForeachCacheFunctionCallback function_callback,
+                                void *user_data)
+{
+  bSound *sound = (bSound *)id;
+  IDCacheKey key = {
+      .id_session_uuid = id->session_uuid,
+      .offset_in_ID = offsetof(bSound, waveform),
+      .cache_v = sound->waveform,
+  };
+
+  function_callback(id, &key, &sound->waveform, 0, user_data);
+}
+
+IDTypeInfo IDType_ID_SO = {
+    .id_code = ID_SO,
+    .id_filter = FILTER_ID_SO,
+    .main_listbase_index = INDEX_ID_SO,
+    .struct_size = sizeof(bSound),
+    .name = "Sound",
+    .name_plural = "sounds",
+    .translation_context = BLT_I18NCONTEXT_ID_SOUND,
+    .flags = 0,
+
+    /* A fuzzy case, think NULLified content is OK here... */
+    .init_data = NULL,
+    .copy_data = sound_copy_data,
+    .free_data = sound_free_data,
+    .make_local = NULL,
+    .foreach_id = NULL,
+    .foreach_cache = sound_foreach_cache,
+};
 
 #ifdef WITH_AUDASPACE
 /* evil globals ;-) */
@@ -66,7 +151,7 @@ static int sound_cfra;
 static char **audio_device_names = NULL;
 #endif
 
-BLI_INLINE void sound_verify_evaluated_id(ID *id)
+BLI_INLINE void sound_verify_evaluated_id(const ID *id)
 {
   UNUSED_VARS_NDEBUG(id);
   /* This is a bit tricky and not quite reliable, but good enough check.
@@ -102,7 +187,7 @@ bSound *BKE_sound_new_file(Main *bmain, const char *filepath)
   BLI_path_abs(str, path);
 
   sound = BKE_libblock_alloc(bmain, ID_SO, BLI_path_basename(filepath), 0);
-  BLI_strncpy(sound->name, filepath, FILE_MAX);
+  BLI_strncpy(sound->filepath, filepath, FILE_MAX);
   /* sound->type = SOUND_TYPE_FILE; */ /* XXX unused currently */
 
   sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
@@ -123,7 +208,7 @@ bSound *BKE_sound_new_file_exists_ex(Main *bmain, const char *filepath, bool *r_
 
   /* first search an identical filepath */
   for (sound = bmain->sounds.first; sound; sound = sound->id.next) {
-    BLI_strncpy(strtest, sound->name, sizeof(sound->name));
+    BLI_strncpy(strtest, sound->filepath, sizeof(sound->filepath));
     BLI_path_abs(strtest, ID_BLEND_PATH(bmain, &sound->id));
 
     if (BLI_path_cmp(strtest, str) == 0) {
@@ -162,64 +247,6 @@ static void sound_free_audio(bSound *sound)
 #else
   UNUSED_VARS(sound);
 #endif /* WITH_AUDASPACE */
-}
-
-/** Free (or release) any data used by this sound (does not free the sound itself). */
-void BKE_sound_free(bSound *sound)
-{
-  /* No animdata here. */
-
-  if (sound->packedfile) {
-    BKE_packedfile_free(sound->packedfile);
-    sound->packedfile = NULL;
-  }
-
-  sound_free_audio(sound);
-  BKE_sound_free_waveform(sound);
-
-  if (sound->spinlock) {
-    BLI_spin_end(sound->spinlock);
-    MEM_freeN(sound->spinlock);
-    sound->spinlock = NULL;
-  }
-}
-
-/**
- * Only copy internal data of Sound ID from source
- * to already allocated/initialized destination.
- * You probably never want to use that directly,
- * use #BKE_id_copy or #BKE_id_copy_ex for typical needs.
- *
- * WARNING! This function will not handle ID user count!
- *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
- */
-void BKE_sound_copy_data(Main *UNUSED(bmain),
-                         bSound *sound_dst,
-                         const bSound *UNUSED(sound_src),
-                         const int UNUSED(flag))
-{
-  sound_dst->handle = NULL;
-  sound_dst->cache = NULL;
-  sound_dst->waveform = NULL;
-  sound_dst->playback_handle = NULL;
-  sound_dst->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
-  BLI_spin_init(sound_dst->spinlock);
-
-  /* Just to be sure, should not have any value actually after reading time. */
-  sound_dst->ipo = NULL;
-  sound_dst->newpackedfile = NULL;
-
-  if (sound_dst->packedfile) {
-    sound_dst->packedfile = BKE_packedfile_duplicate(sound_dst->packedfile);
-  }
-
-  BKE_sound_reset_runtime(sound_dst);
-}
-
-void BKE_sound_make_local(Main *bmain, bSound *sound, const bool lib_local)
-{
-  BKE_id_make_local_generic(bmain, &sound->id, true, lib_local);
 }
 
 #ifdef WITH_AUDASPACE
@@ -440,8 +467,8 @@ static void sound_load_audio(Main *bmain, bSound *sound, bool free_waveform)
     /* load sound */
     PackedFile *pf = sound->packedfile;
 
-    /* don't modify soundact->sound->name, only change a copy */
-    BLI_strncpy(fullpath, sound->name, sizeof(fullpath));
+    /* don't modify soundact->sound->filepath, only change a copy */
+    BLI_strncpy(fullpath, sound->filepath, sizeof(fullpath));
     BLI_path_abs(fullpath, ID_BLEND_PATH(bmain, &sound->id));
 
     /* but we need a packed file then */
@@ -493,7 +520,7 @@ void BKE_sound_load(Main *bmain, bSound *sound)
   sound_load_audio(bmain, sound, true);
 }
 
-AUD_Device *BKE_sound_mixdown(Scene *scene, AUD_DeviceSpecs specs, int start, float volume)
+AUD_Device *BKE_sound_mixdown(const Scene *scene, AUD_DeviceSpecs specs, int start, float volume)
 {
   sound_verify_evaluated_id(&scene->id);
   return AUD_openMixdownDevice(specs, scene->sound_scene, volume, start / FPS);
@@ -537,6 +564,16 @@ void BKE_sound_destroy_scene(Scene *scene)
   if (scene->sound_scene) {
     AUD_Sequence_free(scene->sound_scene);
   }
+}
+
+void BKE_sound_lock()
+{
+  AUD_Device_lock(sound_device);
+}
+
+void BKE_sound_unlock()
+{
+  AUD_Device_unlock(sound_device);
 }
 
 void BKE_sound_reset_scene_specs(Scene *scene)
@@ -730,12 +767,20 @@ static void sound_start_play_scene(Scene *scene)
   }
 }
 
+static double get_cur_time(Scene *scene)
+{
+  /* We divide by the current framelen to take into account time remapping.
+   * Otherwise we will get the wrong starting time which will break A/V sync.
+   * See T74111 for further details. */
+  return FRA2TIME((CFRA + SUBFRA) / (double)scene->r.framelen);
+}
+
 void BKE_sound_play_scene(Scene *scene)
 {
   sound_verify_evaluated_id(&scene->id);
 
   AUD_Status status;
-  const float cur_time = (float)((double)CFRA / FPS);
+  const double cur_time = get_cur_time(scene);
 
   AUD_Device_lock(sound_device);
 
@@ -782,8 +827,8 @@ void BKE_sound_seek_scene(Main *bmain, Scene *scene)
   bScreen *screen;
   int animation_playing;
 
-  const float one_frame = (float)(1.0 / FPS);
-  const float cur_time = (float)((double)CFRA / FPS);
+  const double one_frame = 1.0 / FPS;
+  const double cur_time = FRA2TIME(CFRA);
 
   AUD_Device_lock(sound_device);
 
@@ -840,7 +885,7 @@ void BKE_sound_seek_scene(Main *bmain, Scene *scene)
   AUD_Device_unlock(sound_device);
 }
 
-float BKE_sound_sync_scene(Scene *scene)
+double BKE_sound_sync_scene(Scene *scene)
 {
   sound_verify_evaluated_id(&scene->id);
 
@@ -1140,6 +1185,12 @@ void BKE_sound_create_scene(Scene *UNUSED(scene))
 void BKE_sound_destroy_scene(Scene *UNUSED(scene))
 {
 }
+void BKE_sound_lock(void)
+{
+}
+void BKE_sound_unlock(void)
+{
+}
 void BKE_sound_reset_scene_specs(Scene *UNUSED(scene))
 {
 }
@@ -1195,7 +1246,7 @@ void BKE_sound_stop_scene(Scene *UNUSED(scene))
 void BKE_sound_seek_scene(Main *UNUSED(bmain), Scene *UNUSED(scene))
 {
 }
-float BKE_sound_sync_scene(Scene *UNUSED(scene))
+double BKE_sound_sync_scene(Scene *UNUSED(scene))
 {
   return NAN_FLT;
 }
@@ -1306,7 +1357,7 @@ void BKE_sound_jack_sync_callback_set(SoundJackSyncCallback callback)
 #endif
 }
 
-void BKE_sound_jack_scene_update(Scene *scene, int mode, float time)
+void BKE_sound_jack_scene_update(Scene *scene, int mode, double time)
 {
   sound_verify_evaluated_id(&scene->id);
 

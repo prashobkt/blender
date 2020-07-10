@@ -25,9 +25,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
@@ -35,7 +35,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim.h"
+#include "BKE_anim_path.h"
 #include "BKE_armature.h"
 #include "BKE_curve.h"
 #include "BKE_displist.h"
@@ -119,9 +119,8 @@ static void splineik_init_tree_from_pchan(Scene *UNUSED(scene),
   if (segcount == 0) {
     return;
   }
-  else {
-    pchanRoot = pchanChain[segcount - 1];
-  }
+
+  pchanRoot = pchanChain[segcount - 1];
 
   /* perform binding step if required */
   if ((ikData->flag & CONSTRAINT_SPLINEIK_BOUND) == 0) {
@@ -717,7 +716,7 @@ void BKE_pose_constraints_evaluate(struct Depsgraph *depsgraph,
   if (armature->flag & ARM_RESTPOS) {
     return;
   }
-  else if (pchan->flag & POSE_IKTREE || pchan->flag & POSE_IKSPLINE) {
+  if (pchan->flag & POSE_IKTREE || pchan->flag & POSE_IKSPLINE) {
     /* IK are being solved separately/ */
   }
   else {

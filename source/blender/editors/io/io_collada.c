@@ -36,8 +36,8 @@
 
 #  include "DEG_depsgraph.h"
 
-#  include "ED_screen.h"
 #  include "ED_object.h"
+#  include "ED_screen.h"
 
 #  include "RNA_access.h"
 #  include "RNA_define.h"
@@ -48,7 +48,7 @@
 #  include "WM_api.h"
 #  include "WM_types.h"
 
-#  include "../../collada/collada.h"
+#  include "collada.h"
 
 #  include "io_collada.h"
 
@@ -253,16 +253,15 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "No objects selected -- Created empty export file");
     return OPERATOR_CANCELLED;
   }
-  else if (export_count < 0) {
+  if (export_count < 0) {
     BKE_report(op->reports, RPT_WARNING, "Error during export (see Console)");
     return OPERATOR_CANCELLED;
   }
-  else {
-    char buff[100];
-    sprintf(buff, "Exported %d Objects", export_count);
-    BKE_report(op->reports, RPT_INFO, buff);
-    return OPERATOR_FINISHED;
-  }
+
+  char buff[100];
+  sprintf(buff, "Exported %d Objects", export_count);
+  BKE_report(op->reports, RPT_INFO, buff);
+  return OPERATOR_FINISHED;
 }
 
 static void uiCollada_exportSettings(uiLayout *layout, PointerRNA *imfptr)
@@ -803,10 +802,9 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS);
     return OPERATOR_FINISHED;
   }
-  else {
-    BKE_report(op->reports, RPT_ERROR, "Parsing errors in Document (see Blender Console)");
-    return OPERATOR_CANCELLED;
-  }
+
+  BKE_report(op->reports, RPT_ERROR, "Parsing errors in Document (see Blender Console)");
+  return OPERATOR_CANCELLED;
 }
 
 static void uiCollada_importSettings(uiLayout *layout, PointerRNA *imfptr)
@@ -857,6 +855,7 @@ void WM_OT_collada_import(wmOperatorType *ot)
   ot->name = "Import COLLADA";
   ot->description = "Load a Collada file";
   ot->idname = "WM_OT_collada_import";
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   ot->invoke = WM_operator_filesel;
   ot->exec = wm_collada_import_exec;

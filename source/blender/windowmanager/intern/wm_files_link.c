@@ -23,28 +23,28 @@
  * Functions for dealing with append/link operators and helpers.
  */
 
-#include <float.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stddef.h>
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
+#include <float.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_ID.h"
-#include "DNA_screen_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_bitmap.h"
+#include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
-#include "BLI_ghash.h"
 
 #include "BLO_readfile.h"
 
@@ -56,7 +56,7 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "BKE_idcode.h"
+#include "BKE_idtype.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -74,7 +74,9 @@
 
 #include "wm_files.h"
 
-/* **************** link/append *************** */
+/* -------------------------------------------------------------------- */
+/** \name Link/Append Operator
+ * \{ */
 
 static bool wm_link_append_poll(bContext *C)
 {
@@ -102,7 +104,7 @@ static int wm_link_append_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
     else if (G.relbase_valid) {
       char path[FILE_MAX];
       BLI_strncpy(path, BKE_main_blendfile_path_from_global(), sizeof(path));
-      BLI_parent_dir(path);
+      BLI_path_parent_dir(path);
       RNA_string_set(op->ptr, "filepath", path);
     }
   }
@@ -304,11 +306,11 @@ static bool wm_link_append_item_poll(ReportList *reports,
     return false;
   }
 
-  idcode = BKE_idcode_from_name(group);
+  idcode = BKE_idtype_idcode_from_name(group);
 
   /* XXX For now, we do a nasty exception for workspace, forbid linking them.
    *     Not nice, ultimately should be solved! */
-  if (!BKE_idcode_is_linkable(idcode) && (do_append || idcode != ID_WS)) {
+  if (!BKE_idtype_idcode_is_linkable(idcode) && (do_append || idcode != ID_WS)) {
     if (reports) {
       if (do_append) {
         BKE_reportf(reports,
@@ -444,7 +446,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
 
         lib_idx = POINTER_AS_INT(BLI_ghash_lookup(libraries, libname));
 
-        item = wm_link_append_data_item_add(lapp_data, name, BKE_idcode_from_name(group), NULL);
+        item = wm_link_append_data_item_add(
+            lapp_data, name, BKE_idtype_idcode_from_name(group), NULL);
         BLI_BITMAP_ENABLE(item->libraries, lib_idx);
       }
     }
@@ -456,7 +459,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
     WMLinkAppendDataItem *item;
 
     wm_link_append_data_library_add(lapp_data, libname);
-    item = wm_link_append_data_item_add(lapp_data, name, BKE_idcode_from_name(group), NULL);
+    item = wm_link_append_data_item_add(lapp_data, name, BKE_idtype_idcode_from_name(group), NULL);
     BLI_BITMAP_ENABLE(item->libraries, 0);
   }
 
@@ -617,19 +620,22 @@ void WM_OT_append(wmOperatorType *ot)
       "Localize all appended data, including those indirectly linked from other libraries");
 }
 
-/** \name Append single datablock and return it.
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Append Single Data-Block & Return it
  *
  * Used for appending workspace from startup files.
- *
  * \{ */
 
-ID *WM_file_append_datablock(bContext *C,
+ID *WM_file_append_datablock(Main *bmain,
+                             Scene *scene,
+                             ViewLayer *view_layer,
+                             View3D *v3d,
                              const char *filepath,
                              const short id_code,
                              const char *id_name)
 {
-  Main *bmain = CTX_data_main(C);
-
   /* Tag everything so we can make local only the new datablock. */
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
 
@@ -641,9 +647,6 @@ ID *WM_file_append_datablock(bContext *C,
   BLI_BITMAP_ENABLE(item->libraries, 0);
 
   /* Link datablock. */
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  View3D *v3d = CTX_wm_view3d(C);
   wm_link_do(lapp_data, NULL, bmain, scene, view_layer, v3d);
 
   /* Get linked datablock and free working data. */
@@ -661,6 +664,10 @@ ID *WM_file_append_datablock(bContext *C,
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Library Relocate Operator & Library Reload API
+ * \{ */
+
 static int wm_lib_relocate_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   Library *lib;
@@ -674,10 +681,10 @@ static int wm_lib_relocate_invoke(bContext *C, wmOperator *op, const wmEvent *UN
       BKE_reportf(op->reports,
                   RPT_ERROR_INVALID_INPUT,
                   "Cannot relocate indirectly linked library '%s'",
-                  lib->filepath);
+                  lib->filepath_abs);
       return OPERATOR_CANCELLED;
     }
-    RNA_string_set(op->ptr, "filepath", lib->filepath);
+    RNA_string_set(op->ptr, "filepath", lib->filepath_abs);
 
     WM_event_add_fileselect(C, op);
 
@@ -705,7 +712,7 @@ static void lib_relocate_do(Main *bmain,
     ID *id = lbarray[lba_idx]->first;
     const short idcode = id ? GS(id->name) : 0;
 
-    if (!id || !BKE_idcode_is_linkable(idcode)) {
+    if (!id || !BKE_idtype_idcode_is_linkable(idcode)) {
       /* No need to reload non-linkable datatypes,
        * those will get relinked with their 'users ID'. */
       continue;
@@ -751,6 +758,10 @@ static void lib_relocate_do(Main *bmain,
     BLI_assert(old_id);
     BLI_addtail(which_libbase(bmain, GS(old_id->name)), old_id);
   }
+
+  /* Since our (old) reloaded IDs were removed from main, the user count done for them in linking
+   * code is wrong, we need to redo it here after adding them back to main. */
+  BKE_main_id_refcount_recompute(bmain, false);
 
   /* Note that in reload case, we also want to replace indirect usages. */
   const short remap_flags = ID_REMAP_SKIP_NEVER_NULL_USAGE |
@@ -902,24 +913,24 @@ static void lib_relocate_do(Main *bmain,
 
 void WM_lib_reload(Library *lib, bContext *C, ReportList *reports)
 {
-  if (!BLO_has_bfile_extension(lib->filepath)) {
-    BKE_reportf(reports, RPT_ERROR, "'%s' is not a valid library filepath", lib->filepath);
+  if (!BLO_has_bfile_extension(lib->filepath_abs)) {
+    BKE_reportf(reports, RPT_ERROR, "'%s' is not a valid library filepath", lib->filepath_abs);
     return;
   }
 
-  if (!BLI_exists(lib->filepath)) {
+  if (!BLI_exists(lib->filepath_abs)) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Trying to reload library '%s' from invalid path '%s'",
                 lib->id.name,
-                lib->filepath);
+                lib->filepath_abs);
     return;
   }
 
   WMLinkAppendData *lapp_data = wm_link_append_data_new(BLO_LIBLINK_USE_PLACEHOLDERS |
                                                         BLO_LIBLINK_FORCE_INDIRECT);
 
-  wm_link_append_data_library_add(lapp_data, lib->filepath);
+  wm_link_append_data_library_add(lapp_data, lib->filepath_abs);
 
   lib_relocate_do(CTX_data_main(C), lib, lapp_data, reports, true);
 
@@ -952,7 +963,7 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
       BKE_reportf(op->reports,
                   RPT_ERROR_INVALID_INPUT,
                   "Cannot relocate indirectly linked library '%s'",
-                  lib->filepath);
+                  lib->filepath_abs);
       return OPERATOR_CANCELLED;
     }
 
@@ -975,7 +986,7 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
       return OPERATOR_CANCELLED;
     }
 
-    if (BLI_path_cmp(lib->filepath, path) == 0) {
+    if (BLI_path_cmp(lib->filepath_abs, path) == 0) {
 #ifdef PRINT_DEBUG
       printf("We are supposed to reload '%s' lib (%d)...\n", lib->filepath, lib->id.us);
 #endif
@@ -1012,7 +1023,7 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
 
           BLI_join_dirfile(path, sizeof(path), root, relname);
 
-          if (BLI_path_cmp(path, lib->filepath) == 0 || !BLO_has_bfile_extension(relname)) {
+          if (BLI_path_cmp(path, lib->filepath_abs) == 0 || !BLO_has_bfile_extension(relname)) {
             continue;
           }
 

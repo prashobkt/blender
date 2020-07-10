@@ -22,8 +22,8 @@
  */
 
 #include <limits.h>
-#include <stdlib.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -40,8 +40,9 @@
 #include "DNA_scene_types.h"
 #include "DNA_vfont_types.h"
 
-#include "BKE_animsys.h"
 #include "BKE_collection.h"
+#include "BKE_duplilist.h"
+#include "BKE_editmesh.h"
 #include "BKE_font.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -53,14 +54,12 @@
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
-#include "BKE_editmesh.h"
-#include "BKE_anim.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "BLI_strict_flags.h"
 #include "BLI_hash.h"
+#include "BLI_strict_flags.h"
 
 /* Dupli-Geometry */
 
@@ -187,7 +186,7 @@ static DupliObject *make_dupli(const DupliContext *ctx, Object *ob, float mat[4]
   dob->random_id = BLI_hash_string(dob->ob->id.name + 2);
 
   if (dob->persistent_id[0] != INT_MAX) {
-    for (i = 0; i < MAX_DUPLI_RECUR * 2; i++) {
+    for (i = 0; i < MAX_DUPLI_RECUR; i++) {
       dob->random_id = BLI_hash_int_2d(dob->random_id, (unsigned int)dob->persistent_id[i]);
     }
   }
@@ -426,7 +425,7 @@ static void make_duplis_verts(const DupliContext *ctx)
       vdd.me_eval = vdd.edit_mesh->mesh_eval_cage;
     }
     else {
-      vdd.me_eval = parent->runtime.mesh_eval;
+      vdd.me_eval = BKE_object_get_evaluated_mesh(parent);
     }
 
     if (vdd.me_eval == NULL) {
@@ -702,7 +701,7 @@ static void make_duplis_faces(const DupliContext *ctx)
       fdd.me_eval = em->mesh_eval_cage;
     }
     else {
-      fdd.me_eval = parent->runtime.mesh_eval;
+      fdd.me_eval = BKE_object_get_evaluated_mesh(parent);
     }
 
     if (fdd.me_eval == NULL) {
@@ -1054,7 +1053,7 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
   }
 
   if (psys->lattice_deform_data) {
-    end_latt_deform(psys->lattice_deform_data);
+    BKE_lattice_deform_data_destroy(psys->lattice_deform_data);
     psys->lattice_deform_data = NULL;
   }
 }

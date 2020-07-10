@@ -29,8 +29,8 @@
 #include "BLI_math_color.h"
 
 #include "BKE_context.h"
-#include "BKE_mesh.h"
 #include "BKE_deform.h"
+#include "BKE_mesh.h"
 
 #include "DEG_depsgraph.h"
 
@@ -109,15 +109,13 @@ static int vertex_color_set_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Object *obact = CTX_data_active_object(C);
-  unsigned int paintcol = vpaint_get_current_col(scene, scene->toolsettings->vpaint, false);
+  uint paintcol = vpaint_get_current_col(scene, scene->toolsettings->vpaint, false);
 
   if (vertex_color_set(obact, paintcol)) {
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_vertex_color_set(wmOperatorType *ot)
@@ -160,7 +158,7 @@ static bool vertex_paint_from_weight(Object *ob)
     uint j = 0;
     do {
       uint vidx = me->mloop[mp->loopstart + j].v;
-      const float weight = defvert_find_weight(&me->dvert[vidx], vgroup_active);
+      const float weight = BKE_defvert_find_weight(&me->dvert[vidx], vgroup_active);
       const uchar grayscale = weight * 255;
       lcol->r = grayscale;
       lcol->b = grayscale;
@@ -182,9 +180,7 @@ static int vertex_paint_from_weight_exec(bContext *C, wmOperator *UNUSED(op))
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_vertex_color_from_weight(wmOperatorType *ot)
@@ -323,9 +319,7 @@ static int vertex_color_smooth_exec(bContext *C, wmOperator *UNUSED(op))
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_vertex_color_smooth(wmOperatorType *ot)
@@ -402,9 +396,7 @@ static int vertex_color_brightness_contrast_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_vertex_color_brightness_contrast(wmOperatorType *ot)
@@ -469,9 +461,7 @@ static int vertex_color_hsv_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_vertex_color_hsv(wmOperatorType *ot)
@@ -509,9 +499,7 @@ static int vertex_color_invert_exec(bContext *C, wmOperator *UNUSED(op))
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_vertex_color_invert(wmOperatorType *ot)
@@ -555,9 +543,7 @@ static int vertex_color_levels_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_vertex_color_levels(wmOperatorType *ot)

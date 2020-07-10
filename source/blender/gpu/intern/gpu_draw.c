@@ -60,7 +60,8 @@
 
 #include "PIL_time.h"
 
-static void gpu_free_image_immediate(Image *ima);
+static void gpu_free_image(Image *ima, const bool immediate);
+static void gpu_free_unused_buffers(void);
 
 //* Checking powers of two for images since OpenGL ES requires it */
 #ifdef WITH_DDS
@@ -158,10 +159,10 @@ static GLenum gpu_get_mipmap_filter(bool mag)
 }
 
 /* Anisotropic filtering settings */
-void GPU_set_anisotropic(Main *bmain, float value)
+void GPU_set_anisotropic(float value)
 {
   if (GTS.anisotropic != value) {
-    GPU_free_images(bmain);
+    GPU_samplers_free();
 
     /* Clamp value to the maximum value the graphics card supports */
     const float max = GPU_max_texture_anisotropy();
@@ -170,6 +171,8 @@ void GPU_set_anisotropic(Main *bmain, float value)
     }
 
     GTS.anisotropic = value;
+
+    GPU_samplers_init();
   }
 }
 
@@ -180,27 +183,28 @@ float GPU_get_anisotropic(void)
 
 /* Set OpenGL state for an MTFace */
 
-static GPUTexture **gpu_get_image_gputexture(Image *ima, GLenum textarget)
+static GPUTexture **gpu_get_image_gputexture(Image *ima, GLenum textarget, const int multiview_eye)
 {
   if (textarget == GL_TEXTURE_2D) {
-    return &ima->gputexture[TEXTARGET_TEXTURE_2D];
+    return &(ima->gputexture[TEXTARGET_TEXTURE_2D][multiview_eye]);
   }
   else if (textarget == GL_TEXTURE_CUBE_MAP) {
-    return &ima->gputexture[TEXTARGET_TEXTURE_CUBE_MAP];
+    return &(ima->gputexture[TEXTARGET_TEXTURE_CUBE_MAP][multiview_eye]);
   }
   else if (textarget == GL_TEXTURE_2D_ARRAY) {
-    return &ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY];
+    return &(ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][multiview_eye]);
   }
   else if (textarget == GL_TEXTURE_1D_ARRAY) {
-    return &ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING];
+    return &(ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][multiview_eye]);
   }
 
   return NULL;
 }
 
-static uint gpu_texture_create_tile_mapping(Image *ima)
+static uint gpu_texture_create_tile_mapping(Image *ima, const int multiview_eye)
 {
-  GPUTexture *tilearray = ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY];
+  GPUTexture *tilearray = ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][multiview_eye];
+
   if (tilearray == NULL) {
     return 0;
   }
@@ -328,7 +332,9 @@ static uint gpu_texture_create_tile_array(Image *ima, ImBuf *main_ibuf)
   GLenum data_type, internal_format;
   if (main_ibuf->rect_float) {
     data_type = GL_FLOAT;
-    internal_format = GL_RGBA16F;
+    internal_format = (!(main_ibuf->flags & IB_halffloat) && (ima->flag & IMA_HIGH_BITDEPTH)) ?
+                          GL_RGBA32F :
+                          GL_RGBA16F;
   }
   else {
     data_type = GL_UNSIGNED_BYTE;
@@ -446,21 +452,11 @@ static uint gpu_texture_create_tile_array(Image *ima, ImBuf *main_ibuf)
     BKE_image_release_ibuf(ima, ibuf, NULL);
   }
 
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
-
   if (GPU_get_mipmap()) {
     glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, gpu_get_mipmap_filter(0));
     if (ima) {
       ima->gpuflag |= IMA_GPU_MIPMAP_COMPLETE;
     }
-  }
-  else {
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  }
-
-  if (GLEW_EXT_texture_filter_anisotropic) {
-    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, GPU_get_anisotropic());
   }
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
@@ -472,6 +468,7 @@ static uint gpu_texture_create_from_ibuf(Image *ima, ImBuf *ibuf, int textarget)
 {
   uint bindcode = 0;
   const bool mipmap = GPU_get_mipmap();
+  const bool half_float = (ibuf->flags & IB_halffloat) != 0;
 
 #ifdef WITH_DDS
   if (ibuf->ftype == IMB_FTYPE_DDS) {
@@ -536,6 +533,7 @@ static uint gpu_texture_create_from_ibuf(Image *ima, ImBuf *ibuf, int textarget)
                     ibuf->y,
                     textarget,
                     mipmap,
+                    half_float,
                     compress_as_srgb,
                     ima);
 
@@ -857,13 +855,18 @@ static void gpu_texture_update_from_ibuf(
  * available. It is also required when requesting the GPUTexture for a render result. */
 GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, ImBuf *ibuf, int textarget)
 {
+#ifndef GPU_STANDALONE
   if (ima == NULL) {
     return NULL;
   }
 
+  /* Free any unused GPU textures, since we know we are in a thread with OpenGL
+   * context and might as well ensure we have as much space free as possible. */
+  gpu_free_unused_buffers();
+
   /* currently, gpu refresh tagging is used by ima sequences */
   if (ima->gpuflag & IMA_GPU_REFRESH) {
-    gpu_free_image_immediate(ima);
+    gpu_free_image(ima, true);
     ima->gpuflag &= ~IMA_GPU_REFRESH;
   }
 
@@ -871,7 +874,7 @@ GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, ImBuf *ibuf, 
   BKE_image_tag_time(ima);
 
   /* Test if we already have a texture. */
-  GPUTexture **tex = gpu_get_image_gputexture(ima, textarget);
+  GPUTexture **tex = gpu_get_image_gputexture(ima, textarget, iuser ? iuser->multiview_eye : 0);
   if (*tex) {
     return *tex;
   }
@@ -880,7 +883,7 @@ GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, ImBuf *ibuf, 
    * texture with zero bindcode so we don't keep trying. */
   uint bindcode = 0;
   ImageTile *tile = BKE_image_get_tile(ima, 0);
-  if (tile->ok == 0) {
+  if (tile == NULL || tile->ok == 0) {
     *tex = GPU_texture_from_bindcode(textarget, bindcode);
     return *tex;
   }
@@ -899,7 +902,7 @@ GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, ImBuf *ibuf, 
     bindcode = gpu_texture_create_tile_array(ima, ibuf_intern);
   }
   else if (textarget == GL_TEXTURE_1D_ARRAY) {
-    bindcode = gpu_texture_create_tile_mapping(ima);
+    bindcode = gpu_texture_create_tile_mapping(ima, iuser ? iuser->multiview_eye : 0);
   }
   else {
     bindcode = gpu_texture_create_from_ibuf(ima, ibuf_intern, textarget);
@@ -914,11 +917,19 @@ GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, ImBuf *ibuf, 
 
   GPU_texture_orig_size_set(*tex, ibuf_intern->x, ibuf_intern->y);
 
+  if (textarget == GL_TEXTURE_1D_ARRAY) {
+    /* Special for tile mapping. */
+    GPU_texture_mipmap_mode(*tex, false, false);
+  }
+
   return *tex;
+#endif
+  return NULL;
 }
 
 GPUTexture *GPU_texture_from_movieclip(MovieClip *clip, MovieClipUser *cuser, int textarget)
 {
+#ifndef GPU_STANDALONE
   if (clip == NULL) {
     return NULL;
   }
@@ -941,6 +952,9 @@ GPUTexture *GPU_texture_from_movieclip(MovieClip *clip, MovieClipUser *cuser, in
 
   *tex = GPU_texture_from_bindcode(textarget, bindcode);
   return *tex;
+#else
+  return NULL;
+#endif
 }
 
 void GPU_free_texture_movieclip(struct MovieClip *clip)
@@ -1043,6 +1057,7 @@ void GPU_create_gl_tex(uint *bind,
                        int recth,
                        int textarget,
                        bool mipmap,
+                       bool half_float,
                        bool use_srgb,
                        Image *ima)
 {
@@ -1072,7 +1087,9 @@ void GPU_create_gl_tex(uint *bind,
   glGenTextures(1, (GLuint *)bind);
   glBindTexture(textarget, *bind);
 
-  GLenum internal_format = (frect) ? GL_RGBA16F : (use_srgb) ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+  GLenum float_format = (!half_float && (ima && (ima->flag & IMA_HIGH_BITDEPTH))) ? GL_RGBA32F :
+                                                                                    GL_RGBA16F;
+  GLenum internal_format = (frect) ? float_format : (use_srgb) ? GL_SRGB8_ALPHA8 : GL_RGBA8;
 
   if (textarget == GL_TEXTURE_2D) {
     if (frect) {
@@ -1083,17 +1100,11 @@ void GPU_create_gl_tex(uint *bind,
           GL_TEXTURE_2D, 0, internal_format, rectw, recth, 0, GL_RGBA, GL_UNSIGNED_BYTE, rect);
     }
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
-
     if (GPU_get_mipmap() && mipmap) {
       glGenerateMipmap(GL_TEXTURE_2D);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gpu_get_mipmap_filter(0));
       if (ima) {
         ima->gpuflag |= IMA_GPU_MIPMAP_COMPLETE;
       }
-    }
-    else {
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     }
   }
   else if (textarget == GL_TEXTURE_CUBE_MAP) {
@@ -1117,32 +1128,19 @@ void GPU_create_gl_tex(uint *bind,
         }
       }
 
-      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
-
       if (GPU_get_mipmap() && mipmap) {
         glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, gpu_get_mipmap_filter(0));
 
         if (ima) {
           ima->gpuflag |= IMA_GPU_MIPMAP_COMPLETE;
         }
       }
-      else {
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      }
-      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
       gpu_del_cube_map(cube_map);
     }
     else {
       printf("Incorrect envmap size\n");
     }
-  }
-
-  if (GLEW_EXT_texture_filter_anisotropic) {
-    glTexParameterf(textarget, GL_TEXTURE_MAX_ANISOTROPY_EXT, GPU_get_anisotropic());
   }
 
   glBindTexture(textarget, 0);
@@ -1196,10 +1194,6 @@ bool GPU_upload_dxt_texture(ImBuf *ibuf, bool use_srgb)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gpu_get_mipmap_filter(0));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
 
-  if (GLEW_EXT_texture_filter_anisotropic) {
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, GPU_get_anisotropic());
-  }
-
   blocksize = (ibuf->dds_data.fourcc == FOURCC_DXT1) ? 8 : 16;
   for (i = 0; i < ibuf->dds_data.nummipmaps && (width || height); i++) {
     if (width == 0) {
@@ -1236,18 +1230,21 @@ void GPU_create_gl_tex_compressed(unsigned int *bind, int textarget, Image *ima,
   const bool use_srgb = !(IMB_colormanagement_space_is_data(ibuf->rect_colorspace) ||
                           IMB_colormanagement_space_is_scene_linear(ibuf->rect_colorspace));
   const bool mipmap = GPU_get_mipmap();
+  const bool half_float = (ibuf->flags & IB_halffloat) != 0;
 
 #ifndef WITH_DDS
   (void)ibuf;
   /* Fall back to uncompressed if DDS isn't enabled */
-  GPU_create_gl_tex(bind, ibuf->rect, NULL, ibuf->x, ibuf->y, textarget, mipmap, use_srgb, ima);
+  GPU_create_gl_tex(
+      bind, ibuf->rect, NULL, ibuf->x, ibuf->y, textarget, mipmap, half_float, use_srgb, ima);
 #else
   glGenTextures(1, (GLuint *)bind);
   glBindTexture(textarget, *bind);
 
   if (textarget == GL_TEXTURE_2D && GPU_upload_dxt_texture(ibuf, use_srgb) == 0) {
     glDeleteTextures(1, (GLuint *)bind);
-    GPU_create_gl_tex(bind, ibuf->rect, NULL, ibuf->x, ibuf->y, textarget, mipmap, use_srgb, ima);
+    GPU_create_gl_tex(
+        bind, ibuf->rect, NULL, ibuf->x, ibuf->y, textarget, mipmap, half_float, use_srgb, ima);
   }
 
   glBindTexture(textarget, 0);
@@ -1260,6 +1257,7 @@ void GPU_create_gl_tex_compressed(unsigned int *bind, int textarget, Image *ima,
  * re-uploaded to OpenGL */
 void GPU_paint_set_mipmap(Main *bmain, bool mipmap)
 {
+#ifndef GPU_STANDALONE
   if (!GTS.domipmap) {
     return;
   }
@@ -1270,14 +1268,16 @@ void GPU_paint_set_mipmap(Main *bmain, bool mipmap)
     for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
       if (BKE_image_has_opengl_texture(ima)) {
         if (ima->gpuflag & IMA_GPU_MIPMAP_COMPLETE) {
-          for (int a = 0; a < TEXTARGET_COUNT; a++) {
-            if (ELEM(a, TEXTARGET_TEXTURE_2D, TEXTARGET_TEXTURE_2D_ARRAY)) {
-              GPUTexture *tex = ima->gputexture[a];
-              if (tex != NULL) {
-                GPU_texture_bind(tex, 0);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gpu_get_mipmap_filter(0));
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
-                GPU_texture_unbind(tex);
+          for (int eye = 0; eye < 2; eye++) {
+            for (int a = 0; a < TEXTARGET_COUNT; a++) {
+              if (ELEM(a, TEXTARGET_TEXTURE_2D, TEXTARGET_TEXTURE_2D_ARRAY)) {
+                GPUTexture *tex = ima->gputexture[a][eye];
+                if (tex != NULL) {
+                  GPU_texture_bind(tex, 0);
+                  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gpu_get_mipmap_filter(0));
+                  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
+                  GPU_texture_unbind(tex);
+                }
               }
             }
           }
@@ -1294,14 +1294,16 @@ void GPU_paint_set_mipmap(Main *bmain, bool mipmap)
   else {
     for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
       if (BKE_image_has_opengl_texture(ima)) {
-        for (int a = 0; a < TEXTARGET_COUNT; a++) {
-          if (ELEM(a, TEXTARGET_TEXTURE_2D, TEXTARGET_TEXTURE_2D_ARRAY)) {
-            GPUTexture *tex = ima->gputexture[a];
-            if (tex != NULL) {
-              GPU_texture_bind(tex, 0);
-              glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-              glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
-              GPU_texture_unbind(tex);
+        for (int eye = 0; eye < 2; eye++) {
+          for (int a = 0; a < TEXTARGET_COUNT; a++) {
+            if (ELEM(a, TEXTARGET_TEXTURE_2D, TEXTARGET_TEXTURE_2D_ARRAY)) {
+              GPUTexture *tex = ima->gputexture[a][eye];
+              if (tex != NULL) {
+                GPU_texture_bind(tex, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gpu_get_mipmap_filter(1));
+                GPU_texture_unbind(tex);
+              }
             }
           }
         }
@@ -1311,10 +1313,12 @@ void GPU_paint_set_mipmap(Main *bmain, bool mipmap)
       }
     }
   }
+#endif /* GPU_STANDALONE */
 }
 
 void GPU_paint_update_image(Image *ima, ImageUser *iuser, int x, int y, int w, int h)
 {
+#ifndef GPU_STANDALONE
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, NULL);
   ImageTile *tile = BKE_image_get_tile_from_iuser(ima, iuser);
 
@@ -1323,76 +1327,81 @@ void GPU_paint_update_image(Image *ima, ImageUser *iuser, int x, int y, int w, i
     GPU_free_image(ima);
   }
 
-  GPUTexture *tex = ima->gputexture[TEXTARGET_TEXTURE_2D];
+  GPUTexture *tex = ima->gputexture[TEXTARGET_TEXTURE_2D][0];
   /* Check if we need to update the main gputexture. */
   if (tex != NULL && tile == ima->tiles.first) {
     gpu_texture_update_from_ibuf(tex, ima, ibuf, NULL, x, y, w, h);
   }
 
   /* Check if we need to update the array gputexture. */
-  tex = ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY];
+  tex = ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][0];
   if (tex != NULL) {
     gpu_texture_update_from_ibuf(tex, ima, ibuf, tile, x, y, w, h);
   }
 
   BKE_image_release_ibuf(ima, ibuf, NULL);
+#endif
 }
 
-static LinkNode *image_free_queue = NULL;
-static ThreadMutex img_queue_mutex = BLI_MUTEX_INITIALIZER;
+/* Delayed GPU texture free. Image datablocks can be deleted by any thread,
+ * but there may not be any active OpenGL context. In that case we push them
+ * into a queue and free the buffers later. */
+static LinkNode *gpu_texture_free_queue = NULL;
+static ThreadMutex gpu_texture_queue_mutex = BLI_MUTEX_INITIALIZER;
 
-static void gpu_queue_image_for_free(Image *ima)
+static void gpu_free_unused_buffers()
 {
-  BLI_mutex_lock(&img_queue_mutex);
-  BLI_linklist_prepend(&image_free_queue, ima);
-  BLI_mutex_unlock(&img_queue_mutex);
-}
-
-void GPU_free_unused_buffers(Main *bmain)
-{
-  if (!BLI_thread_is_main()) {
+  if (gpu_texture_free_queue == NULL) {
     return;
   }
 
-  BLI_mutex_lock(&img_queue_mutex);
+  BLI_mutex_lock(&gpu_texture_queue_mutex);
 
-  /* images */
-  for (LinkNode *node = image_free_queue; node; node = node->next) {
-    Image *ima = node->link;
-
-    /* check in case it was freed in the meantime */
-    if (bmain && BLI_findindex(&bmain->images, ima) != -1) {
-      GPU_free_image(ima);
+  if (gpu_texture_free_queue != NULL) {
+    for (LinkNode *node = gpu_texture_free_queue; node; node = node->next) {
+      GPUTexture *tex = node->link;
+      GPU_texture_free(tex);
     }
+
+    BLI_linklist_free(gpu_texture_free_queue, NULL);
+    gpu_texture_free_queue = NULL;
   }
 
-  BLI_linklist_free(image_free_queue, NULL);
-  image_free_queue = NULL;
-
-  BLI_mutex_unlock(&img_queue_mutex);
+  BLI_mutex_unlock(&gpu_texture_queue_mutex);
 }
 
-static void gpu_free_image_immediate(Image *ima)
+static void gpu_free_image(Image *ima, const bool immediate)
 {
-  for (int i = 0; i < TEXTARGET_COUNT; i++) {
-    /* free glsl image binding */
-    if (ima->gputexture[i] != NULL) {
-      GPU_texture_free(ima->gputexture[i]);
-      ima->gputexture[i] = NULL;
+  for (int eye = 0; eye < 2; eye++) {
+    for (int i = 0; i < TEXTARGET_COUNT; i++) {
+      if (ima->gputexture[i][eye] != NULL) {
+        if (immediate) {
+          GPU_texture_free(ima->gputexture[i][eye]);
+        }
+        else {
+          BLI_mutex_lock(&gpu_texture_queue_mutex);
+          BLI_linklist_prepend(&gpu_texture_free_queue, ima->gputexture[i][eye]);
+          BLI_mutex_unlock(&gpu_texture_queue_mutex);
+        }
+
+        ima->gputexture[i][eye] = NULL;
+      }
     }
   }
 
-  ima->gpuflag &= ~(IMA_GPU_MIPMAP_COMPLETE);
+  ima->gpuflag &= ~IMA_GPU_MIPMAP_COMPLETE;
+}
+
+void GPU_free_unused_buffers()
+{
+  if (BLI_thread_is_main()) {
+    gpu_free_unused_buffers();
+  }
 }
 
 void GPU_free_image(Image *ima)
 {
-  if (!BLI_thread_is_main()) {
-    gpu_queue_image_for_free(ima);
-    return;
-  }
-
-  gpu_free_image_immediate(ima);
+  gpu_free_image(ima, BLI_thread_is_main());
 }
 
 void GPU_free_images(Main *bmain)
@@ -1453,240 +1462,3 @@ void GPU_free_images_old(Main *bmain)
     ima = ima->id.next;
   }
 }
-
-static void gpu_disable_multisample(void)
-{
-#ifdef __linux__
-  /* changing multisample from the default (enabled) causes problems on some
-   * systems (NVIDIA/Linux) when the pixel format doesn't have a multisample buffer */
-  bool toggle_ok = true;
-
-  if (GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_UNIX, GPU_DRIVER_ANY)) {
-    int samples = 0;
-    glGetIntegerv(GL_SAMPLES, &samples);
-
-    if (samples == 0) {
-      toggle_ok = false;
-    }
-  }
-
-  if (toggle_ok) {
-    glDisable(GL_MULTISAMPLE);
-  }
-#else
-  glDisable(GL_MULTISAMPLE);
-#endif
-}
-
-/* Default OpenGL State
- *
- * This is called on startup, for opengl offscreen render.
- * Generally we should always return to this state when
- * temporarily modifying the state for drawing, though that are (undocumented)
- * exceptions that we should try to get rid of. */
-
-void GPU_state_init(void)
-{
-  GPU_program_point_size(false);
-
-  glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-
-  glDepthFunc(GL_LEQUAL);
-
-  glDisable(GL_BLEND);
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_COLOR_LOGIC_OP);
-  glDisable(GL_STENCIL_TEST);
-
-  glDepthRange(0.0, 1.0);
-
-  glFrontFace(GL_CCW);
-  glCullFace(GL_BACK);
-  glDisable(GL_CULL_FACE);
-
-  gpu_disable_multisample();
-
-  /* This is a bit dangerous since addons could change this. */
-  glEnable(GL_PRIMITIVE_RESTART);
-  glPrimitiveRestartIndex((GLuint)0xFFFFFFFF);
-
-  /* TODO: Should become default. But needs at least GL 4.3 */
-  if (GLEW_ARB_ES3_compatibility) {
-    /* Takes predecence over GL_PRIMITIVE_RESTART */
-    glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
-  }
-}
-
-/** \name Framebuffer color depth, for selection codes
- * \{ */
-
-#define STATE_STACK_DEPTH 16
-
-typedef struct {
-  eGPUAttrMask mask;
-
-  /* GL_ENABLE_BIT */
-  uint is_blend : 1;
-  uint is_cull_face : 1;
-  uint is_depth_test : 1;
-  uint is_dither : 1;
-  uint is_lighting : 1;
-  uint is_line_smooth : 1;
-  uint is_color_logic_op : 1;
-  uint is_multisample : 1;
-  uint is_polygon_offset_line : 1;
-  uint is_polygon_offset_fill : 1;
-  uint is_polygon_smooth : 1;
-  uint is_sample_alpha_to_coverage : 1;
-  uint is_scissor_test : 1;
-  uint is_stencil_test : 1;
-
-  bool is_clip_plane[6];
-
-  /* GL_DEPTH_BUFFER_BIT */
-  /* uint is_depth_test : 1; */
-  int depth_func;
-  double depth_clear_value;
-  bool depth_write_mask;
-
-  /* GL_SCISSOR_BIT */
-  int scissor_box[4];
-  /* uint is_scissor_test : 1; */
-
-  /* GL_VIEWPORT_BIT */
-  int viewport[4];
-  double near_far[2];
-} GPUAttrValues;
-
-typedef struct {
-  GPUAttrValues attr_stack[STATE_STACK_DEPTH];
-  uint top;
-} GPUAttrStack;
-
-static GPUAttrStack state = {
-    .top = 0,
-};
-
-#define AttrStack state
-#define Attr state.attr_stack[state.top]
-
-/**
- * Replacement for glPush/PopAttributes
- *
- * We don't need to cover all the options of legacy OpenGL
- * but simply the ones used by Blender.
- */
-void gpuPushAttr(eGPUAttrMask mask)
-{
-  Attr.mask = mask;
-
-  if ((mask & GPU_DEPTH_BUFFER_BIT) != 0) {
-    Attr.is_depth_test = glIsEnabled(GL_DEPTH_TEST);
-    glGetIntegerv(GL_DEPTH_FUNC, &Attr.depth_func);
-    glGetDoublev(GL_DEPTH_CLEAR_VALUE, &Attr.depth_clear_value);
-    glGetBooleanv(GL_DEPTH_WRITEMASK, (GLboolean *)&Attr.depth_write_mask);
-  }
-
-  if ((mask & GPU_ENABLE_BIT) != 0) {
-    Attr.is_blend = glIsEnabled(GL_BLEND);
-
-    for (int i = 0; i < 6; i++) {
-      Attr.is_clip_plane[i] = glIsEnabled(GL_CLIP_PLANE0 + i);
-    }
-
-    Attr.is_cull_face = glIsEnabled(GL_CULL_FACE);
-    Attr.is_depth_test = glIsEnabled(GL_DEPTH_TEST);
-    Attr.is_dither = glIsEnabled(GL_DITHER);
-    Attr.is_line_smooth = glIsEnabled(GL_LINE_SMOOTH);
-    Attr.is_color_logic_op = glIsEnabled(GL_COLOR_LOGIC_OP);
-    Attr.is_multisample = glIsEnabled(GL_MULTISAMPLE);
-    Attr.is_polygon_offset_line = glIsEnabled(GL_POLYGON_OFFSET_LINE);
-    Attr.is_polygon_offset_fill = glIsEnabled(GL_POLYGON_OFFSET_FILL);
-    Attr.is_polygon_smooth = glIsEnabled(GL_POLYGON_SMOOTH);
-    Attr.is_sample_alpha_to_coverage = glIsEnabled(GL_SAMPLE_ALPHA_TO_COVERAGE);
-    Attr.is_scissor_test = glIsEnabled(GL_SCISSOR_TEST);
-    Attr.is_stencil_test = glIsEnabled(GL_STENCIL_TEST);
-  }
-
-  if ((mask & GPU_SCISSOR_BIT) != 0) {
-    Attr.is_scissor_test = glIsEnabled(GL_SCISSOR_TEST);
-    glGetIntegerv(GL_SCISSOR_BOX, (GLint *)&Attr.scissor_box);
-  }
-
-  if ((mask & GPU_VIEWPORT_BIT) != 0) {
-    glGetDoublev(GL_DEPTH_RANGE, (GLdouble *)&Attr.near_far);
-    glGetIntegerv(GL_VIEWPORT, (GLint *)&Attr.viewport);
-  }
-
-  if ((mask & GPU_BLEND_BIT) != 0) {
-    Attr.is_blend = glIsEnabled(GL_BLEND);
-  }
-
-  BLI_assert(AttrStack.top < STATE_STACK_DEPTH);
-  AttrStack.top++;
-}
-
-static void restore_mask(GLenum cap, const bool value)
-{
-  if (value) {
-    glEnable(cap);
-  }
-  else {
-    glDisable(cap);
-  }
-}
-
-void gpuPopAttr(void)
-{
-  BLI_assert(AttrStack.top > 0);
-  AttrStack.top--;
-
-  GLint mask = Attr.mask;
-
-  if ((mask & GPU_DEPTH_BUFFER_BIT) != 0) {
-    restore_mask(GL_DEPTH_TEST, Attr.is_depth_test);
-    glDepthFunc(Attr.depth_func);
-    glClearDepth(Attr.depth_clear_value);
-    glDepthMask(Attr.depth_write_mask);
-  }
-
-  if ((mask & GPU_ENABLE_BIT) != 0) {
-    restore_mask(GL_BLEND, Attr.is_blend);
-
-    for (int i = 0; i < 6; i++) {
-      restore_mask(GL_CLIP_PLANE0 + i, Attr.is_clip_plane[i]);
-    }
-
-    restore_mask(GL_CULL_FACE, Attr.is_cull_face);
-    restore_mask(GL_DEPTH_TEST, Attr.is_depth_test);
-    restore_mask(GL_DITHER, Attr.is_dither);
-    restore_mask(GL_LINE_SMOOTH, Attr.is_line_smooth);
-    restore_mask(GL_COLOR_LOGIC_OP, Attr.is_color_logic_op);
-    restore_mask(GL_MULTISAMPLE, Attr.is_multisample);
-    restore_mask(GL_POLYGON_OFFSET_LINE, Attr.is_polygon_offset_line);
-    restore_mask(GL_POLYGON_OFFSET_FILL, Attr.is_polygon_offset_fill);
-    restore_mask(GL_POLYGON_SMOOTH, Attr.is_polygon_smooth);
-    restore_mask(GL_SAMPLE_ALPHA_TO_COVERAGE, Attr.is_sample_alpha_to_coverage);
-    restore_mask(GL_SCISSOR_TEST, Attr.is_scissor_test);
-    restore_mask(GL_STENCIL_TEST, Attr.is_stencil_test);
-  }
-
-  if ((mask & GPU_VIEWPORT_BIT) != 0) {
-    glViewport(Attr.viewport[0], Attr.viewport[1], Attr.viewport[2], Attr.viewport[3]);
-    glDepthRange(Attr.near_far[0], Attr.near_far[1]);
-  }
-
-  if ((mask & GPU_SCISSOR_BIT) != 0) {
-    restore_mask(GL_SCISSOR_TEST, Attr.is_scissor_test);
-    glScissor(Attr.scissor_box[0], Attr.scissor_box[1], Attr.scissor_box[2], Attr.scissor_box[3]);
-  }
-
-  if ((mask & GPU_BLEND_BIT) != 0) {
-    restore_mask(GL_BLEND, Attr.is_blend);
-  }
-}
-
-#undef Attr
-#undef AttrStack
-
-/** \} */

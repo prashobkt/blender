@@ -24,8 +24,8 @@
 #include "render/attribute.h"
 
 #include "util/util_boundbox.h"
-#include "util/util_transform.h"
 #include "util/util_set.h"
+#include "util/util_transform.h"
 #include "util/util_types.h"
 #include "util/util_vector.h"
 
@@ -71,6 +71,9 @@ class Geometry : public Node {
   /* Motion Blur */
   uint motion_steps;
   bool use_motion_blur;
+
+  /* Maximum number of motion steps supported (due to Embree). */
+  static const uint MAX_MOTION_STEPS = 129;
 
   /* BVH */
   BVH *bvh;
@@ -163,7 +166,7 @@ class GeometryManager {
  protected:
   bool displace(Device *device, DeviceScene *dscene, Scene *scene, Mesh *mesh, Progress &progress);
 
-  void create_volume_mesh(Scene *scene, Mesh *mesh, Progress &progress);
+  void create_volume_mesh(Mesh *mesh, Progress &progress);
 
   /* Attributes */
   void update_osl_attributes(Device *device,

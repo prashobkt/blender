@@ -24,13 +24,15 @@
 #ifndef __ED_OBJECT_H__
 #define __ED_OBJECT_H__
 
+#include "BLI_compiler_attrs.h"
+#include "DNA_object_enums.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct Base;
 struct Depsgraph;
-struct EnumPropertyItem;
 struct EnumPropertyItem;
 struct ID;
 struct Main;
@@ -54,14 +56,11 @@ struct wmOperator;
 struct wmOperatorType;
 struct wmWindowManager;
 
-#include "DNA_object_enums.h"
-#include "BLI_compiler_attrs.h"
-
 /* object_edit.c */
 /* context.object */
-struct Object *ED_object_context(struct bContext *C);
+struct Object *ED_object_context(const struct bContext *C);
 /* context.object or context.active_object */
-struct Object *ED_object_active_context(struct bContext *C);
+struct Object *ED_object_active_context(const struct bContext *C);
 void ED_collection_hide_menu_draw(const struct bContext *C, struct uiLayout *layout);
 
 /* object_utils.c */
@@ -146,6 +145,12 @@ typedef enum eObjectSelect_Mode {
   BA_INVERT = 2,
 } eObjectSelect_Mode;
 
+typedef enum eObClearParentTypes {
+  CLEAR_PARENT_ALL = 0,
+  CLEAR_PARENT_KEEP_TRANSFORM,
+  CLEAR_PARENT_INVERSE,
+} eObClearParentTypes;
+
 #ifdef __RNA_TYPES_H__
 extern struct EnumPropertyItem prop_clear_parent_types[];
 extern struct EnumPropertyItem prop_make_parent_types[];
@@ -179,7 +184,7 @@ struct Base *ED_object_add_duplicate(struct Main *bmain,
                                      struct Scene *scene,
                                      struct ViewLayer *view_layer,
                                      struct Base *base,
-                                     int dupflag);
+                                     const eDupli_ID_Flags dupflag);
 
 void ED_object_parent(struct Object *ob,
                       struct Object *parent,
@@ -206,13 +211,11 @@ bool ED_object_editmode_load(struct Main *bmain, struct Object *obedit);
 
 void ED_object_vpaintmode_enter_ex(struct Main *bmain,
                                    struct Depsgraph *depsgraph,
-                                   struct wmWindowManager *wm,
                                    struct Scene *scene,
                                    struct Object *ob);
 void ED_object_vpaintmode_enter(struct bContext *C, struct Depsgraph *depsgraph);
 void ED_object_wpaintmode_enter_ex(struct Main *bmain,
                                    struct Depsgraph *depsgraph,
-                                   struct wmWindowManager *wm,
                                    struct Scene *scene,
                                    struct Object *ob);
 void ED_object_wpaintmode_enter(struct bContext *C, struct Depsgraph *depsgraph);
@@ -221,6 +224,20 @@ void ED_object_vpaintmode_exit_ex(struct Object *ob);
 void ED_object_vpaintmode_exit(struct bContext *C);
 void ED_object_wpaintmode_exit_ex(struct Object *ob);
 void ED_object_wpaintmode_exit(struct bContext *C);
+
+void ED_object_texture_paint_mode_enter_ex(struct Main *bmain, struct Scene *scene, Object *ob);
+void ED_object_texture_paint_mode_enter(struct bContext *C);
+
+void ED_object_texture_paint_mode_exit_ex(struct Main *bmain, struct Scene *scene, Object *ob);
+void ED_object_texture_paint_mode_exit(struct bContext *C);
+
+void ED_object_particle_edit_mode_enter_ex(struct Depsgraph *depsgraph,
+                                           struct Scene *scene,
+                                           Object *ob);
+void ED_object_particle_edit_mode_enter(struct bContext *C);
+
+void ED_object_particle_edit_mode_exit_ex(struct Scene *scene, Object *ob);
+void ED_object_particle_edit_mode_exit(struct bContext *C);
 
 void ED_object_sculptmode_enter_ex(struct Main *bmain,
                                    struct Depsgraph *depsgraph,
@@ -240,7 +257,7 @@ void ED_object_sculptmode_exit(struct bContext *C, struct Depsgraph *depsgraph);
 void ED_object_location_from_view(struct bContext *C, float loc[3]);
 void ED_object_rotation_from_quat(float rot[3], const float quat[4], const char align_axis);
 void ED_object_rotation_from_view(struct bContext *C, float rot[3], const char align_axis);
-void ED_object_base_init_transform_on_add(struct Object *obejct,
+void ED_object_base_init_transform_on_add(struct Object *object,
                                           const float loc[3],
                                           const float rot[3]);
 float ED_object_new_primitive_matrix(struct bContext *C,
@@ -254,6 +271,7 @@ float ED_object_new_primitive_matrix(struct bContext *C,
 #define OBJECT_ADD_SIZE_MAXF 1.0e12f
 
 void ED_object_add_unit_props_size(struct wmOperatorType *ot);
+void ED_object_add_unit_props_radius_ex(struct wmOperatorType *ot, float default_value);
 void ED_object_add_unit_props_radius(struct wmOperatorType *ot);
 void ED_object_add_generic_props(struct wmOperatorType *ot, bool do_editmode);
 void ED_object_add_mesh_props(struct wmOperatorType *ot);
@@ -262,6 +280,7 @@ bool ED_object_add_generic_get_opts(struct bContext *C,
                                     const char view_align_axis,
                                     float loc[3],
                                     float rot[3],
+                                    float scale[3],
                                     bool *enter_editmode,
                                     unsigned short *local_view_bits,
                                     bool *is_view_aligned);
@@ -275,10 +294,6 @@ struct Object *ED_object_add_type(struct bContext *C,
                                   unsigned short local_view_bits)
     ATTR_NONNULL(1) ATTR_RETURNS_NONNULL;
 
-void ED_object_single_users(struct Main *bmain,
-                            struct Scene *scene,
-                            const bool full,
-                            const bool copy_groups);
 void ED_object_single_user(struct Main *bmain, struct Scene *scene, struct Object *ob);
 
 /* object motion paths */
@@ -296,15 +311,15 @@ void ED_objects_recalculate_paths(struct bContext *C,
                                   eObjectPathCalcRange range);
 
 /* constraints */
-struct ListBase *get_active_constraints(struct Object *ob);
-struct ListBase *get_constraint_lb(struct Object *ob,
-                                   struct bConstraint *con,
-                                   struct bPoseChannel **r_pchan);
-struct bConstraint *get_active_constraint(struct Object *ob);
+struct ListBase *ED_object_constraint_list_from_context(struct Object *ob);
+struct ListBase *ED_object_constraint_list_from_constraint(struct Object *ob,
+                                                           struct bConstraint *con,
+                                                           struct bPoseChannel **r_pchan);
+struct bConstraint *ED_object_constraint_active_get(struct Object *ob);
 
 void object_test_constraints(struct Main *bmain, struct Object *ob);
 
-void ED_object_constraint_set_active(struct Object *ob, struct bConstraint *con);
+void ED_object_constraint_active_set(struct Object *ob, struct bConstraint *con);
 void ED_object_constraint_update(struct Main *bmain, struct Object *ob);
 void ED_object_constraint_dependency_update(struct Main *bmain, struct Object *ob);
 
@@ -321,11 +336,12 @@ bool ED_object_mode_compat_set(struct bContext *C,
                                struct Object *ob,
                                eObjectMode mode,
                                struct ReportList *reports);
-void ED_object_mode_toggle(struct bContext *C, eObjectMode mode);
-void ED_object_mode_set(struct bContext *C, eObjectMode mode);
-void ED_object_mode_exit(struct bContext *C, struct Depsgraph *depsgraph);
+bool ED_object_mode_set_ex(struct bContext *C,
+                           eObjectMode mode,
+                           bool use_undo,
+                           struct ReportList *reports);
+bool ED_object_mode_set(struct bContext *C, eObjectMode mode);
 
-bool ED_object_mode_generic_enter(struct bContext *C, eObjectMode object_mode);
 void ED_object_mode_generic_exit(struct Main *bmain,
                                  struct Depsgraph *depsgraph,
                                  struct Scene *scene,
@@ -346,15 +362,21 @@ struct ModifierData *ED_object_modifier_add(struct ReportList *reports,
                                             int type);
 bool ED_object_modifier_remove(struct ReportList *reports,
                                struct Main *bmain,
+                               struct Scene *scene,
                                struct Object *ob,
                                struct ModifierData *md);
-void ED_object_modifier_clear(struct Main *bmain, struct Object *ob);
-int ED_object_modifier_move_down(struct ReportList *reports,
-                                 struct Object *ob,
-                                 struct ModifierData *md);
-int ED_object_modifier_move_up(struct ReportList *reports,
-                               struct Object *ob,
-                               struct ModifierData *md);
+void ED_object_modifier_clear(struct Main *bmain, struct Scene *scene, struct Object *ob);
+bool ED_object_modifier_move_down(struct ReportList *reports,
+                                  struct Object *ob,
+                                  struct ModifierData *md);
+bool ED_object_modifier_move_up(struct ReportList *reports,
+                                struct Object *ob,
+                                struct ModifierData *md);
+bool ED_object_modifier_move_to_index(struct ReportList *reports,
+                                      struct Object *ob,
+                                      struct ModifierData *md,
+                                      const int index);
+
 int ED_object_modifier_convert(struct ReportList *reports,
                                struct Main *bmain,
                                struct Depsgraph *depsgraph,
@@ -362,14 +384,17 @@ int ED_object_modifier_convert(struct ReportList *reports,
                                struct ViewLayer *view_layer,
                                struct Object *ob,
                                struct ModifierData *md);
-int ED_object_modifier_apply(struct Main *bmain,
-                             struct ReportList *reports,
-                             struct Depsgraph *depsgraph,
-                             struct Scene *scene,
-                             struct Object *ob,
-                             struct ModifierData *md,
-                             int mode);
+bool ED_object_modifier_apply(struct Main *bmain,
+                              struct ReportList *reports,
+                              struct Depsgraph *depsgraph,
+                              struct Scene *scene,
+                              struct Object *ob,
+                              struct ModifierData *md,
+                              int mode,
+                              bool keep_modifier);
 int ED_object_modifier_copy(struct ReportList *reports,
+                            struct Main *bmain,
+                            struct Scene *scene,
                             struct Object *ob,
                             struct ModifierData *md);
 
@@ -399,6 +424,10 @@ int ED_object_gpencil_modifier_move_down(struct ReportList *reports,
 int ED_object_gpencil_modifier_move_up(struct ReportList *reports,
                                        struct Object *ob,
                                        struct GpencilModifierData *md);
+bool ED_object_gpencil_modifier_move_to_index(struct ReportList *reports,
+                                              struct Object *ob,
+                                              struct GpencilModifierData *md,
+                                              const int index);
 int ED_object_gpencil_modifier_apply(struct Main *bmain,
                                      struct ReportList *reports,
                                      struct Depsgraph *depsgraph,
@@ -427,6 +456,10 @@ int ED_object_shaderfx_move_down(struct ReportList *reports,
 int ED_object_shaderfx_move_up(struct ReportList *reports,
                                struct Object *ob,
                                struct ShaderFxData *fx);
+bool ED_object_shaderfx_move_to_index(struct ReportList *reports,
+                                      struct Object *ob,
+                                      struct ShaderFxData *fx,
+                                      const int index);
 
 /* object_select.c */
 void ED_object_select_linked_by_id(struct bContext *C, struct ID *id);

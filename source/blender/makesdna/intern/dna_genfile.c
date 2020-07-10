@@ -27,17 +27,17 @@
  * SDNA and the SDNA of the current (running) version of Blender.
  */
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 
 #include "MEM_guardedalloc.h"  // for MEM_freeN MEM_mallocN MEM_callocN
 
-#include "BLI_utildefines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
+#include "BLI_utildefines.h"
 
 #include "BLI_ghash.h"
 
@@ -81,15 +81,15 @@
  *     <typenr><nr_of_elems> <typenr><namenr> <typenr><namenr> ...
  * \endcode
  *
- *  **Remember to read/write integer and short aligned!**
+ * **Remember to read/write integer and short aligned!**
  *
- *  While writing a file, the names of a struct is indicated with a type number,
- *  to be found with: ``type = DNA_struct_find_nr(SDNA *, const char *)``
- *  The value of ``type`` corresponds with the index within the structs array
+ * While writing a file, the names of a struct is indicated with a type number,
+ * to be found with: ``type = DNA_struct_find_nr(SDNA *, const char *)``
+ * The value of ``type`` corresponds with the index within the structs array
  *
- *  For the moment: the complete DNA file is included in a .blend file. For
- *  the future we can think of smarter methods, like only included the used
- *  structs. Only needed to keep a file short though...
+ * For the moment: the complete DNA file is included in a .blend file. For
+ * the future we can think of smarter methods, like only included the used
+ * structs. Only needed to keep a file short though...
  *
  * ALLOWED AND TESTED CHANGES IN STRUCTS:
  *  - Type change (a char to float will be divided by 255).
@@ -591,7 +591,7 @@ SDNA *DNA_sdna_from_data(const void *data,
 }
 
 /**
- * Using globals is acceptable here,
+ * Using a global is acceptable here,
  * the data is read-only and only changes between Blender versions.
  *
  * So it is safe to create once and reuse.
@@ -963,11 +963,10 @@ static int elem_strcmp(const char *name, const char *oname)
  * Returns whether the specified field exists according to the struct format
  * pointed to by old.
  *
- * \param sdna: Old SDNA
- * \param type: Current field type name
- * \param name: Current field name
- * \param old: Pointer to struct information in sdna
- * \return true when existing, false otherwise.
+ * \param type: Current field type name.
+ * \param name: Current field name.
+ * \param old: Pointer to struct information in sdna.
+ * \return true when existing, false otherwise..
  */
 static bool elem_exists_impl(
     /* Expand SDNA. */
@@ -995,6 +994,9 @@ static bool elem_exists_impl(
   return false;
 }
 
+/**
+ * \param sdna: Old SDNA.
+ */
 static bool elem_exists(const SDNA *sdna, const char *type, const char *name, const short *old)
 {
   return elem_exists_impl(
@@ -1079,7 +1081,7 @@ static const char *find_elem(const SDNA *sdna,
 
 /**
  * Converts the contents of a single field of a struct, of a non-struct type,
- * from oldsdna to newsdna format.
+ * from \a oldsdna to \a newsdna format.
  *
  * \param newsdna: SDNA of current Blender
  * \param oldsdna: SDNA of Blender that saved file

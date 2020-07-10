@@ -28,9 +28,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_utildefines.h"
-#include "BLI_hash_mm2a.h"
 #include "BLI_ghash.h" /* own include */
+#include "BLI_hash_mm2a.h"
+#include "BLI_utildefines.h"
 
 /* keep last */
 #include "BLI_strict_flags.h"
@@ -75,6 +75,7 @@ uint BLI_ghashutil_uinthash_v4(const uint key[4])
   hash += key[3];
   return hash;
 }
+
 uint BLI_ghashutil_uinthash_v4_murmur(const uint key[4])
 {
   return BLI_hash_mm2((const unsigned char *)key, sizeof(int) * 4 /* sizeof(key) */, 0);

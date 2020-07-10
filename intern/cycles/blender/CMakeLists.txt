@@ -38,6 +38,7 @@ set(SRC
   CCL_api.h
   blender_device.h
   blender_id_map.h
+  blender_image.h
   blender_object_cull.h
   blender_sync.h
   blender_session.h
@@ -89,6 +90,23 @@ endif()
 
 if(WITH_MOD_FLUID)
   add_definitions(-DWITH_FLUID)
+endif()
+
+if(WITH_OPENVDB)
+  add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+  list(APPEND INC_SYS
+    ${OPENVDB_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${OPENVDB_LIBRARIES}
+  )
+endif()
+
+if(WITH_OPENIMAGEDENOISE)
+  add_definitions(-DWITH_OPENIMAGEDENOISE)
+  list(APPEND INC_SYS
+    ${OPENIMAGEDENOISE_INCLUDE_DIRS}
+  )
 endif()
 
 blender_add_lib(bf_intern_cycles "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
+#include "render/camera.h"
 #include "render/colorspace.h"
 #include "render/mesh.h"
 #include "render/object.h"
 #include "render/scene.h"
-#include "render/camera.h"
 
-#include "blender/blender_sync.h"
 #include "blender/blender_session.h"
+#include "blender/blender_sync.h"
 #include "blender/blender_util.h"
 
 #include "subd/subd_patch.h"
 #include "subd/subd_split.h"
 
 #include "util/util_algorithm.h"
+#include "util/util_disjoint_set.h"
 #include "util/util_foreach.h"
 #include "util/util_hash.h"
 #include "util/util_logging.h"
 #include "util/util_math.h"
-#include "util/util_disjoint_set.h"
 
 #include "mikktspace.h"
 
@@ -278,21 +278,68 @@ static void mikk_compute_tangents(
   genTangSpaceDefault(&context);
 }
 
+/* Create sculpt vertex color attributes. */
+static void attr_create_sculpt_vertex_color(Scene *scene,
+                                            Mesh *mesh,
+                                            BL::Mesh &b_mesh,
+                                            bool subdivision)
+{
+  BL::Mesh::sculpt_vertex_colors_iterator l;
+
+  for (b_mesh.sculpt_vertex_colors.begin(l); l != b_mesh.sculpt_vertex_colors.end(); ++l) {
+    const bool active_render = l->active_render();
+    AttributeStandard vcol_std = (active_render) ? ATTR_STD_VERTEX_COLOR : ATTR_STD_NONE;
+    ustring vcol_name = ustring(l->name().c_str());
+
+    const bool need_vcol = mesh->need_attribute(scene, vcol_name) ||
+                           mesh->need_attribute(scene, vcol_std);
+
+    if (!need_vcol) {
+      continue;
+    }
+
+    AttributeSet &attributes = (subdivision) ? mesh->subd_attributes : mesh->attributes;
+    Attribute *vcol_attr = attributes.add(vcol_name, TypeRGBA, ATTR_ELEMENT_VERTEX);
+    vcol_attr->std = vcol_std;
+
+    float4 *cdata = vcol_attr->data_float4();
+    int numverts = b_mesh.vertices.length();
+
+    for (int i = 0; i < numverts; i++) {
+      *(cdata++) = get_float4(l->data[i].color());
+    }
+  }
+}
+
 /* Create vertex color attributes. */
 static void attr_create_vertex_color(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, bool subdivision)
 {
-  if (subdivision) {
-    BL::Mesh::vertex_colors_iterator l;
+  BL::Mesh::vertex_colors_iterator l;
 
-    for (b_mesh.vertex_colors.begin(l); l != b_mesh.vertex_colors.end(); ++l) {
-      if (!mesh->need_attribute(scene, ustring(l->name().c_str())))
-        continue;
+  for (b_mesh.vertex_colors.begin(l); l != b_mesh.vertex_colors.end(); ++l) {
+    const bool active_render = l->active_render();
+    AttributeStandard vcol_std = (active_render) ? ATTR_STD_VERTEX_COLOR : ATTR_STD_NONE;
+    ustring vcol_name = ustring(l->name().c_str());
 
-      Attribute *attr = mesh->subd_attributes.add(
-          ustring(l->name().c_str()), TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);
+    const bool need_vcol = mesh->need_attribute(scene, vcol_name) ||
+                           mesh->need_attribute(scene, vcol_std);
+
+    if (!need_vcol) {
+      continue;
+    }
+
+    Attribute *vcol_attr = NULL;
+
+    if (subdivision) {
+      if (active_render) {
+        vcol_attr = mesh->subd_attributes.add(vcol_std, vcol_name);
+      }
+      else {
+        vcol_attr = mesh->subd_attributes.add(vcol_name, TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);
+      }
 
       BL::Mesh::polygons_iterator p;
-      uchar4 *cdata = attr->data_uchar4();
+      uchar4 *cdata = vcol_attr->data_uchar4();
 
       for (b_mesh.polygons.begin(p); p != b_mesh.polygons.end(); ++p) {
         int n = p->loop_total();
@@ -303,18 +350,16 @@ static void attr_create_vertex_color(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh,
         }
       }
     }
-  }
-  else {
-    BL::Mesh::vertex_colors_iterator l;
-    for (b_mesh.vertex_colors.begin(l); l != b_mesh.vertex_colors.end(); ++l) {
-      if (!mesh->need_attribute(scene, ustring(l->name().c_str())))
-        continue;
-
-      Attribute *attr = mesh->attributes.add(
-          ustring(l->name().c_str()), TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);
+    else {
+      if (active_render) {
+        vcol_attr = mesh->attributes.add(vcol_std, vcol_name);
+      }
+      else {
+        vcol_attr = mesh->attributes.add(vcol_name, TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);
+      }
 
       BL::Mesh::loop_triangles_iterator t;
-      uchar4 *cdata = attr->data_uchar4();
+      uchar4 *cdata = vcol_attr->data_uchar4();
 
       for (b_mesh.loop_triangles.begin(t); t != b_mesh.loop_triangles.end(); ++t) {
         int3 li = get_int3(t->loops());
@@ -802,6 +847,7 @@ static void create_mesh(Scene *scene,
    */
   attr_create_pointiness(scene, mesh, b_mesh, subdivision);
   attr_create_vertex_color(scene, mesh, b_mesh, subdivision);
+  attr_create_sculpt_vertex_color(scene, mesh, b_mesh, subdivision);
   attr_create_random_per_island(scene, mesh, b_mesh, subdivision);
 
   if (subdivision) {
@@ -915,7 +961,10 @@ static void sync_mesh_fluid_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
   }
 }
 
-void BlenderSync::sync_mesh(BL::Depsgraph b_depsgraph, BL::Object b_ob, Mesh *mesh)
+void BlenderSync::sync_mesh(BL::Depsgraph b_depsgraph,
+                            BL::Object b_ob,
+                            Mesh *mesh,
+                            const vector<Shader *> &used_shaders)
 {
   array<int> oldtriangles;
   array<Mesh::SubdFace> oldsubd_faces;
@@ -923,6 +972,9 @@ void BlenderSync::sync_mesh(BL::Depsgraph b_depsgraph, BL::Object b_ob, Mesh *me
   oldtriangles.steal_data(mesh->triangles);
   oldsubd_faces.steal_data(mesh->subd_faces);
   oldsubd_face_corners.steal_data(mesh->subd_face_corners);
+
+  mesh->clear();
+  mesh->used_shaders = used_shaders;
 
   mesh->subdivision_type = Mesh::SUBDIVISION_NONE;
 
@@ -965,6 +1017,12 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph b_depsgraph,
                                    Mesh *mesh,
                                    int motion_step)
 {
+  /* Fluid motion blur already exported. */
+  BL::FluidDomainSettings b_fluid_domain = object_fluid_liquid_domain_find(b_ob);
+  if (b_fluid_domain) {
+    return;
+  }
+
   /* Skip if no vertices were exported. */
   size_t numverts = mesh->verts.size();
   if (numverts == 0) {
