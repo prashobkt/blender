@@ -1487,7 +1487,7 @@ static int mouse_graph_keys(bAnimContext *ac,
       bezt = nvi->bezt; /* Used to check `bezt` selection is set. */
       /* Only deselect keyframe if it's already active, so that shift-click activates
        * a keyframe before selecting it. */
-      if (select_mode == SELECT_INVERT && (&nvi->fcu->bezt[nvi->fcu->active_key] == bezt)) {
+      if (select_mode == SELECT_INVERT) {
         if (nvi->hpoint == NEAREST_HANDLE_KEY) {
           bezt->f2 ^= SELECT;
         }
@@ -1513,7 +1513,7 @@ static int mouse_graph_keys(bAnimContext *ac,
       }
 
       /* Set the curve's active keyframe. */
-      if (!run_modal && BEZT_ISSEL_ANY(bezt)) {
+      if (!run_modal && BEZT_ISSEL_ANY(bezt) && !already_selected) {
         nvi->fcu->active_key = bezt - nvi->fcu->bezt;
       }
     }
