@@ -137,7 +137,7 @@ enum {
   G_DEBUG_EVENTS = (1 << 3),                /* unused, converted to log WM_LOG_EVENTS */
   G_DEBUG_HANDLERS = (1 << 4),              /* unused, converted to log WM_LOG_HANDLERS  */
   G_DEBUG_WM = (1 << 5),                    /* operator, undo */
-  G_DEBUG_JOBS = (1 << 6),                  /* unused, converted to log WM_LOG_JOB */
+  G_DEBUG_JOBS = (1 << 6),                  /* unused, converted to log WM_LOG_JOBS */
   G_DEBUG_FREESTYLE = (1 << 7),             /* freestyle messages */
   G_DEBUG_DEPSGRAPH_BUILD = (1 << 8),       /* depsgraph construction messages */
   G_DEBUG_DEPSGRAPH_EVAL = (1 << 9),        /* depsgraph evaluation messages */
