@@ -74,21 +74,21 @@ typedef struct OutlinerDropData {
   Object *ob_parent;
   TreeStoreElem *drag_tselem;
   void *drag_directdata;
+  int drag_index;
 
   TreeElementInsertType insert_type;
 } OutlinerDropData;
 
 /*  */
-static void outliner_drop_data_init(wmDrag *drag,
-                                    Object *ob,
-                                    TreeStoreElem *tselem,
-                                    void *directdata)
+static void outliner_drop_data_init(
+    wmDrag *drag, Object *ob, TreeElement *te, TreeStoreElem *tselem, void *directdata)
 {
   OutlinerDropData *drop_data = MEM_callocN(sizeof(OutlinerDropData), "outliner drop data");
 
   drop_data->ob_parent = ob;
   drop_data->drag_tselem = tselem;
   drop_data->drag_directdata = directdata;
+  drop_data->drag_index = te->index;
 
   drag->poin = drop_data;
   drag->flags |= WM_DRAG_FREE_DATA;
@@ -418,7 +418,6 @@ static void parent_drop_set_parents(bContext *C,
 static void parent_drop_move_objects(bContext *C, wmDragID *drag, TreeElement *te)
 {
   Main *bmain = CTX_data_main(C);
-  SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
   Scene *scene = (Scene *)outliner_search_back(te, ID_SCE);
   if (scene == NULL) {
@@ -843,7 +842,9 @@ static int modifier_drop_invoke(bContext *C, wmOperator *op, const wmEvent *even
   }
 
   Object *ob = drop_data->ob_parent;
-  ED_object_modifier_move_to_index(op->reports, ob, drop_data->drag_directdata, te->index);
+  int index = (insert_type == TE_INSERT_BEFORE) ? te->index : te->index + 1;
+  index = (index > drop_data->drag_index) ? index - 1 : index;
+  ED_object_modifier_move_to_index(op->reports, ob, drop_data->drag_directdata, index);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
@@ -1151,7 +1152,7 @@ static int outliner_item_drag_drop_invoke(bContext *C,
 
   if (ELEM(tselem->type, TSE_MODIFIER, TSE_MODIFIER_BASE)) {
     ModifierData *md = te->directdata;
-    outliner_drop_data_init(drag, (Object *)tselem->id, tselem, md);
+    outliner_drop_data_init(drag, (Object *)tselem->id, te, tselem, md);
   }
   else if (ELEM(GS(data.drag_id->name), ID_OB, ID_GR)) {
     /* For collections and objects we cheat and drag all selected. */
