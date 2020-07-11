@@ -5,6 +5,8 @@
 #pragma BLENDER_REQUIRE(workbench_material_lib.glsl)
 #pragma BLENDER_REQUIRE(workbench_image_lib.glsl)
 
+in vec4 ptcloud; /* Point cloud position and radius. Default to {0.0, 0.0, 0.0, 1.0}. */
+
 in vec3 pos;
 in vec3 nor;
 in vec4 ac; /* active color */
@@ -12,7 +14,7 @@ in vec2 au; /* active texture layer */
 
 void main()
 {
-  vec3 world_pos = point_object_to_world(pos);
+  vec3 world_pos = point_object_to_world(pos * ptcloud.w + ptcloud.xyz);
   gl_Position = point_world_to_ndc(world_pos);
 
 #ifdef USE_WORLD_CLIP_PLANES

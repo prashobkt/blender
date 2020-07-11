@@ -144,6 +144,7 @@ int DRW_hair_material_count_get(struct Hair *hair);
 int DRW_pointcloud_material_count_get(struct PointCloud *pointcloud);
 
 struct GPUBatch *DRW_pointcloud_batch_cache_get_dots(struct Object *ob);
+struct GPUBatch *DRW_pointcloud_batch_cache_get_surface(struct Object *ob);
 
 /* Volume */
 int DRW_volume_material_count_get(struct Volume *volume);

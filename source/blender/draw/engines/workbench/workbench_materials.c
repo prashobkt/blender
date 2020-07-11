@@ -162,7 +162,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
                                              Object *ob,
                                              int mat_nr,
                                              eV3DShadingColorType color_type,
-                                             bool hair,
+                                             eWORKBENCH_DataType datatype,
                                              bool *r_transp)
 {
   Image *ima = NULL;
@@ -180,7 +180,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
 
   switch (color_type) {
     case V3D_SHADING_TEXTURE_COLOR: {
-      return workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, sampler, hair);
+      return workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, sampler, datatype);
     }
     case V3D_SHADING_MATERIAL_COLOR: {
       /* For now, we use the same ubo for material and object coloring but with different indices.
@@ -191,7 +191,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
       Material *ma = workbench_object_material_get(ob, mat_nr);
 
       const bool transp = wpd->shading.xray_alpha < 1.0f || ma->a < 1.0f;
-      WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][hair];
+      WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][datatype];
 
       if (r_transp && transp) {
         *r_transp = true;
@@ -216,7 +216,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
     }
     case V3D_SHADING_VERTEX_COLOR: {
       const bool transp = wpd->shading.xray_alpha < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp][infront][hair].vcol_shgrp;
+      DRWShadingGroup *grp = wpd->prepass[transp][infront][datatype].vcol_shgrp;
       return grp;
     }
     default: {

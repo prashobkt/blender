@@ -34,6 +34,7 @@ extern char datatoc_common_smaa_lib_glsl[];
 
 extern char datatoc_workbench_prepass_vert_glsl[];
 extern char datatoc_workbench_prepass_hair_vert_glsl[];
+extern char datatoc_workbench_prepass_pointcloud_vert_glsl[];
 extern char datatoc_workbench_prepass_frag_glsl[];
 
 extern char datatoc_workbench_effect_cavity_frag_glsl[];
@@ -177,15 +178,18 @@ static int workbench_color_index(WORKBENCH_PrivateData *UNUSED(wpd), bool textur
   return (textured) ? (tiled ? 2 : 1) : 0;
 }
 
-static GPUShader *workbench_shader_get_ex(
-    WORKBENCH_PrivateData *wpd, bool transp, bool hair, bool textured, bool tiled)
+static GPUShader *workbench_shader_get_ex(WORKBENCH_PrivateData *wpd,
+                                          bool transp,
+                                          eWORKBENCH_DataType datatype,
+                                          bool textured,
+                                          bool tiled)
 {
   int color = workbench_color_index(wpd, textured, tiled);
   int light = wpd->shading.light;
   BLI_assert(light < MAX_LIGHTING);
   struct GPUShader **shader =
-      (transp) ? &e_data.transp_prepass_sh_cache[wpd->sh_cfg][hair][light][color] :
-                 &e_data.opaque_prepass_sh_cache[wpd->sh_cfg][hair][color];
+      (transp) ? &e_data.transp_prepass_sh_cache[wpd->sh_cfg][datatype][light][color] :
+                 &e_data.opaque_prepass_sh_cache[wpd->sh_cfg][datatype][color];
 
   if (*shader == NULL) {
     char *defines = workbench_build_defines(wpd, textured, tiled, false, false);
@@ -194,8 +198,11 @@ static GPUShader *workbench_shader_get_ex(
                                datatoc_workbench_prepass_frag_glsl;
     char *frag_src = DRW_shader_library_create_shader_string(e_data.lib, frag_file);
 
-    char *vert_file = hair ? datatoc_workbench_prepass_hair_vert_glsl :
-                             datatoc_workbench_prepass_vert_glsl;
+    char *vert_file = (datatype == WORKBENCH_DATATYPE_HAIR) ?
+                          datatoc_workbench_prepass_hair_vert_glsl :
+                          ((datatype == WORKBENCH_DATATYPE_POINTCLOUD) ?
+                               datatoc_workbench_prepass_pointcloud_vert_glsl :
+                               datatoc_workbench_prepass_vert_glsl);
     char *vert_src = DRW_shader_library_create_shader_string(e_data.lib, vert_file);
 
     const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[wpd->sh_cfg];
@@ -217,26 +224,29 @@ static GPUShader *workbench_shader_get_ex(
   return *shader;
 }
 
-GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, bool hair)
+GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, eWORKBENCH_DataType datatype)
 {
-  return workbench_shader_get_ex(wpd, false, hair, false, false);
+  return workbench_shader_get_ex(wpd, false, datatype, false, false);
 }
 
-GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool hair, bool tiled)
+GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd,
+                                             eWORKBENCH_DataType datatype,
+                                             bool tiled)
 {
-  return workbench_shader_get_ex(wpd, false, hair, true, tiled);
+  return workbench_shader_get_ex(wpd, false, datatype, true, tiled);
 }
 
-GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd, bool hair)
+GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd,
+                                            eWORKBENCH_DataType datatype)
 {
-  return workbench_shader_get_ex(wpd, true, hair, false, false);
+  return workbench_shader_get_ex(wpd, true, datatype, false, false);
 }
 
 GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd,
-                                                  bool hair,
+                                                  eWORKBENCH_DataType datatype,
                                                   bool tiled)
 {
-  return workbench_shader_get_ex(wpd, true, hair, true, tiled);
+  return workbench_shader_get_ex(wpd, true, datatype, true, tiled);
 }
 
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd)

@@ -28,6 +28,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_base.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_object_types.h"
@@ -45,8 +46,12 @@ static void pointcloud_batch_cache_clear(PointCloud *pointcloud);
 /* PointCloud GPUBatch Cache */
 
 typedef struct PointCloudBatchCache {
-  GPUVertBuf *pos;
-  GPUBatch *batch;
+  GPUVertBuf *pos;  /* Position and radius. */
+  GPUVertBuf *geom; /* Instanced geometry for each point in the cloud (small sphere). */
+  GPUIndexBuf *geom_indices;
+
+  GPUBatch *dots;
+  GPUBatch *surface;
 
   /* settings to determine if cache is invalid */
   bool is_dirty;
@@ -109,8 +114,11 @@ static void pointcloud_batch_cache_clear(PointCloud *pointcloud)
     return;
   }
 
-  GPU_BATCH_DISCARD_SAFE(cache->batch);
+  GPU_BATCH_DISCARD_SAFE(cache->dots);
+  GPU_BATCH_DISCARD_SAFE(cache->surface);
   GPU_VERTBUF_DISCARD_SAFE(cache->pos);
+  GPU_VERTBUF_DISCARD_SAFE(cache->geom);
+  GPU_INDEXBUF_DISCARD_SAFE(cache->geom_indices);
 }
 
 void DRW_pointcloud_batch_cache_free(PointCloud *pointcloud)
@@ -128,33 +136,88 @@ static void pointcloud_batch_cache_ensure_pos(Object *ob, PointCloudBatchCache *
   PointCloud *pointcloud = ob->data;
 
   static GPUVertFormat format = {0};
-  static uint pos_id;
-  static uint radius_id;
   if (format.attr_len == 0) {
     /* initialize vertex format */
-    pos_id = GPU_vertformat_attr_add(&format, "pointcloud_pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    radius_id = GPU_vertformat_attr_add(
-        &format, "pointcloud_radius", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "ptcloud", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
   }
 
-  GPU_VERTBUF_DISCARD_SAFE(cache->pos);
   cache->pos = GPU_vertbuf_create_with_format(&format);
   GPU_vertbuf_data_alloc(cache->pos, pointcloud->totpoint);
-  GPU_vertbuf_attr_fill(cache->pos, pos_id, pointcloud->co);
 
-  if (pointcloud->radius) {
-    GPU_vertbuf_attr_fill(cache->pos, radius_id, pointcloud->radius);
-  }
-  else if (pointcloud->totpoint) {
-    /* TODO: optimize for constant radius by not including in vertex buffer at all? */
-    float *radius = MEM_malloc_arrayN(pointcloud->totpoint, sizeof(float), __func__);
-    for (int i = 0; i < pointcloud->totpoint; i++) {
-      /* TODO: add default radius to PointCloud data structure. */
-      radius[i] = 0.01f;
+  float(*vbo_data)[4] = (float(*)[4])cache->pos->data;
+
+  for (int i = 0; i < pointcloud->totpoint; i++) {
+    copy_v3_v3(vbo_data[i], pointcloud->co[i]);
+    if (pointcloud->radius) {
+      vbo_data[i][3] = pointcloud->radius[i];
     }
-    GPU_vertbuf_attr_fill(cache->pos, radius_id, radius);
-    MEM_freeN(radius);
+    else {
+      vbo_data[i][3] = 0.01f;
+    }
   }
+}
+
+static const float bone_box_smooth_normals[8][3] = {
+    {M_SQRT3, -M_SQRT3, M_SQRT3},
+    {M_SQRT3, -M_SQRT3, -M_SQRT3},
+    {-M_SQRT3, -M_SQRT3, -M_SQRT3},
+    {-M_SQRT3, -M_SQRT3, M_SQRT3},
+    {M_SQRT3, M_SQRT3, M_SQRT3},
+    {M_SQRT3, M_SQRT3, -M_SQRT3},
+    {-M_SQRT3, M_SQRT3, -M_SQRT3},
+    {-M_SQRT3, M_SQRT3, M_SQRT3},
+};
+
+static const uint bone_box_solid_tris[12][3] = {
+    {0, 2, 1}, /* bottom */
+    {0, 3, 2},
+
+    {0, 1, 5}, /* sides */
+    {0, 5, 4},
+
+    {1, 2, 6},
+    {1, 6, 5},
+
+    {2, 3, 7},
+    {2, 7, 6},
+
+    {3, 0, 4},
+    {3, 4, 7},
+
+    {4, 5, 6}, /* top */
+    {4, 6, 7},
+};
+
+static void pointcloud_batch_cache_ensure_geom(Object *UNUSED(ob), PointCloudBatchCache *cache)
+{
+  if (cache->geom != NULL) {
+    return;
+  }
+
+  static GPUVertFormat format = {0};
+  static uint pos;
+  if (format.attr_len == 0) {
+    /* initialize vertex format */
+    pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_alias_add(&format, "nor");
+  }
+
+  cache->geom = GPU_vertbuf_create_with_format(&format);
+  GPU_vertbuf_data_alloc(cache->geom, ARRAY_SIZE(bone_box_smooth_normals));
+
+  GPU_vertbuf_attr_fill(cache->geom, pos, bone_box_smooth_normals);
+
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder,
+                    GPU_PRIM_TRIS,
+                    ARRAY_SIZE(bone_box_solid_tris),
+                    ARRAY_SIZE(bone_box_smooth_normals));
+
+  for (int i = 0; i < ARRAY_SIZE(bone_box_solid_tris); i++) {
+    GPU_indexbuf_add_tri_verts(&builder, UNPACK3(bone_box_solid_tris[i]));
+  }
+
+  cache->geom_indices = GPU_indexbuf_build(&builder);
 }
 
 GPUBatch *DRW_pointcloud_batch_cache_get_dots(Object *ob)
@@ -162,12 +225,28 @@ GPUBatch *DRW_pointcloud_batch_cache_get_dots(Object *ob)
   PointCloud *pointcloud = ob->data;
   PointCloudBatchCache *cache = pointcloud_batch_cache_get(pointcloud);
 
-  if (cache->batch == NULL) {
+  if (cache->dots == NULL) {
     pointcloud_batch_cache_ensure_pos(ob, cache);
-    cache->batch = GPU_batch_create(GPU_PRIM_POINTS, cache->pos, NULL);
+    cache->dots = GPU_batch_create(GPU_PRIM_POINTS, cache->pos, NULL);
   }
 
-  return cache->batch;
+  return cache->dots;
+}
+
+GPUBatch *DRW_pointcloud_batch_cache_get_surface(Object *ob)
+{
+  PointCloud *pointcloud = ob->data;
+  PointCloudBatchCache *cache = pointcloud_batch_cache_get(pointcloud);
+
+  if (cache->surface == NULL) {
+    pointcloud_batch_cache_ensure_pos(ob, cache);
+    pointcloud_batch_cache_ensure_geom(ob, cache);
+
+    cache->surface = GPU_batch_create(GPU_PRIM_TRIS, cache->geom, cache->geom_indices);
+    GPU_batch_instbuf_add_ex(cache->surface, cache->pos, false);
+  }
+
+  return cache->surface;
 }
 
 int DRW_pointcloud_material_count_get(PointCloud *pointcloud)

@@ -71,6 +71,14 @@ struct RenderEngine;
 struct RenderLayer;
 struct rcti;
 
+typedef enum eWORKBENCH_DataType {
+  WORKBENCH_DATATYPE_MESH = 0,
+  WORKBENCH_DATATYPE_HAIR,
+  WORKBENCH_DATATYPE_POINTCLOUD,
+
+  WORKBENCH_DATATYPE_MAX,
+} eWORKBENCH_DataType;
+
 typedef struct WORKBENCH_FramebufferList {
   struct GPUFrameBuffer *opaque_fb;
   struct GPUFrameBuffer *opaque_infront_fb;
@@ -293,8 +301,8 @@ typedef struct WORKBENCH_PrivateData {
   /** Object IDs buffer for curvature & outline. */
   struct GPUTexture *object_id_tx;
 
-  /** Pre-pass information for each draw types [transparent][infront][hair]. */
-  WORKBENCH_Prepass prepass[2][2][2];
+  /** Pre-pass information for each draw types [transparent][infront][datatype]. */
+  WORKBENCH_Prepass prepass[2][2][WORKBENCH_DATATYPE_MAX];
 
   /* Materials */
   /** Copy of vldata->material_ubo for faster access. */
@@ -393,14 +401,16 @@ void workbench_shadow_cache_init(WORKBENCH_Data *data);
 void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const bool has_transp_mat);
 
 /* workbench_shader.c */
-GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, bool hair);
-GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd, bool hair, bool tiled);
+GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, eWORKBENCH_DataType data);
+GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd,
+                                             eWORKBENCH_DataType data,
+                                             bool tiled);
 GPUShader *workbench_shader_composite_get(WORKBENCH_PrivateData *wpd);
 GPUShader *workbench_shader_merge_infront_get(WORKBENCH_PrivateData *wpd);
 
-GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd, bool hair);
+GPUShader *workbench_shader_transparent_get(WORKBENCH_PrivateData *wpd, eWORKBENCH_DataType data);
 GPUShader *workbench_shader_transparent_image_get(WORKBENCH_PrivateData *wpd,
-                                                  bool hair,
+                                                  eWORKBENCH_DataType data,
                                                   bool tiled);
 GPUShader *workbench_shader_transparent_resolve_get(WORKBENCH_PrivateData *wpd);
 

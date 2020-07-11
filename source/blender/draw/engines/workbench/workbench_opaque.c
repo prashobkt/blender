@@ -84,31 +84,31 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
         pass = psl->opaque_ps;
       }
 
-      for (int hair = 0; hair < 2; hair++) {
-        wpd->prepass[opaque][infront][hair].material_hash = BLI_ghash_ptr_new(__func__);
+      for (int data = 0; data < WORKBENCH_DATATYPE_MAX; data++) {
+        wpd->prepass[opaque][infront][data].material_hash = BLI_ghash_ptr_new(__func__);
 
-        sh = workbench_shader_opaque_get(wpd, hair);
+        sh = workbench_shader_opaque_get(wpd, data);
 
-        wpd->prepass[opaque][infront][hair].common_shgrp = grp = DRW_shgroup_create(sh, pass);
+        wpd->prepass[opaque][infront][data].common_shgrp = grp = DRW_shgroup_create(sh, pass);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
         DRW_shgroup_uniform_int_copy(grp, "materialIndex", -1);
         DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
-        wpd->prepass[opaque][infront][hair].vcol_shgrp = grp = DRW_shgroup_create(sh, pass);
+        wpd->prepass[opaque][infront][data].vcol_shgrp = grp = DRW_shgroup_create(sh, pass);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
         DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. (uses vcol) */
         DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
-        sh = workbench_shader_opaque_image_get(wpd, hair, false);
+        sh = workbench_shader_opaque_image_get(wpd, data, false);
 
-        wpd->prepass[opaque][infront][hair].image_shgrp = grp = DRW_shgroup_create(sh, pass);
+        wpd->prepass[opaque][infront][data].image_shgrp = grp = DRW_shgroup_create(sh, pass);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
         DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
         DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);
 
-        sh = workbench_shader_opaque_image_get(wpd, hair, true);
+        sh = workbench_shader_opaque_image_get(wpd, data, true);
 
-        wpd->prepass[opaque][infront][hair].image_tiled_shgrp = grp = DRW_shgroup_create(sh, pass);
+        wpd->prepass[opaque][infront][data].image_tiled_shgrp = grp = DRW_shgroup_create(sh, pass);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
         DRW_shgroup_uniform_int_copy(grp, "materialIndex", 0); /* Default material. */
         DRW_shgroup_uniform_bool_copy(grp, "useMatcap", use_matcap);

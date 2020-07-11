@@ -438,7 +438,7 @@ void workbench_cache_finish(void *ved)
   /* TODO don't free reuse next redraw. */
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 2; j++) {
-      for (int k = 0; k < 2; k++) {
+      for (int k = 0; k < WORKBENCH_DATATYPE_MAX; k++) {
         if (wpd->prepass[i][j][k].material_hash) {
           BLI_ghash_free(wpd->prepass[i][j][k].material_hash, NULL, NULL);
           wpd->prepass[i][j][k].material_hash = NULL;
