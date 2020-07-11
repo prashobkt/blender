@@ -278,8 +278,8 @@ def main():
             break
         elif cmd == "--run-test":
             modifiers_test.apply_modifiers = False
-            index = int(command[i + 1])
-            modifiers_test.run_test(index)
+            name = str(command[i + 1])
+            modifiers_test.run_test(name)
             break
 
 

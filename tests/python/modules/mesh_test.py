@@ -165,7 +165,7 @@ class MeshTest:
     the public method run_test().
     """
 
-    def __init__(self, test_name: str, test_object_name: str, expected_object_name: str, operations_stack=None, apply_modifiers=False, apply_object_operator=False, threshold=None):
+    def __init__(self, test_name: str, test_object_name: str, expected_object_name: str, operations_stack=None, apply_modifiers=False, threshold=None):
         """
         Constructs a MeshTest object. Raises a KeyError if objects with names expected_object_name
         or test_object_name don't exist.
@@ -174,7 +174,7 @@ class MeshTest:
                                 geometry after running the operations.
         :param operations_stack: list - stack holding operations to perform on the test_object.
         :param apply_modifier: bool - True if we want to apply the modifiers right after adding them to the object.
-                               This affects operations of type ModifierSpec only.
+                               This affects operations of type ModifierSpec and DeformModifierSpec.
         :param test_name: str - unique test name identifier.
         """
         if operations_stack is None:
@@ -188,7 +188,6 @@ class MeshTest:
                                         type(operation)))
         self.operations_stack = operations_stack
         self.apply_modifier = apply_modifiers
-        self.apply_object_operator = apply_object_operator
         self.threshold = threshold
         self.test_name = test_name
 
@@ -298,13 +297,6 @@ class MeshTest:
                 raise AttributeError("Modifier '{}' has no parameter named '{}'".
                                      format(modifier_spec.modifier_type, param_name))
 
-        if self.apply_modifier:
-            if not self.apply_object_operator:
-                self._apply_modifier(modifier_spec.modifier_name)
-
-    def _apply_modifier(self, modifier_name):
-        bpy.ops.object.modifier_apply(modifier=modifier_name)
-
     def _bake_current_simulation(self, obj, test_mod_type, test_mod_name, frame_end):
         for scene in bpy.data.scenes:
             for modifier in obj.modifiers:
@@ -386,7 +378,7 @@ class MeshTest:
 
     def _apply_object_operator(self, operator: ObjectOperatorSpec):
         """
-        Applies the operator of the modifier.
+        Applies the object operator.
         """
         bpy.ops.object.mode_set(mode='OBJECT')
         object_operator = getattr(bpy.ops.object, operator.operator_name)
@@ -394,11 +386,6 @@ class MeshTest:
         print(retval)
         if not object_operator:
             raise AttributeError("No object operator {} found!".format(operator.operator_name))
-
-        # # Modifier name should be passed to the "modifier_apply" function,
-        # # since this is an operator of the modifier itself, the parameters are the same.
-        # if self.apply_object_operator:
-        #     bpy.ops.object.modifier_apply(**operator.operator_parameters)
 
         if retval != {'FINISHED'}:
             raise RuntimeError("Unexpected operator return value: {}".format(retval))
@@ -424,9 +411,10 @@ class MeshTest:
         print("NAME", list(test_object.modifiers))
 
         scene.frame_set(operation.frame_number)
-        if self.apply_object_operator:
+
+        if self.apply_modifier:
             for mod_name in modifier_names:
-                self._apply_modifier(mod_name)
+                bpy.ops.object.modifier_apply(modifier=mod_name)
 
     def run_test(self):
         """
@@ -447,12 +435,15 @@ class MeshTest:
         evaluated_test_object = bpy.context.active_object
         evaluated_test_object.name = "evaluated_object"
         if self.verbose:
+            print()
             print(evaluated_test_object.name, "is set to active")
 
         # Add modifiers and operators.
         for operation in self.operations_stack:
             if isinstance(operation, ModifierSpec):
                 self._add_modifier(evaluated_test_object, operation)
+                if self.apply_modifier:
+                    bpy.ops.object.modifier_apply(modifier=operation.modifier_name)
 
             elif isinstance(operation, OperatorSpec):
                 self._apply_operator(evaluated_test_object, operation)
@@ -547,13 +538,23 @@ class OperatorTest:
             else:
                 seen_name.add(ele)
 
-    def run_test(self, index: int):
+    def run_test(self, test_name: str):
         """
         Run a single test from operator_tests list
-        :param index: int - index of test
+        :param test_name: str - name of test
         :return: bool - True if test is successful. False otherwise.
         """
-        case = self.operator_tests[index]
+        case = self.operator_tests[0]
+        len_test = len(self.operator_tests)
+        count = 0
+        for index,_ in enumerate(self.operator_tests):
+            if test_name == self.operator_tests[index][2]:
+                case = self.operator_tests[index]
+                break
+            count = count + 1
+        if count == len_test:
+            raise Exception("No test {} found!".format(test_name))
+
         if len(case) != 7:
             raise ValueError("Expected exactly 7 parameters for each test case, got {}".format(len(case)))
         select_mode = case[0]
@@ -577,13 +578,14 @@ class OperatorTest:
 
     def run_all_tests(self):
         for index, _ in enumerate(self.operator_tests):
+            test_name = self.operator_tests[index][2]
             if self.verbose:
                 print()
                 print("Running test {}...".format(index))
-            success = self.run_test(index)
+            success = self.run_test(test_name)
 
             if not success:
-                self._failed_tests_list.append(index)
+                self._failed_tests_list.append(test_name)
 
         if len(self._failed_tests_list) != 0:
             print("Following tests failed: {}".format(self._failed_tests_list))
@@ -596,7 +598,7 @@ class OperatorTest:
 
             print("Run following command to open Blender and run the failing test:")
             print("{} {} --python {} -- {} {}"
-                  .format(blender_path, blend_path, python_path, "--run-test", "<test_index>"))
+                  .format(blender_path, blend_path, python_path, "--run-test", "<test_name>"))
 
             raise Exception("Tests {} failed".format(self._failed_tests_list))
 
@@ -612,8 +614,8 @@ class ModifierTest:
     >>>     ModifierSpec("firstSOLIDIFY", "SOLIDIFY", {"thickness_clamp": 0.9, "thickness": 1})
     >>> ]
     >>> tests = [
-    >>>     ["testCube", "expectedCube", modifier_list],
-    >>>     ["testCube_2", "expectedCube_2", modifier_list]
+    >>>     ["Test1","testCube", "expectedCube", modifier_list],
+    >>>     ["Test2","testCube_2", "expectedCube_2", modifier_list]
     >>> ]
     >>> modifiers_test = ModifierTest(tests)
     >>> modifiers_test.run_all_tests()
@@ -652,13 +654,23 @@ class ModifierTest:
             else:
                 seen_name.add(ele)
 
-    def run_test(self, index: int):
+    def run_test(self, test_name: str):
         """
         Run a single test from self.modifier_tests list
-        :param index: int - index of test
+        :param test_name: str - name of test
         :return: bool - True if test passed, False otherwise.
         """
-        case = self.modifier_tests[index]
+        case = self.modifier_tests[0]
+        len_test = len(self.modifier_tests)
+        count = 0
+        for index, _ in enumerate(self.modifier_tests):
+            if test_name == self.modifier_tests[index][0]:
+                case = self.modifier_tests[index]
+                break
+            count = count+1
+        if count == len_test:
+            raise Exception("No test {} found!".format(test_name))
+
         if len(case) != 4:
             print(len(case))
             raise ValueError("Expected exactly 4 parameters for each test case, got {}".format(len(case)))
@@ -686,14 +698,14 @@ class ModifierTest:
         Run all tests in self.modifiers_tests list. Raises an exception if one the tests fails.
         """
         for index, _ in enumerate(self.modifier_tests):
+            test_name = self.modifier_tests[index][0]
             if self.verbose:
                 print()
                 print("Running test {}...\n".format(index))
-            success = self.run_test(index)
+            success = self.run_test(test_name)
 
             if not success:
-                # raise Exception("Test failed {}".format(self.modifier_tests[index][0]))
-                self._failed_tests_list.append(index)
+                self._failed_tests_list.append(test_name)
 
         if len(self._failed_tests_list) != 0:
             print("Following tests failed: {}".format(self._failed_tests_list))
@@ -706,6 +718,108 @@ class ModifierTest:
 
             print("Run following command to open Blender and run the failing test:")
             print("{} {} --python {} -- {} {}"
-                  .format(blender_path, blend_path, python_path, "--run-test", "<test_index>"))
+                  .format(blender_path, blend_path, python_path, "--run-test", "<test_name>"))
+
+            raise Exception("Tests {} failed".format(self._failed_tests_list))
+
+
+class DeformModifierTest:
+    """
+    Helper class that stores and executes deform modifier tests.
+
+    Example usage:
+
+    >>> deform_modifier_list = [
+    >>>         MeshTest("WarpPlane", "testObjPlaneWarp", "expObjPlaneWarp",
+    >>>        [DeformModifierSpec(10, [ModifierSpec('warp', 'WARP',
+    >>>                                               {'object_from': bpy.data.objects["From"],
+    >>>                                                'object_to': bpy.data.objects["To"],})])]),
+    >>> ]
+    >>> deform_test = DeformModifierTest(deform_modifier_list)
+    >>> deform_test.run_all_tests()
+    """
+
+    def __init__(self, deform_tests: list, apply_modifiers=False, threshold=None):
+        """
+        Construct a deform modifier test.
+        Each test is made up of a MeshTest Class with its parameters
+        """
+        self.deform_tests = deform_tests
+        self._check_for_unique()
+        self.apply_modifiers = apply_modifiers
+        self.threshold = threshold
+        self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
+        self._failed_tests_list = []
+
+    def _check_for_unique(self):
+        """
+        Check if the test name is unique
+        """
+        all_test_names = []
+        for index, _ in enumerate(self.deform_tests):
+            test_name = self.deform_tests[index].test_name
+            all_test_names.append(test_name)
+        seen_name = set()
+        for ele in all_test_names:
+            if ele in seen_name:
+                raise ValueError("{} is a duplicate, write a new unique name.".format(ele))
+            else:
+                seen_name.add(ele)
+
+    def run_test(self, test_name: str):
+        """
+        Run a single test from self.deform_tests list
+        :param test_name: int - name of test
+        :return: bool - True if test passed, False otherwise.
+        """
+        case = self.deform_tests[0]
+        len_test = len(self.deform_tests)
+        count = 0
+        for index, _ in enumerate(self.deform_tests):
+            if test_name == self.deform_tests[index].test_name:
+                case = self.deform_tests[index]
+                break
+            count = count+1
+
+        if count == len_test:
+            raise Exception('No test called {} found!'.format(test_name))
+
+        test = case
+        if self.apply_modifiers:
+            test.apply_modifier = True
+
+        success = test.run_test()
+        if test.is_test_updated():
+            # Run the test again if the blend file has been updated.
+            success = test.run_test()
+
+        return success
+
+    def run_all_tests(self):
+        """
+        Run all tests in self.modifiers_tests list. Raises an exception if one the tests fails.
+        """
+        for index, _ in enumerate(self.deform_tests):
+            test_name = self.deform_tests[index].test_name
+            if self.verbose:
+                print()
+                print("Running test {}...\n".format(index))
+            success = self.run_test(test_name)
+
+            if not success:
+                self._failed_tests_list.append(test_name)
+
+        if len(self._failed_tests_list) != 0:
+            print("Following tests failed: {}".format(self._failed_tests_list))
+
+            blender_path = bpy.app.binary_path
+            blend_path = bpy.data.filepath
+            frame = inspect.stack()[1]
+            module = inspect.getmodule(frame[0])
+            python_path = module.__file__
+
+            print("Run following command to open Blender and run the failing test:")
+            print("{} {} --python {} -- {} {}"
+                  .format(blender_path, blend_path, python_path, "--run-test", "<test_name>"))
 
             raise Exception("Tests {} failed".format(self._failed_tests_list))
