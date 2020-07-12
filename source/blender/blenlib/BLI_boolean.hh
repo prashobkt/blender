@@ -21,10 +21,8 @@
  * \ingroup bli
  */
 
-#include "BLI_array.hh"
-#include "BLI_math_mpq.hh"
 #include "BLI_mesh_intersect.hh"
-#include "BLI_mpq3.hh"
+#include <functional>
 
 namespace blender::meshintersect {
 
@@ -38,32 +36,31 @@ enum bool_optype {
   BOOLEAN_DIFFERENCE = 2,
 };
 
-struct PolyMeshOrig {
-  Array<int> vert_orig;
-  Array<Array<int>> face_orig;
-  Array<Array<std::pair<int, int>>> edge_orig;
-};
+/* Do the boolean operation op on the mesh pm_in.
+ * The boolean operation has nshapes input shapes. Each is a disjoint subset of the input mesh.
+ * The shape_fn argument, when applied to an input face argument, says which shape it is in
+ * (should be a value from -1 to nshapes - 1: if -1, it is not part of any shape).
+ * Sometimes the caller has already done a triangulation of the faces,
+ * and if so, *pm_triangulated contains a triangulation: if non-null, it contains a mesh
+ * of triangles, each of whose orig_field says which face in pm that triangle belongs to.
+ * pm arg isn't const because we may populate its verts (for debugging).
+ * Same goes for the pm_triangulated arg.
+ * The output Mesh will have faces whose orig fields map back to faces and edges in
+ * the input mesh.
+ */
+Mesh boolean_mesh(Mesh &pm,
+                  bool_optype op,
+                  int nshapes,
+                  std::function<int(int)> shape_fn,
+                  Mesh *pm_triangulated,
+                  MArena *arena);
 
-struct PolyMesh {
-  Array<mpq3> vert;
-  Array<Array<int>> face;
-  /* triangulation can have zero length: then boolean will do it.  */
-  Array<Array<IndexedTriangle>> triangulation;
-  /* orig can be dummy for boolean input, but has useful information for its output. */
-  PolyMeshOrig orig;
-};
-
-PolyMesh boolean(PolyMesh &pm, bool_optype op, int nshapes, std::function<int(int)> shape_fn);
-
-TriMesh boolean_trimesh(const TriMesh &tm,
-                        bool_optype op,
-                        int nshapes,
-                        std::function<int(int)> shape_fn);
-
-void write_obj_polymesh(const Array<mpq3> &vert,
-                        const Array<Array<int>> &face,
-                        const std::string &objname);
+/* This is like boolean, but operates on Mesh's whose faces are all triangles.
+ * It is exposed mainly for unit testing, at the moment: boolean_mesh() uses
+ * it to do most of its work.
+ */
+Mesh boolean_trimesh(
+    Mesh &tm, bool_optype op, int nshapes, std::function<int(int)> shape_fn, MArena *arena);
 
 }  // namespace blender::meshintersect
-
 #endif /* __BLI_BOOLEAN_HH__ */

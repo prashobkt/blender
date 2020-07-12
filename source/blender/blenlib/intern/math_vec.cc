@@ -26,6 +26,7 @@
 #include "BLI_math_mpq.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_mpq3.hh"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 namespace blender {
@@ -120,16 +121,25 @@ mpq2::isect_result mpq2::isect_seg_seg(const mpq2 &v1,
   return ans;
 }
 
-mpq3 mpq3::cross_poly(const mpq3 *poly, int nv)
+mpq3 mpq3::cross_poly(Span<mpq3> poly)
 {
   /* Newell's Method. */
+  int nv = static_cast<int>(poly.size());
+  if (nv < 3) {
+    return mpq3(0);
+  }
   const mpq3 *v_prev = &poly[nv - 1];
   const mpq3 *v_curr = &poly[0];
   mpq3 n(0);
-  for (int i = 0; i < nv; v_prev = v_curr, v_curr = &poly[++i]) {
+  for (int i = 0; i < nv;) {
     n[0] = n[0] + ((*v_prev)[1] - (*v_curr)[1]) * ((*v_prev)[2] + (*v_curr)[2]);
     n[1] = n[1] + ((*v_prev)[2] - (*v_curr)[2]) * ((*v_prev)[0] + (*v_curr)[0]);
     n[2] = n[2] + ((*v_prev)[0] - (*v_curr)[0]) * ((*v_prev)[1] + (*v_curr)[1]);
+    v_prev = v_curr;
+    ++i;
+    if (i < nv) {
+      v_curr = &poly[i];
+    }
   }
   return n;
 }

@@ -65,7 +65,7 @@ template<> double math_to_double<double>(const double v)
   return v;
 }
 
-/* Define a templated 2D arrangment of vertices, edges, and faces.
+/* Define a templated 2D arrangment of vertices, edges, and faces.
  * The SymEdge data structure is the basis for a structure that allows
  * easy traversal to neighboring (by toplogy) geometric elements.
  * Each of CDTVert, CDTEdge, and CDTFace have an input_id linked list,
@@ -80,11 +80,16 @@ template<typename Arith_t> struct CDTEdge;
 template<typename Arith_t> struct CDTFace;
 
 template<typename Arith_t> struct SymEdge {
-  SymEdge<Arith_t> *next{nullptr}; /* In face, doing CCW traversal of face. */
-  SymEdge<Arith_t> *rot{nullptr};  /* CCW around vert. */
-  CDTVert<Arith_t> *vert{nullptr}; /* Vert at origin. */
-  CDTEdge<Arith_t> *edge{nullptr}; /* Undirected edge this is for. */
-  CDTFace<Arith_t> *face{nullptr}; /* Face on left side. */
+  /* Next SymEdge in face, doing CCW traversal of face. */
+  SymEdge<Arith_t> *next{nullptr};
+  /* Next SymEdge CCW around vert. */
+  SymEdge<Arith_t> *rot{nullptr};
+  /* Vert at origin. */
+  CDTVert<Arith_t> *vert{nullptr};
+  /* Undirected edge this is for. */
+  CDTEdge<Arith_t> *edge{nullptr};
+  /* Face on left side. */
+  CDTFace<Arith_t> *face{nullptr};
 
   SymEdge() = default;
 };
@@ -102,31 +107,41 @@ template<typename T> inline SymEdge<T> *prev(const SymEdge<T> *se)
 }
 
 template<typename Arith_t> struct CDTVert {
-  vec2<Arith_t> co;                   /* Coordinate. */
-  SymEdge<Arith_t> *symedge{nullptr}; /* Some edge attached to it. */
-  LinkNode *input_ids{nullptr};       /* List of corresponding vertex input ids. */
-  int index{-1};                      /* Index into array that CDTArrangement keeps. */
-  int merge_to_index{-1}; /* Index of a CDTVert that this has merged to. -1 if no merge. */
-  int visit_index{0};     /* Used by algorithms operating on CDT structures. */
+  /* Coordinate. */
+  vec2<Arith_t> co;
+  /* Some edge attached to it. */
+  SymEdge<Arith_t> *symedge{nullptr};
+  /* List of corresponding vertex input ids. */
+  LinkNode *input_ids{nullptr};
+  /* Index into array that CDTArrangement keeps. */
+  int index{-1};
+  /* Index of a CDTVert that this has merged to. -1 if no merge. */
+  int merge_to_index{-1};
+  /* Used by algorithms operating on CDT structures. */
+  int visit_index{0};
 
   CDTVert() = default;
   explicit CDTVert(const vec2<Arith_t> &pt);
 };
 
 template<typename Arith_t> struct CDTEdge {
-  LinkNode *input_ids{nullptr}; /* List of input edge ids that this is part of. */
-  SymEdge<Arith_t> symedges[2]{SymEdge<Arith_t>(),
-                               SymEdge<Arith_t>()}; /* The directed edges for this edge. */
+  /* List of input edge ids that this is part of. */
+  LinkNode *input_ids{nullptr};
+  /* The directed edges for this edge. */
+  SymEdge<Arith_t> symedges[2]{SymEdge<Arith_t>(), SymEdge<Arith_t>()};
 
   CDTEdge() = default;
 };
 
 template<typename Arith_t> struct CDTFace {
-  SymEdge<Arith_t> *symedge{
-      nullptr}; /* A symedge in face; only used during output, so only valid then. */
-  LinkNode *input_ids{nullptr}; /* List of input face ids that this is part of. */
-  int visit_index{0};           /* Used by algorithms operating on CDT structures. */
-  bool deleted{false};          /* Marks this face no longer used. */
+  /* A symedge in face; only used during output, so only valid then. */
+  SymEdge<Arith_t> *symedge{nullptr};
+  /* List of input face ids that this is part of. */
+  LinkNode *input_ids{nullptr};
+  /* Used by algorithms operating on CDT structures. */
+  int visit_index{0};
+  /* Marks this face no longer used. */
+  bool deleted{false};
 
   CDTFace() = default;
 };
@@ -136,12 +151,15 @@ template<typename Arith_t> struct CDTArrangement {
    * They are pointers instead of actual structures because these vectors may be resized and
    * other elements refer to the elements by pointer.
    */
-  Vector<CDTVert<Arith_t> *>
-      verts; /* The verts. Some may be merged to others (see their merge_to_index). */
-  Vector<CDTEdge<Arith_t> *>
-      edges; /* The edges. Some may be deleted (SymEdge next and rot pointers are null). */
-  Vector<CDTFace<Arith_t> *> faces; /* The faces. Some may be deleted (see their delete member). */
-  CDTFace<Arith_t> *outer_face{nullptr}; /* Which CDTFace is the outer face. */
+
+  /* The verts. Some may be merged to others (see their merge_to_index). */
+  Vector<CDTVert<Arith_t> *> verts;
+  /* The edges. Some may be deleted (SymEdge next and rot pointers are null). */
+  Vector<CDTEdge<Arith_t> *> edges;
+  /* The faces. Some may be deleted (see their delete member). */
+  Vector<CDTFace<Arith_t> *> faces;
+  /* Which CDTFace is the outer face. */
+  CDTFace<Arith_t> *outer_face{nullptr};
 
   CDTArrangement() = default;
   ~CDTArrangement();
@@ -208,10 +226,16 @@ template<typename Arith_t> struct CDTArrangement {
 template<typename T> class CDT_state {
  public:
   CDTArrangement<T> cdt;
-  int input_vert_tot; /* How many verts were in input (will be first in vert_array). */
-  int visit_count; /* Used for visiting things without having to initialized their visit fields. */
-  int face_edge_offset; /* Input edge id where we start numbering the face edges. */
-  T epsilon;            /* How close before coords considered equal. */
+  /* How many verts were in input (will be first in vert_array). */
+  int input_vert_tot;
+  /* Used for visiting things without having to initialized their visit fields. */
+  int visit_count;
+  /* Edge ids for face start with this, and each face gets this much index space
+   * to encode positions within the face.
+   */
+  int face_edge_offset;
+  /* How close before coords considered equal. */
+  T epsilon;
 
   explicit CDT_state(int num_input_verts, int num_input_edges, int num_input_faces, T epsilon);
   ~CDT_state()
@@ -1808,11 +1832,26 @@ void add_face_ids(
   }
 }
 
+/* Return a power of 10 that is greater than or equal to x. */
+static int power_of_10_greater_equal_to(int x)
+{
+  if (x <= 0) {
+    return 1;
+  }
+  int ans = 1;
+  BLI_assert(x < INT_MAX / 10);
+  while (ans < x) {
+    ans *= 10;
+  }
+  return ans;
+}
+
 /* Incrementally each edge of each input face as an edge constraint.
  * The code will ensure that the CDTEdges created will have ids that tie them
  * back to the original face edge (using a numbering system for those edges
  * that starts with cdt->face_edge_offset, and continues with the edges in
- * order around each face in turn.
+ * order around each face in turn. And then the next face starts at
+ * cdt->face_edge_offset beyond the start for the previous face.
  */
 template<typename T> void add_face_constraints(CDT_state<T> *cdt_state, const CDT_input<T> &input)
 {
@@ -1821,6 +1860,18 @@ template<typename T> void add_face_constraints(CDT_state<T> *cdt_state, const CD
   int fstart = 0;
   SymEdge<T> *face_symedge0 = nullptr;
   CDTArrangement<T> *cdt = &cdt_state->cdt;
+  int maxflen = 0;
+  for (int f = 0; f < nf; f++) {
+    maxflen = max_ii(maxflen, static_cast<int>(input.face[f].size()));
+  }
+  /* For convenience in debugging, make face_edge_offset be a power of 10. */
+  cdt_state->face_edge_offset = power_of_10_greater_equal_to(
+      max_ii(maxflen, cdt_state->face_edge_offset));
+  /* The original_edge encoding scheme doesn't work if the following is false.
+   * If we really have that many faces and that large a max face length that when multiplied
+   * together the are >= INT_MAX, then the Delaunay calculation will take unreasonably long anyway.
+   */
+  BLI_assert(INT_MAX / cdt_state->face_edge_offset > nf);
   for (int f = 0; f < nf; f++) {
     int flen = static_cast<int>(input.face[f].size());
     if (flen <= 2) {
@@ -1828,8 +1879,9 @@ template<typename T> void add_face_constraints(CDT_state<T> *cdt_state, const CD
       fstart += flen;
       continue;
     }
+    int fedge_start = (f + 1) * cdt_state->face_edge_offset;
     for (int i = 0; i < flen; i++) {
-      int face_edge_id = cdt_state->face_edge_offset + fstart + i;
+      int face_edge_id = fedge_start + i;
       int iv1 = input.face[f][i];
       int iv2 = input.face[f][(i + 1) % flen];
       if (iv1 < 0 || iv1 >= nv || iv2 < 0 || iv2 >= nv) {
@@ -1855,7 +1907,6 @@ template<typename T> void add_face_constraints(CDT_state<T> *cdt_state, const CD
       }
       BLI_linklist_free(edge_list, nullptr);
     }
-    int fedge_start = cdt_state->face_edge_offset + fstart;
     int fedge_end = fedge_start + flen - 1;
     if (face_symedge0 != nullptr) {
       add_face_ids(cdt_state, face_symedge0, f, fedge_start, fedge_end);
@@ -2295,7 +2346,7 @@ extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
     int this_start = e_orig_index;
     output->edges_orig_start_table[e] = this_start;
     for (uint j = 0; j < res.edge_orig[e].size(); ++j) {
-      output->edges_orig[e_orig_index++] = res.vert_orig[e][j];
+      output->edges_orig[e_orig_index++] = res.edge_orig[e][j];
     }
     output->edges_orig_len_table[e] = e_orig_index - this_start;
   }

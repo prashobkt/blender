@@ -148,12 +148,9 @@ typedef struct CDT_input {
  * - faces_orig, faces_orig_start_table, faces_orig_len_table
  *
  * For edges, the edges_orig triple can also say which original face
- * edge is part of a given output edge. If an index in edges_orig
- * is greater than the input's edges_len, then subtract input's edges_len
- * from it to some number i: then the face edge that starts from the
- * input vertex at input's faces[i] is the corresponding face edge.
- * for convenience, face_edge_offset in the result will be the input's
- * edges_len, so that this conversion can be easily done by the caller.
+ * edge is part of a given output edge. See the comment below
+ * on the C++ interface for how to decode the entries in the edges_orig
+ * table.
  */
 typedef struct CDT_result {
   int verts_len;
@@ -239,9 +236,20 @@ template<typename Arith_t> class CDT_result {
   Array<vec2<Arith_t>> vert;
   Array<std::pair<int, int>> edge;
   Array<Vector<int>> face;
+  /* For each output vert, which input verts correspond to it? */
   Array<Vector<int>> vert_orig;
+  /* For each output edge, which input edges does it overlap?
+   * The input edge ids are encoded as follows:
+   *   if the value is less than face_edge_offset, then it is
+   *      an index into the input edge[] array.
+   *   else let (a, b) = the quotient and remainder of dividing
+   *      the edge index by face_edge_offset; "a" will be the input face + 1,
+   *      and "b" will be a position within that face.
+   */
   Array<Vector<int>> edge_orig;
+  /* For each output face, which original faces does it overlap? */
   Array<Vector<int>> face_orig;
+  /* Used to encode edge_orig (see above). */
   int face_edge_offset;
 };
 

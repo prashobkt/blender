@@ -24,6 +24,7 @@
 #include "BLI_double3.hh"
 #include "BLI_hash.hh"
 #include "BLI_map.hh"
+#include "BLI_math_mpq.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_span.hh"
@@ -34,201 +35,545 @@
 
 namespace blender::meshintersect {
 
-/* A plane whose equation is dot(n, p) + d = 0. */
-struct planeq {
-  mpq3 n;
-  mpq_class d;
+Vert::Vert(const mpq3 &mco, const double3 &dco, int id, int orig)
+    : co_exact(mco), co(dco), id(id), orig(orig)
+{
+}
 
-  planeq() = default;
+Vert::Vert(const Vert &other)
+    : co_exact(other.co_exact), co(other.co), id(other.id), orig(other.orig)
+{
+}
 
-  planeq(mpq3 n, mpq_class d) : n(n), d(d)
-  {
+Vert::Vert(Vert &&other) noexcept
+    : co_exact(std::move(other.co_exact)), co(std::move(other.co)), id(other.id), orig(other.orig)
+{
+}
+
+Vert &Vert::operator=(const Vert &other)
+{
+  if (this != &other) {
+    this->co_exact = other.co_exact;
+    this->co = other.co;
+    this->id = other.id;
+    this->orig = other.orig;
   }
+  return *this;
+}
 
-  operator const mpq_class *() const
-  {
-    return &n.x;
+Vert &Vert::operator=(Vert &&other) noexcept
+{
+  this->co_exact = std::move(other.co_exact);
+  this->co = std::move(other.co);
+  this->id = other.id;
+  this->orig = other.orig;
+  return *this;
+}
+
+bool Vert::operator==(const Vert &other) const
+{
+  return this->co_exact == other.co_exact;
+}
+
+uint32_t Vert::hash() const
+{
+  return co_exact.hash();
+}
+
+std::ostream &operator<<(std::ostream &os, Vertp v)
+{
+  os << "v" << v->id;
+  if (v->orig != NO_INDEX) {
+    os << "o" << v->orig;
   }
+  os << v->co;
+  return os;
+}
 
-  operator mpq_class *()
-  {
-    return &n.x;
-  }
+bool Plane::operator==(const Plane &other) const
+{
+  return norm_exact == other.norm_exact && d_exact == other.d_exact;
+}
 
-  uint32_t hash() const
-  {
-    constexpr uint32_t h1 = 33;
-    constexpr uint32_t h2 = 37;
-    constexpr uint32_t h3 = 39;
-    uint32_t hashx = hash_mpq_class(this->n.x);
-    uint32_t hashy = hash_mpq_class(this->n.y);
-    uint32_t hashz = hash_mpq_class(this->n.z);
-    uint32_t hashd = hash_mpq_class(this->d);
-    return hashx ^ (hashy * h1) ^ (hashz * h1 * h2) ^ (hashd * h1 * h2 * h3);
-  }
-};
+Plane::Plane(const mpq3 &norm_exact, const mpq_class &d_exact)
+    : norm_exact(norm_exact), d_exact(d_exact)
+{
+  norm[0] = norm_exact[0].get_d();
+  norm[1] = norm_exact[1].get_d();
+  norm[2] = norm_exact[2].get_d();
+  d = d_exact.get_d();
+}
 
-/* A Triangle mesh but with a different structure to hold vertices, so that
- * we can dedup them efficiently.
- * Also optionally keeps the planeqs of the triangles, as those are needed sometimes.
+uint32_t Plane::hash() const
+{
+  constexpr uint32_t h1 = 33;
+  constexpr uint32_t h2 = 37;
+  constexpr uint32_t h3 = 39;
+  uint32_t hashx = hash_mpq_class(this->norm_exact.x);
+  uint32_t hashy = hash_mpq_class(this->norm_exact.y);
+  uint32_t hashz = hash_mpq_class(this->norm_exact.z);
+  uint32_t hashd = hash_mpq_class(this->d_exact);
+  uint32_t ans = hashx ^ (hashy * h1) ^ (hashz * h1 * h2) ^ (hashd * h1 * h2 * h3);
+  return ans;
+}
+
+/* Need a canonical form of a plane so that can use as a key in a map and
+ * all coplanar triangles will have the same key.
+ * Make the first nonzero component of the normal be 1.
+ * Note that this might flip the orientation of the plane.
  */
-class TMesh {
-  /* Invariants:
-   * verts_ contains no duplicates.
-   * Every index t in an tris_ element satisfies
-   *   0 <= t < verts_.size()
-   * No degenerate triangles.
-   * If has_planes_ is true then planes_ parallels
-   * the tris_ vector, and has the corresponding planes.
-   * (The init_planes() function will set that up.)
+void Plane::make_canonical()
+{
+  if (norm_exact[0] != 0) {
+    mpq_class den = norm_exact[0];
+    norm_exact = mpq3(1, norm_exact[1] / den, norm_exact[2] / den);
+    d_exact = d_exact / den;
+  }
+  else if (norm_exact[1] != 0) {
+    mpq_class den = norm_exact[1];
+    norm_exact = mpq3(0, 1, norm_exact[2] / den);
+    d_exact = d_exact / den;
+  }
+  else {
+    mpq_class den = norm_exact[2];
+    norm_exact = mpq3(0, 0, 1);
+    d_exact = d_exact / den;
+  }
+  norm = double3(norm_exact[0].get_d(), norm_exact[1].get_d(), norm_exact[2].get_d());
+  d = d_exact.get_d();
+}
+
+std::ostream &operator<<(std::ostream &os, const Plane &plane)
+{
+  os << "[" << plane.norm << ";" << plane.d << "]";
+  return os;
+}
+
+Face::Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs)
+    : vert(verts), edge_orig(edge_origs), id(id), orig(orig)
+{
+  mpq3 normal;
+  if (vert.size() > 3) {
+    Array<mpq3> co(vert.size());
+    for (uint i : index_range()) {
+      co[i] = vert[i]->co_exact;
+    }
+    normal = mpq3::cross_poly(co);
+  }
+  else {
+    mpq3 tr02 = vert[0]->co_exact - vert[2]->co_exact;
+    mpq3 tr12 = vert[1]->co_exact - vert[2]->co_exact;
+    normal = mpq3::cross(tr02, tr12);
+  }
+  mpq_class d = -mpq3::dot(normal, vert[0]->co_exact);
+  plane = Plane(normal, d);
+}
+
+Face::Face(const Face &other)
+    : vert(other.vert),
+      edge_orig(other.edge_orig),
+      plane(other.plane),
+      id(other.id),
+      orig(other.orig)
+{
+}
+
+Face::Face(Face &&other) noexcept
+    : vert(std::move(other.vert)),
+      edge_orig(std::move(other.edge_orig)),
+      plane(std::move(other.plane)),
+      id(other.id),
+      orig(other.orig)
+{
+}
+
+Face &Face::operator=(const Face &other)
+{
+  if (this != &other) {
+    this->vert = other.vert;
+    this->edge_orig = other.edge_orig;
+    this->plane = other.plane;
+    this->id = other.id;
+    this->orig = other.orig;
+  }
+  return *this;
+}
+
+Face &Face::operator=(Face &&other) noexcept
+{
+  this->vert = std::move(other.vert);
+  this->edge_orig = std::move(other.edge_orig);
+  this->plane = std::move(other.plane);
+  this->id = other.id;
+  this->orig = other.orig;
+  return *this;
+}
+
+bool Face::operator==(const Face &other) const
+{
+  if (this->size() != other.size()) {
+    return false;
+  }
+  for (FacePos i : index_range()) {
+    /* Can test pointer equality since we will have
+     * unique vert pointers for unique co_equal's.
+     */
+    if (this->vert[i] != other.vert[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Face::cyclic_equal(const Face &other) const
+{
+  if (this->size() != other.size()) {
+    return false;
+  }
+  uint flen = this->size();
+  for (FacePos start : index_range()) {
+    for (FacePos start_other : index_range()) {
+      bool ok = true;
+      for (uint i = 0; ok && i < flen; ++i) {
+        FacePos p = (start + i) % flen;
+        FacePos p_other = (start_other + i) % flen;
+        if (this->vert[p] != other.vert[p_other]) {
+          ok = false;
+        }
+      }
+      if (ok) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+std::ostream &operator<<(std::ostream &os, Facep f)
+{
+  os << "f" << f->id << "o" << f->orig << "[";
+  for (Vertp v : *f) {
+    os << "v" << v->id;
+    if (v->orig != NO_INDEX) {
+      os << "o" << v->orig;
+    }
+    if (v != f->vert[f->size() - 1]) {
+      os << " ";
+    }
+  }
+  os << "]";
+  if (f->orig != NO_INDEX) {
+    os << "o" << f->orig;
+  }
+  return os;
+}
+
+/* MArena is the owner of the Vert and Face resources used
+ * during a run of one of the meshintersect main functions.
+ * It also keeps has a hash table of all Verts created so that it can
+ * ensure that only one instance of a Vert with a given co_exact will
+ * exist. I.e., it dedups the vertices.
+ */
+class MArena::MArenaImpl {
+
+  /* Don't use Vert itself as key since resizing may move
+   * pointers to the Vert around, and we need to have those pointers
+   * stay the same throughout the lifetime of the MArena.
    */
-  bool has_planes_ = false;
-  VectorSet<mpq3> verts_;
-  Vector<IndexedTriangle> tris_;
-  Vector<planeq> planes_;
+  struct VSetKey {
+    Vert *vert;
+
+    VSetKey(Vert *p) : vert(p)
+    {
+    }
+
+    uint32_t hash() const
+    {
+      return vert->hash();
+    }
+
+    bool operator==(const VSetKey &other) const
+    {
+      return *this->vert == *other.vert;
+    }
+  };
+
+  VectorSet<VSetKey> vset_; /* TODO: replace with Set */
+
+  /* Ownership of the Vert memory is here, so destroying this reclaims that memory. */
+  /* TODO: replace these with pooled allocation, and just destory the pools at the end. */
+  Vector<std::unique_ptr<Vert>> allocated_verts_;
+  Vector<std::unique_ptr<Face>> allocated_faces_;
+
+  /* Use these to allocate ids when Verts and Faces are allocated. */
+  int next_vert_id_ = 0;
+  int next_face_id_ = 0;
 
  public:
-  TMesh() = default;
+  MArenaImpl() = default;
+  MArenaImpl(const MArenaImpl &) = delete;
+  MArenaImpl(MArenaImpl &&) = delete;
+  ~MArenaImpl() = default;
 
-  /* Copies verts and triangles from tm_in, but dedups the vertices
-   * and ignores degenerate and invalid triangles.
-   * If want_planes is true, calculate and store the planes for each triangle.
+  void reserve(int vert_num_hint, int face_num_hint)
+  {
+    vset_.reserve(vert_num_hint);
+    allocated_verts_.reserve(vert_num_hint);
+    allocated_faces_.reserve(face_num_hint);
+  }
+
+  uint tot_allocated_verts() const
+  {
+    return allocated_verts_.size();
+  }
+
+  uint tot_allocated_faces() const
+  {
+    return allocated_faces_.size();
+  }
+
+  Vertp add_or_find_vert(const mpq3 &co, int orig)
+  {
+    double3 dco(co[0].get_d(), co[1].get_d(), co[2].get_d());
+    return add_or_find_vert(co, dco, orig);
+  }
+
+  Vertp add_or_find_vert(const double3 &co, int orig)
+  {
+    mpq3 mco(co[0], co[1], co[2]);
+    return add_or_find_vert(mco, co, orig);
+  }
+
+  Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs)
+  {
+    Face *f = new Face(verts, next_face_id_++, orig, edge_origs);
+    allocated_faces_.append(std::unique_ptr<Face>(f));
+    return f;
+  }
+
+  Vertp find_vert(const mpq3 &co) const
+  {
+    Vert vtry(co, double3(), NO_INDEX, NO_INDEX);
+    VSetKey vskey(&vtry);
+    int i = vset_.index_of_try(vskey);
+    if (i == -1) {
+      return nullptr;
+    }
+    return vset_[i].vert;
+  }
+
+  /* This is slow. Only used for unit tests right now.
+   * The argument vs can be a cyclic shift of the actual stored Face.
    */
-  TMesh(const TriMesh &tm_in, bool want_planes)
+  Facep find_face(Span<Vertp> vs) const
   {
-    int nvert = static_cast<int>(tm_in.vert.size());
-    this->verts_.reserve(nvert);
-    Array<int> input_v_to_tm_v = Array<int>(nvert); /* Input vert index -> our vert index. */
-    for (int v = 0; v < nvert; ++v) {
-      const mpq3 &co = tm_in.vert[v];
-      int tmv = this->add_vert(co);
-      input_v_to_tm_v[v] = tmv;
-    }
-    int ntri = static_cast<int>(tm_in.tri.size());
-    this->tris_.reserve(ntri);
-    for (int t = 0; t < ntri; ++t) {
-      const IndexedTriangle &tri = tm_in.tri[t];
-      int v0 = tri.v0();
-      int v1 = tri.v1();
-      int v2 = tri.v2();
-      int orig = tri.orig();
-      if (orig == -1) {
-        orig = t;
+    Array<int> eorig(vs.size(), NO_INDEX);
+    Face ftry(vs, NO_INDEX, NO_INDEX, eorig);
+    for (const uint i : allocated_faces_.index_range()) {
+      if (ftry.cyclic_equal(*allocated_faces_[i])) {
+        return allocated_faces_[i].get();
       }
-      if (v0 < 0 || v0 >= nvert || v1 < 0 || v1 >= nvert || v2 < 0 || v2 >= nvert) {
-        /* Skip triangles with invalid indices. */
-        continue;
-      }
-      int tmv0 = input_v_to_tm_v[v0];
-      int tmv1 = input_v_to_tm_v[v1];
-      int tmv2 = input_v_to_tm_v[v2];
-      if (tmv0 == tmv1 || tmv0 == tmv2 || tmv1 == tmv2) {
-        /* Skip triangles with zero area because two verts are the same. */
-        /* TODO: check for 3d collinearity of tmv0 tmv1 and tmv2 and skip those too. */
-        continue;
-      }
-      this->tris_.append(IndexedTriangle(tmv0, tmv1, tmv2, orig));
     }
-    if (want_planes) {
-      this->init_planes();
+    return nullptr;
+  }
+
+ private:
+  Vertp add_or_find_vert(const mpq3 &mco, const double3 &dco, int orig)
+  {
+    /* Don't allocate Vert yet, in case it is already there. */
+    Vert vtry(mco, dco, NO_INDEX, NO_INDEX);
+    VSetKey vskey(&vtry);
+    int i = vset_.index_of_try(vskey);
+    if (i == -1) {
+      vskey.vert = new Vert(mco, dco, next_vert_id_++, orig);
+      vset_.add_new(vskey);
+      allocated_verts_.append(std::unique_ptr<Vert>(vskey.vert));
+      return vskey.vert;
     }
-    else {
-      has_planes_ = false;
-    }
-  }
-
-  /* Copy a single triangle from the source TMesh. */
-  TMesh(const TMesh &source_tm, int t)
-  {
-    BLI_assert(t >= 0 && t < source_tm.tot_tri());
-    this->verts_.reserve(3);
-    const IndexedTriangle &source_it = source_tm.tri(t);
-    int tmv0 = this->add_vert(source_tm.vert(source_it.v0()));
-    int tmv1 = this->add_vert(source_tm.vert(source_it.v1()));
-    int tmv2 = this->add_vert(source_tm.vert(source_it.v2()));
-    this->tris_.append(IndexedTriangle(tmv0, tmv1, tmv2, source_it.orig()));
-    if (source_tm.has_planes_) {
-      this->planes_.append(source_tm.planes_[t]);
-      this->has_planes_ = true;
-    }
-    else {
-      this->has_planes_ = false;
-    }
-  }
-
-  void init_planes()
-  {
-    int ntri = this->tot_tri();
-    planes_.reserve(ntri);
-    for (int t = 0; t < ntri; ++t) {
-      const IndexedTriangle &tri = tris_[t];
-      mpq3 tr02 = verts_[tri[0]] - verts_[tri[2]];
-      mpq3 tr12 = verts_[tri[1]] - verts_[tri[2]];
-      mpq3 n = mpq3::cross(tr02, tr12);
-      mpq_class d = -mpq3::dot(n, verts_[tri[0]]);
-      BLI_assert(!(n.x == 0 && n.y == 0 && n.z == 0));
-      this->planes_.append(planeq(n, d));
-    }
-    has_planes_ = true;
-  }
-
-  int tot_vert() const
-  {
-    return static_cast<int>(verts_.size());
-  }
-
-  int tot_tri() const
-  {
-    return static_cast<int>(tris_.size());
-  }
-
-  bool has_planes() const
-  {
-    return has_planes_;
-  }
-
-  const IndexedTriangle &tri(int index) const
-  {
-    return tris_[index];
-  }
-
-  const mpq3 &vert(int index) const
-  {
-    return verts_[index];
-  }
-
-  const planeq &tri_plane(int index) const
-  {
-    BLI_assert(has_planes_);
-    return planes_[index];
-  }
-
-  int add_tri(int v0, int v1, int v2, int tri_orig)
-  {
-    int t = this->tot_vert();
-    this->tris_.append(IndexedTriangle(v0, v1, v2, tri_orig));
-    return t;
-  }
-
-  int add_tri(const IndexedTriangle &itri)
-  {
-    int t = this->tot_vert();
-    this->tris_.append(itri);
-    return t;
-  }
-
-  int add_vert(const mpq3 &co)
-  {
-    int co_index = this->verts_.index_of_try(co);
-    if (co_index == -1) {
-      co_index = static_cast<int>(this->verts_.size());
-      this->verts_.add_new(co);
-    }
-    return co_index;
-  }
+    /* It was a dup, so return the existing one.
+     * Note that the returned Vert may have a different orig.
+     * This is the intended semantics: if the Vert already
+     * exists then we are merging verts and using the first-seen
+     * one as the canonical one.
+     */
+    return vset_[i].vert;
+  };
 };
 
-static std::ostream &operator<<(std::ostream &os, const TMesh &tm);
+MArena::MArena()
+{
+  pimpl_ = std::unique_ptr<MArenaImpl>(new MArenaImpl());
+}
+
+MArena::~MArena()
+{
+}
+
+void MArena::reserve(int vert_num_hint, int face_num_hint)
+{
+  pimpl_->reserve(vert_num_hint, face_num_hint);
+}
+
+uint MArena::tot_allocated_verts() const
+{
+  return pimpl_->tot_allocated_verts();
+}
+
+uint MArena::tot_allocated_faces() const
+{
+  return pimpl_->tot_allocated_faces();
+}
+
+Vertp MArena::add_or_find_vert(const mpq3 &co, int orig)
+{
+  return pimpl_->add_or_find_vert(co, orig);
+}
+
+Facep MArena::add_face(Span<Vertp> verts, int orig, Span<int> edge_origs)
+{
+  return pimpl_->add_face(verts, orig, edge_origs);
+}
+
+Vertp MArena::add_or_find_vert(const double3 &co, int orig)
+{
+  return pimpl_->add_or_find_vert(co, orig);
+}
+
+Vertp MArena::find_vert(const mpq3 &co) const
+{
+  return pimpl_->find_vert(co);
+}
+
+Facep MArena::find_face(Span<Vertp> verts) const
+{
+  return pimpl_->find_face(verts);
+}
+
+void Mesh::set_faces(Span<Facep> faces)
+{
+  face_ = faces;
+}
+
+uint Mesh::lookup_vert(Vertp v) const
+{
+  BLI_assert(vert_populated_);
+  return vert_to_index_.lookup_default(v, NO_INDEX_U);
+}
+
+void Mesh::populate_vert()
+{
+  /* This is likely an overestimate, since verts are shared between
+   * faces. It is ok if estimate is over or even under.
+   */
+  constexpr int ESTIMATE_VERTS_PER_FACE = 4;
+  uint estimate_num_verts = ESTIMATE_VERTS_PER_FACE * face_.size();
+  populate_vert(estimate_num_verts);
+}
+
+void Mesh::populate_vert(uint max_verts)
+{
+  if (vert_populated_) {
+    return;
+  }
+  vert_to_index_.reserve(max_verts);
+  uint next_allocate_index = 0;
+  for (Facep f : face_) {
+    for (Vertp v : *f) {
+      uint index = vert_to_index_.lookup_default(v, NO_INDEX_U);
+      if (index == NO_INDEX_U) {
+        BLI_assert(next_allocate_index < UINT_MAX - 2);
+        vert_to_index_.add(v, next_allocate_index++);
+      }
+    }
+  }
+  uint tot_v = next_allocate_index;
+  vert_ = Array<Vertp>(tot_v);
+  for (auto item : vert_to_index_.items()) {
+    uint index = item.value;
+    BLI_assert(index < tot_v);
+    vert_[index] = item.key;
+  }
+  /* Easier debugging (at least when there are no merged input verts)
+   * if output vert order is same as input, with new verts at the end.
+   * TODO: when all debugged, set fix_order = false.
+   */
+  const bool fix_order = true;
+  if (fix_order) {
+    std::sort(vert_.begin(), vert_.end(), [](Vertp a, Vertp b) {
+      if (a->orig != NO_INDEX && b->orig != NO_INDEX) {
+        return a->orig < b->orig;
+      }
+      if (a->orig != NO_INDEX) {
+        return true;
+      }
+      if (b->orig != NO_INDEX) {
+        return false;
+      }
+      return a->id < b->id;
+    });
+    for (uint i : vert_.index_range()) {
+      Vertp v = vert_[i];
+      vert_to_index_.add_overwrite(v, i);
+    }
+  }
+  vert_populated_ = true;
+}
+
+void Mesh::erase_face_positions(uint f_index, Span<bool> face_pos_erase, MArena *arena)
+{
+  Facep cur_f = this->face(f_index);
+  int cur_len = static_cast<int>(cur_f->size());
+  int num_to_erase = 0;
+  for (uint i : cur_f->index_range()) {
+    if (face_pos_erase[i]) {
+      ++num_to_erase;
+    }
+  }
+  if (num_to_erase == 0) {
+    return;
+  }
+  int new_len = cur_len - num_to_erase;
+  if (new_len < 3) {
+    /* Invalid erase. Don't do anything. */
+    return;
+  }
+  Array<Vertp> new_vert(new_len);
+  Array<int> new_edge_orig(new_len);
+  int new_index = 0;
+  for (uint i : cur_f->index_range()) {
+    if (!face_pos_erase[i]) {
+      new_vert[new_index] = (*cur_f)[i];
+      new_edge_orig[new_index] = cur_f->edge_orig[i];
+      ++new_index;
+    }
+  }
+  BLI_assert(new_index == new_len);
+  this->face_[f_index] = arena->add_face(new_vert, cur_f->orig, new_edge_orig);
+}
+
+std::ostream &operator<<(std::ostream &os, const Mesh &mesh)
+{
+  if (mesh.has_verts()) {
+    os << "Verts:\n";
+    int i = 0;
+    for (Vertp v : mesh.vertices()) {
+      os << i << ": " << v << "\n";
+      ++i;
+    }
+  }
+  os << "\nFaces:\n";
+  int i = 0;
+  for (Facep f : mesh.faces()) {
+    os << i << ": " << f << "\n";
+    os << "    plane=" << f->plane << " eorig=[";
+    for (Face::FacePos p = 0; p < f->size(); ++p) {
+      os << f->edge_orig[p] << " ";
+    }
+    os << "]\n";
+    ++i;
+  }
+  return os;
+}
 
 /* A cluster of coplanar triangles, by index.
  * A pair of triangles T0 and T1 is said to "nontrivially coplanar-intersect"
@@ -239,34 +584,34 @@ static std::ostream &operator<<(std::ostream &os, const TMesh &tm);
  * triangle in the cluster.
  */
 class CoplanarCluster {
-  Vector<int> tris_;
+  Vector<uint> tris_;
 
  public:
   CoplanarCluster() = default;
-  explicit CoplanarCluster(int t)
+  explicit CoplanarCluster(uint t)
   {
     this->add_tri(t);
   }
   ~CoplanarCluster() = default;
 
   /* Assume that caller knows this will not be a duplicate. */
-  void add_tri(int t)
+  void add_tri(uint t)
   {
     tris_.append(t);
   }
-  int tot_tri() const
+  uint tot_tri() const
   {
-    return static_cast<int>(tris_.size());
+    return tris_.size();
   }
-  int tri(int index) const
+  uint tri(uint index) const
   {
     return tris_[index];
   }
-  const int *begin() const
+  const uint *begin() const
   {
     return tris_.begin();
   }
-  const int *end() const
+  const uint *end() const
   {
     return tris_.end();
   }
@@ -279,35 +624,54 @@ class CoplanarCluster {
  */
 class CoplanarClusterInfo {
   Vector<CoplanarCluster> clusters_;
-  Array<int> tri_cluster_;
+  Array<uint> tri_cluster_;
 
  public:
   CoplanarClusterInfo() = default;
-  explicit CoplanarClusterInfo(int numtri) : tri_cluster_(Array<int>(numtri))
+  explicit CoplanarClusterInfo(uint numtri) : tri_cluster_(Array<uint>(numtri))
   {
     tri_cluster_.fill(-1);
   }
-  int tri_cluster(int t) const
+
+  uint tri_cluster(uint t) const
   {
-    BLI_assert(0 <= t && t < static_cast<int>(tri_cluster_.size()));
+    BLI_assert(t < tri_cluster_.size());
     return tri_cluster_[t];
   }
-  int add_cluster(CoplanarCluster cl)
+
+  uint add_cluster(CoplanarCluster cl)
   {
-    int c_index = static_cast<int>(clusters_.append_and_get_index(cl));
-    for (const int t : cl) {
-      BLI_assert(0 <= t && t < static_cast<int>(tri_cluster_.size()));
+    uint c_index = clusters_.append_and_get_index(cl);
+    for (uint t : cl) {
+      BLI_assert(t < tri_cluster_.size());
       tri_cluster_[t] = c_index;
     }
     return c_index;
   }
-  int tot_cluster() const
+
+  uint tot_cluster() const
   {
-    return static_cast<int>(clusters_.size());
+    return clusters_.size();
   }
-  const CoplanarCluster &cluster(int index) const
+
+  const CoplanarCluster *begin()
   {
-    BLI_assert(0 <= index && index < static_cast<int>(clusters_.size()));
+    return clusters_.begin();
+  }
+
+  const CoplanarCluster *end()
+  {
+    return clusters_.end();
+  }
+
+  IndexRange index_range() const
+  {
+    return clusters_.index_range();
+  }
+
+  const CoplanarCluster &cluster(uint index) const
+  {
+    BLI_assert(index < clusters_.size());
     return clusters_[index];
   }
 };
@@ -551,31 +915,38 @@ static ITT_value itt_canon1(const mpq3 &p1,
   return ITT_value(ICOPLANAR);
 }
 
-static ITT_value intersect_tri_tri(const TMesh &tm, int t1, int t2)
+static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
 {
   constexpr int dbg_level = 0;
-  const IndexedTriangle &tri1 = tm.tri(t1);
-  const IndexedTriangle &tri2 = tm.tri(t2);
-  const mpq3 &p1 = tm.vert(tri1.v0());
-  const mpq3 &q1 = tm.vert(tri1.v1());
-  const mpq3 &r1 = tm.vert(tri1.v2());
-  const mpq3 &p2 = tm.vert(tri2.v0());
-  const mpq3 &q2 = tm.vert(tri2.v1());
-  const mpq3 &r2 = tm.vert(tri2.v2());
-
+  const Face &tri1 = *tm.face(t1);
+  const Face &tri2 = *tm.face(t2);
+  Vertp vp1 = tri1[0];
+  Vertp vq1 = tri1[1];
+  Vertp vr1 = tri1[2];
+  Vertp vp2 = tri2[0];
+  Vertp vq2 = tri2[1];
+  Vertp vr2 = tri2[2];
   if (dbg_level > 0) {
     std::cout << "\nINTERSECT_TRI_TRI t1=" << t1 << ", t2=" << t2 << "\n";
-    std::cout << "  p1 = " << p1 << "\n";
-    std::cout << "  q1 = " << q1 << "\n";
-    std::cout << "  r1 = " << r1 << "\n";
-    std::cout << "  p2 = " << p2 << "\n";
-    std::cout << "  q2 = " << q2 << "\n";
-    std::cout << "  r2 = " << r2 << "\n";
+    std::cout << "  p1 = " << vp1 << "\n";
+    std::cout << "  q1 = " << vq1 << "\n";
+    std::cout << "  r1 = " << vr1 << "\n";
+    std::cout << "  p2 = " << vp2 << "\n";
+    std::cout << "  q2 = " << vq2 << "\n";
+    std::cout << "  r2 = " << vr2 << "\n";
   }
+
+  /* TODO: try doing intersect with double arithmetic first, with error bounds. */
+  const mpq3 &p1 = vp1->co_exact;
+  const mpq3 &q1 = vq1->co_exact;
+  const mpq3 &r1 = vr1->co_exact;
+  const mpq3 &p2 = vp2->co_exact;
+  const mpq3 &q2 = vq2->co_exact;
+  const mpq3 &r2 = vr2->co_exact;
 
   /* Get signs of t1's vertices' distances to plane of t2. */
   /* If don't have normal, use mpq3 n2 = cross_v3v3(sub_v3v3(p2, r2), sub_v3v3(q2, r2)); */
-  const mpq3 &n2 = tm.tri_plane(t2).n;
+  const mpq3 &n2 = tri2.plane.norm_exact;
   int sp1 = sgn(mpq3::dot(p1 - r2, n2));
   int sq1 = sgn(mpq3::dot(q1 - r2, n2));
   int sr1 = sgn(mpq3::dot(r1 - r2, n2));
@@ -593,7 +964,7 @@ static ITT_value intersect_tri_tri(const TMesh &tm, int t1, int t2)
 
   /* Repeat for signs of t2's vertices with respect to plane of t1. */
   /* If don't have normal, use mpq3 n1 = cross_v3v3(sub_v3v3(q1, p1), sub_v3v3(r1, p1)); */
-  const mpq3 &n1 = tm.tri_plane(t1).n;
+  const mpq3 &n1 = tri1.plane.norm_exact;
   int sp2 = sgn(mpq3::dot(p2 - r1, n1));
   int sq2 = sgn(mpq3::dot(q2 - r1, n1));
   int sr2 = sgn(mpq3::dot(r2 - r1, n1));
@@ -674,11 +1045,11 @@ static ITT_value intersect_tri_tri(const TMesh &tm, int t1, int t2)
 }
 
 struct CDT_data {
-  planeq t_plane;
+  Plane t_plane;
   Vector<mpq2> vert;
   Vector<std::pair<int, int>> edge;
   Vector<Vector<int>> face;
-  Vector<int> input_face;        /* Parallels face, gives id from input TMesh of input face. */
+  Vector<int> input_face;        /* Parallels face, gives id from input Mesh of input face. */
   Vector<bool> is_reversed;      /* Parallels face, says if input face orientation is opposite. */
   CDT_result<mpq_class> cdt_out; /* Result of running CDT on input with (vert, edge, face). */
   int proj_axis;
@@ -727,28 +1098,30 @@ static int prepare_need_vert(CDT_data &cd, const mpq3 &p3d)
 static mpq3 unproject_cdt_vert(const CDT_data &cd, const mpq2 &p2d)
 {
   mpq3 p3d;
-  BLI_assert(cd.t_plane.n[cd.proj_axis] != 0);
+  BLI_assert(cd.t_plane.norm_exact[cd.proj_axis] != 0);
+  const mpq3 &n = cd.t_plane.norm_exact;
+  const mpq_class &d = cd.t_plane.d_exact;
   switch (cd.proj_axis) {
     case (0): {
-      mpq_class num = cd.t_plane.n[1] * p2d[0] + cd.t_plane.n[2] * p2d[1] + cd.t_plane.d;
+      mpq_class num = n[1] * p2d[0] + n[2] * p2d[1] + d;
       num = -num;
-      p3d[0] = num / cd.t_plane.n[0];
+      p3d[0] = num / n[0];
       p3d[1] = p2d[0];
       p3d[2] = p2d[1];
     } break;
     case (1): {
       p3d[0] = p2d[0];
-      mpq_class num = cd.t_plane.n[0] * p2d[0] + cd.t_plane.n[2] * p2d[1] + cd.t_plane.d;
+      mpq_class num = n[0] * p2d[0] + n[2] * p2d[1] + d;
       num = -num;
-      p3d[1] = num / cd.t_plane.n[1];
+      p3d[1] = num / n[1];
       p3d[2] = p2d[1];
     } break;
     case (2): {
       p3d[0] = p2d[0];
       p3d[1] = p2d[1];
-      mpq_class num = cd.t_plane.n[0] * p2d[0] + cd.t_plane.n[1] * p2d[1] + cd.t_plane.d;
+      mpq_class num = n[0] * p2d[0] + n[1] * p2d[1] + d;
       num = -num;
-      p3d[2] = num / cd.t_plane.n[2];
+      p3d[2] = num / n[2];
     } break;
     default:
       BLI_assert(false);
@@ -763,24 +1136,24 @@ static void prepare_need_edge(CDT_data &cd, const mpq3 &p1, const mpq3 &p2)
   cd.edge.append(std::pair<int, int>(v1, v2));
 }
 
-static void prepare_need_tri(CDT_data &cd, const TMesh &tm, int t)
+static void prepare_need_tri(CDT_data &cd, const Mesh &tm, uint t)
 {
-  IndexedTriangle tri = tm.tri(t);
-  int v0 = prepare_need_vert(cd, tm.vert(tri.v0()));
-  int v1 = prepare_need_vert(cd, tm.vert(tri.v1()));
-  int v2 = prepare_need_vert(cd, tm.vert(tri.v2()));
+  const Face &tri = *tm.face(t);
+  int v0 = prepare_need_vert(cd, tri[0]->co_exact);
+  int v1 = prepare_need_vert(cd, tri[1]->co_exact);
+  int v2 = prepare_need_vert(cd, tri[2]->co_exact);
   bool rev;
   /* How to get CCW orientation of projected tri? Note that when look down y axis
    * as opposed to x or z, the orientation of the other two axes is not right-and-up.
    */
-  if (cd.t_plane[cd.proj_axis] >= 0) {
+  if (cd.t_plane.norm_exact[cd.proj_axis] >= 0) {
     rev = cd.proj_axis == 1;
   }
   else {
     rev = cd.proj_axis != 1;
   }
   /* If t's plane is opposite to cd.t_plane, need to reverse again. */
-  if (sgn(tm.tri_plane(t).n[cd.proj_axis]) != sgn(cd.t_plane[cd.proj_axis])) {
+  if (sgn(tri.plane.norm_exact[cd.proj_axis]) != sgn(cd.t_plane.norm_exact[cd.proj_axis])) {
     rev = !rev;
   }
   int cd_t = cd.face.append_and_get_index(Vector<int>());
@@ -797,13 +1170,12 @@ static void prepare_need_tri(CDT_data &cd, const TMesh &tm, int t)
   cd.is_reversed.append(rev);
 }
 
-static CDT_data prepare_cdt_input(const TMesh &tm, int t, const Vector<ITT_value> itts)
+static CDT_data prepare_cdt_input(const Mesh &tm, uint t, const Vector<ITT_value> itts)
 {
   CDT_data ans;
-  BLI_assert(tm.has_planes());
-  ans.t_plane = tm.tri_plane(t);
-  const planeq &pl = ans.t_plane;
-  ans.proj_axis = mpq3::dominant_axis(pl.n);
+  ans.t_plane = tm.face(t)->plane;
+  const Plane &pl = ans.t_plane;
+  ans.proj_axis = mpq3::dominant_axis(pl.norm_exact);
   prepare_need_tri(ans, tm, t);
   for (const ITT_value &itt : itts) {
     switch (itt.kind) {
@@ -823,21 +1195,20 @@ static CDT_data prepare_cdt_input(const TMesh &tm, int t, const Vector<ITT_value
   return ans;
 }
 
-static CDT_data prepare_cdt_input_for_cluster(const TMesh &tm,
+static CDT_data prepare_cdt_input_for_cluster(const Mesh &tm,
                                               const CoplanarClusterInfo &clinfo,
-                                              int c,
+                                              uint c,
                                               const Vector<ITT_value> itts)
 {
   CDT_data ans;
-  BLI_assert(c >= 0 && c < clinfo.tot_cluster());
+  BLI_assert(c < clinfo.tot_cluster());
   const CoplanarCluster &cl = clinfo.cluster(c);
   BLI_assert(cl.tot_tri() > 0);
   int t0 = cl.tri(0);
-  BLI_assert(tm.has_planes());
-  ans.t_plane = tm.tri_plane(t0);
-  const planeq &pl = ans.t_plane;
-  ans.proj_axis = mpq3::dominant_axis(pl.n);
-  for (const int t : cl) {
+  ans.t_plane = tm.face(t0)->plane;
+  const Plane &pl = ans.t_plane;
+  ans.proj_axis = mpq3::dominant_axis(pl.norm_exact);
+  for (const uint t : cl) {
     prepare_need_tri(ans, tm, t);
   }
   for (const ITT_value &itt : itts) {
@@ -859,9 +1230,6 @@ static CDT_data prepare_cdt_input_for_cluster(const TMesh &tm,
 static void do_cdt(CDT_data &cd)
 {
   constexpr int dbg_level = 0;
-  /* TODO: find a way to avoid the following copies. Maybe add a CDT_input variant (or just
-   * change its signature) to use Vectors instead of Arrays for the three inputs.
-   */
   CDT_input<mpq_class> cdt_in;
   cdt_in.vert = Array<mpq2>(cd.vert);
   cdt_in.edge = Array<std::pair<int, int>>(cd.edge);
@@ -904,22 +1272,64 @@ static void do_cdt(CDT_data &cd)
       }
       std::cout << "\n";
     }
+    std::cout << "Edges\n";
+    for (uint e = 0; e < cd.cdt_out.edge.size(); ++e) {
+      std::cout << "e" << e << ": (" << cd.cdt_out.edge[e].first << ", "
+                << cd.cdt_out.edge[e].second << ") ";
+      std::cout << "orig: ";
+      for (uint j = 0; j < cd.cdt_out.edge_orig[e].size(); ++j) {
+        std::cout << cd.cdt_out.edge_orig[e][j] << " ";
+      }
+      std::cout << "\n";
+    }
   }
 }
 
-/* Using the result of CDT in cd.cdt_out, extract a TMesh representing the subdivision
+static int get_cdt_edge_orig(int i0, int i1, const CDT_data &cd, const Mesh &in_tm)
+{
+  int foff = cd.cdt_out.face_edge_offset;
+  for (uint e : cd.cdt_out.edge.index_range()) {
+    std::pair<int, int> edge = cd.cdt_out.edge[e];
+    if ((edge.first == i0 && edge.second == i1) || (edge.first == i1 && edge.second == i0)) {
+      /* Pick an arbitrary orig, but not one equal to NO_INDEX, if we can help it. */
+      for (int orig_index : cd.cdt_out.edge_orig[e]) {
+        /* orig_index encodes the triangle and pos within the triangle of the input edge. */
+        if (orig_index >= foff) {
+          int in_face_index = (orig_index / foff) - 1;
+          int pos = orig_index % foff;
+          /* We need to retrieve the edge orig field from the Face used to populate the
+           * in_face_index'th face of the CDT, at the pos'th position of the face.
+           */
+          int in_tm_face_index = cd.input_face[in_face_index];
+          BLI_assert(in_tm_face_index < in_tm.face_size());
+          Facep facep = in_tm.face(in_tm_face_index);
+          BLI_assert(pos < facep->size());
+          bool is_rev = cd.is_reversed[in_face_index];
+          int eorig = is_rev ? facep->edge_orig[2 - pos] : facep->edge_orig[pos];
+          if (eorig != NO_INDEX) {
+            return eorig;
+          }
+        }
+        else {
+          /* TODO: figure out how to track orig_index from an edge input to cdt. */
+          /* This only matters if an input edge was formed by an input face having
+           * an edge that is coplanar with the cluster, while the face as a whole is not.
+           */
+          return NO_INDEX;
+        }
+      }
+      return NO_INDEX;
+    }
+  }
+  return NO_INDEX;
+}
+
+/* Using the result of CDT in cd.cdt_out, extract a Mesh representing the subdivision
  * of input triangle t, which should be an element of cd.input_face.
  */
-
-static TMesh extract_subdivided_tri(const CDT_data &cd, const TMesh &in_tm, int t)
+static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, uint t, MArena *arena)
 {
-  TMesh ans;
-
-  /* We want all triangles in cdt_out that had t (as indexed in the CDT_input) as an orig. */
-  /* Which output verts do we need in our answer? */
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
-  Array<bool> needvert(cdt_out.vert.size(), false);
-  Array<bool> needtri(cdt_out.face.size(), false);
   int t_in_cdt = -1;
   for (int i = 0; i < static_cast<int>(cd.input_face.size()); ++i) {
     if (cd.input_face[i] == t) {
@@ -929,61 +1339,62 @@ static TMesh extract_subdivided_tri(const CDT_data &cd, const TMesh &in_tm, int 
   if (t_in_cdt == -1) {
     std::cout << "Could not find " << t << " in cdt input tris\n";
     BLI_assert(false);
-    return ans;
+    return Mesh();
   }
-  int num_needed_v = 0;
+  int t_orig = in_tm.face(t)->orig;
+  constexpr int inline_buf_size = 20;
+  Vector<Facep, inline_buf_size> faces;
   for (uint f = 0; f < cdt_out.face.size(); ++f) {
     if (cdt_out.face_orig[f].contains(t_in_cdt)) {
-      needtri[f] = true;
-      for (int v : cdt_out.face[f]) {
-        if (!needvert[v]) {
-          needvert[v] = true;
-          ++num_needed_v;
-        }
-      }
-    }
-  }
-  Array<int> cdt_v_to_out_v(cdt_out.vert.size());
-
-  for (uint cdt_v = 0; cdt_v < cdt_out.vert.size(); ++cdt_v) {
-    if (needvert[cdt_v]) {
-      mpq3 v3co = unproject_cdt_vert(cd, cdt_out.vert[cdt_v]);
-      cdt_v_to_out_v[cdt_v] = ans.add_vert(v3co);
-    }
-  }
-  int orig = in_tm.tri(t).orig();
-  for (uint f = 0; f < cdt_out.face.size(); ++f) {
-    if (needtri[f]) {
       BLI_assert(cdt_out.face[f].size() == 3);
-      int v0 = cdt_out.face[f][0];
-      int v1 = cdt_out.face[f][1];
-      int v2 = cdt_out.face[f][2];
-      BLI_assert(needvert[v0] && needvert[v1] && needvert[v2]);
-      int out_v0 = cdt_v_to_out_v[v0];
-      int out_v1 = cdt_v_to_out_v[v1];
-      int out_v2 = cdt_v_to_out_v[v2];
+      int i0 = cdt_out.face[f][0];
+      int i1 = cdt_out.face[f][1];
+      int i2 = cdt_out.face[f][2];
+      mpq3 v0co = unproject_cdt_vert(cd, cdt_out.vert[i0]);
+      mpq3 v1co = unproject_cdt_vert(cd, cdt_out.vert[i1]);
+      mpq3 v2co = unproject_cdt_vert(cd, cdt_out.vert[i2]);
+      /* No need to provide an original index: if coord matches
+       * an original one, then it will already be in the arena
+       * with the correct orig field.
+       */
+      Vertp v0 = arena->add_or_find_vert(v0co, NO_INDEX);
+      Vertp v1 = arena->add_or_find_vert(v1co, NO_INDEX);
+      Vertp v2 = arena->add_or_find_vert(v2co, NO_INDEX);
+      Facep facep;
       if (cd.is_reversed[t_in_cdt]) {
-        ans.add_tri(out_v0, out_v2, out_v1, orig);
+        int oe0 = get_cdt_edge_orig(i0, i2, cd, in_tm);
+        int oe1 = get_cdt_edge_orig(i2, i1, cd, in_tm);
+        int oe2 = get_cdt_edge_orig(i1, i0, cd, in_tm);
+        facep = arena->add_face({v0, v2, v1}, t_orig, {oe0, oe1, oe2});
       }
       else {
-        ans.add_tri(out_v0, out_v1, out_v2, orig);
+        int oe0 = get_cdt_edge_orig(i0, i1, cd, in_tm);
+        int oe1 = get_cdt_edge_orig(i1, i2, cd, in_tm);
+        int oe2 = get_cdt_edge_orig(i2, i0, cd, in_tm);
+        facep = arena->add_face({v0, v1, v2}, t_orig, {oe0, oe1, oe2});
       }
+      faces.append(facep);
     }
   }
-  return ans;
+  return Mesh(faces);
 }
 
-static TMesh calc_tri_subdivided(const TMesh &in_tm, int t)
+static Mesh extract_single_tri(const Mesh &tm, uint t)
+{
+  Facep f = tm.face(t);
+  return Mesh({f});
+}
+
+static Mesh calc_tri_subdivided(const Mesh &in_tm, uint t, MArena *arena)
 {
   constexpr int dbg_level = 0;
-  TMesh ans;
+  Vector<Facep> faces;
 
   if (dbg_level > 0) {
     std::cout << "\ncalc_tri_subdivided for tri " << t << "\n\n";
   }
-  int ntri = in_tm.tot_tri();
   Vector<ITT_value> itts;
-  for (int t_other = 0; t_other < ntri; ++t_other) {
+  for (int t_other : in_tm.face_index_range()) {
     if (t_other == t) {
       continue;
     }
@@ -996,15 +1407,16 @@ static TMesh calc_tri_subdivided(const TMesh &in_tm, int t)
       itts.append(itt);
     }
   }
+  Mesh ans;
   if (itts.size() == 0) {
     /* No intersections: answer is just the original triangle t. */
-    ans = TMesh(in_tm, t);
+    ans = extract_single_tri(in_tm, t);
   }
   else {
     /* Use CDT to subdivide the triangle. */
     CDT_data cd_data = prepare_cdt_input(in_tm, t, itts);
     do_cdt(cd_data);
-    ans = extract_subdivided_tri(cd_data, in_tm, t);
+    ans = extract_subdivided_tri(cd_data, in_tm, t, arena);
   }
   if (dbg_level > 0) {
     std::cout << "\ncalc_tri_subdivided " << t << " result:\n" << ans;
@@ -1012,10 +1424,13 @@ static TMesh calc_tri_subdivided(const TMesh &in_tm, int t)
   return ans;
 }
 
-static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo, int c, const TMesh &tm)
+static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
+                                        uint c,
+                                        const Mesh &tm,
+                                        MArena *UNUSED(arena))
 {
   constexpr int dbg_level = 0;
-  BLI_assert(0 <= c && c < clinfo.tot_cluster());
+  BLI_assert(c < clinfo.tot_cluster());
   const CoplanarCluster &cl = clinfo.cluster(c);
   /* Make a CDT input with triangles from C and intersects from other triangles in tm. */
   if (dbg_level > 0) {
@@ -1025,14 +1440,13 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo, int c
    * in cl and not coplanar with it (for that latter, if there were an intersection,
    * it should already be in cluster cl).
    */
-  int ntri = tm.tot_tri();
   Vector<ITT_value> itts;
-  for (int t_other = 0; t_other < ntri; ++t_other) {
+  for (uint t_other : tm.face_index_range()) {
     if (clinfo.tri_cluster(t_other) != c) {
       if (dbg_level > 0) {
         std::cout << "intersect cluster " << c << " with tri " << t_other << "\n";
       }
-      for (const int t : cl) {
+      for (const uint t : cl) {
         ITT_value itt = intersect_tri_tri(tm, t, t_other);
         if (dbg_level > 0) {
           std::cout << "intersect tri " << t << " with tri " << t_other << " = " << itt << "\n";
@@ -1049,35 +1463,20 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo, int c
   return cd_data;
 }
 
-static TMesh union_tri_subdivides(const blender::Array<TMesh> &tri_subdivided)
+static Mesh union_tri_subdivides(const blender::Array<Mesh> &tri_subdivided)
 {
-  TMesh ans;
-  for (const TMesh &tmsub : tri_subdivided) {
-    Array<int> vtrans(tmsub.tot_vert());
-    for (int v = 0; v < tmsub.tot_vert(); ++v) {
-      vtrans[v] = ans.add_vert(tmsub.vert(v));
+  uint tot_tri = 0;
+  for (const Mesh &m : tri_subdivided) {
+    tot_tri += m.face_size();
+  }
+  Array<Facep> faces(tot_tri);
+  uint face_index = 0;
+  for (const Mesh &m : tri_subdivided) {
+    for (Facep f : m.faces()) {
+      faces[face_index++] = f;
     }
-    for (int t = 0; t < tmsub.tot_tri(); ++t) {
-      const IndexedTriangle &tri = tmsub.tri(t);
-      ans.add_tri(vtrans[tri.v0()], vtrans[tri.v1()], vtrans[tri.v2()], tri.orig());
-    }
   }
-  return ans;
-}
-
-/* Need a canonical form of a plane so that can use as a key in a map and
- * all coplanar triangles will have the same key.
- * Make the first nonzero component of the normal be 1.
- */
-static planeq canon_plane(const planeq &pl)
-{
-  if (pl.n[0] != 0) {
-    return planeq(mpq3(1, pl.n[1] / pl.n[0], pl.n[2] / pl.n[0]), pl.d / pl.n[0]);
-  }
-  if (pl.n[1] != 0) {
-    return planeq(mpq3(0, 1, pl.n[2] / pl.n[1]), pl.d / pl.n[1]);
-  }
-  return planeq(mpq3(0, 0, 1), pl.d / pl.n[2]);
+  return Mesh(faces);
 }
 
 /* Is a point in the interior of a 2d triangle or on one of its
@@ -1121,7 +1520,6 @@ static bool non_trivially_2d_hex_overlap(int orients[2][3][3])
  * As well as a shared edge, the third vertex of one triangle needs to be
  * rightof one and leftof the other two edges of the other triangle.
  */
-
 static bool non_trivially_2d_shared_edge_overlap(int orients[2][3][3],
                                                  const mpq2 *a[3],
                                                  const mpq2 *b[3])
@@ -1179,7 +1577,6 @@ static bool same_triangles(const mpq2 *a[3], const mpq2 *b[3])
  * other. NO: that isn't quite sufficient: there is also the case where the verts are all mutually
  * outside the other's triangle, but there is a hexagonal overlap region where they overlap.
  */
-
 static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
 {
   /* TODO: Could experiment with trying bounding box tests before these.
@@ -1216,26 +1613,25 @@ static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
  * the triangles in cl, and that proj_axis is a good axis to project down
  * to solve this problem in 2d.
  */
-
-static bool non_trivially_coplanar_intersects(const TMesh &tm,
-                                              int t,
+static bool non_trivially_coplanar_intersects(const Mesh &tm,
+                                              uint t,
                                               const CoplanarCluster &cl,
                                               int proj_axis)
 {
-  const IndexedTriangle &tri = tm.tri(t);
-  mpq2 v0 = project_3d_to_2d(tm.vert(tri.v0()), proj_axis);
-  mpq2 v1 = project_3d_to_2d(tm.vert(tri.v1()), proj_axis);
-  mpq2 v2 = project_3d_to_2d(tm.vert(tri.v2()), proj_axis);
+  const Face &tri = *tm.face(t);
+  mpq2 v0 = project_3d_to_2d(tri[0]->co_exact, proj_axis);
+  mpq2 v1 = project_3d_to_2d(tri[1]->co_exact, proj_axis);
+  mpq2 v2 = project_3d_to_2d(tri[2]->co_exact, proj_axis);
   if (mpq2::orient2d(v0, v1, v2) != 1) {
     mpq2 tmp = v1;
     v1 = v2;
     v2 = tmp;
   }
-  for (const int cl_t : cl) {
-    const IndexedTriangle &cl_tri = tm.tri(cl_t);
-    mpq2 ctv0 = project_3d_to_2d(tm.vert(cl_tri.v0()), proj_axis);
-    mpq2 ctv1 = project_3d_to_2d(tm.vert(cl_tri.v1()), proj_axis);
-    mpq2 ctv2 = project_3d_to_2d(tm.vert(cl_tri.v2()), proj_axis);
+  for (const uint cl_t : cl) {
+    const Face &cl_tri = *tm.face(cl_t);
+    mpq2 ctv0 = project_3d_to_2d(cl_tri[0]->co_exact, proj_axis);
+    mpq2 ctv1 = project_3d_to_2d(cl_tri[1]->co_exact, proj_axis);
+    mpq2 ctv2 = project_3d_to_2d(cl_tri[2]->co_exact, proj_axis);
     if (mpq2::orient2d(ctv0, ctv1, ctv2) != 1) {
       mpq2 tmp = ctv1;
       ctv1 = ctv2;
@@ -1250,29 +1646,41 @@ static bool non_trivially_coplanar_intersects(const TMesh &tm,
   return false;
 }
 
-static CoplanarClusterInfo find_clusters(const TMesh &tmesh)
+static CoplanarClusterInfo find_clusters(const Mesh &tm)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "FIND_CLUSTERS\n";
   }
-  CoplanarClusterInfo ans(tmesh.tot_tri());
+  CoplanarClusterInfo ans(tm.face_size());
   /* There can be more than one CoplanarCluster per plane. Accumulate them in
    * a Vector. We will have to merge some elements of the Vector as we discover
    * triangles that form intersection bridges between two or more clusters.
    */
-  Map<planeq, Vector<CoplanarCluster>> plane_cls;
-  for (int t = 0; t < tmesh.tot_tri(); ++t) {
-    const planeq &tplane = tmesh.tri_plane(t);
-    planeq canon_tplane = canon_plane(tplane);
-    if (plane_cls.contains(canon_tplane)) {
-      Vector<CoplanarCluster> &curcls = plane_cls.lookup(canon_tplane);
-      int proj_axis = mpq3::dominant_axis(canon_tplane.n);
+  Map<Plane, Vector<CoplanarCluster>> plane_cls;
+  plane_cls.reserve(tm.face_size());
+  for (uint t : tm.face_index_range()) {
+    /* Use a canonical version of the plane for map index.
+     * We can't just store the canonical version in the face
+     * since canonicalizing loses the orientation of the normal.
+     */
+    Plane tplane = tm.face(t)->plane;
+    tplane.make_canonical();
+    if (dbg_level > 0) {
+      std::cout << "plane for tri " << t << " = " << tplane << "\n";
+    }
+    /* Assume all planes are in canonical from (see canon_plane()). */
+    if (plane_cls.contains(tplane)) {
+      Vector<CoplanarCluster> &curcls = plane_cls.lookup(tplane);
+      if (dbg_level > 0) {
+        std::cout << "already has " << curcls.size() << " clusters\n";
+      }
+      int proj_axis = mpq3::dominant_axis(tplane.norm_exact);
       /* Paritition curcls into those that intersect t non-trivially, and those that don't. */
       Vector<CoplanarCluster *> int_cls;
       Vector<CoplanarCluster *> no_int_cls;
       for (CoplanarCluster &cl : curcls) {
-        if (non_trivially_coplanar_intersects(tmesh, t, cl, proj_axis)) {
+        if (non_trivially_coplanar_intersects(tm, t, cl, proj_axis)) {
           int_cls.append(&cl);
         }
         else {
@@ -1294,7 +1702,7 @@ static CoplanarClusterInfo find_clusters(const TMesh &tmesh)
         CoplanarCluster mergecl;
         mergecl.add_tri(t);
         for (CoplanarCluster *cl : int_cls) {
-          for (int t : *cl) {
+          for (uint t : *cl) {
             mergecl.add_tri(t);
           }
         }
@@ -1303,11 +1711,14 @@ static CoplanarClusterInfo find_clusters(const TMesh &tmesh)
         for (CoplanarCluster *cl_no_int : no_int_cls) {
           newvec.append(*cl_no_int);
         }
-        plane_cls.add_overwrite(canon_tplane, newvec);
+        plane_cls.add_overwrite(tplane, newvec);
       }
     }
     else {
-      plane_cls.add_new(canon_tplane, Vector<CoplanarCluster>{CoplanarCluster(t)});
+      if (dbg_level > 0) {
+        std::cout << "first cluster for its plane\n";
+      }
+      plane_cls.add_new(tplane, Vector<CoplanarCluster>{CoplanarCluster(t)});
     }
   }
   /* Does this give deterministic order for cluster ids? I think so, since
@@ -1324,103 +1735,78 @@ static CoplanarClusterInfo find_clusters(const TMesh &tmesh)
   return ans;
 }
 
-static TriMesh tmesh_to_trimesh(const TMesh &tm)
+/* Does TriMesh tm have any triangles with zero area? */
+static bool has_degenerate_tris(const Mesh &tm)
 {
-  TriMesh ans;
-  ans.vert = Array<mpq3>(tm.tot_vert());
-  ans.tri = Array<IndexedTriangle>(tm.tot_tri());
-  for (uint v = 0; v < tm.tot_vert(); ++v) {
-    ans.vert[v] = tm.vert(v);
+  for (Facep f : tm.faces()) {
+    const Face &face = *f;
+    Vertp v0 = face[0];
+    Vertp v1 = face[1];
+    Vertp v2 = face[2];
+    if (v0 == v1 || v0 == v2 || v1 == v2) {
+      return true;
+    }
+    mpq3 a = v2->co_exact - v0->co_exact;
+    mpq3 b = v2->co_exact - v1->co_exact;
+    mpq3 ab = mpq3::cross(a, b);
+    if (ab.x == 0 && ab.y == 0 && ab.z == 0) {
+      return true;
+    }
   }
-  for (uint t = 0; t < tm.tot_tri(); ++t) {
-    ans.tri[t] = tm.tri(t);
-  }
-  return ans;
+  return false;
 }
 
-/* This is the main routine for calculating the self_intersection of a TriMesh. */
-static TriMesh tpl_trimesh_self_intersect(const TriMesh &tm_in)
+/* This is the main routine for calculating the self_intersection of a triangle mesh. */
+Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nTRIMESH_SELF_INTERSECT\n";
+    for (Facep f : tm_in.faces()) {
+      BLI_assert(f->is_tri());
+    }
   }
-  TMesh tmesh(tm_in, true);
-  int ntri = tmesh.tot_tri();
-  CoplanarClusterInfo clinfo = find_clusters(tmesh);
+  if (has_degenerate_tris(tm_in)) {
+    std::cout << "IMPLEMENT ME - remove degenerate and illegal tris\n";
+    BLI_assert(false);
+  }
+  CoplanarClusterInfo clinfo = find_clusters(tm_in);
   if (dbg_level > 1) {
     std::cout << clinfo;
   }
   blender::Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
-  for (int c = 0; c < clinfo.tot_cluster(); ++c) {
-    cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tmesh);
+  for (uint c : clinfo.index_range()) {
+    cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tm_in, arena);
   }
-  blender::Array<TMesh> tri_subdivided(ntri);
-  for (int t = 0; t < ntri; ++t) {
-    int c = clinfo.tri_cluster(t);
-    if (c == -1) {
-      tri_subdivided[t] = calc_tri_subdivided(tmesh, t);
+  blender::Array<Mesh> tri_subdivided(tm_in.face_size());
+  for (uint t : tm_in.face_index_range()) {
+    uint c = clinfo.tri_cluster(t);
+    if (c == NO_INDEX_U) {
+      tri_subdivided[t] = calc_tri_subdivided(tm_in, t, arena);
+      if (dbg_level > 1) {
+        std::cout << "tri_subdivided[" << t << "] (not in cluster)\n" << tri_subdivided[t];
+      }
     }
     else {
-      tri_subdivided[t] = extract_subdivided_tri(cluster_subdivided[c], tmesh, t);
+      tri_subdivided[t] = extract_subdivided_tri(cluster_subdivided[c], tm_in, t, arena);
+      if (dbg_level > 1) {
+        std::cout << "tri_subdivided[" << t << "] (in cluster " << c << ")\n" << tri_subdivided[t];
+      }
     }
   }
-  TMesh combined = union_tri_subdivides(tri_subdivided);
+  Mesh combined = union_tri_subdivides(tri_subdivided);
   if (dbg_level > 1) {
     std::cout << "TRIMESH_SELF_INTERSECT answer:\n";
     std::cout << combined;
   }
-  return tmesh_to_trimesh(combined);
-}
-
-TriMesh trimesh_self_intersect(const TriMesh &tm_in)
-{
-  return tpl_trimesh_self_intersect(tm_in);
-}
-
-static std::ostream &operator<<(std::ostream &os, const TMesh &tm)
-{
-  os << "TMesh\nVerts:\n";
-  for (int v = 0; v < tm.tot_vert(); ++v) {
-    os << " " << v << ": " << tm.vert(v) << "\n";
-  }
-  os << "Tris:\n";
-  for (int t = 0; t < tm.tot_tri(); ++t) {
-    os << " " << t << ": " << tm.tri(t) << "\n";
-    if (tm.has_planes()) {
-      os << "  plane: [" << tm.tri_plane(t).n << ";" << tm.tri_plane(t).d << "]\n";
-    }
-  }
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const IndexedTriangle &tri)
-{
-  os << "tri(" << tri.v0() << "," << tri.v1() << "," << tri.v2() << ")";
-  if (tri.orig() != -1) {
-    os << "(o" << tri.orig() << ")";
-  }
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const TriMesh &tm)
-{
-  os << "TriMesh input\nVerts:\n";
-  for (uint v = 0; v < tm.vert.size(); ++v) {
-    os << " " << v << ": " << tm.vert[v] << "\n";
-  }
-  os << "Tris:\n";
-  for (uint t = 0; t < tm.tri.size(); ++t) {
-    os << " " << t << ": " << tm.tri[t] << "\n";
-  }
-  return os;
+  return combined;
 }
 
 static std::ostream &operator<<(std::ostream &os, const CoplanarCluster &cl)
 {
   os << "cl(";
   bool first = true;
-  for (const int t : cl) {
+  for (const uint t : cl) {
     if (first) {
       first = false;
     }
@@ -1436,7 +1822,7 @@ static std::ostream &operator<<(std::ostream &os, const CoplanarCluster &cl)
 static std::ostream &operator<<(std::ostream &os, const CoplanarClusterInfo &clinfo)
 {
   os << "Coplanar Cluster Info:\n";
-  for (int c = 0; c < clinfo.tot_cluster(); ++c) {
+  for (uint c : clinfo.index_range()) {
     os << c << ": " << clinfo.cluster(c) << "\n";
   }
   return os;
@@ -1461,118 +1847,11 @@ static std::ostream &operator<<(std::ostream &os, const ITT_value &itt)
   return os;
 }
 
-/* Some contrasting colors to use for distinguishing triangles. */
-static const char *drawcolor[] = {
-    "0.67 0.14 0.14", /* red */
-    "0.16 0.29 0.84", /* blue */
-    "0.11 0.41 0.08", /* green */
-    "0.50 0.29 0.10", /* brown */
-    "0.50 0.15 0.75", /* purple */
-    "0.62 0.62 0.62", /* light grey */
-    "0.50 0.77 0.49", /* light green */
-    "0.61 0.68 1.00", /* light blue */
-    "0.16 0.82 0.82", /* cyan */
-    "1.00 0.57 0.20", /* orange */
-    "1.00 0.93 0.20", /* yellow */
-    "0.91 0.87 0.73", /* tan */
-    "1.00 0.80 0.95", /* pink */
-    "0.34 0.34 0.34"  /* dark grey */
-};
-static constexpr int numcolors = sizeof(drawcolor) / sizeof(drawcolor[0]);
-
-/* See x3dom.org for an explanation of this way of embedding 3d objects in a web page. */
-
-static const char *htmlfileheader = R"(<head>
-<title>Mesh Intersection Tests</title>
-<script type='text/javascript' src='http://www.x3dom.org/download/x3dom.js'> </script>
-<link rel='stylesheet' type='text/cs href='http://www.x3dom.org/download/x3dom.css'></link>
-</head>
-)";
-
-void write_html_trimesh(const Array<mpq3> &vert,
-                        const Array<IndexedTriangle> &tri,
-                        const std::string &fname,
-                        const std::string &label)
-{
-  static bool draw_append = false;
-  constexpr const char *drawfiledir = "/tmp/";
-  constexpr int draw_width = 1400;
-  constexpr int draw_height = 1000;
-  constexpr bool draw_vert_labels = true;
-
-  const std::string fpath = std::string(drawfiledir) + fname;
-
-  std::ofstream f;
-  if (draw_append) {
-    f.open(fpath, std::ios_base::app);
-  }
-  else {
-    f.open(fpath);
-  }
-  if (!f) {
-    std::cout << "Could not open file " << fpath << "\n";
-    return;
-  }
-  if (!draw_append) {
-    f << htmlfileheader;
-  }
-
-  f << "<div>" << label << "</div>\n<div>\n"
-    << "<x3d width='" << draw_width << "px' "
-    << "height='" << draw_height << "px'>\n"
-    << "<scene>\n";
-
-  blender::Array<bool> vused(vert.size());
-  int i = 0;
-  for (const IndexedTriangle &t : tri) {
-    double3 dv0;
-    double3 dv1;
-    double3 dv2;
-    for (int axis = 0; axis < 3; ++axis) {
-      dv0[axis] = vert[t.v0()][axis].get_d();
-      dv1[axis] = vert[t.v1()][axis].get_d();
-      dv2[axis] = vert[t.v2()][axis].get_d();
-    }
-    f << "<shape>\n";
-    f << "  <appearance>\n";
-    f << "    <twosidedmaterial diffuseColor='" << drawcolor[i % numcolors]
-      << "' separatebackcolor='false'/>\n";
-    f << "  </appearance>\n";
-    f << "  <triangleset>\n";
-    f << "    <coordinate point='" << dv0[0] << " " << dv0[1] << " " << dv0[2] << " " << dv1[0]
-      << " " << dv1[1] << " " << dv1[2] << " " << dv2[0] << " " << dv2[1] << " " << dv2[2]
-      << "'/>\n";
-    f << "  </triangleset>\n";
-    f << "</shape>\n";
-    vused[t.v0()] = true;
-    vused[t.v1()] = true;
-    vused[t.v2()] = true;
-    ++i;
-  }
-  if (draw_vert_labels) {
-    for (uint i = 0; i < vert.size(); ++i) {
-      if (!vused[i]) {
-        continue;
-      }
-      double3 dv(vert[i][0].get_d(), vert[i][1].get_d(), vert[i][2].get_d());
-      f << "<transform translation='" << dv[0] << " " << dv[1] << " " << dv[2] << "'>\n";
-      f << "<shape>\n  <appearance>\n"
-        << "    <twosidedmaterial diffuseColor='0 0 0'/>\n"
-        << "  </appearance>\n"
-        << "  <text string='" << i << "'><fontstyle size='0.25'/></text>\n"
-        << "</shape>\n</transform>\n";
-    }
-  }
-  f << "</scene>\n</x3d>\n</div>\n";
-  draw_append = true;
-}
-
-void write_obj_trimesh(const Array<mpq3> &vert,
-                       const Array<IndexedTriangle> &tri,
-                       const std::string &objname)
+/* Writing the obj_mesh has the side effect of populating verts. */
+void write_obj_mesh(Mesh &m, const std::string &objname)
 {
   constexpr const char *objdir = "/tmp/";
-  if (tri.size() == 0) {
+  if (m.face_size() == 0) {
     return;
   }
 
@@ -1585,33 +1864,27 @@ void write_obj_trimesh(const Array<mpq3> &vert,
     return;
   }
 
-  f << "mtllib dumpobj.mtl\n";
-
-  for (const mpq3 &vco : vert) {
-    double3 dv(vco[0].get_d(), vco[1].get_d(), vco[2].get_d());
+  if (!m.has_verts()) {
+    m.populate_vert();
+  }
+  for (Vertp v : m.vertices()) {
+    const double3 dv = v->co;
     f << "v " << dv[0] << " " << dv[1] << " " << dv[2] << "\n";
   }
   int i = 0;
-  for (const IndexedTriangle &t : tri) {
-    int matindex = i % numcolors;
-    f << "usemtl mat" + std::to_string(matindex) + "\n";
+  for (Facep face : m.faces()) {
     /* OBJ files use 1-indexing for vertices. */
-    f << "f " << t.v0() + 1 << " " << t.v1() + 1 << " " << t.v2() + 1 << "\n";
+    f << "f ";
+    for (Vertp v : *face) {
+      int i = m.lookup_vert(v);
+      BLI_assert(i != NO_INDEX);
+      /* OBJ files use 1-indexing for vertices. */
+      f << i + 1 << " ";
+    }
+    f << "\n";
     ++i;
   }
   f.close();
-
-  /* Could check if it already exists, but why bother. */
-  std::ofstream mf;
-  mf.open(matfname);
-  if (!mf) {
-    std::cout << "Could not open file " << matfname << "\n";
-    return;
-  }
-  for (int c = 0; c < numcolors; ++c) {
-    mf << "newmtl mat" + std::to_string(c) + "\n";
-    mf << "Kd " << drawcolor[c] << "\n";
-  }
 }
 
 };  // namespace blender::meshintersect

@@ -32,54 +32,88 @@
 namespace blender {
 namespace meshintersect {
 
-static PolyMesh polymesh_from_bm(BMesh *bm, struct BMLoop *(*looptris)[3], const int looptris_tot)
+static Mesh mesh_from_bm(BMesh *bm,
+                         struct BMLoop *(*looptris)[3],
+                         const int looptris_tot,
+                         Mesh *r_triangulated,
+                         MArena *arena)
 {
-  BM_mesh_elem_index_ensure(bm, BM_VERT | BM_FACE);
-  BM_mesh_elem_table_ensure(bm, BM_VERT | BM_FACE);
-  PolyMesh pm;
-  pm.vert = Array<mpq3>(bm->totvert);
+  BLI_assert(r_triangulated != nullptr);
+  BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+  BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+  const int estimate_num_outv = (3 * bm->totvert) / 2;
+  const int estimate_num_outf = (3 * bm->totface) / 2;
+  arena->reserve(estimate_num_outv, estimate_num_outf);
+  Array<Vertp> vert(bm->totvert);
   for (int v = 0; v < bm->totvert; ++v) {
     BMVert *bmv = BM_vert_at_index(bm, v);
-    pm.vert[v] = mpq3(mpq_class(bmv->co[0]), mpq_class(bmv->co[1]), mpq_class(bmv->co[2]));
+    vert[v] = arena->add_or_find_vert(mpq3(bmv->co[0], bmv->co[1], bmv->co[2]), v);
   }
-  pm.face = Array<Array<int>>(bm->totface);
-  pm.triangulation = Array<Array<IndexedTriangle>>(bm->totface);
+  Array<Facep> face(bm->totface);
+  constexpr uint estimated_max_facelen = 100;
+  Vector<Vertp, estimated_max_facelen> face_vert;
+  Vector<int, estimated_max_facelen> face_edge_orig;
   for (int f = 0; f < bm->totface; ++f) {
     BMFace *bmf = BM_face_at_index(bm, f);
     int flen = bmf->len;
-    pm.face[f] = Array<int>(flen);
-    Array<int> &face = pm.face[f];
+    face_vert.clear();
+    face_edge_orig.clear();
     BMLoop *l = bmf->l_first;
     for (int i = 0; i < flen; ++i) {
-      face[i] = BM_elem_index_get(l->v);
+      Vertp v = vert[BM_elem_index_get(l->v)];
+      face_vert.append(v);
+      int e_index = BM_elem_index_get(l->e);
+      face_edge_orig.append(e_index);
       l = l->next;
     }
-    /* A correct triangulation of a polygon with flen sides has flen-2 tris. */
-    pm.triangulation[f] = Array<IndexedTriangle>(flen - 2);
+    face[f] = arena->add_face(face_vert, f, face_edge_orig);
   }
-  Array<int> triangulation_next_index(bm->totface, 0);
+  /* Now do the triangulation mesh.
+   * The loop_tris have accurate v and f members for the triangles,
+   * but their next and e pointers are not correct for the loops
+   * that start added-diagonal edges.
+   */
+  Array<Facep> tri_face(looptris_tot);
+  face_vert.resize(3);
+  face_edge_orig.resize(3);
   for (int i = 0; i < looptris_tot; ++i) {
     BMFace *bmf = looptris[i][0]->f;
     int f = BM_elem_index_get(bmf);
-    BLI_assert(triangulation_next_index[f] < bmf->len - 2);
-    if (triangulation_next_index[f] >= bmf->len - 2) {
-      continue;
+    for (int j = 0; j < 3; ++j) {
+      BMLoop *l = looptris[i][j];
+      int v_index = BM_elem_index_get(l->v);
+      int e_index;
+      if (l->next->v == looptris[i][(j + 1) % 3]->v) {
+        e_index = BM_elem_index_get(l->e);
+      }
+      else {
+        e_index = NO_INDEX;
+      }
+      face_vert[j] = vert[v_index];
+      face_edge_orig[j] = e_index;
     }
-    int v0 = BM_elem_index_get(looptris[i][0]->v);
-    int v1 = BM_elem_index_get(looptris[i][1]->v);
-    int v2 = BM_elem_index_get(looptris[i][2]->v);
-    pm.triangulation[f][triangulation_next_index[f]++] = IndexedTriangle(v0, v1, v2, f);
+    tri_face[i] = arena->add_face(face_vert, f, face_edge_orig);
   }
-  return pm;
+  r_triangulated->set_faces(tri_face);
+  return Mesh(face);
 }
 
-static void apply_polymesh_output_to_bmesh(BMesh *bm, const PolyMesh &pm_out)
+static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
 {
-  /* For now, just for testing, just kill the whole old mesh and create the new one.
+  /* Change BMesh bm to have the mesh match m_out. Return true if there were any changes at all.
+   *
+   * For now, just for testing, just kill the whole old mesh and create the new one.
    * No attempt yet to use proper examples for the new elements so that they inherit the
    * proper attributes.
    * No attempt yet to leave the correct geometric elements selected.
    */
+
+  m_out.populate_vert();
+
+  /* This is not quite the right test for "no changes" but will do for now. */
+  if (m_out.vert_size() == bm->totvert && m_out.face_size() == bm->totface) {
+    return false;
+  }
 
   /* The BM_ITER_... macros need attention to work in C++. For now, copy the old BMVerts. */
   int totvert_orig = bm->totvert;
@@ -91,44 +125,49 @@ static void apply_polymesh_output_to_bmesh(BMesh *bm, const PolyMesh &pm_out)
     BM_vert_kill(bm, orig_bmv[v]);
   }
 
-  if (pm_out.vert.size() > 0 && pm_out.face.size() > 0) {
-    Array<BMVert *> new_bmv(pm_out.vert.size());
-    for (int v = 0; v < static_cast<int>(pm_out.vert.size()); ++v) {
+  if (m_out.vert_size() > 0 && m_out.face_size() > 0) {
+    Array<BMVert *> new_bmv(m_out.vert_size());
+    for (uint v : m_out.vert_index_range()) {
+      Vertp vertp = m_out.vert(v);
       float co[3];
-      const mpq3 &mpq3_co = pm_out.vert[v];
+      const double3 &d_co = vertp->co;
       for (int i = 0; i < 3; ++i) {
-        co[i] = static_cast<float>(mpq3_co[i].get_d());
+        co[i] = static_cast<float>(d_co[i]);
       }
       new_bmv[v] = BM_vert_create(bm, co, NULL, BM_CREATE_NOP);
     }
     int maxflen = 0;
-    int new_totface = static_cast<int>(pm_out.face.size());
-    for (int f = 0; f < new_totface; ++f) {
-      maxflen = max_ii(maxflen, static_cast<int>(pm_out.face[f].size()));
+    for (Facep f : m_out.faces()) {
+      maxflen = max_ii(maxflen, static_cast<int>(f->size()));
     }
     Array<BMVert *> face_bmverts(maxflen);
-    for (int f = 0; f < new_totface; ++f) {
-      const Array<int> &face = pm_out.face[f];
+    for (Facep f : m_out.faces()) {
+      const Face &face = *f;
       int flen = static_cast<int>(face.size());
       for (int i = 0; i < flen; ++i) {
-        BMVert *bmv = new_bmv[face[i]];
-        face_bmverts[i] = bmv;
+        Vertp v = face[i];
+        uint v_index = m_out.lookup_vert(v);
+        BLI_assert(v_index < new_bmv.size());
+        face_bmverts[i] = new_bmv[v_index];
       }
       BM_face_create_ngon_verts(bm, face_bmverts.begin(), flen, NULL, BM_CREATE_NOP, true, true);
     }
   }
+  return true;
 }
 
-static int bmesh_boolean(BMesh *bm,
-                         struct BMLoop *(*looptris)[3],
-                         const int looptris_tot,
-                         int (*test_fn)(BMFace *f, void *user_data),
-                         void *user_data,
-                         const bool use_self,
-                         const bool UNUSED(use_separate_all),
-                         const int boolean_mode)
+static bool bmesh_boolean(BMesh *bm,
+                          struct BMLoop *(*looptris)[3],
+                          const int looptris_tot,
+                          int (*test_fn)(BMFace *f, void *user_data),
+                          void *user_data,
+                          const bool use_self,
+                          const bool UNUSED(use_separate_all),
+                          const int boolean_mode)
 {
-  PolyMesh pm_in = polymesh_from_bm(bm, looptris, looptris_tot);
+  MArena arena;
+  Mesh m_triangulated;
+  Mesh m_in = mesh_from_bm(bm, looptris, looptris_tot, &m_triangulated, &arena);
   std::function<int(int)> shape_fn;
   int nshapes;
   if (use_self) {
@@ -139,9 +178,7 @@ static int bmesh_boolean(BMesh *bm,
       if (test_fn(bmf, user_data) != -1) {
         return 0;
       }
-      else {
-        return -1;
-      }
+      return -1;
     };
   }
   else {
@@ -157,18 +194,16 @@ static int bmesh_boolean(BMesh *bm,
       if (test_val == 0) {
         return 1;
       }
-      else if (test_val == 1) {
+      if (test_val == 1) {
         return 0;
       }
-      else {
-        return -1;
-      }
+      return -1;
     };
   }
   bool_optype op = static_cast<bool_optype>(boolean_mode);
-  PolyMesh pm_out = boolean(pm_in, op, nshapes, shape_fn);
-  apply_polymesh_output_to_bmesh(bm, pm_out);
-  return pm_in.vert.size() != pm_out.vert.size() || pm_in.face.size() != pm_out.face.size();
+  Mesh m_out = boolean_mesh(m_in, op, nshapes, shape_fn, &m_triangulated, &arena);
+  bool any_change = apply_mesh_output_to_bmesh(bm, m_out);
+  return any_change;
 }
 
 }  // namespace meshintersect
