@@ -376,7 +376,7 @@ TEST(mesh_intersect, TwoTris)
     int nv_out;
     int nf_out;
   };
-  Array<two_tri_test_spec> test_tris = {
+  Array<two_tri_test_spec> test_tris = Span<two_tri_test_spec>{
       {0, 1, 8, 8},  /* 0: T1 pierces T0 inside at (1,11/6,13/6) and (1,11/5,2). */
       {0, 2, 8, 8},  /* 1: T2 intersects T0 inside (1,11/5,2) and edge (1,7/3,8/3). */
       {0, 3, 8, 7},  /* 2: T3 intersects T0 (1,11/5,2) and edge-edge (1,5/2,5/2). */
