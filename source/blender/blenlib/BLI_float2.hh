@@ -53,6 +53,34 @@ struct float2 {
     return len_v2(*this);
   }
 
+  float2 &operator+=(const float2 &other)
+  {
+    x += other.x;
+    y += other.y;
+    return *this;
+  }
+
+  float2 &operator-=(const float2 &other)
+  {
+    x -= other.x;
+    y -= other.y;
+    return *this;
+  }
+
+  float2 &operator*=(float factor)
+  {
+    x *= factor;
+    y *= factor;
+    return *this;
+  }
+
+  float2 &operator/=(float divisor)
+  {
+    x /= divisor;
+    y /= divisor;
+    return *this;
+  }
+
   friend float2 operator+(const float2 &a, const float2 &b)
   {
     return {a.x + b.x, a.y + b.y};
@@ -77,11 +105,6 @@ struct float2 {
   friend float2 operator*(float a, const float2 &b)
   {
     return b * a;
-  }
-
-  friend bool operator==(const float2 &a, const float2 &b)
-  {
-    return a.x == b.x && a.y == b.y;
   }
 
   friend std::ostream &operator<<(std::ostream &stream, const float2 &v)
@@ -125,6 +148,17 @@ struct float2 {
                                     const float2 &v2,
                                     const float2 &v3,
                                     const float2 &v4);
+
+  friend bool operator==(const float2 &a, const float2 &b)
+  {
+    return a.x == b.x && a.y == b.y;
+  }
+
+  friend bool operator!=(const float2 &a, const float2 &b)
+  {
+    return !(a == b);
+  }
+
 };
 
 }  // namespace blender

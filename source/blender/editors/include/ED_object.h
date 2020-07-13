@@ -58,9 +58,9 @@ struct wmWindowManager;
 
 /* object_edit.c */
 /* context.object */
-struct Object *ED_object_context(struct bContext *C);
+struct Object *ED_object_context(const struct bContext *C);
 /* context.object or context.active_object */
-struct Object *ED_object_active_context(struct bContext *C);
+struct Object *ED_object_active_context(const struct bContext *C);
 void ED_collection_hide_menu_draw(const struct bContext *C, struct uiLayout *layout);
 
 /* object_utils.c */
@@ -362,9 +362,10 @@ struct ModifierData *ED_object_modifier_add(struct ReportList *reports,
                                             int type);
 bool ED_object_modifier_remove(struct ReportList *reports,
                                struct Main *bmain,
+                               struct Scene *scene,
                                struct Object *ob,
                                struct ModifierData *md);
-void ED_object_modifier_clear(struct Main *bmain, struct Object *ob);
+void ED_object_modifier_clear(struct Main *bmain, struct Scene *scene, struct Object *ob);
 bool ED_object_modifier_move_down(struct ReportList *reports,
                                   struct Object *ob,
                                   struct ModifierData *md);
@@ -389,8 +390,11 @@ bool ED_object_modifier_apply(struct Main *bmain,
                               struct Scene *scene,
                               struct Object *ob,
                               struct ModifierData *md,
-                              int mode);
+                              int mode,
+                              bool keep_modifier);
 int ED_object_modifier_copy(struct ReportList *reports,
+                            struct Main *bmain,
+                            struct Scene *scene,
                             struct Object *ob,
                             struct ModifierData *md);
 

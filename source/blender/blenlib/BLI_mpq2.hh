@@ -34,8 +34,35 @@ struct mpq2 {
   mpq2(mpq_class x, mpq_class y) : x(x), y(y)
   {
   }
+  
+  mpq2(const mpq2 &other) : x(other.x), y(other.y)
+  {
+  }
+  
+  mpq2(mpq2 &&other) noexcept
+    : x(std::move(other.x)), y(std::move(other.y))
+  {
+  }
 
-  mpq2(const blender::mpq3 &other) : x(other.x), y(other.y)
+  ~mpq2() = default;
+
+  mpq2 &operator=(const mpq2 &other)
+  {
+    if (this != &other) {
+      x = other.x;
+      y = other.y;
+    }
+    return *this;
+  }
+  
+  mpq2 &operator=(mpq2 &&other) noexcept
+  {
+    x = std::move(other.x);
+    y = std::move(other.y);
+    return *this;
+  }
+
+  mpq2(const mpq3 &other) : x(other.x), y(other.y)
   {
   }
 

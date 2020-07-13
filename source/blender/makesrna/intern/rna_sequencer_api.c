@@ -79,7 +79,6 @@ static Sequence *alloc_generic_sequence(
     Editing *ed, const char *name, int frame_start, int channel, int type, const char *file)
 {
   Sequence *seq;
-  Strip *strip;
   StripElem *se;
 
   seq = BKE_sequence_alloc(ed->seqbasep, frame_start, channel, type);
@@ -87,8 +86,7 @@ static Sequence *alloc_generic_sequence(
   BLI_strncpy(seq->name + 2, name, sizeof(seq->name) - 2);
   BKE_sequence_base_unique_name_recursive(&ed->seqbase, seq);
 
-  seq->strip = strip = MEM_callocN(sizeof(Strip), "strip");
-  seq->strip->us = 1;
+  Strip *strip = seq->strip;
 
   if (file) {
     strip->stripdata = se = MEM_callocN(sizeof(StripElem), "stripelem");
@@ -506,7 +504,7 @@ void RNA_api_sequence_strip(StructRNA *srna)
   func = RNA_def_function(srna, "invalidate_cache", "rna_Sequence_invalidate_cache_rnafunc");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID);
   RNA_def_function_ui_description(func,
-                                  "Invalidate Cached images for strip and all dependant strips. ");
+                                  "Invalidate cached images for strip and all dependent strips");
   parm = RNA_def_enum(func, "type", seq_cahce_type_items, 0, "Type", "Cache Type");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 }

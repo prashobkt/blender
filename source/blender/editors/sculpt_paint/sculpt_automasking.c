@@ -94,9 +94,7 @@ float SCULPT_automasking_factor_get(SculptSession *ss, int vert)
   if (ss->cache && ss->cache->automask) {
     return ss->cache->automask[vert];
   }
-  else {
-    return 1.0f;
-  }
+  return 1.0f;
 }
 
 void SCULPT_automasking_end(Object *ob)
@@ -211,7 +209,7 @@ float *SCULPT_boundary_automasking_init(Object *ob,
 {
   SculptSession *ss = ob->sculpt;
 
-  if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && !ss->pmap) {
+  if (!ss->pmap) {
     BLI_assert(!"Boundary Edges masking: pmap missing");
     return NULL;
   }
@@ -223,7 +221,7 @@ float *SCULPT_boundary_automasking_init(Object *ob,
     edge_distance[i] = EDGE_DISTANCE_INF;
     switch (mode) {
       case AUTOMASK_INIT_BOUNDARY_EDGES:
-        if (!SCULPT_vertex_is_boundary(ss, i)) {
+        if (SCULPT_vertex_is_boundary(ss, i)) {
           edge_distance[i] = 0;
         }
         break;

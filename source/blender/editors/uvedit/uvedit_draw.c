@@ -86,16 +86,12 @@ static int draw_uvs_face_check(const ToolSettings *ts)
     if (ts->selectmode == SCE_SELECT_FACE) {
       return 2;
     }
-    else if (ts->selectmode & SCE_SELECT_FACE) {
+    if (ts->selectmode & SCE_SELECT_FACE) {
       return 1;
     }
-    else {
-      return 0;
-    }
+    return 0;
   }
-  else {
-    return (ts->uv_selectmode == UV_SELECT_FACE);
-  }
+  return (ts->uv_selectmode == UV_SELECT_FACE);
 }
 
 /* ------------------------- */
@@ -417,7 +413,7 @@ static void draw_uvs(SpaceImage *sima,
       UI_GetThemeColor3fv(TH_EDGE_SELECT, col2);
       col2[3] = overlay_alpha;
 
-      float dash_width = (sima->dt_uv & SI_UVDT_DASH) ? (4.0f * UI_DPI_FAC) : 9999.0f;
+      const float dash_width = (sima->dt_uv == SI_UVDT_DASH) ? (4.0f * UI_DPI_FAC) : 9999.0f;
       eGPUBuiltinShader shader = (interpedges) ? GPU_SHADER_2D_UV_EDGES_SMOOTH :
                                                  GPU_SHADER_2D_UV_EDGES;
 

@@ -1278,7 +1278,7 @@ template<typename T> inline int tri_orient(const SymEdge<T> *t)
  */
 template<typename T> class CrossData {
  public:
-  T lambda;
+  T lambda = T(0);
   CDTVert<T> *vert;
   SymEdge<T> *in;
   SymEdge<T> *out;
@@ -1288,6 +1288,34 @@ template<typename T> class CrossData {
   }
   CrossData(T l, CDTVert<T> *v, SymEdge<T> *i, SymEdge<T> *o) : lambda(l), vert(v), in(i), out(o)
   {
+  }
+  CrossData(const CrossData &other)
+  : lambda(other.lambda), vert(other.vert), in(other.in), out(other.out)
+  {
+  }
+  CrossData(CrossData &&other) noexcept
+  : lambda(std::move(other.lambda)), vert(std::move(other.vert)),
+  in(std::move(other.in)), out(std::move(other.out))
+  {
+  }
+  ~CrossData() = default;
+  CrossData &operator=(const CrossData &other)
+  {
+    if (this != &other) {
+      lambda = other.lambda;
+      vert = other.vert;
+      in = other.in;
+      out = other.out;
+    }
+    return *this;
+  }
+  CrossData &operator=(CrossData &&other) noexcept
+  {
+    lambda = std::move(other.lambda);
+    vert = std::move(other.vert);
+    in = std::move(other.in);
+    out = std::move(other.out);
+    return *this;
   }
 };
 
@@ -1971,8 +1999,31 @@ template<typename T> void remove_non_constraint_edges(CDT_state<T> *cdt_state)
 
 /* For sorting edges by decreasing length (squared). */
 template<typename T> struct EdgeToSort {
-  T len_squared;
+  T len_squared = T(0);
   CDTEdge<T> *e{nullptr};
+
+  EdgeToSort() = default;
+  EdgeToSort(const EdgeToSort &other)
+  : len_squared(other.len_squared), e(other.e)
+  {
+  }
+  EdgeToSort(EdgeToSort &&other) noexcept
+  : len_squared(std::move(other.len_squared)), e(other.e)
+  {
+  }
+  ~EdgeToSort() = default;
+  EdgeToSort &operator=(const EdgeToSort &other) {
+    if (this != &other) {
+      len_squared = other.len_squared;
+      e = other.e;
+    }
+    return *this;
+  }
+  EdgeToSort &operator=(EdgeToSort &&other) {
+    len_squared = std::move(other.len_squared);
+    e = other.e;
+    return *this;
+  }
 };
 
 template<typename T> void remove_non_constraint_edges_leave_valid_bmesh(CDT_state<T> *cdt_state)

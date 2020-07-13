@@ -1639,6 +1639,40 @@ static void rna_SimulationModifier_simulation_update(Main *bmain, Scene *scene, 
   rna_Modifier_dependency_update(bmain, scene, ptr);
 }
 
+static void rna_SimulationModifier_data_path_get(PointerRNA *ptr, char *value)
+{
+  SimulationModifierData *smd = ptr->data;
+
+  if (smd->data_path) {
+    strcpy(value, smd->data_path);
+  }
+  else {
+    value[0] = '\0';
+  }
+}
+
+static int rna_SimulationModifier_data_path_length(PointerRNA *ptr)
+{
+  SimulationModifierData *smd = ptr->data;
+  return smd->data_path ? strlen(smd->data_path) : 0;
+}
+
+static void rna_SimulationModifier_data_path_set(PointerRNA *ptr, const char *value)
+{
+  SimulationModifierData *smd = ptr->data;
+
+  if (smd->data_path) {
+    MEM_freeN(smd->data_path);
+  }
+
+  if (value[0]) {
+    smd->data_path = BLI_strdup(value);
+  }
+  else {
+    smd->data_path = NULL;
+  }
+}
+
 /**
  * Special set callback that just changes the first bit of the expansion flag.
  * This way the expansion state of all the sub-panels is not changed by RNA.
@@ -5644,7 +5678,7 @@ static void rna_def_modifier_ocean(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "wave_alignment", PROP_FLOAT, PROP_UNSIGNED);
   RNA_def_property_float_sdna(prop, NULL, "wave_alignment");
-  RNA_def_property_range(prop, 0.0, 10.0);
+  RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "Wave Alignment", "How much the waves are aligned to each other");
   RNA_def_property_update(prop, 0, "rna_OceanModifier_init_update");
 
@@ -5721,7 +5755,7 @@ static void rna_def_modifier_ocean(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "sharpen_peak_jonswap", PROP_FLOAT, PROP_UNSIGNED);
   RNA_def_property_float_sdna(prop, NULL, "sharpen_peak_jonswap");
-  RNA_def_property_range(prop, 0.0, 10.0);
+  RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "Sharpen peak", "Peak sharpening for 'JONSWAP' and 'TMA' models");
   RNA_def_property_update(prop, 0, "rna_OceanModifier_init_update");
 
@@ -6859,6 +6893,10 @@ static void rna_def_modifier_simulation(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_SimulationModifier_simulation_update");
 
   prop = RNA_def_property(srna, "data_path", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_SimulationModifier_data_path_get",
+                                "rna_SimulationModifier_data_path_length",
+                                "rna_SimulationModifier_data_path_set");
   RNA_def_property_ui_text(
       prop, "Data Path", "Identifier of the simulation component that should be accessed");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");

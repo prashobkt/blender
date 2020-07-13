@@ -592,7 +592,27 @@ class CoplanarCluster {
   {
     this->add_tri(t);
   }
+  CoplanarCluster(const CoplanarCluster &other)
+  : tris_(other.tris_)
+  {
+  }
+  CoplanarCluster(CoplanarCluster &&other) noexcept
+  : tris_(std::move(other.tris_))
+  {
+  }
   ~CoplanarCluster() = default;
+  CoplanarCluster &operator=(const CoplanarCluster &other)
+  {
+    if (this != &other) {
+      tris_ = other.tris_;
+    }
+    return *this;
+  }
+  CoplanarCluster &operator=(CoplanarCluster &&other) noexcept
+  {
+    tris_ = std::move(other.tris_);
+    return *this;
+  }
 
   /* Assume that caller knows this will not be a duplicate. */
   void add_tri(uint t)
@@ -704,8 +724,34 @@ struct ITT_value {
       : kind(k), p1(p1), p2(p2), t_source(-1)
   {
   }
+  ITT_value(const ITT_value &other)
+  : kind(other.kind), p1(other.p1), p2(other.p2), t_source(other.t_source)
+  {
+  }
+  ITT_value(ITT_value &&other) noexcept
+  : kind(other.kind), p1(std::move(other.p1)), p2(std::move(other.p2)),
+  t_source(other.t_source)
+  {
+  }
   ~ITT_value()
   {
+  }
+  ITT_value &operator=(const ITT_value &other) {
+    if (this != &other) {
+      kind = other.kind;
+      p1 = other.p1;
+      p2 = other.p2;
+      t_source = other.t_source;
+    }
+    return *this;
+  }
+  ITT_value &operator=(ITT_value &&other) noexcept
+  {
+    kind = other.kind;
+    p1 = std::move(other.p1);
+    p2 = std::move(other.p2);
+    t_source = other.t_source;
+    return *this;
   }
 };
 
@@ -1231,9 +1277,9 @@ static void do_cdt(CDT_data &cd)
 {
   constexpr int dbg_level = 0;
   CDT_input<mpq_class> cdt_in;
-  cdt_in.vert = Array<mpq2>(cd.vert);
-  cdt_in.edge = Array<std::pair<int, int>>(cd.edge);
-  cdt_in.face = Array<Vector<int>>(cd.face);
+  cdt_in.vert = Span<mpq2>(cd.vert);
+  cdt_in.edge = Span<std::pair<int, int>>(cd.edge);
+  cdt_in.face = Span<Vector<int>>(cd.face);
   if (dbg_level > 0) {
     std::cout << "CDT input\nVerts:\n";
     for (uint i = 0; i < cdt_in.vert.size(); ++i) {
