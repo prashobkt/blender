@@ -1025,16 +1025,12 @@ void wm_homefile_read(struct bContext *C,
                                    },
                                    reports);
     }
-    if (BLI_listbase_is_empty(&U.themes)) {
-      CLOG_VERBOSE(WM_LOG_SESSION,
-                   1,
-                   "Note: No (valid) '%s' found, fall back to built-in default",
-                   filepath_startup);
-      success = false;
-    }
     if (success) {
       if (update_defaults) {
         if (use_data) {
+          CLOG_INFO(WM_LOG_SESSION,
+                    "No (valid) '%s' found, fall back to built-in default",
+                    filepath_startup);
           BLO_update_defaults_startup_blend(CTX_data_main(C), app_template);
         }
       }
