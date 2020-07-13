@@ -534,7 +534,7 @@ static void stitch_island_calculate_edge_rotation(UvEdge *edge,
                                                   StitchStateContainer *ssc,
                                                   StitchState *state,
                                                   UVVertAverage *uv_average,
-                                                  uint *uvfinal_map,
+                                                  const uint *uvfinal_map,
                                                   IslandStitchData *island_stitch_data)
 {
   BMesh *bm = state->em->bm;
@@ -1935,7 +1935,7 @@ static StitchState *stitch_init(bContext *C,
     return NULL;
   }
 
-  ED_uvedit_get_aspect(scene, obedit, em->bm, &aspx, &aspy);
+  ED_uvedit_get_aspect(obedit, &aspx, &aspy);
   state->aspect = aspx / aspy;
 
   /* Count 'unique' uvs */
