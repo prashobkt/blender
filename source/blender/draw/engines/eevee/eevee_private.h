@@ -1057,14 +1057,12 @@ void EEVEE_shaders_lightprobe_shaders_init(void);
 void EEVEE_shaders_material_shaders_init(void);
 struct DRWShaderLibrary *EEVEE_shader_lib_get(void);
 struct GPUShader *EEVEE_shaders_probe_filter_glossy_sh_get(void);
-struct GPUShader *EEVEE_shaders_probe_default_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_filter_diffuse_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_filter_visibility_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_grid_fill_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_planar_downsample_sh_get(void);
-struct GPUShader *EEVEE_shaders_default_studiolight_sh_get(void);
-struct GPUShader *EEVEE_shaders_default_background_sh_get(void);
-struct GPUShader *EEVEE_shaders_background_studiolight_sh_get(void);
+struct GPUShader *EEVEE_shaders_studiolight_probe_sh_get(void);
+struct GPUShader *EEVEE_shaders_studiolight_background_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_cube_display_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_grid_display_sh_get(void);
 struct GPUShader *EEVEE_shaders_probe_planar_display_sh_get(void);
@@ -1076,6 +1074,7 @@ struct bNodeTree *EEVEE_shader_default_world_nodetree(World *wo);
 Material *EEVEE_material_default_diffuse_get(void);
 Material *EEVEE_material_default_glossy_get(void);
 Material *EEVEE_material_default_error_get(void);
+World *EEVEE_world_default_get(void);
 struct GPUMaterial *EEVEE_material_default_get(struct Scene *scene, Material *ma, int options);
 struct GPUMaterial *EEVEE_material_get(
     EEVEE_Data *vedata, struct Scene *scene, Material *ma, World *wo, int options);
@@ -1299,10 +1298,9 @@ void EEVEE_render_update_passes(struct RenderEngine *engine,
 /** eevee_lookdev.c */
 void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
                               EEVEE_ViewLayerData *sldata,
-                              DRWShadingGroup **grp,
                               DRWPass *pass,
-                              struct World *world,
-                              EEVEE_LightProbesInfo *pinfo);
+                              EEVEE_LightProbesInfo *pinfo,
+                              DRWShadingGroup **r_shgrp);
 void EEVEE_lookdev_draw(EEVEE_Data *vedata);
 
 /** eevee_engine.c */

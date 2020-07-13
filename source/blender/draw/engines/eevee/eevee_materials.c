@@ -311,39 +311,28 @@ void EEVEE_materials_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   {
     DRW_PASS_CREATE(psl->background_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
 
-    struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
     DRWShadingGroup *grp = NULL;
+    EEVEE_lookdev_cache_init(vedata, sldata, psl->background_ps, NULL, &grp);
 
-    Scene *scene = draw_ctx->scene;
-    World *wo = scene->world;
+    if (grp == NULL) {
+      Scene *scene = draw_ctx->scene;
+      World *world = (scene->world) ? scene->world : EEVEE_world_default_get();
 
-    EEVEE_lookdev_cache_init(vedata, sldata, &grp, psl->background_ps, wo, NULL);
-
-    if (!grp && wo) {
-      struct GPUMaterial *gpumat = EEVEE_material_get(
-          vedata, scene, NULL, wo, VAR_WORLD_BACKGROUND);
+      int options = VAR_WORLD_BACKGROUND;
+      struct GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, NULL, world, options);
 
       grp = DRW_shgroup_material_create(gpumat, psl->background_ps);
       DRW_shgroup_uniform_float(grp, "backgroundAlpha", &stl->g_data->background_alpha, 1);
-      /* TODO (fclem): remove those (need to clean the GLSL files). */
-      DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-      DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
-      DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
-      DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
-      DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
-      DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
-      DRW_shgroup_uniform_block_ref(grp, "renderpass_block", &stl->g_data->renderpass_ubo);
-      DRW_shgroup_call(grp, geom, NULL);
     }
 
-    /* Fallback if shader fails or if not using nodetree. */
-    if (grp == NULL) {
-      GPUShader *sh = EEVEE_shaders_default_background_sh_get();
-      grp = DRW_shgroup_create(sh, psl->background_ps);
-      DRW_shgroup_uniform_vec3(grp, "color", G_draw.block.colorBackground, 1);
-      DRW_shgroup_uniform_float(grp, "backgroundAlpha", &stl->g_data->background_alpha, 1);
-      DRW_shgroup_call(grp, geom, NULL);
-    }
+    DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
+    DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
+    DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
+    DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
+    DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
+    DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
+    DRW_shgroup_uniform_block_ref(grp, "renderpass_block", &stl->g_data->renderpass_ubo);
+    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
   }
 
 #define EEVEE_PASS_CREATE(pass, state) \

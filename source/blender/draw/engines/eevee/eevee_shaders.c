@@ -28,6 +28,8 @@
 #include "BLI_dynstr.h"
 #include "BLI_string_utils.h"
 
+#include "DNA_world_types.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "GPU_material.h"
@@ -46,10 +48,11 @@ static const char *filter_defines = "#define HAMMERSLEY_SIZE " STRINGIFY(HAMMERS
 #endif
 
 static struct {
+  /* Lookdev */
+  struct GPUShader *studiolight_probe_sh;
+  struct GPUShader *studiolight_background_sh;
+
   /* Probes */
-  struct GPUShader *probe_default_sh;
-  struct GPUShader *probe_default_studiolight_sh;
-  struct GPUShader *probe_background_studiolight_sh;
   struct GPUShader *probe_grid_display_sh;
   struct GPUShader *probe_cube_display_sh;
   struct GPUShader *probe_planar_display_sh;
@@ -67,7 +70,7 @@ static struct {
   struct GPUShader *taa_resolve_reproject_sh;
 
   /* General purpose Shaders. */
-  struct GPUShader *default_background;
+  struct GPUShader *lookdev_background;
   struct GPUShader *update_noise_sh;
 
   /* Shader strings */
@@ -80,6 +83,8 @@ static struct {
   Material *diffuse_mat;
 
   Material *error_mat;
+
+  World *default_world;
 
   /* Default Material */
   struct {
@@ -113,7 +118,7 @@ extern char datatoc_common_uniforms_lib_glsl[];
 extern char datatoc_common_utiltex_lib_glsl[];
 extern char datatoc_cubemap_lib_glsl[];
 extern char datatoc_default_frag_glsl[];
-extern char datatoc_default_world_frag_glsl[];
+extern char datatoc_lookdev_world_frag_glsl[];
 extern char datatoc_effect_bloom_frag_glsl[];
 extern char datatoc_effect_dof_frag_glsl[];
 extern char datatoc_effect_dof_vert_glsl[];
@@ -238,9 +243,6 @@ void EEVEE_shaders_lightprobe_shaders_init(void)
       e_data.lib,
       filter_defines);
 
-  e_data.probe_default_sh = DRW_shader_create_with_shaderlib(
-      datatoc_background_vert_glsl, NULL, datatoc_default_world_frag_glsl, e_data.lib, NULL);
-
   e_data.probe_filter_diffuse_sh = DRW_shader_create_fullscreen_with_shaderlib(
       datatoc_lightprobe_filter_diffuse_frag_glsl, e_data.lib, filter_defines);
 
@@ -273,11 +275,6 @@ GPUShader *EEVEE_shaders_probe_filter_glossy_sh_get(void)
   return e_data.probe_filter_glossy_sh;
 }
 
-GPUShader *EEVEE_shaders_probe_default_sh_get(void)
-{
-  return e_data.probe_default_sh;
-}
-
 GPUShader *EEVEE_shaders_probe_filter_diffuse_sh_get(void)
 {
   return e_data.probe_filter_diffuse_sh;
@@ -298,30 +295,29 @@ GPUShader *EEVEE_shaders_probe_planar_downsample_sh_get(void)
   return e_data.probe_planar_downsample_sh;
 }
 
-GPUShader *EEVEE_shaders_default_studiolight_sh_get(void)
+GPUShader *EEVEE_shaders_studiolight_probe_sh_get(void)
 {
-  if (e_data.probe_default_studiolight_sh == NULL) {
-    e_data.probe_default_studiolight_sh = DRW_shader_create_with_shaderlib(
-        datatoc_background_vert_glsl,
-        NULL,
-        datatoc_default_world_frag_glsl,
-        e_data.lib,
-        "#define LOOKDEV\n");
+  if (e_data.studiolight_probe_sh == NULL) {
+    e_data.studiolight_probe_sh = DRW_shader_create_with_shaderlib(datatoc_background_vert_glsl,
+                                                                   NULL,
+                                                                   datatoc_lookdev_world_frag_glsl,
+                                                                   e_data.lib,
+                                                                   SHADER_DEFINES);
   }
-  return e_data.probe_default_studiolight_sh;
+  return e_data.studiolight_probe_sh;
 }
 
-GPUShader *EEVEE_shaders_background_studiolight_sh_get(void)
+GPUShader *EEVEE_shaders_studiolight_background_sh_get(void)
 {
-  if (e_data.probe_background_studiolight_sh == NULL) {
-    e_data.probe_background_studiolight_sh = DRW_shader_create_with_shaderlib(
+  if (e_data.studiolight_background_sh == NULL) {
+    e_data.studiolight_background_sh = DRW_shader_create_with_shaderlib(
         datatoc_background_vert_glsl,
         NULL,
-        datatoc_default_world_frag_glsl,
+        datatoc_lookdev_world_frag_glsl,
         e_data.lib,
         "#define LOOKDEV_BG\n" SHADER_DEFINES);
   }
-  return e_data.probe_background_studiolight_sh;
+  return e_data.studiolight_background_sh;
 }
 
 GPUShader *EEVEE_shaders_probe_cube_display_sh_get(void)
@@ -370,15 +366,6 @@ GPUShader *EEVEE_shaders_velocity_resolve_sh_get(void)
         datatoc_effect_velocity_resolve_frag_glsl, e_data.lib, NULL);
   }
   return e_data.velocity_resolve_sh;
-}
-
-GPUShader *EEVEE_shaders_default_background_sh_get(void)
-{
-  if (e_data.default_background == NULL) {
-    e_data.default_background = DRW_shader_create_with_shaderlib(
-        datatoc_background_vert_glsl, NULL, datatoc_default_world_frag_glsl, e_data.lib, NULL);
-  }
-  return e_data.default_background;
 }
 
 GPUShader *EEVEE_shaders_update_noise_sh_get(void)
@@ -541,6 +528,18 @@ struct bNodeTree *EEVEE_shader_default_world_nodetree(World *wo)
   copy_v3_fl3(e_data.world.color_socket->value, wo->horr, wo->horg, wo->horb);
 
   return e_data.world.ntree;
+}
+
+World *EEVEE_world_default_get(void)
+{
+  if (e_data.default_world == NULL) {
+    e_data.default_world = BKE_id_new_nomain(ID_WO, "EEVEEE default world");
+    copy_v3_fl(&e_data.default_world->horr, 0.0f);
+    e_data.default_world->use_nodes = 0;
+    e_data.default_world->nodetree = NULL;
+    BLI_listbase_clear(&e_data.default_world->gpumaterial);
+  }
+  return e_data.default_world;
 }
 
 static char *eevee_get_defines(int options)
@@ -725,16 +724,15 @@ struct GPUMaterial *EEVEE_material_get(
 void EEVEE_shaders_free(void)
 {
   MEM_SAFE_FREE(e_data.surface_lit_frag);
-  DRW_SHADER_FREE_SAFE(e_data.default_background);
+  DRW_SHADER_FREE_SAFE(e_data.lookdev_background);
   DRW_SHADER_FREE_SAFE(e_data.update_noise_sh);
-  DRW_SHADER_FREE_SAFE(e_data.probe_default_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_filter_glossy_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_filter_diffuse_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_filter_visibility_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_grid_fill_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_planar_downsample_sh);
-  DRW_SHADER_FREE_SAFE(e_data.probe_default_studiolight_sh);
-  DRW_SHADER_FREE_SAFE(e_data.probe_background_studiolight_sh);
+  DRW_SHADER_FREE_SAFE(e_data.studiolight_probe_sh);
+  DRW_SHADER_FREE_SAFE(e_data.studiolight_background_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_grid_display_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_cube_display_sh);
   DRW_SHADER_FREE_SAFE(e_data.probe_planar_display_sh);
@@ -743,6 +741,10 @@ void EEVEE_shaders_free(void)
   DRW_SHADER_FREE_SAFE(e_data.taa_resolve_reproject_sh);
   DRW_SHADER_LIB_FREE_SAFE(e_data.lib);
 
+  if (e_data.default_world) {
+    BKE_id_free(NULL, e_data.default_world);
+    e_data.default_world = NULL;
+  }
   if (e_data.glossy_mat) {
     BKE_id_free(NULL, e_data.glossy_mat);
     e_data.glossy_mat = NULL;
