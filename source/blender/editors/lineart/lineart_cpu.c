@@ -2442,7 +2442,7 @@ void ED_lineart_modifier_sync_set_flag(eLineartModifierSyncStatus flag, bool is_
 {
   BLI_spin_lock(&lineart_share.lock_render_status);
 
-  lineart_share.fflag_sync_staus = flag;
+  lineart_share.flag_sync_staus = flag;
 
   BLI_spin_unlock(&lineart_share.lock_render_status);
 }
@@ -2451,7 +2451,7 @@ bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag)
 {
   bool match;
   BLI_spin_lock(&lineart_share.lock_render_status);
-  match = (lineart_share.fflag_sync_staus == flag);
+  match = (lineart_share.flag_sync_staus == flag);
   BLI_spin_unlock(&lineart_share.lock_render_status);
   return match;
 }
@@ -3388,8 +3388,8 @@ static LineartBoundingArea *lineart_get_bounding_area(LineartRenderBuffer *rb, d
   }
   return iba;
 }
-s tatic LineartBoundingArea *lineart_get_first_possible_bounding_area(LineartRenderBuffer *rb,
-                                                                      LineartRenderLine *rl)
+static LineartBoundingArea *lineart_get_first_possible_bounding_area(LineartRenderBuffer *rb,
+                                                                     LineartRenderLine *rl)
 {
   LineartBoundingArea *iba;
   double data[2] = {rl->l->fbcoord[0], rl->l->fbcoord[1]};

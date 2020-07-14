@@ -290,7 +290,7 @@ typedef struct LineartSharedResource {
    */
   SpinLock lock_render_status;
   eLineartRenderStatus flag_render_status;
-  eLineartModifierSyncStatus fflag_sync_staus;
+  eLineartModifierSyncStatus flag_sync_staus;
 
   /** Geometry loading is done in the worker thread,
    * Lock the render thread until loading is done, so that
