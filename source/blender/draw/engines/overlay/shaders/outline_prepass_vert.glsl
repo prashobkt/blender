@@ -1,8 +1,7 @@
 
 uniform bool isTransform;
 
-#ifndef USE_GPENCIL
-in vec4 ptcloud;
+#if !defined(USE_GPENCIL) && !defined(POINTCLOUD)
 in vec3 pos;
 #endif
 
@@ -57,7 +56,11 @@ void main()
 #  endif
 
 #else
-  vec3 world_pos = point_object_to_world(pos * ptcloud.w + ptcloud.xyz);
+#  ifdef POINTCLOUD
+  vec3 world_pos = point_object_to_world(pointcloud_get_pos());
+#  else
+  vec3 world_pos = point_object_to_world(pos);
+#  endif
   gl_Position = point_world_to_ndc(world_pos);
 #  ifdef USE_GEOM
   vPos = point_world_to_view(world_pos);

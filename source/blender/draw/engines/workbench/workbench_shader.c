@@ -29,6 +29,7 @@
 #include "workbench_private.h"
 
 extern char datatoc_common_hair_lib_glsl[];
+extern char datatoc_common_pointcloud_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_common_smaa_lib_glsl[];
 
@@ -75,7 +76,6 @@ extern char datatoc_gpu_shader_common_obinfos_lib_glsl[];
 /* Maximum number of variations. */
 #define MAX_LIGHTING 3
 #define MAX_COLOR 3
-#define MAX_GEOM 2
 
 enum {
   VOLUME_SH_SLICE = 0,
@@ -86,8 +86,9 @@ enum {
 #define VOLUME_SH_MAX (1 << (VOLUME_SH_CUBIC + 1))
 
 static struct {
-  struct GPUShader *opaque_prepass_sh_cache[GPU_SHADER_CFG_LEN][MAX_GEOM][MAX_COLOR];
-  struct GPUShader *transp_prepass_sh_cache[GPU_SHADER_CFG_LEN][MAX_GEOM][MAX_LIGHTING][MAX_COLOR];
+  struct GPUShader *opaque_prepass_sh_cache[GPU_SHADER_CFG_LEN][WORKBENCH_DATATYPE_MAX][MAX_COLOR];
+  struct GPUShader *transp_prepass_sh_cache[GPU_SHADER_CFG_LEN][WORKBENCH_DATATYPE_MAX]
+                                           [MAX_LIGHTING][MAX_COLOR];
 
   struct GPUShader *opaque_composite_sh[MAX_LIGHTING];
   struct GPUShader *oit_resolve_sh;
@@ -120,6 +121,7 @@ void workbench_shader_library_ensure(void)
     /* NOTE: Theses needs to be ordered by dependencies. */
     DRW_SHADER_LIB_ADD(e_data.lib, common_hair_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, common_view_lib);
+    DRW_SHADER_LIB_ADD(e_data.lib, common_pointcloud_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, gpu_shader_common_obinfos_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_shader_interface_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, workbench_common_lib);
@@ -214,6 +216,10 @@ static GPUShader *workbench_shader_get_ex(WORKBENCH_PrivateData *wpd,
                                  defines,
                                  transp ? "#define TRANSPARENT_MATERIAL\n" :
                                           "#define OPAQUE_MATERIAL\n",
+                                 (datatype == WORKBENCH_DATATYPE_POINTCLOUD) ?
+                                     "#define UNIFORM_RESOURCE_ID\n"
+                                     "#define INSTANCED_ATTR\n" :
+                                     NULL,
                                  NULL},
     });
 

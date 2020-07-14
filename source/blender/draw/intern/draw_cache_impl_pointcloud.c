@@ -52,9 +52,12 @@ typedef struct PointCloudBatchCache {
 
   GPUBatch *dots;
   GPUBatch *surface;
+  GPUBatch **surface_per_mat;
 
   /* settings to determine if cache is invalid */
   bool is_dirty;
+
+  int mat_len;
 } PointCloudBatchCache;
 
 /* GPUBatch cache management. */
@@ -62,7 +65,14 @@ typedef struct PointCloudBatchCache {
 static bool pointcloud_batch_cache_valid(PointCloud *pointcloud)
 {
   PointCloudBatchCache *cache = pointcloud->batch_cache;
-  return (cache && cache->is_dirty == false);
+
+  if (cache == NULL) {
+    return false;
+  }
+  if (cache->mat_len != DRW_pointcloud_material_count_get(pointcloud)) {
+    return false;
+  }
+  return cache->is_dirty == false;
 }
 
 static void pointcloud_batch_cache_init(PointCloud *pointcloud)
@@ -75,6 +85,10 @@ static void pointcloud_batch_cache_init(PointCloud *pointcloud)
   else {
     memset(cache, 0, sizeof(*cache));
   }
+
+  cache->mat_len = DRW_pointcloud_material_count_get(pointcloud);
+  cache->surface_per_mat = MEM_callocN(sizeof(GPUBatch *) * cache->mat_len,
+                                       "pointcloud suface_per_mat");
 
   cache->is_dirty = false;
 }
@@ -119,6 +133,13 @@ static void pointcloud_batch_cache_clear(PointCloud *pointcloud)
   GPU_VERTBUF_DISCARD_SAFE(cache->pos);
   GPU_VERTBUF_DISCARD_SAFE(cache->geom);
   GPU_INDEXBUF_DISCARD_SAFE(cache->geom_indices);
+
+  if (cache->surface_per_mat) {
+    for (int i = 0; i < cache->mat_len; i++) {
+      GPU_BATCH_DISCARD_SAFE(cache->surface_per_mat[i]);
+    }
+  }
+  MEM_SAFE_FREE(cache->surface_per_mat);
 }
 
 void DRW_pointcloud_batch_cache_free(PointCloud *pointcloud)
@@ -138,7 +159,7 @@ static void pointcloud_batch_cache_ensure_pos(Object *ob, PointCloudBatchCache *
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* initialize vertex format */
-    GPU_vertformat_attr_add(&format, "ptcloud", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
   }
 
   cache->pos = GPU_vertbuf_create_with_format(&format);
@@ -198,7 +219,7 @@ static void pointcloud_batch_cache_ensure_geom(Object *UNUSED(ob), PointCloudBat
   static uint pos;
   if (format.attr_len == 0) {
     /* initialize vertex format */
-    pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    pos = GPU_vertformat_attr_add(&format, "pos_inst", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     GPU_vertformat_alias_add(&format, "nor");
   }
 
@@ -247,6 +268,25 @@ GPUBatch *DRW_pointcloud_batch_cache_get_surface(Object *ob)
   }
 
   return cache->surface;
+}
+
+GPUBatch **DRW_cache_pointcloud_surface_shaded_get(Object *ob,
+                                                   struct GPUMaterial **UNUSED(gpumat_array),
+                                                   uint gpumat_array_len)
+{
+  PointCloud *pointcloud = ob->data;
+  PointCloudBatchCache *cache = pointcloud_batch_cache_get(pointcloud);
+  BLI_assert(cache->mat_len == gpumat_array_len);
+
+  if (cache->surface_per_mat[0] == NULL) {
+    pointcloud_batch_cache_ensure_pos(ob, cache);
+    pointcloud_batch_cache_ensure_geom(ob, cache);
+
+    cache->surface_per_mat[0] = GPU_batch_create(GPU_PRIM_TRIS, cache->geom, cache->geom_indices);
+    GPU_batch_instbuf_add_ex(cache->surface, cache->pos, false);
+  }
+
+  return cache->surface_per_mat;
 }
 
 int DRW_pointcloud_material_count_get(PointCloud *pointcloud)

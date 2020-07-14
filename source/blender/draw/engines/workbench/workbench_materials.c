@@ -231,7 +231,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
       workbench_material_ubo_data(wpd, ob, NULL, &wpd->material_ubo_data_curr[mat_id], color_type);
 
       const bool transp = wpd->shading.xray_alpha < 1.0f || ob->color[3] < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp][infront][hair].common_shgrp;
+      DRWShadingGroup *grp = wpd->prepass[transp][infront][datatype].common_shgrp;
       if (resource_changed) {
         grp = DRW_shgroup_create_sub(grp);
         DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
@@ -251,7 +251,7 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
                                           Image *ima,
                                           ImageUser *iuser,
                                           eGPUSamplerState sampler,
-                                          bool hair)
+                                          eWORKBENCH_DataType datatype)
 {
   GPUTexture *tex = NULL, *tex_tile_data = NULL;
 
@@ -275,7 +275,7 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
 
   const bool infront = (ob->dtx & OB_DRAWXRAY) != 0;
   const bool transp = wpd->shading.xray_alpha < 1.0f;
-  WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][hair];
+  WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][datatype];
 
   DRWShadingGroup **grp_tex = NULL;
   /* A hashmap stores image shgroups to pack all similar drawcalls together. */

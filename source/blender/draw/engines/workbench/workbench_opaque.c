@@ -59,10 +59,10 @@ void workbench_opaque_engine_init(WORKBENCH_Data *data)
                                 });
 }
 
-void workbench_opaque_cache_init(WORKBENCH_Data *data)
+void workbench_opaque_cache_init(WORKBENCH_Data *vedata)
 {
-  WORKBENCH_PassList *psl = data->psl;
-  WORKBENCH_PrivateData *wpd = data->stl->wpd;
+  WORKBENCH_PassList *psl = vedata->psl;
+  WORKBENCH_PrivateData *wpd = vedata->stl->wpd;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   struct GPUShader *sh;
   DRWShadingGroup *grp;
@@ -84,7 +84,7 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data)
         pass = psl->opaque_ps;
       }
 
-      for (int data = 0; data < WORKBENCH_DATATYPE_MAX; data++) {
+      for (eWORKBENCH_DataType data = 0; data < WORKBENCH_DATATYPE_MAX; data++) {
         wpd->prepass[opaque][infront][data].material_hash = BLI_ghash_ptr_new(__func__);
 
         sh = workbench_shader_opaque_get(wpd, data);

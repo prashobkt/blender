@@ -465,7 +465,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
                                              Object *ob,
                                              int mat_nr,
                                              eV3DShadingColorType color_type,
-                                             bool hair,
+                                             eWORKBENCH_DataType datatype,
                                              bool *r_transp);
 DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
                                           Object *ob,
@@ -473,17 +473,20 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
                                           Image *ima,
                                           ImageUser *iuser,
                                           eGPUSamplerState sampler,
-                                          bool hair);
+                                          eWORKBENCH_DataType datatype);
+
+#define WORKBENCH_OBJECT_DATATYPE(ob) \
+  ((ob->type == OB_POINTCLOUD) ? WORKBENCH_DATATYPE_POINTCLOUD : WORKBENCH_DATATYPE_MESH)
 
 #define workbench_material_setup(wpd, ob, mat_nr, color_type, r_transp) \
-  workbench_material_setup_ex(wpd, ob, mat_nr, color_type, false, r_transp)
+  workbench_material_setup_ex(wpd, ob, mat_nr, color_type, WORKBENCH_OBJECT_DATATYPE(ob), r_transp)
 #define workbench_image_setup(wpd, ob, mat_nr, ima, iuser, interp) \
-  workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, false)
+  workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, WORKBENCH_OBJECT_DATATYPE(ob))
 
 #define workbench_material_hair_setup(wpd, ob, mat_nr, color_type) \
-  workbench_material_setup_ex(wpd, ob, mat_nr, color_type, true, 0)
+  workbench_material_setup_ex(wpd, ob, mat_nr, color_type, WORKBENCH_DATATYPE_HAIR, 0)
 #define workbench_image_hair_setup(wpd, ob, mat_nr, ima, iuser, interp) \
-  workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, true)
+  workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, WORKBENCH_DATATYPE_HAIR)
 
 /* workbench_data.c */
 void workbench_private_data_init(WORKBENCH_PrivateData *wpd);

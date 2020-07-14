@@ -1,136 +1,22 @@
-/**
- * Library to create hairs dynamically from control points.
- * This is less bandwidth intensive than fetching the vertex attributes
- * but does more ALU work per vertex. This also reduces the amount
- * of data the CPU has to precompute and transfer for each update.
- */
 
-/**
- * hairStrandsRes: Number of points per hair strand.
- * 2 - no subdivision
- * 3+ - 1 or more interpolated points per hair.
- */
-uniform int hairStrandsRes = 8;
+/* NOTE: To be used with UNIFORM_RESOURCE_ID and INSTANCED_ATTR as define. */
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
-/**
- * hairThicknessRes : Subdiv around the hair.
- * 1 - Wire Hair: Only one pixel thick, independent of view distance.
- * 2 - Polystrip Hair: Correct width, flat if camera is parallel.
- * 3+ - Cylinder Hair: Massive calculation but potentially perfect. Still need proper support.
- */
-uniform int hairThicknessRes = 1;
+in vec4 pos; /* Position and radius. */
 
-/* Hair thickness shape. */
-uniform float hairRadRoot = 0.01;
-uniform float hairRadTip = 0.0;
-uniform float hairRadShape = 0.5;
-uniform bool hairCloseTip = true;
+/* ---- Instanced attribs ---- */
 
-uniform vec4 hairDupliMatrix[4];
+in vec3 pos_inst;
+in vec3 nor;
 
-/* -- Per control points -- */
-uniform samplerBuffer hairPointBuffer; /* RGBA32F */
-#define point_position xyz
-#define point_time w /* Position along the hair length */
-
-/* -- Per strands data -- */
-uniform usamplerBuffer hairStrandBuffer;    /* R32UI */
-uniform usamplerBuffer hairStrandSegBuffer; /* R16UI */
-
-/* Not used, use one buffer per uv layer */
-// uniform samplerBuffer hairUVBuffer; /* RG32F */
-// uniform samplerBuffer hairColBuffer; /* RGBA16 linear color */
-
-/* -- Subdivision stage -- */
-/**
- * We use a transform feedback to preprocess the strands and add more subdivision to it.
- * For the moment these are simple smooth interpolation but one could hope to see the full
- * children particle modifiers being evaluated at this stage.
- *
- * If no more subdivision is needed, we can skip this step.
- */
-
-#ifdef HAIR_PHASE_SUBDIV
-int hair_get_base_id(float local_time, int strand_segments, out float interp_time)
+/* Return object position. */
+vec3 pointcloud_get_pos(void)
 {
-  float time_per_strand_seg = 1.0 / float(strand_segments);
-
-  float ratio = local_time / time_per_strand_seg;
-  interp_time = fract(ratio);
-
-  return int(ratio);
+  return pos.xyz + pos_inst * pos.w;
 }
 
-void hair_get_interp_attrs(
-    out vec4 data0, out vec4 data1, out vec4 data2, out vec4 data3, out float interp_time)
+/* Return object Normal. */
+vec3 pointcloud_get_nor(void)
 {
-  float local_time = float(gl_VertexID % hairStrandsRes) / float(hairStrandsRes - 1);
-
-  int hair_id = gl_VertexID / hairStrandsRes;
-  int strand_offset = int(texelFetch(hairStrandBuffer, hair_id).x);
-  int strand_segments = int(texelFetch(hairStrandSegBuffer, hair_id).x);
-
-  int id = hair_get_base_id(local_time, strand_segments, interp_time);
-
-  int ofs_id = id + strand_offset;
-
-  data0 = texelFetch(hairPointBuffer, ofs_id - 1);
-  data1 = texelFetch(hairPointBuffer, ofs_id);
-  data2 = texelFetch(hairPointBuffer, ofs_id + 1);
-  data3 = texelFetch(hairPointBuffer, ofs_id + 2);
-
-  if (id <= 0) {
-    /* root points. Need to reconstruct previous data. */
-    data0 = data1 * 2.0 - data2;
-  }
-  if (id + 1 >= strand_segments) {
-    /* tip points. Need to reconstruct next data. */
-    data3 = data2 * 2.0 - data1;
-  }
+  return nor;
 }
-#endif
-
-/* -- Drawing stage -- */
-/**
- * For final drawing, the vertex index and the number of vertex per segment
- */
-
-#ifndef HAIR_PHASE_SUBDIV
-int hair_get_strand_id(void)
-{
-  return gl_VertexID / (hairStrandsRes * hairThicknessRes);
-}
-
-int hair_get_base_id(void)
-{
-  return gl_VertexID / hairThicknessRes;
-}
-
-/* Copied from cycles. */
-float hair_shaperadius(float shape, float root, float tip, float time)
-{
-  float radius = 1.0 - time;
-
-  if (shape < 0.0) {
-    radius = pow(radius, 1.0 + shape);
-  }
-  else {
-    radius = pow(radius, 1.0 / (1.0 - shape));
-  }
-
-  if (hairCloseTip && (time > 0.99)) {
-    return 0.0;
-  }
-
-  return (radius * (root - tip)) + tip;
-}
-
-#  ifdef OS_MAC
-in float dummy;
-#  endif
-
-vec3 pointcloud_get_pos()
-{
-}
-
-#endif
