@@ -1351,6 +1351,7 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
   LineartRenderLine *orl;
   LineartRenderTriangle *ort;
   FreestyleEdge *fe;
+  Object *orig_ob;
   int CanFindFreestyle = 0;
   int i;
 
@@ -1394,26 +1395,28 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
     ort = mem_static_aquire(&rb->render_data_pool, bm->totface * rb->triangle_size);
     orl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine) * bm->totedge);
 
+    orig_ob = (Object *)(ob->id.orig_id ? ob->id.orig_id : ob);
+
     reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
                                             &rb->render_data_pool,
                                             orv,
                                             sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totvert;
-    reln->object_ref = ob;
+    reln->object_ref = orig_ob;
 
     reln = list_append_pointer_static_sized(&rb->line_buffer_pointers,
                                             &rb->render_data_pool,
                                             orl,
                                             sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totedge;
-    reln->object_ref = ob;
+    reln->object_ref = orig_ob;
 
     reln = list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
                                             &rb->render_data_pool,
                                             ort,
                                             sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totface;
-    reln->object_ref = ob;
+    reln->object_ref = orig_ob;
 
     for (i = 0; i < bm->totvert; i++) {
       v = BM_vert_at_index(bm, i);
@@ -1439,7 +1442,7 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
       rl->l = &orv[BM_elem_index_get(e->v1)];
       rl->r = &orv[BM_elem_index_get(e->v2)];
 
-      rl->object_ref = ob;
+      rl->object_ref = orig_ob;
 
       LineartRenderLineSegment *rls = mem_static_aquire(&rb->render_data_pool,
                                                         sizeof(LineartRenderLineSegment));
@@ -3666,8 +3669,16 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
   short thickness = scene->lineart.master_thickness;
   short opacity = scene->lineart.master_strength;
 
-  float mat[4][4];
+  Object *orig_ob = NULL;
+  if (ob) {
+    orig_ob = (Object *)(ob->id.orig_id ? ob->id.orig_id : ob);
+  }
 
+  Collection *orig_col = NULL;
+  if (col) {
+    orig_col = (Collection *)(col->id.orig_id ? col->id.orig_id : col);
+  }
+  float mat[4][4];
   unit_m4(mat);
 
   LISTBASE_FOREACH (LineartRenderLineChain *, rlc, &rb->chains) {
@@ -3675,7 +3686,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (rlc->picked) {
       continue;
     }
-    if (ob && !rlc->object_ref) {
+    if (orig_ob && !rlc->object_ref) {
       continue; /* intersection lines are all in the first collection running into here */
     }
     if (!(rlc->type & types)) {
@@ -3684,18 +3695,11 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     if (rlc->level > level_end || rlc->level < level_start) {
       continue;
     }
-    if (ob && ob->id.orig_id != rlc->object_ref->id.orig_id) {
-      /* Note: not object_ref and ob are both (same?) copy on write data, if legacy mode, use
-       * object_ref->id.orig_id. Same below.
-       * TODO? Should we always use orig_id in the future? */
+    if (orig_ob && orig_ob != rlc->object_ref) {
       continue;
     }
-    if (col && rlc->object_ref) {
-      if (col->id.orig_id) {
-        col = (Collection *)col->id.orig_id;
-        /* Need this for using the same code for modifier preview and applying. */
-      }
-      if (!BKE_collection_has_object_recursive(col, (Object *)rlc->object_ref->id.orig_id)) {
+    if (orig_col && rlc->object_ref) {
+      if (!BKE_collection_has_object_recursive(orig_col, (Object *)rlc->object_ref)) {
         continue;
       }
     }
