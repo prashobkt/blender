@@ -14,7 +14,7 @@
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-#define DO_REGULAR_TESTS 1
+#define DO_REGULAR_TESTS 0
 #define DO_PERF_TESTS 1
 
 namespace blender::meshintersect {
@@ -794,18 +794,18 @@ static void spheresphere_test(int nrings, double y_offset)
   }
   Mesh mesh(faces);
   double time_create = PIL_check_seconds_timer();
-  write_obj_mesh(mesh, "icosphere_in");
+  /* write_obj_mesh(mesh, "spheresphere_in"); */
   Mesh out = trimesh_self_intersect(mesh, &arena);
   double time_intersect = PIL_check_seconds_timer();
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
-  write_obj_mesh(out, "icosphere");
+  /* write_obj_mesh(out, "spheresphere"); */
 }
 
 TEST(mesh_intersect_perf, SphereSphere)
 {
-  spheresphere_test(16, 0.5);
+  spheresphere_test(64, 0.5);
 }
 
 #endif
