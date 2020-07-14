@@ -68,7 +68,7 @@ static Lattice *object_defgroup_lattice_get(ID *id)
  *
  * \param map: an array mapping old indices to new indices.
  */
-void BKE_object_defgroup_remap_update_users(Object *ob, int *map)
+void BKE_object_defgroup_remap_update_users(Object *ob, const int *map)
 {
   ModifierData *md;
   ParticleSystem *psys;
@@ -534,7 +534,6 @@ void BKE_object_defgroup_index_map_apply(MDeformVert *dvert,
       dv->totweight = totweight;
     }
   }
-  BKE_defvert_array_sort_weights(dv, dvert_len);
 }
 
 /**
