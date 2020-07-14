@@ -14,7 +14,7 @@
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-#define DO_REGULAR_TESTS 0
+#define DO_REGULAR_TESTS 1
 #define DO_PERF_TESTS 1
 
 namespace blender::meshintersect {
@@ -646,6 +646,7 @@ static void spheresphere_test(int nrings, double y_offset)
   }
   double time_start = PIL_check_seconds_timer();
   MArena arena;
+  bool triangulate = true;
   const bool nrings_even = (nrings % 2 == 0);
   int half_nrings = nrings / 2;
   int nsegs = 2 * nrings;
@@ -656,15 +657,17 @@ static void spheresphere_test(int nrings, double y_offset)
   double radius = 1.0;
   int num_sphere_verts = nsegs * (nrings - 1) + 2;
   int num_sphere_faces = nsegs * nrings;
-  arena.reserve(2 * num_sphere_verts, 2 * num_sphere_faces);
+  int num_sphere_tris = 2 * nsegs + 2 * nsegs * (nrings - 2);
+  arena.reserve(2 * 2 * num_sphere_verts,
+                2 * 2 * (triangulate ? num_sphere_tris : num_sphere_faces));
   double center_y[2] = {0.0, y_offset};
   double delta_phi = 2 * M_PI / nsegs;
   double delta_theta = M_PI / nrings;
   int fid = 0;
   int vid = 0;
-  Array<Facep> faces(2 * num_sphere_faces);
+  Array<Facep> faces(2 * (triangulate ? num_sphere_tris : num_sphere_faces));
   Array<Vertp> verts(2 * num_sphere_verts);
-  int face_start[2] = {0, num_sphere_faces};
+  int face_start[2] = {0, (triangulate ? num_sphere_tris : num_sphere_faces)};
   int vert_start[2] = {0, num_sphere_verts};
   auto vert_index_fn = [nrings, &vert_start](int sphere, int seg, int ring) {
     if (ring == 0) { /* Top vert. */
@@ -677,6 +680,15 @@ static void spheresphere_test(int nrings, double y_offset)
   };
   auto face_index_fn = [nrings, &face_start](int sphere, int seg, int ring) {
     return face_start[sphere] + seg * nrings + ring;
+  };
+  auto tri_index_fn = [nrings, nsegs, &face_start](int sphere, int seg, int ring, int tri) {
+    if (ring == 0) {
+      return face_start[sphere] + seg;
+    }
+    if (ring < nrings - 1) {
+      return face_start[sphere] + nsegs + 2 * (ring - 1) * nsegs + 2 * seg + tri;
+    }
+    return face_start[sphere] + nsegs + 2 * (nrings - 2) * nsegs + seg;
   };
   Array<int> eid = {0, 0, 0, 0}; /* Don't care about edge ids. */
   for (int sphere : {0, 1}) {
@@ -749,6 +761,7 @@ static void spheresphere_test(int nrings, double y_offset)
         int i2 = vert_index_fn(sphere, snext, rnext);
         int i3 = vert_index_fn(sphere, snext, r);
         Facep f;
+        Facep f2 = nullptr;
         if (r == 0) {
           f = arena.add_face({verts[i0], verts[i1], verts[i2]}, fid++, eid);
         }
@@ -756,21 +769,38 @@ static void spheresphere_test(int nrings, double y_offset)
           f = arena.add_face({verts[i0], verts[i1], verts[i3]}, fid++, eid);
         }
         else {
-          f = arena.add_face({verts[i0], verts[i1], verts[i2], verts[i3]}, fid++, eid);
+          if (triangulate) {
+            f = arena.add_face({verts[i0], verts[i1], verts[i2]}, fid++, eid);
+            f2 = arena.add_face({verts[i2], verts[i3], verts[i0]}, fid++, eid);
+          }
+          else {
+            f = arena.add_face({verts[i0], verts[i1], verts[i2], verts[i3]}, fid++, eid);
+          }
         }
-        int f_index = face_index_fn(sphere, s, r);
-        faces[f_index] = f;
+        if (triangulate) {
+          int f_index = tri_index_fn(sphere, s, r, 0);
+          faces[f_index] = f;
+          if (r != 0 && r != nrings - 1) {
+            int f_index2 = tri_index_fn(sphere, s, r, 1);
+            faces[f_index2] = f2;
+          }
+        }
+        else {
+          int f_index = face_index_fn(sphere, s, r);
+          faces[f_index] = f;
+        }
       }
     }
   }
   Mesh mesh(faces);
   double time_create = PIL_check_seconds_timer();
-  /* write_obj_mesh(mesh, "icosphere"); */
+  write_obj_mesh(mesh, "icosphere_in");
   Mesh out = trimesh_self_intersect(mesh, &arena);
   double time_intersect = PIL_check_seconds_timer();
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
+  write_obj_mesh(out, "icosphere");
 }
 
 TEST(mesh_intersect_perf, SphereSphere)

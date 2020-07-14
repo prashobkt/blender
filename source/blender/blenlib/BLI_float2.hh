@@ -158,7 +158,6 @@ struct float2 {
   {
     return !(a == b);
   }
-
 };
 
 }  // namespace blender

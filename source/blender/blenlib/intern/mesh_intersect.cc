@@ -22,7 +22,9 @@
 #include "BLI_assert.h"
 #include "BLI_delaunay_2d.h"
 #include "BLI_double3.hh"
+#include "BLI_float3.hh"
 #include "BLI_hash.hh"
+#include "BLI_kdopbvh.h"
 #include "BLI_map.hh"
 #include "BLI_math_mpq.hh"
 #include "BLI_mpq2.hh"
@@ -575,6 +577,119 @@ std::ostream &operator<<(std::ostream &os, const Mesh &mesh)
   return os;
 }
 
+struct BoundingBox {
+  float3 min{FLT_MAX, FLT_MAX, FLT_MAX};
+  float3 max{-FLT_MAX, -FLT_MAX, -FLT_MAX};
+
+  BoundingBox() = default;
+  BoundingBox(const float3 &min, const float3 &max) : min(min), max(max)
+  {
+  }
+  BoundingBox(const BoundingBox &other) : min(other.min), max(other.max)
+  {
+  }
+  BoundingBox(BoundingBox &&other) noexcept : min(std::move(other.min)), max(std::move(other.max))
+  {
+  }
+  ~BoundingBox() = default;
+  BoundingBox operator=(const BoundingBox &other)
+  {
+    if (this != &other) {
+      min = other.min;
+      max = other.max;
+    }
+    return *this;
+  }
+  BoundingBox operator=(BoundingBox &&other) noexcept
+  {
+    min = std::move(other.min);
+    max = std::move(other.max);
+    return *this;
+  }
+
+  void combine(const float3 &p)
+  {
+    min.x = min_ff(min.x, p.x);
+    min.y = min_ff(min.y, p.y);
+    min.z = min_ff(min.z, p.z);
+    max.x = max_ff(max.x, p.x);
+    max.y = max_ff(max.y, p.y);
+    max.z = max_ff(max.z, p.z);
+  }
+
+  void combine(const double3 &p)
+  {
+    min.x = min_ff(min.x, static_cast<float>(p.x));
+    min.y = min_ff(min.y, static_cast<float>(p.y));
+    min.z = min_ff(min.z, static_cast<float>(p.z));
+    max.x = max_ff(max.x, static_cast<float>(p.x));
+    max.y = max_ff(max.y, static_cast<float>(p.y));
+    max.z = max_ff(max.z, static_cast<float>(p.z));
+  }
+
+  void combine(const BoundingBox &bb)
+  {
+    min.x = min_ff(min.x, bb.min.x);
+    min.y = min_ff(min.y, bb.min.y);
+    min.z = min_ff(min.z, bb.min.z);
+    max.x = max_ff(max.x, bb.max.x);
+    max.y = max_ff(max.y, bb.max.y);
+    max.z = max_ff(max.z, bb.max.z);
+  }
+
+  void expand(float pad)
+  {
+    min.x -= pad;
+    min.y -= pad;
+    min.z -= pad;
+    max.x += pad;
+    max.y += pad;
+    max.z += pad;
+  }
+};
+
+/* Assume bounding boxes have been expanded by a sufficient epislon on all sides
+ * so that the comparisons against the bb bounds are sufficient to guarantee that
+ * if an overlap or even touching could happen, this will return true.
+ */
+static bool bbs_might_intersect(const BoundingBox &bb_a, const BoundingBox &bb_b)
+{
+  return isect_aabb_aabb_v3(bb_a.min, bb_a.max, bb_b.min, bb_b.max);
+}
+
+/* We will expand the bounding boxes by an epsilon on all sides so that
+ * the "less than" tests in isect_aabb_aabb_v3 are sufficient to detect
+ * touching or overlap.
+ */
+static Array<BoundingBox> calc_face_bounding_boxes(const Mesh &m)
+{
+  double max_abs_val = 0.0;
+  Array<BoundingBox> ans(m.face_size());
+  for (uint f : m.face_index_range()) {
+    const Face &face = *m.face(f);
+    BoundingBox &bb = ans[f];
+    for (Vertp v : face) {
+      bb.combine(v->co);
+      for (int i = 0; i < 3; ++i) {
+        max_abs_val = max_dd(max_abs_val, fabs(v->co[i]));
+      }
+    }
+  }
+  float pad;
+  constexpr float pad_factor = 10.0f;
+  if (max_abs_val == 0.0f) {
+    pad = FLT_EPSILON;
+  }
+  else {
+    pad = 2 * FLT_EPSILON * max_abs_val;
+  }
+  pad *= pad_factor; /* For extra safety. */
+  for (uint f : m.face_index_range()) {
+    ans[f].expand(pad);
+  }
+  return ans;
+}
+
 /* A cluster of coplanar triangles, by index.
  * A pair of triangles T0 and T1 is said to "nontrivially coplanar-intersect"
  * if they are coplanar, intersect, and their intersection is not just existing
@@ -585,19 +700,19 @@ std::ostream &operator<<(std::ostream &os, const Mesh &mesh)
  */
 class CoplanarCluster {
   Vector<uint> tris_;
+  BoundingBox bb_;
 
  public:
   CoplanarCluster() = default;
-  explicit CoplanarCluster(uint t)
+  CoplanarCluster(uint t, const BoundingBox &bb)
   {
-    this->add_tri(t);
+    this->add_tri(t, bb);
   }
-  CoplanarCluster(const CoplanarCluster &other)
-  : tris_(other.tris_)
+  CoplanarCluster(const CoplanarCluster &other) : tris_(other.tris_), bb_(other.bb_)
   {
   }
   CoplanarCluster(CoplanarCluster &&other) noexcept
-  : tris_(std::move(other.tris_))
+      : tris_(std::move(other.tris_)), bb_(std::move(other.bb_))
   {
   }
   ~CoplanarCluster() = default;
@@ -605,19 +720,22 @@ class CoplanarCluster {
   {
     if (this != &other) {
       tris_ = other.tris_;
+      bb_ = other.bb_;
     }
     return *this;
   }
   CoplanarCluster &operator=(CoplanarCluster &&other) noexcept
   {
     tris_ = std::move(other.tris_);
+    bb_ = std::move(other.bb_);
     return *this;
   }
 
   /* Assume that caller knows this will not be a duplicate. */
-  void add_tri(uint t)
+  void add_tri(uint t, const BoundingBox &bb)
   {
     tris_.append(t);
+    bb_ = bb;
   }
   uint tot_tri() const
   {
@@ -634,6 +752,11 @@ class CoplanarCluster {
   const uint *end() const
   {
     return tris_.end();
+  }
+
+  const BoundingBox &bounding_box() const
+  {
+    return bb_;
   }
 };
 
@@ -725,18 +848,21 @@ struct ITT_value {
   {
   }
   ITT_value(const ITT_value &other)
-  : kind(other.kind), p1(other.p1), p2(other.p2), t_source(other.t_source)
+      : kind(other.kind), p1(other.p1), p2(other.p2), t_source(other.t_source)
   {
   }
   ITT_value(ITT_value &&other) noexcept
-  : kind(other.kind), p1(std::move(other.p1)), p2(std::move(other.p2)),
-  t_source(other.t_source)
+      : kind(other.kind),
+        p1(std::move(other.p1)),
+        p2(std::move(other.p2)),
+        t_source(other.t_source)
   {
   }
   ~ITT_value()
   {
   }
-  ITT_value &operator=(const ITT_value &other) {
+  ITT_value &operator=(const ITT_value &other)
+  {
     if (this != &other) {
       kind = other.kind;
       p1 = other.p1;
@@ -1431,43 +1557,85 @@ static Mesh extract_single_tri(const Mesh &tm, uint t)
   return Mesh({f});
 }
 
-static Mesh calc_tri_subdivided(const Mesh &in_tm, uint t, MArena *arena)
+static bool bvhtreeverlap_cmp(const BVHTreeOverlap &a, const BVHTreeOverlap &b)
 {
-  constexpr int dbg_level = 0;
-  Vector<Facep> faces;
-
-  if (dbg_level > 0) {
-    std::cout << "\ncalc_tri_subdivided for tri " << t << "\n\n";
+  if (a.indexA < b.indexA) {
+    return true;
   }
-  Vector<ITT_value> itts;
-  for (int t_other : in_tm.face_index_range()) {
-    if (t_other == t) {
+  if (a.indexA == b.indexA & a.indexB < b.indexB) {
+    return true;
+  }
+  return false;
+}
+
+/* For each triangle in tm, fill in the corresponding slot in
+ * r_tri_subdivided with the result of intersecting it with
+ * all the other triangles in the mesh, if it intersects any others.
+ * But don't do this for triangles that are part of a cluster.
+ * Also, do nothing here if the answer is just the triangle itself.
+ * TODO: parallelize this loop.
+ */
+static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
+                                 const Mesh &tm,
+                                 const CoplanarClusterInfo &clinfo,
+                                 BVHTree *tri_tree,
+                                 MArena *arena)
+{
+  const int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "\nCALC_SUBDIVIDED_TRIS\n\n";
+  }
+  uint overlap_tot;
+  BVHTreeOverlap *overlap = BLI_bvhtree_overlap(tri_tree, tri_tree, &overlap_tot, NULL, NULL);
+  if (overlap == nullptr) {
+    return;
+  }
+  if (overlap_tot <= 1) {
+    MEM_freeN(overlap);
+    return;
+  }
+  /* Sort the overlaps to bring all the intersects with a given indexA together.   */
+  std::sort(overlap, overlap + overlap_tot, bvhtreeverlap_cmp);
+  uint overlap_index = 0;
+  while (overlap_index < overlap_tot) {
+    int t = overlap[overlap_index].indexA;
+    uint i = overlap_index;
+    while (i + 1 < overlap_tot && overlap[i + 1].indexA == t) {
+      ++i;
+    }
+    /* Now overlap[overlap_index] to overlap[i] have indexA == t. */
+    if (clinfo.tri_cluster(t) != NO_INDEX_U) {
+      /* Triangles in clusters are handled separately. */
+      overlap_index = i + 1;
       continue;
     }
-    /* Intersect t with t_other. */
-    ITT_value itt = intersect_tri_tri(in_tm, t, t_other);
-    if (dbg_level > 1) {
-      std::cout << "intersect " << t << " with " << t_other << " result: " << itt << "\n";
+    if (dbg_level > 0) {
+      std::cout << "tri t" << t << " maybe intersects with:\n";
     }
-    if (itt.kind != INONE) {
-      itts.append(itt);
+    constexpr int inline_capacity = 100;
+    Vector<ITT_value, inline_capacity> itts;
+    uint tu = static_cast<uint>(t);
+    for (uint j = overlap_index; j <= i; ++j) {
+      uint t_other = static_cast<uint>(overlap[j].indexB);
+      if (t_other == tu) {
+        continue;
+      }
+      ITT_value itt = intersect_tri_tri(tm, tu, t_other);
+      if (itt.kind != INONE) {
+        itts.append(itt);
+      }
+      if (dbg_level > 0) {
+        std::cout << "  tri t" << t_other << "; result = " << itt << "\n";
+      }
     }
+    if (itts.size() > 0) {
+      CDT_data cd_data = prepare_cdt_input(tm, tu, itts);
+      do_cdt(cd_data);
+      r_tri_subdivided[tu] = extract_subdivided_tri(cd_data, tm, tu, arena);
+    }
+    overlap_index = i + 1;
   }
-  Mesh ans;
-  if (itts.size() == 0) {
-    /* No intersections: answer is just the original triangle t. */
-    ans = extract_single_tri(in_tm, t);
-  }
-  else {
-    /* Use CDT to subdivide the triangle. */
-    CDT_data cd_data = prepare_cdt_input(in_tm, t, itts);
-    do_cdt(cd_data);
-    ans = extract_subdivided_tri(cd_data, in_tm, t, arena);
-  }
-  if (dbg_level > 0) {
-    std::cout << "\ncalc_tri_subdivided " << t << " result:\n" << ans;
-  }
-  return ans;
+  MEM_freeN(overlap);
 }
 
 static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
@@ -1692,7 +1860,7 @@ static bool non_trivially_coplanar_intersects(const Mesh &tm,
   return false;
 }
 
-static CoplanarClusterInfo find_clusters(const Mesh &tm)
+static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox> &tri_bb)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
@@ -1726,7 +1894,8 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm)
       Vector<CoplanarCluster *> int_cls;
       Vector<CoplanarCluster *> no_int_cls;
       for (CoplanarCluster &cl : curcls) {
-        if (non_trivially_coplanar_intersects(tm, t, cl, proj_axis)) {
+        if (bbs_might_intersect(tri_bb[t], cl.bounding_box()) &&
+            non_trivially_coplanar_intersects(tm, t, cl, proj_axis)) {
           int_cls.append(&cl);
         }
         else {
@@ -1735,21 +1904,21 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm)
       }
       if (int_cls.size() == 0) {
         /* t doesn't intersect any existing cluster in its plane, so make one just for it. */
-        curcls.append(CoplanarCluster(t));
+        curcls.append(CoplanarCluster(t, tri_bb[t]));
       }
       else if (int_cls.size() == 1) {
         /* t intersects exactly one existing cluster, so can add t to that cluster. */
-        int_cls[0]->add_tri(t);
+        int_cls[0]->add_tri(t, tri_bb[t]);
       }
       else {
         /* t intersections 2 or more existing clusters: need to merge them and replace all the
          * originals with the merged one in curcls.
          */
         CoplanarCluster mergecl;
-        mergecl.add_tri(t);
+        mergecl.add_tri(t, tri_bb[t]);
         for (CoplanarCluster *cl : int_cls) {
           for (uint t : *cl) {
-            mergecl.add_tri(t);
+            mergecl.add_tri(t, tri_bb[t]);
           }
         }
         Vector<CoplanarCluster> newvec;
@@ -1764,7 +1933,7 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm)
       if (dbg_level > 0) {
         std::cout << "first cluster for its plane\n";
       }
-      plane_cls.add_new(tplane, Vector<CoplanarCluster>{CoplanarCluster(t)});
+      plane_cls.add_new(tplane, Vector<CoplanarCluster>{CoplanarCluster(t, tri_bb[t])});
     }
   }
   /* Does this give deterministic order for cluster ids? I think so, since
@@ -1802,6 +1971,43 @@ static bool has_degenerate_tris(const Mesh &tm)
   return false;
 }
 
+/* Caller will be responsible for doing BLI_bvhtree_free on return val. */
+static BVHTree *bvhtree_for_tris(const Mesh &tm, const Array<BoundingBox> &tri_bb)
+{
+  /* Tree type is 8 => octtree; axis = 6 => using XYZ axes only. */
+  BVHTree *tri_tree = BLI_bvhtree_new(static_cast<int>(tm.face_size()), FLT_EPSILON, 8, 6);
+  float bbpts[6];
+  for (uint t : tm.face_index_range()) {
+    const BoundingBox &bb = tri_bb[t];
+    copy_v3_v3(bbpts, bb.min);
+    copy_v3_v3(bbpts + 3, bb.max);
+    BLI_bvhtree_insert(tri_tree, static_cast<int>(t), bbpts, 2);
+  }
+  BLI_bvhtree_balance(tri_tree);
+  return tri_tree;
+}
+
+/* Maybe return nullptr if there are no clsuters.
+ * If not, caller is responsible for doing BLI_bvhtree_free on return val.
+ */
+static BVHTree *bvhtree_for_clusters(const CoplanarClusterInfo &clinfo)
+{
+  int nc = static_cast<int>(clinfo.tot_cluster());
+  if (nc == 0) {
+    return nullptr;
+  }
+  BVHTree *cluster_tree = BLI_bvhtree_new(nc, FLT_EPSILON, 8, 6);
+  float bbpts[6];
+  for (uint c : clinfo.index_range()) {
+    const BoundingBox &bb = clinfo.cluster(c).bounding_box();
+    copy_v3_v3(bbpts, bb.min);
+    copy_v3_v3(bbpts + 3, bb.max);
+    BLI_bvhtree_insert(cluster_tree, static_cast<int>(c), bbpts, 2);
+  }
+  BLI_bvhtree_balance(cluster_tree);
+  return cluster_tree;
+}
+
 /* This is the main routine for calculating the self_intersection of a triangle mesh. */
 Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
 {
@@ -1816,34 +2022,38 @@ Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
     std::cout << "IMPLEMENT ME - remove degenerate and illegal tris\n";
     BLI_assert(false);
   }
-  CoplanarClusterInfo clinfo = find_clusters(tm_in);
+  Array<BoundingBox> tri_bb = calc_face_bounding_boxes(tm_in);
+  /* Clusters have at least two coplanar, non-trivially intersecting triangles. */
+  CoplanarClusterInfo clinfo = find_clusters(tm_in, tri_bb);
   if (dbg_level > 1) {
     std::cout << clinfo;
   }
-  blender::Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
+  BVHTree *tri_tree = bvhtree_for_tris(tm_in, tri_bb);
+  BVHTree *cluster_tree = bvhtree_for_clusters(clinfo);
+  Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (uint c : clinfo.index_range()) {
     cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tm_in, arena);
   }
   blender::Array<Mesh> tri_subdivided(tm_in.face_size());
+  calc_subdivided_tris(tri_subdivided, tm_in, clinfo, tri_tree, arena);
   for (uint t : tm_in.face_index_range()) {
     uint c = clinfo.tri_cluster(t);
-    if (c == NO_INDEX_U) {
-      tri_subdivided[t] = calc_tri_subdivided(tm_in, t, arena);
-      if (dbg_level > 1) {
-        std::cout << "tri_subdivided[" << t << "] (not in cluster)\n" << tri_subdivided[t];
-      }
-    }
-    else {
+    if (c != NO_INDEX_U) {
+      BLI_assert(tri_subdivided[t].face_size() == 0);
       tri_subdivided[t] = extract_subdivided_tri(cluster_subdivided[c], tm_in, t, arena);
-      if (dbg_level > 1) {
-        std::cout << "tri_subdivided[" << t << "] (in cluster " << c << ")\n" << tri_subdivided[t];
-      }
+    }
+    else if (tri_subdivided[t].face_size() == 0) {
+      tri_subdivided[t] = extract_single_tri(tm_in, t);
     }
   }
   Mesh combined = union_tri_subdivides(tri_subdivided);
   if (dbg_level > 1) {
     std::cout << "TRIMESH_SELF_INTERSECT answer:\n";
     std::cout << combined;
+  }
+  BLI_bvhtree_free(tri_tree);
+  if (cluster_tree != nullptr) {
+    BLI_bvhtree_free(cluster_tree);
   }
   return combined;
 }
@@ -1902,7 +2112,6 @@ void write_obj_mesh(Mesh &m, const std::string &objname)
   }
 
   std::string fname = std::string(objdir) + objname + std::string(".obj");
-  std::string matfname = std::string(objdir) + std::string("dumpobj.mtl");
   std::ofstream f;
   f.open(fname);
   if (!f) {

@@ -34,13 +34,12 @@ struct mpq2 {
   mpq2(mpq_class x, mpq_class y) : x(x), y(y)
   {
   }
-  
+
   mpq2(const mpq2 &other) : x(other.x), y(other.y)
   {
   }
-  
-  mpq2(mpq2 &&other) noexcept
-    : x(std::move(other.x)), y(std::move(other.y))
+
+  mpq2(mpq2 &&other) noexcept : x(std::move(other.x)), y(std::move(other.y))
   {
   }
 
@@ -54,7 +53,7 @@ struct mpq2 {
     }
     return *this;
   }
-  
+
   mpq2 &operator=(mpq2 &&other) noexcept
   {
     x = std::move(other.x);

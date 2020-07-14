@@ -1290,12 +1290,14 @@ template<typename T> class CrossData {
   {
   }
   CrossData(const CrossData &other)
-  : lambda(other.lambda), vert(other.vert), in(other.in), out(other.out)
+      : lambda(other.lambda), vert(other.vert), in(other.in), out(other.out)
   {
   }
   CrossData(CrossData &&other) noexcept
-  : lambda(std::move(other.lambda)), vert(std::move(other.vert)),
-  in(std::move(other.in)), out(std::move(other.out))
+      : lambda(std::move(other.lambda)),
+        vert(std::move(other.vert)),
+        in(std::move(other.in)),
+        out(std::move(other.out))
   {
   }
   ~CrossData() = default;
@@ -2003,23 +2005,23 @@ template<typename T> struct EdgeToSort {
   CDTEdge<T> *e{nullptr};
 
   EdgeToSort() = default;
-  EdgeToSort(const EdgeToSort &other)
-  : len_squared(other.len_squared), e(other.e)
+  EdgeToSort(const EdgeToSort &other) : len_squared(other.len_squared), e(other.e)
   {
   }
-  EdgeToSort(EdgeToSort &&other) noexcept
-  : len_squared(std::move(other.len_squared)), e(other.e)
+  EdgeToSort(EdgeToSort &&other) noexcept : len_squared(std::move(other.len_squared)), e(other.e)
   {
   }
   ~EdgeToSort() = default;
-  EdgeToSort &operator=(const EdgeToSort &other) {
+  EdgeToSort &operator=(const EdgeToSort &other)
+  {
     if (this != &other) {
       len_squared = other.len_squared;
       e = other.e;
     }
     return *this;
   }
-  EdgeToSort &operator=(EdgeToSort &&other) {
+  EdgeToSort &operator=(EdgeToSort &&other)
+  {
     len_squared = std::move(other.len_squared);
     e = other.e;
     return *this;
