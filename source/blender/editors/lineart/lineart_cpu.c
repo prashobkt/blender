@@ -2379,7 +2379,7 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
     ED_lineart_destroy_render_data();
   }
 
-  LineartRenderBuffer *rb = MEM_callocN(sizeof(LineartRenderBuffer), "LRT render buffer");
+  LineartRenderBuffer *rb = MEM_callocN(sizeof(LineartRenderBuffer), "Line Art render buffer");
 
   lineart_share.render_buffer_shared = rb;
   if (lineart_share.viewport_camera_override) {
@@ -3578,7 +3578,7 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_f
     lineart_share.background_render_task = NULL;
   }
 
-  LRT_FeatureLineWorker *flw = MEM_callocN(sizeof(LRT_FeatureLineWorker), "LRT Worker");
+  LRT_FeatureLineWorker *flw = MEM_callocN(sizeof(LRT_FeatureLineWorker), "Line Art Worker");
 
   flw->dg = dg;
   flw->intersection_only = 0 /* Not used for CPU */;
@@ -3905,7 +3905,7 @@ static bool lineart_active_is_source_object(bContext *C)
 void SCENE_OT_lineart_update_strokes(wmOperatorType *ot)
 {
   ot->name = "Update Line Art Strokes";
-  ot->description = "Update strokes for LRT grease pencil targets";
+  ot->description = "Update strokes for Line Art grease pencil targets";
   ot->idname = "SCENE_OT_lineart_update_strokes";
 
   ot->exec = lineart_update_gpencil_strokes_exec;
@@ -3915,7 +3915,7 @@ void SCENE_OT_lineart_update_strokes(wmOperatorType *ot)
 void SCENE_OT_lineart_bake_strokes(wmOperatorType *ot)
 {
   ot->name = "Bake Line Art Strokes";
-  ot->description = "Bake strokes for LRT grease pencil targets in all frames";
+  ot->description = "Bake Line Art into grease pencil strokes for all frames";
   ot->idname = "SCENE_OT_lineart_bake_strokes";
 
   ot->exec = lineart_bake_gpencil_strokes_exec;
