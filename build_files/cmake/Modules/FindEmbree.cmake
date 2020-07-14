@@ -41,18 +41,29 @@ FIND_PATH(EMBREE_INCLUDE_DIR
     include
 )
 
+if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
 
 SET(_embree_FIND_COMPONENTS
-  embree3
-  embree_avx
-  embree_avx2
-  embree_sse42
-  lexers
-  math
-  simd
-  sys
-  tasking
+    embree3
+    lexers
+    math
+    simd
+    sys
+    tasking
 )
+else()
+  SET(_embree_FIND_COMPONENTS
+    embree3
+    embree_avx
+    embree_avx2
+    embree_sse42
+    lexers
+    math
+    simd
+    sys
+    tasking
+  )
+endif()
 
 SET(_embree_LIBRARIES)
 FOREACH(COMPONENT ${_embree_FIND_COMPONENTS})
