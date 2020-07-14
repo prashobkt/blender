@@ -1395,7 +1395,7 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
     ort = mem_static_aquire(&rb->render_data_pool, bm->totface * rb->triangle_size);
     orl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine) * bm->totedge);
 
-    orig_ob = (Object *)(ob->id.orig_id ? ob->id.orig_id : ob);
+    orig_ob = ob->id.orig_id ? (Object *)ob->id.orig_id : ob;
 
     reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
                                             &rb->render_data_pool,
@@ -2581,7 +2581,7 @@ static void lineart_make_initial_bounding_areas(LineartRenderBuffer *rb)
 static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartBoundingArea *root)
 {
   LineartBoundingArea *ba = root->child, *tba;
-  LinkData *lip, *lip2, *next_lip;
+  LinkData *lip2, *next_lip;
   LineartStaticMemPool *mph = &rb->render_data_pool;
 
   /* Inter-connection with newly created 4 child bounding areas. */
@@ -3671,12 +3671,12 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
 
   Object *orig_ob = NULL;
   if (ob) {
-    orig_ob = (Object *)(ob->id.orig_id ? ob->id.orig_id : ob);
+    orig_ob = ob->id.orig_id ? (Object *)ob->id.orig_id : ob;
   }
 
   Collection *orig_col = NULL;
   if (col) {
-    orig_col = (Collection *)(col->id.orig_id ? col->id.orig_id : col);
+    orig_col = col->id.orig_id ? (Collection *)col->id.orig_id : col;
   }
   float mat[4][4];
   unit_m4(mat);
