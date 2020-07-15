@@ -719,10 +719,6 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
 
         layout.prop(lineart, "crease_threshold", slider=True)
 
-        col = layout.column()
-        col.prop(lineart, "master_thickness", slider=True)
-        col.prop(lineart, "master_strength", slider=True)
-
         col.prop(lineart, 'auto_update', text='Auto Update')
 
         if not scene.camera:

@@ -7379,22 +7379,6 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
-  prop = RNA_def_property(srna, "master_thickness", PROP_INT, PROP_NONE);
-  RNA_def_property_int_default(prop, 20);
-  RNA_def_property_ui_text(
-      prop, "Master Thickness", "The thickness that are used to generate strokes");
-  RNA_def_property_ui_range(prop, 1, 100, 1, 1);
-  RNA_def_property_range(prop, 1, 200);
-  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
-
-  prop = RNA_def_property(srna, "master_strength", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 0.1f);
-  RNA_def_property_ui_text(
-      prop, "Master Strength", "The strength value used to generate strokes.");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 2);
-  RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
-
   /* Below these two are only for grease pencil, thus no viewport updates. */
 
   prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);

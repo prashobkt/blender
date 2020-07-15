@@ -536,7 +536,9 @@ void ED_lineart_generate_gpencil_from_chain(struct Depsgraph *depsgraph,
                                             int level_end,
                                             int material_nr,
                                             struct Collection *col,
-                                            int types);
+                                            int types,
+                                            short thickness,
+                                            float opacity);
 void ED_generate_strokes_direct(struct Depsgraph *depsgraph,
                                 struct Object *ob,
                                 struct bGPDlayer *gpl,
@@ -546,7 +548,9 @@ void ED_generate_strokes_direct(struct Depsgraph *depsgraph,
                                 int level_start,
                                 int level_end,
                                 int mat_nr,
-                                short line_types);
+                                short line_types,
+                                short thickness,
+                                float opacity);
 
 struct bContext;
 

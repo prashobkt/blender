@@ -70,6 +70,8 @@ static void initData(GpencilModifierData *md)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   lmd->line_types = LRT_EDGE_FLAG_ALL_TYPE;
+  lmd->thickness = 25;
+  lmd->opacity = 1.0f;
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -92,7 +94,9 @@ static void generate_strokes_actual(
       lmd->level_start,
       lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
       lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
-      lmd->line_types);
+      lmd->line_types,
+      lmd->thickness,
+      lmd->opacity);
 }
 
 static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
@@ -242,6 +246,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   int source_type = RNA_enum_get(&ptr, "source_type");
 
   uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "opacity", 0, NULL, ICON_NONE);
 
   uiItemR(layout, &ptr, "source_type", 0, NULL, ICON_NONE);
 

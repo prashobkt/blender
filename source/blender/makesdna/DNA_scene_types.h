@@ -1719,10 +1719,8 @@ typedef struct SceneLineart {
 
   /* shared */
 
-  float contour_fade;     /* for dpix contour fading,reserved for future usage */
-  float crease_threshold; /* 0-1 range for cosine angle */
-  int master_thickness;   /* 0-100, in GP up to 1000*/
-  float master_strength;
+  float contour_fade;          /* for dpix contour fading,reserved for future usage */
+  float crease_threshold;      /* 0-1 range for cosine angle */
   float crease_fade_threshold; /* for dpix crease fading */
 
   float line_color[4];

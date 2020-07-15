@@ -824,6 +824,10 @@ typedef struct LineartGpencilModifierData {
   struct Material *target_material;
   char target_layer[64];
 
+  float opacity;
+  short thickness;
+  short _pad;
+
 } LineartGpencilModifierData;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

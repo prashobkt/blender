@@ -3666,7 +3666,9 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                             int level_end,
                                             int material_nr,
                                             Collection *col,
-                                            int types)
+                                            int types,
+                                            short thickness,
+                                            float opacity)
 {
   LineartRenderBuffer *rb = lineart_share.render_buffer_shared;
 
@@ -3692,8 +3694,6 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
   tempnum++;
   int color_idx = 0;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  short thickness = scene->lineart.master_thickness;
-  short opacity = scene->lineart.master_strength;
 
   Object *orig_ob = NULL;
   if (ob) {
@@ -3788,7 +3788,9 @@ void ED_generate_strokes_direct(Depsgraph *depsgraph,
                                 int level_start,
                                 int level_end,
                                 int mat_nr,
-                                short line_types)
+                                short line_types,
+                                short thickness,
+                                float opacity)
 {
 
   if (!gpl || !gpf || !source_reference || !ob) {
@@ -3815,7 +3817,9 @@ void ED_generate_strokes_direct(Depsgraph *depsgraph,
                                          level_end,
                                          mat_nr,
                                          source_collection,
-                                         use_types);
+                                         use_types,
+                                         thickness,
+                                         opacity);
 }
 
 static int lineart_update_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op))
@@ -3897,7 +3901,9 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
                 lmd->target_material ?
                     BKE_gpencil_object_material_index_get(ob, lmd->target_material) :
                     0,
-                lmd->line_types);
+                lmd->line_types,
+                lmd->thickness,
+                lmd->opacity);
           }
         }
       }
