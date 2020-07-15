@@ -269,37 +269,21 @@ float LightTree::compute_energy(const Primitive &prim)
     const Transform &tfm = scene->objects[prim.object_id]->tfm;
     float area = mesh->compute_triangle_area(triangle_id, tfm);
 
-    emission *= area * M_PI_F;
+    emission *= area * 4;
   }
   else {
     const Light *light = scene->lights[prim.lamp_id];
 
-    /* get emission from shader */
-    shader = light->shader;
-    bool is_constant_emission = shader->is_constant_emission(&emission);
-    if (!is_constant_emission) {
-      emission = make_float3(1.0f);
-    }
+    emission = light->strength;
 
-    /* calculate the total emission by integrating the emission over the
-     * the entire sphere of directions. */
+    /* calculate the max emission in a single direction. */
     if (light->type == LIGHT_POINT) {
-      emission *= M_4PI_F;
+      emission /= M_PI_F;
     }
     else if (light->type == LIGHT_SPOT) {
-      /* The emission is only non-zero within the cone and if spot_smooth
-       * is non-zero there will be a falloff. In this case, approximate
-       * the integral by considering a smaller cone without falloff. */
-      float spot_angle = light->spot_angle * 0.5f;
-      float spot_falloff_angle = spot_angle * (1.0f - light->spot_smooth);
-      float spot_middle_angle = (spot_angle + spot_falloff_angle) * 0.5f;
-      emission *= M_2PI_F * (1.0f - cosf(spot_middle_angle));
+      emission /= M_PI_F;
     }
     else if (light->type == LIGHT_AREA) {
-      float3 axisu = light->axisu * (light->sizeu * light->size);
-      float3 axisv = light->axisv * (light->sizev * light->size);
-      float area = len(axisu) * len(axisv);
-      emission *= area * M_PI_F;
     }
     else {
       /* LIGHT_DISTANT and LIGHT_BACKGROUND are handled separately */

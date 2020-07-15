@@ -507,6 +507,7 @@ void LightManager::device_update_distribution(Device *device,
 
         /* todo: is there a better way than recalcing this? */
         /* have getters for the light tree that just accesses build_data? */
+
         BoundBox bbox = light_tree.compute_bbox(emissive_prims[j]);
         Orientation bcone = light_tree.compute_bcone(emissive_prims[j]);
         float energy = light_tree.compute_energy(emissive_prims[j]);

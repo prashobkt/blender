@@ -113,7 +113,7 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
         float cdf_L = 0.0f;
         float cdf_R = 0.0f;
         float prob = 0.0f;
-        int light;
+        int light = num_emitters - 1;
         for (int i = 1; i < num_emitters + 1; ++i) {
           prob = calc_light_importance(kg, P, N, offset, i - 1) * sum_inv;
           cdf_R = cdf_L + prob;
@@ -167,6 +167,7 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
                                scale_factor);
 
       --stack_idx;
+      can_split = true;
       continue;
     }
     else {  // Interior node, choose which child(ren) to go down
@@ -220,6 +221,7 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
         }
 
         //++stack_idx;
+        can_split = false;
         randu_stack[stack_idx] = randu;
         randv_stack[stack_idx] = randv;
         offset_stack[stack_idx] = offset;
