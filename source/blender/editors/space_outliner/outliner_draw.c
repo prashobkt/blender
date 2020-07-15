@@ -3598,8 +3598,15 @@ static void outliner_draw_struct_marks(ARegion *region,
   }
 }
 
-static void outliner_draw_highlights_recursive(uint pos,
-                                               const ARegion *region,
+static void draw_line_highlight(int x, int y, int maxx, int maxy, const float color[4])
+{
+  const float pad = U.pixelsize;
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  UI_draw_roundbox_aa(
+      true, (float)x + pad, (float)y + pad, (float)maxx - pad, (float)maxy - pad, 5.0f, color);
+}
+
+static void outliner_draw_highlights_recursive(const ARegion *region,
                                                const SpaceOutliner *soops,
                                                const ListBase *lb,
                                                const float col_selection[4],
@@ -3618,12 +3625,11 @@ static void outliner_draw_highlights_recursive(uint pos,
 
     /* selection status */
     if ((tselem->flag & TSE_ACTIVE) && (tselem->flag & TSE_SELECTED)) {
-      immUniformColor4fv(col_active);
-      immRecti(pos, 0, start_y, (int)region->v2d.cur.xmax, start_y + UI_UNIT_Y);
+      draw_line_highlight(0, start_y, (int)region->v2d.cur.xmax, start_y + UI_UNIT_Y, col_active);
     }
     else if (tselem->flag & TSE_SELECTED) {
-      immUniformColor4fv(col_selection);
-      immRecti(pos, 0, start_y, (int)region->v2d.cur.xmax, start_y + UI_UNIT_Y);
+      draw_line_highlight(
+          0, start_y, (int)region->v2d.cur.xmax, start_y + UI_UNIT_Y, col_selection);
     }
 
     /* highlights */
@@ -3636,20 +3642,18 @@ static void outliner_draw_highlights_recursive(uint pos,
         UI_GetThemeColorShade4fv(TH_BACK, -40, col);
 
         if (tselem->flag & TSE_DRAG_BEFORE) {
-          immUniformColor4fv(col);
-          immRecti(pos,
-                   start_x,
-                   start_y + UI_UNIT_Y - U.pixelsize,
-                   end_x,
-                   start_y + UI_UNIT_Y + U.pixelsize);
+          draw_line_highlight(start_x,
+                              start_y + UI_UNIT_Y - (U.pixelsize * 2),
+                              end_x,
+                              start_y + UI_UNIT_Y + (U.pixelsize * 2),
+                              col);
         }
         else if (tselem->flag & TSE_DRAG_AFTER) {
-          immUniformColor4fv(col);
-          immRecti(pos, start_x, start_y - U.pixelsize, end_x, start_y + U.pixelsize);
+          draw_line_highlight(
+              start_x, start_y - (U.pixelsize * 2), end_x, start_y + (U.pixelsize * 2), col);
         }
         else {
-          immUniformColor3fvAlpha(col, col[3] * 0.5f);
-          immRecti(pos, start_x, start_y, end_x, start_y + UI_UNIT_Y);
+          draw_line_highlight(start_x, start_y, end_x, start_y + UI_UNIT_Y, col);
         }
       }
       else {
@@ -3657,21 +3661,18 @@ static void outliner_draw_highlights_recursive(uint pos,
           /* search match highlights
            *   we don't expand items when searching in the data-blocks but we
            *   still want to highlight any filter matches. */
-          immUniformColor4fv(col_searchmatch);
-          immRecti(pos, start_x, start_y, end_x, start_y + UI_UNIT_Y);
+          draw_line_highlight(start_x, start_y, end_x, start_y + UI_UNIT_Y, col_searchmatch);
         }
         else if (tselem->flag & TSE_HIGHLIGHTED) {
           /* mouse hover highlight */
-          immUniformColor4fv(col_highlight);
-          immRecti(pos, 0, start_y, end_x, start_y + UI_UNIT_Y);
+          draw_line_highlight(0, start_y, end_x, start_y + UI_UNIT_Y, col_highlight);
         }
       }
     }
 
     *io_start_y -= UI_UNIT_Y;
     if (TSELEM_OPEN(tselem, soops)) {
-      outliner_draw_highlights_recursive(pos,
-                                         region,
+      outliner_draw_highlights_recursive(region,
                                          soops,
                                          &te->subtree,
                                          col_selection,
@@ -3692,19 +3693,12 @@ static void outliner_draw_highlights(ARegion *region,
   const float col_highlight[4] = {1.0f, 1.0f, 1.0f, 0.13f};
   float col_selection[4], col_active[4], col_searchmatch[4];
 
-  UI_GetThemeColor3fv(TH_SELECT_HIGHLIGHT, col_selection);
-  col_selection[3] = 1.0f; /* no alpha */
-  UI_GetThemeColor3fv(TH_SELECT_ACTIVE, col_active);
-  col_active[3] = 1.0f; /* no alpha */
+  UI_GetThemeColor4fv(TH_SELECT_HIGHLIGHT, col_selection);
+  UI_GetThemeColor4fv(TH_SELECT_ACTIVE, col_active);
   UI_GetThemeColor4fv(TH_MATCH, col_searchmatch);
   col_searchmatch[3] = 0.5f;
 
-  GPU_blend(true);
-  GPUVertFormat *format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-  outliner_draw_highlights_recursive(pos,
-                                     region,
+  outliner_draw_highlights_recursive(region,
                                      soops,
                                      &soops->tree,
                                      col_selection,
@@ -3713,8 +3707,6 @@ static void outliner_draw_highlights(ARegion *region,
                                      col_searchmatch,
                                      startx,
                                      starty);
-  immUnbindProgram();
-  GPU_blend(false);
 }
 
 static void outliner_draw_tree(bContext *C,
