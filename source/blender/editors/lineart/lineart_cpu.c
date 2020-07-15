@@ -1588,15 +1588,12 @@ static void lineart_make_render_geometry_buffers(
   BLI_listbase_clear(&rb->triangle_buffer_pointers);
   BLI_listbase_clear(&rb->vertex_buffer_pointers);
 
-  DEG_OBJECT_ITER_BEGIN (depsgraph,
-                         ob,
-                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                             DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
+  DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN (depsgraph, ob) {
     int usage = ED_lineart_object_collection_usage_check(scene->master_collection, ob);
 
     lineart_make_render_geometry_buffers_object(ob, view, proj, rb, usage);
   }
-  DEG_OBJECT_ITER_END;
+  DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END;
 }
 
 #define INTERSECT_SORT_MIN_TO_MAX_3(ia, ib, ic, lst) \
