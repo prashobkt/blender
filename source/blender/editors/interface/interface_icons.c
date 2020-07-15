@@ -479,18 +479,18 @@ static void vicon_collection_color_draw(
   immUnbindProgram();
 }
 
-#  define DEF_ICON_COLLECTION_COLOR_DRAW(name, color) \
-    static void vicon_collection_color_draw_##name(int x, int y, int w, int h, float alpha) \
+#  define DEF_ICON_COLLECTION_COLOR_DRAW(index, color) \
+    static void vicon_collection_color_draw_##index(int x, int y, int w, int h, float alpha) \
     { \
       vicon_collection_color_draw(color, x, y, w, h, alpha); \
     }
 
-DEF_ICON_COLLECTION_COLOR_DRAW(red, COLLECTION_COLOR_RED);
-DEF_ICON_COLLECTION_COLOR_DRAW(orange, COLLECTION_COLOR_ORANGE);
-DEF_ICON_COLLECTION_COLOR_DRAW(yellow, COLLECTION_COLOR_YELLOW);
-DEF_ICON_COLLECTION_COLOR_DRAW(green, COLLECTION_COLOR_GREEN);
-DEF_ICON_COLLECTION_COLOR_DRAW(blue, COLLECTION_COLOR_BLUE);
-DEF_ICON_COLLECTION_COLOR_DRAW(purple, COLLECTION_COLOR_PURPLE);
+DEF_ICON_COLLECTION_COLOR_DRAW(01, COLLECTION_COLOR_01);
+DEF_ICON_COLLECTION_COLOR_DRAW(02, COLLECTION_COLOR_02);
+DEF_ICON_COLLECTION_COLOR_DRAW(03, COLLECTION_COLOR_03);
+DEF_ICON_COLLECTION_COLOR_DRAW(04, COLLECTION_COLOR_04);
+DEF_ICON_COLLECTION_COLOR_DRAW(05, COLLECTION_COLOR_05);
+DEF_ICON_COLLECTION_COLOR_DRAW(06, COLLECTION_COLOR_06);
 
 #  undef DEF_ICON_COLLECTION_COLOR_DRAW
 
@@ -1046,12 +1046,12 @@ static void init_internal_icons(void)
   def_internal_vicon(ICON_COLORSET_19_VEC, vicon_colorset_draw_19);
   def_internal_vicon(ICON_COLORSET_20_VEC, vicon_colorset_draw_20);
 
-  def_internal_vicon(ICON_COLLECTION_COLOR_RED, vicon_collection_color_draw_red);
-  def_internal_vicon(ICON_COLLECTION_COLOR_ORANGE, vicon_collection_color_draw_orange);
-  def_internal_vicon(ICON_COLLECTION_COLOR_YELLOW, vicon_collection_color_draw_yellow);
-  def_internal_vicon(ICON_COLLECTION_COLOR_GREEN, vicon_collection_color_draw_green);
-  def_internal_vicon(ICON_COLLECTION_COLOR_BLUE, vicon_collection_color_draw_blue);
-  def_internal_vicon(ICON_COLLECTION_COLOR_PURPLE, vicon_collection_color_draw_purple);
+  def_internal_vicon(ICON_COLLECTION_COLOR_01, vicon_collection_color_draw_01);
+  def_internal_vicon(ICON_COLLECTION_COLOR_02, vicon_collection_color_draw_02);
+  def_internal_vicon(ICON_COLLECTION_COLOR_03, vicon_collection_color_draw_03);
+  def_internal_vicon(ICON_COLLECTION_COLOR_04, vicon_collection_color_draw_04);
+  def_internal_vicon(ICON_COLLECTION_COLOR_05, vicon_collection_color_draw_05);
+  def_internal_vicon(ICON_COLLECTION_COLOR_06, vicon_collection_color_draw_06);
 }
 #  endif /* WITH_HEADLESS */
 
