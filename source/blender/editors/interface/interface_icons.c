@@ -491,6 +491,10 @@ DEF_ICON_COLLECTION_COLOR_DRAW(03, COLLECTION_COLOR_03);
 DEF_ICON_COLLECTION_COLOR_DRAW(04, COLLECTION_COLOR_04);
 DEF_ICON_COLLECTION_COLOR_DRAW(05, COLLECTION_COLOR_05);
 DEF_ICON_COLLECTION_COLOR_DRAW(06, COLLECTION_COLOR_06);
+DEF_ICON_COLLECTION_COLOR_DRAW(07, COLLECTION_COLOR_07);
+DEF_ICON_COLLECTION_COLOR_DRAW(08, COLLECTION_COLOR_08);
+DEF_ICON_COLLECTION_COLOR_DRAW(09, COLLECTION_COLOR_09);
+DEF_ICON_COLLECTION_COLOR_DRAW(10, COLLECTION_COLOR_10);
 
 #  undef DEF_ICON_COLLECTION_COLOR_DRAW
 
@@ -1052,6 +1056,10 @@ static void init_internal_icons(void)
   def_internal_vicon(ICON_COLLECTION_COLOR_04, vicon_collection_color_draw_04);
   def_internal_vicon(ICON_COLLECTION_COLOR_05, vicon_collection_color_draw_05);
   def_internal_vicon(ICON_COLLECTION_COLOR_06, vicon_collection_color_draw_06);
+  def_internal_vicon(ICON_COLLECTION_COLOR_07, vicon_collection_color_draw_07);
+  def_internal_vicon(ICON_COLLECTION_COLOR_08, vicon_collection_color_draw_08);
+  def_internal_vicon(ICON_COLLECTION_COLOR_09, vicon_collection_color_draw_09);
+  def_internal_vicon(ICON_COLLECTION_COLOR_10, vicon_collection_color_draw_10);
 }
 #  endif /* WITH_HEADLESS */
 

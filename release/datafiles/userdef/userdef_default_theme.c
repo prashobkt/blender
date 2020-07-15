@@ -1120,6 +1120,18 @@ const bTheme U_theme_default = {
     {
       .color = RGBA(0x8b65dcff),
     },
+    {
+      .color = RGBA(0x8b65dcff),
+    },
+    {
+      .color = RGBA(0x8b65dcff),
+    },
+    {
+      .color = RGBA(0x8b65dcff),
+    },
+    {
+      .color = RGBA(0x8b65dcff),
+    },
   },
 };
 
