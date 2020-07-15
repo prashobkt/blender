@@ -2767,6 +2767,14 @@ static void rna_def_modifier_boolean(BlenderRNA *brna)
       prop, "Overlap Threshold", "Threshold for checking overlapping geometry");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  prop = RNA_def_boolean(srna,
+                         "use_exact",
+                         true,
+                         "Exact",
+                         "Use the Exact-arithmetic boolean (slower, handles more cases");
+  RNA_def_property_boolean_sdna(prop, NULL, "bm_flag", eBooleanModifierBMeshFlag_BMesh_Exact);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   /* BMesh debugging options, only used when G_DEBUG is set */
 
   /* BMesh intersection options */

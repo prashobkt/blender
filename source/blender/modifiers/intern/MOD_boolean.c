@@ -61,6 +61,7 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
+#include "tools/bmesh_boolean.h"
 #include "tools/bmesh_intersect.h"
 
 #ifdef DEBUG_TIME
@@ -74,6 +75,7 @@ static void initData(ModifierData *md)
 
   bmd->double_threshold = 1e-6f;
   bmd->operation = eBooleanModifierOp_Difference;
+  bmd->bm_flag = eBooleanModifierBMeshFlag_BMesh_Exact;
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene),
@@ -309,8 +311,15 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
           use_island_connect = (bmd->bm_flag & eBooleanModifierBMeshFlag_BMesh_NoConnectRegions) ==
                                0;
         }
+  
+        bool use_exact = bmd->bm_flag & eBooleanModifierBMeshFlag_BMesh_Exact;
 
-        BM_mesh_intersect(bm,
+        if (use_exact) {
+          BM_mesh_boolean(bm, looptris, tottri, bm_face_isect_pair,
+                          NULL, false, bmd->operation);
+        }
+        else {
+          BM_mesh_intersect(bm,
                           looptris,
                           tottri,
                           bm_face_isect_pair,
@@ -323,6 +332,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                           false,
                           bmd->operation,
                           bmd->double_threshold);
+        }
 
         MEM_freeN(looptris);
       }
@@ -370,6 +380,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_exact", 0, NULL, ICON_NONE);
 
   if (G.debug) {
     uiLayout *col = uiLayoutColumn(layout, true);
