@@ -57,7 +57,7 @@ void main()
 
 #else
 #  ifdef POINTCLOUD
-  vec3 world_pos = point_object_to_world(pointcloud_get_pos());
+  vec3 world_pos = pointcloud_get_pos();
 #  else
   vec3 world_pos = point_object_to_world(pos);
 #  endif

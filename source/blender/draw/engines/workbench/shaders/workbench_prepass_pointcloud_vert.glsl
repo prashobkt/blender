@@ -8,9 +8,10 @@
 
 void main()
 {
-  vec3 world_pos = point_object_to_world(pointcloud_get_pos());
+  vec3 world_pos;
+  pointcloud_get_pos_and_nor(world_pos, normal_interp);
 
-  normal_interp = normalize(normal_world_to_view(pointcloud_get_nor()));
+  normal_interp = normalize(normal_world_to_view(normal_interp));
 
   gl_Position = point_world_to_ndc(world_pos);
 
