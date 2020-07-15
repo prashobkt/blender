@@ -166,6 +166,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 
   bGPdata *gpd = ob->data;
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
   if (gpl == NULL) {
@@ -176,10 +177,18 @@ static void bakeModifier(Main *UNUSED(bmain),
     return;
   }
 
-  while (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
-    ; /* TODO: Should use a "poll" callback to stop it from applying.
-       *For now just wait for it's done. */
+  if (scene->lineart.flags & LRT_AUTO_UPDATE) {
+    while (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
+      ; /* If auto update is on, line art would be running if  LRT_SYNC_WAITING is set, we just
+           wait for it's done.*/
+    }
   }
+  else if (!ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH) ||
+           !ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
+    /* If not auto updating, and the cache isn't available, then do not generate strokes. */
+    return;
+  }
+
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 }
 
