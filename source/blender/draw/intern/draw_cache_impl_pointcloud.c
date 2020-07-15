@@ -155,58 +155,51 @@ static void pointcloud_batch_cache_ensure_pos(Object *ob, PointCloudBatchCache *
   }
 
   PointCloud *pointcloud = ob->data;
+  const bool has_radius = pointcloud->radius != NULL;
 
   static GPUVertFormat format = {0};
+  static uint pos;
   if (format.attr_len == 0) {
     /* initialize vertex format */
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    /* From the opengl wiki:
+     * Note that size​ does not have to exactly match the size used by the vertex shader. If the
+     * vertex shader has fewer components than the attribute provides, then the extras are ignored.
+     * If the vertex shader has more components than the array provides, the extras are given
+     * values from the vector (0, 0, 0, 1) for the missing XYZW components.
+     */
+    int comp_len = has_radius ? 4 : 3;
+    pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, comp_len, GPU_FETCH_FLOAT);
   }
 
   cache->pos = GPU_vertbuf_create_with_format(&format);
   GPU_vertbuf_data_alloc(cache->pos, pointcloud->totpoint);
 
-  float(*vbo_data)[4] = (float(*)[4])cache->pos->data;
-
-  for (int i = 0; i < pointcloud->totpoint; i++) {
-    copy_v3_v3(vbo_data[i], pointcloud->co[i]);
-    if (pointcloud->radius) {
-      vbo_data[i][3] = pointcloud->radius[i];
+  if (has_radius) {
+    float(*vbo_data)[4] = (float(*)[4])cache->pos->data;
+    for (int i = 0; i < pointcloud->totpoint; i++) {
+      copy_v3_v3(vbo_data[i], pointcloud->co[i]);
+      /* TODO(fclem) remove multiplication here. Here only for keeping the size correct for now. */
+      vbo_data[i][3] = pointcloud->radius[i] * 100.0f;
     }
-    else {
-      vbo_data[i][3] = 0.01f;
-    }
+  }
+  else {
+    GPU_vertbuf_attr_fill(cache->pos, pos, pointcloud->co);
   }
 }
 
-static const float bone_box_smooth_normals[8][3] = {
-    {M_SQRT3, -M_SQRT3, M_SQRT3},
-    {M_SQRT3, -M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, -M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, -M_SQRT3, M_SQRT3},
-    {M_SQRT3, M_SQRT3, M_SQRT3},
-    {M_SQRT3, M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, M_SQRT3, M_SQRT3},
+static const float half_octahedron_normals[5][3] = {
+    {0.0f, 0.0f, 1.0f},
+    {1.0f, 0.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f},
+    {-1.0f, 0.0f, 0.0f},
+    {0.0f, -1.0f, 0.0f},
 };
 
-static const uint bone_box_solid_tris[12][3] = {
-    {0, 2, 1}, /* bottom */
-    {0, 3, 2},
-
-    {0, 1, 5}, /* sides */
-    {0, 5, 4},
-
-    {1, 2, 6},
-    {1, 6, 5},
-
-    {2, 3, 7},
-    {2, 7, 6},
-
-    {3, 0, 4},
-    {3, 4, 7},
-
-    {4, 5, 6}, /* top */
-    {4, 6, 7},
+static const uint half_octahedron_tris[4][3] = {
+    {0, 1, 2},
+    {0, 2, 3},
+    {0, 3, 4},
+    {0, 4, 1},
 };
 
 static void pointcloud_batch_cache_ensure_geom(Object *UNUSED(ob), PointCloudBatchCache *cache)
@@ -224,18 +217,18 @@ static void pointcloud_batch_cache_ensure_geom(Object *UNUSED(ob), PointCloudBat
   }
 
   cache->geom = GPU_vertbuf_create_with_format(&format);
-  GPU_vertbuf_data_alloc(cache->geom, ARRAY_SIZE(bone_box_smooth_normals));
+  GPU_vertbuf_data_alloc(cache->geom, ARRAY_SIZE(half_octahedron_normals));
 
-  GPU_vertbuf_attr_fill(cache->geom, pos, bone_box_smooth_normals);
+  GPU_vertbuf_attr_fill(cache->geom, pos, half_octahedron_normals);
 
   GPUIndexBufBuilder builder;
   GPU_indexbuf_init(&builder,
                     GPU_PRIM_TRIS,
-                    ARRAY_SIZE(bone_box_solid_tris),
-                    ARRAY_SIZE(bone_box_smooth_normals));
+                    ARRAY_SIZE(half_octahedron_tris),
+                    ARRAY_SIZE(half_octahedron_normals));
 
-  for (int i = 0; i < ARRAY_SIZE(bone_box_solid_tris); i++) {
-    GPU_indexbuf_add_tri_verts(&builder, UNPACK3(bone_box_solid_tris[i]));
+  for (int i = 0; i < ARRAY_SIZE(half_octahedron_tris); i++) {
+    GPU_indexbuf_add_tri_verts(&builder, UNPACK3(half_octahedron_tris[i]));
   }
 
   cache->geom_indices = GPU_indexbuf_build(&builder);
