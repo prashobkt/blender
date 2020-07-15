@@ -182,20 +182,15 @@ static bool bmesh_boolean(BMesh *bm,
     };
   }
   else {
-    /* Binary boolean operation.
-     * Because our boolean function's difference does shape 0 - shape 1,
-     * and Blender's convention is to do the opposite, reverse the shape
-     * assigment in this test.
-     */
     nshapes = 2;
     shape_fn = [bm, test_fn, user_data](int f) {
       BMFace *bmf = BM_face_at_index(bm, f);
       int test_val = test_fn(bmf, user_data);
       if (test_val == 0) {
-        return 1;
+        return 0;
       }
       if (test_val == 1) {
-        return 0;
+        return 1;
       }
       return -1;
     };
