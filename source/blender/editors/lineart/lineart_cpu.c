@@ -3445,7 +3445,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   SceneLineart *lineart = &scene->lineart;
   int intersections_only = 0; /* Not used right now, but preserve for future. */
 
-  if ((lineart->flags & LRT_ENABLED) == 0) {
+  if ((lineart->flags & LRT_AUTO_UPDATE) == 0) {
     /* Release lock when early return. */
     BLI_spin_unlock(&lineart_share.lock_loader);
     return OPERATOR_CANCELLED;
@@ -3967,7 +3967,7 @@ void SCENE_OT_lineart_bake_strokes(wmOperatorType *ot)
 
 void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph *dg)
 {
-  if ((scene->lineart.flags & LRT_ENABLED) == 0 || !(scene->lineart.flags & LRT_AUTO_UPDATE)) {
+  if (!(scene->lineart.flags & LRT_AUTO_UPDATE)) {
     return;
   }
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {

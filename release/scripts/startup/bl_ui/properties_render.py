@@ -706,14 +706,14 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, context):
-        self.layout.prop(context.scene.lineart, "enabled", text="")
+        self.layout.prop(context.scene.lineart, "auto_update", text="")
 
     def draw(self, context):
         scene = context.scene
         lineart = scene.lineart
 
         layout = self.layout
-        layout.active = lineart.enabled
+        layout.active = lineart.auto_update
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
@@ -721,7 +721,6 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
             col.label(text="No active camera.")
 
         else:
-            layout.prop(lineart, 'auto_update', text='Auto Update')
             layout.prop(lineart, "use_intersections")
 
             layout.prop(lineart, "crease_threshold", slider=True)

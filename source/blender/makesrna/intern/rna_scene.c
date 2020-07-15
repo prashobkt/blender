@@ -2590,19 +2590,6 @@ static void rna_lineart_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UN
   }
 }
 
-static void rna_lineart_enable_set(PointerRNA *ptr, bool value)
-{
-  SceneLineart *lineart = (SceneLineart *)ptr->data;
-
-  if (value) {
-    lineart->flags |= LRT_ENABLED;
-    ED_lineart_init_locks();
-  }
-  else {
-    lineart->flags &= ~LRT_ENABLED;
-  }
-}
-
 static char *rna_FFmpegSettings_path(PointerRNA *UNUSED(ptr))
 {
   return BLI_strdup("render.ffmpeg");
@@ -7303,18 +7290,12 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SceneLineart");
   RNA_def_struct_ui_text(srna, "Scene Line Art Config", "Line Art global config");
 
-  prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_ENABLED);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_lineart_enable_set");
-  RNA_def_property_ui_text(prop, "Enabled", "Is Line Art enabled");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_AUTO_UPDATE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
       prop, "Auto Update", "Automatically update Line Art cache when frame changes");
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "gpencil_overwrite", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_GPENCIL_OVERWRITE);

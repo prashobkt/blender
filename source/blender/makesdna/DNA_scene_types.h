@@ -1701,7 +1701,7 @@ typedef enum eLineartPostProcessingStatus {
 } eLineartPostProcessingStatus;
 
 typedef enum eLineartMainFlags {
-  LRT_ENABLED = (1 << 0),
+  LRT_ENABLED = (1 << 0), /* Deprecated right now. */
   /* For Line Art->GP and viewport to update automatically. */
   LRT_AUTO_UPDATE = (1 << 1),
   LRT_SAME_TAPER = (1 << 2),

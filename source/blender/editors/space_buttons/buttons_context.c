@@ -623,7 +623,7 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
       break;
     case BCONTEXT_LRT: /* This is for Line Art object flags */
 #ifdef WITH_LINEART
-      if (scene && ((scene->lineart.flags & LRT_ENABLED))) {
+      if (scene && (scene->lineart.flags & LRT_AUTO_UPDATE)) {
         found = buttons_context_path_object(path);
       }
       else {
