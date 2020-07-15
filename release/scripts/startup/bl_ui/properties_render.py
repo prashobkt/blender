@@ -717,37 +717,17 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
-        layout.prop(lineart, "crease_threshold", slider=True)
-
-        col.prop(lineart, 'auto_update', text='Auto Update')
-
         if not scene.camera:
-            has_camera = False
             col.label(text="No active camera.")
+
         else:
-            has_camera = True
+            layout.prop(lineart, 'auto_update', text='Auto Update')
+            layout.prop(lineart, "use_intersections")
 
-        c = col.column()
-        c.enabled = has_camera
+            layout.prop(lineart, "crease_threshold", slider=True)
 
-
-class RENDER_PT_lineart_options(RenderButtonsPanel, Panel):
-    bl_label = "Settings"
-    bl_parent_id = "RENDER_PT_lineart"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
-
-    def draw(self, context):
-        scene = context.scene
-        lineart = scene.lineart
-
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        layout.prop(lineart, "use_intersections")
-        layout.prop(lineart, "chaining_image_threshold")
-        layout.prop(lineart, "chaining_geometry_threshold")
+            layout.prop(lineart, "chaining_image_threshold")
+            layout.prop(lineart, "chaining_geometry_threshold")
 
 
 class RENDER_PT_lineart_baking(RenderButtonsPanel, Panel):
@@ -800,7 +780,6 @@ classes = (
     RENDER_PT_simplify_render,
     RENDER_PT_simplify_greasepencil,
     RENDER_PT_lineart,
-    RENDER_PT_lineart_options,
     RENDER_PT_lineart_baking,
 )
 

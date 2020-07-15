@@ -247,9 +247,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "thickness", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "opacity", 0, NULL, ICON_NONE);
-
   uiItemR(layout, &ptr, "source_type", 0, NULL, ICON_NONE);
 
   if (source_type == LRT_SOURCE_OBJECT) {
@@ -279,6 +276,11 @@ static void occlusion_panel_draw(const bContext *C, Panel *panel)
 
   uiLayout *layout = panel->layout;
 
+  uiLayoutSetPropSep(layout, true);
+
+  uiItemR(layout, &ptr, "thickness", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "opacity", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
   bool use_multiple_levels = RNA_boolean_get(&ptr, "use_multiple_levels");
 
   uiItemR(layout, &ptr, "use_multiple_levels", 0, "Multiple Levels", ICON_NONE);
@@ -299,7 +301,7 @@ static void panelRegister(ARegionType *region_type)
       region_type, eGpencilModifierType_Lineart, panel_draw);
 
   gpencil_modifier_subpanel_register(
-      region_type, "occlusion", "Occlusion", NULL, occlusion_panel_draw, panel_type);
+      region_type, "settings", "Settings", NULL, occlusion_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Lineart = {
