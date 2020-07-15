@@ -589,7 +589,7 @@ typedef struct EEVEE_ObjectKey {
   /** Parent object for duplis */
   struct Object *parent;
   /** Dupli objects recursive unique identifier */
-  int id[16]; /* 2*MAX_DUPLI_RECUR */
+  int id[8]; /* MAX_DUPLI_RECUR */
 } EEVEE_ObjectKey;
 
 typedef struct EEVEE_ObjectMotionData {
@@ -1012,8 +1012,8 @@ void EEVEE_material_bind_resources(DRWShadingGroup *shgrp,
                                    struct GPUMaterial *gpumat,
                                    EEVEE_ViewLayerData *sldata,
                                    EEVEE_Data *vedata,
-                                   int *ssr_id,
-                                   float *refract_depth,
+                                   const int *ssr_id,
+                                   const float *refract_depth,
                                    bool use_ssrefraction,
                                    bool use_alpha_blend);
 /* eevee_lights.c */

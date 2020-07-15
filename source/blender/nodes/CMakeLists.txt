@@ -30,6 +30,7 @@ set(INC
   ../blenlib
   ../blentranslation
   ../depsgraph
+  ../functions
   ../gpu
   ../imbuf
   ../makesdna
@@ -37,6 +38,7 @@ set(INC
   ../render/extern/include
   ../../../intern/glew-mx
   ../../../intern/guardedalloc
+  ../../../intern/sky/include
 )
 
 set(INC_SYS
@@ -176,7 +178,7 @@ set(SRC
   shader/nodes/node_shader_light_path.c
   shader/nodes/node_shader_map_range.c
   shader/nodes/node_shader_mapping.c
-  shader/nodes/node_shader_math.c
+  shader/nodes/node_shader_math.cc
   shader/nodes/node_shader_mixRgb.c
   shader/nodes/node_shader_mix_shader.c
   shader/nodes/node_shader_normal.c
@@ -192,7 +194,7 @@ set(SRC
   shader/nodes/node_shader_script.c
   shader/nodes/node_shader_sepcombHSV.c
   shader/nodes/node_shader_sepcombRGB.c
-  shader/nodes/node_shader_sepcombXYZ.c
+  shader/nodes/node_shader_sepcombXYZ.cc
   shader/nodes/node_shader_shaderToRgb.c
   shader/nodes/node_shader_squeeze.c
   shader/nodes/node_shader_subsurface_scattering.c
@@ -214,10 +216,10 @@ set(SRC
   shader/nodes/node_shader_uvAlongStroke.c
   shader/nodes/node_shader_uvmap.c
   shader/nodes/node_shader_valToRgb.c
-  shader/nodes/node_shader_value.c
+  shader/nodes/node_shader_value.cc
   shader/nodes/node_shader_vectTransform.c
   shader/nodes/node_shader_vector_displacement.c
-  shader/nodes/node_shader_vector_math.c
+  shader/nodes/node_shader_vector_math.cc
   shader/nodes/node_shader_vector_rotate.c
   shader/nodes/node_shader_vertex_color.c
   shader/nodes/node_shader_volume_absorption.c
@@ -277,7 +279,7 @@ set(SRC
   intern/node_util.c
 
   composite/node_composite_util.h
-  function/node_function_util.h
+  function/node_function_util.hh
   shader/node_shader_util.h
   simulation/node_simulation_util.h
   texture/node_texture_util.h
@@ -296,6 +298,8 @@ set(SRC
 )
 
 set(LIB
+  bf_functions
+  bf_intern_sky
 )
 
 if(WITH_PYTHON)

@@ -1,3 +1,5 @@
+/* Apache License, Version 2.0 */
+
 #include "BLI_span.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_vector.hh"
@@ -281,6 +283,16 @@ TEST(span, CastLargerSize)
 
   EXPECT_EQ(a_span.size(), 4u);
   EXPECT_EQ(new_a_span.size(), 2u);
+}
+
+TEST(span, VoidPointerSpan)
+{
+  int a;
+  float b;
+  double c;
+
+  auto func1 = [](Span<void *> span) { EXPECT_EQ(span.size(), 3u); };
+  func1({&a, &b, &c});
 }
 
 }  // namespace blender

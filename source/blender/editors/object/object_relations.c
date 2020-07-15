@@ -1878,7 +1878,7 @@ static void single_obdata_users(
             /* Needed to remap texcomesh below. */
             me = ob->data = ID_NEW_SET(ob->data, BKE_mesh_copy(bmain, ob->data));
             if (me->key) { /* We do not need to set me->key->id.newid here... */
-              BKE_animdata_copy_id_action(bmain, (ID *)me->key, false);
+              BKE_animdata_copy_id_action(bmain, (ID *)me->key);
             }
             break;
           case OB_MBALL:
@@ -1891,13 +1891,13 @@ static void single_obdata_users(
             ID_NEW_REMAP(cu->bevobj);
             ID_NEW_REMAP(cu->taperobj);
             if (cu->key) { /* We do not need to set cu->key->id.newid here... */
-              BKE_animdata_copy_id_action(bmain, (ID *)cu->key, false);
+              BKE_animdata_copy_id_action(bmain, (ID *)cu->key);
             }
             break;
           case OB_LATTICE:
             ob->data = lat = ID_NEW_SET(ob->data, BKE_lattice_copy(bmain, ob->data));
             if (lat->key) { /* We do not need to set lat->key->id.newid here... */
-              BKE_animdata_copy_id_action(bmain, (ID *)lat->key, false);
+              BKE_animdata_copy_id_action(bmain, (ID *)lat->key);
             }
             break;
           case OB_ARMATURE:
@@ -1937,7 +1937,7 @@ static void single_obdata_users(
          * AnimData structure, which is not what we want.
          *                                             (sergey)
          */
-        BKE_animdata_copy_id_action(bmain, (ID *)ob->data, false);
+        BKE_animdata_copy_id_action(bmain, (ID *)ob->data);
 
         id_us_min(id);
       }
@@ -1958,7 +1958,7 @@ static void single_object_action_users(
   FOREACH_OBJECT_FLAG_BEGIN (scene, view_layer, v3d, flag, ob) {
     if (!ID_IS_LINKED(ob)) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-      BKE_animdata_copy_id_action(bmain, &ob->id, false);
+      BKE_animdata_copy_id_action(bmain, &ob->id);
     }
   }
   FOREACH_OBJECT_FLAG_END;
@@ -1980,7 +1980,7 @@ static void single_mat_users(
 
           if (ma->id.us > 1) {
             man = BKE_material_copy(bmain, ma);
-            BKE_animdata_copy_id_action(bmain, &man->id, false);
+            BKE_animdata_copy_id_action(bmain, &man->id);
 
             man->id.us = 0;
             BKE_object_material_assign(bmain, ob, man, a, BKE_MAT_ASSIGN_USERPREF);
@@ -2242,28 +2242,6 @@ void OBJECT_OT_make_local(wmOperatorType *ot)
 /** \name Make Library Override Operator
  * \{ */
 
-static bool make_override_hierarchy_recursive_tag(Main *bmain, ID *id)
-{
-  MainIDRelationsEntry *entry = BLI_ghash_lookup(bmain->relations->id_user_to_used, id);
-
-  /* This way we won't process again that ID should we encounter it again through another
-   * relationship hierarchy.
-   * Note that this does not free any memory from relations, so we can still use the entries.
-   */
-  BKE_main_relations_ID_remove(bmain, id);
-
-  for (; entry != NULL; entry = entry->next) {
-    /* We only consider IDs from the same library. */
-    if (entry->id_pointer != NULL && (*entry->id_pointer)->lib == id->lib) {
-      if (make_override_hierarchy_recursive_tag(bmain, *entry->id_pointer)) {
-        id->tag |= LIB_TAG_DOIT;
-      }
-    }
-  }
-
-  return (id->tag & LIB_TAG_DOIT) != 0;
-}
-
 static int make_override_tag_ids_cb(LibraryIDLinkCallbackData *cb_data)
 {
   if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_LOOPBACK)) {
@@ -2315,14 +2293,9 @@ static int make_override_library_invoke(bContext *C, wmOperator *op, const wmEve
     return OPERATOR_CANCELLED;
   }
 
-  /* Get object to work on - use a menu if we need to... */
-  if (!ID_IS_LINKED(obact) && obact->instance_collection != NULL &&
-      ID_IS_LINKED(obact->instance_collection)) {
-    /* Gives menu with list of objects in group. */
-    WM_enum_search_invoke(C, op, event);
-    return OPERATOR_CANCELLED;
-  }
-  if (ID_IS_LINKED(obact)) {
+  if ((!ID_IS_LINKED(obact) && obact->instance_collection != NULL &&
+       ID_IS_OVERRIDABLE_LIBRARY(obact->instance_collection)) ||
+      ID_IS_OVERRIDABLE_LIBRARY(obact)) {
     uiPopupMenu *pup = UI_popup_menu_begin(C, IFACE_("OK?"), ICON_QUESTION);
     uiLayout *layout = UI_popup_menu_layout(pup);
 
@@ -2336,6 +2309,11 @@ static int make_override_library_invoke(bContext *C, wmOperator *op, const wmEve
 
     /* This invoke just calls another instance of this operator... */
     return OPERATOR_INTERFACE;
+  }
+  else if (ID_IS_LINKED(obact)) {
+    /* Show menu with list of directly linked collections containing the active object. */
+    WM_enum_search_invoke(C, op, event);
+    return OPERATOR_CANCELLED;
   }
 
   /* Error.. cannot continue. */
@@ -2366,11 +2344,28 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
     id_root = &obact->instance_collection->id;
   }
   else if (!ID_IS_OVERRIDABLE_LIBRARY(obact)) {
-    BKE_reportf(op->reports,
-                RPT_ERROR_INVALID_INPUT,
-                "Active object '%s' is not overridable",
-                obact->id.name + 2);
-    return OPERATOR_CANCELLED;
+    const int i = RNA_property_enum_get(op->ptr, op->type->prop);
+    const uint collection_session_uuid = *((uint *)&i);
+    if (collection_session_uuid == MAIN_ID_SESSION_UUID_UNSET) {
+      BKE_reportf(op->reports,
+                  RPT_ERROR_INVALID_INPUT,
+                  "Active object '%s' is not overridable",
+                  obact->id.name + 2);
+      return OPERATOR_CANCELLED;
+    }
+
+    Collection *collection = BLI_listbase_bytes_find(&bmain->collections,
+                                                     &collection_session_uuid,
+                                                     sizeof(collection_session_uuid),
+                                                     offsetof(ID, session_uuid));
+    if (!ID_IS_OVERRIDABLE_LIBRARY(collection)) {
+      BKE_reportf(op->reports,
+                  RPT_ERROR_INVALID_INPUT,
+                  "Could not find an overridable collection containing object '%s'",
+                  obact->id.name + 2);
+      return OPERATOR_CANCELLED;
+    }
+    id_root = &collection->id;
   }
   /* Else, poll func ensures us that ID_IS_LINKED(obact) is true. */
   else {
@@ -2399,12 +2394,8 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* Then we tag all intermediary data-blocks in-between two overridden ones (e.g. if a shapekey
-   * has a driver using an armature object's bone, we need to override the shapekey/obdata, the
-   * objects using them, etc.) */
-  make_override_hierarchy_recursive_tag(bmain, id_root);
-
-  BKE_main_relations_free(bmain);
+  /* Note that this call will also free the main relations data we created above. */
+  BKE_lib_override_library_dependencies_tag(bmain, id_root, LIB_TAG_DOIT, false);
 
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
@@ -2523,10 +2514,40 @@ static bool make_override_library_poll(bContext *C)
   Object *obact = CTX_data_active_object(C);
 
   /* Object must be directly linked to be overridable. */
-  return (BKE_lib_override_library_is_enabled() && ED_operator_objectmode(C) && obact != NULL &&
-          ((ID_IS_LINKED(obact) && obact->id.tag & LIB_TAG_EXTERN) ||
-           (!ID_IS_LINKED(obact) && obact->instance_collection != NULL &&
-            ID_IS_LINKED(obact->instance_collection))));
+  return (ED_operator_objectmode(C) && obact != NULL &&
+          (ID_IS_LINKED(obact) || (obact->instance_collection != NULL &&
+                                   ID_IS_OVERRIDABLE_LIBRARY(obact->instance_collection))));
+}
+
+static const EnumPropertyItem *make_override_collections_of_linked_object_itemf(
+    bContext *C, PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
+{
+  EnumPropertyItem item_tmp = {0}, *item = NULL;
+  int totitem = 0;
+
+  Object *object = ED_object_active_context(C);
+  Main *bmain = CTX_data_main(C);
+
+  if (!object || !ID_IS_LINKED(object)) {
+    return DummyRNA_DEFAULT_items;
+  }
+
+  LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
+    /* Only check for directly linked collections. */
+    if (!ID_IS_LINKED(&collection->id) || (collection->id.tag & LIB_TAG_INDIRECT) != 0) {
+      continue;
+    }
+    if (BKE_collection_has_object_recursive(collection, object)) {
+      item_tmp.identifier = item_tmp.name = collection->id.name + 2;
+      item_tmp.value = *((int *)&collection->id.session_uuid);
+      RNA_enum_item_add(&item, &totitem, &item_tmp);
+    }
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
 }
 
 void OBJECT_OT_make_override_library(wmOperatorType *ot)
@@ -2547,12 +2568,13 @@ void OBJECT_OT_make_override_library(wmOperatorType *ot)
   /* properties */
   PropertyRNA *prop;
   prop = RNA_def_enum(ot->srna,
-                      "object",
+                      "collection",
                       DummyRNA_DEFAULT_items,
-                      0,
-                      "Override Object",
-                      "Name of lib-linked/collection object to make an override from");
-  RNA_def_enum_funcs(prop, proxy_collection_object_itemf);
+                      MAIN_ID_SESSION_UUID_UNSET,
+                      "Override Collection",
+                      "Name of directly linked collection containing the selected object, to make "
+                      "an override from");
+  RNA_def_enum_funcs(prop, make_override_collections_of_linked_object_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
 }

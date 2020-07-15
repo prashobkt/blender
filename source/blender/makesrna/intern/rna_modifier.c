@@ -1639,6 +1639,40 @@ static void rna_SimulationModifier_simulation_update(Main *bmain, Scene *scene, 
   rna_Modifier_dependency_update(bmain, scene, ptr);
 }
 
+static void rna_SimulationModifier_data_path_get(PointerRNA *ptr, char *value)
+{
+  SimulationModifierData *smd = ptr->data;
+
+  if (smd->data_path) {
+    strcpy(value, smd->data_path);
+  }
+  else {
+    value[0] = '\0';
+  }
+}
+
+static int rna_SimulationModifier_data_path_length(PointerRNA *ptr)
+{
+  SimulationModifierData *smd = ptr->data;
+  return smd->data_path ? strlen(smd->data_path) : 0;
+}
+
+static void rna_SimulationModifier_data_path_set(PointerRNA *ptr, const char *value)
+{
+  SimulationModifierData *smd = ptr->data;
+
+  if (smd->data_path) {
+    MEM_freeN(smd->data_path);
+  }
+
+  if (value[0]) {
+    smd->data_path = BLI_strdup(value);
+  }
+  else {
+    smd->data_path = NULL;
+  }
+}
+
 /**
  * Special set callback that just changes the first bit of the expansion flag.
  * This way the expansion state of all the sub-panels is not changed by RNA.
@@ -1652,6 +1686,17 @@ static void rna_Modifier_show_expanded_set(PointerRNA *ptr, bool value)
   else {
     md->ui_expand_flag &= ~(1 << 0);
   }
+}
+
+/**
+ * Only check the first bit of the expansion flag for the main panel's expansion,
+ * maintaining compatibility with older versions where there was only one expansion
+ * value.
+ */
+static bool rna_Modifier_show_expanded_get(PointerRNA *ptr)
+{
+  ModifierData *md = ptr->data;
+  return md->ui_expand_flag & (1 << 0);
 }
 
 #else
@@ -6859,6 +6904,10 @@ static void rna_def_modifier_simulation(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_SimulationModifier_simulation_update");
 
   prop = RNA_def_property(srna, "data_path", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_SimulationModifier_data_path_get",
+                                "rna_SimulationModifier_data_path_length",
+                                "rna_SimulationModifier_data_path_set");
   RNA_def_property_ui_text(
       prop, "Data Path", "Identifier of the simulation component that should be accessed");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
@@ -6921,7 +6970,8 @@ void RNA_def_modifier(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_Modifier_show_expanded_set");
+  RNA_def_property_boolean_funcs(
+      prop, "rna_Modifier_show_expanded_get", "rna_Modifier_show_expanded_set");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_boolean_sdna(prop, NULL, "ui_expand_flag", 0);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);

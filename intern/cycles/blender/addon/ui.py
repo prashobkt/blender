@@ -265,7 +265,12 @@ class CYCLES_RENDER_PT_sampling_denoising(CyclesButtonsPanel, Panel):
         row = heading.row(align=True)
         row.prop(cscene, "use_denoising", text="")
         sub = row.row()
+
         sub.active = cscene.use_denoising
+        for view_layer in scene.view_layers:
+            if view_layer.cycles.denoising_store_passes:
+                sub.active = True
+
         sub.prop(cscene, "denoiser", text="")
 
         heading = layout.column(align=False, heading="Viewport")
@@ -777,10 +782,6 @@ class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
         col.prop(view_layer, "use_solid", text="Surfaces")
         col.prop(view_layer, "use_strand", text="Hair")
         col.prop(view_layer, "use_volumes", text="Volumes")
-        if with_freestyle:
-            sub = col.row(align=True)
-            sub.prop(view_layer, "use_freestyle", text="Freestyle")
-            sub.active = rd.use_freestyle
 
 
 class CYCLES_RENDER_PT_override(CyclesButtonsPanel, Panel):
@@ -1007,6 +1008,7 @@ class CYCLES_RENDER_PT_denoising(CyclesButtonsPanel, Panel):
             col.prop(cycles_view_layer, "denoising_optix_input_passes")
             return
         elif denoiser == 'OPENIMAGEDENOISE':
+            col.prop(cycles_view_layer, "denoising_openimagedenoise_input_passes")
             return
 
         col.prop(cycles_view_layer, "denoising_radius", text="Radius")
@@ -2026,6 +2028,7 @@ class CYCLES_RENDER_PT_debug(CyclesButtonsPanel, Panel):
         col = layout.column()
         col.label(text="OptiX Flags:")
         col.prop(cscene, "debug_optix_cuda_streams")
+        col.prop(cscene, "debug_optix_curves_api")
 
         col.separator()
 
