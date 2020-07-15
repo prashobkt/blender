@@ -3871,6 +3871,8 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
 
     FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
         scene->master_collection, ob, DAG_EVAL_RENDER) {
+
+      int cleared = 0;
       if (ob->type == OB_GPENCIL) {
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
           if (md->type == eGpencilModifierType_Lineart) {
@@ -3880,9 +3882,11 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
             bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
 
             /* Clear original frame */
-            if ((scene->lineart.flags & LRT_GPENCIL_OVERWRITE) && gpf->strokes.first) {
+            if ((scene->lineart.flags & LRT_GPENCIL_OVERWRITE) && gpf->strokes.first &&
+                (!cleared)) {
               BKE_gpencil_layer_frame_delete(gpl, gpf);
               gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
+              cleared = 1;
             }
 
             ED_generate_strokes_direct(
