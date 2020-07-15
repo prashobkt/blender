@@ -1314,7 +1314,9 @@ static void lineart_perspective_division(LineartRenderBuffer *rb)
   LISTBASE_FOREACH (LineartRenderElementLinkNode *, reln, &rb->vertex_buffer_pointers) {
     rv = reln->pointer;
     for (i = 0; i < reln->element_count; i++) {
-      mul_v3db_db(rv[i].fbcoord, 1 / rv[i].fbcoord[3]);
+      /* Do not divide Z, we use Z to back transform cut points in later chaining process. */
+      rv[i].fbcoord[0] /= rv[i].fbcoord[3];
+      rv[i].fbcoord[1] /= rv[i].fbcoord[3];
       rv[i].fbcoord[0] -= rb->shift_x * 2;
       rv[i].fbcoord[1] -= rb->shift_y * 2;
     }
