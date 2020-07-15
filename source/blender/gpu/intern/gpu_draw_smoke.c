@@ -295,6 +295,28 @@ static GPUTexture *create_flame_texture(FluidDomainSettings *fds, int highres)
   return tex;
 }
 
+static bool get_smoke_velocity_field(FluidDomainSettings *fds,
+                                     float **r_velocity_x,
+                                     float **r_velocity_y,
+                                     float **r_velocity_z)
+{
+  const char grid_type = fds->vector_draw_grid_type;
+  switch (grid_type) {
+    case VECTOR_DRAW_GRID_FLUID_VELOCITY:
+      *r_velocity_x = manta_get_velocity_x(fds->fluid);
+      *r_velocity_y = manta_get_velocity_y(fds->fluid);
+      *r_velocity_z = manta_get_velocity_z(fds->fluid);
+      break;
+    case VECTOR_DRAW_GRID_GUIDE_VELOCITY:
+      *r_velocity_x = manta_get_guide_velocity_x(fds->fluid);
+      *r_velocity_y = manta_get_guide_velocity_y(fds->fluid);
+      *r_velocity_z = manta_get_guide_velocity_z(fds->fluid);
+      break;
+  }
+
+  return *r_velocity_x && *r_velocity_y && *r_velocity_z;
+}
+
 #endif /* WITH_FLUID */
 
 /** \} */
@@ -401,28 +423,6 @@ void GPU_create_smoke(FluidModifierData *fmd, int highres)
 #endif /* WITH_FLUID */
 }
 
-bool get_smoke_velocity_field(FluidDomainSettings *fds,
-                              const float **r_velocity_x,
-                              const float **r_velocity_y,
-                              const float **r_velocity_z)
-{
-  const char grid_type = fds->vector_draw_grid_type;
-  switch (grid_type) {
-    case VECTOR_DRAW_GRID_FLUID_VELOCITY:
-      *r_velocity_x = manta_get_velocity_x(fds->fluid);
-      *r_velocity_y = manta_get_velocity_y(fds->fluid);
-      *r_velocity_z = manta_get_velocity_z(fds->fluid);
-      break;
-    case VECTOR_DRAW_GRID_GUIDE_VELOCITY:
-      *r_velocity_x = manta_get_guide_velocity_x(fds->fluid);
-      *r_velocity_y = manta_get_guide_velocity_y(fds->fluid);
-      *r_velocity_z = manta_get_guide_velocity_z(fds->fluid);
-      break;
-  }
-
-  return *r_velocity_x && *r_velocity_y && *r_velocity_z;
-}
-
 void GPU_create_smoke_velocity(FluidModifierData *fmd)
 {
 #ifndef WITH_FLUID
@@ -430,7 +430,7 @@ void GPU_create_smoke_velocity(FluidModifierData *fmd)
 #else
   if (fmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *fds = fmd->domain;
-    const float *vel_x, *vel_y, *vel_z;
+    float *vel_x = NULL, *vel_y = NULL, *vel_z = NULL;
 
     if (!get_smoke_velocity_field(fds, &vel_x, &vel_y, &vel_z)) {
       fds->vector_draw_grid_type = VECTOR_DRAW_GRID_FLUID_VELOCITY;
