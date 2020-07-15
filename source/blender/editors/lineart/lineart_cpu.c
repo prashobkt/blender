@@ -3832,6 +3832,7 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   int frame_begin = scene->r.sfra;
   int frame_end = scene->r.efra;
   int frame_total = frame_end - frame_begin;
+  int frame_orig = scene->r.cfra;
   LineartGpencilModifierData *lmd;
 
   /* Needed for progress report. */
@@ -3889,6 +3890,10 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
     }
     FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
   }
+
+  /* Restore original frame. */
+  BKE_scene_frame_set(scene, frame_orig);
+  BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
 
   ED_lineart_modifier_sync_set_flag(LRT_SYNC_IDLE, false);
   ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
