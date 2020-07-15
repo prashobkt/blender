@@ -34,6 +34,7 @@
 #include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_customdata.h"
+#include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_geom.h"
 #include "BKE_gpencil_modifier.h"
@@ -3670,13 +3671,17 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
   LineartRenderBuffer *rb = lineart_share.render_buffer_shared;
 
   if (rb == NULL) {
-    printf("NULL Lineart rb!\n");
+    if (G.debug_value == 4000) {
+      printf("NULL Lineart rb!\n");
+    }
     return;
   }
 
   if ((!lineart_share.init_complete) || !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
     /* cache not ready */
-    printf("Line art cache not ready.\n");
+    if (G.debug_value == 4000) {
+      printf("Line art cache isn't ready!\n");
+    }
     return;
   }
   else {
@@ -4003,9 +4008,10 @@ void ED_lineart_update_render_progress(int nr, const char *info)
       WM_progress_set(lineart_share.main_window, (float)nr / 100);
     }
   }
-#ifdef DEBUG
-  if (info) {
-    printf("%s\n", info);
+
+  if (G.debug_value == 4000) {
+    if (info) {
+      printf("%s\n", info);
+    }
   }
-#endif
 }
