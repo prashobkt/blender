@@ -1089,7 +1089,10 @@ void BKE_collection_object_move(
  *
  * For outliner drag & drop.
  */
-void BKE_collection_object_move_after(Collection *collection, Object *ob_relative, Object *ob)
+void BKE_collection_object_move_after(Main *bmain,
+                                      Collection *collection,
+                                      Object *ob_relative,
+                                      Object *ob)
 {
   if (ELEM(NULL, collection, ob_relative, ob)) {
     return;
@@ -1109,6 +1112,8 @@ void BKE_collection_object_move_after(Collection *collection, Object *ob_relativ
   int index_from = BLI_findindex(&collection->gobject, object);
 
   BLI_listbase_move_index(&collection->gobject, index_from, index_to);
+
+  BKE_main_collection_sync(bmain);
 }
 
 /** \} */

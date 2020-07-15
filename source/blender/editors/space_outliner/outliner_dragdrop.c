@@ -445,7 +445,7 @@ static void parent_drop_move_objects(bContext *C, wmDragID *drag, TreeElement *t
 
       Collection *from = collection_parent_from_ID(drag_id->from_parent);
       BKE_collection_object_move(bmain, scene, collection_to, from, object);
-      BKE_collection_object_move_after(collection_to, ob_drop, object);
+      BKE_collection_object_move_after(bmain, collection_to, ob_drop, object);
     }
   }
 
