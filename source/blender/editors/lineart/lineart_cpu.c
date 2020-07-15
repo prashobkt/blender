@@ -2464,6 +2464,7 @@ static int lineart_get_max_occlusion_level(Depsgraph *dg)
   LineartGpencilModifierData *lmd;
   int max_occ = 0;
   int max;
+  int mode = DEG_get_mode(dg);
 
   DEG_OBJECT_ITER_BEGIN (dg,
                          ob,
@@ -2472,6 +2473,16 @@ static int lineart_get_max_occlusion_level(Depsgraph *dg)
     if (ob->type == OB_GPENCIL) {
       LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
         if (md->type == eGpencilModifierType_Lineart) {
+          if (mode == DAG_EVAL_RENDER) {
+            if (!(md->flag & eGpencilModifierMode_Render)) {
+              continue;
+            }
+          }
+          else {
+            if (!(md->flag & eGpencilModifierMode_Realtime)) {
+              continue;
+            }
+          }
           lmd = (LineartGpencilModifierData *)md;
           max = MAX2(lmd->level_start, lmd->level_end);
           max_occ = MAX2(max, max_occ);
@@ -3461,6 +3472,14 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   /** We had everything we need,
    * Unlock parent thread, it'scene safe to run independently from now. */
   BLI_spin_unlock(&lineart_share.lock_loader);
+
+  if (!rb->vertex_buffer_pointers.first) {
+    /* Nothing loaded, early return. */
+    if (show_frame_progress) {
+      ED_lineart_update_render_progress(100, "LRT: Finished.");
+    }
+    return OPERATOR_FINISHED;
+  }
 
   lineart_compute_view_vector(rb);
   lineart_cull_triangles(rb);
