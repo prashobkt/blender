@@ -2583,53 +2583,11 @@ static char *rna_UnitSettings_path(PointerRNA *UNUSED(ptr))
 
 /* lineart */
 
-void rna_lineart_active_line_layer_index_range(
-    PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
+static void rna_lineart_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *UNUSED(ptr))
 {
-  SceneLineart *lineart = (SceneLineart *)ptr->data;
-  *min = 0;
-  *max = max_ii(0, BLI_listbase_count(&lineart->line_layers) - 1);
-}
-
-int rna_lineart_active_line_layer_index_get(PointerRNA *ptr)
-{
-  SceneLineart *lineart = (SceneLineart *)ptr->data;
-  LineartLineLayer *ls;
-  int i = 0;
-  for (ls = lineart->line_layers.first; ls; ls = ls->next) {
-    if (ls == lineart->active_layer)
-      return i;
-    i++;
+  if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
+    ED_lineart_modifier_sync_set_flag(LRT_SYNC_WAITING, 0);
   }
-  return 0;
-}
-
-void rna_lineart_active_line_layer_index_set(PointerRNA *ptr, int value)
-{
-  SceneLineart *lineart = (SceneLineart *)ptr->data;
-  LineartLineLayer *ls;
-  int i = 0;
-  for (ls = lineart->line_layers.first; ls; ls = ls->next) {
-    if (i == value) {
-      lineart->active_layer = ls;
-      return;
-    }
-    i++;
-  }
-  lineart->active_layer = 0;
-}
-
-PointerRNA rna_lineart_active_line_layer_get(PointerRNA *ptr)
-{
-  SceneLineart *lineart = (SceneLineart *)ptr->data;
-  LineartLineLayer *ls = lineart->active_layer;
-  return rna_pointer_inherit_refine(ptr, &RNA_LineartLineLayer, ls);
-}
-
-void rna_lineart_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
-{
-  SceneLineart *lineart = (SceneLineart *)ptr->data;
-  lineart->active_layer = value.data;
 }
 
 static void rna_lineart_enable_set(PointerRNA *ptr, bool value)
@@ -7406,20 +7364,20 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Crease Threshold", "cosine value of face angle");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "crease_fade_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Crease Fade", "cosine value of face angle");
   RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "use_intersections", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_USE_INTERSECTIONS);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "master_thickness", PROP_INT, PROP_NONE);
   RNA_def_property_int_default(prop, 20);
@@ -7427,6 +7385,7 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
       prop, "Master Thickness", "The thickness that are used to generate strokes");
   RNA_def_property_ui_range(prop, 1, 100, 1, 1);
   RNA_def_property_range(prop, 1, 200);
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "master_strength", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.1f);
@@ -7434,6 +7393,7 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
       prop, "Master Strength", "The strength value used to generate strokes.");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 2);
   RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   /* Below these two are only for grease pencil, thus no viewport updates. */
 
@@ -7445,6 +7405,7 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
                            "will be chained together");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 3);
   RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "chaining_image_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.01f);
@@ -7454,36 +7415,7 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
       "Segments where their image distance between them lower than this will be chained together");
   RNA_def_property_ui_range(prop, 0.0f, 0.3f, 0.001f, 4);
   RNA_def_property_range(prop, 0.0f, 0.3f);
-
-  /* here's the collection stuff.... */
-
-  prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "line_layers", NULL);
-  RNA_def_property_struct_type(prop, "LineartLineLayer");
-  RNA_def_property_ui_text(prop, "Line Layers", "Line Art Line Layers");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  /* this part I refered to gpencil's and freestyle's and it seems that there's no difference */
-  RNA_def_property_srna(prop, "LineLayers");
-  srna = RNA_def_struct(brna, "LineLayers", NULL);
-  RNA_def_struct_sdna(srna, "SceneLineart");
-  RNA_def_struct_ui_text(srna, "Line Art Line Layers", "");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "active_layer", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "LineartLineLayer");
-  RNA_def_property_pointer_funcs(
-      prop, "rna_lineart_active_line_layer_get", "rna_lineart_active_line_layer_set", NULL, NULL);
-  RNA_def_property_ui_text(prop, "Active Line Layer", "Active line layer being displayed");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "active_layer_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_funcs(prop,
-                             "rna_lineart_active_line_layer_index_get",
-                             "rna_lineart_active_line_layer_index_set",
-                             "rna_lineart_active_line_layer_index_range");
-  RNA_def_property_ui_text(prop, "Active Line Layer Index", "Index of active line layer slot");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 }
 
 void RNA_def_scene(BlenderRNA *brna)

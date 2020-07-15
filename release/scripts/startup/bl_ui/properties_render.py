@@ -711,7 +711,6 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
     def draw(self, context):
         scene = context.scene
         lineart = scene.lineart
-        active_layer = lineart.layers.active_layer
 
         layout = self.layout
         layout.active = lineart.enabled
