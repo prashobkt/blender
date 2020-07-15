@@ -99,6 +99,24 @@ static void generate_strokes_actual(
       lmd->opacity);
 }
 
+static bool isModifierDisabled(GpencilModifierData *md)
+{
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+
+  if ((lmd->target_layer[0] == '\0') || (lmd->target_material == NULL)) {
+    return true;
+  }
+
+  if (lmd->source_type == LRT_SOURCE_OBJECT && !lmd->source_object) {
+    return true;
+  }
+
+  if (lmd->source_type == LRT_SOURCE_COLLECTION && !lmd->source_collection) {
+    return true;
+  }
+
+  return false;
+}
 static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
@@ -107,6 +125,11 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   bool is_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
 
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IGNORE)) {
+    return;
+  }
+
+  /* Check all parameters required are filled. */
+  if (isModifierDisabled(md)) {
     return;
   }
 
@@ -168,6 +191,11 @@ static void bakeModifier(Main *UNUSED(bmain),
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
+  /* Check all parameters required are filled. */
+  if (isModifierDisabled(md)) {
+    return;
+  }
+
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
   if (gpl == NULL) {
     return;
@@ -192,23 +220,9 @@ static void bakeModifier(Main *UNUSED(bmain),
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 }
 
-static bool *isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
 {
-  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-
-  if (!lmd->target_layer || !lmd->target_material) {
-    return true;
-  }
-
-  if (lmd->source_type == LRT_SOURCE_OBJECT && !lmd->source_object) {
-    return true;
-  }
-
-  if (lmd->source_type == LRT_SOURCE_COLLECTION && !lmd->source_collection) {
-    return true;
-  }
-
-  return false;
+  return isModifierDisabled(md);
 }
 
 static void updateDepsgraph(GpencilModifierData *md,
