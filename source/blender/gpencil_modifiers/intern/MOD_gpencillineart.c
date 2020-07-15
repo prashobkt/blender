@@ -192,6 +192,25 @@ static void bakeModifier(Main *UNUSED(bmain),
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 }
 
+static bool *isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+{
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+
+  if (!lmd->target_layer || !lmd->target_material) {
+    return true;
+  }
+
+  if (lmd->source_type == LRT_SOURCE_OBJECT && !lmd->source_object) {
+    return true;
+  }
+
+  if (lmd->source_type == LRT_SOURCE_COLLECTION && !lmd->source_collection) {
+    return true;
+  }
+
+  return false;
+}
+
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
                             const int mode)
@@ -329,7 +348,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Lineart = {
 
     /* initData */ initData,
     /* freeData */ freeData,
-    /* isDisabled */ NULL,
+    /* isDisabled */ isDisabled,
     /* updateDepsgraph */ updateDepsgraph,
     /* dependsOnTime */ NULL,
     /* foreachObjectLink */ foreachObjectLink,
