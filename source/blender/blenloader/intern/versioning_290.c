@@ -21,15 +21,13 @@
 #define DNA_DEPRECATED_ALLOW
 
 #include "BLI_listbase.h"
+#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_genfile.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
-#include "DNA_lattice_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
@@ -37,9 +35,9 @@
 
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
-#include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
+#include "BKE_node.h"
 
 #include "BLO_readfile.h"
 #include "readfile.h"
@@ -259,6 +257,28 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+
+    /* Initialize parameters of the new Nishita sky model. */
+    if (!DNA_struct_elem_find(fd->filesdna, "NodeTexSky", "float", "sun_size")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+            if (node->type == SH_NODE_TEX_SKY && node->storage) {
+              NodeTexSky *tex = (NodeTexSky *)node->storage;
+              tex->sun_disc = true;
+              tex->sun_size = DEG2RADF(0.545);
+              tex->sun_elevation = M_PI_2;
+              tex->sun_rotation = 0.0f;
+              tex->altitude = 0.0f;
+              tex->air_density = 1.0f;
+              tex->dust_density = 1.0f;
+              tex->ozone_density = 1.0f;
+            }
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 290, 6)) {
@@ -358,26 +378,6 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  /* Make sure that all weights of MDeformVert are sorted. */
-  if (!MAIN_VERSION_ATLEAST(bmain, 290, 7)) {
-    for (Mesh *mesh = bmain->meshes.first; mesh != NULL; mesh = mesh->id.next) {
-      BKE_defvert_array_sort_weights(mesh->dvert, mesh->totvert);
-    }
-    for (Lattice *lt = bmain->lattices.first; lt != NULL; lt = lt->id.next) {
-      const int totvert = lt->pntsu * lt->pntsv * lt->pntsw;
-      BKE_defvert_array_sort_weights(lt->dvert, totvert);
-    }
-    for (bGPdata *gp = bmain->gpencils.first; gp != NULL; gp = gp->id.next) {
-      LISTBASE_FOREACH (bGPDlayer *, layer, &gp->layers) {
-        LISTBASE_FOREACH (bGPDframe *, frame, &layer->frames) {
-          LISTBASE_FOREACH (bGPDstroke *, stroke, &frame->strokes) {
-            BKE_defvert_array_sort_weights(stroke->dvert, stroke->totpoints);
-          }
-        }
-      }
-    }
-  }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -389,5 +389,21 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Initialize additional parameter of the Nishita sky model and change altitude unit. */
+    if (!DNA_struct_elem_find(fd->filesdna, "NodeTexSky", "float", "sun_intensity")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+            if (node->type == SH_NODE_TEX_SKY && node->storage) {
+              NodeTexSky *tex = (NodeTexSky *)node->storage;
+              tex->sun_intensity = 1.0f;
+              tex->altitude *= 0.001f;
+            }
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
   }
 }
