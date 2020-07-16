@@ -16,6 +16,9 @@
 
 #include "BKE_node_tree_multi_function.hh"
 
+#include "BLI_color.hh"
+#include "BLI_float3.hh"
+
 namespace blender {
 namespace bke {
 
@@ -27,6 +30,35 @@ static std::optional<fn::MFDataType> try_get_multi_function_data_type_of_socket(
     return {};
   }
   return bsocket->typeinfo->get_mf_data_type();
+}
+
+const fn::MultiFunction &NodeMFNetworkBuilder::get_default_fn(StringRef name)
+{
+  Vector<fn::MFDataType, 10> input_types;
+  Vector<fn::MFDataType, 10> output_types;
+
+  for (const DInputSocket *dsocket : dnode_.inputs()) {
+    if (dsocket->is_available()) {
+      std::optional<fn::MFDataType> data_type = try_get_multi_function_data_type_of_socket(
+          dsocket->bsocket());
+      if (data_type.has_value()) {
+        input_types.append(*data_type);
+      }
+    }
+  }
+  for (const DOutputSocket *dsocket : dnode_.outputs()) {
+    if (dsocket->is_available()) {
+      std::optional<fn::MFDataType> data_type = try_get_multi_function_data_type_of_socket(
+          dsocket->bsocket());
+      if (data_type.has_value()) {
+        output_types.append(*data_type);
+      }
+    }
+  }
+
+  const fn::MultiFunction &fn = this->construct_fn<fn::CustomMF_DefaultOutput>(
+      name, input_types, output_types);
+  return fn;
 }
 
 static void insert_dummy_node(CommonMFNetworkBuilderData &common, const DNode &dnode)
@@ -136,11 +168,82 @@ static fn::MFOutputSocket *try_find_origin(CommonMFNetworkBuilderData &common,
   }
 
   if (from_dsockets.size() == 1) {
-    return &common.network_map.lookup(*from_dsockets[0]);
+    const DOutputSocket &from_dsocket = *from_dsockets[0];
+    if (!from_dsocket.is_available()) {
+      return nullptr;
+    }
+    if (is_multi_function_data_socket(from_dsocket.bsocket())) {
+      return &common.network_map.lookup(from_dsocket);
+    }
+    return nullptr;
   }
   else {
-    return &common.network_map.lookup(*from_group_inputs[0]);
+    const DGroupInput &from_group_input = *from_group_inputs[0];
+    if (is_multi_function_data_socket(from_group_input.bsocket())) {
+      return &common.network_map.lookup(from_group_input);
+    }
+    return nullptr;
   }
+}
+
+using ImplicitConversionsMap =
+    Map<std::pair<fn::MFDataType, fn::MFDataType>, const fn::MultiFunction *>;
+
+template<typename From, typename To>
+static void add_implicit_conversion(ImplicitConversionsMap &map)
+{
+  static fn::CustomMF_Convert<From, To> function;
+  map.add({fn::MFDataType::ForSingle<From>(), fn::MFDataType::ForSingle<To>()}, &function);
+}
+
+template<typename From, typename To, typename ConversionF>
+static void add_implicit_conversion(ImplicitConversionsMap &map,
+                                    StringRef name,
+                                    ConversionF conversion)
+{
+  static fn::CustomMF_SI_SO<From, To> function{name, conversion};
+  map.add({fn::MFDataType::ForSingle<From>(), fn::MFDataType::ForSingle<To>()}, &function);
+}
+
+static ImplicitConversionsMap get_implicit_conversions()
+{
+  ImplicitConversionsMap conversions;
+  add_implicit_conversion<float, int32_t>(conversions);
+  add_implicit_conversion<float, float3>(conversions);
+  add_implicit_conversion<int32_t, float>(conversions);
+  add_implicit_conversion<float3, float>(
+      conversions, "Vector Length", [](float3 a) { return a.length(); });
+  add_implicit_conversion<int32_t, float3>(
+      conversions, "int32 to float3", [](int32_t a) { return float3((float)a); });
+  add_implicit_conversion<float3, Color4f>(
+      conversions, "float3 to Color4f", [](float3 a) { return Color4f(a.x, a.y, a.z, 1.0f); });
+  add_implicit_conversion<Color4f, float3>(
+      conversions, "Color4f to float3", [](Color4f a) { return float3(a.r, a.g, a.b); });
+  return conversions;
+}
+
+static const fn::MultiFunction *try_get_conversion_function(fn::MFDataType from, fn::MFDataType to)
+{
+  static const ImplicitConversionsMap conversions = get_implicit_conversions();
+  const fn::MultiFunction *function = conversions.lookup_default({from, to}, nullptr);
+  return function;
+}
+
+static fn::MFOutputSocket &insert_default_value_for_type(CommonMFNetworkBuilderData &common,
+                                                         fn::MFDataType type)
+{
+  const fn::MultiFunction *default_fn;
+  if (type.is_single()) {
+    default_fn = &common.resources.construct<fn::CustomMF_GenericConstant>(
+        AT, type.single_type(), type.single_type().default_value());
+  }
+  else {
+    default_fn = &common.resources.construct<fn::CustomMF_GenericConstantArray>(
+        AT, fn::GSpan(type.vector_base_type()));
+  }
+
+  fn::MFNode &node = common.network.add_function(*default_fn);
+  return node.output(0);
 }
 
 static void insert_links(CommonMFNetworkBuilderData &common)
@@ -149,24 +252,34 @@ static void insert_links(CommonMFNetworkBuilderData &common)
     if (!to_dsocket->is_available()) {
       continue;
     }
-
-    if (!is_multi_function_data_socket(to_dsocket->bsocket())) {
+    if (!to_dsocket->is_linked()) {
       continue;
     }
-
-    fn::MFOutputSocket *from_socket = try_find_origin(common, *to_dsocket);
-    if (from_socket == nullptr) {
+    if (!is_multi_function_data_socket(to_dsocket->bsocket())) {
       continue;
     }
 
     Span<fn::MFInputSocket *> to_sockets = common.network_map.lookup(*to_dsocket);
     BLI_assert(to_sockets.size() >= 1);
-
-    fn::MFDataType from_type = from_socket->data_type();
     fn::MFDataType to_type = to_sockets[0]->data_type();
 
+    fn::MFOutputSocket *from_socket = try_find_origin(common, *to_dsocket);
+    if (from_socket == nullptr) {
+      from_socket = &insert_default_value_for_type(common, to_type);
+    }
+
+    fn::MFDataType from_type = from_socket->data_type();
+
     if (from_type != to_type) {
-      /* Todo: Try inserting implicit conversion. */
+      const fn::MultiFunction *conversion_fn = try_get_conversion_function(from_type, to_type);
+      if (conversion_fn != nullptr) {
+        fn::MFNode &node = common.network.add_function(*conversion_fn);
+        common.network.add_link(*from_socket, node.input(0));
+        from_socket = &node.output(0);
+      }
+      else {
+        from_socket = &insert_default_value_for_type(common, to_type);
+      }
     }
 
     for (fn::MFInputSocket *to_socket : to_sockets) {
@@ -217,7 +330,7 @@ MFNetworkTreeMap insert_node_tree_into_mf_network(fn::MFNetwork &network,
                                                   const DerivedNodeTree &tree,
                                                   ResourceCollector &resources)
 {
-  MFNetworkTreeMap network_map{tree};
+  MFNetworkTreeMap network_map{tree, network};
 
   CommonMFNetworkBuilderData common{resources, network, network_map, tree};
 
