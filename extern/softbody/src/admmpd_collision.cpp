@@ -314,6 +314,12 @@ EmbeddedMeshCollision::detect_against_self(
 	Vector4d barys = geom::point_tet_barys(pt,
 		x->row(tet[0]), x->row(tet[1]),
 		x->row(tet[2]), x->row(tet[3]));
+	if (barys.minCoeff()<-1e-8 || barys.sum() > 1+1e-8)
+	{
+		std::cout << barys.transpose() << std::endl;
+		throw std::runtime_error("EmbeddedMeshCollision: Bad tet barys");
+	}
+
 	Vector3d rest_pt =
 		barys[0]*mesh->lat_rest_x.row(tet[0])+
 		barys[1]*mesh->lat_rest_x.row(tet[1])+
@@ -326,6 +332,25 @@ EmbeddedMeshCollision::detect_against_self(
 	NearestTriangleTraverse<double> nearest_tri(rest_pt,
 		&mesh->emb_rest_x,&mesh->emb_faces,skip_tri_inds);
 	mesh->emb_rest_tree.traverse(nearest_tri);
+
+	if (nearest_tri.output.prim<0)
+		throw std::runtime_error("EmbeddedMeshCollision: Failed to find triangle");
+
+	// If we're on the "wrong" side of the nearest
+	// triangle, we're probably outside the mesh.
+	RowVector3i hit_face = mesh->emb_faces.row(nearest_tri.output.prim);
+	Vector3d tri_v[3] = {
+		mesh->emb_rest_x.row(hit_face[0]),
+		mesh->emb_rest_x.row(hit_face[1]),
+		mesh->emb_rest_x.row(hit_face[2])
+	};
+
+	Vector3d tri_n = (tri_v[1]-tri_v[0]).cross(tri_v[2]-tri_v[0]);
+	tri_n.normalize();
+	bool wrong_side = tri_n.dot(rest_pt-nearest_tri.output.pt_on_tri) > 0;
+	if (wrong_side)
+		return ret;
+
 
 	ret.first = true;
 	ret.second.p_idx = pt_idx;
@@ -342,6 +367,12 @@ EmbeddedMeshCollision::detect_against_self(
 		mesh->emb_rest_x.row(f[2])};
 	ret.second.q_bary = geom::point_triangle_barys<double>(
 		nearest_tri.output.pt_on_tri, v3[0], v3[1], v3[2]);
+	if (ret.second.q_bary.minCoeff()<-1e-8 || ret.second.q_bary.sum() > 1+1e-8)
+	{
+		std::cout << barys.transpose() << std::endl;
+		throw std::runtime_error("EmbeddedMeshCollision: Bad triangle barys");
+	}
+
 	return ret;
 }
 
@@ -495,9 +526,9 @@ void EmbeddedMeshCollision::linearize(
 			// The intersected face:
 			for (int j=0; j<3; ++j)
 			{
-				int v_idx = q_face[j];
-				RowVector4d bary = mesh->emb_barys.row(v_idx);
-				int tet_idx = mesh->emb_vtx_to_tet[v_idx];
+				int emb_q_idx = q_face[j];
+				RowVector4d bary = mesh->emb_barys.row(emb_q_idx);
+				int tet_idx = mesh->emb_vtx_to_tet[emb_q_idx];
 				RowVector4i tet = mesh->lat_tets.row(tet_idx);
 				for (int k=0; k<4; ++k)
 				{

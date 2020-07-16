@@ -143,11 +143,13 @@ template <typename T>
 PointInTriangleMeshTraverse<T>::PointInTriangleMeshTraverse(
 	const VecType &point_,
 	const MatrixXType *prim_verts_,
-	const Eigen::MatrixXi *prim_inds_) :
+	const Eigen::MatrixXi *prim_inds_,
+	const std::vector<int> &skip_inds_) :
 	point(point_),
 	dir(0,0,1),
 	prim_verts(prim_verts_),
-	prim_inds(prim_inds_)
+	prim_inds(prim_inds_),
+	skip_inds(skip_inds_)
 {
 	//dir = VecType::Random();
 	BLI_assert(prim_verts->rows()>=0);
@@ -190,6 +192,13 @@ bool PointInTriangleMeshTraverse<T>::stop_traversing(
 	// to interface with Blender kernels.
 	BLI_assert(prim >= 0 && prim < prim_inds->rows());
 	RowVector3i q_f = prim_inds->row(prim);
+	int n_skip = skip_inds.size();
+	for (int i=0; i<n_skip; ++i)
+	{
+		if (skip_inds[i]==q_f[0]) return false;
+		if (skip_inds[i]==q_f[1]) return false;
+		if (skip_inds[i]==q_f[2]) return false;
+	}
 	BLI_assert(q_f[0] < prim_verts->rows());
 	BLI_assert(q_f[1] < prim_verts->rows());
 	BLI_assert(q_f[2] < prim_verts->rows());

@@ -134,6 +134,7 @@ protected:
 	const Eigen::MatrixXi *prim_inds; // triangle mesh inds
 	float o[3], d[3]; // pt and dir casted to float for Blender kernels
 	struct IsectRayPrecalc isect_precalc;
+	std::vector<int> skip_inds;
 
 public:
 	struct Output {
@@ -145,7 +146,8 @@ public:
 	PointInTriangleMeshTraverse(
 		const VecType &point_,
 		const MatrixXType *prim_verts_,
-		const Eigen::MatrixXi *prim_inds_);
+		const Eigen::MatrixXi *prim_inds_,
+		const std::vector<int> &skip_inds_=std::vector<int>());
 
 	void traverse(
 		const AABB &left_aabb, bool &go_left,
