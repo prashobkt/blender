@@ -1206,6 +1206,10 @@ static uiBut *uiItemFullO_ptr_ex(uiLayout *layout,
     but->flag |= UI_SELECT_DRAW;
   }
 
+  if (flag & UI_ITEM_R_ICON_ONLY) {
+    UI_but_drawflag_disable(but, UI_BUT_ICON_LEFT);
+  }
+
   if (layout->redalert) {
     UI_but_flag_enable(but, UI_BUT_REDALERT);
   }
@@ -1426,6 +1430,13 @@ void uiItemsFullEnumO_items(uiLayout *layout,
   if (radial) {
     target = uiLayoutRadial(layout);
   }
+  else if (layout->item.type == ITEM_LAYOUT_ROW && flag & UI_ITEM_R_ICON_ONLY) {
+    target = layout;
+
+    /* Add a blank button to the beginning of the row. */
+    uiDefIconBut(
+        block, UI_BTYPE_LABEL, 0, ICON_BLANK1, 0, 0, UI_UNIT_X, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
+  }
   else {
     split = uiLayoutSplit(layout, 0.0f, false);
     target = uiLayoutColumn(split, layout->align);
@@ -1473,7 +1484,14 @@ void uiItemsFullEnumO_items(uiLayout *layout,
       }
       RNA_property_enum_set(&tptr, prop, item->value);
 
-      uiItemFullO_ptr(target, ot, item->name, item->icon, tptr.data, context, flag, NULL);
+      uiItemFullO_ptr(target,
+                      ot,
+                      (flag & UI_ITEM_R_ICON_ONLY) ? NULL : item->name,
+                      item->icon,
+                      tptr.data,
+                      context,
+                      flag,
+                      NULL);
 
       ui_but_tip_from_enum_item(block->buttons.last, item);
     }
@@ -1597,9 +1615,14 @@ void uiItemsFullEnumO(uiLayout *layout,
   }
 }
 
-void uiItemsEnumO(uiLayout *layout, const char *opname, const char *propname)
+void uiItemsEnumO(uiLayout *layout, const char *opname, const char *propname, const bool icon_only)
 {
-  uiItemsFullEnumO(layout, opname, propname, NULL, layout->root->opcontext, 0);
+  uiItemsFullEnumO(layout,
+                   opname,
+                   propname,
+                   NULL,
+                   layout->root->opcontext,
+                   icon_only ? UI_ITEM_R_ICON_ONLY : 0);
 }
 
 /* for use in cases where we have */
@@ -3363,7 +3386,7 @@ static void menu_item_enum_opname_menu(bContext *UNUSED(C), uiLayout *layout, vo
   MenuItemLevel *lvl = (MenuItemLevel *)(((uiBut *)arg)->func_argN);
 
   uiLayoutSetOperatorContext(layout, lvl->opcontext);
-  uiItemsEnumO(layout, lvl->opname, lvl->propname);
+  uiItemsEnumO(layout, lvl->opname, lvl->propname, false);
 
   layout->root->block->flag |= UI_BLOCK_IS_FLIP;
 
@@ -3711,19 +3734,19 @@ static void ui_litem_estimate_column(uiLayout *litem, bool is_box)
   }
 }
 
-static void ui_litem_layout_column(uiLayout *litem, bool is_box)
+static void ui_litem_layout_column(uiLayout *litem, bool is_box, bool is_menu)
 {
   uiItem *item;
-  int itemh, x, y;
+  int itemw, itemh, x, y;
 
   x = litem->x;
   y = litem->y;
 
   for (item = litem->items.first; item; item = item->next) {
-    ui_item_size(item, NULL, &itemh);
+    ui_item_size(item, &itemw, &itemh);
 
     y -= itemh;
-    ui_item_position(item, x, y, litem->w, itemh);
+    ui_item_position(item, x, y, is_menu ? itemw : litem->w, itemh);
 
     if (item->next && (!is_box || item != litem->items.first)) {
       y -= litem->space;
@@ -3885,8 +3908,11 @@ static void ui_litem_layout_root(uiLayout *litem)
   else if (litem->root->type == UI_LAYOUT_PIEMENU) {
     ui_litem_layout_root_radial(litem);
   }
+  else if (litem->root->type == UI_LAYOUT_MENU) {
+    ui_litem_layout_column(litem, false, true);
+  }
   else {
-    ui_litem_layout_column(litem, false);
+    ui_litem_layout_column(litem, false, false);
   }
 }
 
@@ -3930,7 +3956,7 @@ static void ui_litem_layout_box(uiLayout *litem)
     litem->h -= 2 * boxspace;
   }
 
-  ui_litem_layout_column(litem, true);
+  ui_litem_layout_column(litem, true, false);
 
   litem->x -= boxspace;
   litem->y -= boxspace;
@@ -5213,7 +5239,7 @@ static void ui_item_layout(uiItem *item)
 
     switch (litem->item.type) {
       case ITEM_LAYOUT_COLUMN:
-        ui_litem_layout_column(litem, false);
+        ui_litem_layout_column(litem, false, false);
         break;
       case ITEM_LAYOUT_COLUMN_FLOW:
         ui_litem_layout_column_flow(litem);

@@ -977,6 +977,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_string(func, "property", NULL, 0, "", "Identifier of property in operator");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_boolean(func, "icon_only", false, "", "Draw only icons in buttons, no text");
 
   func = RNA_def_function(srna, "operator_menu_enum", "rna_uiItemMenuEnumO");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);

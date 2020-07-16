@@ -2205,7 +2205,10 @@ void uiItemEnumO_string(uiLayout *layout,
                         const char *opname,
                         const char *propname,
                         const char *value);
-void uiItemsEnumO(uiLayout *layout, const char *opname, const char *propname);
+void uiItemsEnumO(uiLayout *layout,
+                  const char *opname,
+                  const char *propname,
+                  const bool icon_only);
 void uiItemBooleanO(uiLayout *layout,
                     const char *name,
                     int icon,

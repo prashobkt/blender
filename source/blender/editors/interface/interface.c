@@ -380,13 +380,27 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
       }
     }
 
+    /* Keep aligned buttons in the same column. */
+    if (bt->alignnr && bt->next) {
+      int width = 0;
+      for (col_bt = bt; col_bt->rect.xmin < col_bt->next->rect.xmin; col_bt = col_bt->next) {
+        width += BLI_rctf_size_x(&col_bt->rect);
+      }
+      if (width > i) {
+        i = width;
+      }
+      bt = col_bt;
+    }
+
     if (bt->next && bt->rect.xmin < bt->next->rect.xmin) {
       /* End of this column, and it's not the last one. */
       for (col_bt = init_col_bt; col_bt->prev != bt; col_bt = col_bt->next) {
-        col_bt->rect.xmin = x1addval;
-        col_bt->rect.xmax = x1addval + i + block->bounds;
+        if (!col_bt->alignnr) {
+          col_bt->rect.xmin = x1addval;
+          col_bt->rect.xmax = x1addval + i + block->bounds;
 
-        ui_but_update(col_bt); /* clips text again */
+          ui_but_update(col_bt); /* clips text again */
+        }
       }
 
       /* And we prepare next column. */
@@ -398,8 +412,10 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
 
   /* Last column. */
   for (col_bt = init_col_bt; col_bt; col_bt = col_bt->next) {
-    col_bt->rect.xmin = x1addval;
-    col_bt->rect.xmax = max_ff(x1addval + i + block->bounds, offset + block->minbounds);
+    if (!col_bt->alignnr) {
+      col_bt->rect.xmin = x1addval;
+      col_bt->rect.xmax = max_ff(x1addval + i + block->bounds, offset + block->minbounds);
+    }
 
     ui_but_update(col_bt); /* clips text again */
   }
