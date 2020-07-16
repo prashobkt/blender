@@ -168,13 +168,13 @@ namespace blender::bke {
 
 static void ensure_attributes_exist(ParticleSimulationState *state)
 {
-  if (CustomData_get_layer_named(&state->attributes, CD_LOCATION, "Position") == nullptr) {
+  if (CustomData_get_layer_named(&state->attributes, CD_PROP_FLOAT3, "Position") == nullptr) {
     CustomData_add_layer_named(
-        &state->attributes, CD_LOCATION, CD_CALLOC, nullptr, state->tot_particles, "Position");
+        &state->attributes, CD_PROP_FLOAT3, CD_CALLOC, nullptr, state->tot_particles, "Position");
   }
-  if (CustomData_get_layer_named(&state->attributes, CD_LOCATION, "Velocity") == nullptr) {
+  if (CustomData_get_layer_named(&state->attributes, CD_PROP_FLOAT3, "Velocity") == nullptr) {
     CustomData_add_layer_named(
-        &state->attributes, CD_LOCATION, CD_CALLOC, nullptr, state->tot_particles, "Velocity");
+        &state->attributes, CD_PROP_FLOAT3, CD_CALLOC, nullptr, state->tot_particles, "Velocity");
   }
   if (CustomData_get_layer_named(&state->attributes, CD_PROP_INT32, "ID") == nullptr) {
     CustomData_add_layer_named(
@@ -288,7 +288,7 @@ class CustomDataAttributesRef {
           builder.add<int32_t>(layer.name, 0);
           break;
         }
-        case CD_LOCATION: {
+        case CD_PROP_FLOAT3: {
           builder.add<float3>(layer.name, {0, 0, 0});
           break;
         }
@@ -732,12 +732,12 @@ static void simulation_data_update(Depsgraph *depsgraph, Scene *scene, Simulatio
   fn::MFNetwork network;
   ResourceCollector resources;
   MFNetworkTreeMap network_map = insert_node_tree_into_mf_network(network, tree, resources);
-  // WM_clipboard_text_set(tree.to_dot().c_str(), false);
   Map<const fn::MFOutputSocket *, std::string> attribute_inputs = deduplicate_attribute_nodes(
       network, network_map, tree);
   fn::mf_network_optimization::constant_folding(network, resources);
   fn::mf_network_optimization::common_subnetwork_elimination(network);
   fn::mf_network_optimization::dead_node_removal(network);
+  // WM_clipboard_text_set(network.to_dot().c_str(), false);
 
   Map<std::string, Vector<const ParticleForce *>> forces_by_simulation = collect_forces(
       network_map, resources, attribute_inputs);
@@ -763,7 +763,7 @@ static void simulation_data_update(Depsgraph *depsgraph, Scene *scene, Simulatio
 
       for (uint i : positions.index_range()) {
         positions[i] = {i / 100.0f, 0, 0};
-        velocities[i] = {0, BLI_rng_get_float(rng), BLI_rng_get_float(rng) * 2 + 1};
+        velocities[i] = {0, BLI_rng_get_float(rng) - 0.5f, BLI_rng_get_float(rng) - 0.5f};
         ids[i] = i;
       }
     }
