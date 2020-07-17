@@ -47,6 +47,7 @@
 #include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_shader_fx_types.h"
 #include "DNA_simulation_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_volume_types.h"
@@ -515,6 +516,7 @@ static void outliner_add_object_contents(SpaceOutliner *soops,
     }
   }
 
+  /* Grease Pencil modifiers. */
   if (!BLI_listbase_is_empty(&ob->greasepencil_modifiers)) {
     GpencilModifierData *md;
     TreeElement *ten_mod = outliner_add_element(soops, &te->subtree, ob, te, TSE_MODIFIER_BASE, 0);
@@ -546,6 +548,26 @@ static void outliner_add_object_contents(SpaceOutliner *soops,
                              ten,
                              TSE_LINKED_OB,
                              0);
+      }
+    }
+  }
+
+  /* Grease Pencil effects. */
+  if (!BLI_listbase_is_empty(&ob->shader_fx)) {
+    ShaderFxData *fx;
+    TreeElement *ten_fx = outliner_add_element(soops, &te->subtree, ob, te, TSE_EFFECT_BASE, 0);
+    int index;
+
+    ten_fx->name = IFACE_("Effects");
+    for (index = 0, fx = ob->shader_fx.first; fx; index++, fx = fx->next) {
+      TreeElement *ten = outliner_add_element(
+          soops, &ten_fx->subtree, ob, ten_fx, TSE_EFFECT, index);
+      ten->name = fx->name;
+      ten->directdata = fx;
+
+      if (fx->type == eShaderFxType_Swirl) {
+        outliner_add_element(
+            soops, &ten->subtree, ((SwirlShaderFxData *)fx)->object, ten, TSE_LINKED_OB, 0);
       }
     }
   }

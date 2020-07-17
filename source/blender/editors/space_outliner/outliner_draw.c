@@ -2500,6 +2500,10 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         data.icon = ICON_OUTLINER_DATA_GP_LAYER;
         break;
       }
+      case TSE_EFFECT_BASE:
+      case TSE_EFFECT:
+        data.icon = ICON_SHADERFX;
+        break;
       default:
         data.icon = ICON_DOT;
         break;
