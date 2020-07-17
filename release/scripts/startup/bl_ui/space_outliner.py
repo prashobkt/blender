@@ -238,7 +238,8 @@ class OUTLINER_MT_collection(Menu):
             layout.separator()
 
             layout.label(text="Color Tag")
-            layout.operator_enum("outliner.collection_color_tag_set", "color")
+            row = layout.row(align=True)
+            row.operator_enum("outliner.collection_color_tag_set", "color", icon_only=True)
 
         layout.separator()
 
