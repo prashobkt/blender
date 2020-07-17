@@ -311,27 +311,26 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
           use_island_connect = (bmd->bm_flag & eBooleanModifierBMeshFlag_BMesh_NoConnectRegions) ==
                                0;
         }
-  
+
         bool use_exact = bmd->bm_flag & eBooleanModifierBMeshFlag_BMesh_Exact;
 
         if (use_exact) {
-          BM_mesh_boolean(bm, looptris, tottri, bm_face_isect_pair,
-                          NULL, false, bmd->operation);
+          BM_mesh_boolean(bm, looptris, tottri, bm_face_isect_pair, NULL, false, bmd->operation);
         }
         else {
           BM_mesh_intersect(bm,
-                          looptris,
-                          tottri,
-                          bm_face_isect_pair,
-                          NULL,
-                          false,
-                          use_separate,
-                          use_dissolve,
-                          use_island_connect,
-                          false,
-                          false,
-                          bmd->operation,
-                          bmd->double_threshold);
+                            looptris,
+                            tottri,
+                            bm_face_isect_pair,
+                            NULL,
+                            false,
+                            use_separate,
+                            use_dissolve,
+                            use_island_connect,
+                            false,
+                            false,
+                            bmd->operation,
+                            bmd->double_threshold);
         }
 
         MEM_freeN(looptris);

@@ -35,7 +35,16 @@
 
 #include "BLI_mesh_intersect.hh"
 
+// #define PERFDEBUG
+
 namespace blender::meshintersect {
+
+#ifdef PERFDEBUG
+static void perfdata_init(void);
+static void incperfcount(int countnum);
+static void doperfmax(int maxnum, int val);
+static void dump_perfdata(void);
+#endif
 
 Vert::Vert(const mpq3 &mco, const double3 &dco, int id, int orig)
     : co_exact(mco), co(dco), id(id), orig(orig)
@@ -883,6 +892,495 @@ struct ITT_value {
 
 static std::ostream &operator<<(std::ostream &os, const ITT_value &itt);
 
+/* Project a 3d vert to a 2d one by eliding proj_axis. This does not create
+ * degeneracies as long as the projection axis is one where the corresponding
+ * component of the originating plane normal is non-zero.
+ */
+static mpq2 project_3d_to_2d(const mpq3 &p3d, int proj_axis)
+{
+  mpq2 p2d;
+  switch (proj_axis) {
+    case (0): {
+      p2d[0] = p3d[1];
+      p2d[1] = p3d[2];
+    } break;
+    case (1): {
+      p2d[0] = p3d[0];
+      p2d[1] = p3d[2];
+    } break;
+    case (2): {
+      p2d[0] = p3d[0];
+      p2d[1] = p3d[1];
+    } break;
+    default:
+      BLI_assert(false);
+  }
+  return p2d;
+}
+
+/* Is a point in the interior of a 2d triangle or on one of its
+ * edges but not either endpoint of the edge?
+ * orient[pi][i] is the orientation test of the point pi against
+ * the side of the triangle starting at index i.
+ * Assume the triangele is non-degenerate and CCW-oriented.
+ * Then answer is true if p is left of or on all three of triangle a's edges,
+ * and strictly left of at least on of them.
+ */
+static bool non_trivially_2d_point_in_tri(const int orients[3][3], int pi)
+{
+  int p_left_01 = orients[pi][0];
+  int p_left_12 = orients[pi][1];
+  int p_left_20 = orients[pi][2];
+  return (p_left_01 >= 0 && p_left_12 >= 0 && p_left_20 >= 0 &&
+          (p_left_01 + p_left_12 + p_left_20) >= 2);
+}
+
+/* Given orients as defined in non_trivially_2d_intersect, do the triangles
+ * overlap in a "hex" pattern? That is, the overlap region is a hexagon, which
+ * one gets by having, each point of one triangle being strictly rightof one
+ * edge of the other and strictly left of the other two edges; and vice versa.
+ */
+static bool non_trivially_2d_hex_overlap(int orients[2][3][3])
+{
+  for (int ab = 0; ab < 2; ++ab) {
+    for (int i = 0; i < 3; ++i) {
+      bool ok = orients[ab][i][0] + orients[ab][i][1] + orients[ab][i][2] == 1 &&
+                orients[ab][i][0] != 0 && orients[ab][i][1] != 0 && orients[i][2] != 0;
+      if (!ok) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/* Given orients as defined in non_trivially_2d_intersect, do the triangles
+ * have one shared edge in a "folded-over" configuration?
+ * As well as a shared edge, the third vertex of one triangle needs to be
+ * rightof one and leftof the other two edges of the other triangle.
+ */
+static bool non_trivially_2d_shared_edge_overlap(int orients[2][3][3],
+                                                 const mpq2 *a[3],
+                                                 const mpq2 *b[3])
+{
+  for (int i = 0; i < 3; ++i) {
+    int in = (i + 1) % 3;
+    int inn = (i + 2) % 3;
+    for (int j = 0; j < 3; ++j) {
+      int jn = (j + 1) % 3;
+      int jnn = (j + 2) % 3;
+      if (*a[i] == *b[j] && *a[in] == *b[jn]) {
+        /* Edge from a[i] is shared with edge from b[j]. */
+        /* See if a[inn] is rightof or on one of the other edges of b.
+         * If it is on, then it has to be rightof or leftof the shared edge,
+         * depending on which edge it is.
+         */
+        if (orients[0][inn][jn] < 0 || orients[0][inn][jnn] < 0) {
+          return true;
+        }
+        if (orients[0][inn][jn] == 0 && orients[0][inn][j] == 1) {
+          return true;
+        }
+        if (orients[0][inn][jnn] == 0 && orients[0][inn][j] == -1) {
+          return true;
+        }
+        /* Similarly for b[jnn]. */
+        if (orients[1][jnn][in] < 0 || orients[1][jnn][inn] < 0) {
+          return true;
+        }
+        if (orients[1][jnn][in] == 0 && orients[1][jnn][i] == 1) {
+          return true;
+        }
+        if (orients[1][jnn][inn] == 0 && orients[1][jnn][i] == -1) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/* Are the triangles the same, perhaps with some permutation of vertices? */
+static bool same_triangles(const mpq2 *a[3], const mpq2 *b[3])
+{
+  for (int i = 0; i < 3; ++i) {
+    if (a[0] == b[i] && a[1] == b[(i + 1) % 3] && a[2] == b[(i + 2) % 3]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Do 2d triangles (a[0], a[1], a[2]) and (b[0], b[1], b2[2]) intersect at more than just shared
+ * vertices or a shared edge? This is true if any point of one tri is non-trivially inside the
+ * other. NO: that isn't quite sufficient: there is also the case where the verts are all mutually
+ * outside the other's triangle, but there is a hexagonal overlap region where they overlap.
+ */
+static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
+{
+  /* TODO: Could experiment with trying bounding box tests before these.
+   * TODO: Find a less expensive way than 18 orient tests to do this.
+   */
+  /* orients[0][ai][bi] is orient of point a[ai] compared to seg starting at b[bi].
+   * orients[1][bi][ai] is orient of point b[bi] compared to seg starting at a[ai].
+   */
+  int orients[2][3][3];
+  for (int ab = 0; ab < 2; ++ab) {
+    for (int ai = 0; ai < 3; ++ai) {
+      for (int bi = 0; bi < 3; ++bi) {
+        if (ab == 0) {
+          orients[0][ai][bi] = mpq2::orient2d(*b[bi], *b[(bi + 1) % 3], *a[ai]);
+        }
+        else {
+          orients[1][bi][ai] = mpq2::orient2d(*a[ai], *a[(ai + 1) % 3], *b[bi]);
+        }
+      }
+    }
+  }
+  return non_trivially_2d_point_in_tri(orients[0], 0) ||
+         non_trivially_2d_point_in_tri(orients[0], 1) ||
+         non_trivially_2d_point_in_tri(orients[0], 2) ||
+         non_trivially_2d_point_in_tri(orients[1], 0) ||
+         non_trivially_2d_point_in_tri(orients[1], 1) ||
+         non_trivially_2d_point_in_tri(orients[1], 2) || non_trivially_2d_hex_overlap(orients) ||
+         non_trivially_2d_shared_edge_overlap(orients, a, b) || same_triangles(a, b);
+  return true;
+}
+
+/* Does triangle t in tm non-trivially non-coplanar intersect any triangle
+ * in CoplanarCluster cl? Assume t is known to be in the same plane as all
+ * the triangles in cl, and that proj_axis is a good axis to project down
+ * to solve this problem in 2d.
+ */
+static bool non_trivially_coplanar_intersects(const Mesh &tm,
+                                              uint t,
+                                              const CoplanarCluster &cl,
+                                              int proj_axis)
+{
+  const Face &tri = *tm.face(t);
+  mpq2 v0 = project_3d_to_2d(tri[0]->co_exact, proj_axis);
+  mpq2 v1 = project_3d_to_2d(tri[1]->co_exact, proj_axis);
+  mpq2 v2 = project_3d_to_2d(tri[2]->co_exact, proj_axis);
+  if (mpq2::orient2d(v0, v1, v2) != 1) {
+    mpq2 tmp = v1;
+    v1 = v2;
+    v2 = tmp;
+  }
+  for (const uint cl_t : cl) {
+    const Face &cl_tri = *tm.face(cl_t);
+    mpq2 ctv0 = project_3d_to_2d(cl_tri[0]->co_exact, proj_axis);
+    mpq2 ctv1 = project_3d_to_2d(cl_tri[1]->co_exact, proj_axis);
+    mpq2 ctv2 = project_3d_to_2d(cl_tri[2]->co_exact, proj_axis);
+    if (mpq2::orient2d(ctv0, ctv1, ctv2) != 1) {
+      mpq2 tmp = ctv1;
+      ctv1 = ctv2;
+      ctv2 = tmp;
+    }
+    const mpq2 *v[] = {&v0, &v1, &v2};
+    const mpq2 *ctv[] = {&ctv0, &ctv1, &ctv2};
+    if (non_trivially_2d_intersect(v, ctv)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Keeping this code for a while, but for now, almost all
+ * trivial intersects are found before calling intersect_tri_tri now.
+ */
+#if 0
+/* Do tri1 and tri2 intersect at all, and if so, is the intersection
+ * something other than a common vertex or a common edge?
+ * The itt value is the result of calling intersect_tri_tri on tri1, tri2.
+ */
+static bool non_trivial_intersect(const ITT_value &itt, Facep tri1, Facep tri2)
+{
+  if (itt.kind == INONE) {
+    return false;
+  }
+  Facep tris[2] = {tri1, tri2};
+  if (itt.kind == IPOINT) {
+    bool has_p_as_vert[2] {false, false};
+    for (int i = 0; i < 2; ++i) {
+      for (Vertp v : *tris[i]) {
+        if (itt.p1 == v->co_exact) {
+          has_p_as_vert[i] = true;
+          break;
+        }
+      }
+    }
+    return !(has_p_as_vert[0] && has_p_as_vert[1]);
+  }
+  if (itt.kind == ISEGMENT) {
+    bool has_seg_as_edge[2] = {false, false};
+    for (int i = 0; i < 2; ++i) {
+      const Face &t = *tris[i];
+      for (uint pos : t.index_range()) {
+        uint nextpos = t.next_pos(pos);
+        if ((itt.p1 == t[pos]->co_exact && itt.p2 == t[nextpos]->co_exact) ||
+            (itt.p2 == t[pos]->co_exact && itt.p1 == t[nextpos]->co_exact)) {
+          has_seg_as_edge[i] = true;
+          break;
+        }
+      }
+    }
+    return !(has_seg_as_edge[0] && has_seg_as_edge[1]);
+  }
+  BLI_assert(itt.kind == ICOPLANAR);
+  /* TODO: refactor this common code with code above. */
+  int proj_axis = mpq3::dominant_axis(tri1->plane.norm_exact);
+  mpq2 tri_2d[2][3];
+  for (int i = 0; i < 2; ++i) {
+    mpq2 v0 = project_3d_to_2d((*tris[i])[0]->co_exact, proj_axis);
+    mpq2 v1 = project_3d_to_2d((*tris[i])[1]->co_exact, proj_axis);
+    mpq2 v2 = project_3d_to_2d((*tris[i])[2]->co_exact, proj_axis);
+    if (mpq2::orient2d(v0, v1, v2) != 1) {
+      mpq2 tmp = v1;
+      v1 = v2;
+      v2 = tmp;
+    }
+    tri_2d[i][0] = v0;
+    tri_2d[i][1] = v1;
+    tri_2d[i][2] = v2;
+  }
+  const mpq2 *va[] = {&tri_2d[0][0], &tri_2d[0][1], &tri_2d[0][2]};
+  const mpq2 *vb[] = {&tri_2d[1][0], &tri_2d[1][1], &tri_2d[1][2]};
+  return non_trivially_2d_intersect(va, vb);
+}
+#endif
+
+/* The sup and index functions are defined in the paper:
+ * EXACT GEOMETRIC COMPUTATION USING CASCADING, by
+ * Burnikel, Funke, and Seel. They are used to find absolute
+ * bounds on the error due to doing a calculation in double
+ * instead of exactly. For calculations involving only +, -, and *,
+ * the supremum is the same function except using absolute values
+ * on inputs and using + instead of -.
+ * The index function follows these rules:
+ *    index(x op y) = 1 + max(index(x), index(y)) for op + or -
+ *    index(x * y)  = 1 + index(x) + index(y)
+ *    index(x) = 0 if input x can be respresented exactly as a double
+ *    index(x) = 1 otherwise.
+ *
+ * With these rules in place, we know an absolute error bound:
+ *
+ *     |E_exact - E| <= supremum(E) * index(E) * DBL_EPSILON
+ *
+ * where E_exact is what would have been the exact value of the
+ * expression and E is the one calculated with doubles.
+ *
+ * So the sign of E is the same as the sign of E_exact if
+ *    |E| > supremum(E) * index(E) * DBL_EPSILON
+ *
+ * Note: a possible speedup would be to have a simple function
+ * that calculates the error bound if one knows that all values
+ * are less than some global maximum - most of the function would
+ * be calculated ahead of time. The global max could be passed
+ * from above.
+ */
+
+static double supremum_cross(const double3 &a, const double3 &b)
+{
+  double3 abs_a{fabs(a[0]), fabs(a[1]), fabs(a[2])};
+  double3 abs_b{fabs(b[0]), fabs(b[1]), fabs(b[2])};
+  double3 c;
+  /* This is cross(a, b) but using absoluate values for a and b
+   * and always using + when operation is + or -.
+   */
+  c[0] = a[1] * b[2] + a[2] * b[1];
+  c[1] = a[2] * b[0] + a[0] * b[2];
+  c[2] = a[0] * b[1] + a[1] * b[0];
+  return double3::dot(c, c);
+}
+
+/* Used with supremum to get error bound. See Burnikel et al paper.
+ * In cases where argument coords are known to be exactly
+ * representable in doubles, this value is 7 instead of 11.
+ */
+constexpr int index_cross = 11;
+
+static double supremum_dot(const double3 &a, const double3 &b)
+{
+  double3 abs_a{fabs(a[0]), fabs(a[1]), fabs(a[2])};
+  double3 abs_b{fabs(b[0]), fabs(b[1]), fabs(b[2])};
+  return double3::dot(abs_a, abs_b);
+}
+
+/* This value would be 3 if input values are exact */
+static int index_dot = 5;
+
+static double supremum_orient3d(const double3 &a,
+                                const double3 &b,
+                                const double3 &c,
+                                const double3 &d)
+{
+  double3 abs_a{fabs(a[0]), fabs(a[1]), fabs(a[2])};
+  double3 abs_b{fabs(b[0]), fabs(b[1]), fabs(b[2])};
+  double3 abs_c{fabs(c[0]), fabs(c[1]), fabs(c[2])};
+  double3 abs_d{fabs(d[0]), fabs(d[1]), fabs(d[2])};
+  double adx = abs_a[0] + abs_d[0];
+  double bdx = abs_b[0] + abs_d[0];
+  double cdx = abs_c[0] + abs_d[0];
+  double ady = abs_a[1] + abs_d[1];
+  double bdy = abs_b[1] + abs_d[1];
+  double cdy = abs_c[1] + abs_d[1];
+  double adz = abs_a[2] + abs_d[2];
+  double bdz = abs_b[2] + abs_d[2];
+  double cdz = abs_c[2] + abs_d[2];
+
+  double bdxcdy = bdx * cdy;
+  double cdxbdy = cdx * bdy;
+
+  double cdxady = cdx * ady;
+  double adxcdy = adx * cdy;
+
+  double adxbdy = adx * bdy;
+  double bdxady = bdx * ady;
+
+  double det = adz * (bdxcdy + cdxbdy) + bdz * (cdxady + adxcdy) + cdz * (adxbdy + bdxady);
+  return det;
+}
+
+/* This value would be 8 if the input values are exact. */
+static int index_orient3d = 11;
+
+/* Return the approximate orient3d of the four double3's, with
+ * the guarantee that if the value is -1 or 1 then the underlying
+ * mpq3 test would also have returned that value.
+ * When the return value is 0, we are not sure of the sign.
+ */
+int fliter_orient3d(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
+{
+  double o3dfast = double3::orient3d_fast(a, b, c, d);
+  if (o3dfast == 0.0) {
+    return 0;
+  }
+  double err_bound = supremum_orient3d(a, b, c, d) * index_orient3d * DBL_EPSILON;
+  if (fabs(o3dfast) > err_bound) {
+    return o3dfast > 0.0 ? 1 : -1;
+  }
+  return 0;
+}
+
+/* Return the approximate orient3d of the tri plane points and v, with
+ * the guarantee that if the value is -1 or 1 then the underlying
+ * mpq3 test would also have returned that value.
+ * When the return value is 0, we are not sure of the sign.
+ */
+int filter_tri_plane_vert_orient3d(const Face &tri, Vertp v)
+{
+  return fliter_orient3d(tri[0]->co, tri[1]->co, tri[2]->co, v->co);
+}
+
+/* Are vectors a and b parallel or nearly parallel?
+ * This routine should only return false if we are certain
+ * that they are not parallel, taking into account the
+ * possible numeric errors and input value approximation.
+ */
+static bool near_parallel_vecs(const double3 &a, const double3 &b)
+{
+  double3 cr = double3::cross_high_precision(a, b);
+  double cr_len_sq = cr.length_squared();
+  if (cr_len_sq == 0.0) {
+    return true;
+  }
+  double err_bound = supremum_cross(a, b) * index_cross * DBL_EPSILON;
+  if (cr_len_sq > err_bound) {
+    return false;
+  }
+  return true;
+}
+
+/* Return true if we are sure that dot(a,b) > 0, taking into
+ * account the error bounds due to numeric errors and input value
+ * approximation.
+ */
+static bool dot_must_be_positive(const double3 &a, const double3 &b)
+{
+  double d = double3::dot(a, b);
+  if (d <= 0.0) {
+    return false;
+  }
+  double err_bound = supremum_dot(a, b) * index_dot * DBL_EPSILON;
+  if (d > err_bound) {
+    return true;
+  }
+  return false;
+}
+
+/* A fast, non-exhaustive test for non_trivial intersection.
+ * If this returns false then we are sure that tri1 and tri2
+ * do not intersect. If it returns true, they may or may not
+ * non-trivially intersect.
+ * We assume that boundinb box overlap tests have already been
+ * done, so don't repeat those here. This routine is checking
+ * for the very common cases (when doing mesh self-intersect)
+ * where triangles share an edge or a vertex, but don't
+ * otherwise intersect.
+ */
+static bool may_non_trivially_intersect(Facep t1, Facep t2)
+{
+  const Face &tri1 = *t1;
+  const Face &tri2 = *t2;
+  Face::FacePos share1_pos[3];
+  Face::FacePos share2_pos[3];
+  int n_shared = 0;
+  for (Face::FacePos p1 = 0; p1 < 3; ++p1) {
+    Vertp v1 = tri1[p1];
+    for (Face::FacePos p2 = 0; p2 < 3; ++p2) {
+      Vertp v2 = tri2[p2];
+      if (v1 == v2) {
+        share1_pos[n_shared] = p1;
+        share2_pos[n_shared] = p2;
+        ++n_shared;
+      }
+    }
+  }
+  if (n_shared == 2) {
+    /* t1 and t2 share an entire edge.
+     * If their normals are not parallel, they cannot non-trivially intersect.
+     */
+    if (!near_parallel_vecs(tri1.plane.norm, tri2.plane.norm)) {
+      return false;
+    }
+    /* The normals are parallel or nearly parallel.
+     * If the normals are in the same direction and the edges have opposite
+     * directions in the two triangles, they cannot non-trivially intersect.
+     */
+    bool erev1 = tri1.prev_pos(share1_pos[0]) == share1_pos[1];
+    bool erev2 = tri2.prev_pos(share2_pos[0]) == share2_pos[1];
+    if (erev1 != erev2 && dot_must_be_positive(tri1.plane.norm, tri2.plane.norm)) {
+      return false;
+    }
+  }
+  else if (n_shared == 1) {
+    /* t1 and t2 share a vertex, but not an entire edge.
+     * If the two non-shared verts of t2 are both on the same
+     * side of tri1's plane, then they cannot non-trivially intersect.
+     * (There are some other cases that could be caught here but
+     * they are more expensive to check).
+     */
+    Face::FacePos p = share2_pos[0];
+    Vertp v2a = p == 0 ? tri2[1] : tri2[0];
+    Vertp v2b = (p == 0 || p == 1) ? tri2[2] : tri2[1];
+    int o1 = filter_tri_plane_vert_orient3d(tri1, v2a);
+    int o2 = filter_tri_plane_vert_orient3d(tri1, v2b);
+    if (o1 == o2 && o1 != 0) {
+      return false;
+    }
+    p = share1_pos[0];
+    Vertp v1a = (p == 0 || p == 1) ? tri1[2] : tri1[1];
+    Vertp v1b = (p == 0 || p == 1) ? tri1[2] : tri1[1];
+    o1 = filter_tri_plane_vert_orient3d(tri2, v1a);
+    o2 = filter_tri_plane_vert_orient3d(tri2, v1b);
+    if (o1 == o2 && o1 != 0) {
+      return false;
+    }
+  }
+  /* We weren't able to prove that any intersection is trivial. */
+  return true;
+}
+
 /*
  * interesect_tri_tri and helper functions.
  * This code uses the algorithm of Guigue and Devillers, as described
@@ -1090,6 +1588,9 @@ static ITT_value itt_canon1(const mpq3 &p1,
 static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
 {
   constexpr int dbg_level = 0;
+#ifdef PERFDEBUG
+  incperfcount(0);
+#endif
   const Face &tri1 = *tm.face(t1);
   const Face &tri2 = *tm.face(t2);
   Vertp vp1 = tri1[0];
@@ -1131,6 +1632,9 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
     if (dbg_level > 0) {
       std::cout << "no intersection, all t1's verts above or below t2\n";
     }
+#ifdef PERFDEBUG
+    incperfcount(2);
+#endif
     return ITT_value(INONE);
   }
 
@@ -1149,6 +1653,9 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
     if (dbg_level > 0) {
       std::cout << "no intersection, all t2's verts above or below t1\n";
     }
+#ifdef PERFDEBUG
+    incperfcount(2);
+#endif
     return ITT_value(INONE);
   }
 
@@ -1213,6 +1720,12 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
   if (ans.kind == ICOPLANAR) {
     ans.t_source = t2;
   }
+
+#ifdef PERFDEBUG
+  if (ans.kind != INONE) {
+    incperfcount(5);
+  }
+#endif
   return ans;
 }
 
@@ -1226,32 +1739,6 @@ struct CDT_data {
   CDT_result<mpq_class> cdt_out; /* Result of running CDT on input with (vert, edge, face). */
   int proj_axis;
 };
-
-/* Project a 3d vert to a 2d one by eliding proj_axis. This does not create
- * degeneracies as long as the projection axis is one where the corresponding
- * component of the originating plane normal is non-zero.
- */
-static mpq2 project_3d_to_2d(const mpq3 &p3d, int proj_axis)
-{
-  mpq2 p2d;
-  switch (proj_axis) {
-    case (0): {
-      p2d[0] = p3d[1];
-      p2d[1] = p3d[2];
-    } break;
-    case (1): {
-      p2d[0] = p3d[0];
-      p2d[1] = p3d[2];
-    } break;
-    case (2): {
-      p2d[0] = p3d[0];
-      p2d[1] = p3d[1];
-    } break;
-    default:
-      BLI_assert(false);
-  }
-  return p2d;
-}
 
 /* We could dedup verts here, but CDT routine will do that anyway. */
 static int prepare_need_vert(CDT_data &cd, const mpq3 &p3d)
@@ -1620,7 +2107,22 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
       if (t_other == tu) {
         continue;
       }
-      ITT_value itt = intersect_tri_tri(tm, tu, t_other);
+#ifdef PERFDEBUG
+      incperfcount(3);
+#endif
+      ITT_value itt;
+      if (may_non_trivially_intersect(tm.face(tu), tm.face(t_other))) {
+        itt = intersect_tri_tri(tm, tu, t_other);
+      }
+      else {
+        if (dbg_level > 0) {
+          std::cout << "early discovery of only trivial intersect\n";
+        }
+#ifdef PERFDEBUG
+        incperfcount(4);
+#endif
+        itt = ITT_value(INONE);
+      }
       if (itt.kind != INONE) {
         itts.append(itt);
       }
@@ -1691,173 +2193,6 @@ static Mesh union_tri_subdivides(const blender::Array<Mesh> &tri_subdivided)
     }
   }
   return Mesh(faces);
-}
-
-/* Is a point in the interior of a 2d triangle or on one of its
- * edges but not either endpoint of the edge?
- * orient[pi][i] is the orientation test of the point pi against
- * the side of the triangle starting at index i.
- * Assume the triangele is non-degenerate and CCW-oriented.
- * Then answer is true if p is left of or on all three of triangle a's edges,
- * and strictly left of at least on of them.
- */
-static bool non_trivially_2d_point_in_tri(const int orients[3][3], int pi)
-{
-  int p_left_01 = orients[pi][0];
-  int p_left_12 = orients[pi][1];
-  int p_left_20 = orients[pi][2];
-  return (p_left_01 >= 0 && p_left_12 >= 0 && p_left_20 >= 0 &&
-          (p_left_01 + p_left_12 + p_left_20) >= 2);
-}
-
-/* Given orients as defined in non_trivially_2d_intersect, do the triangles
- * overlap in a "hex" pattern? That is, the overlap region is a hexagon, which
- * one gets by having, each point of one triangle being strictly rightof one
- * edge of the other and strictly left of the other two edges; and vice versa.
- */
-static bool non_trivially_2d_hex_overlap(int orients[2][3][3])
-{
-  for (int ab = 0; ab < 2; ++ab) {
-    for (int i = 0; i < 3; ++i) {
-      bool ok = orients[ab][i][0] + orients[ab][i][1] + orients[ab][i][2] == 1 &&
-                orients[ab][i][0] != 0 && orients[ab][i][1] != 0 && orients[i][2] != 0;
-      if (!ok) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-/* Given orients as defined in non_trivially_2d_intersect, do the triangles
- * have one shared edge in a "folded-over" configuration?
- * As well as a shared edge, the third vertex of one triangle needs to be
- * rightof one and leftof the other two edges of the other triangle.
- */
-static bool non_trivially_2d_shared_edge_overlap(int orients[2][3][3],
-                                                 const mpq2 *a[3],
-                                                 const mpq2 *b[3])
-{
-  for (int i = 0; i < 3; ++i) {
-    int in = (i + 1) % 3;
-    int inn = (i + 2) % 3;
-    for (int j = 0; j < 3; ++j) {
-      int jn = (j + 1) % 3;
-      int jnn = (j + 2) % 3;
-      if (*a[i] == *b[j] && *a[in] == *b[jn]) {
-        /* Edge from a[i] is shared with edge from b[j]. */
-        /* See if a[inn] is rightof or on one of the other edges of b.
-         * If it is on, then it has to be rightof or leftof the shared edge,
-         * depending on which edge it is.
-         */
-        if (orients[0][inn][jn] < 0 || orients[0][inn][jnn] < 0) {
-          return true;
-        }
-        if (orients[0][inn][jn] == 0 && orients[0][inn][j] == 1) {
-          return true;
-        }
-        if (orients[0][inn][jnn] == 0 && orients[0][inn][j] == -1) {
-          return true;
-        }
-        /* Similarly for b[jnn]. */
-        if (orients[1][jnn][in] < 0 || orients[1][jnn][inn] < 0) {
-          return true;
-        }
-        if (orients[1][jnn][in] == 0 && orients[1][jnn][i] == 1) {
-          return true;
-        }
-        if (orients[1][jnn][inn] == 0 && orients[1][jnn][i] == -1) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/* Are the triangles the same, perhaps with some permutation of vertices? */
-static bool same_triangles(const mpq2 *a[3], const mpq2 *b[3])
-{
-  for (int i = 0; i < 3; ++i) {
-    if (a[0] == b[i] && a[1] == b[(i + 1) % 3] && a[2] == b[(i + 2) % 3]) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/* Do 2d triangles (a[0], a[1], a[2]) and (b[0], b[1], b2[2]) intersect at more than just shared
- * vertices or a shared edge? This is true if any point of one tri is non-trivially inside the
- * other. NO: that isn't quite sufficient: there is also the case where the verts are all mutually
- * outside the other's triangle, but there is a hexagonal overlap region where they overlap.
- */
-static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
-{
-  /* TODO: Could experiment with trying bounding box tests before these.
-   * TODO: Find a less expensive way than 18 orient tests to do this.
-   */
-  /* orients[0][ai][bi] is orient of point a[ai] compared to seg starting at b[bi].
-   * orients[1][bi][ai] is orient of point b[bi] compared to seg starting at a[ai].
-   */
-  int orients[2][3][3];
-  for (int ab = 0; ab < 2; ++ab) {
-    for (int ai = 0; ai < 3; ++ai) {
-      for (int bi = 0; bi < 3; ++bi) {
-        if (ab == 0) {
-          orients[0][ai][bi] = mpq2::orient2d(*b[bi], *b[(bi + 1) % 3], *a[ai]);
-        }
-        else {
-          orients[1][bi][ai] = mpq2::orient2d(*a[ai], *a[(ai + 1) % 3], *b[bi]);
-        }
-      }
-    }
-  }
-  return non_trivially_2d_point_in_tri(orients[0], 0) ||
-         non_trivially_2d_point_in_tri(orients[0], 1) ||
-         non_trivially_2d_point_in_tri(orients[0], 2) ||
-         non_trivially_2d_point_in_tri(orients[1], 0) ||
-         non_trivially_2d_point_in_tri(orients[1], 1) ||
-         non_trivially_2d_point_in_tri(orients[1], 2) || non_trivially_2d_hex_overlap(orients) ||
-         non_trivially_2d_shared_edge_overlap(orients, a, b) || same_triangles(a, b);
-  return true;
-}
-
-/* Does triangle t in tm non-trivially non-coplanar intersect any triangle
- * in CoplanarCluster cl? Assume t is known to be in the same plane as all
- * the triangles in cl, and that proj_axis is a good axis to project down
- * to solve this problem in 2d.
- */
-static bool non_trivially_coplanar_intersects(const Mesh &tm,
-                                              uint t,
-                                              const CoplanarCluster &cl,
-                                              int proj_axis)
-{
-  const Face &tri = *tm.face(t);
-  mpq2 v0 = project_3d_to_2d(tri[0]->co_exact, proj_axis);
-  mpq2 v1 = project_3d_to_2d(tri[1]->co_exact, proj_axis);
-  mpq2 v2 = project_3d_to_2d(tri[2]->co_exact, proj_axis);
-  if (mpq2::orient2d(v0, v1, v2) != 1) {
-    mpq2 tmp = v1;
-    v1 = v2;
-    v2 = tmp;
-  }
-  for (const uint cl_t : cl) {
-    const Face &cl_tri = *tm.face(cl_t);
-    mpq2 ctv0 = project_3d_to_2d(cl_tri[0]->co_exact, proj_axis);
-    mpq2 ctv1 = project_3d_to_2d(cl_tri[1]->co_exact, proj_axis);
-    mpq2 ctv2 = project_3d_to_2d(cl_tri[2]->co_exact, proj_axis);
-    if (mpq2::orient2d(ctv0, ctv1, ctv2) != 1) {
-      mpq2 tmp = ctv1;
-      ctv1 = ctv2;
-      ctv2 = tmp;
-    }
-    const mpq2 *v[] = {&v0, &v1, &v2};
-    const mpq2 *ctv[] = {&ctv0, &ctv1, &ctv2};
-    if (non_trivially_2d_intersect(v, ctv)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox> &tri_bb)
@@ -2028,6 +2363,11 @@ Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
   if (dbg_level > 1) {
     std::cout << clinfo;
   }
+#ifdef PERFDEBUG
+  perfdata_init();
+  doperfmax(0, static_cast<int>(tm_in.face_size()));
+  doperfmax(1, static_cast<int>(clinfo.tot_cluster()));
+#endif
   BVHTree *tri_tree = bvhtree_for_tris(tm_in, tri_bb);
   BVHTree *cluster_tree = bvhtree_for_clusters(clinfo);
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
@@ -2055,6 +2395,9 @@ Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
   if (cluster_tree != nullptr) {
     BLI_bvhtree_free(cluster_tree);
   }
+#ifdef PERFDEBUG
+  dump_perfdata();
+#endif
   return combined;
 }
 
@@ -2141,5 +2484,70 @@ void write_obj_mesh(Mesh &m, const std::string &objname)
   }
   f.close();
 }
+
+#ifdef PERFDEBUG
+struct PerfCounts {
+  Vector<int> count;
+  Vector<const char *> count_name;
+  Vector<int> max;
+  Vector<const char *> max_name;
+} perfdata;
+
+static void perfdata_init(void)
+{
+  /* count 0. */
+  perfdata.count.append(0);
+  perfdata.count_name.append("intersect_tri_tri calls");
+
+  /* count 1. */
+  perfdata.count.append(0);
+  perfdata.count_name.append("trivial intersects detected post intersect_tri_tri");
+
+  /* count 2. */
+  perfdata.count.append(0);
+  perfdata.count_name.append("tri tri intersects stopped by plane tests");
+
+  /* count 3. */
+  perfdata.count.append(0);
+  perfdata.count_name.append("overlaps");
+
+  /* count 4. */
+  perfdata.count.append(0);
+  perfdata.count_name.append("early discovery of trivial intersects");
+
+  /* count 5. */
+  perfdata.count.append(0);
+  perfdata.count_name.append("final non-NONE intersects");
+
+  /* max 0. */
+  perfdata.max.append(0);
+  perfdata.max_name.append("total faces");
+
+  /* max 1. */
+  perfdata.max.append(0);
+  perfdata.max_name.append("total clusters");
+}
+
+static void incperfcount(int countnum)
+{
+  perfdata.count[countnum]++;
+}
+
+static void doperfmax(int maxnum, int val)
+{
+  perfdata.max[maxnum] = max_ii(perfdata.max[maxnum], val);
+}
+
+static void dump_perfdata(void)
+{
+  std::cout << "\nPERFDATA\n";
+  for (uint i : perfdata.count.index_range()) {
+    std::cout << perfdata.count_name[i] << " = " << perfdata.count[i] << "\n";
+  }
+  for (uint i : perfdata.max.index_range()) {
+    std::cout << perfdata.max_name[i] << " = " << perfdata.max[i] << "\n";
+  }
+}
+#endif
 
 };  // namespace blender::meshintersect
