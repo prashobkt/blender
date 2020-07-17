@@ -1205,6 +1205,11 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
         RNA_id_pointer_create(tselem->id, &ptr);
         ED_buttons_set_context(C, &ptr, BCONTEXT_MODIFIER);
         break;
+      case TSE_EFFECT_BASE:
+      case TSE_EFFECT:
+        RNA_id_pointer_create(tselem->id, &ptr);
+        ED_buttons_set_context(C, &ptr, BCONTEXT_SHADERFX);
+        break;
       case TSE_BONE: {
         bArmature *arm = (bArmature *)tselem->id;
         Bone *bone = te->directdata;
