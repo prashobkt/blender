@@ -5006,6 +5006,7 @@ void BKE_fluid_modifier_create_type_data(struct FluidModifierData *fmd)
     fmd->domain->gridlines_range_color[1] = 0.0f;
     fmd->domain->gridlines_range_color[2] = 0.0f;
     fmd->domain->gridlines_range_color[3] = 1.0f;
+    fmd->domain->gridlines_cell_filter = FLUID_CELL_TYPE_NONE;
 
     /* -- Deprecated / unsed options (below)-- */
 
@@ -5255,6 +5256,7 @@ void BKE_fluid_modifier_copy(const struct FluidModifierData *fmd,
     tfds->gridlines_range_color[1] = fds->gridlines_range_color[1];
     tfds->gridlines_range_color[2] = fds->gridlines_range_color[2];
     tfds->gridlines_range_color[3] = fds->gridlines_range_color[3];
+    tfds->gridlines_cell_filter = fds->gridlines_cell_filter;
 
     /* -- Deprecated / unsed options (below)-- */
 

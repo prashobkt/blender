@@ -10,7 +10,7 @@ uniform vec3 domainOriginOffset;
 /* FluidDomainSettings.res_min */
 uniform ivec3 adaptiveCellOffset;
 
-#ifdef SHOW_FLAGS
+#if defined(SHOW_FLAGS) || defined(SHOW_RANGE)
 uniform usampler3D flagTexture;
 #endif
 
@@ -19,6 +19,7 @@ uniform sampler3D fieldTexture;
 uniform float lowerBound = 0.0;
 uniform float upperBound = 0.0;
 uniform vec4 rangeColor;
+uniform int cellFilter;
 #endif
 
 flat out vec4 finalColor;
@@ -92,15 +93,20 @@ void main()
 
   finalColor = vec4(0.0, 0.0, 0.0, 1.0);
 
-#ifdef SHOW_FLAGS
-  uint flag = texelFetch(flagTexture, cell_co + ivec3(cell_offset), 0).r; 
+#if defined(SHOW_FLAGS) || defined(SHOW_RANGE)
+  uint flag = texelFetch(flagTexture, cell_co + ivec3(cell_offset), 0).r;
+#endif
+
+#ifdef SHOW_FLAGS 
   finalColor = flag_to_color(flag);
 #endif
 
 #ifdef SHOW_RANGE
   float value = texelFetch(fieldTexture, cell_co + ivec3(cell_offset), 0).r;
   if (value >= lowerBound && value <= upperBound) {
-    finalColor = rangeColor;
+    if (cellFilter == 0 || bool(uint(cellFilter) & flag)) {
+      finalColor = rangeColor;
+    }
   }
 #endif
 

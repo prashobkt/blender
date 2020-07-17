@@ -1310,6 +1310,24 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem gridlines_cell_filter_items[] = {
+      {FLUID_CELL_TYPE_NONE, "NONE", 0, "None", "Highlight the cells regardless of their type"},
+      {FLUID_CELL_TYPE_FLUID, "FLUID", 0, "Fluid", "Highlight only the cells of type Fluid"},
+      {FLUID_CELL_TYPE_OBSTACLE,
+       "OBSTACLE",
+       0,
+       "Obstacle",
+       "Highlight only the cells of type Obstacle"},
+      {FLUID_CELL_TYPE_EMPTY, "EMPTY", 0, "Empty", "Highlight only the cells of type Empty"},
+      {FLUID_CELL_TYPE_INFLOW, "INFLOW", 0, "Inflow", "Highlight only the cells of type Inflow"},
+      {FLUID_CELL_TYPE_OUTFLOW,
+       "OUTFLOW",
+       0,
+       "Outflow",
+       "Highlight only the cells of type Outflow"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   static const EnumPropertyItem sndparticle_boundary_items[] = {
       {SNDPARTICLE_BOUNDARY_DELETE,
        "DELETE",
@@ -2490,6 +2508,12 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Color", "Color used to highlight the range");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
+
+  prop = RNA_def_property(srna, "gridlines_cell_filter", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "gridlines_cell_filter");
+  RNA_def_property_enum_items(prop, gridlines_cell_filter_items);
+  RNA_def_property_ui_text(prop, "Cell Type", "Cell type to be highlighted");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
   /* -- Deprecated / unsed options (below)-- */
 

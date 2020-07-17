@@ -1366,6 +1366,7 @@ class PHYSICS_PT_viewport_display_advanced(PhysicButtonsPanel, Panel):
                 col.prop(domain, "gridlines_lower_bound")
                 col.prop(domain, "gridlines_upper_bound")
                 col.prop(domain, "gridlines_range_color")
+                col.prop(domain, "gridlines_cell_filter")
             else:
                 note = layout.split()
                 if (not domain.use_color_ramp):

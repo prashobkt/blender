@@ -1443,7 +1443,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
 
-    if (color_with_flags) {
+    if (color_with_flags || color_range) {
       GPU_create_fluid_flags(fmd);
       DRW_shgroup_uniform_texture(grp, "flagTexture", fds->tex_flags);
     }
@@ -1454,6 +1454,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
       DRW_shgroup_uniform_float_copy(grp, "lowerBound", fds->gridlines_lower_bound);
       DRW_shgroup_uniform_float_copy(grp, "upperBound", fds->gridlines_upper_bound);
       DRW_shgroup_uniform_vec4_copy(grp, "rangeColor", fds->gridlines_range_color);
+      DRW_shgroup_uniform_int_copy(grp, "cellFilter", fds->gridlines_cell_filter);
     }
 
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);

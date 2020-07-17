@@ -139,6 +139,16 @@ enum {
   FLUID_GRIDLINE_COLOR_TYPE_RANGE = 2,
 };
 
+/* Fluid cell types  */
+enum {
+  FLUID_CELL_TYPE_NONE = 0,
+  FLUID_CELL_TYPE_FLUID = (1 << 0),
+  FLUID_CELL_TYPE_OBSTACLE = (1 << 1),
+  FLUID_CELL_TYPE_EMPTY = (1 << 2),
+  FLUID_CELL_TYPE_INFLOW = (1 << 3),
+  FLUID_CELL_TYPE_OUTFLOW = (1 << 4),
+};
+
 /* Fluid domain types. */
 enum {
   FLUID_DOMAIN_TYPE_GAS = 0,
@@ -635,7 +645,8 @@ typedef struct FluidDomainSettings {
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
   char gridlines_color_field; /* Simulation field used to color map onto gridlines. */
-  char _pad9[2];              /* Unused. */
+  char gridlines_cell_filter;
+  char _pad9[1]; /* Unused. */
 
   /* OpenVDB cache options. */
   int openvdb_compression;
