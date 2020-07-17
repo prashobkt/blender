@@ -297,6 +297,14 @@ class MeshTest:
                 raise AttributeError("Modifier '{}' has no parameter named '{}'".
                                      format(modifier_spec.modifier_type, param_name))
 
+    def _apply_modifier(self, test_object, modifier_name):
+        # Modifier automatically gets applied when converting from Curve to Mesh.
+        if test_object.type == 'CURVE':
+            bpy.ops.object.convert(target='MESH')
+
+        elif test_object.type == 'MESH':
+            bpy.ops.object.modifier_apply(modifier=modifier_name)
+
     def _bake_current_simulation(self, obj, test_mod_type, test_mod_name, frame_end):
         for scene in bpy.data.scenes:
             for modifier in obj.modifiers:
@@ -414,7 +422,8 @@ class MeshTest:
 
         if self.apply_modifier:
             for mod_name in modifier_names:
-                bpy.ops.object.modifier_apply(modifier=mod_name)
+                self._apply_modifier(test_object, mod_name)
+
 
     def run_test(self):
         """
@@ -443,7 +452,7 @@ class MeshTest:
             if isinstance(operation, ModifierSpec):
                 self._add_modifier(evaluated_test_object, operation)
                 if self.apply_modifier:
-                    bpy.ops.object.modifier_apply(modifier=operation.modifier_name)
+                    self._apply_modifier(evaluated_test_object,operation.modifier_name)
 
             elif isinstance(operation, OperatorSpec):
                 self._apply_operator(evaluated_test_object, operation)

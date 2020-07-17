@@ -266,6 +266,43 @@ def main():
         ["WavePlane", "testObjPlaneWave", "expObjPlaneWave",
          [ModifierSpec('wave', 'WAVE', {})]],
 
+        #### CURVES ####
+        # Caution: Make sure test object has no modifier in "added" state, the test may fail.
+        ["BezCurveArray", "testObjBezierCurveArray", "expObjBezierCurveArray",
+         [ModifierSpec('array', 'ARRAY', {})]],
+
+        ["CurveBevel", "testObjBezierCurveBevel", "expObjBezierCurveBevel",
+         [ModifierSpec('bevel', 'BEVEL', {})]],
+
+        ["CurveBuild", "testObjBezierCurveBuild", "expObjBezierCurveBuild",
+         [ModifierSpec('build', 'BUILD', {'frame_start': 0, 'frame_duration': 1})]],
+
+        ["CurveDecimate", "testObjBezierCurveDecimate", "expObjBezierCurveDecimate",
+         [ModifierSpec('decimate', 'DECIMATE', {'ratio':0.5})]],
+
+        ["CurveEdgeSplit", "testObjBezierCurveEdgeSplit", "expObjBezierCurveEdgeSplit",
+         [ModifierSpec('edgeSplit', 'EDGE_SPLIT', {})]],
+
+        ["CurveMirror", "testObjBezierCurveMirror", "expObjBezierCurveMirror",
+         [ModifierSpec('mirror', 'MIRROR', {'use_axis': (True, True, False)})]],
+
+        ["CurveScrew", "testObjBezierCurveScrew", "expObjBezierCurveScrew",
+         [ModifierSpec('screw', 'SCREW', {})]],
+
+        ["CurveSolidify", "testObjBezierCurveSolidify", "expObjBezierCurveSolidify",
+         [ModifierSpec('solidify', 'SOLIDIFY', {'thickness':1})]],
+
+        ["CurveSubSurf", "testObjBezierCurveSubSurf", "expObjBezierCurveSubSurf",
+         [ModifierSpec('subSurf', 'SUBSURF', {})]],
+
+        ["CurveTriangulate", "testObjBezierCurveTriangulate", "expObjBezierCurveTriangulate",
+         [ModifierSpec('triangulate', 'TRIANGULATE', {})]],
+
+        # Test 60
+        ["CurveWeld", "testObjBezierCurveWeld", "expObjBezierCurveWeld",
+         [ModifierSpec('weld', 'WELD', {})]],
+
+
     ]
 
     modifiers_test = ModifierTest(tests)
