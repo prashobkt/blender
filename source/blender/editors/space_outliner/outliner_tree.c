@@ -32,6 +32,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
+#include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_hair_types.h"
 #include "DNA_key_types.h"
@@ -510,6 +511,41 @@ static void outliner_add_object_contents(SpaceOutliner *soops,
         ten_psys = outliner_add_element(soops, &ten->subtree, ob, te, TSE_LINKED_PSYS, 0);
         ten_psys->directdata = psys;
         ten_psys->name = psys->part->id.name + 2;
+      }
+    }
+  }
+
+  if (!BLI_listbase_is_empty(&ob->greasepencil_modifiers)) {
+    GpencilModifierData *md;
+    TreeElement *ten_mod = outliner_add_element(soops, &te->subtree, ob, te, TSE_MODIFIER_BASE, 0);
+    int index;
+
+    ten_mod->name = IFACE_("Modifiers");
+    for (index = 0, md = ob->greasepencil_modifiers.first; md; index++, md = md->next) {
+      TreeElement *ten = outliner_add_element(
+          soops, &ten_mod->subtree, ob, ten_mod, TSE_MODIFIER, index);
+      ten->name = md->name;
+      ten->directdata = md;
+
+      if (md->type == eGpencilModifierType_Armature) {
+        outliner_add_element(soops,
+                             &ten->subtree,
+                             ((ArmatureGpencilModifierData *)md)->object,
+                             ten,
+                             TSE_LINKED_OB,
+                             0);
+      }
+      else if (md->type == eGpencilModifierType_Hook) {
+        outliner_add_element(
+            soops, &ten->subtree, ((HookGpencilModifierData *)md)->object, ten, TSE_LINKED_OB, 0);
+      }
+      else if (md->type == eGpencilModifierType_Lattice) {
+        outliner_add_element(soops,
+                             &ten->subtree,
+                             ((LatticeGpencilModifierData *)md)->object,
+                             ten,
+                             TSE_LINKED_OB,
+                             0);
       }
     }
   }

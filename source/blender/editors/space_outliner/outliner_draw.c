@@ -2325,7 +2325,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
           GpencilModifierData *md = BLI_findlink(&ob->greasepencil_modifiers, tselem->nr);
           switch ((GpencilModifierType)md->type) {
             case eGpencilModifierType_Noise:
-              data.icon = ICON_RNDCURVE;
+              data.icon = ICON_MOD_NOISE;
               break;
             case eGpencilModifierType_Subdiv:
               data.icon = ICON_MOD_SUBSURF;
@@ -2368,6 +2368,15 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
               break;
             case eGpencilModifierType_Armature:
               data.icon = ICON_MOD_ARMATURE;
+              break;
+            case eGpencilModifierType_Multiply:
+              data.icon = ICON_GP_MULTIFRAME_EDITING;
+              break;
+            case eGpencilModifierType_Time:
+              data.icon = ICON_MOD_TIME;
+              break;
+            case eGpencilModifierType_Texture:
+              data.icon = ICON_TEXTURE;
               break;
 
               /* Default */
