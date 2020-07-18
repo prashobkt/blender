@@ -769,14 +769,9 @@ static bool modifier_drop_poll(bContext *C,
     ob = (Object *)outliner_search_back(te_target, ID_OB);
   }
 
-  if (ob != drop_data->ob_parent) {
-    return false;
-  }
-
-  /* TODO (Nathan): Add ED_object_modifier_copy_to_object(). */
   if (outliner_ID_drop_find(C, event, ID_OB)) {
     *r_tooltip = TIP_("Copy modifier to object");
-    return false;
+    return true;
   }
 
   /* Reorder modifiers. */
@@ -830,6 +825,7 @@ static int modifier_drop_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
   TreeElementInsertType insert_type;
   TreeElement *te = outliner_drop_insert_find(C, event, &insert_type);
+  TreeStoreElem *tselem = TREESTORE(te);
 
   if (drop_data->drag_tselem->type == TSE_MODIFIER_BASE) {
     Object *ob = (Object *)TREESTORE(te)->id;
@@ -838,6 +834,16 @@ static int modifier_drop_invoke(bContext *C, wmOperator *op, const wmEvent *even
     ED_region_tag_redraw(region);
     WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
     DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+    return OPERATOR_FINISHED;
+  }
+
+  /* Copy if dropping on a different object. */
+  if ((Object *)tselem->id != drop_data->ob_parent) {
+    Object *ob_dst = (Object *)tselem->id;
+
+    BKE_object_link_modifier(ob_dst, drop_data->ob_parent, drop_data->drag_directdata);
+    WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob_dst);
+    DEG_id_tag_update(&ob_dst->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
     return OPERATOR_FINISHED;
   }
 
