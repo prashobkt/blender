@@ -391,7 +391,6 @@ typedef enum eSpaceOutliner_Sort_Types {
   SO_SORT_FREE,
   SO_SORT_ALPHA,
   SO_SORT_TYPE,
-  SO_SORT_CREATION_ORDER,
 } eSpaceOutliner_Sort_Types;
 
 /** \} */

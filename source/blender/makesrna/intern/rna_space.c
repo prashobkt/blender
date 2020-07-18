@@ -3050,11 +3050,6 @@ static void rna_def_space_outliner(BlenderRNA *brna)
       {SO_SORT_FREE, "FREE", 0, "Manual", "Sort objects and collections manually"},
       {SO_SORT_ALPHA, "ALPHA", 0, "Name", "Sort objects and collections by name alphabetically"},
       {SO_SORT_TYPE, "TYPE", 0, "Type", "Sort objects by type"},
-      {SO_SORT_CREATION_ORDER,
-       "CREATION",
-       0,
-       "Creation Order",
-       "Sort objects and collections in the order they were created"},
       {0, NULL, 0, NULL, NULL},
   };
 
