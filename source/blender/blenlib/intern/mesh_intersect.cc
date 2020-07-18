@@ -1249,7 +1249,7 @@ static int index_orient3d = 11;
  * mpq3 test would also have returned that value.
  * When the return value is 0, we are not sure of the sign.
  */
-int fliter_orient3d(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
+static int fliter_orient3d(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
 {
   double o3dfast = double3::orient3d_fast(a, b, c, d);
   if (o3dfast == 0.0) {
@@ -1267,7 +1267,7 @@ int fliter_orient3d(const double3 &a, const double3 &b, const double3 &c, const 
  * mpq3 test would also have returned that value.
  * When the return value is 0, we are not sure of the sign.
  */
-int filter_tri_plane_vert_orient3d(const Face &tri, Vertp v)
+static int filter_tri_plane_vert_orient3d(const Face &tri, Vertp v)
 {
   return fliter_orient3d(tri[0]->co, tri[1]->co, tri[2]->co, v->co);
 }
@@ -2049,7 +2049,7 @@ static bool bvhtreeverlap_cmp(const BVHTreeOverlap &a, const BVHTreeOverlap &b)
   if (a.indexA < b.indexA) {
     return true;
   }
-  if (a.indexA == b.indexA & a.indexB < b.indexB) {
+  if ((a.indexA == b.indexA) & (a.indexB < b.indexB)) {
     return true;
   }
   return false;

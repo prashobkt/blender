@@ -623,7 +623,8 @@ void exactinit()
  *  Sets h = e + f.  See the long version of my paper for details.
  * h cannot be e or f.
  */
-static int fast_expansion_sum_zeroelim(int elen, double *e, int flen, double *f, double *h)
+static int fast_expansion_sum_zeroelim(
+    int elen, const double *e, int flen, const double *f, double *h)
 {
   double Q;
   INEXACT double Qnew;
@@ -702,7 +703,7 @@ static int fast_expansion_sum_zeroelim(int elen, double *e, int flen, double *f,
  *  Sets h = be.  See either version of my paper for details.
  *  e and h cannot be the same.
  */
-static int scale_expansion_zeroelim(int elen, double *e, double b, double *h)
+static int scale_expansion_zeroelim(int elen, const double *e, double b, double *h)
 {
   INEXACT double Q, sum;
   double hh;
@@ -742,7 +743,7 @@ static int scale_expansion_zeroelim(int elen, double *e, double b, double *h)
 }
 
 /*  estimate()   Produce a one-word estimate of an expansion's value. */
-static double estimate(int elen, double *e)
+static double estimate(int elen, const double *e)
 {
   double Q;
   int eindex;
