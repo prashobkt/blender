@@ -41,7 +41,7 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   endif()
 endif()
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.7)
 
 # Prever LEGACY OpenGL to eb compatible with all the existing releases and
 # platforms which don't hare GLVND yet. Only do it if preference was not set
@@ -441,9 +441,12 @@ if(UNIX AND NOT APPLE)
 endif()
 
 
+# Vulkan
+option(WITH_VULKAN              "Enable Vulkan backend (Experimental)" OFF)
+
 # OpenGL
 
-option(WITH_OPENGL              "When off limits visibility of the opengl headers to just bf_gpu and gawain (temporary option for development purposes)" ON)
+option(WITH_OPENGL              "When off limits visibility of the opengl headers to just bf_gpu (temporary option for development purposes)" ON)
 option(WITH_GLEW_ES             "Switches to experimental copy of GLEW that has support for OpenGL ES. (temporary option for development purposes)" OFF)
 option(WITH_GL_EGL              "Use the EGL OpenGL system library instead of the platform specific OpenGL system library (CGL, glX, or WGL)"       OFF)
 option(WITH_GL_PROFILE_ES20     "Support using OpenGL ES 2.0. (through either EGL or the AGL/WGL/XGL 'es20' profile)"                               OFF)
@@ -948,6 +951,17 @@ if(WITH_OPENVDB)
   endif()
 
   list(APPEND OPENVDB_LIBRARIES ${BOOST_LIBRARIES} ${TBB_LIBRARIES})
+endif()
+
+#-----------------------------------------------------------------------------
+# Configure Vulkan.
+
+if(WITH_VULKAN)
+  find_package(Vulkan)
+
+  list(APPEND BLENDER_GL_LIBRARIES ${Vulkan_LIBRARY})
+
+  add_definitions(-DWITH_VULKAN)
 endif()
 
 #-----------------------------------------------------------------------------
