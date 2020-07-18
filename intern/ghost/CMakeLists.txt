@@ -204,6 +204,18 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
       )
     endif()
 
+    if(WITH_VULKAN)
+      list(APPEND SRC
+        intern/GHOST_ContextVK.cpp
+
+        intern/GHOST_ContextVK.h
+      )
+
+      list(APPEND INC_SYS
+        ${Vulkan_INCLUDE_DIR}
+      )
+    endif()
+
     if(WITH_GHOST_XDND)
       add_definitions(-DWITH_XDND)
 

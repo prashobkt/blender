@@ -38,6 +38,10 @@
 #  include "GHOST_DropTargetX11.h"
 #endif
 
+#if defined(WITH_VULKAN)
+#  include "GHOST_ContextVK.h"
+#endif
+
 #ifdef WITH_GL_EGL
 #  include "GHOST_ContextEGL.h"
 #  include <EGL/eglext.h>
@@ -1318,12 +1322,7 @@ GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type
 {
   if (type == GHOST_kDrawingContextTypeOpenGL) {
 
-    // During development:
-    //   try 4.x compatibility profile
-    //   try 3.3 compatibility profile
-    //   fall back to 3.0 if needed
-    //
-    // Final Blender 2.8:
+    // Blender 2.8:
     //   try 4.x core profile
     //   try 3.3 core profile
     //   no fallbacks
@@ -1358,6 +1357,18 @@ GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type
 #endif
 
     GHOST_Context *context;
+
+    // Vulkan port
+    //   try vulkan
+    //   fallback to OGL
+#if defined(WITH_VULKAN)
+    context = new GHOST_ContextVK(m_wantStereoVisual);
+
+    if (context->initializeDrawingContext())
+      return context;
+    else
+      delete context;
+#endif
 
     for (int minor = 5; minor >= 0; --minor) {
 #ifdef WITH_GL_EGL

@@ -48,6 +48,10 @@
 
 #include "GHOST_Debug.h"
 
+#if defined(WITH_VULKAN)
+#  include "GHOST_ContextVK.h"
+#endif
+
 #if defined(WITH_GL_EGL)
 #  include "GHOST_ContextEGL.h"
 #  include <EGL/eglext.h>
@@ -436,6 +440,17 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext()
 #endif
 
   GHOST_Context *context;
+
+#if defined(WITH_VULKAN)
+  {
+    context = new GHOST_ContextVK(false);
+
+    if (context->initializeDrawingContext())
+      return context;
+    else
+      delete context;
+  }
+#endif
 
   for (int minor = 5; minor >= 0; --minor) {
 #if defined(WITH_GL_EGL)
