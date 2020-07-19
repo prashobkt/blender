@@ -208,7 +208,7 @@ static void wm_gesture_draw_line(wmGesture *gt)
   immBindBuiltinProgram(GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR);
 
   float viewport_size[4];
-  glGetFloatv(GL_VIEWPORT, viewport_size);
+  GPU_viewport_size_get_f(viewport_size);
   immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
 
   immUniform1i("colors_len", 2); /* "advanced" mode */
@@ -251,7 +251,7 @@ static void wm_gesture_draw_rect(wmGesture *gt)
   immBindBuiltinProgram(GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR);
 
   float viewport_size[4];
-  glGetFloatv(GL_VIEWPORT, viewport_size);
+  GPU_viewport_size_get_f(viewport_size);
   immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
 
   immUniform1i("colors_len", 2); /* "advanced" mode */
@@ -290,7 +290,7 @@ static void wm_gesture_draw_circle(wmGesture *gt)
   immBindBuiltinProgram(GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR);
 
   float viewport_size[4];
-  glGetFloatv(GL_VIEWPORT, viewport_size);
+  GPU_viewport_size_get_f(viewport_size);
   immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
 
   immUniform1i("colors_len", 2); /* "advanced" mode */
@@ -354,12 +354,7 @@ static void draw_filled_lasso(wmGesture *gt)
 
     /* Additive Blending */
     GPU_blend(true);
-    glBlendFunc(GL_ONE, GL_ONE);
-
-    GLint unpack_alignment;
-    glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_alignment);
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    GPU_blend_set_func(GPU_ONE, GPU_ONE);
 
     IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
     GPU_shader_bind(state.shader);
@@ -381,12 +376,10 @@ static void draw_filled_lasso(wmGesture *gt)
 
     GPU_shader_unbind();
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_alignment);
-
     MEM_freeN(pixel_buf);
 
     GPU_blend(false);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GPU_blend_set_func(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
   }
 
   MEM_freeN(mcoords);
@@ -414,7 +407,7 @@ static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
   immBindBuiltinProgram(GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR);
 
   float viewport_size[4];
-  glGetFloatv(GL_VIEWPORT, viewport_size);
+  GPU_viewport_size_get_f(viewport_size);
   immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
 
   immUniform1i("colors_len", 2); /* "advanced" mode */
@@ -448,7 +441,7 @@ static void wm_gesture_draw_cross(wmWindow *win, wmGesture *gt)
   immBindBuiltinProgram(GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR);
 
   float viewport_size[4];
-  glGetFloatv(GL_VIEWPORT, viewport_size);
+  GPU_viewport_size_get_f(viewport_size);
   immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
 
   immUniform1i("colors_len", 2); /* "advanced" mode */
