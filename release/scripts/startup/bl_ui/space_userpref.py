@@ -1677,26 +1677,18 @@ class UserMenusPanel:
     bl_context = "user_menus"
 
 class USERPREF_MT_menu_select(Menu):
-    bl_label = "Menu select"
-    preset_subdir = "user_menus_editor"
-    preset_operator = "preferences.usermenus_select"
-
-    def draw(self, context):
-        Menu.draw_preset(self, context)
-
-class PIE_MT_user_menu(Menu):
-    bl_idname = "PIE_MT_user_menu"
-    bl_label = "Quick Favorites"
+    bl_label = "Menus group select"
 
     def draw(self, context):
         prefs = context.preferences
         um = prefs.user_menus
-        menu = um.get_current_menu()
 
         layout = self.layout
-        pie = layout.menu_pie()
-        pie.scale_y = 1.2
-        menu.draw(context=context, layout=pie)
+        index = 0
+        for umg in um.menus:
+            layout.operator("preferences.usermenus_select", text=umg.name).index = index
+            index = index + 1
+
 
 class USERPREF_PT_user_menus(UserMenusPanel, Panel):
     bl_label = "user_menus"
@@ -2263,7 +2255,6 @@ classes = (
 
     USERPREF_PT_keymap,
     USERPREF_MT_menu_select,
-    PIE_MT_user_menu,
     USERPREF_PT_user_menus,
     USERPREF_PT_addons,
 

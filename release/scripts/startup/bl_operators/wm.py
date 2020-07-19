@@ -2618,6 +2618,36 @@ class WM_OT_drop_blend_file(Operator):
         col.operator("wm.link", text="Link...", icon='LINK_BLEND').filepath = self.filepath
         col.operator("wm.append", text="Append...", icon='APPEND_BLEND').filepath = self.filepath
 
+class WM_OT_call_user_menu(Operator):
+    bl_idname = "wm.call_user_menu"
+    bl_label = "display user menu"
+
+    index: bpy.props.IntProperty()
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+    def draw_menu(self, menu, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+        umg = um.menus[self.index]
+
+        layout = menu.layout
+        if umg.is_pie:
+            layout = layout.menu_pie()
+        um.draw_menu(context=context, layout=layout, menu=umg)
+
+    def invoke(self, context, event):
+        prefs = context.preferences
+        um = prefs.user_menus
+        wm = context.window_manager
+        umg = um.menus[self.index]
+
+        if umg.is_pie:
+            wm.popup_menu_pie(draw_func=self.draw_menu, title=umg.name, event=event)
+        else:
+            wm.popup_menu(self.draw_menu, title=umg.name)
+        return {'FINISHED'}
 
 classes = (
     WM_OT_context_collection_boolean_set,
@@ -2662,4 +2692,5 @@ classes = (
     WM_OT_batch_rename,
     WM_MT_splash,
     WM_MT_splash_about,
+    WM_OT_call_user_menu,
 )

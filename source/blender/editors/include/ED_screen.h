@@ -377,7 +377,11 @@ bool ED_operator_camera(struct bContext *C);
 
 /* screen_user_menu.c */
 
-bUserMenu **ED_screen_user_menus_find(const struct bContext *C, uint *r_len);
+struct bUserMenusGroup *ED_screen_user_menus_group_find(int id);
+struct bUserMenu **ED_screen_user_menus_find_menu(const struct bContext *C,
+                                                  uint *r_len,
+                                                  struct bUserMenusGroup *umg);
+struct bUserMenu **ED_screen_user_menus_find(const struct bContext *C, uint *r_len, int id);
 struct bUserMenu *ED_screen_user_menu_ensure(struct bContext *C);
 
 struct bUserMenuItem_Op *ED_screen_user_menu_item_find_operator(struct ListBase *lb,
@@ -412,6 +416,10 @@ bool screen_user_menu_draw_items(struct bContext *C,
                                  struct uiLayout *layout,
                                  struct ListBase *lb,
                                  bool is_pie);
+void screen_user_menu_draw_begin(struct bContext *C,
+                                 struct uiLayout *layout,
+                                 bool is_pie,
+                                 struct bUserMenusGroup *umg);
 
 /* Cache display helpers */
 

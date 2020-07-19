@@ -153,6 +153,8 @@ def op_menu(menu, kmi_args):
 def op_menu_pie(menu, kmi_args):
     return ("wm.call_menu_pie", kmi_args, {"properties": [("name", menu)]})
 
+def op_user_menu(menu, kmi_args):
+    return ("wm.call_user_menu", kmi_args, {"properties": [("index", menu)]})
 
 def op_panel(menu, kmi_args, kmi_data=()):
     return ("wm.call_panel", kmi_args, {"properties": [("name", menu), *kmi_data]})
@@ -403,7 +405,7 @@ def km_window(params):
         ("wm.quit_blender", {"type": 'Q', "value": 'PRESS', "ctrl": True}, None),
 
         # Quick menu and toolbar
-        op_menu("SCREEN_MT_user_menu", {"type": 'Q', "value": 'PRESS'}),
+        op_user_menu(0, {"type": 'Q', "value": 'PRESS'}),
 
         # Fast editor switching
         *(

@@ -1297,9 +1297,12 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
     }
   }
 
-  LISTBASE_FOREACH (const bUserMenu *, um, &userdef->user_menus) {
-    BLO_write_struct(writer, bUserMenu, um);
-    write_usermenuitems(writer, &um->items);
+  LISTBASE_FOREACH (const bUserMenusGroup *, umg, &userdef->user_menus) {
+    BLO_write_struct(writer, bUserMenusGroup, umg);
+    LISTBASE_FOREACH (const bUserMenu *, um, &umg->menus) {
+      BLO_write_struct(writer, bUserMenu, um);
+      write_usermenuitems(writer, &um->items);
+    }
   }
 
   LISTBASE_FOREACH (const bAddon *, bext, &userdef->addons) {

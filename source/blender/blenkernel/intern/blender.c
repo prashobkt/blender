@@ -232,10 +232,14 @@ static void userdef_free_keyconfig_prefs(UserDef *userdef)
 
 static void userdef_free_user_menus(UserDef *userdef)
 {
-  for (bUserMenu *um = userdef->user_menus.first, *um_next; um; um = um_next) {
-    um_next = um->next;
-    BKE_blender_user_menu_item_free_list(&um->items);
-    MEM_freeN(um);
+  for (bUserMenusGroup *umg = userdef->user_menus.first, *umg_next; umg; umg = umg_next) {
+    umg_next = umg->next;
+    for (bUserMenu *um = umg->menus.first, *um_next; um; um = um_next) {
+      um_next = um->next;
+      BKE_blender_user_menu_item_free_list(&um->items);
+      MEM_freeN(um);
+    }
+    MEM_freeN(umg);
   }
 }
 

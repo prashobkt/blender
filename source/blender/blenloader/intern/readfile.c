@@ -9974,6 +9974,7 @@ static void read_usermenuitems(BlendDataReader *reader,
     }
     if (umi->type == USER_MENU_TYPE_SUBMENU) {
       bUserMenuItem_SubMenu *umi_sm = (bUserMenuItem_SubMenu *)umi;
+      BLI_listbase_clear(&umi_sm->items);
       BLO_read_list(reader, &umi_sm->items);
       read_usermenuitems(reader, &umi_sm->items, umi_sm);
     }
@@ -10037,9 +10038,14 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
     IDP_DirectLinkGroup_OrFree(&kpt->prop, reader);
   }
 
-  LISTBASE_FOREACH (bUserMenu *, um, &user->user_menus) {
-    BLO_read_list(reader, &um->items);
-    read_usermenuitems(reader, &um->items, NULL);
+  LISTBASE_FOREACH (bUserMenusGroup *, umg, &user->user_menus) {
+    BLI_listbase_clear(&umg->menus);
+    BLO_read_list(reader, &umg->menus);
+    LISTBASE_FOREACH (bUserMenu *, um, &umg->menus) {
+      BLI_listbase_clear(&um->items);
+      BLO_read_list(reader, &um->items);
+      read_usermenuitems(reader, &um->items, NULL);
+    }
   }
 
   for (addon = user->addons.first; addon; addon = addon->next) {
@@ -10061,6 +10067,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   user->runtime.um_space_select = 1;
   user->runtime.um_context_select = 1;
   user->runtime.um_item_select = NULL;
+  user->runtime.umg_select = user->user_menus.first;
   BLI_listbase_clear(&user->runtime.um_buttons);
 
   /* free fd->datamap again */

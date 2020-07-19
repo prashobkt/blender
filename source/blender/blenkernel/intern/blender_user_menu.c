@@ -33,6 +33,22 @@
 #include "BKE_idprop.h"
 
 /* -------------------------------------------------------------------- */
+/** \name Menu group
+ * \{ */
+
+void BKE_blender_user_menu_free_list(ListBase *lb)
+{
+  for (bUserMenu *um = lb->first, *um_next; um; um = um_next) {
+    um_next = um->next;
+    BKE_blender_user_menu_item_free_list(&um->items);
+    MEM_freeN(um);
+  }
+  BLI_listbase_clear(lb);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Menu Type
  * \{ */
 
@@ -53,6 +69,7 @@ bUserMenu *BKE_blender_user_menu_ensure(ListBase *lb, char space_type, const cha
 
     um = MEM_callocN(sizeof(bUserMenu), __func__);
     um->space_type = space_type;
+    BLI_listbase_clear(&um->items);
     STRNCPY(um->context, context);
     BLI_addhead(lb, um);
   }

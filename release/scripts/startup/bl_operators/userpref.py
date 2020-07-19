@@ -1164,7 +1164,6 @@ class PREFERENCES_OT_studiolight_show(Operator):
 # -----------------------------------------------------------------------------
 # User Menus Operators
 
-
 class PREFERENCES_OT_usermenus_select(Operator):
     bl_idname = "preferences.usermenus_select"
     bl_label = "select user menu to edit"
@@ -1179,6 +1178,44 @@ class PREFERENCES_OT_usermenus_select(Operator):
         else:
             return {'CANCELLED'}
 
+
+class PREFERENCES_OT_usermenus_select(Operator):
+    bl_idname = "preferences.usermenus_select"
+    bl_label = "select user menu to edit"
+
+    index: IntProperty()
+
+    def execute(self, _context):
+        prefs = _context.preferences
+        um = prefs.user_menus
+
+        i = 0
+        for umg in um.menus:
+            if i == self.index:
+                um.set_group(new_group=umg)
+                return {'FINISHED'}
+            i = i + 1
+        return {'CANCELLED'}
+
+class PREFERENCES_OT_usermenus_add(Operator):
+    bl_idname = "preferences.usermenus_add"
+    bl_label = "add an user menus group"
+
+    def execute(self, _context):
+        prefs = _context.preferences
+        um = prefs.user_menus
+        um.add_group()
+        return {'FINISHED'}
+
+class PREFERENCES_OT_usermenus_remove(Operator):
+    bl_idname = "preferences.usermenus_remove"
+    bl_label = "add an user menus group"
+
+    def execute(self, _context):
+        prefs = _context.preferences
+        um = prefs.user_menus
+        um.remove_group()
+        return {'FINISHED'}
 
 class PREFERENCES_OT_menuitem_add(Operator):
     """Add user menu item"""
@@ -1304,6 +1341,8 @@ classes = (
     PREFERENCES_OT_studiolight_copy_settings,
     PREFERENCES_OT_studiolight_show,
     PREFERENCES_OT_usermenus_select,
+    PREFERENCES_OT_usermenus_add,
+    PREFERENCES_OT_usermenus_remove,
     PREFERENCES_OT_menuitem_add,
     PREFERENCES_OT_menuitem_remove,
     PREFERENCES_OT_menuitem_up,

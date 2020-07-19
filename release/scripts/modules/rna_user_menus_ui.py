@@ -27,29 +27,44 @@ from bpy.app.translations import pgettext_iface as iface_
 from bpy.app.translations import contexts as i18n_contexts
 
 
-def draw_button(context, box, items):
+def _indented_layout(layout, level):
+    indentpx = 16
+    if level == 0:
+        level = 0.0001   # Tweak so that a percentage of 0 won't split by half
+    indent = level * indentpx / bpy.context.region.width
+
+    split = layout.split(factor=indent)
+    col = split.column()
+    col = split.column()
+    return col
+
+def draw_button(context, box, item):
     prefs = context.preferences
     um = prefs.user_menus
 
-    name = items.item.name
+    name = item.name
+    if name == "":
+        name = " "
+    item.is_selected = item == um.active_item
     col = box.column(align=True)
     row = col.row(align=True)
-    if items.item.type == "SEPARATOR":
+    if item.type == "SEPARATOR":
         name = "___________"
-    row.prop(items, "pressed", text=name, toggle=1)
-    if items.item.type == "SUBMENU":
-        if um.is_pie:
+    row.prop(item, "is_selected", text=name, toggle=1)
+    if item.type == "SUBMENU":
+        sm = item.get_submenu()
+        if um.active_group.is_pie:
             row.operator("preferences.menuitem_add", text="", icon='ADD')
             row.operator("preferences.menuitem_remove", text="", icon='REMOVE')
             row.operator("preferences.menuitem_up", text="", icon='TRIA_UP')
             row.operator("preferences.menuitem_down", text="", icon='TRIA_DOWN')
         sub_box = col.box()
         sub_box = sub_box.column(align=True)
-        draw_item(context, sub_box, items.subbut)
+        draw_item(context, sub_box, sm.items_list)
 
-def draw_item(context, box, but_list):
-    for items in but_list:
-        draw_button(context, box, items)
+def draw_item(context, box, items):
+    for umi in items:
+        draw_button(context, box, umi)
 
 def draw_item_box(context, row):
     prefs = context.preferences
@@ -61,8 +76,8 @@ def draw_item_box(context, row):
     has_item = um.has_item()
     if not has_item:
         box_col.label(text="none")
-    um.buttons_refresh()
-    draw_item(context, box_col, um.buttons)
+    else:
+        draw_item(context, box_col, um.get_current_menu().menu_items)
 
     row = row.split(factor=0.9, align=True)
     col = row.column(align=True)
@@ -86,16 +101,18 @@ def draw_pie(context, row):
     prefs = context.preferences
     um = prefs.user_menus
 
+    cm = um.get_current_menu()
+    if not cm:
+        return
     col = row.column()
-    um.buttons_refresh()
-    draw_pie_item(context, col, um.buttons[0], "Left : ")
-    draw_pie_item(context, col, um.buttons[1], "Right : ")
-    draw_pie_item(context, col, um.buttons[2], "Down : ")
-    draw_pie_item(context, col, um.buttons[3], "Up : ")
-    draw_pie_item(context, col, um.buttons[4], "Upper left : ")
-    draw_pie_item(context, col, um.buttons[5], "Upper right : ")
-    draw_pie_item(context, col, um.buttons[6], "Lower left : ")
-    draw_pie_item(context, col, um.buttons[7], "Lower right : ")
+    draw_pie_item(context, col, cm.menu_items[0], "Left : ")
+    draw_pie_item(context, col, cm.menu_items[1], "Right : ")
+    draw_pie_item(context, col, cm.menu_items[2], "Down : ")
+    draw_pie_item(context, col, cm.menu_items[3], "Up : ")
+    draw_pie_item(context, col, cm.menu_items[4], "Upper left : ")
+    draw_pie_item(context, col, cm.menu_items[5], "Upper right : ")
+    draw_pie_item(context, col, cm.menu_items[6], "Lower left : ")
+    draw_pie_item(context, col, cm.menu_items[7], "Lower right : ")
     row.separator()
         
 
@@ -123,14 +140,34 @@ def draw_item_editor(context, row):
     else:
         col.label(text="No item selected.")
 
+def draw_user_menu_preference(context, layout):
+    prefs = context.preferences
+    um = prefs.user_menus
+    umg = um.active_group
+    kmi = umg.keymap
+
+    col = _indented_layout(layout, 0)
+    row = col.row()
+
+    row.prop(um, "expanded", text="", emboss=False)
+
+    row.prop(umg, "name")
+    pie_text = "List"
+    if umg.is_pie:
+        pie_text = "Pie"
+    row.prop(umg, "is_pie", text=pie_text, toggle=True)
+
+    #row.prop(kmi, )
+
+    
+
 
 def draw_user_menus(context, layout):
     prefs = context.preferences
     um = prefs.user_menus
 
-    menu_name_active = None
-    if not menu_name_active:
-        menu_name_active = "Quick favourites"
+    if not um.active_group:
+        um.active_group = um.menus[0]
 
     split = layout.split(factor=0.4)
 
@@ -138,10 +175,9 @@ def draw_user_menus(context, layout):
     col = layout.column()
 
     rowsub = row.row(align=True)
-    rowsub.menu("USERPREF_MT_menu_select", text=menu_name_active)
-    rowsub.operator("wm.keyconfig_preset_add", text="", icon='ADD')
-    rowsub.operator("wm.keyconfig_preset_add", text="",
-                    icon='REMOVE').remove_active = True
+    rowsub.menu("USERPREF_MT_menu_select", text=um.active_group.name)
+    rowsub.operator("preferences.usermenus_add", text="", icon='ADD')
+    rowsub.operator("preferences.usermenus_remove", text="", icon='REMOVE')
 
     rowsub = split.row(align=True)
     rowsub.prop(um, "space_selected", text="")
@@ -149,25 +185,20 @@ def draw_user_menus(context, layout):
     rowsub = split.row(align=True)
     rowsub.prop(um, "context_selected", text="")
 
-    rowsub = split.row(align=True)
-    rowsub.operator("preferences.keyconfig_import", text="", icon='IMPORT')
-    rowsub.operator("preferences.keyconfig_export", text="", icon='EXPORT')
+    #rowsub = split.row(align=True)
+    #rowsub.operator("preferences.keyconfig_import", text="", icon='IMPORT')
+    #rowsub.operator("preferences.keyconfig_export", text="", icon='EXPORT')
 
     row = layout.row()
     col = layout.column()
-    rowsub = row.split(factor=0.4, align=True)
 
     layout.separator()
-    # TODO : set menu parameters in a submenu here
-    pie_text = "List"
-    if um.is_pie:
-        pie_text = "Pie"
-    rowsub.prop(um, "is_pie", text=pie_text, toggle=True)
+    draw_user_menu_preference(context=context, layout=row)
 
     col = layout.column()
     row = layout.row()
 
-    if um.is_pie:
+    if um.active_group.is_pie:
         draw_pie(context=context, row=row)
     else:
         draw_item_box(context=context, row=row)
@@ -175,13 +206,13 @@ def draw_user_menus(context, layout):
 
     layout.separator()
 
-    km = bpy.context.window_manager.keyconfigs.user.keymaps['Window']
-    for kmi in km.keymap_items:
-        if kmi.idname == "wm.call_menu":
-            if um.is_pie and kmi.properties.name == "SCREEN_MT_user_menu":
-                kmi.idname = "wm.call_menu_pie"
-                kmi.properties.name = "PIE_MT_user_menu"
-        if kmi.idname == "wm.call_menu_pie":
-            if kmi.properties.name == "PIE_MT_user_menu" and not um.is_pie:
-                kmi.idname = "wm.call_menu"
-                kmi.properties.name = "SCREEN_MT_user_menu"
+    #km = bpy.context.window_manager.keyconfigs.user.keymaps['Window']
+    #for kmi in km.keymap_items:
+    #    if kmi.idname == "wm.call_menu":
+    #        if um.is_pie and kmi.properties.name == "SCREEN_MT_user_menu":
+    #            kmi.idname = "wm.call_menu_pie"
+    #            kmi.properties.name = "PIE_MT_user_menu"
+    #    if kmi.idname == "wm.call_menu_pie":
+    #        if kmi.properties.name == "PIE_MT_user_menu" and not um.is_pie:
+    #            kmi.idname = "wm.call_menu"
+    #            kmi.properties.name = "SCREEN_MT_user_menu"

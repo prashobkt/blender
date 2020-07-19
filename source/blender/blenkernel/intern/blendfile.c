@@ -614,6 +614,18 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
     BLI_addtail(&userdef->themes, btheme);
   }
 
+  /* default user menus. */
+  {
+    bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
+    STRNCPY(umg->name, "Quick Favorites");
+    umg->pie = false;
+    umg->prev = NULL;
+    umg->next = NULL;
+    BLI_listbase_clear(&umg->menus);
+    BLI_addtail(&userdef->user_menus, umg);
+    userdef->runtime.umg_select = umg;
+  }
+
 #ifdef WITH_PYTHON_SECURITY
   /* use alternative setting for security nuts
    * otherwise we'd need to patch the binary blob - startup.blend.c */

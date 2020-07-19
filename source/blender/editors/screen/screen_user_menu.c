@@ -67,10 +67,23 @@ static const char *screen_menu_context_string(const bContext *C, const SpaceLink
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Menu Type
+/** \name Menu Group
  * \{ */
 
-bUserMenu **ED_screen_user_menus_find(const bContext *C, uint *r_len)
+bUserMenusGroup *ED_screen_user_menus_group_find(int id)
+{
+  int index = 0;
+  LISTBASE_FOREACH (bUserMenusGroup *, umg, &U.user_menus) {
+    if (index == id)
+      return umg;
+    index++;
+  }
+  return NULL;
+}
+
+/** \} */
+
+bUserMenu **ED_screen_user_menus_find_menu(const bContext *C, uint *r_len, bUserMenusGroup *umg)
 {
   SpaceLink *sl = CTX_wm_space_data(C);
 
@@ -83,15 +96,21 @@ bUserMenu **ED_screen_user_menus_find(const bContext *C, uint *r_len)
   const char *context = screen_menu_context_string(C, sl);
   uint array_len = 3;
   bUserMenu **um_array = MEM_calloc_arrayN(array_len, sizeof(*um_array), __func__);
-  um_array[0] = BKE_blender_user_menu_find(&U.user_menus, sl->spacetype, context);
+  um_array[0] = BKE_blender_user_menu_find(&umg->menus, sl->spacetype, context);
   um_array[1] = (sl->spacetype != SPACE_TOPBAR) ?
-                    BKE_blender_user_menu_find(&U.user_menus, SPACE_TOPBAR, context_mode) :
+                    BKE_blender_user_menu_find(&umg->menus, SPACE_TOPBAR, context_mode) :
                     NULL;
   um_array[2] = (sl->spacetype == SPACE_VIEW3D) ?
-                    BKE_blender_user_menu_find(&U.user_menus, SPACE_PROPERTIES, context_mode) :
+                    BKE_blender_user_menu_find(&umg->menus, SPACE_PROPERTIES, context_mode) :
                     NULL;
   *r_len = array_len;
   return um_array;
+}
+
+bUserMenu **ED_screen_user_menus_find(const bContext *C, uint *r_len, int id)
+{
+  bUserMenusGroup *umg = ED_screen_user_menus_group_find(id);
+  return ED_screen_user_menus_find_menu(C, r_len, umg);
 }
 
 bUserMenu *ED_screen_user_menu_ensure(bContext *C)
@@ -349,17 +368,39 @@ bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase *lb, bo
   return is_empty;
 }
 
-static void screen_user_menu_draw(const bContext *C, Menu *menu)
+void screen_user_menu_draw_begin(bContext *C, uiLayout *layout, bool is_pie, bUserMenusGroup *umg)
 {
   uint um_array_len;
-  bUserMenu **um_array = ED_screen_user_menus_find(C, &um_array_len);
+  bUserMenu **um_array = ED_screen_user_menus_find_menu(C, &um_array_len, umg);
   bool is_empty = true;
   for (int um_index = 0; um_index < um_array_len; um_index++) {
     bUserMenu *um = um_array[um_index];
     if (um == NULL) {
       continue;
     }
-    is_empty = screen_user_menu_draw_items(C, menu->layout, &um->items, true);
+    is_empty = screen_user_menu_draw_items(C, layout, &um->items, true) && is_empty;
+  }
+  if (um_array) {
+    MEM_freeN(um_array);
+  }
+
+  if (is_empty && !is_pie) {
+    uiItemL(layout, TIP_("No menu items found"), ICON_NONE);
+    uiItemL(layout, TIP_("Right click on buttons to add them to this menu"), ICON_NONE);
+  }
+}
+
+static void screen_user_menu_draw(const bContext *C, Menu *menu)
+{
+  uint um_array_len;
+  bUserMenu **um_array = ED_screen_user_menus_find(C, &um_array_len, 0);
+  bool is_empty = true;
+  for (int um_index = 0; um_index < um_array_len; um_index++) {
+    bUserMenu *um = um_array[um_index];
+    if (um == NULL) {
+      continue;
+    }
+    is_empty = is_empty || screen_user_menu_draw_items(C, menu->layout, &um->items, true);
   }
   if (um_array) {
     MEM_freeN(um_array);

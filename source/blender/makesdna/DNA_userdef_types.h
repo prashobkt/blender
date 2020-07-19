@@ -519,10 +519,13 @@ typedef struct bPathCompare {
 } bPathCompare;
 
 typedef struct bUserMenusGroup {
-  struct bUserMenuGroup *next, *prev;
-  char name[64];
+  struct bUserMenusGroup *next, *prev;
+  struct wmKeyMapItem *shortcut;
   /* bUserMenu */
-  ListBase menus;
+  struct ListBase menus;
+  char pie;
+  char name[32];
+  char _pad0[7];
 } bUserMenusGroup;
 
 typedef struct bUserMenu {
@@ -531,7 +534,7 @@ typedef struct bUserMenu {
   char _pad0[7];
   char context[64];
   /* bUserMenuItem */
-  ListBase items;
+  struct ListBase items;
 } bUserMenu;
 
 /** May be part of #bUserMenu or other list. */
@@ -540,7 +543,9 @@ typedef struct bUserMenuItem {
   struct bUserMenuItem_SubMenu *parent;
   char ui_name[64];
   char type;
-  char _pad0[7];
+  // editor
+  char is_selected;
+  char _pad0[6];
 } bUserMenuItem;
 
 typedef struct bUserMenuItem_Op {
@@ -558,7 +563,7 @@ typedef struct bUserMenuItem_Menu {
 
 typedef struct bUserMenuItem_SubMenu {
   bUserMenuItem item;
-  ListBase items;
+  struct ListBase items;
   char name[64];
 } bUserMenuItem_SubMenu;
 
@@ -613,9 +618,10 @@ typedef struct UserDef_Runtime {
   /* User menu editor runtime datas */
   char um_space_select;
   char um_context_select;
-  char um_is_pie;
+  char um_expanded;
   char _pad0[4];
   struct bUserMenuItem *um_item_select;
+  struct bUserMenusGroup *umg_select;
   /** #bUserMenuItem_But. */
   struct ListBase um_buttons;
 } UserDef_Runtime;
@@ -754,7 +760,7 @@ typedef struct UserDef {
   struct ListBase user_keyconfig_prefs;
   struct ListBase addons;
   struct ListBase autoexec_paths;
-  /** #bUserMenu. */
+  /** #bUserMenusGroups. */
   struct ListBase user_menus;
 
   char keyconfigstr[64];

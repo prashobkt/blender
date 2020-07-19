@@ -29,6 +29,8 @@ struct ListBase;
 struct bUserMenu;
 struct bUserMenuItem;
 
+void BKE_blender_user_menu_free_list(struct ListBase *lb);
+
 struct bUserMenu *BKE_blender_user_menu_find(struct ListBase *lb,
                                              char space_type,
                                              const char *context);
